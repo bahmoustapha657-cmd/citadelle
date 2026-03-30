@@ -83,11 +83,11 @@ const COMPTES_DEFAUT = [
 ];
 
 const ACCES = {
-  admin:     ["admin_panel","fondation","compta","primaire","college"],
-  direction: ["fondation","primaire","college"],
-  primaire:  ["primaire"],
-  college:   ["college"],
-  comptable: ["compta","primaire","college"],
+  admin:     ["admin_panel","fondation","compta","primaire","college","calendrier"],
+  direction: ["fondation","primaire","college","calendrier"],
+  primaire:  ["primaire","calendrier"],
+  college:   ["college","calendrier"],
+  comptable: ["compta","primaire","college","calendrier"],
 };
 
 // Qui peut modifier les élèves ?
@@ -99,6 +99,7 @@ const MODULES = [
   {id:"compta",      label:"Comptabilité",     icon:"📊", desc:"Finances"},
   {id:"primaire",    label:"Dir. Primaire",    icon:"🎒", desc:"Primaire"},
   {id:"college",     label:"Bureau Collège",   icon:"🏫", desc:"Collège"},
+  {id:"calendrier",  label:"Calendrier",       icon:"📅", desc:"Événements scolaires"},
 ];
 
 // ══════════════════════════════════════════════════════════════
@@ -1247,6 +1248,16 @@ function Comptabilite({readOnly, annee}) {
             <Input label="Contact Tuteur" value={form.contactTuteur||""} onChange={chg("contactTuteur")}/>
             <Input label="Domicile Tuteur" value={form.domicile||""} onChange={chg("domicile")}/>
           </div>
+          {/* Photo de l'élève */}
+          <div style={{marginTop:14}}>
+            <p style={{fontSize:10,fontWeight:700,color:C.blue,textTransform:"uppercase",margin:"0 0 8px",letterSpacing:"0.07em"}}>Photo de l'élève (optionnel)</p>
+            <div style={{display:"flex",alignItems:"center",gap:14}}>
+              {form.photo&&<img src={form.photo} alt="photo" style={{width:64,height:64,borderRadius:10,objectFit:"cover",border:`2px solid ${C.blue}`}}/>}
+              <UploadFichiers dossier={`photos/eleves`} fichiers={form.photo?[{nom:"photo",url:form.photo}]:[]}
+                onAjouter={f=>setForm(p=>({...p,photo:f.url}))}
+                onSupprimer={()=>setForm(p=>({...p,photo:""}))}/>
+            </div>
+          </div>
           <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
             <Btn v="ghost" onClick={()=>setModal(null)}>Annuler</Btn>
             <Btn onClick={()=>{
@@ -2116,6 +2127,167 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
 }
 
 // ══════════════════════════════════════════════════════════════
+//  RECHERCHE GLOBALE
+// ══════════════════════════════════════════════════════════════
+function RechercheGlobale({onFermer}) {
+  const {items:elevesC}=useFirestore("elevesCollege");
+  const {items:elevesP}=useFirestore("elevesPrimaire");
+  const [q,setQ]=useState("");
+
+  const tousEleves=[
+    ...elevesC.map(e=>({...e,niveau:"Collège"})),
+    ...elevesP.map(e=>({...e,niveau:"Primaire"})),
+  ];
+
+  const resultats=q.length>=2?tousEleves.filter(e=>
+    (e.nom+" "+e.prenom).toLowerCase().includes(q.toLowerCase())||
+    (e.matricule||"").toLowerCase().includes(q.toLowerCase())||
+    (e.classe||"").toLowerCase().includes(q.toLowerCase())
+  ):[];
+
+  return (
+    <Modale titre="🔍 Recherche globale" fermer={onFermer}>
+      <input autoFocus value={q} onChange={e=>setQ(e.target.value)}
+        placeholder="Nom, prénom, matricule, classe..."
+        style={{width:"100%",border:"2px solid #b0c4d8",borderRadius:9,padding:"10px 12px",fontSize:14,boxSizing:"border-box",outline:"none",marginBottom:12}}/>
+      {q.length<2
+        ?<p style={{textAlign:"center",color:"#9ca3af",fontSize:13,padding:"20px 0"}}>Tapez au moins 2 caractères...</p>
+        :resultats.length===0?<Vide icone="🔍" msg="Aucun résultat"/>
+        :<div style={{maxHeight:420,overflowY:"auto"}}>
+          <p style={{fontSize:11,color:"#9ca3af",marginBottom:8}}>{resultats.length} résultat(s)</p>
+          <table style={{width:"100%",borderCollapse:"collapse"}}>
+            <THead cols={["Photo","Matricule","Nom & Prénom","Classe","Niveau","Statut"]}/>
+            <tbody>{resultats.map(e=><TR key={e._id}>
+              <TD>
+                {e.photo
+                  ?<img src={e.photo} alt="" style={{width:32,height:32,borderRadius:6,objectFit:"cover"}}/>
+                  :<div style={{width:32,height:32,borderRadius:6,background:C.blue,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:11,fontWeight:800}}>{(e.nom||"?")[0]}{(e.prenom||"?")[0]}</div>
+                }
+              </TD>
+              <TD><span style={{fontSize:11,fontFamily:"monospace",background:"#e0ebf8",padding:"2px 5px",borderRadius:4,color:C.blue,fontWeight:700}}>{e.matricule||"—"}</span></TD>
+              <TD bold>{e.nom} {e.prenom}</TD>
+              <TD><Badge color="blue">{e.classe}</Badge></TD>
+              <TD><Badge color={e.niveau==="Collège"?"purple":"amber"}>{e.niveau}</Badge></TD>
+              <TD><Badge color={e.statut==="Actif"?"vert":"gray"}>{e.statut||"Actif"}</Badge></TD>
+            </TR>)}</tbody>
+          </table>
+        </div>}
+    </Modale>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
+//  CALENDRIER SCOLAIRE
+// ══════════════════════════════════════════════════════════════
+function Calendrier({annee}) {
+  const {items:evenements,ajouter:ajEv,supprimer:supEv}=useFirestore("evenements");
+  const [modal,setModal]=useState(null);
+  const [form,setForm]=useState({});
+  const chg=k=>e=>setForm(p=>({...p,[k]:e.target.value}));
+
+  const TYPES_EV=[
+    {id:"exam",      label:"Examen / Composition", color:"#ef4444"},
+    {id:"conge",     label:"Congé / Vacances",      color:"#10b981"},
+    {id:"reunion",   label:"Réunion",               color:"#f59e0b"},
+    {id:"evenement", label:"Événement scolaire",    color:"#8b5cf6"},
+    {id:"autre",     label:"Autre",                 color:"#6b7280"},
+  ];
+
+  const MOIS_LABELS=["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+
+  const evParMois=MOIS_LABELS.map((m,i)=>({
+    mois:m, num:i,
+    evs:evenements.filter(e=>{
+      if(!e.date) return false;
+      return new Date(e.date).getMonth()===i;
+    }).sort((a,b)=>a.date>b.date?1:-1)
+  })).filter(m=>m.evs.length>0);
+
+  const prochains=evenements.filter(e=>e.date&&e.date>=today()).sort((a,b)=>a.date>b.date?1:-1).slice(0,5);
+
+  return (
+    <div style={{padding:"22px 26px"}}>
+      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18,flexWrap:"wrap"}}>
+        <img src={LOGO} alt="" style={{width:48,height:48,objectFit:"contain"}}/>
+        <div style={{flex:1}}>
+          <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.blueDark}}>Calendrier Scolaire</h2>
+          <p style={{margin:0,fontSize:12,color:C.green,fontWeight:700}}>Examens, congés, réunions — {annee}</p>
+        </div>
+        <Btn onClick={()=>{setForm({type:"evenement",date:today()});setModal("add_ev");}}>+ Ajouter un événement</Btn>
+      </div>
+
+      {/* Légende */}
+      <div style={{display:"flex",gap:12,flexWrap:"wrap",marginBottom:16}}>
+        {TYPES_EV.map(t=>(
+          <div key={t.id} style={{display:"flex",alignItems:"center",gap:5,fontSize:12}}>
+            <div style={{width:10,height:10,borderRadius:"50%",background:t.color,flexShrink:0}}/>
+            <span style={{color:"#6b7280"}}>{t.label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Prochains événements */}
+      {prochains.length>0&&<div style={{background:"#e0ebf8",borderRadius:10,padding:"12px 16px",marginBottom:16}}>
+        <p style={{margin:"0 0 10px",fontWeight:800,fontSize:13,color:C.blueDark}}>📌 Prochains événements</p>
+        <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+          {prochains.map(ev=>{
+            const t=TYPES_EV.find(t=>t.id===ev.type)||TYPES_EV[4];
+            return <div key={ev._id} style={{background:"#fff",borderRadius:7,padding:"6px 12px",borderLeft:`3px solid ${t.color}`,fontSize:12}}>
+              <span style={{fontWeight:700,color:C.blueDark}}>{ev.titre}</span>
+              <span style={{color:"#9ca3af"}}> · {ev.date}</span>
+              {ev.niveau&&ev.niveau!=="Tous"&&<Badge color="blue" style={{marginLeft:4}}>{ev.niveau}</Badge>}
+            </div>;
+          })}
+        </div>
+      </div>}
+
+      {evenements.length===0?<Vide icone="📅" msg="Aucun événement — cliquez sur + Ajouter"/>
+      :<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:14}}>
+        {evParMois.map(({mois,evs})=>(
+          <Card key={mois}><div style={{padding:"12px 16px"}}>
+            <p style={{margin:"0 0 10px",fontWeight:800,fontSize:14,color:C.blueDark,borderBottom:"2px solid #e0ebf8",paddingBottom:6}}>{mois}</p>
+            {evs.map(ev=>{
+              const t=TYPES_EV.find(t=>t.id===ev.type)||TYPES_EV[4];
+              return <div key={ev._id} style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:8,padding:"8px 10px",borderRadius:7,background:"#f8fafc",borderLeft:`3px solid ${t.color}`}}>
+                <div style={{flex:1}}>
+                  <p style={{margin:0,fontWeight:700,fontSize:12,color:C.blueDark}}>{ev.titre}</p>
+                  <p style={{margin:"2px 0 0",fontSize:11,color:"#6b7280"}}>
+                    {ev.date}{ev.dateFin&&ev.dateFin!==ev.date?` → ${ev.dateFin}`:""} ·
+                    <span style={{color:t.color,fontWeight:600}}> {t.label}</span>
+                    {ev.niveau&&ev.niveau!=="Tous"&&<span style={{color:"#9ca3af"}}> · {ev.niveau}</span>}
+                  </p>
+                  {ev.description&&<p style={{margin:"3px 0 0",fontSize:11,color:"#9ca3af",fontStyle:"italic"}}>{ev.description}</p>}
+                </div>
+                <Btn sm v="danger" onClick={()=>{if(confirm("Supprimer cet événement ?"))supEv(ev._id);}}>×</Btn>
+              </div>;
+            })}
+          </div></Card>
+        ))}
+      </div>}
+
+      {modal==="add_ev"&&<Modale titre="Nouvel événement" fermer={()=>setModal(null)}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <div style={{gridColumn:"1/-1"}}><Input label="Titre de l'événement" value={form.titre||""} onChange={chg("titre")}/></div>
+          <Selec label="Type" value={form.type||"evenement"} onChange={chg("type")}>
+            {TYPES_EV.map(t=><option key={t.id} value={t.id}>{t.label}</option>)}
+          </Selec>
+          <Selec label="Niveau concerné" value={form.niveau||"Tous"} onChange={chg("niveau")}>
+            <option>Tous</option><option>Primaire</option><option>Collège</option>
+          </Selec>
+          <Input label="Date début" type="date" value={form.date||""} onChange={chg("date")}/>
+          <Input label="Date fin (optionnel)" type="date" value={form.dateFin||""} onChange={chg("dateFin")}/>
+          <div style={{gridColumn:"1/-1"}}><Textarea label="Description (optionnel)" value={form.description||""} onChange={chg("description")}/></div>
+        </div>
+        <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
+          <Btn v="ghost" onClick={()=>setModal(null)}>Annuler</Btn>
+          <Btn onClick={()=>{if(form.titre&&form.date){ajEv(form);setModal(null);}else alert("Titre et date requis");}}>Enregistrer</Btn>
+        </div>
+      </Modale>}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
 //  ÉCRAN DE CONNEXION
 // ══════════════════════════════════════════════════════════════
 function Connexion({onLogin}) {
@@ -2183,6 +2355,7 @@ export default function App() {
   const [page,setPage]=useState(null);
   const [annee,setAnneeState]=useState(()=>localStorage.getItem("LC_annee")||"2025-2026");
   const [sidebarOuvert,setSidebarOuvert]=useState(false);
+  const [rechercheOuverte,setRechercheOuverte]=useState(false);
   const isMobile=()=>window.innerWidth<768;
 
   const setAnnee=(val)=>{
@@ -2271,6 +2444,10 @@ export default function App() {
             {readOnly&&<span style={{marginLeft:10,fontSize:11,color:"#d97706",fontWeight:700,background:"#fef3e0",padding:"2px 8px",borderRadius:10}}>👁️ Lecture seule</span>}
           </div>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <button onClick={()=>setRechercheOuverte(true)}
+              style={{display:"flex",alignItems:"center",gap:6,background:"#f0f4f0",border:"1px solid #e0ebf8",borderRadius:8,padding:"5px 12px",cursor:"pointer",fontSize:12,color:"#6b7280",fontWeight:600}}>
+              🔍 <span>Rechercher...</span>
+            </button>
             <div style={{width:30,height:30,borderRadius:"50%",background:C.blue,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800}}>
               {utilisateur.nom[0]}
             </div>
@@ -2278,6 +2455,7 @@ export default function App() {
             <Badge color={utilisateur.role==="admin"?"purple":utilisateur.role==="comptable"?"teal":"blue"}>{utilisateur.label}</Badge>
           </div>
         </header>
+        {rechercheOuverte&&<RechercheGlobale onFermer={()=>setRechercheOuverte(false)}/>}
 
         <div style={{flex:1,overflowY:"auto"}}>
           {page==="admin_panel" && <AdminPanel annee={annee} setAnnee={setAnnee}/>}
@@ -2285,6 +2463,7 @@ export default function App() {
           {page==="compta"      && <Comptabilite readOnly={readOnly} annee={annee}/>}
           {page==="primaire"    && <Ecole titre="Direction du Primaire" couleur={C.green} cleClasses="classesPrimaire" cleEns="ensPrimaire" cleNotes="notesPrimaire" cleEleves="elevesPrimaire" avecEns={false} userRole={utilisateur.role} annee={annee} classesPredefinies={CLASSES_PRIMAIRE}/>}
           {page==="college"     && <Ecole titre="Bureau du Collège" couleur={C.blue} cleClasses="classesCollege" cleEns="ensCollege" cleNotes="notesCollege" cleEleves="elevesCollege" avecEns={true} userRole={utilisateur.role} annee={annee} classesPredefinies={CLASSES_COLLEGE}/>}
+          {page==="calendrier"  && <Calendrier annee={annee}/>}
         </div>
       </main>
     </div>
