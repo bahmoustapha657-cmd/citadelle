@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { db } from "./firebase";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
+import * as XLSX from "xlsx";
 import {
   collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc, getDoc
 } from "firebase/firestore";
@@ -352,6 +353,15 @@ const imprimerListeClasse = (classe, eleves) => {
   <div class="footer"><span>Effectif : ${liste.length} élève(s)</span><span>Date d'impression : ${today()}</span><span>Le Directeur</span></div>
   <script>window.onload=()=>window.print();</script></body></html>`);
   w.document.close();
+};
+
+const exportExcel = (nomFichier, colonnes, lignes) => {
+  const ws = XLSX.utils.aoa_to_sheet([colonnes, ...lignes]);
+  // Style largeur colonnes
+  ws["!cols"] = colonnes.map(()=>({wch:22}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Données");
+  XLSX.writeFile(wb, `${nomFichier}_${new Date().toLocaleDateString("fr-FR").replace(/\//g,"-")}.xlsx`);
 };
 
 const imprimerAttestation = (eleve, niveau, annee) => {
@@ -1179,6 +1189,43 @@ function Comptabilite({readOnly, annee}) {
       </div>}
 
       {tab==="mens"&&<div>
+        {(()=>{
+          const elevesCritiques=eleves.filter(e=>{
+            const mens=e.mens||{};
+            const impayesConsec=MOIS_ANNEE.slice().reverse().findIndex(m=>mens[m]==="Payé");
+            const nbImp=impayesConsec===-1?MOIS_ANNEE.length:impayesConsec;
+            return nbImp>=3;
+          });
+          return elevesCritiques.length>0?(
+            <div style={{background:"#fce8e8",border:"1px solid #f5c1c1",borderRadius:10,padding:"12px 16px",marginBottom:14}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                <span style={{fontSize:18}}>🚨</span>
+                <strong style={{fontSize:13,color:"#9b2020"}}>Alertes mensualités — {elevesCritiques.length} élève(s) avec 3 mois ou plus impayés</strong>
+                <Btn sm v="ghost" style={{marginLeft:"auto"}} onClick={()=>exportExcel(
+                  "Alertes_Mensualites",
+                  ["Matricule","Nom","Prénom","Classe","Niveau","Mois impayés","Tuteur","Contact"],
+                  elevesCritiques.map(e=>{
+                    const mens=e.mens||{};
+                    const niv=elevesC.find(ec=>ec._id===e._id)?"Collège":"Primaire";
+                    const nbImp=MOIS_ANNEE.filter(m=>mens[m]!=="Payé").length;
+                    return [e.matricule||"",e.nom,e.prenom,e.classe,niv,nbImp,e.tuteur||"",e.contactTuteur||""];
+                  })
+                )}>📥 Exporter</Btn>
+              </div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                {elevesCritiques.map(e=>{
+                  const mens=e.mens||{};
+                  const nbImp=MOIS_ANNEE.filter(m=>mens[m]!=="Payé").length;
+                  return <div key={e._id} style={{background:"#fff",border:"1px solid #f5c1c1",borderRadius:7,padding:"6px 10px",fontSize:12}}>
+                    <span style={{fontWeight:800,color:"#9b2020"}}>{e.nom} {e.prenom}</span>
+                    <span style={{color:"#6b7280"}}> · {e.classe} · </span>
+                    <Badge color="red">{nbImp} impayés</Badge>
+                  </div>;
+                })}
+              </div>
+            </div>
+          ):null;
+        })()}
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,flexWrap:"wrap"}}>
           <strong style={{fontSize:14,flex:1,color:C.blueDark}}>Mensualités — {annee||getAnnee()}</strong>
           <select value={niveau} onChange={e=>{setNiveau(e.target.value);setFiltClasse("all");}}
@@ -1461,6 +1508,11 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
             {classesUniq.map(c=><option key={c}>{c}</option>)}
           </select>
           {filtreClasse!=="all"&&<Btn sm v="ghost" onClick={()=>imprimerListeClasse(filtreClasse,eleves)}>🖨️ Imprimer liste</Btn>}
+          <Btn sm v="ghost" onClick={()=>exportExcel(
+            `Eleves_${avecEns?"College":"Primaire"}`,
+            ["Matricule","Nom","Prénom","Classe","Sexe","Filiation","Tuteur","Contact","Domicile","Statut"],
+            elevesFiltres.map(e=>[e.matricule||"",e.nom,e.prenom,e.classe,e.sexe||"",e.filiation||"",e.tuteur||"",e.contactTuteur||"",e.domicile||"",e.statut||"Actif"])
+          )}>📥 Export Excel</Btn>
         </div>
         {cE?<Chargement/>:elevesFiltres.length===0?<Vide icone="🎓" msg="Aucun élève"/>
           :<div style={{overflowX:"auto"}}>
@@ -1539,8 +1591,13 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
 
       {/* ── NOTES ── */}
       {tab==="notes"&&<div>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-          <strong style={{fontSize:14,color:C.blueDark}}>Notes ({notes.length})</strong>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,flexWrap:"wrap"}}>
+          <strong style={{fontSize:14,color:C.blueDark,flex:1}}>Notes ({notes.length})</strong>
+          <Btn sm v="ghost" onClick={()=>exportExcel(
+            `Notes_${avecEns?"College":"Primaire"}`,
+            ["Élève","Matière","Type","Période","Note /20"],
+            notes.map(n=>[n.eleveNom,n.matiere,n.type,n.periode,n.note])
+          )}>📥 Export Excel</Btn>
           {!readOnly&&<Btn onClick={()=>{setForm({periode:"T1",type:"Devoir"});setModal("add_n");}}>+ Saisir</Btn>}
         </div>
         {cN?<Chargement/>:notes.length===0?<Vide icone="📝" msg="Aucune note"/>
@@ -1671,10 +1728,43 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
 
       {/* ── DISCIPLINE ── */}
       {tab==="discipline"&&<div>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-          <strong style={{fontSize:14,color:C.blueDark}}>Discipline & Absences ({absences.length})</strong>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,flexWrap:"wrap"}}>
+          <strong style={{fontSize:14,color:C.blueDark,flex:1}}>Discipline & Absences ({absences.length})</strong>
+          <Btn sm v="ghost" onClick={()=>exportExcel(
+            `Discipline_${avecEns?"College":"Primaire"}`,
+            ["Élève","Classe","Type","Date","Motif","Justifié"],
+            absences.map(a=>[a.eleveNom,a.classe,a.type,a.date,a.motif||"",a.justifie])
+          )}>📥 Export Excel</Btn>
           {!readOnly&&<Btn onClick={()=>{setForm({type:"Absence",justifie:"Non"});setModal("add_abs");}}>+ Enregistrer</Btn>}
         </div>
+        {(()=>{
+          const elevesAlerte=eleves.map(e=>({
+            ...e,
+            nbAbs:absences.filter(a=>a.eleveNom===`${e.nom} ${e.prenom}`&&a.type==="Absence"&&a.justifie==="Non").length
+          })).filter(e=>e.nbAbs>=3).sort((a,b)=>b.nbAbs-a.nbAbs);
+          return elevesAlerte.length>0?(
+            <div style={{background:"#fef3e0",border:"1px solid #fbbf24",borderRadius:10,padding:"12px 16px",marginBottom:14}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                <span style={{fontSize:18}}>⚠️</span>
+                <strong style={{fontSize:13,color:"#92400e"}}>Alertes absences — {elevesAlerte.length} élève(s) avec 3 absences non justifiées ou plus</strong>
+                <Btn sm v="ghost" style={{marginLeft:"auto"}} onClick={()=>exportExcel(
+                  "Alertes_Absences",
+                  ["Nom","Prénom","Classe","Nb absences non justifiées","Tuteur","Contact"],
+                  elevesAlerte.map(e=>[e.nom,e.prenom,e.classe,e.nbAbs,e.tuteur||"",e.contactTuteur||""])
+                )}>📥 Exporter</Btn>
+              </div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                {elevesAlerte.map(e=>(
+                  <div key={e._id} style={{background:"#fff",border:"1px solid #fbbf24",borderRadius:7,padding:"6px 10px",fontSize:12}}>
+                    <span style={{fontWeight:800,color:"#92400e"}}>{e.nom} {e.prenom}</span>
+                    <span style={{color:"#6b7280"}}> · {e.classe} · </span>
+                    <Badge color="amber">{e.nbAbs} absences</Badge>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ):null;
+        })()}
         {cAbs?<Chargement/>:absences.length===0?<Vide icone="📋" msg="Aucun événement de discipline enregistré"/>
           :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
             <THead cols={["Élève","Classe","Type","Date","Motif","Justifié",readOnly?"":"Action"]}/>
