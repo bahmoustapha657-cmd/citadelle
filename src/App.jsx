@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { db } from "./firebase";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import * as XLSX from "xlsx";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
 import {
   collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc, getDoc
 } from "firebase/firestore";
@@ -841,23 +842,92 @@ function Comptabilite({readOnly, annee}) {
           );
         })()}
         {(cR||cD)?<Chargement/>:totR===0&&totD===0?<Vide icone="📊" msg="Aucune donnée financière"/>
-          :<Card><div style={{padding:"16px 18px"}}>
-            {[{l:"Recettes",v:totR,c:C.green},{l:"Dépenses",v:totD,c:"#b91c1c"}].map(b=>(
-              <div key={b.l} style={{marginBottom:10}}>
-                <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
-                  <span style={{fontSize:12,fontWeight:700,color:b.c}}>{b.l}</span>
-                  <span style={{fontSize:12,fontWeight:600}}>{fmt(b.v)}</span>
+          :<>
+            <Card><div style={{padding:"16px 18px"}}>
+              {[{l:"Recettes",v:totR,c:C.green},{l:"Dépenses",v:totD,c:"#b91c1c"}].map(b=>(
+                <div key={b.l} style={{marginBottom:10}}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+                    <span style={{fontSize:12,fontWeight:700,color:b.c}}>{b.l}</span>
+                    <span style={{fontSize:12,fontWeight:600}}>{fmt(b.v)}</span>
+                  </div>
+                  <div style={{background:"#e8f0e8",borderRadius:6,height:8}}>
+                    <div style={{background:b.c,borderRadius:6,height:8,width:`${(b.v/Math.max(totR,totD,1)*100).toFixed(0)}%`}}/>
+                  </div>
                 </div>
-                <div style={{background:"#e8f0e8",borderRadius:6,height:8}}>
-                  <div style={{background:b.c,borderRadius:6,height:8,width:`${(b.v/Math.max(totR,totD,1)*100).toFixed(0)}%`}}/>
-                </div>
+              ))}
+              <div style={{marginTop:14,padding:"10px 14px",background:(totR-totD)>=0?"#eaf4e0":"#fce8e8",borderRadius:7,display:"flex",justifyContent:"space-between"}}>
+                <strong style={{color:(totR-totD)>=0?C.greenDk:"#b91c1c"}}>Solde</strong>
+                <strong style={{color:(totR-totD)>=0?C.greenDk:"#b91c1c"}}>{fmt(totR-totD)}</strong>
               </div>
-            ))}
-            <div style={{marginTop:14,padding:"10px 14px",background:(totR-totD)>=0?"#eaf4e0":"#fce8e8",borderRadius:7,display:"flex",justifyContent:"space-between"}}>
-              <strong style={{color:(totR-totD)>=0?C.greenDk:"#b91c1c"}}>Solde</strong>
-              <strong style={{color:(totR-totD)>=0?C.greenDk:"#b91c1c"}}>{fmt(totR-totD)}</strong>
+            </div></Card>
+
+            {/* ── Graphiques ── */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginTop:14}}>
+              {/* Recettes vs Dépenses par période */}
+              <Card><div style={{padding:"14px 16px"}}>
+                <p style={{margin:"0 0 12px",fontWeight:800,fontSize:13,color:C.blueDark}}>Recettes vs Dépenses par période</p>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={["T1","T2","T3"].map(p=>({
+                    periode:p,
+                    Recettes:recettes.filter(r=>r.periode===p).reduce((s,r)=>s+Number(r.montant||0),0),
+                    Dépenses:depenses.filter(d=>d.periode===p).reduce((s,d)=>s+Number(d.montant||0),0),
+                  }))}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e0ebf8"/>
+                    <XAxis dataKey="periode" tick={{fontSize:11}}/>
+                    <YAxis tick={{fontSize:10}} tickFormatter={v=>`${(v/1e6).toFixed(1)}M`}/>
+                    <Tooltip formatter={v=>fmt(v)}/>
+                    <Legend wrapperStyle={{fontSize:11}}/>
+                    <Bar dataKey="Recettes" fill={C.green} radius={[4,4,0,0]}/>
+                    <Bar dataKey="Dépenses" fill="#ef4444" radius={[4,4,0,0]}/>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div></Card>
+
+              {/* Mensualités payées vs impayées */}
+              <Card><div style={{padding:"14px 16px"}}>
+                <p style={{margin:"0 0 12px",fontWeight:800,fontSize:13,color:C.blueDark}}>Mensualités — état des paiements</p>
+                {(()=>{
+                  const tousEleves=[...elevesC,...elevesP];
+                  const totalMois=tousEleves.reduce((s,e)=>s+MOIS_ANNEE.length,0);
+                  const totalPayes=tousEleves.reduce((s,e)=>s+MOIS_ANNEE.filter(m=>(e.mens||{})[m]==="Payé").length,0);
+                  const totalImpay=totalMois-totalPayes;
+                  const data=[{name:"Payés",value:totalPayes},{name:"Impayés",value:totalImpay}];
+                  return <ResponsiveContainer width="100%" height={220}>
+                    <PieChart>
+                      <Pie data={data} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({name,percent})=>`${name} ${(percent*100).toFixed(0)}%`} labelLine={false}>
+                        <Cell fill={C.green}/><Cell fill="#ef4444"/>
+                      </Pie>
+                      <Tooltip formatter={v=>`${v} mois`}/>
+                    </PieChart>
+                  </ResponsiveContainer>;
+                })()}
+              </div></Card>
             </div>
-          </div></Card>}
+
+            {/* Évolution mensuelle des recettes */}
+            {recettes.length>0&&<Card style={{marginTop:14}}><div style={{padding:"14px 16px"}}>
+              <p style={{margin:"0 0 12px",fontWeight:800,fontSize:13,color:C.blueDark}}>Évolution des recettes par catégorie</p>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={(()=>{
+                  const cats=[...new Set(recettes.map(r=>r.categorie))].filter(Boolean);
+                  return ["T1","T2","T3"].map(p=>{
+                    const row={periode:p};
+                    cats.forEach(c=>row[c]=recettes.filter(r=>r.periode===p&&r.categorie===c).reduce((s,r)=>s+Number(r.montant||0),0));
+                    return row;
+                  });
+                })()} >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e0ebf8"/>
+                  <XAxis dataKey="periode" tick={{fontSize:11}}/>
+                  <YAxis tick={{fontSize:10}} tickFormatter={v=>`${(v/1e6).toFixed(1)}M`}/>
+                  <Tooltip formatter={v=>fmt(v)}/>
+                  <Legend wrapperStyle={{fontSize:11}}/>
+                  {[...new Set(recettes.map(r=>r.categorie))].filter(Boolean).map((cat,i)=>(
+                    <Bar key={cat} dataKey={cat} stackId="a" fill={["#3b82f6","#10b981","#f59e0b","#8b5cf6","#ef4444","#06b6d4"][i%6]} radius={i===0?[0,0,4,4]:[0,0,0,0]}/>
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+            </div></Card>}
+          </>}
       </div>}
 
       {tab==="recettes"&&<div>
@@ -1400,6 +1470,49 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
               </div>
             ))}
           </div></Card>}
+
+          {/* ── GRAPHIQUE EFFECTIFS + MOYENNES ── */}
+          {classes.length>0&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:16}}>
+            <Card><div style={{padding:"14px 16px"}}>
+              <p style={{margin:"0 0 12px",fontWeight:800,fontSize:13,color:C.blueDark}}>Effectifs par classe</p>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={classes.map(c=>({classe:c.nom,Effectif:Number(c.effectif)||0}))}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e0ebf8"/>
+                  <XAxis dataKey="classe" tick={{fontSize:10}}/>
+                  <YAxis tick={{fontSize:10}}/>
+                  <Tooltip/>
+                  <Bar dataKey="Effectif" fill={couleur} radius={[4,4,0,0]}/>
+                </BarChart>
+              </ResponsiveContainer>
+            </div></Card>
+
+            <Card><div style={{padding:"14px 16px"}}>
+              <p style={{margin:"0 0 12px",fontWeight:800,fontSize:13,color:C.blueDark}}>Moyenne générale par classe</p>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={classes.map(c=>{
+                  const elevesClasse=eleves.filter(e=>e.classe===c.nom);
+                  if(!elevesClasse.length) return {classe:c.nom,Moyenne:0};
+                  const moyClasse=elevesClasse.map(e=>{
+                    const notesE=notes.filter(n=>n.eleveId===e._id);
+                    let moy=0,totC=0;
+                    matieres.forEach(mat=>{
+                      const nm=notesE.filter(n=>n.matiere===mat.nom);
+                      if(nm.length){const m=nm.reduce((s,n)=>s+Number(n.note),0)/nm.length;moy+=m*(mat.coefficient||1);totC+=(mat.coefficient||1);}
+                    });
+                    return totC>0?moy/totC:null;
+                  }).filter(m=>m!==null);
+                  const moy=moyClasse.length?(moyClasse.reduce((s,m)=>s+m,0)/moyClasse.length).toFixed(2):0;
+                  return {classe:c.nom,Moyenne:Number(moy)};
+                })}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e0ebf8"/>
+                  <XAxis dataKey="classe" tick={{fontSize:10}}/>
+                  <YAxis domain={[0,20]} tick={{fontSize:10}}/>
+                  <Tooltip formatter={v=>`${v}/20`}/>
+                  <Bar dataKey="Moyenne" fill="#f59e0b" radius={[4,4,0,0]}/>
+                </BarChart>
+              </ResponsiveContainer>
+            </div></Card>
+          </div>}
 
           {/* ── TABLEAU D'HONNEUR ── */}
           {eleves.length>0&&(()=>{
@@ -2069,6 +2182,8 @@ export default function App() {
   const [utilisateur,setUtilisateur]=useState(null);
   const [page,setPage]=useState(null);
   const [annee,setAnneeState]=useState(()=>localStorage.getItem("LC_annee")||"2025-2026");
+  const [sidebarOuvert,setSidebarOuvert]=useState(false);
+  const isMobile=()=>window.innerWidth<768;
 
   const setAnnee=(val)=>{
     setAnneeState(val);
@@ -2097,7 +2212,10 @@ export default function App() {
 
   return (
     <div style={{minHeight:"100vh",display:"flex",background:C.bg,fontFamily:"'Segoe UI',system-ui,sans-serif"}}>
-      <aside style={{position:"fixed",top:0,bottom:0,left:0,width:228,zIndex:50,background:C.sidebar,display:"flex",flexDirection:"column"}}>
+      {/* Overlay mobile */}
+      {sidebarOuvert&&<div onClick={()=>setSidebarOuvert(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:40}}/>}
+      <aside style={{position:"fixed",top:0,bottom:0,left:0,width:228,zIndex:50,background:C.sidebar,display:"flex",flexDirection:"column",
+        transform:isMobile()&&!sidebarOuvert?"translateX(-100%)":"translateX(0)",transition:"transform 0.25s ease"}}>
         <div style={{padding:"18px 16px 14px",borderBottom:"1px solid rgba(255,255,255,0.1)",textAlign:"center"}}>
           <img src={LOGO} alt="" style={{width:72,height:72,objectFit:"contain",marginBottom:8}}/>
           <p style={{margin:0,fontSize:10,fontWeight:600,color:"rgba(255,255,255,0.5)"}}>Groupe Scolaire Privé</p>
@@ -2112,7 +2230,7 @@ export default function App() {
         <nav style={{flex:1,padding:"10px 8px",display:"flex",flexDirection:"column",gap:3}}>
           {modulesVisibles.map(m=>{
             const actif=page===m.id;
-            return <button key={m.id} onClick={()=>setPage(m.id)} style={{
+            return <button key={m.id} onClick={()=>{setPage(m.id);if(isMobile())setSidebarOuvert(false);}} style={{
               display:"flex",alignItems:"center",gap:9,padding:"9px 11px",borderRadius:8,border:"none",cursor:"pointer",textAlign:"left",width:"100%",
               background:actif?`${C.green}22`:"transparent",transition:"background .15s"}}>
               <span style={{fontSize:15}}>{m.icon}</span>
@@ -2140,8 +2258,12 @@ export default function App() {
         </div>
       </aside>
 
-      <main style={{flex:1,marginLeft:228,minWidth:0,display:"flex",flexDirection:"column"}}>
+      <main style={{flex:1,marginLeft:isMobile()?0:228,minWidth:0,display:"flex",flexDirection:"column"}}>
         <header style={{background:"#fff",borderBottom:`3px solid ${C.green}`,padding:"0 22px",height:52,display:"flex",alignItems:"center",gap:10,position:"sticky",top:0,zIndex:30}}>
+          {/* Bouton hamburger mobile */}
+          <button onClick={()=>setSidebarOuvert(v=>!v)} style={{display:isMobile()?"flex":"none",alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:"pointer",padding:4,borderRadius:6,color:C.blueDark,fontSize:20,marginRight:4}}>
+            ☰
+          </button>
           <div style={{flex:1}}>
             <span style={{fontSize:14,fontWeight:800,color:C.blueDark}}>
               {modulesVisibles.find(m=>m.id===page)?.icon} {modulesVisibles.find(m=>m.id===page)?.label}
