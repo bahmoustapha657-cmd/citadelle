@@ -3,6 +3,7 @@ import { db } from "./firebase";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import * as XLSX from "xlsx";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
+import bcrypt from "bcryptjs";
 import {
   collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc, getDoc
 } from "firebase/firestore";
@@ -472,8 +473,9 @@ function AdminPanel({annee, setAnnee}) {
     }
   }, [chargement, comptes.length]);
 
-  const sauvegarder = () => {
-    modifier(form);
+  const sauvegarder = async () => {
+    const mdpHashe = await bcrypt.hash(form.mdp, 10);
+    modifier({...form, mdp: mdpHashe});
     setModal(null);
   };
 
@@ -524,13 +526,19 @@ function AdminPanel({annee, setAnnee}) {
                   <TD><Badge color={c.role==="admin"?"purple":c.role==="comptable"?"teal":c.role==="direction"?"blue":"vert"}>{c.label}</Badge></TD>
                   <TD>
                     <div style={{display:"flex",alignItems:"center",gap:6}}>
-                      <span style={{fontFamily:"monospace",fontSize:13}}>
-                        {voir[c._id||i] ? c.mdp : "••••••••"}
-                      </span>
-                      <button onClick={()=>setVoir(v=>({...v,[c._id||i]:!v[c._id||i]}))}
-                        style={{background:"none",border:"none",cursor:"pointer",color:"#9ca3af",fontSize:14}}>
-                        {voir[c._id||i]?"🙈":"👁️"}
-                      </button>
+                      {c.mdp.startsWith("$2b$")
+                        ? <Badge color="vert">🔒 Hashé (sécurisé)</Badge>
+                        : <>
+                            <span style={{fontFamily:"monospace",fontSize:13}}>
+                              {voir[c._id||i] ? c.mdp : "••••••••"}
+                            </span>
+                            <button onClick={()=>setVoir(v=>({...v,[c._id||i]:!v[c._id||i]}))}
+                              style={{background:"none",border:"none",cursor:"pointer",color:"#9ca3af",fontSize:14}}>
+                              {voir[c._id||i]?"🙈":"👁️"}
+                            </button>
+                            <Badge color="amber">⚠️ Non hashé</Badge>
+                          </>
+                      }
                     </div>
                   </TD>
                   <TD>
@@ -2297,10 +2305,15 @@ function Connexion({onLogin}) {
   const [erreur,setErreur]=useState("");
   const [voir,setVoir]=useState(false);
 
-  const connecter=()=>{
+  const connecter=async()=>{
     const source = comptes.length>0 ? comptes : COMPTES_DEFAUT;
-    const c=source.find(c=>c.login===login.trim()&&c.mdp===mdp);
-    if(c){setErreur("");onLogin(c);}
+    const compte=source.find(c=>c.login===login.trim());
+    if(!compte){setErreur("Identifiant ou mot de passe incorrect.");return;}
+    // Supporte les mdp hashés (bcrypt) et les anciens en clair
+    const valide = compte.mdp.startsWith("$2b$")
+      ? await bcrypt.compare(mdp, compte.mdp)
+      : compte.mdp === mdp;
+    if(valide){setErreur("");onLogin(compte);}
     else setErreur("Identifiant ou mot de passe incorrect.");
   };
 
@@ -2356,7 +2369,13 @@ export default function App() {
   const [annee,setAnneeState]=useState(()=>localStorage.getItem("LC_annee")||"2025-2026");
   const [sidebarOuvert,setSidebarOuvert]=useState(false);
   const [rechercheOuverte,setRechercheOuverte]=useState(false);
+  const [modeSombre,setModeSombre]=useState(()=>localStorage.getItem("LC_theme")==="dark");
   const isMobile=()=>window.innerWidth<768;
+
+  useEffect(()=>{
+    document.body.classList.toggle("mode-sombre", modeSombre);
+    localStorage.setItem("LC_theme", modeSombre?"dark":"light");
+  },[modeSombre]);
 
   const setAnnee=(val)=>{
     setAnneeState(val);
@@ -2447,6 +2466,11 @@ export default function App() {
             <button onClick={()=>setRechercheOuverte(true)}
               style={{display:"flex",alignItems:"center",gap:6,background:"#f0f4f0",border:"1px solid #e0ebf8",borderRadius:8,padding:"5px 12px",cursor:"pointer",fontSize:12,color:"#6b7280",fontWeight:600}}>
               🔍 <span>Rechercher...</span>
+            </button>
+            <button onClick={()=>setModeSombre(v=>!v)}
+              title={modeSombre?"Mode clair":"Mode sombre"}
+              style={{background:"#f0f4f0",border:"1px solid #e0ebf8",borderRadius:8,padding:"5px 10px",cursor:"pointer",fontSize:16,lineHeight:1}}>
+              {modeSombre?"☀️":"🌙"}
             </button>
             <div style={{width:30,height:30,borderRadius:"50%",background:C.blue,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800}}>
               {utilisateur.nom[0]}

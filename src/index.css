@@ -52,6 +52,19 @@
 
 body {
   margin: 0;
+  transition: filter 0.3s ease;
+}
+
+/* Mode sombre via filtre CSS */
+body.mode-sombre {
+  filter: invert(93%) hue-rotate(180deg);
+}
+
+/* Les images et graphiques ne doivent pas être inversés */
+body.mode-sombre img,
+body.mode-sombre .recharts-wrapper,
+body.mode-sombre canvas {
+  filter: invert(100%) hue-rotate(180deg);
 }
 
 #root {
