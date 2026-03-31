@@ -1467,6 +1467,36 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
   const [rechercheMatricule,setRechercheMatricule]=useState("");
   const chg=k=>e=>setForm(p=>({...p,[k]:e.target.value}));
 
+  // ── Validation emploi du temps ──
+  const validerCreneau = () => {
+    if(!form.classe||!form.jour||!form.heureDebut||!form.heureFin){
+      alert("Veuillez remplir : classe, jour, heure début et heure fin.");return false;
+    }
+    if(form.heureDebut>=form.heureFin){
+      alert("L'heure de début doit être avant l'heure de fin.");return false;
+    }
+    const autresCreneaux=emplois.filter(e=>e._id!==form._id);
+    const confClasse=autresCreneaux.find(e=>
+      e.classe===form.classe&&e.jour===form.jour&&
+      (e.heureDebut||"00:00")<form.heureFin&&(e.heureFin||"23:59")>form.heureDebut
+    );
+    if(confClasse){
+      alert(`⚠️ Conflit de classe !\nLa classe ${form.classe} a déjà "${confClasse.matiere||"un cours"}" le ${form.jour} de ${confClasse.heureDebut} à ${confClasse.heureFin}.`);
+      return false;
+    }
+    if(form.enseignant){
+      const confEns=autresCreneaux.find(e=>
+        e.enseignant===form.enseignant&&e.jour===form.jour&&
+        (e.heureDebut||"00:00")<form.heureFin&&(e.heureFin||"23:59")>form.heureDebut
+      );
+      if(confEns){
+        alert(`⚠️ Conflit enseignant !\n${form.enseignant} est déjà affecté en classe ${confEns.classe} le ${form.jour} de ${confEns.heureDebut} à ${confEns.heureFin}.`);
+        return false;
+      }
+    }
+    return true;
+  };
+
   const canEditEleves = peutModifierEleves(userRole);
   const readOnly = userRole === "admin";
   const moy=notes.length?(notes.reduce((s,n)=>s+Number(n.note),0)/notes.length).toFixed(1):"—";
@@ -2105,52 +2135,69 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
         {cEmp?<Chargement/>:emplois.length===0?<Vide icone="📅" msg="Aucun créneau enregistré"/>
           :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
             <THead cols={["Classe","Jour","Heure début","Heure fin","Matière","Enseignant","Salle",readOnly?"":"Actions"]}/>
-            <tbody>{emplois
-              .filter(e=>filtreClasse==="all"||e.classe===filtreClasse)
-              .sort((a,b)=>{
-                const jours=["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi"];
-                return jours.indexOf(a.jour)-jours.indexOf(b.jour)||(a.heureDebut||"").localeCompare(b.heureDebut||"");
-              })
-              .map(e=><TR key={e._id}>
+            <tbody>{(()=>{
+              const jours=["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi"];
+              const liste=emplois
+                .filter(e=>filtreClasse==="all"||e.classe===filtreClasse)
+                .sort((a,b)=>jours.indexOf(a.jour)-jours.indexOf(b.jour)||(a.heureDebut||"").localeCompare(b.heureDebut||""));
+              const aConflit=e=>{
+                const autres=emplois.filter(x=>x._id!==e._id);
+                const confClasse=autres.some(x=>x.classe===e.classe&&x.jour===e.jour&&(x.heureDebut||"00:00")<(e.heureFin||"23:59")&&(x.heureFin||"23:59")>(e.heureDebut||"00:00"));
+                const confEns=e.enseignant&&autres.some(x=>x.enseignant===e.enseignant&&x.jour===e.jour&&(x.heureDebut||"00:00")<(e.heureFin||"23:59")&&(x.heureFin||"23:59")>(e.heureDebut||"00:00"));
+                return confClasse?"classe":confEns?"enseignant":null;
+              };
+              return liste.map(e=>{
+                const conflit=aConflit(e);
+                return <TR key={e._id} style={conflit?{background:"#fff3f3",borderLeft:"3px solid #ef4444"}:{}}>
                 <TD><Badge color="blue">{e.classe}</Badge></TD>
                 <TD bold>{e.jour}</TD>
                 <TD>{e.heureDebut||"—"}</TD>
                 <TD>{e.heureFin||"—"}</TD>
                 <TD>{e.matiere||"—"}</TD>
-                <TD>{e.enseignant||"—"}</TD>
+                <TD style={conflit==="enseignant"?{color:"#b91c1c",fontWeight:700}:{}}>{e.enseignant||<span style={{color:"#9ca3af",fontStyle:"italic"}}>Non assigné</span>}</TD>
                 <TD>{e.salle||"—"}</TD>
-                {!readOnly&&<TD><div style={{display:"flex",gap:6}}>
+                {!readOnly&&<TD><div style={{display:"flex",gap:6,alignItems:"center"}}>
+                  {conflit&&<span title={conflit==="classe"?"Conflit : même classe même horaire":"Conflit : enseignant déjà occupé"} style={{color:"#ef4444",fontSize:14,cursor:"help"}}>⚠️</span>}
                   <Btn sm v="ghost" onClick={()=>{setForm({...e});setModal("edit_emp");}}>Modifier</Btn>
                   <Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ce créneau ?"))supEmp(e._id);}}>Suppr.</Btn>
                 </div></TD>}
-              </TR>)}
+              </TR>;});})()}
             </tbody>
           </table></Card>}
         {(modal==="add_emp"||modal==="edit_emp")&&!readOnly&&<Modale titre={modal==="add_emp"?"Nouveau créneau":"Modifier le créneau"} fermer={()=>setModal(null)}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-            <Selec label="Classe" value={form.classe||""} onChange={chg("classe")}>
+            <Selec label="Classe *" value={form.classe||""} onChange={chg("classe")}>
               <option value="">— Sélectionner —</option>
               {classes.map(c=><option key={c._id}>{c.nom}</option>)}
             </Selec>
-            <Selec label="Jour" value={form.jour||"Lundi"} onChange={chg("jour")}>
+            <Selec label="Jour *" value={form.jour||"Lundi"} onChange={chg("jour")}>
               <option>Lundi</option><option>Mardi</option><option>Mercredi</option>
               <option>Jeudi</option><option>Vendredi</option><option>Samedi</option>
             </Selec>
-            <Input label="Heure début" type="time" value={form.heureDebut||""} onChange={chg("heureDebut")}/>
-            <Input label="Heure fin" type="time" value={form.heureFin||""} onChange={chg("heureFin")}/>
-            <Selec label="Matière" value={form.matiere||""} onChange={chg("matiere")}>
-              <option value="">—</option>
+            <Input label="Heure début *" type="time" value={form.heureDebut||""} onChange={chg("heureDebut")}/>
+            <Input label="Heure fin *" type="time" value={form.heureFin||""} onChange={chg("heureFin")}/>
+            <Selec label="Matière" value={form.matiere||""} onChange={e=>{setForm(p=>({...p,matiere:e.target.value,enseignant:""}));}}>
+              <option value="">— Toutes —</option>
               {matieres.map(m=><option key={m._id}>{m.nom}</option>)}
             </Selec>
-            <Selec label="Enseignant" value={form.enseignant||""} onChange={chg("enseignant")}>
-              <option value="">—</option>
-              {ens.map(e=><option key={e._id}>{e.prenom} {e.nom}</option>)}
-            </Selec>
+            <div>
+              <Selec label="Enseignant" value={form.enseignant||""} onChange={chg("enseignant")}>
+                <option value="">— Sélectionner —</option>
+                {ens
+                  .filter(e=>!form.matiere||(e.matiere||"").toLowerCase().split(/[,/;]+/).map(s=>s.trim()).some(m=>
+                    m.includes(form.matiere.toLowerCase())||form.matiere.toLowerCase().includes(m)
+                  ))
+                  .map(e=><option key={e._id}>{e.prenom} {e.nom} {e.matiere?`(${e.matiere})`:""}​</option>)}
+              </Selec>
+              {form.matiere&&ens.filter(e=>!form.matiere||(e.matiere||"").toLowerCase().split(/[,/;]+/).map(s=>s.trim()).some(m=>
+                m.includes(form.matiere.toLowerCase())||form.matiere.toLowerCase().includes(m)
+              )).length===0&&<p style={{fontSize:11,color:"#d97706",marginTop:4}}>⚠️ Aucun enseignant enregistré pour cette matière</p>}
+            </div>
             <Input label="Salle" value={form.salle||""} onChange={chg("salle")}/>
           </div>
           <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
             <Btn v="ghost" onClick={()=>setModal(null)}>Annuler</Btn>
-            <Btn onClick={()=>{if(modal==="add_emp")ajEmp(form);else modEmp(form);setModal(null);}}>Enregistrer</Btn>
+            <Btn onClick={()=>{if(!validerCreneau())return;if(modal==="add_emp")ajEmp(form);else modEmp(form);setModal(null);}}>Enregistrer</Btn>
           </div>
         </Modale>}
       </div>}
