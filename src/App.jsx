@@ -2200,6 +2200,65 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
             <script>window.onload=()=>window.print();</script></body></html>`);
             w.document.close();
           }}>🖨️ Imprimer EDT</Btn>}
+          <Btn sm v="amber" onClick={()=>{
+            const JOURS=["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi"];
+            const toutesClasses=[...new Set(emplois.map(e=>e.classe))].filter(Boolean).sort();
+            if(toutesClasses.length===0){alert("Aucun créneau enregistré.");return;}
+            const w=window.open("","_blank");
+            w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>EDT Général — ${titre}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;font-size:10px;padding:16px;color:#111}
+.entete{display:flex;align-items:center;gap:12px;border-bottom:3px solid #003d7a;padding-bottom:10px;margin-bottom:14px}
+.entete img{width:60px;height:60px;object-fit:contain}
+.entete h1{font-size:13px;color:#003d7a;margin-bottom:3px}
+.entete p{font-size:10px;color:#555}
+.titre-doc{text-align:center;font-size:14px;font-weight:bold;color:#003d7a;margin-bottom:4px}
+.sous-titre{text-align:center;font-size:10px;color:#555;margin-bottom:16px}
+.section-classe{margin-bottom:22px;page-break-inside:avoid}
+.classe-titre{background:#003d7a;color:#fff;padding:6px 12px;font-size:11px;font-weight:bold;border-radius:4px 4px 0 0}
+table{width:100%;border-collapse:collapse;border:1px solid #b0c4d8}
+th{background:#e0ebf8;color:#003d7a;padding:5px 7px;font-size:9px;font-weight:bold;border:1px solid #b0c4d8;text-align:center}
+th.jour-h{background:#003d7a;color:#fff;width:62px}
+td{padding:4px 6px;border:1px solid #dde;font-size:9px;vertical-align:top}
+td.heure{background:#f0f4f8;font-weight:bold;color:#003d7a;text-align:center;white-space:nowrap}
+td.cellule .mat{font-weight:bold;color:#1d4ed8}
+td.cellule .ens{color:#555;font-style:italic}
+td.cellule .salle{color:#888;font-size:8px}
+td.vide{background:#fafafa;color:#ccc;text-align:center;font-size:8px}
+.footer{margin-top:14px;display:flex;justify-content:space-between;font-size:9px;color:#888;border-top:1px solid #ddd;padding-top:8px}
+@media print{body{padding:6px}.section-classe{page-break-inside:avoid}button{display:none}}
+</style></head><body>
+<div class="entete">
+  <img src="${LOGO}" alt="Logo"/>
+  <div><h1>Groupe Scolaire Privé La Citadelle — ${titre}</h1><p>Kindia, Guinée &nbsp;·&nbsp; Année scolaire ${getAnnee()}</p></div>
+</div>
+<div class="titre-doc">EMPLOI DU TEMPS GÉNÉRAL</div>
+<div class="sous-titre">${toutesClasses.length} classe(s) &nbsp;·&nbsp; ${emplois.length} créneau(x) au total</div>
+${toutesClasses.map(cl=>{
+  const crens=emplois.filter(e=>e.classe===cl).sort((a,b)=>JOURS.indexOf(a.jour)-JOURS.indexOf(b.jour)||(a.heureDebut||"").localeCompare(b.heureDebut||""));
+  const heures=[...new Set(crens.map(e=>e.heureDebut).filter(Boolean))].sort();
+  const joursPresents=JOURS.filter(j=>crens.some(e=>e.jour===j));
+  if(heures.length===0)return`<div class="section-classe"><div class="classe-titre">${cl}</div><p style="padding:8px;color:#888;font-style:italic;border:1px solid #b0c4d8;border-top:none">Aucun créneau enregistré</p></div>`;
+  return`<div class="section-classe">
+<div class="classe-titre">${cl} &nbsp;—&nbsp; ${crens.length} créneau(x)</div>
+<table>
+<thead><tr><th class="jour-h">Horaire</th>${joursPresents.map(j=>`<th>${j}</th>`).join("")}</tr></thead>
+<tbody>${heures.map(h=>{
+  const cells=joursPresents.map(j=>{
+    const c=crens.find(e=>e.heureDebut===h&&e.jour===j);
+    if(!c)return`<td class="vide">—</td>`;
+    return`<td class="cellule"><div class="mat">${c.matiere||"—"}</div><div class="ens">${c.enseignant||""}</div><div class="salle">${c.salle?`Salle : ${c.salle} `:""} ${c.heureFin?`→${c.heureFin}`:""}</div></td>`;
+  }).join("");
+  return`<tr><td class="heure">${h}</td>${cells}</tr>`;
+}).join("")}</tbody>
+</table></div>`;
+}).join("")}
+<div class="footer"><span>Total créneaux : ${emplois.length}</span><span>Imprimé le : ${today()}</span><span>Le Directeur</span></div>
+<script>window.onload=()=>window.print();</script>
+</body></html>`);
+            w.document.close();
+          }}>🖨️ EDT Général</Btn>
         </div>
         {cEmp?<Chargement/>:emplois.length===0?<Vide icone="📅" msg="Aucun créneau enregistré"/>
           :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
