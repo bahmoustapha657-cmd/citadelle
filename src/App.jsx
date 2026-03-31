@@ -888,6 +888,7 @@ function Comptabilite({readOnly, annee}) {
               <Stat label="Dépenses" value={`${(totD/1e6).toFixed(2)}M`} sub="GNF" bg="#fce8e8"/>
               <Stat label="Vers. Fondation" value={`${(totVers/1e6).toFixed(2)}M`} sub="GNF" bg="#f0ebff"/>
               <Stat label="Solde" value={`${((totR-totD)/1e6).toFixed(2)}M`} sub="GNF" bg={(totR-totD)>=0?"#eaf4e0":"#fce8e8"}/>
+              <Stat label="Masse salariale" value={`${((totNetSec+totNetPrim)/1e6).toFixed(3)}M`} sub={`GNF — ${moisSalaire} (${salairesMois.length} ens.)`} bg="#fef3e0"/>
               <Stat label="Mensualités impayées" value={`${(impaye/1e6).toFixed(2)}M`} sub={`GNF — ${pctImpaye}% du total dû`} bg="#fce8e8"/>
               <Stat label="Mensualités perçues" value={`${(totalPercu/1e6).toFixed(2)}M`} sub={`${totalDu>0?(100-Number(pctImpaye)).toFixed(1):0}% du total`} bg="#eaf4e0"/>
             </div>
@@ -1058,6 +1059,74 @@ function Comptabilite({readOnly, annee}) {
           {!readOnly&&<Btn onClick={()=>{setForm({section:"Secondaire",mois:moisSalaire,nonExecute:0,cinqSem:0,bon:0,revision:0});setModal("add_s");}}>+ Ajouter</Btn>}
           <Btn v="vert" onClick={imprimerSalaires}>🖨️ Imprimer</Btn>
         </div>
+
+        {/* ── BILAN SALAIRES ── */}
+        {!cS&&(()=>{
+          const totGen=totNetSec+totNetPrim;
+          const nbEns=salairesMois.length;
+          const dataEvol=MOIS_SALAIRE.map(m=>{
+            const ms=salaires.filter(s=>s.mois===m);
+            const sec=ms.filter(s=>s.section==="Secondaire").reduce((sum,s)=>sum+calcNet(s),0);
+            const prim=ms.filter(s=>s.section==="Primaire").reduce((sum,s)=>sum+Number(s.montantForfait||0)-Number(s.bon||0)+Number(s.revision||0),0);
+            return {mois:m.slice(0,4),Secondaire:sec,Primaire:prim,Total:sec+prim};
+          });
+          return <>
+            {/* Cartes récap */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:10,marginBottom:16}}>
+              <div style={{background:"linear-gradient(135deg,#003d7a,#1d4ed8)",borderRadius:10,padding:"14px 16px",color:"#fff",textAlign:"center"}}>
+                <div style={{fontSize:11,opacity:.85,marginBottom:4}}>Masse salariale</div>
+                <div style={{fontSize:18,fontWeight:900}}>{(totGen/1e6).toFixed(3)}M</div>
+                <div style={{fontSize:10,opacity:.75,marginTop:2}}>GNF — {moisSalaire}</div>
+              </div>
+              <div style={{background:"linear-gradient(135deg,#1e40af,#3b82f6)",borderRadius:10,padding:"14px 16px",color:"#fff",textAlign:"center"}}>
+                <div style={{fontSize:11,opacity:.85,marginBottom:4}}>Secondaire</div>
+                <div style={{fontSize:18,fontWeight:900}}>{(totNetSec/1e6).toFixed(3)}M</div>
+                <div style={{fontSize:10,opacity:.75,marginTop:2}}>{salairesSec.length} enseignant(s)</div>
+              </div>
+              <div style={{background:"linear-gradient(135deg,#065f46,#10b981)",borderRadius:10,padding:"14px 16px",color:"#fff",textAlign:"center"}}>
+                <div style={{fontSize:11,opacity:.85,marginBottom:4}}>Primaire</div>
+                <div style={{fontSize:18,fontWeight:900}}>{(totNetPrim/1e6).toFixed(3)}M</div>
+                <div style={{fontSize:10,opacity:.75,marginTop:2}}>{salairesPrim.length} enseignant(s)</div>
+              </div>
+              <div style={{background:"linear-gradient(135deg,#7c3aed,#a855f7)",borderRadius:10,padding:"14px 16px",color:"#fff",textAlign:"center"}}>
+                <div style={{fontSize:11,opacity:.85,marginBottom:4}}>Total enseignants</div>
+                <div style={{fontSize:28,fontWeight:900}}>{nbEns}</div>
+                <div style={{fontSize:10,opacity:.75,marginTop:2}}>ce mois</div>
+              </div>
+              <div style={{background:"linear-gradient(135deg,#b45309,#f59e0b)",borderRadius:10,padding:"14px 16px",color:"#fff",textAlign:"center"}}>
+                <div style={{fontSize:11,opacity:.85,marginBottom:4}}>Moy. par enseignant</div>
+                <div style={{fontSize:18,fontWeight:900}}>{nbEns>0?Math.round(totGen/nbEns).toLocaleString("fr-FR"):0}</div>
+                <div style={{fontSize:10,opacity:.75,marginTop:2}}>GNF</div>
+              </div>
+            </div>
+            {/* Barre de répartition */}
+            {totGen>0&&<div style={{marginBottom:16,background:"#f0f4f8",borderRadius:10,padding:"12px 16px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:11,fontWeight:700,marginBottom:6}}>
+                <span style={{color:C.blue}}>Secondaire : {totNetSec>0?((totNetSec/totGen)*100).toFixed(1):0}%</span>
+                <span style={{color:C.green}}>Primaire : {totNetPrim>0?((totNetPrim/totGen)*100).toFixed(1):0}%</span>
+              </div>
+              <div style={{display:"flex",borderRadius:6,overflow:"hidden",height:12}}>
+                <div style={{background:C.blue,width:`${totGen>0?(totNetSec/totGen*100):0}%`,transition:"width .4s"}}/>
+                <div style={{background:C.green,flex:1}}/>
+              </div>
+            </div>}
+            {/* Graphique évolution annuelle */}
+            {salaires.length>0&&<Card style={{marginBottom:16}}><div style={{padding:"14px 16px"}}>
+              <p style={{margin:"0 0 12px",fontWeight:800,fontSize:13,color:C.blueDark}}>Évolution de la masse salariale — Année {annee||getAnnee()}</p>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={dataEvol} barGap={2}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e0ebf8"/>
+                  <XAxis dataKey="mois" tick={{fontSize:10}}/>
+                  <YAxis tick={{fontSize:10}} tickFormatter={v=>v===0?"0":`${(v/1e6).toFixed(1)}M`}/>
+                  <Tooltip formatter={(v,n)=>[fmtN(v)+" GNF",n]}/>
+                  <Legend wrapperStyle={{fontSize:11}}/>
+                  <Bar dataKey="Secondaire" fill={C.blue} radius={[3,3,0,0]}/>
+                  <Bar dataKey="Primaire" fill={C.green} radius={[3,3,0,0]}/>
+                </BarChart>
+              </ResponsiveContainer>
+            </div></Card>}
+          </>;
+        })()}
 
         {cS?<Chargement/>:<>
           {/* Section Secondaire */}
