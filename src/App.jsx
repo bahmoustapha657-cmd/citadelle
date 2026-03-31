@@ -22,8 +22,8 @@ const storage = getStorage();
 //  COULEURS
 // ══════════════════════════════════════════════════════════════
 const C = {
-  blue:"#003d7a", blueDark:"#002a58", green:"#5a9e2f", greenDk:"#3d6e1f",
-  white:"#ffffff", bg:"#f0f4f0", sidebar:"#002a58",
+  blue:"#003d7a", blueDark:"#002050", green:"#2eb55f", greenDk:"#1a7d40",
+  white:"#ffffff", bg:"#f0f6f2", sidebar:"#002050",
 };
 
 // ══════════════════════════════════════════════════════════════
@@ -166,8 +166,8 @@ async function supprimerFichier(url) {
 // ══════════════════════════════════════════════════════════════
 const Badge = ({children,color="gray"}) => {
   const M={green:"#e6f4ea;#1a6b30",red:"#fce8e8;#9b2020",blue:"#e0ebf8;#003d7a",
-    amber:"#fef3e0;#8a5000",gray:"#f1f3f4;#5f6368",purple:"#f0ebff;#4a25aa",
-    teal:"#e4f5f0;#0a6652",vert:"#eaf4e0;#3d6e1f",orange:"#fff3e0;#b45309"};
+    amber:"#fef3e0;#8a5000",gray:"#f1f3f4;#5f6368",purple:"#e6f4ea;#1a7d40",
+    teal:"#e4f5f0;#0a6652",vert:"#e6f4ea;#1a7d40",orange:"#fff3e0;#b45309"};
   const [bg,cl]=(M[color]||M.gray).split(";");
   return <span style={{background:bg,color:cl,fontSize:11,fontWeight:700,padding:"2px 9px",borderRadius:20,whiteSpace:"nowrap"}}>{children}</span>;
 };
@@ -200,7 +200,7 @@ const Btn=({children,v="primary",sm,...p})=>{
   const S={primary:{background:C.blue,color:"#fff"},success:{background:C.green,color:"#fff"},
     danger:{background:"#b91c1c",color:"#fff"},ghost:{background:"#f0f4f8",color:C.blue,border:"1px solid #b0c4d8"},
     amber:{background:"#d97706",color:"#fff"},vert:{background:C.greenDk,color:"#fff"},
-    purple:{background:"#6d28d9",color:"#fff"},orange:{background:"#ea580c",color:"#fff"}};
+    purple:{background:"#003d7a",color:"#fff"},orange:{background:"#ea580c",color:"#fff"}};
   return <button style={{...S[v],border:"none",padding:sm?"4px 12px":"8px 18px",borderRadius:7,fontSize:sm?11:13,fontWeight:700,cursor:"pointer",...(p.disabled?{opacity:0.5,cursor:"not-allowed"}:{})}} {...p}>{children}</button>;
 };
 
@@ -394,7 +394,7 @@ const imprimerAttestation = (eleve, niveau, annee) => {
   .sigs{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:50px}
   .sig{border-top:2px solid #003d7a;padding-top:8px;text-align:center;font-size:11px;color:#555}
   .stamp{border:3px solid #003d7a;padding:8px 16px;display:inline-block;border-radius:4px;font-weight:bold;color:#003d7a;margin-top:6px;font-size:13px}
-  .devise{text-align:center;font-size:11px;margin-top:20px;font-style:italic;color:#5a9e2f;font-weight:bold}
+  .devise{text-align:center;font-size:11px;margin-top:20px;font-style:italic;color:#2eb55f;font-weight:bold}
   @media print{button{display:none}}</style></head><body>
   <div class="ent"><img src="${LOGO}" alt="Logo"/>
   <div><h1>Groupe Scolaire Privé La Citadelle</h1><p>Kindia, Guinée · Agrément N° 2005-0042/MEPU-A/IGE · Année scolaire ${annee||getAnnee()}</p></div></div>
@@ -404,10 +404,12 @@ const imprimerAttestation = (eleve, niveau, annee) => {
     <div class="infos">
       <div class="row"><span class="lbl">Nom & Prénom : </span><strong>${eleve.nom} ${eleve.prenom}</strong></div>
       <div class="row"><span class="lbl">Matricule : </span>${eleve.matricule||"—"}</div>
+      <div class="row"><span class="lbl">Date de naissance : </span>${eleve.dateNaissance||"—"}</div>
+      <div class="row"><span class="lbl">Lieu de naissance : </span>${eleve.lieuNaissance||"—"}</div>
       <div class="row"><span class="lbl">Classe : </span>${eleve.classe}</div>
       <div class="row"><span class="lbl">Niveau : </span>${niveauLabel}</div>
       <div class="row"><span class="lbl">Tuteur / Parent : </span>${eleve.tuteur||"—"}</div>
-      <div class="row"><span class="lbl">Statut : </span>${eleve.statut||"Actif"}</div>
+      <div class="row"><span class="lbl">Statut : </span>${eleve.statut||"—"}</div>
     </div>
     <p>est régulièrement inscrit(e) dans notre établissement pour l'année scolaire <strong>${annee||getAnnee()}</strong>
     et suit normalement les cours de la classe de <strong>${eleve.classe}</strong> au niveau <strong>${niveauLabel}</strong>.</p>
@@ -886,7 +888,7 @@ function Comptabilite({readOnly, annee}) {
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:10,marginBottom:16}}>
               <Stat label="Recettes" value={`${(totR/1e6).toFixed(2)}M`} sub="GNF" bg="#eaf4e0"/>
               <Stat label="Dépenses" value={`${(totD/1e6).toFixed(2)}M`} sub="GNF" bg="#fce8e8"/>
-              <Stat label="Vers. Fondation" value={`${(totVers/1e6).toFixed(2)}M`} sub="GNF" bg="#f0ebff"/>
+              <Stat label="Vers. Fondation" value={`${(totVers/1e6).toFixed(2)}M`} sub="GNF" bg="#e6f4ea"/>
               <Stat label="Solde" value={`${((totR-totD)/1e6).toFixed(2)}M`} sub="GNF" bg={(totR-totD)>=0?"#eaf4e0":"#fce8e8"}/>
               <Stat label="Masse salariale" value={`${((totNetSec+totNetPrim)/1e6).toFixed(3)}M`} sub={`GNF — ${moisSalaire} (${salairesMois.length} ens.)`} bg="#fef3e0"/>
               <Stat label="Mensualités impayées" value={`${(impaye/1e6).toFixed(2)}M`} sub={`GNF — ${pctImpaye}% du total dû`} bg="#fce8e8"/>
@@ -975,7 +977,7 @@ function Comptabilite({readOnly, annee}) {
                   <Tooltip formatter={v=>fmt(v)}/>
                   <Legend wrapperStyle={{fontSize:11}}/>
                   {[...new Set(recettes.map(r=>r.categorie))].filter(Boolean).map((cat,i)=>(
-                    <Bar key={cat} dataKey={cat} stackId="a" fill={["#3b82f6","#10b981","#f59e0b","#8b5cf6","#ef4444","#06b6d4"][i%6]} radius={i===0?[0,0,4,4]:[0,0,0,0]}/>
+                    <Bar key={cat} dataKey={cat} stackId="a" fill={["#003d7a","#2eb55f","#f59e0b","#1a7d40","#ef4444","#06b6d4"][i%6]} radius={i===0?[0,0,4,4]:[0,0,0,0]}/>
                   ))}
                 </BarChart>
               </ResponsiveContainer>
@@ -1088,7 +1090,7 @@ function Comptabilite({readOnly, annee}) {
                 <div style={{fontSize:18,fontWeight:900}}>{(totNetPrim/1e6).toFixed(3)}M</div>
                 <div style={{fontSize:10,opacity:.75,marginTop:2}}>{salairesPrim.length} enseignant(s)</div>
               </div>
-              <div style={{background:"linear-gradient(135deg,#7c3aed,#a855f7)",borderRadius:10,padding:"14px 16px",color:"#fff",textAlign:"center"}}>
+              <div style={{background:"linear-gradient(135deg,#003d7a,#1565c0)",borderRadius:10,padding:"14px 16px",color:"#fff",textAlign:"center"}}>
                 <div style={{fontSize:11,opacity:.85,marginBottom:4}}>Total enseignants</div>
                 <div style={{fontSize:28,fontWeight:900}}>{nbEns}</div>
                 <div style={{fontSize:10,opacity:.75,marginTop:2}}>ce mois</div>
@@ -1292,7 +1294,7 @@ function Comptabilite({readOnly, annee}) {
             <THead cols={["Libellé","Description","Montant","Date",readOnly?"":"Actions"]}/>
             <tbody>{versements.map(v=><TR key={v._id}>
               <TD bold>{v.libelle}</TD><TD>{v.description}</TD>
-              <TD><span style={{color:"#6d28d9",fontWeight:700}}>{fmt(v.montant)}</span></TD><TD>{v.date}</TD>
+              <TD><span style={{color:C.blue,fontWeight:700}}>{fmt(v.montant)}</span></TD><TD>{v.date}</TD>
               {!readOnly&&<TD><div style={{display:"flex",gap:6}}>
                 <Btn sm v="ghost" onClick={()=>{setForm({...v});setModal("edit_v");}}>Modifier</Btn>
                 <Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ?"))supV(v._id);}}>Suppr.</Btn>
@@ -1338,7 +1340,7 @@ function Comptabilite({readOnly, annee}) {
               <tbody>{elevesEnrol.map(e=><TR key={e._id}>
                 <TD><span style={{fontSize:11,fontFamily:"monospace",background:"#e0ebf8",padding:"2px 5px",borderRadius:4,color:C.blue,fontWeight:700}}>{e.matricule}</span></TD>
                 <TD bold>{e.nom} {e.prenom}</TD><TD>{e.classe}</TD>
-                <TD><Badge color={e.sexe==="F"?"purple":"blue"}>{e.sexe}</Badge></TD>
+                <TD><Badge color={e.sexe==="F"?"vert":"blue"}>{e.sexe}</Badge></TD>
                 <TD><span style={{fontSize:11,color:"#6b7280"}}>{e.filiation}</span></TD>
                 <TD>{e.tuteur}</TD><TD>{e.contactTuteur}</TD>
                 <TD><span style={{fontSize:11,color:"#6b7280"}}>{e.domicile}</span></TD>
@@ -1379,6 +1381,8 @@ function Comptabilite({readOnly, annee}) {
             <Input label="Nom du Tuteur" value={form.tuteur||""} onChange={chg("tuteur")}/>
             <Input label="Contact Tuteur" value={form.contactTuteur||""} onChange={chg("contactTuteur")}/>
             <Input label="Domicile Tuteur" value={form.domicile||""} onChange={chg("domicile")}/>
+            <Input label="Date de naissance" type="date" value={form.dateNaissance||""} onChange={chg("dateNaissance")}/>
+            <Input label="Lieu de naissance" value={form.lieuNaissance||""} onChange={chg("lieuNaissance")}/>
           </div>
           {/* Photo de l'élève */}
           <div style={{marginTop:14}}>
@@ -1497,7 +1501,7 @@ function Comptabilite({readOnly, annee}) {
                         modEleves(e._id,{inscriptionPayee:!e.inscriptionPayee});
                       }} title="Inscription payée ?"
                         style={{width:26,height:26,borderRadius:5,border:"none",cursor:readOnly?"default":"pointer",fontSize:11,
-                          background:e.inscriptionPayee?"#6d28d9":"#f1f3f4",color:e.inscriptionPayee?"#fff":"#9ca3af",fontWeight:700}}>
+                          background:e.inscriptionPayee?C.blue:"#f1f3f4",color:e.inscriptionPayee?"#fff":"#9ca3af",fontWeight:700}}>
                         {e.inscriptionPayee?"✓":"I"}
                       </button>
                     </td>
@@ -1803,11 +1807,13 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
         {cE?<Chargement/>:elevesFiltres.length===0?<Vide icone="🎓" msg="Aucun élève"/>
           :<div style={{overflowX:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",minWidth:900}}>
-              <THead cols={["Matricule","Nom & Prénom","Classe","Sexe","Filiation","Tuteur","Contact","Domicile","Documents","Statut"]}/>
+              <THead cols={["Matricule","Nom & Prénom","Classe","Sexe","Date Nais.","Lieu Nais.","Filiation","Tuteur","Contact","Domicile","Documents","Statut"]}/>
               <tbody>{elevesFiltres.map(e=><TR key={e._id}>
                 <TD><span style={{fontSize:11,fontFamily:"monospace",background:"#e0ebf8",padding:"2px 5px",borderRadius:4,color:C.blue,fontWeight:700}}>{e.matricule}</span></TD>
                 <TD bold>{e.nom} {e.prenom}</TD><TD>{e.classe}</TD>
-                <TD><Badge color={e.sexe==="F"?"purple":"blue"}>{e.sexe}</Badge></TD>
+                <TD><Badge color={e.sexe==="F"?"vert":"blue"}>{e.sexe}</Badge></TD>
+                <TD>{e.dateNaissance||"—"}</TD>
+                <TD>{e.lieuNaissance||"—"}</TD>
                 <TD><span style={{fontSize:11,color:"#6b7280"}}>{e.filiation}</span></TD>
                 <TD>{e.tuteur}</TD><TD>{e.contactTuteur}</TD>
                 <TD><span style={{fontSize:11,color:"#6b7280"}}>{e.domicile}</span></TD>
@@ -1939,7 +1945,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
             {label:"Cours effectués",val:enseignements.filter(e=>e.statut==="Effectué").length,bg:"#eaf4e0",c:C.greenDk},
             {label:"Absences enseignants",val:enseignements.filter(e=>e.statut==="Absent").length,bg:"#fce8e8",c:"#b91c1c"},
             {label:"Retards",val:enseignements.filter(e=>e.statut==="Retard").length,bg:"#fef3e0",c:"#d97706"},
-            {label:"Cours non effectués",val:enseignements.filter(e=>e.statut==="Non effectué").length,bg:"#f0ebff",c:"#6d28d9"},
+            {label:"Cours non effectués",val:enseignements.filter(e=>e.statut==="Non effectué").length,bg:"#e6f4ea",c:C.blue},
           ].map(s=><div key={s.label} style={{background:s.bg,borderRadius:9,padding:"10px 14px",border:"1px solid #e8eaed"}}>
             <p style={{fontSize:10,fontWeight:700,color:s.c,textTransform:"uppercase",margin:"0 0 2px",letterSpacing:"0.06em"}}>{s.label}</p>
             <p style={{fontSize:22,fontWeight:800,color:s.c,margin:0}}>{s.val}</p>
@@ -2395,7 +2401,7 @@ function Secondaire({userRole, annee}) {
         avecEns={true} userRole={userRole} annee={annee}
         classesPredefinies={CLASSES_COLLEGE} maxNote={20}/>}
       {sousModule==="lycee"&&<Ecole
-        titre="Lycée" couleur="#7c3aed"
+        titre="Lycée" couleur="#2eb55f"
         cleClasses="classesLycee" cleEns="ensLycee"
         cleNotes="notesLycee" cleEleves="elevesLycee"
         avecEns={true} userRole={userRole} annee={annee}
