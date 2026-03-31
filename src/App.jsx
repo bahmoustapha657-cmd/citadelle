@@ -50,6 +50,19 @@ const CLASSES_COLLEGE = [
   "9ème Année A","9ème Année B",
   "10ème Année A","10ème Année B",
 ];
+const CLASSES_LYCEE = [
+  "11ème Année A","11ème Année B",
+  "12ème Année A","12ème Année B",
+  "Terminale A","Terminale B",
+];
+
+// Matières prédéfinies primaire (avec coefficient 1)
+const MATIERES_PRIMAIRE = [
+  "Calcul","Écriture","Lecture","Histoire","Géographie",
+  "Éducation Civique et Morale","Récitation et Chant","Langage",
+  "Sciences d'Observation","Éducation Physique",
+].map(nom=>({nom,coefficient:1}));
+
 const TOUTES_ANNEES = Array.from({length:30},(_,i)=>`${2025+i}-${2026+i}`);
 const MENSUALITE = { college:150000, primaire:120000 };
 const initMens = () => MOIS_ANNEE.reduce((a,m)=>({...a,[m]:"Impayé"}),{});
@@ -704,6 +717,13 @@ function Comptabilite({readOnly, annee}) {
   const {items:versements,chargement:cV,ajouter:ajV,modifier:modV,supprimer:supV}=useFirestore("versements");
   const {items:elevesC,chargement:cEC,ajouter:ajEC,modifier:modEC_full,supprimer:supEC,modifierChamp:modEC}=useFirestore("elevesCollege");
   const {items:elevesP,chargement:cEP,ajouter:ajEP,modifier:modEP_full,supprimer:supEP,modifierChamp:modEP}=useFirestore("elevesPrimaire");
+  // Pour auto-génération salaires
+  const {items:ensCollege}=useFirestore("ensCollege");
+  const {items:ensLycee}=useFirestore("ensLycee");
+  const {items:emploisCollege}=useFirestore("classesCollege_emplois");
+  const {items:emploisLycee}=useFirestore("classesLycee_emplois");
+  const {items:engCollege}=useFirestore("ensCollege_enseignements");
+  const {items:engLycee}=useFirestore("ensLycee_enseignements");
 
   const [tab,setTab]=useState("bilan");
   const [modal,setModal]=useState(null);
@@ -754,9 +774,30 @@ function Comptabilite({readOnly, annee}) {
 
   const calcExecute = (s) => (Number(s.vhPrevu)||0) + (Number(s.cinqSem)||0) - (Number(s.nonExecute)||0);
   const calcMontant = (s) => calcExecute(s) * (Number(s.primeHoraire)||0);
-  const calcNet = (s) => calcMontant(s) - (Number(s.bon)||0);
+  const calcNet = (s) => calcMontant(s) - (Number(s.bon)||0) + (Number(s.revision)||0);
   const totNetSec = salairesSec.reduce((sum,s)=>sum+calcNet(s),0);
-  const totNetPrim = salairesPrim.reduce((sum,s)=>sum+Number(s.montantForfait||0)-(Number(s.bon)||0),0);
+  const totNetPrim = salairesPrim.reduce((sum,s)=>sum+Number(s.montantForfait||0)-(Number(s.bon||0))+(Number(s.revision||0)),0);
+
+  const autoGenererSalaires = async () => {
+    if(readOnly) return;
+    if(!confirm(`Générer automatiquement les salaires pour ${moisSalaire} depuis les emplois du temps ?\n\nSeuls les nouveaux enseignants seront ajoutés.`)) return;
+    const tousEns=[
+      ...ensCollege.map(e=>({...e,_emplois:emploisCollege,_eng:engCollege})),
+      ...ensLycee.map(e=>({...e,_emplois:emploisLycee,_eng:engLycee})),
+    ];
+    const nomsExistants=salairesMois.map(s=>(s.nom||"").toLowerCase().trim());
+    for(const ens of tousEns){
+      const nomComplet=`${ens.prenom||""} ${ens.nom||""}`.trim();
+      if(!nomComplet) continue;
+      if(nomsExistants.includes(nomComplet.toLowerCase())) continue;
+      const creneaux=ens._emplois.filter(emp=>(emp.enseignant||"").toLowerCase().includes((ens.nom||"").toLowerCase()));
+      const vhHebdo=creneaux.length;
+      const vhPrevu=vhHebdo*4;
+      const absences=ens._eng.filter(e=>(e.enseignantNom||"").toLowerCase().includes((ens.nom||"").toLowerCase())&&(e.statut==="Absent"||e.statut==="Non effectué")).length;
+      await ajS({section:"Secondaire",mois:moisSalaire,nom:nomComplet,matiere:ens.matiere||"",niveau:ens.grade||"",vhHebdo,vhPrevu,cinqSem:0,nonExecute:absences,primeHoraire:0,bon:0,revision:0,observation:`Statut: ${ens.statut||"—"}`});
+    }
+    alert("Terminé. Renseignez la prime horaire, la 5ème semaine, le bon et la révision pour chaque enseignant.");
+  };
 
   const imprimerSalaires = () => {
     const w = window.open("","_blank");
@@ -776,24 +817,24 @@ function Comptabilite({readOnly, annee}) {
     <table><thead><tr>
       <th>N°</th><th>Prénoms et Nom</th><th>Matière</th><th>Niveau</th>
       <th>V.H. Hebdo</th><th>V.H. Mensuel Prévu</th><th>5è Sem</th><th>Non Exécuté</th><th>Exécuté</th>
-      <th>Prime Horaire</th><th>Montant</th><th>Bon</th><th>Net à Payer</th><th>Observation</th>
+      <th>Prime Horaire</th><th>Montant</th><th>Bon</th><th>Révision</th><th>Net à Payer</th><th>Observation</th>
     </tr></thead><tbody>
     ${salairesSec.map((s,i)=>`<tr>
       <td>${i+1}</td><td style="text-align:left">${s.nom}</td><td>${s.matiere||""}</td><td>${s.niveau||""}</td>
       <td>${s.vhHebdo||0}</td><td>${s.vhPrevu||0}</td><td>${s.cinqSem||0}</td><td>${s.nonExecute||0}</td>
       <td><strong>${calcExecute(s)}</strong></td><td>${fmtN(s.primeHoraire)}</td>
-      <td>${fmtN(calcMontant(s))}</td><td>${fmtN(s.bon||0)}</td>
+      <td>${fmtN(calcMontant(s))}</td><td>${fmtN(s.bon||0)}</td><td>${fmtN(s.revision||0)}</td>
       <td><strong>${fmtN(calcNet(s))}</strong></td><td>${s.observation||""}</td>
     </tr>`).join("")}
-    <tr class="total-row"><td colspan="12" style="text-align:right">TOTAL NET SECONDAIRE</td><td>${fmtN(totNetSec)}</td><td></td></tr>
+    <tr class="total-row"><td colspan="13" style="text-align:right">TOTAL NET SECONDAIRE</td><td>${fmtN(totNetSec)}</td><td></td></tr>
     </tbody></table>
     <div class="section">SECTION PRIMAIRE</div>
-    <table><thead><tr><th>N°</th><th>Prénoms et Nom</th><th>Classe</th><th>Montant</th><th>Bon</th><th>Net à Payer</th><th>Observation</th></tr></thead>
+    <table><thead><tr><th>N°</th><th>Prénoms et Nom</th><th>Classe</th><th>Montant</th><th>Bon</th><th>Révision</th><th>Net à Payer</th><th>Observation</th></tr></thead>
     <tbody>
     ${salairesPrim.map((s,i)=>`<tr><td>${i+1}</td><td style="text-align:left">${s.nom}</td><td>${s.niveau||""}</td>
-      <td>${fmtN(s.montantForfait||0)}</td><td>${fmtN(s.bon||0)}</td>
-      <td><strong>${fmtN(Number(s.montantForfait||0)-Number(s.bon||0))}</strong></td><td>${s.observation||""}</td></tr>`).join("")}
-    <tr class="total-row"><td colspan="5" style="text-align:right">TOTAL NET PRIMAIRE</td><td>${fmtN(totNetPrim)}</td><td></td></tr>
+      <td>${fmtN(s.montantForfait||0)}</td><td>${fmtN(s.bon||0)}</td><td>${fmtN(s.revision||0)}</td>
+      <td><strong>${fmtN(Number(s.montantForfait||0)-Number(s.bon||0)+Number(s.revision||0))}</strong></td><td>${s.observation||""}</td></tr>`).join("")}
+    <tr class="total-row"><td colspan="6" style="text-align:right">TOTAL NET PRIMAIRE</td><td>${fmtN(totNetPrim)}</td><td></td></tr>
     </tbody></table>
     <div style="text-align:right;font-size:12px;font-weight:bold;margin-top:8px;color:#003d7a">
       TOTAL GÉNÉRAL NET : ${fmtN(totNetSec+totNetPrim)} GNF
@@ -1013,7 +1054,8 @@ function Comptabilite({readOnly, annee}) {
             style={{border:"1px solid #b0c4d8",borderRadius:7,padding:"6px 12px",fontSize:13,background:"#fff",color:C.blueDark,fontWeight:700}}>
             {MOIS_SALAIRE.map(m=><option key={m}>{m}</option>)}
           </select>
-          {!readOnly&&<Btn onClick={()=>{setForm({section:"Secondaire",mois:moisSalaire,nonExecute:0,cinqSem:0,bon:0});setModal("add_s");}}>+ Ajouter</Btn>}
+          {!readOnly&&<Btn v="amber" onClick={autoGenererSalaires}>⚡ Auto-générer depuis EDT</Btn>}
+          {!readOnly&&<Btn onClick={()=>{setForm({section:"Secondaire",mois:moisSalaire,nonExecute:0,cinqSem:0,bon:0,revision:0});setModal("add_s");}}>+ Ajouter</Btn>}
           <Btn v="vert" onClick={imprimerSalaires}>🖨️ Imprimer</Btn>
         </div>
 
@@ -1035,6 +1077,7 @@ function Comptabilite({readOnly, annee}) {
                   <th rowSpan={2} style={{padding:"7px 10px",fontSize:10,fontWeight:700,color:C.blueDark,border:"1px solid #b0c4d8",textAlign:"center"}}>Prime<br/>Horaire</th>
                   <th rowSpan={2} style={{padding:"7px 10px",fontSize:10,fontWeight:700,color:C.blueDark,border:"1px solid #b0c4d8",textAlign:"center"}}>Montant</th>
                   <th rowSpan={2} style={{padding:"7px 10px",fontSize:10,fontWeight:700,color:C.blueDark,border:"1px solid #b0c4d8",textAlign:"center"}}>Bon</th>
+                  <th rowSpan={2} style={{padding:"7px 10px",fontSize:10,fontWeight:700,color:C.blueDark,border:"1px solid #b0c4d8",textAlign:"center",background:"#fef3e0"}}>Révision</th>
                   <th rowSpan={2} style={{padding:"7px 10px",fontSize:10,fontWeight:700,color:C.blueDark,border:"1px solid #b0c4d8",textAlign:"center",background:"#eaf4e0"}}>Net à<br/>Payer</th>
                   <th rowSpan={2} style={{padding:"7px 10px",fontSize:10,fontWeight:700,color:C.blueDark,border:"1px solid #b0c4d8"}}>Obs.</th>
                   {!readOnly&&<th rowSpan={2} style={{padding:"7px 10px",fontSize:10,fontWeight:700,color:C.blueDark,border:"1px solid #b0c4d8"}}>Act.</th>}
@@ -1060,6 +1103,12 @@ function Comptabilite({readOnly, annee}) {
                       <td style={{padding:"7px 10px",textAlign:"right",fontSize:12,border:"1px solid #e8f0e8"}}>{fmtN(s.primeHoraire)}</td>
                       <td style={{padding:"7px 10px",textAlign:"right",fontSize:12,border:"1px solid #e8f0e8"}}>{fmtN(calcMontant(s))}</td>
                       <td style={{padding:"7px 10px",textAlign:"right",fontSize:12,color:"#b91c1c",border:"1px solid #e8f0e8"}}>{fmtN(s.bon||0)}</td>
+                      <td style={{padding:"4px 6px",textAlign:"center",border:"1px solid #e8f0e8",background:"#fffbeb"}}>
+                        {!readOnly
+                          ?<input type="number" value={s.revision||0} onChange={e=>modS({...s,revision:Number(e.target.value)})}
+                            style={{width:80,border:"1px solid #fbbf24",borderRadius:5,padding:"3px 5px",fontSize:11,textAlign:"right"}}/>
+                          :<span style={{fontSize:12}}>{fmtN(s.revision||0)}</span>}
+                      </td>
                       <td style={{padding:"7px 10px",textAlign:"right",fontWeight:800,fontSize:13,color:C.greenDk,background:"#eaf4e0",border:"1px solid #b0c4d8"}}>{fmtN(calcNet(s))}</td>
                       <td style={{padding:"7px 10px",fontSize:11,color:"#6b7280",border:"1px solid #e8f0e8"}}>{s.observation}</td>
                       {!readOnly&&<td style={{padding:"7px 6px",border:"1px solid #e8f0e8"}}>
@@ -1141,16 +1190,20 @@ function Comptabilite({readOnly, annee}) {
               <Input label="Non Exécuté" type="number" value={form.nonExecute||0} onChange={chg("nonExecute")}/>
               <Input label="Prime Horaire (GNF)" type="number" value={form.primeHoraire||""} onChange={chg("primeHoraire")}/>
               <Input label="Bon (GNF)" type="number" value={form.bon||0} onChange={chg("bon")}/>
+              <Input label="Révision (GNF)" type="number" value={form.revision||0} onChange={chg("revision")}/>
             </>:<>
               <Input label="Classe" value={form.niveau||""} onChange={chg("niveau")}/>
               <Input label="Montant Forfaitaire (GNF)" type="number" value={form.montantForfait||""} onChange={chg("montantForfait")}/>
               <Input label="Bon (GNF)" type="number" value={form.bon||0} onChange={chg("bon")}/>
+              <Input label="Révision (GNF)" type="number" value={form.revision||0} onChange={chg("revision")}/>
             </>}
             <div style={{gridColumn:"1/-1"}}><Input label="Observation" value={form.observation||""} onChange={chg("observation")}/></div>
           </div>
           {form.section==="Secondaire"&&<div style={{marginTop:12,padding:"10px 14px",background:"#e0ebf8",borderRadius:8,fontSize:13}}>
             <strong>Aperçu :</strong> Exécuté = {calcExecute(form)} h &nbsp;|&nbsp;
             Montant = {fmtN(calcMontant(form))} GNF &nbsp;|&nbsp;
+            Bon = -{fmtN(form.bon||0)} &nbsp;|&nbsp;
+            Révision = +{fmtN(form.revision||0)} &nbsp;|&nbsp;
             <strong style={{color:C.greenDk}}>Net = {fmtN(calcNet(form))} GNF</strong>
           </div>}
           <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
@@ -1395,7 +1448,7 @@ function Comptabilite({readOnly, annee}) {
 // ══════════════════════════════════════════════════════════════
 //  MODULE ÉCOLE — avec Discipline + Bulletins
 // ══════════════════════════════════════════════════════════════
-function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns, userRole, annee, classesPredefinies, maxNote=20}) {
+function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns, userRole, annee, classesPredefinies, maxNote=20, matieresPredefinies=[]}) {
   const {items:classes,chargement:cC,ajouter:ajC,modifier:modC,supprimer:supC}=useFirestore(cleClasses);
   const {items:ens,chargement:cEns,ajouter:ajEns,modifier:modEns,supprimer:supEns}=useFirestore(cleEns);
   const {items:notes,chargement:cN,ajouter:ajN,supprimer:supN}=useFirestore(cleNotes);
@@ -1987,6 +2040,11 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
           <strong style={{fontSize:14,color:C.blueDark}}>Matières et coefficients ({matieres.length})</strong>
           {!readOnly&&<Btn onClick={()=>{setForm({coefficient:1});setModal("add_mat");}}>+ Ajouter</Btn>}
         </div>
+        {!readOnly&&matieres.length===0&&matieresPredefinies.length>0&&<div style={{background:"#eaf4e0",border:"1px solid #86efac",borderRadius:8,padding:"12px 16px",marginBottom:12,display:"flex",alignItems:"center",gap:12}}>
+          <span style={{fontSize:16}}>💡</span>
+          <span style={{fontSize:13,color:"#166534",flex:1}}>Des matières prédéfinies sont disponibles pour ce niveau.</span>
+          <Btn v="success" onClick={()=>matieresPredefinies.forEach(m=>ajMat(m))}>✅ Initialiser les matières</Btn>
+        </div>}
         {cMat?<Chargement/>:matieres.length===0?<Vide icone="📚" msg="Ajoutez les matières pour calculer les bulletins"/>
           :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
             <THead cols={["Matière","Coefficient",readOnly?"":"Action"]}/>
@@ -2132,6 +2190,41 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
           </table></Card>;
         })()}
       </div>}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
+//  MODULE SECONDAIRE (Collège + Lycée)
+// ══════════════════════════════════════════════════════════════
+function Secondaire({userRole, annee}) {
+  const [sousModule, setSousModule] = useState("college");
+  return (
+    <div>
+      {/* Barre de navigation Collège / Lycée */}
+      <div style={{display:"flex",gap:0,background:C.blueDark,padding:"0 26px",borderBottom:`3px solid ${C.green}`}}>
+        {[{id:"college",label:"🏫 Bureau Collège"},{id:"lycee",label:"🎓 Lycée"}].map(m=>(
+          <button key={m.id} onClick={()=>setSousModule(m.id)} style={{
+            padding:"12px 22px",border:"none",cursor:"pointer",fontWeight:800,fontSize:13,
+            background:sousModule===m.id?C.green:"transparent",
+            color:sousModule===m.id?"#fff":"rgba(255,255,255,0.6)",
+            borderBottom:sousModule===m.id?`3px solid ${C.green}`:"3px solid transparent",
+            marginBottom:-3,transition:"all 0.15s"
+          }}>{m.label}</button>
+        ))}
+      </div>
+      {sousModule==="college"&&<Ecole
+        titre="Bureau du Collège" couleur={C.blue}
+        cleClasses="classesCollege" cleEns="ensCollege"
+        cleNotes="notesCollege" cleEleves="elevesCollege"
+        avecEns={true} userRole={userRole} annee={annee}
+        classesPredefinies={CLASSES_COLLEGE} maxNote={20}/>}
+      {sousModule==="lycee"&&<Ecole
+        titre="Lycée" couleur="#7c3aed"
+        cleClasses="classesLycee" cleEns="ensLycee"
+        cleNotes="notesLycee" cleEleves="elevesLycee"
+        avecEns={true} userRole={userRole} annee={annee}
+        classesPredefinies={CLASSES_LYCEE} maxNote={20}/>}
     </div>
   );
 }
@@ -2487,8 +2580,8 @@ export default function App() {
           {page==="admin_panel" && <AdminPanel annee={annee} setAnnee={setAnnee}/>}
           {page==="fondation"   && <Fondation readOnly={readOnly} annee={annee}/>}
           {page==="compta"      && <Comptabilite readOnly={readOnly} annee={annee}/>}
-          {page==="primaire"    && <Ecole titre="Direction du Primaire" couleur={C.green} cleClasses="classesPrimaire" cleEns="ensPrimaire" cleNotes="notesPrimaire" cleEleves="elevesPrimaire" avecEns={false} userRole={utilisateur.role} annee={annee} classesPredefinies={CLASSES_PRIMAIRE} maxNote={10}/>}
-          {page==="secondaire"  && <Ecole titre="Bureau du Collège" couleur={C.blue} cleClasses="classesCollege" cleEns="ensCollege" cleNotes="notesCollege" cleEleves="elevesCollege" avecEns={true} userRole={utilisateur.role} annee={annee} classesPredefinies={CLASSES_COLLEGE} maxNote={20}/>}
+          {page==="primaire"    && <Ecole titre="Direction du Primaire" couleur={C.green} cleClasses="classesPrimaire" cleEns="ensPrimaire" cleNotes="notesPrimaire" cleEleves="elevesPrimaire" avecEns={false} userRole={utilisateur.role} annee={annee} classesPredefinies={CLASSES_PRIMAIRE} maxNote={10} matieresPredefinies={MATIERES_PRIMAIRE}/>}
+          {page==="secondaire"  && <Secondaire userRole={utilisateur.role} annee={annee}/>}
           {page==="calendrier"  && <Calendrier annee={annee}/>}
         </div>
       </main>
