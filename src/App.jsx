@@ -325,7 +325,7 @@ const imprimerRecu = (eleve, montantUnit) => {
   .total{text-align:right;font-size:14px;font-weight:bold;padding:10px;background:#e8f0e8;color:#003d7a;margin-top:8px}
   .sigs{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:32px}
   .sig{border-top:2px solid #003d7a;padding-top:8px;text-align:center;font-size:11px;color:#555}
-  .devise{text-align:center;font-size:11px;margin-top:8px;font-style:italic;color:#5a9e2f;font-weight:bold}
+  .devise{text-align:center;font-size:11px;margin-top:8px;font-style:italic;color:#2eb55f;font-weight:bold}
   @media print{button{display:none}}</style></head><body>
   <div class="ent"><img src="${LOGO}" alt="Logo"/>
   <div><h1>Groupe Scolaire Privé La Citadelle</h1><p>Kindia, Guinée · Agrément N° 2005-0042/MEPU-A/IGE · ${getAnnee()}</p></div></div>
@@ -339,7 +339,7 @@ const imprimerRecu = (eleve, montantUnit) => {
     <div class="row"><span class="lbl">Contact : </span>${eleve.contactTuteur||"—"}</div>
   </div>
   <table><thead><tr><th>Mois</th><th>Montant</th><th>Statut</th></tr></thead><tbody>
-  ${moisPayes.map(m=>`<tr><td>${m} ${getAnnee()}</td><td>${fmt(montantUnit)}</td><td style="color:#5a9e2f;font-weight:bold">✓ Payé</td></tr>`).join("")}
+  ${moisPayes.map(m=>`<tr><td>${m} ${getAnnee()}</td><td>${fmt(montantUnit)}</td><td style="color:#2eb55f;font-weight:bold">✓ Payé</td></tr>`).join("")}
   </tbody></table>
   <div class="total">Total payé : ${fmt(moisPayes.length*montantUnit)}</div>
   <div class="sigs"><div class="sig">Le/La Caissier(e)<br/><br/><br/>Signature</div><div class="sig">Le/La Tuteur<br/><br/><br/>Signature</div></div>
@@ -363,8 +363,8 @@ const imprimerListeClasse = (classe, eleves) => {
   <div class="ent"><img src="${LOGO}" alt="Logo"/>
   <div><h1>Groupe Scolaire Privé La Citadelle</h1><p>Kindia, Guinée · Année scolaire ${getAnnee()}</p></div></div>
   <h2>Liste des élèves — Classe : ${classe}</h2>
-  <table><thead><tr><th>N°</th><th>Matricule</th><th>Nom & Prénom</th><th>Sexe</th><th>Filiation</th><th>Tuteur</th><th>Contact</th><th>Statut</th></tr></thead>
-  <tbody>${liste.map((e,i)=>`<tr><td>${i+1}</td><td>${e.matricule||"—"}</td><td><strong>${e.nom} ${e.prenom}</strong></td><td>${e.sexe||"—"}</td><td>${e.filiation||"—"}</td><td>${e.tuteur||"—"}</td><td>${e.contactTuteur||"—"}</td><td>${e.statut||"Actif"}</td></tr>`).join("")}
+  <table><thead><tr><th>N°</th><th>Matricule</th><th>Nom & Prénom</th><th>Sexe</th><th>Date Naissance</th><th>Lieu Naissance</th><th>Filiation</th><th>Tuteur</th><th>Contact</th><th>Statut</th></tr></thead>
+  <tbody>${liste.map((e,i)=>`<tr><td>${i+1}</td><td>${e.matricule||"—"}</td><td><strong>${e.nom} ${e.prenom}</strong></td><td>${e.sexe||"—"}</td><td>${e.dateNaissance||"—"}</td><td>${e.lieuNaissance||"—"}</td><td>${e.filiation||"—"}</td><td>${e.tuteur||"—"}</td><td>${e.contactTuteur||"—"}</td><td>${e.statut||"Actif"}</td></tr>`).join("")}
   </tbody></table>
   <div class="footer"><span>Effectif : ${liste.length} élève(s)</span><span>Date d'impression : ${today()}</span><span>Le Directeur</span></div>
   <script>window.onload=()=>window.print();</script></body></html>`);
@@ -445,13 +445,13 @@ const imprimerBulletin = (eleve, notes, matieres, periode, niveau, maxNote=20) =
   <style>body{font-family:Arial,sans-serif;padding:30px;font-size:12px}
   .ent{display:flex;align-items:center;gap:16px;border-bottom:3px solid #003d7a;padding-bottom:12px;margin-bottom:12px}
   .ent img{width:70px;height:70px;object-fit:contain}.ent h1{margin:0;font-size:15px;color:#003d7a}.ent p{margin:2px 0;font-size:11px;color:#555}
-  h2{color:#003d7a;text-align:center;margin:8px 0}.info{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px 20px;margin-bottom:14px;background:#f0f4f8;padding:10px;border-radius:6px}
+  h2{color:#003d7a;text-align:center;margin:8px 0}.info{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px 20px;margin-bottom:14px;background:#f0f6f2;padding:10px 14px;border-radius:6px;border-left:4px solid #003d7a}
   .inf{font-size:11px}.lbl{font-weight:bold;color:#003d7a}
   table{width:100%;border-collapse:collapse;margin-top:10px}th{background:#003d7a;color:#fff;padding:7px 10px;font-size:11px;text-align:left}
   td{padding:7px 10px;border-bottom:1px solid #eee}tr:nth-child(even){background:#f9f9f9}
   .moy{background:#e8f0e8;font-weight:bold;color:#003d7a}.mention{font-size:14px;font-weight:bold;text-align:center;padding:10px;background:#003d7a;color:#fff;margin-top:12px;border-radius:4px}
   .sigs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-top:28px}.sig{border-top:2px solid #003d7a;padding-top:8px;text-align:center;font-size:11px;color:#555}
-  .devise{text-align:center;font-size:11px;margin-top:8px;font-style:italic;color:#5a9e2f;font-weight:bold}
+  .devise{text-align:center;font-size:11px;margin-top:8px;font-style:italic;color:#2eb55f;font-weight:bold}
   @media print{button{display:none}}</style></head><body>
   <div class="ent"><img src="${LOGO}" alt="Logo"/>
   <div><h1>Groupe Scolaire Privé La Citadelle</h1><p>Kindia, Guinée · Agrément N° 2005-0042/MEPU-A/IGE</p></div></div>
@@ -460,6 +460,9 @@ const imprimerBulletin = (eleve, notes, matieres, periode, niveau, maxNote=20) =
     <div class="inf"><span class="lbl">Élève : </span>${eleve.nom} ${eleve.prenom}</div>
     <div class="inf"><span class="lbl">Classe : </span>${eleve.classe}</div>
     <div class="inf"><span class="lbl">Matricule : </span>${eleve.matricule||"—"}</div>
+    <div class="inf"><span class="lbl">Date de naissance : </span>${eleve.dateNaissance||"—"}</div>
+    <div class="inf"><span class="lbl">Lieu de naissance : </span>${eleve.lieuNaissance||"—"}</div>
+    <div class="inf"><span class="lbl">Tuteur / Parent : </span>${eleve.tuteur||"—"}</div>
   </div>
   <table><thead><tr><th>Matière</th><th>Coefficient</th><th>Moyenne</th><th>Moy × Coef</th><th>Appréciation</th></tr></thead>
   <tbody>
@@ -1080,12 +1083,12 @@ function Comptabilite({readOnly, annee}) {
                 <div style={{fontSize:18,fontWeight:900}}>{(totGen/1e6).toFixed(3)}M</div>
                 <div style={{fontSize:10,opacity:.75,marginTop:2}}>GNF — {moisSalaire}</div>
               </div>
-              <div style={{background:"linear-gradient(135deg,#1e40af,#3b82f6)",borderRadius:10,padding:"14px 16px",color:"#fff",textAlign:"center"}}>
+              <div style={{background:"linear-gradient(135deg,#003d7a,#1a6baa)",borderRadius:10,padding:"14px 16px",color:"#fff",textAlign:"center"}}>
                 <div style={{fontSize:11,opacity:.85,marginBottom:4}}>Secondaire</div>
                 <div style={{fontSize:18,fontWeight:900}}>{(totNetSec/1e6).toFixed(3)}M</div>
                 <div style={{fontSize:10,opacity:.75,marginTop:2}}>{salairesSec.length} enseignant(s)</div>
               </div>
-              <div style={{background:"linear-gradient(135deg,#065f46,#10b981)",borderRadius:10,padding:"14px 16px",color:"#fff",textAlign:"center"}}>
+              <div style={{background:"linear-gradient(135deg,#1a7d40,#2eb55f)",borderRadius:10,padding:"14px 16px",color:"#fff",textAlign:"center"}}>
                 <div style={{fontSize:11,opacity:.85,marginBottom:4}}>Primaire</div>
                 <div style={{fontSize:18,fontWeight:900}}>{(totNetPrim/1e6).toFixed(3)}M</div>
                 <div style={{fontSize:10,opacity:.75,marginTop:2}}>{salairesPrim.length} enseignant(s)</div>
@@ -1191,7 +1194,7 @@ function Comptabilite({readOnly, annee}) {
                     </tr>
                 ))}
                 <tr style={{background:"#e0ebf8",fontWeight:800}}>
-                  <td colSpan={12} style={{padding:"8px 12px",textAlign:"right",color:C.blueDark,border:"1px solid #b0c4d8"}}>TOTAL NET SECONDAIRE</td>
+                  <td colSpan={13} style={{padding:"8px 12px",textAlign:"right",color:C.blueDark,border:"1px solid #b0c4d8"}}>TOTAL NET SECONDAIRE</td>
                   <td style={{padding:"8px 12px",textAlign:"right",color:C.greenDk,fontSize:14,border:"1px solid #b0c4d8"}}>{fmtN(totNetSec)}</td>
                   <td colSpan={readOnly?1:2} style={{border:"1px solid #b0c4d8"}}></td>
                 </tr>
@@ -1205,10 +1208,10 @@ function Comptabilite({readOnly, annee}) {
           </div>
           <div style={{overflowX:"auto",marginBottom:8}}>
             <table style={{width:"100%",borderCollapse:"collapse"}}>
-              <THead cols={["N°","Prénoms et Nom","Classe","Montant Forfaitaire","Bon","Net à Payer","Observation",readOnly?"":"Actions"]}/>
+              <THead cols={["N°","Prénoms et Nom","Classe","Montant Forfaitaire","Bon","Révision","Net à Payer","Observation",readOnly?"":"Actions"]}/>
               <tbody>
                 {salairesPrim.length===0?
-                  <tr><td colSpan={readOnly?7:8} style={{padding:"20px",textAlign:"center",color:"#9ca3af",fontStyle:"italic"}}>Aucun enseignant primaire pour ce mois</td></tr>
+                  <tr><td colSpan={readOnly?8:9} style={{padding:"20px",textAlign:"center",color:"#9ca3af",fontStyle:"italic"}}>Aucun enseignant primaire pour ce mois</td></tr>
                   :salairesPrim.map((s,i)=>(
                     <TR key={s._id}>
                       <TD center>{i+1}</TD>
@@ -1216,7 +1219,13 @@ function Comptabilite({readOnly, annee}) {
                       <TD>{s.niveau}</TD>
                       <TD center>{fmtN(s.montantForfait||0)}</TD>
                       <TD center style={{color:"#b91c1c"}}>{fmtN(s.bon||0)}</TD>
-                      <TD center style={{fontWeight:800,color:C.greenDk,background:"#eaf4e0"}}>{fmtN(Number(s.montantForfait||0)-Number(s.bon||0))}</TD>
+                      <TD center style={{background:"#fffbeb"}}>
+                        {!readOnly
+                          ?<input type="number" value={s.revision||0} onChange={e=>modS({...s,revision:Number(e.target.value)})}
+                            style={{width:80,border:"1px solid #fbbf24",borderRadius:5,padding:"3px 5px",fontSize:11,textAlign:"right"}}/>
+                          :<span style={{fontSize:12}}>{fmtN(s.revision||0)}</span>}
+                      </TD>
+                      <TD center style={{fontWeight:800,color:C.greenDk,background:"#eaf4e0"}}>{fmtN(Number(s.montantForfait||0)-Number(s.bon||0)+Number(s.revision||0))}</TD>
                       <TD>{s.observation}</TD>
                       {!readOnly&&<TD><div style={{display:"flex",gap:4}}>
                         <Btn sm v="ghost" onClick={()=>{setForm({...s});setModal("edit_s");}}>✏️</Btn>
@@ -1225,14 +1234,14 @@ function Comptabilite({readOnly, annee}) {
                     </TR>
                 ))}
                 <tr style={{background:"#e0ebf8",fontWeight:800}}>
-                  <td colSpan={readOnly?5:6} style={{padding:"8px 12px",textAlign:"right",color:C.blueDark}}>TOTAL NET PRIMAIRE</td>
+                  <td colSpan={6} style={{padding:"8px 12px",textAlign:"right",color:C.blueDark}}>TOTAL NET PRIMAIRE</td>
                   <td style={{padding:"8px 12px",textAlign:"center",color:C.greenDk,fontSize:14}}>{fmtN(totNetPrim)}</td>
-                  <td></td>
+                  <td colSpan={2}></td>
                 </tr>
                 <tr style={{background:C.blue,color:"#fff",fontWeight:900}}>
-                  <td colSpan={readOnly?5:6} style={{padding:"10px 12px",textAlign:"right",fontSize:14}}>TOTAL GÉNÉRAL NET</td>
-                  <td style={{padding:"10px 12px",textAlign:"center",fontSize:16}}>{fmtN(totNetSec+totNetPrim)} GNF</td>
-                  <td></td>
+                  <td colSpan={6} style={{padding:"10px 12px",textAlign:"right",fontSize:14,letterSpacing:".4px"}}>TOTAL GÉNÉRAL NET À PAYER</td>
+                  <td style={{padding:"10px 12px",textAlign:"center",fontSize:16,fontWeight:900}}>{fmtN(totNetSec+totNetPrim)} GNF</td>
+                  <td colSpan={2}></td>
                 </tr>
               </tbody>
             </table>
@@ -1375,7 +1384,7 @@ function Comptabilite({readOnly, annee}) {
               <option value="M">Masculin</option><option value="F">Féminin</option>
             </Selec>
             <Selec label="Statut" value={form.statut||"Actif"} onChange={chg("statut")}>
-              <option>Actif</option><option>Inactif</option>
+              <option>Actif</option><option>Inactif</option><option>Transféré</option><option>Exclu</option>
             </Selec>
             <div style={{gridColumn:"1/-1"}}><Input label="Filiation (Père / Mère)" value={form.filiation||""} onChange={chg("filiation")}/></div>
             <Input label="Nom du Tuteur" value={form.tuteur||""} onChange={chg("tuteur")}/>
@@ -1720,13 +1729,14 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
                     <tbody>{classement.map((e,i)=>{
                       const medals=["🥇","🥈","🥉","4️⃣","5️⃣"];
                       const moy=e.moyGene.toFixed(2);
-                      const mention=Number(moy)>=16?"Très Bien":Number(moy)>=14?"Bien":Number(moy)>=12?"Assez Bien":"Passable";
+                      const mention=Number(moy)>=16?"Très Bien":Number(moy)>=14?"Bien":Number(moy)>=12?"Assez Bien":Number(moy)>=10?"Passable":"Insuffisant";
+                      const mentionColor=Number(moy)>=14?"vert":Number(moy)>=10?"blue":"red";
                       return <tr key={e._id} style={{borderBottom:"1px solid #fde68a",background:i===0?"#fffbeb":"#fff"}}>
                         <td style={{padding:"9px 12px",textAlign:"center",fontSize:20}}>{medals[i]}</td>
                         <td style={{padding:"9px 12px",fontWeight:800,color:C.blueDark}}>{e.nom} {e.prenom}</td>
                         <td style={{padding:"9px 12px"}}><Badge color="blue">{e.classe}</Badge></td>
                         <td style={{padding:"9px 12px",textAlign:"center",fontSize:16,fontWeight:800,color:C.greenDk}}>{moy}/20</td>
-                        <td style={{padding:"9px 12px",textAlign:"center"}}><Badge color={Number(moy)>=14?"vert":"blue"}>{mention}</Badge></td>
+                        <td style={{padding:"9px 12px",textAlign:"center"}}><Badge color={mentionColor}>{mention}</Badge></td>
                       </tr>;
                     })}</tbody>
                   </table>
@@ -1800,8 +1810,8 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
           {filtreClasse!=="all"&&<Btn sm v="ghost" onClick={()=>imprimerListeClasse(filtreClasse,eleves)}>🖨️ Imprimer liste</Btn>}
           <Btn sm v="ghost" onClick={()=>exportExcel(
             `Eleves_${avecEns?"College":"Primaire"}`,
-            ["Matricule","Nom","Prénom","Classe","Sexe","Filiation","Tuteur","Contact","Domicile","Statut"],
-            elevesFiltres.map(e=>[e.matricule||"",e.nom,e.prenom,e.classe,e.sexe||"",e.filiation||"",e.tuteur||"",e.contactTuteur||"",e.domicile||"",e.statut||"Actif"])
+            ["Matricule","Nom","Prénom","Classe","Sexe","Date Naissance","Lieu Naissance","Filiation","Tuteur","Contact","Domicile","Statut"],
+            elevesFiltres.map(e=>[e.matricule||"",e.nom,e.prenom,e.classe,e.sexe||"",e.dateNaissance||"",e.lieuNaissance||"",e.filiation||"",e.tuteur||"",e.contactTuteur||"",e.domicile||"",e.statut||"Actif"])
           )}>📥 Export Excel</Btn>
         </div>
         {cE?<Chargement/>:elevesFiltres.length===0?<Vide icone="🎓" msg="Aucun élève"/>
