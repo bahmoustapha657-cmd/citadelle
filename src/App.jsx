@@ -84,11 +84,11 @@ const COMPTES_DEFAUT = [
 ];
 
 const ACCES = {
-  admin:     ["admin_panel","fondation","compta","primaire","college","calendrier"],
-  direction: ["fondation","primaire","college","calendrier"],
+  admin:     ["admin_panel","fondation","compta","primaire","secondaire","calendrier"],
+  direction: ["fondation","primaire","secondaire","calendrier"],
   primaire:  ["primaire","calendrier"],
-  college:   ["college","calendrier"],
-  comptable: ["compta","primaire","college","calendrier"],
+  college:   ["secondaire","calendrier"],
+  comptable: ["compta","primaire","secondaire","calendrier"],
 };
 
 // Qui peut modifier les élèves ?
@@ -99,7 +99,7 @@ const MODULES = [
   {id:"fondation",   label:"Fondation",        icon:"🏛️", desc:"Gouvernance"},
   {id:"compta",      label:"Comptabilité",     icon:"📊", desc:"Finances"},
   {id:"primaire",    label:"Dir. Primaire",    icon:"🎒", desc:"Primaire"},
-  {id:"college",     label:"Bureau Collège",   icon:"🏫", desc:"Collège"},
+  {id:"secondaire",  label:"Secondaire",        icon:"🏫", desc:"Bureau Collège"},
   {id:"calendrier",  label:"Calendrier",       icon:"📅", desc:"Événements scolaires"},
 ];
 
@@ -410,7 +410,7 @@ const imprimerAttestation = (eleve, niveau, annee) => {
   w.document.close();
 };
 
-const imprimerBulletin = (eleve, notes, matieres, periode, niveau) => {
+const imprimerBulletin = (eleve, notes, matieres, periode, niveau, maxNote=20) => {
   const notesEleve = notes.filter(n=>n.eleveId===eleve._id && n.periode===periode);
   let moyenne = 0, totalCoef = 0;
   const lignes = matieres.map(mat => {
@@ -421,7 +421,9 @@ const imprimerBulletin = (eleve, notes, matieres, periode, niveau) => {
     return {mat: mat.nom, coef, moy};
   });
   const moyGene = totalCoef > 0 ? (moyenne/totalCoef).toFixed(2) : "—";
-  const mention = moyGene==="—"?"—":Number(moyGene)>=16?"Très Bien":Number(moyGene)>=14?"Bien":Number(moyGene)>=12?"Assez Bien":Number(moyGene)>=10?"Passable":"Insuffisant";
+  const mi = maxNote/2; // seuil de passage (10/20 ou 5/10)
+  const apprec = (v) => v==="—"?"Non évalué":Number(v)>=(maxNote*0.8)?"Très Bien":Number(v)>=(maxNote*0.7)?"Bien":Number(v)>=(maxNote*0.6)?"Assez Bien":Number(v)>=mi?"Passable":"Insuffisant";
+  const mention = apprec(moyGene);
 
   const w = window.open("","_blank");
   w.document.write(`<!DOCTYPE html><html><head><title>Bulletin ${eleve.nom}</title>
@@ -446,8 +448,8 @@ const imprimerBulletin = (eleve, notes, matieres, periode, niveau) => {
   </div>
   <table><thead><tr><th>Matière</th><th>Coefficient</th><th>Moyenne</th><th>Moy × Coef</th><th>Appréciation</th></tr></thead>
   <tbody>
-  ${lignes.map(l=>`<tr><td>${l.mat}</td><td style="text-align:center">${l.coef}</td><td style="text-align:center;font-weight:bold;color:${l.moy!=="—"&&Number(l.moy)>=10?"#1a6b30":"#b91c1c"}">${l.moy}</td><td style="text-align:center">${l.moy!=="—"?(Number(l.moy)*l.coef).toFixed(2):"—"}</td><td>${l.moy==="—"?"Non évalué":Number(l.moy)>=16?"Très Bien":Number(l.moy)>=14?"Bien":Number(l.moy)>=12?"Assez Bien":Number(l.moy)>=10?"Passable":"Insuffisant"}</td></tr>`).join("")}
-  <tr class="moy"><td colspan="2"><strong>Moyenne Générale</strong></td><td style="text-align:center;font-size:16px">${moyGene}/20</td><td style="text-align:center">${totalCoef}</td><td></td></tr>
+  ${lignes.map(l=>`<tr><td>${l.mat}</td><td style="text-align:center">${l.coef}</td><td style="text-align:center;font-weight:bold;color:${l.moy!=="—"&&Number(l.moy)>=mi?"#1a6b30":"#b91c1c"}">${l.moy}</td><td style="text-align:center">${l.moy!=="—"?(Number(l.moy)*l.coef).toFixed(2):"—"}</td><td>${apprec(l.moy)}</td></tr>`).join("")}
+  <tr class="moy"><td colspan="2"><strong>Moyenne Générale</strong></td><td style="text-align:center;font-size:16px">${moyGene}/${maxNote}</td><td style="text-align:center">${totalCoef}</td><td></td></tr>
   </tbody></table>
   <div class="mention">Mention : ${mention}</div>
   <div class="sigs"><div class="sig">Le/La Directeur(rice)<br/><br/><br/>Signature</div><div class="sig">Le/La Prof. Principal(e)<br/><br/><br/>Signature</div><div class="sig">Le/La Parent/Tuteur<br/><br/><br/>Signature</div></div>
@@ -1393,7 +1395,7 @@ function Comptabilite({readOnly, annee}) {
 // ══════════════════════════════════════════════════════════════
 //  MODULE ÉCOLE — avec Discipline + Bulletins
 // ══════════════════════════════════════════════════════════════
-function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns, userRole, annee, classesPredefinies}) {
+function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns, userRole, annee, classesPredefinies, maxNote=20}) {
   const {items:classes,chargement:cC,ajouter:ajC,modifier:modC,supprimer:supC}=useFirestore(cleClasses);
   const {items:ens,chargement:cEns,ajouter:ajEns,modifier:modEns,supprimer:supEns}=useFirestore(cleEns);
   const {items:notes,chargement:cN,ajouter:ajN,supprimer:supN}=useFirestore(cleNotes);
@@ -1466,7 +1468,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
           <Stat label="Classes" value={classes.length}/>
           <Stat label="Élèves actifs" value={eleves.filter(e=>e.statut==="Actif").length} sub={`sur ${eleves.length}`}/>
           {avecEns&&<Stat label="Enseignants" value={ens.length}/>}
-          <Stat label="Moy. Générale" value={`${moy}/20`} bg="#eaf4e0"/>
+          <Stat label="Moy. Générale" value={`${moy}/${maxNote}`} bg="#eaf4e0"/>
           <Stat label="Absences" value={absences.length} bg="#fef3e0"/>
         </div>
         {(cC||cE)?<Chargement/>:classes.length===0&&eleves.length===0?<Vide icone={avecEns?"🏫":"🎒"} msg="Module vide"/>
@@ -1525,8 +1527,8 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
                 })}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e0ebf8"/>
                   <XAxis dataKey="classe" tick={{fontSize:10}}/>
-                  <YAxis domain={[0,20]} tick={{fontSize:10}}/>
-                  <Tooltip formatter={v=>`${v}/20`}/>
+                  <YAxis domain={[0,maxNote]} tick={{fontSize:10}}/>
+                  <Tooltip formatter={v=>`${v}/${maxNote}`}/>
                   <Bar dataKey="Moyenne" fill="#f59e0b" radius={[4,4,0,0]}/>
                 </BarChart>
               </ResponsiveContainer>
@@ -1727,18 +1729,18 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
           <strong style={{fontSize:14,color:C.blueDark,flex:1}}>Notes ({notes.length})</strong>
           <Btn sm v="ghost" onClick={()=>exportExcel(
             `Notes_${avecEns?"College":"Primaire"}`,
-            ["Élève","Matière","Type","Période","Note /20"],
+            ["Élève","Matière","Type","Période",`Note /${maxNote}`],
             notes.map(n=>[n.eleveNom,n.matiere,n.type,n.periode,n.note])
           )}>📥 Export Excel</Btn>
           {!readOnly&&<Btn onClick={()=>{setForm({periode:"T1",type:"Devoir"});setModal("add_n");}}>+ Saisir</Btn>}
         </div>
         {cN?<Chargement/>:notes.length===0?<Vide icone="📝" msg="Aucune note"/>
           :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
-            <THead cols={["Élève","Matière","Type","Période","Note /20",readOnly?"":"Action"]}/>
+            <THead cols={["Élève","Matière","Type","Période",`Note /${maxNote}`,readOnly?"":"Action"]}/>
             <tbody>{notes.map(n=><TR key={n._id}>
               <TD bold>{n.eleveNom}</TD><TD>{n.matiere}</TD>
               <TD><Badge color="gray">{n.type}</Badge></TD><TD>{n.periode}</TD>
-              <TD><Badge color={n.note>=14?"vert":n.note>=10?"blue":"red"}>{n.note}/20</Badge></TD>
+              <TD><Badge color={n.note>=(maxNote*0.7)?"vert":n.note>=(maxNote*0.5)?"blue":"red"}>{n.note}/{maxNote}</Badge></TD>
               {!readOnly&&<TD><Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ?"))supN(n._id);}}>Suppr.</Btn></TD>}
             </TR>)}</tbody>
           </table></Card>}
@@ -1760,7 +1762,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
             <Selec label="Type" value={form.type||"Devoir"} onChange={chg("type")}>
               <option>Devoir</option><option>Interrogation</option><option>Examen</option><option>Composition</option>
             </Selec>
-            <Input label="Note (/20)" type="number" min="0" max="20" step="0.5" value={form.note||""} onChange={chg("note")}/>
+            <Input label={`Note (/${maxNote})`} type="number" min="0" max={maxNote} step="0.25" value={form.note||""} onChange={chg("note")}/>
             <Selec label="Période" value={form.periode||"T1"} onChange={chg("periode")}>
               <option>T1</option><option>T2</option><option>T3</option>
             </Selec>
@@ -1972,7 +1974,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
                 <TD><Badge color="blue">{e.classe}</Badge></TD>
                 <TD><span style={{fontWeight:800,fontSize:14,color:moyGene!=="—"&&Number(moyGene)>=10?C.greenDk:"#b91c1c"}}>{moyGene}/20</span></TD>
                 <TD><Badge color={mention==="Très Bien"||mention==="Bien"?"vert":mention==="Assez Bien"||mention==="Passable"?"blue":"red"}>{mention}</Badge></TD>
-                <TD><Btn sm v="amber" onClick={()=>imprimerBulletin(e,notes,matieres,periodeB,avecEns?"college":"primaire")}>🖨️ Imprimer</Btn></TD>
+                <TD><Btn sm v="amber" onClick={()=>imprimerBulletin(e,notes,matieres,periodeB,avecEns?"college":"primaire",maxNote)}>🖨️ Imprimer</Btn></TD>
               </TR>;
             })}</tbody>
           </table></Card>;
@@ -2485,8 +2487,8 @@ export default function App() {
           {page==="admin_panel" && <AdminPanel annee={annee} setAnnee={setAnnee}/>}
           {page==="fondation"   && <Fondation readOnly={readOnly} annee={annee}/>}
           {page==="compta"      && <Comptabilite readOnly={readOnly} annee={annee}/>}
-          {page==="primaire"    && <Ecole titre="Direction du Primaire" couleur={C.green} cleClasses="classesPrimaire" cleEns="ensPrimaire" cleNotes="notesPrimaire" cleEleves="elevesPrimaire" avecEns={false} userRole={utilisateur.role} annee={annee} classesPredefinies={CLASSES_PRIMAIRE}/>}
-          {page==="college"     && <Ecole titre="Bureau du Collège" couleur={C.blue} cleClasses="classesCollege" cleEns="ensCollege" cleNotes="notesCollege" cleEleves="elevesCollege" avecEns={true} userRole={utilisateur.role} annee={annee} classesPredefinies={CLASSES_COLLEGE}/>}
+          {page==="primaire"    && <Ecole titre="Direction du Primaire" couleur={C.green} cleClasses="classesPrimaire" cleEns="ensPrimaire" cleNotes="notesPrimaire" cleEleves="elevesPrimaire" avecEns={false} userRole={utilisateur.role} annee={annee} classesPredefinies={CLASSES_PRIMAIRE} maxNote={10}/>}
+          {page==="secondaire"  && <Ecole titre="Bureau du Collège" couleur={C.blue} cleClasses="classesCollege" cleEns="ensCollege" cleNotes="notesCollege" cleEleves="elevesCollege" avecEns={true} userRole={utilisateur.role} annee={annee} classesPredefinies={CLASSES_COLLEGE} maxNote={20}/>}
           {page==="calendrier"  && <Calendrier annee={annee}/>}
         </div>
       </main>
