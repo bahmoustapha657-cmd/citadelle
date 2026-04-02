@@ -1,3 +1,4 @@
+import Inscription from "./Inscription";
 import { useState, useEffect, useRef } from "react";
 import { db } from "./firebase";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
@@ -122,9 +123,8 @@ const MODULES = [
 function useFirestore(nomCollection) {
   const [items, setItems] = useState([]);
   const [chargement, setChargement] = useState(true);
-
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, nomCollection), (snap) => {
+    const unsub = onSnapshot(collection(db, "ecoles", "citadelle", nomCollection), (snap) => {
       setItems(snap.docs.map(d=>({...d.data(),_id:d.id})));
       setChargement(false);
     });
@@ -133,14 +133,18 @@ function useFirestore(nomCollection) {
 
   const ajouter = async (item) => {
     const {id,_id,...data} = item;
-    return await addDoc(collection(db, nomCollection), {...data, createdAt:Date.now()});
+    return await addDoc(collection(db, "ecoles", "citadelle", nomCollection), {...data, createdAt:Date.now()});
+  };
+  const supprimer = async (id) => {
+    await deleteDoc(doc(db, "ecoles", "citadelle", nomCollection, id));
   };
   const modifier = async (item) => {
     const {_id,...data} = item;
-    await updateDoc(doc(db, nomCollection, _id), data);
+    await updateDoc(doc(db, "ecoles", "citadelle", nomCollection, _id), data);
   };
-  const supprimer = async (_id) => await deleteDoc(doc(db, nomCollection, _id));
-  const modifierChamp = async (_id, champs) => await updateDoc(doc(db, nomCollection, _id), champs);
+  const modifierChamp = async (_id, champs) => {
+    await updateDoc(doc(db, "ecoles", "citadelle", nomCollection, _id), champs);
+  };
 
   return {items, chargement, ajouter, modifier, supprimer, modifierChamp};
 }
@@ -2584,7 +2588,7 @@ function Calendrier({annee}) {
 // ══════════════════════════════════════════════════════════════
 //  ÉCRAN DE CONNEXION
 // ══════════════════════════════════════════════════════════════
-function Connexion({onLogin}) {
+function Connexion({onLogin, onInscription}) {
   const {items:comptes,chargement}=useFirestore("comptes");
   const [login,setLogin]=useState("");
   const [mdp,setMdp]=useState("");
@@ -2637,9 +2641,15 @@ function Connexion({onLogin}) {
             </div>
           </div>
           {erreur&&<div style={{background:"#fce8e8",border:"1px solid #f5c1c1",borderRadius:8,padding:"9px 12px",fontSize:13,color:"#9b2020",textAlign:"center"}}>{erreur}</div>}
-          <button onClick={connecter} style={{background:`linear-gradient(90deg,${C.blue},${C.green})`,color:"#fff",border:"none",padding:"12px",borderRadius:9,fontSize:14,fontWeight:800,cursor:"pointer",marginTop:4}}>
+          <button onClick={connecter} style={{width:"100%",background:`linear-gradient(90deg,${C.blue},${C.green})`,color:"#fff",border:"none",padding:"12px",borderRadius:9,fontSize:14,fontWeight:800,cursor:"pointer",marginTop:4}}>
             Se connecter
           </button>
+          <p style={{textAlign:"center",marginTop:16,color:"#777",fontSize:13}}>
+            Pas encore inscrit ?{" "}
+            <span style={{color:C.blue,cursor:"pointer",fontWeight:700}} onClick={()=>onInscription&&onInscription()}>
+              Créer un compte école
+            </span>
+          </p>
         </div>
       </div>
     </div>
@@ -2683,7 +2693,8 @@ export default function App() {
   };
   const deconnecter=()=>{setUtilisateur(null);setPage(null);};
 
-  if(!utilisateur)return <Connexion onLogin={connecter}/>;
+ if(!utilisateur && page==="inscription")return <Inscription/>;
+if(!utilisateur)return <Connexion onLogin={connecter} onInscription={()=>setPage("inscription")}/>;
 
   const modulesVisibles=MODULES.filter(m=>ACCES[utilisateur.role].includes(m.id));
   const readOnly = utilisateur.role==="admin";

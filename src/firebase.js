@@ -1,5 +1,6 @@
+import { getAuth } from "firebase/auth";
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, collection, doc } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyClG9mTtFdLpQX7QSP8iDNvyDMQem01Hq4",
@@ -12,3 +13,12 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
+// ✅ Multi-tenant helper
+export const SCHOOL_ID = "citadelle";
+
+export const schoolCol = (collectionName) =>
+  collection(db, "ecoles", SCHOOL_ID, collectionName);
+
+export const schoolDoc = (collectionName, docId) =>
+  doc(db, "ecoles", SCHOOL_ID, collectionName, docId);
+export const auth = getAuth(app);
