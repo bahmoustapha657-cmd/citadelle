@@ -1,6 +1,7 @@
 import Inscription from "./Inscription";
 import { useState, useEffect, useRef } from "react";
-import { db } from "./firebase";
+import { db, auth, SCHOOL_ID } from "./firebase";
+import { signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword } from "firebase/auth";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import * as XLSX from "xlsx";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
@@ -2588,7 +2589,7 @@ function Calendrier({annee}) {
 // ══════════════════════════════════════════════════════════════
 //  ÉCRAN DE CONNEXION
 // ══════════════════════════════════════════════════════════════
-function Connexion({onLogin, onInscription}) {
+function Connexion({onInscription}) {
   const {items:comptes,chargement}=useFirestore("comptes");
   const [login,setLogin]=useState("");
   const [mdp,setMdp]=useState("");
@@ -2596,15 +2597,42 @@ function Connexion({onLogin, onInscription}) {
   const [voir,setVoir]=useState(false);
 
   const connecter=async()=>{
+    setErreur("");
     const source = comptes.length>0 ? comptes : COMPTES_DEFAUT;
     const compte=source.find(c=>c.login===login.trim());
     if(!compte){setErreur("Identifiant ou mot de passe incorrect.");return;}
-    // Supporte les mdp hashés (bcrypt) et les anciens en clair
+    // Valider le mot de passe localement (bcrypt ou clair)
     const valide = compte.mdp.startsWith("$2b$")
       ? await bcrypt.compare(mdp, compte.mdp)
       : compte.mdp === mdp;
-    if(valide){setErreur("");onLogin(compte);}
-    else setErreur("Identifiant ou mot de passe incorrect.");
+    if(!valide){setErreur("Identifiant ou mot de passe incorrect.");return;}
+    // Email synthétique Firebase Auth
+    const email=`${compte.login}.${SCHOOL_ID}@edugest.app`;
+    try {
+      await signInWithEmailAndPassword(auth, email, mdp);
+      // onAuthStateChanged dans App() prend le relai
+    } catch(e) {
+      if(e.code==="auth/user-not-found"||e.code==="auth/invalid-credential"||e.code==="auth/invalid-email"||e.code==="auth/wrong-password") {
+        // Première connexion : créer le compte Firebase Auth (migration transparente)
+        try {
+          const cred=await createUserWithEmailAndPassword(auth, email, mdp);
+          await setDoc(doc(db,"users",cred.user.uid),{
+            schoolId: SCHOOL_ID,
+            role: compte.role,
+            login: compte.login,
+            nom: compte.nom,
+            label: compte.label||compte.role,
+          });
+          // onAuthStateChanged dans App() prend le relai
+        } catch(e2) {
+          console.error("Création compte Firebase Auth :",e2);
+          setErreur("Erreur de connexion. Veuillez réessayer.");
+        }
+      } else {
+        console.error("Firebase Auth :",e);
+        setErreur("Erreur de connexion. Veuillez réessayer.");
+      }
+    }
   };
 
   return (
@@ -2661,6 +2689,7 @@ function Connexion({onLogin, onInscription}) {
 // ══════════════════════════════════════════════════════════════
 export default function App() {
   const [utilisateur,setUtilisateur]=useState(null);
+  const [authChargement,setAuthChargement]=useState(true);
   const [page,setPage]=useState(null);
   const [annee,setAnneeState]=useState(()=>localStorage.getItem("LC_annee")||"2025-2026");
   const [sidebarOuvert,setSidebarOuvert]=useState(false);
@@ -2672,6 +2701,28 @@ export default function App() {
     document.body.classList.toggle("mode-sombre", modeSombre);
     localStorage.setItem("LC_theme", modeSombre?"dark":"light");
   },[modeSombre]);
+
+  // Écoute Firebase Auth — récupère le rôle depuis /users/{uid}
+  useEffect(()=>{
+    const unsub=onAuthStateChanged(auth, async (firebaseUser)=>{
+      if(firebaseUser){
+        try{
+          const snap=await getDoc(doc(db,"users",firebaseUser.uid));
+          if(snap.exists()){
+            const d=snap.data();
+            const u={id:firebaseUser.uid, nom:d.nom, login:d.login, role:d.role, label:d.label||d.role};
+            setUtilisateur(u);
+            setPage(prev=>prev||ACCES[d.role][0]);
+          }
+        }catch(e){console.error("Lecture /users/{uid} :",e);}
+      } else {
+        setUtilisateur(null);
+        setPage(null);
+      }
+      setAuthChargement(false);
+    });
+    return unsub;
+  },[]);
 
   const setAnnee=(val)=>{
     setAnneeState(val);
@@ -2687,14 +2738,14 @@ export default function App() {
     }).catch(()=>{});
   },[]);
 
-  const connecter=(c)=>{
-    setUtilisateur(c);
-    setPage(ACCES[c.role][0]);
+  const deconnecter=async()=>{
+    await signOut(auth);
+    // onAuthStateChanged remet utilisateur à null
   };
-  const deconnecter=()=>{setUtilisateur(null);setPage(null);};
 
- if(!utilisateur && page==="inscription")return <Inscription/>;
-if(!utilisateur)return <Connexion onLogin={connecter} onInscription={()=>setPage("inscription")}/>;
+  if(authChargement)return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#f0f4f8"}}><p style={{color:"#6b7280",fontWeight:600}}>Chargement…</p></div>;
+  if(!utilisateur && page==="inscription")return <Inscription/>;
+  if(!utilisateur)return <Connexion onInscription={()=>setPage("inscription")}/>;
 
   const modulesVisibles=MODULES.filter(m=>ACCES[utilisateur.role].includes(m.id));
   const readOnly = utilisateur.role==="admin";
