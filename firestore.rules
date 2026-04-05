@@ -1,0 +1,49 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ──────────────────────────────────────────────────
+    //  Fonction utilitaire : profil de l'utilisateur connecté
+    // ──────────────────────────────────────────────────
+    function userProfile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function belongsToSchool(schoolId) {
+      return isAuthenticated() && userProfile().schoolId == schoolId;
+    }
+
+    // ──────────────────────────────────────────────────
+    //  /users/{uid} — profil utilisateur
+    //  Seul le propriétaire peut lire/écrire son profil.
+    // ──────────────────────────────────────────────────
+    match /users/{uid} {
+      allow read, write: if isAuthenticated() && request.auth.uid == uid;
+    }
+
+    // ──────────────────────────────────────────────────
+    //  /config/{doc} — configuration globale (année scolaire…)
+    //  Tout utilisateur connecté peut lire.
+    //  Seul un admin peut écrire.
+    // ──────────────────────────────────────────────────
+    match /config/{doc} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && userProfile().role == "admin";
+    }
+
+    // ──────────────────────────────────────────────────
+    //  /ecoles/{schoolId}/** — toutes les données scolaires
+    //  Accessible uniquement aux utilisateurs appartenant
+    //  à cette école (vérification via /users/{uid}.schoolId).
+    // ──────────────────────────────────────────────────
+    match /ecoles/{schoolId}/{document=**} {
+      allow read, write: if belongsToSchool(schoolId);
+    }
+
+  }
+}
