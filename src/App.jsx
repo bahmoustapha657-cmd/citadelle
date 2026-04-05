@@ -1,6 +1,6 @@
 import Inscription from "./Inscription";
 import { useState, useEffect, useRef } from "react";
-import { db, auth, SCHOOL_ID } from "./firebase";
+import { db, auth, SCHOOL_ID, fnCreateUser } from "./firebase";
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword } from "firebase/auth";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import * as XLSX from "xlsx";
@@ -489,7 +489,18 @@ function AdminPanel({annee, setAnnee}) {
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState({});
   const [voir, setVoir] = useState({});
+  const [creation, setCreation] = useState({login:"",mdp:"",nom:"",role:"comptable",label:""});
+  const [creationErreur, setCreationErreur] = useState("");
+  const [creationChargement, setCreationChargement] = useState(false);
   const chg = k => e => setForm(p=>({...p,[k]:e.target.value}));
+  const chgC = k => e => setCreation(p=>({...p,[k]:e.target.value}));
+
+  const ROLES_DISPO = [
+    {value:"direction", label:"Direction Générale"},
+    {value:"primaire",  label:"Direction Primaire"},
+    {value:"college",   label:"Bureau Collège"},
+    {value:"comptable", label:"Comptabilité"},
+  ];
 
   // Initialiser les comptes si vide
   useEffect(() => {
@@ -504,15 +515,87 @@ function AdminPanel({annee, setAnnee}) {
     setModal(null);
   };
 
+  const creerCompte = async () => {
+    setCreationErreur("");
+    if(!creation.login.trim()||!creation.mdp.trim()||!creation.nom.trim()){
+      setCreationErreur("Tous les champs sont obligatoires.");return;
+    }
+    if(creation.mdp.length<6){
+      setCreationErreur("Le mot de passe doit comporter au moins 6 caractères.");return;
+    }
+    setCreationChargement(true);
+    try {
+      const roleLabel = ROLES_DISPO.find(r=>r.value===creation.role)?.label||creation.role;
+      await fnCreateUser({
+        login: creation.login.trim().toLowerCase(),
+        mdp: creation.mdp,
+        nom: creation.nom.trim(),
+        role: creation.role,
+        label: roleLabel,
+        schoolId: SCHOOL_ID,
+      });
+      setModal(null);
+      setCreation({login:"",mdp:"",nom:"",role:"comptable",label:""});
+    } catch(e) {
+      setCreationErreur(e.message||"Erreur lors de la création du compte.");
+    } finally {
+      setCreationChargement(false);
+    }
+  };
+
   return (
     <div style={{padding:"22px 26px"}}>
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18}}>
         <img src={LOGO} alt="" style={{width:48,height:48,objectFit:"contain"}}/>
-        <div>
+        <div style={{flex:1}}>
           <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.blueDark}}>Gestion des Accès</h2>
           <p style={{margin:0,fontSize:12,color:C.green,fontWeight:600}}>Mots de passe & Année scolaire</p>
         </div>
+        <Btn v="success" onClick={()=>setModal("creer")}>+ Nouveau compte</Btn>
       </div>
+
+      {/* ── MODAL : CRÉER UN NOUVEAU COMPTE ── */}
+      {modal==="creer" && (
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <div style={{background:"#fff",borderRadius:16,padding:"28px 32px",width:"100%",maxWidth:420,boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}}>
+            <h3 style={{margin:"0 0 18px",fontSize:17,fontWeight:800,color:C.blueDark}}>Créer un nouveau compte</h3>
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              <div>
+                <label style={{display:"block",fontSize:10,fontWeight:700,color:C.blue,textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:4}}>Nom complet</label>
+                <input value={creation.nom} onChange={chgC("nom")} placeholder="Ex : Jean Kouyaté"
+                  style={{width:"100%",border:"2px solid #b0c4d8",borderRadius:8,padding:"9px 12px",fontSize:14,boxSizing:"border-box"}}/>
+              </div>
+              <div>
+                <label style={{display:"block",fontSize:10,fontWeight:700,color:C.blue,textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:4}}>Identifiant (login)</label>
+                <input value={creation.login} onChange={chgC("login")} placeholder="Ex : jean.k"
+                  style={{width:"100%",border:"2px solid #b0c4d8",borderRadius:8,padding:"9px 12px",fontSize:14,boxSizing:"border-box",fontFamily:"monospace"}}/>
+                <p style={{margin:"4px 0 0",fontSize:11,color:"#9ca3af"}}>Email généré : {creation.login||"login"}.{SCHOOL_ID}@edugest.app</p>
+              </div>
+              <div>
+                <label style={{display:"block",fontSize:10,fontWeight:700,color:C.blue,textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:4}}>Rôle</label>
+                <select value={creation.role} onChange={chgC("role")}
+                  style={{width:"100%",border:"2px solid #b0c4d8",borderRadius:8,padding:"9px 12px",fontSize:14,boxSizing:"border-box",background:"#fff"}}>
+                  {ROLES_DISPO.map(r=><option key={r.value} value={r.value}>{r.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{display:"block",fontSize:10,fontWeight:700,color:C.blue,textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:4}}>Mot de passe provisoire</label>
+                <input value={creation.mdp} onChange={chgC("mdp")} type="text" placeholder="Min. 6 caractères"
+                  style={{width:"100%",border:"2px solid #b0c4d8",borderRadius:8,padding:"9px 12px",fontSize:14,boxSizing:"border-box",fontFamily:"monospace"}}/>
+              </div>
+              {creationErreur && (
+                <div style={{background:"#fce8e8",border:"1px solid #f5c1c1",borderRadius:8,padding:"9px 12px",fontSize:13,color:"#9b2020"}}>{creationErreur}</div>
+              )}
+              <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:6}}>
+                <Btn v="ghost" onClick={()=>{setModal(null);setCreationErreur("");}}>Annuler</Btn>
+                <Btn v="success" onClick={creerCompte} disabled={creationChargement}>
+                  {creationChargement?"Création…":"Créer le compte"}
+                </Btn>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── GESTION ANNÉE SCOLAIRE ── */}
       <Card style={{marginBottom:20,padding:"16px 20px"}}>

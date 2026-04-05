@@ -1,6 +1,7 @@
 import { getAuth } from "firebase/auth";
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, doc } from "firebase/firestore";
+import { getFunctions, httpsCallable } from "firebase/functions";
 
 const firebaseConfig = {
   apiKey: "AIzaSyClG9mTtFdLpQX7QSP8iDNvyDMQem01Hq4",
@@ -22,3 +23,7 @@ export const schoolCol = (collectionName) =>
 export const schoolDoc = (collectionName, docId) =>
   doc(db, "ecoles", SCHOOL_ID, collectionName, docId);
 export const auth = getAuth(app);
+
+// Cloud Functions
+const functions = getFunctions(app, "us-central1");
+export const fnCreateUser = httpsCallable(functions, "createUserAccount");
