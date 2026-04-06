@@ -1,0 +1,59 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Champs réservés au serveur — non modifiables par le client
+    function planFields() {
+      return ["plan", "planExpiry", "planActivatedBy", "planActivatedAt"];
+    }
+
+    // Vérifie que l'utilisateur connecté appartient bien à cette école
+    function appartientEcole(schoolId) {
+      return request.auth != null &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.schoolId == schoolId;
+    }
+
+    // ── Écoles ────────────────────────────────────────────────
+    match /ecoles/{schoolId} {
+      // Lecture publique : nécessaire pour afficher nom/logo sur l'écran de connexion
+      allow read: if true;
+
+      // Création : ouverte (inscription d'une nouvelle école)
+      allow create: if request.resource.data.keys().hasAll(["nom", "ville", "pays", "createdAt", "actif"])
+                   && !request.resource.data.keys().hasAny(planFields());
+
+      // Mise à jour : utilisateur de l'école, ne peut pas modifier les champs plan
+      allow update: if appartientEcole(schoolId)
+                   && !request.resource.data.diff(resource.data).affectedKeys().hasAny(planFields());
+
+      allow delete: if false;
+
+      // Sous-collections : accès réservé aux membres de l'école
+      match /{collection}/{docId} {
+        allow read: if appartientEcole(schoolId);
+        allow write: if appartientEcole(schoolId);
+      }
+    }
+
+    // ── Profils utilisateurs (liés à Firebase Auth) ───────────
+    match /users/{uid} {
+      // Chaque utilisateur ne peut lire que son propre profil
+      allow read: if request.auth != null && request.auth.uid == uid;
+      // Écriture uniquement via Admin SDK (API serveur)
+      allow write: if false;
+    }
+
+    // ── Super-admins — Admin SDK uniquement ───────────────────
+    match /superadmins/{docId} {
+      allow read: if false;
+      allow write: if false;
+    }
+
+    // ── Config globale ────────────────────────────────────────
+    match /config/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+  }
+}

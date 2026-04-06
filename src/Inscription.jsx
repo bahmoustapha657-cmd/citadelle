@@ -77,7 +77,7 @@ export default function Inscription() {
   const cardStyle = {
     minHeight: "100vh", display: "flex", alignItems: "center",
     justifyContent: "center", fontFamily: "'Segoe UI',system-ui,sans-serif",
-    background: "linear-gradient(135deg,#002050 0%,#003d7a 50%,#1a7d40 100%)",
+    background: "linear-gradient(135deg,#002050 0%,#0A1628 50%,#00A876 100%)",
   };
   const boxStyle = {
     background: "#fff", borderRadius: 18, padding: "36px 32px",
@@ -89,11 +89,11 @@ export default function Inscription() {
     outline: "none", marginTop: 4,
   };
   const labelStyle = {
-    display: "block", fontSize: 11, fontWeight: 700, color: "#003d7a",
+    display: "block", fontSize: 11, fontWeight: 700, color: "#0A1628",
     textTransform: "uppercase", letterSpacing: "0.06em", marginTop: 12,
   };
   const btnStyle = {
-    width: "100%", background: "linear-gradient(90deg,#003d7a,#2eb55f)",
+    width: "100%", background: "linear-gradient(90deg,#0A1628,#00C48C)",
     color: "#fff", border: "none", padding: 12, borderRadius: 9,
     fontSize: 14, fontWeight: 800, cursor: "pointer", marginTop: 16,
   };
@@ -109,7 +109,7 @@ export default function Inscription() {
       <div style={cardStyle}>
         <div style={{ ...boxStyle, textAlign: "center" }}>
           <div style={{ fontSize: 56, marginBottom: 12 }}>✅</div>
-          <h2 style={{ color: "#003d7a", margin: "0 0 8px" }}>École créée avec succès !</h2>
+          <h2 style={{ color: "#0A1628", margin: "0 0 8px" }}>École créée avec succès !</h2>
           <p style={{ color: "#555", fontSize: 14, marginBottom: 20 }}>
             Votre espace <strong>{form.nomEcole}</strong> est prêt.<br />
             Connectez-vous avec vos identifiants administrateur.
@@ -118,8 +118,8 @@ export default function Inscription() {
             <div><strong>Identifiant :</strong> {form.adminLogin}</div>
             <div><strong>Rôle :</strong> Direction</div>
             <div style={{ fontSize: 11, color: "#888", marginTop: 6 }}>
-              Comptes supplémentaires créés : comptable / compta123 · admin / admin123<br />
-              <strong>Changez ces mots de passe dès la première connexion.</strong>
+              Comptes supplémentaires créés : <strong>comptable</strong> et <strong>admin</strong><br />
+              <strong>Connectez-vous et changez les mots de passe dès la première connexion.</strong>
             </div>
           </div>
           <a href="/" style={{ ...btnStyle, display: "block", textDecoration: "none", textAlign: "center" }}>
@@ -135,11 +135,11 @@ export default function Inscription() {
       <div style={boxStyle}>
         {/* En-tête */}
         <div style={{ textAlign: "center", marginBottom: 24 }}>
-          <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 900, color: "#003d7a" }}>
+          <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 900, color: "#0A1628" }}>
             Créer votre espace école
           </h2>
           <p style={{ margin: 0, fontSize: 12, color: "#9ca3af" }}>
-            Système de gestion scolaire · La Citadelle
+            Système de gestion scolaire · EduGest
           </p>
           {/* Indicateur d'étape */}
           <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 16 }}>
@@ -147,8 +147,8 @@ export default function Inscription() {
               <div key={n} style={{
                 width: 32, height: 32, borderRadius: "50%", display: "flex",
                 alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700,
-                background: etape >= n ? "#003d7a" : "#e0ebf8",
-                color: etape >= n ? "#fff" : "#003d7a",
+                background: etape >= n ? "#0A1628" : "#e0ebf8",
+                color: etape >= n ? "#fff" : "#0A1628",
               }}>{n}</div>
             ))}
           </div>
@@ -204,7 +204,7 @@ export default function Inscription() {
             <button onClick={() => { setEtape(1); setErreur(""); }}
               style={{ width: "100%", background: "none", border: "1px solid #b0c4d8",
                 borderRadius: 9, padding: "10px", fontSize: 13, cursor: "pointer",
-                color: "#003d7a", marginTop: 8 }}>
+                color: "#0A1628", marginTop: 8 }}>
               ← Retour
             </button>
           </>
@@ -212,7 +212,7 @@ export default function Inscription() {
 
         <p style={{ textAlign: "center", marginTop: 18, fontSize: 12, color: "#9ca3af" }}>
           Déjà inscrit ?{" "}
-          <a href="/" style={{ color: "#003d7a", fontWeight: 700, textDecoration: "none" }}>
+          <a href="/" style={{ color: "#0A1628", fontWeight: 700, textDecoration: "none" }}>
             Se connecter
           </a>
         </p>

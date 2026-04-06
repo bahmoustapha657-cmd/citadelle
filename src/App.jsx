@@ -1,12 +1,16 @@
 import Inscription from "./Inscription";
-import { useState, useEffect, useRef } from "react";
-import { db } from "./firebase";
+import PremiumGate from "./components/PremiumGate";
+import ModuleIA from "./components/IAAssistant";
+import Logo from "./Logo";
+import { useState, useEffect, useRef, createContext, useContext } from "react";
+import { db, auth } from "./firebase";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import * as XLSX from "xlsx";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
 import bcrypt from "bcryptjs";
 import {
-  collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc, getDoc
+  collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc, getDoc, getDocs
 } from "firebase/firestore";
 
 // ══════════════════════════════════════════════════════════════
@@ -23,8 +27,8 @@ const storage = getStorage();
 //  COULEURS
 // ══════════════════════════════════════════════════════════════
 const C = {
-  blue:"#003d7a", blueDark:"#002050", green:"#2eb55f", greenDk:"#1a7d40",
-  white:"#ffffff", bg:"#f0f6f2", sidebar:"#002050",
+  blue:"#0A1628", blueDark:"#0A1628", green:"#00C48C", greenDk:"#00A876",
+  gold:"#FFB547", white:"#ffffff", bg:"#F0F7F4", sidebar:"#0A1628",
 };
 
 // ══════════════════════════════════════════════════════════════
@@ -98,18 +102,22 @@ const COMPTES_DEFAUT = [
 ];
 
 const ACCES = {
-  admin:     ["admin_panel","fondation","compta","primaire","secondaire","calendrier"],
-  direction: ["fondation","primaire","secondaire","calendrier"],
+  superadmin:["superadmin_panel"],
+  admin:     ["admin_panel","parametres","ia_assistant","fondation","compta","primaire","secondaire","calendrier"],
+  direction: ["parametres","ia_assistant","fondation","primaire","secondaire","calendrier"],
   primaire:  ["primaire","calendrier"],
   college:   ["secondaire","calendrier"],
-  comptable: ["compta","primaire","secondaire","calendrier"],
+  comptable: ["ia_assistant","compta","primaire","secondaire","calendrier"],
 };
 
 // Qui peut modifier les élèves ?
 const peutModifierEleves = (role) => role === "comptable" || role === "admin";
 
 const MODULES = [
+  {id:"superadmin_panel", label:"Super Admin",   icon:"⚙️", desc:"Gestion des écoles"},
   {id:"admin_panel", label:"Gestion Accès",   icon:"🔐", desc:"Mots de passe"},
+  {id:"parametres",  label:"Paramètres",      icon:"🏫", desc:"Identité de l'école"},
+  {id:"ia_assistant",label:"Assistant IA",    icon:"✨", desc:"Documents & commentaires"},
   {id:"fondation",   label:"Fondation",        icon:"🏛️", desc:"Gouvernance"},
   {id:"compta",      label:"Comptabilité",     icon:"📊", desc:"Finances"},
   {id:"primaire",    label:"Dir. Primaire",    icon:"🎒", desc:"Primaire"},
@@ -118,32 +126,54 @@ const MODULES = [
 ];
 
 // ══════════════════════════════════════════════════════════════
+//  CONTEXTE MULTI-TENANT
+// ══════════════════════════════════════════════════════════════
+const SCHOOL_INFO_DEFAUT = {
+  nom: "La Citadelle", type: "Groupe Scolaire Privé",
+  ville: "Kindia", pays: "Guinée",
+  couleur1: "#0A1628", couleur2: "#00C48C",
+  logo: null,
+  devise: "Travail – Rigueur – Réussite",
+  plan: "gratuit",
+  planExpiry: null,
+};
+export const SchoolContext = createContext({
+  schoolId: localStorage.getItem("LC_schoolId") || "citadelle",
+  setSchoolId: () => {},
+  schoolInfo: SCHOOL_INFO_DEFAUT,
+  setSchoolInfo: () => {},
+});
+
+// ══════════════════════════════════════════════════════════════
 //  HOOK FIREBASE
 // ══════════════════════════════════════════════════════════════
 function useFirestore(nomCollection) {
+  const { schoolId } = useContext(SchoolContext);
   const [items, setItems] = useState([]);
   const [chargement, setChargement] = useState(true);
+
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, "ecoles", "citadelle", nomCollection), (snap) => {
+    setChargement(true);
+    const unsub = onSnapshot(collection(db, "ecoles", schoolId, nomCollection), (snap) => {
       setItems(snap.docs.map(d=>({...d.data(),_id:d.id})));
       setChargement(false);
     });
     return () => unsub();
-  }, [nomCollection]);
+  }, [nomCollection, schoolId]);
 
   const ajouter = async (item) => {
     const {id,_id,...data} = item;
-    return await addDoc(collection(db, "ecoles", "citadelle", nomCollection), {...data, createdAt:Date.now()});
+    return await addDoc(collection(db, "ecoles", schoolId, nomCollection), {...data, createdAt:Date.now()});
   };
   const supprimer = async (id) => {
-    await deleteDoc(doc(db, "ecoles", "citadelle", nomCollection, id));
+    await deleteDoc(doc(db, "ecoles", schoolId, nomCollection, id));
   };
   const modifier = async (item) => {
     const {_id,...data} = item;
-    await updateDoc(doc(db, "ecoles", "citadelle", nomCollection, _id), data);
+    await updateDoc(doc(db, "ecoles", schoolId, nomCollection, _id), data);
   };
   const modifierChamp = async (_id, champs) => {
-    await updateDoc(doc(db, "ecoles", "citadelle", nomCollection, _id), champs);
+    await updateDoc(doc(db, "ecoles", schoolId, nomCollection, _id), champs);
   };
 
   return {items, chargement, ajouter, modifier, supprimer, modifierChamp};
@@ -169,9 +199,9 @@ async function supprimerFichier(url) {
 //  COMPOSANTS UI
 // ══════════════════════════════════════════════════════════════
 const Badge = ({children,color="gray"}) => {
-  const M={green:"#e6f4ea;#1a6b30",red:"#fce8e8;#9b2020",blue:"#e0ebf8;#003d7a",
-    amber:"#fef3e0;#8a5000",gray:"#f1f3f4;#5f6368",purple:"#e6f4ea;#1a7d40",
-    teal:"#e4f5f0;#0a6652",vert:"#e6f4ea;#1a7d40",orange:"#fff3e0;#b45309"};
+  const M={green:"#e6f4ea;#1a6b30",red:"#fce8e8;#9b2020",blue:"#e0ebf8;#0A1628",
+    amber:"#fef3e0;#8a5000",gray:"#f1f3f4;#5f6368",purple:"#e6f4ea;#00A876",
+    teal:"#e4f5f0;#0a6652",vert:"#e6f4ea;#00A876",orange:"#fff3e0;#b45309"};
   const [bg,cl]=(M[color]||M.gray).split(";");
   return <span style={{background:bg,color:cl,fontSize:11,fontWeight:700,padding:"2px 9px",borderRadius:20,whiteSpace:"nowrap"}}>{children}</span>;
 };
@@ -204,7 +234,7 @@ const Btn=({children,v="primary",sm,...p})=>{
   const S={primary:{background:C.blue,color:"#fff"},success:{background:C.green,color:"#fff"},
     danger:{background:"#b91c1c",color:"#fff"},ghost:{background:"#f0f4f8",color:C.blue,border:"1px solid #b0c4d8"},
     amber:{background:"#d97706",color:"#fff"},vert:{background:C.greenDk,color:"#fff"},
-    purple:{background:"#003d7a",color:"#fff"},orange:{background:"#ea580c",color:"#fff"}};
+    purple:{background:"#0A1628",color:"#fff"},orange:{background:"#ea580c",color:"#fff"}};
   return <button style={{...S[v],border:"none",padding:sm?"4px 12px":"8px 18px",borderRadius:7,fontSize:sm?11:13,fontWeight:700,cursor:"pointer",...(p.disabled?{opacity:0.5,cursor:"not-allowed"}:{})}} {...p}>{children}</button>;
 };
 
@@ -320,16 +350,16 @@ const imprimerRecu = (eleve, montantUnit) => {
   const w = window.open("","_blank");
   w.document.write(`<!DOCTYPE html><html><head><title>Reçu</title>
   <style>body{font-family:Arial,sans-serif;padding:30px;font-size:13px}
-  .ent{display:flex;align-items:center;gap:16px;border-bottom:3px solid #003d7a;padding-bottom:12px;margin-bottom:16px}
-  .ent img{width:75px;height:75px;object-fit:contain}.ent h1{margin:0;font-size:16px;color:#003d7a}.ent p{margin:2px 0;font-size:11px;color:#555}
-  .badge{text-align:center;background:#003d7a;color:#fff;padding:8px;font-size:14px;font-weight:bold;margin:12px 0;border-radius:4px}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:5px 18px;margin-bottom:14px}.row{font-size:12px}.lbl{font-weight:bold;color:#003d7a}
-  table{width:100%;border-collapse:collapse}th{background:#003d7a;color:#fff;padding:6px 10px;font-size:11px;text-align:left}
+  .ent{display:flex;align-items:center;gap:16px;border-bottom:3px solid #0A1628;padding-bottom:12px;margin-bottom:16px}
+  .ent img{width:75px;height:75px;object-fit:contain}.ent h1{margin:0;font-size:16px;color:#0A1628}.ent p{margin:2px 0;font-size:11px;color:#555}
+  .badge{text-align:center;background:#0A1628;color:#fff;padding:8px;font-size:14px;font-weight:bold;margin:12px 0;border-radius:4px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:5px 18px;margin-bottom:14px}.row{font-size:12px}.lbl{font-weight:bold;color:#0A1628}
+  table{width:100%;border-collapse:collapse}th{background:#0A1628;color:#fff;padding:6px 10px;font-size:11px;text-align:left}
   td{padding:6px 10px;border-bottom:1px solid #eee;font-size:12px}
-  .total{text-align:right;font-size:14px;font-weight:bold;padding:10px;background:#e8f0e8;color:#003d7a;margin-top:8px}
+  .total{text-align:right;font-size:14px;font-weight:bold;padding:10px;background:#e8f0e8;color:#0A1628;margin-top:8px}
   .sigs{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:32px}
-  .sig{border-top:2px solid #003d7a;padding-top:8px;text-align:center;font-size:11px;color:#555}
-  .devise{text-align:center;font-size:11px;margin-top:8px;font-style:italic;color:#2eb55f;font-weight:bold}
+  .sig{border-top:2px solid #0A1628;padding-top:8px;text-align:center;font-size:11px;color:#555}
+  .devise{text-align:center;font-size:11px;margin-top:8px;font-style:italic;color:#00C48C;font-weight:bold}
   @media print{button{display:none}}</style></head><body>
   <div class="ent"><img src="${LOGO}" alt="Logo"/>
   <div><h1>Groupe Scolaire Privé La Citadelle</h1><p>Kindia, Guinée · Agrément N° 2005-0042/MEPU-A/IGE · ${getAnnee()}</p></div></div>
@@ -343,7 +373,7 @@ const imprimerRecu = (eleve, montantUnit) => {
     <div class="row"><span class="lbl">Contact : </span>${eleve.contactTuteur||"—"}</div>
   </div>
   <table><thead><tr><th>Mois</th><th>Montant</th><th>Statut</th></tr></thead><tbody>
-  ${moisPayes.map(m=>`<tr><td>${m} ${getAnnee()}</td><td>${fmt(montantUnit)}</td><td style="color:#2eb55f;font-weight:bold">✓ Payé</td></tr>`).join("")}
+  ${moisPayes.map(m=>`<tr><td>${m} ${getAnnee()}</td><td>${fmt(montantUnit)}</td><td style="color:#00C48C;font-weight:bold">✓ Payé</td></tr>`).join("")}
   </tbody></table>
   <div class="total">Total payé : ${fmt(moisPayes.length*montantUnit)}</div>
   <div class="sigs"><div class="sig">Le/La Caissier(e)<br/><br/><br/>Signature</div><div class="sig">Le/La Tuteur<br/><br/><br/>Signature</div></div>
@@ -357,10 +387,10 @@ const imprimerListeClasse = (classe, eleves) => {
   const w = window.open("","_blank");
   w.document.write(`<!DOCTYPE html><html><head><title>Liste ${classe}</title>
   <style>body{font-family:Arial,sans-serif;padding:30px;font-size:12px}
-  .ent{display:flex;align-items:center;gap:16px;border-bottom:3px solid #003d7a;padding-bottom:12px;margin-bottom:16px}
-  .ent img{width:70px;height:70px;object-fit:contain}.ent h1{margin:0;font-size:15px;color:#003d7a}.ent p{margin:2px 0;font-size:11px;color:#555}
-  h2{color:#003d7a;text-align:center}table{width:100%;border-collapse:collapse;margin-top:12px}
-  th{background:#003d7a;color:#fff;padding:7px 10px;font-size:11px;text-align:left}
+  .ent{display:flex;align-items:center;gap:16px;border-bottom:3px solid #0A1628;padding-bottom:12px;margin-bottom:16px}
+  .ent img{width:70px;height:70px;object-fit:contain}.ent h1{margin:0;font-size:15px;color:#0A1628}.ent p{margin:2px 0;font-size:11px;color:#555}
+  h2{color:#0A1628;text-align:center}table{width:100%;border-collapse:collapse;margin-top:12px}
+  th{background:#0A1628;color:#fff;padding:7px 10px;font-size:11px;text-align:left}
   td{padding:7px 10px;border-bottom:1px solid #eee}tr:nth-child(even){background:#f0f4f8}
   .footer{margin-top:30px;display:flex;justify-content:space-between;font-size:11px;color:#555}
   @media print{button{display:none}}</style></head><body>
@@ -389,16 +419,16 @@ const imprimerAttestation = (eleve, niveau, annee) => {
   const w = window.open("","_blank");
   w.document.write(`<!DOCTYPE html><html><head><title>Attestation ${eleve.nom}</title>
   <style>body{font-family:Arial,sans-serif;padding:40px;font-size:13px;max-width:700px;margin:0 auto}
-  .ent{display:flex;align-items:center;gap:16px;border-bottom:3px solid #003d7a;padding-bottom:12px;margin-bottom:20px}
-  .ent img{width:80px;height:80px;object-fit:contain}.ent h1{margin:0;font-size:16px;color:#003d7a}.ent p{margin:2px 0;font-size:11px;color:#555}
-  h2{color:#003d7a;text-align:center;font-size:18px;text-transform:uppercase;letter-spacing:2px;margin:24px 0}
+  .ent{display:flex;align-items:center;gap:16px;border-bottom:3px solid #0A1628;padding-bottom:12px;margin-bottom:20px}
+  .ent img{width:80px;height:80px;object-fit:contain}.ent h1{margin:0;font-size:16px;color:#0A1628}.ent p{margin:2px 0;font-size:11px;color:#555}
+  h2{color:#0A1628;text-align:center;font-size:18px;text-transform:uppercase;letter-spacing:2px;margin:24px 0}
   .body-txt{line-height:2;font-size:14px;text-align:justify;margin:20px 0}
-  .infos{background:#f0f4f8;padding:16px;border-radius:8px;margin:16px 0;border-left:4px solid #003d7a}
-  .row{font-size:13px;margin:5px 0}.lbl{font-weight:bold;color:#003d7a}
+  .infos{background:#f0f4f8;padding:16px;border-radius:8px;margin:16px 0;border-left:4px solid #0A1628}
+  .row{font-size:13px;margin:5px 0}.lbl{font-weight:bold;color:#0A1628}
   .sigs{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:50px}
-  .sig{border-top:2px solid #003d7a;padding-top:8px;text-align:center;font-size:11px;color:#555}
-  .stamp{border:3px solid #003d7a;padding:8px 16px;display:inline-block;border-radius:4px;font-weight:bold;color:#003d7a;margin-top:6px;font-size:13px}
-  .devise{text-align:center;font-size:11px;margin-top:20px;font-style:italic;color:#2eb55f;font-weight:bold}
+  .sig{border-top:2px solid #0A1628;padding-top:8px;text-align:center;font-size:11px;color:#555}
+  .stamp{border:3px solid #0A1628;padding:8px 16px;display:inline-block;border-radius:4px;font-weight:bold;color:#0A1628;margin-top:6px;font-size:13px}
+  .devise{text-align:center;font-size:11px;margin-top:20px;font-style:italic;color:#00C48C;font-weight:bold}
   @media print{button{display:none}}</style></head><body>
   <div class="ent"><img src="${LOGO}" alt="Logo"/>
   <div><h1>Groupe Scolaire Privé La Citadelle</h1><p>Kindia, Guinée · Agrément N° 2005-0042/MEPU-A/IGE · Année scolaire ${annee||getAnnee()}</p></div></div>
@@ -447,15 +477,15 @@ const imprimerBulletin = (eleve, notes, matieres, periode, niveau, maxNote=20) =
   const w = window.open("","_blank");
   w.document.write(`<!DOCTYPE html><html><head><title>Bulletin ${eleve.nom}</title>
   <style>body{font-family:Arial,sans-serif;padding:30px;font-size:12px}
-  .ent{display:flex;align-items:center;gap:16px;border-bottom:3px solid #003d7a;padding-bottom:12px;margin-bottom:12px}
-  .ent img{width:70px;height:70px;object-fit:contain}.ent h1{margin:0;font-size:15px;color:#003d7a}.ent p{margin:2px 0;font-size:11px;color:#555}
-  h2{color:#003d7a;text-align:center;margin:8px 0}.info{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px 20px;margin-bottom:14px;background:#f0f6f2;padding:10px 14px;border-radius:6px;border-left:4px solid #003d7a}
-  .inf{font-size:11px}.lbl{font-weight:bold;color:#003d7a}
-  table{width:100%;border-collapse:collapse;margin-top:10px}th{background:#003d7a;color:#fff;padding:7px 10px;font-size:11px;text-align:left}
+  .ent{display:flex;align-items:center;gap:16px;border-bottom:3px solid #0A1628;padding-bottom:12px;margin-bottom:12px}
+  .ent img{width:70px;height:70px;object-fit:contain}.ent h1{margin:0;font-size:15px;color:#0A1628}.ent p{margin:2px 0;font-size:11px;color:#555}
+  h2{color:#0A1628;text-align:center;margin:8px 0}.info{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px 20px;margin-bottom:14px;background:#f0f6f2;padding:10px 14px;border-radius:6px;border-left:4px solid #0A1628}
+  .inf{font-size:11px}.lbl{font-weight:bold;color:#0A1628}
+  table{width:100%;border-collapse:collapse;margin-top:10px}th{background:#0A1628;color:#fff;padding:7px 10px;font-size:11px;text-align:left}
   td{padding:7px 10px;border-bottom:1px solid #eee}tr:nth-child(even){background:#f9f9f9}
-  .moy{background:#e8f0e8;font-weight:bold;color:#003d7a}.mention{font-size:14px;font-weight:bold;text-align:center;padding:10px;background:#003d7a;color:#fff;margin-top:12px;border-radius:4px}
-  .sigs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-top:28px}.sig{border-top:2px solid #003d7a;padding-top:8px;text-align:center;font-size:11px;color:#555}
-  .devise{text-align:center;font-size:11px;margin-top:8px;font-style:italic;color:#2eb55f;font-weight:bold}
+  .moy{background:#e8f0e8;font-weight:bold;color:#0A1628}.mention{font-size:14px;font-weight:bold;text-align:center;padding:10px;background:#0A1628;color:#fff;margin-top:12px;border-radius:4px}
+  .sigs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-top:28px}.sig{border-top:2px solid #0A1628;padding-top:8px;text-align:center;font-size:11px;color:#555}
+  .devise{text-align:center;font-size:11px;margin-top:8px;font-style:italic;color:#00C48C;font-weight:bold}
   @media print{button{display:none}}</style></head><body>
   <div class="ent"><img src="${LOGO}" alt="Logo"/>
   <div><h1>Groupe Scolaire Privé La Citadelle</h1><p>Kindia, Guinée · Agrément N° 2005-0042/MEPU-A/IGE</p></div></div>
@@ -812,12 +842,12 @@ function Comptabilite({readOnly, annee}) {
     const w = window.open("","_blank");
     w.document.write(`<!DOCTYPE html><html><head><title>États Salaires ${moisSalaire}</title>
     <style>body{font-family:Arial,sans-serif;padding:20px;font-size:11px}
-    .titre{text-align:center;font-size:13px;font-weight:bold;margin-bottom:4px;color:#003d7a}
+    .titre{text-align:center;font-size:13px;font-weight:bold;margin-bottom:4px;color:#0A1628}
     .sous-titre{text-align:center;font-size:11px;margin-bottom:12px}
     table{width:100%;border-collapse:collapse;margin-bottom:16px}
-    th{background:#003d7a;color:#fff;padding:5px 7px;font-size:10px;text-align:center;border:1px solid #003d7a}
+    th{background:#0A1628;color:#fff;padding:5px 7px;font-size:10px;text-align:center;border:1px solid #0A1628}
     td{padding:5px 7px;border:1px solid #ccc;text-align:center}td:nth-child(2){text-align:left}
-    .section{background:#e8f0e8;font-weight:bold;color:#003d7a;padding:5px;margin:10px 0 4px}
+    .section{background:#e8f0e8;font-weight:bold;color:#0A1628;padding:5px;margin:10px 0 4px}
     .total-row{background:#e0ebf8;font-weight:bold}
     @media print{button{display:none}}</style></head><body>
     <div class="titre">ÉTATS DE SALAIRES — G.S. LA CITADELLE — ANNÉE SCOLAIRE ${getAnnee()}</div>
@@ -845,13 +875,13 @@ function Comptabilite({readOnly, annee}) {
       <td><strong>${fmtN(Number(s.montantForfait||0)-Number(s.bon||0)+Number(s.revision||0))}</strong></td><td>${s.observation||""}</td></tr>`).join("")}
     <tr class="total-row"><td colspan="6" style="text-align:right">TOTAL NET PRIMAIRE</td><td>${fmtN(totNetPrim)}</td><td></td></tr>
     </tbody></table>
-    <div style="text-align:right;font-size:12px;font-weight:bold;margin-top:8px;color:#003d7a">
+    <div style="text-align:right;font-size:12px;font-weight:bold;margin-top:8px;color:#0A1628">
       TOTAL GÉNÉRAL NET : ${fmtN(totNetSec+totNetPrim)} GNF
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-top:30px">
-      <div style="border-top:2px solid #003d7a;padding-top:6px;text-align:center;font-size:10px">Le Comptable<br/><br/><br/>Signature</div>
-      <div style="border-top:2px solid #003d7a;padding-top:6px;text-align:center;font-size:10px">Le Directeur<br/><br/><br/>Signature</div>
-      <div style="border-top:2px solid #003d7a;padding-top:6px;text-align:center;font-size:10px">Le Fondateur<br/><br/><br/>Signature</div>
+      <div style="border-top:2px solid #0A1628;padding-top:6px;text-align:center;font-size:10px">Le Comptable<br/><br/><br/>Signature</div>
+      <div style="border-top:2px solid #0A1628;padding-top:6px;text-align:center;font-size:10px">Le Directeur<br/><br/><br/>Signature</div>
+      <div style="border-top:2px solid #0A1628;padding-top:6px;text-align:center;font-size:10px">Le Fondateur<br/><br/><br/>Signature</div>
     </div>
     <script>window.onload=()=>window.print();</script></body></html>`);
     w.document.close();
@@ -984,7 +1014,7 @@ function Comptabilite({readOnly, annee}) {
                   <Tooltip formatter={v=>fmt(v)}/>
                   <Legend wrapperStyle={{fontSize:11}}/>
                   {[...new Set(recettes.map(r=>r.categorie))].filter(Boolean).map((cat,i)=>(
-                    <Bar key={cat} dataKey={cat} stackId="a" fill={["#003d7a","#2eb55f","#f59e0b","#1a7d40","#ef4444","#06b6d4"][i%6]} radius={i===0?[0,0,4,4]:[0,0,0,0]}/>
+                    <Bar key={cat} dataKey={cat} stackId="a" fill={["#0A1628","#00C48C","#f59e0b","#00A876","#ef4444","#06b6d4"][i%6]} radius={i===0?[0,0,4,4]:[0,0,0,0]}/>
                   ))}
                 </BarChart>
               </ResponsiveContainer>
@@ -1082,22 +1112,22 @@ function Comptabilite({readOnly, annee}) {
           return <>
             {/* Cartes récap */}
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:10,marginBottom:16}}>
-              <div style={{background:"linear-gradient(135deg,#003d7a,#1d4ed8)",borderRadius:10,padding:"14px 16px",color:"#fff",textAlign:"center"}}>
+              <div style={{background:"linear-gradient(135deg,#0A1628,#1d4ed8)",borderRadius:10,padding:"14px 16px",color:"#fff",textAlign:"center"}}>
                 <div style={{fontSize:11,opacity:.85,marginBottom:4}}>Masse salariale</div>
                 <div style={{fontSize:18,fontWeight:900}}>{(totGen/1e6).toFixed(3)}M</div>
                 <div style={{fontSize:10,opacity:.75,marginTop:2}}>GNF — {moisSalaire}</div>
               </div>
-              <div style={{background:"linear-gradient(135deg,#003d7a,#1a6baa)",borderRadius:10,padding:"14px 16px",color:"#fff",textAlign:"center"}}>
+              <div style={{background:"linear-gradient(135deg,#0A1628,#1a6baa)",borderRadius:10,padding:"14px 16px",color:"#fff",textAlign:"center"}}>
                 <div style={{fontSize:11,opacity:.85,marginBottom:4}}>Secondaire</div>
                 <div style={{fontSize:18,fontWeight:900}}>{(totNetSec/1e6).toFixed(3)}M</div>
                 <div style={{fontSize:10,opacity:.75,marginTop:2}}>{salairesSec.length} enseignant(s)</div>
               </div>
-              <div style={{background:"linear-gradient(135deg,#1a7d40,#2eb55f)",borderRadius:10,padding:"14px 16px",color:"#fff",textAlign:"center"}}>
+              <div style={{background:"linear-gradient(135deg,#00A876,#00C48C)",borderRadius:10,padding:"14px 16px",color:"#fff",textAlign:"center"}}>
                 <div style={{fontSize:11,opacity:.85,marginBottom:4}}>Primaire</div>
                 <div style={{fontSize:18,fontWeight:900}}>{(totNetPrim/1e6).toFixed(3)}M</div>
                 <div style={{fontSize:10,opacity:.75,marginTop:2}}>{salairesPrim.length} enseignant(s)</div>
               </div>
-              <div style={{background:"linear-gradient(135deg,#003d7a,#1565c0)",borderRadius:10,padding:"14px 16px",color:"#fff",textAlign:"center"}}>
+              <div style={{background:"linear-gradient(135deg,#0A1628,#1565c0)",borderRadius:10,padding:"14px 16px",color:"#fff",textAlign:"center"}}>
                 <div style={{fontSize:11,opacity:.85,marginBottom:4}}>Total enseignants</div>
                 <div style={{fontSize:28,fontWeight:900}}>{nbEns}</div>
                 <div style={{fontSize:10,opacity:.75,marginTop:2}}>ce mois</div>
@@ -2203,10 +2233,10 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
             const w=window.open("","_blank");
             w.document.write(`<!DOCTYPE html><html><head><title>EDT ${filtreClasse}</title>
             <style>body{font-family:Arial,sans-serif;padding:30px;font-size:12px}
-            .ent{display:flex;align-items:center;gap:16px;border-bottom:3px solid #003d7a;padding-bottom:12px;margin-bottom:16px}
-            .ent img{width:70px;height:70px;object-fit:contain}.ent h1{margin:0;font-size:15px;color:#003d7a}.ent p{margin:2px 0;font-size:11px;color:#555}
-            h2{color:#003d7a;text-align:center}table{width:100%;border-collapse:collapse;margin-top:12px}
-            th{background:#003d7a;color:#fff;padding:7px 10px;font-size:11px;text-align:left}
+            .ent{display:flex;align-items:center;gap:16px;border-bottom:3px solid #0A1628;padding-bottom:12px;margin-bottom:16px}
+            .ent img{width:70px;height:70px;object-fit:contain}.ent h1{margin:0;font-size:15px;color:#0A1628}.ent p{margin:2px 0;font-size:11px;color:#555}
+            h2{color:#0A1628;text-align:center}table{width:100%;border-collapse:collapse;margin-top:12px}
+            th{background:#0A1628;color:#fff;padding:7px 10px;font-size:11px;text-align:left}
             td{padding:7px 10px;border-bottom:1px solid #eee}tr:nth-child(even){background:#f0f4f8}
             .footer{margin-top:30px;display:flex;justify-content:space-between;font-size:11px;color:#555}
             @media print{button{display:none}}</style></head><body>
@@ -2229,19 +2259,19 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:Arial,sans-serif;font-size:10px;padding:16px;color:#111}
-.entete{display:flex;align-items:center;gap:12px;border-bottom:3px solid #003d7a;padding-bottom:10px;margin-bottom:14px}
+.entete{display:flex;align-items:center;gap:12px;border-bottom:3px solid #0A1628;padding-bottom:10px;margin-bottom:14px}
 .entete img{width:60px;height:60px;object-fit:contain}
-.entete h1{font-size:13px;color:#003d7a;margin-bottom:3px}
+.entete h1{font-size:13px;color:#0A1628;margin-bottom:3px}
 .entete p{font-size:10px;color:#555}
-.titre-doc{text-align:center;font-size:14px;font-weight:bold;color:#003d7a;margin-bottom:4px}
+.titre-doc{text-align:center;font-size:14px;font-weight:bold;color:#0A1628;margin-bottom:4px}
 .sous-titre{text-align:center;font-size:10px;color:#555;margin-bottom:16px}
 .section-classe{margin-bottom:22px;page-break-inside:avoid}
-.classe-titre{background:#003d7a;color:#fff;padding:6px 12px;font-size:11px;font-weight:bold;border-radius:4px 4px 0 0}
+.classe-titre{background:#0A1628;color:#fff;padding:6px 12px;font-size:11px;font-weight:bold;border-radius:4px 4px 0 0}
 table{width:100%;border-collapse:collapse;border:1px solid #b0c4d8}
-th{background:#e0ebf8;color:#003d7a;padding:5px 7px;font-size:9px;font-weight:bold;border:1px solid #b0c4d8;text-align:center}
-th.jour-h{background:#003d7a;color:#fff;width:62px}
+th{background:#e0ebf8;color:#0A1628;padding:5px 7px;font-size:9px;font-weight:bold;border:1px solid #b0c4d8;text-align:center}
+th.jour-h{background:#0A1628;color:#fff;width:62px}
 td{padding:4px 6px;border:1px solid #dde;font-size:9px;vertical-align:top}
-td.heure{background:#f0f4f8;font-weight:bold;color:#003d7a;text-align:center;white-space:nowrap}
+td.heure{background:#f0f4f8;font-weight:bold;color:#0A1628;text-align:center;white-space:nowrap}
 td.cellule .mat{font-weight:bold;color:#1d4ed8}
 td.cellule .ens{color:#555;font-style:italic}
 td.cellule .salle{color:#888;font-size:8px}
@@ -2415,7 +2445,7 @@ function Secondaire({userRole, annee}) {
         avecEns={true} userRole={userRole} annee={annee}
         classesPredefinies={CLASSES_COLLEGE} maxNote={20}/>}
       {sousModule==="lycee"&&<Ecole
-        titre="Lycée" couleur="#2eb55f"
+        titre="Lycée" couleur="#00C48C"
         cleClasses="classesLycee" cleEns="ensLycee"
         cleNotes="notesLycee" cleEleves="elevesLycee"
         avecEns={true} userRole={userRole} annee={annee}
@@ -2586,25 +2616,670 @@ function Calendrier({annee}) {
 }
 
 // ══════════════════════════════════════════════════════════════
+//  PARAMÈTRES DE L'ÉCOLE
+// ══════════════════════════════════════════════════════════════
+function ParametresEcole() {
+  const {schoolId,schoolInfo,setSchoolInfo} = useContext(SchoolContext);
+  const [form,setForm] = useState({
+    nom: schoolInfo.nom||"",
+    type: schoolInfo.type||"Groupe Scolaire Privé",
+    ville: schoolInfo.ville||"",
+    pays: schoolInfo.pays||"Guinée",
+    couleur1: schoolInfo.couleur1||"#0A1628",
+    couleur2: schoolInfo.couleur2||"#00C48C",
+    logo: schoolInfo.logo||"",
+    devise: schoolInfo.devise||"",
+  });
+  const [chargement,setChargement] = useState(false);
+  const [msgSucces,setMsgSucces] = useState("");
+  const [erreur,setErreur] = useState("");
+  const [apercu,setApercu] = useState(null); // aperçu logo uploadé
+
+  const chg = k => e => setForm(p=>({...p,[k]:e.target.value}));
+
+  // Upload logo fichier → base64
+  const handleLogoFile = e => {
+    const file = e.target.files[0];
+    if(!file) return;
+    if(file.size > 500*1024){ setErreur("Logo trop grand (max 500 Ko)."); return; }
+    const reader = new FileReader();
+    reader.onload = ev => {
+      setForm(p=>({...p,logo:ev.target.result}));
+      setApercu(ev.target.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const sauvegarder = async () => {
+    if(!form.nom.trim()){setErreur("Le nom de l'école est requis.");return;}
+    setChargement(true); setErreur("");
+    try {
+      const data = {
+        nom: form.nom.trim(),
+        type: form.type.trim(),
+        ville: form.ville.trim(),
+        pays: form.pays.trim(),
+        couleur1: form.couleur1,
+        couleur2: form.couleur2,
+        logo: form.logo||null,
+        devise: form.devise.trim(),
+      };
+      await updateDoc(doc(db,"ecoles",schoolId), data);
+      setSchoolInfo(prev=>({...prev,...data}));
+      setMsgSucces("Paramètres enregistrés avec succès.");
+      setTimeout(()=>setMsgSucces(""),4000);
+    } catch(e) {
+      setErreur("Erreur lors de la sauvegarde : "+(e.message||"réessayez."));
+    } finally {
+      setChargement(false);
+    }
+  };
+
+  const resetLogo = () => { setForm(p=>({...p,logo:""})); setApercu(null); };
+
+  const inp = {
+    width:"100%",border:"1px solid #d1d5db",borderRadius:8,
+    padding:"9px 12px",fontSize:13,outline:"none",boxSizing:"border-box",
+  };
+  const lbl = {
+    display:"block",fontSize:11,fontWeight:700,color:C.blueDark,
+    textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:4,marginTop:14,
+  };
+  const sec = {
+    background:"#fff",borderRadius:14,padding:"24px 28px",
+    boxShadow:"0 2px 16px rgba(0,32,80,0.07)",marginBottom:20,
+  };
+
+  return (
+    <div style={{padding:"28px 32px",fontFamily:"'Segoe UI',system-ui,sans-serif",maxWidth:720,margin:"0 auto"}}>
+      <h2 style={{margin:"0 0 4px",fontSize:20,fontWeight:900,color:C.blueDark}}>⚙️ Paramètres de l'école</h2>
+      <p style={{margin:"0 0 24px",fontSize:12,color:"#9ca3af"}}>Personnalisez l'identité visuelle et les informations de votre établissement</p>
+
+      {msgSucces&&<div style={{background:"#d1fae5",border:"1px solid #6ee7b7",borderRadius:8,padding:"10px 16px",marginBottom:16,fontSize:13,color:"#065f46",fontWeight:600}}>✅ {msgSucces}</div>}
+      {erreur&&<div style={{background:"#fee2e2",border:"1px solid #fca5a5",borderRadius:8,padding:"10px 16px",marginBottom:16,fontSize:13,color:"#991b1b"}}>{erreur}</div>}
+
+      {/* Informations générales */}
+      <div style={sec}>
+        <h3 style={{margin:"0 0 16px",fontSize:14,fontWeight:800,color:C.blueDark}}>🏫 Informations générales</h3>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+          <div>
+            <label style={lbl}>Nom de l'école *</label>
+            <input style={inp} value={form.nom} onChange={chg("nom")} placeholder="Ex. : La Citadelle"/>
+          </div>
+          <div>
+            <label style={lbl}>Type d'établissement</label>
+            <input style={inp} value={form.type} onChange={chg("type")} placeholder="Ex. : Groupe Scolaire Privé"/>
+          </div>
+          <div>
+            <label style={lbl}>Ville</label>
+            <input style={inp} value={form.ville} onChange={chg("ville")} placeholder="Ex. : Kindia"/>
+          </div>
+          <div>
+            <label style={lbl}>Pays</label>
+            <input style={inp} value={form.pays} onChange={chg("pays")} placeholder="Ex. : Guinée"/>
+          </div>
+        </div>
+        <label style={lbl}>Devise / Slogan</label>
+        <input style={inp} value={form.devise} onChange={chg("devise")} placeholder="Ex. : Travail – Rigueur – Réussite"/>
+      </div>
+
+      {/* Couleurs */}
+      <div style={sec}>
+        <h3 style={{margin:"0 0 16px",fontSize:14,fontWeight:800,color:C.blueDark}}>🎨 Couleurs de l'établissement</h3>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24}}>
+          {[
+            {key:"couleur1",label:"Couleur principale (fond sidebar, titres)"},
+            {key:"couleur2",label:"Couleur secondaire (accents, boutons)"},
+          ].map(({key,label})=>(
+            <div key={key}>
+              <label style={lbl}>{label}</label>
+              <div style={{display:"flex",alignItems:"center",gap:12}}>
+                <input type="color" value={form[key]} onChange={chg(key)}
+                  style={{width:48,height:40,border:"1px solid #d1d5db",borderRadius:8,cursor:"pointer",padding:2}}/>
+                <input style={{...inp,flex:1}} value={form[key]} onChange={chg(key)} placeholder="#0A1628"/>
+                <div style={{width:40,height:40,borderRadius:8,background:form[key],border:"1px solid #e5e7eb",flexShrink:0}}/>
+              </div>
+            </div>
+          ))}
+        </div>
+        {/* Aperçu couleurs */}
+        <div style={{marginTop:16,padding:"14px 18px",borderRadius:10,background:form.couleur1,display:"flex",alignItems:"center",gap:14}}>
+          <div style={{width:36,height:36,borderRadius:"50%",background:form.couleur2,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>🏫</div>
+          <div>
+            <p style={{margin:0,fontSize:11,color:"rgba(255,255,255,0.6)"}}>Aperçu sidebar</p>
+            <p style={{margin:0,fontSize:14,fontWeight:800,color:form.couleur2}}>{form.nom||"Nom de l'école"}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Logo */}
+      <div style={sec}>
+        <h3 style={{margin:"0 0 16px",fontSize:14,fontWeight:800,color:C.blueDark}}>🖼️ Logo de l'établissement</h3>
+        <div style={{display:"flex",gap:24,alignItems:"flex-start",flexWrap:"wrap"}}>
+          {/* Aperçu */}
+          <div style={{width:100,height:100,borderRadius:12,border:"2px dashed #d1d5db",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",background:"#f9fafb",flexShrink:0}}>
+            {(apercu||form.logo)
+              ? <img src={apercu||form.logo} alt="Logo" style={{width:"100%",height:"100%",objectFit:"contain"}}/>
+              : <span style={{fontSize:32}}>🏫</span>}
+          </div>
+          <div style={{flex:1,minWidth:200}}>
+            <label style={{...lbl,marginTop:0}}>Uploader un fichier (max 500 Ko)</label>
+            <input type="file" accept="image/*" onChange={handleLogoFile}
+              style={{...inp,padding:"6px 8px",cursor:"pointer"}}/>
+            <label style={lbl}>Ou coller une URL d'image</label>
+            <input style={inp} value={form.logo.startsWith("data:")?"":(form.logo||"")}
+              onChange={e=>{ setForm(p=>({...p,logo:e.target.value})); setApercu(null); }}
+              placeholder="https://exemple.com/logo.png"/>
+            {(form.logo||apercu)&&(
+              <button onClick={resetLogo}
+                style={{marginTop:8,background:"#fee2e2",border:"none",color:"#991b1b",padding:"5px 12px",borderRadius:6,fontSize:12,fontWeight:700,cursor:"pointer"}}>
+                ✕ Supprimer le logo
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Bouton sauvegarder */}
+      <button onClick={sauvegarder} disabled={chargement}
+        style={{width:"100%",background:`linear-gradient(90deg,${C.blue},${C.green})`,color:"#fff",
+          border:"none",padding:"13px",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer",
+          opacity:chargement?0.7:1}}>
+        {chargement?"Enregistrement…":"💾 Enregistrer les paramètres"}
+      </button>
+
+      <p style={{textAlign:"center",fontSize:11,color:"#9ca3af",marginTop:12}}>
+        Code école : <strong style={{color:C.blue}}>{schoolId}</strong> · Les modifications sont visibles immédiatement dans la sidebar et au prochain chargement.
+      </p>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
+//  PANEL SUPER-ADMIN
+// ══════════════════════════════════════════════════════════════
+function SuperAdminPanel() {
+  const [ecoles, setEcoles] = useState([]);
+  const [chargement, setChargement] = useState(true);
+  const [stats, setStats] = useState({});
+  const [recherche, setRecherche] = useState("");
+  const [confirmation, setConfirmation] = useState(null); // {ecole, action}
+  const [creationOuverte, setCreationOuverte] = useState(false);
+  const [nouvelleEcole, setNouvelleEcole] = useState({nom:"",ville:"",pays:"Guinée"});
+  const [msgSucces, setMsgSucces] = useState("");
+  const [demandes, setDemandes] = useState([]);
+  const [ongletSA, setOngletSA] = useState("ecoles"); // ecoles | demandes
+
+  const chargerEcoles = async () => {
+    setChargement(true);
+    try {
+      const snap = await getDocs(collection(db,"ecoles"));
+      const liste = snap.docs.map(d=>({...d.data(),_id:d.id}));
+      setEcoles(liste);
+      // Charger les stats en parallèle
+      const statsMap = {};
+      await Promise.all(liste.map(async (e) => {
+        const [eleves, comptes, enseignants] = await Promise.all([
+          getDocs(collection(db,"ecoles",e._id,"elevesPrimaire")).then(s=>s.size).catch(()=>0),
+          getDocs(collection(db,"ecoles",e._id,"comptes")).then(s=>s.size).catch(()=>0),
+          getDocs(collection(db,"ecoles",e._id,"ensPrimaire")).then(s=>s.size).catch(()=>0),
+        ]);
+        // Élèves secondaire aussi
+        const elevesS = await getDocs(collection(db,"ecoles",e._id,"elevesSecondaire")).then(s=>s.size).catch(()=>0);
+        statsMap[e._id] = { eleves: eleves + elevesS, comptes, enseignants };
+      }));
+      setStats(statsMap);
+    } catch(err) {
+      console.error(err);
+    } finally {
+      setChargement(false);
+    }
+  };
+
+  useEffect(() => { chargerEcoles(); chargerDemandes(); }, []);
+
+  const chargerDemandes = async () => {
+    try {
+      const ecolesSnap = await getDocs(collection(db,"ecoles"));
+      const touteDemandes = [];
+      await Promise.all(ecolesSnap.docs.map(async e => {
+        const dSnap = await getDocs(collection(db,"ecoles",e.id,"demandes_plan"));
+        dSnap.docs.forEach(d => touteDemandes.push({...d.data(),_id:d.id,_schoolId:e.id}));
+      }));
+      touteDemandes.sort((a,b)=>b.createdAt-a.createdAt);
+      setDemandes(touteDemandes);
+    } catch {}
+  };
+
+  const validerDemande = async (demande) => {
+    await activerPlan({_id:demande._schoolId,nom:demande.ecoleNom},"pro");
+    await updateDoc(doc(db,"ecoles",demande._schoolId,"demandes_plan",demande._id),{statut:"validee"});
+    setDemandes(prev=>prev.map(d=>d._id===demande._id?{...d,statut:"validee"}:d));
+  };
+
+  const rejeterDemande = async (demande) => {
+    await updateDoc(doc(db,"ecoles",demande._schoolId,"demandes_plan",demande._id),{statut:"rejetee"});
+    setDemandes(prev=>prev.map(d=>d._id===demande._id?{...d,statut:"rejetee"}:d));
+  };
+
+  const activerPlan = async (ecole, plan) => {
+    const update = plan === "pro"
+      ? { plan: "pro", planExpiry: Date.now() + 365*24*60*60*1000, planActivatedBy: "superadmin", planActivatedAt: Date.now() }
+      : { plan: "gratuit", planExpiry: null };
+    await updateDoc(doc(db,"ecoles",ecole._id), update);
+    setEcoles(prev => prev.map(e => e._id===ecole._id ? {...e,...update} : e));
+    setMsgSucces(`Plan ${plan==="pro"?"Pro activé ⭐":"Gratuit rétabli"} pour ${ecole.nom}`);
+    setTimeout(()=>setMsgSucces(""),4000);
+  };
+
+  const toggleActif = async (ecole) => {
+    await updateDoc(doc(db,"ecoles",ecole._id), {actif: !ecole.actif});
+    setEcoles(prev => prev.map(e => e._id===ecole._id ? {...e,actif:!e.actif} : e));
+    setConfirmation(null);
+  };
+
+  const supprimerEcole = async (ecole) => {
+    // On désactive seulement (suppression physique = risque)
+    await updateDoc(doc(db,"ecoles",ecole._id), {actif:false, supprime:true});
+    setEcoles(prev => prev.filter(e => e._id!==ecole._id));
+    setConfirmation(null);
+  };
+
+  const genSlug = (nom) =>
+    nom.toLowerCase().trim()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+      .replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,30)||"ecole";
+
+  const creerEcole = async () => {
+    if(!nouvelleEcole.nom.trim()||!nouvelleEcole.ville.trim()) return;
+    const sid = genSlug(nouvelleEcole.nom);
+    await setDoc(doc(db,"ecoles",sid),{
+      nom: nouvelleEcole.nom.trim(),
+      ville: nouvelleEcole.ville.trim(),
+      pays: nouvelleEcole.pays.trim()||"Guinée",
+      createdAt: Date.now(),
+      actif: true,
+    });
+    setMsgSucces(`École "${nouvelleEcole.nom}" créée (code : ${sid})`);
+    setNouvelleEcole({nom:"",ville:"",pays:"Guinée"});
+    setCreationOuverte(false);
+    chargerEcoles();
+    setTimeout(()=>setMsgSucces(""),4000);
+  };
+
+  const ecolesFiltrees = ecoles.filter(e =>
+    e.nom?.toLowerCase().includes(recherche.toLowerCase()) ||
+    e.ville?.toLowerCase().includes(recherche.toLowerCase()) ||
+    e._id?.toLowerCase().includes(recherche.toLowerCase())
+  );
+
+  const S = {
+    page: {padding:"28px 32px",fontFamily:"'Segoe UI',system-ui,sans-serif",minHeight:"100vh",background:"#f4f7fb"},
+    titre: {margin:"0 0 6px",fontSize:22,fontWeight:900,color:C.blueDark},
+    sous: {margin:"0 0 24px",fontSize:12,color:"#9ca3af"},
+    card: {background:"#fff",borderRadius:14,boxShadow:"0 2px 16px rgba(0,32,80,0.08)",overflow:"hidden"},
+    th: {padding:"10px 14px",fontSize:11,fontWeight:700,color:"#6b7280",textTransform:"uppercase",letterSpacing:"0.05em",background:"#f9fafb",borderBottom:"1px solid #e5e7eb",textAlign:"left"},
+    td: {padding:"12px 14px",fontSize:13,color:"#374151",borderBottom:"1px solid #f0f0f0",verticalAlign:"middle"},
+    badge: (actif) => ({
+      display:"inline-block",padding:"2px 10px",borderRadius:20,fontSize:11,fontWeight:700,
+      background:actif?"#d1fae5":"#fee2e2",color:actif?"#065f46":"#991b1b",
+    }),
+    btn: (color,bg) => ({background:bg||color,color:color===C.blue?"#fff":color===C.green?"#fff":"#fff",border:"none",padding:"5px 12px",borderRadius:6,fontSize:12,fontWeight:700,cursor:"pointer"}),
+    input: {border:"1px solid #d1d5db",borderRadius:8,padding:"8px 12px",fontSize:13,outline:"none",boxSizing:"border-box"},
+    overlay: {position:"fixed",inset:0,background:"rgba(0,0,0,0.4)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center"},
+    modal: {background:"#fff",borderRadius:16,padding:"28px 32px",width:"100%",maxWidth:440,boxShadow:"0 20px 60px rgba(0,0,0,0.25)"},
+  };
+
+  return (
+    <div style={S.page}>
+      <h2 style={S.titre}>⚙️ Panel Super-Admin</h2>
+      <p style={S.sous}>Gestion de toutes les écoles enregistrées sur la plateforme</p>
+
+      {msgSucces && (
+        <div style={{background:"#d1fae5",border:"1px solid #6ee7b7",borderRadius:8,padding:"10px 16px",marginBottom:18,fontSize:13,color:"#065f46",fontWeight:600}}>
+          ✅ {msgSucces}
+        </div>
+      )}
+
+      {/* Onglets */}
+      <div style={{display:"flex",gap:8,marginBottom:20}}>
+        {[
+          {id:"ecoles",label:"🏫 Écoles"},
+          {id:"demandes",label:`💳 Demandes Pro${demandes.filter(d=>d.statut==="en_attente").length>0?" ("+demandes.filter(d=>d.statut==="en_attente").length+")":""}`},
+        ].map(o=>(
+          <button key={o.id} onClick={()=>setOngletSA(o.id)}
+            style={{padding:"9px 18px",borderRadius:9,border:"none",cursor:"pointer",fontWeight:700,fontSize:13,
+              background:ongletSA===o.id?C.blue:"#f0f4f8",color:ongletSA===o.id?"#fff":"#6b7280"}}>
+            {o.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Onglet Demandes Pro ── */}
+      {ongletSA==="demandes" && (
+        <div style={S.card}>
+          {demandes.length===0 ? (
+            <div style={{padding:40,textAlign:"center",color:"#9ca3af"}}>Aucune demande de souscription.</div>
+          ) : (
+            <table style={{width:"100%",borderCollapse:"collapse"}}>
+              <thead>
+                <tr>
+                  {["École","Opérateur","Téléphone","Référence","Date","Statut","Actions"].map(h=>(
+                    <th key={h} style={S.th}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {demandes.map(d=>(
+                  <tr key={d._id}>
+                    <td style={S.td}><strong>{d.ecoleNom||d.schoolId}</strong></td>
+                    <td style={S.td}>{d.operateur}</td>
+                    <td style={S.td}>{d.telephone}</td>
+                    <td style={S.td}><code style={{background:"#f0f4f8",padding:"2px 7px",borderRadius:4,fontSize:11}}>{d.reference}</code></td>
+                    <td style={S.td}>{d.createdAt?new Date(d.createdAt).toLocaleDateString("fr-FR"):"—"}</td>
+                    <td style={S.td}>
+                      <span style={{...S.badge(d.statut==="validee"),
+                        background:d.statut==="validee"?"#d1fae5":d.statut==="rejetee"?"#fee2e2":"#fef3c7",
+                        color:d.statut==="validee"?"#065f46":d.statut==="rejetee"?"#991b1b":"#92400e"}}>
+                        {d.statut==="validee"?"✅ Validée":d.statut==="rejetee"?"❌ Rejetée":"⏳ En attente"}
+                      </span>
+                    </td>
+                    <td style={S.td}>
+                      {d.statut==="en_attente" && (
+                        <div style={{display:"flex",gap:6}}>
+                          <button onClick={()=>validerDemande(d)}
+                            style={{...S.btn(C.green),background:"#d1fae5",color:"#065f46"}}>
+                            ✅ Valider
+                          </button>
+                          <button onClick={()=>rejeterDemande(d)}
+                            style={{...S.btn("#ef4444"),background:"#fee2e2",color:"#991b1b"}}>
+                            ❌ Rejeter
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
+      {/* ── Onglet Écoles ── */}
+      {ongletSA==="ecoles" && <>
+
+      {/* Barre d'outils */}
+      <div style={{display:"flex",gap:12,marginBottom:18,alignItems:"center",flexWrap:"wrap"}}>
+        <input value={recherche} onChange={e=>setRecherche(e.target.value)}
+          placeholder="🔍 Rechercher une école…"
+          style={{...S.input,flex:1,minWidth:200}}/>
+        <button onClick={()=>setCreationOuverte(true)}
+          style={{...S.btn(C.blue),padding:"8px 18px",fontSize:13,background:`linear-gradient(90deg,${C.blue},${C.green})`}}>
+          + Nouvelle école
+        </button>
+        <button onClick={chargerEcoles}
+          style={{...S.btn("#6b7280"),background:"#f3f4f6",color:"#374151",padding:"8px 14px",fontSize:13}}>
+          ↻ Actualiser
+        </button>
+      </div>
+
+      {/* Statistiques globales */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:14,marginBottom:24}}>
+        {[
+          {label:"Écoles totales",val:ecoles.length,icon:"🏫",color:C.blue},
+          {label:"Écoles actives",val:ecoles.filter(e=>e.actif).length,icon:"✅",color:C.green},
+          {label:"Écoles inactives",val:ecoles.filter(e=>!e.actif).length,icon:"⛔",color:"#ef4444"},
+          {label:"Élèves total",val:Object.values(stats).reduce((s,v)=>s+(v.eleves||0),0),icon:"👥",color:"#8b5cf6"},
+        ].map(({label,val,icon,color})=>(
+          <div key={label} style={{background:"#fff",borderRadius:12,padding:"16px 18px",boxShadow:"0 2px 12px rgba(0,32,80,0.07)",borderLeft:`4px solid ${color}`}}>
+            <div style={{fontSize:22}}>{icon}</div>
+            <div style={{fontSize:24,fontWeight:900,color,marginTop:4}}>{chargement?"…":val}</div>
+            <div style={{fontSize:11,color:"#9ca3af",marginTop:2}}>{label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Tableau des écoles */}
+      <div style={S.card}>
+        {chargement ? (
+          <div style={{padding:40,textAlign:"center",color:"#9ca3af"}}>Chargement des écoles…</div>
+        ) : ecolesFiltrees.length===0 ? (
+          <div style={{padding:40,textAlign:"center",color:"#9ca3af"}}>
+            {recherche ? "Aucune école ne correspond à la recherche." : "Aucune école enregistrée."}
+          </div>
+        ) : (
+          <table style={{width:"100%",borderCollapse:"collapse"}}>
+            <thead>
+              <tr>
+                {["Code","École","Ville/Pays","Créée le","Statut","Plan","Élèves","Comptes","Actions"].map(h=>(
+                  <th key={h} style={S.th}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {ecolesFiltrees.map(ecole=>{
+                const st = stats[ecole._id]||{};
+                return (
+                  <tr key={ecole._id} style={{transition:"background .15s"}}
+                    onMouseEnter={e=>e.currentTarget.style.background="#f9fafb"}
+                    onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                    <td style={S.td}>
+                      <code style={{background:"#f0f4f8",padding:"2px 7px",borderRadius:4,fontSize:11,color:C.blue,fontWeight:700}}>
+                        {ecole._id}
+                      </code>
+                    </td>
+                    <td style={S.td}><strong>{ecole.nom}</strong></td>
+                    <td style={S.td}>{ecole.ville}{ecole.pays&&ecole.pays!=="Guinée"?`, ${ecole.pays}`:""}</td>
+                    <td style={S.td}>{ecole.createdAt?new Date(ecole.createdAt).toLocaleDateString("fr-FR"):"—"}</td>
+                    <td style={S.td}><span style={S.badge(ecole.actif)}>{ecole.actif?"Actif":"Inactif"}</span></td>
+                    <td style={S.td}>
+                      <div style={{display:"flex",flexDirection:"column",gap:4,alignItems:"flex-start"}}>
+                        <span style={{
+                          display:"inline-block",padding:"2px 10px",borderRadius:20,fontSize:11,fontWeight:800,
+                          background:ecole.plan==="pro"?"#e0f2fe":"#f3f4f6",
+                          color:ecole.plan==="pro"?"#0369a1":"#6b7280",
+                        }}>
+                          {ecole.plan==="pro"?"⭐ Pro":"Gratuit"}
+                        </span>
+                        {ecole.plan==="pro"&&ecole.planExpiry&&(
+                          <span style={{fontSize:9,color:"#9ca3af"}}>
+                            Exp. {new Date(ecole.planExpiry).toLocaleDateString("fr-FR")}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td style={{...S.td,textAlign:"center",fontWeight:700,color:C.blue}}>{st.eleves??"…"}</td>
+                    <td style={{...S.td,textAlign:"center",fontWeight:700,color:C.green}}>{st.comptes??"…"}</td>
+                    <td style={S.td}>
+                      <div style={{display:"flex",gap:6}}>
+                        <button onClick={()=>activerPlan(ecole, ecole.plan==="pro"?"gratuit":"pro")}
+                          style={{...S.btn(ecole.plan==="pro"?C.blue:C.green),
+                            background:ecole.plan==="pro"?"#e0f2fe":"#d1fae5",
+                            color:ecole.plan==="pro"?"#0369a1":"#065f46"}}>
+                          {ecole.plan==="pro"?"↓ Gratuit":"⭐ Pro"}
+                        </button>
+                        <button onClick={()=>setConfirmation({ecole,action:"toggle"})}
+                          style={{...S.btn(ecole.actif?C.blue:C.green),background:ecole.actif?"#fee2e2":"#d1fae5",color:ecole.actif?"#991b1b":"#065f46"}}>
+                          {ecole.actif?"Désactiver":"Activer"}
+                        </button>
+                        <button onClick={()=>setConfirmation({ecole,action:"supprimer"})}
+                          style={{...S.btn("#ef4444"),background:"#fee2e2",color:"#991b1b"}}>
+                          Supprimer
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Modal confirmation */}
+      {confirmation && (
+        <div style={S.overlay} onClick={()=>setConfirmation(null)}>
+          <div style={S.modal} onClick={e=>e.stopPropagation()}>
+            <h3 style={{margin:"0 0 10px",color:C.blueDark,fontSize:17}}>
+              {confirmation.action==="toggle"
+                ? (confirmation.ecole.actif?"Désactiver l'école":"Activer l'école")
+                : "Supprimer l'école"}
+            </h3>
+            <p style={{fontSize:14,color:"#6b7280",marginBottom:20}}>
+              {confirmation.action==="toggle"
+                ? `Confirmer ${confirmation.ecole.actif?"la désactivation":"l'activation"} de "${confirmation.ecole.nom}" ?`
+                : `Cette action masquera définitivement "${confirmation.ecole.nom}". Confirmer ?`}
+            </p>
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+              <button onClick={()=>setConfirmation(null)}
+                style={{background:"#f3f4f6",border:"none",padding:"9px 18px",borderRadius:8,cursor:"pointer",fontWeight:600,color:"#6b7280"}}>
+                Annuler
+              </button>
+              <button onClick={()=>confirmation.action==="toggle"?toggleActif(confirmation.ecole):supprimerEcole(confirmation.ecole)}
+                style={{background:confirmation.action==="supprimer"?"#ef4444":`linear-gradient(90deg,${C.blue},${C.green})`,
+                  border:"none",color:"#fff",padding:"9px 18px",borderRadius:8,cursor:"pointer",fontWeight:700}}>
+                Confirmer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Fin onglet écoles */}
+      </>}
+
+      {/* Modal création d'école */}
+      {creationOuverte && (
+        <div style={S.overlay} onClick={()=>setCreationOuverte(false)}>
+          <div style={S.modal} onClick={e=>e.stopPropagation()}>
+            <h3 style={{margin:"0 0 16px",color:C.blueDark,fontSize:17}}>➕ Créer une nouvelle école</h3>
+            {[
+              {label:"Nom de l'école *",key:"nom",placeholder:"Ex. : École Les Étoiles"},
+              {label:"Ville *",key:"ville",placeholder:"Ex. : Conakry"},
+              {label:"Pays",key:"pays",placeholder:"Ex. : Guinée"},
+            ].map(({label,key,placeholder})=>(
+              <div key={key} style={{marginBottom:12}}>
+                <label style={{display:"block",fontSize:11,fontWeight:700,color:C.blue,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:4}}>{label}</label>
+                <input value={nouvelleEcole[key]} onChange={e=>setNouvelleEcole(p=>({...p,[key]:e.target.value}))}
+                  placeholder={placeholder} style={{...S.input,width:"100%"}}/>
+              </div>
+            ))}
+            {nouvelleEcole.nom && (
+              <div style={{background:"#f0f4f8",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#6b7280",marginBottom:14}}>
+                Code école généré : <strong style={{color:C.blue}}>{genSlug(nouvelleEcole.nom)}</strong>
+              </div>
+            )}
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:8}}>
+              <button onClick={()=>setCreationOuverte(false)}
+                style={{background:"#f3f4f6",border:"none",padding:"9px 18px",borderRadius:8,cursor:"pointer",fontWeight:600,color:"#6b7280"}}>
+                Annuler
+              </button>
+              <button onClick={creerEcole} disabled={!nouvelleEcole.nom.trim()||!nouvelleEcole.ville.trim()}
+                style={{background:`linear-gradient(90deg,${C.blue},${C.green})`,border:"none",color:"#fff",
+                  padding:"9px 18px",borderRadius:8,cursor:"pointer",fontWeight:700,
+                  opacity:(!nouvelleEcole.nom.trim()||!nouvelleEcole.ville.trim())?0.5:1}}>
+                Créer l'école
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
 //  ÉCRAN DE CONNEXION
 // ══════════════════════════════════════════════════════════════
 function Connexion({onLogin, onInscription}) {
-  const {items:comptes,chargement}=useFirestore("comptes");
+  const {schoolInfo} = useContext(SchoolContext);
+  const [codeEcole,setCodeEcole]=useState(()=>localStorage.getItem("LC_schoolId")||"");
   const [login,setLogin]=useState("");
   const [mdp,setMdp]=useState("");
   const [erreur,setErreur]=useState("");
   const [voir,setVoir]=useState(false);
+  const [chargement,setChargement]=useState(false);
+  const [infoEcole,setInfoEcole]=useState(null); // infos chargées après saisie du code école
+
+  // Charger les infos de l'école dès que le code est saisi
+  useEffect(()=>{
+    const sid=codeEcole.trim().toLowerCase();
+    if(!sid||sid==="superadmin"){setInfoEcole(null);return;}
+    const t=setTimeout(()=>{
+      getDoc(doc(db,"ecoles",sid)).then(snap=>{
+        if(snap.exists()) setInfoEcole(snap.data());
+        else setInfoEcole(null);
+      }).catch(()=>setInfoEcole(null));
+    },600); // debounce 600ms
+    return ()=>clearTimeout(t);
+  },[codeEcole]);
 
   const connecter=async()=>{
-    const source = comptes.length>0 ? comptes : COMPTES_DEFAUT;
-    const compte=source.find(c=>c.login===login.trim());
-    if(!compte){setErreur("Identifiant ou mot de passe incorrect.");return;}
-    // Supporte les mdp hashés (bcrypt) et les anciens en clair
-    const valide = compte.mdp.startsWith("$2b$")
-      ? await bcrypt.compare(mdp, compte.mdp)
-      : compte.mdp === mdp;
-    if(valide){setErreur("");onLogin(compte);}
-    else setErreur("Identifiant ou mot de passe incorrect.");
+    const sid=codeEcole.trim().toLowerCase();
+    if(!sid){setErreur("Veuillez entrer le code de votre école.");return;}
+    if(!login.trim()){setErreur("Veuillez entrer votre identifiant.");return;}
+    setChargement(true);setErreur("");
+    try{
+      // ── Mode Super-Admin (vérification côté serveur) ──
+      if(sid==="superadmin"){
+        const r=await fetch("/api/superadmin-login",{
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({login:login.trim(),mdp}),
+        });
+        const data=await r.json().catch(()=>({}));
+        if(r.ok&&data.ok){setErreur("");onLogin(data.compte,"superadmin");}
+        else setErreur(data.error||"Identifiants super-admin incorrects.");
+        return;
+      }
+
+      // ── Mode École — Firebase Auth (email synthétique) ──
+      const email=`${login.trim().toLowerCase()}.${sid}@edugest.app`;
+      try{
+        await signInWithEmailAndPassword(auth, email, mdp);
+        // onAuthStateChanged dans App() prend le relais
+        return;
+      }catch(firebaseErr){
+        // Utilisateur pas encore migré → on tente l'ancienne méthode
+        if(firebaseErr.code!=="auth/user-not-found" && firebaseErr.code!=="auth/invalid-credential"){
+          setErreur("Identifiant ou mot de passe incorrect.");
+          return;
+        }
+      }
+
+      // ── Fallback : ancienne méthode + migration automatique ──
+      const snap=await getDocs(collection(db,"ecoles",sid,"comptes"));
+      const comptes=snap.docs.map(d=>({...d.data(),_id:d.id}));
+      const source=comptes.length>0?comptes:COMPTES_DEFAUT;
+      const compte=source.find(c=>c.login===login.trim().toLowerCase());
+      if(!compte){setErreur("Identifiant ou mot de passe incorrect.");return;}
+      const valide=compte.mdp.startsWith("$2b$")
+        ?await bcrypt.compare(mdp,compte.mdp)
+        :compte.mdp===mdp;
+      if(!valide){setErreur("Identifiant ou mot de passe incorrect.");return;}
+
+      // Migration : créer le compte Firebase Auth via l'API
+      await fetch("/api/create-user",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({login:login.trim().toLowerCase(), mdp, role:compte.role, nom:compte.nom, schoolId:sid}),
+      }).catch(()=>{}); // non bloquant si l'API échoue
+
+      // Connecter via Firebase Auth après migration
+      try{
+        await signInWithEmailAndPassword(auth, email, mdp);
+        // onAuthStateChanged prend le relais
+      }catch{
+        // Si Firebase Auth échoue encore, connexion locale temporaire
+        setErreur("");
+        onLogin(compte, sid);
+      }
+    }catch(e){
+      setErreur("Impossible de joindre le serveur. Vérifiez le code école.");
+    }finally{
+      setChargement(false);
+    }
   };
 
   return (
@@ -2613,16 +3288,29 @@ function Connexion({onLogin, onInscription}) {
       fontFamily:"'Segoe UI',system-ui,sans-serif"}}>
       <div style={{background:"#fff",borderRadius:18,padding:"36px 32px",width:"100%",maxWidth:400,boxShadow:"0 20px 60px rgba(0,0,0,0.35)"}}>
         <div style={{textAlign:"center",marginBottom:22}}>
-          <img src={LOGO} alt="Logo" style={{width:100,height:100,objectFit:"contain",marginBottom:10}}/>
-          <h1 style={{margin:"0 0 2px",fontSize:15,fontWeight:800,color:C.blueDark}}>Groupe Scolaire Privé</h1>
-          <p style={{margin:"0 0 2px",fontSize:22,fontWeight:900,color:C.green}}>LA CITADELLE</p>
-          <p style={{margin:"0 0 6px",fontSize:11,color:"#9ca3af"}}>Kindia, Guinée · {getAnnee()}</p>
-          <p style={{margin:0,fontSize:11,fontWeight:700}}>
-            <span style={{color:"#e74c3c"}}>Travail</span> – <span style={{color:"#e67e22"}}>Rigueur</span> – <span style={{color:C.green}}>Réussite</span>
-          </p>
+          <Logo width={180} height={58} variant="light"/>
+          {infoEcole && (
+            <div style={{marginTop:14,paddingTop:12,borderTop:"1px solid rgba(255,255,255,0.15)"}}>
+              {infoEcole.logo && (
+                <img src={infoEcole.logo} alt="" style={{width:48,height:48,objectFit:"contain",borderRadius:8,marginBottom:6,display:"block",margin:"0 auto 6px"}}/>
+              )}
+              <p style={{margin:"0 0 2px",fontSize:16,fontWeight:900,color:infoEcole.couleur2||C.green}}>
+                {infoEcole.nom}
+              </p>
+              <p style={{margin:0,fontSize:11,color:"rgba(255,255,255,0.5)"}}>
+                {infoEcole.ville}, {infoEcole.pays} · {getAnnee()}
+              </p>
+            </div>
+          )}
         </div>
         <div style={{height:2,background:`linear-gradient(90deg,${C.blue},${C.green})`,borderRadius:2,marginBottom:20}}/>
         <div style={{display:"flex",flexDirection:"column",gap:13}}>
+          <div>
+            <label style={{display:"block",fontSize:10,fontWeight:700,color:C.blue,textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:5}}>Code école</label>
+            <input value={codeEcole} onChange={e=>setCodeEcole(e.target.value)} placeholder="Ex. : ecole-la-citadelle"
+              onKeyDown={e=>e.key==="Enter"&&connecter()}
+              style={{width:"100%",border:"2px solid #b0c4d8",borderRadius:9,padding:"10px 12px",fontSize:14,boxSizing:"border-box",outline:"none"}}/>
+          </div>
           <div>
             <label style={{display:"block",fontSize:10,fontWeight:700,color:C.blue,textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:5}}>Identifiant</label>
             <input value={login} onChange={e=>setLogin(e.target.value)} placeholder="Votre identifiant"
@@ -2641,8 +3329,8 @@ function Connexion({onLogin, onInscription}) {
             </div>
           </div>
           {erreur&&<div style={{background:"#fce8e8",border:"1px solid #f5c1c1",borderRadius:8,padding:"9px 12px",fontSize:13,color:"#9b2020",textAlign:"center"}}>{erreur}</div>}
-          <button onClick={connecter} style={{width:"100%",background:`linear-gradient(90deg,${C.blue},${C.green})`,color:"#fff",border:"none",padding:"12px",borderRadius:9,fontSize:14,fontWeight:800,cursor:"pointer",marginTop:4}}>
-            Se connecter
+          <button onClick={connecter} disabled={chargement} style={{width:"100%",background:`linear-gradient(90deg,${C.blue},${C.green})`,color:"#fff",border:"none",padding:"12px",borderRadius:9,fontSize:14,fontWeight:800,cursor:"pointer",marginTop:4,opacity:chargement?0.7:1}}>
+            {chargement?"Connexion…":"Se connecter"}
           </button>
           <p style={{textAlign:"center",marginTop:16,color:"#777",fontSize:13}}>
             Pas encore inscrit ?{" "}
@@ -2662,6 +3350,8 @@ function Connexion({onLogin, onInscription}) {
 export default function App() {
   const [utilisateur,setUtilisateur]=useState(null);
   const [page,setPage]=useState(null);
+  const [schoolId,setSchoolId]=useState(()=>localStorage.getItem("LC_schoolId")||"citadelle");
+  const [schoolInfo,setSchoolInfo]=useState(SCHOOL_INFO_DEFAUT);
   const [annee,setAnneeState]=useState(()=>localStorage.getItem("LC_annee")||"2025-2026");
   const [sidebarOuvert,setSidebarOuvert]=useState(false);
   const [rechercheOuverte,setRechercheOuverte]=useState(false);
@@ -2687,34 +3377,90 @@ export default function App() {
     }).catch(()=>{});
   },[]);
 
-  const connecter=(c)=>{
+  // Charger les infos de l'école depuis Firestore (temps réel)
+  useEffect(()=>{
+    if(!schoolId||schoolId==="superadmin") return;
+    const unsub = onSnapshot(doc(db,"ecoles",schoolId),(snap)=>{
+      if(snap.exists()){
+        const d=snap.data();
+        setSchoolInfo(prev=>({
+          ...prev,
+          nom: d.nom||prev.nom,
+          type: d.type||prev.type,
+          ville: d.ville||prev.ville,
+          pays: d.pays||prev.pays,
+          couleur1: d.couleur1||prev.couleur1,
+          couleur2: d.couleur2||prev.couleur2,
+          logo: d.logo||prev.logo,
+          devise: d.devise||prev.devise,
+          plan: d.plan||"gratuit",
+          planExpiry: d.planExpiry||null,
+        }));
+      }
+    });
+    return ()=>unsub();
+  },[schoolId]);
+
+  // Écoute l'état Firebase Auth — charge le profil depuis /users/{uid}
+  useEffect(()=>{
+    const unsub=onAuthStateChanged(auth, async(firebaseUser)=>{
+      if(!firebaseUser){return;}
+      try{
+        const profil=await getDoc(doc(db,"users",firebaseUser.uid));
+        if(profil.exists()){
+          const d=profil.data();
+          const sid=d.schoolId;
+          setSchoolId(sid);
+          localStorage.setItem("LC_schoolId",sid);
+          setUtilisateur({uid:firebaseUser.uid, login:d.login, nom:d.nom, role:d.role});
+          setPage(p=>p||ACCES[d.role][0]);
+        }
+      }catch(e){
+        console.error("Erreur chargement profil:", e);
+      }
+    });
+    return ()=>unsub();
+  },[]);
+
+  const connecter=(c,sid)=>{
+    if(sid){ setSchoolId(sid); localStorage.setItem("LC_schoolId",sid); }
     setUtilisateur(c);
     setPage(ACCES[c.role][0]);
   };
-  const deconnecter=()=>{setUtilisateur(null);setPage(null);};
+  const deconnecter=()=>{
+    signOut(auth).catch(()=>{});
+    setUtilisateur(null);
+    setPage(null);
+  };
 
- if(!utilisateur && page==="inscription")return <Inscription/>;
-if(!utilisateur)return <Connexion onLogin={connecter} onInscription={()=>setPage("inscription")}/>;
+  if(!utilisateur && page==="inscription")return <Inscription/>;
+  if(!utilisateur)return (
+    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo}}>
+      <Connexion onLogin={connecter} onInscription={()=>setPage("inscription")}/>
+    </SchoolContext.Provider>
+  );
 
   const modulesVisibles=MODULES.filter(m=>ACCES[utilisateur.role].includes(m.id));
   const readOnly = utilisateur.role==="admin";
+  const logoSrc = schoolInfo.logo || LOGO;
+  const couleur2 = schoolInfo.couleur2 || C.green;
 
   return (
+    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo}}>
     <div style={{minHeight:"100vh",display:"flex",background:C.bg,fontFamily:"'Segoe UI',system-ui,sans-serif"}}>
       {/* Overlay mobile */}
       {sidebarOuvert&&<div onClick={()=>setSidebarOuvert(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:40}}/>}
-      <aside style={{position:"fixed",top:0,bottom:0,left:0,width:228,zIndex:50,background:C.sidebar,display:"flex",flexDirection:"column",
+      <aside style={{position:"fixed",top:0,bottom:0,left:0,width:228,zIndex:50,background:schoolInfo.couleur1||C.sidebar,display:"flex",flexDirection:"column",
         transform:isMobile()&&!sidebarOuvert?"translateX(-100%)":"translateX(0)",transition:"transform 0.25s ease"}}>
         <div style={{padding:"18px 16px 14px",borderBottom:"1px solid rgba(255,255,255,0.1)",textAlign:"center"}}>
-          <img src={LOGO} alt="" style={{width:72,height:72,objectFit:"contain",marginBottom:8}}/>
-          <p style={{margin:0,fontSize:10,fontWeight:600,color:"rgba(255,255,255,0.5)"}}>Groupe Scolaire Privé</p>
-          <p style={{margin:0,fontSize:14,fontWeight:900,color:C.green}}>LA CITADELLE</p>
-          <p style={{margin:"4px 0 0",fontSize:9,color:"rgba(255,255,255,0.3)"}}>Kindia · Guinée · {annee||getAnnee()}</p>
-          <p style={{margin:"4px 0 0",fontSize:9,fontWeight:700}}>
-            <span style={{color:"#e74c3c"}}>Travail</span><span style={{color:"rgba(255,255,255,0.3)"}}> – </span>
-            <span style={{color:"#e67e22"}}>Rigueur</span><span style={{color:"rgba(255,255,255,0.3)"}}> – </span>
-            <span style={{color:C.green}}>Réussite</span>
-          </p>
+          <Logo width={140} height={46} variant="light"/>
+          <div style={{marginTop:10,paddingTop:8,borderTop:"1px solid rgba(255,255,255,0.08)"}}>
+            {schoolInfo.logo
+              ? <img src={schoolInfo.logo} alt="" style={{width:32,height:32,objectFit:"contain",borderRadius:6,marginBottom:4,display:"block",margin:"0 auto 4px"}}/>
+              : null}
+            <p style={{margin:0,fontSize:12,fontWeight:800,color:couleur2}}>{schoolInfo.nom}</p>
+            <p style={{margin:"2px 0 0",fontSize:9,color:"rgba(255,255,255,0.3)"}}>{schoolInfo.ville||"Kindia"} · {annee||getAnnee()}</p>
+          </div>
         </div>
         <nav style={{flex:1,padding:"10px 8px",display:"flex",flexDirection:"column",gap:3}}>
           {modulesVisibles.map(m=>{
@@ -2779,6 +3525,9 @@ if(!utilisateur)return <Connexion onLogin={connecter} onInscription={()=>setPage
         {rechercheOuverte&&<RechercheGlobale onFermer={()=>setRechercheOuverte(false)}/>}
 
         <div style={{flex:1,overflowY:"auto"}}>
+          {page==="superadmin_panel" && <SuperAdminPanel/>}
+          {page==="parametres"      && <ParametresEcole/>}
+          {page==="ia_assistant"    && <PremiumGate feature="ia_assistant"><ModuleIA/></PremiumGate>}
           {page==="admin_panel" && <AdminPanel annee={annee} setAnnee={setAnnee}/>}
           {page==="fondation"   && <Fondation readOnly={readOnly} annee={annee}/>}
           {page==="compta"      && <Comptabilite readOnly={readOnly} annee={annee}/>}
@@ -2788,5 +3537,6 @@ if(!utilisateur)return <Connexion onLogin={connecter} onInscription={()=>setPage
         </div>
       </main>
     </div>
+    </SchoolContext.Provider>
   );
 }
