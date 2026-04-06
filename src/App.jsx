@@ -3234,46 +3234,38 @@ function Connexion({onLogin, onInscription}) {
         return;
       }
 
-      // ── Mode École — Firebase Auth (email synthétique) ──
+      // ── Mode École — via API serveur (gère migration Firebase Auth) ──
       const email=`${login.trim().toLowerCase()}.${sid}@edugest.app`;
+
+      // 1. Essayer Firebase Auth directement (utilisateur déjà migré)
       try{
         await signInWithEmailAndPassword(auth, email, mdp);
-        // onAuthStateChanged dans App() prend le relais
-        return;
+        return; // onAuthStateChanged prend le relais
       }catch(firebaseErr){
-        // Utilisateur pas encore migré → on tente l'ancienne méthode
-        if(firebaseErr.code!=="auth/user-not-found" && firebaseErr.code!=="auth/invalid-credential"){
+        if(firebaseErr.code==="auth/wrong-password"||firebaseErr.code==="auth/invalid-credential"){
           setErreur("Identifiant ou mot de passe incorrect.");
           return;
         }
+        // auth/user-not-found → pas encore migré, on continue
       }
 
-      // ── Fallback : ancienne méthode + migration automatique ──
-      const snap=await getDocs(collection(db,"ecoles",sid,"comptes"));
-      const comptes=snap.docs.map(d=>({...d.data(),_id:d.id}));
-      const source=comptes.length>0?comptes:COMPTES_DEFAUT;
-      const compte=source.find(c=>c.login===login.trim().toLowerCase());
-      if(!compte){setErreur("Identifiant ou mot de passe incorrect.");return;}
-      const valide=compte.mdp.startsWith("$2b$")
-        ?await bcrypt.compare(mdp,compte.mdp)
-        :compte.mdp===mdp;
-      if(!valide){setErreur("Identifiant ou mot de passe incorrect.");return;}
-
-      // Migration : créer le compte Firebase Auth via l'API
-      await fetch("/api/create-user",{
+      // 2. Fallback via API serveur (vérifie Firestore + migre vers Firebase Auth)
+      const r=await fetch("/api/login",{
         method:"POST",
         headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({login:login.trim().toLowerCase(), mdp, role:compte.role, nom:compte.nom, schoolId:sid}),
-      }).catch(()=>{}); // non bloquant si l'API échoue
+        body:JSON.stringify({login:login.trim().toLowerCase(), mdp, schoolId:sid}),
+      });
+      const data=await r.json().catch(()=>({}));
+      if(!r.ok||!data.ok){setErreur(data.error||"Identifiant ou mot de passe incorrect.");return;}
 
-      // Connecter via Firebase Auth après migration
+      // 3. Connecter via custom token Firebase
       try{
-        await signInWithEmailAndPassword(auth, email, mdp);
+        const {signInWithCustomToken}=await import("firebase/auth");
+        await signInWithCustomToken(auth, data.customToken);
         // onAuthStateChanged prend le relais
       }catch{
-        // Si Firebase Auth échoue encore, connexion locale temporaire
-        setErreur("");
-        onLogin(compte, sid);
+        // Dernier recours : connexion locale temporaire
+        onLogin(data.compte, sid);
       }
     }catch(e){
       setErreur("Impossible de joindre le serveur. Vérifiez le code école.");
