@@ -3582,7 +3582,7 @@ export default function App() {
 
   return (
     <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo}}>
-    <div style={{minHeight:"100vh",display:"flex",background:C.bg,fontFamily:"'Segoe UI',system-ui,sans-serif"}}>
+    <div style={{height:"100vh",overflow:"hidden",display:"flex",background:C.bg,fontFamily:"'Segoe UI',system-ui,sans-serif"}}>
       {/* Overlay mobile */}
       {sidebarOuvert&&<div onClick={()=>setSidebarOuvert(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:40}}/>}
       <aside style={{position:"fixed",top:0,bottom:0,left:0,width:228,zIndex:50,background:schoolInfo.couleur1||C.sidebar,display:"flex",flexDirection:"column",
