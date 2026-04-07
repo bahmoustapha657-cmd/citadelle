@@ -763,10 +763,87 @@ function Fondation({readOnly, userRole}) {
 }
 
 // ══════════════════════════════════════════════════════════════
+//  TARIFS PAR CLASSE (sous-composant Comptabilite)
+// ══════════════════════════════════════════════════════════════
+function TarifsClasses({tarifsClasses, saveTarif, getTarif, canEdit}) {
+  const [ouvert, setOuvert] = useState(false);
+  const [editing, setEditing] = useState({}); // { "Classe X": "150000" }
+  const [saving, setSaving] = useState(false);
+
+  const toutesClasses = [...CLASSES_PRIMAIRE, ...CLASSES_COLLEGE];
+
+  const handleChange = (classe, val) => setEditing(p=>({...p,[classe]:val}));
+
+  const sauvegarderTout = async () => {
+    setSaving(true);
+    try {
+      for(const [classe, val] of Object.entries(editing)){
+        if(val !== "") await saveTarif(classe, val);
+      }
+      setEditing({});
+    } finally { setSaving(false); }
+  };
+
+  const modifie = Object.keys(editing).length > 0;
+
+  return (
+    <div style={{marginBottom:16,border:"1px solid #b0c4d8",borderRadius:10,overflow:"hidden"}}>
+      <button onClick={()=>setOuvert(o=>!o)}
+        style={{width:"100%",background:"#f0f6ff",border:"none",padding:"11px 16px",cursor:"pointer",
+          display:"flex",alignItems:"center",justifyContent:"space-between",fontSize:13,fontWeight:700,color:C.blueDark}}>
+        <span>💰 Tarifs mensuels par classe</span>
+        <span style={{fontSize:11,fontWeight:400,color:"#6b7280"}}>{ouvert?"▲ Fermer":"▼ Voir / Modifier"}</span>
+      </button>
+      {ouvert&&(
+        <div style={{padding:"16px 18px",background:"#fff"}}>
+          {!canEdit&&<p style={{margin:"0 0 12px",fontSize:12,color:"#9ca3af"}}>Lecture seule — seuls le comptable, l'administrateur et la direction peuvent modifier les tarifs.</p>}
+          {["Primaire","Collège"].map(section=>{
+            const classes = section==="Primaire" ? CLASSES_PRIMAIRE : CLASSES_COLLEGE;
+            return (
+              <div key={section} style={{marginBottom:16}}>
+                <p style={{margin:"0 0 8px",fontSize:12,fontWeight:800,color:C.blueDark,textTransform:"uppercase",letterSpacing:"0.05em"}}>{section}</p>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:8}}>
+                  {classes.map(classe=>{
+                    const val = editing[classe]!==undefined ? editing[classe] : String(getTarif(classe));
+                    return (
+                      <div key={classe} style={{display:"flex",alignItems:"center",gap:8,background:"#f8fafc",borderRadius:7,padding:"7px 10px"}}>
+                        <span style={{flex:1,fontSize:12,color:C.blueDark,fontWeight:600}}>{classe}</span>
+                        <input
+                          type="number" value={val}
+                          onChange={e=>canEdit&&handleChange(classe,e.target.value)}
+                          readOnly={!canEdit}
+                          style={{width:100,border:"1px solid #d1d5db",borderRadius:6,padding:"4px 8px",fontSize:12,
+                            textAlign:"right",color:editing[classe]!==undefined?"#d97706":C.blue,fontWeight:700,
+                            background:canEdit?"#fff":"#f3f4f6",cursor:canEdit?"text":"default"}}
+                        />
+                        <span style={{fontSize:11,color:"#9ca3af"}}>GNF</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+          {canEdit&&(
+            <div style={{display:"flex",gap:10,marginTop:8}}>
+              <Btn onClick={sauvegarderTout} disabled={saving||!modifie} v={modifie?"success":"ghost"}>
+                {saving?"Enregistrement…":"💾 Enregistrer les tarifs"}
+              </Btn>
+              {modifie&&<Btn v="ghost" onClick={()=>setEditing({})}>Annuler</Btn>}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
 //  MODULE COMPTABILITÉ
 // ══════════════════════════════════════════════════════════════
 function Comptabilite({readOnly, annee, userRole}) {
   const canEdit = peutModifier(userRole);
+  const canEditEleves = peutModifierEleves(userRole);
   const {schoolInfo} = useContext(SchoolContext);
   const {items:recettes,chargement:cR,ajouter:ajR,modifier:modR,supprimer:supR}=useFirestore("recettes");
   const {items:depenses,chargement:cD,ajouter:ajD,modifier:modD,supprimer:supD}=useFirestore("depenses");
@@ -774,6 +851,7 @@ function Comptabilite({readOnly, annee, userRole}) {
   const {items:versements,chargement:cV,ajouter:ajV,modifier:modV,supprimer:supV}=useFirestore("versements");
   const {items:elevesC,chargement:cEC,ajouter:ajEC,modifier:modEC_full,supprimer:supEC,modifierChamp:modEC}=useFirestore("elevesCollege");
   const {items:elevesP,chargement:cEP,ajouter:ajEP,modifier:modEP_full,supprimer:supEP,modifierChamp:modEP}=useFirestore("elevesPrimaire");
+  const {items:tarifsClasses,ajouter:ajTarif,modifier:modTarif}=useFirestore("tarifs");
   // Pour auto-génération salaires
   const {items:ensCollege}=useFirestore("ensCollege");
   const {items:ensLycee}=useFirestore("ensLycee");
@@ -805,8 +883,20 @@ function Comptabilite({readOnly, annee, userRole}) {
 
   const eleves=niveau==="college"?elevesC:elevesP;
   const modEleves=niveau==="college"?modEC:modEP;
-  const montant=MENSUALITE[niveau];
   const classesU=[...new Set(eleves.map(e=>e.classe))].filter(Boolean);
+
+  // Tarif par classe : cherche dans Firestore, sinon fallback MENSUALITE
+  const getTarif = (classe) => {
+    const t = tarifsClasses.find(t=>t.classe===classe);
+    if(t) return Number(t.montant)||0;
+    return CLASSES_PRIMAIRE.includes(classe) ? MENSUALITE.primaire : MENSUALITE.college;
+  };
+  const saveTarif = async (classe, montant) => {
+    const existing = tarifsClasses.find(t=>t.classe===classe);
+    if(existing) await modTarif(existing._id,{montant:Number(montant)||0});
+    else await ajTarif({classe, montant:Number(montant)||0});
+  };
+  const montant=getTarif(eleves[0]?.classe||""); // fallback pour compatibilité
   const elevesFiltres=filtClasse==="all"?eleves:eleves.filter(e=>e.classe===filtClasse);
   const nbPayes=e=>MOIS_ANNEE.filter(m=>(e.mens||{})[m]==="Payé").length;
 
@@ -928,14 +1018,10 @@ function Comptabilite({readOnly, annee, userRole}) {
         {/* Calcul impayés */}
         {(()=>{
           const tousEleves=[...elevesC,...elevesP];
-          const totalDu=tousEleves.reduce((s,e)=>{
-            const niv=elevesC.find(ec=>ec._id===e._id)?"college":"primaire";
-            return s+MOIS_ANNEE.length*MENSUALITE[niv];
-          },0);
+          const totalDu=tousEleves.reduce((s,e)=>s+MOIS_ANNEE.length*getTarif(e.classe),0);
           const totalPercu=tousEleves.reduce((s,e)=>{
-            const niv=elevesC.find(ec=>ec._id===e._id)?"college":"primaire";
             const pays=MOIS_ANNEE.filter(m=>(e.mens||{})[m]==="Payé").length;
-            return s+pays*MENSUALITE[niv];
+            return s+pays*getTarif(e.classe);
           },0);
           const impaye=totalDu-totalPercu;
           const pctImpaye=totalDu>0?((impaye/totalDu)*100).toFixed(1):0;
@@ -1467,6 +1553,14 @@ function Comptabilite({readOnly, annee, userRole}) {
       </div>}
 
       {tab==="mens"&&<div>
+        {/* ── Tarifs par classe ── */}
+        <TarifsClasses
+          tarifsClasses={tarifsClasses}
+          saveTarif={saveTarif}
+          getTarif={getTarif}
+          canEdit={canEditEleves}
+        />
+
         {(()=>{
           const elevesCritiques=eleves.filter(e=>{
             const mens=e.mens||{};
@@ -1508,8 +1602,8 @@ function Comptabilite({readOnly, annee, userRole}) {
           <strong style={{fontSize:14,flex:1,color:C.blueDark}}>Mensualités — {annee||getAnnee()}</strong>
           <select value={niveau} onChange={e=>{setNiveau(e.target.value);setFiltClasse("all");}}
             style={{border:"1px solid #b0c4d8",borderRadius:7,padding:"6px 10px",fontSize:12,background:"#fff",color:C.blueDark,fontWeight:600}}>
-            <option value="college">Collège — {fmt(MENSUALITE.college)}/mois</option>
-            <option value="primaire">Primaire — {fmt(MENSUALITE.primaire)}/mois</option>
+            <option value="college">Collège</option>
+            <option value="primaire">Primaire</option>
           </select>
           {classesU.length>0&&<select value={filtClasse} onChange={e=>setFiltClasse(e.target.value)}
             style={{border:"1px solid #b0c4d8",borderRadius:7,padding:"6px 10px",fontSize:12,background:"#fff",color:C.blueDark}}>
@@ -1522,7 +1616,7 @@ function Comptabilite({readOnly, annee, userRole}) {
             <div style={{marginBottom:12,padding:"9px 14px",background:"#e0ebf8",borderRadius:8,display:"flex",gap:20,flexWrap:"wrap",alignItems:"center"}}>
               <span style={{fontSize:12,color:C.greenDk,fontWeight:700}}>✓ {elevesFiltres.reduce((s,e)=>s+nbPayes(e),0)} payés</span>
               <span style={{fontSize:12,color:"#b91c1c",fontWeight:700}}>✗ {elevesFiltres.reduce((s,e)=>s+(MOIS_ANNEE.length-nbPayes(e)),0)} impayés</span>
-              <span style={{fontSize:12,color:C.blue,fontWeight:700}}>💰 {fmt(elevesFiltres.reduce((s,e)=>s+nbPayes(e)*montant,0))}</span>
+              <span style={{fontSize:12,color:C.blue,fontWeight:700}}>💰 {fmt(elevesFiltres.reduce((s,e)=>s+nbPayes(e)*getTarif(e.classe),0))}</span>
               <span style={{flex:1}}/>
               <span style={{fontSize:11,fontWeight:700,color:C.blueDark}}>Inscription :</span>
               <input type="number" value={fraisInscription} onChange={e=>setFraisInscription(Number(e.target.value))}
@@ -1567,7 +1661,7 @@ function Comptabilite({readOnly, annee, userRole}) {
                       </button>
                     </td>
                     <td style={{padding:"4px 6px",textAlign:"center"}}>
-                      <Btn sm v="amber" onClick={()=>imprimerRecu(e,montant,schoolInfo)}>🖨️</Btn>
+                      <Btn sm v="amber" onClick={()=>imprimerRecu(e,getTarif(e.classe),schoolInfo)}>🖨️</Btn>
                     </td>
                   </TR>;
                 })}</tbody>
