@@ -3628,7 +3628,7 @@ export default function App() {
         </div>
       </aside>
 
-      <main style={{flex:1,marginLeft:isMobile()?0:228,minWidth:0,display:"flex",flexDirection:"column"}}>
+      <main style={{flex:1,marginLeft:isMobile()?0:228,minWidth:0,display:"flex",flexDirection:"column",height:"100vh",overflow:"hidden"}}>
         <header style={{background:"#fff",borderBottom:`3px solid ${C.green}`,padding:"0 22px",height:52,display:"flex",alignItems:"center",gap:10,position:"sticky",top:0,zIndex:30}}>
           {/* Bouton hamburger mobile */}
           <button onClick={()=>setSidebarOuvert(v=>!v)} style={{display:isMobile()?"flex":"none",alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:"pointer",padding:4,borderRadius:6,color:C.blueDark,fontSize:20,marginRight:4}}>
