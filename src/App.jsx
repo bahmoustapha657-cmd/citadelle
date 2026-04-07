@@ -104,14 +104,14 @@ const COMPTES_DEFAUT = [
 const ACCES = {
   superadmin:["superadmin_panel"],
   admin:     ["admin_panel","parametres","ia_assistant","fondation","compta","primaire","secondaire","calendrier"],
-  direction: ["parametres","ia_assistant","fondation","primaire","secondaire","calendrier"],
+  direction: ["admin_panel","parametres","ia_assistant","fondation","compta","primaire","secondaire","calendrier"],
   primaire:  ["primaire","calendrier"],
   college:   ["secondaire","calendrier"],
   comptable: ["ia_assistant","compta","primaire","secondaire","calendrier"],
 };
 
 // Qui peut modifier les élèves ?
-const peutModifierEleves = (role) => role === "comptable" || role === "admin";
+const peutModifierEleves = (role) => role === "comptable" || role === "admin" || role === "direction";
 
 const MODULES = [
   {id:"superadmin_panel", label:"Super Admin",   icon:"⚙️", desc:"Gestion des écoles"},
@@ -3433,7 +3433,7 @@ export default function App() {
   );
 
   const modulesVisibles=MODULES.filter(m=>ACCES[utilisateur.role].includes(m.id));
-  const readOnly = utilisateur.role==="admin";
+  const readOnly = false;
   const logoSrc = schoolInfo.logo || LOGO;
   const couleur2 = schoolInfo.couleur2 || C.green;
 
