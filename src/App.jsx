@@ -132,10 +132,14 @@ const MODULES = [
 // ══════════════════════════════════════════════════════════════
 const SCHOOL_INFO_DEFAUT = {
   nom: "La Citadelle", type: "Groupe Scolaire Privé",
-  ville: "Kindia", pays: "Guinée",
+  ville: "Kindia", pays: "République de Guinée",
   couleur1: "#0A1628", couleur2: "#00C48C",
   logo: null,
   devise: "Travail – Rigueur – Réussite",
+  ministere: "MEPU-FP",
+  ire: "IRE de Kindia",
+  dpe: "DPE de Kindia",
+  agrement: "",
   plan: "gratuit",
   planExpiry: null,
 };
@@ -345,15 +349,33 @@ function UploadFichiers({dossier, fichiers=[], onAjouter, onSupprimer, readOnly=
 // ══════════════════════════════════════════════════════════════
 //  IMPRESSION
 // ══════════════════════════════════════════════════════════════
-const imprimerRecu = (eleve, montantUnit) => {
+// ── En-tête officiel dynamique pour tous les documents imprimés ──
+const enteteDoc = (si, logoUrl) => `
+<div style="display:flex;align-items:center;gap:16px;border-bottom:3px solid #0A1628;padding-bottom:12px;margin-bottom:16px">
+  <img src="${logoUrl||LOGO}" alt="Logo" style="width:75px;height:75px;object-fit:contain;flex-shrink:0"/>
+  <div style="flex:1;display:flex;justify-content:space-between;align-items:flex-start">
+    <div style="font-size:10px;color:#444;line-height:1.8">
+      <strong style="font-size:11px;color:#0A1628">${si.pays||"République de Guinée"}</strong><br/>
+      <em>Travail - Justice - Solidarité</em><br/>
+      ${si.ministere?`<strong>${si.ministere}</strong><br/>`:""}
+      ${si.ire?`${si.ire}<br/>`:""}
+      ${si.dpe||""}
+    </div>
+    <div style="text-align:right">
+      <strong style="display:block;font-size:13px;color:#0A1628">${si.type||""}</strong>
+      <strong style="display:block;font-size:15px;color:#0A1628">${si.nom||""}</strong>
+      ${si.agrement?`<span style="font-size:10px;color:#555">Agrément : ${si.agrement}</span>`:""}
+    </div>
+  </div>
+</div>`;
+
+const imprimerRecu = (eleve, montantUnit, schoolInfo={}) => {
   const mens = eleve.mens||{};
   const moisPayes = MOIS_ANNEE.filter(m=>mens[m]==="Payé");
   if(!moisPayes.length){alert("Aucun mois payé.");return;}
   const w = window.open("","_blank");
   w.document.write(`<!DOCTYPE html><html><head><title>Reçu</title>
   <style>body{font-family:Arial,sans-serif;padding:30px;font-size:13px}
-  .ent{display:flex;align-items:center;gap:16px;border-bottom:3px solid #0A1628;padding-bottom:12px;margin-bottom:16px}
-  .ent img{width:75px;height:75px;object-fit:contain}.ent h1{margin:0;font-size:16px;color:#0A1628}.ent p{margin:2px 0;font-size:11px;color:#555}
   .badge{text-align:center;background:#0A1628;color:#fff;padding:8px;font-size:14px;font-weight:bold;margin:12px 0;border-radius:4px}
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:5px 18px;margin-bottom:14px}.row{font-size:12px}.lbl{font-weight:bold;color:#0A1628}
   table{width:100%;border-collapse:collapse}th{background:#0A1628;color:#fff;padding:6px 10px;font-size:11px;text-align:left}
@@ -363,8 +385,7 @@ const imprimerRecu = (eleve, montantUnit) => {
   .sig{border-top:2px solid #0A1628;padding-top:8px;text-align:center;font-size:11px;color:#555}
   .devise{text-align:center;font-size:11px;margin-top:8px;font-style:italic;color:#00C48C;font-weight:bold}
   @media print{button{display:none}}</style></head><body>
-  <div class="ent"><img src="${LOGO}" alt="Logo"/>
-  <div><h1>Groupe Scolaire Privé La Citadelle</h1><p>Kindia, Guinée · Agrément N° 2005-0042/MEPU-A/IGE · ${getAnnee()}</p></div></div>
+  ${enteteDoc(schoolInfo, schoolInfo.logo)}
   <div class="badge">REÇU DE PAIEMENT DE MENSUALITÉS</div>
   <div class="grid">
     <div class="row"><span class="lbl">Élève : </span>${eleve.nom} ${eleve.prenom}</div>
@@ -384,20 +405,17 @@ const imprimerRecu = (eleve, montantUnit) => {
   w.document.close();
 };
 
-const imprimerListeClasse = (classe, eleves) => {
+const imprimerListeClasse = (classe, eleves, schoolInfo={}) => {
   const liste = eleves.filter(e=>e.classe===classe);
   const w = window.open("","_blank");
   w.document.write(`<!DOCTYPE html><html><head><title>Liste ${classe}</title>
   <style>body{font-family:Arial,sans-serif;padding:30px;font-size:12px}
-  .ent{display:flex;align-items:center;gap:16px;border-bottom:3px solid #0A1628;padding-bottom:12px;margin-bottom:16px}
-  .ent img{width:70px;height:70px;object-fit:contain}.ent h1{margin:0;font-size:15px;color:#0A1628}.ent p{margin:2px 0;font-size:11px;color:#555}
   h2{color:#0A1628;text-align:center}table{width:100%;border-collapse:collapse;margin-top:12px}
   th{background:#0A1628;color:#fff;padding:7px 10px;font-size:11px;text-align:left}
   td{padding:7px 10px;border-bottom:1px solid #eee}tr:nth-child(even){background:#f0f4f8}
   .footer{margin-top:30px;display:flex;justify-content:space-between;font-size:11px;color:#555}
   @media print{button{display:none}}</style></head><body>
-  <div class="ent"><img src="${LOGO}" alt="Logo"/>
-  <div><h1>Groupe Scolaire Privé La Citadelle</h1><p>Kindia, Guinée · Année scolaire ${getAnnee()}</p></div></div>
+  ${enteteDoc(schoolInfo, schoolInfo.logo)}
   <h2>Liste des élèves — Classe : ${classe}</h2>
   <table><thead><tr><th>N°</th><th>Matricule</th><th>Nom & Prénom</th><th>Sexe</th><th>Date Naissance</th><th>Lieu Naissance</th><th>Filiation</th><th>Tuteur</th><th>Contact</th><th>Statut</th></tr></thead>
   <tbody>${liste.map((e,i)=>`<tr><td>${i+1}</td><td>${e.matricule||"—"}</td><td><strong>${e.nom} ${e.prenom}</strong></td><td>${e.sexe||"—"}</td><td>${e.dateNaissance||"—"}</td><td>${e.lieuNaissance||"—"}</td><td>${e.filiation||"—"}</td><td>${e.tuteur||"—"}</td><td>${e.contactTuteur||"—"}</td><td>${e.statut||"Actif"}</td></tr>`).join("")}
@@ -416,13 +434,11 @@ const exportExcel = (nomFichier, colonnes, lignes) => {
   XLSX.writeFile(wb, `${nomFichier}_${new Date().toLocaleDateString("fr-FR").replace(/\//g,"-")}.xlsx`);
 };
 
-const imprimerAttestation = (eleve, niveau, annee) => {
+const imprimerAttestation = (eleve, niveau, annee, schoolInfo={}) => {
   const niveauLabel = niveau === "college" ? "Collège" : "Primaire";
   const w = window.open("","_blank");
   w.document.write(`<!DOCTYPE html><html><head><title>Attestation ${eleve.nom}</title>
   <style>body{font-family:Arial,sans-serif;padding:40px;font-size:13px;max-width:700px;margin:0 auto}
-  .ent{display:flex;align-items:center;gap:16px;border-bottom:3px solid #0A1628;padding-bottom:12px;margin-bottom:20px}
-  .ent img{width:80px;height:80px;object-fit:contain}.ent h1{margin:0;font-size:16px;color:#0A1628}.ent p{margin:2px 0;font-size:11px;color:#555}
   h2{color:#0A1628;text-align:center;font-size:18px;text-transform:uppercase;letter-spacing:2px;margin:24px 0}
   .body-txt{line-height:2;font-size:14px;text-align:justify;margin:20px 0}
   .infos{background:#f0f4f8;padding:16px;border-radius:8px;margin:16px 0;border-left:4px solid #0A1628}
@@ -432,11 +448,10 @@ const imprimerAttestation = (eleve, niveau, annee) => {
   .stamp{border:3px solid #0A1628;padding:8px 16px;display:inline-block;border-radius:4px;font-weight:bold;color:#0A1628;margin-top:6px;font-size:13px}
   .devise{text-align:center;font-size:11px;margin-top:20px;font-style:italic;color:#00C48C;font-weight:bold}
   @media print{button{display:none}}</style></head><body>
-  <div class="ent"><img src="${LOGO}" alt="Logo"/>
-  <div><h1>Groupe Scolaire Privé La Citadelle</h1><p>Kindia, Guinée · Agrément N° 2005-0042/MEPU-A/IGE · Année scolaire ${annee||getAnnee()}</p></div></div>
+  ${enteteDoc(schoolInfo, schoolInfo.logo)}
   <h2>Attestation de Niveau</h2>
   <div class="body-txt">
-    <p>Le Directeur du Groupe Scolaire Privé <strong>La Citadelle</strong>, soussigné, certifie que l'élève :</p>
+    <p>Le Directeur du ${schoolInfo.type||"Groupe Scolaire Privé"} <strong>${schoolInfo.nom||""}</strong>, soussigné, certifie que l'élève :</p>
     <div class="infos">
       <div class="row"><span class="lbl">Nom & Prénom : </span><strong>${eleve.nom} ${eleve.prenom}</strong></div>
       <div class="row"><span class="lbl">Matricule : </span>${eleve.matricule||"—"}</div>
@@ -450,18 +465,18 @@ const imprimerAttestation = (eleve, niveau, annee) => {
     <p>est régulièrement inscrit(e) dans notre établissement pour l'année scolaire <strong>${annee||getAnnee()}</strong>
     et suit normalement les cours de la classe de <strong>${eleve.classe}</strong> au niveau <strong>${niveauLabel}</strong>.</p>
     <p>La présente attestation est délivrée à l'intéressé(e) pour servir et valoir ce que de droit.</p>
-    <p style="text-align:right;margin-top:20px">Fait à Kindia, le ${today()}</p>
+    <p style="text-align:right;margin-top:20px">Fait à ${schoolInfo.ville||"—"}, le ${today()}</p>
   </div>
   <div class="sigs">
     <div class="sig">Le/La Tuteur / Parent<br/><br/><br/>Signature</div>
-    <div class="sig">Le Directeur Général<br/><div class="stamp">La Citadelle</div></div>
+    <div class="sig">Le Directeur Général<br/><div class="stamp">${schoolInfo.nom||""}</div></div>
   </div>
   <div class="devise">Travail – Rigueur – Réussite</div>
   <script>window.onload=()=>window.print();</script></body></html>`);
   w.document.close();
 };
 
-const imprimerBulletin = (eleve, notes, matieres, periode, niveau, maxNote=20) => {
+const imprimerBulletin = (eleve, notes, matieres, periode, niveau, maxNote=20, schoolInfo={}) => {
   const notesEleve = notes.filter(n=>n.eleveId===eleve._id && n.periode===periode);
   let moyenne = 0, totalCoef = 0;
   const lignes = matieres.map(mat => {
@@ -479,8 +494,6 @@ const imprimerBulletin = (eleve, notes, matieres, periode, niveau, maxNote=20) =
   const w = window.open("","_blank");
   w.document.write(`<!DOCTYPE html><html><head><title>Bulletin ${eleve.nom}</title>
   <style>body{font-family:Arial,sans-serif;padding:30px;font-size:12px}
-  .ent{display:flex;align-items:center;gap:16px;border-bottom:3px solid #0A1628;padding-bottom:12px;margin-bottom:12px}
-  .ent img{width:70px;height:70px;object-fit:contain}.ent h1{margin:0;font-size:15px;color:#0A1628}.ent p{margin:2px 0;font-size:11px;color:#555}
   h2{color:#0A1628;text-align:center;margin:8px 0}.info{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px 20px;margin-bottom:14px;background:#f0f6f2;padding:10px 14px;border-radius:6px;border-left:4px solid #0A1628}
   .inf{font-size:11px}.lbl{font-weight:bold;color:#0A1628}
   table{width:100%;border-collapse:collapse;margin-top:10px}th{background:#0A1628;color:#fff;padding:7px 10px;font-size:11px;text-align:left}
@@ -489,8 +502,7 @@ const imprimerBulletin = (eleve, notes, matieres, periode, niveau, maxNote=20) =
   .sigs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-top:28px}.sig{border-top:2px solid #0A1628;padding-top:8px;text-align:center;font-size:11px;color:#555}
   .devise{text-align:center;font-size:11px;margin-top:8px;font-style:italic;color:#00C48C;font-weight:bold}
   @media print{button{display:none}}</style></head><body>
-  <div class="ent"><img src="${LOGO}" alt="Logo"/>
-  <div><h1>Groupe Scolaire Privé La Citadelle</h1><p>Kindia, Guinée · Agrément N° 2005-0042/MEPU-A/IGE</p></div></div>
+  ${enteteDoc(schoolInfo, schoolInfo.logo)}
   <h2>BULLETIN DE NOTES — ${periode} — Année ${getAnnee()}</h2>
   <div class="info">
     <div class="inf"><span class="lbl">Élève : </span>${eleve.nom} ${eleve.prenom}</div>
@@ -632,6 +644,7 @@ function AdminPanel({annee, setAnnee}) {
 // ══════════════════════════════════════════════════════════════
 function Fondation({readOnly, userRole}) {
   const canEdit = peutModifier(userRole);
+  const {schoolInfo} = useContext(SchoolContext);
   const {items:membres,chargement:cM,ajouter:ajM,modifier:modM,supprimer:supM}=useFirestore("membres");
   const {items:docs,chargement:cD,ajouter:ajD,modifier:modD,supprimer:supD}=useFirestore("documents");
   const [tab,setTab]=useState("apercu");
@@ -657,8 +670,8 @@ function Fondation({readOnly, userRole}) {
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:10,marginBottom:18}}>
           <Stat label="Membres CA" value={membres.length}/>
           <Stat label="Documents" value={docs.length}/>
-          <Stat label="Établissement" value="La Citadelle" bg="#e0ebf8"/>
-          <Stat label="Agrément" value="MEPU-A" bg="#eaf4e0"/>
+          <Stat label="Établissement" value={schoolInfo?.nom||"—"} bg="#e0ebf8"/>
+          <Stat label="Agrément" value={schoolInfo?.agrement||"—"} bg="#eaf4e0"/>
         </div>
         {membres.length===0&&!cM&&<Vide icone="🏛️" msg="Module vide"/>}
         {cM&&<Chargement/>}
@@ -754,6 +767,7 @@ function Fondation({readOnly, userRole}) {
 // ══════════════════════════════════════════════════════════════
 function Comptabilite({readOnly, annee, userRole}) {
   const canEdit = peutModifier(userRole);
+  const {schoolInfo} = useContext(SchoolContext);
   const {items:recettes,chargement:cR,ajouter:ajR,modifier:modR,supprimer:supR}=useFirestore("recettes");
   const {items:depenses,chargement:cD,ajouter:ajD,modifier:modD,supprimer:supD}=useFirestore("depenses");
   const {items:salaires,chargement:cS,ajouter:ajS,modifier:modS,supprimer:supS}=useFirestore("salaires");
@@ -1553,7 +1567,7 @@ function Comptabilite({readOnly, annee, userRole}) {
                       </button>
                     </td>
                     <td style={{padding:"4px 6px",textAlign:"center"}}>
-                      <Btn sm v="amber" onClick={()=>imprimerRecu(e,montant)}>🖨️</Btn>
+                      <Btn sm v="amber" onClick={()=>imprimerRecu(e,montant,schoolInfo)}>🖨️</Btn>
                     </td>
                   </TR>;
                 })}</tbody>
@@ -1617,6 +1631,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
     return true;
   };
 
+  const {schoolInfo} = useContext(SchoolContext);
   const canEditEleves = peutModifierEleves(userRole);
   const canEdit = peutModifier(userRole);
   const readOnly = false;
@@ -1681,7 +1696,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
               <p style={{margin:0,fontWeight:800,fontSize:14,color:C.blueDark}}>Effectifs par classe</p>
               <div style={{display:"flex",gap:8}}>
                 {classesUniq.map(cl=>(
-                  <Btn sm key={cl} v="ghost" onClick={()=>imprimerListeClasse(cl,eleves)}>🖨️ {cl}</Btn>
+                  <Btn sm key={cl} v="ghost" onClick={()=>imprimerListeClasse(cl,eleves,schoolInfo)}>🖨️ {cl}</Btn>
                 ))}
               </div>
             </div>
@@ -1797,7 +1812,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
             <tbody>{classes.map(c=><TR key={c._id}>
               <TD bold>{c.nom}</TD><TD><Badge color="blue">{c.effectif} élèves</Badge></TD>
               <TD>{c.enseignant}</TD><TD>{c.salle}</TD>
-              <TD><Btn sm v="ghost" onClick={()=>imprimerListeClasse(c.nom,eleves)}>🖨️ Imprimer</Btn></TD>
+              <TD><Btn sm v="ghost" onClick={()=>imprimerListeClasse(c.nom,eleves,schoolInfo)}>🖨️ Imprimer</Btn></TD>
               {!readOnly&&<TD><div style={{display:"flex",gap:6}}>
                 <Btn sm v="ghost" onClick={()=>{setForm({...c});setModal("edit_c");}}>Modifier</Btn>
                 <Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ?"))supC(c._id);}}>Suppr.</Btn>
@@ -1846,7 +1861,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
             <option value="all">Toutes les classes</option>
             {classesUniq.map(c=><option key={c}>{c}</option>)}
           </select>
-          {filtreClasse!=="all"&&<Btn sm v="ghost" onClick={()=>imprimerListeClasse(filtreClasse,eleves)}>🖨️ Imprimer liste</Btn>}
+          {filtreClasse!=="all"&&<Btn sm v="ghost" onClick={()=>imprimerListeClasse(filtreClasse,eleves,schoolInfo)}>🖨️ Imprimer liste</Btn>}
           <Btn sm v="ghost" onClick={()=>exportExcel(
             `Eleves_${avecEns?"College":"Primaire"}`,
             ["Matricule","Nom","Prénom","Classe","Sexe","Date Naissance","Lieu Naissance","Filiation","Tuteur","Contact","Domicile","Statut"],
@@ -2181,7 +2196,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
                 <TD><Badge color="blue">{e.classe}</Badge></TD>
                 <TD><span style={{fontWeight:800,fontSize:14,color:moyGene!=="—"&&Number(moyGene)>=10?C.greenDk:"#b91c1c"}}>{moyGene}/20</span></TD>
                 <TD><Badge color={mention==="Très Bien"||mention==="Bien"?"vert":mention==="Assez Bien"||mention==="Passable"?"blue":"red"}>{mention}</Badge></TD>
-                <TD><Btn sm v="amber" onClick={()=>imprimerBulletin(e,notes,matieres,periodeB,avecEns?"college":"primaire",maxNote)}>🖨️ Imprimer</Btn></TD>
+                <TD><Btn sm v="amber" onClick={()=>imprimerBulletin(e,notes,matieres,periodeB,avecEns?"college":"primaire",maxNote,schoolInfo)}>🖨️ Imprimer</Btn></TD>
               </TR>;
             })}</tbody>
           </table></Card>;
@@ -2238,15 +2253,12 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
             const w=window.open("","_blank");
             w.document.write(`<!DOCTYPE html><html><head><title>EDT ${filtreClasse}</title>
             <style>body{font-family:Arial,sans-serif;padding:30px;font-size:12px}
-            .ent{display:flex;align-items:center;gap:16px;border-bottom:3px solid #0A1628;padding-bottom:12px;margin-bottom:16px}
-            .ent img{width:70px;height:70px;object-fit:contain}.ent h1{margin:0;font-size:15px;color:#0A1628}.ent p{margin:2px 0;font-size:11px;color:#555}
             h2{color:#0A1628;text-align:center}table{width:100%;border-collapse:collapse;margin-top:12px}
             th{background:#0A1628;color:#fff;padding:7px 10px;font-size:11px;text-align:left}
             td{padding:7px 10px;border-bottom:1px solid #eee}tr:nth-child(even){background:#f0f4f8}
             .footer{margin-top:30px;display:flex;justify-content:space-between;font-size:11px;color:#555}
             @media print{button{display:none}}</style></head><body>
-            <div class="ent"><img src="${LOGO}" alt="Logo"/>
-            <div><h1>Groupe Scolaire Privé La Citadelle</h1><p>Kindia, Guinée · Année scolaire ${getAnnee()}</p></div></div>
+            ${enteteDoc(schoolInfo, schoolInfo.logo)}
             <h2>Emploi du temps — Classe : ${filtreClasse}</h2>
             <table><thead><tr><th>Jour</th><th>Heure début</th><th>Heure fin</th><th>Matière</th><th>Enseignant</th><th>Salle</th></tr></thead>
             <tbody>${lignes.map(e=>`<tr><td><strong>${e.jour}</strong></td><td>${e.heureDebut||"—"}</td><td>${e.heureFin||"—"}</td><td>${e.matiere||"—"}</td><td>${e.enseignant||"—"}</td><td>${e.salle||"—"}</td></tr>`).join("")}
@@ -2284,10 +2296,7 @@ td.vide{background:#fafafa;color:#ccc;text-align:center;font-size:8px}
 .footer{margin-top:14px;display:flex;justify-content:space-between;font-size:9px;color:#888;border-top:1px solid #ddd;padding-top:8px}
 @media print{body{padding:6px}.section-classe{page-break-inside:avoid}button{display:none}}
 </style></head><body>
-<div class="entete">
-  <img src="${LOGO}" alt="Logo"/>
-  <div><h1>Groupe Scolaire Privé La Citadelle — ${titre}</h1><p>Kindia, Guinée &nbsp;·&nbsp; Année scolaire ${getAnnee()}</p></div>
-</div>
+${enteteDoc(schoolInfo, schoolInfo.logo)}
 <div class="titre-doc">EMPLOI DU TEMPS GÉNÉRAL</div>
 <div class="sous-titre">${toutesClasses.length} classe(s) &nbsp;·&nbsp; ${emplois.length} créneau(x) au total</div>
 ${toutesClasses.map(cl=>{
@@ -2415,7 +2424,7 @@ ${toutesClasses.map(cl=>{
               <TD><Badge color="blue">{e.classe}</Badge></TD>
               <TD><Badge color={avecEns?"purple":"amber"}>{avecEns?"Collège":"Primaire"}</Badge></TD>
               <TD><Badge color={e.statut==="Actif"?"vert":"gray"}>{e.statut||"Actif"}</Badge></TD>
-              <TD><Btn sm v="amber" onClick={()=>imprimerAttestation(e,avecEns?"college":"primaire",annee)}>🖨️ Imprimer</Btn></TD>
+              <TD><Btn sm v="amber" onClick={()=>imprimerAttestation(e,avecEns?"college":"primaire",annee,schoolInfo)}>🖨️ Imprimer</Btn></TD>
             </TR>)}</tbody>
           </table></Card>;
         })()}
@@ -2634,6 +2643,10 @@ function ParametresEcole() {
     couleur2: schoolInfo.couleur2||"#00C48C",
     logo: schoolInfo.logo||"",
     devise: schoolInfo.devise||"",
+    ministere: schoolInfo.ministere||"",
+    ire: schoolInfo.ire||"",
+    dpe: schoolInfo.dpe||"",
+    agrement: schoolInfo.agrement||"",
   });
   const [chargement,setChargement] = useState(false);
   const [msgSucces,setMsgSucces] = useState("");
@@ -2668,6 +2681,10 @@ function ParametresEcole() {
         couleur2: form.couleur2,
         logo: form.logo||null,
         devise: form.devise.trim(),
+        ministere: form.ministere.trim(),
+        ire: form.ire.trim(),
+        dpe: form.dpe.trim(),
+        agrement: form.agrement.trim(),
       };
       await updateDoc(doc(db,"ecoles",schoolId), data);
       setSchoolInfo(prev=>({...prev,...data}));
@@ -2781,6 +2798,29 @@ function ParametresEcole() {
                 ✕ Supprimer le logo
               </button>
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* Informations officielles */}
+      <div style={sec}>
+        <h3 style={{margin:"0 0 16px",fontSize:14,fontWeight:800,color:C.blueDark}}>🏛️ Informations officielles</h3>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+          <div>
+            <label style={lbl}>Ministère (abrégé)</label>
+            <input style={inp} value={form.ministere} onChange={chg("ministere")} placeholder="Ex. : MEPU-FP"/>
+          </div>
+          <div>
+            <label style={lbl}>N° Agrément</label>
+            <input style={inp} value={form.agrement} onChange={chg("agrement")} placeholder="Ex. : 2024/001"/>
+          </div>
+          <div>
+            <label style={lbl}>Inspection Régionale (abrégé)</label>
+            <input style={inp} value={form.ire} onChange={chg("ire")} placeholder="Ex. : IRE de Kindia"/>
+          </div>
+          <div>
+            <label style={lbl}>Direction Préfectorale (abrégé)</label>
+            <input style={inp} value={form.dpe} onChange={chg("dpe")} placeholder="Ex. : DPE de Kindia"/>
           </div>
         </div>
       </div>
@@ -3390,6 +3430,10 @@ export default function App() {
           couleur2: d.couleur2||prev.couleur2,
           logo: d.logo||prev.logo,
           devise: d.devise||prev.devise,
+          ministere: d.ministere||prev.ministere||"",
+          ire: d.ire||prev.ire||"",
+          dpe: d.dpe||prev.dpe||"",
+          agrement: d.agrement||prev.agrement||"",
           plan: d.plan||"gratuit",
           planExpiry: d.planExpiry||null,
         }));
