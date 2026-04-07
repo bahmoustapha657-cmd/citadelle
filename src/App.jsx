@@ -112,6 +112,8 @@ const ACCES = {
 
 // Qui peut modifier les élèves ?
 const peutModifierEleves = (role) => role === "comptable" || role === "admin" || role === "direction";
+// Seuls admin et direction peuvent modifier/supprimer des enregistrements existants
+const peutModifier = (role) => role === "admin" || role === "direction";
 
 const MODULES = [
   {id:"superadmin_panel", label:"Super Admin",   icon:"⚙️", desc:"Gestion des écoles"},
@@ -628,7 +630,8 @@ function AdminPanel({annee, setAnnee}) {
 // ══════════════════════════════════════════════════════════════
 //  MODULE FONDATION
 // ══════════════════════════════════════════════════════════════
-function Fondation({readOnly}) {
+function Fondation({readOnly, userRole}) {
+  const canEdit = peutModifier(userRole);
   const {items:membres,chargement:cM,ajouter:ajM,modifier:modM,supprimer:supM}=useFirestore("membres");
   const {items:docs,chargement:cD,ajouter:ajD,modifier:modD,supprimer:supD}=useFirestore("documents");
   const [tab,setTab]=useState("apercu");
@@ -668,7 +671,7 @@ function Fondation({readOnly}) {
         </div>
         {cM?<Chargement/>:membres.length===0?<Vide icone="👥" msg="Aucun membre"/>
           :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
-            <THead cols={["Nom & Prénom","Rôle","Statut","Téléphone","Documents",readOnly?"":"Actions"]}/>
+            <THead cols={["Nom & Prénom","Rôle","Statut","Téléphone","Documents",canEdit?"Actions":""]}/>
             <tbody>{membres.map(m=><TR key={m._id}>
               <TD bold>{m.prenom} {m.nom}</TD><TD>{m.role}</TD>
               <TD><Badge color={m.statut==="Fondateur"?"purple":"blue"}>{m.statut}</Badge></TD>
@@ -680,7 +683,7 @@ function Fondation({readOnly}) {
                   ))}
                 </div>
               </TD>
-              {!readOnly&&<TD><div style={{display:"flex",gap:6}}>
+              {canEdit&&<TD><div style={{display:"flex",gap:6}}>
                 <Btn sm v="ghost" onClick={()=>{setForm({...m});setModal("edit_m");}}>Modifier</Btn>
                 <Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ?"))supM(m._id);}}>Suppr.</Btn>
               </div></TD>}
@@ -714,12 +717,12 @@ function Fondation({readOnly}) {
         </div>
         {cD?<Chargement/>:docs.length===0?<Vide icone="📄" msg="Aucun document"/>
           :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
-            <THead cols={["Document","Type","Date","Statut","Fichier",readOnly?"":"Actions"]}/>
+            <THead cols={["Document","Type","Date","Statut","Fichier",canEdit?"Actions":""]}/>
             <tbody>{docs.map(d=><TR key={d._id}>
               <TD bold>{d.titre}</TD><TD><Badge color="gray">{d.type}</Badge></TD><TD>{d.date}</TD>
               <TD><Badge color={["Valide","En vigueur","Actif"].includes(d.statut)?"vert":"amber"}>{d.statut}</Badge></TD>
               <TD>{d.fichierUrl&&<a href={d.fichierUrl} target="_blank" rel="noopener noreferrer" style={{fontSize:12,color:C.blue}}>📎 Voir</a>}</TD>
-              {!readOnly&&<TD><div style={{display:"flex",gap:6}}>
+              {canEdit&&<TD><div style={{display:"flex",gap:6}}>
                 <Btn sm v="ghost" onClick={()=>{setForm({...d});setModal("edit_d");}}>Modifier</Btn>
                 <Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ?"))supD(d._id);}}>Suppr.</Btn>
               </div></TD>}
@@ -749,7 +752,8 @@ function Fondation({readOnly}) {
 // ══════════════════════════════════════════════════════════════
 //  MODULE COMPTABILITÉ
 // ══════════════════════════════════════════════════════════════
-function Comptabilite({readOnly, annee}) {
+function Comptabilite({readOnly, annee, userRole}) {
+  const canEdit = peutModifier(userRole);
   const {items:recettes,chargement:cR,ajouter:ajR,modifier:modR,supprimer:supR}=useFirestore("recettes");
   const {items:depenses,chargement:cD,ajouter:ajD,modifier:modD,supprimer:supD}=useFirestore("depenses");
   const {items:salaires,chargement:cS,ajouter:ajS,modifier:modS,supprimer:supS}=useFirestore("salaires");
@@ -1029,11 +1033,11 @@ function Comptabilite({readOnly, annee}) {
         </div>
         {cR?<Chargement/>:recettes.length===0?<Vide icone="💰" msg="Aucune recette"/>
           :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
-            <THead cols={["Libellé","Catégorie","Période","Montant","Date",readOnly?"":"Actions"]}/>
+            <THead cols={["Libellé","Catégorie","Période","Montant","Date",canEdit?"Actions":""]}/>
             <tbody>{recettes.map(r=><TR key={r._id}>
               <TD bold>{r.libelle}</TD><TD><Badge color="vert">{r.categorie}</Badge></TD>
               <TD>{r.periode}</TD><TD bold>{fmt(r.montant)}</TD><TD>{r.date}</TD>
-              {!readOnly&&<TD><div style={{display:"flex",gap:6}}>
+              {canEdit&&<TD><div style={{display:"flex",gap:6}}>
                 <Btn sm v="ghost" onClick={()=>{setForm({...r});setModal("edit_r");}}>Modifier</Btn>
                 <Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ?"))supR(r._id);}}>Suppr.</Btn>
               </div></TD>}
@@ -1061,11 +1065,11 @@ function Comptabilite({readOnly, annee}) {
         </div>
         {cD?<Chargement/>:depenses.length===0?<Vide icone="💸" msg="Aucune dépense"/>
           :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
-            <THead cols={["Libellé","Catégorie","Période","Montant","Date",readOnly?"":"Actions"]}/>
+            <THead cols={["Libellé","Catégorie","Période","Montant","Date",canEdit?"Actions":""]}/>
             <tbody>{depenses.map(d=><TR key={d._id}>
               <TD bold>{d.libelle}</TD><TD><Badge color="red">{d.categorie}</Badge></TD>
               <TD>{d.periode}</TD><TD bold>{fmt(d.montant)}</TD><TD>{d.date}</TD>
-              {!readOnly&&<TD><div style={{display:"flex",gap:6}}>
+              {canEdit&&<TD><div style={{display:"flex",gap:6}}>
                 <Btn sm v="ghost" onClick={()=>{setForm({...d});setModal("edit_d2");}}>Modifier</Btn>
                 <Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ?"))supD(d._id);}}>Suppr.</Btn>
               </div></TD>}
@@ -1219,7 +1223,7 @@ function Comptabilite({readOnly, annee}) {
                       </td>
                       <td style={{padding:"7px 10px",textAlign:"right",fontWeight:800,fontSize:13,color:C.greenDk,background:"#eaf4e0",border:"1px solid #b0c4d8"}}>{fmtN(calcNet(s))}</td>
                       <td style={{padding:"7px 10px",fontSize:11,color:"#6b7280",border:"1px solid #e8f0e8"}}>{s.observation}</td>
-                      {!readOnly&&<td style={{padding:"7px 6px",border:"1px solid #e8f0e8"}}>
+                      {canEdit&&<td style={{padding:"7px 6px",border:"1px solid #e8f0e8"}}>
                         <div style={{display:"flex",gap:4}}>
                           <Btn sm v="ghost" onClick={()=>{setForm({...s});setModal("edit_s");}}>✏️</Btn>
                           <Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ?"))supS(s._id);}}>×</Btn>
@@ -1242,10 +1246,10 @@ function Comptabilite({readOnly, annee}) {
           </div>
           <div style={{overflowX:"auto",marginBottom:8}}>
             <table style={{width:"100%",borderCollapse:"collapse"}}>
-              <THead cols={["N°","Prénoms et Nom","Classe","Montant Forfaitaire","Bon","Révision","Net à Payer","Observation",readOnly?"":"Actions"]}/>
+              <THead cols={["N°","Prénoms et Nom","Classe","Montant Forfaitaire","Bon","Révision","Net à Payer","Observation",canEdit?"Actions":""]}/>
               <tbody>
                 {salairesPrim.length===0?
-                  <tr><td colSpan={readOnly?8:9} style={{padding:"20px",textAlign:"center",color:"#9ca3af",fontStyle:"italic"}}>Aucun enseignant primaire pour ce mois</td></tr>
+                  <tr><td colSpan={canEdit?9:8} style={{padding:"20px",textAlign:"center",color:"#9ca3af",fontStyle:"italic"}}>Aucun enseignant primaire pour ce mois</td></tr>
                   :salairesPrim.map((s,i)=>(
                     <TR key={s._id}>
                       <TD center>{i+1}</TD>
@@ -1254,14 +1258,14 @@ function Comptabilite({readOnly, annee}) {
                       <TD center>{fmtN(s.montantForfait||0)}</TD>
                       <TD center style={{color:"#b91c1c"}}>{fmtN(s.bon||0)}</TD>
                       <TD center style={{background:"#fffbeb"}}>
-                        {!readOnly
+                        {canEdit
                           ?<input type="number" value={s.revision||0} onChange={e=>modS({...s,revision:Number(e.target.value)})}
                             style={{width:80,border:"1px solid #fbbf24",borderRadius:5,padding:"3px 5px",fontSize:11,textAlign:"right"}}/>
                           :<span style={{fontSize:12}}>{fmtN(s.revision||0)}</span>}
                       </TD>
                       <TD center style={{fontWeight:800,color:C.greenDk,background:"#eaf4e0"}}>{fmtN(Number(s.montantForfait||0)-Number(s.bon||0)+Number(s.revision||0))}</TD>
                       <TD>{s.observation}</TD>
-                      {!readOnly&&<TD><div style={{display:"flex",gap:4}}>
+                      {canEdit&&<TD><div style={{display:"flex",gap:4}}>
                         <Btn sm v="ghost" onClick={()=>{setForm({...s});setModal("edit_s");}}>✏️</Btn>
                         <Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ?"))supS(s._id);}}>×</Btn>
                       </div></TD>}
@@ -1334,11 +1338,11 @@ function Comptabilite({readOnly, annee}) {
         </div>
         {cV?<Chargement/>:versements.length===0?<Vide icone="🏛️" msg="Aucun versement"/>
           :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
-            <THead cols={["Libellé","Description","Montant","Date",readOnly?"":"Actions"]}/>
+            <THead cols={["Libellé","Description","Montant","Date",canEdit?"Actions":""]}/>
             <tbody>{versements.map(v=><TR key={v._id}>
               <TD bold>{v.libelle}</TD><TD>{v.description}</TD>
               <TD><span style={{color:C.blue,fontWeight:700}}>{fmt(v.montant)}</span></TD><TD>{v.date}</TD>
-              {!readOnly&&<TD><div style={{display:"flex",gap:6}}>
+              {canEdit&&<TD><div style={{display:"flex",gap:6}}>
                 <Btn sm v="ghost" onClick={()=>{setForm({...v});setModal("edit_v");}}>Modifier</Btn>
                 <Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ?"))supV(v._id);}}>Suppr.</Btn>
               </div></TD>}
@@ -1388,10 +1392,10 @@ function Comptabilite({readOnly, annee}) {
                 <TD>{e.tuteur}</TD><TD>{e.contactTuteur}</TD>
                 <TD><span style={{fontSize:11,color:"#6b7280"}}>{e.domicile}</span></TD>
                 <TD><Badge color={e.statut==="Actif"?"vert":"gray"}>{e.statut}</Badge></TD>
-                <TD><div style={{display:"flex",gap:6}}>
+                {canEdit&&<TD><div style={{display:"flex",gap:6}}>
                   <Btn sm v="ghost" onClick={()=>{setForm({...e,niveau:niveauEnrol});setModal("edit_enrol");}}>Modifier</Btn>
                   <Btn sm v="danger" onClick={()=>{if(confirm("Supprimer définitivement cet élève ?"))supEnrol(e._id);}}>Suppr.</Btn>
-                </div></TD>
+                </div></TD>}
               </TR>)}</tbody>
             </table>
           </div>}
@@ -1614,7 +1618,8 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
   };
 
   const canEditEleves = peutModifierEleves(userRole);
-  const readOnly = userRole === "admin";
+  const canEdit = peutModifier(userRole);
+  const readOnly = false;
   const moy=notes.length?(notes.reduce((s,n)=>s+Number(n.note),0)/notes.length).toFixed(1):"—";
   const classesUniq=[...new Set(eleves.map(e=>e.classe))].filter(Boolean);
   const elevesFiltres=filtreClasse==="all"?eleves:eleves.filter(e=>e.classe===filtreClasse);
@@ -3521,8 +3526,8 @@ export default function App() {
           {page==="parametres"      && <ParametresEcole/>}
           {page==="ia_assistant"    && <PremiumGate feature="ia_assistant"><ModuleIA/></PremiumGate>}
           {page==="admin_panel" && <AdminPanel annee={annee} setAnnee={setAnnee}/>}
-          {page==="fondation"   && <Fondation readOnly={readOnly} annee={annee}/>}
-          {page==="compta"      && <Comptabilite readOnly={readOnly} annee={annee}/>}
+          {page==="fondation"   && <Fondation readOnly={readOnly} annee={annee} userRole={utilisateur.role}/>}
+          {page==="compta"      && <Comptabilite readOnly={readOnly} annee={annee} userRole={utilisateur.role}/>}
           {page==="primaire"    && <Ecole titre="Direction du Primaire" couleur={C.green} cleClasses="classesPrimaire" cleEns="ensPrimaire" cleNotes="notesPrimaire" cleEleves="elevesPrimaire" avecEns={false} userRole={utilisateur.role} annee={annee} classesPredefinies={CLASSES_PRIMAIRE} maxNote={10} matieresPredefinies={MATIERES_PRIMAIRE}/>}
           {page==="secondaire"  && <Secondaire userRole={utilisateur.role} annee={annee}/>}
           {page==="calendrier"  && <Calendrier annee={annee}/>}
