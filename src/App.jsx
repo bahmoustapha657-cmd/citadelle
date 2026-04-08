@@ -1033,9 +1033,12 @@ function CameraCapture({onCapture, onClose}) {
   const streamRef = useRef(null);
   const [erreur, setErreur] = useState("");
   const [pret, setPret] = useState(false);
+  const [facing, setFacing] = useState("user");
 
-  useEffect(() => {
-    navigator.mediaDevices.getUserMedia({video:{facingMode:"user",width:{ideal:640},height:{ideal:480}},audio:false})
+  const demarrerCamera = (mode) => {
+    streamRef.current?.getTracks().forEach(t => t.stop());
+    setPret(false); setErreur("");
+    navigator.mediaDevices.getUserMedia({video:{facingMode:mode,width:{ideal:640},height:{ideal:480}},audio:false})
       .then(s => {
         streamRef.current = s;
         if(videoRef.current){
@@ -1044,8 +1047,11 @@ function CameraCapture({onCapture, onClose}) {
         }
       })
       .catch(e => setErreur("Caméra indisponible : " + (e.message||e.name)));
-    return () => streamRef.current?.getTracks().forEach(t => t.stop());
-  }, []);
+  };
+
+  useEffect(() => { demarrerCamera("user"); return () => streamRef.current?.getTracks().forEach(t=>t.stop()); }, []);
+
+  const inverser = () => { const next = facing==="user"?"environment":"user"; setFacing(next); demarrerCamera(next); };
 
   const fermer = () => { streamRef.current?.getTracks().forEach(t=>t.stop()); onClose(); };
 
@@ -1061,7 +1067,13 @@ function CameraCapture({onCapture, onClose}) {
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.88)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center"}}>
       <div style={{background:"#fff",borderRadius:16,padding:20,maxWidth:460,width:"92%",boxShadow:"0 8px 40px rgba(0,0,0,0.4)"}}>
-        <p style={{margin:"0 0 12px",fontWeight:800,color:C.blueDark,fontSize:15}}>📸 Prendre une photo</p>
+        <div style={{display:"flex",alignItems:"center",marginBottom:12}}>
+          <p style={{margin:0,fontWeight:800,color:C.blueDark,fontSize:15,flex:1}}>📸 Prendre une photo</p>
+          {!erreur&&<button onClick={inverser} title="Inverser la caméra"
+            style={{background:"#f0f4f8",border:"none",borderRadius:8,padding:"6px 10px",cursor:"pointer",fontSize:18}}>
+            🔄
+          </button>}
+        </div>
         {erreur
           ? <p style={{color:"#b91c1c",fontSize:13,background:"#fee2e2",padding:"10px 14px",borderRadius:8}}>{erreur}</p>
           : <video ref={videoRef} autoPlay playsInline muted
