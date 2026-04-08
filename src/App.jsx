@@ -1812,7 +1812,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
 // ══════════════════════════════════════════════════════════════
 //  MODULE ÉCOLE — avec Discipline + Bulletins
 // ══════════════════════════════════════════════════════════════
-function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns, userRole, annee, classesPredefinies, maxNote=20, matieresPredefinies=[], readOnly=false}) {
+function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns, userRole, annee, classesPredefinies, maxNote=20, matieresPredefinies=[], readOnly=false, verrouOuvert=false}) {
   const {items:classes,chargement:cC,ajouter:ajC,modifier:modC,supprimer:supC}=useFirestore(cleClasses);
   const {items:ens,chargement:cEns,ajouter:ajEns,modifier:modEns,supprimer:supEns}=useFirestore(cleEns);
   const {items:notes,chargement:cN,ajouter:ajN,supprimer:supN}=useFirestore(cleNotes);
