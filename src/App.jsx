@@ -3597,7 +3597,7 @@ export default function App() {
             <p style={{margin:"2px 0 0",fontSize:9,color:"rgba(255,255,255,0.3)"}}>{schoolInfo.ville||"Kindia"} · {annee||getAnnee()}</p>
           </div>
         </div>
-        <nav style={{flex:1,padding:"10px 8px",display:"flex",flexDirection:"column",gap:3}}>
+        <nav style={{flex:1,padding:"10px 8px",display:"flex",flexDirection:"column",gap:3,overflowY:"auto",minHeight:0}}>
           {modulesVisibles.map(m=>{
             const actif=page===m.id;
             return <button key={m.id} onClick={()=>{setPage(m.id);if(isMobile())setSidebarOuvert(false);}} style={{
