@@ -467,6 +467,76 @@ const imprimerRecu = (eleve, montantUnit, schoolInfo={}, moisAnnee=MOIS_ANNEE) =
   w.document.close();
 };
 
+const imprimerCartesEleves = (eleves, schoolInfo={}, annee="") => {
+  if(!eleves.length){alert("Aucun élève à imprimer.");return;}
+  const w = window.open("","_blank");
+  const c1 = schoolInfo.couleur1||"#0A1628";
+  const c2 = schoolInfo.couleur2||"#00C48C";
+
+  const carte = (e) => `
+  <div class="carte">
+    <div class="carte-header">
+      ${schoolInfo.logo?`<img src="${schoolInfo.logo}" class="carte-logo"/>`:""}
+      <div class="carte-titre">
+        <div class="carte-ecole">${schoolInfo.nom||"École"}</div>
+        <div class="carte-sous">CARTE D'IDENTITÉ SCOLAIRE</div>
+      </div>
+    </div>
+    <div class="carte-body">
+      <div class="carte-photo">
+        ${e.photo
+          ?`<img src="${e.photo}" class="photo-img"/>`
+          :`<span class="initiales">${(e.prenom||"?")[0]}${(e.nom||"?")[0]}</span>`}
+      </div>
+      <div class="carte-infos">
+        <div class="carte-nom">${e.prenom||""} ${e.nom||""}</div>
+        <div class="info-row">Matricule&nbsp;: <b>${e.matricule||"—"}</b></div>
+        <div class="info-row">Classe&nbsp;: <b>${e.classe||"—"}</b></div>
+        <div class="info-row">Né(e) le&nbsp;: ${e.dateNaissance||"—"}</div>
+        <div class="info-row">Année&nbsp;: ${annee}</div>
+      </div>
+    </div>
+    <div class="carte-footer">
+      <span>${schoolInfo.ville||""}</span>
+      <span class="mat-code">${e.matricule||""}</span>
+    </div>
+  </div>`;
+
+  w.document.write(`<!DOCTYPE html><html><head><title>Cartes d'identité scolaires</title>
+  <meta charset="utf-8"/>
+  <style>
+    @page{size:A4 portrait;margin:8mm}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Arial,sans-serif;background:#fff}
+    .grille{display:grid;grid-template-columns:repeat(2,85.6mm);gap:5mm;justify-content:center}
+    .carte{width:85.6mm;height:54mm;border-radius:3mm;overflow:hidden;border:.3mm solid #bbb;
+           display:flex;flex-direction:column;break-inside:avoid;page-break-inside:avoid;
+           box-shadow:0 1px 4px rgba(0,0,0,.12)}
+    .carte-header{background:${c1};padding:2.2mm 3mm;display:flex;align-items:center;gap:2mm;flex-shrink:0}
+    .carte-logo{width:9mm;height:9mm;object-fit:contain;filter:brightness(0) invert(1);opacity:.9}
+    .carte-titre{flex:1}
+    .carte-ecole{color:${c2};font-size:6.2pt;font-weight:900;text-transform:uppercase;letter-spacing:.04em}
+    .carte-sous{color:rgba(255,255,255,.65);font-size:4.2pt;letter-spacing:.1em;text-transform:uppercase;margin-top:.5mm}
+    .carte-body{flex:1;display:flex;padding:2mm 3mm;gap:3mm;align-items:center;background:#fff}
+    .carte-photo{width:17mm;height:21mm;border-radius:1.5mm;overflow:hidden;flex-shrink:0;
+                 border:.4mm solid ${c1};background:#e8f0f8;display:flex;align-items:center;justify-content:center}
+    .photo-img{width:100%;height:100%;object-fit:cover}
+    .initiales{font-size:12pt;font-weight:900;color:${c1};opacity:.35}
+    .carte-infos{flex:1;overflow:hidden}
+    .carte-nom{font-size:7.5pt;font-weight:900;color:${c1};line-height:1.2;margin-bottom:1.8mm;word-break:break-word}
+    .info-row{font-size:5.2pt;color:#555;line-height:1.7}
+    .info-row b{color:${c1};font-size:5.5pt}
+    .carte-footer{background:${c1};padding:1.2mm 3mm;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+    .carte-footer span{color:rgba(255,255,255,.45);font-size:4pt}
+    .mat-code{font-family:monospace;letter-spacing:.12em;color:${c2}!important;font-weight:800;font-size:5pt!important}
+    @media print{button{display:none}}
+  </style></head><body>
+  <div class="grille">${eleves.map(carte).join("")}</div>
+  <script>window.onload=()=>window.print();</script>
+  </body></html>`);
+  w.document.close();
+};
+
 const imprimerListeClasse = (classe, eleves, schoolInfo={}) => {
   const liste = eleves.filter(e=>e.classe===classe);
   const w = window.open("","_blank");
@@ -2163,6 +2233,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
             {classesUniq.map(c=><option key={c}>{c}</option>)}
           </select>
           {filtreClasse!=="all"&&<Btn sm v="ghost" onClick={()=>imprimerListeClasse(filtreClasse,eleves,schoolInfo)}>🖨️ Imprimer liste</Btn>}
+          <Btn sm v="blue" onClick={()=>imprimerCartesEleves(elevesFiltres,schoolInfo,annee)}>🪪 Cartes ID</Btn>
           <Btn sm v="ghost" onClick={()=>exportExcel(
             `Eleves_${avecEns?"College":"Primaire"}`,
             ["Matricule","Nom","Prénom","Classe","Sexe","Date Naissance","Lieu Naissance","Filiation","Tuteur","Contact","Domicile","Statut"],
