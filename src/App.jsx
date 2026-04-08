@@ -374,34 +374,60 @@ const imprimerRecu = (eleve, montantUnit, schoolInfo={}) => {
   const moisPayes = MOIS_ANNEE.filter(m=>mens[m]==="Payé");
   if(!moisPayes.length){alert("Aucun mois payé.");return;}
   const w = window.open("","_blank");
+
+  // Bloc reçu réutilisé deux fois (exemplaire comptable + exemplaire payant)
+  const bloc = (titre) => `
+  <div class="recu">
+    ${enteteDoc(schoolInfo, schoolInfo.logo)}
+    <div class="badge">REÇU DE PAIEMENT DE MENSUALITÉS</div>
+    <div class="exemplaire">${titre}</div>
+    <div class="grid">
+      <div class="row"><span class="lbl">Élève : </span>${eleve.nom} ${eleve.prenom}</div>
+      <div class="row"><span class="lbl">Matricule : </span>${eleve.matricule||"—"}</div>
+      <div class="row"><span class="lbl">Classe : </span>${eleve.classe}</div>
+      <div class="row"><span class="lbl">Date d'émission : </span>${today()}</div>
+      <div class="row"><span class="lbl">Payant : </span>${eleve.tuteur||"—"}</div>
+      <div class="row"><span class="lbl">Contact : </span>${eleve.contactTuteur||"—"}</div>
+    </div>
+    <table><thead><tr><th>Mois</th><th>Montant unitaire</th><th>Statut</th></tr></thead><tbody>
+    ${moisPayes.map(m=>`<tr><td>${m} ${getAnnee()}</td><td>${fmt(montantUnit)}</td><td style="color:#00C48C;font-weight:bold">✓ Payé</td></tr>`).join("")}
+    </tbody></table>
+    <div class="total">Total versé : ${fmt(moisPayes.length*montantUnit)}</div>
+    <div class="sigs">
+      <div class="sig">Le/La Comptable<br/><br/><br/><br/>Signature &amp; cachet</div>
+      <div class="sig">Le/La Payant(e)<br/><br/><br/><br/>Signature</div>
+    </div>
+    <div class="devise">${schoolInfo.devise||"Travail – Rigueur – Réussite"}</div>
+  </div>`;
+
   w.document.write(`<!DOCTYPE html><html><head><title>Reçu</title>
-  <style>body{font-family:Arial,sans-serif;padding:30px;font-size:13px}
-  .badge{text-align:center;background:#0A1628;color:#fff;padding:8px;font-size:14px;font-weight:bold;margin:12px 0;border-radius:4px}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:5px 18px;margin-bottom:14px}.row{font-size:12px}.lbl{font-weight:bold;color:#0A1628}
-  table{width:100%;border-collapse:collapse}th{background:#0A1628;color:#fff;padding:6px 10px;font-size:11px;text-align:left}
-  td{padding:6px 10px;border-bottom:1px solid #eee;font-size:12px}
-  .total{text-align:right;font-size:14px;font-weight:bold;padding:10px;background:#e8f0e8;color:#0A1628;margin-top:8px}
-  .sigs{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:32px}
-  .sig{border-top:2px solid #0A1628;padding-top:8px;text-align:center;font-size:11px;color:#555}
-  .devise{text-align:center;font-size:11px;margin-top:8px;font-style:italic;color:#00C48C;font-weight:bold}
-  @media print{button{display:none}}</style></head><body>
-  ${enteteDoc(schoolInfo, schoolInfo.logo)}
-  <div class="badge">REÇU DE PAIEMENT DE MENSUALITÉS</div>
-  <div class="grid">
-    <div class="row"><span class="lbl">Élève : </span>${eleve.nom} ${eleve.prenom}</div>
-    <div class="row"><span class="lbl">Matricule : </span>${eleve.matricule||"—"}</div>
-    <div class="row"><span class="lbl">Classe : </span>${eleve.classe}</div>
-    <div class="row"><span class="lbl">Date : </span>${today()}</div>
-    <div class="row"><span class="lbl">Tuteur : </span>${eleve.tuteur||"—"}</div>
-    <div class="row"><span class="lbl">Contact : </span>${eleve.contactTuteur||"—"}</div>
-  </div>
-  <table><thead><tr><th>Mois</th><th>Montant</th><th>Statut</th></tr></thead><tbody>
-  ${moisPayes.map(m=>`<tr><td>${m} ${getAnnee()}</td><td>${fmt(montantUnit)}</td><td style="color:#00C48C;font-weight:bold">✓ Payé</td></tr>`).join("")}
-  </tbody></table>
-  <div class="total">Total payé : ${fmt(moisPayes.length*montantUnit)}</div>
-  <div class="sigs"><div class="sig">Le/La Caissier(e)<br/><br/><br/>Signature</div><div class="sig">Le/La Tuteur<br/><br/><br/>Signature</div></div>
-  <div class="devise">Travail – Rigueur – Réussite</div>
-  <script>window.onload=()=>window.print();</script></body></html>`);
+  <style>
+    *{box-sizing:border-box}
+    body{font-family:Arial,sans-serif;margin:0;padding:10px;font-size:12px;background:#fff}
+    .recu{width:100%;padding:14px 18px;border:1px solid #ccc;border-radius:4px;page-break-inside:avoid}
+    .separateur{border:none;border-top:2px dashed #aaa;margin:12px 0}
+    .badge{text-align:center;background:#0A1628;color:#fff;padding:7px;font-size:13px;font-weight:bold;margin:10px 0;border-radius:4px}
+    .exemplaire{text-align:right;font-size:10px;font-weight:bold;color:#888;text-transform:uppercase;letter-spacing:.06em;margin:-6px 0 8px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;margin-bottom:12px}
+    .row{font-size:11px}.lbl{font-weight:bold;color:#0A1628}
+    table{width:100%;border-collapse:collapse}
+    th{background:#0A1628;color:#fff;padding:5px 8px;font-size:10px;text-align:left}
+    td{padding:5px 8px;border-bottom:1px solid #eee;font-size:11px}
+    .total{text-align:right;font-size:13px;font-weight:bold;padding:8px 10px;background:#e8f0e8;color:#0A1628;margin-top:6px;border-radius:3px}
+    .sigs{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:24px}
+    .sig{border-top:2px solid #0A1628;padding-top:6px;text-align:center;font-size:11px;color:#333;font-weight:600}
+    .devise{text-align:center;font-size:10px;margin-top:10px;font-style:italic;color:#00C48C;font-weight:bold}
+    @media print{
+      body{padding:0}
+      button{display:none}
+      .separateur{border-top:2px dashed #aaa}
+    }
+  </style></head><body>
+  ${bloc("Exemplaire — Comptable")}
+  <hr class="separateur"/>
+  ${bloc("Exemplaire — Payant")}
+  <script>window.onload=()=>window.print();</script>
+  </body></html>`);
   w.document.close();
 };
 
