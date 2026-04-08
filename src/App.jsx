@@ -527,12 +527,21 @@ const imprimerBulletin = (eleve, notes, matieres, periode, niveau, maxNote=20, s
 // ══════════════════════════════════════════════════════════════
 //  PANNEAU ADMIN — Gestion des mots de passe
 // ══════════════════════════════════════════════════════════════
-function AdminPanel({annee, setAnnee}) {
+function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
   const {items:comptes, chargement, ajouter, modifier} = useFirestore("comptes");
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState({});
   const [voir, setVoir] = useState({});
+  const [savingVerrou, setSavingVerrou] = useState(null);
   const chg = k => e => setForm(p=>({...p,[k]:e.target.value}));
+
+  const toggleVerrou = async (cle) => {
+    setSavingVerrou(cle);
+    try {
+      const nvVal = !verrous[cle];
+      await updateDoc(doc(db,"ecoles",schoolId), { [`verrous.${cle}`]: nvVal });
+    } finally { setSavingVerrou(null); }
+  };
 
   // Initialiser les comptes si vide
   useEffect(() => {
@@ -620,6 +629,52 @@ function AdminPanel({annee, setAnnee}) {
           </table>
         </Card>
       )}
+
+      {/* ── CONTRÔLE DES MODIFICATIONS ── */}
+      <Card style={{marginTop:20,padding:"20px 24px"}}>
+        <p style={{margin:"0 0 6px",fontWeight:800,fontSize:14,color:C.blueDark}}>🔒 Contrôle des modifications</p>
+        <p style={{margin:"0 0 18px",fontSize:12,color:"#6b7280"}}>Activez ou désactivez la modification pour chaque rôle. L'administrateur reste toujours en lecture seule.</p>
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          {[
+            {cle:"comptable", label:"Comptable",   desc:"Finances, salaires, mensualités", icon:"💰", color:"#0e7490"},
+            {cle:"primaire",  label:"Primaire",     desc:"Classes, élèves, bulletins, notes", icon:"🌱", color:C.greenDk},
+            {cle:"secondaire",label:"Secondaire",   desc:"Collège, lycée, enseignants, EDT", icon:"🏫", color:C.blue},
+          ].map(({cle,label,desc,icon,color})=>{
+            const actif = !!verrous[cle];
+            const enCours = savingVerrou === cle;
+            return (
+              <div key={cle} style={{display:"flex",alignItems:"center",gap:14,padding:"14px 18px",
+                borderRadius:10,border:`2px solid ${actif?color:"#e5e7eb"}`,
+                background:actif?`${color}0d`:"#f9fafb",transition:"all 0.2s"}}>
+                <span style={{fontSize:22}}>{icon}</span>
+                <div style={{flex:1}}>
+                  <p style={{margin:0,fontSize:13,fontWeight:800,color:C.blueDark}}>{label}</p>
+                  <p style={{margin:0,fontSize:11,color:"#6b7280"}}>{desc}</p>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  <span style={{fontSize:12,fontWeight:700,color:actif?color:"#9ca3af"}}>
+                    {actif?"✅ Modification activée":"🔒 Lecture seule"}
+                  </span>
+                  <button onClick={()=>!enCours&&toggleVerrou(cle)} disabled={enCours}
+                    style={{
+                      position:"relative",width:52,height:28,borderRadius:14,border:"none",cursor:"pointer",
+                      background:actif?color:"#d1d5db",transition:"background 0.2s",padding:0,
+                    }}>
+                    <span style={{
+                      position:"absolute",top:3,left:actif?26:3,width:22,height:22,
+                      borderRadius:"50%",background:"#fff",transition:"left 0.2s",
+                      boxShadow:"0 1px 4px rgba(0,0,0,0.25)",display:"block",
+                    }}/>
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <p style={{margin:"14px 0 0",fontSize:11,color:"#9ca3af"}}>
+          💡 Les modifications sont effectives immédiatement pour tous les utilisateurs connectés.
+        </p>
+      </Card>
 
       {modal==="mdp" && (
         <Modale titre={`Modifier le mot de passe — ${form.nom}`} fermer={()=>setModal(null)}>
@@ -1676,7 +1731,7 @@ function Comptabilite({readOnly, annee, userRole}) {
 // ══════════════════════════════════════════════════════════════
 //  MODULE ÉCOLE — avec Discipline + Bulletins
 // ══════════════════════════════════════════════════════════════
-function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns, userRole, annee, classesPredefinies, maxNote=20, matieresPredefinies=[]}) {
+function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns, userRole, annee, classesPredefinies, maxNote=20, matieresPredefinies=[], readOnly=false}) {
   const {items:classes,chargement:cC,ajouter:ajC,modifier:modC,supprimer:supC}=useFirestore(cleClasses);
   const {items:ens,chargement:cEns,ajouter:ajEns,modifier:modEns,supprimer:supEns}=useFirestore(cleEns);
   const {items:notes,chargement:cN,ajouter:ajN,supprimer:supN}=useFirestore(cleNotes);
@@ -1726,9 +1781,8 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
   };
 
   const {schoolInfo} = useContext(SchoolContext);
-  const canEditEleves = peutModifierEleves(userRole);
-  const canEdit = peutModifier(userRole);
-  const readOnly = false;
+  const canEditEleves = !readOnly && peutModifierEleves(userRole);
+  const canEdit = !readOnly && peutModifier(userRole);
   const moy=notes.length?(notes.reduce((s,n)=>s+Number(n.note),0)/notes.length).toFixed(1):"—";
   const classesUniq=[...new Set(eleves.map(e=>e.classe))].filter(Boolean);
   const elevesFiltres=filtreClasse==="all"?eleves:eleves.filter(e=>e.classe===filtreClasse);
@@ -2530,7 +2584,7 @@ ${toutesClasses.map(cl=>{
 // ══════════════════════════════════════════════════════════════
 //  MODULE SECONDAIRE (Collège + Lycée)
 // ══════════════════════════════════════════════════════════════
-function Secondaire({userRole, annee}) {
+function Secondaire({userRole, annee, readOnly=false}) {
   const [sousModule, setSousModule] = useState("college");
   return (
     <div>
@@ -2551,13 +2605,13 @@ function Secondaire({userRole, annee}) {
         cleClasses="classesCollege" cleEns="ensCollege"
         cleNotes="notesCollege" cleEleves="elevesCollege"
         avecEns={true} userRole={userRole} annee={annee}
-        classesPredefinies={CLASSES_COLLEGE} maxNote={20}/>}
+        classesPredefinies={CLASSES_COLLEGE} maxNote={20} readOnly={readOnly}/>}
       {sousModule==="lycee"&&<Ecole
         titre="Lycée" couleur="#00C48C"
         cleClasses="classesLycee" cleEns="ensLycee"
         cleNotes="notesLycee" cleEleves="elevesLycee"
         avecEns={true} userRole={userRole} annee={annee}
-        classesPredefinies={CLASSES_LYCEE} maxNote={20}/>}
+        classesPredefinies={CLASSES_LYCEE} maxNote={20} readOnly={readOnly}/>}
     </div>
   );
 }
@@ -3519,6 +3573,7 @@ export default function App() {
   const [schoolId,setSchoolId]=useState(()=>localStorage.getItem("LC_schoolId")||"citadelle");
   const [schoolInfo,setSchoolInfo]=useState(SCHOOL_INFO_DEFAUT);
   const [annee,setAnneeState]=useState(()=>localStorage.getItem("LC_annee")||"2025-2026");
+  const [verrous,setVerrous]=useState({comptable:false,primaire:false,secondaire:false});
   const [sidebarOuvert,setSidebarOuvert]=useState(false);
   const [rechercheOuverte,setRechercheOuverte]=useState(false);
   const [modeSombre,setModeSombre]=useState(()=>localStorage.getItem("LC_theme")==="dark");
@@ -3566,6 +3621,7 @@ export default function App() {
           plan: d.plan||"gratuit",
           planExpiry: d.planExpiry||null,
         }));
+        if(d.verrous) setVerrous(d.verrous);
       }
     });
     return ()=>unsub();
@@ -3611,7 +3667,13 @@ export default function App() {
   );
 
   const modulesVisibles=MODULES.filter(m=>ACCES[utilisateur.role].includes(m.id));
-  const readOnly = false;
+  const role = utilisateur.role;
+  const estAdmin = role==="admin" || role==="direction";
+  // Admin/direction : toujours lecture seule — les autres rôles selon les verrous
+  const readOnly = estAdmin;
+  const readOnlyCompta    = estAdmin || (role==="comptable" && !verrous.comptable);
+  const readOnlyPrimaire  = estAdmin || (role==="primaire"  && !verrous.primaire);
+  const readOnlySecondaire= estAdmin || (role==="college"   && !verrous.secondaire);
   const logoSrc = schoolInfo.logo || LOGO;
   const couleur2 = schoolInfo.couleur2 || C.green;
 
@@ -3698,11 +3760,11 @@ export default function App() {
           {page==="superadmin_panel" && <SuperAdminPanel/>}
           {page==="parametres"      && <ParametresEcole/>}
           {page==="ia_assistant"    && <PremiumGate feature="ia_assistant"><ModuleIA/></PremiumGate>}
-          {page==="admin_panel" && <AdminPanel annee={annee} setAnnee={setAnnee}/>}
+          {page==="admin_panel" && <AdminPanel annee={annee} setAnnee={setAnnee} verrous={verrous} schoolId={schoolId}/>}
           {page==="fondation"   && <Fondation readOnly={readOnly} annee={annee} userRole={utilisateur.role}/>}
-          {page==="compta"      && <Comptabilite readOnly={readOnly} annee={annee} userRole={utilisateur.role}/>}
-          {page==="primaire"    && <Ecole titre="Direction du Primaire" couleur={C.green} cleClasses="classesPrimaire" cleEns="ensPrimaire" cleNotes="notesPrimaire" cleEleves="elevesPrimaire" avecEns={false} userRole={utilisateur.role} annee={annee} classesPredefinies={CLASSES_PRIMAIRE} maxNote={10} matieresPredefinies={MATIERES_PRIMAIRE}/>}
-          {page==="secondaire"  && <Secondaire userRole={utilisateur.role} annee={annee}/>}
+          {page==="compta"      && <Comptabilite readOnly={readOnlyCompta} annee={annee} userRole={utilisateur.role}/>}
+          {page==="primaire"    && <Ecole titre="Direction du Primaire" couleur={C.green} cleClasses="classesPrimaire" cleEns="ensPrimaire" cleNotes="notesPrimaire" cleEleves="elevesPrimaire" avecEns={false} userRole={utilisateur.role} annee={annee} classesPredefinies={CLASSES_PRIMAIRE} maxNote={10} matieresPredefinies={MATIERES_PRIMAIRE} readOnly={readOnlyPrimaire}/>}
+          {page==="secondaire"  && <Secondaire userRole={utilisateur.role} annee={annee} readOnly={readOnlySecondaire}/>}
           {page==="calendrier"  && <Calendrier annee={annee}/>}
         </div>
       </main>
