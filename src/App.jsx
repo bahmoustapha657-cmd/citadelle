@@ -375,56 +375,67 @@ const imprimerRecu = (eleve, montantUnit, schoolInfo={}) => {
   if(!moisPayes.length){alert("Aucun mois payé.");return;}
   const w = window.open("","_blank");
 
-  // Bloc reçu réutilisé deux fois (exemplaire comptable + exemplaire payant)
+  // En-tête compacte pour les reçus (logo + infos en ligne)
+  const enteteCompact = () => `
+  <div style="display:flex;align-items:center;gap:8px;border-bottom:2px solid #0A1628;padding-bottom:6px;margin-bottom:6px">
+    ${schoolInfo.logo?`<img src="${schoolInfo.logo}" alt="" style="width:38px;height:38px;object-fit:contain;flex-shrink:0"/>`:''}
+    <div style="flex:1;display:flex;justify-content:space-between;align-items:center">
+      <div style="font-size:8px;color:#444;line-height:1.5">
+        <strong style="font-size:9px;color:#0A1628">${schoolInfo.pays||"Guinée"}</strong><br/>
+        ${schoolInfo.ministere?`${schoolInfo.ministere} / `:""}${schoolInfo.ire||""}${schoolInfo.dpe?` / ${schoolInfo.dpe}`:""}
+      </div>
+      <div style="text-align:right">
+        <strong style="font-size:10px;color:#0A1628;display:block">${schoolInfo.type||""}</strong>
+        <strong style="font-size:12px;color:#0A1628;display:block">${schoolInfo.nom||""}</strong>
+      </div>
+    </div>
+  </div>`;
+
+  // Bloc reçu compact — deux par page A4
   const bloc = (titre) => `
   <div class="recu">
-    ${enteteDoc(schoolInfo, schoolInfo.logo)}
+    ${enteteCompact()}
     <div class="badge">REÇU DE PAIEMENT DE MENSUALITÉS</div>
     <div class="exemplaire">${titre}</div>
     <div class="grid">
       <div class="row"><span class="lbl">Élève : </span>${eleve.nom} ${eleve.prenom}</div>
       <div class="row"><span class="lbl">Matricule : </span>${eleve.matricule||"—"}</div>
       <div class="row"><span class="lbl">Classe : </span>${eleve.classe}</div>
-      <div class="row"><span class="lbl">Date d'émission : </span>${today()}</div>
+      <div class="row"><span class="lbl">Date : </span>${today()}</div>
       <div class="row"><span class="lbl">Payant : </span>${eleve.tuteur||"—"}</div>
       <div class="row"><span class="lbl">Contact : </span>${eleve.contactTuteur||"—"}</div>
     </div>
-    <table><thead><tr><th>Mois</th><th>Montant unitaire</th><th>Statut</th></tr></thead><tbody>
+    <table><thead><tr><th>Mois</th><th>Montant</th><th>Statut</th></tr></thead><tbody>
     ${moisPayes.map(m=>`<tr><td>${m} ${getAnnee()}</td><td>${fmt(montantUnit)}</td><td style="color:#00C48C;font-weight:bold">✓ Payé</td></tr>`).join("")}
     </tbody></table>
     <div class="total">Total versé : ${fmt(moisPayes.length*montantUnit)}</div>
     <div class="sigs">
-      <div class="sig">Le/La Comptable<br/><br/><br/><br/>Signature &amp; cachet</div>
-      <div class="sig">Le/La Payant(e)<br/><br/><br/><br/>Signature</div>
+      <div class="sig">Le/La Comptable<br/><br/><br/>Signature &amp; cachet</div>
+      <div class="sig">Le/La Payant(e)<br/><br/><br/>Signature</div>
     </div>
-    <div class="devise">${schoolInfo.devise||"Travail – Rigueur – Réussite"}</div>
   </div>`;
 
   w.document.write(`<!DOCTYPE html><html><head><title>Reçu</title>
+  <meta charset="utf-8"/>
   <style>
+    @page{size:A4 portrait;margin:6mm}
     *{box-sizing:border-box}
-    body{font-family:Arial,sans-serif;margin:0;padding:10px;font-size:12px;background:#fff}
-    .recu{width:100%;padding:14px 18px;border:1px solid #ccc;border-radius:4px;page-break-inside:avoid}
-    .separateur{border:none;border-top:2px dashed #aaa;margin:12px 0}
-    .badge{text-align:center;background:#0A1628;color:#fff;padding:7px;font-size:13px;font-weight:bold;margin:10px 0;border-radius:4px}
-    .exemplaire{text-align:right;font-size:10px;font-weight:bold;color:#888;text-transform:uppercase;letter-spacing:.06em;margin:-6px 0 8px}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;margin-bottom:12px}
-    .row{font-size:11px}.lbl{font-weight:bold;color:#0A1628}
+    body{font-family:Arial,sans-serif;margin:0;padding:0;background:#fff;
+         height:282mm;display:flex;flex-direction:column;gap:3mm}
+    .recu{flex:1;padding:8px 12px;border:1px solid #bbb;border-radius:3px;overflow:hidden;display:flex;flex-direction:column}
+    .badge{text-align:center;background:#0A1628;color:#fff;padding:4px;font-size:10px;font-weight:bold;margin:5px 0 2px;border-radius:3px}
+    .exemplaire{text-align:right;font-size:8px;font-weight:bold;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;margin-bottom:6px}
+    .row{font-size:8.5px}.lbl{font-weight:bold;color:#0A1628}
     table{width:100%;border-collapse:collapse}
-    th{background:#0A1628;color:#fff;padding:5px 8px;font-size:10px;text-align:left}
-    td{padding:5px 8px;border-bottom:1px solid #eee;font-size:11px}
-    .total{text-align:right;font-size:13px;font-weight:bold;padding:8px 10px;background:#e8f0e8;color:#0A1628;margin-top:6px;border-radius:3px}
-    .sigs{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:24px}
-    .sig{border-top:2px solid #0A1628;padding-top:6px;text-align:center;font-size:11px;color:#333;font-weight:600}
-    .devise{text-align:center;font-size:10px;margin-top:10px;font-style:italic;color:#00C48C;font-weight:bold}
-    @media print{
-      body{padding:0}
-      button{display:none}
-      .separateur{border-top:2px dashed #aaa}
-    }
+    th{background:#0A1628;color:#fff;padding:3px 6px;font-size:8px;text-align:left}
+    td{padding:3px 6px;border-bottom:1px solid #eee;font-size:8.5px}
+    .total{text-align:right;font-size:10px;font-weight:bold;padding:4px 8px;background:#e8f0e8;color:#0A1628;margin-top:4px;border-radius:2px}
+    .sigs{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:auto;padding-top:10px}
+    .sig{border-top:1.5px solid #0A1628;padding-top:4px;text-align:center;font-size:8.5px;color:#333;font-weight:600}
+    @media print{body{height:282mm}button{display:none}}
   </style></head><body>
   ${bloc("Exemplaire — Comptable")}
-  <hr class="separateur"/>
   ${bloc("Exemplaire — Payant")}
   <script>window.onload=()=>window.print();</script>
   </body></html>`);
