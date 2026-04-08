@@ -632,8 +632,8 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
 
       {/* ── CONTRÔLE DES MODIFICATIONS ── */}
       <Card style={{marginTop:20,padding:"20px 24px"}}>
-        <p style={{margin:"0 0 6px",fontWeight:800,fontSize:14,color:C.blueDark}}>🔒 Contrôle des modifications</p>
-        <p style={{margin:"0 0 18px",fontSize:12,color:"#6b7280"}}>Activez ou désactivez la modification pour chaque rôle. L'administrateur reste toujours en lecture seule.</p>
+        <p style={{margin:"0 0 6px",fontWeight:800,fontSize:14,color:C.blueDark}}>🔒 Autorisation de modification</p>
+        <p style={{margin:"0 0 18px",fontSize:12,color:"#6b7280"}}>Chaque rôle peut toujours <strong>créer</strong> des enregistrements. Une fois sauvegardés, ils sont verrouillés. Activez le verrou pour permettre les corrections.</p>
         <div style={{display:"flex",flexDirection:"column",gap:12}}>
           {[
             {cle:"comptable", label:"Comptable",   desc:"Finances, salaires, mensualités", icon:"💰", color:"#0e7490"},
@@ -896,9 +896,13 @@ function TarifsClasses({tarifsClasses, saveTarif, getTarif, canEdit}) {
 // ══════════════════════════════════════════════════════════════
 //  MODULE COMPTABILITÉ
 // ══════════════════════════════════════════════════════════════
-function Comptabilite({readOnly, annee, userRole}) {
-  const canEdit = peutModifier(userRole);
-  const canEditEleves = peutModifierEleves(userRole);
+function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
+  // readOnly=true → admin/direction : zéro action
+  // canEdit → modifier/supprimer des enregistrements existants (verrou admin requis sauf admin lui-même — mais admin est readOnly)
+  // canCreate → ajouter de nouveaux enregistrements (toujours permis si !readOnly)
+  const canCreate = !readOnly;
+  const canEdit = !readOnly && (peutModifier(userRole) || verrouOuvert);
+  const canEditEleves = !readOnly && (peutModifierEleves(userRole) || verrouOuvert);
   const {schoolInfo} = useContext(SchoolContext);
   const {items:recettes,chargement:cR,ajouter:ajR,modifier:modR,supprimer:supR}=useFirestore("recettes");
   const {items:depenses,chargement:cD,ajouter:ajD,modifier:modD,supprimer:supD}=useFirestore("depenses");
@@ -1184,7 +1188,7 @@ function Comptabilite({readOnly, annee, userRole}) {
       {tab==="recettes"&&<div>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
           <strong style={{fontSize:14,color:C.blueDark}}>Recettes ({recettes.length})</strong>
-          {!readOnly&&<Btn onClick={()=>{setForm({periode:"T1"});setModal("add_r");}}>+ Nouvelle recette</Btn>}
+          {canCreate&&<Btn onClick={()=>{setForm({periode:"T1"});setModal("add_r");}}>+ Nouvelle recette</Btn>}
         </div>
         {cR?<Chargement/>:recettes.length===0?<Vide icone="💰" msg="Aucune recette"/>
           :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
@@ -1198,7 +1202,7 @@ function Comptabilite({readOnly, annee, userRole}) {
               </div></TD>}
             </TR>)}</tbody>
           </table></Card>}
-        {(modal==="add_r"||modal==="edit_r")&&!readOnly&&<Modale titre={modal==="add_r"?"Nouvelle recette":"Modifier"} fermer={()=>setModal(null)}>
+        {(modal==="add_r"&&canCreate||(modal==="edit_r"&&canEdit))&&<Modale titre={modal==="add_r"?"Nouvelle recette":"Modifier"} fermer={()=>setModal(null)}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
             <div style={{gridColumn:"1/-1"}}><Input label="Libellé" value={form.libelle||""} onChange={chg("libelle")}/></div>
             <Selec label="Catégorie" value={form.categorie||""} onChange={chg("categorie")}><option>Scolarité</option><option>Inscription</option><option>Examens</option><option>Activités</option><option>Don</option></Selec>
@@ -1216,7 +1220,7 @@ function Comptabilite({readOnly, annee, userRole}) {
       {tab==="depenses"&&<div>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
           <strong style={{fontSize:14,color:C.blueDark}}>Dépenses ({depenses.length})</strong>
-          {!readOnly&&<Btn onClick={()=>{setForm({periode:"T1"});setModal("add_d");}}>+ Nouvelle dépense</Btn>}
+          {canCreate&&<Btn onClick={()=>{setForm({periode:"T1"});setModal("add_d");}}>+ Nouvelle dépense</Btn>}
         </div>
         {cD?<Chargement/>:depenses.length===0?<Vide icone="💸" msg="Aucune dépense"/>
           :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
@@ -1230,7 +1234,7 @@ function Comptabilite({readOnly, annee, userRole}) {
               </div></TD>}
             </TR>)}</tbody>
           </table></Card>}
-        {(modal==="add_d"||modal==="edit_d2")&&!readOnly&&<Modale titre={modal==="add_d"?"Nouvelle dépense":"Modifier"} fermer={()=>setModal(null)}>
+        {(modal==="add_d"&&canCreate||(modal==="edit_d2"&&canEdit))&&<Modale titre={modal==="add_d"?"Nouvelle dépense":"Modifier"} fermer={()=>setModal(null)}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
             <div style={{gridColumn:"1/-1"}}><Input label="Libellé" value={form.libelle||""} onChange={chg("libelle")}/></div>
             <Selec label="Catégorie" value={form.categorie||""} onChange={chg("categorie")}><option>Salaires</option><option>Matériel</option><option>Infrastructure</option><option>Charges</option><option>Divers</option></Selec>
@@ -1253,8 +1257,8 @@ function Comptabilite({readOnly, annee, userRole}) {
             style={{border:"1px solid #b0c4d8",borderRadius:7,padding:"6px 12px",fontSize:13,background:"#fff",color:C.blueDark,fontWeight:700}}>
             {MOIS_SALAIRE.map(m=><option key={m}>{m}</option>)}
           </select>
-          {!readOnly&&<Btn v="amber" onClick={autoGenererSalaires}>⚡ Auto-générer depuis EDT</Btn>}
-          {!readOnly&&<Btn onClick={()=>{setForm({section:"Secondaire",mois:moisSalaire,nonExecute:0,cinqSem:0,bon:0,revision:0});setModal("add_s");}}>+ Ajouter</Btn>}
+          {canCreate&&<Btn v="amber" onClick={autoGenererSalaires}>⚡ Auto-générer depuis EDT</Btn>}
+          {canCreate&&<Btn onClick={()=>{setForm({section:"Secondaire",mois:moisSalaire,nonExecute:0,cinqSem:0,bon:0,revision:0});setModal("add_s");}}>+ Ajouter</Btn>}
           <Btn v="vert" onClick={imprimerSalaires}>🖨️ Imprimer</Btn>
         </div>
 
@@ -1347,7 +1351,7 @@ function Comptabilite({readOnly, annee, userRole}) {
                   <th rowSpan={2} style={{padding:"7px 10px",fontSize:10,fontWeight:700,color:C.blueDark,border:"1px solid #b0c4d8",textAlign:"center",background:"#fef3e0"}}>Révision</th>
                   <th rowSpan={2} style={{padding:"7px 10px",fontSize:10,fontWeight:700,color:C.blueDark,border:"1px solid #b0c4d8",textAlign:"center",background:"#eaf4e0"}}>Net à<br/>Payer</th>
                   <th rowSpan={2} style={{padding:"7px 10px",fontSize:10,fontWeight:700,color:C.blueDark,border:"1px solid #b0c4d8"}}>Obs.</th>
-                  {!readOnly&&<th rowSpan={2} style={{padding:"7px 10px",fontSize:10,fontWeight:700,color:C.blueDark,border:"1px solid #b0c4d8"}}>Act.</th>}
+                  {canEdit&&<th rowSpan={2} style={{padding:"7px 10px",fontSize:10,fontWeight:700,color:C.blueDark,border:"1px solid #b0c4d8"}}>Act.</th>}
                 </tr>
                 <tr style={{background:"#e0ebf8"}}>
                   {["Prévu","5è Sem","Non Exé.","Exécuté"].map(h=><th key={h} style={{padding:"5px 8px",fontSize:10,fontWeight:700,color:C.blueDark,border:"1px solid #b0c4d8",textAlign:"center"}}>{h}</th>)}
@@ -1355,7 +1359,7 @@ function Comptabilite({readOnly, annee, userRole}) {
               </thead>
               <tbody>
                 {salairesSec.length===0?
-                  <tr><td colSpan={readOnly?14:15} style={{padding:"20px",textAlign:"center",color:"#9ca3af",fontStyle:"italic"}}>Aucun enseignant secondaire pour ce mois</td></tr>
+                  <tr><td colSpan={canEdit?15:14} style={{padding:"20px",textAlign:"center",color:"#9ca3af",fontStyle:"italic"}}>Aucun enseignant secondaire pour ce mois</td></tr>
                   :salairesSec.map((s,i)=>(
                     <tr key={s._id} style={{borderBottom:"1px solid #e8f0e8",background:i%2===0?"#fff":"#f9fbf9"}}>
                       <td style={{padding:"7px 10px",textAlign:"center",fontSize:12,border:"1px solid #e8f0e8"}}>{i+1}</td>
@@ -1371,7 +1375,7 @@ function Comptabilite({readOnly, annee, userRole}) {
                       <td style={{padding:"7px 10px",textAlign:"right",fontSize:12,border:"1px solid #e8f0e8"}}>{fmtN(calcMontant(s))}</td>
                       <td style={{padding:"7px 10px",textAlign:"right",fontSize:12,color:"#b91c1c",border:"1px solid #e8f0e8"}}>{fmtN(s.bon||0)}</td>
                       <td style={{padding:"4px 6px",textAlign:"center",border:"1px solid #e8f0e8",background:"#fffbeb"}}>
-                        {!readOnly
+                        {canEdit
                           ?<input type="number" value={s.revision||0} onChange={e=>modS({...s,revision:Number(e.target.value)})}
                             style={{width:80,border:"1px solid #fbbf24",borderRadius:5,padding:"3px 5px",fontSize:11,textAlign:"right"}}/>
                           :<span style={{fontSize:12}}>{fmtN(s.revision||0)}</span>}
@@ -1442,7 +1446,7 @@ function Comptabilite({readOnly, annee, userRole}) {
         </>}
 
         {/* MODAL AJOUT/MODIF SALAIRE */}
-        {(modal==="add_s"||modal==="edit_s")&&!readOnly&&<Modale large titre={modal==="add_s"?"Nouveau salaire":"Modifier le salaire"} fermer={()=>setModal(null)}>
+        {(modal==="add_s"&&canCreate||(modal==="edit_s"&&canEdit))&&<Modale large titre={modal==="add_s"?"Nouveau salaire":"Modifier le salaire"} fermer={()=>setModal(null)}>
           <div style={{marginBottom:14}}>
             <Selec label="Section" value={form.section||"Secondaire"} onChange={chg("section")}>
               <option>Secondaire</option><option>Primaire</option>
@@ -1489,7 +1493,7 @@ function Comptabilite({readOnly, annee, userRole}) {
       {tab==="fondation"&&<div>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
           <strong style={{fontSize:14,color:C.blueDark}}>Versements à la Fondation ({versements.length})</strong>
-          {!readOnly&&<Btn onClick={()=>{setForm({});setModal("add_v");}}>+ Nouveau versement</Btn>}
+          {canCreate&&<Btn onClick={()=>{setForm({});setModal("add_v");}}>+ Nouveau versement</Btn>}
         </div>
         {cV?<Chargement/>:versements.length===0?<Vide icone="🏛️" msg="Aucun versement"/>
           :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
@@ -1503,7 +1507,7 @@ function Comptabilite({readOnly, annee, userRole}) {
               </div></TD>}
             </TR>)}</tbody>
           </table></Card>}
-        {(modal==="add_v"||modal==="edit_v")&&!readOnly&&<Modale titre={modal==="add_v"?"Nouveau versement":"Modifier"} fermer={()=>setModal(null)}>
+        {(modal==="add_v"&&canCreate||(modal==="edit_v"&&canEdit))&&<Modale titre={modal==="add_v"?"Nouveau versement":"Modifier"} fermer={()=>setModal(null)}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
             <div style={{gridColumn:"1/-1"}}><Input label="Libellé" value={form.libelle||""} onChange={chg("libelle")}/></div>
             <div style={{gridColumn:"1/-1"}}><Input label="Description" value={form.description||""} onChange={chg("description")}/></div>
@@ -1526,7 +1530,7 @@ function Comptabilite({readOnly, annee, userRole}) {
             <option value="college">Collège ({elevesC.length} élèves)</option>
             <option value="primaire">Primaire ({elevesP.length} élèves)</option>
           </select>
-          {!readOnly&&<Btn onClick={()=>{
+          {canCreate&&<Btn onClick={()=>{
             const mat=genererMatricule(elevesEnrol, niveauEnrol);
             setForm({statut:"Actif",sexe:"M",niveau:niveauEnrol,matricule:mat});
             setModal("add_enrol");
@@ -1555,7 +1559,7 @@ function Comptabilite({readOnly, annee, userRole}) {
             </table>
           </div>}
 
-        {(modal==="add_enrol"||modal==="edit_enrol")&&!readOnly&&<Modale large titre={modal==="add_enrol"?"Nouvel élève":"Modifier l'élève"} fermer={()=>setModal(null)}>
+        {(modal==="add_enrol"&&canCreate||(modal==="edit_enrol"&&canEdit))&&<Modale large titre={modal==="add_enrol"?"Nouvel élève":"Modifier l'élève"} fermer={()=>setModal(null)}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
             <Input label="Nom" value={form.nom||""} onChange={chg("nom")}/>
             <Input label="Prénom" value={form.prenom||""} onChange={chg("prenom")}/>
@@ -1692,7 +1696,7 @@ function Comptabilite({readOnly, annee, userRole}) {
                     {MOIS_ANNEE.map(m=>{
                       const paye=mens[m]==="Payé";
                       return <td key={m} style={{padding:"4px 2px",textAlign:"center"}}>
-                        <button onClick={()=>!readOnly&&toggleMens(e._id,m,mens)}
+                        <button onClick={()=>canCreate&&toggleMens(e._id,m,mens)}
                           title={`${m} — ${mens[m]||"Impayé"}`}
                           style={{width:26,height:26,borderRadius:5,border:"none",cursor:readOnly?"default":"pointer",fontSize:12,
                             background:paye?C.green:"#e8f0e8",color:paye?"#fff":"#9ca3af",fontWeight:700,opacity:readOnly?0.8:1}}>
@@ -1781,8 +1785,9 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
   };
 
   const {schoolInfo} = useContext(SchoolContext);
-  const canEditEleves = !readOnly && peutModifierEleves(userRole);
-  const canEdit = !readOnly && peutModifier(userRole);
+  const canCreate = !readOnly;
+  const canEditEleves = !readOnly && (peutModifierEleves(userRole) || verrouOuvert);
+  const canEdit = !readOnly && (peutModifier(userRole) || verrouOuvert);
   const moy=notes.length?(notes.reduce((s,n)=>s+Number(n.note),0)/notes.length).toFixed(1):"—";
   const classesUniq=[...new Set(eleves.map(e=>e.classe))].filter(Boolean);
   const elevesFiltres=filtreClasse==="all"?eleves:eleves.filter(e=>e.classe===filtreClasse);
@@ -1952,22 +1957,22 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
       {tab==="classes"&&<div>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
           <strong style={{fontSize:14,color:C.blueDark}}>Classes ({classes.length})</strong>
-          {!readOnly&&<Btn onClick={()=>{setForm({});setModal("add_c");}}>+ Nouvelle classe</Btn>}
+          {canCreate&&<Btn onClick={()=>{setForm({});setModal("add_c");}}>+ Nouvelle classe</Btn>}
         </div>
         {cC?<Chargement/>:classes.length===0?<Vide icone="🏫" msg="Aucune classe"/>
           :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
-            <THead cols={["Classe","Effectif","Enseignant Principal","Salle","Imprimer liste",readOnly?"":"Actions"]}/>
+            <THead cols={["Classe","Effectif","Enseignant Principal","Salle","Imprimer liste",canEdit?"Actions":""]}/>
             <tbody>{classes.map(c=><TR key={c._id}>
               <TD bold>{c.nom}</TD><TD><Badge color="blue">{c.effectif} élèves</Badge></TD>
               <TD>{c.enseignant}</TD><TD>{c.salle}</TD>
               <TD><Btn sm v="ghost" onClick={()=>imprimerListeClasse(c.nom,eleves,schoolInfo)}>🖨️ Imprimer</Btn></TD>
-              {!readOnly&&<TD><div style={{display:"flex",gap:6}}>
+              {canEdit&&<TD><div style={{display:"flex",gap:6}}>
                 <Btn sm v="ghost" onClick={()=>{setForm({...c});setModal("edit_c");}}>Modifier</Btn>
                 <Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ?"))supC(c._id);}}>Suppr.</Btn>
               </div></TD>}
             </TR>)}</tbody>
           </table></Card>}
-        {(modal==="add_c"||modal==="edit_c")&&!readOnly&&<Modale titre={modal==="add_c"?"Nouvelle classe":"Modifier"} fermer={()=>setModal(null)}>
+        {(modal==="add_c"&&canCreate||(modal==="edit_c"&&canEdit))&&<Modale titre={modal==="add_c"?"Nouvelle classe":"Modifier"} fermer={()=>setModal(null)}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
             <div style={{gridColumn:"1/-1"}}>
             <Champ label="Nom de la classe">
@@ -2049,7 +2054,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
       {tab==="ens"&&avecEns&&<div>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
           <strong style={{fontSize:14,color:C.blueDark}}>Corps enseignant ({ens.length})</strong>
-          {!readOnly&&<Btn onClick={()=>{setForm({statut:"Titulaire"});setModal("add_ens");}}>+ Ajouter</Btn>}
+          {canCreate&&<Btn onClick={()=>{setForm({statut:"Titulaire"});setModal("add_ens");}}>+ Ajouter</Btn>}
         </div>
         {cEns?<Chargement/>:ens.length===0?<Vide icone="👨‍🏫" msg="Aucun enseignant"/>
           :<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:10}}>
@@ -2066,13 +2071,13 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
               {(e.fichiers||[]).length>0&&<div style={{marginTop:6,display:"flex",gap:4,flexWrap:"wrap"}}>
                 {e.fichiers.map((f,i)=><a key={i} href={f.url} target="_blank" rel="noopener noreferrer" style={{fontSize:10,color:C.blue,background:"#e0ebf8",padding:"2px 5px",borderRadius:3}}>📎 {f.nom}</a>)}
               </div>}
-              {!readOnly&&<div style={{display:"flex",gap:6,marginTop:10}}>
+              {canEdit&&<div style={{display:"flex",gap:6,marginTop:10}}>
                 <Btn sm v="ghost" onClick={()=>{setForm({...e});setModal("edit_ens");}}>Modifier</Btn>
                 <Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ?"))supEns(e._id);}}>Suppr.</Btn>
               </div>}
             </div></Card>)}
           </div>}
-        {(modal==="add_ens"||modal==="edit_ens")&&!readOnly&&<Modale titre={modal==="add_ens"?"Nouvel enseignant":"Modifier"} fermer={()=>setModal(null)}>
+        {(modal==="add_ens"&&canCreate||(modal==="edit_ens"&&canEdit))&&<Modale titre={modal==="add_ens"?"Nouvel enseignant":"Modifier"} fermer={()=>setModal(null)}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
             <Input label="Nom" value={form.nom||""} onChange={chg("nom")}/>
             <Input label="Prénom" value={form.prenom||""} onChange={chg("prenom")}/>
@@ -2102,7 +2107,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
             ["Élève","Matière","Type","Période",`Note /${maxNote}`],
             notes.map(n=>[n.eleveNom,n.matiere,n.type,n.periode,n.note])
           )}>📥 Export Excel</Btn>
-          {!readOnly&&<Btn onClick={()=>{setForm({periode:"T1",type:"Devoir"});setModal("add_n");}}>+ Saisir</Btn>}
+          {canCreate&&<Btn onClick={()=>{setForm({periode:"T1",type:"Devoir"});setModal("add_n");}}>+ Saisir</Btn>}
         </div>
         {cN?<Chargement/>:notes.length===0?<Vide icone="📝" msg="Aucune note"/>
           :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
@@ -2111,10 +2116,10 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
               <TD bold>{n.eleveNom}</TD><TD>{n.matiere}</TD>
               <TD><Badge color="gray">{n.type}</Badge></TD><TD>{n.periode}</TD>
               <TD><Badge color={n.note>=(maxNote*0.7)?"vert":n.note>=(maxNote*0.5)?"blue":"red"}>{n.note}/{maxNote}</Badge></TD>
-              {!readOnly&&<TD><Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ?"))supN(n._id);}}>Suppr.</Btn></TD>}
+              {canEdit&&<TD><Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ?"))supN(n._id);}}>Suppr.</Btn></TD>}
             </TR>)}</tbody>
           </table></Card>}
-        {modal==="add_n"&&!readOnly&&<Modale titre="Saisir une note" fermer={()=>setModal(null)}>
+        {modal==="add_n"&&canCreate&&<Modale titre="Saisir une note" fermer={()=>setModal(null)}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
             <div style={{gridColumn:"1/-1"}}>
               <Selec label="Élève" value={form.eleveNom||""} onChange={e=>{
@@ -2148,7 +2153,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
       {tab==="enseignements"&&<div>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
           <strong style={{fontSize:14,color:C.blueDark}}>Gestion des Enseignements ({enseignements.length})</strong>
-          {!readOnly&&<Btn onClick={()=>{setForm({type:"Cours",statut:"Effectué"});setModal("add_eng");}}>+ Enregistrer</Btn>}
+          {canCreate&&<Btn onClick={()=>{setForm({type:"Cours",statut:"Effectué"});setModal("add_eng");}}>+ Enregistrer</Btn>}
         </div>
 
         {/* Stats rapides */}
@@ -2166,7 +2171,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
 
         {cEng?<Chargement/>:enseignements.length===0?<Vide icone="📚" msg="Aucun enseignement enregistré"/>
           :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
-            <THead cols={["Enseignant","Matière","Classe","Date","Heure","Type","Statut","Observation",readOnly?"":"Actions"]}/>
+            <THead cols={["Enseignant","Matière","Classe","Date","Heure","Type","Statut","Observation",canEdit?"Actions":""]}/>
             <tbody>{enseignements.sort((a,b)=>b.date>a.date?1:-1).map(e=><TR key={e._id}>
               <TD bold>{e.enseignantNom}</TD>
               <TD>{e.matiere}</TD>
@@ -2180,14 +2185,14 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
                 e.statut==="Retard"?"amber":"purple"
               }>{e.statut}</Badge></TD>
               <TD><span style={{fontSize:11,color:"#6b7280"}}>{e.observation||"—"}</span></TD>
-              {!readOnly&&<TD><div style={{display:"flex",gap:6}}>
+              {canEdit&&<TD><div style={{display:"flex",gap:6}}>
                 <Btn sm v="ghost" onClick={()=>{setForm({...e});setModal("edit_eng");}}>Modifier</Btn>
                 <Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ?"))supEng(e._id);}}>Suppr.</Btn>
               </div></TD>}
             </TR>)}</tbody>
           </table></Card>}
 
-        {(modal==="add_eng"||modal==="edit_eng")&&!readOnly&&<Modale titre={modal==="add_eng"?"Enregistrer un enseignement":"Modifier"} fermer={()=>setModal(null)}>
+        {(modal==="add_eng"&&canCreate||(modal==="edit_eng"&&canEdit))&&<Modale titre={modal==="add_eng"?"Enregistrer un enseignement":"Modifier"} fermer={()=>setModal(null)}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
             <div style={{gridColumn:"1/-1"}}>
               <Selec label="Enseignant" value={form.enseignantNom||""} onChange={chg("enseignantNom")}>
@@ -2239,7 +2244,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
             ["Élève","Classe","Type","Date","Motif","Justifié"],
             absences.map(a=>[a.eleveNom,a.classe,a.type,a.date,a.motif||"",a.justifie])
           )}>📥 Export Excel</Btn>
-          {!readOnly&&<Btn onClick={()=>{setForm({type:"Absence",justifie:"Non"});setModal("add_abs");}}>+ Enregistrer</Btn>}
+          {canCreate&&<Btn onClick={()=>{setForm({type:"Absence",justifie:"Non"});setModal("add_abs");}}>+ Enregistrer</Btn>}
         </div>
         {(()=>{
           const elevesAlerte=eleves.map(e=>({
@@ -2271,16 +2276,16 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
         })()}
         {cAbs?<Chargement/>:absences.length===0?<Vide icone="📋" msg="Aucun événement de discipline enregistré"/>
           :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
-            <THead cols={["Élève","Classe","Type","Date","Motif","Justifié",readOnly?"":"Action"]}/>
+            <THead cols={["Élève","Classe","Type","Date","Motif","Justifié",canEdit?"Action":""]}/>
             <tbody>{absences.map(a=><TR key={a._id}>
               <TD bold>{a.eleveNom}</TD><TD>{a.classe}</TD>
               <TD><Badge color={a.type==="Absence"?"red":a.type==="Retard"?"amber":"orange"}>{a.type}</Badge></TD>
               <TD>{a.date}</TD><TD>{a.motif||"—"}</TD>
               <TD><Badge color={a.justifie==="Oui"?"vert":"red"}>{a.justifie}</Badge></TD>
-              {!readOnly&&<TD><Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ?"))supAbs(a._id);}}>Suppr.</Btn></TD>}
+              {canEdit&&<TD><Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ?"))supAbs(a._id);}}>Suppr.</Btn></TD>}
             </TR>)}</tbody>
           </table></Card>}
-        {modal==="add_abs"&&!readOnly&&<Modale titre="Enregistrer un événement disciplinaire" fermer={()=>setModal(null)}>
+        {modal==="add_abs"&&canCreate&&<Modale titre="Enregistrer un événement disciplinaire" fermer={()=>setModal(null)}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
             <div style={{gridColumn:"1/-1"}}>
               <Selec label="Élève" value={form.eleveNom||""} onChange={e=>{
@@ -2355,23 +2360,23 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
       {tab==="matieres"&&<div>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
           <strong style={{fontSize:14,color:C.blueDark}}>Matières et coefficients ({matieres.length})</strong>
-          {!readOnly&&<Btn onClick={()=>{setForm({coefficient:1});setModal("add_mat");}}>+ Ajouter</Btn>}
+          {canCreate&&<Btn onClick={()=>{setForm({coefficient:1});setModal("add_mat");}}>+ Ajouter</Btn>}
         </div>
-        {!readOnly&&matieres.length===0&&matieresPredefinies.length>0&&<div style={{background:"#eaf4e0",border:"1px solid #86efac",borderRadius:8,padding:"12px 16px",marginBottom:12,display:"flex",alignItems:"center",gap:12}}>
+        {canCreate&&matieres.length===0&&matieresPredefinies.length>0&&<div style={{background:"#eaf4e0",border:"1px solid #86efac",borderRadius:8,padding:"12px 16px",marginBottom:12,display:"flex",alignItems:"center",gap:12}}>
           <span style={{fontSize:16}}>💡</span>
           <span style={{fontSize:13,color:"#166534",flex:1}}>Des matières prédéfinies sont disponibles pour ce niveau.</span>
           <Btn v="success" onClick={()=>matieresPredefinies.forEach(m=>ajMat(m))}>✅ Initialiser les matières</Btn>
         </div>}
         {cMat?<Chargement/>:matieres.length===0?<Vide icone="📚" msg="Ajoutez les matières pour calculer les bulletins"/>
           :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
-            <THead cols={["Matière","Coefficient",readOnly?"":"Action"]}/>
+            <THead cols={["Matière","Coefficient",canEdit?"Action":""]}/>
             <tbody>{matieres.map(m=><TR key={m._id}>
               <TD bold>{m.nom}</TD>
               <TD><Badge color="blue">Coef. {m.coefficient}</Badge></TD>
-              {!readOnly&&<TD><Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ?"))supMat(m._id);}}>Suppr.</Btn></TD>}
+              {canEdit&&<TD><Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ?"))supMat(m._id);}}>Suppr.</Btn></TD>}
             </TR>)}</tbody>
           </table></Card>}
-        {modal==="add_mat"&&!readOnly&&<Modale titre="Nouvelle matière" fermer={()=>setModal(null)}>
+        {modal==="add_mat"&&canCreate&&<Modale titre="Nouvelle matière" fermer={()=>setModal(null)}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
             <Input label="Nom de la matière" value={form.nom||""} onChange={chg("nom")}/>
             <Input label="Coefficient" type="number" min="1" value={form.coefficient||1} onChange={chg("coefficient")}/>
@@ -2387,7 +2392,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
       {tab==="emploidutemps"&&avecEns&&<div>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
           <strong style={{fontSize:14,color:C.blueDark}}>Emplois du temps ({emplois.length})</strong>
-          {!readOnly&&<Btn onClick={()=>{setForm({jour:"Lundi"});setModal("add_emp");}}>+ Ajouter un créneau</Btn>}
+          {canCreate&&<Btn onClick={()=>{setForm({jour:"Lundi"});setModal("add_emp");}}>+ Ajouter un créneau</Btn>}
         </div>
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12,flexWrap:"wrap"}}>
           <select value={filtreClasse} onChange={e=>setFiltreClasse(e.target.value)}
@@ -2496,7 +2501,7 @@ ${toutesClasses.map(cl=>{
                 <TD>{e.matiere||"—"}</TD>
                 <TD style={conflit==="enseignant"?{color:"#b91c1c",fontWeight:700}:{}}>{e.enseignant||<span style={{color:"#9ca3af",fontStyle:"italic"}}>Non assigné</span>}</TD>
                 <TD>{e.salle||"—"}</TD>
-                {!readOnly&&<TD><div style={{display:"flex",gap:6,alignItems:"center"}}>
+                {canEdit&&<TD><div style={{display:"flex",gap:6,alignItems:"center"}}>
                   {conflit&&<span title={conflit==="classe"?"Conflit : même classe même horaire":"Conflit : enseignant déjà occupé"} style={{color:"#ef4444",fontSize:14,cursor:"help"}}>⚠️</span>}
                   <Btn sm v="ghost" onClick={()=>{setForm({...e});setModal("edit_emp");}}>Modifier</Btn>
                   <Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ce créneau ?"))supEmp(e._id);}}>Suppr.</Btn>
@@ -2504,7 +2509,7 @@ ${toutesClasses.map(cl=>{
               </TR>;});})()}
             </tbody>
           </table></Card>}
-        {(modal==="add_emp"||modal==="edit_emp")&&!readOnly&&<Modale titre={modal==="add_emp"?"Nouveau créneau":"Modifier le créneau"} fermer={()=>setModal(null)}>
+        {(modal==="add_emp"&&canCreate||(modal==="edit_emp"&&canEdit))&&<Modale titre={modal==="add_emp"?"Nouveau créneau":"Modifier le créneau"} fermer={()=>setModal(null)}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
             <Selec label="Classe *" value={form.classe||""} onChange={chg("classe")}>
               <option value="">— Sélectionner —</option>
@@ -2584,7 +2589,7 @@ ${toutesClasses.map(cl=>{
 // ══════════════════════════════════════════════════════════════
 //  MODULE SECONDAIRE (Collège + Lycée)
 // ══════════════════════════════════════════════════════════════
-function Secondaire({userRole, annee, readOnly=false}) {
+function Secondaire({userRole, annee, readOnly=false, verrouOuvert=false}) {
   const [sousModule, setSousModule] = useState("college");
   return (
     <div>
@@ -2605,13 +2610,13 @@ function Secondaire({userRole, annee, readOnly=false}) {
         cleClasses="classesCollege" cleEns="ensCollege"
         cleNotes="notesCollege" cleEleves="elevesCollege"
         avecEns={true} userRole={userRole} annee={annee}
-        classesPredefinies={CLASSES_COLLEGE} maxNote={20} readOnly={readOnly}/>}
+        classesPredefinies={CLASSES_COLLEGE} maxNote={20} readOnly={readOnly} verrouOuvert={verrouOuvert}/>}
       {sousModule==="lycee"&&<Ecole
         titre="Lycée" couleur="#00C48C"
         cleClasses="classesLycee" cleEns="ensLycee"
         cleNotes="notesLycee" cleEleves="elevesLycee"
         avecEns={true} userRole={userRole} annee={annee}
-        classesPredefinies={CLASSES_LYCEE} maxNote={20} readOnly={readOnly}/>}
+        classesPredefinies={CLASSES_LYCEE} maxNote={20} readOnly={readOnly} verrouOuvert={verrouOuvert}/>}
     </div>
   );
 }
@@ -3669,11 +3674,9 @@ export default function App() {
   const modulesVisibles=MODULES.filter(m=>ACCES[utilisateur.role].includes(m.id));
   const role = utilisateur.role;
   const estAdmin = role==="admin" || role==="direction";
-  // Admin/direction : toujours lecture seule — les autres rôles selon les verrous
+  // Admin/direction : lecture seule totale (ni créer ni modifier)
+  // Les autres rôles : peuvent toujours créer ; modifier/supprimer selon le verrou de l'admin
   const readOnly = estAdmin;
-  const readOnlyCompta    = estAdmin || (role==="comptable" && !verrous.comptable);
-  const readOnlyPrimaire  = estAdmin || (role==="primaire"  && !verrous.primaire);
-  const readOnlySecondaire= estAdmin || (role==="college"   && !verrous.secondaire);
   const logoSrc = schoolInfo.logo || LOGO;
   const couleur2 = schoolInfo.couleur2 || C.green;
 
@@ -3762,9 +3765,9 @@ export default function App() {
           {page==="ia_assistant"    && <PremiumGate feature="ia_assistant"><ModuleIA/></PremiumGate>}
           {page==="admin_panel" && <AdminPanel annee={annee} setAnnee={setAnnee} verrous={verrous} schoolId={schoolId}/>}
           {page==="fondation"   && <Fondation readOnly={readOnly} annee={annee} userRole={utilisateur.role}/>}
-          {page==="compta"      && <Comptabilite readOnly={readOnlyCompta} annee={annee} userRole={utilisateur.role}/>}
-          {page==="primaire"    && <Ecole titre="Direction du Primaire" couleur={C.green} cleClasses="classesPrimaire" cleEns="ensPrimaire" cleNotes="notesPrimaire" cleEleves="elevesPrimaire" avecEns={false} userRole={utilisateur.role} annee={annee} classesPredefinies={CLASSES_PRIMAIRE} maxNote={10} matieresPredefinies={MATIERES_PRIMAIRE} readOnly={readOnlyPrimaire}/>}
-          {page==="secondaire"  && <Secondaire userRole={utilisateur.role} annee={annee} readOnly={readOnlySecondaire}/>}
+          {page==="compta"      && <Comptabilite readOnly={readOnly} annee={annee} userRole={utilisateur.role} verrouOuvert={!!verrous.comptable}/>}
+          {page==="primaire"    && <Ecole titre="Direction du Primaire" couleur={C.green} cleClasses="classesPrimaire" cleEns="ensPrimaire" cleNotes="notesPrimaire" cleEleves="elevesPrimaire" avecEns={false} userRole={utilisateur.role} annee={annee} classesPredefinies={CLASSES_PRIMAIRE} maxNote={10} matieresPredefinies={MATIERES_PRIMAIRE} readOnly={readOnly} verrouOuvert={!!verrous.primaire}/>}
+          {page==="secondaire"  && <Secondaire userRole={utilisateur.role} annee={annee} readOnly={readOnly} verrouOuvert={!!verrous.secondaire}/>}
           {page==="calendrier"  && <Calendrier annee={annee}/>}
         </div>
       </main>
