@@ -34,8 +34,15 @@ const C = {
 // ══════════════════════════════════════════════════════════════
 //  CONSTANTES
 // ══════════════════════════════════════════════════════════════
-const MOIS_ANNEE = ["Sep","Oct","Nov","Déc","Jan","Fév","Mar","Avr","Mai","Jun"];
-const MOIS_SALAIRE = ["Octobre","Novembre","Décembre","Janvier","Février","Mars","Avril","Mai","Juin"];
+// Référentiels des mois (12 mois pour navigation circulaire)
+const TOUS_MOIS_COURTS  = ["Sep","Oct","Nov","Déc","Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû"];
+const TOUS_MOIS_LONGS   = ["Septembre","Octobre","Novembre","Décembre","Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août"];
+// Valeurs par défaut (9 mois à partir d'Octobre — remplacées dynamiquement via SchoolContext)
+const MOIS_ANNEE   = TOUS_MOIS_COURTS.slice(1,10); // Oct→Jun
+const MOIS_SALAIRE = TOUS_MOIS_LONGS.slice(1,10);
+// Calcule les 9 mois scolaires à partir d'un mois de début
+const calcMoisAnnee   = (debut="Octobre") => { const i=TOUS_MOIS_LONGS.indexOf(debut); return Array.from({length:9},(_,k)=>TOUS_MOIS_COURTS[(i+k)%12]); };
+const calcMoisSalaire = (debut="Octobre") => { const i=TOUS_MOIS_LONGS.indexOf(debut); return Array.from({length:9},(_,k)=>TOUS_MOIS_LONGS[(i+k)%12]); };
 // Année scolaire — lue depuis localStorage
 const getAnnee = () => localStorage.getItem("LC_annee") || "2025-2026";
 
@@ -140,6 +147,7 @@ const SCHOOL_INFO_DEFAUT = {
   ire: "IRE de Kindia",
   dpe: "DPE de Kindia",
   agrement: "",
+  moisDebut: "Octobre",
   plan: "gratuit",
   planExpiry: null,
 };
@@ -148,6 +156,8 @@ export const SchoolContext = createContext({
   setSchoolId: () => {},
   schoolInfo: SCHOOL_INFO_DEFAUT,
   setSchoolInfo: () => {},
+  moisAnnee: MOIS_ANNEE,
+  moisSalaire: MOIS_SALAIRE,
 });
 
 // ══════════════════════════════════════════════════════════════
@@ -369,11 +379,14 @@ const enteteDoc = (si, logoUrl) => `
   </div>
 </div>`;
 
-const imprimerRecu = (eleve, montantUnit, schoolInfo={}) => {
+const imprimerRecu = (eleve, montantUnit, schoolInfo={}, moisAnnee=MOIS_ANNEE) => {
   const mens = eleve.mens||{};
-  const moisPayes = MOIS_ANNEE.filter(m=>mens[m]==="Payé");
-  if(!moisPayes.length){alert("Aucun mois payé.");return;}
+  const moisPayes = moisAnnee.filter(m=>mens[m]==="Payé");
   const w = window.open("","_blank");
+
+  const watermark = schoolInfo.logo
+    ? `<img src="${schoolInfo.logo}" alt="" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:130px;height:130px;object-fit:contain;opacity:0.07;pointer-events:none;z-index:0"/>`
+    : "";
 
   // En-tête compacte pour les reçus (logo + infos en ligne)
   const enteteCompact = () => `
@@ -394,6 +407,8 @@ const imprimerRecu = (eleve, montantUnit, schoolInfo={}) => {
   // Bloc reçu compact — deux par page A4
   const bloc = (titre) => `
   <div class="recu">
+    ${watermark}
+    <div style="position:relative;z-index:1;display:flex;flex-direction:column;height:100%">
     ${enteteCompact()}
     <div class="badge">REÇU DE PAIEMENT DE MENSUALITÉS</div>
     <div class="exemplaire">${titre}</div>
@@ -402,16 +417,20 @@ const imprimerRecu = (eleve, montantUnit, schoolInfo={}) => {
       <div class="row"><span class="lbl">Matricule : </span>${eleve.matricule||"—"}</div>
       <div class="row"><span class="lbl">Classe : </span>${eleve.classe}</div>
       <div class="row"><span class="lbl">Date : </span>${today()}</div>
-      <div class="row"><span class="lbl">Payant : </span>${eleve.tuteur||"—"}</div>
+      <div class="row"><span class="lbl">Tuteur : </span>${eleve.tuteur||"—"}</div>
       <div class="row"><span class="lbl">Contact : </span>${eleve.contactTuteur||"—"}</div>
     </div>
-    <table><thead><tr><th>Mois</th><th>Montant</th><th>Statut</th></tr></thead><tbody>
-    ${moisPayes.map(m=>`<tr><td>${m} ${getAnnee()}</td><td>${fmt(montantUnit)}</td><td style="color:#00C48C;font-weight:bold">✓ Payé</td></tr>`).join("")}
-    </tbody></table>
-    <div class="total">Total versé : ${fmt(moisPayes.length*montantUnit)}</div>
+    <div class="mois-grid">
+      ${moisAnnee.map(m=>{
+        const paye=mens[m]==="Payé";
+        return `<div class="mois-cell ${paye?"paye":"impaye"}"><span class="mois-icn">${paye?"✓":"✗"}</span>${m}</div>`;
+      }).join("")}
+    </div>
+    <div class="total">Total versé : ${fmt(moisPayes.length*montantUnit)} <span style="font-weight:400;font-size:9px">(${moisPayes.length}/${moisAnnee.length} mois)</span></div>
     <div class="sigs">
       <div class="sig">Le/La Comptable<br/><br/><br/>Signature &amp; cachet</div>
       <div class="sig">Le/La Payant(e)<br/><br/><br/>Signature</div>
+    </div>
     </div>
   </div>`;
 
@@ -422,14 +441,16 @@ const imprimerRecu = (eleve, montantUnit, schoolInfo={}) => {
     *{box-sizing:border-box}
     body{font-family:Arial,sans-serif;margin:0;padding:0;background:#fff;
          height:282mm;display:flex;flex-direction:column;gap:3mm}
-    .recu{flex:1;padding:8px 12px;border:1px solid #bbb;border-radius:3px;overflow:hidden;display:flex;flex-direction:column}
+    .recu{flex:1;padding:8px 12px;border:1px solid #bbb;border-radius:3px;overflow:hidden;display:flex;flex-direction:column;position:relative}
     .badge{text-align:center;background:#0A1628;color:#fff;padding:4px;font-size:10px;font-weight:bold;margin:5px 0 2px;border-radius:3px}
     .exemplaire{text-align:right;font-size:8px;font-weight:bold;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
     .grid{display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;margin-bottom:6px}
     .row{font-size:8.5px}.lbl{font-weight:bold;color:#0A1628}
-    table{width:100%;border-collapse:collapse}
-    th{background:#0A1628;color:#fff;padding:3px 6px;font-size:8px;text-align:left}
-    td{padding:3px 6px;border-bottom:1px solid #eee;font-size:8.5px}
+    .mois-grid{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:6px}
+    .mois-cell{display:flex;align-items:center;gap:3px;padding:3px 7px;border-radius:4px;font-size:8px;font-weight:700}
+    .mois-cell.paye{background:#dcfce7;color:#166534}
+    .mois-cell.impaye{background:#f3f4f6;color:#9ca3af}
+    .mois-icn{font-size:9px}
     .total{text-align:right;font-size:10px;font-weight:bold;padding:4px 8px;background:#e8f0e8;color:#0A1628;margin-top:4px;border-radius:2px}
     .sigs{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:auto;padding-top:10px}
     .sig{border-top:1.5px solid #0A1628;padding-top:4px;text-align:center;font-size:8.5px;color:#333;font-weight:600}
@@ -940,7 +961,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   const canCreate = !readOnly;
   const canEdit = !readOnly && (peutModifier(userRole) || verrouOuvert);
   const canEditEleves = !readOnly && (peutModifierEleves(userRole) || verrouOuvert);
-  const {schoolInfo} = useContext(SchoolContext);
+  const {schoolInfo, moisAnnee, moisSalaire} = useContext(SchoolContext);
   const {items:recettes,chargement:cR,ajouter:ajR,modifier:modR,supprimer:supR}=useFirestore("recettes");
   const {items:depenses,chargement:cD,ajouter:ajD,modifier:modD,supprimer:supD}=useFirestore("depenses");
   const {items:salaires,chargement:cS,ajouter:ajS,modifier:modS,supprimer:supS}=useFirestore("salaires");
@@ -961,7 +982,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   const [form,setForm]=useState({});
   const [niveau,setNiveau]=useState("college");
   const [filtClasse,setFiltClasse]=useState("all");
-  const [moisSalaire,setMoisSalaire]=useState("Octobre");
+  const [moisSel,setMoisSel]=useState(()=>moisSalaire[0]||"Octobre");
   const [niveauEnrol,setNiveauEnrol]=useState("college");
   const [fraisInscription,setFraisInscription]=useState(()=>Number(localStorage.getItem("LC_fraisInscription")||50000));
   const chg=k=>e=>setForm(p=>({...p,[k]:e.target.value}));
@@ -994,7 +1015,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   };
   const montant=getTarif(eleves[0]?.classe||""); // fallback pour compatibilité
   const elevesFiltres=filtClasse==="all"?eleves:eleves.filter(e=>e.classe===filtClasse);
-  const nbPayes=e=>MOIS_ANNEE.filter(m=>(e.mens||{})[m]==="Payé").length;
+  const nbPayes=e=>moisAnnee.filter(m=>(e.mens||{})[m]==="Payé").length;
 
   const toggleMens=async(_id,mois,mensActuels)=>{
     if(readOnly) return;
@@ -1011,7 +1032,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   };
 
   // Salaires du mois sélectionné
-  const salairesMois = salaires.filter(s=>s.mois===moisSalaire);
+  const salairesMois = salaires.filter(s=>s.mois===moisSel);
   const salairesSec = salairesMois.filter(s=>s.section==="Secondaire");
   const salairesPrim = salairesMois.filter(s=>s.section==="Primaire");
 
@@ -1023,7 +1044,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
 
   const autoGenererSalaires = async () => {
     if(readOnly) return;
-    if(!confirm(`Générer automatiquement les salaires pour ${moisSalaire} depuis les emplois du temps ?\n\nSeuls les nouveaux enseignants seront ajoutés.`)) return;
+    if(!confirm(`Générer automatiquement les salaires pour ${moisSel} depuis les emplois du temps ?\n\nSeuls les nouveaux enseignants seront ajoutés.`)) return;
     const tousEns=[
       ...ensCollege.map(e=>({...e,_emplois:emploisCollege,_eng:engCollege})),
       ...ensLycee.map(e=>({...e,_emplois:emploisLycee,_eng:engLycee})),
@@ -1037,14 +1058,14 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
       const vhHebdo=creneaux.length;
       const vhPrevu=vhHebdo*4;
       const absences=ens._eng.filter(e=>(e.enseignantNom||"").toLowerCase().includes((ens.nom||"").toLowerCase())&&(e.statut==="Absent"||e.statut==="Non effectué")).length;
-      await ajS({section:"Secondaire",mois:moisSalaire,nom:nomComplet,matiere:ens.matiere||"",niveau:ens.grade||"",vhHebdo,vhPrevu,cinqSem:0,nonExecute:absences,primeHoraire:0,bon:0,revision:0,observation:`Statut: ${ens.statut||"—"}`});
+      await ajS({section:"Secondaire",mois:moisSel,nom:nomComplet,matiere:ens.matiere||"",niveau:ens.grade||"",vhHebdo,vhPrevu,cinqSem:0,nonExecute:absences,primeHoraire:0,bon:0,revision:0,observation:`Statut: ${ens.statut||"—"}`});
     }
     alert("Terminé. Renseignez la prime horaire, la 5ème semaine, le bon et la révision pour chaque enseignant.");
   };
 
   const imprimerSalaires = () => {
     const w = window.open("","_blank");
-    w.document.write(`<!DOCTYPE html><html><head><title>États Salaires ${moisSalaire}</title>
+    w.document.write(`<!DOCTYPE html><html><head><title>États Salaires ${moisSel}</title>
     <style>body{font-family:Arial,sans-serif;padding:20px;font-size:11px}
     .titre{text-align:center;font-size:13px;font-weight:bold;margin-bottom:4px;color:#0A1628}
     .sous-titre{text-align:center;font-size:11px;margin-bottom:12px}
@@ -1055,7 +1076,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
     .total-row{background:#e0ebf8;font-weight:bold}
     @media print{button{display:none}}</style></head><body>
     <div class="titre">ÉTATS DE SALAIRES — G.S. LA CITADELLE — ANNÉE SCOLAIRE ${getAnnee()}</div>
-    <div class="sous-titre">MOIS DE ${moisSalaire.toUpperCase()}</div>
+    <div class="sous-titre">MOIS DE ${moisSel.toUpperCase()}</div>
     <div class="section">SECTION SECONDAIRE</div>
     <table><thead><tr>
       <th>N°</th><th>Prénoms et Nom</th><th>Matière</th><th>Niveau</th>
@@ -1114,9 +1135,9 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
         {/* Calcul impayés */}
         {(()=>{
           const tousEleves=[...elevesC,...elevesP];
-          const totalDu=tousEleves.reduce((s,e)=>s+MOIS_ANNEE.length*getTarif(e.classe),0);
+          const totalDu=tousEleves.reduce((s,e)=>s+moisAnnee.length*getTarif(e.classe),0);
           const totalPercu=tousEleves.reduce((s,e)=>{
-            const pays=MOIS_ANNEE.filter(m=>(e.mens||{})[m]==="Payé").length;
+            const pays=moisAnnee.filter(m=>(e.mens||{})[m]==="Payé").length;
             return s+pays*getTarif(e.classe);
           },0);
           const impaye=totalDu-totalPercu;
@@ -1127,7 +1148,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
               <Stat label="Dépenses" value={`${(totD/1e6).toFixed(2)}M`} sub="GNF" bg="#fce8e8"/>
               <Stat label="Vers. Fondation" value={`${(totVers/1e6).toFixed(2)}M`} sub="GNF" bg="#e6f4ea"/>
               <Stat label="Solde" value={`${((totR-totD)/1e6).toFixed(2)}M`} sub="GNF" bg={(totR-totD)>=0?"#eaf4e0":"#fce8e8"}/>
-              <Stat label="Masse salariale" value={`${((totNetSec+totNetPrim)/1e6).toFixed(3)}M`} sub={`GNF — ${moisSalaire} (${salairesMois.length} ens.)`} bg="#fef3e0"/>
+              <Stat label="Masse salariale" value={`${((totNetSec+totNetPrim)/1e6).toFixed(3)}M`} sub={`GNF — ${moisSel} (${salairesMois.length} ens.)`} bg="#fef3e0"/>
               <Stat label="Mensualités impayées" value={`${(impaye/1e6).toFixed(2)}M`} sub={`GNF — ${pctImpaye}% du total dû`} bg="#fce8e8"/>
               <Stat label="Mensualités perçues" value={`${(totalPercu/1e6).toFixed(2)}M`} sub={`${totalDu>0?(100-Number(pctImpaye)).toFixed(1):0}% du total`} bg="#eaf4e0"/>
             </div>
@@ -1180,8 +1201,8 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                 <p style={{margin:"0 0 12px",fontWeight:800,fontSize:13,color:C.blueDark}}>Mensualités — état des paiements</p>
                 {(()=>{
                   const tousEleves=[...elevesC,...elevesP];
-                  const totalMois=tousEleves.reduce((s,e)=>s+MOIS_ANNEE.length,0);
-                  const totalPayes=tousEleves.reduce((s,e)=>s+MOIS_ANNEE.filter(m=>(e.mens||{})[m]==="Payé").length,0);
+                  const totalMois=tousEleves.reduce((s,e)=>s+moisAnnee.length,0);
+                  const totalPayes=tousEleves.reduce((s,e)=>s+moisAnnee.filter(m=>(e.mens||{})[m]==="Payé").length,0);
                   const totalImpay=totalMois-totalPayes;
                   const data=[{name:"Payés",value:totalPayes},{name:"Impayés",value:totalImpay}];
                   return <ResponsiveContainer width="100%" height={220}>
@@ -1290,12 +1311,12 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
       {tab==="salaires"&&<div>
         <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16,flexWrap:"wrap"}}>
           <strong style={{fontSize:14,color:C.blueDark,flex:1}}>États de Salaires</strong>
-          <select value={moisSalaire} onChange={e=>setMoisSalaire(e.target.value)}
+          <select value={moisSel} onChange={e=>setMoisSel(e.target.value)}
             style={{border:"1px solid #b0c4d8",borderRadius:7,padding:"6px 12px",fontSize:13,background:"#fff",color:C.blueDark,fontWeight:700}}>
-            {MOIS_SALAIRE.map(m=><option key={m}>{m}</option>)}
+            {moisSalaire.map(m=><option key={m}>{m}</option>)}
           </select>
           {canCreate&&<Btn v="amber" onClick={autoGenererSalaires}>⚡ Auto-générer depuis EDT</Btn>}
-          {canCreate&&<Btn onClick={()=>{setForm({section:"Secondaire",mois:moisSalaire,nonExecute:0,cinqSem:0,bon:0,revision:0});setModal("add_s");}}>+ Ajouter</Btn>}
+          {canCreate&&<Btn onClick={()=>{setForm({section:"Secondaire",mois:moisSel,nonExecute:0,cinqSem:0,bon:0,revision:0});setModal("add_s");}}>+ Ajouter</Btn>}
           <Btn v="vert" onClick={imprimerSalaires}>🖨️ Imprimer</Btn>
         </div>
 
@@ -1303,7 +1324,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
         {!cS&&(()=>{
           const totGen=totNetSec+totNetPrim;
           const nbEns=salairesMois.length;
-          const dataEvol=MOIS_SALAIRE.map(m=>{
+          const dataEvol=moisSalaire.map(m=>{
             const ms=salaires.filter(s=>s.mois===m);
             const sec=ms.filter(s=>s.section==="Secondaire").reduce((sum,s)=>sum+calcNet(s),0);
             const prim=ms.filter(s=>s.section==="Primaire").reduce((sum,s)=>sum+Number(s.montantForfait||0)-Number(s.bon||0)+Number(s.revision||0),0);
@@ -1315,7 +1336,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
               <div style={{background:"linear-gradient(135deg,#0A1628,#1d4ed8)",borderRadius:10,padding:"14px 16px",color:"#fff",textAlign:"center"}}>
                 <div style={{fontSize:11,opacity:.85,marginBottom:4}}>Masse salariale</div>
                 <div style={{fontSize:18,fontWeight:900}}>{(totGen/1e6).toFixed(3)}M</div>
-                <div style={{fontSize:10,opacity:.75,marginTop:2}}>GNF — {moisSalaire}</div>
+                <div style={{fontSize:10,opacity:.75,marginTop:2}}>GNF — {moisSel}</div>
               </div>
               <div style={{background:"linear-gradient(135deg,#0A1628,#1a6baa)",borderRadius:10,padding:"14px 16px",color:"#fff",textAlign:"center"}}>
                 <div style={{fontSize:11,opacity:.85,marginBottom:4}}>Secondaire</div>
@@ -1370,7 +1391,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
         {cS?<Chargement/>:<>
           {/* Section Secondaire */}
           <div style={{background:C.blue,color:"#fff",padding:"8px 14px",borderRadius:"8px 8px 0 0",fontWeight:700,fontSize:13}}>
-            SECTION SECONDAIRE — {moisSalaire} {annee||getAnnee()}
+            SECTION SECONDAIRE — {moisSel} {annee||getAnnee()}
           </div>
           <div style={{overflowX:"auto",marginBottom:16}}>
             <table style={{width:"100%",borderCollapse:"collapse",minWidth:900}}>
@@ -1438,7 +1459,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
 
           {/* Section Primaire */}
           <div style={{background:C.green,color:"#fff",padding:"8px 14px",borderRadius:"8px 8px 0 0",fontWeight:700,fontSize:13}}>
-            SECTION PRIMAIRE — {moisSalaire} {annee||getAnnee()}
+            SECTION PRIMAIRE — {moisSel} {annee||getAnnee()}
           </div>
           <div style={{overflowX:"auto",marginBottom:8}}>
             <table style={{width:"100%",borderCollapse:"collapse"}}>
@@ -1489,8 +1510,8 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
               <option>Secondaire</option><option>Primaire</option>
             </Selec>
           </div>
-          <Selec label="Mois" value={form.mois||moisSalaire} onChange={chg("mois")}>
-            {MOIS_SALAIRE.map(m=><option key={m}>{m}</option>)}
+          <Selec label="Mois" value={form.mois||moisSel} onChange={chg("mois")}>
+            {moisSalaire.map(m=><option key={m}>{m}</option>)}
           </Selec>
           <div style={{height:12}}/>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
@@ -1660,8 +1681,8 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
         {(()=>{
           const elevesCritiques=eleves.filter(e=>{
             const mens=e.mens||{};
-            const impayesConsec=MOIS_ANNEE.slice().reverse().findIndex(m=>mens[m]==="Payé");
-            const nbImp=impayesConsec===-1?MOIS_ANNEE.length:impayesConsec;
+            const impayesConsec=moisAnnee.slice().reverse().findIndex(m=>mens[m]==="Payé");
+            const nbImp=impayesConsec===-1?moisAnnee.length:impayesConsec;
             return nbImp>=3;
           });
           return elevesCritiques.length>0?(
@@ -1675,15 +1696,15 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                   elevesCritiques.map(e=>{
                     const mens=e.mens||{};
                     const niv=elevesC.find(ec=>ec._id===e._id)?"Collège":"Primaire";
-                    const nbImp=MOIS_ANNEE.filter(m=>mens[m]!=="Payé").length;
-                    return [e.matricule||"",e.nom,e.prenom,e.classe,niv,nbImp,e.tuteur||"",e.contactTuteur||""];
+                    const nbImp=moisAnnee.filter(m=>mens[m]!=="Payé").length;
+  return [e.matricule||"",e.nom,e.prenom,e.classe,niv,nbImp,e.tuteur||"",e.contactTuteur||""];
                   })
                 )}>📥 Exporter</Btn>
               </div>
               <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
                 {elevesCritiques.map(e=>{
                   const mens=e.mens||{};
-                  const nbImp=MOIS_ANNEE.filter(m=>mens[m]!=="Payé").length;
+                  const nbImp=moisAnnee.filter(m=>mens[m]!=="Payé").length;
                   return <div key={e._id} style={{background:"#fff",border:"1px solid #f5c1c1",borderRadius:7,padding:"6px 10px",fontSize:12}}>
                     <span style={{fontWeight:800,color:"#9b2020"}}>{e.nom} {e.prenom}</span>
                     <span style={{color:"#6b7280"}}> · {e.classe} · </span>
@@ -1711,7 +1732,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
           :<>
             <div style={{marginBottom:12,padding:"9px 14px",background:"#e0ebf8",borderRadius:8,display:"flex",gap:20,flexWrap:"wrap",alignItems:"center"}}>
               <span style={{fontSize:12,color:C.greenDk,fontWeight:700}}>✓ {elevesFiltres.reduce((s,e)=>s+nbPayes(e),0)} payés</span>
-              <span style={{fontSize:12,color:"#b91c1c",fontWeight:700}}>✗ {elevesFiltres.reduce((s,e)=>s+(MOIS_ANNEE.length-nbPayes(e)),0)} impayés</span>
+              <span style={{fontSize:12,color:"#b91c1c",fontWeight:700}}>✗ {elevesFiltres.reduce((s,e)=>s+(moisAnnee.length-nbPayes(e)),0)} impayés</span>
               <span style={{fontSize:12,color:C.blue,fontWeight:700}}>💰 {fmt(elevesFiltres.reduce((s,e)=>s+nbPayes(e)*getTarif(e.classe),0))}</span>
               <span style={{flex:1}}/>
               <span style={{fontSize:11,fontWeight:700,color:C.blueDark}}>Inscription :</span>
@@ -1722,7 +1743,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
             </div>
             <div style={{overflowX:"auto"}}>
               <table style={{width:"100%",borderCollapse:"collapse",minWidth:1000}}>
-                <THead cols={["Matricule","Nom & Prénom","Classe","Tuteur","Contact",...MOIS_ANNEE,"Payés","Ins.","Reçu"]}/>
+                <THead cols={["Matricule","Nom & Prénom","Classe","Tuteur","Contact",...moisAnnee,"Payés","Ins.","Reçu"]}/>
                 <tbody>{elevesFiltres.map(e=>{
                   const mens=e.mens||initMens();
                   return <TR key={e._id}>
@@ -1730,7 +1751,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                     <TD bold>{e.nom} {e.prenom}</TD>
                     <TD><Badge color="blue">{e.classe}</Badge></TD>
                     <TD>{e.tuteur}</TD><TD>{e.contactTuteur}</TD>
-                    {MOIS_ANNEE.map(m=>{
+                    {moisAnnee.map(m=>{
                       const paye=mens[m]==="Payé";
                       return <td key={m} style={{padding:"4px 2px",textAlign:"center"}}>
                         <button onClick={()=>canCreate&&toggleMens(e._id,m,mens)}
@@ -1742,8 +1763,8 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                       </td>;
                     })}
                     <td style={{padding:"4px 8px",textAlign:"center"}}>
-                      <span style={{fontWeight:800,fontSize:13,color:nbPayes(e)===MOIS_ANNEE.length?C.greenDk:nbPayes(e)>0?"#d97706":"#b91c1c"}}>
-                        {nbPayes(e)}/{MOIS_ANNEE.length}
+                      <span style={{fontWeight:800,fontSize:13,color:nbPayes(e)===moisAnnee.length?C.greenDk:nbPayes(e)>0?"#d97706":"#b91c1c"}}>
+                        {nbPayes(e)}/{moisAnnee.length}
                       </span>
                     </td>
                     <td style={{padding:"4px 4px",textAlign:"center"}}>
@@ -1757,7 +1778,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                       </button>
                     </td>
                     <td style={{padding:"4px 6px",textAlign:"center"}}>
-                      <Btn sm v="amber" onClick={()=>imprimerRecu(e,getTarif(e.classe),schoolInfo)}>🖨️</Btn>
+                      <Btn sm v="amber" onClick={()=>imprimerRecu(e,getTarif(e.classe),schoolInfo,moisAnnee)}>🖨️</Btn>
                     </td>
                   </TR>;
                 })}</tbody>
@@ -2837,6 +2858,7 @@ function ParametresEcole() {
     ire: schoolInfo.ire||"",
     dpe: schoolInfo.dpe||"",
     agrement: schoolInfo.agrement||"",
+    moisDebut: schoolInfo.moisDebut||"Octobre",
   });
   const [chargement,setChargement] = useState(false);
   const [msgSucces,setMsgSucces] = useState("");
@@ -2875,6 +2897,7 @@ function ParametresEcole() {
         ire: form.ire.trim(),
         dpe: form.dpe.trim(),
         agrement: form.agrement.trim(),
+        moisDebut: form.moisDebut,
       };
       await updateDoc(doc(db,"ecoles",schoolId), data);
       setSchoolInfo(prev=>({...prev,...data}));
@@ -3012,6 +3035,21 @@ function ParametresEcole() {
             <label style={lbl}>Direction Préfectorale (abrégé)</label>
             <input style={inp} value={form.dpe} onChange={chg("dpe")} placeholder="Ex. : DPE de Kindia"/>
           </div>
+        </div>
+      </div>
+
+      {/* Année scolaire */}
+      <div style={sec}>
+        <h3 style={{margin:"0 0 16px",fontSize:14,fontWeight:800,color:C.blueDark}}>📅 Année scolaire</h3>
+        <div>
+          <label style={lbl}>Mois de début de l'année scolaire</label>
+          <select style={{...inp,cursor:"pointer"}} value={form.moisDebut} onChange={chg("moisDebut")}>
+            {TOUS_MOIS_LONGS.map(m=><option key={m} value={m}>{m}</option>)}
+          </select>
+          <p style={{margin:"6px 0 0",fontSize:11,color:"#9ca3af"}}>
+            L'année scolaire couvre 9 mois à partir du mois choisi. Actuellement&nbsp;:&nbsp;
+            <strong style={{color:C.blue}}>{calcMoisAnnee(form.moisDebut).join(" · ")}</strong>
+          </p>
         </div>
       </div>
 
@@ -3660,6 +3698,7 @@ export default function App() {
           ire: d.ire||prev.ire||"",
           dpe: d.dpe||prev.dpe||"",
           agrement: d.agrement||prev.agrement||"",
+          moisDebut: d.moisDebut||prev.moisDebut||"Octobre",
           plan: d.plan||"gratuit",
           planExpiry: d.planExpiry||null,
         }));
@@ -3703,11 +3742,13 @@ export default function App() {
 
   if(!utilisateur && page==="inscription")return <Inscription/>;
   if(!utilisateur)return (
-    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo}}>
+    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire}}>
       <Connexion onLogin={connecter} onInscription={()=>setPage("inscription")}/>
     </SchoolContext.Provider>
   );
 
+  const moisAnnee   = calcMoisAnnee(schoolInfo.moisDebut||"Octobre");
+  const moisSalaire = calcMoisSalaire(schoolInfo.moisDebut||"Octobre");
   const modulesVisibles=MODULES.filter(m=>ACCES[utilisateur.role].includes(m.id));
   const role = utilisateur.role;
   const estAdmin = role==="admin" || role==="direction";
@@ -3718,7 +3759,7 @@ export default function App() {
   const couleur2 = schoolInfo.couleur2 || C.green;
 
   return (
-    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo}}>
+    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire}}>
     <div style={{height:"100vh",overflow:"hidden",display:"flex",background:C.bg,fontFamily:"'Segoe UI',system-ui,sans-serif"}}>
       {/* Overlay mobile */}
       {sidebarOuvert&&<div onClick={()=>setSidebarOuvert(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:40}}/>}
