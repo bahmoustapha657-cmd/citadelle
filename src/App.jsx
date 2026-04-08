@@ -381,14 +381,11 @@ const enteteDoc = (si, logoUrl) => `
 
 const imprimerRecu = (eleve, montantUnit, schoolInfo={}, moisAnnee=MOIS_ANNEE) => {
   const mens = eleve.mens||{};
+  const mensDates = eleve.mensDates||{};
   const moisPayes = moisAnnee.filter(m=>mens[m]==="Payé");
   const w = window.open("","_blank");
 
-  const watermark = schoolInfo.logo
-    ? `<img src="${schoolInfo.logo}" alt="" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:130px;height:130px;object-fit:contain;opacity:0.07;pointer-events:none;z-index:0"/>`
-    : "";
-
-  // En-tête compacte pour les reçus (logo + infos en ligne)
+  // En-tête compacte pour les reçus (logo + infos en ligne) — sans doublon type/nom
   const enteteCompact = () => `
   <div style="display:flex;align-items:center;gap:8px;border-bottom:2px solid #0A1628;padding-bottom:6px;margin-bottom:6px">
     ${schoolInfo.logo?`<img src="${schoolInfo.logo}" alt="" style="width:38px;height:38px;object-fit:contain;flex-shrink:0"/>`:''}
@@ -398,8 +395,8 @@ const imprimerRecu = (eleve, montantUnit, schoolInfo={}, moisAnnee=MOIS_ANNEE) =
         ${schoolInfo.ministere?`${schoolInfo.ministere} / `:""}${schoolInfo.ire||""}${schoolInfo.dpe?` / ${schoolInfo.dpe}`:""}
       </div>
       <div style="text-align:right">
-        <strong style="font-size:10px;color:#0A1628;display:block">${schoolInfo.type||""}</strong>
-        <strong style="font-size:12px;color:#0A1628;display:block">${schoolInfo.nom||""}</strong>
+        <strong style="font-size:13px;color:#0A1628;display:block">${schoolInfo.nom||""}</strong>
+        ${schoolInfo.agrement?`<span style="font-size:7px;color:#555">Agrém. : ${schoolInfo.agrement}</span>`:""}
       </div>
     </div>
   </div>`;
@@ -407,7 +404,7 @@ const imprimerRecu = (eleve, montantUnit, schoolInfo={}, moisAnnee=MOIS_ANNEE) =
   // Bloc reçu compact — deux par page A4
   const bloc = (titre) => `
   <div class="recu">
-    ${watermark}
+    ${schoolInfo.logo?`<div class="watermark"><img src="${schoolInfo.logo}" alt=""/></div>`:""}
     <div style="position:relative;z-index:1;display:flex;flex-direction:column;height:100%">
     ${enteteCompact()}
     <div class="badge">REÇU DE PAIEMENT DE MENSUALITÉS</div>
@@ -416,14 +413,21 @@ const imprimerRecu = (eleve, montantUnit, schoolInfo={}, moisAnnee=MOIS_ANNEE) =
       <div class="row"><span class="lbl">Élève : </span>${eleve.nom} ${eleve.prenom}</div>
       <div class="row"><span class="lbl">Matricule : </span>${eleve.matricule||"—"}</div>
       <div class="row"><span class="lbl">Classe : </span>${eleve.classe}</div>
-      <div class="row"><span class="lbl">Date : </span>${today()}</div>
+      <div class="row"><span class="lbl">Impression : </span>${today()}</div>
       <div class="row"><span class="lbl">Tuteur : </span>${eleve.tuteur||"—"}</div>
       <div class="row"><span class="lbl">Contact : </span>${eleve.contactTuteur||"—"}</div>
     </div>
     <div class="mois-grid">
       ${moisAnnee.map(m=>{
         const paye=mens[m]==="Payé";
-        return `<div class="mois-cell ${paye?"paye":"impaye"}"><span class="mois-icn">${paye?"✓":"✗"}</span>${m}</div>`;
+        const datePaie=mensDates[m]||"";
+        return `<div class="mois-cell ${paye?"paye":"impaye"}">
+          <span class="mois-icn">${paye?"✓":"✗"}</span>
+          <span style="display:flex;flex-direction:column;align-items:flex-start">
+            <span>${m}</span>
+            ${paye&&datePaie?`<span style="font-size:6.5px;opacity:.75">${datePaie}</span>`:""}
+          </span>
+        </div>`;
       }).join("")}
     </div>
     <div class="total">Total versé : ${fmt(moisPayes.length*montantUnit)} <span style="font-weight:400;font-size:9px">(${moisPayes.length}/${moisAnnee.length} mois)</span></div>
@@ -441,7 +445,9 @@ const imprimerRecu = (eleve, montantUnit, schoolInfo={}, moisAnnee=MOIS_ANNEE) =
     *{box-sizing:border-box}
     body{font-family:Arial,sans-serif;margin:0;padding:0;background:#fff;
          height:282mm;display:flex;flex-direction:column;gap:3mm}
-    .recu{flex:1;padding:8px 12px;border:1px solid #bbb;border-radius:3px;overflow:hidden;display:flex;flex-direction:column;position:relative}
+    .recu{flex:1;padding:8px 12px;border:1px solid #bbb;border-radius:3px;display:flex;flex-direction:column;position:relative}
+    .watermark{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:0}
+    .watermark img{width:160px;height:160px;object-fit:contain;opacity:0.09}
     .badge{text-align:center;background:#0A1628;color:#fff;padding:4px;font-size:10px;font-weight:bold;margin:5px 0 2px;border-radius:3px}
     .exemplaire{text-align:right;font-size:8px;font-weight:bold;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
     .grid{display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;margin-bottom:6px}
@@ -1017,11 +1023,24 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   const elevesFiltres=filtClasse==="all"?eleves:eleves.filter(e=>e.classe===filtClasse);
   const nbPayes=e=>moisAnnee.filter(m=>(e.mens||{})[m]==="Payé").length;
 
-  const toggleMens=async(_id,mois,mensActuels)=>{
+  const toggleMens=async(_id,mois,mensActuels,mensDatesActuels,nomEleve)=>{
     if(readOnly) return;
     const mens={...(mensActuels||initMens())};
-    mens[mois]=mens[mois]==="Payé"?"Impayé":"Payé";
-    await modEleves(_id,{mens});
+    const estPaye=mens[mois]==="Payé";
+    // Décocher nécessite le verrou admin (canEdit)
+    if(estPaye && !canEdit){
+      alert("Le décochage nécessite l'autorisation de l'administrateur (verrou activé).");
+      return;
+    }
+    const msg = estPaye
+      ? `Décocher ${mois} et marquer comme impayé pour ${nomEleve||""} ?`
+      : `Marquer ${mois} comme payé pour ${nomEleve||""} ?`;
+    if(!confirm(msg)) return;
+    mens[mois]=estPaye?"Impayé":"Payé";
+    const mensDates={...(mensDatesActuels||{})};
+    if(!estPaye) mensDates[mois]=new Date().toLocaleDateString("fr-FR");
+    else delete mensDates[mois];
+    await modEleves(_id,{mens,mensDates});
   };
 
   const enreg=(aj,mod,extra={})=>{
@@ -1753,11 +1772,13 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                     <TD>{e.tuteur}</TD><TD>{e.contactTuteur}</TD>
                     {moisAnnee.map(m=>{
                       const paye=mens[m]==="Payé";
+                      const datePaie=(e.mensDates||{})[m]||"";
+                      const peutCliquer=paye?(canCreate&&canEdit):canCreate;
                       return <td key={m} style={{padding:"4px 2px",textAlign:"center"}}>
-                        <button onClick={()=>canCreate&&toggleMens(e._id,m,mens)}
-                          title={`${m} — ${mens[m]||"Impayé"}`}
-                          style={{width:26,height:26,borderRadius:5,border:"none",cursor:readOnly?"default":"pointer",fontSize:12,
-                            background:paye?C.green:"#e8f0e8",color:paye?"#fff":"#9ca3af",fontWeight:700,opacity:readOnly?0.8:1}}>
+                        <button onClick={()=>peutCliquer&&toggleMens(e._id,m,mens,e.mensDates||{},`${e.nom} ${e.prenom}`)}
+                          title={`${m} — ${mens[m]||"Impayé"}${datePaie?" ("+datePaie+")":""}`}
+                          style={{width:26,height:26,borderRadius:5,border:"none",cursor:peutCliquer?"pointer":"default",fontSize:12,
+                            background:paye?C.green:"#e8f0e8",color:paye?"#fff":"#9ca3af",fontWeight:700,opacity:(readOnly||(!peutCliquer&&!paye))?0.6:1}}>
                           {paye?"✓":"·"}
                         </button>
                       </td>;
