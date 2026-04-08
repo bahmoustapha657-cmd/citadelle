@@ -956,6 +956,56 @@ function TarifsClasses({tarifsClasses, saveTarif, getTarif, canEdit}) {
 }
 
 // ══════════════════════════════════════════════════════════════
+//  CAPTURE CAMÉRA
+// ══════════════════════════════════════════════════════════════
+function CameraCapture({onCapture, onClose}) {
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  const [erreur, setErreur] = useState("");
+  const [pret, setPret] = useState(false);
+
+  useEffect(() => {
+    navigator.mediaDevices.getUserMedia({video:{facingMode:"user",width:{ideal:640},height:{ideal:480}},audio:false})
+      .then(s => {
+        streamRef.current = s;
+        if(videoRef.current){
+          videoRef.current.srcObject = s;
+          videoRef.current.onloadedmetadata = () => setPret(true);
+        }
+      })
+      .catch(e => setErreur("Caméra indisponible : " + (e.message||e.name)));
+    return () => streamRef.current?.getTracks().forEach(t => t.stop());
+  }, []);
+
+  const fermer = () => { streamRef.current?.getTracks().forEach(t=>t.stop()); onClose(); };
+
+  const capturer = () => {
+    const v = videoRef.current;
+    const canvas = document.createElement("canvas");
+    canvas.width = v.videoWidth; canvas.height = v.videoHeight;
+    canvas.getContext("2d").drawImage(v, 0, 0);
+    onCapture(canvas.toDataURL("image/jpeg", 0.85));
+    fermer();
+  };
+
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.88)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <div style={{background:"#fff",borderRadius:16,padding:20,maxWidth:460,width:"92%",boxShadow:"0 8px 40px rgba(0,0,0,0.4)"}}>
+        <p style={{margin:"0 0 12px",fontWeight:800,color:C.blueDark,fontSize:15}}>📸 Prendre une photo</p>
+        {erreur
+          ? <p style={{color:"#b91c1c",fontSize:13,background:"#fee2e2",padding:"10px 14px",borderRadius:8}}>{erreur}</p>
+          : <video ref={videoRef} autoPlay playsInline muted
+              style={{width:"100%",borderRadius:10,background:"#000",maxHeight:300,display:"block"}}/>}
+        <div style={{display:"flex",gap:10,marginTop:14,justifyContent:"flex-end"}}>
+          <Btn v="ghost" onClick={fermer}>Annuler</Btn>
+          {!erreur && pret && <Btn v="vert" onClick={capturer}>📸 Capturer</Btn>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
 //  MODULE COMPTABILITÉ
 // ══════════════════════════════════════════════════════════════
 function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
@@ -988,8 +1038,17 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   const [filtClasse,setFiltClasse]=useState("all");
   const [moisSel,setMoisSel]=useState(()=>moisSalaire[0]||"Octobre");
   const [niveauEnrol,setNiveauEnrol]=useState("college");
+  const [cameraOuverte,setCameraOuverte]=useState(false);
   const [fraisInscription,setFraisInscription]=useState(()=>Number(localStorage.getItem("LC_fraisInscription")||50000));
   const chg=k=>e=>setForm(p=>({...p,[k]:e.target.value}));
+  const handlePhotoFichier=e=>{
+    const file=e.target.files[0]; if(!file) return;
+    if(file.size>2*1024*1024){alert("Image trop grande (max 2 Mo).");return;}
+    const reader=new FileReader();
+    reader.onload=ev=>setForm(p=>({...p,photo:ev.target.result}));
+    reader.readAsDataURL(file);
+    e.target.value="";
+  };
 
   const classesPrimaire=CLASSES_PRIMAIRE;
   const classesCollege=CLASSES_COLLEGE;
@@ -1666,15 +1725,27 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
             <Input label="Lieu de naissance" value={form.lieuNaissance||""} onChange={chg("lieuNaissance")}/>
           </div>
           {/* Photo de l'élève */}
-          <div style={{marginTop:14}}>
-            <p style={{fontSize:10,fontWeight:700,color:C.blue,textTransform:"uppercase",margin:"0 0 8px",letterSpacing:"0.07em"}}>Photo de l'élève (optionnel)</p>
-            <div style={{display:"flex",alignItems:"center",gap:14}}>
-              {form.photo&&<img src={form.photo} alt="photo" style={{width:64,height:64,borderRadius:10,objectFit:"cover",border:`2px solid ${C.blue}`}}/>}
-              <UploadFichiers dossier={`photos/eleves`} fichiers={form.photo?[{nom:"photo",url:form.photo}]:[]}
-                onAjouter={f=>setForm(p=>({...p,photo:f.url}))}
-                onSupprimer={()=>setForm(p=>({...p,photo:""}))}/>
+          <div style={{marginTop:14,borderTop:"1px solid #e5e7eb",paddingTop:14}}>
+            <p style={{fontSize:10,fontWeight:700,color:C.blue,textTransform:"uppercase",margin:"0 0 10px",letterSpacing:"0.07em"}}>📷 Photo de l'élève (optionnel)</p>
+            <div style={{display:"flex",alignItems:"center",gap:16,flexWrap:"wrap"}}>
+              {/* Aperçu */}
+              <div style={{width:80,height:80,borderRadius:10,overflow:"hidden",border:`2px solid ${C.blue}`,background:"#f0f4f8",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                {form.photo
+                  ? <img src={form.photo} alt="photo" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                  : <span style={{fontSize:32}}>👤</span>}
+              </div>
+              {/* Boutons */}
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                <Btn v="blue" onClick={()=>setCameraOuverte(true)}>📸 Prendre une photo</Btn>
+                <label style={{display:"inline-flex",alignItems:"center",gap:6,padding:"6px 14px",borderRadius:8,border:`1px solid ${C.blue}`,background:"#fff",color:C.blue,fontSize:12,fontWeight:700,cursor:"pointer"}}>
+                  📁 Importer depuis la galerie
+                  <input type="file" accept="image/*" style={{display:"none"}} onChange={handlePhotoFichier}/>
+                </label>
+                {form.photo&&<Btn sm v="danger" onClick={()=>setForm(p=>({...p,photo:""}))}>✕ Supprimer</Btn>}
+              </div>
             </div>
           </div>
+          {cameraOuverte&&<CameraCapture onCapture={photo=>{setForm(p=>({...p,photo}));setCameraOuverte(false);}} onClose={()=>setCameraOuverte(false)}/>}
           <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
             <Btn v="ghost" onClick={()=>setModal(null)}>Annuler</Btn>
             <Btn onClick={()=>{
