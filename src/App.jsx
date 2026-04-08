@@ -423,10 +423,8 @@ const imprimerRecu = (eleve, montantUnit, schoolInfo={}, moisAnnee=MOIS_ANNEE) =
         const datePaie=mensDates[m]||"";
         return `<div class="mois-cell ${paye?"paye":"impaye"}">
           <span class="mois-icn">${paye?"✓":"✗"}</span>
-          <span style="display:flex;flex-direction:column;align-items:flex-start">
-            <span>${m}</span>
-            ${paye&&datePaie?`<span style="font-size:6.5px;opacity:.75">${datePaie}</span>`:""}
-          </span>
+          <span>${m}</span>
+          ${paye&&datePaie?`<span style="font-size:6px;opacity:.75">${datePaie}</span>`:""}
         </div>`;
       }).join("")}
     </div>
@@ -452,8 +450,8 @@ const imprimerRecu = (eleve, montantUnit, schoolInfo={}, moisAnnee=MOIS_ANNEE) =
     .exemplaire{text-align:right;font-size:8px;font-weight:bold;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
     .grid{display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;margin-bottom:6px}
     .row{font-size:8.5px}.lbl{font-weight:bold;color:#0A1628}
-    .mois-grid{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:6px}
-    .mois-cell{display:flex;align-items:center;gap:3px;padding:3px 7px;border-radius:4px;font-size:8px;font-weight:700}
+    .mois-grid{display:flex;flex-wrap:nowrap;gap:3px;margin-bottom:6px;justify-content:space-between}
+    .mois-cell{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:3px 4px;border-radius:4px;font-size:7.5px;font-weight:700;flex:1;text-align:center}
     .mois-cell.paye{background:#dcfce7;color:#166534}
     .mois-cell.impaye{background:#f3f4f6;color:#9ca3af}
     .mois-icn{font-size:9px}
