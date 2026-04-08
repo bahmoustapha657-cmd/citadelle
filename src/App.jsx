@@ -3740,15 +3740,15 @@ export default function App() {
     setPage(null);
   };
 
+  const moisAnnee   = calcMoisAnnee(schoolInfo.moisDebut||"Octobre");
+  const moisSalaire = calcMoisSalaire(schoolInfo.moisDebut||"Octobre");
+
   if(!utilisateur && page==="inscription")return <Inscription/>;
   if(!utilisateur)return (
     <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire}}>
       <Connexion onLogin={connecter} onInscription={()=>setPage("inscription")}/>
     </SchoolContext.Provider>
   );
-
-  const moisAnnee   = calcMoisAnnee(schoolInfo.moisDebut||"Octobre");
-  const moisSalaire = calcMoisSalaire(schoolInfo.moisDebut||"Octobre");
   const modulesVisibles=MODULES.filter(m=>ACCES[utilisateur.role].includes(m.id));
   const role = utilisateur.role;
   const estAdmin = role==="admin" || role==="direction";
