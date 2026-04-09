@@ -25,4 +25,5 @@ dist-ssr
 
 .vercel
 .env*.local
+serviceAccount.json
 serviceAccount.json.json
