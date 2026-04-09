@@ -2,7 +2,7 @@ import Inscription from "./Inscription";
 import PremiumGate from "./components/PremiumGate";
 import ModuleIA from "./components/IAAssistant";
 import Logo from "./Logo";
-import { useState, useEffect, useRef, createContext, useContext } from "react";
+import React, { useState, useEffect, useRef, createContext, useContext } from "react";
 import { db, auth } from "./firebase";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, updatePassword } from "firebase/auth";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
