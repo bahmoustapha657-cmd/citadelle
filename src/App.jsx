@@ -328,6 +328,7 @@ async function uploadFichier(fichier, chemin) {
   const storageRef = ref(storage, chemin);
   await uploadBytes(storageRef, fichier);
   return await getDownloadURL(storageRef);
+
 }
 
 async function supprimerFichier(url) {
@@ -335,6 +336,20 @@ async function supprimerFichier(url) {
     const storageRef = ref(storage, url);
     await deleteObject(storageRef);
   } catch(e) { console.log("Fichier déjà supprimé"); }
+}
+
+// Upload une photo élève (base64 ou File/Blob) vers Firebase Storage.
+// Si c'est déjà une URL https, retourne telle quelle.
+async function uploadPhotoEleve(photoBase64OuUrl, schoolId) {
+  if (!photoBase64OuUrl) return "";
+  if (photoBase64OuUrl.startsWith("http")) return photoBase64OuUrl;
+  // Convertir base64 en Blob
+  const res = await fetch(photoBase64OuUrl);
+  const blob = await res.blob();
+  const ext = blob.type === "image/png" ? "png" : "jpg";
+  const nom = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  const chemin = `ecoles/${schoolId}/photos/${nom}`;
+  return await uploadFichier(blob, chemin);
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1245,7 +1260,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   const canCreate = !readOnly;
   const canEdit = !readOnly && (peutModifier(userRole) || verrouOuvert);
   const canEditEleves = !readOnly && (peutModifierEleves(userRole) || verrouOuvert);
-  const {schoolInfo, moisAnnee, moisSalaire} = useContext(SchoolContext);
+  const {schoolId, schoolInfo, moisAnnee, moisSalaire} = useContext(SchoolContext);
   const {items:recettes,chargement:cR,ajouter:ajR,modifier:modR,supprimer:supR}=useFirestore("recettes");
   const {items:depenses,chargement:cD,ajouter:ajD,modifier:modD,supprimer:supD}=useFirestore("depenses");
   const {items:salaires,chargement:cS,ajouter:ajS,modifier:modS,supprimer:supS}=useFirestore("salaires");
@@ -1269,6 +1284,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   const [moisSel,setMoisSel]=useState(()=>moisSalaire[0]||"Octobre");
   const [niveauEnrol,setNiveauEnrol]=useState("college");
   const [cameraOuverte,setCameraOuverte]=useState(false);
+  const [uploadEnCours,setUploadEnCours]=useState(false);
   const [fraisInscription,setFraisInscription]=useState(()=>Number(localStorage.getItem("LC_fraisInscription")||50000));
   const chg=k=>e=>setForm(p=>({...p,[k]:e.target.value}));
   const handlePhotoFichier=e=>{
@@ -1977,12 +1993,23 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
           </div>
           {cameraOuverte&&<CameraCapture onCapture={photo=>{setForm(p=>({...p,photo}));setCameraOuverte(false);}} onClose={()=>setCameraOuverte(false)}/>}
           <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
-            <Btn v="ghost" onClick={()=>setModal(null)}>Annuler</Btn>
-            <Btn onClick={()=>{
-              const r={...form,mens:form.mens||initMens()};
-              if(modal==="add_enrol")ajEnrol(r);else modEnrol(r);
-              setModal(null);
-            }}>Enregistrer</Btn>
+            <Btn v="ghost" onClick={()=>setModal(null)} disabled={uploadEnCours}>Annuler</Btn>
+            <Btn disabled={uploadEnCours} onClick={async()=>{
+              setUploadEnCours(true);
+              try{
+                let photoUrl = form.photo || "";
+                if(photoUrl.startsWith("data:")){
+                  photoUrl = await uploadPhotoEleve(photoUrl, schoolId);
+                }
+                const r={...form, photo:photoUrl, mens:form.mens||initMens()};
+                if(modal==="add_enrol")ajEnrol(r);else modEnrol(r);
+                setModal(null);
+              }catch(e){
+                alert("Erreur upload photo : "+e.message);
+              }finally{
+                setUploadEnCours(false);
+              }
+            }}>{uploadEnCours?"⏳ Upload photo...":"Enregistrer"}</Btn>
           </div>
         </Modale>}
       </div>}
