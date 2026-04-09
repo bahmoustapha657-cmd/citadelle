@@ -4,13 +4,13 @@ import ModuleIA from "./components/IAAssistant";
 import Logo from "./Logo";
 import { useState, useEffect, useRef, createContext, useContext } from "react";
 import { db, auth } from "./firebase";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, updatePassword } from "firebase/auth";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import * as XLSX from "xlsx";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
 import bcrypt from "bcryptjs";
 import {
-  collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc, getDoc, getDocs
+  collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc, getDoc, getDocs, query, where
 } from "firebase/firestore";
 
 // ══════════════════════════════════════════════════════════════
@@ -94,6 +94,126 @@ const genererMatricule = (eleves, type) => {
 const today = () => new Date().toLocaleDateString("fr-FR");
 const fmt = n => Number(n||0).toLocaleString("fr-FR")+" GNF";
 const fmtN = n => Number(n||0).toLocaleString("fr-FR");
+
+// ══════════════════════════════════════════════════════════════
+//  MODAL CHANGEMENT MOT DE PASSE FORCÉ
+// ══════════════════════════════════════════════════════════════
+function ChangerMotDePasseModal({utilisateur, onDone}) {
+  const [mdp1, setMdp1] = useState("");
+  const [mdp2, setMdp2] = useState("");
+  const [err,  setErr]  = useState("");
+  const [ok,   setOk]   = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const soumettre = async(e)=>{
+    e.preventDefault();
+    setErr("");
+    if(mdp1.length < 8) return setErr("Le mot de passe doit contenir au moins 8 caractères.");
+    if(mdp1 !== mdp2)   return setErr("Les deux mots de passe ne correspondent pas.");
+    setBusy(true);
+    try{
+      // 1. Mettre à jour Firebase Auth
+      await updatePassword(auth.currentUser, mdp1);
+      // 2. Hacher et stocker dans Firestore comptes
+      const hash = await bcrypt.hash(mdp1, 10);
+      if(utilisateur.compteDocId && utilisateur.schoolId){
+        await updateDoc(
+          doc(db,"ecoles",utilisateur.schoolId,"comptes",utilisateur.compteDocId),
+          { mdp: hash, premiereCo: false }
+        );
+      }
+      setOk(true);
+      setTimeout(()=>onDone(), 1200);
+    }catch(e){
+      if(e.code==="auth/requires-recent-login"){
+        setErr("Session expirée. Veuillez vous reconnecter puis changer le mot de passe.");
+      } else {
+        setErr(e.message||"Erreur lors du changement de mot de passe.");
+      }
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(10,22,40,0.75)",display:"flex",
+      alignItems:"center",justifyContent:"center",zIndex:9999}}>
+      <div style={{background:"#fff",borderRadius:16,padding:40,maxWidth:420,width:"90%",
+        boxShadow:"0 25px 60px rgba(0,0,0,0.3)",fontFamily:"'Segoe UI',system-ui,sans-serif"}}>
+        <div style={{textAlign:"center",marginBottom:24}}>
+          <div style={{fontSize:40,marginBottom:8}}>🔐</div>
+          <h2 style={{margin:0,fontSize:20,color:"#0A1628"}}>Changement de mot de passe requis</h2>
+          <p style={{margin:"8px 0 0",fontSize:13,color:"#6b7280"}}>
+            Votre compte utilise un mot de passe temporaire. Définissez un nouveau mot de passe avant de continuer.
+          </p>
+        </div>
+        {ok ? (
+          <div style={{textAlign:"center",padding:20}}>
+            <div style={{fontSize:36,marginBottom:8}}>✅</div>
+            <p style={{color:"#059669",fontWeight:700}}>Mot de passe mis à jour !</p>
+          </div>
+        ) : (
+          <form onSubmit={soumettre}>
+            <label style={{display:"block",marginBottom:6,fontSize:13,fontWeight:600,color:"#374151"}}>
+              Nouveau mot de passe
+            </label>
+            <input type="password" value={mdp1} onChange={e=>setMdp1(e.target.value)}
+              placeholder="Minimum 8 caractères"
+              style={{width:"100%",padding:"10px 12px",border:"1.5px solid #d1d5db",borderRadius:8,
+                fontSize:14,boxSizing:"border-box",marginBottom:14,outline:"none"}}
+              required autoFocus/>
+            <label style={{display:"block",marginBottom:6,fontSize:13,fontWeight:600,color:"#374151"}}>
+              Confirmer le mot de passe
+            </label>
+            <input type="password" value={mdp2} onChange={e=>setMdp2(e.target.value)}
+              placeholder="Répétez le mot de passe"
+              style={{width:"100%",padding:"10px 12px",border:"1.5px solid #d1d5db",borderRadius:8,
+                fontSize:14,boxSizing:"border-box",marginBottom:14,outline:"none"}}
+              required/>
+            {err && <p style={{color:"#dc2626",fontSize:13,margin:"0 0 14px",background:"#fef2f2",
+              padding:"8px 12px",borderRadius:6}}>{err}</p>}
+            <button type="submit" disabled={busy}
+              style={{width:"100%",background:"#0A1628",color:"#fff",border:"none",
+                padding:"12px",borderRadius:8,fontSize:15,fontWeight:700,cursor:"pointer",
+                opacity:busy?0.7:1}}>
+              {busy?"Enregistrement...":"Changer le mot de passe"}
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
+//  ERROR BOUNDARY
+// ══════════════════════════════════════════════════════════════
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { erreur: null }; }
+  static getDerivedStateFromError(e) { return { erreur: e }; }
+  componentDidCatch(e, info) { console.error("ErrorBoundary:", e, info); }
+  render() {
+    if (this.state.erreur) return (
+      <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
+        height:"100%",padding:40,fontFamily:"'Segoe UI',system-ui,sans-serif",textAlign:"center"}}>
+        <div style={{fontSize:48,marginBottom:16}}>⚠️</div>
+        <h2 style={{color:"#0A1628",marginBottom:8}}>Une erreur est survenue</h2>
+        <p style={{color:"#6b7280",fontSize:14,marginBottom:24,maxWidth:400}}>
+          {this.state.erreur.message||"Erreur inattendue dans ce module."}
+        </p>
+        <button onClick={()=>this.setState({erreur:null})}
+          style={{background:"#0A1628",color:"#fff",border:"none",padding:"10px 24px",
+            borderRadius:8,fontSize:14,fontWeight:700,cursor:"pointer",marginBottom:12}}>
+          🔄 Réessayer
+        </button>
+        <button onClick={()=>window.location.reload()}
+          style={{background:"none",border:"1px solid #d1d5db",color:"#6b7280",
+            padding:"8px 20px",borderRadius:8,fontSize:13,cursor:"pointer"}}>
+          Recharger la page
+        </button>
+      </div>
+    );
+    return this.props.children;
+  }
+}
 
 // ══════════════════════════════════════════════════════════════
 //  COMPTES ET DROITS
@@ -3920,7 +4040,19 @@ export default function App() {
           const sid=d.schoolId;
           setSchoolId(sid);
           localStorage.setItem("LC_schoolId",sid);
-          setUtilisateur({uid:firebaseUser.uid, login:d.login, nom:d.nom, role:d.role});
+          // Charger premiereCo depuis comptes
+          let premiereCo=false;
+          let compteDocId=null;
+          try{
+            const qCompte=query(collection(db,"ecoles",sid,"comptes"),where("login","==",d.login));
+            const snapCompte=await getDocs(qCompte);
+            if(!snapCompte.empty){
+              const dc=snapCompte.docs[0];
+              premiereCo=!!dc.data().premiereCo;
+              compteDocId=dc.id;
+            }
+          }catch(_){}
+          setUtilisateur({uid:firebaseUser.uid, login:d.login, nom:d.nom, role:d.role, premiereCo, compteDocId, schoolId:sid});
           setPage(p=>p||ACCES[d.role][0]);
         }
       }catch(e){
@@ -3950,6 +4082,17 @@ export default function App() {
       <Connexion onLogin={connecter} onInscription={()=>setPage("inscription")}/>
     </SchoolContext.Provider>
   );
+
+  // Forcer le changement de mot de passe à la première connexion
+  if(utilisateur.premiereCo) return (
+    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire}}>
+      <ChangerMotDePasseModal
+        utilisateur={utilisateur}
+        onDone={()=>setUtilisateur(u=>({...u,premiereCo:false}))}
+      />
+    </SchoolContext.Provider>
+  );
+
   const modulesVisibles=MODULES.filter(m=>ACCES[utilisateur.role].includes(m.id));
   const role = utilisateur.role;
   const estAdmin = role==="admin" || role==="direction";
@@ -4039,15 +4182,17 @@ export default function App() {
         {rechercheOuverte&&<RechercheGlobale onFermer={()=>setRechercheOuverte(false)}/>}
 
         <div style={{flex:1,overflowY:"auto"}}>
-          {page==="superadmin_panel" && <SuperAdminPanel/>}
-          {page==="parametres"      && <ParametresEcole/>}
-          {page==="ia_assistant"    && <PremiumGate feature="ia_assistant"><ModuleIA/></PremiumGate>}
-          {page==="admin_panel" && <AdminPanel annee={annee} setAnnee={setAnnee} verrous={verrous} schoolId={schoolId}/>}
-          {page==="fondation"   && <Fondation readOnly={readOnly} annee={annee} userRole={utilisateur.role}/>}
-          {page==="compta"      && <Comptabilite readOnly={readOnly} annee={annee} userRole={utilisateur.role} verrouOuvert={!!verrous.comptable}/>}
-          {page==="primaire"    && <Ecole titre="Direction du Primaire" couleur={C.green} cleClasses="classesPrimaire" cleEns="ensPrimaire" cleNotes="notesPrimaire" cleEleves="elevesPrimaire" avecEns={false} userRole={utilisateur.role} annee={annee} classesPredefinies={CLASSES_PRIMAIRE} maxNote={10} matieresPredefinies={MATIERES_PRIMAIRE} readOnly={readOnly} verrouOuvert={!!verrous.primaire}/>}
-          {page==="secondaire"  && <Secondaire userRole={utilisateur.role} annee={annee} readOnly={readOnly} verrouOuvert={!!verrous.secondaire}/>}
-          {page==="calendrier"  && <Calendrier annee={annee}/>}
+          <ErrorBoundary key={page}>
+            {page==="superadmin_panel" && <SuperAdminPanel/>}
+            {page==="parametres"      && <ParametresEcole/>}
+            {page==="ia_assistant"    && <PremiumGate feature="ia_assistant"><ModuleIA/></PremiumGate>}
+            {page==="admin_panel" && <AdminPanel annee={annee} setAnnee={setAnnee} verrous={verrous} schoolId={schoolId}/>}
+            {page==="fondation"   && <Fondation readOnly={readOnly} annee={annee} userRole={utilisateur.role}/>}
+            {page==="compta"      && <Comptabilite readOnly={readOnly} annee={annee} userRole={utilisateur.role} verrouOuvert={!!verrous.comptable}/>}
+            {page==="primaire"    && <Ecole titre="Direction du Primaire" couleur={C.green} cleClasses="classesPrimaire" cleEns="ensPrimaire" cleNotes="notesPrimaire" cleEleves="elevesPrimaire" avecEns={false} userRole={utilisateur.role} annee={annee} classesPredefinies={CLASSES_PRIMAIRE} maxNote={10} matieresPredefinies={MATIERES_PRIMAIRE} readOnly={readOnly} verrouOuvert={!!verrous.primaire}/>}
+            {page==="secondaire"  && <Secondaire userRole={utilisateur.role} annee={annee} readOnly={readOnly} verrouOuvert={!!verrous.secondaire}/>}
+            {page==="calendrier"  && <Calendrier annee={annee}/>}
+          </ErrorBoundary>
         </div>
       </main>
     </div>
