@@ -101,12 +101,18 @@ const fmtN = n => Number(n||0).toLocaleString("fr-FR");
 //  comptable = seul à pouvoir enrôler/supprimer des élèves
 // ══════════════════════════════════════════════════════════════
 const COMPTES_DEFAUT = [
-  {id:"admin",     nom:"Administrateur",    login:"admin",     mdp:"admin123",   role:"admin",     label:"Administrateur"},
-  {id:"direction", nom:"Directeur Général", login:"directeur", mdp:"dir2024",    role:"direction", label:"Direction Générale"},
-  {id:"primaire",  nom:"Dir. Primaire",     login:"primaire",  mdp:"prim2024",   role:"primaire",  label:"Direction Primaire"},
-  {id:"college",   nom:"Principal Collège", login:"college",   mdp:"col2024",    role:"college",   label:"Bureau Collège"},
-  {id:"comptable", nom:"Comptable",         login:"comptable", mdp:"compta2024", role:"comptable", label:"Comptabilité"},
+  {id:"admin",     nom:"Administrateur",    login:"admin",     role:"admin",     label:"Administrateur"},
+  {id:"direction", nom:"Directeur Général", login:"directeur", role:"direction", label:"Direction Générale"},
+  {id:"primaire",  nom:"Dir. Primaire",     login:"primaire",  role:"primaire",  label:"Direction Primaire"},
+  {id:"college",   nom:"Principal Collège", login:"college",   role:"college",   label:"Bureau Collège"},
+  {id:"comptable", nom:"Comptable",         login:"comptable", role:"comptable", label:"Comptabilité"},
 ];
+
+// Génère un mot de passe aléatoire sécurisé (12 caractères)
+const genererMdp = () => {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#!";
+  return Array.from({length:12}, () => chars[Math.floor(Math.random()*chars.length)]).join("");
+};
 
 const ACCES = {
   superadmin:["superadmin_panel"],
@@ -665,6 +671,8 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
   const [form, setForm] = useState({});
   const [voir, setVoir] = useState({});
   const [savingVerrou, setSavingVerrou] = useState(null);
+  const [mdpsInitiaux, setMdpsInitiaux] = useState(null);
+  const [initEnCours, setInitEnCours] = useState(false);
   const chg = k => e => setForm(p=>({...p,[k]:e.target.value}));
 
   const toggleVerrou = async (cle) => {
@@ -675,12 +683,28 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
     } finally { setSavingVerrou(null); }
   };
 
-  // Initialiser les comptes si vide
+  // Initialiser les comptes avec mots de passe aléatoires si collection vide
   useEffect(() => {
-    if (!chargement && comptes.length === 0) {
-      COMPTES_DEFAUT.forEach(c => ajouter(c));
-    }
-  }, [chargement, comptes.length]);
+    if (chargement || comptes.length > 0 || initEnCours) return;
+    setInitEnCours(true);
+    (async () => {
+      const mdps = {};
+      for (const c of COMPTES_DEFAUT) {
+        const mdpClair = genererMdp();
+        mdps[c.login] = mdpClair;
+        const mdpHash = await bcrypt.hash(mdpClair, 10);
+        await ajouter({...c, mdp: mdpHash, premiereCo: true});
+        try {
+          await fetch("/api/create-user", {
+            method:"POST", headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({login:c.login, mdp:mdpClair, role:c.role, nom:c.nom, schoolId}),
+          });
+        } catch(e) { /* non-bloquant */ }
+      }
+      setMdpsInitiaux(mdps);
+      setInitEnCours(false);
+    })();
+  }, [chargement, comptes.length, initEnCours]);
 
   const sauvegarder = async () => {
     const mdpHashe = await bcrypt.hash(form.mdp, 10);
@@ -723,36 +747,40 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
         <strong>🔐 Rôle Administrateur :</strong> Vous pouvez modifier les mots de passe de tous les utilisateurs. Vous avez accès en lecture seule à tous les modules.
       </div>
 
-      {chargement ? <Chargement/> : (
+      {/* Modale mots de passe initiaux — affichée une seule fois */}
+      {mdpsInitiaux&&<Modale titre="🔐 Comptes créés — Notez les mots de passe" fermer={null}>
+        <p style={{fontSize:13,color:"#b91c1c",fontWeight:700,marginBottom:12}}>
+          ⚠️ Ces mots de passe ne seront plus jamais affichés. Notez-les maintenant.
+        </p>
+        <table style={{width:"100%",borderCollapse:"collapse",marginBottom:16}}>
+          <THead cols={["Login","Rôle","Mot de passe temporaire"]}/>
+          <tbody>{COMPTES_DEFAUT.map(c=>(
+            <TR key={c.login}>
+              <TD><span style={{fontFamily:"monospace",background:"#e0ebf8",padding:"2px 8px",borderRadius:4,fontSize:12,color:C.blue}}>{c.login}</span></TD>
+              <TD><Badge color={c.role==="admin"?"purple":c.role==="comptable"?"teal":c.role==="direction"?"blue":"vert"}>{c.label}</Badge></TD>
+              <TD><span style={{fontFamily:"monospace",fontWeight:800,fontSize:14,color:C.blueDark,letterSpacing:"0.05em"}}>{mdpsInitiaux[c.login]}</span></TD>
+            </TR>
+          ))}</tbody>
+        </table>
+        <Btn v="success" onClick={()=>setMdpsInitiaux(null)}>✅ J'ai noté tous les mots de passe</Btn>
+      </Modale>}
+
+      {chargement||initEnCours ? <Chargement/> : (
         <Card>
           <table style={{width:"100%",borderCollapse:"collapse"}}>
             <THead cols={["Utilisateur","Login","Rôle","Mot de passe","Action"]}/>
             <tbody>
-              {(comptes.length > 0 ? comptes : COMPTES_DEFAUT).map((c,i)=>(
+              {comptes.map((c,i)=>(
                 <TR key={c._id||i}>
                   <TD bold>{c.nom}</TD>
                   <TD><span style={{fontFamily:"monospace",background:"#e0ebf8",padding:"2px 8px",borderRadius:4,fontSize:12,color:C.blue}}>{c.login}</span></TD>
                   <TD><Badge color={c.role==="admin"?"purple":c.role==="comptable"?"teal":c.role==="direction"?"blue":"vert"}>{c.label}</Badge></TD>
                   <TD>
-                    <div style={{display:"flex",alignItems:"center",gap:6}}>
-                      {c.mdp.startsWith("$2b$")
-                        ? <Badge color="vert">🔒 Hashé (sécurisé)</Badge>
-                        : <>
-                            <span style={{fontFamily:"monospace",fontSize:13}}>
-                              {voir[c._id||i] ? c.mdp : "••••••••"}
-                            </span>
-                            <button onClick={()=>setVoir(v=>({...v,[c._id||i]:!v[c._id||i]}))}
-                              style={{background:"none",border:"none",cursor:"pointer",color:"#9ca3af",fontSize:14}}>
-                              {voir[c._id||i]?"🙈":"👁️"}
-                            </button>
-                            <Badge color="amber">⚠️ Non hashé</Badge>
-                          </>
-                      }
-                    </div>
+                    <Badge color="vert">🔒 Sécurisé</Badge>
                   </TD>
                   <TD>
-                    {c.role !== "admin" && c._id && (
-                      <Btn sm onClick={()=>{setForm({...c});setModal("mdp");}}>✏️ Modifier</Btn>
+                    {c._id && (
+                      <Btn sm onClick={()=>{setForm({...c,mdp:""});setModal("mdp");}}>✏️ Modifier</Btn>
                     )}
                   </TD>
                 </TR>

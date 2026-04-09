@@ -12,14 +12,6 @@ function initAdmin() {
   initializeApp({ credential: cert(sa) });
 }
 
-const COMPTES_DEFAUT = [
-  {login:"admin",     nom:"Administrateur",    mdp:"admin123",   role:"admin"},
-  {login:"directeur", nom:"Directeur Général", mdp:"dir2024",    role:"direction"},
-  {login:"primaire",  nom:"Dir. Primaire",     mdp:"prim2024",   role:"primaire"},
-  {login:"college",   nom:"Principal Collège", mdp:"col2024",    role:"college"},
-  {login:"comptable", nom:"Comptable",         mdp:"compta2024", role:"comptable"},
-];
-
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", process.env.ALLOWED_ORIGIN || "*");
   if (req.method === "OPTIONS") return res.status(200).end();
@@ -38,12 +30,13 @@ export default async function handler(req, res) {
   const db = getFirestore();
 
   try {
-    // Récupérer les comptes depuis Firestore (Admin SDK bypass les règles)
     const snap = await db.collection("ecoles").doc(schoolId).collection("comptes").get();
+    if (snap.empty) {
+      return res.status(401).json({ error: "Aucun compte configuré pour cette école. Contactez l'administrateur." });
+    }
     const comptes = snap.docs.map(d => ({ ...d.data(), _id: d.id }));
-    const source = comptes.length > 0 ? comptes : COMPTES_DEFAUT;
 
-    const compte = source.find(c => c.login === login.trim().toLowerCase());
+    const compte = comptes.find(c => c.login === login.trim().toLowerCase());
     if (!compte) return res.status(401).json({ error: "Identifiant ou mot de passe incorrect." });
 
     const valide = compte.mdp.startsWith("$2b$")

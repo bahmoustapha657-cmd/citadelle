@@ -16,12 +16,18 @@ initializeApp({ credential: cert(sa) });
 const auth = getAuth();
 const db = getFirestore();
 
+// Génère un mot de passe aléatoire sécurisé
+const genererMdp = () => {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#!";
+  return Array.from({length:12}, () => chars[Math.floor(Math.random()*chars.length)]).join("");
+};
+
 const COMPTES_DEFAUT = [
-  { login: "admin",     nom: "Administrateur",    mdp: "admin123",   role: "admin" },
-  { login: "directeur", nom: "Directeur Général", mdp: "dir2024",    role: "direction" },
-  { login: "primaire",  nom: "Dir. Primaire",     mdp: "prim2024",   role: "primaire" },
-  { login: "college",   nom: "Principal Collège", mdp: "col2024",    role: "college" },
-  { login: "comptable", nom: "Comptable",         mdp: "compta2024", role: "comptable" },
+  { login: "admin",     nom: "Administrateur",    role: "admin" },
+  { login: "directeur", nom: "Directeur Général", role: "direction" },
+  { login: "primaire",  nom: "Dir. Primaire",     role: "primaire" },
+  { login: "college",   nom: "Principal Collège", role: "college" },
+  { login: "comptable", nom: "Comptable",         role: "comptable" },
 ];
 
 async function migrerEcole(schoolId) {
@@ -33,6 +39,7 @@ async function migrerEcole(schoolId) {
     : snap.docs.map(d => ({ ...d.data(), _id: d.id }));
 
   console.log(`   ${comptes.length} compte(s) trouvé(s)`);
+  const mdpsGeneres = {};
 
   for (const compte of comptes) {
     const loginNorm = (compte.login || "").trim().toLowerCase();
@@ -40,13 +47,18 @@ async function migrerEcole(schoolId) {
 
     const email = `${loginNorm}.${schoolId}@edugest.app`;
 
-    // Récupérer le mot de passe en clair (si hashé, on utilise le défaut)
+    // Si mot de passe hashé ou absent → générer un nouveau mot de passe aléatoire
     let mdpClair = compte.mdp || "";
-    if (mdpClair.startsWith("$2b$")) {
-      // Mot de passe hashé — chercher dans les défauts
-      const defaut = COMPTES_DEFAUT.find(c => c.login === loginNorm);
-      mdpClair = defaut ? defaut.mdp : "Edugest@2024"; // mot de passe temporaire
-      console.log(`   ⚠️  ${loginNorm} : mot de passe hashé → mot de passe temporaire utilisé`);
+    if (!mdpClair || mdpClair.startsWith("$2b$")) {
+      mdpClair = genererMdp();
+      mdpsGeneres[loginNorm] = mdpClair;
+      const mdpHash = await bcrypt.hash(mdpClair, 10);
+      // Mettre à jour le hash dans Firestore si le doc existe
+      if (!snap.empty) {
+        const docRef = snap.docs.find(d => (d.data().login||"") === loginNorm);
+        if (docRef) await docRef.ref.update({ mdp: mdpHash, premiereCo: true });
+      }
+      console.log(`   🔑 ${loginNorm} : mot de passe aléatoire généré`);
     }
 
     try {
@@ -89,6 +101,7 @@ async function migrerEcole(schoolId) {
       console.error(`   ❌ ${loginNorm} : erreur → ${e.message}`);
     }
   }
+  return mdpsGeneres;
 }
 
 async function main() {
@@ -100,11 +113,23 @@ async function main() {
 
   console.log(`${schoolIds.length} école(s) trouvée(s) : ${schoolIds.join(", ")}`);
 
+  const tousLesMdps = {};
   for (const schoolId of schoolIds) {
-    await migrerEcole(schoolId);
+    const mdps = await migrerEcole(schoolId);
+    if (Object.keys(mdps).length > 0) tousLesMdps[schoolId] = mdps;
   }
 
   console.log("\n✅ Migration terminée !");
+  if (Object.keys(tousLesMdps).length > 0) {
+    console.log("\n⚠️  MOTS DE PASSE GÉNÉRÉS — À NOTER MAINTENANT (ne seront plus affichés) :");
+    for (const [sid, mdps] of Object.entries(tousLesMdps)) {
+      console.log(`\n  École : ${sid}`);
+      for (const [login, mdp] of Object.entries(mdps)) {
+        console.log(`    ${login.padEnd(12)} → ${mdp}`);
+      }
+    }
+    console.log("");
+  }
   process.exit(0);
 }
 
