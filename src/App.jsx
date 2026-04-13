@@ -744,7 +744,7 @@ const imprimerCartesEleves = (eleves, schoolInfo={}, annee="") => {
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
     @page{size:A4 portrait;margin:8mm}
-    *{box-sizing:border-box;margin:0;padding:0}
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
     body{font-family:'Inter',Arial,sans-serif;background:#f0f0f0;padding:4mm}
 
     .grille{display:grid;grid-template-columns:repeat(2,86mm);gap:5mm;justify-content:center}
