@@ -28,8 +28,52 @@ const storage = getStorage();
 // ══════════════════════════════════════════════════════════════
 const C = {
   blue:"#0A1628", blueDark:"#0A1628", green:"#00C48C", greenDk:"#00A876",
-  gold:"#FFB547", white:"#ffffff", bg:"#F0F7F4", sidebar:"#0A1628",
+  gold:"#FFB547", white:"#ffffff", bg:"#EEF2F7", sidebar:"#0A1628",
 };
+
+// ── Styles globaux injectés une seule fois ──
+const GLOBAL_CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+  *, *::before, *::after { box-sizing: border-box; }
+  body { font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; background: ${C.bg}; }
+
+  /* Scrollbar fine */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #b0c4d8; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #0A1628; }
+
+  /* Transitions boutons */
+  button { transition: filter .15s ease, transform .12s ease, box-shadow .15s ease; }
+  button:hover:not(:disabled) { filter: brightness(1.09); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+  button:active:not(:disabled) { transform: translateY(0px); box-shadow: none; }
+
+  /* Hover lignes tableau */
+  tbody tr { transition: background .1s; }
+  tbody tr:hover td { background: #f0f7ff !important; }
+
+  /* Focus inputs */
+  input:focus, select:focus, textarea:focus {
+    border-color: #00C48C !important;
+    box-shadow: 0 0 0 3px rgba(0,196,140,0.18) !important;
+    outline: none;
+  }
+
+  /* Spinner animation */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .lc-spinner {
+    width: 36px; height: 36px; border-radius: 50%;
+    border: 3px solid #d0dce8;
+    border-top-color: #00C48C;
+    animation: spin .7s linear infinite;
+    margin: 0 auto 12px;
+  }
+
+  /* Fade-in modales */
+  @keyframes fadeUp { from { opacity:0; transform: translateY(16px); } to { opacity:1; transform: translateY(0); } }
+  .lc-modal-box { animation: fadeUp .2s ease; }
+`;
+const GlobalStyles = () => <style>{GLOBAL_CSS}</style>;
 
 // ══════════════════════════════════════════════════════════════
 //  CONSTANTES
@@ -356,87 +400,104 @@ async function uploadPhotoEleve(photoBase64OuUrl, schoolId) {
 //  COMPOSANTS UI
 // ══════════════════════════════════════════════════════════════
 const Badge = ({children,color="gray"}) => {
-  const M={green:"#e6f4ea;#1a6b30",red:"#fce8e8;#9b2020",blue:"#e0ebf8;#0A1628",
-    amber:"#fef3e0;#8a5000",gray:"#f1f3f4;#5f6368",purple:"#e6f4ea;#00A876",
-    teal:"#e4f5f0;#0a6652",vert:"#e6f4ea;#00A876",orange:"#fff3e0;#b45309"};
+  const M={
+    green:  "#d1fae5;#065f46",
+    red:    "#fee2e2;#991b1b",
+    blue:   "#dbeafe;#1e40af",
+    amber:  "#fef3c7;#92400e",
+    gray:   "#f3f4f6;#4b5563",
+    purple: "#ede9fe;#6d28d9",
+    teal:   "#ccfbf1;#0f766e",
+    vert:   "#d1fae5;#065f46",
+    orange: "#ffedd5;#9a3412",
+  };
   const [bg,cl]=(M[color]||M.gray).split(";");
-  return <span style={{background:bg,color:cl,fontSize:11,fontWeight:700,padding:"2px 9px",borderRadius:20,whiteSpace:"nowrap"}}>{children}</span>;
+  return <span style={{background:bg,color:cl,fontSize:11,fontWeight:700,padding:"3px 10px",borderRadius:20,whiteSpace:"nowrap",letterSpacing:"0.02em"}}>{children}</span>;
 };
 
-const Card=({children,style})=><div style={{background:"#fff",border:"1px solid #d0dce8",borderRadius:12,overflow:"hidden",...style}}>{children}</div>;
+const Card=({children,style})=><div style={{background:"#fff",border:"1px solid #e2e8f0",borderRadius:14,overflow:"hidden",boxShadow:"0 1px 4px rgba(10,22,40,0.06)",...style}}>{children}</div>;
 
 const Modale=({titre,fermer,children,large,xlarge})=>(
-  <div style={{position:"fixed",inset:0,zIndex:999,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,30,60,0.55)"}}>
-    <div style={{background:"#fff",borderRadius:14,width:"100%",maxWidth:xlarge?1100:large?800:520,margin:"0 14px",maxHeight:"92vh",overflowY:"auto",boxShadow:"0 8px 40px rgba(0,30,60,0.25)"}}>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 20px",borderBottom:`3px solid ${C.green}`,background:C.blue,borderRadius:"14px 14px 0 0",position:"sticky",top:0,zIndex:1}}>
-        <strong style={{fontSize:14,color:"#fff"}}>{titre}</strong>
-        <button onClick={fermer} style={{background:"rgba(255,255,255,0.2)",border:"none",width:28,height:28,borderRadius:"50%",cursor:"pointer",color:"#fff",fontSize:18,lineHeight:1}}>×</button>
+  <div style={{position:"fixed",inset:0,zIndex:999,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(10,22,40,0.6)",backdropFilter:"blur(4px)"}}>
+    <div className="lc-modal-box" style={{background:"#fff",borderRadius:18,width:"100%",maxWidth:xlarge?1100:large?820:540,margin:"0 14px",maxHeight:"93vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(10,22,40,0.35)"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 22px",background:`linear-gradient(135deg,${C.blue},#1a3a6b)`,borderRadius:"18px 18px 0 0",position:"sticky",top:0,zIndex:1}}>
+        <strong style={{fontSize:14,color:"#fff",letterSpacing:"0.02em"}}>{titre}</strong>
+        <button onClick={fermer} style={{background:"rgba(255,255,255,0.15)",border:"1px solid rgba(255,255,255,0.25)",width:30,height:30,borderRadius:"50%",cursor:"pointer",color:"#fff",fontSize:18,lineHeight:"28px",textAlign:"center",display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
       </div>
-      <div style={{padding:"20px"}}>{children}</div>
+      <div style={{padding:"22px"}}>{children}</div>
     </div>
   </div>
 );
 
 const Champ=({label,children})=>(
   <div>
-    <label style={{display:"block",fontSize:10,fontWeight:700,color:C.blue,textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:3}}>{label}</label>
+    <label style={{display:"block",fontSize:10,fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:4}}>{label}</label>
     {children}
   </div>
 );
-const Input=({label,...p})=><Champ label={label}><input style={{width:"100%",border:"1px solid #b0c4d8",borderRadius:7,padding:"7px 10px",fontSize:13,boxSizing:"border-box",outline:"none"}} {...p}/></Champ>;
-const Selec=({label,children,...p})=><Champ label={label}><select style={{width:"100%",border:"1px solid #b0c4d8",borderRadius:7,padding:"7px 10px",fontSize:13,background:"#fff",boxSizing:"border-box",outline:"none"}} {...p}>{children}</select></Champ>;
-const Textarea=({label,...p})=><Champ label={label}><textarea style={{width:"100%",border:"1px solid #b0c4d8",borderRadius:7,padding:"7px 10px",fontSize:13,boxSizing:"border-box",outline:"none",resize:"vertical",minHeight:80}} {...p}/></Champ>;
+const Input=({label,...p})=><Champ label={label}><input style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 11px",fontSize:13,boxSizing:"border-box",outline:"none",background:"#fafbfc",transition:"border-color .15s"}} {...p}/></Champ>;
+const Selec=({label,children,...p})=><Champ label={label}><select style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 11px",fontSize:13,background:"#fafbfc",boxSizing:"border-box",outline:"none",transition:"border-color .15s"}} {...p}>{children}</select></Champ>;
+const Textarea=({label,...p})=><Champ label={label}><textarea style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 11px",fontSize:13,boxSizing:"border-box",outline:"none",resize:"vertical",minHeight:80,background:"#fafbfc"}} {...p}/></Champ>;
 
 const Btn=({children,v="primary",sm,...p})=>{
-  const S={primary:{background:C.blue,color:"#fff"},success:{background:C.green,color:"#fff"},
-    danger:{background:"#b91c1c",color:"#fff"},ghost:{background:"#f0f4f8",color:C.blue,border:"1px solid #b0c4d8"},
-    amber:{background:"#d97706",color:"#fff"},vert:{background:C.greenDk,color:"#fff"},
-    purple:{background:"#0A1628",color:"#fff"},orange:{background:"#ea580c",color:"#fff"}};
-  return <button style={{...S[v],border:"none",padding:sm?"4px 12px":"8px 18px",borderRadius:7,fontSize:sm?11:13,fontWeight:700,cursor:"pointer",...(p.disabled?{opacity:0.5,cursor:"not-allowed"}:{})}} {...p}>{children}</button>;
+  const S={
+    primary:{background:`linear-gradient(135deg,${C.blue},#1a3a6b)`,color:"#fff"},
+    success:{background:`linear-gradient(135deg,${C.greenDk},${C.green})`,color:"#fff"},
+    danger: {background:"linear-gradient(135deg,#991b1b,#b91c1c)",color:"#fff"},
+    ghost:  {background:"#fff",color:C.blue,border:"1.5px solid #e2e8f0"},
+    amber:  {background:"linear-gradient(135deg,#b45309,#d97706)",color:"#fff"},
+    vert:   {background:`linear-gradient(135deg,${C.greenDk},${C.green})`,color:"#fff"},
+    red:    {background:"linear-gradient(135deg,#991b1b,#b91c1c)",color:"#fff"},
+    purple: {background:"linear-gradient(135deg,#6d28d9,#7c3aed)",color:"#fff"},
+    orange: {background:"linear-gradient(135deg,#c2410c,#ea580c)",color:"#fff"},
+  };
+  return <button style={{...S[v]||S.primary,border:"none",padding:sm?"4px 12px":"8px 18px",borderRadius:8,fontSize:sm?11:13,fontWeight:700,cursor:"pointer",letterSpacing:"0.01em",...(p.disabled?{opacity:0.5,cursor:"not-allowed"}:{})}} {...p}>{children}</button>;
 };
 
 const THead=({cols})=>(
-  <thead><tr style={{background:C.blue}}>
-    {cols.map((c,i)=><th key={i} style={{textAlign:"left",padding:"9px 12px",fontSize:10,fontWeight:700,color:"#fff",textTransform:"uppercase",letterSpacing:"0.06em",whiteSpace:"nowrap"}}>{c}</th>)}
+  <thead><tr style={{background:`linear-gradient(135deg,${C.blue},#1a3a6b)`}}>
+    {cols.map((c,i)=><th key={i} style={{textAlign:"left",padding:"10px 13px",fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.9)",textTransform:"uppercase",letterSpacing:"0.08em",whiteSpace:"nowrap",borderBottom:`2px solid ${C.green}`}}>{c}</th>)}
   </tr></thead>
 );
-const TR=({children,bg})=><tr style={{borderBottom:"1px solid #e8f0e8",background:bg||"transparent"}}>{children}</tr>;
-const TD=({children,bold,center,style})=><td style={{padding:"9px 12px",fontSize:13,color:bold?C.blueDark:"#374151",fontWeight:bold?700:400,verticalAlign:"middle",textAlign:center?"center":"left",...style}}>{children}</td>;
+const TR=({children,bg})=><tr style={{borderBottom:"1px solid #f1f5f9",background:bg||"transparent"}}>{children}</tr>;
+const TD=({children,bold,center,style})=><td style={{padding:"10px 13px",fontSize:13,color:bold?C.blueDark:"#374151",fontWeight:bold?700:400,verticalAlign:"middle",textAlign:center?"center":"left",...style}}>{children}</td>;
 
 const Stat=({label,value,sub,bg})=>(
-  <div style={{background:bg||"#f0f4f8",borderRadius:11,padding:"13px 16px",border:"1px solid #d0dce8"}}>
-    <p style={{fontSize:10,fontWeight:700,color:C.blue,textTransform:"uppercase",margin:"0 0 3px",letterSpacing:"0.07em"}}>{label}</p>
-    <p style={{fontSize:20,fontWeight:700,color:C.blueDark,margin:"0 0 2px",lineHeight:1.1}}>{value}</p>
-    {sub&&<p style={{fontSize:11,color:"#6b7280",margin:0}}>{sub}</p>}
+  <div style={{background:bg||"#fff",borderRadius:12,padding:"14px 18px",border:"1px solid #e2e8f0",boxShadow:"0 1px 4px rgba(10,22,40,0.06)"}}>
+    <p style={{fontSize:10,fontWeight:700,color:"#64748b",textTransform:"uppercase",margin:"0 0 4px",letterSpacing:"0.08em"}}>{label}</p>
+    <p style={{fontSize:21,fontWeight:800,color:C.blueDark,margin:"0 0 2px",lineHeight:1.1}}>{value}</p>
+    {sub&&<p style={{fontSize:11,color:"#94a3b8",margin:0}}>{sub}</p>}
   </div>
 );
 
 const Tabs=({items,actif,onChange})=>(
-  <div style={{display:"flex",gap:3,marginBottom:18,background:"#e0ebf8",padding:4,borderRadius:10,flexWrap:"wrap"}}>
-    {items.map(t=><button key={t.id} onClick={()=>onChange(t.id)} style={{padding:"6px 14px",borderRadius:7,fontSize:12,fontWeight:700,border:"none",cursor:"pointer",
-      background:actif===t.id?C.green:"transparent",color:actif===t.id?"#fff":C.blue,
-      boxShadow:actif===t.id?"0 2px 6px rgba(90,158,47,0.3)":"none",whiteSpace:"nowrap"}}>{t.label}</button>)}
+  <div style={{display:"flex",gap:3,marginBottom:18,background:"#e2e8f0",padding:4,borderRadius:12,flexWrap:"wrap"}}>
+    {items.map(t=><button key={t.id} onClick={()=>onChange(t.id)} style={{padding:"7px 15px",borderRadius:9,fontSize:12,fontWeight:700,border:"none",cursor:"pointer",
+      background:actif===t.id?`linear-gradient(135deg,${C.greenDk},${C.green})`:"transparent",
+      color:actif===t.id?"#fff":C.blue,
+      boxShadow:actif===t.id?"0 2px 8px rgba(0,168,118,0.35)":"none",whiteSpace:"nowrap",
+      transition:"all .15s"}}>{t.label}</button>)}
   </div>
 );
 
 const Vide=({icone,msg})=>(
-  <div style={{textAlign:"center",padding:"48px 20px",background:"#fff",borderRadius:12,border:"1px dashed #b0c4d8"}}>
-    <div style={{fontSize:40,marginBottom:10}}>{icone}</div>
-    <p style={{fontSize:14,fontWeight:700,color:C.blue,margin:"0 0 4px"}}>{msg}</p>
-    <p style={{fontSize:12,color:"#9ca3af",margin:0}}>Utilisez le bouton ci-dessus pour ajouter des données.</p>
+  <div style={{textAlign:"center",padding:"56px 20px",background:"#fff",borderRadius:14,border:"2px dashed #e2e8f0"}}>
+    <div style={{fontSize:44,marginBottom:12,filter:"grayscale(0.2)"}}>{icone}</div>
+    <p style={{fontSize:15,fontWeight:800,color:C.blue,margin:"0 0 6px"}}>{msg}</p>
+    <p style={{fontSize:12,color:"#94a3b8",margin:0}}>Utilisez le bouton ci-dessus pour ajouter des données.</p>
   </div>
 );
 
 const Chargement=()=>(
-  <div style={{textAlign:"center",padding:"48px",color:C.blue}}>
-    <div style={{fontSize:32,marginBottom:12}}>⏳</div>
-    <p style={{fontWeight:700}}>Chargement...</p>
+  <div style={{textAlign:"center",padding:"56px 20px",color:C.blue}}>
+    <div className="lc-spinner"/>
+    <p style={{fontWeight:700,fontSize:13,color:"#64748b",margin:0}}>Chargement en cours…</p>
   </div>
 );
 
 const LectureSeule=()=>(
-  <div style={{background:"#fef3e0",border:"1px solid #fbbf24",borderRadius:8,padding:"10px 14px",fontSize:13,color:"#92400e",marginBottom:16,display:"flex",alignItems:"center",gap:8}}>
-    <span style={{fontSize:18}}>👁️</span>
+  <div style={{background:"linear-gradient(135deg,#fffbeb,#fef3c7)",border:"1px solid #fcd34d",borderRadius:10,padding:"11px 16px",fontSize:13,color:"#92400e",marginBottom:16,display:"flex",alignItems:"center",gap:10,boxShadow:"0 1px 4px rgba(0,0,0,0.06)"}}>
+    <span style={{fontSize:20}}>👁️</span>
     <span><strong>Mode lecture seule</strong> — vous pouvez consulter mais pas modifier.</span>
   </div>
 );
@@ -4510,6 +4571,7 @@ export default function App() {
   if(!utilisateur && page==="inscription")return <Inscription/>;
   if(!utilisateur)return (
     <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire}}>
+      <GlobalStyles/>
       <Connexion onLogin={connecter} onInscription={()=>{ signOut(auth).catch(()=>{}); setUtilisateur(null); setPage("inscription"); }}/>
     </SchoolContext.Provider>
   );
@@ -4535,7 +4597,8 @@ export default function App() {
 
   return (
     <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire}}>
-    <div style={{height:"100vh",overflow:"hidden",display:"flex",background:C.bg,fontFamily:"'Segoe UI',system-ui,sans-serif"}}>
+    <GlobalStyles/>
+    <div style={{height:"100vh",overflow:"hidden",display:"flex",background:C.bg}}>
       {/* Overlay mobile */}
       {sidebarOuvert&&<div onClick={()=>setSidebarOuvert(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:40}}/>}
       <aside style={{position:"fixed",top:0,bottom:0,left:0,width:228,zIndex:50,background:schoolInfo.couleur1||C.sidebar,display:"flex",flexDirection:"column",
