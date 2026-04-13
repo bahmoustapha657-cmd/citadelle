@@ -2083,28 +2083,44 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
         </Modale>}
 
         {/* MODAL AJOUT/MODIF BON */}
-        {(modal==="add_b"&&canCreate||(modal==="edit_b"&&canEdit))&&<Modale titre={modal==="add_b"?"Nouveau bon":"Modifier le bon"} fermer={()=>setModal(null)}>
-          <Selec label="Mois" value={form.mois||moisSel} onChange={chg("mois")}>
-            {moisSalaire.map(m=><option key={m}>{m}</option>)}
-          </Selec>
-          <div style={{height:10}}/>
-          <Selec label="Section" value={form.section||"Secondaire"} onChange={chg("section")}>
-            <option>Secondaire</option><option>Primaire</option>
-          </Selec>
-          <div style={{height:10}}/>
-          <Input label="Prénoms et Nom de l'enseignant" value={form.nom||""} onChange={chg("nom")} placeholder="Doit correspondre au nom dans les salaires"/>
-          <div style={{height:10}}/>
-          <Input label="Montant du bon (GNF)" type="number" value={form.montant||""} onChange={chg("montant")} placeholder="Ex : 50000"/>
-          <div style={{height:10}}/>
-          <Input label="Motif" value={form.motif||""} onChange={chg("motif")} placeholder="Ex : Retard, Absence injustifiée…"/>
-          <div style={{marginTop:12,padding:"10px 14px",background:"#fce8e8",borderRadius:8,fontSize:12,color:"#9b2020"}}>
-            Le bon sera déduit du salaire net de l'enseignant lors de l'application.
-          </div>
-          <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
-            <Btn v="ghost" onClick={()=>setModal(null)}>Annuler</Btn>
-            <Btn onClick={()=>enreg(ajBon,modBon,{montant:Number(form.montant||0)})}>Enregistrer</Btn>
-          </div>
-        </Modale>}
+        {(modal==="add_b"&&canCreate||(modal==="edit_b"&&canEdit))&&(()=>{
+          const moisBon = form.mois||moisSel;
+          const secBon = form.section||"Secondaire";
+          const ensDisponibles = salaires
+            .filter(s=>s.mois===moisBon && s.section===secBon)
+            .map(s=>s.nom||"")
+            .filter(Boolean)
+            .sort();
+          return <Modale titre={modal==="add_b"?"Nouveau bon":"Modifier le bon"} fermer={()=>setModal(null)}>
+            <Selec label="Mois" value={moisBon} onChange={chg("mois")}>
+              {moisSalaire.map(m=><option key={m}>{m}</option>)}
+            </Selec>
+            <div style={{height:10}}/>
+            <Selec label="Section" value={secBon} onChange={e=>{chg("section")(e);setForm(p=>({...p,nom:""}));}}>
+              <option>Secondaire</option><option>Primaire</option>
+            </Selec>
+            <div style={{height:10}}/>
+            <Selec label="Enseignant" value={form.nom||""} onChange={chg("nom")}>
+              <option value="">— Sélectionner un enseignant —</option>
+              {ensDisponibles.map(n=><option key={n} value={n}>{n}</option>)}
+              {ensDisponibles.length===0&&<option disabled>Aucun enseignant pour ce mois/section</option>}
+            </Selec>
+            {ensDisponibles.length===0&&<div style={{fontSize:11,color:"#b45309",marginTop:4}}>
+              Générez d'abord les salaires pour ce mois avant d'ajouter des bons.
+            </div>}
+            <div style={{height:10}}/>
+            <Input label="Montant du bon (GNF)" type="number" value={form.montant||""} onChange={chg("montant")} placeholder="Ex : 50000"/>
+            <div style={{height:10}}/>
+            <Input label="Motif" value={form.motif||""} onChange={chg("motif")} placeholder="Ex : Retard, Absence injustifiée…"/>
+            <div style={{marginTop:12,padding:"10px 14px",background:"#fce8e8",borderRadius:8,fontSize:12,color:"#9b2020"}}>
+              Le bon sera déduit du salaire net de l'enseignant lors de l'application.
+            </div>
+            <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
+              <Btn v="ghost" onClick={()=>setModal(null)}>Annuler</Btn>
+              <Btn onClick={()=>enreg(ajBon,modBon,{montant:Number(form.montant||0)})}>Enregistrer</Btn>
+            </div>
+          </Modale>;
+        })()}
       </div>}
 
       {tab==="fondation"&&<div>
