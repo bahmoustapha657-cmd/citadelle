@@ -674,67 +674,183 @@ const imprimerCartesEleves = (eleves, schoolInfo={}, annee="") => {
   const w = window.open("","_blank");
   const c1 = schoolInfo.couleur1||"#0A1628";
   const c2 = schoolInfo.couleur2||"#00C48C";
+  const nomEcole = schoolInfo.nom||"École";
+  const ville = schoolInfo.ville||"";
+  const logo = schoolInfo.logo||"";
+
+  // Génère une version claire de c1 pour le fond du corps
+  const c1Light = c1+"18"; // 10% opacity
 
   const carte = (e) => `
   <div class="carte">
-    <div class="carte-header">
-      ${schoolInfo.logo?`<img src="${schoolInfo.logo}" class="carte-logo"/>`:""}
-      <div class="carte-titre">
-        <div class="carte-ecole">${schoolInfo.nom||"École"}</div>
-        <div class="carte-sous">CARTE D'IDENTITÉ SCOLAIRE</div>
+    <!-- Bande déco gauche couleur 2 -->
+    <div class="bande-gauche"></div>
+
+    <div class="carte-inner">
+      <!-- EN-TÊTE -->
+      <div class="carte-header">
+        <div class="logo-wrap">
+          ${logo
+            ?`<img src="${logo}" class="carte-logo"/>`
+            :`<div class="logo-initiales">${nomEcole.slice(0,2).toUpperCase()}</div>`}
+        </div>
+        <div class="carte-titre">
+          <div class="carte-ecole">${nomEcole}</div>
+          ${ville?`<div class="carte-ville">${ville}</div>`:""}
+          <div class="carte-sous">CARTE D'IDENTITÉ SCOLAIRE</div>
+        </div>
+        <div class="annee-badge">${annee}</div>
       </div>
-    </div>
-    <div class="carte-body">
-      <div class="carte-photo">
-        ${e.photo
-          ?`<img src="${e.photo}" class="photo-img"/>`
-          :`<span class="initiales">${(e.prenom||"?")[0]}${(e.nom||"?")[0]}</span>`}
+
+      <!-- SÉPARATEUR -->
+      <div class="separateur"></div>
+
+      <!-- CORPS -->
+      <div class="carte-body">
+        <div class="carte-photo">
+          ${e.photo
+            ?`<img src="${e.photo}" class="photo-img"/>`
+            :`<div class="photo-initiales">${(e.prenom||"?")[0].toUpperCase()}${(e.nom||"?")[0].toUpperCase()}</div>`}
+        </div>
+        <div class="carte-infos">
+          <div class="carte-nom">${(e.prenom||"").toUpperCase()} ${(e.nom||"").toUpperCase()}</div>
+          <div class="info-ligne"><span class="info-label">Matricule</span><span class="info-val">${e.matricule||"—"}</span></div>
+          <div class="info-ligne"><span class="info-label">Classe</span><span class="info-val">${e.classe||"—"}</span></div>
+          <div class="info-ligne"><span class="info-label">Né(e) le</span><span class="info-val">${e.dateNaissance||"—"}</span></div>
+          ${e.sexe?`<div class="info-ligne"><span class="info-label">Sexe</span><span class="info-val">${e.sexe}</span></div>`:""}
+        </div>
       </div>
-      <div class="carte-infos">
-        <div class="carte-nom">${e.prenom||""} ${e.nom||""}</div>
-        <div class="info-row">Matricule&nbsp;: <b>${e.matricule||"—"}</b></div>
-        <div class="info-row">Classe&nbsp;: <b>${e.classe||"—"}</b></div>
-        <div class="info-row">Né(e) le&nbsp;: ${e.dateNaissance||"—"}</div>
-        <div class="info-row">Année&nbsp;: ${annee}</div>
+
+      <!-- PIED -->
+      <div class="carte-footer">
+        <div class="footer-left">
+          <span class="footer-label">Signature Direction</span>
+          <div class="footer-ligne"></div>
+        </div>
+        <div class="footer-center">
+          <div class="mat-badge">${e.matricule||""}</div>
+        </div>
+        <div class="footer-right">
+          <span class="footer-label">Signature Élève</span>
+          <div class="footer-ligne"></div>
+        </div>
       </div>
-    </div>
-    <div class="carte-footer">
-      <span>${schoolInfo.ville||""}</span>
-      <span class="mat-code">${e.matricule||""}</span>
     </div>
   </div>`;
 
-  w.document.write(`<!DOCTYPE html><html><head><title>Cartes d'identité scolaires</title>
+  w.document.write(`<!DOCTYPE html><html><head>
   <meta charset="utf-8"/>
+  <title>Cartes d'identité scolaires — ${nomEcole}</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
     @page{size:A4 portrait;margin:8mm}
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:Arial,sans-serif;background:#fff}
-    .grille{display:grid;grid-template-columns:repeat(2,85.6mm);gap:5mm;justify-content:center}
-    .carte{width:85.6mm;height:54mm;border-radius:3mm;overflow:hidden;border:.3mm solid #bbb;
-           display:flex;flex-direction:column;break-inside:avoid;page-break-inside:avoid;
-           box-shadow:0 1px 4px rgba(0,0,0,.12)}
-    .carte-header{background:${c1};padding:2.2mm 3mm;display:flex;align-items:center;gap:2mm;flex-shrink:0}
-    .carte-logo{width:9mm;height:9mm;object-fit:contain;filter:brightness(0) invert(1);opacity:.9}
-    .carte-titre{flex:1}
-    .carte-ecole{color:${c2};font-size:6.2pt;font-weight:900;text-transform:uppercase;letter-spacing:.04em}
-    .carte-sous{color:rgba(255,255,255,.65);font-size:4.2pt;letter-spacing:.1em;text-transform:uppercase;margin-top:.5mm}
-    .carte-body{flex:1;display:flex;padding:2mm 3mm;gap:3mm;align-items:center;background:#fff}
-    .carte-photo{width:17mm;height:21mm;border-radius:1.5mm;overflow:hidden;flex-shrink:0;
-                 border:.4mm solid ${c1};background:#e8f0f8;display:flex;align-items:center;justify-content:center}
+    body{font-family:'Inter',Arial,sans-serif;background:#f0f0f0;padding:4mm}
+
+    .grille{display:grid;grid-template-columns:repeat(2,86mm);gap:5mm;justify-content:center}
+
+    /* Carte principale */
+    .carte{
+      width:86mm;height:54mm;border-radius:3mm;overflow:hidden;
+      display:flex;flex-direction:row;
+      break-inside:avoid;page-break-inside:avoid;
+      box-shadow:0 2px 8px rgba(0,0,0,.2);
+      background:#fff;
+      border:.3mm solid rgba(0,0,0,.1);
+    }
+
+    /* Bande verticale gauche */
+    .bande-gauche{
+      width:3.5mm;flex-shrink:0;
+      background:linear-gradient(180deg,${c2},${c1});
+    }
+
+    /* Contenu principal */
+    .carte-inner{flex:1;display:flex;flex-direction:column;overflow:hidden}
+
+    /* En-tête */
+    .carte-header{
+      background:${c1};
+      padding:2mm 2.5mm;
+      display:flex;align-items:center;gap:2mm;
+      flex-shrink:0;
+    }
+    .logo-wrap{
+      width:10mm;height:10mm;flex-shrink:0;
+      background:rgba(255,255,255,0.15);
+      border-radius:1.5mm;
+      display:flex;align-items:center;justify-content:center;
+      overflow:hidden;border:.3mm solid rgba(255,255,255,0.3);
+    }
+    .carte-logo{width:100%;height:100%;object-fit:contain;padding:.5mm}
+    .logo-initiales{font-size:7pt;font-weight:900;color:${c2};letter-spacing:-.02em}
+    .carte-titre{flex:1;min-width:0}
+    .carte-ecole{color:${c2};font-size:6pt;font-weight:900;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .carte-ville{color:rgba(255,255,255,.55);font-size:4pt;margin-top:.3mm}
+    .carte-sous{color:rgba(255,255,255,.5);font-size:3.5pt;letter-spacing:.12em;text-transform:uppercase;margin-top:.4mm}
+    .annee-badge{
+      background:${c2};color:${c1};
+      font-size:4pt;font-weight:900;
+      padding:1mm 1.8mm;border-radius:1mm;
+      white-space:nowrap;flex-shrink:0;
+    }
+
+    /* Séparateur */
+    .separateur{height:.4mm;background:linear-gradient(90deg,${c2},${c1});flex-shrink:0}
+
+    /* Corps */
+    .carte-body{
+      flex:1;display:flex;padding:2mm 2.5mm;gap:2.5mm;align-items:center;
+      background:linear-gradient(135deg,#ffffff 70%,${c1}08 100%);
+    }
+    .carte-photo{
+      width:16mm;height:20mm;flex-shrink:0;
+      border-radius:1.5mm;overflow:hidden;
+      border:1mm solid ${c1};
+      background:${c1+"22"};
+      display:flex;align-items:center;justify-content:center;
+    }
     .photo-img{width:100%;height:100%;object-fit:cover}
-    .initiales{font-size:12pt;font-weight:900;color:${c1};opacity:.35}
+    .photo-initiales{
+      font-size:10pt;font-weight:900;
+      color:${c1};opacity:.45;letter-spacing:-.03em;
+    }
     .carte-infos{flex:1;overflow:hidden}
-    .carte-nom{font-size:7.5pt;font-weight:900;color:${c1};line-height:1.2;margin-bottom:1.8mm;word-break:break-word}
-    .info-row{font-size:5.2pt;color:#555;line-height:1.7}
-    .info-row b{color:${c1};font-size:5.5pt}
-    .carte-footer{background:${c1};padding:1.2mm 3mm;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
-    .carte-footer span{color:rgba(255,255,255,.45);font-size:4pt}
-    .mat-code{font-family:monospace;letter-spacing:.12em;color:${c2}!important;font-weight:800;font-size:5pt!important}
-    @media print{button{display:none}}
+    .carte-nom{
+      font-size:6.5pt;font-weight:900;color:${c1};
+      line-height:1.25;margin-bottom:1.5mm;
+      word-break:break-word;letter-spacing:.02em;
+    }
+    .info-ligne{display:flex;align-items:baseline;gap:1mm;margin-bottom:.7mm}
+    .info-label{font-size:4pt;color:#999;text-transform:uppercase;letter-spacing:.06em;flex-shrink:0}
+    .info-val{font-size:5pt;color:${c1};font-weight:700}
+
+    /* Pied */
+    .carte-footer{
+      background:${c1+"0d"};
+      border-top:.3mm solid ${c1+"22"};
+      padding:1.2mm 2.5mm;
+      display:flex;justify-content:space-between;align-items:center;
+      flex-shrink:0;
+    }
+    .footer-left,.footer-right{display:flex;flex-direction:column;align-items:center;gap:.5mm}
+    .footer-label{font-size:3.5pt;color:#aaa;text-transform:uppercase;letter-spacing:.06em}
+    .footer-ligne{width:16mm;height:.3mm;background:${c1}44}
+    .footer-center{display:flex;align-items:center;justify-content:center}
+    .mat-badge{
+      font-family:monospace;font-size:4.5pt;font-weight:800;
+      color:${c1};background:${c2}33;
+      padding:.8mm 2mm;border-radius:1mm;
+      letter-spacing:.1em;
+    }
+
+    @media print{
+      body{background:#fff;padding:0}
+      button{display:none}
+    }
   </style></head><body>
   <div class="grille">${eleves.map(carte).join("")}</div>
-  <script>window.onload=()=>window.print();</script>
+  <script>window.onload=()=>{setTimeout(()=>window.print(),400);}</script>
   </body></html>`);
   w.document.close();
 };
