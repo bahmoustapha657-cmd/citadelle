@@ -3982,9 +3982,13 @@ function Connexion({onLogin, onInscription}) {
 
           <p style={{textAlign:"center",margin:"4px 0 0",color:"#9ca3af",fontSize:12}}>
             Pas encore inscrit ?{" "}
-            <span style={{color:C.blue,cursor:"pointer",fontWeight:700}} onClick={()=>onInscription&&onInscription()}>
+            <button
+              type="button"
+              onClick={()=>onInscription&&onInscription()}
+              style={{background:"none",border:"none",padding:0,color:C.blue,cursor:"pointer",fontWeight:700,fontSize:"inherit",fontFamily:"inherit"}}
+            >
               Créer un compte école
-            </span>
+            </button>
           </p>
         </div>
       </div>
@@ -4106,7 +4110,7 @@ export default function App() {
   if(!utilisateur && page==="inscription")return <Inscription/>;
   if(!utilisateur)return (
     <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire}}>
-      <Connexion onLogin={connecter} onInscription={()=>setPage("inscription")}/>
+      <Connexion onLogin={connecter} onInscription={()=>{ signOut(auth).catch(()=>{}); setUtilisateur(null); setPage("inscription"); }}/>
     </SchoolContext.Provider>
   );
 

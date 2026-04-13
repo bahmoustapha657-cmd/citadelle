@@ -1,7 +1,4 @@
 import { useState } from "react";
-import { db } from "./firebase";
-import { doc, setDoc, collection, addDoc } from "firebase/firestore";
-import bcrypt from "bcryptjs";
 
 export default function Inscription() {
   const [etape, setEtape] = useState(1); // 1=infos école, 2=compte admin, 3=succès
@@ -14,15 +11,7 @@ export default function Inscription() {
 
   const chg = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
-  // Génère un ID école à partir du nom (slug simple)
-  const genSlug = (nom) =>
-    nom.toLowerCase().trim()
-      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, 30) || "ecole";
-
-  const validerEtape1 = () => {
+const validerEtape1 = () => {
     if (!form.nomEcole.trim()) { setErreur("Le nom de l'école est requis."); return false; }
     if (!form.ville.trim())    { setErreur("La ville est requise."); return false; }
     setErreur(""); return true;
@@ -40,34 +29,27 @@ export default function Inscription() {
     setChargement(true);
     setErreur("");
     try {
-      const schoolId = genSlug(form.nomEcole);
-      const mdpHash = await bcrypt.hash(form.adminMdp, 10);
-
-      // Créer le document école
-      await setDoc(doc(db, "ecoles", schoolId), {
-        nom: form.nomEcole.trim(),
-        ville: form.ville.trim(),
-        pays: form.pays.trim(),
-        createdAt: Date.now(),
-        actif: true,
+      const r = await fetch("/api/inscription", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nomEcole:   form.nomEcole,
+          ville:      form.ville,
+          pays:       form.pays,
+          adminLogin: form.adminLogin,
+          adminMdp:   form.adminMdp,
+        }),
       });
-
-      // Créer les comptes par défaut sous /ecoles/{schoolId}/comptes/
-      const comptes = [
-        { login: form.adminLogin.trim(), mdp: mdpHash, role: "direction", label: "Direction", statut: "Actif" },
-        { login: "comptable",  mdp: await bcrypt.hash("compta123",  10), role: "comptable",  label: "Comptable",  statut: "Actif" },
-        { login: "admin",      mdp: await bcrypt.hash("admin123",   10), role: "admin",      label: "Admin",      statut: "Actif" },
-      ];
-      for (const c of comptes) {
-        await addDoc(collection(db, "ecoles", schoolId, "comptes"), c);
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        setErreur(data.error || "Erreur lors de l'inscription. Veuillez réessayer.");
+        return;
       }
-
+      localStorage.setItem("LC_schoolId", data.schoolId);
       setEtape(3);
-      // Stocker l'ID école pour un futur login automatique (optionnel)
-      localStorage.setItem("LC_schoolId", schoolId);
     } catch (e) {
       console.error(e);
-      setErreur("Erreur lors de l'inscription : " + (e.message || "Veuillez réessayer."));
+      setErreur("Impossible de joindre le serveur. Vérifiez votre connexion.");
     } finally {
       setChargement(false);
     }
