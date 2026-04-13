@@ -3792,17 +3792,69 @@ function ParametresEcole() {
 
   const chg = k => e => setForm(p=>({...p,[k]:e.target.value}));
 
-  // Upload logo fichier → base64
+  const [couleursDetectees, setCouleursDetectees] = useState(null);
+
+  // Extrait les 2 couleurs dominantes d'une image via Canvas
+  const extraireCouleurs = (src, cb) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const S = 80; // résolution réduite pour perf
+        const canvas = document.createElement("canvas");
+        canvas.width = S; canvas.height = S;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, S, S);
+        const px = ctx.getImageData(0, 0, S, S).data;
+        const freq = {};
+        for(let i=0;i<px.length;i+=4){
+          const [r,g,b,a] = [px[i],px[i+1],px[i+2],px[i+3]];
+          if(a<100) continue;                        // transparent
+          if(r>230&&g>230&&b>230) continue;          // blanc
+          if(r<25&&g<25&&b<25) continue;             // noir
+          // Quantiser (grouper les teintes proches)
+          const k=`${Math.round(r/28)*28},${Math.round(g/28)*28},${Math.round(b/28)*28}`;
+          freq[k]=(freq[k]||0)+1;
+        }
+        const tri = Object.entries(freq).sort((a,b)=>b[1]-a[1]);
+        if(!tri.length){cb(null,null);return;}
+        const hex=([r,g,b])=>"#"+[r,g,b].map(v=>Math.min(255,v).toString(16).padStart(2,"0")).join("");
+        const c1rgb = tri[0][0].split(",").map(Number);
+        const c1 = hex(c1rgb);
+        let c2=null;
+        for(const [k] of tri.slice(1)){
+          const rgb=k.split(",").map(Number);
+          const d=Math.sqrt(c1rgb.reduce((s,v,i)=>s+(v-rgb[i])**2,0));
+          if(d>70){c2=hex(rgb);break;}
+        }
+        cb(c1, c2||"#00C48C");
+      } catch(e){ cb(null,null); }
+    };
+    img.onerror=()=>cb(null,null);
+    img.src=src;
+  };
+
+  // Upload logo fichier → base64 + extraction couleurs
   const handleLogoFile = e => {
     const file = e.target.files[0];
     if(!file) return;
     if(file.size > 500*1024){ setErreur("Logo trop grand (max 500 Ko)."); return; }
     const reader = new FileReader();
     reader.onload = ev => {
-      setForm(p=>({...p,logo:ev.target.result}));
-      setApercu(ev.target.result);
+      const src = ev.target.result;
+      setForm(p=>({...p,logo:src}));
+      setApercu(src);
+      setCouleursDetectees(null);
+      extraireCouleurs(src, (c1, c2) => {
+        if(c1) setCouleursDetectees({c1, c2});
+      });
     };
     reader.readAsDataURL(file);
+  };
+
+  const appliquerCouleursDetectees = () => {
+    if(!couleursDetectees) return;
+    setForm(p=>({...p, couleur1:couleursDetectees.c1, couleur2:couleursDetectees.c2}));
+    setCouleursDetectees(null);
   };
 
   const sauvegarder = async () => {
@@ -3935,6 +3987,31 @@ function ParametresEcole() {
                 style={{marginTop:8,background:"#fee2e2",border:"none",color:"#991b1b",padding:"5px 12px",borderRadius:6,fontSize:12,fontWeight:700,cursor:"pointer"}}>
                 ✕ Supprimer le logo
               </button>
+            )}
+            {couleursDetectees&&(
+              <div style={{marginTop:10,padding:"10px 14px",background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:10}}>
+                <p style={{fontSize:12,fontWeight:700,color:"#065f46",marginBottom:8}}>🎨 Couleurs détectées dans le logo :</p>
+                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    <div style={{width:28,height:28,borderRadius:6,background:couleursDetectees.c1,border:"2px solid #e2e8f0",boxShadow:"0 1px 4px rgba(0,0,0,.15)"}}/>
+                    <span style={{fontSize:11,color:"#374151",fontWeight:600}}>Couleur 1<br/><code style={{fontSize:10,color:"#6b7280"}}>{couleursDetectees.c1}</code></span>
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    <div style={{width:28,height:28,borderRadius:6,background:couleursDetectees.c2,border:"2px solid #e2e8f0",boxShadow:"0 1px 4px rgba(0,0,0,.15)"}}/>
+                    <span style={{fontSize:11,color:"#374151",fontWeight:600}}>Couleur 2<br/><code style={{fontSize:10,color:"#6b7280"}}>{couleursDetectees.c2}</code></span>
+                  </div>
+                </div>
+                <div style={{display:"flex",gap:8}}>
+                  <button onClick={appliquerCouleursDetectees}
+                    style={{background:"linear-gradient(135deg,#065f46,#059669)",color:"#fff",border:"none",padding:"6px 14px",borderRadius:7,fontSize:12,fontWeight:700,cursor:"pointer"}}>
+                    ✔ Appliquer ces couleurs
+                  </button>
+                  <button onClick={()=>setCouleursDetectees(null)}
+                    style={{background:"#e5e7eb",color:"#374151",border:"none",padding:"6px 12px",borderRadius:7,fontSize:12,fontWeight:600,cursor:"pointer"}}>
+                    Ignorer
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         </div>
