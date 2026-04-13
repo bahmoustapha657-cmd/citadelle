@@ -715,6 +715,7 @@ const imprimerCartesEleves = (eleves, schoolInfo={}, annee="") => {
         <div class="carte-infos">
           <div class="carte-nom">${(e.prenom||"").toUpperCase()} ${(e.nom||"").toUpperCase()}</div>
           <div class="info-ligne"><span class="info-label">Matricule</span><span class="info-val">${e.matricule||"—"}</span></div>
+          ${e.ien?`<div class="info-ligne"><span class="info-label">IEN</span><span class="info-val ien">${e.ien}</span></div>`:""}
           <div class="info-ligne"><span class="info-label">Classe</span><span class="info-val">${e.classe||"—"}</span></div>
           <div class="info-ligne"><span class="info-label">Né(e) le</span><span class="info-val">${e.dateNaissance||"—"}</span></div>
           ${e.sexe?`<div class="info-ligne"><span class="info-label">Sexe</span><span class="info-val">${e.sexe}</span></div>`:""}
@@ -824,6 +825,7 @@ const imprimerCartesEleves = (eleves, schoolInfo={}, annee="") => {
     .info-ligne{display:flex;align-items:baseline;gap:1mm;margin-bottom:.7mm}
     .info-label{font-size:4pt;color:#999;text-transform:uppercase;letter-spacing:.06em;flex-shrink:0}
     .info-val{font-size:5pt;color:${c1};font-weight:700}
+    .ien{font-family:monospace;color:#3730a3;background:#eef2ff;padding:0 2px;border-radius:1mm}
 
     /* Pied */
     .carte-footer{
@@ -2496,9 +2498,10 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
         {(cEC||cEP)?<Chargement/>:elevesEnrol.length===0?<Vide icone="🎓" msg="Aucun élève enregistré"/>
           :<div style={{overflowX:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",minWidth:900}}>
-              <THead cols={["Matricule","Nom & Prénom","Classe","Sexe","Filiation","Tuteur","Contact","Domicile","Statut","Actions"]}/>
+              <THead cols={["Matricule","IEN","Nom & Prénom","Classe","Sexe","Filiation","Tuteur","Contact","Domicile","Statut","Actions"]}/>
               <tbody>{elevesEnrol.map(e=><TR key={e._id}>
                 <TD><span style={{fontSize:11,fontFamily:"monospace",background:"#e0ebf8",padding:"2px 5px",borderRadius:4,color:C.blue,fontWeight:700}}>{e.matricule}</span></TD>
+                <TD><span style={{fontSize:11,fontFamily:"monospace",background:"#eef2ff",padding:"2px 5px",borderRadius:4,color:"#3730a3",fontWeight:700}}>{e.ien||"—"}</span></TD>
                 <TD bold>{e.nom} {e.prenom}</TD><TD>{e.classe}</TD>
                 <TD><Badge color={e.sexe==="F"?"vert":"blue"}>{e.sexe}</Badge></TD>
                 <TD><span style={{fontSize:11,color:"#6b7280"}}>{e.filiation}</span></TD>
@@ -2522,6 +2525,14 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                 <input value={form.matricule||""} onChange={chg("matricule")}
                   style={{flex:1,border:"1px solid #b0c4d8",borderRadius:7,padding:"7px 10px",fontSize:13,boxSizing:"border-box",outline:"none",fontFamily:"monospace",fontWeight:700,color:C.blue,background:"#e0ebf8"}}/>
                 <span style={{fontSize:10,color:"#9ca3af",whiteSpace:"nowrap"}}>Modifiable si besoin</span>
+              </div>
+            </Champ>
+            <Champ label="Identifiant National (IEN)">
+              <div style={{position:"relative"}}>
+                <input value={form.ien||""} onChange={chg("ien")}
+                  placeholder="Ex : GN-2024-000123"
+                  style={{width:"100%",border:"1.5px solid #c7d2fe",borderRadius:8,padding:"7px 10px 7px 30px",fontSize:13,boxSizing:"border-box",outline:"none",background:"#eef2ff",fontFamily:"monospace",fontWeight:700,color:"#3730a3"}}/>
+                <span style={{position:"absolute",left:9,top:"50%",transform:"translateY(-50%)",fontSize:13}}>🪪</span>
               </div>
             </Champ>
             <Champ label="Classe">
@@ -2997,16 +3008,17 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
           <Btn sm v="blue" onClick={()=>imprimerCartesEleves(elevesFiltres,schoolInfo,annee)}>🪪 Cartes ID</Btn>
           <Btn sm v="ghost" onClick={()=>exportExcel(
             `Eleves_${avecEns?"College":"Primaire"}`,
-            ["Matricule","Nom","Prénom","Classe","Sexe","Date Naissance","Lieu Naissance","Filiation","Tuteur","Contact","Domicile","Statut"],
-            elevesFiltres.map(e=>[e.matricule||"",e.nom,e.prenom,e.classe,e.sexe||"",e.dateNaissance||"",e.lieuNaissance||"",e.filiation||"",e.tuteur||"",e.contactTuteur||"",e.domicile||"",e.statut||"Actif"])
+            ["Matricule","IEN","Nom","Prénom","Classe","Sexe","Date Naissance","Lieu Naissance","Filiation","Tuteur","Contact","Domicile","Statut"],
+            elevesFiltres.map(e=>[e.matricule||"",e.ien||"",e.nom,e.prenom,e.classe,e.sexe||"",e.dateNaissance||"",e.lieuNaissance||"",e.filiation||"",e.tuteur||"",e.contactTuteur||"",e.domicile||"",e.statut||"Actif"])
           )}>📥 Export Excel</Btn>
         </div>
         {cE?<Chargement/>:elevesFiltres.length===0?<Vide icone="🎓" msg="Aucun élève"/>
           :<div style={{overflowX:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",minWidth:900}}>
-              <THead cols={["Matricule","Nom & Prénom","Classe","Sexe","Date Nais.","Lieu Nais.","Filiation","Tuteur","Contact","Domicile","Documents","Statut"]}/>
+              <THead cols={["Matricule","IEN","Nom & Prénom","Classe","Sexe","Date Nais.","Lieu Nais.","Filiation","Tuteur","Contact","Domicile","Documents","Statut"]}/>
               <tbody>{elevesFiltres.map(e=><TR key={e._id}>
                 <TD><span style={{fontSize:11,fontFamily:"monospace",background:"#e0ebf8",padding:"2px 5px",borderRadius:4,color:C.blue,fontWeight:700}}>{e.matricule}</span></TD>
+                <TD><span style={{fontSize:11,fontFamily:"monospace",background:"#eef2ff",padding:"2px 5px",borderRadius:4,color:"#3730a3",fontWeight:700}}>{e.ien||"—"}</span></TD>
                 <TD bold>{e.nom} {e.prenom}</TD><TD>{e.classe}</TD>
                 <TD><Badge color={e.sexe==="F"?"vert":"blue"}>{e.sexe}</Badge></TD>
                 <TD>{e.dateNaissance||"—"}</TD>
