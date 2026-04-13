@@ -4001,10 +4001,14 @@ function ParametresEcole() {
                     <span style={{fontSize:11,color:"#374151",fontWeight:600}}>Couleur 2<br/><code style={{fontSize:10,color:"#6b7280"}}>{couleursDetectees.c2}</code></span>
                   </div>
                 </div>
-                <div style={{display:"flex",gap:8}}>
+                <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                   <button onClick={appliquerCouleursDetectees}
                     style={{background:"linear-gradient(135deg,#065f46,#059669)",color:"#fff",border:"none",padding:"6px 14px",borderRadius:7,fontSize:12,fontWeight:700,cursor:"pointer"}}>
                     ✔ Appliquer ces couleurs
+                  </button>
+                  <button onClick={()=>setCouleursDetectees(p=>({c1:p.c2,c2:p.c1}))}
+                    style={{background:"#e0ebf8",color:C.blueDark,border:"none",padding:"6px 12px",borderRadius:7,fontSize:12,fontWeight:700,cursor:"pointer"}}>
+                    ⇄ Inverser
                   </button>
                   <button onClick={()=>setCouleursDetectees(null)}
                     style={{background:"#e5e7eb",color:"#374151",border:"none",padding:"6px 12px",borderRadius:7,fontSize:12,fontWeight:600,cursor:"pointer"}}>
