@@ -1386,6 +1386,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   // Pour auto-génération salaires
   const {items:ensCollege}=useFirestore("ensCollege");
   const {items:ensLycee}=useFirestore("ensLycee");
+  const {items:ensPrimaire}=useFirestore("ensPrimaire");
   const {items:emploisCollege}=useFirestore("classesCollege_emplois");
   const {items:emploisLycee}=useFirestore("classesLycee_emplois");
   const {items:engCollege}=useFirestore("ensCollege_enseignements");
@@ -1483,12 +1484,14 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
 
   const autoGenererSalaires = async () => {
     if(readOnly) return;
-    if(!confirm(`Générer automatiquement les salaires pour ${moisSel} depuis les emplois du temps ?\n\nSeuls les nouveaux enseignants seront ajoutés.`)) return;
+    if(!confirm(`Générer automatiquement les salaires pour ${moisSel} ?\n\nSeuls les nouveaux enseignants seront ajoutés.`)) return;
+    const nomsExistants=salairesMois.map(s=>(s.nom||"").toLowerCase().trim());
+
+    // Secondaire (college + lycée) — modèle horaire
     const tousEns=[
       ...ensCollege.map(e=>({...e,_emplois:emploisCollege,_eng:engCollege})),
       ...ensLycee.map(e=>({...e,_emplois:emploisLycee,_eng:engLycee})),
     ];
-    const nomsExistants=salairesMois.map(s=>(s.nom||"").toLowerCase().trim());
     for(const ens of tousEns){
       const nomComplet=`${ens.prenom||""} ${ens.nom||""}`.trim();
       if(!nomComplet) continue;
@@ -1499,7 +1502,16 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
       const absences=ens._eng.filter(e=>(e.enseignantNom||"").toLowerCase().includes((ens.nom||"").toLowerCase())&&(e.statut==="Absent"||e.statut==="Non effectué")).length;
       await ajS({section:"Secondaire",mois:moisSel,nom:nomComplet,matiere:ens.matiere||"",niveau:ens.grade||"",vhHebdo,vhPrevu,cinqSem:0,nonExecute:absences,primeHoraire:0,bon:0,revision:0,observation:`Statut: ${ens.statut||"—"}`});
     }
-    alert("Terminé. Renseignez la prime horaire, la 5ème semaine, le bon et la révision pour chaque enseignant.");
+
+    // Primaire — modèle forfait
+    for(const ens of ensPrimaire){
+      const nomComplet=`${ens.prenom||""} ${ens.nom||""}`.trim();
+      if(!nomComplet) continue;
+      if(nomsExistants.includes(nomComplet.toLowerCase())) continue;
+      await ajS({section:"Primaire",mois:moisSel,nom:nomComplet,niveau:ens.grade||ens.classe||"",matiere:ens.matiere||"",montantForfait:0,bon:0,revision:0,observation:`Statut: ${ens.statut||"—"}`});
+    }
+
+    alert("Terminé.\n• Secondaire : renseignez prime horaire, 5ème semaine, bon et révision.\n• Primaire : renseignez le montant forfaitaire pour chaque enseignant.");
   };
 
   const imprimerSalaires = () => {
@@ -4358,7 +4370,7 @@ export default function App() {
             {page==="admin_panel" && <AdminPanel annee={annee} setAnnee={setAnnee} verrous={verrous} schoolId={schoolId}/>}
             {page==="fondation"   && <Fondation readOnly={readOnly} annee={annee} userRole={utilisateur.role}/>}
             {page==="compta"      && <Comptabilite readOnly={readOnly} annee={annee} userRole={utilisateur.role} verrouOuvert={!!verrous.comptable}/>}
-            {page==="primaire"    && <Ecole titre="Direction du Primaire" couleur={C.green} cleClasses="classesPrimaire" cleEns="ensPrimaire" cleNotes="notesPrimaire" cleEleves="elevesPrimaire" avecEns={false} userRole={utilisateur.role} annee={annee} classesPredefinies={CLASSES_PRIMAIRE} maxNote={10} matieresPredefinies={MATIERES_PRIMAIRE} readOnly={readOnly} verrouOuvert={!!verrous.primaire}/>}
+            {page==="primaire"    && <Ecole titre="Direction du Primaire" couleur={C.green} cleClasses="classesPrimaire" cleEns="ensPrimaire" cleNotes="notesPrimaire" cleEleves="elevesPrimaire" avecEns={true} userRole={utilisateur.role} annee={annee} classesPredefinies={CLASSES_PRIMAIRE} maxNote={10} matieresPredefinies={MATIERES_PRIMAIRE} readOnly={readOnly} verrouOuvert={!!verrous.primaire}/>}
             {page==="secondaire"  && <Secondaire userRole={utilisateur.role} annee={annee} readOnly={readOnly} verrouOuvert={!!verrous.secondaire}/>}
             {page==="calendrier"  && <Calendrier annee={annee}/>}
           </ErrorBoundary>
