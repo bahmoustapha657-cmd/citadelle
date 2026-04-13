@@ -873,7 +873,7 @@ const imprimerFicheCompositions = (classe, periode, notes, matieres, eleves, max
     @media print{button{display:none}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
   </style></head><body>
   ${enteteDoc(schoolInfo, schoolInfo.logo)}
-  <h2>RÉSULTATS DE COMPOSITION — ${periode} — Année ${getAnnee()}</h2>
+  <h2>RÉSULTATS DES ÉVALUATIONS — ${periode} — Année ${getAnnee()}</h2>
   <h3>Classe : <strong>${classe==="all"?"Toutes les classes":classe}</strong> &nbsp;|&nbsp; Effectif évalué : <strong>${nb} élève${nb>1?"s":""}</strong></h3>
 
   <table>
@@ -2850,7 +2850,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
             {classesUniq.map(c=><option key={c}>{c}</option>)}
           </select>
           <Btn v="success" onClick={()=>imprimerFicheCompositions(filtreClasse,periodeB,notes,matieres,filtreClasse==="all"?elevesFiltres:elevesFiltres.filter(e=>e.classe===filtreClasse),maxNote,schoolInfo)}>
-            🏆 Fiche compositions
+            🏆 Résultats des évaluations
           </Btn>
         </div>
         {(()=>{
