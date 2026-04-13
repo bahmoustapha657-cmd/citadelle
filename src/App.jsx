@@ -1379,6 +1379,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   const {items:recettes,chargement:cR,ajouter:ajR,modifier:modR,supprimer:supR}=useFirestore("recettes");
   const {items:depenses,chargement:cD,ajouter:ajD,modifier:modD,supprimer:supD}=useFirestore("depenses");
   const {items:salaires,chargement:cS,ajouter:ajS,modifier:modS,supprimer:supS}=useFirestore("salaires");
+  const {items:bons,ajouter:ajBon,modifier:modBon,supprimer:supBon}=useFirestore("bons");
   const {items:versements,chargement:cV,ajouter:ajV,modifier:modV,supprimer:supV}=useFirestore("versements");
   const {items:elevesC,chargement:cEC,ajouter:ajEC,modifier:modEC_full,supprimer:supEC,modifierChamp:modEC}=useFirestore("elevesCollege");
   const {items:elevesP,chargement:cEP,ajouter:ajEP,modifier:modEP_full,supprimer:supEP,modifierChamp:modEP}=useFirestore("elevesPrimaire");
@@ -1393,6 +1394,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   const {items:engLycee}=useFirestore("ensLycee_enseignements");
 
   const [tab,setTab]=useState("bilan");
+  const [sousTabSal,setSousTabSal]=useState("etats");
   const [modal,setModal]=useState(null);
   const [form,setForm]=useState({});
   const [niveau,setNiveau]=useState("college");
@@ -1475,6 +1477,22 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   const salairesMois = salaires.filter(s=>s.mois===moisSel);
   const salairesSec = salairesMois.filter(s=>s.section==="Secondaire");
   const salairesPrim = salairesMois.filter(s=>s.section==="Primaire");
+  const bonsMois = bons.filter(b=>b.mois===moisSel);
+  const getBonTotal = (nomSalaire) => bonsMois
+    .filter(b=>(b.nom||"").toLowerCase().trim()===(nomSalaire||"").toLowerCase().trim())
+    .reduce((sum,b)=>sum+Number(b.montant||0),0);
+
+  const appliquerBons = async () => {
+    if(readOnly) return;
+    if(!bonsMois.length){alert("Aucun bon enregistré pour ce mois.");return;}
+    if(!confirm(`Appliquer les bons du mois de ${moisSel} aux salaires ?\n\nLe champ "Bon" de chaque enseignant sera mis à jour.`)) return;
+    let nb=0;
+    for(const sal of salairesMois){
+      const total=getBonTotal(sal.nom);
+      if(total!==Number(sal.bon||0)){await modS({...sal,bon:total});nb++;}
+    }
+    alert(`${nb} salaire(s) mis à jour.`);
+  };
 
   const calcExecute = (s) => (Number(s.vhPrevu)||0) + (Number(s.cinqSem)||0) - (Number(s.nonExecute)||0);
   const calcMontant = (s) => calcExecute(s) * (Number(s.primeHoraire)||0);
@@ -1760,16 +1778,62 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
 
       {/* ── ÉTATS DE SALAIRES MODÈLE EXCEL ── */}
       {tab==="salaires"&&<div>
-        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16,flexWrap:"wrap"}}>
-          <strong style={{fontSize:14,color:C.blueDark,flex:1}}>États de Salaires</strong>
+        {/* Barre de navigation interne */}
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14,flexWrap:"wrap"}}>
+          {[{id:"etats",label:"États de salaires"},{id:"bons",label:`Bons (${bonsMois.length})`}].map(t=>(
+            <button key={t.id} onClick={()=>setSousTabSal(t.id)} style={{
+              padding:"7px 16px",borderRadius:8,border:"none",cursor:"pointer",fontSize:13,fontWeight:700,
+              background:sousTabSal===t.id?C.blueDark:"#e0ebf8",
+              color:sousTabSal===t.id?"#fff":C.blueDark,
+            }}>{t.label}</button>
+          ))}
+          <div style={{flex:1}}/>
           <select value={moisSel} onChange={e=>setMoisSel(e.target.value)}
             style={{border:"1px solid #b0c4d8",borderRadius:7,padding:"6px 12px",fontSize:13,background:"#fff",color:C.blueDark,fontWeight:700}}>
             {moisSalaire.map(m=><option key={m}>{m}</option>)}
           </select>
-          {canCreate&&<Btn v="amber" onClick={autoGenererSalaires}>⚡ Auto-générer depuis EDT</Btn>}
-          {canCreate&&<Btn onClick={()=>{setForm({section:"Secondaire",mois:moisSel,nonExecute:0,cinqSem:0,bon:0,revision:0});setModal("add_s");}}>+ Ajouter</Btn>}
-          <Btn v="vert" onClick={imprimerSalaires}>🖨️ Imprimer</Btn>
+          {sousTabSal==="etats"&&<>
+            {canCreate&&<Btn v="amber" onClick={autoGenererSalaires}>⚡ Auto-générer</Btn>}
+            {canCreate&&bonsMois.length>0&&<Btn v="amber" onClick={appliquerBons}>✔ Appliquer les bons</Btn>}
+            {canCreate&&<Btn onClick={()=>{setForm({section:"Secondaire",mois:moisSel,nonExecute:0,cinqSem:0,bon:0,revision:0});setModal("add_s");}}>+ Ajouter</Btn>}
+            <Btn v="vert" onClick={imprimerSalaires}>🖨️ Imprimer</Btn>
+          </>}
+          {sousTabSal==="bons"&&canCreate&&<Btn onClick={()=>{setForm({mois:moisSel,section:"Secondaire"});setModal("add_b");}}>+ Nouveau bon</Btn>}
         </div>
+
+        {/* ── SOUS-ONGLET BONS ── */}
+        {sousTabSal==="bons"&&<>
+          {bonsMois.length===0
+            ?<Vide icone="📋" msg={`Aucun bon enregistré pour ${moisSel}`}/>
+            :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
+              <THead cols={["Enseignant","Section","Mois","Montant (GNF)","Motif",canEdit?"Actions":""]}/>
+              <tbody>{bonsMois.map(b=><TR key={b._id}>
+                <TD bold>{b.nom}</TD>
+                <TD><Badge color={b.section==="Primaire"?"vert":"blue"}>{b.section}</Badge></TD>
+                <TD>{b.mois}</TD>
+                <TD center style={{color:"#b91c1c",fontWeight:700}}>{fmtN(b.montant||0)}</TD>
+                <TD>{b.motif||"—"}</TD>
+                {canEdit&&<TD center>
+                  <Btn sm v="ghost" onClick={()=>{setForm({...b});setModal("edit_b");}}>✏️</Btn>
+                  <Btn sm v="red" onClick={()=>confirm("Supprimer ce bon ?")&&supBon(b._id)}>🗑</Btn>
+                </TD>}
+              </TR>)}
+              <tr style={{background:"#fce8e8",fontWeight:800}}>
+                <td colSpan={3} style={{padding:"8px 12px",textAlign:"right",color:"#9b2020"}}>TOTAL BONS — {moisSel}</td>
+                <td style={{padding:"8px 12px",textAlign:"center",color:"#9b2020",fontSize:14}}>{fmtN(bonsMois.reduce((s,b)=>s+Number(b.montant||0),0))}</td>
+                <td colSpan={2}></td>
+              </tr>
+              </tbody>
+            </table></Card>
+          }
+          <div style={{marginTop:12,padding:"12px 16px",background:"#fef3e0",border:"1px solid #fbbf24",borderRadius:10,fontSize:13,color:"#92400e"}}>
+            <strong>Comment ça marche :</strong> Enregistrez ici les bons de chaque enseignant pour ce mois.
+            Ensuite, dans <em>États de salaires</em>, cliquez sur <strong>✔ Appliquer les bons</strong> pour reporter automatiquement les montants dans la colonne "Bon" de chaque enseignant.
+          </div>
+        </>}
+
+        {/* ── SOUS-ONGLET ÉTATS ── */}
+        {sousTabSal==="etats"&&<>
 
         {/* ── BILAN SALAIRES ── */}
         {!cS&&(()=>{
@@ -1972,6 +2036,8 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
           </div>
         </>}
 
+        </>}
+
         {/* MODAL AJOUT/MODIF SALAIRE */}
         {(modal==="add_s"&&canCreate||(modal==="edit_s"&&canEdit))&&<Modale large titre={modal==="add_s"?"Nouveau salaire":"Modifier le salaire"} fermer={()=>setModal(null)}>
           <div style={{marginBottom:14}}>
@@ -2013,6 +2079,30 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
           <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
             <Btn v="ghost" onClick={()=>setModal(null)}>Annuler</Btn>
             <Btn onClick={()=>enreg(ajS,modS,{vhHebdo:Number(form.vhHebdo||0),vhPrevu:Number(form.vhPrevu||0),cinqSem:Number(form.cinqSem||0),nonExecute:Number(form.nonExecute||0),primeHoraire:Number(form.primeHoraire||0),bon:Number(form.bon||0),montantForfait:Number(form.montantForfait||0)})}>Enregistrer</Btn>
+          </div>
+        </Modale>}
+
+        {/* MODAL AJOUT/MODIF BON */}
+        {(modal==="add_b"&&canCreate||(modal==="edit_b"&&canEdit))&&<Modale titre={modal==="add_b"?"Nouveau bon":"Modifier le bon"} fermer={()=>setModal(null)}>
+          <Selec label="Mois" value={form.mois||moisSel} onChange={chg("mois")}>
+            {moisSalaire.map(m=><option key={m}>{m}</option>)}
+          </Selec>
+          <div style={{height:10}}/>
+          <Selec label="Section" value={form.section||"Secondaire"} onChange={chg("section")}>
+            <option>Secondaire</option><option>Primaire</option>
+          </Selec>
+          <div style={{height:10}}/>
+          <Input label="Prénoms et Nom de l'enseignant" value={form.nom||""} onChange={chg("nom")} placeholder="Doit correspondre au nom dans les salaires"/>
+          <div style={{height:10}}/>
+          <Input label="Montant du bon (GNF)" type="number" value={form.montant||""} onChange={chg("montant")} placeholder="Ex : 50000"/>
+          <div style={{height:10}}/>
+          <Input label="Motif" value={form.motif||""} onChange={chg("motif")} placeholder="Ex : Retard, Absence injustifiée…"/>
+          <div style={{marginTop:12,padding:"10px 14px",background:"#fce8e8",borderRadius:8,fontSize:12,color:"#9b2020"}}>
+            Le bon sera déduit du salaire net de l'enseignant lors de l'application.
+          </div>
+          <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
+            <Btn v="ghost" onClick={()=>setModal(null)}>Annuler</Btn>
+            <Btn onClick={()=>enreg(ajBon,modBon,{montant:Number(form.montant||0)})}>Enregistrer</Btn>
           </div>
         </Modale>}
       </div>}
