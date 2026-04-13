@@ -1397,6 +1397,8 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   const [niveau,setNiveau]=useState("college");
   const [filtClasse,setFiltClasse]=useState("all");
   const [moisSel,setMoisSel]=useState(()=>moisSalaire[0]||"Octobre");
+  const [filtrePrimNom,setFiltrePrimNom]=useState("");
+  const [filtrePrimClasse,setFiltrePrimClasse]=useState("all");
   const [niveauEnrol,setNiveauEnrol]=useState("college");
   const [cameraOuverte,setCameraOuverte]=useState(false);
   const [uploadEnCours,setUploadEnCours]=useState(false);
@@ -1895,16 +1897,29 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
           </div>
 
           {/* Section Primaire */}
-          <div style={{background:C.green,color:"#fff",padding:"8px 14px",borderRadius:"8px 8px 0 0",fontWeight:700,fontSize:13}}>
-            SECTION PRIMAIRE — {moisSel} {annee||getAnnee()}
+          <div style={{background:C.green,color:"#fff",padding:"8px 14px",borderRadius:"8px 8px 0 0",fontWeight:700,fontSize:13,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+            <span style={{flex:1}}>SECTION PRIMAIRE — {moisSel} {annee||getAnnee()}</span>
+            <input
+              placeholder="🔍 Recherche par nom..."
+              value={filtrePrimNom} onChange={e=>setFiltrePrimNom(e.target.value)}
+              style={{border:"none",borderRadius:6,padding:"4px 10px",fontSize:12,color:"#0A1628",width:160,outline:"none"}}/>
+            <select value={filtrePrimClasse} onChange={e=>setFiltrePrimClasse(e.target.value)}
+              style={{border:"none",borderRadius:6,padding:"4px 8px",fontSize:12,color:"#0A1628",background:"#fff"}}>
+              <option value="all">Toutes les classes</option>
+              {CLASSES_PRIMAIRE.map(c=><option key={c}>{c}</option>)}
+            </select>
           </div>
           <div style={{overflowX:"auto",marginBottom:8}}>
-            <table style={{width:"100%",borderCollapse:"collapse"}}>
+            {(()=>{
+            const salairesPrimFiltres = salairesPrim
+              .filter(s=>!filtrePrimNom||(s.nom||"").toLowerCase().includes(filtrePrimNom.toLowerCase()))
+              .filter(s=>filtrePrimClasse==="all"||(s.niveau||"")===filtrePrimClasse);
+            return <table style={{width:"100%",borderCollapse:"collapse"}}>
               <THead cols={["N°","Prénoms et Nom","Classe","Montant Forfaitaire","Bon","Révision","Net à Payer","Observation",canEdit?"Actions":""]}/>
               <tbody>
-                {salairesPrim.length===0?
-                  <tr><td colSpan={canEdit?9:8} style={{padding:"20px",textAlign:"center",color:"#9ca3af",fontStyle:"italic"}}>Aucun enseignant primaire pour ce mois</td></tr>
-                  :salairesPrim.map((s,i)=>(
+                {salairesPrimFiltres.length===0?
+                  <tr><td colSpan={canEdit?9:8} style={{padding:"20px",textAlign:"center",color:"#9ca3af",fontStyle:"italic"}}>{salairesPrim.length===0?"Aucun enseignant primaire pour ce mois":"Aucun résultat pour ce filtre"}</td></tr>
+                  :salairesPrimFiltres.map((s,i)=>(
                     <TR key={s._id}>
                       <TD center>{i+1}</TD>
                       <TD bold>{s.nom}</TD>
@@ -1926,8 +1941,12 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                     </TR>
                 ))}
                 <tr style={{background:"#e0ebf8",fontWeight:800}}>
-                  <td colSpan={6} style={{padding:"8px 12px",textAlign:"right",color:C.blueDark}}>TOTAL NET PRIMAIRE</td>
-                  <td style={{padding:"8px 12px",textAlign:"center",color:C.greenDk,fontSize:14}}>{fmtN(totNetPrim)}</td>
+                  <td colSpan={6} style={{padding:"8px 12px",textAlign:"right",color:C.blueDark}}>
+                    TOTAL NET PRIMAIRE {filtrePrimClasse!=="all"||filtrePrimNom?`(filtre : ${salairesPrimFiltres.length}/${salairesPrim.length})` : ""}
+                  </td>
+                  <td style={{padding:"8px 12px",textAlign:"center",color:C.greenDk,fontSize:14}}>
+                    {fmtN(salairesPrimFiltres.reduce((s,e)=>s+Number(e.montantForfait||0)-Number(e.bon||0)+Number(e.revision||0),0))}
+                  </td>
                   <td colSpan={2}></td>
                 </tr>
                 <tr style={{background:C.blue,color:"#fff",fontWeight:900}}>
@@ -1936,7 +1955,8 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                   <td colSpan={2}></td>
                 </tr>
               </tbody>
-            </table>
+            </table>;
+            })()}
           </div>
         </>}
 
