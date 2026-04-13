@@ -1380,6 +1380,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   const {items:depenses,chargement:cD,ajouter:ajD,modifier:modD,supprimer:supD}=useFirestore("depenses");
   const {items:salaires,chargement:cS,ajouter:ajS,modifier:modS,supprimer:supS}=useFirestore("salaires");
   const {items:bons,ajouter:ajBon,modifier:modBon,supprimer:supBon}=useFirestore("bons");
+  const {items:personnel,chargement:cPers,ajouter:ajPers,modifier:modPers,supprimer:supPers}=useFirestore("personnel");
   const {items:versements,chargement:cV,ajouter:ajV,modifier:modV,supprimer:supV}=useFirestore("versements");
   const {items:elevesC,chargement:cEC,ajouter:ajEC,modifier:modEC_full,supprimer:supEC,modifierChamp:modEC}=useFirestore("elevesCollege");
   const {items:elevesP,chargement:cEP,ajouter:ajEP,modifier:modEP_full,supprimer:supEP,modifierChamp:modEP}=useFirestore("elevesPrimaire");
@@ -1477,6 +1478,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   const salairesMois = salaires.filter(s=>s.mois===moisSel);
   const salairesSec = salairesMois.filter(s=>s.section==="Secondaire");
   const salairesPrim = salairesMois.filter(s=>s.section==="Primaire");
+  const salairesPers = salairesMois.filter(s=>s.section==="Personnel");
   const bonsMois = bons.filter(b=>b.mois===moisSel);
   const getBonTotal = (nomSalaire) => bonsMois
     .filter(b=>(b.nom||"").toLowerCase().trim()===(nomSalaire||"").toLowerCase().trim())
@@ -1499,6 +1501,8 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   const calcNet = (s) => calcMontant(s) - (Number(s.bon)||0) + (Number(s.revision)||0);
   const totNetSec = salairesSec.reduce((sum,s)=>sum+calcNet(s),0);
   const totNetPrim = salairesPrim.reduce((sum,s)=>sum+Number(s.montantForfait||0)-(Number(s.bon||0))+(Number(s.revision||0)),0);
+  const calcNetF = (s) => Number(s.montantForfait||0)-Number(s.bon||0)+Number(s.revision||0);
+  const totNetPers = salairesPers.reduce((sum,s)=>sum+calcNetF(s),0);
 
   const autoGenererSalaires = async () => {
     if(readOnly) return;
@@ -1529,7 +1533,15 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
       await ajS({section:"Primaire",mois:moisSel,nom:nomComplet,niveau:ens.grade||ens.classe||"",matiere:ens.matiere||"",montantForfait:0,bon:0,revision:0,observation:`Statut: ${ens.statut||"—"}`});
     }
 
-    alert("Terminé.\n• Secondaire : renseignez prime horaire, 5ème semaine, bon et révision.\n• Primaire : renseignez le montant forfaitaire pour chaque enseignant.");
+    // Personnel administratif — modèle forfait fixe
+    for(const emp of personnel.filter(e=>(e.statut||"Actif")==="Actif")){
+      const nomComplet=`${emp.prenom||""} ${emp.nom||""}`.trim();
+      if(!nomComplet) continue;
+      if(nomsExistants.includes(nomComplet.toLowerCase())) continue;
+      await ajS({section:"Personnel",mois:moisSel,nom:nomComplet,poste:emp.poste||"",categorie:emp.categorie||"",montantForfait:Number(emp.salaireBase||0),bon:0,revision:0,observation:emp.observation||""});
+    }
+
+    alert("Terminé.\n• Secondaire : renseignez prime horaire, 5ème semaine, bon et révision.\n• Primaire : renseignez le montant forfaitaire.\n• Personnel : salaires de base repris automatiquement.");
   };
 
   const imprimerSalaires = () => {
@@ -1584,6 +1596,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   const tabs=[{id:"bilan",label:"Bilan"},{id:"recettes",label:`Recettes (${recettes.length})`},
     {id:"depenses",label:`Dépenses (${depenses.length})`},
     {id:"salaires",label:`Salaires`},
+    {id:"personnel",label:`Personnel (${personnel.length})`},
     {id:"fondation",label:`Versements (${versements.length})`},
     {id:"enrolment",label:`Élèves (${elevesC.length+elevesP.length})`},
     {id:"mens",label:"Mensualités"}];
@@ -1617,7 +1630,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
               <Stat label="Dépenses" value={`${(totD/1e6).toFixed(2)}M`} sub="GNF" bg="#fce8e8"/>
               <Stat label="Vers. Fondation" value={`${(totVers/1e6).toFixed(2)}M`} sub="GNF" bg="#e6f4ea"/>
               <Stat label="Solde" value={`${((totR-totD)/1e6).toFixed(2)}M`} sub="GNF" bg={(totR-totD)>=0?"#eaf4e0":"#fce8e8"}/>
-              <Stat label="Masse salariale" value={`${((totNetSec+totNetPrim)/1e6).toFixed(3)}M`} sub={`GNF — ${moisSel} (${salairesMois.length} ens.)`} bg="#fef3e0"/>
+              <Stat label="Masse salariale" value={`${((totNetSec+totNetPrim+totNetPers)/1e6).toFixed(3)}M`} sub={`GNF — ${moisSel} (${salairesMois.length})`} bg="#fef3e0"/>
               <Stat label="Mensualités impayées" value={`${(impaye/1e6).toFixed(2)}M`} sub={`GNF — ${pctImpaye}% du total dû`} bg="#fce8e8"/>
               <Stat label="Mensualités perçues" value={`${(totalPercu/1e6).toFixed(2)}M`} sub={`${totalDu>0?(100-Number(pctImpaye)).toFixed(1):0}% du total`} bg="#eaf4e0"/>
             </div>
@@ -1837,13 +1850,14 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
 
         {/* ── BILAN SALAIRES ── */}
         {!cS&&(()=>{
-          const totGen=totNetSec+totNetPrim;
+          const totGen=totNetSec+totNetPrim+totNetPers;
           const nbEns=salairesMois.length;
           const dataEvol=moisSalaire.map(m=>{
             const ms=salaires.filter(s=>s.mois===m);
             const sec=ms.filter(s=>s.section==="Secondaire").reduce((sum,s)=>sum+calcNet(s),0);
             const prim=ms.filter(s=>s.section==="Primaire").reduce((sum,s)=>sum+Number(s.montantForfait||0)-Number(s.bon||0)+Number(s.revision||0),0);
-            return {mois:m.slice(0,4),Secondaire:sec,Primaire:prim,Total:sec+prim};
+            const pers=ms.filter(s=>s.section==="Personnel").reduce((sum,s)=>sum+Number(s.montantForfait||0)-Number(s.bon||0)+Number(s.revision||0),0);
+            return {mois:m.slice(0,4),Secondaire:sec,Primaire:prim,Personnel:pers,Total:sec+prim+pers};
           });
           return <>
             {/* Cartes récap */}
@@ -1863,26 +1877,33 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                 <div style={{fontSize:18,fontWeight:900}}>{(totNetPrim/1e6).toFixed(3)}M</div>
                 <div style={{fontSize:10,opacity:.75,marginTop:2}}>{salairesPrim.length} enseignant(s)</div>
               </div>
+              <div style={{background:"linear-gradient(135deg,#7c3aed,#a855f7)",borderRadius:10,padding:"14px 16px",color:"#fff",textAlign:"center"}}>
+                <div style={{fontSize:11,opacity:.85,marginBottom:4}}>Personnel</div>
+                <div style={{fontSize:18,fontWeight:900}}>{(totNetPers/1e6).toFixed(3)}M</div>
+                <div style={{fontSize:10,opacity:.75,marginTop:2}}>{salairesPers.length} employé(s)</div>
+              </div>
               <div style={{background:"linear-gradient(135deg,#0A1628,#1565c0)",borderRadius:10,padding:"14px 16px",color:"#fff",textAlign:"center"}}>
-                <div style={{fontSize:11,opacity:.85,marginBottom:4}}>Total enseignants</div>
+                <div style={{fontSize:11,opacity:.85,marginBottom:4}}>Total agents</div>
                 <div style={{fontSize:28,fontWeight:900}}>{nbEns}</div>
                 <div style={{fontSize:10,opacity:.75,marginTop:2}}>ce mois</div>
               </div>
               <div style={{background:"linear-gradient(135deg,#b45309,#f59e0b)",borderRadius:10,padding:"14px 16px",color:"#fff",textAlign:"center"}}>
-                <div style={{fontSize:11,opacity:.85,marginBottom:4}}>Moy. par enseignant</div>
+                <div style={{fontSize:11,opacity:.85,marginBottom:4}}>Moy. par agent</div>
                 <div style={{fontSize:18,fontWeight:900}}>{nbEns>0?Math.round(totGen/nbEns).toLocaleString("fr-FR"):0}</div>
                 <div style={{fontSize:10,opacity:.75,marginTop:2}}>GNF</div>
               </div>
             </div>
             {/* Barre de répartition */}
             {totGen>0&&<div style={{marginBottom:16,background:"#f0f4f8",borderRadius:10,padding:"12px 16px"}}>
-              <div style={{display:"flex",justifyContent:"space-between",fontSize:11,fontWeight:700,marginBottom:6}}>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:11,fontWeight:700,marginBottom:6,flexWrap:"wrap",gap:4}}>
                 <span style={{color:C.blue}}>Secondaire : {totNetSec>0?((totNetSec/totGen)*100).toFixed(1):0}%</span>
                 <span style={{color:C.green}}>Primaire : {totNetPrim>0?((totNetPrim/totGen)*100).toFixed(1):0}%</span>
+                <span style={{color:"#7c3aed"}}>Personnel : {totNetPers>0?((totNetPers/totGen)*100).toFixed(1):0}%</span>
               </div>
               <div style={{display:"flex",borderRadius:6,overflow:"hidden",height:12}}>
                 <div style={{background:C.blue,width:`${totGen>0?(totNetSec/totGen*100):0}%`,transition:"width .4s"}}/>
-                <div style={{background:C.green,flex:1}}/>
+                <div style={{background:C.green,width:`${totGen>0?(totNetPrim/totGen*100):0}%`,transition:"width .4s"}}/>
+                <div style={{background:"#a855f7",flex:1}}/>
               </div>
             </div>}
             {/* Graphique évolution annuelle */}
@@ -1897,6 +1918,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                   <Legend wrapperStyle={{fontSize:11}}/>
                   <Bar dataKey="Secondaire" fill={C.blue} radius={[3,3,0,0]}/>
                   <Bar dataKey="Primaire" fill={C.green} radius={[3,3,0,0]}/>
+                  <Bar dataKey="Personnel" fill="#a855f7" radius={[3,3,0,0]}/>
                 </BarChart>
               </ResponsiveContainer>
             </div></Card>}
@@ -2025,14 +2047,51 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                   </td>
                   <td colSpan={2}></td>
                 </tr>
-                <tr style={{background:C.blue,color:"#fff",fontWeight:900}}>
-                  <td colSpan={6} style={{padding:"10px 12px",textAlign:"right",fontSize:14,letterSpacing:".4px"}}>TOTAL GÉNÉRAL NET À PAYER</td>
-                  <td style={{padding:"10px 12px",textAlign:"center",fontSize:16,fontWeight:900}}>{fmtN(totNetSec+totNetPrim)} GNF</td>
-                  <td colSpan={2}></td>
-                </tr>
               </tbody>
             </table>;
             })()}
+          </div>
+
+          {/* Section Personnel */}
+          <div style={{background:"#7c3aed",color:"#fff",padding:"8px 14px",borderRadius:"8px 8px 0 0",fontWeight:700,fontSize:13,display:"flex",alignItems:"center",gap:10}}>
+            <span style={{flex:1}}>SECTION PERSONNEL — {moisSel} {annee||getAnnee()}</span>
+          </div>
+          <div style={{overflowX:"auto",marginBottom:8}}>
+            <table style={{width:"100%",borderCollapse:"collapse"}}>
+              <THead cols={["N°","Prénoms et Nom","Poste","Catégorie","Salaire de base","Bon","Révision","Net à Payer","Observation",canEdit?"Actions":""]}/>
+              <tbody>
+                {salairesPers.length===0
+                  ?<tr><td colSpan={canEdit?10:9} style={{padding:"20px",textAlign:"center",color:"#9ca3af",fontStyle:"italic"}}>Aucun employé pour ce mois</td></tr>
+                  :salairesPers.map((s,i)=>(
+                    <TR key={s._id}>
+                      <TD center>{i+1}</TD>
+                      <TD bold>{s.nom}</TD>
+                      <TD>{s.poste||"—"}</TD>
+                      <TD><Badge color="purple">{s.categorie||"—"}</Badge></TD>
+                      <TD center>{fmtN(s.montantForfait||0)}</TD>
+                      <TD center style={{color:"#b91c1c"}}>{fmtN(s.bon||0)}</TD>
+                      <TD center style={{color:C.greenDk}}>{fmtN(s.revision||0)}</TD>
+                      <TD center><strong style={{color:C.greenDk}}>{fmtN(calcNetF(s))}</strong></TD>
+                      <TD>{s.observation||""}</TD>
+                      {canEdit&&<TD center>
+                        <Btn sm v="ghost" onClick={()=>{setForm({...s});setModal("edit_s");}}>✏️</Btn>
+                        <Btn sm v="red" onClick={()=>confirm("Supprimer ?")&&supS(s._id)}>🗑</Btn>
+                      </TD>}
+                    </TR>
+                  ))
+                }
+                <tr style={{background:"#ede9fe",fontWeight:800}}>
+                  <td colSpan={7} style={{padding:"8px 12px",textAlign:"right",color:"#7c3aed"}}>TOTAL NET PERSONNEL</td>
+                  <td style={{padding:"8px 12px",textAlign:"center",color:"#7c3aed",fontSize:14}}>{fmtN(totNetPers)}</td>
+                  <td colSpan={canEdit?2:1}></td>
+                </tr>
+                <tr style={{background:C.blue,color:"#fff",fontWeight:900}}>
+                  <td colSpan={7} style={{padding:"10px 12px",textAlign:"right",fontSize:14,letterSpacing:".4px"}}>TOTAL GÉNÉRAL NET À PAYER</td>
+                  <td style={{padding:"10px 12px",textAlign:"center",fontSize:16,fontWeight:900}}>{fmtN(totNetSec+totNetPrim+totNetPers)} GNF</td>
+                  <td colSpan={canEdit?2:1}></td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </>}
 
@@ -2042,7 +2101,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
         {(modal==="add_s"&&canCreate||(modal==="edit_s"&&canEdit))&&<Modale large titre={modal==="add_s"?"Nouveau salaire":"Modifier le salaire"} fermer={()=>setModal(null)}>
           <div style={{marginBottom:14}}>
             <Selec label="Section" value={form.section||"Secondaire"} onChange={chg("section")}>
-              <option>Secondaire</option><option>Primaire</option>
+              <option>Secondaire</option><option>Primaire</option><option>Personnel</option>
             </Selec>
           </div>
           <Selec label="Mois" value={form.mois||moisSel} onChange={chg("mois")}>
@@ -2059,6 +2118,15 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
               <Input label="5ème Semaine" type="number" value={form.cinqSem||0} onChange={chg("cinqSem")}/>
               <Input label="Non Exécuté" type="number" value={form.nonExecute||0} onChange={chg("nonExecute")}/>
               <Input label="Prime Horaire (GNF)" type="number" value={form.primeHoraire||""} onChange={chg("primeHoraire")}/>
+              <Input label="Bon (GNF)" type="number" value={form.bon||0} onChange={chg("bon")}/>
+              <Input label="Révision (GNF)" type="number" value={form.revision||0} onChange={chg("revision")}/>
+            </>:form.section==="Personnel"?<>
+              <Input label="Poste" value={form.poste||""} onChange={chg("poste")} placeholder="Ex : Gardien, Secrétaire…"/>
+              <Selec label="Catégorie" value={form.categorie||""} onChange={chg("categorie")}>
+                <option value="">— Catégorie —</option>
+                {["Administration","Surveillance","Entretien","Cuisine","Sécurité","Divers"].map(c=><option key={c}>{c}</option>)}
+              </Selec>
+              <Input label="Salaire de base (GNF)" type="number" value={form.montantForfait||""} onChange={chg("montantForfait")}/>
               <Input label="Bon (GNF)" type="number" value={form.bon||0} onChange={chg("bon")}/>
               <Input label="Révision (GNF)" type="number" value={form.revision||0} onChange={chg("revision")}/>
             </>:<>
@@ -2097,7 +2165,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
             </Selec>
             <div style={{height:10}}/>
             <Selec label="Section" value={secBon} onChange={e=>{chg("section")(e);setForm(p=>({...p,nom:""}));}}>
-              <option>Secondaire</option><option>Primaire</option>
+              <option>Secondaire</option><option>Primaire</option><option>Personnel</option>
             </Selec>
             <div style={{height:10}}/>
             <Selec label="Enseignant" value={form.nom||""} onChange={chg("nom")}>
@@ -2121,6 +2189,82 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
             </div>
           </Modale>;
         })()}
+      </div>}
+
+      {/* ══ ONGLET PERSONNEL ══ */}
+      {tab==="personnel"&&<div>
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16,flexWrap:"wrap"}}>
+          <strong style={{fontSize:14,color:C.blueDark,flex:1}}>Registre du Personnel ({personnel.length})</strong>
+          {canCreate&&<Btn onClick={()=>{setForm({statut:"Actif"});setModal("add_p");}}>+ Ajouter un employé</Btn>}
+        </div>
+
+        {/* Cartes résumé */}
+        {personnel.length>0&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:10,marginBottom:16}}>
+          {["Administration","Surveillance","Entretien","Cuisine","Sécurité","Divers"].map(cat=>{
+            const n=personnel.filter(p=>p.categorie===cat).length;
+            if(!n) return null;
+            return <div key={cat} style={{background:"#f5f3ff",borderRadius:10,padding:"12px 14px",textAlign:"center",border:"1px solid #ddd6fe"}}>
+              <div style={{fontSize:11,color:"#7c3aed",fontWeight:700,marginBottom:4}}>{cat}</div>
+              <div style={{fontSize:20,fontWeight:900,color:C.blueDark}}>{n}</div>
+            </div>;
+          })}
+          <div style={{background:"linear-gradient(135deg,#7c3aed,#a855f7)",borderRadius:10,padding:"12px 14px",textAlign:"center",color:"#fff"}}>
+            <div style={{fontSize:11,opacity:.85,marginBottom:4}}>Masse mensuelle</div>
+            <div style={{fontSize:16,fontWeight:900}}>{(personnel.reduce((s,p)=>s+Number(p.salaireBase||0),0)/1e6).toFixed(3)}M</div>
+            <div style={{fontSize:10,opacity:.75}}>GNF</div>
+          </div>
+        </div>}
+
+        {cPers?<Chargement/>:personnel.length===0?<Vide icone="👥" msg="Aucun employé enregistré"/>
+          :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
+            <THead cols={["Prénoms et Nom","Poste","Catégorie","Salaire de base","Statut","Observation",canEdit?"Actions":""]}/>
+            <tbody>{personnel.map(p=><TR key={p._id}>
+              <TD bold>{p.prenom||""} {p.nom||""}</TD>
+              <TD>{p.poste||"—"}</TD>
+              <TD><Badge color="purple">{p.categorie||"—"}</Badge></TD>
+              <TD center>{fmtN(p.salaireBase||0)}</TD>
+              <TD><Badge color={p.statut==="Actif"?"vert":"gray"}>{p.statut||"Actif"}</Badge></TD>
+              <TD>{p.observation||"—"}</TD>
+              {canEdit&&<TD center>
+                <Btn sm v="ghost" onClick={()=>{setForm({...p});setModal("edit_p");}}>✏️</Btn>
+                <Btn sm v="red" onClick={()=>confirm("Supprimer cet employé ?")&&supPers(p._id)}>🗑</Btn>
+              </TD>}
+            </TR>)}
+            <tr style={{background:"#ede9fe",fontWeight:800}}>
+              <td colSpan={3} style={{padding:"8px 12px",textAlign:"right",color:"#7c3aed"}}>TOTAL MASSE MENSUELLE</td>
+              <td style={{padding:"8px 12px",textAlign:"center",color:"#7c3aed",fontSize:14}}>
+                {fmtN(personnel.filter(p=>(p.statut||"Actif")==="Actif").reduce((s,p)=>s+Number(p.salaireBase||0),0))}
+              </td>
+              <td colSpan={canEdit?3:2}></td>
+            </tr>
+            </tbody>
+          </table></Card>
+        }
+
+        {/* MODAL PERSONNEL */}
+        {(modal==="add_p"&&canCreate||(modal==="edit_p"&&canEdit))&&<Modale large titre={modal==="add_p"?"Nouvel employé":"Modifier l'employé"} fermer={()=>setModal(null)}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            <Input label="Nom" value={form.nom||""} onChange={chg("nom")}/>
+            <Input label="Prénom" value={form.prenom||""} onChange={chg("prenom")}/>
+            <Input label="Poste" value={form.poste||""} onChange={chg("poste")} placeholder="Ex : Gardien, Secrétaire…"/>
+            <Selec label="Catégorie" value={form.categorie||""} onChange={chg("categorie")}>
+              <option value="">— Catégorie —</option>
+              {["Administration","Surveillance","Entretien","Cuisine","Sécurité","Divers"].map(c=><option key={c}>{c}</option>)}
+            </Selec>
+            <Input label="Salaire mensuel de base (GNF)" type="number" value={form.salaireBase||""} onChange={chg("salaireBase")} placeholder="Ex : 500000"/>
+            <Selec label="Statut" value={form.statut||"Actif"} onChange={chg("statut")}>
+              <option>Actif</option><option>Inactif</option>
+            </Selec>
+            <div style={{gridColumn:"1/-1"}}><Input label="Observation" value={form.observation||""} onChange={chg("observation")}/></div>
+          </div>
+          <div style={{marginTop:12,padding:"10px 14px",background:"#f5f3ff",borderRadius:8,fontSize:12,color:"#7c3aed"}}>
+            Le salaire de base sera repris automatiquement lors de la génération mensuelle des salaires.
+          </div>
+          <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
+            <Btn v="ghost" onClick={()=>setModal(null)}>Annuler</Btn>
+            <Btn onClick={()=>enreg(ajPers,modPers,{salaireBase:Number(form.salaireBase||0)})}>Enregistrer</Btn>
+          </div>
+        </Modale>}
       </div>}
 
       {tab==="fondation"&&<div>
