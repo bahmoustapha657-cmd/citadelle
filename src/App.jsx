@@ -4,7 +4,7 @@ import ModuleIA from "./components/IAAssistant";
 import Logo from "./Logo";
 import React, { useState, useEffect, useRef, createContext, useContext } from "react";
 import { db, auth } from "./firebase";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, updatePassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, signOut, onAuthStateChanged, updatePassword } from "firebase/auth";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import * as XLSX from "xlsx";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
@@ -4650,22 +4650,9 @@ function Connexion({onLogin, onInscription}) {
         return;
       }
 
-      // ── Mode École — via API serveur (gère migration Firebase Auth) ──
-      const email=`${login.trim().toLowerCase()}.${sid}@edugest.app`;
-
-      // 1. Essayer Firebase Auth directement (utilisateur déjà migré)
-      try{
-        await signInWithEmailAndPassword(auth, email, mdp);
-        return; // onAuthStateChanged prend le relais
-      }catch(firebaseErr){
-        if(firebaseErr.code==="auth/wrong-password"||firebaseErr.code==="auth/invalid-credential"){
-          setErreur("Identifiant ou mot de passe incorrect.");
-          return;
-        }
-        // auth/user-not-found → pas encore migré, on continue
-      }
-
-      // 2. Fallback via API serveur (vérifie Firestore + migre vers Firebase Auth)
+      // ── Mode École — toujours via API serveur (Firestore = source de vérité) ──
+      // Ne pas utiliser signInWithEmailAndPassword directement : Firebase Auth peut
+      // conserver un ancien mot de passe si le compte a été modifié dans Firestore.
       const r=await fetch("/api/login",{
         method:"POST",
         headers:{"Content-Type":"application/json"},
