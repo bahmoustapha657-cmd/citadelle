@@ -6149,7 +6149,12 @@ function PortailPublic({onConnexion}) {
 export default function App() {
   const [utilisateur,setUtilisateur]=useState(null);
   const [page,setPage]=useState(null);
-  const [schoolId,setSchoolId]=useState(()=>localStorage.getItem("LC_schoolId")||"citadelle");
+  const [schoolId,setSchoolId]=useState(()=>{
+    const params=new URLSearchParams(window.location.search);
+    const fromUrl=params.get("school");
+    if(fromUrl){localStorage.setItem("LC_schoolId",fromUrl);}
+    return fromUrl||localStorage.getItem("LC_schoolId")||"citadelle";
+  });
   const [schoolInfo,setSchoolInfo]=useState(SCHOOL_INFO_DEFAUT);
   const [annee,setAnneeState]=useState(()=>localStorage.getItem("LC_annee")||"2025-2026");
   const [verrous,setVerrous]=useState({comptable:false,primaire:false,secondaire:false});
@@ -6205,6 +6210,7 @@ export default function App() {
           moisDebut: d.moisDebut||prev.moisDebut||"Octobre",
           plan: d.plan||"gratuit",
           planExpiry: d.planExpiry||null,
+          accueil: d.accueil||prev.accueil,
         }));
         if(d.verrous) setVerrous(d.verrous);
       }
@@ -6360,32 +6366,33 @@ export default function App() {
       </aside>
 
       <main style={{flex:1,marginLeft:isMobile?0:228,minWidth:0,display:"flex",flexDirection:"column",height:"100dvh",overflow:"hidden"}}>
-        <header style={{background:"#fff",borderBottom:`3px solid ${C.green}`,padding:"0 22px",height:52,display:"flex",alignItems:"center",gap:10,position:"sticky",top:0,zIndex:30}}>
+        <header style={{background:"#fff",borderBottom:`3px solid ${C.green}`,padding:"0 12px",height:52,display:"flex",alignItems:"center",gap:8,position:"sticky",top:0,zIndex:30,minWidth:0}}>
           {/* Bouton hamburger mobile */}
-          <button onClick={()=>setSidebarOuvert(v=>!v)} style={{display:isMobile?"flex":"none",alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:"pointer",padding:4,borderRadius:6,color:C.blueDark,fontSize:20,marginRight:4}}>
+          <button onClick={()=>setSidebarOuvert(v=>!v)} style={{display:isMobile?"flex":"none",flexShrink:0,alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:"pointer",padding:6,borderRadius:6,color:C.blueDark,fontSize:22}}>
             ☰
           </button>
-          <div style={{flex:1}}>
-            <span style={{fontSize:14,fontWeight:800,color:C.blueDark}}>
+          <div style={{flex:1,minWidth:0,overflow:"hidden"}}>
+            <span style={{fontSize:14,fontWeight:800,color:C.blueDark,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",display:"block"}}>
               {modulesVisibles.find(m=>m.id===page)?.icon} {modulesVisibles.find(m=>m.id===page)?.label}
             </span>
-            {readOnly&&<span style={{marginLeft:10,fontSize:11,color:"#d97706",fontWeight:700,background:"#fef3e0",padding:"2px 8px",borderRadius:10}}>👁️ Lecture seule</span>}
+            {readOnly&&!isMobile&&<span style={{marginLeft:10,fontSize:11,color:"#d97706",fontWeight:700,background:"#fef3e0",padding:"2px 8px",borderRadius:10}}>👁️ Lecture seule</span>}
           </div>
-          <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
             <button onClick={()=>setRechercheOuverte(true)}
-              style={{display:"flex",alignItems:"center",gap:6,background:"#f0f4f0",border:"1px solid #e0ebf8",borderRadius:8,padding:"5px 12px",cursor:"pointer",fontSize:12,color:"#6b7280",fontWeight:600}}>
-              🔍 <span>Rechercher...</span>
+              title="Rechercher"
+              style={{display:"flex",alignItems:"center",gap:isMobile?0:6,background:"#f0f4f0",border:"1px solid #e0ebf8",borderRadius:8,padding:"5px 10px",cursor:"pointer",fontSize:isMobile?17:12,color:"#6b7280",fontWeight:600}}>
+              🔍{!isMobile&&<span>Rechercher...</span>}
             </button>
-            <button onClick={()=>setModeSombre(v=>!v)}
+            {!isMobile&&<button onClick={()=>setModeSombre(v=>!v)}
               title={modeSombre?"Mode clair":"Mode sombre"}
               style={{background:"#f0f4f0",border:"1px solid #e0ebf8",borderRadius:8,padding:"5px 10px",cursor:"pointer",fontSize:16,lineHeight:1}}>
               {modeSombre?"☀️":"🌙"}
-            </button>
-            <div style={{width:30,height:30,borderRadius:"50%",background:C.blue,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800}}>
+            </button>}
+            <div style={{width:30,height:30,borderRadius:"50%",background:C.blue,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,flexShrink:0}}>
               {utilisateur.nom[0]}
             </div>
-            <span style={{fontSize:12,fontWeight:700,color:C.blueDark}}>{utilisateur.nom}</span>
-            <Badge color={utilisateur.role==="admin"?"purple":utilisateur.role==="comptable"?"teal":"blue"}>{utilisateur.label}</Badge>
+            {!isMobile&&<span style={{fontSize:12,fontWeight:700,color:C.blueDark}}>{utilisateur.nom}</span>}
+            {!isMobile&&<Badge color={utilisateur.role==="admin"?"purple":utilisateur.role==="comptable"?"teal":"blue"}>{utilisateur.label}</Badge>}
           </div>
         </header>
         {rechercheOuverte&&<RechercheGlobale onFermer={()=>setRechercheOuverte(false)}/>}
