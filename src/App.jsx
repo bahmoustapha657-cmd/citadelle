@@ -3555,7 +3555,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
       {tab==="emploidutemps"&&avecEns&&(()=>{
         const JOURS=["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi"];
         const genTranches=(step)=>{
-          const t=[];let h=8,m=30;
+          const t=[];let h=8,m=0;
           while(h*60+m<=18*60){t.push(String(h).padStart(2,"0")+":"+String(m).padStart(2,"0"));m+=step;h+=Math.floor(m/60);m=m%60;}
           return t;
         };
