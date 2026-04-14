@@ -6328,7 +6328,7 @@ export default function App() {
 
   // Charger les infos de l'école depuis Firestore (temps réel)
   useEffect(()=>{
-    if(!schoolId||schoolId==="superadmin") return;
+    if(!schoolId||schoolId==="superadmin"){setSchoolInfo(SCHOOL_INFO_DEFAUT);return;}
     const unsub = onSnapshot(doc(db,"ecoles",schoolId),(snap)=>{
       if(snap.exists()){
         const d=snap.data();
