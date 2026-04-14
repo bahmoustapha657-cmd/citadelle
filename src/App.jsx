@@ -2786,6 +2786,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
   const [filtreClasse,setFiltreClasse]=useState("all");
   const [edtVueGrille,setEdtVueGrille]=useState(true);
   const [edtCellule,setEdtCellule]=useState(null); // {jour,heureDebut,heureFin,existing?}
+  const [edtDuree,setEdtDuree]=useState(maxNote===10?60:120); // primaire: 30/45/60min, secondaire: 120min fixe
   const [eleveSelec,setEleveSelec]=useState(null);
   const [periodeB,setPeriodeB]=useState("T1");
   const [rechercheMatricule,setRechercheMatricule]=useState("");
@@ -3553,7 +3554,13 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
       {/* ── EMPLOIS DU TEMPS — GRILLE VISUELLE ── */}
       {tab==="emploidutemps"&&avecEns&&(()=>{
         const JOURS=["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi"];
-        const TRANCHES=["07:00","08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00"];
+        const genTranches=(step)=>{
+          const t=[];let h=7,m=0;
+          while(h*60+m<=18*60){t.push(String(h).padStart(2,"0")+":"+String(m).padStart(2,"0"));m+=step;h+=Math.floor(m/60);m=m%60;}
+          return t;
+        };
+        const duree=maxNote===10?edtDuree:120; // secondaire toujours 2h
+        const TRANCHES=genTranches(duree);
         const COULEURS=["#dbeafe","#dcfce7","#fef9c3","#ffe4e6","#f3e8ff","#ffedd5","#e0f2fe","#d1fae5","#fce7f3","#ecfdf5"];
         const classeEdtActuelle = filtreClasse==="all"&&classes.length>0 ? classes[0].nom : filtreClasse;
         const matCouleur={};
@@ -3588,6 +3595,16 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
           </select>
           <Btn sm v={edtVueGrille?"blue":"ghost"} onClick={()=>setEdtVueGrille(true)}>📅 Grille</Btn>
           <Btn sm v={!edtVueGrille?"blue":"ghost"} onClick={()=>setEdtVueGrille(false)}>☰ Liste</Btn>
+          {maxNote===10
+            ? <select value={edtDuree} onChange={e=>setEdtDuree(Number(e.target.value))}
+                title="Durée des rubriques"
+                style={{border:"1px solid #b0c4d8",borderRadius:7,padding:"5px 10px",fontSize:12,background:"#fff",color:C.blueDark}}>
+                <option value={30}>Rubriques 30 min</option>
+                <option value={45}>Rubriques 45 min</option>
+                <option value={60}>Rubriques 1 h</option>
+              </select>
+            : <span style={{fontSize:11,color:"#9ca3af",padding:"4px 8px",background:"#f8fafc",borderRadius:6,border:"1px solid #e2e8f0"}}>⏱ Séances 2h</span>
+          }
           {canCreate&&<Btn sm v="vert" onClick={copierEDT}>📋 Copier vers…</Btn>}
           {classeEdtActuelle!=="all"&&<Btn sm v="ghost" onClick={imprimerEDT}>🖨️ Imprimer</Btn>}
         </div>
