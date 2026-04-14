@@ -35,7 +35,12 @@ const C = {
 const GLOBAL_CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
   *, *::before, *::after { box-sizing: border-box; }
-  body { font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; background: ${C.bg}; }
+  html, body { height: 100%; margin: 0; padding: 0; }
+  body { font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; background: ${C.bg}; -webkit-text-size-adjust: 100%; }
+
+  /* Hauteur viewport dynamique (iOS Safari compatible) */
+  .lc-app-root { height: 100dvh; height: 100vh; } /* dvh = dynamic viewport height */
+  @supports (height: 100dvh) { .lc-app-root { height: 100dvh; } }
 
   /* Scrollbar fine */
   ::-webkit-scrollbar { width: 5px; height: 5px; }
@@ -44,7 +49,7 @@ const GLOBAL_CSS = `
   ::-webkit-scrollbar-thumb:hover { background: #0A1628; }
 
   /* Transitions boutons */
-  button { transition: filter .15s ease, transform .12s ease, box-shadow .15s ease; }
+  button { transition: filter .15s ease, transform .12s ease, box-shadow .15s ease; touch-action: manipulation; }
   button:hover:not(:disabled) { filter: brightness(1.09); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
   button:active:not(:disabled) { transform: translateY(0px); box-shadow: none; }
 
@@ -72,6 +77,36 @@ const GLOBAL_CSS = `
   /* Fade-in modales */
   @keyframes fadeUp { from { opacity:0; transform: translateY(16px); } to { opacity:1; transform: translateY(0); } }
   .lc-modal-box { animation: fadeUp .2s ease; }
+
+  /* ── RESPONSIVE MOBILE ── */
+  @media (max-width: 767px) {
+    /* Empêche le zoom iOS sur les inputs (iOS zoome si font-size < 16px) */
+    input, select, textarea { font-size: 16px !important; }
+
+    /* Modales adaptées mobile : plein écran en bas */
+    .lc-modal-overlay { align-items: flex-end !important; padding: 0 !important; }
+    .lc-modal-box {
+      border-radius: 20px 20px 0 0 !important;
+      max-height: 92dvh !important;
+      max-height: 92vh !important;
+      overflow-y: auto !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      margin: 0 !important;
+    }
+    @supports (max-height: 92dvh) { .lc-modal-box { max-height: 92dvh !important; } }
+
+    /* Tables : scroll horizontal */
+    .lc-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table { font-size: 12px !important; }
+    td, th { padding: 8px 10px !important; }
+
+    /* Boutons plus grands pour le touch */
+    button { min-height: 36px; }
+
+    /* Header compact */
+    .lc-header-actions span { display: none; }
+  }
 `;
 const GlobalStyles = () => <style>{GLOBAL_CSS}</style>;
 
@@ -428,8 +463,8 @@ const Badge = ({children,color="gray"}) => {
 const Card=({children,style})=><div style={{background:"#fff",border:"1px solid #e2e8f0",borderRadius:14,overflow:"hidden",boxShadow:"0 1px 4px rgba(10,22,40,0.06)",...style}}>{children}</div>;
 
 const Modale=({titre,fermer,children,large,xlarge})=>(
-  <div style={{position:"fixed",inset:0,zIndex:999,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(10,22,40,0.6)",backdropFilter:"blur(4px)"}}>
-    <div className="lc-modal-box" style={{background:"#fff",borderRadius:18,width:"100%",maxWidth:xlarge?1100:large?820:540,margin:"0 14px",maxHeight:"93vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(10,22,40,0.35)"}}>
+  <div className="lc-modal-overlay" style={{position:"fixed",inset:0,zIndex:999,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(10,22,40,0.6)",backdropFilter:"blur(4px)"}}>
+    <div className="lc-modal-box" style={{background:"#fff",borderRadius:18,width:"100%",maxWidth:xlarge?1100:large?820:540,margin:"0 14px",maxHeight:"93dvh",overflowY:"auto",boxShadow:"0 20px 60px rgba(10,22,40,0.35)"}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 22px",background:`linear-gradient(135deg,${C.blue},#1a3a6b)`,borderRadius:"18px 18px 0 0",position:"sticky",top:0,zIndex:1}}>
         <strong style={{fontSize:14,color:"#fff",letterSpacing:"0.02em"}}>{titre}</strong>
         <button onClick={fermer} style={{background:"rgba(255,255,255,0.15)",border:"1px solid rgba(255,255,255,0.25)",width:30,height:30,borderRadius:"50%",cursor:"pointer",color:"#fff",fontSize:18,lineHeight:"28px",textAlign:"center",display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
@@ -6121,7 +6156,12 @@ export default function App() {
   const [sidebarOuvert,setSidebarOuvert]=useState(false);
   const [rechercheOuverte,setRechercheOuverte]=useState(false);
   const [modeSombre,setModeSombre]=useState(()=>localStorage.getItem("LC_theme")==="dark");
-  const isMobile=()=>window.innerWidth<768;
+  const [isMobile,setIsMobile]=useState(()=>window.innerWidth<768);
+  useEffect(()=>{
+    const fn=()=>setIsMobile(window.innerWidth<768);
+    window.addEventListener("resize",fn);
+    return ()=>window.removeEventListener("resize",fn);
+  },[]);
 
   useEffect(()=>{
     document.body.classList.toggle("mode-sombre", modeSombre);
@@ -6273,11 +6313,11 @@ export default function App() {
   return (
     <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire}}>
     <GlobalStyles/>
-    <div style={{height:"100vh",overflow:"hidden",display:"flex",background:C.bg}}>
+    <div className="lc-app-root" style={{overflow:"hidden",display:"flex",background:C.bg}}>
       {/* Overlay mobile */}
       {sidebarOuvert&&<div onClick={()=>setSidebarOuvert(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:40}}/>}
       <aside style={{position:"fixed",top:0,bottom:0,left:0,width:228,zIndex:50,background:schoolInfo.couleur1||C.sidebar,display:"flex",flexDirection:"column",
-        transform:isMobile()&&!sidebarOuvert?"translateX(-100%)":"translateX(0)",transition:"transform 0.25s ease"}}>
+        transform:isMobile&&!sidebarOuvert?"translateX(-100%)":"translateX(0)",transition:"transform 0.25s ease"}}>
         <div style={{padding:"18px 16px 14px",borderBottom:"1px solid rgba(255,255,255,0.1)",textAlign:"center"}}>
           <Logo width={140} height={46} variant="light"/>
           <div style={{marginTop:10,paddingTop:8,borderTop:"1px solid rgba(255,255,255,0.08)"}}>
@@ -6291,7 +6331,7 @@ export default function App() {
         <nav style={{flex:1,padding:"10px 8px",display:"flex",flexDirection:"column",gap:3,overflowY:"auto",minHeight:0}}>
           {modulesVisibles.map(m=>{
             const actif=page===m.id;
-            return <button key={m.id} onClick={()=>{setPage(m.id);if(isMobile())setSidebarOuvert(false);}} style={{
+            return <button key={m.id} onClick={()=>{setPage(m.id);if(isMobile)setSidebarOuvert(false);}} style={{
               display:"flex",alignItems:"center",gap:9,padding:"9px 11px",borderRadius:8,border:"none",cursor:"pointer",textAlign:"left",width:"100%",
               background:actif?`${C.green}22`:"transparent",transition:"background .15s"}}>
               <span style={{fontSize:15}}>{m.icon}</span>
@@ -6319,10 +6359,10 @@ export default function App() {
         </div>
       </aside>
 
-      <main style={{flex:1,marginLeft:isMobile()?0:228,minWidth:0,display:"flex",flexDirection:"column",height:"100vh",overflow:"hidden"}}>
+      <main style={{flex:1,marginLeft:isMobile?0:228,minWidth:0,display:"flex",flexDirection:"column",height:"100dvh",overflow:"hidden"}}>
         <header style={{background:"#fff",borderBottom:`3px solid ${C.green}`,padding:"0 22px",height:52,display:"flex",alignItems:"center",gap:10,position:"sticky",top:0,zIndex:30}}>
           {/* Bouton hamburger mobile */}
-          <button onClick={()=>setSidebarOuvert(v=>!v)} style={{display:isMobile()?"flex":"none",alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:"pointer",padding:4,borderRadius:6,color:C.blueDark,fontSize:20,marginRight:4}}>
+          <button onClick={()=>setSidebarOuvert(v=>!v)} style={{display:isMobile?"flex":"none",alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:"pointer",padding:4,borderRadius:6,color:C.blueDark,fontSize:20,marginRight:4}}>
             ☰
           </button>
           <div style={{flex:1}}>
