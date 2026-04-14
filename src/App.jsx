@@ -348,14 +348,14 @@ const MODULES = [
 //  CONTEXTE MULTI-TENANT
 // ══════════════════════════════════════════════════════════════
 const SCHOOL_INFO_DEFAUT = {
-  nom: "La Citadelle", type: "Groupe Scolaire Privé",
-  ville: "Kindia", pays: "République de Guinée",
+  nom: "EduGest", type: "Groupe Scolaire Privé",
+  ville: "", pays: "",
   couleur1: "#0A1628", couleur2: "#00C48C",
   logo: null,
-  devise: "Travail – Rigueur – Réussite",
-  ministere: "MEPU-FP",
-  ire: "IRE de Kindia",
-  dpe: "DPE de Kindia",
+  devise: "",
+  ministere: "",
+  ire: "",
+  dpe: "",
   agrement: "",
   moisDebut: "Octobre",
   plan: "gratuit",
@@ -6332,25 +6332,26 @@ export default function App() {
     const unsub = onSnapshot(doc(db,"ecoles",schoolId),(snap)=>{
       if(snap.exists()){
         const d=snap.data();
-        setSchoolInfo(prev=>({
-          ...prev,
-          nom: d.nom||prev.nom,
-          type: d.type||prev.type,
-          ville: d.ville||prev.ville,
-          pays: d.pays||prev.pays,
-          couleur1: d.couleur1||prev.couleur1,
-          couleur2: d.couleur2||prev.couleur2,
-          logo: d.logo||prev.logo,
-          devise: d.devise||prev.devise,
-          ministere: d.ministere||prev.ministere||"",
-          ire: d.ire||prev.ire||"",
-          dpe: d.dpe||prev.dpe||"",
-          agrement: d.agrement||prev.agrement||"",
-          moisDebut: d.moisDebut||prev.moisDebut||"Octobre",
-          plan: d.plan||"gratuit",
-          planExpiry: d.planExpiry||null,
-          accueil: d.accueil||prev.accueil,
-        }));
+        const D = SCHOOL_INFO_DEFAUT;
+        setSchoolInfo({
+          ...D,
+          nom:       d.nom       || D.nom,
+          type:      d.type      || D.type,
+          ville:     d.ville     || D.ville,
+          pays:      d.pays      || D.pays,
+          couleur1:  d.couleur1  || D.couleur1,
+          couleur2:  d.couleur2  || D.couleur2,
+          logo:      d.logo      || D.logo,
+          devise:    d.devise    || D.devise,
+          ministere: d.ministere || D.ministere,
+          ire:       d.ire       || D.ire,
+          dpe:       d.dpe       || D.dpe,
+          agrement:  d.agrement  || D.agrement,
+          moisDebut: d.moisDebut || D.moisDebut,
+          plan:      d.plan      || "gratuit",
+          planExpiry:d.planExpiry|| null,
+          accueil:   d.accueil   || D.accueil,
+        });
         if(d.verrous) setVerrous(d.verrous);
       }
     });
