@@ -5919,6 +5919,145 @@ function MessagesParents({readOnly}) {
 }
 
 // ══════════════════════════════════════════════════════════════
+//  LANDING EDUGEST (page de présentation du produit)
+// ══════════════════════════════════════════════════════════════
+function LandingEduGest({onConnexion, onInscription}) {
+  return (
+    <div style={{minHeight:"100vh",background:"#0A1628",fontFamily:"'Inter','Segoe UI',sans-serif",color:"#fff",overflowX:"hidden"}}>
+      <GlobalStyles/>
+
+      {/* ── NAV ── */}
+      <nav style={{position:"sticky",top:0,zIndex:100,background:"rgba(10,22,40,0.92)",backdropFilter:"blur(12px)",borderBottom:"1px solid rgba(255,255,255,0.07)",padding:"0 24px",height:60,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <span style={{fontSize:22}}>🏫</span>
+          <span style={{fontSize:20,fontWeight:900,color:"#00C48C",letterSpacing:"-0.5px"}}>EduGest</span>
+          <span style={{fontSize:10,color:"rgba(255,255,255,0.35)",fontWeight:600,letterSpacing:"2px",textTransform:"uppercase",marginLeft:4}}>SaaS Scolaire</span>
+        </div>
+        <div style={{display:"flex",gap:10}}>
+          <button onClick={onConnexion} style={{background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.15)",color:"#fff",padding:"8px 20px",borderRadius:8,fontSize:13,fontWeight:700,cursor:"pointer"}}>
+            Connexion
+          </button>
+          <button onClick={onInscription} style={{background:"#00C48C",border:"none",color:"#fff",padding:"8px 20px",borderRadius:8,fontSize:13,fontWeight:700,cursor:"pointer"}}>
+            Créer mon école →
+          </button>
+        </div>
+      </nav>
+
+      {/* ── HERO ── */}
+      <div style={{padding:"80px 24px 60px",textAlign:"center",maxWidth:860,margin:"0 auto",position:"relative"}}>
+        {/* Cercles déco */}
+        <div style={{position:"absolute",top:-40,left:"10%",width:320,height:320,borderRadius:"50%",background:"radial-gradient(circle,rgba(0,196,140,0.12) 0%,transparent 70%)",pointerEvents:"none"}}/>
+        <div style={{position:"absolute",top:60,right:"5%",width:200,height:200,borderRadius:"50%",background:"radial-gradient(circle,rgba(0,140,255,0.09) 0%,transparent 70%)",pointerEvents:"none"}}/>
+
+        <div style={{display:"inline-flex",alignItems:"center",gap:8,background:"rgba(0,196,140,0.12)",border:"1px solid rgba(0,196,140,0.3)",borderRadius:20,padding:"6px 16px",marginBottom:28}}>
+          <span style={{width:6,height:6,borderRadius:"50%",background:"#00C48C",display:"inline-block"}}/>
+          <span style={{fontSize:12,fontWeight:700,color:"#00C48C",letterSpacing:"0.5px"}}>Conçu pour l'Afrique de l'Ouest</span>
+        </div>
+
+        <h1 style={{fontSize:"clamp(28px,6vw,54px)",fontWeight:900,lineHeight:1.15,margin:"0 0 20px",letterSpacing:"-1px"}}>
+          La gestion scolaire <span style={{color:"#00C48C"}}>simple</span>,<br/>
+          <span style={{color:"#00C48C"}}>complète</span> et <span style={{color:"#00C48C"}}>accessible</span>
+        </h1>
+        <p style={{fontSize:"clamp(14px,2.5vw,18px)",color:"rgba(255,255,255,0.6)",maxWidth:560,margin:"0 auto 40px",lineHeight:1.7}}>
+          Gérez élèves, enseignants, finances et bulletins depuis un seul outil.
+          Aucune installation. Disponible sur tous les appareils.
+        </p>
+
+        <div style={{display:"flex",gap:14,justifyContent:"center",flexWrap:"wrap"}}>
+          <button onClick={onInscription} style={{background:"linear-gradient(135deg,#00C48C,#00a876)",border:"none",color:"#fff",padding:"15px 36px",borderRadius:30,fontSize:16,fontWeight:800,cursor:"pointer",boxShadow:"0 8px 28px rgba(0,196,140,0.4)",letterSpacing:0.3}}>
+            🚀 Créer mon école gratuitement
+          </button>
+          <button onClick={onConnexion} style={{background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.2)",color:"#fff",padding:"15px 32px",borderRadius:30,fontSize:15,fontWeight:700,cursor:"pointer"}}>
+            Se connecter →
+          </button>
+        </div>
+        <p style={{marginTop:14,fontSize:11,color:"rgba(255,255,255,0.3)"}}>Inscription gratuite · Aucune carte bancaire requise</p>
+      </div>
+
+      {/* ── STATS ── */}
+      <div style={{padding:"10px 24px 50px",display:"flex",justifyContent:"center",gap:"clamp(20px,5vw,60px)",flexWrap:"wrap"}}>
+        {[
+          {v:"100%",l:"Cloud & accessible"},
+          {v:"6",l:"Modules intégrés"},
+          {v:"∞",l:"Élèves & enseignants"},
+          {v:"0€",l:"Pour démarrer"},
+        ].map(s=>(
+          <div key={s.l} style={{textAlign:"center"}}>
+            <div style={{fontSize:"clamp(26px,5vw,38px)",fontWeight:900,color:"#00C48C"}}>{s.v}</div>
+            <div style={{fontSize:12,color:"rgba(255,255,255,0.45)",marginTop:2}}>{s.l}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── MODULES ── */}
+      <div style={{padding:"0 24px 60px",maxWidth:960,margin:"0 auto"}}>
+        <h2 style={{textAlign:"center",fontSize:"clamp(18px,3vw,26px)",fontWeight:800,marginBottom:8}}>Tout ce dont votre école a besoin</h2>
+        <p style={{textAlign:"center",color:"rgba(255,255,255,0.45)",fontSize:13,marginBottom:36}}>6 modules complets, dans une seule interface</p>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:14}}>
+          {[
+            {icon:"🎒",name:"Primaire",desc:"Maternelle → CM2 : classes, notes /10, bulletins, absences, emplois du temps."},
+            {icon:"🏫",name:"Secondaire",desc:"Collège & Lycée : matières, coefficients, moyennes par trimestre."},
+            {icon:"📊",name:"Comptabilité",desc:"Scolarités, salaires, bons, révisions, personnel administratif."},
+            {icon:"👨‍🏫",name:"Portail Enseignant",desc:"Espace dédié : emploi du temps, saisie de notes, fiche de paie."},
+            {icon:"👨‍👩‍👧",name:"Portail Parent",desc:"Suivi en temps réel : notes, absences, bulletins, messagerie."},
+            {icon:"✨",name:"Assistant IA",desc:"Génération de commentaires de bulletins et documents administratifs."},
+          ].map(m=>(
+            <div key={m.name} style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:14,padding:"20px 18px"}}>
+              <div style={{fontSize:26,marginBottom:8}}>{m.icon}</div>
+              <div style={{fontSize:14,fontWeight:800,color:"#fff",marginBottom:6}}>{m.name}</div>
+              <div style={{fontSize:12,color:"rgba(255,255,255,0.5)",lineHeight:1.6}}>{m.desc}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── POURQUOI ── */}
+      <div style={{padding:"40px 24px 60px",background:"rgba(0,196,140,0.05)",borderTop:"1px solid rgba(0,196,140,0.12)",borderBottom:"1px solid rgba(0,196,140,0.12)"}}>
+        <div style={{maxWidth:900,margin:"0 auto"}}>
+          <h2 style={{textAlign:"center",fontSize:"clamp(18px,3vw,24px)",fontWeight:800,marginBottom:36}}>Pourquoi choisir EduGest ?</h2>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:20}}>
+            {[
+              {icon:"🚀",title:"Démarrage immédiat",desc:"Votre espace école est opérationnel le jour même, sans installation ni formation."},
+              {icon:"🎨",title:"Identité personnalisée",desc:"Logo, couleurs et nom de l'école intégrés partout — bulletins, cartes d'élèves, en-têtes."},
+              {icon:"🔒",title:"Données isolées",desc:"Les données de chaque école sont strictement séparées. Chaque rôle n'accède qu'à ce qui le concerne."},
+              {icon:"📱",title:"Responsive",desc:"Fonctionne sur ordinateur, tablette et téléphone. Aucune installation requise."},
+            ].map(w=>(
+              <div key={w.title} style={{background:"rgba(255,255,255,0.03)",borderRadius:12,padding:"20px 16px",textAlign:"center"}}>
+                <div style={{fontSize:28,marginBottom:10}}>{w.icon}</div>
+                <div style={{fontSize:13,fontWeight:800,color:"#00C48C",marginBottom:6}}>{w.title}</div>
+                <div style={{fontSize:12,color:"rgba(255,255,255,0.5)",lineHeight:1.6}}>{w.desc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── CTA FINAL ── */}
+      <div style={{padding:"60px 24px 80px",textAlign:"center"}}>
+        <h2 style={{fontSize:"clamp(20px,3.5vw,30px)",fontWeight:900,marginBottom:14}}>
+          Prêt à digitaliser votre école ?
+        </h2>
+        <p style={{color:"rgba(255,255,255,0.5)",fontSize:14,marginBottom:32}}>Rejoignez les établissements qui font confiance à EduGest</p>
+        <button onClick={onInscription} style={{background:"linear-gradient(135deg,#00C48C,#00a876)",border:"none",color:"#fff",padding:"16px 44px",borderRadius:30,fontSize:16,fontWeight:800,cursor:"pointer",boxShadow:"0 8px 28px rgba(0,196,140,0.4)"}}>
+          🏫 Créer mon école gratuitement
+        </button>
+        <div style={{marginTop:14,fontSize:12,color:"rgba(255,255,255,0.3)"}}>
+          Déjà inscrit ?{" "}
+          <button onClick={onConnexion} style={{background:"none",border:"none",color:"#00C48C",fontSize:12,fontWeight:700,cursor:"pointer",padding:0,textDecoration:"underline"}}>
+            Se connecter
+          </button>
+        </div>
+      </div>
+
+      {/* ── FOOTER ── */}
+      <div style={{borderTop:"1px solid rgba(255,255,255,0.07)",padding:"20px 24px",textAlign:"center",color:"rgba(255,255,255,0.2)",fontSize:11}}>
+        © {new Date().getFullYear()} EduGest · Solution SaaS de gestion scolaire
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
 //  PORTAIL PUBLIC (page d'accueil avant connexion)
 // ══════════════════════════════════════════════════════════════
 function PortailPublic({onConnexion}) {
@@ -6267,13 +6406,22 @@ export default function App() {
 
   if(!utilisateur && page==="inscription")return <Inscription/>;
 
-  // Page d'accueil publique (si activée et pas encore sur l'écran de login)
-  if(!utilisateur && schoolInfo.accueil?.active && page!=="login") return (
+  // 1. Landing EduGest (page produit, visible si aucune page sélectionnée)
+  if(!utilisateur && !page) return (
+    <LandingEduGest
+      onConnexion={()=>setPage("login")}
+      onInscription={()=>setPage("inscription")}
+    />
+  );
+
+  // 2. Portail public de l'école (si activé, avant le formulaire de connexion)
+  if(!utilisateur && page==="login" && schoolInfo.accueil?.active) return (
     <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire}}>
-      <PortailPublic onConnexion={()=>setPage("login")}/>
+      <PortailPublic onConnexion={()=>setPage("connexion")}/>
     </SchoolContext.Provider>
   );
 
+  // 3. Formulaire de connexion
   if(!utilisateur)return (
     <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire}}>
       <GlobalStyles/>
