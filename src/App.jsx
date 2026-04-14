@@ -2784,6 +2784,8 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
   const [modal,setModal]=useState(null);
   const [form,setForm]=useState({});
   const [filtreClasse,setFiltreClasse]=useState("all");
+  const [edtVueGrille,setEdtVueGrille]=useState(true);
+  const [edtCellule,setEdtCellule]=useState(null); // {jour,heureDebut,heureFin,existing?}
   const [eleveSelec,setEleveSelec]=useState(null);
   const [periodeB,setPeriodeB]=useState("T1");
   const [rechercheMatricule,setRechercheMatricule]=useState("");
@@ -3548,164 +3550,162 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
         </Modale>}
       </div>}
 
-      {/* ── EMPLOIS DU TEMPS ── */}
-      {tab==="emploidutemps"&&avecEns&&<div>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-          <strong style={{fontSize:14,color:C.blueDark}}>Emplois du temps ({emplois.length})</strong>
-          {canCreate&&<Btn onClick={()=>{setForm({jour:"Lundi"});setModal("add_emp");}}>+ Ajouter un créneau</Btn>}
-        </div>
-        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12,flexWrap:"wrap"}}>
-          <select value={filtreClasse} onChange={e=>setFiltreClasse(e.target.value)}
-            style={{border:"1px solid #b0c4d8",borderRadius:7,padding:"6px 10px",fontSize:12,background:"#fff"}}>
-            <option value="all">Toutes les classes</option>
-            {classesUniq.map(c=><option key={c}>{c}</option>)}
+      {/* ── EMPLOIS DU TEMPS — GRILLE VISUELLE ── */}
+      {tab==="emploidutemps"&&avecEns&&(()=>{
+        const JOURS=["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi"];
+        const TRANCHES=["07:00","08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00"];
+        const COULEURS=["#dbeafe","#dcfce7","#fef9c3","#ffe4e6","#f3e8ff","#ffedd5","#e0f2fe","#d1fae5","#fce7f3","#ecfdf5"];
+        const classeEdtActuelle = filtreClasse==="all"&&classes.length>0 ? classes[0].nom : filtreClasse;
+        const matCouleur={};
+        matieres.forEach((m,i)=>{matCouleur[m.nom]=COULEURS[i%COULEURS.length];});
+        const emploisClasse=emplois.filter(e=>e.classe===classeEdtActuelle);
+        const getCreneau=(jour,hd)=>emploisClasse.find(e=>e.jour===jour&&e.heureDebut===hd);
+        const imprimerEDT=()=>{
+          const lignes=[...emploisClasse].sort((a,b)=>JOURS.indexOf(a.jour)-JOURS.indexOf(b.jour)||(a.heureDebut||"").localeCompare(b.heureDebut||""));
+          const w=window.open("","_blank");
+          const rows=lignes.map(e=>"<tr><td><b>"+e.jour+"</b></td><td>"+(e.heureDebut||"—")+"</td><td>"+(e.heureFin||"—")+"</td><td>"+(e.matiere||"—")+"</td><td>"+(e.enseignant||"—")+"</td><td>"+(e.salle||"—")+"</td></tr>").join("");
+          w.document.write("<!DOCTYPE html><html><head><title>EDT "+classeEdtActuelle+"</title><style>body{font-family:Arial,sans-serif;padding:30px;font-size:12px}h2{color:#0A1628;text-align:center}table{width:100%;border-collapse:collapse;margin-top:12px}th{background:#0A1628;color:#fff;padding:7px 10px;font-size:11px;text-align:left}td{padding:7px 10px;border-bottom:1px solid #eee}tr:nth-child(even){background:#f0f4f8}@media print{button{display:none}}</style></head><body>"+enteteDoc(schoolInfo,schoolInfo.logo)+"<h2>Emploi du temps — "+classeEdtActuelle+"</h2><table><thead><tr><th>Jour</th><th>Heure d\u00e9but</th><th>Heure fin</th><th>Mati\u00e8re</th><th>Enseignant</th><th>Salle</th></tr></thead><tbody>"+rows+"</tbody></table><script>window.onload=()=>window.print();</scri"+"pt></body></html>");
+          w.document.close();
+        };
+        const copierEDT=()=>{
+          const cibles=classes.filter(c=>c.nom!==classeEdtActuelle);
+          if(!cibles.length){alert("Aucune autre classe.");return;}
+          const dest=window.prompt("Copier l'EDT de \""+classeEdtActuelle+"\" vers quelle classe ?\n"+cibles.map(c=>c.nom).join(", "));
+          if(!dest||!classes.find(c=>c.nom===dest)){alert("Classe introuvable.");return;}
+          const aSupp=emplois.filter(e=>e.classe===dest);
+          Promise.all(aSupp.map(e=>supEmp(e._id))).then(()=>{
+            emploisClasse.forEach(e=>ajEmp({...e,classe:dest,_id:undefined}));
+          });
+          alert("EDT copié vers "+dest);
+        };
+        return <div>
+        {/* ── TOOLBAR ── */}
+        <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:14,flexWrap:"wrap"}}>
+          <strong style={{fontSize:14,color:C.blueDark,marginRight:4}}>Emploi du temps</strong>
+          <select value={classeEdtActuelle} onChange={e=>setFiltreClasse(e.target.value)}
+            style={{border:"1px solid #b0c4d8",borderRadius:7,padding:"6px 12px",fontSize:13,background:"#fff",fontWeight:700,color:C.blueDark}}>
+            {classes.map(c=><option key={c._id} value={c.nom}>{c.nom}</option>)}
           </select>
-          {filtreClasse!=="all"&&<Btn sm v="ghost" onClick={()=>{
-            const jours=["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi"];
-            const lignes=emplois.filter(e=>e.classe===filtreClasse).sort((a,b)=>jours.indexOf(a.jour)-jours.indexOf(b.jour)||(a.heureDebut||"").localeCompare(b.heureDebut||""));
-            const w=window.open("","_blank");
-            w.document.write(`<!DOCTYPE html><html><head><title>EDT ${filtreClasse}</title>
-            <style>body{font-family:Arial,sans-serif;padding:30px;font-size:12px}
-            h2{color:#0A1628;text-align:center}table{width:100%;border-collapse:collapse;margin-top:12px}
-            th{background:#0A1628;color:#fff;padding:7px 10px;font-size:11px;text-align:left}
-            td{padding:7px 10px;border-bottom:1px solid #eee}tr:nth-child(even){background:#f0f4f8}
-            .footer{margin-top:30px;display:flex;justify-content:space-between;font-size:11px;color:#555}
-            @media print{button{display:none}}</style></head><body>
-            ${enteteDoc(schoolInfo, schoolInfo.logo)}
-            <h2>Emploi du temps — Classe : ${filtreClasse}</h2>
-            <table><thead><tr><th>Jour</th><th>Heure début</th><th>Heure fin</th><th>Matière</th><th>Enseignant</th><th>Salle</th></tr></thead>
-            <tbody>${lignes.map(e=>`<tr><td><strong>${e.jour}</strong></td><td>${e.heureDebut||"—"}</td><td>${e.heureFin||"—"}</td><td>${e.matiere||"—"}</td><td>${e.enseignant||"—"}</td><td>${e.salle||"—"}</td></tr>`).join("")}
-            </tbody></table>
-            <div class="footer"><span>Créneaux : ${lignes.length}</span><span>Imprimé le : ${today()}</span><span>Le Directeur</span></div>
-            <script>window.onload=()=>window.print();</script></body></html>`);
-            w.document.close();
-          }}>🖨️ Imprimer EDT</Btn>}
-          <Btn sm v="amber" onClick={()=>{
-            const JOURS=["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi"];
-            const toutesClasses=[...new Set(emplois.map(e=>e.classe))].filter(Boolean).sort();
-            if(toutesClasses.length===0){alert("Aucun créneau enregistré.");return;}
-            const w=window.open("","_blank");
-            w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>EDT Général — ${titre}</title>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:Arial,sans-serif;font-size:10px;padding:16px;color:#111}
-.entete{display:flex;align-items:center;gap:12px;border-bottom:3px solid #0A1628;padding-bottom:10px;margin-bottom:14px}
-.entete img{width:60px;height:60px;object-fit:contain}
-.entete h1{font-size:13px;color:#0A1628;margin-bottom:3px}
-.entete p{font-size:10px;color:#555}
-.titre-doc{text-align:center;font-size:14px;font-weight:bold;color:#0A1628;margin-bottom:4px}
-.sous-titre{text-align:center;font-size:10px;color:#555;margin-bottom:16px}
-.section-classe{margin-bottom:22px;page-break-inside:avoid}
-.classe-titre{background:#0A1628;color:#fff;padding:6px 12px;font-size:11px;font-weight:bold;border-radius:4px 4px 0 0}
-table{width:100%;border-collapse:collapse;border:1px solid #b0c4d8}
-th{background:#e0ebf8;color:#0A1628;padding:5px 7px;font-size:9px;font-weight:bold;border:1px solid #b0c4d8;text-align:center}
-th.jour-h{background:#0A1628;color:#fff;width:62px}
-td{padding:4px 6px;border:1px solid #dde;font-size:9px;vertical-align:top}
-td.heure{background:#f0f4f8;font-weight:bold;color:#0A1628;text-align:center;white-space:nowrap}
-td.cellule .mat{font-weight:bold;color:#1d4ed8}
-td.cellule .ens{color:#555;font-style:italic}
-td.cellule .salle{color:#888;font-size:8px}
-td.vide{background:#fafafa;color:#ccc;text-align:center;font-size:8px}
-.footer{margin-top:14px;display:flex;justify-content:space-between;font-size:9px;color:#888;border-top:1px solid #ddd;padding-top:8px}
-@media print{body{padding:6px}.section-classe{page-break-inside:avoid}button{display:none}}
-</style></head><body>
-${enteteDoc(schoolInfo, schoolInfo.logo)}
-<div class="titre-doc">EMPLOI DU TEMPS GÉNÉRAL</div>
-<div class="sous-titre">${toutesClasses.length} classe(s) &nbsp;·&nbsp; ${emplois.length} créneau(x) au total</div>
-${toutesClasses.map(cl=>{
-  const crens=emplois.filter(e=>e.classe===cl).sort((a,b)=>JOURS.indexOf(a.jour)-JOURS.indexOf(b.jour)||(a.heureDebut||"").localeCompare(b.heureDebut||""));
-  const heures=[...new Set(crens.map(e=>e.heureDebut).filter(Boolean))].sort();
-  const joursPresents=JOURS.filter(j=>crens.some(e=>e.jour===j));
-  if(heures.length===0)return`<div class="section-classe"><div class="classe-titre">${cl}</div><p style="padding:8px;color:#888;font-style:italic;border:1px solid #b0c4d8;border-top:none">Aucun créneau enregistré</p></div>`;
-  return`<div class="section-classe">
-<div class="classe-titre">${cl} &nbsp;—&nbsp; ${crens.length} créneau(x)</div>
-<table>
-<thead><tr><th class="jour-h">Horaire</th>${joursPresents.map(j=>`<th>${j}</th>`).join("")}</tr></thead>
-<tbody>${heures.map(h=>{
-  const cells=joursPresents.map(j=>{
-    const c=crens.find(e=>e.heureDebut===h&&e.jour===j);
-    if(!c)return`<td class="vide">—</td>`;
-    return`<td class="cellule"><div class="mat">${c.matiere||"—"}</div><div class="ens">${c.enseignant||""}</div><div class="salle">${c.salle?`Salle : ${c.salle} `:""} ${c.heureFin?`→${c.heureFin}`:""}</div></td>`;
-  }).join("");
-  return`<tr><td class="heure">${h}</td>${cells}</tr>`;
-}).join("")}</tbody>
-</table></div>`;
-}).join("")}
-<div class="footer"><span>Total créneaux : ${emplois.length}</span><span>Imprimé le : ${today()}</span><span>Le Directeur</span></div>
-<script>window.onload=()=>window.print();</script>
-</body></html>`);
-            w.document.close();
-          }}>🖨️ EDT Général</Btn>
+          <Btn sm v={edtVueGrille?"blue":"ghost"} onClick={()=>setEdtVueGrille(true)}>📅 Grille</Btn>
+          <Btn sm v={!edtVueGrille?"blue":"ghost"} onClick={()=>setEdtVueGrille(false)}>☰ Liste</Btn>
+          {canCreate&&<Btn sm v="vert" onClick={copierEDT}>📋 Copier vers…</Btn>}
+          {classeEdtActuelle!=="all"&&<Btn sm v="ghost" onClick={imprimerEDT}>🖨️ Imprimer</Btn>}
         </div>
-        {cEmp?<Chargement/>:emplois.length===0?<Vide icone="📅" msg="Aucun créneau enregistré"/>
-          :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
-            <THead cols={["Classe","Jour","Heure début","Heure fin","Matière","Enseignant","Salle",readOnly?"":"Actions"]}/>
-            <tbody>{(()=>{
-              const jours=["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi"];
-              const liste=emplois
-                .filter(e=>filtreClasse==="all"||e.classe===filtreClasse)
-                .sort((a,b)=>jours.indexOf(a.jour)-jours.indexOf(b.jour)||(a.heureDebut||"").localeCompare(b.heureDebut||""));
-              const aConflit=e=>{
-                const autres=emplois.filter(x=>x._id!==e._id);
-                const confClasse=autres.some(x=>x.classe===e.classe&&x.jour===e.jour&&(x.heureDebut||"00:00")<(e.heureFin||"23:59")&&(x.heureFin||"23:59")>(e.heureDebut||"00:00"));
-                const confEns=e.enseignant&&autres.some(x=>x.enseignant===e.enseignant&&x.jour===e.jour&&(x.heureDebut||"00:00")<(e.heureFin||"23:59")&&(x.heureFin||"23:59")>(e.heureDebut||"00:00"));
-                return confClasse?"classe":confEns?"enseignant":null;
-              };
-              return liste.map(e=>{
-                const conflit=aConflit(e);
-                return <TR key={e._id} style={conflit?{background:"#fff3f3",borderLeft:"3px solid #ef4444"}:{}}>
-                <TD><Badge color="blue">{e.classe}</Badge></TD>
-                <TD bold>{e.jour}</TD>
-                <TD>{e.heureDebut||"—"}</TD>
-                <TD>{e.heureFin||"—"}</TD>
-                <TD>{e.matiere||"—"}</TD>
-                <TD style={conflit==="enseignant"?{color:"#b91c1c",fontWeight:700}:{}}>{e.enseignant||<span style={{color:"#9ca3af",fontStyle:"italic"}}>Non assigné</span>}</TD>
-                <TD>{e.salle||"—"}</TD>
-                {canEdit&&<TD><div style={{display:"flex",gap:6,alignItems:"center"}}>
-                  {conflit&&<span title={conflit==="classe"?"Conflit : même classe même horaire":"Conflit : enseignant déjà occupé"} style={{color:"#ef4444",fontSize:14,cursor:"help"}}>⚠️</span>}
-                  <Btn sm v="ghost" onClick={()=>{setForm({...e});setModal("edit_emp");}}>Modifier</Btn>
-                  <Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ce créneau ?"))supEmp(e._id);}}>Suppr.</Btn>
-                </div></TD>}
-              </TR>;});})()}
-            </tbody>
-          </table></Card>}
-        {(modal==="add_emp"&&canCreate||(modal==="edit_emp"&&canEdit))&&<Modale titre={modal==="add_emp"?"Nouveau créneau":"Modifier le créneau"} fermer={()=>setModal(null)}>
+
+        {classes.length===0
+          ? <Vide icone="📅" msg="Créez d'abord des classes"/>
+          : cEmp ? <Chargement/>
+          : edtVueGrille ? (
+          /* ── VUE GRILLE ── */
+          <div style={{overflowX:"auto"}}>
+            <table style={{borderCollapse:"collapse",minWidth:700,width:"100%",fontSize:12}}>
+              <thead>
+                <tr>
+                  <th style={{background:C.blueDark,color:"#fff",padding:"8px 10px",width:72,fontSize:11}}>Horaire</th>
+                  {JOURS.map(j=><th key={j} style={{background:C.blueDark,color:"#fff",padding:"8px 10px",textAlign:"center",fontSize:11,fontWeight:700}}>{j}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {TRANCHES.slice(0,-1).map((hd,i)=>{
+                  const hf=TRANCHES[i+1];
+                  return <tr key={hd}>
+                    <td style={{padding:"6px 8px",background:"#f0f4f8",fontWeight:700,fontSize:11,color:C.blueDark,textAlign:"center",borderBottom:"1px solid #e2e8f0",whiteSpace:"nowrap"}}>
+                      {hd.slice(0,5)}–{hf.slice(0,5)}
+                    </td>
+                    {JOURS.map(jour=>{
+                      const cr=getCreneau(jour,hd);
+                      const conflit=cr&&emplois.some(x=>x._id!==cr._id&&x.enseignant&&x.enseignant===cr.enseignant&&x.jour===jour&&x.heureDebut===hd);
+                      return <td key={jour}
+                        onClick={()=>{
+                          if(!canCreate&&!canEdit)return;
+                          if(cr){setForm({...cr});setEdtCellule({jour,heureDebut:hd,heureFin:hf,existing:cr});}
+                          else{setForm({classe:classeEdtActuelle,jour,heureDebut:hd,heureFin:hf,matiere:"",enseignant:"",salle:""});setEdtCellule({jour,heureDebut:hd,heureFin:hf,existing:null});}
+                        }}
+                        style={{
+                          padding:"4px 5px",border:"1px solid #e2e8f0",cursor:canCreate||canEdit?"pointer":"default",
+                          background:cr?matCouleur[cr.matiere]||"#e0ebf8":"#fafcff",
+                          minWidth:90,verticalAlign:"top",position:"relative",
+                          transition:"filter .15s",
+                        }}>
+                        {cr ? <>
+                          {conflit&&<span title="Conflit enseignant" style={{position:"absolute",top:2,right:3,fontSize:10}}>⚠️</span>}
+                          <div style={{fontWeight:800,fontSize:11,color:"#1e3a5f",lineHeight:1.3}}>{cr.matiere||"—"}</div>
+                          {cr.enseignant&&<div style={{fontSize:10,color:"#475569",marginTop:1}}>{cr.enseignant.split(" ").slice(-1)[0]}</div>}
+                          {cr.salle&&<div style={{fontSize:9,color:"#94a3b8",marginTop:1}}>📍{cr.salle}</div>}
+                        </> : (canCreate&&<div style={{fontSize:18,color:"#c7d7e9",textAlign:"center",lineHeight:"40px"}}>+</div>)}
+                      </td>;
+                    })}
+                  </tr>;
+                })}
+              </tbody>
+            </table>
+            <p style={{fontSize:11,color:"#9ca3af",marginTop:8}}>💡 Cliquez sur une cellule pour ajouter ou modifier un créneau</p>
+          </div>
+        ) : (
+          /* ── VUE LISTE ── */
+          emploisClasse.length===0
+            ? <Vide icone="📅" msg="Aucun créneau pour cette classe"/>
+            : <Card><table style={{width:"100%",borderCollapse:"collapse"}}>
+              <THead cols={["Jour","Heure","Matière","Enseignant","Salle",canEdit?"":"" ]}/>
+              <tbody>{emploisClasse
+                .sort((a,b)=>JOURS.indexOf(a.jour)-JOURS.indexOf(b.jour)||(a.heureDebut||"").localeCompare(b.heureDebut||""))
+                .map(e=><TR key={e._id}>
+                  <TD bold>{e.jour}</TD>
+                  <TD>{e.heureDebut} – {e.heureFin}</TD>
+                  <TD>{e.matiere||"—"}</TD>
+                  <TD>{e.enseignant||<span style={{color:"#9ca3af",fontStyle:"italic"}}>—</span>}</TD>
+                  <TD>{e.salle||"—"}</TD>
+                  {canEdit&&<TD><div style={{display:"flex",gap:6}}>
+                    <Btn sm v="ghost" onClick={()=>{setForm({...e});setEdtCellule({jour:e.jour,heureDebut:e.heureDebut,heureFin:e.heureFin,existing:e});}}>Modifier</Btn>
+                    <Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ?"))supEmp(e._id);}}>Suppr.</Btn>
+                  </div></TD>}
+                </TR>)}
+              </tbody>
+            </table></Card>
+        )}
+
+        {/* ── MINI MODAL CELLULE ── */}
+        {edtCellule&&(canCreate||canEdit)&&<Modale
+          titre={edtCellule.existing?"Modifier le créneau":"Nouveau créneau"}
+          fermer={()=>setEdtCellule(null)}>
+          <div style={{marginBottom:12,padding:"8px 12px",background:"#f0f7ff",borderRadius:8,fontSize:12,color:C.blueDark,display:"flex",gap:16,flexWrap:"wrap"}}>
+            <span>📅 <strong>{edtCellule.jour}</strong></span>
+            <span>⏰ <strong>{edtCellule.heureDebut} → {edtCellule.heureFin}</strong></span>
+            <span>🏫 <strong>{form.classe||classeEdtActuelle}</strong></span>
+          </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-            <Selec label="Classe *" value={form.classe||""} onChange={chg("classe")}>
-              <option value="">— Sélectionner —</option>
-              {classes.map(c=><option key={c._id}>{c.nom}</option>)}
-            </Selec>
-            <Selec label="Jour *" value={form.jour||"Lundi"} onChange={chg("jour")}>
-              <option>Lundi</option><option>Mardi</option><option>Mercredi</option>
-              <option>Jeudi</option><option>Vendredi</option><option>Samedi</option>
-            </Selec>
-            <Input label="Heure début *" type="time" value={form.heureDebut||""} onChange={chg("heureDebut")}/>
-            <Input label="Heure fin *" type="time" value={form.heureFin||""} onChange={chg("heureFin")}/>
             <Selec label="Matière" value={form.matiere||""} onChange={e=>{setForm(p=>({...p,matiere:e.target.value,enseignant:""}));}}>
-              <option value="">— Toutes —</option>
+              <option value="">— Sélectionner —</option>
               {matieres.map(m=><option key={m._id}>{m.nom}</option>)}
             </Selec>
-            <div>
-              <Selec label="Enseignant" value={form.enseignant||""} onChange={chg("enseignant")}>
-                <option value="">— Sélectionner —</option>
-                {ens
-                  .filter(e=>!form.matiere||(e.matiere||"").toLowerCase().split(/[,/;]+/).map(s=>s.trim()).some(m=>
-                    m.includes(form.matiere.toLowerCase())||form.matiere.toLowerCase().includes(m)
-                  ))
-                  .map(e=><option key={e._id}>{e.prenom} {e.nom} {e.matiere?`(${e.matiere})`:""}​</option>)}
-              </Selec>
-              {form.matiere&&ens.filter(e=>!form.matiere||(e.matiere||"").toLowerCase().split(/[,/;]+/).map(s=>s.trim()).some(m=>
-                m.includes(form.matiere.toLowerCase())||form.matiere.toLowerCase().includes(m)
-              )).length===0&&<p style={{fontSize:11,color:"#d97706",marginTop:4}}>⚠️ Aucun enseignant enregistré pour cette matière</p>}
+            <Selec label="Enseignant" value={form.enseignant||""} onChange={chg("enseignant")}>
+              <option value="">— Sélectionner —</option>
+              {ens.filter(e=>!form.matiere||(e.matiere||"").toLowerCase().split(/[,/;]+/).map(s=>s.trim()).some(m=>m.includes((form.matiere||"").toLowerCase())||(form.matiere||"").toLowerCase().includes(m)))
+                .map(e=><option key={e._id}>{e.prenom} {e.nom}{e.matiere?` (${e.matiere})`:""}</option>)}
+            </Selec>
+            <Input label="Salle (optionnel)" value={form.salle||""} onChange={chg("salle")}/>
+            <div style={{display:"flex",alignItems:"flex-end",gap:8}}>
+              <Input label="Début" type="time" value={form.heureDebut||edtCellule.heureDebut} onChange={chg("heureDebut")}/>
+              <Input label="Fin" type="time" value={form.heureFin||edtCellule.heureFin} onChange={chg("heureFin")}/>
             </div>
-            <Input label="Salle" value={form.salle||""} onChange={chg("salle")}/>
           </div>
-          <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
-            <Btn v="ghost" onClick={()=>setModal(null)}>Annuler</Btn>
-            <Btn onClick={()=>{if(!validerCreneau())return;if(modal==="add_emp")ajEmp(form);else modEmp(form);setModal(null);}}>Enregistrer</Btn>
+          <div style={{display:"flex",justifyContent:"space-between",marginTop:16}}>
+            <div>
+              {edtCellule.existing&&canEdit&&<Btn v="danger" onClick={()=>{supEmp(edtCellule.existing._id);setEdtCellule(null);}}>🗑 Supprimer</Btn>}
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <Btn v="ghost" onClick={()=>setEdtCellule(null)}>Annuler</Btn>
+              <Btn onClick={()=>{
+                if(!form.matiere){alert("Choisissez une matière.");return;}
+                const data={classe:form.classe||classeEdtActuelle,jour:edtCellule.jour,heureDebut:form.heureDebut||edtCellule.heureDebut,heureFin:form.heureFin||edtCellule.heureFin,matiere:form.matiere,enseignant:form.enseignant||"",salle:form.salle||""};
+                if(edtCellule.existing)modEmp({...data,_id:edtCellule.existing._id});
+                else ajEmp(data);
+                setEdtCellule(null);
+              }}>✅ Enregistrer</Btn>
+            </div>
           </div>
         </Modale>}
-      </div>}
+      </div>;})()}
 
       {/* ── ATTESTATIONS DE NIVEAU ── */}
       {tab==="attestations"&&<div>
