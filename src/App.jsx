@@ -325,6 +325,11 @@ const SCHOOL_INFO_DEFAUT = {
   moisDebut: "Octobre",
   plan: "gratuit",
   planExpiry: null,
+  accueil: {
+    active: false, slogan: "", texteAccueil: "", bannerUrl: "",
+    photos: [], showAnnonces: true, showHonneurs: true, showContact: true,
+    telephone: "", email: "", facebook: "", whatsapp: "", adresse: "",
+  },
 };
 export const SchoolContext = createContext({
   schoolId: localStorage.getItem("LC_schoolId") || "citadelle",
@@ -3907,6 +3912,8 @@ function Calendrier({annee}) {
 // ══════════════════════════════════════════════════════════════
 function ParametresEcole() {
   const {schoolId,schoolInfo,setSchoolInfo} = useContext(SchoolContext);
+  const {items:honneurs, ajouter:ajHonneur, modifier:modHonneur, supprimer:supHonneur} = useFirestore("honneurs");
+  const [tabParam, setTabParam] = useState("identite");
   const [form,setForm] = useState({
     nom: schoolInfo.nom||"",
     type: schoolInfo.type||"Groupe Scolaire Privé",
@@ -3922,6 +3929,25 @@ function ParametresEcole() {
     agrement: schoolInfo.agrement||"",
     moisDebut: schoolInfo.moisDebut||"Octobre",
   });
+  const acc0 = schoolInfo.accueil||{};
+  const [accueil, setAccueil] = useState({
+    active: acc0.active||false,
+    slogan: acc0.slogan||"",
+    texteAccueil: acc0.texteAccueil||"",
+    bannerUrl: acc0.bannerUrl||"",
+    photos: acc0.photos||[],
+    showAnnonces: acc0.showAnnonces!==false,
+    showHonneurs: acc0.showHonneurs!==false,
+    showContact: acc0.showContact!==false,
+    telephone: acc0.telephone||"",
+    email: acc0.email||"",
+    facebook: acc0.facebook||"",
+    whatsapp: acc0.whatsapp||"",
+    adresse: acc0.adresse||"",
+  });
+  const [formHonneur, setFormHonneur] = useState({});
+  const [modalH, setModalH] = useState(null);
+  const chgA = k => e => setAccueil(p=>({...p,[k]: e.target.type==="checkbox"?e.target.checked:e.target.value}));
   const [chargement,setChargement] = useState(false);
   const [msgSucces,setMsgSucces] = useState("");
   const [erreur,setErreur] = useState("");
@@ -4012,6 +4038,21 @@ function ParametresEcole() {
         dpe: form.dpe.trim(),
         agrement: form.agrement.trim(),
         moisDebut: form.moisDebut,
+        accueil: {
+          active: accueil.active,
+          slogan: accueil.slogan.trim(),
+          texteAccueil: accueil.texteAccueil.trim(),
+          bannerUrl: accueil.bannerUrl.trim(),
+          photos: accueil.photos,
+          showAnnonces: accueil.showAnnonces,
+          showHonneurs: accueil.showHonneurs,
+          showContact: accueil.showContact,
+          telephone: accueil.telephone.trim(),
+          email: accueil.email.trim(),
+          facebook: accueil.facebook.trim(),
+          whatsapp: accueil.whatsapp.trim(),
+          adresse: accueil.adresse.trim(),
+        },
       };
       await updateDoc(doc(db,"ecoles",schoolId), data);
       setSchoolInfo(prev=>({...prev,...data}));
@@ -4022,6 +4063,31 @@ function ParametresEcole() {
     } finally {
       setChargement(false);
     }
+  };
+
+  // Upload photo galerie → base64
+  const handlePhotoGalerie = e => {
+    const files = Array.from(e.target.files);
+    files.forEach(file => {
+      if(file.size > 800*1024){ alert(`${file.name} trop grande (max 800 Ko).`); return; }
+      const reader = new FileReader();
+      reader.onload = ev => {
+        setAccueil(p=>({...p, photos:[...(p.photos||[]), {url:ev.target.result, caption:""}]}));
+      };
+      reader.readAsDataURL(file);
+    });
+    e.target.value = "";
+  };
+
+  // Upload bannière → base64
+  const handleBanniere = e => {
+    const file = e.target.files[0];
+    if(!file) return;
+    if(file.size > 1024*1024){ setErreur("Bannière trop grande (max 1 Mo)."); return; }
+    const reader = new FileReader();
+    reader.onload = ev => setAccueil(p=>({...p, bannerUrl:ev.target.result}));
+    reader.readAsDataURL(file);
+    e.target.value = "";
   };
 
   const resetLogo = () => { setForm(p=>({...p,logo:""})); setApercu(null); };
@@ -4040,13 +4106,33 @@ function ParametresEcole() {
   };
 
   return (
-    <div style={{padding:"28px 32px",fontFamily:"'Segoe UI',system-ui,sans-serif",maxWidth:720,margin:"0 auto"}}>
+    <div style={{padding:"28px 32px",fontFamily:"'Segoe UI',system-ui,sans-serif",maxWidth:760,margin:"0 auto"}}>
       <h2 style={{margin:"0 0 4px",fontSize:20,fontWeight:900,color:C.blueDark}}>⚙️ Paramètres de l'école</h2>
-      <p style={{margin:"0 0 24px",fontSize:12,color:"#9ca3af"}}>Personnalisez l'identité visuelle et les informations de votre établissement</p>
+      <p style={{margin:"0 0 16px",fontSize:12,color:"#9ca3af"}}>Personnalisez l'identité visuelle et les informations de votre établissement</p>
+
+      {/* Tabs */}
+      <div style={{display:"flex",gap:4,background:"#f1f5f9",borderRadius:12,padding:4,marginBottom:24,width:"fit-content"}}>
+        {[
+          {id:"identite",    label:"🏫 Identité"},
+          {id:"accueil",     label:"🌐 Page d'accueil"},
+          {id:"officiel",    label:"🏛️ Officiel & Année"},
+        ].map(t=>(
+          <button key={t.id} onClick={()=>setTabParam(t.id)} style={{
+            padding:"8px 18px",border:"none",borderRadius:9,cursor:"pointer",
+            fontSize:13,fontWeight:700,
+            background:tabParam===t.id?"#fff":"transparent",
+            color:tabParam===t.id?C.blueDark:"#64748b",
+            boxShadow:tabParam===t.id?"0 1px 4px rgba(0,0,0,0.08)":"none",
+            transition:"all .15s",
+          }}>{t.label}</button>
+        ))}
+      </div>
 
       {msgSucces&&<div style={{background:"#d1fae5",border:"1px solid #6ee7b7",borderRadius:8,padding:"10px 16px",marginBottom:16,fontSize:13,color:"#065f46",fontWeight:600}}>✅ {msgSucces}</div>}
       {erreur&&<div style={{background:"#fee2e2",border:"1px solid #fca5a5",borderRadius:8,padding:"10px 16px",marginBottom:16,fontSize:13,color:"#991b1b"}}>{erreur}</div>}
 
+      {/* ══ TAB IDENTITÉ ══ */}
+      {tabParam==="identite"&&<>
       {/* Informations générales */}
       <div style={sec}>
         <h3 style={{margin:"0 0 16px",fontSize:14,fontWeight:800,color:C.blueDark}}>🏫 Informations générales</h3>
@@ -4158,6 +4244,195 @@ function ParametresEcole() {
         </div>
       </div>
 
+      {/* Année scolaire — dans onglet identité */}
+      <div style={sec}>
+        <h3 style={{margin:"0 0 16px",fontSize:14,fontWeight:800,color:C.blueDark}}>📅 Mois de début de l'année</h3>
+        <select style={{...inp,cursor:"pointer"}} value={form.moisDebut} onChange={chg("moisDebut")}>
+          {TOUS_MOIS_LONGS.map(m=><option key={m} value={m}>{m}</option>)}
+        </select>
+        <p style={{margin:"6px 0 0",fontSize:11,color:"#9ca3af"}}>
+          Actuellement : <strong style={{color:C.blue}}>{calcMoisAnnee(form.moisDebut).join(" · ")}</strong>
+        </p>
+      </div>
+      </>}
+
+      {/* ══ TAB PAGE D'ACCUEIL ══ */}
+      {tabParam==="accueil"&&<>
+
+        {/* Activation */}
+        <div style={{...sec,borderLeft:`4px solid ${accueil.active?C.green:"#e2e8f0"}`}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12}}>
+            <div>
+              <h3 style={{margin:"0 0 4px",fontSize:14,fontWeight:800,color:C.blueDark}}>🌐 Page d'accueil publique</h3>
+              <p style={{margin:0,fontSize:12,color:"#64748b"}}>Visible par tous les visiteurs avant connexion — vitrine de votre école</p>
+            </div>
+            <label style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}}>
+              <span style={{fontSize:13,fontWeight:700,color:accueil.active?C.greenDk:"#94a3b8"}}>
+                {accueil.active?"✅ Activée":"⭕ Désactivée"}
+              </span>
+              <div onClick={()=>setAccueil(p=>({...p,active:!p.active}))} style={{
+                width:44,height:24,borderRadius:12,cursor:"pointer",transition:"background .2s",
+                background:accueil.active?C.green:"#d1d5db",position:"relative",flexShrink:0,
+              }}>
+                <div style={{
+                  position:"absolute",top:2,left:accueil.active?22:2,
+                  width:20,height:20,borderRadius:"50%",background:"#fff",
+                  transition:"left .2s",boxShadow:"0 1px 4px rgba(0,0,0,.25)",
+                }}/>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        {/* Textes */}
+        <div style={sec}>
+          <h3 style={{margin:"0 0 16px",fontSize:14,fontWeight:800,color:C.blueDark}}>✏️ Textes de la page</h3>
+          <label style={lbl}>Slogan / Tagline</label>
+          <input style={inp} value={accueil.slogan} onChange={chgA("slogan")} placeholder="Ex. : L'excellence au cœur de l'Afrique"/>
+          <label style={lbl}>Message d'accueil</label>
+          <textarea value={accueil.texteAccueil} onChange={chgA("texteAccueil")} rows={3}
+            placeholder="Ex. : Bienvenue à l'École La Citadelle, un établissement d'excellence..."
+            style={{...inp,resize:"vertical",fontFamily:"inherit"}}/>
+        </div>
+
+        {/* Bannière */}
+        <div style={sec}>
+          <h3 style={{margin:"0 0 16px",fontSize:14,fontWeight:800,color:C.blueDark}}>🖼️ Image bannière (hero)</h3>
+          {accueil.bannerUrl&&<div style={{marginBottom:12,borderRadius:10,overflow:"hidden",height:120,background:"#f1f5f9"}}>
+            <img src={accueil.bannerUrl} alt="Bannière" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+          </div>}
+          <input type="file" accept="image/*" onChange={handleBanniere} style={{...inp,padding:"6px 8px",cursor:"pointer"}}/>
+          <label style={lbl}>Ou coller une URL</label>
+          <input style={inp} value={accueil.bannerUrl.startsWith("data:")?"":accueil.bannerUrl}
+            onChange={e=>setAccueil(p=>({...p,bannerUrl:e.target.value}))}
+            placeholder="https://...jpg"/>
+          {accueil.bannerUrl&&<button onClick={()=>setAccueil(p=>({...p,bannerUrl:""}))}
+            style={{marginTop:8,background:"#fee2e2",border:"none",color:"#991b1b",padding:"5px 12px",borderRadius:6,fontSize:12,fontWeight:700,cursor:"pointer"}}>
+            ✕ Supprimer la bannière
+          </button>}
+        </div>
+
+        {/* Galerie photos */}
+        <div style={sec}>
+          <h3 style={{margin:"0 0 16px",fontSize:14,fontWeight:800,color:C.blueDark}}>📸 Galerie de photos</h3>
+          <input type="file" accept="image/*" multiple onChange={handlePhotoGalerie}
+            style={{...inp,padding:"6px 8px",cursor:"pointer",marginBottom:12}}/>
+          {(accueil.photos||[]).length===0&&<p style={{fontSize:12,color:"#94a3b8",margin:0}}>Aucune photo ajoutée</p>}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:10,marginTop:8}}>
+            {(accueil.photos||[]).map((p,i)=>(
+              <div key={i} style={{position:"relative",borderRadius:8,overflow:"hidden",background:"#f1f5f9"}}>
+                <img src={p.url} alt="" style={{width:"100%",height:90,objectFit:"cover",display:"block"}}/>
+                <input value={p.caption||""} onChange={e=>{
+                  const photos=[...accueil.photos];
+                  photos[i]={...photos[i],caption:e.target.value};
+                  setAccueil(pa=>({...pa,photos}));
+                }} placeholder="Légende..." style={{width:"100%",border:"none",borderTop:"1px solid #e2e8f0",padding:"4px 6px",fontSize:11,outline:"none",boxSizing:"border-box"}}/>
+                <button onClick={()=>setAccueil(pa=>({...pa,photos:pa.photos.filter((_,j)=>j!==i)}))}
+                  style={{position:"absolute",top:4,right:4,background:"rgba(0,0,0,0.6)",border:"none",color:"#fff",borderRadius:"50%",width:22,height:22,cursor:"pointer",fontSize:12,lineHeight:1,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Tableau d'honneur */}
+        <div style={sec}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:8}}>
+            <h3 style={{margin:0,fontSize:14,fontWeight:800,color:C.blueDark}}>🏆 Tableau d'honneur</h3>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,fontWeight:600,color:"#64748b",cursor:"pointer"}}>
+                <input type="checkbox" checked={accueil.showHonneurs} onChange={chgA("showHonneurs")}/>
+                Afficher sur la page
+              </label>
+              <Btn sm onClick={()=>{setFormHonneur({periode:"",distinction:"Major de promotion"});setModalH("add");}}>+ Ajouter</Btn>
+            </div>
+          </div>
+          {honneurs.length===0&&<p style={{fontSize:12,color:"#94a3b8",margin:0}}>Aucun élève distingué</p>}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:10}}>
+            {honneurs.map(h=>(
+              <div key={h._id} style={{background:"linear-gradient(135deg,#fefce8,#fef9c3)",border:"1px solid #fde68a",borderRadius:12,padding:"14px 16px",position:"relative"}}>
+                <div style={{fontSize:22,marginBottom:6}}>🏅</div>
+                <div style={{fontWeight:800,fontSize:13,color:"#0A1628"}}>{h.prenom} {h.nom}</div>
+                <div style={{fontSize:11,color:"#92400e",fontWeight:700,marginTop:2}}>{h.distinction}</div>
+                <div style={{fontSize:11,color:"#94a3b8",marginTop:4}}>{h.classe} · {h.periode}</div>
+                <div style={{display:"flex",gap:4,marginTop:8}}>
+                  <Btn sm v="ghost" onClick={()=>{setFormHonneur({...h});setModalH("edit");}}>✏️</Btn>
+                  <Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ?"))supHonneur(h._id);}}>🗑</Btn>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Sections visibles */}
+        <div style={sec}>
+          <h3 style={{margin:"0 0 16px",fontSize:14,fontWeight:800,color:C.blueDark}}>👁️ Sections affichées</h3>
+          <div style={{display:"flex",flexDirection:"column",gap:12}}>
+            {[
+              {key:"showAnnonces", label:"Annonces de l'école"},
+              {key:"showContact",  label:"Informations de contact"},
+            ].map(({key,label})=>(
+              <label key={key} style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer",fontSize:13,color:"#374151"}}>
+                <input type="checkbox" checked={accueil[key]} onChange={chgA(key)} style={{width:16,height:16}}/>
+                <span style={{fontWeight:600}}>{label}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* Contact */}
+        <div style={sec}>
+          <h3 style={{margin:"0 0 16px",fontSize:14,fontWeight:800,color:C.blueDark}}>📞 Informations de contact</h3>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+            <div><label style={lbl}>Téléphone</label><input style={inp} value={accueil.telephone} onChange={chgA("telephone")} placeholder="+224 6XX XXX XXX"/></div>
+            <div><label style={lbl}>Email</label><input style={inp} value={accueil.email} onChange={chgA("email")} placeholder="contact@ecole.gn"/></div>
+            <div><label style={lbl}>WhatsApp</label><input style={inp} value={accueil.whatsapp} onChange={chgA("whatsapp")} placeholder="+224 6XX XXX XXX"/></div>
+            <div><label style={lbl}>Facebook</label><input style={inp} value={accueil.facebook} onChange={chgA("facebook")} placeholder="facebook.com/monecole"/></div>
+          </div>
+          <label style={lbl}>Adresse physique</label>
+          <input style={inp} value={accueil.adresse} onChange={chgA("adresse")} placeholder="Ex. : Quartier Madina, Kindia, Guinée"/>
+        </div>
+
+        {/* Modal honneur */}
+        {modalH&&<Modale titre={modalH==="add"?"Ajouter une distinction":"Modifier"} fermer={()=>setModalH(null)}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            <Input label="Prénom" value={formHonneur.prenom||""} onChange={e=>setFormHonneur(p=>({...p,prenom:e.target.value}))}/>
+            <Input label="Nom" value={formHonneur.nom||""} onChange={e=>setFormHonneur(p=>({...p,nom:e.target.value}))}/>
+            <Input label="Classe" value={formHonneur.classe||""} onChange={e=>setFormHonneur(p=>({...p,classe:e.target.value}))} placeholder="Ex : 9ème A"/>
+            <Input label="Période" value={formHonneur.periode||""} onChange={e=>setFormHonneur(p=>({...p,periode:e.target.value}))} placeholder="Ex : T1 2025-2026"/>
+          </div>
+          <div style={{marginTop:12}}>
+            <Selec label="Distinction" value={formHonneur.distinction||"Major de promotion"} onChange={e=>setFormHonneur(p=>({...p,distinction:e.target.value}))}>
+              <option>Major de promotion</option>
+              <option>Premier de classe</option>
+              <option>Deuxième de classe</option>
+              <option>Troisième de classe</option>
+              <option>Excellence académique</option>
+              <option>Mention Très Bien</option>
+              <option>Mention Bien</option>
+              <option>Prix du mérite</option>
+              <option>Meilleur(e) en Mathématiques</option>
+              <option>Meilleur(e) en Français</option>
+              <option>Meilleur(e) en Sciences</option>
+            </Selec>
+          </div>
+          <div style={{marginTop:12}}>
+            <label style={{...lbl,marginTop:0}}>Observation (optionnel)</label>
+            <input style={inp} value={formHonneur.observation||""} onChange={e=>setFormHonneur(p=>({...p,observation:e.target.value}))} placeholder="Ex : Moyenne 19.5/20"/>
+          </div>
+          <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
+            <Btn v="ghost" onClick={()=>setModalH(null)}>Annuler</Btn>
+            <Btn onClick={()=>{
+              if(!formHonneur.nom?.trim()||!formHonneur.prenom?.trim()){alert("Nom et prénom requis.");return;}
+              if(modalH==="add") ajHonneur(formHonneur); else modHonneur(formHonneur);
+              setModalH(null);
+            }}>Enregistrer</Btn>
+          </div>
+        </Modale>}
+
+      </>}
+
+      {/* ══ TAB OFFICIEL & ANNÉE ══ */}
+      {tabParam==="officiel"&&<>
       {/* Informations officielles */}
       <div style={sec}>
         <h3 style={{margin:"0 0 16px",fontSize:14,fontWeight:800,color:C.blueDark}}>🏛️ Informations officielles</h3>
@@ -4195,6 +4470,7 @@ function ParametresEcole() {
           </p>
         </div>
       </div>
+      </>}
 
       {/* Bouton sauvegarder */}
       <button onClick={sauvegarder} disabled={chargement}
@@ -5608,6 +5884,231 @@ function MessagesParents({readOnly}) {
 }
 
 // ══════════════════════════════════════════════════════════════
+//  PORTAIL PUBLIC (page d'accueil avant connexion)
+// ══════════════════════════════════════════════════════════════
+function PortailPublic({onConnexion}) {
+  const {schoolInfo} = useContext(SchoolContext);
+  const {items:annonces} = useFirestore("annonces");
+  const {items:honneurs} = useFirestore("honneurs");
+
+  const acc = schoolInfo.accueil || {};
+  const c1  = schoolInfo.couleur1 || "#0A1628";
+  const c2  = schoolInfo.couleur2 || "#00C48C";
+  const [galIndex, setGalIndex] = useState(null); // lightbox
+  const photos = acc.photos || [];
+  const annoncesPub = annonces.filter(a=>a.date).sort((a,b)=>b.date-a.date).slice(0,4);
+
+  return (
+    <div style={{minHeight:"100vh",background:"#f8fafc",fontFamily:"'Inter','Segoe UI',sans-serif",color:"#0A1628"}}>
+      <GlobalStyles/>
+
+      {/* ── HERO ── */}
+      <div style={{
+        position:"relative",minHeight:"100vh",display:"flex",flexDirection:"column",
+        justifyContent:"center",alignItems:"center",textAlign:"center",
+        overflow:"hidden",padding:"80px 24px 60px",
+      }}>
+        {/* Fond */}
+        {acc.bannerUrl
+          ? <div style={{position:"absolute",inset:0,backgroundImage:`url(${acc.bannerUrl})`,backgroundSize:"cover",backgroundPosition:"center",filter:"brightness(0.35)"}}/>
+          : <div style={{position:"absolute",inset:0,background:`linear-gradient(160deg,${c1} 0%,${c1}ee 50%,${c2}44 100%)`}}/>
+        }
+        <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.25)"}}/>
+
+        {/* Contenu hero */}
+        <div style={{position:"relative",zIndex:1,maxWidth:680}}>
+          {schoolInfo.logo&&<img src={schoolInfo.logo} alt="logo"
+            style={{width:110,height:110,objectFit:"contain",borderRadius:20,
+              background:"rgba(255,255,255,0.12)",padding:12,marginBottom:24,
+              boxShadow:"0 8px 32px rgba(0,0,0,0.3)",backdropFilter:"blur(4px)"}}/>}
+
+          {schoolInfo.ministere&&<div style={{display:"inline-block",fontSize:10,fontWeight:700,
+            letterSpacing:2,textTransform:"uppercase",color:"rgba(255,255,255,0.55)",marginBottom:12}}>
+            {schoolInfo.ministere} {schoolInfo.ire&&`· ${schoolInfo.ire}`}
+          </div>}
+
+          <h1 style={{margin:"0 0 8px",fontSize:"clamp(28px,5vw,52px)",fontWeight:900,
+            color:"#fff",letterSpacing:-1,lineHeight:1.1,textShadow:"0 2px 12px rgba(0,0,0,0.4)"}}>
+            {schoolInfo.nom||"Notre École"}
+          </h1>
+          <div style={{color:c2,fontSize:"clamp(12px,2vw,14px)",fontWeight:700,letterSpacing:1,
+            textTransform:"uppercase",marginBottom:16}}>
+            {schoolInfo.type||"Établissement scolaire privé"} · {schoolInfo.ville||""}
+          </div>
+
+          {acc.slogan&&<p style={{fontSize:"clamp(14px,2.5vw,20px)",fontWeight:300,
+            color:"rgba(255,255,255,0.8)",lineHeight:1.6,marginBottom:8,fontStyle:"italic"}}>
+            « {acc.slogan} »
+          </p>}
+          {schoolInfo.devise&&!acc.slogan&&<p style={{fontSize:16,color:"rgba(255,255,255,0.6)",
+            marginBottom:8,fontStyle:"italic"}}>« {schoolInfo.devise} »</p>}
+
+          {acc.texteAccueil&&<p style={{fontSize:14,color:"rgba(255,255,255,0.65)",
+            lineHeight:1.7,maxWidth:520,margin:"16px auto 0"}}>{acc.texteAccueil}</p>}
+
+          <div style={{marginTop:36,display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap"}}>
+            <button onClick={onConnexion} style={{
+              background:c2,color:"#fff",border:"none",
+              padding:"14px 36px",borderRadius:30,fontSize:15,fontWeight:800,
+              cursor:"pointer",boxShadow:`0 6px 20px ${c2}55`,
+              transition:"transform .15s,box-shadow .15s",letterSpacing:0.3,
+            }}
+            onMouseEnter={e=>{e.target.style.transform="translateY(-2px)";e.target.style.boxShadow=`0 10px 28px ${c2}66`;}}
+            onMouseLeave={e=>{e.target.style.transform="";e.target.style.boxShadow=`0 6px 20px ${c2}55`;}}>
+              🔐 Se connecter
+            </button>
+            {acc.whatsapp&&<a href={`https://wa.me/${acc.whatsapp.replace(/\D/g,"")}`} target="_blank" rel="noopener noreferrer"
+              style={{background:"rgba(255,255,255,0.12)",color:"#fff",border:"1px solid rgba(255,255,255,0.25)",
+                padding:"14px 28px",borderRadius:30,fontSize:14,fontWeight:700,
+                cursor:"pointer",textDecoration:"none"}}>
+              💬 WhatsApp
+            </a>}
+          </div>
+        </div>
+
+        {/* Scroll indicator */}
+        <div style={{position:"absolute",bottom:24,left:"50%",transform:"translateX(-50%)",
+          color:"rgba(255,255,255,0.3)",fontSize:20,animation:"bounce 2s infinite"}}>↓</div>
+        <style>{`@keyframes bounce{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(-8px)}}`}</style>
+      </div>
+
+      {/* ── ANNONCES ── */}
+      {acc.showAnnonces&&annoncesPub.length>0&&(
+        <div style={{padding:"60px 24px",background:"#fff"}}>
+          <div style={{maxWidth:900,margin:"0 auto"}}>
+            <div style={{textAlign:"center",marginBottom:36}}>
+              <div style={{fontSize:11,fontWeight:800,letterSpacing:2,textTransform:"uppercase",color:c2,marginBottom:8}}>Actualités</div>
+              <h2 style={{margin:0,fontSize:"clamp(22px,4vw,32px)",fontWeight:900,color:c1}}>Annonces de l'école</h2>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:16}}>
+              {annoncesPub.map((an,i)=>(
+                <div key={i} style={{
+                  background:an.important?"linear-gradient(135deg,#fefce8,#fff)":"#f8fafc",
+                  border:`1px solid ${an.important?"#fcd34d":"#e2e8f0"}`,
+                  borderTop:`4px solid ${an.important?"#f59e0b":c1}`,
+                  borderRadius:12,padding:"20px 22px",
+                }}>
+                  {an.important&&<span style={{display:"inline-block",background:"#fef3c7",color:"#d97706",fontSize:10,fontWeight:800,padding:"2px 8px",borderRadius:8,marginBottom:10,letterSpacing:1}}>📌 IMPORTANT</span>}
+                  <h3 style={{margin:"0 0 8px",fontSize:15,fontWeight:800,color:c1,lineHeight:1.3}}>{an.titre}</h3>
+                  <p style={{margin:"0 0 12px",fontSize:13,color:"#475569",lineHeight:1.6}}>{an.corps}</p>
+                  <div style={{fontSize:11,color:"#94a3b8"}}>{new Date(an.date).toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"})}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── TABLEAU D'HONNEUR ── */}
+      {acc.showHonneurs&&honneurs.length>0&&(
+        <div style={{padding:"60px 24px",background:`linear-gradient(135deg,${c1},${c1}f0)`}}>
+          <div style={{maxWidth:1000,margin:"0 auto"}}>
+            <div style={{textAlign:"center",marginBottom:36}}>
+              <div style={{fontSize:11,fontWeight:800,letterSpacing:2,textTransform:"uppercase",color:c2,marginBottom:8}}>Mérite & Excellence</div>
+              <h2 style={{margin:0,fontSize:"clamp(22px,4vw,32px)",fontWeight:900,color:"#fff"}}>🏆 Tableau d'honneur</h2>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:14}}>
+              {honneurs.map((h,i)=>(
+                <div key={i} style={{
+                  background:"rgba(255,255,255,0.07)",
+                  border:"1px solid rgba(255,255,255,0.12)",
+                  borderRadius:14,padding:"20px 18px",textAlign:"center",
+                  backdropFilter:"blur(4px)",
+                }}>
+                  <div style={{width:52,height:52,borderRadius:"50%",
+                    background:`linear-gradient(135deg,${c2},${c2}99)`,
+                    display:"flex",alignItems:"center",justifyContent:"center",
+                    fontSize:22,margin:"0 auto 12px",boxShadow:`0 4px 14px ${c2}44`}}>
+                    {i===0?"🥇":i===1?"🥈":i===2?"🥉":"🏅"}
+                  </div>
+                  <div style={{fontWeight:900,fontSize:14,color:"#fff",marginBottom:4}}>
+                    {h.prenom} {h.nom}
+                  </div>
+                  <div style={{fontSize:11,fontWeight:700,color:c2,marginBottom:6}}>{h.distinction}</div>
+                  <div style={{fontSize:11,color:"rgba(255,255,255,0.45)"}}>{h.classe} · {h.periode}</div>
+                  {h.observation&&<div style={{marginTop:8,fontSize:11,color:"rgba(255,255,255,0.6)",fontStyle:"italic"}}>{h.observation}</div>}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── GALERIE ── */}
+      {photos.length>0&&(
+        <div style={{padding:"60px 24px",background:"#f8fafc"}}>
+          <div style={{maxWidth:1000,margin:"0 auto"}}>
+            <div style={{textAlign:"center",marginBottom:36}}>
+              <div style={{fontSize:11,fontWeight:800,letterSpacing:2,textTransform:"uppercase",color:c2,marginBottom:8}}>Notre établissement</div>
+              <h2 style={{margin:0,fontSize:"clamp(22px,4vw,32px)",fontWeight:900,color:c1}}>📸 Galerie</h2>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:12}}>
+              {photos.map((p,i)=>(
+                <div key={i} onClick={()=>setGalIndex(i)} style={{cursor:"zoom-in",borderRadius:12,overflow:"hidden",boxShadow:"0 2px 12px rgba(0,0,0,0.1)",background:"#e2e8f0"}}>
+                  <img src={p.url} alt={p.caption||""} style={{width:"100%",height:160,objectFit:"cover",display:"block",transition:"transform .3s"}}
+                    onMouseEnter={e=>e.target.style.transform="scale(1.04)"}
+                    onMouseLeave={e=>e.target.style.transform=""}/>
+                  {p.caption&&<div style={{padding:"8px 12px",fontSize:12,color:"#475569",fontWeight:600}}>{p.caption}</div>}
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* Lightbox */}
+          {galIndex!==null&&(
+            <div onClick={()=>setGalIndex(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.92)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+              <button onClick={e=>{e.stopPropagation();setGalIndex(i=>Math.max(0,i-1));}}
+                style={{position:"absolute",left:20,top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",fontSize:24,width:48,height:48,borderRadius:"50%",cursor:"pointer"}}>‹</button>
+              <img src={photos[galIndex]?.url} alt="" style={{maxWidth:"90vw",maxHeight:"85vh",objectFit:"contain",borderRadius:8,boxShadow:"0 8px 40px rgba(0,0,0,0.6)"}}/>
+              <button onClick={e=>{e.stopPropagation();setGalIndex(i=>Math.min(photos.length-1,i+1));}}
+                style={{position:"absolute",right:20,top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",fontSize:24,width:48,height:48,borderRadius:"50%",cursor:"pointer"}}>›</button>
+              {photos[galIndex]?.caption&&<div style={{position:"absolute",bottom:30,left:"50%",transform:"translateX(-50%)",color:"rgba(255,255,255,0.7)",fontSize:13,background:"rgba(0,0,0,0.5)",padding:"6px 16px",borderRadius:20}}>{photos[galIndex].caption}</div>}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── CONTACT ── */}
+      {acc.showContact&&(acc.telephone||acc.email||acc.adresse||acc.facebook)&&(
+        <div style={{padding:"60px 24px",background:`linear-gradient(135deg,#0A1628,${c1})`}}>
+          <div style={{maxWidth:800,margin:"0 auto",textAlign:"center"}}>
+            <div style={{fontSize:11,fontWeight:800,letterSpacing:2,textTransform:"uppercase",color:c2,marginBottom:8}}>Nous trouver</div>
+            <h2 style={{margin:"0 0 32px",fontSize:"clamp(20px,4vw,30px)",fontWeight:900,color:"#fff"}}>📍 Contact & localisation</h2>
+            <div style={{display:"flex",gap:16,justifyContent:"center",flexWrap:"wrap"}}>
+              {acc.telephone&&<a href={`tel:${acc.telephone}`} style={{display:"flex",alignItems:"center",gap:10,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:12,padding:"14px 22px",textDecoration:"none",color:"#fff"}}>
+                <span style={{fontSize:20}}>📞</span>
+                <div style={{textAlign:"left"}}><div style={{fontSize:10,color:c2,fontWeight:700,letterSpacing:1}}>TÉLÉPHONE</div><div style={{fontSize:13,fontWeight:700}}>{acc.telephone}</div></div>
+              </a>}
+              {acc.whatsapp&&<a href={`https://wa.me/${acc.whatsapp.replace(/\D/g,"")}`} target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",gap:10,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:12,padding:"14px 22px",textDecoration:"none",color:"#fff"}}>
+                <span style={{fontSize:20}}>💬</span>
+                <div style={{textAlign:"left"}}><div style={{fontSize:10,color:c2,fontWeight:700,letterSpacing:1}}>WHATSAPP</div><div style={{fontSize:13,fontWeight:700}}>{acc.whatsapp}</div></div>
+              </a>}
+              {acc.email&&<a href={`mailto:${acc.email}`} style={{display:"flex",alignItems:"center",gap:10,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:12,padding:"14px 22px",textDecoration:"none",color:"#fff"}}>
+                <span style={{fontSize:20}}>✉️</span>
+                <div style={{textAlign:"left"}}><div style={{fontSize:10,color:c2,fontWeight:700,letterSpacing:1}}>EMAIL</div><div style={{fontSize:13,fontWeight:700}}>{acc.email}</div></div>
+              </a>}
+              {acc.facebook&&<a href={acc.facebook.startsWith("http")?acc.facebook:`https://${acc.facebook}`} target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",gap:10,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:12,padding:"14px 22px",textDecoration:"none",color:"#fff"}}>
+                <span style={{fontSize:20}}>📘</span>
+                <div style={{textAlign:"left"}}><div style={{fontSize:10,color:c2,fontWeight:700,letterSpacing:1}}>FACEBOOK</div><div style={{fontSize:13,fontWeight:700}}>Page Facebook</div></div>
+              </a>}
+            </div>
+            {acc.adresse&&<div style={{marginTop:24,display:"flex",alignItems:"center",justifyContent:"center",gap:8,color:"rgba(255,255,255,0.55)",fontSize:13}}>
+              <span>📍</span><span>{acc.adresse}</span>
+            </div>}
+          </div>
+        </div>
+      )}
+
+      {/* ── FOOTER ── */}
+      <div style={{background:"#020c1b",padding:"20px 24px",textAlign:"center"}}>
+        <p style={{margin:0,fontSize:11,color:"rgba(255,255,255,0.2)"}}>
+          {schoolInfo.nom} · Propulsé par <strong style={{color:c2}}>EduGest</strong> · {new Date().getFullYear()}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
 //  APPLICATION PRINCIPALE
 // ══════════════════════════════════════════════════════════════
 export default function App() {
@@ -5719,6 +6220,14 @@ export default function App() {
   const moisSalaire = calcMoisSalaire(schoolInfo.moisDebut||"Octobre");
 
   if(!utilisateur && page==="inscription")return <Inscription/>;
+
+  // Page d'accueil publique (si activée et pas encore sur l'écran de login)
+  if(!utilisateur && schoolInfo.accueil?.active && page!=="login") return (
+    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire}}>
+      <PortailPublic onConnexion={()=>setPage("login")}/>
+    </SchoolContext.Provider>
+  );
+
   if(!utilisateur)return (
     <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire}}>
       <GlobalStyles/>
