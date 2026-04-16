@@ -11,7 +11,8 @@
     <!-- Icône navigateur -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 
-    <!-- PWA — iOS (Apple) -->
+    <!-- PWA — Manifest & icônes -->
+    <link rel="manifest" href="/manifest.json" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -28,5 +29,14 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    <!-- Enregistrement du Service Worker PWA -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .catch(() => {}); // Silencieux si échec (dev HTTP)
+        });
+      }
+    </script>
   </body>
 </html>
