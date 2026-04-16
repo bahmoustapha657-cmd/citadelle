@@ -2,7 +2,7 @@ import Inscription from "./Inscription";
 import PremiumGate from "./components/PremiumGate";
 import ModuleIA from "./components/IAAssistant";
 import Logo from "./Logo";
-import React, { useState, useEffect, useRef, createContext, useContext } from "react";
+import React, { useState, useEffect, useRef, useMemo, createContext, useContext } from "react";
 import { db, auth } from "./firebase";
 import { createUserWithEmailAndPassword, signOut, onAuthStateChanged, updatePassword } from "firebase/auth";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
@@ -7244,11 +7244,116 @@ function PortailPublic({onConnexion}) {
 }
 
 // ══════════════════════════════════════════════════════════════
+//  RECHERCHE GLOBALE (Ctrl+K / ⌘K)
+// ══════════════════════════════════════════════════════════════
+function RechercheGlobale({modules, onNaviguer, onFermer}) {
+  const {schoolInfo} = useContext(SchoolContext);
+  const {items:elevesC} = useFirestore("elevesCollege");
+  const {items:elevesP} = useFirestore("elevesPrimaire");
+  const {items:ensP}    = useFirestore("ensPrimaire");
+  const {items:ensC}    = useFirestore("ensCollege");
+  const {items:ensL}    = useFirestore("ensLycee");
+  const [q, setQ] = useState("");
+  const inputRef  = useRef(null);
+  const [selIdx, setSelIdx] = useState(0);
+
+  useEffect(()=>{ inputRef.current?.focus(); },[]);
+
+  const q2 = q.trim().toLowerCase();
+
+  const resultats = useMemo(()=>{
+    if(q2.length < 2) return modules.map(m=>({type:"module", label:m.label, sub:m.desc, icon:m.icon, action:()=>onNaviguer(m.id)}));
+    const r = [];
+    // Modules
+    modules.filter(m=>
+      m.label.toLowerCase().includes(q2)||m.desc.toLowerCase().includes(q2)
+    ).forEach(m=>r.push({type:"module",label:m.label,sub:m.desc,icon:m.icon,action:()=>onNaviguer(m.id)}));
+    // Élèves
+    [...elevesC,...elevesP].filter(e=>
+      `${e.nom} ${e.prenom} ${e.matricule||""} ${e.classe||""}`.toLowerCase().includes(q2)
+    ).slice(0,6).forEach(e=>r.push({
+      type:"élève", label:`${e.nom} ${e.prenom}`, sub:`${e.classe||""} · ${e.matricule||""}`,
+      icon:"🎓", action:()=>{ onNaviguer(elevesC.find(ec=>ec._id===e._id)?"secondaire":"primaire"); onFermer(); }
+    }));
+    // Enseignants
+    [...ensP,...ensC,...ensL].filter(e=>
+      `${e.nom} ${e.prenom||""} ${e.matiere||""}`.toLowerCase().includes(q2)
+    ).slice(0,4).forEach(e=>r.push({
+      type:"enseignant", label:`${e.nom}${e.prenom?" "+e.prenom:""}`, sub:e.matiere||"Enseignant",
+      icon:"👨‍🏫", action:()=>{ onNaviguer(ensP.find(ec=>ec._id===e._id)?"primaire":"secondaire"); onFermer(); }
+    }));
+    return r;
+  },[q2, modules, elevesC, elevesP, ensP, ensC, ensL]);
+
+  useEffect(()=>setSelIdx(0),[q2]);
+
+  const executer = (i=selIdx) => {
+    if(resultats[i]) { resultats[i].action(); onFermer(); }
+  };
+
+  const onKey = (e) => {
+    if(e.key==="ArrowDown"){ e.preventDefault(); setSelIdx(i=>Math.min(i+1,resultats.length-1)); }
+    if(e.key==="ArrowUp")  { e.preventDefault(); setSelIdx(i=>Math.max(i-1,0)); }
+    if(e.key==="Enter")    { e.preventDefault(); executer(); }
+    if(e.key==="Escape")   { onFermer(); }
+  };
+
+  const TYPE_COLOR = {module:"#6366f1",élève:"#0ea5e9",enseignant:"#10b981"};
+
+  return (
+    <div onClick={onFermer} style={{position:"fixed",inset:0,zIndex:9999,background:"rgba(10,22,40,0.55)",backdropFilter:"blur(4px)",display:"flex",alignItems:"flex-start",justifyContent:"center",paddingTop:"10vh"}}>
+      <div onClick={e=>e.stopPropagation()} style={{
+        background:"#fff",borderRadius:16,width:"min(620px,95vw)",
+        boxShadow:"0 24px 80px rgba(0,0,0,0.35)",overflow:"hidden",
+        animation:"fadeUp .15s ease",
+      }}>
+        {/* Barre de recherche */}
+        <div style={{display:"flex",alignItems:"center",gap:12,padding:"16px 20px",borderBottom:"1px solid #f1f5f9"}}>
+          <span style={{fontSize:20,flexShrink:0}}>🔍</span>
+          <input
+            ref={inputRef}
+            value={q}
+            onChange={e=>setQ(e.target.value)}
+            onKeyDown={onKey}
+            placeholder="Rechercher un module, élève, enseignant…"
+            style={{flex:1,border:"none",outline:"none",fontSize:16,color:"#0f172a",background:"transparent"}}
+          />
+          <kbd style={{background:"#f1f5f9",border:"1px solid #e2e8f0",borderRadius:6,padding:"2px 8px",fontSize:11,color:"#64748b",flexShrink:0}}>ESC</kbd>
+        </div>
+        {/* Résultats */}
+        <div style={{maxHeight:"60vh",overflowY:"auto"}}>
+          {resultats.length===0&&<div style={{padding:"32px 20px",textAlign:"center",color:"#94a3b8",fontSize:14}}>Aucun résultat</div>}
+          {resultats.map((r,i)=>(
+            <div key={i} onMouseEnter={()=>setSelIdx(i)} onClick={()=>executer(i)}
+              style={{display:"flex",alignItems:"center",gap:12,padding:"10px 20px",cursor:"pointer",
+                background:i===selIdx?"var(--sc1-lt)":"transparent",
+                borderLeft:i===selIdx?"3px solid var(--sc1)":"3px solid transparent",
+              }}>
+              <span style={{fontSize:20,flexShrink:0}}>{r.icon}</span>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:14,fontWeight:700,color:"#0f172a",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.label}</div>
+                <div style={{fontSize:12,color:"#64748b",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.sub}</div>
+              </div>
+              <span style={{background:TYPE_COLOR[r.type]||"#94a3b8",color:"#fff",borderRadius:20,padding:"2px 8px",fontSize:10,fontWeight:700,flexShrink:0,textTransform:"capitalize"}}>{r.type}</span>
+            </div>
+          ))}
+        </div>
+        {/* Footer */}
+        <div style={{padding:"8px 20px",borderTop:"1px solid #f1f5f9",display:"flex",gap:16,fontSize:11,color:"#94a3b8"}}>
+          <span>↑↓ naviguer</span><span>↵ ouvrir</span><span>Échap fermer</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
 //  APPLICATION PRINCIPALE
 // ══════════════════════════════════════════════════════════════
 export default function App() {
   const [utilisateur,setUtilisateur]=useState(null);
   const [page,setPage]=useState(null);
+  const [rechercheOuverte,setRechercheOuverte]=useState(false);
   const [schoolId,setSchoolId]=useState(()=>{
     const params=new URLSearchParams(window.location.search);
     const fromUrl=params.get("school");
@@ -7312,6 +7417,19 @@ export default function App() {
     document.body.classList.toggle("mode-sombre", modeSombre);
     localStorage.setItem("LC_theme", modeSombre?"dark":"light");
   },[modeSombre]);
+
+  // Ctrl+K / ⌘K — ouvrir la recherche globale
+  useEffect(()=>{
+    const fn=(e)=>{
+      if((e.ctrlKey||e.metaKey) && e.key==="k"){
+        e.preventDefault();
+        if(utilisateur && !["enseignant","parent"].includes(utilisateur.role))
+          setRechercheOuverte(o=>!o);
+      }
+    };
+    window.addEventListener("keydown",fn);
+    return ()=>window.removeEventListener("keydown",fn);
+  },[utilisateur]);
 
   const setAnnee=(val)=>{
     setAnneeState(val);
@@ -7522,6 +7640,13 @@ export default function App() {
 
     <ToastContainer toasts={toasts}/>
 
+    {rechercheOuverte&&(
+      <RechercheGlobale
+        modules={modulesVisibles}
+        onNaviguer={id=>{setPage(id);setRechercheOuverte(false);}}
+        onFermer={()=>setRechercheOuverte(false)}
+      />
+    )}
 
 {/* ── Bandeau INSTALLER L'APPLICATION ─────────────────── */}
     {installVisible&&promptInstall&&(
@@ -7620,9 +7745,9 @@ export default function App() {
               </div>
             )}
             <button onClick={()=>setRechercheOuverte(true)}
-              title="Rechercher"
+              title="Recherche globale (Ctrl+K)"
               style={{display:"flex",alignItems:"center",gap:isMobile?0:6,background:"#f0f4f0",border:"1px solid #e0ebf8",borderRadius:8,padding:"5px 10px",cursor:"pointer",fontSize:isMobile?17:12,color:"#6b7280",fontWeight:600}}>
-              🔍{!isMobile&&<span>Rechercher...</span>}
+              🔍{!isMobile&&<><span>Rechercher</span><kbd style={{background:"#e2e8f0",border:"1px solid #cbd5e1",borderRadius:4,padding:"1px 5px",fontSize:10,color:"#94a3b8",marginLeft:4}}>Ctrl K</kbd></>}
             </button>
             {!isMobile&&<button onClick={()=>setModeSombre(v=>!v)}
               title={modeSombre?"Mode clair":"Mode sombre"}
@@ -7636,8 +7761,6 @@ export default function App() {
             {!isMobile&&<Badge color={utilisateur.role==="admin"?"purple":utilisateur.role==="comptable"?"teal":"blue"}>{utilisateur.label}</Badge>}
           </div>
         </header>
-        {rechercheOuverte&&<RechercheGlobale onFermer={()=>setRechercheOuverte(false)}/>}
-
         <div style={{flex:1,overflowY:"auto"}}>
           <ErrorBoundary key={page}>
             {page==="superadmin_panel" && <SuperAdminPanel/>}
