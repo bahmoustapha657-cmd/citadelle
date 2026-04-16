@@ -6325,6 +6325,33 @@ export default function App() {
   const [sidebarOuvert,setSidebarOuvert]=useState(false);
   const [rechercheOuverte,setRechercheOuverte]=useState(false);
   const [modeSombre,setModeSombre]=useState(()=>localStorage.getItem("LC_theme")==="dark");
+  const [estHorsLigne,setEstHorsLigne]=useState(!navigator.onLine);
+  const [promptInstall,setPromptInstall]=useState(null);
+  const [installVisible,setInstallVisible]=useState(false);
+
+  // ── PWA : détection hors ligne ───────────────────────────────
+  useEffect(()=>{
+    const goOn  = ()=>setEstHorsLigne(false);
+    const goOff = ()=>setEstHorsLigne(true);
+    window.addEventListener("online",  goOn);
+    window.addEventListener("offline", goOff);
+    return ()=>{ window.removeEventListener("online",goOn); window.removeEventListener("offline",goOff); };
+  },[]);
+
+  // ── PWA : prompt d'installation (Android Chrome / Edge) ──────
+  useEffect(()=>{
+    const handler=(e)=>{ e.preventDefault(); setPromptInstall(e); setInstallVisible(true); };
+    window.addEventListener("beforeinstallprompt", handler);
+    return ()=>window.removeEventListener("beforeinstallprompt", handler);
+  },[]);
+
+  const installerApp=async()=>{
+    if(!promptInstall)return;
+    promptInstall.prompt();
+    const {outcome}=await promptInstall.userChoice;
+    if(outcome==="accepted") setInstallVisible(false);
+    setPromptInstall(null);
+  };
   const [isMobile,setIsMobile]=useState(()=>window.innerWidth<768);
   useEffect(()=>{
     const fn=()=>setIsMobile(window.innerWidth<768);
@@ -6498,7 +6525,41 @@ export default function App() {
   return (
     <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire}}>
     <GlobalStyles/>
-    <div className="lc-app-root" style={{overflow:"hidden",display:"flex",background:C.bg}}>
+
+    {/* ── Bannière HORS LIGNE ───────────────────────────────── */}
+    {estHorsLigne&&(
+      <div style={{position:"fixed",top:0,left:0,right:0,zIndex:9999,
+        background:"#92400e",color:"#fff",fontSize:13,fontWeight:700,
+        textAlign:"center",padding:"8px 16px",display:"flex",alignItems:"center",
+        justifyContent:"center",gap:8}}>
+        <span>📡</span>
+        <span>Hors ligne — les données affichées proviennent du cache local</span>
+      </div>
+    )}
+
+    {/* ── Bandeau INSTALLER L'APPLICATION ─────────────────── */}
+    {installVisible&&promptInstall&&(
+      <div style={{position:"fixed",bottom:16,left:"50%",transform:"translateX(-50%)",
+        zIndex:9998,background:"#0A1628",color:"#fff",borderRadius:14,
+        padding:"12px 20px",display:"flex",alignItems:"center",gap:14,
+        boxShadow:"0 8px 32px rgba(0,0,0,0.45)",maxWidth:360,width:"calc(100% - 32px)"}}>
+        <span style={{fontSize:28}}>📲</span>
+        <div style={{flex:1}}>
+          <p style={{margin:"0 0 2px",fontWeight:800,fontSize:14}}>Installer EduGest</p>
+          <p style={{margin:0,fontSize:12,color:"rgba(255,255,255,0.65)"}}>Accès rapide, fonctionne hors ligne</p>
+        </div>
+        <button onClick={installerApp}
+          style={{background:"#00C48C",color:"#fff",border:"none",borderRadius:8,
+            padding:"8px 14px",fontSize:13,fontWeight:800,cursor:"pointer",whiteSpace:"nowrap"}}>
+          Installer
+        </button>
+        <button onClick={()=>setInstallVisible(false)}
+          style={{background:"none",border:"none",color:"rgba(255,255,255,0.5)",
+            fontSize:18,cursor:"pointer",padding:"4px",lineHeight:1}}>✕</button>
+      </div>
+    )}
+
+    <div className="lc-app-root" style={{overflow:"hidden",display:"flex",background:C.bg,marginTop:estHorsLigne?"36px":0}}>
       {/* Overlay mobile */}
       {sidebarOuvert&&<div onClick={()=>setSidebarOuvert(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:40}}/>}
       <aside style={{position:"fixed",top:0,bottom:0,left:0,width:228,zIndex:50,background:schoolInfo.couleur1||C.sidebar,display:"flex",flexDirection:"column",
