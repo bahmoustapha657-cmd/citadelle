@@ -74,6 +74,18 @@ const GLOBAL_CSS = `
     margin: 0 auto 12px;
   }
 
+  /* Skeleton shimmer */
+  @keyframes shimmer {
+    0%   { background-position: -600px 0; }
+    100% { background-position:  600px 0; }
+  }
+  .lc-skeleton {
+    background: linear-gradient(90deg, #e8f0f7 25%, #f4f8fb 50%, #e8f0f7 75%);
+    background-size: 600px 100%;
+    animation: shimmer 1.4s ease-in-out infinite;
+    border-radius: 6px;
+  }
+
   /* Fade-in modales */
   @keyframes fadeUp { from { opacity:0; transform: translateY(16px); } to { opacity:1; transform: translateY(0); } }
   .lc-modal-box { animation: fadeUp .2s ease; }
@@ -561,12 +573,66 @@ const Vide=({icone,msg})=>(
   </div>
 );
 
-const Chargement=()=>(
-  <div style={{textAlign:"center",padding:"56px 20px",color:C.blue}}>
-    <div className="lc-spinner"/>
-    <p style={{fontWeight:700,fontSize:13,color:"#64748b",margin:0}}>Chargement en cours…</p>
+// ── Skeleton de base ──────────────────────────────────────────
+const Sk=({w="100%",h=14,r=6,mb=0})=>(
+  <div className="lc-skeleton" style={{width:w,height:h,borderRadius:r,marginBottom:mb,flexShrink:0}}/>
+);
+
+// Skeleton tableau (listes, tables)
+const SkeletonTable=({rows=5})=>(
+  <div style={{background:"#fff",borderRadius:14,border:"1px solid #e0ebf8",overflow:"hidden"}}>
+    {/* En-tête */}
+    <div style={{display:"flex",gap:12,padding:"12px 18px",borderBottom:"2px solid #e0ebf8",background:"#f8fafc"}}>
+      {[30,20,20,20].map((w,i)=><Sk key={i} w={`${w}%`} h={11}/>)}
+    </div>
+    {/* Lignes */}
+    {Array.from({length:rows}).map((_,i)=>(
+      <div key={i} style={{display:"flex",gap:12,padding:"13px 18px",borderBottom:"1px solid #f1f5f9",alignItems:"center"}}>
+        <div style={{width:32,height:32,borderRadius:"50%",flexShrink:0}} className="lc-skeleton"/>
+        <Sk w="25%" h={12}/>
+        <Sk w="18%" h={12}/>
+        <Sk w="18%" h={12}/>
+        <Sk w="18%" h={20} r={10}/>
+      </div>
+    ))}
   </div>
 );
+
+// Skeleton cartes KPI (tableau de bord)
+const SkeletonKPI=({cols=4})=>(
+  <div style={{display:"grid",gridTemplateColumns:`repeat(${cols},1fr)`,gap:12}}>
+    {Array.from({length:cols}).map((_,i)=>(
+      <div key={i} style={{background:"#e8f0f7",borderRadius:14,padding:"18px 20px"}}>
+        <Sk w="55%" h={10} mb={10}/>
+        <Sk w="70%" h={28} mb={8}/>
+        <Sk w="40%" h={10}/>
+      </div>
+    ))}
+  </div>
+);
+
+// Skeleton liste (historique, messages, événements)
+const SkeletonListe=({rows=4})=>(
+  <div style={{background:"#fff",borderRadius:14,border:"1px solid #e0ebf8",overflow:"hidden"}}>
+    {Array.from({length:rows}).map((_,i)=>(
+      <div key={i} style={{display:"flex",gap:12,padding:"14px 18px",borderBottom:"1px solid #f1f5f9",alignItems:"flex-start"}}>
+        <div style={{width:36,height:36,borderRadius:10,flexShrink:0}} className="lc-skeleton"/>
+        <div style={{flex:1,display:"flex",flexDirection:"column",gap:7}}>
+          <Sk w="45%" h={12}/>
+          <Sk w="70%" h={10}/>
+        </div>
+        <Sk w="15%" h={10}/>
+      </div>
+    ))}
+  </div>
+);
+
+// Chargement générique (garde le spinner pour les cas simples)
+const Chargement=({type="table",rows,cols})=>{
+  if(type==="kpi")    return <div style={{padding:"22px 26px"}}><SkeletonKPI cols={cols||4}/></div>;
+  if(type==="liste")  return <SkeletonListe rows={rows||4}/>;
+  return <SkeletonTable rows={rows||5}/>;
+};
 
 const LectureSeule=()=>(
   <div style={{background:"linear-gradient(135deg,#fffbeb,#fef3c7)",border:"1px solid #fcd34d",borderRadius:10,padding:"11px 16px",fontSize:13,color:"#92400e",marginBottom:16,display:"flex",alignItems:"center",gap:10,boxShadow:"0 1px 4px rgba(0,0,0,0.06)"}}>
@@ -4366,7 +4432,7 @@ function HistoriqueActions() {
           placeholder="Rechercher une action..."
           style={{border:"1px solid #b0c4d8",borderRadius:8,padding:"7px 12px",fontSize:12,minWidth:200,color:C.blue}}/>
       </div>
-      {chargement ? <Chargement/> : filtres.length===0 ? (
+      {chargement ? <Chargement type="liste" rows={6}/> : filtres.length===0 ? (
         <Vide icone="📋" msg={filtre?"Aucun résultat":"Aucune action enregistrée — les actions importantes apparaîtront ici."}/>
       ) : (
         <Card>
@@ -4395,8 +4461,8 @@ function HistoriqueActions() {
 // ══════════════════════════════════════════════════════════════
 function TableauDeBord({annee}) {
   const {schoolInfo, moisSalaire} = useContext(SchoolContext);
-  const {items:elevesC} = useFirestore("elevesCollege");
-  const {items:elevesP} = useFirestore("elevesPrimaire");
+  const {items:elevesC, chargement:cEC} = useFirestore("elevesCollege");
+  const {items:elevesP, chargement:cEP} = useFirestore("elevesPrimaire");
   const {items:ensC}    = useFirestore("ensCollege");
   const {items:ensL}    = useFirestore("ensLycee");
   const {items:ensP}    = useFirestore("ensPrimaire");
@@ -4410,6 +4476,7 @@ function TableauDeBord({annee}) {
 
   const c1 = schoolInfo.couleur1 || C.blue;
   const c2 = schoolInfo.couleur2 || C.green;
+  const enChargement = cEC || cEP;
 
   const totalEleves = elevesC.filter(e=>e.statut==="Actif").length + elevesP.filter(e=>e.statut==="Actif").length;
   const totalEns    = ensC.length + ensL.length + ensP.length;
@@ -4464,6 +4531,8 @@ function TableauDeBord({annee}) {
   );
 
   const TYPE_COLORS = {exam:"#ef4444",conge:"#10b981",reunion:"#f59e0b",autre:"#6366f1"};
+
+  if(enChargement) return <Chargement type="kpi" cols={6}/>;
 
   return (
     <div style={{padding:"22px 26px",maxWidth:1200}}>
