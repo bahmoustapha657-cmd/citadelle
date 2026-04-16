@@ -5595,14 +5595,13 @@ function Connexion({onLogin, onInscription}) {
         });
         const data=await r.json().catch(()=>({}));
         if(!r.ok||!data.ok){setErreur(data.error||"Identifiants super-admin incorrects.");return;}
-        // Connexion Firebase Auth via custom token → session persistante
-        try{
+        // Connexion immédiate — ne pas attendre onAuthStateChanged qui peut échouer
+        // si le profil /users/{uid} n'existe pas encore en Firestore
+        onLogin(data.compte,"superadmin");
+        // Firebase Auth en arrière-plan pour la persistance de session (best-effort)
+        if(data.customToken){
           const {signInWithCustomToken}=await import("firebase/auth");
-          await signInWithCustomToken(auth, data.customToken);
-          // onAuthStateChanged prend le relais
-        }catch{
-          // Dernier recours : connexion locale temporaire
-          onLogin(data.compte,"superadmin");
+          signInWithCustomToken(auth, data.customToken).catch(()=>{});
         }
         return;
       }
