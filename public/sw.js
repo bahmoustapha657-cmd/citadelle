@@ -8,9 +8,9 @@
  *   API routes Vercel (/api/) → NetworkFirst avec fallback
  */
 
-const CACHE_APP    = "edugest-app-v1";
-const CACHE_DATA   = "edugest-data-v1";
-const CACHE_PHOTOS = "edugest-photos-v1";
+const CACHE_APP    = "edugest-app-v2";
+const CACHE_DATA   = "edugest-data-v2";
+const CACHE_PHOTOS = "edugest-photos-v2";
 
 const APP_SHELL = [
   "/",
@@ -68,8 +68,14 @@ self.addEventListener("fetch", (e) => {
     return;
   }
 
-  // 5. App shell (navigation + assets statiques) → CacheFirst
-  if (request.mode === "navigate" || url.origin === self.location.origin) {
+  // 5. Navigation HTML → NetworkFirst (toujours la dernière version)
+  if (request.mode === "navigate") {
+    e.respondWith(networkFirst(request, CACHE_APP, 5000));
+    return;
+  }
+
+  // 6. Assets statiques hachés (JS/CSS/images) → CacheFirst (safe car hash change à chaque build)
+  if (url.origin === self.location.origin) {
     e.respondWith(appShellFirst(request));
     return;
   }
