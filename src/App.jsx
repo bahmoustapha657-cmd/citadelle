@@ -315,8 +315,8 @@ const genererMdp = () => {
 
 const ACCES = {
   superadmin:  ["superadmin_panel"],
-  admin:       ["admin_panel","parametres","ia_assistant","fondation","compta","primaire","secondaire","calendrier","messages"],
-  direction:   ["admin_panel","parametres","ia_assistant","fondation","compta","primaire","secondaire","calendrier","messages"],
+  admin:       ["accueil","historique","admin_panel","parametres","ia_assistant","fondation","compta","primaire","secondaire","calendrier","messages"],
+  direction:   ["accueil","historique","admin_panel","parametres","ia_assistant","fondation","compta","primaire","secondaire","calendrier","messages"],
   primaire:    ["primaire","calendrier"],
   college:     ["secondaire","calendrier"],
   comptable:   ["ia_assistant","compta","primaire","secondaire","calendrier"],
@@ -331,6 +331,8 @@ const peutModifier = (role) => role === "admin" || role === "direction";
 
 const MODULES = [
   {id:"superadmin_panel", label:"Super Admin",   icon:"⚙️", desc:"Gestion des écoles"},
+  {id:"accueil",     label:"Tableau de bord",  icon:"📈", desc:"Vue d'ensemble"},
+  {id:"historique",  label:"Historique",       icon:"📋", desc:"Journal des actions"},
   {id:"admin_panel", label:"Gestion Accès",   icon:"🔐", desc:"Mots de passe"},
   {id:"parametres",  label:"Paramètres",      icon:"🏫", desc:"Identité de l'école"},
   {id:"ia_assistant",label:"Assistant IA",    icon:"✨", desc:"Documents & commentaires"},
@@ -373,7 +375,33 @@ export const SchoolContext = createContext({
   setSchoolInfo: () => {},
   moisAnnee: MOIS_ANNEE,
   moisSalaire: MOIS_SALAIRE,
+  toast: () => {},
+  logAction: () => {},
 });
+
+// ── TOAST SYSTEM ──────────────────────────────────────────────
+const TOAST_COLORS = { success:"#00C48C", error:"#ef4444", info:"#3b82f6", warning:"#f59e0b" };
+const TOAST_ICONS  = { success:"✅", error:"❌", info:"ℹ️", warning:"⚠️" };
+function ToastContainer({toasts}) {
+  return (
+    <div style={{position:"fixed",bottom:24,right:24,zIndex:9999,display:"flex",flexDirection:"column",gap:8,maxWidth:360}}>
+      {toasts.map(t=>(
+        <div key={t.id} style={{
+          background:"#1e293b",color:"#f1f5f9",borderRadius:12,padding:"12px 16px",
+          boxShadow:"0 8px 32px rgba(0,0,0,0.4)",display:"flex",alignItems:"flex-start",gap:10,
+          borderLeft:`4px solid ${TOAST_COLORS[t.type]||TOAST_COLORS.info}`,
+          animation:"slideIn .25s ease",fontSize:13,lineHeight:1.4,
+        }}>
+          <span style={{fontSize:16,marginTop:1}}>{TOAST_ICONS[t.type]||"ℹ️"}</span>
+          <span>{t.msg}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+const toastStyle = document.createElement("style");
+toastStyle.textContent = "@keyframes slideIn{from{transform:translateX(120%);opacity:0}to{transform:none;opacity:1}}";
+document.head.appendChild(toastStyle);
 
 // ══════════════════════════════════════════════════════════════
 //  HOOK FIREBASE
@@ -551,19 +579,20 @@ const LectureSeule=()=>(
 //  UPLOAD FICHIERS COMPONENT
 // ══════════════════════════════════════════════════════════════
 function UploadFichiers({dossier, fichiers=[], onAjouter, onSupprimer, readOnly=false}) {
+  const {toast} = useContext(SchoolContext);
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef();
 
   const handleUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > 5*1024*1024) { alert("Fichier trop grand (max 5MB)"); return; }
+    if (file.size > 5*1024*1024) { toast("Fichier trop grand (max 5MB)","warning"); return; }
     setUploading(true);
     try {
       const url = await uploadFichier(file, `${dossier}/${Date.now()}_${file.name}`);
       onAjouter({nom: file.name, url, type: file.type, date: today()});
     } catch(e) {
-      alert("Erreur upload: " + e.message);
+      toast("Erreur upload: " + e.message,"error");
     }
     setUploading(false);
     inputRef.current.value = "";
@@ -1599,7 +1628,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   const canCreate = !readOnly;
   const canEdit = !readOnly && (peutModifier(userRole) || verrouOuvert);
   const canEditEleves = !readOnly && (peutModifierEleves(userRole) || verrouOuvert);
-  const {schoolId, schoolInfo, moisAnnee, moisSalaire} = useContext(SchoolContext);
+  const {schoolId, schoolInfo, moisAnnee, moisSalaire, toast, logAction} = useContext(SchoolContext);
   const {items:recettes,chargement:cR,ajouter:ajR,modifier:modR,supprimer:supR}=useFirestore("recettes");
   const {items:depenses,chargement:cD,ajouter:ajD,modifier:modD,supprimer:supD}=useFirestore("depenses");
   const {items:salaires,chargement:cS,ajouter:ajS,modifier:modS,supprimer:supS}=useFirestore("salaires");
@@ -1625,6 +1654,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   const [niveau,setNiveau]=useState("college");
   const [filtClasse,setFiltClasse]=useState("all");
   const [moisSel,setMoisSel]=useState(()=>moisSalaire[0]||"Octobre");
+  const [primeDefaut,setPrimeDefaut]=useState(0);
   const [filtrePrimNom,setFiltrePrimNom]=useState("");
   const [filtrePrimClasse,setFiltrePrimClasse]=useState("all");
   const [niveauEnrol,setNiveauEnrol]=useState("college");
@@ -1634,7 +1664,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   const chg=k=>e=>setForm(p=>({...p,[k]:e.target.value}));
   const handlePhotoFichier=e=>{
     const file=e.target.files[0]; if(!file) return;
-    if(file.size>2*1024*1024){alert("Image trop grande (max 2 Mo).");return;}
+    if(file.size>2*1024*1024){toast("Image trop grande (max 2 Mo).","warning");return;}
     const reader=new FileReader();
     reader.onload=ev=>setForm(p=>({...p,photo:ev.target.result}));
     reader.readAsDataURL(file);
@@ -1677,7 +1707,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
     const estPaye=mens[mois]==="Payé";
     // Décocher nécessite le verrou admin (canEdit)
     if(estPaye && !canEdit){
-      alert("Le décochage nécessite l'autorisation de l'administrateur (verrou activé).");
+      toast("Le décochage nécessite l'autorisation de l'administrateur (verrou activé).","warning");
       return;
     }
     const msg = estPaye
@@ -1710,14 +1740,50 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
 
   const appliquerBons = async () => {
     if(readOnly) return;
-    if(!bonsMois.length){alert("Aucun bon enregistré pour ce mois.");return;}
+    if(!bonsMois.length){toast("Aucun bon enregistré pour ce mois.","warning");return;}
     if(!confirm(`Appliquer les bons du mois de ${moisSel} aux salaires ?\n\nLe champ "Bon" de chaque enseignant sera mis à jour.`)) return;
     let nb=0;
     for(const sal of salairesMois){
       const total=getBonTotal(sal.nom);
       if(total!==Number(sal.bon||0)){await modS({...sal,bon:total});nb++;}
     }
-    alert(`${nb} salaire(s) mis à jour.`);
+    toast(`${nb} salaire(s) mis à jour.`,"success");
+  };
+
+  // ── 5ÈME SEMAINE : détecte les jours qui ont 5 occurrences dans le mois sélectionné ──
+  const getJours5emeSemaine = (moisNom) => {
+    const idxMois = TOUS_MOIS_LONGS.indexOf(moisNom);
+    if(idxMois < 0) return [];
+    // Détermination de l'année réelle
+    const now = new Date();
+    const jsM = now.getMonth(); // 0-11
+    const idxActuel = jsM >= 8 ? jsM - 8 : jsM + 4; // index dans TOUS_MOIS_LONGS
+    const anneeDebutScolaire = idxActuel < 4 ? now.getFullYear() : now.getFullYear() - 1;
+    const anneeReel = idxMois < 4 ? anneeDebutScolaire : anneeDebutScolaire + 1;
+    // JS month number (Sep=8,Oct=9,...,Dec=11 → Jan=0,...,Aug=7)
+    const jsMoisCible = idxMois < 4 ? idxMois + 8 : idxMois - 4;
+    const JOURS_FR = ["Dimanche","Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi"];
+    const nbJours = new Date(anneeReel, jsMoisCible + 1, 0).getDate();
+    const compteur = {};
+    for(let j=1;j<=nbJours;j++){
+      const nom = JOURS_FR[new Date(anneeReel, jsMoisCible, j).getDay()];
+      compteur[nom] = (compteur[nom]||0) + 1;
+    }
+    return Object.entries(compteur).filter(([n,c])=>c===5&&n!=="Dimanche").map(([n])=>n);
+  };
+  // Calcule les heures de 5ème semaine d'un enseignant selon son EDT
+  const calcCinqSemEns = (nomEns, emploisEns, jours5eme) => {
+    if(!jours5eme.length) return 0;
+    const creneaux = emploisEns.filter(emp =>
+      (emp.enseignant||"").toLowerCase().includes((nomEns||"").toLowerCase()) &&
+      jours5eme.includes(emp.jour)
+    );
+    return creneaux.reduce((acc, emp) => {
+      if(!emp.heureDebut||!emp.heureFin) return acc + 2;
+      const [hd,md]=(emp.heureDebut).split(":").map(Number);
+      const [hf,mf]=(emp.heureFin).split(":").map(Number);
+      return acc + Math.round((hf*60+mf - hd*60-md)/60*10)/10;
+    }, 0);
   };
 
   const calcExecute = (s) => (Number(s.vhPrevu)||0) + (Number(s.cinqSem)||0) - (Number(s.nonExecute)||0);
@@ -1730,7 +1796,9 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
 
   const autoGenererSalaires = async () => {
     if(readOnly) return;
-    if(!confirm(`Générer automatiquement les salaires pour ${moisSel} ?\n\nSeuls les nouveaux enseignants seront ajoutés.`)) return;
+    const jours5eme = getJours5emeSemaine(moisSel);
+    const info5eme = jours5eme.length ? `\n📅 5ème semaine détectée : ${jours5eme.join(", ")} → heures supplémentaires calculées automatiquement.` : "";
+    if(!confirm(`Générer automatiquement les salaires pour ${moisSel} ?${info5eme}\n\nSeuls les nouveaux enseignants seront ajoutés.`)) return;
     const nomsExistants=salairesMois.map(s=>(s.nom||"").toLowerCase().trim());
 
     // Secondaire (college + lycée) — modèle horaire
@@ -1743,10 +1811,31 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
       if(!nomComplet) continue;
       if(nomsExistants.includes(nomComplet.toLowerCase())) continue;
       const creneaux=ens._emplois.filter(emp=>(emp.enseignant||"").toLowerCase().includes((ens.nom||"").toLowerCase()));
-      const vhHebdo=creneaux.length;
-      const vhPrevu=vhHebdo*4;
+      // Calcule les heures et la prime pour chaque créneau (prime par classe si définie)
+      const getSlotPrime=(slot)=>{
+        const ppc=ens.primeParClasse||[];
+        if(ppc.length){
+          const match=ppc.find(p=>p.classe&&slot.classe&&slot.classe.toLowerCase().includes(p.classe.toLowerCase()));
+          if(match)return Number(match.prime||0);
+        }
+        return Number(ens.primeHoraire||primeDefaut||0);
+      };
+      const getSlotH=(emp)=>{
+        if(!emp.heureDebut||!emp.heureFin)return 2;
+        const [hd,md]=(emp.heureDebut).split(":").map(Number);
+        const [hf,mf]=(emp.heureFin).split(":").map(Number);
+        return Math.round((hf*60+mf-hd*60-md)/60*10)/10;
+      };
+      const vhHebdo=Math.round(creneaux.reduce((a,e)=>a+getSlotH(e),0)*10)/10;
+      const vhPrevu=Math.round(vhHebdo*4*10)/10;
+      // Prime pondérée = Σ(heures_i × prime_i) / Σ(heures_i)
+      const totalSalSem=creneaux.reduce((a,e)=>a+getSlotH(e)*getSlotPrime(e),0);
+      const primeHoraire=vhHebdo>0?Math.round(totalSalSem/vhHebdo):Number(ens.primeHoraire||primeDefaut||0);
+      const hasPPC=(ens.primeParClasse||[]).some(p=>p.classe&&p.prime);
+      const cinqSem=calcCinqSemEns(ens.nom, ens._emplois, jours5eme);
       const absences=ens._eng.filter(e=>(e.enseignantNom||"").toLowerCase().includes((ens.nom||"").toLowerCase())&&(e.statut==="Absent"||e.statut==="Non effectué")).length;
-      await ajS({section:"Secondaire",mois:moisSel,nom:nomComplet,matiere:ens.matiere||"",niveau:ens.grade||"",vhHebdo,vhPrevu,cinqSem:0,nonExecute:absences,primeHoraire:0,bon:0,revision:0,observation:`Statut: ${ens.statut||"—"}`});
+      const obs=`Statut: ${ens.statut||"—"}${hasPPC?" · Prime pondérée par classe":""}`;
+      await ajS({section:"Secondaire",mois:moisSel,nom:nomComplet,matiere:ens.matiere||"",niveau:ens.grade||"",vhHebdo,vhPrevu,cinqSem,nonExecute:absences,primeHoraire,bon:0,revision:0,observation:obs});
     }
 
     // Primaire — modèle forfait
@@ -1765,7 +1854,8 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
       await ajS({section:"Personnel",mois:moisSel,nom:nomComplet,poste:emp.poste||"",categorie:emp.categorie||"",montantForfait:Number(emp.salaireBase||0),bon:0,revision:0,observation:emp.observation||""});
     }
 
-    alert("Terminé.\n• Secondaire : renseignez prime horaire, 5ème semaine, bon et révision.\n• Primaire : renseignez le montant forfaitaire.\n• Personnel : salaires de base repris automatiquement.");
+    toast("Salaires générés. Renseignez prime horaire, 5ème semaine, bon et révision selon la section.","success");
+    logAction("Salaires auto-générés",`Mois : ${moisSel}`);
   };
 
   const imprimerSalaires = () => {
@@ -2030,11 +2120,26 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
             {moisSalaire.map(m=><option key={m}>{m}</option>)}
           </select>
           {sousTabSal==="etats"&&<>
+            {canCreate&&<label title="Appliquée uniquement aux enseignants sans prime définie sur leur fiche" style={{display:"flex",alignItems:"center",gap:5,fontSize:12,color:C.blueDark,background:"#f0f7ff",border:"1px solid #b0c4d8",borderRadius:7,padding:"4px 10px",cursor:"help"}}>
+              Prime/h par défaut
+              <input type="number" min="0" value={primeDefaut||""} placeholder="0"
+                onChange={e=>setPrimeDefaut(Number(e.target.value))}
+                style={{width:80,border:"none",background:"transparent",fontSize:13,fontWeight:700,color:C.blueDark,outline:"none"}}/>
+              GNF
+            </label>}
             {canCreate&&<Btn v="amber" onClick={autoGenererSalaires}>⚡ Auto-générer</Btn>}
             {canCreate&&bonsMois.length>0&&<Btn v="amber" onClick={appliquerBons}>✔ Appliquer les bons</Btn>}
             {canCreate&&<Btn onClick={()=>{setForm({section:"Secondaire",mois:moisSel,nonExecute:0,cinqSem:0,bon:0,revision:0});setModal("add_s");}}>+ Ajouter</Btn>}
             <Btn v="vert" onClick={imprimerSalaires}>🖨️ Imprimer</Btn>
           </>}
+          {(()=>{const j5=getJours5emeSemaine(moisSel);return j5.length>0&&(
+            <div style={{width:"100%",marginTop:6,background:"linear-gradient(135deg,#fef3c7,#fde68a)",border:"1px solid #f59e0b",borderRadius:8,padding:"7px 14px",fontSize:12,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+              <span style={{fontSize:15}}>📅</span>
+              <strong style={{color:"#92400e"}}>{moisSel} — 5ème semaine :</strong>
+              {j5.map(j=><span key={j} style={{background:"#f59e0b",color:"#fff",fontWeight:700,padding:"2px 9px",borderRadius:10,fontSize:11}}>{j}</span>)}
+              <span style={{color:"#92400e",fontSize:11}}>→ Les enseignants qui ont cours ces jours ont des heures supplémentaires. Cliquez sur ⚡ Auto-générer pour les calculer automatiquement.</span>
+            </div>
+          );})()}
           {sousTabSal==="bons"&&canCreate&&<Btn onClick={()=>{setForm({mois:moisSel,section:"Secondaire"});setModal("add_b");}}>+ Nouveau bon</Btn>}
         </div>
 
@@ -2370,7 +2475,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
           </div>}
           <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
             <Btn v="ghost" onClick={()=>setModal(null)}>Annuler</Btn>
-            <Btn onClick={()=>enreg(ajS,modS,{vhHebdo:Number(form.vhHebdo||0),vhPrevu:Number(form.vhPrevu||0),cinqSem:Number(form.cinqSem||0),nonExecute:Number(form.nonExecute||0),primeHoraire:Number(form.primeHoraire||0),bon:Number(form.bon||0),montantForfait:Number(form.montantForfait||0)})}>Enregistrer</Btn>
+            <Btn onClick={()=>enreg(ajS,modS,{vhHebdo:Number(form.vhHebdo||0),vhPrevu:Number(form.vhPrevu||0),cinqSem:Number(form.cinqSem||0),nonExecute:Number(form.nonExecute||0),primeHoraire:Number(form.primeHoraire||0),bon:Number(form.bon||0),revision:Number(form.revision||0),montantForfait:Number(form.montantForfait||0)})}>Enregistrer</Btn>
           </div>
         </Modale>}
 
@@ -2635,7 +2740,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                 if(modal==="add_enrol")ajEnrol(r);else modEnrol(r);
                 setModal(null);
               }catch(e){
-                alert("Erreur upload photo : "+e.message);
+                toast("Erreur upload photo : "+e.message,"error");
               }finally{
                 setUploadEnCours(false);
               }
@@ -2787,6 +2892,9 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
   const [edtVueGrille,setEdtVueGrille]=useState(true);
   const [edtCellule,setEdtCellule]=useState(null); // {jour,heureDebut,heureFin,existing?}
   const [edtDuree,setEdtDuree]=useState(maxNote===10?60:120); // primaire: 30/45/60min, secondaire: 120min fixe
+  const [edtGeneralOuvert,setEdtGeneralOuvert]=useState(false);
+  const [edtHeureDebut,setEdtHeureDebut]=useState("08:00");
+  const [edtHeureFin,setEdtHeureFin]=useState("14:00");
   const [eleveSelec,setEleveSelec]=useState(null);
   const [periodeB,setPeriodeB]=useState("T1");
   const [rechercheMatricule,setRechercheMatricule]=useState("");
@@ -2801,10 +2909,10 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
   // ── Validation emploi du temps ──
   const validerCreneau = () => {
     if(!form.classe||!form.jour||!form.heureDebut||!form.heureFin){
-      alert("Veuillez remplir : classe, jour, heure début et heure fin.");return false;
+      toast("Veuillez remplir : classe, jour, heure début et heure fin.","warning");return false;
     }
     if(form.heureDebut>=form.heureFin){
-      alert("L'heure de début doit être avant l'heure de fin.");return false;
+      toast("L'heure de début doit être avant l'heure de fin.","warning");return false;
     }
     const autresCreneaux=emplois.filter(e=>e._id!==form._id);
     const confClasse=autresCreneaux.find(e=>
@@ -2812,7 +2920,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
       (e.heureDebut||"00:00")<form.heureFin&&(e.heureFin||"23:59")>form.heureDebut
     );
     if(confClasse){
-      alert(`⚠️ Conflit de classe !\nLa classe ${form.classe} a déjà "${confClasse.matiere||"un cours"}" le ${form.jour} de ${confClasse.heureDebut} à ${confClasse.heureFin}.`);
+      toast(`Conflit de classe ! ${form.classe} a déjà "${confClasse.matiere||"un cours"}" le ${form.jour} de ${confClasse.heureDebut} à ${confClasse.heureFin}.`,"error");
       return false;
     }
     if(form.enseignant){
@@ -2821,14 +2929,14 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
         (e.heureDebut||"00:00")<form.heureFin&&(e.heureFin||"23:59")>form.heureDebut
       );
       if(confEns){
-        alert(`⚠️ Conflit enseignant !\n${form.enseignant} est déjà affecté en classe ${confEns.classe} le ${form.jour} de ${confEns.heureDebut} à ${confEns.heureFin}.`);
+        toast(`Conflit enseignant ! ${form.enseignant} est déjà en classe ${confEns.classe} le ${form.jour} de ${confEns.heureDebut} à ${confEns.heureFin}.`,"error");
         return false;
       }
     }
     return true;
   };
 
-  const {schoolInfo} = useContext(SchoolContext);
+  const {schoolInfo, toast, logAction} = useContext(SchoolContext);
   const canCreate = !readOnly;
   const canEditEleves = !readOnly && (peutModifierEleves(userRole) || verrouOuvert);
   const canEdit = !readOnly && (peutModifier(userRole) || verrouOuvert);
@@ -3123,8 +3231,8 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
         <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
           <Btn v="ghost" onClick={()=>setParentEleve(null)}>Annuler</Btn>
           <Btn v="purple" onClick={async()=>{
-            if(!formP.login?.trim()){alert("Identifiant requis.");return;}
-            if(!formP.mdp||formP.mdp.length<6){alert("Mot de passe minimum 6 caractères.");return;}
+            if(!formP.login?.trim()){toast("Identifiant requis.","warning");return;}
+            if(!formP.mdp||formP.mdp.length<6){toast("Mot de passe minimum 6 caractères.","warning");return;}
             try{
               const section=cleEleves.includes("Primaire")?"primaire":cleEleves.includes("Lycee")?"lycee":"college";
               const mdpHash=await bcrypt.hash(formP.mdp,10);
@@ -3142,9 +3250,10 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
                 statut:"Actif",
                 createdAt:Date.now(),
               });
-              alert(`✅ Compte parent créé !\n\nIdentifiant : ${formP.login}\nMot de passe : ${formP.mdp}\n\nA remettre au tuteur de ${parentEleve.prenom}.`);
+              toast(`Compte parent créé — ID : ${formP.login} · Remettez-le au tuteur de ${parentEleve.prenom}.`,"success");
+              logAction("Compte parent créé",`Login: ${formP.login} · Élève: ${parentEleve.prenom} ${parentEleve.nom}`);
               setParentEleve(null);
-            }catch(e){alert("Erreur : "+e.message);}
+            }catch(e){toast("Erreur : "+e.message,"error");}
           }}>✅ Créer le compte</Btn>
         </div>
       </Modale>}
@@ -3156,8 +3265,8 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
         const sectionEns = cleEns.includes("Lycee")?"lycee":cleEns.includes("College")?"college":"primaire";
 
         const creerCompteEns = async () => {
-          if(!formC.login?.trim()){alert("Identifiant requis.");return;}
-          if(!formC.mdp||formC.mdp.length<6){alert("Mot de passe minimum 6 caractères.");return;}
+          if(!formC.login?.trim()){toast("Identifiant requis.","warning");return;}
+          if(!formC.mdp||formC.mdp.length<6){toast("Mot de passe minimum 6 caractères.","warning");return;}
           try{
             const nomComplet=`${ensCompte.prenom||""} ${ensCompte.nom||""}`.trim();
             const mdpHash=await bcrypt.hash(formC.mdp,10);
@@ -3174,9 +3283,10 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
               statut:"Actif",
               createdAt:Date.now(),
             });
-            alert(`✅ Compte créé !\n\nIdentifiant : ${formC.login}\nMot de passe : ${formC.mdp}\n\nL'enseignant devra changer son mot de passe à la première connexion.`);
+            toast(`Compte enseignant créé — ID : ${formC.login} · L'enseignant changera son mot de passe à la 1ère connexion.`,"success");
+            logAction("Compte enseignant créé",`Login: ${formC.login} · ${nomComplet}`);
             setEnsCompte(null);
-          }catch(e){alert("Erreur : "+e.message);}
+          }catch(e){toast("Erreur : "+e.message,"error");}
         };
 
         return <div>
@@ -3246,6 +3356,28 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
               <Selec label="Statut" value={form.statut||"Titulaire"} onChange={chg("statut")}>
                 <option>Titulaire</option><option>Contractuel</option><option>Vacataire</option>
               </Selec>
+              <Input label="Prime horaire unique (GNF)" type="number" value={form.primeHoraire||""} onChange={chg("primeHoraire")} placeholder="Ex : 15000"/>
+              <div style={{display:"flex",alignItems:"flex-end",paddingBottom:4}}>
+                <span style={{fontSize:11,color:"#64748b",lineHeight:1.4}}>💡 Utilisée si aucune prime par classe n'est définie ci-dessous</span>
+              </div>
+            </div>
+            {/* ── PRIMES PAR CLASSE ── */}
+            <div style={{marginTop:14,borderTop:"1px solid #e2e8f0",paddingTop:12}}>
+              <div style={{fontSize:12,fontWeight:700,color:C.blueDark,marginBottom:8}}>
+                Primes par classe <span style={{fontWeight:400,color:"#94a3b8",fontSize:11}}>(si la prime varie selon la classe enseignée)</span>
+              </div>
+              {(form.primeParClasse||[]).map((entry,i)=>(
+                <div key={i} style={{display:"flex",gap:8,marginBottom:6,alignItems:"center"}}>
+                  <input value={entry.classe||""} placeholder="Classe (ex: 3ème Année A)"
+                    onChange={e=>setForm(p=>{const arr=[...(p.primeParClasse||[])];arr[i]={...arr[i],classe:e.target.value};return{...p,primeParClasse:arr};})}
+                    style={{flex:2,border:"1px solid #b0c4d8",borderRadius:6,padding:"5px 8px",fontSize:12}}/>
+                  <input type="number" value={entry.prime||""} placeholder="Prime GNF"
+                    onChange={e=>setForm(p=>{const arr=[...(p.primeParClasse||[])];arr[i]={...arr[i],prime:Number(e.target.value)};return{...p,primeParClasse:arr};})}
+                    style={{flex:1,border:"1px solid #b0c4d8",borderRadius:6,padding:"5px 8px",fontSize:12}}/>
+                  <Btn sm v="danger" onClick={()=>setForm(p=>({...p,primeParClasse:(p.primeParClasse||[]).filter((_,j)=>j!==i)}))}>×</Btn>
+                </div>
+              ))}
+              <Btn sm v="ghost" onClick={()=>setForm(p=>({...p,primeParClasse:[...(p.primeParClasse||[]),{classe:"",prime:0}]}))}>+ Ajouter une classe</Btn>
             </div>
             <UploadFichiers dossier={`enseignants/${cleEns}`} fichiers={form.fichiers||[]}
               onAjouter={f=>setForm(p=>({...p,fichiers:[...(p.fichiers||[]),f]}))}
@@ -3555,43 +3687,183 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
       {tab==="emploidutemps"&&avecEns&&(()=>{
         const JOURS=["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi"];
         const genTranches=(step)=>{
-          const t=[];let h=8,m=0;
-          while(h*60+m<=18*60){t.push(String(h).padStart(2,"0")+":"+String(m).padStart(2,"0"));m+=step;h+=Math.floor(m/60);m=m%60;}
+          const [sh,sm]=(edtHeureDebut||"08:00").split(":").map(Number);
+          const [eh,em]=(edtHeureFin||"14:00").split(":").map(Number);
+          const t=[];let h=sh,m=sm;
+          while(h*60+m<=eh*60+em){t.push(String(h).padStart(2,"0")+":"+String(m).padStart(2,"0"));m+=step;h+=Math.floor(m/60);m=m%60;}
           return t;
         };
         const duree=maxNote===10?edtDuree:120; // secondaire toujours 2h
         const TRANCHES=genTranches(duree);
         const COULEURS=["#dbeafe","#dcfce7","#fef9c3","#ffe4e6","#f3e8ff","#ffedd5","#e0f2fe","#d1fae5","#fce7f3","#ecfdf5"];
-        const classeEdtActuelle = filtreClasse==="all"&&classes.length>0 ? classes[0].nom : filtreClasse;
+        // ── Tri des classes par niveau scolaire ──
+        const NIVEAUX_ORDER=[
+          "maternelle","ps","ms","gs","petite section","moyenne section","grande section",
+          "cp","cp1","cp2",
+          "ce","ce1","ce2",
+          "cm","cm1","cm2",
+          "6ème","6e","6","6eme",
+          "5ème","5e","5","5eme",
+          "4ème","4e","4","4eme",
+          "3ème","3e","3","3eme",
+          "7ème","7e","7","7eme",
+          "8ème","8e","8","8eme",
+          "9ème","9e","9","9eme",
+          "10ème","10e","10","10eme",
+          "11ème","11e","11","11eme",
+          "seconde","2nde","2nd",
+          "12ème","12e","12","12eme",
+          "première","premiere","1ère","1ere",
+          "13ème","13e","13","13eme",
+          "terminale","tle","term",
+        ];
+        const niveauRank=(nom)=>{
+          const n=(nom||"").toLowerCase().trim();
+          const idx=NIVEAUX_ORDER.findIndex(o=>n===o||n.startsWith(o+" ")||n.startsWith(o+"-")||n.startsWith(o+"_"));
+          if(idx>=0)return idx*10;
+          const m=n.match(/^(\d+)/);
+          if(m)return 500+parseInt(m[1]);
+          return 999;
+        };
+        const classesTriees=[...classes].sort((a,b)=>niveauRank(a.nom)-niveauRank(b.nom));
+        const classeEdtActuelle = filtreClasse==="all"&&classesTriees.length>0 ? classesTriees[0].nom : filtreClasse;
         const matCouleur={};
         matieres.forEach((m,i)=>{matCouleur[m.nom]=COULEURS[i%COULEURS.length];});
+        // Lookup enseignant par nom stocké (supporte ancien format "Prénom Nom (matière)" et nouveau "Prénom Nom")
+        const findEns=(nomStr)=>ens.find(e=>{
+          if(!nomStr)return false;
+          const full=`${e.prenom||""} ${e.nom||""}`.trim();
+          return nomStr===full||nomStr.startsWith(full+" (");
+        });
+        // Nom affiché sans la partie "(matière)" si présente
+        const affNom=(nomStr)=>nomStr?nomStr.replace(/\s*\([^)]*\)$/,""):"";
         const emploisClasse=emplois.filter(e=>e.classe===classeEdtActuelle);
         const getCreneau=(jour,hd)=>emploisClasse.find(e=>e.jour===jour&&e.heureDebut===hd);
         const imprimerEDT=()=>{
-          const lignes=[...emploisClasse].sort((a,b)=>JOURS.indexOf(a.jour)-JOURS.indexOf(b.jour)||(a.heureDebut||"").localeCompare(b.heureDebut||""));
+          const couleursBg=["#dbeafe","#dcfce7","#fef9c3","#ffe4e6","#f3e8ff","#ffedd5","#e0f2fe","#d1fae5","#fce7f3","#ecfdf5"];
+          const allMat=[...new Set(emploisClasse.map(e=>e.matiere).filter(Boolean))];
+          const mc={};allMat.forEach((m,i)=>{mc[m]=couleursBg[i%couleursBg.length];});
+          const getCr=(jour,hd)=>emploisClasse.find(e=>e.jour===jour&&e.heureDebut===hd);
+          const ths=JOURS.map(j=>"<th style='background:#0A1628;color:#fff;padding:8px 10px;font-size:11px;text-align:center;min-width:80px'>"+j+"</th>").join("");
+          const rows=TRANCHES.slice(0,-1).map((_,i)=>{
+            const hd=TRANCHES[i],hf=TRANCHES[i+1];
+            const tds=JOURS.map(jour=>{
+              const cr=getCr(jour,hd);
+              if(!cr)return "<td style='background:#fafcff;border:1px solid #e2e8f0;padding:6px'></td>";
+              const bg=mc[cr.matiere]||"#e0ebf8";
+              const ensObj=findEns(cr.enseignant);
+              return "<td style='background:"+bg+";border:1px solid #e2e8f0;padding:6px;vertical-align:top'>"
+                +"<b style='font-size:11px;color:#1e3a5f;display:block'>"+cr.matiere+"</b>"
+                +(cr.enseignant?"<span style='font-size:10px;color:#475569'>"+affNom(cr.enseignant)+"</span>":"")
+                +(ensObj?.telephone?"<br><span style='font-size:9px;color:#00876a;font-weight:600'>"+ensObj.telephone+"</span>":"")
+                +(cr.salle?"<br><span style='font-size:9px;color:#94a3b8'>📍"+cr.salle+"</span>":"")
+                +"</td>";
+            }).join("");
+            return "<tr><td style='background:#f0f4f8;font-weight:700;font-size:11px;color:#0A1628;padding:7px 10px;text-align:center;border:1px solid #e2e8f0;white-space:nowrap'>"+hd.slice(0,5)+"–"+hf.slice(0,5)+"</td>"+tds+"</tr>";
+          }).join("");
           const w=window.open("","_blank");
-          const rows=lignes.map(e=>"<tr><td><b>"+e.jour+"</b></td><td>"+(e.heureDebut||"—")+"</td><td>"+(e.heureFin||"—")+"</td><td>"+(e.matiere||"—")+"</td><td>"+(e.enseignant||"—")+"</td><td>"+(e.salle||"—")+"</td></tr>").join("");
-          w.document.write("<!DOCTYPE html><html><head><title>EDT "+classeEdtActuelle+"</title><style>body{font-family:Arial,sans-serif;padding:30px;font-size:12px}h2{color:#0A1628;text-align:center}table{width:100%;border-collapse:collapse;margin-top:12px}th{background:#0A1628;color:#fff;padding:7px 10px;font-size:11px;text-align:left}td{padding:7px 10px;border-bottom:1px solid #eee}tr:nth-child(even){background:#f0f4f8}@media print{button{display:none}}</style></head><body>"+enteteDoc(schoolInfo,schoolInfo.logo)+"<h2>Emploi du temps — "+classeEdtActuelle+"</h2><table><thead><tr><th>Jour</th><th>Heure d\u00e9but</th><th>Heure fin</th><th>Mati\u00e8re</th><th>Enseignant</th><th>Salle</th></tr></thead><tbody>"+rows+"</tbody></table><script>window.onload=()=>window.print();</scri"+"pt></body></html>");
+          w.document.write("<!DOCTYPE html><html><head><meta charset='UTF-8'><title>EDT "+classeEdtActuelle+"</title>"
+            +"<style>body{font-family:Arial,sans-serif;padding:30px;font-size:12px}h2{color:#0A1628;text-align:center;margin-bottom:12px}"
+            +"table{width:100%;border-collapse:collapse}@media print{body{padding:10px}}</style></head><body>"
+            +enteteDoc(schoolInfo,schoolInfo.logo)
+            +"<h2>Emploi du temps — "+classeEdtActuelle+"</h2>"
+            +"<table><thead><tr><th style='background:#0A1628;color:#fff;padding:8px 10px;font-size:11px;width:80px'>Horaire</th>"+ths+"</tr></thead>"
+            +"<tbody>"+rows+"</tbody></table>"
+            +"<scri"+"pt>window.onload=()=>window.print();</scri"+"pt></body></html>");
           w.document.close();
         };
         const copierEDT=()=>{
           const cibles=classes.filter(c=>c.nom!==classeEdtActuelle);
-          if(!cibles.length){alert("Aucune autre classe.");return;}
+          if(!cibles.length){toast("Aucune autre classe.","warning");return;}
           const dest=window.prompt("Copier l'EDT de \""+classeEdtActuelle+"\" vers quelle classe ?\n"+cibles.map(c=>c.nom).join(", "));
-          if(!dest||!classes.find(c=>c.nom===dest)){alert("Classe introuvable.");return;}
+          if(!dest||!classes.find(c=>c.nom===dest)){toast("Classe introuvable.","error");return;}
           const aSupp=emplois.filter(e=>e.classe===dest);
           Promise.all(aSupp.map(e=>supEmp(e._id))).then(()=>{
             emploisClasse.forEach(e=>ajEmp({...e,classe:dest,_id:undefined}));
+            toast("EDT copié vers "+dest,"success");
           });
-          alert("EDT copié vers "+dest);
         };
+
+        // ── EDT GÉNÉRAL : Col1=Classes · Col2=Horaires (3 sous-lignes, 4 pour le 10ème) · Col3-8=Jours ──
+        // Sous-lignes : 0=Matière 1=Enseignant 2=Salle (3ème slot=4ème sous-ligne vide de séparation)
+        const SOUS_LABELS=["Matière","Enseignant","Salle"];
+        const nbTranches=TRANCHES.length-1;
+        const nbSousLignes=(ti)=>ti===9?4:3; // 10ème créneau (index 9) → 4 sous-lignes
+        const totalLignesClasse=()=>{let t=0;for(let i=0;i<nbTranches;i++)t+=nbSousLignes(i);return t;};
+
+        // ── version HTML pour impression ──
+        const getEdtGeneralHTML=()=>{
+          const couleursBg=["#dbeafe","#dcfce7","#fef9c3","#ffe4e6","#f3e8ff","#ffedd5","#e0f2fe","#d1fae5","#fce7f3","#ecfdf5"];
+          const allMat=[...new Set(emplois.map(e=>e.matiere).filter(Boolean))];
+          const mc={};allMat.forEach((m,i)=>{mc[m]=couleursBg[i%couleursBg.length];});
+          const ths=JOURS.map(j=>"<th style='background:#0A1628;color:#fff;padding:7px 8px;font-size:11px;text-align:center;min-width:90px'>"+j+"</th>").join("");
+          const subLabelStyle="background:#f8fafc;color:#94a3b8;font-size:9px;padding:2px 6px;text-align:right;border:1px solid #e8edf2;white-space:nowrap;font-style:italic";
+          const hrStyle="background:#f0f4f8;font-weight:800;font-size:11px;color:#0A1628;padding:5px 7px;text-align:center;border:1px solid #e2e8f0;white-space:nowrap;vertical-align:middle";
+          const clsStyle="background:#0A1628;color:#00C48C;font-weight:800;font-size:12px;text-align:center;padding:6px 8px;border:2px solid #0A1628;vertical-align:middle;writing-mode:horizontal-tb";
+          let tbody="";
+          classesTriees.forEach(cl=>{
+            const total=totalLignesClasse();
+            let firstRowOfClass=true;
+            for(let ti=0;ti<nbTranches;ti++){
+              const hd=TRANCHES[ti],hf=TRANCHES[ti+1];
+              const ns=nbSousLignes(ti);
+              for(let si=0;si<ns;si++){
+                const isLastSub=si===ns-1;
+                const isLastSlot=ti===nbTranches-1;
+                const borderB=isLastSub?(isLastSlot?"3px solid #0A1628":"2px solid #b0c4d8"):"1px solid #f0f4f8";
+                let row="<tr>";
+                if(firstRowOfClass&&si===0){row+="<td rowspan='"+total+"' style='"+clsStyle+"'>"+cl.nom+"</td>";firstRowOfClass=false;}
+                if(si===0)row+="<td rowspan='"+ns+"' style='"+hrStyle+"'>"+hd.slice(0,5)+"<br>"+hf.slice(0,5)+"</td>";
+                row+="<td style='"+subLabelStyle+";border-bottom:"+borderB+"'>"+(SOUS_LABELS[si]||"")+"</td>";
+                JOURS.forEach(jour=>{
+                  const cr=emplois.find(e=>e.classe===cl.nom&&e.jour===jour&&e.heureDebut===hd);
+                  const bg=cr?(mc[cr.matiere]||"#e0ebf8"):"#fff";
+                  let val="";
+                  if(cr){
+                    if(si===0)val="<b>"+cr.matiere+"</b>";
+                    else if(si===1){
+                      const ensObj=findEns(cr.enseignant);
+                      val=affNom(cr.enseignant||"")+(ensObj?.telephone?"<br><span style='font-size:9px;color:#00876a;font-weight:600'>"+ensObj.telephone+"</span>":"");
+                    }
+                    else if(si===2)val=cr.salle||"";
+                  }
+                  row+="<td style='background:"+bg+";border:1px solid #e2e8f0;border-bottom:"+borderB+";padding:2px 5px;font-size:10px;text-align:center;vertical-align:middle'>"+val+"</td>";
+                });
+                row+="</tr>";
+                tbody+=row;
+              }
+            }
+          });
+          return "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>EDT G\u00e9n\u00e9ral</title>"
+            +"<style>body{font-family:Arial,sans-serif;padding:15px;font-size:11px;color:#0A1628}"
+            +"h2{text-align:center;font-size:14px;margin-bottom:10px}"
+            +"table{width:100%;border-collapse:collapse}"
+            +"@media print{.no-print{display:none}body{padding:8px}}</style></head><body>"
+            +enteteDoc(schoolInfo,schoolInfo.logo)
+            +"<h2>Emploi du Temps G\u00e9n\u00e9ral</h2>"
+            +"<div class='no-print' style='text-align:center;margin-bottom:12px'>"
+            +"<button onclick='window.print()' style='background:#0A1628;color:#fff;border:none;padding:7px 22px;border-radius:20px;font-size:12px;cursor:pointer;font-weight:700'>🖨️ Imprimer</button></div>"
+            +"<table><thead><tr>"
+            +"<th style='background:#0A1628;color:#fff;padding:7px 8px;font-size:11px;min-width:70px'>Classes</th>"
+            +"<th style='background:#0A1628;color:#fff;padding:7px 8px;font-size:11px;min-width:60px'>Horaires</th>"
+            +"<th style='background:#0A1628;color:#fff;padding:7px 8px;font-size:10px;min-width:50px'></th>"
+            +ths
+            +"</tr></thead><tbody>"+tbody+"</tbody></table>"
+            +"<scri"+"pt>window.onload=()=>window.print();<\/script></body></html>";
+        };
+        const voirEdtGeneral=()=>{
+          const w=window.open("","_blank");
+          w.document.write(getEdtGeneralHTML());
+          w.document.close();
+        };
+
         return <div>
         {/* ── TOOLBAR ── */}
         <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:14,flexWrap:"wrap"}}>
           <strong style={{fontSize:14,color:C.blueDark,marginRight:4}}>Emploi du temps</strong>
           <select value={classeEdtActuelle} onChange={e=>setFiltreClasse(e.target.value)}
             style={{border:"1px solid #b0c4d8",borderRadius:7,padding:"6px 12px",fontSize:13,background:"#fff",fontWeight:700,color:C.blueDark}}>
-            {classes.map(c=><option key={c._id} value={c.nom}>{c.nom}</option>)}
+            {classesTriees.map(c=><option key={c._id} value={c.nom}>{c.nom}</option>)}
           </select>
           <Btn sm v={edtVueGrille?"blue":"ghost"} onClick={()=>setEdtVueGrille(true)}>📅 Grille</Btn>
           <Btn sm v={!edtVueGrille?"blue":"ghost"} onClick={()=>setEdtVueGrille(false)}>☰ Liste</Btn>
@@ -3605,8 +3877,17 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
               </select>
             : <span style={{fontSize:11,color:"#9ca3af",padding:"4px 8px",background:"#f8fafc",borderRadius:6,border:"1px solid #e2e8f0"}}>⏱ Séances 2h</span>
           }
+          <label style={{display:"flex",alignItems:"center",gap:4,fontSize:11,color:C.blueDark}}>
+            De <input type="time" value={edtHeureDebut} onChange={e=>setEdtHeureDebut(e.target.value)}
+              style={{border:"1px solid #b0c4d8",borderRadius:6,padding:"4px 6px",fontSize:12,width:90}}/>
+          </label>
+          <label style={{display:"flex",alignItems:"center",gap:4,fontSize:11,color:C.blueDark}}>
+            à <input type="time" value={edtHeureFin} onChange={e=>setEdtHeureFin(e.target.value)}
+              style={{border:"1px solid #b0c4d8",borderRadius:6,padding:"4px 6px",fontSize:12,width:90}}/>
+          </label>
           {canCreate&&<Btn sm v="vert" onClick={copierEDT}>📋 Copier vers…</Btn>}
           {classeEdtActuelle!=="all"&&<Btn sm v="ghost" onClick={imprimerEDT}>🖨️ Imprimer</Btn>}
+          <Btn sm v="blue" onClick={()=>setEdtGeneralOuvert(true)}>📊 EDT Général</Btn>
         </div>
 
         {classes.length===0
@@ -3647,7 +3928,13 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
                         {cr ? <>
                           {conflit&&<span title="Conflit enseignant" style={{position:"absolute",top:2,right:3,fontSize:10}}>⚠️</span>}
                           <div style={{fontWeight:800,fontSize:11,color:"#1e3a5f",lineHeight:1.3}}>{cr.matiere||"—"}</div>
-                          {cr.enseignant&&<div style={{fontSize:10,color:"#475569",marginTop:1}}>{cr.enseignant.split(" ").slice(-1)[0]}</div>}
+                          {cr.enseignant&&(()=>{
+                            const e=findEns(cr.enseignant);
+                            return <div style={{fontSize:10,color:"#475569",marginTop:1}}>
+                              <div>{affNom(cr.enseignant)}</div>
+                              {e?.telephone&&<div style={{fontSize:9,color:"#00876a",fontWeight:600}}>{e.telephone}</div>}
+                            </div>;
+                          })()}
                           {cr.salle&&<div style={{fontSize:9,color:"#94a3b8",marginTop:1}}>📍{cr.salle}</div>}
                         </> : (canCreate&&<div style={{fontSize:18,color:"#c7d7e9",textAlign:"center",lineHeight:"40px"}}>+</div>)}
                       </td>;
@@ -3659,26 +3946,35 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
             <p style={{fontSize:11,color:"#9ca3af",marginTop:8}}>💡 Cliquez sur une cellule pour ajouter ou modifier un créneau</p>
           </div>
         ) : (
-          /* ── VUE LISTE ── */
+          /* ── VUE LISTE (groupée par jour, sans répétition) ── */
           emploisClasse.length===0
             ? <Vide icone="📅" msg="Aucun créneau pour cette classe"/>
-            : <Card><table style={{width:"100%",borderCollapse:"collapse"}}>
-              <THead cols={["Jour","Heure","Matière","Enseignant","Salle",canEdit?"":"" ]}/>
-              <tbody>{emploisClasse
-                .sort((a,b)=>JOURS.indexOf(a.jour)-JOURS.indexOf(b.jour)||(a.heureDebut||"").localeCompare(b.heureDebut||""))
-                .map(e=><TR key={e._id}>
-                  <TD bold>{e.jour}</TD>
-                  <TD>{e.heureDebut} – {e.heureFin}</TD>
-                  <TD>{e.matiere||"—"}</TD>
-                  <TD>{e.enseignant||<span style={{color:"#9ca3af",fontStyle:"italic"}}>—</span>}</TD>
-                  <TD>{e.salle||"—"}</TD>
-                  {canEdit&&<TD><div style={{display:"flex",gap:6}}>
-                    <Btn sm v="ghost" onClick={()=>{setForm({...e});setEdtCellule({jour:e.jour,heureDebut:e.heureDebut,heureFin:e.heureFin,existing:e});}}>Modifier</Btn>
-                    <Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ?"))supEmp(e._id);}}>Suppr.</Btn>
-                  </div></TD>}
-                </TR>)}
-              </tbody>
-            </table></Card>
+            : <Card style={{padding:0,overflow:"hidden"}}>{(()=>{
+                const lignes=[...emploisClasse].sort((a,b)=>JOURS.indexOf(a.jour)-JOURS.indexOf(b.jour)||(a.heureDebut||"").localeCompare(b.heureDebut||""));
+                const rows=[];let dernierJour=null;
+                lignes.forEach((e,i)=>{
+                  const jourChange=e.jour!==dernierJour;
+                  dernierJour=e.jour;
+                  rows.push(<TR key={e._id}>
+                    {jourChange
+                      ? <TD bold style={{background:"#f0f4f8",verticalAlign:"top",whiteSpace:"nowrap",borderRight:"2px solid #e2e8f0"}}>{e.jour}</TD>
+                      : <td style={{background:"#f8fafc",borderRight:"2px solid #e2e8f0",borderBottom:"1px solid #f1f5f9"}}></td>}
+                    <TD style={{whiteSpace:"nowrap"}}>{e.heureDebut} – {e.heureFin}</TD>
+                    <TD><span style={{background:matCouleur[e.matiere]||"#e0ebf8",padding:"2px 8px",borderRadius:6,fontSize:11,fontWeight:700}}>{e.matiere||"—"}</span></TD>
+                    <TD>{e.enseignant||<span style={{color:"#9ca3af",fontStyle:"italic"}}>—</span>}</TD>
+                    <TD>{e.salle||"—"}</TD>
+                    {canEdit&&<TD><div style={{display:"flex",gap:6}}>
+                      <Btn sm v="ghost" onClick={()=>{setForm({...e});setEdtCellule({jour:e.jour,heureDebut:e.heureDebut,heureFin:e.heureFin,existing:e});}}>Modifier</Btn>
+                      <Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ?"))supEmp(e._id);}}>Suppr.</Btn>
+                    </div></TD>}
+                  </TR>);
+                });
+                return <table style={{width:"100%",borderCollapse:"collapse"}}>
+                  <THead cols={["Jour","Heure","Matière","Enseignant","Salle",canEdit?"":""]}/>
+                  <tbody>{rows}</tbody>
+                </table>;
+              })()}
+            </Card>
         )}
 
         {/* ── MINI MODAL CELLULE ── */}
@@ -3695,11 +3991,23 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
               <option value="">— Sélectionner —</option>
               {matieres.map(m=><option key={m._id}>{m.nom}</option>)}
             </Selec>
-            <Selec label="Enseignant" value={form.enseignant||""} onChange={chg("enseignant")}>
-              <option value="">— Sélectionner —</option>
-              {ens.filter(e=>!form.matiere||(e.matiere||"").toLowerCase().split(/[,/;]+/).map(s=>s.trim()).some(m=>m.includes((form.matiere||"").toLowerCase())||(form.matiere||"").toLowerCase().includes(m)))
-                .map(e=><option key={e._id}>{e.prenom} {e.nom}{e.matiere?` (${e.matiere})`:""}</option>)}
-            </Selec>
+            {(()=>{
+              const ensOccupes=emplois
+                .filter(x=>x.jour===edtCellule.jour&&x.heureDebut===edtCellule.heureDebut
+                  &&(!edtCellule.existing||x._id!==edtCellule.existing._id)&&x.enseignant)
+                .map(x=>x.enseignant);
+              const ensFiltres=ens.filter(e=>!form.matiere||(e.matiere||"").toLowerCase().split(/[,/;]+/).map(s=>s.trim()).some(m=>m.includes((form.matiere||"").toLowerCase())||(form.matiere||"").toLowerCase().includes(m)));
+              return <Selec label="Enseignant" value={form.enseignant||""} onChange={chg("enseignant")}>
+                <option value="">— Sélectionner —</option>
+                {ensFiltres.map(e=>{
+                  const nomSimple=`${e.prenom} ${e.nom}`.trim();
+                  const nomAvecMat=`${nomSimple}${e.matiere?` (${e.matiere})`:""}`; // pour compatibilité détection conflit
+                  const occupe=ensOccupes.some(n=>n===nomSimple||n===nomAvecMat);
+                  const label=`${nomSimple}${e.matiere?` · ${e.matiere}`:""}${e.telephone?` · ${e.telephone}`:""}`;
+                  return <option key={e._id} value={nomSimple} disabled={occupe}>{occupe?`⚠️ ${label} — occupé`:label}</option>;
+                })}
+              </Selec>;
+            })()}
             <Input label="Salle (optionnel)" value={form.salle||""} onChange={chg("salle")}/>
             <div style={{display:"flex",alignItems:"flex-end",gap:8}}>
               <Input label="Début" type="time" value={form.heureDebut||edtCellule.heureDebut} onChange={chg("heureDebut")}/>
@@ -3713,13 +4021,71 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
             <div style={{display:"flex",gap:8}}>
               <Btn v="ghost" onClick={()=>setEdtCellule(null)}>Annuler</Btn>
               <Btn onClick={()=>{
-                if(!form.matiere){alert("Choisissez une matière.");return;}
+                if(!form.matiere){toast("Choisissez une matière.","warning");return;}
                 const data={classe:form.classe||classeEdtActuelle,jour:edtCellule.jour,heureDebut:form.heureDebut||edtCellule.heureDebut,heureFin:form.heureFin||edtCellule.heureFin,matiere:form.matiere,enseignant:form.enseignant||"",salle:form.salle||""};
                 if(edtCellule.existing)modEmp({...data,_id:edtCellule.existing._id});
                 else ajEmp(data);
                 setEdtCellule(null);
               }}>✅ Enregistrer</Btn>
             </div>
+          </div>
+        </Modale>}
+
+        {/* ── MODAL EDT GÉNÉRAL : 8 colonnes ── */}
+        {edtGeneralOuvert&&<Modale titre="📊 Emploi du Temps Général" fermer={()=>setEdtGeneralOuvert(false)}>
+          <div style={{marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+            <span style={{fontSize:12,color:"#64748b"}}>{classes.length} classe(s) · {emplois.length} créneaux</span>
+            <Btn onClick={voirEdtGeneral}>🖨️ Imprimer / PDF</Btn>
+          </div>
+          <div style={{overflowX:"auto",maxHeight:"70dvh",overflowY:"auto"}}>
+            <table style={{borderCollapse:"collapse",fontSize:11,width:"100%",minWidth:700}}>
+              <thead>
+                <tr style={{position:"sticky",top:0,zIndex:3}}>
+                  <th style={{background:C.blueDark,color:"#fff",padding:"6px 8px",fontSize:10,minWidth:65,position:"sticky",top:0}}>Classes</th>
+                  <th style={{background:C.blueDark,color:"#fff",padding:"6px 8px",fontSize:10,minWidth:58,position:"sticky",top:0}}>Horaires</th>
+                  <th style={{background:C.blueDark,color:"#fff",padding:"6px 4px",fontSize:9,position:"sticky",top:0}}></th>
+                  {JOURS.map(j=><th key={j} style={{background:C.blueDark,color:"#fff",padding:"6px 8px",fontSize:10,textAlign:"center",minWidth:85,position:"sticky",top:0}}>{j}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {(()=>{
+                  const rows=[];
+                  classesTriees.forEach(cl=>{
+                    const total=totalLignesClasse();
+                    let first=true;
+                    for(let ti=0;ti<nbTranches;ti++){
+                      const hd=TRANCHES[ti],hf=TRANCHES[ti+1];
+                      const ns=nbSousLignes(ti);
+                      for(let si=0;si<ns;si++){
+                        const isLastSub=si===ns-1;
+                        const isLastSlot=ti===nbTranches-1;
+                        const bBot=isLastSub?(isLastSlot?"3px solid "+C.blueDark:"2px solid #b0c4d8"):"1px solid #f0f4f8";
+                        const cells=[];
+                        if(first&&si===0){
+                          cells.push(<td key="cls" rowSpan={total} style={{background:C.blueDark,color:C.vert,fontWeight:800,fontSize:12,textAlign:"center",padding:"6px 5px",border:"2px solid "+C.blueDark,verticalAlign:"middle"}}>{cl.nom}</td>);
+                          first=false;
+                        }
+                        if(si===0)cells.push(<td key="hr" rowSpan={ns} style={{background:"#f0f4f8",fontWeight:800,fontSize:10,color:C.blueDark,textAlign:"center",padding:"4px 5px",border:"1px solid #e2e8f0",whiteSpace:"nowrap",verticalAlign:"middle"}}>{hd.slice(0,5)}<br/>{hf.slice(0,5)}</td>);
+                        cells.push(<td key="lbl" style={{background:"#f8fafc",color:"#94a3b8",fontSize:9,padding:"2px 5px",textAlign:"right",border:"1px solid #e8edf2",borderBottom:bBot,whiteSpace:"nowrap",fontStyle:"italic"}}>{SOUS_LABELS[si]||""}</td>);
+                        JOURS.forEach(jour=>{
+                          const cr=emplois.find(e=>e.classe===cl.nom&&e.jour===jour&&e.heureDebut===hd);
+                          const bg=cr?(matCouleur[cr.matiere]||"#e0ebf8"):"#fff";
+                          let val=null;
+                          if(cr){
+                            if(si===0)val=<strong style={{fontSize:11}}>{cr.matiere}</strong>;
+                            else if(si===1){const e=findEns(cr.enseignant);val=<span style={{fontSize:10,color:"#475569"}}>{affNom(cr.enseignant||"")}{e?.telephone&&<span style={{display:"block",fontSize:9,color:"#00876a",fontWeight:600}}>{e.telephone}</span>}</span>;}
+                            else if(si===2)val=<span style={{fontSize:9,color:"#94a3b8"}}>{cr.salle||""}</span>;
+                          }
+                          cells.push(<td key={jour} style={{background:bg,border:"1px solid #e2e8f0",borderBottom:bBot,padding:"2px 5px",textAlign:"center",verticalAlign:"middle",minWidth:85}}>{val}</td>);
+                        });
+                        rows.push(<tr key={cl._id+"-"+ti+"-"+si}>{cells}</tr>);
+                      }
+                    }
+                  });
+                  return rows;
+                })()}
+              </tbody>
+            </table>
           </div>
         </Modale>}
       </div>;})()}
@@ -3852,6 +4218,7 @@ function RechercheGlobale({onFermer}) {
 //  CALENDRIER SCOLAIRE
 // ══════════════════════════════════════════════════════════════
 function Calendrier({annee}) {
+  const {toast}=useContext(SchoolContext);
   const {items:evenements,ajouter:ajEv,supprimer:supEv}=useFirestore("evenements");
   const [modal,setModal]=useState(null);
   const [form,setForm]=useState({});
@@ -3952,9 +4319,263 @@ function Calendrier({annee}) {
         </div>
         <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
           <Btn v="ghost" onClick={()=>setModal(null)}>Annuler</Btn>
-          <Btn onClick={()=>{if(form.titre&&form.date){ajEv(form);setModal(null);}else alert("Titre et date requis");}}>Enregistrer</Btn>
+          <Btn onClick={()=>{if(form.titre&&form.date){ajEv(form);setModal(null);}else toast("Titre et date requis","warning");}}>Enregistrer</Btn>
         </div>
       </Modale>}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
+//  HISTORIQUE DES ACTIONS
+// ══════════════════════════════════════════════════════════════
+function HistoriqueActions() {
+  const {schoolInfo} = useContext(SchoolContext);
+  const {items:historique, chargement} = useFirestore("historique");
+  const [filtre, setFiltre] = useState("");
+
+  const sorted = [...historique].sort((a,b)=>(b.date||0)-(a.date||0));
+  const filtres = sorted.filter(h=>
+    !filtre ||
+    (h.action||"").toLowerCase().includes(filtre.toLowerCase()) ||
+    (h.details||"").toLowerCase().includes(filtre.toLowerCase())
+  );
+
+  const fmtDate = (ts) => {
+    if(!ts) return "—";
+    const d = new Date(ts);
+    return d.toLocaleDateString("fr-FR") + " à " + d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+  };
+
+  const ICONS = {
+    "Salaires": "📋", "Compte": "👤", "EDT": "📅", "Connexion": "🔑",
+  };
+  const getIcon = (action) => {
+    for(const [key,icon] of Object.entries(ICONS)) if(action.includes(key)) return icon;
+    return "📝";
+  };
+
+  return (
+    <div style={{padding:"22px 26px",maxWidth:900}}>
+      <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:20,flexWrap:"wrap"}}>
+        <div style={{flex:1}}>
+          <h1 style={{margin:0,fontSize:18,fontWeight:900,color:C.blue}}>Historique des actions</h1>
+          <p style={{margin:"3px 0 0",fontSize:12,color:"#6b7280"}}>Journal des opérations enregistrées dans le système</p>
+        </div>
+        <input value={filtre} onChange={e=>setFiltre(e.target.value)}
+          placeholder="Rechercher une action..."
+          style={{border:"1px solid #b0c4d8",borderRadius:8,padding:"7px 12px",fontSize:12,minWidth:200,color:C.blue}}/>
+      </div>
+      {chargement ? <Chargement/> : filtres.length===0 ? (
+        <Vide icone="📋" msg={filtre?"Aucun résultat":"Aucune action enregistrée — les actions importantes apparaîtront ici."}/>
+      ) : (
+        <Card>
+          <div style={{padding:"0"}}>
+            {filtres.slice(0,100).map((h,i)=>(
+              <div key={h._id||i} style={{display:"flex",alignItems:"flex-start",gap:12,padding:"12px 18px",borderBottom:"1px solid #f1f5f9"}}>
+                <div style={{fontSize:20,flexShrink:0,marginTop:1}}>{getIcon(h.action||"")}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:13,fontWeight:800,color:C.blue}}>{h.action||"Action"}</div>
+                  {h.details&&<div style={{fontSize:12,color:"#6b7280",marginTop:2}}>{h.details}</div>}
+                  {h.auteur&&<div style={{fontSize:11,color:"#9ca3af",marginTop:2}}>Par : {h.auteur}</div>}
+                </div>
+                <div style={{fontSize:11,color:"#9ca3af",flexShrink:0,marginTop:2,textAlign:"right"}}>{fmtDate(h.date)}</div>
+              </div>
+            ))}
+            {filtres.length > 100 && <div style={{padding:"10px 18px",fontSize:11,color:"#9ca3af",textAlign:"center"}}>+{filtres.length-100} entrées supplémentaires...</div>}
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
+//  TABLEAU DE BORD DIRECTION
+// ══════════════════════════════════════════════════════════════
+function TableauDeBord({annee}) {
+  const {schoolInfo, moisSalaire} = useContext(SchoolContext);
+  const {items:elevesC} = useFirestore("elevesCollege");
+  const {items:elevesP} = useFirestore("elevesPrimaire");
+  const {items:ensC}    = useFirestore("ensCollege");
+  const {items:ensL}    = useFirestore("ensLycee");
+  const {items:ensP}    = useFirestore("ensPrimaire");
+  const {items:recettes}= useFirestore("recettes");
+  const {items:depenses}= useFirestore("depenses");
+  const {items:salaires}= useFirestore("salaires");
+  const {items:bons}    = useFirestore("bons");
+  const {items:evenements} = useFirestore("evenements");
+  const {items:absences}= useFirestore("absencesCollege");
+  const {items:absP}    = useFirestore("absencesPrimaire");
+
+  const c1 = schoolInfo.couleur1 || C.blue;
+  const c2 = schoolInfo.couleur2 || C.green;
+
+  const totalEleves = elevesC.filter(e=>e.statut==="Actif").length + elevesP.filter(e=>e.statut==="Actif").length;
+  const totalEns    = ensC.length + ensL.length + ensP.length;
+  const moisActuel  = moisSalaire[moisSalaire.length-1] || "";
+
+  // Taux de paiement mensualités
+  const calcTauxPaiement = (eleves) => {
+    if(!eleves.length) return 0;
+    const moisAnnee = Object.keys((eleves[0]?.mens||{}));
+    if(!moisAnnee.length) return 0;
+    const total = eleves.length * moisAnnee.length;
+    const payes = eleves.reduce((s,e)=>s+Object.values(e.mens||{}).filter(v=>v==="Payé").length,0);
+    return total > 0 ? Math.round(payes/total*100) : 0;
+  };
+  const tauxPayC = calcTauxPaiement(elevesC);
+  const tauxPayP = calcTauxPaiement(elevesP);
+  const tauxPay  = Math.round((tauxPayC + tauxPayP) / 2);
+
+  // Finances
+  const totalRec  = recettes.reduce((s,r)=>s+Number(r.montant||0),0);
+  const totalDep  = depenses.reduce((s,d)=>s+Number(d.montant||0),0);
+  const solde     = totalRec - totalDep;
+
+  // Masse salariale mois courant
+  const salMois = salaires.filter(s=>s.mois===moisActuel);
+  const masseSal = salMois.reduce((s,sal)=>{
+    const net = Number(sal.vhExecute||0)*Number(sal.primeHoraire||0)
+      + Number(sal.cinqSem||0)*Number(sal.primeHoraire||0)
+      + Number(sal.bon||0)
+      + Number(sal.revision||0)
+      + Number(sal.montantForfait||0);
+    return s + net;
+  },0);
+
+  // Événements à venir
+  const today = new Date().toISOString().slice(0,10);
+  const evAVenir = evenements.filter(e=>e.date && e.date >= today).sort((a,b)=>a.date>b.date?1:-1).slice(0,4);
+
+  // Absences ce mois
+  const totalAbs = absences.length + absP.length;
+
+  const KPI = ({label, value, sub, icon, color="white", trend}) => (
+    <div style={{background:c1,borderRadius:14,padding:"18px 20px",position:"relative",overflow:"hidden"}}>
+      <div style={{position:"absolute",top:-12,right:-12,fontSize:48,opacity:0.06}}>{icon}</div>
+      <div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.5)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>{label}</div>
+      <div style={{fontSize:"clamp(22px,3vw,30px)",fontWeight:900,color:color==="green"?c2:"#fff",lineHeight:1}}>{value}</div>
+      {sub&&<div style={{fontSize:11,color:"rgba(255,255,255,0.4)",marginTop:4}}>{sub}</div>}
+      {trend!==undefined&&<div style={{fontSize:11,fontWeight:700,marginTop:6,color:trend>=0?"#4ade80":"#f87171"}}>
+        {trend>=0?"▲":"▼"} {Math.abs(trend)}%
+      </div>}
+    </div>
+  );
+
+  const TYPE_COLORS = {exam:"#ef4444",conge:"#10b981",reunion:"#f59e0b",autre:"#6366f1"};
+
+  return (
+    <div style={{padding:"22px 26px",maxWidth:1200}}>
+      {/* En-tête */}
+      <div style={{marginBottom:24}}>
+        <h1 style={{margin:0,fontSize:20,fontWeight:900,color:c1}}>
+          Tableau de bord — {schoolInfo.nom||"EduGest"}
+        </h1>
+        <p style={{margin:"4px 0 0",fontSize:13,color:"#6b7280"}}>Année {annee||getAnnee()} · Vue consolidée</p>
+      </div>
+
+      {/* KPIs principaux */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12,marginBottom:24}}>
+        <KPI label="Élèves actifs"  value={totalEleves} icon="🎓" sub={`${elevesC.filter(e=>e.statut==="Actif").length} collège · ${elevesP.filter(e=>e.statut==="Actif").length} primaire`}/>
+        <KPI label="Enseignants"    value={totalEns}    icon="👨‍🏫" sub={`${ensC.length}C · ${ensL.length}L · ${ensP.length}P`}/>
+        <KPI label="Taux paiement"  value={`${tauxPay}%`} icon="💳" color="green" sub="Mensualités toutes sections"/>
+        <KPI label="Solde tréso."   value={fmt(solde)} icon="💰" color={solde>=0?"green":"white"} sub={`Rec: ${fmt(totalRec)} / Dép: ${fmt(totalDep)}`}/>
+        <KPI label="Masse salariale" value={fmt(masseSal)} icon="📋" sub={`${salMois.length} lignes · ${moisActuel}`}/>
+        <KPI label="Absences saisies" value={totalAbs} icon="📝" sub="Toutes sections"/>
+      </div>
+
+      {/* Graphiques */}
+      <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:16,marginBottom:20}}>
+        {/* Répartition élèves par classe */}
+        <Card><div style={{padding:"16px 18px"}}>
+          <p style={{margin:"0 0 14px",fontWeight:800,fontSize:13,color:c1}}>Répartition des élèves par section</p>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={[
+              {section:"Collège",Actifs:elevesC.filter(e=>e.statut==="Actif").length,Inactifs:elevesC.filter(e=>e.statut!=="Actif").length},
+              {section:"Primaire",Actifs:elevesP.filter(e=>e.statut==="Actif").length,Inactifs:elevesP.filter(e=>e.statut!=="Actif").length},
+            ]}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e0ebf8"/>
+              <XAxis dataKey="section" tick={{fontSize:11}}/>
+              <YAxis tick={{fontSize:11}}/>
+              <Tooltip/>
+              <Bar dataKey="Actifs" fill={c2} radius={[4,4,0,0]} name="Actifs"/>
+              <Bar dataKey="Inactifs" fill="#e2e8f0" radius={[4,4,0,0]} name="Inactifs"/>
+            </BarChart>
+          </ResponsiveContainer>
+        </div></Card>
+
+        {/* Taux de paiement */}
+        <Card><div style={{padding:"16px 18px"}}>
+          <p style={{margin:"0 0 14px",fontWeight:800,fontSize:13,color:c1}}>Taux de paiement</p>
+          <div style={{display:"flex",flexDirection:"column",gap:16,marginTop:8}}>
+            {[["Collège",tauxPayC],["Primaire",tauxPayP]].map(([label,taux])=>(
+              <div key={label}>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
+                  <span style={{fontSize:12,fontWeight:700,color:c1}}>{label}</span>
+                  <span style={{fontSize:12,fontWeight:800,color:taux>=60?C.greenDk:"#ef4444"}}>{taux}%</span>
+                </div>
+                <div style={{background:"#e0ebf8",borderRadius:6,height:10}}>
+                  <div style={{background:taux>=60?c2:"#ef4444",borderRadius:6,height:10,width:`${taux}%`,transition:"width 0.5s"}}/>
+                </div>
+              </div>
+            ))}
+            <div style={{marginTop:8,padding:"10px 12px",background:"#f0fdf8",borderRadius:8,borderLeft:`3px solid ${c2}`}}>
+              <div style={{fontSize:11,color:"#374151"}}>Taux global</div>
+              <div style={{fontSize:22,fontWeight:900,color:c2}}>{tauxPay}%</div>
+            </div>
+          </div>
+        </div></Card>
+      </div>
+
+      {/* Événements à venir + Alertes */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+        <Card><div style={{padding:"16px 18px"}}>
+          <p style={{margin:"0 0 12px",fontWeight:800,fontSize:13,color:c1}}>Prochains événements</p>
+          {evAVenir.length===0
+            ? <Vide icone="📅" msg="Aucun événement planifié"/>
+            : evAVenir.map(ev=>(
+              <div key={ev._id} style={{display:"flex",alignItems:"flex-start",gap:10,marginBottom:10,padding:"8px 10px",background:"#f8fafc",borderRadius:8,borderLeft:`3px solid ${TYPE_COLORS[ev.type]||"#6366f1"}`}}>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:12,fontWeight:800,color:c1}}>{ev.titre}</div>
+                  <div style={{fontSize:11,color:"#6b7280"}}>{ev.date} {ev.dateFin&&ev.dateFin!==ev.date?`→ ${ev.dateFin}`:""}</div>
+                </div>
+                <Badge color={ev.type==="exam"?"red":ev.type==="conge"?"green":ev.type==="reunion"?"orange":"blue"}>{ev.type||"événement"}</Badge>
+              </div>
+            ))
+          }
+        </div></Card>
+
+        <Card><div style={{padding:"16px 18px"}}>
+          <p style={{margin:"0 0 12px",fontWeight:800,fontSize:13,color:c1}}>Alertes & rappels</p>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {tauxPay < 60 && (
+              <div style={{padding:"10px 12px",background:"#fef3e0",borderRadius:8,borderLeft:"3px solid #f59e0b",fontSize:12}}>
+                <span style={{fontWeight:800,color:"#92400e"}}>Taux de paiement bas</span>
+                <div style={{color:"#92400e",marginTop:2}}>{tauxPay}% — Relancez les familles en retard.</div>
+              </div>
+            )}
+            {solde < 0 && (
+              <div style={{padding:"10px 12px",background:"#fef2f2",borderRadius:8,borderLeft:"3px solid #ef4444",fontSize:12}}>
+                <span style={{fontWeight:800,color:"#991b1b"}}>Solde de trésorerie négatif</span>
+                <div style={{color:"#991b1b",marginTop:2}}>Solde : {fmt(solde)} GNF</div>
+              </div>
+            )}
+            {masseSal > totalRec * 0.7 && masseSal > 0 && (
+              <div style={{padding:"10px 12px",background:"#fef3e0",borderRadius:8,borderLeft:"3px solid #f59e0b",fontSize:12}}>
+                <span style={{fontWeight:800,color:"#92400e"}}>Masse salariale élevée</span>
+                <div style={{color:"#92400e",marginTop:2}}>{Math.round(masseSal/totalRec*100)}% des recettes ce mois.</div>
+              </div>
+            )}
+            {tauxPay >= 60 && solde >= 0 && (
+              <div style={{padding:"10px 12px",background:"#f0fdf8",borderRadius:8,borderLeft:`3px solid ${c2}`,fontSize:12}}>
+                <span style={{fontWeight:800,color:"#065f46"}}>Tout va bien</span>
+                <div style={{color:"#065f46",marginTop:2}}>Trésorerie positive et taux de paiement satisfaisant.</div>
+              </div>
+            )}
+          </div>
+        </div></Card>
+      </div>
     </div>
   );
 }
@@ -3963,7 +4584,7 @@ function Calendrier({annee}) {
 //  PARAMÈTRES DE L'ÉCOLE
 // ══════════════════════════════════════════════════════════════
 function ParametresEcole() {
-  const {schoolId,schoolInfo,setSchoolInfo} = useContext(SchoolContext);
+  const {schoolId,schoolInfo,setSchoolInfo,toast} = useContext(SchoolContext);
   const {items:honneurs, ajouter:ajHonneur, modifier:modHonneur, supprimer:supHonneur} = useFirestore("honneurs");
   const [tabParam, setTabParam] = useState("identite");
   const [form,setForm] = useState({
@@ -4121,7 +4742,7 @@ function ParametresEcole() {
   const handlePhotoGalerie = e => {
     const files = Array.from(e.target.files);
     files.forEach(file => {
-      if(file.size > 800*1024){ alert(`${file.name} trop grande (max 800 Ko).`); return; }
+      if(file.size > 800*1024){ toast(`${file.name} trop grande (max 800 Ko).`,"warning"); return; }
       const reader = new FileReader();
       reader.onload = ev => {
         setAccueil(p=>({...p, photos:[...(p.photos||[]), {url:ev.target.result, caption:""}]}));
@@ -4474,7 +5095,7 @@ function ParametresEcole() {
           <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
             <Btn v="ghost" onClick={()=>setModalH(null)}>Annuler</Btn>
             <Btn onClick={()=>{
-              if(!formHonneur.nom?.trim()||!formHonneur.prenom?.trim()){alert("Nom et prénom requis.");return;}
+              if(!formHonneur.nom?.trim()||!formHonneur.prenom?.trim()){toast("Nom et prénom requis.","warning");return;}
               if(modalH==="add") ajHonneur(formHonneur); else modHonneur(formHonneur);
               setModalH(null);
             }}>Enregistrer</Btn>
@@ -5118,7 +5739,7 @@ function Connexion({onLogin, onInscription}) {
 //  PORTAIL ENSEIGNANT
 // ══════════════════════════════════════════════════════════════
 function PortailEnseignant({utilisateur, deconnecter, annee, schoolInfo}) {
-  const {moisAnnee, moisSalaire} = useContext(SchoolContext);
+  const {moisAnnee, moisSalaire, toast} = useContext(SchoolContext);
   const nomEns = utilisateur.enseignantNom || utilisateur.nom || "";
   const sec     = utilisateur.section || "college";
   const matiere = utilisateur.matiere || "";
@@ -5315,7 +5936,7 @@ function PortailEnseignant({utilisateur, deconnecter, annee, schoolInfo}) {
             <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
               <Btn v="ghost" onClick={()=>setModalNote(null)}>Annuler</Btn>
               <Btn onClick={()=>{
-                if(!formNote.eleveId||formNote.note===""){alert("Élève et note requis.");return;}
+                if(!formNote.eleveId||formNote.note===""){toast("Élève et note requis.","warning");return;}
                 const data={...formNote,note:Number(formNote.note),matiere,periode:periodeN};
                 if(modalNote==="add") ajNote(data); else modNote(data);
                 setModalNote(null);
@@ -5429,7 +6050,7 @@ function PortailEnseignant({utilisateur, deconnecter, annee, schoolInfo}) {
 //  PORTAIL PARENT
 // ══════════════════════════════════════════════════════════════
 function PortailParent({utilisateur, deconnecter, annee, schoolInfo}) {
-  const {schoolId} = useContext(SchoolContext);
+  const {schoolId,toast} = useContext(SchoolContext);
   const c1 = schoolInfo.couleur1||C.blue;
   const c2 = schoolInfo.couleur2||C.green;
 
@@ -5463,7 +6084,7 @@ function PortailParent({utilisateur, deconnecter, annee, schoolInfo}) {
   const matieres = [...new Set(mesNotes.map(n=>n.matiere))];
 
   const envoyer = async() => {
-    if(!sujet.trim()||!corps.trim()){alert("Sujet et message requis.");return;}
+    if(!sujet.trim()||!corps.trim()){toast("Sujet et message requis.","warning");return;}
     setEnvoi(true);
     await envoyerMsg({
       expediteur:"parent",
@@ -5771,7 +6392,7 @@ function PortailParent({utilisateur, deconnecter, annee, schoolInfo}) {
 //  MODULE MESSAGES PARENTS (côté école)
 // ══════════════════════════════════════════════════════════════
 function MessagesParents({readOnly}) {
-  const {schoolId,schoolInfo} = useContext(SchoolContext);
+  const {schoolId,schoolInfo,toast} = useContext(SchoolContext);
   const c1 = schoolInfo.couleur1||C.blue;
   const {items:msgs, modifier:modMsg, ajouter:repMsg} = useFirestore("messages");
   const {items:annonces, ajouter:ajAnn, supprimer:supAnn} = useFirestore("annonces");
@@ -5931,7 +6552,7 @@ function MessagesParents({readOnly}) {
           <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
             <Btn v="ghost" onClick={()=>setModal(null)}>Annuler</Btn>
             <Btn onClick={()=>{
-              if(!formAnn.titre.trim()||!formAnn.corps.trim()){alert("Titre et contenu requis.");return;}
+              if(!formAnn.titre.trim()||!formAnn.corps.trim()){toast("Titre et contenu requis.","warning");return;}
               ajAnn({...formAnn,auteur:schoolInfo.nom||"École",date:Date.now()});
               setFormAnn({titre:"",corps:"",important:false});
               setModal(null);
@@ -6051,6 +6672,107 @@ function LandingEduGest({onConnexion, onInscription}) {
                 <div style={{fontSize:28,marginBottom:10}}>{w.icon}</div>
                 <div style={{fontSize:13,fontWeight:800,color:"#00C48C",marginBottom:6}}>{w.title}</div>
                 <div style={{fontSize:12,color:"rgba(255,255,255,0.5)",lineHeight:1.6}}>{w.desc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── TARIFICATION ── */}
+      <div style={{padding:"60px 24px",maxWidth:960,margin:"0 auto"}}>
+        <h2 style={{textAlign:"center",fontSize:"clamp(18px,3vw,26px)",fontWeight:800,marginBottom:8}}>Tarification transparente</h2>
+        <p style={{textAlign:"center",color:"rgba(255,255,255,0.45)",fontSize:13,marginBottom:40}}>Démarrez gratuitement, évoluez selon vos besoins</p>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:18}}>
+          {[
+            {
+              name:"Gratuit",badge:null,price:"0 GNF",period:"/mois",
+              color:"rgba(255,255,255,0.08)",border:"rgba(255,255,255,0.12)",
+              features:["1 section (Primaire ou Collège)","Jusqu'à 150 élèves","Emplois du temps & notes","Bulletins imprimables","Support communauté"],
+              cta:"Démarrer gratuitement",action:onInscription,highlight:false,
+            },
+            {
+              name:"École",badge:"✦ Populaire",price:"50 000 GNF",period:"/mois",
+              color:"rgba(0,196,140,0.08)",border:"#00C48C",
+              features:["Toutes les sections (Primaire, Collège, Lycée)","Élèves illimités","Comptabilité & salaires","Portail enseignant & parent","Assistant IA inclus","Support prioritaire"],
+              cta:"Choisir ce plan",action:onInscription,highlight:true,
+            },
+            {
+              name:"Groupe Scolaire",badge:null,price:"Sur devis",period:"",
+              color:"rgba(255,255,255,0.04)",border:"rgba(255,255,255,0.12)",
+              features:["Multi-établissements","Tableau de bord groupe","Facturation centralisée","Onboarding personnalisé","SLA garanti 99,9%","Compte manager dédié"],
+              cta:"Nous contacter",action:onConnexion,highlight:false,
+            },
+          ].map(plan=>(
+            <div key={plan.name} style={{
+              background:plan.color,border:`2px solid ${plan.border}`,borderRadius:18,
+              padding:"28px 22px",position:"relative",
+              boxShadow:plan.highlight?"0 0 40px rgba(0,196,140,0.18)":"none",
+            }}>
+              {plan.badge&&<div style={{position:"absolute",top:-12,left:"50%",transform:"translateX(-50%)",background:"#00C48C",color:"#fff",fontSize:11,fontWeight:800,padding:"4px 14px",borderRadius:20,whiteSpace:"nowrap"}}>{plan.badge}</div>}
+              <div style={{fontSize:16,fontWeight:800,color:"#fff",marginBottom:6}}>{plan.name}</div>
+              <div style={{fontSize:"clamp(22px,4vw,32px)",fontWeight:900,color:plan.highlight?"#00C48C":"#fff",lineHeight:1}}>
+                {plan.price}
+                {plan.period&&<span style={{fontSize:13,fontWeight:400,color:"rgba(255,255,255,0.4)"}}>{plan.period}</span>}
+              </div>
+              <div style={{height:1,background:"rgba(255,255,255,0.08)",margin:"18px 0"}}/>
+              <ul style={{listStyle:"none",padding:0,margin:"0 0 24px",display:"flex",flexDirection:"column",gap:9}}>
+                {plan.features.map(f=>(
+                  <li key={f} style={{display:"flex",alignItems:"flex-start",gap:8,fontSize:12,color:"rgba(255,255,255,0.7)"}}>
+                    <span style={{color:"#00C48C",fontWeight:800,marginTop:1,flexShrink:0}}>✓</span>{f}
+                  </li>
+                ))}
+              </ul>
+              <button onClick={plan.action} style={{
+                width:"100%",padding:"11px",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",
+                background:plan.highlight?"linear-gradient(135deg,#00C48C,#00a876)":"rgba(255,255,255,0.08)",
+                border:plan.highlight?"none":"1px solid rgba(255,255,255,0.2)",
+                color:"#fff",
+              }}>{plan.cta}</button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── TÉMOIGNAGES ── */}
+      <div style={{padding:"50px 24px 70px",background:"rgba(255,255,255,0.02)",borderTop:"1px solid rgba(255,255,255,0.05)"}}>
+        <div style={{maxWidth:900,margin:"0 auto"}}>
+          <h2 style={{textAlign:"center",fontSize:"clamp(18px,3vw,24px)",fontWeight:800,marginBottom:8}}>Ils nous font confiance</h2>
+          <p style={{textAlign:"center",color:"rgba(255,255,255,0.4)",fontSize:13,marginBottom:36}}>Des directeurs d'établissements qui ont transformé leur gestion</p>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:16}}>
+            {[
+              {
+                nom:"Mamadou Diallo",poste:"Directeur, Groupe Scolaire Excellence",ville:"Conakry",
+                texte:"EduGest a révolutionné notre façon de gérer les 3 sections de notre groupe. La génération automatique des bulletins nous économise des jours de travail.",
+                note:5,
+              },
+              {
+                nom:"Fatoumata Camara",poste:"Directrice, Institut Sainte-Marie",ville:"Kankan",
+                texte:"L'emploi du temps général et les états de salaires sont maintenant prêts en quelques clics. Je recommande à tous les établissements privés.",
+                note:5,
+              },
+              {
+                nom:"Ibrahima Bah",poste:"Administrateur, Lycée Avenir",ville:"Labé",
+                texte:"Le portail parent permet aux familles de suivre les notes en temps réel. Les demandes de bulletins ont diminué de 70% depuis que nous utilisons EduGest.",
+                note:5,
+              },
+            ].map(t=>(
+              <div key={t.nom} style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:14,padding:"22px 18px"}}>
+                <div style={{display:"flex",gap:3,marginBottom:12}}>
+                  {Array.from({length:t.note}).map((_,i)=><span key={i} style={{color:"#f59e0b",fontSize:14}}>★</span>)}
+                </div>
+                <p style={{fontSize:13,color:"rgba(255,255,255,0.65)",lineHeight:1.7,margin:"0 0 18px",fontStyle:"italic"}}>
+                  « {t.texte} »
+                </p>
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  <div style={{width:38,height:38,borderRadius:"50%",background:"linear-gradient(135deg,#00C48C,#0A1628)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:800,color:"#fff",flexShrink:0}}>
+                    {t.nom.charAt(0)}
+                  </div>
+                  <div>
+                    <div style={{fontSize:12,fontWeight:800,color:"#fff"}}>{t.nom}</div>
+                    <div style={{fontSize:11,color:"rgba(255,255,255,0.4)"}}>{t.poste}</div>
+                    <div style={{fontSize:11,color:"rgba(255,255,255,0.3)"}}>{t.ville}</div>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
@@ -6322,6 +7044,19 @@ export default function App() {
   const [schoolInfo,setSchoolInfo]=useState(SCHOOL_INFO_DEFAUT);
   const [annee,setAnneeState]=useState(()=>localStorage.getItem("LC_annee")||"2025-2026");
   const [verrous,setVerrous]=useState({comptable:false,primaire:false,secondaire:false});
+  const [toasts,setToasts]=useState([]);
+  const toast=(msg,type="success")=>{
+    const id=Date.now()+Math.random();
+    setToasts(t=>[...t,{id,msg,type}]);
+    setTimeout(()=>setToasts(t=>t.filter(x=>x.id!==id)),4000);
+  };
+  const logAction=(action,details="",auteur="")=>{
+    try{
+      const sid=localStorage.getItem("LC_schoolId")||"citadelle";
+      addDoc(collection(db,"ecoles",sid,"historique"),{action,details,auteur,date:Date.now()}).catch(()=>{});
+    }catch(_){}
+  };
+  const [onboardingOuvert,setOnboardingOuvert]=useState(false);
   const [sidebarOuvert,setSidebarOuvert]=useState(false);
   const [rechercheOuverte,setRechercheOuverte]=useState(false);
   const [modeSombre,setModeSombre]=useState(()=>localStorage.getItem("LC_theme")==="dark");
@@ -6452,6 +7187,7 @@ export default function App() {
     if(sid){ setSchoolId(sid); localStorage.setItem("LC_schoolId",sid); }
     setUtilisateur(c);
     setPage(ACCES[c.role][0]);
+    logAction("Connexion",`${c.nom} (${c.label})`,c.nom);
   };
   const deconnecter=()=>{
     signOut(auth).catch(()=>{});
@@ -6474,14 +7210,14 @@ export default function App() {
 
   // 2. Portail public de l'école (si activé, avant le formulaire de connexion)
   if(!utilisateur && page==="login" && schoolInfo.accueil?.active) return (
-    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire}}>
+    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire,toast,logAction}}>
       <PortailPublic onConnexion={()=>setPage("connexion")}/>
     </SchoolContext.Provider>
   );
 
   // 3. Formulaire de connexion
   if(!utilisateur)return (
-    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire}}>
+    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire,toast,logAction}}>
       <GlobalStyles/>
       <Connexion onLogin={connecter} onInscription={()=>{ signOut(auth).catch(()=>{}); setUtilisateur(null); setPage("inscription"); }}/>
     </SchoolContext.Provider>
@@ -6489,7 +7225,7 @@ export default function App() {
 
   // Forcer le changement de mot de passe à la première connexion
   if(utilisateur.premiereCo) return (
-    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire}}>
+    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire,toast,logAction}}>
       <ChangerMotDePasseModal
         utilisateur={utilisateur}
         onDone={()=>setUtilisateur(u=>({...u,premiereCo:false}))}
@@ -6499,7 +7235,7 @@ export default function App() {
 
   // Portail dédié aux enseignants — interface séparée du shell principal
   if(utilisateur.role==="enseignant") return (
-    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire}}>
+    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire,toast,logAction}}>
       <GlobalStyles/>
       <PortailEnseignant utilisateur={utilisateur} deconnecter={deconnecter} annee={annee} schoolInfo={schoolInfo}/>
     </SchoolContext.Provider>
@@ -6507,7 +7243,7 @@ export default function App() {
 
   // Portail dédié aux parents
   if(utilisateur.role==="parent") return (
-    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire}}>
+    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire,toast,logAction}}>
       <GlobalStyles/>
       <PortailParent utilisateur={utilisateur} deconnecter={deconnecter} annee={annee} schoolInfo={schoolInfo}/>
     </SchoolContext.Provider>
@@ -6523,8 +7259,10 @@ export default function App() {
   const couleur2 = schoolInfo.couleur2 || C.green;
 
   return (
-    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire}}>
+    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire,toast,logAction}}>
     <GlobalStyles/>
+
+    <ToastContainer toasts={toasts}/>
 
     {/* ── Bannière HORS LIGNE ───────────────────────────────── */}
     {estHorsLigne&&(
@@ -6640,6 +7378,8 @@ export default function App() {
         <div style={{flex:1,overflowY:"auto"}}>
           <ErrorBoundary key={page}>
             {page==="superadmin_panel" && <SuperAdminPanel/>}
+            {page==="accueil"         && <TableauDeBord annee={annee}/>}
+            {page==="historique"      && <HistoriqueActions/>}
             {page==="parametres"      && <ParametresEcole/>}
             {page==="ia_assistant"    && <PremiumGate feature="ia_assistant"><ModuleIA/></PremiumGate>}
             {page==="admin_panel" && <AdminPanel annee={annee} setAnnee={setAnnee} verrous={verrous} schoolId={schoolId}/>}
@@ -6653,6 +7393,55 @@ export default function App() {
         </div>
       </main>
     </div>
+
+    {/* ── Bouton flottant guide de démarrage ── */}
+    {estAdmin && (
+      <button onClick={()=>setOnboardingOuvert(true)}
+        title="Guide de démarrage"
+        style={{position:"fixed",bottom:24,left:isMobile?16:244,zIndex:200,width:44,height:44,borderRadius:"50%",background:couleur2,border:"none",cursor:"pointer",boxShadow:"0 4px 16px rgba(0,0,0,0.2)",fontSize:20,display:"flex",alignItems:"center",justifyContent:"center"}}>
+        🚀
+      </button>
+    )}
+
+    {/* ── Modal Onboarding guidé ── */}
+    {onboardingOuvert && (
+      <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+        <div style={{background:"#fff",borderRadius:18,padding:"28px 28px 24px",maxWidth:520,width:"100%",boxShadow:"0 24px 60px rgba(0,0,0,0.3)"}}>
+          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
+            <div style={{fontSize:28}}>🚀</div>
+            <div>
+              <h2 style={{margin:0,fontSize:17,fontWeight:900,color:C.blue}}>Guide de démarrage</h2>
+              <p style={{margin:"3px 0 0",fontSize:12,color:"#6b7280"}}>Suivez ces étapes pour configurer votre école</p>
+            </div>
+          </div>
+          {[
+            {done:schoolInfo.nom!=="EduGest"&&!!schoolInfo.nom, label:"Configurer l'identité de l'école", desc:"Nom, logo, couleurs, coordonnées", action:()=>{setPage("parametres");setOnboardingOuvert(false);}},
+            {done:true, label:"Créer les classes", desc:"Primaire et/ou Secondaire selon votre établissement", action:()=>{setPage("primaire");setOnboardingOuvert(false);}},
+            {done:true, label:"Ajouter les enseignants", desc:"Profil, matière, prime horaire", action:()=>{setPage("primaire");setOnboardingOuvert(false);}},
+            {done:true, label:"Enrôler les élèves", desc:"Via le module Comptabilité → Élèves", action:()=>{setPage("compta");setOnboardingOuvert(false);}},
+            {done:true, label:"Configurer les emplois du temps", desc:"Par classe, dans chaque section", action:()=>{setPage("primaire");setOnboardingOuvert(false);}},
+            {done:true, label:"Générer les états de salaires", desc:"Via Comptabilité → Salaires → Auto-générer", action:()=>{setPage("compta");setOnboardingOuvert(false);}},
+          ].map((step,i)=>(
+            <div key={i} onClick={step.action} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 14px",borderRadius:10,marginBottom:6,cursor:"pointer",border:`1px solid ${step.done?"#d1fae5":"#e5e7eb"}`,background:step.done?"#f0fdf4":"#fafafa",transition:"background 0.15s"}}
+              onMouseEnter={e=>e.currentTarget.style.background=step.done?"#dcfce7":"#f0f4ff"}
+              onMouseLeave={e=>e.currentTarget.style.background=step.done?"#f0fdf4":"#fafafa"}>
+              <div style={{width:26,height:26,borderRadius:"50%",background:step.done?"#00C48C":C.blue,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,color:"#fff",flexShrink:0}}>
+                {step.done?"✓":i+1}
+              </div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:13,fontWeight:800,color:step.done?C.greenDk:C.blue}}>{step.label}</div>
+                <div style={{fontSize:11,color:"#6b7280"}}>{step.desc}</div>
+              </div>
+              <span style={{fontSize:12,color:"#9ca3af"}}>→</span>
+            </div>
+          ))}
+          <div style={{display:"flex",justifyContent:"flex-end",marginTop:16}}>
+            <Btn onClick={()=>setOnboardingOuvert(false)}>Fermer</Btn>
+          </div>
+        </div>
+      </div>
+    )}
+
     </SchoolContext.Provider>
   );
 }

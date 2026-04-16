@@ -1,6 +1,6 @@
 import { getAuth } from "firebase/auth";
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, doc } from "firebase/firestore";
+import { getFirestore, collection, doc, enableIndexedDbPersistence } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyClG9mTtFdLpQX7QSP8iDNvyDMQem01Hq4",
@@ -13,6 +13,8 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
+// Mode hors-ligne : cache local IndexedDB
+enableIndexedDbPersistence(db).catch(()=>{});
 // ✅ Multi-tenant helper
 export const SCHOOL_ID = "citadelle";
 
