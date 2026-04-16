@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>EduGest — Fiche Produit</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Inter',sans-serif;background:#f1f5f9;color:#0A1628;}
+  @page{size:A4;margin:0;}
+  @media print{body{background:#fff;} .page{box-shadow:none!important;margin:0!important;border-radius:0!important;}}
+
+  .page{
+    width:210mm;min-height:297mm;margin:20px auto;background:#fff;
+    box-shadow:0 8px 40px rgba(0,0,0,0.15);
+    display:flex;flex-direction:column;overflow:hidden;
+  }
+
+  /* HEADER */
+  .header{
+    background:linear-gradient(135deg,#0A1628 0%,#0d2040 60%,#0a2a1a 100%);
+    padding:36px 44px 32px;
+    display:flex;align-items:center;justify-content:space-between;
+    position:relative;overflow:hidden;
+  }
+  .header::before{
+    content:'';position:absolute;top:-60px;right:-60px;
+    width:220px;height:220px;border-radius:50%;
+    background:rgba(0,196,140,0.12);
+  }
+  .header::after{
+    content:'';position:absolute;bottom:-40px;left:40%;
+    width:140px;height:140px;border-radius:50%;
+    background:rgba(0,196,140,0.07);
+  }
+  .logo-zone{position:relative;z-index:1;}
+  .logo-badge{
+    display:inline-flex;align-items:center;gap:10px;
+    background:rgba(255,255,255,0.07);border:1px solid rgba(0,196,140,0.3);
+    border-radius:12px;padding:10px 18px;margin-bottom:14px;
+  }
+  .logo-icon{font-size:28px;}
+  .logo-name{color:#00C48C;font-size:26px;font-weight:900;letter-spacing:-0.5px;}
+  .logo-sub{color:rgba(255,255,255,0.45);font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;margin-top:2px;}
+  .tagline{color:#fff;font-size:18px;font-weight:700;line-height:1.4;max-width:360px;}
+  .tagline span{color:#00C48C;}
+  .header-right{position:relative;z-index:1;text-align:right;}
+  .badge-saas{
+    background:linear-gradient(135deg,#00C48C,#00a876);
+    color:#fff;font-size:11px;font-weight:800;
+    padding:6px 16px;border-radius:20px;letter-spacing:0.5px;
+    display:inline-block;margin-bottom:10px;
+  }
+  .header-stat{color:rgba(255,255,255,0.6);font-size:11px;line-height:1.8;}
+  .header-stat strong{color:#fff;}
+
+  /* BODY */
+  .body{padding:36px 44px;flex:1;}
+
+  /* INTRO */
+  .intro{
+    background:linear-gradient(135deg,#f0fdf8,#e8f8f0);
+    border-left:4px solid #00C48C;
+    border-radius:0 12px 12px 0;
+    padding:16px 20px;margin-bottom:28px;
+    font-size:13px;line-height:1.7;color:#334155;
+  }
+
+  /* MODULES GRID */
+  .section-title{
+    font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase;
+    color:#00C48C;margin-bottom:14px;
+  }
+  .modules-grid{
+    display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:28px;
+  }
+  .module{
+    border:1px solid #e2e8f0;border-radius:12px;padding:14px 16px;
+    background:#fff;transition:border-color .2s;
+  }
+  .module:hover{border-color:#00C48C;}
+  .module-head{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+  .module-icon{font-size:18px;}
+  .module-name{font-size:13px;font-weight:800;color:#0A1628;}
+  .module-desc{font-size:11px;color:#64748b;line-height:1.6;}
+  .module-tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;}
+  .tag{
+    font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;
+    background:#f0f7ff;color:#0A1628;
+  }
+
+  /* POURQUOI */
+  .why-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:28px;}
+  .why-card{
+    background:linear-gradient(135deg,#0A1628,#0d2040);
+    border-radius:12px;padding:16px;text-align:center;
+  }
+  .why-icon{font-size:22px;margin-bottom:8px;}
+  .why-title{color:#00C48C;font-size:12px;font-weight:800;margin-bottom:4px;}
+  .why-text{color:rgba(255,255,255,0.6);font-size:10px;line-height:1.5;}
+
+  /* ROLES */
+  .roles-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:28px;}
+  .role-pill{
+    display:flex;align-items:center;gap:6px;
+    background:#f8fafc;border:1px solid #e2e8f0;
+    border-radius:20px;padding:6px 12px;
+  }
+  .role-dot{width:8px;height:8px;border-radius:50%;}
+  .role-label{font-size:11px;font-weight:700;color:#334155;}
+
+  /* TECH */
+  .tech-row{
+    display:flex;gap:8px;flex-wrap:wrap;
+    padding:14px 16px;background:#f8fafc;border-radius:10px;margin-bottom:28px;
+  }
+  .tech-badge{
+    font-size:11px;font-weight:700;
+    background:#fff;border:1px solid #e2e8f0;
+    padding:5px 12px;border-radius:8px;color:#334155;
+  }
+
+  /* CTA / FOOTER */
+  .footer{
+    background:linear-gradient(135deg,#0A1628,#0d2040);
+    padding:26px 44px;
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .cta-text{color:rgba(255,255,255,0.7);font-size:12px;line-height:1.7;}
+  .cta-text strong{color:#fff;display:block;font-size:15px;margin-bottom:4px;}
+  .cta-btn{
+    background:linear-gradient(135deg,#00C48C,#00a876);
+    color:#fff;font-size:13px;font-weight:800;
+    padding:12px 28px;border-radius:30px;
+    text-decoration:none;white-space:nowrap;
+    letter-spacing:0.3px;
+  }
+
+  .divider{height:1px;background:#f1f5f9;margin-bottom:24px;}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="logo-zone">
+      <div class="logo-badge">
+        <span class="logo-icon">🏫</span>
+        <div>
+          <div class="logo-name">EduGest</div>
+          <div class="logo-sub">Système de Gestion Scolaire</div>
+        </div>
+      </div>
+      <div class="tagline">La <span>gestion complète</span> de votre école,<br/>en un seul endroit.</div>
+    </div>
+    <div class="header-right">
+      <div class="badge-saas">✦ Solution SaaS Cloud</div>
+      <div class="header-stat">
+        <strong>Accessible partout</strong><br/>
+        Ordinateur · Tablette · Mobile<br/>
+        Aucune installation requise
+      </div>
+    </div>
+  </div>
+
+  <!-- BODY -->
+  <div class="body">
+
+    <!-- INTRO -->
+    <div class="intro">
+      <strong>EduGest</strong> est une plateforme numérique conçue pour les établissements scolaires privés d'Afrique de l'Ouest. Elle centralise la gestion des élèves, des enseignants, des finances et de la comptabilité dans une interface moderne et intuitive, accessible depuis n'importe quel appareil connecté.
+    </div>
+
+    <!-- MODULES -->
+    <div class="section-title">Modules inclus</div>
+    <div class="modules-grid">
+
+      <div class="module">
+        <div class="module-head">
+          <span class="module-icon">🎒</span>
+          <span class="module-name">Direction Primaire</span>
+        </div>
+        <div class="module-desc">Gestion complète de la maternelle jusqu'au CM2 : classes, élèves, notes, absences, emplois du temps et bulletins.</div>
+        <div class="module-tags">
+          <span class="tag">Maternelle → CM2</span>
+          <span class="tag">Bulletins</span>
+          <span class="tag">Notes /10</span>
+        </div>
+      </div>
+
+      <div class="module">
+        <div class="module-head">
+          <span class="module-icon">🏫</span>
+          <span class="module-name">Secondaire (Collège & Lycée)</span>
+        </div>
+        <div class="module-desc">Suivi pédagogique du Collège et du Lycée avec gestion des matières, des coefficients et des moyennes par trimestre.</div>
+        <div class="module-tags">
+          <span class="tag">7ème → Terminale</span>
+          <span class="tag">Coefficients</span>
+          <span class="tag">Moyennes</span>
+        </div>
+      </div>
+
+      <div class="module">
+        <div class="module-head">
+          <span class="module-icon">📊</span>
+          <span class="module-name">Comptabilité</span>
+        </div>
+        <div class="module-desc">Suivi des scolarités, génération automatique des salaires, gestion des bons et révisions, personnel administratif inclus.</div>
+        <div class="module-tags">
+          <span class="tag">Salaires</span>
+          <span class="tag">Bons</span>
+          <span class="tag">Scolarités</span>
+        </div>
+      </div>
+
+      <div class="module">
+        <div class="module-head">
+          <span class="module-icon">🏛️</span>
+          <span class="module-name">Fondation</span>
+        </div>
+        <div class="module-desc">Gestion de la gouvernance de l'établissement : membres fondateurs, documents officiels, assemblées.</div>
+        <div class="module-tags">
+          <span class="tag">Gouvernance</span>
+          <span class="tag">Documents</span>
+        </div>
+      </div>
+
+      <div class="module">
+        <div class="module-head">
+          <span class="module-icon">👨‍🏫</span>
+          <span class="module-name">Portail Enseignant</span>
+        </div>
+        <div class="module-desc">Espace de travail sécurisé et dédié à chaque enseignant : emploi du temps, saisie de notes, liste d'élèves et fiche de paie.</div>
+        <div class="module-tags">
+          <span class="tag">Notes</span>
+          <span class="tag">EDT</span>
+          <span class="tag">Fiche paie</span>
+        </div>
+      </div>
+
+      <div class="module">
+        <div class="module-head">
+          <span class="module-icon">✨</span>
+          <span class="module-name">Assistant IA (Premium)</span>
+        </div>
+        <div class="module-desc">Génération automatique de documents administratifs, commentaires de bulletins et rapports pédagogiques par intelligence artificielle.</div>
+        <div class="module-tags">
+          <span class="tag">Documents auto</span>
+          <span class="tag">Commentaires</span>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- POURQUOI -->
+    <div class="section-title">Pourquoi choisir EduGest ?</div>
+    <div class="why-grid">
+      <div class="why-card">
+        <div class="why-icon">🚀</div>
+        <div class="why-title">Démarrage immédiat</div>
+        <div class="why-text">Inscription en 2 minutes. Votre espace école est opérationnel le jour même, sans formation technique.</div>
+      </div>
+      <div class="why-card">
+        <div class="why-icon">🎨</div>
+        <div class="why-title">Identité visuelle</div>
+        <div class="why-text">Logo, couleurs et nom de l'école intégrés partout — cartes d'élèves, en-têtes, interface personnalisée.</div>
+      </div>
+      <div class="why-card">
+        <div class="why-icon">🔒</div>
+        <div class="why-title">Sécurisé & Isolé</div>
+        <div class="why-text">Les données de chaque école sont strictement isolées. Chaque rôle n'accède qu'à ce qui le concerne.</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ROLES -->
+    <div class="section-title">Rôles & accès</div>
+    <div class="roles-row">
+      <div class="role-pill"><div class="role-dot" style="background:#6d28d9"></div><span class="role-label">Direction</span></div>
+      <div class="role-pill"><div class="role-dot" style="background:#0A1628"></div><span class="role-label">Administrateur</span></div>
+      <div class="role-pill"><div class="role-dot" style="background:#0891b2"></div><span class="role-label">Comptable</span></div>
+      <div class="role-pill"><div class="role-dot" style="background:#00C48C"></div><span class="role-label">Enseignant Primaire</span></div>
+      <div class="role-pill"><div class="role-dot" style="background:#16a34a"></div><span class="role-label">Enseignant Collège</span></div>
+      <div class="role-pill"><div class="role-dot" style="background:#d97706"></div><span class="role-label">Personnel Admin</span></div>
+    </div>
+
+    <!-- TECH -->
+    <div class="section-title">Technologies</div>
+    <div class="tech-row">
+      <span class="tech-badge">⚡ React (Vite)</span>
+      <span class="tech-badge">🔥 Firebase Firestore</span>
+      <span class="tech-badge">☁️ Hébergement Cloud</span>
+      <span class="tech-badge">📱 Responsive (mobile/tablette)</span>
+      <span class="tech-badge">🖨️ Impression & Cartes ID</span>
+      <span class="tech-badge">🌍 Multi-établissements</span>
+    </div>
+
+  </div>
+
+  <!-- FOOTER / CTA -->
+  <div class="footer">
+    <div class="cta-text">
+      <strong>Prêt à digitaliser votre école ?</strong>
+      Inscription gratuite · Aucune carte bancaire requise<br/>
+      Support disponible · Données hébergées en sécurité
+    </div>
+    <a class="cta-btn" href="#">Démarrer gratuitement →</a>
+  </div>
+
+</div>
+</body>
+</html>
