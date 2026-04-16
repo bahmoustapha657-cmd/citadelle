@@ -38,6 +38,16 @@ const GLOBAL_CSS = `
   html, body { height: 100%; margin: 0; padding: 0; }
   body { font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; background: ${C.bg}; -webkit-text-size-adjust: 100%; }
 
+  /* ── Couleurs école (surchargées dynamiquement via JS) ── */
+  :root {
+    --sc1: ${C.blue};
+    --sc2: ${C.green};
+    --sc1-dk: color-mix(in srgb, var(--sc1) 80%, #000);
+    --sc1-lt: color-mix(in srgb, var(--sc1) 12%, #fff);
+    --sc2-dk: color-mix(in srgb, var(--sc2) 80%, #000);
+    --sc2-lt: color-mix(in srgb, var(--sc2) 12%, #fff);
+  }
+
   /* Hauteur viewport dynamique (iOS Safari compatible) */
   .lc-app-root { height: 100dvh; height: 100vh; } /* dvh = dynamic viewport height */
   @supports (height: 100dvh) { .lc-app-root { height: 100dvh; } }
@@ -59,8 +69,8 @@ const GLOBAL_CSS = `
 
   /* Focus inputs */
   input:focus, select:focus, textarea:focus {
-    border-color: #00C48C !important;
-    box-shadow: 0 0 0 3px rgba(0,196,140,0.18) !important;
+    border-color: var(--sc2) !important;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--sc2) 18%, transparent) !important;
     outline: none;
   }
 
@@ -69,7 +79,7 @@ const GLOBAL_CSS = `
   .lc-spinner {
     width: 36px; height: 36px; border-radius: 50%;
     border: 3px solid #d0dce8;
-    border-top-color: #00C48C;
+    border-top-color: var(--sc2);
     animation: spin .7s linear infinite;
     margin: 0 auto 12px;
   }
@@ -527,12 +537,12 @@ const Textarea=({label,...p})=><Champ label={label}><textarea style={{width:"100
 
 const Btn=({children,v="primary",sm,...p})=>{
   const S={
-    primary:{background:`linear-gradient(135deg,${C.blue},#1a3a6b)`,color:"#fff"},
+    primary:{background:"linear-gradient(135deg,var(--sc1),var(--sc1-dk))",color:"#fff"},
     success:{background:`linear-gradient(135deg,${C.greenDk},${C.green})`,color:"#fff"},
     danger: {background:"linear-gradient(135deg,#991b1b,#b91c1c)",color:"#fff"},
-    ghost:  {background:"#fff",color:C.blue,border:"1.5px solid #e2e8f0"},
+    ghost:  {background:"#fff",color:"var(--sc1)",border:"1.5px solid #e2e8f0"},
     amber:  {background:"linear-gradient(135deg,#b45309,#d97706)",color:"#fff"},
-    vert:   {background:`linear-gradient(135deg,${C.greenDk},${C.green})`,color:"#fff"},
+    vert:   {background:"linear-gradient(135deg,var(--sc2-dk),var(--sc2))",color:"#fff"},
     red:    {background:"linear-gradient(135deg,#991b1b,#b91c1c)",color:"#fff"},
     purple: {background:"linear-gradient(135deg,#6d28d9,#7c3aed)",color:"#fff"},
     orange: {background:"linear-gradient(135deg,#c2410c,#ea580c)",color:"#fff"},
@@ -541,8 +551,8 @@ const Btn=({children,v="primary",sm,...p})=>{
 };
 
 const THead=({cols})=>(
-  <thead><tr style={{background:`linear-gradient(135deg,${C.blue},#1a3a6b)`}}>
-    {cols.map((c,i)=><th key={i} style={{textAlign:"left",padding:"10px 13px",fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.9)",textTransform:"uppercase",letterSpacing:"0.08em",whiteSpace:"nowrap",borderBottom:`2px solid ${C.green}`}}>{c}</th>)}
+  <thead><tr style={{background:"linear-gradient(135deg,var(--sc1),var(--sc1-dk))"}}>
+    {cols.map((c,i)=><th key={i} style={{textAlign:"left",padding:"10px 13px",fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.9)",textTransform:"uppercase",letterSpacing:"0.08em",whiteSpace:"nowrap",borderBottom:"2px solid var(--sc2)"}}>{c}</th>)}
   </tr></thead>
 );
 const TR=({children,bg})=><tr style={{borderBottom:"1px solid #f1f5f9",background:bg||"transparent"}}>{children}</tr>;
@@ -4925,6 +4935,8 @@ function ParametresEcole() {
       };
       await updateDoc(doc(db,"ecoles",schoolId), data);
       setSchoolInfo(prev=>({...prev,...data}));
+      if(data.couleur1) document.documentElement.style.setProperty("--sc1", data.couleur1);
+      if(data.couleur2) document.documentElement.style.setProperty("--sc2", data.couleur2);
       setMsgSucces("Paramètres enregistrés avec succès.");
       setTimeout(()=>setMsgSucces(""),4000);
     } catch(e) {
@@ -7317,7 +7329,12 @@ export default function App() {
 
   // Charger les infos de l'école depuis Firestore (temps réel)
   useEffect(()=>{
-    if(!schoolId||schoolId==="superadmin"){setSchoolInfo(SCHOOL_INFO_DEFAUT);return;}
+    if(!schoolId||schoolId==="superadmin"){
+      setSchoolInfo(SCHOOL_INFO_DEFAUT);
+      document.documentElement.style.setProperty("--sc1","#0A1628");
+      document.documentElement.style.setProperty("--sc2","#00C48C");
+      return;
+    }
     const unsub = onSnapshot(doc(db,"ecoles",schoolId),(snap)=>{
       if(snap.exists()){
         const d=snap.data();
@@ -7342,6 +7359,10 @@ export default function App() {
           accueil:   d.accueil   || D.accueil,
         });
         if(d.verrous) setVerrous(d.verrous);
+        // Sync CSS custom properties for school branding
+        const r = document.documentElement.style;
+        r.setProperty("--sc1", d.couleur1 || "#0A1628");
+        r.setProperty("--sc2", d.couleur2 || "#00C48C");
       }
     });
     return ()=>unsub();
