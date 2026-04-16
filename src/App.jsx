@@ -7263,18 +7263,8 @@ export default function App() {
 
     <ToastContainer toasts={toasts}/>
 
-    {/* ── Bannière HORS LIGNE ───────────────────────────────── */}
-    {estHorsLigne&&(
-      <div style={{position:"fixed",top:0,left:0,right:0,zIndex:9999,
-        background:"#92400e",color:"#fff",fontSize:13,fontWeight:700,
-        textAlign:"center",padding:"8px 16px",display:"flex",alignItems:"center",
-        justifyContent:"center",gap:8}}>
-        <span>📡</span>
-        <span>Hors ligne — les données affichées proviennent du cache local</span>
-      </div>
-    )}
 
-    {/* ── Bandeau INSTALLER L'APPLICATION ─────────────────── */}
+{/* ── Bandeau INSTALLER L'APPLICATION ─────────────────── */}
     {installVisible&&promptInstall&&(
       <div style={{position:"fixed",bottom:16,left:"50%",transform:"translateX(-50%)",
         zIndex:9998,background:"#0A1628",color:"#fff",borderRadius:14,
@@ -7296,7 +7286,7 @@ export default function App() {
       </div>
     )}
 
-    <div className="lc-app-root" style={{overflow:"hidden",display:"flex",background:C.bg,marginTop:estHorsLigne?"36px":0}}>
+    <div className="lc-app-root" style={{overflow:"hidden",display:"flex",background:C.bg}}>
       {/* Overlay mobile */}
       {sidebarOuvert&&<div onClick={()=>setSidebarOuvert(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:40}}/>}
       <aside style={{position:"fixed",top:0,bottom:0,left:0,width:228,zIndex:50,background:schoolInfo.couleur1||C.sidebar,display:"flex",flexDirection:"column",
@@ -7339,6 +7329,15 @@ export default function App() {
           <button onClick={deconnecter} style={{width:"100%",background:"rgba(255,255,255,0.08)",border:"none",color:"rgba(255,255,255,0.5)",padding:"6px",borderRadius:6,fontSize:11,cursor:"pointer",fontWeight:600}}>
             ⬅ Se déconnecter
           </button>
+          {estHorsLigne&&(
+            <div style={{marginTop:8,background:"rgba(245,158,11,0.15)",border:"1px solid rgba(245,158,11,0.3)",borderRadius:6,padding:"6px 10px",display:"flex",alignItems:"center",gap:6}}>
+              <span style={{fontSize:14}}>📡</span>
+              <div>
+                <p style={{margin:0,fontSize:10,fontWeight:800,color:"#fbbf24"}}>Mode hors ligne</p>
+                <p style={{margin:0,fontSize:9,color:"rgba(255,255,255,0.4)"}}>Navigation disponible</p>
+              </div>
+            </div>
+          )}
         </div>
       </aside>
 
@@ -7355,6 +7354,12 @@ export default function App() {
             {readOnly&&!isMobile&&<span style={{marginLeft:10,fontSize:11,color:"#d97706",fontWeight:700,background:"#fef3e0",padding:"2px 8px",borderRadius:10}}>👁️ Lecture seule</span>}
           </div>
           <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+            {estHorsLigne&&(
+              <div title="Mode hors ligne — données depuis le cache" style={{display:"flex",alignItems:"center",gap:4,background:"#fef3c7",border:"1px solid #f59e0b",borderRadius:8,padding:"4px 9px",fontSize:11,fontWeight:700,color:"#92400e",flexShrink:0}}>
+                <span style={{fontSize:13}}>📡</span>
+                {!isMobile&&<span>Hors ligne</span>}
+              </div>
+            )}
             <button onClick={()=>setRechercheOuverte(true)}
               title="Rechercher"
               style={{display:"flex",alignItems:"center",gap:isMobile?0:6,background:"#f0f4f0",border:"1px solid #e0ebf8",borderRadius:8,padding:"5px 10px",cursor:"pointer",fontSize:isMobile?17:12,color:"#6b7280",fontWeight:600}}>
