@@ -53,11 +53,20 @@ export default async function handler(req, res) {
       actif: true,
     });
 
-    // Hasher les mots de passe
+    // Générer des mots de passe aléatoires pour les comptes secondaires
+    const genMdp = () => {
+      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#!";
+      let pwd = "";
+      for (let i = 0; i < 12; i++) pwd += chars[Math.floor(Math.random() * chars.length)];
+      return pwd;
+    };
+    const mdpComptableClair = genMdp();
+    const mdpAdminClair     = genMdp();
+
     const [mdpAdmin, mdpComptable, mdpAdminDefault] = await Promise.all([
       bcrypt.hash(adminMdp, 10),
-      bcrypt.hash("compta123", 10),
-      bcrypt.hash("admin123", 10),
+      bcrypt.hash(mdpComptableClair, 10),
+      bcrypt.hash(mdpAdminClair, 10),
     ]);
 
     // Créer les comptes par défaut
@@ -74,7 +83,15 @@ export default async function handler(req, res) {
     }
     await batch.commit();
 
-    return res.status(200).json({ ok: true, schoolId });
+    return res.status(200).json({
+      ok: true,
+      schoolId,
+      // Mots de passe à afficher une seule fois à l'administrateur
+      compteSecondaires: {
+        comptable: { login: "comptable", mdp: mdpComptableClair },
+        admin:     { login: "admin",     mdp: mdpAdminClair },
+      },
+    });
   } catch (e) {
     console.error("inscription error:", e);
     return res.status(500).json({ error: e.message || "Erreur serveur" });

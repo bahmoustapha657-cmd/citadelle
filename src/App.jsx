@@ -4973,8 +4973,16 @@ function Connexion({onLogin, onInscription}) {
           body:JSON.stringify({login:login.trim(),mdp}),
         });
         const data=await r.json().catch(()=>({}));
-        if(r.ok&&data.ok){setErreur("");onLogin(data.compte,"superadmin");}
-        else setErreur(data.error||"Identifiants super-admin incorrects.");
+        if(!r.ok||!data.ok){setErreur(data.error||"Identifiants super-admin incorrects.");return;}
+        // Connexion Firebase Auth via custom token → session persistante
+        try{
+          const {signInWithCustomToken}=await import("firebase/auth");
+          await signInWithCustomToken(auth, data.customToken);
+          // onAuthStateChanged prend le relais
+        }catch{
+          // Dernier recours : connexion locale temporaire
+          onLogin(data.compte,"superadmin");
+        }
         return;
       }
 
@@ -6378,7 +6386,12 @@ export default function App() {
   // Écoute l'état Firebase Auth — charge le profil depuis /users/{uid}
   useEffect(()=>{
     const unsub=onAuthStateChanged(auth, async(firebaseUser)=>{
-      if(!firebaseUser){return;}
+      if(!firebaseUser){
+        // Session Firebase expirée ou déconnexion — vider l'état
+        setUtilisateur(null);
+        setPage(null);
+        return;
+      }
       try{
         const profil=await getDoc(doc(db,"users",firebaseUser.uid));
         if(profil.exists()){

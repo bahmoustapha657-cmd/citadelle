@@ -46,6 +46,9 @@ const validerEtape1 = () => {
         return;
       }
       localStorage.setItem("LC_schoolId", data.schoolId);
+      if (data.compteSecondaires) {
+        localStorage.setItem("LC_comptes_init", JSON.stringify(data.compteSecondaires));
+      }
       setEtape(3);
     } catch (e) {
       console.error(e);
@@ -97,12 +100,28 @@ const validerEtape1 = () => {
             Connectez-vous avec vos identifiants administrateur.
           </p>
           <div style={{ background: "#f0f6f2", borderRadius: 10, padding: "14px 18px", textAlign: "left", fontSize: 13, marginBottom: 20 }}>
-            <div><strong>Identifiant :</strong> {form.adminLogin}</div>
-            <div><strong>Rôle :</strong> Direction</div>
-            <div style={{ fontSize: 11, color: "#888", marginTop: 6 }}>
-              Comptes supplémentaires créés : <strong>comptable</strong> et <strong>admin</strong><br />
-              <strong>Connectez-vous et changez les mots de passe dès la première connexion.</strong>
+            <div style={{ marginBottom: 8 }}><strong>Votre compte Direction :</strong></div>
+            <div style={{ fontFamily: "monospace", background: "#e0ebf8", borderRadius: 6, padding: "6px 10px", marginBottom: 12 }}>
+              <div>Identifiant : <strong>{form.adminLogin}</strong></div>
+              <div>Mot de passe : <strong>{form.adminMdp}</strong></div>
             </div>
+            {(() => {
+              try {
+                const c = JSON.parse(localStorage.getItem("LC_comptes_init") || "{}");
+                if (!c.comptable) return null;
+                return (
+                  <div>
+                    <div style={{ marginBottom: 6, fontWeight: 700, color: "#b45309" }}>
+                      ⚠️ Comptes secondaires — noter et supprimer après connexion :
+                    </div>
+                    <div style={{ fontFamily: "monospace", background: "#fff7ed", borderRadius: 6, padding: "6px 10px" }}>
+                      <div>comptable / <strong>{c.comptable.mdp}</strong></div>
+                      <div>admin / <strong>{c.admin.mdp}</strong></div>
+                    </div>
+                  </div>
+                );
+              } catch { return null; }
+            })()}
           </div>
           <a href="/" style={{ ...btnStyle, display: "block", textDecoration: "none", textAlign: "center" }}>
             Aller à la connexion

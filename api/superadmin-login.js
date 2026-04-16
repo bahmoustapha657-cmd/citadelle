@@ -1,4 +1,5 @@
 import { initializeApp, getApps, cert } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import bcrypt from "bcryptjs";
 
@@ -24,6 +25,7 @@ export default async function handler(req, res) {
   }
 
   const db = getFirestore();
+  const authAdmin = getAuth();
 
   try {
     const snap = await db.collection("superadmins").get();
@@ -45,8 +47,35 @@ export default async function handler(req, res) {
 
     if (!valide) return res.status(401).json({ error: "Identifiants incorrects" });
 
+    // Créer ou récupérer le compte Firebase Auth du superadmin
+    const email = `${login.trim()}@superadmin.edugest.app`;
+    let uid;
+    try {
+      const userRecord = await authAdmin.createUser({ email, password: mdp, displayName: compte.nom || "Super Admin" });
+      uid = userRecord.uid;
+    } catch (e) {
+      if (e.code === "auth/email-already-exists") {
+        const existing = await authAdmin.getUserByEmail(email);
+        await authAdmin.updateUser(existing.uid, { password: mdp });
+        uid = existing.uid;
+      } else throw e;
+    }
+
+    // Créer/mettre à jour le profil /users/{uid} (admin SDK — contourne les règles)
+    await db.collection("users").doc(uid).set({
+      schoolId: "superadmin",
+      role: "superadmin",
+      nom: compte.nom || "Super Admin",
+      login: login.trim(),
+      updatedAt: Date.now(),
+    }, { merge: true });
+
+    // Retourner un custom token pour que le client soit persistant
+    const customToken = await authAdmin.createCustomToken(uid);
+
     return res.status(200).json({
       ok: true,
+      customToken,
       compte: { login: compte.login, role: "superadmin", nom: compte.nom || "Super Admin" },
     });
   } catch (e) {

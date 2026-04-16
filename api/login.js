@@ -39,9 +39,10 @@ export default async function handler(req, res) {
     const compte = comptes.find(c => c.login === login.trim().toLowerCase());
     if (!compte) return res.status(401).json({ error: "Identifiant ou mot de passe incorrect." });
 
-    const valide = compte.mdp.startsWith("$2b$")
-      ? await bcrypt.compare(mdp, compte.mdp)
-      : compte.mdp === mdp;
+    if (!compte.mdp.startsWith("$2b$")) {
+      return res.status(401).json({ error: "Compte non sécurisé. Contactez l'administrateur." });
+    }
+    const valide = await bcrypt.compare(mdp, compte.mdp);
 
     if (!valide) return res.status(401).json({ error: "Identifiant ou mot de passe incorrect." });
 
