@@ -389,6 +389,7 @@ export const SchoolContext = createContext({
   moisSalaire: MOIS_SALAIRE,
   toast: () => {},
   logAction: () => {},
+  envoyerPush: () => {},
 });
 
 // ── TOAST SYSTEM ──────────────────────────────────────────────
@@ -1798,7 +1799,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   const canCreate = !readOnly;
   const canEdit = !readOnly && (peutModifier(userRole) || verrouOuvert);
   const canEditEleves = !readOnly && (peutModifierEleves(userRole) || verrouOuvert);
-  const {schoolId, schoolInfo, moisAnnee, moisSalaire, toast, logAction} = useContext(SchoolContext);
+  const {schoolId, schoolInfo, moisAnnee, moisSalaire, toast, logAction, envoyerPush} = useContext(SchoolContext);
   const {items:recettes,chargement:cR,ajouter:ajR,modifier:modR,supprimer:supR}=useFirestore("recettes");
   const {items:depenses,chargement:cD,ajouter:ajD,modifier:modD,supprimer:supD}=useFirestore("depenses");
   const {items:salaires,chargement:cS,ajouter:ajS,modifier:modS,supprimer:supS}=useFirestore("salaires");
@@ -1889,6 +1890,12 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
     if(!estPaye) mensDates[mois]=new Date().toLocaleDateString("fr-FR");
     else delete mensDates[mois];
     await modEleves(_id,{mens,mensDates});
+    // Notifier le parent : rappel si impayé, confirmation si payé
+    if(!estPaye){
+      envoyerPush(["parent"],"✅ Paiement enregistré",`Mensualité ${mois} de ${nomEleve||"votre enfant"} confirmée.`,"/paiements");
+    } else {
+      envoyerPush(["parent"],"⚠️ Rappel de paiement",`La mensualité ${mois} de ${nomEleve||"votre enfant"} est marquée impayée.`,"/paiements");
+    }
   };
 
   const enreg=(aj,mod,extra={})=>{
@@ -3106,7 +3113,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
     return true;
   };
 
-  const {schoolInfo, toast, logAction} = useContext(SchoolContext);
+  const {schoolInfo, toast, logAction, envoyerPush} = useContext(SchoolContext);
   const canCreate = !readOnly;
   const canEditEleves = !readOnly && (peutModifierEleves(userRole) || verrouOuvert);
   const canEdit = !readOnly && (peutModifier(userRole) || verrouOuvert);
@@ -3769,7 +3776,17 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
           </div>
           <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
             <Btn v="ghost" onClick={()=>setModal(null)}>Annuler</Btn>
-            <Btn v="orange" onClick={()=>{ajAbs({...form,date:form.date||today()});setModal(null);}}>Enregistrer</Btn>
+            <Btn v="orange" onClick={async()=>{
+              const abs={...form,date:form.date||today()};
+              await ajAbs(abs);
+              setModal(null);
+              envoyerPush(
+                ["parent"],
+                `⚠️ ${abs.type||"Absence"} signalée`,
+                `${abs.eleveNom||"Votre enfant"} — ${abs.type||"Absence"} du ${abs.date}${abs.motif?` : ${abs.motif}`:""}`,
+                "/absences"
+              );
+            }}>Enregistrer</Btn>
           </div>
         </Modale>}
       </div>}
@@ -6570,7 +6587,7 @@ function PortailParent({utilisateur, deconnecter, annee, schoolInfo}) {
 //  MODULE MESSAGES PARENTS (côté école)
 // ══════════════════════════════════════════════════════════════
 function MessagesParents({readOnly}) {
-  const {schoolId,schoolInfo,toast} = useContext(SchoolContext);
+  const {schoolId,schoolInfo,toast,envoyerPush} = useContext(SchoolContext);
   const c1 = schoolInfo.couleur1||C.blue;
   const {items:msgs, modifier:modMsg, ajouter:repMsg} = useFirestore("messages");
   const {items:annonces, ajouter:ajAnn, supprimer:supAnn} = useFirestore("annonces");
@@ -6611,6 +6628,13 @@ function MessagesParents({readOnly}) {
       lu:false,
       date:Date.now(),
     });
+    // Notifier le parent par push
+    envoyerPush(
+      ["parent"],
+      `📩 Message de ${schoolInfo.nom||"l'école"}`,
+      `Concernant ${threadSelec.eleveNom} : ${reponse.trim().slice(0,80)}${reponse.length>80?"…":""}`,
+      "/messages"
+    );
     setRep("");
   };
 
@@ -7361,11 +7385,46 @@ export default function App() {
     return ()=>unsub();
   },[]);
 
+  // ── Push notifications helper ────────────────────────────────
+  const envoyerPush = (cibles, titre, corps, url="/") => {
+    const sid = localStorage.getItem("LC_schoolId")||"citadelle";
+    fetch("/api/push",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({schoolId:sid,cibles,titre,corps,url}),
+    }).catch(()=>{});
+  };
+
+  // Abonnement push après login (silencieux si refus)
+  const sAbonnerAuxPush = async(utilisateurCo, sid) => {
+    try{
+      if(!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+      const perm = await Notification.requestPermission();
+      if(perm !== "granted") return;
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: import.meta.env.VITE_VAPID_PUBLIC_KEY,
+      });
+      // Sauvegarde la souscription dans Firestore
+      const id = btoa(sub.endpoint).slice(-20);
+      await setDoc(doc(db,"ecoles",sid,"pushSubs",id),{
+        subscription: sub.toJSON(),
+        role: utilisateurCo.role,
+        nom: utilisateurCo.nom,
+        updatedAt: Date.now(),
+      });
+    }catch(_){}
+  };
+
   const connecter=(c,sid)=>{
     if(sid){ setSchoolId(sid); localStorage.setItem("LC_schoolId",sid); }
     setUtilisateur(c);
     setPage(ACCES[c.role][0]);
     logAction("Connexion",`${c.nom} (${c.label})`,c.nom);
+    // Abonnement push en arrière-plan
+    const schoolIdEffectif = sid || localStorage.getItem("LC_schoolId") || "citadelle";
+    sAbonnerAuxPush(c, schoolIdEffectif);
   };
   const deconnecter=()=>{
     signOut(auth).catch(()=>{});
@@ -7388,14 +7447,14 @@ export default function App() {
 
   // 2. Portail public de l'école (si activé, avant le formulaire de connexion)
   if(!utilisateur && page==="login" && schoolInfo.accueil?.active) return (
-    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire,toast,logAction}}>
+    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire,toast,logAction,envoyerPush}}>
       <PortailPublic onConnexion={()=>setPage("connexion")}/>
     </SchoolContext.Provider>
   );
 
   // 3. Formulaire de connexion
   if(!utilisateur)return (
-    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire,toast,logAction}}>
+    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire,toast,logAction,envoyerPush}}>
       <GlobalStyles/>
       <Connexion onLogin={connecter} onInscription={()=>{ signOut(auth).catch(()=>{}); setUtilisateur(null); setPage("inscription"); }}/>
     </SchoolContext.Provider>
@@ -7403,7 +7462,7 @@ export default function App() {
 
   // Forcer le changement de mot de passe à la première connexion
   if(utilisateur.premiereCo) return (
-    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire,toast,logAction}}>
+    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire,toast,logAction,envoyerPush}}>
       <ChangerMotDePasseModal
         utilisateur={utilisateur}
         onDone={()=>setUtilisateur(u=>({...u,premiereCo:false}))}
@@ -7413,7 +7472,7 @@ export default function App() {
 
   // Portail dédié aux enseignants — interface séparée du shell principal
   if(utilisateur.role==="enseignant") return (
-    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire,toast,logAction}}>
+    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire,toast,logAction,envoyerPush}}>
       <GlobalStyles/>
       <PortailEnseignant utilisateur={utilisateur} deconnecter={deconnecter} annee={annee} schoolInfo={schoolInfo}/>
     </SchoolContext.Provider>
@@ -7421,7 +7480,7 @@ export default function App() {
 
   // Portail dédié aux parents
   if(utilisateur.role==="parent") return (
-    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire,toast,logAction}}>
+    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire,toast,logAction,envoyerPush}}>
       <GlobalStyles/>
       <PortailParent utilisateur={utilisateur} deconnecter={deconnecter} annee={annee} schoolInfo={schoolInfo}/>
     </SchoolContext.Provider>
@@ -7437,7 +7496,7 @@ export default function App() {
   const couleur2 = schoolInfo.couleur2 || C.green;
 
   return (
-    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire,toast,logAction}}>
+    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire,toast,logAction,envoyerPush}}>
     <GlobalStyles/>
 
     <ToastContainer toasts={toasts}/>

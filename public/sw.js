@@ -139,3 +139,32 @@ async function appShellFirst(request) {
     return new Response("Hors ligne", { status: 503 });
   }
 }
+
+// ── Push notifications ────────────────────────────────────────
+self.addEventListener("push", (e) => {
+  let data = { titre: "EduGest", corps: "", url: "/", icon: "/icons/pwa-192.png" };
+  try { data = { ...data, ...JSON.parse(e.data?.text() || "{}") }; } catch {}
+
+  e.waitUntil(
+    self.registration.showNotification(data.titre, {
+      body:  data.corps,
+      icon:  data.icon,
+      badge: "/icons/pwa-192.png",
+      data:  { url: data.url },
+      vibrate: [200, 100, 200],
+    })
+  );
+});
+
+// Clic sur la notification → ouvre l'app sur l'URL concernée
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  const url = e.notification.data?.url || "/";
+  e.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+      const existing = list.find(c => c.url.includes(self.location.origin));
+      if (existing) return existing.focus();
+      return clients.openWindow(url);
+    })
+  );
+});
