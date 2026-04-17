@@ -134,6 +134,37 @@ const GLOBAL_CSS = `
     /* Header compact */
     .lc-header-actions span { display: none; }
   }
+
+  /* ══════════════════════════════════════════════════════════
+     MODE SOMBRE
+     Activé par <body class="mode-sombre">
+     Technique : CSS invert + hue-rotate sur le conteneur app,
+     puis ré-inversion sur les images/vidéos pour les garder
+     dans leurs couleurs naturelles.
+  ══════════════════════════════════════════════════════════ */
+
+  body.mode-sombre {
+    background: #0f1117;
+  }
+
+  /* Conteneur racine : inversion totale + rotation de teinte
+     → blanc devient noir, noir devient blanc, les bleus restent bleus */
+  body.mode-sombre .lc-app-root {
+    filter: invert(1) hue-rotate(180deg);
+  }
+
+  /* Ré-inversion des éléments qui doivent garder leurs couleurs naturelles */
+  body.mode-sombre .lc-app-root img,
+  body.mode-sombre .lc-app-root video,
+  body.mode-sombre .lc-app-root canvas,
+  body.mode-sombre .lc-app-root [data-nodark] {
+    filter: invert(1) hue-rotate(180deg);
+  }
+
+  /* Scrollbar (dark) */
+  body.mode-sombre ::-webkit-scrollbar-track  { background: #151a27; }
+  body.mode-sombre ::-webkit-scrollbar-thumb  { background: #3d4f6b; }
+  body.mode-sombre ::-webkit-scrollbar-thumb:hover { background: #5a6e8a; }
 `;
 const GlobalStyles = () => <style>{GLOBAL_CSS}</style>;
 
@@ -8474,11 +8505,11 @@ export default function App() {
               style={{display:"flex",alignItems:"center",gap:isMobile?0:6,background:"#f0f4f0",border:"1px solid #e0ebf8",borderRadius:8,padding:"5px 10px",cursor:"pointer",fontSize:isMobile?17:12,color:"#6b7280",fontWeight:600}}>
               🔍{!isMobile&&<><span>Rechercher</span><kbd style={{background:"#e2e8f0",border:"1px solid #cbd5e1",borderRadius:4,padding:"1px 5px",fontSize:10,color:"#94a3b8",marginLeft:4}}>Ctrl K</kbd></>}
             </button>
-            {!isMobile&&<button onClick={()=>setModeSombre(v=>!v)}
+            <button onClick={()=>setModeSombre(v=>!v)}
               title={modeSombre?"Mode clair":"Mode sombre"}
               style={{background:"#f0f4f0",border:"1px solid #e0ebf8",borderRadius:8,padding:"5px 10px",cursor:"pointer",fontSize:16,lineHeight:1}}>
               {modeSombre?"☀️":"🌙"}
-            </button>}
+            </button>
             <div style={{width:30,height:30,borderRadius:"50%",background:C.blue,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,flexShrink:0}}>
               {utilisateur.nom[0]}
             </div>
