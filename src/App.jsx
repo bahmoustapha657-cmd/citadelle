@@ -5,6 +5,7 @@ import { getAuthHeaders } from "./apiClient";
 import { SchoolContext, SCHOOL_INFO_DEFAUT } from "./contexts/SchoolContext";
 import { useFirestore } from "./hooks/useFirestore";
 import React, { useState, useEffect, useRef, useMemo, useContext } from "react";
+import ReactDOM from "react-dom";
 import { db, auth } from "./firebase";
 import { signOut, onAuthStateChanged, updatePassword } from "firebase/auth";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
@@ -6383,9 +6384,9 @@ function SuperAdminPanel() {
         </div>
       )}
 
-      {/* Modal confirmation désactiver/supprimer */}
-      {confirmation && (
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}
+      {/* Modals via Portal → montées directement sur document.body */}
+      {confirmation && ReactDOM.createPortal(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:99999,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}
           onClick={()=>setConfirmation(null)}>
           <div style={S.modal} onClick={e=>e.stopPropagation()}>
             <h3 style={{margin:"0 0 10px",color:C.blueDark,fontSize:17}}>
@@ -6410,12 +6411,12 @@ function SuperAdminPanel() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* Modal gestion plan */}
-      {planModal && (
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}
+      {planModal && ReactDOM.createPortal(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:99999,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}
           onClick={()=>setPlanModal(null)}>
           <div style={{...S.modal,maxWidth:480}} onClick={e=>e.stopPropagation()}>
             <h3 style={{margin:"0 0 4px",color:C.blueDark,fontSize:17}}>Gérer le plan</h3>
@@ -6463,7 +6464,8 @@ function SuperAdminPanel() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
