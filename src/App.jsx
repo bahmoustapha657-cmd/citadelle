@@ -1552,14 +1552,66 @@ const imprimerFicheCompositions = (classe, periode, notes, matieres, eleves, max
 // ══════════════════════════════════════════════════════════════
 //  PANNEAU ADMIN — Gestion des mots de passe
 // ══════════════════════════════════════════════════════════════
+// Mapping promotion classes : quelle classe vient après quelle classe
+const PROMOTION_SUIVANTE = {
+  // Primaire (classique)
+  "Maternelle A":"1ère Année A","Maternelle B":"1ère Année B",
+  "1ère Année A":"2ème Année A","1ère Année B":"2ème Année B",
+  "2ème Année A":"3ème Année A","2ème Année B":"3ème Année B",
+  "3ème Année A":"4ème Année A","3ème Année B":"4ème Année B",
+  "4ème Année A":"5ème Année A","4ème Année B":"5ème Année B",
+  "5ème Année A":"6ème Année A","5ème Année B":"6ème Année B",
+  // Collège
+  "6ème A":"5ème A","6ème B":"5ème B","6ème C":"5ème C",
+  "5ème A":"4ème A","5ème B":"4ème B","5ème C":"4ème C",
+  "4ème A":"3ème A","4ème B":"3ème B","4ème C":"3ème C",
+  // Lycée
+  "Seconde A":"Première A","Seconde B":"Première B","Seconde C":"Première C",
+  "Première A":"Terminale A","Première B":"Terminale B","Première C":"Terminale C",
+};
+
 function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
+  const {toast} = useContext(SchoolContext);
   const {items:comptes, chargement, ajouter, modifier} = useFirestore("comptes");
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState({});
   const [savingVerrou, setSavingVerrou] = useState(null);
   const [mdpsInitiaux, setMdpsInitiaux] = useState(null);
   const [initEnCours, setInitEnCours] = useState(false);
+  const [promoEn, setPromoEn] = useState(false); // promotion en cours
+  const [promoRes, setPromoRes] = useState(null); // résultats de promotion
   const chg = k => e => setForm(p=>({...p,[k]:e.target.value}));
+
+  const lancerPromotion = async () => {
+    if(!window.confirm("Lancer la promotion de fin d'année ? Tous les élèves actifs seront avancés dans la classe supérieure.")) return;
+    setPromoEn(true);
+    try {
+      const sections = ["elevesCollege","elevesPrimaire","elevesLycee"];
+      let total=0, avances=0, terminalistes=0, errors=0;
+      for(const sec of sections) {
+        const snap = await getDocs(collection(db,"ecoles",schoolId,sec));
+        for(const d of snap.docs) {
+          const e = d.data();
+          if(e.statut!=="Actif") continue;
+          total++;
+          const classeActuelle = e.classe||"";
+          const classeSuivante = PROMOTION_SUIVANTE[classeActuelle];
+          if(classeSuivante) {
+            await updateDoc(doc(db,"ecoles",schoolId,sec,d.id),{classe:classeSuivante});
+            avances++;
+          } else {
+            terminalistes++; // Terminale ou classe sans suite connue
+          }
+        }
+      }
+      setPromoRes({total,avances,terminalistes,errors});
+      toast(`Promotion terminée — ${avances} élèves avancés sur ${total}`, "success");
+    } catch(e) {
+      toast("Erreur lors de la promotion : "+e.message, "error");
+    } finally {
+      setPromoEn(false);
+    }
+  };
 
   const toggleVerrou = async (cle) => {
     setSavingVerrou(cle);
@@ -1628,6 +1680,29 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
           <span style={{fontSize:13,color:C.green,fontWeight:700}}>Année active : <strong>{annee}</strong></span>
         </div>
         <p style={{fontSize:11,color:"#9ca3af",margin:"8px 0 0"}}>⚠️ Changer l'année affecte tous les modules de l'application.</p>
+      </Card>
+
+      {/* ── PROMOTION FIN D'ANNÉE ── */}
+      <Card style={{marginBottom:20,padding:"16px 20px",border:"2px solid #fef3c7"}}>
+        <div style={{display:"flex",alignItems:"flex-start",gap:14}}>
+          <span style={{fontSize:28}}>🎓</span>
+          <div style={{flex:1}}>
+            <p style={{margin:"0 0 4px",fontWeight:800,fontSize:14,color:C.blueDark}}>Promotion de fin d'année</p>
+            <p style={{margin:"0 0 12px",fontSize:12,color:"#6b7280"}}>Avance automatiquement tous les élèves actifs dans la classe supérieure (6ème→5ème, 5ème→4ème…). À effectuer après la clôture de l'année en cours.</p>
+            {promoRes && (
+              <div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:8,padding:"10px 14px",marginBottom:12,fontSize:13}}>
+                <strong style={{color:C.greenDk}}>✅ Promotion terminée :</strong>
+                <span style={{marginLeft:8,color:"#374151"}}>{promoRes.avances} élèves promus · {promoRes.terminalistes} en fin de cycle · {promoRes.total} traités</span>
+              </div>
+            )}
+            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              <Btn v="amber" onClick={lancerPromotion} disabled={promoEn}>
+                {promoEn?"⏳ En cours...":"🎓 Lancer la promotion"}
+              </Btn>
+              {promoRes&&<Btn v="ghost" onClick={()=>setPromoRes(null)}>Effacer le résultat</Btn>}
+            </div>
+          </div>
+        </div>
       </Card>
 
       <div style={{background:"#e0ebf8",borderRadius:10,padding:"12px 16px",marginBottom:20,fontSize:13,color:C.blueDark}}>
