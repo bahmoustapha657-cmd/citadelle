@@ -12,7 +12,7 @@ import { signOut, onAuthStateChanged, updatePassword } from "firebase/auth";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import * as XLSX from "xlsx";
 import QRCode from "qrcode";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, RadarChart, Radar, PolarGrid, PolarAngleAxis } from "recharts";
 import bcrypt from "bcryptjs";
 import {
   collection, onSnapshot, addDoc, updateDoc, doc, setDoc, getDoc, getDocs, query, where
@@ -342,11 +342,11 @@ const genererMdp = () => {
 
 const ACCES = {
   superadmin:  ["superadmin_panel"],
-  admin:       ["accueil","historique","admin_panel","parametres","ia_assistant","fondation","compta","primaire","secondaire","calendrier","messages"],
-  direction:   ["accueil","historique","admin_panel","parametres","ia_assistant","fondation","compta","primaire","secondaire","calendrier","messages"],
-  primaire:    ["primaire","calendrier"],
-  college:     ["secondaire","calendrier"],
-  comptable:   ["ia_assistant","compta","primaire","secondaire","calendrier"],
+  admin:       ["accueil","historique","admin_panel","parametres","ia_assistant","fondation","compta","primaire","secondaire","calendrier","examens","messages"],
+  direction:   ["accueil","historique","admin_panel","parametres","ia_assistant","fondation","compta","primaire","secondaire","calendrier","examens","messages"],
+  primaire:    ["primaire","calendrier","examens"],
+  college:     ["secondaire","calendrier","examens"],
+  comptable:   ["ia_assistant","compta","primaire","secondaire","calendrier","examens"],
   enseignant:  ["portail_enseignant"],
   parent:      ["portail_parent"],
 };
@@ -368,6 +368,7 @@ const MODULES = [
   {id:"primaire",    label:"Dir. Primaire",    icon:"🎒", desc:"Primaire"},
   {id:"secondaire",  label:"Secondaire",        icon:"🏫", desc:"Bureau Collège"},
   {id:"calendrier",        label:"Calendrier",        icon:"📅", desc:"Événements scolaires"},
+  {id:"examens",           label:"Examens",           icon:"📝", desc:"Planning & convocations"},
   {id:"portail_enseignant",label:"Mon Espace",         icon:"👨‍🏫", desc:"Portail enseignant"},
   {id:"portail_parent",    label:"Espace Parent",      icon:"👨‍👩‍👧", desc:"Suivi de mon enfant"},
   {id:"messages",          label:"Messages Parents",   icon:"💬", desc:"Liaison école-famille"},
@@ -3263,8 +3264,14 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
   const [formC,setFormC]=useState({});
   const [parentEleve,setParentEleve]=useState(null);
   const [formP,setFormP]=useState({});
-  const [importPreview,setImportPreview]=useState(null); // {lignes, erreurs}
+  const [importPreview,setImportPreview]=useState(null);
   const [importEnCours,setImportEnCours]=useState(false);
+  const [notesVue,setNotesVue]=useState("liste"); // "liste" | "grille"
+  const [grilleClasse,setGrilleClasse]=useState("all");
+  const [grillePeriode,setGrillePeriode]=useState("T1");
+  const [grilleType,setGrilleType]=useState("Devoir");
+  const [grilleChanges,setGrilleChanges]=useState({}); // {"eleveId|matiere": note}
+  const [grilleSaving,setGrilleSaving]=useState(false);
   const chg=k=>e=>setForm(p=>({...p,[k]:e.target.value}));
   const chgC=k=>e=>setFormC(p=>({...p,[k]:e.target.value}));
   const chgP=k=>e=>setFormP(p=>({...p,[k]:e.target.value}));
@@ -3757,22 +3764,158 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
       {tab==="notes"&&<div>
         <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,flexWrap:"wrap"}}>
           <strong style={{fontSize:14,color:C.blueDark,flex:1}}>Notes ({notes.length})</strong>
+          {/* Toggle vue */}
+          <div style={{display:"flex",background:"#f1f5f9",borderRadius:8,padding:3,gap:2}}>
+            {[{v:"liste",icon:"☰"},{v:"grille",icon:"⊞"}].map(({v,icon})=>(
+              <button key={v} onClick={()=>setNotesVue(v)} style={{
+                padding:"4px 10px",borderRadius:6,border:"none",cursor:"pointer",fontSize:13,fontWeight:700,
+                background:notesVue===v?"#fff":"transparent",color:notesVue===v?C.blueDark:"#94a3b8",
+                boxShadow:notesVue===v?"0 1px 3px rgba(0,0,0,0.1)":"none",
+              }}>{icon}</button>
+            ))}
+          </div>
           <Btn sm v="ghost" onClick={()=>exportExcel(
             `Notes_${avecEns?"College":"Primaire"}`,
             ["Élève","Matière","Type","Période",`Note /${maxNote}`],
             notes.map(n=>[n.eleveNom,n.matiere,n.type,n.periode,n.note])
           )}>📥 Export</Btn>
-          <Btn sm v="ghost" onClick={()=>{
-            // Télécharger modèle Excel
-            exportExcel(`Modele_Import_Notes_/${maxNote}`,
-              ["Élève (Nom Prénom)","Matière","Type","Période",`Note (sur ${maxNote})`],
-              eleves.slice(0,3).map(e=>[`${e.nom} ${e.prenom}`,matieres[0]?.nom||"Mathématiques","Devoir","T1",Math.round(maxNote*0.7)])
-            );
-          }}>📋 Modèle</Btn>
+          <Btn sm v="ghost" onClick={()=>exportExcel(`Modele_Notes`,
+            ["Élève (Nom Prénom)","Matière","Type","Période",`Note (/${maxNote})`],
+            eleves.slice(0,3).map(e=>[`${e.nom} ${e.prenom}`,matieres[0]?.nom||"Maths","Devoir","T1",Math.round(maxNote*0.7)])
+          )}>📋 Modèle</Btn>
           {canCreate&&<Btn sm v="vert" onClick={()=>setModal("import_notes")}>⬆️ Importer</Btn>}
           {canCreate&&<Btn onClick={()=>{setForm({periode:"T1",type:"Devoir"});setModal("add_n");}}>+ Saisir</Btn>}
         </div>
-        {cN?<Chargement/>:notes.length===0?<Vide icone="📝" msg="Aucune note"/>
+
+        {/* ── VUE GRILLE ── */}
+        {notesVue==="grille"&&(()=>{
+          const classesUniqN = [...new Set(eleves.map(e=>e.classe||""))].filter(Boolean).sort();
+          const elevesGrille = (grilleClasse==="all"?eleves:eleves.filter(e=>e.classe===grilleClasse))
+            .filter(e=>e.statut==="Actif"||!e.statut)
+            .sort((a,b)=>(a.nom+a.prenom).localeCompare(b.nom+b.prenom));
+          const matieresCols = matieres.map(m=>m.nom);
+
+          const getNoteExist = (eleveId, mat) =>
+            notes.find(n=>(n.eleveId===eleveId||n.eleveNom)&&n.matiere===mat&&n.periode===grillePeriode&&n.type===grilleType);
+
+          const valeurCellule = (eleveId, mat) => {
+            const key = `${eleveId}|${mat}`;
+            if(key in grilleChanges) return grilleChanges[key];
+            return getNoteExist(eleveId, mat)?.note ?? "";
+          };
+
+          const couleurNote = (v) => {
+            const n = Number(v);
+            if(v===""||isNaN(n)) return {};
+            if(n >= maxNote*0.7) return {background:"#dcfce7",color:"#166534"};
+            if(n >= maxNote*0.5) return {background:"#fef3c7",color:"#92400e"};
+            return {background:"#fee2e2",color:"#991b1b"};
+          };
+
+          const sauvegarderGrille = async() => {
+            if(!Object.keys(grilleChanges).length){toast("Aucune modification.","info");return;}
+            setGrilleSaving(true);
+            let nb=0;
+            for(const [key,val] of Object.entries(grilleChanges)){
+              const [eleveId, ...matParts] = key.split("|");
+              const mat = matParts.join("|");
+              if(val===""||isNaN(Number(val))) continue;
+              const exist = getNoteExist(eleveId, mat);
+              const eleve = eleves.find(e=>e._id===eleveId);
+              if(exist){ /* modifier */ await ajN({...exist,note:Number(val)}); }
+              else { await ajN({eleveId,eleveNom:`${eleve?.nom||""} ${eleve?.prenom||""}`.trim(),matiere:mat,type:grilleType,periode:grillePeriode,note:Number(val)}); }
+              nb++;
+            }
+            setGrilleChanges({});
+            setGrilleSaving(false);
+            toast(`${nb} note(s) enregistrée(s)`,"success");
+          };
+
+          return (
+            <div>
+              <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
+                <select value={grilleClasse} onChange={e=>setGrilleClasse(e.target.value)}
+                  style={{border:"1px solid #b0c4d8",borderRadius:7,padding:"6px 10px",fontSize:12}}>
+                  <option value="all">Toutes classes</option>
+                  {classesUniqN.map(c=><option key={c}>{c}</option>)}
+                </select>
+                <select value={grillePeriode} onChange={e=>setGrillePeriode(e.target.value)}
+                  style={{border:"1px solid #b0c4d8",borderRadius:7,padding:"6px 10px",fontSize:12}}>
+                  <option>T1</option><option>T2</option><option>T3</option>
+                </select>
+                <select value={grilleType} onChange={e=>setGrilleType(e.target.value)}
+                  style={{border:"1px solid #b0c4d8",borderRadius:7,padding:"6px 10px",fontSize:12}}>
+                  <option>Devoir</option><option>Interrogation</option><option>Examen</option><option>Composition</option>
+                </select>
+                {Object.keys(grilleChanges).length>0&&(
+                  <Btn v="vert" sm disabled={grilleSaving} onClick={sauvegarderGrille}>
+                    {grilleSaving?"Enregistrement…":`💾 Enregistrer (${Object.keys(grilleChanges).length} modif.)`}
+                  </Btn>
+                )}
+                {Object.keys(grilleChanges).length>0&&(
+                  <Btn v="ghost" sm onClick={()=>setGrilleChanges({})}>✕ Annuler</Btn>
+                )}
+              </div>
+              {elevesGrille.length===0?<Vide icone="📝" msg="Aucun élève"/>:
+              matieresCols.length===0?<Vide icone="📚" msg="Aucune matière définie"/>:
+              <div style={{overflowX:"auto"}}>
+                <table style={{width:"100%",borderCollapse:"collapse",minWidth:600}}>
+                  <thead>
+                    <tr style={{background:"linear-gradient(135deg,var(--sc1),var(--sc1-dk))"}}>
+                      <th style={{padding:"8px 12px",textAlign:"left",color:"rgba(255,255,255,0.9)",fontSize:11,fontWeight:700,textTransform:"uppercase",whiteSpace:"nowrap",minWidth:150}}>Élève</th>
+                      {matieresCols.map(m=>(
+                        <th key={m} style={{padding:"8px 10px",textAlign:"center",color:"rgba(255,255,255,0.9)",fontSize:10,fontWeight:700,textTransform:"uppercase",whiteSpace:"nowrap",borderLeft:"1px solid rgba(255,255,255,0.1)"}}>
+                          {m}<div style={{fontSize:9,opacity:0.6,fontWeight:400}}>/{maxNote}</div>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {elevesGrille.map((e,ri)=>{
+                      const moy = matieresCols.reduce((s,m)=>{
+                        const v=Number(valeurCellule(e._id,m));
+                        return s+(isNaN(v)?0:v);
+                      },0)/matieresCols.filter(m=>valeurCellule(e._id,m)!=="").length||0;
+                      return (
+                        <tr key={e._id} style={{background:ri%2===0?"#fff":"#f8fafc",borderBottom:"1px solid #f1f5f9"}}>
+                          <td style={{padding:"6px 12px",fontSize:12,fontWeight:700,color:C.blueDark,whiteSpace:"nowrap"}}>
+                            {e.nom} {e.prenom}
+                            <span style={{fontSize:10,color:"#94a3b8",marginLeft:6}}>{e.classe}</span>
+                            {!isNaN(moy)&&moy>0&&<span style={{marginLeft:8,fontSize:11,fontWeight:900,...couleurNote(moy)}}>{moy.toFixed(1)}</span>}
+                          </td>
+                          {matieresCols.map(m=>{
+                            const key=`${e._id}|${m}`;
+                            const val=valeurCellule(e._id,m);
+                            const modif=key in grilleChanges;
+                            return (
+                              <td key={m} style={{padding:"4px 6px",textAlign:"center",borderLeft:"1px solid #f1f5f9"}}>
+                                {canCreate
+                                  ?<input
+                                    type="number" min="0" max={maxNote} step="0.25"
+                                    value={val}
+                                    onChange={ev=>setGrilleChanges(p=>({...p,[key]:ev.target.value}))}
+                                    style={{
+                                      width:54,textAlign:"center",border:`1.5px solid ${modif?"#f59e0b":"#e2e8f0"}`,
+                                      borderRadius:6,padding:"3px 4px",fontSize:12,fontWeight:700,
+                                      outline:"none",...couleurNote(val),
+                                      background:modif?"#fffbeb":couleurNote(val).background||"#fff",
+                                    }}
+                                  />
+                                  :<span style={{...couleurNote(val),padding:"2px 6px",borderRadius:6,fontSize:12,fontWeight:700}}>{val||"—"}</span>
+                                }
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>}
+            </div>
+          );
+        })()}
+        {notesVue==="liste"&&(cN?<Chargement/>:notes.length===0?<Vide icone="📝" msg="Aucune note"/>
           :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
             <THead cols={["Élève","Matière","Type","Période",`Note /${maxNote}`,readOnly?"":"Action"]}/>
             <tbody>{notes.map(n=><TR key={n._id}>
@@ -3781,7 +3924,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
               <TD><Badge color={n.note>=(maxNote*0.7)?"vert":n.note>=(maxNote*0.5)?"blue":"red"}>{n.note}/{maxNote}</Badge></TD>
               {canEdit&&<TD><Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ?"))supN(n._id);}}>Suppr.</Btn></TD>}
             </TR>)}</tbody>
-          </table></Card>}
+          </table></Card>)}
         {modal==="import_notes"&&canCreate&&<Modale titre="⬆️ Importer des notes depuis Excel" fermer={()=>{setModal(null);setImportPreview(null);}} large>
           <div style={{marginBottom:14,padding:"10px 14px",background:"#f0fdf4",borderRadius:10,fontSize:12,color:"#166534"}}>
             <strong>Format attendu :</strong> colonnes <em>Élève (Nom Prénom) · Matière · Type · Période · Note</em><br/>
@@ -6562,6 +6705,7 @@ function PortailParent({utilisateur, deconnecter, annee, schoolInfo}) {
   const [sujet,setSujet] = useState("");
   const [corps,setCorps] = useState("");
   const [envoi,setEnvoi] = useState(false);
+  const {items:mensEleve} = useFirestore(cleEleves);
 
   const eleve      = eleves.find(e=>e._id===eleveId) || {};
   const mesNotes   = notes.filter(n=>n.eleveId===eleveId||n.eleveNom===eleveNom);
@@ -6589,11 +6733,15 @@ function PortailParent({utilisateur, deconnecter, annee, schoolInfo}) {
     setEnvoi(false);
   };
 
+  const eleveCourant = mensEleve.find(e=>e._id===eleveId)||{};
+  const moisAnneeCtx = useContext(SchoolContext).moisAnnee;
+
   const TABS = [
     {id:"dashboard",icon:"🏠",label:"Tableau de bord"},
     {id:"notes",    icon:"📝",label:"Notes"},
     {id:"absences", icon:"📋",label:"Absences"},
     {id:"bulletins",icon:"📄",label:"Bulletins"},
+    {id:"paiements",icon:"💳",label:"Paiements"},
     {id:"messages", icon:"💬",label:"Messages"+(nonLus>0?` (${nonLus})`:"")},
   ];
 
@@ -6721,6 +6869,29 @@ function PortailParent({utilisateur, deconnecter, annee, schoolInfo}) {
             </div>
           </Card>}
 
+          {/* Graphique radar notes par matière */}
+          {mesNotes.length>0&&(()=>{
+            const radarData = matieres.map(mat=>{
+              const ns = mesNotes.filter(n=>n.matiere===mat);
+              const moy = ns.length ? ns.reduce((s,n)=>s+Number(n.note||0),0)/ns.length : 0;
+              return { matiere:mat.length>10?mat.slice(0,10)+"…":mat, valeur:Math.round(moy*10)/10, plein:20 };
+            });
+            return radarData.length>=3?(
+              <Card style={{marginBottom:16}}><div style={{padding:"14px 18px"}}>
+                <p style={{margin:"0 0 8px",fontWeight:800,fontSize:13,color:c1}}>📊 Profil par matière</p>
+                <ResponsiveContainer width="100%" height={220}>
+                  <RadarChart data={radarData}>
+                    <PolarGrid stroke="#e2e8f0"/>
+                    <PolarAngleAxis dataKey="matiere" tick={{fontSize:10}}/>
+                    <Radar name="Note" dataKey="valeur" stroke={c1} fill={c1} fillOpacity={0.25}/>
+                    <Radar name="Max" dataKey="plein" stroke="transparent" fill="transparent"/>
+                    <Tooltip formatter={v=>`${v}/20`}/>
+                  </RadarChart>
+                </ResponsiveContainer>
+              </div></Card>
+            ):null;
+          })()}
+
           {mesNotes.length===0&&mesAbs.length===0&&<Vide icone="🎓" msg="Aucune donnée disponible pour le moment"/>}
         </>}
 
@@ -6803,7 +6974,16 @@ function PortailParent({utilisateur, deconnecter, annee, schoolInfo}) {
               <Card key={periode} style={{marginBottom:12}}>
                 <div style={{padding:"12px 18px",background:`linear-gradient(135deg,${c1},${c1}cc)`,borderRadius:"14px 14px 0 0",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
                   <strong style={{color:"#fff",fontSize:14}}>Bulletin — {periode}</strong>
-                  <span style={{background:c2,color:"#fff",fontWeight:900,fontSize:13,padding:"4px 14px",borderRadius:20}}>Moy. {moy}/20</span>
+                  <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                    <span style={{background:c2,color:"#fff",fontWeight:900,fontSize:13,padding:"4px 14px",borderRadius:20}}>Moy. {moy}/20</span>
+                    <button onClick={()=>imprimerBulletin(
+                      {...eleve,nom:eleveNom.split(" ").slice(-1)[0]||eleveNom,prenom:eleveNom.split(" ").slice(0,-1).join(" ")},
+                      notesP, [...new Set(notesP.map(n=>n.matiere))].map(n=>({nom:n})),
+                      periode, sec==="primaire"?"Primaire":"Secondaire", sec==="primaire"?10:20, schoolInfo
+                    )} style={{background:"rgba(255,255,255,0.2)",border:"1px solid rgba(255,255,255,0.4)",color:"#fff",padding:"4px 10px",borderRadius:8,fontSize:11,cursor:"pointer",fontWeight:700}}>
+                      🖨️ Imprimer
+                    </button>
+                  </div>
                 </div>
                 <table style={{width:"100%",borderCollapse:"collapse"}}>
                   <THead cols={["Matière","Type","Note /20"]}/>
@@ -6819,6 +6999,55 @@ function PortailParent({utilisateur, deconnecter, annee, schoolInfo}) {
             );
           })}
           {mesNotes.length===0&&<Vide icone="📄" msg="Aucun bulletin disponible pour le moment"/>}
+        </>}
+
+        {/* ── PAIEMENTS ── */}
+        {tab==="paiements"&&<>
+          <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:900,color:c1}}>Suivi des mensualités</h2>
+          {(()=>{
+            const mens = eleveCourant.mens||{};
+            const mensDates = eleveCourant.mensDates||{};
+            const moisList = moisAnneeCtx.length ? moisAnneeCtx : Object.keys(mens);
+            const nbPayes = moisList.filter(m=>mens[m]==="Payé").length;
+            const nbImp   = moisList.filter(m=>mens[m]!=="Payé").length;
+            return (
+              <>
+                <div style={{display:"flex",gap:12,marginBottom:20,flexWrap:"wrap"}}>
+                  <div style={{padding:"14px 20px",background:"#dcfce7",borderRadius:12,textAlign:"center",minWidth:120}}>
+                    <div style={{fontWeight:900,fontSize:24,color:"#166534"}}>{nbPayes}</div>
+                    <div style={{fontSize:11,color:"#94a3b8",marginTop:2}}>Mois payés</div>
+                  </div>
+                  <div style={{padding:"14px 20px",background:"#fee2e2",borderRadius:12,textAlign:"center",minWidth:120}}>
+                    <div style={{fontWeight:900,fontSize:24,color:"#b91c1c"}}>{nbImp}</div>
+                    <div style={{fontSize:11,color:"#94a3b8",marginTop:2}}>Mois impayés</div>
+                  </div>
+                  <div style={{padding:"14px 20px",background:"#f0fdf4",borderRadius:12,textAlign:"center",minWidth:120}}>
+                    <div style={{fontWeight:900,fontSize:24,color:c2}}>{moisList.length?Math.round(nbPayes/moisList.length*100):0}%</div>
+                    <div style={{fontSize:11,color:"#94a3b8",marginTop:2}}>Taux</div>
+                  </div>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))",gap:8}}>
+                  {moisList.map(m=>{
+                    const paye = mens[m]==="Payé";
+                    return (
+                      <div key={m} style={{
+                        padding:"12px 16px",borderRadius:12,
+                        background:paye?"#dcfce7":"#fee2e2",
+                        border:`2px solid ${paye?"#86efac":"#fca5a5"}`,
+                      }}>
+                        <div style={{fontWeight:800,fontSize:13,color:paye?"#166534":"#b91c1c"}}>{m}</div>
+                        <div style={{fontSize:11,marginTop:4,color:paye?"#15803d":"#dc2626",fontWeight:700}}>
+                          {paye?"✅ Payé":"❌ Impayé"}
+                        </div>
+                        {paye&&mensDates[m]&&<div style={{fontSize:10,color:"#94a3b8",marginTop:2}}>{mensDates[m]}</div>}
+                      </div>
+                    );
+                  })}
+                </div>
+                {moisList.length===0&&<Vide icone="💳" msg="Aucune information de paiement"/>}
+              </>
+            );
+          })()}
         </>}
 
         {/* ── MESSAGES ── */}
@@ -7526,6 +7755,201 @@ function PortailPublic({onConnexion}) {
 }
 
 // ══════════════════════════════════════════════════════════════
+//  GESTION DES EXAMENS
+// ══════════════════════════════════════════════════════════════
+function GestionExamens() {
+  const {schoolId, schoolInfo, toast, moisAnnee} = useContext(SchoolContext);
+  const {items:examens, ajouter:ajEx, modifier:modEx, supprimer:supEx} = useFirestore("examens");
+  const {items:elevesC} = useFirestore("elevesCollege");
+  const {items:elevesP} = useFirestore("elevesPrimaire");
+  const c1 = schoolInfo.couleur1||C.blue;
+  const c2 = schoolInfo.couleur2||C.green;
+  const [modal,setModal] = useState(null);
+  const [form,setForm]   = useState({});
+  const [filtre,setFiltre] = useState("all");
+  const chg = k=>e=>setForm(p=>({...p,[k]:e.target.value}));
+
+  const tousEleves = [...elevesC,...elevesP];
+  const classes = [...new Set(tousEleves.map(e=>e.classe||""))].filter(Boolean).sort();
+
+  const examensFiltrés = filtre==="all" ? examens : examens.filter(e=>e.classe===filtre||e.classe==="Toutes");
+  const examensTriés  = [...examensFiltrés].sort((a,b)=>a.date>b.date?1:-1);
+
+  const genererConvocations = (exam) => {
+    const elevesCible = tousEleves.filter(e=>exam.classe==="Toutes"||e.classe===exam.classe);
+    if(!elevesCible.length){alert("Aucun élève pour cette classe.");return;}
+    const c1p = schoolInfo.couleur1||"#0A1628";
+    const c2p = schoolInfo.couleur2||"#00C48C";
+    const logo = schoolInfo.logo||"";
+    const nomEcole = schoolInfo.nom||"École";
+    const w = window.open("","_blank");
+    w.document.write(`<!DOCTYPE html><html lang="fr"><head>
+    <meta charset="utf-8"/>
+    <title>Convocations — ${exam.titre}</title>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+      @page{size:A5 portrait;margin:10mm}
+      *{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+      body{font-family:'Inter',Arial,sans-serif;background:#fff;margin:0}
+      .convoc{width:148mm;min-height:105mm;border:2px solid ${c1p};border-radius:6mm;padding:7mm;page-break-after:always;page-break-inside:avoid;display:flex;flex-direction:column;gap:4mm}
+      .convoc:last-child{page-break-after:auto}
+      .header{display:flex;align-items:center;gap:5mm;border-bottom:2px solid ${c2p};padding-bottom:4mm}
+      .logo{width:14mm;height:14mm;object-fit:contain}
+      .logo-ph{width:14mm;height:14mm;background:${c1p};border-radius:2mm;display:flex;align-items:center;justify-content:center;color:${c2p};font-size:8pt;font-weight:900}
+      .ecole-name{font-size:11pt;font-weight:900;color:${c1p}}
+      .ecole-sub{font-size:7pt;color:#64748b}
+      .titre{text-align:center;font-size:9pt;font-weight:900;color:${c1p};text-transform:uppercase;letter-spacing:.08em;background:${c2p}22;padding:2mm 4mm;border-radius:2mm;border-left:3mm solid ${c2p}}
+      .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:2mm}
+      .info-item{background:#f8fafc;padding:2mm 3mm;border-radius:2mm}
+      .info-label{font-size:6pt;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em}
+      .info-val{font-size:9pt;font-weight:800;color:${c1p}}
+      .footer{margin-top:auto;display:flex;justify-content:space-between;padding-top:3mm;border-top:1px solid #e2e8f0;font-size:7pt;color:#94a3b8}
+      .signature{text-align:center}
+      .sig-label{font-size:7pt;color:#64748b;margin-bottom:4mm}
+      .sig-line{width:30mm;height:.3mm;background:#94a3b8;margin:0 auto}
+    </style></head><body>
+    ${elevesCible.map(e=>`
+    <div class="convoc">
+      <div class="header">
+        ${logo?`<img src="${logo}" class="logo"/>`:`<div class="logo-ph">${nomEcole.slice(0,2).toUpperCase()}</div>`}
+        <div>
+          <div class="ecole-name">${nomEcole}</div>
+          <div class="ecole-sub">CONVOCATION D'EXAMEN</div>
+        </div>
+      </div>
+      <div class="titre">${exam.titre}</div>
+      <div class="info-grid">
+        <div class="info-item"><div class="info-label">Élève</div><div class="info-val">${e.nom} ${e.prenom}</div></div>
+        <div class="info-item"><div class="info-label">Matricule</div><div class="info-val">${e.matricule||"—"}</div></div>
+        <div class="info-item"><div class="info-label">Classe</div><div class="info-val">${e.classe||"—"}</div></div>
+        <div class="info-item"><div class="info-label">Date</div><div class="info-val">${exam.date||"—"}</div></div>
+        ${exam.heure?`<div class="info-item"><div class="info-label">Heure</div><div class="info-val">${exam.heure}</div></div>`:""}
+        ${exam.salle?`<div class="info-item"><div class="info-label">Salle</div><div class="info-val">${exam.salle}</div></div>`:""}
+        ${exam.matiere?`<div class="info-item"><div class="info-label">Matière</div><div class="info-val">${exam.matiere}</div></div>`:""}
+        ${exam.duree?`<div class="info-item"><div class="info-label">Durée</div><div class="info-val">${exam.duree}</div></div>`:""}
+      </div>
+      ${exam.consignes?`<div style="font-size:8pt;color:#475569;padding:2mm 3mm;background:#f8fafc;border-radius:2mm;"><strong>Consignes :</strong> ${exam.consignes}</div>`:""}
+      <div class="footer">
+        <span>Pièce à présenter le jour de l'examen</span>
+        <div class="signature"><div class="sig-label">Signature Direction</div><div class="sig-line"></div></div>
+      </div>
+    </div>`).join("")}
+    <script>window.onload=()=>{setTimeout(()=>window.print(),400);}</script>
+    </body></html>`);
+    w.document.close();
+  };
+
+  const TYPES_EXAM = ["Composition","Examen","Contrôle","Devoir surveillé","Brevet blanc","BAC blanc"];
+  const today = new Date().toISOString().slice(0,10);
+  const aVenir = examensTriés.filter(e=>!e.date||e.date>=today);
+  const passes  = examensTriés.filter(e=>e.date&&e.date<today);
+
+  return (
+    <div style={{padding:"22px 26px",maxWidth:1100}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20,flexWrap:"wrap",gap:10}}>
+        <div>
+          <h2 style={{margin:0,fontSize:18,fontWeight:900,color:c1}}>📝 Gestion des Examens</h2>
+          <p style={{margin:"4px 0 0",fontSize:13,color:"#6b7280"}}>{examens.length} examen(s) planifié(s)</p>
+        </div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          <select value={filtre} onChange={e=>setFiltre(e.target.value)}
+            style={{border:"1px solid #b0c4d8",borderRadius:8,padding:"6px 10px",fontSize:12}}>
+            <option value="all">Toutes classes</option>
+            <option value="Toutes">Toutes (globaux)</option>
+            {classes.map(c=><option key={c}>{c}</option>)}
+          </select>
+          <Btn onClick={()=>{setForm({type:"Composition",classe:"Toutes"});setModal("add");}}>+ Planifier</Btn>
+        </div>
+      </div>
+
+      {/* Examens à venir */}
+      {aVenir.length>0&&<>
+        <h3 style={{fontSize:13,fontWeight:800,color:c1,margin:"0 0 10px",textTransform:"uppercase",letterSpacing:"0.06em"}}>À venir ({aVenir.length})</h3>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:12,marginBottom:20}}>
+          {aVenir.map(ex=>(
+            <Card key={ex._id} style={{border:`1px solid ${c1}22`}}>
+              <div style={{padding:"14px 16px"}}>
+                <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:8,marginBottom:10}}>
+                  <div>
+                    <div style={{fontWeight:900,fontSize:14,color:c1}}>{ex.titre}</div>
+                    <div style={{fontSize:11,color:"#64748b",marginTop:2}}>{ex.type} · {ex.classe||"Toutes classes"}</div>
+                  </div>
+                  <div style={{background:`${c2}22`,color:c1,fontWeight:800,fontSize:12,padding:"4px 10px",borderRadius:8,whiteSpace:"nowrap"}}>{ex.date||"—"}</div>
+                </div>
+                <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
+                  {ex.heure&&<span style={{fontSize:11,background:"#f1f5f9",padding:"2px 8px",borderRadius:6,color:"#475569"}}>🕐 {ex.heure}</span>}
+                  {ex.salle&&<span style={{fontSize:11,background:"#f1f5f9",padding:"2px 8px",borderRadius:6,color:"#475569"}}>📍 {ex.salle}</span>}
+                  {ex.matiere&&<span style={{fontSize:11,background:"#f1f5f9",padding:"2px 8px",borderRadius:6,color:"#475569"}}>📚 {ex.matiere}</span>}
+                  {ex.duree&&<span style={{fontSize:11,background:"#f1f5f9",padding:"2px 8px",borderRadius:6,color:"#475569"}}>⏱ {ex.duree}</span>}
+                </div>
+                {ex.consignes&&<p style={{fontSize:11,color:"#64748b",margin:"0 0 10px",padding:"6px 10px",background:"#f8fafc",borderRadius:6,lineHeight:1.5}}>{ex.consignes}</p>}
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                  <Btn sm v="vert" onClick={()=>genererConvocations(ex)}>🖨️ Convocations</Btn>
+                  <Btn sm v="ghost" onClick={()=>{setForm({...ex});setModal("edit");}}>✏️</Btn>
+                  <Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ?"))supEx(ex._id);}}>🗑️</Btn>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </>}
+
+      {/* Examens passés */}
+      {passes.length>0&&<>
+        <h3 style={{fontSize:13,fontWeight:800,color:"#94a3b8",margin:"0 0 10px",textTransform:"uppercase",letterSpacing:"0.06em"}}>Passés ({passes.length})</h3>
+        <Card style={{opacity:0.75}}>
+          <table style={{width:"100%",borderCollapse:"collapse"}}>
+            <THead cols={["Titre","Type","Classe","Date","Salle","Actions"]}/>
+            <tbody>{passes.map(ex=><TR key={ex._id}>
+              <TD bold>{ex.titre}</TD>
+              <TD><Badge color="gray">{ex.type}</Badge></TD>
+              <TD>{ex.classe||"Toutes"}</TD>
+              <TD>{ex.date}</TD>
+              <TD>{ex.salle||"—"}</TD>
+              <TD>
+                <Btn sm v="ghost" onClick={()=>genererConvocations(ex)}>🖨️</Btn>
+                <Btn sm v="danger" style={{marginLeft:4}} onClick={()=>{if(confirm("Supprimer ?"))supEx(ex._id);}}>🗑️</Btn>
+              </TD>
+            </TR>)}</tbody>
+          </table>
+        </Card>
+      </>}
+
+      {examens.length===0&&<Vide icone="📝" msg="Aucun examen planifié"/>}
+
+      {/* Modal add/edit */}
+      {(modal==="add"||modal==="edit")&&<Modale titre={modal==="add"?"Planifier un examen":"Modifier l'examen"} fermer={()=>setModal(null)}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <div style={{gridColumn:"1/-1"}}><Input label="Titre de l'examen" value={form.titre||""} onChange={chg("titre")} placeholder="Ex : Composition du 1er trimestre"/></div>
+          <Selec label="Type" value={form.type||"Composition"} onChange={chg("type")}>
+            {TYPES_EXAM.map(t=><option key={t}>{t}</option>)}
+          </Selec>
+          <Selec label="Classe" value={form.classe||"Toutes"} onChange={chg("classe")}>
+            <option>Toutes</option>
+            {classes.map(c=><option key={c}>{c}</option>)}
+          </Selec>
+          <Input label="Date" type="date" value={form.date||""} onChange={chg("date")}/>
+          <Input label="Heure de début" value={form.heure||""} onChange={chg("heure")} placeholder="08:00"/>
+          <Input label="Salle / Lieu" value={form.salle||""} onChange={chg("salle")} placeholder="Salle A"/>
+          <Input label="Matière (optionnel)" value={form.matiere||""} onChange={chg("matiere")}/>
+          <Input label="Durée" value={form.duree||""} onChange={chg("duree")} placeholder="2h"/>
+          <div style={{gridColumn:"1/-1"}}><Textarea label="Consignes (optionnel)" value={form.consignes||""} onChange={chg("consignes")}/></div>
+        </div>
+        <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
+          <Btn v="ghost" onClick={()=>setModal(null)}>Annuler</Btn>
+          <Btn onClick={()=>{
+            if(!form.titre){toast("Titre requis","warning");return;}
+            modal==="add"?ajEx(form):modEx(form);
+            setModal(null);
+            toast(modal==="add"?"Examen planifié":"Examen mis à jour","success");
+          }}>{modal==="add"?"Planifier":"Enregistrer"}</Btn>
+        </div>
+      </Modale>}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
 //  RECHERCHE GLOBALE (Ctrl+K / ⌘K)
 // ══════════════════════════════════════════════════════════════
 function RechercheGlobale({modules, onNaviguer, onFermer}) {
@@ -7643,6 +8067,7 @@ export default function App() {
   const [schoolInfoState,setSchoolInfo]=useState(SCHOOL_INFO_DEFAUT);
   const [annee,setAnneeState]=useState(()=>localStorage.getItem("LC_annee")||"2025-2026");
   const [verrous,setVerrous]=useState({comptable:false,primaire:false,secondaire:false});
+  const [msgsNonLus,setMsgsNonLus]=useState(0); // badge messages sidebar
   const [toasts,setToasts]=useState([]);
   const toast=(msg,type="success")=>{
     const id=Date.now()+Math.random();
@@ -7762,6 +8187,16 @@ export default function App() {
         r.setProperty("--sc1", d.couleur1 || "#0A1628");
         r.setProperty("--sc2", d.couleur2 || "#00C48C");
       }
+    });
+    return ()=>unsub();
+  },[schoolId]);
+
+  // Badge messages non lus (côté école) — écoute en temps réel
+  useEffect(()=>{
+    if(!schoolId||schoolId==="superadmin") return;
+    const unsub = onSnapshot(collection(db,"ecoles",schoolId,"messages"),(snap)=>{
+      const nonLus = snap.docs.filter(d=>d.data().expediteur==="parent"&&!d.data().lu).length;
+      setMsgsNonLus(nonLus);
     });
     return ()=>unsub();
   },[schoolId]);
@@ -7977,11 +8412,16 @@ export default function App() {
               display:"flex",alignItems:"center",gap:9,padding:"9px 11px",borderRadius:8,border:"none",cursor:"pointer",textAlign:"left",width:"100%",
               background:actif?`${C.green}22`:"transparent",transition:"background .15s"}}>
               <span style={{fontSize:15}}>{m.icon}</span>
-              <div>
+              <div style={{flex:1,minWidth:0}}>
                 <p style={{margin:0,fontSize:12,fontWeight:800,color:actif?C.green:"rgba(255,255,255,0.82)"}}>{m.label}</p>
                 <p style={{margin:0,fontSize:9,color:"rgba(255,255,255,0.35)"}}>{m.desc}</p>
               </div>
-              {actif&&<div style={{marginLeft:"auto",width:5,height:5,borderRadius:"50%",background:C.green}}/>}
+              {m.id==="messages"&&msgsNonLus>0&&(
+                <span style={{background:"#ef4444",color:"#fff",borderRadius:"50%",minWidth:18,height:18,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:900,padding:"0 4px",flexShrink:0}}>
+                  {msgsNonLus}
+                </span>
+              )}
+              {actif&&msgsNonLus===0&&<div style={{marginLeft:"auto",width:5,height:5,borderRadius:"50%",background:C.green,flexShrink:0}}/>}
             </button>;
           })}
         </nav>
@@ -8059,6 +8499,7 @@ export default function App() {
             {page==="primaire"    && <Ecole titre="Direction du Primaire" couleur={C.green} cleClasses="classesPrimaire" cleEns="ensPrimaire" cleNotes="notesPrimaire" cleEleves="elevesPrimaire" avecEns={true} userRole={utilisateur.role} annee={annee} classesPredefinies={CLASSES_PRIMAIRE} maxNote={10} matieresPredefinies={MATIERES_PRIMAIRE} readOnly={readOnly} verrouOuvert={!!verrous.primaire}/>}
             {page==="secondaire"  && <Secondaire userRole={utilisateur.role} annee={annee} readOnly={readOnly} verrouOuvert={!!verrous.secondaire}/>}
             {page==="calendrier"  && <Calendrier annee={annee}/>}
+            {page==="examens"     && <GestionExamens/>}
             {page==="messages"    && <MessagesParents readOnly={readOnly}/>}
           </ErrorBoundary>
         </div>
