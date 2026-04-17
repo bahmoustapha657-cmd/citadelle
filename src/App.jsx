@@ -6604,7 +6604,15 @@ function PortailEnseignant({utilisateur, deconnecter, annee, schoolInfo}) {
 
         {/* ── EMPLOI DU TEMPS ── */}
         {tab==="edt"&&<>
-          <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:900,color:c1}}>Mon emploi du temps</h2>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:8}}>
+            <h2 style={{margin:0,fontSize:16,fontWeight:900,color:c1}}>Mon emploi du temps</h2>
+            {mesEmplois.length>0&&<Btn sm v="ghost" onClick={()=>{
+              const w=window.open("","_blank");
+              const rows=HEURES.map(h=>`<tr><td style="font-weight:700;background:#f8fafc;white-space:nowrap">${h}</td>${JOURS.map(j=>{const c=mesEmplois.find(e=>e.heure===h&&e.jour===j);return`<td style="text-align:center;padding:6px">${c?`<div style="background:#e8f0fe;border-radius:4px;padding:4px 6px;font-size:11px"><strong>${c.classe}</strong><br/>${c.matiere||matiere}</div>`:""}</td>`;}).join("")}</tr>`).join("");
+              w.document.write(`<!DOCTYPE html><html><head><title>EDT — ${nomEns}</title><style>body{font-family:Arial,sans-serif;padding:24px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #d0dce8;padding:8px 10px;font-size:12px}th{background:#0A1628;color:#fff}@media print{button{display:none}}</style></head><body><h2 style="color:#0A1628">Emploi du temps — ${nomEns}</h2><p style="color:#555">${matiere} · ${schoolInfo.nom} · ${annee}</p><table><tr><th>Heure</th>${JOURS.map(j=>`<th>${j}</th>`).join("")}</tr>${rows}</table><br/><button onclick="window.print()">Imprimer</button></body></html>`);
+              w.document.close();
+            }}>🖨️ Imprimer EDT</Btn>}
+          </div>
           {mesEmplois.length===0
             ?<Vide icone="📅" msg="Aucun créneau dans votre emploi du temps"/>
             :<Card>
