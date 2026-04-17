@@ -138,26 +138,34 @@ const GLOBAL_CSS = `
   /* ══════════════════════════════════════════════════════════
      MODE SOMBRE
      Activé par <body class="mode-sombre">
-     Technique : CSS invert + hue-rotate sur le conteneur app,
-     puis ré-inversion sur les images/vidéos pour les garder
-     dans leurs couleurs naturelles.
+
+     Technique : filtre invert+hue-rotate appliqué sur <html>
+     (pas sur un conteneur enfant) pour que les modales
+     position:fixed soient également traitées.
+
+     La sidebar <aside> est déjà sombre → on la ré-inverse pour
+     qu'elle reste telle quelle.
+     Les images/canvas sont aussi ré-inversés.
   ══════════════════════════════════════════════════════════ */
 
   body.mode-sombre {
     background: #0f1117;
   }
 
-  /* Conteneur racine : inversion totale + rotation de teinte
-     → blanc devient noir, noir devient blanc, les bleus restent bleus */
-  body.mode-sombre .lc-app-root {
+  /* Filtre global sur <html> */
+  html:has(body.mode-sombre) {
     filter: invert(1) hue-rotate(180deg);
   }
 
-  /* Ré-inversion des éléments qui doivent garder leurs couleurs naturelles */
-  body.mode-sombre .lc-app-root img,
-  body.mode-sombre .lc-app-root video,
-  body.mode-sombre .lc-app-root canvas,
-  body.mode-sombre .lc-app-root [data-nodark] {
+  /* Sidebar déjà sombre → double inversion = couleurs d'origine */
+  html:has(body.mode-sombre) aside {
+    filter: invert(1) hue-rotate(180deg);
+  }
+
+  /* Médias : ré-inversion pour garder les couleurs naturelles */
+  html:has(body.mode-sombre) img,
+  html:has(body.mode-sombre) video,
+  html:has(body.mode-sombre) canvas {
     filter: invert(1) hue-rotate(180deg);
   }
 
