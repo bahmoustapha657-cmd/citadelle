@@ -1,6 +1,4 @@
 import Inscription from "./Inscription";
-import PremiumGate from "./components/PremiumGate";
-import ModuleIA from "./components/IAAssistant";
 import ToastContainerView from "./components/ToastContainer";
 import Logo from "./Logo";
 import { getAuthHeaders } from "./apiClient";
@@ -379,13 +377,28 @@ const genererMdp = () => {
   return Array.from({length:12}, () => chars[Math.floor(Math.random()*chars.length)]).join("");
 };
 
+// ── Plans & limites ──────────────────────────────────────────
+const PLANS = {
+  gratuit:  { label:"Gratuit",  eleveLimit:50,       couleur:"#64748b", bg:"#f1f5f9" },
+  starter:  { label:"Starter",  eleveLimit:200,      couleur:"#0ea5e9", bg:"#e0f2fe" },
+  standard: { label:"Standard", eleveLimit:500,      couleur:"#8b5cf6", bg:"#ede9fe" },
+  premium:  { label:"Premium",  eleveLimit:Infinity, couleur:"#f59e0b", bg:"#fef3c7" },
+};
+// Durées standard (en jours)
+const PLAN_DUREES = [
+  {label:"1 mois",  jours:30},
+  {label:"3 mois",  jours:90},
+  {label:"6 mois",  jours:180},
+  {label:"1 an",    jours:365},
+];
+
 const ACCES = {
   superadmin:  ["superadmin_panel"],
-  admin:       ["accueil","historique","admin_panel","parametres","ia_assistant","fondation","compta","primaire","secondaire","calendrier","examens","messages"],
-  direction:   ["accueil","historique","admin_panel","parametres","ia_assistant","fondation","compta","primaire","secondaire","calendrier","examens","messages"],
+  admin:       ["accueil","historique","admin_panel","parametres","fondation","compta","primaire","secondaire","calendrier","examens","messages"],
+  direction:   ["accueil","historique","admin_panel","parametres","fondation","compta","primaire","secondaire","calendrier","examens","messages"],
   primaire:    ["primaire","calendrier","examens"],
   college:     ["secondaire","calendrier","examens"],
-  comptable:   ["ia_assistant","compta","primaire","secondaire","calendrier","examens"],
+  comptable:   ["compta","primaire","secondaire","calendrier","examens"],
   enseignant:  ["portail_enseignant"],
   parent:      ["portail_parent"],
 };
@@ -401,7 +414,6 @@ const MODULES = [
   {id:"historique",  label:"Historique",       icon:"📋", desc:"Journal des actions"},
   {id:"admin_panel", label:"Gestion Accès",   icon:"🔐", desc:"Mots de passe"},
   {id:"parametres",  label:"Paramètres",      icon:"🏫", desc:"Identité de l'école"},
-  {id:"ia_assistant",label:"Assistant IA",    icon:"✨", desc:"Documents & commentaires"},
   {id:"fondation",   label:"Fondation",        icon:"🏛️", desc:"Gouvernance"},
   {id:"compta",      label:"Comptabilité",     icon:"📊", desc:"Finances"},
   {id:"primaire",    label:"Dir. Primaire",    icon:"🎒", desc:"Primaire"},
@@ -446,6 +458,7 @@ export const SchoolContext = createContext({
   toast: () => {},
   logAction: () => {},
   envoyerPush: () => {},
+  planInfo: { planCourant:"gratuit", planLabel:"Gratuit", eleveLimit:50, totalElevesActifs:0, peutAjouterEleve:true, joursRestants:null, planEstExpire:false },
 });
 
 // ── TOAST SYSTEM ──────────────────────────────────────────────
@@ -2099,7 +2112,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   const canCreate = !readOnly;
   const canEdit = !readOnly && (peutModifier(userRole) || verrouOuvert);
   const canEditEleves = !readOnly && (peutModifierEleves(userRole) || verrouOuvert);
-  const {schoolId, schoolInfo, moisAnnee, moisSalaire, toast, logAction, envoyerPush} = useContext(SchoolContext);
+  const {schoolId, schoolInfo, moisAnnee, moisSalaire, toast, logAction, envoyerPush, planInfo} = useContext(SchoolContext);
   const {items:recettes,chargement:cR,ajouter:ajR,modifier:modR,supprimer:supR}=useFirestore("recettes");
   const {items:depenses,chargement:cD,ajouter:ajD,modifier:modD,supprimer:supD}=useFirestore("depenses");
   const {items:salaires,chargement:cS,ajouter:ajS,modifier:modS,supprimer:supS}=useFirestore("salaires");
@@ -3105,18 +3118,46 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
 
       {/* ── ENRÔLEMENT ÉLÈVES (Comptabilité uniquement) ── */}
       {tab==="enrolment"&&<div>
+        {/* ── Alerte plan : limite atteinte ── */}
+        {planInfo && !planInfo.peutAjouterEleve && (
+          <div style={{background:"#fef3c7",border:"2px solid #f59e0b",borderRadius:12,padding:"14px 18px",marginBottom:16,display:"flex",gap:14,alignItems:"center"}}>
+            <span style={{fontSize:28}}>🔒</span>
+            <div style={{flex:1}}>
+              <p style={{margin:"0 0 4px",fontWeight:900,fontSize:14,color:"#92400e"}}>
+                Limite d'élèves atteinte — Plan {planInfo.planLabel}
+              </p>
+              <p style={{margin:0,fontSize:12,color:"#78350f"}}>
+                Vous avez <strong>{planInfo.totalElevesActifs}</strong> élèves actifs
+                sur <strong>{planInfo.eleveLimit === Infinity ? "∞" : planInfo.eleveLimit}</strong> autorisés.
+                {planInfo.planCourant==="gratuit"
+                  ? " Contactez le Super-Admin pour activer un abonnement et inscrire plus d'élèves."
+                  : " Contactez le Super-Admin pour passer à un plan supérieur."}
+              </p>
+            </div>
+          </div>
+        )}
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,flexWrap:"wrap"}}>
-          <strong style={{fontSize:14,flex:1,color:C.blueDark}}>Enrôlement des Élèves</strong>
+          <strong style={{fontSize:14,flex:1,color:C.blueDark}}>
+            Enrôlement des Élèves
+            <span style={{marginLeft:10,fontSize:11,fontWeight:600,color:
+              planInfo?.peutAjouterEleve?"#16a34a":"#dc2626"}}>
+              ({planInfo?.totalElevesActifs ?? "…"}/{planInfo?.eleveLimit===Infinity?"∞":planInfo?.eleveLimit} élèves — Plan {planInfo?.planLabel})
+            </span>
+          </strong>
           <select value={niveauEnrol} onChange={e=>setNiveauEnrol(e.target.value)}
             style={{border:"1px solid #b0c4d8",borderRadius:7,padding:"6px 10px",fontSize:12,background:"#fff",color:C.blueDark,fontWeight:600}}>
             <option value="college">Collège ({elevesC.length} élèves)</option>
             <option value="primaire">Primaire ({elevesP.length} élèves)</option>
           </select>
-          {canCreate&&<Btn onClick={()=>{
-            const mat=genererMatricule(elevesEnrol, niveauEnrol);
-            setForm({statut:"Actif",sexe:"M",niveau:niveauEnrol,matricule:mat});
-            setModal("add_enrol");
-          }}>+ Nouvel élève</Btn>}
+          {canCreate&&(
+            planInfo?.peutAjouterEleve
+              ? <Btn onClick={()=>{
+                  const mat=genererMatricule(elevesEnrol, niveauEnrol);
+                  setForm({statut:"Actif",sexe:"M",niveau:niveauEnrol,matricule:mat});
+                  setModal("add_enrol");
+                }}>+ Nouvel élève</Btn>
+              : <Btn disabled title="Limite du plan atteinte — Contactez le Super-Admin">🔒 Limite atteinte</Btn>
+          )}
         </div>
         <div style={{background:"#e0ebf8",borderRadius:8,padding:"9px 14px",marginBottom:14,fontSize:12,color:C.blueDark}}>
           🔒 Seul le <strong>Comptable</strong> peut enrôler ou supprimer des élèves.
@@ -5928,12 +5969,17 @@ function SuperAdminPanel() {
   const [chargement, setChargement] = useState(true);
   const [stats, setStats] = useState({});
   const [recherche, setRecherche] = useState("");
-  const [confirmation, setConfirmation] = useState(null); // {ecole, action}
+  const [confirmation, setConfirmation] = useState(null);
   const [creationOuverte, setCreationOuverte] = useState(false);
   const [nouvelleEcole, setNouvelleEcole] = useState({nom:"",ville:"",pays:"Guinée"});
   const [msgSucces, setMsgSucces] = useState("");
   const [demandes, setDemandes] = useState([]);
-  const [ongletSA, setOngletSA] = useState("ecoles"); // ecoles | demandes
+  const [ongletSA, setOngletSA] = useState("ecoles");
+  // Modal gestion plan
+  const [planModal, setPlanModal] = useState(null); // {ecole}
+  const [planChoix, setPlanChoix] = useState("gratuit");
+  const [planDuree, setPlanDuree] = useState(365); // jours
+  const [planSaving, setPlanSaving] = useState(false);
 
   const chargerEcoles = async () => {
     setChargement(true);
@@ -5995,6 +6041,21 @@ function SuperAdminPanel() {
     setEcoles(prev => prev.map(e => e._id===ecole._id ? {...e,...update} : e));
     setMsgSucces(`Plan ${plan==="pro"?"Pro activé ⭐":"Gratuit rétabli"} pour ${ecole.nom}`);
     setTimeout(()=>setMsgSucces(""),4000);
+  };
+
+  const sauvegarderPlan = async () => {
+    if(!planModal) return;
+    setPlanSaving(true);
+    try {
+      const update = planChoix === "gratuit"
+        ? { plan:"gratuit", planExpiry:null, planActivatedBy:"superadmin", planActivatedAt:Date.now() }
+        : { plan:planChoix, planExpiry:Date.now()+planDuree*86400000, planActivatedBy:"superadmin", planActivatedAt:Date.now() };
+      await updateDoc(doc(db,"ecoles",planModal._id), update);
+      setEcoles(prev=>prev.map(e=>e._id===planModal._id?{...e,...update}:e));
+      setMsgSucces(`Plan ${PLANS[planChoix]?.label} activé pour ${planModal.nom}`);
+      setTimeout(()=>setMsgSucces(""),5000);
+      setPlanModal(null);
+    } finally { setPlanSaving(false); }
   };
 
   const toggleActif = async (ecole) => {
@@ -6200,29 +6261,32 @@ function SuperAdminPanel() {
                     <td style={S.td}><span style={S.badge(ecole.actif)}>{ecole.actif?"Actif":"Inactif"}</span></td>
                     <td style={S.td}>
                       <div style={{display:"flex",flexDirection:"column",gap:4,alignItems:"flex-start"}}>
-                        <span style={{
-                          display:"inline-block",padding:"2px 10px",borderRadius:20,fontSize:11,fontWeight:800,
-                          background:ecole.plan==="pro"?"#e0f2fe":"#f3f4f6",
-                          color:ecole.plan==="pro"?"#0369a1":"#6b7280",
-                        }}>
-                          {ecole.plan==="pro"?"⭐ Pro":"Gratuit"}
-                        </span>
-                        {ecole.plan==="pro"&&ecole.planExpiry&&(
-                          <span style={{fontSize:9,color:"#9ca3af"}}>
-                            Exp. {new Date(ecole.planExpiry).toLocaleDateString("fr-FR")}
-                          </span>
-                        )}
+                        {(()=>{
+                          const p=PLANS[ecole.plan]||PLANS.gratuit;
+                          const expired=ecole.plan!=="gratuit"&&ecole.planExpiry&&Date.now()>ecole.planExpiry;
+                          return (<>
+                            <span style={{
+                              display:"inline-block",padding:"2px 10px",borderRadius:20,fontSize:11,fontWeight:800,
+                              background:expired?"#fee2e2":p.bg, color:expired?"#991b1b":p.couleur,
+                            }}>
+                              {expired?"⚠ Expiré":p.label}
+                            </span>
+                            {ecole.plan!=="gratuit"&&ecole.planExpiry&&(
+                              <span style={{fontSize:9,color:expired?"#ef4444":"#9ca3af"}}>
+                                Exp. {new Date(ecole.planExpiry).toLocaleDateString("fr-FR")}
+                              </span>
+                            )}
+                          </>);
+                        })()}
                       </div>
                     </td>
                     <td style={{...S.td,textAlign:"center",fontWeight:700,color:C.blue}}>{st.eleves??"…"}</td>
                     <td style={{...S.td,textAlign:"center",fontWeight:700,color:C.green}}>{st.comptes??"…"}</td>
                     <td style={S.td}>
                       <div style={{display:"flex",gap:6}}>
-                        <button onClick={()=>activerPlan(ecole, ecole.plan==="pro"?"gratuit":"pro")}
-                          style={{...S.btn(ecole.plan==="pro"?C.blue:C.green),
-                            background:ecole.plan==="pro"?"#e0f2fe":"#d1fae5",
-                            color:ecole.plan==="pro"?"#0369a1":"#065f46"}}>
-                          {ecole.plan==="pro"?"↓ Gratuit":"⭐ Pro"}
+                        <button onClick={()=>{setPlanModal(ecole);setPlanChoix(ecole.plan||"gratuit");setPlanDuree(365);}}
+                          style={{...S.btn(C.blue),background:"#e0f2fe",color:"#0369a1"}}>
+                          Gérer le plan
                         </button>
                         <button onClick={()=>setConfirmation({ecole,action:"toggle"})}
                           style={{...S.btn(ecole.actif?C.blue:C.green),background:ecole.actif?"#fee2e2":"#d1fae5",color:ecole.actif?"#991b1b":"#065f46"}}>
@@ -6265,6 +6329,71 @@ function SuperAdminPanel() {
                 style={{background:confirmation.action==="supprimer"?"#ef4444":`linear-gradient(90deg,${C.blue},${C.green})`,
                   border:"none",color:"#fff",padding:"9px 18px",borderRadius:8,cursor:"pointer",fontWeight:700}}>
                 Confirmer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal gestion plan */}
+      {planModal && (
+        <div style={S.overlay} onClick={()=>setPlanModal(null)}>
+          <div style={{...S.modal,maxWidth:480}} onClick={e=>e.stopPropagation()}>
+            <h3 style={{margin:"0 0 4px",color:C.blueDark,fontSize:17}}>Gérer le plan</h3>
+            <p style={{fontSize:13,color:"#6b7280",marginBottom:18}}>{planModal.nom}</p>
+
+            {/* Sélecteur de plan */}
+            <label style={{display:"block",fontSize:11,fontWeight:700,color:C.blue,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:8}}>Plan</label>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:18}}>
+              {Object.entries(PLANS).map(([key,info])=>(
+                <button key={key} onClick={()=>setPlanChoix(key)}
+                  style={{
+                    border:`2px solid ${planChoix===key?info.couleur:"#e5e7eb"}`,
+                    borderRadius:10,padding:"10px 14px",cursor:"pointer",textAlign:"left",
+                    background:planChoix===key?info.bg:"#fff",
+                    transition:"all 0.15s",
+                  }}>
+                  <div style={{fontWeight:800,fontSize:13,color:info.couleur}}>{info.label}</div>
+                  <div style={{fontSize:11,color:"#6b7280",marginTop:2}}>
+                    {info.eleveLimit===Infinity?"Illimité":`≤ ${info.eleveLimit} élèves`}
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {/* Durée (uniquement pour plans payants) */}
+            {planChoix !== "gratuit" && (
+              <>
+                <label style={{display:"block",fontSize:11,fontWeight:700,color:C.blue,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:8}}>Durée</label>
+                <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:18}}>
+                  {PLAN_DUREES.map(d=>(
+                    <button key={d.jours} onClick={()=>setPlanDuree(d.jours)}
+                      style={{
+                        border:`2px solid ${planDuree===d.jours?C.blue:"#e5e7eb"}`,
+                        borderRadius:8,padding:"7px 14px",cursor:"pointer",
+                        background:planDuree===d.jours?"#e0f2fe":"#fff",
+                        color:planDuree===d.jours?C.blue:"#374151",
+                        fontWeight:planDuree===d.jours?700:400,fontSize:13,
+                      }}>
+                      {d.label}
+                    </button>
+                  ))}
+                </div>
+                <div style={{fontSize:12,color:"#6b7280",marginBottom:18}}>
+                  Expiration : <strong>{new Date(Date.now()+planDuree*86400000).toLocaleDateString("fr-FR")}</strong>
+                </div>
+              </>
+            )}
+
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+              <button onClick={()=>setPlanModal(null)}
+                style={{background:"#f3f4f6",border:"none",padding:"9px 18px",borderRadius:8,cursor:"pointer",fontWeight:600,color:"#6b7280"}}>
+                Annuler
+              </button>
+              <button onClick={sauvegarderPlan} disabled={planSaving}
+                style={{background:`linear-gradient(90deg,${C.blue},${C.green})`,border:"none",color:"#fff",
+                  padding:"9px 22px",borderRadius:8,cursor:"pointer",fontWeight:700,opacity:planSaving?0.7:1}}>
+                {planSaving?"Sauvegarde…":"Confirmer"}
               </button>
             </div>
           </div>
@@ -8221,6 +8350,7 @@ export default function App() {
   const [annee,setAnneeState]=useState(()=>localStorage.getItem("LC_annee")||"2025-2026");
   const [verrous,setVerrous]=useState({comptable:false,primaire:false,secondaire:false});
   const [msgsNonLus,setMsgsNonLus]=useState(0); // badge messages sidebar
+  const [totalElevesActifs,setTotalElevesActifs]=useState(0); // comptage toutes sections
   const [toasts,setToasts]=useState([]);
   const toast=(msg,type="success")=>{
     const id=Date.now()+Math.random();
@@ -8365,6 +8495,20 @@ export default function App() {
     return ()=>unsub();
   },[schoolId]);
 
+  // Comptage élèves actifs toutes sections (pour vérification plan)
+  useEffect(()=>{
+    if(!schoolId||schoolId==="superadmin") return;
+    const colls = ["elevesCollege","elevesPrimaire","elevesLycee"];
+    const counts = {elevesCollege:0, elevesPrimaire:0, elevesLycee:0};
+    const unsubs = colls.map(coll=>
+      onSnapshot(collection(db,"ecoles",schoolId,coll),(snap)=>{
+        counts[coll] = snap.docs.filter(d=>d.data().statut==="Actif").length;
+        setTotalElevesActifs(Object.values(counts).reduce((a,b)=>a+b,0));
+      })
+    );
+    return ()=>unsubs.forEach(u=>u());
+  },[schoolId]);
+
   // Centre de notifications — 10 dernières actions de l'historique
   useEffect(()=>{
     if(!schoolId||schoolId==="superadmin") return;
@@ -8418,6 +8562,26 @@ export default function App() {
     });
     return ()=>unsub();
   },[]);
+
+  // ── Calcul planInfo (freemium) ───────────────────────────────
+  const planCourant   = schoolInfoState.plan || "gratuit";
+  const planExpiry    = schoolInfoState.planExpiry || null;
+  const now           = Date.now();
+  const planEstExpire = planCourant !== "gratuit" && planExpiry && now > planExpiry;
+  const joursRestants = planExpiry ? Math.ceil((planExpiry - now) / 86400000) : null;
+  const eleveLimit    = planEstExpire
+    ? PLANS.gratuit.eleveLimit
+    : (PLANS[planCourant]?.eleveLimit ?? PLANS.gratuit.eleveLimit);
+  const planInfo = {
+    planCourant,
+    planExpiry,
+    planEstExpire,
+    joursRestants,
+    eleveLimit,
+    totalElevesActifs,
+    peutAjouterEleve: totalElevesActifs < eleveLimit,
+    planLabel: PLANS[planCourant]?.label ?? "Gratuit",
+  };
 
   // ── Push notifications helper ────────────────────────────────
   const envoyerPush = async(cibles, titre, corps, url="/") => {
@@ -8485,14 +8649,14 @@ export default function App() {
 
   // 2. Portail public de l'école (si activé, avant le formulaire de connexion)
   if(!utilisateur && page==="login" && schoolInfo.accueil?.active) return (
-    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire,toast,logAction,envoyerPush}}>
+    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire,toast,logAction,envoyerPush,planInfo}}>
       <PortailPublic onConnexion={()=>setPage("connexion")}/>
     </SchoolContext.Provider>
   );
 
   // 3. Formulaire de connexion
   if(!utilisateur)return (
-    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire,toast,logAction,envoyerPush}}>
+    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire,toast,logAction,envoyerPush,planInfo}}>
       <GlobalStyles/>
       <Connexion onLogin={connecter} onInscription={()=>{ signOut(auth).catch(()=>{}); setUtilisateur(null); setPage("inscription"); }}/>
     </SchoolContext.Provider>
@@ -8500,7 +8664,7 @@ export default function App() {
 
   // Forcer le changement de mot de passe à la première connexion
   if(utilisateur.premiereCo) return (
-    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire,toast,logAction,envoyerPush}}>
+    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire,toast,logAction,envoyerPush,planInfo}}>
       <ChangerMotDePasseModal
         utilisateur={utilisateur}
         onDone={()=>setUtilisateur(u=>({...u,premiereCo:false}))}
@@ -8510,7 +8674,7 @@ export default function App() {
 
   // Portail dédié aux enseignants — interface séparée du shell principal
   if(utilisateur.role==="enseignant") return (
-    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire,toast,logAction,envoyerPush}}>
+    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire,toast,logAction,envoyerPush,planInfo}}>
       <GlobalStyles/>
       <PortailEnseignant utilisateur={utilisateur} deconnecter={deconnecter} annee={annee} schoolInfo={schoolInfo}/>
     </SchoolContext.Provider>
@@ -8518,7 +8682,7 @@ export default function App() {
 
   // Portail dédié aux parents
   if(utilisateur.role==="parent") return (
-    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire,toast,logAction,envoyerPush}}>
+    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire,toast,logAction,envoyerPush,planInfo}}>
       <GlobalStyles/>
       <PortailParent utilisateur={utilisateur} deconnecter={deconnecter} annee={annee} schoolInfo={schoolInfo}/>
     </SchoolContext.Provider>
@@ -8533,7 +8697,7 @@ export default function App() {
   const couleur2 = schoolInfo.couleur2 || C.green;
 
   return (
-    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire,toast,logAction,envoyerPush}}>
+    <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire,toast,logAction,envoyerPush,planInfo}}>
     <GlobalStyles/>
 
     <ToastContainerView toasts={toasts}/>
@@ -8647,6 +8811,18 @@ export default function App() {
                 {!isMobile&&<span>Hors ligne</span>}
               </div>
             )}
+            {/* ── Alerte expiration abonnement ── */}
+            {planInfo && planInfo.joursRestants !== null && planInfo.joursRestants <= 30 && ["admin","direction"].includes(utilisateur?.role) && (
+              <div title={`Abonnement ${planInfo.planLabel} — expire dans ${planInfo.joursRestants} jour(s)`}
+                style={{display:"flex",alignItems:"center",gap:4,
+                  background: planInfo.joursRestants<=7?"#fee2e2":"#fef3c7",
+                  border:`1px solid ${planInfo.joursRestants<=7?"#f87171":"#f59e0b"}`,
+                  borderRadius:8,padding:"4px 9px",fontSize:11,fontWeight:700,
+                  color:planInfo.joursRestants<=7?"#b91c1c":"#92400e",flexShrink:0,cursor:"default"}}>
+                <span style={{fontSize:13}}>{planInfo.joursRestants<=7?"🔴":"🟡"}</span>
+                {!isMobile&&<span>Abonnement : {planInfo.joursRestants<=0?"EXPIRÉ":`${planInfo.joursRestants}j`}</span>}
+              </div>
+            )}
             <button onClick={()=>setRechercheOuverte(true)}
               title="Recherche globale (Ctrl+K)"
               style={{display:"flex",alignItems:"center",gap:isMobile?0:6,background:"#f0f4f0",border:"1px solid #e0ebf8",borderRadius:8,padding:"5px 10px",cursor:"pointer",fontSize:isMobile?17:12,color:"#6b7280",fontWeight:600}}>
@@ -8740,7 +8916,6 @@ export default function App() {
             {page==="accueil"         && <TableauDeBord annee={annee}/>}
             {page==="historique"      && <HistoriqueActions/>}
             {page==="parametres"      && <ParametresEcole/>}
-            {page==="ia_assistant"    && <PremiumGate feature="ia_assistant"><ModuleIA/></PremiumGate>}
             {page==="admin_panel" && <AdminPanel annee={annee} setAnnee={setAnnee} verrous={verrous} schoolId={schoolId}/>}
             {page==="fondation"   && <Fondation readOnly={readOnly} annee={annee} userRole={utilisateur.role}/>}
             {page==="compta"      && <Comptabilite readOnly={readOnly} annee={annee} userRole={utilisateur.role} verrouOuvert={!!verrous.comptable}/>}
