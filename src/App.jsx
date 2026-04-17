@@ -4822,6 +4822,19 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
             <option value="all">Toutes les classes</option>
             {classesUniq.map(c=><option key={c}>{c}</option>)}
           </select>
+          <Btn sm v="amber" onClick={()=>{
+            const elevesAtt=elevesFiltres.filter(e=>!rechercheMatricule
+              ||(e.matricule||"").toLowerCase().includes(rechercheMatricule.toLowerCase())
+              ||(e.nom+" "+e.prenom).toLowerCase().includes(rechercheMatricule.toLowerCase()));
+            if(!elevesAtt.length){alert("Aucun élève à imprimer.");return;}
+            const niveau=avecEns?"college":"primaire";
+            const w=window.open("","_blank");
+            const blocs=elevesAtt.map(e=>imprimerAttestation._html?imprimerAttestation._html(e,niveau,annee,schoolInfo):"").join("");
+            // Génération groupée en ouvrant plusieurs onglets n'est pas idéale ; on imprime la liste
+            const rows=elevesAtt.map(e=>`<tr><td>${e.matricule||"—"}</td><td>${e.nom} ${e.prenom}</td><td>${e.classe}</td><td>${e.dateNaissance||"—"}</td><td>${e.lieuNaissance||"—"}</td></tr>`).join("");
+            w.document.write(`<!DOCTYPE html><html><head><title>Attestations — ${filtreClasse==="all"?"Toutes classes":filtreClasse}</title><style>body{font-family:Arial,sans-serif;padding:24px}h2{color:#0A1628;text-align:center}table{width:100%;border-collapse:collapse;margin-top:16px}th{background:#0A1628;color:#fff;padding:8px}td{padding:7px 8px;border-bottom:1px solid #e5e7eb}@media print{button{display:none}}</style></head><body><h2>${schoolInfo.nom||"École"} — Registre des attestations</h2><p style="text-align:center">${filtreClasse==="all"?"Toutes classes":filtreClasse} · Année ${annee}</p><table><tr><th>Matricule</th><th>Nom & Prénom</th><th>Classe</th><th>Date naissance</th><th>Lieu naissance</th></tr>${rows}</table><br/><button onclick="window.print()">🖨️ Imprimer la liste</button></body></html>`);
+            w.document.close();
+          }}>📋 Liste en lot</Btn>
         </div>
         <div style={{background:"#eaf4e0",border:"1px solid #86efac",borderRadius:8,padding:"9px 14px",fontSize:12,color:"#166534",marginBottom:14,display:"flex",alignItems:"center",gap:8}}>
           <span style={{fontSize:16}}>📜</span>
@@ -6736,54 +6749,67 @@ function PortailEnseignant({utilisateur, deconnecter, annee, schoolInfo}) {
 
         {/* ── FICHE DE PAIE ── */}
         {tab==="salaire"&&<>
-          <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:900,color:c1}}>Ma fiche de paie</h2>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:8}}>
+            <h2 style={{margin:0,fontSize:16,fontWeight:900,color:c1}}>Ma fiche de paie</h2>
+            {monSalaire.length>0&&<Btn sm v="ghost" onClick={()=>{
+              const w=window.open("","_blank");
+              const lignes=monSalaire.map(s=>{
+                const net=s.section==="Secondaire"
+                  ?((Number(s.vhPrevu||0)+Number(s.cinqSem||0)-Number(s.nonExecute||0))*Number(s.primeHoraire||0)-Number(s.bon||0)+Number(s.revision||0))
+                  :(Number(s.montantForfait||0)-Number(s.bon||0)+Number(s.revision||0));
+                return `<tr><td>${s.mois}</td><td>${s.section}</td><td>${s.section==="Secondaire"?`${(Number(s.vhPrevu||0)+Number(s.cinqSem||0)-Number(s.nonExecute||0))} h × ${(s.primeHoraire||0).toLocaleString("fr-FR")} GNF`:`Forfait ${Number(s.montantForfait||0).toLocaleString("fr-FR")} GNF`}</td><td>${Number(s.bon||0)>0?"-"+Number(s.bon).toLocaleString("fr-FR"):"-"}</td><td>${Number(s.revision||0)>0?"+"+Number(s.revision).toLocaleString("fr-FR"):"-"}</td><td style="font-weight:900;color:#0A1628">${net.toLocaleString("fr-FR")} GNF</td></tr>`;
+              }).join("");
+              w.document.write(`<!DOCTYPE html><html><head><title>Fiches de paie — ${nomEns}</title><style>body{font-family:Arial,sans-serif;padding:24px;font-size:13px}h2{color:#0A1628}table{width:100%;border-collapse:collapse;margin-top:16px}th{background:#0A1628;color:#fff;padding:8px 10px}td{padding:8px 10px;border-bottom:1px solid #e5e7eb}@media print{button{display:none}}</style></head><body><h2>${schoolInfo.nom||"École"} — Fiches de paie</h2><p>${nomEns} · ${matiere||"Enseignant"} · Année ${annee}</p><table><tr><th>Mois</th><th>Section</th><th>Détail</th><th>Bon</th><th>Révision</th><th>Net à payer</th></tr>${lignes}</table><br/><button onclick="window.print()">🖨️ Imprimer</button></body></html>`);
+              w.document.close();
+            }}>🖨️ Imprimer fiches</Btn>}
+          </div>
           <LectureSeule/>
           {monSalaire.length===0
             ?<Vide icone="💰" msg="Aucune fiche de paie disponible"/>
             :<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:12}}>
-              {monSalaire.map((s,i)=>(
-                <Card key={i} style={{padding:0}}>
-                  <div style={{background:`linear-gradient(135deg,${c1},${c1}cc)`,padding:"12px 16px",borderRadius:"14px 14px 0 0"}}>
-                    <div style={{color:c2,fontWeight:900,fontSize:13}}>{s.mois}</div>
-                    <div style={{color:"rgba(255,255,255,0.7)",fontSize:11}}>Section {s.section}</div>
-                  </div>
-                  <div style={{padding:"14px 16px"}}>
-                    {s.section==="Secondaire"?<>
-                      <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:6,paddingBottom:6,borderBottom:"1px solid #f1f5f9"}}>
-                        <span style={{color:"#64748b"}}>V.H. exécuté</span>
-                        <strong>{(Number(s.vhPrevu||0)+Number(s.cinqSem||0)-Number(s.nonExecute||0))} h</strong>
-                      </div>
-                      <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:6}}>
-                        <span style={{color:"#64748b"}}>Prime horaire</span>
-                        <strong>{(s.primeHoraire||0).toLocaleString("fr-FR")} GNF</strong>
-                      </div>
-                    </>:<>
-                      <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:6,paddingBottom:6,borderBottom:"1px solid #f1f5f9"}}>
-                        <span style={{color:"#64748b"}}>Forfait</span>
-                        <strong>{Number(s.montantForfait||0).toLocaleString("fr-FR")} GNF</strong>
-                      </div>
-                    </>}
-                    {Number(s.bon||0)>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:6,color:"#b91c1c"}}>
-                      <span>Bon déduit</span>
-                      <strong>-{Number(s.bon).toLocaleString("fr-FR")} GNF</strong>
-                    </div>}
-                    {Number(s.revision||0)>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:6,color:C.greenDk}}>
-                      <span>Révision</span>
-                      <strong>+{Number(s.revision).toLocaleString("fr-FR")} GNF</strong>
-                    </div>}
-                    <div style={{display:"flex",justifyContent:"space-between",padding:"10px 12px",background:`${c1}0d`,borderRadius:8,marginTop:8}}>
-                      <span style={{fontWeight:700,fontSize:13,color:c1}}>NET À PAYER</span>
-                      <strong style={{fontSize:15,color:c1}}>
-                        {s.section==="Secondaire"
-                          ?((Number(s.vhPrevu||0)+Number(s.cinqSem||0)-Number(s.nonExecute||0))*Number(s.primeHoraire||0)-Number(s.bon||0)+Number(s.revision||0)).toLocaleString("fr-FR")
-                          :(Number(s.montantForfait||0)-Number(s.bon||0)+Number(s.revision||0)).toLocaleString("fr-FR")
-                        } GNF
-                      </strong>
+              {monSalaire.map((s,i)=>{
+                const net=s.section==="Secondaire"
+                  ?((Number(s.vhPrevu||0)+Number(s.cinqSem||0)-Number(s.nonExecute||0))*Number(s.primeHoraire||0)-Number(s.bon||0)+Number(s.revision||0))
+                  :(Number(s.montantForfait||0)-Number(s.bon||0)+Number(s.revision||0));
+                return (
+                  <Card key={i} style={{padding:0}}>
+                    <div style={{background:`linear-gradient(135deg,${c1},${c1}cc)`,padding:"12px 16px",borderRadius:"14px 14px 0 0"}}>
+                      <div style={{color:c2,fontWeight:900,fontSize:13}}>{s.mois}</div>
+                      <div style={{color:"rgba(255,255,255,0.7)",fontSize:11}}>Section {s.section}</div>
                     </div>
-                    {s.observation&&<p style={{fontSize:11,color:"#94a3b8",marginTop:8}}>{s.observation}</p>}
-                  </div>
-                </Card>
-              ))}
+                    <div style={{padding:"14px 16px"}}>
+                      {s.section==="Secondaire"?<>
+                        <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:6,paddingBottom:6,borderBottom:"1px solid #f1f5f9"}}>
+                          <span style={{color:"#64748b"}}>V.H. exécuté</span>
+                          <strong>{(Number(s.vhPrevu||0)+Number(s.cinqSem||0)-Number(s.nonExecute||0))} h</strong>
+                        </div>
+                        <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:6}}>
+                          <span style={{color:"#64748b"}}>Prime horaire</span>
+                          <strong>{(s.primeHoraire||0).toLocaleString("fr-FR")} GNF</strong>
+                        </div>
+                      </>:<>
+                        <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:6,paddingBottom:6,borderBottom:"1px solid #f1f5f9"}}>
+                          <span style={{color:"#64748b"}}>Forfait</span>
+                          <strong>{Number(s.montantForfait||0).toLocaleString("fr-FR")} GNF</strong>
+                        </div>
+                      </>}
+                      {Number(s.bon||0)>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:6,color:"#b91c1c"}}>
+                        <span>Bon déduit</span>
+                        <strong>-{Number(s.bon).toLocaleString("fr-FR")} GNF</strong>
+                      </div>}
+                      {Number(s.revision||0)>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:6,color:C.greenDk}}>
+                        <span>Révision</span>
+                        <strong>+{Number(s.revision).toLocaleString("fr-FR")} GNF</strong>
+                      </div>}
+                      <div style={{display:"flex",justifyContent:"space-between",padding:"10px 12px",background:`${c1}0d`,borderRadius:8,marginTop:8}}>
+                        <span style={{fontWeight:700,fontSize:13,color:c1}}>NET À PAYER</span>
+                        <strong style={{fontSize:15,color:c1}}>{net.toLocaleString("fr-FR")} GNF</strong>
+                      </div>
+                      {s.observation&&<p style={{fontSize:11,color:"#94a3b8",marginTop:8}}>{s.observation}</p>}
+                    </div>
+                  </Card>
+                );
+              })}
             </div>}
         </>}
 
