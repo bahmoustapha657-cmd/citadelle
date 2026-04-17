@@ -3263,6 +3263,8 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
   const [formC,setFormC]=useState({});
   const [parentEleve,setParentEleve]=useState(null);
   const [formP,setFormP]=useState({});
+  const [importPreview,setImportPreview]=useState(null); // {lignes, erreurs}
+  const [importEnCours,setImportEnCours]=useState(false);
   const chg=k=>e=>setForm(p=>({...p,[k]:e.target.value}));
   const chgC=k=>e=>setFormC(p=>({...p,[k]:e.target.value}));
   const chgP=k=>e=>setFormP(p=>({...p,[k]:e.target.value}));
@@ -3759,7 +3761,15 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
             `Notes_${avecEns?"College":"Primaire"}`,
             ["Élève","Matière","Type","Période",`Note /${maxNote}`],
             notes.map(n=>[n.eleveNom,n.matiere,n.type,n.periode,n.note])
-          )}>📥 Export Excel</Btn>
+          )}>📥 Export</Btn>
+          <Btn sm v="ghost" onClick={()=>{
+            // Télécharger modèle Excel
+            exportExcel(`Modele_Import_Notes_/${maxNote}`,
+              ["Élève (Nom Prénom)","Matière","Type","Période",`Note (sur ${maxNote})`],
+              eleves.slice(0,3).map(e=>[`${e.nom} ${e.prenom}`,matieres[0]?.nom||"Mathématiques","Devoir","T1",Math.round(maxNote*0.7)])
+            );
+          }}>📋 Modèle</Btn>
+          {canCreate&&<Btn sm v="vert" onClick={()=>setModal("import_notes")}>⬆️ Importer</Btn>}
           {canCreate&&<Btn onClick={()=>{setForm({periode:"T1",type:"Devoir"});setModal("add_n");}}>+ Saisir</Btn>}
         </div>
         {cN?<Chargement/>:notes.length===0?<Vide icone="📝" msg="Aucune note"/>
@@ -3772,6 +3782,90 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
               {canEdit&&<TD><Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ?"))supN(n._id);}}>Suppr.</Btn></TD>}
             </TR>)}</tbody>
           </table></Card>}
+        {modal==="import_notes"&&canCreate&&<Modale titre="⬆️ Importer des notes depuis Excel" fermer={()=>{setModal(null);setImportPreview(null);}} large>
+          <div style={{marginBottom:14,padding:"10px 14px",background:"#f0fdf4",borderRadius:10,fontSize:12,color:"#166534"}}>
+            <strong>Format attendu :</strong> colonnes <em>Élève (Nom Prénom) · Matière · Type · Période · Note</em><br/>
+            Télécharge le modèle via le bouton "📋 Modèle" pour garantir le bon format.
+          </div>
+          <input type="file" accept=".xlsx,.xls,.csv" onChange={async e=>{
+            const file = e.target.files[0];
+            if(!file) return;
+            const ab = await file.arrayBuffer();
+            const wb = XLSX.read(ab);
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(ws,{header:1,defval:""}).slice(1); // skip header
+            const noms = new Set(eleves.map(e=>`${e.nom} ${e.prenom}`.toLowerCase()));
+            const periodes = new Set(["t1","t2","t3","s1","s2"]);
+            const types = new Set(["devoir","interrogation","examen","composition","contrôle","controle"]);
+            const lignes = rows.filter(r=>r[0]||r[1]).map((r,i)=>{
+              const eleveNom = String(r[0]||"").trim();
+              const matiere  = String(r[1]||"").trim();
+              const type     = String(r[2]||"Devoir").trim();
+              const periode  = String(r[3]||"T1").trim();
+              const note     = Number(String(r[4]||"").replace(",","."));
+              const eleve    = eleves.find(e=>`${e.nom} ${e.prenom}`.toLowerCase()===eleveNom.toLowerCase());
+              const erreurs  = [];
+              if(!eleveNom) erreurs.push("Élève manquant");
+              else if(!eleve) erreurs.push("Élève introuvable");
+              if(!matiere) erreurs.push("Matière manquante");
+              if(isNaN(note)||note<0||note>maxNote) erreurs.push(`Note invalide (0–${maxNote})`);
+              return { eleveNom, eleveId:eleve?._id, matiere, type, periode, note, erreurs, ligne:i+2 };
+            });
+            setImportPreview({ lignes, valides:lignes.filter(l=>!l.erreurs.length) });
+          }} style={{marginBottom:12}}/>
+
+          {importPreview&&<>
+            <div style={{display:"flex",gap:12,marginBottom:10,fontSize:12}}>
+              <span style={{color:"#059669",fontWeight:700}}>✅ {importPreview.valides.length} valides</span>
+              <span style={{color:"#dc2626",fontWeight:700}}>❌ {importPreview.lignes.length-importPreview.valides.length} erreurs</span>
+            </div>
+            <div style={{maxHeight:300,overflowY:"auto",border:"1px solid #e2e8f0",borderRadius:8}}>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
+                <thead><tr style={{background:"#f8fafc",position:"sticky",top:0}}>
+                  <th style={{padding:"6px 8px",textAlign:"left",fontSize:10,color:"#64748b"}}>L.</th>
+                  <th style={{padding:"6px 8px",textAlign:"left",fontSize:10,color:"#64748b"}}>Élève</th>
+                  <th style={{padding:"6px 8px",textAlign:"left",fontSize:10,color:"#64748b"}}>Matière</th>
+                  <th style={{padding:"6px 8px",textAlign:"left",fontSize:10,color:"#64748b"}}>Type</th>
+                  <th style={{padding:"6px 8px",textAlign:"left",fontSize:10,color:"#64748b"}}>Période</th>
+                  <th style={{padding:"6px 8px",textAlign:"center",fontSize:10,color:"#64748b"}}>Note</th>
+                  <th style={{padding:"6px 8px",textAlign:"left",fontSize:10,color:"#64748b"}}>Statut</th>
+                </tr></thead>
+                <tbody>{importPreview.lignes.map((l,i)=>(
+                  <tr key={i} style={{background:l.erreurs.length?"#fef2f2":"#f0fdf4",borderBottom:"1px solid #f1f5f9"}}>
+                    <td style={{padding:"4px 8px",color:"#94a3b8",fontSize:10}}>{l.ligne}</td>
+                    <td style={{padding:"4px 8px",fontWeight:600}}>{l.eleveNom||"—"}</td>
+                    <td style={{padding:"4px 8px"}}>{l.matiere||"—"}</td>
+                    <td style={{padding:"4px 8px"}}>{l.type}</td>
+                    <td style={{padding:"4px 8px"}}>{l.periode}</td>
+                    <td style={{padding:"4px 8px",textAlign:"center",fontWeight:700}}>{isNaN(l.note)?"—":l.note}</td>
+                    <td style={{padding:"4px 8px"}}>
+                      {l.erreurs.length
+                        ?<span style={{color:"#dc2626",fontSize:10}}>⚠️ {l.erreurs.join(", ")}</span>
+                        :<span style={{color:"#059669",fontSize:10}}>✅</span>}
+                    </td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+          </>}
+
+          <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
+            <Btn v="ghost" onClick={()=>{setModal(null);setImportPreview(null);}}>Annuler</Btn>
+            {importPreview?.valides.length>0&&<Btn v="vert" disabled={importEnCours} onClick={async()=>{
+              setImportEnCours(true);
+              let count=0;
+              for(const l of importPreview.valides){
+                await ajN({eleveNom:l.eleveNom,eleveId:l.eleveId,matiere:l.matiere,type:l.type,periode:l.periode,note:l.note});
+                count++;
+              }
+              setImportEnCours(false);
+              setModal(null);
+              setImportPreview(null);
+              toast(`${count} note(s) importée(s) avec succès`,"success");
+            }}>{importEnCours?"Import en cours…":`⬆️ Importer ${importPreview.valides.length} note(s)`}</Btn>}
+          </div>
+        </Modale>}
+
         {modal==="add_n"&&canCreate&&<Modale titre="Saisir une note" fermer={()=>setModal(null)}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
             <div style={{gridColumn:"1/-1"}}>
@@ -4874,6 +4968,53 @@ function TableauDeBord({annee}) {
           </div>
         </div></Card>
       </div>
+
+      {/* ── Tendances annuelles ── */}
+      {(()=>{
+        // Taux paiement mois par mois pour tous les élèves
+        const tousEleves = [...elevesC,...elevesP];
+        const dataTendance = moisAnnee.map(m=>{
+          const payesMois = tousEleves.filter(e=>(e.mens||{})[m]==="Payé").length;
+          const taux = tousEleves.length ? Math.round(payesMois/tousEleves.length*100) : 0;
+          const absencesMois = [...absences,...absP].filter(a=>{
+            try { return new Date(a.date).toLocaleDateString("fr-FR",{month:"long"}).toLowerCase()===m.toLowerCase(); } catch { return false; }
+          }).length;
+          return { mois:m.slice(0,3), taux, absences:absencesMois, payes:payesMois };
+        });
+        return (
+          <Card style={{marginBottom:16}}><div style={{padding:"16px 18px"}}>
+            <p style={{margin:"0 0 14px",fontWeight:800,fontSize:13,color:c1}}>Tendances annuelles — {annee||getAnnee()}</p>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+              {/* Courbe taux paiement */}
+              <div>
+                <p style={{fontSize:11,fontWeight:700,color:"#64748b",margin:"0 0 8px",textTransform:"uppercase",letterSpacing:"0.06em"}}>Taux de paiement (%)</p>
+                <ResponsiveContainer width="100%" height={160}>
+                  <LineChart data={dataTendance} margin={{top:4,right:8,left:-20,bottom:0}}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e0ebf8"/>
+                    <XAxis dataKey="mois" tick={{fontSize:10}}/>
+                    <YAxis domain={[0,100]} tick={{fontSize:10}} tickFormatter={v=>`${v}%`}/>
+                    <Tooltip formatter={(v)=>`${v}%`}/>
+                    <Line type="monotone" dataKey="taux" stroke={c2} strokeWidth={2.5} dot={{r:3,fill:c2}} name="Taux paiement"/>
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+              {/* Courbe absences */}
+              <div>
+                <p style={{fontSize:11,fontWeight:700,color:"#64748b",margin:"0 0 8px",textTransform:"uppercase",letterSpacing:"0.06em"}}>Absences enregistrées</p>
+                <ResponsiveContainer width="100%" height={160}>
+                  <LineChart data={dataTendance} margin={{top:4,right:8,left:-20,bottom:0}}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e0ebf8"/>
+                    <XAxis dataKey="mois" tick={{fontSize:10}}/>
+                    <YAxis tick={{fontSize:10}}/>
+                    <Tooltip/>
+                    <Line type="monotone" dataKey="absences" stroke="#ef4444" strokeWidth={2.5} dot={{r:3,fill:"#ef4444"}} name="Absences"/>
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div></Card>
+        );
+      })()}
 
       {/* Événements à venir + Alertes */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
