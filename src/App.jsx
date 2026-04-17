@@ -6322,9 +6322,12 @@ function SuperAdminPanel() {
                     <td style={{...S.td,textAlign:"center",fontWeight:700,color:C.green}}>{st.comptes??"…"}</td>
                     <td style={S.td}>
                       <div style={{display:"flex",gap:6}}>
-                        <button onClick={()=>{setPlanModal(ecole);setPlanChoix(ecole.plan||"gratuit");setPlanDuree(365);}}
-                          style={{...S.btn(C.blue),background:"#e0f2fe",color:"#0369a1"}}>
-                          Gérer le plan
+                        <button onClick={()=>{
+                            if(planModal?._id===ecole._id){setPlanModal(null);}
+                            else{setPlanModal(ecole);setPlanChoix(ecole.plan||"gratuit");setPlanDuree(365);}
+                          }}
+                          style={{...S.btn(C.blue),background:planModal?._id===ecole._id?"#0369a1":"#e0f2fe",color:planModal?._id===ecole._id?"#fff":"#0369a1"}}>
+                          {planModal?._id===ecole._id?"▲ Fermer":"Gérer le plan"}
                         </button>
                         <button onClick={()=>setConfirmation({ecole,action:"toggle"})}
                           style={{...S.btn(ecole.actif?C.blue:C.green),background:ecole.actif?"#fee2e2":"#d1fae5",color:ecole.actif?"#991b1b":"#065f46"}}>
@@ -6343,6 +6346,65 @@ function SuperAdminPanel() {
           </table>
         )}
       </div>
+
+      {/* Panneau inline gestion plan */}
+      {planModal && (
+        <div style={{background:"#fff",border:`2px solid ${PLANS[planChoix]?.couleur||C.blue}`,borderRadius:14,padding:"24px 28px",marginTop:16,boxShadow:"0 4px 24px rgba(0,0,0,0.08)"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+            <div>
+              <h3 style={{margin:0,fontSize:16,fontWeight:800,color:C.blueDark}}>Gérer le plan — {planModal.nom}</h3>
+              <p style={{margin:"4px 0 0",fontSize:12,color:"#6b7280"}}>Plan actuel : <strong>{PLANS[planModal.plan]?.label||"Gratuit"}</strong></p>
+            </div>
+            <button onClick={()=>setPlanModal(null)}
+              style={{background:"#f3f4f6",border:"none",borderRadius:8,padding:"6px 14px",cursor:"pointer",fontWeight:700,fontSize:13,color:"#6b7280"}}>
+              ✕ Fermer
+            </button>
+          </div>
+
+          <label style={{display:"block",fontSize:11,fontWeight:700,color:C.blue,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:10}}>Choisir le plan</label>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:20}}>
+            {Object.entries(PLANS).map(([key,info])=>(
+              <button key={key} onClick={()=>setPlanChoix(key)}
+                style={{border:`2px solid ${planChoix===key?info.couleur:"#e5e7eb"}`,borderRadius:10,padding:"12px 10px",cursor:"pointer",textAlign:"left",
+                  background:planChoix===key?info.bg:"#f9fafb",transition:"all 0.15s"}}>
+                <div style={{fontWeight:800,fontSize:13,color:info.couleur}}>{info.label}</div>
+                <div style={{fontSize:11,color:"#6b7280",marginTop:3}}>{info.eleveLimit===Infinity?"Illimité":`≤ ${info.eleveLimit} élèves`}</div>
+              </button>
+            ))}
+          </div>
+
+          {planChoix !== "gratuit" && (
+            <div style={{marginBottom:20}}>
+              <label style={{display:"block",fontSize:11,fontWeight:700,color:C.blue,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:10}}>Durée de l'abonnement</label>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                {PLAN_DUREES.map(d=>(
+                  <button key={d.jours} onClick={()=>setPlanDuree(d.jours)}
+                    style={{border:`2px solid ${planDuree===d.jours?C.blue:"#e5e7eb"}`,borderRadius:8,padding:"8px 18px",cursor:"pointer",
+                      background:planDuree===d.jours?"#e0f2fe":"#fff",color:planDuree===d.jours?C.blue:"#374151",
+                      fontWeight:planDuree===d.jours?700:400,fontSize:13}}>
+                    {d.label}
+                  </button>
+                ))}
+              </div>
+              <p style={{margin:"10px 0 0",fontSize:12,color:"#6b7280"}}>
+                Expiration : <strong style={{color:C.blueDark}}>{new Date(Date.now()+planDuree*86400000).toLocaleDateString("fr-FR")}</strong>
+              </p>
+            </div>
+          )}
+
+          <div style={{display:"flex",gap:10,justifyContent:"flex-end",paddingTop:16,borderTop:"1px solid #f0f0f0"}}>
+            <button onClick={()=>setPlanModal(null)}
+              style={{background:"#f3f4f6",border:"none",padding:"10px 20px",borderRadius:8,cursor:"pointer",fontWeight:600,color:"#6b7280",fontSize:13}}>
+              Annuler
+            </button>
+            <button onClick={sauvegarderPlan} disabled={planSaving}
+              style={{background:`linear-gradient(90deg,${C.blue},${C.green})`,border:"none",color:"#fff",
+                padding:"10px 28px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13,opacity:planSaving?0.7:1}}>
+              {planSaving?"Sauvegarde en cours…":"✅ Confirmer le plan"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Fin onglet écoles */}
       </>}
@@ -6384,88 +6446,29 @@ function SuperAdminPanel() {
         </div>
       )}
 
-      {/* Modals via Portal → montées directement sur document.body */}
-      {confirmation && ReactDOM.createPortal(
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:99999,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}
-          onClick={()=>setConfirmation(null)}>
-          <div style={S.modal} onClick={e=>e.stopPropagation()}>
-            <h3 style={{margin:"0 0 10px",color:C.blueDark,fontSize:17}}>
-              {confirmation.action==="toggle"
-                ? (confirmation.ecole.actif?"Désactiver l'école":"Activer l'école")
-                : "Supprimer l'école"}
-            </h3>
-            <p style={{fontSize:14,color:"#6b7280",marginBottom:20}}>
-              {confirmation.action==="toggle"
-                ? `Confirmer ${confirmation.ecole.actif?"la désactivation":"l'activation"} de "${confirmation.ecole.nom}" ?`
-                : `Cette action masquera définitivement "${confirmation.ecole.nom}". Confirmer ?`}
-            </p>
-            <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
-              <button onClick={()=>setConfirmation(null)}
-                style={{background:"#f3f4f6",border:"none",padding:"9px 18px",borderRadius:8,cursor:"pointer",fontWeight:600,color:"#6b7280"}}>
-                Annuler
-              </button>
-              <button onClick={()=>confirmation.action==="toggle"?toggleActif(confirmation.ecole):supprimerEcole(confirmation.ecole)}
-                style={{background:confirmation.action==="supprimer"?"#ef4444":`linear-gradient(90deg,${C.blue},${C.green})`,
-                  border:"none",color:"#fff",padding:"9px 18px",borderRadius:8,cursor:"pointer",fontWeight:700}}>
-                Confirmer
-              </button>
-            </div>
+      {/* Confirmation désactiver/supprimer — inline */}
+      {confirmation && (
+        <div style={{background:"#fff",border:"1px solid #e5e7eb",borderRadius:12,padding:"20px 24px",marginTop:16,boxShadow:"0 2px 12px rgba(0,0,0,0.08)"}}>
+          <h3 style={{margin:"0 0 8px",color:C.blueDark,fontSize:16,fontWeight:800}}>
+            {confirmation.action==="toggle"?(confirmation.ecole.actif?"Désactiver l'école":"Activer l'école"):"Supprimer l'école"}
+          </h3>
+          <p style={{fontSize:13,color:"#6b7280",marginBottom:16}}>
+            {confirmation.action==="toggle"
+              ?`Confirmer ${confirmation.ecole.actif?"la désactivation":"l'activation"} de "${confirmation.ecole.nom}" ?`
+              :`Cette action masquera définitivement "${confirmation.ecole.nom}". Confirmer ?`}
+          </p>
+          <div style={{display:"flex",gap:10}}>
+            <button onClick={()=>setConfirmation(null)}
+              style={{background:"#f3f4f6",border:"none",padding:"9px 18px",borderRadius:8,cursor:"pointer",fontWeight:600,color:"#6b7280",fontSize:13}}>
+              Annuler
+            </button>
+            <button onClick={()=>confirmation.action==="toggle"?toggleActif(confirmation.ecole):supprimerEcole(confirmation.ecole)}
+              style={{background:confirmation.action==="supprimer"?"#ef4444":`linear-gradient(90deg,${C.blue},${C.green})`,
+                border:"none",color:"#fff",padding:"9px 18px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13}}>
+              Confirmer
+            </button>
           </div>
-        </div>,
-        document.body
-      )}
-
-      {planModal && ReactDOM.createPortal(
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:99999,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}
-          onClick={()=>setPlanModal(null)}>
-          <div style={{...S.modal,maxWidth:480}} onClick={e=>e.stopPropagation()}>
-            <h3 style={{margin:"0 0 4px",color:C.blueDark,fontSize:17}}>Gérer le plan</h3>
-            <p style={{fontSize:13,color:"#6b7280",marginBottom:18}}>{planModal.nom}</p>
-
-            <label style={{display:"block",fontSize:11,fontWeight:700,color:C.blue,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:8}}>Plan</label>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:18}}>
-              {Object.entries(PLANS).map(([key,info])=>(
-                <button key={key} onClick={()=>setPlanChoix(key)}
-                  style={{border:`2px solid ${planChoix===key?info.couleur:"#e5e7eb"}`,borderRadius:10,padding:"10px 14px",cursor:"pointer",textAlign:"left",background:planChoix===key?info.bg:"#fff",transition:"all 0.15s"}}>
-                  <div style={{fontWeight:800,fontSize:13,color:info.couleur}}>{info.label}</div>
-                  <div style={{fontSize:11,color:"#6b7280",marginTop:2}}>{info.eleveLimit===Infinity?"Illimité":`≤ ${info.eleveLimit} élèves`}</div>
-                </button>
-              ))}
-            </div>
-
-            {planChoix !== "gratuit" && (
-              <>
-                <label style={{display:"block",fontSize:11,fontWeight:700,color:C.blue,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:8}}>Durée</label>
-                <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:18}}>
-                  {PLAN_DUREES.map(d=>(
-                    <button key={d.jours} onClick={()=>setPlanDuree(d.jours)}
-                      style={{border:`2px solid ${planDuree===d.jours?C.blue:"#e5e7eb"}`,borderRadius:8,padding:"7px 14px",cursor:"pointer",
-                        background:planDuree===d.jours?"#e0f2fe":"#fff",color:planDuree===d.jours?C.blue:"#374151",
-                        fontWeight:planDuree===d.jours?700:400,fontSize:13}}>
-                      {d.label}
-                    </button>
-                  ))}
-                </div>
-                <div style={{fontSize:12,color:"#6b7280",marginBottom:18}}>
-                  Expiration : <strong>{new Date(Date.now()+planDuree*86400000).toLocaleDateString("fr-FR")}</strong>
-                </div>
-              </>
-            )}
-
-            <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
-              <button onClick={()=>setPlanModal(null)}
-                style={{background:"#f3f4f6",border:"none",padding:"9px 18px",borderRadius:8,cursor:"pointer",fontWeight:600,color:"#6b7280"}}>
-                Annuler
-              </button>
-              <button onClick={sauvegarderPlan} disabled={planSaving}
-                style={{background:`linear-gradient(90deg,${C.blue},${C.green})`,border:"none",color:"#fff",
-                  padding:"9px 22px",borderRadius:8,cursor:"pointer",fontWeight:700,opacity:planSaving?0.7:1}}>
-                {planSaving?"Sauvegarde…":"Confirmer"}
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
+        </div>
       )}
     </div>
   );
