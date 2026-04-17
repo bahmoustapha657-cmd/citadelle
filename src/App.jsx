@@ -6052,7 +6052,36 @@ function SuperAdminPanel() {
         : { plan:planChoix, planExpiry:Date.now()+planDuree*86400000, planActivatedBy:"superadmin", planActivatedAt:Date.now() };
       await updateDoc(doc(db,"ecoles",planModal._id), update);
       setEcoles(prev=>prev.map(e=>e._id===planModal._id?{...e,...update}:e));
-      setMsgSucces(`Plan ${PLANS[planChoix]?.label} activé pour ${planModal.nom}`);
+
+      // Notification dans le centre de notifications de l'école
+      const planLabel = PLANS[planChoix]?.label ?? "Gratuit";
+      const expMsg = update.planExpiry
+        ? ` — expire le ${new Date(update.planExpiry).toLocaleDateString("fr-FR")}`
+        : "";
+      await addDoc(collection(db,"ecoles",planModal._id,"historique"),{
+        action: "Plan mis à jour",
+        details: `Plan ${planLabel} activé par le superadmin${expMsg}`,
+        auteur: "EduGest",
+        date: Date.now(),
+      });
+
+      // Push notification vers admin/direction de l'école
+      try {
+        const headers = await getAuthHeaders({"Content-Type":"application/json"});
+        fetch("/api/push",{
+          method:"POST",
+          headers,
+          body: JSON.stringify({
+            schoolId: planModal._id,
+            cibles: ["admin","direction"],
+            titre: `Plan ${planLabel} activé`,
+            corps: `Votre abonnement ${planLabel} est maintenant actif${expMsg}.`,
+            url: "/",
+          }),
+        }).catch(()=>{});
+      } catch {}
+
+      setMsgSucces(`Plan ${planLabel} activé pour ${planModal.nom}`);
       setTimeout(()=>setMsgSucces(""),5000);
       setPlanModal(null);
     } finally { setPlanSaving(false); }
