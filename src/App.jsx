@@ -15,7 +15,7 @@ import QRCode from "qrcode";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, RadarChart, Radar, PolarGrid, PolarAngleAxis } from "recharts";
 import bcrypt from "bcryptjs";
 import {
-  collection, onSnapshot, addDoc, updateDoc, doc, setDoc, getDoc, getDocs, query, where
+  collection, onSnapshot, addDoc, updateDoc, doc, setDoc, getDoc, getDocs, query, where, orderBy, limit
 } from "firebase/firestore";
 
 // ══════════════════════════════════════════════════════════════
@@ -8089,6 +8089,11 @@ export default function App() {
   const [utilisateur,setUtilisateur]=useState(null);
   const [page,setPage]=useState(null);
   const [rechercheOuverte,setRechercheOuverte]=useState(false);
+  const [notifOuvert,setNotifOuvert]=useState(false);
+  const [notifListe,setNotifListe]=useState([]);
+  const [notifNonLues,setNotifNonLues]=useState(0);
+  const [profilOuvert,setProfilOuvert]=useState(false);
+  const [aideOuverte,setAideOuverte]=useState(false);
   const [schoolId,setSchoolId]=useState(()=>{
     const params=new URLSearchParams(window.location.search);
     const fromUrl=params.get("school");
@@ -8155,13 +8160,24 @@ export default function App() {
     localStorage.setItem("LC_theme", modeSombre?"dark":"light");
   },[modeSombre]);
 
-  // Ctrl+K / ⌘K — ouvrir la recherche globale
+  // Ctrl+K / ⌘K — ouvrir la recherche globale  |  ? — aide raccourcis
   useEffect(()=>{
     const fn=(e)=>{
       if((e.ctrlKey||e.metaKey) && e.key==="k"){
         e.preventDefault();
         if(utilisateur && !["enseignant","parent"].includes(utilisateur.role))
           setRechercheOuverte(o=>!o);
+      }
+      // ? — aide clavier (seulement si pas de champ texte actif)
+      if(e.key==="?" && !["INPUT","TEXTAREA","SELECT"].includes(document.activeElement?.tagName)){
+        e.preventDefault();
+        if(utilisateur) setAideOuverte(o=>!o);
+      }
+      // Escape — fermer les dropdowns/panneaux
+      if(e.key==="Escape"){
+        setNotifOuvert(false);
+        setProfilOuvert(false);
+        setAideOuverte(false);
       }
     };
     window.addEventListener("keydown",fn);
@@ -8228,6 +8244,20 @@ export default function App() {
     const unsub = onSnapshot(collection(db,"ecoles",schoolId,"messages"),(snap)=>{
       const nonLus = snap.docs.filter(d=>d.data().expediteur==="parent"&&!d.data().lu).length;
       setMsgsNonLus(nonLus);
+    });
+    return ()=>unsub();
+  },[schoolId]);
+
+  // Centre de notifications — 10 dernières actions de l'historique
+  useEffect(()=>{
+    if(!schoolId||schoolId==="superadmin") return;
+    const q=query(collection(db,"ecoles",schoolId,"historique"),orderBy("date","desc"),limit(10));
+    const unsub=onSnapshot(q,(snap)=>{
+      const liste=snap.docs.map(d=>({id:d.id,...d.data()}));
+      setNotifListe(liste);
+      // Non lues = actions < 5 minutes
+      const cinqMin=Date.now()-5*60*1000;
+      setNotifNonLues(liste.filter(n=>n.date>cinqMin).length);
     });
     return ()=>unsub();
   },[schoolId]);
@@ -8510,11 +8540,81 @@ export default function App() {
               style={{background:"#f0f4f0",border:"1px solid #e0ebf8",borderRadius:8,padding:"5px 10px",cursor:"pointer",fontSize:16,lineHeight:1}}>
               {modeSombre?"☀️":"🌙"}
             </button>
-            <div style={{width:30,height:30,borderRadius:"50%",background:C.blue,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,flexShrink:0}}>
-              {utilisateur.nom[0]}
+
+            {/* ── Cloche notifications ── */}
+            <div style={{position:"relative",flexShrink:0}}>
+              <button onClick={()=>{setNotifOuvert(v=>!v);setProfilOuvert(false);setNotifNonLues(0);}}
+                title="Notifications récentes"
+                style={{position:"relative",background:"#f0f4f0",border:"1px solid #e0ebf8",borderRadius:8,padding:"5px 10px",cursor:"pointer",fontSize:16,lineHeight:1}}>
+                🔔
+                {notifNonLues>0&&<span style={{position:"absolute",top:-4,right:-4,background:"#ef4444",color:"#fff",borderRadius:"50%",width:16,height:16,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:900}}>{notifNonLues}</span>}
+              </button>
+              {notifOuvert&&(
+                <div onClick={e=>e.stopPropagation()} style={{position:"absolute",top:"calc(100% + 8px)",right:0,width:320,background:"#fff",border:"1px solid #e2e8f0",borderRadius:12,boxShadow:"0 10px 40px rgba(0,0,0,0.15)",zIndex:200,overflow:"hidden"}}>
+                  <div style={{padding:"12px 16px",borderBottom:"1px solid #f1f5f9",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                    <span style={{fontWeight:800,fontSize:13,color:"#0f172a"}}>Activité récente</span>
+                    <button onClick={()=>setNotifOuvert(false)} style={{background:"none",border:"none",cursor:"pointer",fontSize:16,color:"#94a3b8",padding:0}}>✕</button>
+                  </div>
+                  <div style={{maxHeight:320,overflowY:"auto"}}>
+                    {notifListe.length===0
+                      ? <div style={{padding:"24px 16px",textAlign:"center",color:"#94a3b8",fontSize:12}}>Aucune activité récente</div>
+                      : notifListe.map((n,i)=>{
+                          const age=Date.now()-n.date;
+                          const ageStr=age<60000?"À l'instant":age<3600000?`${Math.floor(age/60000)}min`:age<86400000?`${Math.floor(age/3600000)}h`:`${Math.floor(age/86400000)}j`;
+                          const isNew=age<5*60*1000;
+                          return <div key={n.id||i} style={{padding:"10px 16px",borderBottom:"1px solid #f8fafc",background:isNew?"#f0fdf4":"#fff",display:"flex",gap:10,alignItems:"flex-start"}}>
+                            <div style={{width:8,height:8,borderRadius:"50%",background:isNew?"#22c55e":"#e2e8f0",marginTop:5,flexShrink:0}}/>
+                            <div style={{flex:1,minWidth:0}}>
+                              <p style={{margin:0,fontSize:12,fontWeight:700,color:"#1e293b",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{n.action}</p>
+                              {n.details&&<p style={{margin:"2px 0 0",fontSize:11,color:"#64748b",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{n.details}</p>}
+                            </div>
+                            <span style={{fontSize:10,color:"#94a3b8",flexShrink:0,marginTop:2}}>{ageStr}</span>
+                          </div>;
+                        })
+                    }
+                  </div>
+                  <div style={{padding:"8px 16px",borderTop:"1px solid #f1f5f9"}}>
+                    <button onClick={()=>{setNotifOuvert(false);setPage("historique");}} style={{width:"100%",background:"none",border:"none",cursor:"pointer",fontSize:11,color:C.blue,fontWeight:700,padding:"4px 0",textAlign:"center"}}>
+                      Voir tout l'historique →
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-            {!isMobile&&<span style={{fontSize:12,fontWeight:700,color:C.blueDark}}>{utilisateur.nom}</span>}
-            {!isMobile&&<Badge color={utilisateur.role==="admin"?"purple":utilisateur.role==="comptable"?"teal":"blue"}>{utilisateur.label}</Badge>}
+
+            {/* ── Avatar + menu profil ── */}
+            <div style={{position:"relative",flexShrink:0}}>
+              <button onClick={()=>{setProfilOuvert(v=>!v);setNotifOuvert(false);}}
+                title="Mon profil"
+                style={{display:"flex",alignItems:"center",gap:6,background:"none",border:"none",cursor:"pointer",padding:"3px 6px",borderRadius:8}}>
+                <div style={{width:30,height:30,borderRadius:"50%",background:C.blue,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,flexShrink:0}}>
+                  {utilisateur.nom[0]}
+                </div>
+                {!isMobile&&<>
+                  <span style={{fontSize:12,fontWeight:700,color:C.blueDark}}>{utilisateur.nom}</span>
+                  <Badge color={utilisateur.role==="admin"?"purple":utilisateur.role==="comptable"?"teal":"blue"}>{utilisateur.label}</Badge>
+                </>}
+              </button>
+              {profilOuvert&&(
+                <div onClick={e=>e.stopPropagation()} style={{position:"absolute",top:"calc(100% + 8px)",right:0,width:220,background:"#fff",border:"1px solid #e2e8f0",borderRadius:12,boxShadow:"0 10px 40px rgba(0,0,0,0.15)",zIndex:200,overflow:"hidden"}}>
+                  <div style={{padding:"14px 16px",borderBottom:"1px solid #f1f5f9",background:"#f8fafc"}}>
+                    <p style={{margin:0,fontSize:13,fontWeight:800,color:"#0f172a"}}>{utilisateur.nom}</p>
+                    <p style={{margin:"2px 0 0",fontSize:11,color:"#64748b"}}>{utilisateur.label} · {schoolInfo.nom}</p>
+                  </div>
+                  {["admin","superadmin"].includes(utilisateur.role)&&(
+                    <button onClick={()=>{setProfilOuvert(false);setPage("parametres");}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 16px",background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#374151",textAlign:"left",fontWeight:600}}>
+                      🏫 <span>Paramètres école</span>
+                    </button>
+                  )}
+                  <button onClick={()=>{setProfilOuvert(false);setAideOuverte(true);}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 16px",background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#374151",textAlign:"left",fontWeight:600,borderBottom:"1px solid #f1f5f9"}}>
+                    ⌨️ <span>Raccourcis clavier</span><kbd style={{marginLeft:"auto",background:"#f1f5f9",border:"1px solid #e2e8f0",borderRadius:4,padding:"1px 5px",fontSize:10,color:"#94a3b8"}}>?</kbd>
+                  </button>
+                  <button onClick={()=>{setProfilOuvert(false);deconnecter();}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 16px",background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#ef4444",textAlign:"left",fontWeight:700}}>
+                    ⬅ <span>Se déconnecter</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
         <div style={{flex:1,overflowY:"auto"}}>
@@ -8580,6 +8680,63 @@ export default function App() {
           ))}
           <div style={{display:"flex",justifyContent:"flex-end",marginTop:16}}>
             <Btn onClick={()=>setOnboardingOuvert(false)}>Fermer</Btn>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* ── Fermer dropdowns au clic extérieur ── */}
+    {(notifOuvert||profilOuvert)&&(
+      <div style={{position:"fixed",inset:0,zIndex:150}} onClick={()=>{setNotifOuvert(false);setProfilOuvert(false);}}/>
+    )}
+
+    {/* ── Modal Aide raccourcis clavier ── */}
+    {aideOuverte&&(
+      <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:400,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={()=>setAideOuverte(false)}>
+        <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:18,padding:"28px",maxWidth:480,width:"100%",boxShadow:"0 24px 60px rgba(0,0,0,0.3)",maxHeight:"80vh",overflowY:"auto"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <span style={{fontSize:24}}>⌨️</span>
+              <div>
+                <h2 style={{margin:0,fontSize:16,fontWeight:900,color:C.blue}}>Raccourcis clavier</h2>
+                <p style={{margin:"2px 0 0",fontSize:11,color:"#6b7280"}}>Naviguez plus vite avec le clavier</p>
+              </div>
+            </div>
+            <button onClick={()=>setAideOuverte(false)} style={{background:"none",border:"none",cursor:"pointer",fontSize:18,color:"#94a3b8"}}>✕</button>
+          </div>
+          {[
+            {groupe:"Navigation",items:[
+              {keys:["Ctrl","K"],desc:"Ouvrir la recherche globale"},
+              {keys:["?"],desc:"Afficher cette aide"},
+              {keys:["Escape"],desc:"Fermer modal / panneau ouvert"},
+            ]},
+            {groupe:"Partout",items:[
+              {keys:["Tab"],desc:"Passer au champ suivant"},
+              {keys:["Shift","Tab"],desc:"Champ précédent"},
+              {keys:["Enter"],desc:"Valider / confirmer"},
+            ]},
+            {groupe:"Recherche globale",items:[
+              {keys:["↑","↓"],desc:"Naviguer dans les résultats"},
+              {keys:["Enter"],desc:"Ouvrir le résultat sélectionné"},
+              {keys:["Escape"],desc:"Fermer la recherche"},
+            ]},
+          ].map(({groupe,items})=>(
+            <div key={groupe} style={{marginBottom:18}}>
+              <p style={{margin:"0 0 8px",fontSize:10,fontWeight:900,color:"#94a3b8",textTransform:"uppercase",letterSpacing:1}}>{groupe}</p>
+              {items.map(({keys,desc})=>(
+                <div key={desc} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"7px 0",borderBottom:"1px solid #f8fafc"}}>
+                  <span style={{fontSize:12,color:"#374151"}}>{desc}</span>
+                  <div style={{display:"flex",gap:4,flexShrink:0}}>
+                    {keys.map((k,i)=>(
+                      <kbd key={i} style={{background:"#f1f5f9",border:"1px solid #e2e8f0",borderBottomWidth:3,borderRadius:5,padding:"2px 7px",fontSize:11,fontWeight:700,color:"#475569",fontFamily:"monospace"}}>{k}</kbd>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))}
+          <div style={{marginTop:16,textAlign:"center"}}>
+            <button onClick={()=>setAideOuverte(false)} style={{background:C.blue,color:"#fff",border:"none",borderRadius:8,padding:"8px 24px",cursor:"pointer",fontWeight:700,fontSize:13}}>Fermer</button>
           </div>
         </div>
       </div>
