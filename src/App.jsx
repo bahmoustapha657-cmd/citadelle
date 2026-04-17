@@ -11,6 +11,7 @@ import { db, auth } from "./firebase";
 import { signOut, onAuthStateChanged, updatePassword } from "firebase/auth";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import * as XLSX from "xlsx";
+import QRCode from "qrcode";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
 import bcrypt from "bcryptjs";
 import {
@@ -797,8 +798,17 @@ const imprimerRecu = (eleve, montantUnit, schoolInfo={}, moisAnnee=MOIS_ANNEE) =
   w.document.close();
 };
 
-const imprimerCartesEleves = (eleves, schoolInfo={}, annee="") => {
+const imprimerCartesEleves = async (eleves, schoolInfo={}, annee="") => {
   if(!eleves.length){alert("Aucun élève à imprimer.");return;}
+  // Pré-générer les QR codes (data URL) pour chaque élève
+  const qrMap = {};
+  await Promise.all(eleves.map(async e => {
+    try {
+      qrMap[e._id] = await QRCode.toDataURL(e.matricule||e._id, {
+        width:80, margin:0, color:{dark:"#0A1628",light:"#ffffff"}
+      });
+    } catch { qrMap[e._id] = ""; }
+  }));
   const w = window.open("","_blank");
   const c1 = schoolInfo.couleur1||"#0A1628";
   const c2 = schoolInfo.couleur2||"#00C48C";
@@ -855,7 +865,9 @@ const imprimerCartesEleves = (eleves, schoolInfo={}, annee="") => {
           <div class="footer-ligne"></div>
         </div>
         <div class="footer-center">
-          <div class="mat-badge">${e.matricule||""}</div>
+          ${qrMap[e._id]
+            ?`<div class="qr-wrap"><img src="${qrMap[e._id]}" class="qr-img"/><div class="mat-badge">${e.matricule||""}</div></div>`
+            :`<div class="mat-badge">${e.matricule||""}</div>`}
         </div>
         <div class="footer-right">
           <span class="footer-label">Signature Élève</span>
@@ -965,11 +977,13 @@ const imprimerCartesEleves = (eleves, schoolInfo={}, annee="") => {
     .footer-label{font-size:3.5pt;color:#aaa;text-transform:uppercase;letter-spacing:.06em}
     .footer-ligne{width:16mm;height:.3mm;background:${c1}44}
     .footer-center{display:flex;align-items:center;justify-content:center}
+    .qr-wrap{display:flex;flex-direction:column;align-items:center;gap:.5mm}
+    .qr-img{width:9mm;height:9mm;image-rendering:pixelated}
     .mat-badge{
-      font-family:monospace;font-size:4.5pt;font-weight:800;
+      font-family:monospace;font-size:4pt;font-weight:800;
       color:${c1};background:${c2}33;
-      padding:.8mm 2mm;border-radius:1mm;
-      letter-spacing:.1em;
+      padding:.5mm 1.5mm;border-radius:1mm;
+      letter-spacing:.08em;
     }
 
     @media print{
@@ -1000,6 +1014,188 @@ const imprimerListeClasse = (classe, eleves, schoolInfo={}) => {
   </tbody></table>
   <div class="footer"><span>Effectif : ${liste.length} élève(s)</span><span>Date d'impression : ${today()}</span><span>Le Directeur</span></div>
   <script>window.onload=()=>window.print();</script></body></html>`);
+  w.document.close();
+};
+
+/**
+ * Rapport mensuel complet : absences + paiements par classe
+ * @param {string} mois  — ex: "Novembre"
+ * @param {Array}  eleves — tous les élèves (primaire + collège fusionnés)
+ * @param {Array}  absences — collection absences
+ * @param {string} annee — ex: "2025-2026"
+ * @param {Object} schoolInfo
+ * @param {Array}  moisAnnee — liste des mois de l'année scolaire
+ */
+const genererRapportMensuel = (mois, eleves, absences, annee, schoolInfo={}, moisAnnee=[]) => {
+  if(!eleves.length){ alert("Aucun élève."); return; }
+  const c1 = schoolInfo.couleur1||"#0A1628";
+  const c2 = schoolInfo.couleur2||"#00C48C";
+  const nomEcole = schoolInfo.nom||"École";
+  const logo = schoolInfo.logo||"";
+
+  // Absences du mois sélectionné
+  const absences_mois = absences.filter(a => a.date && a.date.startsWith
+    ? a.date.includes(mois) || (() => {
+        try { return new Date(a.date).toLocaleDateString("fr-FR",{month:"long"}).toLowerCase() === mois.toLowerCase(); } catch { return false; }
+      })()
+    : false
+  );
+
+  // Grouper par classe
+  const classes = [...new Set(eleves.map(e=>e.classe||"Sans classe"))].sort();
+
+  const rangMois = moisAnnee.indexOf(mois);
+
+  const lignesClasse = classes.map(classe => {
+    const elevesClasse = eleves.filter(e=>(e.classe||"Sans classe")===classe);
+    const absClasse = absences_mois.filter(a => elevesClasse.some(e=>e._id===a.eleveId||(e.nom+" "+e.prenom)===a.eleveNom));
+    const absJustif = absClasse.filter(a=>a.justifie==="Oui").length;
+    const absNonJust = absClasse.filter(a=>a.justifie!=="Oui").length;
+    // Paiements : compter payés vs impayés pour ce mois
+    const payesMois = elevesClasse.filter(e=>(e.mens||{})[mois]==="Payé").length;
+    const tauxPaye = elevesClasse.length ? Math.round(payesMois/elevesClasse.length*100) : 0;
+    return { classe, effectif:elevesClasse.length, absJustif, absNonJust, total:absJustif+absNonJust, payesMois, tauxPaye };
+  });
+
+  const totEffectif = lignesClasse.reduce((s,l)=>s+l.effectif,0);
+  const totAbsJ = lignesClasse.reduce((s,l)=>s+l.absJustif,0);
+  const totAbsN = lignesClasse.reduce((s,l)=>s+l.absNonJust,0);
+  const totPaye = lignesClasse.reduce((s,l)=>s+l.payesMois,0);
+  const tauxGlobal = totEffectif ? Math.round(totPaye/totEffectif*100) : 0;
+
+  // Élèves avec absences répétées (≥ 3 ce mois)
+  const elevesConcernes = eleves.map(e => {
+    const abs = absences_mois.filter(a=>a.eleveId===e._id||(e.nom+" "+e.prenom)===a.eleveNom);
+    return { ...e, nbAbs: abs.length };
+  }).filter(e=>e.nbAbs>=3).sort((a,b)=>b.nbAbs-a.nbAbs).slice(0,15);
+
+  const w = window.open("","_blank");
+  w.document.write(`<!DOCTYPE html><html lang="fr"><head>
+  <meta charset="utf-8"/>
+  <title>Rapport Mensuel ${mois} ${annee} — ${nomEcole}</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+    @page{size:A4 portrait;margin:15mm 12mm}
+    *{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+    body{font-family:'Inter',Arial,sans-serif;color:#1e293b;font-size:11px;line-height:1.5;background:#fff}
+
+    /* En-tête */
+    .header{display:flex;align-items:center;gap:14px;padding-bottom:10px;border-bottom:3px solid ${c1};margin-bottom:16px}
+    .header-logo{width:52px;height:52px;flex-shrink:0;object-fit:contain}
+    .header-logo-ph{width:52px;height:52px;flex-shrink:0;background:${c1};border-radius:8px;display:flex;align-items:center;justify-content:center;color:${c2};font-size:14px;font-weight:900}
+    .header-text{flex:1}
+    .header-ecole{font-size:16px;font-weight:900;color:${c1}}
+    .header-sub{font-size:10px;color:#64748b;margin-top:2px}
+    .header-badge{background:${c1};color:${c2};padding:6px 14px;border-radius:8px;text-align:center}
+    .header-badge-title{font-size:9px;text-transform:uppercase;letter-spacing:.08em;opacity:.7}
+    .header-badge-val{font-size:13px;font-weight:900}
+
+    /* KPI cards */
+    .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}
+    .kpi{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;text-align:center}
+    .kpi-val{font-size:22px;font-weight:900;color:${c1};line-height:1}
+    .kpi-label{font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-top:3px}
+    .kpi-sub{font-size:10px;color:#94a3b8;margin-top:2px}
+    .kpi.vert .kpi-val{color:#059669}
+    .kpi.rouge .kpi-val{color:#dc2626}
+    .kpi.amber .kpi-val{color:#d97706}
+
+    /* Section titre */
+    .section-title{font-size:11px;font-weight:800;color:${c1};text-transform:uppercase;letter-spacing:.06em;margin:16px 0 8px;padding-left:8px;border-left:3px solid ${c2}}
+
+    /* Tables */
+    table{width:100%;border-collapse:collapse;margin-bottom:12px;font-size:10px}
+    thead tr{background:${c1};color:#fff}
+    th{padding:6px 8px;text-align:left;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+    td{padding:5px 8px;border-bottom:1px solid #f1f5f9}
+    tr:nth-child(even) td{background:#f8fafc}
+    .pct-bar{display:inline-block;height:6px;border-radius:3px;background:${c2};vertical-align:middle;margin-right:4px}
+
+    /* Alerte */
+    .alert-box{background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;margin-bottom:12px}
+    .alert-title{font-size:11px;font-weight:800;color:#991b1b;margin-bottom:6px}
+
+    /* Footer */
+    .page-footer{margin-top:24px;padding-top:10px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;font-size:9px;color:#94a3b8}
+
+    @media print{button{display:none}}
+  </style></head><body>
+
+  <div class="header">
+    ${logo
+      ?`<img src="${logo}" class="header-logo"/>`
+      :`<div class="header-logo-ph">${nomEcole.slice(0,2).toUpperCase()}</div>`}
+    <div class="header-text">
+      <div class="header-ecole">${nomEcole}</div>
+      <div class="header-sub">Rapport mensuel • Année scolaire ${annee}</div>
+    </div>
+    <div class="header-badge">
+      <div class="header-badge-title">Période</div>
+      <div class="header-badge-val">${mois}</div>
+    </div>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi"><div class="kpi-val">${totEffectif}</div><div class="kpi-label">Élèves</div><div class="kpi-sub">${classes.length} classe(s)</div></div>
+    <div class="kpi amber"><div class="kpi-val">${totAbsJ+totAbsN}</div><div class="kpi-label">Absences</div><div class="kpi-sub">${totAbsJ} justifiées · ${totAbsN} non just.</div></div>
+    <div class="kpi ${tauxGlobal>=80?"vert":tauxGlobal>=50?"amber":"rouge"}"><div class="kpi-val">${tauxGlobal}%</div><div class="kpi-label">Taux paiement</div><div class="kpi-sub">${totPaye}/${totEffectif} payés</div></div>
+    <div class="kpi"><div class="kpi-val">${elevesConcernes.length}</div><div class="kpi-label">Alertes absences</div><div class="kpi-sub">≥ 3 absences ce mois</div></div>
+  </div>
+
+  <div class="section-title">Récapitulatif par classe</div>
+  <table>
+    <thead><tr>
+      <th>Classe</th><th>Effectif</th><th>Abs. justifiées</th><th>Abs. non justif.</th><th>Total abs.</th><th>Paiements</th><th>Taux</th>
+    </tr></thead>
+    <tbody>
+      ${lignesClasse.map(l=>`<tr>
+        <td><strong>${l.classe}</strong></td>
+        <td style="text-align:center">${l.effectif}</td>
+        <td style="text-align:center;color:#059669">${l.absJustif}</td>
+        <td style="text-align:center;color:#dc2626">${l.absNonJust}</td>
+        <td style="text-align:center;font-weight:700">${l.total}</td>
+        <td style="text-align:center">${l.payesMois}/${l.effectif}</td>
+        <td>
+          <span class="pct-bar" style="width:${l.tauxPaye*0.5}px"></span>
+          <strong style="color:${l.tauxPaye>=80?"#059669":l.tauxPaye>=50?"#d97706":"#dc2626"}">${l.tauxPaye}%</strong>
+        </td>
+      </tr>`).join("")}
+      <tr style="background:#f1f5f9;font-weight:800">
+        <td>TOTAL</td><td style="text-align:center">${totEffectif}</td>
+        <td style="text-align:center;color:#059669">${totAbsJ}</td>
+        <td style="text-align:center;color:#dc2626">${totAbsN}</td>
+        <td style="text-align:center">${totAbsJ+totAbsN}</td>
+        <td style="text-align:center">${totPaye}/${totEffectif}</td>
+        <td><strong style="color:${tauxGlobal>=80?"#059669":tauxGlobal>=50?"#d97706":"#dc2626"}">${tauxGlobal}%</strong></td>
+      </tr>
+    </tbody>
+  </table>
+
+  ${elevesConcernes.length>0?`
+  <div class="alert-box">
+    <div class="alert-title">🚨 Élèves avec absences répétées (≥ 3 ce mois)</div>
+    <table style="margin-bottom:0">
+      <thead><tr><th>Nom & Prénom</th><th>Classe</th><th>Nb absences</th><th>Tuteur</th><th>Contact</th></tr></thead>
+      <tbody>
+        ${elevesConcernes.map(e=>`<tr>
+          <td><strong>${e.nom} ${e.prenom}</strong></td>
+          <td>${e.classe||"—"}</td>
+          <td style="text-align:center;font-weight:800;color:#dc2626">${e.nbAbs}</td>
+          <td>${e.tuteur||"—"}</td>
+          <td>${e.contactTuteur||"—"}</td>
+        </tr>`).join("")}
+      </tbody>
+    </table>
+  </div>`:""}
+
+  <div class="page-footer">
+    <span>Généré le ${new Date().toLocaleDateString("fr-FR",{day:"2-digit",month:"long",year:"numeric"})}</span>
+    <span>${nomEcole} — Rapport confidentiel</span>
+    <span>Signature Direction : ___________________</span>
+  </div>
+
+  <script>window.onload=()=>{setTimeout(()=>window.print(),400);}</script>
+  </body></html>`);
   w.document.close();
 };
 
@@ -4525,7 +4721,7 @@ function HistoriqueActions() {
 //  TABLEAU DE BORD DIRECTION
 // ══════════════════════════════════════════════════════════════
 function TableauDeBord({annee}) {
-  const {schoolInfo, moisSalaire} = useContext(SchoolContext);
+  const {schoolInfo, moisAnnee, moisSalaire} = useContext(SchoolContext);
   const {items:elevesC, chargement:cEC} = useFirestore("elevesCollege");
   const {items:elevesP, chargement:cEP} = useFirestore("elevesPrimaire");
   const {items:ensC}    = useFirestore("ensCollege");
@@ -4538,6 +4734,7 @@ function TableauDeBord({annee}) {
   const {items:evenements} = useFirestore("evenements");
   const {items:absences}= useFirestore("absencesCollege");
   const {items:absP}    = useFirestore("absencesPrimaire");
+  const [moisRapport,setMoisRapport] = useState(moisSalaire[moisSalaire.length-1]||"");
 
   const c1 = schoolInfo.couleur1 || C.blue;
   const c2 = schoolInfo.couleur2 || C.green;
@@ -4602,11 +4799,27 @@ function TableauDeBord({annee}) {
   return (
     <div style={{padding:"22px 26px",maxWidth:1200}}>
       {/* En-tête */}
-      <div style={{marginBottom:24}}>
-        <h1 style={{margin:0,fontSize:20,fontWeight:900,color:c1}}>
-          Tableau de bord — {schoolInfo.nom||"EduGest"}
-        </h1>
-        <p style={{margin:"4px 0 0",fontSize:13,color:"#6b7280"}}>Année {annee||getAnnee()} · Vue consolidée</p>
+      <div style={{marginBottom:24,display:"flex",alignItems:"flex-start",justifyContent:"space-between",flexWrap:"wrap",gap:12}}>
+        <div>
+          <h1 style={{margin:0,fontSize:20,fontWeight:900,color:c1}}>
+            Tableau de bord — {schoolInfo.nom||"EduGest"}
+          </h1>
+          <p style={{margin:"4px 0 0",fontSize:13,color:"#6b7280"}}>Année {annee||getAnnee()} · Vue consolidée</p>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <select value={moisRapport} onChange={e=>setMoisRapport(e.target.value)}
+            style={{border:"1px solid #b0c4d8",borderRadius:8,padding:"6px 10px",fontSize:12,background:"#fff",color:c1,fontWeight:600}}>
+            {moisAnnee.map(m=><option key={m}>{m}</option>)}
+          </select>
+          <Btn v="primary" sm onClick={()=>genererRapportMensuel(
+            moisRapport,
+            [...elevesC,...elevesP],
+            [...absences,...absP],
+            annee||getAnnee(),
+            schoolInfo,
+            moisAnnee
+          )}>📄 Rapport mensuel</Btn>
+        </div>
       </div>
 
       {/* KPIs principaux */}
