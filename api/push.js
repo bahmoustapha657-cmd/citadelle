@@ -1,15 +1,7 @@
 import webpush from "web-push";
-import { initializeApp, getApps, cert } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
-
-function initAdmin() {
-  if (getApps().length) return;
-  const raw = process.env.FIREBASE_SERVICE_ACCOUNT || "{}";
-  let sa;
-  try { sa = JSON.parse(raw); } catch { sa = JSON.parse(raw.replace(/\\n/g, "\n")); }
-  if (sa.private_key) sa.private_key = sa.private_key.replace(/\\n/g, "\n");
-  initializeApp({ credential: cert(sa) });
-}
+import { initAdmin } from "./_lib/firebase-admin.js";
+import { applyCors, requireSession } from "./_lib/security.js";
 
 webpush.setVapidDetails(
   "mailto:bahmoustapha657@gmail.com",
@@ -18,7 +10,7 @@ webpush.setVapidDetails(
 );
 
 export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", process.env.ALLOWED_ORIGIN || "*");
+  applyCors(req, res);
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).end();
 
@@ -28,6 +20,13 @@ export default async function handler(req, res) {
   try { initAdmin(); } catch {
     return res.status(500).json({ error: "Erreur serveur" });
   }
+
+  const isAuthorized = await requireSession(req, res, {
+    roles: ["direction", "admin", "comptable"],
+    schoolId,
+    allowSuperadmin: true,
+  });
+  if (!isAuthorized) return;
 
   const db = getFirestore();
   const payload = JSON.stringify({ titre, corps: corps || "", url, icon: "/icons/pwa-192.png" });

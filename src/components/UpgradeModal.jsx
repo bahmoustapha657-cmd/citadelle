@@ -1,7 +1,7 @@
 import { useState, useEffect, useContext } from "react";
 import { doc, onSnapshot, addDoc, collection } from "firebase/firestore";
 import { db } from "../firebase";
-import { SchoolContext } from "../App";
+import { SchoolContext } from "../contexts/SchoolContext";
 import { PLANS } from "../contexts/PlanContext";
 
 const C = { blue: "#0A1628", green: "#00C48C", blueDark: "#0A1628" };
@@ -35,7 +35,7 @@ export default function UpgradeModal({ onFermer }) {
       }
     });
     return () => unsub();
-  }, [etape, schoolId]);
+  }, [etape, schoolId, setSchoolInfo]);
 
   const soumettreDemande = async () => {
     if (!form.telephone.trim()) { setErreur("Entrez votre numéro de téléphone."); return; }
@@ -53,7 +53,7 @@ export default function UpgradeModal({ onFermer }) {
         createdAt: Date.now(),
       });
       setEtape("attente");
-    } catch (e) {
+    } catch {
       setErreur("Erreur lors de la soumission. Réessayez.");
     } finally {
       setChargement(false);

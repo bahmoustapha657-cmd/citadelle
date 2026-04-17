@@ -1,45 +1,9 @@
-import { useState, useContext } from "react";
-import { SchoolContext } from "../App";
+import { useState } from "react";
+import { useIA } from "./useIA";
 
 const C = { blue: "#0A1628", green: "#00C48C", blueDark: "#0A1628" };
 
 // ── Hook d'appel à l'API IA ─────────────────────────────────
-export function useIA() {
-  const { schoolId } = useContext(SchoolContext);
-
-  const genererCommentaire = async ({ eleve, moyenneGenerale, mention, matieres, periode, niveau }) => {
-    const res = await fetch("/api/ia", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "commentaire_bulletin",
-        schoolId,
-        payload: { eleve, moyenneGenerale, mention, matieres, periode, niveau },
-      }),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || "Erreur IA");
-    }
-    return (await res.json()).commentaire;
-  };
-
-  const genererDocument = async ({ type, eleve, contexte }) => {
-    const res = await fetch("/api/ia", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "generer_document", schoolId, payload: { type, eleve, contexte } }),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || "Erreur IA");
-    }
-    return (await res.json()).document;
-  };
-
-  return { genererCommentaire, genererDocument };
-}
-
 // ── Bouton commentaire IA (à placer dans le bulletin) ────────
 export function BoutonCommentaireIA({ eleve, moyenneGenerale, mention, matieres, periode, niveau }) {
   const { genererCommentaire } = useIA();

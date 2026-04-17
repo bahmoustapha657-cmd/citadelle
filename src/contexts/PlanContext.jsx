@@ -1,5 +1,5 @@
-import { useContext } from "react";
-import { SchoolContext } from "../App";
+import { useContext, useState } from "react";
+import { SchoolContext } from "./SchoolContext";
 
 // ── Fonctionnalités par plan ────────────────────────────────
 const FEATURES_GRATUIT = [
@@ -42,9 +42,10 @@ export const PLANS = {
 // ── Hook principal ──────────────────────────────────────────
 export function usePlan() {
   const { schoolInfo } = useContext(SchoolContext);
+  const [now] = useState(() => Date.now());
   const plan = schoolInfo?.plan || "gratuit";
   const expiry = schoolInfo?.planExpiry;
-  const isExpired = expiry && Date.now() > expiry;
+  const isExpired = expiry && now > expiry;
   const isPro = plan === "pro" && !isExpired;
 
   const canAccess = (feature) => {
@@ -54,7 +55,7 @@ export function usePlan() {
 
   const joursRestants = () => {
     if (!expiry || !isPro) return null;
-    return Math.ceil((expiry - Date.now()) / (1000 * 60 * 60 * 24));
+    return Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
   };
 
   return { plan, isPro, isExpired, canAccess, joursRestants };

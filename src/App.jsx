@@ -1,16 +1,20 @@
 import Inscription from "./Inscription";
 import PremiumGate from "./components/PremiumGate";
 import ModuleIA from "./components/IAAssistant";
+import ToastContainerView from "./components/ToastContainer";
 import Logo from "./Logo";
-import React, { useState, useEffect, useRef, useMemo, createContext, useContext } from "react";
+import { getAuthHeaders } from "./apiClient";
+import { SchoolContext, SCHOOL_INFO_DEFAUT } from "./contexts/SchoolContext";
+import { useFirestore } from "./hooks/useFirestore";
+import React, { useState, useEffect, useRef, useMemo, useContext } from "react";
 import { db, auth } from "./firebase";
-import { createUserWithEmailAndPassword, signOut, onAuthStateChanged, updatePassword } from "firebase/auth";
+import { signOut, onAuthStateChanged, updatePassword } from "firebase/auth";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import * as XLSX from "xlsx";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
 import bcrypt from "bcryptjs";
 import {
-  collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc, getDoc, getDocs, query, where
+  collection, onSnapshot, addDoc, updateDoc, doc, setDoc, getDoc, getDocs, query, where
 } from "firebase/firestore";
 
 // ══════════════════════════════════════════════════════════════
@@ -371,6 +375,7 @@ const MODULES = [
 // ══════════════════════════════════════════════════════════════
 //  CONTEXTE MULTI-TENANT
 // ══════════════════════════════════════════════════════════════
+/*
 const SCHOOL_INFO_DEFAUT = {
   nom: "EduGest", type: "Groupe Scolaire Privé",
   ville: "", pays: "",
@@ -403,6 +408,8 @@ export const SchoolContext = createContext({
 });
 
 // ── TOAST SYSTEM ──────────────────────────────────────────────
+*/
+/*
 const TOAST_COLORS = { success:"#00C48C", error:"#ef4444", info:"#3b82f6", warning:"#f59e0b" };
 const TOAST_ICONS  = { success:"✅", error:"❌", info:"ℹ️", warning:"⚠️" };
 function ToastContainer({toasts}) {
@@ -425,42 +432,11 @@ function ToastContainer({toasts}) {
 const toastStyle = document.createElement("style");
 toastStyle.textContent = "@keyframes slideIn{from{transform:translateX(120%);opacity:0}to{transform:none;opacity:1}}";
 document.head.appendChild(toastStyle);
+*/
 
 // ══════════════════════════════════════════════════════════════
 //  HOOK FIREBASE
 // ══════════════════════════════════════════════════════════════
-function useFirestore(nomCollection) {
-  const { schoolId } = useContext(SchoolContext);
-  const [items, setItems] = useState([]);
-  const [chargement, setChargement] = useState(true);
-
-  useEffect(() => {
-    setChargement(true);
-    const unsub = onSnapshot(collection(db, "ecoles", schoolId, nomCollection), (snap) => {
-      setItems(snap.docs.map(d=>({...d.data(),_id:d.id})));
-      setChargement(false);
-    });
-    return () => unsub();
-  }, [nomCollection, schoolId]);
-
-  const ajouter = async (item) => {
-    const {id,_id,...data} = item;
-    return await addDoc(collection(db, "ecoles", schoolId, nomCollection), {...data, createdAt:Date.now()});
-  };
-  const supprimer = async (id) => {
-    await deleteDoc(doc(db, "ecoles", schoolId, nomCollection, id));
-  };
-  const modifier = async (item) => {
-    const {_id,...data} = item;
-    await updateDoc(doc(db, "ecoles", schoolId, nomCollection, _id), data);
-  };
-  const modifierChamp = async (_id, champs) => {
-    await updateDoc(doc(db, "ecoles", schoolId, nomCollection, _id), champs);
-  };
-
-  return {items, chargement, ajouter, modifier, supprimer, modifierChamp};
-}
-
 // ══════════════════════════════════════════════════════════════
 //  UPLOAD FICHIER FIREBASE STORAGE
 // ══════════════════════════════════════════════════════════════
@@ -471,6 +447,7 @@ async function uploadFichier(fichier, chemin) {
 
 }
 
+// eslint-disable-next-line no-unused-vars
 async function supprimerFichier(url) {
   try {
     const storageRef = ref(storage, url);
@@ -830,8 +807,6 @@ const imprimerCartesEleves = (eleves, schoolInfo={}, annee="") => {
   const logo = schoolInfo.logo||"";
 
   // Génère une version claire de c1 pour le fond du corps
-  const c1Light = c1+"18"; // 10% opacity
-
   const carte = (e) => `
   <div class="carte">
     <!-- Bande déco gauche couleur 2 -->
@@ -1353,7 +1328,6 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
   const {items:comptes, chargement, ajouter, modifier} = useFirestore("comptes");
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState({});
-  const [voir, setVoir] = useState({});
   const [savingVerrou, setSavingVerrou] = useState(null);
   const [mdpsInitiaux, setMdpsInitiaux] = useState(null);
   const [initEnCours, setInitEnCours] = useState(false);
@@ -1379,11 +1353,12 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
         const mdpHash = await bcrypt.hash(mdpClair, 10);
         await ajouter({...c, mdp: mdpHash, premiereCo: true});
         try {
+          const headers = await getAuthHeaders({"Content-Type":"application/json"});
           await fetch("/api/create-user", {
-            method:"POST", headers:{"Content-Type":"application/json"},
+            method:"POST", headers,
             body:JSON.stringify({login:c.login, mdp:mdpClair, role:c.role, nom:c.nom, schoolId}),
           });
-        } catch(e) { /* non-bloquant */ }
+        } catch { /* non-bloquant */ }
       }
       setMdpsInitiaux(mdps);
       setInitEnCours(false);
@@ -1664,12 +1639,10 @@ function Fondation({readOnly, userRole}) {
 // ══════════════════════════════════════════════════════════════
 //  TARIFS PAR CLASSE (sous-composant Comptabilite)
 // ══════════════════════════════════════════════════════════════
-function TarifsClasses({tarifsClasses, saveTarif, getTarif, canEdit}) {
+function TarifsClasses({saveTarif, getTarif, canEdit}) {
   const [ouvert, setOuvert] = useState(false);
   const [editing, setEditing] = useState({}); // { "Classe X": "150000" }
   const [saving, setSaving] = useState(false);
-
-  const toutesClasses = [...CLASSES_PRIMAIRE, ...CLASSES_COLLEGE];
 
   const handleChange = (classe, val) => setEditing(p=>({...p,[classe]:val}));
 
@@ -1761,7 +1734,13 @@ function CameraCapture({onCapture, onClose}) {
       .catch(e => setErreur("Caméra indisponible : " + (e.message||e.name)));
   };
 
-  useEffect(() => { demarrerCamera("user"); return () => streamRef.current?.getTracks().forEach(t=>t.stop()); }, []);
+  useEffect(() => {
+    const timer = setTimeout(() => demarrerCamera("user"), 0);
+    return () => {
+      clearTimeout(timer);
+      streamRef.current?.getTracks().forEach(t=>t.stop());
+    };
+  }, []);
 
   const inverser = () => { const next = facing==="user"?"environment":"user"; setFacing(next); demarrerCamera(next); };
 
@@ -1878,7 +1857,6 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
     if(existing) await modTarif(existing._id,{montant:Number(montant)||0});
     else await ajTarif({classe, montant:Number(montant)||0});
   };
-  const montant=getTarif(eleves[0]?.classe||""); // fallback pour compatibilité
   const elevesFiltres=filtClasse==="all"?eleves:eleves.filter(e=>e.classe===filtClasse);
   const nbPayes=e=>moisAnnee.filter(m=>(e.mens||{})[m]==="Payé").length;
 
@@ -3066,7 +3044,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
   const {items:classes,chargement:cC,ajouter:ajC,modifier:modC,supprimer:supC}=useFirestore(cleClasses);
   const {items:ens,chargement:cEns,ajouter:ajEns,modifier:modEns,supprimer:supEns}=useFirestore(cleEns);
   const {items:notes,chargement:cN,ajouter:ajN,supprimer:supN}=useFirestore(cleNotes);
-  const {items:eleves,chargement:cE,ajouter:ajE,modifier:modE,supprimer:supE}=useFirestore(cleEleves);
+  const {items:eleves,chargement:cE,modifier:modE}=useFirestore(cleEleves);
   const {items:absences,chargement:cAbs,ajouter:ajAbs,supprimer:supAbs}=useFirestore(cleEleves+"_absences");
   const {items:enseignements,chargement:cEng,ajouter:ajEng,modifier:modEng,supprimer:supEng}=useFirestore(cleEns+"_enseignements");
   const {items:matieres,chargement:cMat,ajouter:ajMat,supprimer:supMat}=useFirestore(cleClasses+"_matieres");
@@ -4364,56 +4342,6 @@ function Secondaire({userRole, annee, readOnly=false, verrouOuvert=false}) {
         avecEns={true} userRole={userRole} annee={annee}
         classesPredefinies={CLASSES_LYCEE} maxNote={20} readOnly={readOnly} verrouOuvert={verrouOuvert}/>}
     </div>
-  );
-}
-
-// ══════════════════════════════════════════════════════════════
-//  RECHERCHE GLOBALE
-// ══════════════════════════════════════════════════════════════
-function RechercheGlobale({onFermer}) {
-  const {items:elevesC}=useFirestore("elevesCollege");
-  const {items:elevesP}=useFirestore("elevesPrimaire");
-  const [q,setQ]=useState("");
-
-  const tousEleves=[
-    ...elevesC.map(e=>({...e,niveau:"Collège"})),
-    ...elevesP.map(e=>({...e,niveau:"Primaire"})),
-  ];
-
-  const resultats=q.length>=2?tousEleves.filter(e=>
-    (e.nom+" "+e.prenom).toLowerCase().includes(q.toLowerCase())||
-    (e.matricule||"").toLowerCase().includes(q.toLowerCase())||
-    (e.classe||"").toLowerCase().includes(q.toLowerCase())
-  ):[];
-
-  return (
-    <Modale titre="🔍 Recherche globale" fermer={onFermer}>
-      <input autoFocus value={q} onChange={e=>setQ(e.target.value)}
-        placeholder="Nom, prénom, matricule, classe..."
-        style={{width:"100%",border:"2px solid #b0c4d8",borderRadius:9,padding:"10px 12px",fontSize:14,boxSizing:"border-box",outline:"none",marginBottom:12}}/>
-      {q.length<2
-        ?<p style={{textAlign:"center",color:"#9ca3af",fontSize:13,padding:"20px 0"}}>Tapez au moins 2 caractères...</p>
-        :resultats.length===0?<Vide icone="🔍" msg="Aucun résultat"/>
-        :<div style={{maxHeight:420,overflowY:"auto"}}>
-          <p style={{fontSize:11,color:"#9ca3af",marginBottom:8}}>{resultats.length} résultat(s)</p>
-          <table style={{width:"100%",borderCollapse:"collapse"}}>
-            <THead cols={["Photo","Matricule","Nom & Prénom","Classe","Niveau","Statut"]}/>
-            <tbody>{resultats.map(e=><TR key={e._id}>
-              <TD>
-                {e.photo
-                  ?<img src={e.photo} alt="" style={{width:32,height:32,borderRadius:6,objectFit:"cover"}}/>
-                  :<div style={{width:32,height:32,borderRadius:6,background:C.blue,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:11,fontWeight:800}}>{(e.nom||"?")[0]}{(e.prenom||"?")[0]}</div>
-                }
-              </TD>
-              <TD><span style={{fontSize:11,fontFamily:"monospace",background:"#e0ebf8",padding:"2px 5px",borderRadius:4,color:C.blue,fontWeight:700}}>{e.matricule||"—"}</span></TD>
-              <TD bold>{e.nom} {e.prenom}</TD>
-              <TD><Badge color="blue">{e.classe}</Badge></TD>
-              <TD><Badge color={e.niveau==="Collège"?"purple":"amber"}>{e.niveau}</Badge></TD>
-              <TD><Badge color={e.statut==="Actif"?"vert":"gray"}>{e.statut||"Actif"}</Badge></TD>
-            </TR>)}</tbody>
-          </table>
-        </div>}
-    </Modale>
   );
 }
 
@@ -7283,9 +7211,7 @@ function RechercheGlobale({modules, onNaviguer, onFermer}) {
       icon:"👨‍🏫", action:()=>{ onNaviguer(ensP.find(ec=>ec._id===e._id)?"primaire":"secondaire"); onFermer(); }
     }));
     return r;
-  },[q2, modules, elevesC, elevesP, ensP, ensC, ensL]);
-
-  useEffect(()=>setSelIdx(0),[q2]);
+  },[q2, modules, elevesC, elevesP, ensP, ensC, ensL, onNaviguer, onFermer]);
 
   const executer = (i=selIdx) => {
     if(resultats[i]) { resultats[i].action(); onFermer(); }
@@ -7313,7 +7239,7 @@ function RechercheGlobale({modules, onNaviguer, onFermer}) {
           <input
             ref={inputRef}
             value={q}
-            onChange={e=>setQ(e.target.value)}
+            onChange={e=>{ setQ(e.target.value); setSelIdx(0); }}
             onKeyDown={onKey}
             placeholder="Rechercher un module, élève, enseignant…"
             style={{flex:1,border:"none",outline:"none",fontSize:16,color:"#0f172a",background:"transparent"}}
@@ -7360,7 +7286,7 @@ export default function App() {
     if(fromUrl){localStorage.setItem("LC_schoolId",fromUrl);}
     return fromUrl||localStorage.getItem("LC_schoolId")||"citadelle";
   });
-  const [schoolInfo,setSchoolInfo]=useState(SCHOOL_INFO_DEFAUT);
+  const [schoolInfoState,setSchoolInfo]=useState(SCHOOL_INFO_DEFAUT);
   const [annee,setAnneeState]=useState(()=>localStorage.getItem("LC_annee")||"2025-2026");
   const [verrous,setVerrous]=useState({comptable:false,primaire:false,secondaire:false});
   const [toasts,setToasts]=useState([]);
@@ -7373,11 +7299,12 @@ export default function App() {
     try{
       const sid=localStorage.getItem("LC_schoolId")||"citadelle";
       addDoc(collection(db,"ecoles",sid,"historique"),{action,details,auteur,date:Date.now()}).catch(()=>{});
-    }catch(_){}
+    }catch{
+      // Logging is best-effort only.
+    }
   };
   const [onboardingOuvert,setOnboardingOuvert]=useState(false);
   const [sidebarOuvert,setSidebarOuvert]=useState(false);
-  const [rechercheOuverte,setRechercheOuverte]=useState(false);
   const [modeSombre,setModeSombre]=useState(()=>localStorage.getItem("LC_theme")==="dark");
   const [estHorsLigne,setEstHorsLigne]=useState(!navigator.onLine);
   const [promptInstall,setPromptInstall]=useState(null);
@@ -7448,7 +7375,6 @@ export default function App() {
   // Charger les infos de l'école depuis Firestore (temps réel)
   useEffect(()=>{
     if(!schoolId||schoolId==="superadmin"){
-      setSchoolInfo(SCHOOL_INFO_DEFAUT);
       document.documentElement.style.setProperty("--sc1","#0A1628");
       document.documentElement.style.setProperty("--sc2","#00C48C");
       return;
@@ -7513,7 +7439,9 @@ export default function App() {
               premiereCo=!!dc.data().premiereCo;
               compteDocId=dc.id;
             }
-          }catch(_){}
+          }catch{
+            // Missing account metadata should not block login.
+          }
           setUtilisateur({uid:firebaseUser.uid, login:d.login, nom:d.nom, role:d.role, premiereCo, compteDocId, schoolId:sid});
           setPage(p=>p||ACCES[d.role][0]);
         }
@@ -7525,11 +7453,12 @@ export default function App() {
   },[]);
 
   // ── Push notifications helper ────────────────────────────────
-  const envoyerPush = (cibles, titre, corps, url="/") => {
+  const envoyerPush = async(cibles, titre, corps, url="/") => {
     const sid = localStorage.getItem("LC_schoolId")||"citadelle";
+    const headers = await getAuthHeaders({"Content-Type":"application/json"});
     fetch("/api/push",{
       method:"POST",
-      headers:{"Content-Type":"application/json"},
+      headers,
       body:JSON.stringify({schoolId:sid,cibles,titre,corps,url}),
     }).catch(()=>{});
   };
@@ -7553,7 +7482,9 @@ export default function App() {
         nom: utilisateurCo.nom,
         updatedAt: Date.now(),
       });
-    }catch(_){}
+    }catch{
+      // Push subscription is optional.
+    }
   };
 
   const connecter=(c,sid)=>{
@@ -7571,6 +7502,7 @@ export default function App() {
     setPage(null);
   };
 
+  const schoolInfo = (!schoolId || schoolId === "superadmin") ? SCHOOL_INFO_DEFAUT : schoolInfoState;
   const moisAnnee   = calcMoisAnnee(schoolInfo.moisDebut||"Octobre");
   const moisSalaire = calcMoisSalaire(schoolInfo.moisDebut||"Octobre");
 
@@ -7631,14 +7563,13 @@ export default function App() {
   // Admin/direction : lecture seule totale (ni créer ni modifier)
   // Les autres rôles : peuvent toujours créer ; modifier/supprimer selon le verrou de l'admin
   const readOnly = estAdmin;
-  const logoSrc = schoolInfo.logo || LOGO;
   const couleur2 = schoolInfo.couleur2 || C.green;
 
   return (
     <SchoolContext.Provider value={{schoolId,setSchoolId,schoolInfo,setSchoolInfo,moisAnnee,moisSalaire,toast,logAction,envoyerPush}}>
     <GlobalStyles/>
 
-    <ToastContainer toasts={toasts}/>
+    <ToastContainerView toasts={toasts}/>
 
     {rechercheOuverte&&(
       <RechercheGlobale

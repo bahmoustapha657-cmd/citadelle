@@ -1,19 +1,11 @@
-import { initializeApp, getApps, cert } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import bcrypt from "bcryptjs";
-
-function initAdmin() {
-  if (getApps().length) return;
-  const raw = process.env.FIREBASE_SERVICE_ACCOUNT || "{}";
-  let sa;
-  try { sa = JSON.parse(raw); } catch { sa = JSON.parse(raw.replace(/\\n/g, "\n")); }
-  if (sa.private_key) sa.private_key = sa.private_key.replace(/\\n/g, "\n");
-  initializeApp({ credential: cert(sa) });
-}
+import { initAdmin } from "./_lib/firebase-admin.js";
+import { applyCors } from "./_lib/security.js";
 
 export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", process.env.ALLOWED_ORIGIN || "*");
+  applyCors(req, res);
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).end();
 
@@ -22,7 +14,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Champs requis : login, mdp, schoolId" });
   }
 
-  try { initAdmin(); } catch (e) {
+  try { initAdmin(); } catch {
     return res.status(500).json({ error: "Erreur serveur (init)" });
   }
 
