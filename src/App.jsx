@@ -6163,9 +6163,12 @@ function SuperAdminPanel() {
 
   const chargerDemandes = () => {
     try {
-      const q = query(collectionGroup(db,"demandes_plan"), orderBy("createdAt","desc"));
+      const q = collectionGroup(db,"demandes_plan");
       return onSnapshot(q, snap => {
-        setDemandes(snap.docs.map(d=>({...d.data(),_id:d.id,_schoolId:d.ref.parent.parent.id})));
+        const liste = snap.docs
+          .map(d=>({...d.data(),_id:d.id,_schoolId:d.ref.parent.parent.id}))
+          .sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+        setDemandes(liste);
       }, ()=>{});
     } catch { return ()=>{}; }
   };
