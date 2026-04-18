@@ -6062,10 +6062,10 @@ function SuperAdminPanel() {
         ? ` — expire le ${new Date(update.planExpiry).toLocaleDateString("fr-FR")}`
         : "";
 
-      // ── 2. Fermer modal + feedback immédiat ──
-      setMsgSucces(`Plan ${planLabel} activé pour ${planModal.nom}`);
-      setTimeout(()=>setMsgSucces(""),5000);
-      setPlanModal(null);
+      // ── 2. Feedback immédiat + fermeture différée ──
+      setMsgSucces(`✅ Plan ${planLabel} activé pour ${planModal.nom}`);
+      setTimeout(()=>{ setPlanModal(null); setMsgSucces(""); }, 2500);
+      planPanelRef.current?.scrollIntoView({behavior:"smooth",block:"start"});
 
       // ── 3. Notification & push (best-effort, ne bloque pas) ──
       addDoc(collection(db,"ecoles",planModal._id,"historique"),{
@@ -6398,15 +6398,20 @@ function SuperAdminPanel() {
             </div>
           )}
 
+          {msgSucces && (
+            <div style={{background:"#d1fae5",border:"1px solid #6ee7b7",borderRadius:8,padding:"10px 16px",marginBottom:12,fontSize:13,color:"#065f46",fontWeight:700}}>
+              {msgSucces}
+            </div>
+          )}
           <div style={{display:"flex",gap:10,justifyContent:"flex-end",paddingTop:16,borderTop:"1px solid #f0f0f0"}}>
             <button onClick={()=>setPlanModal(null)}
               style={{background:"#f3f4f6",border:"none",padding:"10px 20px",borderRadius:8,cursor:"pointer",fontWeight:600,color:"#6b7280",fontSize:13}}>
               Annuler
             </button>
-            <button onClick={sauvegarderPlan} disabled={planSaving}
+            <button onClick={sauvegarderPlan} disabled={planSaving||!!msgSucces}
               style={{background:`linear-gradient(90deg,${C.blue},${C.green})`,border:"none",color:"#fff",
-                padding:"10px 28px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13,opacity:planSaving?0.7:1}}>
-              {planSaving?"Sauvegarde en cours…":"✅ Confirmer le plan"}
+                padding:"10px 28px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13,opacity:(planSaving||!!msgSucces)?0.7:1}}>
+              {planSaving?"Sauvegarde en cours…":"Confirmer le plan"}
             </button>
           </div>
         </div>

@@ -24,11 +24,15 @@ service cloud.firestore {
     match /ecoles/{schoolId} {
       allow read: if true;
 
-      allow create: if request.resource.data.keys().hasAll(["nom", "ville", "pays", "createdAt", "actif"])
+      // Création école : superadmin uniquement, sans champs plan
+      allow create: if aUnRole(["superadmin"])
                    && !request.resource.data.keys().hasAny(planFields());
 
-      allow update: if appartientEcole(schoolId)
-                   && !request.resource.data.diff(resource.data).affectedKeys().hasAny(planFields());
+      // Mise à jour : superadmin peut tout modifier (plan inclus) ;
+      // les autres membres peuvent modifier sauf les champs plan
+      allow update: if aUnRole(["superadmin"])
+                   || (appartientEcole(schoolId)
+                       && !request.resource.data.diff(resource.data).affectedKeys().hasAny(planFields()));
 
       allow delete: if false;
 
@@ -47,9 +51,10 @@ service cloud.firestore {
         allow write: if false;
       }
 
+      // Sous-collections générales : membres de l'école + superadmin
       match /{collection}/{docId} {
-        allow read: if appartientEcole(schoolId);
-        allow write: if appartientEcole(schoolId);
+        allow read: if appartientEcole(schoolId) || aUnRole(["superadmin"]);
+        allow write: if appartientEcole(schoolId) || aUnRole(["superadmin"]);
       }
     }
 
