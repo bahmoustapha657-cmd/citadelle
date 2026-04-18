@@ -2303,6 +2303,8 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
       const creneaux=ens._emplois.filter(emp=>(emp.enseignant||"").toLowerCase().includes((ens.nom||"").toLowerCase()));
       // Calcule les heures et la prime pour chaque créneau (prime par classe si définie)
       const getSlotPrime=(slot)=>{
+        // Révision : prime spécifique au créneau (prioritaire)
+        if(slot.type==="revision" && slot.primeRevision) return Number(slot.primeRevision);
         const ppc=ens.primeParClasse||[];
         if(ppc.length){
           const match=ppc.find(p=>p.classe&&slot.classe&&slot.classe.toLowerCase().includes(p.classe.toLowerCase()));
@@ -4520,13 +4522,17 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
             const tds=JOURS.map(jour=>{
               const cr=getCr(jour,hd);
               if(!cr)return "<td style='background:#fafcff;border:1px solid #e2e8f0;padding:6px'></td>";
-              const bg=mc[cr.matiere]||"#e0ebf8";
+              const isRev=cr.type==="revision";
+              const bg=isRev?"#fff7ed":(mc[cr.matiere]||"#e0ebf8");
+              const borderColor=isRev?"#fdba74":"#e2e8f0";
               const ensObj=findEns(cr.enseignant);
-              return "<td style='background:"+bg+";border:1px solid #e2e8f0;padding:6px;vertical-align:top'>"
-                +"<b style='font-size:11px;color:#1e3a5f;display:block'>"+cr.matiere+"</b>"
+              return "<td style='background:"+bg+";border:1px solid "+borderColor+";padding:6px;vertical-align:top'>"
+                +(isRev?"<span style='background:#f97316;color:#fff;font-size:8px;font-weight:900;padding:1px 4px;border-radius:3px;display:inline-block;margin-bottom:2px'>RÉV</span><br>":"")
+                +"<b style='font-size:11px;color:"+(isRev?"#9a3412":"#1e3a5f")+";display:block'>"+cr.matiere+"</b>"
                 +(cr.enseignant?"<span style='font-size:10px;color:#475569'>"+affNom(cr.enseignant)+"</span>":"")
                 +(ensObj?.telephone?"<br><span style='font-size:9px;color:#00876a;font-weight:600'>"+ensObj.telephone+"</span>":"")
                 +(cr.salle?"<br><span style='font-size:9px;color:#94a3b8'>📍"+cr.salle+"</span>":"")
+                +(isRev&&cr.primeRevision>0?"<br><span style='font-size:9px;color:#c2410c;font-weight:700'>"+Number(cr.primeRevision).toLocaleString("fr-FR")+" GNF/h</span>":"")
                 +"</td>";
             }).join("");
             return "<tr><td style='background:#f0f4f8;font-weight:700;font-size:11px;color:#0A1628;padding:7px 10px;text-align:center;border:1px solid #e2e8f0;white-space:nowrap'>"+hd.slice(0,5)+"–"+hf.slice(0,5)+"</td>"+tds+"</tr>";
@@ -4690,14 +4696,16 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
                           else{setForm({classe:classeEdtActuelle,jour,heureDebut:hd,heureFin:hf,matiere:"",enseignant:"",salle:""});setEdtCellule({jour,heureDebut:hd,heureFin:hf,existing:null});}
                         }}
                         style={{
-                          padding:"4px 5px",border:"1px solid #e2e8f0",cursor:canCreate||canEdit?"pointer":"default",
-                          background:cr?matCouleur[cr.matiere]||"#e0ebf8":"#fafcff",
+                          padding:"4px 5px",border:`1px solid ${cr?.type==="revision"?"#fdba74":"#e2e8f0"}`,
+                          cursor:canCreate||canEdit?"pointer":"default",
+                          background:cr?(cr.type==="revision"?"#fff7ed":matCouleur[cr.matiere]||"#e0ebf8"):"#fafcff",
                           minWidth:90,verticalAlign:"top",position:"relative",
                           transition:"filter .15s",
                         }}>
                         {cr ? <>
                           {conflit&&<span title="Conflit enseignant" style={{position:"absolute",top:2,right:3,fontSize:10}}>⚠️</span>}
-                          <div style={{fontWeight:800,fontSize:11,color:"#1e3a5f",lineHeight:1.3}}>{cr.matiere||"—"}</div>
+                          {cr.type==="revision"&&<span style={{position:"absolute",top:2,left:3,background:"#f97316",color:"#fff",fontSize:8,fontWeight:900,padding:"1px 4px",borderRadius:3,lineHeight:1.4}}>RÉV</span>}
+                          <div style={{fontWeight:800,fontSize:11,color:cr.type==="revision"?"#9a3412":"#1e3a5f",lineHeight:1.3,marginTop:cr.type==="revision"?10:0}}>{cr.matiere||"—"}</div>
                           {cr.enseignant&&(()=>{
                             const e=findEns(cr.enseignant);
                             return <div style={{fontSize:10,color:"#475569",marginTop:1}}>
@@ -4706,6 +4714,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
                             </div>;
                           })()}
                           {cr.salle&&<div style={{fontSize:9,color:"#94a3b8",marginTop:1}}>📍{cr.salle}</div>}
+                          {cr.type==="revision"&&cr.primeRevision>0&&<div style={{fontSize:9,color:"#c2410c",fontWeight:700,marginTop:1}}>{Number(cr.primeRevision).toLocaleString("fr-FR")} GNF/h</div>}
                         </> : (canCreate&&<div style={{fontSize:18,color:"#c7d7e9",textAlign:"center",lineHeight:"40px"}}>+</div>)}
                       </td>;
                     })}
@@ -4730,7 +4739,21 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
                       ? <TD bold style={{background:"#f0f4f8",verticalAlign:"top",whiteSpace:"nowrap",borderRight:"2px solid #e2e8f0"}}>{e.jour}</TD>
                       : <td style={{background:"#f8fafc",borderRight:"2px solid #e2e8f0",borderBottom:"1px solid #f1f5f9"}}></td>}
                     <TD style={{whiteSpace:"nowrap"}}>{e.heureDebut} – {e.heureFin}</TD>
-                    <TD><span style={{background:matCouleur[e.matiere]||"#e0ebf8",padding:"2px 8px",borderRadius:6,fontSize:11,fontWeight:700}}>{e.matiere||"—"}</span></TD>
+                    <TD>
+                      <span style={{background:e.type==="revision"?"#fff7ed":matCouleur[e.matiere]||"#e0ebf8",
+                        border:e.type==="revision"?"1px solid #fdba74":"none",
+                        padding:"2px 8px",borderRadius:6,fontSize:11,fontWeight:700,
+                        color:e.type==="revision"?"#9a3412":"inherit"}}>
+                        {e.matiere||"—"}
+                      </span>
+                    </TD>
+                    <TD>
+                      {e.type==="revision"
+                        ? <span style={{background:"#fff7ed",border:"1px solid #fdba74",color:"#9a3412",padding:"2px 8px",borderRadius:6,fontSize:11,fontWeight:700}}>
+                            📝 Révision{e.primeRevision>0?` · ${Number(e.primeRevision).toLocaleString("fr-FR")} GNF/h`:""}
+                          </span>
+                        : <span style={{color:"#9ca3af",fontSize:11}}>Cours</span>}
+                    </TD>
                     <TD>{e.enseignant||<span style={{color:"#9ca3af",fontStyle:"italic"}}>—</span>}</TD>
                     <TD>{e.salle||"—"}</TD>
                     {canEdit&&<TD><div style={{display:"flex",gap:6}}>
@@ -4740,7 +4763,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
                   </TR>);
                 });
                 return <table style={{width:"100%",borderCollapse:"collapse"}}>
-                  <THead cols={["Jour","Heure","Matière","Enseignant","Salle",canEdit?"":""]}/>
+                  <THead cols={["Jour","Heure","Matière","Type","Enseignant","Salle",canEdit?"":""]}/>
                   <tbody>{rows}</tbody>
                 </table>;
               })()}
@@ -4756,6 +4779,36 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
             <span>⏰ <strong>{edtCellule.heureDebut} → {edtCellule.heureFin}</strong></span>
             <span>🏫 <strong>{form.classe||classeEdtActuelle}</strong></span>
           </div>
+          {/* Type du créneau */}
+          <div style={{display:"flex",gap:8,marginBottom:14}}>
+            {[{v:"cours",label:"📚 Cours"},{v:"revision",label:"📝 Révision"}].map(t=>(
+              <button key={t.v} onClick={()=>setForm(p=>({...p,type:t.v}))}
+                style={{flex:1,padding:"9px 0",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13,
+                  background:(form.type||"cours")===t.v?(t.v==="revision"?"#fff7ed":"#eff6ff"):"#f9fafb",
+                  border:`2px solid ${(form.type||"cours")===t.v?(t.v==="revision"?"#f97316":"#3b82f6"):"#e5e7eb"}`,
+                  color:(form.type||"cours")===t.v?(t.v==="revision"?"#9a3412":"#1d4ed8"):"#6b7280"}}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {(form.type||"cours")==="revision"&&(
+            <div style={{background:"#fff7ed",border:"1px solid #fdba74",borderRadius:8,padding:"10px 14px",marginBottom:12,display:"flex",alignItems:"center",gap:12}}>
+              <span style={{fontSize:20}}>📝</span>
+              <div style={{flex:1}}>
+                <div style={{fontSize:12,fontWeight:700,color:"#9a3412",marginBottom:4}}>Prime horaire révision</div>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <input type="number" min="0" value={form.primeRevision||""}
+                    onChange={e=>setForm(p=>({...p,primeRevision:e.target.value}))}
+                    placeholder="Ex : 50000"
+                    style={{border:"1px solid #fdba74",borderRadius:6,padding:"6px 10px",fontSize:13,width:140,background:"#fff"}}/>
+                  <span style={{fontSize:12,color:"#c2410c",fontWeight:600}}>GNF / heure</span>
+                </div>
+                <div style={{fontSize:11,color:"#c2410c",marginTop:4}}>Cette prime remplace la prime horaire normale pour ce créneau.</div>
+              </div>
+            </div>
+          )}
+
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
             <Selec label="Matière" value={form.matiere||""} onChange={e=>{setForm(p=>({...p,matiere:e.target.value,enseignant:""}));}}>
               <option value="">— Sélectionner —</option>
@@ -4792,7 +4845,18 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
               <Btn v="ghost" onClick={()=>setEdtCellule(null)}>Annuler</Btn>
               <Btn onClick={()=>{
                 if(!form.matiere){toast("Choisissez une matière.","warning");return;}
-                const data={classe:form.classe||classeEdtActuelle,jour:edtCellule.jour,heureDebut:form.heureDebut||edtCellule.heureDebut,heureFin:form.heureFin||edtCellule.heureFin,matiere:form.matiere,enseignant:form.enseignant||"",salle:form.salle||""};
+                const typeCreneaux=form.type||"cours";
+                const data={
+                  classe:form.classe||classeEdtActuelle,
+                  jour:edtCellule.jour,
+                  heureDebut:form.heureDebut||edtCellule.heureDebut,
+                  heureFin:form.heureFin||edtCellule.heureFin,
+                  matiere:form.matiere,
+                  enseignant:form.enseignant||"",
+                  salle:form.salle||"",
+                  type:typeCreneaux,
+                  primeRevision:typeCreneaux==="revision"?Number(form.primeRevision||0):null,
+                };
                 if(edtCellule.existing)modEmp({...data,_id:edtCellule.existing._id});
                 else ajEmp(data);
                 setEdtCellule(null);
