@@ -14,7 +14,7 @@ import QRCode from "qrcode";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, RadarChart, Radar, PolarGrid, PolarAngleAxis } from "recharts";
 import bcrypt from "bcryptjs";
 import {
-  collection, onSnapshot, addDoc, updateDoc, doc, setDoc, getDoc, getDocs, query, where, orderBy, limit
+  collection, collectionGroup, onSnapshot, addDoc, updateDoc, doc, setDoc, getDoc, getDocs, query, where, orderBy, limit
 } from "firebase/firestore";
 
 // ══════════════════════════════════════════════════════════════
@@ -5456,7 +5456,8 @@ function TableauDeBord({annee}) {
                   <span>💬</span> WhatsApp
                 </a>
                 {/* Contact Email */}
-                <a href={`mailto:edugest26@gmail.com?subject=Demande abonnement — ${schoolInfo.nom||""}&body=Bonjour%2C%0AJe souhaite souscrire un abonnement pour mon école.%0A%0A%C3%89cole : ${schoolInfo.nom||""}%0A`}
+                <a href={`https://mail.google.com/mail/?view=cm&to=edugest26@gmail.com&su=${encodeURIComponent("Demande abonnement — "+(schoolInfo.nom||""))}&body=${encodeURIComponent("Bonjour,\nJe souhaite souscrire un abonnement EduGest pour mon école.\n\nÉcole : "+(schoolInfo.nom||"")+"\n")}`}
+                  target="_blank" rel="noopener noreferrer"
                   style={{display:"flex",alignItems:"center",gap:6,background:"#ede9fe",color:"#6d28d9",border:"none",borderRadius:8,padding:"8px 14px",fontSize:12,fontWeight:700,textDecoration:"none",cursor:"pointer"}}>
                   <span>✉️</span> Email
                 </a>
@@ -6154,19 +6155,19 @@ function SuperAdminPanel() {
     }
   };
 
-  useEffect(() => { chargerEcoles(); chargerDemandes(); }, []);
+  useEffect(() => {
+    chargerEcoles();
+    const unsub = chargerDemandes();
+    return () => unsub && unsub();
+  }, []);
 
-  const chargerDemandes = async () => {
+  const chargerDemandes = () => {
     try {
-      const ecolesSnap = await getDocs(collection(db,"ecoles"));
-      const touteDemandes = [];
-      await Promise.all(ecolesSnap.docs.map(async e => {
-        const dSnap = await getDocs(collection(db,"ecoles",e.id,"demandes_plan"));
-        dSnap.docs.forEach(d => touteDemandes.push({...d.data(),_id:d.id,_schoolId:e.id}));
-      }));
-      touteDemandes.sort((a,b)=>b.createdAt-a.createdAt);
-      setDemandes(touteDemandes);
-    } catch {}
+      const q = query(collectionGroup(db,"demandes_plan"), orderBy("createdAt","desc"));
+      return onSnapshot(q, snap => {
+        setDemandes(snap.docs.map(d=>({...d.data(),_id:d.id,_schoolId:d.ref.parent.parent.id})));
+      }, ()=>{});
+    } catch { return ()=>{}; }
   };
 
   const validerDemande = async (demande) => {
