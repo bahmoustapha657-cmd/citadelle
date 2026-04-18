@@ -5127,7 +5127,7 @@ function HistoriqueActions() {
 //  TABLEAU DE BORD DIRECTION
 // ══════════════════════════════════════════════════════════════
 function TableauDeBord({annee}) {
-  const {schoolInfo, moisAnnee, moisSalaire} = useContext(SchoolContext);
+  const {schoolId, schoolInfo, moisAnnee, moisSalaire, planInfo} = useContext(SchoolContext);
   const {items:elevesC, chargement:cEC} = useFirestore("elevesCollege");
   const {items:elevesP, chargement:cEP} = useFirestore("elevesPrimaire");
   const {items:ensC}    = useFirestore("ensCollege");
@@ -5141,6 +5141,31 @@ function TableauDeBord({annee}) {
   const {items:absences}= useFirestore("absencesCollege");
   const {items:absP}    = useFirestore("absencesPrimaire");
   const [moisRapport,setMoisRapport] = useState(moisSalaire[moisSalaire.length-1]||"");
+  const [demandeOuverte, setDemandeOuverte] = useState(false);
+  const [demandePlan, setDemandePlan] = useState("starter");
+  const [demandeForm, setDemandeForm] = useState({operateur:"Orange Money",telephone:"",reference:""});
+  const [demandeEnvoi, setDemandeEnvoi] = useState(false);
+  const [demandeSucces, setDemandeSucces] = useState(false);
+
+  const envoyerDemande = async () => {
+    if(!demandeForm.telephone.trim()||!demandeForm.reference.trim()) return;
+    setDemandeEnvoi(true);
+    try {
+      await addDoc(collection(db,"ecoles",schoolId,"demandes_plan"),{
+        ecoleNom: schoolInfo.nom,
+        planDemande: demandePlan,
+        operateur: demandeForm.operateur,
+        telephone: demandeForm.telephone.trim(),
+        reference: demandeForm.reference.trim(),
+        statut: "en_attente",
+        createdAt: Date.now(),
+      });
+      setDemandeSucces(true);
+      setDemandeOuverte(false);
+      setTimeout(()=>setDemandeSucces(false),6000);
+    } catch(e){ console.error(e); }
+    finally { setDemandeEnvoi(false); }
+  };
 
   const c1 = schoolInfo.couleur1 || C.blue;
   const c2 = schoolInfo.couleur2 || C.green;
@@ -5376,6 +5401,126 @@ function TableauDeBord({annee}) {
           </div>
         </div></Card>
       </div>
+
+      {/* ── Bloc abonnement ── */}
+      {planInfo && (
+        <div style={{marginTop:24}}>
+
+          {/* Bannière expiration / limite */}
+          {(planInfo.planEstExpire || planInfo.joursRestants!==null&&planInfo.joursRestants<=30 ||
+            planInfo.planCourant==="gratuit"&&planInfo.totalElevesActifs>=40) && (
+            <div style={{
+              background: planInfo.planEstExpire?"#fee2e2":planInfo.joursRestants<=7?"#fef2f2":"#fef3c7",
+              border:`1px solid ${planInfo.planEstExpire||planInfo.joursRestants<=7?"#fca5a5":"#fcd34d"}`,
+              borderRadius:10,padding:"12px 18px",marginBottom:16,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"
+            }}>
+              <span style={{fontSize:22}}>{planInfo.planEstExpire?"🔴":planInfo.joursRestants<=7?"🔴":"🟡"}</span>
+              <div style={{flex:1}}>
+                <p style={{margin:0,fontWeight:800,fontSize:13,color:planInfo.planEstExpire?"#991b1b":"#92400e"}}>
+                  {planInfo.planEstExpire ? "Abonnement expiré — accès limité à 50 élèves"
+                   : planInfo.joursRestants!==null&&planInfo.joursRestants<=30
+                     ? `Abonnement ${planInfo.planLabel} expire dans ${planInfo.joursRestants} jour(s)`
+                     : `Plan Gratuit : ${planInfo.totalElevesActifs}/50 élèves — bientôt à la limite`}
+                </p>
+                <p style={{margin:"2px 0 0",fontSize:11,color:"#6b7280"}}>Souscrivez un abonnement pour continuer à inscrire des élèves sans limite.</p>
+              </div>
+            </div>
+          )}
+
+          {/* Succès demande envoyée */}
+          {demandeSucces && (
+            <div style={{background:"#d1fae5",border:"1px solid #6ee7b7",borderRadius:10,padding:"12px 18px",marginBottom:16,fontSize:13,color:"#065f46",fontWeight:700}}>
+              ✅ Demande envoyée ! L'équipe EduGest va traiter votre demande et activer votre abonnement.
+            </div>
+          )}
+
+          <div style={{background:"#fff",borderRadius:14,boxShadow:"0 2px 16px rgba(0,32,80,0.07)",overflow:"hidden"}}>
+            <div style={{padding:"16px 20px",borderBottom:"1px solid #f0f0f0",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
+              <div>
+                <p style={{margin:0,fontWeight:800,fontSize:14,color:C.blueDark}}>
+                  Abonnement — Plan <span style={{color:PLANS[planInfo.planCourant]?.couleur||C.blue}}>{planInfo.planLabel}</span>
+                </p>
+                <p style={{margin:"3px 0 0",fontSize:12,color:"#6b7280"}}>
+                  {planInfo.planCourant==="gratuit"
+                    ? `${planInfo.totalElevesActifs}/50 élèves actifs — gratuit jusqu'à 50`
+                    : planInfo.planEstExpire
+                      ? "Expiré — limité à 50 élèves"
+                      : `${planInfo.totalElevesActifs} élèves actifs · expire le ${new Date(planInfo.planExpiry).toLocaleDateString("fr-FR")}`}
+                </p>
+              </div>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                {/* Contact WhatsApp */}
+                <a href={`https://wa.me/+224625000000?text=Bonjour%2C%20je%20souhaite%20souscrire%20un%20abonnement%20EduGest%20pour%20l%27%C3%A9cole%20%22${encodeURIComponent(schoolInfo.nom||"")}%22`}
+                  target="_blank" rel="noopener noreferrer"
+                  style={{display:"flex",alignItems:"center",gap:6,background:"#dcfce7",color:"#15803d",border:"none",borderRadius:8,padding:"8px 14px",fontSize:12,fontWeight:700,textDecoration:"none",cursor:"pointer"}}>
+                  <span>💬</span> WhatsApp
+                </a>
+                {/* Contact Email */}
+                <a href={`mailto:contact@edugest.app?subject=Demande abonnement — ${schoolInfo.nom||""}&body=Bonjour%2C%0AJe souhaite souscrire un abonnement pour mon école.%0A%0A%C3%89cole : ${schoolInfo.nom||""}%0A`}
+                  style={{display:"flex",alignItems:"center",gap:6,background:"#ede9fe",color:"#6d28d9",border:"none",borderRadius:8,padding:"8px 14px",fontSize:12,fontWeight:700,textDecoration:"none",cursor:"pointer"}}>
+                  <span>✉️</span> Email
+                </a>
+                {/* Bouton demande formelle */}
+                <button onClick={()=>setDemandeOuverte(v=>!v)}
+                  style={{display:"flex",alignItems:"center",gap:6,background:`linear-gradient(90deg,${C.blue},${C.green})`,color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontSize:12,fontWeight:700,cursor:"pointer"}}>
+                  {demandeOuverte?"▲ Fermer":"📋 Demande formelle"}
+                </button>
+              </div>
+            </div>
+
+            {/* Formulaire de demande */}
+            {demandeOuverte && (
+              <div style={{padding:"20px 24px"}}>
+                <p style={{margin:"0 0 16px",fontSize:13,color:"#374151"}}>Remplissez ce formulaire après avoir effectué votre paiement mobile. L'équipe EduGest validera et activera votre abonnement sous 24h.</p>
+
+                {/* Choix du plan */}
+                <label style={{display:"block",fontSize:11,fontWeight:700,color:C.blue,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:8}}>Plan souhaité</label>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:18}}>
+                  {Object.entries(PLANS).filter(([k])=>k!=="gratuit").map(([key,info])=>(
+                    <button key={key} onClick={()=>setDemandePlan(key)}
+                      style={{border:`2px solid ${demandePlan===key?info.couleur:"#e5e7eb"}`,borderRadius:10,padding:"10px 12px",cursor:"pointer",textAlign:"left",background:demandePlan===key?info.bg:"#f9fafb"}}>
+                      <div style={{fontWeight:800,fontSize:13,color:info.couleur}}>{info.label}</div>
+                      <div style={{fontSize:11,color:"#6b7280",marginTop:2}}>{info.eleveLimit===Infinity?"Illimité":`≤ ${info.eleveLimit} élèves`}</div>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Infos paiement */}
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+                  <div>
+                    <label style={{display:"block",fontSize:11,fontWeight:700,color:"#374151",marginBottom:4}}>Opérateur Mobile Money</label>
+                    <select value={demandeForm.operateur} onChange={e=>setDemandeForm(p=>({...p,operateur:e.target.value}))}
+                      style={{width:"100%",border:"1px solid #d1d5db",borderRadius:8,padding:"8px 10px",fontSize:13}}>
+                      {["Orange Money","MTN Mobile Money","Moov Money","Wave","Autre"].map(o=><option key={o}>{o}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{display:"block",fontSize:11,fontWeight:700,color:"#374151",marginBottom:4}}>Numéro de téléphone</label>
+                    <input value={demandeForm.telephone} onChange={e=>setDemandeForm(p=>({...p,telephone:e.target.value}))}
+                      placeholder="Ex. : 621 00 00 00"
+                      style={{width:"100%",border:"1px solid #d1d5db",borderRadius:8,padding:"8px 10px",fontSize:13,boxSizing:"border-box"}}/>
+                  </div>
+                </div>
+                <div style={{marginBottom:18}}>
+                  <label style={{display:"block",fontSize:11,fontWeight:700,color:"#374151",marginBottom:4}}>Référence du paiement</label>
+                  <input value={demandeForm.reference} onChange={e=>setDemandeForm(p=>({...p,reference:e.target.value}))}
+                    placeholder="Ex. : TXN-20240418-001"
+                    style={{width:"100%",border:"1px solid #d1d5db",borderRadius:8,padding:"8px 10px",fontSize:13,boxSizing:"border-box"}}/>
+                </div>
+
+                <div style={{display:"flex",justifyContent:"flex-end"}}>
+                  <button onClick={envoyerDemande}
+                    disabled={demandeEnvoi||!demandeForm.telephone.trim()||!demandeForm.reference.trim()}
+                    style={{background:`linear-gradient(90deg,${C.blue},${C.green})`,color:"#fff",border:"none",padding:"10px 28px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13,
+                      opacity:(demandeEnvoi||!demandeForm.telephone.trim()||!demandeForm.reference.trim())?0.6:1}}>
+                    {demandeEnvoi?"Envoi en cours…":"Envoyer la demande"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -6025,9 +6170,22 @@ function SuperAdminPanel() {
   };
 
   const validerDemande = async (demande) => {
-    await activerPlan({_id:demande._schoolId,nom:demande.ecoleNom},"pro");
+    const plan = demande.planDemande || "starter";
+    const update = {
+      plan, planExpiry: Date.now()+365*86400000,
+      planActivatedBy:"superadmin", planActivatedAt:Date.now(),
+    };
+    await updateDoc(doc(db,"ecoles",demande._schoolId), update);
     await updateDoc(doc(db,"ecoles",demande._schoolId,"demandes_plan",demande._id),{statut:"validee"});
+    await addDoc(collection(db,"ecoles",demande._schoolId,"historique"),{
+      action:"Plan activé",
+      details:`Plan ${PLANS[plan]?.label||plan} activé par le superadmin — valable 1 an`,
+      auteur:"EduGest", date:Date.now(),
+    }).catch(()=>{});
     setDemandes(prev=>prev.map(d=>d._id===demande._id?{...d,statut:"validee"}:d));
+    setEcoles(prev=>prev.map(e=>e._id===demande._schoolId?{...e,...update}:e));
+    setMsgSucces(`Plan ${PLANS[plan]?.label||plan} activé pour ${demande.ecoleNom}`);
+    setTimeout(()=>setMsgSucces(""),4000);
   };
 
   const rejeterDemande = async (demande) => {
@@ -6189,7 +6347,7 @@ function SuperAdminPanel() {
             <table style={{width:"100%",borderCollapse:"collapse"}}>
               <thead>
                 <tr>
-                  {["École","Opérateur","Téléphone","Référence","Date","Statut","Actions"].map(h=>(
+                  {["École","Plan demandé","Opérateur","Téléphone","Référence","Date","Statut","Actions"].map(h=>(
                     <th key={h} style={S.th}>{h}</th>
                   ))}
                 </tr>
@@ -6197,8 +6355,16 @@ function SuperAdminPanel() {
               <tbody>
                 {demandes.map(d=>(
                   <tr key={d._id}>
-                    <td style={S.td}><strong>{d.ecoleNom||d.schoolId}</strong></td>
-                    <td style={S.td}>{d.operateur}</td>
+                    <td style={S.td}><strong>{d.ecoleNom||d._schoolId}</strong></td>
+                    <td style={S.td}>
+                      {d.planDemande ? (
+                        <span style={{display:"inline-block",padding:"2px 10px",borderRadius:20,fontSize:11,fontWeight:800,
+                          background:PLANS[d.planDemande]?.bg||"#f3f4f6",color:PLANS[d.planDemande]?.couleur||"#6b7280"}}>
+                          {PLANS[d.planDemande]?.label||d.planDemande}
+                        </span>
+                      ):"—"}
+                    </td>
+                    <td style={S.td}>{d.operateur||"—"}</td>
                     <td style={S.td}>{d.telephone}</td>
                     <td style={S.td}><code style={{background:"#f0f4f8",padding:"2px 7px",borderRadius:4,fontSize:11}}>{d.reference}</code></td>
                     <td style={S.td}>{d.createdAt?new Date(d.createdAt).toLocaleDateString("fr-FR"):"—"}</td>
