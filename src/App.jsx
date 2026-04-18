@@ -5409,23 +5409,32 @@ function TableauDeBord({annee}) {
       {planInfo && (
         <div style={{marginTop:24}}>
 
-          {/* Bannière expiration / limite */}
-          {(planInfo.planEstExpire || planInfo.joursRestants!==null&&planInfo.joursRestants<=30 ||
+          {/* Bannière expiration / période de grâce / limite */}
+          {(planInfo.planEstExpire || planInfo.enPeriodeGrace || planInfo.joursRestants!==null&&planInfo.joursRestants<=30 ||
             planInfo.planCourant==="gratuit"&&planInfo.totalElevesActifs>=40) && (
             <div style={{
-              background: planInfo.planEstExpire?"#fee2e2":planInfo.joursRestants<=7?"#fef2f2":"#fef3c7",
-              border:`1px solid ${planInfo.planEstExpire||planInfo.joursRestants<=7?"#fca5a5":"#fcd34d"}`,
+              background: planInfo.planEstExpire?"#fee2e2":planInfo.enPeriodeGrace?"#fff7ed":planInfo.joursRestants<=7?"#fef2f2":"#fef3c7",
+              border:`1px solid ${planInfo.planEstExpire?"#fca5a5":planInfo.enPeriodeGrace?"#fdba74":planInfo.joursRestants<=7?"#fca5a5":"#fcd34d"}`,
               borderRadius:10,padding:"12px 18px",marginBottom:16,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"
             }}>
-              <span style={{fontSize:22}}>{planInfo.planEstExpire?"🔴":planInfo.joursRestants<=7?"🔴":"🟡"}</span>
+              <span style={{fontSize:22}}>
+                {planInfo.planEstExpire?"🔴":planInfo.enPeriodeGrace?"🟠":planInfo.joursRestants<=7?"🔴":"🟡"}
+              </span>
               <div style={{flex:1}}>
-                <p style={{margin:0,fontWeight:800,fontSize:13,color:planInfo.planEstExpire?"#991b1b":"#92400e"}}>
-                  {planInfo.planEstExpire ? "Abonnement expiré — accès limité à 50 élèves"
-                   : planInfo.joursRestants!==null&&planInfo.joursRestants<=30
-                     ? `Abonnement ${planInfo.planLabel} expire dans ${planInfo.joursRestants} jour(s)`
-                     : `Plan Gratuit : ${planInfo.totalElevesActifs}/50 élèves — bientôt à la limite`}
+                <p style={{margin:0,fontWeight:800,fontSize:13,color:planInfo.planEstExpire?"#991b1b":planInfo.enPeriodeGrace?"#c2410c":"#92400e"}}>
+                  {planInfo.planEstExpire
+                    ? "Abonnement expiré — accès limité à 50 élèves"
+                    : planInfo.enPeriodeGrace
+                      ? `Période de grâce — encore ${planInfo.joursGrace} jour(s) d'accès complet`
+                      : planInfo.joursRestants!==null&&planInfo.joursRestants<=30
+                        ? `Abonnement ${planInfo.planLabel} expire dans ${planInfo.joursRestants} jour(s)`
+                        : `Plan Gratuit : ${planInfo.totalElevesActifs}/50 élèves — bientôt à la limite`}
                 </p>
-                <p style={{margin:"2px 0 0",fontSize:11,color:"#6b7280"}}>Souscrivez un abonnement pour continuer à inscrire des élèves sans limite.</p>
+                <p style={{margin:"2px 0 0",fontSize:11,color:"#6b7280"}}>
+                  {planInfo.enPeriodeGrace
+                    ? "Renouvelez votre abonnement avant la fin de la période de grâce pour ne pas perdre l'accès."
+                    : "Souscrivez un abonnement pour continuer à inscrire des élèves sans limite."}
+                </p>
               </div>
             </div>
           )}
@@ -5448,7 +5457,9 @@ function TableauDeBord({annee}) {
                     ? `${planInfo.totalElevesActifs}/50 élèves actifs — gratuit jusqu'à 50`
                     : planInfo.planEstExpire
                       ? "Expiré — limité à 50 élèves"
-                      : `${planInfo.totalElevesActifs} élèves actifs · expire le ${new Date(planInfo.planExpiry).toLocaleDateString("fr-FR")}`}
+                      : planInfo.enPeriodeGrace
+                        ? `Période de grâce — ${planInfo.joursGrace} jour(s) restant(s)`
+                        : `${planInfo.totalElevesActifs} élèves actifs · expire le ${new Date(planInfo.planExpiry).toLocaleDateString("fr-FR")}`}
                 </p>
               </div>
               <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
@@ -6138,6 +6149,7 @@ function SuperAdminPanel() {
   const [planChoix, setPlanChoix] = useState("gratuit");
   const [planDuree, setPlanDuree] = useState(365);
   const [planSaving, setPlanSaving] = useState(false);
+  const [confirmDowngrade, setConfirmDowngrade] = useState(false);
   const planPanelRef = useRef(null);
 
   const chargerEcoles = async () => {
@@ -6220,6 +6232,13 @@ function SuperAdminPanel() {
 
   const sauvegarderPlan = async () => {
     if(!planModal) return;
+    // Protection : downgrade vers Gratuit depuis un plan payant → double confirmation
+    const estPlanPayant = planModal.plan && planModal.plan !== "gratuit";
+    if(planChoix === "gratuit" && estPlanPayant && !confirmDowngrade) {
+      setConfirmDowngrade(true);
+      return;
+    }
+    setConfirmDowngrade(false);
     setPlanSaving(true);
     try {
       const update = planChoix === "gratuit"
@@ -6237,7 +6256,7 @@ function SuperAdminPanel() {
 
       // ── 2. Feedback immédiat + fermeture différée ──
       setMsgSucces(`✅ Plan ${planLabel} activé pour ${planModal.nom}`);
-      setTimeout(()=>{ setPlanModal(null); setMsgSucces(""); }, 2500);
+      setTimeout(()=>{ setPlanModal(null);setConfirmDowngrade(false); setMsgSucces(""); }, 2500);
       planPanelRef.current?.scrollIntoView({behavior:"smooth",block:"start"});
 
       // ── 3. Notification & push (best-effort, ne bloque pas) ──
@@ -6346,7 +6365,7 @@ function SuperAdminPanel() {
           {id:"plans",label:"⭐ Plans"},
           {id:"demandes",label:`📋 Demandes${demandes.filter(d=>d.statut==="en_attente").length>0?" ("+demandes.filter(d=>d.statut==="en_attente").length+")":""}`},
         ].map(o=>(
-          <button key={o.id} onClick={()=>{setOngletSA(o.id);setPlanModal(null);}}
+          <button key={o.id} onClick={()=>{setOngletSA(o.id);setPlanModal(null);setConfirmDowngrade(false);}}
             style={{padding:"9px 18px",borderRadius:9,border:"none",cursor:"pointer",fontWeight:700,fontSize:13,
               background:ongletSA===o.id?C.blue:"#f0f4f8",color:ongletSA===o.id?"#fff":"#6b7280"}}>
             {o.label}
@@ -6466,7 +6485,7 @@ function SuperAdminPanel() {
                         )}
                       </div>
                       <button onClick={()=>{
-                          if(isOpen){setPlanModal(null);}
+                          if(isOpen){setPlanModal(null);setConfirmDowngrade(false);}
                           else{
                             setPlanModal(ecole);
                             setPlanChoix(ecole.plan||"gratuit");
@@ -6490,7 +6509,7 @@ function SuperAdminPanel() {
                         </label>
                         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))",gap:10,marginBottom:16}}>
                           {Object.entries(PLANS).map(([key,info])=>(
-                            <button key={key} onClick={()=>setPlanChoix(key)}
+                            <button key={key} onClick={()=>{setPlanChoix(key);setConfirmDowngrade(false);}}
                               style={{border:`2px solid ${planChoix===key?info.couleur:"#e5e7eb"}`,borderRadius:10,
                                 padding:"12px 10px",cursor:"pointer",textAlign:"left",
                                 background:planChoix===key?info.bg:"#fff",transition:"all 0.15s"}}>
@@ -6530,16 +6549,22 @@ function SuperAdminPanel() {
                             {msgSucces}
                           </div>
                         )}
+                        {confirmDowngrade && (
+                          <div style={{background:"#fef2f2",border:"2px solid #fca5a5",borderRadius:8,padding:"12px 16px",marginBottom:12}}>
+                            <p style={{margin:"0 0 6px",fontWeight:800,fontSize:13,color:"#991b1b"}}>⚠️ Confirmer la désactivation du plan payant ?</p>
+                            <p style={{margin:0,fontSize:12,color:"#7f1d1d"}}>Cette école passera au plan Gratuit (≤ 50 élèves). Cette action ne peut pas être annulée automatiquement.</p>
+                          </div>
+                        )}
                         <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
-                          <button onClick={()=>setPlanModal(null)}
+                          <button onClick={()=>{setPlanModal(null);setConfirmDowngrade(false);}}
                             style={{background:"#f3f4f6",border:"none",padding:"9px 20px",borderRadius:8,cursor:"pointer",fontWeight:600,color:"#6b7280",fontSize:13}}>
                             Annuler
                           </button>
                           <button onClick={sauvegarderPlan} disabled={planSaving||!!msgSucces}
-                            style={{background:`linear-gradient(90deg,${C.blue},${C.green})`,border:"none",color:"#fff",
-                              padding:"9px 28px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13,
+                            style={{background:confirmDowngrade?`linear-gradient(90deg,#ef4444,#dc2626)`:`linear-gradient(90deg,${C.blue},${C.green})`,
+                              border:"none",color:"#fff",padding:"9px 28px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13,
                               opacity:(planSaving||!!msgSucces)?0.7:1}}>
-                            {planSaving?"Sauvegarde…":"✅ Confirmer le plan"}
+                            {planSaving?"Sauvegarde…":confirmDowngrade?"⚠️ Oui, désactiver":"✅ Confirmer le plan"}
                           </button>
                         </div>
                       </div>
@@ -6645,7 +6670,7 @@ function SuperAdminPanel() {
                     <td style={S.td}>
                       <div style={{display:"flex",gap:6}}>
                         <button onClick={()=>{
-                            if(planModal?._id===ecole._id){setPlanModal(null);}
+                            if(planModal?._id===ecole._id){setPlanModal(null);setConfirmDowngrade(false);}
                             else{
                               setPlanModal(ecole);
                               setPlanChoix(ecole.plan||"gratuit");
@@ -6691,7 +6716,7 @@ function SuperAdminPanel() {
           <label style={{display:"block",fontSize:11,fontWeight:700,color:C.blue,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:10}}>Choisir le plan</label>
           <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:20}}>
             {Object.entries(PLANS).map(([key,info])=>(
-              <button key={key} onClick={()=>setPlanChoix(key)}
+              <button key={key} onClick={()=>{setPlanChoix(key);setConfirmDowngrade(false);}}
                 style={{border:`2px solid ${planChoix===key?info.couleur:"#e5e7eb"}`,borderRadius:10,padding:"12px 10px",cursor:"pointer",textAlign:"left",
                   background:planChoix===key?info.bg:"#f9fafb",transition:"all 0.15s"}}>
                 <div style={{fontWeight:800,fontSize:13,color:info.couleur}}>{info.label}</div>
@@ -6724,15 +6749,22 @@ function SuperAdminPanel() {
               {msgSucces}
             </div>
           )}
+          {confirmDowngrade && (
+            <div style={{background:"#fef2f2",border:"2px solid #fca5a5",borderRadius:8,padding:"12px 16px",marginBottom:12}}>
+              <p style={{margin:"0 0 6px",fontWeight:800,fontSize:13,color:"#991b1b"}}>⚠️ Confirmer la désactivation du plan payant ?</p>
+              <p style={{margin:0,fontSize:12,color:"#7f1d1d"}}>Cette école passera au plan Gratuit (≤ 50 élèves). Cette action ne peut pas être annulée automatiquement.</p>
+            </div>
+          )}
           <div style={{display:"flex",gap:10,justifyContent:"flex-end",paddingTop:16,borderTop:"1px solid #f0f0f0"}}>
             <button onClick={()=>setPlanModal(null)}
               style={{background:"#f3f4f6",border:"none",padding:"10px 20px",borderRadius:8,cursor:"pointer",fontWeight:600,color:"#6b7280",fontSize:13}}>
               Annuler
             </button>
             <button onClick={sauvegarderPlan} disabled={planSaving||!!msgSucces}
-              style={{background:`linear-gradient(90deg,${C.blue},${C.green})`,border:"none",color:"#fff",
-                padding:"10px 28px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13,opacity:(planSaving||!!msgSucces)?0.7:1}}>
-              {planSaving?"Sauvegarde en cours…":"Confirmer le plan"}
+              style={{background:confirmDowngrade?`linear-gradient(90deg,#ef4444,#dc2626)`:`linear-gradient(90deg,${C.blue},${C.green})`,
+                border:"none",color:"#fff",padding:"10px 28px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13,
+                opacity:(planSaving||!!msgSucces)?0.7:1}}>
+              {planSaving?"Sauvegarde en cours…":confirmDowngrade?"⚠️ Oui, désactiver":"Confirmer le plan"}
             </button>
           </div>
         </div>
@@ -8926,12 +8958,17 @@ export default function App() {
     return ()=>unsub();
   },[]);
 
-  // ── Calcul planInfo (freemium) ───────────────────────────────
+  // ── Calcul planInfo (freemium + période de grâce 7 jours) ───
+  const GRACE_MS      = 7 * 86400000; // 7 jours de grâce après expiration
   const planCourant   = schoolInfoState.plan || "gratuit";
   const planExpiry    = schoolInfoState.planExpiry || null;
   const now           = Date.now();
-  const planEstExpire = planCourant !== "gratuit" && planExpiry && now > planExpiry;
-  const joursRestants = planExpiry ? Math.ceil((planExpiry - now) / 86400000) : null;
+  const planExpiryBrut = planCourant !== "gratuit" && planExpiry && now > planExpiry;
+  const enPeriodeGrace = planExpiryBrut && now < planExpiry + GRACE_MS;
+  const planEstExpire  = planExpiryBrut && !enPeriodeGrace; // vraiment expiré (après grâce)
+  const joursGrace     = enPeriodeGrace ? Math.ceil((planExpiry + GRACE_MS - now) / 86400000) : null;
+  const joursRestants  = planExpiry && !planExpiryBrut ? Math.ceil((planExpiry - now) / 86400000) : null;
+  // Pendant la période de grâce : on garde les limites du plan payant
   const eleveLimit    = planEstExpire
     ? PLANS.gratuit.eleveLimit
     : (PLANS[planCourant]?.eleveLimit ?? PLANS.gratuit.eleveLimit);
@@ -8939,6 +8976,8 @@ export default function App() {
     planCourant,
     planExpiry,
     planEstExpire,
+    enPeriodeGrace,
+    joursGrace,
     joursRestants,
     eleveLimit,
     totalElevesActifs,
