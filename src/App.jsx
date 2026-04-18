@@ -5161,9 +5161,12 @@ function TableauDeBord({annee}) {
         createdAt: Date.now(),
       });
       setDemandeSucces(true);
-      setDemandeOuverte(false);
-      setTimeout(()=>setDemandeSucces(false),6000);
-    } catch(e){ console.error(e); }
+      // Ne pas fermer le formulaire — montrer le succès à l'intérieur
+      setTimeout(()=>{ setDemandeSucces(false); setDemandeOuverte(false); setDemandeForm({operateur:"Orange Money",telephone:"",reference:""}); }, 5000);
+    } catch(e){
+      console.error(e);
+      alert("Erreur lors de l'envoi. Vérifiez votre connexion et réessayez.");
+    }
     finally { setDemandeEnvoi(false); }
   };
 
@@ -5509,14 +5512,22 @@ function TableauDeBord({annee}) {
                     style={{width:"100%",border:"1px solid #d1d5db",borderRadius:8,padding:"8px 10px",fontSize:13,boxSizing:"border-box"}}/>
                 </div>
 
-                <div style={{display:"flex",justifyContent:"flex-end"}}>
-                  <button onClick={envoyerDemande}
-                    disabled={demandeEnvoi||!demandeForm.telephone.trim()||!demandeForm.reference.trim()}
-                    style={{background:`linear-gradient(90deg,${C.blue},${C.green})`,color:"#fff",border:"none",padding:"10px 28px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13,
-                      opacity:(demandeEnvoi||!demandeForm.telephone.trim()||!demandeForm.reference.trim())?0.6:1}}>
-                    {demandeEnvoi?"Envoi en cours…":"Envoyer la demande"}
-                  </button>
-                </div>
+                {demandeSucces ? (
+                  <div style={{background:"#d1fae5",border:"2px solid #6ee7b7",borderRadius:12,padding:"20px",textAlign:"center"}}>
+                    <div style={{fontSize:36,marginBottom:8}}>✅</div>
+                    <p style={{margin:"0 0 4px",fontWeight:800,fontSize:15,color:"#065f46"}}>Demande envoyée avec succès !</p>
+                    <p style={{margin:0,fontSize:12,color:"#047857"}}>L'équipe EduGest va vérifier votre paiement et activer votre abonnement <strong>{PLANS[demandePlan]?.label}</strong> sous 24h.</p>
+                  </div>
+                ) : (
+                  <div style={{display:"flex",justifyContent:"flex-end"}}>
+                    <button onClick={envoyerDemande}
+                      disabled={demandeEnvoi||!demandeForm.telephone.trim()||!demandeForm.reference.trim()}
+                      style={{background:`linear-gradient(90deg,${C.blue},${C.green})`,color:"#fff",border:"none",padding:"10px 28px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13,
+                        opacity:(demandeEnvoi||!demandeForm.telephone.trim()||!demandeForm.reference.trim())?0.6:1}}>
+                      {demandeEnvoi?"Envoi en cours…":"Envoyer la demande"}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
