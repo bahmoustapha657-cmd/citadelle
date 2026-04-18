@@ -1353,16 +1353,17 @@ const imprimerBulletin = (eleve, notes, matieres, periode, niveau, maxNote=20, s
 };
 
 // ── IMPRESSION GROUPÉE : tous les bulletins d'une classe en un seul PDF ──
-const imprimerBulletinsGroupes = (eleves, notes, matieres, periode, niveau, maxNote=20, schoolInfo={}, classe="") => {
+const imprimerBulletinsGroupes = (eleves, notes, matieres, periode, niveau, maxNote=20, schoolInfo={}, classe="", matieresParClasseFn=null) => {
   if(!eleves.length){ alert("Aucun élève pour cette sélection."); return; }
   const mi = maxNote / 2;
   const apprec = (v) => v==="—"?"Non évalué":Number(v)>=(maxNote*0.8)?"Très Bien":Number(v)>=(maxNote*0.7)?"Bien":Number(v)>=(maxNote*0.6)?"Assez Bien":Number(v)>=mi?"Passable":"Insuffisant";
+  const getMat = (eleve) => matieresParClasseFn ? matieresParClasseFn(eleve.classe) : matieres;
 
   // Calcul des moyennes pour le classement
   const avecMoyenne = eleves.map(eleve => {
     const notesEleve = notes.filter(n=>n.eleveId===eleve._id && n.periode===periode);
     let total=0, totalCoef=0;
-    const lignes = matieres.map(mat => {
+    const lignes = getMat(eleve).map(mat => {
       const nm = notesEleve.filter(n=>n.matiere===mat.nom);
       const moy = nm.length ? (nm.reduce((s,n)=>s+Number(n.note),0)/nm.length).toFixed(2) : "—";
       const coef = mat.coefficient||1;
@@ -3402,7 +3403,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
   const {items:eleves,chargement:cE,modifier:modE}=useFirestore(cleEleves);
   const {items:absences,chargement:cAbs,ajouter:ajAbs,supprimer:supAbs}=useFirestore(cleEleves+"_absences");
   const {items:enseignements,chargement:cEng,ajouter:ajEng,modifier:modEng,supprimer:supEng}=useFirestore(cleEns+"_enseignements");
-  const {items:matieres,chargement:cMat,ajouter:ajMat,supprimer:supMat}=useFirestore(cleClasses+"_matieres");
+  const {items:matieres,chargement:cMat,ajouter:ajMat,modifier:modMat,supprimer:supMat}=useFirestore(cleClasses+"_matieres");
   const {items:emplois,chargement:cEmp,ajouter:ajEmp,modifier:modEmp,supprimer:supEmp}=useFirestore(cleClasses+"_emplois");
 
   const [tab,setTab]=useState("apercu");
@@ -3412,6 +3413,11 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
   const [edtVueGrille,setEdtVueGrille]=useState(true);
   const [edtCellule,setEdtCellule]=useState(null); // {jour,heureDebut,heureFin,existing?}
   const [edtDuree,setEdtDuree]=useState(maxNote===10?60:120); // primaire: 30/45/60min, secondaire: 120min fixe
+  // Matières filtrées par classe : si la matière a des classes assignées, on filtre ; sinon elle s'applique à tout
+  const matieresForClasse = (classe) => {
+    if(!classe||classe==="all") return matieres;
+    return matieres.filter(m=>!m.classes||!m.classes.length||m.classes.includes(classe));
+  };
   const [edtGeneralOuvert,setEdtGeneralOuvert]=useState(false);
   const [edtHeureDebut,setEdtHeureDebut]=useState("08:00");
   const [edtHeureFin,setEdtHeureFin]=useState("14:00");
@@ -3951,7 +3957,8 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
           const elevesGrille = (grilleClasse==="all"?eleves:eleves.filter(e=>e.classe===grilleClasse))
             .filter(e=>e.statut==="Actif"||!e.statut)
             .sort((a,b)=>(a.nom+a.prenom).localeCompare(b.nom+b.prenom));
-          const matieresCols = matieres.map(m=>m.nom);
+          // Filtre les matières selon la classe sélectionnée dans la grille
+          const matieresCols = matieresForClasse(grilleClasse==="all"?null:grilleClasse).map(m=>m.nom);
 
           const getNoteExist = (eleveId, mat) =>
             notes.find(n=>(n.eleveId===eleveId||n.eleveNom)&&n.matiere===mat&&n.periode===grillePeriode&&n.type===grilleType);
@@ -4180,7 +4187,10 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
             </div>
             <Selec label="Matière" value={form.matiere||""} onChange={chg("matiere")}>
               <option value="">—</option>
-              {matieres.map(m=><option key={m._id}>{m.nom}</option>)}
+              {(()=>{
+                const eleveSelec=eleves.find(e=>`${e.nom} ${e.prenom}`===form.eleveNom);
+                return matieresForClasse(eleveSelec?.classe).map(m=><option key={m._id}>{m.nom}</option>);
+              })()}
             </Selec>
             <Selec label="Type" value={form.type||"Devoir"} onChange={chg("type")}>
               <option>Devoir</option><option>Interrogation</option><option>Examen</option><option>Composition</option>
@@ -4391,7 +4401,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
           </Btn>
           <Btn v="vert" onClick={()=>{
             const elevesB=elevesFiltres.filter(e=>!rechercheMatricule||(e.matricule||"").toLowerCase().includes(rechercheMatricule.toLowerCase())||(e.nom+" "+e.prenom).toLowerCase().includes(rechercheMatricule.toLowerCase()));
-            imprimerBulletinsGroupes(elevesB,notes,matieres,periodeB,avecEns?"college":"primaire",maxNote,schoolInfo,filtreClasse==="all"?"Toutes classes":filtreClasse);
+            imprimerBulletinsGroupes(elevesB,notes,matieres,periodeB,avecEns?"college":"primaire",maxNote,schoolInfo,filtreClasse==="all"?"Toutes classes":filtreClasse,matieresForClasse);
           }}>
             📄 Tous les bulletins {filtreClasse!=="all"?`— ${filtreClasse}`:""}
           </Btn>
@@ -4404,7 +4414,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
             <tbody>{elevesB.map(e=>{
               const notesE=notes.filter(n=>n.eleveId===e._id&&n.periode===periodeB);
               let moy=0,totC=0;
-              matieres.forEach(mat=>{
+              matieresForClasse(e.classe).forEach(mat=>{
                 const nm=notesE.filter(n=>n.matiere===mat.nom);
                 if(nm.length){const m=nm.reduce((s,n)=>s+Number(n.note),0)/nm.length;moy+=m*(mat.coefficient||1);totC+=(mat.coefficient||1);}
               });
@@ -4416,7 +4426,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
                 <TD><Badge color="blue">{e.classe}</Badge></TD>
                 <TD><span style={{fontWeight:800,fontSize:14,color:moyGene!=="—"&&Number(moyGene)>=10?C.greenDk:"#b91c1c"}}>{moyGene}/20</span></TD>
                 <TD><Badge color={mention==="Très Bien"||mention==="Bien"?"vert":mention==="Assez Bien"||mention==="Passable"?"blue":"red"}>{mention}</Badge></TD>
-                <TD><Btn sm v="amber" onClick={()=>imprimerBulletin(e,notes,matieres,periodeB,avecEns?"college":"primaire",maxNote,schoolInfo)}>🖨️ Imprimer</Btn></TD>
+                <TD><Btn sm v="amber" onClick={()=>imprimerBulletin(e,notes,matieresForClasse(e.classe),periodeB,avecEns?"college":"primaire",maxNote,schoolInfo)}>🖨️ Imprimer</Btn></TD>
               </TR>;
             })}</tbody>
           </table></Card>;
@@ -4434,25 +4444,96 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
           <span style={{fontSize:13,color:"#166534",flex:1}}>Des matières prédéfinies sont disponibles pour ce niveau.</span>
           <Btn v="success" onClick={()=>matieresPredefinies.forEach(m=>ajMat(m))}>✅ Initialiser les matières</Btn>
         </div>}
+        {/* Légende */}
+        <div style={{background:"#f0f7ff",border:"1px solid #bfdbfe",borderRadius:8,padding:"9px 14px",marginBottom:12,fontSize:12,color:"#1e40af"}}>
+          💡 Si une matière n'est assignée à <strong>aucune classe</strong>, elle apparaît dans <strong>toutes les classes</strong>. Sinon, elle n'apparaît que dans les classes sélectionnées.
+        </div>
         {cMat?<Chargement/>:matieres.length===0?<Vide icone="📚" msg="Ajoutez les matières pour calculer les bulletins"/>
           :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
-            <THead cols={["Matière","Coefficient",canEdit?"Action":""]}/>
+            <THead cols={["Matière","Coefficient","Classes concernées",canEdit?"Actions":""]}/>
             <tbody>{matieres.map(m=><TR key={m._id}>
               <TD bold>{m.nom}</TD>
               <TD><Badge color="blue">Coef. {m.coefficient}</Badge></TD>
-              {canEdit&&<TD><Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ?"))supMat(m._id);}}>Suppr.</Btn></TD>}
+              <TD>
+                {!m.classes||!m.classes.length
+                  ? <span style={{color:"#9ca3af",fontSize:11,fontStyle:"italic"}}>Toutes les classes</span>
+                  : <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                      {m.classes.map(c=><span key={c} style={{background:"#ede9fe",color:"#6d28d9",padding:"2px 8px",borderRadius:12,fontSize:11,fontWeight:700}}>{c}</span>)}
+                    </div>}
+              </TD>
+              {canEdit&&<TD><div style={{display:"flex",gap:6}}>
+                <Btn sm v="ghost" onClick={()=>{setForm({...m,classesEdit:[...(m.classes||[])]});setModal("edit_mat_"+m._id);}}>Modifier</Btn>
+                <Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ?"))supMat(m._id);}}>Suppr.</Btn>
+              </div></TD>}
             </TR>)}</tbody>
           </table></Card>}
+
+        {/* Modal ajout matière */}
         {modal==="add_mat"&&canCreate&&<Modale titre="Nouvelle matière" fermer={()=>setModal(null)}>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
             <Input label="Nom de la matière" value={form.nom||""} onChange={chg("nom")}/>
             <Input label="Coefficient" type="number" min="1" value={form.coefficient||1} onChange={chg("coefficient")}/>
           </div>
-          <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
+          <div style={{marginBottom:16}}>
+            <label style={{display:"block",fontSize:11,fontWeight:700,color:C.blue,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:8}}>
+              Classes (laisser vide = toutes les classes)
+            </label>
+            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+              {classes.map(c=>{
+                const sel=(form.classesEdit||[]).includes(c.nom);
+                return <button key={c._id} type="button"
+                  onClick={()=>setForm(p=>({...p,classesEdit:sel?(p.classesEdit||[]).filter(x=>x!==c.nom):[...(p.classesEdit||[]),c.nom]}))}
+                  style={{padding:"5px 12px",borderRadius:20,border:`2px solid ${sel?"#8b5cf6":"#e5e7eb"}`,
+                    background:sel?"#ede9fe":"#f9fafb",color:sel?"#6d28d9":"#6b7280",
+                    fontWeight:sel?700:400,fontSize:12,cursor:"pointer"}}>
+                  {c.nom}
+                </button>;
+              })}
+            </div>
+          </div>
+          <div style={{display:"flex",justifyContent:"flex-end",gap:8}}>
             <Btn v="ghost" onClick={()=>setModal(null)}>Annuler</Btn>
-            <Btn onClick={()=>{ajMat({...form,coefficient:Number(form.coefficient||1)});setModal(null);}}>Enregistrer</Btn>
+            <Btn onClick={()=>{ajMat({...form,coefficient:Number(form.coefficient||1),classes:form.classesEdit||[]});setModal(null);}}>Enregistrer</Btn>
           </div>
         </Modale>}
+
+        {/* Modal modification matière (classes assignées) */}
+        {modal&&modal.startsWith("edit_mat_")&&canEdit&&(()=>{
+          const matId=modal.replace("edit_mat_","");
+          const mat=matieres.find(m=>m._id===matId);
+          if(!mat)return null;
+          return <Modale titre={`Modifier — ${mat.nom}`} fermer={()=>setModal(null)}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
+              <Input label="Nom" value={form.nom||""} onChange={chg("nom")}/>
+              <Input label="Coefficient" type="number" min="1" value={form.coefficient||1} onChange={chg("coefficient")}/>
+            </div>
+            <div style={{marginBottom:16}}>
+              <label style={{display:"block",fontSize:11,fontWeight:700,color:C.blue,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:8}}>
+                Classes concernées (laisser vide = toutes les classes)
+              </label>
+              <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                {classes.map(c=>{
+                  const sel=(form.classesEdit||[]).includes(c.nom);
+                  return <button key={c._id} type="button"
+                    onClick={()=>setForm(p=>({...p,classesEdit:sel?(p.classesEdit||[]).filter(x=>x!==c.nom):[...(p.classesEdit||[]),c.nom]}))}
+                    style={{padding:"5px 12px",borderRadius:20,border:`2px solid ${sel?"#8b5cf6":"#e5e7eb"}`,
+                      background:sel?"#ede9fe":"#f9fafb",color:sel?"#6d28d9":"#6b7280",
+                      fontWeight:sel?700:400,fontSize:12,cursor:"pointer"}}>
+                    {c.nom}
+                  </button>;
+                })}
+              </div>
+              {!(form.classesEdit||[]).length&&<p style={{margin:"8px 0 0",fontSize:11,color:"#9ca3af",fontStyle:"italic"}}>Aucune sélection → s'applique à toutes les classes</p>}
+            </div>
+            <div style={{display:"flex",justifyContent:"flex-end",gap:8}}>
+              <Btn v="ghost" onClick={()=>setModal(null)}>Annuler</Btn>
+              <Btn onClick={()=>{
+                modMat ? modMat({...form,coefficient:Number(form.coefficient||1),classes:form.classesEdit||[],_id:matId}) : null;
+                setModal(null);
+              }}>💾 Enregistrer</Btn>
+            </div>
+          </Modale>;
+        })()}
       </div>}
 
       {/* ── EMPLOIS DU TEMPS — GRILLE VISUELLE ── */}
