@@ -5450,13 +5450,13 @@ function TableauDeBord({annee}) {
               </div>
               <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                 {/* Contact WhatsApp */}
-                <a href={`https://wa.me/+224625000000?text=Bonjour%2C%20je%20souhaite%20souscrire%20un%20abonnement%20EduGest%20pour%20l%27%C3%A9cole%20%22${encodeURIComponent(schoolInfo.nom||"")}%22`}
+                <a href={`https://wa.me/+224627738579?text=Bonjour%2C%20je%20souhaite%20souscrire%20un%20abonnement%20EduGest%20pour%20l%27%C3%A9cole%20%22${encodeURIComponent(schoolInfo.nom||"")}%22`}
                   target="_blank" rel="noopener noreferrer"
                   style={{display:"flex",alignItems:"center",gap:6,background:"#dcfce7",color:"#15803d",border:"none",borderRadius:8,padding:"8px 14px",fontSize:12,fontWeight:700,textDecoration:"none",cursor:"pointer"}}>
                   <span>💬</span> WhatsApp
                 </a>
                 {/* Contact Email */}
-                <a href={`mailto:contact@edugest.app?subject=Demande abonnement — ${schoolInfo.nom||""}&body=Bonjour%2C%0AJe souhaite souscrire un abonnement pour mon école.%0A%0A%C3%89cole : ${schoolInfo.nom||""}%0A`}
+                <a href={`mailto:edugest26@gmail.com?subject=Demande abonnement — ${schoolInfo.nom||""}&body=Bonjour%2C%0AJe souhaite souscrire un abonnement pour mon école.%0A%0A%C3%89cole : ${schoolInfo.nom||""}%0A`}
                   style={{display:"flex",alignItems:"center",gap:6,background:"#ede9fe",color:"#6d28d9",border:"none",borderRadius:8,padding:"8px 14px",fontSize:12,fontWeight:700,textDecoration:"none",cursor:"pointer"}}>
                   <span>✉️</span> Email
                 </a>
