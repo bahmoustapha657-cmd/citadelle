@@ -4532,7 +4532,6 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
                 +(cr.enseignant?"<span style='font-size:10px;color:#475569'>"+affNom(cr.enseignant)+"</span>":"")
                 +(ensObj?.telephone?"<br><span style='font-size:9px;color:#00876a;font-weight:600'>"+ensObj.telephone+"</span>":"")
                 +(cr.salle?"<br><span style='font-size:9px;color:#94a3b8'>📍"+cr.salle+"</span>":"")
-                +(isRev&&cr.primeRevision>0?"<br><span style='font-size:9px;color:#c2410c;font-weight:700'>"+Number(cr.primeRevision).toLocaleString("fr-FR")+" GNF/h</span>":"")
                 +"</td>";
             }).join("");
             return "<tr><td style='background:#f0f4f8;font-weight:700;font-size:11px;color:#0A1628;padding:7px 10px;text-align:center;border:1px solid #e2e8f0;white-space:nowrap'>"+hd.slice(0,5)+"–"+hf.slice(0,5)+"</td>"+tds+"</tr>";
@@ -4714,7 +4713,6 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
                             </div>;
                           })()}
                           {cr.salle&&<div style={{fontSize:9,color:"#94a3b8",marginTop:1}}>📍{cr.salle}</div>}
-                          {cr.type==="revision"&&cr.primeRevision>0&&<div style={{fontSize:9,color:"#c2410c",fontWeight:700,marginTop:1}}>{Number(cr.primeRevision).toLocaleString("fr-FR")} GNF/h</div>}
                         </> : (canCreate&&<div style={{fontSize:18,color:"#c7d7e9",textAlign:"center",lineHeight:"40px"}}>+</div>)}
                       </td>;
                     })}
@@ -4750,7 +4748,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
                     <TD>
                       {e.type==="revision"
                         ? <span style={{background:"#fff7ed",border:"1px solid #fdba74",color:"#9a3412",padding:"2px 8px",borderRadius:6,fontSize:11,fontWeight:700}}>
-                            📝 Révision{e.primeRevision>0?` · ${Number(e.primeRevision).toLocaleString("fr-FR")} GNF/h`:""}
+                            📝 Révision
                           </span>
                         : <span style={{color:"#9ca3af",fontSize:11}}>Cours</span>}
                     </TD>
