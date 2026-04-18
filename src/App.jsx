@@ -8076,58 +8076,73 @@ function LandingEduGest({onConnexion, onInscription}) {
       </div>
 
       {/* ── TARIFICATION ── */}
-      <div style={{padding:"60px 24px",maxWidth:960,margin:"0 auto"}}>
+      <div style={{padding:"60px 24px",maxWidth:1060,margin:"0 auto"}}>
         <h2 style={{textAlign:"center",fontSize:"clamp(18px,3vw,26px)",fontWeight:800,marginBottom:8}}>Tarification transparente</h2>
         <p style={{textAlign:"center",color:"rgba(255,255,255,0.45)",fontSize:13,marginBottom:40}}>Démarrez gratuitement, évoluez selon vos besoins</p>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:18}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:16}}>
           {[
             {
               name:"Gratuit",badge:null,price:"0 GNF",period:"/mois",
-              color:"rgba(255,255,255,0.08)",border:"rgba(255,255,255,0.12)",
-              features:["1 section (Primaire ou Collège)","Jusqu'à 150 élèves","Emplois du temps & notes","Bulletins imprimables","Support communauté"],
+              accent:"rgba(255,255,255,0.55)",
+              color:"rgba(255,255,255,0.05)",border:"rgba(255,255,255,0.12)",
+              features:["Jusqu'à 50 élèves actifs","1 section (Primaire ou Collège)","Notes & bulletins imprimables","Emplois du temps","Support communauté"],
               cta:"Démarrer gratuitement",action:onInscription,highlight:false,
             },
             {
-              name:"École",badge:"✦ Populaire",price:"50 000 GNF",period:"/mois",
-              color:"rgba(0,196,140,0.08)",border:"#00C48C",
-              features:["Toutes les sections (Primaire, Collège, Lycée)","Élèves illimités","Comptabilité & salaires","Portail enseignant & parent","Assistant IA inclus","Support prioritaire"],
-              cta:"Choisir ce plan",action:onInscription,highlight:true,
+              name:"Starter",badge:null,price:"100 000 GNF",period:"/mois",
+              accent:"#0ea5e9",
+              color:"rgba(14,165,233,0.07)",border:"rgba(14,165,233,0.4)",
+              features:["Jusqu'à 200 élèves actifs","Primaire + Collège","Notes, bulletins, absences","Comptabilité de base","Portail enseignant","Support standard"],
+              cta:"Choisir Starter",action:onInscription,highlight:false,
             },
             {
-              name:"Groupe Scolaire",badge:null,price:"Sur devis",period:"",
-              color:"rgba(255,255,255,0.04)",border:"rgba(255,255,255,0.12)",
-              features:["Multi-établissements","Tableau de bord groupe","Facturation centralisée","Onboarding personnalisé","SLA garanti 99,9%","Compte manager dédié"],
-              cta:"Nous contacter",action:onConnexion,highlight:false,
+              name:"Standard",badge:"✦ Recommandé",price:"200 000 GNF",period:"/mois",
+              accent:"#8b5cf6",
+              color:"rgba(139,92,246,0.08)",border:"#8b5cf6",
+              features:["Jusqu'à 500 élèves actifs","Toutes les sections","Comptabilité complète & salaires","Portail enseignant & parent","Assistant IA inclus","Support prioritaire"],
+              cta:"Choisir Standard",action:onInscription,highlight:true,
+            },
+            {
+              name:"Premium",badge:null,price:"500 000 GNF",period:"/mois",
+              accent:"#f59e0b",
+              color:"rgba(245,158,11,0.07)",border:"rgba(245,158,11,0.5)",
+              features:["Élèves illimités","Toutes les sections","Toutes les fonctionnalités","Personnalisation avancée","Assistant IA prioritaire","Support dédié 7j/7"],
+              cta:"Choisir Premium",action:onInscription,highlight:false,
             },
           ].map(plan=>(
             <div key={plan.name} style={{
               background:plan.color,border:`2px solid ${plan.border}`,borderRadius:18,
-              padding:"28px 22px",position:"relative",
-              boxShadow:plan.highlight?"0 0 40px rgba(0,196,140,0.18)":"none",
+              padding:"26px 20px",position:"relative",
+              boxShadow:plan.highlight?"0 0 40px rgba(139,92,246,0.2)":"none",
             }}>
-              {plan.badge&&<div style={{position:"absolute",top:-12,left:"50%",transform:"translateX(-50%)",background:"#00C48C",color:"#fff",fontSize:11,fontWeight:800,padding:"4px 14px",borderRadius:20,whiteSpace:"nowrap"}}>{plan.badge}</div>}
-              <div style={{fontSize:16,fontWeight:800,color:"#fff",marginBottom:6}}>{plan.name}</div>
-              <div style={{fontSize:"clamp(22px,4vw,32px)",fontWeight:900,color:plan.highlight?"#00C48C":"#fff",lineHeight:1}}>
+              {plan.badge&&<div style={{position:"absolute",top:-12,left:"50%",transform:"translateX(-50%)",
+                background:plan.accent,color:"#fff",fontSize:11,fontWeight:800,
+                padding:"4px 14px",borderRadius:20,whiteSpace:"nowrap"}}>{plan.badge}</div>}
+              <div style={{fontSize:15,fontWeight:800,color:plan.accent,marginBottom:6}}>{plan.name}</div>
+              <div style={{fontSize:"clamp(18px,3vw,26px)",fontWeight:900,color:"#fff",lineHeight:1.1}}>
                 {plan.price}
-                {plan.period&&<span style={{fontSize:13,fontWeight:400,color:"rgba(255,255,255,0.4)"}}>{plan.period}</span>}
+                {plan.period&&<span style={{fontSize:12,fontWeight:400,color:"rgba(255,255,255,0.4)"}}>{plan.period}</span>}
               </div>
-              <div style={{height:1,background:"rgba(255,255,255,0.08)",margin:"18px 0"}}/>
-              <ul style={{listStyle:"none",padding:0,margin:"0 0 24px",display:"flex",flexDirection:"column",gap:9}}>
+              <div style={{height:1,background:"rgba(255,255,255,0.08)",margin:"16px 0"}}/>
+              <ul style={{listStyle:"none",padding:0,margin:"0 0 22px",display:"flex",flexDirection:"column",gap:8}}>
                 {plan.features.map(f=>(
                   <li key={f} style={{display:"flex",alignItems:"flex-start",gap:8,fontSize:12,color:"rgba(255,255,255,0.7)"}}>
-                    <span style={{color:"#00C48C",fontWeight:800,marginTop:1,flexShrink:0}}>✓</span>{f}
+                    <span style={{color:plan.accent,fontWeight:800,marginTop:1,flexShrink:0}}>✓</span>{f}
                   </li>
                 ))}
               </ul>
               <button onClick={plan.action} style={{
                 width:"100%",padding:"11px",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",
-                background:plan.highlight?"linear-gradient(135deg,#00C48C,#00a876)":"rgba(255,255,255,0.08)",
-                border:plan.highlight?"none":"1px solid rgba(255,255,255,0.2)",
+                background:plan.highlight?`linear-gradient(135deg,${plan.accent},#6d28d9)`:"rgba(255,255,255,0.08)",
+                border:plan.highlight?"none":`1px solid ${plan.border}`,
                 color:"#fff",
               }}>{plan.cta}</button>
             </div>
           ))}
         </div>
+        <p style={{textAlign:"center",marginTop:20,fontSize:11,color:"rgba(255,255,255,0.25)"}}>
+          Tarifs en Francs Guinéens (GNF) · Facturation mensuelle · Période de grâce 7 jours après expiration
+        </p>
       </div>
 
       {/* ── TÉMOIGNAGES ── */}
