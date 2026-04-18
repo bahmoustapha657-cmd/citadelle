@@ -8206,11 +8206,39 @@ function LandingEduGest({onConnexion, onInscription}) {
             Se connecter
           </button>
         </div>
+
+        {/* Contact EduGest */}
+        <div style={{marginTop:36,display:"flex",justifyContent:"center",gap:16,flexWrap:"wrap"}}>
+          <a href="https://wa.me/+224627738579" target="_blank" rel="noopener noreferrer"
+            style={{display:"flex",alignItems:"center",gap:8,background:"rgba(0,196,140,0.1)",
+              border:"1px solid rgba(0,196,140,0.3)",borderRadius:10,padding:"10px 20px",
+              textDecoration:"none",color:"#00C48C",fontSize:13,fontWeight:700}}>
+            💬 +224 627 738 579
+          </a>
+          <a href="https://mail.google.com/mail/?view=cm&to=edugest26@gmail.com" target="_blank" rel="noopener noreferrer"
+            style={{display:"flex",alignItems:"center",gap:8,background:"rgba(139,92,246,0.1)",
+              border:"1px solid rgba(139,92,246,0.3)",borderRadius:10,padding:"10px 20px",
+              textDecoration:"none",color:"#a78bfa",fontSize:13,fontWeight:700}}>
+            ✉️ edugest26@gmail.com
+          </a>
+        </div>
       </div>
 
       {/* ── FOOTER ── */}
-      <div style={{borderTop:"1px solid rgba(255,255,255,0.07)",padding:"20px 24px",textAlign:"center",color:"rgba(255,255,255,0.2)",fontSize:11}}>
-        © {new Date().getFullYear()} EduGest · Solution SaaS de gestion scolaire
+      <div style={{borderTop:"1px solid rgba(255,255,255,0.07)",padding:"24px",display:"flex",flexWrap:"wrap",gap:10,justifyContent:"space-between",alignItems:"center"}}>
+        <div style={{color:"rgba(255,255,255,0.2)",fontSize:11}}>
+          © {new Date().getFullYear()} EduGest · Solution SaaS de gestion scolaire pour l'Afrique
+        </div>
+        <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
+          <a href="https://wa.me/+224627738579" target="_blank" rel="noopener noreferrer"
+            style={{color:"rgba(255,255,255,0.3)",fontSize:11,textDecoration:"none"}}>
+            💬 +224 627 738 579
+          </a>
+          <a href="https://mail.google.com/mail/?view=cm&to=edugest26@gmail.com" target="_blank" rel="noopener noreferrer"
+            style={{color:"rgba(255,255,255,0.3)",fontSize:11,textDecoration:"none"}}>
+            ✉️ edugest26@gmail.com
+          </a>
+        </div>
       </div>
     </div>
   );
