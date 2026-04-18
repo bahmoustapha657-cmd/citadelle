@@ -45,9 +45,14 @@ self.addEventListener("fetch", (e) => {
   const { request } = e;
   const url = new URL(request.url);
 
-  // 1. Firebase Auth → toujours réseau (jamais de cache)
+  // 1. Fichiers SEO / validation → toujours réseau
+  if (/sitemap\.xml|robots\.txt|google.*\.html|BingSiteAuth\.xml/.test(url.pathname)) {
+    return;
+  }
+
+  // 2. Firebase Auth → toujours réseau (jamais de cache)
   if (/identitytoolkit|securetoken/.test(url.hostname)) {
-    return; // laisse passer sans intercepter
+    return;
   }
 
   // 2. Firebase Storage (photos) → CacheFirst
