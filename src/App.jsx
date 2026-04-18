@@ -5976,11 +5976,12 @@ function SuperAdminPanel() {
   const [msgSucces, setMsgSucces] = useState("");
   const [demandes, setDemandes] = useState([]);
   const [ongletSA, setOngletSA] = useState("ecoles");
-  // Modal gestion plan
-  const [planModal, setPlanModal] = useState(null); // {ecole}
+  // Gestion plan inline
+  const [planModal, setPlanModal] = useState(null);
   const [planChoix, setPlanChoix] = useState("gratuit");
-  const [planDuree, setPlanDuree] = useState(365); // jours
+  const [planDuree, setPlanDuree] = useState(365);
   const [planSaving, setPlanSaving] = useState(false);
+  const planPanelRef = useRef(null);
 
   const chargerEcoles = async () => {
     setChargement(true);
@@ -6324,7 +6325,12 @@ function SuperAdminPanel() {
                       <div style={{display:"flex",gap:6}}>
                         <button onClick={()=>{
                             if(planModal?._id===ecole._id){setPlanModal(null);}
-                            else{setPlanModal(ecole);setPlanChoix(ecole.plan||"gratuit");setPlanDuree(365);}
+                            else{
+                              setPlanModal(ecole);
+                              setPlanChoix(ecole.plan||"gratuit");
+                              setPlanDuree(365);
+                              setTimeout(()=>planPanelRef.current?.scrollIntoView({behavior:"smooth",block:"start"}),50);
+                            }
                           }}
                           style={{...S.btn(C.blue),background:planModal?._id===ecole._id?"#0369a1":"#e0f2fe",color:planModal?._id===ecole._id?"#fff":"#0369a1"}}>
                           {planModal?._id===ecole._id?"▲ Fermer":"Gérer le plan"}
@@ -6349,7 +6355,7 @@ function SuperAdminPanel() {
 
       {/* Panneau inline gestion plan */}
       {planModal && (
-        <div style={{background:"#fff",border:`2px solid ${PLANS[planChoix]?.couleur||C.blue}`,borderRadius:14,padding:"24px 28px",marginTop:16,boxShadow:"0 4px 24px rgba(0,0,0,0.08)"}}>
+        <div ref={planPanelRef} style={{background:"#fff",border:`2px solid ${PLANS[planChoix]?.couleur||C.blue}`,borderRadius:14,padding:"24px 28px",marginTop:16,boxShadow:"0 4px 24px rgba(0,0,0,0.08)"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
             <div>
               <h3 style={{margin:0,fontSize:16,fontWeight:800,color:C.blueDark}}>Gérer le plan — {planModal.nom}</h3>
