@@ -2434,7 +2434,13 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
           },0);
           const impaye=totalDu-totalPercu;
           const pctImpaye=totalDu>0?((impaye/totalDu)*100).toFixed(1):0;
-          return (
+          const blocage=!!schoolInfo.blocageParentImpaye;
+          const toggleBlocage=async()=>{
+            if(!canCreate){toast("Action réservée au comptable ou à l'administrateur.","warning");return;}
+            await updateDoc(doc(db,"ecoles",schoolId),{blocageParentImpaye:!blocage});
+            toast(blocage?"🔓 Accès parents rétabli":"🔒 Accès parents bloqué pour les impayés","success");
+          };
+          return (<>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:10,marginBottom:16}}>
               <Stat label="Recettes" value={`${(totR/1e6).toFixed(2)}M`} sub="GNF" bg="#eaf4e0"/>
               <Stat label="Dépenses" value={`${(totD/1e6).toFixed(2)}M`} sub="GNF" bg="#fce8e8"/>
@@ -2444,7 +2450,31 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
               <Stat label="Mensualités impayées" value={`${(impaye/1e6).toFixed(2)}M`} sub={`GNF — ${pctImpaye}% du total dû`} bg="#fce8e8"/>
               <Stat label="Mensualités perçues" value={`${(totalPercu/1e6).toFixed(2)}M`} sub={`${totalDu>0?(100-Number(pctImpaye)).toFixed(1):0}% du total`} bg="#eaf4e0"/>
             </div>
-          );
+            {/* ── Contrôle accès parent ── */}
+            <div style={{display:"flex",alignItems:"center",gap:16,background:blocage?"#fef2f2":"#f0fdf4",
+              border:`2px solid ${blocage?"#fca5a5":"#86efac"}`,borderRadius:12,padding:"14px 20px",marginBottom:18,flexWrap:"wrap"}}>
+              <span style={{fontSize:28}}>{blocage?"🔒":"🔓"}</span>
+              <div style={{flex:1,minWidth:200}}>
+                <div style={{fontWeight:800,fontSize:14,color:blocage?"#991b1b":"#14532d"}}>
+                  Accès parents — {blocage?"Bloqué pour les élèves en défaut":"Autorisé pour tous"}
+                </div>
+                <div style={{fontSize:12,color:"#6b7280",marginTop:2}}>
+                  {blocage
+                    ? "Les parents d'élèves avec mensualités impayées ne peuvent pas consulter ni imprimer les notes et bulletins."
+                    : "Activez le blocage pour empêcher la consultation des notes/bulletins en cas d'impayé."}
+                </div>
+              </div>
+              {canCreate&&<button onClick={toggleBlocage} style={{
+                background:blocage?"#dcfce7":"#fee2e2",
+                border:`1px solid ${blocage?"#86efac":"#fca5a5"}`,
+                color:blocage?"#14532d":"#991b1b",
+                padding:"9px 20px",borderRadius:9,cursor:"pointer",fontWeight:800,fontSize:13,
+                whiteSpace:"nowrap",
+              }}>
+                {blocage?"🔓 Débloquer l'accès":"🔒 Bloquer l'accès"}
+              </button>}
+            </div>
+          </>);
         })()}
         {(cR||cD)?<Chargement/>:totR===0&&totD===0?<Vide icone="📊" msg="Aucune donnée financière"/>
           :<>
@@ -7505,6 +7535,43 @@ function PortailEnseignant({utilisateur, deconnecter, annee, schoolInfo}) {
 // ══════════════════════════════════════════════════════════════
 //  PORTAIL PARENT
 // ══════════════════════════════════════════════════════════════
+// ── Écran de blocage accès parent (impayés) ──────────────────
+function BlocagePaiement({moisImpayes=[], schoolInfo={}, onPaiements}) {
+  const c1 = schoolInfo.couleur1||"#0A1628";
+  return (
+    <div style={{background:"#fff",borderRadius:16,border:"2px solid #fca5a5",padding:"36px 28px",textAlign:"center",maxWidth:500,margin:"0 auto"}}>
+      <div style={{fontSize:52,marginBottom:12}}>🔒</div>
+      <h3 style={{margin:"0 0 8px",fontSize:18,fontWeight:900,color:"#991b1b"}}>Accès restreint</h3>
+      <p style={{margin:"0 0 16px",fontSize:14,color:"#6b7280",lineHeight:1.6}}>
+        La consultation et l'impression des notes et bulletins sont temporairement suspendues
+        car <strong>des mensualités sont en attente de règlement</strong>.
+      </p>
+      <div style={{background:"#fef2f2",borderRadius:10,padding:"12px 16px",marginBottom:20,display:"inline-block",textAlign:"left"}}>
+        <div style={{fontSize:12,fontWeight:700,color:"#991b1b",marginBottom:6}}>Mois impayés :</div>
+        <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+          {moisImpayes.map(m=>(
+            <span key={m} style={{background:"#fee2e2",color:"#b91c1c",padding:"3px 10px",borderRadius:20,fontSize:12,fontWeight:700}}>{m}</span>
+          ))}
+        </div>
+      </div>
+      <p style={{margin:"0 0 20px",fontSize:12,color:"#9ca3af"}}>
+        Régularisez votre situation auprès de {schoolInfo.nom||"l'établissement"} pour retrouver l'accès complet.
+      </p>
+      {schoolInfo.telephone&&(
+        <a href={`tel:${schoolInfo.telephone}`}
+          style={{display:"inline-flex",alignItems:"center",gap:6,background:"#dcfce7",color:"#15803d",
+            border:"none",borderRadius:8,padding:"8px 18px",fontSize:13,fontWeight:700,textDecoration:"none",marginRight:8}}>
+          📞 Appeler l'école
+        </a>
+      )}
+      <button onClick={onPaiements}
+        style={{background:c1,border:"none",color:"#fff",padding:"9px 22px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13}}>
+        💳 Voir mes paiements
+      </button>
+    </div>
+  );
+}
+
 function PortailParent({utilisateur, deconnecter, annee, schoolInfo}) {
   const {schoolId,toast} = useContext(SchoolContext);
   const c1 = schoolInfo.couleur1||C.blue;
@@ -7560,11 +7627,16 @@ function PortailParent({utilisateur, deconnecter, annee, schoolInfo}) {
   const eleveCourant = mensEleve.find(e=>e._id===eleveId)||{};
   const moisAnneeCtx = useContext(SchoolContext).moisAnnee;
 
+  // Blocage accès en cas d'impayé
+  const blocageActif = !!schoolInfo.blocageParentImpaye;
+  const moisImpayes = moisAnneeCtx.filter(m=>(eleveCourant.mens||{})[m]!=="Payé");
+  const accesBloqueParPaiement = blocageActif && moisImpayes.length > 0;
+
   const TABS = [
     {id:"dashboard",icon:"🏠",label:"Tableau de bord"},
-    {id:"notes",    icon:"📝",label:"Notes"},
+    {id:"notes",    icon:"📝",label:"Notes",     bloque:accesBloqueParPaiement},
     {id:"absences", icon:"📋",label:"Absences"},
-    {id:"bulletins",icon:"📄",label:"Bulletins"},
+    {id:"bulletins",icon:"📄",label:"Bulletins", bloque:accesBloqueParPaiement},
     {id:"paiements",icon:"💳",label:"Paiements"},
     {id:"messages", icon:"💬",label:"Messages"+(nonLus>0?` (${nonLus})`:"")},
   ];
@@ -7622,10 +7694,13 @@ function PortailParent({utilisateur, deconnecter, annee, schoolInfo}) {
           <button key={t.id} onClick={()=>setTab(t.id)} style={{
             padding:"13px 16px",border:"none",background:"none",cursor:"pointer",
             fontSize:13,fontWeight:700,whiteSpace:"nowrap",
-            color:tab===t.id?c1:"#64748b",
+            color:tab===t.id?c1:t.bloque?"#ef4444":"#64748b",
             borderBottom:tab===t.id?`3px solid ${c1}`:"3px solid transparent",
             transition:"all .15s",
-          }}>{t.icon} {t.label}</button>
+            opacity:t.bloque&&tab!==t.id?0.75:1,
+          }}>
+            {t.bloque?"🔒 ":""}{t.icon} {t.label}
+          </button>
         ))}
       </div>
 
@@ -7722,7 +7797,8 @@ function PortailParent({utilisateur, deconnecter, annee, schoolInfo}) {
         {/* ── NOTES ── */}
         {tab==="notes"&&<>
           <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:900,color:c1}}>Notes de {eleveNom}</h2>
-          {mesNotes.length===0?<Vide icone="📝" msg="Aucune note disponible"/>
+          {accesBloqueParPaiement ? <BlocagePaiement moisImpayes={moisImpayes} schoolInfo={schoolInfo} onPaiements={()=>setTab("paiements")}/>
+          : mesNotes.length===0?<Vide icone="📝" msg="Aucune note disponible"/>
             :<>
               {matieres.map(mat=>{
                 const notesM = mesNotes.filter(n=>n.matiere===mat);
@@ -7789,7 +7865,9 @@ function PortailParent({utilisateur, deconnecter, annee, schoolInfo}) {
         {/* ── BULLETINS ── */}
         {tab==="bulletins"&&<>
           <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:900,color:c1}}>Bulletins scolaires</h2>
-          <LectureSeule/>
+          {accesBloqueParPaiement && <BlocagePaiement moisImpayes={moisImpayes} schoolInfo={schoolInfo} onPaiements={()=>setTab("paiements")}/>}
+          {!accesBloqueParPaiement && <LectureSeule/>}
+          {!accesBloqueParPaiement && <>
           {["T1","T2","T3"].map(periode=>{
             const notesP = mesNotes.filter(n=>n.periode===periode);
             if(notesP.length===0) return null;
@@ -7823,6 +7901,7 @@ function PortailParent({utilisateur, deconnecter, annee, schoolInfo}) {
             );
           })}
           {mesNotes.length===0&&<Vide icone="📄" msg="Aucun bulletin disponible pour le moment"/>}
+          </>}
         </>}
 
         {/* ── PAIEMENTS ── */}
