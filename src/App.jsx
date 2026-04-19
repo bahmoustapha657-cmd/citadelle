@@ -1590,6 +1590,228 @@ const imprimerFicheCompositions = (classe, periode, notes, matieres, eleves, max
 };
 
 // ══════════════════════════════════════════════════════════════
+//  IMPRESSION — ORDRE DE MUTATION
+// ══════════════════════════════════════════════════════════════
+const imprimerOrdreMutation = (eleve, schoolInfo={}, ecoleDestination="", annee="") => {
+  const w = window.open("","_blank");
+  w.document.write(`<!DOCTYPE html><html><head><title>Ordre de mutation</title>
+  <meta charset="utf-8"/>
+  <style>
+    @page{size:A4 portrait;margin:18mm}
+    body{font-family:Arial,sans-serif;color:#111;font-size:12px}
+    .entete{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;border-bottom:2px solid #0A1628;padding-bottom:12px}
+    .entete-col{flex:1;font-size:10px;line-height:1.7}
+    h1{text-align:center;font-size:16px;text-transform:uppercase;letter-spacing:2px;color:#0A1628;margin:20px 0 8px;text-decoration:underline}
+    .sub{text-align:center;font-size:11px;color:#444;margin-bottom:24px}
+    table{width:100%;border-collapse:collapse;margin-bottom:18px}
+    td{padding:7px 10px;border:1px solid #ccc;font-size:11px}
+    td:first-child{font-weight:700;background:#f5f7fa;width:40%}
+    .sigs{display:flex;justify-content:space-between;margin-top:36px}
+    .sig{text-align:center;font-size:11px;flex:1}
+    @media print{button{display:none}}
+  </style></head><body>
+  <div class="entete">
+    <div class="entete-col">
+      <strong>${schoolInfo.pays||"République de Guinée"}</strong><br/>
+      ${schoolInfo.ministere||"Ministère de l'Éducation"}<br/>
+      ${schoolInfo.ire||""} ${schoolInfo.dpe?`/ ${schoolInfo.dpe}`:""}
+    </div>
+    ${schoolInfo.logo?`<img src="${schoolInfo.logo}" style="height:55px;object-fit:contain"/>`:""}
+    <div class="entete-col" style="text-align:right">
+      <strong>${schoolInfo.nom||""}</strong><br/>
+      ${schoolInfo.agrement?`Agrém. : ${schoolInfo.agrement}`:""}
+    </div>
+  </div>
+  <h1>Ordre de Mutation</h1>
+  <p class="sub">Année scolaire : <strong>${annee||getAnnee()}</strong></p>
+  <table>
+    <tr><td>Nom & Prénom</td><td><strong>${eleve.nom||""} ${eleve.prenom||""}</strong></td></tr>
+    <tr><td>Matricule</td><td>${eleve.matricule||"—"}</td></tr>
+    ${eleve.ien?`<tr><td>Identifiant National (IEN)</td><td>${eleve.ien}</td></tr>`:""}
+    <tr><td>Date de naissance</td><td>${eleve.dateNaissance||"—"}</td></tr>
+    <tr><td>Lieu de naissance</td><td>${eleve.lieuNaissance||"—"}</td></tr>
+    <tr><td>Classe actuelle</td><td>${eleve.classe||"—"}</td></tr>
+    <tr><td>Tuteur / Parent</td><td>${eleve.tuteur||"—"} — ${eleve.contactTuteur||"—"}</td></tr>
+    <tr><td>École d'origine</td><td><strong>${schoolInfo.nom||""}</strong></td></tr>
+    <tr><td>École de destination</td><td><strong>${ecoleDestination||"À compléter"}</strong></td></tr>
+    <tr><td>Date de la mutation</td><td>${today()}</td></tr>
+    <tr><td>Motif</td><td>${eleve.motifDepart||"Mutation volontaire"}</td></tr>
+  </table>
+  <p style="font-size:11px;margin-bottom:30px">
+    Le Directeur soussigné certifie que l'élève ci-dessus mentionné a été régulièrement inscrit dans son établissement
+    et qu'il est autorisé à rejoindre l'établissement d'accueil dans les conditions prévues par la réglementation en vigueur.
+  </p>
+  <div class="sigs">
+    <div class="sig">Le/La Directeur(rice) de l'école d'origine<br/><br/><br/><br/>Signature & Cachet</div>
+    <div class="sig">Lu et approuvé par le/la parent/tuteur<br/><br/><br/><br/>Signature</div>
+  </div>
+  <button onclick="window.print()" style="position:fixed;bottom:20px;right:20px;padding:8px 20px;background:#0A1628;color:#fff;border:none;border-radius:8px;cursor:pointer">🖨️ Imprimer</button>
+  </body></html>`);
+  w.document.close();
+};
+
+// ══════════════════════════════════════════════════════════════
+//  IMPRESSION — CERTIFICAT DE RADIATION
+// ══════════════════════════════════════════════════════════════
+const imprimerCertificatRadiation = (eleve, schoolInfo={}, annee="", soldeRestant=0) => {
+  const w = window.open("","_blank");
+  w.document.write(`<!DOCTYPE html><html><head><title>Certificat de radiation</title>
+  <meta charset="utf-8"/>
+  <style>
+    @page{size:A4 portrait;margin:20mm}
+    body{font-family:Arial,sans-serif;color:#111;font-size:12px}
+    .entete{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #0A1628;padding-bottom:12px;margin-bottom:20px}
+    .entete-col{flex:1;font-size:10px;line-height:1.7}
+    h1{text-align:center;font-size:15px;text-transform:uppercase;letter-spacing:1.5px;color:#0A1628;margin:16px 0;text-decoration:underline}
+    .corps{line-height:2;font-size:12px;margin:20px 0}
+    .corps strong{border-bottom:1px solid #111}
+    .fin{margin-top:40px;text-align:right;font-size:11px}
+    .sig{margin-top:30px;text-align:center;font-size:11px}
+    @media print{button{display:none}}
+  </style></head><body>
+  <div class="entete">
+    <div class="entete-col">
+      <strong>${schoolInfo.pays||"République de Guinée"}</strong><br/>
+      ${schoolInfo.ministere||"Ministère de l'Éducation"}<br/>
+      ${schoolInfo.ire||""} ${schoolInfo.dpe?`/ ${schoolInfo.dpe}`:""}
+    </div>
+    ${schoolInfo.logo?`<img src="${schoolInfo.logo}" style="height:55px;object-fit:contain"/>`:""}
+    <div class="entete-col" style="text-align:right">
+      <strong>${schoolInfo.nom||""}</strong><br/>
+      ${schoolInfo.agrement?`Agrém. : ${schoolInfo.agrement}`:""}
+    </div>
+  </div>
+  <h1>Certificat de Radiation</h1>
+  <div class="corps">
+    Nous, Directeur(rice) du ${schoolInfo.type||"Groupe Scolaire Privé"} <strong>${schoolInfo.nom||""}</strong>,
+    certifions que l'élève :<br/><br/>
+    &nbsp;&nbsp;&nbsp;Nom & Prénom : <strong>${eleve.nom||""} ${eleve.prenom||""}</strong><br/>
+    &nbsp;&nbsp;&nbsp;Matricule : <strong>${eleve.matricule||"—"}</strong><br/>
+    ${eleve.ien?`&nbsp;&nbsp;&nbsp;IEN : <strong>${eleve.ien}</strong><br/>`:""}
+    &nbsp;&nbsp;&nbsp;Né(e) le : <strong>${eleve.dateNaissance||"—"}</strong> à <strong>${eleve.lieuNaissance||"—"}</strong><br/>
+    &nbsp;&nbsp;&nbsp;Classe fréquentée : <strong>${eleve.classe||"—"}</strong><br/>
+    &nbsp;&nbsp;&nbsp;Année scolaire : <strong>${annee||getAnnee()}</strong><br/><br/>
+    …a été radié(e) des listes de notre établissement en date du <strong>${today()}</strong>
+    pour motif de : <strong>${eleve.motifDepart||"départ volontaire"}</strong>.<br/><br/>
+    Situation financière : <strong>${soldeRestant<=0?"Situation apurée — aucun solde dû":"Solde restant dû : "+fmt(soldeRestant)}</strong>
+  </div>
+  <p style="font-size:11px;font-style:italic">
+    Ce certificat est délivré à la demande de l'intéressé(e) pour servir et valoir ce que de droit.
+  </p>
+  <div class="fin">Fait à ${schoolInfo.ville||"—"}, le ${today()}</div>
+  <div class="sig"><br/>Le/La Directeur(rice)<br/><br/><br/><br/>Signature & Cachet officiel</div>
+  <button onclick="window.print()" style="position:fixed;bottom:20px;right:20px;padding:8px 20px;background:#0A1628;color:#fff;border:none;border-radius:8px;cursor:pointer">🖨️ Imprimer</button>
+  </body></html>`);
+  w.document.close();
+};
+
+// ══════════════════════════════════════════════════════════════
+//  IMPRESSION — LIVRET SCOLAIRE OFFICIEL
+// ══════════════════════════════════════════════════════════════
+const imprimerLivret = (livret, schoolInfo={}) => {
+  const c1 = schoolInfo.couleur1||"#0A1628";
+  const annees = livret.annees||[];
+  const pagesAnnees = annees.map((an, idx) => {
+    const notesRows = (an.notes||[]).map(n=>`
+      <tr>
+        <td>${n.matiere||""}</td>
+        <td style="text-align:center">${n.coef||1}</td>
+        <td style="text-align:center">${n.T1!=null?n.T1:"—"}</td>
+        <td style="text-align:center">${n.T2!=null?n.T2:"—"}</td>
+        <td style="text-align:center">${n.T3!=null?n.T3:"—"}</td>
+        <td style="text-align:center;font-weight:700;color:${Number(n.annuelle||0)>=Number(n.maxNote||20)/2?"#14532d":"#b91c1c"}">${n.annuelle!=null?Number(n.annuelle).toFixed(2):"—"}</td>
+      </tr>`).join("");
+    const decisionColor = an.decision==="Admis avec félicitations"?"#14532d":an.decision==="Admis"?"#1d4ed8":an.decision==="Redoublant"?"#b45309":"#b91c1c";
+    return `
+    <div class="page-annee" style="page-break-before:${idx>0?"always":"auto"}">
+      <div class="bandeau" style="background:${c1}">
+        <span>Livret scolaire — ${schoolInfo.nom||""}</span>
+        <span>Année ${an.anneeScolaire||"—"}</span>
+      </div>
+      <div class="info-row">
+        <span><b>Classe :</b> ${an.classe||"—"}</span>
+        <span><b>Enseignant(e) principal(e) :</b> ${an.enseignantPrincipal||"—"}</span>
+        <span><b>Effectif :</b> ${an.effectifClasse||"—"}</span>
+        <span><b>Rang :</b> ${an.rang||"—"}</span>
+      </div>
+      <table class="notes-tbl">
+        <thead><tr style="background:${c1};color:#fff">
+          <th style="text-align:left">Matière</th>
+          <th>Coef</th><th>T1</th><th>T2</th><th>T3</th><th>Annuelle</th>
+        </tr></thead>
+        <tbody>${notesRows}</tbody>
+      </table>
+      <div class="abs-row">
+        <span>Absences justifiées : <b>${an.absences?.justifiees||0}</b></span>
+        <span>Absences non justifiées : <b>${an.absences?.nonJustifiees||0}</b></span>
+      </div>
+      <div class="appreciation">
+        <strong>Appréciation générale de l'enseignant :</strong><br/>
+        <div style="min-height:40px;padding-top:6px">${an.appreciation||""}</div>
+      </div>
+      <div class="decision-box" style="border-color:${decisionColor}">
+        <strong>Décision du conseil de classe :</strong>
+        <span class="decision-badge" style="background:${decisionColor}">${an.decision||"—"}</span>
+      </div>
+      <div class="sigs-livret">
+        <div class="sig-livret">Le/La Directeur(rice)<br/><br/>${an.signe?`<em style="font-size:9px;color:#14532d">✅ Signé le ${an.dateSigne||""}</em>`:"<br/>Signature & Cachet"}</div>
+        <div class="sig-livret">Le/La parent / tuteur<br/><br/><br/>Signature</div>
+        <div class="sig-livret">Visa de l'Inspecteur<br/><br/><br/>&nbsp;</div>
+      </div>
+    </div>`;
+  }).join("");
+
+  const w = window.open("","_blank");
+  w.document.write(`<!DOCTYPE html><html><head><title>Livret scolaire — ${livret.eleveNom||""}</title>
+  <meta charset="utf-8"/>
+  <style>
+    @page{size:A4 portrait;margin:12mm}
+    *{box-sizing:border-box}
+    body{font-family:Arial,sans-serif;color:#111;font-size:11px;margin:0}
+    .couverture{display:flex;flex-direction:column;align-items:center;justify-content:center;height:250mm;text-align:center;border:3px solid ${c1};padding:30px;page-break-after:always}
+    .couv-school{font-size:11px;color:#444;margin-bottom:4px}
+    .couv-titre{font-size:22px;font-weight:900;color:${c1};text-transform:uppercase;letter-spacing:3px;margin:16px 0 8px}
+    .couv-num{font-size:12px;color:#6b7280;margin-bottom:20px}
+    .couv-photo{width:90px;height:110px;border:2px solid ${c1};border-radius:4px;object-fit:cover;margin-bottom:16px}
+    .couv-nom{font-size:18px;font-weight:900;color:#111;margin-bottom:6px}
+    .couv-info{font-size:12px;color:#444;line-height:2}
+    .bandeau{display:flex;justify-content:space-between;padding:7px 12px;color:#fff;font-weight:700;font-size:11px;border-radius:4px;margin-bottom:10px}
+    .info-row{display:flex;gap:20px;font-size:11px;margin-bottom:10px;flex-wrap:wrap}
+    .notes-tbl{width:100%;border-collapse:collapse;margin-bottom:10px;font-size:11px}
+    .notes-tbl td,.notes-tbl th{border:1px solid #ccc;padding:4px 7px}
+    .abs-row{display:flex;gap:30px;font-size:11px;margin-bottom:10px;color:#374151}
+    .appreciation{border:1px solid #d1d5db;border-radius:6px;padding:8px 12px;margin-bottom:10px;font-size:11px}
+    .decision-box{display:flex;align-items:center;gap:14px;border:2px solid;border-radius:8px;padding:8px 14px;margin-bottom:12px}
+    .decision-badge{padding:4px 14px;border-radius:14px;color:#fff;font-weight:900;font-size:12px}
+    .sigs-livret{display:flex;justify-content:space-between;margin-top:16px}
+    .sig-livret{text-align:center;flex:1;font-size:10px;border-top:1px solid #999;padding-top:6px;margin:0 8px}
+    @media print{button{display:none}.page-annee{page-break-before:always}}
+  </style></head><body>
+  <!-- COUVERTURE -->
+  <div class="couverture">
+    <div class="couv-school">${schoolInfo.pays||"République de Guinée"} · ${schoolInfo.ministere||"Ministère de l'Éducation"}</div>
+    ${schoolInfo.logo?`<img src="${schoolInfo.logo}" style="height:50px;margin-bottom:8px"/>`:""}
+    <div style="font-size:13px;font-weight:700;color:#111">${schoolInfo.nom||""}</div>
+    <div style="font-size:10px;color:#6b7280;margin-bottom:12px">${schoolInfo.agrement?`Agrém. ${schoolInfo.agrement}`:""}</div>
+    <div class="couv-titre">Livret Scolaire</div>
+    <div class="couv-num">N° ${livret.numeroLivret||"—"}</div>
+    ${livret.photo?`<img src="${livret.photo}" class="couv-photo"/>`:`<div class="couv-photo" style="display:flex;align-items:center;justify-content:center;font-size:36px;background:#f0f4f8">👤</div>`}
+    <div class="couv-nom">${livret.eleveNom||"—"}</div>
+    <div class="couv-info">
+      Né(e) le : <strong>${livret.dateNaissance||"—"}</strong> à <strong>${livret.lieuNaissance||"—"}</strong><br/>
+      Matricule : <strong>${livret.matricule||"—"}</strong>
+      ${livret.ien?`&nbsp;·&nbsp;IEN : <strong>${livret.ien}</strong>`:""}<br/>
+      Section : <strong>${livret.section==="primaire"?"Enseignement Primaire":livret.section==="lycee"?"Lycée":"Collège"}</strong>
+    </div>
+  </div>
+  <!-- PAGES ANNUELLES -->
+  ${pagesAnnees||`<div style="padding:40px;text-align:center;color:#9ca3af">Aucune année saisie dans ce livret.</div>`}
+  <button onclick="window.print()" style="position:fixed;bottom:20px;right:20px;padding:8px 20px;background:${c1};color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700">🖨️ Imprimer</button>
+  </body></html>`);
+  w.document.close();
+};
+
+// ══════════════════════════════════════════════════════════════
 //  PANNEAU ADMIN — Gestion des mots de passe
 // ══════════════════════════════════════════════════════════════
 // Mapping promotion classes : quelle classe vient après quelle classe
@@ -2587,7 +2809,8 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
     {id:"personnel",label:`Personnel (${personnel.length})`},
     {id:"fondation",label:`Versements (${versements.length})`},
     {id:"enrolment",label:`Élèves (${elevesC.length+elevesP.length})`},
-    {id:"mens",label:"Mensualités"}];
+    {id:"mens",label:"Mensualités"},
+    {id:"transferts",label:"🔄 Transferts"}];
 
   return (
     <div style={{padding:"22px 26px"}}>
@@ -3522,6 +3745,9 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
             <Input label="Domicile Tuteur" value={form.domicile||""} onChange={chg("domicile")}/>
             <Input label="Date de naissance" type="date" value={form.dateNaissance||""} onChange={chg("dateNaissance")}/>
             <Input label="Lieu de naissance" value={form.lieuNaissance||""} onChange={chg("lieuNaissance")}/>
+            {form.typeInscription==="Réinscription"&&
+              <Input label="Établissement d'origine (si transféré)" value={form.etablissementOrigine||""} onChange={chg("etablissementOrigine")} placeholder="Nom de l'ancienne école"/>
+            }
           </div>
           {/* Photo de l'élève */}
           <div style={{marginTop:14,borderTop:"1px solid #e5e7eb",paddingTop:14}}>
@@ -3555,7 +3781,28 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                   photoUrl = await uploadPhotoEleve(photoUrl, schoolId);
                 }
                 const r={...form, photo:photoUrl, mens:form.mens||initMens()};
-                if(modal==="add_enrol")ajEnrol(r);else modEnrol(r);
+                // ── Vérification des doublons avant enrôlement ──
+                if(modal==="add_enrol") {
+                  const tousEleves2=[...elevesC,...elevesP];
+                  const doublonIEN = r.ien && tousEleves2.some(e=>e.ien && e.ien===r.ien);
+                  const doublonNom = tousEleves2.some(e=>
+                    e.nom?.trim().toLowerCase()===r.nom?.trim().toLowerCase() &&
+                    e.prenom?.trim().toLowerCase()===r.prenom?.trim().toLowerCase() &&
+                    e.dateNaissance && e.dateNaissance===r.dateNaissance
+                  );
+                  const doublonMat = r.matricule && tousEleves2.some(e=>e.matricule===r.matricule);
+                  if(doublonIEN || doublonNom || doublonMat) {
+                    const msg = doublonIEN ? `⚠️ Un élève avec le même IEN (${r.ien}) existe déjà.`
+                      : doublonMat ? `⚠️ Le matricule "${r.matricule}" est déjà utilisé.`
+                      : `⚠️ Un élève portant le même nom et la même date de naissance est déjà enregistré.`;
+                    if(!window.confirm(msg+"\n\nVoulez-vous quand même créer cette fiche ?")) {
+                      setUploadEnCours(false); return;
+                    }
+                  }
+                  ajEnrol(r);
+                } else {
+                  modEnrol(r);
+                }
                 setModal(null);
               }catch(e){
                 toast("Erreur upload photo : "+e.message,"error");
@@ -3689,6 +3936,8 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
             </div>
           </>}
       </div>}
+
+      {tab==="transferts"&&<TransfertsPanel userRole={userRole} annee={annee}/>}
     </div>
   );
 }
@@ -3787,6 +4036,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
     {id:"enseignements",label:"Enseignements"},
     {id:"discipline",label:"Discipline"},
     {id:"bulletins",label:"Bulletins"},
+    {id:"livrets",label:"📋 Livrets"},
     {id:"matieres",label:"Matières"},
     ...(avecEns?[{id:"emploidutemps",label:"Emplois du temps"}]:[]),
     {id:"attestations",label:"Attestations de niveau"},
@@ -4748,6 +4998,13 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
           </table></Card>;
         })()}
       </div>}
+
+      {/* ── LIVRETS ── */}
+      {tab==="livrets"&&<LivretsTab
+        cleEleves={cleEleves} cleNotes={cleNotes}
+        matieres={matieres} maxNote={maxNote}
+        userRole={userRole} annee={annee}
+      />}
 
       {/* ── MATIÈRES ── */}
       {tab==="matieres"&&<div>
@@ -6003,6 +6260,492 @@ function TableauDeBord({annee}) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
+//  PARAMÈTRES MATRICULE (sous-composant)
+// ══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
+//  COMPOSANT LIVRETS SCOLAIRES
+// ══════════════════════════════════════════════════════════════
+function LivretsTab({cleEleves, cleNotes, matieres, maxNote, userRole, annee}) {
+  const {schoolId, schoolInfo, moisAnnee, toast} = useContext(SchoolContext);
+  const {items:livrets, ajouter:ajLivret, modifier:modLivret} = useFirestore("livrets");
+  const {items:eleves} = useFirestore(cleEleves);
+  const {items:notes}  = useFirestore(cleNotes);
+  const section = cleEleves.includes("Primaire")?"primaire":cleEleves.includes("Lycee")?"lycee":"college";
+  const canEdit = ["direction","admin","comptable"].includes(userRole);
+
+  const [livretSelId, setLivretSelId] = useState(null);
+  const [filtreClasse, setFiltreClasse] = useState("all");
+  const [modal, setModal] = useState(null); // "annee"
+  const [formAnnee, setFormAnnee] = useState({});
+  const [savingL, setSavingL] = useState(false);
+
+  const classesUniq = [...new Set(eleves.map(e=>e.classe))].filter(Boolean).sort();
+  const elevesFiltr = filtreClasse==="all" ? eleves : eleves.filter(e=>e.classe===filtreClasse);
+  const livretSel = livrets.find(l=>l._id===livretSelId);
+
+  // Génère un numéro de livret
+  const genNumeroLivret = () => {
+    const an = getAnnee().split("-")[0].slice(-2);
+    const nums = livrets.map(l=>parseInt((l.numeroLivret||"").replace(/[^0-9]/g,""))||0);
+    const n = nums.length>0 ? Math.max(...nums)+1 : 1;
+    return `LIV-${an}-${String(n).padStart(4,"0")}`;
+  };
+
+  // Crée ou ouvre le livret d'un élève
+  const ouvrirLivret = async (eleve) => {
+    const existing = livrets.find(l=>l.eleveId===eleve._id);
+    if(existing){ setLivretSelId(existing._id); return; }
+    if(!canEdit){toast("Création réservée à la direction/admin.","warning");return;}
+    setSavingL(true);
+    try {
+      const id = await ajLivret({
+        eleveId: eleve._id,
+        eleveNom: `${eleve.nom} ${eleve.prenom}`,
+        matricule: eleve.matricule||"",
+        ien: eleve.ien||"",
+        dateNaissance: eleve.dateNaissance||"",
+        lieuNaissance: eleve.lieuNaissance||"",
+        photo: eleve.photo||"",
+        section,
+        numeroLivret: genNumeroLivret(),
+        dateCreation: new Date().toISOString().slice(0,10),
+        annees: [],
+      });
+      setLivretSelId(id);
+      toast("Livret créé","success");
+    } finally { setSavingL(false); }
+  };
+
+  // Pré-remplit une nouvelle entrée annuelle depuis les notes actuelles
+  const preRemplirAnnee = (eleve) => {
+    const notesEleve = notes.filter(n=>n.eleveId===eleve._id);
+    const matieresList = matieres.map(mat=>{
+      const notesParPeriode = ["T1","T2","T3"].reduce((acc,p)=>{
+        const ns = notesEleve.filter(n=>n.matiere===mat.nom&&n.periode===p);
+        acc[p] = ns.length ? (ns.reduce((s,n)=>s+Number(n.note),0)/ns.length) : null;
+        return acc;
+      },{});
+      const avec = Object.values(notesParPeriode).filter(v=>v!==null);
+      const ann = avec.length ? avec.reduce((s,v)=>s+v,0)/avec.length : null;
+      return {matiere:mat.nom, coef:mat.coefficient||1, maxNote,
+        T1:notesParPeriode.T1, T2:notesParPeriode.T2, T3:notesParPeriode.T3,
+        annuelle:ann};
+    });
+    return {
+      anneeScolaire: annee||getAnnee(),
+      classe: eleve.classe||"",
+      enseignantPrincipal: "",
+      notes: matieresList,
+      absences: {justifiees:0, nonJustifiees:0},
+      rang: "", effectifClasse: eleves.filter(e=>e.classe===eleve.classe).length,
+      appreciation: "", decision: "Admis",
+      signe: false, dateSigne: null,
+    };
+  };
+
+  const sauvegarderAnnee = async () => {
+    if(!livretSel) return;
+    setSavingL(true);
+    try {
+      const annees = [...(livretSel.annees||[])];
+      if(formAnnee._idx!=null) annees[formAnnee._idx] = {...formAnnee, _idx:undefined};
+      else annees.push({...formAnnee});
+      await modLivret(livretSel._id,{annees});
+      setModal(null);
+      toast("Année enregistrée","success");
+    } finally { setSavingL(false); }
+  };
+
+  const signerAnnee = async (livretId, idx) => {
+    const lv = livrets.find(l=>l._id===livretId);
+    if(!lv) return;
+    const annees = [...lv.annees];
+    annees[idx] = {...annees[idx], signe:true, dateSigne:today()};
+    await modLivret(livretId,{annees});
+    toast("Année signée et verrouillée","success");
+  };
+
+  const chgAnnee = k => e => setFormAnnee(p=>({...p,[k]:e.target.value}));
+  const chgAbs  = k => e => setFormAnnee(p=>({...p,absences:{...(p.absences||{}), [k]:Number(e.target.value)}}));
+
+  // ── Vue détail d'un livret ─────────────────────────────────
+  if(livretSel) {
+    const eleve = eleves.find(e=>e._id===livretSel.eleveId)||{};
+    return (
+      <div>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+          <Btn sm v="ghost" onClick={()=>setLivretSelId(null)}>← Retour</Btn>
+          <strong style={{fontSize:14,color:C.blueDark,flex:1}}>
+            📋 Livret — {livretSel.eleveNom} · <span style={{fontFamily:"monospace",color:C.blue}}>{livretSel.numeroLivret}</span>
+          </strong>
+          <Btn sm v="vert" onClick={()=>imprimerLivret({...livretSel,photo:eleve.photo||livretSel.photo},schoolInfo)}>🖨️ Imprimer le livret</Btn>
+          {canEdit&&<Btn sm v="blue" onClick={()=>{setFormAnnee({...preRemplirAnnee(eleve)});setModal("annee");}}>+ Nouvelle année</Btn>}
+        </div>
+
+        {(livretSel.annees||[]).length===0
+          ? <Vide icone="📅" msg="Aucune année saisie — cliquez sur '+ Nouvelle année'"/>
+          : (livretSel.annees||[]).map((an,idx)=>(
+            <Card key={idx} style={{marginBottom:14,border:`2px solid ${an.signe?"#86efac":"#e5e7eb"}`}}>
+              <div style={{display:"flex",alignItems:"center",gap:10,padding:"12px 16px",background:an.signe?"#f0fdf4":"#f8fafc",borderRadius:"14px 14px 0 0"}}>
+                <strong style={{flex:1,fontSize:13,color:C.blueDark}}>Année {an.anneeScolaire} — {an.classe}</strong>
+                <Badge color={an.decision==="Admis avec félicitations"||an.decision==="Admis"?"vert":an.decision==="Redoublant"?"amber":"red"}>{an.decision||"—"}</Badge>
+                {an.signe
+                  ? <span style={{fontSize:11,color:"#15803d",fontWeight:700}}>✅ Signé le {an.dateSigne}</span>
+                  : canEdit&&<>
+                      <Btn sm v="ghost" onClick={()=>{setFormAnnee({...an,_idx:idx});setModal("annee");}}>✏️ Modifier</Btn>
+                      <Btn sm v="vert" onClick={()=>signerAnnee(livretSel._id,idx)}>✍️ Signer</Btn>
+                    </>
+                }
+              </div>
+              <div style={{padding:"12px 16px",fontSize:12}}>
+                <div style={{display:"flex",gap:20,marginBottom:8,flexWrap:"wrap",color:"#374151"}}>
+                  <span>Enseignant : <strong>{an.enseignantPrincipal||"—"}</strong></span>
+                  <span>Rang : <strong>{an.rang||"—"}/{an.effectifClasse||"—"}</strong></span>
+                  <span>Abs. justifiées : <strong>{an.absences?.justifiees||0}</strong></span>
+                  <span>Abs. non just. : <strong>{an.absences?.nonJustifiees||0}</strong></span>
+                </div>
+                {an.appreciation&&<div style={{fontStyle:"italic",color:"#6b7280",marginBottom:6}}>"{an.appreciation}"</div>}
+                <details><summary style={{cursor:"pointer",color:C.blue,fontSize:12,fontWeight:700}}>Voir les notes ({(an.notes||[]).length} matières)</summary>
+                  <table style={{width:"100%",borderCollapse:"collapse",marginTop:8,fontSize:11}}>
+                    <THead cols={["Matière","Coef","T1","T2","T3","Annuelle"]}/>
+                    <tbody>{(an.notes||[]).map((n,i)=><TR key={i}>
+                      <TD bold>{n.matiere}</TD><TD center>{n.coef}</TD>
+                      <TD center>{n.T1!=null?Number(n.T1).toFixed(1):"—"}</TD>
+                      <TD center>{n.T2!=null?Number(n.T2).toFixed(1):"—"}</TD>
+                      <TD center>{n.T3!=null?Number(n.T3).toFixed(1):"—"}</TD>
+                      <TD center><strong style={{color:n.annuelle>=maxNote/2?"#15803d":"#b91c1c"}}>{n.annuelle!=null?Number(n.annuelle).toFixed(2):"—"}</strong></TD>
+                    </TR>)}</tbody>
+                  </table>
+                </details>
+              </div>
+            </Card>
+          ))
+        }
+
+        {/* Modal saisie année */}
+        {modal==="annee"&&<Modale large titre={formAnnee._idx!=null?"Modifier l'année":"Nouvelle année scolaire"} fermer={()=>setModal(null)}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:14}}>
+            <Input label="Année scolaire" value={formAnnee.anneeScolaire||""} onChange={chgAnnee("anneeScolaire")} placeholder="2024-2025"/>
+            <Input label="Classe" value={formAnnee.classe||""} onChange={chgAnnee("classe")}/>
+            <Input label="Enseignant(e) principal(e)" value={formAnnee.enseignantPrincipal||""} onChange={chgAnnee("enseignantPrincipal")}/>
+            <Input label="Rang" type="number" value={formAnnee.rang||""} onChange={chgAnnee("rang")}/>
+            <Input label="Effectif classe" type="number" value={formAnnee.effectifClasse||""} onChange={chgAnnee("effectifClasse")}/>
+            <Selec label="Décision du conseil" value={formAnnee.decision||"Admis"} onChange={chgAnnee("decision")}>
+              <option>Admis</option>
+              <option>Admis avec félicitations</option>
+              <option>Redoublant</option>
+              <option>Exclu</option>
+            </Selec>
+            <div style={{gridColumn:"1/3"}}>
+              <Input label="Absences justifiées" type="number" value={formAnnee.absences?.justifiees||0} onChange={chgAbs("justifiees")}/>
+            </div>
+            <Input label="Absences non justifiées" type="number" value={formAnnee.absences?.nonJustifiees||0} onChange={chgAbs("nonJustifiees")}/>
+            <div style={{gridColumn:"1/-1"}}>
+              <label style={{fontSize:12,fontWeight:700,color:C.blueDark,display:"block",marginBottom:4}}>Appréciation générale</label>
+              <textarea value={formAnnee.appreciation||""} onChange={chgAnnee("appreciation")} rows={3}
+                style={{width:"100%",border:"1px solid #b0c4d8",borderRadius:8,padding:"8px 12px",fontSize:12,resize:"vertical"}}/>
+            </div>
+          </div>
+          {(formAnnee.notes||[]).length>0&&<>
+            <p style={{fontWeight:700,fontSize:12,color:C.blueDark,margin:"0 0 8px"}}>Notes par matière (pré-remplies depuis les bulletins)</p>
+            <div style={{overflowX:"auto"}}>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:11,marginBottom:14}}>
+                <THead cols={["Matière","Coef","T1","T2","T3","Annuelle"]}/>
+                <tbody>{(formAnnee.notes||[]).map((n,i)=>(
+                  <TR key={i}>
+                    <TD bold>{n.matiere}</TD>
+                    <TD center><input type="number" value={n.coef||1}
+                      onChange={e=>{const ns=[...formAnnee.notes];ns[i]={...ns[i],coef:Number(e.target.value)};setFormAnnee(p=>({...p,notes:ns}));}}
+                      style={{width:40,textAlign:"center",border:"1px solid #b0c4d8",borderRadius:4,padding:"2px 4px"}}/></TD>
+                    {["T1","T2","T3"].map(p=>(
+                      <td key={p} style={{padding:"2px 6px",textAlign:"center"}}>
+                        <input type="number" value={n[p]!=null?n[p]:""}
+                          onChange={e=>{const ns=[...formAnnee.notes];ns[i]={...ns[i],[p]:e.target.value===""?null:Number(e.target.value)};setFormAnnee(p=>({...p,notes:ns}));}}
+                          style={{width:50,textAlign:"center",border:"1px solid #b0c4d8",borderRadius:4,padding:"2px 4px"}}/>
+                      </td>
+                    ))}
+                    <td style={{padding:"2px 8px",textAlign:"center",fontWeight:700,color:n.annuelle>=maxNote/2?"#15803d":"#b91c1c"}}>
+                      {n.annuelle!=null?Number(n.annuelle).toFixed(2):"—"}
+                    </td>
+                  </TR>
+                ))}</tbody>
+              </table>
+            </div>
+          </>}
+          <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:8}}>
+            <Btn v="ghost" onClick={()=>setModal(null)}>Annuler</Btn>
+            <Btn v="success" onClick={sauvegarderAnnee} disabled={savingL}>{savingL?"Enregistrement…":"💾 Enregistrer"}</Btn>
+          </div>
+        </Modale>}
+      </div>
+    );
+  }
+
+  // ── Vue liste des livrets ──────────────────────────────────
+  return (
+    <div>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,flexWrap:"wrap"}}>
+        <strong style={{fontSize:14,flex:1,color:C.blueDark}}>📋 Livrets scolaires ({livrets.length})</strong>
+        <select value={filtreClasse} onChange={e=>setFiltreClasse(e.target.value)}
+          style={{border:"1px solid #b0c4d8",borderRadius:7,padding:"6px 10px",fontSize:12,background:"#fff"}}>
+          <option value="all">Toutes les classes</option>
+          {classesUniq.map(c=><option key={c}>{c}</option>)}
+        </select>
+      </div>
+      {elevesFiltr.length===0
+        ? <Vide icone="📋" msg="Aucun élève dans cette sélection"/>
+        : <Card>
+            <table style={{width:"100%",borderCollapse:"collapse"}}>
+              <THead cols={["Matricule","Nom & Prénom","Classe","Livret","Années saisies","Action"]}/>
+              <tbody>{elevesFiltr.map(e=>{
+                const lv = livrets.find(l=>l.eleveId===e._id);
+                return <TR key={e._id}>
+                  <TD><span style={{fontSize:11,fontFamily:"monospace",background:"#e0ebf8",padding:"2px 5px",borderRadius:4,color:C.blue,fontWeight:700}}>{e.matricule||"—"}</span></TD>
+                  <TD bold>{e.nom} {e.prenom}</TD>
+                  <TD><Badge color="blue">{e.classe}</Badge></TD>
+                  <TD>{lv
+                    ? <span style={{fontFamily:"monospace",fontSize:11,color:C.blue}}>{lv.numeroLivret}</span>
+                    : <span style={{fontSize:11,color:"#9ca3af"}}>Non créé</span>}
+                  </TD>
+                  <TD center>{lv ? <Badge color={(lv.annees||[]).length>0?"vert":"gray"}>{(lv.annees||[]).length} an(s)</Badge> : "—"}</TD>
+                  <TD>
+                    <Btn sm v={lv?"ghost":"blue"} onClick={()=>ouvrirLivret(e)} disabled={savingL}>
+                      {lv?"📂 Ouvrir":"📋 Créer"}
+                    </Btn>
+                    {lv&&<Btn sm v="amber" style={{marginLeft:4}} onClick={()=>imprimerLivret({...lv,photo:e.photo||lv.photo},schoolInfo)}>🖨️</Btn>}
+                  </TD>
+                </TR>;
+              })}</tbody>
+            </table>
+          </Card>
+      }
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
+//  COMPOSANT TRANSFERTS (Phase 1 + Phase 2)
+// ══════════════════════════════════════════════════════════════
+function TransfertsPanel({userRole, annee}) {
+  const {schoolId, schoolInfo, moisAnnee, toast} = useContext(SchoolContext);
+  const {items:elevesC} = useFirestore("elevesCollege");
+  const {items:elevesP} = useFirestore("elevesPrimaire");
+  const {items:elevesL} = useFirestore("elevesLycee");
+  const {items:tarifsClasses} = useFirestore("tarifs");
+  const canEdit = !["enseignant"].includes(userRole);
+
+  const [sousTab, setSousTab] = useState("sortants"); // sortants | entrants
+  const [modalSortant, setModalSortant] = useState(null);
+  const [modalEntrant, setModalEntrant] = useState(false);
+  const [formSortant, setFormSortant] = useState({});
+  const [tokenInput, setTokenInput] = useState("");
+  const [transfertData, setTransfertData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [transfertsSortants, setTransfertsSortants] = useState([]);
+
+  const tousEleves = [...elevesC, ...elevesP, ...elevesL];
+  const partis = tousEleves.filter(e=>["Transféré"].includes(e.statut));
+
+  const getTarif = (classe) => {
+    const t = tarifsClasses.find(t=>t.classe===classe);
+    return Number(t?.montant||0);
+  };
+
+  const getSolde = (eleve) => {
+    const mens = eleve.mens||{};
+    const nbImpayes = moisAnnee.filter(m=>mens[m]!=="Payé").length;
+    return nbImpayes * getTarif(eleve.classe);
+  };
+
+  // Génère un token de transfert (Phase 2)
+  const genererToken = async (eleve, ecoleDestination) => {
+    setLoading(true);
+    try {
+      const headers = await getAuthHeaders({"Content-Type":"application/json"});
+      const res = await fetch("/api/transfert", {
+        method:"POST",
+        headers,
+        body: JSON.stringify({
+          action: "generer",
+          schoolId,
+          eleveSnapshot: {
+            ...eleve,
+            schoolNom: schoolInfo.nom||"",
+            solde: getSolde(eleve),
+          },
+          ecoleDestination,
+        }),
+      });
+      const data = await res.json();
+      if(data.token) {
+        setTransfertsSortants(prev=>[{...data, eleveNom:`${eleve.nom} ${eleve.prenom}`, classe:eleve.classe, dateCreation:today()}, ...prev]);
+        toast(`Token généré : ${data.token}`, "success");
+        setModalSortant({...eleve, token:data.token, ecoleDestination});
+      } else {
+        toast(data.error||"Erreur lors de la génération","error");
+      }
+    } catch(e) {
+      toast("Erreur réseau : "+e.message,"error");
+    } finally { setLoading(false); }
+  };
+
+  // Vérifie un token entrant (Phase 2)
+  const verifierToken = async () => {
+    if(!tokenInput.trim()){toast("Saisissez un token","warning");return;}
+    setLoading(true);
+    try {
+      const headers = await getAuthHeaders({});
+      const res = await fetch(`/api/transfert?token=${encodeURIComponent(tokenInput.trim())}`, {headers});
+      const data = await res.json();
+      if(data.eleveSnapshot) setTransfertData(data);
+      else toast(data.error||"Token introuvable ou expiré","error");
+    } catch(e) {
+      toast("Erreur réseau : "+e.message,"error");
+    } finally { setLoading(false); }
+  };
+
+  // Accepte un transfert entrant et importe l'élève
+  const accepterTransfert = async () => {
+    if(!transfertData) return;
+    setLoading(true);
+    try {
+      const headers = await getAuthHeaders({"Content-Type":"application/json"});
+      const res = await fetch("/api/transfert", {
+        method:"POST", headers,
+        body: JSON.stringify({action:"accepter", token:tokenInput, targetSchoolId:schoolId}),
+      });
+      const data = await res.json();
+      if(data.ok) {
+        toast("Élève importé avec succès","success");
+        setTransfertData(null); setTokenInput("");
+      } else {
+        toast(data.error||"Erreur lors de l'acceptation","error");
+      }
+    } catch(e) {
+      toast("Erreur réseau : "+e.message,"error");
+    } finally { setLoading(false); }
+  };
+
+  return (
+    <div>
+      {/* Sous-tabs */}
+      <div style={{display:"flex",gap:6,background:"#f1f5f9",borderRadius:10,padding:4,marginBottom:18,width:"fit-content"}}>
+        {[["sortants","📤 Transferts sortants"],["entrants","📥 Transferts entrants"]].map(([id,lbl])=>(
+          <button key={id} onClick={()=>setSousTab(id)}
+            style={{padding:"7px 16px",border:"none",borderRadius:7,cursor:"pointer",fontSize:12,fontWeight:700,
+              background:sousTab===id?"#fff":"transparent",
+              color:sousTab===id?C.blueDark:"#64748b",
+              boxShadow:sousTab===id?"0 1px 4px rgba(0,0,0,0.08)":"none"}}>
+            {lbl}
+          </button>
+        ))}
+      </div>
+
+      {/* ── SORTANTS ── */}
+      {sousTab==="sortants"&&<>
+        <p style={{fontSize:12,color:"#6b7280",marginBottom:14}}>
+          Générez les documents officiels et les tokens de transfert pour les élèves marqués "Transféré".
+        </p>
+        {partis.length===0
+          ? <Vide icone="📤" msg="Aucun élève marqué 'Transféré' — déclarez un départ depuis l'onglet Enrôlement"/>
+          : <Card>
+              <table style={{width:"100%",borderCollapse:"collapse"}}>
+                <THead cols={["Matricule","Élève","Classe","Date départ","Destination","Solde dû","Documents","Token EduGest"]}/>
+                <tbody>{partis.map(e=>{
+                  const solde = getSolde(e);
+                  const token = transfertsSortants.find(t=>t.eleveId===e._id||t.eleveNom===`${e.nom} ${e.prenom}`);
+                  return <TR key={e._id}>
+                    <TD><span style={{fontSize:11,fontFamily:"monospace",background:"#e0ebf8",padding:"2px 5px",borderRadius:4,color:C.blue,fontWeight:700}}>{e.matricule}</span></TD>
+                    <TD bold>{e.nom} {e.prenom}</TD>
+                    <TD><Badge color="blue">{e.classe}</Badge></TD>
+                    <TD>{e.dateDepart||"—"}</TD>
+                    <TD><span style={{fontSize:11,color:"#6b7280"}}>{e.destinationDepart||"—"}</span></TD>
+                    <TD><span style={{fontWeight:700,color:solde>0?"#b91c1c":"#15803d"}}>{solde>0?fmt(solde):"Apuré"}</span></TD>
+                    <TD>
+                      <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                        <Btn sm v="ghost" onClick={()=>imprimerOrdreMutation(e,schoolInfo,e.destinationDepart||"",annee)}>📄 Mutation</Btn>
+                        <Btn sm v="ghost" onClick={()=>imprimerCertificatRadiation(e,schoolInfo,annee,solde)}>📄 Radiation</Btn>
+                      </div>
+                    </TD>
+                    <TD>
+                      {token
+                        ? <span style={{fontFamily:"monospace",fontWeight:900,color:C.blue,fontSize:13}}>{token.token}</span>
+                        : canEdit&&<Btn sm v="blue" onClick={()=>genererToken(e, e.destinationDepart||"")} disabled={loading}>
+                            🔑 Générer
+                          </Btn>
+                      }
+                    </TD>
+                  </TR>;
+                })}</tbody>
+              </table>
+            </Card>
+        }
+
+        {/* Modal token généré */}
+        {modalSortant?.token&&<Modale titre="🔑 Token de transfert généré" fermer={()=>setModalSortant(null)}>
+          <p style={{fontSize:13,marginBottom:16}}>
+            Remettez ce code à <strong>{modalSortant.nom} {modalSortant.prenom}</strong> ou à son école d'accueil.
+          </p>
+          <div style={{background:"#f0f9ff",border:"2px solid #38bdf8",borderRadius:12,padding:"20px",textAlign:"center",marginBottom:16}}>
+            <div style={{fontSize:28,fontWeight:900,fontFamily:"monospace",color:C.blue,letterSpacing:4}}>{modalSortant.token}</div>
+            <div style={{fontSize:11,color:"#0369a1",marginTop:6}}>Valable 30 jours · Usage unique</div>
+          </div>
+          <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+            <Btn v="ghost" onClick={()=>setModalSortant(null)}>Fermer</Btn>
+            <Btn v="blue" onClick={()=>{navigator.clipboard?.writeText(modalSortant.token);toast("Token copié","success");}}>📋 Copier</Btn>
+          </div>
+        </Modale>}
+      </>}
+
+      {/* ── ENTRANTS ── */}
+      {sousTab==="entrants"&&<>
+        <p style={{fontSize:12,color:"#6b7280",marginBottom:14}}>
+          Importez un élève transféré depuis une autre école EduGest via son token, ou créez manuellement sa fiche.
+        </p>
+
+        {/* Import manuel */}
+        <Card style={{marginBottom:16,border:"2px solid #e0ebf8"}}>
+          <div style={{padding:"14px 18px"}}>
+            <p style={{margin:"0 0 10px",fontWeight:800,fontSize:13,color:C.blueDark}}>📥 Importer via token EduGest</p>
+            <div style={{display:"flex",gap:8,alignItems:"center"}}>
+              <input value={tokenInput} onChange={e=>setTokenInput(e.target.value.toUpperCase())}
+                placeholder="Ex : TRF-A3K9B2"
+                style={{flex:1,border:"1.5px solid #b0c4d8",borderRadius:8,padding:"9px 14px",fontSize:14,fontFamily:"monospace",fontWeight:700,letterSpacing:2}}/>
+              <Btn v="blue" onClick={verifierToken} disabled={loading}>{loading?"⏳":"🔍 Vérifier"}</Btn>
+            </div>
+
+            {transfertData&&<div style={{marginTop:14,background:"#f0fdf4",border:"1px solid #86efac",borderRadius:10,padding:"14px 18px"}}>
+              <p style={{margin:"0 0 10px",fontWeight:800,color:"#14532d"}}>✅ Dossier trouvé — {transfertData.eleveSnapshot?.nom} {transfertData.eleveSnapshot?.prenom}</p>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,fontSize:12,marginBottom:12}}>
+                <span>Classe : <strong>{transfertData.eleveSnapshot?.classe}</strong></span>
+                <span>École d'origine : <strong>{transfertData.eleveSnapshot?.schoolNom}</strong></span>
+                <span>Date naissance : <strong>{transfertData.eleveSnapshot?.dateNaissance}</strong></span>
+                <span>Situation : <strong style={{color:transfertData.eleveSnapshot?.solde>0?"#b91c1c":"#15803d"}}>{transfertData.eleveSnapshot?.solde>0?`Solde dû : ${fmt(transfertData.eleveSnapshot.solde)}`:"Situation apurée"}</strong></span>
+              </div>
+              <Btn v="success" onClick={accepterTransfert} disabled={loading}>
+                {loading?"⏳ Import en cours…":"✅ Confirmer l'accueil — Créer la fiche élève"}
+              </Btn>
+            </div>}
+          </div>
+        </Card>
+
+        <div style={{textAlign:"center",padding:"10px 0",color:"#9ca3af",fontSize:12,marginBottom:12}}>— ou —</div>
+
+        <Card style={{border:"2px dashed #b0c4d8"}}>
+          <div style={{padding:"14px 18px"}}>
+            <p style={{margin:"0 0 8px",fontWeight:800,fontSize:13,color:C.blueDark}}>📝 Enregistrement manuel (élève venant d'une école hors EduGest)</p>
+            <p style={{margin:"0 0 12px",fontSize:12,color:"#6b7280"}}>
+              Créez directement la fiche élève depuis l'onglet <strong>Enrôlement</strong>, en complétant le champ "Établissement d'origine" et en sélectionnant "Réinscription" comme type d'inscription.
+            </p>
+            <Btn sm v="ghost">→ Aller à l'Enrôlement</Btn>
+          </div>
+        </Card>
+      </>}
     </div>
   );
 }
