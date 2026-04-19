@@ -2451,28 +2451,33 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
               <Stat label="Mensualités perçues" value={`${(totalPercu/1e6).toFixed(2)}M`} sub={`${totalDu>0?(100-Number(pctImpaye)).toFixed(1):0}% du total`} bg="#eaf4e0"/>
             </div>
             {/* ── Contrôle accès parent ── */}
-            <div style={{display:"flex",alignItems:"center",gap:16,background:blocage?"#fef2f2":"#f0fdf4",
-              border:`2px solid ${blocage?"#fca5a5":"#86efac"}`,borderRadius:12,padding:"14px 20px",marginBottom:18,flexWrap:"wrap"}}>
-              <span style={{fontSize:28}}>{blocage?"🔒":"🔓"}</span>
-              <div style={{flex:1,minWidth:200}}>
-                <div style={{fontWeight:800,fontSize:14,color:blocage?"#991b1b":"#14532d"}}>
-                  Accès parents — {blocage?"Bloqué pour les élèves en défaut":"Autorisé pour tous"}
+            <div style={{background:blocage?"#fff0f0":"#f0fdf4",border:`2px solid ${blocage?"#f87171":"#4ade80"}`,borderRadius:14,padding:"18px 20px",marginBottom:18}}>
+              <div style={{display:"flex",alignItems:"center",gap:14,flexWrap:"wrap"}}>
+                <span style={{fontSize:34,lineHeight:1}}>{blocage?"🔒":"🔓"}</span>
+                <div style={{flex:1,minWidth:180}}>
+                  <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}>
+                    <span style={{fontWeight:900,fontSize:14,color:"#1e293b"}}>Portail parents — Notes & Bulletins</span>
+                    <span style={{
+                      display:"inline-block",padding:"3px 12px",borderRadius:20,fontWeight:900,fontSize:12,letterSpacing:.5,
+                      background:blocage?"#b91c1c":"#15803d",color:"#fff",
+                    }}>{blocage?"🔴 BLOQUÉ":"🟢 OUVERT"}</span>
+                  </div>
+                  <div style={{fontSize:12,color:"#6b7280"}}>
+                    {blocage
+                      ? "Les parents d'élèves avec mensualités impayées ne peuvent pas consulter ni imprimer les notes et bulletins."
+                      : "Tous les parents peuvent consulter et imprimer les notes et bulletins."}
+                  </div>
                 </div>
-                <div style={{fontSize:12,color:"#6b7280",marginTop:2}}>
-                  {blocage
-                    ? "Les parents d'élèves avec mensualités impayées ne peuvent pas consulter ni imprimer les notes et bulletins."
-                    : "Activez le blocage pour empêcher la consultation des notes/bulletins en cas d'impayé."}
-                </div>
+                {canCreate&&(
+                  <button onClick={toggleBlocage} style={{
+                    background:blocage?"#15803d":"#b91c1c",color:"#fff",
+                    border:"none",padding:"10px 22px",borderRadius:10,cursor:"pointer",fontWeight:900,fontSize:13,
+                    whiteSpace:"nowrap",boxShadow:"0 2px 6px rgba(0,0,0,.15)",
+                  }}>
+                    {blocage?"🔓 Débloquer":"🔒 Bloquer"}
+                  </button>
+                )}
               </div>
-              {canCreate&&<button onClick={toggleBlocage} style={{
-                background:blocage?"#dcfce7":"#fee2e2",
-                border:`1px solid ${blocage?"#86efac":"#fca5a5"}`,
-                color:blocage?"#14532d":"#991b1b",
-                padding:"9px 20px",borderRadius:9,cursor:"pointer",fontWeight:800,fontSize:13,
-                whiteSpace:"nowrap",
-              }}>
-                {blocage?"🔓 Débloquer l'accès":"🔒 Bloquer l'accès"}
-              </button>}
             </div>
           </>);
         })()}
