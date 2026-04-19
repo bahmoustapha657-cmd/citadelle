@@ -4433,11 +4433,17 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
             <option value="all">Toutes les classes</option>
             {classesUniq.map(c=><option key={c}>{c}</option>)}
           </select>
-          <Btn v="success" onClick={()=>imprimerFicheCompositions(filtreClasse,periodeB,notes,matieres,filtreClasse==="all"?elevesFiltres:elevesFiltres.filter(e=>e.classe===filtreClasse),maxNote,schoolInfo)}>
+          <Btn v="success" onClick={()=>{
+            const elevesC=(filtreClasse==="all"?elevesFiltres:elevesFiltres.filter(e=>e.classe===filtreClasse))
+              .filter(e=>!(!!schoolInfo.blocageParentImpaye && moisAnnee.filter(m=>(e.mens||{})[m]!=="Payé").length>0));
+            imprimerFicheCompositions(filtreClasse,periodeB,notes,matieres,elevesC,maxNote,schoolInfo);
+          }}>
             🏆 Résultats des évaluations
           </Btn>
           <Btn v="vert" onClick={()=>{
-            const elevesB=elevesFiltres.filter(e=>!rechercheMatricule||(e.matricule||"").toLowerCase().includes(rechercheMatricule.toLowerCase())||(e.nom+" "+e.prenom).toLowerCase().includes(rechercheMatricule.toLowerCase()));
+            const elevesB=elevesFiltres
+              .filter(e=>!rechercheMatricule||(e.matricule||"").toLowerCase().includes(rechercheMatricule.toLowerCase())||(e.nom+" "+e.prenom).toLowerCase().includes(rechercheMatricule.toLowerCase()))
+              .filter(e=>!(!!schoolInfo.blocageParentImpaye && moisAnnee.filter(m=>(e.mens||{})[m]!=="Payé").length>0));
             imprimerBulletinsGroupes(elevesB,notes,matieres,periodeB,avecEns?"college":"primaire",maxNote,schoolInfo,filtreClasse==="all"?"Toutes classes":filtreClasse,matieresForClasse);
           }}>
             📄 Tous les bulletins {filtreClasse!=="all"?`— ${filtreClasse}`:""}
@@ -4459,13 +4465,17 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
               });
               const moyGene=totC>0?(moy/totC).toFixed(2):"—";
               const mention=moyGene==="—"?"—":Number(moyGene)>=16?"Très Bien":Number(moyGene)>=14?"Bien":Number(moyGene)>=12?"Assez Bien":Number(moyGene)>=10?"Passable":"Insuffisant";
+              const eleveImpayeBloq = !!schoolInfo.blocageParentImpaye && moisAnnee.filter(m=>(e.mens||{})[m]!=="Payé").length>0;
               return <TR key={e._id}>
                 <TD><span style={{fontSize:11,fontFamily:"monospace",background:"#e0ebf8",padding:"2px 5px",borderRadius:4,color:C.blue,fontWeight:700}}>{e.matricule||"—"}</span></TD>
                 <TD bold>{e.nom} {e.prenom}</TD>
                 <TD><Badge color="blue">{e.classe}</Badge></TD>
                 <TD><span style={{fontWeight:800,fontSize:14,color:moyGene!=="—"&&Number(moyGene)>=10?C.greenDk:"#b91c1c"}}>{moyGene}/20</span></TD>
                 <TD><Badge color={mention==="Très Bien"||mention==="Bien"?"vert":mention==="Assez Bien"||mention==="Passable"?"blue":"red"}>{mention}</Badge></TD>
-                <TD><Btn sm v="amber" onClick={()=>imprimerBulletin(e,notes,matieresForClasse(e.classe),periodeB,avecEns?"college":"primaire",maxNote,schoolInfo)}>🖨️ Imprimer</Btn></TD>
+                <TD>{eleveImpayeBloq
+                  ? <span title="Frais impayés — impression bloquée" style={{fontSize:18}}>🔒</span>
+                  : <Btn sm v="amber" onClick={()=>imprimerBulletin(e,notes,matieresForClasse(e.classe),periodeB,avecEns?"college":"primaire",maxNote,schoolInfo)}>🖨️ Imprimer</Btn>
+                }</TD>
               </TR>;
             })}</tbody>
           </table></Card>;
