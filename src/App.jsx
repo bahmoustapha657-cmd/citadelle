@@ -1267,13 +1267,26 @@ const genererRapportMensuel = (mois, eleves, absences, annee, schoolInfo={}, moi
   w.document.close();
 };
 
+const telechargerExcel = (wb, nomFichier) => {
+  try {
+    const buf = XLSX.write(wb, {bookType:"xlsx", type:"array"});
+    const blob = new Blob([buf], {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = nomFichier;
+    document.body.appendChild(a); a.click();
+    setTimeout(()=>{ document.body.removeChild(a); URL.revokeObjectURL(url); }, 150);
+  } catch(err) {
+    alert("Impossible de générer le fichier Excel : " + err.message);
+  }
+};
+
 const exportExcel = (nomFichier, colonnes, lignes) => {
   const ws = XLSX.utils.aoa_to_sheet([colonnes, ...lignes]);
-  // Style largeur colonnes
   ws["!cols"] = colonnes.map(()=>({wch:22}));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Données");
-  XLSX.writeFile(wb, `${nomFichier}_${new Date().toLocaleDateString("fr-FR").replace(/\//g,"-")}.xlsx`);
+  telechargerExcel(wb, `${nomFichier}_${new Date().toLocaleDateString("fr-FR").replace(/\//g,"-")}.xlsx`);
 };
 
 const imprimerAttestation = (eleve, niveau, annee, schoolInfo={}) => {
@@ -4029,7 +4042,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                 ["Diallo","Ibrahima","5ème B","M","2013-07-22","Kindia","","Mariama Diallo","628000002","Père: Boubacar Diallo / Mère: Mariama Bah","Kindia","Réinscription"],
               ]);
               XLSX.utils.book_append_sheet(wb,ws,"Eleves");
-              XLSX.writeFile(wb,"modele_import_eleves.xlsx");
+              telechargerExcel(wb,"modele_import_eleves.xlsx");
             }}>⬇️ Modèle Excel</Btn>
           </div>
 
