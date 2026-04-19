@@ -2536,6 +2536,8 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   const [niveauEnrol,setNiveauEnrol]=useState("college");
   const [cameraOuverte,setCameraOuverte]=useState(false);
   const [uploadEnCours,setUploadEnCours]=useState(false);
+  const [importEnrolPreview,setImportEnrolPreview]=useState(null);
+  const [importEnrolEnCours,setImportEnrolEnCours]=useState(false);
   const [fraisInscription,setFraisInscription]=useState(()=>Number(localStorage.getItem("LC_fraisInscription")||50000));
   const chg=k=>e=>setForm(p=>({...p,[k]:e.target.value}));
   const handlePhotoFichier=e=>{
@@ -3597,11 +3599,19 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
           </Btn>
           {!afficherDeparts&&canCreate&&(
             planInfo?.peutAjouterEleve
-              ? <Btn onClick={()=>{
-                  const mat=genererMatricule(elevesEnrol, niveauEnrol, schoolInfo);
-                  setForm({statut:"Actif",sexe:"M",niveau:niveauEnrol,matricule:mat,typeInscription:"Première inscription"});
-                  setModal("add_enrol");
-                }}>+ Nouvel élève</Btn>
+              ? <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                  <Btn onClick={()=>{
+                    const mat=genererMatricule(elevesEnrol, niveauEnrol, schoolInfo);
+                    setForm({statut:"Actif",sexe:"M",niveau:niveauEnrol,matricule:mat,typeInscription:"Première inscription"});
+                    setModal("add_enrol");
+                  }}>+ Nouvel élève</Btn>
+                  <Btn v="ghost" title="Saisie rapide : formulaire minimal, enchaîner plusieurs élèves" onClick={()=>{
+                    const mat=genererMatricule(elevesEnrol, niveauEnrol, schoolInfo);
+                    setForm({statut:"Actif",sexe:"M",niveau:niveauEnrol,matricule:mat,typeInscription:"Première inscription"});
+                    setModal("rapide_enrol");
+                  }}>⚡ Rapide</Btn>
+                  <Btn v="ghost" title="Importer depuis un fichier Excel ou CSV" onClick={()=>{setImportEnrolPreview(null);setModal("import_enrol");}}>📋 Import Excel</Btn>
+                </div>
               : <Btn disabled title="Limite du plan atteinte — Contactez le Super-Admin">🔒 Limite atteinte</Btn>
           )}
         </div>
@@ -3624,6 +3634,12 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                 <TD><Badge color={e.statut==="Actif"?"vert":"gray"}>{e.statut}</Badge></TD>
                 {canEdit&&<TD><div style={{display:"flex",gap:6}}>
                   <Btn sm v="ghost" onClick={()=>{setForm({...e,niveau:niveauEnrol});setModal("edit_enrol");}}>Modifier</Btn>
+                  {canCreate&&planInfo?.peutAjouterEleve&&<Btn sm v="ghost" title="Dupliquer — même tuteur/contact (frère/sœur)" onClick={()=>{
+                    const mat=genererMatricule(elevesEnrol,niveauEnrol,schoolInfo);
+                    setForm({statut:"Actif",sexe:e.sexe||"M",niveau:niveauEnrol,matricule:mat,typeInscription:"Première inscription",
+                      classe:e.classe,filiation:e.filiation,tuteur:e.tuteur,contactTuteur:e.contactTuteur,domicile:e.domicile});
+                    setModal("add_enrol");
+                  }}>👥</Btn>}
                   {e.statut==="Actif"&&<Btn sm v="amber" onClick={()=>{
                     setForm({...e,niveau:niveauEnrol,statut:"Transféré",dateDepart:new Date().toISOString().slice(0,10)});
                     setModal("edit_enrol");
@@ -3810,6 +3826,179 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                 setUploadEnCours(false);
               }
             }}>{uploadEnCours?"⏳ Upload photo...":"Enregistrer"}</Btn>
+          </div>
+        </Modale>}
+
+        {/* ── SAISIE RAPIDE ── */}
+        {modal==="rapide_enrol"&&canCreate&&<Modale titre="⚡ Saisie rapide d'élèves" fermer={()=>setModal(null)}>
+          <p style={{margin:"0 0 14px",fontSize:12,color:"#6b7280"}}>Remplissez les champs essentiels. Cliquez sur <strong>Suivant</strong> pour enchaîner sans fermer, ou <strong>Terminer</strong> pour sauvegarder et fermer.</p>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            <Input label="Nom *" value={form.nom||""} onChange={chg("nom")} placeholder="Bah"/>
+            <Input label="Prénom *" value={form.prenom||""} onChange={chg("prenom")} placeholder="Aminata"/>
+            <Champ label="Matricule (auto)">
+              <input value={form.matricule||""} onChange={chg("matricule")}
+                style={{width:"100%",border:"1px solid #b0c4d8",borderRadius:7,padding:"7px 10px",fontSize:13,boxSizing:"border-box",outline:"none",fontFamily:"monospace",fontWeight:700,color:C.blue,background:"#e0ebf8"}}/>
+            </Champ>
+            <Champ label="Classe *">
+              <select value={form.classe||""} onChange={chg("classe")}
+                style={{width:"100%",border:"1px solid #b0c4d8",borderRadius:7,padding:"7px 10px",fontSize:13,background:"#fff",boxSizing:"border-box",outline:"none"}}>
+                <option value="">— Sélectionner —</option>
+                {(niveauEnrol==="college"?classesCollege:classesPrimaire).map(c=><option key={c}>{c}</option>)}
+              </select>
+            </Champ>
+            <Selec label="Sexe" value={form.sexe||"M"} onChange={chg("sexe")}>
+              <option value="M">Masculin</option><option value="F">Féminin</option>
+            </Selec>
+            <Selec label="Type d'inscription" value={form.typeInscription||"Première inscription"} onChange={chg("typeInscription")}>
+              <option>Première inscription</option><option>Réinscription</option>
+            </Selec>
+            <Input label="Date de naissance" type="date" value={form.dateNaissance||""} onChange={chg("dateNaissance")}/>
+            <Input label="Tuteur" value={form.tuteur||""} onChange={chg("tuteur")} placeholder="Nom du tuteur"/>
+            <Input label="Contact" value={form.contactTuteur||""} onChange={chg("contactTuteur")} placeholder="622 000 000"/>
+            <div style={{gridColumn:"1/-1"}}><Input label="Filiation (Père / Mère)" value={form.filiation||""} onChange={chg("filiation")}/></div>
+          </div>
+          <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
+            <Btn v="ghost" onClick={()=>setModal(null)}>Annuler</Btn>
+            <Btn v="ghost" onClick={async()=>{
+              if(!form.nom||!form.prenom){toast("Nom et prénom obligatoires","warning");return;}
+              if(!form.classe){toast("Classe obligatoire","warning");return;}
+              const r={...form,statut:"Actif",mens:initMens()};
+              const tousE2=[...elevesC,...elevesP];
+              const doublonNom=tousE2.some(e=>e.nom?.trim().toLowerCase()===r.nom?.trim().toLowerCase()&&e.prenom?.trim().toLowerCase()===r.prenom?.trim().toLowerCase()&&e.dateNaissance&&e.dateNaissance===r.dateNaissance);
+              if(doublonNom&&!window.confirm("⚠️ Un élève portant le même nom et la même date de naissance existe déjà.\n\nVoulez-vous quand même créer cette fiche ?"))return;
+              ajEnrol(r);
+              toast(`${r.prenom} ${r.nom} ajouté(e)`,"success");
+              const mat=genererMatricule([...elevesEnrol,r],niveauEnrol,schoolInfo);
+              setForm({statut:"Actif",sexe:"M",niveau:niveauEnrol,matricule:mat,typeInscription:"Première inscription",tuteur:r.tuteur||"",contactTuteur:r.contactTuteur||"",domicile:r.domicile||""});
+            }}>➕ Suivant</Btn>
+            <Btn onClick={async()=>{
+              if(!form.nom||!form.prenom){toast("Nom et prénom obligatoires","warning");return;}
+              if(!form.classe){toast("Classe obligatoire","warning");return;}
+              const r={...form,statut:"Actif",mens:initMens()};
+              const tousE2=[...elevesC,...elevesP];
+              const doublonNom=tousE2.some(e=>e.nom?.trim().toLowerCase()===r.nom?.trim().toLowerCase()&&e.prenom?.trim().toLowerCase()===r.prenom?.trim().toLowerCase()&&e.dateNaissance&&e.dateNaissance===r.dateNaissance);
+              if(doublonNom&&!window.confirm("⚠️ Un élève portant le même nom et la même date de naissance existe déjà.\n\nVoulez-vous quand même créer cette fiche ?"))return;
+              ajEnrol(r);
+              toast(`${r.prenom} ${r.nom} ajouté(e)`,"success");
+              setModal(null);
+            }}>✅ Terminer</Btn>
+          </div>
+        </Modale>}
+
+        {/* ── IMPORT EXCEL ── */}
+        {modal==="import_enrol"&&canCreate&&<Modale titre="📋 Importer des élèves depuis Excel" fermer={()=>{setModal(null);setImportEnrolPreview(null);}} large>
+          <div style={{marginBottom:12,padding:"10px 14px",background:"#f0fdf4",borderRadius:10,fontSize:12,color:"#166534"}}>
+            <strong>Colonnes attendues :</strong> <em>Nom · Prénom · Classe · Sexe (M/F) · Date naissance (AAAA-MM-JJ) · IEN · Tuteur · Contact · Filiation · Domicile · Type inscription</em><br/>
+            La ligne 1 est l'en-tête (ignorée). Seuls <strong>Nom</strong>, <strong>Prénom</strong> et <strong>Classe</strong> sont obligatoires.
+          </div>
+          <div style={{display:"flex",gap:10,marginBottom:12,alignItems:"center",flexWrap:"wrap"}}>
+            <label style={{display:"inline-flex",alignItems:"center",gap:6,padding:"7px 14px",borderRadius:8,border:`1.5px dashed ${C.blue}`,background:"#f0f6ff",color:C.blue,fontSize:12,fontWeight:700,cursor:"pointer"}}>
+              📂 Choisir un fichier Excel / CSV
+              <input type="file" accept=".xlsx,.xls,.csv" style={{display:"none"}} onChange={async e=>{
+                const file=e.target.files[0]; if(!file) return;
+                const ab=await file.arrayBuffer();
+                const wb=XLSX.read(ab);
+                const ws=wb.Sheets[wb.SheetNames[0]];
+                const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:""}).slice(1);
+                const classesList=[...CLASSES_COLLEGE,...CLASSES_PRIMAIRE].map(c=>c.toLowerCase());
+                const lignes=rows.filter(r=>r[0]||r[1]).map((r,i)=>{
+                  const nom=String(r[0]||"").trim();
+                  const prenom=String(r[1]||"").trim();
+                  const classe=String(r[2]||"").trim();
+                  const sexe=["M","F"].includes(String(r[3]||"M").trim().toUpperCase())?String(r[3]).trim().toUpperCase():"M";
+                  const dateNaissance=String(r[4]||"").trim();
+                  const ien=String(r[5]||"").trim();
+                  const tuteur=String(r[6]||"").trim();
+                  const contactTuteur=String(r[7]||"").trim();
+                  const filiation=String(r[8]||"").trim();
+                  const domicile=String(r[9]||"").trim();
+                  const typeInscription=String(r[10]||"Première inscription").trim()||"Première inscription";
+                  const erreurs=[];
+                  if(!nom) erreurs.push("Nom manquant");
+                  if(!prenom) erreurs.push("Prénom manquant");
+                  if(!classe) erreurs.push("Classe manquante");
+                  else if(!classesList.includes(classe.toLowerCase())) erreurs.push("Classe inconnue");
+                  return {nom,prenom,classe,sexe,dateNaissance,ien,tuteur,contactTuteur,filiation,domicile,typeInscription,erreurs,ligne:i+2};
+                });
+                setImportEnrolPreview({lignes,valides:lignes.filter(l=>!l.erreurs.length)});
+                e.target.value="";
+              }}/>
+            </label>
+            <Btn v="ghost" onClick={()=>{
+              const wb=XLSX.utils.book_new();
+              const ws=XLSX.utils.aoa_to_sheet([
+                ["Nom","Prénom","Classe","Sexe","Date naissance","IEN","Tuteur","Contact","Filiation","Domicile","Type inscription"],
+                ["Bah","Aminata","6ème A","F","2012-03-15","GN-2024-000001","Mamadou Bah","622000001","Père: Mamadou / Mère: Fatoumata","Conakry, Dixinn","Première inscription"],
+              ]);
+              XLSX.utils.book_append_sheet(wb,ws,"Eleves");
+              XLSX.writeFile(wb,"modele_import_eleves.xlsx");
+            }}>⬇️ Modèle Excel</Btn>
+          </div>
+
+          {importEnrolPreview&&<>
+            <div style={{display:"flex",gap:14,marginBottom:10,fontSize:12}}>
+              <span style={{color:"#059669",fontWeight:700}}>✅ {importEnrolPreview.valides.length} valides</span>
+              <span style={{color:"#dc2626",fontWeight:700}}>❌ {importEnrolPreview.lignes.length-importEnrolPreview.valides.length} erreurs</span>
+            </div>
+            <div style={{maxHeight:280,overflowY:"auto",border:"1px solid #e2e8f0",borderRadius:8,marginBottom:12}}>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
+                <thead><tr style={{background:"#f8fafc",position:"sticky",top:0}}>
+                  {["L.","Nom","Prénom","Classe","Sexe","Date naiss.","Statut"].map(h=>(
+                    <th key={h} style={{padding:"6px 8px",textAlign:"left",fontSize:10,color:"#64748b"}}>{h}</th>
+                  ))}
+                </tr></thead>
+                <tbody>{importEnrolPreview.lignes.map((l,i)=>(
+                  <tr key={i} style={{background:l.erreurs.length?"#fef2f2":"#f0fdf4",borderBottom:"1px solid #f1f5f9"}}>
+                    <td style={{padding:"4px 8px",color:"#94a3b8",fontSize:10}}>{l.ligne}</td>
+                    <td style={{padding:"4px 8px",fontWeight:600}}>{l.nom||"—"}</td>
+                    <td style={{padding:"4px 8px"}}>{l.prenom||"—"}</td>
+                    <td style={{padding:"4px 8px"}}>{l.classe||"—"}</td>
+                    <td style={{padding:"4px 8px"}}>{l.sexe}</td>
+                    <td style={{padding:"4px 8px"}}>{l.dateNaissance||"—"}</td>
+                    <td style={{padding:"4px 8px"}}>
+                      {l.erreurs.length
+                        ?<span style={{color:"#dc2626",fontSize:10}}>⚠️ {l.erreurs.join(", ")}</span>
+                        :<span style={{color:"#059669",fontSize:10}}>✅</span>}
+                    </td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+          </>}
+
+          <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:8}}>
+            <Btn v="ghost" onClick={()=>{setModal(null);setImportEnrolPreview(null);}}>Annuler</Btn>
+            {importEnrolPreview?.valides.length>0&&<Btn v="vert" disabled={importEnrolEnCours} onClick={async()=>{
+              setImportEnrolEnCours(true);
+              let count=0;
+              const existants=[...elevesC,...elevesP];
+              for(const l of importEnrolPreview.valides){
+                const doublon=existants.some(e=>
+                  e.nom?.trim().toLowerCase()===l.nom.toLowerCase()&&
+                  e.prenom?.trim().toLowerCase()===l.prenom.toLowerCase()&&
+                  e.dateNaissance&&e.dateNaissance===l.dateNaissance
+                );
+                if(doublon) continue;
+                const mat=genererMatricule([...elevesEnrol,...Array(count).fill({})],niveauEnrol,schoolInfo);
+                const enrolSection=CLASSES_PRIMAIRE.includes(l.classe)?"primaire":"college";
+                const ajFn=enrolSection==="primaire"?ajEP:ajEC;
+                await ajFn({
+                  nom:l.nom,prenom:l.prenom,classe:l.classe,sexe:l.sexe,
+                  dateNaissance:l.dateNaissance,ien:l.ien,
+                  tuteur:l.tuteur,contactTuteur:l.contactTuteur,
+                  filiation:l.filiation,domicile:l.domicile,
+                  typeInscription:l.typeInscription,
+                  matricule:mat,statut:"Actif",mens:initMens(),
+                });
+                count++;
+              }
+              setImportEnrolEnCours(false);
+              setModal(null);
+              setImportEnrolPreview(null);
+              toast(`${count} élève(s) importé(s) avec succès`,"success");
+            }}>
+              {importEnrolEnCours?`⏳ Import en cours…`:`⬆️ Importer ${importEnrolPreview.valides.length} élève(s)`}
+            </Btn>}
           </div>
         </Modale>}
       </div>}
