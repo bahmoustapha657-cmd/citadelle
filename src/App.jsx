@@ -1311,7 +1311,8 @@ const imprimerBulletin = (eleve, notes, matieres, periode, niveau, maxNote=20, s
     const noteMat = notesEleve.filter(n=>n.matiere===mat.nom);
     const moy = noteMat.length ? (noteMat.reduce((s,n)=>s+Number(n.note),0)/noteMat.length).toFixed(2) : "—";
     const coef = mat.coefficient||1;
-    if(moy !== "—") { moyenne += Number(moy)*coef; totalCoef += coef; }
+    totalCoef += coef; // toutes les matières comptent au dénominateur
+    if(moy !== "—") { moyenne += Number(moy)*coef; }
     return {mat: mat.nom, coef, moy};
   });
   const moyGene = totalCoef > 0 ? (moyenne/totalCoef).toFixed(2) : "—";
@@ -1367,7 +1368,8 @@ const imprimerBulletinsGroupes = (eleves, notes, matieres, periode, niveau, maxN
       const nm = notesEleve.filter(n=>n.matiere===mat.nom);
       const moy = nm.length ? (nm.reduce((s,n)=>s+Number(n.note),0)/nm.length).toFixed(2) : "—";
       const coef = mat.coefficient||1;
-      if(moy!=="—"){ total += Number(moy)*coef; totalCoef += coef; }
+      totalCoef += coef; // toutes les matières comptent au dénominateur
+      if(moy!=="—"){ total += Number(moy)*coef; }
       return {mat:mat.nom, coef, moy};
     });
     const moyGene = totalCoef > 0 ? (total/totalCoef).toFixed(2) : "—";
@@ -1387,7 +1389,7 @@ const imprimerBulletinsGroupes = (eleves, notes, matieres, periode, niveau, maxN
   const pages = avecMoyenne.map(({eleve, lignes, moyGene}) => {
     const rang = rangMap[eleve._id] || "—";
     const mention = apprec(moyGene);
-    const totalCoef = lignes.reduce((s,l)=>l.moy!=="—"?s+(l.coef):s,0);
+    const totalCoef = lignes.reduce((s,l)=>s+(l.coef),0); // toutes les matières
     return `
     <div class="page">
       ${enteteDoc(schoolInfo, schoolInfo.logo)}
@@ -1473,7 +1475,8 @@ const imprimerFicheCompositions = (classe, periode, notes, matieres, eleves, max
       const nm = ne.filter(n=>n.matiere===mat.nom);
       const moy = nm.length ? nm.reduce((s,n)=>s+Number(n.note),0)/nm.length : null;
       const coef = mat.coefficient||1;
-      if(moy!==null){ tot+=moy*coef; totC+=coef; }
+      totC+=coef; // toutes les matières comptent au dénominateur
+      if(moy!==null){ tot+=moy*coef; }
       return {nom:mat.nom, coef, moy};
     });
     const moyGene = totC>0 ? tot/totC : null;
@@ -3574,9 +3577,11 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
                   const moyClasse=elevesClasse.map(e=>{
                     const notesE=notes.filter(n=>n.eleveId===e._id);
                     let moy=0,totC=0;
-                    matieres.forEach(mat=>{
+                    matieresForClasse(e.classe).forEach(mat=>{
+                      const coef=mat.coefficient||1;
+                      totC+=coef;
                       const nm=notesE.filter(n=>n.matiere===mat.nom);
-                      if(nm.length){const m=nm.reduce((s,n)=>s+Number(n.note),0)/nm.length;moy+=m*(mat.coefficient||1);totC+=(mat.coefficient||1);}
+                      if(nm.length){const m=nm.reduce((s,n)=>s+Number(n.note),0)/nm.length;moy+=m*coef;}
                     });
                     return totC>0?moy/totC:null;
                   }).filter(m=>m!==null);
@@ -3598,9 +3603,11 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
             const classement=eleves.map(e=>{
               const notesPeriode=notes.filter(n=>n.eleveId===e._id);
               let moy=0,totC=0;
-              matieres.forEach(mat=>{
+              matieresForClasse(e.classe).forEach(mat=>{
+                const coef=mat.coefficient||1;
+                totC+=coef;
                 const nm=notesPeriode.filter(n=>n.matiere===mat.nom);
-                if(nm.length){const m=nm.reduce((s,n)=>s+Number(n.note),0)/nm.length;moy+=m*(mat.coefficient||1);totC+=(mat.coefficient||1);}
+                if(nm.length){const m=nm.reduce((s,n)=>s+Number(n.note),0)/nm.length;moy+=m*coef;}
               });
               return {...e, moyGene:totC>0?(moy/totC):0};
             }).filter(e=>e.moyGene>0).sort((a,b)=>b.moyGene-a.moyGene).slice(0,5);
@@ -4415,8 +4422,10 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
               const notesE=notes.filter(n=>n.eleveId===e._id&&n.periode===periodeB);
               let moy=0,totC=0;
               matieresForClasse(e.classe).forEach(mat=>{
+                const coef=mat.coefficient||1;
+                totC+=coef; // toutes les matières comptent au dénominateur
                 const nm=notesE.filter(n=>n.matiere===mat.nom);
-                if(nm.length){const m=nm.reduce((s,n)=>s+Number(n.note),0)/nm.length;moy+=m*(mat.coefficient||1);totC+=(mat.coefficient||1);}
+                if(nm.length){const m=nm.reduce((s,n)=>s+Number(n.note),0)/nm.length;moy+=m*coef;}
               });
               const moyGene=totC>0?(moy/totC).toFixed(2):"—";
               const mention=moyGene==="—"?"—":Number(moyGene)>=16?"Très Bien":Number(moyGene)>=14?"Bien":Number(moyGene)>=12?"Assez Bien":Number(moyGene)>=10?"Passable":"Insuffisant";
