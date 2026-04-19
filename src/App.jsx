@@ -224,16 +224,24 @@ const MENSUALITE = { college:150000, primaire:120000 };
 const initMens = () => MOIS_ANNEE.reduce((a,m)=>({...a,[m]:"Impayé"}),{});
 
 // Génère automatiquement le prochain matricule
-// Format: C25-001 (Collège 2025), P25-001 (Primaire 2025)
-const genererMatricule = (eleves, type) => {
-  const anneeShort = getAnnee().split("-")[0].slice(-2); // "25" pour 2025
-  const prefix = type==="college" ? `C${anneeShort}-` : `P${anneeShort}-`;
+// Modèle configurable via schoolInfo (paramètres → Matricules)
+const genererMatricule = (eleves, type, config={}) => {
+  const anneeShort = getAnnee().split("-")[0].slice(-2);
+  const anneeFull  = getAnnee().split("-")[0];
+  const pref = type==="college"
+    ? (config.matriculePrefixColl||"C")
+    : (config.matriculePrefixPrim||"P");
+  const sep       = config.matriculeSep!=null ? config.matriculeSep : "-";
+  const avecAnnee = config.matriculeAnnee !== false;
+  const anneeStr  = avecAnnee ? (config.matriculeAnnee4 ? anneeFull : anneeShort) : "";
+  const nChiffres = Number(config.matriculeChiffres||3);
+  const prefix    = avecAnnee ? `${pref}${anneeStr}${sep}` : `${pref}${sep}`;
   const nums = eleves
     .map(e => e.matricule||"")
     .filter(m => m.startsWith(prefix))
     .map(m => parseInt(m.replace(prefix,""))||0);
   const suivant = nums.length > 0 ? Math.max(...nums)+1 : 1;
-  return `${prefix}${String(suivant).padStart(3,"0")}`;
+  return `${prefix}${String(suivant).padStart(nChiffres,"0")}`;
 };
 const today = () => new Date().toLocaleDateString("fr-FR");
 const fmt = n => Number(n||0).toLocaleString("fr-FR")+" GNF";
@@ -764,7 +772,7 @@ const enteteDoc = (si, logoUrl) => `
   </div>
 </div>`;
 
-const imprimerRecu = (eleve, montantUnit, schoolInfo={}, moisAnnee=MOIS_ANNEE) => {
+const imprimerRecu = (eleve, montantUnit, schoolInfo={}, moisAnnee=MOIS_ANNEE, fraisIns=0) => {
   const mens = eleve.mens||{};
   const mensDates = eleve.mensDates||{};
   const moisPayes = moisAnnee.filter(m=>mens[m]==="Payé");
@@ -813,7 +821,13 @@ const imprimerRecu = (eleve, montantUnit, schoolInfo={}, moisAnnee=MOIS_ANNEE) =
         </tr>`;
       }).join("")}
     </tbody></table>
-    <div class="total">Total versé : ${fmt(moisPayes.length*montantUnit)} <span style="font-weight:400;font-size:9px">(${moisPayes.length}/${moisAnnee.length} mois)</span></div>
+    ${eleve.inscriptionPayee&&fraisIns>0?`
+    <div class="total" style="font-size:9px;padding:4px 8px;background:#f0f9ff;border-color:#7dd3fc">
+      ${eleve.typeInscription==="Réinscription"?"Réinscription":"Inscription"} : <strong>${fmt(fraisIns)}</strong>
+      <span style="font-weight:400;margin-left:4px">✓ Payée</span>
+    </div>`:""}
+    <div class="total">Mensualités versées : ${fmt(moisPayes.length*montantUnit)} <span style="font-weight:400;font-size:9px">(${moisPayes.length}/${moisAnnee.length} mois)</span></div>
+    ${eleve.inscriptionPayee&&fraisIns>0?`<div class="total" style="background:#e0f2fe;border-color:#38bdf8">Total général : <strong>${fmt(moisPayes.length*montantUnit+fraisIns)}</strong></div>`:""}
     <div class="sigs">
       <div class="sig">Le/La Comptable<br/><br/><br/>Signature &amp; cachet</div>
       <div class="sig">Le/La Payant(e)<br/><br/><br/>Signature</div>
@@ -1968,18 +1982,25 @@ function Fondation({readOnly, userRole}) {
 // ══════════════════════════════════════════════════════════════
 //  TARIFS PAR CLASSE (sous-composant Comptabilite)
 // ══════════════════════════════════════════════════════════════
-function TarifsClasses({saveTarif, getTarif, canEdit}) {
+function TarifsClasses({saveTarif, getTarif, getTarifIns, getTarifReinsc, canEdit}) {
   const [ouvert, setOuvert] = useState(false);
-  const [editing, setEditing] = useState({}); // { "Classe X": "150000" }
+  // editing: { "Classe X": {mens, ins, reinsc} }
+  const [editing, setEditing] = useState({});
   const [saving, setSaving] = useState(false);
 
-  const handleChange = (classe, val) => setEditing(p=>({...p,[classe]:val}));
+  const handleChange = (classe, champ, val) =>
+    setEditing(p=>({...p,[classe]:{...(p[classe]||{}), [champ]:val}}));
 
   const sauvegarderTout = async () => {
     setSaving(true);
     try {
-      for(const [classe, val] of Object.entries(editing)){
-        if(val !== "") await saveTarif(classe, val);
+      for(const [classe, vals] of Object.entries(editing)){
+        await saveTarif(
+          classe,
+          vals.mens!==undefined ? vals.mens : String(getTarif(classe)),
+          vals.ins!==undefined  ? vals.ins  : String(getTarifIns(classe)),
+          vals.reinsc!==undefined ? vals.reinsc : String(getTarifReinsc(classe))
+        );
       }
       setEditing({});
     } finally { setSaving(false); }
@@ -1987,12 +2008,25 @@ function TarifsClasses({saveTarif, getTarif, canEdit}) {
 
   const modifie = Object.keys(editing).length > 0;
 
+  const field = (classe, champ, getVal, color) => {
+    const cur = editing[classe]?.[champ];
+    return (
+      <input type="number" value={cur!==undefined ? cur : String(getVal(classe))}
+        onChange={e=>canEdit&&handleChange(classe, champ, e.target.value)}
+        readOnly={!canEdit}
+        style={{width:90,border:"1px solid #d1d5db",borderRadius:6,padding:"4px 6px",fontSize:11,
+          textAlign:"right",color:cur!==undefined?"#d97706":color,fontWeight:700,
+          background:canEdit?"#fff":"#f3f4f6",cursor:canEdit?"text":"default"}}
+      />
+    );
+  };
+
   return (
     <div style={{marginBottom:16,border:"1px solid #b0c4d8",borderRadius:10,overflow:"hidden"}}>
       <button onClick={()=>setOuvert(o=>!o)}
         style={{width:"100%",background:"#f0f6ff",border:"none",padding:"11px 16px",cursor:"pointer",
           display:"flex",alignItems:"center",justifyContent:"space-between",fontSize:13,fontWeight:700,color:C.blueDark}}>
-        <span>💰 Tarifs mensuels par classe</span>
+        <span>💰 Tarifs par classe (mensualité · inscription · réinscription)</span>
         <span style={{fontSize:11,fontWeight:400,color:"#6b7280"}}>{ouvert?"▲ Fermer":"▼ Voir / Modifier"}</span>
       </button>
       {ouvert&&(
@@ -2003,25 +2037,22 @@ function TarifsClasses({saveTarif, getTarif, canEdit}) {
             return (
               <div key={section} style={{marginBottom:16}}>
                 <p style={{margin:"0 0 8px",fontSize:12,fontWeight:800,color:C.blueDark,textTransform:"uppercase",letterSpacing:"0.05em"}}>{section}</p>
-                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:8}}>
-                  {classes.map(classe=>{
-                    const val = editing[classe]!==undefined ? editing[classe] : String(getTarif(classe));
-                    return (
-                      <div key={classe} style={{display:"flex",alignItems:"center",gap:8,background:"#f8fafc",borderRadius:7,padding:"7px 10px"}}>
-                        <span style={{flex:1,fontSize:12,color:C.blueDark,fontWeight:600}}>{classe}</span>
-                        <input
-                          type="number" value={val}
-                          onChange={e=>canEdit&&handleChange(classe,e.target.value)}
-                          readOnly={!canEdit}
-                          style={{width:100,border:"1px solid #d1d5db",borderRadius:6,padding:"4px 8px",fontSize:12,
-                            textAlign:"right",color:editing[classe]!==undefined?"#d97706":C.blue,fontWeight:700,
-                            background:canEdit?"#fff":"#f3f4f6",cursor:canEdit?"text":"default"}}
-                        />
-                        <span style={{fontSize:11,color:"#9ca3af"}}>GNF</span>
-                      </div>
-                    );
-                  })}
-                </div>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                  <thead><tr style={{background:"#f0f6ff"}}>
+                    <th style={{padding:"6px 10px",textAlign:"left",color:C.blueDark}}>Classe</th>
+                    <th style={{padding:"6px 10px",textAlign:"right",color:C.blue}}>Mensualité (GNF)</th>
+                    <th style={{padding:"6px 10px",textAlign:"right",color:"#059669"}}>Inscription (GNF)</th>
+                    <th style={{padding:"6px 10px",textAlign:"right",color:"#7c3aed"}}>Réinscription (GNF)</th>
+                  </tr></thead>
+                  <tbody>{classes.map(classe=>(
+                    <tr key={classe} style={{borderBottom:"1px solid #e5e7eb"}}>
+                      <td style={{padding:"6px 10px",fontWeight:700,color:C.blueDark}}>{classe}</td>
+                      <td style={{padding:"4px 10px",textAlign:"right"}}>{field(classe,"mens",getTarif,C.blue)}</td>
+                      <td style={{padding:"4px 10px",textAlign:"right"}}>{field(classe,"ins",getTarifIns,"#059669")}</td>
+                      <td style={{padding:"4px 10px",textAlign:"right"}}>{field(classe,"reinsc",getTarifReinsc,"#7c3aed")}</td>
+                    </tr>
+                  ))}</tbody>
+                </table>
               </div>
             );
           })}
@@ -2140,6 +2171,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   const [sousTabSal,setSousTabSal]=useState("etats");
   const [modal,setModal]=useState(null);
   const [form,setForm]=useState({});
+  const [afficherDeparts,setAfficherDeparts]=useState(false);
   const [niveau,setNiveau]=useState("college");
   const [filtClasse,setFiltClasse]=useState("all");
   const [moisSel,setMoisSel]=useState(()=>moisSalaire[0]||"Octobre");
@@ -2181,10 +2213,23 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
     if(t) return Number(t.montant)||0;
     return CLASSES_PRIMAIRE.includes(classe) ? MENSUALITE.primaire : MENSUALITE.college;
   };
-  const saveTarif = async (classe, montant) => {
+  const getTarifIns = (classe) => {
+    const t = tarifsClasses.find(t=>t.classe===classe);
+    return Number(t?.inscription||0);
+  };
+  const getTarifReinsc = (classe) => {
+    const t = tarifsClasses.find(t=>t.classe===classe);
+    return Number(t?.reinscription||0);
+  };
+  const saveTarif = async (classe, montant, inscription=null, reinscription=null) => {
     const existing = tarifsClasses.find(t=>t.classe===classe);
-    if(existing) await modTarif(existing._id,{montant:Number(montant)||0});
-    else await ajTarif({classe, montant:Number(montant)||0});
+    const data = {
+      montant:Number(montant)||0,
+      ...(inscription!==null?{inscription:Number(inscription)||0}:{}),
+      ...(reinscription!==null?{reinscription:Number(reinscription)||0}:{})
+    };
+    if(existing) await modTarif(existing._id, data);
+    else await ajTarif({classe, ...data});
   };
   const elevesFiltres=filtClasse==="all"?eleves:eleves.filter(e=>e.classe===filtClasse);
   const nbPayes=e=>moisAnnee.filter(m=>(e.mens||{})[m]==="Payé").length;
@@ -3180,22 +3225,25 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
         )}
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,flexWrap:"wrap"}}>
           <strong style={{fontSize:14,flex:1,color:C.blueDark}}>
-            Enrôlement des Élèves
-            <span style={{marginLeft:10,fontSize:11,fontWeight:600,color:
+            {afficherDeparts?"📤 Départs & Statistiques":"Enrôlement des Élèves"}
+            {!afficherDeparts&&<span style={{marginLeft:10,fontSize:11,fontWeight:600,color:
               planInfo?.peutAjouterEleve?"#16a34a":"#dc2626"}}>
               ({planInfo?.totalElevesActifs ?? "…"}/{planInfo?.eleveLimit===Infinity?"∞":planInfo?.eleveLimit} élèves — Plan {planInfo?.planLabel})
-            </span>
+            </span>}
           </strong>
           <select value={niveauEnrol} onChange={e=>setNiveauEnrol(e.target.value)}
             style={{border:"1px solid #b0c4d8",borderRadius:7,padding:"6px 10px",fontSize:12,background:"#fff",color:C.blueDark,fontWeight:600}}>
             <option value="college">Collège ({elevesC.length} élèves)</option>
             <option value="primaire">Primaire ({elevesP.length} élèves)</option>
           </select>
-          {canCreate&&(
+          <Btn sm v={afficherDeparts?"blue":"ghost"} onClick={()=>setAfficherDeparts(d=>!d)}>
+            {afficherDeparts?"👥 Élèves actifs":"📤 Départs"}
+          </Btn>
+          {!afficherDeparts&&canCreate&&(
             planInfo?.peutAjouterEleve
               ? <Btn onClick={()=>{
-                  const mat=genererMatricule(elevesEnrol, niveauEnrol);
-                  setForm({statut:"Actif",sexe:"M",niveau:niveauEnrol,matricule:mat});
+                  const mat=genererMatricule(elevesEnrol, niveauEnrol, schoolInfo);
+                  setForm({statut:"Actif",sexe:"M",niveau:niveauEnrol,matricule:mat,typeInscription:"Première inscription"});
                   setModal("add_enrol");
                 }}>+ Nouvel élève</Btn>
               : <Btn disabled title="Limite du plan atteinte — Contactez le Super-Admin">🔒 Limite atteinte</Btn>
@@ -3204,7 +3252,8 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
         <div style={{background:"#e0ebf8",borderRadius:8,padding:"9px 14px",marginBottom:14,fontSize:12,color:C.blueDark}}>
           🔒 Seul le <strong>Comptable</strong> peut enrôler ou supprimer des élèves.
         </div>
-        {(cEC||cEP)?<Chargement/>:elevesEnrol.length===0?<Vide icone="🎓" msg="Aucun élève enregistré"/>
+        {!afficherDeparts&&(
+          (cEC||cEP)?<Chargement/>:elevesEnrol.length===0?<Vide icone="🎓" msg="Aucun élève enregistré"/>
           :<div style={{overflowX:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",minWidth:900}}>
               <THead cols={["Matricule","IEN","Nom & Prénom","Classe","Sexe","Filiation","Tuteur","Contact","Domicile","Statut","Actions"]}/>
@@ -3219,11 +3268,76 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                 <TD><Badge color={e.statut==="Actif"?"vert":"gray"}>{e.statut}</Badge></TD>
                 {canEdit&&<TD><div style={{display:"flex",gap:6}}>
                   <Btn sm v="ghost" onClick={()=>{setForm({...e,niveau:niveauEnrol});setModal("edit_enrol");}}>Modifier</Btn>
+                  {e.statut==="Actif"&&<Btn sm v="amber" onClick={()=>{
+                    setForm({...e,niveau:niveauEnrol,statut:"Transféré",dateDepart:new Date().toISOString().slice(0,10)});
+                    setModal("edit_enrol");
+                  }} title="Déclarer un départ">📤</Btn>}
                   <Btn sm v="danger" onClick={()=>{if(confirm("Supprimer définitivement cet élève ?"))supEnrol(e._id);}}>Suppr.</Btn>
                 </div></TD>}
               </TR>)}</tbody>
             </table>
-          </div>}
+          </div>
+        )}
+        {afficherDeparts&&(()=>{
+          const MOTIFS_DEPART = ["Transféré","Exclu","Abandonné","Décédé","Inactif"];
+          const partis = elevesEnrol.filter(e=>MOTIFS_DEPART.includes(e.statut));
+          const actifs = elevesEnrol.filter(e=>e.statut==="Actif");
+          const total  = elevesEnrol.length;
+          const tauxRetention = total>0 ? ((actifs.length/total)*100).toFixed(1) : "100";
+          const parMotif = MOTIFS_DEPART.map(m=>({motif:m, count:partis.filter(e=>e.statut===m).length})).filter(x=>x.count>0);
+          const parClasse = [...new Set(partis.map(e=>e.classe))].filter(Boolean).map(cl=>({
+            classe:cl, count:partis.filter(e=>e.classe===cl).length
+          })).sort((a,b)=>b.count-a.count);
+          return (<>
+            {/* ── Stats cards ── */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:10,marginBottom:18}}>
+              <Stat label="Élèves actifs" value={actifs.length} bg="#dcfce7" sub={`${tauxRetention}% de rétention`}/>
+              <Stat label="Total départs" value={partis.length} bg="#fee2e2" sub="cette année scolaire"/>
+              {parMotif.map(x=>(
+                <Stat key={x.motif} label={x.motif} value={x.count} bg={
+                  x.motif==="Transféré"?"#dbeafe":x.motif==="Exclu"?"#fef9c3":x.motif==="Abandonné"?"#ffe4e6":x.motif==="Décédé"?"#f3f4f6":"#f0fdf4"
+                }/>
+              ))}
+            </div>
+            {parClasse.length>0&&<Card style={{marginBottom:14}}>
+              <div style={{padding:"12px 16px"}}>
+                <p style={{margin:"0 0 10px",fontWeight:800,fontSize:13,color:C.blueDark}}>Départs par classe</p>
+                <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                  {parClasse.map(x=>(
+                    <span key={x.classe} style={{background:"#fee2e2",color:"#b91c1c",fontWeight:800,fontSize:12,padding:"4px 12px",borderRadius:20}}>
+                      {x.classe} : {x.count}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </Card>}
+            {/* ── Liste des partis ── */}
+            {partis.length===0?<Vide icone="✅" msg="Aucun départ enregistré pour cette section"/>
+            :<div style={{overflowX:"auto"}}>
+              <table style={{width:"100%",borderCollapse:"collapse",minWidth:700}}>
+                <THead cols={["Matricule","Nom & Prénom","Classe","Motif","Date départ","Destination / Détail","Actions"]}/>
+                <tbody>{partis.map(e=>(
+                  <TR key={e._id}>
+                    <TD><span style={{fontSize:11,fontFamily:"monospace",background:"#e0ebf8",padding:"2px 5px",borderRadius:4,color:C.blue,fontWeight:700}}>{e.matricule}</span></TD>
+                    <TD bold>{e.nom} {e.prenom}</TD>
+                    <TD><Badge color="blue">{e.classe}</Badge></TD>
+                    <TD><Badge color={e.statut==="Exclu"?"red":e.statut==="Décédé"?"gray":"amber"}>{e.statut}</Badge></TD>
+                    <TD>{e.dateDepart||"—"}</TD>
+                    <TD><span style={{fontSize:11,color:"#6b7280"}}>{e.destinationDepart||e.motifDepart||"—"}</span></TD>
+                    {canEdit&&<TD>
+                      <Btn sm v="vert" onClick={async()=>{
+                        if(confirm(`Réintégrer ${e.nom} ${e.prenom} comme élève Actif ?`)){
+                          await modEnrol(e._id,{statut:"Actif",dateDepart:null,motifDepart:null,destinationDepart:null});
+                          toast("Élève réintégré","success");
+                        }
+                      }}>↩ Réintégrer</Btn>
+                    </TD>}
+                  </TR>
+                ))}</tbody>
+              </table>
+            </div>}
+          </>);
+        })()}
 
         {(modal==="add_enrol"&&canCreate||(modal==="edit_enrol"&&canEdit))&&<Modale large titre={modal==="add_enrol"?"Nouvel élève":"Modifier l'élève"} fermer={()=>setModal(null)}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
@@ -3255,8 +3369,20 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
               <option value="M">Masculin</option><option value="F">Féminin</option>
             </Selec>
             <Selec label="Statut" value={form.statut||"Actif"} onChange={chg("statut")}>
-              <option>Actif</option><option>Inactif</option><option>Transféré</option><option>Exclu</option>
+              <option>Actif</option><option>Inactif</option><option>Transféré</option><option>Exclu</option><option>Abandonné</option><option>Décédé</option>
             </Selec>
+            <Selec label="Type d'inscription" value={form.typeInscription||"Première inscription"} onChange={chg("typeInscription")}>
+              <option>Première inscription</option><option>Réinscription</option>
+            </Selec>
+            {["Transféré","Exclu","Abandonné","Décédé"].includes(form.statut)&&<>
+              <Input label="Date de départ" type="date" value={form.dateDepart||""} onChange={chg("dateDepart")}/>
+              <div style={{gridColumn:"1/-1"}}>
+                <Input label="Motif du départ" value={form.motifDepart||""} onChange={chg("motifDepart")} placeholder="Ex: Transfert vers Lycée Donka, fin d'année..."/>
+              </div>
+              {form.statut==="Transféré"&&<div style={{gridColumn:"1/-1"}}>
+                <Input label="École de destination" value={form.destinationDepart||""} onChange={chg("destinationDepart")} placeholder="Nom de l'école d'accueil"/>
+              </div>}
+            </>}
             <div style={{gridColumn:"1/-1"}}><Input label="Filiation (Père / Mère)" value={form.filiation||""} onChange={chg("filiation")}/></div>
             <Input label="Nom du Tuteur" value={form.tuteur||""} onChange={chg("tuteur")}/>
             <Input label="Contact Tuteur" value={form.contactTuteur||""} onChange={chg("contactTuteur")}/>
@@ -3314,6 +3440,8 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
           tarifsClasses={tarifsClasses}
           saveTarif={saveTarif}
           getTarif={getTarif}
+          getTarifIns={getTarifIns}
+          getTarifReinsc={getTarifReinsc}
           canEdit={canEditEleves}
         />
 
@@ -3419,7 +3547,8 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                       </button>
                     </td>
                     <td style={{padding:"4px 6px",textAlign:"center"}}>
-                      <Btn sm v="amber" onClick={()=>imprimerRecu(e,getTarif(e.classe),schoolInfo,moisAnnee)}>🖨️</Btn>
+                      <Btn sm v="amber" onClick={()=>imprimerRecu(e,getTarif(e.classe),schoolInfo,moisAnnee,
+                        e.typeInscription==="Réinscription"?getTarifReinsc(e.classe):getTarifIns(e.classe))}>🖨️</Btn>
                     </td>
                   </TR>;
                 })}</tbody>
@@ -5956,6 +6085,7 @@ function ParametresEcole() {
           {id:"identite",    label:"🏫 Identité"},
           {id:"accueil",     label:"🌐 Page d'accueil"},
           {id:"officiel",    label:"🏛️ Officiel & Année"},
+          {id:"matricules",  label:"🔢 Matricules"},
         ].map(t=>(
           <button key={t.id} onClick={()=>setTabParam(t.id)} style={{
             padding:"8px 18px",border:"none",borderRadius:9,cursor:"pointer",
@@ -6312,13 +6442,93 @@ function ParametresEcole() {
       </div>
       </>}
 
-      {/* Bouton sauvegarder */}
-      <button onClick={sauvegarder} disabled={chargement}
+      {/* ══ TAB MATRICULES ══ */}
+      {tabParam==="matricules"&&(()=>{
+        const cfg = {
+          matriculePrefixPrim: schoolInfo.matriculePrefixPrim||"P",
+          matriculePrefixColl: schoolInfo.matriculePrefixColl||"C",
+          matriculeSep:        schoolInfo.matriculeSep!=null ? schoolInfo.matriculeSep : "-",
+          matriculeAnnee:      schoolInfo.matriculeAnnee!==false,
+          matriculeAnnee4:     !!schoolInfo.matriculeAnnee4,
+          matriculeChiffres:   Number(schoolInfo.matriculeChiffres||3),
+        };
+        const [cfgLocal, setCfgLocal] = React.useState(cfg);
+        const [savingMat, setSavingMat] = React.useState(false);
+        const anneeShort = getAnnee().split("-")[0].slice(-2);
+        const anneeFull  = getAnnee().split("-")[0];
+        const previewFor = (type) => {
+          const pref = type==="college" ? cfgLocal.matriculePrefixColl : cfgLocal.matriculePrefixPrim;
+          const sep  = cfgLocal.matriculeSep;
+          const anneeStr = cfgLocal.matriculeAnnee ? (cfgLocal.matriculeAnnee4?anneeFull:anneeShort) : "";
+          const prefix = cfgLocal.matriculeAnnee ? `${pref}${anneeStr}${sep}` : `${pref}${sep}`;
+          return `${prefix}${"1".padStart(Number(cfgLocal.matriculeChiffres)||3,"0")} · ${prefix}${"2".padStart(Number(cfgLocal.matriculeChiffres)||3,"0")} · ...`;
+        };
+        const sauvegarderMat = async () => {
+          setSavingMat(true);
+          try {
+            await updateDoc(doc(db,"ecoles",schoolId), cfgLocal);
+            setSchoolInfo(prev=>({...prev,...cfgLocal}));
+            setMsgSucces("Modèle de matricule enregistré."); setTimeout(()=>setMsgSucces(""),3000);
+          } catch(e) { setErreur(e.message); } finally { setSavingMat(false); }
+        };
+        const upd = k => e => setCfgLocal(p=>({...p,[k]:e.target.type==="checkbox"?e.target.checked:e.target.value}));
+        return (
+          <div style={sec}>
+            <h3 style={{margin:"0 0 16px",fontSize:14,fontWeight:800,color:C.blueDark}}>🔢 Modèle de matricule</h3>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
+              <div>
+                <label style={lbl}>Préfixe — Primaire</label>
+                <input style={inp} value={cfgLocal.matriculePrefixPrim} onChange={upd("matriculePrefixPrim")} placeholder="P"/>
+              </div>
+              <div>
+                <label style={lbl}>Préfixe — Collège / Secondaire</label>
+                <input style={inp} value={cfgLocal.matriculePrefixColl} onChange={upd("matriculePrefixColl")} placeholder="C"/>
+              </div>
+              <div>
+                <label style={lbl}>Séparateur (entre préfixe+année et numéro)</label>
+                <input style={inp} value={cfgLocal.matriculeSep} onChange={upd("matriculeSep")} placeholder="-" maxLength={3}/>
+              </div>
+              <div>
+                <label style={lbl}>Nombre de chiffres du numéro séquentiel</label>
+                <select style={{...inp,cursor:"pointer"}} value={cfgLocal.matriculeChiffres} onChange={upd("matriculeChiffres")}>
+                  <option value={3}>3 → 001, 002…</option>
+                  <option value={4}>4 → 0001, 0002…</option>
+                  <option value={5}>5 → 00001, 00002…</option>
+                </select>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:24,marginBottom:16}}>
+              <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,cursor:"pointer"}}>
+                <input type="checkbox" checked={cfgLocal.matriculeAnnee} onChange={upd("matriculeAnnee")}/>
+                Inclure l'année dans le matricule
+              </label>
+              {cfgLocal.matriculeAnnee&&<label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,cursor:"pointer"}}>
+                <input type="checkbox" checked={cfgLocal.matriculeAnnee4} onChange={upd("matriculeAnnee4")}/>
+                Année sur 4 chiffres ({anneeFull} au lieu de {anneeShort})
+              </label>}
+            </div>
+            <div style={{background:"#f0f9ff",border:"1px solid #7dd3fc",borderRadius:10,padding:"12px 16px",marginBottom:16}}>
+              <p style={{margin:"0 0 6px",fontSize:12,fontWeight:700,color:C.blueDark}}>Aperçu</p>
+              <p style={{margin:"0 0 4px",fontSize:12,color:"#0369a1"}}>Primaire : <strong>{previewFor("primaire")}</strong></p>
+              <p style={{margin:0,fontSize:12,color:"#0369a1"}}>Collège : <strong>{previewFor("college")}</strong></p>
+            </div>
+            <p style={{margin:"0 0 14px",fontSize:11,color:"#9ca3af"}}>
+              ⚠️ Ce modèle s'applique uniquement aux <strong>nouveaux élèves</strong>. Les matricules existants ne sont pas modifiés.
+            </p>
+            <Btn onClick={sauvegarderMat} disabled={savingMat} v="success">
+              {savingMat?"Enregistrement…":"💾 Enregistrer le modèle"}
+            </Btn>
+          </div>
+        );
+      })()}
+
+      {/* Bouton sauvegarder (identité / officiel / accueil) */}
+      {["identite","accueil","officiel"].includes(tabParam)&&<button onClick={sauvegarder} disabled={chargement}
         style={{width:"100%",background:`linear-gradient(90deg,${C.blue},${C.green})`,color:"#fff",
           border:"none",padding:"13px",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer",
           opacity:chargement?0.7:1}}>
         {chargement?"Enregistrement…":"💾 Enregistrer les paramètres"}
-      </button>
+      </button>}
 
       <p style={{textAlign:"center",fontSize:11,color:"#9ca3af",marginTop:12}}>
         Code école : <strong style={{color:C.blue}}>{schoolId}</strong> · Les modifications sont visibles immédiatement dans la sidebar et au prochain chargement.
