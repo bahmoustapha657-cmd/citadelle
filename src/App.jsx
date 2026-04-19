@@ -3942,17 +3942,21 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                   }
                   return -1;
                 };
+                // Colonne "Élève" = nom complet (prénom + nom ou nom + prénom) à splitter
+                const colEleveComplet=findCol(["eleve","nom complet","nom et prenom","prenom et nom","full name","nomcomplet"]);
                 const cols={
-                  nom:       findCol(["nom","name","last name","nom famille","nom eleve","surname","noms"]),
-                  prenom:    findCol(["prenom","first name","prenoms","prenom eleve","given name","forename"]),
+                  nom:       findCol(["nom eleve","nom de l eleve","last name","nom famille","surname","noms","nom"]),
+                  prenom:    findCol(["prenom eleve","prenom de l eleve","first name","prenoms","given name","forename","prenom"]),
+                  eleveComplet: colEleveComplet, // colonne nom complet
                   classe:    findCol(["classe","class","niveau","section","group"]),
                   sexe:      findCol(["sexe","genre","sex","gender","m f","masculin","feminin"]),
                   date:      findCol(["date naissance","date de naissance","naissance","ne le","dob","birth","date naiss"]),
                   ien:       findCol(["ien","identifiant national","id national","matricule national","numero national","identifiant"]),
                   tuteur:    findCol(["tuteur","parent","responsable","nom tuteur","gardien","nom parent","tuteur legal"]),
                   contact:   findCol(["contact","telephone","tel","phone","contact tuteur","numero","mobile","gsm"]),
-                  filiation: findCol(["filiation","parents","pere et mere","famille","pere mere","filiation parentale"]),
-                  domicile:  findCol(["domicile","adresse","quartier","residence","localite","lieu"]),
+                  filiation: findCol(["pere et mere","pere mere","filiation","parents","famille","filiation parentale","pere","mere"]),
+                  lieuNaiss: findCol(["lieu naissance","lieu de naissance","lieu naiss","ville naissance","ne a","ne","birthplace","born in"]),
+                  domicile:  findCol(["domicile","adresse","quartier","residence","localite","lieu domicile","lieu de residence"]),
                   typeInsc:  findCol(["type inscription","type","type inscript","reinscription","premiere inscription"]),
                   matricule: findCol(["matricule","mat","numero eleve","id eleve"]),
                 };
@@ -3977,8 +3981,17 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
 
                 const rows=allRows.slice(1).filter(r=>r.some(c=>String(c||"").trim()));
                 const lignes=rows.map((r,i)=>{
-                  const nom=get(r,cols.nom);
-                  const prenom=get(r,cols.prenom);
+                  // Colonne "Élève" (nom complet) : 1er mot = prénom, reste = nom
+                  let nom=get(r,cols.nom);
+                  let prenom=get(r,cols.prenom);
+                  if((!nom||!prenom) && cols.eleveComplet>=0){
+                    const complet=get(r,cols.eleveComplet);
+                    if(complet){
+                      const parts=complet.trim().split(/\s+/);
+                      if(!prenom) prenom=parts[0]||"";
+                      if(!nom)    nom=parts.slice(1).join(" ")||"";
+                    }
+                  }
                   const classe=get(r,cols.classe);
                   const sexeRaw=get(r,cols.sexe).toUpperCase();
                   const sexe=sexeRaw==="F"||sexeRaw.startsWith("F")?"F":"M";
@@ -3987,6 +4000,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                   const tuteur=get(r,cols.tuteur);
                   const contactTuteur=get(r,cols.contact);
                   const filiation=get(r,cols.filiation);
+                  const lieuNaissance=get(r,cols.lieuNaiss);
                   const domicile=get(r,cols.domicile);
                   const ti=get(r,cols.typeInsc);
                   const typeInscription=ti||"Première inscription";
@@ -3996,11 +4010,11 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                   if(!prenom) erreurs.push("Prénom manquant");
                   if(!classe) erreurs.push("Classe manquante");
                   else if(!classesList.includes(classe.toLowerCase())) erreurs.push(`Classe inconnue (${classe})`);
-                  return {nom,prenom,classe,sexe,dateNaissance,ien,tuteur,contactTuteur,filiation,domicile,typeInscription,matricule,erreurs,ligne:i+2};
+                  return {nom,prenom,classe,sexe,dateNaissance,lieuNaissance,ien,tuteur,contactTuteur,filiation,domicile,typeInscription,matricule,erreurs,ligne:i+2};
                 });
 
                 // Résumé du mapping détecté
-                const champLabels={nom:"Nom",prenom:"Prénom",classe:"Classe",sexe:"Sexe",date:"Date naissance",ien:"IEN",tuteur:"Tuteur",contact:"Contact",filiation:"Filiation",domicile:"Domicile",typeInsc:"Type inscription",matricule:"Matricule"};
+                const champLabels={nom:"Nom",prenom:"Prénom",eleveComplet:"Élève (complet)",classe:"Classe",sexe:"Sexe",date:"Date naissance",lieuNaiss:"Lieu de naissance",ien:"IEN",tuteur:"Tuteur",contact:"Contact",filiation:"Père et Mère",domicile:"Domicile",typeInsc:"Type inscription",matricule:"Matricule"};
                 const mapping=Object.entries(cols).map(([k,idx])=>({champ:champLabels[k],colonne:idx>=0?headers[idx]:null,idx}));
 
                 setImportEnrolPreview({lignes,valides:lignes.filter(l=>!l.erreurs.length),mapping});
@@ -4010,8 +4024,9 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
             <Btn v="ghost" onClick={()=>{
               const wb=XLSX.utils.book_new();
               const ws=XLSX.utils.aoa_to_sheet([
-                ["Nom","Prénom","Classe","Sexe","Date naissance","IEN","Tuteur","Contact","Filiation","Domicile","Type inscription"],
-                ["Bah","Aminata","6ème A","F","2012-03-15","GN-2024-000001","Mamadou Bah","622000001","Père: Mamadou / Mère: Fatoumata","Conakry, Dixinn","Première inscription"],
+                ["Nom","Prénom","Classe","Sexe","Date naissance","Lieu de naissance","IEN","Tuteur","Contact","Père et Mère","Domicile","Type inscription"],
+                ["Bah","Aminata","6ème A","F","2012-03-15","Conakry","GN-2024-000001","Mamadou Bah","622000001","Père: Mamadou Bah / Mère: Fatoumata Diallo","Conakry, Dixinn","Première inscription"],
+                ["Diallo","Ibrahima","5ème B","M","2013-07-22","Kindia","","Mariama Diallo","628000002","Père: Boubacar Diallo / Mère: Mariama Bah","Kindia","Réinscription"],
               ]);
               XLSX.utils.book_append_sheet(wb,ws,"Eleves");
               XLSX.writeFile(wb,"modele_import_eleves.xlsx");
@@ -4087,7 +4102,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                 const ajFn=enrolSection==="primaire"?ajEP:ajEC;
                 await ajFn({
                   nom:l.nom,prenom:l.prenom,classe:l.classe,sexe:l.sexe,
-                  dateNaissance:l.dateNaissance,ien:l.ien,
+                  dateNaissance:l.dateNaissance,lieuNaissance:l.lieuNaissance,ien:l.ien,
                   tuteur:l.tuteur,contactTuteur:l.contactTuteur,
                   filiation:l.filiation,domicile:l.domicile,
                   typeInscription:l.typeInscription,
