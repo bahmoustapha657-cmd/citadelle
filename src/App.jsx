@@ -3937,7 +3937,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
           </>}
       </div>}
 
-      {tab==="transferts"&&<TransfertsPanel userRole={userRole} annee={annee}/>}
+      {tab==="transferts"&&<TransfertsPanel userRole={userRole} annee={annee} setTab={setTab}/>}
     </div>
   );
 }
@@ -6531,7 +6531,7 @@ function LivretsTab({cleEleves, cleNotes, matieres, maxNote, userRole, annee}) {
 // ══════════════════════════════════════════════════════════════
 //  COMPOSANT TRANSFERTS (Phase 1 + Phase 2)
 // ══════════════════════════════════════════════════════════════
-function TransfertsPanel({userRole, annee}) {
+function TransfertsPanel({userRole, annee, setTab}) {
   const {schoolId, schoolInfo, moisAnnee, toast} = useContext(SchoolContext);
   const {items:elevesC} = useFirestore("elevesCollege");
   const {items:elevesP} = useFirestore("elevesPrimaire");
@@ -6742,7 +6742,7 @@ function TransfertsPanel({userRole, annee}) {
             <p style={{margin:"0 0 12px",fontSize:12,color:"#6b7280"}}>
               Créez directement la fiche élève depuis l'onglet <strong>Enrôlement</strong>, en complétant le champ "Établissement d'origine" et en sélectionnant "Réinscription" comme type d'inscription.
             </p>
-            <Btn sm v="ghost">→ Aller à l'Enrôlement</Btn>
+            <Btn sm v="ghost" onClick={()=>setTab&&setTab("enrolment")}>→ Aller à l'Enrôlement</Btn>
           </div>
         </Card>
       </>}
