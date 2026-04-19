@@ -2551,7 +2551,8 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
 
   const classesPrimaire=CLASSES_PRIMAIRE;
   const classesCollege=CLASSES_COLLEGE;
-  const elevesEnrol=niveauEnrol==="college"?elevesC:elevesP;
+  const sortAlpha = arr => [...arr].sort((a,b)=>`${a.nom} ${a.prenom}`.localeCompare(`${b.nom} ${b.prenom}`,"fr",{sensitivity:"base"}));
+  const elevesEnrol=sortAlpha(niveauEnrol==="college"?elevesC:elevesP);
   const ajEnrol=niveauEnrol==="college"?ajEC:ajEP;
   const supEnrol=niveauEnrol==="college"?supEC:supEP;
   const modEnrol=niveauEnrol==="college"?modEC_full:modEP_full;
@@ -2588,7 +2589,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
     if(existing) await modTarif(existing._id, data);
     else await ajTarif({classe, ...data});
   };
-  const elevesFiltres=filtClasse==="all"?eleves:eleves.filter(e=>e.classe===filtClasse);
+  const elevesFiltres=[...(filtClasse==="all"?eleves:eleves.filter(e=>e.classe===filtClasse))].sort((a,b)=>`${a.nom} ${a.prenom}`.localeCompare(`${b.nom} ${b.prenom}`,"fr",{sensitivity:"base"}));
   const nbPayes=e=>moisAnnee.filter(m=>(e.mens||{})[m]==="Payé").length;
 
   const toggleMens=async(_id,mois,mensActuels,mensDatesActuels,nomEleve)=>{
@@ -4228,7 +4229,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
   const canEdit = !readOnly && (peutModifier(userRole) || verrouOuvert);
   const moy=notes.length?(notes.reduce((s,n)=>s+Number(n.note),0)/notes.length).toFixed(1):"—";
   const classesUniq=[...new Set(eleves.map(e=>e.classe))].filter(Boolean);
-  const elevesFiltres=filtreClasse==="all"?eleves:eleves.filter(e=>e.classe===filtreClasse);
+  const elevesFiltres=[...(filtreClasse==="all"?eleves:eleves.filter(e=>e.classe===filtreClasse))].sort((a,b)=>`${a.nom} ${a.prenom}`.localeCompare(`${b.nom} ${b.prenom}`,"fr",{sensitivity:"base"}));
 
   const tabItems=[
     {id:"apercu",label:"Aperçu"},
