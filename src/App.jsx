@@ -3912,11 +3912,11 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
           })()}
         </Modale>}
 
-        {/* ── IMPORT EXCEL ── */}
+        {/* ── IMPORT EXCEL (adaptatif) ── */}
         {modal==="import_enrol"&&canCreate&&<Modale titre="📋 Importer des élèves depuis Excel" fermer={()=>{setModal(null);setImportEnrolPreview(null);}} large>
-          <div style={{marginBottom:12,padding:"10px 14px",background:"#f0fdf4",borderRadius:10,fontSize:12,color:"#166534"}}>
-            <strong>Colonnes attendues :</strong> <em>Nom · Prénom · Classe · Sexe (M/F) · Date naissance (AAAA-MM-JJ) · IEN · Tuteur · Contact · Filiation · Domicile · Type inscription</em><br/>
-            La ligne 1 est l'en-tête (ignorée). Seuls <strong>Nom</strong>, <strong>Prénom</strong> et <strong>Classe</strong> sont obligatoires.
+          <div style={{marginBottom:12,padding:"10px 14px",background:"#f0f9ff",border:"1px solid #bae6fd",borderRadius:10,fontSize:12,color:"#0369a1"}}>
+            <strong>📌 Détection automatique des colonnes</strong> — Peu importe l'ordre ou le nom exact des colonnes dans votre fichier, le système les reconnaît automatiquement.<br/>
+            Seuls <strong>Nom</strong>, <strong>Prénom</strong> et <strong>Classe</strong> sont obligatoires. Tous les autres champs sont optionnels.
           </div>
           <div style={{display:"flex",gap:10,marginBottom:12,alignItems:"center",flexWrap:"wrap"}}>
             <label style={{display:"inline-flex",alignItems:"center",gap:6,padding:"7px 14px",borderRadius:8,border:`1.5px dashed ${C.blue}`,background:"#f0f6ff",color:C.blue,fontSize:12,fontWeight:700,cursor:"pointer"}}>
@@ -3924,30 +3924,86 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
               <input type="file" accept=".xlsx,.xls,.csv" style={{display:"none"}} onChange={async e=>{
                 const file=e.target.files[0]; if(!file) return;
                 const ab=await file.arrayBuffer();
-                const wb=XLSX.read(ab);
+                const wb=XLSX.read(ab,{cellDates:true});
                 const ws=wb.Sheets[wb.SheetNames[0]];
-                const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:""}).slice(1);
+                const allRows=XLSX.utils.sheet_to_json(ws,{header:1,defval:"",raw:false});
+                if(allRows.length<2){toast("Fichier vide ou sans données","warning");return;}
+
+                // ── Détection des colonnes par leur en-tête ──────────────
+                const headers=allRows[0].map(h=>String(h||""));
+                const norm=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g," ").trim();
+                const findCol=(variants)=>{
+                  for(const v of variants){
+                    const idx=headers.findIndex(h=>{
+                      const hn=norm(h);
+                      return hn===v||hn.includes(v)||v.includes(hn);
+                    });
+                    if(idx>=0) return idx;
+                  }
+                  return -1;
+                };
+                const cols={
+                  nom:       findCol(["nom","name","last name","nom famille","nom eleve","surname","noms"]),
+                  prenom:    findCol(["prenom","first name","prenoms","prenom eleve","given name","forename"]),
+                  classe:    findCol(["classe","class","niveau","section","group"]),
+                  sexe:      findCol(["sexe","genre","sex","gender","m f","masculin","feminin"]),
+                  date:      findCol(["date naissance","date de naissance","naissance","ne le","dob","birth","date naiss"]),
+                  ien:       findCol(["ien","identifiant national","id national","matricule national","numero national","identifiant"]),
+                  tuteur:    findCol(["tuteur","parent","responsable","nom tuteur","gardien","nom parent","tuteur legal"]),
+                  contact:   findCol(["contact","telephone","tel","phone","contact tuteur","numero","mobile","gsm"]),
+                  filiation: findCol(["filiation","parents","pere et mere","famille","pere mere","filiation parentale"]),
+                  domicile:  findCol(["domicile","adresse","quartier","residence","localite","lieu"]),
+                  typeInsc:  findCol(["type inscription","type","type inscript","reinscription","premiere inscription"]),
+                  matricule: findCol(["matricule","mat","numero eleve","id eleve"]),
+                };
+
+                // ── Normaliser une date quelle que soit son format ────────
+                const parseDate=val=>{
+                  if(!val) return "";
+                  const s=String(val).trim();
+                  // AAAA-MM-JJ (déjà bon)
+                  if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+                  // JJ/MM/AAAA ou JJ-MM-AAAA
+                  const m1=s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+                  if(m1) return `${m1[3]}-${m1[2].padStart(2,"0")}-${m1[1].padStart(2,"0")}`;
+                  // MM/JJ/AAAA (anglais)
+                  const m2=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+                  if(m2) return `${m2[3]}-${m2[1].padStart(2,"0")}-${m2[2].padStart(2,"0")}`;
+                  return s;
+                };
+
+                const get=(row,idx)=>idx>=0?String(row[idx]||"").trim():"";
                 const classesList=[...CLASSES_COLLEGE,...CLASSES_PRIMAIRE].map(c=>c.toLowerCase());
-                const lignes=rows.filter(r=>r[0]||r[1]).map((r,i)=>{
-                  const nom=String(r[0]||"").trim();
-                  const prenom=String(r[1]||"").trim();
-                  const classe=String(r[2]||"").trim();
-                  const sexe=["M","F"].includes(String(r[3]||"M").trim().toUpperCase())?String(r[3]).trim().toUpperCase():"M";
-                  const dateNaissance=String(r[4]||"").trim();
-                  const ien=String(r[5]||"").trim();
-                  const tuteur=String(r[6]||"").trim();
-                  const contactTuteur=String(r[7]||"").trim();
-                  const filiation=String(r[8]||"").trim();
-                  const domicile=String(r[9]||"").trim();
-                  const typeInscription=String(r[10]||"Première inscription").trim()||"Première inscription";
+
+                const rows=allRows.slice(1).filter(r=>r.some(c=>String(c||"").trim()));
+                const lignes=rows.map((r,i)=>{
+                  const nom=get(r,cols.nom);
+                  const prenom=get(r,cols.prenom);
+                  const classe=get(r,cols.classe);
+                  const sexeRaw=get(r,cols.sexe).toUpperCase();
+                  const sexe=sexeRaw==="F"||sexeRaw.startsWith("F")?"F":"M";
+                  const dateNaissance=parseDate(get(r,cols.date));
+                  const ien=get(r,cols.ien);
+                  const tuteur=get(r,cols.tuteur);
+                  const contactTuteur=get(r,cols.contact);
+                  const filiation=get(r,cols.filiation);
+                  const domicile=get(r,cols.domicile);
+                  const ti=get(r,cols.typeInsc);
+                  const typeInscription=ti||"Première inscription";
+                  const matricule=get(r,cols.matricule);
                   const erreurs=[];
                   if(!nom) erreurs.push("Nom manquant");
                   if(!prenom) erreurs.push("Prénom manquant");
                   if(!classe) erreurs.push("Classe manquante");
-                  else if(!classesList.includes(classe.toLowerCase())) erreurs.push("Classe inconnue");
-                  return {nom,prenom,classe,sexe,dateNaissance,ien,tuteur,contactTuteur,filiation,domicile,typeInscription,erreurs,ligne:i+2};
+                  else if(!classesList.includes(classe.toLowerCase())) erreurs.push(`Classe inconnue (${classe})`);
+                  return {nom,prenom,classe,sexe,dateNaissance,ien,tuteur,contactTuteur,filiation,domicile,typeInscription,matricule,erreurs,ligne:i+2};
                 });
-                setImportEnrolPreview({lignes,valides:lignes.filter(l=>!l.erreurs.length)});
+
+                // Résumé du mapping détecté
+                const champLabels={nom:"Nom",prenom:"Prénom",classe:"Classe",sexe:"Sexe",date:"Date naissance",ien:"IEN",tuteur:"Tuteur",contact:"Contact",filiation:"Filiation",domicile:"Domicile",typeInsc:"Type inscription",matricule:"Matricule"};
+                const mapping=Object.entries(cols).map(([k,idx])=>({champ:champLabels[k],colonne:idx>=0?headers[idx]:null,idx}));
+
+                setImportEnrolPreview({lignes,valides:lignes.filter(l=>!l.erreurs.length),mapping});
                 e.target.value="";
               }}/>
             </label>
@@ -3963,14 +4019,33 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
           </div>
 
           {importEnrolPreview&&<>
+            {/* Mapping détecté */}
+            <div style={{marginBottom:12,border:"1px solid #e2e8f0",borderRadius:10,overflow:"hidden"}}>
+              <div style={{background:"#f8fafc",padding:"8px 14px",fontSize:11,fontWeight:800,color:"#475569",borderBottom:"1px solid #e2e8f0"}}>
+                🗺️ Colonnes détectées dans votre fichier
+              </div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:6,padding:"10px 14px"}}>
+                {importEnrolPreview.mapping.map(({champ,colonne})=>(
+                  <span key={champ} style={{
+                    padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:700,
+                    background:colonne?"#dcfce7":"#fef9c3",
+                    color:colonne?"#15803d":"#92400e",
+                    border:`1px solid ${colonne?"#86efac":"#fde68a"}`
+                  }}>
+                    {champ} {colonne?`→ "${colonne}"` :"— non trouvé"}
+                  </span>
+                ))}
+              </div>
+            </div>
+
             <div style={{display:"flex",gap:14,marginBottom:10,fontSize:12}}>
               <span style={{color:"#059669",fontWeight:700}}>✅ {importEnrolPreview.valides.length} valides</span>
-              <span style={{color:"#dc2626",fontWeight:700}}>❌ {importEnrolPreview.lignes.length-importEnrolPreview.valides.length} erreurs</span>
+              <span style={{color:"#dc2626",fontWeight:700}}>❌ {importEnrolPreview.lignes.length-importEnrolPreview.valides.length} avec erreurs</span>
             </div>
-            <div style={{maxHeight:280,overflowY:"auto",border:"1px solid #e2e8f0",borderRadius:8,marginBottom:12}}>
+            <div style={{maxHeight:260,overflowY:"auto",border:"1px solid #e2e8f0",borderRadius:8,marginBottom:12}}>
               <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
                 <thead><tr style={{background:"#f8fafc",position:"sticky",top:0}}>
-                  {["L.","Nom","Prénom","Classe","Sexe","Date naiss.","Statut"].map(h=>(
+                  {["L.","Nom","Prénom","Classe","Sexe","Date naiss.","Tuteur","Statut"].map(h=>(
                     <th key={h} style={{padding:"6px 8px",textAlign:"left",fontSize:10,color:"#64748b"}}>{h}</th>
                   ))}
                 </tr></thead>
@@ -3982,6 +4057,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                     <td style={{padding:"4px 8px"}}>{l.classe||"—"}</td>
                     <td style={{padding:"4px 8px"}}>{l.sexe}</td>
                     <td style={{padding:"4px 8px"}}>{l.dateNaissance||"—"}</td>
+                    <td style={{padding:"4px 8px"}}>{l.tuteur||"—"}</td>
                     <td style={{padding:"4px 8px"}}>
                       {l.erreurs.length
                         ?<span style={{color:"#dc2626",fontSize:10}}>⚠️ {l.erreurs.join(", ")}</span>
@@ -4006,7 +4082,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                   e.dateNaissance&&e.dateNaissance===l.dateNaissance
                 );
                 if(doublon) continue;
-                const mat=genererMatricule([...elevesEnrol,...Array(count).fill({})],niveauEnrol,schoolInfo);
+                const mat=l.matricule||genererMatricule([...elevesEnrol,...Array(count).fill({})],niveauEnrol,schoolInfo);
                 const enrolSection=CLASSES_PRIMAIRE.includes(l.classe)?"primaire":"college";
                 const ajFn=enrolSection==="primaire"?ajEP:ajEC;
                 await ajFn({
