@@ -2551,7 +2551,19 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
 
   const classesPrimaire=CLASSES_PRIMAIRE;
   const classesCollege=CLASSES_COLLEGE;
-  const sortAlpha = arr => [...arr].sort((a,b)=>`${a.prenom} ${a.nom}`.localeCompare(`${b.prenom} ${b.nom}`,"fr",{sensitivity:"base"}));
+  const sortAlpha = arr => {
+    const tri = schoolInfo.triEleves || "prenom_nom";
+    return [...arr].sort((a,b)=>{
+      const ka = tri==="nom_prenom"||tri==="classe_nom" ? `${a.classe||""} ${a.nom} ${a.prenom}` : `${a.classe||""} ${a.prenom} ${a.nom}`;
+      const kb = tri==="nom_prenom"||tri==="classe_nom" ? `${b.classe||""} ${b.nom} ${b.prenom}` : `${b.classe||""} ${b.prenom} ${b.nom}`;
+      const withClasse = tri==="classe_prenom"||tri==="classe_nom";
+      if(withClasse) return ka.localeCompare(kb,"fr",{sensitivity:"base"});
+      // sans classe : comparer sans le préfixe classe
+      const sa = tri==="nom_prenom" ? `${a.nom} ${a.prenom}` : `${a.prenom} ${a.nom}`;
+      const sb = tri==="nom_prenom" ? `${b.nom} ${b.prenom}` : `${b.prenom} ${b.nom}`;
+      return sa.localeCompare(sb,"fr",{sensitivity:"base"});
+    });
+  };
   const elevesEnrol=sortAlpha(niveauEnrol==="college"?elevesC:elevesP);
   const ajEnrol=niveauEnrol==="college"?ajEC:ajEP;
   const supEnrol=niveauEnrol==="college"?supEC:supEP;
@@ -2589,7 +2601,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
     if(existing) await modTarif(existing._id, data);
     else await ajTarif({classe, ...data});
   };
-  const elevesFiltres=[...(filtClasse==="all"?eleves:eleves.filter(e=>e.classe===filtClasse))].sort((a,b)=>`${a.prenom} ${a.nom}`.localeCompare(`${b.prenom} ${b.nom}`,"fr",{sensitivity:"base"}));
+  const elevesFiltres=sortAlpha(filtClasse==="all"?eleves:eleves.filter(e=>e.classe===filtClasse));
   const nbPayes=e=>moisAnnee.filter(m=>(e.mens||{})[m]==="Payé").length;
 
   const toggleMens=async(_id,mois,mensActuels,mensDatesActuels,nomEleve)=>{
@@ -4229,7 +4241,20 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
   const canEdit = !readOnly && (peutModifier(userRole) || verrouOuvert);
   const moy=notes.length?(notes.reduce((s,n)=>s+Number(n.note),0)/notes.length).toFixed(1):"—";
   const classesUniq=[...new Set(eleves.map(e=>e.classe))].filter(Boolean);
-  const elevesFiltres=[...(filtreClasse==="all"?eleves:eleves.filter(e=>e.classe===filtreClasse))].sort((a,b)=>`${a.prenom} ${a.nom}`.localeCompare(`${b.prenom} ${b.nom}`,"fr",{sensitivity:"base"}));
+  const sortAlphaEcole = arr => {
+    const tri = schoolInfo.triEleves || "prenom_nom";
+    return [...arr].sort((a,b)=>{
+      const withClasse = tri==="classe_prenom"||tri==="classe_nom";
+      const sa = withClasse
+        ? (tri==="classe_nom" ? `${a.classe||""} ${a.nom} ${a.prenom}` : `${a.classe||""} ${a.prenom} ${a.nom}`)
+        : (tri==="nom_prenom" ? `${a.nom} ${a.prenom}` : `${a.prenom} ${a.nom}`);
+      const sb = withClasse
+        ? (tri==="classe_nom" ? `${b.classe||""} ${b.nom} ${b.prenom}` : `${b.classe||""} ${b.prenom} ${b.nom}`)
+        : (tri==="nom_prenom" ? `${b.nom} ${b.prenom}` : `${b.prenom} ${b.nom}`);
+      return sa.localeCompare(sb,"fr",{sensitivity:"base"});
+    });
+  };
+  const elevesFiltres=sortAlphaEcole(filtreClasse==="all"?eleves:eleves.filter(e=>e.classe===filtreClasse));
 
   const tabItems=[
     {id:"apercu",label:"Aperçu"},
@@ -7043,6 +7068,58 @@ function MatriculeSettings({sec, lbl, inp, setMsgSucces, setErreur}) {
 // ══════════════════════════════════════════════════════════════
 //  PARAMÈTRES DE L'ÉCOLE
 // ══════════════════════════════════════════════════════════════
+function AffichageSettings({sec, lbl, inp, setMsgSucces, setErreur}) {
+  const {schoolId, schoolInfo, setSchoolInfo} = useContext(SchoolContext);
+  const [triEleves, setTriEleves] = useState(schoolInfo.triEleves || "prenom_nom");
+  const [saving, setSaving] = useState(false);
+
+  const sauvegarder = async () => {
+    setSaving(true);
+    try {
+      await updateDoc(doc(db,"ecoles",schoolId), { triEleves });
+      setSchoolInfo(p=>({...p, triEleves}));
+      setMsgSucces("Paramètres d'affichage enregistrés !");
+      setTimeout(()=>setMsgSucces(""),3000);
+    } catch(e) {
+      setErreur("Erreur : "+e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const options = [
+    {v:"prenom_nom",    label:"Prénom puis Nom",           ex:"Aminata Bah, Ibrahima Diallo"},
+    {v:"nom_prenom",    label:"Nom puis Prénom",            ex:"Bah Aminata, Diallo Ibrahima"},
+    {v:"classe_prenom", label:"Classe puis Prénom puis Nom",ex:"6ème A → Aminata Bah, Ibrahima Diallo…"},
+    {v:"classe_nom",    label:"Classe puis Nom puis Prénom",ex:"6ème A → Bah Aminata, Diallo Ibrahima…"},
+  ];
+
+  return (
+    <div style={sec}>
+      <h3 style={{margin:"0 0 4px",fontSize:14,fontWeight:800,color:C.blueDark}}>📋 Ordre d'affichage des élèves</h3>
+      <p style={{margin:"0 0 16px",fontSize:12,color:"#6b7280"}}>Définit l'ordre dans lequel les élèves apparaissent dans toutes les listes (enrôlement, mensualités, bulletins…)</p>
+      <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:20}}>
+        {options.map(o=>(
+          <label key={o.v} onClick={()=>setTriEleves(o.v)}
+            style={{display:"flex",alignItems:"flex-start",gap:12,padding:"12px 14px",borderRadius:10,border:`2px solid ${triEleves===o.v?C.blue:"#e5e7eb"}`,background:triEleves===o.v?"#f0f6ff":"#fff",cursor:"pointer",transition:"all .15s"}}>
+            <div style={{width:18,height:18,borderRadius:"50%",border:`2px solid ${triEleves===o.v?C.blue:"#d1d5db"}`,background:triEleves===o.v?C.blue:"#fff",flexShrink:0,marginTop:1,display:"flex",alignItems:"center",justifyContent:"center"}}>
+              {triEleves===o.v&&<div style={{width:7,height:7,borderRadius:"50%",background:"#fff"}}/>}
+            </div>
+            <div>
+              <div style={{fontSize:13,fontWeight:700,color:C.blueDark}}>{o.label}</div>
+              <div style={{fontSize:11,color:"#6b7280",marginTop:2}}>Ex : {o.ex}</div>
+            </div>
+          </label>
+        ))}
+      </div>
+      <button onClick={sauvegarder} disabled={saving}
+        style={{background:`linear-gradient(90deg,${C.blue},${C.green})`,color:"#fff",border:"none",padding:"11px 24px",borderRadius:9,fontSize:13,fontWeight:800,cursor:"pointer",opacity:saving?0.7:1}}>
+        {saving?"Enregistrement…":"💾 Enregistrer"}
+      </button>
+    </div>
+  );
+}
+
 function ParametresEcole() {
   const {schoolId,schoolInfo,setSchoolInfo,toast} = useContext(SchoolContext);
   const {items:honneurs, ajouter:ajHonneur, modifier:modHonneur, supprimer:supHonneur} = useFirestore("honneurs");
@@ -7252,6 +7329,7 @@ function ParametresEcole() {
           {id:"accueil",     label:"🌐 Page d'accueil"},
           {id:"officiel",    label:"🏛️ Officiel & Année"},
           {id:"matricules",  label:"🔢 Matricules"},
+          {id:"affichage",   label:"🎨 Affichage"},
         ].map(t=>(
           <button key={t.id} onClick={()=>setTabParam(t.id)} style={{
             padding:"8px 18px",border:"none",borderRadius:9,cursor:"pointer",
@@ -7610,6 +7688,9 @@ function ParametresEcole() {
 
       {/* ══ TAB MATRICULES ══ */}
       {tabParam==="matricules"&&<MatriculeSettings sec={sec} lbl={lbl} inp={inp} setMsgSucces={setMsgSucces} setErreur={setErreur}/>}
+
+      {/* ══ TAB AFFICHAGE ══ */}
+      {tabParam==="affichage"&&<AffichageSettings sec={sec} lbl={lbl} inp={inp} setMsgSucces={setMsgSucces} setErreur={setErreur}/>}
 
       {/* Bouton sauvegarder (identité / officiel / accueil) */}
       {["identite","accueil","officiel"].includes(tabParam)&&<button onClick={sauvegarder} disabled={chargement}
