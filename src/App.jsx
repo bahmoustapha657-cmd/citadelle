@@ -2551,6 +2551,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   const [uploadEnCours,setUploadEnCours]=useState(false);
   const [importEnrolPreview,setImportEnrolPreview]=useState(null);
   const [importEnrolEnCours,setImportEnrolEnCours]=useState(false);
+  const [classeDefautImport,setClasseDefautImport]=useState("");
   const [fraisInscription,setFraisInscription]=useState(()=>Number(localStorage.getItem("LC_fraisInscription")||50000));
   const chg=k=>e=>setForm(p=>({...p,[k]:e.target.value}));
   const handlePhotoFichier=e=>{
@@ -3955,23 +3956,27 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                   }
                   return -1;
                 };
-                // Colonne "Élève" = nom complet (prénom + nom ou nom + prénom) à splitter
-                const colEleveComplet=findCol(["eleve","nom complet","nom et prenom","prenom et nom","full name","nomcomplet"]);
                 const cols={
+                  // ── Colonnes de base ──
+                  num:       findCol(["n","no","num","numero","n°","#"]),           // N° (ignoré)
+                  matricule: findCol(["matricule","mat","numero eleve","id eleve"]),
+                  eleveComplet: findCol(["eleve","nom complet","nom et prenom","prenom et nom","full name","nomcomplet","nom prenom"]),
                   nom:       findCol(["nom eleve","nom de l eleve","last name","nom famille","surname","noms","nom"]),
                   prenom:    findCol(["prenom eleve","prenom de l eleve","first name","prenoms","given name","forename","prenom"]),
-                  eleveComplet: colEleveComplet, // colonne nom complet
                   classe:    findCol(["classe","class","niveau","section","group"]),
                   sexe:      findCol(["sexe","genre","sex","gender","m f","masculin","feminin"]),
                   date:      findCol(["date naissance","date de naissance","naissance","ne le","dob","birth","date naiss"]),
-                  ien:       findCol(["ien","identifiant national","id national","matricule national","numero national","identifiant"]),
-                  tuteur:    findCol(["tuteur","parent","responsable","nom tuteur","gardien","nom parent","tuteur legal"]),
-                  contact:   findCol(["contact","telephone","tel","phone","contact tuteur","numero","mobile","gsm"]),
-                  filiation: findCol(["pere et mere","pere mere","filiation","parents","famille","filiation parentale","pere","mere"]),
-                  lieuNaiss: findCol(["lieu naissance","lieu de naissance","lieu naiss","ville naissance","ne a","ne","birthplace","born in"]),
-                  domicile:  findCol(["domicile","adresse","quartier","residence","localite","lieu domicile","lieu de residence"]),
+                  lieuNaiss: findCol(["lieu naissance","lieu de naissance","lieu naiss","ville naissance","ne a","birthplace","born in","lieu"]),
+                  // ── Père et Mère séparés (format privilégié) ──
+                  pere:      findCol(["pere","father","nom pere","papa"]),
+                  mere:      findCol(["mere","mother","nom mere","maman"]),
+                  // ── Colonnes alternatives/combinées ──
+                  filiation: findCol(["pere et mere","pere mere","filiation","parents","famille"]),
+                  tuteur:    findCol(["tuteur","responsable","gardien","tuteur legal"]),
+                  contact:   findCol(["telephone","tel","contact","phone","mobile","gsm","numero"]),
+                  domicile:  findCol(["domicile","adresse","quartier","residence","localite"]),
                   typeInsc:  findCol(["type inscription","type","type inscript","reinscription","premiere inscription"]),
-                  matricule: findCol(["matricule","mat","numero eleve","id eleve"]),
+                  ien:       findCol(["ien","identifiant national","id national","matricule national","identifiant"]),
                 };
 
                 // ── Normaliser une date quelle que soit son format ────────
@@ -3997,7 +4002,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
 
                 const rows=allRows.slice(1).filter(r=>r.some(c=>String(c||"").trim()));
                 const lignes=rows.map((r,i)=>{
-                  // Colonne "Élève" (nom complet) : 1er mot = prénom, reste = nom
+                  // ── Nom & Prénom : colonne Élève (nom complet) ou colonnes séparées ──
                   let nom=get(r,cols.nom);
                   let prenom=get(r,cols.prenom);
                   if((!nom||!prenom) && cols.eleveComplet>=0){
@@ -4008,31 +4013,40 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                       if(!nom)    nom=parts.slice(1).join(" ")||"";
                     }
                   }
-                  const classe=get(r,cols.classe);
+                  // ── Classe : colonne ou défaut sélectionné ──
+                  const classe=get(r,cols.classe)||classeDefautImport;
+                  // ── Sexe ──
                   const sexeRaw=get(r,cols.sexe).toUpperCase();
                   const sexe=sexeRaw==="F"||sexeRaw.startsWith("F")?"F":"M";
+                  // ── Dates ──
                   const dateNaissance=parseDate(get(r,cols.date));
-                  const ien=get(r,cols.ien);
-                  const tuteur=get(r,cols.tuteur);
-                  const contactTuteur=get(r,cols.contact);
-                  const filiation=get(r,cols.filiation);
                   const lieuNaissance=get(r,cols.lieuNaiss);
+                  // ── Père / Mère → filiation + tuteur ──
+                  const pereVal=get(r,cols.pere);
+                  const mereVal=get(r,cols.mere);
+                  const filiation=pereVal||mereVal
+                    ? [pereVal?"Père: "+pereVal:"", mereVal?"Mère: "+mereVal:""].filter(Boolean).join(" / ")
+                    : get(r,cols.filiation);
+                  const tuteur=get(r,cols.tuteur)||pereVal||mereVal;
+                  // ── Contact ──
+                  const contactTuteur=get(r,cols.contact);
                   const domicile=get(r,cols.domicile);
                   const ti=get(r,cols.typeInsc);
                   const typeInscription=ti||"Première inscription";
                   const matricule=get(r,cols.matricule);
+                  const ien=get(r,cols.ien);
                   const erreurs=[];
                   const avertissements=[];
                   if(!nom) erreurs.push("Nom manquant");
                   if(!prenom) erreurs.push("Prénom manquant");
-                  if(!classe) erreurs.push("Classe manquante");
+                  if(!classe) avertissements.push("Classe non définie — sélectionner une classe par défaut");
                   else if(!classesEcole.includes(classe.toLowerCase())&&!classesConnues.includes(classe.toLowerCase()))
-                    avertissements.push(`Classe "${classe}" non reconnue — sera créée`);
+                    avertissements.push(`Classe "${classe}" non reconnue`);
                   return {nom,prenom,classe,sexe,dateNaissance,lieuNaissance,ien,tuteur,contactTuteur,filiation,domicile,typeInscription,matricule,erreurs,avertissements,ligne:i+2};
                 });
 
                 // Résumé du mapping détecté
-                const champLabels={nom:"Nom",prenom:"Prénom",eleveComplet:"Élève (complet)",classe:"Classe",sexe:"Sexe",date:"Date naissance",lieuNaiss:"Lieu de naissance",ien:"IEN",tuteur:"Tuteur",contact:"Contact",filiation:"Père et Mère",domicile:"Domicile",typeInsc:"Type inscription",matricule:"Matricule"};
+                const champLabels={num:"N°(ignoré)",matricule:"Matricule",eleveComplet:"Élève",nom:"Nom",prenom:"Prénom",classe:"Classe",sexe:"Sexe",date:"Date naissance",lieuNaiss:"Lieu naissance",pere:"Père",mere:"Mère",filiation:"Père et Mère (combiné)",tuteur:"Tuteur",contact:"Téléphone",domicile:"Domicile",typeInsc:"Type inscription",ien:"IEN"};
                 const mapping=Object.entries(cols).map(([k,idx])=>({champ:champLabels[k],colonne:idx>=0?headers[idx]:null,idx}));
 
                 setImportEnrolPreview({lignes,valides:lignes.filter(l=>!l.erreurs.length),mapping,nbAvert:lignes.filter(l=>!l.erreurs.length&&l.avertissements?.length).length});
@@ -4042,13 +4056,24 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
             <Btn v="ghost" onClick={()=>{
               const wb=XLSX.utils.book_new();
               const ws=XLSX.utils.aoa_to_sheet([
-                ["Nom","Prénom","Classe","Sexe","Date naissance","Lieu de naissance","IEN","Tuteur","Contact","Père et Mère","Domicile","Type inscription"],
-                ["Bah","Aminata",(niveauEnrol==="primaire"?classesPrimaire:classesCollege)[0]||"Classe A","F","2012-03-15","Conakry","GN-2024-000001","Mamadou Bah","622000001","Père: Mamadou Bah / Mère: Fatoumata Diallo","Conakry, Dixinn","Première inscription"],
-                ["Diallo","Ibrahima",(niveauEnrol==="primaire"?classesPrimaire:classesCollege)[1]||(niveauEnrol==="primaire"?classesPrimaire:classesCollege)[0]||"Classe B","M","2013-07-22","Kindia","","Mariama Diallo","628000002","Père: Boubacar Diallo / Mère: Mariama Bah","Kindia","Réinscription"],
+                ["N°","Matricule","Élève","Sexe","Date de naissance","Lieu de naissance","Père","Mère","Téléphone"],
+                [1,"","Aminata Bah","F","2012-03-15","Conakry","Mamadou Bah","Fatoumata Diallo","622000001"],
+                [2,"","Ibrahima Diallo","M","2013-07-22","Kindia","Boubacar Diallo","Mariama Bah","628000002"],
               ]);
               XLSX.utils.book_append_sheet(wb,ws,"Eleves");
               telechargerExcel(wb,"modele_import_eleves.xlsx");
             }}>⬇️ Modèle Excel</Btn>
+          </div>
+
+          {/* Sélecteur classe par défaut (quand pas de colonne Classe dans le fichier) */}
+          <div style={{marginBottom:12,padding:"10px 14px",background:"#fefce8",border:"1px solid #fde047",borderRadius:10,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+            <span style={{fontSize:13,fontWeight:700,color:"#854d0e"}}>📚 Classe à affecter</span>
+            <span style={{fontSize:12,color:"#713f12",flex:1}}>Si votre fichier n'a pas de colonne Classe, sélectionnez-en une ici.</span>
+            <select value={classeDefautImport} onChange={e=>setClasseDefautImport(e.target.value)}
+              style={{border:"1.5px solid #fbbf24",borderRadius:7,padding:"6px 10px",fontSize:12,background:"#fff",fontWeight:700,color:"#0A1628"}}>
+              <option value="">— Classe du fichier —</option>
+              {(niveauEnrol==="primaire"?classesPrimaire:classesCollege).map(c=><option key={c} value={c}>{c}</option>)}
+            </select>
           </div>
 
           {importEnrolPreview&&<>
