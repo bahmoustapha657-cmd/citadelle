@@ -10801,6 +10801,7 @@ export default function App() {
         const D = SCHOOL_INFO_DEFAUT;
         setSchoolInfo({
           ...D,
+          ...d,           // tous les champs Firestore (blocageParentImpaye, triEleves, matricule*, etc.)
           nom:       d.nom       || D.nom,
           type:      d.type      || D.type,
           ville:     d.ville     || D.ville,
