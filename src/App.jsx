@@ -4076,8 +4076,10 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                   const domicile=get(r,cols.domicile);
                   const ti=get(r,cols.typeInsc);
                   const typeInscription=ti||"Première inscription";
-                  const matricule=get(r,cols.matricule);
-                  const ien=get(r,cols.ien);
+                  // La colonne "Matricule" du fichier = identifiant national (IEN) en contexte guinéen.
+                  // Le matricule interne de l'école est toujours auto-généré à l'import.
+                  const matriculeFichier=get(r,cols.matricule);
+                  const ien=get(r,cols.ien)||(cols.ien<0?matriculeFichier:"");
                   const erreurs=[];
                   const avertissements=[];
                   if(!nom) erreurs.push("Nom manquant");
@@ -4085,11 +4087,11 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                   if(!classe) avertissements.push("Classe non définie — sélectionner une classe par défaut");
                   else if(!classesEcole.includes(classe.toLowerCase())&&!classesConnues.includes(classe.toLowerCase()))
                     avertissements.push(`Classe "${classe}" non reconnue`);
-                  return {nom,prenom,classe,sexe,dateNaissance,lieuNaissance,ien,tuteur,contactTuteur,filiation,domicile,typeInscription,matricule,erreurs,avertissements,ligne:i+2};
+                  return {nom,prenom,classe,sexe,dateNaissance,lieuNaissance,ien,tuteur,contactTuteur,filiation,domicile,typeInscription,erreurs,avertissements,ligne:i+2};
                 });
 
                 // Résumé du mapping détecté
-                const champLabels={num:"N°(ignoré)",matricule:"Matricule",eleveComplet:"Élève",nom:"Nom",prenom:"Prénom",classe:"Classe",sexe:"Sexe",date:"Date naissance",lieuNaiss:"Lieu naissance",pere:"Père",mere:"Mère",filiation:"Père et Mère (combiné)",tuteur:"Tuteur",contact:"Téléphone",domicile:"Domicile",typeInsc:"Type inscription",ien:"IEN"};
+                const champLabels={num:"N°(ignoré)",matricule:"Matricule→IEN",eleveComplet:"Élève",nom:"Nom",prenom:"Prénom",classe:"Classe",sexe:"Sexe",date:"Date naissance",lieuNaiss:"Lieu naissance",pere:"Père",mere:"Mère",filiation:"Père et Mère (combiné)",tuteur:"Tuteur",contact:"Téléphone",domicile:"Domicile",typeInsc:"Type inscription",ien:"IEN"};
                 const mapping=Object.entries(cols).map(([k,idx])=>({champ:champLabels[k],colonne:idx>=0?headers[idx]:null,idx}));
 
                 setImportEnrolPreview({lignes,valides:lignes.filter(l=>!l.erreurs.length),mapping,nbAvert:lignes.filter(l=>!l.erreurs.length&&l.avertissements?.length).length});
@@ -4203,7 +4205,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                   e.dateNaissance&&e.dateNaissance===l.dateNaissance
                 );
                 if(doublon) continue;
-                const mat=l.matricule||genererMatricule([...elevesEnrol,...Array(count).fill({})],niveauEnrol,schoolInfo);
+                const mat=genererMatricule([...elevesEnrol,...Array(count).fill({})],niveauEnrol,schoolInfo);
                 const ajFn=niveauEnrol==="primaire"?ajEP:ajEC;
                 await ajFn({
                   nom:l.nom,prenom:l.prenom,classe:l.classe,sexe:l.sexe,
