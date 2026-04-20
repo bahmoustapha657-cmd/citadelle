@@ -2,6 +2,7 @@ import React, { useState, useContext } from "react";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
 import { C } from "../constants";
+import { GlobalStyles } from "../styles";
 import { Stat } from "./ui";
 
 function PortailPublic({onConnexion}) {

@@ -6,7 +6,7 @@ import { Stat } from "./ui";
 // ══════════════════════════════════════════════════════════════
 //  MODULE SECONDAIRE (Collège + Lycée)
 // ══════════════════════════════════════════════════════════════
-function Secondaire({userRole, annee, readOnly=false, verrouOuvert=false}) {
+function Secondaire({Ecole, userRole, annee, readOnly=false, verrouOuvert=false}) {
   const [sousModule, setSousModule] = useState("college");
   return (
     <div>

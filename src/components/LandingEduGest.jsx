@@ -1,5 +1,6 @@
 import React from "react";
 import { C } from "../constants";
+import { GlobalStyles } from "../styles";
 import Logo from "../Logo";
 
 function LandingEduGest({onConnexion, onInscription}) {
