@@ -3950,7 +3950,12 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                   for(const v of variants){
                     const idx=headers.findIndex(h=>{
                       const hn=norm(h);
-                      return hn===v||hn.includes(v)||v.includes(hn);
+                      if(!hn) return false;
+                      // Correspondance exacte ou le header contient la variante
+                      if(hn===v||hn.includes(v)) return true;
+                      // Le header est contenu dans la variante SEULEMENT si >= 3 chars (évite "n","m" etc.)
+                      if(hn.length>=3 && v.includes(hn)) return true;
+                      return false;
                     });
                     if(idx>=0) return idx;
                   }
