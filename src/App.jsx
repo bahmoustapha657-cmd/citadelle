@@ -4009,8 +4009,9 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                     const complet=get(r,cols.eleveComplet);
                     if(complet){
                       const parts=complet.trim().split(/\s+/);
-                      if(!prenom) prenom=parts[0]||"";
-                      if(!nom)    nom=parts.slice(1).join(" ")||"";
+                      // Dernier mot = Nom (famille), tout le reste = Prénom (peut être composé)
+                      if(!nom)    nom=parts[parts.length-1]||"";
+                      if(!prenom) prenom=parts.slice(0,-1).join(" ")||"";
                     }
                   }
                   // ── Classe : colonne ou défaut sélectionné ──
