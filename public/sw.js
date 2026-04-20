@@ -100,7 +100,7 @@ async function cacheFirst(request, cacheName, maxAgeSeconds) {
   }
   try {
     const response = await fetch(request);
-    if (response.ok) cache.put(request, response.clone());
+    if (response.ok && request.method === "GET") cache.put(request, response.clone());
     return response;
   } catch {
     return cached || new Response("Hors ligne", { status: 503 });
@@ -115,7 +115,7 @@ async function networkFirst(request, cacheName, timeoutMs) {
     const tid = setTimeout(() => controller.abort(), timeoutMs);
     const response = await fetch(request, { signal: controller.signal });
     clearTimeout(tid);
-    if (response.ok) cache.put(request, response.clone());
+    if (response.ok && request.method === "GET") cache.put(request, response.clone());
     return response;
   } catch {
     const cached = await cache.match(request);
