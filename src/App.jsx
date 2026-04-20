@@ -75,6 +75,8 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   const {items:elevesC,chargement:cEC,ajouter:ajEC,modifier:modEC_full,supprimer:supEC,modifierChamp:modEC}=useFirestore("elevesCollege");
   const {items:elevesP,chargement:cEP,ajouter:ajEP,modifier:modEP_full,supprimer:supEP,modifierChamp:modEP}=useFirestore("elevesPrimaire");
   const {items:tarifsClasses,ajouter:ajTarif,modifier:modTarif}=useFirestore("tarifs");
+  const {items:classesCollegeList,ajouter:ajClasseCollege}=useFirestore("classesCollege");
+  const {items:classesPrimaireList,ajouter:ajClassePrimaire}=useFirestore("classesPrimaire");
   // Pour auto-génération salaires
   const {items:ensCollege}=useFirestore("ensCollege");
   const {items:ensLycee}=useFirestore("ensLycee");
@@ -130,6 +132,17 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   };
   const elevesEnrol=sortAlpha(niveauEnrol==="college"?elevesC:elevesP);
   const ajEnrol=niveauEnrol==="college"?ajEC:ajEP;
+
+  // Crée la classe dans Firestore si elle n'existe pas encore
+  const ensureClasse = async (nom, niveau, dejaCreees) => {
+    if(!nom) return;
+    const list = niveau==="college" ? classesCollegeList : classesPrimaireList;
+    const aj   = niveau==="college" ? ajClasseCollege    : ajClassePrimaire;
+    if(!list.find(c=>c.nom===nom) && !(dejaCreees&&dejaCreees.has(nom))) {
+      await aj({nom, effectif:0});
+      if(dejaCreees) dejaCreees.add(nom);
+    }
+  };
   const supEnrol=niveauEnrol==="college"?supEC:supEP;
   const modEnrol=niveauEnrol==="college"?modEC_full:modEP_full;
 
@@ -1393,6 +1406,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                     }
                   }
                   ajEnrol(r);
+                  await ensureClasse(r.classe, niveauEnrol);
                 } else {
                   modEnrol(r);
                 }
@@ -1457,6 +1471,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
               const doublonNom=tousE2.some(e=>e.nom?.trim().toLowerCase()===r.nom?.trim().toLowerCase()&&e.prenom?.trim().toLowerCase()===r.prenom?.trim().toLowerCase()&&e.dateNaissance&&e.dateNaissance===r.dateNaissance);
               if(doublonNom&&!window.confirm("⚠️ Un élève portant le même nom et la même date de naissance existe déjà.\n\nVoulez-vous quand même créer cette fiche ?"))return false;
               ajEnrol(r);
+              await ensureClasse(r.classe, niveauEnrol);
               toast(`${r.prenom} ${r.nom} ajouté(e)`,"success");
               if(!fermer){
                 const mat=genererMatricule([...elevesEnrol,r],niveauEnrol,schoolInfo);
@@ -1749,6 +1764,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
               const existants=[...elevesC,...elevesP];
               // Accumule les matricules générés dans ce lot pour éviter les doublons
               const matsGeneres=[];
+              const classesImportCreees=new Set();
               for(const l of importEnrolPreview.valides){
                 const doublon=existants.some(e=>
                   e.nom?.trim().toLowerCase()===l.nom.toLowerCase()&&
@@ -1767,6 +1783,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                   typeInscription:l.typeInscription,
                   matricule:mat,statut:"Actif",mens:initMens(),
                 });
+                await ensureClasse(l.classe, niveauEnrol, classesImportCreees);
                 count++;
               }
               setImportEnrolEnCours(false);
@@ -2401,6 +2418,9 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
               <Selec label="Statut" value={form.statut||"Titulaire"} onChange={chg("statut")}>
                 <option>Titulaire</option><option>Contractuel</option><option>Vacataire</option>
               </Selec>
+              <div style={{gridColumn:"1/-1"}}>
+                <Input label="Classe (titulaire)" value={form.classeTitle||""} onChange={chg("classeTitle")} placeholder="Ex : 3ème Année A — laissez vide si non titulaire"/>
+              </div>
               <Input label="Prime horaire unique (GNF)" type="number" value={form.primeHoraire||""} onChange={chg("primeHoraire")} placeholder="Ex : 15000"/>
               <div style={{display:"flex",alignItems:"flex-end",paddingBottom:4}}>
                 <span style={{fontSize:11,color:"#64748b",lineHeight:1.4}}>💡 Utilisée si aucune prime par classe n'est définie ci-dessous</span>
@@ -2429,7 +2449,13 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
               onSupprimer={i=>setForm(p=>({...p,fichiers:p.fichiers.filter((_,j)=>j!==i)}))}/>
             <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
               <Btn v="ghost" onClick={()=>setModal(null)}>Annuler</Btn>
-              <Btn onClick={()=>{if(modal==="add_ens")ajEns(form);else modEns(form);setModal(null);}}>Enregistrer</Btn>
+              <Btn onClick={async()=>{
+                if(modal==="add_ens") ajEns(form); else modEns(form);
+                if(form.classeTitle && !classes.find(c=>c.nom===form.classeTitle)) {
+                  await ajC({nom:form.classeTitle, effectif:0});
+                }
+                setModal(null);
+              }}>Enregistrer</Btn>
             </div>
           </Modale>}
         </div>;
