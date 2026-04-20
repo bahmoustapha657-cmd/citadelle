@@ -58,6 +58,7 @@ import { TableauDeBord } from "./components/TableauDeBord";
 import { LivretsTab } from "./components/LivretsTab";
 import { PortailEnseignant } from "./components/PortailEnseignant";
 import { PortailParent } from "./components/PortailParent";
+import { LandingEduGest } from "./components/LandingEduGest";
 function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   // readOnly=true → admin/direction : zéro action
   // canEdit → modifier/supprimer des enregistrements existants (verrou admin requis sauf admin lui-même — mais admin est readOnly)
