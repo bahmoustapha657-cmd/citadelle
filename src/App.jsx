@@ -2020,6 +2020,8 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
     });
   };
   const elevesFiltres=sortAlphaEcole(filtreClasse==="all"?eleves:eleves.filter(e=>e.classe===filtreClasse));
+  // Effectif réel = nombre d'élèves dont le champ classe correspond
+  const effectifReel = (nomClasse) => eleves.filter(e=>e.classe===nomClasse && e.statut!=="Départ").length;
 
   const tabItems=[
     {id:"apercu",label:"Aperçu"},
@@ -2087,9 +2089,9 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
               <div key={c._id} style={{display:"flex",alignItems:"center",gap:9,marginBottom:8}}>
                 <span style={{fontSize:13,fontWeight:700,color:C.blueDark,width:76}}>{c.nom}</span>
                 <div style={{flex:1,background:"#e0ebf8",borderRadius:5,height:8}}>
-                  <div style={{background:couleur,borderRadius:5,height:8,width:`${Math.min((Number(c.effectif)||0)/50*100,100).toFixed(0)}%`}}/>
+                  <div style={{background:couleur,borderRadius:5,height:8,width:`${Math.min(effectifReel(c.nom)/50*100,100).toFixed(0)}%`}}/>
                 </div>
-                <span style={{fontSize:11,color:"#6b7280",width:26,textAlign:"right",fontWeight:600}}>{c.effectif}</span>
+                <span style={{fontSize:11,color:"#6b7280",width:26,textAlign:"right",fontWeight:600}}>{effectifReel(c.nom)}</span>
               </div>
             ))}
           </div></Card>}
@@ -2099,7 +2101,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
             <Card><div style={{padding:"14px 16px"}}>
               <p style={{margin:"0 0 12px",fontWeight:800,fontSize:13,color:C.blueDark}}>Effectifs par classe</p>
               <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={classes.map(c=>({classe:c.nom,Effectif:Number(c.effectif)||0}))}>
+                <BarChart data={classes.map(c=>({classe:c.nom,Effectif:effectifReel(c.nom)}))}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e0ebf8"/>
                   <XAxis dataKey="classe" tick={{fontSize:10}}/>
                   <YAxis tick={{fontSize:10}}/>
@@ -2197,7 +2199,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
           :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
             <THead cols={["Classe","Effectif","Enseignant Principal","Salle","Imprimer liste",canEdit?"Actions":""]}/>
             <tbody>{classes.map(c=><TR key={c._id}>
-              <TD bold>{c.nom}</TD><TD><Badge color="blue">{c.effectif} élèves</Badge></TD>
+              <TD bold>{c.nom}</TD><TD><Badge color="blue">{effectifReel(c.nom)} élèves</Badge></TD>
               <TD>{c.enseignant}</TD><TD>{c.salle}</TD>
               <TD><Btn sm v="ghost" onClick={()=>imprimerListeClasse(c.nom,eleves,schoolInfo)}>🖨️ Imprimer</Btn></TD>
               {canEdit&&<TD><div style={{display:"flex",gap:6}}>
@@ -2482,8 +2484,14 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
               <Btn v="ghost" onClick={()=>setModal(null)}>Annuler</Btn>
               <Btn onClick={async()=>{
                 if(modal==="add_ens") ajEns(form); else modEns(form);
-                if(form.classeTitle && !classes.find(c=>c.nom===form.classeTitle)) {
-                  await ajC({nom:form.classeTitle, effectif:0});
+                if(form.classeTitle) {
+                  const nomEns = `${form.prenom||""} ${form.nom||""}`.trim();
+                  const existante = classes.find(c=>c.nom===form.classeTitle);
+                  if(!existante) {
+                    await ajC({nom:form.classeTitle, effectif:0, enseignant:nomEns});
+                  } else if(nomEns && existante.enseignant!==nomEns) {
+                    await modC({...existante, enseignant:nomEns});
+                  }
                 }
                 setModal(null);
               }}>Enregistrer</Btn>
