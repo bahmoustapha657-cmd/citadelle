@@ -4346,7 +4346,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
     return true;
   };
 
-  const {schoolInfo, toast, logAction, envoyerPush} = useContext(SchoolContext);
+  const {schoolInfo, moisAnnee, toast, logAction, envoyerPush} = useContext(SchoolContext);
   const canCreate = !readOnly;
   const canEditEleves = !readOnly && (peutModifierEleves(userRole) || verrouOuvert);
   const canEdit = !readOnly && (peutModifier(userRole) || verrouOuvert);
