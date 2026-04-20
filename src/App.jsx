@@ -3943,40 +3943,61 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                 const allRows=XLSX.utils.sheet_to_json(ws,{header:1,defval:"",raw:false});
                 if(allRows.length<2){toast("Fichier vide ou sans données","warning");return;}
 
-                // ── Détection des colonnes par leur en-tête ──────────────
-                const headers=allRows[0].map(h=>String(h||""));
                 const norm=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g," ").trim();
+
+                // ── Auto-détection de la ligne d'en-tête ──────────────────
+                // Certains fichiers ont un titre fusionné en ligne 1 (ex: "LISTE DES ÉLÈVES - 4ème A")
+                // On cherche parmi les 5 premières lignes celle qui ressemble le plus à des en-têtes
+                const HDR_KW=["nom","prenom","eleve","classe","sexe","date","lieu","pere","mere","telephone","matricule","naissance","contact","n°","numero"];
+                const scoreHdr=row=>row.reduce((s,c)=>{
+                  const hn=norm(String(c||""));
+                  return s+(HDR_KW.some(k=>hn===k||hn.startsWith(k+' ')||hn.endsWith(' '+k)||(' '+hn+' ').includes(' '+k+' '))?1:0);
+                },0);
+                let headerRowIdx=0, bestScore=scoreHdr(allRows[0]);
+                for(let ri=1;ri<Math.min(5,allRows.length-1);ri++){
+                  const sc=scoreHdr(allRows[ri]);
+                  if(sc>bestScore){bestScore=sc;headerRowIdx=ri;}
+                }
+
+                // ── Détection des colonnes par leur en-tête ──────────────
+                const headers=allRows[headerRowIdx].map(h=>String(h||""));
+
+                // Correspondance par mots entiers (avec pluriel toléré)
+                // Ex: "nom" matche "Noms", "Noms et Prénoms" ; "prenom" matche "Prénoms"
+                // Mais "nom" ne matche PAS "Prénom" (mot différent)
+                const wordMatch=(hn,v)=>{
+                  if(hn===v) return true;
+                  const hnW=hn.split(/\s+/), vW=v.split(/\s+/);
+                  return vW.every(vw=>hnW.some(hw=>{
+                    if(hw===vw) return true;
+                    // startsWith toléré pour gérer pluriels (nom→noms, prenom→prenoms)
+                    // seulement pour mots de 3+ caractères (évite que "n" matche "no", "ne", etc.)
+                    if(hw.length>=3&&vw.length>=3&&(hw.startsWith(vw)||vw.startsWith(hw))) return true;
+                    return false;
+                  }));
+                };
                 const findCol=(variants)=>{
                   for(const v of variants){
                     const idx=headers.findIndex(h=>{
                       const hn=norm(h);
-                      if(!hn) return false;
-                      if(hn===v) return true;                          // exact match
-                      if(v.length>=5 && hn.includes(v)) return true;  // hn contient la variante (>=5 chars seulement)
-                      if(hn.length>=5 && v.includes(hn)) return true;  // variante contient hn (>=5 chars seulement)
-                      return false;
+                      return hn&&wordMatch(hn,v);
                     });
                     if(idx>=0) return idx;
                   }
                   return -1;
                 };
                 const cols={
-                  // ── Colonnes de base ──
-                  num:       findCol(["n","no","num","numero"]),                    // N° (ignoré)
+                  num:       findCol(["n","no","num","numero"]),
                   matricule: findCol(["matricule","mat","numero eleve","id eleve"]),
-                  eleveComplet: findCol(["eleve","nom complet","nom et prenom","prenom et nom","nomcomplet","nom prenom","full name"]),
+                  eleveComplet: findCol(["eleve","noms et prenoms","nom et prenom","nom complet","prenom et nom","nomcomplet","nom prenom","full name"]),
                   nom:       findCol(["nom eleve","nom de l eleve","nom famille","last name","surname","noms","nom"]),
                   prenom:    findCol(["prenom eleve","prenom de l eleve","prenoms","first name","given name","forename","prenom"]),
                   classe:    findCol(["classe","class","niveau","section","group"]),
                   sexe:      findCol(["sexe","genre","sex","gender","masculin","feminin"]),
-                  // "naissance" retiré car présent dans "Lieu de naissance" et "Date de naissance"
                   date:      findCol(["date naissance","date de naissance","date naiss","ne le","dob","birth"]),
-                  // "lieu" retiré (trop court, risque de faux positif)
                   lieuNaiss: findCol(["lieu naissance","lieu de naissance","lieu naiss","ville naissance","birthplace","born in","ne a"]),
-                  // ── Père et Mère séparés (format privilégié) ──
                   pere:      findCol(["pere","father","papa","nom pere"]),
                   mere:      findCol(["mere","mother","maman","nom mere"]),
-                  // ── Colonnes alternatives/combinées ──
                   filiation: findCol(["pere et mere","filiation","parents","famille"]),
                   tuteur:    findCol(["tuteur","responsable","gardien","tuteur legal"]),
                   contact:   findCol(["telephone","tel","phone","mobile","gsm","numero telephone","contact"]),
@@ -3984,6 +4005,11 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                   typeInsc:  findCol(["type inscription","type inscript","reinscription","premiere inscription"]),
                   ien:       findCol(["ien","identifiant national","id national","matricule national","identifiant"]),
                 };
+                // Si nom et prénom pointent sur la même colonne → colonne combinée (ex: "Noms et Prénoms")
+                if(cols.nom>=0&&cols.nom===cols.prenom){
+                  if(cols.eleveComplet<0) cols.eleveComplet=cols.nom;
+                  cols.nom=-1; cols.prenom=-1;
+                }
 
                 // ── Normaliser une date quelle que soit son format ────────
                 const parseDate=val=>{
@@ -4006,7 +4032,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                 // Classes déjà utilisées dans l'école (acceptées sans avertissement)
                 const classesEcole=[...new Set([...elevesC,...elevesP].map(e=>e.classe||"").filter(Boolean))].map(c=>c.toLowerCase());
 
-                const rows=allRows.slice(1).filter(r=>r.some(c=>String(c||"").trim()));
+                const rows=allRows.slice(headerRowIdx+1).filter(r=>r.some(c=>String(c||"").trim()));
                 const lignes=rows.map((r,i)=>{
                   // ── Nom & Prénom : colonne Élève (nom complet) ou colonnes séparées ──
                   let nom=get(r,cols.nom);
