@@ -3951,10 +3951,9 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                     const idx=headers.findIndex(h=>{
                       const hn=norm(h);
                       if(!hn) return false;
-                      // Correspondance exacte ou le header contient la variante
-                      if(hn===v||hn.includes(v)) return true;
-                      // Le header est contenu dans la variante SEULEMENT si >= 3 chars (évite "n","m" etc.)
-                      if(hn.length>=3 && v.includes(hn)) return true;
+                      if(hn===v) return true;                          // exact match
+                      if(v.length>=5 && hn.includes(v)) return true;  // hn contient la variante (>=5 chars seulement)
+                      if(hn.length>=5 && v.includes(hn)) return true;  // variante contient hn (>=5 chars seulement)
                       return false;
                     });
                     if(idx>=0) return idx;
@@ -3963,24 +3962,26 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                 };
                 const cols={
                   // ── Colonnes de base ──
-                  num:       findCol(["n","no","num","numero","n°","#"]),           // N° (ignoré)
+                  num:       findCol(["n","no","num","numero"]),                    // N° (ignoré)
                   matricule: findCol(["matricule","mat","numero eleve","id eleve"]),
-                  eleveComplet: findCol(["eleve","nom complet","nom et prenom","prenom et nom","full name","nomcomplet","nom prenom"]),
-                  nom:       findCol(["nom eleve","nom de l eleve","last name","nom famille","surname","noms","nom"]),
-                  prenom:    findCol(["prenom eleve","prenom de l eleve","first name","prenoms","given name","forename","prenom"]),
+                  eleveComplet: findCol(["eleve","nom complet","nom et prenom","prenom et nom","nomcomplet","nom prenom","full name"]),
+                  nom:       findCol(["nom eleve","nom de l eleve","nom famille","last name","surname","noms","nom"]),
+                  prenom:    findCol(["prenom eleve","prenom de l eleve","prenoms","first name","given name","forename","prenom"]),
                   classe:    findCol(["classe","class","niveau","section","group"]),
-                  sexe:      findCol(["sexe","genre","sex","gender","m f","masculin","feminin"]),
-                  date:      findCol(["date naissance","date de naissance","naissance","ne le","dob","birth","date naiss"]),
-                  lieuNaiss: findCol(["lieu naissance","lieu de naissance","lieu naiss","ville naissance","ne a","birthplace","born in","lieu"]),
+                  sexe:      findCol(["sexe","genre","sex","gender","masculin","feminin"]),
+                  // "naissance" retiré car présent dans "Lieu de naissance" et "Date de naissance"
+                  date:      findCol(["date naissance","date de naissance","date naiss","ne le","dob","birth"]),
+                  // "lieu" retiré (trop court, risque de faux positif)
+                  lieuNaiss: findCol(["lieu naissance","lieu de naissance","lieu naiss","ville naissance","birthplace","born in","ne a"]),
                   // ── Père et Mère séparés (format privilégié) ──
-                  pere:      findCol(["pere","father","nom pere","papa"]),
-                  mere:      findCol(["mere","mother","nom mere","maman"]),
+                  pere:      findCol(["pere","father","papa","nom pere"]),
+                  mere:      findCol(["mere","mother","maman","nom mere"]),
                   // ── Colonnes alternatives/combinées ──
-                  filiation: findCol(["pere et mere","pere mere","filiation","parents","famille"]),
+                  filiation: findCol(["pere et mere","filiation","parents","famille"]),
                   tuteur:    findCol(["tuteur","responsable","gardien","tuteur legal"]),
-                  contact:   findCol(["telephone","tel","contact","phone","mobile","gsm","numero"]),
+                  contact:   findCol(["telephone","tel","phone","mobile","gsm","numero telephone","contact"]),
                   domicile:  findCol(["domicile","adresse","quartier","residence","localite"]),
-                  typeInsc:  findCol(["type inscription","type","type inscript","reinscription","premiere inscription"]),
+                  typeInsc:  findCol(["type inscription","type inscript","reinscription","premiere inscription"]),
                   ien:       findCol(["ien","identifiant national","id national","matricule national","identifiant"]),
                 };
 
@@ -4014,9 +4015,20 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                     const complet=get(r,cols.eleveComplet);
                     if(complet){
                       const parts=complet.trim().split(/\s+/);
-                      // Dernier mot = Nom (famille), tout le reste = Prénom (peut être composé)
-                      if(!nom)    nom=parts[parts.length-1]||"";
-                      if(!prenom) prenom=parts.slice(0,-1).join(" ")||"";
+                      // Détection automatique de l'ordre : si le premier mot est tout en MAJUSCULES
+                      // → convention africaine NOM PRÉNOM(S) (ex: "DIALLO Mamadou Alpha")
+                      // → sinon convention PRÉNOM(S) NOM (ex: "Mamadou Alpha DIALLO", dernier mot = nom)
+                      const premier=parts[0]||"";
+                      const premierEstMaj=premier.length>1 && premier===premier.toUpperCase() && /[A-Z]/.test(premier);
+                      if(premierEstMaj){
+                        // NOM PRÉNOM(S) — premier mot = famille
+                        if(!nom)    nom=parts[0]||"";
+                        if(!prenom) prenom=parts.slice(1).join(" ")||"";
+                      } else {
+                        // PRÉNOM(S) NOM — dernier mot = famille
+                        if(!nom)    nom=parts[parts.length-1]||"";
+                        if(!prenom) prenom=parts.slice(0,-1).join(" ")||"";
+                      }
                     }
                   }
                   // ── Classe : colonne ou défaut sélectionné ──
@@ -4063,8 +4075,8 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
               const wb=XLSX.utils.book_new();
               const ws=XLSX.utils.aoa_to_sheet([
                 ["N°","Matricule","Élève","Sexe","Date de naissance","Lieu de naissance","Père","Mère","Téléphone"],
-                [1,"","Aminata Bah","F","2012-03-15","Conakry","Mamadou Bah","Fatoumata Diallo","622000001"],
-                [2,"","Ibrahima Diallo","M","2013-07-22","Kindia","Boubacar Diallo","Mariama Bah","628000002"],
+                [1,"","BAH Aminata","F","2012-03-15","Conakry","Mamadou Bah","Fatoumata Diallo","622000001"],
+                [2,"","DIALLO Ibrahima Sékou","M","2013-07-22","Kindia","Boubacar Diallo","Mariama Bah","628000002"],
               ]);
               XLSX.utils.book_append_sheet(wb,ws,"Eleves");
               telechargerExcel(wb,"modele_import_eleves.xlsx");
