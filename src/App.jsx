@@ -2191,9 +2191,35 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
 
       {/* ── CLASSES ── */}
       {tab==="classes"&&<div>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,gap:8,flexWrap:"wrap"}}>
           <strong style={{fontSize:14,color:C.blueDark}}>Classes ({classes.length})</strong>
-          {canCreate&&<Btn onClick={()=>{setForm({});setModal("add_c");}}>+ Nouvelle classe</Btn>}
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            {canCreate&&<Btn v="ghost" onClick={async()=>{
+              const classesEleves=[...new Set(eleves.map(e=>e.classe).filter(Boolean))];
+              const titulairesParClasse={};
+              ens.forEach(e=>{
+                if(e.classeTitle){
+                  titulairesParClasse[e.classeTitle]=`${e.prenom||""} ${e.nom||""}`.trim();
+                }
+              });
+              const classesEns=Object.keys(titulairesParClasse);
+              const toutesClasses=[...new Set([...classesEleves,...classesEns])];
+              let nbCrees=0, nbMaj=0;
+              for(const nom of toutesClasses){
+                const existante=classes.find(c=>c.nom===nom);
+                const titulaire=titulairesParClasse[nom]||"";
+                if(!existante){
+                  await ajC({nom, effectif:0, ...(titulaire?{enseignant:titulaire}:{})});
+                  nbCrees++;
+                } else if(titulaire && !existante.enseignant){
+                  await modC({...existante, enseignant:titulaire});
+                  nbMaj++;
+                }
+              }
+              toast(`Synchronisation : ${nbCrees} classe(s) créée(s), ${nbMaj} mise(s) à jour.`, "success");
+            }}>🔄 Synchroniser depuis élèves & enseignants</Btn>}
+            {canCreate&&<Btn onClick={()=>{setForm({});setModal("add_c");}}>+ Nouvelle classe</Btn>}
+          </div>
         </div>
         {cC?<Chargement/>:classes.length===0?<Vide icone="🏫" msg="Aucune classe"/>
           :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
