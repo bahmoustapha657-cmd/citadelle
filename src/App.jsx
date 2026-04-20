@@ -3990,7 +3990,10 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                 };
 
                 const get=(row,idx)=>idx>=0?String(row[idx]||"").trim():"";
-                const classesList=[...CLASSES_COLLEGE,...CLASSES_PRIMAIRE].map(c=>c.toLowerCase());
+                // Classes connues pour avertissement (pas bloquant)
+                const classesConnues=[...CLASSES_COLLEGE,...CLASSES_PRIMAIRE,...CLASSES_LYCEE].map(c=>c.toLowerCase());
+                // Classes déjà utilisées dans l'école (acceptées sans avertissement)
+                const classesEcole=[...new Set([...elevesC,...elevesP].map(e=>e.classe||"").filter(Boolean))].map(c=>c.toLowerCase());
 
                 const rows=allRows.slice(1).filter(r=>r.some(c=>String(c||"").trim()));
                 const lignes=rows.map((r,i)=>{
@@ -4019,18 +4022,20 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                   const typeInscription=ti||"Première inscription";
                   const matricule=get(r,cols.matricule);
                   const erreurs=[];
+                  const avertissements=[];
                   if(!nom) erreurs.push("Nom manquant");
                   if(!prenom) erreurs.push("Prénom manquant");
                   if(!classe) erreurs.push("Classe manquante");
-                  else if(!classesList.includes(classe.toLowerCase())) erreurs.push(`Classe inconnue (${classe})`);
-                  return {nom,prenom,classe,sexe,dateNaissance,lieuNaissance,ien,tuteur,contactTuteur,filiation,domicile,typeInscription,matricule,erreurs,ligne:i+2};
+                  else if(!classesEcole.includes(classe.toLowerCase())&&!classesConnues.includes(classe.toLowerCase()))
+                    avertissements.push(`Classe "${classe}" non reconnue — sera créée`);
+                  return {nom,prenom,classe,sexe,dateNaissance,lieuNaissance,ien,tuteur,contactTuteur,filiation,domicile,typeInscription,matricule,erreurs,avertissements,ligne:i+2};
                 });
 
                 // Résumé du mapping détecté
                 const champLabels={nom:"Nom",prenom:"Prénom",eleveComplet:"Élève (complet)",classe:"Classe",sexe:"Sexe",date:"Date naissance",lieuNaiss:"Lieu de naissance",ien:"IEN",tuteur:"Tuteur",contact:"Contact",filiation:"Père et Mère",domicile:"Domicile",typeInsc:"Type inscription",matricule:"Matricule"};
                 const mapping=Object.entries(cols).map(([k,idx])=>({champ:champLabels[k],colonne:idx>=0?headers[idx]:null,idx}));
 
-                setImportEnrolPreview({lignes,valides:lignes.filter(l=>!l.erreurs.length),mapping});
+                setImportEnrolPreview({lignes,valides:lignes.filter(l=>!l.erreurs.length),mapping,nbAvert:lignes.filter(l=>!l.erreurs.length&&l.avertissements?.length).length});
                 e.target.value="";
               }}/>
             </label>
@@ -4038,8 +4043,8 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
               const wb=XLSX.utils.book_new();
               const ws=XLSX.utils.aoa_to_sheet([
                 ["Nom","Prénom","Classe","Sexe","Date naissance","Lieu de naissance","IEN","Tuteur","Contact","Père et Mère","Domicile","Type inscription"],
-                ["Bah","Aminata","6ème A","F","2012-03-15","Conakry","GN-2024-000001","Mamadou Bah","622000001","Père: Mamadou Bah / Mère: Fatoumata Diallo","Conakry, Dixinn","Première inscription"],
-                ["Diallo","Ibrahima","5ème B","M","2013-07-22","Kindia","","Mariama Diallo","628000002","Père: Boubacar Diallo / Mère: Mariama Bah","Kindia","Réinscription"],
+                ["Bah","Aminata",(niveauEnrol==="primaire"?classesPrimaire:classesCollege)[0]||"Classe A","F","2012-03-15","Conakry","GN-2024-000001","Mamadou Bah","622000001","Père: Mamadou Bah / Mère: Fatoumata Diallo","Conakry, Dixinn","Première inscription"],
+                ["Diallo","Ibrahima",(niveauEnrol==="primaire"?classesPrimaire:classesCollege)[1]||(niveauEnrol==="primaire"?classesPrimaire:classesCollege)[0]||"Classe B","M","2013-07-22","Kindia","","Mariama Diallo","628000002","Père: Boubacar Diallo / Mère: Mariama Bah","Kindia","Réinscription"],
               ]);
               XLSX.utils.book_append_sheet(wb,ws,"Eleves");
               telechargerExcel(wb,"modele_import_eleves.xlsx");
@@ -4066,9 +4071,10 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
               </div>
             </div>
 
-            <div style={{display:"flex",gap:14,marginBottom:10,fontSize:12}}>
-              <span style={{color:"#059669",fontWeight:700}}>✅ {importEnrolPreview.valides.length} valides</span>
-              <span style={{color:"#dc2626",fontWeight:700}}>❌ {importEnrolPreview.lignes.length-importEnrolPreview.valides.length} avec erreurs</span>
+            <div style={{display:"flex",gap:14,marginBottom:10,fontSize:12,flexWrap:"wrap"}}>
+              <span style={{color:"#059669",fontWeight:700}}>✅ {importEnrolPreview.valides.length} prêts à importer</span>
+              {importEnrolPreview.nbAvert>0&&<span style={{color:"#d97706",fontWeight:700}}>⚠️ {importEnrolPreview.nbAvert} avec avertissement</span>}
+              <span style={{color:"#dc2626",fontWeight:700}}>❌ {importEnrolPreview.lignes.length-importEnrolPreview.valides.length} bloqués (champs obligatoires manquants)</span>
             </div>
             <div style={{maxHeight:260,overflowY:"auto",border:"1px solid #e2e8f0",borderRadius:8,marginBottom:12}}>
               <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
@@ -4078,7 +4084,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                   ))}
                 </tr></thead>
                 <tbody>{importEnrolPreview.lignes.map((l,i)=>(
-                  <tr key={i} style={{background:l.erreurs.length?"#fef2f2":"#f0fdf4",borderBottom:"1px solid #f1f5f9"}}>
+                  <tr key={i} style={{background:l.erreurs.length?"#fef2f2":l.avertissements?.length?"#fffbeb":"#f0fdf4",borderBottom:"1px solid #f1f5f9"}}>
                     <td style={{padding:"4px 8px",color:"#94a3b8",fontSize:10}}>{l.ligne}</td>
                     <td style={{padding:"4px 8px",fontWeight:600}}>{l.nom||"—"}</td>
                     <td style={{padding:"4px 8px"}}>{l.prenom||"—"}</td>
@@ -4088,8 +4094,10 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                     <td style={{padding:"4px 8px"}}>{l.tuteur||"—"}</td>
                     <td style={{padding:"4px 8px"}}>
                       {l.erreurs.length
-                        ?<span style={{color:"#dc2626",fontSize:10}}>⚠️ {l.erreurs.join(", ")}</span>
-                        :<span style={{color:"#059669",fontSize:10}}>✅</span>}
+                        ?<span style={{color:"#dc2626",fontSize:10}}>❌ {l.erreurs.join(", ")}</span>
+                        :l.avertissements?.length
+                          ?<span style={{color:"#d97706",fontSize:10}}>⚠️ {l.avertissements.join(", ")}</span>
+                          :<span style={{color:"#059669",fontSize:10}}>✅</span>}
                     </td>
                   </tr>
                 ))}</tbody>
@@ -4111,8 +4119,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                 );
                 if(doublon) continue;
                 const mat=l.matricule||genererMatricule([...elevesEnrol,...Array(count).fill({})],niveauEnrol,schoolInfo);
-                const enrolSection=CLASSES_PRIMAIRE.includes(l.classe)?"primaire":"college";
-                const ajFn=enrolSection==="primaire"?ajEP:ajEC;
+                const ajFn=niveauEnrol==="primaire"?ajEP:ajEC;
                 await ajFn({
                   nom:l.nom,prenom:l.prenom,classe:l.classe,sexe:l.sexe,
                   dateNaissance:l.dateNaissance,lieuNaissance:l.lieuNaissance,ien:l.ien,
