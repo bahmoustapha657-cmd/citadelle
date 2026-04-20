@@ -4198,6 +4198,8 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
               setImportEnrolEnCours(true);
               let count=0;
               const existants=[...elevesC,...elevesP];
+              // Accumule les matricules générés dans ce lot pour éviter les doublons
+              const matsGeneres=[];
               for(const l of importEnrolPreview.valides){
                 const doublon=existants.some(e=>
                   e.nom?.trim().toLowerCase()===l.nom.toLowerCase()&&
@@ -4205,7 +4207,8 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                   e.dateNaissance&&e.dateNaissance===l.dateNaissance
                 );
                 if(doublon) continue;
-                const mat=genererMatricule([...elevesEnrol,...Array(count).fill({})],niveauEnrol,schoolInfo);
+                const mat=genererMatricule([...elevesEnrol,...matsGeneres],niveauEnrol,schoolInfo);
+                matsGeneres.push({matricule:mat});
                 const ajFn=niveauEnrol==="primaire"?ajEP:ajEC;
                 await ajFn({
                   nom:l.nom,prenom:l.prenom,classe:l.classe,sexe:l.sexe,
