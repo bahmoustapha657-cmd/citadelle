@@ -8,7 +8,7 @@ import { Stat } from "./ui";
 //  RECHERCHE GLOBALE (Ctrl+K / ⌘K)
 // ══════════════════════════════════════════════════════════════
 function RechercheGlobale({modules, onNaviguer, onFermer}) {
-  const {schoolInfo, moisAnnee} = useContext(SchoolContext);
+  const {moisAnnee} = useContext(SchoolContext);
   const {items:elevesC} = useFirestore("elevesCollege");
   const {items:elevesP} = useFirestore("elevesPrimaire");
   const {items:elevesL} = useFirestore("elevesLycee");
@@ -63,7 +63,7 @@ function RechercheGlobale({modules, onNaviguer, onFermer}) {
   const TYPE_COLOR = {module:"#6366f1",élève:"#0ea5e9",enseignant:"#10b981"};
 
   // ── Fiche élève ─────────────────────────────────────────────
-  const FicheEleve = ({data, section}) => {
+  const renderFicheEleve = (data, section) => {
     const mens = data.mens || {};
     const mois = moisAnnee || [];
     const nbPayes = mois.filter(m=>mens[m]==="Payé").length;
@@ -151,7 +151,7 @@ function RechercheGlobale({modules, onNaviguer, onFermer}) {
   };
 
   // ── Fiche enseignant ─────────────────────────────────────────
-  const FicheEnseignant = ({data, section}) => {
+  const renderFicheEnseignant = (data, section) => {
     const sectionLabel = section==="primaire"?"Primaire":section==="lycee"?"Lycée":"Collège";
     const sectionColor = section==="college"?"#3b82f6":section==="lycee"?"#8b5cf6":"#10b981";
     const moduleTarget = section==="primaire"?"primaire":"secondaire";
@@ -260,8 +260,8 @@ function RechercheGlobale({modules, onNaviguer, onFermer}) {
 
         {/* Fiche détaillée */}
         {fiche&&<div style={{flex:1,overflowY:"auto"}}>
-          {fiche.type==="élève"&&<FicheEleve data={fiche.data} section={fiche.section}/>}
-          {fiche.type==="enseignant"&&<FicheEnseignant data={fiche.data} section={fiche.section}/>}
+          {fiche.type==="élève"&&renderFicheEleve(fiche.data, fiche.section)}
+          {fiche.type==="enseignant"&&renderFicheEnseignant(fiche.data, fiche.section)}
         </div>}
 
         {/* Footer */}

@@ -1,8 +1,8 @@
 import React, { useState, useContext } from "react";
-import { doc } from "firebase/firestore";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
 import { C, peutModifier } from "../constants";
+import LOGO from "../assets/defaultLogo";
 import { Badge, Btn, Card, Chargement, Input, LectureSeule, Modale, Selec, Stat, TD, THead, TR, Tabs, Vide, UploadFichiers } from "./ui";
 
 // ══════════════════════════════════════════════════════════════

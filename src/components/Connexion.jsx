@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useContext } from "react";
-import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { db, auth } from "../firebase";
 import { SchoolContext } from "../contexts/SchoolContext";
-import { C } from "../constants";
+import { C, getAnnee } from "../constants";
 import Logo from "../Logo";
 import { Chargement } from "./ui";
 
@@ -10,7 +10,7 @@ import { Chargement } from "./ui";
 //  ÉCRAN DE CONNEXION
 // ══════════════════════════════════════════════════════════════
 function Connexion({onLogin, onInscription}) {
-  const {schoolInfo} = useContext(SchoolContext);
+  useContext(SchoolContext);
   const [codeEcole,setCodeEcole]=useState(()=>localStorage.getItem("LC_schoolId")||"");
   const [login,setLogin]=useState("");
   const [mdp,setMdp]=useState("");
@@ -78,7 +78,7 @@ function Connexion({onLogin, onInscription}) {
         // Dernier recours : connexion locale temporaire
         onLogin(data.compte, sid);
       }
-    }catch(e){
+    }catch{
       setErreur("Impossible de joindre le serveur. Vérifiez le code école.");
     }finally{
       setChargement(false);

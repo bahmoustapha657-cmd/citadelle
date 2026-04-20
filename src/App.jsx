@@ -4,15 +4,14 @@ import Logo from "./Logo";
 import { getAuthHeaders } from "./apiClient";
 import { SchoolContext, SCHOOL_INFO_DEFAUT } from "./contexts/SchoolContext";
 import { useFirestore } from "./hooks/useFirestore";
-import React, { useState, useEffect, useRef, useMemo, useContext } from "react";
+import React, { useState, useEffect, useRef, useContext } from "react";
 import ReactDOM from "react-dom";
 import { db, auth } from "./firebase";
-import { signOut, onAuthStateChanged, updatePassword } from "firebase/auth";
+import { signOut, onAuthStateChanged } from "firebase/auth";
 import * as XLSX from "xlsx";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, RadarChart, Radar, PolarGrid, PolarAngleAxis } from "recharts";
-import bcrypt from "bcryptjs";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
 import {
-  collection, collectionGroup, onSnapshot, addDoc, updateDoc, doc, setDoc, getDoc, getDocs, query, where, orderBy, limit
+  collection, collectionGroup, onSnapshot, addDoc, updateDoc, doc, setDoc, getDoc, getDocs, query, orderBy, limit
 } from "firebase/firestore";
 import LOGO from "./assets/defaultLogo";
 import {
@@ -26,7 +25,7 @@ import {
   peutModifierEleves, peutModifier, MODULES,
 } from "./constants";
 import { GlobalStyles } from "./styles";
-import { uploadFichier, supprimerFichier, uploadPhotoEleve } from "./storageUtils";
+import { uploadPhotoEleve } from "./storageUtils";
 import {
   Badge, Card, Modale, Champ, Input, Selec, Textarea, Btn,
   THead, TR, TD, Stat, Tabs, Vide,
@@ -37,7 +36,6 @@ import {
   enteteDoc, imprimerRecu, imprimerCartesEleves,
   imprimerListeClasse, imprimerAttestation, imprimerBulletin,
   imprimerBulletinsGroupes, imprimerFicheCompositions,
-  imprimerOrdreMutation, imprimerCertificatRadiation, imprimerLivret,
   telechargerExcel, exportExcel,
 } from "./reports";
 import { AdminPanel } from "./components/AdminPanel";
@@ -53,129 +51,13 @@ import { AffichageSettings } from "./components/AffichageSettings";
 import { GestionExamens } from "./components/GestionExamens";
 import { RechercheGlobale } from "./components/RechercheGlobale";
 import { MessagesParents } from "./components/MessagesParents";
-import { LandingEduGest } from "./components/LandingEduGest";
 import { PortailPublic } from "./components/PortailPublic";
-
-
-// ══════════════════════════════════════════════════════════════
-//  MODAL CHANGEMENT MOT DE PASSE FORCÉ
-// ══════════════════════════════════════════════════════════════
-function ChangerMotDePasseModal({utilisateur, onDone}) {
-  const [mdp1, setMdp1] = useState("");
-  const [mdp2, setMdp2] = useState("");
-  const [err,  setErr]  = useState("");
-  const [ok,   setOk]   = useState(false);
-  const [busy, setBusy] = useState(false);
-
-  const soumettre = async(e)=>{
-    e.preventDefault();
-    setErr("");
-    if(mdp1.length < 8) return setErr("Le mot de passe doit contenir au moins 8 caractères.");
-    if(mdp1 !== mdp2)   return setErr("Les deux mots de passe ne correspondent pas.");
-    setBusy(true);
-    try{
-      // 1. Mettre à jour Firebase Auth
-      await updatePassword(auth.currentUser, mdp1);
-      // 2. Hacher et stocker dans Firestore comptes
-      const hash = await bcrypt.hash(mdp1, 10);
-      if(utilisateur.compteDocId && utilisateur.schoolId){
-        await updateDoc(
-          doc(db,"ecoles",utilisateur.schoolId,"comptes",utilisateur.compteDocId),
-          { mdp: hash, premiereCo: false }
-        );
-      }
-      setOk(true);
-      setTimeout(()=>onDone(), 1200);
-    }catch(e){
-      if(e.code==="auth/requires-recent-login"){
-        setErr("Session expirée. Veuillez vous reconnecter puis changer le mot de passe.");
-      } else {
-        setErr(e.message||"Erreur lors du changement de mot de passe.");
-      }
-    } finally { setBusy(false); }
-  };
-
-  return (
-    <div style={{position:"fixed",inset:0,background:"rgba(10,22,40,0.75)",display:"flex",
-      alignItems:"center",justifyContent:"center",zIndex:9999}}>
-      <div style={{background:"#fff",borderRadius:16,padding:40,maxWidth:420,width:"90%",
-        boxShadow:"0 25px 60px rgba(0,0,0,0.3)",fontFamily:"'Segoe UI',system-ui,sans-serif"}}>
-        <div style={{textAlign:"center",marginBottom:24}}>
-          <div style={{fontSize:40,marginBottom:8}}>🔐</div>
-          <h2 style={{margin:0,fontSize:20,color:"#0A1628"}}>Changement de mot de passe requis</h2>
-          <p style={{margin:"8px 0 0",fontSize:13,color:"#6b7280"}}>
-            Votre compte utilise un mot de passe temporaire. Définissez un nouveau mot de passe avant de continuer.
-          </p>
-        </div>
-        {ok ? (
-          <div style={{textAlign:"center",padding:20}}>
-            <div style={{fontSize:36,marginBottom:8}}>✅</div>
-            <p style={{color:"#059669",fontWeight:700}}>Mot de passe mis à jour !</p>
-          </div>
-        ) : (
-          <form onSubmit={soumettre}>
-            <label style={{display:"block",marginBottom:6,fontSize:13,fontWeight:600,color:"#374151"}}>
-              Nouveau mot de passe
-            </label>
-            <input type="password" value={mdp1} onChange={e=>setMdp1(e.target.value)}
-              placeholder="Minimum 8 caractères"
-              style={{width:"100%",padding:"10px 12px",border:"1.5px solid #d1d5db",borderRadius:8,
-                fontSize:14,boxSizing:"border-box",marginBottom:14,outline:"none"}}
-              required autoFocus/>
-            <label style={{display:"block",marginBottom:6,fontSize:13,fontWeight:600,color:"#374151"}}>
-              Confirmer le mot de passe
-            </label>
-            <input type="password" value={mdp2} onChange={e=>setMdp2(e.target.value)}
-              placeholder="Répétez le mot de passe"
-              style={{width:"100%",padding:"10px 12px",border:"1.5px solid #d1d5db",borderRadius:8,
-                fontSize:14,boxSizing:"border-box",marginBottom:14,outline:"none"}}
-              required/>
-            {err && <p style={{color:"#dc2626",fontSize:13,margin:"0 0 14px",background:"#fef2f2",
-              padding:"8px 12px",borderRadius:6}}>{err}</p>}
-            <button type="submit" disabled={busy}
-              style={{width:"100%",background:"#0A1628",color:"#fff",border:"none",
-                padding:"12px",borderRadius:8,fontSize:15,fontWeight:700,cursor:"pointer",
-                opacity:busy?0.7:1}}>
-              {busy?"Enregistrement...":"Changer le mot de passe"}
-            </button>
-          </form>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ══════════════════════════════════════════════════════════════
-//  ERROR BOUNDARY
-// ══════════════════════════════════════════════════════════════
-class ErrorBoundary extends React.Component {
-  constructor(props) { super(props); this.state = { erreur: null }; }
-  static getDerivedStateFromError(e) { return { erreur: e }; }
-  componentDidCatch(e, info) { console.error("ErrorBoundary:", e, info); }
-  render() {
-    if (this.state.erreur) return (
-      <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
-        height:"100%",padding:40,fontFamily:"'Segoe UI',system-ui,sans-serif",textAlign:"center"}}>
-        <div style={{fontSize:48,marginBottom:16}}>⚠️</div>
-        <h2 style={{color:"#0A1628",marginBottom:8}}>Une erreur est survenue</h2>
-        <p style={{color:"#6b7280",fontSize:14,marginBottom:24,maxWidth:400}}>
-          {this.state.erreur.message||"Erreur inattendue dans ce module."}
-        </p>
-        <button onClick={()=>this.setState({erreur:null})}
-          style={{background:"#0A1628",color:"#fff",border:"none",padding:"10px 24px",
-            borderRadius:8,fontSize:14,fontWeight:700,cursor:"pointer",marginBottom:12}}>
-          🔄 Réessayer
-        </button>
-        <button onClick={()=>window.location.reload()}
-          style={{background:"none",border:"1px solid #d1d5db",color:"#6b7280",
-            padding:"8px 20px",borderRadius:8,fontSize:13,cursor:"pointer"}}>
-          Recharger la page
-        </button>
-      </div>
-    );
-    return this.props.children;
-  }
-}
+import { ChangerMotDePasseModal } from "./components/ChangerMotDePasseModal";
+import { Secondaire } from "./components/Secondaire";
+import { TableauDeBord } from "./components/TableauDeBord";
+import { LivretsTab } from "./components/LivretsTab";
+import { PortailEnseignant } from "./components/PortailEnseignant";
+import { PortailParent } from "./components/PortailParent";
 function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   // readOnly=true → admin/direction : zéro action
   // canEdit → modifier/supprimer des enregistrements existants (verrou admin requis sauf admin lui-même — mais admin est readOnly)
@@ -626,7 +508,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                 <p style={{margin:"0 0 12px",fontWeight:800,fontSize:13,color:C.blueDark}}>Mensualités — état des paiements</p>
                 {(()=>{
                   const tousEleves=[...elevesC,...elevesP];
-                  const totalMois=tousEleves.reduce((s,e)=>s+moisAnnee.length,0);
+                  const totalMois=tousEleves.reduce(s=>s+moisAnnee.length,0);
                   const totalPayes=tousEleves.reduce((s,e)=>s+moisAnnee.filter(m=>(e.mens||{})[m]==="Payé").length,0);
                   const totalImpay=totalMois-totalPayes;
                   const data=[{name:"Payés",value:totalPayes},{name:"Impayés",value:totalImpay}];
@@ -1686,10 +1568,10 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                   // AAAA-MM-JJ (déjà bon)
                   if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
                   // JJ/MM/AAAA ou JJ-MM-AAAA
-                  const m1=s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+                  const m1=s.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
                   if(m1) return `${m1[3]}-${m1[2].padStart(2,"0")}-${m1[1].padStart(2,"0")}`;
                   // MM/JJ/AAAA (anglais)
-                  const m2=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+                  const m2=s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
                   if(m2) return `${m2[3]}-${m2[1].padStart(2,"0")}-${m2[2].padStart(2,"0")}`;
                   return s;
                 };
@@ -2054,7 +1936,6 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
   const [edtGeneralOuvert,setEdtGeneralOuvert]=useState(false);
   const [edtHeureDebut,setEdtHeureDebut]=useState("08:00");
   const [edtHeureFin,setEdtHeureFin]=useState("14:00");
-  const [eleveSelec,setEleveSelec]=useState(null);
   const [periodeB,setPeriodeB]=useState("T1");
   const [rechercheMatricule,setRechercheMatricule]=useState("");
   const [ensCompte,setEnsCompte]=useState(null);
@@ -2072,40 +1953,8 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
   const chg=k=>e=>setForm(p=>({...p,[k]:e.target.value}));
   const chgC=k=>e=>setFormC(p=>({...p,[k]:e.target.value}));
   const chgP=k=>e=>setFormP(p=>({...p,[k]:e.target.value}));
-
-  // ── Validation emploi du temps ──
-  const validerCreneau = () => {
-    if(!form.classe||!form.jour||!form.heureDebut||!form.heureFin){
-      toast("Veuillez remplir : classe, jour, heure début et heure fin.","warning");return false;
-    }
-    if(form.heureDebut>=form.heureFin){
-      toast("L'heure de début doit être avant l'heure de fin.","warning");return false;
-    }
-    const autresCreneaux=emplois.filter(e=>e._id!==form._id);
-    const confClasse=autresCreneaux.find(e=>
-      e.classe===form.classe&&e.jour===form.jour&&
-      (e.heureDebut||"00:00")<form.heureFin&&(e.heureFin||"23:59")>form.heureDebut
-    );
-    if(confClasse){
-      toast(`Conflit de classe ! ${form.classe} a déjà "${confClasse.matiere||"un cours"}" le ${form.jour} de ${confClasse.heureDebut} à ${confClasse.heureFin}.`,"error");
-      return false;
-    }
-    if(form.enseignant){
-      const confEns=autresCreneaux.find(e=>
-        e.enseignant===form.enseignant&&e.jour===form.jour&&
-        (e.heureDebut||"00:00")<form.heureFin&&(e.heureFin||"23:59")>form.heureDebut
-      );
-      if(confEns){
-        toast(`Conflit enseignant ! ${form.enseignant} est déjà en classe ${confEns.classe} le ${form.jour} de ${confEns.heureDebut} à ${confEns.heureFin}.`,"error");
-        return false;
-      }
-    }
-    return true;
-  };
-
-  const {schoolInfo, moisAnnee, toast, logAction, envoyerPush} = useContext(SchoolContext);
+  const {schoolId, schoolInfo, moisAnnee, toast, logAction, envoyerPush} = useContext(SchoolContext);
   const canCreate = !readOnly;
-  const canEditEleves = !readOnly && (peutModifierEleves(userRole) || verrouOuvert);
   const canEdit = !readOnly && (peutModifier(userRole) || verrouOuvert);
   const moy=notes.length?(notes.reduce((s,n)=>s+Number(n.note),0)/notes.length).toFixed(1):"—";
   const classesUniq=[...new Set(eleves.map(e=>e.classe))].filter(Boolean);
@@ -2417,24 +2266,30 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
           <Btn v="ghost" onClick={()=>setParentEleve(null)}>Annuler</Btn>
           <Btn v="purple" onClick={async()=>{
             if(!formP.login?.trim()){toast("Identifiant requis.","warning");return;}
-            if(!formP.mdp||formP.mdp.length<6){toast("Mot de passe minimum 6 caractères.","warning");return;}
+            if(!formP.mdp||formP.mdp.length<8){toast("Mot de passe minimum 8 caractères.","warning");return;}
             try{
               const section=cleEleves.includes("Primaire")?"primaire":cleEleves.includes("Lycee")?"lycee":"college";
-              const mdpHash=await bcrypt.hash(formP.mdp,10);
-              await addDoc(collection(db,"ecoles",schoolId,"comptes"),{
-                login:formP.login.trim().toLowerCase(),
-                mdp:mdpHash,
-                role:"parent",
-                label:"Parent",
-                nom:(parentEleve.tuteur||`Parent de ${parentEleve.prenom}`),
-                eleveId:parentEleve._id,
-                eleveNom:`${parentEleve.prenom} ${parentEleve.nom}`,
-                eleveClasse:parentEleve.classe||"",
-                section,
-                premiereCo:true,
-                statut:"Actif",
-                createdAt:Date.now(),
+              const headers = await getAuthHeaders({"Content-Type":"application/json"});
+              const res = await fetch("/api/account-manage",{
+                method:"POST",
+                headers,
+                body:JSON.stringify({
+                  action:"create",
+                  schoolId,
+                  login:formP.login.trim().toLowerCase(),
+                  mdp:formP.mdp,
+                  role:"parent",
+                  label:"Parent",
+                  nom:(parentEleve.tuteur||`Parent de ${parentEleve.prenom}`),
+                  eleveId:parentEleve._id,
+                  eleveNom:`${parentEleve.prenom} ${parentEleve.nom}`,
+                  eleveClasse:parentEleve.classe||"",
+                  section,
+                  statut:"Actif",
+                }),
               });
+              const data = await res.json().catch(()=>({}));
+              if(!res.ok||!data.ok) throw new Error(data.error||"Création du compte impossible.");
               toast(`Compte parent créé — ID : ${formP.login} · Remettez-le au tuteur de ${parentEleve.prenom}.`,"success");
               logAction("Compte parent créé",`Login: ${formP.login} · Élève: ${parentEleve.prenom} ${parentEleve.nom}`);
               setParentEleve(null);
@@ -2451,23 +2306,29 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
 
         const creerCompteEns = async () => {
           if(!formC.login?.trim()){toast("Identifiant requis.","warning");return;}
-          if(!formC.mdp||formC.mdp.length<6){toast("Mot de passe minimum 6 caractères.","warning");return;}
+          if(!formC.mdp||formC.mdp.length<8){toast("Mot de passe minimum 8 caractères.","warning");return;}
           try{
             const nomComplet=`${ensCompte.prenom||""} ${ensCompte.nom||""}`.trim();
-            const mdpHash=await bcrypt.hash(formC.mdp,10);
-            await addDoc(collection(db,"ecoles",schoolId,"comptes"),{
-              login:formC.login.trim().toLowerCase(),
-              mdp:mdpHash,
-              role:"enseignant",
-              label:"Enseignant",
-              nom:nomComplet,
-              enseignantNom:nomComplet,
-              section:sectionEns,
-              matiere:ensCompte.matiere||"",
-              premiereCo:true,
-              statut:"Actif",
-              createdAt:Date.now(),
+            const headers = await getAuthHeaders({"Content-Type":"application/json"});
+            const res = await fetch("/api/account-manage",{
+              method:"POST",
+              headers,
+              body:JSON.stringify({
+                action:"create",
+                schoolId,
+                login:formC.login.trim().toLowerCase(),
+                mdp:formC.mdp,
+                role:"enseignant",
+                label:"Enseignant",
+                nom:nomComplet,
+                enseignantNom:nomComplet,
+                section:sectionEns,
+                matiere:ensCompte.matiere||"",
+                statut:"Actif",
+              }),
             });
+            const data = await res.json().catch(()=>({}));
+            if(!res.ok||!data.ok) throw new Error(data.error||"Création du compte impossible.");
             toast(`Compte enseignant créé — ID : ${formC.login} · L'enseignant changera son mot de passe à la 1ère connexion.`,"success");
             logAction("Compte enseignant créé",`Login: ${formC.login} · ${nomComplet}`);
             setEnsCompte(null);
@@ -2497,7 +2358,6 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
                 {canEdit&&<div style={{display:"flex",gap:6,marginTop:10,flexWrap:"wrap"}}>
                   <Btn sm v="ghost" onClick={()=>{setForm({...e});setModal("edit_ens");}}>✏️ Modifier</Btn>
                   <Btn sm v="purple" onClick={()=>{
-                    const nomComplet=`${e.prenom||""} ${e.nom||""}`.trim();
                     const loginSuggere=`${(e.prenom||"").toLowerCase().replace(/\s+/g,"")}${e.nom?"."+e.nom.toLowerCase().replace(/\s+/g,""):""}`;
                     setEnsCompte(e);
                     setFormC({login:loginSuggere,mdp:genererMdp()});
@@ -2753,9 +2613,6 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
             const wb = XLSX.read(ab);
             const ws = wb.Sheets[wb.SheetNames[0]];
             const rows = XLSX.utils.sheet_to_json(ws,{header:1,defval:""}).slice(1); // skip header
-            const noms = new Set(eleves.map(e=>`${e.nom} ${e.prenom}`.toLowerCase()));
-            const periodes = new Set(["t1","t2","t3","s1","s2"]);
-            const types = new Set(["devoir","interrogation","examen","composition","contrôle","controle"]);
             const lignes = rows.filter(r=>r[0]||r[1]).map((r,i)=>{
               const eleveNom = String(r[0]||"").trim();
               const matiere  = String(r[1]||"").trim();
@@ -3375,7 +3232,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
             +"<th style='background:#0A1628;color:#fff;padding:7px 8px;font-size:10px;min-width:50px'></th>"
             +ths
             +"</tr></thead><tbody>"+tbody+"</tbody></table>"
-            +"<scri"+"pt>window.onload=()=>window.print();<\/script></body></html>";
+            +"<scri"+"pt>window.onload=()=>window.print();</script></body></html>";
         };
         const voirEdtGeneral=()=>{
           const w=window.open("","_blank");
@@ -3480,7 +3337,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
             : <Card style={{padding:0,overflow:"hidden"}}>{(()=>{
                 const lignes=[...emploisClasse].sort((a,b)=>JOURS.indexOf(a.jour)-JOURS.indexOf(b.jour)||(a.heureDebut||"").localeCompare(b.heureDebut||""));
                 const rows=[];let dernierJour=null;
-                lignes.forEach((e,i)=>{
+                lignes.forEach(e=>{
                   const jourChange=e.jour!==dernierJour;
                   dernierJour=e.jour;
                   rows.push(<TR key={e._id}>
@@ -3690,9 +3547,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
               ||(e.matricule||"").toLowerCase().includes(rechercheMatricule.toLowerCase())
               ||(e.nom+" "+e.prenom).toLowerCase().includes(rechercheMatricule.toLowerCase()));
             if(!elevesAtt.length){alert("Aucun élève à imprimer.");return;}
-            const niveau=avecEns?"college":"primaire";
             const w=window.open("","_blank");
-            const blocs=elevesAtt.map(e=>imprimerAttestation._html?imprimerAttestation._html(e,niveau,annee,schoolInfo):"").join("");
             // Génération groupée en ouvrant plusieurs onglets n'est pas idéale ; on imprime la liste
             const rows=elevesAtt.map(e=>`<tr><td>${e.matricule||"—"}</td><td>${e.nom} ${e.prenom}</td><td>${e.classe}</td><td>${e.dateNaissance||"—"}</td><td>${e.lieuNaissance||"—"}</td></tr>`).join("");
             w.document.write(`<!DOCTYPE html><html><head><title>Attestations — ${filtreClasse==="all"?"Toutes classes":filtreClasse}</title><style>body{font-family:Arial,sans-serif;padding:24px}h2{color:#0A1628;text-align:center}table{width:100%;border-collapse:collapse;margin-top:16px}th{background:#0A1628;color:#fff;padding:8px}td{padding:7px 8px;border-bottom:1px solid #e5e7eb}@media print{button{display:none}}</style></head><body><h2>${schoolInfo.nom||"École"} — Registre des attestations</h2><p style="text-align:center">${filtreClasse==="all"?"Toutes classes":filtreClasse} · Année ${annee}</p><table><tr><th>Matricule</th><th>Nom & Prénom</th><th>Classe</th><th>Date naissance</th><th>Lieu naissance</th></tr>${rows}</table><br/><button onclick="window.print()">🖨️ Imprimer la liste</button></body></html>`);
@@ -3724,729 +3579,6 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
     </div>
   );
 }
-
-// ══════════════════════════════════════════════════════════════
-//  MODULE SECONDAIRE (Collège + Lycée)
-// ══════════════════════════════════════════════════════════════
-function Secondaire({userRole, annee, readOnly=false, verrouOuvert=false}) {
-  const [sousModule, setSousModule] = useState("college");
-  return (
-    <div>
-      {/* Barre de navigation Collège / Lycée */}
-      <div style={{display:"flex",gap:0,background:C.blueDark,padding:"0 26px",borderBottom:`3px solid ${C.green}`}}>
-        {[{id:"college",label:"🏫 Bureau Collège"},{id:"lycee",label:"🎓 Lycée"}].map(m=>(
-          <button key={m.id} onClick={()=>setSousModule(m.id)} style={{
-            padding:"12px 22px",border:"none",cursor:"pointer",fontWeight:800,fontSize:13,
-            background:sousModule===m.id?C.green:"transparent",
-            color:sousModule===m.id?"#fff":"rgba(255,255,255,0.6)",
-            borderBottom:sousModule===m.id?`3px solid ${C.green}`:"3px solid transparent",
-            marginBottom:-3,transition:"all 0.15s"
-          }}>{m.label}</button>
-        ))}
-      </div>
-      {sousModule==="college"&&<Ecole
-        titre="Bureau du Collège" couleur={C.blue}
-        cleClasses="classesCollege" cleEns="ensCollege"
-        cleNotes="notesCollege" cleEleves="elevesCollege"
-        avecEns={true} userRole={userRole} annee={annee}
-        classesPredefinies={CLASSES_COLLEGE} maxNote={20} readOnly={readOnly} verrouOuvert={verrouOuvert}/>}
-      {sousModule==="lycee"&&<Ecole
-        titre="Lycée" couleur="#00C48C"
-        cleClasses="classesLycee" cleEns="ensLycee"
-        cleNotes="notesLycee" cleEleves="elevesLycee"
-        avecEns={true} userRole={userRole} annee={annee}
-        classesPredefinies={CLASSES_LYCEE} maxNote={20} readOnly={readOnly} verrouOuvert={verrouOuvert}/>}
-    </div>
-  );
-}
-
-function TableauDeBord({annee}) {
-  const {schoolId, schoolInfo, moisAnnee, moisSalaire, planInfo} = useContext(SchoolContext);
-  const {items:elevesC, chargement:cEC} = useFirestore("elevesCollege");
-  const {items:elevesP, chargement:cEP} = useFirestore("elevesPrimaire");
-  const {items:ensC}    = useFirestore("ensCollege");
-  const {items:ensL}    = useFirestore("ensLycee");
-  const {items:ensP}    = useFirestore("ensPrimaire");
-  const {items:recettes}= useFirestore("recettes");
-  const {items:depenses}= useFirestore("depenses");
-  const {items:salaires}= useFirestore("salaires");
-  const {items:bons}    = useFirestore("bons");
-  const {items:evenements} = useFirestore("evenements");
-  const {items:absences}= useFirestore("absencesCollege");
-  const {items:absP}    = useFirestore("absencesPrimaire");
-  const [moisRapport,setMoisRapport] = useState(moisSalaire[moisSalaire.length-1]||"");
-  const [demandeOuverte, setDemandeOuverte] = useState(false);
-  const [demandePlan, setDemandePlan] = useState("starter");
-  const [demandeForm, setDemandeForm] = useState({operateur:"Orange Money",telephone:"",reference:""});
-  const [demandeEnvoi, setDemandeEnvoi] = useState(false);
-  const [demandeSucces, setDemandeSucces] = useState(false);
-
-  const envoyerDemande = async () => {
-    if(!demandeForm.telephone.trim()||!demandeForm.reference.trim()) return;
-    setDemandeEnvoi(true);
-    try {
-      await addDoc(collection(db,"ecoles",schoolId,"demandes_plan"),{
-        ecoleNom: schoolInfo.nom,
-        planDemande: demandePlan,
-        operateur: demandeForm.operateur,
-        telephone: demandeForm.telephone.trim(),
-        reference: demandeForm.reference.trim(),
-        statut: "en_attente",
-        createdAt: Date.now(),
-      });
-      setDemandeSucces(true);
-      // Ne pas fermer le formulaire — montrer le succès à l'intérieur
-      setTimeout(()=>{ setDemandeSucces(false); setDemandeOuverte(false); setDemandeForm({operateur:"Orange Money",telephone:"",reference:""}); }, 5000);
-    } catch(e){
-      console.error(e);
-      alert("Erreur lors de l'envoi. Vérifiez votre connexion et réessayez.");
-    }
-    finally { setDemandeEnvoi(false); }
-  };
-
-  const c1 = schoolInfo.couleur1 || C.blue;
-  const c2 = schoolInfo.couleur2 || C.green;
-  const enChargement = cEC || cEP;
-
-  const totalEleves = elevesC.filter(e=>e.statut==="Actif").length + elevesP.filter(e=>e.statut==="Actif").length;
-  const totalEns    = ensC.length + ensL.length + ensP.length;
-  const moisActuel  = moisSalaire[moisSalaire.length-1] || "";
-
-  // Taux de paiement mensualités
-  const calcTauxPaiement = (eleves) => {
-    if(!eleves.length) return 0;
-    const moisAnnee = Object.keys((eleves[0]?.mens||{}));
-    if(!moisAnnee.length) return 0;
-    const total = eleves.length * moisAnnee.length;
-    const payes = eleves.reduce((s,e)=>s+Object.values(e.mens||{}).filter(v=>v==="Payé").length,0);
-    return total > 0 ? Math.round(payes/total*100) : 0;
-  };
-  const tauxPayC = calcTauxPaiement(elevesC);
-  const tauxPayP = calcTauxPaiement(elevesP);
-  const tauxPay  = Math.round((tauxPayC + tauxPayP) / 2);
-
-  // Finances
-  const totalRec  = recettes.reduce((s,r)=>s+Number(r.montant||0),0);
-  const totalDep  = depenses.reduce((s,d)=>s+Number(d.montant||0),0);
-  const solde     = totalRec - totalDep;
-
-  // Masse salariale mois courant
-  const salMois = salaires.filter(s=>s.mois===moisActuel);
-  const masseSal = salMois.reduce((s,sal)=>{
-    const net = Number(sal.vhExecute||0)*Number(sal.primeHoraire||0)
-      + Number(sal.cinqSem||0)*Number(sal.primeHoraire||0)
-      + Number(sal.bon||0)
-      + Number(sal.revision||0)
-      + Number(sal.montantForfait||0);
-    return s + net;
-  },0);
-
-  // Événements à venir
-  const today = new Date().toISOString().slice(0,10);
-  const evAVenir = evenements.filter(e=>e.date && e.date >= today).sort((a,b)=>a.date>b.date?1:-1).slice(0,4);
-
-  // Absences ce mois
-  const totalAbs = absences.length + absP.length;
-
-  const KPI = ({label, value, sub, icon, color="white", trend}) => (
-    <div style={{background:c1,borderRadius:14,padding:"18px 20px",position:"relative",overflow:"hidden"}}>
-      <div style={{position:"absolute",top:-12,right:-12,fontSize:48,opacity:0.06}}>{icon}</div>
-      <div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.5)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>{label}</div>
-      <div style={{fontSize:"clamp(22px,3vw,30px)",fontWeight:900,color:color==="green"?c2:"#fff",lineHeight:1}}>{value}</div>
-      {sub&&<div style={{fontSize:11,color:"rgba(255,255,255,0.4)",marginTop:4}}>{sub}</div>}
-      {trend!==undefined&&<div style={{fontSize:11,fontWeight:700,marginTop:6,color:trend>=0?"#4ade80":"#f87171"}}>
-        {trend>=0?"▲":"▼"} {Math.abs(trend)}%
-      </div>}
-    </div>
-  );
-
-  const TYPE_COLORS = {exam:"#ef4444",conge:"#10b981",reunion:"#f59e0b",autre:"#6366f1"};
-
-  if(enChargement) return <Chargement type="kpi" cols={6}/>;
-
-  return (
-    <div style={{padding:"22px 26px",maxWidth:1200}}>
-      {/* En-tête */}
-      <div style={{marginBottom:24,display:"flex",alignItems:"flex-start",justifyContent:"space-between",flexWrap:"wrap",gap:12}}>
-        <div>
-          <h1 style={{margin:0,fontSize:20,fontWeight:900,color:c1}}>
-            Tableau de bord — {schoolInfo.nom||"EduGest"}
-          </h1>
-          <p style={{margin:"4px 0 0",fontSize:13,color:"#6b7280"}}>Année {annee||getAnnee()} · Vue consolidée</p>
-        </div>
-        <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <select value={moisRapport} onChange={e=>setMoisRapport(e.target.value)}
-            style={{border:"1px solid #b0c4d8",borderRadius:8,padding:"6px 10px",fontSize:12,background:"#fff",color:c1,fontWeight:600}}>
-            {moisAnnee.map(m=><option key={m}>{m}</option>)}
-          </select>
-          <Btn v="primary" sm onClick={()=>genererRapportMensuel(
-            moisRapport,
-            [...elevesC,...elevesP],
-            [...absences,...absP],
-            annee||getAnnee(),
-            schoolInfo,
-            moisAnnee
-          )}>📄 Rapport mensuel</Btn>
-        </div>
-      </div>
-
-      {/* KPIs principaux */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12,marginBottom:24}}>
-        <KPI label="Élèves actifs"  value={totalEleves} icon="🎓" sub={`${elevesC.filter(e=>e.statut==="Actif").length} collège · ${elevesP.filter(e=>e.statut==="Actif").length} primaire`}/>
-        <KPI label="Enseignants"    value={totalEns}    icon="👨‍🏫" sub={`${ensC.length}C · ${ensL.length}L · ${ensP.length}P`}/>
-        <KPI label="Taux paiement"  value={`${tauxPay}%`} icon="💳" color="green" sub="Mensualités toutes sections"/>
-        <KPI label="Solde tréso."   value={fmt(solde)} icon="💰" color={solde>=0?"green":"white"} sub={`Rec: ${fmt(totalRec)} / Dép: ${fmt(totalDep)}`}/>
-        <KPI label="Masse salariale" value={fmt(masseSal)} icon="📋" sub={`${salMois.length} lignes · ${moisActuel}`}/>
-        <KPI label="Absences saisies" value={totalAbs} icon="📝" sub="Toutes sections"/>
-      </div>
-
-      {/* Graphiques */}
-      <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:16,marginBottom:20}}>
-        {/* Répartition élèves par classe */}
-        <Card><div style={{padding:"16px 18px"}}>
-          <p style={{margin:"0 0 14px",fontWeight:800,fontSize:13,color:c1}}>Répartition des élèves par section</p>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={[
-              {section:"Collège",Actifs:elevesC.filter(e=>e.statut==="Actif").length,Inactifs:elevesC.filter(e=>e.statut!=="Actif").length},
-              {section:"Primaire",Actifs:elevesP.filter(e=>e.statut==="Actif").length,Inactifs:elevesP.filter(e=>e.statut!=="Actif").length},
-            ]}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e0ebf8"/>
-              <XAxis dataKey="section" tick={{fontSize:11}}/>
-              <YAxis tick={{fontSize:11}}/>
-              <Tooltip/>
-              <Bar dataKey="Actifs" fill={c2} radius={[4,4,0,0]} name="Actifs"/>
-              <Bar dataKey="Inactifs" fill="#e2e8f0" radius={[4,4,0,0]} name="Inactifs"/>
-            </BarChart>
-          </ResponsiveContainer>
-        </div></Card>
-
-        {/* Taux de paiement */}
-        <Card><div style={{padding:"16px 18px"}}>
-          <p style={{margin:"0 0 14px",fontWeight:800,fontSize:13,color:c1}}>Taux de paiement</p>
-          <div style={{display:"flex",flexDirection:"column",gap:16,marginTop:8}}>
-            {[["Collège",tauxPayC],["Primaire",tauxPayP]].map(([label,taux])=>(
-              <div key={label}>
-                <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
-                  <span style={{fontSize:12,fontWeight:700,color:c1}}>{label}</span>
-                  <span style={{fontSize:12,fontWeight:800,color:taux>=60?C.greenDk:"#ef4444"}}>{taux}%</span>
-                </div>
-                <div style={{background:"#e0ebf8",borderRadius:6,height:10}}>
-                  <div style={{background:taux>=60?c2:"#ef4444",borderRadius:6,height:10,width:`${taux}%`,transition:"width 0.5s"}}/>
-                </div>
-              </div>
-            ))}
-            <div style={{marginTop:8,padding:"10px 12px",background:"#f0fdf8",borderRadius:8,borderLeft:`3px solid ${c2}`}}>
-              <div style={{fontSize:11,color:"#374151"}}>Taux global</div>
-              <div style={{fontSize:22,fontWeight:900,color:c2}}>{tauxPay}%</div>
-            </div>
-          </div>
-        </div></Card>
-      </div>
-
-      {/* ── Tendances annuelles ── */}
-      {(()=>{
-        // Taux paiement mois par mois pour tous les élèves
-        const tousEleves = [...elevesC,...elevesP];
-        const dataTendance = moisAnnee.map(m=>{
-          const payesMois = tousEleves.filter(e=>(e.mens||{})[m]==="Payé").length;
-          const taux = tousEleves.length ? Math.round(payesMois/tousEleves.length*100) : 0;
-          const absencesMois = [...absences,...absP].filter(a=>{
-            try { return new Date(a.date).toLocaleDateString("fr-FR",{month:"long"}).toLowerCase()===m.toLowerCase(); } catch { return false; }
-          }).length;
-          return { mois:m.slice(0,3), taux, absences:absencesMois, payes:payesMois };
-        });
-        return (
-          <Card style={{marginBottom:16}}><div style={{padding:"16px 18px"}}>
-            <p style={{margin:"0 0 14px",fontWeight:800,fontSize:13,color:c1}}>Tendances annuelles — {annee||getAnnee()}</p>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
-              {/* Courbe taux paiement */}
-              <div>
-                <p style={{fontSize:11,fontWeight:700,color:"#64748b",margin:"0 0 8px",textTransform:"uppercase",letterSpacing:"0.06em"}}>Taux de paiement (%)</p>
-                <ResponsiveContainer width="100%" height={160}>
-                  <LineChart data={dataTendance} margin={{top:4,right:8,left:-20,bottom:0}}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e0ebf8"/>
-                    <XAxis dataKey="mois" tick={{fontSize:10}}/>
-                    <YAxis domain={[0,100]} tick={{fontSize:10}} tickFormatter={v=>`${v}%`}/>
-                    <Tooltip formatter={(v)=>`${v}%`}/>
-                    <Line type="monotone" dataKey="taux" stroke={c2} strokeWidth={2.5} dot={{r:3,fill:c2}} name="Taux paiement"/>
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-              {/* Courbe absences */}
-              <div>
-                <p style={{fontSize:11,fontWeight:700,color:"#64748b",margin:"0 0 8px",textTransform:"uppercase",letterSpacing:"0.06em"}}>Absences enregistrées</p>
-                <ResponsiveContainer width="100%" height={160}>
-                  <LineChart data={dataTendance} margin={{top:4,right:8,left:-20,bottom:0}}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e0ebf8"/>
-                    <XAxis dataKey="mois" tick={{fontSize:10}}/>
-                    <YAxis tick={{fontSize:10}}/>
-                    <Tooltip/>
-                    <Line type="monotone" dataKey="absences" stroke="#ef4444" strokeWidth={2.5} dot={{r:3,fill:"#ef4444"}} name="Absences"/>
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div></Card>
-        );
-      })()}
-
-      {/* Événements à venir + Alertes */}
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
-        <Card><div style={{padding:"16px 18px"}}>
-          <p style={{margin:"0 0 12px",fontWeight:800,fontSize:13,color:c1}}>Prochains événements</p>
-          {evAVenir.length===0
-            ? <Vide icone="📅" msg="Aucun événement planifié"/>
-            : evAVenir.map(ev=>(
-              <div key={ev._id} style={{display:"flex",alignItems:"flex-start",gap:10,marginBottom:10,padding:"8px 10px",background:"#f8fafc",borderRadius:8,borderLeft:`3px solid ${TYPE_COLORS[ev.type]||"#6366f1"}`}}>
-                <div style={{flex:1}}>
-                  <div style={{fontSize:12,fontWeight:800,color:c1}}>{ev.titre}</div>
-                  <div style={{fontSize:11,color:"#6b7280"}}>{ev.date} {ev.dateFin&&ev.dateFin!==ev.date?`→ ${ev.dateFin}`:""}</div>
-                </div>
-                <Badge color={ev.type==="exam"?"red":ev.type==="conge"?"green":ev.type==="reunion"?"orange":"blue"}>{ev.type||"événement"}</Badge>
-              </div>
-            ))
-          }
-        </div></Card>
-
-        <Card><div style={{padding:"16px 18px"}}>
-          <p style={{margin:"0 0 12px",fontWeight:800,fontSize:13,color:c1}}>Alertes & rappels</p>
-          <div style={{display:"flex",flexDirection:"column",gap:8}}>
-            {tauxPay < 60 && (
-              <div style={{padding:"10px 12px",background:"#fef3e0",borderRadius:8,borderLeft:"3px solid #f59e0b",fontSize:12}}>
-                <span style={{fontWeight:800,color:"#92400e"}}>Taux de paiement bas</span>
-                <div style={{color:"#92400e",marginTop:2}}>{tauxPay}% — Relancez les familles en retard.</div>
-              </div>
-            )}
-            {solde < 0 && (
-              <div style={{padding:"10px 12px",background:"#fef2f2",borderRadius:8,borderLeft:"3px solid #ef4444",fontSize:12}}>
-                <span style={{fontWeight:800,color:"#991b1b"}}>Solde de trésorerie négatif</span>
-                <div style={{color:"#991b1b",marginTop:2}}>Solde : {fmt(solde)} GNF</div>
-              </div>
-            )}
-            {masseSal > totalRec * 0.7 && masseSal > 0 && (
-              <div style={{padding:"10px 12px",background:"#fef3e0",borderRadius:8,borderLeft:"3px solid #f59e0b",fontSize:12}}>
-                <span style={{fontWeight:800,color:"#92400e"}}>Masse salariale élevée</span>
-                <div style={{color:"#92400e",marginTop:2}}>{Math.round(masseSal/totalRec*100)}% des recettes ce mois.</div>
-              </div>
-            )}
-            {tauxPay >= 60 && solde >= 0 && (
-              <div style={{padding:"10px 12px",background:"#f0fdf8",borderRadius:8,borderLeft:`3px solid ${c2}`,fontSize:12}}>
-                <span style={{fontWeight:800,color:"#065f46"}}>Tout va bien</span>
-                <div style={{color:"#065f46",marginTop:2}}>Trésorerie positive et taux de paiement satisfaisant.</div>
-              </div>
-            )}
-          </div>
-        </div></Card>
-      </div>
-
-      {/* ── Bloc abonnement ── */}
-      {planInfo && (
-        <div style={{marginTop:24}}>
-
-          {/* Bannière expiration / période de grâce / limite */}
-          {(planInfo.planEstExpire || planInfo.enPeriodeGrace || planInfo.joursRestants!==null&&planInfo.joursRestants<=30 ||
-            planInfo.planCourant==="gratuit"&&planInfo.totalElevesActifs>=40) && (
-            <div style={{
-              background: planInfo.planEstExpire?"#fee2e2":planInfo.enPeriodeGrace?"#fff7ed":planInfo.joursRestants<=7?"#fef2f2":"#fef3c7",
-              border:`1px solid ${planInfo.planEstExpire?"#fca5a5":planInfo.enPeriodeGrace?"#fdba74":planInfo.joursRestants<=7?"#fca5a5":"#fcd34d"}`,
-              borderRadius:10,padding:"12px 18px",marginBottom:16,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"
-            }}>
-              <span style={{fontSize:22}}>
-                {planInfo.planEstExpire?"🔴":planInfo.enPeriodeGrace?"🟠":planInfo.joursRestants<=7?"🔴":"🟡"}
-              </span>
-              <div style={{flex:1}}>
-                <p style={{margin:0,fontWeight:800,fontSize:13,color:planInfo.planEstExpire?"#991b1b":planInfo.enPeriodeGrace?"#c2410c":"#92400e"}}>
-                  {planInfo.planEstExpire
-                    ? "Abonnement expiré — accès limité à 50 élèves"
-                    : planInfo.enPeriodeGrace
-                      ? `Période de grâce — encore ${planInfo.joursGrace} jour(s) d'accès complet`
-                      : planInfo.joursRestants!==null&&planInfo.joursRestants<=30
-                        ? `Abonnement ${planInfo.planLabel} expire dans ${planInfo.joursRestants} jour(s)`
-                        : `Plan Gratuit : ${planInfo.totalElevesActifs}/50 élèves — bientôt à la limite`}
-                </p>
-                <p style={{margin:"2px 0 0",fontSize:11,color:"#6b7280"}}>
-                  {planInfo.enPeriodeGrace
-                    ? "Renouvelez votre abonnement avant la fin de la période de grâce pour ne pas perdre l'accès."
-                    : "Souscrivez un abonnement pour continuer à inscrire des élèves sans limite."}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Succès demande envoyée */}
-          {demandeSucces && (
-            <div style={{background:"#d1fae5",border:"1px solid #6ee7b7",borderRadius:10,padding:"12px 18px",marginBottom:16,fontSize:13,color:"#065f46",fontWeight:700}}>
-              ✅ Demande envoyée ! L'équipe EduGest va traiter votre demande et activer votre abonnement.
-            </div>
-          )}
-
-          <div style={{background:"#fff",borderRadius:14,boxShadow:"0 2px 16px rgba(0,32,80,0.07)",overflow:"hidden"}}>
-            <div style={{padding:"16px 20px",borderBottom:"1px solid #f0f0f0",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
-              <div>
-                <p style={{margin:0,fontWeight:800,fontSize:14,color:C.blueDark}}>
-                  Abonnement — Plan <span style={{color:PLANS[planInfo.planCourant]?.couleur||C.blue}}>{planInfo.planLabel}</span>
-                </p>
-                <p style={{margin:"3px 0 0",fontSize:12,color:"#6b7280"}}>
-                  {planInfo.planCourant==="gratuit"
-                    ? `${planInfo.totalElevesActifs}/50 élèves actifs — gratuit jusqu'à 50`
-                    : planInfo.planEstExpire
-                      ? "Expiré — limité à 50 élèves"
-                      : planInfo.enPeriodeGrace
-                        ? `Période de grâce — ${planInfo.joursGrace} jour(s) restant(s)`
-                        : `${planInfo.totalElevesActifs} élèves actifs · expire le ${new Date(planInfo.planExpiry).toLocaleDateString("fr-FR")}`}
-                </p>
-              </div>
-              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                {/* Contact WhatsApp */}
-                <a href={`https://wa.me/+224627738579?text=Bonjour%2C%20je%20souhaite%20souscrire%20un%20abonnement%20EduGest%20pour%20l%27%C3%A9cole%20%22${encodeURIComponent(schoolInfo.nom||"")}%22`}
-                  target="_blank" rel="noopener noreferrer"
-                  style={{display:"flex",alignItems:"center",gap:6,background:"#dcfce7",color:"#15803d",border:"none",borderRadius:8,padding:"8px 14px",fontSize:12,fontWeight:700,textDecoration:"none",cursor:"pointer"}}>
-                  <span>💬</span> WhatsApp
-                </a>
-                {/* Contact Email */}
-                <a href={`https://mail.google.com/mail/?view=cm&to=edugest26@gmail.com&su=${encodeURIComponent("Demande abonnement — "+(schoolInfo.nom||""))}&body=${encodeURIComponent("Bonjour,\nJe souhaite souscrire un abonnement EduGest pour mon école.\n\nÉcole : "+(schoolInfo.nom||"")+"\n")}`}
-                  target="_blank" rel="noopener noreferrer"
-                  style={{display:"flex",alignItems:"center",gap:6,background:"#ede9fe",color:"#6d28d9",border:"none",borderRadius:8,padding:"8px 14px",fontSize:12,fontWeight:700,textDecoration:"none",cursor:"pointer"}}>
-                  <span>✉️</span> Email
-                </a>
-                {/* Bouton demande formelle */}
-                <button onClick={()=>setDemandeOuverte(v=>!v)}
-                  style={{display:"flex",alignItems:"center",gap:6,background:`linear-gradient(90deg,${C.blue},${C.green})`,color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontSize:12,fontWeight:700,cursor:"pointer"}}>
-                  {demandeOuverte?"▲ Fermer":"📋 Demande formelle"}
-                </button>
-              </div>
-            </div>
-
-            {/* Formulaire de demande */}
-            {demandeOuverte && (
-              <div style={{padding:"20px 24px"}}>
-                <p style={{margin:"0 0 16px",fontSize:13,color:"#374151"}}>Remplissez ce formulaire après avoir effectué votre paiement mobile. L'équipe EduGest validera et activera votre abonnement sous 24h.</p>
-
-                {/* Choix du plan */}
-                <label style={{display:"block",fontSize:11,fontWeight:700,color:C.blue,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:8}}>Plan souhaité</label>
-                <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:18}}>
-                  {Object.entries(PLANS).filter(([k])=>k!=="gratuit").map(([key,info])=>(
-                    <button key={key} onClick={()=>setDemandePlan(key)}
-                      style={{border:`2px solid ${demandePlan===key?info.couleur:"#e5e7eb"}`,borderRadius:10,padding:"10px 12px",cursor:"pointer",textAlign:"left",background:demandePlan===key?info.bg:"#f9fafb"}}>
-                      <div style={{fontWeight:800,fontSize:13,color:info.couleur}}>{info.label}</div>
-                      <div style={{fontSize:11,color:"#6b7280",marginTop:2}}>{info.eleveLimit===Infinity?"Illimité":`≤ ${info.eleveLimit} élèves`}</div>
-                    </button>
-                  ))}
-                </div>
-
-                {/* Infos paiement */}
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
-                  <div>
-                    <label style={{display:"block",fontSize:11,fontWeight:700,color:"#374151",marginBottom:4}}>Opérateur Mobile Money</label>
-                    <select value={demandeForm.operateur} onChange={e=>setDemandeForm(p=>({...p,operateur:e.target.value}))}
-                      style={{width:"100%",border:"1px solid #d1d5db",borderRadius:8,padding:"8px 10px",fontSize:13}}>
-                      {["Orange Money","MTN Mobile Money","Moov Money","Wave","Autre"].map(o=><option key={o}>{o}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{display:"block",fontSize:11,fontWeight:700,color:"#374151",marginBottom:4}}>Numéro de téléphone</label>
-                    <input value={demandeForm.telephone} onChange={e=>setDemandeForm(p=>({...p,telephone:e.target.value}))}
-                      placeholder="Ex. : 621 00 00 00"
-                      style={{width:"100%",border:"1px solid #d1d5db",borderRadius:8,padding:"8px 10px",fontSize:13,boxSizing:"border-box"}}/>
-                  </div>
-                </div>
-                <div style={{marginBottom:18}}>
-                  <label style={{display:"block",fontSize:11,fontWeight:700,color:"#374151",marginBottom:4}}>Référence du paiement</label>
-                  <input value={demandeForm.reference} onChange={e=>setDemandeForm(p=>({...p,reference:e.target.value}))}
-                    placeholder="Ex. : TXN-20240418-001"
-                    style={{width:"100%",border:"1px solid #d1d5db",borderRadius:8,padding:"8px 10px",fontSize:13,boxSizing:"border-box"}}/>
-                </div>
-
-                {demandeSucces ? (
-                  <div style={{background:"#d1fae5",border:"2px solid #6ee7b7",borderRadius:12,padding:"20px",textAlign:"center"}}>
-                    <div style={{fontSize:36,marginBottom:8}}>✅</div>
-                    <p style={{margin:"0 0 4px",fontWeight:800,fontSize:15,color:"#065f46"}}>Demande envoyée avec succès !</p>
-                    <p style={{margin:0,fontSize:12,color:"#047857"}}>L'équipe EduGest va vérifier votre paiement et activer votre abonnement <strong>{PLANS[demandePlan]?.label}</strong> sous 24h.</p>
-                  </div>
-                ) : (
-                  <div style={{display:"flex",justifyContent:"flex-end"}}>
-                    <button onClick={envoyerDemande}
-                      disabled={demandeEnvoi||!demandeForm.telephone.trim()||!demandeForm.reference.trim()}
-                      style={{background:`linear-gradient(90deg,${C.blue},${C.green})`,color:"#fff",border:"none",padding:"10px 28px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13,
-                        opacity:(demandeEnvoi||!demandeForm.telephone.trim()||!demandeForm.reference.trim())?0.6:1}}>
-                      {demandeEnvoi?"Envoi en cours…":"Envoyer la demande"}
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ══════════════════════════════════════════════════════════════
-//  PARAMÈTRES MATRICULE (sous-composant)
-// ══════════════════════════════════════════════════════════════
-// ══════════════════════════════════════════════════════════════
-//  COMPOSANT LIVRETS SCOLAIRES
-// ══════════════════════════════════════════════════════════════
-function LivretsTab({cleEleves, cleNotes, matieres, maxNote, userRole, annee}) {
-  const {schoolId, schoolInfo, moisAnnee, toast} = useContext(SchoolContext);
-  const {items:livrets, ajouter:ajLivret, modifier:modLivret} = useFirestore("livrets");
-  const {items:eleves} = useFirestore(cleEleves);
-  const {items:notes}  = useFirestore(cleNotes);
-  const section = cleEleves.includes("Primaire")?"primaire":cleEleves.includes("Lycee")?"lycee":"college";
-  const canEdit = ["direction","admin","comptable"].includes(userRole);
-
-  const [livretSelId, setLivretSelId] = useState(null);
-  const [filtreClasse, setFiltreClasse] = useState("all");
-  const [modal, setModal] = useState(null); // "annee"
-  const [formAnnee, setFormAnnee] = useState({});
-  const [savingL, setSavingL] = useState(false);
-
-  const classesUniq = [...new Set(eleves.map(e=>e.classe))].filter(Boolean).sort();
-  const elevesFiltr = filtreClasse==="all" ? eleves : eleves.filter(e=>e.classe===filtreClasse);
-  const livretSel = livrets.find(l=>l._id===livretSelId);
-
-  // Génère un numéro de livret
-  const genNumeroLivret = () => {
-    const an = getAnnee().split("-")[0].slice(-2);
-    const nums = livrets.map(l=>parseInt((l.numeroLivret||"").replace(/[^0-9]/g,""))||0);
-    const n = nums.length>0 ? Math.max(...nums)+1 : 1;
-    return `LIV-${an}-${String(n).padStart(4,"0")}`;
-  };
-
-  // Crée ou ouvre le livret d'un élève
-  const ouvrirLivret = async (eleve) => {
-    const existing = livrets.find(l=>l.eleveId===eleve._id);
-    if(existing){ setLivretSelId(existing._id); return; }
-    if(!canEdit){toast("Création réservée à la direction/admin.","warning");return;}
-    setSavingL(true);
-    try {
-      const id = await ajLivret({
-        eleveId: eleve._id,
-        eleveNom: `${eleve.nom} ${eleve.prenom}`,
-        matricule: eleve.matricule||"",
-        ien: eleve.ien||"",
-        dateNaissance: eleve.dateNaissance||"",
-        lieuNaissance: eleve.lieuNaissance||"",
-        photo: eleve.photo||"",
-        section,
-        numeroLivret: genNumeroLivret(),
-        dateCreation: new Date().toISOString().slice(0,10),
-        annees: [],
-      });
-      setLivretSelId(id);
-      toast("Livret créé","success");
-    } finally { setSavingL(false); }
-  };
-
-  // Pré-remplit une nouvelle entrée annuelle depuis les notes actuelles
-  const preRemplirAnnee = (eleve) => {
-    const notesEleve = notes.filter(n=>n.eleveId===eleve._id);
-    const matieresList = matieres.map(mat=>{
-      const notesParPeriode = ["T1","T2","T3"].reduce((acc,p)=>{
-        const ns = notesEleve.filter(n=>n.matiere===mat.nom&&n.periode===p);
-        acc[p] = ns.length ? (ns.reduce((s,n)=>s+Number(n.note),0)/ns.length) : null;
-        return acc;
-      },{});
-      const avec = Object.values(notesParPeriode).filter(v=>v!==null);
-      const ann = avec.length ? avec.reduce((s,v)=>s+v,0)/avec.length : null;
-      return {matiere:mat.nom, coef:mat.coefficient||1, maxNote,
-        T1:notesParPeriode.T1, T2:notesParPeriode.T2, T3:notesParPeriode.T3,
-        annuelle:ann};
-    });
-    return {
-      anneeScolaire: annee||getAnnee(),
-      classe: eleve.classe||"",
-      enseignantPrincipal: "",
-      notes: matieresList,
-      absences: {justifiees:0, nonJustifiees:0},
-      rang: "", effectifClasse: eleves.filter(e=>e.classe===eleve.classe).length,
-      appreciation: "", decision: "Admis",
-      signe: false, dateSigne: null,
-    };
-  };
-
-  const sauvegarderAnnee = async () => {
-    if(!livretSel) return;
-    setSavingL(true);
-    try {
-      const annees = [...(livretSel.annees||[])];
-      if(formAnnee._idx!=null) annees[formAnnee._idx] = {...formAnnee, _idx:undefined};
-      else annees.push({...formAnnee});
-      await modLivret(livretSel._id,{annees});
-      setModal(null);
-      toast("Année enregistrée","success");
-    } finally { setSavingL(false); }
-  };
-
-  const signerAnnee = async (livretId, idx) => {
-    const lv = livrets.find(l=>l._id===livretId);
-    if(!lv) return;
-    const annees = [...lv.annees];
-    annees[idx] = {...annees[idx], signe:true, dateSigne:today()};
-    await modLivret(livretId,{annees});
-    toast("Année signée et verrouillée","success");
-  };
-
-  const chgAnnee = k => e => setFormAnnee(p=>({...p,[k]:e.target.value}));
-  const chgAbs  = k => e => setFormAnnee(p=>({...p,absences:{...(p.absences||{}), [k]:Number(e.target.value)}}));
-
-  // ── Vue détail d'un livret ─────────────────────────────────
-  if(livretSel) {
-    const eleve = eleves.find(e=>e._id===livretSel.eleveId)||{};
-    return (
-      <div>
-        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
-          <Btn sm v="ghost" onClick={()=>setLivretSelId(null)}>← Retour</Btn>
-          <strong style={{fontSize:14,color:C.blueDark,flex:1}}>
-            📋 Livret — {livretSel.eleveNom} · <span style={{fontFamily:"monospace",color:C.blue}}>{livretSel.numeroLivret}</span>
-          </strong>
-          <Btn sm v="vert" onClick={()=>imprimerLivret({...livretSel,photo:eleve.photo||livretSel.photo},schoolInfo)}>🖨️ Imprimer le livret</Btn>
-          {canEdit&&<Btn sm v="blue" onClick={()=>{setFormAnnee({...preRemplirAnnee(eleve)});setModal("annee");}}>+ Nouvelle année</Btn>}
-        </div>
-
-        {(livretSel.annees||[]).length===0
-          ? <Vide icone="📅" msg="Aucune année saisie — cliquez sur '+ Nouvelle année'"/>
-          : (livretSel.annees||[]).map((an,idx)=>(
-            <Card key={idx} style={{marginBottom:14,border:`2px solid ${an.signe?"#86efac":"#e5e7eb"}`}}>
-              <div style={{display:"flex",alignItems:"center",gap:10,padding:"12px 16px",background:an.signe?"#f0fdf4":"#f8fafc",borderRadius:"14px 14px 0 0"}}>
-                <strong style={{flex:1,fontSize:13,color:C.blueDark}}>Année {an.anneeScolaire} — {an.classe}</strong>
-                <Badge color={an.decision==="Admis avec félicitations"||an.decision==="Admis"?"vert":an.decision==="Redoublant"?"amber":"red"}>{an.decision||"—"}</Badge>
-                {an.signe
-                  ? <span style={{fontSize:11,color:"#15803d",fontWeight:700}}>✅ Signé le {an.dateSigne}</span>
-                  : canEdit&&<>
-                      <Btn sm v="ghost" onClick={()=>{setFormAnnee({...an,_idx:idx});setModal("annee");}}>✏️ Modifier</Btn>
-                      <Btn sm v="vert" onClick={()=>signerAnnee(livretSel._id,idx)}>✍️ Signer</Btn>
-                    </>
-                }
-              </div>
-              <div style={{padding:"12px 16px",fontSize:12}}>
-                <div style={{display:"flex",gap:20,marginBottom:8,flexWrap:"wrap",color:"#374151"}}>
-                  <span>Enseignant : <strong>{an.enseignantPrincipal||"—"}</strong></span>
-                  <span>Rang : <strong>{an.rang||"—"}/{an.effectifClasse||"—"}</strong></span>
-                  <span>Abs. justifiées : <strong>{an.absences?.justifiees||0}</strong></span>
-                  <span>Abs. non just. : <strong>{an.absences?.nonJustifiees||0}</strong></span>
-                </div>
-                {an.appreciation&&<div style={{fontStyle:"italic",color:"#6b7280",marginBottom:6}}>"{an.appreciation}"</div>}
-                <details><summary style={{cursor:"pointer",color:C.blue,fontSize:12,fontWeight:700}}>Voir les notes ({(an.notes||[]).length} matières)</summary>
-                  <table style={{width:"100%",borderCollapse:"collapse",marginTop:8,fontSize:11}}>
-                    <THead cols={["Matière","Coef","T1","T2","T3","Annuelle"]}/>
-                    <tbody>{(an.notes||[]).map((n,i)=><TR key={i}>
-                      <TD bold>{n.matiere}</TD><TD center>{n.coef}</TD>
-                      <TD center>{n.T1!=null?Number(n.T1).toFixed(1):"—"}</TD>
-                      <TD center>{n.T2!=null?Number(n.T2).toFixed(1):"—"}</TD>
-                      <TD center>{n.T3!=null?Number(n.T3).toFixed(1):"—"}</TD>
-                      <TD center><strong style={{color:n.annuelle>=maxNote/2?"#15803d":"#b91c1c"}}>{n.annuelle!=null?Number(n.annuelle).toFixed(2):"—"}</strong></TD>
-                    </TR>)}</tbody>
-                  </table>
-                </details>
-              </div>
-            </Card>
-          ))
-        }
-
-        {/* Modal saisie année */}
-        {modal==="annee"&&<Modale large titre={formAnnee._idx!=null?"Modifier l'année":"Nouvelle année scolaire"} fermer={()=>setModal(null)}>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:14}}>
-            <Input label="Année scolaire" value={formAnnee.anneeScolaire||""} onChange={chgAnnee("anneeScolaire")} placeholder="2024-2025"/>
-            <Input label="Classe" value={formAnnee.classe||""} onChange={chgAnnee("classe")}/>
-            <Input label="Enseignant(e) principal(e)" value={formAnnee.enseignantPrincipal||""} onChange={chgAnnee("enseignantPrincipal")}/>
-            <Input label="Rang" type="number" value={formAnnee.rang||""} onChange={chgAnnee("rang")}/>
-            <Input label="Effectif classe" type="number" value={formAnnee.effectifClasse||""} onChange={chgAnnee("effectifClasse")}/>
-            <Selec label="Décision du conseil" value={formAnnee.decision||"Admis"} onChange={chgAnnee("decision")}>
-              <option>Admis</option>
-              <option>Admis avec félicitations</option>
-              <option>Redoublant</option>
-              <option>Exclu</option>
-            </Selec>
-            <div style={{gridColumn:"1/3"}}>
-              <Input label="Absences justifiées" type="number" value={formAnnee.absences?.justifiees||0} onChange={chgAbs("justifiees")}/>
-            </div>
-            <Input label="Absences non justifiées" type="number" value={formAnnee.absences?.nonJustifiees||0} onChange={chgAbs("nonJustifiees")}/>
-            <div style={{gridColumn:"1/-1"}}>
-              <label style={{fontSize:12,fontWeight:700,color:C.blueDark,display:"block",marginBottom:4}}>Appréciation générale</label>
-              <textarea value={formAnnee.appreciation||""} onChange={chgAnnee("appreciation")} rows={3}
-                style={{width:"100%",border:"1px solid #b0c4d8",borderRadius:8,padding:"8px 12px",fontSize:12,resize:"vertical"}}/>
-            </div>
-          </div>
-          {(formAnnee.notes||[]).length>0&&<>
-            <p style={{fontWeight:700,fontSize:12,color:C.blueDark,margin:"0 0 8px"}}>Notes par matière (pré-remplies depuis les bulletins)</p>
-            <div style={{overflowX:"auto"}}>
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:11,marginBottom:14}}>
-                <THead cols={["Matière","Coef","T1","T2","T3","Annuelle"]}/>
-                <tbody>{(formAnnee.notes||[]).map((n,i)=>(
-                  <TR key={i}>
-                    <TD bold>{n.matiere}</TD>
-                    <TD center><input type="number" value={n.coef||1}
-                      onChange={e=>{const ns=[...formAnnee.notes];ns[i]={...ns[i],coef:Number(e.target.value)};setFormAnnee(p=>({...p,notes:ns}));}}
-                      style={{width:40,textAlign:"center",border:"1px solid #b0c4d8",borderRadius:4,padding:"2px 4px"}}/></TD>
-                    {["T1","T2","T3"].map(p=>(
-                      <td key={p} style={{padding:"2px 6px",textAlign:"center"}}>
-                        <input type="number" value={n[p]!=null?n[p]:""}
-                          onChange={e=>{const ns=[...formAnnee.notes];ns[i]={...ns[i],[p]:e.target.value===""?null:Number(e.target.value)};setFormAnnee(p=>({...p,notes:ns}));}}
-                          style={{width:50,textAlign:"center",border:"1px solid #b0c4d8",borderRadius:4,padding:"2px 4px"}}/>
-                      </td>
-                    ))}
-                    <td style={{padding:"2px 8px",textAlign:"center",fontWeight:700,color:n.annuelle>=maxNote/2?"#15803d":"#b91c1c"}}>
-                      {n.annuelle!=null?Number(n.annuelle).toFixed(2):"—"}
-                    </td>
-                  </TR>
-                ))}</tbody>
-              </table>
-            </div>
-          </>}
-          <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:8}}>
-            <Btn v="ghost" onClick={()=>setModal(null)}>Annuler</Btn>
-            <Btn v="success" onClick={sauvegarderAnnee} disabled={savingL}>{savingL?"Enregistrement…":"💾 Enregistrer"}</Btn>
-          </div>
-        </Modale>}
-      </div>
-    );
-  }
-
-  // ── Vue liste des livrets ──────────────────────────────────
-  return (
-    <div>
-      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,flexWrap:"wrap"}}>
-        <strong style={{fontSize:14,flex:1,color:C.blueDark}}>📋 Livrets scolaires ({livrets.length})</strong>
-        <select value={filtreClasse} onChange={e=>setFiltreClasse(e.target.value)}
-          style={{border:"1px solid #b0c4d8",borderRadius:7,padding:"6px 10px",fontSize:12,background:"#fff"}}>
-          <option value="all">Toutes les classes</option>
-          {classesUniq.map(c=><option key={c}>{c}</option>)}
-        </select>
-      </div>
-      {elevesFiltr.length===0
-        ? <Vide icone="📋" msg="Aucun élève dans cette sélection"/>
-        : <Card>
-            <table style={{width:"100%",borderCollapse:"collapse"}}>
-              <THead cols={["Matricule","Nom & Prénom","Classe","Livret","Années saisies","Action"]}/>
-              <tbody>{elevesFiltr.map(e=>{
-                const lv = livrets.find(l=>l.eleveId===e._id);
-                return <TR key={e._id}>
-                  <TD><span style={{fontSize:11,fontFamily:"monospace",background:"#e0ebf8",padding:"2px 5px",borderRadius:4,color:C.blue,fontWeight:700}}>{e.matricule||"—"}</span></TD>
-                  <TD bold>{e.nom} {e.prenom}</TD>
-                  <TD><Badge color="blue">{e.classe}</Badge></TD>
-                  <TD>{lv
-                    ? <span style={{fontFamily:"monospace",fontSize:11,color:C.blue}}>{lv.numeroLivret}</span>
-                    : <span style={{fontSize:11,color:"#9ca3af"}}>Non créé</span>}
-                  </TD>
-                  <TD center>{lv ? <Badge color={(lv.annees||[]).length>0?"vert":"gray"}>{(lv.annees||[]).length} an(s)</Badge> : "—"}</TD>
-                  <TD>
-                    <Btn sm v={lv?"ghost":"blue"} onClick={()=>ouvrirLivret(e)} disabled={savingL}>
-                      {lv?"📂 Ouvrir":"📋 Créer"}
-                    </Btn>
-                    {lv&&<Btn sm v="amber" style={{marginLeft:4}} onClick={()=>imprimerLivret({...lv,photo:e.photo||lv.photo},schoolInfo)}>🖨️</Btn>}
-                  </TD>
-                </TR>;
-              })}</tbody>
-            </table>
-          </Card>
-      }
-    </div>
-  );
-}
-
-// ══════════════════════════════════════════════════════════════
 function ParametresEcole() {
   const {schoolId,schoolInfo,setSchoolInfo,toast} = useContext(SchoolContext);
   const {items:honneurs, ajouter:ajHonneur, modifier:modHonneur, supprimer:supHonneur} = useFirestore("honneurs");
@@ -4527,7 +3659,7 @@ function ParametresEcole() {
           if(d>70){c2=hex(rgb);break;}
         }
         cb(c1, c2||"#00C48C");
-      } catch(e){ cb(null,null); }
+      } catch{ cb(null,null); }
     };
     img.onerror=()=>cb(null,null);
     img.src=src;
@@ -5122,16 +4254,6 @@ function SuperAdminPanel() {
   const rejeterDemande = async (demande) => {
     await updateDoc(doc(db,"ecoles",demande._schoolId,"demandes_plan",demande._id),{statut:"rejetee"});
     setDemandes(prev=>prev.map(d=>d._id===demande._id?{...d,statut:"rejetee"}:d));
-  };
-
-  const activerPlan = async (ecole, plan) => {
-    const update = plan === "pro"
-      ? { plan: "pro", planExpiry: Date.now() + 365*24*60*60*1000, planActivatedBy: "superadmin", planActivatedAt: Date.now() }
-      : { plan: "gratuit", planExpiry: null };
-    await updateDoc(doc(db,"ecoles",ecole._id), update);
-    setEcoles(prev => prev.map(e => e._id===ecole._id ? {...e,...update} : e));
-    setMsgSucces(`Plan ${plan==="pro"?"Pro activé ⭐":"Gratuit rétabli"} pour ${ecole.nom}`);
-    setTimeout(()=>setMsgSucces(""),4000);
   };
 
   const sauvegarderPlan = async () => {
@@ -5741,819 +4863,6 @@ function SuperAdminPanel() {
     </div>
   );
 }
-
-//  PORTAIL ENSEIGNANT
-// ══════════════════════════════════════════════════════════════
-function PortailEnseignant({utilisateur, deconnecter, annee, schoolInfo}) {
-  const {moisAnnee, moisSalaire, toast} = useContext(SchoolContext);
-  const nomEns = utilisateur.enseignantNom || utilisateur.nom || "";
-  const sec     = utilisateur.section || "college";
-  const matiere = utilisateur.matiere || "";
-
-  const cleEmplois = sec==="lycee"?"classesLycee_emplois":sec==="primaire"?"classesPrimaire_emplois":"classesCollege_emplois";
-  const cleNotes   = sec==="lycee"?"notesLycee":sec==="primaire"?"notesPrimaire":"notesCollege";
-  const cleEleves  = sec==="lycee"?"elevesLycee":sec==="primaire"?"elevesPrimaire":"elevesCollege";
-  const cleEng     = sec==="primaire"?null:sec==="lycee"?"ensLycee_enseignements":"ensCollege_enseignements";
-
-  const {items:emplois}                                            = useFirestore(cleEmplois);
-  const {items:notes,  ajouter:ajNote, modifier:modNote}          = useFirestore(cleNotes);
-  const {items:eleves}                                             = useFirestore(cleEleves);
-  const {items:absences}                                           = useFirestore(cleEng||"__none__");
-  const {items:salaires}                                           = useFirestore("salaires");
-
-  const [tab,setTab] = useState("dashboard");
-  const [periodeN,setPeriodeN] = useState(moisAnnee[0]||"");
-  const [modalNote,setModalNote] = useState(null);
-  const [formNote,setFormNote] = useState({});
-
-  // Données filtrées
-  const mesEmplois  = emplois.filter(e=>(e.enseignant||"").toLowerCase()===nomEns.toLowerCase());
-  const mesClasses  = [...new Set(mesEmplois.map(e=>e.classe||""))].filter(Boolean);
-  const mesEleves   = eleves.filter(e=>mesClasses.includes(e.classe));
-  const mesNotes    = notes.filter(n=>(n.matiere||"")===(matiere||n.matiere));
-  const mesAbsences = absences.filter(a=>(a.enseignantNom||"").toLowerCase()===nomEns.toLowerCase());
-  const monSalaire  = salaires.filter(s=>(s.nom||"").toLowerCase().trim()===nomEns.toLowerCase().trim());
-
-  const c1 = schoolInfo.couleur1||C.blue;
-  const c2 = schoolInfo.couleur2||C.green;
-
-  const JOURS = ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi"];
-  const HEURES = ["07h-08h","08h-09h","09h-10h","10h-11h","11h-12h","14h-15h","15h-16h","16h-17h","17h-18h"];
-
-  return (
-    <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Inter','Segoe UI',sans-serif"}}>
-      <GlobalStyles/>
-      {/* Header */}
-      <div style={{background:`linear-gradient(135deg,${c1},${c1}ee)`,padding:"14px 24px",display:"flex",alignItems:"center",gap:14,boxShadow:"0 2px 12px rgba(0,0,0,0.2)"}}>
-        {schoolInfo.logo&&<img src={schoolInfo.logo} alt="logo" style={{width:38,height:38,objectFit:"contain",borderRadius:8,background:"rgba(255,255,255,0.15)",padding:4}}/>}
-        <div style={{flex:1}}>
-          <div style={{color:c2,fontWeight:900,fontSize:15}}>{schoolInfo.nom||"École"}</div>
-          <div style={{color:"rgba(255,255,255,0.7)",fontSize:11}}>Portail Enseignant · {annee}</div>
-        </div>
-        <div style={{textAlign:"right"}}>
-          <div style={{color:"#fff",fontWeight:700,fontSize:13}}>{nomEns}</div>
-          <div style={{display:"flex",alignItems:"center",gap:6,marginTop:4}}>
-            <Badge color="purple">{matiere||"Enseignant"}</Badge>
-            <button onClick={deconnecter} style={{background:"rgba(255,255,255,0.15)",border:"1px solid rgba(255,255,255,0.3)",color:"#fff",padding:"3px 10px",borderRadius:6,fontSize:11,cursor:"pointer",fontWeight:700}}>Déconnexion</button>
-          </div>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div style={{background:"#fff",borderBottom:"2px solid #e2e8f0",padding:"0 24px",display:"flex",gap:0,overflowX:"auto"}}>
-        {[
-          {id:"dashboard",icon:"🏠",label:"Tableau de bord"},
-          {id:"edt",      icon:"📅",label:"Mon EDT"},
-          {id:"notes",    icon:"📝",label:"Saisie notes"},
-          {id:"eleves",   icon:"👥",label:"Mes élèves"},
-          {id:"absences", icon:"📋",label:"Mes absences"},
-          {id:"salaire",  icon:"💰",label:"Ma fiche de paie"},
-        ].map(t=>(
-          <button key={t.id} onClick={()=>setTab(t.id)} style={{
-            padding:"13px 18px",border:"none",background:"none",cursor:"pointer",
-            fontSize:13,fontWeight:700,whiteSpace:"nowrap",
-            color:tab===t.id?c1:"#64748b",
-            borderBottom:tab===t.id?`3px solid ${c1}`:"3px solid transparent",
-            transition:"all .15s",
-          }}>{t.icon} {t.label}</button>
-        ))}
-      </div>
-
-      <div style={{padding:"24px",maxWidth:1100,margin:"0 auto"}}>
-
-        {/* ── DASHBOARD ── */}
-        {tab==="dashboard"&&<>
-          <h2 style={{margin:"0 0 20px",fontSize:18,fontWeight:900,color:c1}}>Bonjour, {nomEns.split(" ")[0]} 👋</h2>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12,marginBottom:24}}>
-            <Stat label="Mes classes"       value={mesClasses.length} sub={mesClasses.join(", ")||"—"} bg="#f0f7ff"/>
-            <Stat label="Mes élèves"        value={mesEleves.length}  sub="ce niveau"                   bg="#f0fdf4"/>
-            <Stat label="Notes saisies"     value={mesNotes.length}   sub={matiere}                     bg="#fefce8"/>
-            <Stat label="Créneaux / semaine" value={mesEmplois.length} sub="heures de cours"            bg="#fdf4ff"/>
-            <Stat label="Absences"          value={mesAbsences.filter(a=>a.statut==="Absent").length} sub="ce mois" bg="#fff1f2"/>
-          </div>
-
-          {/* Planning du jour (aujourd'hui) */}
-          {mesEmplois.length>0&&<Card style={{marginBottom:20}}>
-            <div style={{padding:"14px 18px",borderBottom:"1px solid #f1f5f9"}}>
-              <strong style={{fontSize:13,color:c1}}>📅 Mon emploi du temps</strong>
-            </div>
-            <div style={{padding:"12px 18px",display:"flex",flexWrap:"wrap",gap:8}}>
-              {mesEmplois.map((e,i)=>(
-                <div key={i} style={{background:`${c1}11`,borderLeft:`3px solid ${c1}`,borderRadius:"0 8px 8px 0",padding:"8px 12px",minWidth:130}}>
-                  <div style={{fontSize:11,fontWeight:700,color:c1}}>{e.jour} — {e.heure}</div>
-                  <div style={{fontSize:12,fontWeight:700,color:"#374151",marginTop:2}}>{e.classe}</div>
-                  <div style={{fontSize:11,color:"#94a3b8"}}>{e.matiere||matiere}</div>
-                </div>
-              ))}
-            </div>
-          </Card>}
-
-          {/* Dernières notes saisies */}
-          {mesNotes.length>0&&<Card>
-            <div style={{padding:"14px 18px",borderBottom:"1px solid #f1f5f9"}}>
-              <strong style={{fontSize:13,color:c1}}>📝 Dernières notes saisies</strong>
-            </div>
-            <div style={{overflowX:"auto"}}>
-              <table style={{width:"100%",borderCollapse:"collapse"}}>
-                <THead cols={["Élève","Matière","Type","Période","Note"]}/>
-                <tbody>{mesNotes.slice(-10).reverse().map((n,i)=>(
-                  <TR key={i}>
-                    <TD bold>{n.eleveNom}</TD>
-                    <TD>{n.matiere}</TD>
-                    <TD><Badge color="blue">{n.type}</Badge></TD>
-                    <TD>{n.periode}</TD>
-                    <TD center><strong style={{color:Number(n.note)>=10?C.greenDk:"#b91c1c"}}>{n.note}/20</strong></TD>
-                  </TR>
-                ))}</tbody>
-              </table>
-            </div>
-          </Card>}
-        </>}
-
-        {/* ── EMPLOI DU TEMPS ── */}
-        {tab==="edt"&&<>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:8}}>
-            <h2 style={{margin:0,fontSize:16,fontWeight:900,color:c1}}>Mon emploi du temps</h2>
-            {mesEmplois.length>0&&<Btn sm v="ghost" onClick={()=>{
-              const w=window.open("","_blank");
-              const rows=HEURES.map(h=>`<tr><td style="font-weight:700;background:#f8fafc;white-space:nowrap">${h}</td>${JOURS.map(j=>{const c=mesEmplois.find(e=>e.heure===h&&e.jour===j);return`<td style="text-align:center;padding:6px">${c?`<div style="background:#e8f0fe;border-radius:4px;padding:4px 6px;font-size:11px"><strong>${c.classe}</strong><br/>${c.matiere||matiere}</div>`:""}</td>`;}).join("")}</tr>`).join("");
-              w.document.write(`<!DOCTYPE html><html><head><title>EDT — ${nomEns}</title><style>body{font-family:Arial,sans-serif;padding:24px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #d0dce8;padding:8px 10px;font-size:12px}th{background:#0A1628;color:#fff}@media print{button{display:none}}</style></head><body><h2 style="color:#0A1628">Emploi du temps — ${nomEns}</h2><p style="color:#555">${matiere} · ${schoolInfo.nom} · ${annee}</p><table><tr><th>Heure</th>${JOURS.map(j=>`<th>${j}</th>`).join("")}</tr>${rows}</table><br/><button onclick="window.print()">Imprimer</button></body></html>`);
-              w.document.close();
-            }}>🖨️ Imprimer EDT</Btn>}
-          </div>
-          {mesEmplois.length===0
-            ?<Vide icone="📅" msg="Aucun créneau dans votre emploi du temps"/>
-            :<Card>
-              <div style={{overflowX:"auto"}}>
-                <table style={{width:"100%",borderCollapse:"collapse",minWidth:600}}>
-                  <THead cols={["Heure",...JOURS]}/>
-                  <tbody>{HEURES.map(h=>(
-                    <TR key={h}>
-                      <TD bold style={{background:"#f8fafc",whiteSpace:"nowrap",fontSize:11}}>{h}</TD>
-                      {JOURS.map(j=>{
-                        const c=mesEmplois.find(e=>e.heure===h&&e.jour===j);
-                        return <td key={j} style={{padding:"6px 10px",border:"1px solid #f1f5f9",textAlign:"center"}}>
-                          {c?<div style={{background:`${c1}15`,borderRadius:6,padding:"4px 8px",border:`1px solid ${c1}33`}}>
-                            <div style={{fontSize:11,fontWeight:800,color:c1}}>{c.classe}</div>
-                            <div style={{fontSize:10,color:"#64748b"}}>{c.matiere||matiere}</div>
-                          </div>:null}
-                        </td>;
-                      })}
-                    </TR>
-                  ))}</tbody>
-                </table>
-              </div>
-            </Card>}
-        </>}
-
-        {/* ── SAISIE NOTES ── */}
-        {tab==="notes"&&<>
-          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16,flexWrap:"wrap"}}>
-            <h2 style={{margin:0,fontSize:16,fontWeight:900,color:c1,flex:1}}>Saisie des notes — {matiere}</h2>
-            <select value={periodeN} onChange={e=>setPeriodeN(e.target.value)}
-              style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",fontSize:13,background:"#fff"}}>
-              {moisAnnee.map(m=><option key={m}>{m}</option>)}
-            </select>
-            <Btn onClick={()=>{setFormNote({matiere,periode:periodeN,type:"Devoir"});setModalNote("add");}}>+ Nouvelle note</Btn>
-          </div>
-          {mesNotes.filter(n=>n.periode===periodeN).length===0
-            ?<Vide icone="📝" msg={`Aucune note pour ${periodeN}`}/>
-            :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
-              <THead cols={["Élève","Type","Note /20","Actions"]}/>
-              <tbody>{mesNotes.filter(n=>n.periode===periodeN).map(n=>(
-                <TR key={n._id}>
-                  <TD bold>{n.eleveNom}</TD>
-                  <TD><Badge color="blue">{n.type}</Badge></TD>
-                  <TD center><strong style={{fontSize:14,color:Number(n.note)>=10?C.greenDk:"#b91c1c"}}>{n.note}</strong></TD>
-                  <TD center>
-                    <Btn sm v="ghost" onClick={()=>{setFormNote({...n});setModalNote("edit");}}>✏️</Btn>
-                    <Btn sm v="danger" onClick={()=>confirm("Supprimer ?")&&notes.find(x=>x._id===n._id)&&modNote({...n,note:n.note})}>🗑</Btn>
-                  </TD>
-                </TR>
-              ))}</tbody>
-            </table></Card>}
-
-          {modalNote&&<Modale titre={modalNote==="add"?"Nouvelle note":"Modifier la note"} fermer={()=>setModalNote(null)}>
-            <Selec label="Élève" value={formNote.eleveId||""} onChange={e=>{
-              const el=mesEleves.find(x=>x._id===e.target.value);
-              setFormNote(p=>({...p,eleveId:e.target.value,eleveNom:el?`${el.nom} ${el.prenom}`:p.eleveNom}));
-            }}>
-              <option value="">— Choisir un élève —</option>
-              {mesEleves.map(e=><option key={e._id} value={e._id}>{e.nom} {e.prenom} ({e.classe})</option>)}
-            </Selec>
-            <div style={{height:10}}/>
-            <Selec label="Type" value={formNote.type||"Devoir"} onChange={e=>setFormNote(p=>({...p,type:e.target.value}))}>
-              <option>Devoir</option><option>Composition</option><option>Interrogation</option>
-            </Selec>
-            <div style={{height:10}}/>
-            <Input label="Note /20" type="number" value={formNote.note||""} onChange={e=>setFormNote(p=>({...p,note:e.target.value}))} placeholder="Ex : 14"/>
-            <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
-              <Btn v="ghost" onClick={()=>setModalNote(null)}>Annuler</Btn>
-              <Btn onClick={()=>{
-                if(!formNote.eleveId||formNote.note===""){toast("Élève et note requis.","warning");return;}
-                const data={...formNote,note:Number(formNote.note),matiere,periode:periodeN};
-                if(modalNote==="add") ajNote(data); else modNote(data);
-                setModalNote(null);
-              }}>Enregistrer</Btn>
-            </div>
-          </Modale>}
-        </>}
-
-        {/* ── MES ÉLÈVES ── */}
-        {tab==="eleves"&&<>
-          <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:900,color:c1}}>Mes élèves ({mesEleves.length})</h2>
-          {mesClasses.length===0
-            ?<Vide icone="👥" msg="Aucune classe assignée dans l'emploi du temps"/>
-            :<>
-              <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}>
-                {mesClasses.map(c=><Badge key={c} color="blue">{c} — {mesEleves.filter(e=>e.classe===c).length} élève(s)</Badge>)}
-              </div>
-              <Card><table style={{width:"100%",borderCollapse:"collapse"}}>
-                <THead cols={["Matricule","Nom & Prénom","Classe","Sexe","Statut"]}/>
-                <tbody>{mesEleves.map(e=>(
-                  <TR key={e._id}>
-                    <TD><span style={{fontFamily:"monospace",fontSize:11,background:"#e0ebf8",padding:"2px 5px",borderRadius:4,color:c1,fontWeight:700}}>{e.matricule}</span></TD>
-                    <TD bold>{e.nom} {e.prenom}</TD>
-                    <TD><Badge color="blue">{e.classe}</Badge></TD>
-                    <TD><Badge color={e.sexe==="F"?"vert":"blue"}>{e.sexe}</Badge></TD>
-                    <TD><Badge color={e.statut==="Actif"?"vert":"gray"}>{e.statut||"Actif"}</Badge></TD>
-                  </TR>
-                ))}</tbody>
-              </table></Card>
-            </>}
-        </>}
-
-        {/* ── ABSENCES ── */}
-        {tab==="absences"&&<>
-          <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:900,color:c1}}>Mes absences & engagements</h2>
-          {mesAbsences.length===0
-            ?<Vide icone="📋" msg="Aucune absence enregistrée"/>
-            :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
-              <THead cols={["Date","Classe","Matière","Statut","Motif"]}/>
-              <tbody>{mesAbsences.map((a,i)=>(
-                <TR key={i}>
-                  <TD>{a.date||"—"}</TD>
-                  <TD><Badge color="blue">{a.classe||"—"}</Badge></TD>
-                  <TD>{a.matiere||matiere}</TD>
-                  <TD><Badge color={a.statut==="Absent"?"red":a.statut==="Non effectué"?"amber":"vert"}>{a.statut}</Badge></TD>
-                  <TD>{a.motif||"—"}</TD>
-                </TR>
-              ))}</tbody>
-            </table></Card>}
-        </>}
-
-        {/* ── FICHE DE PAIE ── */}
-        {tab==="salaire"&&<>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:8}}>
-            <h2 style={{margin:0,fontSize:16,fontWeight:900,color:c1}}>Ma fiche de paie</h2>
-            {monSalaire.length>0&&<Btn sm v="ghost" onClick={()=>{
-              const w=window.open("","_blank");
-              const lignes=monSalaire.map(s=>{
-                const net=s.section==="Secondaire"
-                  ?((Number(s.vhPrevu||0)+Number(s.cinqSem||0)-Number(s.nonExecute||0))*Number(s.primeHoraire||0)-Number(s.bon||0)+Number(s.revision||0))
-                  :(Number(s.montantForfait||0)-Number(s.bon||0)+Number(s.revision||0));
-                return `<tr><td>${s.mois}</td><td>${s.section}</td><td>${s.section==="Secondaire"?`${(Number(s.vhPrevu||0)+Number(s.cinqSem||0)-Number(s.nonExecute||0))} h × ${(s.primeHoraire||0).toLocaleString("fr-FR")} GNF`:`Forfait ${Number(s.montantForfait||0).toLocaleString("fr-FR")} GNF`}</td><td>${Number(s.bon||0)>0?"-"+Number(s.bon).toLocaleString("fr-FR"):"-"}</td><td>${Number(s.revision||0)>0?"+"+Number(s.revision).toLocaleString("fr-FR"):"-"}</td><td style="font-weight:900;color:#0A1628">${net.toLocaleString("fr-FR")} GNF</td></tr>`;
-              }).join("");
-              w.document.write(`<!DOCTYPE html><html><head><title>Fiches de paie — ${nomEns}</title><style>body{font-family:Arial,sans-serif;padding:24px;font-size:13px}h2{color:#0A1628}table{width:100%;border-collapse:collapse;margin-top:16px}th{background:#0A1628;color:#fff;padding:8px 10px}td{padding:8px 10px;border-bottom:1px solid #e5e7eb}@media print{button{display:none}}</style></head><body><h2>${schoolInfo.nom||"École"} — Fiches de paie</h2><p>${nomEns} · ${matiere||"Enseignant"} · Année ${annee}</p><table><tr><th>Mois</th><th>Section</th><th>Détail</th><th>Bon</th><th>Révision</th><th>Net à payer</th></tr>${lignes}</table><br/><button onclick="window.print()">🖨️ Imprimer</button></body></html>`);
-              w.document.close();
-            }}>🖨️ Imprimer fiches</Btn>}
-          </div>
-          <LectureSeule/>
-          {monSalaire.length===0
-            ?<Vide icone="💰" msg="Aucune fiche de paie disponible"/>
-            :<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:12}}>
-              {monSalaire.map((s,i)=>{
-                const net=s.section==="Secondaire"
-                  ?((Number(s.vhPrevu||0)+Number(s.cinqSem||0)-Number(s.nonExecute||0))*Number(s.primeHoraire||0)-Number(s.bon||0)+Number(s.revision||0))
-                  :(Number(s.montantForfait||0)-Number(s.bon||0)+Number(s.revision||0));
-                return (
-                  <Card key={i} style={{padding:0}}>
-                    <div style={{background:`linear-gradient(135deg,${c1},${c1}cc)`,padding:"12px 16px",borderRadius:"14px 14px 0 0"}}>
-                      <div style={{color:c2,fontWeight:900,fontSize:13}}>{s.mois}</div>
-                      <div style={{color:"rgba(255,255,255,0.7)",fontSize:11}}>Section {s.section}</div>
-                    </div>
-                    <div style={{padding:"14px 16px"}}>
-                      {s.section==="Secondaire"?<>
-                        <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:6,paddingBottom:6,borderBottom:"1px solid #f1f5f9"}}>
-                          <span style={{color:"#64748b"}}>V.H. exécuté</span>
-                          <strong>{(Number(s.vhPrevu||0)+Number(s.cinqSem||0)-Number(s.nonExecute||0))} h</strong>
-                        </div>
-                        <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:6}}>
-                          <span style={{color:"#64748b"}}>Prime horaire</span>
-                          <strong>{(s.primeHoraire||0).toLocaleString("fr-FR")} GNF</strong>
-                        </div>
-                      </>:<>
-                        <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:6,paddingBottom:6,borderBottom:"1px solid #f1f5f9"}}>
-                          <span style={{color:"#64748b"}}>Forfait</span>
-                          <strong>{Number(s.montantForfait||0).toLocaleString("fr-FR")} GNF</strong>
-                        </div>
-                      </>}
-                      {Number(s.bon||0)>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:6,color:"#b91c1c"}}>
-                        <span>Bon déduit</span>
-                        <strong>-{Number(s.bon).toLocaleString("fr-FR")} GNF</strong>
-                      </div>}
-                      {Number(s.revision||0)>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:6,color:C.greenDk}}>
-                        <span>Révision</span>
-                        <strong>+{Number(s.revision).toLocaleString("fr-FR")} GNF</strong>
-                      </div>}
-                      <div style={{display:"flex",justifyContent:"space-between",padding:"10px 12px",background:`${c1}0d`,borderRadius:8,marginTop:8}}>
-                        <span style={{fontWeight:700,fontSize:13,color:c1}}>NET À PAYER</span>
-                        <strong style={{fontSize:15,color:c1}}>{net.toLocaleString("fr-FR")} GNF</strong>
-                      </div>
-                      {s.observation&&<p style={{fontSize:11,color:"#94a3b8",marginTop:8}}>{s.observation}</p>}
-                    </div>
-                  </Card>
-                );
-              })}
-            </div>}
-        </>}
-
-      </div>
-    </div>
-  );
-}
-
-// ══════════════════════════════════════════════════════════════
-//  PORTAIL PARENT
-// ══════════════════════════════════════════════════════════════
-// ── Écran de blocage accès parent (impayés) ──────────────────
-function BlocagePaiement({moisImpayes=[], schoolInfo={}, onPaiements}) {
-  const c1 = schoolInfo.couleur1||"#0A1628";
-  return (
-    <div style={{background:"#fff",borderRadius:16,border:"2px solid #fca5a5",padding:"36px 28px",textAlign:"center",maxWidth:500,margin:"0 auto"}}>
-      <div style={{fontSize:52,marginBottom:12}}>🔒</div>
-      <h3 style={{margin:"0 0 8px",fontSize:18,fontWeight:900,color:"#991b1b"}}>Accès restreint</h3>
-      <p style={{margin:"0 0 16px",fontSize:14,color:"#6b7280",lineHeight:1.6}}>
-        La consultation et l'impression des notes et bulletins sont temporairement suspendues
-        car <strong>des mensualités sont en attente de règlement</strong>.
-      </p>
-      <div style={{background:"#fef2f2",borderRadius:10,padding:"12px 16px",marginBottom:20,display:"inline-block",textAlign:"left"}}>
-        <div style={{fontSize:12,fontWeight:700,color:"#991b1b",marginBottom:6}}>Mois impayés :</div>
-        <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-          {moisImpayes.map(m=>(
-            <span key={m} style={{background:"#fee2e2",color:"#b91c1c",padding:"3px 10px",borderRadius:20,fontSize:12,fontWeight:700}}>{m}</span>
-          ))}
-        </div>
-      </div>
-      <p style={{margin:"0 0 20px",fontSize:12,color:"#9ca3af"}}>
-        Régularisez votre situation auprès de {schoolInfo.nom||"l'établissement"} pour retrouver l'accès complet.
-      </p>
-      {schoolInfo.telephone&&(
-        <a href={`tel:${schoolInfo.telephone}`}
-          style={{display:"inline-flex",alignItems:"center",gap:6,background:"#dcfce7",color:"#15803d",
-            border:"none",borderRadius:8,padding:"8px 18px",fontSize:13,fontWeight:700,textDecoration:"none",marginRight:8}}>
-          📞 Appeler l'école
-        </a>
-      )}
-      <button onClick={onPaiements}
-        style={{background:c1,border:"none",color:"#fff",padding:"9px 22px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13}}>
-        💳 Voir mes paiements
-      </button>
-    </div>
-  );
-}
-
-function PortailParent({utilisateur, deconnecter, annee, schoolInfo}) {
-  const {schoolId,toast} = useContext(SchoolContext);
-  const c1 = schoolInfo.couleur1||C.blue;
-  const c2 = schoolInfo.couleur2||C.green;
-
-  const sec     = utilisateur.section || "college";
-  const eleveId = utilisateur.eleveId || null;
-  const eleveNom= utilisateur.eleveNom || "";
-
-  const cleNotes   = sec==="primaire"?"notesPrimaire":sec==="lycee"?"notesLycee":"notesCollege";
-  const cleEleves  = sec==="primaire"?"elevesPrimaire":sec==="lycee"?"elevesLycee":"elevesCollege";
-  const cleAbs     = cleEleves+"_absences";
-
-  const {items:notes}    = useFirestore(cleNotes);
-  const {items:eleves}   = useFirestore(cleEleves);
-  const {items:absences} = useFirestore(cleAbs);
-  const {items:salaires} = useFirestore("salaires");
-  const {items:msgs, ajouter:envoyerMsg} = useFirestore("messages");
-  const {items:annonces} = useFirestore("annonces");
-
-  const [tab,setTab]     = useState("dashboard");
-  const [sujet,setSujet] = useState("");
-  const [corps,setCorps] = useState("");
-  const [envoi,setEnvoi] = useState(false);
-  const {items:mensEleve} = useFirestore(cleEleves);
-
-  const eleve      = eleves.find(e=>e._id===eleveId) || {};
-  const mesNotes   = notes.filter(n=>n.eleveId===eleveId||n.eleveNom===eleveNom);
-  const mesAbs     = absences.filter(a=>a.eleveId===eleveId||a.eleveNom===eleveNom);
-  const scolarite  = salaires.filter(s=>s.eleveId===eleveId||s.eleveNom===eleveNom);
-  const mesMessages= msgs.filter(m=>m.eleveId===eleveId||m.eleveNom===eleveNom).sort((a,b)=>b.date-a.date);
-  const nonLus     = mesMessages.filter(m=>m.expediteur==="ecole"&&!m.lu).length;
-
-  const matieres = [...new Set(mesNotes.map(n=>n.matiere))];
-
-  const envoyer = async() => {
-    if(!sujet.trim()||!corps.trim()){toast("Sujet et message requis.","warning");return;}
-    setEnvoi(true);
-    await envoyerMsg({
-      expediteur:"parent",
-      expediteurNom:utilisateur.nom||"Parent",
-      expediteurLogin:utilisateur.login,
-      eleveId, eleveNom,
-      sujet:sujet.trim(),
-      corps:corps.trim(),
-      lu:false,
-      date:Date.now(),
-    });
-    setSujet(""); setCorps("");
-    setEnvoi(false);
-  };
-
-  const eleveCourant = mensEleve.find(e=>e._id===eleveId)||{};
-  const moisAnneeCtx = useContext(SchoolContext).moisAnnee;
-
-  // Blocage accès en cas d'impayé
-  const blocageActif = !!schoolInfo.blocageParentImpaye;
-  const moisImpayes = moisAnneeCtx.filter(m=>(eleveCourant.mens||{})[m]!=="Payé");
-  const accesBloqueParPaiement = blocageActif && moisImpayes.length > 0;
-
-  const TABS = [
-    {id:"dashboard",icon:"🏠",label:"Tableau de bord"},
-    {id:"notes",    icon:"📝",label:"Notes",     bloque:accesBloqueParPaiement},
-    {id:"absences", icon:"📋",label:"Absences"},
-    {id:"bulletins",icon:"📄",label:"Bulletins", bloque:accesBloqueParPaiement},
-    {id:"paiements",icon:"💳",label:"Paiements"},
-    {id:"messages", icon:"💬",label:"Messages"+(nonLus>0?` (${nonLus})`:"")},
-  ];
-
-  return (
-    <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Inter','Segoe UI',sans-serif"}}>
-      <GlobalStyles/>
-      {/* Header */}
-      <div style={{background:`linear-gradient(135deg,${c1},${c1}ee)`,padding:"14px 24px",display:"flex",alignItems:"center",gap:14,boxShadow:"0 2px 12px rgba(0,0,0,0.2)"}}>
-        {schoolInfo.logo&&<img src={schoolInfo.logo} alt="logo" style={{width:38,height:38,objectFit:"contain",borderRadius:8,background:"rgba(255,255,255,0.15)",padding:4}}/>}
-        <div style={{flex:1}}>
-          <div style={{color:c2,fontWeight:900,fontSize:15}}>{schoolInfo.nom||"École"}</div>
-          <div style={{color:"rgba(255,255,255,0.6)",fontSize:11}}>Espace Parent · {annee}</div>
-        </div>
-        <div style={{textAlign:"right"}}>
-          <div style={{color:"#fff",fontWeight:700,fontSize:13}}>{utilisateur.nom}</div>
-          <div style={{display:"flex",alignItems:"center",gap:6,marginTop:4}}>
-            <Badge color="teal">Parent</Badge>
-            <button onClick={deconnecter} style={{background:"rgba(255,255,255,0.15)",border:"1px solid rgba(255,255,255,0.3)",color:"#fff",padding:"3px 10px",borderRadius:6,fontSize:11,cursor:"pointer",fontWeight:700}}>Déconnexion</button>
-          </div>
-        </div>
-      </div>
-
-      {/* Fiche élève */}
-      <div style={{background:"#fff",borderBottom:"1px solid #f1f5f9",padding:"14px 24px",display:"flex",alignItems:"center",gap:16}}>
-        <div style={{width:48,height:48,borderRadius:12,background:`linear-gradient(135deg,${c1},${c2})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,color:"#fff",fontWeight:900,flexShrink:0}}>
-          {(eleveNom||"E")[0]}
-        </div>
-        <div style={{flex:1}}>
-          <div style={{fontWeight:900,fontSize:15,color:"#0A1628"}}>{eleveNom||"—"}</div>
-          <div style={{fontSize:12,color:"#64748b",marginTop:2}}>
-            {eleve.classe&&<span style={{background:"#e0ebf8",color:c1,fontWeight:700,padding:"2px 8px",borderRadius:6,marginRight:8}}>{eleve.classe}</span>}
-            {eleve.matricule&&<span style={{fontFamily:"monospace",fontSize:11,color:"#64748b"}}>#{eleve.matricule}</span>}
-          </div>
-        </div>
-        <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-          <div style={{textAlign:"center",padding:"8px 16px",background:"#f0fdf4",borderRadius:10}}>
-            <div style={{fontWeight:900,fontSize:18,color:C.greenDk}}>{mesNotes.length}</div>
-            <div style={{fontSize:10,color:"#94a3b8",marginTop:2}}>Notes</div>
-          </div>
-          <div style={{textAlign:"center",padding:"8px 16px",background:"#fff1f2",borderRadius:10}}>
-            <div style={{fontWeight:900,fontSize:18,color:"#b91c1c"}}>{mesAbs.filter(a=>a.statut==="Absent").length}</div>
-            <div style={{fontSize:10,color:"#94a3b8",marginTop:2}}>Absences</div>
-          </div>
-          {nonLus>0&&<div style={{textAlign:"center",padding:"8px 16px",background:"#fef3c7",borderRadius:10}}>
-            <div style={{fontWeight:900,fontSize:18,color:"#d97706"}}>{nonLus}</div>
-            <div style={{fontSize:10,color:"#94a3b8",marginTop:2}}>Non lus</div>
-          </div>}
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div style={{background:"#fff",borderBottom:"2px solid #e2e8f0",padding:"0 24px",display:"flex",gap:0,overflowX:"auto"}}>
-        {TABS.map(t=>(
-          <button key={t.id} onClick={()=>setTab(t.id)} style={{
-            padding:"13px 16px",border:"none",background:"none",cursor:"pointer",
-            fontSize:13,fontWeight:700,whiteSpace:"nowrap",
-            color:tab===t.id?c1:t.bloque?"#ef4444":"#64748b",
-            borderBottom:tab===t.id?`3px solid ${c1}`:"3px solid transparent",
-            transition:"all .15s",
-            opacity:t.bloque&&tab!==t.id?0.75:1,
-          }}>
-            {t.bloque?"🔒 ":""}{t.icon} {t.label}
-          </button>
-        ))}
-      </div>
-
-      <div style={{padding:"24px",maxWidth:1000,margin:"0 auto"}}>
-
-        {/* ── DASHBOARD ── */}
-        {tab==="dashboard"&&<>
-          {/* Annonces */}
-          {annonces.length>0&&<div style={{marginBottom:20}}>
-            {annonces.sort((a,b)=>b.date-a.date).slice(0,3).map((an,i)=>(
-              <div key={i} style={{
-                background:an.important?"linear-gradient(135deg,#fef3c7,#fffbeb)":"#f8fafc",
-                border:`1px solid ${an.important?"#fcd34d":"#e2e8f0"}`,
-                borderLeft:`4px solid ${an.important?"#f59e0b":c1}`,
-                borderRadius:"0 12px 12px 0",padding:"12px 18px",marginBottom:8,
-              }}>
-                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
-                  {an.important&&<span style={{fontSize:12}}>📌</span>}
-                  <strong style={{fontSize:13,color:"#0A1628"}}>{an.titre}</strong>
-                  <span style={{marginLeft:"auto",fontSize:10,color:"#94a3b8"}}>{an.auteur} · {new Date(an.date).toLocaleDateString("fr-FR")}</span>
-                </div>
-                <p style={{margin:0,fontSize:12,color:"#475569",lineHeight:1.6}}>{an.corps}</p>
-              </div>
-            ))}
-          </div>}
-
-          {/* Dernières notes */}
-          {mesNotes.length>0&&<Card style={{marginBottom:16}}>
-            <div style={{padding:"14px 18px",borderBottom:"1px solid #f1f5f9",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-              <strong style={{fontSize:13,color:c1}}>📝 Dernières notes</strong>
-              <button onClick={()=>setTab("notes")} style={{fontSize:12,color:c1,background:"none",border:"none",cursor:"pointer",fontWeight:700}}>Voir tout →</button>
-            </div>
-            <div style={{overflowX:"auto"}}>
-              <table style={{width:"100%",borderCollapse:"collapse"}}>
-                <THead cols={["Matière","Type","Période","Note"]}/>
-                <tbody>{mesNotes.slice(-6).reverse().map((n,i)=>(
-                  <TR key={i}>
-                    <TD bold>{n.matiere}</TD>
-                    <TD><Badge color="blue">{n.type}</Badge></TD>
-                    <TD>{n.periode}</TD>
-                    <TD center><strong style={{color:Number(n.note)>=10?C.greenDk:"#b91c1c",fontSize:14}}>{n.note}/20</strong></TD>
-                  </TR>
-                ))}</tbody>
-              </table>
-            </div>
-          </Card>}
-
-          {/* Dernières absences */}
-          {mesAbs.filter(a=>a.statut==="Absent").length>0&&<Card>
-            <div style={{padding:"14px 18px",borderBottom:"1px solid #f1f5f9"}}>
-              <strong style={{fontSize:13,color:"#b91c1c"}}>⚠️ Absences récentes</strong>
-            </div>
-            <div style={{overflowX:"auto"}}>
-              <table style={{width:"100%",borderCollapse:"collapse"}}>
-                <THead cols={["Date","Matière","Statut","Motif"]}/>
-                <tbody>{mesAbs.filter(a=>a.statut==="Absent").slice(-5).map((a,i)=>(
-                  <TR key={i}>
-                    <TD>{a.date||"—"}</TD>
-                    <TD>{a.matiere||"—"}</TD>
-                    <TD><Badge color="red">Absent</Badge></TD>
-                    <TD>{a.motif||"—"}</TD>
-                  </TR>
-                ))}</tbody>
-              </table>
-            </div>
-          </Card>}
-
-          {/* Graphique radar notes par matière */}
-          {mesNotes.length>0&&(()=>{
-            const radarData = matieres.map(mat=>{
-              const ns = mesNotes.filter(n=>n.matiere===mat);
-              const moy = ns.length ? ns.reduce((s,n)=>s+Number(n.note||0),0)/ns.length : 0;
-              return { matiere:mat.length>10?mat.slice(0,10)+"…":mat, valeur:Math.round(moy*10)/10, plein:20 };
-            });
-            return radarData.length>=3?(
-              <Card style={{marginBottom:16}}><div style={{padding:"14px 18px"}}>
-                <p style={{margin:"0 0 8px",fontWeight:800,fontSize:13,color:c1}}>📊 Profil par matière</p>
-                <ResponsiveContainer width="100%" height={220}>
-                  <RadarChart data={radarData}>
-                    <PolarGrid stroke="#e2e8f0"/>
-                    <PolarAngleAxis dataKey="matiere" tick={{fontSize:10}}/>
-                    <Radar name="Note" dataKey="valeur" stroke={c1} fill={c1} fillOpacity={0.25}/>
-                    <Radar name="Max" dataKey="plein" stroke="transparent" fill="transparent"/>
-                    <Tooltip formatter={v=>`${v}/20`}/>
-                  </RadarChart>
-                </ResponsiveContainer>
-              </div></Card>
-            ):null;
-          })()}
-
-          {mesNotes.length===0&&mesAbs.length===0&&<Vide icone="🎓" msg="Aucune donnée disponible pour le moment"/>}
-        </>}
-
-        {/* ── NOTES ── */}
-        {tab==="notes"&&<>
-          <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:900,color:c1}}>Notes de {eleveNom}</h2>
-          {accesBloqueParPaiement ? <BlocagePaiement moisImpayes={moisImpayes} schoolInfo={schoolInfo} onPaiements={()=>setTab("paiements")}/>
-          : mesNotes.length===0?<Vide icone="📝" msg="Aucune note disponible"/>
-            :<>
-              {matieres.map(mat=>{
-                const notesM = mesNotes.filter(n=>n.matiere===mat);
-                const moy = (notesM.reduce((s,n)=>s+Number(n.note||0),0)/notesM.length).toFixed(1);
-                return (
-                  <Card key={mat} style={{marginBottom:12}}>
-                    <div style={{padding:"12px 18px",borderBottom:"1px solid #f1f5f9",display:"flex",alignItems:"center",gap:10}}>
-                      <strong style={{fontSize:13,color:c1,flex:1}}>{mat}</strong>
-                      <span style={{
-                        background:Number(moy)>=10?"#dcfce7":"#fee2e2",
-                        color:Number(moy)>=10?"#166534":"#b91c1c",
-                        fontWeight:900,fontSize:13,padding:"4px 12px",borderRadius:20,
-                      }}>Moy. {moy}/20</span>
-                    </div>
-                    <div style={{overflowX:"auto"}}>
-                      <table style={{width:"100%",borderCollapse:"collapse"}}>
-                        <THead cols={["Type","Période","Note /20"]}/>
-                        <tbody>{notesM.map((n,i)=>(
-                          <TR key={i}>
-                            <TD><Badge color="blue">{n.type}</Badge></TD>
-                            <TD>{n.periode}</TD>
-                            <TD center><strong style={{color:Number(n.note)>=10?C.greenDk:"#b91c1c"}}>{n.note}/20</strong></TD>
-                          </TR>
-                        ))}</tbody>
-                      </table>
-                    </div>
-                  </Card>
-                );
-              })}
-            </>}
-        </>}
-
-        {/* ── ABSENCES ── */}
-        {tab==="absences"&&<>
-          <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:900,color:c1}}>Absences & présences</h2>
-          <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}}>
-            <div style={{padding:"12px 20px",background:"#fee2e2",borderRadius:10,textAlign:"center"}}>
-              <div style={{fontWeight:900,fontSize:22,color:"#b91c1c"}}>{mesAbs.filter(a=>a.statut==="Absent").length}</div>
-              <div style={{fontSize:11,color:"#94a3b8",marginTop:2}}>Absences</div>
-            </div>
-            <div style={{padding:"12px 20px",background:"#fef3c7",borderRadius:10,textAlign:"center"}}>
-              <div style={{fontWeight:900,fontSize:22,color:"#d97706"}}>{mesAbs.filter(a=>a.statut==="Retard").length}</div>
-              <div style={{fontSize:11,color:"#94a3b8",marginTop:2}}>Retards</div>
-            </div>
-            <div style={{padding:"12px 20px",background:"#dcfce7",borderRadius:10,textAlign:"center"}}>
-              <div style={{fontWeight:900,fontSize:22,color:"#166534"}}>{mesAbs.filter(a=>a.statut==="Présent").length}</div>
-              <div style={{fontSize:11,color:"#94a3b8",marginTop:2}}>Présences</div>
-            </div>
-          </div>
-          {mesAbs.length===0?<Vide icone="📋" msg="Aucune absence enregistrée"/>
-            :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
-              <THead cols={["Date","Matière","Statut","Motif"]}/>
-              <tbody>{mesAbs.map((a,i)=>(
-                <TR key={i}>
-                  <TD>{a.date||"—"}</TD>
-                  <TD>{a.matiere||"—"}</TD>
-                  <TD><Badge color={a.statut==="Absent"?"red":a.statut==="Retard"?"amber":"vert"}>{a.statut||"—"}</Badge></TD>
-                  <TD>{a.motif||"—"}</TD>
-                </TR>
-              ))}</tbody>
-            </table></Card>}
-        </>}
-
-        {/* ── BULLETINS ── */}
-        {tab==="bulletins"&&<>
-          <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:900,color:c1}}>Bulletins scolaires</h2>
-          {accesBloqueParPaiement && <BlocagePaiement moisImpayes={moisImpayes} schoolInfo={schoolInfo} onPaiements={()=>setTab("paiements")}/>}
-          {!accesBloqueParPaiement && <LectureSeule/>}
-          {!accesBloqueParPaiement && <>
-          {["T1","T2","T3"].map(periode=>{
-            const notesP = mesNotes.filter(n=>n.periode===periode);
-            if(notesP.length===0) return null;
-            const moy = (notesP.reduce((s,n)=>s+Number(n.note||0),0)/notesP.length).toFixed(1);
-            return (
-              <Card key={periode} style={{marginBottom:12}}>
-                <div style={{padding:"12px 18px",background:`linear-gradient(135deg,${c1},${c1}cc)`,borderRadius:"14px 14px 0 0",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                  <strong style={{color:"#fff",fontSize:14}}>Bulletin — {periode}</strong>
-                  <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                    <span style={{background:c2,color:"#fff",fontWeight:900,fontSize:13,padding:"4px 14px",borderRadius:20}}>Moy. {moy}/20</span>
-                    <button onClick={()=>imprimerBulletin(
-                      {...eleve,nom:eleveNom.split(" ").slice(-1)[0]||eleveNom,prenom:eleveNom.split(" ").slice(0,-1).join(" ")},
-                      notesP, [...new Set(notesP.map(n=>n.matiere))].map(n=>({nom:n})),
-                      periode, sec==="primaire"?"Primaire":"Secondaire", sec==="primaire"?10:20, schoolInfo
-                    )} style={{background:"rgba(255,255,255,0.2)",border:"1px solid rgba(255,255,255,0.4)",color:"#fff",padding:"4px 10px",borderRadius:8,fontSize:11,cursor:"pointer",fontWeight:700}}>
-                      🖨️ Imprimer
-                    </button>
-                  </div>
-                </div>
-                <table style={{width:"100%",borderCollapse:"collapse"}}>
-                  <THead cols={["Matière","Type","Note /20"]}/>
-                  <tbody>{notesP.map((n,i)=>(
-                    <TR key={i}>
-                      <TD bold>{n.matiere}</TD>
-                      <TD><Badge color="blue">{n.type}</Badge></TD>
-                      <TD center><strong style={{color:Number(n.note)>=10?C.greenDk:"#b91c1c"}}>{n.note}/20</strong></TD>
-                    </TR>
-                  ))}</tbody>
-                </table>
-              </Card>
-            );
-          })}
-          {mesNotes.length===0&&<Vide icone="📄" msg="Aucun bulletin disponible pour le moment"/>}
-          </>}
-        </>}
-
-        {/* ── PAIEMENTS ── */}
-        {tab==="paiements"&&<>
-          <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:900,color:c1}}>Suivi des mensualités</h2>
-          {(()=>{
-            const mens = eleveCourant.mens||{};
-            const mensDates = eleveCourant.mensDates||{};
-            const moisList = moisAnneeCtx.length ? moisAnneeCtx : Object.keys(mens);
-            const nbPayes = moisList.filter(m=>mens[m]==="Payé").length;
-            const nbImp   = moisList.filter(m=>mens[m]!=="Payé").length;
-            return (
-              <>
-                <div style={{display:"flex",gap:12,marginBottom:20,flexWrap:"wrap"}}>
-                  <div style={{padding:"14px 20px",background:"#dcfce7",borderRadius:12,textAlign:"center",minWidth:120}}>
-                    <div style={{fontWeight:900,fontSize:24,color:"#166534"}}>{nbPayes}</div>
-                    <div style={{fontSize:11,color:"#94a3b8",marginTop:2}}>Mois payés</div>
-                  </div>
-                  <div style={{padding:"14px 20px",background:"#fee2e2",borderRadius:12,textAlign:"center",minWidth:120}}>
-                    <div style={{fontWeight:900,fontSize:24,color:"#b91c1c"}}>{nbImp}</div>
-                    <div style={{fontSize:11,color:"#94a3b8",marginTop:2}}>Mois impayés</div>
-                  </div>
-                  <div style={{padding:"14px 20px",background:"#f0fdf4",borderRadius:12,textAlign:"center",minWidth:120}}>
-                    <div style={{fontWeight:900,fontSize:24,color:c2}}>{moisList.length?Math.round(nbPayes/moisList.length*100):0}%</div>
-                    <div style={{fontSize:11,color:"#94a3b8",marginTop:2}}>Taux</div>
-                  </div>
-                </div>
-                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))",gap:8}}>
-                  {moisList.map(m=>{
-                    const paye = mens[m]==="Payé";
-                    return (
-                      <div key={m} style={{
-                        padding:"12px 16px",borderRadius:12,
-                        background:paye?"#dcfce7":"#fee2e2",
-                        border:`2px solid ${paye?"#86efac":"#fca5a5"}`,
-                      }}>
-                        <div style={{fontWeight:800,fontSize:13,color:paye?"#166534":"#b91c1c"}}>{m}</div>
-                        <div style={{fontSize:11,marginTop:4,color:paye?"#15803d":"#dc2626",fontWeight:700}}>
-                          {paye?"✅ Payé":"❌ Impayé"}
-                        </div>
-                        {paye&&mensDates[m]&&<div style={{fontSize:10,color:"#94a3b8",marginTop:2}}>{mensDates[m]}</div>}
-                      </div>
-                    );
-                  })}
-                </div>
-                {moisList.length===0&&<Vide icone="💳" msg="Aucune information de paiement"/>}
-              </>
-            );
-          })()}
-        </>}
-
-        {/* ── MESSAGES ── */}
-        {tab==="messages"&&<>
-          <h2 style={{margin:"0 0 20px",fontSize:16,fontWeight:900,color:c1}}>Messages avec l'école</h2>
-
-          {/* Fil de messages */}
-          <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:24}}>
-            {mesMessages.length===0&&<Vide icone="💬" msg="Aucun message pour le moment"/>}
-            {mesMessages.map((m,i)=>{
-              const estParent = m.expediteur==="parent";
-              return (
-                <div key={i} style={{
-                  display:"flex",flexDirection:"column",
-                  alignItems:estParent?"flex-end":"flex-start",
-                }}>
-                  <div style={{
-                    maxWidth:"75%",background:estParent?`${c1}15`:"#fff",
-                    border:`1px solid ${estParent?c1+"33":"#e2e8f0"}`,
-                    borderRadius:estParent?"16px 16px 4px 16px":"16px 16px 16px 4px",
-                    padding:"12px 16px",
-                  }}>
-                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
-                      <span style={{fontSize:11,fontWeight:700,color:estParent?c1:"#64748b"}}>{estParent?"Vous":m.expediteurNom||"École"}</span>
-                      <span style={{fontSize:10,color:"#94a3b8",marginLeft:"auto"}}>{new Date(m.date).toLocaleDateString("fr-FR")}</span>
-                    </div>
-                    <div style={{fontSize:12,fontWeight:700,color:"#0A1628",marginBottom:4}}>{m.sujet}</div>
-                    <div style={{fontSize:13,color:"#475569",lineHeight:1.6}}>{m.corps}</div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Formulaire d'envoi */}
-          <Card>
-            <div style={{padding:"14px 18px",borderBottom:"1px solid #f1f5f9"}}>
-              <strong style={{fontSize:13,color:c1}}>✉️ Envoyer un message à l'école</strong>
-            </div>
-            <div style={{padding:"16px 18px",display:"flex",flexDirection:"column",gap:10}}>
-              <Input label="Sujet" value={sujet} onChange={e=>setSujet(e.target.value)} placeholder="Ex : Justification d'absence du 12/04"/>
-              <Champ label="Message">
-                <textarea value={corps} onChange={e=>setCorps(e.target.value)}
-                  rows={4} placeholder="Écrivez votre message ici..."
-                  style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 12px",fontSize:13,resize:"vertical",outline:"none",fontFamily:"inherit"}}/>
-              </Champ>
-              <div style={{display:"flex",justifyContent:"flex-end"}}>
-                <Btn onClick={envoyer} disabled={envoi}>{envoi?"Envoi...":"📨 Envoyer"}</Btn>
-              </div>
-            </div>
-          </Card>
-        </>}
-
-      </div>
-    </div>
-  );
-}
-
-
-// ══════════════════════════════════════════════════════════════
-//  APPLICATION PRINCIPALE
-// ══════════════════════════════════════════════════════════════
 export default function App() {
   const [utilisateur,setUtilisateur]=useState(null);
   const [page,setPage]=useState(null);
@@ -6574,6 +4883,7 @@ export default function App() {
   const [verrous,setVerrous]=useState({comptable:false,primaire:false,secondaire:false});
   const [msgsNonLus,setMsgsNonLus]=useState(0); // badge messages sidebar
   const [totalElevesActifs,setTotalElevesActifs]=useState(0); // comptage toutes sections
+  const [nowTs,setNowTs]=useState(() => Date.now());
   const [toasts,setToasts]=useState([]);
   const toast=(msg,type="success")=>{
     const id=Date.now()+Math.random();
@@ -6594,6 +4904,11 @@ export default function App() {
   const [estHorsLigne,setEstHorsLigne]=useState(!navigator.onLine);
   const [promptInstall,setPromptInstall]=useState(null);
   const [installVisible,setInstallVisible]=useState(false);
+
+  useEffect(()=>{
+    const timer = window.setInterval(()=>setNowTs(Date.now()), 60000);
+    return ()=>window.clearInterval(timer);
+  },[]);
 
   // ── PWA : détection hors ligne ───────────────────────────────
   useEffect(()=>{
@@ -6763,20 +5078,8 @@ export default function App() {
           const sid=d.schoolId;
           setSchoolId(sid);
           localStorage.setItem("LC_schoolId",sid);
-          // Charger premiereCo depuis comptes
-          let premiereCo=false;
-          let compteDocId=null;
-          try{
-            const qCompte=query(collection(db,"ecoles",sid,"comptes"),where("login","==",d.login));
-            const snapCompte=await getDocs(qCompte);
-            if(!snapCompte.empty){
-              const dc=snapCompte.docs[0];
-              premiereCo=!!dc.data().premiereCo;
-              compteDocId=dc.id;
-            }
-          }catch{
-            // Missing account metadata should not block login.
-          }
+          const premiereCo=!!d.premiereCo;
+          const compteDocId=d.compteDocId||null;
           setUtilisateur({uid:firebaseUser.uid, login:d.login, nom:d.nom, role:d.role, premiereCo, compteDocId, schoolId:sid});
           setPage(p=>p||ACCES[d.role][0]);
         }
@@ -6791,7 +5094,7 @@ export default function App() {
   const GRACE_MS      = 7 * 86400000; // 7 jours de grâce après expiration
   const planCourant   = schoolInfoState.plan || "gratuit";
   const planExpiry    = schoolInfoState.planExpiry || null;
-  const now           = Date.now();
+  const now           = nowTs;
   const planExpiryBrut = planCourant !== "gratuit" && planExpiry && now > planExpiry;
   const enPeriodeGrace = planExpiryBrut && now < planExpiry + GRACE_MS;
   const planEstExpire  = planExpiryBrut && !enPeriodeGrace; // vraiment expiré (après grâce)
@@ -7083,7 +5386,7 @@ export default function App() {
                     {notifListe.length===0
                       ? <div style={{padding:"24px 16px",textAlign:"center",color:"#94a3b8",fontSize:12}}>Aucune activité récente</div>
                       : notifListe.map((n,i)=>{
-                          const age=Date.now()-n.date;
+                          const age=nowTs-n.date;
                           const ageStr=age<60000?"À l'instant":age<3600000?`${Math.floor(age/60000)}min`:age<86400000?`${Math.floor(age/3600000)}h`:`${Math.floor(age/86400000)}j`;
                           const isNew=age<5*60*1000;
                           return <div key={n.id||i} style={{padding:"10px 16px",borderBottom:"1px solid #f8fafc",background:isNew?"#f0fdf4":"#fff",display:"flex",gap:10,alignItems:"flex-start"}}>
@@ -7268,3 +5571,4 @@ export default function App() {
     </SchoolContext.Provider>
   );
 }
+

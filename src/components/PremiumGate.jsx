@@ -16,7 +16,7 @@ import UpgradeModal from "./UpgradeModal";
  *   </PremiumGate>
  */
 export default function PremiumGate({ feature, children, inline = false }) {
-  const { canAccess, isPro } = usePlan();
+  const { canAccess } = usePlan();
   const [showUpgrade, setShowUpgrade] = useState(false);
 
   // Plan Pro ou fonctionnalité gratuite → accès direct

@@ -1,6 +1,5 @@
 import React, { useState } from "react";
-import { db } from "../firebase";
-import { C } from "../constants";
+import { C, CLASSES_COLLEGE, CLASSES_PRIMAIRE } from "../constants";
 import { Btn, Stat } from "./ui";
 
 function TarifsClasses({saveTarif, getTarif, getTarifIns, getTarifReinsc, canEdit}) {

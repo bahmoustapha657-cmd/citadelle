@@ -1,5 +1,4 @@
 import React from "react";
-import { doc } from "firebase/firestore";
 import { C } from "../constants";
 import Logo from "../Logo";
 

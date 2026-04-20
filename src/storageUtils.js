@@ -8,12 +8,11 @@ export async function uploadFichier(fichier, chemin) {
   return await getDownloadURL(storageRef);
 }
 
-// eslint-disable-next-line no-unused-vars
 export async function supprimerFichier(url) {
   try {
     const storageRef = ref(storage, url);
     await deleteObject(storageRef);
-  } catch(e) { console.log("Fichier déjà supprimé"); }
+  } catch { console.log("Fichier déjà supprimé"); }
 }
 
 // Upload une photo élève (base64 ou File/Blob) vers Firebase Storage.

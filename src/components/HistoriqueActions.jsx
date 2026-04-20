@@ -1,12 +1,12 @@
 import React, { useState, useContext } from "react";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
-import { C, fmt } from "../constants";
+import { C } from "../constants";
 import { Card, Chargement, Stat, Vide } from "./ui";
 
 // ══════════════════════════════════════════════════════════════
 function HistoriqueActions() {
-  const {schoolInfo} = useContext(SchoolContext);
+  useContext(SchoolContext);
   const {items:historique, chargement} = useFirestore("historique");
   const [filtre, setFiltre] = useState("");
 

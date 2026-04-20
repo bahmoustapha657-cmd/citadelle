@@ -1,8 +1,9 @@
 import React, { useState, useContext } from "react";
-import { doc } from "firebase/firestore";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
 import { C, fmt, today } from "../constants";
+import { getAuthHeaders } from "../apiClient";
+import { imprimerCertificatRadiation, imprimerOrdreMutation } from "../reports";
 import { Badge, Btn, Card, Input, Modale, Stat, TD, THead, TR, Vide } from "./ui";
 
 function TransfertsPanel({userRole, annee, setTab}) {
@@ -15,8 +16,6 @@ function TransfertsPanel({userRole, annee, setTab}) {
 
   const [sousTab, setSousTab] = useState("sortants"); // sortants | entrants
   const [modalSortant, setModalSortant] = useState(null);
-  const [modalEntrant, setModalEntrant] = useState(false);
-  const [formSortant, setFormSortant] = useState({});
   const [tokenInput, setTokenInput] = useState("");
   const [transfertData, setTransfertData] = useState(null);
   const [loading, setLoading] = useState(false);

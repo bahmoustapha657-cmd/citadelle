@@ -1,12 +1,11 @@
 import React, { useState, useContext } from "react";
-import { doc } from "firebase/firestore";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
-import { C, today } from "../constants";
+import { C } from "../constants";
 import { Badge, Btn, Card, Input, Modale, Selec, Stat, TD, THead, TR, Textarea, Vide } from "./ui";
 
 function GestionExamens() {
-  const {schoolId, schoolInfo, toast, moisAnnee} = useContext(SchoolContext);
+  const {schoolInfo, toast} = useContext(SchoolContext);
   const {items:examens, ajouter:ajEx, modifier:modEx, supprimer:supEx} = useFirestore("examens");
   const {items:elevesC} = useFirestore("elevesCollege");
   const {items:elevesP} = useFirestore("elevesPrimaire");

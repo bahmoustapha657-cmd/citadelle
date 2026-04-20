@@ -2,7 +2,7 @@ import QRCode from "qrcode";
 import * as XLSX from "xlsx";
 import LOGO from "./assets/defaultLogo";
 // eslint-disable-next-line no-unused-vars
-import { MOIS_ANNEE, fmt, fmtN, today } from "./constants";
+import { MOIS_ANNEE, fmt, fmtN, getAnnee, today } from "./constants";
 
 // ══════════════════════════════════════════════════════════════
 //  IMPRESSION / EXPORT  — fonctions pures (pas de React)
@@ -350,8 +350,9 @@ export const imprimerListeClasse = (classe, eleves, schoolInfo={}) => {
  * @param {Object} schoolInfo
  * @param {Array}  moisAnnee — liste des mois de l'année scolaire
  */
-const genererRapportMensuel = (mois, eleves, absences, annee, schoolInfo={}, moisAnnee=[]) => {
+export const genererRapportMensuel = (mois, eleves, absences, annee, schoolInfo={}, _moisAnnee=[]) => {
   if(!eleves.length){ alert("Aucun élève."); return; }
+  void _moisAnnee;
   const c1 = schoolInfo.couleur1||"#0A1628";
   const c2 = schoolInfo.couleur2||"#00C48C";
   const nomEcole = schoolInfo.nom||"École";
@@ -367,8 +368,6 @@ const genererRapportMensuel = (mois, eleves, absences, annee, schoolInfo={}, moi
 
   // Grouper par classe
   const classes = [...new Set(eleves.map(e=>e.classe||"Sans classe"))].sort();
-
-  const rangMois = moisAnnee.indexOf(mois);
 
   const lignesClasse = classes.map(classe => {
     const elevesClasse = eleves.filter(e=>(e.classe||"Sans classe")===classe);
@@ -1079,3 +1078,5 @@ export const imprimerLivret = (livret, schoolInfo={}) => {
   </body></html>`);
   w.document.close();
 };
+
+

@@ -4,8 +4,10 @@ import { useFirestore } from "../hooks/useFirestore";
 import { C } from "../constants";
 import { Btn, Card, Champ, Input, Modale, Selec, Stat, Vide } from "./ui";
 
+const creerTimestamp = () => Date.now();
+
 function MessagesParents({readOnly}) {
-  const {schoolId,schoolInfo,toast,envoyerPush} = useContext(SchoolContext);
+  const {schoolInfo,toast,envoyerPush} = useContext(SchoolContext);
   const c1 = schoolInfo.couleur1||C.blue;
   const {items:msgs, modifier:modMsg, ajouter:repMsg} = useFirestore("messages");
   const {items:annonces, ajouter:ajAnn, supprimer:supAnn} = useFirestore("annonces");
@@ -44,7 +46,7 @@ function MessagesParents({readOnly}) {
       sujet:"Réponse : "+(threadSelec.messages[0]?.sujet||""),
       corps:reponse.trim(),
       lu:false,
-      date:Date.now(),
+      date:creerTimestamp(),
     });
     // Notifier le parent par push
     envoyerPush(

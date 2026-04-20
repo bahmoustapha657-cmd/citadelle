@@ -2,6 +2,7 @@ import React, { useState, useContext } from "react";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
 import { C, today } from "../constants";
+import LOGO from "../assets/defaultLogo";
 import { Badge, Btn, Card, Input, Modale, Selec, Stat, Textarea, Vide } from "./ui";
 
 // ══════════════════════════════════════════════════════════════

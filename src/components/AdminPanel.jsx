@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useContext } from "react";
-import { collection, doc, getDoc, getDocs, updateDoc } from "firebase/firestore";
-import bcrypt from "bcryptjs";
+import { collection, doc, getDocs, updateDoc } from "firebase/firestore";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
+import { getAuthHeaders } from "../apiClient";
+import LOGO from "../assets/defaultLogo";
 import { db } from "../firebase";
-import { C, COMPTES_DEFAUT, genererMdp } from "../constants";
+import { C, COMPTES_DEFAUT, TOUTES_ANNEES, genererMdp } from "../constants";
 import { Badge, Btn, Card, Chargement, Input, Modale, Stat, TD, THead, TR } from "./ui";
 
 // ══════════════════════════════════════════════════════════════
@@ -30,7 +31,7 @@ const PROMOTION_SUIVANTE = {
 
 function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
   const {toast} = useContext(SchoolContext);
-  const {items:comptes, chargement, ajouter, modifier} = useFirestore("comptes");
+  const {items:comptes, chargement} = useFirestore("comptes");
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState({});
   const [savingVerrou, setSavingVerrou] = useState(null);
@@ -45,7 +46,7 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
   const chg = k => e => setForm(p=>({...p,[k]:e.target.value}));
 
   // Calcule la moyenne annuelle d'un élève à partir de ses notes (toutes périodes)
-  const calcMoyenneAnnuelle = (notes, maxNote) => {
+  const calcMoyenneAnnuelle = (notes) => {
     if(!notes || notes.length===0) return null;
     const sum = notes.reduce((s,n)=>s+Number(n.note||0),0);
     return sum / notes.length; // moyenne simple sur toutes les notes T1+T2+T3
@@ -77,7 +78,7 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
           if(!classeSuivante) { terminalistes++; continue; }
           // Notes de cet élève
           const notesEleve = notesToutes.filter(n=>n.eleveId===d.id);
-          const moy = calcMoyenneAnnuelle(notesEleve, sec.maxNote);
+          const moy = calcMoyenneAnnuelle(notesEleve);
           let decision;
           if(moy===null) {
             sansNotes++;
@@ -121,25 +122,58 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
       for (const c of COMPTES_DEFAUT) {
         const mdpClair = genererMdp();
         mdps[c.login] = mdpClair;
-        const mdpHash = await bcrypt.hash(mdpClair, 10);
-        await ajouter({...c, mdp: mdpHash, premiereCo: true});
         try {
           const headers = await getAuthHeaders({"Content-Type":"application/json"});
-          await fetch("/api/create-user", {
+          const res = await fetch("/api/account-manage", {
             method:"POST", headers,
-            body:JSON.stringify({login:c.login, mdp:mdpClair, role:c.role, nom:c.nom, schoolId}),
+            body:JSON.stringify({
+              action:"create",
+              schoolId,
+              login:c.login,
+              mdp:mdpClair,
+              role:c.role,
+              nom:c.nom,
+              label:c.label,
+              statut:"Actif",
+            }),
           });
-        } catch { /* non-bloquant */ }
+          const data = await res.json().catch(()=>({}));
+          if(!res.ok||!data.ok) throw new Error(data.error||`Création du compte ${c.login} impossible.`);
+        } catch (e) {
+          toast(e.message||"Erreur création comptes.", "error");
+          setInitEnCours(false);
+          return;
+        }
       }
       setMdpsInitiaux(mdps);
       setInitEnCours(false);
     })();
-  }, [chargement, comptes.length, initEnCours]);
+  }, [chargement, comptes.length, initEnCours, schoolId, toast]);
 
   const sauvegarder = async () => {
-    const mdpHashe = await bcrypt.hash(form.mdp, 10);
-    modifier({...form, mdp: mdpHashe});
-    setModal(null);
+    if(!form.mdp || form.mdp.length < 8){
+      toast("Le mot de passe doit contenir au moins 8 caractères.", "warning");
+      return;
+    }
+    try{
+      const headers = await getAuthHeaders({"Content-Type":"application/json"});
+      const res = await fetch("/api/account-manage", {
+        method:"POST",
+        headers,
+        body:JSON.stringify({
+          action:"reset_password",
+          schoolId,
+          accountId:form._id,
+          mdp:form.mdp,
+        }),
+      });
+      const data = await res.json().catch(()=>({}));
+      if(!res.ok||!data.ok) throw new Error(data.error||"Réinitialisation impossible.");
+      toast(`Mot de passe réinitialisé pour ${form.nom}.`, "success");
+      setModal(null);
+    }catch(e){
+      toast(e.message||"Erreur lors de la réinitialisation.", "error");
+    }
   };
 
   return (

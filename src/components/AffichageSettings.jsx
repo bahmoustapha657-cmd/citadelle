@@ -5,7 +5,7 @@ import { SchoolContext } from "../contexts/SchoolContext";
 import { C } from "../constants";
 import { Stat } from "./ui";
 
-function AffichageSettings({sec, lbl, inp, setMsgSucces, setErreur}) {
+function AffichageSettings({sec, setMsgSucces, setErreur}) {
   const {schoolId, schoolInfo, setSchoolInfo} = useContext(SchoolContext);
   const [triEleves, setTriEleves] = useState(schoolInfo.triEleves || "prenom_nom");
   const [saving, setSaving] = useState(false);
