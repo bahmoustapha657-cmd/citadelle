@@ -1,132 +1,233 @@
 /**
  * API Transfert inter-écoles EduGest
- * GET  ?token=TRF-XXXX  → récupère les données du dossier de transfert
- * POST {action:"generer", schoolId, eleveSnapshot, ecoleDestination} → crée un token
- * POST {action:"accepter", token, targetSchoolId} → accepte et importe l'élève
+ * GET  ?token=TRF-XXXXXX       -> récupère un dossier de transfert
+ * POST {action:"generer", ...} -> crée un token
+ * POST {action:"accepter", ...} -> importe l'élève dans l'école cible
  */
-import { getFirestore, FieldValue } from "firebase-admin/firestore";
+import crypto from "crypto";
+import { getFirestore } from "firebase-admin/firestore";
 import { initAdmin } from "./_lib/firebase-admin.js";
-import { applyCors } from "./_lib/security.js";
+import {
+  applyCors,
+  isValidSchoolId,
+  isValidTransferToken,
+  normalizeSchoolId,
+  normalizeTransferToken,
+  requireSession,
+} from "./_lib/security.js";
 
-const VALIDITE_MS = 30 * 24 * 60 * 60 * 1000; // 30 jours
+const VALIDITE_MS = 30 * 24 * 60 * 60 * 1000;
+const TOKEN_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
-function genToken() {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let t = "TRF-";
-  for (let i = 0; i < 6; i++) t += chars[Math.floor(Math.random() * chars.length)];
-  return t;
+function genToken(length = 10) {
+  const bytes = crypto.randomBytes(length);
+  let token = "TRF-";
+  for (let index = 0; index < length; index += 1) {
+    token += TOKEN_ALPHABET[bytes[index] % TOKEN_ALPHABET.length];
+  }
+  return token;
+}
+
+async function findTransferByToken(db, token) {
+  const snap = await db
+    .collection("transferts")
+    .where("token", "==", token)
+    .limit(1)
+    .get();
+
+  if (snap.empty) {
+    return null;
+  }
+
+  return snap.docs[0];
 }
 
 export default async function handler(req, res) {
-  applyCors(req, res);
+  applyCors(req, res, "GET,POST,OPTIONS");
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  try { initAdmin(); } catch {
+  try {
+    initAdmin();
+  } catch {
     return res.status(500).json({ error: "Erreur serveur (init)" });
   }
+
   const db = getFirestore();
 
-  // ── GET : récupérer un dossier par token ────────────────────
   if (req.method === "GET") {
-    const { token } = req.query || {};
-    if (!token) return res.status(400).json({ error: "Token requis" });
-
-    const snap = await db.collection("transferts")
-      .where("token", "==", token.trim().toUpperCase())
-      .limit(1).get();
-
-    if (snap.empty) return res.status(404).json({ error: "Token introuvable ou expiré" });
-    const data = snap.docs[0].data();
-
-    if (data.statut === "accepté") return res.status(410).json({ error: "Ce token a déjà été utilisé" });
-    if (data.statut === "expiré" || Date.now() > data.dateExpiration) {
-      await snap.docs[0].ref.update({ statut: "expiré" });
-      return res.status(410).json({ error: "Ce token a expiré (validité 30 jours)" });
+    const token = normalizeTransferToken(req.query?.token);
+    if (!token || !isValidTransferToken(token)) {
+      return res.status(400).json({ error: "Token invalide." });
     }
 
-    return res.status(200).json({
-      id: snap.docs[0].id,
-      token: data.token,
-      eleveSnapshot: data.eleveSnapshot,
-      ecoleDestination: data.ecoleDestination,
-      schoolIdSource: data.schoolIdSource,
-      dateCreation: data.dateCreation,
+    const session = await requireSession(req, res, {
+      roles: ["direction", "admin", "comptable", "primaire", "college"],
+      allowSuperadmin: true,
     });
+    if (!session) return;
+
+    try {
+      const transferDoc = await findTransferByToken(db, token);
+      if (!transferDoc) {
+        return res.status(404).json({ error: "Token introuvable ou expiré" });
+      }
+
+      const data = transferDoc.data();
+
+      if (data.statut === "accepté") {
+        return res.status(410).json({ error: "Ce token a déjà été utilisé" });
+      }
+      if (data.statut === "expiré" || Date.now() > data.dateExpiration) {
+        await transferDoc.ref.update({ statut: "expiré", updatedAt: Date.now() });
+        return res.status(410).json({ error: "Ce token a expiré (validité 30 jours)" });
+      }
+
+      return res.status(200).json({
+        id: transferDoc.id,
+        token: data.token,
+        eleveSnapshot: data.eleveSnapshot,
+        ecoleDestination: data.ecoleDestination,
+        schoolIdSource: data.schoolIdSource,
+        dateCreation: data.dateCreation,
+      });
+    } catch (e) {
+      console.error("transfert get error:", e);
+      return res.status(500).json({ error: "Erreur lecture transfert" });
+    }
   }
 
-  // ── POST ────────────────────────────────────────────────────
-  if (req.method === "POST") {
-    const { action, schoolId, eleveSnapshot, ecoleDestination, token, targetSchoolId } = req.body || {};
+  if (req.method !== "POST") {
+    return res.status(405).end();
+  }
 
-    // Générer un token de transfert
-    if (action === "generer") {
-      if (!schoolId || !eleveSnapshot) return res.status(400).json({ error: "schoolId et eleveSnapshot requis" });
+  const {
+    action,
+    schoolId,
+    eleveSnapshot,
+    ecoleDestination,
+    token,
+    targetSchoolId,
+  } = req.body || {};
 
-      let tok;
-      let tentatives = 0;
+  if (action === "generer") {
+    const normalizedSchoolId = normalizeSchoolId(schoolId);
+    if (!normalizedSchoolId || !isValidSchoolId(normalizedSchoolId) || !eleveSnapshot) {
+      return res.status(400).json({ error: "schoolId valide et eleveSnapshot requis" });
+    }
+
+    const session = await requireSession(req, res, {
+      roles: ["direction", "admin", "comptable", "primaire", "college"],
+      schoolId: normalizedSchoolId,
+      allowSuperadmin: true,
+    });
+    if (!session) return;
+
+    try {
+      let generatedToken;
+      let attempts = 0;
+
       do {
-        tok = genToken();
-        const existing = await db.collection("transferts").where("token", "==", tok).limit(1).get();
-        if (existing.empty) break;
-        tentatives++;
-      } while (tentatives < 5);
+        generatedToken = genToken();
+        const existing = await findTransferByToken(db, generatedToken);
+        if (!existing) break;
+        attempts += 1;
+      } while (attempts < 5);
+
+      if (!generatedToken) {
+        return res.status(500).json({ error: "Impossible de générer un token de transfert." });
+      }
 
       const docRef = await db.collection("transferts").add({
-        token: tok,
-        schoolIdSource: schoolId,
-        eleveSnapshot: eleveSnapshot,
+        token: generatedToken,
+        schoolIdSource: normalizedSchoolId,
+        eleveSnapshot,
         ecoleDestination: ecoleDestination || "",
         statut: "en_attente",
         dateCreation: Date.now(),
         dateExpiration: Date.now() + VALIDITE_MS,
+        createdByUid: session.uid,
+        createdByRole: session.profile.role,
       });
 
-      return res.status(200).json({ token: tok, id: docRef.id });
+      return res.status(200).json({ token: generatedToken, id: docRef.id });
+    } catch (e) {
+      console.error("transfert generate error:", e);
+      return res.status(500).json({ error: "Erreur génération transfert" });
+    }
+  }
+
+  if (action === "accepter") {
+    const normalizedToken = normalizeTransferToken(token);
+    const normalizedTargetSchoolId = normalizeSchoolId(targetSchoolId);
+
+    if (!normalizedToken || !isValidTransferToken(normalizedToken) || !normalizedTargetSchoolId || !isValidSchoolId(normalizedTargetSchoolId)) {
+      return res.status(400).json({ error: "token et targetSchoolId valides requis" });
     }
 
-    // Accepter un transfert et créer l'élève dans l'école cible
-    if (action === "accepter") {
-      if (!token || !targetSchoolId) return res.status(400).json({ error: "token et targetSchoolId requis" });
+    const session = await requireSession(req, res, {
+      roles: ["direction", "admin", "comptable", "primaire", "college"],
+      schoolId: normalizedTargetSchoolId,
+      allowSuperadmin: true,
+    });
+    if (!session) return;
 
-      const snap = await db.collection("transferts")
-        .where("token", "==", token.trim().toUpperCase())
-        .limit(1).get();
-
-      if (snap.empty) return res.status(404).json({ error: "Token introuvable" });
-      const docSnap = snap.docs[0];
-      const data = docSnap.data();
-
-      if (data.statut !== "en_attente") return res.status(409).json({ error: "Token déjà utilisé ou expiré" });
-      if (Date.now() > data.dateExpiration) {
-        await docSnap.ref.update({ statut: "expiré" });
-        return res.status(410).json({ error: "Token expiré" });
+    try {
+      const transferDoc = await findTransferByToken(db, normalizedToken);
+      if (!transferDoc) {
+        return res.status(404).json({ error: "Token introuvable" });
       }
 
-      // Détermine la collection de destination selon la section
-      const section = data.eleveSnapshot?.section || "college";
-      const collCible = section === "primaire" ? "elevesPrimaire"
-        : section === "lycee" ? "elevesLycee"
-        : "elevesCollege";
+      const data = transferDoc.data();
 
-      // Crée la fiche élève dans l'école cible (sans le matricule source)
-      const { matricule: _mat, _id: _id, schoolNom: _sn, solde: _sol, ...eleveData } = data.eleveSnapshot || {};
-      await db.collection("ecoles").doc(targetSchoolId).collection(collCible).add({
+      if (data.statut !== "en_attente") {
+        return res.status(409).json({ error: "Token déjà utilisé ou expiré" });
+      }
+      if (Date.now() > data.dateExpiration) {
+        await transferDoc.ref.update({ statut: "expiré", updatedAt: Date.now() });
+        return res.status(410).json({ error: "Token expiré" });
+      }
+      if (data.schoolIdSource === normalizedTargetSchoolId) {
+        return res.status(409).json({ error: "Le transfert vers la même école est interdit." });
+      }
+
+      const section = data.eleveSnapshot?.section || "college";
+      const collCible = section === "primaire"
+        ? "elevesPrimaire"
+        : section === "lycee"
+          ? "elevesLycee"
+          : "elevesCollege";
+
+      const {
+        matricule: _matricule,
+        _id: _id,
+        schoolNom: _schoolNom,
+        solde: _solde,
+        ...eleveData
+      } = data.eleveSnapshot || {};
+
+      await db.collection("ecoles").doc(normalizedTargetSchoolId).collection(collCible).add({
         ...eleveData,
         statut: "Actif",
         typeInscription: "Réinscription",
         etablissementOrigine: data.eleveSnapshot?.schoolNom || "",
         dateTransfert: new Date().toISOString().slice(0, 10),
         mens: {},
+        createdAt: Date.now(),
       });
 
-      // Marque le transfert comme accepté
-      await docSnap.ref.update({ statut: "accepté", schoolIdCible: targetSchoolId, dateAcceptation: Date.now() });
+      await transferDoc.ref.update({
+        statut: "accepté",
+        schoolIdCible: normalizedTargetSchoolId,
+        dateAcceptation: Date.now(),
+        acceptedByUid: session.uid,
+      });
 
       return res.status(200).json({ ok: true });
+    } catch (e) {
+      console.error("transfert accept error:", e);
+      return res.status(500).json({ error: "Erreur acceptation transfert" });
     }
-
-    return res.status(400).json({ error: "Action inconnue" });
   }
 
-  return res.status(405).end();
+  return res.status(400).json({ error: "Action inconnue" });
 }

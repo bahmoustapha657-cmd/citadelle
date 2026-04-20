@@ -2,11 +2,71 @@ import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import { initAdmin } from "./firebase-admin.js";
 
+export const SCHOOL_ROLES = [
+  "direction",
+  "admin",
+  "primaire",
+  "college",
+  "comptable",
+  "enseignant",
+  "parent",
+];
+
+export const PRIVILEGED_SCHOOL_ROLES = ["direction", "admin"];
+export const STAFF_ROLES = [
+  "direction",
+  "admin",
+  "primaire",
+  "college",
+  "comptable",
+  "enseignant",
+];
+
+const LOGIN_PATTERN = /^[a-z0-9._-]{3,30}$/;
+const SCHOOL_ID_PATTERN = /^[a-z0-9-]{3,50}$/;
+const TRANSFER_TOKEN_PATTERN = /^TRF-[A-Z2-9]{6,10}$/;
+
 function parseAllowedOrigins() {
   return (process.env.ALLOWED_ORIGIN || "")
     .split(",")
     .map((origin) => origin.trim())
     .filter(Boolean);
+}
+
+export function normalizeLogin(login) {
+  return typeof login === "string" ? login.trim().toLowerCase() : "";
+}
+
+export function normalizeSchoolId(schoolId) {
+  return typeof schoolId === "string" ? schoolId.trim().toLowerCase() : "";
+}
+
+export function normalizeTransferToken(token) {
+  return typeof token === "string" ? token.trim().toUpperCase() : "";
+}
+
+export function isValidLogin(login) {
+  return LOGIN_PATTERN.test(login);
+}
+
+export function isValidSchoolId(schoolId) {
+  return SCHOOL_ID_PATTERN.test(schoolId);
+}
+
+export function isValidTransferToken(token) {
+  return TRANSFER_TOKEN_PATTERN.test(token);
+}
+
+export function isAllowedSchoolRole(role) {
+  return SCHOOL_ROLES.includes(role);
+}
+
+export function requireEnv(name) {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`Variable d'environnement manquante: ${name}`);
+  }
+  return value;
 }
 
 export function applyCors(req, res, methods = "POST,OPTIONS") {
@@ -49,6 +109,10 @@ export async function requireSession(req, res, options = {}) {
     }
 
     const profile = userSnap.data();
+    if (!profile?.role || !profile?.schoolId) {
+      res.status(403).json({ error: "Profil utilisateur incomplet." });
+      return null;
+    }
     const isSuperadmin = profile.role === "superadmin";
 
     if (schoolId && profile.schoolId !== schoolId && !(allowSuperadmin && isSuperadmin)) {

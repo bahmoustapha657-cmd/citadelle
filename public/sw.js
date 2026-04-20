@@ -148,7 +148,7 @@ async function appShellFirst(request) {
 // ── Push notifications ────────────────────────────────────────
 self.addEventListener("push", (e) => {
   let data = { titre: "EduGest", corps: "", url: "/", icon: "/icons/pwa-192.png" };
-  try { data = { ...data, ...JSON.parse(e.data?.text() || "{}") }; } catch {}
+  try { data = { ...data, ...JSON.parse(e.data?.text() || "{}") }; } catch { /* ignore malformed push payload */ }
 
   e.waitUntil(
     self.registration.showNotification(data.titre, {

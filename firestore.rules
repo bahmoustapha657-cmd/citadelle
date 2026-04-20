@@ -3,7 +3,11 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function planFields() {
-      return ["plan", "planExpiry", "planActivatedBy", "planActivatedAt"];
+      return ["plan", "planExpiry", "planActivatedBy", "planActivatedAt", "lastSuccessfulPaymentId"];
+    }
+
+    function allowedSchoolRoles() {
+      return ["direction", "admin", "primaire", "college", "comptable", "enseignant", "parent"];
     }
 
     function appartientEcole(schoolId) {
@@ -21,40 +25,159 @@ service cloud.firestore {
       return request.auth != null && [roleUtilisateur()].hasAny(roles);
     }
 
+    function roleScolaireValide(role) {
+      return role is string && [role].hasAny(allowedSchoolRoles());
+    }
+
+    function compteAllowedKeys() {
+      return [
+        "login",
+        "mdp",
+        "role",
+        "label",
+        "nom",
+        "eleveId",
+        "eleveNom",
+        "eleveClasse",
+        "section",
+        "matiere",
+        "premiereCo",
+        "statut",
+        "createdAt",
+        "updatedAt",
+        "enseignantNom",
+        "uid"
+      ];
+    }
+
+    function compteCreateValide() {
+      return request.resource.data.keys().hasOnly(compteAllowedKeys())
+             && !request.resource.data.keys().hasAny(["uid"])
+             && request.resource.data.login is string
+             && request.resource.data.login.size() >= 3
+             && request.resource.data.login.size() <= 30
+             && request.resource.data.mdp is string
+             && request.resource.data.mdp.size() >= 20
+             && roleScolaireValide(request.resource.data.role);
+    }
+
+    function compteAdminUpdateValide() {
+      return request.resource.data.keys().hasOnly(compteAllowedKeys())
+             && request.resource.data.login == resource.data.login
+             && request.resource.data.uid == resource.data.uid
+             && request.resource.data.mdp is string
+             && request.resource.data.mdp.size() >= 20
+             && roleScolaireValide(request.resource.data.role);
+    }
+
     match /ecoles/{schoolId} {
       allow read: if true;
 
-      // Création école : superadmin uniquement, sans champs plan
       allow create: if aUnRole(["superadmin"])
                    && !request.resource.data.keys().hasAny(planFields());
 
-      // Mise à jour : superadmin peut tout modifier (plan inclus) ;
-      // les autres membres peuvent modifier sauf les champs plan
       allow update: if aUnRole(["superadmin"])
                    || (appartientEcole(schoolId)
+                       && aUnRole(["direction", "admin"])
                        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(planFields()));
 
       allow delete: if false;
 
       match /comptes/{docId} {
-        allow read, write: if appartientEcole(schoolId) && aUnRole(["direction", "admin"]);
+        allow read: if (appartientEcole(schoolId) && aUnRole(["direction", "admin"]))
+                     || aUnRole(["superadmin"]);
+        allow create: if (appartientEcole(schoolId) && aUnRole(["direction", "admin"]) && compteCreateValide())
+                       || aUnRole(["superadmin"]);
+        allow update: if (appartientEcole(schoolId) && aUnRole(["direction", "admin"]) && compteAdminUpdateValide())
+                       || aUnRole(["superadmin"]);
+        allow delete: if (appartientEcole(schoolId) && aUnRole(["direction", "admin"]))
+                       || aUnRole(["superadmin"]);
       }
 
       match /pushSubs/{docId} {
         allow read: if appartientEcole(schoolId) && aUnRole(["direction", "admin", "comptable"]);
-        allow create: if appartientEcole(schoolId);
-        allow update, delete: if appartientEcole(schoolId) && aUnRole(["direction", "admin", "comptable"]);
+        allow create, update, delete: if appartientEcole(schoolId);
       }
 
       match /paiements/{docId} {
-        allow read: if appartientEcole(schoolId) && aUnRole(["direction", "admin", "comptable"]);
+        allow read: if (appartientEcole(schoolId) && aUnRole(["direction", "admin", "comptable"]))
+                     || aUnRole(["superadmin"]);
         allow write: if false;
       }
 
-      // Sous-collections générales : membres de l'école + superadmin
+      match /annonces/{docId} {
+        allow read: if true;
+        allow write: if (appartientEcole(schoolId) && aUnRole(["direction", "admin", "primaire", "college"]))
+                      || aUnRole(["superadmin"]);
+      }
+
+      match /honneurs/{docId} {
+        allow read: if true;
+        allow write: if (appartientEcole(schoolId) && aUnRole(["direction", "admin", "primaire", "college"]))
+                      || aUnRole(["superadmin"]);
+      }
+
+      match /messages/{docId} {
+        allow read: if appartientEcole(schoolId) || aUnRole(["superadmin"]);
+        allow write: if (appartientEcole(schoolId) && aUnRole(["direction", "admin", "comptable", "primaire", "college", "parent"]))
+                      || aUnRole(["superadmin"]);
+      }
+
+      match /historique/{docId} {
+        allow read: if appartientEcole(schoolId) || aUnRole(["superadmin"]);
+        allow write: if (appartientEcole(schoolId) && aUnRole(["direction", "admin", "comptable", "primaire", "college"]))
+                      || aUnRole(["superadmin"]);
+      }
+
+      match /demandes_plan/{docId} {
+        allow read: if (appartientEcole(schoolId) && aUnRole(["direction", "admin", "comptable"]))
+                     || aUnRole(["superadmin"]);
+        allow create: if (appartientEcole(schoolId) && aUnRole(["direction", "admin", "comptable"]))
+                       || aUnRole(["superadmin"]);
+        allow update: if aUnRole(["superadmin"]);
+        allow delete: if false;
+      }
+
+      match /notesCollege/{docId} {
+        allow read: if appartientEcole(schoolId) || aUnRole(["superadmin"]);
+        allow write: if (appartientEcole(schoolId) && aUnRole(["direction", "admin", "college", "enseignant"]))
+                      || aUnRole(["superadmin"]);
+      }
+
+      match /notesPrimaire/{docId} {
+        allow read: if appartientEcole(schoolId) || aUnRole(["superadmin"]);
+        allow write: if (appartientEcole(schoolId) && aUnRole(["direction", "admin", "primaire", "enseignant"]))
+                      || aUnRole(["superadmin"]);
+      }
+
+      match /notesLycee/{docId} {
+        allow read: if appartientEcole(schoolId) || aUnRole(["superadmin"]);
+        allow write: if (appartientEcole(schoolId) && aUnRole(["direction", "admin", "college", "enseignant"]))
+                      || aUnRole(["superadmin"]);
+      }
+
+      match /absencesCollege/{docId} {
+        allow read: if appartientEcole(schoolId) || aUnRole(["superadmin"]);
+        allow write: if (appartientEcole(schoolId) && aUnRole(["direction", "admin", "college", "enseignant"]))
+                      || aUnRole(["superadmin"]);
+      }
+
+      match /absencesPrimaire/{docId} {
+        allow read: if appartientEcole(schoolId) || aUnRole(["superadmin"]);
+        allow write: if (appartientEcole(schoolId) && aUnRole(["direction", "admin", "primaire", "enseignant"]))
+                      || aUnRole(["superadmin"]);
+      }
+
+      match /absencesLycee/{docId} {
+        allow read: if appartientEcole(schoolId) || aUnRole(["superadmin"]);
+        allow write: if (appartientEcole(schoolId) && aUnRole(["direction", "admin", "college", "enseignant"]))
+                      || aUnRole(["superadmin"]);
+      }
+
       match /{collection}/{docId} {
         allow read: if appartientEcole(schoolId) || aUnRole(["superadmin"]);
-        allow write: if appartientEcole(schoolId) || aUnRole(["superadmin"]);
+        allow write: if (appartientEcole(schoolId) && aUnRole(["direction", "admin", "comptable", "primaire", "college"]))
+                      || aUnRole(["superadmin"]);
       }
     }
 
@@ -73,17 +196,13 @@ service cloud.firestore {
       allow write: if request.auth != null && aUnRole(["superadmin"]);
     }
 
-    // Règle collection group pour les requêtes cross-écoles (superadmin)
+    match /transferts/{transfertId} {
+      allow read, write: if false;
+    }
+
     match /{path=**}/demandes_plan/{docId} {
       allow read: if aUnRole(["superadmin"]);
-      allow write: if request.auth != null;
+      allow write: if false;
     }
-  }
-
-  // Transferts inter-écoles — readable par toute école authentifiée (via API)
-  // La création/modification passe par l'API Vercel (firebase-admin, pas ces règles)
-  match /transferts/{transfertId} {
-    allow read: if request.auth != null;
-    allow write: if false; // toujours via l'API serveur
   }
 }
