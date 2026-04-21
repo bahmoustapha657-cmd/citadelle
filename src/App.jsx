@@ -431,6 +431,25 @@ export default function App() {
   };
 
   // ── Push notifications helper ────────────────────────────────
+  useEffect(()=>{
+    if(!utilisateur || !schoolId || schoolId==="superadmin") return;
+    if(!["direction","admin"].includes(utilisateur.role)) return;
+    let annule = false;
+    (async()=>{
+      try{
+        const headers = await getAuthHeaders({"Content-Type":"application/json"});
+        if(annule) return;
+        await fetch("/api/ecole-public-sync",{
+          method:"POST",
+          headers,
+          body:JSON.stringify({ action:"sync", schoolId }),
+        });
+      }catch{
+        // Best effort only: keep the public school profile aligned.
+      }
+    })();
+    return ()=>{ annule = true; };
+  },[schoolId, utilisateur]);
   const envoyerPush = async(cibles, titre, corps, url="/") => {
     const sid = localStorage.getItem("LC_schoolId")||"citadelle";
     const headers = await getAuthHeaders({"Content-Type":"application/json"});

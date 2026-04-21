@@ -8,9 +8,9 @@
  *   API routes Vercel (/api/) → NetworkFirst avec fallback
  */
 
-const CACHE_APP    = "edugest-app-v3";
-const CACHE_DATA   = "edugest-data-v3";
-const CACHE_PHOTOS = "edugest-photos-v3";
+const CACHE_APP    = "edugest-app-v4";
+const CACHE_DATA   = "edugest-data-v4";
+const CACHE_PHOTOS = "edugest-photos-v4";
 
 const APP_SHELL = [
   "/",
@@ -61,9 +61,8 @@ self.addEventListener("fetch", (e) => {
     return;
   }
 
-  // 3. Firestore → NetworkFirst (fallback cache)
+  // 3. Firestore → toujours réseau pour éviter les données d'école obsolètes
   if (url.hostname === "firestore.googleapis.com") {
-    e.respondWith(networkFirst(request, CACHE_DATA, 5000));
     return;
   }
 
