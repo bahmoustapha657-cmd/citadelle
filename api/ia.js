@@ -1,109 +1,117 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { getFirestore } from "firebase-admin/firestore";
 import { initAdmin } from "./_lib/firebase-admin.js";
-import { applyCors, requireSession } from "./_lib/security.js";
+import { applyCors, requireEnv, requireSession } from "./_lib/security.js";
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const DEFAULT_MODEL = "claude-opus-4-5";
+const DEFAULT_MODE = "support";
 
-export default async function handler(req, res) {
-  applyCors(req, res);
-  if (req.method === "OPTIONS") return res.status(200).end();
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Méthode non autorisée" });
+const MODE_INSTRUCTIONS = {
+  support: "Redige une reponse de support claire, calme et utile. Va droit au but, propose des etapes concretes et evite le jargon inutile.",
+  annonce: "Redige une annonce officielle courte et professionnelle a destination des ecoles, avec un ton rassurant et precis.",
+  incident: "Analyse un incident de facon operationnelle. Structure la reponse en 3 parties : resume, causes probables, actions recommandees.",
+  commercial: "Redige un message commercial sobre et credible, sans exagere ni promesse floue.",
+};
+
+export function normalizeAssistantMode(mode) {
+  const normalized = typeof mode === "string" ? mode.trim().toLowerCase() : "";
+  return MODE_INSTRUCTIONS[normalized] ? normalized : DEFAULT_MODE;
+}
+
+export function buildSuperadminAssistantPrompt(payload = {}) {
+  const mode = normalizeAssistantMode(payload.mode);
+  const prompt = typeof payload.prompt === "string" ? payload.prompt.trim() : "";
+  const context = typeof payload.context === "string" ? payload.context.trim() : "";
+  const schoolName = typeof payload.schoolName === "string" ? payload.schoolName.trim() : "";
+
+  return [
+    "Tu assistes le superadmin d'une plateforme SaaS scolaire appelee EduGest / Citadelle.",
+    "Ta reponse doit etre en francais, claire, exploitable et professionnelle.",
+    "Ne mentionne pas de modele, d'IA, ni Claude dans la reponse finale.",
+    "Si des informations manquent, fais des hypotheses prudentes et signale-les brievement.",
+    MODE_INSTRUCTIONS[mode],
+    schoolName ? `Ecole concernee : ${schoolName}` : "",
+    context ? `Contexte : ${context}` : "",
+    `Demande : ${prompt}`,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+function extractTextContent(message) {
+  if (!Array.isArray(message?.content)) {
+    return "";
   }
 
-  const { action, schoolId, payload } = req.body || {};
+  return message.content
+    .filter((part) => part?.type === "text" && typeof part.text === "string")
+    .map((part) => part.text.trim())
+    .filter(Boolean)
+    .join("\n\n")
+    .trim();
+}
 
-  if (!action || !schoolId) {
-    return res.status(400).json({ error: "action et schoolId requis" });
+export default async function handler(req, res) {
+  if (!applyCors(req, res)) return;
+  if (req.method === "OPTIONS") return res.status(200).end();
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Methode non autorisee" });
   }
 
   try {
     initAdmin();
-  } catch (e) {
-    return res.status(500).json({ error: `Firebase Admin init failed: ${e.message}` });
+  } catch {
+    return res.status(500).json({ error: "Erreur serveur (init)" });
   }
 
-  const isAuthorized = await requireSession(req, res, { schoolId, allowSuperadmin: true });
-  if (!isAuthorized) return;
+  const session = await requireSession(req, res, { allowSuperadmin: true });
+  if (!session) return;
+
+  if (session.profile.role !== "superadmin") {
+    return res.status(403).json({ error: "Acces reserve au superadmin." });
+  }
+
+  const { action, payload } = req.body || {};
+  if (action !== "assistant_superadmin") {
+    return res.status(400).json({ error: "Action inconnue." });
+  }
+
+  if (!payload?.prompt || typeof payload.prompt !== "string" || !payload.prompt.trim()) {
+    return res.status(400).json({ error: "Le champ prompt est requis." });
+  }
+
+  let apiKey;
+  try {
+    apiKey = requireEnv("ANTHROPIC_API_KEY");
+  } catch {
+    return res.status(500).json({ error: "Assistant non configure." });
+  }
+
+  const client = new Anthropic({ apiKey });
 
   try {
-    const db = getFirestore();
-    const snap = await db.collection("ecoles").doc(schoolId).get();
-    if (!snap.exists || snap.data().plan !== "pro") {
-      return res.status(403).json({ error: "Plan Pro requis pour utiliser l'IA" });
+    const message = await client.messages.create({
+      model: process.env.ANTHROPIC_MODEL || DEFAULT_MODEL,
+      max_tokens: 700,
+      messages: [
+        {
+          role: "user",
+          content: buildSuperadminAssistantPrompt(payload),
+        },
+      ],
+    });
+
+    const result = extractTextContent(message);
+    if (!result) {
+      return res.status(502).json({ error: "Reponse vide du service assistant." });
     }
+
+    return res.status(200).json({
+      ok: true,
+      mode: normalizeAssistantMode(payload.mode),
+      result,
+    });
   } catch (e) {
-    return res.status(500).json({ error: `Erreur vérification plan : ${e.message}` });
+    console.error("assistant superadmin error:", e);
+    return res.status(500).json({ error: "Erreur lors de la generation du brouillon." });
   }
-
-  if (action === "commentaire_bulletin") {
-    const { eleve, moyenneGenerale, mention, matieres, periode, niveau } = payload || {};
-    const matieresStr = Array.isArray(matieres)
-      ? matieres.map((m) => `${m.nom} (${m.moy || m.moyenne || "-"}/20)`).join(", ")
-      : "";
-
-    const prompt = `Tu es un directeur d'école en Guinée (Afrique de l'Ouest).
-Rédige un commentaire de bulletin scolaire en français formel et bienveillant.
-Le commentaire doit faire 2 à 3 phrases, refléter les résultats réels et encourager l'élève.
-N'écris que le commentaire, sans titre ni introduction.
-
-Élève : ${eleve?.nom || ""} ${eleve?.prenom || ""}
-Classe : ${eleve?.classe || ""} - Niveau : ${niveau || ""}
-Période : ${periode || ""}
-Moyenne générale : ${moyenneGenerale}/20 - Mention : ${mention || ""}
-Matières : ${matieresStr}`;
-
-    try {
-      const message = await client.messages.create({
-        model: "claude-opus-4-5",
-        max_tokens: 250,
-        messages: [{ role: "user", content: prompt }],
-      });
-      return res.json({ commentaire: message.content[0].text.trim() });
-    } catch (e) {
-      return res.status(500).json({ error: `Erreur Claude : ${e.message}` });
-    }
-  }
-
-  if (action === "generer_document") {
-    const { type, eleve, contexte } = payload || {};
-    const nomComplet = `${eleve?.nom || ""} ${eleve?.prenom || ""}`.trim();
-    const classe = eleve?.classe || "";
-
-    const prompts = {
-      courrier_tuteur: `Tu rédiges un courrier officiel en français pour une école en Guinée (Afrique de l'Ouest).
-Destinataire : le tuteur/parent de l'élève ${nomComplet}, classe ${classe}.
-Objet : ${contexte}
-Format : lettre officielle avec en-tête générique, formule de politesse, corps structuré, signature.
-Ton : professionnel, bienveillant, formel.`,
-      attestation_perso: `Tu rédiges une attestation personnalisée officielle en français pour une école en Guinée.
-Élève concerné : ${nomComplet}, classe ${classe}.
-Objet de l'attestation : ${contexte}
-Format : document administratif avec titre, corps, date et espace signature.
-Style : formel, administratif guinéen.`,
-      certificat_scolarite: `Tu rédiges un certificat de scolarité en français pour une école en Guinée.
-Élève : ${nomComplet}, classe ${classe}.
-Informations complémentaires : ${contexte}
-Format : certificat officiel avec formule attestant la scolarité de l'élève pour l'année en cours.`,
-      rapport_comportement: `Tu rédiges un rapport de comportement officiel en français pour une école en Guinée.
-Élève : ${nomComplet}, classe ${classe}.
-Contexte : ${contexte}
-Format : rapport structuré avec constats, recommandations et conclusion.
-Ton : objectif, constructif, professionnel.`,
-    };
-
-    try {
-      const message = await client.messages.create({
-        model: "claude-opus-4-5",
-        max_tokens: 600,
-        messages: [{ role: "user", content: prompts[type] || prompts.courrier_tuteur }],
-      });
-      return res.json({ document: message.content[0].text.trim() });
-    } catch (e) {
-      return res.status(500).json({ error: `Erreur Claude : ${e.message}` });
-    }
-  }
-
-  return res.status(400).json({ error: `Action inconnue : ${action}` });
 }

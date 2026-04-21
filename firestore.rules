@@ -10,14 +10,31 @@ service cloud.firestore {
       return ["direction", "admin", "primaire", "college", "comptable", "enseignant", "parent"];
     }
 
+    function tokenRole() {
+      return request.auth != null && request.auth.token.role is string
+        ? request.auth.token.role
+        : null;
+    }
+
+    function tokenSchoolId() {
+      return request.auth != null && request.auth.token.schoolId is string
+        ? request.auth.token.schoolId
+        : null;
+    }
+
     function appartientEcole(schoolId) {
-      return request.auth != null &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.schoolId == schoolId;
+      return request.auth != null && (
+        (tokenSchoolId() != null && tokenSchoolId() == schoolId) ||
+        (tokenSchoolId() == null &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.schoolId == schoolId)
+      );
     }
 
     function roleUtilisateur() {
       return request.auth != null
-        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
+        ? (tokenRole() != null
+            ? tokenRole()
+            : get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role)
         : null;
     }
 

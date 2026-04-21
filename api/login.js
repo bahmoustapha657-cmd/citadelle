@@ -4,6 +4,8 @@ import bcrypt from "bcryptjs";
 import { initAdmin } from "./_lib/firebase-admin.js";
 import {
   applyCors,
+  consumeRateLimit,
+  getClientIp,
   isAllowedSchoolRole,
   isValidLogin,
   isValidSchoolId,
@@ -11,8 +13,13 @@ import {
   normalizeSchoolId,
 } from "./_lib/security.js";
 
+const LOGIN_RATE_LIMIT = {
+  limit: 10,
+  windowMs: 15 * 60 * 1000,
+};
+
 export default async function handler(req, res) {
-  applyCors(req, res);
+  if (!applyCors(req, res)) return;
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).end();
 
@@ -35,8 +42,24 @@ export default async function handler(req, res) {
 
   const authAdmin = getAuth();
   const db = getFirestore();
+  const clientIp = getClientIp(req);
 
   try {
+    const quota = await consumeRateLimit({
+      db,
+      scope: "login",
+      key: `${clientIp}|${normalizedSchoolId}|${normalizedLogin}`,
+      limit: LOGIN_RATE_LIMIT.limit,
+      windowMs: LOGIN_RATE_LIMIT.windowMs,
+    });
+
+    if (!quota.ok) {
+      res.setHeader("Retry-After", String(Math.ceil(quota.retryAfterMs / 1000)));
+      return res.status(quota.status).json({
+        error: "Trop de tentatives de connexion. Réessayez plus tard.",
+      });
+    }
+
     const comptesSnap = await db
       .collection("ecoles")
       .doc(normalizedSchoolId)
@@ -68,27 +91,28 @@ export default async function handler(req, res) {
     }
 
     const email = `${normalizedLogin}.${normalizedSchoolId}@edugest.app`;
+    const displayName = compte.nom || normalizedLogin;
     let uid;
 
     try {
-      const userRecord = await authAdmin.createUser({
-        email,
-        password: mdp,
-        displayName: compte.nom || normalizedLogin,
-      });
+      const userRecord = await authAdmin.createUser({ email, password: mdp, displayName });
       uid = userRecord.uid;
     } catch (e) {
       if (e.code === "auth/email-already-exists") {
         const existing = await authAdmin.getUserByEmail(email);
-        await authAdmin.updateUser(existing.uid, {
-          password: mdp,
-          displayName: compte.nom || normalizedLogin,
-        });
+        if (existing.displayName !== displayName) {
+          await authAdmin.updateUser(existing.uid, { displayName });
+        }
         uid = existing.uid;
       } else {
         throw e;
       }
     }
+
+    await authAdmin.setCustomUserClaims(uid, {
+      role: compte.role,
+      schoolId: normalizedSchoolId,
+    });
 
     await db.collection("users").doc(uid).set({
       schoolId: normalizedSchoolId,
@@ -110,6 +134,6 @@ export default async function handler(req, res) {
     });
   } catch (e) {
     console.error("login error:", e);
-    return res.status(500).json({ error: e.message || "Erreur serveur" });
+    return res.status(500).json({ error: "Erreur serveur" });
   }
 }

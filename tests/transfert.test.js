@@ -1,10 +1,19 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  normalizeTransferStatus,
   resolveTransferCollection,
   validateTransferAcceptance,
   validateTransferReadState,
 } from "../api/transfert.js";
+
+test("normalizeTransferStatus accepts legacy accented and mojibake values", () => {
+  assert.equal(normalizeTransferStatus("accept\u00e9"), "accepted");
+  assert.equal(normalizeTransferStatus("accept\u00c3\u00a9"), "accepted");
+  assert.equal(normalizeTransferStatus("expir\u00e9"), "expired");
+  assert.equal(normalizeTransferStatus("expired"), "expired");
+  assert.equal(normalizeTransferStatus("en_attente"), "en_attente");
+});
 
 test("resolveTransferCollection maps sections to the right destination collections", () => {
   assert.equal(resolveTransferCollection("primaire"), "elevesPrimaire");
@@ -15,11 +24,11 @@ test("resolveTransferCollection maps sections to the right destination collectio
 
 test("validateTransferReadState blocks used tokens", () => {
   assert.deepEqual(
-    validateTransferReadState({ statut: "acceptÃ©", dateExpiration: Date.now() + 1_000 }),
+    validateTransferReadState({ statut: "accept\u00e9", dateExpiration: Date.now() + 1_000 }),
     {
       ok: false,
       status: 410,
-      error: "Ce token a dÃ©jÃ  Ã©tÃ© utilisÃ©",
+      error: "Ce token a deja ete utilise.",
     },
   );
 });
@@ -30,7 +39,7 @@ test("validateTransferReadState flags expired transfers for cleanup", () => {
     {
       ok: false,
       status: 410,
-      error: "Ce token a expirÃ© (validitÃ© 30 jours)",
+      error: "Ce token a expire (validite 30 jours).",
       shouldExpire: true,
     },
   );
@@ -38,11 +47,11 @@ test("validateTransferReadState flags expired transfers for cleanup", () => {
 
 test("validateTransferAcceptance rejects reused, expired, or same-school transfers", () => {
   assert.deepEqual(
-    validateTransferAcceptance({ statut: "acceptÃ©", dateExpiration: Date.now() + 10_000 }, "ecole-b"),
+    validateTransferAcceptance({ statut: "accepted", dateExpiration: Date.now() + 10_000 }, "ecole-b"),
     {
       ok: false,
       status: 409,
-      error: "Token dÃ©jÃ  utilisÃ© ou expirÃ©",
+      error: "Token deja utilise ou expire.",
     },
   );
 
@@ -51,7 +60,7 @@ test("validateTransferAcceptance rejects reused, expired, or same-school transfe
     {
       ok: false,
       status: 410,
-      error: "Token expirÃ©",
+      error: "Token expire.",
       shouldExpire: true,
     },
   );
@@ -64,7 +73,7 @@ test("validateTransferAcceptance rejects reused, expired, or same-school transfe
     {
       ok: false,
       status: 409,
-      error: "Le transfert vers la mÃªme Ã©cole est interdit.",
+      error: "Le transfert vers la meme ecole est interdit.",
     },
   );
 });

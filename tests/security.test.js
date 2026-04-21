@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
+import process from "node:process";
 import test from "node:test";
 import {
+  applyCors,
+  consumeRateLimit,
+  getClientIp,
   isAllowedSchoolRole,
   isValidLogin,
   isValidSchoolId,
@@ -10,6 +14,66 @@ import {
   normalizeTransferToken,
   validateSessionProfile,
 } from "../api/_lib/security.js";
+
+function createResponseDouble() {
+  return {
+    headers: {},
+    statusCode: 200,
+    body: null,
+    setHeader(name, value) {
+      this.headers[name] = value;
+    },
+    status(code) {
+      this.statusCode = code;
+      return this;
+    },
+    json(payload) {
+      this.body = payload;
+      return this;
+    },
+  };
+}
+
+function restoreEnv(name, value) {
+  if (value === undefined) {
+    delete process.env[name];
+    return;
+  }
+
+  process.env[name] = value;
+}
+
+function createRateLimitDb() {
+  const store = new Map();
+
+  return {
+    collection(name) {
+      assert.equal(name, "_rateLimits");
+      return {
+        doc(id) {
+          return { id };
+        },
+      };
+    },
+    async runTransaction(callback) {
+      const tx = {
+        async get(ref) {
+          const data = store.get(ref.id);
+          return {
+            exists: data !== undefined,
+            data: () => data,
+          };
+        },
+        set(ref, data, options = {}) {
+          const previous = store.get(ref.id) || {};
+          store.set(ref.id, options.merge ? { ...previous, ...data } : data);
+        },
+      };
+
+      return callback(tx);
+    },
+  };
+}
 
 test("normalize helpers sanitize login, school id, and transfer token", () => {
   assert.equal(normalizeLogin("  Admin.User  "), "admin.user");
@@ -104,4 +168,97 @@ test("validateSessionProfile lets superadmin bypass role and school checks only 
       error: "Acces refuse pour cette ecole.",
     },
   );
+});
+
+test("applyCors allows configured origins", () => {
+  const previous = process.env.ALLOWED_ORIGIN;
+  const previousNodeEnv = process.env.NODE_ENV;
+  process.env.ALLOWED_ORIGIN = "https://app.edugest.test";
+  process.env.NODE_ENV = "production";
+
+  try {
+    const req = { headers: { origin: "https://app.edugest.test" } };
+    const res = createResponseDouble();
+
+    assert.equal(applyCors(req, res), true);
+    assert.equal(res.headers["Access-Control-Allow-Origin"], "https://app.edugest.test");
+  } finally {
+    restoreEnv("ALLOWED_ORIGIN", previous);
+    restoreEnv("NODE_ENV", previousNodeEnv);
+  }
+});
+
+test("applyCors rejects browser requests in production when ALLOWED_ORIGIN is missing", () => {
+  const previous = process.env.ALLOWED_ORIGIN;
+  const previousNodeEnv = process.env.NODE_ENV;
+  delete process.env.ALLOWED_ORIGIN;
+  process.env.NODE_ENV = "production";
+
+  try {
+    const req = { headers: { origin: "https://app.edugest.test" } };
+    const res = createResponseDouble();
+
+    assert.equal(applyCors(req, res), false);
+    assert.equal(res.statusCode, 500);
+    assert.deepEqual(res.body, { error: "CORS non configure sur le serveur." });
+  } finally {
+    restoreEnv("ALLOWED_ORIGIN", previous);
+    restoreEnv("NODE_ENV", previousNodeEnv);
+  }
+});
+
+test("applyCors still allows server-to-server requests without origin", () => {
+  const previous = process.env.ALLOWED_ORIGIN;
+  const previousNodeEnv = process.env.NODE_ENV;
+  delete process.env.ALLOWED_ORIGIN;
+  process.env.NODE_ENV = "production";
+
+  try {
+    const req = { headers: {} };
+    const res = createResponseDouble();
+
+    assert.equal(applyCors(req, res), true);
+    assert.equal(res.statusCode, 200);
+  } finally {
+    restoreEnv("ALLOWED_ORIGIN", previous);
+    restoreEnv("NODE_ENV", previousNodeEnv);
+  }
+});
+
+test("getClientIp prioritizes forwarded headers", () => {
+  assert.equal(
+    getClientIp({
+      headers: {
+        "x-forwarded-for": "203.0.113.10, 10.0.0.1",
+        "x-real-ip": "198.51.100.2",
+      },
+      socket: { remoteAddress: "127.0.0.1" },
+    }),
+    "203.0.113.10",
+  );
+});
+
+test("consumeRateLimit blocks requests after the configured limit", async () => {
+  const db = createRateLimitDb();
+
+  const first = await consumeRateLimit({
+    db,
+    scope: "inscription",
+    key: "203.0.113.10",
+    limit: 1,
+    windowMs: 60_000,
+    now: 10_000,
+  });
+  const second = await consumeRateLimit({
+    db,
+    scope: "inscription",
+    key: "203.0.113.10",
+    limit: 1,
+    windowMs: 60_000,
+    now: 20_000,
+  });
+
+  assert.equal(first.ok, true);
+  assert.equal(second.ok, false);
+  assert.equal(second.status, 429);
 });

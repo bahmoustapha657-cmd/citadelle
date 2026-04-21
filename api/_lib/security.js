@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import { initAdmin } from "./firebase-admin.js";
@@ -25,12 +26,17 @@ export const STAFF_ROLES = [
 const LOGIN_PATTERN = /^[a-z0-9._-]{3,30}$/;
 const SCHOOL_ID_PATTERN = /^[a-z0-9-]{3,50}$/;
 const TRANSFER_TOKEN_PATTERN = /^TRF-[A-Z2-9]{6,10}$/;
+const RATE_LIMIT_COLLECTION = "_rateLimits";
 
 function parseAllowedOrigins() {
   return (process.env.ALLOWED_ORIGIN || "")
     .split(",")
     .map((origin) => origin.trim())
     .filter(Boolean);
+}
+
+export function isProductionEnvironment() {
+  return process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production";
 }
 
 export function normalizeLogin(login) {
@@ -69,21 +75,113 @@ export function requireEnv(name) {
   return value;
 }
 
+export function getClientIp(req) {
+  const forwardedFor = typeof req?.headers?.["x-forwarded-for"] === "string"
+    ? req.headers["x-forwarded-for"].split(",")[0].trim()
+    : "";
+  const realIp = typeof req?.headers?.["x-real-ip"] === "string"
+    ? req.headers["x-real-ip"].trim()
+    : "";
+  const remoteAddress = typeof req?.socket?.remoteAddress === "string"
+    ? req.socket.remoteAddress.trim()
+    : "";
+
+  return forwardedFor || realIp || remoteAddress || "unknown";
+}
+
 export function applyCors(req, res, methods = "POST,OPTIONS") {
   const allowedOrigins = parseAllowedOrigins();
-  const origin = req.headers.origin;
-  const isAllowedOrigin =
-    !origin ||
-    allowedOrigins.length === 0 ||
-    allowedOrigins.includes(origin);
-
-  if (isAllowedOrigin) {
-    res.setHeader("Access-Control-Allow-Origin", origin || allowedOrigins[0] || "*");
-    res.setHeader("Vary", "Origin");
-  }
+  const origin = typeof req?.headers?.origin === "string" ? req.headers.origin.trim() : "";
 
   res.setHeader("Access-Control-Allow-Methods", methods);
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+
+  if (!origin) {
+    return true;
+  }
+
+  if (allowedOrigins.length === 0) {
+    if (isProductionEnvironment()) {
+      res.status(500).json({ error: "CORS non configure sur le serveur." });
+      return false;
+    }
+
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
+    return true;
+  }
+
+  if (!allowedOrigins.includes(origin)) {
+    res.status(403).json({ error: "Origine non autorisee." });
+    return false;
+  }
+
+  res.setHeader("Access-Control-Allow-Origin", origin);
+  res.setHeader("Vary", "Origin");
+  return true;
+}
+
+export async function consumeRateLimit({
+  db,
+  scope,
+  key,
+  limit,
+  windowMs,
+  now = Date.now(),
+}) {
+  const normalizedScope = typeof scope === "string" ? scope.trim().toLowerCase() : "";
+  const normalizedKey = typeof key === "string" ? key.trim() : "";
+
+  if (!db || !normalizedScope || !normalizedKey) {
+    throw new Error("Parametres de rate limit invalides.");
+  }
+  if (!Number.isInteger(limit) || limit < 1) {
+    throw new Error("La limite de rate limit est invalide.");
+  }
+  if (!Number.isFinite(windowMs) || windowMs < 1000) {
+    throw new Error("La fenetre de rate limit est invalide.");
+  }
+
+  const bucketStart = now - (now % windowMs);
+  const retryAfterMs = Math.max(1000, bucketStart + windowMs - now);
+  const keyHash = crypto
+    .createHash("sha256")
+    .update(`${normalizedScope}:${normalizedKey}`)
+    .digest("hex");
+  const docId = `${normalizedScope}_${keyHash}_${bucketStart}`;
+  const docRef = db.collection(RATE_LIMIT_COLLECTION).doc(docId);
+  let nextCount = 0;
+
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(docRef);
+    const currentCount = snap.exists ? Number(snap.data()?.count || 0) : 0;
+    nextCount = currentCount + 1;
+
+    tx.set(docRef, {
+      scope: normalizedScope,
+      keyHash,
+      bucketStart,
+      windowMs,
+      count: nextCount,
+      updatedAt: now,
+      expireAt: bucketStart + windowMs,
+    }, { merge: true });
+  });
+
+  if (nextCount > limit) {
+    return {
+      ok: false,
+      status: 429,
+      error: "Trop de tentatives. Reessayez plus tard.",
+      retryAfterMs,
+    };
+  }
+
+  return {
+    ok: true,
+    remaining: Math.max(0, limit - nextCount),
+    retryAfterMs,
+  };
 }
 
 export function validateSessionProfile(profile, options = {}) {

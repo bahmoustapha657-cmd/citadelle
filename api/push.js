@@ -1,7 +1,12 @@
 import webpush from "web-push";
 import { getFirestore } from "firebase-admin/firestore";
 import { initAdmin } from "./_lib/firebase-admin.js";
-import { applyCors, requireSession } from "./_lib/security.js";
+import {
+  applyCors,
+  isValidSchoolId,
+  normalizeSchoolId,
+  requireSession,
+} from "./_lib/security.js";
 
 webpush.setVapidDetails(
   "mailto:bahmoustapha657@gmail.com",
@@ -10,12 +15,19 @@ webpush.setVapidDetails(
 );
 
 export default async function handler(req, res) {
-  applyCors(req, res);
+  if (!applyCors(req, res)) return;
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).end();
 
   const { schoolId, cibles, titre, corps, url = "/" } = req.body || {};
-  if (!schoolId || !titre) return res.status(400).json({ error: "schoolId et titre requis" });
+  const normalizedSchoolId = normalizeSchoolId(schoolId);
+
+  if (!normalizedSchoolId || !titre) {
+    return res.status(400).json({ error: "schoolId et titre requis" });
+  }
+  if (!isValidSchoolId(normalizedSchoolId)) {
+    return res.status(400).json({ error: "Code école invalide." });
+  }
 
   try { initAdmin(); } catch {
     return res.status(500).json({ error: "Erreur serveur" });
@@ -23,7 +35,7 @@ export default async function handler(req, res) {
 
   const isAuthorized = await requireSession(req, res, {
     roles: ["direction", "admin", "comptable"],
-    schoolId,
+    schoolId: normalizedSchoolId,
     allowSuperadmin: true,
   });
   if (!isAuthorized) return;
@@ -33,7 +45,7 @@ export default async function handler(req, res) {
 
   try {
     // Récupère les souscriptions push du schoolId
-    const snap = await db.collection("ecoles").doc(schoolId).collection("pushSubs").get();
+    const snap = await db.collection("ecoles").doc(normalizedSchoolId).collection("pushSubs").get();
     let docs = snap.docs;
 
     // Filtre par rôles cibles si précisé (ex: ["parent", "direction"])

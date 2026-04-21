@@ -13,7 +13,7 @@ import {
 } from "./_lib/security.js";
 
 export default async function handler(req, res) {
-  applyCors(req, res);
+  if (!applyCors(req, res)) return;
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).end();
 
@@ -94,6 +94,11 @@ export default async function handler(req, res) {
 
     const mdpHash = await bcrypt.hash(mdp, 10);
 
+    await authAdmin.setCustomUserClaims(userRecord.uid, {
+      role: compte.role,
+      schoolId: normalizedSchoolId,
+    });
+
     await db.collection("users").doc(userRecord.uid).set({
       schoolId: normalizedSchoolId,
       role: compte.role,
@@ -114,6 +119,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, uid: userRecord.uid });
   } catch (e) {
     console.error("create-user error:", e);
-    return res.status(500).json({ error: e.message || "Erreur serveur" });
+    return res.status(500).json({ error: "Erreur serveur" });
   }
 }

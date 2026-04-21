@@ -27,6 +27,12 @@ async function upsertAuthUser(authAdmin, { email, password, displayName }) {
   }
 }
 
+function canManageTargetRole(session, targetRole) {
+  if (session.profile.role === "superadmin") return true;
+  if (targetRole === "direction") return session.profile.role === "direction";
+  return ["direction", "admin"].includes(session.profile.role);
+}
+
 async function findAccount({ db, schoolId, accountId = "", login = "" }) {
   if (accountId) {
     const docRef = db.collection("ecoles").doc(schoolId).collection("comptes").doc(accountId);
@@ -76,7 +82,7 @@ async function syncUserProfile({ db, uid, schoolId, login, role, nom, email, com
 }
 
 export default async function handler(req, res) {
-  applyCors(req, res);
+  if (!applyCors(req, res)) return;
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).end();
 
@@ -116,6 +122,10 @@ export default async function handler(req, res) {
     });
     if (!session) return;
 
+    if (!canManageTargetRole(session, role)) {
+      return res.status(403).json({ error: "Seule la direction peut créer un compte direction." });
+    }
+
     try {
       const existing = await findAccount({ db, schoolId: normalizedSchoolId, login: normalizedLogin });
       if (existing) {
@@ -145,6 +155,10 @@ export default async function handler(req, res) {
       });
 
       await ref.update({ uid: userRecord.uid, updatedAt: Date.now() });
+      await authAdmin.setCustomUserClaims(userRecord.uid, {
+        role,
+        schoolId: normalizedSchoolId,
+      });
       await syncUserProfile({
         db,
         uid: userRecord.uid,
@@ -160,7 +174,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, uid: userRecord.uid, compteDocId: ref.id });
     } catch (e) {
       console.error("account-manage create error:", e);
-      return res.status(500).json({ error: e.message || "Erreur création compte" });
+      return res.status(500).json({ error: "Erreur création compte" });
     }
   }
 
@@ -192,6 +206,10 @@ export default async function handler(req, res) {
         return res.status(404).json({ error: "Compte introuvable." });
       }
 
+      if (!canManageTargetRole(session, account.data.role)) {
+        return res.status(403).json({ error: "Seule la direction peut réinitialiser un compte direction." });
+      }
+
       const email = buildEmail(account.data.login, normalizedSchoolId);
       const userRecord = await upsertAuthUser(authAdmin, {
         email,
@@ -205,6 +223,11 @@ export default async function handler(req, res) {
         premiereCo: true,
         uid: userRecord.uid,
         updatedAt: Date.now(),
+      });
+
+      await authAdmin.setCustomUserClaims(userRecord.uid, {
+        role: account.data.role,
+        schoolId: normalizedSchoolId,
       });
 
       await syncUserProfile({
@@ -222,7 +245,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true });
     } catch (e) {
       console.error("account-manage reset error:", e);
-      return res.status(500).json({ error: e.message || "Erreur réinitialisation mot de passe" });
+      return res.status(500).json({ error: "Erreur réinitialisation mot de passe" });
     }
   }
 
@@ -263,7 +286,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true });
     } catch (e) {
       console.error("account-manage self sync error:", e);
-      return res.status(500).json({ error: e.message || "Erreur synchronisation mot de passe" });
+      return res.status(500).json({ error: "Erreur synchronisation mot de passe" });
     }
   }
 
