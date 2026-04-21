@@ -222,6 +222,20 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /superadmin_messages/{messageId} {
+      allow read: if request.auth != null && roleUtilisateur() != "parent";
+      allow create, update, delete: if aUnRole(["superadmin"]);
+
+      match /lectures/{uid} {
+        allow read: if aUnRole(["superadmin"])
+                     || (request.auth != null && request.auth.uid == uid);
+        allow create: if request.auth != null
+                       && request.auth.uid == uid
+                       && roleUtilisateur() != "parent";
+        allow update, delete: if false;
+      }
+    }
+
     match /{path=**}/demandes_plan/{docId} {
       allow read: if aUnRole(["superadmin"]);
       allow write: if false;

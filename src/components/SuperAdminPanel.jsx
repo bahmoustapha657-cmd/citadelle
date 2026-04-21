@@ -4,6 +4,7 @@ import { C, PLANS, PLAN_DUREES } from "../constants";
 import { db } from "../firebaseDb";
 import { addDoc, collection, collectionGroup, doc, getDoc, getDocs, onSnapshot, setDoc, updateDoc } from "firebase/firestore";
 import SuperAdminAssistant from "./SuperAdminAssistant";
+import CommunicationsAdmin from "./CommunicationsAdmin";
 
 // ══════════════════════════════════════════════════════════════
 //  PANEL SUPER-ADMIN
@@ -286,6 +287,7 @@ function SuperAdminPanel() {
           {id:"ecoles",label:"🏫 Écoles"},
           {id:"plans",label:"⭐ Plans"},
           {id:"assistant",label:"Assistant"},
+          {id:"communications",label:"📢 Communications"},
           {id:"demandes",label:`📋 Demandes${demandes.filter(d=>d.statut==="en_attente").length>0?" ("+demandes.filter(d=>d.statut==="en_attente").length+")":""}`},
         ].map(o=>(
           <button key={o.id} onClick={()=>{setOngletSA(o.id);setPlanModal(null);setConfirmDowngrade(false);}}
@@ -297,6 +299,8 @@ function SuperAdminPanel() {
       </div>
 
       {ongletSA==="assistant" && <SuperAdminAssistant />}
+
+      {ongletSA==="communications" && <CommunicationsAdmin ecoles={ecoles} auteur="superadmin" />}
 
       {/* ── Onglet Demandes Pro ── */}
       {ongletSA==="demandes" && (

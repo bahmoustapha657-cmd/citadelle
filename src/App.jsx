@@ -42,6 +42,7 @@ const Secondaire = lazyNamedExport(() => import("./components/Secondaire"), "Sec
 const Calendrier = lazyNamedExport(() => import("./components/Calendrier"), "Calendrier");
 const GestionExamens = lazyNamedExport(() => import("./components/GestionExamens"), "GestionExamens");
 const MessagesParents = lazyNamedExport(() => import("./components/MessagesParents"), "MessagesParents");
+const MessagesEcole = lazy(() => import("./components/MessagesEcole"));
 const LandingEduGest = lazyNamedExport(() => import("./components/LandingEduGest"), "LandingEduGest");
 
 function FullScreenFallback() {
@@ -574,6 +575,9 @@ export default function App() {
       <Suspense fallback={<FullScreenFallback/>}>
         <PortailEnseignant utilisateur={utilisateur} deconnecter={deconnecter} annee={annee} schoolInfo={schoolInfo}/>
       </Suspense>
+      <Suspense fallback={null}>
+        <MessagesEcole utilisateur={utilisateur} schoolId={schoolId}/>
+      </Suspense>
     </SchoolContext.Provider>
   );
 
@@ -937,6 +941,12 @@ export default function App() {
           </div>
         </div>
       </div>
+    )}
+
+    {schoolId && schoolId !== "superadmin" && (
+      <Suspense fallback={null}>
+        <MessagesEcole utilisateur={utilisateur} schoolId={schoolId}/>
+      </Suspense>
     )}
 
     </SchoolContext.Provider>
