@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from "react";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, getDocFromServer } from "firebase/firestore";
 import { signInWithCustomTokenClient } from "../firebaseAuth";
 import { db } from "../firebaseDb";
 import { SchoolContext } from "../contexts/SchoolContext";
@@ -25,10 +25,17 @@ function Connexion({onLogin, onInscription}) {
     const sid=codeEcole.trim().toLowerCase();
     if(!sid||sid==="superadmin"){setInfoEcole(null);return;}
     setInfoEcole(null);
-    const t=setTimeout(()=>{
-      getDoc(doc(db,"ecoles_public",sid))
-        .then(snap=>setInfoEcole(snap.exists()?snap.data():null))
-        .catch(()=>setInfoEcole(null));
+    const t=setTimeout(async()=>{
+      const publicRef = doc(db,"ecoles_public",sid);
+      const privateRef = doc(db,"ecoles",sid);
+      try{
+        const snap = await getDocFromServer(privateRef).catch(async()=>getDocFromServer(publicRef));
+        setInfoEcole(snap.exists()?snap.data():null);
+      }catch{
+        getDoc(publicRef)
+          .then(snap=>setInfoEcole(snap.exists()?snap.data():null))
+          .catch(()=>setInfoEcole(null));
+      }
     },600); // debounce 600ms
     return ()=>clearTimeout(t);
   },[codeEcole]);

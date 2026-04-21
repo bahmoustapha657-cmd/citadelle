@@ -206,8 +206,28 @@ function SuperAdminPanel() {
     }
     await setDoc(doc(db,"ecoles",sid),{
       nom: nouvelleEcole.nom.trim(),
+      type: "Groupe Scolaire Privé",
       ville: nouvelleEcole.ville.trim(),
       pays: nouvelleEcole.pays.trim()||"Guinée",
+      couleur1: "#0A1628",
+      couleur2: "#00C48C",
+      logo: null,
+      devise: "",
+      accueil: {
+        active: false,
+        slogan: "",
+        texteAccueil: "",
+        bannerUrl: "",
+        photos: [],
+        showAnnonces: true,
+        showHonneurs: true,
+        showContact: true,
+        telephone: "",
+        email: "",
+        facebook: "",
+        whatsapp: "",
+        adresse: "",
+      },
       createdAt: Date.now(),
       actif: true,
     });

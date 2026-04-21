@@ -6,7 +6,7 @@ import React, { Suspense, lazy, useEffect, useState } from "react";
 import { signOutCurrentUser, watchAuthState } from "./firebaseAuth";
 import { db } from "./firebaseDb";
 import {
-  collection, onSnapshot, addDoc, doc, setDoc, getDoc, query, orderBy, limit
+  collection, onSnapshot, addDoc, doc, setDoc, getDoc, getDocFromServer, query, orderBy, limit
 } from "firebase/firestore";
 import {
   C,
@@ -257,54 +257,72 @@ export default function App() {
     }).catch(()=>{});
   },[]);
 
-  // Charger les infos de l'école depuis Firestore (temps réel)
+  // Charger les infos de l'?cole depuis Firestore (temps r?el)
   useEffect(()=>{
-    setSchoolInfo(SCHOOL_INFO_DEFAUT);
-    setVerrous({comptable:false,primaire:false,secondaire:false});
-    if(!schoolId||schoolId==="superadmin"){
+    let actif = true;
+    let accepterCache = false;
+    const schoolRef = schoolId ? doc(db,"ecoles",schoolId) : null;
+    const reinitialiserBranding = () => {
+      setSchoolInfo(SCHOOL_INFO_DEFAUT);
+      setVerrous({comptable:false,primaire:false,secondaire:false});
       document.documentElement.style.setProperty("--sc1","#0A1628");
       document.documentElement.style.setProperty("--sc2","#00C48C");
+    };
+    const appliquerDonneesEcole = (d) => {
+      const D = SCHOOL_INFO_DEFAUT;
+      setSchoolInfo({
+        ...D,
+        ...d,           // tous les champs Firestore (blocageParentImpaye, triEleves, matricule*, etc.)
+        nom:       d.nom       || D.nom,
+        type:      d.type      || D.type,
+        ville:     d.ville     || D.ville,
+        pays:      d.pays      || D.pays,
+        couleur1:  d.couleur1  || D.couleur1,
+        couleur2:  d.couleur2  || D.couleur2,
+        logo:      d.logo      || D.logo,
+        devise:    d.devise    || D.devise,
+        ministere: d.ministere || D.ministere,
+        ire:       d.ire       || D.ire,
+        dpe:       d.dpe       || D.dpe,
+        agrement:  d.agrement  || D.agrement,
+        moisDebut: d.moisDebut || D.moisDebut,
+        plan:      d.plan      || "gratuit",
+        planExpiry:d.planExpiry|| null,
+        accueil:   d.accueil   || D.accueil,
+      });
+      setVerrous(d.verrous || {comptable:false,primaire:false,secondaire:false});
+      const r = document.documentElement.style;
+      r.setProperty("--sc1", d.couleur1 || "#0A1628");
+      r.setProperty("--sc2", d.couleur2 || "#00C48C");
+    };
+
+    reinitialiserBranding();
+    if(!schoolId||schoolId==="superadmin"){
       return;
     }
-    const unsub = onSnapshot(doc(db,"ecoles",schoolId),(snap)=>{
-      if(snap.exists()){
-        const d=snap.data();
-        const D = SCHOOL_INFO_DEFAUT;
-        setSchoolInfo({
-          ...D,
-          ...d,           // tous les champs Firestore (blocageParentImpaye, triEleves, matricule*, etc.)
-          nom:       d.nom       || D.nom,
-          type:      d.type      || D.type,
-          ville:     d.ville     || D.ville,
-          pays:      d.pays      || D.pays,
-          couleur1:  d.couleur1  || D.couleur1,
-          couleur2:  d.couleur2  || D.couleur2,
-          logo:      d.logo      || D.logo,
-          devise:    d.devise    || D.devise,
-          ministere: d.ministere || D.ministere,
-          ire:       d.ire       || D.ire,
-          dpe:       d.dpe       || D.dpe,
-          agrement:  d.agrement  || D.agrement,
-          moisDebut: d.moisDebut || D.moisDebut,
-          plan:      d.plan      || "gratuit",
-          planExpiry:d.planExpiry|| null,
-          accueil:   d.accueil   || D.accueil,
-        });
-        if(d.verrous) setVerrous(d.verrous);
-        // Sync CSS custom properties for school branding
-        const r = document.documentElement.style;
-        r.setProperty("--sc1", d.couleur1 || "#0A1628");
-        r.setProperty("--sc2", d.couleur2 || "#00C48C");
-      } else {
-        setSchoolInfo(SCHOOL_INFO_DEFAUT);
-        setVerrous({comptable:false,primaire:false,secondaire:false});
-        document.documentElement.style.setProperty("--sc1","#0A1628");
-        document.documentElement.style.setProperty("--sc2","#00C48C");
-      }
-    });
-    return ()=>unsub();
-  },[schoolId]);
 
+    getDocFromServer(schoolRef).then((snap)=>{
+      if(!actif) return;
+      accepterCache = true;
+      if(snap.exists()) appliquerDonneesEcole(snap.data());
+      else reinitialiserBranding();
+    }).catch(()=>{
+      if(!actif) return;
+      accepterCache = true;
+    });
+
+    const unsub = onSnapshot(schoolRef,(snap)=>{
+      if(!actif) return;
+      if(!accepterCache && snap.metadata?.fromCache) return;
+      if(snap.exists()) appliquerDonneesEcole(snap.data());
+      else reinitialiserBranding();
+    });
+
+    return ()=>{
+      actif = false;
+      unsub();
+    };
+  },[schoolId]);
   // Badge messages non lus (côté école) — écoute en temps réel
   useEffect(()=>{
     if(!schoolId||schoolId==="superadmin") return;

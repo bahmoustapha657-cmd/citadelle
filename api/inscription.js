@@ -18,6 +18,28 @@ const INSCRIPTION_RATE_LIMIT = {
   windowMs: 24 * 60 * 60 * 1000,
 };
 const PASSWORD_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#!";
+const DEFAULT_SCHOOL_BRANDING = {
+  type: "Groupe Scolaire Prive",
+  couleur1: "#0A1628",
+  couleur2: "#00C48C",
+  logo: null,
+  devise: "",
+  accueil: {
+    active: false,
+    slogan: "",
+    texteAccueil: "",
+    bannerUrl: "",
+    photos: [],
+    showAnnonces: true,
+    showHonneurs: true,
+    showContact: true,
+    telephone: "",
+    email: "",
+    facebook: "",
+    whatsapp: "",
+    adresse: "",
+  },
+};
 
 const genSlug = (nom) =>
   nom.toLowerCase().trim()
@@ -92,6 +114,7 @@ export default async function handler(req, res) {
       nom: nomEcole.trim(),
       ville: ville.trim(),
       pays: (pays || "Guinee").trim(),
+      ...DEFAULT_SCHOOL_BRANDING,
       createdAt: Date.now(),
       actif: true,
       securityVersion: 2,
