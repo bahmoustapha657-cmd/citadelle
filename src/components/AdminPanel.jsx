@@ -30,7 +30,7 @@ const PROMOTION_SUIVANTE = {
 };
 
 function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
-  const {toast} = useContext(SchoolContext);
+  const {toast, schoolInfo} = useContext(SchoolContext);
   const {items:comptes, chargement} = useFirestore("comptes");
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState({});
@@ -183,7 +183,7 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
   return (
     <div style={{padding:"22px 26px"}}>
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18}}>
-        <img src={LOGO} alt="" style={{width:48,height:48,objectFit:"contain"}}/>
+        <img src={schoolInfo?.logo||LOGO} alt="" style={{width:48,height:48,objectFit:"contain"}}/>
         <div>
           <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.blueDark}}>Gestion des Accès</h2>
           <p style={{margin:0,fontSize:12,color:C.green,fontWeight:600}}>Mots de passe & Année scolaire</p>
