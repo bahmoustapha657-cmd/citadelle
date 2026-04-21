@@ -62,6 +62,7 @@ export default async function handler(req, res) {
 
     const compteDoc = comptesSnap.docs[0];
     const compte = compteDoc.data();
+    const label = compte.label || compte.role;
 
     if (!isAllowedSchoolRole(compte.role)) {
       return res.status(403).json({ error: "Rôle de compte invalide. Synchronisation refusée." });
@@ -85,6 +86,7 @@ export default async function handler(req, res) {
         await authAdmin.updateUser(existing.uid, {
           password: mdp,
           displayName: compte.nom || normalizedLogin,
+          disabled: false,
         });
         userRecord = existing;
       } else {
@@ -103,10 +105,12 @@ export default async function handler(req, res) {
       schoolId: normalizedSchoolId,
       role: compte.role,
       nom: compte.nom || normalizedLogin,
+      label,
       login: normalizedLogin,
       email,
       compteDocId: compteDoc.id,
       premiereCo: !!compte.premiereCo,
+      statut: compte.statut || "Actif",
       updatedAt: Date.now(),
     }, { merge: true });
 

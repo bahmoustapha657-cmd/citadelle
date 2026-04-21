@@ -93,6 +93,7 @@ export default async function handler(req, res) {
 
     const email = `${normalizedLogin}.${normalizedSchoolId}@edugest.app`;
     const displayName = compte.nom || normalizedLogin;
+    const label = compte.label || compte.role;
     let uid;
 
     try {
@@ -101,8 +102,8 @@ export default async function handler(req, res) {
     } catch (e) {
       if (e.code === "auth/email-already-exists") {
         const existing = await authAdmin.getUserByEmail(email);
-        if (existing.displayName !== displayName) {
-          await authAdmin.updateUser(existing.uid, { displayName });
+        if (existing.displayName !== displayName || existing.disabled) {
+          await authAdmin.updateUser(existing.uid, { displayName, disabled: false });
         }
         uid = existing.uid;
       } else {
@@ -119,10 +120,12 @@ export default async function handler(req, res) {
       schoolId: normalizedSchoolId,
       role: compte.role,
       nom: compte.nom || normalizedLogin,
+      label,
       login: normalizedLogin,
       email,
       compteDocId: compte._id,
       premiereCo: !!compte.premiereCo,
+      statut: compte.statut || "Actif",
       updatedAt: Date.now(),
     }, { merge: true });
 
@@ -131,7 +134,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       ok: true,
       customToken,
-      compte: { login: compte.login, role: compte.role, nom: compte.nom || normalizedLogin },
+      compte: { login: compte.login, role: compte.role, nom: compte.nom || normalizedLogin, label },
     });
   } catch (e) {
     console.error("login error:", e);

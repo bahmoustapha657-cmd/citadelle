@@ -1,6 +1,8 @@
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import bcrypt from "bcryptjs";
+import { ROLE_ORDER, getRoleSettingsMap } from "../shared/role-config.js";
+import { generateSecurePassword } from "./_lib/passwords.js";
 import { initAdmin } from "./_lib/firebase-admin.js";
 import {
   applyCors,
@@ -16,13 +18,13 @@ function buildEmail(login, schoolId) {
   return `${login}.${schoolId}@edugest.app`;
 }
 
-async function upsertAuthUser(authAdmin, { email, password, displayName }) {
+async function upsertAuthUser(authAdmin, { email, password, displayName, disabled = false }) {
   try {
-    return await authAdmin.createUser({ email, password, displayName });
+    return await authAdmin.createUser({ email, password, displayName, disabled });
   } catch (e) {
     if (e.code !== "auth/email-already-exists") throw e;
     const existing = await authAdmin.getUserByEmail(email);
-    await authAdmin.updateUser(existing.uid, { password, displayName });
+    await authAdmin.updateUser(existing.uid, { password, displayName, disabled });
     return existing;
   }
 }
@@ -68,17 +70,31 @@ function sanitizeAccountPayload(body = {}) {
   };
 }
 
-async function syncUserProfile({ db, uid, schoolId, login, role, nom, email, compteDocId, premiereCo }) {
+async function syncUserProfile({ db, uid, schoolId, login, role, nom, label, email, compteDocId, premiereCo, statut = "Actif" }) {
   await db.collection("users").doc(uid).set({
     schoolId,
     role,
     nom,
+    label,
     login,
     email,
     compteDocId,
     premiereCo,
+    statut,
     updatedAt: Date.now(),
   }, { merge: true });
+}
+
+async function updateAuthIdentity(authAdmin, uid, { email, nom, active }) {
+  if (!uid) return;
+  await authAdmin.updateUser(uid, {
+    email,
+    displayName: nom,
+    disabled: !active,
+  });
+  if (!active) {
+    await authAdmin.revokeRefreshTokens(uid);
+  }
 }
 
 export default async function handler(req, res) {
@@ -133,6 +149,7 @@ export default async function handler(req, res) {
       }
 
       const accountFields = sanitizeAccountPayload({ ...req.body, role, login: normalizedLogin });
+      const active = accountFields.statut !== "Inactif";
       const mdpHash = await bcrypt.hash(mdp, 10);
       const createdAt = Date.now();
       const accountData = {
@@ -152,6 +169,7 @@ export default async function handler(req, res) {
         email,
         password: mdp,
         displayName: accountFields.nom || normalizedLogin,
+        disabled: !active,
       });
 
       await ref.update({ uid: userRecord.uid, updatedAt: Date.now() });
@@ -166,15 +184,171 @@ export default async function handler(req, res) {
         login: normalizedLogin,
         role,
         nom: accountFields.nom || normalizedLogin,
+        label: accountFields.label || role,
         email,
         compteDocId: ref.id,
         premiereCo: true,
+        statut: accountFields.statut || "Actif",
       });
 
       return res.status(200).json({ ok: true, uid: userRecord.uid, compteDocId: ref.id });
     } catch (e) {
       console.error("account-manage create error:", e);
       return res.status(500).json({ error: "Erreur création compte" });
+    }
+  }
+
+  if (action === "sync_role_settings") {
+    const normalizedSchoolId = normalizeSchoolId(req.body?.schoolId);
+    if (!normalizedSchoolId || !isValidSchoolId(normalizedSchoolId)) {
+      return res.status(400).json({ error: "Code école invalide." });
+    }
+
+    const session = await requireSession(req, res, {
+      roles: ["direction", "admin"],
+      schoolId: normalizedSchoolId,
+      allowSuperadmin: true,
+    });
+    if (!session) return;
+
+    try {
+      const normalizedRoleSettings = getRoleSettingsMap(req.body?.roleSettings || {});
+      const comptesRef = db.collection("ecoles").doc(normalizedSchoolId).collection("comptes");
+      const comptesSnap = await comptesRef.where("role", "in", ROLE_ORDER).get();
+      const comptesParRole = new Map();
+      const comptesParLogin = new Map();
+
+      comptesSnap.docs.forEach((snap) => {
+        const account = { ref: snap.ref, id: snap.id, data: snap.data() };
+        comptesParRole.set(account.data.role, account);
+        comptesParLogin.set(account.data.login, account);
+      });
+
+      for (const role of ROLE_ORDER) {
+        const config = normalizedRoleSettings[role];
+        const existing = comptesParRole.get(role);
+        const conflict = comptesParLogin.get(config.login);
+        if (conflict && conflict.id !== existing?.id) {
+          return res.status(409).json({ error: `L'identifiant ${config.login} est déjà utilisé par un autre compte.` });
+        }
+      }
+
+      const generatedAccounts = [];
+      const updatedRoles = [];
+
+      for (const role of ROLE_ORDER) {
+        const config = normalizedRoleSettings[role];
+        const existing = comptesParRole.get(role);
+        const active = config.active !== false;
+        const statut = active ? "Actif" : "Inactif";
+        const email = buildEmail(config.login, normalizedSchoolId);
+
+        if (existing) {
+          await existing.ref.update({
+            login: config.login,
+            nom: config.nom,
+            label: config.label,
+            statut,
+            updatedAt: Date.now(),
+          });
+
+          if (existing.data.uid) {
+            await updateAuthIdentity(authAdmin, existing.data.uid, {
+              email,
+              nom: config.nom,
+              active,
+            });
+            await authAdmin.setCustomUserClaims(existing.data.uid, {
+              role,
+              schoolId: normalizedSchoolId,
+            });
+            await syncUserProfile({
+              db,
+              uid: existing.data.uid,
+              schoolId: normalizedSchoolId,
+              login: config.login,
+              role,
+              nom: config.nom,
+              label: config.label,
+              email,
+              compteDocId: existing.id,
+              premiereCo: !!existing.data.premiereCo,
+              statut,
+            });
+          }
+
+          updatedRoles.push(role);
+          continue;
+        }
+
+        if (!active) continue;
+
+        const mdp = generateSecurePassword();
+        const mdpHash = await bcrypt.hash(mdp, 10);
+        const createdAt = Date.now();
+        const userRecord = await upsertAuthUser(authAdmin, {
+          email,
+          password: mdp,
+          displayName: config.nom,
+          disabled: false,
+        });
+
+        const ref = comptesRef.doc();
+        await ref.set({
+          login: config.login,
+          mdp: mdpHash,
+          role,
+          nom: config.nom,
+          label: config.label,
+          statut,
+          premiereCo: true,
+          uid: userRecord.uid,
+          createdAt,
+          updatedAt: createdAt,
+        });
+
+        await authAdmin.setCustomUserClaims(userRecord.uid, {
+          role,
+          schoolId: normalizedSchoolId,
+        });
+        await syncUserProfile({
+          db,
+          uid: userRecord.uid,
+          schoolId: normalizedSchoolId,
+          login: config.login,
+          role,
+          nom: config.nom,
+          label: config.label,
+          email,
+          compteDocId: ref.id,
+          premiereCo: true,
+          statut,
+        });
+
+        generatedAccounts.push({
+          role,
+          login: config.login,
+          nom: config.nom,
+          label: config.label,
+          mdp,
+        });
+        updatedRoles.push(role);
+      }
+
+      await db.collection("ecoles").doc(normalizedSchoolId).set({
+        roleSettings: normalizedRoleSettings,
+        updatedAt: Date.now(),
+      }, { merge: true });
+
+      return res.status(200).json({
+        ok: true,
+        roleSettings: normalizedRoleSettings,
+        generatedAccounts,
+        updatedRoles,
+      });
+    } catch (e) {
+      console.error("account-manage sync roles error:", e);
+      return res.status(500).json({ error: "Erreur synchronisation des comptes" });
     }
   }
 
@@ -215,6 +389,7 @@ export default async function handler(req, res) {
         email,
         password: mdp,
         displayName: account.data.nom || account.data.login,
+        disabled: account.data.statut === "Inactif",
       });
 
       const mdpHash = await bcrypt.hash(mdp, 10);
@@ -237,9 +412,11 @@ export default async function handler(req, res) {
         login: account.data.login,
         role: account.data.role,
         nom: account.data.nom || account.data.login,
+        label: account.data.label || account.data.role,
         email,
         compteDocId: account.id,
         premiereCo: true,
+        statut: account.data.statut || "Actif",
       });
 
       return res.status(200).json({ ok: true });

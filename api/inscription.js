@@ -1,6 +1,7 @@
-import crypto from "crypto";
 import { getFirestore } from "firebase-admin/firestore";
 import bcrypt from "bcryptjs";
+import { getActiveRoleAccounts, getRoleConfig, getRoleSettingsMap } from "../shared/role-config.js";
+import { generateSecurePassword } from "./_lib/passwords.js";
 import { initAdmin } from "./_lib/firebase-admin.js";
 import { syncEcolePublic } from "./_lib/ecole-public.js";
 import {
@@ -17,7 +18,6 @@ const INSCRIPTION_RATE_LIMIT = {
   limit: 5,
   windowMs: 24 * 60 * 60 * 1000,
 };
-const PASSWORD_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#!";
 const DEFAULT_SCHOOL_BRANDING = {
   type: "Groupe Scolaire Prive",
   couleur1: "#0A1628",
@@ -40,12 +40,6 @@ const DEFAULT_SCHOOL_BRANDING = {
     adresse: "",
   },
 };
-const DEFAULT_BOOTSTRAP_ACCOUNTS = [
-  { key: "comptable", login: "comptable", role: "comptable", nom: "Comptable", label: "Comptabilite" },
-  { key: "admin", login: "admin", role: "admin", nom: "Administrateur", label: "Administrateur" },
-  { key: "primaire", login: "primaire", role: "primaire", nom: "Direction Primaire", label: "Direction Primaire" },
-  { key: "college", login: "college", role: "college", nom: "Bureau College", label: "Bureau College" },
-];
 
 const genSlug = (nom) =>
   nom.toLowerCase().trim()
@@ -54,14 +48,7 @@ const genSlug = (nom) =>
     .replace(/^-+|-+$/g, "")
     .slice(0, 30) || "ecole";
 
-export function generateSecurePassword(length = 12) {
-  const bytes = crypto.randomBytes(length);
-  let password = "";
-  for (let index = 0; index < length; index += 1) {
-    password += PASSWORD_ALPHABET[bytes[index] % PASSWORD_ALPHABET.length];
-  }
-  return password;
-}
+export { generateSecurePassword };
 
 export default async function handler(req, res) {
   if (!applyCors(req, res)) return;
@@ -116,11 +103,18 @@ export default async function handler(req, res) {
       return res.status(409).json({ error: "Une ecole avec ce nom existe deja. Choisissez un nom different." });
     }
 
+    const roleSettings = getRoleSettingsMap({
+      direction: { login: normalizedLogin },
+    });
+    const directionConfig = getRoleConfig("direction", roleSettings);
+    const secondaryAccounts = getActiveRoleAccounts(roleSettings).filter((account) => account.role !== "direction");
+
     const ecoleData = {
       nom: nomEcole.trim(),
       ville: ville.trim(),
       pays: (pays || "Guinee").trim(),
       ...DEFAULT_SCHOOL_BRANDING,
+      roleSettings,
       createdAt: Date.now(),
       actif: true,
       securityVersion: 2,
@@ -131,34 +125,36 @@ export default async function handler(req, res) {
 
     const createdAt = Date.now();
     const bootstrapPasswords = Object.fromEntries(
-      DEFAULT_BOOTSTRAP_ACCOUNTS.map((account) => [account.key, generateSecurePassword()]),
+      secondaryAccounts.map((account) => [account.role, generateSecurePassword()]),
     );
     const hashedBootstrapAccounts = await Promise.all([
       bcrypt.hash(adminMdp, 10),
-      ...DEFAULT_BOOTSTRAP_ACCOUNTS.map((account) => bcrypt.hash(bootstrapPasswords[account.key], 10)),
+      ...secondaryAccounts.map((account) => bcrypt.hash(bootstrapPasswords[account.role], 10)),
     ]);
 
     const [mdpDirection, ...hashedDefaults] = hashedBootstrapAccounts;
     const comptes = [
       {
-        login: normalizedLogin,
+        login: directionConfig.login,
         mdp: mdpDirection,
         role: "direction",
-        nom: "Directeur General",
-        label: "Direction Generale",
+        nom: directionConfig.nom,
+        label: directionConfig.label,
         statut: "Actif",
         premiereCo: true,
         createdAt,
+        updatedAt: createdAt,
       },
-      ...DEFAULT_BOOTSTRAP_ACCOUNTS.map((account, index) => ({
+      ...secondaryAccounts.map((account, index) => ({
         login: account.login,
         mdp: hashedDefaults[index],
         role: account.role,
         nom: account.nom,
         label: account.label,
-        statut: "Actif",
+        statut: account.active ? "Actif" : "Inactif",
         premiereCo: true,
         createdAt,
+        updatedAt: createdAt,
       })),
     ];
 
@@ -173,9 +169,9 @@ export default async function handler(req, res) {
       ok: true,
       schoolId,
       compteSecondaires: Object.fromEntries(
-        DEFAULT_BOOTSTRAP_ACCOUNTS.map((account) => [
-          account.key,
-          { login: account.login, mdp: bootstrapPasswords[account.key], label: account.label },
+        secondaryAccounts.map((account) => [
+          account.role,
+          { login: account.login, mdp: bootstrapPasswords[account.role], label: account.label },
         ]),
       ),
     });

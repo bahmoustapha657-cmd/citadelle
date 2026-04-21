@@ -2,15 +2,11 @@ import React, { useState } from "react";
 import { C, CLASSES_COLLEGE, CLASSES_LYCEE } from "../constants";
 import { Ecole } from "./Ecole";
 
-// =================================================================
-//  MODULE SECONDAIRE (College + Lycee)
-// =================================================================
-function Secondaire({ userRole, annee, readOnly = false, verrouOuvert = false }) {
+function Secondaire({ userRole, annee, readOnly = false, verrouOuvert = false, collegeLabel = "Bureau College" }) {
   const [sousModule, setSousModule] = useState("college");
 
   return (
     <div>
-      {/* Barre de navigation College / Lycee */}
       <div
         style={{
           display: "flex",
@@ -21,33 +17,33 @@ function Secondaire({ userRole, annee, readOnly = false, verrouOuvert = false })
         }}
       >
         {[
-          { id: "college", label: "Bureau College" },
+          { id: "college", label: collegeLabel },
           { id: "lycee", label: "Lycee" },
-        ].map((m) => (
+        ].map((moduleItem) => (
           <button
-            key={m.id}
-            onClick={() => setSousModule(m.id)}
+            key={moduleItem.id}
+            onClick={() => setSousModule(moduleItem.id)}
             style={{
               padding: "12px 22px",
               border: "none",
               cursor: "pointer",
               fontWeight: 800,
               fontSize: 13,
-              background: sousModule === m.id ? C.green : "transparent",
-              color: sousModule === m.id ? "#fff" : "rgba(255,255,255,0.6)",
-              borderBottom: sousModule === m.id ? `3px solid ${C.green}` : "3px solid transparent",
+              background: sousModule === moduleItem.id ? C.green : "transparent",
+              color: sousModule === moduleItem.id ? "#fff" : "rgba(255,255,255,0.6)",
+              borderBottom: sousModule === moduleItem.id ? `3px solid ${C.green}` : "3px solid transparent",
               marginBottom: -3,
               transition: "all 0.15s",
             }}
           >
-            {m.label}
+            {moduleItem.label}
           </button>
         ))}
       </div>
 
       {sousModule === "college" && (
         <Ecole
-          titre="Bureau du College"
+          titre={collegeLabel}
           couleur={C.blue}
           cleClasses="classesCollege"
           cleEns="ensCollege"

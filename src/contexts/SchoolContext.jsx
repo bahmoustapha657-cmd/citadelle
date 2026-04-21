@@ -1,9 +1,13 @@
 import { createContext } from "react";
+import { getRoleSettingsMap } from "../../shared/role-config.js";
 
 export const SCHOOL_INFO_DEFAUT = {
-  nom: "EduGest", type: "Groupe Scolaire Privé",
-  ville: "", pays: "",
-  couleur1: "#0A1628", couleur2: "#00C48C",
+  nom: "EduGest",
+  type: "Groupe Scolaire Privé",
+  ville: "",
+  pays: "",
+  couleur1: "#0A1628",
+  couleur2: "#00C48C",
   logo: null,
   devise: "",
   ministere: "",
@@ -13,10 +17,21 @@ export const SCHOOL_INFO_DEFAUT = {
   moisDebut: "Octobre",
   plan: "gratuit",
   planExpiry: null,
+  roleSettings: getRoleSettingsMap(),
   accueil: {
-    active: false, slogan: "", texteAccueil: "", bannerUrl: "",
-    photos: [], showAnnonces: true, showHonneurs: true, showContact: true,
-    telephone: "", email: "", facebook: "", whatsapp: "", adresse: "",
+    active: false,
+    slogan: "",
+    texteAccueil: "",
+    bannerUrl: "",
+    photos: [],
+    showAnnonces: true,
+    showHonneurs: true,
+    showContact: true,
+    telephone: "",
+    email: "",
+    facebook: "",
+    whatsapp: "",
+    adresse: "",
   },
 };
 
