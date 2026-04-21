@@ -7,7 +7,7 @@ import {
   onSnapshot,
   updateDoc,
 } from "firebase/firestore";
-import { db } from "../firebase";
+import { db } from "../firebaseDb";
 import { SchoolContext } from "../contexts/SchoolContext";
 
 const initialState = {

@@ -1,8 +1,9 @@
-import QRCode from "qrcode";
-import * as XLSX from "xlsx";
 import LOGO from "./assets/defaultLogo";
 // eslint-disable-next-line no-unused-vars
 import { MOIS_ANNEE, fmt, fmtN, getAnnee, today } from "./constants";
+
+const loadXLSX = () => import("xlsx");
+const loadQRCode = async () => (await import("qrcode")).default;
 
 // ══════════════════════════════════════════════════════════════
 //  IMPRESSION / EXPORT  — fonctions pures (pas de React)
@@ -125,6 +126,7 @@ export const imprimerCartesEleves = async (eleves, schoolInfo={}, annee="") => {
   if(!eleves.length){alert("Aucun Ã©lÃ¨ve Ã  imprimer.");return;}
   // PrÃ©-gÃ©nÃ©rer les QR codes (data URL) pour chaque Ã©lÃ¨ve
   const qrMap = {};
+  const QRCode = await loadQRCode();
   await Promise.all(eleves.map(async e => {
     try {
       qrMap[e._id] = await QRCode.toDataURL(e.matricule||e._id, {
@@ -522,8 +524,9 @@ export const genererRapportMensuel = (mois, eleves, absences, annee, schoolInfo=
   w.document.close();
 };
 
-export const telechargerExcel = (wb, nomFichier) => {
+export const telechargerExcel = async (wb, nomFichier) => {
   try {
+    const XLSX = await loadXLSX();
     const buf = XLSX.write(wb, {bookType:"xlsx", type:"array"});
     const blob = new Blob([buf], {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
     const url = URL.createObjectURL(blob);
@@ -536,12 +539,13 @@ export const telechargerExcel = (wb, nomFichier) => {
   }
 };
 
-export const exportExcel = (nomFichier, colonnes, lignes) => {
+export const exportExcel = async (nomFichier, colonnes, lignes) => {
+  const XLSX = await loadXLSX();
   const ws = XLSX.utils.aoa_to_sheet([colonnes, ...lignes]);
   ws["!cols"] = colonnes.map(()=>({wch:22}));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Données");
-  telechargerExcel(wb, `${nomFichier}_${new Date().toLocaleDateString("fr-FR").replace(/\//g,"-")}.xlsx`);
+  await telechargerExcel(wb, `${nomFichier}_${new Date().toLocaleDateString("fr-FR").replace(/\//g,"-")}.xlsx`);
 };
 
 export const imprimerAttestation = (eleve, niveau, annee, schoolInfo={}) => {

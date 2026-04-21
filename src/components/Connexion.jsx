@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext } from "react";
 import { doc, getDoc } from "firebase/firestore";
-import { db, auth } from "../firebase";
+import { signInWithCustomTokenClient } from "../firebaseAuth";
+import { db } from "../firebaseDb";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { C, getAnnee } from "../constants";
 import Logo from "../Logo";
@@ -52,8 +53,7 @@ function Connexion({onLogin, onInscription}) {
         onLogin(data.compte,"superadmin");
         // Firebase Auth en arrière-plan pour la persistance de session (best-effort)
         if(data.customToken){
-          const {signInWithCustomToken}=await import("firebase/auth");
-          signInWithCustomToken(auth, data.customToken).catch(()=>{});
+          signInWithCustomTokenClient(data.customToken).catch(()=>{});
         }
         return;
       }
@@ -71,8 +71,7 @@ function Connexion({onLogin, onInscription}) {
 
       // 3. Connecter via custom token Firebase
       try{
-        const {signInWithCustomToken}=await import("firebase/auth");
-        await signInWithCustomToken(auth, data.customToken);
+        await signInWithCustomTokenClient(data.customToken);
         // onAuthStateChanged prend le relais
       }catch{
         // Dernier recours : connexion locale temporaire

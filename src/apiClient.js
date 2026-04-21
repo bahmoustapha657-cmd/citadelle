@@ -1,19 +1,13 @@
-import { auth } from "./firebase";
+import { getCurrentUserIdToken } from "./firebaseAuth";
 
 export async function getAuthHeaders(baseHeaders = {}) {
-  const user = auth.currentUser;
-
-  if (!user) {
+  const token = await getCurrentUserIdToken();
+  if (!token) {
     return baseHeaders;
   }
 
-  try {
-    const token = await user.getIdToken();
-    return {
-      ...baseHeaders,
-      Authorization: `Bearer ${token}`,
-    };
-  } catch {
-    return baseHeaders;
-  }
+  return {
+    ...baseHeaders,
+    Authorization: `Bearer ${token}`,
+  };
 }

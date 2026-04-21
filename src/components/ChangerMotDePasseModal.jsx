@@ -1,7 +1,6 @@
 import React, { useState } from "react";
-import { updatePassword } from "firebase/auth";
 import { getAuthHeaders } from "../apiClient";
-import { auth } from "../firebase";
+import { updateCurrentUserPassword } from "../firebaseAuth";
 
 function ChangerMotDePasseModal({ utilisateur, onDone }) {
   const [mdp1, setMdp1] = useState("");
@@ -25,7 +24,7 @@ function ChangerMotDePasseModal({ utilisateur, onDone }) {
 
     setBusy(true);
     try {
-      await updatePassword(auth.currentUser, mdp1);
+      await updateCurrentUserPassword(mdp1);
 
       const headers = await getAuthHeaders({ "Content-Type": "application/json" });
       const res = await fetch("/api/account-manage", {

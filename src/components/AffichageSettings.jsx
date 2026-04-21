@@ -1,6 +1,6 @@
 import React, { useState, useContext } from "react";
 import { doc, updateDoc } from "firebase/firestore";
-import { db } from "../firebase";
+import { db } from "../firebaseDb";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { C } from "../constants";
 import { Stat } from "./ui";

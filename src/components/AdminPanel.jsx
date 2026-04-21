@@ -4,7 +4,7 @@ import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
 import { getAuthHeaders } from "../apiClient";
 import LOGO from "../assets/defaultLogo";
-import { db } from "../firebase";
+import { db } from "../firebaseDb";
 import { C, COMPTES_DEFAUT, TOUTES_ANNEES, genererMdp } from "../constants";
 import { Badge, Btn, Card, Chargement, Input, Modale, Stat, TD, THead, TR } from "./ui";
 

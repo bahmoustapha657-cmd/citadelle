@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext } from "react";
 import { doc, onSnapshot, addDoc, collection } from "firebase/firestore";
-import { db } from "../firebase";
+import { db } from "../firebaseDb";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { PLANS } from "../contexts/PlanContext";
 
