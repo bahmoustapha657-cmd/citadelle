@@ -198,6 +198,11 @@ service cloud.firestore {
       }
     }
 
+    match /ecoles_public/{schoolId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     match /users/{uid} {
       allow read: if request.auth != null && request.auth.uid == uid;
       allow write: if false;

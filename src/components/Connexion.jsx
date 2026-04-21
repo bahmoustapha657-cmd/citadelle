@@ -25,9 +25,11 @@ function Connexion({onLogin, onInscription}) {
     const sid=codeEcole.trim().toLowerCase();
     if(!sid||sid==="superadmin"){setInfoEcole(null);return;}
     const t=setTimeout(()=>{
-      getDoc(doc(db,"ecoles",sid)).then(snap=>{
-        if(snap.exists()) setInfoEcole(snap.data());
-        else setInfoEcole(null);
+      getDoc(doc(db,"ecoles_public",sid)).then(snap=>{
+        if(snap.exists()){setInfoEcole(snap.data());return;}
+        return getDoc(doc(db,"ecoles",sid)).then(fallback=>{
+          setInfoEcole(fallback.exists()?fallback.data():null);
+        });
       }).catch(()=>setInfoEcole(null));
     },600); // debounce 600ms
     return ()=>clearTimeout(t);

@@ -24,7 +24,30 @@ function SuperAdminPanel() {
   const [planDuree, setPlanDuree] = useState(365);
   const [planSaving, setPlanSaving] = useState(false);
   const [confirmDowngrade, setConfirmDowngrade] = useState(false);
+  const [backfillEnCours, setBackfillEnCours] = useState(false);
   const planPanelRef = useRef(null);
+
+  const lancerBackfillPublic = async () => {
+    setBackfillEnCours(true);
+    try {
+      const headers = await getAuthHeaders({ "Content-Type": "application/json" });
+      const r = await fetch("/api/ecole-public-sync", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ action: "backfill" }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (r.ok) {
+        setMsgSucces(`Synchronisation publique effectuée (${data.synced || 0} écoles).`);
+        setTimeout(() => setMsgSucces(""), 4000);
+      } else {
+        setMsgSucces(`Erreur : ${data.error || "échec backfill"}`);
+        setTimeout(() => setMsgSucces(""), 4000);
+      }
+    } finally {
+      setBackfillEnCours(false);
+    }
+  };
 
   const chargerEcoles = async () => {
     setChargement(true);
@@ -456,6 +479,10 @@ function SuperAdminPanel() {
         <button onClick={chargerEcoles}
           style={{...S.btn("#6b7280"),background:"#f3f4f6",color:"#374151",padding:"8px 14px",fontSize:13}}>
           ↻ Actualiser
+        </button>
+        <button onClick={lancerBackfillPublic} disabled={backfillEnCours}
+          style={{...S.btn("#6b7280"),background:"#eef2ff",color:"#3730a3",padding:"8px 14px",fontSize:13,opacity:backfillEnCours?0.6:1}}>
+          {backfillEnCours ? "⏳ Synchro…" : "🔁 Sync écoles publiques"}
         </button>
       </div>
 

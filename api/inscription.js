@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { getFirestore } from "firebase-admin/firestore";
 import bcrypt from "bcryptjs";
 import { initAdmin } from "./_lib/firebase-admin.js";
+import { syncEcolePublic } from "./_lib/ecole-public.js";
 import {
   applyCors,
   consumeRateLimit,
@@ -87,14 +88,17 @@ export default async function handler(req, res) {
       return res.status(409).json({ error: "Une ecole avec ce nom existe deja. Choisissez un nom different." });
     }
 
-    await db.collection("ecoles").doc(schoolId).set({
+    const ecoleData = {
       nom: nomEcole.trim(),
       ville: ville.trim(),
       pays: (pays || "Guinee").trim(),
       createdAt: Date.now(),
       actif: true,
       securityVersion: 2,
-    });
+    };
+
+    await db.collection("ecoles").doc(schoolId).set(ecoleData);
+    await syncEcolePublic(db, schoolId, ecoleData);
 
     const mdpComptableClair = generateSecurePassword();
     const mdpAdminClair = generateSecurePassword();
