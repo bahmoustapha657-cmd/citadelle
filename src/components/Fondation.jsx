@@ -2,7 +2,6 @@ import React, { useState, useContext } from "react";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
 import { C, peutModifier } from "../constants";
-import LOGO from "../assets/defaultLogo";
 import { Badge, Btn, Card, Chargement, Input, LectureSeule, Modale, Selec, Stat, TD, THead, TR, Tabs, Vide, UploadFichiers } from "./ui";
 
 // ══════════════════════════════════════════════════════════════
@@ -23,7 +22,7 @@ function Fondation({readOnly, userRole}) {
   return (
     <div style={{padding:"22px 26px"}}>
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18}}>
-        <img src={schoolInfo?.logo||LOGO} alt="" style={{width:48,height:48,objectFit:"contain"}}/>
+        {schoolInfo?.logo&&<img src={schoolInfo.logo} alt="" style={{width:48,height:48,objectFit:"contain"}}/>}
         <div>
           <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.blueDark}}>Fondation</h2>
           <p style={{margin:0,fontSize:12,color:C.green,fontWeight:600}}>Gouvernance & administration générale</p>

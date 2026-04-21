@@ -1,4 +1,3 @@
-import LOGO from "./assets/defaultLogo";
 // eslint-disable-next-line no-unused-vars
 import { MOIS_ANNEE, fmt, fmtN, getAnnee, today } from "./constants";
 
@@ -11,7 +10,7 @@ const loadQRCode = async () => (await import("qrcode")).default;
 
 export const enteteDoc = (si, logoUrl) => `
 <div style="display:flex;align-items:center;gap:16px;border-bottom:3px solid #0A1628;padding-bottom:12px;margin-bottom:16px">
-  <img src="${logoUrl||LOGO}" alt="Logo" style="width:75px;height:75px;object-fit:contain;flex-shrink:0"/>
+  ${logoUrl?`<img src="${logoUrl}" alt="Logo" style="width:75px;height:75px;object-fit:contain;flex-shrink:0"/>`:`<div style="width:75px;height:75px;flex-shrink:0"></div>`}
   <div style="flex:1;display:flex;justify-content:space-between;align-items:flex-start">
     <div style="font-size:10px;color:#444;line-height:1.8">
       <strong style="font-size:11px;color:#0A1628">${si.pays||"RÃ©publique de GuinÃ©e"}</strong><br/>

@@ -8,9 +8,9 @@
  *   API routes Vercel (/api/) → NetworkFirst avec fallback
  */
 
-const CACHE_APP    = "edugest-app-v4";
-const CACHE_DATA   = "edugest-data-v4";
-const CACHE_PHOTOS = "edugest-photos-v4";
+const CACHE_APP    = "edugest-app-v5";
+const CACHE_DATA   = "edugest-data-v5";
+const CACHE_PHOTOS = "edugest-photos-v5";
 
 const APP_SHELL = [
   "/",

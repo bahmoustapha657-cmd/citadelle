@@ -1,6 +1,5 @@
 import React, { useContext, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import LOGO from "../assets/defaultLogo";
 import { C, today, genererMdp, peutModifier } from "../constants";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
@@ -105,7 +104,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
   return (
     <div style={{padding:"22px 26px"}}>
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18}}>
-        <img src={schoolInfo?.logo||LOGO} alt="" style={{width:48,height:48,objectFit:"contain"}}/>
+        {schoolInfo?.logo&&<img src={schoolInfo.logo} alt="" style={{width:48,height:48,objectFit:"contain"}}/>}
         <div>
           <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.blueDark}}>{titre}</h2>
           <p style={{margin:0,fontSize:12,color:couleur,fontWeight:700}}>Gestion des classes, élèves, notes et discipline</p>

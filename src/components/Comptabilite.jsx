@@ -1,7 +1,6 @@
 import React, { useContext, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { doc, updateDoc } from "firebase/firestore";
-import LOGO from "../assets/defaultLogo";
 import { C, TOUS_MOIS_LONGS, getAnnee, CLASSES_PRIMAIRE, CLASSES_COLLEGE, CLASSES_LYCEE, MENSUALITE, initMens, genererMatricule, fmt, fmtN, peutModifierEleves, peutModifier } from "../constants";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
@@ -366,7 +365,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   return (
     <div style={{padding:"22px 26px"}}>
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18}}>
-        <img src={schoolInfo?.logo||LOGO} alt="" style={{width:48,height:48,objectFit:"contain"}}/>
+        {schoolInfo?.logo&&<img src={schoolInfo.logo} alt="" style={{width:48,height:48,objectFit:"contain"}}/>}
         <div>
           <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.blueDark}}>Comptabilité</h2>
           <p style={{margin:0,fontSize:12,color:C.green,fontWeight:600}}>Finances, salaires, versements & mensualités</p>

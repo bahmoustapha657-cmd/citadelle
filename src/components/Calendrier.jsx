@@ -2,7 +2,6 @@ import React, { useState, useContext } from "react";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
 import { C, today } from "../constants";
-import LOGO from "../assets/defaultLogo";
 import { Badge, Btn, Card, Input, Modale, Selec, Stat, Textarea, Vide } from "./ui";
 
 // ══════════════════════════════════════════════════════════════
@@ -38,7 +37,7 @@ function Calendrier({annee}) {
   return (
     <div style={{padding:"22px 26px"}}>
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18,flexWrap:"wrap"}}>
-        <img src={schoolInfo?.logo||LOGO} alt="" style={{width:48,height:48,objectFit:"contain"}}/>
+        {schoolInfo?.logo&&<img src={schoolInfo.logo} alt="" style={{width:48,height:48,objectFit:"contain"}}/>}
         <div style={{flex:1}}>
           <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.blueDark}}>Calendrier Scolaire</h2>
           <p style={{margin:0,fontSize:12,color:C.green,fontWeight:700}}>Examens, congés, réunions — {annee}</p>

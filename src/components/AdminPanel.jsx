@@ -3,7 +3,6 @@ import { collection, doc, getDocs, updateDoc } from "firebase/firestore";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
 import { getAuthHeaders } from "../apiClient";
-import LOGO from "../assets/defaultLogo";
 import { db } from "../firebaseDb";
 import { C, COMPTES_DEFAUT, TOUTES_ANNEES, genererMdp } from "../constants";
 import { Badge, Btn, Card, Chargement, Input, Modale, Stat, TD, THead, TR } from "./ui";
@@ -183,7 +182,7 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
   return (
     <div style={{padding:"22px 26px"}}>
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18}}>
-        <img src={schoolInfo?.logo||LOGO} alt="" style={{width:48,height:48,objectFit:"contain"}}/>
+        {schoolInfo?.logo&&<img src={schoolInfo.logo} alt="" style={{width:48,height:48,objectFit:"contain"}}/>}
         <div>
           <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.blueDark}}>Gestion des Accès</h2>
           <p style={{margin:0,fontSize:12,color:C.green,fontWeight:600}}>Mots de passe & Année scolaire</p>
