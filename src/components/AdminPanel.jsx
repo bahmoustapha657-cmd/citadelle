@@ -17,9 +17,9 @@ import {
 } from "../constants";
 import { Badge, Btn, Card, Chargement, Input, Modale, TD, THead, TR } from "./ui";
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-//  PANNEAU ADMIN â€” Gestion des mots de passe
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ══════════════════════════════════════════════════════════════
+//  PANNEAU ADMIN — Gestion des mots de passe
+// ══════════════════════════════════════════════════════════════
 // Mapping promotion classes : quelle classe vient apres quelle classe
 const PROMOTION_SUIVANTE = {
   // Primaire (classique)
@@ -140,7 +140,7 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
         }
       }
       setPromoRes({total,promus,redoublants,terminalistes,sansNotes,details});
-      toast(`Promotion terminee â€” ${promus} promus, ${redoublants} redoublants`, "success");
+      toast(`Promotion terminee — ${promus} promus, ${redoublants} redoublants`, "success");
     } catch(e) {
       toast("Erreur lors de la promotion : "+e.message, "error");
     } finally {
@@ -280,14 +280,14 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18}}>
         {schoolInfo?.logo&&<img src={schoolInfo.logo} alt="" style={{width:48,height:48,objectFit:"contain"}}/>}
         <div>
-          <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.blueDark}}>Gestion des Acces</h2>
-          <p style={{margin:0,fontSize:12,color:C.green,fontWeight:600}}>Mots de passe & Annee scolaire</p>
+          <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.blueDark}}>Gestion des Accès</h2>
+          <p style={{margin:0,fontSize:12,color:C.green,fontWeight:600}}>Mots de passe & Année scolaire</p>
         </div>
       </div>
 
-      {/* â”€â”€ GESTION ANNÃ‰E SCOLAIRE â”€â”€ */}
+      {/* ── GESTION ANNÉE SCOLAIRE ── */}
       <Card style={{marginBottom:20,padding:"16px 20px"}}>
-        <p style={{margin:"0 0 12px",fontWeight:800,fontSize:14,color:C.blueDark}}>ðŸ“… Annee Scolaire</p>
+        <p style={{margin:"0 0 12px",fontWeight:800,fontSize:14,color:C.blueDark}}>📅 Année scolaire</p>
         <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
           <select value={annee} onChange={e=>setAnnee(e.target.value)}
             style={{border:"2px solid "+C.blue,borderRadius:8,padding:"8px 14px",fontSize:15,fontWeight:800,color:C.blueDark,background:"#fff"}}>
@@ -296,24 +296,24 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
           <Btn v="success" onClick={()=>{
             const idx=TOUTES_ANNEES.indexOf(annee);
             if(idx<TOUTES_ANNEES.length-1)setAnnee(TOUTES_ANNEES[idx+1]);
-          }}>â–¶ Annee suivante</Btn>
+          }}>▶ Année suivante</Btn>
           <Btn v="ghost" onClick={()=>{
             const idx=TOUTES_ANNEES.indexOf(annee);
             if(idx>0)setAnnee(TOUTES_ANNEES[idx-1]);
-          }}>â—€ Annee precedente</Btn>
-          <span style={{fontSize:13,color:C.green,fontWeight:700}}>Annee active : <strong>{annee}</strong></span>
+          }}>◀ Année précédente</Btn>
+          <span style={{fontSize:13,color:C.green,fontWeight:700}}>Année active : <strong>{annee}</strong></span>
         </div>
-        <p style={{fontSize:11,color:"#9ca3af",margin:"8px 0 0"}}>Attention Changer l'annee affecte tous les modules de l'application.</p>
+        <p style={{fontSize:11,color:"#9ca3af",margin:"8px 0 0"}}>Attention : changer l'année affecte tous les modules de l'application.</p>
       </Card>
 
-      {/* â”€â”€ PROMOTION FIN D'ANNÃ‰E â”€â”€ */}
+      {/* ── PROMOTION FIN D'ANNÉE ── */}
       <Card style={{marginBottom:20,padding:"16px 20px",border:"2px solid #fef3c7"}}>
         <div style={{display:"flex",alignItems:"flex-start",gap:14}}>
           <span style={{fontSize:28}}>Promotion</span>
           <div style={{flex:1}}>
-            <p style={{margin:"0 0 4px",fontWeight:800,fontSize:14,color:C.blueDark}}>Promotion de fin d'annee</p>
+            <p style={{margin:"0 0 4px",fontWeight:800,fontSize:14,color:C.blueDark}}>Promotion de fin d'année</p>
             <p style={{margin:"0 0 12px",fontSize:12,color:"#6b7280"}}>
-              Avance les eleves dont la moyenne annuelle atteint le seuil de passage. Les autres redoublent.
+              Avance les élèves dont la moyenne annuelle atteint le seuil de passage. Les autres redoublent.
             </p>
             {promoRes&&<>
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))",gap:8,marginBottom:12}}>
@@ -323,28 +323,28 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
                 </div>
                 <div style={{background:"#fee2e2",borderRadius:8,padding:"8px 12px",textAlign:"center"}}>
                   <div style={{fontSize:20,fontWeight:900,color:"#b91c1c"}}>{promoRes.redoublants}</div>
-                  <div style={{fontSize:11,color:"#b91c1c"}}>ðŸ” Redoublants</div>
+                  <div style={{fontSize:11,color:"#b91c1c"}}>🔁 Redoublants</div>
                 </div>
                 <div style={{background:"#fef9c3",borderRadius:8,padding:"8px 12px",textAlign:"center"}}>
                   <div style={{fontSize:20,fontWeight:900,color:"#854d0e"}}>{promoRes.terminalistes}</div>
-                  <div style={{fontSize:11,color:"#854d0e"}}>ðŸ Fin de cycle</div>
+                  <div style={{fontSize:11,color:"#854d0e"}}>🏁 Fin de cycle</div>
                 </div>
                 {promoRes.sansNotes>0&&<div style={{background:"#f3f4f6",borderRadius:8,padding:"8px 12px",textAlign:"center"}}>
                   <div style={{fontSize:20,fontWeight:900,color:"#6b7280"}}>{promoRes.sansNotes}</div>
-                  <div style={{fontSize:11,color:"#6b7280"}}>ðŸ“­ Sans notes</div>
+                  <div style={{fontSize:11,color:"#6b7280"}}>📭 Sans notes</div>
                 </div>}
               </div>
               {promoRes.details&&promoRes.details.length>0&&<details style={{marginBottom:12}}>
                 <summary style={{fontSize:12,cursor:"pointer",color:C.blue,fontWeight:700}}>
-                  Voir le detail ({promoRes.details.length} eleves)
+                  Voir le détail ({promoRes.details.length} élèves)
                 </summary>
                 <div style={{overflowX:"auto",marginTop:8}}>
                   <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
                     <thead><tr style={{background:"#f0f6ff"}}>
-                      <th style={{padding:"5px 8px",textAlign:"left"}}>Ã‰leve</th>
+                      <th style={{padding:"5px 8px",textAlign:"left"}}>Éleve</th>
                       <th style={{padding:"5px 8px"}}>Classe actuelle</th>
                       <th style={{padding:"5px 8px"}}>Moy. annuelle</th>
-                      <th style={{padding:"5px 8px"}}>Decision</th>
+                      <th style={{padding:"5px 8px"}}>Décision</th>
                       <th style={{padding:"5px 8px"}}>Nouvelle classe</th>
                     </tr></thead>
                     <tbody>{promoRes.details.map((d,i)=>(
@@ -353,17 +353,17 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
                         <td style={{padding:"4px 8px",textAlign:"center"}}>{d.classe}</td>
                         <td style={{padding:"4px 8px",textAlign:"center",fontWeight:800,
                           color:d.moy===null?"#9ca3af":d.statut==="promu"?"#15803d":"#b91c1c"}}>
-                          {d.moy===null?"â€”":d.moy.toFixed(2)}
+                          {d.moy===null?"—":d.moy.toFixed(2)}
                         </td>
                         <td style={{padding:"4px 8px",textAlign:"center"}}>
                           <span style={{padding:"2px 8px",borderRadius:12,fontSize:11,fontWeight:700,
                             background:d.statut==="promu"?"#dcfce7":"#fee2e2",
                             color:d.statut==="promu"?"#15803d":"#b91c1c"}}>
-                            {d.statut==="promu"?"OK Promu":"ðŸ” Redoublant"}
+                            {d.statut==="promu"?"OK Promu":"🔁 Redoublant"}
                           </span>
                         </td>
                         <td style={{padding:"4px 8px",textAlign:"center",color:"#6b7280"}}>
-                          {d.nouvClasse||"â€”"}
+                          {d.nouvClasse||"—"}
                         </td>
                       </tr>
                     ))}</tbody>
@@ -373,18 +373,18 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
             </>}
             <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
               <Btn v="amber" onClick={()=>setPromoModal(true)} disabled={promoEn}>
-                {promoEn?"â³ En cours...":"Promotion Lancer la promotion"}
+                {promoEn?"⏳ En cours...":"Promotion Lancer la promotion"}
               </Btn>
-              {promoRes&&<Btn v="ghost" onClick={()=>setPromoRes(null)}>Effacer le resultat</Btn>}
+              {promoRes&&<Btn v="ghost" onClick={()=>setPromoRes(null)}>Effacer le résultat</Btn>}
             </div>
           </div>
         </div>
       </Card>
 
       {/* Modal config promotion */}
-      {promoModal&&<Modale titre="âš™ï¸ Configuration de la promotion" fermer={()=>setPromoModal(false)}>
+      {promoModal&&<Modale titre="⚙️ Configuration de la promotion" fermer={()=>setPromoModal(false)}>
         <p style={{margin:"0 0 16px",fontSize:13,color:"#374151"}}>
-          Definissez le seuil de passage pour chaque section. Les eleves dont la moyenne annuelle est inferieure au seuil redoublent.
+          Définissez le seuil de passage pour chaque section. Les élèves dont la moyenne annuelle est inférieure au seuil redoublent.
         </p>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:16}}>
           <div>
@@ -408,10 +408,10 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
         </div>
         <div style={{marginBottom:16}}>
           <label style={{fontSize:12,fontWeight:700,color:C.blueDark,display:"block",marginBottom:6}}>
-            Ã‰leves sans notes (aucun devoir saisi)
+            Élèves sans notes (aucun devoir saisi)
           </label>
           <div style={{display:"flex",flexDirection:"column",gap:6}}>
-            {[["promouvoir","OK Promouvoir automatiquement"],["redoubler","ðŸ” Faire redoubler automatiquement"]].map(([v,lbl])=>(
+            {[["promouvoir","OK Promouvoir automatiquement"],["redoubler","🔁 Faire redoubler automatiquement"]].map(([v,lbl])=>(
               <label key={v} style={{display:"flex",alignItems:"center",gap:8,fontSize:13,cursor:"pointer"}}>
                 <input type="radio" name="sansNotes" value={v}
                   checked={sansNotesBehavior===v} onChange={()=>setSansNotesBehavior(v)}/>
@@ -421,7 +421,7 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
           </div>
         </div>
         <div style={{background:"#fef3c7",border:"1px solid #fcd34d",borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:12,color:"#92400e"}}>
-          Attention Cette action est <strong>irreversible</strong>. Les classes de tous les eleves promus seront immediatement mises a jour dans Firestore.
+          Attention : cette action est <strong>irréversible</strong>. Les classes de tous les élèves promus seront immédiatement mises à jour dans Firestore.
         </div>
         <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
           <Btn v="ghost" onClick={()=>setPromoModal(false)}>Annuler</Btn>
@@ -512,7 +512,7 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
       {chargement||initEnCours ? <Chargement/> : (
         <Card>
           <table style={{width:"100%",borderCollapse:"collapse"}}>
-            <THead cols={["Utilisateur","Login","RÃ´le","Mot de passe","Action"]}/>
+            <THead cols={["Utilisateur","Login","Rôle","Mot de passe","Action"]}/>
             <tbody>
               {comptes.map((c,i)=>(
                 <TR key={c._id||i}>
@@ -520,11 +520,11 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
                   <TD><span style={{fontFamily:"monospace",background:"#e0ebf8",padding:"2px 8px",borderRadius:4,fontSize:12,color:C.blue}}>{c.login}</span></TD>
                   <TD><div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}><Badge color={compteColor(c.role)}>{c.label}</Badge>{c.statut && c.statut!=="Actif" && <Badge color="gray">Inactif</Badge>}</div></TD>
                   <TD>
-                    <Badge color="vert">ðŸ”’ Securise</Badge>
+                    <Badge color="vert">🔒 Sécurisé</Badge>
                   </TD>
                   <TD>
                     {c._id && (
-                      <Btn sm onClick={()=>{setForm({...c,mdp:""});setModal("mdp");}}>âœï¸ Modifier</Btn>
+                      <Btn sm onClick={()=>{setForm({...c,mdp:""});setModal("mdp");}}>✏️ Modifier</Btn>
                     )}
                   </TD>
                 </TR>
@@ -534,15 +534,15 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
         </Card>
       )}
 
-      {/* â”€â”€ CONTRÃ”LE DES MODIFICATIONS â”€â”€ */}
+      {/* ── CONTRÔLE DES MODIFICATIONS ── */}
       <Card style={{marginTop:20,padding:"20px 24px"}}>
-        <p style={{margin:"0 0 6px",fontWeight:800,fontSize:14,color:C.blueDark}}>ðŸ”’ Autorisation de modification</p>
-        <p style={{margin:"0 0 18px",fontSize:12,color:"#6b7280"}}>Chaque rÃ´le peut toujours <strong>creer</strong> des enregistrements. Une fois sauvegardes, ils sont verrouilles. Activez le verrou pour permettre les corrections.</p>
+        <p style={{margin:"0 0 6px",fontWeight:800,fontSize:14,color:C.blueDark}}>🔒 Autorisation de modification</p>
+        <p style={{margin:"0 0 18px",fontSize:12,color:"#6b7280"}}>Chaque rôle peut toujours <strong>creer</strong> des enregistrements. Une fois sauvegardes, ils sont verrouilles. Activez le verrou pour permettre les corrections.</p>
         <div style={{display:"flex",flexDirection:"column",gap:12}}>
           {[
-            {cle:"comptable", label:"Comptable",   desc:"Finances, salaires, mensualites", icon:"ðŸ’°", color:"#0e7490"},
-            {cle:"primaire",  label:"Primaire",     desc:"Classes, eleves, bulletins, notes", icon:"ðŸŒ±", color:C.greenDk},
-            {cle:"secondaire",label:"Secondaire",   desc:"College, lycee, enseignants, EDT", icon:"ðŸ«", color:C.blue},
+            {cle:"comptable", label:"Comptable",   desc:"Finances, salaires, mensualites", icon:"💰", color:"#0e7490"},
+            {cle:"primaire",  label:"Primaire",     desc:"Classes, élèves, bulletins, notes", icon:"🌱", color:C.greenDk},
+            {cle:"secondaire",label:"Secondaire",   desc:"College, lycee, enseignants, EDT", icon:"🏫", color:C.blue},
           ].map(({cle,label,desc,icon,color})=>{
             const actif = !!verrous[cle];
             const enCours = savingVerrou === cle;
@@ -557,7 +557,7 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
                 </div>
                 <div style={{display:"flex",alignItems:"center",gap:10}}>
                   <span style={{fontSize:12,fontWeight:700,color:actif?color:"#9ca3af"}}>
-                    {actif?"OK Modification activee":"ðŸ”’ Lecture seule"}
+                    {actif?"OK Modification activee":"🔒 Lecture seule"}
                   </span>
                   <button onClick={()=>!enCours&&toggleVerrou(cle)} disabled={enCours}
                     style={{
@@ -576,12 +576,12 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
           })}
         </div>
         <p style={{margin:"14px 0 0",fontSize:11,color:"#9ca3af"}}>
-          ðŸ’¡ Les modifications sont effectives immediatement pour tous les utilisateurs connectes.
+          💡 Les modifications sont effectives immédiatement pour tous les utilisateurs connectés.
         </p>
       </Card>
 
       {modal==="mdp" && (
-        <Modale titre={`Modifier le mot de passe â€” ${form.nom}`} fermer={()=>setModal(null)}>
+        <Modale titre={`Modifier le mot de passe — ${form.nom}`} fermer={()=>setModal(null)}>
           <div style={{display:"flex",flexDirection:"column",gap:14}}>
             <Input label="Nouveau mot de passe" type="text" value={form.mdp||""} onChange={chg("mdp")}/>
             <div style={{background:"#fef3e0",padding:"10px 14px",borderRadius:8,fontSize:12,color:"#92400e"}}>

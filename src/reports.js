@@ -13,8 +13,8 @@ export const enteteDoc = (si, logoUrl) => `
   ${logoUrl?`<img src="${logoUrl}" alt="Logo" style="width:75px;height:75px;object-fit:contain;flex-shrink:0"/>`:`<div style="width:75px;height:75px;flex-shrink:0"></div>`}
   <div style="flex:1;display:flex;justify-content:space-between;align-items:flex-start">
     <div style="font-size:10px;color:#444;line-height:1.8">
-      <strong style="font-size:11px;color:#0A1628">${si.pays||"RÃ©publique de GuinÃ©e"}</strong><br/>
-      <em>Travail - Justice - SolidaritÃ©</em><br/>
+      <strong style="font-size:11px;color:#0A1628">${si.pays||"République de Guinée"}</strong><br/>
+      <em>Travail - Justice - Solidarité</em><br/>
       ${si.ministere?`<strong>${si.ministere}</strong><br/>`:""}
       ${si.ire?`${si.ire}<br/>`:""}
       ${si.dpe||""}
@@ -22,7 +22,7 @@ export const enteteDoc = (si, logoUrl) => `
     <div style="text-align:right">
       <strong style="display:block;font-size:13px;color:#0A1628">${si.type||""}</strong>
       <strong style="display:block;font-size:15px;color:#0A1628">${si.nom||""}</strong>
-      ${si.agrement?`<span style="font-size:10px;color:#555">AgrÃ©ment : ${si.agrement}</span>`:""}
+      ${si.agrement?`<span style="font-size:10px;color:#555">Agrément : ${si.agrement}</span>`:""}
     </div>
   </div>
 </div>`;
@@ -30,59 +30,59 @@ export const enteteDoc = (si, logoUrl) => `
 export const imprimerRecu = (eleve, montantUnit, schoolInfo={}, moisAnnee=MOIS_ANNEE, fraisIns=0) => {
   const mens = eleve.mens||{};
   const mensDates = eleve.mensDates||{};
-  const moisPayes = moisAnnee.filter(m=>mens[m]==="PayÃ©");
+  const moisPayes = moisAnnee.filter(m=>mens[m]==="Payé");
   const w = window.open("","_blank");
 
-  // En-tÃªte compacte pour les reÃ§us (logo + infos en ligne) â€” sans doublon type/nom
+  // En-tête compacte pour les reçus (logo + infos en ligne) — sans doublon type/nom
   const enteteCompact = () => `
   <div style="display:flex;align-items:center;gap:8px;border-bottom:2px solid #0A1628;padding-bottom:6px;margin-bottom:6px">
     ${schoolInfo.logo?`<img src="${schoolInfo.logo}" alt="" style="width:38px;height:38px;object-fit:contain;flex-shrink:0"/>`:''}
     <div style="flex:1;display:flex;justify-content:space-between;align-items:center">
       <div style="font-size:8px;color:#444;line-height:1.5">
-        <strong style="font-size:9px;color:#0A1628">${schoolInfo.pays||"GuinÃ©e"}</strong><br/>
+        <strong style="font-size:9px;color:#0A1628">${schoolInfo.pays||"Guinée"}</strong><br/>
         ${schoolInfo.ministere?`${schoolInfo.ministere} / `:""}${schoolInfo.ire||""}${schoolInfo.dpe?` / ${schoolInfo.dpe}`:""}
       </div>
       <div style="text-align:right">
         <strong style="font-size:13px;color:#0A1628;display:block">${schoolInfo.nom||""}</strong>
-        ${schoolInfo.agrement?`<span style="font-size:7px;color:#555">AgrÃ©m. : ${schoolInfo.agrement}</span>`:""}
+        ${schoolInfo.agrement?`<span style="font-size:7px;color:#555">Agrém. : ${schoolInfo.agrement}</span>`:""}
       </div>
     </div>
   </div>`;
 
-  // Bloc reÃ§u compact â€” deux par page A4
+  // Bloc reçu compact — deux par page A4
   const bloc = (titre) => `
   <div class="recu">
     ${schoolInfo.logo?`<div class="watermark"><img src="${schoolInfo.logo}" alt=""/></div>`:""}
     <div style="position:relative;z-index:1;display:flex;flex-direction:column;height:100%">
     ${enteteCompact()}
-    <div class="badge">REÃ‡U DE PAIEMENT DE MENSUALITÃ‰S</div>
+    <div class="badge">REÇU DE PAIEMENT DE MENSUALITÉS</div>
     <div class="exemplaire">${titre}</div>
     <div class="grid">
-      <div class="row"><span class="lbl">Ã‰lÃ¨ve : </span>${eleve.nom} ${eleve.prenom}</div>
-      <div class="row"><span class="lbl">Matricule : </span>${eleve.matricule||"â€”"}</div>
+      <div class="row"><span class="lbl">Élève : </span>${eleve.nom} ${eleve.prenom}</div>
+      <div class="row"><span class="lbl">Matricule : </span>${eleve.matricule||"—"}</div>
       <div class="row"><span class="lbl">Classe : </span>${eleve.classe}</div>
       <div class="row"><span class="lbl">Impression : </span>${today()}</div>
-      <div class="row"><span class="lbl">Tuteur : </span>${eleve.tuteur||"â€”"}</div>
-      <div class="row"><span class="lbl">Contact : </span>${eleve.contactTuteur||"â€”"}</div>
+      <div class="row"><span class="lbl">Tuteur : </span>${eleve.tuteur||"—"}</div>
+      <div class="row"><span class="lbl">Contact : </span>${eleve.contactTuteur||"—"}</div>
     </div>
     <table class="mois-table"><thead><tr><th>Mois</th><th>Statut</th><th>Date de paiement</th></tr></thead><tbody>
       ${moisAnnee.map(m=>{
-        const paye=mens[m]==="PayÃ©";
-        const datePaie=mensDates[m]||"â€”";
+        const paye=mens[m]==="Payé";
+        const datePaie=mensDates[m]||"—";
         return `<tr class="${paye?"paye":"impaye"}">
           <td style="font-weight:700">${m}</td>
-          <td style="text-align:center">${paye?"âœ“ PayÃ©":"âœ— ImpayÃ©"}</td>
-          <td style="text-align:center">${paye?datePaie:"â€”"}</td>
+          <td style="text-align:center">${paye?"✓ Payé":"✗ Impayé"}</td>
+          <td style="text-align:center">${paye?datePaie:"—"}</td>
         </tr>`;
       }).join("")}
     </tbody></table>
     ${eleve.inscriptionPayee&&fraisIns>0?`
     <div class="total" style="font-size:9px;padding:4px 8px;background:#f0f9ff;border-color:#7dd3fc">
-      ${eleve.typeInscription==="RÃ©inscription"?"RÃ©inscription":"Inscription"} : <strong>${fmt(fraisIns)}</strong>
-      <span style="font-weight:400;margin-left:4px">âœ“ PayÃ©e</span>
+      ${eleve.typeInscription==="Réinscription"?"Réinscription":"Inscription"} : <strong>${fmt(fraisIns)}</strong>
+      <span style="font-weight:400;margin-left:4px">✓ Payée</span>
     </div>`:""}
-    <div class="total">MensualitÃ©s versÃ©es : ${fmt(moisPayes.length*montantUnit)} <span style="font-weight:400;font-size:9px">(${moisPayes.length}/${moisAnnee.length} mois)</span></div>
-    ${eleve.inscriptionPayee&&fraisIns>0?`<div class="total" style="background:#e0f2fe;border-color:#38bdf8">Total gÃ©nÃ©ral : <strong>${fmt(moisPayes.length*montantUnit+fraisIns)}</strong></div>`:""}
+    <div class="total">Mensualités versées : ${fmt(moisPayes.length*montantUnit)} <span style="font-weight:400;font-size:9px">(${moisPayes.length}/${moisAnnee.length} mois)</span></div>
+    ${eleve.inscriptionPayee&&fraisIns>0?`<div class="total" style="background:#e0f2fe;border-color:#38bdf8">Total général : <strong>${fmt(moisPayes.length*montantUnit+fraisIns)}</strong></div>`:""}
     <div class="sigs">
       <div class="sig">Le/La Comptable<br/><br/><br/>Signature &amp; cachet</div>
       <div class="sig">Le/La Payant(e)<br/><br/><br/>Signature</div>
@@ -90,7 +90,7 @@ export const imprimerRecu = (eleve, montantUnit, schoolInfo={}, moisAnnee=MOIS_A
     </div>
   </div>`;
 
-  w.document.write(`<!DOCTYPE html><html><head><title>ReÃ§u</title>
+  w.document.write(`<!DOCTYPE html><html><head><title>Reçu</title>
   <meta charset="utf-8"/>
   <style>
     @page{size:A4 portrait;margin:6mm}
@@ -114,16 +114,16 @@ export const imprimerRecu = (eleve, montantUnit, schoolInfo={}, moisAnnee=MOIS_A
     .sig{border-top:1.5px solid #0A1628;padding-top:4px;text-align:center;font-size:8.5px;color:#333;font-weight:600}
     @media print{body{height:282mm}button{display:none}}
   </style></head><body>
-  ${bloc("Exemplaire â€” Comptable")}
-  ${bloc("Exemplaire â€” Payant")}
+  ${bloc("Exemplaire — Comptable")}
+  ${bloc("Exemplaire — Payant")}
   <script>window.onload=()=>window.print();</script>
   </body></html>`);
   w.document.close();
 };
 
 export const imprimerCartesEleves = async (eleves, schoolInfo={}, annee="") => {
-  if(!eleves.length){alert("Aucun Ã©lÃ¨ve Ã  imprimer.");return;}
-  // PrÃ©-gÃ©nÃ©rer les QR codes (data URL) pour chaque Ã©lÃ¨ve
+  if(!eleves.length){alert("Aucun élève à imprimer.");return;}
+  // Pré-générer les QR codes (data URL) pour chaque élève
   const qrMap = {};
   const QRCode = await loadQRCode();
   await Promise.all(eleves.map(async e => {
@@ -136,18 +136,18 @@ export const imprimerCartesEleves = async (eleves, schoolInfo={}, annee="") => {
   const w = window.open("","_blank");
   const c1 = schoolInfo.couleur1||"#0A1628";
   const c2 = schoolInfo.couleur2||"#00C48C";
-  const nomEcole = schoolInfo.nom||"Ã‰cole";
+  const nomEcole = schoolInfo.nom||"École";
   const ville = schoolInfo.ville||"";
   const logo = schoolInfo.logo||"";
 
-  // GÃ©nÃ¨re une version claire de c1 pour le fond du corps
+  // Génère une version claire de c1 pour le fond du corps
   const carte = (e) => `
   <div class="carte">
-    <!-- Bande dÃ©co gauche couleur 2 -->
+    <!-- Bande déco gauche couleur 2 -->
     <div class="bande-gauche"></div>
 
     <div class="carte-inner">
-      <!-- EN-TÃŠTE -->
+      <!-- EN-TÊTE -->
       <div class="carte-header">
         <div class="logo-wrap">
           ${logo
@@ -157,12 +157,12 @@ export const imprimerCartesEleves = async (eleves, schoolInfo={}, annee="") => {
         <div class="carte-titre">
           <div class="carte-ecole">${nomEcole}</div>
           ${ville?`<div class="carte-ville">${ville}</div>`:""}
-          <div class="carte-sous">CARTE D'IDENTITÃ‰ SCOLAIRE</div>
+          <div class="carte-sous">CARTE D'IDENTITÉ SCOLAIRE</div>
         </div>
         <div class="annee-badge">${annee}</div>
       </div>
 
-      <!-- SÃ‰PARATEUR -->
+      <!-- SÉPARATEUR -->
       <div class="separateur"></div>
 
       <!-- CORPS -->
@@ -174,10 +174,10 @@ export const imprimerCartesEleves = async (eleves, schoolInfo={}, annee="") => {
         </div>
         <div class="carte-infos">
           <div class="carte-nom">${(e.prenom||"").toUpperCase()} ${(e.nom||"").toUpperCase()}</div>
-          <div class="info-ligne"><span class="info-label">Matricule</span><span class="info-val">${e.matricule||"â€”"}</span></div>
+          <div class="info-ligne"><span class="info-label">Matricule</span><span class="info-val">${e.matricule||"—"}</span></div>
           ${e.ien?`<div class="info-ligne"><span class="info-label">IEN</span><span class="info-val ien">${e.ien}</span></div>`:""}
-          <div class="info-ligne"><span class="info-label">Classe</span><span class="info-val">${e.classe||"â€”"}</span></div>
-          <div class="info-ligne"><span class="info-label">NÃ©(e) le</span><span class="info-val">${e.dateNaissance||"â€”"}</span></div>
+          <div class="info-ligne"><span class="info-label">Classe</span><span class="info-val">${e.classe||"—"}</span></div>
+          <div class="info-ligne"><span class="info-label">Né(e) le</span><span class="info-val">${e.dateNaissance||"—"}</span></div>
           ${e.sexe?`<div class="info-ligne"><span class="info-label">Sexe</span><span class="info-val">${e.sexe}</span></div>`:""}
         </div>
       </div>
@@ -194,7 +194,7 @@ export const imprimerCartesEleves = async (eleves, schoolInfo={}, annee="") => {
             :`<div class="mat-badge">${e.matricule||""}</div>`}
         </div>
         <div class="footer-right">
-          <span class="footer-label">Signature Ã‰lÃ¨ve</span>
+          <span class="footer-label">Signature Élève</span>
           <div class="footer-ligne"></div>
         </div>
       </div>
@@ -203,7 +203,7 @@ export const imprimerCartesEleves = async (eleves, schoolInfo={}, annee="") => {
 
   w.document.write(`<!DOCTYPE html><html><head>
   <meta charset="utf-8"/>
-  <title>Cartes d'identitÃ© scolaires â€” ${nomEcole}</title>
+  <title>Cartes d'identité scolaires — ${nomEcole}</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
     @page{size:A4 portrait;margin:8mm}
@@ -231,7 +231,7 @@ export const imprimerCartesEleves = async (eleves, schoolInfo={}, annee="") => {
     /* Contenu principal */
     .carte-inner{flex:1;display:flex;flex-direction:column;overflow:hidden}
 
-    /* En-tÃªte */
+    /* En-tête */
     .carte-header{
       background:${c1};
       padding:2mm 2.5mm;
@@ -258,7 +258,7 @@ export const imprimerCartesEleves = async (eleves, schoolInfo={}, annee="") => {
       white-space:nowrap;flex-shrink:0;
     }
 
-    /* SÃ©parateur */
+    /* Séparateur */
     .separateur{height:.4mm;background:linear-gradient(90deg,${c2},${c1});flex-shrink:0}
 
     /* Corps */
