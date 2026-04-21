@@ -3,6 +3,7 @@ import { getAuthHeaders } from "../apiClient";
 import { C, PLANS, PLAN_DUREES } from "../constants";
 import { db } from "../firebaseDb";
 import { addDoc, collection, collectionGroup, doc, getDocs, onSnapshot, setDoc, updateDoc } from "firebase/firestore";
+import SuperAdminAssistant from "./SuperAdminAssistant";
 
 // ══════════════════════════════════════════════════════════════
 //  PANEL SUPER-ADMIN
@@ -258,6 +259,7 @@ function SuperAdminPanel() {
         {[
           {id:"ecoles",label:"🏫 Écoles"},
           {id:"plans",label:"⭐ Plans"},
+          {id:"assistant",label:"Assistant"},
           {id:"demandes",label:`📋 Demandes${demandes.filter(d=>d.statut==="en_attente").length>0?" ("+demandes.filter(d=>d.statut==="en_attente").length+")":""}`},
         ].map(o=>(
           <button key={o.id} onClick={()=>{setOngletSA(o.id);setPlanModal(null);setConfirmDowngrade(false);}}
@@ -267,6 +269,8 @@ function SuperAdminPanel() {
           </button>
         ))}
       </div>
+
+      {ongletSA==="assistant" && <SuperAdminAssistant />}
 
       {/* ── Onglet Demandes Pro ── */}
       {ongletSA==="demandes" && (

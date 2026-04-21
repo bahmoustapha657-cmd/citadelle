@@ -11,8 +11,8 @@ import UpgradeModal from "./UpgradeModal";
  *   </PremiumGate>
  *
  * Usage inline (cadenas sur un bouton) :
- *   <PremiumGate feature="ia_commentaires" inline>
- *     <button>✨ IA</button>
+ *   <PremiumGate feature="export_excel" inline>
+ *     <button>Exporter</button>
  *   </PremiumGate>
  */
 export default function PremiumGate({ feature, children, inline = false }) {

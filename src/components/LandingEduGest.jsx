@@ -82,7 +82,7 @@ function LandingEduGest({onConnexion, onInscription}) {
             {icon:"📊",name:"Comptabilité",desc:"Scolarités, salaires, bons, révisions, personnel administratif."},
             {icon:"👨‍🏫",name:"Portail Enseignant",desc:"Espace dédié : emploi du temps, saisie de notes, fiche de paie."},
             {icon:"👨‍👩‍👧",name:"Portail Parent",desc:"Suivi en temps réel : notes, absences, bulletins, messagerie."},
-            {icon:"✨",name:"Assistant IA",desc:"Génération de commentaires de bulletins et documents administratifs."},
+            {icon:"💬",name:"Messagerie Parents",desc:"Messages, annonces et communication école-famille depuis une seule interface."},
           ].map(m=>(
             <div key={m.name} style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:14,padding:"20px 18px"}}>
               <div style={{fontSize:26,marginBottom:8}}>{m.icon}</div>
@@ -138,14 +138,14 @@ function LandingEduGest({onConnexion, onInscription}) {
               name:"Standard",badge:"✦ Recommandé",price:"200 000 GNF",period:"/mois",
               accent:"#8b5cf6",
               color:"rgba(139,92,246,0.08)",border:"#8b5cf6",
-              features:["Jusqu'à 500 élèves actifs","Toutes les sections","Comptabilité complète & salaires","Portail enseignant & parent","Assistant IA inclus","Support prioritaire"],
+              features:["Jusqu'à 500 élèves actifs","Toutes les sections","Comptabilité complète & salaires","Portail enseignant & parent","Exports & impressions avances","Support prioritaire"],
               cta:"Choisir Standard",action:onInscription,highlight:true,
             },
             {
               name:"Premium",badge:null,price:"500 000 GNF",period:"/mois",
               accent:"#f59e0b",
               color:"rgba(245,158,11,0.07)",border:"rgba(245,158,11,0.5)",
-              features:["Élèves illimités","Toutes les sections","Toutes les fonctionnalités","Personnalisation avancée","Assistant IA prioritaire","Support dédié 7j/7"],
+              features:["Élèves illimités","Toutes les sections","Toutes les fonctionnalités","Personnalisation avancée","Multi-utilisateurs","Support dédié 7j/7"],
               cta:"Choisir Premium",action:onInscription,highlight:false,
             },
           ].map(plan=>(

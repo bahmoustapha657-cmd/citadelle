@@ -32,7 +32,7 @@ export const PLANS = {
       "Export Excel",
       "Impressions illimitées",
       "Module Fondation",
-      "Assistant IA (commentaires, documents)",
+      "Messagerie parents et portail famille",
       "Multi-utilisateurs",
       "Support prioritaire",
     ],
