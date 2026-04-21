@@ -5,7 +5,9 @@ import {
   applyCors,
   consumeRateLimit,
   getClientIp,
+  inferRequestOrigin,
   isAllowedSchoolRole,
+  isSameOriginRequest,
   isValidLogin,
   isValidSchoolId,
   isValidTransferToken,
@@ -188,14 +190,72 @@ test("applyCors allows configured origins", () => {
   }
 });
 
-test("applyCors rejects browser requests in production when ALLOWED_ORIGIN is missing", () => {
+test("inferRequestOrigin rebuilds the deployed app origin from forwarded headers", () => {
+  assert.equal(
+    inferRequestOrigin({
+      headers: {
+        "x-forwarded-proto": "https",
+        "x-forwarded-host": "citadelle.vercel.app",
+      },
+    }),
+    "https://citadelle.vercel.app",
+  );
+});
+
+test("isSameOriginRequest matches browser origin to deployment origin", () => {
+  assert.equal(
+    isSameOriginRequest(
+      {
+        headers: {
+          origin: "https://citadelle.vercel.app",
+          "x-forwarded-proto": "https",
+          "x-forwarded-host": "citadelle.vercel.app",
+        },
+      },
+      "https://citadelle.vercel.app",
+    ),
+    true,
+  );
+});
+
+test("applyCors allows same-origin browser requests in production when ALLOWED_ORIGIN is missing", () => {
   const previous = process.env.ALLOWED_ORIGIN;
   const previousNodeEnv = process.env.NODE_ENV;
   delete process.env.ALLOWED_ORIGIN;
   process.env.NODE_ENV = "production";
 
   try {
-    const req = { headers: { origin: "https://app.edugest.test" } };
+    const req = {
+      headers: {
+        origin: "https://citadelle.vercel.app",
+        "x-forwarded-proto": "https",
+        "x-forwarded-host": "citadelle.vercel.app",
+      },
+    };
+    const res = createResponseDouble();
+
+    assert.equal(applyCors(req, res), true);
+    assert.equal(res.headers["Access-Control-Allow-Origin"], "https://citadelle.vercel.app");
+  } finally {
+    restoreEnv("ALLOWED_ORIGIN", previous);
+    restoreEnv("NODE_ENV", previousNodeEnv);
+  }
+});
+
+test("applyCors still rejects cross-origin browser requests in production when ALLOWED_ORIGIN is missing", () => {
+  const previous = process.env.ALLOWED_ORIGIN;
+  const previousNodeEnv = process.env.NODE_ENV;
+  delete process.env.ALLOWED_ORIGIN;
+  process.env.NODE_ENV = "production";
+
+  try {
+    const req = {
+      headers: {
+        origin: "https://app.edugest.test",
+        "x-forwarded-proto": "https",
+        "x-forwarded-host": "citadelle.vercel.app",
+      },
+    };
     const res = createResponseDouble();
 
     assert.equal(applyCors(req, res), false);

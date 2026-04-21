@@ -35,6 +35,10 @@ function parseAllowedOrigins() {
     .filter(Boolean);
 }
 
+function getForwardedHeaderValue(value) {
+  return typeof value === "string" ? value.split(",")[0].trim() : "";
+}
+
 export function isProductionEnvironment() {
   return process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production";
 }
@@ -89,6 +93,38 @@ export function getClientIp(req) {
   return forwardedFor || realIp || remoteAddress || "unknown";
 }
 
+export function inferRequestOrigin(req) {
+  const host = getForwardedHeaderValue(req?.headers?.["x-forwarded-host"])
+    || getForwardedHeaderValue(req?.headers?.host);
+
+  if (!host) {
+    return "";
+  }
+
+  const protocol = getForwardedHeaderValue(req?.headers?.["x-forwarded-proto"])
+    || (req?.socket?.encrypted ? "https" : "")
+    || (isProductionEnvironment() ? "https" : "http");
+
+  return `${protocol}://${host}`;
+}
+
+export function isSameOriginRequest(req, origin) {
+  if (!origin) {
+    return false;
+  }
+
+  const inferredOrigin = inferRequestOrigin(req);
+  if (!inferredOrigin) {
+    return false;
+  }
+
+  try {
+    return new URL(origin).origin === new URL(inferredOrigin).origin;
+  } catch {
+    return false;
+  }
+}
+
 export function applyCors(req, res, methods = "POST,OPTIONS") {
   const allowedOrigins = parseAllowedOrigins();
   const origin = typeof req?.headers?.origin === "string" ? req.headers.origin.trim() : "";
@@ -97,6 +133,12 @@ export function applyCors(req, res, methods = "POST,OPTIONS") {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
   if (!origin) {
+    return true;
+  }
+
+  if (isSameOriginRequest(req, origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
     return true;
   }
 
