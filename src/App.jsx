@@ -360,6 +360,9 @@ export default function App() {
           const compteDocId=d.compteDocId||null;
           setUtilisateur({uid:firebaseUser.uid, login:d.login, nom:d.nom, role:d.role, premiereCo, compteDocId, schoolId:sid});
           setPage(p=>p||ACCES[d.role][0]);
+          // Prefetch des pages les plus utilisées pendant que le dashboard se rend
+          import("./components/Comptabilite").catch(()=>{});
+          import("./components/Ecole").catch(()=>{});
         }
       }catch(e){
         console.error("Erreur chargement profil:", e);
