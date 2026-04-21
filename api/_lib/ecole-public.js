@@ -26,9 +26,10 @@ export async function syncEcolePublic(db, schoolId, source) {
   if (Object.keys(payload).length === 0) {
     return { written: false };
   }
-  await db.collection("ecoles_public").doc(schoolId).set(
-    { ...payload, updatedAt: FieldValue.serverTimestamp() },
-    { merge: true },
-  );
+  // Overwrite the public projection so removed branding fields disappear too.
+  await db.collection("ecoles_public").doc(schoolId).set({
+    ...payload,
+    updatedAt: FieldValue.serverTimestamp(),
+  });
   return { written: true };
 }

@@ -259,6 +259,8 @@ export default function App() {
 
   // Charger les infos de l'école depuis Firestore (temps réel)
   useEffect(()=>{
+    setSchoolInfo(SCHOOL_INFO_DEFAUT);
+    setVerrous({comptable:false,primaire:false,secondaire:false});
     if(!schoolId||schoolId==="superadmin"){
       document.documentElement.style.setProperty("--sc1","#0A1628");
       document.documentElement.style.setProperty("--sc2","#00C48C");
@@ -293,6 +295,11 @@ export default function App() {
         const r = document.documentElement.style;
         r.setProperty("--sc1", d.couleur1 || "#0A1628");
         r.setProperty("--sc2", d.couleur2 || "#00C48C");
+      } else {
+        setSchoolInfo(SCHOOL_INFO_DEFAUT);
+        setVerrous({comptable:false,primaire:false,secondaire:false});
+        document.documentElement.style.setProperty("--sc1","#0A1628");
+        document.documentElement.style.setProperty("--sc2","#00C48C");
       }
     });
     return ()=>unsub();
@@ -880,4 +887,3 @@ export default function App() {
     </SchoolContext.Provider>
   );
 }
-

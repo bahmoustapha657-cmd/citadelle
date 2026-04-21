@@ -24,6 +24,7 @@ function Connexion({onLogin, onInscription}) {
   useEffect(()=>{
     const sid=codeEcole.trim().toLowerCase();
     if(!sid||sid==="superadmin"){setInfoEcole(null);return;}
+    setInfoEcole(null);
     const t=setTimeout(()=>{
       getDoc(doc(db,"ecoles_public",sid))
         .then(snap=>setInfoEcole(snap.exists()?snap.data():null))

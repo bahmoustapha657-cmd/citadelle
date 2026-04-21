@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { getAuthHeaders } from "../apiClient";
 import { C, PLANS, PLAN_DUREES } from "../constants";
 import { db } from "../firebaseDb";
-import { addDoc, collection, collectionGroup, doc, getDocs, onSnapshot, setDoc, updateDoc } from "firebase/firestore";
+import { addDoc, collection, collectionGroup, doc, getDoc, getDocs, onSnapshot, setDoc, updateDoc } from "firebase/firestore";
 import SuperAdminAssistant from "./SuperAdminAssistant";
 
 // ══════════════════════════════════════════════════════════════
@@ -198,6 +198,12 @@ function SuperAdminPanel() {
   const creerEcole = async () => {
     if(!nouvelleEcole.nom.trim()||!nouvelleEcole.ville.trim()) return;
     const sid = genSlug(nouvelleEcole.nom);
+    const existing = await getDoc(doc(db,"ecoles",sid));
+    if(existing.exists()){
+      setMsgSucces(`Le code école "${sid}" existe déjà. Choisissez un nom différent.`);
+      setTimeout(()=>setMsgSucces(""),4000);
+      return;
+    }
     await setDoc(doc(db,"ecoles",sid),{
       nom: nouvelleEcole.nom.trim(),
       ville: nouvelleEcole.ville.trim(),

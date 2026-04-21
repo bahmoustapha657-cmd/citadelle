@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   ECOLE_PUBLIC_FIELDS,
   buildEcolePublicPayload,
+  syncEcolePublic,
 } from "../api/_lib/ecole-public.js";
 
 test("buildEcolePublicPayload only keeps the approved public fields", () => {
@@ -41,4 +42,38 @@ test("buildEcolePublicPayload only keeps the approved public fields", () => {
 test("buildEcolePublicPayload ignores undefined fields", () => {
   const payload = buildEcolePublicPayload({ nom: "A", ville: undefined });
   assert.deepEqual(payload, { nom: "A" });
+});
+
+test("syncEcolePublic overwrites stale public branding data", async () => {
+  let receivedArgs = null;
+  const db = {
+    collection(name) {
+      assert.equal(name, "ecoles_public");
+      return {
+        doc(id) {
+          assert.equal(id, "la-citadelle");
+          return {
+            async set(...args) {
+              receivedArgs = args;
+            },
+          };
+        },
+      };
+    },
+  };
+
+  const result = await syncEcolePublic(db, "la-citadelle", {
+    nom: "École Citadelle",
+    ville: "Conakry",
+    pays: "Guinée",
+  });
+
+  assert.deepEqual(result, { written: true });
+  assert.equal(receivedArgs.length, 1);
+  assert.equal(receivedArgs[0].nom, "École Citadelle");
+  assert.equal(receivedArgs[0].ville, "Conakry");
+  assert.equal(receivedArgs[0].pays, "Guinée");
+  assert.ok("updatedAt" in receivedArgs[0]);
+  assert.equal(receivedArgs[0].logo, undefined);
+  assert.equal(receivedArgs[0].accueil, undefined);
 });
