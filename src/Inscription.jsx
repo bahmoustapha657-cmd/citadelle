@@ -15,6 +15,9 @@ export default function Inscription() {
   });
 
   const chg = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
+  const comptesSecondaires = comptesInit
+    ? Object.values(comptesInit).filter((compte) => compte?.login && compte?.mdp)
+    : [];
 
   const validerEtape1 = () => {
     if (!form.nomEcole.trim()) {
@@ -154,14 +157,15 @@ export default function Inscription() {
               <div>Identifiant : <strong>{form.adminLogin}</strong></div>
               <div>Mot de passe : <strong>{form.adminMdp}</strong></div>
             </div>
-            {comptesInit?.comptable && (
+            {comptesSecondaires.length > 0 && (
               <div>
                 <div style={{ marginBottom: 6, fontWeight: 700, color: "#b45309" }}>
-                  Attention : comptes secondaires a noter puis supprimer apres connexion :
+                  Attention : comptes complementaires a noter puis securiser apres connexion :
                 </div>
                 <div style={{ fontFamily: "monospace", background: "#fff7ed", borderRadius: 6, padding: "6px 10px" }}>
-                  <div>comptable / <strong>{comptesInit.comptable.mdp}</strong></div>
-                  <div>admin / <strong>{comptesInit.admin.mdp}</strong></div>
+                  {comptesSecondaires.map((compte) => (
+                    <div key={compte.login}>{compte.login} / <strong>{compte.mdp}</strong></div>
+                  ))}
                 </div>
               </div>
             )}

@@ -115,11 +115,15 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
 
   // Initialiser les comptes avec mots de passe aléatoires si collection vide
   useEffect(() => {
-    if (chargement || comptes.length > 0 || initEnCours) return;
+    if (chargement || initEnCours) return;
+    const comptesManquants = COMPTES_DEFAUT.filter((compteDefaut) =>
+      !comptes.some((compteExistant) => compteExistant.role === compteDefaut.role),
+    );
+    if (comptesManquants.length === 0) return;
     setInitEnCours(true);
     (async () => {
       const mdps = {};
-      for (const c of COMPTES_DEFAUT) {
+      for (const c of comptesManquants) {
         const mdpClair = genererMdp();
         mdps[c.login] = mdpClair;
         try {
@@ -145,10 +149,10 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
           return;
         }
       }
-      setMdpsInitiaux(mdps);
+      if (Object.keys(mdps).length > 0) setMdpsInitiaux(mdps);
       setInitEnCours(false);
     })();
-  }, [chargement, comptes.length, initEnCours, schoolId, toast]);
+  }, [chargement, comptes, initEnCours, schoolId, toast]);
 
   const sauvegarder = async () => {
     if(!form.mdp || form.mdp.length < 8){
@@ -341,7 +345,7 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
         </p>
         <table style={{width:"100%",borderCollapse:"collapse",marginBottom:16}}>
           <THead cols={["Login","Rôle","Mot de passe temporaire"]}/>
-          <tbody>{COMPTES_DEFAUT.map(c=>(
+          <tbody>{COMPTES_DEFAUT.filter(c=>mdpsInitiaux[c.login]).map(c=>(
             <TR key={c.login}>
               <TD><span style={{fontFamily:"monospace",background:"#e0ebf8",padding:"2px 8px",borderRadius:4,fontSize:12,color:C.blue}}>{c.login}</span></TD>
               <TD><Badge color={c.role==="admin"?"purple":c.role==="comptable"?"teal":c.role==="direction"?"blue":"vert"}>{c.label}</Badge></TD>

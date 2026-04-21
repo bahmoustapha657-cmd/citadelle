@@ -40,6 +40,12 @@ const DEFAULT_SCHOOL_BRANDING = {
     adresse: "",
   },
 };
+const DEFAULT_BOOTSTRAP_ACCOUNTS = [
+  { key: "comptable", login: "comptable", role: "comptable", nom: "Comptable", label: "Comptabilite" },
+  { key: "admin", login: "admin", role: "admin", nom: "Administrateur", label: "Administrateur" },
+  { key: "primaire", login: "primaire", role: "primaire", nom: "Direction Primaire", label: "Direction Primaire" },
+  { key: "college", login: "college", role: "college", nom: "Bureau College", label: "Bureau College" },
+];
 
 const genSlug = (nom) =>
   nom.toLowerCase().trim()
@@ -123,44 +129,37 @@ export default async function handler(req, res) {
     await db.collection("ecoles").doc(schoolId).set(ecoleData);
     await syncEcolePublic(db, schoolId, ecoleData);
 
-    const mdpComptableClair = generateSecurePassword();
-    const mdpAdminClair = generateSecurePassword();
-
-    const [mdpDirection, mdpComptable, mdpAdminDefault] = await Promise.all([
+    const createdAt = Date.now();
+    const bootstrapPasswords = Object.fromEntries(
+      DEFAULT_BOOTSTRAP_ACCOUNTS.map((account) => [account.key, generateSecurePassword()]),
+    );
+    const hashedBootstrapAccounts = await Promise.all([
       bcrypt.hash(adminMdp, 10),
-      bcrypt.hash(mdpComptableClair, 10),
-      bcrypt.hash(mdpAdminClair, 10),
+      ...DEFAULT_BOOTSTRAP_ACCOUNTS.map((account) => bcrypt.hash(bootstrapPasswords[account.key], 10)),
     ]);
 
-    const createdAt = Date.now();
+    const [mdpDirection, ...hashedDefaults] = hashedBootstrapAccounts;
     const comptes = [
       {
         login: normalizedLogin,
         mdp: mdpDirection,
         role: "direction",
-        label: "Direction",
+        nom: "Directeur General",
+        label: "Direction Generale",
         statut: "Actif",
         premiereCo: true,
         createdAt,
       },
-      {
-        login: "comptable",
-        mdp: mdpComptable,
-        role: "comptable",
-        label: "Comptable",
+      ...DEFAULT_BOOTSTRAP_ACCOUNTS.map((account, index) => ({
+        login: account.login,
+        mdp: hashedDefaults[index],
+        role: account.role,
+        nom: account.nom,
+        label: account.label,
         statut: "Actif",
         premiereCo: true,
         createdAt,
-      },
-      {
-        login: "admin",
-        mdp: mdpAdminDefault,
-        role: "admin",
-        label: "Admin",
-        statut: "Actif",
-        premiereCo: true,
-        createdAt,
-      },
+      })),
     ];
 
     const batch = db.batch();
@@ -173,10 +172,12 @@ export default async function handler(req, res) {
     return res.status(200).json({
       ok: true,
       schoolId,
-      compteSecondaires: {
-        comptable: { login: "comptable", mdp: mdpComptableClair },
-        admin: { login: "admin", mdp: mdpAdminClair },
-      },
+      compteSecondaires: Object.fromEntries(
+        DEFAULT_BOOTSTRAP_ACCOUNTS.map((account) => [
+          account.key,
+          { login: account.login, mdp: bootstrapPasswords[account.key], label: account.label },
+        ]),
+      ),
     });
   } catch (e) {
     console.error("inscription error:", e);

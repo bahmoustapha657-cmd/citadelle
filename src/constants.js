@@ -100,6 +100,11 @@ export const COMPTES_DEFAUT = [
 // Génère un mot de passe aléatoire sécurisé (12 caractères)
 export const genererMdp = () => {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#!";
+  if (globalThis.crypto?.getRandomValues) {
+    const bytes = new Uint32Array(12);
+    globalThis.crypto.getRandomValues(bytes);
+    return Array.from(bytes, (value) => chars[value % chars.length]).join("");
+  }
   return Array.from({length:12}, () => chars[Math.floor(Math.random()*chars.length)]).join("");
 };
 
