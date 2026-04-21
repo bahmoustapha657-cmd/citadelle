@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { initAdmin } from "./_lib/firebase-admin.js";
+import { captureServerError } from "./_lib/observability.js";
 import {
   applyCors,
   isValidSchoolId,
@@ -125,6 +126,12 @@ export default async function handler(req, res) {
     });
   } catch (e) {
     console.error("Erreur enregistrement paiement :", e);
+    await captureServerError(e, {
+      endpoint: "kkiapay-webhook",
+      phase: "record",
+      schoolId: normalizedSchoolId,
+      transactionId,
+    });
     return res.status(500).json({ error: "Erreur enregistrement paiement" });
   }
 
@@ -150,6 +157,12 @@ export default async function handler(req, res) {
       });
     } catch (e) {
       console.error("Erreur activation plan :", e);
+      await captureServerError(e, {
+        endpoint: "kkiapay-webhook",
+        phase: "activate-plan",
+        schoolId: normalizedSchoolId,
+        transactionId,
+      });
       return res.status(500).json({ error: "Erreur activation plan" });
     }
   }

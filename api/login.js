@@ -2,6 +2,7 @@ import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import bcrypt from "bcryptjs";
 import { initAdmin } from "./_lib/firebase-admin.js";
+import { captureServerError } from "./_lib/observability.js";
 import {
   applyCors,
   consumeRateLimit,
@@ -134,6 +135,10 @@ export default async function handler(req, res) {
     });
   } catch (e) {
     console.error("login error:", e);
+    await captureServerError(e, {
+      endpoint: "login",
+      schoolId: normalizedSchoolId,
+    });
     return res.status(500).json({ error: "Erreur serveur" });
   }
 }
