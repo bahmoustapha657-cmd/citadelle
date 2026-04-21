@@ -28,6 +28,43 @@ function genToken(length = 10) {
   return token;
 }
 
+export function resolveTransferCollection(section) {
+  if (section === "primaire") return "elevesPrimaire";
+  if (section === "lycee") return "elevesLycee";
+  return "elevesCollege";
+}
+
+export function validateTransferReadState(data, now = Date.now()) {
+  if (data.statut === "acceptÃ©") {
+    return { ok: false, status: 410, error: "Ce token a dÃ©jÃ  Ã©tÃ© utilisÃ©" };
+  }
+  if (data.statut === "expirÃ©" || now > data.dateExpiration) {
+    return {
+      ok: false,
+      status: 410,
+      error: "Ce token a expirÃ© (validitÃ© 30 jours)",
+      shouldExpire: true,
+    };
+  }
+  return { ok: true };
+}
+
+export function validateTransferAcceptance(data, targetSchoolId, now = Date.now()) {
+  if (data.statut !== "en_attente") {
+    return { ok: false, status: 409, error: "Token dÃ©jÃ  utilisÃ© ou expirÃ©" };
+  }
+  if (now > data.dateExpiration) {
+    return { ok: false, status: 410, error: "Token expirÃ©", shouldExpire: true };
+  }
+  if (data.schoolIdSource === targetSchoolId) {
+    return { ok: false, status: 409, error: "Le transfert vers la mÃªme Ã©cole est interdit." };
+  }
+  return {
+    ok: true,
+    collCible: resolveTransferCollection(data.eleveSnapshot?.section),
+  };
+}
+
 async function findTransferByToken(db, token) {
   const snap = await db
     .collection("transferts")
@@ -74,12 +111,12 @@ export default async function handler(req, res) {
 
       const data = transferDoc.data();
 
-      if (data.statut === "accepté") {
-        return res.status(410).json({ error: "Ce token a déjà été utilisé" });
-      }
-      if (data.statut === "expiré" || Date.now() > data.dateExpiration) {
-        await transferDoc.ref.update({ statut: "expiré", updatedAt: Date.now() });
-        return res.status(410).json({ error: "Ce token a expiré (validité 30 jours)" });
+      const validation = validateTransferReadState(data);
+      if (!validation.ok) {
+        if (validation.shouldExpire) {
+          await transferDoc.ref.update({ statut: "expiré", updatedAt: Date.now() });
+        }
+        return res.status(validation.status).json({ error: validation.error });
       }
 
       return res.status(200).json({
@@ -179,23 +216,15 @@ export default async function handler(req, res) {
 
       const data = transferDoc.data();
 
-      if (data.statut !== "en_attente") {
-        return res.status(409).json({ error: "Token déjà utilisé ou expiré" });
-      }
-      if (Date.now() > data.dateExpiration) {
-        await transferDoc.ref.update({ statut: "expiré", updatedAt: Date.now() });
-        return res.status(410).json({ error: "Token expiré" });
-      }
-      if (data.schoolIdSource === normalizedTargetSchoolId) {
-        return res.status(409).json({ error: "Le transfert vers la même école est interdit." });
+      const validation = validateTransferAcceptance(data, normalizedTargetSchoolId);
+      if (!validation.ok) {
+        if (validation.shouldExpire) {
+          await transferDoc.ref.update({ statut: "expiré", updatedAt: Date.now() });
+        }
+        return res.status(validation.status).json({ error: validation.error });
       }
 
-      const section = data.eleveSnapshot?.section || "college";
-      const collCible = section === "primaire"
-        ? "elevesPrimaire"
-        : section === "lycee"
-          ? "elevesLycee"
-          : "elevesCollege";
+      const { collCible } = validation;
 
       const {
         matricule: _matricule,

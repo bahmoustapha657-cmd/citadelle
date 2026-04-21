@@ -3,7 +3,7 @@ import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { initAdmin } from "./_lib/firebase-admin.js";
 import { isValidSchoolId, normalizeSchoolId, requireEnv } from "./_lib/security.js";
 
-function signaturesMatch(expected, received) {
+export function signaturesMatch(expected, received) {
   const expectedBuffer = Buffer.from(expected, "hex");
   const receivedBuffer = Buffer.from(received, "hex");
 
@@ -12,6 +12,21 @@ function signaturesMatch(expected, received) {
   }
 
   return crypto.timingSafeEqual(expectedBuffer, receivedBuffer);
+}
+
+export function buildKkiapaySignature(payload, privateKey) {
+  return crypto
+    .createHmac("sha256", privateKey)
+    .update(JSON.stringify(payload || {}))
+    .digest("hex");
+}
+
+export function verifyKkiapaySignature(payload, signature, privateKey) {
+  if (!signature || !/^[a-f0-9]+$/i.test(signature)) {
+    return false;
+  }
+
+  return signaturesMatch(buildKkiapaySignature(payload, privateKey), signature);
 }
 
 export default async function handler(req, res) {
@@ -40,13 +55,7 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: "Signature manquante" });
   }
 
-  const rawBody = JSON.stringify(req.body || {});
-  const expected = crypto
-    .createHmac("sha256", privateKey)
-    .update(rawBody)
-    .digest("hex");
-
-  if (!/^[a-f0-9]+$/i.test(signature) || !signaturesMatch(expected, signature)) {
+  if (!verifyKkiapaySignature(req.body || {}, signature, privateKey)) {
     console.error("Signature Kkiapay invalide");
     return res.status(401).json({ error: "Signature invalide" });
   }

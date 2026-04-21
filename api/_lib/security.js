@@ -86,6 +86,26 @@ export function applyCors(req, res, methods = "POST,OPTIONS") {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 }
 
+export function validateSessionProfile(profile, options = {}) {
+  const { roles = null, schoolId = null, allowSuperadmin = false } = options;
+
+  if (!profile?.role || !profile?.schoolId) {
+    return { ok: false, status: 403, error: "Profil utilisateur incomplet." };
+  }
+
+  const isSuperadmin = profile.role === "superadmin";
+
+  if (schoolId && profile.schoolId !== schoolId && !(allowSuperadmin && isSuperadmin)) {
+    return { ok: false, status: 403, error: "Acces refuse pour cette ecole." };
+  }
+
+  if (roles && !roles.includes(profile.role) && !(allowSuperadmin && isSuperadmin)) {
+    return { ok: false, status: 403, error: "Droits insuffisants." };
+  }
+
+  return { ok: true, isSuperadmin };
+}
+
 export async function requireSession(req, res, options = {}) {
   const { roles = null, schoolId = null, allowSuperadmin = false } = options;
   const authHeader = req.headers.authorization || "";
@@ -109,25 +129,20 @@ export async function requireSession(req, res, options = {}) {
     }
 
     const profile = userSnap.data();
-    if (!profile?.role || !profile?.schoolId) {
-      res.status(403).json({ error: "Profil utilisateur incomplet." });
-      return null;
-    }
-    const isSuperadmin = profile.role === "superadmin";
+    const validation = validateSessionProfile(profile, {
+      roles,
+      schoolId,
+      allowSuperadmin,
+    });
 
-    if (schoolId && profile.schoolId !== schoolId && !(allowSuperadmin && isSuperadmin)) {
-      res.status(403).json({ error: "Accès refusé pour cette école." });
-      return null;
-    }
-
-    if (roles && !roles.includes(profile.role) && !(allowSuperadmin && isSuperadmin)) {
-      res.status(403).json({ error: "Droits insuffisants." });
+    if (!validation.ok) {
+      res.status(validation.status).json({ error: validation.error });
       return null;
     }
 
     return { uid: decoded.uid, profile };
   } catch {
-    res.status(401).json({ error: "Session invalide ou expirée." });
+    res.status(401).json({ error: "Session invalide ou expiree." });
     return null;
   }
 }
