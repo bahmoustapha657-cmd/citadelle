@@ -88,7 +88,7 @@ service cloud.firestore {
     }
 
     match /ecoles/{schoolId} {
-      allow read: if true;
+      allow read: if appartientEcole(schoolId) || aUnRole(["superadmin"]);
 
       allow create: if aUnRole(["superadmin"])
                    && !request.resource.data.keys().hasAny(planFields());

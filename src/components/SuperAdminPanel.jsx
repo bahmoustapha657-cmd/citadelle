@@ -204,6 +204,14 @@ function SuperAdminPanel() {
       createdAt: Date.now(),
       actif: true,
     });
+    try {
+      const headers = await getAuthHeaders({ "Content-Type": "application/json" });
+      await fetch("/api/ecole-public-sync", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ action: "sync", schoolId: sid }),
+      });
+    } catch { /* non-bloquant */ }
     setMsgSucces(`École "${nouvelleEcole.nom}" créée (code : ${sid})`);
     setNouvelleEcole({nom:"",ville:"",pays:"Guinée"});
     setCreationOuverte(false);
