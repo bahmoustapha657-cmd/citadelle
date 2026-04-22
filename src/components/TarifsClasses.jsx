@@ -15,25 +15,54 @@ function TarifsClasses({
   // editing: { "Classe X": {mens, revision, autre, ins, reinsc} }
   const [editing, setEditing] = useState({});
   const [saving, setSaving] = useState(false);
+  const [feedback, setFeedback] = useState(null); // {type: "success"|"error", msg}
 
   const handleChange = (classe, champ, val) =>
     setEditing(p=>({...p,[classe]:{...(p[classe]||{}), [champ]:val}}));
 
   const sauvegarderTout = async () => {
+    if (saving) return;
+    const entrees = Object.entries(editing);
+    if (entrees.length === 0) return;
     setSaving(true);
+    setFeedback(null);
     try {
-      for(const [classe, vals] of Object.entries(editing)){
-        await saveTarif(
-          classe,
-          vals.mens!==undefined ? vals.mens : String(getTarifBase(classe)),
-          vals.ins!==undefined  ? vals.ins  : String(getTarifIns(classe)),
-          vals.reinsc!==undefined ? vals.reinsc : String(getTarifReinsc(classe)),
-          vals.revision!==undefined ? vals.revision : String(getTarifRevision(classe)),
-          vals.autre!==undefined ? vals.autre : String(getTarifAutre(classe))
-        );
+      const resultats = await Promise.allSettled(
+        entrees.map(([classe, vals]) =>
+          saveTarif(
+            classe,
+            vals.mens!==undefined ? vals.mens : String(getTarifBase(classe)),
+            vals.ins!==undefined  ? vals.ins  : String(getTarifIns(classe)),
+            vals.reinsc!==undefined ? vals.reinsc : String(getTarifReinsc(classe)),
+            vals.revision!==undefined ? vals.revision : String(getTarifRevision(classe)),
+            vals.autre!==undefined ? vals.autre : String(getTarifAutre(classe))
+          )
+        )
+      );
+      const echecs = resultats
+        .map((r, i) => ({ r, classe: entrees[i][0] }))
+        .filter(({ r }) => r.status === "rejected");
+      if (echecs.length === 0) {
+        setEditing({});
+        setFeedback({ type: "success", msg: `✅ ${entrees.length} tarif${entrees.length>1?"s":""} enregistré${entrees.length>1?"s":""}.` });
+      } else {
+        const restant = {};
+        echecs.forEach(({ classe }) => {
+          if (editing[classe]) restant[classe] = editing[classe];
+        });
+        setEditing(restant);
+        const premier = echecs[0].r.reason;
+        setFeedback({
+          type: "error",
+          msg: `❌ ${echecs.length} échec${echecs.length>1?"s":""} : ${premier?.message || "écriture refusée"}. Vos saisies sont conservées.`,
+        });
       }
-      setEditing({});
-    } finally { setSaving(false); }
+    } catch (e) {
+      setFeedback({ type: "error", msg: `❌ Erreur inattendue : ${e?.message || "écriture refusée"}.` });
+    } finally {
+      setSaving(false);
+      setTimeout(() => setFeedback(null), 5000);
+    }
   };
 
   const modifie = Object.keys(editing).length > 0;
@@ -101,12 +130,23 @@ function TarifsClasses({
               </div>
             );
           })}
+          {feedback&&(
+            <div style={{
+              marginTop:10,padding:"8px 12px",borderRadius:8,fontSize:12,fontWeight:600,
+              background:feedback.type==="success"?"#d1fae5":"#fee2e2",
+              color:feedback.type==="success"?"#065f46":"#991b1b",
+              border:`1px solid ${feedback.type==="success"?"#6ee7b7":"#fca5a5"}`,
+            }}>{feedback.msg}</div>
+          )}
           {canEdit&&(
-            <div style={{display:"flex",gap:10,marginTop:8}}>
+            <div style={{display:"flex",gap:10,marginTop:8,alignItems:"center"}}>
               <Btn onClick={sauvegarderTout} disabled={saving||!modifie} v={modifie?"success":"ghost"}>
                 {saving?"Enregistrement...":"Enregistrer les tarifs"}
               </Btn>
-              {modifie&&<Btn v="ghost" onClick={()=>setEditing({})}>Annuler</Btn>}
+              {modifie&&!saving&&<Btn v="ghost" onClick={()=>setEditing({})}>Annuler</Btn>}
+              {!modifie&&!saving&&!feedback&&(
+                <span style={{fontSize:11,color:"#9ca3af"}}>Modifiez au moins un tarif pour activer le bouton.</span>
+              )}
             </div>
           )}
         </div>

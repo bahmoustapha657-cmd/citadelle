@@ -82,7 +82,6 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   const [importEnrolEnCours,setImportEnrolEnCours]=useState(false);
   const [classeDefautImport,setClasseDefautImport]=useState("");
   const [ordreNomImport,setOrdreNomImport]=useState("auto"); // "auto" | "nom_prenom" | "prenom_nom"
-  const [fraisInscription,setFraisInscription]=useState(()=>Number(localStorage.getItem("LC_fraisInscription")||50000));
   const chg=k=>e=>setForm(p=>({...p,[k]:e.target.value}));
   const handlePhotoFichier=e=>{
     const file=e.target.files[0]; if(!file) return;
@@ -159,6 +158,9 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
     const t = getTarifConfig(classe);
     return Number(t?.reinscription||0);
   };
+  const getTarifInscriptionForEleve = (eleve = {}) => (
+    eleve.typeInscription==="Réinscription" ? getTarifReinsc(eleve.classe) : getTarifIns(eleve.classe)
+  );
   const saveTarif = async (classe, montant, inscription=null, reinscription=null, revision=null, autre=null) => {
     const existing = getTarifConfig(classe);
     const data = {
@@ -168,11 +170,35 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
       ...(revision!==null?{revision:Number(revision)||0}:{}),
       ...(autre!==null?{autre:Number(autre)||0}:{})
     };
-    if(existing) await modTarif(existing._id, data);
+    if(existing) await modTarif({_id: existing._id, ...data});
     else await ajTarif({classe, ...data});
   };
   const elevesFiltres=sortAlpha(filtClasse==="all"?eleves:eleves.filter(e=>e.classe===filtClasse));
   const nbPayes=e=>moisAnnee.filter(m=>(e.mens||{})[m]==="Payé").length;
+
+  const toggleFraisAnnexe = async (_id, {
+    payKey,
+    dateKey,
+    valeurActuelle=false,
+    label,
+    montant=0,
+    nomEleve="",
+  }) => {
+    if(readOnly) return;
+    if(valeurActuelle && !canEdit){
+      toast(`Le retrait de ${label.toLowerCase()} nécessite l'autorisation de l'administrateur (verrou activé).`,"warning");
+      return;
+    }
+    const montantLabel = montant>0 ? ` (${fmt(montant)})` : "";
+    const message = valeurActuelle
+      ? `Retirer ${label.toLowerCase()}${montantLabel} pour ${nomEleve} ?`
+      : `Marquer ${label.toLowerCase()}${montantLabel} comme payé pour ${nomEleve} ?`;
+    if(!confirm(message)) return;
+    await modEleves(_id,{
+      [payKey]:!valeurActuelle,
+      [dateKey]:!valeurActuelle ? new Date().toLocaleDateString("fr-FR") : null,
+    });
+  };
 
   const toggleMens=async(_id,mois,mensActuels,mensDatesActuels,nomEleve)=>{
     if(readOnly) return;
@@ -1283,7 +1309,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                     {canEdit&&<TD>
                       <Btn sm v="vert" onClick={async()=>{
                         if(confirm(`Réintégrer ${e.nom} ${e.prenom} comme élève Actif ?`)){
-                          await modEnrol(e._id,{statut:"Actif",dateDepart:null,motifDepart:null,destinationDepart:null});
+                          await modEnrol({_id:e._id,statut:"Actif",dateDepart:null,motifDepart:null,destinationDepart:null});
                           toast("Élève réintégré","success");
                         }
                       }}>↩ Réintégrer</Btn>
@@ -1857,66 +1883,84 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
             {classesU.map(c=><option key={c}>{c}</option>)}
           </select>}
         </div>
-        {eleves.length===0?<Vide icone="🎓" msg="Aucun élève"/>
-          :<>
-            <div style={{marginBottom:12,padding:"9px 14px",background:"#e0ebf8",borderRadius:8,display:"flex",gap:20,flexWrap:"wrap",alignItems:"center"}}>
-              <span style={{fontSize:12,color:C.greenDk,fontWeight:700}}>✓ {elevesFiltres.reduce((s,e)=>s+nbPayes(e),0)} payés</span>
-              <span style={{fontSize:12,color:"#b91c1c",fontWeight:700}}>✗ {elevesFiltres.reduce((s,e)=>s+(moisAnnee.length-nbPayes(e)),0)} impayés</span>
-              <span style={{fontSize:12,color:C.blue,fontWeight:700}}>💰 {fmt(elevesFiltres.reduce((s,e)=>s+nbPayes(e)*getTarif(e.classe),0))}</span>
-              <span style={{flex:1}}/>
-              <span style={{fontSize:11,fontWeight:700,color:C.blueDark}}>Inscription :</span>
-              <input type="number" value={fraisInscription} onChange={e=>setFraisInscription(Number(e.target.value))}
-                placeholder="Frais inscription GNF"
-                style={{border:"1px solid #b0c4d8",borderRadius:6,padding:"4px 8px",fontSize:12,width:160,color:C.blue,fontWeight:700}}/>
-              <Badge color="purple">{fmt(elevesFiltres.filter(e=>e.inscriptionPayee).length * fraisInscription)} perçus</Badge>
-            </div>
-            <div style={{overflowX:"auto"}}>
-              <table style={{width:"100%",borderCollapse:"collapse",minWidth:1000}}>
-                <THead cols={["Matricule","Nom & Prénom","Classe","Tuteur","Contact",...moisAnnee,"Payés","Ins.","Reçu"]}/>
-                <tbody>{elevesFiltres.map(e=>{
-                  const mens=e.mens||initMens();
-                  return <TR key={e._id}>
-                    <TD><span style={{fontSize:11,fontFamily:"monospace",background:"#e0ebf8",padding:"2px 6px",borderRadius:4,color:C.blue,fontWeight:700}}>{e.matricule}</span></TD>
-                    <TD bold>{e.nom} {e.prenom}</TD>
-                    <TD><Badge color="blue">{e.classe}</Badge></TD>
-                    <TD>{e.tuteur}</TD><TD>{e.contactTuteur}</TD>
-                    {moisAnnee.map(m=>{
-                      const paye=mens[m]==="Payé";
-                      const datePaie=(e.mensDates||{})[m]||"";
-                      const peutCliquer=paye?(canCreate&&canEdit):canCreate;
-                      return <td key={m} style={{padding:"4px 2px",textAlign:"center"}}>
-                        <button onClick={()=>peutCliquer&&toggleMens(e._id,m,mens,e.mensDates||{},`${e.nom} ${e.prenom}`)}
-                          title={`${m} — ${mens[m]||"Impayé"}${datePaie?" ("+datePaie+")":""}`}
-                          style={{width:26,height:26,borderRadius:5,border:"none",cursor:peutCliquer?"pointer":"default",fontSize:12,
-                            background:paye?C.green:"#e8f0e8",color:paye?"#fff":"#9ca3af",fontWeight:700,opacity:(readOnly||(!peutCliquer&&!paye))?0.6:1}}>
-                          {paye?"✓":"·"}
+          {eleves.length===0?<Vide icone="🎓" msg="Aucun élève"/>
+            :<>
+              <div style={{marginBottom:12,padding:"9px 14px",background:"#e0ebf8",borderRadius:8,display:"flex",gap:20,flexWrap:"wrap",alignItems:"center"}}>
+                <span style={{fontSize:12,color:C.greenDk,fontWeight:700}}>✓ {elevesFiltres.reduce((s,e)=>s+nbPayes(e),0)} payés</span>
+                <span style={{fontSize:12,color:"#b91c1c",fontWeight:700}}>✗ {elevesFiltres.reduce((s,e)=>s+(moisAnnee.length-nbPayes(e)),0)} impayés</span>
+                <span style={{fontSize:12,color:C.blue,fontWeight:700}}>💰 {fmt(elevesFiltres.reduce((s,e)=>s+nbPayes(e)*getTarif(e.classe),0))}</span>
+                <Badge color="purple">{fmt(elevesFiltres.reduce((s,e)=>s+(e.inscriptionPayee?getTarifInscriptionForEleve(e):0),0))} inscriptions perçues</Badge>
+                <Badge color="gray">{fmt(elevesFiltres.reduce((s,e)=>s+(e.autrePayee?getTarifAutre(e.classe):0),0))} autres frais perçus</Badge>
+              </div>
+              <div style={{overflowX:"auto"}}>
+                <table style={{width:"100%",borderCollapse:"collapse",minWidth:1080}}>
+                  <THead cols={["Matricule","Nom & Prénom","Classe","Tuteur","Contact",...moisAnnee,"Payés","Ins.","Autre","Reçu"]}/>
+                  <tbody>{elevesFiltres.map(e=>{
+                    const mens=e.mens||initMens();
+                    const montantInscription = getTarifInscriptionForEleve(e);
+                    const montantAutre = getTarifAutre(e.classe);
+                    return <TR key={e._id}>
+                      <TD><span style={{fontSize:11,fontFamily:"monospace",background:"#e0ebf8",padding:"2px 6px",borderRadius:4,color:C.blue,fontWeight:700}}>{e.matricule}</span></TD>
+                      <TD bold>{e.nom} {e.prenom}</TD>
+                      <TD><Badge color="blue">{e.classe}</Badge></TD>
+                      <TD>{e.tuteur}</TD><TD>{e.contactTuteur}</TD>
+                      {moisAnnee.map(m=>{
+                        const paye=mens[m]==="Payé";
+                        const datePaie=(e.mensDates||{})[m]||"";
+                        const peutCliquer=paye?(canCreate&&canEdit):canCreate;
+                        return <td key={m} style={{padding:"4px 2px",textAlign:"center"}}>
+                          <button onClick={()=>peutCliquer&&toggleMens(e._id,m,mens,e.mensDates||{},`${e.nom} ${e.prenom}`)}
+                            title={`${m} — ${mens[m]||"Impayé"}${datePaie?" ("+datePaie+")":""}`}
+                            style={{width:26,height:26,borderRadius:5,border:"none",cursor:peutCliquer?"pointer":"default",fontSize:12,
+                              background:paye?C.green:"#e8f0e8",color:paye?"#fff":"#9ca3af",fontWeight:700,opacity:(readOnly||(!peutCliquer&&!paye))?0.6:1}}>
+                            {paye?"✓":"·"}
+                          </button>
+                        </td>;
+                      })}
+                      <td style={{padding:"4px 8px",textAlign:"center"}}>
+                        <span style={{fontWeight:800,fontSize:13,color:nbPayes(e)===moisAnnee.length?C.greenDk:nbPayes(e)>0?"#d97706":"#b91c1c"}}>
+                          {nbPayes(e)}/{moisAnnee.length}
+                        </span>
+                      </td>
+                      <td style={{padding:"4px 4px",textAlign:"center"}}>
+                        <button onClick={()=>toggleFraisAnnexe(e._id,{
+                          payKey:"inscriptionPayee",
+                          dateKey:"inscriptionDate",
+                          valeurActuelle:e.inscriptionPayee,
+                          label:e.typeInscription==="Réinscription"?"Réinscription":"Inscription",
+                          montant:montantInscription,
+                          nomEleve:`${e.nom} ${e.prenom}`,
+                        })} title={`${e.typeInscription==="Réinscription"?"Réinscription":"Inscription"}${e.inscriptionDate?` (${e.inscriptionDate})`:""}`}
+                          style={{width:26,height:26,borderRadius:5,border:"none",cursor:readOnly?"default":"pointer",fontSize:11,
+                            background:e.inscriptionPayee?C.blue:"#f1f3f4",color:e.inscriptionPayee?"#fff":"#9ca3af",fontWeight:700}}>
+                          {e.inscriptionPayee?"✓":"I"}
                         </button>
-                      </td>;
-                    })}
-                    <td style={{padding:"4px 8px",textAlign:"center"}}>
-                      <span style={{fontWeight:800,fontSize:13,color:nbPayes(e)===moisAnnee.length?C.greenDk:nbPayes(e)>0?"#d97706":"#b91c1c"}}>
-                        {nbPayes(e)}/{moisAnnee.length}
-                      </span>
-                    </td>
-                    <td style={{padding:"4px 4px",textAlign:"center"}}>
-                      <button onClick={()=>{
-                        if(readOnly)return;
-                        modEleves(e._id,{inscriptionPayee:!e.inscriptionPayee});
-                      }} title="Inscription payée ?"
-                        style={{width:26,height:26,borderRadius:5,border:"none",cursor:readOnly?"default":"pointer",fontSize:11,
-                          background:e.inscriptionPayee?C.blue:"#f1f3f4",color:e.inscriptionPayee?"#fff":"#9ca3af",fontWeight:700}}>
-                        {e.inscriptionPayee?"✓":"I"}
-                      </button>
-                    </td>
-                    <td style={{padding:"4px 6px",textAlign:"center"}}>
-                      <Btn sm v="amber" onClick={()=>imprimerRecu(e,getTarif(e.classe),schoolInfo,moisAnnee,
-                        e.typeInscription==="Réinscription"?getTarifReinsc(e.classe):getTarifIns(e.classe))}>🖨️</Btn>
-                    </td>
-                  </TR>;
-                })}</tbody>
-              </table>
-            </div>
-          </>}
+                      </td>
+                      <td style={{padding:"4px 4px",textAlign:"center"}}>
+                        <button onClick={()=>toggleFraisAnnexe(e._id,{
+                          payKey:"autrePayee",
+                          dateKey:"autreDate",
+                          valeurActuelle:e.autrePayee,
+                          label:"Autre frais",
+                          montant:montantAutre,
+                          nomEleve:`${e.nom} ${e.prenom}`,
+                        })} title={`Autre frais${e.autreDate?` (${e.autreDate})`:""}`}
+                          style={{width:26,height:26,borderRadius:5,border:"none",cursor:readOnly?"default":"pointer",fontSize:11,
+                            background:e.autrePayee?"#475569":"#f1f3f4",color:e.autrePayee?"#fff":"#9ca3af",fontWeight:700}}>
+                          {e.autrePayee?"✓":"A"}
+                        </button>
+                      </td>
+                      <td style={{padding:"4px 6px",textAlign:"center"}}>
+                        <Btn sm v="amber" onClick={()=>imprimerRecu(e,getTarif(e.classe),schoolInfo,moisAnnee,{
+                          inscription: montantInscription,
+                          autre: montantAutre,
+                        })}>🖨️</Btn>
+                      </td>
+                    </TR>;
+                  })}</tbody>
+                </table>
+              </div>
+            </>}
       </div>}
 
       {tab==="transferts"&&<TransfertsPanel userRole={userRole} annee={annee} setTab={setTab}/>}
