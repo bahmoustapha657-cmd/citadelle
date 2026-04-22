@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { C, getClassesForSection, getSectionLabel } from "../constants";
 import { Btn } from "./ui";
 
@@ -46,12 +46,12 @@ function TarifsClasses({saveTarif, getTarif, getTarifIns, getTarifReinsc, canEdi
       <button onClick={()=>setOuvert(o=>!o)}
         style={{width:"100%",background:"#f0f6ff",border:"none",padding:"11px 16px",cursor:"pointer",
           display:"flex",alignItems:"center",justifyContent:"space-between",fontSize:13,fontWeight:700,color:C.blueDark}}>
-        <span>ðŸ’° Tarifs par classe (mensualitÃ© Â· inscription Â· rÃ©inscription)</span>
-        <span style={{fontSize:11,fontWeight:400,color:"#6b7280"}}>{ouvert?"â–² Fermer":"â–¼ Voir / Modifier"}</span>
+        <span>Tarifs par classe (mensualité · inscription · réinscription)</span>
+        <span style={{fontSize:11,fontWeight:400,color:"#6b7280"}}>{ouvert?"Fermer":"Voir / Modifier"}</span>
       </button>
       {ouvert&&(
         <div style={{padding:"16px 18px",background:"#fff"}}>
-          {!canEdit&&<p style={{margin:"0 0 12px",fontSize:12,color:"#9ca3af"}}>Lecture seule â€” seuls le comptable, l'administrateur et la direction peuvent modifier les tarifs.</p>}
+          {!canEdit&&<p style={{margin:"0 0 12px",fontSize:12,color:"#9ca3af"}}>Lecture seule - seuls le comptable, l'administrateur et la direction peuvent modifier les tarifs.</p>}
           {["primaire", "college", "lycee"].map((section) => {
             const classes = getClassesForSection(section);
             return (
@@ -60,9 +60,9 @@ function TarifsClasses({saveTarif, getTarif, getTarifIns, getTarifReinsc, canEdi
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
                   <thead><tr style={{background:"#f0f6ff"}}>
                     <th style={{padding:"6px 10px",textAlign:"left",color:C.blueDark}}>Classe</th>
-                    <th style={{padding:"6px 10px",textAlign:"right",color:C.blue}}>MensualitÃ© (GNF)</th>
+                    <th style={{padding:"6px 10px",textAlign:"right",color:C.blue}}>Mensualité (GNF)</th>
                     <th style={{padding:"6px 10px",textAlign:"right",color:"#059669"}}>Inscription (GNF)</th>
-                    <th style={{padding:"6px 10px",textAlign:"right",color:"#7c3aed"}}>RÃ©inscription (GNF)</th>
+                    <th style={{padding:"6px 10px",textAlign:"right",color:"#7c3aed"}}>Réinscription (GNF)</th>
                   </tr></thead>
                   <tbody>{classes.map(classe=>(
                     <tr key={classe} style={{borderBottom:"1px solid #e5e7eb"}}>
@@ -79,7 +79,7 @@ function TarifsClasses({saveTarif, getTarif, getTarifIns, getTarifReinsc, canEdi
           {canEdit&&(
             <div style={{display:"flex",gap:10,marginTop:8}}>
               <Btn onClick={sauvegarderTout} disabled={saving||!modifie} v={modifie?"success":"ghost"}>
-                {saving?"Enregistrementâ€¦":"ðŸ’¾ Enregistrer les tarifs"}
+                {saving?"Enregistrement...":"Enregistrer les tarifs"}
               </Btn>
               {modifie&&<Btn v="ghost" onClick={()=>setEditing({})}>Annuler</Btn>}
             </div>
@@ -90,8 +90,7 @@ function TarifsClasses({saveTarif, getTarif, getTarifIns, getTarifReinsc, canEdi
   );
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-//  CAPTURE CAMÃ‰RA
+
+
 
 export { TarifsClasses };
-

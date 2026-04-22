@@ -1,4 +1,4 @@
-﻿import {
+import {
   ROLE_ORDER,
   ROLE_MODULE_CAPABILITIES,
   ROLE_SETTINGS_DEFAULT,
@@ -22,8 +22,8 @@ export const C = {
   sidebar: "#0A1628",
 };
 
-export const TOUS_MOIS_COURTS = ["Sep", "Oct", "Nov", "DÃ©c", "Jan", "FÃ©v", "Mar", "Avr", "Mai", "Jun", "Jul", "AoÃ»"];
-export const TOUS_MOIS_LONGS = ["Septembre", "Octobre", "Novembre", "DÃ©cembre", "Janvier", "FÃ©vrier", "Mars", "Avril", "Mai", "Juin", "Juillet", "AoÃ»t"];
+export const TOUS_MOIS_COURTS = ["Sep", "Oct", "Nov", "Déc", "Jan", "Fév", "Mar", "Avr", "Mai", "Jun", "Jul", "Aoû"];
+export const TOUS_MOIS_LONGS = ["Septembre", "Octobre", "Novembre", "Décembre", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août"];
 export const MOIS_ANNEE = TOUS_MOIS_COURTS.slice(1, 10);
 export const MOIS_SALAIRE = TOUS_MOIS_LONGS.slice(1, 10);
 export const calcMoisAnnee = (debut = "Octobre") => {
@@ -38,34 +38,34 @@ export const getAnnee = () => localStorage.getItem("LC_annee") || "2025-2026";
 
 export const CLASSES_PRIMAIRE = [
   "Maternelle A", "Maternelle B",
-  "1Ã¨re AnnÃ©e A", "1Ã¨re AnnÃ©e B",
-  "2Ã¨me AnnÃ©e A", "2Ã¨me AnnÃ©e B",
-  "3Ã¨me AnnÃ©e A", "3Ã¨me AnnÃ©e B",
-  "4Ã¨me AnnÃ©e A", "4Ã¨me AnnÃ©e B",
-  "5Ã¨me AnnÃ©e A", "5Ã¨me AnnÃ©e B",
-  "6Ã¨me AnnÃ©e A", "6Ã¨me AnnÃ©e B",
+  "1ère Année A", "1ère Année B",
+  "2ème Année A", "2ème Année B",
+  "3ème Année A", "3ème Année B",
+  "4ème Année A", "4ème Année B",
+  "5ème Année A", "5ème Année B",
+  "6ème Année A", "6ème Année B",
 ];
 export const CLASSES_COLLEGE = [
-  "7Ã¨me AnnÃ©e A", "7Ã¨me AnnÃ©e B",
-  "8Ã¨me AnnÃ©e A", "8Ã¨me AnnÃ©e B",
-  "9Ã¨me AnnÃ©e A", "9Ã¨me AnnÃ©e B",
-  "10Ã¨me AnnÃ©e A", "10Ã¨me AnnÃ©e B",
+  "7ème Année A", "7ème Année B",
+  "8ème Année A", "8ème Année B",
+  "9ème Année A", "9ème Année B",
+  "10ème Année A", "10ème Année B",
 ];
 export const CLASSES_LYCEE = [
-  "11Ã¨me AnnÃ©e A", "11Ã¨me AnnÃ©e B",
-  "12Ã¨me AnnÃ©e A", "12Ã¨me AnnÃ©e B",
+  "11ème Année A", "11ème Année B",
+  "12ème Année A", "12ème Année B",
   "Terminale A", "Terminale B",
 ];
 
 export const MATIERES_PRIMAIRE = [
-  "Calcul", "Ã‰criture", "Lecture", "Histoire", "GÃ©ographie",
-  "Ã‰ducation Civique et Morale", "RÃ©citation et Chant", "Langage",
-  "Sciences d'Observation", "Ã‰ducation Physique",
+  "Calcul", "Écriture", "Lecture", "Histoire", "Géographie",
+  "Éducation Civique et Morale", "Récitation et Chant", "Langage",
+  "Sciences d'Observation", "Éducation Physique",
 ].map((nom) => ({ nom, coefficient: 1 }));
 
 export const TOUTES_ANNEES = Array.from({ length: 30 }, (_, index) => `${2025 + index}-${2026 + index}`);
 export const MENSUALITE = { college: 150000, lycee: 150000, primaire: 120000 };
-export const initMens = () => MOIS_ANNEE.reduce((accumulator, mois) => ({ ...accumulator, [mois]: "ImpayÃ©" }), {});
+export const initMens = () => MOIS_ANNEE.reduce((accumulator, mois) => ({ ...accumulator, [mois]: "Impayé" }), {});
 
 export const getSectionForClasse = (classe = "") => {
   if (CLASSES_PRIMAIRE.includes(classe)) return "primaire";
@@ -152,24 +152,23 @@ export const peutModifierEleves = (role) => role === "comptable" || role === "ad
 export const peutModifier = (role) => role === "admin" || role === "direction";
 
 export const MODULES = [
-  { id: "superadmin_panel", label: "Super Admin", icon: "âš™ï¸", desc: "Gestion des Ã©coles" },
-  { id: "accueil", label: "Tableau de bord", icon: "ðŸ“ˆ", desc: "Vue d'ensemble" },
-  { id: "historique", label: "Historique", icon: "ðŸ“‹", desc: "Journal des actions" },
-  { id: "admin_panel", label: "Gestion AccÃ¨s", icon: "ðŸ”", desc: "Mots de passe" },
-  { id: "parametres", label: "ParamÃ¨tres", icon: "ðŸ«", desc: "IdentitÃ© de l'Ã©cole" },
-  { id: "fondation", label: "Fondation", icon: "ðŸ›ï¸", desc: "Gouvernance" },
-  { id: "compta", label: "ComptabilitÃ©", icon: "ðŸ“Š", desc: "Finances" },
-  { id: "primaire", label: "Dir. Primaire", icon: "ðŸŽ’", desc: "Primaire" },
-  { id: "secondaire", label: "Secondaire", icon: "ðŸ«", desc: "Bureau CollÃ¨ge" },
-  { id: "calendrier", label: "Calendrier", icon: "ðŸ“…", desc: "Ã‰vÃ©nements scolaires" },
-  { id: "examens", label: "Examens", icon: "ðŸ“", desc: "Planning & convocations" },
-  { id: "portail_enseignant", label: "Mon Espace", icon: "ðŸ‘¨â€ðŸ«", desc: "Portail enseignant" },
-  { id: "portail_parent", label: "Espace Parent", icon: "ðŸ‘¨â€ðŸ‘©â€ðŸ‘§", desc: "Suivi de mon enfant" },
-  { id: "messages", label: "Messages Parents", icon: "ðŸ’¬", desc: "Liaison Ã©cole-famille" },
+  { id: "superadmin_panel", label: "Super Admin", icon: "⚙️", desc: "Gestion des écoles" },
+  { id: "accueil", label: "Tableau de bord", icon: "📈", desc: "Vue d'ensemble" },
+  { id: "historique", label: "Historique", icon: "📋", desc: "Journal des actions" },
+  { id: "admin_panel", label: "Gestion Accès", icon: "🔐", desc: "Mots de passe" },
+  { id: "parametres", label: "Paramètres", icon: "🏫", desc: "Identité de l'école" },
+  { id: "fondation", label: "Fondation", icon: "🏛️", desc: "Gouvernance" },
+  { id: "compta", label: "Comptabilité", icon: "📊", desc: "Finances" },
+  { id: "primaire", label: "Dir. Primaire", icon: "🎒", desc: "Primaire" },
+  { id: "secondaire", label: "Secondaire", icon: "🏫", desc: "Bureau Collège" },
+  { id: "calendrier", label: "Calendrier", icon: "📅", desc: "Événements scolaires" },
+  { id: "examens", label: "Examens", icon: "📝", desc: "Planning & convocations" },
+  { id: "portail_enseignant", label: "Mon Espace", icon: "👨‍🏫", desc: "Portail enseignant" },
+  { id: "portail_parent", label: "Espace Parent", icon: "👨‍👩‍👧", desc: "Suivi de mon enfant" },
+  { id: "messages", label: "Messages Parents", icon: "💬", desc: "Liaison école-famille" },
 ];
 
 export const getModuleOptionsForRole = (role) => {
   const allowedModules = ACCES[role] || [];
   return MODULES.filter((module) => allowedModules.includes(module.id));
 };
-
