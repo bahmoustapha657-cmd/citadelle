@@ -6,6 +6,9 @@ import {
   getClassesForSection,
   getDefaultMensualiteForClasse,
   getSectionForClasse,
+  getTarifAutreValue,
+  getTarifMensuelTotal,
+  getTarifRevisionValue,
 } from "../src/constants.js";
 
 test("lycee classes resolve to the lycee section and default monthly fee", () => {
@@ -24,4 +27,12 @@ test("lycee matricules default to the L prefix", () => {
   } finally {
     globalThis.localStorage = previousLocalStorage;
   }
+});
+
+test("tarif helpers include revision in the monthly total and expose other fees", () => {
+  const tarif = { montant: 180000, revision: 20000, autre: 15000 };
+
+  assert.equal(getTarifRevisionValue(tarif), 20000);
+  assert.equal(getTarifAutreValue(tarif), 15000);
+  assert.equal(getTarifMensuelTotal(tarif, "Terminale A"), 200000);
 });

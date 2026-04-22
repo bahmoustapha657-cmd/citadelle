@@ -17,6 +17,9 @@ import {
   getClassesForSection,
   getDefaultMensualiteForClasse,
   getSectionLabelForClasse,
+  getTarifAutreValue,
+  getTarifMensuelTotal,
+  getTarifRevisionValue,
 } from "../constants";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
@@ -138,26 +141,32 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   const classesU=[...new Set(eleves.map(e=>e.classe))].filter(Boolean);
   const tousElevesScolarite=[...elevesC,...elevesL,...elevesP];
 
-  // Tarif par classe : cherche dans Firestore, sinon fallback MENSUALITE
-  const getTarif = (classe) => {
-    const t = tarifsClasses.find(t=>t.classe===classe);
-    if(t) return Number(t.montant)||0;
+  const getTarifConfig = (classe) => tarifsClasses.find((tarif) => tarif.classe === classe) || null;
+  // Tarif mensuel total = mensualite de base + frais de revision
+  const getTarif = (classe) => getTarifMensuelTotal(getTarifConfig(classe), classe);
+  const getTarifBase = (classe) => {
+    const tarif = getTarifConfig(classe);
+    if (tarif) return Number(tarif.montant || 0);
     return getDefaultMensualiteForClasse(classe);
   };
+  const getTarifRevision = (classe) => getTarifRevisionValue(getTarifConfig(classe));
+  const getTarifAutre = (classe) => getTarifAutreValue(getTarifConfig(classe));
   const getTarifIns = (classe) => {
-    const t = tarifsClasses.find(t=>t.classe===classe);
+    const t = getTarifConfig(classe);
     return Number(t?.inscription||0);
   };
   const getTarifReinsc = (classe) => {
-    const t = tarifsClasses.find(t=>t.classe===classe);
+    const t = getTarifConfig(classe);
     return Number(t?.reinscription||0);
   };
-  const saveTarif = async (classe, montant, inscription=null, reinscription=null) => {
-    const existing = tarifsClasses.find(t=>t.classe===classe);
+  const saveTarif = async (classe, montant, inscription=null, reinscription=null, revision=null, autre=null) => {
+    const existing = getTarifConfig(classe);
     const data = {
       montant:Number(montant)||0,
       ...(inscription!==null?{inscription:Number(inscription)||0}:{}),
-      ...(reinscription!==null?{reinscription:Number(reinscription)||0}:{})
+      ...(reinscription!==null?{reinscription:Number(reinscription)||0}:{}),
+      ...(revision!==null?{revision:Number(revision)||0}:{}),
+      ...(autre!==null?{autre:Number(autre)||0}:{})
     };
     if(existing) await modTarif(existing._id, data);
     else await ajTarif({classe, ...data});
@@ -1789,7 +1798,9 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
         <TarifsClasses
           tarifsClasses={tarifsClasses}
           saveTarif={saveTarif}
-          getTarif={getTarif}
+          getTarifBase={getTarifBase}
+          getTarifRevision={getTarifRevision}
+          getTarifAutre={getTarifAutre}
           getTarifIns={getTarifIns}
           getTarifReinsc={getTarifReinsc}
           canEdit={canEditEleves}

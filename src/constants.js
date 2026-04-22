@@ -88,6 +88,15 @@ export const getDefaultMensualiteForClasse = (classe = "") => {
   return MENSUALITE[section] ?? MENSUALITE.college;
 };
 
+export const getTarifRevisionValue = (tarif = {}) => Number(tarif?.revision || 0);
+
+export const getTarifAutreValue = (tarif = {}) => Number(tarif?.autre || 0);
+
+export const getTarifMensuelTotal = (tarif = null, classe = "") => {
+  const montantBase = tarif ? Number(tarif?.montant || 0) : getDefaultMensualiteForClasse(classe);
+  return montantBase + getTarifRevisionValue(tarif);
+};
+
 export const genererMatricule = (eleves, type, config = {}) => {
   const anneeShort = getAnnee().split("-")[0].slice(-2);
   const anneeFull = getAnnee().split("-")[0];

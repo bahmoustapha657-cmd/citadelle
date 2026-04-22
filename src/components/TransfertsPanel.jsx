@@ -1,7 +1,7 @@
 import React, { useState, useContext } from "react";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
-import { C, fmt, today } from "../constants";
+import { C, fmt, getTarifMensuelTotal, today } from "../constants";
 import { getAuthHeaders } from "../apiClient";
 import { imprimerCertificatRadiation, imprimerOrdreMutation } from "../reports";
 import { Badge, Btn, Card, Input, Modale, Stat, TD, THead, TR, Vide } from "./ui";
@@ -26,7 +26,7 @@ function TransfertsPanel({userRole, annee, setTab}) {
 
   const getTarif = (classe) => {
     const t = tarifsClasses.find(t=>t.classe===classe);
-    return Number(t?.montant||0);
+    return getTarifMensuelTotal(t, classe);
   };
 
   const getSolde = (eleve) => {
