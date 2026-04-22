@@ -1,7 +1,23 @@
 import React, { useContext, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { doc, updateDoc } from "firebase/firestore";
-import { C, TOUS_MOIS_LONGS, getAnnee, CLASSES_PRIMAIRE, CLASSES_COLLEGE, CLASSES_LYCEE, MENSUALITE, initMens, genererMatricule, fmt, fmtN, peutModifierEleves, peutModifier } from "../constants";
+import {
+  C,
+  TOUS_MOIS_LONGS,
+  getAnnee,
+  CLASSES_PRIMAIRE,
+  CLASSES_COLLEGE,
+  CLASSES_LYCEE,
+  initMens,
+  genererMatricule,
+  fmt,
+  fmtN,
+  peutModifierEleves,
+  peutModifier,
+  getClassesForSection,
+  getDefaultMensualiteForClasse,
+  getSectionLabelForClasse,
+} from "../constants";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
 import { db } from "../firebaseDb";
@@ -12,7 +28,6 @@ import { Fondation } from "./Fondation";
 import { TarifsClasses } from "./TarifsClasses";
 import { CameraCapture } from "./CameraCapture";
 import { TransfertsPanel } from "./TransfertsPanel";
-import { Secondaire } from "./Secondaire";
 
 const loadXLSX = () => import("xlsx");
 
@@ -32,9 +47,11 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   const {items:versements,chargement:cV,ajouter:ajV,modifier:modV,supprimer:supV}=useFirestore("versements");
   const {items:elevesC,chargement:cEC,ajouter:ajEC,modifier:modEC_full,supprimer:supEC,modifierChamp:modEC}=useFirestore("elevesCollege");
   const {items:elevesP,chargement:cEP,ajouter:ajEP,modifier:modEP_full,supprimer:supEP,modifierChamp:modEP}=useFirestore("elevesPrimaire");
+  const {items:elevesL,chargement:cEL,ajouter:ajEL,modifier:modEL_full,supprimer:supEL,modifierChamp:modEL}=useFirestore("elevesLycee");
   const {items:tarifsClasses,ajouter:ajTarif,modifier:modTarif}=useFirestore("tarifs");
   const {items:classesCollegeList,ajouter:ajClasseCollege}=useFirestore("classesCollege");
   const {items:classesPrimaireList,ajouter:ajClassePrimaire}=useFirestore("classesPrimaire");
+  const {items:classesLyceeList,ajouter:ajClasseLycee}=useFirestore("classesLycee");
   // Pour auto-génération salaires
   const {items:ensCollege}=useFirestore("ensCollege");
   const {items:ensLycee}=useFirestore("ensLycee");
@@ -73,8 +90,11 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
     e.target.value="";
   };
 
-  const classesPrimaire=CLASSES_PRIMAIRE;
-  const classesCollege=CLASSES_COLLEGE;
+  const elevesParNiveau = { college: elevesC, lycee: elevesL, primaire: elevesP };
+  const modChampParNiveau = { college: modEC, lycee: modEL, primaire: modEP };
+  const ajoutParNiveau = { college: ajEC, lycee: ajEL, primaire: ajEP };
+  const suppressionParNiveau = { college: supEC, lycee: supEL, primaire: supEP };
+  const modifParNiveau = { college: modEC_full, lycee: modEL_full, primaire: modEP_full };
   const sortAlpha = arr => {
     const tri = schoolInfo.triEleves || "prenom_nom";
     return [...arr].sort((a,b)=>{
@@ -88,35 +108,41 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
       return sa.localeCompare(sb,"fr",{sensitivity:"base"});
     });
   };
-  const elevesEnrol=sortAlpha(niveauEnrol==="college"?elevesC:elevesP);
-  const ajEnrol=niveauEnrol==="college"?ajEC:ajEP;
+  const elevesEnrol=sortAlpha(elevesParNiveau[niveauEnrol] || []);
+  const ajEnrol=ajoutParNiveau[niveauEnrol] || ajEC;
 
   // Crée la classe dans Firestore si elle n'existe pas encore
   const ensureClasse = async (nom, niveau, dejaCreees) => {
     if(!nom) return;
-    const list = niveau==="college" ? classesCollegeList : classesPrimaireList;
-    const aj   = niveau==="college" ? ajClasseCollege    : ajClassePrimaire;
+    const classesConfig = niveau==="primaire"
+      ? { list: classesPrimaireList, aj: ajClassePrimaire }
+      : niveau==="lycee"
+        ? { list: classesLyceeList, aj: ajClasseLycee }
+        : { list: classesCollegeList, aj: ajClasseCollege };
+    const list = classesConfig.list;
+    const aj = classesConfig.aj;
     if(!list.find(c=>c.nom===nom) && !(dejaCreees&&dejaCreees.has(nom))) {
       await aj({nom, effectif:0});
       if(dejaCreees) dejaCreees.add(nom);
     }
   };
-  const supEnrol=niveauEnrol==="college"?supEC:supEP;
-  const modEnrol=niveauEnrol==="college"?modEC_full:modEP_full;
+  const supEnrol=suppressionParNiveau[niveauEnrol] || supEC;
+  const modEnrol=modifParNiveau[niveauEnrol] || modEC_full;
 
   const totR=recettes.reduce((s,x)=>s+Number(x.montant),0);
   const totD=depenses.reduce((s,x)=>s+Number(x.montant),0);
   const totVers=versements.reduce((s,x)=>s+Number(x.montant),0);
 
-  const eleves=niveau==="college"?elevesC:elevesP;
-  const modEleves=niveau==="college"?modEC:modEP;
+  const eleves=elevesParNiveau[niveau] || elevesC;
+  const modEleves=modChampParNiveau[niveau] || modEC;
   const classesU=[...new Set(eleves.map(e=>e.classe))].filter(Boolean);
+  const tousElevesScolarite=[...elevesC,...elevesL,...elevesP];
 
   // Tarif par classe : cherche dans Firestore, sinon fallback MENSUALITE
   const getTarif = (classe) => {
     const t = tarifsClasses.find(t=>t.classe===classe);
     if(t) return Number(t.montant)||0;
-    return CLASSES_PRIMAIRE.includes(classe) ? MENSUALITE.primaire : MENSUALITE.college;
+    return getDefaultMensualiteForClasse(classe);
   };
   const getTarifIns = (classe) => {
     const t = tarifsClasses.find(t=>t.classe===classe);
@@ -358,7 +384,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
     {id:"salaires",label:`Salaires`},
     {id:"personnel",label:`Personnel (${personnel.length})`},
     {id:"fondation",label:`Versements (${versements.length})`},
-    {id:"enrolment",label:`Élèves (${elevesC.length+elevesP.length})`},
+    {id:"enrolment",label:`Élèves (${elevesC.length+elevesL.length+elevesP.length})`},
     {id:"mens",label:"Mensualités"},
     {id:"transferts",label:"🔄 Transferts"}];
 
@@ -377,7 +403,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
       {tab==="bilan"&&<div>
         {/* Calcul impayés */}
         {(()=>{
-          const tousEleves=[...elevesC,...elevesP];
+          const tousEleves=tousElevesScolarite;
           const totalDu=tousEleves.reduce((s,e)=>s+moisAnnee.length*getTarif(e.classe),0);
           const totalPercu=tousEleves.reduce((s,e)=>{
             const pays=moisAnnee.filter(m=>(e.mens||{})[m]==="Payé").length;
@@ -478,7 +504,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
               <Card><div style={{padding:"14px 16px"}}>
                 <p style={{margin:"0 0 12px",fontWeight:800,fontSize:13,color:C.blueDark}}>Mensualités — état des paiements</p>
                 {(()=>{
-                  const tousEleves=[...elevesC,...elevesP];
+                  const tousEleves=tousElevesScolarite;
                   const totalMois=tousEleves.reduce(s=>s+moisAnnee.length,0);
                   const totalPayes=tousEleves.reduce((s,e)=>s+moisAnnee.filter(m=>(e.mens||{})[m]==="Payé").length,0);
                   const totalImpay=totalMois-totalPayes;
@@ -1140,6 +1166,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
           <select value={niveauEnrol} onChange={e=>setNiveauEnrol(e.target.value)}
             style={{border:"1px solid #b0c4d8",borderRadius:7,padding:"6px 10px",fontSize:12,background:"#fff",color:C.blueDark,fontWeight:600}}>
             <option value="college">Collège ({elevesC.length} élèves)</option>
+            <option value="lycee">Lycée ({elevesL.length} élèves)</option>
             <option value="primaire">Primaire ({elevesP.length} élèves)</option>
           </select>
           <Btn sm v={afficherDeparts?"blue":"ghost"} onClick={()=>setAfficherDeparts(d=>!d)}>
@@ -1167,7 +1194,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
           🔒 Seul le <strong>Comptable</strong> peut enrôler ou supprimer des élèves.
         </div>
         {!afficherDeparts&&(
-          (cEC||cEP)?<Chargement/>:elevesEnrol.length===0?<Vide icone="🎓" msg="Aucun élève enregistré"/>
+          (cEC||cEL||cEP)?<Chargement/>:elevesEnrol.length===0?<Vide icone="🎓" msg="Aucun élève enregistré"/>
           :<div style={{overflowX:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",minWidth:900}}>
               <THead cols={["Matricule","IEN","Nom & Prénom","Classe","Sexe","Filiation","Tuteur","Contact","Domicile","Statut","Actions"]}/>
@@ -1282,7 +1309,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
               <select value={form.classe||""} onChange={chg("classe")}
                 style={{width:"100%",border:"1px solid #b0c4d8",borderRadius:7,padding:"7px 10px",fontSize:13,background:"#fff",boxSizing:"border-box",outline:"none"}}>
                 <option value="">— Sélectionner —</option>
-                {(niveauEnrol==="college"?classesCollege:classesPrimaire).map(c=><option key={c}>{c}</option>)}
+                {getClassesForSection(niveauEnrol).map(c=><option key={c}>{c}</option>)}
               </select>
             </Champ>
             <Selec label="Sexe" value={form.sexe||"M"} onChange={chg("sexe")}>
@@ -1347,7 +1374,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                 const r={...form, photo:photoUrl, mens:form.mens||initMens()};
                 // ── Vérification des doublons avant enrôlement ──
                 if(modal==="add_enrol") {
-                  const tousEleves2=[...elevesC,...elevesP];
+                  const tousEleves2=tousElevesScolarite;
                   const doublonIEN = r.ien && tousEleves2.some(e=>e.ien && e.ien===r.ien);
                   const doublonNom = tousEleves2.some(e=>
                     e.nom?.trim().toLowerCase()===r.nom?.trim().toLowerCase() &&
@@ -1404,7 +1431,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                 <select value={form.classe||""} onChange={chg("classe")}
                   style={{width:"100%",border:"1px solid #b0c4d8",borderRadius:7,padding:"7px 10px",fontSize:13,background:"#fff",boxSizing:"border-box",outline:"none"}}>
                   <option value="">— Sélectionner —</option>
-                  {(niveauEnrol==="college"?classesCollege:classesPrimaire).map(c=><option key={c}>{c}</option>)}
+              {getClassesForSection(niveauEnrol).map(c=><option key={c}>{c}</option>)}
                 </select>
               </Champ>
               <Selec label="Sexe" value={form.sexe||"M"} onChange={chg("sexe")}>
@@ -1425,7 +1452,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
               if(!form.nom||!form.prenom){toast("Nom et prénom obligatoires","warning");return false;}
               if(!form.classe){toast("Classe obligatoire","warning");return false;}
               const r={...form,statut:"Actif",mens:initMens()};
-              const tousE2=[...elevesC,...elevesP];
+              const tousE2=tousElevesScolarite;
               const doublonNom=tousE2.some(e=>e.nom?.trim().toLowerCase()===r.nom?.trim().toLowerCase()&&e.prenom?.trim().toLowerCase()===r.prenom?.trim().toLowerCase()&&e.dateNaissance&&e.dateNaissance===r.dateNaissance);
               if(doublonNom&&!window.confirm("⚠️ Un élève portant le même nom et la même date de naissance existe déjà.\n\nVoulez-vous quand même créer cette fiche ?"))return false;
               ajEnrol(r);
@@ -1554,7 +1581,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                 // Classes connues pour avertissement (pas bloquant)
                 const classesConnues=[...CLASSES_COLLEGE,...CLASSES_PRIMAIRE,...CLASSES_LYCEE].map(c=>c.toLowerCase());
                 // Classes déjà utilisées dans l'école (acceptées sans avertissement)
-                const classesEcole=[...new Set([...elevesC,...elevesP].map(e=>e.classe||"").filter(Boolean))].map(c=>c.toLowerCase());
+                const classesEcole=[...new Set(tousElevesScolarite.map(e=>e.classe||"").filter(Boolean))].map(c=>c.toLowerCase());
 
                 const rows=allRows.slice(headerRowIdx+1).filter(r=>r.some(c=>String(c||"").trim()));
                 const lignes=rows.map((r,i)=>{
@@ -1641,7 +1668,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
             <select value={classeDefautImport} onChange={e=>setClasseDefautImport(e.target.value)}
               style={{border:"1.5px solid #fbbf24",borderRadius:7,padding:"6px 10px",fontSize:12,background:"#fff",fontWeight:700,color:"#0A1628"}}>
               <option value="">— Classe du fichier —</option>
-              {(niveauEnrol==="primaire"?classesPrimaire:classesCollege).map(c=><option key={c} value={c}>{c}</option>)}
+              {getClassesForSection(niveauEnrol).map(c=><option key={c} value={c}>{c}</option>)}
             </select>
           </div>
 
@@ -1721,7 +1748,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
             {importEnrolPreview?.valides.length>0&&<Btn v="vert" disabled={importEnrolEnCours} onClick={async()=>{
               setImportEnrolEnCours(true);
               let count=0;
-              const existants=[...elevesC,...elevesP];
+              const existants=tousElevesScolarite;
               // Accumule les matricules générés dans ce lot pour éviter les doublons
               const matsGeneres=[];
               const classesImportCreees=new Set();
@@ -1734,7 +1761,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                 if(doublon) continue;
                 const mat=genererMatricule([...elevesEnrol,...matsGeneres],niveauEnrol,schoolInfo);
                 matsGeneres.push({matricule:mat});
-                const ajFn=niveauEnrol==="primaire"?ajEP:ajEC;
+                const ajFn=ajoutParNiveau[niveauEnrol] || ajEC;
                 await ajFn({
                   nom:l.nom,prenom:l.prenom,classe:l.classe,sexe:l.sexe,
                   dateNaissance:l.dateNaissance,lieuNaissance:l.lieuNaissance,ien:l.ien,
@@ -1785,7 +1812,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                   ["Matricule","Nom","Prénom","Classe","Niveau","Mois impayés","Tuteur","Contact"],
                   elevesCritiques.map(e=>{
                     const mens=e.mens||{};
-                    const niv=elevesC.find(ec=>ec._id===e._id)?"Collège":"Primaire";
+                    const niv=getSectionLabelForClasse(e.classe);
                     const nbImp=moisAnnee.filter(m=>mens[m]!=="Payé").length;
   return [e.matricule||"",e.nom,e.prenom,e.classe,niv,nbImp,e.tuteur||"",e.contactTuteur||""];
                   })
@@ -1810,6 +1837,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
           <select value={niveau} onChange={e=>{setNiveau(e.target.value);setFiltClasse("all");}}
             style={{border:"1px solid #b0c4d8",borderRadius:7,padding:"6px 10px",fontSize:12,background:"#fff",color:C.blueDark,fontWeight:600}}>
             <option value="college">Collège</option>
+            <option value="lycee">Lycée</option>
             <option value="primaire">Primaire</option>
           </select>
           {classesU.length>0&&<select value={filtClasse} onChange={e=>setFiltClasse(e.target.value)}

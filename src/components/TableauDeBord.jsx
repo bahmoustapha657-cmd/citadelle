@@ -12,6 +12,7 @@ function TableauDeBord({annee}) {
   const {schoolId, schoolInfo, moisAnnee, moisSalaire, planInfo} = useContext(SchoolContext);
   const {items:elevesC, chargement:cEC} = useFirestore("elevesCollege");
   const {items:elevesP, chargement:cEP} = useFirestore("elevesPrimaire");
+  const {items:elevesL, chargement:cEL} = useFirestore("elevesLycee");
   const {items:ensC}    = useFirestore("ensCollege");
   const {items:ensL}    = useFirestore("ensLycee");
   const {items:ensP}    = useFirestore("ensPrimaire");
@@ -21,6 +22,7 @@ function TableauDeBord({annee}) {
   const {items:evenements} = useFirestore("evenements");
   const {items:absences}= useFirestore("absencesCollege");
   const {items:absP}    = useFirestore("absencesPrimaire");
+  const {items:absL}    = useFirestore("elevesLycee_absences");
   const [moisRapport,setMoisRapport] = useState(moisSalaire[moisSalaire.length-1]||"");
   const [demandeOuverte, setDemandeOuverte] = useState(false);
   const [demandePlan, setDemandePlan] = useState("starter");
@@ -53,9 +55,9 @@ function TableauDeBord({annee}) {
 
   const c1 = schoolInfo.couleur1 || C.blue;
   const c2 = schoolInfo.couleur2 || C.green;
-  const enChargement = cEC || cEP;
+  const enChargement = cEC || cEP || cEL;
 
-  const totalEleves = elevesC.filter(e=>e.statut==="Actif").length + elevesP.filter(e=>e.statut==="Actif").length;
+  const totalEleves = elevesC.filter(e=>e.statut==="Actif").length + elevesL.filter(e=>e.statut==="Actif").length + elevesP.filter(e=>e.statut==="Actif").length;
   const totalEns    = ensC.length + ensL.length + ensP.length;
   const moisActuel  = moisSalaire[moisSalaire.length-1] || "";
 
@@ -69,8 +71,9 @@ function TableauDeBord({annee}) {
     return total > 0 ? Math.round(payes/total*100) : 0;
   };
   const tauxPayC = calcTauxPaiement(elevesC);
+  const tauxPayL = calcTauxPaiement(elevesL);
   const tauxPayP = calcTauxPaiement(elevesP);
-  const tauxPay  = Math.round((tauxPayC + tauxPayP) / 2);
+  const tauxPay  = calcTauxPaiement([...elevesC, ...elevesL, ...elevesP]);
 
   // Finances
   const totalRec  = recettes.reduce((s,r)=>s+Number(r.montant||0),0);
@@ -93,7 +96,7 @@ function TableauDeBord({annee}) {
   const evAVenir = evenements.filter(e=>e.date && e.date >= today).sort((a,b)=>a.date>b.date?1:-1).slice(0,4);
 
   // Absences ce mois
-  const totalAbs = absences.length + absP.length;
+  const totalAbs = absences.length + absP.length + absL.length;
 
   const KPI = ({label, value, sub, icon, color="white", trend}) => (
     <div style={{background:c1,borderRadius:14,padding:"18px 20px",position:"relative",overflow:"hidden"}}>
@@ -128,8 +131,8 @@ function TableauDeBord({annee}) {
           </select>
           <Btn v="primary" sm onClick={()=>genererRapportMensuel(
             moisRapport,
-            [...elevesC,...elevesP],
-            [...absences,...absP],
+            [...elevesC,...elevesL,...elevesP],
+            [...absences,...absL,...absP],
             annee||getAnnee(),
             schoolInfo,
             moisAnnee
@@ -139,7 +142,7 @@ function TableauDeBord({annee}) {
 
       {/* KPIs principaux */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12,marginBottom:24}}>
-        <KPI label="Élèves actifs"  value={totalEleves} icon="🎓" sub={`${elevesC.filter(e=>e.statut==="Actif").length} collège · ${elevesP.filter(e=>e.statut==="Actif").length} primaire`}/>
+        <KPI label="Élèves actifs"  value={totalEleves} icon="🎓" sub={`${elevesC.filter(e=>e.statut==="Actif").length} collège · ${elevesL.filter(e=>e.statut==="Actif").length} lycée · ${elevesP.filter(e=>e.statut==="Actif").length} primaire`}/>
         <KPI label="Enseignants"    value={totalEns}    icon="👨‍🏫" sub={`${ensC.length}C · ${ensL.length}L · ${ensP.length}P`}/>
         <KPI label="Taux paiement"  value={`${tauxPay}%`} icon="💳" color="green" sub="Mensualités toutes sections"/>
         <KPI label="Solde tréso."   value={fmt(solde)} icon="💰" color={solde>=0?"green":"white"} sub={`Rec: ${fmt(totalRec)} / Dép: ${fmt(totalDep)}`}/>
@@ -155,6 +158,7 @@ function TableauDeBord({annee}) {
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={[
               {section:"Collège",Actifs:elevesC.filter(e=>e.statut==="Actif").length,Inactifs:elevesC.filter(e=>e.statut!=="Actif").length},
+              {section:"Lycée",Actifs:elevesL.filter(e=>e.statut==="Actif").length,Inactifs:elevesL.filter(e=>e.statut!=="Actif").length},
               {section:"Primaire",Actifs:elevesP.filter(e=>e.statut==="Actif").length,Inactifs:elevesP.filter(e=>e.statut!=="Actif").length},
             ]}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e0ebf8"/>
@@ -171,7 +175,7 @@ function TableauDeBord({annee}) {
         <Card><div style={{padding:"16px 18px"}}>
           <p style={{margin:"0 0 14px",fontWeight:800,fontSize:13,color:c1}}>Taux de paiement</p>
           <div style={{display:"flex",flexDirection:"column",gap:16,marginTop:8}}>
-            {[["Collège",tauxPayC],["Primaire",tauxPayP]].map(([label,taux])=>(
+            {[["Collège",tauxPayC],["Lycée",tauxPayL],["Primaire",tauxPayP]].map(([label,taux])=>(
               <div key={label}>
                 <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
                   <span style={{fontSize:12,fontWeight:700,color:c1}}>{label}</span>
@@ -193,11 +197,11 @@ function TableauDeBord({annee}) {
       {/* ── Tendances annuelles ── */}
       {(()=>{
         // Taux paiement mois par mois pour tous les élèves
-        const tousEleves = [...elevesC,...elevesP];
+        const tousEleves = [...elevesC,...elevesL,...elevesP];
         const dataTendance = moisAnnee.map(m=>{
           const payesMois = tousEleves.filter(e=>(e.mens||{})[m]==="Payé").length;
           const taux = tousEleves.length ? Math.round(payesMois/tousEleves.length*100) : 0;
-          const absencesMois = [...absences,...absP].filter(a=>{
+          const absencesMois = [...absences,...absP,...absL].filter(a=>{
             try { return new Date(a.date).toLocaleDateString("fr-FR",{month:"long"}).toLowerCase()===m.toLowerCase(); } catch { return false; }
           }).length;
           return { mois:m.slice(0,3), taux, absences:absencesMois, payes:payesMois };
