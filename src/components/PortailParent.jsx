@@ -1,6 +1,6 @@
 import React, { useContext, useState } from "react";
 import { PolarAngleAxis, PolarGrid, Radar, RadarChart, ResponsiveContainer, Tooltip } from "recharts";
-import { C } from "../constants";
+import { C, fmt, getTarifAutreValue, getTarifMensuelTotal } from "../constants";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
 import { imprimerBulletin } from "../reports";
@@ -24,6 +24,7 @@ function PortailParent({utilisateur, deconnecter, annee, schoolInfo}) {
   const {items:notes}    = useFirestore(cleNotes);
   const {items:eleves}   = useFirestore(cleEleves);
   const {items:absences} = useFirestore(cleAbs);
+  const {items:tarifsClasses} = useFirestore("tarifs");
   const {items:msgs, ajouter:envoyerMsg} = useFirestore("messages");
   const {items:annonces} = useFirestore("annonces");
 
@@ -59,6 +60,12 @@ function PortailParent({utilisateur, deconnecter, annee, schoolInfo}) {
   };
 
   const eleveCourant = mensEleve.find(e=>e._id===eleveId)||{};
+  const tarifEleve = tarifsClasses.find(t=>t.classe===eleveCourant.classe) || null;
+  const montantMensuel = getTarifMensuelTotal(tarifEleve, eleveCourant.classe);
+  const montantAutre = getTarifAutreValue(tarifEleve);
+  const montantInscription = eleveCourant.typeInscription==="Réinscription"
+    ? Number(tarifEleve?.reinscription||0)
+    : Number(tarifEleve?.inscription||0);
   const moisAnneeCtx = useContext(SchoolContext).moisAnnee;
 
   // Blocage accès en cas d'impayé
@@ -340,13 +347,35 @@ function PortailParent({utilisateur, deconnecter, annee, schoolInfo}) {
 
         {/* ── PAIEMENTS ── */}
         {tab==="paiements"&&<>
-          <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:900,color:c1}}>Suivi des mensualités</h2>
+          <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:900,color:c1}}>Suivi des paiements</h2>
           {(()=>{
             const mens = eleveCourant.mens||{};
             const mensDates = eleveCourant.mensDates||{};
             const moisList = moisAnneeCtx.length ? moisAnneeCtx : Object.keys(mens);
             const nbPayes = moisList.filter(m=>mens[m]==="Payé").length;
             const nbImp   = moisList.filter(m=>mens[m]!=="Payé").length;
+            const fraisAnnexes = [
+              {
+                id:"inscription",
+                label:eleveCourant.typeInscription==="Réinscription"?"Réinscription":"Inscription",
+                montant:montantInscription,
+                paye:!!eleveCourant.inscriptionPayee,
+                date:eleveCourant.inscriptionDate||"",
+                couleur:eleveCourant.inscriptionPayee?"#dbeafe":"#fee2e2",
+                bordure:eleveCourant.inscriptionPayee?"#93c5fd":"#fca5a5",
+                texte:eleveCourant.inscriptionPayee?"#1d4ed8":"#b91c1c",
+              },
+              {
+                id:"autre",
+                label:"Autre frais",
+                montant:montantAutre,
+                paye:!!eleveCourant.autrePayee,
+                date:eleveCourant.autreDate||"",
+                couleur:eleveCourant.autrePayee?"#e2e8f0":"#fee2e2",
+                bordure:eleveCourant.autrePayee?"#94a3b8":"#fca5a5",
+                texte:eleveCourant.autrePayee?"#334155":"#b91c1c",
+              },
+            ].filter((frais)=>frais.montant>0);
             return (
               <>
                 <div style={{display:"flex",gap:12,marginBottom:20,flexWrap:"wrap"}}>
@@ -362,7 +391,25 @@ function PortailParent({utilisateur, deconnecter, annee, schoolInfo}) {
                     <div style={{fontWeight:900,fontSize:24,color:c2}}>{moisList.length?Math.round(nbPayes/moisList.length*100):0}%</div>
                     <div style={{fontSize:11,color:"#94a3b8",marginTop:2}}>Taux</div>
                   </div>
+                  <div style={{padding:"14px 20px",background:"#eff6ff",borderRadius:12,textAlign:"center",minWidth:150}}>
+                    <div style={{fontWeight:900,fontSize:20,color:"#1d4ed8"}}>{fmt(montantMensuel)}</div>
+                    <div style={{fontSize:11,color:"#94a3b8",marginTop:2}}>Mensualité</div>
+                  </div>
                 </div>
+                {fraisAnnexes.length>0&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(210px,1fr))",gap:10,marginBottom:18}}>
+                  {fraisAnnexes.map((frais)=>(
+                    <div key={frais.id} style={{padding:"14px 16px",borderRadius:14,background:frais.couleur,border:`1px solid ${frais.bordure}`}}>
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
+                        <strong style={{fontSize:13,color:frais.texte}}>{frais.label}</strong>
+                        <Badge color={frais.paye?"green":"red"}>{frais.paye?"Payé":"Impayé"}</Badge>
+                      </div>
+                      <div style={{fontSize:20,fontWeight:900,color:frais.texte,marginTop:10}}>{fmt(frais.montant)}</div>
+                      <div style={{fontSize:11,color:"#64748b",marginTop:4}}>
+                        {frais.paye&&frais.date?`Réglé le ${frais.date}`:"En attente de règlement"}
+                      </div>
+                    </div>
+                  ))}
+                </div>}
                 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))",gap:8}}>
                   {moisList.map(m=>{
                     const paye = mens[m]==="Payé";
@@ -381,7 +428,7 @@ function PortailParent({utilisateur, deconnecter, annee, schoolInfo}) {
                     );
                   })}
                 </div>
-                {moisList.length===0&&<Vide icone="💳" msg="Aucune information de paiement"/>}
+                {moisList.length===0&&fraisAnnexes.length===0&&<Vide icone="💳" msg="Aucune information de paiement"/>}
               </>
             );
           })()}

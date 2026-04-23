@@ -1,5 +1,5 @@
 // eslint-disable-next-line no-unused-vars
-import { MOIS_ANNEE, fmt, fmtN, getAnnee, today } from "./constants";
+import { MOIS_ANNEE, fmt, fmtN, getAnnee, today } from "./constants.js";
 
 const loadXLSX = () => import("xlsx");
 const loadQRCode = async () => (await import("qrcode")).default;
@@ -27,10 +27,22 @@ export const enteteDoc = (si, logoUrl) => `
   </div>
 </div>`;
 
-export const imprimerRecu = (eleve, montantUnit, schoolInfo={}, moisAnnee=MOIS_ANNEE, fraisIns=0) => {
+export const getRecuTotals = (eleve, montantUnit, moisAnnee=MOIS_ANNEE, fraisAnnexes={}) => {
+  const mens = eleve.mens||{};
+  const moisPayes = moisAnnee.filter(m=>mens[m]==="Payé");
+  const fraisIns = Number(fraisAnnexes?.inscription||0);
+  const fraisAutre = Number(fraisAnnexes?.autre||0);
+  const totalMensualites = moisPayes.length*montantUnit;
+  const totalGeneral = totalMensualites
+    + (eleve.inscriptionPayee&&fraisIns>0?fraisIns:0)
+    + (eleve.autrePayee&&fraisAutre>0?fraisAutre:0);
+  return { moisPayes, fraisIns, fraisAutre, totalMensualites, totalGeneral };
+};
+
+export const imprimerRecu = (eleve, montantUnit, schoolInfo={}, moisAnnee=MOIS_ANNEE, fraisAnnexes={}) => {
   const mens = eleve.mens||{};
   const mensDates = eleve.mensDates||{};
-  const moisPayes = moisAnnee.filter(m=>mens[m]==="Payé");
+  const {moisPayes, fraisIns, fraisAutre, totalMensualites, totalGeneral} = getRecuTotals(eleve, montantUnit, moisAnnee, fraisAnnexes);
   const w = window.open("","_blank");
 
   // En-tête compacte pour les reçus (logo + infos en ligne) — sans doublon type/nom
@@ -81,8 +93,13 @@ export const imprimerRecu = (eleve, montantUnit, schoolInfo={}, moisAnnee=MOIS_A
       ${eleve.typeInscription==="Réinscription"?"Réinscription":"Inscription"} : <strong>${fmt(fraisIns)}</strong>
       <span style="font-weight:400;margin-left:4px">✓ Payée</span>
     </div>`:""}
-    <div class="total">Mensualités versées : ${fmt(moisPayes.length*montantUnit)} <span style="font-weight:400;font-size:9px">(${moisPayes.length}/${moisAnnee.length} mois)</span></div>
-    ${eleve.inscriptionPayee&&fraisIns>0?`<div class="total" style="background:#e0f2fe;border-color:#38bdf8">Total général : <strong>${fmt(moisPayes.length*montantUnit+fraisIns)}</strong></div>`:""}
+    ${eleve.autrePayee&&fraisAutre>0?`
+    <div class="total" style="font-size:9px;padding:4px 8px;background:#f8fafc;border-color:#94a3b8">
+      Autre frais : <strong>${fmt(fraisAutre)}</strong>
+      <span style="font-weight:400;margin-left:4px">✓ Payé</span>
+    </div>`:""}
+    <div class="total">Mensualités versées : ${fmt(totalMensualites)} <span style="font-weight:400;font-size:9px">(${moisPayes.length}/${moisAnnee.length} mois)</span></div>
+    <div class="total" style="background:#e0f2fe;border-color:#38bdf8">Total général : <strong>${fmt(totalGeneral)}</strong></div>
     <div class="sigs">
       <div class="sig">Le/La Comptable<br/><br/><br/>Signature &amp; cachet</div>
       <div class="sig">Le/La Payant(e)<br/><br/><br/>Signature</div>
@@ -1081,5 +1098,3 @@ export const imprimerLivret = (livret, schoolInfo={}) => {
   </body></html>`);
   w.document.close();
 };
-
-
