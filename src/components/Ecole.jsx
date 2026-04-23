@@ -470,19 +470,20 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
             const res = await fetch("/api/account-manage",{
               method:"POST",
               headers,
-              body:JSON.stringify({
-                action:"create",
-                schoolId,
-                login:formC.login.trim().toLowerCase(),
-                mdp:formC.mdp,
-                role:"enseignant",
-                label:"Enseignant",
-                nom:nomComplet,
-                enseignantNom:nomComplet,
-                section:sectionEns,
-                matiere:ensCompte.matiere||"",
-                statut:"Actif",
-              }),
+                body:JSON.stringify({
+                  action:"create",
+                  schoolId,
+                  login:formC.login.trim().toLowerCase(),
+                  mdp:formC.mdp,
+                  role:"enseignant",
+                  label:"Enseignant",
+                  nom:nomComplet,
+                  enseignantId:ensCompte._id,
+                  enseignantNom:nomComplet,
+                  section:sectionEns,
+                  matiere:ensCompte.matiere||"",
+                  statut:"Actif",
+                }),
             });
             const data = await res.json().catch(()=>({}));
             if(!res.ok||!data.ok) throw new Error(data.error||"Création du compte impossible.");

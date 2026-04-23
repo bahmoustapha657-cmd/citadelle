@@ -3,6 +3,7 @@ import { getFirestore } from "firebase-admin/firestore";
 import bcrypt from "bcryptjs";
 import { ROLE_ORDER, getRoleSettingsMap } from "../shared/role-config.js";
 import { generateSecurePassword } from "./_lib/passwords.js";
+import { findLogicalAccountConflict } from "./_lib/account-conflicts.js";
 import { initAdmin } from "./_lib/firebase-admin.js";
 import {
   applyCors,
@@ -65,9 +66,21 @@ function sanitizeAccountPayload(body = {}) {
     eleveClasse: body.eleveClasse || null,
     section: body.section || null,
     matiere: body.matiere || null,
+    enseignantId: body.enseignantId || null,
     enseignantNom: body.enseignantNom || null,
     statut: body.statut || "Actif",
   };
+}
+
+async function findAccountsByRole({ db, schoolId, role }) {
+  const snap = await db
+    .collection("ecoles")
+    .doc(schoolId)
+    .collection("comptes")
+    .where("role", "==", role)
+    .get();
+
+  return snap.docs.map((doc) => ({ _id: doc.id, ...doc.data() }));
 }
 
 async function syncUserProfile({ db, uid, schoolId, login, role, nom, label, email, compteDocId, premiereCo, statut = "Actif" }) {
@@ -149,6 +162,17 @@ export default async function handler(req, res) {
       }
 
       const accountFields = sanitizeAccountPayload({ ...req.body, role, login: normalizedLogin });
+      const logicalAccounts = ["parent", "enseignant"].includes(role)
+        ? await findAccountsByRole({ db, schoolId: normalizedSchoolId, role })
+        : [];
+      const logicalConflict = findLogicalAccountConflict(logicalAccounts, {
+        role,
+        ...accountFields,
+      });
+      if (logicalConflict) {
+        return res.status(409).json({ error: logicalConflict.error });
+      }
+
       const active = accountFields.statut !== "Inactif";
       const mdpHash = await bcrypt.hash(mdp, 10);
       const createdAt = Date.now();
