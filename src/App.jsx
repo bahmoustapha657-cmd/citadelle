@@ -801,7 +801,7 @@ export default function App() {
                     <p style={{margin:0,fontSize:13,fontWeight:800,color:"#0f172a"}}>{utilisateur.nom}</p>
                     <p style={{margin:"2px 0 0",fontSize:11,color:"#64748b"}}>{utilisateurLabel} · {schoolInfo.nom}</p>
                   </div>
-                  {["admin","superadmin"].includes(utilisateur.role)&&(
+                  {["admin","direction","superadmin"].includes(utilisateur.role)&&(
                     <button onClick={()=>{setProfilOuvert(false);setPage("parametres");}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 16px",background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#374151",textAlign:"left",fontWeight:600}}>
                       🏫 <span>Paramètres école</span>
                     </button>
@@ -823,7 +823,7 @@ export default function App() {
               {page==="superadmin_panel" && <SuperAdminPanel/>}
               {page==="accueil"         && <TableauDeBord annee={annee}/>}
               {page==="historique"      && <HistoriqueActions/>}
-              {page==="parametres"      && <ParametresEcole/>}
+              {page==="parametres"      && <ParametresEcole utilisateurRole={utilisateur.role} onSchoolClosed={deconnecter}/>}
               {page==="admin_panel" && <AdminPanel annee={annee} setAnnee={setAnnee} verrous={verrous} schoolId={schoolId}/>}
               {page==="fondation"   && <Fondation readOnly={readOnly} annee={annee} userRole={utilisateur.role}/>}
               {page==="compta"      && <Comptabilite readOnly={readOnly} annee={annee} userRole={utilisateur.role} verrouOuvert={!!verrous.comptable}/>}

@@ -19,22 +19,47 @@ function Connexion({onLogin, onInscription}) {
   const [voir,setVoir]=useState(false);
   const [chargement,setChargement]=useState(false);
   const [infoEcole,setInfoEcole]=useState(null); // infos chargées après saisie du code école
+  const [statutEcole,setStatutEcole]=useState("");
 
   // Charger les infos de l'école dès que le code est saisi
   useEffect(()=>{
     const sid=codeEcole.trim().toLowerCase();
-    if(!sid||sid==="superadmin"){setInfoEcole(null);return;}
+    if(!sid||sid==="superadmin"){setInfoEcole(null);setStatutEcole("");return;}
     setInfoEcole(null);
+    setStatutEcole("");
+    const appliquerEtatEcole = (snap) => {
+      if(!snap.exists()){
+        setInfoEcole(null);
+        setStatutEcole("");
+        return;
+      }
+      const data = snap.data() || {};
+      if(data.supprime===true){
+        setInfoEcole(null);
+        setStatutEcole("supprimee");
+        return;
+      }
+      if(data.actif===false){
+        setInfoEcole(null);
+        setStatutEcole("inactive");
+        return;
+      }
+      setInfoEcole(data);
+      setStatutEcole("");
+    };
     const t=setTimeout(async()=>{
       const publicRef = doc(db,"ecoles_public",sid);
       const privateRef = doc(db,"ecoles",sid);
       try{
         const snap = await getDocFromServer(privateRef).catch(async()=>getDocFromServer(publicRef));
-        setInfoEcole(snap.exists()?snap.data():null);
+        appliquerEtatEcole(snap);
       }catch{
         getDoc(publicRef)
-          .then(snap=>setInfoEcole(snap.exists()?snap.data():null))
-          .catch(()=>setInfoEcole(null));
+          .then(appliquerEtatEcole)
+          .catch(()=>{
+            setInfoEcole(null);
+            setStatutEcole("");
+          });
       }
     },600); // debounce 600ms
     return ()=>clearTimeout(t);
@@ -140,6 +165,13 @@ function Connexion({onLogin, onInscription}) {
               placeholder="Ex. : ecole-la-citadelle"
               onKeyDown={e=>e.key==="Enter"&&connecter()}
               style={inp2}/>
+            {statutEcole&&(
+              <p style={{margin:"8px 2px 0",fontSize:12,fontWeight:700,color:"#b91c1c"}}>
+                {statutEcole==="inactive"
+                  ? "Cette ecole est inactive."
+                  : "Cette ecole n'est plus disponible."}
+              </p>
+            )}
           </div>
           <div>
             <label style={{display:"block",fontSize:10,fontWeight:700,color:C.blueDark,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>Identifiant</label>

@@ -61,6 +61,17 @@ export default async function handler(req, res) {
       });
     }
 
+    const schoolSnap = await db.collection("ecoles").doc(normalizedSchoolId).get();
+    const school = schoolSnap.data() || null;
+
+    if (!schoolSnap.exists || school?.supprime === true) {
+      return res.status(404).json({ error: "Cette ecole n'est plus disponible." });
+    }
+
+    if (school?.actif === false) {
+      return res.status(403).json({ error: "Cette ecole est desactivee." });
+    }
+
     const comptesSnap = await db
       .collection("ecoles")
       .doc(normalizedSchoolId)

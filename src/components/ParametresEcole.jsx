@@ -9,7 +9,7 @@ import { AffichageSettings } from "./AffichageSettings";
 import { MatriculeSettings } from "./MatriculeSettings";
 import { Btn, Input, Modale, Selec } from "./ui";
 
-function ParametresEcole() {
+function ParametresEcole({ utilisateurRole = "", onSchoolClosed = null }) {
   const {schoolId,schoolInfo,setSchoolInfo,toast} = useContext(SchoolContext);
   const {items:honneurs, ajouter:ajHonneur, modifier:modHonneur, supprimer:supHonneur} = useFirestore("honneurs");
   const [tabParam, setTabParam] = useState("identite");
@@ -52,9 +52,34 @@ function ParametresEcole() {
   const [erreur,setErreur] = useState("");
   const [apercu,setApercu] = useState(null); // aperçu logo uploadé
 
+  const [dangerAction,setDangerAction] = useState("");
+  const [dangerConfirmation,setDangerConfirmation] = useState("");
+  const [dangerLoading,setDangerLoading] = useState(false);
+
   const chg = k => e => setForm(p=>({...p,[k]:e.target.value}));
 
   const [couleursDetectees, setCouleursDetectees] = useState(null);
+  const canManageLifecycle = schoolId && schoolId !== "superadmin" && ["direction","superadmin"].includes(utilisateurRole);
+  const dangerConfig = {
+    deactivate: {
+      title: "Desactiver l'ecole",
+      confirmation: "DESACTIVER",
+      tone: "#b45309",
+      bg: "#fff7ed",
+      border: "#fdba74",
+      button: "#f59e0b",
+      description: "L'acces sera bloque pour tous les comptes de cette ecole jusqu'a reactivation.",
+    },
+    delete: {
+      title: "Supprimer l'ecole",
+      confirmation: "SUPPRIMER",
+      tone: "#b91c1c",
+      bg: "#fef2f2",
+      border: "#fca5a5",
+      button: "#dc2626",
+      description: "Suppression logique uniquement : les donnees sont preservees, mais l'ecole disparait de l'acces normal.",
+    },
+  };
 
   // Extrait les 2 couleurs dominantes d'une image via Canvas
   const extraireCouleurs = (src, cb) => {
@@ -174,6 +199,54 @@ function ParametresEcole() {
     }
   };
 
+  const lancerActionEcole = async () => {
+    if (!canManageLifecycle || !dangerAction || !dangerConfig[dangerAction]) return;
+    setDangerLoading(true);
+    setErreur("");
+    setMsgSucces("");
+    try {
+      const headers = await getAuthHeaders({ "Content-Type": "application/json" });
+      const response = await fetch("/api/school-lifecycle", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          schoolId,
+          action: dangerAction,
+          confirmation: dangerConfirmation,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.ok) {
+        setErreur(data.error || "Action impossible pour le moment.");
+        return;
+      }
+
+      const nextInfo = {
+        ...schoolInfo,
+        actif: data.actif,
+        supprime: data.supprime,
+      };
+      setSchoolInfo(nextInfo);
+      setDangerAction("");
+      setDangerConfirmation("");
+
+      if (dangerAction === "delete") {
+        toast("Ecole supprimee.", "success");
+      } else {
+        toast("Ecole desactivee.", "success");
+      }
+
+      localStorage.removeItem("LC_schoolId");
+      if (typeof onSchoolClosed === "function") {
+        onSchoolClosed();
+      }
+    } catch {
+      setErreur("Erreur lors de la mise a jour de l'ecole.");
+    } finally {
+      setDangerLoading(false);
+    }
+  };
+
   // Upload photo galerie → base64
   const handlePhotoGalerie = e => {
     const files = Array.from(e.target.files);
@@ -213,6 +286,14 @@ function ParametresEcole() {
     background:"#fff",borderRadius:14,padding:"24px 28px",
     boxShadow:"0 2px 16px rgba(0,32,80,0.07)",marginBottom:20,
   };
+  const tabItems = [
+    {id:"identite", label:"Identite"},
+    {id:"accueil", label:"Accueil"},
+    {id:"officiel", label:"Officiel"},
+    {id:"matricules", label:"Matricules"},
+    {id:"affichage", label:"Affichage"},
+    ...(canManageLifecycle ? [{id:"danger", label:"Danger"}] : []),
+  ];
 
   return (
     <div style={{padding:"28px 32px",fontFamily:"'Segoe UI',system-ui,sans-serif",maxWidth:760,margin:"0 auto"}}>
@@ -221,13 +302,7 @@ function ParametresEcole() {
 
       {/* Tabs */}
       <div style={{display:"flex",gap:4,background:"#f1f5f9",borderRadius:12,padding:4,marginBottom:24,width:"fit-content"}}>
-        {[
-          {id:"identite",    label:"🏫 Identité"},
-          {id:"accueil",     label:"🌐 Page d'accueil"},
-          {id:"officiel",    label:"🏛️ Officiel & Année"},
-          {id:"matricules",  label:"🔢 Matricules"},
-          {id:"affichage",   label:"🎨 Affichage"},
-        ].map(t=>(
+        {tabItems.map(t=>(
           <button key={t.id} onClick={()=>setTabParam(t.id)} style={{
             padding:"8px 18px",border:"none",borderRadius:9,cursor:"pointer",
             fontSize:13,fontWeight:700,
@@ -588,6 +663,82 @@ function ParametresEcole() {
 
       {/* ══ TAB AFFICHAGE ══ */}
       {tabParam==="affichage"&&<AffichageSettings sec={sec} lbl={lbl} inp={inp} setMsgSucces={setMsgSucces} setErreur={setErreur}/>}
+
+      {tabParam==="danger"&&canManageLifecycle&&<>
+        <div style={{...sec,border:"1px solid #fed7aa",background:"#fffaf0"}}>
+          <h3 style={{margin:"0 0 8px",fontSize:16,fontWeight:800,color:"#9a3412"}}>Zone sensible</h3>
+          <p style={{margin:"0 0 18px",fontSize:13,color:"#7c2d12"}}>
+            Ces actions coupent l'acces a l'ecole. Elles sont reservees au role direction.
+          </p>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:14}}>
+            {Object.entries(dangerConfig).map(([key,config])=>(
+              <div key={key} style={{border:`1px solid ${config.border}`,background:config.bg,borderRadius:12,padding:"16px 18px"}}>
+                <h4 style={{margin:"0 0 6px",fontSize:14,fontWeight:800,color:config.tone}}>{config.title}</h4>
+                <p style={{margin:"0 0 14px",fontSize:12,color:"#7c2d12"}}>{config.description}</p>
+                <button
+                  onClick={()=>{
+                    setDangerAction(key);
+                    setDangerConfirmation("");
+                    setErreur("");
+                    setMsgSucces("");
+                  }}
+                  style={{background:config.button,color:"#fff",border:"none",padding:"10px 14px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13}}
+                >
+                  {config.title}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {dangerAction&&dangerConfig[dangerAction]&&(
+          <div style={{...sec,border:`2px solid ${dangerConfig[dangerAction].border}`,background:dangerConfig[dangerAction].bg}}>
+            <h3 style={{margin:"0 0 8px",fontSize:16,fontWeight:800,color:dangerConfig[dangerAction].tone}}>
+              Confirmation requise
+            </h3>
+            <p style={{margin:"0 0 10px",fontSize:13,color:"#7f1d1d"}}>
+              Pour continuer, tapez <strong>{dangerConfig[dangerAction].confirmation}</strong>.
+            </p>
+            <p style={{margin:"0 0 14px",fontSize:12,color:"#7f1d1d"}}>
+              Ecole concernee : <strong>{schoolInfo.nom || schoolId}</strong>
+            </p>
+            <input
+              style={inp}
+              value={dangerConfirmation}
+              onChange={(e)=>setDangerConfirmation(e.target.value)}
+              placeholder={dangerConfig[dangerAction].confirmation}
+            />
+            <div style={{display:"flex",gap:10,marginTop:16,flexWrap:"wrap"}}>
+              <button
+                onClick={()=>{
+                  setDangerAction("");
+                  setDangerConfirmation("");
+                }}
+                style={{background:"#e5e7eb",color:"#374151",border:"none",padding:"10px 14px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13}}
+              >
+                Annuler
+              </button>
+              <button
+                onClick={lancerActionEcole}
+                disabled={dangerLoading || dangerConfirmation.trim().toUpperCase() !== dangerConfig[dangerAction].confirmation}
+                style={{
+                  background:dangerConfig[dangerAction].button,
+                  color:"#fff",
+                  border:"none",
+                  padding:"10px 16px",
+                  borderRadius:8,
+                  cursor:dangerLoading?"not-allowed":"pointer",
+                  fontWeight:700,
+                  fontSize:13,
+                  opacity:dangerLoading || dangerConfirmation.trim().toUpperCase() !== dangerConfig[dangerAction].confirmation ? 0.6 : 1,
+                }}
+              >
+                {dangerLoading ? "Traitement..." : dangerConfig[dangerAction].title}
+              </button>
+            </div>
+          </div>
+        )}
+      </>}
 
       {/* Bouton sauvegarder (identité / officiel / accueil) */}
       {["identite","accueil","officiel"].includes(tabParam)&&<button onClick={sauvegarder} disabled={chargement}
