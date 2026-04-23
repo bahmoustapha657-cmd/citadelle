@@ -4,6 +4,7 @@ import { C, today, genererMdp, peutModifier } from "../constants";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
 import { getAuthHeaders } from "../apiClient";
+import { findStaffDuplicate, getStaffDuplicateMessage } from "../staff-utils";
 import { Badge, Card, Modale, Champ, Input, Selec, Textarea, Btn, THead, TR, TD, Stat, Tabs, Vide, Chargement, LectureSeule, UploadFichiers } from "./ui";
 import { enteteDoc, imprimerCartesEleves, imprimerListeClasse, imprimerAttestation, imprimerBulletin, imprimerBulletinsGroupes, imprimerFicheCompositions, exportExcel } from "../reports";
 import { LivretsTab } from "./LivretsTab";
@@ -98,6 +99,35 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
       if(ancienNom&&ancienNom!==form.nom)
         eleves.filter(e=>e.classe===ancienNom).forEach(e=>modE({...e,classe:form.nom}));
     }
+    setModal(null);
+  };
+
+  const saveEnseignant = async () => {
+    const row = { ...form };
+    const doublon = findStaffDuplicate(row, ens, {
+      excludeId: modal === "edit_ens" ? row._id : null,
+    });
+    if (doublon) {
+      toast(getStaffDuplicateMessage(doublon, { label: "cet enseignant" }), "warning");
+      return;
+    }
+
+    if (modal === "add_ens") {
+      await ajEns(row);
+    } else {
+      await modEns(row);
+    }
+
+    if (row.classeTitle) {
+      const nomEns = `${row.prenom || ""} ${row.nom || ""}`.trim();
+      const existante = classes.find((c) => c.nom === row.classeTitle);
+      if (!existante) {
+        await ajC({ nom: row.classeTitle, effectif: 0, enseignant: nomEns });
+      } else if (nomEns && existante.enseignant !== nomEns) {
+        await modC({ ...existante, enseignant: nomEns });
+      }
+    }
+
     setModal(null);
   };
 
@@ -559,19 +589,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
               onSupprimer={i=>setForm(p=>({...p,fichiers:p.fichiers.filter((_,j)=>j!==i)}))}/>
             <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
               <Btn v="ghost" onClick={()=>setModal(null)}>Annuler</Btn>
-              <Btn onClick={async()=>{
-                if(modal==="add_ens") ajEns(form); else modEns(form);
-                if(form.classeTitle) {
-                  const nomEns = `${form.prenom||""} ${form.nom||""}`.trim();
-                  const existante = classes.find(c=>c.nom===form.classeTitle);
-                  if(!existante) {
-                    await ajC({nom:form.classeTitle, effectif:0, enseignant:nomEns});
-                  } else if(nomEns && existante.enseignant!==nomEns) {
-                    await modC({...existante, enseignant:nomEns});
-                  }
-                }
-                setModal(null);
-              }}>Enregistrer</Btn>
+              <Btn onClick={saveEnseignant}>Enregistrer</Btn>
             </div>
           </Modale>}
         </div>;

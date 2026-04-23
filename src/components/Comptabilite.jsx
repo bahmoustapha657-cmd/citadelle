@@ -32,6 +32,7 @@ import { TarifsClasses } from "./TarifsClasses";
 import { CameraCapture } from "./CameraCapture";
 import { TransfertsPanel } from "./TransfertsPanel";
 import { findEnrollmentDuplicate, getEnrollmentDuplicateMessage } from "../enrollment-utils";
+import { findStaffDuplicate, getStaffDuplicateMessage } from "../staff-utils";
 
 const loadXLSX = () => import("xlsx");
 
@@ -231,6 +232,20 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
     if(readOnly) return;
     const r={...form,...extra};
     if(modal.startsWith("add"))aj(r);else mod(r);
+    setModal(null);
+  };
+
+  const savePersonnel = async () => {
+    if(readOnly) return;
+    const r={...form,salaireBase:Number(form.salaireBase||0)};
+    const doublon = findStaffDuplicate(r, personnel, {
+      excludeId: modal==="edit_p" ? r._id : null,
+    });
+    if(doublon){
+      toast(getStaffDuplicateMessage(doublon, { label: "ce membre du personnel" }),"warning");
+      return;
+    }
+    if(modal==="add_p") await ajPers(r); else await modPers(r);
     setModal(null);
   };
 
@@ -1135,7 +1150,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
           </div>
           <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
             <Btn v="ghost" onClick={()=>setModal(null)}>Annuler</Btn>
-            <Btn onClick={()=>enreg(ajPers,modPers,{salaireBase:Number(form.salaireBase||0)})}>Enregistrer</Btn>
+            <Btn onClick={savePersonnel}>Enregistrer</Btn>
           </div>
         </Modale>}
       </div>}
