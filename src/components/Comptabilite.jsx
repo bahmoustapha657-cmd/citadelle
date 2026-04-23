@@ -31,6 +31,7 @@ import { Fondation } from "./Fondation";
 import { TarifsClasses } from "./TarifsClasses";
 import { CameraCapture } from "./CameraCapture";
 import { TransfertsPanel } from "./TransfertsPanel";
+import { findEnrollmentDuplicate, getEnrollmentDuplicateMessage } from "../enrollment-utils";
 
 const loadXLSX = () => import("xlsx");
 
@@ -522,7 +523,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                   <BarChart data={["T1","T2","T3"].map(p=>({
                     periode:p,
                     Recettes:recettes.filter(r=>r.periode===p).reduce((s,r)=>s+Number(r.montant||0),0),
-                    Dépenses:depenses.filter(d=>d.periode===p).reduce((s,d)=>s+Number(d.montant||0),0),
+                    "Dépenses":depenses.filter(d=>d.periode===p).reduce((s,d)=>s+Number(d.montant||0),0),
                   }))}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e0ebf8"/>
                     <XAxis dataKey="periode" tick={{fontSize:11}}/>
@@ -1407,28 +1408,18 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                   photoUrl = await uploadPhotoEleve(photoUrl, schoolId);
                 }
                 const r={...form, photo:photoUrl, mens:form.mens||initMens()};
-                // ── Vérification des doublons avant enrôlement ──
+                const doublon = findEnrollmentDuplicate(r, tousElevesScolarite, {
+                  excludeId: modal==="edit_enrol" ? r._id : null,
+                });
+                if(doublon){
+                  toast(getEnrollmentDuplicateMessage(doublon, r),"warning");
+                  return;
+                }
                 if(modal==="add_enrol") {
-                  const tousEleves2=tousElevesScolarite;
-                  const doublonIEN = r.ien && tousEleves2.some(e=>e.ien && e.ien===r.ien);
-                  const doublonNom = tousEleves2.some(e=>
-                    e.nom?.trim().toLowerCase()===r.nom?.trim().toLowerCase() &&
-                    e.prenom?.trim().toLowerCase()===r.prenom?.trim().toLowerCase() &&
-                    e.dateNaissance && e.dateNaissance===r.dateNaissance
-                  );
-                  const doublonMat = r.matricule && tousEleves2.some(e=>e.matricule===r.matricule);
-                  if(doublonIEN || doublonNom || doublonMat) {
-                    const msg = doublonIEN ? `⚠️ Un élève avec le même IEN (${r.ien}) existe déjà.`
-                      : doublonMat ? `⚠️ Le matricule "${r.matricule}" est déjà utilisé.`
-                      : `⚠️ Un élève portant le même nom et la même date de naissance est déjà enregistré.`;
-                    if(!window.confirm(msg+"\n\nVoulez-vous quand même créer cette fiche ?")) {
-                      setUploadEnCours(false); return;
-                    }
-                  }
-                  ajEnrol(r);
+                  await ajEnrol(r);
                   await ensureClasse(r.classe, niveauEnrol);
                 } else {
-                  modEnrol(r);
+                  await modEnrol(r);
                 }
                 setModal(null);
               }catch(e){
@@ -1487,12 +1478,14 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
               if(!form.nom||!form.prenom){toast("Nom et prénom obligatoires","warning");return false;}
               if(!form.classe){toast("Classe obligatoire","warning");return false;}
               const r={...form,statut:"Actif",mens:initMens()};
-              const tousE2=tousElevesScolarite;
-              const doublonNom=tousE2.some(e=>e.nom?.trim().toLowerCase()===r.nom?.trim().toLowerCase()&&e.prenom?.trim().toLowerCase()===r.prenom?.trim().toLowerCase()&&e.dateNaissance&&e.dateNaissance===r.dateNaissance);
-              if(doublonNom&&!window.confirm("⚠️ Un élève portant le même nom et la même date de naissance existe déjà.\n\nVoulez-vous quand même créer cette fiche ?"))return false;
-              ajEnrol(r);
+              const doublon = findEnrollmentDuplicate(r, tousElevesScolarite);
+              if(doublon){
+                toast(getEnrollmentDuplicateMessage(doublon, r),"warning");
+                return false;
+              }
+              await ajEnrol(r);
               await ensureClasse(r.classe, niveauEnrol);
-              toast(`${r.prenom} ${r.nom} ajouté(e)`,"success");
+              toast(`${r.prenom} ${r.nom} ajoute(e)`,"success");
               if(!fermer){
                 const mat=genererMatricule([...elevesEnrol,r],niveauEnrol,schoolInfo);
                 // Conserve tuteur/filiation/domicile, réinitialise les champs élève
@@ -1619,63 +1612,75 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                 const classesEcole=[...new Set(tousElevesScolarite.map(e=>e.classe||"").filter(Boolean))].map(c=>c.toLowerCase());
 
                 const rows=allRows.slice(headerRowIdx+1).filter(r=>r.some(c=>String(c||"").trim()));
-                const lignes=rows.map((r,i)=>{
-                  // ── Nom & Prénom : colonne Élève (nom complet) ou colonnes séparées ──
+                const lignes=[];
+                const candidatsImport=[];
+                for(const [i, r] of rows.entries()){
                   let nom=get(r,cols.nom);
                   let prenom=get(r,cols.prenom);
                   if((!nom||!prenom) && cols.eleveComplet>=0){
                     const complet=get(r,cols.eleveComplet);
                     if(complet){
                       const parts=complet.trim().split(/\s+/);
-                      // Détermine l'ordre selon le paramètre choisi par l'utilisateur
                       const premier=parts[0]||"";
                       const premierEstMaj=premier.length>1&&premier===premier.toUpperCase()&&/[A-Z]/.test(premier);
                       const nomEnPremier = ordreNomImport==="nom_prenom"
                         || (ordreNomImport==="auto" && premierEstMaj);
                       if(nomEnPremier){
-                        if(!nom)    nom=parts[0]||"";
+                        if(!nom) nom=parts[0]||"";
                         if(!prenom) prenom=parts.slice(1).join(" ")||"";
                       } else {
-                        if(!nom)    nom=parts[parts.length-1]||"";
+                        if(!nom) nom=parts[parts.length-1]||"";
                         if(!prenom) prenom=parts.slice(0,-1).join(" ")||"";
                       }
                     }
                   }
-                  // ── Classe : colonne ou défaut sélectionné ──
                   const classe=get(r,cols.classe)||classeDefautImport;
-                  // ── Sexe ──
                   const sexeRaw=get(r,cols.sexe).toUpperCase();
                   const sexe=sexeRaw==="F"||sexeRaw.startsWith("F")?"F":"M";
-                  // ── Dates ──
                   const dateNaissance=parseDate(get(r,cols.date));
                   const lieuNaissance=get(r,cols.lieuNaiss);
-                  // ── Père / Mère → filiation + tuteur ──
                   const pereVal=get(r,cols.pere);
                   const mereVal=get(r,cols.mere);
                   const filiation=pereVal||mereVal
-                    ? [pereVal?"Père: "+pereVal:"", mereVal?"Mère: "+mereVal:""].filter(Boolean).join(" / ")
+                    ? [pereVal?"Pere: "+pereVal:"", mereVal?"Mere: "+mereVal:""] .filter(Boolean).join(" / ")
                     : get(r,cols.filiation);
                   const tuteur=get(r,cols.tuteur)||pereVal||mereVal;
-                  // ── Contact ──
                   const contactTuteur=get(r,cols.contact);
                   const domicile=get(r,cols.domicile);
                   const ti=get(r,cols.typeInsc);
-                  const typeInscription=ti||"Première inscription";
-                  // La colonne "Matricule" du fichier = identifiant national (IEN) en contexte guinéen.
-                  // Le matricule interne de l'école est toujours auto-généré à l'import.
+                  const typeInscription=ti||"Premiere inscription";
                   const matriculeFichier=get(r,cols.matricule);
                   const ien=get(r,cols.ien)||(cols.ien<0?matriculeFichier:"");
+                  const ligneCandidate={nom,prenom,classe,sexe,dateNaissance,lieuNaissance,ien,tuteur,contactTuteur,filiation,domicile,typeInscription};
                   const erreurs=[];
                   const avertissements=[];
                   if(!nom) erreurs.push("Nom manquant");
-                  if(!prenom) erreurs.push("Prénom manquant");
-                  if(!classe) avertissements.push("Classe non définie — sélectionner une classe par défaut");
-                  else if(!classesEcole.includes(classe.toLowerCase())&&!classesConnues.includes(classe.toLowerCase()))
+                  if(!prenom) erreurs.push("Prenom manquant");
+                  if(!classe) avertissements.push("Classe non definie - selectionner une classe par defaut");
+                  else if(!classesEcole.includes(classe.toLowerCase())&&!classesConnues.includes(classe.toLowerCase())){
                     avertissements.push(`Classe "${classe}" non reconnue`);
-                  return {nom,prenom,classe,sexe,dateNaissance,lieuNaissance,ien,tuteur,contactTuteur,filiation,domicile,typeInscription,erreurs,avertissements,ligne:i+2};
-                });
+                  }
+                  if(!erreurs.length){
+                    const doublonExistant = findEnrollmentDuplicate(ligneCandidate, tousElevesScolarite);
+                    if(doublonExistant){
+                      erreurs.push(getEnrollmentDuplicateMessage(doublonExistant, ligneCandidate, { scope: "deja dans l'ecole" }));
+                    } else {
+                      const doublonImport = findEnrollmentDuplicate(ligneCandidate, candidatsImport);
+                      if(doublonImport){
+                        erreurs.push(getEnrollmentDuplicateMessage(doublonImport, ligneCandidate, { scope: "deja dans ce fichier" }));
+                      } else {
+                        candidatsImport.push(ligneCandidate);
+                      }
+                    }
+                  }
+                  lignes.push({
+                    ...ligneCandidate,
+                    erreurs,
+                    avertissements,
+                    ligne:i+2,
+                  });
+                }
 
-                // Résumé du mapping détecté
                 const champLabels={num:"N°(ignoré)",matricule:"Matricule→IEN",eleveComplet:"Élève",nom:"Nom",prenom:"Prénom",classe:"Classe",sexe:"Sexe",date:"Date naissance",lieuNaiss:"Lieu naissance",pere:"Père",mere:"Mère",filiation:"Père et Mère (combiné)",tuteur:"Tuteur",contact:"Téléphone",domicile:"Domicile",typeInsc:"Type inscription",ien:"IEN"};
                 const mapping=Object.entries(cols).map(([k,idx])=>({champ:champLabels[k],colonne:idx>=0?headers[idx]:null,idx}));
 
@@ -1784,27 +1789,25 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
               setImportEnrolEnCours(true);
               let count=0;
               const existants=tousElevesScolarite;
-              // Accumule les matricules générés dans ce lot pour éviter les doublons
               const matsGeneres=[];
               const classesImportCreees=new Set();
+              const ajFn=ajoutParNiveau[niveauEnrol] || ajEC;
+              const lotImporte=[];
               for(const l of importEnrolPreview.valides){
-                const doublon=existants.some(e=>
-                  e.nom?.trim().toLowerCase()===l.nom.toLowerCase()&&
-                  e.prenom?.trim().toLowerCase()===l.prenom.toLowerCase()&&
-                  e.dateNaissance&&e.dateNaissance===l.dateNaissance
-                );
+                const doublon = findEnrollmentDuplicate(l, [...existants, ...lotImporte]);
                 if(doublon) continue;
                 const mat=genererMatricule([...elevesEnrol,...matsGeneres],niveauEnrol,schoolInfo);
-                matsGeneres.push({matricule:mat});
-                const ajFn=ajoutParNiveau[niveauEnrol] || ajEC;
-                await ajFn({
+                const eleveAImporter={
                   nom:l.nom,prenom:l.prenom,classe:l.classe,sexe:l.sexe,
                   dateNaissance:l.dateNaissance,lieuNaissance:l.lieuNaissance,ien:l.ien,
                   tuteur:l.tuteur,contactTuteur:l.contactTuteur,
                   filiation:l.filiation,domicile:l.domicile,
                   typeInscription:l.typeInscription,
                   matricule:mat,statut:"Actif",mens:initMens(),
-                });
+                };
+                matsGeneres.push({matricule:mat});
+                await ajFn(eleveAImporter);
+                lotImporte.push(eleveAImporter);
                 await ensureClasse(l.classe, niveauEnrol, classesImportCreees);
                 count++;
               }
