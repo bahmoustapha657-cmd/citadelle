@@ -6,17 +6,19 @@ import { addDoc, collection, collectionGroup, doc, getDoc, getDocs, onSnapshot, 
 import SuperAdminAssistant from "./SuperAdminAssistant";
 import CommunicationsAdmin from "./CommunicationsAdmin";
 
-// ══════════════════════════════════════════════════════════════
+// =============================================================
 //  PANEL SUPER-ADMIN
-// ══════════════════════════════════════════════════════════════
+// =============================================================
 function SuperAdminPanel() {
   const [ecoles, setEcoles] = useState([]);
   const [chargement, setChargement] = useState(true);
   const [stats, setStats] = useState({});
   const [recherche, setRecherche] = useState("");
   const [confirmation, setConfirmation] = useState(null);
+  const [confirmationValue, setConfirmationValue] = useState("");
+  const [confirmationLoading, setConfirmationLoading] = useState(false);
   const [creationOuverte, setCreationOuverte] = useState(false);
-  const [nouvelleEcole, setNouvelleEcole] = useState({nom:"",ville:"",pays:"Guinée"});
+  const [nouvelleEcole, setNouvelleEcole] = useState({nom:"",ville:"",pays:"Guinee"});
   const [msgSucces, setMsgSucces] = useState("");
   const [demandes, setDemandes] = useState([]);
   const [ongletSA, setOngletSA] = useState("ecoles");
@@ -28,6 +30,38 @@ function SuperAdminPanel() {
   const [confirmDowngrade, setConfirmDowngrade] = useState(false);
   const [backfillEnCours, setBackfillEnCours] = useState(false);
   const planPanelRef = useRef(null);
+  const lifecycleLabels = {
+    deactivate: {
+      title: "Desactiver l'ecole",
+      confirmation: "DESACTIVER",
+      success: "Ecole desactivee.",
+      description: "L'acces est bloque jusqu'a reactivation.",
+      button: "Desactiver",
+      color: "#b45309",
+      bg: "#fff7ed",
+      border: "#fdba74",
+    },
+    reactivate: {
+      title: "Reactiver l'ecole",
+      confirmation: "ACTIVER",
+      success: "Ecole reactivee.",
+      description: "L'ecole redevient accessible.",
+      button: "Reactiver",
+      color: "#166534",
+      bg: "#f0fdf4",
+      border: "#86efac",
+    },
+    delete: {
+      title: "Supprimer l'ecole",
+      confirmation: "SUPPRIMER",
+      success: "Ecole supprimee logiquement.",
+      description: "La suppression est logique uniquement. Les donnees restent conservees.",
+      button: "Supprimer",
+      color: "#b91c1c",
+      bg: "#fef2f2",
+      border: "#fca5a5",
+    },
+  };
 
   const lancerBackfillPublic = async () => {
     setBackfillEnCours(true);
@@ -40,10 +74,10 @@ function SuperAdminPanel() {
       });
       const data = await r.json().catch(() => ({}));
       if (r.ok) {
-        setMsgSucces(`Synchronisation publique effectuée (${data.synced || 0} écoles).`);
+        setMsgSucces(`Synchronisation publique effectuee (${data.synced || 0} ecoles).`);
         setTimeout(() => setMsgSucces(""), 4000);
       } else {
-        setMsgSucces(`Erreur : ${data.error || "échec backfill"}`);
+        setMsgSucces(`Erreur: ${data.error || "echec backfill"}`);
         setTimeout(() => setMsgSucces(""), 4000);
       }
     } finally {
@@ -57,7 +91,7 @@ function SuperAdminPanel() {
       const snap = await getDocs(collection(db,"ecoles"));
       const liste = snap.docs.map(d=>({...d.data(),_id:d.id}));
       setEcoles(liste);
-      // Charger les stats en parallèle
+      // Charger les stats en parallele
       const statsMap = {};
       await Promise.all(liste.map(async (e) => {
         const [eleves, comptes, enseignants] = await Promise.all([
@@ -65,7 +99,7 @@ function SuperAdminPanel() {
           getDocs(collection(db,"ecoles",e._id,"comptes")).then(s=>s.size).catch(()=>0),
           getDocs(collection(db,"ecoles",e._id,"ensPrimaire")).then(s=>s.size).catch(()=>0),
         ]);
-        // Élèves secondaire aussi
+        // Eleves secondaire aussi
         const elevesS = await getDocs(collection(db,"ecoles",e._id,"elevesSecondaire")).then(s=>s.size).catch(()=>0);
         statsMap[e._id] = { eleves: eleves + elevesS, comptes, enseignants };
       }));
@@ -104,13 +138,13 @@ function SuperAdminPanel() {
     await updateDoc(doc(db,"ecoles",demande._schoolId), update);
     await updateDoc(doc(db,"ecoles",demande._schoolId,"demandes_plan",demande._id),{statut:"validee"});
     await addDoc(collection(db,"ecoles",demande._schoolId,"historique"),{
-      action:"Plan activé",
-      details:`Plan ${PLANS[plan]?.label||plan} activé par le superadmin — valable 1 an`,
+      action:"Plan active",
+      details:`Plan ${PLANS[plan]?.label||plan} active par le superadmin - valable 1 an`,
       auteur:"EduGest", date:Date.now(),
     }).catch(()=>{});
     setDemandes(prev=>prev.map(d=>d._id===demande._id?{...d,statut:"validee"}:d));
     setEcoles(prev=>prev.map(e=>e._id===demande._schoolId?{...e,...update}:e));
-    setMsgSucces(`Plan ${PLANS[plan]?.label||plan} activé pour ${demande.ecoleNom}`);
+    setMsgSucces(`Plan ${PLANS[plan]?.label||plan} active pour ${demande.ecoleNom}`);
     setTimeout(()=>setMsgSucces(""),4000);
   };
 
@@ -121,7 +155,7 @@ function SuperAdminPanel() {
 
   const sauvegarderPlan = async () => {
     if(!planModal) return;
-    // Protection : downgrade vers Gratuit depuis un plan payant → double confirmation
+    // Protection : downgrade vers Gratuit depuis un plan payant -> double confirmation
     const estPlanPayant = planModal.plan && planModal.plan !== "gratuit";
     if(planChoix === "gratuit" && estPlanPayant && !confirmDowngrade) {
       setConfirmDowngrade(true);
@@ -134,24 +168,24 @@ function SuperAdminPanel() {
         ? { plan:"gratuit", planExpiry:null, planActivatedBy:"superadmin", planActivatedAt:Date.now() }
         : { plan:planChoix, planExpiry:Date.now()+planDuree*86400000, planActivatedBy:"superadmin", planActivatedAt:Date.now() };
 
-      // ── 1. Sauvegarde principale (bloquante) ──
+      // 1. Sauvegarde principale (bloquante)
       await updateDoc(doc(db,"ecoles",planModal._id), update);
       setEcoles(prev=>prev.map(e=>e._id===planModal._id?{...e,...update}:e));
 
       const planLabel = PLANS[planChoix]?.label ?? "Gratuit";
       const expMsg = update.planExpiry
-        ? ` — expire le ${new Date(update.planExpiry).toLocaleDateString("fr-FR")}`
+        ? ` - expire le ${new Date(update.planExpiry).toLocaleDateString("fr-FR")}`
         : "";
 
-      // ── 2. Feedback immédiat + fermeture différée ──
-      setMsgSucces(`✅ Plan ${planLabel} activé pour ${planModal.nom}`);
+      // 2. Feedback immediat + fermeture differee
+      setMsgSucces(`Plan ${planLabel} active pour ${planModal.nom}`);
       setTimeout(()=>{ setPlanModal(null);setConfirmDowngrade(false); setMsgSucces(""); }, 2500);
       planPanelRef.current?.scrollIntoView({behavior:"smooth",block:"start"});
 
-      // ── 3. Notification & push (best-effort, ne bloque pas) ──
+      // 3. Notification et push (best-effort, ne bloque pas)
       addDoc(collection(db,"ecoles",planModal._id,"historique"),{
-        action: "Plan mis à jour",
-        details: `Plan ${planLabel} activé par le superadmin${expMsg}`,
+        action: "Plan mis a jour",
+        details: `Plan ${planLabel} active par le superadmin${expMsg}`,
         auteur: "EduGest",
         date: Date.now(),
       }).catch(()=>{});
@@ -162,7 +196,7 @@ function SuperAdminPanel() {
           body: JSON.stringify({
             schoolId: planModal._id,
             cibles: ["admin","direction"],
-            titre: `Plan ${planLabel} activé`,
+            titre: `Plan ${planLabel} active`,
             corps: `Votre abonnement ${planLabel} est maintenant actif${expMsg}.`,
             url: "/",
           }),
@@ -171,24 +205,59 @@ function SuperAdminPanel() {
 
     } catch(err) {
       console.error("Erreur sauvegarderPlan:", err);
-      setMsgSucces("Erreur lors de la sauvegarde. Vérifiez votre connexion.");
+      setMsgSucces("Erreur lors de la sauvegarde. Verifiez votre connexion.");
       setTimeout(()=>setMsgSucces(""),5000);
     } finally {
       setPlanSaving(false);
     }
   };
 
-  const toggleActif = async (ecole) => {
-    await updateDoc(doc(db,"ecoles",ecole._id), {actif: !ecole.actif});
-    setEcoles(prev => prev.map(e => e._id===ecole._id ? {...e,actif:!e.actif} : e));
-    setConfirmation(null);
+  const ouvrirConfirmation = (ecole, action) => {
+    setConfirmation({ ecole, action });
+    setConfirmationValue("");
+    setConfirmationLoading(false);
   };
 
-  const supprimerEcole = async (ecole) => {
-    // On désactive seulement (suppression physique = risque)
-    await updateDoc(doc(db,"ecoles",ecole._id), {actif:false, supprime:true});
-    setEcoles(prev => prev.filter(e => e._id!==ecole._id));
-    setConfirmation(null);
+  const executerCycleVie = async () => {
+    if (!confirmation || !lifecycleLabels[confirmation.action]) return;
+    const config = lifecycleLabels[confirmation.action];
+    if (confirmationValue.trim().toUpperCase() !== config.confirmation) return;
+
+    setConfirmationLoading(true);
+    try {
+      const headers = await getAuthHeaders({ "Content-Type": "application/json" });
+      const response = await fetch("/api/school-lifecycle", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          schoolId: confirmation.ecole._id,
+          action: confirmation.action,
+          confirmation: config.confirmation,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.ok) {
+        setMsgSucces(`Erreur: ${data.error || "action impossible"}`);
+        setTimeout(() => setMsgSucces(""), 5000);
+        return;
+      }
+
+      setEcoles((prev) => prev.map((ecole) => (
+        ecole._id === confirmation.ecole._id
+          ? { ...ecole, actif: data.actif, supprime: data.supprime }
+          : ecole
+      )));
+      setMsgSucces(`${config.success} ${confirmation.ecole.nom}`);
+      setTimeout(() => setMsgSucces(""), 4000);
+      setConfirmation(null);
+      setConfirmationValue("");
+    } catch (error) {
+      console.error("Erreur school-lifecycle:", error);
+      setMsgSucces("Erreur lors de l'action sur l'ecole.");
+      setTimeout(() => setMsgSucces(""), 5000);
+    } finally {
+      setConfirmationLoading(false);
+    }
   };
 
   const genSlug = (nom) =>
@@ -201,15 +270,15 @@ function SuperAdminPanel() {
     const sid = genSlug(nouvelleEcole.nom);
     const existing = await getDoc(doc(db,"ecoles",sid));
     if(existing.exists()){
-      setMsgSucces(`Le code école "${sid}" existe déjà. Choisissez un nom différent.`);
+      setMsgSucces(`Le code ecole "${sid}" existe deja. Choisissez un nom different.`);
       setTimeout(()=>setMsgSucces(""),4000);
       return;
     }
     await setDoc(doc(db,"ecoles",sid),{
       nom: nouvelleEcole.nom.trim(),
-      type: "Groupe Scolaire Privé",
+      type: "Groupe Scolaire Prive",
       ville: nouvelleEcole.ville.trim(),
-      pays: nouvelleEcole.pays.trim()||"Guinée",
+      pays: nouvelleEcole.pays.trim()||"Guinee",
       couleur1: "#0A1628",
       couleur2: "#00C48C",
       logo: null,
@@ -240,8 +309,8 @@ function SuperAdminPanel() {
         body: JSON.stringify({ action: "sync", schoolId: sid }),
       });
     } catch { /* non-bloquant */ }
-    setMsgSucces(`École "${nouvelleEcole.nom}" créée (code : ${sid})`);
-    setNouvelleEcole({nom:"",ville:"",pays:"Guinée"});
+    setMsgSucces(`Ecole "${nouvelleEcole.nom}" creee (code: ${sid})`);
+    setNouvelleEcole({nom:"",ville:"",pays:"Guinee"});
     setCreationOuverte(false);
     chargerEcoles();
     setTimeout(()=>setMsgSucces(""),4000);
@@ -272,23 +341,23 @@ function SuperAdminPanel() {
 
   return (
     <div style={S.page}>
-      <h2 style={S.titre}>⚙️ Panel Super-Admin</h2>
-      <p style={S.sous}>Gestion de toutes les écoles enregistrées sur la plateforme</p>
+      <h2 style={S.titre}>Panel Super-Admin</h2>
+      <p style={S.sous}>Gestion de toutes les ecoles enregistrees sur la plateforme</p>
 
       {msgSucces && (
         <div style={{background:"#d1fae5",border:"1px solid #6ee7b7",borderRadius:8,padding:"10px 16px",marginBottom:18,fontSize:13,color:"#065f46",fontWeight:600}}>
-          ✅ {msgSucces}
+          {msgSucces}
         </div>
       )}
 
       {/* Onglets */}
       <div style={{display:"flex",gap:8,marginBottom:20}}>
         {[
-          {id:"ecoles",label:"🏫 Écoles"},
-          {id:"plans",label:"⭐ Plans"},
+          {id:"ecoles",label:"Ecoles"},
+          {id:"plans",label:"Plans"},
           {id:"assistant",label:"Assistant"},
-          {id:"communications",label:"📢 Communications"},
-          {id:"demandes",label:`📋 Demandes${demandes.filter(d=>d.statut==="en_attente").length>0?" ("+demandes.filter(d=>d.statut==="en_attente").length+")":""}`},
+          {id:"communications",label:"Communications"},
+          {id:"demandes",label:`Demandes${demandes.filter(d=>d.statut==="en_attente").length>0?" ("+demandes.filter(d=>d.statut==="en_attente").length+")":""}`},
         ].map(o=>(
           <button key={o.id} onClick={()=>{setOngletSA(o.id);setPlanModal(null);setConfirmDowngrade(false);}}
             style={{padding:"9px 18px",borderRadius:9,border:"none",cursor:"pointer",fontWeight:700,fontSize:13,
@@ -302,7 +371,7 @@ function SuperAdminPanel() {
 
       {ongletSA==="communications" && <CommunicationsAdmin ecoles={ecoles} auteur="superadmin" />}
 
-      {/* ── Onglet Demandes Pro ── */}
+      {/* Onglet Demandes Pro */}
       {ongletSA==="demandes" && (
         <div style={S.card}>
           {demandes.length===0 ? (
@@ -311,7 +380,7 @@ function SuperAdminPanel() {
             <table style={{width:"100%",borderCollapse:"collapse"}}>
               <thead>
                 <tr>
-                  {["École","Plan demandé","Opérateur","Téléphone","Référence","Date","Statut","Actions"].map(h=>(
+                  {["Ecole","Plan demande","Operateur","Telephone","Reference","Date","Statut","Actions"].map(h=>(
                     <th key={h} style={S.th}>{h}</th>
                   ))}
                 </tr>
@@ -326,17 +395,17 @@ function SuperAdminPanel() {
                           background:PLANS[d.planDemande]?.bg||"#f3f4f6",color:PLANS[d.planDemande]?.couleur||"#6b7280"}}>
                           {PLANS[d.planDemande]?.label||d.planDemande}
                         </span>
-                      ):"—"}
+                      ):"-"}
                     </td>
-                    <td style={S.td}>{d.operateur||"—"}</td>
+                    <td style={S.td}>{d.operateur||"-"}</td>
                     <td style={S.td}>{d.telephone}</td>
                     <td style={S.td}><code style={{background:"#f0f4f8",padding:"2px 7px",borderRadius:4,fontSize:11}}>{d.reference}</code></td>
-                    <td style={S.td}>{d.createdAt?new Date(d.createdAt).toLocaleDateString("fr-FR"):"—"}</td>
+                    <td style={S.td}>{d.createdAt?new Date(d.createdAt).toLocaleDateString("fr-FR"):"-"}</td>
                     <td style={S.td}>
                       <span style={{...S.badge(d.statut==="validee"),
                         background:d.statut==="validee"?"#d1fae5":d.statut==="rejetee"?"#fee2e2":"#fef3c7",
                         color:d.statut==="validee"?"#065f46":d.statut==="rejetee"?"#991b1b":"#92400e"}}>
-                        {d.statut==="validee"?"✅ Validée":d.statut==="rejetee"?"❌ Rejetée":"⏳ En attente"}
+                        {d.statut==="validee"?"Validee":d.statut==="rejetee"?"Rejetee":"En attente"}
                       </span>
                     </td>
                     <td style={S.td}>
@@ -344,11 +413,11 @@ function SuperAdminPanel() {
                         <div style={{display:"flex",gap:6}}>
                           <button onClick={()=>validerDemande(d)}
                             style={{...S.btn(C.green),background:"#d1fae5",color:"#065f46"}}>
-                            ✅ Valider
+                            Valider
                           </button>
                           <button onClick={()=>rejeterDemande(d)}
                             style={{...S.btn("#ef4444"),background:"#fee2e2",color:"#991b1b"}}>
-                            ❌ Rejeter
+                            Rejeter
                           </button>
                         </div>
                       )}
@@ -361,10 +430,10 @@ function SuperAdminPanel() {
         </div>
       )}
 
-      {/* ── Onglet Plans ── */}
+      {/* Onglet Plans */}
       {ongletSA==="plans" && (
         <div>
-          {/* Résumé par plan */}
+          {/* Resume par plan */}
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:12,marginBottom:22}}>
             {Object.entries(PLANS).map(([key,info])=>{
               const count = ecoles.filter(e=>(e.plan||"gratuit")===key).length;
@@ -373,17 +442,17 @@ function SuperAdminPanel() {
                 <div key={key} style={{background:"#fff",borderRadius:12,padding:"14px 16px",boxShadow:"0 2px 12px rgba(0,32,80,0.07)",borderTop:`4px solid ${info.couleur}`}}>
                   <div style={{fontSize:22,fontWeight:900,color:info.couleur}}>{count}</div>
                   <div style={{fontSize:13,fontWeight:700,color:"#374151",marginTop:2}}>{info.label}</div>
-                  {expired>0&&<div style={{fontSize:11,color:"#ef4444",marginTop:2}}>⚠ {expired} expiré{expired>1?"s":""}</div>}
+                  {expired>0&&<div style={{fontSize:11,color:"#ef4444",marginTop:2}}>Alerte: {expired} expire{expired>1?"s":""}</div>}
                 </div>
               );
             })}
           </div>
 
-          {/* Liste des écoles avec gestion plan */}
+          {/* Liste des ecoles avec gestion plan */}
           {chargement ? (
-            <div style={{padding:40,textAlign:"center",color:"#9ca3af"}}>Chargement…</div>
+            <div style={{padding:40,textAlign:"center",color:"#9ca3af"}}>Chargement...</div>
           ) : ecoles.length===0 ? (
-            <div style={{padding:40,textAlign:"center",color:"#9ca3af"}}>Aucune école.</div>
+            <div style={{padding:40,textAlign:"center",color:"#9ca3af"}}>Aucune ecole.</div>
           ) : (
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
               {ecoles.filter(e=>
@@ -396,16 +465,16 @@ function SuperAdminPanel() {
                 return (
                   <div key={ecole._id} style={{background:"#fff",borderRadius:12,overflow:"hidden",
                     boxShadow:"0 2px 12px rgba(0,32,80,0.07)",border:`1px solid ${isOpen?C.blue:"#e5e7eb"}`}}>
-                    {/* Ligne école */}
+                    {/* Ligne ecole */}
                     <div style={{display:"flex",alignItems:"center",gap:14,padding:"14px 18px",flexWrap:"wrap"}}>
                       <div style={{flex:1,minWidth:160}}>
                         <div style={{fontWeight:800,fontSize:14,color:C.blueDark}}>{ecole.nom}</div>
-                        <div style={{fontSize:11,color:"#9ca3af",marginTop:2}}>{ecole.ville} · <code style={{fontSize:10}}>{ecole._id}</code></div>
+                        <div style={{fontSize:11,color:"#9ca3af",marginTop:2}}>{ecole.ville} - <code style={{fontSize:10}}>{ecole._id}</code></div>
                       </div>
                       <div style={{display:"flex",alignItems:"center",gap:8}}>
                         <span style={{display:"inline-block",padding:"3px 12px",borderRadius:20,fontSize:12,fontWeight:800,
                           background:expired?"#fee2e2":p.bg, color:expired?"#991b1b":p.couleur}}>
-                          {expired?"⚠ Expiré":p.label}
+                          {expired?"Expire":p.label}
                         </span>
                         {ecole.plan&&ecole.plan!=="gratuit"&&ecole.planExpiry&&(
                           <span style={{fontSize:11,color:expired?"#ef4444":"#9ca3af"}}>
@@ -425,7 +494,7 @@ function SuperAdminPanel() {
                         style={{background:isOpen?"#0369a1":"#e0f2fe",color:isOpen?"#fff":"#0369a1",
                           border:"none",padding:"8px 18px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13,
                           whiteSpace:"nowrap",minWidth:130}}>
-                        {isOpen?"▲ Fermer":"✏ Modifier le plan"}
+                        {isOpen?"Fermer":"Modifier le plan"}
                       </button>
                     </div>
 
@@ -444,7 +513,7 @@ function SuperAdminPanel() {
                                 background:planChoix===key?info.bg:"#fff",transition:"all 0.15s"}}>
                               <div style={{fontWeight:800,fontSize:13,color:info.couleur}}>{info.label}</div>
                               <div style={{fontSize:11,color:"#6b7280",marginTop:3}}>
-                                {info.eleveLimit===Infinity?"Illimité":`≤ ${info.eleveLimit} élèves`}
+                                {info.eleveLimit===Infinity?"Illimite":`max ${info.eleveLimit} eleves`}
                               </div>
                             </button>
                           ))}
@@ -453,7 +522,7 @@ function SuperAdminPanel() {
                         {planChoix!=="gratuit" && (
                           <div style={{marginBottom:16}}>
                             <label style={{display:"block",fontSize:11,fontWeight:700,color:C.blue,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:8}}>
-                              Durée
+                              Duree
                             </label>
                             <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                               {PLAN_DUREES.map(d=>(
@@ -480,8 +549,8 @@ function SuperAdminPanel() {
                         )}
                         {confirmDowngrade && (
                           <div style={{background:"#fef2f2",border:"2px solid #fca5a5",borderRadius:8,padding:"12px 16px",marginBottom:12}}>
-                            <p style={{margin:"0 0 6px",fontWeight:800,fontSize:13,color:"#991b1b"}}>⚠️ Confirmer la désactivation du plan payant ?</p>
-                            <p style={{margin:0,fontSize:12,color:"#7f1d1d"}}>Cette école passera au plan Gratuit (≤ 50 élèves). Cette action ne peut pas être annulée automatiquement.</p>
+                            <p style={{margin:"0 0 6px",fontWeight:800,fontSize:13,color:"#991b1b"}}>Confirmer la desactivation du plan payant ?</p>
+                            <p style={{margin:0,fontSize:12,color:"#7f1d1d"}}>Cette ecole passera au plan Gratuit (max 50 eleves). Cette action ne peut pas etre annulee automatiquement.</p>
                           </div>
                         )}
                         <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
@@ -493,7 +562,7 @@ function SuperAdminPanel() {
                             style={{background:confirmDowngrade?`linear-gradient(90deg,#ef4444,#dc2626)`:`linear-gradient(90deg,${C.blue},${C.green})`,
                               border:"none",color:"#fff",padding:"9px 28px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13,
                               opacity:(planSaving||!!msgSucces)?0.7:1}}>
-                            {planSaving?"Sauvegarde…":confirmDowngrade?"⚠️ Oui, désactiver":"✅ Confirmer le plan"}
+                            {planSaving?"Sauvegarde...":confirmDowngrade?"Oui, desactiver":"Confirmer le plan"}
                           </button>
                         </div>
                       </div>
@@ -506,57 +575,57 @@ function SuperAdminPanel() {
         </div>
       )}
 
-      {/* ── Onglet Écoles ── */}
+      {/* Onglet Ecoles */}
       {ongletSA==="ecoles" && <>
 
       {/* Barre d'outils */}
       <div style={{display:"flex",gap:12,marginBottom:18,alignItems:"center",flexWrap:"wrap"}}>
         <input value={recherche} onChange={e=>setRecherche(e.target.value)}
-          placeholder="🔍 Rechercher une école…"
+          placeholder="Rechercher une ecole..."
           style={{...S.input,flex:1,minWidth:200}}/>
         <button onClick={()=>setCreationOuverte(true)}
           style={{...S.btn(C.blue),padding:"8px 18px",fontSize:13,background:`linear-gradient(90deg,${C.blue},${C.green})`}}>
-          + Nouvelle école
+          + Nouvelle ecole
         </button>
         <button onClick={chargerEcoles}
           style={{...S.btn("#6b7280"),background:"#f3f4f6",color:"#374151",padding:"8px 14px",fontSize:13}}>
-          ↻ Actualiser
+          Actualiser
         </button>
         <button onClick={lancerBackfillPublic} disabled={backfillEnCours}
           style={{...S.btn("#6b7280"),background:"#eef2ff",color:"#3730a3",padding:"8px 14px",fontSize:13,opacity:backfillEnCours?0.6:1}}>
-          {backfillEnCours ? "⏳ Synchro…" : "🔁 Sync écoles publiques"}
+          {backfillEnCours ? "Synchro..." : "Sync ecoles publiques"}
         </button>
       </div>
 
       {/* Statistiques globales */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:14,marginBottom:24}}>
         {[
-          {label:"Écoles totales",val:ecoles.length,icon:"🏫",color:C.blue},
-          {label:"Écoles actives",val:ecoles.filter(e=>e.actif).length,icon:"✅",color:C.green},
-          {label:"Écoles inactives",val:ecoles.filter(e=>!e.actif).length,icon:"⛔",color:"#ef4444"},
-          {label:"Élèves total",val:Object.values(stats).reduce((s,v)=>s+(v.eleves||0),0),icon:"👥",color:"#8b5cf6"},
+          {label:"Ecoles totales",val:ecoles.length,icon:"EC",color:C.blue},
+          {label:"Ecoles actives",val:ecoles.filter(e=>e.actif && !e.supprime).length,icon:"ON",color:C.green},
+          {label:"Ecoles inactives",val:ecoles.filter(e=>!e.actif && !e.supprime).length,icon:"OFF",color:"#ef4444"},
+          {label:"Ecoles supprimees",val:ecoles.filter(e=>e.supprime).length,icon:"DEL",color:"#7f1d1d"},
         ].map(({label,val,icon,color})=>(
           <div key={label} style={{background:"#fff",borderRadius:12,padding:"16px 18px",boxShadow:"0 2px 12px rgba(0,32,80,0.07)",borderLeft:`4px solid ${color}`}}>
             <div style={{fontSize:22}}>{icon}</div>
-            <div style={{fontSize:24,fontWeight:900,color,marginTop:4}}>{chargement?"…":val}</div>
+            <div style={{fontSize:24,fontWeight:900,color,marginTop:4}}>{chargement?"...":val}</div>
             <div style={{fontSize:11,color:"#9ca3af",marginTop:2}}>{label}</div>
           </div>
         ))}
       </div>
 
-      {/* Tableau des écoles */}
+      {/* Tableau des ecoles */}
       <div style={S.card}>
         {chargement ? (
-          <div style={{padding:40,textAlign:"center",color:"#9ca3af"}}>Chargement des écoles…</div>
+          <div style={{padding:40,textAlign:"center",color:"#9ca3af"}}>Chargement des ecoles...</div>
         ) : ecolesFiltrees.length===0 ? (
           <div style={{padding:40,textAlign:"center",color:"#9ca3af"}}>
-            {recherche ? "Aucune école ne correspond à la recherche." : "Aucune école enregistrée."}
+            {recherche ? "Aucune ecole ne correspond a la recherche." : "Aucune ecole enregistree."}
           </div>
         ) : (
           <table style={{width:"100%",borderCollapse:"collapse"}}>
             <thead>
               <tr>
-                {["Code","École","Ville/Pays","Créée le","Statut","Plan","Élèves","Comptes","Actions"].map(h=>(
+                {["Code","Ecole","Ville/Pays","Creee le","Statut","Plan","Eleves","Comptes","Actions"].map(h=>(
                   <th key={h} style={S.th}>{h}</th>
                 ))}
               </tr>
@@ -574,9 +643,13 @@ function SuperAdminPanel() {
                       </code>
                     </td>
                     <td style={S.td}><strong>{ecole.nom}</strong></td>
-                    <td style={S.td}>{ecole.ville}{ecole.pays&&ecole.pays!=="Guinée"?`, ${ecole.pays}`:""}</td>
-                    <td style={S.td}>{ecole.createdAt?new Date(ecole.createdAt).toLocaleDateString("fr-FR"):"—"}</td>
-                    <td style={S.td}><span style={S.badge(ecole.actif)}>{ecole.actif?"Actif":"Inactif"}</span></td>
+                    <td style={S.td}>{ecole.ville}{ecole.pays&&ecole.pays!=="Guinee"?`, ${ecole.pays}`:""}</td>
+                    <td style={S.td}>{ecole.createdAt?new Date(ecole.createdAt).toLocaleDateString("fr-FR"):"-"}</td>
+                    <td style={S.td}>
+                      <span style={S.badge(ecole.actif && !ecole.supprime)}>
+                        {ecole.supprime?"Supprimee":ecole.actif?"Active":"Inactive"}
+                      </span>
+                    </td>
                     <td style={S.td}>
                       <div style={{display:"flex",flexDirection:"column",gap:4,alignItems:"flex-start"}}>
                         {(()=>{
@@ -587,7 +660,7 @@ function SuperAdminPanel() {
                               display:"inline-block",padding:"2px 10px",borderRadius:20,fontSize:11,fontWeight:800,
                               background:expired?"#fee2e2":p.bg, color:expired?"#991b1b":p.couleur,
                             }}>
-                              {expired?"⚠ Expiré":p.label}
+                              {expired?"Expire":p.label}
                             </span>
                             {ecole.plan!=="gratuit"&&ecole.planExpiry&&(
                               <span style={{fontSize:9,color:expired?"#ef4444":"#9ca3af"}}>
@@ -598,8 +671,8 @@ function SuperAdminPanel() {
                         })()}
                       </div>
                     </td>
-                    <td style={{...S.td,textAlign:"center",fontWeight:700,color:C.blue}}>{st.eleves??"…"}</td>
-                    <td style={{...S.td,textAlign:"center",fontWeight:700,color:C.green}}>{st.comptes??"…"}</td>
+                    <td style={{...S.td,textAlign:"center",fontWeight:700,color:C.blue}}>{st.eleves??"..."}</td>
+                    <td style={{...S.td,textAlign:"center",fontWeight:700,color:C.green}}>{st.comptes??"..."}</td>
                     <td style={S.td}>
                       <div style={{display:"flex",gap:6}}>
                         <button onClick={()=>{
@@ -612,14 +685,15 @@ function SuperAdminPanel() {
                             }
                           }}
                           style={{...S.btn(C.blue),background:planModal?._id===ecole._id?"#0369a1":"#e0f2fe",color:planModal?._id===ecole._id?"#fff":"#0369a1"}}>
-                          {planModal?._id===ecole._id?"▲ Fermer":"Gérer le plan"}
+                          {planModal?._id===ecole._id?"Fermer":"Gerer le plan"}
                         </button>
-                        <button onClick={()=>setConfirmation({ecole,action:"toggle"})}
-                          style={{...S.btn(ecole.actif?C.blue:C.green),background:ecole.actif?"#fee2e2":"#d1fae5",color:ecole.actif?"#991b1b":"#065f46"}}>
-                          {ecole.actif?"Désactiver":"Activer"}
+                        <button onClick={()=>ouvrirConfirmation(ecole, ecole.actif && !ecole.supprime ? "deactivate" : "reactivate")}
+                          style={{...S.btn(ecole.actif && !ecole.supprime ? C.blue : C.green),background:ecole.actif && !ecole.supprime ? "#fee2e2" : "#d1fae5",color:ecole.actif && !ecole.supprime ? "#991b1b" : "#065f46"}}>
+                          {ecole.actif && !ecole.supprime ? "Desactiver" : "Reactiver"}
                         </button>
-                        <button onClick={()=>setConfirmation({ecole,action:"supprimer"})}
-                          style={{...S.btn("#ef4444"),background:"#fee2e2",color:"#991b1b"}}>
+                        <button onClick={()=>ouvrirConfirmation(ecole, "delete")}
+                          disabled={!!ecole.supprime}
+                          style={{...S.btn("#ef4444"),background:"#fee2e2",color:"#991b1b",opacity:ecole.supprime?0.5:1,cursor:ecole.supprime?"not-allowed":"pointer"}}>
                           Supprimer
                         </button>
                       </div>
@@ -637,12 +711,12 @@ function SuperAdminPanel() {
         <div ref={planPanelRef} style={{background:"#fff",border:`2px solid ${PLANS[planChoix]?.couleur||C.blue}`,borderRadius:14,padding:"24px 28px",marginTop:16,boxShadow:"0 4px 24px rgba(0,0,0,0.08)"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
             <div>
-              <h3 style={{margin:0,fontSize:16,fontWeight:800,color:C.blueDark}}>Gérer le plan — {planModal.nom}</h3>
+              <h3 style={{margin:0,fontSize:16,fontWeight:800,color:C.blueDark}}>Gerer le plan - {planModal.nom}</h3>
               <p style={{margin:"4px 0 0",fontSize:12,color:"#6b7280"}}>Plan actuel : <strong>{PLANS[planModal.plan]?.label||"Gratuit"}</strong></p>
             </div>
             <button onClick={()=>setPlanModal(null)}
               style={{background:"#f3f4f6",border:"none",borderRadius:8,padding:"6px 14px",cursor:"pointer",fontWeight:700,fontSize:13,color:"#6b7280"}}>
-              ✕ Fermer
+              Fermer
             </button>
           </div>
 
@@ -653,14 +727,14 @@ function SuperAdminPanel() {
                 style={{border:`2px solid ${planChoix===key?info.couleur:"#e5e7eb"}`,borderRadius:10,padding:"12px 10px",cursor:"pointer",textAlign:"left",
                   background:planChoix===key?info.bg:"#f9fafb",transition:"all 0.15s"}}>
                 <div style={{fontWeight:800,fontSize:13,color:info.couleur}}>{info.label}</div>
-                <div style={{fontSize:11,color:"#6b7280",marginTop:3}}>{info.eleveLimit===Infinity?"Illimité":`≤ ${info.eleveLimit} élèves`}</div>
+                <div style={{fontSize:11,color:"#6b7280",marginTop:3}}>{info.eleveLimit===Infinity?"Illimite":`<= ${info.eleveLimit} eleves`}</div>
               </button>
             ))}
           </div>
 
           {planChoix !== "gratuit" && (
             <div style={{marginBottom:20}}>
-              <label style={{display:"block",fontSize:11,fontWeight:700,color:C.blue,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:10}}>Durée de l'abonnement</label>
+              <label style={{display:"block",fontSize:11,fontWeight:700,color:C.blue,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:10}}>Duree de l'abonnement</label>
               <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                 {PLAN_DUREES.map(d=>(
                   <button key={d.jours} onClick={()=>setPlanDuree(d.jours)}
@@ -684,8 +758,8 @@ function SuperAdminPanel() {
           )}
           {confirmDowngrade && (
             <div style={{background:"#fef2f2",border:"2px solid #fca5a5",borderRadius:8,padding:"12px 16px",marginBottom:12}}>
-              <p style={{margin:"0 0 6px",fontWeight:800,fontSize:13,color:"#991b1b"}}>⚠️ Confirmer la désactivation du plan payant ?</p>
-              <p style={{margin:0,fontSize:12,color:"#7f1d1d"}}>Cette école passera au plan Gratuit (≤ 50 élèves). Cette action ne peut pas être annulée automatiquement.</p>
+              <p style={{margin:"0 0 6px",fontWeight:800,fontSize:13,color:"#991b1b"}}>Confirmer la desactivation du plan payant ?</p>
+              <p style={{margin:0,fontSize:12,color:"#7f1d1d"}}>Cette ecole passera au plan Gratuit (max 50 eleves). Cette action ne peut pas etre annulee automatiquement.</p>
             </div>
           )}
           <div style={{display:"flex",gap:10,justifyContent:"flex-end",paddingTop:16,borderTop:"1px solid #f0f0f0"}}>
@@ -697,24 +771,24 @@ function SuperAdminPanel() {
               style={{background:confirmDowngrade?`linear-gradient(90deg,#ef4444,#dc2626)`:`linear-gradient(90deg,${C.blue},${C.green})`,
                 border:"none",color:"#fff",padding:"10px 28px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13,
                 opacity:(planSaving||!!msgSucces)?0.7:1}}>
-              {planSaving?"Sauvegarde en cours…":confirmDowngrade?"⚠️ Oui, désactiver":"Confirmer le plan"}
+              {planSaving?"Sauvegarde en cours...":confirmDowngrade?"Oui, desactiver":"Confirmer le plan"}
             </button>
           </div>
         </div>
       )}
 
-      {/* Fin onglet écoles */}
+      {/* Fin onglet ecoles */}
       </>}
 
-      {/* Modal création d'école */}
+      {/* Modal creation d'ecole */}
       {creationOuverte && (
         <div style={S.overlay} onClick={()=>setCreationOuverte(false)}>
           <div style={S.modal} onClick={e=>e.stopPropagation()}>
-            <h3 style={{margin:"0 0 16px",color:C.blueDark,fontSize:17}}>➕ Créer une nouvelle école</h3>
+            <h3 style={{margin:"0 0 16px",color:C.blueDark,fontSize:17}}>Creer une nouvelle ecole</h3>
             {[
-              {label:"Nom de l'école *",key:"nom",placeholder:"Ex. : École Les Étoiles"},
+              {label:"Nom de l'ecole *",key:"nom",placeholder:"Ex. : Ecole Les Etoiles"},
               {label:"Ville *",key:"ville",placeholder:"Ex. : Conakry"},
-              {label:"Pays",key:"pays",placeholder:"Ex. : Guinée"},
+              {label:"Pays",key:"pays",placeholder:"Ex. : Guinee"},
             ].map(({label,key,placeholder})=>(
               <div key={key} style={{marginBottom:12}}>
                 <label style={{display:"block",fontSize:11,fontWeight:700,color:C.blue,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:4}}>{label}</label>
@@ -724,7 +798,7 @@ function SuperAdminPanel() {
             ))}
             {nouvelleEcole.nom && (
               <div style={{background:"#f0f4f8",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#6b7280",marginBottom:14}}>
-                Code école généré : <strong style={{color:C.blue}}>{genSlug(nouvelleEcole.nom)}</strong>
+                Code ecole genere : <strong style={{color:C.blue}}>{genSlug(nouvelleEcole.nom)}</strong>
               </div>
             )}
             <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:8}}>
@@ -736,33 +810,42 @@ function SuperAdminPanel() {
                 style={{background:`linear-gradient(90deg,${C.blue},${C.green})`,border:"none",color:"#fff",
                   padding:"9px 18px",borderRadius:8,cursor:"pointer",fontWeight:700,
                   opacity:(!nouvelleEcole.nom.trim()||!nouvelleEcole.ville.trim())?0.5:1}}>
-                Créer l'école
+                Creer l'ecole
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Confirmation désactiver/supprimer — inline */}
+      {/* Confirmation cycle de vie - inline */}
       {confirmation && (
-        <div style={{background:"#fff",border:"1px solid #e5e7eb",borderRadius:12,padding:"20px 24px",marginTop:16,boxShadow:"0 2px 12px rgba(0,0,0,0.08)"}}>
+        <div style={{background:lifecycleLabels[confirmation.action].bg,border:`1px solid ${lifecycleLabels[confirmation.action].border}`,borderRadius:12,padding:"20px 24px",marginTop:16,boxShadow:"0 2px 12px rgba(0,0,0,0.08)"}}>
           <h3 style={{margin:"0 0 8px",color:C.blueDark,fontSize:16,fontWeight:800}}>
-            {confirmation.action==="toggle"?(confirmation.ecole.actif?"Désactiver l'école":"Activer l'école"):"Supprimer l'école"}
+            {lifecycleLabels[confirmation.action].title}
           </h3>
           <p style={{fontSize:13,color:"#6b7280",marginBottom:16}}>
-            {confirmation.action==="toggle"
-              ?`Confirmer ${confirmation.ecole.actif?"la désactivation":"l'activation"} de "${confirmation.ecole.nom}" ?`
-              :`Cette action masquera définitivement "${confirmation.ecole.nom}". Confirmer ?`}
+            {lifecycleLabels[confirmation.action].description}
           </p>
+          <p style={{fontSize:12,color:"#6b7280",margin:"0 0 8px"}}>
+            Tapez <strong>{lifecycleLabels[confirmation.action].confirmation}</strong> pour continuer sur <strong>{confirmation.ecole.nom}</strong>.
+          </p>
+          <input
+            value={confirmationValue}
+            onChange={(e)=>setConfirmationValue(e.target.value)}
+            placeholder={lifecycleLabels[confirmation.action].confirmation}
+            style={{...S.input,width:"100%",marginBottom:12}}
+          />
           <div style={{display:"flex",gap:10}}>
             <button onClick={()=>setConfirmation(null)}
               style={{background:"#f3f4f6",border:"none",padding:"9px 18px",borderRadius:8,cursor:"pointer",fontWeight:600,color:"#6b7280",fontSize:13}}>
               Annuler
             </button>
-            <button onClick={()=>confirmation.action==="toggle"?toggleActif(confirmation.ecole):supprimerEcole(confirmation.ecole)}
-              style={{background:confirmation.action==="supprimer"?"#ef4444":`linear-gradient(90deg,${C.blue},${C.green})`,
-                border:"none",color:"#fff",padding:"9px 18px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13}}>
-              Confirmer
+            <button onClick={executerCycleVie}
+              disabled={confirmationLoading || confirmationValue.trim().toUpperCase() !== lifecycleLabels[confirmation.action].confirmation}
+              style={{background:confirmation.action==="delete"?"#ef4444":`linear-gradient(90deg,${C.blue},${C.green})`,
+                border:"none",color:"#fff",padding:"9px 18px",borderRadius:8,cursor:confirmationLoading?"not-allowed":"pointer",fontWeight:700,fontSize:13,
+                opacity:confirmationLoading || confirmationValue.trim().toUpperCase() !== lifecycleLabels[confirmation.action].confirmation ? 0.6 : 1}}>
+              {confirmationLoading ? "Traitement..." : lifecycleLabels[confirmation.action].button}
             </button>
           </div>
         </div>
