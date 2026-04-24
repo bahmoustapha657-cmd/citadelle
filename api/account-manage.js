@@ -4,7 +4,12 @@ import bcrypt from "bcryptjs";
 import { ROLE_ORDER, getRoleSettingsMap } from "../shared/role-config.js";
 import { generateSecurePassword } from "./_lib/passwords.js";
 import { findLogicalAccountConflict } from "./_lib/account-conflicts.js";
-import { extractAccountProfileFields } from "./_lib/account-links.js";
+import {
+  extractAccountProfileFields,
+  hasSameParentHousehold,
+  mergeParentStudentLinks,
+  parentAccountsShareStudent,
+} from "./_lib/account-links.js";
 import { initAdmin } from "./_lib/firebase-admin.js";
 import { buildSessionAccountPayload, buildUserProfilePayload } from "./_lib/user-profiles.js";
 import {
@@ -91,6 +96,36 @@ async function findAccountsByRole({ db, schoolId, role }) {
   return snap.docs.map((doc) => ({ _id: doc.id, ...doc.data() }));
 }
 
+function findParentHouseholdAccount(accounts = [], candidate = {}) {
+  return accounts.find((account) => (
+    hasSameParentHousehold(candidate, account)
+    && !parentAccountsShareStudent(candidate, account)
+  )) || null;
+}
+
+function buildMergedParentAccount(existingAccount = {}, candidate = {}) {
+  const mergedLinks = mergeParentStudentLinks(existingAccount, candidate);
+
+  return {
+    ...existingAccount,
+    ...candidate,
+    login: existingAccount.login,
+    mdp: existingAccount.mdp,
+    uid: existingAccount.uid || null,
+    role: existingAccount.role || candidate.role || "parent",
+    nom: existingAccount.nom || candidate.nom || existingAccount.login,
+    label: existingAccount.label || candidate.label || "Parent",
+    statut: existingAccount.statut || candidate.statut || "Actif",
+    premiereCo: existingAccount.premiereCo !== false,
+    createdAt: existingAccount.createdAt || Date.now(),
+    updatedAt: Date.now(),
+    ...mergedLinks,
+    tuteur: existingAccount.tuteur || candidate.tuteur || null,
+    contactTuteur: existingAccount.contactTuteur || candidate.contactTuteur || null,
+    filiation: existingAccount.filiation || candidate.filiation || null,
+  };
+}
+
 async function syncUserProfile({ db, uid, schoolId, login, email, compteDocId, account }) {
   await db.collection("users").doc(uid).set(buildUserProfilePayload({
     account,
@@ -174,6 +209,45 @@ export default async function handler(req, res) {
       });
       if (logicalConflict) {
         return res.status(409).json({ error: logicalConflict.error });
+      }
+
+      if (role === "parent") {
+        const householdMatch = findParentHouseholdAccount(logicalAccounts, accountFields);
+        if (householdMatch && householdMatch._id) {
+          const householdRef = db
+            .collection("ecoles")
+            .doc(normalizedSchoolId)
+            .collection("comptes")
+            .doc(householdMatch._id);
+          const merged = buildMergedParentAccount(householdMatch, { role, ...accountFields });
+          delete merged._id;
+          await householdRef.update({ ...merged, updatedAt: Date.now() });
+
+          if (householdMatch.uid) {
+            const householdEmail = buildEmail(householdMatch.login, normalizedSchoolId);
+            await syncUserProfile({
+              db,
+              uid: householdMatch.uid,
+              schoolId: normalizedSchoolId,
+              login: householdMatch.login,
+              email: householdEmail,
+              compteDocId: householdMatch._id,
+              account: { ...merged, uid: householdMatch.uid },
+            });
+          }
+
+          return res.status(200).json({
+            ok: true,
+            merged: true,
+            uid: householdMatch.uid || null,
+            compteDocId: householdMatch._id,
+            compte: buildSessionAccountPayload(
+              { ...merged, uid: householdMatch.uid || null },
+              householdMatch.login,
+            ),
+            message: `Élève ajouté au compte parent existant « ${householdMatch.login} ». Le mot de passe initial reste inchangé.`,
+          });
+        }
       }
 
       const active = accountFields.statut !== "Inactif";

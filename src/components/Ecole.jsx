@@ -458,8 +458,14 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
               });
               const data = await res.json().catch(()=>({}));
               if(!res.ok||!data.ok) throw new Error(data.error||"Création du compte impossible.");
-              toast(`Compte parent créé — ID : ${formP.login} · Remettez-le au tuteur de ${parentEleve.prenom}.`,"success");
-              logAction("Compte parent créé",`Login: ${formP.login} · Élève: ${parentEleve.prenom} ${parentEleve.nom}`);
+              if(data.merged){
+                const loginExistant = data.compte?.login || formP.login;
+                toast(`${parentEleve.prenom} ajouté au compte parent existant « ${loginExistant} ». Le tuteur conserve son mot de passe actuel.`,"success");
+                logAction("Élève rattaché compte parent",`Login: ${loginExistant} · Élève: ${parentEleve.prenom} ${parentEleve.nom}`);
+              } else {
+                toast(`Compte parent créé — ID : ${formP.login} · Remettez-le au tuteur de ${parentEleve.prenom}.`,"success");
+                logAction("Compte parent créé",`Login: ${formP.login} · Élève: ${parentEleve.prenom} ${parentEleve.nom}`);
+              }
               setParentEleve(null);
             }catch(e){toast("Erreur : "+e.message,"error");}
           }}>✅ Créer le compte</Btn>
