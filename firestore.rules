@@ -50,6 +50,10 @@ service cloud.firestore {
       return ["direction", "admin", "primaire", "college", "comptable"];
     }
 
+    function staffRoles() {
+      return ["direction", "admin", "primaire", "college", "comptable", "enseignant"];
+    }
+
     function pedagogieRoles(sectionRole) {
       return ["direction", "admin", sectionRole];
     }
@@ -93,6 +97,54 @@ service cloud.firestore {
              && request.resource.data.mdp is string
              && request.resource.data.mdp.size() >= 20
              && roleScolaireValide(request.resource.data.role);
+    }
+
+    function messageParentValide(schoolId) {
+      return appartientEcole(schoolId)
+             && aUnRole(["parent"])
+             && request.resource.data.expediteur == "parent"
+             && request.resource.data.sujet is string
+             && request.resource.data.sujet.size() > 0
+             && request.resource.data.sujet.size() <= 200
+             && request.resource.data.corps is string
+             && request.resource.data.corps.size() > 0
+             && request.resource.data.corps.size() <= 5000;
+    }
+
+    // Collections légitimes de l'application accessibles en lecture/écriture par le back-office.
+    function collectionsBackOffice() {
+      return [
+        "evenements",
+        "recettes",
+        "depenses",
+        "salaires",
+        "bons",
+        "personnel",
+        "membres",
+        "versements",
+        "tarifs",
+        "documents",
+        "examens",
+        "livrets",
+        "elevesPrimaire",
+        "elevesCollege",
+        "elevesLycee",
+        "classesPrimaire",
+        "classesCollege",
+        "classesLycee",
+        "ensPrimaire",
+        "ensCollege",
+        "ensLycee",
+        "ensPrimaire_enseignements",
+        "ensCollege_enseignements",
+        "ensLycee_enseignements",
+        "classesPrimaire_emplois",
+        "classesCollege_emplois",
+        "classesLycee_emplois",
+        "classesPrimaire_matieres",
+        "classesCollege_matieres",
+        "classesLycee_matieres"
+      ];
     }
 
     match /ecoles/{schoolId} {
@@ -145,8 +197,11 @@ service cloud.firestore {
       match /messages/{docId} {
         allow read: if (appartientEcole(schoolId) && aUnRole(backOfficeRoles()))
                      || aUnRole(["superadmin"]);
-        allow write: if (appartientEcole(schoolId) && aUnRole(backOfficeRoles()))
-                      || aUnRole(["superadmin"]);
+        allow create: if ((appartientEcole(schoolId) && aUnRole(backOfficeRoles()))
+                          || messageParentValide(schoolId)
+                          || aUnRole(["superadmin"]));
+        allow update, delete: if (appartientEcole(schoolId) && aUnRole(backOfficeRoles()))
+                               || aUnRole(["superadmin"]);
       }
 
       match /historique/{docId} {
@@ -207,11 +262,15 @@ service cloud.firestore {
                       || aUnRole(["superadmin"]);
       }
 
+      // Catch-all durci : whitelist strict des collections légitimes de l'application.
+      // Toute collection non listée ici est refusée en lecture ET en écriture.
       match /{collection}/{docId} {
-        allow read: if (appartientEcole(schoolId) && aUnRole(backOfficeRoles()))
-                     || aUnRole(["superadmin"]);
-        allow write: if (appartientEcole(schoolId) && aUnRole(backOfficeRoles()))
-                      || aUnRole(["superadmin"]);
+        allow read: if collection in collectionsBackOffice()
+                    && ((appartientEcole(schoolId) && aUnRole(backOfficeRoles()))
+                        || aUnRole(["superadmin"]));
+        allow write: if collection in collectionsBackOffice()
+                     && ((appartientEcole(schoolId) && aUnRole(backOfficeRoles()))
+                         || aUnRole(["superadmin"]));
       }
     }
 
