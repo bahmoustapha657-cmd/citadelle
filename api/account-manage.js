@@ -4,7 +4,9 @@ import bcrypt from "bcryptjs";
 import { ROLE_ORDER, getRoleSettingsMap } from "../shared/role-config.js";
 import { generateSecurePassword } from "./_lib/passwords.js";
 import { findLogicalAccountConflict } from "./_lib/account-conflicts.js";
+import { extractAccountProfileFields } from "./_lib/account-links.js";
 import { initAdmin } from "./_lib/firebase-admin.js";
+import { buildSessionAccountPayload, buildUserProfilePayload } from "./_lib/user-profiles.js";
 import {
   applyCors,
   isAllowedSchoolRole,
@@ -64,10 +66,16 @@ function sanitizeAccountPayload(body = {}) {
     eleveId: body.eleveId || null,
     eleveNom: body.eleveNom || null,
     eleveClasse: body.eleveClasse || null,
+    eleveIds: Array.isArray(body.eleveIds) ? body.eleveIds : null,
+    elevesAssocies: Array.isArray(body.elevesAssocies) ? body.elevesAssocies : null,
     section: body.section || null,
+    sections: Array.isArray(body.sections) ? body.sections : null,
     matiere: body.matiere || null,
     enseignantId: body.enseignantId || null,
     enseignantNom: body.enseignantNom || null,
+    tuteur: body.tuteur || null,
+    contactTuteur: body.contactTuteur || null,
+    filiation: body.filiation || null,
     statut: body.statut || "Actif",
   };
 }
@@ -83,19 +91,14 @@ async function findAccountsByRole({ db, schoolId, role }) {
   return snap.docs.map((doc) => ({ _id: doc.id, ...doc.data() }));
 }
 
-async function syncUserProfile({ db, uid, schoolId, login, role, nom, label, email, compteDocId, premiereCo, statut = "Actif" }) {
-  await db.collection("users").doc(uid).set({
+async function syncUserProfile({ db, uid, schoolId, login, email, compteDocId, account }) {
+  await db.collection("users").doc(uid).set(buildUserProfilePayload({
+    account,
     schoolId,
-    role,
-    nom,
-    label,
     login,
     email,
     compteDocId,
-    premiereCo,
-    statut,
-    updatedAt: Date.now(),
-  }, { merge: true });
+  }), { merge: true });
 }
 
 async function updateAuthIdentity(authAdmin, uid, { email, nom, active }) {
@@ -206,16 +209,23 @@ export default async function handler(req, res) {
         uid: userRecord.uid,
         schoolId: normalizedSchoolId,
         login: normalizedLogin,
-        role,
-        nom: accountFields.nom || normalizedLogin,
-        label: accountFields.label || role,
         email,
         compteDocId: ref.id,
-        premiereCo: true,
-        statut: accountFields.statut || "Actif",
+        account: {
+          ...accountData,
+          uid: userRecord.uid,
+        },
       });
 
-      return res.status(200).json({ ok: true, uid: userRecord.uid, compteDocId: ref.id });
+      return res.status(200).json({
+        ok: true,
+        uid: userRecord.uid,
+        compteDocId: ref.id,
+        compte: buildSessionAccountPayload({
+          ...accountData,
+          uid: userRecord.uid,
+        }, normalizedLogin),
+      });
     } catch (e) {
       console.error("account-manage create error:", e);
       return res.status(500).json({ error: "Erreur création compte" });
@@ -291,13 +301,16 @@ export default async function handler(req, res) {
               uid: existing.data.uid,
               schoolId: normalizedSchoolId,
               login: config.login,
-              role,
-              nom: config.nom,
-              label: config.label,
               email,
               compteDocId: existing.id,
-              premiereCo: !!existing.data.premiereCo,
-              statut,
+              account: {
+                ...existing.data,
+                login: config.login,
+                role,
+                nom: config.nom,
+                label: config.label,
+                statut,
+              },
             });
           }
 
@@ -340,13 +353,17 @@ export default async function handler(req, res) {
           uid: userRecord.uid,
           schoolId: normalizedSchoolId,
           login: config.login,
-          role,
-          nom: config.nom,
-          label: config.label,
           email,
           compteDocId: ref.id,
-          premiereCo: true,
-          statut,
+          account: {
+            login: config.login,
+            role,
+            nom: config.nom,
+            label: config.label,
+            statut,
+            premiereCo: true,
+            uid: userRecord.uid,
+          },
         });
 
         generatedAccounts.push({
@@ -434,13 +451,13 @@ export default async function handler(req, res) {
         uid: userRecord.uid,
         schoolId: normalizedSchoolId,
         login: account.data.login,
-        role: account.data.role,
-        nom: account.data.nom || account.data.login,
-        label: account.data.label || account.data.role,
         email,
         compteDocId: account.id,
-        premiereCo: true,
-        statut: account.data.statut || "Actif",
+        account: {
+          ...account.data,
+          premiereCo: true,
+          uid: userRecord.uid,
+        },
       });
 
       return res.status(200).json({ ok: true });
@@ -481,6 +498,7 @@ export default async function handler(req, res) {
       await db.collection("users").doc(session.uid).set({
         compteDocId: account.id,
         premiereCo: false,
+        ...extractAccountProfileFields(account.data),
         updatedAt: Date.now(),
       }, { merge: true });
 

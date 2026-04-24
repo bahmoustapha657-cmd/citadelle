@@ -3,6 +3,7 @@ import { getFirestore } from "firebase-admin/firestore";
 import bcrypt from "bcryptjs";
 import { initAdmin } from "./_lib/firebase-admin.js";
 import { captureServerError } from "./_lib/observability.js";
+import { buildSessionAccountPayload, buildUserProfilePayload } from "./_lib/user-profiles.js";
 import {
   applyCors,
   consumeRateLimit,
@@ -127,25 +128,23 @@ export default async function handler(req, res) {
       schoolId: normalizedSchoolId,
     });
 
-    await db.collection("users").doc(uid).set({
+    await db.collection("users").doc(uid).set(buildUserProfilePayload({
+      account: compte,
       schoolId: normalizedSchoolId,
-      role: compte.role,
-      nom: compte.nom || normalizedLogin,
-      label,
       login: normalizedLogin,
       email,
       compteDocId: compte._id,
-      premiereCo: !!compte.premiereCo,
-      statut: compte.statut || "Actif",
-      updatedAt: Date.now(),
-    }, { merge: true });
+    }), { merge: true });
 
     const customToken = await authAdmin.createCustomToken(uid);
 
     return res.status(200).json({
       ok: true,
       customToken,
-      compte: { login: compte.login, role: compte.role, nom: compte.nom || normalizedLogin, label },
+      compte: buildSessionAccountPayload({
+        ...compte,
+        label,
+      }, normalizedLogin),
     });
   } catch (e) {
     console.error("login error:", e);

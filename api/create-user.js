@@ -2,6 +2,7 @@ import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import bcrypt from "bcryptjs";
 import { initAdmin } from "./_lib/firebase-admin.js";
+import { buildUserProfilePayload } from "./_lib/user-profiles.js";
 import {
   applyCors,
   isAllowedSchoolRole,
@@ -62,8 +63,6 @@ export default async function handler(req, res) {
 
     const compteDoc = comptesSnap.docs[0];
     const compte = compteDoc.data();
-    const label = compte.label || compte.role;
-
     if (!isAllowedSchoolRole(compte.role)) {
       return res.status(403).json({ error: "Rôle de compte invalide. Synchronisation refusée." });
     }
@@ -101,18 +100,13 @@ export default async function handler(req, res) {
       schoolId: normalizedSchoolId,
     });
 
-    await db.collection("users").doc(userRecord.uid).set({
+    await db.collection("users").doc(userRecord.uid).set(buildUserProfilePayload({
+      account: compte,
       schoolId: normalizedSchoolId,
-      role: compte.role,
-      nom: compte.nom || normalizedLogin,
-      label,
       login: normalizedLogin,
       email,
       compteDocId: compteDoc.id,
-      premiereCo: !!compte.premiereCo,
-      statut: compte.statut || "Actif",
-      updatedAt: Date.now(),
-    }, { merge: true });
+    }), { merge: true });
 
     await compteDoc.ref.update({
       mdp: mdpHash,

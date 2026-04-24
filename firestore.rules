@@ -46,6 +46,14 @@ service cloud.firestore {
       return role is string && [role].hasAny(allowedSchoolRoles());
     }
 
+    function backOfficeRoles() {
+      return ["direction", "admin", "primaire", "college", "comptable"];
+    }
+
+    function pedagogieRoles(sectionRole) {
+      return ["direction", "admin", sectionRole];
+    }
+
     function compteAllowedKeys() {
       return [
         "login",
@@ -135,14 +143,16 @@ service cloud.firestore {
       }
 
       match /messages/{docId} {
-        allow read: if appartientEcole(schoolId) || aUnRole(["superadmin"]);
-        allow write: if (appartientEcole(schoolId) && aUnRole(["direction", "admin", "comptable", "primaire", "college", "parent"]))
+        allow read: if (appartientEcole(schoolId) && aUnRole(backOfficeRoles()))
+                     || aUnRole(["superadmin"]);
+        allow write: if (appartientEcole(schoolId) && aUnRole(backOfficeRoles()))
                       || aUnRole(["superadmin"]);
       }
 
       match /historique/{docId} {
-        allow read: if appartientEcole(schoolId) || aUnRole(["superadmin"]);
-        allow write: if (appartientEcole(schoolId) && aUnRole(["direction", "admin", "comptable", "primaire", "college"]))
+        allow read: if (appartientEcole(schoolId) && aUnRole(backOfficeRoles()))
+                     || aUnRole(["superadmin"]);
+        allow write: if (appartientEcole(schoolId) && aUnRole(backOfficeRoles()))
                       || aUnRole(["superadmin"]);
       }
 
@@ -156,44 +166,51 @@ service cloud.firestore {
       }
 
       match /notesCollege/{docId} {
-        allow read: if appartientEcole(schoolId) || aUnRole(["superadmin"]);
-        allow write: if (appartientEcole(schoolId) && aUnRole(["direction", "admin", "college", "enseignant"]))
+        allow read: if (appartientEcole(schoolId) && aUnRole(pedagogieRoles("college")))
+                     || aUnRole(["superadmin"]);
+        allow write: if (appartientEcole(schoolId) && aUnRole(pedagogieRoles("college")))
                       || aUnRole(["superadmin"]);
       }
 
       match /notesPrimaire/{docId} {
-        allow read: if appartientEcole(schoolId) || aUnRole(["superadmin"]);
-        allow write: if (appartientEcole(schoolId) && aUnRole(["direction", "admin", "primaire", "enseignant"]))
+        allow read: if (appartientEcole(schoolId) && aUnRole(pedagogieRoles("primaire")))
+                     || aUnRole(["superadmin"]);
+        allow write: if (appartientEcole(schoolId) && aUnRole(pedagogieRoles("primaire")))
                       || aUnRole(["superadmin"]);
       }
 
       match /notesLycee/{docId} {
-        allow read: if appartientEcole(schoolId) || aUnRole(["superadmin"]);
-        allow write: if (appartientEcole(schoolId) && aUnRole(["direction", "admin", "college", "enseignant"]))
+        allow read: if (appartientEcole(schoolId) && aUnRole(pedagogieRoles("college")))
+                     || aUnRole(["superadmin"]);
+        allow write: if (appartientEcole(schoolId) && aUnRole(pedagogieRoles("college")))
                       || aUnRole(["superadmin"]);
       }
 
-      match /absencesCollege/{docId} {
-        allow read: if appartientEcole(schoolId) || aUnRole(["superadmin"]);
-        allow write: if (appartientEcole(schoolId) && aUnRole(["direction", "admin", "college", "enseignant"]))
+      match /elevesCollege_absences/{docId} {
+        allow read: if (appartientEcole(schoolId) && aUnRole(pedagogieRoles("college")))
+                     || aUnRole(["superadmin"]);
+        allow write: if (appartientEcole(schoolId) && aUnRole(pedagogieRoles("college")))
                       || aUnRole(["superadmin"]);
       }
 
-      match /absencesPrimaire/{docId} {
-        allow read: if appartientEcole(schoolId) || aUnRole(["superadmin"]);
-        allow write: if (appartientEcole(schoolId) && aUnRole(["direction", "admin", "primaire", "enseignant"]))
+      match /elevesPrimaire_absences/{docId} {
+        allow read: if (appartientEcole(schoolId) && aUnRole(pedagogieRoles("primaire")))
+                     || aUnRole(["superadmin"]);
+        allow write: if (appartientEcole(schoolId) && aUnRole(pedagogieRoles("primaire")))
                       || aUnRole(["superadmin"]);
       }
 
-      match /absencesLycee/{docId} {
-        allow read: if appartientEcole(schoolId) || aUnRole(["superadmin"]);
-        allow write: if (appartientEcole(schoolId) && aUnRole(["direction", "admin", "college", "enseignant"]))
+      match /elevesLycee_absences/{docId} {
+        allow read: if (appartientEcole(schoolId) && aUnRole(pedagogieRoles("college")))
+                     || aUnRole(["superadmin"]);
+        allow write: if (appartientEcole(schoolId) && aUnRole(pedagogieRoles("college")))
                       || aUnRole(["superadmin"]);
       }
 
       match /{collection}/{docId} {
-        allow read: if appartientEcole(schoolId) || aUnRole(["superadmin"]);
-        allow write: if (appartientEcole(schoolId) && aUnRole(["direction", "admin", "comptable", "primaire", "college"]))
+        allow read: if (appartientEcole(schoolId) && aUnRole(backOfficeRoles()))
+                     || aUnRole(["superadmin"]);
+        allow write: if (appartientEcole(schoolId) && aUnRole(backOfficeRoles()))
                       || aUnRole(["superadmin"]);
       }
     }

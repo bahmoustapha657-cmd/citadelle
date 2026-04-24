@@ -327,17 +327,19 @@ export default function App() {
   },[schoolId]);
   // Badge messages non lus (côte ecole) — ecoute en temps reel
   useEffect(()=>{
-    if(!schoolId||schoolId==="superadmin") return;
+    if(!utilisateur||!schoolId||schoolId==="superadmin") return;
+    if(["enseignant","parent"].includes(utilisateur.role)) return;
     const unsub = onSnapshot(collection(db,"ecoles",schoolId,"messages"),(snap)=>{
       const nonLus = snap.docs.filter(d=>d.data().expediteur==="parent"&&!d.data().lu).length;
       setMsgsNonLus(nonLus);
     });
     return ()=>unsub();
-  },[schoolId]);
+  },[schoolId, utilisateur]);
 
   // Comptage eleves actifs toutes sections (pour verification plan)
   useEffect(()=>{
-    if(!schoolId||schoolId==="superadmin") return;
+    if(!utilisateur||!schoolId||schoolId==="superadmin") return;
+    if(["enseignant","parent"].includes(utilisateur.role)) return;
     const colls = ["elevesCollege","elevesPrimaire","elevesLycee"];
     const counts = {elevesCollege:0, elevesPrimaire:0, elevesLycee:0};
     const unsubs = colls.map(coll=>
@@ -347,11 +349,12 @@ export default function App() {
       })
     );
     return ()=>unsubs.forEach(u=>u());
-  },[schoolId]);
+  },[schoolId, utilisateur]);
 
   // Centre de notifications — 10 dernieres actions de l'historique
   useEffect(()=>{
-    if(!schoolId||schoolId==="superadmin") return;
+    if(!utilisateur||!schoolId||schoolId==="superadmin") return;
+    if(["enseignant","parent"].includes(utilisateur.role)) return;
     const q=query(collection(db,"ecoles",schoolId,"historique"),orderBy("date","desc"),limit(10));
     const unsub=onSnapshot(q,(snap)=>{
       const liste=snap.docs.map(d=>({id:d.id,...d.data()}));
@@ -361,7 +364,7 @@ export default function App() {
       setNotifNonLues(liste.filter(n=>n.date>cinqMin).length);
     });
     return ()=>unsub();
-  },[schoolId]);
+  },[schoolId, utilisateur]);
 
   // Écoute l'etat Firebase Auth — charge le profil depuis /users/{uid}
   useEffect(()=>{
@@ -391,7 +394,29 @@ export default function App() {
           localStorage.setItem("LC_schoolId",sid);
           const premiereCo=!!d.premiereCo;
           const compteDocId=d.compteDocId||null;
-          setUtilisateur({uid:firebaseUser.uid, login:d.login, nom:d.nom, role:d.role, label:d.label||d.role, premiereCo, compteDocId, schoolId:sid});
+          setUtilisateur({
+            uid:firebaseUser.uid,
+            login:d.login,
+            nom:d.nom,
+            role:d.role,
+            label:d.label||d.role,
+            premiereCo,
+            compteDocId,
+            schoolId:sid,
+            section:d.section||null,
+            sections:Array.isArray(d.sections)?d.sections:[],
+            eleveId:d.eleveId||null,
+            eleveIds:Array.isArray(d.eleveIds)?d.eleveIds:[],
+            eleveNom:d.eleveNom||"",
+            eleveClasse:d.eleveClasse||"",
+            elevesAssocies:Array.isArray(d.elevesAssocies)?d.elevesAssocies:[],
+            enseignantId:d.enseignantId||null,
+            enseignantNom:d.enseignantNom||"",
+            matiere:d.matiere||"",
+            tuteur:d.tuteur||"",
+            contactTuteur:d.contactTuteur||"",
+            filiation:d.filiation||"",
+          });
           setPage(p=>p||getPrimaryModuleForRole(d.role));
           // Prefetch des pages les plus utilisees pendant que le dashboard se rend
           import("./components/Comptabilite").catch(()=>{});
@@ -952,7 +977,6 @@ export default function App() {
     </SchoolContext.Provider>
   );
 }
-
 
 
 
