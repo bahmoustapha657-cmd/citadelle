@@ -53,3 +53,28 @@ test("allows different students and different teachers", () => {
   assert.equal(parentConflict, null);
   assert.equal(teacherConflict, null);
 });
+
+test("does not treat siblings from the same household as a direct conflict", () => {
+  const parentConflict = findLogicalAccountConflict(
+    [{
+      role: "parent",
+      eleveId: "eleve-1",
+      eleveNom: "Aminata Bah",
+      eleveClasse: "6e A",
+      section: "college",
+      tuteur: "Mamadou Bah",
+      filiation: "Pere",
+    }],
+    {
+      role: "parent",
+      eleveId: "eleve-2",
+      eleveNom: "Mariama Bah",
+      eleveClasse: "4e B",
+      section: "college",
+      tuteur: "Mamadou Bah",
+      filiation: "Pere",
+    },
+  );
+
+  assert.equal(parentConflict, null);
+});

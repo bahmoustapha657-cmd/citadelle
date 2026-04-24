@@ -400,11 +400,11 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
             </table>
           </div>}
 
-      {/* Modal création compte parent */}
-      {parentEleve&&<Modale titre={`Compte parent — ${parentEleve.prenom} ${parentEleve.nom}`} fermer={()=>setParentEleve(null)}>
+      {/* Modal creation compte parent */}
+      {parentEleve&&<Modale titre={`Compte parent - ${parentEleve.prenom} ${parentEleve.nom}`} fermer={()=>setParentEleve(null)}>
         <div style={{marginBottom:14,padding:"10px 14px",background:"#f0fdf4",borderRadius:10,fontSize:12,color:"#166534",display:"flex",gap:10,alignItems:"center"}}>
-          <span style={{fontSize:18}}>🎓</span>
-          <span><strong>{parentEleve.prenom} {parentEleve.nom}</strong> · Classe {parentEleve.classe} · Tuteur : {parentEleve.tuteur||"—"}</span>
+          <span style={{fontSize:18}}>Tuteur</span>
+          <span><strong>{parentEleve.prenom} {parentEleve.nom}</strong> - Classe {parentEleve.classe} - Tuteur : {parentEleve.tuteur||"-"}</span>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr",gap:12}}>
           <Input label="Identifiant de connexion" value={formP.login||""} onChange={chgP("login")} placeholder="ex: parent.dupont"/>
@@ -412,18 +412,18 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
             <div style={{display:"flex",gap:8}}>
               <input value={formP.mdp||""} onChange={chgP("mdp")}
                 style={{flex:1,border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 11px",fontSize:13,fontFamily:"monospace",background:"#fafbfc",outline:"none"}}/>
-              <Btn sm v="ghost" onClick={()=>setFormP(p=>({...p,mdp:genererMdp()}))}>🔄 Générer</Btn>
+              <Btn sm v="ghost" onClick={()=>setFormP(p=>({...p,mdp:genererMdp()}))}>Regenerer</Btn>
             </div>
           </Champ>
         </div>
         <div style={{marginTop:12,padding:"10px 14px",background:"#fef3c7",borderRadius:8,fontSize:12,color:"#92400e"}}>
-          ⚠️ Notez ces identifiants avant de valider — remettez-les au tuteur de l'élève.
+          Notez ces identifiants avant de valider. Si un compte parent existe deja pour le meme tuteur et la meme filiation, l'eleve sera rattache a ce compte.
         </div>
         <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
           <Btn v="ghost" onClick={()=>setParentEleve(null)}>Annuler</Btn>
           <Btn v="purple" onClick={async()=>{
             if(!formP.login?.trim()){toast("Identifiant requis.","warning");return;}
-            if(!formP.mdp||formP.mdp.length<8){toast("Mot de passe minimum 8 caractères.","warning");return;}
+            if(!formP.mdp||formP.mdp.length<8){toast("Mot de passe minimum 8 caracteres.","warning");return;}
             try{
               const section=cleEleves.includes("Primaire")?"primaire":cleEleves.includes("Lycee")?"lycee":"college";
               const headers = await getAuthHeaders({"Content-Type":"application/json"});
@@ -457,18 +457,18 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
                 }),
               });
               const data = await res.json().catch(()=>({}));
-              if(!res.ok||!data.ok) throw new Error(data.error||"Création du compte impossible.");
-              if(data.merged){
-                const loginExistant = data.compte?.login || formP.login;
-                toast(`${parentEleve.prenom} ajouté au compte parent existant « ${loginExistant} ». Le tuteur conserve son mot de passe actuel.`,"success");
-                logAction("Élève rattaché compte parent",`Login: ${loginExistant} · Élève: ${parentEleve.prenom} ${parentEleve.nom}`);
+              if(!res.ok||!data.ok) throw new Error(data.error||"Creation du compte impossible.");
+              const loginUtilise = data.compte?.login || formP.login;
+              if(data.merged || data.mergedIntoExisting){
+                toast(`${parentEleve.prenom} a ete rattache au compte parent ${loginUtilise}. Le mot de passe actuel est conserve.`,"success");
+                logAction("Eleve rattache compte parent",`Login: ${loginUtilise} - Eleve: ${parentEleve.prenom} ${parentEleve.nom}`);
               } else {
-                toast(`Compte parent créé — ID : ${formP.login} · Remettez-le au tuteur de ${parentEleve.prenom}.`,"success");
-                logAction("Compte parent créé",`Login: ${formP.login} · Élève: ${parentEleve.prenom} ${parentEleve.nom}`);
+                toast(`Compte parent cree - ID : ${loginUtilise}. Remettez-le au tuteur de ${parentEleve.prenom}.`,"success");
+                logAction("Compte parent cree",`Login: ${loginUtilise} - Eleve: ${parentEleve.prenom} ${parentEleve.nom}`);
               }
               setParentEleve(null);
             }catch(e){toast("Erreur : "+e.message,"error");}
-          }}>✅ Créer le compte</Btn>
+          }}>Creer le compte</Btn>
         </div>
       </Modale>}
 

@@ -8,7 +8,11 @@ function normalizeText(value = "") {
 }
 
 function normalizePhone(value = "") {
-  return String(value || "").replace(/\D+/g, "");
+  const digits = String(value || "").replace(/\D+/g, "");
+  if (digits.length > 9 && digits.startsWith("224")) {
+    return digits.slice(-9);
+  }
+  return digits;
 }
 
 function uniqueStrings(values = []) {

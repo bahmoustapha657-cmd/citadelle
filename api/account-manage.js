@@ -173,13 +173,13 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Champs requis : schoolId, login, role, mdp" });
     }
     if (!isValidSchoolId(normalizedSchoolId) || !isValidLogin(normalizedLogin)) {
-      return res.status(400).json({ error: "Identifiant ou code école invalide." });
+      return res.status(400).json({ error: "Identifiant ou code ecole invalide." });
     }
     if (mdp.length < 8) {
-      return res.status(400).json({ error: "Le mot de passe doit contenir au moins 8 caractères." });
+      return res.status(400).json({ error: "Le mot de passe doit contenir au moins 8 caracteres." });
     }
     if (!isAllowedSchoolRole(role)) {
-      return res.status(400).json({ error: "Rôle de compte invalide." });
+      return res.status(400).json({ error: "Role de compte invalide." });
     }
 
     const session = await requireSession(req, res, {
@@ -190,15 +190,10 @@ export default async function handler(req, res) {
     if (!session) return;
 
     if (!canManageTargetRole(session, role)) {
-      return res.status(403).json({ error: "Seule la direction peut créer un compte direction." });
+      return res.status(403).json({ error: "Seule la direction peut creer un compte direction." });
     }
 
     try {
-      const existing = await findAccount({ db, schoolId: normalizedSchoolId, login: normalizedLogin });
-      if (existing) {
-        return res.status(409).json({ error: "Un compte existe déjà avec cet identifiant." });
-      }
-
       const accountFields = sanitizeAccountPayload({ ...req.body, role, login: normalizedLogin });
       const logicalAccounts = ["parent", "enseignant"].includes(role)
         ? await findAccountsByRole({ db, schoolId: normalizedSchoolId, role })
@@ -211,8 +206,15 @@ export default async function handler(req, res) {
         return res.status(409).json({ error: logicalConflict.error });
       }
 
+      const householdMatch = role === "parent"
+        ? findParentHouseholdAccount(logicalAccounts, { role, ...accountFields })
+        : null;
+      const existing = await findAccount({ db, schoolId: normalizedSchoolId, login: normalizedLogin });
+      if (existing && existing.id !== householdMatch?._id) {
+        return res.status(409).json({ error: "Un compte existe deja avec cet identifiant." });
+      }
+
       if (role === "parent") {
-        const householdMatch = findParentHouseholdAccount(logicalAccounts, accountFields);
         if (householdMatch && householdMatch._id) {
           const householdRef = db
             .collection("ecoles")
@@ -221,10 +223,14 @@ export default async function handler(req, res) {
             .doc(householdMatch._id);
           const merged = buildMergedParentAccount(householdMatch, { role, ...accountFields });
           delete merged._id;
-          await householdRef.update({ ...merged, updatedAt: Date.now() });
+          await householdRef.set({ ...merged, updatedAt: Date.now() }, { merge: true });
 
           if (householdMatch.uid) {
             const householdEmail = buildEmail(householdMatch.login, normalizedSchoolId);
+            await authAdmin.setCustomUserClaims(householdMatch.uid, {
+              role: "parent",
+              schoolId: normalizedSchoolId,
+            });
             await syncUserProfile({
               db,
               uid: householdMatch.uid,
@@ -239,13 +245,14 @@ export default async function handler(req, res) {
           return res.status(200).json({
             ok: true,
             merged: true,
+            mergedIntoExisting: true,
             uid: householdMatch.uid || null,
             compteDocId: householdMatch._id,
             compte: buildSessionAccountPayload(
               { ...merged, uid: householdMatch.uid || null },
               householdMatch.login,
             ),
-            message: `Élève ajouté au compte parent existant « ${householdMatch.login} ». Le mot de passe initial reste inchangé.`,
+            message: `Eleve ajoute au compte parent existant "${householdMatch.login}". Le mot de passe initial reste inchange.`,
           });
         }
       }
@@ -302,7 +309,7 @@ export default async function handler(req, res) {
       });
     } catch (e) {
       console.error("account-manage create error:", e);
-      return res.status(500).json({ error: "Erreur création compte" });
+      return res.status(500).json({ error: "Erreur creation compte" });
     }
   }
 
