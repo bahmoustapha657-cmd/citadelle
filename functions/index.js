@@ -14,10 +14,10 @@ import superadminLoginHandler from "../api/superadmin-login.js";
 import teacherPortalHandler from "../api/teacher-portal.js";
 import transfertHandler from "../api/transfert.js";
 
-const FUNCTION_REGION = process.env.FUNCTION_REGION || "europe-west1";
+const appFunctionRegion = process.env.APP_FUNCTION_REGION || "europe-west1";
 
 setGlobalOptions({
-  region: FUNCTION_REGION,
+  region: appFunctionRegion,
   maxInstances: 10,
 });
 

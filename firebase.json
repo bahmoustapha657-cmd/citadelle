@@ -5,7 +5,7 @@
   },
   "functions": {
     "source": ".",
-    "codebase": "api",
+    "codebase": "backend",
     "ignore": [
       "node_modules",
       ".git",
