@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { apiFetch } from "./apiClient";
 
 export default function Inscription() {
   const [etape, setEtape] = useState(1); // 1=infos ecole, 2=compte admin, 3=succes
@@ -54,7 +55,7 @@ export default function Inscription() {
     setChargement(true);
     setErreur("");
     try {
-      const r = await fetch("/api/inscription", {
+      const r = await apiFetch("/inscription", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

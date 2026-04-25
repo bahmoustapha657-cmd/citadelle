@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
 import { PolarAngleAxis, PolarGrid, Radar, RadarChart, ResponsiveContainer, Tooltip } from "recharts";
-import { getAuthHeaders } from "../apiClient";
+import { apiFetch, getAuthHeaders } from "../apiClient";
 import { C, fmt, getTarifAutreValue, getTarifMensuelTotal } from "../constants";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { imprimerBulletin } from "../reports";
@@ -82,7 +82,7 @@ function PortailParent({ utilisateur, deconnecter, annee, schoolInfo }) {
     setChargement(true);
     try {
       const headers = await getAuthHeaders();
-      const res = await fetch("/api/parent-portal", { headers });
+      const res = await apiFetch("/parent-portal", { headers });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) {
         throw new Error(data.error || "Chargement impossible.");
@@ -122,7 +122,7 @@ function PortailParent({ utilisateur, deconnecter, annee, schoolInfo }) {
     setEnvoi(true);
     try {
       const headers = await getAuthHeaders({ "Content-Type": "application/json" });
-      const res = await fetch("/api/parent-portal", {
+      const res = await apiFetch("/parent-portal", {
         method: "POST",
         headers,
         body: JSON.stringify({

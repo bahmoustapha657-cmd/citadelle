@@ -4,6 +4,7 @@ import { signInWithCustomTokenClient } from "../firebaseAuth";
 import { db } from "../firebaseDb";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { C, getAnnee } from "../constants";
+import { apiFetch } from "../apiClient";
 import Logo from "../Logo";
 import { Chargement } from "./ui";
 
@@ -73,7 +74,7 @@ function Connexion({onLogin, onInscription}) {
     try{
       // ── Mode Super-Admin (vérification côté serveur) ──
       if(sid==="superadmin"){
-        const r=await fetch("/api/superadmin-login",{
+         const r=await apiFetch("/superadmin-login",{
           method:"POST",
           headers:{"Content-Type":"application/json"},
           body:JSON.stringify({login:login.trim(),mdp}),
@@ -93,7 +94,7 @@ function Connexion({onLogin, onInscription}) {
       // ── Mode École — toujours via API serveur (Firestore = source de vérité) ──
       // Ne pas utiliser signInWithEmailAndPassword directement : Firebase Auth peut
       // conserver un ancien mot de passe si le compte a été modifié dans Firestore.
-      const r=await fetch("/api/login",{
+      const r=await apiFetch("/login",{
         method:"POST",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({login:login.trim().toLowerCase(), mdp, schoolId:sid}),

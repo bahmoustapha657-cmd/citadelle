@@ -2,7 +2,7 @@ import React, { useState, useContext } from "react";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
 import { C, fmt, getTarifMensuelTotal, today } from "../constants";
-import { getAuthHeaders } from "../apiClient";
+import { apiFetch, getAuthHeaders } from "../apiClient";
 import { imprimerCertificatRadiation, imprimerOrdreMutation } from "../reports";
 import { Badge, Btn, Card, Input, Modale, Stat, TD, THead, TR, Vide } from "./ui";
 
@@ -51,7 +51,7 @@ function TransfertsPanel({userRole, annee, setTab}) {
     setLoading(true);
     try {
       const headers = await getAuthHeaders({"Content-Type":"application/json"});
-      const res = await fetch("/api/transfert", {
+      const res = await apiFetch("/transfert", {
         method:"POST",
         headers,
         body: JSON.stringify({
@@ -84,7 +84,7 @@ function TransfertsPanel({userRole, annee, setTab}) {
     setLoading(true);
     try {
       const headers = await getAuthHeaders({});
-      const res = await fetch(`/api/transfert?token=${encodeURIComponent(tokenInput.trim())}`, {headers});
+      const res = await apiFetch("/transfert", { headers, query: { token: tokenInput.trim() } });
       const data = await res.json();
       if(data.eleveSnapshot) setTransfertData(data);
       else toast(data.error||"Token introuvable ou expiré","error");
@@ -99,7 +99,7 @@ function TransfertsPanel({userRole, annee, setTab}) {
     setLoading(true);
     try {
       const headers = await getAuthHeaders({"Content-Type":"application/json"});
-      const res = await fetch("/api/transfert", {
+      const res = await apiFetch("/transfert", {
         method:"POST", headers,
         body: JSON.stringify({action:"accepter", token:tokenInput, targetSchoolId:schoolId}),
       });

@@ -1,6 +1,6 @@
 import ToastContainerView from "./components/ToastContainer";
 import Logo from "./Logo";
-import { getAuthHeaders } from "./apiClient";
+import { apiFetch, getAuthHeaders } from "./apiClient";
 import { SchoolContext, SCHOOL_INFO_DEFAUT } from "./contexts/SchoolContext";
 import React, { Suspense, lazy, useEffect, useState } from "react";
 import { signOutCurrentUser, watchAuthState } from "./firebaseAuth";
@@ -472,7 +472,7 @@ export default function App() {
       try{
         const headers = await getAuthHeaders({"Content-Type":"application/json"});
         if(annule) return;
-        await fetch("/api/ecole-public-sync",{
+      await apiFetch("/ecole-public-sync",{
           method:"POST",
           headers,
           body:JSON.stringify({ action:"sync", schoolId }),
@@ -486,7 +486,7 @@ export default function App() {
   const envoyerPush = async(cibles, titre, corps, url="/") => {
     const sid = localStorage.getItem("LC_schoolId")||"citadelle";
     const headers = await getAuthHeaders({"Content-Type":"application/json"});
-    fetch("/api/push",{
+      apiFetch("/push",{
       method:"POST",
       headers,
       body:JSON.stringify({schoolId:sid,cibles,titre,corps,url}),
@@ -977,7 +977,6 @@ export default function App() {
     </SchoolContext.Provider>
   );
 }
-
 
 
 

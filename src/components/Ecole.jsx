@@ -3,7 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { C, today, genererMdp, peutModifier } from "../constants";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
-import { getAuthHeaders } from "../apiClient";
+import { apiFetch, getAuthHeaders } from "../apiClient";
 import { findStaffDuplicate, getStaffDuplicateMessage } from "../staff-utils";
 import { Badge, Card, Modale, Champ, Input, Selec, Textarea, Btn, THead, TR, TD, Stat, Tabs, Vide, Chargement, LectureSeule, UploadFichiers } from "./ui";
 import { enteteDoc, imprimerCartesEleves, imprimerListeClasse, imprimerAttestation, imprimerBulletin, imprimerBulletinsGroupes, imprimerFicheCompositions, exportExcel } from "../reports";
@@ -427,7 +427,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
             try{
               const section=cleEleves.includes("Primaire")?"primaire":cleEleves.includes("Lycee")?"lycee":"college";
               const headers = await getAuthHeaders({"Content-Type":"application/json"});
-              const res = await fetch("/api/account-manage",{
+              const res = await apiFetch("/account-manage",{
                 method:"POST",
                 headers,
                 body:JSON.stringify({
@@ -484,7 +484,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
           try{
             const nomComplet=`${ensCompte.prenom||""} ${ensCompte.nom||""}`.trim();
             const headers = await getAuthHeaders({"Content-Type":"application/json"});
-            const res = await fetch("/api/account-manage",{
+              const res = await apiFetch("/account-manage",{
               method:"POST",
               headers,
                 body:JSON.stringify({

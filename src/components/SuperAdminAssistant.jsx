@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { getAuthHeaders } from "../apiClient";
+import { apiFetch, getAuthHeaders } from "../apiClient";
 import { C } from "../constants";
 import {
   buildAssistantHistoryEntry,
@@ -109,7 +109,7 @@ export default function SuperAdminAssistant() {
 
     try {
       const headers = await getAuthHeaders({ "Content-Type": "application/json" });
-      const response = await fetch("/api/ia", {
+      const response = await apiFetch("/ia", {
         method: "POST",
         headers,
         body: JSON.stringify({

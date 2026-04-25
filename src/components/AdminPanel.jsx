@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext } from "react";
 import { collection, doc, getDocs, updateDoc } from "firebase/firestore";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
-import { getAuthHeaders } from "../apiClient";
+import { apiFetch, getAuthHeaders } from "../apiClient";
 import { db } from "../firebaseDb";
 import {
   ACCES,
@@ -176,7 +176,7 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
         });
         try {
           const headers = await getAuthHeaders({"Content-Type":"application/json"});
-          const res = await fetch("/api/account-manage", {
+          const res = await apiFetch("/account-manage", {
             method:"POST", headers,
             body:JSON.stringify({
               action:"create",
@@ -224,7 +224,7 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
     setSavingRoles(true);
     try {
       const headers = await getAuthHeaders({"Content-Type":"application/json"});
-      const res = await fetch("/api/account-manage", {
+      const res = await apiFetch("/account-manage", {
         method:"POST",
         headers,
         body:JSON.stringify({
@@ -256,7 +256,7 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
     }
     try{
       const headers = await getAuthHeaders({"Content-Type":"application/json"});
-      const res = await fetch("/api/account-manage", {
+      const res = await apiFetch("/account-manage", {
         method:"POST",
         headers,
         body:JSON.stringify({
@@ -599,7 +599,6 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
 }
 
 export { AdminPanel };
-
 
 
 

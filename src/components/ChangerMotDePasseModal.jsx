@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { getAuthHeaders } from "../apiClient";
+import { apiFetch, getAuthHeaders } from "../apiClient";
 import { updateCurrentUserPassword } from "../firebaseAuth";
 
 function ChangerMotDePasseModal({ utilisateur, onDone }) {
@@ -27,7 +27,7 @@ function ChangerMotDePasseModal({ utilisateur, onDone }) {
       await updateCurrentUserPassword(mdp1);
 
       const headers = await getAuthHeaders({ "Content-Type": "application/json" });
-      const res = await fetch("/api/account-manage", {
+      const res = await apiFetch("/account-manage", {
         method: "POST",
         headers,
         body: JSON.stringify({ action: "self_password_sync", mdp: mdp1 }),

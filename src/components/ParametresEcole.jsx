@@ -4,7 +4,7 @@ import { C, TOUS_MOIS_LONGS, calcMoisAnnee } from "../constants";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
 import { db } from "../firebaseDb";
-import { getAuthHeaders } from "../apiClient";
+import { apiFetch, getAuthHeaders } from "../apiClient";
 import { AffichageSettings } from "./AffichageSettings";
 import { MatriculeSettings } from "./MatriculeSettings";
 import { Btn, Input, Modale, Selec } from "./ui";
@@ -182,7 +182,7 @@ function ParametresEcole({ utilisateurRole = "", onSchoolClosed = null }) {
       setSchoolInfo(prev=>({...prev,...data}));
       try {
         const headers = await getAuthHeaders({ "Content-Type": "application/json" });
-        await fetch("/api/ecole-public-sync", {
+        await apiFetch("/ecole-public-sync", {
           method: "POST",
           headers,
           body: JSON.stringify({ action: "sync", schoolId }),
@@ -206,7 +206,7 @@ function ParametresEcole({ utilisateurRole = "", onSchoolClosed = null }) {
     setMsgSucces("");
     try {
       const headers = await getAuthHeaders({ "Content-Type": "application/json" });
-      const response = await fetch("/api/school-lifecycle", {
+      const response = await apiFetch("/school-lifecycle", {
         method: "POST",
         headers,
         body: JSON.stringify({

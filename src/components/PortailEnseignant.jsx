@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
 import { SchoolContext } from "../contexts/SchoolContext";
-import { getAuthHeaders } from "../apiClient";
+import { apiFetch, getAuthHeaders } from "../apiClient";
 import { C } from "../constants";
 import { GlobalStyles } from "../styles";
 import { Badge, Btn, Card, Chargement, Input, LectureSeule, Modale, Selec, Stat, TD, THead, TR, Vide } from "./ui";
@@ -51,7 +51,7 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
     setChargement(true);
     try {
       const headers = await getAuthHeaders();
-      const res = await fetch("/api/teacher-portal", { headers });
+      const res = await apiFetch("/teacher-portal", { headers });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) {
         throw new Error(data.error || "Chargement impossible.");
@@ -106,7 +106,7 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
     setEnregistrement(true);
     try {
       const headers = await getAuthHeaders({ "Content-Type": "application/json" });
-      const res = await fetch("/api/teacher-portal", {
+      const res = await apiFetch("/teacher-portal", {
         method: "POST",
         headers,
         body: JSON.stringify({
@@ -140,7 +140,7 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
     setEnregistrement(true);
     try {
       const headers = await getAuthHeaders({ "Content-Type": "application/json" });
-      const res = await fetch("/api/teacher-portal", {
+      const res = await apiFetch("/teacher-portal", {
         method: "POST",
         headers,
         body: JSON.stringify({

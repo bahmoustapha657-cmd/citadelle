@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { getAuthHeaders } from "../apiClient";
+import { apiFetch, getAuthHeaders } from "../apiClient";
 import { C, PLANS, PLAN_DUREES } from "../constants";
 import { db } from "../firebaseDb";
 import { addDoc, collection, collectionGroup, doc, getDoc, getDocs, onSnapshot, setDoc, updateDoc } from "firebase/firestore";
@@ -67,7 +67,7 @@ function SuperAdminPanel() {
     setBackfillEnCours(true);
     try {
       const headers = await getAuthHeaders({ "Content-Type": "application/json" });
-      const r = await fetch("/api/ecole-public-sync", {
+      const r = await apiFetch("/ecole-public-sync", {
         method: "POST",
         headers,
         body: JSON.stringify({ action: "backfill" }),
@@ -191,7 +191,7 @@ function SuperAdminPanel() {
       }).catch(()=>{});
 
       getAuthHeaders({"Content-Type":"application/json"}).then(headers =>
-        fetch("/api/push",{
+        apiFetch("/push",{
           method:"POST", headers,
           body: JSON.stringify({
             schoolId: planModal._id,
@@ -226,7 +226,7 @@ function SuperAdminPanel() {
     setConfirmationLoading(true);
     try {
       const headers = await getAuthHeaders({ "Content-Type": "application/json" });
-      const response = await fetch("/api/school-lifecycle", {
+      const response = await apiFetch("/school-lifecycle", {
         method: "POST",
         headers,
         body: JSON.stringify({
@@ -303,7 +303,7 @@ function SuperAdminPanel() {
     });
     try {
       const headers = await getAuthHeaders({ "Content-Type": "application/json" });
-      await fetch("/api/ecole-public-sync", {
+      await apiFetch("/ecole-public-sync", {
         method: "POST",
         headers,
         body: JSON.stringify({ action: "sync", schoolId: sid }),

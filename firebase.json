@@ -3,6 +3,26 @@
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
   },
+  "functions": {
+    "source": ".",
+    "codebase": "api",
+    "ignore": [
+      "node_modules",
+      ".git",
+      ".github",
+      ".vercel",
+      ".firebase",
+      "dist",
+      "public",
+      "docs",
+      "tests",
+      "*.local",
+      ".env",
+      ".env.*",
+      "serviceAccount.json",
+      "serviceAccount.json.json"
+    ]
+  },
   "hosting": {
     "public": "dist",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
