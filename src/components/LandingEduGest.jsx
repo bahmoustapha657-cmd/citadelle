@@ -1,385 +1,248 @@
-import React from "react";
+﻿import React from "react";
 import { C } from "../constants";
 import { GlobalStyles } from "../styles";
 import Logo from "../Logo";
 
-function LandingEduGest({onConnexion, onInscription}) {
-  return (
-    <div style={{minHeight:"100vh",background:"#0A1628",fontFamily:"'Inter','Segoe UI',sans-serif",color:"#fff",overflowX:"hidden"}}>
-      <GlobalStyles/>
+const modules = [
+  {
+    title: "Primaire",
+    description: "Classes, notes, bulletins, absences et emplois du temps pour la maternelle et le primaire.",
+  },
+  {
+    title: "Secondaire",
+    description: "College et lycee avec matieres, coefficients, moyennes et bulletins trimestriels.",
+  },
+  {
+    title: "Comptabilite",
+    description: "Scolarites, salaires, personnel, recettes, depenses et suivi des impayes.",
+  },
+  {
+    title: "Portail enseignant",
+    description: "Emploi du temps, saisie des notes et suivi des paies dans un espace dedie.",
+  },
+  {
+    title: "Portail parent",
+    description: "Notes, absences, bulletins, paiements et messages depuis un seul compte.",
+  },
+  {
+    title: "Communication",
+    description: "Annonces, messagerie et informations de l'ecole diffusees simplement.",
+  },
+];
 
-      {/* ── NAV ── */}
-      <nav style={{position:"sticky",top:0,zIndex:100,background:"rgba(10,22,40,0.92)",backdropFilter:"blur(12px)",borderBottom:"1px solid rgba(255,255,255,0.07)",padding:"0 24px",height:60,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <span style={{fontSize:22}}>🏫</span>
-          <span style={{fontSize:20,fontWeight:900,color:"#00C48C",letterSpacing:"-0.5px"}}>EduGest</span>
-          <span style={{fontSize:10,color:"rgba(255,255,255,0.35)",fontWeight:600,letterSpacing:"2px",textTransform:"uppercase",marginLeft:4}}>SaaS Scolaire</span>
+const avantages = [
+  {
+    title: "Demarrage rapide",
+    description: "Votre espace ecole peut etre operationnel le jour meme, sans installation lourde.",
+  },
+  {
+    title: "Identite personnalisee",
+    description: "Logo, couleurs et informations de l'ecole apparaissent partout de facon coherente.",
+  },
+  {
+    title: "Donnees cloisonnees",
+    description: "Chaque ecole reste isolee, chaque role ne voit que son perimetre utile.",
+  },
+  {
+    title: "Acces mobile",
+    description: "L'application fonctionne sur ordinateur, tablette et telephone, sans installation speciale.",
+  },
+];
+
+const situations = [
+  {
+    situation: "Un parent reclame un recu de l'annee derniere",
+    avant: "Recherche manuelle dans les cahiers et les dossiers.",
+    apres: "Recu retrouve et imprime en quelques secondes.",
+  },
+  {
+    situation: "Le comptable est absent",
+    avant: "La caisse reste difficile a relire ou a verifier.",
+    apres: "La direction garde une vue claire sur l'etat des comptes.",
+  },
+  {
+    situation: "Un parent veut savoir s'il est a jour",
+    avant: "Discussion longue et verification manuelle.",
+    apres: "Le parent voit son historique et son solde dans son portail.",
+  },
+];
+
+const offres = [
+  {
+    name: "Gratuit",
+    price: "0 GNF / mois",
+    features: ["Jusqu'a 50 eleves", "Notes et bulletins", "Une section active", "Support de base"],
+    highlight: false,
+  },
+  {
+    name: "Starter",
+    price: "100 000 GNF / mois",
+    features: ["Jusqu'a 200 eleves", "Primaire et college", "Comptabilite de base", "Portail enseignant"],
+    highlight: false,
+  },
+  {
+    name: "Standard",
+    price: "200 000 GNF / mois",
+    features: ["Jusqu'a 500 eleves", "Toutes les sections", "Comptabilite complete", "Portail parent et enseignant"],
+    highlight: true,
+  },
+  {
+    name: "Premium",
+    price: "500 000 GNF / mois",
+    features: ["Eleves illimites", "Toutes les fonctions", "Personnalisation avancee", "Support prioritaire"],
+    highlight: false,
+  },
+];
+
+function cardStyle(borderColor = "rgba(255,255,255,0.08)", background = "rgba(255,255,255,0.04)") {
+  return {
+    background,
+    border: `1px solid ${borderColor}`,
+    borderRadius: 16,
+    padding: "20px 18px",
+  };
+}
+
+function LandingEduGest({ onConnexion, onInscription }) {
+  return (
+    <div style={{ minHeight: "100vh", background: "#0A1628", fontFamily: "'Inter','Segoe UI',sans-serif", color: "#fff", overflowX: "hidden" }}>
+      <GlobalStyles />
+
+      <nav style={{ position: "sticky", top: 0, zIndex: 100, background: "rgba(10,22,40,0.92)", backdropFilter: "blur(12px)", borderBottom: "1px solid rgba(255,255,255,0.07)", padding: "0 24px", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <Logo width={150} height={42} variant="light" />
+          <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase" }}>SaaS scolaire</span>
         </div>
-        <div style={{display:"flex",gap:10}}>
-          <button onClick={onConnexion} style={{background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.15)",color:"#fff",padding:"8px 20px",borderRadius:8,fontSize:13,fontWeight:700,cursor:"pointer"}}>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
+          <button onClick={onConnexion} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", color: "#fff", padding: "8px 20px", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
             Connexion
           </button>
-          <button onClick={onInscription} style={{background:"#00C48C",border:"none",color:"#fff",padding:"8px 20px",borderRadius:8,fontSize:13,fontWeight:700,cursor:"pointer"}}>
-            Créer mon école →
+          <button onClick={onInscription} style={{ background: "#00C48C", border: "none", color: "#fff", padding: "8px 20px", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+            Creer mon ecole
           </button>
         </div>
       </nav>
 
-      {/* ── HERO ── */}
-      <div style={{padding:"80px 24px 60px",textAlign:"center",maxWidth:860,margin:"0 auto",position:"relative"}}>
-        {/* Cercles déco */}
-        <div style={{position:"absolute",top:-40,left:"10%",width:320,height:320,borderRadius:"50%",background:"radial-gradient(circle,rgba(0,196,140,0.12) 0%,transparent 70%)",pointerEvents:"none"}}/>
-        <div style={{position:"absolute",top:60,right:"5%",width:200,height:200,borderRadius:"50%",background:"radial-gradient(circle,rgba(0,140,255,0.09) 0%,transparent 70%)",pointerEvents:"none"}}/>
+      <section style={{ padding: "84px 24px 56px", textAlign: "center", maxWidth: 920, margin: "0 auto", position: "relative" }}>
+        <div style={{ position: "absolute", top: -40, left: "10%", width: 320, height: 320, borderRadius: "50%", background: "radial-gradient(circle,rgba(0,196,140,0.12) 0%,transparent 70%)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", top: 60, right: "5%", width: 200, height: 200, borderRadius: "50%", background: "radial-gradient(circle,rgba(0,140,255,0.09) 0%,transparent 70%)", pointerEvents: "none" }} />
 
-        <div style={{display:"inline-flex",alignItems:"center",gap:8,background:"rgba(0,196,140,0.12)",border:"1px solid rgba(0,196,140,0.3)",borderRadius:20,padding:"6px 16px",marginBottom:28}}>
-          <span style={{width:6,height:6,borderRadius:"50%",background:"#00C48C",display:"inline-block"}}/>
-          <span style={{fontSize:12,fontWeight:700,color:"#00C48C",letterSpacing:"0.5px"}}>Conçu pour l'Afrique de l'Ouest</span>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(0,196,140,0.12)", border: "1px solid rgba(0,196,140,0.3)", borderRadius: 20, padding: "6px 16px", marginBottom: 28 }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#00C48C", display: "inline-block" }} />
+          <span style={{ fontSize: 12, fontWeight: 700, color: "#00C48C", letterSpacing: "0.5px" }}>Concu pour les ecoles d'Afrique de l'Ouest</span>
         </div>
 
-        <h1 style={{fontSize:"clamp(28px,6vw,54px)",fontWeight:900,lineHeight:1.15,margin:"0 0 20px",letterSpacing:"-1px"}}>
-          La gestion scolaire <span style={{color:"#00C48C"}}>simple</span>,<br/>
-          <span style={{color:"#00C48C"}}>complète</span> et <span style={{color:"#00C48C"}}>accessible</span>
+        <h1 style={{ fontSize: "clamp(30px,6vw,56px)", fontWeight: 900, lineHeight: 1.12, margin: "0 0 18px", letterSpacing: "-1px" }}>
+          La gestion scolaire <span style={{ color: "#00C48C" }}>claire</span>, <span style={{ color: "#00C48C" }}>complete</span> et <span style={{ color: "#00C48C" }}>fiable</span>
         </h1>
-        <p style={{fontSize:"clamp(14px,2.5vw,18px)",color:"rgba(255,255,255,0.6)",maxWidth:560,margin:"0 auto 40px",lineHeight:1.7}}>
-          Gérez élèves, enseignants, finances et bulletins depuis un seul outil.
-          Aucune installation. Disponible sur tous les appareils.
+        <p style={{ fontSize: "clamp(14px,2.5vw,18px)", color: "rgba(255,255,255,0.62)", maxWidth: 620, margin: "0 auto 36px", lineHeight: 1.7 }}>
+          EduGest aide les directions, comptables, enseignants et parents a suivre les eleves, les notes et les paiements dans un seul outil simple a prendre en main.
         </p>
 
-        <div style={{display:"flex",gap:14,justifyContent:"center",flexWrap:"wrap"}}>
-          <button onClick={onInscription} style={{background:"linear-gradient(135deg,#00C48C,#00a876)",border:"none",color:"#fff",padding:"15px 36px",borderRadius:30,fontSize:16,fontWeight:800,cursor:"pointer",boxShadow:"0 8px 28px rgba(0,196,140,0.4)",letterSpacing:0.3}}>
-            🚀 Créer mon école gratuitement
+        <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
+          <button onClick={onInscription} style={{ background: "linear-gradient(135deg,#00C48C,#00a876)", border: "none", color: "#fff", padding: "15px 36px", borderRadius: 30, fontSize: 16, fontWeight: 800, cursor: "pointer", boxShadow: "0 8px 28px rgba(0,196,140,0.35)", letterSpacing: 0.3 }}>
+            Creer mon ecole gratuitement
           </button>
-          <button onClick={onConnexion} style={{background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.2)",color:"#fff",padding:"15px 32px",borderRadius:30,fontSize:15,fontWeight:700,cursor:"pointer"}}>
-            Se connecter →
-          </button>
-        </div>
-        <p style={{marginTop:14,fontSize:11,color:"rgba(255,255,255,0.3)"}}>Inscription gratuite · Aucune carte bancaire requise</p>
-      </div>
-
-      {/* ── STATS ── */}
-      <div style={{padding:"10px 24px 50px",display:"flex",justifyContent:"center",gap:"clamp(20px,5vw,60px)",flexWrap:"wrap"}}>
-        {[
-          {v:"100%",l:"Cloud & accessible"},
-          {v:"6",l:"Modules intégrés"},
-          {v:"∞",l:"Élèves & enseignants"},
-          {v:"0€",l:"Pour démarrer"},
-        ].map(s=>(
-          <div key={s.l} style={{textAlign:"center"}}>
-            <div style={{fontSize:"clamp(26px,5vw,38px)",fontWeight:900,color:"#00C48C"}}>{s.v}</div>
-            <div style={{fontSize:12,color:"rgba(255,255,255,0.45)",marginTop:2}}>{s.l}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* ── MODULES ── */}
-      <div style={{padding:"0 24px 60px",maxWidth:960,margin:"0 auto"}}>
-        <h2 style={{textAlign:"center",fontSize:"clamp(18px,3vw,26px)",fontWeight:800,marginBottom:8}}>Tout ce dont votre école a besoin</h2>
-        <p style={{textAlign:"center",color:"rgba(255,255,255,0.45)",fontSize:13,marginBottom:36}}>6 modules complets, dans une seule interface</p>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:14}}>
-          {[
-            {icon:"🎒",name:"Primaire",desc:"Maternelle → CM2 : classes, notes /10, bulletins, absences, emplois du temps."},
-            {icon:"🏫",name:"Secondaire",desc:"Collège & Lycée : matières, coefficients, moyennes par trimestre."},
-            {icon:"📊",name:"Comptabilité",desc:"Scolarités, salaires, bons, révisions, personnel administratif."},
-            {icon:"👨‍🏫",name:"Portail Enseignant",desc:"Espace dédié : emploi du temps, saisie de notes, fiche de paie."},
-            {icon:"👨‍👩‍👧",name:"Portail Parent",desc:"Suivi en temps réel : notes, absences, bulletins, messagerie."},
-            {icon:"💬",name:"Messagerie Parents",desc:"Messages, annonces et communication école-famille depuis une seule interface."},
-          ].map(m=>(
-            <div key={m.name} style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:14,padding:"20px 18px"}}>
-              <div style={{fontSize:26,marginBottom:8}}>{m.icon}</div>
-              <div style={{fontSize:14,fontWeight:800,color:"#fff",marginBottom:6}}>{m.name}</div>
-              <div style={{fontSize:12,color:"rgba(255,255,255,0.5)",lineHeight:1.6}}>{m.desc}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ── POURQUOI ── */}
-      <div style={{padding:"40px 24px 60px",background:"rgba(0,196,140,0.05)",borderTop:"1px solid rgba(0,196,140,0.12)",borderBottom:"1px solid rgba(0,196,140,0.12)"}}>
-        <div style={{maxWidth:900,margin:"0 auto"}}>
-          <h2 style={{textAlign:"center",fontSize:"clamp(18px,3vw,24px)",fontWeight:800,marginBottom:36}}>Pourquoi choisir EduGest ?</h2>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:20}}>
-            {[
-              {icon:"🚀",title:"Démarrage immédiat",desc:"Votre espace école est opérationnel le jour même, sans installation ni formation."},
-              {icon:"🎨",title:"Identité personnalisée",desc:"Logo, couleurs et nom de l'école intégrés partout — bulletins, cartes d'élèves, en-têtes."},
-              {icon:"🔒",title:"Données isolées",desc:"Les données de chaque école sont strictement séparées. Chaque rôle n'accède qu'à ce qui le concerne."},
-              {icon:"📱",title:"Responsive",desc:"Fonctionne sur ordinateur, tablette et téléphone. Aucune installation requise."},
-            ].map(w=>(
-              <div key={w.title} style={{background:"rgba(255,255,255,0.03)",borderRadius:12,padding:"20px 16px",textAlign:"center"}}>
-                <div style={{fontSize:28,marginBottom:10}}>{w.icon}</div>
-                <div style={{fontSize:13,fontWeight:800,color:"#00C48C",marginBottom:6}}>{w.title}</div>
-                <div style={{fontSize:12,color:"rgba(255,255,255,0.5)",lineHeight:1.6}}>{w.desc}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* ── TRANSPARENCE ── */}
-      <div style={{padding:"60px 24px",maxWidth:1060,margin:"0 auto"}}>
-        <div style={{textAlign:"center",marginBottom:14}}>
-          <span style={{display:"inline-block",background:"rgba(0,196,140,0.12)",border:"1px solid rgba(0,196,140,0.3)",color:"#00C48C",fontSize:11,fontWeight:800,letterSpacing:"1.5px",textTransform:"uppercase",padding:"5px 14px",borderRadius:20}}>Notre obsession</span>
-        </div>
-        <h2 style={{textAlign:"center",fontSize:"clamp(20px,3.5vw,30px)",fontWeight:900,marginBottom:10,lineHeight:1.2}}>
-          La transparence comptable.<br/>
-          <span style={{color:"#00C48C"}}>Tout est tracé. Rien ne peut être caché.</span>
-        </h2>
-        <p style={{textAlign:"center",color:"rgba(255,255,255,0.55)",fontSize:14,maxWidth:680,margin:"0 auto 36px",lineHeight:1.6}}>
-          Dans 9 écoles privées sur 10, personne ne peut dire avec certitude où passe l'argent des inscriptions.
-          EduGest met fin à cette opacité — pour toujours.
-        </p>
-
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:14}}>
-          {[
-            {icon:"🔍",title:"Chaque franc est tracé",desc:"Qui a saisi, quand, à la seconde, pour qui, pourquoi. Aucune saisie anonyme possible."},
-            {icon:"🔒",title:"Historique inviolable",desc:"Les modifications laissent une trace que personne — pas même l'admin — ne peut effacer."},
-            {icon:"📲",title:"Mobile Money réconcilié",desc:"Orange Money, MTN, Moov via Kkiapay. Les versements arrivent en caisse automatiquement, sans saisie humaine."},
-            {icon:"📊",title:"Tableau de bord temps réel",desc:"Trésorerie, recettes, dépenses, retards de paiement. Visible depuis votre téléphone, partout."},
-            {icon:"👨‍👩‍👧",title:"Les parents voient leurs paiements",desc:"Plus jamais de « j'ai payé / non vous n'avez pas payé ». Chaque parent a son historique."},
-            {icon:"🛡️",title:"Architecture anti-fraude",desc:"Les rôles sont stricts au niveau du serveur. Un comptable ne peut pas modifier ses écritures rétroactivement."},
-          ].map(p=>(
-            <div key={p.title} style={{background:"rgba(0,196,140,0.04)",border:"1px solid rgba(0,196,140,0.15)",borderRadius:14,padding:"20px 18px"}}>
-              <div style={{fontSize:26,marginBottom:8}}>{p.icon}</div>
-              <div style={{fontSize:14,fontWeight:800,color:"#fff",marginBottom:6}}>{p.title}</div>
-              <div style={{fontSize:12,color:"rgba(255,255,255,0.55)",lineHeight:1.6}}>{p.desc}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Pull-quote fondateur */}
-        <div style={{marginTop:48,maxWidth:720,marginInline:"auto",background:"linear-gradient(135deg,rgba(0,196,140,0.08),rgba(0,196,140,0.02))",border:"1px solid rgba(0,196,140,0.25)",borderRadius:18,padding:"28px 28px 24px",position:"relative"}}>
-          <div style={{position:"absolute",top:-18,left:24,fontSize:60,color:"#00C48C",fontFamily:"Georgia,serif",lineHeight:1,opacity:0.5}}>“</div>
-          <p style={{fontSize:"clamp(14px,2vw,17px)",color:"rgba(255,255,255,0.85)",lineHeight:1.7,margin:"0 0 16px",fontStyle:"italic"}}>
-            J'ai créé EduGest parce que dans 9 écoles privées sur 10, personne ne peut dire avec certitude où
-            passe l'argent des inscriptions. Ni le directeur, ni le comptable, encore moins les parents. Cette
-            opacité tue les écoles. EduGest la fait disparaître.
-          </p>
-          <div style={{display:"flex",alignItems:"center",gap:12}}>
-            <div style={{width:42,height:42,borderRadius:"50%",background:"linear-gradient(135deg,#00C48C,#0A1628)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:900,color:"#fff",flexShrink:0}}>M</div>
-            <div>
-              <div style={{fontSize:13,fontWeight:800,color:"#fff"}}>Moustapha Bah</div>
-              <div style={{fontSize:11,color:"rgba(255,255,255,0.5)"}}>Fondateur d'EduGest · Conakry</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Lettre du fondateur — déroulable */}
-        <details style={{marginTop:28,maxWidth:720,marginInline:"auto",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:14,padding:"18px 22px"}}>
-          <summary style={{cursor:"pointer",fontSize:13,fontWeight:800,color:"#00C48C",letterSpacing:"0.3px",listStyle:"none",display:"flex",alignItems:"center",gap:8}}>
-            <span>📜 Lire la lettre complète du fondateur</span>
-          </summary>
-          <div style={{marginTop:16,fontSize:13,color:"rgba(255,255,255,0.7)",lineHeight:1.8}}>
-            <p style={{marginTop:0}}>Je suis allé visiter une école dirigée par un proche. J'ai vu <strong style={{color:"#fff"}}>trois cahiers différents</strong> pour la même caisse. J'ai vu une comptable pleurer parce qu'on l'accusait de vol sans pouvoir le prouver, et un directeur impuissant parce qu'il n'avait pas non plus de preuve du contraire.</p>
-            <p>J'ai vu des parents accumuler les frustrations parce qu'ils ne savaient pas s'ils étaient à jour. J'ai vu des enseignants démissionner parce que leur salaire était imprévisible.</p>
-            <p style={{color:"#fff",fontWeight:600}}>Cette école avait du potentiel. L'opacité l'étouffait.</p>
-            <p>EduGest, c'est ma façon de dire : <em>la confiance ne se décrète pas, elle se prouve par les chiffres</em>. Et ces chiffres, EduGest les met dans la lumière, pour tout le monde, tout le temps.</p>
-            <p style={{color:"rgba(255,255,255,0.5)",fontSize:12,marginBottom:0}}>— Moustapha Bah, Conakry, 2026</p>
-          </div>
-        </details>
-      </div>
-
-      {/* ── AVANT / APRÈS ── */}
-      <div style={{padding:"60px 24px",background:"rgba(255,255,255,0.02)",borderTop:"1px solid rgba(255,255,255,0.05)",borderBottom:"1px solid rgba(255,255,255,0.05)"}}>
-        <div style={{maxWidth:980,margin:"0 auto"}}>
-          <h2 style={{textAlign:"center",fontSize:"clamp(18px,3vw,26px)",fontWeight:800,marginBottom:8}}>Ce qui change concrètement avec EduGest</h2>
-          <p style={{textAlign:"center",color:"rgba(255,255,255,0.45)",fontSize:13,marginBottom:32}}>Sept situations vécues par chaque école — avant et après EduGest</p>
-          <div style={{display:"grid",gap:10}}>
-            {[
-              {sit:"Un parent réclame un reçu de l'année dernière",avant:"« Repassez la semaine prochaine, on cherche dans les cahiers »",apres:"Reçu PDF généré en 5 secondes depuis l'historique"},
-              {sit:"Le comptable est absent",avant:"La caisse est bloquée, personne ne sait l'état des comptes",apres:"Le directeur voit tout depuis son téléphone"},
-              {sit:"Un parent veut savoir s'il a payé",avant:"Cherche son reçu papier, parfois perdu",apres:"Se connecte à son portail, voit tout son historique"},
-              {sit:"Audit annuel ou contrôle fiscal",avant:"Semaines de préparation, comptes reconstitués",apres:"Export Excel + PDF en 5 minutes"},
-              {sit:"Un nouveau directeur prend la suite",avant:"Aucune mémoire, repart de zéro",apres:"Toute l'histoire de l'école est dans EduGest"},
-              {sit:"Vol en caisse de 3 000 000 GNF",avant:"Découvert 2 mois plus tard, auteur introuvable",apres:"Détecté immédiatement, auteur identifié par log"},
-              {sit:"Conflit sur un salaire d'enseignant",avant:"Discussion à l'oral, sans preuve",apres:"Historique des paiements affiché, signé, daté"},
-            ].map(r=>(
-              <div key={r.sit} style={{display:"grid",gridTemplateColumns:"minmax(0,1.1fr) minmax(0,1fr) minmax(0,1fr)",gap:12,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:12,padding:"16px 18px",alignItems:"start"}}>
-                <div style={{fontSize:13,fontWeight:700,color:"#fff",lineHeight:1.5}}>{r.sit}</div>
-                <div style={{fontSize:12,color:"rgba(239,68,68,0.85)",lineHeight:1.6,paddingLeft:10,borderLeft:"2px solid rgba(239,68,68,0.4)"}}>
-                  <div style={{fontSize:10,fontWeight:800,color:"rgba(239,68,68,0.7)",letterSpacing:"1px",marginBottom:4}}>AVANT</div>
-                  {r.avant}
-                </div>
-                <div style={{fontSize:12,color:"rgba(0,196,140,0.95)",lineHeight:1.6,paddingLeft:10,borderLeft:"2px solid rgba(0,196,140,0.5)"}}>
-                  <div style={{fontSize:10,fontWeight:800,color:"#00C48C",letterSpacing:"1px",marginBottom:4}}>AVEC EDUGEST</div>
-                  {r.apres}
-                </div>
-              </div>
-            ))}
-          </div>
-
-        </div>
-      </div>
-
-      {/* ── TARIFICATION ── */}
-      <div style={{padding:"60px 24px",maxWidth:1060,margin:"0 auto"}}>
-        <h2 style={{textAlign:"center",fontSize:"clamp(18px,3vw,26px)",fontWeight:800,marginBottom:8}}>Tarification transparente</h2>
-        <p style={{textAlign:"center",color:"rgba(255,255,255,0.45)",fontSize:13,marginBottom:40}}>Démarrez gratuitement, évoluez selon vos besoins</p>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:16}}>
-          {[
-            {
-              name:"Gratuit",badge:null,price:"0 GNF",period:"/mois",
-              accent:"rgba(255,255,255,0.55)",
-              color:"rgba(255,255,255,0.05)",border:"rgba(255,255,255,0.12)",
-              features:["Jusqu'à 50 élèves actifs","1 section (Primaire ou Collège)","Notes & bulletins imprimables","Emplois du temps","Support communauté"],
-              cta:"Démarrer gratuitement",action:onInscription,highlight:false,
-            },
-            {
-              name:"Starter",badge:null,price:"100 000 GNF",period:"/mois",
-              accent:"#0ea5e9",
-              color:"rgba(14,165,233,0.07)",border:"rgba(14,165,233,0.4)",
-              features:["Jusqu'à 200 élèves actifs","Primaire + Collège","Notes, bulletins, absences","Comptabilité de base","Portail enseignant","Support standard"],
-              cta:"Choisir Starter",action:onInscription,highlight:false,
-            },
-            {
-              name:"Standard",badge:"✦ Recommandé",price:"200 000 GNF",period:"/mois",
-              accent:"#8b5cf6",
-              color:"rgba(139,92,246,0.08)",border:"#8b5cf6",
-              features:["Jusqu'à 500 élèves actifs","Toutes les sections","Comptabilité complète & salaires","Portail enseignant & parent","Exports & impressions avances","Support prioritaire"],
-              cta:"Choisir Standard",action:onInscription,highlight:true,
-            },
-            {
-              name:"Premium",badge:null,price:"500 000 GNF",period:"/mois",
-              accent:"#f59e0b",
-              color:"rgba(245,158,11,0.07)",border:"rgba(245,158,11,0.5)",
-              features:["Élèves illimités","Toutes les sections","Toutes les fonctionnalités","Personnalisation avancée","Multi-utilisateurs","Support dédié 7j/7"],
-              cta:"Choisir Premium",action:onInscription,highlight:false,
-            },
-          ].map(plan=>(
-            <div key={plan.name} style={{
-              background:plan.color,border:`2px solid ${plan.border}`,borderRadius:18,
-              padding:"26px 20px",position:"relative",
-              boxShadow:plan.highlight?"0 0 40px rgba(139,92,246,0.2)":"none",
-            }}>
-              {plan.badge&&<div style={{position:"absolute",top:-12,left:"50%",transform:"translateX(-50%)",
-                background:plan.accent,color:"#fff",fontSize:11,fontWeight:800,
-                padding:"4px 14px",borderRadius:20,whiteSpace:"nowrap"}}>{plan.badge}</div>}
-              <div style={{fontSize:15,fontWeight:800,color:plan.accent,marginBottom:6}}>{plan.name}</div>
-              <div style={{fontSize:"clamp(18px,3vw,26px)",fontWeight:900,color:"#fff",lineHeight:1.1}}>
-                {plan.price}
-                {plan.period&&<span style={{fontSize:12,fontWeight:400,color:"rgba(255,255,255,0.4)"}}>{plan.period}</span>}
-              </div>
-              <div style={{height:1,background:"rgba(255,255,255,0.08)",margin:"16px 0"}}/>
-              <ul style={{listStyle:"none",padding:0,margin:"0 0 22px",display:"flex",flexDirection:"column",gap:8}}>
-                {plan.features.map(f=>(
-                  <li key={f} style={{display:"flex",alignItems:"flex-start",gap:8,fontSize:12,color:"rgba(255,255,255,0.7)"}}>
-                    <span style={{color:plan.accent,fontWeight:800,marginTop:1,flexShrink:0}}>✓</span>{f}
-                  </li>
-                ))}
-              </ul>
-              <button onClick={plan.action} style={{
-                width:"100%",padding:"11px",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",
-                background:plan.highlight?`linear-gradient(135deg,${plan.accent},#6d28d9)`:"rgba(255,255,255,0.08)",
-                border:plan.highlight?"none":`1px solid ${plan.border}`,
-                color:"#fff",
-              }}>{plan.cta}</button>
-            </div>
-          ))}
-        </div>
-        <p style={{textAlign:"center",marginTop:20,fontSize:11,color:"rgba(255,255,255,0.25)"}}>
-          Tarifs en Francs Guinéens (GNF) · Facturation mensuelle · Période de grâce 7 jours après expiration
-        </p>
-      </div>
-
-      {/* ── TÉMOIGNAGES ── */}
-      <div style={{padding:"50px 24px 70px",background:"rgba(255,255,255,0.02)",borderTop:"1px solid rgba(255,255,255,0.05)"}}>
-        <div style={{maxWidth:900,margin:"0 auto"}}>
-          <h2 style={{textAlign:"center",fontSize:"clamp(18px,3vw,24px)",fontWeight:800,marginBottom:8}}>Ils nous font confiance</h2>
-          <p style={{textAlign:"center",color:"rgba(255,255,255,0.4)",fontSize:13,marginBottom:36}}>Des directeurs d'établissements qui ont transformé leur gestion</p>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:16}}>
-            {[
-              {
-                nom:"École La Citadelle",poste:"Direction",ville:"Kindia",
-                texte:"EduGest est né dans nos murs. Aujourd'hui, chaque franc payé est tracé, chaque parent voit son solde en temps réel, et nos comptes ne souffrent plus du moindre doute.",
-                note:5,
-              },
-              {
-                nom:"Directrice",poste:"École primaire privée",ville:"Témoignage anonyme",
-                texte:"Pour la première fois, je peux dormir tranquille. Je sais ce qu'il y a dans la caisse, sans avoir besoin de demander.",
-                note:5,
-              },
-              {
-                nom:"Fondatrice",poste:"Collège privé",ville:"Témoignage anonyme",
-                texte:"Mes parents m'envoient des messages pour me dire qu'enfin ils comprennent ce qu'ils paient. Le portail parent a tout changé.",
-                note:5,
-              },
-            ].map(t=>(
-              <div key={t.nom} style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:14,padding:"22px 18px"}}>
-                <div style={{display:"flex",gap:3,marginBottom:12}}>
-                  {Array.from({length:t.note}).map((_,i)=><span key={i} style={{color:"#f59e0b",fontSize:14}}>★</span>)}
-                </div>
-                <p style={{fontSize:13,color:"rgba(255,255,255,0.65)",lineHeight:1.7,margin:"0 0 18px",fontStyle:"italic"}}>
-                  « {t.texte} »
-                </p>
-                <div style={{display:"flex",alignItems:"center",gap:10}}>
-                  <div style={{width:38,height:38,borderRadius:"50%",background:"linear-gradient(135deg,#00C48C,#0A1628)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:800,color:"#fff",flexShrink:0}}>
-                    {t.nom.charAt(0)}
-                  </div>
-                  <div>
-                    <div style={{fontSize:12,fontWeight:800,color:"#fff"}}>{t.nom}</div>
-                    <div style={{fontSize:11,color:"rgba(255,255,255,0.4)"}}>{t.poste}</div>
-                    <div style={{fontSize:11,color:"rgba(255,255,255,0.3)"}}>{t.ville}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* ── CTA FINAL ── */}
-      <div style={{padding:"60px 24px 80px",textAlign:"center"}}>
-        <h2 style={{fontSize:"clamp(20px,3.5vw,30px)",fontWeight:900,marginBottom:14}}>
-          Prêt à digitaliser votre école ?
-        </h2>
-        <p style={{color:"rgba(255,255,255,0.5)",fontSize:14,marginBottom:32}}>Rejoignez les établissements qui font confiance à EduGest</p>
-        <button onClick={onInscription} style={{background:"linear-gradient(135deg,#00C48C,#00a876)",border:"none",color:"#fff",padding:"16px 44px",borderRadius:30,fontSize:16,fontWeight:800,cursor:"pointer",boxShadow:"0 8px 28px rgba(0,196,140,0.4)"}}>
-          🏫 Créer mon école gratuitement
-        </button>
-        <div style={{marginTop:14,fontSize:12,color:"rgba(255,255,255,0.3)"}}>
-          Déjà inscrit ?{" "}
-          <button onClick={onConnexion} style={{background:"none",border:"none",color:"#00C48C",fontSize:12,fontWeight:700,cursor:"pointer",padding:0,textDecoration:"underline"}}>
+          <button onClick={onConnexion} style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", padding: "15px 32px", borderRadius: 30, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
             Se connecter
           </button>
         </div>
+        <p style={{ marginTop: 14, fontSize: 11, color: "rgba(255,255,255,0.3)" }}>Inscription gratuite - aucune carte bancaire requise</p>
+      </section>
 
-        {/* Contact EduGest */}
-        <div style={{marginTop:36,display:"flex",justifyContent:"center",gap:16,flexWrap:"wrap"}}>
-          <a href="https://wa.me/+224627738579" target="_blank" rel="noopener noreferrer"
-            style={{display:"flex",alignItems:"center",gap:8,background:"rgba(0,196,140,0.1)",
-              border:"1px solid rgba(0,196,140,0.3)",borderRadius:10,padding:"10px 20px",
-              textDecoration:"none",color:"#00C48C",fontSize:13,fontWeight:700}}>
-            💬 +224 627 738 579
-          </a>
-          <a href="https://mail.google.com/mail/?view=cm&to=edugest26@gmail.com" target="_blank" rel="noopener noreferrer"
-            style={{display:"flex",alignItems:"center",gap:8,background:"rgba(139,92,246,0.1)",
-              border:"1px solid rgba(139,92,246,0.3)",borderRadius:10,padding:"10px 20px",
-              textDecoration:"none",color:"#a78bfa",fontSize:13,fontWeight:700}}>
-            ✉️ edugest26@gmail.com
-          </a>
+      <section style={{ padding: "0 24px 56px", maxWidth: 980, margin: "0 auto" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 14 }}>
+          {modules.map((module) => (
+            <div key={module.title} style={cardStyle()}>
+              <div style={{ fontSize: 15, fontWeight: 800, color: "#fff", marginBottom: 8 }}>{module.title}</div>
+              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.58)", lineHeight: 1.65 }}>{module.description}</div>
+            </div>
+          ))}
         </div>
-      </div>
+      </section>
 
-      {/* ── FOOTER ── */}
-      <div style={{borderTop:"1px solid rgba(255,255,255,0.07)",padding:"24px",display:"flex",flexWrap:"wrap",gap:10,justifyContent:"space-between",alignItems:"center"}}>
-        <div style={{color:"rgba(255,255,255,0.2)",fontSize:11}}>
-          © {new Date().getFullYear()} EduGest · Solution SaaS de gestion scolaire pour l'Afrique
+      <section style={{ padding: "42px 24px 60px", background: "rgba(0,196,140,0.05)", borderTop: "1px solid rgba(0,196,140,0.12)", borderBottom: "1px solid rgba(0,196,140,0.12)" }}>
+        <div style={{ maxWidth: 980, margin: "0 auto" }}>
+          <h2 style={{ textAlign: "center", fontSize: "clamp(20px,3vw,28px)", fontWeight: 800, marginBottom: 10 }}>Pourquoi choisir EduGest ?</h2>
+          <p style={{ textAlign: "center", color: "rgba(255,255,255,0.45)", fontSize: 13, marginBottom: 34 }}>Un produit terrain, pense pour les besoins reels des ecoles.</p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 18 }}>
+            {avantages.map((item) => (
+              <div key={item.title} style={cardStyle("rgba(0,196,140,0.18)", "rgba(255,255,255,0.03)")}>
+                <div style={{ fontSize: 14, fontWeight: 800, color: "#00C48C", marginBottom: 8 }}>{item.title}</div>
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.58)", lineHeight: 1.65 }}>{item.description}</div>
+              </div>
+            ))}
+          </div>
         </div>
-        <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
-          <a href="https://wa.me/+224627738579" target="_blank" rel="noopener noreferrer"
-            style={{color:"rgba(255,255,255,0.3)",fontSize:11,textDecoration:"none"}}>
-            💬 +224 627 738 579
-          </a>
-          <a href="https://mail.google.com/mail/?view=cm&to=edugest26@gmail.com" target="_blank" rel="noopener noreferrer"
-            style={{color:"rgba(255,255,255,0.3)",fontSize:11,textDecoration:"none"}}>
-            ✉️ edugest26@gmail.com
-          </a>
+      </section>
+
+      <section style={{ padding: "60px 24px", maxWidth: 980, margin: "0 auto" }}>
+        <div style={{ textAlign: "center", marginBottom: 14 }}>
+          <span style={{ display: "inline-block", background: "rgba(0,196,140,0.12)", border: "1px solid rgba(0,196,140,0.3)", color: "#00C48C", fontSize: 11, fontWeight: 800, letterSpacing: "1.5px", textTransform: "uppercase", padding: "5px 14px", borderRadius: 20 }}>Notre obsession</span>
         </div>
-      </div>
+        <h2 style={{ textAlign: "center", fontSize: "clamp(20px,3.5vw,30px)", fontWeight: 900, marginBottom: 10, lineHeight: 1.2 }}>
+          La transparence comptable. <span style={{ color: "#00C48C" }}>Tout est trace.</span>
+        </h2>
+        <p style={{ textAlign: "center", color: "rgba(255,255,255,0.55)", fontSize: 14, maxWidth: 700, margin: "0 auto 34px", lineHeight: 1.65 }}>
+          EduGest aide la direction a savoir ce qui entre, ce qui sort et qui a fait quoi, sans dependre d'un cahier ou d'une memoire incertaine.
+        </p>
+
+        <div style={{ display: "grid", gap: 10 }}>
+          {situations.map((item) => (
+            <div key={item.situation} style={{ display: "grid", gridTemplateColumns: "minmax(0,1.1fr) minmax(0,1fr) minmax(0,1fr)", gap: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "16px 18px", alignItems: "start" }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", lineHeight: 1.5 }}>{item.situation}</div>
+              <div style={{ fontSize: 12, color: "rgba(239,68,68,0.85)", lineHeight: 1.6, paddingLeft: 10, borderLeft: "2px solid rgba(239,68,68,0.4)" }}>
+                <div style={{ fontSize: 10, fontWeight: 800, color: "rgba(239,68,68,0.7)", letterSpacing: "1px", marginBottom: 4 }}>AVANT</div>
+                {item.avant}
+              </div>
+              <div style={{ fontSize: 12, color: "rgba(0,196,140,0.95)", lineHeight: 1.6, paddingLeft: 10, borderLeft: "2px solid rgba(0,196,140,0.5)" }}>
+                <div style={{ fontSize: 10, fontWeight: 800, color: "#00C48C", letterSpacing: "1px", marginBottom: 4 }}>AVEC EDUGEST</div>
+                {item.apres}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section style={{ padding: "58px 24px", maxWidth: 1060, margin: "0 auto" }}>
+        <h2 style={{ textAlign: "center", fontSize: "clamp(20px,3vw,28px)", fontWeight: 800, marginBottom: 8 }}>Tarification transparente</h2>
+        <p style={{ textAlign: "center", color: "rgba(255,255,255,0.45)", fontSize: 13, marginBottom: 36 }}>Demarrez gratuitement, puis evoluez selon la taille de votre ecole.</p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 16 }}>
+          {offres.map((plan) => (
+            <div key={plan.name} style={{ ...cardStyle(plan.highlight ? "#8b5cf6" : "rgba(255,255,255,0.12)", plan.highlight ? "rgba(139,92,246,0.08)" : "rgba(255,255,255,0.05)"), boxShadow: plan.highlight ? "0 0 40px rgba(139,92,246,0.2)" : "none" }}>
+              <div style={{ fontSize: 15, fontWeight: 800, color: plan.highlight ? "#c4b5fd" : "rgba(255,255,255,0.8)", marginBottom: 6 }}>{plan.name}</div>
+              <div style={{ fontSize: "clamp(18px,3vw,26px)", fontWeight: 900, color: "#fff", lineHeight: 1.1 }}>{plan.price}</div>
+              <div style={{ height: 1, background: "rgba(255,255,255,0.08)", margin: "16px 0" }} />
+              <ul style={{ listStyle: "none", padding: 0, margin: "0 0 22px", display: "flex", flexDirection: "column", gap: 8 }}>
+                {plan.features.map((feature) => (
+                  <li key={feature} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12, color: "rgba(255,255,255,0.7)" }}>
+                    <span style={{ color: plan.highlight ? "#c4b5fd" : "#00C48C", fontWeight: 800, marginTop: 1, flexShrink: 0 }}>-</span>
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <button onClick={onInscription} style={{ width: "100%", padding: "11px", borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: "pointer", background: plan.highlight ? "linear-gradient(135deg,#8b5cf6,#6d28d9)" : "rgba(255,255,255,0.08)", border: plan.highlight ? "none" : "1px solid rgba(255,255,255,0.12)", color: "#fff" }}>
+                Choisir {plan.name}
+              </button>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section style={{ padding: "54px 24px 80px", textAlign: "center", background: "rgba(255,255,255,0.02)", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+        <h2 style={{ fontSize: "clamp(22px,3.5vw,30px)", fontWeight: 900, marginBottom: 14 }}>Pret a digitaliser votre ecole ?</h2>
+        <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14, marginBottom: 30 }}>Lancez un espace propre, simple et adapte a votre realite terrain.</p>
+        <div style={{ display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
+          <button onClick={onInscription} style={{ background: "linear-gradient(135deg,#00C48C,#00a876)", border: "none", color: "#fff", padding: "16px 42px", borderRadius: 30, fontSize: 16, fontWeight: 800, cursor: "pointer", boxShadow: "0 8px 28px rgba(0,196,140,0.35)" }}>
+            Creer mon ecole gratuitement
+          </button>
+          <button onClick={onConnexion} style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", padding: "16px 32px", borderRadius: 30, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+            Se connecter
+          </button>
+        </div>
+      </section>
     </div>
   );
 }
-
-// ══════════════════════════════════════════════════════════════
-//  PORTAIL PUBLIC (page d'accueil avant connexion)
-// ══════════════════════════════════════════════════════════════
 
 export { LandingEduGest };

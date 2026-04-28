@@ -1,4 +1,4 @@
-# Runbook Exploitation Et Incident
+﻿# Runbook Exploitation Et Incident
 
 Objectif: fournir une base simple pour exploiter `citadelle` sans improviser en cas d'incident.
 
@@ -29,7 +29,7 @@ Objectif: fournir une base simple pour exploiter `citadelle` sans improviser en 
   - `api/login`
   - `api/transfert`
   - `api/account-manage`
-  - `api/kkiapay-webhook`
+  - `suivi des paiements Mobile Money`
 - Duplications ou absence de paiements apres webhook
 - Echec de build ou de tests dans la CI
 
@@ -64,14 +64,14 @@ Actions:
 ## Incident Paiement
 
 Symptomes:
-- paiement visible chez Kkiapay mais absent dans l'ecole
+- paiement visible chez le canal Mobile Money mais absent dans l'ecole
 - paiements en double
 - plan non active apres paiement
 
 Actions:
-1. verifier la signature recue dans `api/kkiapay-webhook`
-2. verifier `KKIAPAY_PRIVATE_KEY`
-3. verifier le document `ecoles/{schoolId}/paiements/kkiapay_{transactionId}`
+1. verifier la signature recue dans `suivi des paiements Mobile Money`
+2. verifier `le canal Mobile Money_PRIVATE_KEY`
+3. verifier le document `ecoles/{schoolId}/paiements/le canal Mobile Money_{transactionId}`
 4. verifier que le webhook n'a pas ete rejoue avec un payload modifie
 5. verifier l'activation du plan dans `ecoles/{schoolId}`
 
@@ -123,3 +123,4 @@ En cas de recuperation:
 - brancher une solution centralisee de logs/alertes
 - ajouter des tests Firestore rules avec emulateur
 - ajouter une verification manuelle post-deploiement
+
