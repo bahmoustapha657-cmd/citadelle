@@ -287,18 +287,18 @@ function LandingEduGest({onConnexion, onInscription}) {
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:16}}>
             {[
               {
-                nom:"Mamadou Diallo",poste:"Directeur, Groupe Scolaire Excellence",ville:"Conakry",
-                texte:"EduGest a révolutionné notre façon de gérer les 3 sections de notre groupe. La génération automatique des bulletins nous économise des jours de travail.",
+                nom:"École La Citadelle",poste:"Direction",ville:"Conakry",
+                texte:"EduGest est né dans nos murs. Aujourd'hui, chaque franc payé est tracé, chaque parent voit son solde en temps réel, et nos comptes ne souffrent plus du moindre doute.",
                 note:5,
               },
               {
-                nom:"Fatoumata Camara",poste:"Directrice, Institut Sainte-Marie",ville:"Kankan",
-                texte:"L'emploi du temps général et les états de salaires sont maintenant prêts en quelques clics. Je recommande à tous les établissements privés.",
+                nom:"Directrice",poste:"École primaire privée",ville:"Témoignage anonyme",
+                texte:"Pour la première fois, je peux dormir tranquille. Je sais ce qu'il y a dans la caisse, sans avoir besoin de demander.",
                 note:5,
               },
               {
-                nom:"Ibrahima Bah",poste:"Administrateur, Lycée Avenir",ville:"Labé",
-                texte:"Le portail parent permet aux familles de suivre les notes en temps réel. Les demandes de bulletins ont diminué de 70% depuis que nous utilisons EduGest.",
+                nom:"Fondatrice",poste:"Collège privé",ville:"Témoignage anonyme",
+                texte:"Mes parents m'envoient des messages pour me dire qu'enfin ils comprennent ce qu'ils paient. Le portail parent a tout changé.",
                 note:5,
               },
             ].map(t=>(
