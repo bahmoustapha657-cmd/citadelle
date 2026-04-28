@@ -287,7 +287,7 @@ function LandingEduGest({onConnexion, onInscription}) {
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:16}}>
             {[
               {
-                nom:"École La Citadelle",poste:"Direction",ville:"Conakry",
+                nom:"École La Citadelle",poste:"Direction",ville:"Kindia",
                 texte:"EduGest est né dans nos murs. Aujourd'hui, chaque franc payé est tracé, chaque parent voit son solde en temps réel, et nos comptes ne souffrent plus du moindre doute.",
                 note:5,
               },
