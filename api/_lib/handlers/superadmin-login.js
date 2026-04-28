@@ -1,12 +1,12 @@
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import bcrypt from "bcryptjs";
-import { initAdmin } from "./_lib/firebase-admin.js";
+import { initAdmin } from "../firebase-admin.js";
 import {
   applyCors,
   consumeRateLimit,
   getClientIp,
-} from "./_lib/security.js";
+} from "../security.js";
 
 const SUPERADMIN_LOGIN_PATTERN = /^[a-z0-9._-]{3,40}$/i;
 const SUPERADMIN_RATE_LIMIT = {
@@ -57,7 +57,6 @@ export default async function handler(req, res) {
     const snap = await db.collection("superadmins").get();
     let comptes = snap.docs.map(d => ({ ...d.data(), _id: d.id }));
 
-    // Fallback uniquement si aucun compte en base — à supprimer après setup initial
     if (comptes.length === 0) {
       const fallbackHash = process.env.SUPERADMIN_PASSWORD_HASH || "";
       if (!fallbackHash) return res.status(401).json({ error: "Aucun super-admin configuré" });
@@ -69,11 +68,10 @@ export default async function handler(req, res) {
 
     const valide = compte.mdp.startsWith("$2b$")
       ? await bcrypt.compare(mdp, compte.mdp)
-      : false; // mots de passe en clair refusés
+      : false;
 
     if (!valide) return res.status(401).json({ error: "Identifiants incorrects" });
 
-    // Créer ou récupérer le compte Firebase Auth du superadmin
     const email = `${trimmedLogin.toLowerCase()}@superadmin.edugest.app`;
     const displayName = compte.nom || "Super Admin";
     let uid;
@@ -92,7 +90,6 @@ export default async function handler(req, res) {
       schoolId: "superadmin",
     });
 
-    // Créer/mettre à jour le profil /users/{uid} (admin SDK — contourne les règles)
     await db.collection("users").doc(uid).set({
       schoolId: "superadmin",
       role: "superadmin",
@@ -101,7 +98,6 @@ export default async function handler(req, res) {
       updatedAt: Date.now(),
     }, { merge: true });
 
-    // Retourner un custom token pour que le client soit persistant
     const customToken = await authAdmin.createCustomToken(uid);
 
     return res.status(200).json({

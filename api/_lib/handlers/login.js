@@ -1,9 +1,9 @@
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import bcrypt from "bcryptjs";
-import { initAdmin } from "./_lib/firebase-admin.js";
-import { captureServerError } from "./_lib/observability.js";
-import { buildSessionAccountPayload, buildUserProfilePayload } from "./_lib/user-profiles.js";
+import { initAdmin } from "../firebase-admin.js";
+import { captureServerError } from "../observability.js";
+import { buildSessionAccountPayload, buildUserProfilePayload } from "../user-profiles.js";
 import {
   applyCors,
   consumeRateLimit,
@@ -13,7 +13,7 @@ import {
   isValidSchoolId,
   normalizeLogin,
   normalizeSchoolId,
-} from "./_lib/security.js";
+} from "../security.js";
 
 const LOGIN_RATE_LIMIT = {
   limit: 10,

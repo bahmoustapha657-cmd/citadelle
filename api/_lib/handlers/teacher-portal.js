@@ -1,5 +1,5 @@
 import { getFirestore } from "firebase-admin/firestore";
-import { initAdmin } from "./_lib/firebase-admin.js";
+import { initAdmin } from "../firebase-admin.js";
 import {
   getDocsByFieldValues,
   getSectionCollections,
@@ -9,8 +9,8 @@ import {
   sortByDateDesc,
   toItem,
   uniqueById,
-} from "./_lib/portal-data.js";
-import { applyCors, normalizeSchoolId, requireSession } from "./_lib/security.js";
+} from "../portal-data.js";
+import { applyCors, normalizeSchoolId, requireSession } from "../security.js";
 
 function getTeacherSection(profile = {}) {
   return normalizeSection(profile.section || profile.sections?.[0] || "college");

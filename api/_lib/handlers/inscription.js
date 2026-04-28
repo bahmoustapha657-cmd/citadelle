@@ -1,9 +1,9 @@
 import { getFirestore } from "firebase-admin/firestore";
 import bcrypt from "bcryptjs";
-import { getActiveRoleAccounts, getRoleConfig, getRoleSettingsMap } from "../shared/role-config.js";
-import { generateSecurePassword } from "./_lib/passwords.js";
-import { initAdmin } from "./_lib/firebase-admin.js";
-import { syncEcolePublic } from "./_lib/ecole-public.js";
+import { getActiveRoleAccounts, getRoleConfig, getRoleSettingsMap } from "../../../shared/role-config.js";
+import { generateSecurePassword } from "../passwords.js";
+import { initAdmin } from "../firebase-admin.js";
+import { syncEcolePublic } from "../ecole-public.js";
 import {
   applyCors,
   consumeRateLimit,
@@ -11,7 +11,7 @@ import {
   isValidLogin,
   isValidSchoolId,
   normalizeLogin,
-} from "./_lib/security.js";
+} from "../security.js";
 
 const RESERVED_SCHOOL_IDS = new Set(["superadmin", "config", "users"]);
 const INSCRIPTION_RATE_LIMIT = {
@@ -47,8 +47,6 @@ const genSlug = (nom) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 30) || "ecole";
-
-export { generateSecurePassword };
 
 export default async function handler(req, res) {
   if (!applyCors(req, res)) return;

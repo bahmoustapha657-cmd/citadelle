@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { generateSecurePassword } from "../api/inscription.js";
+import { generateSecurePassword } from "../api/_lib/passwords.js";
 
 const PASSWORD_PATTERN = /^[ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#!]{12}$/;
 

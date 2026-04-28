@@ -1,17 +1,17 @@
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import bcrypt from "bcryptjs";
-import { ROLE_ORDER, getRoleSettingsMap } from "../shared/role-config.js";
-import { generateSecurePassword } from "./_lib/passwords.js";
-import { findLogicalAccountConflict } from "./_lib/account-conflicts.js";
+import { ROLE_ORDER, getRoleSettingsMap } from "../../../shared/role-config.js";
+import { generateSecurePassword } from "../passwords.js";
+import { findLogicalAccountConflict } from "../account-conflicts.js";
 import {
   extractAccountProfileFields,
   hasSameParentHousehold,
   mergeParentStudentLinks,
   parentAccountsShareStudent,
-} from "./_lib/account-links.js";
-import { initAdmin } from "./_lib/firebase-admin.js";
-import { buildSessionAccountPayload, buildUserProfilePayload } from "./_lib/user-profiles.js";
+} from "../account-links.js";
+import { initAdmin } from "../firebase-admin.js";
+import { buildSessionAccountPayload, buildUserProfilePayload } from "../user-profiles.js";
 import {
   applyCors,
   isAllowedSchoolRole,
@@ -20,7 +20,7 @@ import {
   normalizeLogin,
   normalizeSchoolId,
   requireSession,
-} from "./_lib/security.js";
+} from "../security.js";
 
 function buildEmail(login, schoolId) {
   return `${login}.${schoolId}@edugest.app`;

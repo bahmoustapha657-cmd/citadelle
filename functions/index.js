@@ -1,17 +1,17 @@
 import process from "node:process";
 import { onRequest } from "firebase-functions/v2/https";
 import { setGlobalOptions } from "firebase-functions/v2/options";
-import accountManageHandler from "../api/account-manage.js";
-import ecolePublicSyncHandler from "../api/ecole-public-sync.js";
+import accountManageHandler from "../api/_lib/handlers/account-manage.js";
+import ecolePublicSyncHandler from "../api/_lib/handlers/ecole-public-sync.js";
 import iaHandler from "../api/ia.js";
-import inscriptionHandler from "../api/inscription.js";
+import inscriptionHandler from "../api/_lib/handlers/inscription.js";
 import kkiapayWebhookHandler from "../api/kkiapay-webhook.js";
-import loginHandler from "../api/login.js";
-import parentPortalHandler from "../api/parent-portal.js";
+import loginHandler from "../api/_lib/handlers/login.js";
+import parentPortalHandler from "../api/_lib/handlers/parent-portal.js";
 import pushHandler from "../api/push.js";
-import schoolLifecycleHandler from "../api/school-lifecycle.js";
-import superadminLoginHandler from "../api/superadmin-login.js";
-import teacherPortalHandler from "../api/teacher-portal.js";
+import schoolLifecycleHandler from "../api/_lib/handlers/school-lifecycle.js";
+import superadminLoginHandler from "../api/_lib/handlers/superadmin-login.js";
+import teacherPortalHandler from "../api/_lib/handlers/teacher-portal.js";
 import transfertHandler from "../api/transfert.js";
 
 const appFunctionRegion = process.env.APP_FUNCTION_REGION || "europe-west1";

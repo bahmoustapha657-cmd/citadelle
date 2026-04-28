@@ -4,7 +4,7 @@ import {
   SCHOOL_LIFECYCLE_CONFIRMATIONS,
   buildSchoolLifecyclePatch,
   normalizeSchoolLifecycleAction,
-} from "../api/school-lifecycle.js";
+} from "../api/_lib/handlers/school-lifecycle.js";
 
 test("normalizeSchoolLifecycleAction only accepts supported actions", () => {
   assert.equal(normalizeSchoolLifecycleAction(" deactivate "), "deactivate");

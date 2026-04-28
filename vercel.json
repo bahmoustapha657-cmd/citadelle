@@ -1,5 +1,13 @@
 {
   "rewrites": [
+    { "source": "/api/login", "destination": "/api/auth?op=login" },
+    { "source": "/api/superadmin-login", "destination": "/api/auth?op=superadmin-login" },
+    { "source": "/api/inscription", "destination": "/api/auth?op=inscription" },
+    { "source": "/api/parent-portal", "destination": "/api/portals?op=parent" },
+    { "source": "/api/teacher-portal", "destination": "/api/portals?op=teacher" },
+    { "source": "/api/account-manage", "destination": "/api/school?op=account-manage" },
+    { "source": "/api/school-lifecycle", "destination": "/api/school?op=lifecycle" },
+    { "source": "/api/ecole-public-sync", "destination": "/api/school?op=public-sync" },
     { "source": "/api/:path*", "destination": "/api/:path*" }
   ],
   "functions": {

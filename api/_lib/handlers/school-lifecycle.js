@@ -1,12 +1,12 @@
 import { getFirestore } from "firebase-admin/firestore";
-import { initAdmin } from "./_lib/firebase-admin.js";
-import { syncEcolePublic } from "./_lib/ecole-public.js";
+import { initAdmin } from "../firebase-admin.js";
+import { syncEcolePublic } from "../ecole-public.js";
 import {
   applyCors,
   isValidSchoolId,
   normalizeSchoolId,
   requireSession,
-} from "./_lib/security.js";
+} from "../security.js";
 
 export const SCHOOL_LIFECYCLE_CONFIRMATIONS = {
   deactivate: "DESACTIVER",
