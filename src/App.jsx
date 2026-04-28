@@ -125,7 +125,7 @@ class ErrorBoundary extends React.Component {
         <button onClick={()=>this.setState({erreur:null})}
           style={{background:"#0A1628",color:"#fff",border:"none",padding:"10px 24px",
             borderRadius:8,fontSize:14,fontWeight:700,cursor:"pointer",marginBottom:12}}>
-          Reessayer
+          🔄 Reessayer
         </button>
         <button onClick={()=>window.location.reload()}
           style={{background:"none",border:"1px solid #d1d5db",color:"#6b7280",
@@ -648,7 +648,7 @@ export default function App() {
         zIndex:9998,background:"#0A1628",color:"#fff",borderRadius:14,
         padding:"12px 20px",display:"flex",alignItems:"center",gap:14,
         boxShadow:"0 8px 32px rgba(0,0,0,0.45)",maxWidth:360,width:"calc(100% - 32px)"}}>
-        <span style={{fontSize:28}}>APP</span>
+        <span style={{fontSize:28}}>📲</span>
         <div style={{flex:1}}>
           <p style={{margin:"0 0 2px",fontWeight:800,fontSize:14}}>Installer EduGest</p>
           <p style={{margin:0,fontSize:12,color:"rgba(255,255,255,0.65)"}}>Accès rapide, fonctionne hors ligne</p>
@@ -710,11 +710,11 @@ export default function App() {
             </div>
           </div>
           <button onClick={deconnecter} style={{width:"100%",background:"rgba(255,255,255,0.08)",border:"none",color:"rgba(255,255,255,0.5)",padding:"6px",borderRadius:6,fontSize:11,cursor:"pointer",fontWeight:600}}>
-            Se deconnecter
+            ⬅ Se déconnecter
           </button>
           {estHorsLigne&&(
             <div style={{marginTop:8,background:"rgba(245,158,11,0.15)",border:"1px solid rgba(245,158,11,0.3)",borderRadius:6,padding:"6px 10px",display:"flex",alignItems:"center",gap:6}}>
-              <span style={{fontSize:14}}>NET</span>
+              <span style={{fontSize:14}}>📡</span>
               <div>
                 <p style={{margin:0,fontSize:10,fontWeight:800,color:"#fbbf24"}}>Mode hors ligne</p>
                 <p style={{margin:0,fontSize:9,color:"rgba(255,255,255,0.4)"}}>Navigation disponible</p>
@@ -734,12 +734,12 @@ export default function App() {
             <span style={{fontSize:14,fontWeight:800,color:C.blueDark,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",display:"block"}}>
               {modulesVisibles.find(m=>m.id===page)?.icon} {modulesVisibles.find(m=>m.id===page)?.label}
             </span>
-            {readOnly&&!isMobile&&<span style={{marginLeft:10,fontSize:11,color:"#d97706",fontWeight:700,background:"#fef3e0",padding:"2px 8px",borderRadius:10}}>Lecture seule</span>}
+            {readOnly&&!isMobile&&<span style={{marginLeft:10,fontSize:11,color:"#d97706",fontWeight:700,background:"#fef3e0",padding:"2px 8px",borderRadius:10}}>👁️ Lecture seule</span>}
           </div>
           <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
             {estHorsLigne&&(
-              <div title="Mode hors ligne - donnees depuis le cache" style={{display:"flex",alignItems:"center",gap:4,background:"#fef3c7",border:"1px solid #f59e0b",borderRadius:8,padding:"4px 9px",fontSize:11,fontWeight:700,color:"#92400e",flexShrink:0}}>
-                <span style={{fontSize:13}}>NET</span>
+              <div title="Mode hors ligne — données depuis le cache" style={{display:"flex",alignItems:"center",gap:4,background:"#fef3c7",border:"1px solid #f59e0b",borderRadius:8,padding:"4px 9px",fontSize:11,fontWeight:700,color:"#92400e",flexShrink:0}}>
+                <span style={{fontSize:13}}>📡</span>
                 {!isMobile&&<span>Hors ligne</span>}
               </div>
             )}
@@ -751,19 +751,19 @@ export default function App() {
                   border:`1px solid ${planInfo.joursRestants<=7?"#f87171":"#f59e0b"}`,
                   borderRadius:8,padding:"4px 9px",fontSize:11,fontWeight:700,
                   color:planInfo.joursRestants<=7?"#b91c1c":"#92400e",flexShrink:0,cursor:"default"}}>
-                <span style={{fontSize:13}}>{planInfo.joursRestants<=7?"!":"i"}</span>
-                {!isMobile&&<span>Abonnement : {planInfo.joursRestants<=0?"EXPIRE":`${planInfo.joursRestants}j`}</span>}
+                <span style={{fontSize:13}}>{planInfo.joursRestants<=7?"🔴":"🟡"}</span>
+                {!isMobile&&<span>Abonnement : {planInfo.joursRestants<=0?"EXPIRÉ":`${planInfo.joursRestants}j`}</span>}
               </div>
             )}
             <button onClick={()=>setRechercheOuverte(true)}
               title="Recherche globale (Ctrl+K)"
               style={{display:"flex",alignItems:"center",gap:isMobile?0:6,background:"#f0f4f0",border:"1px solid #e0ebf8",borderRadius:8,padding:"5px 10px",cursor:"pointer",fontSize:isMobile?17:12,color:"#6b7280",fontWeight:600}}>
-              Chercher{!isMobile&&<><span>Rechercher</span><kbd style={{background:"#e2e8f0",border:"1px solid #cbd5e1",borderRadius:4,padding:"1px 5px",fontSize:10,color:"#94a3b8",marginLeft:4}}>Ctrl K</kbd></>}
+              🔍{!isMobile&&<><span>Rechercher</span><kbd style={{background:"#e2e8f0",border:"1px solid #cbd5e1",borderRadius:4,padding:"1px 5px",fontSize:10,color:"#94a3b8",marginLeft:4}}>Ctrl K</kbd></>}
             </button>
             <button onClick={()=>setModeSombre(v=>!v)}
               title={modeSombre?"Mode clair":"Mode sombre"}
               style={{background:"#f0f4f0",border:"1px solid #e0ebf8",borderRadius:8,padding:"5px 10px",cursor:"pointer",fontSize:16,lineHeight:1}}>
-              {modeSombre?"Clair":"Sombre"}
+              {modeSombre?"☀️":"🌙"}
             </button>
 
             {/* ── Cloche notifications ── */}
@@ -771,7 +771,7 @@ export default function App() {
               <button onClick={()=>{setNotifOuvert(v=>!v);setProfilOuvert(false);setNotifNonLues(0);}}
                 title="Notifications récentes"
                 style={{position:"relative",background:"#f0f4f0",border:"1px solid #e0ebf8",borderRadius:8,padding:"5px 10px",cursor:"pointer",fontSize:16,lineHeight:1}}>
-                Notif
+                🔔
                 {notifNonLues>0&&<span style={{position:"absolute",top:-4,right:-4,background:"#ef4444",color:"#fff",borderRadius:"50%",width:16,height:16,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:900}}>{notifNonLues}</span>}
               </button>
               {notifOuvert&&(
@@ -785,7 +785,7 @@ export default function App() {
                       ? <div style={{padding:"24px 16px",textAlign:"center",color:"#94a3b8",fontSize:12}}>Aucune activité récente</div>
                       : notifListe.map((n,i)=>{
                           const age=nowTs-n.date;
-                          const ageStr=age<60000?"A l'instant":age<3600000?`${Math.floor(age/60000)}min`:age<86400000?`${Math.floor(age/3600000)}h`:`${Math.floor(age/86400000)}j`;
+                          const ageStr=age<60000?"À l'instant":age<3600000?`${Math.floor(age/60000)}min`:age<86400000?`${Math.floor(age/3600000)}h`:`${Math.floor(age/86400000)}j`;
                           const isNew=age<5*60*1000;
                           return <div key={n.id||i} style={{padding:"10px 16px",borderBottom:"1px solid #f8fafc",background:isNew?"#f0fdf4":"#fff",display:"flex",gap:10,alignItems:"flex-start"}}>
                             <div style={{width:8,height:8,borderRadius:"50%",background:isNew?"#22c55e":"#e2e8f0",marginTop:5,flexShrink:0}}/>
@@ -800,7 +800,7 @@ export default function App() {
                   </div>
                   <div style={{padding:"8px 16px",borderTop:"1px solid #f1f5f9"}}>
                     <button onClick={()=>{setNotifOuvert(false);setPage("historique");}} style={{width:"100%",background:"none",border:"none",cursor:"pointer",fontSize:11,color:C.blue,fontWeight:700,padding:"4px 0",textAlign:"center"}}>
-                      Voir tout l'historique -&gt;
+                      Voir tout l'historique →
                     </button>
                   </div>
                 </div>
@@ -828,14 +828,14 @@ export default function App() {
                   </div>
                   {["admin","direction","superadmin"].includes(utilisateur.role)&&(
                     <button onClick={()=>{setProfilOuvert(false);setPage("parametres");}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 16px",background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#374151",textAlign:"left",fontWeight:600}}>
-                      <span>Parametres ecole</span>
+                      🏫 <span>Paramètres école</span>
                     </button>
                   )}
                   <button onClick={()=>{setProfilOuvert(false);setAideOuverte(true);}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 16px",background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#374151",textAlign:"left",fontWeight:600,borderBottom:"1px solid #f1f5f9"}}>
-                    <span>Raccourcis clavier</span><kbd style={{marginLeft:"auto",background:"#f1f5f9",border:"1px solid #e2e8f0",borderRadius:4,padding:"1px 5px",fontSize:10,color:"#94a3b8"}}>?</kbd>
+                    ⌨️ <span>Raccourcis clavier</span><kbd style={{marginLeft:"auto",background:"#f1f5f9",border:"1px solid #e2e8f0",borderRadius:4,padding:"1px 5px",fontSize:10,color:"#94a3b8"}}>?</kbd>
                   </button>
                   <button onClick={()=>{setProfilOuvert(false);deconnecter();}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 16px",background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#ef4444",textAlign:"left",fontWeight:700}}>
-                    <span>Se deconnecter</span>
+                    ⬅ <span>Se déconnecter</span>
                   </button>
                 </div>
               )}
@@ -866,9 +866,9 @@ export default function App() {
     {/* ── Bouton flottant guide de demarrage ── */}
     {estAdmin && (
       <button onClick={()=>setOnboardingOuvert(true)}
-        title="Guide de demarrage"
+        title="Guide de démarrage"
         style={{position:"fixed",bottom:24,left:isMobile?16:244,zIndex:200,width:44,height:44,borderRadius:"50%",background:couleur2,border:"none",cursor:"pointer",boxShadow:"0 4px 16px rgba(0,0,0,0.2)",fontSize:20,display:"flex",alignItems:"center",justifyContent:"center"}}>
-        Go
+        🚀
       </button>
     )}
 
@@ -877,31 +877,31 @@ export default function App() {
       <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
         <div style={{background:"#fff",borderRadius:18,padding:"28px 28px 24px",maxWidth:520,width:"100%",boxShadow:"0 24px 60px rgba(0,0,0,0.3)"}}>
           <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
-            <div style={{fontSize:28}}>Go</div>
+            <div style={{fontSize:28}}>🚀</div>
             <div>
-              <h2 style={{margin:0,fontSize:17,fontWeight:900,color:C.blue}}>Guide de demarrage</h2>
-              <p style={{margin:"3px 0 0",fontSize:12,color:"#6b7280"}}>Suivez ces etapes pour configurer votre ecole</p>
+              <h2 style={{margin:0,fontSize:17,fontWeight:900,color:C.blue}}>Guide de démarrage</h2>
+              <p style={{margin:"3px 0 0",fontSize:12,color:"#6b7280"}}>Suivez ces étapes pour configurer votre école</p>
             </div>
           </div>
           {[
-            {done:schoolInfo.nom!=="EduGest"&&!!schoolInfo.nom, label:"Configurer l'identite de l'ecole", desc:"Nom, logo, couleurs, coordonnees", action:()=>{setPage("parametres");setOnboardingOuvert(false);}},
+            {done:schoolInfo.nom!=="EduGest"&&!!schoolInfo.nom, label:"Configurer l'identité de l'école", desc:"Nom, logo, couleurs, coordonnées", action:()=>{setPage("parametres");setOnboardingOuvert(false);}},
             {done:true, label:"Creer les classes", desc:"Primaire et/ou Secondaire selon votre etablissement", action:()=>{setPage("primaire");setOnboardingOuvert(false);}},
             {done:true, label:"Ajouter les enseignants", desc:"Profil, matiere, prime horaire", action:()=>{setPage("primaire");setOnboardingOuvert(false);}},
-            {done:true, label:"Enroler les eleves", desc:"Via le module Comptabilite -> Eleves", action:()=>{setPage("compta");setOnboardingOuvert(false);}},
+            {done:true, label:"Enrôler les élèves", desc:"Via le module Comptabilité → Élèves", action:()=>{setPage("compta");setOnboardingOuvert(false);}},
             {done:true, label:"Configurer les emplois du temps", desc:"Par classe, dans chaque section", action:()=>{setPage("primaire");setOnboardingOuvert(false);}},
-            {done:true, label:"Generer les etats de salaires", desc:"Via Comptabilite -> Salaires -> Auto-generer", action:()=>{setPage("compta");setOnboardingOuvert(false);}},
+            {done:true, label:"Générer les états de salaires", desc:"Via Comptabilité → Salaires → Auto-générer", action:()=>{setPage("compta");setOnboardingOuvert(false);}},
           ].map((step,i)=>(
             <div key={i} onClick={step.action} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 14px",borderRadius:10,marginBottom:6,cursor:"pointer",border:`1px solid ${step.done?"#d1fae5":"#e5e7eb"}`,background:step.done?"#f0fdf4":"#fafafa",transition:"background 0.15s"}}
               onMouseEnter={e=>e.currentTarget.style.background=step.done?"#dcfce7":"#f0f4ff"}
               onMouseLeave={e=>e.currentTarget.style.background=step.done?"#f0fdf4":"#fafafa"}>
               <div style={{width:26,height:26,borderRadius:"50%",background:step.done?"#00C48C":C.blue,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,color:"#fff",flexShrink:0}}>
-                {step.done?"OK":i+1}
+                {step.done?"✓":i+1}
               </div>
               <div style={{flex:1}}>
                 <div style={{fontSize:13,fontWeight:800,color:step.done?C.greenDk:C.blue}}>{step.label}</div>
                 <div style={{fontSize:11,color:"#6b7280"}}>{step.desc}</div>
               </div>
-              <span style={{fontSize:12,color:"#9ca3af"}}>-&gt;</span>
+              <span style={{fontSize:12,color:"#9ca3af"}}>→</span>
             </div>
           ))}
           <div style={{display:"flex",justifyContent:"flex-end",marginTop:16}}>
@@ -922,7 +922,7 @@ export default function App() {
         <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:18,padding:"28px",maxWidth:480,width:"100%",boxShadow:"0 24px 60px rgba(0,0,0,0.3)",maxHeight:"80vh",overflowY:"auto"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
-              <span style={{fontSize:24}}>KB</span>
+              <span style={{fontSize:24}}>⌨️</span>
               <div>
                 <h2 style={{margin:0,fontSize:16,fontWeight:900,color:C.blue}}>Raccourcis clavier</h2>
                 <p style={{margin:"2px 0 0",fontSize:11,color:"#6b7280"}}>Naviguez plus vite avec le clavier</p>
@@ -938,12 +938,12 @@ export default function App() {
             ]},
             {groupe:"Partout",items:[
               {keys:["Tab"],desc:"Passer au champ suivant"},
-              {keys:["Shift","Tab"],desc:"Champ precedent"},
+              {keys:["Shift","Tab"],desc:"Champ précédent"},
               {keys:["Enter"],desc:"Valider / confirmer"},
             ]},
             {groupe:"Recherche globale",items:[
-              {keys:["Haut","Bas"],desc:"Naviguer dans les resultats"},
-              {keys:["Enter"],desc:"Ouvrir le resultat selectionne"},
+              {keys:["↑","↓"],desc:"Naviguer dans les résultats"},
+              {keys:["Enter"],desc:"Ouvrir le résultat sélectionné"},
               {keys:["Escape"],desc:"Fermer la recherche"},
             ]},
           ].map(({groupe,items})=>(
@@ -977,6 +977,8 @@ export default function App() {
     </SchoolContext.Provider>
   );
 }
+
+
 
 
 

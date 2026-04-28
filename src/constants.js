@@ -161,20 +161,20 @@ export const peutModifierEleves = (role) => role === "comptable" || role === "ad
 export const peutModifier = (role) => role === "admin" || role === "direction";
 
 export const MODULES = [
-  { id: "superadmin_panel", label: "Super Admin", icon: "SYS", desc: "Gestion des ecoles" },
-  { id: "accueil", label: "Tableau de bord", icon: "ACC", desc: "Vue d'ensemble" },
-  { id: "historique", label: "Historique", icon: "HIS", desc: "Journal des actions" },
-  { id: "admin_panel", label: "Gestion Acces", icon: "ACL", desc: "Mots de passe" },
-  { id: "parametres", label: "Parametres", icon: "ECO", desc: "Identite de l'ecole" },
-  { id: "fondation", label: "Fondation", icon: "FON", desc: "Gouvernance" },
-  { id: "compta", label: "Comptabilite", icon: "COM", desc: "Finances" },
-  { id: "primaire", label: "Dir. Primaire", icon: "PRI", desc: "Primaire" },
-  { id: "secondaire", label: "Secondaire", icon: "SEC", desc: "Bureau College" },
-  { id: "calendrier", label: "Calendrier", icon: "CAL", desc: "Evenements scolaires" },
-  { id: "examens", label: "Examens", icon: "EXA", desc: "Planning & convocations" },
-  { id: "portail_enseignant", label: "Mon Espace", icon: "ENS", desc: "Portail enseignant" },
-  { id: "portail_parent", label: "Espace Parent", icon: "PAR", desc: "Suivi de mon enfant" },
-  { id: "messages", label: "Messages Parents", icon: "MSG", desc: "Liaison ecole-famille" },
+  { id: "superadmin_panel", label: "Super Admin", icon: "⚙️", desc: "Gestion des écoles" },
+  { id: "accueil", label: "Tableau de bord", icon: "📈", desc: "Vue d'ensemble" },
+  { id: "historique", label: "Historique", icon: "📋", desc: "Journal des actions" },
+  { id: "admin_panel", label: "Gestion Accès", icon: "🔐", desc: "Mots de passe" },
+  { id: "parametres", label: "Paramètres", icon: "🏫", desc: "Identité de l'école" },
+  { id: "fondation", label: "Fondation", icon: "🏛️", desc: "Gouvernance" },
+  { id: "compta", label: "Comptabilité", icon: "📊", desc: "Finances" },
+  { id: "primaire", label: "Dir. Primaire", icon: "🎒", desc: "Primaire" },
+  { id: "secondaire", label: "Secondaire", icon: "🏫", desc: "Bureau Collège" },
+  { id: "calendrier", label: "Calendrier", icon: "📅", desc: "Événements scolaires" },
+  { id: "examens", label: "Examens", icon: "📝", desc: "Planning & convocations" },
+  { id: "portail_enseignant", label: "Mon Espace", icon: "👨‍🏫", desc: "Portail enseignant" },
+  { id: "portail_parent", label: "Espace Parent", icon: "👨‍👩‍👧", desc: "Suivi de mon enfant" },
+  { id: "messages", label: "Messages Parents", icon: "💬", desc: "Liaison école-famille" },
 ];
 
 export const getModuleOptionsForRole = (role) => {
