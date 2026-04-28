@@ -1,0 +1,709 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>EduGest — Brochure officielle pour les fondateurs d'école</title>
+  <meta name="description" content="EduGest — la gestion scolaire que rien ne cache. Brochure pour directeurs et fondateurs d'établissements." />
+  <style>
+    :root {
+      --vert: #00C48C;
+      --vert-fonce: #00875F;
+      --marine: #0A1628;
+      --rouge: #E74C3C;
+      --gris-clair: #F4F6F9;
+      --gris-bord: #E2E8F0;
+      --texte: #1F2937;
+      --texte-doux: #4B5563;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: "Inter", "Segoe UI", "Helvetica Neue", sans-serif;
+      color: var(--texte);
+      line-height: 1.55;
+      font-size: 13px;
+      background: var(--gris-clair);
+    }
+    .page {
+      width: 210mm;
+      min-height: 297mm;
+      padding: 22mm 20mm;
+      background: #fff;
+      margin: 12mm auto;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      page-break-after: always;
+      position: relative;
+      overflow: hidden;
+    }
+    .page:last-child { page-break-after: auto; }
+
+    h1, h2, h3, h4 { color: var(--marine); margin-top: 0; line-height: 1.25; }
+    h1 { font-size: 32px; font-weight: 900; letter-spacing: -0.5px; }
+    h2 { font-size: 22px; font-weight: 800; margin-top: 28px; margin-bottom: 14px; border-bottom: 3px solid var(--vert); padding-bottom: 8px; display: inline-block; }
+    h3 { font-size: 15px; font-weight: 800; color: var(--vert-fonce); margin-top: 18px; margin-bottom: 6px; }
+    p { margin: 0 0 11px; color: var(--texte-doux); }
+    strong { color: var(--marine); font-weight: 700; }
+    em { color: var(--vert-fonce); font-style: italic; }
+
+    .footer-mark {
+      position: absolute;
+      bottom: 10mm;
+      left: 20mm;
+      right: 20mm;
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: #94A3B8;
+      border-top: 1px solid var(--gris-bord);
+      padding-top: 6px;
+    }
+
+    /* ── COVER ── */
+    .cover {
+      background: linear-gradient(135deg, var(--marine) 0%, #0d1f3a 100%);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 30mm 24mm;
+    }
+    .cover .brand { display: flex; align-items: center; gap: 10px; }
+    .cover .brand-name { font-size: 22px; font-weight: 900; color: var(--vert); letter-spacing: -0.5px; }
+    .cover .brand-sub { font-size: 9px; color: rgba(255,255,255,0.45); font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; }
+    .cover h1 { color: #fff; font-size: 44px; line-height: 1.1; margin: 0 0 16px; }
+    .cover h1 .accent { color: var(--vert); }
+    .cover .subtitle { font-size: 17px; color: rgba(255,255,255,0.75); max-width: 130mm; line-height: 1.6; }
+    .cover .badge {
+      display: inline-block;
+      background: rgba(0,196,140,0.18);
+      border: 1px solid rgba(0,196,140,0.4);
+      color: var(--vert);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: 5px 14px;
+      border-radius: 20px;
+      margin-bottom: 18px;
+    }
+    .cover .meta {
+      font-size: 11px;
+      color: rgba(255,255,255,0.5);
+      border-top: 1px solid rgba(255,255,255,0.15);
+      padding-top: 14px;
+    }
+    .cover .meta strong { color: rgba(255,255,255,0.85); }
+
+    /* ── COMPOSANTS ── */
+    .quote {
+      background: linear-gradient(135deg, rgba(0,196,140,0.08), rgba(0,196,140,0.02));
+      border-left: 4px solid var(--vert);
+      padding: 18px 22px;
+      margin: 20px 0;
+      border-radius: 0 10px 10px 0;
+      font-size: 14px;
+      color: var(--marine);
+      font-style: italic;
+      line-height: 1.7;
+    }
+    .quote .auteur { display: block; margin-top: 12px; font-style: normal; font-size: 12px; color: var(--texte-doux); }
+    .quote .auteur strong { color: var(--marine); }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 12px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 12px; }
+
+    .pilier {
+      background: var(--gris-clair);
+      border-left: 3px solid var(--vert);
+      padding: 12px 14px;
+      border-radius: 0 8px 8px 0;
+    }
+    .pilier .num {
+      display: inline-block;
+      background: var(--vert);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 900;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      text-align: center;
+      line-height: 22px;
+      margin-right: 6px;
+    }
+    .pilier .titre { font-size: 13px; font-weight: 800; color: var(--marine); margin: 4px 0 5px; }
+    .pilier .desc { font-size: 11.5px; color: var(--texte-doux); line-height: 1.55; margin: 0; }
+
+    .compare {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0 0;
+      font-size: 11.5px;
+    }
+    .compare th, .compare td {
+      padding: 10px 11px;
+      text-align: left;
+      vertical-align: top;
+      border-bottom: 1px solid var(--gris-bord);
+    }
+    .compare th {
+      background: var(--marine);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .compare th:nth-child(2) { background: var(--rouge); }
+    .compare th:nth-child(3) { background: var(--vert); }
+    .compare tr:nth-child(even) td { background: var(--gris-clair); }
+    .compare td.situ { font-weight: 700; color: var(--marine); width: 32%; }
+    .compare td.avant { color: #B91C1C; width: 34%; }
+    .compare td.apres { color: var(--vert-fonce); width: 34%; font-weight: 600; }
+
+    .acteur {
+      background: var(--gris-clair);
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+    }
+    .acteur .role { font-size: 13px; font-weight: 800; color: var(--vert-fonce); margin-bottom: 4px; }
+    .acteur ul { margin: 0; padding-left: 18px; font-size: 11.5px; color: var(--texte-doux); }
+    .acteur ul li { margin-bottom: 3px; }
+
+    .tarif-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; margin-top: 14px; }
+    .tarif {
+      border: 1.5px solid var(--gris-bord);
+      border-radius: 12px;
+      padding: 14px 12px;
+      text-align: center;
+    }
+    .tarif.recommande { border-color: var(--vert); background: rgba(0,196,140,0.05); position: relative; }
+    .tarif.recommande::before {
+      content: "RECOMMANDÉ";
+      position: absolute;
+      top: -10px; left: 50%; transform: translateX(-50%);
+      background: var(--vert); color: #fff;
+      font-size: 9px; font-weight: 900; letter-spacing: 1px;
+      padding: 3px 10px; border-radius: 12px;
+    }
+    .tarif .nom { font-size: 12px; font-weight: 800; color: var(--marine); margin-bottom: 4px; }
+    .tarif .prix { font-size: 17px; font-weight: 900; color: var(--vert-fonce); line-height: 1.1; }
+    .tarif .prix .periode { font-size: 10px; color: var(--texte-doux); font-weight: 500; }
+    .tarif .desc { font-size: 10.5px; color: var(--texte-doux); margin-top: 8px; line-height: 1.5; }
+
+    .roi-bloc {
+      background: linear-gradient(135deg, rgba(0,196,140,0.12), rgba(0,196,140,0.04));
+      border: 1px solid var(--vert);
+      border-radius: 12px;
+      padding: 16px 18px;
+      margin-top: 18px;
+      font-size: 12px;
+      color: var(--marine);
+    }
+    .roi-bloc strong { color: var(--vert-fonce); }
+
+    .faq-q {
+      font-size: 12.5px;
+      font-weight: 800;
+      color: var(--marine);
+      margin-top: 14px;
+      margin-bottom: 4px;
+    }
+    .faq-q::before { content: "Q. "; color: var(--vert); }
+    .faq-r {
+      font-size: 11.5px;
+      color: var(--texte-doux);
+      margin: 0;
+      line-height: 1.6;
+    }
+
+    .cta-final {
+      background: linear-gradient(135deg, var(--marine), #0d1f3a);
+      color: #fff;
+      border-radius: 14px;
+      padding: 28px 26px;
+      text-align: center;
+      margin-top: 16px;
+    }
+    .cta-final h3 { color: #fff; font-size: 20px; margin: 0 0 10px; }
+    .cta-final p { color: rgba(255,255,255,0.7); margin-bottom: 16px; }
+    .cta-final .contact {
+      display: inline-block;
+      background: var(--vert);
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: 800;
+      text-decoration: none;
+      font-size: 13px;
+      margin: 4px 6px;
+    }
+    .cta-final .contact.alt {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.25);
+    }
+
+    .print-bar {
+      position: fixed;
+      top: 12mm;
+      right: 12mm;
+      background: var(--vert);
+      color: #fff;
+      padding: 10px 18px;
+      border-radius: 30px;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(0,196,140,0.4);
+      border: none;
+      z-index: 1000;
+    }
+    .print-bar:hover { background: var(--vert-fonce); }
+
+    @media print {
+      body { background: #fff; }
+      .page {
+        margin: 0;
+        box-shadow: none;
+        page-break-after: always;
+      }
+      .page:last-child { page-break-after: auto; }
+      .print-bar { display: none; }
+      @page {
+        size: A4;
+        margin: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <button class="print-bar" onclick="window.print()">🖨️ Imprimer / Enregistrer en PDF</button>
+
+  <!-- ───────── COUVERTURE ───────── -->
+  <div class="page cover">
+    <div class="brand">
+      <span style="font-size: 26px;">🏫</span>
+      <div>
+        <div class="brand-name">EduGest</div>
+        <div class="brand-sub">Solution SaaS de gestion scolaire</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="badge">Pour les fondateurs d'école</div>
+      <h1>
+        La gestion scolaire <span class="accent">que rien ne cache.</span>
+      </h1>
+      <p class="subtitle">
+        Tout ce qui entre, tout ce qui sort, qui l'a touché, à quelle heure, et pourquoi.
+        Tout est tracé. Tout est visible. Rien ne peut être effacé.
+      </p>
+    </div>
+
+    <div class="meta">
+      <strong>Brochure officielle</strong> — édition Avril 2026<br/>
+      Édité par Moustapha Bah · Conakry, République de Guinée<br/>
+      📞 +224 627 738 579 &nbsp;·&nbsp; ✉️ edugest26@gmail.com
+    </div>
+  </div>
+
+  <!-- ───────── PAGE 1 — MOT DU FONDATEUR ───────── -->
+  <div class="page">
+    <h2>Mot du fondateur</h2>
+    <p>
+      Cher fondateur, chère directrice,
+    </p>
+    <p>
+      Je suis allé visiter une école dirigée par un proche. J'ai vu <strong>trois cahiers
+      différents</strong> pour la même caisse. J'ai vu une comptable pleurer parce qu'on
+      l'accusait de vol sans pouvoir le prouver, et un directeur impuissant parce qu'il
+      n'avait pas non plus de preuve du contraire.
+    </p>
+    <p>
+      J'ai vu des parents accumuler les frustrations parce qu'ils ne savaient pas s'ils
+      étaient à jour. J'ai vu des enseignants démissionner parce que leur salaire était
+      imprévisible.
+    </p>
+    <p style="color: var(--marine); font-weight: 600;">
+      Cette école avait du potentiel. L'opacité l'étouffait.
+    </p>
+    <p>
+      EduGest, c'est ma façon de dire : <em>la confiance ne se décrète pas, elle se prouve
+      par les chiffres</em>. Et ces chiffres, EduGest les met dans la lumière, pour tout
+      le monde, tout le temps.
+    </p>
+
+    <div class="quote">
+      Dans 9 écoles privées sur 10, personne ne peut dire avec certitude où passe l'argent
+      des inscriptions. Ni le directeur, ni le comptable, encore moins les parents.
+      Cette opacité tue les écoles. EduGest la fait disparaître.
+      <span class="auteur"><strong>Moustapha Bah</strong> — fondateur d'EduGest</span>
+    </div>
+
+    <h3>Cette brochure en 30 secondes</h3>
+    <p>
+      Ce document s'adresse aux <strong>fondateurs et directeurs</strong> d'établissements
+      scolaires privés en Afrique de l'Ouest. Il explique pourquoi EduGest existe, ce qu'il
+      fait, comment il garantit la transparence comptable, et combien il coûte. Vous pouvez
+      le partager librement avec vos collègues, votre conseil d'administration ou votre
+      comptable.
+    </p>
+
+    <div class="footer-mark">
+      <span>EduGest — Brochure officielle 2026</span>
+      <span>Page 1 — Mot du fondateur</span>
+    </div>
+  </div>
+
+  <!-- ───────── PAGE 2 — LE PROBLÈME ───────── -->
+  <div class="page">
+    <h2>Le problème que personne n'ose nommer</h2>
+    <p>
+      Vous êtes directeur d'école privée. Vous avez 800 élèves. Chaque trimestre, vos
+      parents versent au moins <strong>2 milliards GNF</strong>. À la fin de l'année,
+      vous regardez vos comptes et vous vous posez la même question :
+    </p>
+    <div class="quote" style="font-size: 17px;">
+      « Où est passé l'argent ? »
+    </div>
+
+    <h3>Sept symptômes que vous reconnaîtrez</h3>
+    <ul style="font-size: 12.5px; color: var(--texte-doux); line-height: 1.8;">
+      <li>Le comptable vous présente un cahier rempli de chiffres griffonnés.</li>
+      <li>Trois reçus se sont « perdus ».</li>
+      <li>Deux parents jurent avoir payé des frais que vous ne retrouvez nulle part.</li>
+      <li>Vos enseignants demandent leur salaire alors que vous ne savez pas si la
+          trésorerie suit.</li>
+      <li>L'année suivante, votre comptable démissionne — et part avec sa version de
+          la vérité.</li>
+      <li>Lors du contrôle fiscal, vous passez trois semaines à reconstituer des
+          écritures.</li>
+      <li>Le conseil d'administration vous demande un bilan que personne ne peut
+          produire en moins de 10 jours.</li>
+    </ul>
+
+    <p style="margin-top: 22px; font-size: 13px; color: var(--marine); font-weight: 600;">
+      Ce n'est pas un cas extrême. C'est la norme. Et c'est ce qu'EduGest a été construit
+      pour éliminer.
+    </p>
+
+    <h3>La promesse EduGest</h3>
+    <p>
+      EduGest n'est pas un logiciel de plus. C'est un <strong>changement de culture</strong>
+      — celui qui transforme une école opaque en une école <strong>auditable du jour au
+      lendemain</strong>.
+    </p>
+
+    <div class="footer-mark">
+      <span>EduGest — Brochure officielle 2026</span>
+      <span>Page 2 — Le problème</span>
+    </div>
+  </div>
+
+  <!-- ───────── PAGE 3 — LES 7 PILIERS ───────── -->
+  <div class="page">
+    <h2>Les 7 piliers de la transparence EduGest</h2>
+
+    <div class="grid-2">
+      <div class="pilier">
+        <span class="num">1</span><strong style="font-size: 11px;">TRAÇABILITÉ NOMINATIVE</strong>
+        <div class="titre">Chaque franc rattaché à un nom et un horodatage</div>
+        <p class="desc">Qui a saisi l'opération, quand (à la seconde), pourquoi (catégorie, motif), combien (montant exact, mode de paiement). Plus de « j'ai oublié de noter ».</p>
+      </div>
+      <div class="pilier">
+        <span class="num">2</span><strong style="font-size: 11px;">HISTORIQUE INVIOLABLE</strong>
+        <div class="titre">Personne ne peut effacer ses traces</div>
+        <p class="desc">Un journal d'actions automatique enregistre chaque création, modification et suppression. Aucun utilisateur — pas même l'administrateur — ne peut le réécrire.</p>
+      </div>
+      <div class="pilier">
+        <span class="num">3</span><strong style="font-size: 11px;">MOBILE MONEY RÉCONCILIÉ</strong>
+        <div class="titre">Les versements arrivent en caisse tout seuls</div>
+        <p class="desc">Intégration native Kkiapay (Orange Money, MTN, Moov). Le versement apparaît en temps réel, signature cryptographique vérifiée. Impossible de fabriquer un faux versement.</p>
+      </div>
+      <div class="pilier">
+        <span class="num">4</span><strong style="font-size: 11px;">DASHBOARD TEMPS RÉEL</strong>
+        <div class="titre">L'école dans votre poche</div>
+        <p class="desc">Trésorerie disponible, recettes du mois, dépenses ventilées, salaires, taux d'encaissement, top retards de paiement, alertes. Visible depuis n'importe où.</p>
+      </div>
+      <div class="pilier">
+        <span class="num">5</span><strong style="font-size: 11px;">PORTAIL PARENT</strong>
+        <div class="titre">Les parents voient tout en direct</div>
+        <p class="desc">Versements effectués, soldes restants, reçus PDF, notes des enfants, absences, annonces. Plus jamais de « j'ai payé / non vous n'avez pas payé ».</p>
+      </div>
+      <div class="pilier">
+        <span class="num">6</span><strong style="font-size: 11px;">RÔLES STRICTS SERVEUR</strong>
+        <div class="titre">L'architecture rend la fraude impossible</div>
+        <p class="desc">Les permissions sont vérifiées par les règles Firestore au niveau du serveur, pas seulement de l'interface. Un comptable ne peut pas modifier ses écritures rétroactivement.</p>
+      </div>
+      <div class="pilier" style="grid-column: 1 / -1;">
+        <span class="num">7</span><strong style="font-size: 11px;">RAPPORTS AUTOMATIQUES</strong>
+        <div class="titre">Bilans, exports et bulletins en un clic</div>
+        <p class="desc">Bilan trimestriel PDF, export Excel complet pour audit, bulletins générés depuis les notes saisies, listes de présence, récapitulatif des salaires. Si l'administration fiscale, un commissaire aux comptes ou un membre du conseil vous demande des justificatifs, vous les avez en 30 secondes.</p>
+      </div>
+    </div>
+
+    <div class="footer-mark">
+      <span>EduGest — Brochure officielle 2026</span>
+      <span>Page 3 — Les 7 piliers</span>
+    </div>
+  </div>
+
+  <!-- ───────── PAGE 4 — AVANT / APRÈS ───────── -->
+  <div class="page">
+    <h2>Avant EduGest / Avec EduGest</h2>
+    <p>Sept situations vécues par chaque école — et ce qu'EduGest change concrètement.</p>
+
+    <table class="compare">
+      <thead>
+        <tr>
+          <th>Situation</th>
+          <th>Avant EduGest</th>
+          <th>Avec EduGest</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="situ">Un parent réclame un reçu de l'année dernière</td>
+          <td class="avant">« Repassez la semaine prochaine, on cherche dans les cahiers »</td>
+          <td class="apres">Reçu PDF généré en 5 secondes depuis l'historique</td>
+        </tr>
+        <tr>
+          <td class="situ">Le comptable est absent</td>
+          <td class="avant">La caisse est bloquée, personne ne sait l'état des comptes</td>
+          <td class="apres">Le directeur voit tout depuis son téléphone</td>
+        </tr>
+        <tr>
+          <td class="situ">Un enseignant conteste son salaire</td>
+          <td class="avant">Discussion à l'oral, sans preuve</td>
+          <td class="apres">Historique des paiements affiché, signé, daté</td>
+        </tr>
+        <tr>
+          <td class="situ">Un parent veut savoir s'il a payé</td>
+          <td class="avant">Cherche son reçu papier, parfois perdu</td>
+          <td class="apres">Se connecte à son portail, voit tout</td>
+        </tr>
+        <tr>
+          <td class="situ">Audit annuel ou contrôle fiscal</td>
+          <td class="avant">Semaines de préparation, comptes reconstitués</td>
+          <td class="apres">Export Excel + PDF en 5 minutes</td>
+        </tr>
+        <tr>
+          <td class="situ">Un nouveau directeur prend la suite</td>
+          <td class="avant">Aucune mémoire, repart de zéro</td>
+          <td class="apres">Toute l'histoire de l'école est dans EduGest</td>
+        </tr>
+        <tr>
+          <td class="situ">Vol en caisse de 3 000 000 GNF</td>
+          <td class="avant">Découvert 2 mois plus tard, auteur introuvable</td>
+          <td class="apres">Détecté immédiatement, auteur identifié par log</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="footer-mark">
+      <span>EduGest — Brochure officielle 2026</span>
+      <span>Page 4 — Avant / Après</span>
+    </div>
+  </div>
+
+  <!-- ───────── PAGE 5 — CHAQUE ACTEUR ───────── -->
+  <div class="page">
+    <h2>Ce que voit chaque acteur</h2>
+    <p>EduGest assigne à chaque utilisateur un rôle précis, avec une vue adaptée. Personne n'en voit trop. Personne n'en voit trop peu.</p>
+
+    <div class="acteur">
+      <div class="role">👔 Le directeur / fondateur</div>
+      <ul>
+        <li>Tableau de bord temps réel (trésorerie, recettes, dépenses)</li>
+        <li>Validation des dépenses majeures</li>
+        <li>Vision consolidée Primaire / Collège / Lycée</li>
+        <li>Historique complet des actions de chaque utilisateur</li>
+        <li>Bilans automatiques en un clic</li>
+      </ul>
+    </div>
+
+    <div class="acteur">
+      <div class="role">🧮 Le comptable</div>
+      <ul>
+        <li>Saisie des recettes (versements scolarité, frais annexes)</li>
+        <li>Saisie des dépenses (avec justificatif obligatoire)</li>
+        <li>Gestion des salaires</li>
+        <li>Génération des reçus</li>
+        <li><strong>Aucune capacité de suppression rétroactive</strong></li>
+      </ul>
+    </div>
+
+    <div class="acteur">
+      <div class="role">👨‍🏫 L'enseignant</div>
+      <ul>
+        <li>Saisie des notes pour les classes affectées</li>
+        <li>Marquage des absences</li>
+        <li>Vue de son emploi du temps</li>
+        <li>Historique de ses propres salaires reçus</li>
+      </ul>
+    </div>
+
+    <div class="acteur">
+      <div class="role">👨‍👩‍👧 Le parent</div>
+      <ul>
+        <li>Versements effectués + solde restant pour chaque enfant</li>
+        <li>Notes et bulletins des enfants</li>
+        <li>Absences signalées</li>
+        <li>Annonces de l'école</li>
+        <li>Messagerie directe avec la direction</li>
+      </ul>
+    </div>
+
+    <div class="acteur">
+      <div class="role">🛡️ Le superadmin (fondateur de groupe scolaire)</div>
+      <ul>
+        <li>Vue multi-écoles si vous gérez plusieurs établissements</li>
+        <li>Activation / désactivation d'écoles</li>
+        <li>Audit complet de chaque école</li>
+        <li>Données agrégées au niveau du groupe</li>
+      </ul>
+    </div>
+
+    <div class="footer-mark">
+      <span>EduGest — Brochure officielle 2026</span>
+      <span>Page 5 — Chaque acteur</span>
+    </div>
+  </div>
+
+  <!-- ───────── PAGE 6 — TARIFS ───────── -->
+  <div class="page">
+    <h2>Tarification transparente</h2>
+    <p>Une formule simple. Pas de frais cachés. Pas d'engagement.</p>
+
+    <div class="tarif-grid">
+      <div class="tarif">
+        <div class="nom">Gratuit</div>
+        <div class="prix">0 GNF<span class="periode"> / mois</span></div>
+        <div class="desc">Jusqu'à 50 élèves<br/>1 section<br/>Notes, bulletins, emplois du temps</div>
+      </div>
+      <div class="tarif">
+        <div class="nom">Starter</div>
+        <div class="prix">100 000 GNF<span class="periode"> / mois</span></div>
+        <div class="desc">Jusqu'à 200 élèves<br/>Primaire + Collège<br/>Comptabilité de base, portail enseignant</div>
+      </div>
+      <div class="tarif recommande">
+        <div class="nom">Standard</div>
+        <div class="prix">200 000 GNF<span class="periode"> / mois</span></div>
+        <div class="desc">Jusqu'à 500 élèves<br/>Toutes sections<br/>Comptabilité complète, portails parent + enseignant</div>
+      </div>
+      <div class="tarif">
+        <div class="nom">Premium</div>
+        <div class="prix">500 000 GNF<span class="periode"> / mois</span></div>
+        <div class="desc">Élèves illimités<br/>Toutes les fonctionnalités<br/>Personnalisation avancée, support 7j/7</div>
+      </div>
+    </div>
+
+    <div class="roi-bloc">
+      <strong>Comparaison concrète :</strong> un comptable senior coûte minimum 3 000 000 GNF / mois en Guinée.
+      EduGest <strong>divise par 15 ce coût</strong> tout en éliminant les pertes par fraude (qui dépassent
+      souvent 10 % du chiffre d'affaires dans les écoles non équipées).<br/><br/>
+      <strong>Retour sur investissement typique : 2 mois.</strong>
+    </div>
+
+    <h3 style="margin-top: 24px;">Sécurité — transparence ne signifie pas fuite de données</h3>
+    <p style="font-size: 12px;">
+      <strong>Cloisonnement par école</strong> (aucune école ne voit les données d'une autre)
+      · <strong>Authentification forte</strong> (Firebase Auth, tokens JWT signés)
+      · <strong>Mots de passe hachés</strong> (bcrypt 10 rounds, jamais en clair)
+      · <strong>HTTPS obligatoire</strong> · <strong>Headers de sécurité</strong> (CSP, HSTS)
+      · <strong>Sauvegardes automatiques</strong> · <strong>Souveraineté</strong> : vos données restent
+      les vôtres, exportables à tout moment.
+    </p>
+
+    <div class="footer-mark">
+      <span>EduGest — Brochure officielle 2026</span>
+      <span>Page 6 — Tarifs &amp; sécurité</span>
+    </div>
+  </div>
+
+  <!-- ───────── PAGE 7 — FAQ ───────── -->
+  <div class="page">
+    <h2>Foire aux questions</h2>
+
+    <div class="faq-q">EduGest fonctionne-t-il avec une connexion Internet faible ?</div>
+    <p class="faq-r">Oui. EduGest est une application progressive (PWA) qui fonctionne hors ligne pour la plupart des opérations courantes. Les données se synchronisent dès qu'une connexion est retrouvée.</p>
+
+    <div class="faq-q">Faut-il acheter du matériel ?</div>
+    <p class="faq-r">Non. EduGest fonctionne sur n'importe quel ordinateur, tablette ou smartphone moderne, depuis un navigateur web.</p>
+
+    <div class="faq-q">Combien de temps pour former mon équipe ?</div>
+    <p class="faq-r">Une matinée pour le comptable et le directeur. 30 minutes pour un enseignant. Les parents apprennent en 5 minutes.</p>
+
+    <div class="faq-q">Mes données sont-elles vraiment privées ?</div>
+    <p class="faq-r">Oui. Chaque école a son espace cloisonné. Aucune autre école, et aucun tiers, ne peut accéder à vos données. Vous pouvez exporter ou supprimer vos données à tout moment.</p>
+
+    <div class="faq-q">Que se passe-t-il si EduGest disparaît ?</div>
+    <p class="faq-r">Vous gardez la totalité de vos données via les exports automatiques (PDF + Excel). EduGest est conçu pour ne jamais vous enfermer.</p>
+
+    <div class="faq-q">Puis-je essayer avant de payer ?</div>
+    <p class="faq-r">Oui. La formule Gratuite est complète pour les écoles de moins de 50 élèves. Pour les écoles plus grandes, la période de grâce de 7 jours après expiration vous laisse le temps d'évaluer.</p>
+
+    <div class="faq-q">Mon comptable n'est pas à l'aise avec l'informatique.</div>
+    <p class="faq-r">La saisie est aussi simple que remplir un cahier. Si nécessaire, nous formons votre équipe gratuitement à distance ou en présentiel (Conakry uniquement pour le moment).</p>
+
+    <div class="faq-q">Acceptez-vous Orange Money / MTN / Moov ?</div>
+    <p class="faq-r">Oui, les trois, via Kkiapay. Le paiement par carte bancaire est également disponible pour les abonnements.</p>
+
+    <div class="faq-q">Puis-je gérer plusieurs écoles avec un seul compte ?</div>
+    <p class="faq-r">Oui, avec la formule Premium ou Groupe scolaire. Le superadmin a une vue consolidée de toutes les écoles du groupe avec audit complet.</p>
+
+    <div class="faq-q">Et si un de mes employés essaie de tricher ?</div>
+    <p class="faq-r">L'architecture EduGest rend la fraude techniquement impossible côté serveur. Toute action est loggée. Toute tentative de modification rétroactive est bloquée et tracée.</p>
+
+    <div class="footer-mark">
+      <span>EduGest — Brochure officielle 2026</span>
+      <span>Page 7 — FAQ</span>
+    </div>
+  </div>
+
+  <!-- ───────── PAGE 8 — CTA ───────── -->
+  <div class="page">
+    <h2>Comment commencer</h2>
+
+    <ol style="font-size: 13px; color: var(--texte-doux); line-height: 1.9; padding-left: 22px;">
+      <li><strong style="color: var(--marine);">Créez votre école en ligne</strong> sur edugest.app/inscription</li>
+      <li><strong style="color: var(--marine);">Recevez vos identifiants</strong> par email en moins de 2 minutes</li>
+      <li><strong style="color: var(--marine);">Commencez à saisir</strong> : ajoutez vos classes, vos élèves, votre premier versement</li>
+      <li><strong style="color: var(--marine);">Activez la formule</strong> Standard quand vous êtes prêt</li>
+    </ol>
+
+    <h3>Une démonstration en 30 minutes ?</h3>
+    <p>
+      Si vous êtes <strong>fondateur ou directeur</strong> et que vous voulez voir EduGest tourner avec
+      vos propres exemples avant de décider, écrivez-nous. Nous bloquons un créneau de 30 minutes pour
+      vous présenter la solution sur votre cas concret — élèves, classes, comptes — et répondre à toutes
+      vos questions.
+    </p>
+
+    <div class="cta-final">
+      <h3>Une école transparente est une école qui dure.</h3>
+      <p>
+        Une école qui dure, c'est des parents qui paient sans hésiter, des enseignants payés à l'heure,
+        un directeur qui dort la nuit, et une réputation qui attire de nouveaux élèves chaque année.
+      </p>
+      <a href="https://wa.me/+224627738579" class="contact">💬 +224 627 738 579 (WhatsApp)</a>
+      <a href="mailto:edugest26@gmail.com" class="contact alt">✉️ edugest26@gmail.com</a>
+    </div>
+
+    <div style="margin-top: 36px; padding-top: 18px; border-top: 1px solid var(--gris-bord); text-align: center; font-size: 11px; color: var(--texte-doux);">
+      <strong style="color: var(--marine);">EduGest</strong> — édité par Moustapha Bah, depuis Conakry,
+      pour les écoles d'Afrique de l'Ouest et au-delà.<br/>
+      Brochure officielle — Avril 2026.<br/><br/>
+      <em>« La confiance ne se décrète pas, elle se prouve par les chiffres. »</em>
+    </div>
+
+    <div class="footer-mark">
+      <span>EduGest — Brochure officielle 2026</span>
+      <span>Page 8 — Comment commencer</span>
+    </div>
+  </div>
+
+</body>
+</html>

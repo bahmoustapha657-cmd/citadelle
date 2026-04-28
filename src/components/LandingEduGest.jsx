@@ -114,6 +114,108 @@ function LandingEduGest({onConnexion, onInscription}) {
         </div>
       </div>
 
+      {/* ── TRANSPARENCE ── */}
+      <div style={{padding:"60px 24px",maxWidth:1060,margin:"0 auto"}}>
+        <div style={{textAlign:"center",marginBottom:14}}>
+          <span style={{display:"inline-block",background:"rgba(0,196,140,0.12)",border:"1px solid rgba(0,196,140,0.3)",color:"#00C48C",fontSize:11,fontWeight:800,letterSpacing:"1.5px",textTransform:"uppercase",padding:"5px 14px",borderRadius:20}}>Notre obsession</span>
+        </div>
+        <h2 style={{textAlign:"center",fontSize:"clamp(20px,3.5vw,30px)",fontWeight:900,marginBottom:10,lineHeight:1.2}}>
+          La transparence comptable.<br/>
+          <span style={{color:"#00C48C"}}>Tout est tracé. Rien ne peut être caché.</span>
+        </h2>
+        <p style={{textAlign:"center",color:"rgba(255,255,255,0.55)",fontSize:14,maxWidth:680,margin:"0 auto 36px",lineHeight:1.6}}>
+          Dans 9 écoles privées sur 10, personne ne peut dire avec certitude où passe l'argent des inscriptions.
+          EduGest met fin à cette opacité — pour toujours.
+        </p>
+
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:14}}>
+          {[
+            {icon:"🔍",title:"Chaque franc est tracé",desc:"Qui a saisi, quand, à la seconde, pour qui, pourquoi. Aucune saisie anonyme possible."},
+            {icon:"🔒",title:"Historique inviolable",desc:"Les modifications laissent une trace que personne — pas même l'admin — ne peut effacer."},
+            {icon:"📲",title:"Mobile Money réconcilié",desc:"Orange Money, MTN, Moov via Kkiapay. Les versements arrivent en caisse automatiquement, sans saisie humaine."},
+            {icon:"📊",title:"Tableau de bord temps réel",desc:"Trésorerie, recettes, dépenses, retards de paiement. Visible depuis votre téléphone, partout."},
+            {icon:"👨‍👩‍👧",title:"Les parents voient leurs paiements",desc:"Plus jamais de « j'ai payé / non vous n'avez pas payé ». Chaque parent a son historique."},
+            {icon:"🛡️",title:"Architecture anti-fraude",desc:"Les rôles sont stricts au niveau du serveur. Un comptable ne peut pas modifier ses écritures rétroactivement."},
+          ].map(p=>(
+            <div key={p.title} style={{background:"rgba(0,196,140,0.04)",border:"1px solid rgba(0,196,140,0.15)",borderRadius:14,padding:"20px 18px"}}>
+              <div style={{fontSize:26,marginBottom:8}}>{p.icon}</div>
+              <div style={{fontSize:14,fontWeight:800,color:"#fff",marginBottom:6}}>{p.title}</div>
+              <div style={{fontSize:12,color:"rgba(255,255,255,0.55)",lineHeight:1.6}}>{p.desc}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Pull-quote fondateur */}
+        <div style={{marginTop:48,maxWidth:720,marginInline:"auto",background:"linear-gradient(135deg,rgba(0,196,140,0.08),rgba(0,196,140,0.02))",border:"1px solid rgba(0,196,140,0.25)",borderRadius:18,padding:"28px 28px 24px",position:"relative"}}>
+          <div style={{position:"absolute",top:-18,left:24,fontSize:60,color:"#00C48C",fontFamily:"Georgia,serif",lineHeight:1,opacity:0.5}}>“</div>
+          <p style={{fontSize:"clamp(14px,2vw,17px)",color:"rgba(255,255,255,0.85)",lineHeight:1.7,margin:"0 0 16px",fontStyle:"italic"}}>
+            J'ai créé EduGest parce que dans 9 écoles privées sur 10, personne ne peut dire avec certitude où
+            passe l'argent des inscriptions. Ni le directeur, ni le comptable, encore moins les parents. Cette
+            opacité tue les écoles. EduGest la fait disparaître.
+          </p>
+          <div style={{display:"flex",alignItems:"center",gap:12}}>
+            <div style={{width:42,height:42,borderRadius:"50%",background:"linear-gradient(135deg,#00C48C,#0A1628)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:900,color:"#fff",flexShrink:0}}>M</div>
+            <div>
+              <div style={{fontSize:13,fontWeight:800,color:"#fff"}}>Moustapha Bah</div>
+              <div style={{fontSize:11,color:"rgba(255,255,255,0.5)"}}>Fondateur d'EduGest · Conakry</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Lettre du fondateur — déroulable */}
+        <details style={{marginTop:28,maxWidth:720,marginInline:"auto",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:14,padding:"18px 22px"}}>
+          <summary style={{cursor:"pointer",fontSize:13,fontWeight:800,color:"#00C48C",letterSpacing:"0.3px",listStyle:"none",display:"flex",alignItems:"center",gap:8}}>
+            <span>📜 Lire la lettre complète du fondateur</span>
+          </summary>
+          <div style={{marginTop:16,fontSize:13,color:"rgba(255,255,255,0.7)",lineHeight:1.8}}>
+            <p style={{marginTop:0}}>Je suis allé visiter une école dirigée par un proche. J'ai vu <strong style={{color:"#fff"}}>trois cahiers différents</strong> pour la même caisse. J'ai vu une comptable pleurer parce qu'on l'accusait de vol sans pouvoir le prouver, et un directeur impuissant parce qu'il n'avait pas non plus de preuve du contraire.</p>
+            <p>J'ai vu des parents accumuler les frustrations parce qu'ils ne savaient pas s'ils étaient à jour. J'ai vu des enseignants démissionner parce que leur salaire était imprévisible.</p>
+            <p style={{color:"#fff",fontWeight:600}}>Cette école avait du potentiel. L'opacité l'étouffait.</p>
+            <p>EduGest, c'est ma façon de dire : <em>la confiance ne se décrète pas, elle se prouve par les chiffres</em>. Et ces chiffres, EduGest les met dans la lumière, pour tout le monde, tout le temps.</p>
+            <p style={{color:"rgba(255,255,255,0.5)",fontSize:12,marginBottom:0}}>— Moustapha Bah, Conakry, 2026</p>
+          </div>
+        </details>
+      </div>
+
+      {/* ── AVANT / APRÈS ── */}
+      <div style={{padding:"60px 24px",background:"rgba(255,255,255,0.02)",borderTop:"1px solid rgba(255,255,255,0.05)",borderBottom:"1px solid rgba(255,255,255,0.05)"}}>
+        <div style={{maxWidth:980,margin:"0 auto"}}>
+          <h2 style={{textAlign:"center",fontSize:"clamp(18px,3vw,26px)",fontWeight:800,marginBottom:8}}>Ce qui change concrètement avec EduGest</h2>
+          <p style={{textAlign:"center",color:"rgba(255,255,255,0.45)",fontSize:13,marginBottom:32}}>Sept situations vécues par chaque école — avant et après EduGest</p>
+          <div style={{display:"grid",gap:10}}>
+            {[
+              {sit:"Un parent réclame un reçu de l'année dernière",avant:"« Repassez la semaine prochaine, on cherche dans les cahiers »",apres:"Reçu PDF généré en 5 secondes depuis l'historique"},
+              {sit:"Le comptable est absent",avant:"La caisse est bloquée, personne ne sait l'état des comptes",apres:"Le directeur voit tout depuis son téléphone"},
+              {sit:"Un parent veut savoir s'il a payé",avant:"Cherche son reçu papier, parfois perdu",apres:"Se connecte à son portail, voit tout son historique"},
+              {sit:"Audit annuel ou contrôle fiscal",avant:"Semaines de préparation, comptes reconstitués",apres:"Export Excel + PDF en 5 minutes"},
+              {sit:"Un nouveau directeur prend la suite",avant:"Aucune mémoire, repart de zéro",apres:"Toute l'histoire de l'école est dans EduGest"},
+              {sit:"Vol en caisse de 3 000 000 GNF",avant:"Découvert 2 mois plus tard, auteur introuvable",apres:"Détecté immédiatement, auteur identifié par log"},
+              {sit:"Conflit sur un salaire d'enseignant",avant:"Discussion à l'oral, sans preuve",apres:"Historique des paiements affiché, signé, daté"},
+            ].map(r=>(
+              <div key={r.sit} style={{display:"grid",gridTemplateColumns:"minmax(0,1.1fr) minmax(0,1fr) minmax(0,1fr)",gap:12,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:12,padding:"16px 18px",alignItems:"start"}}>
+                <div style={{fontSize:13,fontWeight:700,color:"#fff",lineHeight:1.5}}>{r.sit}</div>
+                <div style={{fontSize:12,color:"rgba(239,68,68,0.85)",lineHeight:1.6,paddingLeft:10,borderLeft:"2px solid rgba(239,68,68,0.4)"}}>
+                  <div style={{fontSize:10,fontWeight:800,color:"rgba(239,68,68,0.7)",letterSpacing:"1px",marginBottom:4}}>AVANT</div>
+                  {r.avant}
+                </div>
+                <div style={{fontSize:12,color:"rgba(0,196,140,0.95)",lineHeight:1.6,paddingLeft:10,borderLeft:"2px solid rgba(0,196,140,0.5)"}}>
+                  <div style={{fontSize:10,fontWeight:800,color:"#00C48C",letterSpacing:"1px",marginBottom:4}}>AVEC EDUGEST</div>
+                  {r.apres}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Brochure download */}
+          <div style={{marginTop:36,textAlign:"center"}}>
+            <a href="/edugest-brochure.html" target="_blank" rel="noopener noreferrer"
+              style={{display:"inline-flex",alignItems:"center",gap:8,background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.15)",color:"#fff",padding:"12px 22px",borderRadius:30,fontSize:13,fontWeight:700,textDecoration:"none"}}>
+              📄 Télécharger la brochure (à distribuer aux fondateurs)
+            </a>
+          </div>
+        </div>
+      </div>
+
       {/* ── TARIFICATION ── */}
       <div style={{padding:"60px 24px",maxWidth:1060,margin:"0 auto"}}>
         <h2 style={{textAlign:"center",fontSize:"clamp(18px,3vw,26px)",fontWeight:800,marginBottom:8}}>Tarification transparente</h2>
