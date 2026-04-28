@@ -22,6 +22,7 @@ function SuperAdminPanel() {
   const [msgSucces, setMsgSucces] = useState("");
   const [demandes, setDemandes] = useState([]);
   const [ongletSA, setOngletSA] = useState("ecoles");
+  const [outilsTab, setOutilsTab] = useState("communications");
   // Gestion plan inline
   const [planModal, setPlanModal] = useState(null);
   const [planChoix, setPlanChoix] = useState("gratuit");
@@ -351,12 +352,11 @@ function SuperAdminPanel() {
       )}
 
       {/* Onglets */}
-      <div style={{display:"flex",gap:8,marginBottom:20}}>
+      <div style={{display:"flex",gap:8,marginBottom:20,flexWrap:"wrap"}}>
         {[
           {id:"ecoles",label:"Ecoles"},
           {id:"plans",label:"Plans"},
-          {id:"assistant",label:"Assistant"},
-          {id:"communications",label:"Communications"},
+          {id:"outils",label:"Comms & Assistant"},
           {id:"demandes",label:`Demandes${demandes.filter(d=>d.statut==="en_attente").length>0?" ("+demandes.filter(d=>d.statut==="en_attente").length+")":""}`},
         ].map(o=>(
           <button key={o.id} onClick={()=>{setOngletSA(o.id);setPlanModal(null);setConfirmDowngrade(false);}}
@@ -367,9 +367,25 @@ function SuperAdminPanel() {
         ))}
       </div>
 
-      {ongletSA==="assistant" && <SuperAdminAssistant />}
-
-      {ongletSA==="communications" && <CommunicationsAdmin ecoles={ecoles} auteur="superadmin" />}
+      {ongletSA==="outils" && (
+        <div>
+          <div style={{display:"inline-flex",gap:4,padding:4,background:"#f0f4f8",borderRadius:10,marginBottom:18}}>
+            {[
+              {id:"communications",label:"Diffusion aux écoles"},
+              {id:"assistant",label:"Assistant IA"},
+            ].map(s=>(
+              <button key={s.id} onClick={()=>setOutilsTab(s.id)}
+                style={{padding:"7px 16px",borderRadius:7,border:"none",cursor:"pointer",fontWeight:700,fontSize:12,
+                  background:outilsTab===s.id?"#fff":"transparent",color:outilsTab===s.id?C.blue:"#6b7280",
+                  boxShadow:outilsTab===s.id?"0 1px 4px rgba(0,32,80,0.1)":"none"}}>
+                {s.label}
+              </button>
+            ))}
+          </div>
+          {outilsTab==="communications" && <CommunicationsAdmin ecoles={ecoles} auteur="superadmin" />}
+          {outilsTab==="assistant" && <SuperAdminAssistant />}
+        </div>
+      )}
 
       {/* Onglet Demandes Pro */}
       {ongletSA==="demandes" && (
