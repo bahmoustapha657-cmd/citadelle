@@ -5,6 +5,7 @@ import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
 import { apiFetch, getAuthHeaders } from "../apiClient";
 import { findStaffDuplicate, getStaffDuplicateMessage } from "../staff-utils";
+import { getEligibleTeachersForTimetable, getTeacherMonthlyForfait } from "../teacher-utils";
 import { Badge, Card, Modale, Champ, Input, Selec, Textarea, Btn, THead, TR, TD, Stat, Tabs, Vide, Chargement, LectureSeule, UploadFichiers } from "./ui";
 import { enteteDoc, imprimerCartesEleves, imprimerListeClasse, imprimerAttestation, imprimerBulletin, imprimerBulletinsGroupes, imprimerFicheCompositions, exportExcel } from "../reports";
 import { LivretsTab } from "./LivretsTab";
@@ -12,6 +13,7 @@ import { LivretsTab } from "./LivretsTab";
 const loadXLSX = () => import("xlsx");
 
 function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns, userRole, annee, classesPredefinies, maxNote=20, matieresPredefinies=[], readOnly=false, verrouOuvert=false}) {
+  const isPrimarySection = cleEns === "ensPrimaire";
   const {items:classes,chargement:cC,ajouter:ajC,modifier:modC,supprimer:supC}=useFirestore(cleClasses);
   const {items:ens,chargement:cEns,ajouter:ajEns,modifier:modEns,supprimer:supEns}=useFirestore(cleEns);
   const {items:notes,chargement:cN,ajouter:ajN,supprimer:supN}=useFirestore(cleNotes);
@@ -526,7 +528,11 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
                   <Badge color={e.statut==="Titulaire"?"vert":"amber"}>{e.statut}</Badge>
                 </div>
                 <p style={{margin:"0 0 1px",fontWeight:800,fontSize:13,color:C.blueDark}}>{e.prenom} {e.nom}</p>
-                <p style={{margin:"0 0 4px",fontSize:12,color:couleur,fontWeight:700}}>{e.matiere}</p>
+                <p style={{margin:"0 0 4px",fontSize:12,color:couleur,fontWeight:700}}>
+                  {isPrimarySection
+                    ? `Forfait ${Number(getTeacherMonthlyForfait(e) || 0).toLocaleString("fr-FR")} GNF`
+                    : e.matiere}
+                </p>
                 <p style={{margin:0,fontSize:11,color:"#9ca3af"}}>{e.grade} · {e.telephone}</p>
                 {(e.fichiers||[]).length>0&&<div style={{marginTop:6,display:"flex",gap:4,flexWrap:"wrap"}}>
                   {e.fichiers.map((f,i)=><a key={i} href={f.url} target="_blank" rel="noopener noreferrer" style={{fontSize:10,color:C.blue,background:"#e0ebf8",padding:"2px 5px",borderRadius:3}}>📎 {f.nom}</a>)}
@@ -580,29 +586,41 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
               <div style={{gridColumn:"1/-1"}}>
                 <Input label="Classe (titulaire)" value={form.classeTitle||""} onChange={chg("classeTitle")} placeholder="Ex : 3ème Année A — laissez vide si non titulaire"/>
               </div>
-              <Input label="Prime horaire unique (GNF)" type="number" value={form.primeHoraire||""} onChange={chg("primeHoraire")} placeholder="Ex : 15000"/>
-              <div style={{display:"flex",alignItems:"flex-end",paddingBottom:4}}>
-                <span style={{fontSize:11,color:"#64748b",lineHeight:1.4}}>💡 Utilisée si aucune prime par classe n'est définie ci-dessous</span>
-              </div>
+              {isPrimarySection ? (
+                <>
+                  <Input label="Forfait mensuel (GNF)" type="number" value={form.montantForfait||""} onChange={chg("montantForfait")} placeholder="Ex : 1500000"/>
+                  <div style={{display:"flex",alignItems:"flex-end",paddingBottom:4}}>
+                    <span style={{fontSize:11,color:"#64748b",lineHeight:1.4}}>Paiement au forfait pour les enseignants du primaire.</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Input label="Prime horaire unique (GNF)" type="number" value={form.primeHoraire||""} onChange={chg("primeHoraire")} placeholder="Ex : 15000"/>
+                  <div style={{display:"flex",alignItems:"flex-end",paddingBottom:4}}>
+                    <span style={{fontSize:11,color:"#64748b",lineHeight:1.4}}>Utilisee si aucune prime par classe n'est definie ci-dessous.</span>
+                  </div>
+                </>
+              )}
             </div>
-            {/* ── PRIMES PAR CLASSE ── */}
-            <div style={{marginTop:14,borderTop:"1px solid #e2e8f0",paddingTop:12}}>
-              <div style={{fontSize:12,fontWeight:700,color:C.blueDark,marginBottom:8}}>
-                Primes par classe <span style={{fontWeight:400,color:"#94a3b8",fontSize:11}}>(si la prime varie selon la classe enseignée)</span>
-              </div>
-              {(form.primeParClasse||[]).map((entry,i)=>(
-                <div key={i} style={{display:"flex",gap:8,marginBottom:6,alignItems:"center"}}>
-                  <input value={entry.classe||""} placeholder="Classe (ex: 3ème Année A)"
-                    onChange={e=>setForm(p=>{const arr=[...(p.primeParClasse||[])];arr[i]={...arr[i],classe:e.target.value};return{...p,primeParClasse:arr};})}
-                    style={{flex:2,border:"1px solid #b0c4d8",borderRadius:6,padding:"5px 8px",fontSize:12}}/>
-                  <input type="number" value={entry.prime||""} placeholder="Prime GNF"
-                    onChange={e=>setForm(p=>{const arr=[...(p.primeParClasse||[])];arr[i]={...arr[i],prime:Number(e.target.value)};return{...p,primeParClasse:arr};})}
-                    style={{flex:1,border:"1px solid #b0c4d8",borderRadius:6,padding:"5px 8px",fontSize:12}}/>
-                  <Btn sm v="danger" onClick={()=>setForm(p=>({...p,primeParClasse:(p.primeParClasse||[]).filter((_,j)=>j!==i)}))}>×</Btn>
+            {!isPrimarySection && (
+              <div style={{marginTop:14,borderTop:"1px solid #e2e8f0",paddingTop:12}}>
+                <div style={{fontSize:12,fontWeight:700,color:C.blueDark,marginBottom:8}}>
+                  Primes par classe <span style={{fontWeight:400,color:"#94a3b8",fontSize:11}}>(si la prime varie selon la classe enseignee)</span>
                 </div>
-              ))}
-              <Btn sm v="ghost" onClick={()=>setForm(p=>({...p,primeParClasse:[...(p.primeParClasse||[]),{classe:"",prime:0}]}))}>+ Ajouter une classe</Btn>
-            </div>
+                {(form.primeParClasse||[]).map((entry,i)=>(
+                  <div key={i} style={{display:"flex",gap:8,marginBottom:6,alignItems:"center"}}>
+                    <input value={entry.classe||""} placeholder="Classe (ex: 3eme Annee A)"
+                      onChange={e=>setForm(p=>{const arr=[...(p.primeParClasse||[])];arr[i]={...arr[i],classe:e.target.value};return{...p,primeParClasse:arr};})}
+                      style={{flex:2,border:"1px solid #b0c4d8",borderRadius:6,padding:"5px 8px",fontSize:12}}/>
+                    <input type="number" value={entry.prime||""} placeholder="Prime GNF"
+                      onChange={e=>setForm(p=>{const arr=[...(p.primeParClasse||[])];arr[i]={...arr[i],prime:Number(e.target.value)};return{...p,primeParClasse:arr};})}
+                      style={{flex:1,border:"1px solid #b0c4d8",borderRadius:6,padding:"5px 8px",fontSize:12}}/>
+                    <Btn sm v="danger" onClick={()=>setForm(p=>({...p,primeParClasse:(p.primeParClasse||[]).filter((_,j)=>j!==i)}))}>×</Btn>
+                  </div>
+                ))}
+                <Btn sm v="ghost" onClick={()=>setForm(p=>({...p,primeParClasse:[...(p.primeParClasse||[]),{classe:"",prime:0}]}))}>+ Ajouter une classe</Btn>
+              </div>
+            )}
             <UploadFichiers dossier={`enseignants/${cleEns}`} fichiers={form.fichiers||[]}
               onAjouter={f=>setForm(p=>({...p,fichiers:[...(p.fichiers||[]),f]}))}
               onSupprimer={i=>setForm(p=>({...p,fichiers:p.fichiers.filter((_,j)=>j!==i)}))}/>
@@ -1605,7 +1623,11 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
                 .filter(x=>x.jour===edtCellule.jour&&x.heureDebut===edtCellule.heureDebut
                   &&(!edtCellule.existing||x._id!==edtCellule.existing._id)&&x.enseignant)
                 .map(x=>x.enseignant);
-              const ensFiltres=ens.filter(e=>!form.matiere||(e.matiere||"").toLowerCase().split(/[,/;]+/).map(s=>s.trim()).some(m=>m.includes((form.matiere||"").toLowerCase())||(form.matiere||"").toLowerCase().includes(m)));
+              const ensFiltres=getEligibleTeachersForTimetable(ens,{
+                classe: form.classe||classeEdtActuelle,
+                matiere: form.matiere||"",
+                isPrimary: isPrimarySection,
+              });
               return <Selec label="Enseignant" value={form.enseignant||""} onChange={chg("enseignant")}>
                 <option value="">— Sélectionner —</option>
                 {ensFiltres.map(e=>{

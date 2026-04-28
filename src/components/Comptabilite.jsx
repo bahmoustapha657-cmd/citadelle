@@ -33,6 +33,7 @@ import { CameraCapture } from "./CameraCapture";
 import { TransfertsPanel } from "./TransfertsPanel";
 import { findEnrollmentDuplicate, getEnrollmentDuplicateMessage } from "../enrollment-utils";
 import { findStaffDuplicate, getStaffDuplicateMessage } from "../staff-utils";
+import { getTeacherMonthlyForfait } from "../teacher-utils";
 import {
   buildTeacherFullName,
   getTeacherAbsenceHours,
@@ -340,7 +341,17 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
       const nomComplet=`${ens.prenom||""} ${ens.nom||""}`.trim();
       if(!nomComplet) continue;
       if(nomsExistants.includes(nomComplet.toLowerCase())) continue;
-      await ajS({section:"Primaire",mois:moisSel,nom:nomComplet,niveau:ens.grade||ens.classe||"",matiere:ens.matiere||"",montantForfait:0,bon:0,revision:0,observation:`Statut: ${ens.statut||"—"}`});
+      await ajS({
+        section:"Primaire",
+        mois:moisSel,
+        nom:nomComplet,
+        niveau:ens.grade||ens.classeTitle||ens.classe||"",
+        matiere:ens.matiere||"",
+        montantForfait:getTeacherMonthlyForfait(ens),
+        bon:0,
+        revision:0,
+        observation:`Statut: ${ens.statut||"—"}${ens.classeTitle?` · Titulaire ${ens.classeTitle}`:""}`,
+      });
     }
 
     // Personnel administratif — modèle forfait fixe
