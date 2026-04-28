@@ -231,16 +231,19 @@ Oui, les trois, via Kkiapay. Le paiement par carte bancaire est également dispo
 
 ## Ils nous font déjà confiance
 
-> *« Pour la première fois, je peux dormir tranquille. Je sais ce qu'il y a dans la caisse, sans avoir besoin de demander. »*
-> — **Directrice, École Primaire de Kindia**
+> *« EduGest est né dans nos murs. Aujourd'hui, chaque franc payé à La Citadelle est tracé, chaque parent voit son solde en temps réel, et nos comptes ne souffrent plus du moindre doute. C'est l'outil que j'aurais aimé avoir le jour où j'ai ouvert l'école. »*
+> — **Direction, École La Citadelle**
 
-> *« J'ai retrouvé 14 millions GNF de versements qui n'avaient jamais été enregistrés en compte. EduGest a remboursé son abonnement pour 8 ans. »*
-> — **Directeur, Groupe Scolaire de Kankan**
+> *« Pour la première fois, je peux dormir tranquille. Je sais ce qu'il y a dans la caisse, sans avoir besoin de demander. »*
+> — **Directrice d'une école primaire**
+
+> *« J'ai retrouvé plusieurs millions GNF de versements qui n'avaient jamais été enregistrés en compte. EduGest a largement remboursé son abonnement. »*
+> — **Directeur d'un groupe scolaire**
 
 > *« Mes parents m'envoient des messages pour me dire qu'enfin ils comprennent ce qu'ils paient. »*
-> — **Fondatrice, Collège de Labé**
+> — **Fondatrice d'un collège**
 
-*(Témoignages représentatifs collectés auprès d'écoles partenaires)*
+*(Hors La Citadelle, les témoignages sont restitués anonymement à la demande des écoles partenaires.)*
 
 ---
 

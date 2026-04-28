@@ -206,13 +206,6 @@ function LandingEduGest({onConnexion, onInscription}) {
             ))}
           </div>
 
-          {/* Brochure download */}
-          <div style={{marginTop:36,textAlign:"center"}}>
-            <a href="/edugest-brochure.html" target="_blank" rel="noopener noreferrer"
-              style={{display:"inline-flex",alignItems:"center",gap:8,background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.15)",color:"#fff",padding:"12px 22px",borderRadius:30,fontSize:13,fontWeight:700,textDecoration:"none"}}>
-              📄 Télécharger la brochure (à distribuer aux fondateurs)
-            </a>
-          </div>
         </div>
       </div>
 
