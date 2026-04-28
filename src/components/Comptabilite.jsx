@@ -33,6 +33,14 @@ import { CameraCapture } from "./CameraCapture";
 import { TransfertsPanel } from "./TransfertsPanel";
 import { findEnrollmentDuplicate, getEnrollmentDuplicateMessage } from "../enrollment-utils";
 import { findStaffDuplicate, getStaffDuplicateMessage } from "../staff-utils";
+import {
+  buildTeacherFullName,
+  getTeacherAbsenceHours,
+  getTeacherFifthWeekHours,
+  getTeacherScheduleSlots,
+  getScheduleSlotHours,
+  getWeightedPrimeHoraire,
+} from "../salary-utils";
 
 const loadXLSX = () => import("xlsx");
 
@@ -292,21 +300,6 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
     }
     return Object.entries(compteur).filter(([n,c])=>c===5&&n!=="Dimanche").map(([n])=>n);
   };
-  // Calcule les heures de 5ème semaine d'un enseignant selon son EDT
-  const calcCinqSemEns = (nomEns, emploisEns, jours5eme) => {
-    if(!jours5eme.length) return 0;
-    const creneaux = emploisEns.filter(emp =>
-      (emp.enseignant||"").toLowerCase().includes((nomEns||"").toLowerCase()) &&
-      jours5eme.includes(emp.jour)
-    );
-    return creneaux.reduce((acc, emp) => {
-      if(!emp.heureDebut||!emp.heureFin) return acc + 2;
-      const [hd,md]=(emp.heureDebut).split(":").map(Number);
-      const [hf,mf]=(emp.heureFin).split(":").map(Number);
-      return acc + Math.round((hf*60+mf - hd*60-md)/60*10)/10;
-    }, 0);
-  };
-
   const calcExecute = (s) => (Number(s.vhPrevu)||0) + (Number(s.cinqSem)||0) - (Number(s.nonExecute)||0);
   const calcMontant = (s) => calcExecute(s) * (Number(s.primeHoraire)||0);
   const calcNet = (s) => calcMontant(s) - (Number(s.bon)||0) + (Number(s.revision)||0);
@@ -328,35 +321,16 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
       ...ensLycee.map(e=>({...e,_emplois:emploisLycee,_eng:engLycee})),
     ];
     for(const ens of tousEns){
-      const nomComplet=`${ens.prenom||""} ${ens.nom||""}`.trim();
+      const nomComplet=buildTeacherFullName(ens);
       if(!nomComplet) continue;
       if(nomsExistants.includes(nomComplet.toLowerCase())) continue;
-      const creneaux=ens._emplois.filter(emp=>(emp.enseignant||"").toLowerCase().includes((ens.nom||"").toLowerCase()));
-      // Calcule les heures et la prime pour chaque créneau (prime par classe si définie)
-      const getSlotPrime=(slot)=>{
-        // Révision : prime spécifique au créneau (prioritaire)
-        if(slot.type==="revision" && slot.primeRevision) return Number(slot.primeRevision);
-        const ppc=ens.primeParClasse||[];
-        if(ppc.length){
-          const match=ppc.find(p=>p.classe&&slot.classe&&slot.classe.toLowerCase().includes(p.classe.toLowerCase()));
-          if(match)return Number(match.prime||0);
-        }
-        return Number(ens.primeHoraire||primeDefaut||0);
-      };
-      const getSlotH=(emp)=>{
-        if(!emp.heureDebut||!emp.heureFin)return 2;
-        const [hd,md]=(emp.heureDebut).split(":").map(Number);
-        const [hf,mf]=(emp.heureFin).split(":").map(Number);
-        return Math.round((hf*60+mf-hd*60-md)/60*10)/10;
-      };
-      const vhHebdo=Math.round(creneaux.reduce((a,e)=>a+getSlotH(e),0)*10)/10;
+      const creneaux=getTeacherScheduleSlots(ens._emplois, ens);
+      const vhHebdo=Math.round(creneaux.reduce((sum, slot)=>sum+getScheduleSlotHours(slot),0)*10)/10;
       const vhPrevu=Math.round(vhHebdo*4*10)/10;
-      // Prime pondérée = Σ(heures_i × prime_i) / Σ(heures_i)
-      const totalSalSem=creneaux.reduce((a,e)=>a+getSlotH(e)*getSlotPrime(e),0);
-      const primeHoraire=vhHebdo>0?Math.round(totalSalSem/vhHebdo):Number(ens.primeHoraire||primeDefaut||0);
+      const primeHoraire=getWeightedPrimeHoraire(ens, creneaux, primeDefaut);
       const hasPPC=(ens.primeParClasse||[]).some(p=>p.classe&&p.prime);
-      const cinqSem=calcCinqSemEns(ens.nom, ens._emplois, jours5eme);
-      const absences=ens._eng.filter(e=>(e.enseignantNom||"").toLowerCase().includes((ens.nom||"").toLowerCase())&&(e.statut==="Absent"||e.statut==="Non effectué")).length;
+      const cinqSem=getTeacherFifthWeekHours(creneaux, jours5eme);
+      const absences=getTeacherAbsenceHours(ens._eng, ens, creneaux);
       const obs=`Statut: ${ens.statut||"—"}${hasPPC?" · Prime pondérée par classe":""}`;
       await ajS({section:"Secondaire",mois:moisSel,nom:nomComplet,matiere:ens.matiere||"",niveau:ens.grade||"",vhHebdo,vhPrevu,cinqSem,nonExecute:absences,primeHoraire,bon:0,revision:0,observation:obs});
     }
