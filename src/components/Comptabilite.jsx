@@ -1285,16 +1285,21 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                   <Input label="Prime horaire (GNF)" type="number" value={form.primeHoraire||""} onChange={chg("primeHoraire")} placeholder="Ex : 15000"/>
                 </>}
               </div>
-              {!isPrim&&(
-                <div style={{marginTop:14,borderTop:"1px solid #e2e8f0",paddingTop:12}}>
+              {!isPrim&&(()=>{
+                const sec=form._section||"Collège";
+                const classesDispo=sec==="Lycée"?CLASSES_LYCEE:CLASSES_COLLEGE;
+                return <div style={{marginTop:14,borderTop:"1px solid #e2e8f0",paddingTop:12}}>
                   <div style={{fontSize:12,fontWeight:700,color:C.blueDark,marginBottom:8}}>
                     Primes par classe <span style={{fontWeight:400,color:"#94a3b8",fontSize:11}}>(si la prime varie selon la classe enseignée — sinon laissez vide)</span>
                   </div>
                   {(form.primeParClasse||[]).map((entry,i)=>(
                     <div key={i} style={{display:"flex",gap:8,marginBottom:6,alignItems:"center"}}>
-                      <input value={entry.classe||""} placeholder="Classe (ex: 3ème A)"
+                      <select value={entry.classe||""}
                         onChange={e=>setForm(p=>{const arr=[...(p.primeParClasse||[])];arr[i]={...arr[i],classe:e.target.value};return{...p,primeParClasse:arr};})}
-                        style={{flex:2,border:"1px solid #b0c4d8",borderRadius:6,padding:"5px 8px",fontSize:12}}/>
+                        style={{flex:2,border:"1px solid #b0c4d8",borderRadius:6,padding:"5px 8px",fontSize:12,background:"#fff"}}>
+                        <option value="">— Choisir une classe —</option>
+                        {classesDispo.map(c=><option key={c} value={c}>{c}</option>)}
+                      </select>
                       <input type="number" value={entry.prime||""} placeholder="Prime GNF"
                         onChange={e=>setForm(p=>{const arr=[...(p.primeParClasse||[])];arr[i]={...arr[i],prime:Number(e.target.value)};return{...p,primeParClasse:arr};})}
                         style={{flex:1,border:"1px solid #b0c4d8",borderRadius:6,padding:"5px 8px",fontSize:12}}/>
@@ -1302,8 +1307,11 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                     </div>
                   ))}
                   <Btn sm v="ghost" onClick={()=>setForm(p=>({...p,primeParClasse:[...(p.primeParClasse||[]),{classe:"",prime:0}]}))}>+ Ajouter une classe</Btn>
-                </div>
-              )}
+                  <div style={{fontSize:11,color:"#64748b",marginTop:6,fontStyle:"italic"}}>
+                    💡 Choisissez parmi les classes officielles — un libellé exact garantit que la prime soit prise en compte lors du calcul du salaire.
+                  </div>
+                </div>;
+              })()}
               <div style={{marginTop:12,padding:"10px 14px",background:"#fefce8",border:"1px solid #fde68a",borderRadius:8,fontSize:12,color:"#854d0e"}}>
                 {isPrim
                   ? "Le forfait sera repris automatiquement lors de la génération mensuelle des salaires."
