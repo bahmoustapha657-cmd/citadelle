@@ -36,10 +36,13 @@ import { findStaffDuplicate, getStaffDuplicateMessage } from "../staff-utils";
 import { getTeacherMonthlyForfait } from "../teacher-utils";
 import {
   buildTeacherFullName,
+  getTeacherAbsenceAmount,
   getTeacherAbsenceHours,
+  getTeacherFifthWeekAmount,
   getTeacherFifthWeekHours,
   getTeacherScheduleSlots,
   getScheduleSlotHours,
+  getTeacherWeeklyAmount,
   getWeightedPrimeHoraire,
 } from "../salary-utils";
 
@@ -329,10 +332,16 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
       const creneaux=getTeacherScheduleSlots(ens._emplois, ens);
       const vhHebdo=Math.round(creneaux.reduce((sum, slot)=>sum+getScheduleSlotHours(slot),0)*10)/10;
       const vhPrevu=Math.round(vhHebdo*4*10)/10;
-      const primeHoraire=getWeightedPrimeHoraire(ens, creneaux, primeDefaut);
       const hasPPC=(ens.primeParClasse||[]).some(p=>p.classe&&p.prime);
       const cinqSem=getTeacherFifthWeekHours(creneaux, jours5eme);
       const absences=getTeacherAbsenceHours(ens._eng, ens, creneaux);
+      const montantHebdo=getTeacherWeeklyAmount(ens, creneaux, primeDefaut);
+      const montant5eme=getTeacherFifthWeekAmount(ens, creneaux, jours5eme, primeDefaut);
+      const montantAbsences=getTeacherAbsenceAmount(ens._eng, ens, creneaux, primeDefaut);
+      const heuresExecutees=Math.max(0, Math.round(((vhPrevu + cinqSem - absences) || 0) * 10) / 10);
+      const primeHoraire=heuresExecutees>0
+        ? Math.round((((montantHebdo * 4) + montant5eme - montantAbsences) / heuresExecutees))
+        : getWeightedPrimeHoraire(ens, creneaux, primeDefaut);
       const obs=`Statut: ${ens.statut||"—"}${hasPPC?" · Prime pondérée par classe":""}`;
       await ajS({section:"Secondaire",mois,nom:nomComplet,matiere:ens.matiere||"",niveau:ens.grade||"",vhHebdo,vhPrevu,cinqSem,nonExecute:absences,primeHoraire,bon:0,revision:0,observation:obs});
       nb++;
@@ -2152,4 +2161,3 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
 // ══════════════════════════════════════════════════════════════
 
 export { Comptabilite };
-

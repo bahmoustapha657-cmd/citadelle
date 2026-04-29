@@ -44,6 +44,17 @@ export function getTeacherScheduleSlots(emplois = [], teacher = {}) {
   return emplois.filter((slot) => matchesTeacherName(slot.enseignant, teacher));
 }
 
+export function getSlotPrimeForTeacher(teacher = {}, slot = {}, primeDefaut = 0) {
+  if (slot.type === "revision" && slot.primeRevision) return Number(slot.primeRevision);
+
+  const primesParClasse = Array.isArray(teacher.primeParClasse) ? teacher.primeParClasse : [];
+  const slotClasse = normalizeText(slot.classe);
+  const match = primesParClasse.find((item) => normalizeText(item.classe) === slotClasse);
+  if (match) return Number(match.prime || 0);
+
+  return Number(teacher.primeHoraire || primeDefaut || 0);
+}
+
 export function getTeacherDefaultSlotHours(teacherSlots = []) {
   const frequencies = new Map();
 
@@ -67,6 +78,25 @@ export function getTeacherFifthWeekHours(teacherSlots = [], jours5eme = []) {
     .reduce((sum, slot) => sum + getScheduleSlotHours(slot), 0);
 
   return Math.round(total * 10) / 10;
+}
+
+export function getTeacherWeeklyAmount(teacher = {}, teacherSlots = [], primeDefaut = 0) {
+  return teacherSlots.reduce(
+    (sum, slot) => sum + getScheduleSlotHours(slot) * getSlotPrimeForTeacher(teacher, slot, primeDefaut),
+    0,
+  );
+}
+
+export function getTeacherFifthWeekAmount(teacher = {}, teacherSlots = [], jours5eme = [], primeDefaut = 0) {
+  if (!jours5eme.length) return 0;
+
+  const jours = new Set(jours5eme.map((jour) => normalizeText(jour)));
+  return teacherSlots
+    .filter((slot) => jours.has(normalizeText(slot.jour)))
+    .reduce(
+      (sum, slot) => sum + getScheduleSlotHours(slot) * getSlotPrimeForTeacher(teacher, slot, primeDefaut),
+      0,
+    );
 }
 
 function isAbsenceStatus(value = "") {
@@ -97,6 +127,29 @@ export function getTeachingEntryHours(entry = {}, teacherSlots = []) {
   return getTeacherDefaultSlotHours(teacherSlots);
 }
 
+function findTeachingEntrySlot(entry = {}, teacherSlots = []) {
+  const heure = String(entry.heure || "").trim();
+  const classe = normalizeText(entry.classe);
+
+  if (heure) {
+    const exactSlot = teacherSlots.find((slot) => (
+      String(slot.heureDebut || "").trim() === heure
+      && normalizeText(slot.classe) === classe
+    ));
+    if (exactSlot) return exactSlot;
+
+    const slotSameTime = teacherSlots.find((slot) => String(slot.heureDebut || "").trim() === heure);
+    if (slotSameTime) return slotSameTime;
+  }
+
+  if (classe) {
+    const slotSameClass = teacherSlots.find((slot) => normalizeText(slot.classe) === classe);
+    if (slotSameClass) return slotSameClass;
+  }
+
+  return null;
+}
+
 export function getTeacherAbsenceHours(enseignements = [], teacher = {}, teacherSlots = []) {
   const total = enseignements
     .filter((entry) => matchesTeacherName(entry.enseignantNom, teacher) && isAbsenceStatus(entry.statut))
@@ -105,25 +158,23 @@ export function getTeacherAbsenceHours(enseignements = [], teacher = {}, teacher
   return Math.round(total * 10) / 10;
 }
 
+export function getTeacherAbsenceAmount(enseignements = [], teacher = {}, teacherSlots = [], primeDefaut = 0) {
+  return enseignements
+    .filter((entry) => matchesTeacherName(entry.enseignantNom, teacher) && isAbsenceStatus(entry.statut))
+    .reduce((sum, entry) => {
+      const slot = findTeachingEntrySlot(entry, teacherSlots);
+      if (slot) {
+        return sum + getScheduleSlotHours(slot) * getSlotPrimeForTeacher(teacher, slot, primeDefaut);
+      }
+      return sum + getTeachingEntryHours(entry, teacherSlots) * Number(teacher.primeHoraire || primeDefaut || 0);
+    }, 0);
+}
+
 export function getWeightedPrimeHoraire(teacher = {}, teacherSlots = [], primeDefaut = 0) {
-  const getSlotPrime = (slot) => {
-    if (slot.type === "revision" && slot.primeRevision) return Number(slot.primeRevision);
-
-    const primesParClasse = Array.isArray(teacher.primeParClasse) ? teacher.primeParClasse : [];
-    const slotClasse = normalizeText(slot.classe);
-    const match = primesParClasse.find((item) => normalizeText(item.classe) === slotClasse);
-    if (match) return Number(match.prime || 0);
-
-    return Number(teacher.primeHoraire || primeDefaut || 0);
-  };
-
   const vhHebdo = Math.round(teacherSlots.reduce((sum, slot) => sum + getScheduleSlotHours(slot), 0) * 10) / 10;
   if (vhHebdo <= 0) return Number(teacher.primeHoraire || primeDefaut || 0);
 
-  const totalSalaireHebdo = teacherSlots.reduce(
-    (sum, slot) => sum + getScheduleSlotHours(slot) * getSlotPrime(slot),
-    0,
-  );
+  const totalSalaireHebdo = getTeacherWeeklyAmount(teacher, teacherSlots, primeDefaut);
 
   return Math.round(totalSalaireHebdo / vhHebdo);
 }

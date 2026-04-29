@@ -3,11 +3,14 @@ import assert from "node:assert/strict";
 
 import {
   buildTeacherFullName,
+  getTeacherAbsenceAmount,
   getScheduleSlotHours,
   getTeacherAbsenceHours,
   getTeacherDefaultSlotHours,
+  getTeacherFifthWeekAmount,
   getTeacherFifthWeekHours,
   getTeacherScheduleSlots,
+  getTeacherWeeklyAmount,
   getWeightedPrimeHoraire,
   matchesTeacherName,
 } from "../src/salary-utils.js";
@@ -66,4 +69,24 @@ test("getTeacherAbsenceHours subtracts timetable hours instead of raw session co
   ];
 
   assert.equal(getTeacherAbsenceHours(enseignements, teacher, teacherSlots), 3);
+});
+
+test("salary helpers keep exact class-based amounts for fifth week and absences", () => {
+  const teacher = {
+    prenom: "Aminata",
+    nom: "Diallo",
+    primeHoraire: 20000,
+    primeParClasse: [{ classe: "10A", prime: 30000 }],
+  };
+  const teacherSlots = [
+    { enseignant: "Aminata Diallo", jour: "Lundi", classe: "10A", heureDebut: "08:00", heureFin: "10:00" },
+    { enseignant: "Aminata Diallo", jour: "Mardi", classe: "11A", heureDebut: "10:00", heureFin: "12:00" },
+  ];
+  const enseignements = [
+    { enseignantNom: "Aminata Diallo", classe: "10A", heure: "08:00", statut: "Absent" },
+  ];
+
+  assert.equal(getTeacherWeeklyAmount(teacher, teacherSlots, 15000), 100000);
+  assert.equal(getTeacherFifthWeekAmount(teacher, teacherSlots, ["Lundi"], 15000), 60000);
+  assert.equal(getTeacherAbsenceAmount(enseignements, teacher, teacherSlots, 15000), 60000);
 });
