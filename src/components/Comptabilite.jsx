@@ -42,6 +42,7 @@ import {
   getTeacherFifthWeekHours,
   getTeacherScheduleSlots,
   getScheduleSlotHours,
+  getSlotPrimeForTeacher,
   getTeacherWeeklyAmount,
   getWeightedPrimeHoraire,
 } from "../salary-utils";
@@ -315,6 +316,39 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   const calcNetF = (s) => Number(s.montantForfait||0)-Number(s.bon||0)+Number(s.revision||0);
   const totNetPers = salairesPers.reduce((sum,s)=>sum+calcNetF(s),0);
 
+  const buildSecondaireSalaryObservation = (teacher, slots, primeDefaut, extras = {}) => {
+    const breakdown = new Map();
+
+    slots.forEach((slot) => {
+      const key = slot.type === "revision"
+        ? `Révision ${slot.classe || "—"}`
+        : (slot.classe || "Sans classe");
+      const hours = getScheduleSlotHours(slot);
+      const rate = getSlotPrimeForTeacher(teacher, slot, primeDefaut);
+      const current = breakdown.get(key) || { hours: 0, rate };
+      current.hours += hours;
+      current.rate = rate;
+      breakdown.set(key, current);
+    });
+
+    const detailRates = [...breakdown.entries()]
+      .map(([label, info]) => `${label}: ${Number(info.hours.toFixed(1))}h × ${fmtN(info.rate)}`)
+      .join(" | ");
+
+    const detailExtras = [
+      extras.cinqSem ? `5e sem: ${fmtN(extras.cinqSem)}` : "",
+      extras.absences ? `Non exécuté: -${fmtN(extras.absences)}` : "",
+    ].filter(Boolean).join(" | ");
+
+    const parts = [
+      `Statut: ${teacher.statut || "—"}`,
+      detailRates,
+      detailExtras,
+    ].filter(Boolean);
+
+    return parts.join(" • ");
+  };
+
   const genererPourMois = async (mois) => {
     const jours5eme = getJours5emeSemaine(mois);
     const dejaCeMois = salaires.filter(s=>s.mois===mois);
@@ -342,7 +376,10 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
       const primeHoraire=heuresExecutees>0
         ? Math.round((((montantHebdo * 4) + montant5eme - montantAbsences) / heuresExecutees))
         : getWeightedPrimeHoraire(ens, creneaux, primeDefaut);
-      const obs=`Statut: ${ens.statut||"—"}${hasPPC?" · Prime pondérée par classe":""}`;
+      const obs=buildSecondaireSalaryObservation(ens, creneaux, primeDefaut, {
+        cinqSem: montant5eme,
+        absences: montantAbsences,
+      }) + (hasPPC ? " • Prime pondérée par classe" : "");
       await ajS({section:"Secondaire",mois,nom:nomComplet,matiere:ens.matiere||"",niveau:ens.grade||"",vhHebdo,vhPrevu,cinqSem,nonExecute:absences,primeHoraire,bon:0,revision:0,observation:obs});
       nb++;
     }
@@ -884,7 +921,12 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                           :<span style={{fontSize:12}}>{fmtN(s.revision||0)}</span>}
                       </td>
                       <td style={{padding:"7px 10px",textAlign:"right",fontWeight:800,fontSize:13,color:C.greenDk,background:"#eaf4e0",border:"1px solid #b0c4d8"}}>{fmtN(calcNet(s))}</td>
-                      <td style={{padding:"7px 10px",fontSize:11,color:"#6b7280",border:"1px solid #e8f0e8"}}>{s.observation}</td>
+                      <td
+                        title={s.observation||""}
+                        style={{padding:"7px 10px",fontSize:11,color:"#6b7280",border:"1px solid #e8f0e8",maxWidth:280,whiteSpace:"normal",lineHeight:1.4}}
+                      >
+                        {s.observation}
+                      </td>
                       {canEdit&&<td style={{padding:"7px 6px",border:"1px solid #e8f0e8"}}>
                         <div style={{display:"flex",gap:4}}>
                           <Btn sm v="ghost" onClick={()=>{setForm({...s});setModal("edit_s");}}>✏️</Btn>
