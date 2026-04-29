@@ -349,11 +349,11 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
     return parts.join(" • ");
   };
 
-  const genererPourMois = async (mois) => {
+  const genererPourMois = async (mois, {resync=false}={}) => {
     const jours5eme = getJours5emeSemaine(mois);
     const dejaCeMois = salaires.filter(s=>s.mois===mois);
-    const nomsExistants=dejaCeMois.map(s=>(s.nom||"").toLowerCase().trim());
-    let nb = 0;
+    const trouverExistant = (nom) => dejaCeMois.find(s=>(s.nom||"").toLowerCase().trim()===nom.toLowerCase().trim());
+    let nbCree = 0, nbResync = 0;
 
     const tousEns=[
       ...ensCollege.map(e=>({...e,_emplois:emploisCollege,_eng:engCollege})),
@@ -362,7 +362,8 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
     for(const ens of tousEns){
       const nomComplet=buildTeacherFullName(ens);
       if(!nomComplet) continue;
-      if(nomsExistants.includes(nomComplet.toLowerCase())) continue;
+      const existant=trouverExistant(nomComplet);
+      if(existant && !resync) continue;
       const creneaux=getTeacherScheduleSlots(ens._emplois, ens);
       const vhHebdo=Math.round(creneaux.reduce((sum, slot)=>sum+getScheduleSlotHours(slot),0)*10)/10;
       const vhPrevu=Math.round(vhHebdo*4*10)/10;
@@ -380,36 +381,53 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
         cinqSem: montant5eme,
         absences: montantAbsences,
       }) + (hasPPC ? " • Prime pondérée par classe" : "");
-      await ajS({section:"Secondaire",mois,nom:nomComplet,matiere:ens.matiere||"",niveau:ens.grade||"",vhHebdo,vhPrevu,cinqSem,nonExecute:absences,primeHoraire,bon:0,revision:0,observation:obs});
-      nb++;
+      const champsCalcules = {section:"Secondaire",mois,nom:nomComplet,matiere:ens.matiere||"",niveau:ens.grade||"",vhHebdo,vhPrevu,cinqSem,nonExecute:absences,primeHoraire,observation:obs};
+      if(existant){
+        // Resync : on garde bon et revision saisis manuellement
+        await modS({...existant,...champsCalcules,bon:Number(existant.bon||0),revision:Number(existant.revision||0)});
+        nbResync++;
+      } else {
+        await ajS({...champsCalcules,bon:0,revision:0});
+        nbCree++;
+      }
     }
 
     for(const ens of ensPrimaire){
       const nomComplet=`${ens.prenom||""} ${ens.nom||""}`.trim();
       if(!nomComplet) continue;
-      if(nomsExistants.includes(nomComplet.toLowerCase())) continue;
-      await ajS({
-        section:"Primaire",
-        mois,
-        nom:nomComplet,
+      const existant=trouverExistant(nomComplet);
+      if(existant && !resync) continue;
+      const champsCalcules={
+        section:"Primaire",mois,nom:nomComplet,
         niveau:ens.grade||ens.classeTitle||ens.classe||"",
         matiere:ens.matiere||"",
         montantForfait:getTeacherMonthlyForfait(ens),
-        bon:0,
-        revision:0,
         observation:`Statut: ${ens.statut||"—"}${ens.classeTitle?` · Titulaire ${ens.classeTitle}`:""}`,
-      });
-      nb++;
+      };
+      if(existant){
+        await modS({...existant,...champsCalcules,bon:Number(existant.bon||0),revision:Number(existant.revision||0)});
+        nbResync++;
+      } else {
+        await ajS({...champsCalcules,bon:0,revision:0});
+        nbCree++;
+      }
     }
 
     for(const emp of personnel.filter(e=>(e.statut||"Actif")==="Actif")){
       const nomComplet=`${emp.prenom||""} ${emp.nom||""}`.trim();
       if(!nomComplet) continue;
-      if(nomsExistants.includes(nomComplet.toLowerCase())) continue;
-      await ajS({section:"Personnel",mois,nom:nomComplet,poste:emp.poste||"",categorie:emp.categorie||"",montantForfait:Number(emp.salaireBase||0),bon:0,revision:0,observation:emp.observation||""});
-      nb++;
+      const existant=trouverExistant(nomComplet);
+      if(existant && !resync) continue;
+      const champsCalcules={section:"Personnel",mois,nom:nomComplet,poste:emp.poste||"",categorie:emp.categorie||"",montantForfait:Number(emp.salaireBase||0),observation:emp.observation||""};
+      if(existant){
+        await modS({...existant,...champsCalcules,bon:Number(existant.bon||0),revision:Number(existant.revision||0)});
+        nbResync++;
+      } else {
+        await ajS({...champsCalcules,bon:0,revision:0});
+        nbCree++;
+      }
     }
-    return nb;
+    return {nbCree, nbResync};
   };
 
   const verifierFichesPaie = () => {
@@ -427,7 +445,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
 
   const formatNoms = (liste) => liste.slice(0,3).map(e=>`${e.prenom||""} ${e.nom||""}`.trim()).filter(Boolean).join(", ") + (liste.length>3?` +${liste.length-3}`:"");
 
-  const autoGenererSalaires = async () => {
+  const autoGenererSalaires = async ({resync=false}={}) => {
     if(readOnly) return;
     const {secMissing, primMissing, persMissing} = verifierFichesPaie();
     const totalMissing = secMissing.length + primMissing.length + persMissing.length;
@@ -439,23 +457,35 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
       if(persMissing.length) lignes.push(`• Personnel sans salaire de base : ${formatNoms(persMissing)}`);
       warningMissing = `\n\n⚠️ Fiches incomplètes (à compléter dans l'onglet Enseignants / Personnel) :\n${lignes.join("\n")}\n\nLeur ligne sera générée à 0 GNF — vous pourrez la corriger après.`;
     }
+    const verbeAction = resync ? "Rafraîchir" : "Générer";
+    const detailMode = resync
+      ? "Les lignes existantes seront RECALCULÉES depuis la fiche enseignant et l'EDT actuels (V/H, prime horaire, observation). Les bons et révisions saisis manuellement seront conservés."
+      : "Seuls les nouveaux enseignants seront ajoutés.";
     if(moisSel==="__TOUS__"){
-      if(!confirm(`Générer les salaires pour les ${moisSalaire.length} mois de l'année scolaire ?\n\nUtile pour avoir une prévision annuelle. Seuls les nouveaux enseignants seront ajoutés à chaque mois.${warningMissing}`)) return;
-      let total=0;
-      for(const m of moisSalaire){ total += await genererPourMois(m); }
-      toast(`Prévision annuelle générée — ${total} ligne(s) sur ${moisSalaire.length} mois.`,"success");
-      logAction("Salaires auto-générés (annuel)",`${total} lignes · ${moisSalaire.join(", ")}`);
+      if(!confirm(`${verbeAction} les salaires pour les ${moisSalaire.length} mois de l'année scolaire ?\n\n${detailMode}${warningMissing}`)) return;
+      let totalCree=0, totalResync=0;
+      for(const m of moisSalaire){
+        const r = await genererPourMois(m,{resync});
+        totalCree += r.nbCree; totalResync += r.nbResync;
+      }
+      toast(`Prévision annuelle : ${totalCree} créé(s), ${totalResync} rafraîchi(s) sur ${moisSalaire.length} mois.`,"success");
+      logAction("Salaires auto-générés (annuel)",`${totalCree} créés · ${totalResync} rafraîchis · ${moisSalaire.join(", ")}`);
       return;
     }
     const jours5eme = getJours5emeSemaine(moisSel);
     const info5eme = jours5eme.length ? `\n📅 5ème semaine détectée : ${jours5eme.join(", ")} → heures supplémentaires calculées automatiquement.` : "";
-    if(!confirm(`Générer automatiquement les salaires pour ${moisSel} ?${info5eme}\n\nSeuls les nouveaux enseignants seront ajoutés.${warningMissing}`)) return;
-    const nb = await genererPourMois(moisSel);
+    if(!confirm(`${verbeAction} automatiquement les salaires pour ${moisSel} ?${info5eme}\n\n${detailMode}${warningMissing}`)) return;
+    const {nbCree, nbResync} = await genererPourMois(moisSel,{resync});
+    const parts = [];
+    if(nbCree) parts.push(`${nbCree} créé(s)`);
+    if(nbResync) parts.push(`${nbResync} rafraîchi(s)`);
+    if(!parts.length) parts.push("rien à faire");
+    const baseMsg = `Salaires : ${parts.join(", ")}.`;
     const msg = totalMissing > 0
-      ? `Salaires générés (${nb}). ${totalMissing} fiche(s) sans paie — complétez-les dans l'onglet Enseignants/Personnel.`
-      : `Salaires générés (${nb}).`;
+      ? `${baseMsg} ${totalMissing} fiche(s) sans paie — complétez-les dans l'onglet Enseignants/Personnel.`
+      : baseMsg;
     toast(msg, totalMissing > 0 ? "warning" : "success");
-    logAction("Salaires auto-générés",`Mois : ${moisSel}${totalMissing?` · ${totalMissing} fiche(s) incomplètes`:""}`);
+    logAction(resync?"Salaires rafraîchis":"Salaires auto-générés",`Mois : ${moisSel} · ${nbCree} créés · ${nbResync} rafraîchis`);
   };
 
   const imprimerSalaires = () => {
@@ -766,7 +796,8 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                 style={{width:80,border:"none",background:"transparent",fontSize:13,fontWeight:700,color:C.blueDark,outline:"none"}}/>
               GNF
             </label>}
-            {canCreate&&<Btn v="amber" onClick={autoGenererSalaires}>⚡ Auto-générer</Btn>}
+            {canCreate&&<Btn v="amber" onClick={()=>autoGenererSalaires()}>⚡ Auto-générer</Btn>}
+            {canCreate&&<Btn v="amber" onClick={()=>autoGenererSalaires({resync:true})} title="Recalcule V/H et prime horaire des lignes existantes à partir de la fiche enseignant et de l'EDT actuels (bons et révisions préservés)">🔄 Rafraîchir</Btn>}
             {canCreate&&bonsMois.length>0&&<Btn v="amber" onClick={appliquerBons}>✔ Appliquer les bons</Btn>}
             {canCreate&&<Btn onClick={()=>{setForm({section:"Secondaire",mois:moisModale,nonExecute:0,cinqSem:0,bon:0,revision:0});setModal("add_s");}}>+ Ajouter</Btn>}
             <Btn v="vert" onClick={imprimerSalaires}>🖨️ Imprimer</Btn>
