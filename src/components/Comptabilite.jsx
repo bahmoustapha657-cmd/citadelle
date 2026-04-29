@@ -1195,7 +1195,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
             payload.primeParClasse=(form.primeParClasse||[]).filter(p=>p.classe&&Number(p.prime)>0).map(p=>({classe:p.classe,prime:Number(p.prime)}));
           }
           if(modal==="edit_ens_compta"){
-            await modEnsForSection(sec)(form._id,payload);
+            await modEnsForSection(sec)({...payload,_id:form._id});
             toast("Enseignant mis à jour.","success");
             logAction("Enseignant modifié (Compta)",`${payload.prenom} ${payload.nom} · ${sec}`);
           } else {
