@@ -413,15 +413,19 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   };
 
   const verifierFichesPaie = () => {
-    const secMissing = [...ensCollege, ...ensLycee].filter(e => {
+    // Secondaire : si une prime par défaut est saisie, elle s'applique en fallback → pas de manque.
+    const defautOK = (Number(primeDefaut)||0) > 0;
+    const secMissing = defautOK ? [] : [...ensCollege, ...ensLycee].filter(e => {
       const hasPrime = Number(e.primeHoraire||0) > 0;
       const hasPPC = (e.primeParClasse||[]).some(p=>p.classe&&Number(p.prime)>0);
       return !hasPrime && !hasPPC;
     });
-    const primMissing = ensPrimaire.filter(e => Number(e.montantForfait||e.salaireBase||0) <= 0);
+    const primMissing = ensPrimaire.filter(e => Number(e.montantForfait||e.salaireBase||e.forfait||0) <= 0);
     const persMissing = personnel.filter(p => (p.statut||"Actif")==="Actif" && Number(p.salaireBase||0) <= 0);
     return {secMissing, primMissing, persMissing};
   };
+
+  const formatNoms = (liste) => liste.slice(0,3).map(e=>`${e.prenom||""} ${e.nom||""}`.trim()).filter(Boolean).join(", ") + (liste.length>3?` +${liste.length-3}`:"");
 
   const autoGenererSalaires = async () => {
     if(readOnly) return;
@@ -430,9 +434,9 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
     let warningMissing = "";
     if(totalMissing > 0){
       const lignes = [];
-      if(secMissing.length) lignes.push(`• ${secMissing.length} enseignant(s) Secondaire sans prime horaire ni prime/classe`);
-      if(primMissing.length) lignes.push(`• ${primMissing.length} enseignant(s) Primaire sans forfait mensuel`);
-      if(persMissing.length) lignes.push(`• ${persMissing.length} membre(s) du personnel sans salaire de base`);
+      if(secMissing.length) lignes.push(`• Secondaire sans prime horaire ni prime/classe : ${formatNoms(secMissing)}`);
+      if(primMissing.length) lignes.push(`• Primaire sans forfait mensuel : ${formatNoms(primMissing)}`);
+      if(persMissing.length) lignes.push(`• Personnel sans salaire de base : ${formatNoms(persMissing)}`);
       warningMissing = `\n\n⚠️ Fiches incomplètes (à compléter dans l'onglet Enseignants / Personnel) :\n${lignes.join("\n")}\n\nLeur ligne sera générée à 0 GNF — vous pourrez la corriger après.`;
     }
     if(moisSel==="__TOUS__"){
