@@ -1072,7 +1072,6 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
           ...ensCollege.map(e=>({...e,_section:"Collège"})),
           ...ensLycee.map(e=>({...e,_section:"Lycée"})),
         ];
-        const masseForf=ensPrimaire.reduce((s,e)=>s+Number(getTeacherMonthlyForfait(e)||0),0);
         const ajEnsForSection=(sec)=>sec==="Primaire"?ajEnsPrim:sec==="Collège"?ajEnsCol:ajEnsLyc;
         const modEnsForSection=(sec)=>sec==="Primaire"?modEnsPrim:sec==="Collège"?modEnsCol:modEnsLyc;
         const supEnsForSection=(sec)=>sec==="Primaire"?supEnsPrim:sec==="Collège"?supEnsCol:supEnsLyc;
@@ -1125,11 +1124,6 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                 <div style={{fontSize:20,fontWeight:900,color:C.blueDark}}>{s.n}</div>
               </div>
             ))}
-            <div style={{background:"linear-gradient(135deg,#0ea5e9,#0284c7)",borderRadius:10,padding:"12px 14px",textAlign:"center",color:"#fff"}}>
-              <div style={{fontSize:11,opacity:.85,marginBottom:4}}>Masse forfait Primaire</div>
-              <div style={{fontSize:16,fontWeight:900}}>{(masseForf/1e6).toFixed(3)}M</div>
-              <div style={{fontSize:10,opacity:.75}}>GNF / mois</div>
-            </div>
           </div>
 
           {ensTous.length===0?<Vide icone="🎓" msg="Aucun enseignant enregistré"/>
@@ -1137,7 +1131,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
               <THead cols={["Prénoms et Nom","Section","Matière","Classe titulaire","Statut","Paie",canEdit?"Actions":""]}/>
               <tbody>{ensTous.map(e=>{
                 const isPrim=e._section==="Primaire";
-                const paie=isPrim?fmtN(getTeacherMonthlyForfait(e)||0)+" /mois":fmtN(e.primeHoraire||0)+" /h";
+                const paie=isPrim?"—":fmtN(e.primeHoraire||0)+" /h";
                 const couleurSec=e._section==="Primaire"?"bleu":e._section==="Collège"?"violet":"rose";
                 return <TR key={`${e._section}-${e._id}`}>
                   <TD bold>{e.prenom||""} {e.nom||""}</TD>
@@ -2134,3 +2128,4 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
 // ══════════════════════════════════════════════════════════════
 
 export { Comptabilite };
+
