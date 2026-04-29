@@ -412,10 +412,31 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
     return nb;
   };
 
+  const verifierFichesPaie = () => {
+    const secMissing = [...ensCollege, ...ensLycee].filter(e => {
+      const hasPrime = Number(e.primeHoraire||0) > 0;
+      const hasPPC = (e.primeParClasse||[]).some(p=>p.classe&&Number(p.prime)>0);
+      return !hasPrime && !hasPPC;
+    });
+    const primMissing = ensPrimaire.filter(e => Number(e.montantForfait||e.salaireBase||0) <= 0);
+    const persMissing = personnel.filter(p => (p.statut||"Actif")==="Actif" && Number(p.salaireBase||0) <= 0);
+    return {secMissing, primMissing, persMissing};
+  };
+
   const autoGenererSalaires = async () => {
     if(readOnly) return;
+    const {secMissing, primMissing, persMissing} = verifierFichesPaie();
+    const totalMissing = secMissing.length + primMissing.length + persMissing.length;
+    let warningMissing = "";
+    if(totalMissing > 0){
+      const lignes = [];
+      if(secMissing.length) lignes.push(`• ${secMissing.length} enseignant(s) Secondaire sans prime horaire ni prime/classe`);
+      if(primMissing.length) lignes.push(`• ${primMissing.length} enseignant(s) Primaire sans forfait mensuel`);
+      if(persMissing.length) lignes.push(`• ${persMissing.length} membre(s) du personnel sans salaire de base`);
+      warningMissing = `\n\n⚠️ Fiches incomplètes (à compléter dans l'onglet Enseignants / Personnel) :\n${lignes.join("\n")}\n\nLeur ligne sera générée à 0 GNF — vous pourrez la corriger après.`;
+    }
     if(moisSel==="__TOUS__"){
-      if(!confirm(`Générer les salaires pour les ${moisSalaire.length} mois de l'année scolaire ?\n\nUtile pour avoir une prévision annuelle. Seuls les nouveaux enseignants seront ajoutés à chaque mois.`)) return;
+      if(!confirm(`Générer les salaires pour les ${moisSalaire.length} mois de l'année scolaire ?\n\nUtile pour avoir une prévision annuelle. Seuls les nouveaux enseignants seront ajoutés à chaque mois.${warningMissing}`)) return;
       let total=0;
       for(const m of moisSalaire){ total += await genererPourMois(m); }
       toast(`Prévision annuelle générée — ${total} ligne(s) sur ${moisSalaire.length} mois.`,"success");
@@ -424,10 +445,13 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
     }
     const jours5eme = getJours5emeSemaine(moisSel);
     const info5eme = jours5eme.length ? `\n📅 5ème semaine détectée : ${jours5eme.join(", ")} → heures supplémentaires calculées automatiquement.` : "";
-    if(!confirm(`Générer automatiquement les salaires pour ${moisSel} ?${info5eme}\n\nSeuls les nouveaux enseignants seront ajoutés.`)) return;
+    if(!confirm(`Générer automatiquement les salaires pour ${moisSel} ?${info5eme}\n\nSeuls les nouveaux enseignants seront ajoutés.${warningMissing}`)) return;
     const nb = await genererPourMois(moisSel);
-    toast(`Salaires générés (${nb}). Renseignez prime horaire, 5ème semaine, bon et révision selon la section.`,"success");
-    logAction("Salaires auto-générés",`Mois : ${moisSel}`);
+    const msg = totalMissing > 0
+      ? `Salaires générés (${nb}). ${totalMissing} fiche(s) sans paie — complétez-les dans l'onglet Enseignants/Personnel.`
+      : `Salaires générés (${nb}).`;
+    toast(msg, totalMissing > 0 ? "warning" : "success");
+    logAction("Salaires auto-générés",`Mois : ${moisSel}${totalMissing?` · ${totalMissing} fiche(s) incomplètes`:""}`);
   };
 
   const imprimerSalaires = () => {
