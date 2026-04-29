@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useMemo, useState } from "react";
 import { PolarAngleAxis, PolarGrid, Radar, RadarChart, ResponsiveContainer, Tooltip } from "recharts";
 import { apiFetch, getAuthHeaders } from "../apiClient";
 import { C, fmt, getTarifAutreValue, getTarifMensuelTotal } from "../constants";
+import { getGeneralAverage, getSubjectAverage } from "../note-utils";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { imprimerBulletin } from "../reports";
 import { GlobalStyles } from "../styles";
@@ -311,9 +312,7 @@ function PortailParent({ utilisateur, deconnecter, annee, schoolInfo }) {
                       <ResponsiveContainer width="100%" height={220}>
                         <RadarChart data={matieres.map((matiere) => {
                           const notesMatiere = mesNotes.filter((item) => item.matiere === matiere);
-                          const moyenne = notesMatiere.length
-                            ? notesMatiere.reduce((sum, item) => sum + Number(item.note || 0), 0) / notesMatiere.length
-                            : 0;
+                          const moyenne = getSubjectAverage(notesMatiere, eleve.classe) || 0;
                           return { matiere: matiere.length > 10 ? `${matiere.slice(0, 10)}...` : matiere, valeur: Math.round(moyenne * 10) / 10, plein: 20 };
                         })}>
                           <PolarGrid stroke="#e2e8f0" />
@@ -341,7 +340,7 @@ function PortailParent({ utilisateur, deconnecter, annee, schoolInfo }) {
                 ) : (
                   matieres.map((matiere) => {
                     const notesMatiere = mesNotes.filter((item) => item.matiere === matiere);
-                    const moyenne = (notesMatiere.reduce((sum, item) => sum + Number(item.note || 0), 0) / notesMatiere.length).toFixed(1);
+                    const moyenne = (getSubjectAverage(notesMatiere, eleve.classe) || 0).toFixed(1);
                     return (
                       <Card key={matiere} style={{ marginBottom: 12 }}>
                         <div style={{ padding: "12px 18px", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: 10 }}>
@@ -416,7 +415,8 @@ function PortailParent({ utilisateur, deconnecter, annee, schoolInfo }) {
                   {["T1", "T2", "T3"].map((periode) => {
                     const notesPeriode = mesNotes.filter((item) => item.periode === periode);
                     if (notesPeriode.length === 0) return null;
-                    const moyenne = (notesPeriode.reduce((sum, item) => sum + Number(item.note || 0), 0) / notesPeriode.length).toFixed(1);
+                    const matieresPeriode = [...new Set(notesPeriode.map((item) => item.matiere))].map((nom) => ({ nom }));
+                    const moyenne = (getGeneralAverage(notesPeriode, matieresPeriode, eleve.classe) || 0).toFixed(1);
                     return (
                       <Card key={periode} style={{ marginBottom: 12 }}>
                         <div style={{ padding: "12px 18px", background: `linear-gradient(135deg,${c1},${c1}cc)`, borderRadius: "14px 14px 0 0", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>

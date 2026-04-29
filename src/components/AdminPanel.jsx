@@ -15,6 +15,7 @@ import {
   getRoleSettingsForSchool,
   normalizeRoleLogin,
 } from "../constants";
+import { getGeneralAverage } from "../note-utils";
 import { Badge, Btn, Card, Chargement, Input, Modale, TD, THead, TR } from "./ui";
 
 // ══════════════════════════════════════════════════════════════
@@ -89,10 +90,14 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
   };
 
   // Calcule la moyenne annuelle d'un eleve a partir de ses notes (toutes periodes)
-  const calcMoyenneAnnuelle = (notes) => {
+  const calcMoyenneAnnuelle = (notes, classe, matieres) => {
     if(!notes || notes.length===0) return null;
-    const sum = notes.reduce((s,n)=>s+Number(n.note||0),0);
-    return sum / notes.length; // moyenne simple sur toutes les notes T1+T2+T3
+    const periodes = ["T1", "T2", "T3"];
+    const moyennes = periodes
+      .map((periode) => getGeneralAverage(notes.filter((note) => note.periode === periode), matieres, classe))
+      .filter((value) => value != null);
+    if(!moyennes.length) return null;
+    return moyennes.reduce((sum, value) => sum + value, 0) / moyennes.length;
   };
 
   const lancerPromotion = async () => {
@@ -121,7 +126,8 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
           if(!classeSuivante) { terminalistes++; continue; }
           // Notes de cet eleve
           const notesEleve = notesToutes.filter(n=>n.eleveId===d.id);
-          const moy = calcMoyenneAnnuelle(notesEleve);
+          const matieresEleve = [...new Set(notesEleve.map((note) => note.matiere).filter(Boolean))].map((nom) => ({ nom }));
+          const moy = calcMoyenneAnnuelle(notesEleve, classeActuelle, matieresEleve);
           let decision;
           if(moy===null) {
             sansNotes++;
@@ -599,8 +605,6 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
 }
 
 export { AdminPanel };
-
-
 
 
 

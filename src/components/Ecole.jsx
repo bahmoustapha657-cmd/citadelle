@@ -4,6 +4,7 @@ import { C, today, genererMdp, peutModifier } from "../constants";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
 import { apiFetch, getAuthHeaders } from "../apiClient";
+import { getGeneralAverage } from "../note-utils";
 import { findStaffDuplicate, getStaffDuplicateMessage } from "../staff-utils";
 import { getEligibleTeachersForTimetable, getTeacherMonthlyForfait } from "../teacher-utils";
 import { Badge, Card, Modale, Champ, Input, Selec, Textarea, Btn, THead, TR, TD, Stat, Tabs, Vide, Chargement, LectureSeule, UploadFichiers } from "./ui";
@@ -202,14 +203,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
                   if(!elevesClasse.length) return {classe:c.nom,Moyenne:0};
                   const moyClasse=elevesClasse.map(e=>{
                     const notesE=notes.filter(n=>n.eleveId===e._id);
-                    let moy=0,totC=0;
-                    matieresForClasse(e.classe).forEach(mat=>{
-                      const coef=mat.coefficient||1;
-                      totC+=coef;
-                      const nm=notesE.filter(n=>n.matiere===mat.nom);
-                      if(nm.length){const m=nm.reduce((s,n)=>s+Number(n.note),0)/nm.length;moy+=m*coef;}
-                    });
-                    return totC>0?moy/totC:null;
+                    return getGeneralAverage(notesE, matieresForClasse(e.classe), e.classe);
                   }).filter(m=>m!==null);
                   const moy=moyClasse.length?(moyClasse.reduce((s,m)=>s+m,0)/moyClasse.length).toFixed(2):0;
                   return {classe:c.nom,Moyenne:Number(moy)};
@@ -228,14 +222,8 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
           {eleves.length>0&&(()=>{
             const classement=eleves.map(e=>{
               const notesPeriode=notes.filter(n=>n.eleveId===e._id);
-              let moy=0,totC=0;
-              matieresForClasse(e.classe).forEach(mat=>{
-                const coef=mat.coefficient||1;
-                totC+=coef;
-                const nm=notesPeriode.filter(n=>n.matiere===mat.nom);
-                if(nm.length){const m=nm.reduce((s,n)=>s+Number(n.note),0)/nm.length;moy+=m*coef;}
-              });
-              return {...e, moyGene:totC>0?(moy/totC):0};
+              const moyenne = getGeneralAverage(notesPeriode, matieresForClasse(e.classe), e.classe);
+              return {...e, moyGene:moyenne||0};
             }).filter(e=>e.moyGene>0).sort((a,b)=>b.moyGene-a.moyGene).slice(0,5);
             if(!classement.length) return null;
             return (
@@ -1094,14 +1082,8 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
             <THead cols={["Matricule","Élève","Classe","Moy. Générale","Mention","Bulletin"]}/>
             <tbody>{elevesB.map(e=>{
               const notesE=notes.filter(n=>n.eleveId===e._id&&n.periode===periodeB);
-              let moy=0,totC=0;
-              matieresForClasse(e.classe).forEach(mat=>{
-                const coef=mat.coefficient||1;
-                totC+=coef; // toutes les matières comptent au dénominateur
-                const nm=notesE.filter(n=>n.matiere===mat.nom);
-                if(nm.length){const m=nm.reduce((s,n)=>s+Number(n.note),0)/nm.length;moy+=m*coef;}
-              });
-              const moyGene=totC>0?(moy/totC).toFixed(2):"—";
+              const moyenneGenerale = getGeneralAverage(notesE, matieresForClasse(e.classe), e.classe);
+              const moyGene=moyenneGenerale!=null?moyenneGenerale.toFixed(2):"—";
               const mention=moyGene==="—"?"—":Number(moyGene)>=16?"Très Bien":Number(moyGene)>=14?"Bien":Number(moyGene)>=12?"Assez Bien":Number(moyGene)>=10?"Passable":"Insuffisant";
               const eleveImpayeBloq = !!schoolInfo.blocageParentImpaye && moisAnnee.filter(m=>(e.mens||{})[m]!=="Payé").length>0;
               return <TR key={e._id}>
@@ -1766,3 +1748,5 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
 
 
 export { Ecole };
+
+

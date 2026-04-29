@@ -1,5 +1,6 @@
 // eslint-disable-next-line no-unused-vars
 import { MOIS_ANNEE, fmt, fmtN, getAnnee, today } from "./constants.js";
+import { getGeneralAverage, getSubjectAverage } from "./note-utils.js";
 
 const loadXLSX = () => import("xlsx");
 const loadQRCode = async () => (await import("qrcode")).default;
@@ -608,16 +609,16 @@ export const imprimerAttestation = (eleve, niveau, annee, schoolInfo={}) => {
 
 export const imprimerBulletin = (eleve, notes, matieres, periode, niveau, maxNote=20, schoolInfo={}) => {
   const notesEleve = notes.filter(n=>n.eleveId===eleve._id && n.periode===periode);
-  let moyenne = 0, totalCoef = 0;
   const lignes = matieres.map(mat => {
     const noteMat = notesEleve.filter(n=>n.matiere===mat.nom);
-    const moy = noteMat.length ? (noteMat.reduce((s,n)=>s+Number(n.note),0)/noteMat.length).toFixed(2) : "—";
+    const moyenneMatiere = getSubjectAverage(noteMat, eleve.classe, niveau);
+    const moy = moyenneMatiere != null ? moyenneMatiere.toFixed(2) : "—";
     const coef = mat.coefficient||1;
-    totalCoef += coef; // toutes les matières comptent au dénominateur
-    if(moy !== "—") { moyenne += Number(moy)*coef; }
     return {mat: mat.nom, coef, moy};
   });
-  const moyGene = totalCoef > 0 ? (moyenne/totalCoef).toFixed(2) : "—";
+  const totalCoef = matieres.reduce((sum, mat) => sum + Number(mat.coefficient||1), 0);
+  const moyenneGenerale = getGeneralAverage(notesEleve, matieres, eleve.classe, niveau);
+  const moyGene = moyenneGenerale != null ? moyenneGenerale.toFixed(2) : "—";
   const mi = maxNote/2; // seuil de passage (10/20 ou 5/10)
   const apprec = (v) => v==="—"?"Non évalué":Number(v)>=(maxNote*0.8)?"Très Bien":Number(v)>=(maxNote*0.7)?"Bien":Number(v)>=(maxNote*0.6)?"Assez Bien":Number(v)>=mi?"Passable":"Insuffisant";
   const mention = apprec(moyGene);
@@ -665,16 +666,15 @@ export const imprimerBulletinsGroupes = (eleves, notes, matieres, periode, nivea
   // Calcul des moyennes pour le classement
   const avecMoyenne = eleves.map(eleve => {
     const notesEleve = notes.filter(n=>n.eleveId===eleve._id && n.periode===periode);
-    let total=0, totalCoef=0;
     const lignes = getMat(eleve).map(mat => {
       const nm = notesEleve.filter(n=>n.matiere===mat.nom);
-      const moy = nm.length ? (nm.reduce((s,n)=>s+Number(n.note),0)/nm.length).toFixed(2) : "—";
+      const moyenneMatiere = getSubjectAverage(nm, eleve.classe, niveau);
+      const moy = moyenneMatiere != null ? moyenneMatiere.toFixed(2) : "—";
       const coef = mat.coefficient||1;
-      totalCoef += coef; // toutes les matières comptent au dénominateur
-      if(moy!=="—"){ total += Number(moy)*coef; }
       return {mat:mat.nom, coef, moy};
     });
-    const moyGene = totalCoef > 0 ? (total/totalCoef).toFixed(2) : "—";
+    const moyenneGenerale = getGeneralAverage(notesEleve, getMat(eleve), eleve.classe, niveau);
+    const moyGene = moyenneGenerale != null ? moyenneGenerale.toFixed(2) : "—";
     return {eleve, lignes, moyGene};
   });
 
@@ -1098,3 +1098,4 @@ export const imprimerLivret = (livret, schoolInfo={}) => {
   </body></html>`);
   w.document.close();
 };
+

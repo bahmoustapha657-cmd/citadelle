@@ -2,6 +2,7 @@ import React, { useState, useContext } from "react";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
 import { C, getAnnee, today } from "../constants";
+import { getSubjectAverage } from "../note-utils";
 import { imprimerLivret } from "../reports";
 import { Badge, Btn, Card, Input, Modale, Selec, Stat, TD, THead, TR, Vide } from "./ui";
 
@@ -66,7 +67,7 @@ function LivretsTab({cleEleves, cleNotes, matieres, maxNote, userRole, annee}) {
     const matieresList = matieres.map(mat=>{
       const notesParPeriode = ["T1","T2","T3"].reduce((acc,p)=>{
         const ns = notesEleve.filter(n=>n.matiere===mat.nom&&n.periode===p);
-        acc[p] = ns.length ? (ns.reduce((s,n)=>s+Number(n.note),0)/ns.length) : null;
+        acc[p] = getSubjectAverage(ns, eleve.classe, section);
         return acc;
       },{});
       const avec = Object.values(notesParPeriode).filter(v=>v!==null);
