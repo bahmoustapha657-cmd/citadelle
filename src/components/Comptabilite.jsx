@@ -259,7 +259,9 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   };
 
   // Salaires du mois sélectionné
-  const salairesMois = salaires.filter(s=>s.mois===moisSel);
+  const moisLabel = moisSel==="__TOUS__" ? "Tous les mois (prévision)" : moisSel;
+  const moisModale = moisSel==="__TOUS__" ? (moisSalaire[0]||"Octobre") : moisSel;
+  const salairesMois = moisSel==="__TOUS__" ? [] : salaires.filter(s=>s.mois===moisSel);
   const salairesSec = salairesMois.filter(s=>s.section==="Secondaire");
   const salairesPrim = salairesMois.filter(s=>s.section==="Primaire");
   const salairesPers = salairesMois.filter(s=>s.section==="Personnel");
@@ -270,6 +272,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
 
   const appliquerBons = async () => {
     if(readOnly) return;
+    if(moisSel==="__TOUS__"){toast("Sélectionnez un mois précis pour appliquer les bons.","warning");return;}
     if(!bonsMois.length){toast("Aucun bon enregistré pour ce mois.","warning");return;}
     if(!confirm(`Appliquer les bons du mois de ${moisSel} aux salaires ?\n\nLe champ "Bon" de chaque enseignant sera mis à jour.`)) return;
     let nb=0;
@@ -309,14 +312,12 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   const calcNetF = (s) => Number(s.montantForfait||0)-Number(s.bon||0)+Number(s.revision||0);
   const totNetPers = salairesPers.reduce((sum,s)=>sum+calcNetF(s),0);
 
-  const autoGenererSalaires = async () => {
-    if(readOnly) return;
-    const jours5eme = getJours5emeSemaine(moisSel);
-    const info5eme = jours5eme.length ? `\n📅 5ème semaine détectée : ${jours5eme.join(", ")} → heures supplémentaires calculées automatiquement.` : "";
-    if(!confirm(`Générer automatiquement les salaires pour ${moisSel} ?${info5eme}\n\nSeuls les nouveaux enseignants seront ajoutés.`)) return;
-    const nomsExistants=salairesMois.map(s=>(s.nom||"").toLowerCase().trim());
+  const genererPourMois = async (mois) => {
+    const jours5eme = getJours5emeSemaine(mois);
+    const dejaCeMois = salaires.filter(s=>s.mois===mois);
+    const nomsExistants=dejaCeMois.map(s=>(s.nom||"").toLowerCase().trim());
+    let nb = 0;
 
-    // Secondaire (college + lycée) — modèle horaire
     const tousEns=[
       ...ensCollege.map(e=>({...e,_emplois:emploisCollege,_eng:engCollege})),
       ...ensLycee.map(e=>({...e,_emplois:emploisLycee,_eng:engLycee})),
@@ -333,17 +334,17 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
       const cinqSem=getTeacherFifthWeekHours(creneaux, jours5eme);
       const absences=getTeacherAbsenceHours(ens._eng, ens, creneaux);
       const obs=`Statut: ${ens.statut||"—"}${hasPPC?" · Prime pondérée par classe":""}`;
-      await ajS({section:"Secondaire",mois:moisSel,nom:nomComplet,matiere:ens.matiere||"",niveau:ens.grade||"",vhHebdo,vhPrevu,cinqSem,nonExecute:absences,primeHoraire,bon:0,revision:0,observation:obs});
+      await ajS({section:"Secondaire",mois,nom:nomComplet,matiere:ens.matiere||"",niveau:ens.grade||"",vhHebdo,vhPrevu,cinqSem,nonExecute:absences,primeHoraire,bon:0,revision:0,observation:obs});
+      nb++;
     }
 
-    // Primaire — modèle forfait
     for(const ens of ensPrimaire){
       const nomComplet=`${ens.prenom||""} ${ens.nom||""}`.trim();
       if(!nomComplet) continue;
       if(nomsExistants.includes(nomComplet.toLowerCase())) continue;
       await ajS({
         section:"Primaire",
-        mois:moisSel,
+        mois,
         nom:nomComplet,
         niveau:ens.grade||ens.classeTitle||ens.classe||"",
         matiere:ens.matiere||"",
@@ -352,21 +353,39 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
         revision:0,
         observation:`Statut: ${ens.statut||"—"}${ens.classeTitle?` · Titulaire ${ens.classeTitle}`:""}`,
       });
+      nb++;
     }
 
-    // Personnel administratif — modèle forfait fixe
     for(const emp of personnel.filter(e=>(e.statut||"Actif")==="Actif")){
       const nomComplet=`${emp.prenom||""} ${emp.nom||""}`.trim();
       if(!nomComplet) continue;
       if(nomsExistants.includes(nomComplet.toLowerCase())) continue;
-      await ajS({section:"Personnel",mois:moisSel,nom:nomComplet,poste:emp.poste||"",categorie:emp.categorie||"",montantForfait:Number(emp.salaireBase||0),bon:0,revision:0,observation:emp.observation||""});
+      await ajS({section:"Personnel",mois,nom:nomComplet,poste:emp.poste||"",categorie:emp.categorie||"",montantForfait:Number(emp.salaireBase||0),bon:0,revision:0,observation:emp.observation||""});
+      nb++;
     }
+    return nb;
+  };
 
-    toast("Salaires générés. Renseignez prime horaire, 5ème semaine, bon et révision selon la section.","success");
+  const autoGenererSalaires = async () => {
+    if(readOnly) return;
+    if(moisSel==="__TOUS__"){
+      if(!confirm(`Générer les salaires pour les ${moisSalaire.length} mois de l'année scolaire ?\n\nUtile pour avoir une prévision annuelle. Seuls les nouveaux enseignants seront ajoutés à chaque mois.`)) return;
+      let total=0;
+      for(const m of moisSalaire){ total += await genererPourMois(m); }
+      toast(`Prévision annuelle générée — ${total} ligne(s) sur ${moisSalaire.length} mois.`,"success");
+      logAction("Salaires auto-générés (annuel)",`${total} lignes · ${moisSalaire.join(", ")}`);
+      return;
+    }
+    const jours5eme = getJours5emeSemaine(moisSel);
+    const info5eme = jours5eme.length ? `\n📅 5ème semaine détectée : ${jours5eme.join(", ")} → heures supplémentaires calculées automatiquement.` : "";
+    if(!confirm(`Générer automatiquement les salaires pour ${moisSel} ?${info5eme}\n\nSeuls les nouveaux enseignants seront ajoutés.`)) return;
+    const nb = await genererPourMois(moisSel);
+    toast(`Salaires générés (${nb}). Renseignez prime horaire, 5ème semaine, bon et révision selon la section.`,"success");
     logAction("Salaires auto-générés",`Mois : ${moisSel}`);
   };
 
   const imprimerSalaires = () => {
+    if(moisSel==="__TOUS__"){toast("Sélectionnez un mois précis pour imprimer.","warning");return;}
     const w = window.open("","_blank");
     w.document.write(`<!DOCTYPE html><html><head><title>États Salaires ${moisSel}</title>
     <style>body{font-family:Arial,sans-serif;padding:20px;font-size:11px}
@@ -460,7 +479,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
               <Stat label="Dépenses" value={`${(totD/1e6).toFixed(2)}M`} sub="GNF" bg="#fce8e8"/>
               <Stat label="Vers. Fondation" value={`${(totVers/1e6).toFixed(2)}M`} sub="GNF" bg="#e6f4ea"/>
               <Stat label="Solde" value={`${((totR-totD)/1e6).toFixed(2)}M`} sub="GNF" bg={(totR-totD)>=0?"#eaf4e0":"#fce8e8"}/>
-              <Stat label="Masse salariale" value={`${((totNetSec+totNetPrim+totNetPers)/1e6).toFixed(3)}M`} sub={`GNF — ${moisSel} (${salairesMois.length})`} bg="#fef3e0"/>
+              <Stat label="Masse salariale" value={`${((totNetSec+totNetPrim+totNetPers)/1e6).toFixed(3)}M`} sub={`GNF — ${moisLabel} (${salairesMois.length})`} bg="#fef3e0"/>
               <Stat label="Mensualités impayées" value={`${(impaye/1e6).toFixed(2)}M`} sub={`GNF — ${pctImpaye}% du total dû`} bg="#fce8e8"/>
               <Stat label="Mensualités perçues" value={`${(totalPercu/1e6).toFixed(2)}M`} sub={`${totalDu>0?(100-Number(pctImpaye)).toFixed(1):0}% du total`} bg="#eaf4e0"/>
             </div>
@@ -662,7 +681,8 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
           <div style={{flex:1}}/>
           <select value={moisSel} onChange={e=>setMoisSel(e.target.value)}
             style={{border:"1px solid #b0c4d8",borderRadius:7,padding:"6px 12px",fontSize:13,background:"#fff",color:C.blueDark,fontWeight:700}}>
-            {moisSalaire.map(m=><option key={m}>{m}</option>)}
+            <option value="__TOUS__">Tous les mois (prévision)</option>
+            {moisSalaire.map(m=><option key={m} value={m}>{m}</option>)}
           </select>
           {sousTabSal==="etats"&&<>
             {canCreate&&<label title="Appliquée uniquement aux enseignants sans prime définie sur leur fiche" style={{display:"flex",alignItems:"center",gap:5,fontSize:12,color:C.blueDark,background:"#f0f7ff",border:"1px solid #b0c4d8",borderRadius:7,padding:"4px 10px",cursor:"help"}}>
@@ -674,7 +694,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
             </label>}
             {canCreate&&<Btn v="amber" onClick={autoGenererSalaires}>⚡ Auto-générer</Btn>}
             {canCreate&&bonsMois.length>0&&<Btn v="amber" onClick={appliquerBons}>✔ Appliquer les bons</Btn>}
-            {canCreate&&<Btn onClick={()=>{setForm({section:"Secondaire",mois:moisSel,nonExecute:0,cinqSem:0,bon:0,revision:0});setModal("add_s");}}>+ Ajouter</Btn>}
+            {canCreate&&<Btn onClick={()=>{setForm({section:"Secondaire",mois:moisModale,nonExecute:0,cinqSem:0,bon:0,revision:0});setModal("add_s");}}>+ Ajouter</Btn>}
             <Btn v="vert" onClick={imprimerSalaires}>🖨️ Imprimer</Btn>
           </>}
           {(()=>{const j5=getJours5emeSemaine(moisSel);return j5.length>0&&(
@@ -685,13 +705,13 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
               <span style={{color:"#92400e",fontSize:11}}>→ Les enseignants qui ont cours ces jours ont des heures supplémentaires. Cliquez sur ⚡ Auto-générer pour les calculer automatiquement.</span>
             </div>
           );})()}
-          {sousTabSal==="bons"&&canCreate&&<Btn onClick={()=>{setForm({mois:moisSel,section:"Secondaire"});setModal("add_b");}}>+ Nouveau bon</Btn>}
+          {sousTabSal==="bons"&&canCreate&&<Btn onClick={()=>{setForm({mois:moisModale,section:"Secondaire"});setModal("add_b");}}>+ Nouveau bon</Btn>}
         </div>
 
         {/* ── SOUS-ONGLET BONS ── */}
         {sousTabSal==="bons"&&<>
           {bonsMois.length===0
-            ?<Vide icone="📋" msg={`Aucun bon enregistré pour ${moisSel}`}/>
+            ?<Vide icone="📋" msg={`Aucun bon enregistré pour ${moisLabel}`}/>
             :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
               <THead cols={["Enseignant","Section","Mois","Montant (GNF)","Motif",canEdit?"Actions":""]}/>
               <tbody>{bonsMois.map(b=><TR key={b._id}>
@@ -706,7 +726,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                 </TD>}
               </TR>)}
               <tr style={{background:"#fce8e8",fontWeight:800}}>
-                <td colSpan={3} style={{padding:"8px 12px",textAlign:"right",color:"#9b2020"}}>TOTAL BONS — {moisSel}</td>
+                <td colSpan={3} style={{padding:"8px 12px",textAlign:"right",color:"#9b2020"}}>TOTAL BONS — {moisLabel}</td>
                 <td style={{padding:"8px 12px",textAlign:"center",color:"#9b2020",fontSize:14}}>{fmtN(bonsMois.reduce((s,b)=>s+Number(b.montant||0),0))}</td>
                 <td colSpan={2}></td>
               </tr>
@@ -739,7 +759,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
               <div style={{background:"linear-gradient(135deg,#0A1628,#1d4ed8)",borderRadius:10,padding:"14px 16px",color:"#fff",textAlign:"center"}}>
                 <div style={{fontSize:11,opacity:.85,marginBottom:4}}>Masse salariale</div>
                 <div style={{fontSize:18,fontWeight:900}}>{(totGen/1e6).toFixed(3)}M</div>
-                <div style={{fontSize:10,opacity:.75,marginTop:2}}>GNF — {moisSel}</div>
+                <div style={{fontSize:10,opacity:.75,marginTop:2}}>GNF — {moisLabel}</div>
               </div>
               <div style={{background:"linear-gradient(135deg,#0A1628,#1a6baa)",borderRadius:10,padding:"14px 16px",color:"#fff",textAlign:"center"}}>
                 <div style={{fontSize:11,opacity:.85,marginBottom:4}}>Secondaire</div>
@@ -800,9 +820,14 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
         })()}
 
         {cS?<Chargement/>:<>
+          {moisSel==="__TOUS__"&&<div style={{background:"linear-gradient(135deg,#fef3c7,#fde68a)",border:"1px solid #f59e0b",borderRadius:10,padding:"12px 16px",marginBottom:14,fontSize:13,color:"#92400e"}}>
+            <strong>📊 Mode prévision annuelle</strong> — Sélectionnez un mois précis pour consulter ou modifier ses salaires.
+            Cliquez sur <strong>⚡ Auto-générer</strong> pour remplir d'un coup les {moisSalaire.length} mois de l'année scolaire.
+          </div>}
+
           {/* Section Secondaire */}
           <div style={{background:C.blue,color:"#fff",padding:"8px 14px",borderRadius:"8px 8px 0 0",fontWeight:700,fontSize:13}}>
-            SECTION SECONDAIRE — {moisSel} {annee||getAnnee()}
+            SECTION SECONDAIRE — {moisLabel} {annee||getAnnee()}
           </div>
           <div style={{overflowX:"auto",marginBottom:16}}>
             <table style={{width:"100%",borderCollapse:"collapse",minWidth:900}}>
@@ -870,7 +895,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
 
           {/* Section Primaire */}
           <div style={{background:C.green,color:"#fff",padding:"8px 14px",borderRadius:"8px 8px 0 0",fontWeight:700,fontSize:13,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
-            <span style={{flex:1}}>SECTION PRIMAIRE — {moisSel} {annee||getAnnee()}</span>
+            <span style={{flex:1}}>SECTION PRIMAIRE — {moisLabel} {annee||getAnnee()}</span>
             <input
               placeholder="🔍 Recherche par nom..."
               value={filtrePrimNom} onChange={e=>setFiltrePrimNom(e.target.value)}
@@ -887,16 +912,15 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
               .filter(s=>!filtrePrimNom||(s.nom||"").toLowerCase().includes(filtrePrimNom.toLowerCase()))
               .filter(s=>filtrePrimClasse==="all"||(s.niveau||"")===filtrePrimClasse);
             return <table style={{width:"100%",borderCollapse:"collapse"}}>
-              <THead cols={["N°","Prénoms et Nom","Classe","Montant Forfaitaire","Bon","Révision","Net à Payer","Observation",canEdit?"Actions":""]}/>
+              <THead cols={["N°","Prénoms et Nom","Classe","Bon","Révision","Net à Payer","Observation",canEdit?"Actions":""]}/>
               <tbody>
                 {salairesPrimFiltres.length===0?
-                  <tr><td colSpan={canEdit?9:8} style={{padding:"20px",textAlign:"center",color:"#9ca3af",fontStyle:"italic"}}>{salairesPrim.length===0?"Aucun enseignant primaire pour ce mois":"Aucun résultat pour ce filtre"}</td></tr>
+                  <tr><td colSpan={canEdit?8:7} style={{padding:"20px",textAlign:"center",color:"#9ca3af",fontStyle:"italic"}}>{salairesPrim.length===0?"Aucun enseignant primaire pour ce mois":"Aucun résultat pour ce filtre"}</td></tr>
                   :salairesPrimFiltres.map((s,i)=>(
                     <TR key={s._id}>
                       <TD center>{i+1}</TD>
                       <TD bold>{s.nom}</TD>
                       <TD>{s.niveau}</TD>
-                      <TD center>{fmtN(s.montantForfait||0)}</TD>
                       <TD center style={{color:"#b91c1c"}}>{fmtN(s.bon||0)}</TD>
                       <TD center style={{background:"#fffbeb"}}>
                         {canEdit
@@ -913,7 +937,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                     </TR>
                 ))}
                 <tr style={{background:"#e0ebf8",fontWeight:800}}>
-                  <td colSpan={6} style={{padding:"8px 12px",textAlign:"right",color:C.blueDark}}>
+                  <td colSpan={5} style={{padding:"8px 12px",textAlign:"right",color:C.blueDark}}>
                     TOTAL NET PRIMAIRE {filtrePrimClasse!=="all"||filtrePrimNom?`(filtre : ${salairesPrimFiltres.length}/${salairesPrim.length})` : ""}
                   </td>
                   <td style={{padding:"8px 12px",textAlign:"center",color:C.greenDk,fontSize:14}}>
@@ -928,7 +952,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
 
           {/* Section Personnel */}
           <div style={{background:"#7c3aed",color:"#fff",padding:"8px 14px",borderRadius:"8px 8px 0 0",fontWeight:700,fontSize:13,display:"flex",alignItems:"center",gap:10}}>
-            <span style={{flex:1}}>SECTION PERSONNEL — {moisSel} {annee||getAnnee()}</span>
+            <span style={{flex:1}}>SECTION PERSONNEL — {moisLabel} {annee||getAnnee()}</span>
           </div>
           <div style={{overflowX:"auto",marginBottom:8}}>
             <table style={{width:"100%",borderCollapse:"collapse"}}>
@@ -978,7 +1002,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
               <option>Secondaire</option><option>Primaire</option><option>Personnel</option>
             </Selec>
           </div>
-          <Selec label="Mois" value={form.mois||moisSel} onChange={chg("mois")}>
+          <Selec label="Mois" value={form.mois||moisModale} onChange={chg("mois")}>
             {moisSalaire.map(m=><option key={m}>{m}</option>)}
           </Selec>
           <div style={{height:12}}/>
@@ -1026,7 +1050,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
 
         {/* MODAL AJOUT/MODIF BON */}
         {(modal==="add_b"&&canCreate||(modal==="edit_b"&&canEdit))&&(()=>{
-          const moisBon = form.mois||moisSel;
+          const moisBon = form.mois||moisModale;
           const secBon = form.section||"Secondaire";
           const ensDisponibles = salaires
             .filter(s=>s.mois===moisBon && s.section===secBon)
