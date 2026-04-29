@@ -1090,6 +1090,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
             if(form.classeTitle) payload.classeTitle=form.classeTitle;
           } else {
             payload.primeHoraire=Number(form.primeHoraire||0);
+            payload.primeParClasse=(form.primeParClasse||[]).filter(p=>p.classe&&Number(p.prime)>0).map(p=>({classe:p.classe,prime:Number(p.prime)}));
           }
           if(modal==="edit_ens_compta"){
             await modEnsForSection(sec)(form._id,payload);
@@ -1187,10 +1188,29 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                   <Input label="Prime horaire (GNF)" type="number" value={form.primeHoraire||""} onChange={chg("primeHoraire")} placeholder="Ex : 15000"/>
                 </>}
               </div>
+              {!isPrim&&(
+                <div style={{marginTop:14,borderTop:"1px solid #e2e8f0",paddingTop:12}}>
+                  <div style={{fontSize:12,fontWeight:700,color:C.blueDark,marginBottom:8}}>
+                    Primes par classe <span style={{fontWeight:400,color:"#94a3b8",fontSize:11}}>(si la prime varie selon la classe enseignée — sinon laissez vide)</span>
+                  </div>
+                  {(form.primeParClasse||[]).map((entry,i)=>(
+                    <div key={i} style={{display:"flex",gap:8,marginBottom:6,alignItems:"center"}}>
+                      <input value={entry.classe||""} placeholder="Classe (ex: 3ème A)"
+                        onChange={e=>setForm(p=>{const arr=[...(p.primeParClasse||[])];arr[i]={...arr[i],classe:e.target.value};return{...p,primeParClasse:arr};})}
+                        style={{flex:2,border:"1px solid #b0c4d8",borderRadius:6,padding:"5px 8px",fontSize:12}}/>
+                      <input type="number" value={entry.prime||""} placeholder="Prime GNF"
+                        onChange={e=>setForm(p=>{const arr=[...(p.primeParClasse||[])];arr[i]={...arr[i],prime:Number(e.target.value)};return{...p,primeParClasse:arr};})}
+                        style={{flex:1,border:"1px solid #b0c4d8",borderRadius:6,padding:"5px 8px",fontSize:12}}/>
+                      <Btn sm v="danger" onClick={()=>setForm(p=>({...p,primeParClasse:(p.primeParClasse||[]).filter((_,j)=>j!==i)}))}>×</Btn>
+                    </div>
+                  ))}
+                  <Btn sm v="ghost" onClick={()=>setForm(p=>({...p,primeParClasse:[...(p.primeParClasse||[]),{classe:"",prime:0}]}))}>+ Ajouter une classe</Btn>
+                </div>
+              )}
               <div style={{marginTop:12,padding:"10px 14px",background:"#fefce8",border:"1px solid #fde68a",borderRadius:8,fontSize:12,color:"#854d0e"}}>
                 {isPrim
                   ? "Le forfait sera repris automatiquement lors de la génération mensuelle des salaires."
-                  : "La prime horaire sera multipliée par les heures de l'EDT lors de la génération des salaires. Les primes par classe se règlent dans Secondaire."
+                  : "Lors de la génération des salaires : la prime utilisée pour chaque classe enseignée est celle saisie ci-dessus si renseignée, sinon la prime horaire unique. Le total = somme(prime classe × heures EDT de cette classe) × 4 semaines."
                 }
               </div>
               <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
