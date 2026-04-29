@@ -316,36 +316,10 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   const calcNetF = (s) => Number(s.montantForfait||0)-Number(s.bon||0)+Number(s.revision||0);
   const totNetPers = salairesPers.reduce((sum,s)=>sum+calcNetF(s),0);
 
-  const buildSecondaireSalaryObservation = (teacher, slots, primeDefaut, extras = {}) => {
-    const breakdown = new Map();
-
-    slots.forEach((slot) => {
-      const key = slot.type === "revision"
-        ? `Révision ${slot.classe || "—"}`
-        : (slot.classe || "Sans classe");
-      const hours = getScheduleSlotHours(slot);
-      const rate = getSlotPrimeForTeacher(teacher, slot, primeDefaut);
-      const current = breakdown.get(key) || { hours: 0, rate };
-      current.hours += hours;
-      current.rate = rate;
-      breakdown.set(key, current);
-    });
-
-    const detailRates = [...breakdown.entries()]
-      .map(([label, info]) => `${label}: ${Number(info.hours.toFixed(1))}h × ${fmtN(info.rate)}`)
-      .join(" | ");
-
-    const detailExtras = [
-      extras.cinqSem ? `5e sem: ${fmtN(extras.cinqSem)}` : "",
-      extras.absences ? `Non exécuté: -${fmtN(extras.absences)}` : "",
-    ].filter(Boolean).join(" | ");
-
-    const parts = [
-      `Statut: ${teacher.statut || "—"}`,
-      detailRates,
-      detailExtras,
-    ].filter(Boolean);
-
+  const buildSecondaireSalaryObservation = (teacher, slots) => {
+    const aRevision = slots.some(s => s.type === "revision");
+    const parts = [`Statut: ${teacher.statut || "—"}`];
+    if(aRevision) parts.push("Révisions incluses");
     return parts.join(" • ");
   };
 
@@ -377,10 +351,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
       const primeHoraire=heuresExecutees>0
         ? Math.round((((montantHebdo * 4) + montant5eme - montantAbsences) / heuresExecutees))
         : getWeightedPrimeHoraire(ens, creneaux, primeDefaut);
-      const obs=buildSecondaireSalaryObservation(ens, creneaux, primeDefaut, {
-        cinqSem: montant5eme,
-        absences: montantAbsences,
-      }) + (hasPPC ? " • Prime pondérée par classe" : "");
+      const obs=buildSecondaireSalaryObservation(ens, creneaux) + (hasPPC ? " • Prime pondérée par classe" : "");
       const champsCalcules = {section:"Secondaire",mois,nom:nomComplet,matiere:ens.matiere||"",niveau:ens.grade||"",vhHebdo,vhPrevu,cinqSem,nonExecute:absences,primeHoraire,observation:obs};
       if(existant){
         // Resync : on garde bon et revision saisis manuellement
