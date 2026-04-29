@@ -21,6 +21,7 @@ const normalizeType = (value = "") => String(value || "")
 
 const averageNumbers = (values = []) => {
   const nums = values
+    .filter((value) => value !== null && value !== undefined && value !== "")
     .map((value) => Number(value))
     .filter((value) => !Number.isNaN(value));
   if (!nums.length) return null;
@@ -76,7 +77,7 @@ export const getGeneralAverage = (notes = [], matieres = [], classe = "", sectio
       classe,
       effectiveSection,
     );
-    if (moyenne != null) total += moyenne * coef;
+    total += (moyenne != null ? moyenne : 0) * coef;
   });
 
   if (!totalCoef) return null;

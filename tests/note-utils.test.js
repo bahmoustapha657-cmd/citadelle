@@ -42,3 +42,19 @@ test("getGeneralAverage combine les moyennes matieres du secondaire avec coeffic
 
   assert.equal(Number(moyenne.toFixed(4)), 11);
 });
+
+test("getGeneralAverage compte les matières sans note comme 0 dans le dénominateur", () => {
+  const notes = [
+    { matiere: "Maths", type: "Interrogation", note: 12, periode: "T1" },
+    { matiere: "Maths", type: "Devoir", note: 14, periode: "T1" },
+    { matiere: "Maths", type: "Composition", note: 10, periode: "T1" },
+  ];
+  const matieres = [
+    { nom: "Maths", coefficient: 2 },
+    { nom: "Physique", coefficient: 3 },
+  ];
+
+  const moyenne = getGeneralAverage(notes, matieres, "10ème Année A");
+
+  assert.equal(Number(moyenne.toFixed(4)), 4.4);
+});
