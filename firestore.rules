@@ -50,12 +50,23 @@ service cloud.firestore {
       return ["direction", "admin", "primaire", "college", "comptable"];
     }
 
+    // Rôles autorisés à écrire côté client. L'admin est retiré : il est en
+    // lecture seule pour empêcher tout contournement de l'UI via un client
+    // Firestore direct (console, SDK, etc.).
+    function backOfficeWriteRoles() {
+      return ["direction", "primaire", "college", "comptable"];
+    }
+
     function staffRoles() {
       return ["direction", "admin", "primaire", "college", "comptable", "enseignant"];
     }
 
     function pedagogieRoles(sectionRole) {
       return ["direction", "admin", sectionRole];
+    }
+
+    function pedagogieWriteRoles(sectionRole) {
+      return ["direction", sectionRole];
     }
 
     function compteAllowedKeys() {
@@ -155,20 +166,27 @@ service cloud.firestore {
 
       allow update: if aUnRole(["superadmin"])
                    || (appartientEcole(schoolId)
-                       && aUnRole(["direction", "admin"])
+                       && aUnRole(["direction"])
                        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(planFields()));
 
       allow delete: if false;
 
       match /comptes/{docId} {
+        // Les comptes ne sont JAMAIS modifiables côté client.
+        // Toute mutation passe par l'API serveur (Firebase Admin SDK)
+        // qui applique les contrôles de rôle (canManageTargetRole) et
+        // journalise dans audit_securite. Cela empêche un admin de
+        // modifier directement le hash mdp d'un autre compte via un
+        // client Firestore custom.
         allow read: if (appartientEcole(schoolId) && aUnRole(["direction", "admin"]))
                      || aUnRole(["superadmin"]);
-        allow create: if (appartientEcole(schoolId) && aUnRole(["direction", "admin"]) && compteCreateValide())
-                       || aUnRole(["superadmin"]);
-        allow update: if (appartientEcole(schoolId) && aUnRole(["direction", "admin"]) && compteAdminUpdateValide())
-                       || aUnRole(["superadmin"]);
-        allow delete: if (appartientEcole(schoolId) && aUnRole(["direction", "admin"]))
-                       || aUnRole(["superadmin"]);
+        allow write: if false;
+      }
+
+      match /audit_securite/{docId} {
+        allow read: if (appartientEcole(schoolId) && aUnRole(["direction"]))
+                     || aUnRole(["superadmin"]);
+        allow write: if false;
       }
 
       match /pushSubs/{docId} {
@@ -184,37 +202,37 @@ service cloud.firestore {
 
       match /annonces/{docId} {
         allow read: if true;
-        allow write: if (appartientEcole(schoolId) && aUnRole(["direction", "admin", "primaire", "college"]))
+        allow write: if (appartientEcole(schoolId) && aUnRole(["direction", "primaire", "college"]))
                       || aUnRole(["superadmin"]);
       }
 
       match /honneurs/{docId} {
         allow read: if true;
-        allow write: if (appartientEcole(schoolId) && aUnRole(["direction", "admin", "primaire", "college"]))
+        allow write: if (appartientEcole(schoolId) && aUnRole(["direction", "primaire", "college"]))
                       || aUnRole(["superadmin"]);
       }
 
       match /messages/{docId} {
         allow read: if (appartientEcole(schoolId) && aUnRole(backOfficeRoles()))
                      || aUnRole(["superadmin"]);
-        allow create: if ((appartientEcole(schoolId) && aUnRole(backOfficeRoles()))
+        allow create: if ((appartientEcole(schoolId) && aUnRole(backOfficeWriteRoles()))
                           || messageParentValide(schoolId)
                           || aUnRole(["superadmin"]));
-        allow update, delete: if (appartientEcole(schoolId) && aUnRole(backOfficeRoles()))
+        allow update, delete: if (appartientEcole(schoolId) && aUnRole(backOfficeWriteRoles()))
                                || aUnRole(["superadmin"]);
       }
 
       match /historique/{docId} {
         allow read: if (appartientEcole(schoolId) && aUnRole(backOfficeRoles()))
                      || aUnRole(["superadmin"]);
-        allow write: if (appartientEcole(schoolId) && aUnRole(backOfficeRoles()))
+        allow write: if (appartientEcole(schoolId) && aUnRole(backOfficeWriteRoles()))
                       || aUnRole(["superadmin"]);
       }
 
       match /demandes_plan/{docId} {
         allow read: if (appartientEcole(schoolId) && aUnRole(["direction", "admin", "comptable"]))
                      || aUnRole(["superadmin"]);
-        allow create: if (appartientEcole(schoolId) && aUnRole(["direction", "admin", "comptable"]))
+        allow create: if (appartientEcole(schoolId) && aUnRole(["direction", "comptable"]))
                        || aUnRole(["superadmin"]);
         allow update: if aUnRole(["superadmin"]);
         allow delete: if false;
@@ -223,53 +241,57 @@ service cloud.firestore {
       match /notesCollege/{docId} {
         allow read: if (appartientEcole(schoolId) && aUnRole(pedagogieRoles("college")))
                      || aUnRole(["superadmin"]);
-        allow write: if (appartientEcole(schoolId) && aUnRole(pedagogieRoles("college")))
+        allow write: if (appartientEcole(schoolId) && aUnRole(pedagogieWriteRoles("college")))
                       || aUnRole(["superadmin"]);
       }
 
       match /notesPrimaire/{docId} {
         allow read: if (appartientEcole(schoolId) && aUnRole(pedagogieRoles("primaire")))
                      || aUnRole(["superadmin"]);
-        allow write: if (appartientEcole(schoolId) && aUnRole(pedagogieRoles("primaire")))
+        allow write: if (appartientEcole(schoolId) && aUnRole(pedagogieWriteRoles("primaire")))
                       || aUnRole(["superadmin"]);
       }
 
       match /notesLycee/{docId} {
         allow read: if (appartientEcole(schoolId) && aUnRole(pedagogieRoles("college")))
                      || aUnRole(["superadmin"]);
-        allow write: if (appartientEcole(schoolId) && aUnRole(pedagogieRoles("college")))
+        allow write: if (appartientEcole(schoolId) && aUnRole(pedagogieWriteRoles("college")))
                       || aUnRole(["superadmin"]);
       }
 
       match /elevesCollege_absences/{docId} {
         allow read: if (appartientEcole(schoolId) && aUnRole(pedagogieRoles("college")))
                      || aUnRole(["superadmin"]);
-        allow write: if (appartientEcole(schoolId) && aUnRole(pedagogieRoles("college")))
+        allow write: if (appartientEcole(schoolId) && aUnRole(pedagogieWriteRoles("college")))
                       || aUnRole(["superadmin"]);
       }
 
       match /elevesPrimaire_absences/{docId} {
         allow read: if (appartientEcole(schoolId) && aUnRole(pedagogieRoles("primaire")))
                      || aUnRole(["superadmin"]);
-        allow write: if (appartientEcole(schoolId) && aUnRole(pedagogieRoles("primaire")))
+        allow write: if (appartientEcole(schoolId) && aUnRole(pedagogieWriteRoles("primaire")))
                       || aUnRole(["superadmin"]);
       }
 
       match /elevesLycee_absences/{docId} {
         allow read: if (appartientEcole(schoolId) && aUnRole(pedagogieRoles("college")))
                      || aUnRole(["superadmin"]);
-        allow write: if (appartientEcole(schoolId) && aUnRole(pedagogieRoles("college")))
+        allow write: if (appartientEcole(schoolId) && aUnRole(pedagogieWriteRoles("college")))
                       || aUnRole(["superadmin"]);
       }
 
       // Catch-all durci : whitelist strict des collections légitimes de l'application.
       // Toute collection non listée ici est refusée en lecture ET en écriture.
+      // L'admin peut LIRE (audit/lecture seule) mais NE PEUT PAS écrire :
+      // c'est ce qui empêche un admin malveillant de contourner l'UI via
+      // un client Firestore custom (console, SDK direct, etc.) pour
+      // modifier recettes/dépenses/salaires/notes.
       match /{collection}/{docId} {
         allow read: if collection in collectionsBackOffice()
                     && ((appartientEcole(schoolId) && aUnRole(backOfficeRoles()))
                         || aUnRole(["superadmin"]));
         allow write: if collection in collectionsBackOffice()
-                     && ((appartientEcole(schoolId) && aUnRole(backOfficeRoles()))
+                     && ((appartientEcole(schoolId) && aUnRole(backOfficeWriteRoles()))
                          || aUnRole(["superadmin"]));
       }
     }

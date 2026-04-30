@@ -37,10 +37,34 @@ async function upsertAuthUser(authAdmin, { email, password, displayName, disable
   }
 }
 
+const ROLES_SYSTEME_ECRITURE = new Set(["direction", "admin", "comptable", "primaire", "college"]);
+
 function canManageTargetRole(session, targetRole) {
   if (session.profile.role === "superadmin") return true;
-  if (targetRole === "direction") return session.profile.role === "direction";
-  return ["direction", "admin"].includes(session.profile.role);
+  if (session.profile.role === "direction") return true;
+  if (session.profile.role === "admin") {
+    if (ROLES_SYSTEME_ECRITURE.has(targetRole)) return false;
+    return ["enseignant", "parent"].includes(targetRole);
+  }
+  return false;
+}
+
+async function logAuditAction({ db, schoolId, auteur, action, cible, details = {} }) {
+  try {
+    await db.collection("ecoles").doc(schoolId).collection("audit_securite").add({
+      auteur: {
+        login: auteur.login || null,
+        role: auteur.role || null,
+        uid: auteur.uid || null,
+      },
+      action,
+      cible,
+      details,
+      timestamp: Date.now(),
+    });
+  } catch (err) {
+    console.error("audit log error:", err);
+  }
 }
 
 async function findAccount({ db, schoolId, accountId = "", login = "" }) {
@@ -462,6 +486,14 @@ export default async function handler(req, res) {
         updatedAt: Date.now(),
       }, { merge: true });
 
+      await logAuditAction({
+        db,
+        schoolId: normalizedSchoolId,
+        auteur: session.profile,
+        action: "sync_role_settings",
+        cible: { rolesAffectes: updatedRoles, comptesGeneres: generatedAccounts.length },
+      });
+
       return res.status(200).json({
         ok: true,
         roleSettings: normalizedRoleSettings,
@@ -538,6 +570,19 @@ export default async function handler(req, res) {
           ...account.data,
           premiereCo: true,
           uid: userRecord.uid,
+        },
+      });
+
+      await logAuditAction({
+        db,
+        schoolId: normalizedSchoolId,
+        auteur: session.profile,
+        action: "reset_password",
+        cible: {
+          accountId: account.id,
+          login: account.data.login,
+          role: account.data.role,
+          nom: account.data.nom || null,
         },
       });
 

@@ -39,8 +39,15 @@ const PROMOTION_SUIVANTE = {
   "Premiere A":"Terminale A","Premiere B":"Terminale B","Premiere C":"Terminale C",
 };
 
+const ROLES_SYSTEME_RESERVES = new Set(["direction", "admin", "comptable", "primaire", "college"]);
+
 function AdminPanel({annee, setAnnee, verrous={}, schoolId, userRole}) {
   const peutGererRoles = userRole === "direction" || userRole === "superadmin";
+  const peutResetCompte = (targetRole) => {
+    if (userRole === "superadmin" || userRole === "direction") return true;
+    if (userRole === "admin") return !ROLES_SYSTEME_RESERVES.has(targetRole);
+    return false;
+  };
   const {toast, schoolInfo, setSchoolInfo} = useContext(SchoolContext);
   const {items:comptes, chargement} = useFirestore("comptes");
   const [modal, setModal] = useState(null);
@@ -522,7 +529,9 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId, userRole}) {
           <table style={{width:"100%",borderCollapse:"collapse"}}>
             <THead cols={["Utilisateur","Login","Rôle","Mot de passe","Action"]}/>
             <tbody>
-              {comptes.map((c,i)=>(
+              {comptes.map((c,i)=>{
+                const reserve = !peutResetCompte(c.role);
+                return (
                 <TR key={c._id||i}>
                   <TD bold>{c.nom}</TD>
                   <TD><span style={{fontFamily:"monospace",background:"#e0ebf8",padding:"2px 8px",borderRadius:4,fontSize:12,color:C.blue}}>{c.login}</span></TD>
@@ -531,12 +540,14 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId, userRole}) {
                     <Badge color="vert">🔒 Sécurisé</Badge>
                   </TD>
                   <TD>
-                    {c._id && (
-                      <Btn sm onClick={()=>{setForm({...c,mdp:""});setModal("mdp");}}>✏️ Modifier</Btn>
+                    {c._id && (reserve
+                      ? <span title="Seule la Direction Générale peut réinitialiser ce compte" style={{fontSize:11,color:"#6b7280",fontStyle:"italic"}}>🛡️ Réservé Direction</span>
+                      : <Btn sm onClick={()=>{setForm({...c,mdp:""});setModal("mdp");}}>✏️ Modifier</Btn>
                     )}
                   </TD>
                 </TR>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </Card>
