@@ -42,7 +42,6 @@ import {
   getTeacherFifthWeekHours,
   getTeacherScheduleSlots,
   getScheduleSlotHours,
-  getSlotPrimeForTeacher,
   getTeacherWeeklyAmount,
   getWeightedPrimeHoraire,
 } from "../salary-utils";
@@ -503,8 +502,16 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
       <td><strong>${fmtN(Number(s.montantForfait||0)-Number(s.bon||0)+Number(s.revision||0))}</strong></td><td>${s.observation||""}</td></tr>`).join("")}
     <tr class="total-row"><td colspan="6" style="text-align:right">TOTAL NET PRIMAIRE</td><td>${fmtN(totNetPrim)}</td><td></td></tr>
     </tbody></table>
+    <div class="section">SECTION ADMINISTRATION / PERSONNEL</div>
+    <table><thead><tr><th>N°</th><th>Prénoms et Nom</th><th>Poste</th><th>Catégorie</th><th>Montant</th><th>Bon</th><th>Révision</th><th>Net à Payer</th><th>Observation</th></tr></thead>
+    <tbody>
+    ${salairesPers.map((s,i)=>`<tr><td>${i+1}</td><td style="text-align:left">${s.nom}</td><td>${s.poste||""}</td><td>${s.categorie||""}</td>
+      <td>${fmtN(s.montantForfait||0)}</td><td>${fmtN(s.bon||0)}</td><td>${fmtN(s.revision||0)}</td>
+      <td><strong>${fmtN(Number(s.montantForfait||0)-Number(s.bon||0)+Number(s.revision||0))}</strong></td><td>${s.observation||""}</td></tr>`).join("")}
+    <tr class="total-row"><td colspan="7" style="text-align:right">TOTAL NET ADMINISTRATION / PERSONNEL</td><td>${fmtN(totNetPers)}</td><td></td></tr>
+    </tbody></table>
     <div style="text-align:right;font-size:12px;font-weight:bold;margin-top:8px;color:#0A1628">
-      TOTAL GÉNÉRAL NET : ${fmtN(totNetSec+totNetPrim)} GNF
+      TOTAL GÉNÉRAL NET : ${fmtN(totNetSec+totNetPrim+totNetPers)} GNF
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-top:30px">
       <div style="border-top:2px solid #0A1628;padding-top:6px;text-align:center;font-size:10px">Le Comptable<br/><br/><br/>Signature</div>
@@ -2247,3 +2254,4 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
 // ══════════════════════════════════════════════════════════════
 
 export { Comptabilite };
+
