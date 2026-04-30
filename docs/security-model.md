@@ -143,20 +143,18 @@ Note : 🔒 sur `notes*` pour enseignant = via `teacher-portal` API, jamais en d
 
 ## 5. Findings de l'audit
 
-### 🔴 F1. Enseignant sans matière → accès toutes notes de ses classes
+### ✅ F1. Enseignant sans matière → accès toutes notes de ses classes — **CORRIGÉ 2026-04-30**
 
-**Fichier** : `api/_lib/handlers/teacher-portal.js:40,71,154,193`
+**Fichier** : `api/_lib/handlers/teacher-portal.js`
 
-**Description** : La fonction `noteBelongsToTeacherScope` filtre par matière uniquement si `profile.matiere` est non-vide :
-```js
-if (matiere && normalizeText(note.matiere) !== normalizeText(matiere)) {
-  return false;
-}
-```
-Si l'enseignant n'a pas de matière définie dans son profil (cas possible pour un titulaire de classe primaire ou un compte mal configuré), le filtre est sauté. Conséquence : il voit ET peut modifier (`save_note` / `delete_note`) les notes de toutes les matières de tous les élèves de ses classes.
+**Description** : La fonction `noteBelongsToTeacherScope` filtrait par matière uniquement si `profile.matiere` est non-vide. Si l'enseignant n'avait pas de matière définie, le filtre était sauté → il voyait et pouvait modifier les notes de toutes les matières de tous les élèves de ses classes.
 
-**Sévérité** : Élevée (intégrité des notes).
-**Probabilité** : Moyenne (dépend de la complétude des fiches enseignants).
+**Correctif appliqué** :
+- `noteBelongsToTeacherScope` prend désormais la `section` en paramètre.
+- **Primaire** : pas de filtre matière obligatoire (un titulaire enseigne toutes les matières de sa classe).
+- **Secondaire** (college/lycee) : matière du profil **obligatoire** ; absence → refus systématique.
+- L'endpoint `save_note`/`delete_note` rejette en 403 dès le départ si l'enseignant secondaire n'a pas de matière.
+- Tests unitaires : `tests/teacher-portal-scope.test.js` (11 cas).
 
 ### 🔴 F2. Fallback par nom d'élève dans les portails
 
@@ -222,7 +220,7 @@ Si l'enseignant n'a pas de matière définie dans son profil (cas possible pour 
 
 ### Priorité 1 — Cette semaine
 
-- [ ] **F1** : Si `profile.matiere` est vide, soit refuser l'action (`save_note`/`delete_note`), soit forcer un filtre strict ; à minima logger un warning. Ajouter test unitaire dans `tests/teacher-portal-scope.test.js`.
+- [x] **F1** : Refusé pour secondaire sans matière, primaire reste permissif (titulaire). Tests dans `tests/teacher-portal-scope.test.js`. ✅ 2026-04-30
 - [ ] **F3** : Vérifier en console Firebase si Storage est utilisé. Si oui, écrire `storage.rules` qui restreint par schoolId et rôle, ajouter à `firebase.json`.
 
 ### Priorité 2 — Ce mois-ci

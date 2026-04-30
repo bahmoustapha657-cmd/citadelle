@@ -24,7 +24,12 @@ function normalizeText(value = "") {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
-function noteBelongsToTeacherScope(note = {}, studentIds = new Set(), matiere = "", studentNames = new Set()) {
+// Restreint le périmètre d'une note à la classe ET à la matière de l'enseignant.
+// Primaire : un titulaire enseigne toutes les matières de sa classe → pas de filtre matière.
+// Secondaire (college/lycee) : la matière du profil est OBLIGATOIRE ; absente → refus.
+// Sans cela un enseignant secondaire mal configuré (matière vide) verrait/modifierait
+// toutes les notes de toutes les matières de ses classes.
+export function noteBelongsToTeacherScope(note = {}, studentIds = new Set(), matiere = "", studentNames = new Set(), section = "college") {
   const noteStudentId = String(note.eleveId || "").trim();
   if (noteStudentId) {
     if (!studentIds.has(noteStudentId)) {
@@ -37,8 +42,10 @@ function noteBelongsToTeacherScope(note = {}, studentIds = new Set(), matiere = 
     }
   }
 
-  if (matiere && normalizeText(note.matiere) !== normalizeText(matiere)) {
-    return false;
+  const normalizedSection = normalizeText(section);
+  if (normalizedSection !== "primaire") {
+    if (!matiere) return false;
+    if (normalizeText(note.matiere) !== normalizeText(matiere)) return false;
   }
 
   return true;
@@ -68,7 +75,7 @@ async function loadTeacherPortalPayload({ db, schoolId, profile }) {
       .filter(Boolean),
   );
   const rawNotes = (await schoolRef.collection(collections.notes).get()).docs.map(toItem);
-  const notes = rawNotes.filter((note) => noteBelongsToTeacherScope(note, studentIds, profile.matiere || "", studentNames));
+  const notes = rawNotes.filter((note) => noteBelongsToTeacherScope(note, studentIds, profile.matiere || "", studentNames, section));
 
   return {
     section,
@@ -131,6 +138,16 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Action inconnue." });
   }
 
+  // Échec sécurisé : un enseignant secondaire (college/lycee) doit avoir une
+  // matière définie pour pouvoir créer/modifier/supprimer des notes. Sans
+  // cela, son périmètre est ambigu et il pourrait toucher des notes hors de
+  // sa discipline.
+  if (section !== "primaire" && !session.profile.matiere) {
+    return res.status(403).json({
+      error: "Profil enseignant incomplet : la matière n'est pas définie. Contactez la direction.",
+    });
+  }
+
   try {
     const teacherScope = await resolveTeacherScope({
       db,
@@ -151,7 +168,7 @@ export default async function handler(req, res) {
       }
 
       const note = toItem(noteSnap);
-      if (!noteBelongsToTeacherScope(note, teacherScope.studentIds, session.profile.matiere || "", teacherScope.studentNames)) {
+      if (!noteBelongsToTeacherScope(note, teacherScope.studentIds, session.profile.matiere || "", teacherScope.studentNames, section)) {
         return res.status(403).json({ error: "Note hors perimetre pour cet enseignant." });
       }
 
@@ -190,7 +207,7 @@ export default async function handler(req, res) {
       }
 
       const existingNote = toItem(noteSnap);
-      if (!noteBelongsToTeacherScope(existingNote, teacherScope.studentIds, session.profile.matiere || "", teacherScope.studentNames)) {
+      if (!noteBelongsToTeacherScope(existingNote, teacherScope.studentIds, session.profile.matiere || "", teacherScope.studentNames, section)) {
         return res.status(403).json({ error: "Note hors perimetre pour cet enseignant." });
       }
 
