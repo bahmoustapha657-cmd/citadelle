@@ -6,10 +6,6 @@ service cloud.firestore {
       return ["plan", "planExpiry", "planActivatedBy", "planActivatedAt", "lastSuccessfulPaymentId"];
     }
 
-    function allowedSchoolRoles() {
-      return ["direction", "admin", "primaire", "college", "comptable", "enseignant", "parent"];
-    }
-
     function tokenRole() {
       return request.auth != null && request.auth.token.role is string
         ? request.auth.token.role
@@ -42,10 +38,6 @@ service cloud.firestore {
       return request.auth != null && [roleUtilisateur()].hasAny(roles);
     }
 
-    function roleScolaireValide(role) {
-      return role is string && [role].hasAny(allowedSchoolRoles());
-    }
-
     function backOfficeRoles() {
       return ["direction", "admin", "primaire", "college", "comptable"];
     }
@@ -57,57 +49,12 @@ service cloud.firestore {
       return ["direction", "primaire", "college", "comptable"];
     }
 
-    function staffRoles() {
-      return ["direction", "admin", "primaire", "college", "comptable", "enseignant"];
-    }
-
     function pedagogieRoles(sectionRole) {
       return ["direction", "admin", sectionRole];
     }
 
     function pedagogieWriteRoles(sectionRole) {
       return ["direction", sectionRole];
-    }
-
-    function compteAllowedKeys() {
-      return [
-        "login",
-        "mdp",
-        "role",
-        "label",
-        "nom",
-        "eleveId",
-        "eleveNom",
-        "eleveClasse",
-        "section",
-        "matiere",
-        "premiereCo",
-        "statut",
-        "createdAt",
-        "updatedAt",
-        "enseignantNom",
-        "uid"
-      ];
-    }
-
-    function compteCreateValide() {
-      return request.resource.data.keys().hasOnly(compteAllowedKeys())
-             && !request.resource.data.keys().hasAny(["uid"])
-             && request.resource.data.login is string
-             && request.resource.data.login.size() >= 3
-             && request.resource.data.login.size() <= 30
-             && request.resource.data.mdp is string
-             && request.resource.data.mdp.size() >= 20
-             && roleScolaireValide(request.resource.data.role);
-    }
-
-    function compteAdminUpdateValide() {
-      return request.resource.data.keys().hasOnly(compteAllowedKeys())
-             && request.resource.data.login == resource.data.login
-             && request.resource.data.uid == resource.data.uid
-             && request.resource.data.mdp is string
-             && request.resource.data.mdp.size() >= 20
-             && roleScolaireValide(request.resource.data.role);
     }
 
     function messageParentValide(schoolId) {
