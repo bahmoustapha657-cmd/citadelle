@@ -320,7 +320,7 @@ export default async function handler(req, res) {
     }
 
     const session = await requireSession(req, res, {
-      roles: ["direction", "admin"],
+      roles: ["direction"],
       schoolId: normalizedSchoolId,
       allowSuperadmin: true,
     });

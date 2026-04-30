@@ -2,7 +2,7 @@ export const ROLE_ORDER = ["direction", "admin", "comptable", "primaire", "colle
 
 export const ROLE_MODULE_CAPABILITIES = {
   superadmin: ["superadmin_panel"],
-  admin: ["accueil", "historique", "admin_panel", "parametres", "fondation", "compta", "primaire", "secondaire", "calendrier", "examens", "messages"],
+  admin: ["accueil", "historique", "admin_panel", "parametres", "compta", "primaire", "secondaire", "calendrier", "examens", "messages"],
   direction: ["accueil", "historique", "admin_panel", "parametres", "fondation", "compta", "primaire", "secondaire", "calendrier", "examens", "messages"],
   primaire: ["primaire", "calendrier", "examens"],
   college: ["secondaire", "calendrier", "examens"],

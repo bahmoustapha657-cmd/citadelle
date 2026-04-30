@@ -39,7 +39,8 @@ const PROMOTION_SUIVANTE = {
   "Premiere A":"Terminale A","Premiere B":"Terminale B","Premiere C":"Terminale C",
 };
 
-function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
+function AdminPanel({annee, setAnnee, verrous={}, schoolId, userRole}) {
+  const peutGererRoles = userRole === "direction" || userRole === "superadmin";
   const {toast, schoolInfo, setSchoolInfo} = useContext(SchoolContext);
   const {items:comptes, chargement} = useFirestore("comptes");
   const [modal, setModal] = useState(null);
@@ -437,9 +438,10 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
 
       <div style={{background:"#e0ebf8",borderRadius:10,padding:"12px 16px",marginBottom:20,fontSize:13,color:C.blueDark}}>
         <strong>🔐 Rôle Administrateur :</strong> Vous pouvez modifier les mots de passe de tous les utilisateurs. Vous avez accès en lecture seule à tous les modules.
+        {!peutGererRoles && <div style={{marginTop:6,fontSize:12,color:"#6b7280"}}>La configuration des rôles et l'accès Fondation sont réservés à la Direction Générale.</div>}
       </div>
 
-      <Card style={{marginBottom:20,padding:"18px 20px"}}>
+      {peutGererRoles && <Card style={{marginBottom:20,padding:"18px 20px"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap",marginBottom:14}}>
           <div>
             <p style={{margin:"0 0 4px",fontWeight:800,fontSize:14,color:C.blueDark}}>Organisation des comptes par école</p>
@@ -495,7 +497,7 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId}) {
             );
           })}
         </div>
-      </Card>
+      </Card>}
 
       {/* Modale mots de passe initiaux — affichée une seule fois */}
       {mdpsInitiaux&&<Modale titre="🔐 Comptes créés — Notez les mots de passe" fermer={null}>
