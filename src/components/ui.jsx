@@ -167,7 +167,7 @@ const LectureSeule=()=>(
 //  UPLOAD FICHIERS COMPONENT
 // ══════════════════════════════════════════════════════════════
 function UploadFichiers({dossier, fichiers=[], onAjouter, onSupprimer, readOnly=false}) {
-  const {toast} = useContext(SchoolContext);
+  const {toast, schoolId} = useContext(SchoolContext);
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef();
 
@@ -175,9 +175,10 @@ function UploadFichiers({dossier, fichiers=[], onAjouter, onSupprimer, readOnly=
     const file = e.target.files[0];
     if (!file) return;
     if (file.size > 5*1024*1024) { toast("Fichier trop grand (max 5MB)","warning"); return; }
+    if (!schoolId) { toast("Session école manquante.","error"); return; }
     setUploading(true);
     try {
-      const url = await uploadFichier(file, `${dossier}/${Date.now()}_${file.name}`);
+      const url = await uploadFichier(file, `ecoles/${schoolId}/${dossier}/${Date.now()}_${file.name}`);
       onAjouter({nom: file.name, url, type: file.type, date: today()});
     } catch(e) {
       toast("Erreur upload: " + e.message,"error");

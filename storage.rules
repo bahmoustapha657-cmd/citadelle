@@ -1,0 +1,85 @@
+rules_version = '2';
+
+// Règles Firebase Storage — isolation stricte par école.
+// Les uploads passent désormais tous par /ecoles/{schoolId}/<type>/<file>.
+// Les anciennes URLs signées (getDownloadURL) restent accessibles via leur
+// token Firebase persistant, indépendamment de ces règles ; ces règles
+// s'appliquent aux requêtes Storage directes (SDK, listing, accès par path).
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function tokenSchoolId() {
+      return request.auth != null && request.auth.token.schoolId is string
+        ? request.auth.token.schoolId
+        : null;
+    }
+
+    function tokenRole() {
+      return request.auth != null && request.auth.token.role is string
+        ? request.auth.token.role
+        : null;
+    }
+
+    function isSuperadmin() {
+      return tokenRole() == "superadmin";
+    }
+
+    function appartientEcole(schoolId) {
+      return tokenSchoolId() == schoolId;
+    }
+
+    function isStaff() {
+      return tokenRole() in ["direction", "admin", "primaire", "college", "comptable", "enseignant"];
+    }
+
+    // Rôles autorisés à uploader (admin retiré : il est lecture seule).
+    function isWriter() {
+      return tokenRole() in ["direction", "primaire", "college", "comptable"];
+    }
+
+    // Chemins isolés par école : /ecoles/{schoolId}/<type>/<fichier>
+    match /ecoles/{schoolId}/{type}/{fileName=**} {
+      // Lecture : tout user authentifié appartenant à l'école + superadmin.
+      // Les parents/enseignants ont besoin de lire les photos d'élève par
+      // exemple. Les rules sont permissives ici car la sensibilité est
+      // protégée par l'isolation school + token.
+      allow read: if (request.auth != null && appartientEcole(schoolId)) || isSuperadmin();
+
+      // Création / mise à jour : staff non-enseignant + limite de taille (5 MB).
+      // Validation du content-type pour bloquer les types exotiques.
+      allow create, update: if
+        ((isWriter() && appartientEcole(schoolId))
+          && request.resource.size < 5 * 1024 * 1024
+          && request.resource.contentType.matches("image/.*|application/pdf|application/msword|application/vnd.openxmlformats-officedocument.*|text/plain"))
+        || isSuperadmin();
+
+      // Suppression : direction de l'école et superadmin uniquement.
+      allow delete: if
+        (tokenRole() == "direction" && appartientEcole(schoolId))
+        || isSuperadmin();
+    }
+
+    // Compat ascendante : anciens chemins à plat (avant 2026-04-30).
+    // Lecture autorisée pour ne pas casser les fichiers déjà référencés.
+    // Aucune nouvelle écriture autorisée — les nouveaux uploads doivent
+    // passer par /ecoles/{schoolId}/.
+    match /enseignants/{fileName=**} {
+      allow read: if request.auth != null || isSuperadmin();
+      allow write: if false;
+    }
+    match /membres/{fileName=**} {
+      allow read: if request.auth != null || isSuperadmin();
+      allow write: if false;
+    }
+    match /documents/{fileName=**} {
+      allow read: if request.auth != null || isSuperadmin();
+      allow write: if false;
+    }
+
+    // Catch-all : refus total pour tout chemin non listé ci-dessus.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

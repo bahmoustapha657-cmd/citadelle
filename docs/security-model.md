@@ -165,12 +165,31 @@ Note : 🔒 sur `notes*` pour enseignant = via `teacher-portal` API, jamais en d
 **Sévérité** : Modérée à élevée.
 **Probabilité** : Faible à moyenne (dépend de la base d'élèves).
 
-### 🟡 F3. Pas de fichier `storage.rules`
+### 🟡 F3. Storage non isolé par école — **Code corrigé 2026-04-30, déploiement en attente**
 
-**Description** : Aucun fichier `storage.rules` dans le repo, pas de section `storage` dans `firebase.json`. Si Firebase Storage est utilisé (uploads photos élèves, logos écoles, bannières), les règles par défaut s'appliquent (souvent permissives ou refusées selon le projet). À vérifier en console Firebase et durcir si nécessaire.
+**Diagnostic 2026-04-30** :
+- Firebase Storage **n'est pas activé** sur le projet `citadelle-school` (vérifié : `firebase deploy --only storage` retourne "Storage has not been set up").
+- Conséquence actuelle : tous les uploads (`uploadFichier`, `uploadPhotoEleve`) **échouent** en production. Les logos/bannières sont stockés en base64 dans Firestore (cf. `ParametresEcole.jsx`) — pas dans Storage.
+- Mais le code Storage existe et est appelé, donc dès que Storage sera activé, le risque devient actif.
 
-**Sévérité** : Modérée à élevée selon usage réel.
-**Action** : audit manuel en console + ajouter `storage.rules` versionné si Storage actif.
+**Findings dans le code** : les chemins n'étaient pas tous isolés par schoolId.
+- ✅ `ecoles/{schoolId}/photos/...` — isolé
+- ❌ `enseignants/{cleEns}/...` — partagé entre toutes les écoles
+- ❌ `membres/...` — partagé
+- ❌ `documents/...` — partagé
+
+**Correctif appliqué (code)** :
+- `UploadFichiers` (ui.jsx) préfixe désormais tous les uploads par `ecoles/{schoolId}/{dossier}/...`.
+- `storage.rules` créé et versionné : isolation stricte par école, taille max 5 MB, content-type validé, écriture refusée à l'admin et à l'enseignant (lecture seule), suppression réservée à direction + superadmin.
+- `firebase.json` configuré pour pointer sur `storage.rules`.
+
+**Action manuelle requise** :
+1. Activer Firebase Storage en console : https://console.firebase.google.com/project/citadelle-school/storage → "Get Started".
+2. Choisir la région (recommandation : `eur3` ou la plus proche des utilisateurs).
+3. Déployer les règles : `firebase deploy --only storage`.
+
+**Sévérité actuelle** : Faible (pas de fichiers à exposer).
+**Sévérité si Storage activé sans nos rules** : Élevée.
 
 ### 🟡 F4. Énumération de logins via `login.js`
 
@@ -221,7 +240,8 @@ Note : 🔒 sur `notes*` pour enseignant = via `teacher-portal` API, jamais en d
 ### Priorité 1 — Cette semaine
 
 - [x] **F1** : Refusé pour secondaire sans matière, primaire reste permissif (titulaire). Tests dans `tests/teacher-portal-scope.test.js`. ✅ 2026-04-30
-- [ ] **F3** : Vérifier en console Firebase si Storage est utilisé. Si oui, écrire `storage.rules` qui restreint par schoolId et rôle, ajouter à `firebase.json`.
+- [x] **F3 (code)** : Chemins isolés par école dans `UploadFichiers`, `storage.rules` versionné, `firebase.json` configuré. ✅ 2026-04-30
+- [ ] **F3 (déploiement)** : Activer Firebase Storage en console + `firebase deploy --only storage`. **Action utilisateur.**
 
 ### Priorité 2 — Ce mois-ci
 
