@@ -309,7 +309,12 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
     return Object.entries(compteur).filter(([n,c])=>c===5&&n!=="Dimanche").map(([n])=>n);
   };
   const calcExecute = (s) => (Number(s.vhPrevu)||0) + (Number(s.cinqSem)||0) - (Number(s.nonExecute)||0);
-  const calcMontant = (s) => calcExecute(s) * (Number(s.primeHoraire)||0);
+  const calcMontant = (s) => {
+    if (s && s.montantBrut !== undefined && s.montantBrut !== null && Number.isFinite(Number(s.montantBrut))) {
+      return Number(s.montantBrut);
+    }
+    return calcExecute(s) * (Number(s.primeHoraire)||0);
+  };
   const calcNet = (s) => calcMontant(s) - (Number(s.bon)||0) + (Number(s.revision)||0);
   const totNetSec = salairesSec.reduce((sum,s)=>sum+calcNet(s),0);
   const totNetPrim = salairesPrim.reduce((sum,s)=>sum+Number(s.montantForfait||0)-(Number(s.bon||0))+(Number(s.revision||0)),0);
@@ -348,11 +353,12 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
       const montant5eme=getTeacherFifthWeekAmount(ens, creneaux, jours5eme, primeDefaut);
       const montantAbsences=getTeacherAbsenceAmount(ens._eng, ens, creneaux, primeDefaut);
       const heuresExecutees=Math.max(0, Math.round(((vhPrevu + cinqSem - absences) || 0) * 10) / 10);
+      const montantBrut=Math.max(0, Math.round((montantHebdo * 4) + montant5eme - montantAbsences));
       const primeHoraire=heuresExecutees>0
-        ? Math.round((((montantHebdo * 4) + montant5eme - montantAbsences) / heuresExecutees))
+        ? Math.round(montantBrut / heuresExecutees)
         : getWeightedPrimeHoraire(ens, creneaux, primeDefaut);
       const obs=buildSecondaireSalaryObservation(ens, creneaux) + (hasPPC ? " • Prime pondérée par classe" : "");
-      const champsCalcules = {section:"Secondaire",mois,nom:nomComplet,matiere:ens.matiere||"",niveau:ens.grade||"",vhHebdo,vhPrevu,cinqSem,nonExecute:absences,primeHoraire,observation:obs};
+      const champsCalcules = {section:"Secondaire",mois,nom:nomComplet,matiere:ens.matiere||"",niveau:ens.grade||"",vhHebdo,vhPrevu,cinqSem,nonExecute:absences,primeHoraire,montantBrut,primesVariables:hasPPC,observation:obs};
       if(existant){
         // Resync : on garde bon et revision saisis manuellement
         await modS({...existant,...champsCalcules,bon:Number(existant.bon||0),revision:Number(existant.revision||0)});
@@ -483,7 +489,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
     ${salairesSec.map((s,i)=>`<tr>
       <td>${i+1}</td><td style="text-align:left">${s.nom}</td><td>${s.matiere||""}</td><td>${s.niveau||""}</td>
       <td>${s.vhHebdo||0}</td><td>${s.vhPrevu||0}</td><td>${s.cinqSem||0}</td><td>${s.nonExecute||0}</td>
-      <td><strong>${calcExecute(s)}</strong></td><td>${fmtN(s.primeHoraire)}</td>
+      <td><strong>${calcExecute(s)}</strong></td><td>${s.primesVariables?"Variable":fmtN(s.primeHoraire)}</td>
       <td>${fmtN(calcMontant(s))}</td><td>${fmtN(s.bon||0)}</td><td>${fmtN(s.revision||0)}</td>
       <td><strong>${fmtN(calcNet(s))}</strong></td><td>${s.observation||""}</td>
     </tr>`).join("")}
@@ -941,7 +947,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                       <td style={{padding:"7px 10px",textAlign:"center",fontSize:12,border:"1px solid #e8f0e8"}}>{s.cinqSem||0}</td>
                       <td style={{padding:"7px 10px",textAlign:"center",fontSize:12,border:"1px solid #e8f0e8"}}>{s.nonExecute||0}</td>
                       <td style={{padding:"7px 10px",textAlign:"center",fontWeight:700,fontSize:12,border:"1px solid #e8f0e8",background:"#f0f8ff"}}>{calcExecute(s)}</td>
-                      <td style={{padding:"7px 10px",textAlign:"right",fontSize:12,border:"1px solid #e8f0e8"}}>{fmtN(s.primeHoraire)}</td>
+                      <td style={{padding:"7px 10px",textAlign:"right",fontSize:12,border:"1px solid #e8f0e8"}} title={s.primesVariables?"Primes par classe — voir observation":""}>{s.primesVariables?<span style={{color:"#9a3412",fontWeight:700,fontSize:11}}>Variable</span>:fmtN(s.primeHoraire)}</td>
                       <td style={{padding:"7px 10px",textAlign:"right",fontSize:12,border:"1px solid #e8f0e8"}}>{fmtN(calcMontant(s))}</td>
                       <td style={{padding:"7px 10px",textAlign:"right",fontSize:12,color:"#b91c1c",border:"1px solid #e8f0e8"}}>{fmtN(s.bon||0)}</td>
                       <td style={{padding:"4px 6px",textAlign:"center",border:"1px solid #e8f0e8",background:"#fffbeb"}}>
@@ -1125,7 +1131,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
           </div>}
           <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
             <Btn v="ghost" onClick={()=>setModal(null)}>Annuler</Btn>
-            <Btn onClick={()=>enreg(ajS,modS,{vhHebdo:Number(form.vhHebdo||0),vhPrevu:Number(form.vhPrevu||0),cinqSem:Number(form.cinqSem||0),nonExecute:Number(form.nonExecute||0),primeHoraire:Number(form.primeHoraire||0),bon:Number(form.bon||0),revision:Number(form.revision||0),montantForfait:Number(form.montantForfait||0)})}>Enregistrer</Btn>
+            <Btn onClick={()=>enreg(ajS,modS,{vhHebdo:Number(form.vhHebdo||0),vhPrevu:Number(form.vhPrevu||0),cinqSem:Number(form.cinqSem||0),nonExecute:Number(form.nonExecute||0),primeHoraire:Number(form.primeHoraire||0),bon:Number(form.bon||0),revision:Number(form.revision||0),montantForfait:Number(form.montantForfait||0),montantBrut:null,primesVariables:false})}>Enregistrer</Btn>
           </div>
         </Modale>}
 

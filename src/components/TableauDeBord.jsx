@@ -83,8 +83,11 @@ function TableauDeBord({annee}) {
   // Masse salariale mois courant
   const salMois = salaires.filter(s=>s.mois===moisActuel);
   const masseSal = salMois.reduce((s,sal)=>{
-    const net = Number(sal.vhExecute||0)*Number(sal.primeHoraire||0)
-      + Number(sal.cinqSem||0)*Number(sal.primeHoraire||0)
+    const baseSec = (sal.montantBrut!==undefined && sal.montantBrut!==null && Number.isFinite(Number(sal.montantBrut)))
+      ? Number(sal.montantBrut)
+      : Number(sal.vhExecute||0)*Number(sal.primeHoraire||0)
+        + Number(sal.cinqSem||0)*Number(sal.primeHoraire||0);
+    const net = baseSec
       + Number(sal.bon||0)
       + Number(sal.revision||0)
       + Number(sal.montantForfait||0);

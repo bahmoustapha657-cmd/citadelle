@@ -177,10 +177,17 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
 
   const imprimerPaies = () => {
     const lignes = salaires.map((salaire) => {
+      const heuresExec = Number(salaire.vhPrevu || 0) + Number(salaire.cinqSem || 0) - Number(salaire.nonExecute || 0);
+      const baseSec = (salaire.montantBrut !== undefined && salaire.montantBrut !== null && Number.isFinite(Number(salaire.montantBrut)))
+        ? Number(salaire.montantBrut)
+        : heuresExec * Number(salaire.primeHoraire || 0);
       const net = salaire.section === "Secondaire"
-        ? ((Number(salaire.vhPrevu || 0) + Number(salaire.cinqSem || 0) - Number(salaire.nonExecute || 0)) * Number(salaire.primeHoraire || 0) - Number(salaire.bon || 0) + Number(salaire.revision || 0))
+        ? (baseSec - Number(salaire.bon || 0) + Number(salaire.revision || 0))
         : (Number(salaire.montantForfait || 0) - Number(salaire.bon || 0) + Number(salaire.revision || 0));
-      return `<tr><td>${salaire.mois}</td><td>${salaire.section}</td><td>${salaire.section === "Secondaire" ? `${(Number(salaire.vhPrevu || 0) + Number(salaire.cinqSem || 0) - Number(salaire.nonExecute || 0))} h x ${(salaire.primeHoraire || 0).toLocaleString("fr-FR")} GNF` : `Forfait ${Number(salaire.montantForfait || 0).toLocaleString("fr-FR")} GNF`}</td><td>${Number(salaire.bon || 0) > 0 ? `-${Number(salaire.bon).toLocaleString("fr-FR")}` : "-"}</td><td>${Number(salaire.revision || 0) > 0 ? `+${Number(salaire.revision).toLocaleString("fr-FR")}` : "-"}</td><td style="font-weight:900;color:#0A1628">${net.toLocaleString("fr-FR")} GNF</td></tr>`;
+      const detailSec = salaire.primesVariables
+        ? `${heuresExec} h - primes variables (voir details ecole)`
+        : `${heuresExec} h x ${(salaire.primeHoraire || 0).toLocaleString("fr-FR")} GNF`;
+      return `<tr><td>${salaire.mois}</td><td>${salaire.section}</td><td>${salaire.section === "Secondaire" ? detailSec : `Forfait ${Number(salaire.montantForfait || 0).toLocaleString("fr-FR")} GNF`}</td><td>${Number(salaire.bon || 0) > 0 ? `-${Number(salaire.bon).toLocaleString("fr-FR")}` : "-"}</td><td>${Number(salaire.revision || 0) > 0 ? `+${Number(salaire.revision).toLocaleString("fr-FR")}` : "-"}</td><td style="font-weight:900;color:#0A1628">${net.toLocaleString("fr-FR")} GNF</td></tr>`;
     }).join("");
     const w = window.open("", "_blank");
     w.document.write(`<!DOCTYPE html><html><head><title>Paies - ${nomEns}</title><style>body{font-family:Arial,sans-serif;padding:24px;font-size:13px}h2{color:#0A1628}table{width:100%;border-collapse:collapse;margin-top:16px}th{background:#0A1628;color:#fff;padding:8px 10px}td{padding:8px 10px;border-bottom:1px solid #e5e7eb}@media print{button{display:none}}</style></head><body><h2>${schoolInfo.nom || "Ecole"} - Fiches de paie</h2><p>${nomEns} - ${matiere || "Enseignant"} - Annee ${annee}</p><table><tr><th>Mois</th><th>Section</th><th>Detail</th><th>Bon</th><th>Revision</th><th>Net a payer</th></tr>${lignes}</table><br/><button onclick="window.print()">Imprimer</button></body></html>`);
@@ -478,8 +485,12 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
                 ) : (
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))", gap: 12 }}>
                     {salaires.map((salaire) => {
+                      const heuresExec = Number(salaire.vhPrevu || 0) + Number(salaire.cinqSem || 0) - Number(salaire.nonExecute || 0);
+                      const baseSec = (salaire.montantBrut !== undefined && salaire.montantBrut !== null && Number.isFinite(Number(salaire.montantBrut)))
+                        ? Number(salaire.montantBrut)
+                        : heuresExec * Number(salaire.primeHoraire || 0);
                       const net = salaire.section === "Secondaire"
-                        ? ((Number(salaire.vhPrevu || 0) + Number(salaire.cinqSem || 0) - Number(salaire.nonExecute || 0)) * Number(salaire.primeHoraire || 0) - Number(salaire.bon || 0) + Number(salaire.revision || 0))
+                        ? (baseSec - Number(salaire.bon || 0) + Number(salaire.revision || 0))
                         : (Number(salaire.montantForfait || 0) - Number(salaire.bon || 0) + Number(salaire.revision || 0));
                       return (
                         <Card key={salaire._id} style={{ padding: 0 }}>
@@ -496,8 +507,14 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
                                 </div>
                                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 6 }}>
                                   <span style={{ color: "#64748b" }}>Prime horaire</span>
-                                  <strong>{Number(salaire.primeHoraire || 0).toLocaleString("fr-FR")} GNF</strong>
+                                  <strong>{salaire.primesVariables ? "Variable" : `${Number(salaire.primeHoraire || 0).toLocaleString("fr-FR")} GNF`}</strong>
                                 </div>
+                                {salaire.primesVariables && (
+                                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 6 }}>
+                                    <span style={{ color: "#64748b" }}>Montant brut</span>
+                                    <strong>{Number(salaire.montantBrut || 0).toLocaleString("fr-FR")} GNF</strong>
+                                  </div>
+                                )}
                               </>
                             ) : (
                               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 6, paddingBottom: 6, borderBottom: "1px solid #f1f5f9" }}>

@@ -1617,6 +1617,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
               <Btn v="ghost" onClick={()=>setEdtCellule(null)}>Annuler</Btn>
               <Btn onClick={()=>{
                 if(!form.matiere){toast("Choisissez une matière.","warning");return;}
+                if(!form.enseignant){toast("Choisissez un enseignant.","warning");return;}
                 const typeCreneaux=form.type||"cours";
                 const data={
                   classe:form.classe||classeEdtActuelle,
