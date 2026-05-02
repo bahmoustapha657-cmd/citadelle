@@ -9,19 +9,29 @@ const loadQRCode = async () => (await import("qrcode")).default;
 //  IMPRESSION / EXPORT  — fonctions pures (pas de React)
 // ══════════════════════════════════════════════════════════════
 
+// Supprime les en-têtes / pieds automatiques du navigateur ("about:blank",
+// URL, date, n° de page). Doit être présent dans chaque <style> de doc
+// imprimable. La compensation des marges se fait via padding sur le contenu.
+export const PRINT_RESET = `@page{size:A4 portrait;margin:0}@media print{html,body{margin:0}}`;
+
+// Devise nationale de la République de Guinée aux couleurs du drapeau
+// (rouge / jaune / vert).
+const DEVISE_GUINEE_HTML = `<em style="-webkit-print-color-adjust:exact;print-color-adjust:exact"><span style="color:#CE1126;font-weight:700">Travail</span> - <span style="color:#B8860B;font-weight:700">Justice</span> - <span style="color:#009460;font-weight:700">Solidarité</span></em>`;
+
+export const MINISTERE_DEFAUT = "Ministère de l'Éducation Nationale, de l'Alphabétisation, de l'Enseignement Technique et de la Formation Professionnelle";
+
 export const enteteDoc = (si, logoUrl) => `
 <div style="display:flex;align-items:center;gap:16px;border-bottom:3px solid #0A1628;padding-bottom:12px;margin-bottom:16px">
   ${logoUrl?`<img src="${logoUrl}" alt="Logo" style="width:75px;height:75px;object-fit:contain;flex-shrink:0"/>`:`<div style="width:75px;height:75px;flex-shrink:0"></div>`}
   <div style="flex:1;display:flex;justify-content:space-between;align-items:flex-start">
     <div style="font-size:10px;color:#444;line-height:1.8">
       <strong style="font-size:11px;color:#0A1628">${si.pays||"République de Guinée"}</strong><br/>
-      <em>Travail - Justice - Solidarité</em><br/>
-      ${si.ministere?`<strong>${si.ministere}</strong><br/>`:""}
+      ${DEVISE_GUINEE_HTML}<br/>
+      <strong>${si.ministere||MINISTERE_DEFAUT}</strong><br/>
       ${si.ire?`${si.ire}<br/>`:""}
       ${si.dpe||""}
     </div>
     <div style="text-align:right">
-      <strong style="display:block;font-size:13px;color:#0A1628">${si.type||""}</strong>
       <strong style="display:block;font-size:15px;color:#0A1628">${si.nom||""}</strong>
       ${si.agrement?`<span style="font-size:10px;color:#555">Agrément : ${si.agrement}</span>`:""}
     </div>
@@ -52,8 +62,9 @@ export const imprimerRecu = (eleve, montantUnit, schoolInfo={}, moisAnnee=MOIS_A
     ${schoolInfo.logo?`<img src="${schoolInfo.logo}" alt="" style="width:38px;height:38px;object-fit:contain;flex-shrink:0"/>`:''}
     <div style="flex:1;display:flex;justify-content:space-between;align-items:center">
       <div style="font-size:8px;color:#444;line-height:1.5">
-        <strong style="font-size:9px;color:#0A1628">${schoolInfo.pays||"Guinée"}</strong><br/>
-        ${schoolInfo.ministere?`${schoolInfo.ministere} / `:""}${schoolInfo.ire||""}${schoolInfo.dpe?` / ${schoolInfo.dpe}`:""}
+        <strong style="font-size:9px;color:#0A1628">${schoolInfo.pays||"République de Guinée"}</strong><br/>
+        ${DEVISE_GUINEE_HTML}<br/>
+        ${schoolInfo.ministere||MINISTERE_DEFAUT}${schoolInfo.ire?` / ${schoolInfo.ire}`:""}${schoolInfo.dpe?` / ${schoolInfo.dpe}`:""}
       </div>
       <div style="text-align:right">
         <strong style="font-size:13px;color:#0A1628;display:block">${schoolInfo.nom||""}</strong>
@@ -111,9 +122,9 @@ export const imprimerRecu = (eleve, montantUnit, schoolInfo={}, moisAnnee=MOIS_A
   w.document.write(`<!DOCTYPE html><html><head><title>Reçu</title>
   <meta charset="utf-8"/>
   <style>
-    @page{size:A4 portrait;margin:6mm}
+    ${PRINT_RESET}
     *{box-sizing:border-box}
-    body{font-family:Arial,sans-serif;margin:0;padding:0;background:#fff;
+    body{font-family:Arial,sans-serif;margin:0;padding:6mm;background:#fff;
          height:282mm;display:flex;flex-direction:column;gap:3mm}
     .recu{flex:1;padding:8px 12px;border:1px solid #bbb;border-radius:3px;display:flex;flex-direction:column;position:relative}
     .watermark{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:0}
@@ -224,9 +235,9 @@ export const imprimerCartesEleves = async (eleves, schoolInfo={}, annee="") => {
   <title>Cartes d'identité scolaires — ${nomEcole}</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
-    @page{size:A4 portrait;margin:8mm}
+    ${PRINT_RESET}
     *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
-    body{font-family:'Inter',Arial,sans-serif;background:#f0f0f0;padding:4mm}
+    body{font-family:'Inter',Arial,sans-serif;background:#f0f0f0;padding:8mm}
 
     .grille{display:grid;grid-template-columns:repeat(2,86mm);gap:5mm;justify-content:center}
 
@@ -344,7 +355,8 @@ export const imprimerListeClasse = (classe, eleves, schoolInfo={}) => {
   const liste = eleves.filter(e=>e.classe===classe);
   const w = window.open("","_blank");
   w.document.write(`<!DOCTYPE html><html><head><title>Liste ${classe}</title>
-  <style>body{font-family:Arial,sans-serif;padding:30px;font-size:12px}
+  <style>${PRINT_RESET}
+  body{font-family:Arial,sans-serif;padding:14mm 12mm;font-size:12px;margin:0}
   h2{color:#0A1628;text-align:center}table{width:100%;border-collapse:collapse;margin-top:12px}
   th{background:#0A1628;color:#fff;padding:7px 10px;font-size:11px;text-align:left}
   td{padding:7px 10px;border-bottom:1px solid #eee}tr:nth-child(even){background:#f0f4f8}
@@ -417,9 +429,9 @@ export const genererRapportMensuel = (mois, eleves, absences, annee, schoolInfo=
   <title>Rapport Mensuel ${mois} ${annee} — ${nomEcole}</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
-    @page{size:A4 portrait;margin:15mm 12mm}
+    ${PRINT_RESET}
     *{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
-    body{font-family:'Inter',Arial,sans-serif;color:#1e293b;font-size:11px;line-height:1.5;background:#fff}
+    body{font-family:'Inter',Arial,sans-serif;color:#1e293b;font-size:11px;line-height:1.5;background:#fff;padding:15mm 12mm}
 
     /* En-tête */
     .header{display:flex;align-items:center;gap:14px;padding-bottom:10px;border-bottom:3px solid ${c1};margin-bottom:16px}
@@ -569,7 +581,8 @@ export const imprimerAttestation = (eleve, niveau, annee, schoolInfo={}) => {
   const niveauLabel = niveau === "college" ? "Collège" : "Primaire";
   const w = window.open("","_blank");
   w.document.write(`<!DOCTYPE html><html><head><title>Attestation ${eleve.nom}</title>
-  <style>body{font-family:Arial,sans-serif;padding:40px;font-size:13px;max-width:700px;margin:0 auto}
+  <style>${PRINT_RESET}
+  body{font-family:Arial,sans-serif;padding:18mm 14mm;font-size:13px;max-width:700px;margin:0 auto}
   h2{color:#0A1628;text-align:center;font-size:18px;text-transform:uppercase;letter-spacing:2px;margin:24px 0}
   .body-txt{line-height:2;font-size:14px;text-align:justify;margin:20px 0}
   .infos{background:#f0f4f8;padding:16px;border-radius:8px;margin:16px 0;border-left:4px solid #0A1628}
@@ -793,7 +806,6 @@ function buildBulletinPageHTML({
           <div style="font-size:14px;font-weight:800;color:${c1};margin-bottom:2px">${eleve.nom || ""} ${eleve.prenom || ""}</div>
           <div><strong>Classe :</strong> ${eleve.classe || "—"} &nbsp;·&nbsp; <strong>Matricule :</strong> ${eleve.matricule || "—"}</div>
           <div><strong>Né(e) le :</strong> ${eleve.dateNaissance || "—"}${eleve.lieuNaissance ? ` à ${eleve.lieuNaissance}` : ""}</div>
-          <div><strong>Tuteur :</strong> ${eleve.tuteur || "—"}</div>
         </div>
       </div>
 
@@ -863,8 +875,9 @@ function buildBulletinPageHTML({
 
 function getBulletinStyles() {
   return `
+    ${PRINT_RESET}
     body{font-family:Arial,sans-serif;padding:0;margin:0;font-size:11px;color:#1f2937}
-    .page{padding:24px 26px;page-break-after:always;box-sizing:border-box}
+    .page{padding:14mm 12mm;page-break-after:always;box-sizing:border-box}
     .page:last-child{page-break-after:auto}
     table{width:100%;border-collapse:collapse;margin-top:4px}
     th{color:#fff;padding:7px 9px;font-size:10.5px;text-align:left;border:1px solid rgba(0,0,0,0.05)}
@@ -1014,7 +1027,8 @@ export const imprimerFicheCompositions = (classe, periode, notes, matieres, elev
   w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/>
   <title>Fiche Compositions — ${periode}</title>
   <style>
-    body{font-family:Arial,sans-serif;padding:24px;font-size:12px;color:#1a1a1a}
+    ${PRINT_RESET}
+    body{font-family:Arial,sans-serif;padding:14mm 12mm;font-size:12px;color:#1a1a1a;margin:0}
     h2{color:#0A1628;text-align:center;margin:10px 0 4px;font-size:16px}
     h3{text-align:center;margin:0 0 14px;font-size:13px;color:#555;font-weight:normal}
     table{width:100%;border-collapse:collapse;margin-top:10px;font-size:11px}
@@ -1080,8 +1094,8 @@ export const imprimerOrdreMutation = (eleve, schoolInfo={}, ecoleDestination="",
   w.document.write(`<!DOCTYPE html><html><head><title>Ordre de mutation</title>
   <meta charset="utf-8"/>
   <style>
-    @page{size:A4 portrait;margin:18mm}
-    body{font-family:Arial,sans-serif;color:#111;font-size:12px}
+    ${PRINT_RESET}
+    body{font-family:Arial,sans-serif;color:#111;font-size:12px;padding:18mm}
     .entete{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;border-bottom:2px solid #0A1628;padding-bottom:12px}
     .entete-col{flex:1;font-size:10px;line-height:1.7}
     h1{text-align:center;font-size:16px;text-transform:uppercase;letter-spacing:2px;color:#0A1628;margin:20px 0 8px;text-decoration:underline}
@@ -1096,7 +1110,7 @@ export const imprimerOrdreMutation = (eleve, schoolInfo={}, ecoleDestination="",
   <div class="entete">
     <div class="entete-col">
       <strong>${schoolInfo.pays||"République de Guinée"}</strong><br/>
-      ${schoolInfo.ministere||"Ministère de l'Éducation"}<br/>
+      ${schoolInfo.ministere||MINISTERE_DEFAUT}<br/>
       ${schoolInfo.ire||""} ${schoolInfo.dpe?`/ ${schoolInfo.dpe}`:""}
     </div>
     ${schoolInfo.logo?`<img src="${schoolInfo.logo}" style="height:55px;object-fit:contain"/>`:""}
@@ -1141,8 +1155,8 @@ export const imprimerCertificatRadiation = (eleve, schoolInfo={}, annee="", sold
   w.document.write(`<!DOCTYPE html><html><head><title>Certificat de radiation</title>
   <meta charset="utf-8"/>
   <style>
-    @page{size:A4 portrait;margin:20mm}
-    body{font-family:Arial,sans-serif;color:#111;font-size:12px}
+    ${PRINT_RESET}
+    body{font-family:Arial,sans-serif;color:#111;font-size:12px;padding:20mm}
     .entete{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #0A1628;padding-bottom:12px;margin-bottom:20px}
     .entete-col{flex:1;font-size:10px;line-height:1.7}
     h1{text-align:center;font-size:15px;text-transform:uppercase;letter-spacing:1.5px;color:#0A1628;margin:16px 0;text-decoration:underline}
@@ -1155,7 +1169,7 @@ export const imprimerCertificatRadiation = (eleve, schoolInfo={}, annee="", sold
   <div class="entete">
     <div class="entete-col">
       <strong>${schoolInfo.pays||"République de Guinée"}</strong><br/>
-      ${schoolInfo.ministere||"Ministère de l'Éducation"}<br/>
+      ${schoolInfo.ministere||MINISTERE_DEFAUT}<br/>
       ${schoolInfo.ire||""} ${schoolInfo.dpe?`/ ${schoolInfo.dpe}`:""}
     </div>
     ${schoolInfo.logo?`<img src="${schoolInfo.logo}" style="height:55px;object-fit:contain"/>`:""}
@@ -1248,9 +1262,9 @@ export const imprimerLivret = (livret, schoolInfo={}) => {
   w.document.write(`<!DOCTYPE html><html><head><title>Livret scolaire — ${livret.eleveNom||""}</title>
   <meta charset="utf-8"/>
   <style>
-    @page{size:A4 portrait;margin:12mm}
+    ${PRINT_RESET}
     *{box-sizing:border-box}
-    body{font-family:Arial,sans-serif;color:#111;font-size:11px;margin:0}
+    body{font-family:Arial,sans-serif;color:#111;font-size:11px;margin:0;padding:12mm}
     .couverture{display:flex;flex-direction:column;align-items:center;justify-content:center;height:250mm;text-align:center;border:3px solid ${c1};padding:30px;page-break-after:always}
     .couv-school{font-size:11px;color:#444;margin-bottom:4px}
     .couv-titre{font-size:22px;font-weight:900;color:${c1};text-transform:uppercase;letter-spacing:3px;margin:16px 0 8px}
@@ -1272,7 +1286,7 @@ export const imprimerLivret = (livret, schoolInfo={}) => {
   </style></head><body>
   <!-- COUVERTURE -->
   <div class="couverture">
-    <div class="couv-school">${schoolInfo.pays||"République de Guinée"} · ${schoolInfo.ministere||"Ministère de l'Éducation"}</div>
+    <div class="couv-school">${schoolInfo.pays||"République de Guinée"} · ${schoolInfo.ministere||MINISTERE_DEFAUT}</div>
     ${schoolInfo.logo?`<img src="${schoolInfo.logo}" style="height:50px;margin-bottom:8px"/>`:""}
     <div style="font-size:13px;font-weight:700;color:#111">${schoolInfo.nom||""}</div>
     <div style="font-size:10px;color:#6b7280;margin-bottom:12px">${schoolInfo.agrement?`Agrém. ${schoolInfo.agrement}`:""}</div>

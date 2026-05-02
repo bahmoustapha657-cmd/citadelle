@@ -35,10 +35,11 @@ function GestionExamens() {
     <title>Convocations — ${exam.titre}</title>
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
-      @page{size:A5 portrait;margin:10mm}
+      @page{size:A5 portrait;margin:0}
+      @media print{html,body{margin:0}}
       *{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
-      body{font-family:'Inter',Arial,sans-serif;background:#fff;margin:0}
-      .convoc{width:148mm;min-height:105mm;border:2px solid ${c1p};border-radius:6mm;padding:7mm;page-break-after:always;page-break-inside:avoid;display:flex;flex-direction:column;gap:4mm}
+      body{font-family:'Inter',Arial,sans-serif;background:#fff;margin:0;padding:5mm}
+      .convoc{width:138mm;min-height:95mm;border:2px solid ${c1p};border-radius:6mm;padding:7mm;page-break-after:always;page-break-inside:avoid;display:flex;flex-direction:column;gap:4mm}
       .convoc:last-child{page-break-after:auto}
       .header{display:flex;align-items:center;gap:5mm;border-bottom:2px solid ${c2p};padding-bottom:4mm}
       .logo{width:14mm;height:14mm;object-fit:contain}

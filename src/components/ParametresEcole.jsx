@@ -624,8 +624,8 @@ function ParametresEcole({ utilisateurRole = "", onSchoolClosed = null }) {
         <h3 style={{margin:"0 0 16px",fontSize:14,fontWeight:800,color:C.blueDark}}>🏛️ Informations officielles</h3>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
           <div>
-            <label style={lbl}>Ministère (abrégé)</label>
-            <input style={inp} value={form.ministere} onChange={chg("ministere")} placeholder="Ex. : MEPU-FP"/>
+            <label style={lbl}>Ministère</label>
+            <input style={inp} value={form.ministere} onChange={chg("ministere")} placeholder="Ex. : Ministère de l'Enseignement Pré-Universitaire et de l'Éducation Civique"/>
           </div>
           <div>
             <label style={lbl}>N° Agrément</label>

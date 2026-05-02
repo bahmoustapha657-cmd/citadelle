@@ -468,7 +468,8 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
     if(moisSel==="__TOUS__"){toast("Sélectionnez un mois précis pour imprimer.","warning");return;}
     const w = window.open("","_blank");
     w.document.write(`<!DOCTYPE html><html><head><title>États Salaires ${moisSel}</title>
-    <style>body{font-family:Arial,sans-serif;padding:20px;font-size:11px}
+    <style>@page{size:A4 portrait;margin:0}@media print{html,body{margin:0}button{display:none}}
+    body{font-family:Arial,sans-serif;padding:12mm 10mm;font-size:11px;margin:0}
     .titre{text-align:center;font-size:13px;font-weight:bold;margin-bottom:4px;color:#0A1628}
     .sous-titre{text-align:center;font-size:11px;margin-bottom:12px}
     table{width:100%;border-collapse:collapse;margin-bottom:16px}

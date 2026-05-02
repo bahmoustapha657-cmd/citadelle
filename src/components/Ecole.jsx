@@ -1345,8 +1345,8 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
           }).join("");
           const w=window.open("","_blank");
           w.document.write("<!DOCTYPE html><html><head><meta charset='UTF-8'><title>EDT "+classeEdtActuelle+"</title>"
-            +"<style>body{font-family:Arial,sans-serif;padding:30px;font-size:12px}h2{color:#0A1628;text-align:center;margin-bottom:12px}"
-            +"table{width:100%;border-collapse:collapse}@media print{body{padding:10px}}</style></head><body>"
+            +"<style>@page{size:A4 portrait;margin:0}@media print{html,body{margin:0}}body{font-family:Arial,sans-serif;padding:14mm 12mm;font-size:12px;margin:0}h2{color:#0A1628;text-align:center;margin-bottom:12px}"
+            +"table{width:100%;border-collapse:collapse}</style></head><body>"
             +enteteDoc(schoolInfo,schoolInfo.logo)
             +"<h2>Emploi du temps — "+classeEdtActuelle+"</h2>"
             +"<table><thead><tr><th style='background:#0A1628;color:#fff;padding:8px 10px;font-size:11px;width:80px'>Horaire</th>"+ths+"</tr></thead>"
@@ -1426,10 +1426,10 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
             }
           });
           return "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>EDT G\u00e9n\u00e9ral</title>"
-            +"<style>body{font-family:Arial,sans-serif;padding:15px;font-size:11px;color:#0A1628}"
+            +"<style>@page{size:A4 portrait;margin:0}@media print{html,body{margin:0}.no-print{display:none}}"
+            +"body{font-family:Arial,sans-serif;padding:10mm;font-size:11px;color:#0A1628;margin:0}"
             +"h2{text-align:center;font-size:14px;margin-bottom:10px}"
-            +"table{width:100%;border-collapse:collapse}"
-            +"@media print{.no-print{display:none}body{padding:8px}}</style></head><body>"
+            +"table{width:100%;border-collapse:collapse}</style></head><body>"
             +enteteDoc(schoolInfo,schoolInfo.logo)
             +"<h2>Emploi du Temps G\u00e9n\u00e9ral</h2>"
             +"<div style='text-align:center;margin:-2px 0 12px'>"
@@ -1767,7 +1767,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
             const w=window.open("","_blank");
             // Génération groupée en ouvrant plusieurs onglets n'est pas idéale ; on imprime la liste
             const rows=elevesAtt.map(e=>`<tr><td>${e.matricule||"—"}</td><td>${e.nom} ${e.prenom}</td><td>${e.classe}</td><td>${e.dateNaissance||"—"}</td><td>${e.lieuNaissance||"—"}</td></tr>`).join("");
-            w.document.write(`<!DOCTYPE html><html><head><title>Attestations — ${filtreClasse==="all"?"Toutes classes":filtreClasse}</title><style>body{font-family:Arial,sans-serif;padding:24px}h2{color:#0A1628;text-align:center}table{width:100%;border-collapse:collapse;margin-top:16px}th{background:#0A1628;color:#fff;padding:8px}td{padding:7px 8px;border-bottom:1px solid #e5e7eb}@media print{button{display:none}}</style></head><body><h2>${schoolInfo.nom||"École"} — Registre des attestations</h2><p style="text-align:center">${filtreClasse==="all"?"Toutes classes":filtreClasse} · Année ${annee}</p><table><tr><th>Matricule</th><th>Nom & Prénom</th><th>Classe</th><th>Date naissance</th><th>Lieu naissance</th></tr>${rows}</table><br/><button onclick="window.print()">🖨️ Imprimer la liste</button></body></html>`);
+            w.document.write(`<!DOCTYPE html><html><head><title>Attestations — ${filtreClasse==="all"?"Toutes classes":filtreClasse}</title><style>@page{size:A4 portrait;margin:0}@media print{html,body{margin:0}button{display:none}}body{font-family:Arial,sans-serif;padding:14mm 12mm;margin:0}h2{color:#0A1628;text-align:center}table{width:100%;border-collapse:collapse;margin-top:16px}th{background:#0A1628;color:#fff;padding:8px}td{padding:7px 8px;border-bottom:1px solid #e5e7eb}</style></head><body><h2>${schoolInfo.nom||"École"} — Registre des attestations</h2><p style="text-align:center">${filtreClasse==="all"?"Toutes classes":filtreClasse} · Année ${annee}</p><table><tr><th>Matricule</th><th>Nom & Prénom</th><th>Classe</th><th>Date naissance</th><th>Lieu naissance</th></tr>${rows}</table><br/><button onclick="window.print()">🖨️ Imprimer la liste</button></body></html>`);
             w.document.close();
           }}>📋 Liste en lot</Btn>
         </div>
