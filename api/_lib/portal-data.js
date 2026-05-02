@@ -45,13 +45,26 @@ export function getSectionCollections(section = "") {
   return SECTION_COLLECTIONS[normalizeSection(section)];
 }
 
+// Retire un éventuel suffixe legacy "(Matière)" en fin de nom.
+// Avant le 2026-04, l'EDT stockait l'enseignant sous la forme
+// "Prénom Nom (Mathématiques)". Maintenant on stocke juste "Prénom Nom",
+// mais des données antérieures persistent — ce strip permet au portail
+// enseignant de retrouver SES créneaux dans les deux formats.
+function stripLegacyTeacherSuffix(value = "") {
+  return String(value || "").replace(/\s*\([^)]*\)\s*$/, "").trim();
+}
+
 export function getTeacherAliases(profile = {}) {
   return uniqueStrings([profile.enseignantNom, profile.nom]);
 }
 
 export function matchesTeacherAlias(value = "", aliases = []) {
-  const normalizedValue = normalizeText(value);
-  return aliases.some((alias) => normalizedValue && normalizedValue === normalizeText(alias));
+  const normalizedValue = normalizeText(stripLegacyTeacherSuffix(value));
+  if (!normalizedValue) return false;
+  return aliases.some((alias) => {
+    const normalizedAlias = normalizeText(stripLegacyTeacherSuffix(alias));
+    return normalizedAlias && normalizedAlias === normalizedValue;
+  });
 }
 
 export function matchesStudentLink(student = {}, link = {}, section = "") {
