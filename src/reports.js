@@ -607,157 +607,351 @@ export const imprimerAttestation = (eleve, niveau, annee, schoolInfo={}) => {
   w.document.close();
 };
 
-export const imprimerBulletin = (eleve, notes, matieres, periode, niveau, maxNote=20, schoolInfo={}) => {
-  const notesEleve = notes.filter(n=>n.eleveId===eleve._id && n.periode===periode);
-  const lignes = matieres.map(mat => {
-    const noteMat = notesEleve.filter(n=>n.matiere===mat.nom);
+// ══════════════════════════════════════════════════════════════
+//  BULLETINS — version 2 (refonte 2026-05-02)
+// ══════════════════════════════════════════════════════════════
+
+const PERIODES_ORDRE = ["T1", "T2", "T3"];
+
+function getMention(moy, maxNote) {
+  if (moy === "—" || moy == null || moy === "") return "Non évalué";
+  const v = Number(moy);
+  if (!Number.isFinite(v)) return "Non évalué";
+  if (v >= maxNote * 0.8) return "Très Bien";
+  if (v >= maxNote * 0.7) return "Bien";
+  if (v >= maxNote * 0.6) return "Assez Bien";
+  if (v >= maxNote * 0.5) return "Passable";
+  return "Insuffisant";
+}
+
+function getMentionColors(mention) {
+  switch (mention) {
+    case "Très Bien":  return { bg: "#dcfce7", color: "#166534", border: "#86efac" };
+    case "Bien":       return { bg: "#dbeafe", color: "#1e40af", border: "#93c5fd" };
+    case "Assez Bien": return { bg: "#fef3c7", color: "#92400e", border: "#fcd34d" };
+    case "Passable":   return { bg: "#e0f2fe", color: "#0369a1", border: "#7dd3fc" };
+    case "Insuffisant":return { bg: "#fee2e2", color: "#991b1b", border: "#fca5a5" };
+    default:           return { bg: "#f3f4f6", color: "#6b7280", border: "#d1d5db" };
+  }
+}
+
+function getInitiales(eleve = {}) {
+  const p = (eleve.prenom || "").trim()[0] || "";
+  const n = (eleve.nom || "").trim()[0] || "";
+  return (p + n).toUpperCase() || "•";
+}
+
+function getNumeroBulletin(eleve, periode, schoolInfo, annee) {
+  const code = String(schoolInfo.nom || "ECO").replace(/[^a-zA-Z]/g, "").slice(0, 3).toUpperCase() || "ECO";
+  const an = String(annee || getAnnee()).split("-")[0].slice(-2);
+  const per = String(periode).replace(/[^A-Z0-9]/gi, "").toUpperCase();
+  const ref = eleve.matricule || (String(eleve._id || "").slice(-6).toUpperCase());
+  return `BUL-${code}-${an}-${per}-${ref}`;
+}
+
+function ordinalFr(rang) {
+  return rang === 1 ? "er" : "e";
+}
+
+function getStatsClasse(elevesClasse, notes, matieres, periode, classe, niveau) {
+  const moyennes = elevesClasse
+    .map((e) => {
+      const notesE = notes.filter((n) => n.eleveId === e._id && n.periode === periode);
+      return getGeneralAverage(notesE, matieres, classe, niveau);
+    })
+    .filter((v) => v != null);
+  if (moyennes.length === 0) return null;
+  const sum = moyennes.reduce((s, v) => s + v, 0);
+  return {
+    effectif: elevesClasse.length,
+    nbEvalues: moyennes.length,
+    moyenneClasse: sum / moyennes.length,
+    min: Math.min(...moyennes),
+    max: Math.max(...moyennes),
+  };
+}
+
+function getMoyenneClasseParMatiere(elevesClasse, notes, matiereNom, periode, classe, niveau) {
+  const moyennes = elevesClasse
+    .map((e) => {
+      const nm = notes.filter((n) => n.eleveId === e._id && n.periode === periode && n.matiere === matiereNom);
+      return getSubjectAverage(nm, classe, niveau);
+    })
+    .filter((v) => v != null);
+  return moyennes.length ? moyennes.reduce((s, v) => s + v, 0) / moyennes.length : null;
+}
+
+function getRangEleve(eleve, elevesClasse, notes, matieres, periode, classe, niveau) {
+  const avecMoy = elevesClasse
+    .map((e) => {
+      const notesE = notes.filter((n) => n.eleveId === e._id && n.periode === periode);
+      return { id: e._id, moy: getGeneralAverage(notesE, matieres, classe, niveau) };
+    })
+    .filter((x) => x.moy != null);
+  if (avecMoy.length === 0) return null;
+  avecMoy.sort((a, b) => b.moy - a.moy);
+  let rang = 1;
+  for (let i = 0; i < avecMoy.length; i++) {
+    if (i > 0 && avecMoy[i].moy < avecMoy[i - 1].moy) rang = i + 1;
+    if (avecMoy[i].id === eleve._id) return { rang, effectif: avecMoy.length };
+  }
+  return null;
+}
+
+function getEvolutionPeriode(eleve, allNotes, matieres, classe, niveau, periodeActuelle) {
+  const idx = PERIODES_ORDRE.indexOf(periodeActuelle);
+  if (idx <= 0) return null;
+  const periodePrec = PERIODES_ORDRE[idx - 1];
+  const notesActu = allNotes.filter((n) => n.eleveId === eleve._id && n.periode === periodeActuelle);
+  const notesPrec = allNotes.filter((n) => n.eleveId === eleve._id && n.periode === periodePrec);
+  const moyActu = getGeneralAverage(notesActu, matieres, classe, niveau);
+  const moyPrec = getGeneralAverage(notesPrec, matieres, classe, niveau);
+  if (moyActu == null || moyPrec == null) return null;
+  return { periodePrec, moyPrec, moyActu, ecart: moyActu - moyPrec };
+}
+
+function buildBulletinPageHTML({
+  eleve,
+  notes,
+  matieres,
+  periode,
+  niveau,
+  maxNote,
+  schoolInfo,
+  rang = null,
+  evolution = null,
+  classStats = null,
+  matiereClasseAvg = {},
+  appreciation = "",
+}) {
+  const c1 = schoolInfo.couleur1 || "#0A1628";
+  const c2 = schoolInfo.couleur2 || "#00C48C";
+  const annee = getAnnee();
+
+  const notesEleve = notes.filter((n) => n.eleveId === eleve._id && n.periode === periode);
+  const lignes = matieres.map((mat) => {
+    const noteMat = notesEleve.filter((n) => n.matiere === mat.nom);
     const moyenneMatiere = getSubjectAverage(noteMat, eleve.classe, niveau);
     const moy = moyenneMatiere != null ? moyenneMatiere.toFixed(2) : "—";
-    const coef = mat.coefficient||1;
-    return {mat: mat.nom, coef, moy};
+    return { mat: mat.nom, coef: mat.coefficient || 1, moy, moyClasse: matiereClasseAvg[mat.nom] };
   });
-  const totalCoef = matieres.reduce((sum, mat) => sum + Number(mat.coefficient||1), 0);
+  const totalCoef = matieres.reduce((s, mat) => s + Number(mat.coefficient || 1), 0);
   const moyenneGenerale = getGeneralAverage(notesEleve, matieres, eleve.classe, niveau);
   const moyGene = moyenneGenerale != null ? moyenneGenerale.toFixed(2) : "—";
-  const mi = maxNote/2; // seuil de passage (10/20 ou 5/10)
-  const apprec = (v) => v==="—"?"Non évalué":Number(v)>=(maxNote*0.8)?"Très Bien":Number(v)>=(maxNote*0.7)?"Bien":Number(v)>=(maxNote*0.6)?"Assez Bien":Number(v)>=mi?"Passable":"Insuffisant";
-  const mention = apprec(moyGene);
+  const mention = getMention(moyGene, maxNote);
+  const ms = getMentionColors(mention);
+  const numero = getNumeroBulletin(eleve, periode, schoolInfo, annee);
 
-  const w = window.open("","_blank");
-  w.document.write(`<!DOCTYPE html><html><head><title>Bulletin ${eleve.nom}</title>
-  <style>body{font-family:Arial,sans-serif;padding:30px;font-size:12px}
-  h2{color:#0A1628;text-align:center;margin:8px 0}.info{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px 20px;margin-bottom:14px;background:#f0f6f2;padding:10px 14px;border-radius:6px;border-left:4px solid #0A1628}
-  .inf{font-size:11px}.lbl{font-weight:bold;color:#0A1628}
-  table{width:100%;border-collapse:collapse;margin-top:10px}th{background:#0A1628;color:#fff;padding:7px 10px;font-size:11px;text-align:left}
-  td{padding:7px 10px;border-bottom:1px solid #eee}tr:nth-child(even){background:#f9f9f9}
-  .moy{background:#e8f0e8;font-weight:bold;color:#0A1628}.mention{font-size:14px;font-weight:bold;text-align:center;padding:10px;background:#0A1628;color:#fff;margin-top:12px;border-radius:4px}
-  .sigs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-top:28px}.sig{border-top:2px solid #0A1628;padding-top:8px;text-align:center;font-size:11px;color:#555}
-  .devise{text-align:center;font-size:11px;margin-top:8px;font-style:italic;color:#00C48C;font-weight:bold}
-  @media print{button{display:none}}</style></head><body>
-  ${enteteDoc(schoolInfo, schoolInfo.logo)}
-  <h2>BULLETIN DE NOTES — ${periode} — Année ${getAnnee()}</h2>
-  <div class="info">
-    <div class="inf"><span class="lbl">Élève : </span>${eleve.nom} ${eleve.prenom}</div>
-    <div class="inf"><span class="lbl">Classe : </span>${eleve.classe}</div>
-    <div class="inf"><span class="lbl">Matricule : </span>${eleve.matricule||"—"}</div>
-    <div class="inf"><span class="lbl">Date de naissance : </span>${eleve.dateNaissance||"—"}</div>
-    <div class="inf"><span class="lbl">Lieu de naissance : </span>${eleve.lieuNaissance||"—"}</div>
-    <div class="inf"><span class="lbl">Tuteur / Parent : </span>${eleve.tuteur||"—"}</div>
-  </div>
-  <table><thead><tr><th>Matière</th><th>Coefficient</th><th>Moyenne</th><th>Moy × Coef</th><th>Appréciation</th></tr></thead>
-  <tbody>
-  ${lignes.map(l=>`<tr><td>${l.mat}</td><td style="text-align:center">${l.coef}</td><td style="text-align:center;font-weight:bold;color:${l.moy!=="—"&&Number(l.moy)>=mi?"#1a6b30":"#b91c1c"}">${l.moy}</td><td style="text-align:center">${l.moy!=="—"?(Number(l.moy)*l.coef).toFixed(2):"—"}</td><td>${apprec(l.moy)}</td></tr>`).join("")}
-  <tr class="moy"><td colspan="2"><strong>Moyenne Générale</strong></td><td style="text-align:center;font-size:16px">${moyGene}/${maxNote}</td><td style="text-align:center">${totalCoef}</td><td></td></tr>
-  </tbody></table>
-  <div class="mention">Mention : ${mention}</div>
-  <div class="sigs"><div class="sig">Le/La Directeur(rice)<br/><br/><br/>Signature</div><div class="sig">Le/La Prof. Principal(e)<br/><br/><br/>Signature</div><div class="sig">Le/La Parent/Tuteur<br/><br/><br/>Signature</div></div>
-  <div class="devise">Travail – Rigueur – Réussite</div>
-  <script>window.onload=()=>window.print();</script></body></html>`);
+  const tbody = lignes.map((l) => {
+    const moyVal = l.moy === "—" ? null : Number(l.moy);
+    const mLigne = getMention(l.moy, maxNote);
+    const lc = getMentionColors(mLigne);
+    const pct = moyVal != null ? Math.min(100, Math.max(0, (moyVal / maxNote) * 100)) : 0;
+    const compare = (moyVal != null && l.moyClasse != null)
+      ? (moyVal > l.moyClasse + 0.05
+          ? `<span style="color:#16a34a;font-weight:700">↑ +${(moyVal - l.moyClasse).toFixed(1)}</span>`
+          : moyVal < l.moyClasse - 0.05
+            ? `<span style="color:#dc2626;font-weight:700">↓ ${(moyVal - l.moyClasse).toFixed(1)}</span>`
+            : `<span style="color:#6b7280">=</span>`)
+      : "";
+    const moyClasseDisplay = l.moyClasse != null ? l.moyClasse.toFixed(1) : "—";
+    return `<tr>
+      <td>${l.mat}</td>
+      <td style="text-align:center">${l.coef}</td>
+      <td style="text-align:center">
+        <div style="display:inline-flex;align-items:center;gap:6px">
+          <strong style="color:${lc.color};min-width:32px;display:inline-block;text-align:right">${l.moy}</strong>
+          <div style="width:48px;height:5px;background:#e5e7eb;border-radius:3px;overflow:hidden">
+            <div style="width:${pct}%;height:100%;background:${lc.color}"></div>
+          </div>
+        </div>
+      </td>
+      <td style="text-align:center">${l.moy !== "—" ? (Number(l.moy) * l.coef).toFixed(2) : "—"}</td>
+      <td style="text-align:center;font-size:10px;color:#6b7280">${moyClasseDisplay} ${compare}</td>
+      <td style="background:${lc.bg};color:${lc.color};font-weight:600;font-size:10.5px">${mLigne}</td>
+    </tr>`;
+  }).join("");
+
+  return `
+  <div class="page">
+    ${enteteDoc(schoolInfo, schoolInfo.logo)}
+
+    <div style="background:linear-gradient(135deg,${c1},${c1}dd);color:#fff;padding:9px 16px;border-radius:8px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:13px;font-weight:800;letter-spacing:0.04em">BULLETIN DE NOTES</div>
+        <div style="font-size:11px;opacity:0.85">${periode} — Année scolaire ${annee}</div>
+      </div>
+      <div style="font-size:9.5px;opacity:0.78;font-family:monospace;text-align:right">N° ${numero}</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1.55fr 1fr;gap:12px;margin-bottom:12px">
+      <div style="border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;display:flex;gap:12px;align-items:center">
+        ${eleve.photo
+          ? `<img src="${eleve.photo}" alt="" style="width:60px;height:60px;border-radius:8px;object-fit:cover;border:2px solid ${c1};flex-shrink:0"/>`
+          : `<div style="width:60px;height:60px;border-radius:8px;background:${c1};color:#fff;font-weight:900;font-size:22px;display:flex;align-items:center;justify-content:center;flex-shrink:0">${getInitiales(eleve)}</div>`}
+        <div style="flex:1;font-size:10.5px;line-height:1.6;min-width:0">
+          <div style="font-size:14px;font-weight:800;color:${c1};margin-bottom:2px">${eleve.nom || ""} ${eleve.prenom || ""}</div>
+          <div><strong>Classe :</strong> ${eleve.classe || "—"} &nbsp;·&nbsp; <strong>Matricule :</strong> ${eleve.matricule || "—"}</div>
+          <div><strong>Né(e) le :</strong> ${eleve.dateNaissance || "—"}${eleve.lieuNaissance ? ` à ${eleve.lieuNaissance}` : ""}</div>
+          <div><strong>Tuteur :</strong> ${eleve.tuteur || "—"}</div>
+        </div>
+      </div>
+
+      <div style="border:2px solid ${ms.border};border-radius:8px;padding:10px 8px;text-align:center;background:${ms.bg}">
+        <div style="font-size:8.5px;text-transform:uppercase;letter-spacing:0.08em;color:${ms.color};font-weight:700;margin-bottom:1px">Moyenne générale</div>
+        <div style="font-size:30px;font-weight:900;color:${ms.color};line-height:1.05">${moyGene}<span style="font-size:13px;opacity:0.65">/${maxNote}</span></div>
+        <div style="font-size:11px;font-weight:800;color:${ms.color};margin-top:3px;text-transform:uppercase;letter-spacing:0.04em">${mention}</div>
+        ${rang ? `<div style="font-size:10px;margin-top:5px;padding-top:4px;border-top:1px solid ${ms.border};color:${ms.color}"><strong>Rang : ${rang.rang}<sup>${ordinalFr(rang.rang)}</sup> / ${rang.effectif}</strong></div>` : ""}
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="background:${c1}">Matière</th>
+          <th style="background:${c1};text-align:center;width:50px">Coef.</th>
+          <th style="background:${c1};text-align:center;width:140px">Moyenne /${maxNote}</th>
+          <th style="background:${c1};text-align:center;width:80px">Moy × Coef</th>
+          <th style="background:${c1};text-align:center;width:90px">Moy. classe</th>
+          <th style="background:${c1};width:100px">Appréciation</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${tbody}
+        <tr style="background:${c1}1A;font-weight:800">
+          <td colspan="2" style="color:${c1}">MOYENNE GÉNÉRALE</td>
+          <td style="text-align:center;color:${c1};font-size:14px">${moyGene}/${maxNote}</td>
+          <td style="text-align:center;color:${c1}">${totalCoef}</td>
+          <td style="text-align:center;font-size:10px;color:#6b7280">${classStats && classStats.moyenneClasse != null ? classStats.moyenneClasse.toFixed(2) : "—"}</td>
+          <td style="background:${ms.bg};color:${ms.color}">${mention}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    ${(classStats || evolution) ? `
+    <div style="display:flex;gap:8px;margin-top:8px;font-size:10px">
+      ${classStats ? `<div style="flex:1;background:#f9fafb;padding:7px 11px;border-radius:6px;border-left:3px solid ${c2}">
+        <div style="font-weight:700;color:${c1};text-transform:uppercase;font-size:8.5px;margin-bottom:2px;letter-spacing:0.06em">Statistiques de la classe</div>
+        Effectif : <strong>${classStats.effectif}</strong> &nbsp;·&nbsp;
+        Moy. classe : <strong>${classStats.moyenneClasse.toFixed(2)}</strong> &nbsp;·&nbsp;
+        Min : <strong>${classStats.min.toFixed(1)}</strong> &nbsp;·&nbsp;
+        Max : <strong>${classStats.max.toFixed(1)}</strong>
+      </div>` : ""}
+      ${evolution ? `<div style="flex:1;background:#f9fafb;padding:7px 11px;border-radius:6px;border-left:3px solid ${c2}">
+        <div style="font-weight:700;color:${c1};text-transform:uppercase;font-size:8.5px;margin-bottom:2px;letter-spacing:0.06em">Évolution</div>
+        ${evolution.periodePrec} : ${evolution.moyPrec.toFixed(2)} → ${periode} : <strong>${evolution.moyActu.toFixed(2)}</strong>
+        ${evolution.ecart >= 0
+          ? ` <span style="color:#16a34a;font-weight:700">↑ +${evolution.ecart.toFixed(2)}</span>`
+          : ` <span style="color:#dc2626;font-weight:700">↓ ${evolution.ecart.toFixed(2)}</span>`}
+      </div>` : ""}
+    </div>` : ""}
+
+    <div style="margin-top:10px;border:1px dashed #cbd5e1;border-radius:6px;padding:8px 12px;min-height:36px">
+      <div style="font-size:8.5px;font-weight:700;color:${c1};text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">Appréciation du conseil de classe</div>
+      <div style="font-size:11px;color:#374151;line-height:1.5">${appreciation || `<span style="color:#cbd5e1">__________________________________________________________________________</span>`}</div>
+    </div>
+
+    <div class="sigs">
+      <div class="sig">Le/La Directeur(rice)<br/><br/><br/>Signature</div>
+      <div class="sig">Le/La Professeur(e) Principal(e)<br/><br/><br/>Signature</div>
+      <div class="sig">Le/La Parent/Tuteur<br/><br/><br/>Signature</div>
+    </div>
+
+    <div class="devise" style="color:${c2}">${schoolInfo.devise || "Travail – Rigueur – Réussite"}</div>
+  </div>`;
+}
+
+function getBulletinStyles() {
+  return `
+    body{font-family:Arial,sans-serif;padding:0;margin:0;font-size:11px;color:#1f2937}
+    .page{padding:24px 26px;page-break-after:always;box-sizing:border-box}
+    .page:last-child{page-break-after:auto}
+    table{width:100%;border-collapse:collapse;margin-top:4px}
+    th{color:#fff;padding:7px 9px;font-size:10.5px;text-align:left;border:1px solid rgba(0,0,0,0.05)}
+    td{padding:6px 9px;border-bottom:1px solid #f1f5f9;font-size:11px;vertical-align:middle}
+    tbody tr:nth-child(odd){background:#fafafa}
+    .sigs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;margin-top:18px}
+    .sig{border-top:1.5px solid #1f2937;padding-top:6px;text-align:center;font-size:10px;color:#555}
+    .devise{text-align:center;font-size:10px;margin-top:8px;font-style:italic;font-weight:700}
+    @media print{body{margin:0}button{display:none}.page{padding:18px 22px}}
+  `;
+}
+
+export const imprimerBulletin = (eleve, notes, matieres, periode, niveau, maxNote = 20, schoolInfo = {}, options = {}) => {
+  const allEleves = Array.isArray(options.allEleves) ? options.allEleves : null;
+  const allNotes = Array.isArray(options.allNotes) ? options.allNotes : notes;
+  const elevesClasse = allEleves ? allEleves.filter((e) => e.classe === eleve.classe) : null;
+
+  const rang = elevesClasse
+    ? getRangEleve(eleve, elevesClasse, allNotes, matieres, periode, eleve.classe, niveau)
+    : null;
+  const classStats = elevesClasse
+    ? getStatsClasse(elevesClasse, allNotes, matieres, periode, eleve.classe, niveau)
+    : null;
+  const matiereClasseAvg = elevesClasse
+    ? Object.fromEntries(matieres.map((mat) => [
+        mat.nom,
+        getMoyenneClasseParMatiere(elevesClasse, allNotes, mat.nom, periode, eleve.classe, niveau),
+      ]))
+    : {};
+  const evolution = allNotes.length > notes.length || allEleves
+    ? getEvolutionPeriode(eleve, allNotes, matieres, eleve.classe, niveau, periode)
+    : null;
+
+  const html = buildBulletinPageHTML({
+    eleve, notes: allNotes, matieres, periode, niveau, maxNote, schoolInfo,
+    rang, classStats, matiereClasseAvg, evolution,
+    appreciation: options.appreciation || "",
+  });
+
+  const w = window.open("", "_blank");
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/>
+    <title>Bulletin ${eleve.nom || ""} ${eleve.prenom || ""} — ${periode}</title>
+    <style>${getBulletinStyles()}</style>
+  </head><body>${html}<script>window.onload=()=>window.print();</script></body></html>`);
   w.document.close();
 };
 
 // ── IMPRESSION GROUPÉE : tous les bulletins d'une classe en un seul PDF ──
-export const imprimerBulletinsGroupes = (eleves, notes, matieres, periode, niveau, maxNote=20, schoolInfo={}, classe="", matieresParClasseFn=null) => {
-  if(!eleves.length){ alert("Aucun élève pour cette sélection."); return; }
-  const mi = maxNote / 2;
-  const apprec = (v) => v==="—"?"Non évalué":Number(v)>=(maxNote*0.8)?"Très Bien":Number(v)>=(maxNote*0.7)?"Bien":Number(v)>=(maxNote*0.6)?"Assez Bien":Number(v)>=mi?"Passable":"Insuffisant";
-  const getMat = (eleve) => matieresParClasseFn ? matieresParClasseFn(eleve.classe) : matieres;
+export const imprimerBulletinsGroupes = (eleves, notes, matieres, periode, niveau, maxNote = 20, schoolInfo = {}, classe = "", matieresParClasseFn = null) => {
+  if (!eleves.length) { alert("Aucun élève pour cette sélection."); return; }
+  const getMat = (eleve) => (matieresParClasseFn ? matieresParClasseFn(eleve.classe) : matieres);
 
-  // Calcul des moyennes pour le classement
-  const avecMoyenne = eleves.map(eleve => {
-    const notesEleve = notes.filter(n=>n.eleveId===eleve._id && n.periode===periode);
-    const lignes = getMat(eleve).map(mat => {
-      const nm = notesEleve.filter(n=>n.matiere===mat.nom);
-      const moyenneMatiere = getSubjectAverage(nm, eleve.classe, niveau);
-      const moy = moyenneMatiere != null ? moyenneMatiere.toFixed(2) : "—";
-      const coef = mat.coefficient||1;
-      return {mat:mat.nom, coef, moy};
+  // Cache par classe : stats + moyennes par matière
+  const classCache = new Map();
+  const getCacheClasse = (cl) => {
+    if (!classCache.has(cl)) {
+      const matsCl = matieresParClasseFn ? matieresParClasseFn(cl) : matieres;
+      const elevesClasse = eleves.filter((e) => e.classe === cl);
+      classCache.set(cl, {
+        stats: getStatsClasse(elevesClasse, notes, matsCl, periode, cl, niveau),
+        matieresAvg: Object.fromEntries(matsCl.map((mat) => [
+          mat.nom,
+          getMoyenneClasseParMatiere(elevesClasse, notes, mat.nom, periode, cl, niveau),
+        ])),
+        elevesClasse,
+      });
+    }
+    return classCache.get(cl);
+  };
+
+  const pages = eleves.map((eleve) => {
+    const matsEleve = getMat(eleve);
+    const cache = getCacheClasse(eleve.classe);
+    const rang = getRangEleve(eleve, cache.elevesClasse, notes, matsEleve, periode, eleve.classe, niveau);
+    const evolution = getEvolutionPeriode(eleve, notes, matsEleve, eleve.classe, niveau, periode);
+    return buildBulletinPageHTML({
+      eleve, notes, matieres: matsEleve, periode, niveau, maxNote, schoolInfo,
+      rang, classStats: cache.stats, matiereClasseAvg: cache.matieresAvg, evolution,
     });
-    const moyenneGenerale = getGeneralAverage(notesEleve, getMat(eleve), eleve.classe, niveau);
-    const moyGene = moyenneGenerale != null ? moyenneGenerale.toFixed(2) : "—";
-    return {eleve, lignes, moyGene};
-  });
-
-  // Classement (rang)
-  const sorted = [...avecMoyenne].filter(x=>x.moyGene!=="—").sort((a,b)=>Number(b.moyGene)-Number(a.moyGene));
-  const rangMap = {};
-  let rang=1;
-  sorted.forEach((x,i)=>{
-    if(i>0 && x.moyGene!==sorted[i-1].moyGene) rang=i+1;
-    rangMap[x.eleve._id]=rang;
-  });
-  const effectif = sorted.length;
-
-  const pages = avecMoyenne.map(({eleve, lignes, moyGene}) => {
-    const rang = rangMap[eleve._id] || "—";
-    const mention = apprec(moyGene);
-    const totalCoef = lignes.reduce((s,l)=>s+(l.coef),0); // toutes les matières
-    return `
-    <div class="page">
-      ${enteteDoc(schoolInfo, schoolInfo.logo)}
-      <h2>BULLETIN DE NOTES — ${periode} — Année ${getAnnee()}</h2>
-      <div class="info">
-        <div class="inf"><span class="lbl">Élève : </span>${eleve.nom} ${eleve.prenom}</div>
-        <div class="inf"><span class="lbl">Classe : </span>${eleve.classe}</div>
-        <div class="inf"><span class="lbl">Matricule : </span>${eleve.matricule||"—"}</div>
-        <div class="inf"><span class="lbl">Naissance : </span>${eleve.dateNaissance||"—"} ${eleve.lieuNaissance?`· ${eleve.lieuNaissance}`:""}</div>
-        <div class="inf"><span class="lbl">Tuteur : </span>${eleve.tuteur||"—"}</div>
-        <div class="inf"><span class="lbl">Rang : </span><strong style="color:#0A1628">${rang} / ${effectif}</strong></div>
-      </div>
-      <table>
-        <thead><tr><th>Matière</th><th style="text-align:center">Coef.</th><th style="text-align:center">Moyenne</th><th style="text-align:center">Moy × Coef</th><th>Appréciation</th></tr></thead>
-        <tbody>
-          ${lignes.map(l=>`<tr>
-            <td>${l.mat}</td>
-            <td style="text-align:center">${l.coef}</td>
-            <td style="text-align:center;font-weight:bold;color:${l.moy!=="—"&&Number(l.moy)>=mi?"#1a6b30":"#b91c1c"}">${l.moy}</td>
-            <td style="text-align:center">${l.moy!=="—"?(Number(l.moy)*l.coef).toFixed(2):"—"}</td>
-            <td>${apprec(l.moy)}</td>
-          </tr>`).join("")}
-          <tr class="moy">
-            <td colspan="2"><strong>Moyenne Générale</strong></td>
-            <td style="text-align:center;font-size:16px"><strong>${moyGene}/${maxNote}</strong></td>
-            <td style="text-align:center">${totalCoef}</td>
-            <td></td>
-          </tr>
-        </tbody>
-      </table>
-      <div class="mention">Mention : ${mention} &nbsp;|&nbsp; Rang : ${rang} / ${effectif}</div>
-      <div class="sigs">
-        <div class="sig">Le/La Directeur(rice)<br/><br/><br/>Signature</div>
-        <div class="sig">Le/La Prof. Principal(e)<br/><br/><br/>Signature</div>
-        <div class="sig">Le/La Parent/Tuteur<br/><br/><br/>Signature</div>
-      </div>
-      <div class="devise">Travail – Rigueur – Réussite</div>
-    </div>`;
   }).join("");
 
-  const w = window.open("","_blank");
+  const w = window.open("", "_blank");
   w.document.write(`<!DOCTYPE html><html><head>
   <meta charset="utf-8"/>
-  <title>Bulletins ${classe||niveau} — ${periode} — Année ${getAnnee()}</title>
-  <style>
-    body{font-family:Arial,sans-serif;padding:0;margin:0;font-size:12px}
-    .page{padding:28px 32px;page-break-after:always;box-sizing:border-box}
-    .page:last-child{page-break-after:auto}
-    h2{color:#0A1628;text-align:center;margin:8px 0;font-size:14px}
-    .info{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px 16px;margin-bottom:12px;background:#f0f6f2;padding:9px 12px;border-radius:6px;border-left:4px solid #0A1628}
-    .inf{font-size:11px}.lbl{font-weight:bold;color:#0A1628}
-    table{width:100%;border-collapse:collapse;margin-top:10px}
-    th{background:#0A1628;color:#fff;padding:7px 10px;font-size:11px;text-align:left}
-    td{padding:7px 10px;border-bottom:1px solid #eee}
-    tr:nth-child(even){background:#f9f9f9}
-    .moy{background:#e8f0e8;font-weight:bold;color:#0A1628}
-    .mention{font-size:13px;font-weight:bold;text-align:center;padding:9px;background:#0A1628;color:#fff;margin-top:10px;border-radius:4px}
-    .sigs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-top:24px}
-    .sig{border-top:2px solid #0A1628;padding-top:8px;text-align:center;font-size:11px;color:#555}
-    .devise{text-align:center;font-size:11px;margin-top:8px;font-style:italic;color:#00C48C;font-weight:bold}
-    @media print{body{margin:0}button{display:none}.page{padding:20px 24px}}
-  </style>
-  </head><body>
-  ${pages}
-  <script>window.onload=()=>window.print();</script>
-  </body></html>`);
+  <title>Bulletins ${classe || niveau} — ${periode} — Année ${getAnnee()}</title>
+  <style>${getBulletinStyles()}</style>
+  </head><body>${pages}<script>window.onload=()=>window.print();</script></body></html>`);
   w.document.close();
 };
 
