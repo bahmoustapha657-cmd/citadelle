@@ -227,6 +227,27 @@ service cloud.firestore {
                       || aUnRole(["superadmin"]);
       }
 
+      match /appreciationsPrimaire/{docId} {
+        allow read: if (appartientEcole(schoolId) && aUnRole(pedagogieRoles("primaire")))
+                     || aUnRole(["superadmin"]);
+        allow write: if (appartientEcole(schoolId) && aUnRole(pedagogieWriteRoles("primaire")))
+                      || aUnRole(["superadmin"]);
+      }
+
+      match /appreciationsCollege/{docId} {
+        allow read: if (appartientEcole(schoolId) && aUnRole(pedagogieRoles("college")))
+                     || aUnRole(["superadmin"]);
+        allow write: if (appartientEcole(schoolId) && aUnRole(pedagogieWriteRoles("college")))
+                      || aUnRole(["superadmin"]);
+      }
+
+      match /appreciationsLycee/{docId} {
+        allow read: if (appartientEcole(schoolId) && aUnRole(pedagogieRoles("college")))
+                     || aUnRole(["superadmin"]);
+        allow write: if (appartientEcole(schoolId) && aUnRole(pedagogieWriteRoles("college")))
+                      || aUnRole(["superadmin"]);
+      }
+
       // Catch-all durci : whitelist strict des collections légitimes de l'application.
       // Toute collection non listée ici est refusée en lecture ET en écriture.
       // L'admin peut LIRE (audit/lecture seule) mais NE PEUT PAS écrire :

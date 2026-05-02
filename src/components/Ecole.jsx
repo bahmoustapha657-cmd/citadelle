@@ -23,6 +23,18 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
   const {items:enseignements,chargement:cEng,ajouter:ajEng,modifier:modEng,supprimer:supEng}=useFirestore(cleEns+"_enseignements");
   const {items:matieres,chargement:cMat,ajouter:ajMat,modifier:modMat,supprimer:supMat}=useFirestore(cleClasses+"_matieres");
   const {items:emplois,chargement:cEmp,ajouter:ajEmp,modifier:modEmp,supprimer:supEmp}=useFirestore(cleClasses+"_emplois");
+  const cleAppreciations=cleNotes.replace("notes","appreciations");
+  const {items:appreciations,ajouter:ajApp,modifier:modApp}=useFirestore(cleAppreciations);
+  const getAppreciation=(eleveId,periode)=>appreciations.find(a=>a.eleveId===eleveId&&a.periode===periode);
+  const saveAppreciation=async(eleveId,periode,texte)=>{
+    const existant=getAppreciation(eleveId,periode);
+    const data={eleveId,periode,texte:String(texte||"").trim(),updatedAt:Date.now()};
+    if(existant)await modApp({...existant,...data});
+    else await ajApp(data);
+  };
+  const appreciationsParEleveB=(periode)=>Object.fromEntries(
+    appreciations.filter(a=>a.periode===periode&&a.texte).map(a=>[a.eleveId,a.texte])
+  );
 
   const [tab,setTab]=useState("apercu");
   const [modal,setModal]=useState(null);
@@ -1070,7 +1082,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
             const elevesB=elevesFiltres
               .filter(e=>!rechercheMatricule||(e.matricule||"").toLowerCase().includes(rechercheMatricule.toLowerCase())||(e.nom+" "+e.prenom).toLowerCase().includes(rechercheMatricule.toLowerCase()))
               .filter(e=>!(!!schoolInfo.blocageParentImpaye && moisAnnee.filter(m=>(e.mens||{})[m]!=="Payé").length>0));
-            imprimerBulletinsGroupes(elevesB,notes,matieres,periodeB,avecEns?"college":"primaire",maxNote,schoolInfo,filtreClasse==="all"?"Toutes classes":filtreClasse,matieresForClasse);
+            imprimerBulletinsGroupes(elevesB,notes,matieres,periodeB,avecEns?"college":"primaire",maxNote,schoolInfo,filtreClasse==="all"?"Toutes classes":filtreClasse,matieresForClasse,appreciationsParEleveB(periodeB));
           }}>
             📄 Tous les bulletins {filtreClasse!=="all"?`— ${filtreClasse}`:""}
           </Btn>
@@ -1079,27 +1091,65 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
           const elevesB=elevesFiltres.filter(e=>!rechercheMatricule||(e.matricule||"").toLowerCase().includes(rechercheMatricule.toLowerCase())||(e.nom+" "+e.prenom).toLowerCase().includes(rechercheMatricule.toLowerCase()));
           return elevesB.length===0?<Vide icone="📊" msg="Aucun élève pour cette sélection"/>
           :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
-            <THead cols={["Matricule","Élève","Classe","Moy. Générale","Mention","Bulletin"]}/>
+            <THead cols={["Matricule","Élève","Classe","Moy. Générale","Mention","Appréciation","Bulletin"]}/>
             <tbody>{elevesB.map(e=>{
               const notesE=notes.filter(n=>n.eleveId===e._id&&n.periode===periodeB);
               const moyenneGenerale = getGeneralAverage(notesE, matieresForClasse(e.classe), e.classe);
               const moyGene=moyenneGenerale!=null?moyenneGenerale.toFixed(2):"—";
               const mention=moyGene==="—"?"—":Number(moyGene)>=16?"Très Bien":Number(moyGene)>=14?"Bien":Number(moyGene)>=12?"Assez Bien":Number(moyGene)>=10?"Passable":"Insuffisant";
               const eleveImpayeBloq = !!schoolInfo.blocageParentImpaye && moisAnnee.filter(m=>(e.mens||{})[m]!=="Payé").length>0;
+              const apprec=getAppreciation(e._id,periodeB);
+              const apprecTexte=apprec?.texte||"";
               return <TR key={e._id}>
                 <TD><span style={{fontSize:11,fontFamily:"monospace",background:"#e0ebf8",padding:"2px 5px",borderRadius:4,color:C.blue,fontWeight:700}}>{e.matricule||"—"}</span></TD>
                 <TD bold>{e.nom} {e.prenom}</TD>
                 <TD><Badge color="blue">{e.classe}</Badge></TD>
                 <TD><span style={{fontWeight:800,fontSize:14,color:moyGene!=="—"&&Number(moyGene)>=10?C.greenDk:"#b91c1c"}}>{moyGene}/20</span></TD>
                 <TD><Badge color={mention==="Très Bien"||mention==="Bien"?"vert":mention==="Assez Bien"||mention==="Passable"?"blue":"red"}>{mention}</Badge></TD>
+                <TD>
+                  {(canCreate||canEdit)
+                    ? <Btn sm v={apprecTexte?"vert":"ghost"} title={apprecTexte||"Ajouter une appréciation"} onClick={()=>{setForm({eleveId:e._id,nomComplet:`${e.nom} ${e.prenom}`,texte:apprecTexte});setModal("apprec");}}>
+                        {apprecTexte?"✏️ Modifier":"➕ Saisir"}
+                      </Btn>
+                    : (apprecTexte
+                        ? <span title={apprecTexte} style={{fontSize:11,color:"#374151",fontStyle:"italic",display:"inline-block",maxWidth:200,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{apprecTexte}</span>
+                        : <span style={{fontSize:11,color:"#9ca3af",fontStyle:"italic"}}>—</span>)
+                  }
+                </TD>
                 <TD>{eleveImpayeBloq
                   ? <span title="Frais impayés — impression bloquée" style={{fontSize:18}}>🔒</span>
-                  : <Btn sm v="amber" onClick={()=>imprimerBulletin(e,notes,matieresForClasse(e.classe),periodeB,avecEns?"college":"primaire",maxNote,schoolInfo,{allEleves:eleves,allNotes:notes})}>🖨️ Imprimer</Btn>
+                  : <Btn sm v="amber" onClick={()=>imprimerBulletin(e,notes,matieresForClasse(e.classe),periodeB,avecEns?"college":"primaire",maxNote,schoolInfo,{allEleves:eleves,allNotes:notes,appreciation:apprecTexte})}>🖨️ Imprimer</Btn>
                 }</TD>
               </TR>;
             })}</tbody>
           </table></Card>;
         })()}
+
+        {modal==="apprec"&&(canCreate||canEdit)&&<Modale titre={`Appréciation — ${form.nomComplet||""} · ${periodeB}`} fermer={()=>setModal(null)}>
+          <div style={{marginBottom:12,padding:"10px 14px",background:"#f0f7ff",borderRadius:8,fontSize:12,color:C.blueDark}}>
+            Saisissez l'appréciation du conseil de classe pour cet élève. Elle apparaîtra sur le bulletin imprimé.
+          </div>
+          <Textarea label="Appréciation" rows={4} value={form.texte||""} onChange={chg("texte")} placeholder="Ex : Trimestre satisfaisant. Doit poursuivre ses efforts en mathématiques." maxLength={500}/>
+          <div style={{fontSize:11,color:"#6b7280",marginTop:4,textAlign:"right"}}>{(form.texte||"").length} / 500</div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:14}}>
+            <div>
+              {getAppreciation(form.eleveId,periodeB)?.texte && (
+                <Btn v="ghost" sm onClick={async()=>{
+                  if(!confirm("Effacer l'appréciation ?"))return;
+                  await saveAppreciation(form.eleveId,periodeB,"");
+                  setModal(null);
+                }}>🗑 Effacer</Btn>
+              )}
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <Btn v="ghost" onClick={()=>setModal(null)}>Annuler</Btn>
+              <Btn onClick={async()=>{
+                await saveAppreciation(form.eleveId,periodeB,form.texte||"");
+                setModal(null);
+              }}>✅ Enregistrer</Btn>
+            </div>
+          </div>
+        </Modale>}
       </div>}
 
       {/* ── LIVRETS ── */}

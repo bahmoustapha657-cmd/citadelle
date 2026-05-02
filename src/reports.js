@@ -913,7 +913,7 @@ export const imprimerBulletin = (eleve, notes, matieres, periode, niveau, maxNot
 };
 
 // ── IMPRESSION GROUPÉE : tous les bulletins d'une classe en un seul PDF ──
-export const imprimerBulletinsGroupes = (eleves, notes, matieres, periode, niveau, maxNote = 20, schoolInfo = {}, classe = "", matieresParClasseFn = null) => {
+export const imprimerBulletinsGroupes = (eleves, notes, matieres, periode, niveau, maxNote = 20, schoolInfo = {}, classe = "", matieresParClasseFn = null, appreciationsParEleve = {}) => {
   if (!eleves.length) { alert("Aucun élève pour cette sélection."); return; }
   const getMat = (eleve) => (matieresParClasseFn ? matieresParClasseFn(eleve.classe) : matieres);
 
@@ -943,6 +943,7 @@ export const imprimerBulletinsGroupes = (eleves, notes, matieres, periode, nivea
     return buildBulletinPageHTML({
       eleve, notes, matieres: matsEleve, periode, niveau, maxNote, schoolInfo,
       rang, classStats: cache.stats, matiereClasseAvg: cache.matieresAvg, evolution,
+      appreciation: (appreciationsParEleve && appreciationsParEleve[eleve._id]) || "",
     });
   }).join("");
 
