@@ -7,7 +7,7 @@ import { GlobalStyles } from "../styles";
 import { Badge, Btn, Card, Chargement, Input, LectureSeule, Modale, Selec, Stat, TD, THead, TR, Vide } from "./ui";
 
 function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
-  const { moisAnnee, toast } = useContext(SchoolContext);
+  const { moisAnnee, toast, envoyerPush } = useContext(SchoolContext);
   const c1 = schoolInfo.couleur1 || C.blue;
   const c2 = schoolInfo.couleur2 || C.green;
   const noteForms = getActiveNoteForms(schoolInfo, utilisateur.section || "secondaire");
@@ -222,9 +222,24 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
       if (!res.ok || !data.ok) {
         throw new Error(data.error || "Enregistrement impossible.");
       }
+      // Notification push aux parents — uniquement à la création (pas en
+      // édition) pour éviter de spammer si l'enseignant corrige une faute
+      // de frappe.
+      if (!formIncident.incidentId && envoyerPush) {
+        const type = formIncident.type || "Absence";
+        const eleveNom = formIncident.eleveNom || "Votre enfant";
+        const date = formIncident.date || new Date().toISOString().slice(0, 10);
+        const motif = formIncident.motif ? ` : ${formIncident.motif}` : "";
+        envoyerPush(
+          ["parent"],
+          `⚠️ ${type} signalée par l'enseignant`,
+          `${eleveNom} — ${type} du ${date}${motif}`,
+          "/absences",
+        );
+      }
       setModalIncident(null);
       await chargerPortail();
-      toast("Signalement enregistré.", "success");
+      toast("Signalement enregistré. Les parents ont été notifiés.", "success");
     } catch (error) {
       toast(error.message || "Erreur d'enregistrement.", "error");
     } finally {
