@@ -382,7 +382,7 @@ export default async function handler(req, res) {
         const existing = comptesParRole.get(role);
         const conflict = comptesParLogin.get(config.login);
         if (conflict && conflict.id !== existing?.id) {
-          return res.status(409).json({ error: `L'identifiant ${config.login} est dÃ©jÃ  utilisÃ© par un autre compte.` });
+          return res.status(409).json({ error: `L'identifiant ${config.login} est dÃ©jÃ  utilisÃ© par un autre compte.` });
         }
       }
 
@@ -651,4 +651,5 @@ export default async function handler(req, res) {
 
   return res.status(400).json({ error: "Action inconnue" });
 }
+
 
