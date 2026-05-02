@@ -56,10 +56,12 @@ async function loadTeacherPortalPayload({ db, schoolId, profile }) {
   const section = getTeacherSection(profile);
   const aliases = getTeacherAliases(profile);
   const collections = getSectionCollections(section);
-  const [emploisSnap, enseignementsSnap, salairesSnap] = await Promise.all([
+  const absencesCollName = `${collections.eleves}_absences`;
+  const [emploisSnap, enseignementsSnap, salairesSnap, absencesSnap] = await Promise.all([
     schoolRef.collection(collections.emplois).get(),
     schoolRef.collection(collections.enseignements).get(),
     schoolRef.collection("salaires").get(),
+    schoolRef.collection(absencesCollName).get(),
   ]);
 
   const emplois = emploisSnap.docs.map(toItem).filter((item) => matchesTeacherAlias(item.enseignant, aliases));
@@ -77,6 +79,16 @@ async function loadTeacherPortalPayload({ db, schoolId, profile }) {
   const rawNotes = (await schoolRef.collection(collections.notes).get()).docs.map(toItem);
   const notes = rawNotes.filter((note) => noteBelongsToTeacherScope(note, studentIds, profile.matiere || "", studentNames, section));
 
+  // Incidents (absences/retard/indiscipline) sur les élèves dans le scope
+  // de l'enseignant. Filtrage par eleveId de préférence, fallback eleveNom
+  // pour les anciens enregistrements créés sans id explicite.
+  const incidents = absencesSnap.docs.map(toItem).filter((inc) => {
+    const incId = String(inc.eleveId || "").trim();
+    if (incId) return studentIds.has(incId);
+    const incName = normalizeText(inc.eleveNom);
+    return incName && studentNames.has(incName);
+  });
+
   return {
     section,
     emplois: sortByDateDesc(uniqueById(emplois), "updatedAt"),
@@ -84,6 +96,7 @@ async function loadTeacherPortalPayload({ db, schoolId, profile }) {
     notes: sortByDateDesc(uniqueById(notes), "updatedAt"),
     enseignements: sortByDateDesc(uniqueById(enseignements), "date"),
     salaires: sortByDateDesc(uniqueById(salaires), "createdAt"),
+    incidents: sortByDateDesc(uniqueById(incidents), "date"),
   };
 }
 
@@ -134,15 +147,16 @@ export default async function handler(req, res) {
   }
 
   const action = String(req.body?.action || "").trim();
-  if (!["save_note", "delete_note"].includes(action)) {
+  const NOTE_ACTIONS = ["save_note", "delete_note"];
+  const INCIDENT_ACTIONS = ["save_incident", "delete_incident"];
+  if (![...NOTE_ACTIONS, ...INCIDENT_ACTIONS].includes(action)) {
     return res.status(400).json({ error: "Action inconnue." });
   }
 
   // Échec sécurisé : un enseignant secondaire (college/lycee) doit avoir une
-  // matière définie pour pouvoir créer/modifier/supprimer des notes. Sans
-  // cela, son périmètre est ambigu et il pourrait toucher des notes hors de
-  // sa discipline.
-  if (section !== "primaire" && !session.profile.matiere) {
+  // matière définie pour saisir des notes. Le filtre matière ne s'applique
+  // pas aux incidents (un incident est lié à l'élève, pas à une discipline).
+  if (NOTE_ACTIONS.includes(action) && section !== "primaire" && !session.profile.matiere) {
     return res.status(403).json({
       error: "Profil enseignant incomplet : la matière n'est pas définie. Contactez la direction.",
     });
@@ -155,6 +169,86 @@ export default async function handler(req, res) {
       profile: session.profile,
     });
     const notesRef = db.collection("ecoles").doc(schoolId).collection(collections.notes);
+    const absencesRef = db.collection("ecoles").doc(schoolId).collection(`${collections.eleves}_absences`);
+
+    // ── Incidents (absence, retard, indiscipline, sanction) ────────────────
+    if (action === "delete_incident") {
+      const incidentId = String(req.body?.incidentId || "").trim();
+      if (!incidentId) {
+        return res.status(400).json({ error: "Champ requis : incidentId" });
+      }
+      const incSnap = await absencesRef.doc(incidentId).get();
+      if (!incSnap.exists) {
+        return res.status(404).json({ error: "Incident introuvable." });
+      }
+      const inc = toItem(incSnap);
+      // L'enseignant ne peut supprimer que les incidents qu'il a lui-même
+      // créés (signaledByEnseignantId). Les incidents saisis par la direction
+      // sont protégés.
+      const enseignantId = session.profile.enseignantId || null;
+      if (!enseignantId || inc.signaledByEnseignantId !== enseignantId) {
+        return res.status(403).json({ error: "Vous ne pouvez supprimer que vos propres signalements." });
+      }
+      // Vérification scope : l'élève doit toujours être dans son périmètre.
+      const incEleveId = String(inc.eleveId || "").trim();
+      if (incEleveId && !teacherScope.studentIds.has(incEleveId)) {
+        return res.status(403).json({ error: "Élève hors périmètre." });
+      }
+      await incSnap.ref.delete();
+      return res.status(200).json({ ok: true });
+    }
+
+    if (action === "save_incident") {
+      const incidentId = String(req.body?.incidentId || "").trim();
+      const eleveId = String(req.body?.eleveId || "").trim();
+      const type = String(req.body?.type || "").trim();
+      const date = String(req.body?.date || "").trim();
+      const justifie = String(req.body?.justifie || "Non").trim();
+      const motif = String(req.body?.motif || "").trim();
+      const TYPES_AUTORISES = ["Absence", "Retard", "Sanction", "Avertissement", "Renvoi temporaire"];
+      const eleve = teacherScope.eleves.find((s) => s._id === eleveId);
+
+      if (!eleveId || !eleve) {
+        return res.status(400).json({ error: "Élève hors périmètre ou introuvable." });
+      }
+      if (!TYPES_AUTORISES.includes(type)) {
+        return res.status(400).json({ error: "Type de signalement invalide." });
+      }
+      if (!date) {
+        return res.status(400).json({ error: "Date requise." });
+      }
+
+      const enseignantNom = session.profile.enseignantNom || session.profile.nom || "";
+      const payload = {
+        eleveId,
+        eleveNom: `${eleve.prenom || ""} ${eleve.nom || ""}`.trim(),
+        classe: eleve.classe || "",
+        type,
+        date,
+        justifie: justifie === "Oui" ? "Oui" : "Non",
+        motif,
+        matiere: session.profile.matiere || "",
+        signaledByEnseignantId: session.profile.enseignantId || null,
+        signaledByEnseignantNom: enseignantNom,
+        updatedAt: Date.now(),
+      };
+
+      if (incidentId) {
+        const incSnap = await absencesRef.doc(incidentId).get();
+        if (!incSnap.exists) {
+          return res.status(404).json({ error: "Incident introuvable." });
+        }
+        const existing = toItem(incSnap);
+        if (existing.signaledByEnseignantId !== payload.signaledByEnseignantId) {
+          return res.status(403).json({ error: "Vous ne pouvez modifier que vos propres signalements." });
+        }
+        await incSnap.ref.update(payload);
+        return res.status(200).json({ ok: true, incidentId });
+      }
+
+      const created = await absencesRef.add({ ...payload, createdAt: Date.now() });
+      return res.status(200).json({ ok: true, incidentId: created.id });
+    }
 
     if (action === "delete_note") {
       const noteId = String(req.body?.noteId || "").trim();

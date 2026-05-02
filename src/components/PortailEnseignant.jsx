@@ -23,9 +23,12 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
     notes: [],
     enseignements: [],
     salaires: [],
+    incidents: [],
   });
   const [modalNote, setModalNote] = useState(null);
   const [formNote, setFormNote] = useState({});
+  const [modalIncident, setModalIncident] = useState(null);
+  const [formIncident, setFormIncident] = useState({});
   const [enregistrement, setEnregistrement] = useState(false);
 
   const nomEns = utilisateur.enseignantNom || utilisateur.nom || "";
@@ -35,6 +38,8 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
   const notes = portalData.notes || [];
   const enseignements = portalData.enseignements || [];
   const salaires = portalData.salaires || [];
+  const incidents = portalData.incidents || [];
+  const enseignantId = utilisateur.enseignantId || null;
 
   const mesClasses = [...new Set(emplois.map((item) => item.classe).filter(Boolean))];
   const mesNotes = [...notes].sort((left, right) => Number(right.updatedAt || right.createdAt || 0) - Number(left.updatedAt || left.createdAt || 0));
@@ -66,6 +71,7 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
         notes: Array.isArray(data.notes) ? data.notes : [],
         enseignements: Array.isArray(data.enseignements) ? data.enseignements : [],
         salaires: Array.isArray(data.salaires) ? data.salaires : [],
+        incidents: Array.isArray(data.incidents) ? data.incidents : [],
       });
     } catch (error) {
       toast(error.message || "Erreur de chargement du portail enseignant.", "error");
@@ -157,6 +163,93 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
       }
       await chargerPortail();
       toast("Note supprimee.", "success");
+    } catch (error) {
+      toast(error.message || "Erreur de suppression.", "error");
+    } finally {
+      setEnregistrement(false);
+    }
+  };
+
+  const ouvrirSignalementEleve = (eleve) => {
+    setFormIncident({
+      eleveId: eleve._id,
+      eleveNom: `${eleve.nom} ${eleve.prenom}`,
+      classe: eleve.classe || "",
+      type: "Absence",
+      date: new Date().toISOString().slice(0, 10),
+      justifie: "Non",
+      motif: "",
+    });
+    setModalIncident("add");
+  };
+
+  const ouvrirEditionIncident = (inc) => {
+    setFormIncident({
+      incidentId: inc._id,
+      eleveId: inc.eleveId,
+      eleveNom: inc.eleveNom,
+      classe: inc.classe || "",
+      type: inc.type || "Absence",
+      date: inc.date || new Date().toISOString().slice(0, 10),
+      justifie: inc.justifie || "Non",
+      motif: inc.motif || "",
+    });
+    setModalIncident("edit");
+  };
+
+  const enregistrerIncident = async () => {
+    if (!formIncident.eleveId || !formIncident.type || !formIncident.date) {
+      toast("Élève, type et date requis.", "warning");
+      return;
+    }
+    setEnregistrement(true);
+    try {
+      const headers = await getAuthHeaders({ "Content-Type": "application/json" });
+      const res = await apiFetch("/teacher-portal", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          action: "save_incident",
+          incidentId: formIncident.incidentId || "",
+          eleveId: formIncident.eleveId,
+          type: formIncident.type,
+          date: formIncident.date,
+          justifie: formIncident.justifie || "Non",
+          motif: formIncident.motif || "",
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || "Enregistrement impossible.");
+      }
+      setModalIncident(null);
+      await chargerPortail();
+      toast("Signalement enregistré.", "success");
+    } catch (error) {
+      toast(error.message || "Erreur d'enregistrement.", "error");
+    } finally {
+      setEnregistrement(false);
+    }
+  };
+
+  const supprimerIncident = async (incidentId) => {
+    if (!incidentId || !window.confirm("Supprimer ce signalement ?")) {
+      return;
+    }
+    setEnregistrement(true);
+    try {
+      const headers = await getAuthHeaders({ "Content-Type": "application/json" });
+      const res = await apiFetch("/teacher-portal", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ action: "delete_incident", incidentId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || "Suppression impossible.");
+      }
+      await chargerPortail();
+      toast("Signalement supprimé.", "success");
     } catch (error) {
       toast(error.message || "Erreur de suppression.", "error");
     } finally {
@@ -429,7 +522,7 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
                     </div>
                     <Card>
                       <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                        <THead cols={["Matricule", "Nom et prenom", "Classe", "Sexe", "Statut"]} />
+                        <THead cols={["Matricule", "Nom et prenom", "Classe", "Sexe", "Statut", "Action"]} />
                         <tbody>
                           {eleves.map((eleveItem) => (
                             <TR key={eleveItem._id}>
@@ -438,6 +531,9 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
                               <TD><Badge color="blue">{eleveItem.classe}</Badge></TD>
                               <TD><Badge color={eleveItem.sexe === "F" ? "vert" : "blue"}>{eleveItem.sexe}</Badge></TD>
                               <TD><Badge color={eleveItem.statut === "Actif" ? "vert" : "gray"}>{eleveItem.statut || "Actif"}</Badge></TD>
+                              <TD>
+                                <Btn sm v="amber" onClick={() => ouvrirSignalementEleve(eleveItem)}>⚠️ Signaler</Btn>
+                              </TD>
                             </TR>
                           ))}
                         </tbody>
@@ -450,13 +546,62 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
 
             {tab === "absences" && (
               <>
-                <h2 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 900, color: c1 }}>Absences et engagements</h2>
-                {mesEvenements.length === 0 ? (
-                  <Vide icone="Evenements" msg="Aucun evenement enregistre" />
-                ) : (
-                  <Card>
+                <h2 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 900, color: c1 }}>Signalements et événements</h2>
+
+                <Card style={{ marginBottom: 16 }}>
+                  <div style={{ padding: "12px 18px", borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                    <strong style={{ fontSize: 13, color: c1 }}>Mes signalements sur élèves ({incidents.length})</strong>
+                    <span style={{ fontSize: 11, color: "#64748b" }}>Visibles par la direction et les parents concernés.</span>
+                  </div>
+                  {incidents.length === 0 ? (
+                    <div style={{ padding: "20px", textAlign: "center", color: "#9ca3af", fontSize: 12 }}>
+                      Aucun signalement. Allez dans <strong>Mes élèves</strong> pour signaler une absence, un retard, une indiscipline.
+                    </div>
+                  ) : (
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                      <THead cols={["Date", "Classe", "Matiere", "Statut", "Motif"]} />
+                      <THead cols={["Date", "Élève", "Classe", "Type", "Justifié", "Motif", "Action"]} />
+                      <tbody>
+                        {incidents.map((inc) => {
+                          const mine = enseignantId && inc.signaledByEnseignantId === enseignantId;
+                          const typeColor = inc.type === "Absence" ? "red" : inc.type === "Retard" ? "amber" : inc.type === "Avertissement" ? "amber" : inc.type === "Sanction" ? "red" : inc.type === "Renvoi temporaire" ? "red" : "blue";
+                          return (
+                            <TR key={inc._id}>
+                              <TD>{inc.date || "-"}</TD>
+                              <TD bold>{inc.eleveNom || "-"}</TD>
+                              <TD><Badge color="blue">{inc.classe || "-"}</Badge></TD>
+                              <TD><Badge color={typeColor}>{inc.type || "-"}</Badge></TD>
+                              <TD><Badge color={inc.justifie === "Oui" ? "vert" : "gray"}>{inc.justifie || "Non"}</Badge></TD>
+                              <TD>{inc.motif || "-"}</TD>
+                              <TD>
+                                {mine ? (
+                                  <div style={{ display: "flex", gap: 4 }}>
+                                    <Btn sm v="ghost" onClick={() => ouvrirEditionIncident(inc)}>✏️</Btn>
+                                    <Btn sm v="danger" onClick={() => supprimerIncident(inc._id)}>🗑</Btn>
+                                  </div>
+                                ) : (
+                                  <span title={`Signalé par ${inc.signaledByEnseignantNom || "la direction"}`} style={{ fontSize: 10, color: "#9ca3af", fontStyle: "italic" }}>
+                                    {inc.signaledByEnseignantNom ? `par ${inc.signaledByEnseignantNom.split(" ").slice(-1)[0]}` : "Direction"}
+                                  </span>
+                                )}
+                              </TD>
+                            </TR>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </Card>
+
+                <Card>
+                  <div style={{ padding: "12px 18px", borderBottom: "1px solid #f1f5f9" }}>
+                    <strong style={{ fontSize: 13, color: c1 }}>Mes événements d'enseignement ({mesEvenements.length})</strong>
+                    <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>Cours effectués, absents, non effectués (saisis par la comptabilité).</div>
+                  </div>
+                  {mesEvenements.length === 0 ? (
+                    <div style={{ padding: "20px", textAlign: "center", color: "#9ca3af", fontSize: 12 }}>Aucun événement enregistré.</div>
+                  ) : (
+                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <THead cols={["Date", "Classe", "Matière", "Statut", "Motif"]} />
                       <tbody>
                         {mesEvenements.map((item) => (
                           <TR key={item._id}>
@@ -469,8 +614,8 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
                         ))}
                       </tbody>
                     </table>
-                  </Card>
-                )}
+                  )}
+                </Card>
               </>
             )}
 
@@ -549,6 +694,46 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
               </>
             )}
           </>
+        )}
+
+        {modalIncident && (
+          <Modale titre={modalIncident === "edit" ? "Modifier le signalement" : `Signaler — ${formIncident.eleveNom || ""}`} fermer={() => setModalIncident(null)}>
+            <div style={{ marginBottom: 12, padding: "10px 14px", background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: 8, fontSize: 12, color: "#92400e" }}>
+              Ce signalement sera visible par <strong>la direction</strong> et <strong>les parents</strong> de l'élève.
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <Selec label="Type" value={formIncident.type || "Absence"} onChange={(e) => setFormIncident((p) => ({ ...p, type: e.target.value }))}>
+                <option>Absence</option>
+                <option>Retard</option>
+                <option>Avertissement</option>
+                <option>Sanction</option>
+                <option>Renvoi temporaire</option>
+              </Selec>
+              <Input label="Date" type="date" value={formIncident.date || ""} onChange={(e) => setFormIncident((p) => ({ ...p, date: e.target.value }))} />
+              <Selec label="Justifié ?" value={formIncident.justifie || "Non"} onChange={(e) => setFormIncident((p) => ({ ...p, justifie: e.target.value }))}>
+                <option>Non</option>
+                <option>Oui</option>
+              </Selec>
+              <div style={{ display: "flex", alignItems: "flex-end", fontSize: 11, color: "#6b7280" }}>
+                Classe : <strong style={{ marginLeft: 4 }}>{formIncident.classe || "—"}</strong>
+              </div>
+            </div>
+            <div style={{ height: 10 }} />
+            <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: c1, marginBottom: 4 }}>Motif / Description</label>
+            <textarea
+              rows={3}
+              value={formIncident.motif || ""}
+              onChange={(e) => setFormIncident((p) => ({ ...p, motif: e.target.value }))}
+              placeholder="Ex : Bavardage répété, n'a pas rendu son devoir, absent sans justification..."
+              maxLength={500}
+              style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 11px", fontSize: 13, fontFamily: "inherit", resize: "vertical", outline: "none", boxSizing: "border-box" }}
+            />
+            <div style={{ fontSize: 11, color: "#6b7280", textAlign: "right", marginTop: 2 }}>{(formIncident.motif || "").length} / 500</div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
+              <Btn v="ghost" onClick={() => setModalIncident(null)}>Annuler</Btn>
+              <Btn v="amber" onClick={enregistrerIncident} disabled={enregistrement}>{enregistrement ? "Enregistrement..." : "✅ Enregistrer le signalement"}</Btn>
+            </div>
+          </Modale>
         )}
       </div>
     </div>
