@@ -4,6 +4,7 @@ import { C, today, genererMdp, peutModifier } from "../constants";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
 import { apiFetch, getAuthHeaders } from "../apiClient";
+import { getActiveNoteForms, getEvaluationLabel, resolveCanonicalNoteType } from "../evaluation-forms";
 import { getGeneralAverage } from "../note-utils";
 import { findStaffDuplicate, getStaffDuplicateMessage } from "../staff-utils";
 import { getEligibleTeachersForTimetable, getTeacherMonthlyForfait } from "../teacher-utils";
@@ -62,13 +63,15 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
   const [notesVue,setNotesVue]=useState("liste"); // "liste" | "grille"
   const [grilleClasse,setGrilleClasse]=useState("all");
   const [grillePeriode,setGrillePeriode]=useState("T1");
-  const [grilleType,setGrilleType]=useState("Devoir");
   const [grilleChanges,setGrilleChanges]=useState({}); // {"eleveId|matiere": note}
   const [grilleSaving,setGrilleSaving]=useState(false);
   const chg=k=>e=>setForm(p=>({...p,[k]:e.target.value}));
   const chgC=k=>e=>setFormC(p=>({...p,[k]:e.target.value}));
   const chgP=k=>e=>setFormP(p=>({...p,[k]:e.target.value}));
   const {schoolId, schoolInfo, moisAnnee, toast, logAction, envoyerPush} = useContext(SchoolContext);
+  const noteForms = getActiveNoteForms(schoolInfo, isPrimarySection ? "primaire" : "secondaire");
+  const defaultNoteType = noteForms[0]?.value || "Devoir";
+  const [grilleType,setGrilleType]=useState(defaultNoteType);
   const canCreate = !readOnly;
   const canEdit = !readOnly && (peutModifier(userRole) || verrouOuvert);
   const moy=notes.length?(notes.reduce((s,n)=>s+Number(n.note),0)/notes.length).toFixed(1):"—";
@@ -618,14 +621,14 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
           <Btn sm v="ghost" onClick={()=>exportExcel(
             `Notes_${avecEns?"College":"Primaire"}`,
             ["Élève","Matière","Type","Période",`Note /${maxNote}`],
-            notes.map(n=>[n.eleveNom,n.matiere,n.type,n.periode,n.note])
+            notes.map(n=>[n.eleveNom,n.matiere,getEvaluationLabel(n.type, schoolInfo, { section: isPrimarySection ? "primaire" : "secondaire" }),n.periode,n.note])
           )}>📥 Export</Btn>
           <Btn sm v="ghost" onClick={()=>exportExcel(`Modele_Notes`,
             ["Élève (Nom Prénom)","Matière","Type","Période",`Note (/${maxNote})`],
-            eleves.slice(0,3).map(e=>[`${e.nom} ${e.prenom}`,matieres[0]?.nom||"Maths","Devoir","T1",Math.round(maxNote*0.7)])
+            eleves.slice(0,3).map(e=>[`${e.nom} ${e.prenom}`,matieres[0]?.nom||"Maths",noteForms[0]?.label||"Devoir","T1",Math.round(maxNote*0.7)])
           )}>📋 Modèle</Btn>
           {canCreate&&<Btn sm v="vert" onClick={()=>setModal("import_notes")}>⬆️ Importer</Btn>}
-          {canCreate&&<Btn onClick={()=>{setForm({periode:"T1",type:"Devoir"});setModal("add_n");}}>+ Saisir</Btn>}
+          {canCreate&&<Btn onClick={()=>{setForm({periode:"T1",type:defaultNoteType});setModal("add_n");}}>+ Saisir</Btn>}
         </div>
 
         {/* ── VUE GRILLE ── */}
@@ -687,7 +690,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
                 </select>
                 <select value={grilleType} onChange={e=>setGrilleType(e.target.value)}
                   style={{border:"1px solid #b0c4d8",borderRadius:7,padding:"6px 10px",fontSize:12}}>
-                  <option>Devoir</option><option>Interrogation</option><option>Examen</option><option>Composition</option>
+                  {noteForms.map(item=><option key={item.id} value={item.value}>{item.label}</option>)}
                 </select>
                 {Object.keys(grilleChanges).length>0&&(
                   <Btn v="vert" sm disabled={grilleSaving} onClick={sauvegarderGrille}>
@@ -762,7 +765,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
             <THead cols={["Élève","Matière","Type","Période",`Note /${maxNote}`,readOnly?"":"Action"]}/>
             <tbody>{notes.map(n=><TR key={n._id}>
               <TD bold>{n.eleveNom}</TD><TD>{n.matiere}</TD>
-              <TD><Badge color="gray">{n.type}</Badge></TD><TD>{n.periode}</TD>
+              <TD><Badge color="gray">{getEvaluationLabel(n.type, schoolInfo, { section: isPrimarySection ? "primaire" : "secondaire" })}</Badge></TD><TD>{n.periode}</TD>
               <TD><Badge color={n.note>=(maxNote*0.7)?"vert":n.note>=(maxNote*0.5)?"blue":"red"}>{n.note}/{maxNote}</Badge></TD>
               {canEdit&&<TD><Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ?"))supN(n._id);}}>Suppr.</Btn></TD>}
             </TR>)}</tbody>
@@ -783,7 +786,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
             const lignes = rows.filter(r=>r[0]||r[1]).map((r,i)=>{
               const eleveNom = String(r[0]||"").trim();
               const matiere  = String(r[1]||"").trim();
-              const type     = String(r[2]||"Devoir").trim();
+              const type     = resolveCanonicalNoteType(String(r[2]||(noteForms[0]?.label||"Devoir")).trim(), schoolInfo, isPrimarySection ? "primaire" : "secondaire");
               const periode  = String(r[3]||"T1").trim();
               const note     = Number(String(r[4]||"").replace(",","."));
               const eleve    = eleves.find(e=>`${e.nom} ${e.prenom}`.toLowerCase()===eleveNom.toLowerCase());
@@ -818,7 +821,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
                     <td style={{padding:"4px 8px",color:"#94a3b8",fontSize:10}}>{l.ligne}</td>
                     <td style={{padding:"4px 8px",fontWeight:600}}>{l.eleveNom||"—"}</td>
                     <td style={{padding:"4px 8px"}}>{l.matiere||"—"}</td>
-                    <td style={{padding:"4px 8px"}}>{l.type}</td>
+                    <td style={{padding:"4px 8px"}}>{getEvaluationLabel(l.type, schoolInfo, { section: isPrimarySection ? "primaire" : "secondaire" })}</td>
                     <td style={{padding:"4px 8px"}}>{l.periode}</td>
                     <td style={{padding:"4px 8px",textAlign:"center",fontWeight:700}}>{isNaN(l.note)?"—":l.note}</td>
                     <td style={{padding:"4px 8px"}}>
@@ -867,8 +870,8 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
                 return matieresForClasse(eleveSelec?.classe).map(m=><option key={m._id}>{m.nom}</option>);
               })()}
             </Selec>
-            <Selec label="Type" value={form.type||"Devoir"} onChange={chg("type")}>
-              <option>Devoir</option><option>Interrogation</option><option>Examen</option><option>Composition</option>
+            <Selec label="Type" value={form.type||defaultNoteType} onChange={chg("type")}>
+              {noteForms.map(item=><option key={item.id} value={item.value}>{item.label}</option>)}
             </Selec>
             <Input label={`Note (/${maxNote})`} type="number" min="0" max={maxNote} step="0.25" value={form.note||""} onChange={chg("note")}/>
             <Selec label="Période" value={form.periode||"T1"} onChange={chg("periode")}>
@@ -877,7 +880,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
           </div>
           <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
             <Btn v="ghost" onClick={()=>setModal(null)}>Annuler</Btn>
-            <Btn onClick={()=>{ajN({...form,note:Number(form.note)});setModal(null);}}>Enregistrer</Btn>
+            <Btn onClick={()=>{ajN({...form,type:resolveCanonicalNoteType(form.type, schoolInfo, isPrimarySection ? "primaire" : "secondaire"),note:Number(form.note)});setModal(null);}}>Enregistrer</Btn>
           </div>
         </Modale>}
       </div>}

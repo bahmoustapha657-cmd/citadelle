@@ -5,6 +5,7 @@ import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
 import { db } from "../firebaseDb";
 import { apiFetch, getAuthHeaders } from "../apiClient";
+import { getEvaluationFormsConfig } from "../evaluation-forms";
 import { AffichageSettings } from "./AffichageSettings";
 import { MatriculeSettings } from "./MatriculeSettings";
 import { Btn, Input, Modale, Selec } from "./ui";
@@ -46,6 +47,7 @@ function ParametresEcole({ utilisateurRole = "", onSchoolClosed = null }) {
   });
   const [formHonneur, setFormHonneur] = useState({});
   const [modalH, setModalH] = useState(null);
+  const [evaluationForms, setEvaluationForms] = useState(() => getEvaluationFormsConfig(schoolInfo));
   const chgA = k => e => setAccueil(p=>({...p,[k]: e.target.type==="checkbox"?e.target.checked:e.target.value}));
   const [chargement,setChargement] = useState(false);
   const [msgSucces,setMsgSucces] = useState("");
@@ -57,6 +59,22 @@ function ParametresEcole({ utilisateurRole = "", onSchoolClosed = null }) {
   const [dangerLoading,setDangerLoading] = useState(false);
 
   const chg = k => e => setForm(p=>({...p,[k]:e.target.value}));
+  const setEvaluationLabel = (groupId, formId, label) => {
+    setEvaluationForms((prev) => ({
+      ...prev,
+      [groupId]: prev[groupId].map((item) => (
+        item.id === formId ? { ...item, label } : item
+      )),
+    }));
+  };
+  const toggleEvaluationActive = (groupId, formId) => {
+    setEvaluationForms((prev) => ({
+      ...prev,
+      [groupId]: prev[groupId].map((item) => (
+        item.id === formId ? { ...item, active: !item.active } : item
+      )),
+    }));
+  };
 
   const [couleursDetectees, setCouleursDetectees] = useState(null);
   const canManageLifecycle = schoolId && schoolId !== "superadmin" && ["direction","superadmin"].includes(utilisateurRole);
@@ -162,6 +180,7 @@ function ParametresEcole({ utilisateurRole = "", onSchoolClosed = null }) {
         dpe: form.dpe.trim(),
         agrement: form.agrement.trim(),
         moisDebut: form.moisDebut,
+        evaluationForms,
         accueil: {
           active: accueil.active,
           slogan: accueil.slogan.trim(),
@@ -290,6 +309,7 @@ function ParametresEcole({ utilisateurRole = "", onSchoolClosed = null }) {
     {id:"identite", label:"Identite"},
     {id:"accueil", label:"Accueil"},
     {id:"officiel", label:"Officiel"},
+    {id:"evaluations", label:"Evaluations"},
     {id:"matricules", label:"Matricules"},
     {id:"affichage", label:"Affichage"},
     ...(canManageLifecycle ? [{id:"danger", label:"Danger"}] : []),
@@ -439,6 +459,46 @@ function ParametresEcole({ utilisateurRole = "", onSchoolClosed = null }) {
         <p style={{margin:"6px 0 0",fontSize:11,color:"#9ca3af"}}>
           Actuellement : <strong style={{color:C.blue}}>{calcMoisAnnee(form.moisDebut).join(" · ")}</strong>
         </p>
+      </div>
+      </>}
+
+      {tabParam==="evaluations"&&<>
+      <div style={sec}>
+        <h3 style={{margin:"0 0 10px",fontSize:14,fontWeight:800,color:C.blueDark}}>Formes d'evaluation</h3>
+        <p style={{margin:"0 0 16px",fontSize:12,color:"#64748b"}}>
+          Chaque ecole peut renommer les formes affichees, et activer seulement celles qu'elle utilise.
+          Les calculs restent stables en interne.
+        </p>
+        {[
+          { id: "primaire", title: "Primaire" },
+          { id: "secondaire", title: "Secondaire" },
+          { id: "examens", title: "Examens" },
+        ].map((group) => (
+          <div key={group.id} style={{border:"1px solid #e2e8f0",borderRadius:12,padding:"16px 18px",marginBottom:14,background:"#f8fafc"}}>
+            <h4 style={{margin:"0 0 12px",fontSize:13,fontWeight:800,color:C.blueDark}}>{group.title}</h4>
+            <div style={{display:"grid",gap:10}}>
+              {(evaluationForms[group.id] || []).map((item) => (
+                <div key={item.id} style={{display:"grid",gridTemplateColumns:"minmax(140px,180px) 1fr auto",gap:10,alignItems:"center"}}>
+                  <div style={{fontSize:12,fontWeight:700,color:"#475569"}}>{item.value}</div>
+                  <input
+                    style={inp}
+                    value={item.label}
+                    onChange={(e)=>setEvaluationLabel(group.id, item.id, e.target.value)}
+                    placeholder={item.value}
+                  />
+                  <label style={{display:"flex",alignItems:"center",gap:8,fontSize:12,fontWeight:700,color:item.active?C.greenDk:"#64748b",cursor:"pointer",whiteSpace:"nowrap"}}>
+                    <input
+                      type="checkbox"
+                      checked={item.active}
+                      onChange={()=>toggleEvaluationActive(group.id, item.id)}
+                    />
+                    {item.active ? "Active" : "Masquee"}
+                  </label>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
       </>}
 
@@ -741,7 +801,7 @@ function ParametresEcole({ utilisateurRole = "", onSchoolClosed = null }) {
       </>}
 
       {/* Bouton sauvegarder (identité / officiel / accueil) */}
-      {["identite","accueil","officiel"].includes(tabParam)&&<button onClick={sauvegarder} disabled={chargement}
+      {["identite","accueil","officiel","evaluations"].includes(tabParam)&&<button onClick={sauvegarder} disabled={chargement}
         style={{width:"100%",background:`linear-gradient(90deg,${C.blue},${C.green})`,color:"#fff",
           border:"none",padding:"13px",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer",
           opacity:chargement?0.7:1}}>

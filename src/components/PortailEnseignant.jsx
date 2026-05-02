@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useMemo, useState } from "react";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { apiFetch, getAuthHeaders } from "../apiClient";
 import { C } from "../constants";
+import { getActiveNoteForms, getEvaluationLabel, resolveCanonicalNoteType } from "../evaluation-forms";
 import { GlobalStyles } from "../styles";
 import { Badge, Btn, Card, Chargement, Input, LectureSeule, Modale, Selec, Stat, TD, THead, TR, Vide } from "./ui";
 
@@ -9,6 +10,8 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
   const { moisAnnee, toast } = useContext(SchoolContext);
   const c1 = schoolInfo.couleur1 || C.blue;
   const c2 = schoolInfo.couleur2 || C.green;
+  const noteForms = getActiveNoteForms(schoolInfo, utilisateur.section || "secondaire");
+  const defaultNoteType = noteForms[0]?.value || "Devoir";
 
   const [tab, setTab] = useState("dashboard");
   const [periodeN, setPeriodeN] = useState(moisAnnee[0] || "");
@@ -79,7 +82,7 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
   const ouvrirCreationNote = () => {
     setFormNote({
       eleveId: "",
-      type: "Devoir",
+      type: defaultNoteType,
       periode: periodeN,
       note: "",
     });
@@ -90,7 +93,7 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
     setFormNote({
       noteId: note._id,
       eleveId: note.eleveId || "",
-      type: note.type || "Devoir",
+      type: note.type || defaultNoteType,
       periode: note.periode || periodeN,
       note: note.note ?? "",
     });
@@ -113,7 +116,7 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
           action: "save_note",
           noteId: formNote.noteId || "",
           eleveId: formNote.eleveId,
-          type: formNote.type || "Devoir",
+          type: resolveCanonicalNoteType(formNote.type || defaultNoteType, schoolInfo, utilisateur.section || "secondaire"),
           periode: formNote.periode,
           note: Number(formNote.note),
         }),
@@ -287,7 +290,7 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
                             <TR key={note._id}>
                               <TD bold>{note.eleveNom}</TD>
                               <TD>{note.matiere}</TD>
-                              <TD><Badge color="blue">{note.type}</Badge></TD>
+                              <TD><Badge color="blue">{getEvaluationLabel(note.type, schoolInfo, { section: utilisateur.section || "secondaire" })}</Badge></TD>
                               <TD>{note.periode}</TD>
                               <TD center><strong style={{ color: Number(note.note) >= 10 ? C.greenDk : "#b91c1c" }}>{note.note}/20</strong></TD>
                             </TR>
@@ -350,7 +353,7 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
                         {notesPeriode.map((note) => (
                           <TR key={note._id}>
                             <TD bold>{note.eleveNom}</TD>
-                            <TD><Badge color="blue">{note.type}</Badge></TD>
+                            <TD><Badge color="blue">{getEvaluationLabel(note.type, schoolInfo, { section: utilisateur.section || "secondaire" })}</Badge></TD>
                             <TD center><strong style={{ fontSize: 14, color: Number(note.note) >= 10 ? C.greenDk : "#b91c1c" }}>{note.note}</strong></TD>
                             <TD center>
                               <div style={{ display: "flex", justifyContent: "center", gap: 6 }}>
@@ -382,12 +385,10 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
                     <div style={{ height: 10 }} />
                     <Selec
                       label="Type"
-                      value={formNote.type || "Devoir"}
+                      value={formNote.type || defaultNoteType}
                       onChange={(event) => setFormNote((current) => ({ ...current, type: event.target.value }))}
                     >
-                      <option>Devoir</option>
-                      <option>Composition</option>
-                      <option>Interrogation</option>
+                      {noteForms.map((item) => <option key={item.id} value={item.value}>{item.label}</option>)}
                     </Selec>
                     <div style={{ height: 10 }} />
                     <Selec
