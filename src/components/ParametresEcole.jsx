@@ -18,7 +18,7 @@ function ParametresEcole({ utilisateurRole = "", onSchoolClosed = null }) {
     nom: schoolInfo.nom||"",
     type: schoolInfo.type||"Groupe Scolaire Privé",
     ville: schoolInfo.ville||"",
-    pays: schoolInfo.pays||"Guinée",
+    pays: schoolInfo.pays||"République de Guinée",
     couleur1: schoolInfo.couleur1||"#0A1628",
     couleur2: schoolInfo.couleur2||"#00C48C",
     logo: schoolInfo.logo||"",

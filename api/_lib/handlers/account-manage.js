@@ -1,4 +1,4 @@
-import { getAuth } from "firebase-admin/auth";
+﻿import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import bcrypt from "bcryptjs";
 import { ROLE_ORDER, getRoleSettingsMap } from "../../../shared/role-config.js";
@@ -39,12 +39,26 @@ async function upsertAuthUser(authAdmin, { email, password, displayName, disable
 
 const ROLES_SYSTEME_ECRITURE = new Set(["direction", "admin", "comptable", "primaire", "college"]);
 
-function canManageTargetRole(session, targetRole) {
+export function canManageTeacherScope(session, targetSection) {
+  if (session.profile.role === "primaire") {
+    return targetSection === "primaire";
+  }
+  if (session.profile.role === "college") {
+    return targetSection === "college" || targetSection === "lycee";
+  }
+  return false;
+}
+
+export function canManageTargetRole(session, targetRole, targetData = {}) {
   if (session.profile.role === "superadmin") return true;
   if (session.profile.role === "direction") return true;
   if (session.profile.role === "admin") {
     if (ROLES_SYSTEME_ECRITURE.has(targetRole)) return false;
     return ["enseignant", "parent"].includes(targetRole);
+  }
+  if (session.profile.role === "primaire" || session.profile.role === "college") {
+    if (targetRole !== "enseignant") return false;
+    return canManageTeacherScope(session, targetData.section);
   }
   return false;
 }
@@ -207,14 +221,14 @@ export default async function handler(req, res) {
     }
 
     const session = await requireSession(req, res, {
-      roles: ["direction", "admin"],
+      roles: ["direction", "admin", "primaire", "college"],
       schoolId: normalizedSchoolId,
       allowSuperadmin: true,
     });
     if (!session) return;
 
-    if (!canManageTargetRole(session, role)) {
-      return res.status(403).json({ error: "Seule la direction peut creer un compte direction." });
+    if (!canManageTargetRole(session, role, sanitizeAccountPayload({ ...req.body, role, login: normalizedLogin }))) {
+      return res.status(403).json({ error: "Droits insuffisants pour creer ce compte." });
     }
 
     try {
@@ -340,7 +354,7 @@ export default async function handler(req, res) {
   if (action === "sync_role_settings") {
     const normalizedSchoolId = normalizeSchoolId(req.body?.schoolId);
     if (!normalizedSchoolId || !isValidSchoolId(normalizedSchoolId)) {
-      return res.status(400).json({ error: "Code école invalide." });
+      return res.status(400).json({ error: "Code Ã©cole invalide." });
     }
 
     const session = await requireSession(req, res, {
@@ -368,7 +382,7 @@ export default async function handler(req, res) {
         const existing = comptesParRole.get(role);
         const conflict = comptesParLogin.get(config.login);
         if (conflict && conflict.id !== existing?.id) {
-          return res.status(409).json({ error: `L'identifiant ${config.login} est déjà utilisé par un autre compte.` });
+          return res.status(409).json({ error: `L'identifiant ${config.login} est dÃ©jÃ  utilisÃ© par un autre compte.` });
         }
       }
 
@@ -515,14 +529,14 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Champs requis : schoolId, accountId, mdp" });
     }
     if (!isValidSchoolId(normalizedSchoolId)) {
-      return res.status(400).json({ error: "Code école invalide." });
+      return res.status(400).json({ error: "Code Ã©cole invalide." });
     }
     if (mdp.length < 8) {
-      return res.status(400).json({ error: "Le mot de passe doit contenir au moins 8 caractères." });
+      return res.status(400).json({ error: "Le mot de passe doit contenir au moins 8 caractÃ¨res." });
     }
 
     const session = await requireSession(req, res, {
-      roles: ["direction", "admin"],
+      roles: ["direction", "admin", "primaire", "college"],
       schoolId: normalizedSchoolId,
       allowSuperadmin: true,
     });
@@ -534,8 +548,8 @@ export default async function handler(req, res) {
         return res.status(404).json({ error: "Compte introuvable." });
       }
 
-      if (!canManageTargetRole(session, account.data.role)) {
-        return res.status(403).json({ error: "Seule la direction peut réinitialiser un compte direction." });
+      if (!canManageTargetRole(session, account.data.role, account.data)) {
+        return res.status(403).json({ error: "Droits insuffisants pour reinitialiser ce compte." });
       }
 
       const email = buildEmail(account.data.login, normalizedSchoolId);
@@ -589,7 +603,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true });
     } catch (e) {
       console.error("account-manage reset error:", e);
-      return res.status(500).json({ error: "Erreur réinitialisation mot de passe" });
+      return res.status(500).json({ error: "Erreur rÃ©initialisation mot de passe" });
     }
   }
 
@@ -599,7 +613,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Champ requis : mdp" });
     }
     if (mdp.length < 8) {
-      return res.status(400).json({ error: "Le mot de passe doit contenir au moins 8 caractères." });
+      return res.status(400).json({ error: "Le mot de passe doit contenir au moins 8 caractÃ¨res." });
     }
 
     const session = await requireSession(req, res, { allowSuperadmin: true });
@@ -611,7 +625,7 @@ export default async function handler(req, res) {
     try {
       const account = await findAccount({ db, schoolId, accountId: session.profile.compteDocId || "", login });
       if (!account) {
-        return res.status(404).json({ error: "Compte associé introuvable." });
+        return res.status(404).json({ error: "Compte associÃ© introuvable." });
       }
 
       const mdpHash = await bcrypt.hash(mdp, 10);
@@ -637,3 +651,4 @@ export default async function handler(req, res) {
 
   return res.status(400).json({ error: "Action inconnue" });
 }
+

@@ -20,23 +20,30 @@ const DEVISE_GUINEE_HTML = `<em style="-webkit-print-color-adjust:exact;print-co
 
 export const MINISTERE_DEFAUT = "Ministère de l'Éducation Nationale, de l'Alphabétisation, de l'Enseignement Technique et de la Formation Professionnelle";
 
-export const enteteDoc = (si, logoUrl) => `
-<div style="display:flex;align-items:center;gap:16px;border-bottom:3px solid #0A1628;padding-bottom:12px;margin-bottom:16px">
-  ${logoUrl?`<img src="${logoUrl}" alt="Logo" style="width:75px;height:75px;object-fit:contain;flex-shrink:0"/>`:`<div style="width:75px;height:75px;flex-shrink:0"></div>`}
-  <div style="flex:1;display:flex;justify-content:space-between;align-items:flex-start">
-    <div style="font-size:10px;color:#444;line-height:1.8">
-      <strong style="font-size:11px;color:#0A1628">${si.pays||"République de Guinée"}</strong><br/>
-      ${DEVISE_GUINEE_HTML}<br/>
-      <strong>${si.ministere||MINISTERE_DEFAUT}</strong><br/>
-      ${si.ire?`${si.ire}<br/>`:""}
-      ${si.dpe||""}
-    </div>
-    <div style="text-align:right">
-      <strong style="display:block;font-size:15px;color:#0A1628">${si.nom||""}</strong>
-      ${si.agrement?`<span style="font-size:10px;color:#555">Agrément : ${si.agrement}</span>`:""}
-    </div>
+// Helpers défensifs : tolèrent null/undefined/"" et chaînes blanches
+const orDefault = (v, def) => (typeof v === "string" && v.trim() ? v : def);
+
+export const enteteDoc = (si = {}, logoUrl) => {
+  const pays = orDefault(si.pays, "République de Guinée");
+  const ministere = orDefault(si.ministere, MINISTERE_DEFAUT);
+  return `
+<div style="display:flex;align-items:flex-start;gap:14px;border-bottom:3px solid #0A1628;padding-bottom:12px;margin-bottom:16px">
+  <div style="flex:1;font-size:10px;color:#444;line-height:1.8;min-width:0">
+    <strong style="font-size:11px;color:#0A1628">${pays}</strong><br/>
+    ${DEVISE_GUINEE_HTML}<br/>
+    <strong>${ministere}</strong><br/>
+    ${si.ire?`${si.ire}<br/>`:""}
+    ${si.dpe||""}
+  </div>
+  <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0">
+    ${logoUrl?`<img src="${logoUrl}" alt="Logo" style="width:78px;height:78px;object-fit:contain"/>`:`<div style="width:78px;height:78px"></div>`}
+  </div>
+  <div style="flex:1;text-align:right;min-width:0">
+    <strong style="display:block;font-size:15px;color:#0A1628;line-height:1.3">${si.nom||""}</strong>
+    ${si.agrement?`<span style="font-size:10px;color:#555">Agrément : ${si.agrement}</span>`:""}
   </div>
 </div>`;
+};
 
 export const getRecuTotals = (eleve, montantUnit, moisAnnee=MOIS_ANNEE, fraisAnnexes={}) => {
   const mens = eleve.mens||{};
@@ -804,7 +811,7 @@ function buildBulletinPageHTML({
           : `<div style="width:60px;height:60px;border-radius:8px;background:${c1};color:#fff;font-weight:900;font-size:22px;display:flex;align-items:center;justify-content:center;flex-shrink:0">${getInitiales(eleve)}</div>`}
         <div style="flex:1;font-size:10.5px;line-height:1.6;min-width:0">
           <div style="font-size:14px;font-weight:800;color:${c1};margin-bottom:2px">${eleve.nom || ""} ${eleve.prenom || ""}</div>
-          <div><strong>Classe :</strong> ${eleve.classe || "—"} &nbsp;·&nbsp; <strong>Matricule :</strong> ${eleve.matricule || "—"}</div>
+          <div><strong>Classe :</strong> ${eleve.classe || "—"} &nbsp;·&nbsp; <strong>Matricule national :</strong> ${eleve.ien || "—"}</div>
           <div><strong>Né(e) le :</strong> ${eleve.dateNaissance || "—"}${eleve.lieuNaissance ? ` à ${eleve.lieuNaissance}` : ""}</div>
         </div>
       </div>
