@@ -158,6 +158,87 @@ function LandingEduGest({ onConnexion, onInscription }) {
   return (
     <div style={{ minHeight: "100vh", background: "#0A1628", fontFamily: "'Inter','Segoe UI',sans-serif", color: "#fff", overflowX: "hidden" }}>
       <GlobalStyles />
+      <style>{`
+        @keyframes landingFadeUp {
+          from { opacity: 0; transform: translateY(22px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes landingFloat {
+          0%, 100% { transform: translate3d(0, 0, 0); }
+          50% { transform: translate3d(0, -14px, 0); }
+        }
+
+        @keyframes landingGlow {
+          0%, 100% { box-shadow: 0 0 0 rgba(0, 196, 140, 0); }
+          50% { box-shadow: 0 0 24px rgba(0, 196, 140, 0.22); }
+        }
+
+        .landing-fade-up {
+          opacity: 0;
+          animation: landingFadeUp 700ms ease forwards;
+        }
+
+        .landing-delay-1 { animation-delay: 80ms; }
+        .landing-delay-2 { animation-delay: 160ms; }
+        .landing-delay-3 { animation-delay: 240ms; }
+        .landing-delay-4 { animation-delay: 320ms; }
+
+        .landing-blob {
+          animation: landingFloat 7s ease-in-out infinite;
+          will-change: transform;
+        }
+
+        .landing-badge {
+          animation: landingGlow 3.4s ease-in-out infinite;
+        }
+
+        .landing-card,
+        .landing-link-card,
+        .landing-cta {
+          will-change: transform;
+        }
+
+        .landing-card,
+        .landing-link-card {
+          transition: transform 220ms ease, border-color 220ms ease, background 220ms ease, box-shadow 220ms ease;
+        }
+
+        .landing-card:hover,
+        .landing-link-card:hover {
+          transform: translateY(-5px);
+          border-color: rgba(0, 196, 140, 0.24) !important;
+          box-shadow: 0 14px 36px rgba(0, 0, 0, 0.18);
+        }
+
+        .landing-cta {
+          transition: transform 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
+        }
+
+        .landing-cta:hover {
+          transform: translateY(-2px) scale(1.01);
+        }
+
+        .landing-cta:active {
+          transform: translateY(0) scale(0.995);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .landing-fade-up,
+          .landing-blob,
+          .landing-badge {
+            animation: none !important;
+            opacity: 1 !important;
+            transform: none !important;
+          }
+
+          .landing-card,
+          .landing-link-card,
+          .landing-cta {
+            transition: none !important;
+          }
+        }
+      `}</style>
 
       <nav style={{ position: "sticky", top: 0, zIndex: 100, background: "rgba(10,22,40,0.92)", backdropFilter: "blur(12px)", borderBottom: "1px solid rgba(255,255,255,0.07)", padding: "0 24px", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -175,30 +256,30 @@ function LandingEduGest({ onConnexion, onInscription }) {
       </nav>
 
       <section style={{ padding: "84px 24px 56px", textAlign: "center", maxWidth: 920, margin: "0 auto", position: "relative" }}>
-        <div style={{ position: "absolute", top: -40, left: "10%", width: 320, height: 320, borderRadius: "50%", background: "radial-gradient(circle,rgba(0,196,140,0.12) 0%,transparent 70%)", pointerEvents: "none" }} />
-        <div style={{ position: "absolute", top: 60, right: "5%", width: 200, height: 200, borderRadius: "50%", background: "radial-gradient(circle,rgba(0,140,255,0.09) 0%,transparent 70%)", pointerEvents: "none" }} />
+        <div className="landing-blob" style={{ position: "absolute", top: -40, left: "10%", width: 320, height: 320, borderRadius: "50%", background: "radial-gradient(circle,rgba(0,196,140,0.12) 0%,transparent 70%)", pointerEvents: "none" }} />
+        <div className="landing-blob" style={{ position: "absolute", top: 60, right: "5%", width: 200, height: 200, borderRadius: "50%", background: "radial-gradient(circle,rgba(0,140,255,0.09) 0%,transparent 70%)", pointerEvents: "none", animationDelay: "-2.8s" }} />
 
-        <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(0,196,140,0.12)", border: "1px solid rgba(0,196,140,0.3)", borderRadius: 20, padding: "6px 16px", marginBottom: 28 }}>
+        <div className="landing-fade-up landing-badge" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(0,196,140,0.12)", border: "1px solid rgba(0,196,140,0.3)", borderRadius: 20, padding: "6px 16px", marginBottom: 28 }}>
           <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#00C48C", display: "inline-block" }} />
           <span style={{ fontSize: 12, fontWeight: 700, color: "#00C48C", letterSpacing: "0.5px" }}>Conçu pour les écoles d'Afrique de l'Ouest</span>
         </div>
 
-        <h1 style={{ fontSize: "clamp(30px,6vw,56px)", fontWeight: 900, lineHeight: 1.12, margin: "0 0 18px", letterSpacing: "-1px" }}>
+        <h1 className="landing-fade-up landing-delay-1" style={{ fontSize: "clamp(30px,6vw,56px)", fontWeight: 900, lineHeight: 1.12, margin: "0 0 18px", letterSpacing: "-1px" }}>
           La gestion scolaire <span style={{ color: "#00C48C" }}>claire</span>, <span style={{ color: "#00C48C" }}>complete</span> et <span style={{ color: "#00C48C" }}>fiable</span>
         </h1>
-        <p style={{ fontSize: "clamp(14px,2.5vw,18px)", color: "rgba(255,255,255,0.62)", maxWidth: 620, margin: "0 auto 36px", lineHeight: 1.7 }}>
+        <p className="landing-fade-up landing-delay-2" style={{ fontSize: "clamp(14px,2.5vw,18px)", color: "rgba(255,255,255,0.62)", maxWidth: 620, margin: "0 auto 36px", lineHeight: 1.7 }}>
           EduGest est un logiciel de gestion scolaire pour les écoles en Guinée. Il aide les directions, comptables, enseignants et parents à suivre les élèves, les notes, les bulletins, les paiements et les emplois du temps dans un seul outil simple à prendre en main.
         </p>
 
-        <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
-          <button onClick={onInscription} style={{ background: "linear-gradient(135deg,#00C48C,#00a876)", border: "none", color: "#fff", padding: "15px 36px", borderRadius: 30, fontSize: 16, fontWeight: 800, cursor: "pointer", boxShadow: "0 8px 28px rgba(0,196,140,0.35)", letterSpacing: 0.3 }}>
+        <div className="landing-fade-up landing-delay-3" style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
+          <button className="landing-cta" onClick={onInscription} style={{ background: "linear-gradient(135deg,#00C48C,#00a876)", border: "none", color: "#fff", padding: "15px 36px", borderRadius: 30, fontSize: 16, fontWeight: 800, cursor: "pointer", boxShadow: "0 8px 28px rgba(0,196,140,0.35)", letterSpacing: 0.3 }}>
             Créer mon école gratuitement
           </button>
-          <button onClick={onConnexion} style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", padding: "15px 32px", borderRadius: 30, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+          <button className="landing-cta" onClick={onConnexion} style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", padding: "15px 32px", borderRadius: 30, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
             Se connecter
           </button>
         </div>
-        <p style={{ marginTop: 14, fontSize: 11, color: "rgba(255,255,255,0.3)" }}>Inscription gratuite - aucune carte bancaire requise</p>
+        <p className="landing-fade-up landing-delay-4" style={{ marginTop: 14, fontSize: 11, color: "rgba(255,255,255,0.3)" }}>Inscription gratuite - aucune carte bancaire requise</p>
       </section>
 
       <section style={{ padding: "0 24px 46px", maxWidth: 980, margin: "0 auto" }}>
@@ -230,6 +311,7 @@ function LandingEduGest({ onConnexion, onInscription }) {
               <a
                 key={item.href}
                 href={item.href}
+                className="landing-link-card"
                 style={{
                   display: "block",
                   textDecoration: "none",
@@ -261,6 +343,7 @@ function LandingEduGest({ onConnexion, onInscription }) {
               <a
                 key={item.href}
                 href={item.href}
+                className="landing-link-card"
                 style={{
                   display: "block",
                   textDecoration: "none",
@@ -283,7 +366,7 @@ function LandingEduGest({ onConnexion, onInscription }) {
       <section style={{ padding: "0 24px 56px", maxWidth: 980, margin: "0 auto" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 14 }}>
           {modules.map((module) => (
-            <div key={module.title} style={cardStyle()}>
+            <div key={module.title} className="landing-card" style={cardStyle()}>
               <div style={{ fontSize: 15, fontWeight: 800, color: "#fff", marginBottom: 8 }}>{module.title}</div>
               <div style={{ fontSize: 13, color: "rgba(255,255,255,0.58)", lineHeight: 1.65 }}>{module.description}</div>
             </div>
@@ -297,7 +380,7 @@ function LandingEduGest({ onConnexion, onInscription }) {
           <p style={{ textAlign: "center", color: "rgba(255,255,255,0.45)", fontSize: 13, marginBottom: 34 }}>Un produit terrain, pensé pour les besoins réels des écoles.</p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 18 }}>
             {avantages.map((item) => (
-              <div key={item.title} style={cardStyle("rgba(0,196,140,0.18)", "rgba(255,255,255,0.03)")}>
+              <div key={item.title} className="landing-card" style={cardStyle("rgba(0,196,140,0.18)", "rgba(255,255,255,0.03)")}>
                 <div style={{ fontSize: 14, fontWeight: 800, color: "#00C48C", marginBottom: 8 }}>{item.title}</div>
                 <div style={{ fontSize: 12, color: "rgba(255,255,255,0.58)", lineHeight: 1.65 }}>{item.description}</div>
               </div>
@@ -319,7 +402,7 @@ function LandingEduGest({ onConnexion, onInscription }) {
 
         <div style={{ display: "grid", gap: 10 }}>
           {situations.map((item) => (
-            <div key={item.situation} style={{ display: "grid", gridTemplateColumns: "minmax(0,1.1fr) minmax(0,1fr) minmax(0,1fr)", gap: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "16px 18px", alignItems: "start" }}>
+            <div key={item.situation} className="landing-card" style={{ display: "grid", gridTemplateColumns: "minmax(0,1.1fr) minmax(0,1fr) minmax(0,1fr)", gap: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "16px 18px", alignItems: "start" }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", lineHeight: 1.5 }}>{item.situation}</div>
               <div style={{ fontSize: 12, color: "rgba(239,68,68,0.85)", lineHeight: 1.6, paddingLeft: 10, borderLeft: "2px solid rgba(239,68,68,0.4)" }}>
                 <div style={{ fontSize: 10, fontWeight: 800, color: "rgba(239,68,68,0.7)", letterSpacing: "1px", marginBottom: 4 }}>AVANT</div>
@@ -339,7 +422,7 @@ function LandingEduGest({ onConnexion, onInscription }) {
         <p style={{ textAlign: "center", color: "rgba(255,255,255,0.45)", fontSize: 13, marginBottom: 36 }}>Démarrez gratuitement, puis évoluez selon la taille de votre école.</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 16 }}>
           {offres.map((plan) => (
-            <div key={plan.name} style={{ ...cardStyle(plan.highlight ? "#8b5cf6" : "rgba(255,255,255,0.12)", plan.highlight ? "rgba(139,92,246,0.08)" : "rgba(255,255,255,0.05)"), boxShadow: plan.highlight ? "0 0 40px rgba(139,92,246,0.2)" : "none" }}>
+            <div key={plan.name} className="landing-card" style={{ ...cardStyle(plan.highlight ? "#8b5cf6" : "rgba(255,255,255,0.12)", plan.highlight ? "rgba(139,92,246,0.08)" : "rgba(255,255,255,0.05)"), boxShadow: plan.highlight ? "0 0 40px rgba(139,92,246,0.2)" : "none" }}>
               <div style={{ fontSize: 15, fontWeight: 800, color: plan.highlight ? "#c4b5fd" : "rgba(255,255,255,0.8)", marginBottom: 6 }}>{plan.name}</div>
               <div style={{ fontSize: "clamp(18px,3vw,26px)", fontWeight: 900, color: "#fff", lineHeight: 1.1 }}>{plan.price}</div>
               <div style={{ height: 1, background: "rgba(255,255,255,0.08)", margin: "16px 0" }} />
@@ -351,7 +434,7 @@ function LandingEduGest({ onConnexion, onInscription }) {
                   </li>
                 ))}
               </ul>
-              <button onClick={onInscription} style={{ width: "100%", padding: "11px", borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: "pointer", background: plan.highlight ? "linear-gradient(135deg,#8b5cf6,#6d28d9)" : "rgba(255,255,255,0.08)", border: plan.highlight ? "none" : "1px solid rgba(255,255,255,0.12)", color: "#fff" }}>
+              <button className="landing-cta" onClick={onInscription} style={{ width: "100%", padding: "11px", borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: "pointer", background: plan.highlight ? "linear-gradient(135deg,#8b5cf6,#6d28d9)" : "rgba(255,255,255,0.08)", border: plan.highlight ? "none" : "1px solid rgba(255,255,255,0.12)", color: "#fff" }}>
                 Choisir {plan.name}
               </button>
             </div>
@@ -368,7 +451,7 @@ function LandingEduGest({ onConnexion, onInscription }) {
         </p>
         <div style={{ display: "grid", gap: 14 }}>
           {faqItems.map((item) => (
-            <div key={item.question} style={cardStyle("rgba(255,255,255,0.12)", "rgba(255,255,255,0.03)")}>
+            <div key={item.question} className="landing-card" style={cardStyle("rgba(255,255,255,0.12)", "rgba(255,255,255,0.03)")}>
               <h3 style={{ margin: "0 0 8px", fontSize: 15, fontWeight: 800 }}>{item.question}</h3>
               <p style={{ margin: 0, fontSize: 13, color: "rgba(255,255,255,0.62)", lineHeight: 1.7 }}>{item.answer}</p>
             </div>
@@ -380,10 +463,10 @@ function LandingEduGest({ onConnexion, onInscription }) {
         <h2 style={{ fontSize: "clamp(22px,3.5vw,30px)", fontWeight: 900, marginBottom: 14 }}>Prêt à digitaliser votre école ?</h2>
         <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14, marginBottom: 30 }}>Lancez un espace propre, simple et adapté à votre réalité terrain.</p>
         <div style={{ display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
-          <button onClick={onInscription} style={{ background: "linear-gradient(135deg,#00C48C,#00a876)", border: "none", color: "#fff", padding: "16px 42px", borderRadius: 30, fontSize: 16, fontWeight: 800, cursor: "pointer", boxShadow: "0 8px 28px rgba(0,196,140,0.35)" }}>
+          <button className="landing-cta" onClick={onInscription} style={{ background: "linear-gradient(135deg,#00C48C,#00a876)", border: "none", color: "#fff", padding: "16px 42px", borderRadius: 30, fontSize: 16, fontWeight: 800, cursor: "pointer", boxShadow: "0 8px 28px rgba(0,196,140,0.35)" }}>
             Créer mon école gratuitement
           </button>
-          <button onClick={onConnexion} style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", padding: "16px 32px", borderRadius: 30, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+          <button className="landing-cta" onClick={onConnexion} style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", padding: "16px 32px", borderRadius: 30, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
             Se connecter
           </button>
         </div>
