@@ -67,6 +67,28 @@ const situations = [
   },
 ];
 
+const seoPoints = [
+  "Logiciel de gestion scolaire pour ecole privee en Guinee",
+  "Gestion des notes, bulletins et moyennes par classe",
+  "Comptabilite scolaire avec recus, salaires et impayes",
+  "Emplois du temps, examens et portail parent / enseignant",
+];
+
+const faqItems = [
+  {
+    question: "A qui s'adresse EduGest ?",
+    answer: "EduGest s'adresse aux ecoles primaires, colleges, lycees et groupes scolaires prives qui veulent gerer eleves, notes, bulletins, comptabilite et emplois du temps dans un seul outil.",
+  },
+  {
+    question: "Est-ce adapte aux ecoles en Guinee ?",
+    answer: "Oui. EduGest est pense pour les realites des ecoles en Guinee et en Afrique de l'Ouest, avec une approche simple pour la direction, la comptabilite, les enseignants et les parents.",
+  },
+  {
+    question: "Quelles fonctions sont les plus utiles ?",
+    answer: "Les ecoles utilisent surtout la gestion des eleves, la saisie des notes, les bulletins, la comptabilite scolaire, les paiements, les emplois du temps et les portails parent et enseignant.",
+  },
+];
+
 const offres = [
   {
     name: "Gratuit",
@@ -136,7 +158,7 @@ function LandingEduGest({ onConnexion, onInscription }) {
           La gestion scolaire <span style={{ color: "#00C48C" }}>claire</span>, <span style={{ color: "#00C48C" }}>complete</span> et <span style={{ color: "#00C48C" }}>fiable</span>
         </h1>
         <p style={{ fontSize: "clamp(14px,2.5vw,18px)", color: "rgba(255,255,255,0.62)", maxWidth: 620, margin: "0 auto 36px", lineHeight: 1.7 }}>
-          EduGest aide les directions, comptables, enseignants et parents a suivre les eleves, les notes et les paiements dans un seul outil simple a prendre en main.
+          EduGest est un logiciel de gestion scolaire pour les ecoles en Guinee. Il aide les directions, comptables, enseignants et parents a suivre les eleves, les notes, les bulletins, les paiements et les emplois du temps dans un seul outil simple a prendre en main.
         </p>
 
         <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
@@ -148,6 +170,22 @@ function LandingEduGest({ onConnexion, onInscription }) {
           </button>
         </div>
         <p style={{ marginTop: 14, fontSize: 11, color: "rgba(255,255,255,0.3)" }}>Inscription gratuite - aucune carte bancaire requise</p>
+      </section>
+
+      <section style={{ padding: "0 24px 46px", maxWidth: 980, margin: "0 auto" }}>
+        <div style={{ ...cardStyle("rgba(0,196,140,0.18)", "rgba(255,255,255,0.03)") }}>
+          <h2 style={{ margin: "0 0 14px", fontSize: "clamp(20px,3vw,28px)", fontWeight: 800 }}>
+            Logiciel de gestion scolaire pour primaire, college et lycee
+          </h2>
+          <p style={{ margin: "0 0 18px", fontSize: 14, color: "rgba(255,255,255,0.62)", lineHeight: 1.7 }}>
+            EduGest aide les ecoles privees a gerer les inscriptions, les notes, les bulletins scolaires, la comptabilite, les salaires, les paiements, les absences et les emplois du temps.
+          </p>
+          <ul style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 8, color: "rgba(255,255,255,0.78)", fontSize: 13, lineHeight: 1.6 }}>
+            {seoPoints.map((point) => (
+              <li key={point}>{point}</li>
+            ))}
+          </ul>
+        </div>
       </section>
 
       <section style={{ padding: "0 24px 56px", maxWidth: 980, margin: "0 auto" }}>
@@ -224,6 +262,23 @@ function LandingEduGest({ onConnexion, onInscription }) {
               <button onClick={onInscription} style={{ width: "100%", padding: "11px", borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: "pointer", background: plan.highlight ? "linear-gradient(135deg,#8b5cf6,#6d28d9)" : "rgba(255,255,255,0.08)", border: plan.highlight ? "none" : "1px solid rgba(255,255,255,0.12)", color: "#fff" }}>
                 Choisir {plan.name}
               </button>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section style={{ padding: "24px 24px 70px", maxWidth: 980, margin: "0 auto" }}>
+        <h2 style={{ textAlign: "center", fontSize: "clamp(20px,3vw,28px)", fontWeight: 800, marginBottom: 10 }}>
+          Questions frequentes sur EduGest
+        </h2>
+        <p style={{ textAlign: "center", color: "rgba(255,255,255,0.45)", fontSize: 13, marginBottom: 28 }}>
+          Les reponses les plus utiles pour comprendre le logiciel de gestion scolaire.
+        </p>
+        <div style={{ display: "grid", gap: 14 }}>
+          {faqItems.map((item) => (
+            <div key={item.question} style={cardStyle("rgba(255,255,255,0.12)", "rgba(255,255,255,0.03)")}>
+              <h3 style={{ margin: "0 0 8px", fontSize: 15, fontWeight: 800 }}>{item.question}</h3>
+              <p style={{ margin: 0, fontSize: 13, color: "rgba(255,255,255,0.62)", lineHeight: 1.7 }}>{item.answer}</p>
             </div>
           ))}
         </div>
