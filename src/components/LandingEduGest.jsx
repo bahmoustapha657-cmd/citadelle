@@ -238,7 +238,7 @@ function LandingEduGest({ onConnexion, onInscription }) {
             Ressources utiles sur EduGest
           </h2>
           <p style={{ margin: "0 0 20px", fontSize: 13, color: "rgba(255,255,255,0.55)", lineHeight: 1.7 }}>
-            Ces pages detaillees aident aussi Google a mieux comprendre ce que fait EduGest et a quelles ecoles la plateforme s'adresse.
+            Ces pages detaillees permettent de mieux presenter les usages d'EduGest et les besoins des ecoles auxquelles la plateforme s'adresse.
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 14 }}>
             {seoLinks.map((item) => (
@@ -269,7 +269,7 @@ function LandingEduGest({ onConnexion, onInscription }) {
             Pages locales pour les ecoles en Guinee
           </h2>
           <p style={{ margin: "0 0 18px", fontSize: 13, color: "rgba(255,255,255,0.55)", lineHeight: 1.7 }}>
-            Si une direction cherche un logiciel pour ecole privee dans une ville precise, ces pages locales aident Google a faire le lien.
+            Si une direction cherche un logiciel pour ecole privee dans une ville precise, ces pages locales permettent de mieux presenter l'offre dans un contexte proche du terrain.
           </p>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             {localLinks.map((item) => (
@@ -303,7 +303,7 @@ function LandingEduGest({ onConnexion, onInscription }) {
             Articles conseils pour les ecoles
           </h2>
           <p style={{ margin: "0 0 18px", fontSize: 13, color: "rgba(255,255,255,0.55)", lineHeight: 1.7 }}>
-            Ces articles repondent a des questions tres recherchees par les directions et aident aussi Google a mieux comprendre l'expertise d'EduGest.
+            Ces articles repondent a des questions tres frequentes des directions et montrent plus clairement l'expertise d'EduGest sur la gestion scolaire.
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 14 }}>
             {articleLinks.map((item) => (
