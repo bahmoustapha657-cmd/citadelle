@@ -233,6 +233,11 @@ function LandingEduGest({ onConnexion, onInscription }) {
           50%      { transform: scale(1.4); opacity: 0.6; }
         }
 
+        @keyframes landingMarquee {
+          from { transform: translateX(0); }
+          to   { transform: translateX(-50%); }
+        }
+
         .landing-fade-up {
           opacity: 0;
           animation: landingFadeUp 700ms ease forwards;
@@ -327,6 +332,46 @@ function LandingEduGest({ onConnexion, onInscription }) {
           animation: landingTickerPing 1.6s ease-in-out infinite;
         }
 
+        /* Bandeau défilant (marquee) — les enfants doivent être dupliqués
+           dans le markup pour que la boucle ne saute pas. */
+        .landing-marquee {
+          position: relative;
+          overflow: hidden;
+          padding: 14px 0;
+          background: linear-gradient(90deg, rgba(0,196,140,0.04), rgba(96,165,250,0.04));
+          border-top: 1px solid rgba(255,255,255,0.06);
+          border-bottom: 1px solid rgba(255,255,255,0.06);
+          mask-image: linear-gradient(90deg, transparent 0, #000 80px, #000 calc(100% - 80px), transparent 100%);
+          -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 80px, #000 calc(100% - 80px), transparent 100%);
+        }
+        .landing-marquee-track {
+          display: flex;
+          gap: 48px;
+          width: max-content;
+          align-items: center;
+          animation: landingMarquee 32s linear infinite;
+        }
+        .landing-marquee:hover .landing-marquee-track {
+          animation-play-state: paused;
+        }
+        .landing-marquee-item {
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          font-size: 13px;
+          font-weight: 700;
+          color: rgba(255,255,255,0.78);
+          letter-spacing: 0.4px;
+          white-space: nowrap;
+        }
+        .landing-marquee-dot {
+          width: 5px;
+          height: 5px;
+          border-radius: 50%;
+          background: #00C48C;
+          flex-shrink: 0;
+        }
+
         .landing-card,
         .landing-link-card,
         .landing-cta {
@@ -407,7 +452,8 @@ function LandingEduGest({ onConnexion, onInscription }) {
           .landing-particle,
           .landing-scroll-hint,
           .landing-ticker,
-          .landing-stagger > * {
+          .landing-stagger > *,
+          .landing-marquee-track {
             animation: none !important;
             opacity: 1 !important;
             transform: none !important;
@@ -554,7 +600,19 @@ function LandingEduGest({ onConnexion, onInscription }) {
         </div>
       </section>
 
-      <section data-landing-reveal className="landing-reveal" style={{ padding: "0 24px 46px", maxWidth: 980, margin: "0 auto" }}>
+      {/* Bandeau défilant — modules en boucle continue */}
+      <div className="landing-marquee" aria-hidden="true">
+        <div className="landing-marquee-track">
+          {[...modules, ...modules].map((module, idx) => (
+            <span key={`${module.title}-${idx}`} className="landing-marquee-item">
+              <span className="landing-marquee-dot" />
+              {module.title}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <section data-landing-reveal className="landing-reveal" style={{ padding: "46px 24px 46px", maxWidth: 980, margin: "0 auto" }}>
         <div className="landing-card" style={{ ...cardStyle("rgba(0,196,140,0.18)", "rgba(255,255,255,0.03)") }}>
           <h2 style={{ margin: "0 0 14px", fontSize: "clamp(20px,3vw,28px)", fontWeight: 800 }}>
             Logiciel de gestion scolaire pour primaire, collège et lycée
