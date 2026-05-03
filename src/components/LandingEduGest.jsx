@@ -107,6 +107,21 @@ const seoLinks = [
   },
 ];
 
+const localLinks = [
+  {
+    title: "Logiciel pour ecole privee a Conakry",
+    href: "/logiciel-ecole-privee-conakry.html",
+  },
+  {
+    title: "Logiciel pour ecole privee a Kindia",
+    href: "/logiciel-ecole-privee-kindia.html",
+  },
+  {
+    title: "Logiciel pour ecole privee a Labe",
+    href: "/logiciel-ecole-privee-labe.html",
+  },
+];
+
 const offres = [
   {
     name: "Gratuit",
@@ -231,6 +246,40 @@ function LandingEduGest({ onConnexion, onInscription }) {
               >
                 <div style={{ fontSize: 14, fontWeight: 800, color: "#00C48C", marginBottom: 8 }}>{item.title}</div>
                 <div style={{ fontSize: 12, color: "rgba(255,255,255,0.62)", lineHeight: 1.65 }}>{item.description}</div>
+              </a>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section style={{ padding: "0 24px 52px", maxWidth: 980, margin: "0 auto" }}>
+        <div style={{ ...cardStyle("rgba(0,196,140,0.18)", "rgba(255,255,255,0.03)") }}>
+          <h2 style={{ margin: "0 0 10px", fontSize: "clamp(20px,3vw,28px)", fontWeight: 800 }}>
+            Pages locales pour les ecoles en Guinee
+          </h2>
+          <p style={{ margin: "0 0 18px", fontSize: 13, color: "rgba(255,255,255,0.55)", lineHeight: 1.7 }}>
+            Si une direction cherche un logiciel pour ecole privee dans une ville precise, ces pages locales aident Google a faire le lien.
+          </p>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            {localLinks.map((item) => (
+              <a
+                key={item.href}
+                href={item.href}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "10px 14px",
+                  borderRadius: 999,
+                  textDecoration: "none",
+                  color: "#fff",
+                  background: "rgba(255,255,255,0.06)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  fontSize: 13,
+                  fontWeight: 700,
+                }}
+              >
+                {item.title}
               </a>
             ))}
           </div>
