@@ -197,6 +197,42 @@ function LandingEduGest({ onConnexion, onInscription }) {
           50% { box-shadow: 0 0 24px rgba(0, 196, 140, 0.22); }
         }
 
+        @keyframes landingShimmer {
+          0%   { background-position: -200% 50%; }
+          100% { background-position:  200% 50%; }
+        }
+
+        @keyframes landingPulseCta {
+          0%, 100% { box-shadow: 0 8px 28px rgba(0,196,140,0.35); }
+          50%      { box-shadow: 0 8px 40px rgba(0,196,140,0.6), 0 0 0 6px rgba(0,196,140,0.18); }
+        }
+
+        @keyframes landingScaleIn {
+          from { transform: scale(0.6); opacity: 0; }
+          to   { transform: scale(1);   opacity: 1; }
+        }
+
+        @keyframes landingBounce {
+          0%, 100% { transform: translateY(0); }
+          50%      { transform: translateY(-5px); }
+        }
+
+        @keyframes landingRise {
+          0%   { transform: translate3d(0, 0, 0)   scale(1);   opacity: 0; }
+          15%  { opacity: 0.8; }
+          100% { transform: translate3d(0, -180px, 0) scale(1.4); opacity: 0; }
+        }
+
+        @keyframes landingScrollHint {
+          0%, 100% { transform: translateY(0); opacity: 0.7; }
+          50%      { transform: translateY(8px); opacity: 1; }
+        }
+
+        @keyframes landingTickerPing {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50%      { transform: scale(1.4); opacity: 0.6; }
+        }
+
         .landing-fade-up {
           opacity: 0;
           animation: landingFadeUp 700ms ease forwards;
@@ -214,6 +250,81 @@ function LandingEduGest({ onConnexion, onInscription }) {
 
         .landing-badge {
           animation: landingGlow 3.4s ease-in-out infinite;
+        }
+
+        /* Mots-clés du titre — gradient qui défile */
+        .landing-shimmer {
+          background: linear-gradient(90deg, #00C48C 0%, #60A5FA 25%, #00C48C 50%, #FBBF24 75%, #00C48C 100%);
+          background-size: 200% auto;
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+          color: transparent;
+          animation: landingShimmer 5s linear infinite;
+        }
+
+        /* Bouton CTA principal — pulse subtil */
+        .landing-cta-primary {
+          animation: landingPulseCta 2.8s ease-in-out infinite;
+        }
+
+        /* Stats du hero — apparition en scale */
+        .landing-stat-value {
+          display: inline-block;
+          opacity: 0;
+          animation: landingScaleIn 700ms cubic-bezier(.5, 1.6, .4, 1) forwards;
+        }
+        .landing-stat-value:nth-child(1) { animation-delay: 700ms; }
+        .landing-stat-value:nth-child(2) { animation-delay: 850ms; }
+        .landing-stat-value:nth-child(3) { animation-delay: 1000ms; }
+
+        /* Indicateurs colorés du dashboard mock — bounce léger */
+        .landing-bounce-1 { animation: landingBounce 2.2s ease-in-out 0s     infinite; }
+        .landing-bounce-2 { animation: landingBounce 2.2s ease-in-out 0.4s  infinite; }
+        .landing-bounce-3 { animation: landingBounce 2.2s ease-in-out 0.8s  infinite; }
+
+        /* Particules flottantes en background du hero */
+        .landing-particles {
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          overflow: hidden;
+          z-index: 0;
+        }
+        .landing-particle {
+          position: absolute;
+          bottom: -20px;
+          width: 4px;
+          height: 4px;
+          border-radius: 50%;
+          background: rgba(0, 196, 140, 0.6);
+          animation: landingRise 9s linear infinite;
+        }
+        .landing-particle.alt { background: rgba(96, 165, 250, 0.55); }
+        .landing-particle.warm { background: rgba(251, 191, 36, 0.55); }
+
+        /* Stagger — les enfants apparaissent en cascade */
+        .landing-stagger > * {
+          opacity: 0;
+          animation: landingFadeUp 600ms ease forwards;
+        }
+        .landing-stagger > *:nth-child(1) { animation-delay:  60ms; }
+        .landing-stagger > *:nth-child(2) { animation-delay: 140ms; }
+        .landing-stagger > *:nth-child(3) { animation-delay: 220ms; }
+        .landing-stagger > *:nth-child(4) { animation-delay: 300ms; }
+        .landing-stagger > *:nth-child(5) { animation-delay: 380ms; }
+        .landing-stagger > *:nth-child(6) { animation-delay: 460ms; }
+        .landing-stagger > *:nth-child(7) { animation-delay: 540ms; }
+        .landing-stagger > *:nth-child(8) { animation-delay: 620ms; }
+
+        /* Indicateur de défilement sous le hero */
+        .landing-scroll-hint {
+          animation: landingScrollHint 2s ease-in-out infinite;
+        }
+
+        /* Pastille verte (point de connexion live) */
+        .landing-ticker {
+          animation: landingTickerPing 1.6s ease-in-out infinite;
         }
 
         .landing-card,
@@ -286,10 +397,26 @@ function LandingEduGest({ onConnexion, onInscription }) {
         @media (prefers-reduced-motion: reduce) {
           .landing-fade-up,
           .landing-blob,
-          .landing-badge {
+          .landing-badge,
+          .landing-shimmer,
+          .landing-cta-primary,
+          .landing-stat-value,
+          .landing-bounce-1,
+          .landing-bounce-2,
+          .landing-bounce-3,
+          .landing-particle,
+          .landing-scroll-hint,
+          .landing-ticker,
+          .landing-stagger > * {
             animation: none !important;
             opacity: 1 !important;
             transform: none !important;
+          }
+
+          .landing-shimmer {
+            color: #00C48C !important;
+            -webkit-text-fill-color: #00C48C !important;
+            background: none !important;
           }
 
           .landing-reveal,
@@ -326,20 +453,32 @@ function LandingEduGest({ onConnexion, onInscription }) {
         <div className="landing-blob" style={{ position: "absolute", top: -40, left: "10%", width: 320, height: 320, borderRadius: "50%", background: "radial-gradient(circle,rgba(0,196,140,0.12) 0%,transparent 70%)", pointerEvents: "none" }} />
         <div className="landing-blob" style={{ position: "absolute", top: 60, right: "5%", width: 200, height: 200, borderRadius: "50%", background: "radial-gradient(circle,rgba(0,140,255,0.09) 0%,transparent 70%)", pointerEvents: "none", animationDelay: "-2.8s" }} />
 
-        <div className="landing-fade-up landing-badge" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(0,196,140,0.12)", border: "1px solid rgba(0,196,140,0.3)", borderRadius: 20, padding: "6px 16px", marginBottom: 28 }}>
-          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#00C48C", display: "inline-block" }} />
+        {/* Particules flottantes en background — montent du bas */}
+        <div className="landing-particles" aria-hidden="true">
+          <span className="landing-particle"      style={{ left: "8%",  animationDelay: "0s"   }} />
+          <span className="landing-particle alt"  style={{ left: "18%", animationDelay: "1.4s" }} />
+          <span className="landing-particle"      style={{ left: "28%", animationDelay: "3s"   }} />
+          <span className="landing-particle warm" style={{ left: "42%", animationDelay: "0.7s" }} />
+          <span className="landing-particle"      style={{ left: "55%", animationDelay: "2.2s" }} />
+          <span className="landing-particle alt"  style={{ left: "68%", animationDelay: "4s"   }} />
+          <span className="landing-particle warm" style={{ left: "78%", animationDelay: "1s"   }} />
+          <span className="landing-particle"      style={{ left: "90%", animationDelay: "2.7s" }} />
+        </div>
+
+        <div className="landing-fade-up landing-badge" style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(0,196,140,0.12)", border: "1px solid rgba(0,196,140,0.3)", borderRadius: 20, padding: "6px 16px", marginBottom: 28 }}>
+          <span className="landing-ticker" style={{ width: 6, height: 6, borderRadius: "50%", background: "#00C48C", display: "inline-block" }} />
           <span style={{ fontSize: 12, fontWeight: 700, color: "#00C48C", letterSpacing: "0.5px" }}>Conçu pour les écoles d'Afrique de l'Ouest</span>
         </div>
 
-        <h1 className="landing-fade-up landing-delay-1" style={{ fontSize: "clamp(30px,6vw,56px)", fontWeight: 900, lineHeight: 1.12, margin: "0 0 18px", letterSpacing: "-1px" }}>
-          La gestion scolaire <span style={{ color: "#00C48C" }}>claire</span>, <span style={{ color: "#00C48C" }}>complète</span> et <span style={{ color: "#00C48C" }}>fiable</span>
+        <h1 className="landing-fade-up landing-delay-1" style={{ position: "relative", fontSize: "clamp(30px,6vw,56px)", fontWeight: 900, lineHeight: 1.12, margin: "0 0 18px", letterSpacing: "-1px" }}>
+          La gestion scolaire <span className="landing-shimmer">claire</span>, <span className="landing-shimmer">complète</span> et <span className="landing-shimmer">fiable</span>
         </h1>
-        <p className="landing-fade-up landing-delay-2" style={{ fontSize: "clamp(14px,2.5vw,18px)", color: "rgba(255,255,255,0.62)", maxWidth: 620, margin: "0 auto 36px", lineHeight: 1.7 }}>
+        <p className="landing-fade-up landing-delay-2" style={{ position: "relative", fontSize: "clamp(14px,2.5vw,18px)", color: "rgba(255,255,255,0.62)", maxWidth: 620, margin: "0 auto 36px", lineHeight: 1.7 }}>
           EduGest est un logiciel de gestion scolaire pour les écoles en Guinée. Il aide les directions, comptables, enseignants et parents à suivre les élèves, les notes, les bulletins, les paiements et les emplois du temps dans un seul outil simple à prendre en main.
         </p>
 
-        <div className="landing-fade-up landing-delay-3" style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
-          <button className="landing-cta" onClick={onInscription} style={{ background: "linear-gradient(135deg,#00C48C,#00a876)", border: "none", color: "#fff", padding: "15px 36px", borderRadius: 30, fontSize: 16, fontWeight: 800, cursor: "pointer", boxShadow: "0 8px 28px rgba(0,196,140,0.35)", letterSpacing: 0.3 }}>
+        <div className="landing-fade-up landing-delay-3" style={{ position: "relative", display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
+          <button className="landing-cta landing-cta-primary" onClick={onInscription} style={{ background: "linear-gradient(135deg,#00C48C,#00a876)", border: "none", color: "#fff", padding: "15px 36px", borderRadius: 30, fontSize: 16, fontWeight: 800, cursor: "pointer", boxShadow: "0 8px 28px rgba(0,196,140,0.35)", letterSpacing: 0.3 }}>
             Créer mon école gratuitement
           </button>
           <button className="landing-cta" onClick={onConnexion} style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", padding: "15px 32px", borderRadius: 30, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
@@ -355,9 +494,9 @@ function LandingEduGest({ onConnexion, onInscription }) {
               <div style={{ fontSize: 18, fontWeight: 800, marginTop: 4 }}>Votre école, en un seul tableau clair</div>
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#00C48C", display: "inline-block" }} />
-              <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#F59E0B", display: "inline-block" }} />
-              <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#60A5FA", display: "inline-block" }} />
+              <span className="landing-bounce-1" style={{ width: 10, height: 10, borderRadius: "50%", background: "#00C48C", display: "inline-block" }} />
+              <span className="landing-bounce-2" style={{ width: 10, height: 10, borderRadius: "50%", background: "#F59E0B", display: "inline-block" }} />
+              <span className="landing-bounce-3" style={{ width: 10, height: 10, borderRadius: "50%", background: "#60A5FA", display: "inline-block" }} />
             </div>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1.2fr 0.8fr", gap: 14, position: "relative" }}>
@@ -365,9 +504,9 @@ function LandingEduGest({ onConnexion, onInscription }) {
               <div className="landing-grid-chip" style={{ textAlign: "left" }}>
                 <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "1px", color: "rgba(255,255,255,0.45)", fontWeight: 800 }}>Aujourd'hui</div>
                 <div style={{ marginTop: 8, display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 10 }}>
-                  {heroStats.map((stat) => (
+                  {heroStats.map((stat, idx) => (
                     <div key={stat.label}>
-                      <div style={{ fontSize: 22, fontWeight: 900, color: "#00C48C" }}>{stat.value}</div>
+                      <div className="landing-stat-value" style={{ fontSize: 22, fontWeight: 900, color: "#00C48C", animationDelay: `${700 + idx * 150}ms` }}>{stat.value}</div>
                       <div style={{ fontSize: 11, color: "rgba(255,255,255,0.58)", lineHeight: 1.5 }}>{stat.label}</div>
                     </div>
                   ))}
@@ -497,7 +636,7 @@ function LandingEduGest({ onConnexion, onInscription }) {
       </section>
 
       <section data-landing-reveal className="landing-reveal" style={{ padding: "0 24px 56px", maxWidth: 980, margin: "0 auto" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 14 }}>
+        <div className="landing-stagger" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 14 }}>
           {modules.map((module) => (
             <div key={module.title} className="landing-card" style={cardStyle()}>
               <div style={{ fontSize: 15, fontWeight: 800, color: "#fff", marginBottom: 8 }}>{module.title}</div>
@@ -511,7 +650,7 @@ function LandingEduGest({ onConnexion, onInscription }) {
         <div style={{ maxWidth: 980, margin: "0 auto" }}>
           <h2 style={{ textAlign: "center", fontSize: "clamp(20px,3vw,28px)", fontWeight: 800, marginBottom: 10 }}>Pourquoi choisir EduGest ?</h2>
           <p style={{ textAlign: "center", color: "rgba(255,255,255,0.45)", fontSize: 13, marginBottom: 34 }}>Un produit terrain, pensé pour les besoins réels des écoles.</p>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 18 }}>
+          <div className="landing-stagger" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 18 }}>
             {avantages.map((item) => (
               <div key={item.title} className="landing-card" style={cardStyle("rgba(0,196,140,0.18)", "rgba(255,255,255,0.03)")}>
                 <div style={{ fontSize: 14, fontWeight: 800, color: "#00C48C", marginBottom: 8 }}>{item.title}</div>
