@@ -89,6 +89,24 @@ const faqItems = [
   },
 ];
 
+const seoLinks = [
+  {
+    title: "Logiciel de gestion scolaire en Guinee",
+    href: "/logiciel-gestion-scolaire-guinee.html",
+    description: "Une page dediee pour les directions qui recherchent une solution complete pour primaire, college et lycee.",
+  },
+  {
+    title: "Gestion des notes et bulletins",
+    href: "/gestion-des-notes-et-bulletins.html",
+    description: "Une page ciblee sur la saisie des notes, les moyennes et l'impression des bulletins scolaires.",
+  },
+  {
+    title: "Comptabilite scolaire",
+    href: "/comptabilite-scolaire.html",
+    description: "Une page centree sur les recus, paiements, impayes, salaires et suivi comptable de l'ecole.",
+  },
+];
+
 const offres = [
   {
     name: "Gratuit",
@@ -185,6 +203,37 @@ function LandingEduGest({ onConnexion, onInscription }) {
               <li key={point}>{point}</li>
             ))}
           </ul>
+        </div>
+      </section>
+
+      <section style={{ padding: "0 24px 52px", maxWidth: 980, margin: "0 auto" }}>
+        <div style={{ ...cardStyle("rgba(255,255,255,0.12)", "rgba(255,255,255,0.03)") }}>
+          <h2 style={{ margin: "0 0 10px", fontSize: "clamp(20px,3vw,28px)", fontWeight: 800 }}>
+            Ressources utiles sur EduGest
+          </h2>
+          <p style={{ margin: "0 0 20px", fontSize: 13, color: "rgba(255,255,255,0.55)", lineHeight: 1.7 }}>
+            Ces pages detaillees aident aussi Google a mieux comprendre ce que fait EduGest et a quelles ecoles la plateforme s'adresse.
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 14 }}>
+            {seoLinks.map((item) => (
+              <a
+                key={item.href}
+                href={item.href}
+                style={{
+                  display: "block",
+                  textDecoration: "none",
+                  color: "#fff",
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: 14,
+                  padding: "18px 16px",
+                }}
+              >
+                <div style={{ fontSize: 14, fontWeight: 800, color: "#00C48C", marginBottom: 8 }}>{item.title}</div>
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.62)", lineHeight: 1.65 }}>{item.description}</div>
+              </a>
+            ))}
+          </div>
         </div>
       </section>
 
