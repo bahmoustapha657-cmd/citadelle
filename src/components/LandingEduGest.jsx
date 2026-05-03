@@ -10,15 +10,15 @@ const modules = [
   },
   {
     title: "Secondaire",
-    description: "College et lycee avec matieres, coefficients, moyennes et bulletins trimestriels.",
+    description: "Collège et lycée avec matières, coefficients, moyennes et bulletins trimestriels.",
   },
   {
-    title: "Comptabilite",
-    description: "Scolarites, salaires, personnel, recettes, depenses et suivi des impayes.",
+    title: "Comptabilité",
+    description: "Scolarités, salaires, personnel, recettes, dépenses et suivi des impayés.",
   },
   {
     title: "Portail enseignant",
-    description: "Emploi du temps, saisie des notes et suivi des paies dans un espace dedie.",
+    description: "Emploi du temps, saisie des notes et suivi des paies dans un espace dédié.",
   },
   {
     title: "Portail parent",
@@ -26,84 +26,84 @@ const modules = [
   },
   {
     title: "Communication",
-    description: "Annonces, messagerie et informations de l'ecole diffusees simplement.",
+    description: "Annonces, messagerie et informations de l'école diffusées simplement.",
   },
 ];
 
 const avantages = [
   {
-    title: "Demarrage rapide",
-    description: "Votre espace ecole peut etre operationnel le jour meme, sans installation lourde.",
+    title: "Démarrage rapide",
+    description: "Votre espace école peut être opérationnel le jour même, sans installation lourde.",
   },
   {
-    title: "Identite personnalisee",
-    description: "Logo, couleurs et informations de l'ecole apparaissent partout de facon coherente.",
+    title: "Identité personnalisée",
+    description: "Logo, couleurs et informations de l'école apparaissent partout de façon cohérente.",
   },
   {
-    title: "Donnees cloisonnees",
-    description: "Chaque ecole reste isolee, chaque role ne voit que son perimetre utile.",
+    title: "Données cloisonnées",
+    description: "Chaque école reste isolée, chaque rôle ne voit que son périmètre utile.",
   },
   {
-    title: "Acces mobile",
-    description: "L'application fonctionne sur ordinateur, tablette et telephone, sans installation speciale.",
+    title: "Accès mobile",
+    description: "L'application fonctionne sur ordinateur, tablette et téléphone, sans installation spéciale.",
   },
 ];
 
 const situations = [
   {
-    situation: "Un parent reclame un recu de l'annee derniere",
+    situation: "Un parent réclame un reçu de l'année dernière",
     avant: "Recherche manuelle dans les cahiers et les dossiers.",
-    apres: "Recu retrouve et imprime en quelques secondes.",
+    apres: "Reçu retrouvé et imprimé en quelques secondes.",
   },
   {
     situation: "Le comptable est absent",
-    avant: "La caisse reste difficile a relire ou a verifier.",
-    apres: "La direction garde une vue claire sur l'etat des comptes.",
+    avant: "La caisse reste difficile à relire ou à vérifier.",
+    apres: "La direction garde une vue claire sur l'état des comptes.",
   },
   {
-    situation: "Un parent veut savoir s'il est a jour",
-    avant: "Discussion longue et verification manuelle.",
+    situation: "Un parent veut savoir s'il est à jour",
+    avant: "Discussion longue et vérification manuelle.",
     apres: "Le parent voit son historique et son solde dans son portail.",
   },
 ];
 
 const seoPoints = [
-  "Logiciel de gestion scolaire pour ecole privee en Guinee",
+  "Logiciel de gestion scolaire pour école privée en Guinée",
   "Gestion des notes, bulletins et moyennes par classe",
-  "Comptabilite scolaire avec recus, salaires et impayes",
+  "Comptabilité scolaire avec reçus, salaires et impayés",
   "Emplois du temps, examens et portail parent / enseignant",
 ];
 
 const faqItems = [
   {
-    question: "A qui s'adresse EduGest ?",
-    answer: "EduGest s'adresse aux ecoles primaires, colleges, lycees et groupes scolaires prives qui veulent gerer eleves, notes, bulletins, comptabilite et emplois du temps dans un seul outil.",
+    question: "À qui s'adresse EduGest ?",
+    answer: "EduGest s'adresse aux écoles primaires, collèges, lycées et groupes scolaires privés qui veulent gérer élèves, notes, bulletins, comptabilité et emplois du temps dans un seul outil.",
   },
   {
-    question: "Est-ce adapte aux ecoles en Guinee ?",
-    answer: "Oui. EduGest est pense pour les realites des ecoles en Guinee et en Afrique de l'Ouest, avec une approche simple pour la direction, la comptabilite, les enseignants et les parents.",
+    question: "Est-ce adapté aux écoles en Guinée ?",
+    answer: "Oui. EduGest est pensé pour les réalités des écoles en Guinée et en Afrique de l'Ouest, avec une approche simple pour la direction, la comptabilité, les enseignants et les parents.",
   },
   {
     question: "Quelles fonctions sont les plus utiles ?",
-    answer: "Les ecoles utilisent surtout la gestion des eleves, la saisie des notes, les bulletins, la comptabilite scolaire, les paiements, les emplois du temps et les portails parent et enseignant.",
+    answer: "Les écoles utilisent surtout la gestion des élèves, la saisie des notes, les bulletins, la comptabilité scolaire, les paiements, les emplois du temps et les portails parent et enseignant.",
   },
 ];
 
 const seoLinks = [
   {
-    title: "Logiciel de gestion scolaire en Guinee",
+    title: "Logiciel de gestion scolaire en Guinée",
     href: "/logiciel-gestion-scolaire-guinee.html",
-    description: "Une page dediee pour les directions qui recherchent une solution complete pour primaire, college et lycee.",
+    description: "Une page dédiée pour les directions qui recherchent une solution complète pour primaire, collège et lycée.",
   },
   {
     title: "Gestion des notes et bulletins",
     href: "/gestion-des-notes-et-bulletins.html",
-    description: "Une page ciblee sur la saisie des notes, les moyennes et l'impression des bulletins scolaires.",
+    description: "Une page ciblée sur la saisie des notes, les moyennes et l'impression des bulletins scolaires.",
   },
   {
-    title: "Comptabilite scolaire",
+    title: "Comptabilité scolaire",
     href: "/comptabilite-scolaire.html",
-    description: "Une page centree sur les recus, paiements, impayes, salaires et suivi comptable de l'ecole.",
+    description: "Une page centrée sur les reçus, paiements, impayés, salaires et suivi comptable de l'école.",
   },
 ];
 
@@ -113,7 +113,7 @@ const articleLinks = [
     href: "/comment-calculer-un-bulletin-scolaire.html",
   },
   {
-    title: "Comment gerer les impayes scolaires",
+    title: "Comment gérer les impayés scolaires",
     href: "/comment-gerer-les-impayes-scolaires.html",
   },
 ];
@@ -122,25 +122,25 @@ const offres = [
   {
     name: "Gratuit",
     price: "0 GNF / mois",
-    features: ["Jusqu'a 50 eleves", "Notes et bulletins", "Une section active", "Support de base"],
+    features: ["Jusqu'à 50 élèves", "Notes et bulletins", "Une section active", "Support de base"],
     highlight: false,
   },
   {
     name: "Starter",
     price: "100 000 GNF / mois",
-    features: ["Jusqu'a 200 eleves", "Primaire et college", "Comptabilite de base", "Portail enseignant"],
+    features: ["Jusqu'à 200 élèves", "Primaire et collège", "Comptabilité de base", "Portail enseignant"],
     highlight: false,
   },
   {
     name: "Standard",
     price: "200 000 GNF / mois",
-    features: ["Jusqu'a 500 eleves", "Toutes les sections", "Comptabilite complete", "Portail parent et enseignant"],
+    features: ["Jusqu'à 500 élèves", "Toutes les sections", "Comptabilité complète", "Portail parent et enseignant"],
     highlight: true,
   },
   {
     name: "Premium",
     price: "500 000 GNF / mois",
-    features: ["Eleves illimites", "Toutes les fonctions", "Personnalisation avancee", "Support prioritaire"],
+    features: ["Élèves illimités", "Toutes les fonctions", "Personnalisation avancée", "Support prioritaire"],
     highlight: false,
   },
 ];
@@ -169,7 +169,7 @@ function LandingEduGest({ onConnexion, onInscription }) {
             Connexion
           </button>
           <button onClick={onInscription} style={{ background: "#00C48C", border: "none", color: "#fff", padding: "8px 20px", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-            Creer mon ecole
+            Créer mon école
           </button>
         </div>
       </nav>
@@ -180,19 +180,19 @@ function LandingEduGest({ onConnexion, onInscription }) {
 
         <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(0,196,140,0.12)", border: "1px solid rgba(0,196,140,0.3)", borderRadius: 20, padding: "6px 16px", marginBottom: 28 }}>
           <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#00C48C", display: "inline-block" }} />
-          <span style={{ fontSize: 12, fontWeight: 700, color: "#00C48C", letterSpacing: "0.5px" }}>Concu pour les ecoles d'Afrique de l'Ouest</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: "#00C48C", letterSpacing: "0.5px" }}>Conçu pour les écoles d'Afrique de l'Ouest</span>
         </div>
 
         <h1 style={{ fontSize: "clamp(30px,6vw,56px)", fontWeight: 900, lineHeight: 1.12, margin: "0 0 18px", letterSpacing: "-1px" }}>
           La gestion scolaire <span style={{ color: "#00C48C" }}>claire</span>, <span style={{ color: "#00C48C" }}>complete</span> et <span style={{ color: "#00C48C" }}>fiable</span>
         </h1>
         <p style={{ fontSize: "clamp(14px,2.5vw,18px)", color: "rgba(255,255,255,0.62)", maxWidth: 620, margin: "0 auto 36px", lineHeight: 1.7 }}>
-          EduGest est un logiciel de gestion scolaire pour les ecoles en Guinee. Il aide les directions, comptables, enseignants et parents a suivre les eleves, les notes, les bulletins, les paiements et les emplois du temps dans un seul outil simple a prendre en main.
+          EduGest est un logiciel de gestion scolaire pour les écoles en Guinée. Il aide les directions, comptables, enseignants et parents à suivre les élèves, les notes, les bulletins, les paiements et les emplois du temps dans un seul outil simple à prendre en main.
         </p>
 
         <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
           <button onClick={onInscription} style={{ background: "linear-gradient(135deg,#00C48C,#00a876)", border: "none", color: "#fff", padding: "15px 36px", borderRadius: 30, fontSize: 16, fontWeight: 800, cursor: "pointer", boxShadow: "0 8px 28px rgba(0,196,140,0.35)", letterSpacing: 0.3 }}>
-            Creer mon ecole gratuitement
+            Créer mon école gratuitement
           </button>
           <button onClick={onConnexion} style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", padding: "15px 32px", borderRadius: 30, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
             Se connecter
@@ -204,10 +204,10 @@ function LandingEduGest({ onConnexion, onInscription }) {
       <section style={{ padding: "0 24px 46px", maxWidth: 980, margin: "0 auto" }}>
         <div style={{ ...cardStyle("rgba(0,196,140,0.18)", "rgba(255,255,255,0.03)") }}>
           <h2 style={{ margin: "0 0 14px", fontSize: "clamp(20px,3vw,28px)", fontWeight: 800 }}>
-            Logiciel de gestion scolaire pour primaire, college et lycee
+            Logiciel de gestion scolaire pour primaire, collège et lycée
           </h2>
           <p style={{ margin: "0 0 18px", fontSize: 14, color: "rgba(255,255,255,0.62)", lineHeight: 1.7 }}>
-            EduGest aide les ecoles privees a gerer les inscriptions, les notes, les bulletins scolaires, la comptabilite, les salaires, les paiements, les absences et les emplois du temps.
+            EduGest aide les écoles privées à gérer les inscriptions, les notes, les bulletins scolaires, la comptabilité, les salaires, les paiements, les absences et les emplois du temps.
           </p>
           <ul style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 8, color: "rgba(255,255,255,0.78)", fontSize: 13, lineHeight: 1.6 }}>
             {seoPoints.map((point) => (
@@ -223,7 +223,7 @@ function LandingEduGest({ onConnexion, onInscription }) {
             Ressources utiles sur EduGest
           </h2>
           <p style={{ margin: "0 0 20px", fontSize: 13, color: "rgba(255,255,255,0.55)", lineHeight: 1.7 }}>
-            Ces pages detaillees permettent de mieux presenter les usages d'EduGest et les besoins des ecoles auxquelles la plateforme s'adresse.
+            Ces pages détaillées permettent de mieux présenter les usages d'EduGest et les besoins des écoles auxquelles la plateforme s'adresse.
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 14 }}>
             {seoLinks.map((item) => (
@@ -251,10 +251,10 @@ function LandingEduGest({ onConnexion, onInscription }) {
       <section style={{ padding: "0 24px 52px", maxWidth: 980, margin: "0 auto" }}>
         <div style={{ ...cardStyle("rgba(255,255,255,0.12)", "rgba(255,255,255,0.03)") }}>
           <h2 style={{ margin: "0 0 10px", fontSize: "clamp(20px,3vw,28px)", fontWeight: 800 }}>
-            Articles conseils pour les ecoles
+            Articles conseils pour les écoles
           </h2>
           <p style={{ margin: "0 0 18px", fontSize: 13, color: "rgba(255,255,255,0.55)", lineHeight: 1.7 }}>
-            Ces articles repondent a des questions tres frequentes des directions et montrent plus clairement l'expertise d'EduGest sur la gestion scolaire.
+            Ces articles répondent à des questions très fréquentes des directions et montrent plus clairement l'expertise d'EduGest sur la gestion scolaire.
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 14 }}>
             {articleLinks.map((item) => (
@@ -294,7 +294,7 @@ function LandingEduGest({ onConnexion, onInscription }) {
       <section style={{ padding: "42px 24px 60px", background: "rgba(0,196,140,0.05)", borderTop: "1px solid rgba(0,196,140,0.12)", borderBottom: "1px solid rgba(0,196,140,0.12)" }}>
         <div style={{ maxWidth: 980, margin: "0 auto" }}>
           <h2 style={{ textAlign: "center", fontSize: "clamp(20px,3vw,28px)", fontWeight: 800, marginBottom: 10 }}>Pourquoi choisir EduGest ?</h2>
-          <p style={{ textAlign: "center", color: "rgba(255,255,255,0.45)", fontSize: 13, marginBottom: 34 }}>Un produit terrain, pense pour les besoins reels des ecoles.</p>
+          <p style={{ textAlign: "center", color: "rgba(255,255,255,0.45)", fontSize: 13, marginBottom: 34 }}>Un produit terrain, pensé pour les besoins réels des écoles.</p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 18 }}>
             {avantages.map((item) => (
               <div key={item.title} style={cardStyle("rgba(0,196,140,0.18)", "rgba(255,255,255,0.03)")}>
@@ -311,10 +311,10 @@ function LandingEduGest({ onConnexion, onInscription }) {
           <span style={{ display: "inline-block", background: "rgba(0,196,140,0.12)", border: "1px solid rgba(0,196,140,0.3)", color: "#00C48C", fontSize: 11, fontWeight: 800, letterSpacing: "1.5px", textTransform: "uppercase", padding: "5px 14px", borderRadius: 20 }}>Notre obsession</span>
         </div>
         <h2 style={{ textAlign: "center", fontSize: "clamp(20px,3.5vw,30px)", fontWeight: 900, marginBottom: 10, lineHeight: 1.2 }}>
-          La transparence comptable. <span style={{ color: "#00C48C" }}>Tout est trace.</span>
+          La transparence comptable. <span style={{ color: "#00C48C" }}>Tout est tracé.</span>
         </h2>
         <p style={{ textAlign: "center", color: "rgba(255,255,255,0.55)", fontSize: 14, maxWidth: 700, margin: "0 auto 34px", lineHeight: 1.65 }}>
-          EduGest aide la direction a savoir ce qui entre, ce qui sort et qui a fait quoi, sans dependre d'un cahier ou d'une memoire incertaine.
+          EduGest aide la direction à savoir ce qui entre, ce qui sort et qui a fait quoi, sans dépendre d'un cahier ou d'une mémoire incertaine.
         </p>
 
         <div style={{ display: "grid", gap: 10 }}>
@@ -336,7 +336,7 @@ function LandingEduGest({ onConnexion, onInscription }) {
 
       <section style={{ padding: "58px 24px", maxWidth: 1060, margin: "0 auto" }}>
         <h2 style={{ textAlign: "center", fontSize: "clamp(20px,3vw,28px)", fontWeight: 800, marginBottom: 8 }}>Tarification transparente</h2>
-        <p style={{ textAlign: "center", color: "rgba(255,255,255,0.45)", fontSize: 13, marginBottom: 36 }}>Demarrez gratuitement, puis evoluez selon la taille de votre ecole.</p>
+        <p style={{ textAlign: "center", color: "rgba(255,255,255,0.45)", fontSize: 13, marginBottom: 36 }}>Démarrez gratuitement, puis évoluez selon la taille de votre école.</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 16 }}>
           {offres.map((plan) => (
             <div key={plan.name} style={{ ...cardStyle(plan.highlight ? "#8b5cf6" : "rgba(255,255,255,0.12)", plan.highlight ? "rgba(139,92,246,0.08)" : "rgba(255,255,255,0.05)"), boxShadow: plan.highlight ? "0 0 40px rgba(139,92,246,0.2)" : "none" }}>
@@ -361,10 +361,10 @@ function LandingEduGest({ onConnexion, onInscription }) {
 
       <section style={{ padding: "24px 24px 70px", maxWidth: 980, margin: "0 auto" }}>
         <h2 style={{ textAlign: "center", fontSize: "clamp(20px,3vw,28px)", fontWeight: 800, marginBottom: 10 }}>
-          Questions frequentes sur EduGest
+          Questions fréquentes sur EduGest
         </h2>
         <p style={{ textAlign: "center", color: "rgba(255,255,255,0.45)", fontSize: 13, marginBottom: 28 }}>
-          Les reponses les plus utiles pour comprendre le logiciel de gestion scolaire.
+          Les réponses les plus utiles pour comprendre le logiciel de gestion scolaire.
         </p>
         <div style={{ display: "grid", gap: 14 }}>
           {faqItems.map((item) => (
@@ -377,11 +377,11 @@ function LandingEduGest({ onConnexion, onInscription }) {
       </section>
 
       <section style={{ padding: "54px 24px 80px", textAlign: "center", background: "rgba(255,255,255,0.02)", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-        <h2 style={{ fontSize: "clamp(22px,3.5vw,30px)", fontWeight: 900, marginBottom: 14 }}>Pret a digitaliser votre ecole ?</h2>
-        <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14, marginBottom: 30 }}>Lancez un espace propre, simple et adapte a votre realite terrain.</p>
+        <h2 style={{ fontSize: "clamp(22px,3.5vw,30px)", fontWeight: 900, marginBottom: 14 }}>Prêt à digitaliser votre école ?</h2>
+        <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14, marginBottom: 30 }}>Lancez un espace propre, simple et adapté à votre réalité terrain.</p>
         <div style={{ display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
           <button onClick={onInscription} style={{ background: "linear-gradient(135deg,#00C48C,#00a876)", border: "none", color: "#fff", padding: "16px 42px", borderRadius: 30, fontSize: 16, fontWeight: 800, cursor: "pointer", boxShadow: "0 8px 28px rgba(0,196,140,0.35)" }}>
-            Creer mon ecole gratuitement
+            Créer mon école gratuitement
           </button>
           <button onClick={onConnexion} style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", padding: "16px 32px", borderRadius: 30, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
             Se connecter
