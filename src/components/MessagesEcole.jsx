@@ -1,8 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import {
-  doc,
-  setDoc,
-} from "firebase/firestore";
+import { doc, setDoc } from "firebase/firestore";
 import { db } from "../firebaseDb";
 import { C } from "../constants";
 import { apiFetch, getAuthHeaders } from "../apiClient";
@@ -29,7 +26,7 @@ function ecrireLusLocal(uid, lus) {
   try {
     localStorage.setItem(cleStockage(uid), JSON.stringify(lus));
   } catch {
-    // quota exceeded, ignore
+    // Quota localStorage dépassé : on ignore.
   }
 }
 
@@ -99,6 +96,7 @@ function MessagesEcole({ utilisateur, schoolId }) {
     const nouveauxLus = { ...lus, [msg._id]: Date.now() };
     setLus(nouveauxLus);
     ecrireLusLocal(uid, nouveauxLus);
+
     try {
       await setDoc(
         doc(db, "superadmin_messages", msg._id, "lectures", uid),
@@ -110,7 +108,7 @@ function MessagesEcole({ utilisateur, schoolId }) {
         },
       );
     } catch {
-      // pas d'accès réseau ou règles : on garde le marquage local
+      // Pas d'accès réseau ou règles plus strictes : on garde le marquage local.
     }
   };
 
@@ -122,7 +120,6 @@ function MessagesEcole({ utilisateur, schoolId }) {
 
   return (
     <>
-      {/* Bandeau pour messages important/critique non lus */}
       {bandeauxAffiches.map((m) => {
         const niv = NIVEAUX[m.niveau] || NIVEAUX.info;
         return (
@@ -143,7 +140,7 @@ function MessagesEcole({ utilisateur, schoolId }) {
             <div style={{ flex: 1, minWidth: 0 }}>
               <strong style={{ fontWeight: 800, marginRight: 8 }}>{m.titre}</strong>
               <span style={{ color: niv.couleur, opacity: 0.85 }}>
-                {m.corps.length > 140 ? m.corps.slice(0, 140) + "…" : m.corps}
+                {m.corps.length > 140 ? `${m.corps.slice(0, 140)}…` : m.corps}
               </span>
             </div>
             <button
@@ -181,7 +178,6 @@ function MessagesEcole({ utilisateur, schoolId }) {
         );
       })}
 
-      {/* Cloche flottante avec compteur */}
       <button
         onClick={() => setBoiteOuverte(true)}
         title="Messages SuperAdmin"
@@ -230,7 +226,6 @@ function MessagesEcole({ utilisateur, schoolId }) {
         )}
       </button>
 
-      {/* Boîte de réception modale */}
       {boiteOuverte && (
         <div
           onClick={() => setBoiteOuverte(false)}
