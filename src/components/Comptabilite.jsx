@@ -316,9 +316,18 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   };
   const calcNet = (s) => calcMontant(s) - (Number(s.bon)||0) + (Number(s.revision)||0);
   const totNetSec = salairesSec.reduce((sum,s)=>sum+calcNet(s),0);
+  const totMontantSec = salairesSec.reduce((sum,s)=>sum+calcMontant(s),0);
+  const totBonSec = salairesSec.reduce((sum,s)=>sum+Number(s.bon||0),0);
   const totNetPrim = salairesPrim.reduce((sum,s)=>sum+Number(s.montantForfait||0)-(Number(s.bon||0))+(Number(s.revision||0)),0);
+  const totMontantPrim = salairesPrim.reduce((sum,s)=>sum+Number(s.montantForfait||0),0);
+  const totBonPrim = salairesPrim.reduce((sum,s)=>sum+Number(s.bon||0),0);
   const calcNetF = (s) => Number(s.montantForfait||0)-Number(s.bon||0)+Number(s.revision||0);
   const totNetPers = salairesPers.reduce((sum,s)=>sum+calcNetF(s),0);
+  const totMontantPers = salairesPers.reduce((sum,s)=>sum+Number(s.montantForfait||0),0);
+  const totBonPers = salairesPers.reduce((sum,s)=>sum+Number(s.bon||0),0);
+  const totMontantGlobal = totMontantSec + totMontantPrim + totMontantPers;
+  const totBonGlobal = totBonSec + totBonPrim + totBonPers;
+  const totNetGlobal = totNetSec + totNetPrim + totNetPers;
 
   const buildSecondaireSalaryObservation = (teacher, slots) => {
     const aRevision = slots.some(s => s.type === "revision");
@@ -477,6 +486,17 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
     td{padding:5px 7px;border:1px solid #ccc;text-align:center}td:nth-child(2){text-align:left}
     .section{background:#e8f0e8;font-weight:bold;color:#0A1628;padding:5px;margin:10px 0 4px}
     .total-row{background:#e0ebf8;font-weight:bold}
+    .total-label{background:#e2e8f0;color:#0f172a;font-weight:bold}
+    .total-montant{background:#dbeafe;color:#1d4ed8;font-weight:bold}
+    .total-bon{background:#fee2e2;color:#b91c1c;font-weight:bold}
+    .total-net{background:#dcfce7;color:#166534;font-weight:bold}
+    .global-totaux{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
+    .global-total{border-radius:10px;padding:10px 12px;color:#fff}
+    .global-total .lib{font-size:10px;text-transform:uppercase;letter-spacing:.06em;opacity:.85;margin-bottom:4px}
+    .global-total .val{font-size:16px;font-weight:bold}
+    .global-total.montant{background:#1d4ed8}
+    .global-total.bon{background:#b91c1c}
+    .global-total.net{background:#166534}
     @media print{button{display:none}}</style></head><body>
     <div class="titre">ÉTATS DE SALAIRES — G.S. LA CITADELLE — ANNÉE SCOLAIRE ${getAnnee()}</div>
     <div class="sous-titre">MOIS DE ${moisSel.toUpperCase()}</div>
@@ -493,7 +513,13 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
       <td>${fmtN(calcMontant(s))}</td><td>${fmtN(s.bon||0)}</td><td>${fmtN(s.revision||0)}</td>
       <td><strong>${fmtN(calcNet(s))}</strong></td>
     </tr>`).join("")}
-    <tr class="total-row"><td colspan="13" style="text-align:right">TOTAL NET SECONDAIRE</td><td>${fmtN(totNetSec)}</td></tr>
+    <tr class="total-row">
+      <td colspan="10" class="total-label" style="text-align:right">TOTAUX SECONDAIRE</td>
+      <td class="total-montant">${fmtN(totMontantSec)}</td>
+      <td class="total-bon">${fmtN(totBonSec)}</td>
+      <td>${fmtN(salairesSec.reduce((sum,s)=>sum+Number(s.revision||0),0))}</td>
+      <td class="total-net">${fmtN(totNetSec)}</td>
+    </tr>
     </tbody></table>
     <div class="section">SECTION PRIMAIRE</div>
     <table><thead><tr><th>N°</th><th>Prénoms et Nom</th><th>Classe</th><th>Montant</th><th>Bon</th><th>Révision</th><th>Net à Payer</th></tr></thead>
@@ -501,7 +527,13 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
     ${salairesPrim.map((s,i)=>`<tr><td>${i+1}</td><td style="text-align:left">${s.nom}</td><td>${s.niveau||""}</td>
       <td>${fmtN(s.montantForfait||0)}</td><td>${fmtN(s.bon||0)}</td><td>${fmtN(s.revision||0)}</td>
       <td><strong>${fmtN(Number(s.montantForfait||0)-Number(s.bon||0)+Number(s.revision||0))}</strong></td></tr>`).join("")}
-    <tr class="total-row"><td colspan="6" style="text-align:right">TOTAL NET PRIMAIRE</td><td>${fmtN(totNetPrim)}</td></tr>
+    <tr class="total-row">
+      <td colspan="3" class="total-label" style="text-align:right">TOTAUX PRIMAIRE</td>
+      <td class="total-montant">${fmtN(totMontantPrim)}</td>
+      <td class="total-bon">${fmtN(totBonPrim)}</td>
+      <td>${fmtN(salairesPrim.reduce((sum,s)=>sum+Number(s.revision||0),0))}</td>
+      <td class="total-net">${fmtN(totNetPrim)}</td>
+    </tr>
     </tbody></table>
     <div class="section">SECTION ADMINISTRATION / PERSONNEL</div>
     <table><thead><tr><th>N°</th><th>Prénoms et Nom</th><th>Poste</th><th>Catégorie</th><th>Montant</th><th>Bon</th><th>Révision</th><th>Net à Payer</th></tr></thead>
@@ -509,10 +541,18 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
     ${salairesPers.map((s,i)=>`<tr><td>${i+1}</td><td style="text-align:left">${s.nom}</td><td>${s.poste||""}</td><td>${s.categorie||""}</td>
       <td>${fmtN(s.montantForfait||0)}</td><td>${fmtN(s.bon||0)}</td><td>${fmtN(s.revision||0)}</td>
       <td><strong>${fmtN(Number(s.montantForfait||0)-Number(s.bon||0)+Number(s.revision||0))}</strong></td></tr>`).join("")}
-    <tr class="total-row"><td colspan="7" style="text-align:right">TOTAL NET ADMINISTRATION / PERSONNEL</td><td>${fmtN(totNetPers)}</td></tr>
+    <tr class="total-row">
+      <td colspan="4" class="total-label" style="text-align:right">TOTAUX ADMINISTRATION / PERSONNEL</td>
+      <td class="total-montant">${fmtN(totMontantPers)}</td>
+      <td class="total-bon">${fmtN(totBonPers)}</td>
+      <td>${fmtN(salairesPers.reduce((sum,s)=>sum+Number(s.revision||0),0))}</td>
+      <td class="total-net">${fmtN(totNetPers)}</td>
+    </tr>
     </tbody></table>
-    <div style="text-align:right;font-size:12px;font-weight:bold;margin-top:8px;color:#0A1628">
-      TOTAL GÉNÉRAL NET : ${fmtN(totNetSec+totNetPrim+totNetPers)} GNF
+    <div class="global-totaux">
+      <div class="global-total montant"><div class="lib">Total montant ?? payer</div><div class="val">${fmtN(totMontantGlobal)} GNF</div></div>
+      <div class="global-total bon"><div class="lib">Total bon</div><div class="val">${fmtN(totBonGlobal)} GNF</div></div>
+      <div class="global-total net"><div class="lib">Total net ?? payer</div><div class="val">${fmtN(totNetGlobal)} GNF</div></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-top:30px">
       <div style="border-top:2px solid #0A1628;padding-top:6px;text-align:center;font-size:10px">Le Comptable<br/><br/><br/>Signature</div>
@@ -2255,4 +2295,3 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
 // ══════════════════════════════════════════════════════════════
 
 export { Comptabilite };
-
