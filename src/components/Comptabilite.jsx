@@ -484,32 +484,32 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
     <table><thead><tr>
       <th>N°</th><th>Prénoms et Nom</th><th>Matière</th><th>Niveau</th>
       <th>V.H. Hebdo</th><th>V.H. Mensuel Prévu</th><th>5è Sem</th><th>Non Exécuté</th><th>Exécuté</th>
-      <th>Prime Horaire</th><th>Montant</th><th>Bon</th><th>Révision</th><th>Net à Payer</th><th>Observation</th>
+      <th>Prime Horaire</th><th>Montant</th><th>Bon</th><th>Révision</th><th>Net à Payer</th>
     </tr></thead><tbody>
     ${salairesSec.map((s,i)=>`<tr>
       <td>${i+1}</td><td style="text-align:left">${s.nom}</td><td>${s.matiere||""}</td><td>${s.niveau||""}</td>
       <td>${s.vhHebdo||0}</td><td>${s.vhPrevu||0}</td><td>${s.cinqSem||0}</td><td>${s.nonExecute||0}</td>
       <td><strong>${calcExecute(s)}</strong></td><td>${s.primesVariables?"Variable":fmtN(s.primeHoraire)}</td>
       <td>${fmtN(calcMontant(s))}</td><td>${fmtN(s.bon||0)}</td><td>${fmtN(s.revision||0)}</td>
-      <td><strong>${fmtN(calcNet(s))}</strong></td><td>${s.observation||""}</td>
+      <td><strong>${fmtN(calcNet(s))}</strong></td>
     </tr>`).join("")}
-    <tr class="total-row"><td colspan="13" style="text-align:right">TOTAL NET SECONDAIRE</td><td>${fmtN(totNetSec)}</td><td></td></tr>
+    <tr class="total-row"><td colspan="13" style="text-align:right">TOTAL NET SECONDAIRE</td><td>${fmtN(totNetSec)}</td></tr>
     </tbody></table>
     <div class="section">SECTION PRIMAIRE</div>
-    <table><thead><tr><th>N°</th><th>Prénoms et Nom</th><th>Classe</th><th>Montant</th><th>Bon</th><th>Révision</th><th>Net à Payer</th><th>Observation</th></tr></thead>
+    <table><thead><tr><th>N°</th><th>Prénoms et Nom</th><th>Classe</th><th>Montant</th><th>Bon</th><th>Révision</th><th>Net à Payer</th></tr></thead>
     <tbody>
     ${salairesPrim.map((s,i)=>`<tr><td>${i+1}</td><td style="text-align:left">${s.nom}</td><td>${s.niveau||""}</td>
       <td>${fmtN(s.montantForfait||0)}</td><td>${fmtN(s.bon||0)}</td><td>${fmtN(s.revision||0)}</td>
-      <td><strong>${fmtN(Number(s.montantForfait||0)-Number(s.bon||0)+Number(s.revision||0))}</strong></td><td>${s.observation||""}</td></tr>`).join("")}
-    <tr class="total-row"><td colspan="6" style="text-align:right">TOTAL NET PRIMAIRE</td><td>${fmtN(totNetPrim)}</td><td></td></tr>
+      <td><strong>${fmtN(Number(s.montantForfait||0)-Number(s.bon||0)+Number(s.revision||0))}</strong></td></tr>`).join("")}
+    <tr class="total-row"><td colspan="6" style="text-align:right">TOTAL NET PRIMAIRE</td><td>${fmtN(totNetPrim)}</td></tr>
     </tbody></table>
     <div class="section">SECTION ADMINISTRATION / PERSONNEL</div>
-    <table><thead><tr><th>N°</th><th>Prénoms et Nom</th><th>Poste</th><th>Catégorie</th><th>Montant</th><th>Bon</th><th>Révision</th><th>Net à Payer</th><th>Observation</th></tr></thead>
+    <table><thead><tr><th>N°</th><th>Prénoms et Nom</th><th>Poste</th><th>Catégorie</th><th>Montant</th><th>Bon</th><th>Révision</th><th>Net à Payer</th></tr></thead>
     <tbody>
     ${salairesPers.map((s,i)=>`<tr><td>${i+1}</td><td style="text-align:left">${s.nom}</td><td>${s.poste||""}</td><td>${s.categorie||""}</td>
       <td>${fmtN(s.montantForfait||0)}</td><td>${fmtN(s.bon||0)}</td><td>${fmtN(s.revision||0)}</td>
-      <td><strong>${fmtN(Number(s.montantForfait||0)-Number(s.bon||0)+Number(s.revision||0))}</strong></td><td>${s.observation||""}</td></tr>`).join("")}
-    <tr class="total-row"><td colspan="7" style="text-align:right">TOTAL NET ADMINISTRATION / PERSONNEL</td><td>${fmtN(totNetPers)}</td><td></td></tr>
+      <td><strong>${fmtN(Number(s.montantForfait||0)-Number(s.bon||0)+Number(s.revision||0))}</strong></td></tr>`).join("")}
+    <tr class="total-row"><td colspan="7" style="text-align:right">TOTAL NET ADMINISTRATION / PERSONNEL</td><td>${fmtN(totNetPers)}</td></tr>
     </tbody></table>
     <div style="text-align:right;font-size:12px;font-weight:bold;margin-top:8px;color:#0A1628">
       TOTAL GÉNÉRAL NET : ${fmtN(totNetSec+totNetPrim+totNetPers)} GNF
