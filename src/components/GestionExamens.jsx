@@ -27,15 +27,15 @@ function GestionExamens() {
 
   const genererConvocations = (exam) => {
     const elevesCible = tousEleves.filter(e=>exam.classe==="Toutes"||e.classe===exam.classe);
-    if(!elevesCible.length){alert("Aucun Ã©lÃ¨ve pour cette classe.");return;}
+    if(!elevesCible.length){alert("Aucun élève pour cette classe.");return;}
     const c1p = schoolInfo.couleur1||"#0A1628";
     const c2p = schoolInfo.couleur2||"#00C48C";
     const logo = schoolInfo.logo||"";
-    const nomEcole = schoolInfo.nom||"Ã‰cole";
+    const nomEcole = schoolInfo.nom||"École";
     const w = window.open("","_blank");
     w.document.write(`<!DOCTYPE html><html lang="fr"><head>
     <meta charset="utf-8"/>
-    <title>Convocations â€” ${exam.titre}</title>
+    <title>Convocations — ${exam.titre}</title>
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
       @page{size:A5 portrait;margin:0}
@@ -70,18 +70,18 @@ function GestionExamens() {
       </div>
       <div class="titre">${exam.titre}</div>
       <div class="info-grid">
-        <div class="info-item"><div class="info-label">Ã‰lÃ¨ve</div><div class="info-val">${e.nom} ${e.prenom}</div></div>
-        <div class="info-item"><div class="info-label">Matricule</div><div class="info-val">${e.matricule||"â€”"}</div></div>
-        <div class="info-item"><div class="info-label">Classe</div><div class="info-val">${e.classe||"â€”"}</div></div>
-        <div class="info-item"><div class="info-label">Date</div><div class="info-val">${exam.date||"â€”"}</div></div>
+        <div class="info-item"><div class="info-label">Élève</div><div class="info-val">${e.nom} ${e.prenom}</div></div>
+        <div class="info-item"><div class="info-label">Matricule</div><div class="info-val">${e.matricule||"—"}</div></div>
+        <div class="info-item"><div class="info-label">Classe</div><div class="info-val">${e.classe||"—"}</div></div>
+        <div class="info-item"><div class="info-label">Date</div><div class="info-val">${exam.date||"—"}</div></div>
         ${exam.heure?`<div class="info-item"><div class="info-label">Heure</div><div class="info-val">${exam.heure}</div></div>`:""}
         ${exam.salle?`<div class="info-item"><div class="info-label">Salle</div><div class="info-val">${exam.salle}</div></div>`:""}
-        ${exam.matiere?`<div class="info-item"><div class="info-label">MatiÃ¨re</div><div class="info-val">${exam.matiere}</div></div>`:""}
-        ${exam.duree?`<div class="info-item"><div class="info-label">DurÃ©e</div><div class="info-val">${exam.duree}</div></div>`:""}
+        ${exam.matiere?`<div class="info-item"><div class="info-label">Matière</div><div class="info-val">${exam.matiere}</div></div>`:""}
+        ${exam.duree?`<div class="info-item"><div class="info-label">Durée</div><div class="info-val">${exam.duree}</div></div>`:""}
       </div>
       ${exam.consignes?`<div style="font-size:8pt;color:#475569;padding:2mm 3mm;background:#f8fafc;border-radius:2mm;"><strong>Consignes :</strong> ${exam.consignes}</div>`:""}
       <div class="footer">
-        <span>PiÃ¨ce Ã  prÃ©senter le jour de l'examen</span>
+        <span>Pièce à présenter le jour de l'examen</span>
         <div class="signature"><div class="sig-label">Signature Direction</div><div class="sig-line"></div></div>
       </div>
     </div>`).join("")}
@@ -97,8 +97,8 @@ function GestionExamens() {
     <div style={{padding:"22px 26px",maxWidth:1100}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20,flexWrap:"wrap",gap:10}}>
         <div>
-          <h2 style={{margin:0,fontSize:18,fontWeight:900,color:c1}}>ðŸ“ Gestion des Examens</h2>
-          <p style={{margin:"4px 0 0",fontSize:13,color:"#6b7280"}}>{examens.length} examen(s) planifiÃ©(s)</p>
+          <h2 style={{margin:0,fontSize:18,fontWeight:900,color:c1}}>📝 Gestion des Examens</h2>
+          <p style={{margin:"4px 0 0",fontSize:13,color:"#6b7280"}}>{examens.length} examen(s) planifié(s)</p>
         </div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
           <select value={filtre} onChange={e=>setFiltre(e.target.value)}
@@ -111,9 +111,9 @@ function GestionExamens() {
         </div>
       </div>
 
-      {/* Examens Ã  venir */}
+      {/* Examens à venir */}
       {aVenir.length>0&&<>
-        <h3 style={{fontSize:13,fontWeight:800,color:c1,margin:"0 0 10px",textTransform:"uppercase",letterSpacing:"0.06em"}}>Ã€ venir ({aVenir.length})</h3>
+        <h3 style={{fontSize:13,fontWeight:800,color:c1,margin:"0 0 10px",textTransform:"uppercase",letterSpacing:"0.06em"}}>À venir ({aVenir.length})</h3>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:12,marginBottom:20}}>
           {aVenir.map(ex=>(
             <Card key={ex._id} style={{border:`1px solid ${c1}22`}}>
@@ -121,21 +121,21 @@ function GestionExamens() {
                 <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:8,marginBottom:10}}>
                   <div>
                     <div style={{fontWeight:900,fontSize:14,color:c1}}>{ex.titre}</div>
-                    <div style={{fontSize:11,color:"#64748b",marginTop:2}}>{getEvaluationLabel(ex.type, schoolInfo, { kind:"exam" })} Â· {ex.classe||"Toutes classes"}</div>
+                    <div style={{fontSize:11,color:"#64748b",marginTop:2}}>{getEvaluationLabel(ex.type, schoolInfo, { kind:"exam" })} · {ex.classe||"Toutes classes"}</div>
                   </div>
-                  <div style={{background:`${c2}22`,color:c1,fontWeight:800,fontSize:12,padding:"4px 10px",borderRadius:8,whiteSpace:"nowrap"}}>{ex.date||"â€”"}</div>
+                  <div style={{background:`${c2}22`,color:c1,fontWeight:800,fontSize:12,padding:"4px 10px",borderRadius:8,whiteSpace:"nowrap"}}>{ex.date||"—"}</div>
                 </div>
                 <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
-                  {ex.heure&&<span style={{fontSize:11,background:"#f1f5f9",padding:"2px 8px",borderRadius:6,color:"#475569"}}>ðŸ• {ex.heure}</span>}
-                  {ex.salle&&<span style={{fontSize:11,background:"#f1f5f9",padding:"2px 8px",borderRadius:6,color:"#475569"}}>ðŸ“ {ex.salle}</span>}
-                  {ex.matiere&&<span style={{fontSize:11,background:"#f1f5f9",padding:"2px 8px",borderRadius:6,color:"#475569"}}>ðŸ“š {ex.matiere}</span>}
-                  {ex.duree&&<span style={{fontSize:11,background:"#f1f5f9",padding:"2px 8px",borderRadius:6,color:"#475569"}}>â± {ex.duree}</span>}
+                  {ex.heure&&<span style={{fontSize:11,background:"#f1f5f9",padding:"2px 8px",borderRadius:6,color:"#475569"}}>🕐 {ex.heure}</span>}
+                  {ex.salle&&<span style={{fontSize:11,background:"#f1f5f9",padding:"2px 8px",borderRadius:6,color:"#475569"}}>📍 {ex.salle}</span>}
+                  {ex.matiere&&<span style={{fontSize:11,background:"#f1f5f9",padding:"2px 8px",borderRadius:6,color:"#475569"}}>📚 {ex.matiere}</span>}
+                  {ex.duree&&<span style={{fontSize:11,background:"#f1f5f9",padding:"2px 8px",borderRadius:6,color:"#475569"}}>⏱ {ex.duree}</span>}
                 </div>
                 {ex.consignes&&<p style={{fontSize:11,color:"#64748b",margin:"0 0 10px",padding:"6px 10px",background:"#f8fafc",borderRadius:6,lineHeight:1.5}}>{ex.consignes}</p>}
                 <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                  <Btn sm v="vert" onClick={()=>genererConvocations(ex)}>ðŸ–¨ï¸ Convocations</Btn>
-                  <Btn sm v="ghost" onClick={()=>{setForm({...ex});setModal("edit");}}>âœï¸</Btn>
-                  <Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ?"))supEx(ex._id);}}>ðŸ—‘ï¸</Btn>
+                  <Btn sm v="vert" onClick={()=>genererConvocations(ex)}>🖨️ Convocations</Btn>
+                  <Btn sm v="ghost" onClick={()=>{setForm({...ex});setModal("edit");}}>✏️</Btn>
+                  <Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ?"))supEx(ex._id);}}>🗑️</Btn>
                 </div>
               </div>
             </Card>
@@ -143,9 +143,9 @@ function GestionExamens() {
         </div>
       </>}
 
-      {/* Examens passÃ©s */}
+      {/* Examens passés */}
       {passes.length>0&&<>
-        <h3 style={{fontSize:13,fontWeight:800,color:"#94a3b8",margin:"0 0 10px",textTransform:"uppercase",letterSpacing:"0.06em"}}>PassÃ©s ({passes.length})</h3>
+        <h3 style={{fontSize:13,fontWeight:800,color:"#94a3b8",margin:"0 0 10px",textTransform:"uppercase",letterSpacing:"0.06em"}}>Passés ({passes.length})</h3>
         <Card style={{opacity:0.75}}>
           <table style={{width:"100%",borderCollapse:"collapse"}}>
             <THead cols={["Titre","Type","Classe","Date","Salle","Actions"]}/>
@@ -154,17 +154,17 @@ function GestionExamens() {
               <TD><Badge color="gray">{getEvaluationLabel(ex.type, schoolInfo, { kind:"exam" })}</Badge></TD>
               <TD>{ex.classe||"Toutes"}</TD>
               <TD>{ex.date}</TD>
-              <TD>{ex.salle||"â€”"}</TD>
+              <TD>{ex.salle||"—"}</TD>
               <TD>
-                <Btn sm v="ghost" onClick={()=>genererConvocations(ex)}>ðŸ–¨ï¸</Btn>
-                <Btn sm v="danger" style={{marginLeft:4}} onClick={()=>{if(confirm("Supprimer ?"))supEx(ex._id);}}>ðŸ—‘ï¸</Btn>
+                <Btn sm v="ghost" onClick={()=>genererConvocations(ex)}>🖨️</Btn>
+                <Btn sm v="danger" style={{marginLeft:4}} onClick={()=>{if(confirm("Supprimer ?"))supEx(ex._id);}}>🗑️</Btn>
               </TD>
             </TR>)}</tbody>
           </table>
         </Card>
       </>}
 
-      {examens.length===0&&<Vide icone="ðŸ“" msg="Aucun examen planifiÃ©"/>}
+      {examens.length===0&&<Vide icone="📝" msg="Aucun examen planifié"/>}
 
       {/* Modal add/edit */}
       {(modal==="add"||modal==="edit")&&<Modale titre={modal==="add"?"Planifier un examen":"Modifier l'examen"} fermer={()=>setModal(null)}>
@@ -178,10 +178,10 @@ function GestionExamens() {
             {classes.map(c=><option key={c}>{c}</option>)}
           </Selec>
           <Input label="Date" type="date" value={form.date||""} onChange={chg("date")}/>
-          <Input label="Heure de dÃ©but" value={form.heure||""} onChange={chg("heure")} placeholder="08:00"/>
+          <Input label="Heure de début" value={form.heure||""} onChange={chg("heure")} placeholder="08:00"/>
           <Input label="Salle / Lieu" value={form.salle||""} onChange={chg("salle")} placeholder="Salle A"/>
-          <Input label="MatiÃ¨re (optionnel)" value={form.matiere||""} onChange={chg("matiere")}/>
-          <Input label="DurÃ©e" value={form.duree||""} onChange={chg("duree")} placeholder="2h"/>
+          <Input label="Matière (optionnel)" value={form.matiere||""} onChange={chg("matiere")}/>
+          <Input label="Durée" value={form.duree||""} onChange={chg("duree")} placeholder="2h"/>
           <div style={{gridColumn:"1/-1"}}><Textarea label="Consignes (optionnel)" value={form.consignes||""} onChange={chg("consignes")}/></div>
         </div>
         <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
@@ -191,7 +191,7 @@ function GestionExamens() {
             const row = { ...form, type: resolveCanonicalExamType(form.type || defaultExamType, schoolInfo) };
             modal==="add"?ajEx(row):modEx(row);
             setModal(null);
-            toast(modal==="add"?"Examen planifiÃ©":"Examen mis Ã  jour","success");
+            toast(modal==="add"?"Examen planifié":"Examen mis à jour","success");
           }}>{modal==="add"?"Planifier":"Enregistrer"}</Btn>
         </div>
       </Modale>}
@@ -200,7 +200,7 @@ function GestionExamens() {
 }
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-//  RECHERCHE GLOBALE (Ctrl+K / âŒ˜K)
+//  RECHERCHE GLOBALE (Ctrl+K / ⌘K)
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 export { GestionExamens };
