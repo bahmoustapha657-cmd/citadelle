@@ -1,14 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  collection,
   doc,
-  onSnapshot,
-  orderBy,
-  query,
   setDoc,
 } from "firebase/firestore";
 import { db } from "../firebaseDb";
 import { C } from "../constants";
+import { apiFetch, getAuthHeaders } from "../apiClient";
 
 const NIVEAUX = {
   info: { label: "Info", couleur: "#0369a1", bg: "#e0f2fe", border: "#7dd3fc" },
@@ -52,27 +49,44 @@ function MessagesEcole({ utilisateur, schoolId }) {
 
   useEffect(() => {
     if (!uid || !role || role === "parent") return;
-    const q = query(collection(db, "superadmin_messages"), orderBy("createdAt", "desc"));
-    const unsub = onSnapshot(
-      q,
-      (snap) => {
-        const liste = snap.docs.map((d) => ({ ...d.data(), _id: d.id }));
-        setMessages(liste);
-      },
-      () => setMessages([]),
-    );
-    return () => unsub();
+    let cancelled = false;
+
+    const chargerMessages = async () => {
+      try {
+        const headers = await getAuthHeaders();
+        const response = await apiFetch("/school", {
+          method: "GET",
+          query: { op: "superadmin-messages" },
+          headers,
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const payload = await response.json();
+        if (!cancelled) {
+          setMessages(Array.isArray(payload.messages) ? payload.messages : []);
+        }
+      } catch {
+        if (!cancelled) {
+          setMessages([]);
+        }
+      }
+    };
+
+    chargerMessages();
+    const timer = window.setInterval(chargerMessages, 60000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
   }, [uid, role]);
 
   const messagesPourMoi = useMemo(() => {
     if (!role || !schoolId) return [];
-    return messages.filter((m) => {
-      const cibleSchools = Array.isArray(m.cibleSchools) ? m.cibleSchools : [];
-      const cibleRoles = Array.isArray(m.cibleRoles) ? m.cibleRoles : [];
-      const ecoleOk = cibleSchools.includes("*") || cibleSchools.includes(schoolId);
-      const roleOk = cibleRoles.includes(role);
-      return ecoleOk && roleOk;
-    });
+    return messages;
   }, [messages, role, schoolId]);
 
   const nonLus = messagesPourMoi.filter((m) => !lus[m._id]);

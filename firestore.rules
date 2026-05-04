@@ -289,7 +289,7 @@ service cloud.firestore {
     }
 
     match /superadmin_messages/{messageId} {
-      allow read: if request.auth != null && roleUtilisateur() != "parent";
+      allow read: if aUnRole(["superadmin"]);
       allow create, update, delete: if aUnRole(["superadmin"]);
 
       match /lectures/{uid} {
