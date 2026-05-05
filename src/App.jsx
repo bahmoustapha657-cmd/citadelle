@@ -44,6 +44,7 @@ const GestionExamens = lazyNamedExport(() => import("./components/GestionExamens
 const MessagesParents = lazyNamedExport(() => import("./components/MessagesParents"), "MessagesParents");
 const MessagesEcole = lazy(() => import("./components/MessagesEcole"));
 const LandingEduGest = lazyNamedExport(() => import("./components/LandingEduGest"), "LandingEduGest");
+const DemoEduGest = lazyNamedExport(() => import("./components/DemoEduGest"), "DemoEduGest");
 
 function FullScreenFallback() {
   return (
@@ -561,6 +562,17 @@ export default function App() {
   if(!utilisateur && !page) return (
     <Suspense fallback={<FullScreenFallback/>}>
       <LandingEduGest
+        onDemo={()=>setPage("demo")}
+        onConnexion={()=>setPage("login")}
+        onInscription={()=>setPage("inscription")}
+      />
+    </Suspense>
+  );
+
+  if(!utilisateur && page==="demo") return (
+    <Suspense fallback={<FullScreenFallback/>}>
+      <DemoEduGest
+        onRetour={()=>setPage(null)}
         onConnexion={()=>setPage("login")}
         onInscription={()=>setPage("inscription")}
       />

@@ -169,7 +169,7 @@ function cardStyle(borderColor = "rgba(255,255,255,0.08)", background = "rgba(25
   };
 }
 
-function LandingEduGest({ onConnexion, onInscription }) {
+function LandingEduGest({ onConnexion, onInscription, onDemo }) {
   useEffect(() => {
     const elements = Array.from(document.querySelectorAll("[data-landing-reveal]"));
     if (!elements.length) return undefined;
@@ -643,6 +643,9 @@ function LandingEduGest({ onConnexion, onInscription }) {
           <span className="landing-nav-tag" style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase" }}>SaaS scolaire</span>
         </div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
+          <button onClick={onDemo} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", color: "#fff", padding: "8px 20px", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+            Voir une démo
+          </button>
           <button onClick={onConnexion} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", color: "#fff", padding: "8px 20px", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
             Connexion
           </button>
@@ -683,6 +686,9 @@ function LandingEduGest({ onConnexion, onInscription }) {
         <div className="landing-fade-up landing-delay-3 landing-cta-row" style={{ position: "relative", display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
           <button className="landing-cta landing-cta-primary" onClick={onInscription} style={{ border: "none", color: "#fff", padding: "15px 36px", borderRadius: 30, fontSize: 16, fontWeight: 800, cursor: "pointer", letterSpacing: 0.3 }}>
             Créer mon école gratuitement
+          </button>
+          <button className="landing-cta landing-cta-secondary" onClick={onDemo} style={{ color: "#fff", padding: "15px 32px", borderRadius: 30, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+            Voir une démo
           </button>
           <button className="landing-cta landing-cta-secondary" onClick={onConnexion} style={{ color: "#fff", padding: "15px 32px", borderRadius: 30, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
             Se connecter
@@ -1013,6 +1019,9 @@ function LandingEduGest({ onConnexion, onInscription }) {
           <button className="landing-cta" onClick={onInscription} style={{ background: "linear-gradient(135deg,#00C48C,#00a876)", border: "none", color: "#fff", padding: "16px 42px", borderRadius: 30, fontSize: 16, fontWeight: 800, cursor: "pointer", boxShadow: "0 8px 28px rgba(0,196,140,0.35)" }}>
             Créer mon école gratuitement
           </button>
+          <button className="landing-cta" onClick={onDemo} style={{ background: "rgba(255,255,255,0.09)", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", padding: "16px 32px", borderRadius: 30, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+            Voir une démo
+          </button>
           <button className="landing-cta" onClick={onConnexion} style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", padding: "16px 32px", borderRadius: 30, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
             Se connecter
           </button>
@@ -1023,4 +1032,3 @@ function LandingEduGest({ onConnexion, onInscription }) {
 }
 
 export { LandingEduGest };
-
