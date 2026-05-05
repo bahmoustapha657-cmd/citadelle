@@ -5,6 +5,7 @@ import {
   C,
   TOUS_MOIS_LONGS,
   getAnnee,
+  today,
   CLASSES_PRIMAIRE,
   CLASSES_COLLEGE,
   CLASSES_LYCEE,
@@ -26,7 +27,7 @@ import { useFirestore } from "../hooks/useFirestore";
 import { db } from "../firebaseDb";
 import { uploadPhotoEleve } from "../storageUtils";
 import { Badge, Card, Modale, Champ, Input, Selec, Btn, THead, TR, TD, Stat, Tabs, Vide, Chargement, LectureSeule } from "./ui";
-import { imprimerRecu, telechargerExcel, exportExcel } from "../reports";
+import { imprimerRecu, telechargerExcel, exportExcel, enteteDoc, PRINT_RESET } from "../reports";
 import { Fondation } from "./Fondation";
 import { TarifsClasses } from "./TarifsClasses";
 import { CameraCapture } from "./CameraCapture";
@@ -475,91 +476,172 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
 
   const imprimerSalaires = () => {
     if(moisSel==="__TOUS__"){toast("Sélectionnez un mois précis pour imprimer.","warning");return;}
+
+    const c1 = schoolInfo?.couleur1 || "#0A1628";
+    const c2 = schoolInfo?.couleur2 || "#00C48C";
+
+    // Couleurs par section (palette cohérente, lisible aussi à l'impression couleur)
+    const SEC_COLORS = {
+      secondaire: { primary: "#1D4ED8", soft: "#DBEAFE", line: "#BFDBFE" },  // bleu royal
+      primaire:   { primary: "#15803D", soft: "#DCFCE7", line: "#BBF7D0" },  // vert
+      personnel:  { primary: "#B45309", soft: "#FEF3C7", line: "#FDE68A" },  // ambre
+    };
+
+    const totRevSec  = salairesSec.reduce((sum,s)=>sum+Number(s.revision||0),0);
+    const totRevPrim = salairesPrim.reduce((sum,s)=>sum+Number(s.revision||0),0);
+    const totRevPers = salairesPers.reduce((sum,s)=>sum+Number(s.revision||0),0);
+
+    const sectionHeader = (label, color, count) => `
+      <div class="section-header" style="border-left:5px solid ${color.primary};background:linear-gradient(90deg, ${color.soft} 0%, transparent 100%);padding:9px 14px;margin:18px 0 8px;display:flex;justify-content:space-between;align-items:center;border-radius:0 6px 6px 0">
+        <div style="font-size:12px;font-weight:900;color:${color.primary};letter-spacing:0.06em;text-transform:uppercase">${label}</div>
+        <div style="font-size:10px;color:${color.primary};font-weight:700">${count} ${count > 1 ? "personnes" : "personne"}</div>
+      </div>`;
+
+    const tableHead = (cols, color) => `
+      <thead><tr>${cols.map((c, i) => `<th style="background:linear-gradient(180deg, ${color.primary} 0%, ${color.primary}dd 100%);color:#fff;padding:7px 6px;font-size:9.5px;text-align:${i===1?"left":"center"};border:1px solid ${color.primary};font-weight:800;letter-spacing:0.02em">${c}</th>`).join("")}</tr></thead>`;
+
+    const totalRow = (label, color, montant, bon, rev, net, colspan) => `
+      <tr class="total-row">
+        <td colspan="${colspan}" style="background:${color.soft};color:${color.primary};font-weight:900;text-align:right;padding:8px 10px;font-size:11px;letter-spacing:0.04em">${label}</td>
+        <td style="background:#DBEAFE;color:#1D4ED8;font-weight:900;text-align:center;padding:8px;font-size:11px">${fmtN(montant)}</td>
+        <td style="background:#FEE2E2;color:#B91C1C;font-weight:800;text-align:center;padding:8px;font-size:11px">${bon ? "-"+fmtN(bon) : "0"}</td>
+        <td style="background:#FEF3C7;color:#B45309;font-weight:800;text-align:center;padding:8px;font-size:11px">${rev ? "+"+fmtN(rev) : "0"}</td>
+        <td style="background:#DCFCE7;color:#166534;font-weight:900;text-align:center;padding:8px;font-size:12px">${fmtN(net)}</td>
+      </tr>`;
+
     const w = window.open("","_blank");
-    w.document.write(`<!DOCTYPE html><html><head><title>États Salaires ${moisSel}</title>
-    <style>@page{size:A4 portrait;margin:0}@media print{html,body{margin:0}button{display:none}}
-    body{font-family:Arial,sans-serif;padding:12mm 10mm;font-size:11px;margin:0}
-    .titre{text-align:center;font-size:13px;font-weight:bold;margin-bottom:4px;color:#0A1628}
-    .sous-titre{text-align:center;font-size:11px;margin-bottom:12px}
-    table{width:100%;border-collapse:collapse;margin-bottom:16px}
-    th{background:#0A1628;color:#fff;padding:5px 7px;font-size:10px;text-align:center;border:1px solid #0A1628}
-    td{padding:5px 7px;border:1px solid #ccc;text-align:center}td:nth-child(2){text-align:left}
-    .section{background:#e8f0e8;font-weight:bold;color:#0A1628;padding:5px;margin:10px 0 4px}
-    .total-row{background:#e0ebf8;font-weight:bold}
-    .total-label{background:#e2e8f0;color:#0f172a;font-weight:bold}
-    .total-montant{background:#dbeafe;color:#1d4ed8;font-weight:bold}
-    .total-bon{background:#fee2e2;color:#b91c1c;font-weight:bold}
-    .total-net{background:#dcfce7;color:#166534;font-weight:bold}
-    .global-totaux{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
-    .global-total{border-radius:10px;padding:10px 12px;color:#fff}
-    .global-total .lib{font-size:10px;text-transform:uppercase;letter-spacing:.06em;opacity:.85;margin-bottom:4px}
-    .global-total .val{font-size:16px;font-weight:bold}
-    .global-total.montant{background:#1d4ed8}
-    .global-total.bon{background:#b91c1c}
-    .global-total.net{background:#166534}
-    @media print{button{display:none}}</style></head><body>
-    <div class="titre">ÉTATS DE SALAIRES — G.S. LA CITADELLE — ANNÉE SCOLAIRE ${getAnnee()}</div>
-    <div class="sous-titre">MOIS DE ${moisSel.toUpperCase()}</div>
-    <div class="section">SECTION SECONDAIRE</div>
-    <table><thead><tr>
-      <th>N°</th><th>Prénoms et Nom</th><th>Matière</th><th>Niveau</th>
-      <th>V.H. Hebdo</th><th>V.H. Mensuel Prévu</th><th>5è Sem</th><th>Non Exécuté</th><th>Exécuté</th>
-      <th>Prime Horaire</th><th>Montant</th><th>Bon</th><th>Révision</th><th>Net à Payer</th>
-    </tr></thead><tbody>
-    ${salairesSec.map((s,i)=>`<tr>
-      <td>${i+1}</td><td style="text-align:left">${s.nom}</td><td>${s.matiere||""}</td><td>${s.niveau||""}</td>
-      <td>${s.vhHebdo||0}</td><td>${s.vhPrevu||0}</td><td>${s.cinqSem||0}</td><td>${s.nonExecute||0}</td>
-      <td><strong>${calcExecute(s)}</strong></td><td>${s.primesVariables?"Variable":fmtN(s.primeHoraire)}</td>
-      <td>${fmtN(calcMontant(s))}</td><td>${fmtN(s.bon||0)}</td><td>${fmtN(s.revision||0)}</td>
-      <td><strong>${fmtN(calcNet(s))}</strong></td>
-    </tr>`).join("")}
-    <tr class="total-row">
-      <td colspan="10" class="total-label" style="text-align:right">TOTAUX SECONDAIRE</td>
-      <td class="total-montant">${fmtN(totMontantSec)}</td>
-      <td class="total-bon">${fmtN(totBonSec)}</td>
-      <td>${fmtN(salairesSec.reduce((sum,s)=>sum+Number(s.revision||0),0))}</td>
-      <td class="total-net">${fmtN(totNetSec)}</td>
-    </tr>
-    </tbody></table>
-    <div class="section">SECTION PRIMAIRE</div>
-    <table><thead><tr><th>N°</th><th>Prénoms et Nom</th><th>Classe</th><th>Montant</th><th>Bon</th><th>Révision</th><th>Net à Payer</th></tr></thead>
-    <tbody>
-    ${salairesPrim.map((s,i)=>`<tr><td>${i+1}</td><td style="text-align:left">${s.nom}</td><td>${s.niveau||""}</td>
-      <td>${fmtN(s.montantForfait||0)}</td><td>${fmtN(s.bon||0)}</td><td>${fmtN(s.revision||0)}</td>
-      <td><strong>${fmtN(Number(s.montantForfait||0)-Number(s.bon||0)+Number(s.revision||0))}</strong></td></tr>`).join("")}
-    <tr class="total-row">
-      <td colspan="3" class="total-label" style="text-align:right">TOTAUX PRIMAIRE</td>
-      <td class="total-montant">${fmtN(totMontantPrim)}</td>
-      <td class="total-bon">${fmtN(totBonPrim)}</td>
-      <td>${fmtN(salairesPrim.reduce((sum,s)=>sum+Number(s.revision||0),0))}</td>
-      <td class="total-net">${fmtN(totNetPrim)}</td>
-    </tr>
-    </tbody></table>
-    <div class="section">SECTION ADMINISTRATION / PERSONNEL</div>
-    <table><thead><tr><th>N°</th><th>Prénoms et Nom</th><th>Poste</th><th>Catégorie</th><th>Montant</th><th>Bon</th><th>Révision</th><th>Net à Payer</th></tr></thead>
-    <tbody>
-    ${salairesPers.map((s,i)=>`<tr><td>${i+1}</td><td style="text-align:left">${s.nom}</td><td>${s.poste||""}</td><td>${s.categorie||""}</td>
-      <td>${fmtN(s.montantForfait||0)}</td><td>${fmtN(s.bon||0)}</td><td>${fmtN(s.revision||0)}</td>
-      <td><strong>${fmtN(Number(s.montantForfait||0)-Number(s.bon||0)+Number(s.revision||0))}</strong></td></tr>`).join("")}
-    <tr class="total-row">
-      <td colspan="4" class="total-label" style="text-align:right">TOTAUX ADMINISTRATION / PERSONNEL</td>
-      <td class="total-montant">${fmtN(totMontantPers)}</td>
-      <td class="total-bon">${fmtN(totBonPers)}</td>
-      <td>${fmtN(salairesPers.reduce((sum,s)=>sum+Number(s.revision||0),0))}</td>
-      <td class="total-net">${fmtN(totNetPers)}</td>
-    </tr>
-    </tbody></table>
-    <div class="global-totaux">
-      <div class="global-total montant"><div class="lib">Total montant ?? payer</div><div class="val">${fmtN(totMontantGlobal)} GNF</div></div>
-      <div class="global-total bon"><div class="lib">Total bon</div><div class="val">${fmtN(totBonGlobal)} GNF</div></div>
-      <div class="global-total net"><div class="lib">Total net ?? payer</div><div class="val">${fmtN(totNetGlobal)} GNF</div></div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-top:30px">
-      <div style="border-top:2px solid #0A1628;padding-top:6px;text-align:center;font-size:10px">Le Comptable<br/><br/><br/>Signature</div>
-      <div style="border-top:2px solid #0A1628;padding-top:6px;text-align:center;font-size:10px">Le Directeur<br/><br/><br/>Signature</div>
-      <div style="border-top:2px solid #0A1628;padding-top:6px;text-align:center;font-size:10px">Le Fondateur<br/><br/><br/>Signature</div>
-    </div>
-    <script>window.onload=()=>window.print();</script></body></html>`);
+    w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/>
+    <title>États de Salaires — ${moisSel} ${getAnnee()}</title>
+    <style>
+      ${PRINT_RESET}
+      *{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
+      body{font-family:'Inter',Arial,sans-serif;padding:12mm 10mm;font-size:11px;margin:0;color:#1f2937;background:#fff}
+      .titre-wrap{text-align:center;margin:6px 0 18px;padding:14px 12px;border-radius:10px;background:linear-gradient(135deg, ${c1} 0%, ${c1}dd 100%);color:#fff}
+      .titre-wrap .titre{font-size:16px;font-weight:900;letter-spacing:0.04em}
+      .titre-wrap .sous-titre{font-size:11px;opacity:0.9;margin-top:3px;font-weight:600;letter-spacing:0.06em}
+      .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:18px}
+      .stat-card{padding:10px 12px;border-radius:8px;border:1px solid #e2e8f0;background:#fff}
+      .stat-card .lib{font-size:9px;text-transform:uppercase;letter-spacing:0.07em;font-weight:700;color:#6b7280;margin-bottom:3px}
+      .stat-card .val{font-size:14px;font-weight:900}
+      .stat-card.brut{border-top:3px solid #1D4ED8} .stat-card.brut .val{color:#1D4ED8}
+      .stat-card.bons{border-top:3px solid #B91C1C} .stat-card.bons .val{color:#B91C1C}
+      .stat-card.rev{border-top:3px solid #B45309} .stat-card.rev .val{color:#B45309}
+      .stat-card.net{border-top:3px solid #166534;background:linear-gradient(180deg, #DCFCE7 0%, #fff 100%)} .stat-card.net .val{color:#166534;font-size:15px}
+      table{width:100%;border-collapse:collapse;margin:0 0 12px}
+      td{padding:5px 6px;border:1px solid #e5e7eb;font-size:10.5px;vertical-align:middle}
+      tbody tr:nth-child(odd) td{background:#fafbfc}
+      tbody tr:hover td{background:#f1f5f9}
+      td.left{text-align:left;font-weight:600;color:#0f172a}
+      td.right{text-align:right;font-variant-numeric:tabular-nums}
+      td.center{text-align:center}
+      td.net{font-weight:900;color:#166534;background:#F0FDF4;font-variant-numeric:tabular-nums}
+      td.bon-val{color:#B91C1C;font-weight:600;font-variant-numeric:tabular-nums}
+      td.rev-val{color:#B45309;font-weight:600;font-variant-numeric:tabular-nums}
+      .global-totaux{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px;padding-top:14px;border-top:2px dashed #cbd5e1}
+      .global-total{border-radius:10px;padding:14px 16px;color:#fff;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.08)}
+      .global-total .lib{font-size:10px;text-transform:uppercase;letter-spacing:0.08em;opacity:0.9;margin-bottom:5px;font-weight:700}
+      .global-total .val{font-size:18px;font-weight:900;letter-spacing:0.02em}
+      .global-total.montant{background:linear-gradient(135deg,#1E40AF,#1D4ED8)}
+      .global-total.bon{background:linear-gradient(135deg,#991B1B,#B91C1C)}
+      .global-total.net{background:linear-gradient(135deg,#15803D,#166534)}
+      .signatures{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;margin-top:32px;page-break-inside:avoid}
+      .sig{border-top:1.5px solid #1f2937;padding-top:6px;text-align:center;font-size:10px;color:#475569;font-weight:600}
+      .footer-note{text-align:center;margin-top:14px;font-size:9px;color:#94a3b8;font-style:italic}
+    </style></head><body>
+      ${enteteDoc(schoolInfo, schoolInfo?.logo)}
+      <div class="titre-wrap">
+        <div class="titre">ÉTATS DE SALAIRES</div>
+        <div class="sous-titre">MOIS DE ${moisSel.toUpperCase()} — ANNÉE SCOLAIRE ${getAnnee()}</div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card brut"><div class="lib">Total brut</div><div class="val">${fmtN(totMontantGlobal)}</div></div>
+        <div class="stat-card bons"><div class="lib">Total bons</div><div class="val">-${fmtN(totBonGlobal)}</div></div>
+        <div class="stat-card rev"><div class="lib">Total révisions</div><div class="val">+${fmtN(totRevSec+totRevPrim+totRevPers)}</div></div>
+        <div class="stat-card net"><div class="lib">Net à payer</div><div class="val">${fmtN(totNetGlobal)} GNF</div></div>
+      </div>
+
+      ${sectionHeader("Section Secondaire", SEC_COLORS.secondaire, salairesSec.length)}
+      <table>
+        ${tableHead(["N°","Prénoms et Nom","Matière","Niveau","V.H. Hebdo","V.H. Prévu","5è Sem","Non Exé.","Exécuté","Prime/h","Montant","Bon","Révision","Net à Payer"], SEC_COLORS.secondaire)}
+        <tbody>
+        ${salairesSec.length === 0
+          ? `<tr><td colspan="14" class="center" style="color:#9ca3af;font-style:italic;padding:18px">Aucun enseignant secondaire pour ce mois</td></tr>`
+          : salairesSec.map((s,i)=>`<tr>
+            <td class="center" style="color:#94a3b8;font-weight:700">${i+1}</td>
+            <td class="left">${s.nom||""}</td>
+            <td class="center">${s.matiere||"—"}</td>
+            <td class="center">${s.niveau||"—"}</td>
+            <td class="center">${s.vhHebdo||0}</td>
+            <td class="center">${s.vhPrevu||0}</td>
+            <td class="center">${s.cinqSem||0}</td>
+            <td class="center">${s.nonExecute||0}</td>
+            <td class="center" style="background:#EFF6FF;font-weight:800;color:#1D4ED8">${calcExecute(s)}</td>
+            <td class="right">${s.primesVariables?'<span style="color:#9a3412;font-weight:700;font-size:9.5px">Variable</span>':fmtN(s.primeHoraire)}</td>
+            <td class="right">${fmtN(calcMontant(s))}</td>
+            <td class="right bon-val">${s.bon?"-"+fmtN(s.bon):"—"}</td>
+            <td class="right rev-val">${s.revision?"+"+fmtN(s.revision):"—"}</td>
+            <td class="right net">${fmtN(calcNet(s))}</td>
+          </tr>`).join("")}
+        ${salairesSec.length > 0 ? totalRow("TOTAL SECONDAIRE", SEC_COLORS.secondaire, totMontantSec, totBonSec, totRevSec, totNetSec, 10) : ""}
+        </tbody>
+      </table>
+
+      ${sectionHeader("Section Primaire", SEC_COLORS.primaire, salairesPrim.length)}
+      <table>
+        ${tableHead(["N°","Prénoms et Nom","Classe","Montant","Bon","Révision","Net à Payer"], SEC_COLORS.primaire)}
+        <tbody>
+        ${salairesPrim.length === 0
+          ? `<tr><td colspan="7" class="center" style="color:#9ca3af;font-style:italic;padding:18px">Aucun enseignant primaire pour ce mois</td></tr>`
+          : salairesPrim.map((s,i)=>`<tr>
+            <td class="center" style="color:#94a3b8;font-weight:700">${i+1}</td>
+            <td class="left">${s.nom||""}</td>
+            <td class="center">${s.niveau||"—"}</td>
+            <td class="right">${fmtN(s.montantForfait||0)}</td>
+            <td class="right bon-val">${s.bon?"-"+fmtN(s.bon):"—"}</td>
+            <td class="right rev-val">${s.revision?"+"+fmtN(s.revision):"—"}</td>
+            <td class="right net">${fmtN(Number(s.montantForfait||0)-Number(s.bon||0)+Number(s.revision||0))}</td>
+          </tr>`).join("")}
+        ${salairesPrim.length > 0 ? totalRow("TOTAL PRIMAIRE", SEC_COLORS.primaire, totMontantPrim, totBonPrim, totRevPrim, totNetPrim, 3) : ""}
+        </tbody>
+      </table>
+
+      ${sectionHeader("Administration & Personnel", SEC_COLORS.personnel, salairesPers.length)}
+      <table>
+        ${tableHead(["N°","Prénoms et Nom","Poste","Catégorie","Montant","Bon","Révision","Net à Payer"], SEC_COLORS.personnel)}
+        <tbody>
+        ${salairesPers.length === 0
+          ? `<tr><td colspan="8" class="center" style="color:#9ca3af;font-style:italic;padding:18px">Aucun membre du personnel pour ce mois</td></tr>`
+          : salairesPers.map((s,i)=>`<tr>
+            <td class="center" style="color:#94a3b8;font-weight:700">${i+1}</td>
+            <td class="left">${s.nom||""}</td>
+            <td class="center">${s.poste||"—"}</td>
+            <td class="center">${s.categorie||"—"}</td>
+            <td class="right">${fmtN(s.montantForfait||0)}</td>
+            <td class="right bon-val">${s.bon?"-"+fmtN(s.bon):"—"}</td>
+            <td class="right rev-val">${s.revision?"+"+fmtN(s.revision):"—"}</td>
+            <td class="right net">${fmtN(Number(s.montantForfait||0)-Number(s.bon||0)+Number(s.revision||0))}</td>
+          </tr>`).join("")}
+        ${salairesPers.length > 0 ? totalRow("TOTAL ADMINISTRATION", SEC_COLORS.personnel, totMontantPers, totBonPers, totRevPers, totNetPers, 4) : ""}
+        </tbody>
+      </table>
+
+      <div class="global-totaux">
+        <div class="global-total montant"><div class="lib">Total brut à payer</div><div class="val">${fmtN(totMontantGlobal)} GNF</div></div>
+        <div class="global-total bon"><div class="lib">Total bons</div><div class="val">${fmtN(totBonGlobal)} GNF</div></div>
+        <div class="global-total net"><div class="lib">Total net à payer</div><div class="val">${fmtN(totNetGlobal)} GNF</div></div>
+      </div>
+
+      <div class="signatures">
+        <div class="sig">Le Comptable<br/><br/><br/>Signature</div>
+        <div class="sig">Le Directeur<br/><br/><br/>Signature</div>
+        <div class="sig">Le Fondateur<br/><br/><br/>Signature</div>
+      </div>
+
+      <div class="footer-note">État émis le ${today()} — ${schoolInfo?.nom||"École"} — Tous montants en Francs Guinéens (GNF)</div>
+
+      <script>window.onload=()=>window.print();</script>
+    </body></html>`);
     w.document.close();
   };
 
