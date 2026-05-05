@@ -478,7 +478,6 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
     if(moisSel==="__TOUS__"){toast("Sélectionnez un mois précis pour imprimer.","warning");return;}
 
     const c1 = schoolInfo?.couleur1 || "#0A1628";
-    const c2 = schoolInfo?.couleur2 || "#00C48C";
 
     // Couleurs par section (palette cohérente, lisible aussi à l'impression couleur)
     const SEC_COLORS = {

@@ -57,6 +57,18 @@ service cloud.firestore {
       return ["direction", sectionRole];
     }
 
+    function pushSubPayloadValide(uid) {
+      return request.auth != null
+             && request.auth.uid == uid
+             && request.resource.data.keys().hasOnly(["subscription", "role", "nom", "uid", "updatedAt"])
+             && request.resource.data.keys().hasAll(["subscription", "role", "uid", "updatedAt"])
+             && request.resource.data.uid == request.auth.uid
+             && request.resource.data.role == roleUtilisateur()
+             && request.resource.data.subscription is map
+             && request.resource.data.updatedAt is int
+             && (!("nom" in request.resource.data) || request.resource.data.nom is string);
+    }
+
     function messageParentValide(schoolId) {
       return appartientEcole(schoolId)
              && aUnRole(["parent"])
@@ -137,8 +149,16 @@ service cloud.firestore {
       }
 
       match /pushSubs/{docId} {
-        allow read: if appartientEcole(schoolId) && aUnRole(["direction", "admin", "comptable"]);
-        allow create, update, delete: if appartientEcole(schoolId);
+        allow read: if (appartientEcole(schoolId) && aUnRole(["direction", "admin", "comptable"]))
+                     || (appartientEcole(schoolId) && request.auth != null && request.auth.uid == docId);
+        allow create: if appartientEcole(schoolId) && pushSubPayloadValide(docId);
+        allow update: if appartientEcole(schoolId)
+                       && resource.data.uid == request.auth.uid
+                       && pushSubPayloadValide(docId);
+        allow delete: if appartientEcole(schoolId)
+                       && request.auth != null
+                       && request.auth.uid == docId
+                       && resource.data.uid == request.auth.uid;
       }
 
       match /paiements/{docId} {

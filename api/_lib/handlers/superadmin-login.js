@@ -1,6 +1,7 @@
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import bcrypt from "bcryptjs";
+import { applyPasswordTarpit } from "../auth-tarpit.js";
 import { initAdmin } from "../firebase-admin.js";
 import {
   applyCors,
@@ -30,7 +31,9 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Mot de passe invalide." });
   }
 
-  try { initAdmin(); } catch {
+  try {
+    initAdmin();
+  } catch {
     return res.status(500).json({ error: "Erreur serveur" });
   }
 
@@ -50,27 +53,35 @@ export default async function handler(req, res) {
     if (!quota.ok) {
       res.setHeader("Retry-After", String(Math.ceil(quota.retryAfterMs / 1000)));
       return res.status(quota.status).json({
-        error: "Trop de tentatives. RÃ©essayez plus tard.",
+        error: "Trop de tentatives. Réessayez plus tard.",
       });
     }
 
     const snap = await db.collection("superadmins").get();
-    let comptes = snap.docs.map(d => ({ ...d.data(), _id: d.id }));
+    let comptes = snap.docs.map((d) => ({ ...d.data(), _id: d.id }));
 
     if (comptes.length === 0) {
       const fallbackHash = process.env.SUPERADMIN_PASSWORD_HASH || "";
-      if (!fallbackHash) return res.status(401).json({ error: "Aucun super-admin configurÃ©" });
+      if (!fallbackHash) return res.status(401).json({ error: "Aucun super-admin configuré" });
       comptes = [{ login: "superadmin", mdp: fallbackHash, role: "superadmin", nom: "Super Admin" }];
     }
 
-    const compte = comptes.find(c => c.login === trimmedLogin);
-    if (!compte) return res.status(401).json({ error: "Identifiants incorrects" });
+    const compte = comptes.find((c) => c.login === trimmedLogin);
+    if (!compte) {
+      await applyPasswordTarpit(mdp);
+      return res.status(401).json({ error: "Identifiants incorrects" });
+    }
 
     const valide = compte.mdp.startsWith("$2b$")
       ? await bcrypt.compare(mdp, compte.mdp)
       : false;
 
-    if (!valide) return res.status(401).json({ error: "Identifiants incorrects" });
+    if (!valide) {
+      if (!compte.mdp.startsWith("$2b$")) {
+        await applyPasswordTarpit(mdp);
+      }
+      return res.status(401).json({ error: "Identifiants incorrects" });
+    }
 
     const email = `${trimmedLogin.toLowerCase()}@superadmin.edugest.app`;
     const displayName = compte.nom || "Super Admin";

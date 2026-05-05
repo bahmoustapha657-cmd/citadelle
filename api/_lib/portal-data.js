@@ -70,16 +70,13 @@ export function matchesTeacherAlias(value = "", aliases = []) {
 export function matchesStudentLink(student = {}, link = {}, section = "") {
   const targetSection = normalizeSection(link.section || section);
   const studentSection = normalizeSection(student.section || section);
-  const studentName = [student.prenom, student.nom].filter(Boolean).join(" ");
 
-  if (student._id && link.eleveId && String(student._id).trim() === String(link.eleveId).trim()) {
-    return true;
-  }
-
-  return normalizeText(link.eleveNom)
-    && normalizeText(link.eleveNom) === normalizeText(student.eleveNom || student.nomComplet || studentName)
-    && normalizeText(link.eleveClasse) === normalizeText(student.classe)
-    && targetSection === studentSection;
+  return !!(
+    student._id
+    && link.eleveId
+    && String(student._id).trim() === String(link.eleveId).trim()
+    && targetSection === studentSection
+  );
 }
 
 export function filterParentStudents(profile = {}, students = [], section = "") {

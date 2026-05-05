@@ -3,7 +3,7 @@ import Logo from "./Logo";
 import { apiFetch, getAuthHeaders } from "./apiClient";
 import { SchoolContext, SCHOOL_INFO_DEFAUT } from "./contexts/SchoolContext";
 import React, { Suspense, lazy, useEffect, useState } from "react";
-import { signOutCurrentUser, watchAuthState } from "./firebaseAuth";
+import { getCurrentUser, signOutCurrentUser, watchAuthState } from "./firebaseAuth";
 import { db } from "./firebaseDb";
 import {
   collection, onSnapshot, addDoc, doc, setDoc, getDoc, getDocFromServer, query, orderBy, limit
@@ -502,17 +502,19 @@ export default function App() {
       if(!("serviceWorker" in navigator) || !("PushManager" in window)) return;
       const perm = await Notification.requestPermission();
       if(perm !== "granted") return;
+      const currentUser = await getCurrentUser();
+      if(!currentUser?.uid) return;
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: import.meta.env.VITE_VAPID_PUBLIC_KEY,
       });
       // Sauvegarde la souscription dans Firestore
-      const id = btoa(sub.endpoint).slice(-20);
-      await setDoc(doc(db,"ecoles",sid,"pushSubs",id),{
+      await setDoc(doc(db,"ecoles",sid,"pushSubs",currentUser.uid),{
         subscription: sub.toJSON(),
         role: utilisateurCo.role,
         nom: utilisateurCo.nom,
+        uid: currentUser.uid,
         updatedAt: Date.now(),
       });
     }catch{

@@ -28,7 +28,7 @@ test("matchesTeacherAlias rejects empty values", () => {
   assert.equal(matchesTeacherAlias("(Mathématiques)", ["Moussa Diallo"]), false);
 });
 
-test("matchesStudentLink supports direct ids and legacy full-name links", () => {
+test("matchesStudentLink requires direct ids", () => {
   const student = {
     _id: "eleve-1",
     prenom: "Aminata",
@@ -41,11 +41,6 @@ test("matchesStudentLink supports direct ids and legacy full-name links", () => 
   assert.equal(matchesStudentLink(student, {
     eleveNom: "Aminata Bah",
     eleveClasse: "6e A",
-    section: "college",
-  }, "college"), true);
-  assert.equal(matchesStudentLink(student, {
-    eleveNom: "Aminata Bah",
-    eleveClasse: "5e A",
     section: "college",
   }, "college"), false);
 });

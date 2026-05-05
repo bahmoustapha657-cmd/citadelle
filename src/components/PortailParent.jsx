@@ -50,18 +50,18 @@ function PortailParent({ utilisateur, deconnecter, annee, schoolInfo }) {
   const section = eleve.section || utilisateur.section || "college";
 
   const mesNotes = useMemo(
-    () => notes.filter((item) => item.eleveId === eleveId || item.eleveNom === eleveNom),
-    [notes, eleveId, eleveNom],
+    () => notes.filter((item) => item.eleveId === eleveId),
+    [notes, eleveId],
   );
   const mesAbsences = useMemo(
-    () => absences.filter((item) => item.eleveId === eleveId || item.eleveNom === eleveNom),
-    [absences, eleveId, eleveNom],
+    () => absences.filter((item) => item.eleveId === eleveId),
+    [absences, eleveId],
   );
   const mesMessages = useMemo(
     () => [...messages]
-      .filter((item) => item.eleveId === eleveId || item.eleveNom === eleveNom)
+      .filter((item) => item.eleveId === eleveId)
       .sort((left, right) => Number(right.date || 0) - Number(left.date || 0)),
-    [messages, eleveId, eleveNom],
+    [messages, eleveId],
   );
   const nonLus = mesMessages.filter((item) => item.expediteur === "ecole" && !item.lu).length;
 

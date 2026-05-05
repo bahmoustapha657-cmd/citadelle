@@ -13,14 +13,6 @@ import {
 } from "../portal-data.js";
 import { applyCors, normalizeSchoolId, requireSession } from "../security.js";
 
-function getStudentNames(students = []) {
-  return [...new Set(
-    students
-      .map((student) => `${student.prenom || ""} ${student.nom || ""}`.trim())
-      .filter(Boolean),
-  )];
-}
-
 function getParentSections(profile = {}) {
   const sections = Array.isArray(profile.sections) && profile.sections.length > 0
     ? profile.sections
@@ -35,18 +27,7 @@ async function loadParentStudents({ db, schoolId, profile, section }) {
   const elevesRef = schoolRef.collection(eleves);
   const explicitIds = getProfileStudentIds(profile);
   const linkedById = await getDocsByIds(elevesRef, explicitIds);
-  const linkedStudents = filterParentStudents(profile, linkedById, section);
-  const hasLegacyLink = (profile.elevesAssocies || []).some((entry) => !entry?.eleveId);
-
-  if (!hasLegacyLink) {
-    return linkedStudents;
-  }
-
-  const allStudents = (await elevesRef.get()).docs.map(toItem);
-  return uniqueById([
-    ...linkedStudents,
-    ...filterParentStudents(profile, allStudents, section),
-  ]);
+  return filterParentStudents(profile, linkedById, section);
 }
 
 async function loadParentSectionData({ db, schoolId, profile, section }) {
@@ -54,25 +35,21 @@ async function loadParentSectionData({ db, schoolId, profile, section }) {
   const collections = getSectionCollections(section);
   const students = await loadParentStudents({ db, schoolId, profile, section });
   const studentIds = getProfileStudentIds(profile, students);
-  const studentNames = getStudentNames(students);
   const classes = [...new Set(students.map((student) => student.classe).filter(Boolean))];
 
-  const [notesById, notesByName, absencesById, absencesByName, messagesById, messagesByName, tarifs] = await Promise.all([
+  const [notesById, absencesById, messagesById, tarifs] = await Promise.all([
     getDocsByFieldValues(schoolRef.collection(collections.notes), "eleveId", studentIds),
-    getDocsByFieldValues(schoolRef.collection(collections.notes), "eleveNom", studentNames),
     getDocsByFieldValues(schoolRef.collection(`${collections.eleves}_absences`), "eleveId", studentIds),
-    getDocsByFieldValues(schoolRef.collection(`${collections.eleves}_absences`), "eleveNom", studentNames),
     getDocsByFieldValues(schoolRef.collection("messages"), "eleveId", studentIds),
-    getDocsByFieldValues(schoolRef.collection("messages"), "eleveNom", studentNames),
     getDocsByFieldValues(schoolRef.collection("tarifs"), "classe", classes),
   ]);
 
   return {
     section,
     eleves: students.map((student) => ({ ...student, section })),
-    notes: uniqueById([...notesById, ...notesByName]),
-    absences: uniqueById([...absencesById, ...absencesByName]),
-    messages: uniqueById([...messagesById, ...messagesByName]),
+    notes: uniqueById(notesById),
+    absences: uniqueById(absencesById),
+    messages: uniqueById(messagesById),
     tarifs,
   };
 }

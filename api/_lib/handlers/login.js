@@ -1,8 +1,10 @@
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import bcrypt from "bcryptjs";
+import { applyPasswordTarpit } from "../auth-tarpit.js";
 import { initAdmin } from "../firebase-admin.js";
 import { captureServerError } from "../observability.js";
+import { migrateParentAccountLinks } from "../parent-links-migration.js";
 import { buildSessionAccountPayload, buildUserProfilePayload } from "../user-profiles.js";
 import {
   applyCors,
@@ -33,7 +35,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Champs requis : login, mdp, schoolId" });
   }
   if (!isValidLogin(normalizedLogin) || !isValidSchoolId(normalizedSchoolId)) {
-    return res.status(400).json({ error: "Identifiant ou code √©cole invalide." });
+    return res.status(400).json({ error: "Identifiant ou code Ècole invalide." });
   }
 
   try {
@@ -58,7 +60,7 @@ export default async function handler(req, res) {
     if (!quota.ok) {
       res.setHeader("Retry-After", String(Math.ceil(quota.retryAfterMs / 1000)));
       return res.status(quota.status).json({
-        error: "Trop de tentatives de connexion. R√©essayez plus tard.",
+        error: "Trop de tentatives de connexion. RÈessayez plus tard.",
       });
     }
 
@@ -82,25 +84,51 @@ export default async function handler(req, res) {
       .get();
 
     if (comptesSnap.empty) {
+      await applyPasswordTarpit(mdp);
       return res.status(401).json({ error: "Identifiant ou mot de passe incorrect." });
     }
 
     const compteDoc = comptesSnap.docs[0];
-    const compte = { ...compteDoc.data(), _id: compteDoc.id };
+    let compte = { ...compteDoc.data(), _id: compteDoc.id };
 
     if (!compte.mdp?.startsWith("$2b$")) {
-      return res.status(401).json({ error: "Compte non s√©curis√©. Contactez l'administrateur." });
-    }
-    if (compte.statut && compte.statut !== "Actif") {
-      return res.status(403).json({ error: "Ce compte est inactif." });
+      await applyPasswordTarpit(mdp);
+      return res.status(401).json({ error: "Identifiant ou mot de passe incorrect." });
     }
     if (!isAllowedSchoolRole(compte.role)) {
-      return res.status(403).json({ error: "R√¥le de compte invalide. Contactez l'administrateur." });
+      return res.status(403).json({ error: "RÙle de compte invalide. Contactez l'administrateur." });
     }
 
     const valide = await bcrypt.compare(mdp, compte.mdp);
     if (!valide) {
       return res.status(401).json({ error: "Identifiant ou mot de passe incorrect." });
+    }
+    if (compte.statut && compte.statut !== "Actif") {
+      return res.status(403).json({ error: "Ce compte est inactif." });
+    }
+
+    if (compte.role === "parent") {
+      const migration = await migrateParentAccountLinks({
+        db,
+        schoolId: normalizedSchoolId,
+        account: compte,
+      });
+      if (migration.didUpdate) {
+        compte = {
+          ...compte,
+          ...migration.account,
+        };
+        await compteDoc.ref.set({
+          eleveId: compte.eleveId || null,
+          eleveNom: compte.eleveNom || null,
+          eleveClasse: compte.eleveClasse || null,
+          eleveIds: Array.isArray(compte.eleveIds) ? compte.eleveIds : [],
+          elevesAssocies: Array.isArray(compte.elevesAssocies) ? compte.elevesAssocies : [],
+          section: compte.section || null,
+          sections: Array.isArray(compte.sections) ? compte.sections : [],
+          updatedAt: Date.now(),
+        }, { merge: true });
+      }
     }
 
     const email = `${normalizedLogin}.${normalizedSchoolId}@edugest.app`;
