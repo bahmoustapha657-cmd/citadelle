@@ -15,11 +15,7 @@ import {
   peutModifierEleves,
   peutModifier,
   getClassesForSection,
-  getDefaultMensualiteForClasse,
   getSectionLabelForClasse,
-  getTarifAutreValue,
-  getTarifMensuelTotal,
-  getTarifRevisionValue,
 } from "../constants";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
@@ -34,6 +30,21 @@ import { TransfertsPanel } from "./TransfertsPanel";
 import { findEnrollmentDuplicate, getEnrollmentDuplicateMessage } from "../enrollment-utils";
 import { findStaffDuplicate, getStaffDuplicateMessage } from "../staff-utils";
 import { getTeacherMonthlyForfait } from "../teacher-utils";
+import {
+  countPaidMonths,
+  countUnpaidMonths,
+  getEleveMensualiteSnapshot,
+  getElevesCritiques,
+  getMensualiteOverview,
+  getTarifAutreForClasse,
+  getTarifBaseForClasse,
+  getTarifConfigForClasse,
+  getTarifInscriptionForClasse,
+  getTarifInscriptionForEleve as getTarifInscriptionForEleveValue,
+  getTarifMensuelForClasse,
+  getTarifReinscriptionForClasse,
+  getTarifRevisionForClasse,
+} from "../mensualite-utils";
 import {
   buildPersonnelSalaryRecord,
   buildPrimarySalaryRecord,
@@ -156,27 +167,14 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   const classesU=[...new Set(eleves.map(e=>e.classe))].filter(Boolean);
   const tousElevesScolarite=[...elevesC,...elevesL,...elevesP];
 
-  const getTarifConfig = (classe) => tarifsClasses.find((tarif) => tarif.classe === classe) || null;
-  // Tarif mensuel total = mensualite de base + frais de revision
-  const getTarif = (classe) => getTarifMensuelTotal(getTarifConfig(classe), classe);
-  const getTarifBase = (classe) => {
-    const tarif = getTarifConfig(classe);
-    if (tarif) return Number(tarif.montant || 0);
-    return getDefaultMensualiteForClasse(classe);
-  };
-  const getTarifRevision = (classe) => getTarifRevisionValue(getTarifConfig(classe));
-  const getTarifAutre = (classe) => getTarifAutreValue(getTarifConfig(classe));
-  const getTarifIns = (classe) => {
-    const t = getTarifConfig(classe);
-    return Number(t?.inscription||0);
-  };
-  const getTarifReinsc = (classe) => {
-    const t = getTarifConfig(classe);
-    return Number(t?.reinscription||0);
-  };
-  const getTarifInscriptionForEleve = (eleve = {}) => (
-    eleve.typeInscription==="Réinscription" ? getTarifReinsc(eleve.classe) : getTarifIns(eleve.classe)
-  );
+  const getTarifConfig = (classe) => getTarifConfigForClasse(tarifsClasses, classe);
+  const getTarif = (classe) => getTarifMensuelForClasse(tarifsClasses, classe);
+  const getTarifBase = (classe) => getTarifBaseForClasse(tarifsClasses, classe);
+  const getTarifRevision = (classe) => getTarifRevisionForClasse(tarifsClasses, classe);
+  const getTarifAutre = (classe) => getTarifAutreForClasse(tarifsClasses, classe);
+  const getTarifIns = (classe) => getTarifInscriptionForClasse(tarifsClasses, classe);
+  const getTarifReinsc = (classe) => getTarifReinscriptionForClasse(tarifsClasses, classe);
+  const getTarifInscriptionEleve = (eleve = {}) => getTarifInscriptionForEleveValue(eleve, tarifsClasses);
   const saveTarif = async (classe, montant, inscription=null, reinscription=null, revision=null, autre=null) => {
     const existing = getTarifConfig(classe);
     const data = {
@@ -190,7 +188,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
     else await ajTarif({classe, ...data});
   };
   const elevesFiltres=sortAlpha(filtClasse==="all"?eleves:eleves.filter(e=>e.classe===filtClasse));
-  const nbPayes=e=>moisAnnee.filter(m=>(e.mens||{})[m]==="Payé").length;
+  const nbPayes=e=>countPaidMonths(e, moisAnnee);
 
   const toggleFraisAnnexe = async (_id, {
     payKey,
@@ -307,6 +305,11 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   const totMontantGlobal = totalsSec.montant + totalsPrim.montant + totalsPers.montant;
   const totBonGlobal = totalsSec.bon + totalsPrim.bon + totalsPers.bon;
   const totNetGlobal = totalsSec.net + totalsPrim.net + totalsPers.net;
+  const mensualiteOverview = getMensualiteOverview(tousElevesScolarite, moisAnnee, tarifsClasses);
+  const impaye = mensualiteOverview.totalDu - mensualiteOverview.totalPercu;
+  const pctImpaye = mensualiteOverview.totalDu > 0
+    ? ((impaye / mensualiteOverview.totalDu) * 100).toFixed(1)
+    : 0;
 
   const genererPourMois = async (mois, {resync=false}={}) => {
     const jours5eme = getFifthWeekDays(mois);
@@ -624,14 +627,6 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
       {tab==="bilan"&&<div>
         {/* Calcul impayés */}
         {(()=>{
-          const tousEleves=tousElevesScolarite;
-          const totalDu=tousEleves.reduce((s,e)=>s+moisAnnee.length*getTarif(e.classe),0);
-          const totalPercu=tousEleves.reduce((s,e)=>{
-            const pays=moisAnnee.filter(m=>(e.mens||{})[m]==="Payé").length;
-            return s+pays*getTarif(e.classe);
-          },0);
-          const impaye=totalDu-totalPercu;
-          const pctImpaye=totalDu>0?((impaye/totalDu)*100).toFixed(1):0;
           const blocage=!!schoolInfo.blocageParentImpaye;
           const toggleBlocage=async()=>{
             if(!canCreate){toast("Action réservée au comptable ou à l'administrateur.","warning");return;}
@@ -646,7 +641,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
               <Stat label="Solde" value={`${((totR-totD)/1e6).toFixed(2)}M`} sub="GNF" bg={(totR-totD)>=0?"#eaf4e0":"#fce8e8"}/>
               <Stat label="Masse salariale" value={`${((totNetSec+totNetPrim+totNetPers)/1e6).toFixed(3)}M`} sub={`GNF — ${moisLabel} (${salairesMois.length})`} bg="#fef3e0"/>
               <Stat label="Mensualités impayées" value={`${(impaye/1e6).toFixed(2)}M`} sub={`GNF — ${pctImpaye}% du total dû`} bg="#fce8e8"/>
-              <Stat label="Mensualités perçues" value={`${(totalPercu/1e6).toFixed(2)}M`} sub={`${totalDu>0?(100-Number(pctImpaye)).toFixed(1):0}% du total`} bg="#eaf4e0"/>
+              <Stat label="Mensualités perçues" value={`${(mensualiteOverview.totalPercu/1e6).toFixed(2)}M`} sub={`${mensualiteOverview.totalDu>0?(100-Number(pctImpaye)).toFixed(1):0}% du total`} bg="#eaf4e0"/>
             </div>
             {/* ── Contrôle accès parent ── */}
             <div style={{background:blocage?"#fff0f0":"#f0fdf4",border:`2px solid ${blocage?"#f87171":"#4ade80"}`,borderRadius:14,padding:"18px 20px",marginBottom:18}}>
@@ -725,11 +720,10 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
               <Card><div style={{padding:"14px 16px"}}>
                 <p style={{margin:"0 0 12px",fontWeight:800,fontSize:13,color:C.blueDark}}>Mensualités — état des paiements</p>
                 {(()=>{
-                  const tousEleves=tousElevesScolarite;
-                  const totalMois=tousEleves.reduce(s=>s+moisAnnee.length,0);
-                  const totalPayes=tousEleves.reduce((s,e)=>s+moisAnnee.filter(m=>(e.mens||{})[m]==="Payé").length,0);
-                  const totalImpay=totalMois-totalPayes;
-                  const data=[{name:"Payés",value:totalPayes},{name:"Impayés",value:totalImpay}];
+                  const data=[
+                    {name:"Payés",value:mensualiteOverview.totalPayes},
+                    {name:"Impayés",value:mensualiteOverview.totalImpayes},
+                  ];
                   return <ResponsiveContainer width="100%" height={220}>
                     <PieChart>
                       <Pie data={data} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({name,percent})=>`${name} ${(percent*100).toFixed(0)}%`} labelLine={false}>
@@ -2191,12 +2185,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
         />
 
         {(()=>{
-          const elevesCritiques=eleves.filter(e=>{
-            const mens=e.mens||{};
-            const impayesConsec=moisAnnee.slice().reverse().findIndex(m=>mens[m]==="Payé");
-            const nbImp=impayesConsec===-1?moisAnnee.length:impayesConsec;
-            return nbImp>=3;
-          });
+          const elevesCritiques=getElevesCritiques(eleves, moisAnnee, 3);
           return elevesCritiques.length>0?(
             <div style={{background:"#fce8e8",border:"1px solid #f5c1c1",borderRadius:10,padding:"12px 16px",marginBottom:14}}>
               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
@@ -2206,17 +2195,15 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                   "Alertes_Mensualites",
                   ["Matricule","Nom","Prénom","Classe","Niveau","Mois impayés","Tuteur","Contact"],
                   elevesCritiques.map(e=>{
-                    const mens=e.mens||{};
                     const niv=getSectionLabelForClasse(e.classe);
-                    const nbImp=moisAnnee.filter(m=>mens[m]!=="Payé").length;
-  return [e.matricule||"",e.nom,e.prenom,e.classe,niv,nbImp,e.tuteur||"",e.contactTuteur||""];
+                    const nbImp=countUnpaidMonths(e, moisAnnee);
+                    return [e.matricule||"",e.nom,e.prenom,e.classe,niv,nbImp,e.tuteur||"",e.contactTuteur||""];
                   })
                 )}>📥 Exporter</Btn>
               </div>
               <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
                 {elevesCritiques.map(e=>{
-                  const mens=e.mens||{};
-                  const nbImp=moisAnnee.filter(m=>mens[m]!=="Payé").length;
+                  const nbImp=countUnpaidMonths(e, moisAnnee);
                   return <div key={e._id} style={{background:"#fff",border:"1px solid #f5c1c1",borderRadius:7,padding:"6px 10px",fontSize:12}}>
                     <span style={{fontWeight:800,color:"#9b2020"}}>{e.nom} {e.prenom}</span>
                     <span style={{color:"#6b7280"}}> · {e.classe} · </span>
@@ -2247,7 +2234,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                 <span style={{fontSize:12,color:C.greenDk,fontWeight:700}}>✓ {elevesFiltres.reduce((s,e)=>s+nbPayes(e),0)} payés</span>
                 <span style={{fontSize:12,color:"#b91c1c",fontWeight:700}}>✗ {elevesFiltres.reduce((s,e)=>s+(moisAnnee.length-nbPayes(e)),0)} impayés</span>
                 <span style={{fontSize:12,color:C.blue,fontWeight:700}}>💰 {fmt(elevesFiltres.reduce((s,e)=>s+nbPayes(e)*getTarif(e.classe),0))}</span>
-                <Badge color="purple">{fmt(elevesFiltres.reduce((s,e)=>s+(e.inscriptionPayee?getTarifInscriptionForEleve(e):0),0))} inscriptions perçues</Badge>
+                <Badge color="purple">{fmt(elevesFiltres.reduce((s,e)=>s+(e.inscriptionPayee?getTarifInscriptionEleve(e):0),0))} inscriptions perçues</Badge>
                 <Badge color="gray">{fmt(elevesFiltres.reduce((s,e)=>s+(e.autrePayee?getTarifAutre(e.classe):0),0))} autres frais perçus</Badge>
               </div>
               <div style={{overflowX:"auto"}}>
@@ -2255,7 +2242,8 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                   <THead cols={["Matricule","Nom & Prénom","Classe","Tuteur","Contact",...moisAnnee,"Payés","Ins.","Autre","Reçu"]}/>
                   <tbody>{elevesFiltres.map(e=>{
                     const mens=e.mens||initMens();
-                    const montantInscription = getTarifInscriptionForEleve(e);
+                    const snapshot = getEleveMensualiteSnapshot(e, moisAnnee, tarifsClasses);
+                    const montantInscription = getTarifInscriptionEleve(e);
                     const montantAutre = getTarifAutre(e.classe);
                     return <TR key={e._id}>
                       <TD><span style={{fontSize:11,fontFamily:"monospace",background:"#e0ebf8",padding:"2px 6px",borderRadius:4,color:C.blue,fontWeight:700}}>{e.matricule}</span></TD>
@@ -2276,8 +2264,8 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
                         </td>;
                       })}
                       <td style={{padding:"4px 8px",textAlign:"center"}}>
-                        <span style={{fontWeight:800,fontSize:13,color:nbPayes(e)===moisAnnee.length?C.greenDk:nbPayes(e)>0?"#d97706":"#b91c1c"}}>
-                          {nbPayes(e)}/{moisAnnee.length}
+                        <span style={{fontWeight:800,fontSize:13,color:snapshot.nbPayes===moisAnnee.length?C.greenDk:snapshot.nbPayes>0?"#d97706":"#b91c1c"}}>
+                          {snapshot.nbPayes}/{moisAnnee.length}
                         </span>
                       </td>
                       <td style={{padding:"4px 4px",textAlign:"center"}}>
