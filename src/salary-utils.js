@@ -1,3 +1,5 @@
+import { TOUS_MOIS_LONGS } from "./constants.js";
+
 function normalizeText(value = "") {
   return String(value || "")
     .trim()
@@ -177,4 +179,172 @@ export function getWeightedPrimeHoraire(teacher = {}, teacherSlots = [], primeDe
   const totalSalaireHebdo = getTeacherWeeklyAmount(teacher, teacherSlots, primeDefaut);
 
   return Math.round(totalSalaireHebdo / vhHebdo);
+}
+
+export function getFifthWeekDays(moisNom, nowDate = new Date()) {
+  const idxMois = TOUS_MOIS_LONGS.indexOf(moisNom);
+  if (idxMois < 0) return [];
+
+  const jsM = nowDate.getMonth();
+  const idxActuel = jsM >= 8 ? jsM - 8 : jsM + 4;
+  const anneeDebutScolaire = idxActuel < 4 ? nowDate.getFullYear() : nowDate.getFullYear() - 1;
+  const anneeReel = idxMois < 4 ? anneeDebutScolaire : anneeDebutScolaire + 1;
+  const jsMoisCible = idxMois < 4 ? idxMois + 8 : idxMois - 4;
+  const joursFr = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
+  const nbJours = new Date(anneeReel, jsMoisCible + 1, 0).getDate();
+  const compteur = {};
+
+  for (let jour = 1; jour <= nbJours; jour += 1) {
+    const nom = joursFr[new Date(anneeReel, jsMoisCible, jour).getDay()];
+    compteur[nom] = (compteur[nom] || 0) + 1;
+  }
+
+  return Object.entries(compteur)
+    .filter(([nom, count]) => count === 5 && nom !== "Dimanche")
+    .map(([nom]) => nom);
+}
+
+export function getSalaryExecutionHours(salary = {}) {
+  return (Number(salary.vhPrevu) || 0) + (Number(salary.cinqSem) || 0) - (Number(salary.nonExecute) || 0);
+}
+
+export function getSalaryMontantBrut(salary = {}) {
+  if (salary && salary.montantBrut !== undefined && salary.montantBrut !== null && Number.isFinite(Number(salary.montantBrut))) {
+    return Number(salary.montantBrut);
+  }
+  return getSalaryExecutionHours(salary) * (Number(salary.primeHoraire) || 0);
+}
+
+export function getSalaryNet(salary = {}) {
+  return getSalaryMontantBrut(salary) - (Number(salary.bon) || 0) + (Number(salary.revision) || 0);
+}
+
+export function getForfaitNet(salary = {}) {
+  return Number(salary.montantForfait || 0) - Number(salary.bon || 0) + Number(salary.revision || 0);
+}
+
+export function buildSecondarySalaryObservation(teacher = {}, slots = []) {
+  const hasRevision = slots.some((slot) => slot.type === "revision");
+  const parts = [`Statut: ${teacher.statut || "—"}`];
+  if (hasRevision) parts.push("Révisions incluses");
+  if ((teacher.primeParClasse || []).some((item) => item.classe && item.prime)) {
+    parts.push("Prime pondérée par classe");
+  }
+  return parts.join(" • ");
+}
+
+export function buildSecondarySalaryRecord(teacher = {}, {
+  mois,
+  emplois = [],
+  enseignements = [],
+  jours5eme = [],
+  primeDefaut = 0,
+} = {}) {
+  const nomComplet = buildTeacherFullName(teacher);
+  if (!nomComplet) return null;
+
+  const creneaux = getTeacherScheduleSlots(emplois, teacher);
+  const vhHebdo = Math.round(creneaux.reduce((sum, slot) => sum + getScheduleSlotHours(slot), 0) * 10) / 10;
+  const vhPrevu = Math.round(vhHebdo * 4 * 10) / 10;
+  const cinqSem = getTeacherFifthWeekHours(creneaux, jours5eme);
+  const nonExecute = getTeacherAbsenceHours(enseignements, teacher, creneaux);
+  const montantHebdo = getTeacherWeeklyAmount(teacher, creneaux, primeDefaut);
+  const montant5eme = getTeacherFifthWeekAmount(teacher, creneaux, jours5eme, primeDefaut);
+  const montantAbsences = getTeacherAbsenceAmount(enseignements, teacher, creneaux, primeDefaut);
+  const heuresExecutees = Math.max(0, Math.round(((vhPrevu + cinqSem - nonExecute) || 0) * 10) / 10);
+  const montantBrut = Math.max(0, Math.round((montantHebdo * 4) + montant5eme - montantAbsences));
+  const primeHoraire = heuresExecutees > 0
+    ? Math.round(montantBrut / heuresExecutees)
+    : getWeightedPrimeHoraire(teacher, creneaux, primeDefaut);
+
+  return {
+    section: "Secondaire",
+    mois,
+    nom: nomComplet,
+    matiere: teacher.matiere || "",
+    niveau: teacher.grade || "",
+    vhHebdo,
+    vhPrevu,
+    cinqSem,
+    nonExecute,
+    primeHoraire,
+    montantBrut,
+    primesVariables: (teacher.primeParClasse || []).some((item) => item.classe && item.prime),
+    observation: buildSecondarySalaryObservation(teacher, creneaux),
+  };
+}
+
+export function buildPrimarySalaryRecord(teacher = {}, { mois, getTeacherMonthlyForfait } = {}) {
+  const nomComplet = buildTeacherFullName(teacher);
+  if (!nomComplet) return null;
+
+  return {
+    section: "Primaire",
+    mois,
+    nom: nomComplet,
+    niveau: teacher.grade || teacher.classeTitle || teacher.classe || "",
+    matiere: teacher.matiere || "",
+    montantForfait: Number(getTeacherMonthlyForfait ? getTeacherMonthlyForfait(teacher) : 0),
+    observation: `Statut: ${teacher.statut || "—"}${teacher.classeTitle ? ` · Titulaire ${teacher.classeTitle}` : ""}`,
+  };
+}
+
+export function buildPersonnelSalaryRecord(person = {}, { mois } = {}) {
+  const nomComplet = `${person.prenom || ""} ${person.nom || ""}`.trim();
+  if (!nomComplet) return null;
+
+  return {
+    section: "Personnel",
+    mois,
+    nom: nomComplet,
+    poste: person.poste || "",
+    categorie: person.categorie || "",
+    montantForfait: Number(person.salaireBase || 0),
+    observation: person.observation || "",
+  };
+}
+
+export function getMissingSalaryProfiles({
+  ensCollege = [],
+  ensLycee = [],
+  ensPrimaire = [],
+  personnel = [],
+  primeDefaut = 0,
+} = {}) {
+  const defaultPrimeSet = (Number(primeDefaut) || 0) > 0;
+  const secMissing = defaultPrimeSet ? [] : [...ensCollege, ...ensLycee].filter((teacher) => {
+    const hasPrime = Number(teacher.primeHoraire || 0) > 0;
+    const hasPPC = (teacher.primeParClasse || []).some((item) => item.classe && Number(item.prime) > 0);
+    return !hasPrime && !hasPPC;
+  });
+  const primMissing = ensPrimaire.filter((teacher) => Number(teacher.montantForfait || teacher.salaireBase || teacher.forfait || 0) <= 0);
+  const persMissing = personnel.filter((person) => (person.statut || "Actif") === "Actif" && Number(person.salaireBase || 0) <= 0);
+
+  return { secMissing, primMissing, persMissing };
+}
+
+export function mergeSalaryWithManualFields(existingSalary = {}, computedSalary = {}) {
+  return {
+    ...existingSalary,
+    ...computedSalary,
+    bon: Number(existingSalary.bon || 0),
+    revision: Number(existingSalary.revision || 0),
+  };
+}
+
+export function summarizeSalaryTotals(salaries = []) {
+  return salaries.reduce((summary, salary) => {
+    const isForfait = salary.section === "Primaire" || salary.section === "Personnel";
+    const montant = isForfait ? Number(salary.montantForfait || 0) : getSalaryMontantBrut(salary);
+    const bon = Number(salary.bon || 0);
+    const revision = Number(salary.revision || 0);
+    const net = isForfait ? getForfaitNet(salary) : getSalaryNet(salary);
+
+    return {
+      montant: summary.montant + montant,
+      bon: summary.bon + bon,
+      revision: summary.revision + revision,
+      net: summary.net + net,
+    };
+  }, { montant: 0, bon: 0, revision: 0, net: 0 });
 }

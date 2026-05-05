@@ -3,7 +3,6 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { doc, updateDoc } from "firebase/firestore";
 import {
   C,
-  TOUS_MOIS_LONGS,
   getAnnee,
   today,
   CLASSES_PRIMAIRE,
@@ -36,15 +35,17 @@ import { findEnrollmentDuplicate, getEnrollmentDuplicateMessage } from "../enrol
 import { findStaffDuplicate, getStaffDuplicateMessage } from "../staff-utils";
 import { getTeacherMonthlyForfait } from "../teacher-utils";
 import {
-  buildTeacherFullName,
-  getTeacherAbsenceAmount,
-  getTeacherAbsenceHours,
-  getTeacherFifthWeekAmount,
-  getTeacherFifthWeekHours,
-  getTeacherScheduleSlots,
-  getScheduleSlotHours,
-  getTeacherWeeklyAmount,
-  getWeightedPrimeHoraire,
+  buildPersonnelSalaryRecord,
+  buildPrimarySalaryRecord,
+  buildSecondarySalaryRecord,
+  getFifthWeekDays,
+  getForfaitNet,
+  getMissingSalaryProfiles,
+  getSalaryExecutionHours,
+  getSalaryMontantBrut,
+  getSalaryNet,
+  mergeSalaryWithManualFields,
+  summarizeSalaryTotals,
 } from "../salary-utils";
 
 const loadXLSX = () => import("xlsx");
@@ -287,58 +288,28 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
     toast(`${nb} salaire(s) mis à jour.`,"success");
   };
 
-  // ── 5ÈME SEMAINE : détecte les jours qui ont 5 occurrences dans le mois sélectionné ──
-  const getJours5emeSemaine = (moisNom) => {
-    const idxMois = TOUS_MOIS_LONGS.indexOf(moisNom);
-    if(idxMois < 0) return [];
-    // Détermination de l'année réelle
-    const now = new Date();
-    const jsM = now.getMonth(); // 0-11
-    const idxActuel = jsM >= 8 ? jsM - 8 : jsM + 4; // index dans TOUS_MOIS_LONGS
-    const anneeDebutScolaire = idxActuel < 4 ? now.getFullYear() : now.getFullYear() - 1;
-    const anneeReel = idxMois < 4 ? anneeDebutScolaire : anneeDebutScolaire + 1;
-    // JS month number (Sep=8,Oct=9,...,Dec=11 → Jan=0,...,Aug=7)
-    const jsMoisCible = idxMois < 4 ? idxMois + 8 : idxMois - 4;
-    const JOURS_FR = ["Dimanche","Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi"];
-    const nbJours = new Date(anneeReel, jsMoisCible + 1, 0).getDate();
-    const compteur = {};
-    for(let j=1;j<=nbJours;j++){
-      const nom = JOURS_FR[new Date(anneeReel, jsMoisCible, j).getDay()];
-      compteur[nom] = (compteur[nom]||0) + 1;
-    }
-    return Object.entries(compteur).filter(([n,c])=>c===5&&n!=="Dimanche").map(([n])=>n);
-  };
-  const calcExecute = (s) => (Number(s.vhPrevu)||0) + (Number(s.cinqSem)||0) - (Number(s.nonExecute)||0);
-  const calcMontant = (s) => {
-    if (s && s.montantBrut !== undefined && s.montantBrut !== null && Number.isFinite(Number(s.montantBrut))) {
-      return Number(s.montantBrut);
-    }
-    return calcExecute(s) * (Number(s.primeHoraire)||0);
-  };
-  const calcNet = (s) => calcMontant(s) - (Number(s.bon)||0) + (Number(s.revision)||0);
-  const totNetSec = salairesSec.reduce((sum,s)=>sum+calcNet(s),0);
-  const totMontantSec = salairesSec.reduce((sum,s)=>sum+calcMontant(s),0);
-  const totBonSec = salairesSec.reduce((sum,s)=>sum+Number(s.bon||0),0);
-  const totNetPrim = salairesPrim.reduce((sum,s)=>sum+Number(s.montantForfait||0)-(Number(s.bon||0))+(Number(s.revision||0)),0);
-  const totMontantPrim = salairesPrim.reduce((sum,s)=>sum+Number(s.montantForfait||0),0);
-  const totBonPrim = salairesPrim.reduce((sum,s)=>sum+Number(s.bon||0),0);
-  const calcNetF = (s) => Number(s.montantForfait||0)-Number(s.bon||0)+Number(s.revision||0);
-  const totNetPers = salairesPers.reduce((sum,s)=>sum+calcNetF(s),0);
-  const totMontantPers = salairesPers.reduce((sum,s)=>sum+Number(s.montantForfait||0),0);
-  const totBonPers = salairesPers.reduce((sum,s)=>sum+Number(s.bon||0),0);
-  const totMontantGlobal = totMontantSec + totMontantPrim + totMontantPers;
-  const totBonGlobal = totBonSec + totBonPrim + totBonPers;
-  const totNetGlobal = totNetSec + totNetPrim + totNetPers;
-
-  const buildSecondaireSalaryObservation = (teacher, slots) => {
-    const aRevision = slots.some(s => s.type === "revision");
-    const parts = [`Statut: ${teacher.statut || "—"}`];
-    if(aRevision) parts.push("Révisions incluses");
-    return parts.join(" • ");
-  };
+  const calcExecute = (salary) => getSalaryExecutionHours(salary);
+  const calcMontant = (salary) => getSalaryMontantBrut(salary);
+  const calcNet = (salary) => getSalaryNet(salary);
+  const calcNetF = (salary) => getForfaitNet(salary);
+  const totalsSec = summarizeSalaryTotals(salairesSec);
+  const totalsPrim = summarizeSalaryTotals(salairesPrim);
+  const totalsPers = summarizeSalaryTotals(salairesPers);
+  const totNetSec = totalsSec.net;
+  const totMontantSec = totalsSec.montant;
+  const totBonSec = totalsSec.bon;
+  const totNetPrim = totalsPrim.net;
+  const totMontantPrim = totalsPrim.montant;
+  const totBonPrim = totalsPrim.bon;
+  const totNetPers = totalsPers.net;
+  const totMontantPers = totalsPers.montant;
+  const totBonPers = totalsPers.bon;
+  const totMontantGlobal = totalsSec.montant + totalsPrim.montant + totalsPers.montant;
+  const totBonGlobal = totalsSec.bon + totalsPrim.bon + totalsPers.bon;
+  const totNetGlobal = totalsSec.net + totalsPrim.net + totalsPers.net;
 
   const genererPourMois = async (mois, {resync=false}={}) => {
-    const jours5eme = getJours5emeSemaine(mois);
+    const jours5eme = getFifthWeekDays(mois);
     const dejaCeMois = salaires.filter(s=>s.mois===mois);
     const trouverExistant = (nom) => dejaCeMois.find(s=>(s.nom||"").toLowerCase().trim()===nom.toLowerCase().trim());
     let nbCree = 0, nbResync = 0;
@@ -348,68 +319,55 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
       ...ensLycee.map(e=>({...e,_emplois:emploisLycee,_eng:engLycee})),
     ];
     for(const ens of tousEns){
-      const nomComplet=buildTeacherFullName(ens);
-      if(!nomComplet) continue;
+      const salaireCalcule = buildSecondarySalaryRecord(ens, {
+        mois,
+        emplois: ens._emplois,
+        enseignements: ens._eng,
+        jours5eme,
+        primeDefaut,
+      });
+      if(!salaireCalcule) continue;
+      const nomComplet=salaireCalcule.nom;
       const existant=trouverExistant(nomComplet);
       if(existant && !resync) continue;
-      const creneaux=getTeacherScheduleSlots(ens._emplois, ens);
-      const vhHebdo=Math.round(creneaux.reduce((sum, slot)=>sum+getScheduleSlotHours(slot),0)*10)/10;
-      const vhPrevu=Math.round(vhHebdo*4*10)/10;
-      const hasPPC=(ens.primeParClasse||[]).some(p=>p.classe&&p.prime);
-      const cinqSem=getTeacherFifthWeekHours(creneaux, jours5eme);
-      const absences=getTeacherAbsenceHours(ens._eng, ens, creneaux);
-      const montantHebdo=getTeacherWeeklyAmount(ens, creneaux, primeDefaut);
-      const montant5eme=getTeacherFifthWeekAmount(ens, creneaux, jours5eme, primeDefaut);
-      const montantAbsences=getTeacherAbsenceAmount(ens._eng, ens, creneaux, primeDefaut);
-      const heuresExecutees=Math.max(0, Math.round(((vhPrevu + cinqSem - absences) || 0) * 10) / 10);
-      const montantBrut=Math.max(0, Math.round((montantHebdo * 4) + montant5eme - montantAbsences));
-      const primeHoraire=heuresExecutees>0
-        ? Math.round(montantBrut / heuresExecutees)
-        : getWeightedPrimeHoraire(ens, creneaux, primeDefaut);
-      const obs=buildSecondaireSalaryObservation(ens, creneaux) + (hasPPC ? " • Prime pondérée par classe" : "");
-      const champsCalcules = {section:"Secondaire",mois,nom:nomComplet,matiere:ens.matiere||"",niveau:ens.grade||"",vhHebdo,vhPrevu,cinqSem,nonExecute:absences,primeHoraire,montantBrut,primesVariables:hasPPC,observation:obs};
       if(existant){
-        // Resync : on garde bon et revision saisis manuellement
-        await modS({...existant,...champsCalcules,bon:Number(existant.bon||0),revision:Number(existant.revision||0)});
+        await modS(mergeSalaryWithManualFields(existant, salaireCalcule));
         nbResync++;
       } else {
-        await ajS({...champsCalcules,bon:0,revision:0});
+        await ajS({...salaireCalcule,bon:0,revision:0});
         nbCree++;
       }
     }
 
     for(const ens of ensPrimaire){
-      const nomComplet=`${ens.prenom||""} ${ens.nom||""}`.trim();
-      if(!nomComplet) continue;
+      const salaireCalcule = buildPrimarySalaryRecord(ens, {
+        mois,
+        getTeacherMonthlyForfait,
+      });
+      if(!salaireCalcule) continue;
+      const nomComplet=salaireCalcule.nom;
       const existant=trouverExistant(nomComplet);
       if(existant && !resync) continue;
-      const champsCalcules={
-        section:"Primaire",mois,nom:nomComplet,
-        niveau:ens.grade||ens.classeTitle||ens.classe||"",
-        matiere:ens.matiere||"",
-        montantForfait:getTeacherMonthlyForfait(ens),
-        observation:`Statut: ${ens.statut||"—"}${ens.classeTitle?` · Titulaire ${ens.classeTitle}`:""}`,
-      };
       if(existant){
-        await modS({...existant,...champsCalcules,bon:Number(existant.bon||0),revision:Number(existant.revision||0)});
+        await modS(mergeSalaryWithManualFields(existant, salaireCalcule));
         nbResync++;
       } else {
-        await ajS({...champsCalcules,bon:0,revision:0});
+        await ajS({...salaireCalcule,bon:0,revision:0});
         nbCree++;
       }
     }
 
     for(const emp of personnel.filter(e=>(e.statut||"Actif")==="Actif")){
-      const nomComplet=`${emp.prenom||""} ${emp.nom||""}`.trim();
-      if(!nomComplet) continue;
+      const salaireCalcule = buildPersonnelSalaryRecord(emp, { mois });
+      if(!salaireCalcule) continue;
+      const nomComplet=salaireCalcule.nom;
       const existant=trouverExistant(nomComplet);
       if(existant && !resync) continue;
-      const champsCalcules={section:"Personnel",mois,nom:nomComplet,poste:emp.poste||"",categorie:emp.categorie||"",montantForfait:Number(emp.salaireBase||0),observation:emp.observation||""};
       if(existant){
-        await modS({...existant,...champsCalcules,bon:Number(existant.bon||0),revision:Number(existant.revision||0)});
+        await modS(mergeSalaryWithManualFields(existant, salaireCalcule));
         nbResync++;
       } else {
-        await ajS({...champsCalcules,bon:0,revision:0});
+        await ajS({...salaireCalcule,bon:0,revision:0});
         nbCree++;
       }
     }
@@ -417,16 +375,13 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   };
 
   const verifierFichesPaie = () => {
-    // Secondaire : si une prime par défaut est saisie, elle s'applique en fallback → pas de manque.
-    const defautOK = (Number(primeDefaut)||0) > 0;
-    const secMissing = defautOK ? [] : [...ensCollege, ...ensLycee].filter(e => {
-      const hasPrime = Number(e.primeHoraire||0) > 0;
-      const hasPPC = (e.primeParClasse||[]).some(p=>p.classe&&Number(p.prime)>0);
-      return !hasPrime && !hasPPC;
+    return getMissingSalaryProfiles({
+      ensCollege,
+      ensLycee,
+      ensPrimaire,
+      personnel,
+      primeDefaut,
     });
-    const primMissing = ensPrimaire.filter(e => Number(e.montantForfait||e.salaireBase||e.forfait||0) <= 0);
-    const persMissing = personnel.filter(p => (p.statut||"Actif")==="Actif" && Number(p.salaireBase||0) <= 0);
-    return {secMissing, primMissing, persMissing};
   };
 
   const formatNoms = (liste) => liste.slice(0,3).map(e=>`${e.prenom||""} ${e.nom||""}`.trim()).filter(Boolean).join(", ") + (liste.length>3?` +${liste.length-3}`:"");
@@ -458,7 +413,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
       logAction("Salaires auto-générés (annuel)",`${totalCree} créés · ${totalResync} rafraîchis · ${moisSalaire.join(", ")}`);
       return;
     }
-    const jours5eme = getJours5emeSemaine(moisSel);
+    const jours5eme = getFifthWeekDays(moisSel);
     const info5eme = jours5eme.length ? `\n📅 5ème semaine détectée : ${jours5eme.join(", ")} → heures supplémentaires calculées automatiquement.` : "";
     if(!confirm(`${verbeAction} automatiquement les salaires pour ${moisSel} ?${info5eme}\n\n${detailMode}${warningMissing}`)) return;
     const {nbCree, nbResync} = await genererPourMois(moisSel,{resync});
@@ -908,7 +863,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
             {canCreate&&<Btn onClick={()=>{setForm({section:"Secondaire",mois:moisModale,nonExecute:0,cinqSem:0,bon:0,revision:0});setModal("add_s");}}>+ Ajouter</Btn>}
             <Btn v="vert" onClick={imprimerSalaires}>🖨️ Imprimer</Btn>
           </>}
-          {(()=>{const j5=getJours5emeSemaine(moisSel);return j5.length>0&&(
+          {(()=>{const j5=getFifthWeekDays(moisSel);return j5.length>0&&(
             <div style={{width:"100%",marginTop:6,background:"linear-gradient(135deg,#fef3c7,#fde68a)",border:"1px solid #f59e0b",borderRadius:8,padding:"7px 14px",fontSize:12,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
               <span style={{fontSize:15}}>📅</span>
               <strong style={{color:"#92400e"}}>{moisSel} — 5ème semaine :</strong>
