@@ -7,8 +7,13 @@ import {
 } from "firebase/firestore";
 import { app } from "./firebaseApp";
 
+const isLocalhost =
+  typeof window !== "undefined" &&
+  /^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname);
+
 export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+  ...(isLocalhost ? { experimentalAutoDetectLongPolling: true } : {}),
 });
 
 export const SCHOOL_ID = "citadelle";

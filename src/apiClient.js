@@ -45,7 +45,8 @@ export function buildApiUrl(path = "/", query) {
     return appendQuery(relativeUrl, query).toString();
   }
 
-  const absoluteUrl = new URL(normalizedPath, `${baseUrl}/`);
+  const relativePath = normalizedPath.replace(/^\/+/, "");
+  const absoluteUrl = new URL(relativePath, `${baseUrl}/`);
   return appendQuery(absoluteUrl, query).toString();
 }
 
