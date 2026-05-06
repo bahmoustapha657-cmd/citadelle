@@ -17,6 +17,11 @@ export default defineConfig({
         target: "https://edugest-gn.vercel.app",
         changeOrigin: true,
         secure: true,
+        headers: {
+          // L'API Vercel applique un filtrage d'origine.
+          // En dev local, on envoie donc une origine cohérente avec la cible proxifiée.
+          origin: "https://edugest-gn.vercel.app",
+        },
       },
     },
   },
