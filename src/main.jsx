@@ -18,4 +18,6 @@ createRoot(document.getElementById('root')).render(
   </StrictMode>,
 )
 
-registerServiceWorker()
+if (import.meta.env.PROD) {
+  registerServiceWorker()
+}
