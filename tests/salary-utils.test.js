@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  SALARY_ALGO_VERSION,
   buildPersonnelSalaryRecord,
   buildPrimarySalaryRecord,
   buildSecondarySalaryRecord,
@@ -218,4 +219,92 @@ test("getFifthWeekDays detects fifth weekdays inside the school year calendar", 
   assert.ok(Array.isArray(days));
   assert.ok(days.length > 0);
   assert.equal(days.includes("Dimanche"), false);
+});
+
+test("SALARY_ALGO_VERSION est un entier ≥ 1", () => {
+  assert.equal(typeof SALARY_ALGO_VERSION, "number");
+  assert.equal(SALARY_ALGO_VERSION, 1);
+});
+
+test("buildSecondarySalaryRecord stocke algoVersion + paramSnapshot pour reproductibilité", () => {
+  const record = buildSecondarySalaryRecord(
+    { prenom: "Aminata", nom: "Diallo", primeHoraire: 20000 },
+    {
+      mois: "Octobre",
+      emplois: [{ enseignant: "Aminata Diallo", jour: "Lundi", classe: "10A", heureDebut: "08:00", heureFin: "10:00" }],
+      enseignements: [],
+      jours5eme: ["Lundi", "Mercredi"],
+      primeDefaut: 15000,
+    },
+  );
+
+  assert.equal(record.algoVersion, SALARY_ALGO_VERSION);
+  assert.equal(record.paramSnapshot.primeDefaut, 15000);
+  assert.deepEqual(record.paramSnapshot.jours5eme, ["Lundi", "Mercredi"]);
+});
+
+test("paramSnapshot est cloné, pas référencé (mutation externe ne change pas la fiche)", () => {
+  const jours = ["Lundi"];
+  const record = buildSecondarySalaryRecord(
+    { prenom: "X", nom: "Y", primeHoraire: 10000 },
+    {
+      mois: "Octobre",
+      emplois: [{ enseignant: "X Y", jour: "Lundi", classe: "10A", heureDebut: "08:00", heureFin: "10:00" }],
+      enseignements: [],
+      jours5eme: jours,
+      primeDefaut: 0,
+    },
+  );
+
+  jours.push("Mardi"); // mutation après-coup
+  assert.deepEqual(record.paramSnapshot.jours5eme, ["Lundi"]);
+});
+
+test("buildPrimarySalaryRecord et buildPersonnelSalaryRecord taggent aussi algoVersion", () => {
+  const primary = buildPrimarySalaryRecord(
+    { prenom: "Mariam", nom: "Barry", classeTitle: "CM1" },
+    { mois: "Octobre", getTeacherMonthlyForfait: () => 850000 },
+  );
+  assert.equal(primary.algoVersion, SALARY_ALGO_VERSION);
+
+  const personnel = buildPersonnelSalaryRecord(
+    { prenom: "Moussa", nom: "Camara", salaireBase: 1200000 },
+    { mois: "Octobre" },
+  );
+  assert.equal(personnel.algoVersion, SALARY_ALGO_VERSION);
+});
+
+test("invariance : montantBrut stocké reste fixe même si on relit après changement des paramètres", () => {
+  // Une vieille fiche secondaire stockée avec son montantBrut.
+  // C'est exactement le comportement qui protège du "bug silencieux 6 mois après" :
+  // si la formule, la primeDefaut ou les jours 5e changent, le montant
+  // déjà calculé reste reproductible via le snapshot.
+  const ancienneFiche = {
+    section: "Secondaire",
+    vhPrevu: 8,
+    cinqSem: 2,
+    nonExecute: 1,
+    primeHoraire: 20000,
+    montantBrut: 999999, // valeur figée arbitraire pour le test
+  };
+
+  // getSalaryMontantBrut DOIT retourner le snapshot, pas recalculer.
+  assert.equal(getSalaryMontantBrut(ancienneFiche), 999999);
+
+  // Même si on simule un environnement où la formule "vraie" donnerait autre chose
+  // (heures * prime = 9 * 20000 = 180000), on retourne bien le snapshot.
+  assert.notEqual(9 * 20000, getSalaryMontantBrut(ancienneFiche));
+});
+
+test("getSalaryMontantBrut recalcule si montantBrut absent (cas migration / fiche partielle)", () => {
+  // Fallback : si une fiche legacy n'a pas de montantBrut, on recalcule.
+  const ficheLegacy = {
+    section: "Secondaire",
+    vhPrevu: 8,
+    cinqSem: 2,
+    nonExecute: 1,
+    primeHoraire: 20000,
+    // pas de montantBrut
+  };
+  assert.equal(getSalaryMontantBrut(ficheLegacy), (8 + 2 - 1) * 20000);
 });

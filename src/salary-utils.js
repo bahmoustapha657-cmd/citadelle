@@ -1,5 +1,9 @@
 import { TOUS_MOIS_LONGS } from "./constants.js";
 
+// Bumper à chaque changement de formule de salaire (heures, prime, montantBrut)
+// qui rendrait les fiches précédentes non reproductibles.
+export const SALARY_ALGO_VERSION = 1;
+
 function normalizeText(value = "") {
   return String(value || "")
     .trim()
@@ -258,6 +262,7 @@ export function buildSecondarySalaryRecord(teacher = {}, {
     : getWeightedPrimeHoraire(teacher, creneaux, primeDefaut);
 
   return {
+    algoVersion: SALARY_ALGO_VERSION,
     section: "Secondaire",
     mois,
     nom: nomComplet,
@@ -271,6 +276,10 @@ export function buildSecondarySalaryRecord(teacher = {}, {
     montantBrut,
     primesVariables: (teacher.primeParClasse || []).some((item) => item.classe && item.prime),
     observation: buildSecondarySalaryObservation(teacher, creneaux),
+    paramSnapshot: {
+      primeDefaut: Number(primeDefaut) || 0,
+      jours5eme: Array.isArray(jours5eme) ? [...jours5eme] : [],
+    },
   };
 }
 
@@ -279,6 +288,7 @@ export function buildPrimarySalaryRecord(teacher = {}, { mois, getTeacherMonthly
   if (!nomComplet) return null;
 
   return {
+    algoVersion: SALARY_ALGO_VERSION,
     section: "Primaire",
     mois,
     nom: nomComplet,
@@ -294,6 +304,7 @@ export function buildPersonnelSalaryRecord(person = {}, { mois } = {}) {
   if (!nomComplet) return null;
 
   return {
+    algoVersion: SALARY_ALGO_VERSION,
     section: "Personnel",
     mois,
     nom: nomComplet,

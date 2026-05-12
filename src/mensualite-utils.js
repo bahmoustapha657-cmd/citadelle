@@ -5,6 +5,10 @@ import {
   getTarifRevisionValue,
 } from "./constants.js";
 
+// Bumper à chaque changement de formule (mensualité, solde, snapshot) qui
+// rendrait les calculs antérieurs non reproductibles.
+export const MENSUALITE_ALGO_VERSION = 1;
+
 export function getTarifConfigForClasse(tarifsClasses = [], classe = "") {
   return tarifsClasses.find((tarif) => tarif.classe === classe) || null;
 }
@@ -67,17 +71,29 @@ export function getElevesCritiques(eleves = [], moisAnnee = [], minimumUnpaid = 
 
 export function getEleveMensualiteSnapshot(eleve = {}, moisAnnee = [], tarifsClasses = []) {
   const nbPayes = countPaidMonths(eleve, moisAnnee);
+  const nbImpayes = moisAnnee.length - nbPayes;
   const mensualite = getTarifMensuelForClasse(tarifsClasses, eleve.classe);
-  const inscription = eleve.inscriptionPayee ? getTarifInscriptionForEleve(eleve, tarifsClasses) : 0;
-  const autre = eleve.autrePayee ? getTarifAutreForClasse(tarifsClasses, eleve.classe) : 0;
+  const inscriptionTarif = getTarifInscriptionForEleve(eleve, tarifsClasses);
+  const autreTarif = getTarifAutreForClasse(tarifsClasses, eleve.classe);
+  const inscriptionPercu = eleve.inscriptionPayee ? inscriptionTarif : 0;
+  const autrePercu = eleve.autrePayee ? autreTarif : 0;
 
   return {
+    algoVersion: MENSUALITE_ALGO_VERSION,
     nbPayes,
-    nbImpayes: moisAnnee.length - nbPayes,
+    nbImpayes,
     montantMensualitesPercu: nbPayes * mensualite,
-    montantInscriptionPercu: inscription,
-    montantAutrePercu: autre,
+    montantInscriptionPercu: inscriptionPercu,
+    montantAutrePercu: autrePercu,
+    soldeMensualites: nbImpayes * mensualite,
+    soldeInscription: eleve.inscriptionPayee ? 0 : inscriptionTarif,
+    soldeAutre: eleve.autrePayee ? 0 : autreTarif,
   };
+}
+
+export function getEleveSolde(eleve = {}, moisAnnee = [], tarifsClasses = []) {
+  const snapshot = getEleveMensualiteSnapshot(eleve, moisAnnee, tarifsClasses);
+  return snapshot.soldeMensualites + snapshot.soldeInscription + snapshot.soldeAutre;
 }
 
 export function getMensualiteOverview(eleves = [], moisAnnee = [], tarifsClasses = []) {

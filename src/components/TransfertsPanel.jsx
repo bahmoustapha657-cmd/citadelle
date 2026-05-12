@@ -1,7 +1,8 @@
 import React, { useState, useContext } from "react";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
-import { C, fmt, getTarifMensuelTotal, today } from "../constants";
+import { C, fmt, today } from "../constants";
+import { getEleveSolde } from "../mensualite-utils";
 import { apiFetch, getAuthHeaders } from "../apiClient";
 import { imprimerCertificatRadiation, imprimerOrdreMutation } from "../reports";
 import { Badge, Btn, Card, Input, Modale, Stat, TD, THead, TR, Vide } from "./ui";
@@ -24,27 +25,7 @@ function TransfertsPanel({userRole, annee, setTab}) {
   const tousEleves = [...elevesC, ...elevesP, ...elevesL];
   const partis = tousEleves.filter(e=>["Transféré"].includes(e.statut));
 
-  const getTarifConfig = (classe) => tarifsClasses.find(t=>t.classe===classe) || null;
-  const getTarif = (classe) => {
-    const t = getTarifConfig(classe);
-    return getTarifMensuelTotal(t, classe);
-  };
-  const getTarifInscription = (eleve) => {
-    const t = getTarifConfig(eleve?.classe);
-    return eleve?.typeInscription==="Réinscription"
-      ? Number(t?.reinscription||0)
-      : Number(t?.inscription||0);
-  };
-  const getTarifAutre = (classe) => Number(getTarifConfig(classe)?.autre||0);
-
-  const getSolde = (eleve) => {
-    const mens = eleve.mens||{};
-    const nbImpayes = moisAnnee.filter(m=>mens[m]!=="Payé").length;
-    const soldeMensualites = nbImpayes * getTarif(eleve.classe);
-    const soldeInscription = eleve.inscriptionPayee ? 0 : getTarifInscription(eleve);
-    const soldeAutre = eleve.autrePayee ? 0 : getTarifAutre(eleve.classe);
-    return soldeMensualites + soldeInscription + soldeAutre;
-  };
+  const getSolde = (eleve) => getEleveSolde(eleve, moisAnnee, tarifsClasses);
 
   // Génère un token de transfert (Phase 2)
   const genererToken = async (eleve, ecoleDestination) => {
