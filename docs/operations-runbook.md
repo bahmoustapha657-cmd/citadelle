@@ -6,13 +6,17 @@ Objectif: fournir une base simple pour exploiter `citadelle` sans improviser en 
 
 - CI GitHub:
   - `npm run lint`
-  - `npm run test`
+  - `npm run test` (tsx --test, couvre .js et .ts)
+  - `npm run typecheck` (tsc --noEmit, depuis 2026-05-12)
   - `npm run build`
 - Tests anti-regression securite sur:
   - normalisation et validation des identifiants
   - autorisation de session
   - transferts inter-ecoles
   - verification de signature webhook
+  - regles Firestore (emulateur, 14 suites / 82 tests, job CI parallele)
+- Observabilite Sentry active sur tous les handlers API via `withObservability`
+  (depuis 2026-05-12). Capture cote client via `initSentry()` + ErrorBoundary.
 
 ## Verification Quotidienne
 
@@ -105,6 +109,36 @@ Procedure:
    - commit retire
    - commit restaure
 
+## Observabilite Sentry
+
+Configuration:
+- DSN configurees dans les env vars Vercel:
+  - `VITE_SENTRY_DSN` (frontend, expose via `import.meta.env`)
+  - `SENTRY_DSN` (backend, lue par `process.env`)
+- Si l'une est absente, le code passe en mode no-op et `console.error`
+  remplace la capture. Pas d'erreur fatale.
+
+Verifier que la capture fonctionne (apres rotation DSN, migration projet,
+ou doute):
+1. Ajouter temporairement un endpoint `api/sentry-test.js`:
+   ```js
+   import { withObservability } from "./_lib/observability.js";
+   async function handler() { throw new Error("test capture"); }
+   export default withObservability(handler);
+   ```
+2. Commit + push (Vercel auto-deploie).
+3. Hit `https://<prod-url>/api/sentry-test` → attendu: 500 + JSON
+   `{"error":"Erreur serveur."}`.
+4. Verifier dans le dashboard Sentry (Issues): un nouvel event doit
+   apparaitre dans la minute, avec le tag `endpoint`, l'url, la methode.
+5. Supprimer le fichier de test et commit la cleanup.
+
+Alerte:
+- Par defaut Sentry envoie un email a chaque nouvelle issue.
+- Pour ajouter Slack / Telegram / Discord: Sentry dashboard ->
+  Settings -> Integrations.
+- Pour ajuster la verbosite: Project Settings -> Alerts.
+
 ## Sauvegarde Et Recuperation
 
 Minimum recommande:
@@ -120,7 +154,12 @@ En cas de recuperation:
 
 ## Prochaine Marche Recommandee
 
-- brancher une solution centralisee de logs/alertes
-- ajouter des tests Firestore rules avec emulateur
+- ~~brancher une solution centralisee de logs/alertes~~ (fait: Sentry, 2026-05-12)
+- ~~ajouter des tests Firestore rules avec emulateur~~ (fait: 2026-05-05)
 - ajouter une verification manuelle post-deploiement
+- mettre en place un canal de feedback utilisateur direct (email visible,
+  groupe WhatsApp, formulaire) pour ramener du signal terrain
+- documenter la procedure de bootstrap / rotation `SUPERADMIN_PASSWORD_HASH`
+  (finding F7 du modele de securite)
+- prevoir un acces partage ou un coffre recuperable (bus factor solo dev)
 
