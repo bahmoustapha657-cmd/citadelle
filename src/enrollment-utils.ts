@@ -1,15 +1,37 @@
-const normalizeToken = (value = "") => String(value || "")
+export type EnrollmentStudent = {
+  _id?: string;
+  nom?: string;
+  prenom?: string;
+  dateNaissance?: string;
+  ien?: string;
+  matricule?: string;
+};
+
+export type EnrollmentDuplicate = {
+  type: "ien" | "matricule" | "identity";
+  student: EnrollmentStudent;
+};
+
+type FindEnrollmentDuplicateOptions = {
+  excludeId?: string | null;
+};
+
+type GetEnrollmentDuplicateMessageOptions = {
+  scope?: string;
+};
+
+const normalizeToken = (value: string = ""): string => String(value || "")
   .trim()
   .toLowerCase()
   .normalize("NFD")
-  .replace(/[\u0300-\u036f]/g, "")
+  .replace(/[̀-ͯ]/g, "")
   .replace(/\s+/g, " ");
 
-const normalizeIdentifier = (value = "") => normalizeToken(value).replace(/\s+/g, "");
+const normalizeIdentifier = (value: string = ""): string => normalizeToken(value).replace(/\s+/g, "");
 
-const normalizeDate = (value = "") => String(value || "").trim();
+const normalizeDate = (value: string = ""): string => String(value || "").trim();
 
-const buildIdentityKey = (student = {}) => {
+const buildIdentityKey = (student: EnrollmentStudent = {}): string => {
   const nom = normalizeToken(student.nom);
   const prenom = normalizeToken(student.prenom);
   const dateNaissance = normalizeDate(student.dateNaissance);
@@ -19,7 +41,11 @@ const buildIdentityKey = (student = {}) => {
 
 export const normalizeEnrollmentText = normalizeToken;
 
-export const findEnrollmentDuplicate = (candidate = {}, students = [], options = {}) => {
+export const findEnrollmentDuplicate = (
+  candidate: EnrollmentStudent = {},
+  students: EnrollmentStudent[] = [],
+  options: FindEnrollmentDuplicateOptions = {},
+): EnrollmentDuplicate | null => {
   const excludeId = options.excludeId ?? candidate?._id ?? null;
   const pool = (students || []).filter((student) => student && student._id !== excludeId);
 
@@ -44,7 +70,11 @@ export const findEnrollmentDuplicate = (candidate = {}, students = [], options =
   return null;
 };
 
-export const getEnrollmentDuplicateMessage = (duplicate, candidate = {}, options = {}) => {
+export const getEnrollmentDuplicateMessage = (
+  duplicate: EnrollmentDuplicate | null,
+  candidate: EnrollmentStudent = {},
+  options: GetEnrollmentDuplicateMessageOptions = {},
+): string => {
   if (!duplicate) return "";
   const suffix = options.scope ? ` (${options.scope})` : "";
   if (duplicate.type === "ien") {

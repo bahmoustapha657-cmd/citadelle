@@ -1,13 +1,29 @@
-function normalizeText(value = "") {
+export type Teacher = {
+  _id?: string;
+  nom?: string;
+  prenom?: string;
+  matiere?: string;
+  classeTitle?: string;
+  montantForfait?: number | string;
+  salaireBase?: number | string;
+};
+
+type GetEligibleTeachersOptions = {
+  classe?: string;
+  matiere?: string;
+  isPrimary?: boolean;
+};
+
+function normalizeText(value: string = ""): string {
   return String(value || "")
     .trim()
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[̀-ͯ]/g, "")
     .replace(/\s+/g, " ");
 }
 
-function matchesSubject(teacher = {}, matiere = "") {
+function matchesSubject(teacher: Teacher = {}, matiere: string = ""): boolean {
   const subject = normalizeText(matiere);
   if (!subject) return true;
 
@@ -22,15 +38,14 @@ function matchesSubject(teacher = {}, matiere = "") {
   return teacherSubjects.some((item) => item.includes(subject) || subject.includes(item));
 }
 
-export function getTeacherMonthlyForfait(teacher = {}) {
+export function getTeacherMonthlyForfait(teacher: Teacher = {}): number {
   return Number(teacher.montantForfait || teacher.salaireBase || 0);
 }
 
-export function getEligibleTeachersForTimetable(teachers = [], {
-  classe = "",
-  matiere = "",
-  isPrimary = false,
-} = {}) {
+export function getEligibleTeachersForTimetable(
+  teachers: Teacher[] = [],
+  { classe = "", matiere = "", isPrimary = false }: GetEligibleTeachersOptions = {},
+): Teacher[] {
   const subjectFiltered = teachers.filter((teacher) => matchesSubject(teacher, matiere));
   if (!isPrimary) return subjectFiltered;
 

@@ -1,24 +1,49 @@
-const normalizeText = (value = "") => String(value || "")
+export type StaffPerson = {
+  _id?: string;
+  nom?: string;
+  prenom?: string;
+  telephone?: string;
+  contact?: string;
+};
+
+export type StaffDuplicate = {
+  type: "phone" | "identity";
+  person: StaffPerson;
+};
+
+type FindStaffDuplicateOptions = {
+  excludeId?: string | null;
+};
+
+type GetStaffDuplicateMessageOptions = {
+  label?: string;
+};
+
+const normalizeText = (value: string = ""): string => String(value || "")
   .trim()
   .toLowerCase()
   .normalize("NFD")
-  .replace(/[\u0300-\u036f]/g, "")
+  .replace(/[̀-ͯ]/g, "")
   .replace(/\s+/g, " ");
 
-const normalizePhone = (value = "") => {
+const normalizePhone = (value: string = ""): string => {
   const digits = String(value || "").replace(/\D+/g, "");
   if (digits.length > 9) return digits.slice(-9);
   return digits;
 };
 
-const buildIdentityKey = (person = {}) => {
+const buildIdentityKey = (person: StaffPerson = {}): string => {
   const nom = normalizeText(person.nom);
   const prenom = normalizeText(person.prenom);
   if (!nom || !prenom) return "";
   return `${nom}|${prenom}`;
 };
 
-export const findStaffDuplicate = (candidate = {}, people = [], options = {}) => {
+export const findStaffDuplicate = (
+  candidate: StaffPerson = {},
+  people: StaffPerson[] = [],
+  options: FindStaffDuplicateOptions = {},
+): StaffDuplicate | null => {
   const excludeId = options.excludeId ?? candidate?._id ?? null;
   const pool = (people || []).filter((person) => person && person._id !== excludeId);
 
@@ -37,7 +62,10 @@ export const findStaffDuplicate = (candidate = {}, people = [], options = {}) =>
   return null;
 };
 
-export const getStaffDuplicateMessage = (duplicate, options = {}) => {
+export const getStaffDuplicateMessage = (
+  duplicate: StaffDuplicate | null,
+  options: GetStaffDuplicateMessageOptions = {},
+): string => {
   if (!duplicate) return "";
   const label = options.label || "cette fiche";
   if (duplicate.type === "phone") {
