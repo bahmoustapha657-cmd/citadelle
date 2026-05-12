@@ -7,6 +7,7 @@ import {
   applyCors,
   consumeRateLimit,
   getClientIp,
+  sanitizeDisplayName,
 } from "../security.js";
 
 const SUPERADMIN_LOGIN_PATTERN = /^[a-z0-9._-]{3,40}$/i;
@@ -53,7 +54,7 @@ export default async function handler(req, res) {
     if (!quota.ok) {
       res.setHeader("Retry-After", String(Math.ceil(quota.retryAfterMs / 1000)));
       return res.status(quota.status).json({
-        error: "Trop de tentatives. Réessayez plus tard.",
+        error: "Trop de tentatives. Rï¿½essayez plus tard.",
       });
     }
 
@@ -62,7 +63,7 @@ export default async function handler(req, res) {
 
     if (comptes.length === 0) {
       const fallbackHash = process.env.SUPERADMIN_PASSWORD_HASH || "";
-      if (!fallbackHash) return res.status(401).json({ error: "Aucun super-admin configuré" });
+      if (!fallbackHash) return res.status(401).json({ error: "Aucun super-admin configurï¿½" });
       comptes = [{ login: "superadmin", mdp: fallbackHash, role: "superadmin", nom: "Super Admin" }];
     }
 
@@ -84,7 +85,7 @@ export default async function handler(req, res) {
     }
 
     const email = `${trimmedLogin.toLowerCase()}@superadmin.edugest.app`;
-    const displayName = compte.nom || "Super Admin";
+    const displayName = sanitizeDisplayName(compte.nom, "Super Admin");
     let uid;
     try {
       const userRecord = await authAdmin.createUser({ email, password: mdp, displayName });

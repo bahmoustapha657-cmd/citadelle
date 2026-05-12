@@ -15,6 +15,7 @@ import {
   isValidSchoolId,
   normalizeLogin,
   normalizeSchoolId,
+  sanitizeDisplayName,
 } from "../security.js";
 
 const LOGIN_RATE_LIMIT = {
@@ -35,7 +36,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Champs requis : login, mdp, schoolId" });
   }
   if (!isValidLogin(normalizedLogin) || !isValidSchoolId(normalizedSchoolId)) {
-    return res.status(400).json({ error: "Identifiant ou code école invalide." });
+    return res.status(400).json({ error: "Identifiant ou code ï¿½cole invalide." });
   }
 
   try {
@@ -60,7 +61,7 @@ export default async function handler(req, res) {
     if (!quota.ok) {
       res.setHeader("Retry-After", String(Math.ceil(quota.retryAfterMs / 1000)));
       return res.status(quota.status).json({
-        error: "Trop de tentatives de connexion. Réessayez plus tard.",
+        error: "Trop de tentatives de connexion. Rï¿½essayez plus tard.",
       });
     }
 
@@ -96,7 +97,7 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: "Identifiant ou mot de passe incorrect." });
     }
     if (!isAllowedSchoolRole(compte.role)) {
-      return res.status(403).json({ error: "Rôle de compte invalide. Contactez l'administrateur." });
+      return res.status(403).json({ error: "Rï¿½le de compte invalide. Contactez l'administrateur." });
     }
 
     const valide = await bcrypt.compare(mdp, compte.mdp);
@@ -132,7 +133,7 @@ export default async function handler(req, res) {
     }
 
     const email = `${normalizedLogin}.${normalizedSchoolId}@edugest.app`;
-    const displayName = compte.nom || normalizedLogin;
+    const displayName = sanitizeDisplayName(compte.nom, normalizedLogin);
     const label = compte.label || compte.role;
     let uid;
 

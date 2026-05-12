@@ -156,14 +156,16 @@ Note : 🔒 sur `notes*` pour enseignant = via `teacher-portal` API, jamais en d
 - L'endpoint `save_note`/`delete_note` rejette en 403 dès le départ si l'enseignant secondaire n'a pas de matière.
 - Tests unitaires : `tests/teacher-portal-scope.test.js` (11 cas).
 
-### 🔴 F2. Fallback par nom d'élève dans les portails
+### 🟢 F2. Fallback par nom d'élève dans les portails — **DURCI 2026-05-12**
 
-**Fichier** : `api/_lib/handlers/teacher-portal.js:34-37` et `parent-portal.js:60-66`
+**Description initiale** : Quand un document (note, absence, message) n'a pas de `eleveId`, le filtre fallback sur `eleveNom` (nom + prénom). En cas d'homonymie inter-classes, fuite possible.
 
-**Description** : Quand un document (note, absence, message) n'a pas de `eleveId`, le filtre fallback sur `eleveNom` (nom + prénom). En cas d'homonymie inter-classes (cas réaliste), un enseignant ou un parent peut accéder aux données d'un élève qui n'est pas dans son périmètre.
+**État après audit 2026-05-12** :
+- **`parent-portal.js`** : aucun fallback eleveNom côté lecture. Les notes/absences/messages sont récupérés via `getDocsByFieldValues("eleveId", studentIds)` — un document sans `eleveId` est invisible au parent.
+- **`teacher-portal.js`** : `noteBelongsToTeacherScope` ET le filtre incidents acceptent désormais le fallback `eleveNom` **uniquement si** `note.classe` (ou `inc.classe`) est dans `teacherClasses`. Un homonyme inter-classes est donc filtré.
+- Tests dédiés : `tests/teacher-portal-scope.test.js` (4 cas F2 : fallback OK avec classe, refus si classe hors scope, refus si classe absente, path principal eleveId inchangé).
 
-**Sévérité** : Modérée à élevée.
-**Probabilité** : Faible à moyenne (dépend de la base d'élèves).
+**Risque résiduel** : si un document legacy n'a ni `eleveId` ni `classe`, il est désormais invisible (refus). Si nécessaire, lancer un script de migration pour annoter ces documents (priorité basse — fail-closed est le bon défaut).
 
 ### 🟡 F3. Storage non isolé par école — **Code corrigé 2026-04-30, déploiement en attente**
 
@@ -191,32 +193,39 @@ Note : 🔒 sur `notes*` pour enseignant = via `teacher-portal` API, jamais en d
 **Sévérité actuelle** : Faible (pas de fichiers à exposer).
 **Sévérité si Storage activé sans nos rules** : Élevée.
 
-### 🟡 F4. Énumération de logins via `login.js`
+### ✅ F4. Énumération de logins via `login.js` — **CORRIGÉ**
 
-**Fichier** : `api/_lib/handlers/login.js:84-86`
+**Fichier** : `api/_lib/handlers/login.js:86-97`
 
-**Description** : Si le compte n'existe pas, retourne 401 immédiatement. Si le compte existe mais le mdp est faux, retourne 401 après ~200ms de bcrypt. Permet à un attaquant de distinguer un login valide d'un login invalide via timing.
+**Description initiale** : Si le compte n'existe pas, retournait 401 immédiatement. Si le compte existe mais le mdp est faux, retournait 401 après ~200ms de bcrypt. Permet à un attaquant de distinguer un login valide d'un login invalide via timing.
 
-**Sévérité** : Faible (le rate limit limite l'exploitation).
-**Mitigation possible** : exécuter un bcrypt factice quand le compte n'existe pas (tarpit constant-time).
+**Correctif appliqué** :
+- `api/_lib/auth-tarpit.js` introduit un `applyPasswordTarpit(password)` qui exécute un `bcrypt.compare` contre un hash factice.
+- Le tarpit est appelé dans `login.js` aux deux branches d'échec rapide : compte introuvable (l.87) et hash invalide (l.95).
+- Le délai constant rend les deux branches indiscernables.
 
-### 🟡 F5. `pushSubs` : pas de vérification d'identité
+### ✅ F5. `pushSubs` : pas de vérification d'identité — **CORRIGÉ**
 
-**Fichier** : `firestore.rules:175`
+**Fichier** : `firestore.rules:60-69, 151-163`
 
-**Description** : `allow create, update, delete: if appartientEcole(schoolId);`. Tout utilisateur d'une école peut créer/modifier/supprimer n'importe quelle souscription push, y compris celles d'un autre user. Risque : spoofing de subscription, suppression des subs d'un autre, spam push.
+**Description initiale** : `allow create, update, delete: if appartientEcole(schoolId);`. Tout utilisateur d'une école pouvait créer/modifier/supprimer n'importe quelle souscription push.
 
-**Sévérité** : Faible à modérée.
-**Mitigation** : vérifier que `request.resource.data.uid == request.auth.uid` (ou équivalent).
+**Correctif appliqué** :
+- Helper `pushSubPayloadValide(uid)` vérifie `request.auth.uid == uid` et la structure du payload.
+- `create` : `appartientEcole(schoolId) && pushSubPayloadValide(docId)` — le `docId` doit être l'uid de l'auteur.
+- `update` : ajoute `resource.data.uid == request.auth.uid` (ne peut mettre à jour que sa propre sub).
+- `delete` : restreint au propriétaire de la sub.
+- Couvert par les tests émulateur (suite 10 `/pushSubs`).
 
-### 🟡 F6. Parent legacy link → lecture de toute la collection élèves
+### ✅ F6. Parent legacy link → lecture de toute la collection élèves — **CORRIGÉ**
 
-**Fichier** : `api/_lib/handlers/parent-portal.js:39-49`
+**Description initiale** : Si `profile.elevesAssocies` contient une entrée sans `eleveId`, `parent-portal.js` lisait `(await elevesRef.get()).docs.map(toItem)` puis filtrait côté serveur. Coût en lectures Firestore + dépendance totale à la justesse de `filterParentStudents` pour empêcher la fuite.
 
-**Description** : Si `profile.elevesAssocies` contient une entrée sans `eleveId`, lit `(await elevesRef.get()).docs.map(toItem)` puis filtre côté serveur. Coût en lectures Firestore + dépendance totale à la justesse de `filterParentStudents` pour empêcher la fuite.
-
-**Sévérité** : Modérée (perf + risque latent).
-**Mitigation** : migration de tous les liens legacy vers `eleveId` explicite, puis suppression de ce code path.
+**Correctif appliqué** :
+- `parent-portal.js:loadParentStudents` charge uniquement via `getDocsByIds(elevesRef, explicitIds)` — pas de `elevesRef.get()` global.
+- `matchesStudentLink` (`portal-data.js:70-80`) exige désormais `link.eleveId` non-vide pour matcher — un lien legacy sans `eleveId` ne ramène rien plutôt que tout.
+- Migration auto au login parent via `migrateParentAccountLinks` (`parent-links-migration.js`) : résout `eleveNom + eleveClasse` → `eleveId` lors de la première connexion et persiste le résultat sur le compte.
+- Tests : `tests/parent-links-migration.test.js`, `tests/portal-data.test.js`.
 
 ### 🟢 F7. `superadmin-login` : fallback env var
 
@@ -227,11 +236,16 @@ Note : 🔒 sur `notes*` pour enseignant = via `teacher-portal` API, jamais en d
 **Sévérité** : Information.
 **Mitigation** : runbook opérationnel + rotation périodique.
 
-### 🟢 F8. `displayName` Firebase Auth non sanitizé
+### ✅ F8. `displayName` Firebase Auth non sanitizé — **CORRIGÉ 2026-05-12**
 
-**Description** : `compte.nom` est passé tel quel à `authAdmin.createUser({ displayName })`. Pas de validation de longueur ou caractères. Pas de risque de sécurité direct identifié, mais peut causer des comportements inattendus côté Auth.
+**Description initiale** : `compte.nom` était passé tel quel à `authAdmin.createUser({ displayName })`. Pas de validation de longueur ou caractères.
 
-**Sévérité** : Information.
+**Correctif appliqué** :
+- Helper `sanitizeDisplayName(value, fallback)` ajouté dans `api/_lib/security.js`.
+- Supprime les caractères de contrôle (`\x00-\x1F`, `\x7F`), collapse les espaces, trim, cape à 128 caractères.
+- Fallback explicite quand le nom devient vide après sanitisation.
+- Appliqué dans `login.js` et `superadmin-login.js` avant `authAdmin.createUser({ displayName })`.
+- Tests : `tests/sanitize-display-name.test.js` (6 cas).
 
 ---
 
@@ -245,14 +259,14 @@ Note : 🔒 sur `notes*` pour enseignant = via `teacher-portal` API, jamais en d
 
 ### Priorité 2 — Ce mois-ci
 
-- [ ] **F2** : Programme de migration : pour chaque collection (notes, absences, messages), s'assurer que tous les documents ont `eleveId`. Une fois la migration faite, retirer le fallback `eleveNom` dans `teacher-portal.js` et `parent-portal.js`. Test d'intégration avec deux élèves homonymes.
-- [ ] **F6** : Migrer les comptes parents legacy vers `eleveIds` explicites. Suppression du fallback "all students".
-- [ ] **F5** : Durcir `pushSubs` rules pour valider `uid == auth.uid`.
+- [x] **F2** : `teacher-portal.js` durci — fallback eleveNom n'accepte que si `note.classe ∈ teacherClasses`. `parent-portal.js` n'a pas de fallback eleveNom (lecture par `eleveId` strict). ✅ 2026-05-12
+- [x] **F6** : Migration auto en place via `migrateParentAccountLinks`. `parent-portal.js` n'a plus de fallback "all students" — `matchesStudentLink` exige `link.eleveId`. ✅
+- [x] **F5** : Durcir `pushSubs` rules pour valider `uid == auth.uid`. ✅ via `pushSubPayloadValide` (couvert par tests émulateur).
 
 ### Priorité 3 — Trimestre
 
-- [ ] **F4** : Ajouter un bcrypt factice constant-time dans `login.js` quand le compte n'existe pas.
-- [ ] Tests d'intégration des Firestore rules via emulator (`@firebase/rules-unit-testing`). Couvrir : isolation inter-écoles, admin write refusé, comptes immuables côté client, audit_securite invisible aux non-direction.
+- [x] **F4** : `applyPasswordTarpit` (bcrypt factice) appliqué aux deux branches d'échec rapide dans `login.js`. ✅ (commit antérieur, doc mise à jour 2026-05-11)
+- [x] Tests d'intégration des Firestore rules via emulator (`@firebase/rules-unit-testing`). 14 suites / 82 tests dans `tests/firestore-rules.emulator.js`, lancés via `npm run test:rules`, intégrés au CI. ✅ 2026-05-05
 - [ ] **F7** : Documenter la procédure de bootstrap superadmin dans `operations-runbook.md` + rotation régulière.
 
 ### En continu

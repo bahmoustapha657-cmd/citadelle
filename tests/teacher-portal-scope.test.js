@@ -81,7 +81,7 @@ test("matiere comparison ignore accents et casse", () => {
   );
 });
 
-test("fallback eleveNom: matching name + bonne matière", () => {
+test("fallback eleveNom: matching name + bonne matière (sans teacherClasses → legacy permissif)", () => {
   const note = { eleveNom: "Aminata Bah", matiere: "Mathematiques" };
   assert.equal(
     noteBelongsToTeacherScope(note, studentIds, "Mathematiques", studentNames, "college"),
@@ -94,6 +94,44 @@ test("fallback eleveNom: nom inconnu → refus", () => {
   assert.equal(
     noteBelongsToTeacherScope(note, studentIds, "Mathematiques", studentNames, "college"),
     false,
+  );
+});
+
+test("F2 durcissement — fallback eleveNom + classe in scope → OK", () => {
+  const teacherClasses = new Set(["3eme A", "4eme B"]);
+  const note = { eleveNom: "Aminata Bah", matiere: "Mathematiques", classe: "3eme A" };
+  assert.equal(
+    noteBelongsToTeacherScope(note, studentIds, "Mathematiques", studentNames, "college", teacherClasses),
+    true,
+  );
+});
+
+test("F2 durcissement — fallback eleveNom + classe hors scope (homonymie inter-classes) → refus", () => {
+  // Aminata Bah existe aussi en 5eme C avec un autre enseignant — la note de cette
+  // homonyme ne doit PAS être visible par le prof de 3eme A.
+  const teacherClasses = new Set(["3eme A", "4eme B"]);
+  const note = { eleveNom: "Aminata Bah", matiere: "Mathematiques", classe: "5eme C" };
+  assert.equal(
+    noteBelongsToTeacherScope(note, studentIds, "Mathematiques", studentNames, "college", teacherClasses),
+    false,
+  );
+});
+
+test("F2 durcissement — fallback eleveNom sans classe sur la note → refus", () => {
+  const teacherClasses = new Set(["3eme A"]);
+  const note = { eleveNom: "Aminata Bah", matiere: "Mathematiques" };
+  assert.equal(
+    noteBelongsToTeacherScope(note, studentIds, "Mathematiques", studentNames, "college", teacherClasses),
+    false,
+  );
+});
+
+test("F2 durcissement — eleveId présent : classe pas exigée (path principal inchangé)", () => {
+  const teacherClasses = new Set(["3eme A"]);
+  const note = { eleveId: "eleve-1", matiere: "Mathematiques" }; // pas de classe
+  assert.equal(
+    noteBelongsToTeacherScope(note, studentIds, "Mathematiques", studentNames, "college", teacherClasses),
+    true,
   );
 });
 

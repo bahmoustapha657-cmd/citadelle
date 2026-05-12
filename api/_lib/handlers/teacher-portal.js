@@ -29,7 +29,13 @@ function normalizeText(value = "") {
 // Secondaire (college/lycee) : la matière du profil est OBLIGATOIRE ; absente → refus.
 // Sans cela un enseignant secondaire mal configuré (matière vide) verrait/modifierait
 // toutes les notes de toutes les matières de ses classes.
-export function noteBelongsToTeacherScope(note = {}, studentIds = new Set(), matiere = "", studentNames = new Set(), section = "college") {
+//
+// F2 (homonymie eleveNom) — durcissement 2026-05-12 : si la note n'a pas d'eleveId,
+// on tombe sur le fallback eleveNom. Pour éviter qu'un homonyme inter-classes ne
+// fuite, on exige désormais que `note.classe` corresponde à une classe du périmètre
+// enseignant (paramètre teacherClasses). Sans classe sur la note ou classe hors
+// scope → refus, même si le nom matche.
+export function noteBelongsToTeacherScope(note = {}, studentIds = new Set(), matiere = "", studentNames = new Set(), section = "college", teacherClasses = null) {
   const noteStudentId = String(note.eleveId || "").trim();
   if (noteStudentId) {
     if (!studentIds.has(noteStudentId)) {
@@ -39,6 +45,13 @@ export function noteBelongsToTeacherScope(note = {}, studentIds = new Set(), mat
     const noteStudentName = normalizeText(note.eleveNom);
     if (!noteStudentName || !studentNames.has(noteStudentName)) {
       return false;
+    }
+    // Durcissement F2 : exiger une classe explicite dans le scope si fourni.
+    if (teacherClasses instanceof Set && teacherClasses.size > 0) {
+      const noteClasse = String(note.classe || "").trim();
+      if (!noteClasse || !teacherClasses.has(noteClasse)) {
+        return false;
+      }
     }
   }
 
@@ -69,6 +82,7 @@ async function loadTeacherPortalPayload({ db, schoolId, profile }) {
   const salaires = salairesSnap.docs.map(toItem).filter((item) => matchesTeacherAlias(item.nom, aliases));
 
   const classes = [...new Set(emplois.map((emploi) => emploi.classe).filter(Boolean))];
+  const teacherClasses = new Set(classes);
   const eleves = uniqueById(await getDocsByFieldValues(schoolRef.collection(collections.eleves), "classe", classes));
   const studentIds = new Set(eleves.map((student) => String(student._id || "").trim()).filter(Boolean));
   const studentNames = new Set(
@@ -77,16 +91,18 @@ async function loadTeacherPortalPayload({ db, schoolId, profile }) {
       .filter(Boolean),
   );
   const rawNotes = (await schoolRef.collection(collections.notes).get()).docs.map(toItem);
-  const notes = rawNotes.filter((note) => noteBelongsToTeacherScope(note, studentIds, profile.matiere || "", studentNames, section));
+  const notes = rawNotes.filter((note) => noteBelongsToTeacherScope(note, studentIds, profile.matiere || "", studentNames, section, teacherClasses));
 
   // Incidents (absences/retard/indiscipline) sur les élèves dans le scope
-  // de l'enseignant. Filtrage par eleveId de préférence, fallback eleveNom
-  // pour les anciens enregistrements créés sans id explicite.
+  // de l'enseignant. Filtrage par eleveId de préférence, fallback eleveNom +
+  // classe (durcissement F2 2026-05-12) pour les anciens enregistrements.
   const incidents = absencesSnap.docs.map(toItem).filter((inc) => {
     const incId = String(inc.eleveId || "").trim();
     if (incId) return studentIds.has(incId);
     const incName = normalizeText(inc.eleveNom);
-    return incName && studentNames.has(incName);
+    if (!incName || !studentNames.has(incName)) return false;
+    const incClasse = String(inc.classe || "").trim();
+    return !!incClasse && teacherClasses.has(incClasse);
   });
 
   return {
@@ -110,6 +126,7 @@ async function resolveTeacherScope({ db, schoolId, profile }) {
           .map((student) => normalizeText(`${student.prenom || ""} ${student.nom || ""}`))
           .filter(Boolean),
       ),
+      teacherClasses: new Set(payload.eleves.map((student) => String(student.classe || "").trim()).filter(Boolean)),
     };
   }
 
@@ -262,7 +279,7 @@ export default async function handler(req, res) {
       }
 
       const note = toItem(noteSnap);
-      if (!noteBelongsToTeacherScope(note, teacherScope.studentIds, session.profile.matiere || "", teacherScope.studentNames, section)) {
+      if (!noteBelongsToTeacherScope(note, teacherScope.studentIds, session.profile.matiere || "", teacherScope.studentNames, section, teacherScope.teacherClasses)) {
         return res.status(403).json({ error: "Note hors perimetre pour cet enseignant." });
       }
 
