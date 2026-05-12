@@ -11,6 +11,7 @@ import {
   uniqueById,
 } from "../portal-data.js";
 import { applyCors, normalizeSchoolId, requireSession } from "../security.js";
+import { captureServerError, withObservability } from "../observability.js";
 
 function getTeacherSection(profile = {}) {
   return normalizeSection(profile.section || profile.sections?.[0] || "college");
@@ -130,7 +131,7 @@ async function resolveTeacherScope({ db, schoolId, profile }) {
     };
   }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (!applyCors(req, res, "GET,POST,OPTIONS")) return;
   if (req.method === "OPTIONS") return res.status(200).end();
   if (!["GET", "POST"].includes(req.method)) return res.status(405).end();
@@ -333,6 +334,9 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, noteId: createdRef.id });
   } catch (error) {
     console.error("teacher-portal post error:", error);
+    await captureServerError(error, { endpoint: "teacher-portal" });
     return res.status(500).json({ error: "Erreur serveur" });
   }
 }
+
+export default withObservability(handler);

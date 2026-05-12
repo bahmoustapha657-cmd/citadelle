@@ -12,6 +12,7 @@ import {
   uniqueById,
 } from "../portal-data.js";
 import { applyCors, normalizeSchoolId, requireSession } from "../security.js";
+import { captureServerError, withObservability } from "../observability.js";
 
 function getParentSections(profile = {}) {
   const sections = Array.isArray(profile.sections) && profile.sections.length > 0
@@ -77,7 +78,7 @@ async function resolveParentStudent({ db, schoolId, profile, eleveId }) {
   return payload.eleves.find((student) => student._id === eleveId) || null;
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (!applyCors(req, res, "GET,POST,OPTIONS")) return;
   if (req.method === "OPTIONS") return res.status(200).end();
   if (!["GET", "POST"].includes(req.method)) return res.status(405).end();
@@ -143,6 +144,9 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true });
   } catch (error) {
     console.error("parent-portal post error:", error);
+    await captureServerError(error, { endpoint: "parent-portal" });
     return res.status(500).json({ error: "Erreur serveur" });
   }
 }
+
+export default withObservability(handler);

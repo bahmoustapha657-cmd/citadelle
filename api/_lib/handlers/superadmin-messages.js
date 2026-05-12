@@ -1,6 +1,7 @@
 import { getFirestore } from "firebase-admin/firestore";
 import { initAdmin } from "../firebase-admin.js";
 import { applyCors, normalizeSchoolId, requireSession } from "../security.js";
+import { captureServerError, withObservability } from "../observability.js";
 
 function toMessageItem(docSnap) {
   return { _id: docSnap.id, ...docSnap.data() };
@@ -32,7 +33,7 @@ export function isMessageVisibleToSchool(profile = {}, schoolId = "", message = 
   return schoolMatches && roleMatches;
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (!applyCors(req, res, "GET,OPTIONS")) return;
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "GET") return res.status(405).end();
@@ -59,6 +60,9 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, messages });
   } catch (error) {
     console.error("superadmin-messages error:", error);
+    await captureServerError(error, { endpoint: "superadmin-messages" });
     return res.status(500).json({ error: "Erreur serveur" });
   }
 }
+
+export default withObservability(handler);

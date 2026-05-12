@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { initAdmin } from "./_lib/firebase-admin.js";
-import { captureServerError } from "./_lib/observability.js";
+import { captureServerError, withObservability } from "./_lib/observability.js";
 import {
   applyCors,
   isValidSchoolId,
@@ -53,7 +53,7 @@ export function isEligibleProPayment(status, amount, minimumAmount = getMinimumP
   return status === "SUCCESS" && normalizePaymentAmount(amount) >= minimumAmount;
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (!applyCors(req, res, "POST,OPTIONS")) return;
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).end();
@@ -169,3 +169,5 @@ export default async function handler(req, res) {
 
   return res.status(200).json({ received: true, status });
 }
+
+export default withObservability(handler);

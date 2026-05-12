@@ -3,7 +3,7 @@ import { getFirestore } from "firebase-admin/firestore";
 import bcrypt from "bcryptjs";
 import { applyPasswordTarpit } from "../auth-tarpit.js";
 import { initAdmin } from "../firebase-admin.js";
-import { captureServerError } from "../observability.js";
+import { captureServerError, withObservability } from "../observability.js";
 import { migrateParentAccountLinks } from "../parent-links-migration.js";
 import { buildSessionAccountPayload, buildUserProfilePayload } from "../user-profiles.js";
 import {
@@ -23,7 +23,7 @@ const LOGIN_RATE_LIMIT = {
   windowMs: 15 * 60 * 1000,
 };
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (!applyCors(req, res)) return;
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).end();
@@ -184,3 +184,5 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Erreur serveur" });
   }
 }
+
+export default withObservability(handler);

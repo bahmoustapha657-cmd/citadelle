@@ -1,5 +1,6 @@
 import { getFirestore } from "firebase-admin/firestore";
 import { initAdmin } from "../firebase-admin.js";
+import { captureServerError, withObservability } from "../observability.js";
 import { syncEcolePublic } from "../ecole-public.js";
 import {
   applyCors,
@@ -56,7 +57,7 @@ export function buildSchoolLifecyclePatch(action, session, now = Date.now()) {
   return {};
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (!applyCors(req, res)) return;
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).end();
@@ -135,6 +136,9 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     console.error("school-lifecycle error:", error);
+    await captureServerError(error, { endpoint: "school-lifecycle" });
     return res.status(500).json({ error: "Erreur lors de la mise a jour de l'ecole." });
   }
 }
+
+export default withObservability(handler);

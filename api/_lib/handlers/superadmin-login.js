@@ -3,6 +3,7 @@ import { getFirestore } from "firebase-admin/firestore";
 import bcrypt from "bcryptjs";
 import { applyPasswordTarpit } from "../auth-tarpit.js";
 import { initAdmin } from "../firebase-admin.js";
+import { captureServerError, withObservability } from "../observability.js";
 import {
   applyCors,
   consumeRateLimit,
@@ -16,7 +17,7 @@ const SUPERADMIN_RATE_LIMIT = {
   windowMs: 60 * 60 * 1000,
 };
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (!applyCors(req, res)) return;
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).end();
@@ -119,6 +120,9 @@ export default async function handler(req, res) {
     });
   } catch (e) {
     console.error("superadmin-login error:", e);
+    await captureServerError(e, { endpoint: "superadmin-login" });
     return res.status(500).json({ error: "Erreur serveur" });
   }
 }
+
+export default withObservability(handler);

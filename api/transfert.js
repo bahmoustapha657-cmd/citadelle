@@ -7,6 +7,7 @@
 import crypto from "crypto";
 import { getFirestore } from "firebase-admin/firestore";
 import { initAdmin } from "./_lib/firebase-admin.js";
+import { captureServerError, withObservability } from "./_lib/observability.js";
 import {
   applyCors,
   isValidSchoolId,
@@ -119,7 +120,7 @@ async function findTransferByToken(db, token) {
   return snap.docs[0];
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (!applyCors(req, res, "GET,POST,OPTIONS")) return;
   if (req.method === "OPTIONS") return res.status(200).end();
 
@@ -302,9 +303,12 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true });
     } catch (e) {
       console.error("transfert accept error:", e);
+      await captureServerError(e, { endpoint: "transfert", action: "accept" });
       return res.status(500).json({ error: "Erreur acceptation transfert" });
     }
   }
 
   return res.status(400).json({ error: "Action inconnue" });
 }
+
+export default withObservability(handler);

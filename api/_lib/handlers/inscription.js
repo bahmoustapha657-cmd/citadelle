@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { getActiveRoleAccounts, getRoleConfig, getRoleSettingsMap } from "../../../shared/role-config.js";
 import { generateSecurePassword } from "../passwords.js";
 import { initAdmin } from "../firebase-admin.js";
+import { captureServerError, withObservability } from "../observability.js";
 import { syncEcolePublic } from "../ecole-public.js";
 import {
   applyCors,
@@ -48,7 +49,7 @@ const genSlug = (nom) =>
     .replace(/^-+|-+$/g, "")
     .slice(0, 30) || "ecole";
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (!applyCors(req, res)) return;
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).end();
@@ -175,6 +176,9 @@ export default async function handler(req, res) {
     });
   } catch (e) {
     console.error("inscription error:", e);
+    await captureServerError(e, { endpoint: "inscription" });
     return res.status(500).json({ error: "Erreur serveur" });
   }
 }
+
+export default withObservability(handler);

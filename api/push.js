@@ -1,6 +1,7 @@
 import webpush from "web-push";
 import { getFirestore } from "firebase-admin/firestore";
 import { initAdmin } from "./_lib/firebase-admin.js";
+import { captureServerError, withObservability } from "./_lib/observability.js";
 import {
   applyCors,
   isValidSchoolId,
@@ -14,7 +15,7 @@ webpush.setVapidDetails(
   process.env.VAPID_PRIVATE_KEY || ""
 );
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (!applyCors(req, res)) return;
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).end();
@@ -72,6 +73,9 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, envoyes, expirés });
   } catch (e) {
     console.error("push error:", e);
+    await captureServerError(e, { endpoint: "push" });
     return res.status(500).json({ error: "Erreur envoi push" });
   }
 }
+
+export default withObservability(handler);

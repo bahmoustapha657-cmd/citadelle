@@ -1,5 +1,6 @@
 import { getFirestore } from "firebase-admin/firestore";
 import { initAdmin } from "../firebase-admin.js";
+import { withObservability } from "../observability.js";
 import { syncEcolePublic } from "../ecole-public.js";
 import {
   applyCors,
@@ -27,7 +28,7 @@ async function backfillAll(db) {
   return { ok: true, synced };
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (!applyCors(req, res)) return;
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).end();
@@ -81,3 +82,5 @@ export default async function handler(req, res) {
 
   return res.status(400).json({ error: "Action inconnue" });
 }
+
+export default withObservability(handler);

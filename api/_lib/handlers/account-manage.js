@@ -11,6 +11,7 @@ import {
   parentAccountsShareStudent,
 } from "../account-links.js";
 import { initAdmin } from "../firebase-admin.js";
+import { withObservability } from "../observability.js";
 import { buildSessionAccountPayload, buildUserProfilePayload } from "../user-profiles.js";
 import {
   applyCors,
@@ -186,7 +187,7 @@ async function updateAuthIdentity(authAdmin, uid, { email, nom, active }) {
   }
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (!applyCors(req, res)) return;
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).end();
@@ -651,5 +652,7 @@ export default async function handler(req, res) {
 
   return res.status(400).json({ error: "Action inconnue" });
 }
+
+export default withObservability(handler);
 
 

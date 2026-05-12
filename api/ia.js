@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { initAdmin } from "./_lib/firebase-admin.js";
+import { captureServerError, withObservability } from "./_lib/observability.js";
 import { applyCors, requireEnv, requireSession } from "./_lib/security.js";
 
 const DEFAULT_MODEL = "claude-opus-4-5";
@@ -50,7 +51,7 @@ function extractTextContent(message) {
     .trim();
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (!applyCors(req, res)) return;
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") {
@@ -112,6 +113,9 @@ export default async function handler(req, res) {
     });
   } catch (e) {
     console.error("assistant superadmin error:", e);
+    await captureServerError(e, { endpoint: "ia" });
     return res.status(500).json({ error: "Erreur lors de la generation du brouillon." });
   }
 }
+
+export default withObservability(handler);
