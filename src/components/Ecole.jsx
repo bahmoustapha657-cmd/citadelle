@@ -1,6 +1,7 @@
 import React, { useContext, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { C, peutModifier } from "../constants";
+import { getDefaultPeriode, getPeriodesForSchool } from "../period-utils";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
 import { getActiveNoteForms } from "../evaluation-forms";
@@ -51,7 +52,8 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
     if(!classe||classe==="all") return matieres;
     return matieres.filter(m=>!m.classes||!m.classes.length||m.classes.includes(classe));
   };
-  const [periodeB,setPeriodeB]=useState("T1");
+  // Périodes scolaires actives (T1/T2/T3 par défaut, ou S1/S2 ou mois selon schoolInfo.periodicite).
+  // Calculées dans le composant pour pouvoir initialiser les states ci-dessous.
   const [rechercheMatricule,setRechercheMatricule]=useState("");
   const [ensCompte,setEnsCompte]=useState(null);
   const [formC,setFormC]=useState({});
@@ -61,11 +63,14 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
   const [importEnCours,setImportEnCours]=useState(false);
   const [notesVue,setNotesVue]=useState("liste"); // "liste" | "grille"
   const [grilleClasse,setGrilleClasse]=useState("all");
-  const [grillePeriode,setGrillePeriode]=useState("T1");
   const [grilleChanges,setGrilleChanges]=useState({}); // {"eleveId|matiere": note}
   const [grilleSaving,setGrilleSaving]=useState(false);
   const chg=k=>e=>setForm(p=>({...p,[k]:e.target.value}));
   const {schoolId, schoolInfo, moisAnnee, toast, logAction, envoyerPush} = useContext(SchoolContext);
+  const periodes = getPeriodesForSchool(schoolInfo, moisAnnee);
+  const defaultPeriode = periodes[0] || getDefaultPeriode(schoolInfo);
+  const [periodeB,setPeriodeB]=useState(defaultPeriode);
+  const [grillePeriode,setGrillePeriode]=useState(defaultPeriode);
   const noteForms = getActiveNoteForms(schoolInfo, isPrimarySection ? "primaire" : "secondaire");
   const defaultNoteType = noteForms[0]?.value || "Devoir";
   const [grilleType,setGrilleType]=useState(defaultNoteType);
@@ -255,6 +260,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
 
       {/* ── NOTES ── */}
       {tab==="notes"&&<NotesTab
+        periodes={periodes}
         notes={notes}
         cN={cN}
         ajN={ajN}
@@ -334,6 +340,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
 
       {/* ── BULLETINS ── */}
       {tab==="bulletins"&&<BulletinsTab
+        periodes={periodes}
         rechercheMatricule={rechercheMatricule}
         setRechercheMatricule={setRechercheMatricule}
         periodeB={periodeB}
@@ -364,6 +371,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
 
       {/* ── LIVRETS ── */}
       {tab==="livrets"&&<LivretsTab
+        periodes={periodes}
         cleEleves={cleEleves} cleNotes={cleNotes}
         matieres={matieres} maxNote={maxNote}
         userRole={userRole} annee={annee}

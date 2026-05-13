@@ -7,6 +7,7 @@ import { getEvaluationLabel, resolveCanonicalNoteType } from "../../evaluation-f
 const loadXLSX = () => import("xlsx");
 
 export function NotesTab({
+  periodes = ["T1", "T2", "T3"],
   notes,
   cN,
   ajN,
@@ -68,10 +69,10 @@ export function NotesTab({
         )}>📥 Export</Btn>
         <Btn sm v="ghost" onClick={()=>exportExcel(`Modele_Notes`,
           ["Élève (Nom Prénom)","Matière","Type","Période",`Note (/${maxNote})`],
-          eleves.slice(0,3).map(e=>[`${e.nom} ${e.prenom}`,matieres[0]?.nom||"Maths",noteForms[0]?.label||"Devoir","T1",Math.round(maxNote*0.7)])
+          eleves.slice(0,3).map(e=>[`${e.nom} ${e.prenom}`,matieres[0]?.nom||"Maths",noteForms[0]?.label||"Devoir",periodes[0]||"T1",Math.round(maxNote*0.7)])
         )}>📋 Modèle</Btn>
         {canCreate&&<Btn sm v="vert" onClick={()=>setModal("import_notes")}>⬆️ Importer</Btn>}
-        {canCreate&&<Btn onClick={()=>{setForm({periode:"T1",type:defaultNoteType});setModal("add_n");}}>+ Saisir</Btn>}
+        {canCreate&&<Btn onClick={()=>{setForm({periode:periodes[0]||"T1",type:defaultNoteType});setModal("add_n");}}>+ Saisir</Btn>}
       </div>
 
       {/* ── VUE GRILLE ── */}
@@ -128,7 +129,7 @@ export function NotesTab({
               </select>
               <select value={grillePeriode} onChange={e=>setGrillePeriode(e.target.value)}
                 style={{border:"1px solid #b0c4d8",borderRadius:7,padding:"6px 10px",fontSize:12}}>
-                <option>T1</option><option>T2</option><option>T3</option>
+                {periodes.map(p=><option key={p} value={p}>{p}</option>)}
               </select>
               <select value={grilleType} onChange={e=>setGrilleType(e.target.value)}
                 style={{border:"1px solid #b0c4d8",borderRadius:7,padding:"6px 10px",fontSize:12}}>
@@ -229,7 +230,7 @@ export function NotesTab({
             const eleveNom = String(r[0]||"").trim();
             const matiere  = String(r[1]||"").trim();
             const type     = resolveCanonicalNoteType(String(r[2]||(noteForms[0]?.label||"Devoir")).trim(), schoolInfo, isPrimarySection ? "primaire" : "secondaire");
-            const periode  = String(r[3]||"T1").trim();
+            const periode  = String(r[3]||periodes[0]||"T1").trim();
             const note     = Number(String(r[4]||"").replace(",","."));
             const eleve    = eleves.find(e=>`${e.nom} ${e.prenom}`.toLowerCase()===eleveNom.toLowerCase());
             const erreurs  = [];
@@ -316,8 +317,8 @@ export function NotesTab({
             {noteForms.map(item=><option key={item.id} value={item.value}>{item.label}</option>)}
           </Selec>
           <Input label={`Note (/${maxNote})`} type="number" min="0" max={maxNote} step="0.25" value={form.note||""} onChange={chg("note")}/>
-          <Selec label="Période" value={form.periode||"T1"} onChange={chg("periode")}>
-            <option>T1</option><option>T2</option><option>T3</option>
+          <Selec label="Période" value={form.periode||periodes[0]||"T1"} onChange={chg("periode")}>
+            {periodes.map(p=><option key={p} value={p}>{p}</option>)}
           </Selec>
         </div>
         <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>

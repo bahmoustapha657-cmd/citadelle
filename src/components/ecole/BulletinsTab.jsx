@@ -5,6 +5,7 @@ import { imprimerBulletin, imprimerBulletinsGroupes, imprimerFicheCompositions }
 import { getGeneralAverage } from "../../note-utils";
 
 export function BulletinsTab({
+  periodes = ["T1", "T2", "T3"],
   rechercheMatricule,
   setRechercheMatricule,
   periodeB,
@@ -43,7 +44,7 @@ export function BulletinsTab({
           style={{border:"1px solid #b0c4d8",borderRadius:7,padding:"6px 10px",fontSize:12,width:200}}/>
         <select value={periodeB} onChange={e=>setPeriodeB(e.target.value)}
           style={{border:"1px solid #b0c4d8",borderRadius:7,padding:"6px 10px",fontSize:12,background:"#fff"}}>
-          <option>T1</option><option>T2</option><option>T3</option>
+          {periodes.map(p=><option key={p} value={p}>{p}</option>)}
         </select>
         <select value={filtreClasse} onChange={e=>setFiltreClasse(e.target.value)}
           style={{border:"1px solid #b0c4d8",borderRadius:7,padding:"6px 10px",fontSize:12,background:"#fff"}}>
