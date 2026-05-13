@@ -2,7 +2,12 @@ import React, { useEffect, useRef, useState } from "react";
 import { apiFetch, getAuthHeaders } from "../apiClient";
 import { C, PLANS, PLAN_DUREES } from "../constants";
 import { db } from "../firebaseDb";
-import { addDoc, collection, collectionGroup, doc, getDoc, getDocs, onSnapshot, setDoc, updateDoc } from "firebase/firestore";
+import { addDoc, collection, collectionGroup, doc, getDoc, getDocs, onSnapshot, setDoc, updateDoc, writeBatch } from "firebase/firestore";
+
+const COLLECTIONS_ANNUELLES = [
+  "notesPrimaire","notesCollege","notesLycee",
+  "recettes","depenses","salaires","bons","versements","livrets",
+];
 import SuperAdminAssistant from "./SuperAdminAssistant";
 import CommunicationsAdmin from "./CommunicationsAdmin";
 
@@ -30,6 +35,7 @@ function SuperAdminPanel() {
   const [planSaving, setPlanSaving] = useState(false);
   const [confirmDowngrade, setConfirmDowngrade] = useState(false);
   const [backfillEnCours, setBackfillEnCours] = useState(false);
+  const [migrationAnneeEnCours, setMigrationAnneeEnCours] = useState(false);
   const planPanelRef = useRef(null);
   const lifecycleLabels = {
     deactivate: {
@@ -62,6 +68,41 @@ function SuperAdminPanel() {
       bg: "#fef2f2",
       border: "#fca5a5",
     },
+  };
+
+  const lancerMigrationAnnee = async () => {
+    if(!confirm("Migrer toutes les données legacy sans champ `annee` ?\n\nL'année courante (config/annee) sera assignée à chaque doc des collections suivantes :\n- "+COLLECTIONS_ANNUELLES.join(", ")+"\n\nOpération sûre et idempotente (les docs ayant déjà `annee` sont ignorés).")) return;
+    setMigrationAnneeEnCours(true);
+    try {
+      const snapAnnee = await getDoc(doc(db,"config","annee"));
+      const annee = (snapAnnee.exists() && snapAnnee.data().valeur) || "2025-2026";
+      const ecolesSnap = await getDocs(collection(db,"ecoles"));
+      let totalMaj = 0;
+      let totalSkipped = 0;
+      let totalEcoles = 0;
+      for(const ecoleDoc of ecolesSnap.docs) {
+        const sid = ecoleDoc.id;
+        totalEcoles++;
+        for(const coll of COLLECTIONS_ANNUELLES) {
+          const collSnap = await getDocs(collection(db,"ecoles",sid,coll));
+          const aMigrer = collSnap.docs.filter(d => !d.data().annee);
+          totalSkipped += collSnap.size - aMigrer.length;
+          for(let i=0;i<aMigrer.length;i+=400) {
+            const batch = writeBatch(db);
+            for(const d of aMigrer.slice(i,i+400)) batch.update(d.ref,{annee});
+            await batch.commit();
+            totalMaj += Math.min(400, aMigrer.length-i);
+          }
+        }
+      }
+      setMsgSucces(`Migration terminée : ${totalMaj} doc(s) mis à jour, ${totalSkipped} ignoré(s) (déjà à jour), sur ${totalEcoles} école(s). Année assignée : ${annee}.`);
+      setTimeout(() => setMsgSucces(""), 8000);
+    } catch(e) {
+      setMsgSucces(`Erreur migration : ${e?.message || "échec"}`);
+      setTimeout(() => setMsgSucces(""), 6000);
+    } finally {
+      setMigrationAnneeEnCours(false);
+    }
   };
 
   const lancerBackfillPublic = async () => {
@@ -610,6 +651,11 @@ function SuperAdminPanel() {
         <button onClick={lancerBackfillPublic} disabled={backfillEnCours}
           style={{...S.btn("#6b7280"),background:"#eef2ff",color:"#3730a3",padding:"8px 14px",fontSize:13,opacity:backfillEnCours?0.6:1}}>
           {backfillEnCours ? "Synchro..." : "Sync ecoles publiques"}
+        </button>
+        <button onClick={lancerMigrationAnnee} disabled={migrationAnneeEnCours}
+          style={{...S.btn("#6b7280"),background:"#fef3c7",color:"#92400e",padding:"8px 14px",fontSize:13,opacity:migrationAnneeEnCours?0.6:1}}
+          title="Assigne le champ `annee` à toutes les données legacy (notes, recettes, dépenses, salaires, bons, versements, livrets).">
+          {migrationAnneeEnCours ? "Migration..." : "Migrer annee legacy"}
         </button>
       </div>
 

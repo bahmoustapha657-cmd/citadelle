@@ -55,6 +55,7 @@ function LivretsTab({cleEleves, cleNotes, matieres, maxNote, userRole, annee}) {
         numeroLivret: genNumeroLivret(),
         dateCreation: new Date().toISOString().slice(0,10),
         annees: [],
+        annee: annee||getAnnee(),
       });
       setLivretSelId(id);
       toast("Livret créé","success");

@@ -1,6 +1,6 @@
 import React, { useContext, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { C, peutModifier } from "../constants";
+import { C, getAnnee, peutModifier } from "../constants";
 import { getDefaultPeriode, getPeriodesForSchool } from "../period-utils";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
@@ -22,9 +22,14 @@ import { NotesTab } from "./ecole/NotesTab";
 
 function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns, userRole, annee, classesPredefinies, maxNote=20, matieresPredefinies=[], readOnly=false, verrouOuvert=false}) {
   const isPrimarySection = cleEns === "ensPrimaire";
+  const anneeCourante = annee || getAnnee();
+  const [anneeConsultee, setAnneeConsultee] = useState(anneeCourante);
+  // Vue archive : filtre les notes (les autres collections restent persistantes).
+  const enModeArchive = anneeConsultee !== anneeCourante;
+  const anneeFiltre = enModeArchive ? anneeConsultee : null;
   const {items:classes,chargement:cC,ajouter:ajC,modifier:modC,supprimer:supC}=useFirestore(cleClasses);
   const {items:ens,chargement:cEns,ajouter:ajEns,modifier:modEns,supprimer:supEns}=useFirestore(cleEns);
-  const {items:notes,chargement:cN,ajouter:ajN,supprimer:supN}=useFirestore(cleNotes);
+  const {items:notes,chargement:cN,ajouter:ajN,supprimer:supN}=useFirestore(cleNotes,{annee:anneeFiltre});
   const {items:eleves,chargement:cE,modifier:modE}=useFirestore(cleEleves);
   const {items:absences,chargement:cAbs,ajouter:ajAbs,supprimer:supAbs}=useFirestore(cleEleves+"_absences");
   const {items:enseignements,chargement:cEng,ajouter:ajEng,modifier:modEng,supprimer:supEng}=useFirestore(cleEns+"_enseignements");
@@ -74,8 +79,8 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
   const noteForms = getActiveNoteForms(schoolInfo, isPrimarySection ? "primaire" : "secondaire");
   const defaultNoteType = noteForms[0]?.value || "Devoir";
   const [grilleType,setGrilleType]=useState(defaultNoteType);
-  const canCreate = !readOnly;
-  const canEdit = !readOnly && (peutModifier(userRole) || verrouOuvert);
+  const canCreate = !readOnly && !enModeArchive;
+  const canEdit = !readOnly && !enModeArchive && (peutModifier(userRole) || verrouOuvert);
   const moy=notes.length?(notes.reduce((s,n)=>s+Number(n.note),0)/notes.length).toFixed(1):"—";
   const classesUniq=[...new Set(eleves.map(e=>e.classe))].filter(Boolean);
   const sortAlphaEcole = arr => {
@@ -151,13 +156,25 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
     setModal(null);
   };
 
+  const anneeBase = Number(String(anneeCourante).split("-")[0]) || new Date().getFullYear();
+  const anneesDispo = Array.from({length:7},(_,i)=>`${anneeBase-i}-${anneeBase-i+1}`);
+
   return (
     <div style={{padding:"22px 26px"}}>
-      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18}}>
+      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18,flexWrap:"wrap"}}>
         {schoolInfo?.logo&&<img src={schoolInfo.logo} alt="" style={{width:48,height:48,objectFit:"contain"}}/>}
-        <div>
+        <div style={{flex:1,minWidth:200}}>
           <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.blueDark}}>{titre}</h2>
           <p style={{margin:0,fontSize:12,color:couleur,fontWeight:700}}>Gestion des classes, élèves, notes et discipline</p>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <label style={{fontSize:12,color:"#64748b",fontWeight:600}}>Année consultée :</label>
+          <select value={anneeConsultee} onChange={e=>setAnneeConsultee(e.target.value)}
+            style={{padding:"6px 10px",borderRadius:8,border:`1px solid ${enModeArchive?"#f59e0b":"#cbd5e1"}`,fontSize:13,fontWeight:700,
+              background:enModeArchive?"#fef3c7":"#fff",color:enModeArchive?"#92400e":C.blueDark,cursor:"pointer"}}>
+            {anneesDispo.map(a=><option key={a} value={a}>{a}{a===anneeCourante?" (courante)":""}</option>)}
+          </select>
+          {enModeArchive&&<Badge color="orange">📚 Archive — lecture seule</Badge>}
         </div>
       </div>
       {readOnly&&<LectureSeule/>}
@@ -260,6 +277,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
 
       {/* ── NOTES ── */}
       {tab==="notes"&&<NotesTab
+        annee={annee}
         periodes={periodes}
         notes={notes}
         cN={cN}

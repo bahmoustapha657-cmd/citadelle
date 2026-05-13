@@ -62,16 +62,21 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   // readOnly=true → admin/direction : zéro action
   // canEdit → modifier/supprimer des enregistrements existants (verrou admin requis sauf admin lui-même — mais admin est readOnly)
   // canCreate → ajouter de nouveaux enregistrements (toujours permis si !readOnly)
-  const canCreate = !readOnly;
-  const canEdit = !readOnly && (peutModifier(userRole) || verrouOuvert);
-  const canEditEleves = !readOnly && (peutModifierEleves(userRole) || verrouOuvert);
+  const anneeCourante = annee || getAnnee();
+  const [anneeConsultee, setAnneeConsultee] = useState(anneeCourante);
+  // Vue archive : filtre lecture mais désactive la création (les écritures iraient sur l'année courante).
+  const enModeArchive = anneeConsultee !== anneeCourante;
+  const anneeFiltre = enModeArchive ? anneeConsultee : null;
+  const canCreate = !readOnly && !enModeArchive;
+  const canEdit = !readOnly && !enModeArchive && (peutModifier(userRole) || verrouOuvert);
+  const canEditEleves = !readOnly && !enModeArchive && (peutModifierEleves(userRole) || verrouOuvert);
   const {schoolId, schoolInfo, moisAnnee, moisSalaire, toast, logAction, envoyerPush} = useContext(SchoolContext);
-  const {items:recettes,chargement:cR,ajouter:ajR,modifier:modR,supprimer:supR}=useFirestore("recettes");
-  const {items:depenses,chargement:cD,ajouter:ajD,modifier:modD,supprimer:supD}=useFirestore("depenses");
-  const {items:salaires,chargement:cS,ajouter:ajS,modifier:modS,supprimer:supS}=useFirestore("salaires");
-  const {items:bons,ajouter:ajBon,modifier:modBon,supprimer:supBon}=useFirestore("bons");
+  const {items:recettes,chargement:cR,ajouter:ajR,modifier:modR,supprimer:supR}=useFirestore("recettes",{annee:anneeFiltre});
+  const {items:depenses,chargement:cD,ajouter:ajD,modifier:modD,supprimer:supD}=useFirestore("depenses",{annee:anneeFiltre});
+  const {items:salaires,chargement:cS,ajouter:ajS,modifier:modS,supprimer:supS}=useFirestore("salaires",{annee:anneeFiltre});
+  const {items:bons,ajouter:ajBon,modifier:modBon,supprimer:supBon}=useFirestore("bons",{annee:anneeFiltre});
   const {items:personnel,chargement:cPers,ajouter:ajPers,modifier:modPers,supprimer:supPers}=useFirestore("personnel");
-  const {items:versements,chargement:cV,ajouter:ajV,modifier:modV,supprimer:supV}=useFirestore("versements");
+  const {items:versements,chargement:cV,ajouter:ajV,modifier:modV,supprimer:supV}=useFirestore("versements",{annee:anneeFiltre});
   const {items:elevesC,chargement:cEC,ajouter:ajEC,modifier:modEC_full,supprimer:supEC,modifierChamp:modEC}=useFirestore("elevesCollege");
   const {items:elevesP,chargement:cEP,ajouter:ajEP,modifier:modEP_full,supprimer:supEP,modifierChamp:modEP}=useFirestore("elevesPrimaire");
   const {items:elevesL,chargement:cEL,ajouter:ajEL,modifier:modEL_full,supprimer:supEL,modifierChamp:modEL}=useFirestore("elevesLycee");
@@ -217,7 +222,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   const enreg=(aj,mod,extra={})=>{
     if(readOnly) return;
     const r={...form,...extra};
-    if(modal.startsWith("add"))aj(r);else mod(r);
+    if(modal.startsWith("add"))aj({...r,annee:annee||anneeConsultee});else mod(r);
     setModal(null);
   };
 
@@ -311,7 +316,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
         await modS(mergeSalaryWithManualFields(existant, salaireCalcule));
         nbResync++;
       } else {
-        await ajS({...salaireCalcule,bon:0,revision:0});
+        await ajS({...salaireCalcule,bon:0,revision:0,annee:annee||anneeConsultee});
         nbCree++;
       }
     }
@@ -329,7 +334,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
         await modS(mergeSalaryWithManualFields(existant, salaireCalcule));
         nbResync++;
       } else {
-        await ajS({...salaireCalcule,bon:0,revision:0});
+        await ajS({...salaireCalcule,bon:0,revision:0,annee:annee||anneeConsultee});
         nbCree++;
       }
     }
@@ -344,7 +349,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
         await modS(mergeSalaryWithManualFields(existant, salaireCalcule));
         nbResync++;
       } else {
-        await ajS({...salaireCalcule,bon:0,revision:0});
+        await ajS({...salaireCalcule,bon:0,revision:0,annee:annee||anneeConsultee});
         nbCree++;
       }
     }
@@ -442,7 +447,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
 
     const w = window.open("","_blank");
     w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/>
-    <title>États de Salaires — ${moisSel} ${getAnnee()}</title>
+    <title>États de Salaires — ${moisSel} ${anneeConsultee}</title>
     <style>
       ${PRINT_RESET}
       *{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
@@ -482,7 +487,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
       ${enteteDoc(schoolInfo, schoolInfo?.logo)}
       <div class="titre-wrap">
         <div class="titre">ÉTATS DE SALAIRES</div>
-        <div class="sous-titre">MOIS DE ${moisSel.toUpperCase()} — ANNÉE SCOLAIRE ${getAnnee()}</div>
+        <div class="sous-titre">MOIS DE ${moisSel.toUpperCase()} — ANNÉE SCOLAIRE ${anneeConsultee}</div>
       </div>
 
       <div class="stats-row">
@@ -586,13 +591,25 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
     {id:"mens",label:"Mensualités"},
     {id:"transferts",label:"🔄 Transferts"}];
 
+  const anneeBase = Number(String(anneeCourante).split("-")[0]) || new Date().getFullYear();
+  const anneesDispo = Array.from({length:7},(_,i)=>`${anneeBase-i}-${anneeBase-i+1}`);
+
   return (
     <div style={{padding:"22px 26px"}}>
-      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18}}>
+      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18,flexWrap:"wrap"}}>
         {schoolInfo?.logo&&<img src={schoolInfo.logo} alt="" style={{width:48,height:48,objectFit:"contain"}}/>}
-        <div>
+        <div style={{flex:1,minWidth:200}}>
           <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.blueDark}}>Comptabilité</h2>
           <p style={{margin:0,fontSize:12,color:C.green,fontWeight:600}}>Finances, salaires, versements & mensualités</p>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <label style={{fontSize:12,color:"#64748b",fontWeight:600}}>Année consultée :</label>
+          <select value={anneeConsultee} onChange={e=>setAnneeConsultee(e.target.value)}
+            style={{padding:"6px 10px",borderRadius:8,border:`1px solid ${enModeArchive?"#f59e0b":"#cbd5e1"}`,fontSize:13,fontWeight:700,
+              background:enModeArchive?"#fef3c7":"#fff",color:enModeArchive?"#92400e":C.blueDark,cursor:"pointer"}}>
+            {anneesDispo.map(a=><option key={a} value={a}>{a}{a===anneeCourante?" (courante)":""}</option>)}
+          </select>
+          {enModeArchive&&<Badge color="orange">📚 Vue archive — lecture seule</Badge>}
         </div>
       </div>
       {readOnly&&<LectureSeule/>}

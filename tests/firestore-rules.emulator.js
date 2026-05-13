@@ -1,7 +1,7 @@
 // Tests des règles firestore.rules contre l'émulateur Firestore.
 // Démarré via `npm run test:rules` (qui lance l'émulateur puis ce fichier).
 //
-// Couvre 14 invariants :
+// Couvre 15 invariants :
 //   1. Isolation multi-tenant
 //   2. Admin lecture seule (pas d'écriture client sur recettes/depenses/salaires/notes)
 //   3. Comptes intouchables côté client
@@ -16,6 +16,7 @@
 //  12. demandes_plan — création direction/comptable, modif superadmin
 //  13. Top-level (/users, /superadmins, /config, /transferts)
 //  14. /superadmin_messages + sous-collection lectures + collection group demandes_plan
+//  15. Archive multi-années : lecture cross-année autorisée (isolation par schoolId, pas par annee)
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -28,13 +29,16 @@ import {
   initializeTestEnvironment,
 } from "@firebase/rules-unit-testing";
 import {
+  collection,
   collectionGroup,
   doc,
   getDoc,
   getDocs,
+  query,
   setDoc,
   updateDoc,
   deleteDoc,
+  where,
 } from "firebase/firestore";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -853,5 +857,51 @@ describe("14. superadmin_messages & collection group", () => {
   test("collection group demandes_plan : direction NE PEUT PAS lister", async () => {
     const db = asUser({ schoolId: SCHOOL_A, role: "direction" });
     await assertFails(getDocs(collectionGroup(db, "demandes_plan")));
+  });
+});
+
+// ───────────────────────────────────────────────────────────
+// 15. Archive multi-années — lecture cross-année autorisée
+// ───────────────────────────────────────────────────────────
+// L'isolation Firestore est faite par schoolId, pas par annee. Le champ `annee`
+// est purement applicatif : c'est le client (useFirestore) qui filtre via
+// where("annee","=="). Les rules ne doivent jamais bloquer une lecture sur la
+// base de `annee` — sinon l'archive multi-années serait cassée.
+describe("15. Archive multi-années — lecture cross-année", () => {
+  beforeEach(async () => {
+    await seed(async (db) => {
+      await setDoc(doc(db, `ecoles/${SCHOOL_A}/recettes/r-courant`), { montant: 100, annee: "2025-2026" });
+      await setDoc(doc(db, `ecoles/${SCHOOL_A}/recettes/r-passe`), { montant: 50, annee: "2024-2025" });
+      await setDoc(doc(db, `ecoles/${SCHOOL_A}/recettes/r-legacy`), { montant: 25 }); // pas de champ annee
+      await setDoc(doc(db, `ecoles/${SCHOOL_A}/notesCollege/n-passe`), { val: 14, annee: "2024-2025" });
+      await setDoc(doc(db, `ecoles/${SCHOOL_B}/recettes/r-b-passe`), { montant: 999, annee: "2024-2025" });
+    });
+  });
+
+  test("direction lit une recette d'année passée (même schoolId)", async () => {
+    const db = asUser({ schoolId: SCHOOL_A, role: "direction" });
+    await assertSucceeds(getDoc(doc(db, `ecoles/${SCHOOL_A}/recettes/r-passe`)));
+  });
+
+  test("direction lit une recette legacy sans champ annee", async () => {
+    const db = asUser({ schoolId: SCHOOL_A, role: "direction" });
+    await assertSucceeds(getDoc(doc(db, `ecoles/${SCHOOL_A}/recettes/r-legacy`)));
+  });
+
+  test("direction peut requêter recettes filtrées par annee=2024-2025", async () => {
+    const db = asUser({ schoolId: SCHOOL_A, role: "direction" });
+    const q = query(collection(db, `ecoles/${SCHOOL_A}/recettes`), where("annee", "==", "2024-2025"));
+    await assertSucceeds(getDocs(q));
+  });
+
+  test("primaire peut requêter notesCollege de SA section filtré par annee", async () => {
+    const db = asUser({ schoolId: SCHOOL_A, role: "college" });
+    const q = query(collection(db, `ecoles/${SCHOOL_A}/notesCollege`), where("annee", "==", "2024-2025"));
+    await assertSucceeds(getDocs(q));
+  });
+
+  test("isolation préservée : direction de A NE PEUT PAS lire recette de B même année passée", async () => {
+    const db = asUser({ schoolId: SCHOOL_A, role: "direction" });
+    await assertFails(getDoc(doc(db, `ecoles/${SCHOOL_B}/recettes/r-b-passe`)));
   });
 });

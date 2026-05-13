@@ -5,7 +5,9 @@ import {
   deleteDoc,
   doc,
   onSnapshot,
+  query,
   updateDoc,
+  where,
 } from "firebase/firestore";
 import { db } from "../firebaseDb";
 import { SchoolContext } from "../contexts/SchoolContext";
@@ -26,13 +28,17 @@ function firestoreReducer(state, action) {
   }
 }
 
-export function useFirestore(nomCollection) {
+export function useFirestore(nomCollection, options = {}) {
   const { schoolId } = useContext(SchoolContext);
   const [{ items, chargement }, dispatch] = useReducer(firestoreReducer, initialState);
 
+  const anneeFiltre = options.annee || null;
+
   useEffect(() => {
     dispatch({ type: "loading" });
-    const unsub = onSnapshot(collection(db, "ecoles", schoolId, nomCollection), (snap) => {
+    const ref = collection(db, "ecoles", schoolId, nomCollection);
+    const q = anneeFiltre ? query(ref, where("annee", "==", anneeFiltre)) : ref;
+    const unsub = onSnapshot(q, (snap) => {
       dispatch({
         type: "success",
         items: snap.docs.map((item) => ({ ...item.data(), _id: item.id })),
@@ -40,7 +46,7 @@ export function useFirestore(nomCollection) {
     });
 
     return () => unsub();
-  }, [nomCollection, schoolId]);
+  }, [nomCollection, schoolId, anneeFiltre]);
 
   const ajouter = async (item) => {
     const { id: _idIgnored, _id, ...data } = item;

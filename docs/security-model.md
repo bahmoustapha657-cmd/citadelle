@@ -81,6 +81,18 @@ Implémentation : transaction Firestore atomique sur `_rateLimits/{scope}_{hash}
 - Lecture réservée à `direction` et `superadmin` (l'admin ne peut pas effacer ses traces).
 - Écriture côté client : `false` (seul l'API y écrit via Admin SDK).
 
+### 2.6 Archive multi-années (champ `annee`)
+
+Depuis 2026-05-13, les documents annuels (notes, recettes, dépenses, salaires, bons, versements, livrets) portent un champ `annee` (ex. `"2025-2026"`). Le sélecteur "Année consultée" dans Comptabilité et École permet de lire l'historique d'une année passée.
+
+**Décision de sécurité** : l'isolation Firestore est faite **uniquement par `schoolId`**, jamais par `annee`. Les rules ne contrôlent ni le contenu du champ `annee` à l'écriture, ni la valeur passée dans un `where("annee", "==", …)` à la lecture. Le filtrage est purement applicatif (côté `useFirestore`).
+
+**Conséquence** : un utilisateur authentifié de l'école A peut lire **toutes** les années de l'école A. Les rules garantissent uniquement qu'il ne lit jamais l'école B. C'est l'UI qui décide quelle année afficher.
+
+**Mode archive** : quand `anneeConsultee !== anneeCourante`, l'UI désactive création/édition (`canCreate=false`, `canEdit=false`). Ce n'est PAS une garantie de sécurité — un client malveillant peut toujours écrire dans une année passée via le SDK direct. Si cela devient un risque, prévoir un check rules sur la mutabilité (ex. interdire `update` des docs où `annee != anneeCourante`).
+
+**Tests** : suite "15. Archive multi-années" dans `firestore-rules.emulator.js` vérifie que la lecture cross-année passe et que l'isolation par schoolId reste intacte.
+
 ---
 
 ## 3. Matrice rôle × ressource × action
@@ -291,6 +303,7 @@ Note : 🔒 sur `notes*` pour enseignant = via `teacher-portal` API, jamais en d
 ✅ Reset de mdp pour les rôles système réservé à direction (depuis 2026-04-30).
 ✅ Configuration des rôles réservée à direction (depuis 2026-04-30).
 ✅ Catch-all des collections : whitelist stricte (refus implicite hors liste).
+✅ Archive multi-années : isolation par `schoolId` uniquement, jamais par `annee` (cf. § 2.6).
 
 ---
 

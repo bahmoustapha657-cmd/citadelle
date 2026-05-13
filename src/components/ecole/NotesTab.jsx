@@ -1,5 +1,5 @@
 import React from "react";
-import { C } from "../../constants";
+import { C, getAnnee } from "../../constants";
 import { Badge, Btn, Card, Chargement, Input, Modale, Selec, TD, THead, TR, Vide } from "../ui";
 import { exportExcel } from "../../reports";
 import { getEvaluationLabel, resolveCanonicalNoteType } from "../../evaluation-forms";
@@ -7,6 +7,7 @@ import { getEvaluationLabel, resolveCanonicalNoteType } from "../../evaluation-f
 const loadXLSX = () => import("xlsx");
 
 export function NotesTab({
+  annee,
   periodes = ["T1", "T2", "T3"],
   notes,
   cN,
@@ -110,8 +111,8 @@ export function NotesTab({
             if(val===""||isNaN(Number(val))) continue;
             const exist = getNoteExist(eleveId, mat);
             const eleve = eleves.find(e=>e._id===eleveId);
-            if(exist){ await ajN({...exist,note:Number(val)}); }
-            else { await ajN({eleveId,eleveNom:`${eleve?.nom||""} ${eleve?.prenom||""}`.trim(),matiere:mat,type:grilleType,periode:grillePeriode,note:Number(val)}); }
+            if(exist){ await ajN({...exist,note:Number(val),annee:exist.annee||annee||getAnnee()}); }
+            else { await ajN({eleveId,eleveNom:`${eleve?.nom||""} ${eleve?.prenom||""}`.trim(),matiere:mat,type:grilleType,periode:grillePeriode,note:Number(val),annee:annee||getAnnee()}); }
             nb++;
           }
           setGrilleChanges({});
@@ -284,7 +285,7 @@ export function NotesTab({
             setImportEnCours(true);
             let count=0;
             for(const l of importPreview.valides){
-              await ajN({eleveNom:l.eleveNom,eleveId:l.eleveId,matiere:l.matiere,type:l.type,periode:l.periode,note:l.note});
+              await ajN({eleveNom:l.eleveNom,eleveId:l.eleveId,matiere:l.matiere,type:l.type,periode:l.periode,note:l.note,annee:annee||getAnnee()});
               count++;
             }
             setImportEnCours(false);
@@ -323,7 +324,7 @@ export function NotesTab({
         </div>
         <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
           <Btn v="ghost" onClick={()=>setModal(null)}>Annuler</Btn>
-          <Btn onClick={()=>{ajN({...form,type:resolveCanonicalNoteType(form.type, schoolInfo, isPrimarySection ? "primaire" : "secondaire"),note:Number(form.note)});setModal(null);}}>Enregistrer</Btn>
+          <Btn onClick={()=>{ajN({...form,type:resolveCanonicalNoteType(form.type, schoolInfo, isPrimarySection ? "primaire" : "secondaire"),note:Number(form.note),annee:annee||getAnnee()});setModal(null);}}>Enregistrer</Btn>
         </div>
       </Modale>}
     </div>
