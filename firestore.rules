@@ -126,7 +126,10 @@ service cloud.firestore {
       allow update: if aUnRole(["superadmin"])
                    || (appartientEcole(schoolId)
                        && aUnRole(["direction"])
-                       && !request.resource.data.diff(resource.data).affectedKeys().hasAny(planFields()));
+                       && !request.resource.data.diff(resource.data).affectedKeys().hasAny(planFields()))
+                   || (appartientEcole(schoolId)
+                       && aUnRole(["comptable"])
+                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["monnaie"]));
 
       allow delete: if false;
 

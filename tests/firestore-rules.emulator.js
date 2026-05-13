@@ -429,6 +429,27 @@ describe("7. Champs plan protégés", () => {
     );
   });
 
+  test("comptable PEUT muter UNIQUEMENT le champ monnaie", async () => {
+    const db = asUser({ schoolId: SCHOOL_A, role: "comptable" });
+    await assertSucceeds(
+      updateDoc(doc(db, `ecoles/${SCHOOL_A}`), { monnaie: "XOF" }),
+    );
+  });
+
+  test("comptable NE PEUT PAS muter d'autres champs (ex: nom)", async () => {
+    const db = asUser({ schoolId: SCHOOL_A, role: "comptable" });
+    await assertFails(
+      updateDoc(doc(db, `ecoles/${SCHOOL_A}`), { nom: "Hacked" }),
+    );
+  });
+
+  test("comptable NE PEUT PAS muter monnaie + autre champ ensemble", async () => {
+    const db = asUser({ schoolId: SCHOOL_A, role: "comptable" });
+    await assertFails(
+      updateDoc(doc(db, `ecoles/${SCHOOL_A}`), { monnaie: "USD", nom: "Hack" }),
+    );
+  });
+
   test("superadmin PEUT muter le champ plan", async () => {
     const db = asUser({ schoolId: "central", role: "superadmin" });
     await assertSucceeds(

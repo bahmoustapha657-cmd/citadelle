@@ -1,6 +1,6 @@
 import React, { useContext, useState } from "react";
 import { doc, updateDoc } from "firebase/firestore";
-import { C, TOUS_MOIS_LONGS, calcMoisAnnee } from "../constants";
+import { C, MONNAIES, TOUS_MOIS_LONGS, calcMoisAnnee, setMonnaie } from "../constants";
 import { PERIODICITES, getPeriodesForSchool } from "../period-utils";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
@@ -24,6 +24,7 @@ function ParametresEcole({ utilisateurRole = "", onSchoolClosed = null }) {
     couleur2: schoolInfo.couleur2||"#00C48C",
     logo: schoolInfo.logo||"",
     devise: schoolInfo.devise||"",
+    monnaie: schoolInfo.monnaie||"GNF",
     ministere: schoolInfo.ministere||"",
     ire: schoolInfo.ire||"",
     dpe: schoolInfo.dpe||"",
@@ -80,6 +81,9 @@ function ParametresEcole({ utilisateurRole = "", onSchoolClosed = null }) {
 
   const [couleursDetectees, setCouleursDetectees] = useState(null);
   const canManageLifecycle = schoolId && schoolId !== "superadmin" && ["direction","superadmin"].includes(utilisateurRole);
+  // Le comptable n'a accès qu'au sélecteur de monnaie (rules Firestore autorisent
+  // uniquement update de `monnaie` pour ce rôle — cf. firestore.rules §/ecoles).
+  const isComptableSeul = utilisateurRole === "comptable";
   const dangerConfig = {
     deactivate: {
       title: "Desactiver l'ecole",
@@ -165,6 +169,22 @@ function ParametresEcole({ utilisateurRole = "", onSchoolClosed = null }) {
   };
 
   const sauvegarder = async () => {
+    if(isComptableSeul) {
+      setChargement(true); setErreur("");
+      try {
+        const monnaie = (form.monnaie||"GNF").trim().toUpperCase();
+        await updateDoc(doc(db,"ecoles",schoolId), { monnaie });
+        setSchoolInfo(prev=>({...prev,monnaie}));
+        setMonnaie(monnaie);
+        setMsgSucces("Monnaie enregistrée.");
+        setTimeout(()=>setMsgSucces(""),3000);
+      } catch(e) {
+        setErreur("Erreur lors de la sauvegarde : "+(e.message||"réessayez."));
+      } finally {
+        setChargement(false);
+      }
+      return;
+    }
     if(!form.nom.trim()){setErreur("Le nom de l'école est requis.");return;}
     setChargement(true); setErreur("");
     try {
@@ -177,6 +197,7 @@ function ParametresEcole({ utilisateurRole = "", onSchoolClosed = null }) {
         couleur2: form.couleur2,
         logo: form.logo||null,
         devise: form.devise.trim(),
+        monnaie: (form.monnaie||"GNF").trim().toUpperCase(),
         ministere: form.ministere.trim(),
         ire: form.ire.trim(),
         dpe: form.dpe.trim(),
@@ -202,6 +223,7 @@ function ParametresEcole({ utilisateurRole = "", onSchoolClosed = null }) {
       };
       await updateDoc(doc(db,"ecoles",schoolId), data);
       setSchoolInfo(prev=>({...prev,...data}));
+      setMonnaie(data.monnaie);
       try {
         const headers = await getAuthHeaders({ "Content-Type": "application/json" });
         await apiFetch("/ecole-public-sync", {
@@ -318,6 +340,37 @@ function ParametresEcole({ utilisateurRole = "", onSchoolClosed = null }) {
     ...(canManageLifecycle ? [{id:"danger", label:"Danger"}] : []),
   ];
 
+  if(isComptableSeul) {
+    return (
+      <div style={{padding:"28px 32px",fontFamily:"'Segoe UI',system-ui,sans-serif",maxWidth:560,margin:"0 auto"}}>
+        <h2 style={{margin:"0 0 4px",fontSize:20,fontWeight:900,color:C.blueDark}}>💰 Monnaie de l'école</h2>
+        <p style={{margin:"0 0 20px",fontSize:12,color:"#9ca3af"}}>Choisissez la monnaie affichée pour tous les montants (recettes, dépenses, salaires).</p>
+        {msgSucces&&<div style={{background:"#d1fae5",border:"1px solid #6ee7b7",borderRadius:8,padding:"10px 16px",marginBottom:16,fontSize:13,color:"#065f46",fontWeight:600}}>✅ {msgSucces}</div>}
+        {erreur&&<div style={{background:"#fee2e2",border:"1px solid #fca5a5",borderRadius:8,padding:"10px 16px",marginBottom:16,fontSize:13,color:"#991b1b"}}>{erreur}</div>}
+        <div style={sec}>
+          <label style={lbl}>Monnaie utilisée pour les montants</label>
+          <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+            <select style={{...inp,maxWidth:180}} value={MONNAIES.includes((form.monnaie||"").toUpperCase())?form.monnaie.toUpperCase():"__autre__"}
+              onChange={e=>{
+                const v = e.target.value;
+                if(v==="__autre__") setForm(p=>({...p,monnaie:""}));
+                else setForm(p=>({...p,monnaie:v}));
+              }}>
+              {MONNAIES.map(m=><option key={m} value={m}>{m}</option>)}
+              <option value="__autre__">Autre…</option>
+            </select>
+            {!MONNAIES.includes((form.monnaie||"").toUpperCase())&&
+              <input style={{...inp,maxWidth:120}} value={form.monnaie} onChange={chg("monnaie")} placeholder="Ex. CAD" maxLength={5}/>}
+          </div>
+          <p style={{marginTop:10,fontSize:11,color:"#64748b"}}>Aperçu : « 125 000 {form.monnaie||"GNF"} ».</p>
+        </div>
+        <button onClick={sauvegarder} disabled={chargement} style={{marginTop:18,padding:"10px 22px",background:C.green,color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontSize:13,fontWeight:800,opacity:chargement?0.6:1}}>
+          {chargement?"Enregistrement…":"Enregistrer la monnaie"}
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div style={{padding:"28px 32px",fontFamily:"'Segoe UI',system-ui,sans-serif",maxWidth:760,margin:"0 auto"}}>
       <h2 style={{margin:"0 0 4px",fontSize:20,fontWeight:900,color:C.blueDark}}>⚙️ Paramètres de l'école</h2>
@@ -365,6 +418,23 @@ function ParametresEcole({ utilisateurRole = "", onSchoolClosed = null }) {
         </div>
         <label style={lbl}>Devise / Slogan</label>
         <input style={inp} value={form.devise} onChange={chg("devise")} placeholder="Ex. : Travail – Rigueur – Réussite"/>
+        <div style={{marginTop:16}}>
+          <label style={lbl}>Monnaie utilisée pour les montants</label>
+          <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+            <select style={{...inp,maxWidth:180}} value={MONNAIES.includes((form.monnaie||"").toUpperCase())?form.monnaie.toUpperCase():"__autre__"}
+              onChange={e=>{
+                const v = e.target.value;
+                if(v==="__autre__") setForm(p=>({...p,monnaie:""}));
+                else setForm(p=>({...p,monnaie:v}));
+              }}>
+              {MONNAIES.map(m=><option key={m} value={m}>{m}</option>)}
+              <option value="__autre__">Autre…</option>
+            </select>
+            {!MONNAIES.includes((form.monnaie||"").toUpperCase())&&
+              <input style={{...inp,maxWidth:120}} value={form.monnaie} onChange={chg("monnaie")} placeholder="Ex. CAD" maxLength={5}/>}
+            <span style={{fontSize:11,color:"#64748b"}}>Affichée après chaque montant (ex. « 125 000 {form.monnaie||"GNF"} »).</span>
+          </div>
+        </div>
       </div>
 
       {/* Couleurs */}

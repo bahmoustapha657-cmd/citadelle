@@ -10,6 +10,7 @@ export const SCHOOL_INFO_DEFAUT = {
   couleur2: "#00C48C",
   logo: null,
   devise: "",
+  monnaie: "GNF",
   ministere: "Ministère de l'Éducation Nationale, de l'Alphabétisation, de l'Enseignement Technique et de la Formation Professionnelle",
   ire: "",
   dpe: "",

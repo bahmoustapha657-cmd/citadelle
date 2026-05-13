@@ -25,6 +25,7 @@ const DEFAULT_SCHOOL_BRANDING = {
   couleur2: "#00C48C",
   logo: null,
   devise: "",
+  monnaie: "GNF",
   accueil: {
     active: false,
     slogan: "",

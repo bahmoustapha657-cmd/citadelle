@@ -119,7 +119,14 @@ export const genererMatricule = (eleves, type, config = {}) => {
 };
 
 export const today = () => new Date().toLocaleDateString("fr-FR");
-export const fmt = (nombre) => `${Number(nombre || 0).toLocaleString("fr-FR")} GNF`;
+
+// Monnaie courante (mise à jour depuis App.jsx via setMonnaie) — défaut "GNF".
+// Variable module-level pour que fmt() reste appelable sans args partout (~23 sites).
+export const MONNAIES = ["GNF","XOF","XAF","USD","EUR","MAD"];
+let _monnaieCourante = "GNF";
+export const setMonnaie = (m) => { _monnaieCourante = (typeof m === "string" && m.trim()) || "GNF"; };
+export const getMonnaie = () => _monnaieCourante;
+export const fmt = (nombre, monnaie) => `${Number(nombre || 0).toLocaleString("fr-FR")} ${monnaie || _monnaieCourante}`;
 export const fmtN = (nombre) => Number(nombre || 0).toLocaleString("fr-FR");
 
 export const ROLE_IDS_PERSONNALISABLES = ROLE_ORDER;

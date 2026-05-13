@@ -14,6 +14,7 @@ import {
   CLASSES_PRIMAIRE,
   MATIERES_PRIMAIRE, PLANS, MODULES,
   getModulesForRole, getPrimaryModuleForRole, getRoleLabelForSchool, getRoleSettingsForSchool,
+  setMonnaie,
 } from "./constants";
 import { GlobalStyles } from "./styles";
 import {
@@ -269,6 +270,7 @@ export default function App() {
       : null;
     const reinitialiserBranding = () => {
       setSchoolInfo(SCHOOL_INFO_DEFAUT);
+      setMonnaie(SCHOOL_INFO_DEFAUT.monnaie);
       setVerrous({comptable:false,primaire:false,secondaire:false});
       document.documentElement.style.setProperty("--sc1","#0A1628");
       document.documentElement.style.setProperty("--sc2","#00C48C");
@@ -286,6 +288,7 @@ export default function App() {
         couleur2:  d.couleur2  || D.couleur2,
         logo:      d.logo      || D.logo,
         devise:    d.devise    || D.devise,
+        monnaie:   d.monnaie   || D.monnaie,
         ministere: d.ministere || D.ministere,
         ire:       d.ire       || D.ire,
         dpe:       d.dpe       || D.dpe,
@@ -296,6 +299,7 @@ export default function App() {
         accueil:   d.accueil   || D.accueil,
         roleSettings: getRoleSettingsForSchool(d.roleSettings || D.roleSettings),
       });
+      setMonnaie(d.monnaie || D.monnaie);
       setVerrous(d.verrous || {comptable:false,primaire:false,secondaire:false});
       const r = document.documentElement.style;
       r.setProperty("--sc1", d.couleur1 || "#0A1628");
@@ -843,7 +847,7 @@ export default function App() {
                     <p style={{margin:0,fontSize:13,fontWeight:800,color:"#0f172a"}}>{utilisateur.nom}</p>
                     <p style={{margin:"2px 0 0",fontSize:11,color:"#64748b"}}>{utilisateurLabel} · {schoolInfo.nom}</p>
                   </div>
-                  {["admin","direction","superadmin"].includes(utilisateur.role)&&(
+                  {["admin","direction","comptable","superadmin"].includes(utilisateur.role)&&(
                     <button onClick={()=>{setProfilOuvert(false);setPage("parametres");}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 16px",background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#374151",textAlign:"left",fontWeight:600}}>
                       🏫 <span>Paramètres école</span>
                     </button>
