@@ -1,6 +1,7 @@
 import React, { useContext, useState } from "react";
 import { doc, updateDoc } from "firebase/firestore";
 import { C, TOUS_MOIS_LONGS, calcMoisAnnee } from "../constants";
+import { PERIODICITES, getPeriodesForSchool } from "../period-utils";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
 import { db } from "../firebaseDb";
@@ -28,6 +29,7 @@ function ParametresEcole({ utilisateurRole = "", onSchoolClosed = null }) {
     dpe: schoolInfo.dpe||"",
     agrement: schoolInfo.agrement||"",
     moisDebut: schoolInfo.moisDebut||"Octobre",
+    periodicite: schoolInfo.periodicite||"trimestre",
   });
   const acc0 = schoolInfo.accueil||{};
   const [accueil, setAccueil] = useState({
@@ -180,6 +182,7 @@ function ParametresEcole({ utilisateurRole = "", onSchoolClosed = null }) {
         dpe: form.dpe.trim(),
         agrement: form.agrement.trim(),
         moisDebut: form.moisDebut,
+        periodicite: form.periodicite || "trimestre",
         evaluationForms,
         accueil: {
           active: accueil.active,
@@ -459,6 +462,27 @@ function ParametresEcole({ utilisateurRole = "", onSchoolClosed = null }) {
         <p style={{margin:"6px 0 0",fontSize:11,color:"#9ca3af"}}>
           Actuellement : <strong style={{color:C.blue}}>{calcMoisAnnee(form.moisDebut).join(" · ")}</strong>
         </p>
+      </div>
+
+      {/* Périodicité scolaire */}
+      <div style={sec}>
+        <h3 style={{margin:"0 0 16px",fontSize:14,fontWeight:800,color:C.blueDark}}>🗓️ Périodicité scolaire</h3>
+        <select style={{...inp,cursor:"pointer"}} value={form.periodicite||"trimestre"} onChange={chg("periodicite")}>
+          {PERIODICITES.map(p=>(
+            <option key={p.value} value={p.value}>{p.label} — {p.description}</option>
+          ))}
+        </select>
+        <p style={{margin:"6px 0 0",fontSize:11,color:"#9ca3af"}}>
+          Périodes utilisées pour les notes, bulletins, livrets et recettes/dépenses :{" "}
+          <strong style={{color:C.blue}}>
+            {getPeriodesForSchool({periodicite: form.periodicite, moisDebut: form.moisDebut}).join(" · ")}
+          </strong>
+        </p>
+        {schoolInfo.periodicite && schoolInfo.periodicite !== form.periodicite && (
+          <p style={{margin:"8px 0 0",padding:"8px 12px",background:"#fef3c7",border:"1px solid #fbbf24",borderRadius:6,fontSize:11,color:"#92400e"}}>
+            ⚠️ Changer la périodicité après que des notes ont été saisies peut rendre certaines invisibles dans les bulletins. Une interface de migration sera bientôt proposée.
+          </p>
+        )}
       </div>
       </>}
 

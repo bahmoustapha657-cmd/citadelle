@@ -15,6 +15,7 @@ export const SCHOOL_INFO_DEFAUT = {
   dpe: "",
   agrement: "",
   moisDebut: "Octobre",
+  periodicite: "trimestre",
   plan: "gratuit",
   planExpiry: null,
   roleSettings: getRoleSettingsMap(),
