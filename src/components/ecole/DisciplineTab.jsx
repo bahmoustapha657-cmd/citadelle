@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { C, today } from "../../constants";
 import { Badge, Btn, Card, Chargement, Input, Modale, Selec, TD, Textarea, THead, TR, Vide } from "../ui";
 import { exportExcel } from "../../reports";
@@ -18,12 +19,13 @@ export function DisciplineTab({
   canEdit,
   envoyerPush,
 }) {
+  const { t } = useTranslation();
   const chg = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
   return (
     <div>
       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,flexWrap:"wrap"}}>
-        <strong style={{fontSize:14,color:C.blueDark,flex:1}}>Discipline & Absences ({absences.length})</strong>
+        <strong style={{fontSize:14,color:C.blueDark,flex:1}}>{t("school.discipline.title")} & {t("dashboard.absences")} ({absences.length})</strong>
         <Btn sm v="ghost" onClick={()=>exportExcel(
           `Discipline_${avecEns?"College":"Primaire"}`,
           ["Élève","Classe","Type","Date","Motif","Justifié"],

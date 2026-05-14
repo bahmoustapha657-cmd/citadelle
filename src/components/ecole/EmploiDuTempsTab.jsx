@@ -1,4 +1,5 @@
 import React, { useContext, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { C } from "../../constants";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { Btn, Card, Modale, Input, Selec, THead, TR, TD, Vide, Chargement } from "../ui";
@@ -24,6 +25,7 @@ export function EmploiDuTempsTab({
   modEmp,
   supEmp,
 }) {
+  const { t } = useTranslation();
   const { schoolInfo, toast } = useContext(SchoolContext);
 
   const [edtVueGrille, setEdtVueGrille] = useState(true);
@@ -226,7 +228,7 @@ export function EmploiDuTempsTab({
   return <div>
     {/* ── TOOLBAR ── */}
     <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:14,flexWrap:"wrap"}}>
-      <strong style={{fontSize:14,color:C.blueDark,marginRight:4}}>Emploi du temps</strong>
+      <strong style={{fontSize:14,color:C.blueDark,marginRight:4}}>{t("school.timetable.title")}</strong>
       <select value={classeEdtActuelle} onChange={e=>setFiltreClasse(e.target.value)}
         style={{border:"1px solid #b0c4d8",borderRadius:7,padding:"6px 12px",fontSize:13,background:"#fff",fontWeight:700,color:C.blueDark}}>
         {classesTriees.map(c=><option key={c._id} value={c.nom}>{c.nom}</option>)}

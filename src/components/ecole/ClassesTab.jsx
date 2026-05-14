@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { C } from "../../constants";
 import { Badge, Btn, Card, Champ, Chargement, Input, Modale, TD, THead, TR, Vide } from "../ui";
 import { imprimerListeClasse } from "../../reports";
@@ -23,12 +24,13 @@ export function ClassesTab({
   saveClasse,
   toast,
 }) {
+  const { t } = useTranslation();
   const chg = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
   return (
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,gap:8,flexWrap:"wrap"}}>
-        <strong style={{fontSize:14,color:C.blueDark}}>Classes ({classes.length})</strong>
+        <strong style={{fontSize:14,color:C.blueDark}}>{t("school.classes.title")} ({classes.length})</strong>
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
           {canCreate&&<Btn v="ghost" onClick={async()=>{
             const classesEleves=[...new Set(eleves.map(e=>e.classe).filter(Boolean))];
@@ -54,10 +56,10 @@ export function ClassesTab({
             }
             toast(`Synchronisation : ${nbCrees} classe(s) créée(s), ${nbMaj} mise(s) à jour.`, "success");
           }}>🔄 Synchroniser depuis élèves & enseignants</Btn>}
-          {canCreate&&<Btn onClick={()=>{setForm({});setModal("add_c");}}>+ Nouvelle classe</Btn>}
+          {canCreate&&<Btn onClick={()=>{setForm({});setModal("add_c");}}>{t("school.classes.addClass")}</Btn>}
         </div>
       </div>
-      {cC?<Chargement/>:classes.length===0?<Vide icone="🏫" msg="Aucune classe"/>
+      {cC?<Chargement/>:classes.length===0?<Vide icone="🏫" msg={t("school.classes.noClass")}/>
         :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
           <THead cols={["Classe","Effectif","Enseignant Principal","Salle","Imprimer liste",canEdit?"Actions":""]}/>
           <tbody>{classes.map(c=><TR key={c._id}>

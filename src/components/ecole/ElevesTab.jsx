@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { C, genererMdp } from "../../constants";
 import { Badge, Btn, Card, Champ, Chargement, Input, Modale, TD, THead, TR, Vide } from "../ui";
 import { apiFetch, getAuthHeaders } from "../../apiClient";
@@ -24,15 +25,16 @@ export function ElevesTab({
   formP,
   setFormP,
 }) {
+  const { t } = useTranslation();
   const chgP = (k) => (e) => setFormP((p) => ({ ...p, [k]: e.target.value }));
 
   return (
     <div>
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12,flexWrap:"wrap"}}>
-        <strong style={{fontSize:14,color:C.blueDark,flex:1}}>Élèves ({eleves.length})</strong>
+        <strong style={{fontSize:14,color:C.blueDark,flex:1}}>{t("school.students.title")} ({eleves.length})</strong>
         <select value={filtreClasse} onChange={e=>setFiltreClasse(e.target.value)}
           style={{border:"1px solid #b0c4d8",borderRadius:7,padding:"6px 10px",fontSize:12,background:"#fff"}}>
-          <option value="all">Toutes les classes</option>
+          <option value="all">{t("common.all")}</option>
           {classesUniq.map(c=><option key={c}>{c}</option>)}
         </select>
         {filtreClasse!=="all"&&<Btn sm v="ghost" onClick={()=>imprimerListeClasse(filtreClasse,eleves,schoolInfo)}>🖨️ Imprimer liste</Btn>}
@@ -43,7 +45,7 @@ export function ElevesTab({
           elevesFiltres.map(e=>[e.matricule||"",e.ien||"",e.nom,e.prenom,e.classe,e.sexe||"",e.dateNaissance||"",e.lieuNaissance||"",e.filiation||"",e.tuteur||"",e.contactTuteur||"",e.domicile||"",e.statut||"Actif"])
         )}>📥 Export Excel</Btn>
       </div>
-      {cE?<Chargement/>:elevesFiltres.length===0?<Vide icone="🎓" msg="Aucun élève"/>
+      {cE?<Chargement/>:elevesFiltres.length===0?<Vide icone="🎓" msg={t("school.students.noStudent")}/>
         :<div style={{overflowX:"auto"}}>
           <table style={{width:"100%",borderCollapse:"collapse",minWidth:900}}>
             <THead cols={["Matricule","IEN","Nom & Prénom","Classe","Sexe","Date Nais.","Lieu Nais.","Filiation","Tuteur","Contact","Domicile","Documents","Statut","Accès"]}/>

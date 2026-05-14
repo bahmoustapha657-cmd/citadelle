@@ -1,4 +1,5 @@
 import React, { useState, useContext } from "react";
+import { useTranslation } from "react-i18next";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
 import { C, today } from "../constants";
@@ -8,6 +9,7 @@ import { Badge, Btn, Card, Input, Modale, Selec, Stat, Textarea, Vide } from "./
 //  CALENDRIER SCOLAIRE
 // ══════════════════════════════════════════════════════════════
 function Calendrier({annee}) {
+  const { t } = useTranslation();
   const {toast,schoolInfo}=useContext(SchoolContext);
   const {items:evenements,ajouter:ajEv,supprimer:supEv}=useFirestore("evenements");
   const [modal,setModal]=useState(null);
@@ -39,10 +41,10 @@ function Calendrier({annee}) {
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18,flexWrap:"wrap"}}>
         {schoolInfo?.logo&&<img src={schoolInfo.logo} alt="" style={{width:48,height:48,objectFit:"contain"}}/>}
         <div style={{flex:1}}>
-          <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.blueDark}}>Calendrier Scolaire</h2>
-          <p style={{margin:0,fontSize:12,color:C.green,fontWeight:700}}>Examens, congés, réunions — {annee}</p>
+          <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.blueDark}}>{t("nav.calendar")}</h2>
+          <p style={{margin:0,fontSize:12,color:C.green,fontWeight:700}}>{annee}</p>
         </div>
-        <Btn onClick={()=>{setForm({type:"evenement",date:today()});setModal("add_ev");}}>+ Ajouter un événement</Btn>
+        <Btn onClick={()=>{setForm({type:"evenement",date:today()});setModal("add_ev");}}>+ {t("common.add")}</Btn>
       </div>
 
       {/* Légende */}

@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { C, fmtN } from "../../constants";
 import { Badge, Btn, Card, Chargement, Input, Modale, Selec, TD, THead, TR, Vide } from "../ui";
 
@@ -14,13 +15,14 @@ export function PersonnelTab({
   supPers,
   savePersonnel,
 }) {
+  const { t } = useTranslation();
   const chg = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
   return (
     <div>
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16,flexWrap:"wrap"}}>
-        <strong style={{fontSize:14,color:C.blueDark,flex:1}}>Registre du Personnel ({personnel.length})</strong>
-        {canCreate&&<Btn onClick={()=>{setForm({statut:"Actif"});setModal("add_p");}}>+ Ajouter un employé</Btn>}
+        <strong style={{fontSize:14,color:C.blueDark,flex:1}}>{t("accounting.tabs.staff")} ({personnel.length})</strong>
+        {canCreate&&<Btn onClick={()=>{setForm({statut:"Actif"});setModal("add_p");}}>+ {t("common.add")}</Btn>}
       </div>
 
       {/* Cartes résumé */}
@@ -40,7 +42,7 @@ export function PersonnelTab({
         </div>
       </div>}
 
-      {cPers?<Chargement/>:personnel.length===0?<Vide icone="👥" msg="Aucun employé enregistré"/>
+      {cPers?<Chargement/>:personnel.length===0?<Vide icone="👥" msg={t("common.empty")}/>
         :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
           <THead cols={["Prénoms et Nom","Poste","Catégorie","Salaire de base","Statut","Observation",canEdit?"Actions":""]}/>
           <tbody>{personnel.map(p=><TR key={p._id}>

@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { C, CLASSES_COLLEGE, CLASSES_LYCEE, fmtN } from "../../constants";
 import { Badge, Btn, Card, Input, Modale, Selec, TD, THead, TR, Vide } from "../ui";
 
@@ -24,6 +25,7 @@ export function EnseignantsTab({
   supEnsCol,
   supEnsLyc,
 }) {
+  const { t } = useTranslation();
   const chg = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
   const ensTous=[
@@ -64,8 +66,8 @@ export function EnseignantsTab({
 
   return <div>
     <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16,flexWrap:"wrap"}}>
-      <strong style={{fontSize:14,color:C.blueDark,flex:1}}>Registre des enseignants ({ensTous.length})</strong>
-      {canCreate&&<Btn onClick={()=>{setForm({_section:"Primaire",statut:"Titulaire"});setModal("add_ens_compta");}}>+ Ajouter un enseignant</Btn>}
+      <strong style={{fontSize:14,color:C.blueDark,flex:1}}>{t("accounting.tabs.teachers")} ({ensTous.length})</strong>
+      {canCreate&&<Btn onClick={()=>{setForm({_section:"Primaire",statut:"Titulaire"});setModal("add_ens_compta");}}>+ {t("common.add")}</Btn>}
     </div>
 
     <div style={{padding:"10px 14px",background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:8,fontSize:12,color:"#1e40af",marginBottom:14}}>

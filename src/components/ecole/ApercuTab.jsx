@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { C } from "../../constants";
 import { Badge, Btn, Card, Chargement, Stat, Vide } from "../ui";
@@ -22,19 +23,20 @@ export function ApercuTab({
   couleur,
   schoolInfo,
 }) {
+  const { t } = useTranslation();
   return (
     <div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:10,marginBottom:16}}>
-        <Stat label="Classes" value={classes.length}/>
-        <Stat label="Élèves actifs" value={eleves.filter(e=>e.statut==="Actif").length} sub={`sur ${eleves.length}`}/>
-        {avecEns&&<Stat label="Enseignants" value={ens.length}/>}
-        <Stat label="Moy. Générale" value={`${moy}/${maxNote}`} bg="#eaf4e0"/>
-        <Stat label="Absences" value={absences.length} bg="#fef3e0"/>
+        <Stat label={t("school.classes.title")} value={classes.length}/>
+        <Stat label={t("school.students.active")} value={eleves.filter(e=>e.statut==="Actif").length} sub={`/ ${eleves.length}`}/>
+        {avecEns&&<Stat label={t("school.teachers.title")} value={ens.length}/>}
+        <Stat label={t("school.bulletins.average")} value={`${moy}/${maxNote}`} bg="#eaf4e0"/>
+        <Stat label={t("dashboard.absences")} value={absences.length} bg="#fef3e0"/>
       </div>
       {(cC||cE)?<Chargement/>:classes.length===0&&eleves.length===0?<Vide icone={avecEns?"🏫":"🎒"} msg="Module vide"/>
         :<Card><div style={{padding:"16px 18px"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-            <p style={{margin:0,fontWeight:800,fontSize:14,color:C.blueDark}}>Effectifs par classe</p>
+            <p style={{margin:0,fontWeight:800,fontSize:14,color:C.blueDark}}>{t("school.overview.studentsByClass")}</p>
             <div style={{display:"flex",gap:8}}>
               {classesUniq.map(cl=>(
                 <Btn sm key={cl} v="ghost" onClick={()=>imprimerListeClasse(cl,eleves,schoolInfo)}>🖨️ {cl}</Btn>

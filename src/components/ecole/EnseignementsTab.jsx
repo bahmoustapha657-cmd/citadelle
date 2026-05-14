@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { C, today } from "../../constants";
 import { Badge, Btn, Card, Chargement, Input, Modale, Selec, TD, Textarea, THead, TR, Vide } from "../ui";
 
@@ -18,13 +19,14 @@ export function EnseignementsTab({
   canCreate,
   canEdit,
 }) {
+  const { t } = useTranslation();
   const chg = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
   return (
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-        <strong style={{fontSize:14,color:C.blueDark}}>Gestion des Enseignements ({enseignements.length})</strong>
-        {canCreate&&<Btn onClick={()=>{setForm({type:"Cours",statut:"Effectué"});setModal("add_eng");}}>+ Enregistrer</Btn>}
+        <strong style={{fontSize:14,color:C.blueDark}}>{t("school.teachings.title")} ({enseignements.length})</strong>
+        {canCreate&&<Btn onClick={()=>{setForm({type:"Cours",statut:"Effectué"});setModal("add_eng");}}>+ {t("common.add")}</Btn>}
       </div>
 
       {/* Stats rapides */}

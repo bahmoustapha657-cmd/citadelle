@@ -1,4 +1,5 @@
 import React, { useContext, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   C,
   CLASSES_PRIMAIRE,
@@ -37,6 +38,7 @@ export function EnrolmentTab({
   ensureClasse,
   sortAlpha,
 }) {
+  const { t } = useTranslation();
   const { schoolId, schoolInfo, toast, planInfo } = useContext(SchoolContext);
 
   const [niveauEnrol, setNiveauEnrol] = useState("college");
@@ -87,7 +89,7 @@ export function EnrolmentTab({
       )}
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,flexWrap:"wrap"}}>
         <strong style={{fontSize:14,flex:1,color:C.blueDark}}>
-          {afficherDeparts?"📤 Départs & Statistiques":"Enrôlement des Élèves"}
+          {afficherDeparts?"📤 Départs & Statistiques":t("school.students.title")}
           {!afficherDeparts&&<span style={{marginLeft:10,fontSize:11,fontWeight:600,color:
             planInfo?.peutAjouterEleve?"#16a34a":"#dc2626"}}>
             ({planInfo?.totalElevesActifs ?? "…"}/{planInfo?.eleveLimit===Infinity?"∞":planInfo?.eleveLimit} élèves — Plan {planInfo?.planLabel})

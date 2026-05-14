@@ -233,6 +233,64 @@
       "certificates": "Certificates"
     },
     "enrollmentNotice": "Student enrollment and removal are managed only from Accounting → Students.",
+    "overview": {
+      "title": "Overview",
+      "studentsByClass": "Students by class",
+      "averageByClass": "Average by class"
+    },
+    "classes": {
+      "title": "Classes",
+      "addClass": "+ New class",
+      "name": "Name",
+      "students": "Headcount",
+      "noClass": "No class",
+      "deleteConfirm": "Delete this class?"
+    },
+    "students": {
+      "title": "Students",
+      "matricule": "Student ID",
+      "name": "Full name",
+      "class": "Class",
+      "parent": "Guardian",
+      "contact": "Contact",
+      "status": "Status",
+      "active": "Active",
+      "inactive": "Inactive",
+      "noStudent": "No student"
+    },
+    "teachers": {
+      "title": "Teachers",
+      "addTeacher": "+ New teacher",
+      "name": "Name",
+      "role": "Role",
+      "classes": "Classes",
+      "noTeacher": "No teacher"
+    },
+    "subjects": {
+      "title": "Subjects",
+      "addSubject": "+ New subject",
+      "name": "Subject",
+      "coefficient": "Coefficient",
+      "noSubject": "No subject"
+    },
+    "discipline": {
+      "title": "Discipline",
+      "sanctions": "Sanctions",
+      "addSanction": "+ New sanction"
+    },
+    "timetable": {
+      "title": "Timetable",
+      "addSlot": "+ Add slot"
+    },
+    "teachings": {
+      "title": "Teachings",
+      "addTeaching": "+ New assignment"
+    },
+    "certificates": {
+      "title": "Certificates",
+      "generate": "Generate",
+      "print": "Print"
+    },
     "bulletins": {
       "title": "Report cards",
       "searchByMatricule": "🔍 Search by student ID...",

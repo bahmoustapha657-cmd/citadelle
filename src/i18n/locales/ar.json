@@ -233,6 +233,64 @@
       "certificates": "الشهادات"
     },
     "enrollmentNotice": "تسجيل الطلاب وحذفهم يتمان فقط من قسم المحاسبة ← الطلاب.",
+    "overview": {
+      "title": "نظرة عامة",
+      "studentsByClass": "الطلاب حسب الفصل",
+      "averageByClass": "المعدل حسب الفصل"
+    },
+    "classes": {
+      "title": "الفصول",
+      "addClass": "+ فصل جديد",
+      "name": "الاسم",
+      "students": "العدد",
+      "noClass": "لا توجد فصول",
+      "deleteConfirm": "حذف هذا الفصل؟"
+    },
+    "students": {
+      "title": "الطلاب",
+      "matricule": "رقم الطالب",
+      "name": "الاسم الكامل",
+      "class": "الفصل",
+      "parent": "الولي",
+      "contact": "الاتصال",
+      "status": "الحالة",
+      "active": "نشط",
+      "inactive": "غير نشط",
+      "noStudent": "لا يوجد طلاب"
+    },
+    "teachers": {
+      "title": "المعلمون",
+      "addTeacher": "+ معلم جديد",
+      "name": "الاسم",
+      "role": "الوظيفة",
+      "classes": "الفصول",
+      "noTeacher": "لا يوجد معلمون"
+    },
+    "subjects": {
+      "title": "المواد",
+      "addSubject": "+ مادة جديدة",
+      "name": "المادة",
+      "coefficient": "المعامل",
+      "noSubject": "لا توجد مواد"
+    },
+    "discipline": {
+      "title": "الانضباط",
+      "sanctions": "العقوبات",
+      "addSanction": "+ عقوبة جديدة"
+    },
+    "timetable": {
+      "title": "الجدول الزمني",
+      "addSlot": "+ إضافة حصة"
+    },
+    "teachings": {
+      "title": "التدريس",
+      "addTeaching": "+ تكليف جديد"
+    },
+    "certificates": {
+      "title": "الشهادات",
+      "generate": "توليد",
+      "print": "طباعة"
+    },
     "bulletins": {
       "title": "كشوف العلامات",
       "searchByMatricule": "🔍 البحث برقم الطالب...",

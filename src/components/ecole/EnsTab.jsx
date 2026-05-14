@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { C, genererMdp } from "../../constants";
 import { Badge, Btn, Card, Champ, Chargement, Input, Modale, Selec, UploadFichiers, Vide } from "../ui";
 import { apiFetch, getAuthHeaders } from "../../apiClient";
@@ -26,6 +27,7 @@ export function EnsTab({
   setFormC,
   saveEnseignant,
 }) {
+  const { t } = useTranslation();
   const chg = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
   const chgC = (k) => (e) => setFormC((p) => ({ ...p, [k]: e.target.value }));
   const sectionEns = cleEns.includes("Lycee") ? "lycee" : cleEns.includes("College") ? "college" : "primaire";
@@ -65,10 +67,10 @@ export function EnsTab({
 
   return <div>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-      <strong style={{fontSize:14,color:C.blueDark}}>Corps enseignant ({ens.length})</strong>
-      {canCreate&&<Btn onClick={()=>{setForm({statut:"Titulaire"});setModal("add_ens");}}>+ Ajouter</Btn>}
+      <strong style={{fontSize:14,color:C.blueDark}}>{t("school.teachers.title")} ({ens.length})</strong>
+      {canCreate&&<Btn onClick={()=>{setForm({statut:"Titulaire"});setModal("add_ens");}}>+ {t("common.add")}</Btn>}
     </div>
-    {cEns?<Chargement/>:ens.length===0?<Vide icone="👨‍🏫" msg="Aucun enseignant"/>
+    {cEns?<Chargement/>:ens.length===0?<Vide icone="👨‍🏫" msg={t("school.teachers.noTeacher")}/>
       :<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(210px,1fr))",gap:10}}>
         {ens.map(e=><Card key={e._id}><div style={{padding:"14px 15px"}}>
           <div style={{display:"flex",alignItems:"center",gap:9,marginBottom:9}}>

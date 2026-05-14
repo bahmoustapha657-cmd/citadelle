@@ -1,4 +1,5 @@
 import React, { useState, useContext } from "react";
+import { useTranslation } from "react-i18next";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
 import { C, getAnnee, today } from "../constants";
@@ -11,6 +12,7 @@ import { Badge, Btn, Card, Input, Modale, Selec, Stat, TD, THead, TR, Vide } fro
 //  COMPOSANT LIVRETS SCOLAIRES
 // ══════════════════════════════════════════════════════════════
 function LivretsTab({cleEleves, cleNotes, matieres, maxNote, userRole, annee}) {
+  const { t } = useTranslation();
   const {schoolInfo, toast} = useContext(SchoolContext);
   const {items:livrets, ajouter:ajLivret, modifier:modLivret} = useFirestore("livrets");
   const {items:eleves} = useFirestore(cleEleves);
@@ -120,7 +122,7 @@ function LivretsTab({cleEleves, cleNotes, matieres, maxNote, userRole, annee}) {
     return (
       <div>
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
-          <Btn sm v="ghost" onClick={()=>setLivretSelId(null)}>← Retour</Btn>
+          <Btn sm v="ghost" onClick={()=>setLivretSelId(null)}>← {t("common.back")}</Btn>
           <strong style={{fontSize:14,color:C.blueDark,flex:1}}>
             📋 Livret — {livretSel.eleveNom} · <span style={{fontFamily:"monospace",color:C.blue}}>{livretSel.numeroLivret}</span>
           </strong>

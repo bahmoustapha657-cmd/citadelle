@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { C } from "../../constants";
 import { Badge, Btn, Card, Chargement, TD, THead, TR, Vide } from "../ui";
 import { imprimerAttestation } from "../../reports";
@@ -15,6 +16,7 @@ export function AttestationsTab({
   avecEns,
   cE,
 }) {
+  const { t } = useTranslation();
   const elevesAtt = elevesFiltres.filter(e=>!rechercheMatricule
     ||(e.matricule||"").toLowerCase().includes(rechercheMatricule.toLowerCase())
     ||(e.nom+" "+e.prenom).toLowerCase().includes(rechercheMatricule.toLowerCase()));
@@ -22,13 +24,13 @@ export function AttestationsTab({
   return (
     <div>
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16,flexWrap:"wrap"}}>
-        <strong style={{fontSize:14,color:C.blueDark,flex:1}}>Attestations de niveau</strong>
-        <input placeholder="🔍 Recherche nom / matricule..."
+        <strong style={{fontSize:14,color:C.blueDark,flex:1}}>{t("school.certificates.title")}</strong>
+        <input placeholder={t("school.bulletins.searchByMatricule")}
           value={rechercheMatricule||""} onChange={e=>setRechercheMatricule(e.target.value)}
           style={{border:"1px solid #b0c4d8",borderRadius:7,padding:"6px 10px",fontSize:12,width:200}}/>
         <select value={filtreClasse} onChange={e=>setFiltreClasse(e.target.value)}
           style={{border:"1px solid #b0c4d8",borderRadius:7,padding:"6px 10px",fontSize:12,background:"#fff"}}>
-          <option value="all">Toutes les classes</option>
+          <option value="all">{t("common.all")}</option>
           {classesUniq.map(c=><option key={c}>{c}</option>)}
         </select>
         <Btn sm v="amber" onClick={()=>{

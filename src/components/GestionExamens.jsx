@@ -1,4 +1,5 @@
 ﻿import React, { useState, useContext } from "react";
+import { useTranslation } from "react-i18next";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
 import { C } from "../constants";
@@ -6,6 +7,7 @@ import { getActiveExamForms, getEvaluationLabel, resolveCanonicalExamType } from
 import { Badge, Btn, Card, Input, Modale, Selec, Stat, TD, THead, TR, Textarea, Vide } from "./ui";
 
 function GestionExamens() {
+  const { t } = useTranslation();
   const {schoolInfo, toast} = useContext(SchoolContext);
   const {items:examens, ajouter:ajEx, modifier:modEx, supprimer:supEx} = useFirestore("examens");
   const {items:elevesC} = useFirestore("elevesCollege");
@@ -97,13 +99,13 @@ function GestionExamens() {
     <div style={{padding:"22px 26px",maxWidth:1100}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20,flexWrap:"wrap",gap:10}}>
         <div>
-          <h2 style={{margin:0,fontSize:18,fontWeight:900,color:c1}}>📝 Gestion des Examens</h2>
+          <h2 style={{margin:0,fontSize:18,fontWeight:900,color:c1}}>📝 {t("nav.exams")}</h2>
           <p style={{margin:"4px 0 0",fontSize:13,color:"#6b7280"}}>{examens.length} examen(s) planifié(s)</p>
         </div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
           <select value={filtre} onChange={e=>setFiltre(e.target.value)}
             style={{border:"1px solid #b0c4d8",borderRadius:8,padding:"6px 10px",fontSize:12}}>
-            <option value="all">Toutes classes</option>
+            <option value="all">{t("common.all")}</option>
             <option value="Toutes">Toutes (globaux)</option>
             {classes.map(c=><option key={c}>{c}</option>)}
           </select>

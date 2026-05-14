@@ -1,4 +1,5 @@
 import React, { useState, useContext } from "react";
+import { useTranslation } from "react-i18next";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
 import { C, fmt, today } from "../constants";
@@ -8,6 +9,7 @@ import { imprimerCertificatRadiation, imprimerOrdreMutation } from "../reports";
 import { Badge, Btn, Card, Input, Modale, Stat, TD, THead, TR, Vide } from "./ui";
 
 function TransfertsPanel({userRole, annee, setTab}) {
+  const { t } = useTranslation();
   const {schoolId, schoolInfo, moisAnnee, toast} = useContext(SchoolContext);
   const {items:elevesC} = useFirestore("elevesCollege");
   const {items:elevesP} = useFirestore("elevesPrimaire");
@@ -100,7 +102,7 @@ function TransfertsPanel({userRole, annee, setTab}) {
     <div>
       {/* Sous-tabs */}
       <div style={{display:"flex",gap:6,background:"#f1f5f9",borderRadius:10,padding:4,marginBottom:18,width:"fit-content"}}>
-        {[["sortants","📤 Transferts sortants"],["entrants","📥 Transferts entrants"]].map(([id,lbl])=>(
+        {[["sortants",`📤 ${t("nav.transfers")}`],["entrants",`📥 ${t("nav.transfers")}`]].map(([id,lbl])=>(
           <button key={id} onClick={()=>setSousTab(id)}
             style={{padding:"7px 16px",border:"none",borderRadius:7,cursor:"pointer",fontSize:12,fontWeight:700,
               background:sousTab===id?"#fff":"transparent",

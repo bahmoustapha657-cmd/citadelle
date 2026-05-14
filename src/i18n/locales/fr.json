@@ -233,6 +233,64 @@
       "certificates": "Attestations"
     },
     "enrollmentNotice": "L'enrôlement et la suppression des élèves se font uniquement dans le module Comptabilité → Élèves.",
+    "overview": {
+      "title": "Aperçu",
+      "studentsByClass": "Élèves par classe",
+      "averageByClass": "Moyenne par classe"
+    },
+    "classes": {
+      "title": "Classes",
+      "addClass": "+ Nouvelle classe",
+      "name": "Nom",
+      "students": "Effectif",
+      "noClass": "Aucune classe",
+      "deleteConfirm": "Supprimer cette classe ?"
+    },
+    "students": {
+      "title": "Élèves",
+      "matricule": "Matricule",
+      "name": "Nom & Prénom",
+      "class": "Classe",
+      "parent": "Tuteur",
+      "contact": "Contact",
+      "status": "Statut",
+      "active": "Actif",
+      "inactive": "Inactif",
+      "noStudent": "Aucun élève"
+    },
+    "teachers": {
+      "title": "Enseignants",
+      "addTeacher": "+ Nouvel enseignant",
+      "name": "Nom",
+      "role": "Fonction",
+      "classes": "Classes",
+      "noTeacher": "Aucun enseignant"
+    },
+    "subjects": {
+      "title": "Matières",
+      "addSubject": "+ Nouvelle matière",
+      "name": "Matière",
+      "coefficient": "Coefficient",
+      "noSubject": "Aucune matière"
+    },
+    "discipline": {
+      "title": "Discipline",
+      "sanctions": "Sanctions",
+      "addSanction": "+ Nouvelle sanction"
+    },
+    "timetable": {
+      "title": "Emploi du temps",
+      "addSlot": "+ Ajouter un créneau"
+    },
+    "teachings": {
+      "title": "Enseignements",
+      "addTeaching": "+ Nouvelle affectation"
+    },
+    "certificates": {
+      "title": "Attestations de niveau",
+      "generate": "Générer",
+      "print": "Imprimer"
+    },
     "bulletins": {
       "title": "Bulletins de notes",
       "searchByMatricule": "🔍 Recherche par matricule...",

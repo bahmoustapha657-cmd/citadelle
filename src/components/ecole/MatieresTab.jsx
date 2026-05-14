@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { C } from "../../constants";
 import { Badge, Btn, Card, Chargement, Input, Modale, TD, THead, TR, Vide } from "../ui";
 
@@ -17,13 +18,14 @@ export function MatieresTab({
   canCreate,
   canEdit,
 }) {
+  const { t } = useTranslation();
   const chg = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
   return (
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-        <strong style={{fontSize:14,color:C.blueDark}}>Matières et coefficients ({matieres.length})</strong>
-        {canCreate&&<Btn onClick={()=>{setForm({coefficient:1});setModal("add_mat");}}>+ Ajouter</Btn>}
+        <strong style={{fontSize:14,color:C.blueDark}}>{t("school.subjects.title")} ({matieres.length})</strong>
+        {canCreate&&<Btn onClick={()=>{setForm({coefficient:1});setModal("add_mat");}}>+ {t("common.add")}</Btn>}
       </div>
       {canCreate&&matieres.length===0&&matieresPredefinies.length>0&&<div style={{background:"#eaf4e0",border:"1px solid #86efac",borderRadius:8,padding:"12px 16px",marginBottom:12,display:"flex",alignItems:"center",gap:12}}>
         <span style={{fontSize:16}}>💡</span>
@@ -34,7 +36,7 @@ export function MatieresTab({
       <div style={{background:"#f0f7ff",border:"1px solid #bfdbfe",borderRadius:8,padding:"9px 14px",marginBottom:12,fontSize:12,color:"#1e40af"}}>
         💡 Si une matière n'est assignée à <strong>aucune classe</strong>, elle apparaît dans <strong>toutes les classes</strong>. Sinon, elle n'apparaît que dans les classes sélectionnées.
       </div>
-      {cMat?<Chargement/>:matieres.length===0?<Vide icone="📚" msg="Ajoutez les matières pour calculer les bulletins"/>
+      {cMat?<Chargement/>:matieres.length===0?<Vide icone="📚" msg={t("school.subjects.noSubject")}/>
         :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
           <THead cols={["Matière","Coefficient","Classes concernées",canEdit?"Actions":""]}/>
           <tbody>{matieres.map(m=><TR key={m._id}>
