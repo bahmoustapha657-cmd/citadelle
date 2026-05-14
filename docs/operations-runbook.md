@@ -120,18 +120,24 @@ Configuration:
 
 Verifier que la capture fonctionne (apres rotation DSN, migration projet,
 ou doute):
-1. Ajouter temporairement un endpoint `api/sentry-test.js`:
-   ```js
-   import { withObservability } from "./_lib/observability.js";
-   async function handler() { throw new Error("test capture"); }
-   export default withObservability(handler);
-   ```
-2. Commit + push (Vercel auto-deploie).
-3. Hit `https://<prod-url>/api/sentry-test` → attendu: 500 + JSON
-   `{"error":"Erreur serveur."}`.
-4. Verifier dans le dashboard Sentry (Issues): un nouvel event doit
-   apparaitre dans la minute, avec le tag `endpoint`, l'url, la methode.
-5. Supprimer le fichier de test et commit la cleanup.
+- **Methode recommandee** (depuis 2026-05-14): SuperAdmin -> onglet
+  "Alertes Sentry" -> bouton "Tester la capture". Declenche une exception
+  serveur capturee par Sentry sans crasher l'endpoint. Pas besoin d'ajouter
+  ou de supprimer un fichier.
+- Methode legacy: ajouter `api/sentry-test.js` temporairement, hit l'URL,
+  supprimer apres validation.
+
+Panneau "Alertes Sentry" (SuperAdmin):
+- Liste les 20 dernieres issues du projet (14 derniers jours) via l'API
+  Sentry. Necessite cote serveur:
+  - `SENTRY_AUTH_TOKEN` (scopes: `event:read`, `project:read`)
+  - `SENTRY_ORG_SLUG`
+  - `SENTRY_PROJECT_SLUG`
+- Affiche niveau, titre, occurrences, utilisateurs touches, derniere vue,
+  lien direct vers l'issue dans le dashboard Sentry.
+- Bouton "Ouvrir Sentry" pointe sur l'URL du projet.
+- Tant que les env vars manquent, le panneau affiche un encart de
+  configuration au lieu de la liste.
 
 Alerte:
 - Par defaut Sentry envoie un email a chaque nouvelle issue.

@@ -7,7 +7,8 @@
     { "source": "/api/teacher-portal", "destination": "/api/portals?op=teacher" },
     { "source": "/api/account-manage", "destination": "/api/school?op=account-manage" },
     { "source": "/api/school-lifecycle", "destination": "/api/school?op=lifecycle" },
-    { "source": "/api/ecole-public-sync", "destination": "/api/school?op=public-sync" }
+    { "source": "/api/ecole-public-sync", "destination": "/api/school?op=public-sync" },
+    { "source": "/api/sentry-status", "destination": "/api/school?op=sentry-status" }
   ],
   "functions": {
     "api/ia.js": { "maxDuration": 30 }
