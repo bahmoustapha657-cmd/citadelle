@@ -267,14 +267,14 @@ function Connexion({ onLogin, onInscription }) {
                 type={voir ? "text" : "password"}
                 placeholder={t("auth.passwordPlaceholder")}
                 onKeyDown={(event) => event.key === "Enter" && connecter()}
-                style={{ ...champStyle, paddingRight: 44 }}
+                style={{ ...champStyle, paddingInlineEnd: 44 }}
               />
               <button
                 type="button"
                 onClick={() => setVoir((value) => !value)}
                 style={{
                   position: "absolute",
-                  right: 12,
+                  insetInlineEnd: 12,
                   top: "50%",
                   transform: "translateY(-50%)",
                   background: "none",

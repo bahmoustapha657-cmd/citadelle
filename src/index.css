@@ -122,3 +122,30 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+
+/* ── RTL ── */
+/* Active une font système arabe lisible quand la langue est RTL. */
+html[dir="rtl"] body {
+  font-family: 'Segoe UI', Tahoma, 'Noto Sans Arabic', 'Geeza Pro', system-ui, sans-serif;
+}
+
+/* Forme les chiffres dans le sens occidental même en RTL pour les montants/dates,
+   tout en gardant le texte arabe à droite. */
+html[dir="rtl"] [data-numeric],
+html[dir="rtl"] .recharts-wrapper {
+  direction: ltr;
+}
+
+/* Inverse les icônes directionnelles flèches simples placées via CSS pseudo. */
+html[dir="rtl"] .flip-rtl {
+  transform: scaleX(-1);
+}
+
+/* Évite que les inputs number / date / time aient leur ascenseur côté gauche
+   bizarrement positionné en RTL. */
+html[dir="rtl"] input[type="number"],
+html[dir="rtl"] input[type="date"],
+html[dir="rtl"] input[type="time"] {
+  text-align: end;
+  direction: ltr;
+}

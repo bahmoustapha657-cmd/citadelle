@@ -155,7 +155,7 @@ export default function Inscription() {
             <br />
             {t("register.successInstructions")}
           </p>
-          <div style={{ background: "#f0f6f2", borderRadius: 10, padding: "14px 18px", textAlign: "left", fontSize: 13, marginBottom: 20 }}>
+          <div style={{ background: "#f0f6f2", borderRadius: 10, padding: "14px 18px", textAlign: "start", fontSize: 13, marginBottom: 20 }}>
             <div style={{ marginBottom: 8 }}><strong>{t("register.directionAccount")} :</strong></div>
             <div style={{ fontFamily: "monospace", background: "#e0ebf8", borderRadius: 6, padding: "6px 10px", marginBottom: 12 }}>
               <div>{t("register.usernameLabel")} : <strong>{form.adminLogin}</strong></div>

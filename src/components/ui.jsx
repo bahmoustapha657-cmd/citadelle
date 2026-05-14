@@ -63,7 +63,7 @@ const Btn=({children,v="primary",sm,...p})=>{
 
 const THead=({cols})=>(
   <thead><tr style={{background:"linear-gradient(135deg,var(--sc1),var(--sc1-dk))"}}>
-    {cols.map((c,i)=><th key={i} style={{textAlign:"left",padding:"10px 13px",fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.9)",textTransform:"uppercase",letterSpacing:"0.08em",whiteSpace:"nowrap",borderBottom:"2px solid var(--sc2)"}}>{c}</th>)}
+    {cols.map((c,i)=><th key={i} style={{textAlign:"start",padding:"10px 13px",fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.9)",textTransform:"uppercase",letterSpacing:"0.08em",whiteSpace:"nowrap",borderBottom:"2px solid var(--sc2)"}}>{c}</th>)}
   </tr></thead>
 );
 const TR=({children,bg})=><tr style={{borderBottom:"1px solid #f1f5f9",background:bg||"transparent"}}>{children}</tr>;
@@ -214,7 +214,7 @@ function UploadFichiers({dossier, fichiers=[], onAjouter, onSupprimer, readOnly=
           <Btn sm v="ghost" onClick={()=>inputRef.current.click()} disabled={uploading}>
             {uploading ? "⏳ Upload..." : "📎 Joindre un fichier"}
           </Btn>
-          <span style={{fontSize:10,color:"#9ca3af",marginLeft:8}}>PDF, images, Word (max 5MB)</span>
+          <span style={{fontSize:10,color:"#9ca3af",marginInlineStart:8}}>PDF, images, Word (max 5MB)</span>
         </>
       )}
     </div>
