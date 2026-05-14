@@ -1,11 +1,14 @@
 import React, { useState, useContext } from "react";
+import { useTranslation } from "react-i18next";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
 import { C } from "../constants";
 import { GlobalStyles } from "../styles";
 import { Stat } from "./ui";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 
 function PortailPublic({onConnexion}) {
+  const { t } = useTranslation();
   const {schoolInfo} = useContext(SchoolContext);
   const {items:annonces} = useFirestore("annonces");
   const {items:honneurs} = useFirestore("honneurs");
@@ -20,6 +23,9 @@ function PortailPublic({onConnexion}) {
   return (
     <div style={{minHeight:"100vh",background:"#f8fafc",fontFamily:"'Inter','Segoe UI',sans-serif",color:"#0A1628"}}>
       <GlobalStyles/>
+      <div style={{position:"fixed",top:16,right:16,zIndex:50}}>
+        <LanguageSwitcher compact />
+      </div>
 
       {/* ── HERO ── */}
       <div style={{
@@ -74,7 +80,7 @@ function PortailPublic({onConnexion}) {
             }}
             onMouseEnter={e=>{e.target.style.transform="translateY(-2px)";e.target.style.boxShadow=`0 10px 28px ${c2}66`;}}
             onMouseLeave={e=>{e.target.style.transform="";e.target.style.boxShadow=`0 6px 20px ${c2}55`;}}>
-              🔐 Se connecter
+              🔐 {t("auth.loginButton")}
             </button>
             {acc.whatsapp&&<a href={`https://wa.me/${acc.whatsapp.replace(/\D/g,"")}`} target="_blank" rel="noopener noreferrer"
               style={{background:"rgba(255,255,255,0.12)",color:"#fff",border:"1px solid rgba(255,255,255,0.25)",
@@ -96,8 +102,8 @@ function PortailPublic({onConnexion}) {
         <div style={{padding:"60px 24px",background:"#fff"}}>
           <div style={{maxWidth:900,margin:"0 auto"}}>
             <div style={{textAlign:"center",marginBottom:36}}>
-              <div style={{fontSize:11,fontWeight:800,letterSpacing:2,textTransform:"uppercase",color:c2,marginBottom:8}}>Actualités</div>
-              <h2 style={{margin:0,fontSize:"clamp(22px,4vw,32px)",fontWeight:900,color:c1}}>Annonces de l'école</h2>
+              <div style={{fontSize:11,fontWeight:800,letterSpacing:2,textTransform:"uppercase",color:c2,marginBottom:8}}>{t("publicPage.announcements")}</div>
+              <h2 style={{margin:0,fontSize:"clamp(22px,4vw,32px)",fontWeight:900,color:c1}}>{t("publicPage.announcements")}</h2>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:16}}>
               {annoncesPub.map((an,i)=>(
@@ -124,7 +130,7 @@ function PortailPublic({onConnexion}) {
           <div style={{maxWidth:1000,margin:"0 auto"}}>
             <div style={{textAlign:"center",marginBottom:36}}>
               <div style={{fontSize:11,fontWeight:800,letterSpacing:2,textTransform:"uppercase",color:c2,marginBottom:8}}>Mérite & Excellence</div>
-              <h2 style={{margin:0,fontSize:"clamp(22px,4vw,32px)",fontWeight:900,color:"#fff"}}>🏆 Tableau d'honneur</h2>
+              <h2 style={{margin:0,fontSize:"clamp(22px,4vw,32px)",fontWeight:900,color:"#fff"}}>🏆 {t("publicPage.honorRoll")}</h2>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:14}}>
               {honneurs.map((h,i)=>(
@@ -191,7 +197,7 @@ function PortailPublic({onConnexion}) {
         <div style={{padding:"60px 24px",background:`linear-gradient(135deg,#0A1628,${c1})`}}>
           <div style={{maxWidth:800,margin:"0 auto",textAlign:"center"}}>
             <div style={{fontSize:11,fontWeight:800,letterSpacing:2,textTransform:"uppercase",color:c2,marginBottom:8}}>Nous trouver</div>
-            <h2 style={{margin:"0 0 32px",fontSize:"clamp(20px,4vw,30px)",fontWeight:900,color:"#fff"}}>📍 Contact & localisation</h2>
+            <h2 style={{margin:"0 0 32px",fontSize:"clamp(20px,4vw,30px)",fontWeight:900,color:"#fff"}}>📍 {t("publicPage.contact")}</h2>
             <div style={{display:"flex",gap:16,justifyContent:"center",flexWrap:"wrap"}}>
               {acc.telephone&&<a href={`tel:${acc.telephone}`} style={{display:"flex",alignItems:"center",gap:10,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:12,padding:"14px 22px",textDecoration:"none",color:"#fff"}}>
                 <span style={{fontSize:20}}>📞</span>

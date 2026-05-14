@@ -216,6 +216,60 @@
     "salaryBonus": "Bon",
     "salaryRevision": "Révision"
   },
+  "parent": {
+    "title": "Espace Parent",
+    "welcome": "Bonjour",
+    "myChildren": "Mes enfants",
+    "tabs": {
+      "overview": "Aperçu",
+      "grades": "Notes",
+      "bulletin": "Bulletin",
+      "absences": "Absences",
+      "schedule": "Emploi du temps",
+      "fees": "Mensualités",
+      "messages": "Messages"
+    },
+    "selectChild": "Sélectionnez un enfant",
+    "noChild": "Aucun enfant rattaché à votre compte. Contactez la direction.",
+    "averageGeneral": "Moyenne générale",
+    "ranking": "Rang",
+    "outOf": "sur",
+    "feePaid": "Payé",
+    "feePending": "En attente",
+    "sendMessage": "Envoyer un message",
+    "messagePlaceholder": "Votre message...",
+    "newMessage": "Nouveau message",
+    "noMessages": "Aucun message",
+    "blockedByUnpaid": "Accès bloqué — mensualités impayées. Contactez la comptabilité."
+  },
+  "teacher": {
+    "title": "Mon Espace",
+    "welcome": "Bienvenue",
+    "myClasses": "Mes classes",
+    "mySubjects": "Mes matières",
+    "tabs": {
+      "overview": "Aperçu",
+      "grades": "Saisir des notes",
+      "students": "Mes élèves",
+      "schedule": "Emploi du temps",
+      "messages": "Messages"
+    },
+    "selectClass": "Sélectionnez une classe",
+    "selectSubject": "Sélectionnez une matière",
+    "noClass": "Aucune classe affectée",
+    "saveGrades": "Enregistrer les notes",
+    "saving": "Enregistrement...",
+    "saved": "Notes enregistrées"
+  },
+  "publicPage": {
+    "announcements": "Annonces",
+    "honorRoll": "Tableau d'honneur",
+    "contact": "Contact",
+    "address": "Adresse",
+    "phone": "Téléphone",
+    "noAnnouncement": "Aucune annonce pour le moment",
+    "noHonor": "Aucun élève au tableau d'honneur"
+  },
   "school": {
     "title": "Établissement",
     "subtitle": "Gestion des classes, élèves, notes et discipline",

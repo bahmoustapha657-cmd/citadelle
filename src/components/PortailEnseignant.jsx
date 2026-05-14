@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { apiFetch, getAuthHeaders } from "../apiClient";
 import { C } from "../constants";
@@ -7,6 +8,7 @@ import { GlobalStyles } from "../styles";
 import { Badge, Btn, Card, Chargement, Input, LectureSeule, Modale, Selec, Stat, TD, THead, TR, Vide } from "./ui";
 
 function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
+  const { t } = useTranslation();
   const { moisAnnee, toast, envoyerPush } = useContext(SchoolContext);
   const c1 = schoolInfo.couleur1 || C.blue;
   const c2 = schoolInfo.couleur2 || C.green;
@@ -318,19 +320,19 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
           <div style={{ color: "#fff", fontWeight: 700, fontSize: 13 }}>{nomEns}</div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
             <Badge color="purple">{matiere || "Enseignant"}</Badge>
-            <button onClick={deconnecter} style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.3)", color: "#fff", padding: "3px 10px", borderRadius: 6, fontSize: 11, cursor: "pointer", fontWeight: 700 }}>Deconnexion</button>
+            <button onClick={deconnecter} style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.3)", color: "#fff", padding: "3px 10px", borderRadius: 6, fontSize: 11, cursor: "pointer", fontWeight: 700 }}>{t("auth.logout")}</button>
           </div>
         </div>
       </div>
 
       <div style={{ background: "#fff", borderBottom: "2px solid #e2e8f0", padding: "0 24px", display: "flex", gap: 0, overflowX: "auto" }}>
         {[
-          { id: "dashboard", label: "Dashboard" },
-          { id: "edt", label: "Mon EDT" },
-          { id: "notes", label: "Saisie notes" },
-          { id: "eleves", label: "Mes eleves" },
-          { id: "absences", label: "Absences / engagements" },
-          { id: "salaire", label: "Paie" },
+          { id: "dashboard", label: t("teacher.tabs.overview") },
+          { id: "edt", label: t("teacher.tabs.schedule") },
+          { id: "notes", label: t("teacher.tabs.grades") },
+          { id: "eleves", label: t("teacher.tabs.students") },
+          { id: "absences", label: t("dashboard.absences") },
+          { id: "salaire", label: t("accounting.tabs.salaries") },
         ].map((item) => (
           <button
             key={item.id}
@@ -359,9 +361,9 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
           <>
             {tab === "dashboard" && (
               <>
-                <h2 style={{ margin: "0 0 20px", fontSize: 18, fontWeight: 900, color: c1 }}>Bonjour, {nomEns.split(" ")[0] || nomEns}</h2>
+                <h2 style={{ margin: "0 0 20px", fontSize: 18, fontWeight: 900, color: c1 }}>{t("teacher.welcome")}, {nomEns.split(" ")[0] || nomEns}</h2>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12, marginBottom: 24 }}>
-                  <Stat label="Mes classes" value={mesClasses.length} sub={mesClasses.join(", ") || "-"} bg="#f0f7ff" />
+                  <Stat label={t("teacher.myClasses")} value={mesClasses.length} sub={mesClasses.join(", ") || "-"} bg="#f0f7ff" />
                   <Stat label="Mes eleves" value={eleves.length} sub="classes attribuees" bg="#f0fdf4" />
                   <Stat label="Notes saisies" value={mesNotes.length} sub={matiere || "Toutes"} bg="#fefce8" />
                   <Stat label="Creneaux / semaine" value={emplois.length} sub="emploi du temps" bg="#fdf4ff" />

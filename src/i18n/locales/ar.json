@@ -216,6 +216,60 @@
     "salaryBonus": "علاوة",
     "salaryRevision": "مراجعة"
   },
+  "parent": {
+    "title": "فضاء الأولياء",
+    "welcome": "مرحبًا",
+    "myChildren": "أبنائي",
+    "tabs": {
+      "overview": "نظرة عامة",
+      "grades": "الدرجات",
+      "bulletin": "كشف العلامات",
+      "absences": "الغيابات",
+      "schedule": "الجدول الزمني",
+      "fees": "الأقساط الشهرية",
+      "messages": "الرسائل"
+    },
+    "selectChild": "اختر طفلاً",
+    "noChild": "لا يوجد طفل مرتبط بحسابك. اتصل بإدارة المدرسة.",
+    "averageGeneral": "المعدل العام",
+    "ranking": "الترتيب",
+    "outOf": "من",
+    "feePaid": "مدفوع",
+    "feePending": "قيد الانتظار",
+    "sendMessage": "إرسال رسالة",
+    "messagePlaceholder": "رسالتك...",
+    "newMessage": "رسالة جديدة",
+    "noMessages": "لا توجد رسائل",
+    "blockedByUnpaid": "الوصول محظور — أقساط غير مدفوعة. اتصل بالمحاسبة."
+  },
+  "teacher": {
+    "title": "فضائي",
+    "welcome": "مرحبًا",
+    "myClasses": "فصولي",
+    "mySubjects": "موادي",
+    "tabs": {
+      "overview": "نظرة عامة",
+      "grades": "إدخال الدرجات",
+      "students": "طلابي",
+      "schedule": "الجدول الزمني",
+      "messages": "الرسائل"
+    },
+    "selectClass": "اختر فصلاً",
+    "selectSubject": "اختر مادة",
+    "noClass": "لا يوجد فصل مُسند",
+    "saveGrades": "حفظ الدرجات",
+    "saving": "جارٍ الحفظ...",
+    "saved": "تم حفظ الدرجات"
+  },
+  "publicPage": {
+    "announcements": "الإعلانات",
+    "honorRoll": "لوحة الشرف",
+    "contact": "اتصال",
+    "address": "العنوان",
+    "phone": "الهاتف",
+    "noAnnouncement": "لا توجد إعلانات حتى الآن",
+    "noHonor": "لا يوجد طالب على لوحة الشرف"
+  },
   "school": {
     "title": "المدرسة",
     "subtitle": "الفصول، الطلاب، الدرجات والانضباط",

@@ -216,6 +216,60 @@
     "salaryBonus": "Bonus",
     "salaryRevision": "Revision"
   },
+  "parent": {
+    "title": "Parent space",
+    "welcome": "Hello",
+    "myChildren": "My children",
+    "tabs": {
+      "overview": "Overview",
+      "grades": "Grades",
+      "bulletin": "Report card",
+      "absences": "Absences",
+      "schedule": "Timetable",
+      "fees": "Monthly fees",
+      "messages": "Messages"
+    },
+    "selectChild": "Select a child",
+    "noChild": "No child linked to your account. Contact the school office.",
+    "averageGeneral": "Overall average",
+    "ranking": "Rank",
+    "outOf": "of",
+    "feePaid": "Paid",
+    "feePending": "Pending",
+    "sendMessage": "Send a message",
+    "messagePlaceholder": "Your message...",
+    "newMessage": "New message",
+    "noMessages": "No messages",
+    "blockedByUnpaid": "Access blocked — unpaid fees. Contact accounting."
+  },
+  "teacher": {
+    "title": "My space",
+    "welcome": "Welcome",
+    "myClasses": "My classes",
+    "mySubjects": "My subjects",
+    "tabs": {
+      "overview": "Overview",
+      "grades": "Enter grades",
+      "students": "My students",
+      "schedule": "Timetable",
+      "messages": "Messages"
+    },
+    "selectClass": "Select a class",
+    "selectSubject": "Select a subject",
+    "noClass": "No class assigned",
+    "saveGrades": "Save grades",
+    "saving": "Saving...",
+    "saved": "Grades saved"
+  },
+  "publicPage": {
+    "announcements": "Announcements",
+    "honorRoll": "Honor roll",
+    "contact": "Contact",
+    "address": "Address",
+    "phone": "Phone",
+    "noAnnouncement": "No announcement yet",
+    "noHonor": "No student on the honor roll"
+  },
   "school": {
     "title": "School",
     "subtitle": "Classes, students, grades and discipline",

@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { PolarAngleAxis, PolarGrid, Radar, RadarChart, ResponsiveContainer, Tooltip } from "recharts";
 import { apiFetch, getAuthHeaders } from "../apiClient";
 import { C, fmt, getTarifAutreValue, getTarifMensuelTotal } from "../constants";
@@ -18,6 +19,7 @@ function normalizeText(value = "") {
 }
 
 function PortailParent({ utilisateur, deconnecter, annee, schoolInfo }) {
+  const { t } = useTranslation();
   const { toast, moisAnnee } = useContext(SchoolContext);
   const c1 = schoolInfo.couleur1 || C.blue;
   const c2 = schoolInfo.couleur2 || C.green;
@@ -147,12 +149,12 @@ function PortailParent({ utilisateur, deconnecter, annee, schoolInfo }) {
   };
 
   const tabs = [
-    { id: "dashboard", label: "Dashboard" },
-    { id: "notes", label: "Notes", bloque: accesBloqueParPaiement },
-    { id: "absences", label: "Absences" },
-    { id: "bulletins", label: "Bulletins", bloque: accesBloqueParPaiement },
-    { id: "paiements", label: "Paiements" },
-    { id: "messages", label: `Messages${nonLus > 0 ? ` (${nonLus})` : ""}` },
+    { id: "dashboard", label: t("parent.tabs.overview") },
+    { id: "notes", label: t("parent.tabs.grades"), bloque: accesBloqueParPaiement },
+    { id: "absences", label: t("parent.tabs.absences") },
+    { id: "bulletins", label: t("parent.tabs.bulletin"), bloque: accesBloqueParPaiement },
+    { id: "paiements", label: t("parent.tabs.fees") },
+    { id: "messages", label: `${t("parent.tabs.messages")}${nonLus > 0 ? ` (${nonLus})` : ""}` },
   ];
 
   return (
