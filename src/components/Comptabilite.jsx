@@ -1,4 +1,5 @@
 import React, { useContext, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { doc, updateDoc } from "firebase/firestore";
 import {
@@ -59,6 +60,7 @@ import {
 } from "../salary-utils";
 
 function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
+  const { t } = useTranslation();
   // readOnly=true → admin/direction : zéro action
   // canEdit → modifier/supprimer des enregistrements existants (verrou admin requis sauf admin lui-même — mais admin est readOnly)
   // canCreate → ajouter de nouveaux enregistrements (toujours permis si !readOnly)
@@ -581,15 +583,15 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
     w.document.close();
   };
 
-  const tabs=[{id:"bilan",label:"Bilan"},{id:"recettes",label:`Recettes (${recettes.length})`},
-    {id:"depenses",label:`Dépenses (${depenses.length})`},
-    {id:"salaires",label:`Salaires`},
-    {id:"enseignants",label:`Enseignants (${ensPrimaire.length+ensCollege.length+ensLycee.length})`},
-    {id:"personnel",label:`Personnel admin (${personnel.length})`},
-    {id:"fondation",label:`Versements (${versements.length})`},
-    {id:"enrolment",label:`Élèves (${elevesC.length+elevesL.length+elevesP.length})`},
-    {id:"mens",label:"Mensualités"},
-    {id:"transferts",label:"🔄 Transferts"}];
+  const tabs=[{id:"bilan",label:t("accounting.tabs.bilan")},{id:"recettes",label:`${t("accounting.tabs.revenues")} (${recettes.length})`},
+    {id:"depenses",label:`${t("accounting.tabs.expenses")} (${depenses.length})`},
+    {id:"salaires",label:t("accounting.tabs.salaries")},
+    {id:"enseignants",label:`${t("accounting.tabs.teachers")} (${ensPrimaire.length+ensCollege.length+ensLycee.length})`},
+    {id:"personnel",label:`${t("accounting.tabs.staff")} (${personnel.length})`},
+    {id:"fondation",label:`${t("accounting.tabs.donations")} (${versements.length})`},
+    {id:"enrolment",label:`${t("accounting.tabs.students")} (${elevesC.length+elevesL.length+elevesP.length})`},
+    {id:"mens",label:t("accounting.tabs.monthlyFees")},
+    {id:"transferts",label:`🔄 ${t("accounting.tabs.transfers")}`}];
 
   const anneeBase = Number(String(anneeCourante).split("-")[0]) || new Date().getFullYear();
   const anneesDispo = Array.from({length:7},(_,i)=>`${anneeBase-i}-${anneeBase-i+1}`);
@@ -599,17 +601,17 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18,flexWrap:"wrap"}}>
         {schoolInfo?.logo&&<img src={schoolInfo.logo} alt="" style={{width:48,height:48,objectFit:"contain"}}/>}
         <div style={{flex:1,minWidth:200}}>
-          <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.blueDark}}>Comptabilité</h2>
-          <p style={{margin:0,fontSize:12,color:C.green,fontWeight:600}}>Finances, salaires, versements & mensualités</p>
+          <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.blueDark}}>{t("accounting.title")}</h2>
+          <p style={{margin:0,fontSize:12,color:C.green,fontWeight:600}}>{t("accounting.subtitle")}</p>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <label style={{fontSize:12,color:"#64748b",fontWeight:600}}>Année consultée :</label>
+          <label style={{fontSize:12,color:"#64748b",fontWeight:600}}>{t("common.yearViewed")} :</label>
           <select value={anneeConsultee} onChange={e=>setAnneeConsultee(e.target.value)}
             style={{padding:"6px 10px",borderRadius:8,border:`1px solid ${enModeArchive?"#f59e0b":"#cbd5e1"}`,fontSize:13,fontWeight:700,
               background:enModeArchive?"#fef3c7":"#fff",color:enModeArchive?"#92400e":C.blueDark,cursor:"pointer"}}>
-            {anneesDispo.map(a=><option key={a} value={a}>{a}{a===anneeCourante?" (courante)":""}</option>)}
+            {anneesDispo.map(a=><option key={a} value={a}>{a}{a===anneeCourante?` (${t("common.current")})`:""}</option>)}
           </select>
-          {enModeArchive&&<Badge color="orange">📚 Vue archive — lecture seule</Badge>}
+          {enModeArchive&&<Badge color="orange">📚 {t("common.archive")} — {t("common.readOnly")}</Badge>}
         </div>
       </div>
       {readOnly&&<LectureSeule/>}

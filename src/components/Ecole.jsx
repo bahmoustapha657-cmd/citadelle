@@ -1,4 +1,5 @@
 import React, { useContext, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { C, getAnnee, peutModifier } from "../constants";
 import { getDefaultPeriode, getPeriodesForSchool } from "../period-utils";
@@ -21,6 +22,7 @@ import { ElevesTab } from "./ecole/ElevesTab";
 import { NotesTab } from "./ecole/NotesTab";
 
 function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns, userRole, annee, classesPredefinies, maxNote=20, matieresPredefinies=[], readOnly=false, verrouOuvert=false}) {
+  const { t } = useTranslation();
   const isPrimarySection = cleEns === "ensPrimaire";
   const anneeCourante = annee || getAnnee();
   const [anneeConsultee, setAnneeConsultee] = useState(anneeCourante);
@@ -101,18 +103,18 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
   const effectifReel = (nomClasse) => eleves.filter(e=>e.classe===nomClasse && e.statut!=="Départ").length;
 
   const tabItems=[
-    {id:"apercu",label:"Aperçu"},
-    {id:"classes",label:`Classes (${classes.length})`},
-    {id:"eleves",label:`Élèves (${eleves.length})`},
-    ...(avecEns?[{id:"ens",label:`Enseignants (${ens.length})`}]:[]),
-    {id:"notes",label:`Notes (${notes.length})`},
-    {id:"enseignements",label:"Enseignements"},
-    {id:"discipline",label:"Discipline"},
-    {id:"bulletins",label:"Bulletins"},
+    {id:"apercu",label:t("school.tabs.overview")},
+    {id:"classes",label:`${t("school.tabs.classes")} (${classes.length})`},
+    {id:"eleves",label:`${t("school.tabs.students")} (${eleves.length})`},
+    ...(avecEns?[{id:"ens",label:`${t("school.tabs.teachers")} (${ens.length})`}]:[]),
+    {id:"notes",label:`${t("school.tabs.notes")} (${notes.length})`},
+    {id:"enseignements",label:t("school.tabs.teachings")},
+    {id:"discipline",label:t("school.tabs.discipline")},
+    {id:"bulletins",label:t("school.tabs.bulletins")},
     {id:"livrets",label:"📋 Livrets"},
-    {id:"matieres",label:"Matières"},
-    ...(avecEns?[{id:"emploidutemps",label:"Emplois du temps"}]:[]),
-    {id:"attestations",label:"Attestations de niveau"},
+    {id:"matieres",label:t("school.tabs.subjects")},
+    ...(avecEns?[{id:"emploidutemps",label:t("school.tabs.schedule")}]:[]),
+    {id:"attestations",label:t("school.tabs.certificates")},
   ];
 
   const saveClasse=()=>{
@@ -165,22 +167,22 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
         {schoolInfo?.logo&&<img src={schoolInfo.logo} alt="" style={{width:48,height:48,objectFit:"contain"}}/>}
         <div style={{flex:1,minWidth:200}}>
           <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.blueDark}}>{titre}</h2>
-          <p style={{margin:0,fontSize:12,color:couleur,fontWeight:700}}>Gestion des classes, élèves, notes et discipline</p>
+          <p style={{margin:0,fontSize:12,color:couleur,fontWeight:700}}>{t("school.subtitle")}</p>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <label style={{fontSize:12,color:"#64748b",fontWeight:600}}>Année consultée :</label>
+          <label style={{fontSize:12,color:"#64748b",fontWeight:600}}>{t("common.yearViewed")} :</label>
           <select value={anneeConsultee} onChange={e=>setAnneeConsultee(e.target.value)}
             style={{padding:"6px 10px",borderRadius:8,border:`1px solid ${enModeArchive?"#f59e0b":"#cbd5e1"}`,fontSize:13,fontWeight:700,
               background:enModeArchive?"#fef3c7":"#fff",color:enModeArchive?"#92400e":C.blueDark,cursor:"pointer"}}>
-            {anneesDispo.map(a=><option key={a} value={a}>{a}{a===anneeCourante?" (courante)":""}</option>)}
+            {anneesDispo.map(a=><option key={a} value={a}>{a}{a===anneeCourante?` (${t("common.current")})`:""}</option>)}
           </select>
-          {enModeArchive&&<Badge color="orange">📚 Archive — lecture seule</Badge>}
+          {enModeArchive&&<Badge color="orange">📚 {t("common.archive")} — {t("common.readOnly")}</Badge>}
         </div>
       </div>
       {readOnly&&<LectureSeule/>}
       <div style={{background:"#fef3e0",border:"1px solid #fbbf24",borderRadius:8,padding:"9px 14px",fontSize:12,color:"#92400e",marginBottom:14,display:"flex",alignItems:"center",gap:8}}>
         <span style={{fontSize:16}}>🔒</span>
-        <span>L'enrôlement et la suppression des élèves se font uniquement dans le module <strong>Comptabilité → Élèves</strong>.</span>
+        <span>{t("school.enrollmentNotice")}</span>
       </div>
       <Tabs items={tabItems} actif={tab} onChange={setTab}/>
 

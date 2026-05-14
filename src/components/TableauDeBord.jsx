@@ -1,4 +1,5 @@
 import React, { useState, useContext } from "react";
+import { useTranslation } from "react-i18next";
 import { addDoc, collection } from "firebase/firestore";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line, ResponsiveContainer } from "recharts";
 import { db } from "../firebaseDb";
@@ -9,6 +10,7 @@ import { genererRapportMensuel } from "../reports";
 import { Badge, Btn, Card, Chargement, Stat, TR, Vide } from "./ui";
 
 function TableauDeBord({annee}) {
+  const { t } = useTranslation();
   const {schoolId, schoolInfo, moisAnnee, moisSalaire, planInfo} = useContext(SchoolContext);
   const {items:elevesC, chargement:cEC} = useFirestore("elevesCollege");
   const {items:elevesP, chargement:cEP} = useFirestore("elevesPrimaire");
@@ -123,9 +125,9 @@ function TableauDeBord({annee}) {
       <div style={{marginBottom:24,display:"flex",alignItems:"flex-start",justifyContent:"space-between",flexWrap:"wrap",gap:12}}>
         <div>
           <h1 style={{margin:0,fontSize:20,fontWeight:900,color:c1}}>
-            Tableau de bord — {schoolInfo.nom||"EduGest"}
+            {t("dashboard.title")} — {schoolInfo.nom||"EduGest"}
           </h1>
-          <p style={{margin:"4px 0 0",fontSize:13,color:"#6b7280"}}>Année {annee||getAnnee()} · Vue consolidée</p>
+          <p style={{margin:"4px 0 0",fontSize:13,color:"#6b7280"}}>{t("dashboard.yearLabel")} {annee||getAnnee()} · {t("dashboard.consolidatedView")}</p>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <select value={moisRapport} onChange={e=>setMoisRapport(e.target.value)}
@@ -139,25 +141,25 @@ function TableauDeBord({annee}) {
             annee||getAnnee(),
             schoolInfo,
             moisAnnee
-          )}>📄 Rapport mensuel</Btn>
+          )}>📄 {t("dashboard.monthlyReport")}</Btn>
         </div>
       </div>
 
       {/* KPIs principaux */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12,marginBottom:24}}>
-        <KPI label="Élèves actifs"  value={totalEleves} icon="🎓" sub={`${elevesC.filter(e=>e.statut==="Actif").length} collège · ${elevesL.filter(e=>e.statut==="Actif").length} lycée · ${elevesP.filter(e=>e.statut==="Actif").length} primaire`}/>
-        <KPI label="Enseignants"    value={totalEns}    icon="👨‍🏫" sub={`${ensC.length}C · ${ensL.length}L · ${ensP.length}P`}/>
-        <KPI label="Taux paiement"  value={`${tauxPay}%`} icon="💳" color="green" sub="Mensualités toutes sections"/>
-        <KPI label="Solde tréso."   value={fmt(solde)} icon="💰" color={solde>=0?"green":"white"} sub={`Rec: ${fmt(totalRec)} / Dép: ${fmt(totalDep)}`}/>
-        <KPI label="Masse salariale" value={fmt(masseSal)} icon="📋" sub={`${salMois.length} lignes · ${moisActuel}`}/>
-        <KPI label="Absences saisies" value={totalAbs} icon="📝" sub="Toutes sections"/>
+        <KPI label={t("dashboard.activeStudents")}  value={totalEleves} icon="🎓" sub={`${elevesC.filter(e=>e.statut==="Actif").length} ${t("dashboard.secondary")} · ${elevesL.filter(e=>e.statut==="Actif").length} ${t("dashboard.lycee")} · ${elevesP.filter(e=>e.statut==="Actif").length} ${t("dashboard.primary")}`}/>
+        <KPI label={t("dashboard.totalTeachers")}    value={totalEns}    icon="👨‍🏫" sub={`${ensC.length}C · ${ensL.length}L · ${ensP.length}P`}/>
+        <KPI label={t("dashboard.paymentRate")}  value={`${tauxPay}%`} icon="💳" color="green" sub={t("dashboard.allSections")}/>
+        <KPI label={t("dashboard.treasury")}   value={fmt(solde)} icon="💰" color={solde>=0?"green":"white"} sub={`${fmt(totalRec)} / ${fmt(totalDep)}`}/>
+        <KPI label={t("dashboard.salaryTotal")} value={fmt(masseSal)} icon="📋" sub={`${salMois.length} · ${moisActuel}`}/>
+        <KPI label={t("dashboard.absencesEntered")} value={totalAbs} icon="📝" sub={t("dashboard.allSections")}/>
       </div>
 
       {/* Graphiques */}
       <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:16,marginBottom:20}}>
         {/* Répartition élèves par classe */}
         <Card><div style={{padding:"16px 18px"}}>
-          <p style={{margin:"0 0 14px",fontWeight:800,fontSize:13,color:c1}}>Répartition des élèves par section</p>
+          <p style={{margin:"0 0 14px",fontWeight:800,fontSize:13,color:c1}}>{t("dashboard.studentDistribution")}</p>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={[
               {section:"Collège",Actifs:elevesC.filter(e=>e.statut==="Actif").length,Inactifs:elevesC.filter(e=>e.statut!=="Actif").length},

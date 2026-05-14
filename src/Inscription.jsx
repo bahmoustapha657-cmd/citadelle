@@ -1,7 +1,10 @@
 import { useState } from "react";
+import { useTranslation, Trans } from "react-i18next";
 import { apiFetch } from "./apiClient";
+import { LanguageSwitcher } from "./components/LanguageSwitcher";
 
 export default function Inscription() {
+  const { t } = useTranslation();
   const [etape, setEtape] = useState(1); // 1=infos ecole, 2=compte admin, 3=succes
   const [chargement, setChargement] = useState(false);
   const [erreur, setErreur] = useState("");
@@ -22,11 +25,11 @@ export default function Inscription() {
 
   const validerEtape1 = () => {
     if (!form.nomEcole.trim()) {
-      setErreur("Le nom de l'ecole est requis.");
+      setErreur(t("register.errors.schoolNameRequired"));
       return false;
     }
     if (!form.ville.trim()) {
-      setErreur("La ville est requise.");
+      setErreur(t("register.errors.cityRequired"));
       return false;
     }
     setErreur("");
@@ -35,15 +38,15 @@ export default function Inscription() {
 
   const validerEtape2 = () => {
     if (!form.adminLogin.trim()) {
-      setErreur("L'identifiant administrateur est requis.");
+      setErreur(t("register.errors.adminLoginRequired"));
       return false;
     }
     if (form.adminMdp.length < 8) {
-      setErreur("Le mot de passe doit contenir au moins 8 caracteres.");
+      setErreur(t("register.errors.passwordTooShort"));
       return false;
     }
     if (form.adminMdp !== form.adminMdp2) {
-      setErreur("Les mots de passe ne correspondent pas.");
+      setErreur(t("register.errors.passwordsMismatch"));
       return false;
     }
     setErreur("");
@@ -68,7 +71,7 @@ export default function Inscription() {
       });
       const data = await r.json().catch(() => ({}));
       if (!r.ok) {
-        setErreur(data.error || "Erreur lors de l'inscription. Veuillez reessayer.");
+        setErreur(data.error || t("register.errors.submitFailed"));
         return;
       }
       localStorage.setItem("LC_schoolId", data.schoolId);
@@ -77,7 +80,7 @@ export default function Inscription() {
       setEtape(3);
     } catch (e) {
       console.error(e);
-      setErreur("Impossible de joindre le serveur. Verifiez votre connexion.");
+      setErreur(t("register.errors.networkError"));
     } finally {
       setChargement(false);
     }
@@ -146,22 +149,22 @@ export default function Inscription() {
       <div style={cardStyle}>
         <div style={{ ...boxStyle, textAlign: "center" }}>
           <div style={{ fontSize: 56, marginBottom: 12 }}>OK</div>
-          <h2 style={{ color: "#0A1628", margin: "0 0 8px" }}>Ecole creee avec succes !</h2>
+          <h2 style={{ color: "#0A1628", margin: "0 0 8px" }}>{t("register.successTitle")}</h2>
           <p style={{ color: "#555", fontSize: 14, marginBottom: 20 }}>
-            Votre espace <strong>{form.nomEcole}</strong> est pret.
+            <Trans i18nKey="register.successWorkspace" values={{ name: form.nomEcole }} components={{ strong: <strong /> }} />
             <br />
-            Connectez-vous avec vos identifiants administrateur.
+            {t("register.successInstructions")}
           </p>
           <div style={{ background: "#f0f6f2", borderRadius: 10, padding: "14px 18px", textAlign: "left", fontSize: 13, marginBottom: 20 }}>
-            <div style={{ marginBottom: 8 }}><strong>Votre compte Direction :</strong></div>
+            <div style={{ marginBottom: 8 }}><strong>{t("register.directionAccount")} :</strong></div>
             <div style={{ fontFamily: "monospace", background: "#e0ebf8", borderRadius: 6, padding: "6px 10px", marginBottom: 12 }}>
-              <div>Identifiant : <strong>{form.adminLogin}</strong></div>
-              <div>Mot de passe : <strong>{form.adminMdp}</strong></div>
+              <div>{t("register.usernameLabel")} : <strong>{form.adminLogin}</strong></div>
+              <div>{t("register.passwordLabel")} : <strong>{form.adminMdp}</strong></div>
             </div>
             {comptesSecondaires.length > 0 && (
               <div>
                 <div style={{ marginBottom: 6, fontWeight: 700, color: "#b45309" }}>
-                  Attention : comptes complementaires a noter puis securiser apres connexion :
+                  {t("register.secondaryAccountsWarning")} :
                 </div>
                 <div style={{ fontFamily: "monospace", background: "#fff7ed", borderRadius: 6, padding: "6px 10px" }}>
                   {comptesSecondaires.map((compte) => (
@@ -172,7 +175,7 @@ export default function Inscription() {
             )}
           </div>
           <a href="/" style={{ ...btnStyle, display: "block", textDecoration: "none", textAlign: "center" }}>
-            Aller a la connexion
+            {t("register.goToLogin")}
           </a>
         </div>
       </div>
@@ -182,12 +185,15 @@ export default function Inscription() {
   return (
     <div style={cardStyle}>
       <div style={boxStyle}>
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+          <LanguageSwitcher compact />
+        </div>
         <div style={{ textAlign: "center", marginBottom: 24 }}>
           <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 900, color: "#0A1628" }}>
-            Creer votre espace ecole
+            {t("register.title")}
           </h2>
           <p style={{ margin: 0, fontSize: 12, color: "#9ca3af" }}>
-            Systeme de gestion scolaire - EduGest
+            {t("register.subtitle")}
           </p>
           <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 16 }}>
             {[1, 2].map((n) => (
@@ -211,78 +217,78 @@ export default function Inscription() {
             ))}
           </div>
           <p style={{ margin: "8px 0 0", fontSize: 11, color: "#6b7280" }}>
-            {etape === 1 ? "Informations de l'ecole" : "Compte administrateur"}
+            {etape === 1 ? t("register.step1Title") : t("register.step2Title")}
           </p>
         </div>
 
         {etape === 1 && (
           <>
-            <label style={labelStyle}>Nom de l'ecole *</label>
+            <label style={labelStyle}>{t("register.schoolName")} *</label>
             <input
               style={inputStyle}
               value={form.nomEcole}
               onChange={chg("nomEcole")}
-              placeholder="Ex. : Ecole La Citadelle"
+              placeholder={t("register.schoolNamePlaceholder")}
               autoFocus
             />
 
-            <label style={labelStyle}>Ville *</label>
+            <label style={labelStyle}>{t("register.city")} *</label>
             <input
               style={inputStyle}
               value={form.ville}
               onChange={chg("ville")}
-              placeholder="Ex. : Kindia"
+              placeholder={t("register.cityPlaceholder")}
             />
 
-            <label style={labelStyle}>Pays</label>
+            <label style={labelStyle}>{t("register.country")}</label>
             <input
               style={inputStyle}
               value={form.pays}
               onChange={chg("pays")}
-              placeholder="Ex. : Guinee"
+              placeholder={t("register.countryPlaceholder")}
             />
 
             {erreur && <div style={errStyle}>{erreur}</div>}
 
             <button style={btnStyle} onClick={() => { if (validerEtape1()) setEtape(2); }}>
-              Suivant -&gt;
+              {t("common.next")} →
             </button>
           </>
         )}
 
         {etape === 2 && (
           <>
-            <label style={labelStyle}>Identifiant de connexion *</label>
+            <label style={labelStyle}>{t("register.adminUsername")} *</label>
             <input
               style={inputStyle}
               value={form.adminLogin}
               onChange={chg("adminLogin")}
-              placeholder="Ex. : directeur"
+              placeholder={t("register.adminUsernamePlaceholder")}
               autoFocus
             />
 
-            <label style={labelStyle}>Mot de passe *</label>
+            <label style={labelStyle}>{t("register.adminPassword")} *</label>
             <input
               style={inputStyle}
               type="password"
               value={form.adminMdp}
               onChange={chg("adminMdp")}
-              placeholder="Minimum 8 caracteres"
+              placeholder={t("register.adminPasswordPlaceholder")}
             />
 
-            <label style={labelStyle}>Confirmer le mot de passe *</label>
+            <label style={labelStyle}>{t("register.adminPasswordConfirm")} *</label>
             <input
               style={inputStyle}
               type="password"
               value={form.adminMdp2}
               onChange={chg("adminMdp2")}
-              placeholder="Repetez le mot de passe"
+              placeholder={t("register.adminPasswordConfirmPlaceholder")}
             />
 
             {erreur && <div style={errStyle}>{erreur}</div>}
 
             <button style={btnStyle} onClick={inscrire} disabled={chargement}>
-              {chargement ? "Creation en cours..." : "Creer mon ecole"}
+              {chargement ? t("register.creating") : t("register.submitButton")}
             </button>
 
             <button
@@ -299,15 +305,15 @@ export default function Inscription() {
                 marginTop: 8,
               }}
             >
-              &lt;- Retour
+              ← {t("common.back")}
             </button>
           </>
         )}
 
         <p style={{ textAlign: "center", marginTop: 18, fontSize: 12, color: "#9ca3af" }}>
-          Deja inscrit ?{" "}
+          {t("register.alreadyRegistered")}{" "}
           <a href="/" style={{ color: "#0A1628", fontWeight: 700, textDecoration: "none" }}>
-            Se connecter
+            {t("register.signIn")}
           </a>
         </p>
       </div>

@@ -1,7 +1,9 @@
 ﻿import React, { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { C } from "../constants";
 import { GlobalStyles } from "../styles";
 import Logo from "../Logo";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 
 const modules = [
   {
@@ -170,6 +172,7 @@ function cardStyle(borderColor = "rgba(255,255,255,0.08)", background = "rgba(25
 }
 
 function LandingEduGest({ onConnexion, onInscription, onDemo }) {
+  const { t } = useTranslation();
   useEffect(() => {
     const elements = Array.from(document.querySelectorAll("[data-landing-reveal]"));
     if (!elements.length) return undefined;
@@ -676,22 +679,26 @@ function LandingEduGest({ onConnexion, onInscription, onDemo }) {
           <span style={{ fontSize: 12, fontWeight: 700, color: "#00C48C", letterSpacing: "0.5px" }}>Conçu pour les écoles d'Afrique de l'Ouest</span>
         </div>
 
+        <div style={{ position: "absolute", top: 16, right: 16, zIndex: 10 }}>
+          <LanguageSwitcher compact />
+        </div>
+
         <h1 className="landing-fade-up landing-delay-1" style={{ position: "relative", fontSize: "clamp(30px,6vw,56px)", fontWeight: 900, lineHeight: 1.12, margin: "0 0 18px", letterSpacing: "-1px" }}>
-          La gestion scolaire <span className="landing-shimmer">claire</span>, <span className="landing-shimmer">complète</span> et <span className="landing-shimmer">fiable</span>
+          {t("landing.heroTitle")}
         </h1>
         <p className="landing-fade-up landing-delay-2" style={{ position: "relative", fontSize: "clamp(14px,2.5vw,18px)", color: "rgba(255,255,255,0.62)", maxWidth: 620, margin: "0 auto 36px", lineHeight: 1.7 }}>
-          EduGest est un logiciel de gestion scolaire pour les écoles en Guinée. Il aide les directions, comptables, enseignants et parents à suivre les élèves, les notes, les bulletins, les paiements et les emplois du temps dans un seul outil simple à prendre en main.
+          {t("landing.heroSubtitle")}
         </p>
 
         <div className="landing-fade-up landing-delay-3 landing-cta-row" style={{ position: "relative", display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
           <button className="landing-cta landing-cta-primary" onClick={onInscription} style={{ border: "none", color: "#fff", padding: "15px 36px", borderRadius: 30, fontSize: 16, fontWeight: 800, cursor: "pointer", letterSpacing: 0.3 }}>
-            Créer mon école gratuitement
+            {t("landing.ctaRegister")}
           </button>
           <button className="landing-cta landing-cta-secondary" onClick={onDemo} style={{ color: "#fff", padding: "15px 32px", borderRadius: 30, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
-            Voir une démo
+            {t("landing.ctaDemo")}
           </button>
           <button className="landing-cta landing-cta-secondary" onClick={onConnexion} style={{ color: "#fff", padding: "15px 32px", borderRadius: 30, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
-            Se connecter
+            {t("landing.ctaLogin")}
           </button>
         </div>
         <p className="landing-fade-up landing-delay-4" style={{ marginTop: 14, fontSize: 11, color: "rgba(255,255,255,0.3)" }}>Inscription gratuite - aucune carte bancaire requise</p>
