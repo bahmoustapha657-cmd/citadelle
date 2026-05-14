@@ -6,6 +6,7 @@ import UpdateBanner from './components/UpdateBanner.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import { registerServiceWorker } from './sw-register.js'
 import { initSentry } from './sentry.js'
+import './i18n'
 
 initSentry()
 

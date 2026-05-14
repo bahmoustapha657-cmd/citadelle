@@ -1,12 +1,15 @@
 ﻿import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { doc, getDoc, getDocFromServer } from "firebase/firestore";
 import { signInWithCustomTokenClient } from "../firebaseAuth";
 import { db } from "../firebaseDb";
 import { C, getAnnee } from "../constants";
 import { apiFetch } from "../apiClient";
 import Logo from "../Logo";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 
 function Connexion({ onLogin, onInscription }) {
+  const { t } = useTranslation();
   const [codeEcole, setCodeEcole] = useState(() => localStorage.getItem("LC_schoolId") || "");
   const [login, setLogin] = useState("");
   const [mdp, setMdp] = useState("");
@@ -219,14 +222,17 @@ function Connexion({ onLogin, onInscription }) {
         </div>
 
         <div style={{ padding: "30px 36px 32px", display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: -8 }}>
+            <LanguageSwitcher compact />
+          </div>
           <div>
             <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: C.blueDark, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>
-              Code ecole
+              {t("auth.schoolCode")}
             </label>
             <input
               value={codeEcole}
               onChange={(event) => setCodeEcole(event.target.value)}
-              placeholder="Ex. : ecole-la-citadelle"
+              placeholder={t("auth.schoolCodePlaceholder")}
               onKeyDown={(event) => event.key === "Enter" && connecter()}
               style={champStyle}
             />
@@ -239,12 +245,12 @@ function Connexion({ onLogin, onInscription }) {
 
           <div>
             <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: C.blueDark, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>
-              Identifiant
+              {t("auth.username")}
             </label>
             <input
               value={login}
               onChange={(event) => setLogin(event.target.value)}
-              placeholder="Votre identifiant"
+              placeholder={t("auth.usernamePlaceholder")}
               onKeyDown={(event) => event.key === "Enter" && connecter()}
               style={champStyle}
             />
@@ -252,14 +258,14 @@ function Connexion({ onLogin, onInscription }) {
 
           <div>
             <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: C.blueDark, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>
-              Mot de passe
+              {t("auth.password")}
             </label>
             <div style={{ position: "relative" }}>
               <input
                 value={mdp}
                 onChange={(event) => setMdp(event.target.value)}
                 type={voir ? "text" : "password"}
-                placeholder="Votre mot de passe"
+                placeholder={t("auth.passwordPlaceholder")}
                 onKeyDown={(event) => event.key === "Enter" && connecter()}
                 style={{ ...champStyle, paddingRight: 44 }}
               />
@@ -320,17 +326,17 @@ function Connexion({ onLogin, onInscription }) {
               letterSpacing: "0.02em",
             }}
           >
-            {chargement ? "Connexion en cours..." : "Se connecter"}
+            {chargement ? t("auth.loggingIn") : t("auth.loginButton")}
           </button>
 
           <p style={{ textAlign: "center", margin: "4px 0 0", color: "#9ca3af", fontSize: 12 }}>
-            Pas encore inscrit ?{" "}
+            {t("auth.noAccount")}{" "}
             <button
               type="button"
               onClick={() => onInscription && onInscription()}
               style={{ background: "none", border: "none", padding: 0, color: C.blue, cursor: "pointer", fontWeight: 700, fontSize: "inherit", fontFamily: "inherit" }}
             >
-              Creer un compte ecole
+              {t("auth.registerLink")}
             </button>
           </p>
         </div>

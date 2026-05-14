@@ -3,6 +3,22 @@ import Logo from "./Logo";
 import { apiFetch, getAuthHeaders } from "./apiClient";
 import { SchoolContext, SCHOOL_INFO_DEFAUT } from "./contexts/SchoolContext";
 import React, { Suspense, lazy, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { LanguageSwitcher } from "./components/LanguageSwitcher";
+
+const MODULE_I18N_KEYS = {
+  accueil: "nav.dashboard",
+  compta: "nav.accounting",
+  primaire: "nav.primary",
+  secondaire: "nav.secondary",
+  calendrier: "nav.calendar",
+  examens: "nav.exams",
+  messages: "nav.messages",
+  historique: "nav.history",
+  parametres: "nav.settings",
+  admin_panel: "nav.admin",
+  fondation: "nav.foundation",
+};
 import { getCurrentUser, signOutCurrentUser, watchAuthState } from "./firebaseAuth";
 import { db } from "./firebaseDb";
 import {
@@ -141,6 +157,7 @@ class ErrorBoundary extends React.Component {
 }
 
 export default function App() {
+  const { t } = useTranslation();
   const [utilisateur,setUtilisateur]=useState(null);
   const [page,setPage]=useState(null);
   const [rechercheOuverte,setRechercheOuverte]=useState(false);
@@ -708,7 +725,7 @@ export default function App() {
               background:actif?`${C.green}22`:"transparent",transition:"background .15s"}}>
               <span style={{fontSize:15}}>{m.icon}</span>
               <div style={{flex:1,minWidth:0}}>
-                <p style={{margin:0,fontSize:12,fontWeight:800,color:actif?C.green:"rgba(255,255,255,0.82)"}}>{m.label}</p>
+                <p style={{margin:0,fontSize:12,fontWeight:800,color:actif?C.green:"rgba(255,255,255,0.82)"}}>{MODULE_I18N_KEYS[m.id]?t(MODULE_I18N_KEYS[m.id]):m.label}</p>
                 <p style={{margin:0,fontSize:9,color:"rgba(255,255,255,0.35)"}}>{m.desc}</p>
               </div>
               {m.id==="messages"&&msgsNonLus>0&&(
@@ -853,10 +870,15 @@ export default function App() {
                     </button>
                   )}
                   <button onClick={()=>{setProfilOuvert(false);setAideOuverte(true);}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 16px",background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#374151",textAlign:"left",fontWeight:600,borderBottom:"1px solid #f1f5f9"}}>
-                    ⌨️ <span>Raccourcis clavier</span><kbd style={{marginLeft:"auto",background:"#f1f5f9",border:"1px solid #e2e8f0",borderRadius:4,padding:"1px 5px",fontSize:10,color:"#94a3b8"}}>?</kbd>
+                    ⌨️ <span>{t("nav.shortcuts")}</span><kbd style={{marginLeft:"auto",background:"#f1f5f9",border:"1px solid #e2e8f0",borderRadius:4,padding:"1px 5px",fontSize:10,color:"#94a3b8"}}>?</kbd>
                   </button>
+                  <div style={{padding:"10px 16px",borderBottom:"1px solid #f1f5f9",display:"flex",alignItems:"center",gap:10}}>
+                    <span style={{fontSize:14}}>🌐</span>
+                    <span style={{fontSize:12,fontWeight:600,color:"#374151",flex:1}}>{t("common.language")}</span>
+                    <LanguageSwitcher compact />
+                  </div>
                   <button onClick={()=>{setProfilOuvert(false);deconnecter();}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 16px",background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#ef4444",textAlign:"left",fontWeight:700}}>
-                    ⬅ <span>Se déconnecter</span>
+                    ⬅ <span>{t("auth.logout")}</span>
                   </button>
                 </div>
               )}
