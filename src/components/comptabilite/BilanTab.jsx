@@ -1,6 +1,7 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { C, fmt } from "../../constants";
+import { C, fmt, getMonnaie } from "../../constants";
 import { Card, Chargement, Stat, Vide } from "../ui";
 
 export function BilanTab({
@@ -23,18 +24,20 @@ export function BilanTab({
   moisLabel,
   mensualiteOverview,
 }) {
+  const { t } = useTranslation();
   const blocage = !!schoolInfo.blocageParentImpaye;
+  const cur = getMonnaie();
 
   return (
     <div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:10,marginBottom:16}}>
-        <Stat label="Recettes" value={`${(totR/1e6).toFixed(2)}M`} sub="GNF" bg="#eaf4e0"/>
-        <Stat label="Dépenses" value={`${(totD/1e6).toFixed(2)}M`} sub="GNF" bg="#fce8e8"/>
-        <Stat label="Vers. Fondation" value={`${(totVers/1e6).toFixed(2)}M`} sub="GNF" bg="#e6f4ea"/>
-        <Stat label="Solde" value={`${((totR-totD)/1e6).toFixed(2)}M`} sub="GNF" bg={(totR-totD)>=0?"#eaf4e0":"#fce8e8"}/>
-        <Stat label="Masse salariale" value={`${((totNetSec+totNetPrim+totNetPers)/1e6).toFixed(3)}M`} sub={`GNF — ${moisLabel} (${salairesMois.length})`} bg="#fef3e0"/>
-        <Stat label="Mensualités impayées" value={`${(impaye/1e6).toFixed(2)}M`} sub={`GNF — ${pctImpaye}% du total dû`} bg="#fce8e8"/>
-        <Stat label="Mensualités perçues" value={`${(mensualiteOverview.totalPercu/1e6).toFixed(2)}M`} sub={`${mensualiteOverview.totalDu>0?(100-Number(pctImpaye)).toFixed(1):0}% du total`} bg="#eaf4e0"/>
+        <Stat label={t("accounting.revenuesTitle")} value={`${(totR/1e6).toFixed(2)}M`} sub={cur} bg="#eaf4e0"/>
+        <Stat label={t("accounting.expensesTitle")} value={`${(totD/1e6).toFixed(2)}M`} sub={cur} bg="#fce8e8"/>
+        <Stat label={t("accounting.tabs.donations")} value={`${(totVers/1e6).toFixed(2)}M`} sub={cur} bg="#e6f4ea"/>
+        <Stat label={t("accounting.balanceLabel")} value={`${((totR-totD)/1e6).toFixed(2)}M`} sub={cur} bg={(totR-totD)>=0?"#eaf4e0":"#fce8e8"}/>
+        <Stat label={t("accounting.totalSalaries")} value={`${((totNetSec+totNetPrim+totNetPers)/1e6).toFixed(3)}M`} sub={`${cur} — ${moisLabel} (${salairesMois.length})`} bg="#fef3e0"/>
+        <Stat label={t("accounting.outstanding")} value={`${(impaye/1e6).toFixed(2)}M`} sub={`${cur} — ${pctImpaye}%`} bg="#fce8e8"/>
+        <Stat label={t("accounting.totalReceived")} value={`${(mensualiteOverview.totalPercu/1e6).toFixed(2)}M`} sub={`${mensualiteOverview.totalDu>0?(100-Number(pctImpaye)).toFixed(1):0}%`} bg="#eaf4e0"/>
       </div>
       {/* ── Contrôle accès parent ── */}
       <div style={{background:blocage?"#fff0f0":"#f0fdf4",border:`2px solid ${blocage?"#f87171":"#4ade80"}`,borderRadius:14,padding:"18px 20px",marginBottom:18}}>

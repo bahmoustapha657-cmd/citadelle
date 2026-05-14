@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { C, fmt, initMens, getAnnee, getSectionLabelForClasse } from "../../constants";
 import { Badge, Btn, THead, TR, TD, Vide } from "../ui";
 import { exportExcel, imprimerRecu } from "../../reports";
@@ -39,6 +40,7 @@ export function MensualitesTab({
   getTarifInscriptionEleve,
   getTarif,
 }) {
+  const { t } = useTranslation();
   return (
     <div>
       {/* ── Tarifs par classe ── */}
@@ -84,16 +86,16 @@ export function MensualitesTab({
         ):null;
       })()}
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,flexWrap:"wrap"}}>
-        <strong style={{fontSize:14,flex:1,color:C.blueDark}}>Mensualités — {annee||getAnnee()}</strong>
+        <strong style={{fontSize:14,flex:1,color:C.blueDark}}>{t("accounting.monthly")} — {annee||getAnnee()}</strong>
         <select value={niveau} onChange={e=>{setNiveau(e.target.value);setFiltClasse("all");}}
           style={{border:"1px solid #b0c4d8",borderRadius:7,padding:"6px 10px",fontSize:12,background:"#fff",color:C.blueDark,fontWeight:600}}>
-          <option value="college">Collège</option>
-          <option value="lycee">Lycée</option>
-          <option value="primaire">Primaire</option>
+          <option value="college">{t("dashboard.secondary")}</option>
+          <option value="lycee">{t("dashboard.lycee")}</option>
+          <option value="primaire">{t("dashboard.primary")}</option>
         </select>
         {classesU.length>0&&<select value={filtClasse} onChange={e=>setFiltClasse(e.target.value)}
           style={{border:"1px solid #b0c4d8",borderRadius:7,padding:"6px 10px",fontSize:12,background:"#fff",color:C.blueDark}}>
-          <option value="all">Toutes les classes</option>
+          <option value="all">{t("common.all")}</option>
           {classesU.map(c=><option key={c}>{c}</option>)}
         </select>}
       </div>
@@ -102,8 +104,8 @@ export function MensualitesTab({
             const overview = getMensualiteOverview(elevesFiltres, moisAnnee, tarifsClasses);
             return <>
             <div style={{marginBottom:12,padding:"9px 14px",background:"#e0ebf8",borderRadius:8,display:"flex",gap:20,flexWrap:"wrap",alignItems:"center"}}>
-              <span style={{fontSize:12,color:C.greenDk,fontWeight:700}}>✓ {overview.totalPayes} payés</span>
-              <span style={{fontSize:12,color:"#b91c1c",fontWeight:700}}>✗ {overview.totalImpayes} impayés</span>
+              <span style={{fontSize:12,color:C.greenDk,fontWeight:700}}>✓ {overview.totalPayes} {t("accounting.paid").toLowerCase()}</span>
+              <span style={{fontSize:12,color:"#b91c1c",fontWeight:700}}>✗ {overview.totalImpayes} {t("accounting.unpaid").toLowerCase()}</span>
               <span style={{fontSize:12,color:C.blue,fontWeight:700}}>💰 {fmt(overview.totalPercu)}</span>
               <Badge color="purple">{fmt(overview.totalInscriptionsPercues)} inscriptions perçues</Badge>
               <Badge color="gray">{fmt(overview.totalAutresPercus)} autres frais perçus</Badge>

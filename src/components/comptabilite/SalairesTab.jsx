@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { C, CLASSES_PRIMAIRE, fmtN, getAnnee } from "../../constants";
 import { Badge, Btn, Card, Chargement, Input, Modale, Selec, TD, THead, TR, Vide } from "../ui";
@@ -61,18 +62,19 @@ export function SalairesTab({
   imprimerSalaires,
   enreg,
 }) {
+  const { t } = useTranslation();
   const chg = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
   return (
     <div>
       {/* Barre de navigation interne */}
       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14,flexWrap:"wrap"}}>
-        {[{id:"etats",label:"États de salaires"},{id:"bons",label:`Bons (${bonsMois.length})`}].map(t=>(
-          <button key={t.id} onClick={()=>setSousTabSal(t.id)} style={{
+        {[{id:"etats",label:t("accounting.salaryHeader")},{id:"bons",label:`${t("accounting.salaryBonus")}s (${bonsMois.length})`}].map(tab=>(
+          <button key={tab.id} onClick={()=>setSousTabSal(tab.id)} style={{
             padding:"7px 16px",borderRadius:8,border:"none",cursor:"pointer",fontSize:13,fontWeight:700,
-            background:sousTabSal===t.id?C.blueDark:"#e0ebf8",
-            color:sousTabSal===t.id?"#fff":C.blueDark,
-          }}>{t.label}</button>
+            background:sousTabSal===tab.id?C.blueDark:"#e0ebf8",
+            color:sousTabSal===tab.id?"#fff":C.blueDark,
+          }}>{tab.label}</button>
         ))}
         <div style={{flex:1}}/>
         <select value={moisSel} onChange={e=>setMoisSel(e.target.value)}
@@ -88,11 +90,11 @@ export function SalairesTab({
               style={{width:80,border:"none",background:"transparent",fontSize:13,fontWeight:700,color:C.blueDark,outline:"none"}}/>
             GNF
           </label>}
-          {canCreate&&<Btn v="amber" onClick={()=>autoGenererSalaires()}>⚡ Auto-générer</Btn>}
-          {canCreate&&<Btn v="amber" onClick={()=>autoGenererSalaires({resync:true})} title="Recalcule V/H et prime horaire des lignes existantes à partir de la fiche enseignant et de l'EDT actuels (bons et révisions préservés)">🔄 Rafraîchir</Btn>}
-          {canCreate&&bonsMois.length>0&&<Btn v="amber" onClick={appliquerBons}>✔ Appliquer les bons</Btn>}
-          {canCreate&&<Btn onClick={()=>{setForm({section:"Secondaire",mois:moisModale,nonExecute:0,cinqSem:0,bon:0,revision:0});setModal("add_s");}}>+ Ajouter</Btn>}
-          <Btn v="vert" onClick={imprimerSalaires}>🖨️ Imprimer</Btn>
+          {canCreate&&<Btn v="amber" onClick={()=>autoGenererSalaires()}>⚡ {t("accounting.generateSalaries")}</Btn>}
+          {canCreate&&<Btn v="amber" onClick={()=>autoGenererSalaires({resync:true})} title="Recalcule V/H et prime horaire des lignes existantes à partir de la fiche enseignant et de l'EDT actuels (bons et révisions préservés)">🔄 {t("common.refresh")}</Btn>}
+          {canCreate&&bonsMois.length>0&&<Btn v="amber" onClick={appliquerBons}>✔ {t("accounting.applyBonus")}</Btn>}
+          {canCreate&&<Btn onClick={()=>{setForm({section:"Secondaire",mois:moisModale,nonExecute:0,cinqSem:0,bon:0,revision:0});setModal("add_s");}}>+ {t("common.add")}</Btn>}
+          <Btn v="vert" onClick={imprimerSalaires}>🖨️ {t("accounting.printSalaries")}</Btn>
         </>}
         {(()=>{const j5=getFifthWeekDays(moisSel);return j5.length>0&&(
           <div style={{width:"100%",marginTop:6,background:"linear-gradient(135deg,#fef3c7,#fde68a)",border:"1px solid #f59e0b",borderRadius:8,padding:"7px 14px",fontSize:12,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
@@ -224,7 +226,7 @@ export function SalairesTab({
 
         {/* Section Secondaire */}
         <div style={{background:C.blue,color:"#fff",padding:"8px 14px",borderRadius:"8px 8px 0 0",fontWeight:700,fontSize:13}}>
-          SECTION SECONDAIRE — {moisLabel} {annee||getAnnee()}
+          {t("accounting.section").toUpperCase()} {t("dashboard.secondary").toUpperCase()} — {moisLabel} {annee||getAnnee()}
         </div>
         <div style={{overflowX:"auto",marginBottom:16}}>
           <table style={{width:"100%",borderCollapse:"collapse",minWidth:900}}>
@@ -297,7 +299,7 @@ export function SalairesTab({
 
         {/* Section Primaire */}
         <div style={{background:C.green,color:"#fff",padding:"8px 14px",borderRadius:"8px 8px 0 0",fontWeight:700,fontSize:13,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
-          <span style={{flex:1}}>SECTION PRIMAIRE — {moisLabel} {annee||getAnnee()}</span>
+          <span style={{flex:1}}>{t("accounting.section").toUpperCase()} {t("dashboard.primary").toUpperCase()} — {moisLabel} {annee||getAnnee()}</span>
           <input
             placeholder="🔍 Recherche par nom..."
             value={filtrePrimNom} onChange={e=>setFiltrePrimNom(e.target.value)}
@@ -354,7 +356,7 @@ export function SalairesTab({
 
         {/* Section Personnel */}
         <div style={{background:"#7c3aed",color:"#fff",padding:"8px 14px",borderRadius:"8px 8px 0 0",fontWeight:700,fontSize:13,display:"flex",alignItems:"center",gap:10}}>
-          <span style={{flex:1}}>SECTION PERSONNEL — {moisLabel} {annee||getAnnee()}</span>
+          <span style={{flex:1}}>{t("accounting.section").toUpperCase()} {t("accounting.tabs.staff").toUpperCase()} — {moisLabel} {annee||getAnnee()}</span>
         </div>
         <div style={{overflowX:"auto",marginBottom:8}}>
           <table style={{width:"100%",borderCollapse:"collapse"}}>

@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { C, getAnnee } from "../../constants";
 import { Badge, Btn, Card, Chargement, Input, Modale, Selec, TD, THead, TR, Vide } from "../ui";
 import { exportExcel } from "../../reports";
@@ -47,12 +48,13 @@ export function NotesTab({
   setImportEnCours,
   toast,
 }) {
+  const { t } = useTranslation();
   const chg = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
   return (
     <div>
       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,flexWrap:"wrap"}}>
-        <strong style={{fontSize:14,color:C.blueDark,flex:1}}>Notes ({notes.length})</strong>
+        <strong style={{fontSize:14,color:C.blueDark,flex:1}}>{t("school.tabs.notes")} ({notes.length})</strong>
         {/* Toggle vue */}
         <div style={{display:"flex",background:"#f1f5f9",borderRadius:8,padding:3,gap:2}}>
           {[{v:"liste",icon:"☰"},{v:"grille",icon:"⊞"}].map(({v,icon})=>(
@@ -67,13 +69,13 @@ export function NotesTab({
           `Notes_${avecEns?"College":"Primaire"}`,
           ["Élève","Matière","Type","Période",`Note /${maxNote}`],
           notes.map(n=>[n.eleveNom,n.matiere,getEvaluationLabel(n.type, schoolInfo, { section: isPrimarySection ? "primaire" : "secondaire" }),n.periode,n.note])
-        )}>📥 Export</Btn>
+        )}>📥 {t("common.export")}</Btn>
         <Btn sm v="ghost" onClick={()=>exportExcel(`Modele_Notes`,
           ["Élève (Nom Prénom)","Matière","Type","Période",`Note (/${maxNote})`],
           eleves.slice(0,3).map(e=>[`${e.nom} ${e.prenom}`,matieres[0]?.nom||"Maths",noteForms[0]?.label||"Devoir",periodes[0]||"T1",Math.round(maxNote*0.7)])
         )}>📋 Modèle</Btn>
-        {canCreate&&<Btn sm v="vert" onClick={()=>setModal("import_notes")}>⬆️ Importer</Btn>}
-        {canCreate&&<Btn onClick={()=>{setForm({periode:periodes[0]||"T1",type:defaultNoteType});setModal("add_n");}}>+ Saisir</Btn>}
+        {canCreate&&<Btn sm v="vert" onClick={()=>setModal("import_notes")}>⬆️ {t("common.import")}</Btn>}
+        {canCreate&&<Btn onClick={()=>{setForm({periode:periodes[0]||"T1",type:defaultNoteType});setModal("add_n");}}>+ {t("common.add")}</Btn>}
       </div>
 
       {/* ── VUE GRILLE ── */}
@@ -125,7 +127,7 @@ export function NotesTab({
             <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
               <select value={grilleClasse} onChange={e=>setGrilleClasse(e.target.value)}
                 style={{border:"1px solid #b0c4d8",borderRadius:7,padding:"6px 10px",fontSize:12}}>
-                <option value="all">Toutes classes</option>
+                <option value="all">{t("common.all")}</option>
                 {classesUniqN.map(c=><option key={c}>{c}</option>)}
               </select>
               <select value={grillePeriode} onChange={e=>setGrillePeriode(e.target.value)}
