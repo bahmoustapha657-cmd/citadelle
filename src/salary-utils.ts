@@ -4,24 +4,109 @@ import { TOUS_MOIS_LONGS } from "./constants.js";
 // qui rendrait les fiches précédentes non reproductibles.
 export const SALARY_ALGO_VERSION = 1;
 
-function normalizeText(value = "") {
+export type PrimeParClasse = {
+  classe?: string;
+  prime?: number | string;
+};
+
+export type Teacher = {
+  _id?: string;
+  nom?: string;
+  prenom?: string;
+  nomComplet?: string;
+  enseignantNom?: string;
+  matiere?: string;
+  classe?: string;
+  classeTitle?: string;
+  grade?: string;
+  statut?: string;
+  primeHoraire?: number | string;
+  primeParClasse?: PrimeParClasse[];
+  montantForfait?: number | string;
+  salaireBase?: number | string;
+  forfait?: number | string;
+};
+
+export type ScheduleSlot = {
+  jour?: string;
+  heureDebut?: string;
+  heureFin?: string;
+  classe?: string;
+  enseignant?: string;
+  type?: string;
+  primeRevision?: number | string;
+};
+
+export type TeachingEntry = {
+  heure?: string;
+  classe?: string;
+  enseignantNom?: string;
+  statut?: string;
+};
+
+export type Person = {
+  nom?: string;
+  prenom?: string;
+  poste?: string;
+  categorie?: string;
+  salaireBase?: number | string;
+  statut?: string;
+  observation?: string;
+};
+
+export type ParamSnapshot = {
+  primeDefaut: number;
+  jours5eme: string[];
+};
+
+export type SalaryRecord = {
+  algoVersion?: number;
+  section?: "Primaire" | "Secondaire" | "Personnel" | string;
+  mois?: string;
+  nom?: string;
+  matiere?: string;
+  niveau?: string;
+  poste?: string;
+  categorie?: string;
+  vhHebdo?: number;
+  vhPrevu?: number;
+  cinqSem?: number;
+  nonExecute?: number;
+  primeHoraire?: number;
+  montantBrut?: number | string;
+  montantForfait?: number | string;
+  primesVariables?: boolean;
+  observation?: string;
+  paramSnapshot?: ParamSnapshot;
+  bon?: number | string;
+  revision?: number | string;
+};
+
+export type SalaryTotals = {
+  montant: number;
+  bon: number;
+  revision: number;
+  net: number;
+};
+
+function normalizeText(value: string = ""): string {
   return String(value || "")
     .trim()
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[̀-ͯ]/g, "")
     .replace(/\s+/g, " ");
 }
 
-function stripLegacyTeacherSuffix(value = "") {
+function stripLegacyTeacherSuffix(value: string = ""): string {
   return String(value || "").replace(/\s*\([^)]*\)\s*$/, "").trim();
 }
 
-export function buildTeacherFullName(teacher = {}) {
+export function buildTeacherFullName(teacher: Teacher = {}): string {
   return `${teacher.prenom || ""} ${teacher.nom || ""}`.trim();
 }
 
-export function matchesTeacherName(value = "", teacher = {}) {
+export function matchesTeacherName(value: string = "", teacher: Teacher = {}): boolean {
   const target = normalizeText(stripLegacyTeacherSuffix(value));
   if (!target) return false;
 
@@ -30,13 +115,13 @@ export function matchesTeacherName(value = "", teacher = {}) {
     teacher.nomComplet,
     teacher.enseignantNom,
   ]
-    .map((alias) => normalizeText(stripLegacyTeacherSuffix(alias)))
+    .map((alias) => normalizeText(stripLegacyTeacherSuffix(alias || "")))
     .filter(Boolean);
 
   return aliases.includes(target);
 }
 
-export function getScheduleSlotHours(slot = {}) {
+export function getScheduleSlotHours(slot: ScheduleSlot = {}): number {
   if (!slot.heureDebut || !slot.heureFin) return 2;
 
   const [hd, md] = String(slot.heureDebut).split(":").map(Number);
@@ -46,11 +131,11 @@ export function getScheduleSlotHours(slot = {}) {
   return Number.isFinite(duree) && duree > 0 ? Math.round(duree * 10) / 10 : 2;
 }
 
-export function getTeacherScheduleSlots(emplois = [], teacher = {}) {
+export function getTeacherScheduleSlots(emplois: ScheduleSlot[] = [], teacher: Teacher = {}): ScheduleSlot[] {
   return emplois.filter((slot) => matchesTeacherName(slot.enseignant, teacher));
 }
 
-export function getSlotPrimeForTeacher(teacher = {}, slot = {}, primeDefaut = 0) {
+export function getSlotPrimeForTeacher(teacher: Teacher = {}, slot: ScheduleSlot = {}, primeDefaut: number | string = 0): number {
   if (slot.type === "revision" && slot.primeRevision) return Number(slot.primeRevision);
 
   const primesParClasse = Array.isArray(teacher.primeParClasse) ? teacher.primeParClasse : [];
@@ -61,8 +146,8 @@ export function getSlotPrimeForTeacher(teacher = {}, slot = {}, primeDefaut = 0)
   return Number(teacher.primeHoraire || primeDefaut || 0);
 }
 
-export function getTeacherDefaultSlotHours(teacherSlots = []) {
-  const frequencies = new Map();
+export function getTeacherDefaultSlotHours(teacherSlots: ScheduleSlot[] = []): number {
+  const frequencies = new Map<number, number>();
 
   teacherSlots.forEach((slot) => {
     const hours = getScheduleSlotHours(slot);
@@ -75,7 +160,7 @@ export function getTeacherDefaultSlotHours(teacherSlots = []) {
     .sort((left, right) => right[1] - left[1] || right[0] - left[0])[0][0];
 }
 
-export function getTeacherFifthWeekHours(teacherSlots = [], jours5eme = []) {
+export function getTeacherFifthWeekHours(teacherSlots: ScheduleSlot[] = [], jours5eme: string[] = []): number {
   if (!jours5eme.length) return 0;
 
   const jours = new Set(jours5eme.map((jour) => normalizeText(jour)));
@@ -86,14 +171,14 @@ export function getTeacherFifthWeekHours(teacherSlots = [], jours5eme = []) {
   return Math.round(total * 10) / 10;
 }
 
-export function getTeacherWeeklyAmount(teacher = {}, teacherSlots = [], primeDefaut = 0) {
+export function getTeacherWeeklyAmount(teacher: Teacher = {}, teacherSlots: ScheduleSlot[] = [], primeDefaut: number | string = 0): number {
   return teacherSlots.reduce(
     (sum, slot) => sum + getScheduleSlotHours(slot) * getSlotPrimeForTeacher(teacher, slot, primeDefaut),
     0,
   );
 }
 
-export function getTeacherFifthWeekAmount(teacher = {}, teacherSlots = [], jours5eme = [], primeDefaut = 0) {
+export function getTeacherFifthWeekAmount(teacher: Teacher = {}, teacherSlots: ScheduleSlot[] = [], jours5eme: string[] = [], primeDefaut: number | string = 0): number {
   if (!jours5eme.length) return 0;
 
   const jours = new Set(jours5eme.map((jour) => normalizeText(jour)));
@@ -105,12 +190,12 @@ export function getTeacherFifthWeekAmount(teacher = {}, teacherSlots = [], jours
     );
 }
 
-function isAbsenceStatus(value = "") {
+function isAbsenceStatus(value: string = ""): boolean {
   const normalized = normalizeText(value);
   return normalized === "absent" || normalized === "non effectue";
 }
 
-export function getTeachingEntryHours(entry = {}, teacherSlots = []) {
+export function getTeachingEntryHours(entry: TeachingEntry = {}, teacherSlots: ScheduleSlot[] = []): number {
   const heure = String(entry.heure || "").trim();
   const classe = normalizeText(entry.classe);
 
@@ -133,7 +218,7 @@ export function getTeachingEntryHours(entry = {}, teacherSlots = []) {
   return getTeacherDefaultSlotHours(teacherSlots);
 }
 
-function findTeachingEntrySlot(entry = {}, teacherSlots = []) {
+function findTeachingEntrySlot(entry: TeachingEntry = {}, teacherSlots: ScheduleSlot[] = []): ScheduleSlot | null {
   const heure = String(entry.heure || "").trim();
   const classe = normalizeText(entry.classe);
 
@@ -156,7 +241,7 @@ function findTeachingEntrySlot(entry = {}, teacherSlots = []) {
   return null;
 }
 
-export function getTeacherAbsenceHours(enseignements = [], teacher = {}, teacherSlots = []) {
+export function getTeacherAbsenceHours(enseignements: TeachingEntry[] = [], teacher: Teacher = {}, teacherSlots: ScheduleSlot[] = []): number {
   const total = enseignements
     .filter((entry) => matchesTeacherName(entry.enseignantNom, teacher) && isAbsenceStatus(entry.statut))
     .reduce((sum, entry) => sum + getTeachingEntryHours(entry, teacherSlots), 0);
@@ -164,7 +249,7 @@ export function getTeacherAbsenceHours(enseignements = [], teacher = {}, teacher
   return Math.round(total * 10) / 10;
 }
 
-export function getTeacherAbsenceAmount(enseignements = [], teacher = {}, teacherSlots = [], primeDefaut = 0) {
+export function getTeacherAbsenceAmount(enseignements: TeachingEntry[] = [], teacher: Teacher = {}, teacherSlots: ScheduleSlot[] = [], primeDefaut: number | string = 0): number {
   return enseignements
     .filter((entry) => matchesTeacherName(entry.enseignantNom, teacher) && isAbsenceStatus(entry.statut))
     .reduce((sum, entry) => {
@@ -176,7 +261,7 @@ export function getTeacherAbsenceAmount(enseignements = [], teacher = {}, teache
     }, 0);
 }
 
-export function getWeightedPrimeHoraire(teacher = {}, teacherSlots = [], primeDefaut = 0) {
+export function getWeightedPrimeHoraire(teacher: Teacher = {}, teacherSlots: ScheduleSlot[] = [], primeDefaut: number | string = 0): number {
   const vhHebdo = Math.round(teacherSlots.reduce((sum, slot) => sum + getScheduleSlotHours(slot), 0) * 10) / 10;
   if (vhHebdo <= 0) return Number(teacher.primeHoraire || primeDefaut || 0);
 
@@ -185,8 +270,8 @@ export function getWeightedPrimeHoraire(teacher = {}, teacherSlots = [], primeDe
   return Math.round(totalSalaireHebdo / vhHebdo);
 }
 
-export function getFifthWeekDays(moisNom, nowDate = new Date()) {
-  const idxMois = TOUS_MOIS_LONGS.indexOf(moisNom);
+export function getFifthWeekDays(moisNom: string, nowDate: Date = new Date()): string[] {
+  const idxMois = (TOUS_MOIS_LONGS as string[]).indexOf(moisNom);
   if (idxMois < 0) return [];
 
   const jsM = nowDate.getMonth();
@@ -196,7 +281,7 @@ export function getFifthWeekDays(moisNom, nowDate = new Date()) {
   const jsMoisCible = idxMois < 4 ? idxMois + 8 : idxMois - 4;
   const joursFr = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
   const nbJours = new Date(anneeReel, jsMoisCible + 1, 0).getDate();
-  const compteur = {};
+  const compteur: Record<string, number> = {};
 
   for (let jour = 1; jour <= nbJours; jour += 1) {
     const nom = joursFr[new Date(anneeReel, jsMoisCible, jour).getDay()];
@@ -208,26 +293,26 @@ export function getFifthWeekDays(moisNom, nowDate = new Date()) {
     .map(([nom]) => nom);
 }
 
-export function getSalaryExecutionHours(salary = {}) {
+export function getSalaryExecutionHours(salary: SalaryRecord = {}): number {
   return (Number(salary.vhPrevu) || 0) + (Number(salary.cinqSem) || 0) - (Number(salary.nonExecute) || 0);
 }
 
-export function getSalaryMontantBrut(salary = {}) {
+export function getSalaryMontantBrut(salary: SalaryRecord = {}): number {
   if (salary && salary.montantBrut !== undefined && salary.montantBrut !== null && Number.isFinite(Number(salary.montantBrut))) {
     return Number(salary.montantBrut);
   }
   return getSalaryExecutionHours(salary) * (Number(salary.primeHoraire) || 0);
 }
 
-export function getSalaryNet(salary = {}) {
+export function getSalaryNet(salary: SalaryRecord = {}): number {
   return getSalaryMontantBrut(salary) - (Number(salary.bon) || 0) + (Number(salary.revision) || 0);
 }
 
-export function getForfaitNet(salary = {}) {
+export function getForfaitNet(salary: SalaryRecord = {}): number {
   return Number(salary.montantForfait || 0) - Number(salary.bon || 0) + Number(salary.revision || 0);
 }
 
-export function buildSecondarySalaryObservation(teacher = {}, slots = []) {
+export function buildSecondarySalaryObservation(teacher: Teacher = {}, slots: ScheduleSlot[] = []): string {
   const hasRevision = slots.some((slot) => slot.type === "revision");
   const parts = [`Statut: ${teacher.statut || "—"}`];
   if (hasRevision) parts.push("Révisions incluses");
@@ -237,13 +322,21 @@ export function buildSecondarySalaryObservation(teacher = {}, slots = []) {
   return parts.join(" • ");
 }
 
-export function buildSecondarySalaryRecord(teacher = {}, {
+export type SecondarySalaryOptions = {
+  mois?: string;
+  emplois?: ScheduleSlot[];
+  enseignements?: TeachingEntry[];
+  jours5eme?: string[];
+  primeDefaut?: number | string;
+};
+
+export function buildSecondarySalaryRecord(teacher: Teacher = {}, {
   mois,
   emplois = [],
   enseignements = [],
   jours5eme = [],
   primeDefaut = 0,
-} = {}) {
+}: SecondarySalaryOptions = {}): SalaryRecord | null {
   const nomComplet = buildTeacherFullName(teacher);
   if (!nomComplet) return null;
 
@@ -274,7 +367,7 @@ export function buildSecondarySalaryRecord(teacher = {}, {
     nonExecute,
     primeHoraire,
     montantBrut,
-    primesVariables: (teacher.primeParClasse || []).some((item) => item.classe && item.prime),
+    primesVariables: (teacher.primeParClasse || []).some((item) => Boolean(item.classe && item.prime)),
     observation: buildSecondarySalaryObservation(teacher, creneaux),
     paramSnapshot: {
       primeDefaut: Number(primeDefaut) || 0,
@@ -283,7 +376,12 @@ export function buildSecondarySalaryRecord(teacher = {}, {
   };
 }
 
-export function buildPrimarySalaryRecord(teacher = {}, { mois, getTeacherMonthlyForfait } = {}) {
+export type PrimarySalaryOptions = {
+  mois?: string;
+  getTeacherMonthlyForfait?: (teacher: Teacher) => number;
+};
+
+export function buildPrimarySalaryRecord(teacher: Teacher = {}, { mois, getTeacherMonthlyForfait }: PrimarySalaryOptions = {}): SalaryRecord | null {
   const nomComplet = buildTeacherFullName(teacher);
   if (!nomComplet) return null;
 
@@ -299,7 +397,7 @@ export function buildPrimarySalaryRecord(teacher = {}, { mois, getTeacherMonthly
   };
 }
 
-export function buildPersonnelSalaryRecord(person = {}, { mois } = {}) {
+export function buildPersonnelSalaryRecord(person: Person = {}, { mois }: { mois?: string } = {}): SalaryRecord | null {
   const nomComplet = `${person.prenom || ""} ${person.nom || ""}`.trim();
   if (!nomComplet) return null;
 
@@ -315,17 +413,31 @@ export function buildPersonnelSalaryRecord(person = {}, { mois } = {}) {
   };
 }
 
+export type MissingSalaryProfilesOptions = {
+  ensCollege?: Teacher[];
+  ensLycee?: Teacher[];
+  ensPrimaire?: Teacher[];
+  personnel?: Person[];
+  primeDefaut?: number | string;
+};
+
+export type MissingSalaryProfiles = {
+  secMissing: Teacher[];
+  primMissing: Teacher[];
+  persMissing: Person[];
+};
+
 export function getMissingSalaryProfiles({
   ensCollege = [],
   ensLycee = [],
   ensPrimaire = [],
   personnel = [],
   primeDefaut = 0,
-} = {}) {
+}: MissingSalaryProfilesOptions = {}): MissingSalaryProfiles {
   const defaultPrimeSet = (Number(primeDefaut) || 0) > 0;
   const secMissing = defaultPrimeSet ? [] : [...ensCollege, ...ensLycee].filter((teacher) => {
     const hasPrime = Number(teacher.primeHoraire || 0) > 0;
-    const hasPPC = (teacher.primeParClasse || []).some((item) => item.classe && Number(item.prime) > 0);
+    const hasPPC = (teacher.primeParClasse || []).some((item) => Boolean(item.classe && Number(item.prime) > 0));
     return !hasPrime && !hasPPC;
   });
   const primMissing = ensPrimaire.filter((teacher) => Number(teacher.montantForfait || teacher.salaireBase || teacher.forfait || 0) <= 0);
@@ -334,7 +446,7 @@ export function getMissingSalaryProfiles({
   return { secMissing, primMissing, persMissing };
 }
 
-export function mergeSalaryWithManualFields(existingSalary = {}, computedSalary = {}) {
+export function mergeSalaryWithManualFields(existingSalary: SalaryRecord = {}, computedSalary: SalaryRecord = {}): SalaryRecord {
   return {
     ...existingSalary,
     ...computedSalary,
@@ -343,8 +455,8 @@ export function mergeSalaryWithManualFields(existingSalary = {}, computedSalary 
   };
 }
 
-export function summarizeSalaryTotals(salaries = []) {
-  return salaries.reduce((summary, salary) => {
+export function summarizeSalaryTotals(salaries: SalaryRecord[] = []): SalaryTotals {
+  return salaries.reduce<SalaryTotals>((summary, salary) => {
     const isForfait = salary.section === "Primaire" || salary.section === "Personnel";
     const montant = isForfait ? Number(salary.montantForfait || 0) : getSalaryMontantBrut(salary);
     const bon = Number(salary.bon || 0);
