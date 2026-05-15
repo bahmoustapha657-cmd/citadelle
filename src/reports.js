@@ -2,6 +2,7 @@
 import { MOIS_ANNEE, fmt, fmtN, getAnnee, today } from "./constants.js";
 import { getGeneralAverage, getSubjectAverage } from "./note-utils.js";
 import { getPeriodesForSchool } from "./period-utils.js";
+import { getNationalDeviseHTML } from "./national-symbols.js";
 import i18n from "./i18n";
 
 const loadXLSX = () => import("xlsx");
@@ -21,13 +22,11 @@ const printLang = () => i18n.resolvedLanguage || i18n.language || "fr";
 // ══════════════════════════════════════════════════════════════
 
 // Supprime les en-têtes / pieds automatiques du navigateur ("about:blank",
-// URL, date, n° de page). Doit être présent dans chaque <style> de doc
-// imprimable. La compensation des marges se fait via padding sur le contenu.
-export const PRINT_RESET = `@page{size:A4 portrait;margin:0}@media print{html,body{margin:0}}`;
+// URL, date, n° de page). Force aussi `print-color-adjust:exact` sur tous
+// les éléments pour conserver les couleurs des badges, bandeaux et notes
+// (sans ça Chrome/Edge basculent en niveaux de gris à l'impression).
+export const PRINT_RESET = `@page{size:A4 portrait;margin:0}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}@media print{html,body{margin:0}}`;
 
-// Devise nationale de la République de Guinée aux couleurs du drapeau
-// (rouge / jaune / vert).
-const DEVISE_GUINEE_HTML = `<em style="-webkit-print-color-adjust:exact;print-color-adjust:exact"><span style="color:#CE1126;font-weight:700">Travail</span> - <span style="color:#B8860B;font-weight:700">Justice</span> - <span style="color:#009460;font-weight:700">Solidarité</span></em>`;
 
 export const MINISTERE_DEFAUT = "Ministère de l'Éducation Nationale, de l'Alphabétisation, de l'Enseignement Technique et de la Formation Professionnelle";
 
@@ -41,7 +40,7 @@ export const enteteDoc = (si = {}, logoUrl) => {
 <div style="display:flex;align-items:flex-start;gap:14px;border-bottom:3px solid #0A1628;padding-bottom:12px;margin-bottom:16px">
   <div style="flex:1;font-size:10px;color:#444;line-height:1.8;min-width:0">
     <strong style="font-size:11px;color:#0A1628">${pays}</strong><br/>
-    ${DEVISE_GUINEE_HTML}<br/>
+    ${getNationalDeviseHTML(si.pays)}<br/>
     <strong>${ministere}</strong><br/>
     ${si.ire?`${si.ire}<br/>`:""}
     ${si.dpe||""}
@@ -81,7 +80,7 @@ export const imprimerRecu = (eleve, montantUnit, schoolInfo={}, moisAnnee=MOIS_A
     <div style="flex:1;display:flex;justify-content:space-between;align-items:center">
       <div style="font-size:8px;color:#444;line-height:1.5">
         <strong style="font-size:9px;color:#0A1628">${schoolInfo.pays||"République de Guinée"}</strong><br/>
-        ${DEVISE_GUINEE_HTML}<br/>
+        ${getNationalDeviseHTML(schoolInfo.pays)}<br/>
         ${schoolInfo.ministere||MINISTERE_DEFAUT}${schoolInfo.ire?` / ${schoolInfo.ire}`:""}${schoolInfo.dpe?` / ${schoolInfo.dpe}`:""}
       </div>
       <div style="text-align:right">
