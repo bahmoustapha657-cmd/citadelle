@@ -1,6 +1,7 @@
 // eslint-disable-next-line no-unused-vars
 import { MOIS_ANNEE, fmt, fmtN, getAnnee, today } from "./constants.js";
 import { getGeneralAverage, getSubjectAverage } from "./note-utils.js";
+import { getPeriodesForSchool } from "./period-utils.js";
 import i18n from "./i18n";
 
 const loadXLSX = () => import("xlsx");
@@ -640,8 +641,6 @@ export const imprimerAttestation = (eleve, niveau, annee, schoolInfo={}) => {
 //  BULLETINS — version 2 (refonte 2026-05-02)
 // ══════════════════════════════════════════════════════════════
 
-const PERIODES_ORDRE = ["T1", "T2", "T3"];
-
 function getMention(moy, maxNote) {
   if (moy === "—" || moy == null || moy === "") return "Non évalué";
   const v = Number(moy);
@@ -727,10 +726,11 @@ function getRangEleve(eleve, elevesClasse, notes, matieres, periode, classe, niv
   return null;
 }
 
-function getEvolutionPeriode(eleve, allNotes, matieres, classe, niveau, periodeActuelle) {
-  const idx = PERIODES_ORDRE.indexOf(periodeActuelle);
+function getEvolutionPeriode(eleve, allNotes, matieres, classe, niveau, periodeActuelle, schoolInfo = {}) {
+  const periodes = getPeriodesForSchool(schoolInfo);
+  const idx = periodes.indexOf(periodeActuelle);
   if (idx <= 0) return null;
-  const periodePrec = PERIODES_ORDRE[idx - 1];
+  const periodePrec = periodes[idx - 1];
   const notesActu = allNotes.filter((n) => n.eleveId === eleve._id && n.periode === periodeActuelle);
   const notesPrec = allNotes.filter((n) => n.eleveId === eleve._id && n.periode === periodePrec);
   const moyActu = getGeneralAverage(notesActu, matieres, classe, niveau);
@@ -924,7 +924,7 @@ export const imprimerBulletin = (eleve, notes, matieres, periode, niveau, maxNot
       ]))
     : {};
   const evolution = allNotes.length > notes.length || allEleves
-    ? getEvolutionPeriode(eleve, allNotes, matieres, eleve.classe, niveau, periode)
+    ? getEvolutionPeriode(eleve, allNotes, matieres, eleve.classe, niveau, periode, schoolInfo)
     : null;
 
   const html = buildBulletinPageHTML({
@@ -968,7 +968,7 @@ export const imprimerBulletinsGroupes = (eleves, notes, matieres, periode, nivea
     const matsEleve = getMat(eleve);
     const cache = getCacheClasse(eleve.classe);
     const rang = getRangEleve(eleve, cache.elevesClasse, notes, matsEleve, periode, eleve.classe, niveau);
-    const evolution = getEvolutionPeriode(eleve, notes, matsEleve, eleve.classe, niveau, periode);
+    const evolution = getEvolutionPeriode(eleve, notes, matsEleve, eleve.classe, niveau, periode, schoolInfo);
     return buildBulletinPageHTML({
       eleve, notes, matieres: matsEleve, periode, niveau, maxNote, schoolInfo,
       rang, classStats: cache.stats, matiereClasseAvg: cache.matieresAvg, evolution,
