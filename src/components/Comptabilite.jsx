@@ -34,6 +34,7 @@ import { EnseignantsTab } from "./comptabilite/EnseignantsTab";
 import { SalairesTab } from "./comptabilite/SalairesTab";
 import { findStaffDuplicate, getStaffDuplicateMessage } from "../staff-utils";
 import { getTeacherMonthlyForfait } from "../teacher-utils";
+import { getPeriodesForSchool } from "../period-utils";
 import {
   getMensualiteOverview,
   getTarifAutreForClasse,
@@ -287,6 +288,8 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   const totBonGlobal = totalsSec.bon + totalsPrim.bon + totalsPers.bon;
   const totNetGlobal = totalsSec.net + totalsPrim.net + totalsPers.net;
   const mensualiteOverview = getMensualiteOverview(tousElevesScolarite, moisAnnee, tarifsClasses);
+  const periodes = getPeriodesForSchool(schoolInfo, moisAnnee);
+  const defaultPeriode = periodes[0] || "T1";
   const impaye = mensualiteOverview.totalDu - mensualiteOverview.totalPercu;
   const pctImpaye = mensualiteOverview.totalDu > 0
     ? ((impaye / mensualiteOverview.totalDu) * 100).toFixed(1)
@@ -619,6 +622,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
 
       {tab==="bilan"&&<BilanTab
         schoolInfo={schoolInfo}
+        periodes={periodes}
         canCreate={canCreate}
         toggleBlocage={async()=>{
           const blocage=!!schoolInfo.blocageParentImpaye;
@@ -656,6 +660,8 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
         modR={modR}
         supR={supR}
         enreg={enreg}
+        periodes={periodes}
+        defaultPeriode={defaultPeriode}
       />}
 
       {tab==="depenses"&&<DepensesTab
@@ -671,6 +677,8 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
         modD={modD}
         supD={supD}
         enreg={enreg}
+        periodes={periodes}
+        defaultPeriode={defaultPeriode}
       />}
 
       {/* ── ÉTATS DE SALAIRES MODÈLE EXCEL ── */}

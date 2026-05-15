@@ -23,6 +23,7 @@ export function BilanTab({
   salairesMois,
   moisLabel,
   mensualiteOverview,
+  periodes = ["T1", "T2", "T3"],
 }) {
   const { t } = useTranslation();
   const blocage = !!schoolInfo.blocageParentImpaye;
@@ -94,7 +95,7 @@ export function BilanTab({
             <Card><div style={{padding:"14px 16px"}}>
               <p style={{margin:"0 0 12px",fontWeight:800,fontSize:13,color:C.blueDark}}>Recettes vs Dépenses par période</p>
               <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={["T1","T2","T3"].map(p=>({
+                <BarChart data={periodes.map(p=>({
                   periode:p,
                   Recettes:recettes.filter(r=>r.periode===p).reduce((s,r)=>s+Number(r.montant||0),0),
                   "Dépenses":depenses.filter(d=>d.periode===p).reduce((s,d)=>s+Number(d.montant||0),0),
@@ -136,7 +137,7 @@ export function BilanTab({
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={(()=>{
                 const cats=[...new Set(recettes.map(r=>r.categorie))].filter(Boolean);
-                return ["T1","T2","T3"].map(p=>{
+                return periodes.map(p=>{
                   const row={periode:p};
                   cats.forEach(c=>row[c]=recettes.filter(r=>r.periode===p&&r.categorie===c).reduce((s,r)=>s+Number(r.montant||0),0));
                   return row;

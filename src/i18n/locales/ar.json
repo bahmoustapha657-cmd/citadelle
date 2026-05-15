@@ -98,6 +98,29 @@
       "networkError": "تعذّر الاتصال بالخادم. تحقق من اتصالك."
     }
   },
+  "modules": {
+    "superadmin_panel": { "label": "المشرف الأعلى", "desc": "إدارة المدارس" },
+    "accueil": { "label": "لوحة التحكم", "desc": "نظرة عامة" },
+    "historique": { "label": "السجل", "desc": "سجل الإجراءات" },
+    "admin_panel": { "label": "إدارة الوصول", "desc": "كلمات المرور" },
+    "parametres": { "label": "الإعدادات", "desc": "هوية المدرسة" },
+    "fondation": { "label": "المؤسسة", "desc": "الحوكمة" },
+    "compta": { "label": "المحاسبة", "desc": "الشؤون المالية" },
+    "primaire": { "label": "إدارة الابتدائي", "desc": "الابتدائي" },
+    "secondaire": { "label": "الثانوي", "desc": "مكتب الإعدادية" },
+    "calendrier": { "label": "التقويم", "desc": "أحداث المدرسة" },
+    "examens": { "label": "الامتحانات", "desc": "الجدولة والاستدعاءات" },
+    "portail_enseignant": { "label": "مساحتي", "desc": "بوابة المعلم" },
+    "portail_parent": { "label": "مساحة الأهل", "desc": "متابعة ابني" },
+    "messages": { "label": "رسائل الأهل", "desc": "الربط بين المدرسة والأسرة" }
+  },
+  "plans": {
+    "gratuit": "مجاني",
+    "starter": "مبتدئ",
+    "standard": "قياسي",
+    "premium": "متميز",
+    "pro": "احترافي"
+  },
   "nav": {
     "dashboard": "لوحة التحكم",
     "accounting": "المحاسبة",

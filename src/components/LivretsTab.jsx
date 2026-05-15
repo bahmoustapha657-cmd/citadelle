@@ -4,6 +4,7 @@ import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
 import { C, getAnnee, today } from "../constants";
 import { getSubjectAverage } from "../note-utils";
+import { getPeriodesForSchool } from "../period-utils";
 import { imprimerLivret } from "../reports";
 import { Badge, Btn, Card, Input, Modale, Selec, Stat, TD, THead, TR, Vide } from "./ui";
 
@@ -19,6 +20,7 @@ function LivretsTab({cleEleves, cleNotes, matieres, maxNote, userRole, annee}) {
   const {items:notes}  = useFirestore(cleNotes);
   const section = cleEleves.includes("Primaire")?"primaire":cleEleves.includes("Lycee")?"lycee":"college";
   const canEdit = ["direction","admin","comptable"].includes(userRole);
+  const periodes = getPeriodesForSchool(schoolInfo);
 
   const [livretSelId, setLivretSelId] = useState(null);
   const [filtreClasse, setFiltreClasse] = useState("all");
@@ -68,7 +70,7 @@ function LivretsTab({cleEleves, cleNotes, matieres, maxNote, userRole, annee}) {
   const preRemplirAnnee = (eleve) => {
     const notesEleve = notes.filter(n=>n.eleveId===eleve._id);
     const matieresList = matieres.map(mat=>{
-      const notesParPeriode = ["T1","T2","T3"].reduce((acc,p)=>{
+      const notesParPeriode = periodes.reduce((acc,p)=>{
         const ns = notesEleve.filter(n=>n.matiere===mat.nom&&n.periode===p);
         acc[p] = getSubjectAverage(ns, eleve.classe, section);
         return acc;
@@ -76,7 +78,7 @@ function LivretsTab({cleEleves, cleNotes, matieres, maxNote, userRole, annee}) {
       const avec = Object.values(notesParPeriode).filter(v=>v!==null);
       const ann = avec.length ? avec.reduce((s,v)=>s+v,0)/avec.length : null;
       return {matiere:mat.nom, coef:mat.coefficient||1, maxNote,
-        T1:notesParPeriode.T1, T2:notesParPeriode.T2, T3:notesParPeriode.T3,
+        ...notesParPeriode,
         annuelle:ann};
     });
     return {
@@ -155,12 +157,10 @@ function LivretsTab({cleEleves, cleNotes, matieres, maxNote, userRole, annee}) {
                 {an.appreciation&&<div style={{fontStyle:"italic",color:"#6b7280",marginBottom:6}}>"{an.appreciation}"</div>}
                 <details><summary style={{cursor:"pointer",color:C.blue,fontSize:12,fontWeight:700}}>Voir les notes ({(an.notes||[]).length} matières)</summary>
                   <table style={{width:"100%",borderCollapse:"collapse",marginTop:8,fontSize:11}}>
-                    <THead cols={["Matière","Coef","T1","T2","T3","Annuelle"]}/>
+                    <THead cols={["Matière","Coef",...periodes,"Annuelle"]}/>
                     <tbody>{(an.notes||[]).map((n,i)=><TR key={i}>
                       <TD bold>{n.matiere}</TD><TD center>{n.coef}</TD>
-                      <TD center>{n.T1!=null?Number(n.T1).toFixed(1):"—"}</TD>
-                      <TD center>{n.T2!=null?Number(n.T2).toFixed(1):"—"}</TD>
-                      <TD center>{n.T3!=null?Number(n.T3).toFixed(1):"—"}</TD>
+                      {periodes.map(p=><TD key={p} center>{n[p]!=null?Number(n[p]).toFixed(1):"—"}</TD>)}
                       <TD center><strong style={{color:n.annuelle>=maxNote/2?"#15803d":"#b91c1c"}}>{n.annuelle!=null?Number(n.annuelle).toFixed(2):"—"}</strong></TD>
                     </TR>)}</tbody>
                   </table>
@@ -198,14 +198,14 @@ function LivretsTab({cleEleves, cleNotes, matieres, maxNote, userRole, annee}) {
             <p style={{fontWeight:700,fontSize:12,color:C.blueDark,margin:"0 0 8px"}}>Notes par matière (pré-remplies depuis les bulletins)</p>
             <div style={{overflowX:"auto"}}>
               <table style={{width:"100%",borderCollapse:"collapse",fontSize:11,marginBottom:14}}>
-                <THead cols={["Matière","Coef","T1","T2","T3","Annuelle"]}/>
+                <THead cols={["Matière","Coef",...periodes,"Annuelle"]}/>
                 <tbody>{(formAnnee.notes||[]).map((n,i)=>(
                   <TR key={i}>
                     <TD bold>{n.matiere}</TD>
                     <TD center><input type="number" value={n.coef||1}
                       onChange={e=>{const ns=[...formAnnee.notes];ns[i]={...ns[i],coef:Number(e.target.value)};setFormAnnee(p=>({...p,notes:ns}));}}
                       style={{width:40,textAlign:"center",border:"1px solid #b0c4d8",borderRadius:4,padding:"2px 4px"}}/></TD>
-                    {["T1","T2","T3"].map(p=>(
+                    {periodes.map(p=>(
                       <td key={p} style={{padding:"2px 6px",textAlign:"center"}}>
                         <input type="number" value={n[p]!=null?n[p]:""}
                           onChange={e=>{const ns=[...formAnnee.notes];ns[i]={...ns[i],[p]:e.target.value===""?null:Number(e.target.value)};setFormAnnee(p=>({...p,notes:ns}));}}

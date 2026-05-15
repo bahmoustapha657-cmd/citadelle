@@ -1223,6 +1223,7 @@ export const imprimerCertificatRadiation = (eleve, schoolInfo={}, annee="", sold
 export const imprimerLivret = (livret, schoolInfo={}) => {
   const c1 = schoolInfo.couleur1||"#0A1628";
   const annees = livret.annees||[];
+  const periodes = getPeriodesForSchool(schoolInfo);
   // Mapping décisions FR (stockées en base) → clés i18n
   const decisionLabel = (d) => {
     if (d === "Admis avec félicitations") return tr("reports.livret.decisionDistinction");
@@ -1241,9 +1242,7 @@ export const imprimerLivret = (livret, schoolInfo={}) => {
       <tr>
         <td>${n.matiere||""}</td>
         <td style="text-align:center">${n.coef||1}</td>
-        <td style="text-align:center">${n.T1!=null?n.T1:"—"}</td>
-        <td style="text-align:center">${n.T2!=null?n.T2:"—"}</td>
-        <td style="text-align:center">${n.T3!=null?n.T3:"—"}</td>
+        ${periodes.map(p=>`<td style="text-align:center">${n[p]!=null?n[p]:"—"}</td>`).join("")}
         <td style="text-align:center;font-weight:700;color:${Number(n.annuelle||0)>=Number(n.maxNote||20)/2?"#14532d":"#b91c1c"}">${n.annuelle!=null?Number(n.annuelle).toFixed(2):"—"}</td>
       </tr>`).join("");
     const decisionColor = an.decision==="Admis avec félicitations"?"#14532d":an.decision==="Admis"?"#1d4ed8":an.decision==="Redoublant"?"#b45309":"#b91c1c";
@@ -1262,7 +1261,7 @@ export const imprimerLivret = (livret, schoolInfo={}) => {
       <table class="notes-tbl">
         <thead><tr style="background:${c1};color:#fff">
           <th style="text-align:start">${tr("reports.livret.subjectHeader")}</th>
-          <th>${tr("reports.livret.coefHeader")}</th><th>T1</th><th>T2</th><th>T3</th><th>${tr("reports.livret.annualHeader")}</th>
+          <th>${tr("reports.livret.coefHeader")}</th>${periodes.map(p=>`<th>${p}</th>`).join("")}<th>${tr("reports.livret.annualHeader")}</th>
         </tr></thead>
         <tbody>${notesRows}</tbody>
       </table>

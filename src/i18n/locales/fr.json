@@ -114,6 +114,29 @@
     "foundation": "Fondation",
     "shortcuts": "Raccourcis clavier"
   },
+  "modules": {
+    "superadmin_panel": { "label": "Super Admin", "desc": "Gestion des écoles" },
+    "accueil": { "label": "Tableau de bord", "desc": "Vue d'ensemble" },
+    "historique": { "label": "Historique", "desc": "Journal des actions" },
+    "admin_panel": { "label": "Gestion Accès", "desc": "Mots de passe" },
+    "parametres": { "label": "Paramètres", "desc": "Identité de l'école" },
+    "fondation": { "label": "Fondation", "desc": "Gouvernance" },
+    "compta": { "label": "Comptabilité", "desc": "Finances" },
+    "primaire": { "label": "Dir. Primaire", "desc": "Primaire" },
+    "secondaire": { "label": "Secondaire", "desc": "Bureau Collège" },
+    "calendrier": { "label": "Calendrier", "desc": "Événements scolaires" },
+    "examens": { "label": "Examens", "desc": "Planning & convocations" },
+    "portail_enseignant": { "label": "Mon Espace", "desc": "Portail enseignant" },
+    "portail_parent": { "label": "Espace Parent", "desc": "Suivi de mon enfant" },
+    "messages": { "label": "Messages Parents", "desc": "Liaison école-famille" }
+  },
+  "plans": {
+    "gratuit": "Gratuit",
+    "starter": "Starter",
+    "standard": "Standard",
+    "premium": "Premium",
+    "pro": "Pro"
+  },
   "dashboard": {
     "title": "Tableau de bord",
     "welcome": "Bienvenue",

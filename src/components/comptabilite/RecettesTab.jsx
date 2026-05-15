@@ -16,6 +16,8 @@ export function RecettesTab({
   modR,
   supR,
   enreg,
+  periodes = ["T1", "T2", "T3"],
+  defaultPeriode = "T1",
 }) {
   const { t } = useTranslation();
   const chg = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
@@ -24,7 +26,7 @@ export function RecettesTab({
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
         <strong style={{fontSize:14,color:C.blueDark}}>{t("accounting.revenuesTitle")} ({recettes.length})</strong>
-        {canCreate&&<Btn onClick={()=>{setForm({periode:"T1"});setModal("add_r");}}>{t("accounting.addRevenue")}</Btn>}
+        {canCreate&&<Btn onClick={()=>{setForm({periode:defaultPeriode});setModal("add_r");}}>{t("accounting.addRevenue")}</Btn>}
       </div>
       {cR?<Chargement/>:recettes.length===0?<Vide icone="💰" msg={t("accounting.noRevenue")}/>
         :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
@@ -44,7 +46,7 @@ export function RecettesTab({
           <Selec label={t("accounting.categoryField")} value={form.categorie||""} onChange={chg("categorie")}><option>Scolarité</option><option>Inscription</option><option>Examens</option><option>Activités</option><option>Don</option></Selec>
           <Input label={t("accounting.amountField")} type="number" value={form.montant||""} onChange={chg("montant")}/>
           <Input label={t("accounting.dateField")} type="date" value={form.date||""} onChange={chg("date")}/>
-          <Selec label={t("accounting.period")} value={form.periode||"T1"} onChange={chg("periode")}><option>T1</option><option>T2</option><option>T3</option></Selec>
+          <Selec label={t("accounting.period")} value={form.periode||defaultPeriode} onChange={chg("periode")}>{periodes.map(p=><option key={p} value={p}>{p}</option>)}</Selec>
         </div>
         <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
           <Btn v="ghost" onClick={()=>setModal(null)}>{t("common.cancel")}</Btn>

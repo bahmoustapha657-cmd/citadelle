@@ -279,7 +279,7 @@ Note : 🔒 sur `notes*` pour enseignant = via `teacher-portal` API, jamais en d
 
 - [x] **F4** : `applyPasswordTarpit` (bcrypt factice) appliqué aux deux branches d'échec rapide dans `login.js`. ✅ (commit antérieur, doc mise à jour 2026-05-11)
 - [x] Tests d'intégration des Firestore rules via emulator (`@firebase/rules-unit-testing`). 14 suites / 82 tests dans `tests/firestore-rules.emulator.js`, lancés via `npm run test:rules`, intégrés au CI. ✅ 2026-05-05
-- [ ] **F7** : Documenter la procédure de bootstrap superadmin dans `operations-runbook.md` + rotation régulière.
+- [x] **F7** : Procédure documentée dans `operations-runbook.md` (section "Bootstrap Et Rotation Superadmin (F7)") — bootstrap, génération de hash, rotation 6 mois ou sur incident, et migration cible vers comptes Firestore. ✅ 2026-05-15
 
 ### En continu
 

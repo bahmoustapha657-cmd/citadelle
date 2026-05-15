@@ -6,19 +6,10 @@ import React, { Suspense, lazy, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
 
-const MODULE_I18N_KEYS = {
-  accueil: "nav.dashboard",
-  compta: "nav.accounting",
-  primaire: "nav.primary",
-  secondaire: "nav.secondary",
-  calendrier: "nav.calendar",
-  examens: "nav.exams",
-  messages: "nav.messages",
-  historique: "nav.history",
-  parametres: "nav.settings",
-  admin_panel: "nav.admin",
-  fondation: "nav.foundation",
-};
+// Helpers de traduction des modules (label + desc).
+// Fallback sur le champ FR du MODULES si la clé i18n manque.
+const moduleLabel = (m, t) => t(`modules.${m.id}.label`, m.label);
+const moduleDesc = (m, t) => t(`modules.${m.id}.desc`, m.desc);
 import { getCurrentUser, signOutCurrentUser, watchAuthState } from "./firebaseAuth";
 import { db } from "./firebaseDb";
 import {
@@ -485,7 +476,7 @@ export default function App() {
     eleveLimit,
     totalElevesActifs,
     peutAjouterEleve: totalElevesActifs < eleveLimit,
-    planLabel: PLANS[planCourant]?.label ?? "Gratuit",
+    planLabel: t(`plans.${planCourant}`, PLANS[planCourant]?.label ?? "Gratuit"),
   };
 
   // â”€â”€ Push notifications helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -725,8 +716,8 @@ export default function App() {
               background:actif?`${C.green}22`:"transparent",transition:"background .15s"}}>
               <span style={{fontSize:15}}>{m.icon}</span>
               <div style={{flex:1,minWidth:0}}>
-                <p style={{margin:0,fontSize:12,fontWeight:800,color:actif?C.green:"rgba(255,255,255,0.82)"}}>{MODULE_I18N_KEYS[m.id]?t(MODULE_I18N_KEYS[m.id]):m.label}</p>
-                <p style={{margin:0,fontSize:9,color:"rgba(255,255,255,0.35)"}}>{m.desc}</p>
+                <p style={{margin:0,fontSize:12,fontWeight:800,color:actif?C.green:"rgba(255,255,255,0.82)"}}>{moduleLabel(m,t)}</p>
+                <p style={{margin:0,fontSize:9,color:"rgba(255,255,255,0.35)"}}>{moduleDesc(m,t)}</p>
               </div>
               {m.id==="messages"&&msgsNonLus>0&&(
                 <span style={{background:"#ef4444",color:"#fff",borderRadius:"50%",minWidth:18,height:18,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:900,padding:"0 4px",flexShrink:0}}>
@@ -770,7 +761,7 @@ export default function App() {
           </button>
           <div style={{flex:1,minWidth:0,overflow:"hidden"}}>
             <span style={{fontSize:14,fontWeight:800,color:C.blueDark,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",display:"block"}}>
-              {modulesVisibles.find(m=>m.id===page)?.icon} {modulesVisibles.find(m=>m.id===page)?.label}
+              {modulesVisibles.find(m=>m.id===page)?.icon} {(()=>{const m=modulesVisibles.find(m=>m.id===page);return m?moduleLabel(m,t):"";})()}
             </span>
             {readOnly&&!isMobile&&<span style={{marginInlineStart:10,fontSize:11,color:"#d97706",fontWeight:700,background:"#fef3e0",padding:"2px 8px",borderRadius:10}}>👁️ {t("common.readOnly")}</span>}
           </div>

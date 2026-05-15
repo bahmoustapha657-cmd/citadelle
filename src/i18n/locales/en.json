@@ -98,6 +98,29 @@
       "networkError": "Unable to reach the server. Check your connection."
     }
   },
+  "modules": {
+    "superadmin_panel": { "label": "Super Admin", "desc": "Schools management" },
+    "accueil": { "label": "Dashboard", "desc": "Overview" },
+    "historique": { "label": "History", "desc": "Action log" },
+    "admin_panel": { "label": "Access Management", "desc": "Passwords" },
+    "parametres": { "label": "Settings", "desc": "School identity" },
+    "fondation": { "label": "Foundation", "desc": "Governance" },
+    "compta": { "label": "Accounting", "desc": "Finances" },
+    "primaire": { "label": "Primary Mgmt", "desc": "Primary" },
+    "secondaire": { "label": "Secondary", "desc": "Middle School Office" },
+    "calendrier": { "label": "Calendar", "desc": "School events" },
+    "examens": { "label": "Exams", "desc": "Schedule & invitations" },
+    "portail_enseignant": { "label": "My Space", "desc": "Teacher portal" },
+    "portail_parent": { "label": "Parent Space", "desc": "My child's tracking" },
+    "messages": { "label": "Parent Messages", "desc": "School-family link" }
+  },
+  "plans": {
+    "gratuit": "Free",
+    "starter": "Starter",
+    "standard": "Standard",
+    "premium": "Premium",
+    "pro": "Pro"
+  },
   "nav": {
     "dashboard": "Dashboard",
     "accounting": "Accounting",

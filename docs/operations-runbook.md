@@ -158,14 +158,80 @@ En cas de recuperation:
 3. reconstruire l'application
 4. rejouer la recette fonctionnelle courte
 
+## Bootstrap Et Rotation Superadmin (F7)
+
+L'endpoint `api/_lib/handlers/superadmin-login.js` accepte deux sources
+de comptes super-admin :
+
+1. Collection Firestore `superadmins` (mode normal).
+2. Env var `SUPERADMIN_PASSWORD_HASH` (bootstrap / fallback), utilisee
+   uniquement si la collection est vide. Login force a `superadmin`.
+
+### Detenteur Et Stockage
+
+- Variable stockee dans Vercel (Project Settings -> Environment Variables),
+  scope `Production`. Aucun commit en clair dans le repo.
+- Detenteur unique : developpeur principal. Bus factor : prevoir un coffre
+  partage (ex. 1Password Family, Bitwarden organisation) pour ne pas
+  perdre l'acces si le detenteur unique est indisponible.
+
+### Generer Un Hash
+
+Format attendu : bcrypt cost >= 10, prefixe `$2b$`.
+
+```bash
+node -e "import('bcryptjs').then(b=>b.default.hash(process.argv[1],12).then(console.log))" 'NouveauMotDePasseFort'
+```
+
+Verifier que la sortie demarre bien par `$2b$12$...`.
+
+### Rotation Reguliere
+
+Frequence recommandee : tous les 6 mois, ou immediatement apres :
+
+- Depart d'un detenteur de l'env var
+- Soupcon de fuite (laptop perdu, vault compromis)
+- Changement d'equipe ayant acces Vercel
+- Incident de securite
+
+Procedure (1 a 5 min de coupure superadmin) :
+
+1. Generer un nouveau hash avec la commande ci-dessus.
+2. Vercel -> Settings -> Environment Variables -> `SUPERADMIN_PASSWORD_HASH`
+   -> Edit, coller le nouveau hash, sauvegarder.
+3. Vercel -> Deployments -> latest production -> Redeploy (pour propager
+   immediatement la nouvelle valeur). Sans redeploiement, le changement
+   n'est pris en compte qu'au prochain push.
+4. Tester la connexion superadmin avec le nouveau mot de passe.
+5. Mettre a jour le coffre partage.
+6. Invalider d'eventuelles sessions superadmin en cours via
+   Firebase Auth -> Users -> revoquer les refresh tokens du compte
+   `superadmin@superadmin.edugest.app` si l'incident le justifie.
+
+### Cible : Supprimer Le Fallback
+
+Le fallback env var est un mecanisme de bootstrap. Des qu'un super-admin
+existe dans la collection Firestore `superadmins`, l'env var n'est plus
+lue (cf. `superadmin-login.js:62-69`). Procedure de migration :
+
+1. Se connecter avec le mot de passe env var.
+2. Creer un compte superadmin reel via le panneau SuperAdmin.
+3. Verifier que le nouveau compte fonctionne (logout + login).
+4. Supprimer la variable `SUPERADMIN_PASSWORD_HASH` dans Vercel et
+   redeployer.
+5. Confirmer que la connexion superadmin reste OK via le compte Firestore.
+
+Apres cette migration, la rotation se fait directement dans l'UI
+SuperAdmin (changer le mot de passe du compte), sans toucher aux env vars.
+
 ## Prochaine Marche Recommandee
 
 - ~~brancher une solution centralisee de logs/alertes~~ (fait: Sentry, 2026-05-12)
 - ~~ajouter des tests Firestore rules avec emulateur~~ (fait: 2026-05-05)
+- ~~documenter la procedure de bootstrap / rotation `SUPERADMIN_PASSWORD_HASH`~~
+  (fait: 2026-05-15, section "Bootstrap Et Rotation Superadmin (F7)" ci-dessus)
 - ajouter une verification manuelle post-deploiement
 - mettre en place un canal de feedback utilisateur direct (email visible,
   groupe WhatsApp, formulaire) pour ramener du signal terrain
-- documenter la procedure de bootstrap / rotation `SUPERADMIN_PASSWORD_HASH`
-  (finding F7 du modele de securite)
 - prevoir un acces partage ou un coffre recuperable (bus factor solo dev)
 

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { apiFetch, getAuthHeaders } from "../apiClient";
 import { C } from "../constants";
+import { getPeriodesForSchool } from "../period-utils";
 import { getActiveNoteForms, getEvaluationLabel, resolveCanonicalNoteType } from "../evaluation-forms";
 import { GlobalStyles } from "../styles";
 import { Badge, Btn, Card, Chargement, Input, LectureSeule, Modale, Selec, Stat, TD, THead, TR, Vide } from "./ui";
@@ -14,9 +15,10 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
   const c2 = schoolInfo.couleur2 || C.green;
   const noteForms = getActiveNoteForms(schoolInfo, utilisateur.section || "secondaire");
   const defaultNoteType = noteForms[0]?.value || "Devoir";
+  const periodes = getPeriodesForSchool(schoolInfo, moisAnnee);
 
   const [tab, setTab] = useState("dashboard");
-  const [periodeN, setPeriodeN] = useState(moisAnnee[0] || "");
+  const [periodeN, setPeriodeN] = useState(periodes[0] || "");
   const [chargement, setChargement] = useState(true);
   const [portalData, setPortalData] = useState({
     section: utilisateur.section || "college",
@@ -448,7 +450,7 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
                 <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
                   <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900, color: c1, flex: 1 }}>Saisie des notes - {matiere || "Matiere"}</h2>
                   <select value={periodeN} onChange={(event) => setPeriodeN(event.target.value)} style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "7px 12px", fontSize: 13, background: "#fff" }}>
-                    {moisAnnee.map((mois) => <option key={mois}>{mois}</option>)}
+                    {periodes.map((p) => <option key={p}>{p}</option>)}
                   </select>
                   <Btn onClick={ouvrirCreationNote}>Nouvelle note</Btn>
                 </div>
@@ -506,7 +508,7 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
                       value={formNote.periode || periodeN}
                       onChange={(event) => setFormNote((current) => ({ ...current, periode: event.target.value }))}
                     >
-                      {moisAnnee.map((mois) => <option key={mois}>{mois}</option>)}
+                      {periodes.map((p) => <option key={p}>{p}</option>)}
                     </Selec>
                     <div style={{ height: 10 }} />
                     <Input

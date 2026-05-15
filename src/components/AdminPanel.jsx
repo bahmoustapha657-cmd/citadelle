@@ -16,6 +16,7 @@ import {
   normalizeRoleLogin,
 } from "../constants";
 import { getGeneralAverage } from "../note-utils";
+import { getPeriodesForSchool } from "../period-utils";
 import { Badge, Btn, Card, Chargement, Input, Modale, TD, THead, TR } from "./ui";
 
 // ══════════════════════════════════════════════════════════════
@@ -100,7 +101,7 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId, userRole}) {
   // Calcule la moyenne annuelle d'un eleve a partir de ses notes (toutes periodes)
   const calcMoyenneAnnuelle = (notes, classe, matieres) => {
     if(!notes || notes.length===0) return null;
-    const periodes = ["T1", "T2", "T3"];
+    const periodes = getPeriodesForSchool(schoolInfo);
     const moyennes = periodes
       .map((periode) => getGeneralAverage(notes.filter((note) => note.periode === periode), matieres, classe))
       .filter((value) => value != null);

@@ -4,6 +4,7 @@ import { PolarAngleAxis, PolarGrid, Radar, RadarChart, ResponsiveContainer, Tool
 import { apiFetch, getAuthHeaders } from "../apiClient";
 import { C, fmt, getTarifAutreValue, getTarifMensuelTotal } from "../constants";
 import { getGeneralAverage, getSubjectAverage } from "../note-utils";
+import { getPeriodesForSchool } from "../period-utils";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { imprimerBulletin } from "../reports";
 import { GlobalStyles } from "../styles";
@@ -23,6 +24,7 @@ function PortailParent({ utilisateur, deconnecter, annee, schoolInfo }) {
   const { toast, moisAnnee } = useContext(SchoolContext);
   const c1 = schoolInfo.couleur1 || C.blue;
   const c2 = schoolInfo.couleur2 || C.green;
+  const periodes = getPeriodesForSchool(schoolInfo, moisAnnee);
 
   const [tab, setTab] = useState("dashboard");
   const [sujet, setSujet] = useState("");
@@ -414,7 +416,7 @@ function PortailParent({ utilisateur, deconnecter, annee, schoolInfo }) {
                 <h2 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 900, color: c1 }}>Bulletins</h2>
                 {accesBloqueParPaiement && <BlocagePaiement moisImpayes={moisImpayes} schoolInfo={schoolInfo} onPaiements={() => setTab("paiements")} />}
                 {!accesBloqueParPaiement && <>
-                  {["T1", "T2", "T3"].map((periode) => {
+                  {periodes.map((periode) => {
                     const notesPeriode = mesNotes.filter((item) => item.periode === periode);
                     if (notesPeriode.length === 0) return null;
                     const matieresPeriode = [...new Set(notesPeriode.map((item) => item.matiere))].map((nom) => ({ nom }));
