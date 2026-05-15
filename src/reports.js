@@ -1,9 +1,19 @@
 // eslint-disable-next-line no-unused-vars
 import { MOIS_ANNEE, fmt, fmtN, getAnnee, today } from "./constants.js";
 import { getGeneralAverage, getSubjectAverage } from "./note-utils.js";
+import i18n from "./i18n";
 
 const loadXLSX = () => import("xlsx");
 const loadQRCode = async () => (await import("qrcode")).default;
+
+// Helper i18n hors React : raccourci vers i18n.t().
+// Fallback sur la clé si i18n n'est pas encore initialisé (cas improbable
+// car main.jsx fait `import './i18n'` avant tout rendu).
+const tr = (k, opts) => i18n.t(k, opts);
+
+// Direction d'écriture pour le HTML imprimé (rtl en arabe, ltr sinon).
+const printDir = () => (["ar", "ar-SA", "ar-EG"].includes(i18n.resolvedLanguage || i18n.language) ? "rtl" : "ltr");
+const printLang = () => i18n.resolvedLanguage || i18n.language || "fr";
 
 // ══════════════════════════════════════════════════════════════
 //  IMPRESSION / EXPORT  — fonctions pures (pas de React)
@@ -86,47 +96,47 @@ export const imprimerRecu = (eleve, montantUnit, schoolInfo={}, moisAnnee=MOIS_A
     ${schoolInfo.logo?`<div class="watermark"><img src="${schoolInfo.logo}" alt=""/></div>`:""}
     <div style="position:relative;z-index:1;display:flex;flex-direction:column;height:100%">
     ${enteteCompact()}
-    <div class="badge">REÇU DE PAIEMENT DE MENSUALITÉS</div>
+    <div class="badge">${tr("reports.receipt.title").toUpperCase()}</div>
     <div class="exemplaire">${titre}</div>
     <div class="grid">
-      <div class="row"><span class="lbl">Élève : </span>${eleve.nom} ${eleve.prenom}</div>
-      <div class="row"><span class="lbl">Matricule : </span>${eleve.matricule||"—"}</div>
-      <div class="row"><span class="lbl">Classe : </span>${eleve.classe}</div>
-      <div class="row"><span class="lbl">Impression : </span>${today()}</div>
-      <div class="row"><span class="lbl">Tuteur : </span>${eleve.tuteur||"—"}</div>
-      <div class="row"><span class="lbl">Contact : </span>${eleve.contactTuteur||"—"}</div>
+      <div class="row"><span class="lbl">${tr("reports.studentName")} : </span>${eleve.nom} ${eleve.prenom}</div>
+      <div class="row"><span class="lbl">${tr("school.bulletins.matricule")} : </span>${eleve.matricule||"—"}</div>
+      <div class="row"><span class="lbl">${tr("reports.class")} : </span>${eleve.classe}</div>
+      <div class="row"><span class="lbl">${tr("common.date")} : </span>${today()}</div>
+      <div class="row"><span class="lbl">${tr("school.students.parent")} : </span>${eleve.tuteur||"—"}</div>
+      <div class="row"><span class="lbl">${tr("school.students.contact")} : </span>${eleve.contactTuteur||"—"}</div>
     </div>
-    <table class="mois-table"><thead><tr><th>Mois</th><th>Statut</th><th>Date de paiement</th></tr></thead><tbody>
+    <table class="mois-table"><thead><tr><th>${tr("accounting.month")}</th><th>${tr("common.status")}</th><th>${tr("common.date")}</th></tr></thead><tbody>
       ${moisAnnee.map(m=>{
         const paye=mens[m]==="Payé";
         const datePaie=mensDates[m]||"—";
         return `<tr class="${paye?"paye":"impaye"}">
           <td style="font-weight:700">${m}</td>
-          <td style="text-align:center">${paye?"✓ Payé":"✗ Impayé"}</td>
+          <td style="text-align:center">${paye?"✓ "+tr("accounting.paid"):"✗ "+tr("accounting.unpaid")}</td>
           <td style="text-align:center">${paye?datePaie:"—"}</td>
         </tr>`;
       }).join("")}
     </tbody></table>
     ${eleve.inscriptionPayee&&fraisIns>0?`
     <div class="total" style="font-size:9px;padding:4px 8px;background:#f0f9ff;border-color:#7dd3fc">
-      ${eleve.typeInscription==="Réinscription"?"Réinscription":"Inscription"} : <strong>${fmt(fraisIns)}</strong>
-      <span style="font-weight:400;margin-left:4px">✓ Payée</span>
+      ${tr("reports.receipt.registration")} : <strong>${fmt(fraisIns)}</strong>
+      <span style="font-weight:400;margin-inline-start:4px">✓ ${tr("accounting.paid")}</span>
     </div>`:""}
     ${eleve.autrePayee&&fraisAutre>0?`
     <div class="total" style="font-size:9px;padding:4px 8px;background:#f8fafc;border-color:#94a3b8">
-      Autre frais : <strong>${fmt(fraisAutre)}</strong>
-      <span style="font-weight:400;margin-left:4px">✓ Payé</span>
+      ${tr("reports.receipt.otherFees")} : <strong>${fmt(fraisAutre)}</strong>
+      <span style="font-weight:400;margin-inline-start:4px">✓ ${tr("accounting.paid")}</span>
     </div>`:""}
-    <div class="total">Mensualités versées : ${fmt(totalMensualites)} <span style="font-weight:400;font-size:9px">(${moisPayes.length}/${moisAnnee.length} mois)</span></div>
-    <div class="total" style="background:#e0f2fe;border-color:#38bdf8">Total général : <strong>${fmt(totalGeneral)}</strong></div>
+    <div class="total">${tr("reports.receipt.monthlyFee")} : ${fmt(totalMensualites)} <span style="font-weight:400;font-size:9px">(${moisPayes.length}/${moisAnnee.length})</span></div>
+    <div class="total" style="background:#e0f2fe;border-color:#38bdf8">${tr("reports.receipt.amount")} : <strong>${fmt(totalGeneral)}</strong></div>
     <div class="sigs">
-      <div class="sig">Le/La Comptable<br/><br/><br/>Signature &amp; cachet</div>
-      <div class="sig">Le/La Payant(e)<br/><br/><br/>Signature</div>
+      <div class="sig">${tr("accounting.tabs.bilan")}<br/><br/><br/>${tr("reports.signature")} &amp; ${tr("reports.stamp")}</div>
+      <div class="sig">${tr("school.students.parent")}<br/><br/><br/>${tr("reports.signature")}</div>
     </div>
     </div>
   </div>`;
 
-  w.document.write(`<!DOCTYPE html><html><head><title>Reçu</title>
+  w.document.write(`<!DOCTYPE html><html lang="${printLang()}" dir="${printDir()}"><head><title>${tr("reports.receipt.title")}</title>
   <meta charset="utf-8"/>
   <style>
     ${PRINT_RESET}
@@ -193,7 +203,7 @@ export const imprimerCartesEleves = async (eleves, schoolInfo={}, annee="") => {
         <div class="carte-titre">
           <div class="carte-ecole">${nomEcole}</div>
           ${ville?`<div class="carte-ville">${ville}</div>`:""}
-          <div class="carte-sous">CARTE D'IDENTITÉ SCOLAIRE</div>
+          <div class="carte-sous">${tr("reports.card.title").toUpperCase()}</div>
         </div>
         <div class="annee-badge">${annee}</div>
       </div>
@@ -210,18 +220,18 @@ export const imprimerCartesEleves = async (eleves, schoolInfo={}, annee="") => {
         </div>
         <div class="carte-infos">
           <div class="carte-nom">${(e.prenom||"").toUpperCase()} ${(e.nom||"").toUpperCase()}</div>
-          <div class="info-ligne"><span class="info-label">Matricule</span><span class="info-val">${e.matricule||"—"}</span></div>
+          <div class="info-ligne"><span class="info-label">${tr("school.bulletins.matricule")}</span><span class="info-val">${e.matricule||"—"}</span></div>
           ${e.ien?`<div class="info-ligne"><span class="info-label">IEN</span><span class="info-val ien">${e.ien}</span></div>`:""}
-          <div class="info-ligne"><span class="info-label">Classe</span><span class="info-val">${e.classe||"—"}</span></div>
-          <div class="info-ligne"><span class="info-label">Né(e) le</span><span class="info-val">${e.dateNaissance||"—"}</span></div>
-          ${e.sexe?`<div class="info-ligne"><span class="info-label">Sexe</span><span class="info-val">${e.sexe}</span></div>`:""}
+          <div class="info-ligne"><span class="info-label">${tr("reports.class")}</span><span class="info-val">${e.classe||"—"}</span></div>
+          <div class="info-ligne"><span class="info-label">${tr("reports.dateOfBirth")}</span><span class="info-val">${e.dateNaissance||"—"}</span></div>
+          ${e.sexe?`<div class="info-ligne"><span class="info-label">${tr("common.status")}</span><span class="info-val">${e.sexe}</span></div>`:""}
         </div>
       </div>
 
       <!-- PIED -->
       <div class="carte-footer">
         <div class="footer-left">
-          <span class="footer-label">Signature Direction</span>
+          <span class="footer-label">${tr("reports.signature")} — ${tr("reports.director")}</span>
           <div class="footer-ligne"></div>
         </div>
         <div class="footer-center">
@@ -230,16 +240,16 @@ export const imprimerCartesEleves = async (eleves, schoolInfo={}, annee="") => {
             :`<div class="mat-badge">${e.matricule||""}</div>`}
         </div>
         <div class="footer-right">
-          <span class="footer-label">Signature Élève</span>
+          <span class="footer-label">${tr("reports.signature")} — ${tr("reports.studentName")}</span>
           <div class="footer-ligne"></div>
         </div>
       </div>
     </div>
   </div>`;
 
-  w.document.write(`<!DOCTYPE html><html><head>
+  w.document.write(`<!DOCTYPE html><html lang="${printLang()}" dir="${printDir()}"><head>
   <meta charset="utf-8"/>
-  <title>Cartes d'identité scolaires — ${nomEcole}</title>
+  <title>${tr("reports.card.title")} — ${nomEcole}</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
     ${PRINT_RESET}
@@ -431,9 +441,9 @@ export const genererRapportMensuel = (mois, eleves, absences, annee, schoolInfo=
   }).filter(e=>e.nbAbs>=3).sort((a,b)=>b.nbAbs-a.nbAbs).slice(0,15);
 
   const w = window.open("","_blank");
-  w.document.write(`<!DOCTYPE html><html lang="fr"><head>
+  w.document.write(`<!DOCTYPE html><html lang="${printLang()}" dir="${printDir()}"><head>
   <meta charset="utf-8"/>
-  <title>Rapport Mensuel ${mois} ${annee} — ${nomEcole}</title>
+  <title>${tr("reports.monthlyReport.title")} ${mois} ${annee} — ${nomEcole}</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
     ${PRINT_RESET}
@@ -488,25 +498,25 @@ export const genererRapportMensuel = (mois, eleves, absences, annee, schoolInfo=
       :`<div class="header-logo-ph">${nomEcole.slice(0,2).toUpperCase()}</div>`}
     <div class="header-text">
       <div class="header-ecole">${nomEcole}</div>
-      <div class="header-sub">Rapport mensuel • Année scolaire ${annee}</div>
+      <div class="header-sub">${tr("reports.monthlyReport.title")} • ${tr("reports.schoolYear")} ${annee}</div>
     </div>
     <div class="header-badge">
-      <div class="header-badge-title">Période</div>
+      <div class="header-badge-title">${tr("reports.period")}</div>
       <div class="header-badge-val">${mois}</div>
     </div>
   </div>
 
   <div class="kpi-row">
-    <div class="kpi"><div class="kpi-val">${totEffectif}</div><div class="kpi-label">Élèves</div><div class="kpi-sub">${classes.length} classe(s)</div></div>
-    <div class="kpi amber"><div class="kpi-val">${totAbsJ+totAbsN}</div><div class="kpi-label">Absences</div><div class="kpi-sub">${totAbsJ} justifiées · ${totAbsN} non just.</div></div>
-    <div class="kpi ${tauxGlobal>=80?"vert":tauxGlobal>=50?"amber":"rouge"}"><div class="kpi-val">${tauxGlobal}%</div><div class="kpi-label">Taux paiement</div><div class="kpi-sub">${totPaye}/${totEffectif} payés</div></div>
-    <div class="kpi"><div class="kpi-val">${elevesConcernes.length}</div><div class="kpi-label">Alertes absences</div><div class="kpi-sub">≥ 3 absences ce mois</div></div>
+    <div class="kpi"><div class="kpi-val">${totEffectif}</div><div class="kpi-label">${tr("reports.monthlyReport.totalStudents")}</div><div class="kpi-sub">${classes.length}</div></div>
+    <div class="kpi amber"><div class="kpi-val">${totAbsJ+totAbsN}</div><div class="kpi-label">${tr("reports.absences")}</div><div class="kpi-sub">${totAbsJ} ${tr("reports.justified")} · ${totAbsN} ${tr("reports.unjustified")}</div></div>
+    <div class="kpi ${tauxGlobal>=80?"vert":tauxGlobal>=50?"amber":"rouge"}"><div class="kpi-val">${tauxGlobal}%</div><div class="kpi-label">${tr("accounting.rate")}</div><div class="kpi-sub">${totPaye}/${totEffectif}</div></div>
+    <div class="kpi"><div class="kpi-val">${elevesConcernes.length}</div><div class="kpi-label">${tr("reports.absences")}</div><div class="kpi-sub">≥ 3</div></div>
   </div>
 
-  <div class="section-title">Récapitulatif par classe</div>
+  <div class="section-title">${tr("reports.monthlyReport.stats")}</div>
   <table>
     <thead><tr>
-      <th>Classe</th><th>Effectif</th><th>Abs. justifiées</th><th>Abs. non justif.</th><th>Total abs.</th><th>Paiements</th><th>Taux</th>
+      <th>${tr("reports.class")}</th><th>${tr("school.classes.students")}</th><th>${tr("reports.absences")} ${tr("reports.justified")}</th><th>${tr("reports.absences")} ${tr("reports.unjustified")}</th><th>${tr("common.total")}</th><th>${tr("accounting.tabs.monthlyFees")}</th><th>${tr("accounting.rate")}</th>
     </tr></thead>
     <tbody>
       ${lignesClasse.map(l=>`<tr>
@@ -522,7 +532,7 @@ export const genererRapportMensuel = (mois, eleves, absences, annee, schoolInfo=
         </td>
       </tr>`).join("")}
       <tr style="background:#f1f5f9;font-weight:800">
-        <td>TOTAL</td><td style="text-align:center">${totEffectif}</td>
+        <td>${tr("common.total").toUpperCase()}</td><td style="text-align:center">${totEffectif}</td>
         <td style="text-align:center;color:#059669">${totAbsJ}</td>
         <td style="text-align:center;color:#dc2626">${totAbsN}</td>
         <td style="text-align:center">${totAbsJ+totAbsN}</td>
@@ -550,9 +560,9 @@ export const genererRapportMensuel = (mois, eleves, absences, annee, schoolInfo=
   </div>`:""}
 
   <div class="page-footer">
-    <span>Généré le ${new Date().toLocaleDateString("fr-FR",{day:"2-digit",month:"long",year:"numeric"})}</span>
-    <span>${nomEcole} — Rapport confidentiel</span>
-    <span>Signature Direction : ___________________</span>
+    <span>${new Date().toLocaleDateString("fr-FR",{day:"2-digit",month:"long",year:"numeric"})}</span>
+    <span>${nomEcole}</span>
+    <span>${tr("reports.signature")} ${tr("reports.director")} : ___________________</span>
   </div>
 
   <script>window.onload=()=>{setTimeout(()=>window.print(),400);}</script>
@@ -585,14 +595,14 @@ export const exportExcel = async (nomFichier, colonnes, lignes) => {
 };
 
 export const imprimerAttestation = (eleve, niveau, annee, schoolInfo={}) => {
-  const niveauLabel = niveau === "college" ? "Collège" : "Primaire";
+  const niveauLabel = niveau === "college" ? tr("dashboard.secondary") : tr("dashboard.primary");
   const w = window.open("","_blank");
-  w.document.write(`<!DOCTYPE html><html><head><title>Attestation ${eleve.nom}</title>
+  w.document.write(`<!DOCTYPE html><html lang="${printLang()}" dir="${printDir()}"><head><title>${tr("reports.attestation.title")} — ${eleve.nom}</title>
   <style>${PRINT_RESET}
   body{font-family:Arial,sans-serif;padding:18mm 14mm;font-size:13px;max-width:700px;margin:0 auto}
   h2{color:#0A1628;text-align:center;font-size:18px;text-transform:uppercase;letter-spacing:2px;margin:24px 0}
   .body-txt{line-height:2;font-size:14px;text-align:justify;margin:20px 0}
-  .infos{background:#f0f4f8;padding:16px;border-radius:8px;margin:16px 0;border-left:4px solid #0A1628}
+  .infos{background:#f0f4f8;padding:16px;border-radius:8px;margin:16px 0;border-inline-start:4px solid #0A1628}
   .row{font-size:13px;margin:5px 0}.lbl{font-weight:bold;color:#0A1628}
   .sigs{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:50px}
   .sig{border-top:2px solid #0A1628;padding-top:8px;text-align:center;font-size:11px;color:#555}
@@ -600,29 +610,28 @@ export const imprimerAttestation = (eleve, niveau, annee, schoolInfo={}) => {
   .devise{text-align:center;font-size:11px;margin-top:20px;font-style:italic;color:#00C48C;font-weight:bold}
   @media print{button{display:none}}</style></head><body>
   ${enteteDoc(schoolInfo, schoolInfo.logo)}
-  <h2>Attestation de Niveau</h2>
+  <h2>${tr("reports.attestation.title")}</h2>
   <div class="body-txt">
-    <p>Le Directeur du ${schoolInfo.type||"Groupe Scolaire Privé"} <strong>${schoolInfo.nom||""}</strong>, soussigné, certifie que l'élève :</p>
+    <p>${tr("reports.attestation.intro")} :</p>
     <div class="infos">
-      <div class="row"><span class="lbl">Nom & Prénom : </span><strong>${eleve.nom} ${eleve.prenom}</strong></div>
-      <div class="row"><span class="lbl">Matricule : </span>${eleve.matricule||"—"}</div>
-      <div class="row"><span class="lbl">Date de naissance : </span>${eleve.dateNaissance||"—"}</div>
-      <div class="row"><span class="lbl">Lieu de naissance : </span>${eleve.lieuNaissance||"—"}</div>
-      <div class="row"><span class="lbl">Classe : </span>${eleve.classe}</div>
-      <div class="row"><span class="lbl">Niveau : </span>${niveauLabel}</div>
-      <div class="row"><span class="lbl">Tuteur / Parent : </span>${eleve.tuteur||"—"}</div>
-      <div class="row"><span class="lbl">Statut : </span>${eleve.statut||"—"}</div>
+      <div class="row"><span class="lbl">${tr("reports.studentName")} : </span><strong>${eleve.nom} ${eleve.prenom}</strong></div>
+      <div class="row"><span class="lbl">${tr("school.bulletins.matricule")} : </span>${eleve.matricule||"—"}</div>
+      <div class="row"><span class="lbl">${tr("reports.dateOfBirth")} : </span>${eleve.dateNaissance||"—"}</div>
+      <div class="row"><span class="lbl">${tr("school.bulletins.matricule")} : </span>${eleve.lieuNaissance||"—"}</div>
+      <div class="row"><span class="lbl">${tr("reports.class")} : </span>${eleve.classe}</div>
+      <div class="row"><span class="lbl">${niveauLabel}</span></div>
+      <div class="row"><span class="lbl">${tr("school.students.parent")} : </span>${eleve.tuteur||"—"}</div>
+      <div class="row"><span class="lbl">${tr("school.students.status")} : </span>${eleve.statut||"—"}</div>
     </div>
-    <p>est régulièrement inscrit(e) dans notre établissement pour l'année scolaire <strong>${annee||getAnnee()}</strong>
-    et suit normalement les cours de la classe de <strong>${eleve.classe}</strong> au niveau <strong>${niveauLabel}</strong>.</p>
-    <p>La présente attestation est délivrée à l'intéressé(e) pour servir et valoir ce que de droit.</p>
-    <p style="text-align:right;margin-top:20px">Fait à ${schoolInfo.ville||"—"}, le ${today()}</p>
+    <p>${tr("reports.attestation.intro")} <strong>${annee||getAnnee()}</strong>.</p>
+    <p>${tr("reports.attestation.issued")}.</p>
+    <p style="text-align:end;margin-top:20px">${tr("reports.ordreMutation.issuedAt")} ${schoolInfo.ville||"—"}, ${tr("reports.ordreMutation.on")} ${today()}</p>
   </div>
   <div class="sigs">
-    <div class="sig">Le/La Tuteur / Parent<br/><br/><br/>Signature</div>
-    <div class="sig">Le Directeur Général<br/><div class="stamp">${schoolInfo.nom||""}</div></div>
+    <div class="sig">${tr("school.students.parent")}<br/><br/><br/>${tr("reports.signature")}</div>
+    <div class="sig">${tr("reports.director")}<br/><div class="stamp">${schoolInfo.nom||""}</div></div>
   </div>
-  <div class="devise">Travail – Rigueur – Réussite</div>
+  <div class="devise">${schoolInfo.devise || "Travail – Rigueur – Réussite"}</div>
   <script>window.onload=()=>window.print();</script></body></html>`);
   w.document.close();
 };
@@ -798,10 +807,10 @@ function buildBulletinPageHTML({
 
     <div style="background:linear-gradient(135deg,${c1},${c1}dd);color:#fff;padding:9px 16px;border-radius:8px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
       <div>
-        <div style="font-size:13px;font-weight:800;letter-spacing:0.04em">BULLETIN DE NOTES</div>
-        <div style="font-size:11px;opacity:0.85">${periode} — Année scolaire ${annee}</div>
+        <div style="font-size:13px;font-weight:800;letter-spacing:0.04em">${tr("reports.bulletinTitle").toUpperCase()}</div>
+        <div style="font-size:11px;opacity:0.85">${periode} — ${tr("reports.schoolYear")} ${annee}</div>
       </div>
-      <div style="font-size:9.5px;opacity:0.78;font-family:monospace;text-align:right">N° ${numero}</div>
+      <div style="font-size:9.5px;opacity:0.78;font-family:monospace;text-align:end">${tr("reports.bulletinNumber")} ${numero}</div>
     </div>
 
     <div style="display:grid;grid-template-columns:1.55fr 1fr;gap:12px;margin-bottom:12px">
@@ -811,34 +820,34 @@ function buildBulletinPageHTML({
           : `<div style="width:60px;height:60px;border-radius:8px;background:${c1};color:#fff;font-weight:900;font-size:22px;display:flex;align-items:center;justify-content:center;flex-shrink:0">${getInitiales(eleve)}</div>`}
         <div style="flex:1;font-size:10.5px;line-height:1.6;min-width:0">
           <div style="font-size:14px;font-weight:800;color:${c1};margin-bottom:2px">${eleve.nom || ""} ${eleve.prenom || ""}</div>
-          <div><strong>Classe :</strong> ${eleve.classe || "—"} &nbsp;·&nbsp; <strong>Matricule national :</strong> ${eleve.ien || "—"}</div>
-          <div><strong>Né(e) le :</strong> ${eleve.dateNaissance || "—"}${eleve.lieuNaissance ? ` à ${eleve.lieuNaissance}` : ""}</div>
+          <div><strong>${tr("reports.class")} :</strong> ${eleve.classe || "—"} &nbsp;·&nbsp; <strong>${tr("school.bulletins.matricule")} :</strong> ${eleve.ien || "—"}</div>
+          <div><strong>${tr("reports.dateOfBirth")} :</strong> ${eleve.dateNaissance || "—"}${eleve.lieuNaissance ? ` — ${eleve.lieuNaissance}` : ""}</div>
         </div>
       </div>
 
       <div style="border:2px solid ${ms.border};border-radius:8px;padding:10px 8px;text-align:center;background:${ms.bg}">
-        <div style="font-size:8.5px;text-transform:uppercase;letter-spacing:0.08em;color:${ms.color};font-weight:700;margin-bottom:1px">Moyenne générale</div>
+        <div style="font-size:8.5px;text-transform:uppercase;letter-spacing:0.08em;color:${ms.color};font-weight:700;margin-bottom:1px">${tr("reports.generalAverage")}</div>
         <div style="font-size:30px;font-weight:900;color:${ms.color};line-height:1.05">${moyGene}<span style="font-size:13px;opacity:0.65">/${maxNote}</span></div>
         <div style="font-size:11px;font-weight:800;color:${ms.color};margin-top:3px;text-transform:uppercase;letter-spacing:0.04em">${mention}</div>
-        ${rang ? `<div style="font-size:10px;margin-top:5px;padding-top:4px;border-top:1px solid ${ms.border};color:${ms.color}"><strong>Rang : ${rang.rang}<sup>${ordinalFr(rang.rang)}</sup> / ${rang.effectif}</strong></div>` : ""}
+        ${rang ? `<div style="font-size:10px;margin-top:5px;padding-top:4px;border-top:1px solid ${ms.border};color:${ms.color}"><strong>${tr("reports.rank")} : ${rang.rang}<sup>${ordinalFr(rang.rang)}</sup> / ${rang.effectif}</strong></div>` : ""}
       </div>
     </div>
 
     <table>
       <thead>
         <tr>
-          <th style="background:${c1}">Matière</th>
-          <th style="background:${c1};text-align:center;width:50px">Coef.</th>
-          <th style="background:${c1};text-align:center;width:140px">Moyenne /${maxNote}</th>
-          <th style="background:${c1};text-align:center;width:80px">Moy × Coef</th>
-          <th style="background:${c1};text-align:center;width:90px">Moy. classe</th>
-          <th style="background:${c1};width:100px">Appréciation</th>
+          <th style="background:${c1}">${tr("reports.subject")}</th>
+          <th style="background:${c1};text-align:center;width:50px">${tr("reports.coefficient")}</th>
+          <th style="background:${c1};text-align:center;width:140px">${tr("reports.average")} /${maxNote}</th>
+          <th style="background:${c1};text-align:center;width:80px">${tr("reports.weighted")}</th>
+          <th style="background:${c1};text-align:center;width:90px">${tr("reports.average")} ${tr("reports.class")}</th>
+          <th style="background:${c1};width:100px">${tr("reports.appreciation")}</th>
         </tr>
       </thead>
       <tbody>
         ${tbody}
         <tr style="background:${c1}1A;font-weight:800">
-          <td colspan="2" style="color:${c1}">MOYENNE GÉNÉRALE</td>
+          <td colspan="2" style="color:${c1}">${tr("reports.generalAverage").toUpperCase()}</td>
           <td style="text-align:center;color:${c1};font-size:14px">${moyGene}/${maxNote}</td>
           <td style="text-align:center;color:${c1}">${totalCoef}</td>
           <td style="text-align:center;font-size:10px;color:#6b7280">${classStats && classStats.moyenneClasse != null ? classStats.moyenneClasse.toFixed(2) : "—"}</td>
@@ -866,14 +875,14 @@ function buildBulletinPageHTML({
     </div>` : ""}
 
     <div style="margin-top:10px;border:1px dashed #cbd5e1;border-radius:6px;padding:8px 12px;min-height:36px">
-      <div style="font-size:8.5px;font-weight:700;color:${c1};text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">Appréciation du conseil de classe</div>
+      <div style="font-size:8.5px;font-weight:700;color:${c1};text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">${tr("reports.appreciation")}</div>
       <div style="font-size:11px;color:#374151;line-height:1.5">${appreciation || `<span style="color:#cbd5e1">__________________________________________________________________________</span>`}</div>
     </div>
 
     <div class="sigs">
-      <div class="sig">Le/La Directeur(rice)<br/><br/><br/>Signature</div>
-      <div class="sig">Le/La Professeur(e) Principal(e)<br/><br/><br/>Signature</div>
-      <div class="sig">Le/La Parent/Tuteur<br/><br/><br/>Signature</div>
+      <div class="sig">${tr("reports.director")}<br/><br/><br/>${tr("reports.signature")}</div>
+      <div class="sig">${tr("reports.headTeacher")}<br/><br/><br/>${tr("reports.signature")}</div>
+      <div class="sig">${tr("school.students.parent")}<br/><br/><br/>${tr("reports.signature")}</div>
     </div>
 
     <div class="devise" style="color:${c2}">${schoolInfo.devise || "Travail – Rigueur – Réussite"}</div>
@@ -925,8 +934,8 @@ export const imprimerBulletin = (eleve, notes, matieres, periode, niveau, maxNot
   });
 
   const w = window.open("", "_blank");
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/>
-    <title>Bulletin ${eleve.nom || ""} ${eleve.prenom || ""} — ${periode}</title>
+  w.document.write(`<!DOCTYPE html><html lang="${printLang()}" dir="${printDir()}"><head><meta charset="utf-8"/>
+    <title>${tr("reports.bulletinTitle")} — ${eleve.nom || ""} ${eleve.prenom || ""} — ${periode}</title>
     <style>${getBulletinStyles()}</style>
   </head><body>${html}<script>window.onload=()=>window.print();</script></body></html>`);
   w.document.close();
@@ -968,9 +977,9 @@ export const imprimerBulletinsGroupes = (eleves, notes, matieres, periode, nivea
   }).join("");
 
   const w = window.open("", "_blank");
-  w.document.write(`<!DOCTYPE html><html><head>
+  w.document.write(`<!DOCTYPE html><html lang="${printLang()}" dir="${printDir()}"><head>
   <meta charset="utf-8"/>
-  <title>Bulletins ${classe || niveau} — ${periode} — Année ${getAnnee()}</title>
+  <title>${tr("reports.bulletinTitle")} ${classe || niveau} — ${periode} — ${tr("reports.schoolYear")} ${getAnnee()}</title>
   <style>${getBulletinStyles()}</style>
   </head><body>${pages}<script>window.onload=()=>window.print();</script></body></html>`);
   w.document.close();
@@ -1031,8 +1040,8 @@ export const imprimerFicheCompositions = (classe, periode, notes, matieres, elev
   }).join("");
 
   const w = window.open("","_blank");
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/>
-  <title>Fiche Compositions — ${periode}</title>
+  w.document.write(`<!DOCTYPE html><html lang="${printLang()}" dir="${printDir()}"><head><meta charset="utf-8"/>
+  <title>${tr("reports.compositionResults")} — ${periode}</title>
   <style>
     ${PRINT_RESET}
     body{font-family:Arial,sans-serif;padding:14mm 12mm;font-size:12px;color:#1a1a1a;margin:0}
@@ -1054,17 +1063,17 @@ export const imprimerFicheCompositions = (classe, periode, notes, matieres, elev
     @media print{button{display:none}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
   </style></head><body>
   ${enteteDoc(schoolInfo, schoolInfo.logo)}
-  <h2>RÉSULTATS DES ÉVALUATIONS — ${periode} — Année ${getAnnee()}</h2>
-  <h3>Classe : <strong>${classe==="all"?"Toutes les classes":classe}</strong> &nbsp;|&nbsp; Effectif évalué : <strong>${nb} élève${nb>1?"s":""}</strong></h3>
+  <h2>${tr("reports.compositionResults").toUpperCase()} — ${periode} — ${tr("reports.schoolYear")} ${getAnnee()}</h2>
+  <h3>${tr("reports.class")} : <strong>${classe==="all"?tr("common.all"):classe}</strong> &nbsp;|&nbsp; <strong>${nb}</strong></h3>
 
   <table>
     <thead><tr>
-      <th style="text-align:center;width:40px">Rang</th>
-      <th>Nom & Prénom</th>
-      <th style="text-align:center">Matricule</th>
+      <th style="text-align:center;width:40px">${tr("reports.rank")}</th>
+      <th>${tr("reports.studentName")}</th>
+      <th style="text-align:center">${tr("school.bulletins.matricule")}</th>
       ${thMat}
-      <th style="text-align:center">Moy/${maxNote}</th>
-      <th style="text-align:center">Mention</th>
+      <th style="text-align:center">${tr("reports.average")}/${maxNote}</th>
+      <th style="text-align:center">${tr("reports.mention")}</th>
     </tr></thead>
     <tbody>${rows}</tbody>
   </table>
@@ -1085,8 +1094,8 @@ export const imprimerFicheCompositions = (classe, periode, notes, matieres, elev
   </div>
 
   <div class="sigs">
-    <div class="sig">Le/La Directeur(rice)<br/><br/><br/>Signature & Cachet</div>
-    <div class="sig">Le/La Prof. Principal(e)<br/><br/><br/>Signature</div>
+    <div class="sig">${tr("reports.director")}<br/><br/><br/>${tr("reports.signature")} & ${tr("reports.stamp")}</div>
+    <div class="sig">${tr("reports.headTeacher")}<br/><br/><br/>${tr("reports.signature")}</div>
   </div>
   <script>window.onload=()=>window.print();</script>
   </body></html>`);

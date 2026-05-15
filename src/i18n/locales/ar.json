@@ -270,6 +270,95 @@
     "noAnnouncement": "لا توجد إعلانات حتى الآن",
     "noHonor": "لا يوجد طالب على لوحة الشرف"
   },
+  "reports": {
+    "schoolYear": "السنة الدراسية",
+    "period": "الفترة",
+    "subject": "المادة",
+    "coefficient": "المعامل",
+    "grade": "الدرجة",
+    "average": "المعدل",
+    "weighted": "موزون",
+    "appreciation": "ملاحظة",
+    "generalAverage": "المعدل العام",
+    "rank": "الترتيب",
+    "mention": "التقدير",
+    "absences": "الغيابات",
+    "justified": "مبررة",
+    "unjustified": "غير مبررة",
+    "signature": "التوقيع",
+    "stamp": "الختم",
+    "director": "الإدارة",
+    "headTeacher": "الأستاذ الرئيسي",
+    "bulletinTitle": "كشف العلامات",
+    "bulletinNumber": "كشف رقم",
+    "studentName": "الطالب",
+    "class": "الفصل",
+    "dateOfBirth": "تاريخ الميلاد",
+    "compositionResults": "نتائج التقييمات",
+    "totalCoefficients": "مجموع المعاملات",
+    "totalPoints": "المجموع الموزون",
+    "rankInClass": "من",
+    "mentions": {
+      "veryGood": "ممتاز",
+      "good": "جيد جدًا",
+      "fairlyGood": "جيد",
+      "passable": "مقبول",
+      "insufficient": "غير كافٍ"
+    },
+    "attestation": {
+      "title": "شهادة التسجيل",
+      "intro": "أنا الموقع أدناه، مدير المؤسسة، أشهد أن الطالب المذكور أدناه مسجل بانتظام في مؤسستنا للسنة الدراسية",
+      "issued": "سُلمت لتفيد عند اللزوم"
+    },
+    "card": {
+      "title": "بطاقة الطالب المدرسية",
+      "validity": "صالحة للسنة الدراسية"
+    },
+    "receipt": {
+      "title": "إيصال دفع",
+      "number": "إيصال رقم",
+      "for": "استُلم من",
+      "amount": "المبلغ الإجمالي",
+      "paidFor": "بعنوان",
+      "details": "التفاصيل",
+      "monthlyFee": "قسط شهري",
+      "registration": "التسجيل",
+      "otherFees": "رسوم أخرى",
+      "thanks": "شكرًا على ثقتكم"
+    },
+    "monthlyReport": {
+      "title": "التقرير الشهري",
+      "month": "الشهر",
+      "stats": "إحصائيات الحضور",
+      "totalStudents": "إجمالي الطلاب",
+      "absencesTotal": "إجمالي الغيابات",
+      "presenceRate": "نسبة الحضور"
+    },
+    "ordreMutation": {
+      "title": "أمر النقل",
+      "intro": "تشهد هذه الوثيقة بنقل الطالب",
+      "to": "إلى مؤسسة",
+      "issuedAt": "حُرر في",
+      "on": "بتاريخ"
+    },
+    "radiation": {
+      "title": "شهادة الشطب",
+      "intro": "يُشهد بأن الطالب المذكور أدناه قد شُطب من سجلات المؤسسة",
+      "balance": "الرصيد المستحق"
+    },
+    "livret": {
+      "title": "السجل المدرسي",
+      "studentBook": "سجل الطالب",
+      "studentInfo": "معلومات الطالب",
+      "yearlyRecap": "ملخص السنة",
+      "decision": "القرار",
+      "admitted": "ناجح(ة)",
+      "admittedDistinction": "ناجح(ة) مع التهاني",
+      "repeating": "معيد",
+      "excluded": "مفصول",
+      "signedOn": "وُقّع بتاريخ"
+    }
+  },
   "school": {
     "title": "المدرسة",
     "subtitle": "الفصول، الطلاب، الدرجات والانضباط",

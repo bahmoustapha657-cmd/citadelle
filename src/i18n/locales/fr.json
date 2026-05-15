@@ -270,6 +270,95 @@
     "noAnnouncement": "Aucune annonce pour le moment",
     "noHonor": "Aucun élève au tableau d'honneur"
   },
+  "reports": {
+    "schoolYear": "Année scolaire",
+    "period": "Période",
+    "subject": "Matière",
+    "coefficient": "Coef.",
+    "grade": "Note",
+    "average": "Moyenne",
+    "weighted": "Pondéré",
+    "appreciation": "Appréciation",
+    "generalAverage": "Moyenne générale",
+    "rank": "Rang",
+    "mention": "Mention",
+    "absences": "Absences",
+    "justified": "justifiées",
+    "unjustified": "non justifiées",
+    "signature": "Signature",
+    "stamp": "Cachet",
+    "director": "Direction",
+    "headTeacher": "Professeur principal",
+    "bulletinTitle": "Bulletin de notes",
+    "bulletinNumber": "Bulletin N°",
+    "studentName": "Élève",
+    "class": "Classe",
+    "dateOfBirth": "Date de naissance",
+    "compositionResults": "Résultats des évaluations",
+    "totalCoefficients": "Total coefficients",
+    "totalPoints": "Total pondéré",
+    "rankInClass": "sur",
+    "mentions": {
+      "veryGood": "Très Bien",
+      "good": "Bien",
+      "fairlyGood": "Assez Bien",
+      "passable": "Passable",
+      "insufficient": "Insuffisant"
+    },
+    "attestation": {
+      "title": "Attestation de niveau",
+      "intro": "Je soussigné, Directeur de l'établissement, atteste que l'élève désigné ci-dessous est régulièrement inscrit dans notre établissement pour l'année scolaire",
+      "issued": "Délivré pour servir et valoir ce que de droit"
+    },
+    "card": {
+      "title": "Carte d'identité scolaire",
+      "validity": "Valable pour l'année"
+    },
+    "receipt": {
+      "title": "Reçu de paiement",
+      "number": "Reçu N°",
+      "for": "Reçu de",
+      "amount": "Montant total",
+      "paidFor": "Au titre de",
+      "details": "Détail",
+      "monthlyFee": "Mensualité",
+      "registration": "Inscription",
+      "otherFees": "Autres frais",
+      "thanks": "Merci de votre confiance"
+    },
+    "monthlyReport": {
+      "title": "Rapport mensuel",
+      "month": "Mois",
+      "stats": "Statistiques de présence",
+      "totalStudents": "Total élèves",
+      "absencesTotal": "Total absences",
+      "presenceRate": "Taux de présence"
+    },
+    "ordreMutation": {
+      "title": "Ordre de mutation",
+      "intro": "Le présent document atteste de la mutation de l'élève",
+      "to": "vers l'établissement",
+      "issuedAt": "Fait à",
+      "on": "le"
+    },
+    "radiation": {
+      "title": "Certificat de radiation",
+      "intro": "Il est certifié que l'élève dont l'identité suit a été radié des effectifs de l'établissement",
+      "balance": "Solde restant à recouvrer"
+    },
+    "livret": {
+      "title": "Livret scolaire",
+      "studentBook": "Livret de l'élève",
+      "studentInfo": "Informations de l'élève",
+      "yearlyRecap": "Récapitulatif annuel",
+      "decision": "Décision",
+      "admitted": "Admis(e)",
+      "admittedDistinction": "Admis(e) avec félicitations",
+      "repeating": "Redouble",
+      "excluded": "Exclu(e)",
+      "signedOn": "Signé le"
+    }
+  },
   "school": {
     "title": "Établissement",
     "subtitle": "Gestion des classes, élèves, notes et discipline",

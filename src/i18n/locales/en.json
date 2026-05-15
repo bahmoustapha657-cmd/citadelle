@@ -270,6 +270,95 @@
     "noAnnouncement": "No announcement yet",
     "noHonor": "No student on the honor roll"
   },
+  "reports": {
+    "schoolYear": "School year",
+    "period": "Period",
+    "subject": "Subject",
+    "coefficient": "Coef.",
+    "grade": "Grade",
+    "average": "Average",
+    "weighted": "Weighted",
+    "appreciation": "Appreciation",
+    "generalAverage": "General average",
+    "rank": "Rank",
+    "mention": "Honors",
+    "absences": "Absences",
+    "justified": "justified",
+    "unjustified": "unjustified",
+    "signature": "Signature",
+    "stamp": "Stamp",
+    "director": "Director",
+    "headTeacher": "Head teacher",
+    "bulletinTitle": "Report card",
+    "bulletinNumber": "Card No.",
+    "studentName": "Student",
+    "class": "Class",
+    "dateOfBirth": "Date of birth",
+    "compositionResults": "Evaluation results",
+    "totalCoefficients": "Total coefficients",
+    "totalPoints": "Total weighted",
+    "rankInClass": "of",
+    "mentions": {
+      "veryGood": "Very Good",
+      "good": "Good",
+      "fairlyGood": "Fairly Good",
+      "passable": "Pass",
+      "insufficient": "Insufficient"
+    },
+    "attestation": {
+      "title": "Enrollment certificate",
+      "intro": "I, the undersigned Director of this institution, certify that the student named below is duly enrolled for the school year",
+      "issued": "Issued to serve and assert as appropriate"
+    },
+    "card": {
+      "title": "Student ID card",
+      "validity": "Valid for school year"
+    },
+    "receipt": {
+      "title": "Payment receipt",
+      "number": "Receipt No.",
+      "for": "Received from",
+      "amount": "Total amount",
+      "paidFor": "For",
+      "details": "Details",
+      "monthlyFee": "Monthly fee",
+      "registration": "Registration",
+      "otherFees": "Other fees",
+      "thanks": "Thank you for your trust"
+    },
+    "monthlyReport": {
+      "title": "Monthly report",
+      "month": "Month",
+      "stats": "Attendance statistics",
+      "totalStudents": "Total students",
+      "absencesTotal": "Total absences",
+      "presenceRate": "Attendance rate"
+    },
+    "ordreMutation": {
+      "title": "Transfer order",
+      "intro": "This document certifies the transfer of the student",
+      "to": "to the institution",
+      "issuedAt": "Issued at",
+      "on": "on"
+    },
+    "radiation": {
+      "title": "Removal certificate",
+      "intro": "This certifies that the student named below has been removed from the school's records",
+      "balance": "Outstanding balance"
+    },
+    "livret": {
+      "title": "School record book",
+      "studentBook": "Student record",
+      "studentInfo": "Student information",
+      "yearlyRecap": "Yearly recap",
+      "decision": "Decision",
+      "admitted": "Admitted",
+      "admittedDistinction": "Admitted with honors",
+      "repeating": "Repeating",
+      "excluded": "Excluded",
+      "signedOn": "Signed on"
+    }
+  },
   "school": {
     "title": "School",
     "subtitle": "Classes, students, grades and discipline",
