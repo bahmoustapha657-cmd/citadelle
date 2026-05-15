@@ -37,13 +37,13 @@ export function ElevesTab({
           <option value="all">{t("common.all")}</option>
           {classesUniq.map(c=><option key={c}>{c}</option>)}
         </select>
-        {filtreClasse!=="all"&&<Btn sm v="ghost" onClick={()=>imprimerListeClasse(filtreClasse,eleves,schoolInfo)}>🖨️ Imprimer liste</Btn>}
-        <Btn sm v="blue" onClick={()=>imprimerCartesEleves(elevesFiltres,schoolInfo,annee)}>🪪 Cartes ID</Btn>
+        {filtreClasse!=="all"&&<Btn sm v="ghost" onClick={()=>imprimerListeClasse(filtreClasse,eleves,schoolInfo)}>🖨️ {t("common.print")}</Btn>}
+        <Btn sm v="blue" onClick={()=>imprimerCartesEleves(elevesFiltres,schoolInfo,annee)}>🪪 {t("reports.card.title")}</Btn>
         <Btn sm v="ghost" onClick={()=>exportExcel(
-          `Eleves_${avecEns?"College":"Primaire"}`,
-          ["Matricule","IEN","Nom","Prénom","Classe","Sexe","Date Naissance","Lieu Naissance","Filiation","Tuteur","Contact","Domicile","Statut"],
-          elevesFiltres.map(e=>[e.matricule||"",e.ien||"",e.nom,e.prenom,e.classe,e.sexe||"",e.dateNaissance||"",e.lieuNaissance||"",e.filiation||"",e.tuteur||"",e.contactTuteur||"",e.domicile||"",e.statut||"Actif"])
-        )}>📥 Export Excel</Btn>
+          `${t("reports.excel.files.students")}_${avecEns?"College":"Primaire"}`,
+          [t("reports.excel.headers.matricule"),t("reports.excel.headers.ien"),t("reports.excel.headers.lastName"),t("reports.excel.headers.firstName"),t("reports.excel.headers.class"),t("reports.excel.headers.sex"),t("reports.excel.headers.dateOfBirth"),t("reports.excel.headers.birthPlace"),t("reports.excel.headers.filiation"),t("reports.excel.headers.guardian"),t("reports.excel.headers.contact"),t("reports.excel.headers.domicile"),t("reports.excel.headers.status")],
+          elevesFiltres.map(e=>[e.matricule||"",e.ien||"",e.nom,e.prenom,e.classe,e.sexe||"",e.dateNaissance||"",e.lieuNaissance||"",e.filiation||"",e.tuteur||"",e.contactTuteur||"",e.domicile||"",e.statut||t("school.students.active")])
+        )}>📥 {t("common.export")} Excel</Btn>
       </div>
       {cE?<Chargement/>:elevesFiltres.length===0?<Vide icone="🎓" msg={t("school.students.noStudent")}/>
         :<div style={{overflowX:"auto"}}>

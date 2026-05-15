@@ -66,14 +66,14 @@ export function NotesTab({
           ))}
         </div>
         <Btn sm v="ghost" onClick={()=>exportExcel(
-          `Notes_${avecEns?"College":"Primaire"}`,
-          ["Élève","Matière","Type","Période",`Note /${maxNote}`],
+          `${t("reports.excel.files.notes")}_${avecEns?"College":"Primaire"}`,
+          [t("reports.excel.headers.student"),t("reports.excel.headers.subject"),t("reports.excel.headers.type"),t("reports.excel.headers.period"),`${t("reports.excel.headers.grade")} /${maxNote}`],
           notes.map(n=>[n.eleveNom,n.matiere,getEvaluationLabel(n.type, schoolInfo, { section: isPrimarySection ? "primaire" : "secondaire" }),n.periode,n.note])
         )}>📥 {t("common.export")}</Btn>
-        <Btn sm v="ghost" onClick={()=>exportExcel(`Modele_Notes`,
-          ["Élève (Nom Prénom)","Matière","Type","Période",`Note (/${maxNote})`],
+        <Btn sm v="ghost" onClick={()=>exportExcel(t("reports.excel.files.notesTemplate"),
+          [t("reports.excel.headers.studentFullName"),t("reports.excel.headers.subject"),t("reports.excel.headers.type"),t("reports.excel.headers.period"),`${t("reports.excel.headers.grade")} (/${maxNote})`],
           eleves.slice(0,3).map(e=>[`${e.nom} ${e.prenom}`,matieres[0]?.nom||"Maths",noteForms[0]?.label||"Devoir",periodes[0]||"T1",Math.round(maxNote*0.7)])
-        )}>📋 Modèle</Btn>
+        )}>📋 {t("common.template")}</Btn>
         {canCreate&&<Btn sm v="vert" onClick={()=>setModal("import_notes")}>⬆️ {t("common.import")}</Btn>}
         {canCreate&&<Btn onClick={()=>{setForm({periode:periodes[0]||"T1",type:defaultNoteType});setModal("add_n");}}>+ {t("common.add")}</Btn>}
       </div>

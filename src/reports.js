@@ -371,20 +371,20 @@ export const imprimerCartesEleves = async (eleves, schoolInfo={}, annee="") => {
 export const imprimerListeClasse = (classe, eleves, schoolInfo={}) => {
   const liste = eleves.filter(e=>e.classe===classe);
   const w = window.open("","_blank");
-  w.document.write(`<!DOCTYPE html><html><head><title>Liste ${classe}</title>
+  w.document.write(`<!DOCTYPE html><html lang="${printLang()}" dir="${printDir()}"><head><title>${tr("reports.listClass.title")} ${classe}</title>
   <style>${PRINT_RESET}
   body{font-family:Arial,sans-serif;padding:14mm 12mm;font-size:12px;margin:0}
   h2{color:#0A1628;text-align:center}table{width:100%;border-collapse:collapse;margin-top:12px}
-  th{background:#0A1628;color:#fff;padding:7px 10px;font-size:11px;text-align:left}
+  th{background:#0A1628;color:#fff;padding:7px 10px;font-size:11px;text-align:start}
   td{padding:7px 10px;border-bottom:1px solid #eee}tr:nth-child(even){background:#f0f4f8}
   .footer{margin-top:30px;display:flex;justify-content:space-between;font-size:11px;color:#555}
   @media print{button{display:none}}</style></head><body>
   ${enteteDoc(schoolInfo, schoolInfo.logo)}
-  <h2>Liste des élèves — Classe : ${classe}</h2>
-  <table><thead><tr><th>N°</th><th>Matricule</th><th>Nom & Prénom</th><th>Sexe</th><th>Date Naissance</th><th>Lieu Naissance</th><th>Filiation</th><th>Tuteur</th><th>Contact</th><th>Statut</th></tr></thead>
-  <tbody>${liste.map((e,i)=>`<tr><td>${i+1}</td><td>${e.matricule||"—"}</td><td><strong>${e.nom} ${e.prenom}</strong></td><td>${e.sexe||"—"}</td><td>${e.dateNaissance||"—"}</td><td>${e.lieuNaissance||"—"}</td><td>${e.filiation||"—"}</td><td>${e.tuteur||"—"}</td><td>${e.contactTuteur||"—"}</td><td>${e.statut||"Actif"}</td></tr>`).join("")}
+  <h2>${tr("reports.listClass.title")} ${classe}</h2>
+  <table><thead><tr><th>${tr("reports.listClass.headerN")}</th><th>${tr("reports.listClass.headerMatricule")}</th><th>${tr("reports.listClass.headerName")}</th><th>${tr("reports.listClass.headerSex")}</th><th>${tr("reports.listClass.headerDateOfBirth")}</th><th>${tr("reports.listClass.headerBirthPlace")}</th><th>${tr("reports.listClass.headerFiliation")}</th><th>${tr("reports.listClass.headerGuardian")}</th><th>${tr("reports.listClass.headerContact")}</th><th>${tr("reports.listClass.headerStatus")}</th></tr></thead>
+  <tbody>${liste.map((e,i)=>`<tr><td>${i+1}</td><td>${e.matricule||"—"}</td><td><strong>${e.nom} ${e.prenom}</strong></td><td>${e.sexe||"—"}</td><td>${e.dateNaissance||"—"}</td><td>${e.lieuNaissance||"—"}</td><td>${e.filiation||"—"}</td><td>${e.tuteur||"—"}</td><td>${e.contactTuteur||"—"}</td><td>${e.statut||tr("school.students.active")}</td></tr>`).join("")}
   </tbody></table>
-  <div class="footer"><span>Effectif : ${liste.length} élève(s)</span><span>Date d'impression : ${today()}</span><span>Le Directeur</span></div>
+  <div class="footer"><span>${tr("reports.listClass.enrollment")} : ${liste.length} ${tr("reports.listClass.studentSuffix")}</span><span>${tr("reports.listClass.printDate")} : ${today()}</span><span>${tr("reports.director")}</span></div>
   <script>window.onload=()=>window.print();</script></body></html>`);
   w.document.close();
 };
@@ -581,7 +581,7 @@ export const telechargerExcel = async (wb, nomFichier) => {
     document.body.appendChild(a); a.click();
     setTimeout(()=>{ document.body.removeChild(a); URL.revokeObjectURL(url); }, 150);
   } catch(err) {
-    alert("Impossible de générer le fichier Excel : " + err.message);
+    alert(tr("reports.excel.errorGenerate") + " " + err.message);
   }
 };
 
@@ -590,8 +590,8 @@ export const exportExcel = async (nomFichier, colonnes, lignes) => {
   const ws = XLSX.utils.aoa_to_sheet([colonnes, ...lignes]);
   ws["!cols"] = colonnes.map(()=>({wch:22}));
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Données");
-  await telechargerExcel(wb, `${nomFichier}_${new Date().toLocaleDateString("fr-FR").replace(/\//g,"-")}.xlsx`);
+  XLSX.utils.book_append_sheet(wb, ws, tr("reports.excel.sheetName"));
+  await telechargerExcel(wb, `${nomFichier}_${new Date().toLocaleDateString(printLang()==="fr"?"fr-FR":printLang()==="ar"?"ar":"en-US").replace(/\//g,"-")}.xlsx`);
 };
 
 export const imprimerAttestation = (eleve, niveau, annee, schoolInfo={}) => {
@@ -1107,7 +1107,7 @@ export const imprimerFicheCompositions = (classe, periode, notes, matieres, elev
 // ══════════════════════════════════════════════════════════════
 export const imprimerOrdreMutation = (eleve, schoolInfo={}, ecoleDestination="", annee="") => {
   const w = window.open("","_blank");
-  w.document.write(`<!DOCTYPE html><html><head><title>Ordre de mutation</title>
+  w.document.write(`<!DOCTYPE html><html lang="${printLang()}" dir="${printDir()}"><head><title>${tr("reports.ordreMutation.title")}</title>
   <meta charset="utf-8"/>
   <style>
     ${PRINT_RESET}
@@ -1130,35 +1130,34 @@ export const imprimerOrdreMutation = (eleve, schoolInfo={}, ecoleDestination="",
       ${schoolInfo.ire||""} ${schoolInfo.dpe?`/ ${schoolInfo.dpe}`:""}
     </div>
     ${schoolInfo.logo?`<img src="${schoolInfo.logo}" style="height:55px;object-fit:contain"/>`:""}
-    <div class="entete-col" style="text-align:right">
+    <div class="entete-col" style="text-align:end">
       <strong>${schoolInfo.nom||""}</strong><br/>
-      ${schoolInfo.agrement?`Agrém. : ${schoolInfo.agrement}`:""}
+      ${schoolInfo.agrement?`${tr("reports.livret.agrement")} : ${schoolInfo.agrement}`:""}
     </div>
   </div>
-  <h1>Ordre de Mutation</h1>
-  <p class="sub">Année scolaire : <strong>${annee||getAnnee()}</strong></p>
+  <h1>${tr("reports.ordreMutation.title")}</h1>
+  <p class="sub">${tr("reports.schoolYear")} : <strong>${annee||getAnnee()}</strong></p>
   <table>
-    <tr><td>Nom & Prénom</td><td><strong>${eleve.nom||""} ${eleve.prenom||""}</strong></td></tr>
-    <tr><td>Matricule</td><td>${eleve.matricule||"—"}</td></tr>
-    ${eleve.ien?`<tr><td>Identifiant National (IEN)</td><td>${eleve.ien}</td></tr>`:""}
-    <tr><td>Date de naissance</td><td>${eleve.dateNaissance||"—"}</td></tr>
-    <tr><td>Lieu de naissance</td><td>${eleve.lieuNaissance||"—"}</td></tr>
-    <tr><td>Classe actuelle</td><td>${eleve.classe||"—"}</td></tr>
-    <tr><td>Tuteur / Parent</td><td>${eleve.tuteur||"—"} — ${eleve.contactTuteur||"—"}</td></tr>
-    <tr><td>École d'origine</td><td><strong>${schoolInfo.nom||""}</strong></td></tr>
-    <tr><td>École de destination</td><td><strong>${ecoleDestination||"À compléter"}</strong></td></tr>
-    <tr><td>Date de la mutation</td><td>${today()}</td></tr>
-    <tr><td>Motif</td><td>${eleve.motifDepart||"Mutation volontaire"}</td></tr>
+    <tr><td>${tr("reports.ordreMutation.fullName")}</td><td><strong>${eleve.nom||""} ${eleve.prenom||""}</strong></td></tr>
+    <tr><td>${tr("reports.ordreMutation.matricule")}</td><td>${eleve.matricule||"—"}</td></tr>
+    ${eleve.ien?`<tr><td>${tr("reports.ordreMutation.nationalId")}</td><td>${eleve.ien}</td></tr>`:""}
+    <tr><td>${tr("reports.ordreMutation.dateOfBirth")}</td><td>${eleve.dateNaissance||"—"}</td></tr>
+    <tr><td>${tr("reports.ordreMutation.birthPlace")}</td><td>${eleve.lieuNaissance||"—"}</td></tr>
+    <tr><td>${tr("reports.ordreMutation.currentClass")}</td><td>${eleve.classe||"—"}</td></tr>
+    <tr><td>${tr("reports.ordreMutation.guardian")}</td><td>${eleve.tuteur||"—"} — ${eleve.contactTuteur||"—"}</td></tr>
+    <tr><td>${tr("reports.ordreMutation.originSchool")}</td><td><strong>${schoolInfo.nom||""}</strong></td></tr>
+    <tr><td>${tr("reports.ordreMutation.destinationSchool")}</td><td><strong>${ecoleDestination||tr("reports.ordreMutation.toFill")}</strong></td></tr>
+    <tr><td>${tr("reports.ordreMutation.transferDate")}</td><td>${today()}</td></tr>
+    <tr><td>${tr("reports.ordreMutation.motive")}</td><td>${eleve.motifDepart||tr("reports.ordreMutation.defaultMotive")}</td></tr>
   </table>
   <p style="font-size:11px;margin-bottom:30px">
-    Le Directeur soussigné certifie que l'élève ci-dessus mentionné a été régulièrement inscrit dans son établissement
-    et qu'il est autorisé à rejoindre l'établissement d'accueil dans les conditions prévues par la réglementation en vigueur.
+    ${tr("reports.ordreMutation.paragraph")}
   </p>
   <div class="sigs">
-    <div class="sig">Le/La Directeur(rice) de l'école d'origine<br/><br/><br/><br/>Signature & Cachet</div>
-    <div class="sig">Lu et approuvé par le/la parent/tuteur<br/><br/><br/><br/>Signature</div>
+    <div class="sig">${tr("reports.ordreMutation.originDirector")}<br/><br/><br/><br/>${tr("reports.ordreMutation.signStamp")}</div>
+    <div class="sig">${tr("reports.ordreMutation.parentApproval")}<br/><br/><br/><br/>${tr("reports.signature")}</div>
   </div>
-  <button onclick="window.print()" style="position:fixed;bottom:20px;right:20px;padding:8px 20px;background:#0A1628;color:#fff;border:none;border-radius:8px;cursor:pointer">🖨️ Imprimer</button>
+  <button onclick="window.print()" style="position:fixed;bottom:20px;right:20px;padding:8px 20px;background:#0A1628;color:#fff;border:none;border-radius:8px;cursor:pointer">🖨️ ${tr("reports.livret.print")}</button>
   </body></html>`);
   w.document.close();
 };
@@ -1168,7 +1167,7 @@ export const imprimerOrdreMutation = (eleve, schoolInfo={}, ecoleDestination="",
 // ══════════════════════════════════════════════════════════════
 export const imprimerCertificatRadiation = (eleve, schoolInfo={}, annee="", soldeRestant=0) => {
   const w = window.open("","_blank");
-  w.document.write(`<!DOCTYPE html><html><head><title>Certificat de radiation</title>
+  w.document.write(`<!DOCTYPE html><html lang="${printLang()}" dir="${printDir()}"><head><title>${tr("reports.radiation.title")}</title>
   <meta charset="utf-8"/>
   <style>
     ${PRINT_RESET}
@@ -1178,7 +1177,7 @@ export const imprimerCertificatRadiation = (eleve, schoolInfo={}, annee="", sold
     h1{text-align:center;font-size:15px;text-transform:uppercase;letter-spacing:1.5px;color:#0A1628;margin:16px 0;text-decoration:underline}
     .corps{line-height:2;font-size:12px;margin:20px 0}
     .corps strong{border-bottom:1px solid #111}
-    .fin{margin-top:40px;text-align:right;font-size:11px}
+    .fin{margin-top:40px;text-align:end;font-size:11px}
     .sig{margin-top:30px;text-align:center;font-size:11px}
     @media print{button{display:none}}
   </style></head><body>
@@ -1189,31 +1188,31 @@ export const imprimerCertificatRadiation = (eleve, schoolInfo={}, annee="", sold
       ${schoolInfo.ire||""} ${schoolInfo.dpe?`/ ${schoolInfo.dpe}`:""}
     </div>
     ${schoolInfo.logo?`<img src="${schoolInfo.logo}" style="height:55px;object-fit:contain"/>`:""}
-    <div class="entete-col" style="text-align:right">
+    <div class="entete-col" style="text-align:end">
       <strong>${schoolInfo.nom||""}</strong><br/>
-      ${schoolInfo.agrement?`Agrém. : ${schoolInfo.agrement}`:""}
+      ${schoolInfo.agrement?`${tr("reports.livret.agrement")} : ${schoolInfo.agrement}`:""}
     </div>
   </div>
-  <h1>Certificat de Radiation</h1>
+  <h1>${tr("reports.radiation.title")}</h1>
   <div class="corps">
-    Nous, Directeur(rice) du ${schoolInfo.type||"Groupe Scolaire Privé"} <strong>${schoolInfo.nom||""}</strong>,
-    certifions que l'élève :<br/><br/>
-    &nbsp;&nbsp;&nbsp;Nom & Prénom : <strong>${eleve.nom||""} ${eleve.prenom||""}</strong><br/>
-    &nbsp;&nbsp;&nbsp;Matricule : <strong>${eleve.matricule||"—"}</strong><br/>
-    ${eleve.ien?`&nbsp;&nbsp;&nbsp;IEN : <strong>${eleve.ien}</strong><br/>`:""}
-    &nbsp;&nbsp;&nbsp;Né(e) le : <strong>${eleve.dateNaissance||"—"}</strong> à <strong>${eleve.lieuNaissance||"—"}</strong><br/>
-    &nbsp;&nbsp;&nbsp;Classe fréquentée : <strong>${eleve.classe||"—"}</strong><br/>
-    &nbsp;&nbsp;&nbsp;Année scolaire : <strong>${annee||getAnnee()}</strong><br/><br/>
-    …a été radié(e) des listes de notre établissement en date du <strong>${today()}</strong>
-    pour motif de : <strong>${eleve.motifDepart||"départ volontaire"}</strong>.<br/><br/>
-    Situation financière : <strong>${soldeRestant<=0?"Situation apurée — aucun solde dû":"Solde restant dû : "+fmt(soldeRestant)}</strong>
+    ${tr("reports.radiation.directorIntro")} ${schoolInfo.type||tr("reports.radiation.defaultType")} <strong>${schoolInfo.nom||""}</strong>,
+    ${tr("reports.radiation.certify")}<br/><br/>
+    &nbsp;&nbsp;&nbsp;${tr("reports.radiation.fullName")} : <strong>${eleve.nom||""} ${eleve.prenom||""}</strong><br/>
+    &nbsp;&nbsp;&nbsp;${tr("reports.radiation.matricule")} : <strong>${eleve.matricule||"—"}</strong><br/>
+    ${eleve.ien?`&nbsp;&nbsp;&nbsp;${tr("reports.radiation.ienShort")} : <strong>${eleve.ien}</strong><br/>`:""}
+    &nbsp;&nbsp;&nbsp;${tr("reports.radiation.bornOn")} : <strong>${eleve.dateNaissance||"—"}</strong> ${tr("reports.radiation.at")} <strong>${eleve.lieuNaissance||"—"}</strong><br/>
+    &nbsp;&nbsp;&nbsp;${tr("reports.radiation.classAttended")} : <strong>${eleve.classe||"—"}</strong><br/>
+    &nbsp;&nbsp;&nbsp;${tr("reports.radiation.schoolYear")} : <strong>${annee||getAnnee()}</strong><br/><br/>
+    ${tr("reports.radiation.removedOn")} <strong>${today()}</strong>
+    ${tr("reports.radiation.forReason")} <strong>${eleve.motifDepart||tr("reports.radiation.defaultMotive")}</strong>.<br/><br/>
+    ${tr("reports.radiation.financialSituation")} : <strong>${soldeRestant<=0?tr("reports.radiation.settled"):tr("reports.radiation.remainingDue")+" "+fmt(soldeRestant)}</strong>
   </div>
   <p style="font-size:11px;font-style:italic">
-    Ce certificat est délivré à la demande de l'intéressé(e) pour servir et valoir ce que de droit.
+    ${tr("reports.radiation.deliveryNote")}
   </p>
-  <div class="fin">Fait à ${schoolInfo.ville||"—"}, le ${today()}</div>
-  <div class="sig"><br/>Le/La Directeur(rice)<br/><br/><br/><br/>Signature & Cachet officiel</div>
-  <button onclick="window.print()" style="position:fixed;bottom:20px;right:20px;padding:8px 20px;background:#0A1628;color:#fff;border:none;border-radius:8px;cursor:pointer">🖨️ Imprimer</button>
+  <div class="fin">${tr("reports.radiation.issuedAtCity")} ${schoolInfo.ville||"—"}, ${tr("reports.ordreMutation.on")} ${today()}</div>
+  <div class="sig"><br/>${tr("reports.livret.directorSignature")}<br/><br/><br/><br/>${tr("reports.radiation.officialStamp")}</div>
+  <button onclick="window.print()" style="position:fixed;bottom:20px;right:20px;padding:8px 20px;background:#0A1628;color:#fff;border:none;border-radius:8px;cursor:pointer">🖨️ ${tr("reports.livret.print")}</button>
   </body></html>`);
   w.document.close();
 };
@@ -1224,6 +1223,19 @@ export const imprimerCertificatRadiation = (eleve, schoolInfo={}, annee="", sold
 export const imprimerLivret = (livret, schoolInfo={}) => {
   const c1 = schoolInfo.couleur1||"#0A1628";
   const annees = livret.annees||[];
+  // Mapping décisions FR (stockées en base) → clés i18n
+  const decisionLabel = (d) => {
+    if (d === "Admis avec félicitations") return tr("reports.livret.decisionDistinction");
+    if (d === "Admis") return tr("reports.livret.decisionAdmitted");
+    if (d === "Redoublant") return tr("reports.livret.decisionRepeating");
+    if (d === "Exclu") return tr("reports.livret.decisionExcluded");
+    return d || "—";
+  };
+  const sectionLabel = (s) => {
+    if (s === "primaire") return tr("reports.livret.sectionPrimary");
+    if (s === "lycee") return tr("reports.livret.sectionLycee");
+    return tr("reports.livret.sectionCollege");
+  };
   const pagesAnnees = annees.map((an, idx) => {
     const notesRows = (an.notes||[]).map(n=>`
       <tr>
@@ -1238,44 +1250,44 @@ export const imprimerLivret = (livret, schoolInfo={}) => {
     return `
     <div class="page-annee" style="page-break-before:${idx>0?"always":"auto"}">
       <div class="bandeau" style="background:${c1}">
-        <span>Livret scolaire — ${schoolInfo.nom||""}</span>
-        <span>Année ${an.anneeScolaire||"—"}</span>
+        <span>${tr("reports.livret.schoolBook")} — ${schoolInfo.nom||""}</span>
+        <span>${tr("reports.livret.year")} ${an.anneeScolaire||"—"}</span>
       </div>
       <div class="info-row">
-        <span><b>Classe :</b> ${an.classe||"—"}</span>
-        <span><b>Enseignant(e) principal(e) :</b> ${an.enseignantPrincipal||"—"}</span>
-        <span><b>Effectif :</b> ${an.effectifClasse||"—"}</span>
-        <span><b>Rang :</b> ${an.rang||"—"}</span>
+        <span><b>${tr("reports.livret.classLabel")}</b> ${an.classe||"—"}</span>
+        <span><b>${tr("reports.livret.headTeacherLabel")}</b> ${an.enseignantPrincipal||"—"}</span>
+        <span><b>${tr("reports.livret.enrollmentLabel")}</b> ${an.effectifClasse||"—"}</span>
+        <span><b>${tr("reports.livret.rankLabel")}</b> ${an.rang||"—"}</span>
       </div>
       <table class="notes-tbl">
         <thead><tr style="background:${c1};color:#fff">
-          <th style="text-align:left">Matière</th>
-          <th>Coef</th><th>T1</th><th>T2</th><th>T3</th><th>Annuelle</th>
+          <th style="text-align:start">${tr("reports.livret.subjectHeader")}</th>
+          <th>${tr("reports.livret.coefHeader")}</th><th>T1</th><th>T2</th><th>T3</th><th>${tr("reports.livret.annualHeader")}</th>
         </tr></thead>
         <tbody>${notesRows}</tbody>
       </table>
       <div class="abs-row">
-        <span>Absences justifiées : <b>${an.absences?.justifiees||0}</b></span>
-        <span>Absences non justifiées : <b>${an.absences?.nonJustifiees||0}</b></span>
+        <span>${tr("reports.livret.absencesJustified")} <b>${an.absences?.justifiees||0}</b></span>
+        <span>${tr("reports.livret.absencesUnjustified")} <b>${an.absences?.nonJustifiees||0}</b></span>
       </div>
       <div class="appreciation">
-        <strong>Appréciation générale de l'enseignant :</strong><br/>
+        <strong>${tr("reports.livret.teacherAppreciation")}</strong><br/>
         <div style="min-height:40px;padding-top:6px">${an.appreciation||""}</div>
       </div>
       <div class="decision-box" style="border-color:${decisionColor}">
-        <strong>Décision du conseil de classe :</strong>
-        <span class="decision-badge" style="background:${decisionColor}">${an.decision||"—"}</span>
+        <strong>${tr("reports.livret.councilDecision")}</strong>
+        <span class="decision-badge" style="background:${decisionColor}">${decisionLabel(an.decision)}</span>
       </div>
       <div class="sigs-livret">
-        <div class="sig-livret">Le/La Directeur(rice)<br/><br/>${an.signe?`<em style="font-size:9px;color:#14532d">✅ Signé le ${an.dateSigne||""}</em>`:"<br/>Signature & Cachet"}</div>
-        <div class="sig-livret">Le/La parent / tuteur<br/><br/><br/>Signature</div>
-        <div class="sig-livret">Visa de l'Inspecteur<br/><br/><br/>&nbsp;</div>
+        <div class="sig-livret">${tr("reports.livret.directorSignature")}<br/><br/>${an.signe?`<em style="font-size:9px;color:#14532d">✅ ${tr("reports.livret.signedOn")} ${an.dateSigne||""}</em>`:"<br/>"+tr("reports.livret.signStamp")}</div>
+        <div class="sig-livret">${tr("reports.livret.parentTutor")}<br/><br/><br/>${tr("reports.signature")}</div>
+        <div class="sig-livret">${tr("reports.livret.inspectorVisa")}<br/><br/><br/>&nbsp;</div>
       </div>
     </div>`;
   }).join("");
 
   const w = window.open("","_blank");
-  w.document.write(`<!DOCTYPE html><html><head><title>Livret scolaire — ${livret.eleveNom||""}</title>
+  w.document.write(`<!DOCTYPE html><html lang="${printLang()}" dir="${printDir()}"><head><title>${tr("reports.livret.schoolBook")} — ${livret.eleveNom||""}</title>
   <meta charset="utf-8"/>
   <style>
     ${PRINT_RESET}
@@ -1305,21 +1317,21 @@ export const imprimerLivret = (livret, schoolInfo={}) => {
     <div class="couv-school">${schoolInfo.pays||"République de Guinée"} · ${schoolInfo.ministere||MINISTERE_DEFAUT}</div>
     ${schoolInfo.logo?`<img src="${schoolInfo.logo}" style="height:50px;margin-bottom:8px"/>`:""}
     <div style="font-size:13px;font-weight:700;color:#111">${schoolInfo.nom||""}</div>
-    <div style="font-size:10px;color:#6b7280;margin-bottom:12px">${schoolInfo.agrement?`Agrém. ${schoolInfo.agrement}`:""}</div>
-    <div class="couv-titre">Livret Scolaire</div>
-    <div class="couv-num">N° ${livret.numeroLivret||"—"}</div>
+    <div style="font-size:10px;color:#6b7280;margin-bottom:12px">${schoolInfo.agrement?`${tr("reports.livret.agrement")} ${schoolInfo.agrement}`:""}</div>
+    <div class="couv-titre">${tr("reports.livret.schoolBook")}</div>
+    <div class="couv-num">${tr("reports.livret.number")} ${livret.numeroLivret||"—"}</div>
     ${livret.photo?`<img src="${livret.photo}" class="couv-photo"/>`:`<div class="couv-photo" style="display:flex;align-items:center;justify-content:center;font-size:36px;background:#f0f4f8">👤</div>`}
     <div class="couv-nom">${livret.eleveNom||"—"}</div>
     <div class="couv-info">
-      Né(e) le : <strong>${livret.dateNaissance||"—"}</strong> à <strong>${livret.lieuNaissance||"—"}</strong><br/>
-      Matricule : <strong>${livret.matricule||"—"}</strong>
-      ${livret.ien?`&nbsp;·&nbsp;IEN : <strong>${livret.ien}</strong>`:""}<br/>
-      Section : <strong>${livret.section==="primaire"?"Enseignement Primaire":livret.section==="lycee"?"Lycée":"Collège"}</strong>
+      ${tr("reports.livret.bornOn")} <strong>${livret.dateNaissance||"—"}</strong> ${tr("reports.livret.at")} <strong>${livret.lieuNaissance||"—"}</strong><br/>
+      ${tr("reports.livret.matriculeLabel")} <strong>${livret.matricule||"—"}</strong>
+      ${livret.ien?`&nbsp;·&nbsp;${tr("reports.livret.ienLabel")} <strong>${livret.ien}</strong>`:""}<br/>
+      ${tr("reports.livret.sectionLabel")} <strong>${sectionLabel(livret.section)}</strong>
     </div>
   </div>
   <!-- PAGES ANNUELLES -->
-  ${pagesAnnees||`<div style="padding:40px;text-align:center;color:#9ca3af">Aucune année saisie dans ce livret.</div>`}
-  <button onclick="window.print()" style="position:fixed;bottom:20px;right:20px;padding:8px 20px;background:${c1};color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700">🖨️ Imprimer</button>
+  ${pagesAnnees||`<div style="padding:40px;text-align:center;color:#9ca3af">${tr("reports.livret.noYearRecorded")}</div>`}
+  <button onclick="window.print()" style="position:fixed;bottom:20px;right:20px;padding:8px 20px;background:${c1};color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700">🖨️ ${tr("reports.livret.print")}</button>
   </body></html>`);
   w.document.close();
 };

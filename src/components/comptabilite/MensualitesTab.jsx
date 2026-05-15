@@ -62,15 +62,15 @@ export function MensualitesTab({
             <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
               <span style={{fontSize:18}}>🚨</span>
               <strong style={{fontSize:13,color:"#9b2020"}}>Alertes mensualités — {elevesCritiques.length} élève(s) avec 3 mois ou plus impayés</strong>
-              <Btn sm v="ghost" style={{marginLeft:"auto"}} onClick={()=>exportExcel(
-                "Alertes_Mensualites",
-                ["Matricule","Nom","Prénom","Classe","Niveau","Mois impayés","Tuteur","Contact"],
+              <Btn sm v="ghost" style={{marginInlineStart:"auto"}} onClick={()=>exportExcel(
+                t("reports.excel.files.paymentAlerts"),
+                [t("reports.excel.headers.matricule"),t("reports.excel.headers.lastName"),t("reports.excel.headers.firstName"),t("reports.excel.headers.class"),t("reports.excel.headers.level"),t("reports.excel.headers.unpaidMonths"),t("reports.excel.headers.guardian"),t("reports.excel.headers.contact")],
                 elevesCritiques.map(e=>{
                   const niv=getSectionLabelForClasse(e.classe);
                   const nbImp=countUnpaidMonths(e, moisAnnee);
                   return [e.matricule||"",e.nom,e.prenom,e.classe,niv,nbImp,e.tuteur||"",e.contactTuteur||""];
                 })
-              )}>📥 Exporter</Btn>
+              )}>📥 {t("common.export")}</Btn>
             </div>
             <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
               {elevesCritiques.map(e=>{

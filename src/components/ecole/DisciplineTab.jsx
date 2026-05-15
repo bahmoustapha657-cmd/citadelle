@@ -27,10 +27,10 @@ export function DisciplineTab({
       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,flexWrap:"wrap"}}>
         <strong style={{fontSize:14,color:C.blueDark,flex:1}}>{t("school.discipline.title")} & {t("dashboard.absences")} ({absences.length})</strong>
         <Btn sm v="ghost" onClick={()=>exportExcel(
-          `Discipline_${avecEns?"College":"Primaire"}`,
-          ["Élève","Classe","Type","Date","Motif","Justifié"],
+          `${t("reports.excel.files.discipline")}_${avecEns?"College":"Primaire"}`,
+          [t("reports.excel.headers.student"),t("reports.excel.headers.class"),t("reports.excel.headers.type"),t("reports.excel.headers.date"),t("reports.excel.headers.motive"),t("reports.excel.headers.justified")],
           absences.map(a=>[a.eleveNom,a.classe,a.type,a.date,a.motif||"",a.justifie])
-        )}>📥 Export Excel</Btn>
+        )}>📥 {t("common.export")} Excel</Btn>
         {canCreate&&<Btn onClick={()=>{setForm({type:"Absence",justifie:"Non"});setModal("add_abs");}}>+ Enregistrer</Btn>}
       </div>
       {(()=>{
@@ -43,11 +43,11 @@ export function DisciplineTab({
             <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
               <span style={{fontSize:18}}>⚠️</span>
               <strong style={{fontSize:13,color:"#92400e"}}>Alertes absences — {elevesAlerte.length} élève(s) avec 3 absences non justifiées ou plus</strong>
-              <Btn sm v="ghost" style={{marginLeft:"auto"}} onClick={()=>exportExcel(
-                "Alertes_Absences",
-                ["Nom","Prénom","Classe","Nb absences non justifiées","Tuteur","Contact"],
+              <Btn sm v="ghost" style={{marginInlineStart:"auto"}} onClick={()=>exportExcel(
+                t("reports.excel.files.attendanceAlerts"),
+                [t("reports.excel.headers.lastName"),t("reports.excel.headers.firstName"),t("reports.excel.headers.class"),t("reports.excel.headers.countUnjustified"),t("reports.excel.headers.guardian"),t("reports.excel.headers.contact")],
                 elevesAlerte.map(e=>[e.nom,e.prenom,e.classe,e.nbAbs,e.tuteur||"",e.contactTuteur||""])
-              )}>📥 Exporter</Btn>
+              )}>📥 {t("common.export")}</Btn>
             </div>
             <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
               {elevesAlerte.map(e=>(

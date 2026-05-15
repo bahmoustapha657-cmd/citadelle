@@ -567,13 +567,13 @@ export function EnrolmentTab({
             const XLSX = await loadXLSX();
             const wb=XLSX.utils.book_new();
             const ws=XLSX.utils.aoa_to_sheet([
-              ["N°","Matricule","Élève","Sexe","Date de naissance","Lieu de naissance","Père","Mère","Téléphone"],
+              [t("reports.excel.template.n"),t("reports.excel.template.matricule"),t("reports.excel.template.student"),t("reports.excel.template.sex"),t("reports.excel.template.dateOfBirth"),t("reports.excel.template.birthPlace"),t("reports.excel.template.father"),t("reports.excel.template.mother"),t("reports.excel.template.phone")],
               [1,"","BAH Aminata","F","2012-03-15","Conakry","Mamadou Bah","Fatoumata Diallo","622000001"],
               [2,"","DIALLO Ibrahima Sékou","M","2013-07-22","Kindia","Boubacar Diallo","Mariama Bah","628000002"],
             ]);
-            XLSX.utils.book_append_sheet(wb,ws,"Eleves");
-            await telechargerExcel(wb,"modele_import_eleves.xlsx");
-          }}>⬇️ Modèle Excel</Btn>
+            XLSX.utils.book_append_sheet(wb,ws,t("reports.excel.template.sheetStudents"));
+            await telechargerExcel(wb,t("reports.excel.template.filename"));
+          }}>⬇️ {t("common.template")} Excel</Btn>
         </div>
 
         <div style={{marginBottom:8,padding:"10px 14px",background:"#fefce8",border:"1px solid #fde047",borderRadius:10,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
