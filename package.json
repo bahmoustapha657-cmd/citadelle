@@ -14,9 +14,10 @@
     "test": "tsx --test tests/**/*.test.{js,ts}",
     "typecheck": "tsc --noEmit",
     "test:rules": "firebase emulators:exec --only firestore --project edugest-rules-test \"node --test tests/firestore-rules.emulator.js\"",
-    "preview": "vite preview",
+    "preview": "npm run build && wrangler dev",
     "pwa-icons": "node generate-pwa-icons.mjs",
-    "deploy:functions": "firebase deploy --only functions:backend"
+    "deploy:functions": "firebase deploy --only functions:backend",
+    "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.82.0",
@@ -36,6 +37,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.37.1",
     "@eslint/js": "^9.39.4",
     "@firebase/rules-unit-testing": "^5.0.0",
     "@resvg/resvg-js": "^2.6.2",
@@ -49,6 +51,7 @@
     "sharp": "^0.34.5",
     "tsx": "^4.21.0",
     "typescript": "^6.0.3",
-    "vite": "^8.0.1"
+    "vite": "^8.0.1",
+    "wrangler": "^4.92.0"
   }
 }
