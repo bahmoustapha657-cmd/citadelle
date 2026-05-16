@@ -8,9 +8,9 @@
  *   API routes Vercel (/api/) → NetworkFirst avec fallback
  */
 
-const CACHE_APP    = "edugest-app-v5";
-const CACHE_DATA   = "edugest-data-v5";
-const CACHE_PHOTOS = "edugest-photos-v5";
+const CACHE_APP    = "edugest-app-v6";
+const CACHE_DATA   = "edugest-data-v6";
+const CACHE_PHOTOS = "edugest-photos-v6";
 
 const APP_SHELL = [
   "/",
@@ -26,7 +26,16 @@ self.addEventListener("install", (e) => {
   e.waitUntil(
     caches.open(CACHE_APP).then((cache) => cache.addAll(APP_SHELL))
   );
-  self.skipWaiting();
+  // Note : on n'appelle PAS self.skipWaiting() ici. Le client décide
+  // (via postMessage SKIP_WAITING) — auto-reload si pas de modale,
+  // bannière sinon. Voir src/components/UpdateBanner.jsx.
+});
+
+// Permet au client de prendre la main sur le nouveau SW
+self.addEventListener("message", (e) => {
+  if (e.data && e.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
 
 // ── Activation : nettoyage des vieux caches ───────────────────
