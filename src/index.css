@@ -11,6 +11,7 @@
   --lc-text:         #1f2937; /* texte principal */
   --lc-text-muted:   #64748b; /* texte secondaire */
   --lc-text-faint:   #94a3b8; /* texte tertiaire */
+  --lc-text-brand:   #0A1628; /* texte marque (titres, libellés strong) */
   --lc-border:       #e2e8f0; /* bordures cartes / inputs */
   --lc-border-soft:  #f1f5f9; /* séparateurs lignes */
   --lc-input-bg:     #fafbfc; /* fond input/select */
@@ -81,6 +82,7 @@ body.mode-sombre {
   --lc-text:         #e5e7eb;
   --lc-text-muted:   #9ca3af;
   --lc-text-faint:   #6b7280;
+  --lc-text-brand:   #f1f5f9; /* dark : texte marque clair lisible */
   --lc-border:       #2d3340;
   --lc-border-soft:  #232733;
   --lc-input-bg:     #14171f;

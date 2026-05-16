@@ -11,6 +11,13 @@ import {
   normalizeRoleLogin,
 } from "../shared/role-config.js";
 
+// Couleurs marque/UI. `blue`/`blueDark` restent la couleur marque
+// littérale (utilisée à la fois comme texte et comme background dans
+// des avatars/boutons/badges) — ne pas la dérouter vers une variable
+// thème car ça casserait les fonds bleus en mode sombre.
+// Le mode sombre utilise plutôt les règles CSS catch-all dans index.css
+// pour remapper les couleurs textes vers --lc-text quand elles
+// apparaissent sur un fond clair surchargé.
 export const C = {
   blue: "#0A1628",
   blueDark: "#0A1628",
@@ -18,7 +25,7 @@ export const C = {
   greenDk: "#00A876",
   gold: "#FFB547",
   white: "#ffffff",
-  bg: "#EEF2F7",
+  bg: "var(--lc-bg, #EEF2F7)",
   sidebar: "#0A1628",
 };
 
