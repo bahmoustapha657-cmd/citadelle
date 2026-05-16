@@ -693,7 +693,7 @@ export default function App() {
       </div>
     )}
 
-    <div className="lc-app-root" style={{overflow:"hidden",display:"flex",background:C.bg}}>
+    <div className="lc-app-root" style={{overflow:"hidden",display:"flex",background:"var(--lc-bg)"}}>
       {/* Overlay mobile */}
       {sidebarOuvert&&<div onClick={()=>setSidebarOuvert(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:40}}/>}
       <aside style={{position:"fixed",top:0,bottom:0,insetInlineStart:0,width:228,zIndex:50,background:schoolInfo.couleur1||C.sidebar,display:"flex",flexDirection:"column",

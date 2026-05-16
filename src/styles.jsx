@@ -65,6 +65,10 @@ const GLOBAL_CSS = `
     animation: shimmer 1.4s ease-in-out infinite;
     border-radius: 6px;
   }
+  body.mode-sombre .lc-skeleton {
+    background: linear-gradient(90deg, #1c2030 25%, #262b3a 50%, #1c2030 75%);
+    background-size: 600px 100%;
+  }
 
   /* Fade-in modales */
   @keyframes fadeUp { from { opacity:0; transform: translateY(16px); } to { opacity:1; transform: translateY(0); } }
@@ -100,44 +104,9 @@ const GLOBAL_CSS = `
     .lc-header-actions span { display: none; }
   }
 
-  /* ══════════════════════════════════════════════════════════
-     MODE SOMBRE
-     Activé par <body class="mode-sombre">
-
-     Technique : filtre invert+hue-rotate appliqué sur <html>
-     (pas sur un conteneur enfant) pour que les modales
-     position:fixed soient également traitées.
-
-     La sidebar <aside> est déjà sombre → on la ré-inverse pour
-     qu'elle reste telle quelle.
-     Les images/canvas sont aussi ré-inversés.
-  ══════════════════════════════════════════════════════════ */
-
-  body.mode-sombre {
-    background: #0f1117;
-  }
-
-  /* Filtre global sur <html> */
-  html:has(body.mode-sombre) {
-    filter: invert(1) hue-rotate(180deg);
-  }
-
-  /* Sidebar déjà sombre → double inversion = couleurs d'origine */
-  html:has(body.mode-sombre) aside {
-    filter: invert(1) hue-rotate(180deg);
-  }
-
-  /* Médias : ré-inversion pour garder les couleurs naturelles */
-  html:has(body.mode-sombre) img,
-  html:has(body.mode-sombre) video,
-  html:has(body.mode-sombre) canvas {
-    filter: invert(1) hue-rotate(180deg);
-  }
-
-  /* Scrollbar (dark) */
-  body.mode-sombre ::-webkit-scrollbar-track  { background: #151a27; }
-  body.mode-sombre ::-webkit-scrollbar-thumb  { background: #3d4f6b; }
-  body.mode-sombre ::-webkit-scrollbar-thumb:hover { background: #5a6e8a; }
+  /* Mode sombre : la palette et les overrides sont gérés dans
+     index.css (CSS variables). Cette feuille ne contient plus
+     le filtre invert (technique abandonnée — voir commit). */
 `;
 const GlobalStyles = () => <style>{GLOBAL_CSS}</style>;
 

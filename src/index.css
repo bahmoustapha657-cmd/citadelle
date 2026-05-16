@@ -1,4 +1,24 @@
+/* ──────────────────────────────────────────────────────────────
+   PALETTE CSS — mode clair (par défaut) et sombre
+   Activé par <body class="mode-sombre"> depuis App.jsx
+────────────────────────────────────────────────────────────── */
 :root {
+  /* Palette LC (utilisée par EduGest, préfixe --lc-) */
+  --lc-bg:           #EEF2F7; /* fond app */
+  --lc-surface:      #ffffff; /* cartes, modales, inputs */
+  --lc-surface-alt:  #f8fafc; /* fond de zones secondaires */
+  --lc-surface-hov:  #f1f5f9; /* hover lignes table */
+  --lc-text:         #1f2937; /* texte principal */
+  --lc-text-muted:   #64748b; /* texte secondaire */
+  --lc-text-faint:   #94a3b8; /* texte tertiaire */
+  --lc-border:       #e2e8f0; /* bordures cartes / inputs */
+  --lc-border-soft:  #f1f5f9; /* séparateurs lignes */
+  --lc-input-bg:     #fafbfc; /* fond input/select */
+  --lc-shadow:       0 1px 4px rgba(10,22,40,0.06);
+  --lc-shadow-modal: 0 20px 60px rgba(10,22,40,0.35);
+  --lc-overlay:      rgba(10,22,40,0.6);
+
+  /* Vieilles variables conservées pour rétrocompat (landing/docs) */
   --text: #6b6375;
   --text-h: #08060d;
   --bg: #fff;
@@ -50,21 +70,126 @@
   }
 }
 
+/* ──────────────────────────────────────────────────────────────
+   MODE SOMBRE — vraies couleurs (pas de filter invert)
+────────────────────────────────────────────────────────────── */
+body.mode-sombre {
+  --lc-bg:           #0f1117;
+  --lc-surface:      #1a1d26;
+  --lc-surface-alt:  #14171f;
+  --lc-surface-hov:  #232733;
+  --lc-text:         #e5e7eb;
+  --lc-text-muted:   #9ca3af;
+  --lc-text-faint:   #6b7280;
+  --lc-border:       #2d3340;
+  --lc-border-soft:  #232733;
+  --lc-input-bg:     #14171f;
+  --lc-shadow:       0 1px 4px rgba(0,0,0,0.4);
+  --lc-shadow-modal: 0 20px 60px rgba(0,0,0,0.6);
+  --lc-overlay:      rgba(0,0,0,0.7);
+  color-scheme: dark;
+  background: var(--lc-bg);
+  color: var(--lc-text);
+}
+
 body {
   margin: 0;
-  transition: filter 0.3s ease;
+  background: var(--lc-bg);
+  color: var(--lc-text);
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-/* Mode sombre via filtre CSS */
-body.mode-sombre {
-  filter: invert(93%) hue-rotate(180deg);
+/* ── Catch-all : composants applicatifs qui hardcodent un fond
+   clair en style inline → on les force au surface sombre.
+   Préfère un sélecteur attribut précis pour limiter les effets de bord. */
+body.mode-sombre [style*="background:#fff"],
+body.mode-sombre [style*="background: #fff"],
+body.mode-sombre [style*='background:"#fff"'],
+body.mode-sombre [style*="background:#ffffff"],
+body.mode-sombre [style*="background: #ffffff"] {
+  background: var(--lc-surface) !important;
+}
+body.mode-sombre [style*="background:#f8fafc"],
+body.mode-sombre [style*="background: #f8fafc"],
+body.mode-sombre [style*="background:#fafbfc"],
+body.mode-sombre [style*="background: #fafbfc"] {
+  background: var(--lc-surface-alt) !important;
+}
+body.mode-sombre [style*="background:#f0f4f8"],
+body.mode-sombre [style*="background: #f0f4f8"],
+body.mode-sombre [style*="background:#e0ebf8"],
+body.mode-sombre [style*="background: #e0ebf8"] {
+  background: var(--lc-surface-hov) !important;
+}
+/* Bordures et séparateurs claires → sombres */
+body.mode-sombre [style*="border:1px solid #e2e8f0"],
+body.mode-sombre [style*="border: 1px solid #e2e8f0"],
+body.mode-sombre [style*="border-bottom:1px solid #f1f5f9"],
+body.mode-sombre [style*="border-bottom: 1px solid #f1f5f9"],
+body.mode-sombre [style*="border:1px solid #e5e7eb"],
+body.mode-sombre [style*="border: 1px solid #e5e7eb"] {
+  border-color: var(--lc-border) !important;
+}
+/* Textes : les couleurs sombres explicites perdent leur lisibilité.
+   On remappe les plus communes. */
+body.mode-sombre [style*="color:#0A1628"],
+body.mode-sombre [style*="color: #0A1628"],
+body.mode-sombre [style*="color:#1e293b"],
+body.mode-sombre [style*="color: #1e293b"],
+body.mode-sombre [style*="color:#374151"],
+body.mode-sombre [style*="color: #374151"],
+body.mode-sombre [style*="color:#111"],
+body.mode-sombre [style*="color: #111"] {
+  color: var(--lc-text) !important;
+}
+body.mode-sombre [style*="color:#64748b"],
+body.mode-sombre [style*="color: #64748b"],
+body.mode-sombre [style*="color:#475569"],
+body.mode-sombre [style*="color: #475569"],
+body.mode-sombre [style*="color:#6b7280"],
+body.mode-sombre [style*="color: #6b7280"] {
+  color: var(--lc-text-muted) !important;
+}
+body.mode-sombre [style*="color:#94a3b8"],
+body.mode-sombre [style*="color: #94a3b8"],
+body.mode-sombre [style*="color:#9ca3af"],
+body.mode-sombre [style*="color: #9ca3af"] {
+  color: var(--lc-text-faint) !important;
 }
 
-/* Les images et graphiques ne doivent pas être inversés */
-body.mode-sombre img,
-body.mode-sombre .recharts-wrapper,
-body.mode-sombre canvas {
-  filter: invert(100%) hue-rotate(180deg);
+/* Inputs / selects natifs : forcer fond + texte sombres */
+body.mode-sombre input,
+body.mode-sombre select,
+body.mode-sombre textarea {
+  background-color: var(--lc-input-bg);
+  color: var(--lc-text);
+  border-color: var(--lc-border);
+  color-scheme: dark;
+}
+body.mode-sombre input::placeholder,
+body.mode-sombre textarea::placeholder {
+  color: var(--lc-text-faint);
+}
+
+/* Tables : lignes alternées et bordures */
+body.mode-sombre table tr {
+  border-color: var(--lc-border-soft);
+}
+
+/* Scrollbar (dark) */
+body.mode-sombre ::-webkit-scrollbar-track  { background: #151a27; }
+body.mode-sombre ::-webkit-scrollbar-thumb  { background: #3d4f6b; }
+body.mode-sombre ::-webkit-scrollbar-thumb:hover { background: #5a6e8a; }
+
+/* Recharts : libellés des axes/légende — passer en clair */
+body.mode-sombre .recharts-text,
+body.mode-sombre .recharts-cartesian-axis-tick-value,
+body.mode-sombre .recharts-legend-item-text {
+  fill: var(--lc-text-muted) !important;
+  color: var(--lc-text-muted) !important;
+}
+body.mode-sombre .recharts-cartesian-grid line {
+  stroke: var(--lc-border) !important;
 }
 
 #root {
