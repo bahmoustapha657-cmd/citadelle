@@ -118,7 +118,27 @@ body.mode-sombre [style*="background: #fafbfc"] {
 body.mode-sombre [style*="background:#f0f4f8"],
 body.mode-sombre [style*="background: #f0f4f8"],
 body.mode-sombre [style*="background:#e0ebf8"],
-body.mode-sombre [style*="background: #e0ebf8"] {
+body.mode-sombre [style*="background: #e0ebf8"],
+body.mode-sombre [style*="background:#f1f5f9"],
+body.mode-sombre [style*="background: #f1f5f9"],
+body.mode-sombre [style*="background:#f3f4f6"],
+body.mode-sombre [style*="background: #f3f4f6"],
+body.mode-sombre [style*="background:#f0f7ff"],
+body.mode-sombre [style*="background: #f0f7ff"],
+body.mode-sombre [style*="background:#f0f6ff"],
+body.mode-sombre [style*="background: #f0f6ff"],
+body.mode-sombre [style*="background:#eef2ff"],
+body.mode-sombre [style*="background: #eef2ff"],
+body.mode-sombre [style*="background:#f5f3ff"],
+body.mode-sombre [style*="background: #f5f3ff"],
+body.mode-sombre [style*="background:#f0f9ff"],
+body.mode-sombre [style*="background: #f0f9ff"],
+body.mode-sombre [style*="background:#fef3e0"],
+body.mode-sombre [style*="background: #fef3e0"],
+body.mode-sombre [style*="background:#e8f0f7"],
+body.mode-sombre [style*="background: #e8f0f7"],
+body.mode-sombre [style*="background:#e0f2fe"],
+body.mode-sombre [style*="background: #e0f2fe"] {
   background: var(--lc-surface-hov) !important;
 }
 /* Bordures et séparateurs claires → sombres */
@@ -136,6 +156,10 @@ body.mode-sombre [style*="color:#0A1628"],
 body.mode-sombre [style*="color: #0A1628"],
 body.mode-sombre [style*="color:#1e293b"],
 body.mode-sombre [style*="color: #1e293b"],
+body.mode-sombre [style*="color:#1f2937"],
+body.mode-sombre [style*="color: #1f2937"],
+body.mode-sombre [style*="color:#0f172a"],
+body.mode-sombre [style*="color: #0f172a"],
 body.mode-sombre [style*="color:#374151"],
 body.mode-sombre [style*="color: #374151"],
 body.mode-sombre [style*="color:#111"],
@@ -155,6 +179,32 @@ body.mode-sombre [style*="color: #94a3b8"],
 body.mode-sombre [style*="color:#9ca3af"],
 body.mode-sombre [style*="color: #9ca3af"] {
   color: var(--lc-text-faint) !important;
+}
+
+/* Bordures de séparateurs claires supplémentaires */
+body.mode-sombre [style*="border-bottom:1px solid #e0ebf8"],
+body.mode-sombre [style*="border-bottom: 1px solid #e0ebf8"],
+body.mode-sombre [style*="border-bottom:2px solid #e0ebf8"],
+body.mode-sombre [style*="border-bottom: 2px solid #e0ebf8"],
+body.mode-sombre [style*="border-bottom:1px solid #f8fafc"],
+body.mode-sombre [style*="border-bottom: 1px solid #f8fafc"],
+body.mode-sombre [style*="border-top:1px solid #f1f5f9"],
+body.mode-sombre [style*="border-top: 1px solid #f1f5f9"],
+body.mode-sombre [style*="border:1px solid #e0ebf8"],
+body.mode-sombre [style*="border: 1px solid #e0ebf8"],
+body.mode-sombre [style*="border:1px solid #d1d5db"],
+body.mode-sombre [style*="border: 1px solid #d1d5db"],
+body.mode-sombre [style*="border:1px solid #cbd5e1"],
+body.mode-sombre [style*="border: 1px solid #cbd5e1"],
+body.mode-sombre [style*="border:2px dashed #e2e8f0"],
+body.mode-sombre [style*="border: 2px dashed #e2e8f0"] {
+  border-color: var(--lc-border) !important;
+}
+
+/* Headers sticky en fond clair — passer en surface-alt */
+body.mode-sombre header[style*="background:#fff"],
+body.mode-sombre header[style*="background: #fff"] {
+  background: var(--lc-surface) !important;
 }
 
 /* Inputs / selects natifs : forcer fond + texte sombres */
