@@ -8,6 +8,7 @@ import {
   buildSecondarySalaryRecord,
   buildTeacherFullName,
   findSalaryDuplicate,
+  groupSalariesByPersonMonth,
   getFifthWeekDays,
   getForfaitNet,
   getMissingSalaryProfiles,
@@ -341,4 +342,25 @@ test("findSalaryDuplicate flags same agent / same month / same section as duplic
     findSalaryDuplicate({ _id: "a1", nom: "Mamadou Diallo", mois: "Octobre", section: "Secondaire" }, existing, { excludeId: "a1" }),
     null,
   );
+});
+
+test("groupSalariesByPersonMonth merges multi-function payslips per person/month", () => {
+  const sal = [
+    { _id: "s1", nom: "Mamadou Diallo", mois: "Octobre", section: "Secondaire", vhPrevu: 8, cinqSem: 0, nonExecute: 0, primeHoraire: 20000, bon: 0, revision: 0 },
+    { _id: "s2", nom: "mamadou diallo (prof)", mois: "Octobre", section: "Personnel", montantForfait: 500000, bon: 0, revision: 0 },
+    { _id: "s3", nom: "Aissatou Bah", mois: "Octobre", section: "Primaire", montantForfait: 800000, bon: 0, revision: 0 },
+    { _id: "s4", nom: "Mamadou Diallo", mois: "Novembre", section: "Secondaire", vhPrevu: 10, cinqSem: 0, nonExecute: 0, primeHoraire: 20000, bon: 0, revision: 0 },
+  ];
+  const groups = groupSalariesByPersonMonth(sal);
+  // 3 groupes : (Mamadou,Oct), (Aissatou,Oct), (Mamadou,Nov)
+  assert.equal(groups.length, 3);
+  const mamOct = groups.find((g) => g.mois === "Octobre" && g.nom.toLowerCase().includes("mamadou"));
+  assert.ok(mamOct);
+  assert.equal(mamOct.parts.length, 2);
+  assert.deepEqual(mamOct.sections.sort(), ["Personnel", "Secondaire"]);
+  assert.equal(mamOct.totalMontant, 8 * 20000 + 500000); // 660000
+  assert.equal(mamOct.totalNet, 660000);
+  const mamNov = groups.find((g) => g.mois === "Novembre");
+  assert.equal(mamNov.parts.length, 1);
+  assert.equal(mamNov.totalNet, 200000);
 });

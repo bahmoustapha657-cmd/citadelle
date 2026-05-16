@@ -479,6 +479,59 @@ export function findSalaryDuplicate(
   }) || null;
 }
 
+export type SalaryPersonMonth = {
+  nom: string;
+  mois: string;
+  parts: SalaryRecord[];
+  sections: string[];
+  totalMontant: number;
+  totalBon: number;
+  totalRevision: number;
+  totalNet: number;
+};
+
+// Regroupe les fiches de paie par (personne, mois). Utilisé côté
+// portail enseignant et côté impression pour consolider les bulletins
+// quand une même personne cumule plusieurs fonctions (ex : prof
+// secondaire + agent administratif). Le matching de "personne" se
+// fait par nom normalisé (accents, casse, suffixes legacy).
+export function groupSalariesByPersonMonth(salaries: SalaryRecord[] = []): SalaryPersonMonth[] {
+  const groups = new Map<string, SalaryPersonMonth>();
+  for (const s of salaries) {
+    const nom = String(s.nom || "").trim();
+    const mois = String(s.mois || "").trim();
+    if (!nom || !mois) continue;
+    const key = `${normalizeText(stripLegacyTeacherSuffix(nom))}__${mois}`;
+    const isForfait = s.section === "Primaire" || s.section === "Personnel";
+    const montant = isForfait ? Number(s.montantForfait || 0) : getSalaryMontantBrut(s);
+    const bon = Number(s.bon || 0);
+    const revision = Number(s.revision || 0);
+    const net = isForfait ? getForfaitNet(s) : getSalaryNet(s);
+    const section = String(s.section || "");
+    const existing = groups.get(key);
+    if (existing) {
+      existing.parts.push(s);
+      if (section && !existing.sections.includes(section)) existing.sections.push(section);
+      existing.totalMontant += montant;
+      existing.totalBon += bon;
+      existing.totalRevision += revision;
+      existing.totalNet += net;
+    } else {
+      groups.set(key, {
+        nom,
+        mois,
+        parts: [s],
+        sections: section ? [section] : [],
+        totalMontant: montant,
+        totalBon: bon,
+        totalRevision: revision,
+        totalNet: net,
+      });
+    }
+  }
+  return [...groups.values()];
+}
+
 export function summarizeSalaryTotals(salaries: SalaryRecord[] = []): SalaryTotals {
   return salaries.reduce<SalaryTotals>((summary, salary) => {
     const isForfait = salary.section === "Primaire" || salary.section === "Personnel";

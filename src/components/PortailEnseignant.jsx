@@ -4,6 +4,7 @@ import { SchoolContext } from "../contexts/SchoolContext";
 import { apiFetch, getAuthHeaders } from "../apiClient";
 import { C } from "../constants";
 import { getPeriodesForSchool } from "../period-utils";
+import { groupSalariesByPersonMonth } from "../salary-utils";
 import { getActiveNoteForms, getEvaluationLabel, resolveCanonicalNoteType } from "../evaluation-forms";
 import { GlobalStyles } from "../styles";
 import { Badge, Btn, Card, Chargement, Input, LectureSeule, Modale, Selec, Stat, TD, THead, TR, Vide } from "./ui";
@@ -291,21 +292,31 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
   };
 
   const imprimerPaies = () => {
-    const lignes = salaires.map((salaire) => {
-      const heuresExec = Number(salaire.vhPrevu || 0) + Number(salaire.cinqSem || 0) - Number(salaire.nonExecute || 0);
-      const baseSec = (salaire.montantBrut !== undefined && salaire.montantBrut !== null && Number.isFinite(Number(salaire.montantBrut)))
-        ? Number(salaire.montantBrut)
-        : heuresExec * Number(salaire.primeHoraire || 0);
-      const net = salaire.section === "Secondaire"
-        ? (baseSec - Number(salaire.bon || 0) + Number(salaire.revision || 0))
-        : (Number(salaire.montantForfait || 0) - Number(salaire.bon || 0) + Number(salaire.revision || 0));
-      const detailSec = salaire.primesVariables
-        ? `${heuresExec} h - primes variables (voir details ecole)`
-        : `${heuresExec} h x ${(salaire.primeHoraire || 0).toLocaleString("fr-FR")} GNF`;
-      return `<tr><td>${salaire.mois}</td><td>${salaire.section}</td><td>${salaire.section === "Secondaire" ? detailSec : `Forfait ${Number(salaire.montantForfait || 0).toLocaleString("fr-FR")} GNF`}</td><td>${Number(salaire.bon || 0) > 0 ? `-${Number(salaire.bon).toLocaleString("fr-FR")}` : "-"}</td><td>${Number(salaire.revision || 0) > 0 ? `+${Number(salaire.revision).toLocaleString("fr-FR")}` : "-"}</td><td style="font-weight:900;color:#0A1628">${net.toLocaleString("fr-FR")} GNF</td></tr>`;
+    // Un bulletin = 1 ligne consolidée par mois. Si l'enseignant cumule
+    // plusieurs fonctions (ex: secondaire + personnel), on ajoute des
+    // sous-lignes détaillant chaque source.
+    const groupes = groupSalariesByPersonMonth(salaires);
+    const lignes = groupes.map((g) => {
+      const sections = g.sections.join(" + ") || "—";
+      const detail = g.parts.length === 1
+        ? (() => {
+            const s = g.parts[0];
+            const heuresExec = Number(s.vhPrevu || 0) + Number(s.cinqSem || 0) - Number(s.nonExecute || 0);
+            return s.section === "Secondaire"
+              ? (s.primesVariables ? `${heuresExec} h - primes variables` : `${heuresExec} h x ${(s.primeHoraire || 0).toLocaleString("fr-FR")} GNF`)
+              : `Forfait ${Number(s.montantForfait || 0).toLocaleString("fr-FR")} GNF`;
+          })()
+        : g.parts.map((s) => {
+            const heuresExec = Number(s.vhPrevu || 0) + Number(s.cinqSem || 0) - Number(s.nonExecute || 0);
+            const lib = s.section === "Secondaire"
+              ? `${heuresExec} h x ${(s.primeHoraire || 0).toLocaleString("fr-FR")} GNF`
+              : `Forfait ${Number(s.montantForfait || 0).toLocaleString("fr-FR")} GNF`;
+            return `<div style="font-size:11px;color:#475569">• ${s.section} : ${lib}</div>`;
+          }).join("");
+      return `<tr><td>${g.mois}</td><td>${sections}</td><td>${detail}</td><td>${g.totalBon > 0 ? `-${g.totalBon.toLocaleString("fr-FR")}` : "-"}</td><td>${g.totalRevision > 0 ? `+${g.totalRevision.toLocaleString("fr-FR")}` : "-"}</td><td style="font-weight:900;color:#0A1628">${g.totalNet.toLocaleString("fr-FR")} GNF</td></tr>`;
     }).join("");
     const w = window.open("", "_blank");
-    w.document.write(`<!DOCTYPE html><html><head><title>Paies - ${nomEns}</title><style>@page{size:A4 portrait;margin:0}@media print{html,body{margin:0}button{display:none}}body{font-family:Arial,sans-serif;padding:14mm 12mm;font-size:13px;margin:0}h2{color:#0A1628}table{width:100%;border-collapse:collapse;margin-top:16px}th{background:#0A1628;color:#fff;padding:8px 10px}td{padding:8px 10px;border-bottom:1px solid #e5e7eb}</style></head><body><h2>${schoolInfo.nom || "Ecole"} - Fiches de paie</h2><p>${nomEns} - ${matiere || "Enseignant"} - Annee ${annee}</p><table><tr><th>Mois</th><th>Section</th><th>Detail</th><th>Bon</th><th>Revision</th><th>Net a payer</th></tr>${lignes}</table><br/><button onclick="window.print()">Imprimer</button></body></html>`);
+    w.document.write(`<!DOCTYPE html><html><head><title>Paies - ${nomEns}</title><style>@page{size:A4 portrait;margin:0}@media print{html,body{margin:0}button{display:none}}body{font-family:Arial,sans-serif;padding:14mm 12mm;font-size:13px;margin:0}h2{color:#0A1628}table{width:100%;border-collapse:collapse;margin-top:16px}th{background:#0A1628;color:#fff;padding:8px 10px}td{padding:8px 10px;border-bottom:1px solid #e5e7eb;vertical-align:top}</style></head><body><h2>${schoolInfo.nom || "Ecole"} - Fiches de paie</h2><p>${nomEns} - ${matiere || "Enseignant"} - Annee ${annee}</p><table><tr><th>Mois</th><th>Fonction(s)</th><th>Detail</th><th>Bon</th><th>Revision</th><th>Net a payer</th></tr>${lignes}</table><br/><button onclick="window.print()">Imprimer</button></body></html>`);
     w.document.close();
   };
 
@@ -649,61 +660,65 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
                   <Vide icone="Paie" msg="Aucune fiche de paie disponible" />
                 ) : (
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))", gap: 12 }}>
-                    {salaires.map((salaire) => {
-                      const heuresExec = Number(salaire.vhPrevu || 0) + Number(salaire.cinqSem || 0) - Number(salaire.nonExecute || 0);
-                      const baseSec = (salaire.montantBrut !== undefined && salaire.montantBrut !== null && Number.isFinite(Number(salaire.montantBrut)))
-                        ? Number(salaire.montantBrut)
-                        : heuresExec * Number(salaire.primeHoraire || 0);
-                      const net = salaire.section === "Secondaire"
-                        ? (baseSec - Number(salaire.bon || 0) + Number(salaire.revision || 0))
-                        : (Number(salaire.montantForfait || 0) - Number(salaire.bon || 0) + Number(salaire.revision || 0));
+                    {groupSalariesByPersonMonth(salaires).map((g) => {
+                      const cumul = g.parts.length > 1;
                       return (
-                        <Card key={salaire._id} style={{ padding: 0 }}>
+                        <Card key={`${g.mois}-${g.nom}`} style={{ padding: 0 }}>
                           <div style={{ background: `linear-gradient(135deg,${c1},${c1}cc)`, padding: "12px 16px", borderRadius: "14px 14px 0 0" }}>
-                            <div style={{ color: c2, fontWeight: 900, fontSize: 13 }}>{salaire.mois}</div>
-                            <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 11 }}>Section {salaire.section}</div>
+                            <div style={{ color: c2, fontWeight: 900, fontSize: 13 }}>{g.mois}</div>
+                            <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 11 }}>
+                              {cumul ? `${g.parts.length} fonctions : ${g.sections.join(" + ")}` : `Section ${g.sections[0] || "—"}`}
+                            </div>
                           </div>
                           <div style={{ padding: "14px 16px" }}>
-                            {salaire.section === "Secondaire" ? (
-                              <>
-                                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 6, paddingBottom: 6, borderBottom: "1px solid #f1f5f9" }}>
-                                  <span style={{ color: "#64748b" }}>V.H. execute</span>
-                                  <strong>{Number(salaire.vhPrevu || 0) + Number(salaire.cinqSem || 0) - Number(salaire.nonExecute || 0)} h</strong>
+                            {g.parts.map((salaire, idx) => {
+                              const heuresExec = Number(salaire.vhPrevu || 0) + Number(salaire.cinqSem || 0) - Number(salaire.nonExecute || 0);
+                              return (
+                                <div key={salaire._id || idx} style={{ marginBottom: cumul ? 10 : 0, paddingBottom: cumul ? 10 : 0, borderBottom: cumul && idx < g.parts.length - 1 ? "1px dashed #e2e8f0" : "none" }}>
+                                  {cumul && <div style={{ fontSize: 10, fontWeight: 800, color: c1, textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 4 }}>{salaire.section}</div>}
+                                  {salaire.section === "Secondaire" ? (
+                                    <>
+                                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
+                                        <span style={{ color: "#64748b" }}>V.H. execute</span>
+                                        <strong>{heuresExec} h</strong>
+                                      </div>
+                                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
+                                        <span style={{ color: "#64748b" }}>Prime horaire</span>
+                                        <strong>{salaire.primesVariables ? "Variable" : `${Number(salaire.primeHoraire || 0).toLocaleString("fr-FR")} GNF`}</strong>
+                                      </div>
+                                      {salaire.primesVariables && (
+                                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
+                                          <span style={{ color: "#64748b" }}>Montant brut</span>
+                                          <strong>{Number(salaire.montantBrut || 0).toLocaleString("fr-FR")} GNF</strong>
+                                        </div>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
+                                      <span style={{ color: "#64748b" }}>Forfait</span>
+                                      <strong>{Number(salaire.montantForfait || 0).toLocaleString("fr-FR")} GNF</strong>
+                                    </div>
+                                  )}
+                                  {Number(salaire.bon || 0) > 0 && (
+                                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4, color: "#b91c1c" }}>
+                                      <span>Bon deduit</span>
+                                      <strong>-{Number(salaire.bon).toLocaleString("fr-FR")} GNF</strong>
+                                    </div>
+                                  )}
+                                  {Number(salaire.revision || 0) > 0 && (
+                                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4, color: C.greenDk }}>
+                                      <span>Revision</span>
+                                      <strong>+{Number(salaire.revision).toLocaleString("fr-FR")} GNF</strong>
+                                    </div>
+                                  )}
+                                  {salaire.observation && <p style={{ fontSize: 11, color: "#94a3b8", marginTop: 4, marginBottom: 0 }}>{salaire.observation}</p>}
                                 </div>
-                                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 6 }}>
-                                  <span style={{ color: "#64748b" }}>Prime horaire</span>
-                                  <strong>{salaire.primesVariables ? "Variable" : `${Number(salaire.primeHoraire || 0).toLocaleString("fr-FR")} GNF`}</strong>
-                                </div>
-                                {salaire.primesVariables && (
-                                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 6 }}>
-                                    <span style={{ color: "#64748b" }}>Montant brut</span>
-                                    <strong>{Number(salaire.montantBrut || 0).toLocaleString("fr-FR")} GNF</strong>
-                                  </div>
-                                )}
-                              </>
-                            ) : (
-                              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 6, paddingBottom: 6, borderBottom: "1px solid #f1f5f9" }}>
-                                <span style={{ color: "#64748b" }}>Forfait</span>
-                                <strong>{Number(salaire.montantForfait || 0).toLocaleString("fr-FR")} GNF</strong>
-                              </div>
-                            )}
-                            {Number(salaire.bon || 0) > 0 && (
-                              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 6, color: "#b91c1c" }}>
-                                <span>Bon deduit</span>
-                                <strong>-{Number(salaire.bon).toLocaleString("fr-FR")} GNF</strong>
-                              </div>
-                            )}
-                            {Number(salaire.revision || 0) > 0 && (
-                              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 6, color: C.greenDk }}>
-                                <span>Revision</span>
-                                <strong>+{Number(salaire.revision).toLocaleString("fr-FR")} GNF</strong>
-                              </div>
-                            )}
+                              );
+                            })}
                             <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 12px", background: `${c1}0d`, borderRadius: 8, marginTop: 8 }}>
-                              <span style={{ fontWeight: 700, fontSize: 13, color: c1 }}>NET A PAYER</span>
-                              <strong style={{ fontSize: 15, color: c1 }}>{net.toLocaleString("fr-FR")} GNF</strong>
+                              <span style={{ fontWeight: 700, fontSize: 13, color: c1 }}>{cumul ? "TOTAL NET A PAYER" : "NET A PAYER"}</span>
+                              <strong style={{ fontSize: 15, color: c1 }}>{g.totalNet.toLocaleString("fr-FR")} GNF</strong>
                             </div>
-                            {salaire.observation && <p style={{ fontSize: 11, color: "#94a3b8", marginTop: 8 }}>{salaire.observation}</p>}
                           </div>
                         </Card>
                       );
