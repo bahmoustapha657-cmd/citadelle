@@ -23,8 +23,10 @@ test("getActiveNoteForms retourne les formes actives configurees par l'ecole", (
 
   const forms = getActiveNoteForms(schoolInfo, "secondaire");
 
-  assert.deepEqual(forms.map((item) => item.label), ["Test ecrit", "Compo"]);
-  assert.deepEqual(forms.map((item) => item.value), ["Devoir", "Composition"]);
+  // Les formes par défaut ajoutent aussi "Évaluation orale" et "Évaluation
+  // écrite" (actives par défaut, non surchargées par schoolInfo).
+  assert.deepEqual(forms.map((item) => item.label), ["Test ecrit", "Évaluation orale", "Évaluation écrite", "Compo"]);
+  assert.deepEqual(forms.map((item) => item.value), ["Devoir", "Évaluation orale", "Évaluation écrite", "Composition"]);
 });
 
 test("resolveCanonicalNoteType reconnait un libelle personnalise", () => {

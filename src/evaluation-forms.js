@@ -2,12 +2,16 @@ const DEFAULT_EVALUATION_FORMS = {
   primaire: [
     { id: "devoir", value: "Devoir", label: "Devoir", active: true },
     { id: "interrogation", value: "Interrogation", label: "Interrogation", active: true },
+    { id: "evaluation_orale", value: "Évaluation orale", label: "Évaluation orale", active: true },
+    { id: "evaluation_ecrite", value: "Évaluation écrite", label: "Évaluation écrite", active: true },
     { id: "examen", value: "Examen", label: "Examen", active: false },
     { id: "composition", value: "Composition", label: "Composition", active: false },
   ],
   secondaire: [
     { id: "devoir", value: "Devoir", label: "Devoir", active: true },
     { id: "interrogation", value: "Interrogation", label: "Interrogation", active: true },
+    { id: "evaluation_orale", value: "Évaluation orale", label: "Évaluation orale", active: true },
+    { id: "evaluation_ecrite", value: "Évaluation écrite", label: "Évaluation écrite", active: true },
     { id: "examen", value: "Examen", label: "Examen", active: true },
     { id: "composition", value: "Composition", label: "Composition", active: true },
   ],
