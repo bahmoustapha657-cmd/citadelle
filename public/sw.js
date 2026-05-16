@@ -47,7 +47,6 @@ self.addEventListener("activate", (e) => {
     )
   );
   self.clients.claim();
-  // eslint-disable-next-line no-console
   console.log("[SW] activated", CACHE_APP);
 });
 

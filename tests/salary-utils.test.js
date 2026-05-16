@@ -7,6 +7,7 @@ import {
   buildPrimarySalaryRecord,
   buildSecondarySalaryRecord,
   buildTeacherFullName,
+  findSalaryDuplicate,
   getFifthWeekDays,
   getForfaitNet,
   getMissingSalaryProfiles,
@@ -307,4 +308,37 @@ test("getSalaryMontantBrut recalcule si montantBrut absent (cas migration / fich
     // pas de montantBrut
   };
   assert.equal(getSalaryMontantBrut(ficheLegacy), (8 + 2 - 1) * 20000);
+});
+
+
+test("findSalaryDuplicate flags same agent / same month / same section as duplicate", () => {
+  const existing = [
+    { _id: "a1", nom: "Mamadou Diallo", mois: "Octobre", section: "Secondaire" },
+    { _id: "a2", nom: "Aissatou Bah", mois: "Octobre", section: "Primaire" },
+  ];
+  // doublon exact
+  assert.equal(
+    findSalaryDuplicate({ nom: "Mamadou Diallo", mois: "Octobre", section: "Secondaire" }, existing)?._id,
+    "a1",
+  );
+  // normalisation : accents, casse, suffixe legacy "(prof)"
+  assert.equal(
+    findSalaryDuplicate({ nom: "  mamadou DIALLO (prof) ", mois: "Octobre", section: "Secondaire" }, existing)?._id,
+    "a1",
+  );
+  // mois différent => pas doublon
+  assert.equal(
+    findSalaryDuplicate({ nom: "Mamadou Diallo", mois: "Novembre", section: "Secondaire" }, existing),
+    null,
+  );
+  // section différente => pas doublon
+  assert.equal(
+    findSalaryDuplicate({ nom: "Mamadou Diallo", mois: "Octobre", section: "Primaire" }, existing),
+    null,
+  );
+  // édition de la fiche elle-même => excludeId la laisse passer
+  assert.equal(
+    findSalaryDuplicate({ _id: "a1", nom: "Mamadou Diallo", mois: "Octobre", section: "Secondaire" }, existing, { excludeId: "a1" }),
+    null,
+  );
 });

@@ -31,7 +31,6 @@ export function SalairesTab({
   // données salaires
   salaires,
   cS,
-  ajS,
   modS,
   supS,
   salairesMois,
@@ -61,6 +60,7 @@ export function SalairesTab({
   appliquerBons,
   imprimerSalaires,
   enreg,
+  saveSalaire,
 }) {
   const { t } = useTranslation();
   const chg = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
@@ -448,7 +448,7 @@ export function SalairesTab({
         </div>}
         <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
           <Btn v="ghost" onClick={()=>setModal(null)}>Annuler</Btn>
-          <Btn onClick={()=>enreg(ajS,modS,{vhHebdo:Number(form.vhHebdo||0),vhPrevu:Number(form.vhPrevu||0),cinqSem:Number(form.cinqSem||0),nonExecute:Number(form.nonExecute||0),primeHoraire:Number(form.primeHoraire||0),bon:Number(form.bon||0),revision:Number(form.revision||0),montantForfait:Number(form.montantForfait||0),montantBrut:null,primesVariables:false})}>Enregistrer</Btn>
+          <Btn onClick={()=>saveSalaire({vhHebdo:Number(form.vhHebdo||0),vhPrevu:Number(form.vhPrevu||0),cinqSem:Number(form.cinqSem||0),nonExecute:Number(form.nonExecute||0),primeHoraire:Number(form.primeHoraire||0),bon:Number(form.bon||0),revision:Number(form.revision||0),montantForfait:Number(form.montantForfait||0),montantBrut:null,primesVariables:false})}>Enregistrer</Btn>
         </div>
       </Modale>}
 

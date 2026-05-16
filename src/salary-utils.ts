@@ -60,6 +60,7 @@ export type ParamSnapshot = {
 };
 
 export type SalaryRecord = {
+  _id?: string;
   algoVersion?: number;
   section?: "Primaire" | "Secondaire" | "Personnel" | string;
   mois?: string;
@@ -453,6 +454,29 @@ export function mergeSalaryWithManualFields(existingSalary: SalaryRecord = {}, c
     bon: Number(existingSalary.bon || 0),
     revision: Number(existingSalary.revision || 0),
   };
+}
+
+// Cherche un doublon nom+mois+section dans la liste des salaires.
+// Sert à empêcher la création de 2 fiches de paie pour le même
+// agent / même mois (formulaire manuel — la génération auto gère
+// déjà ses propres dédups). Compare noms normalisés (accents, casse,
+// whitespace, suffixes legacy "(prof)").
+export function findSalaryDuplicate(
+  record: SalaryRecord = {},
+  salaries: SalaryRecord[] = [],
+  opts: { excludeId?: string | null } = {},
+): SalaryRecord | null {
+  const nom = normalizeText(stripLegacyTeacherSuffix(String(record.nom || "")));
+  const mois = String(record.mois || "").trim();
+  const section = String(record.section || "").trim();
+  if (!nom || !mois || !section) return null;
+  return salaries.find((s) => {
+    if (opts.excludeId && s._id === opts.excludeId) return false;
+    if (String(s.mois || "").trim() !== mois) return false;
+    if (String(s.section || "").trim() !== section) return false;
+    const otherNom = normalizeText(stripLegacyTeacherSuffix(String(s.nom || "")));
+    return otherNom === nom;
+  }) || null;
 }
 
 export function summarizeSalaryTotals(salaries: SalaryRecord[] = []): SalaryTotals {

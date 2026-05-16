@@ -50,6 +50,7 @@ import {
   buildPersonnelSalaryRecord,
   buildPrimarySalaryRecord,
   buildSecondarySalaryRecord,
+  findSalaryDuplicate,
   getFifthWeekDays,
   getForfaitNet,
   getMissingSalaryProfiles,
@@ -226,6 +227,23 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
     if(readOnly) return;
     const r={...form,...extra};
     if(modal.startsWith("add"))aj({...r,annee:annee||anneeConsultee});else mod(r);
+    setModal(null);
+  };
+
+  // Sauvegarde d'une fiche de paie avec garde anti-doublon
+  // (nom + mois + section) — évite 2 bulletins pour le même agent
+  // le même mois via le formulaire manuel.
+  const saveSalaire = async (extra={}) => {
+    if(readOnly) return;
+    const r = {...form, ...extra};
+    const isEdit = modal === "edit_s";
+    const doublon = findSalaryDuplicate(r, salaires, { excludeId: isEdit ? r._id : null });
+    if(doublon){
+      toast(`Une fiche existe déjà pour ${doublon.nom} en ${doublon.mois} (${doublon.section}).`, "warning");
+      return;
+    }
+    if(isEdit) await modS(r);
+    else await ajS({...r, annee: annee || anneeConsultee});
     setModal(null);
   };
 
@@ -728,6 +746,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
         appliquerBons={appliquerBons}
         imprimerSalaires={imprimerSalaires}
         enreg={enreg}
+        saveSalaire={saveSalaire}
       />}
 
       {/* ══ ONGLET PERSONNEL ENSEIGNANT (vue hybride) ══ */}
