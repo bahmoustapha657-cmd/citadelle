@@ -315,8 +315,19 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
 
   const genererPourMois = async (mois, {resync=false}={}) => {
     const jours5eme = getFifthWeekDays(mois);
-    const dejaCeMois = salaires.filter(s=>s.mois===mois);
-    const trouverExistant = (nom) => dejaCeMois.find(s=>(s.nom||"").toLowerCase().trim()===nom.toLowerCase().trim());
+    // Accumulateur local mis à jour à chaque ajS pour que les itérations
+    // suivantes voient les fiches tout juste créées. Sinon la liste
+    // `salaires` (réactive) n'est rafraîchie qu'après le retour du
+    // listener Firestore, ce qui peut arriver après la fin de la boucle
+    // et produit des doublons (notamment quand un même nom apparait
+    // plusieurs fois dans ensPrimaire, ou entre collège+lycée).
+    const acc = salaires.filter(s=>s.mois===mois).slice();
+    // findSalaryDuplicate matche par nom+mois+section (normalisation
+    // accents/casse/suffixe legacy). Une même personne dans 2 sections
+    // distinctes (ex: prof secondaire + agent administratif) ne déclenche
+    // donc PAS de faux doublon.
+    const trouverExistant = (record) => findSalaryDuplicate(record, acc);
+    const noterCree = (record, ref) => acc.push({...record, _id: ref?.id});
     let nbCree = 0, nbResync = 0;
 
     const tousEns=[
@@ -332,14 +343,15 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
         primeDefaut,
       });
       if(!salaireCalcule) continue;
-      const nomComplet=salaireCalcule.nom;
-      const existant=trouverExistant(nomComplet);
+      const existant=trouverExistant(salaireCalcule);
       if(existant && !resync) continue;
       if(existant){
         await modS(mergeSalaryWithManualFields(existant, salaireCalcule));
         nbResync++;
       } else {
-        await ajS({...salaireCalcule,bon:0,revision:0,annee:annee||anneeConsultee});
+        const record = {...salaireCalcule,bon:0,revision:0,annee:annee||anneeConsultee};
+        const ref = await ajS(record);
+        noterCree(record, ref);
         nbCree++;
       }
     }
@@ -350,14 +362,15 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
         getTeacherMonthlyForfait,
       });
       if(!salaireCalcule) continue;
-      const nomComplet=salaireCalcule.nom;
-      const existant=trouverExistant(nomComplet);
+      const existant=trouverExistant(salaireCalcule);
       if(existant && !resync) continue;
       if(existant){
         await modS(mergeSalaryWithManualFields(existant, salaireCalcule));
         nbResync++;
       } else {
-        await ajS({...salaireCalcule,bon:0,revision:0,annee:annee||anneeConsultee});
+        const record = {...salaireCalcule,bon:0,revision:0,annee:annee||anneeConsultee};
+        const ref = await ajS(record);
+        noterCree(record, ref);
         nbCree++;
       }
     }
@@ -365,14 +378,15 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
     for(const emp of personnel.filter(e=>(e.statut||"Actif")==="Actif")){
       const salaireCalcule = buildPersonnelSalaryRecord(emp, { mois });
       if(!salaireCalcule) continue;
-      const nomComplet=salaireCalcule.nom;
-      const existant=trouverExistant(nomComplet);
+      const existant=trouverExistant(salaireCalcule);
       if(existant && !resync) continue;
       if(existant){
         await modS(mergeSalaryWithManualFields(existant, salaireCalcule));
         nbResync++;
       } else {
-        await ajS({...salaireCalcule,bon:0,revision:0,annee:annee||anneeConsultee});
+        const record = {...salaireCalcule,bon:0,revision:0,annee:annee||anneeConsultee};
+        const ref = await ajS(record);
+        noterCree(record, ref);
         nbCree++;
       }
     }
