@@ -8,9 +8,9 @@
  *   API routes Vercel (/api/) → NetworkFirst avec fallback
  */
 
-const CACHE_APP    = "edugest-app-v6";
-const CACHE_DATA   = "edugest-data-v6";
-const CACHE_PHOTOS = "edugest-photos-v6";
+const CACHE_APP    = "edugest-app-v7";
+const CACHE_DATA   = "edugest-data-v7";
+const CACHE_PHOTOS = "edugest-photos-v7";
 
 const APP_SHELL = [
   "/",
@@ -47,6 +47,8 @@ self.addEventListener("activate", (e) => {
     )
   );
   self.clients.claim();
+  // eslint-disable-next-line no-console
+  console.log("[SW] activated", CACHE_APP);
 });
 
 // ── Fetch : intercept toutes les requêtes ─────────────────────
