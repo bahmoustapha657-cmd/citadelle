@@ -25,7 +25,36 @@ const printLang = () => i18n.resolvedLanguage || i18n.language || "fr";
 // URL, date, n° de page). Force aussi `print-color-adjust:exact` sur tous
 // les éléments pour conserver les couleurs des badges, bandeaux et notes
 // (sans ça Chrome/Edge basculent en niveaux de gris à l'impression).
-export const PRINT_RESET = `@page{size:A4 portrait;margin:0}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}@media print{html,body{margin:0}}`;
+// `.no-print` permet de masquer la notice "passer en Couleur" lors de
+// l'impression effective.
+export const PRINT_RESET = `@page{size:A4 portrait;margin:0}html{color-scheme:light}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}@media print{html,body{margin:0;background:#fff}.no-print{display:none!important}}`;
+
+// Notice insérée en haut de chaque document imprimable. Cachée à
+// l'impression réelle (.no-print). Sur Chrome desktop, l'utilisateur
+// doit parfois basculer manuellement le paramètre "Couleur" dans le
+// dialogue d'impression — sinon le rendu sort en niveaux de gris
+// quel que soit le CSS print-color-adjust.
+export const PRINT_NOTICE = `<div class="no-print" style="position:fixed;top:8px;left:8px;right:8px;z-index:9999;background:#fef3c7;border:1px solid #fbbf24;border-radius:8px;padding:8px 12px;font-family:Arial,sans-serif;font-size:12px;color:#92400e;display:flex;justify-content:space-between;align-items:center;gap:10px"><span><strong>💡 Astuce :</strong> si l'aperçu sort en gris, déplie « Plus de paramètres » et passe « Couleur » sur <strong>Couleur</strong> (Chrome PC met parfois N&amp;B par défaut).</span><button onclick="this.parentNode.style.display='none'" style="background:#92400e;color:#fff;border:0;border-radius:4px;padding:3px 10px;cursor:pointer;font-size:11px">OK</button></div>`;
+
+// Helper : attend le chargement réel (images + layout) avant de
+// déclencher window.print(). Sur PC, Chrome lance parfois print()
+// trop tôt et la page sort partiellement (couleurs, images manquantes).
+// Inséré dans chaque template via <script>${PRINT_TRIGGER}</script>.
+export const PRINT_TRIGGER = `
+  (function(){
+    function go(){
+      var imgs = Array.prototype.slice.call(document.images || []);
+      var p = imgs.length === 0 ? Promise.resolve()
+        : Promise.all(imgs.map(function(img){
+            if (img.complete) return Promise.resolve();
+            return new Promise(function(res){ img.onload = res; img.onerror = res; });
+          }));
+      p.then(function(){ setTimeout(function(){ window.print(); }, 250); });
+    }
+    if (document.readyState === "complete") go();
+    else window.addEventListener("load", go);
+  })();
+`;
 
 
 export const MINISTERE_DEFAUT = "Ministère de l'Éducation Nationale, de l'Alphabétisation, de l'Enseignement Technique et de la Formation Professionnelle";
@@ -130,7 +159,7 @@ export const imprimerRecu = (eleve, montantUnit, schoolInfo={}, moisAnnee=MOIS_A
     <div class="total">${tr("reports.receipt.monthlyFee")} : ${fmt(totalMensualites)} <span style="font-weight:400;font-size:9px">(${moisPayes.length}/${moisAnnee.length})</span></div>
     <div class="total" style="background:#e0f2fe;border-color:#38bdf8">${tr("reports.receipt.amount")} : <strong>${fmt(totalGeneral)}</strong></div>
     <div class="sigs">
-      <div class="sig">${tr("accounting.tabs.bilan")}<br/><br/><br/>${tr("reports.signature")} &amp; ${tr("reports.stamp")}</div>
+      <div class="sig">${tr("reports.accountant")}<br/><br/><br/>${tr("reports.signature")} &amp; ${tr("reports.stamp")}</div>
       <div class="sig">${tr("school.students.parent")}<br/><br/><br/>${tr("reports.signature")}</div>
     </div>
     </div>
@@ -162,7 +191,7 @@ export const imprimerRecu = (eleve, montantUnit, schoolInfo={}, moisAnnee=MOIS_A
   </style></head><body>
   ${bloc("Exemplaire — Comptable")}
   ${bloc("Exemplaire — Payant")}
-  <script>window.onload=()=>window.print();</script>
+  <script>${PRINT_TRIGGER}</script>
   </body></html>`);
   w.document.close();
 };
@@ -362,7 +391,7 @@ export const imprimerCartesEleves = async (eleves, schoolInfo={}, annee="") => {
     }
   </style></head><body>
   <div class="grille">${eleves.map(carte).join("")}</div>
-  <script>window.onload=()=>{setTimeout(()=>window.print(),400);}</script>
+  <script>${PRINT_TRIGGER}</script>
   </body></html>`);
   w.document.close();
 };
@@ -385,7 +414,7 @@ export const imprimerListeClasse = (classe, eleves, schoolInfo={}) => {
   <tbody>${liste.map((e,i)=>`<tr><td>${i+1}</td><td>${e.matricule||"—"}</td><td><strong>${e.nom} ${e.prenom}</strong></td><td>${e.sexe||"—"}</td><td>${e.dateNaissance||"—"}</td><td>${e.lieuNaissance||"—"}</td><td>${e.filiation||"—"}</td><td>${e.tuteur||"—"}</td><td>${e.contactTuteur||"—"}</td><td>${e.statut||tr("school.students.active")}</td></tr>`).join("")}
   </tbody></table>
   <div class="footer"><span>${tr("reports.listClass.enrollment")} : ${liste.length} ${tr("reports.listClass.studentSuffix")}</span><span>${tr("reports.listClass.printDate")} : ${today()}</span><span>${tr("reports.director")}</span></div>
-  <script>window.onload=()=>window.print();</script></body></html>`);
+  <script>${PRINT_TRIGGER}</script></body></html>`);
   w.document.close();
 };
 
@@ -565,7 +594,7 @@ export const genererRapportMensuel = (mois, eleves, absences, annee, schoolInfo=
     <span>${tr("reports.signature")} ${tr("reports.director")} : ___________________</span>
   </div>
 
-  <script>window.onload=()=>{setTimeout(()=>window.print(),400);}</script>
+  <script>${PRINT_TRIGGER}</script>
   </body></html>`);
   w.document.close();
 };
@@ -632,7 +661,7 @@ export const imprimerAttestation = (eleve, niveau, annee, schoolInfo={}) => {
     <div class="sig">${tr("reports.director")}<br/><div class="stamp">${schoolInfo.nom||""}</div></div>
   </div>
   <div class="devise">${schoolInfo.devise || "Travail – Rigueur – Réussite"}</div>
-  <script>window.onload=()=>window.print();</script></body></html>`);
+  <script>${PRINT_TRIGGER}</script></body></html>`);
   w.document.close();
 };
 
@@ -936,7 +965,7 @@ export const imprimerBulletin = (eleve, notes, matieres, periode, niveau, maxNot
   w.document.write(`<!DOCTYPE html><html lang="${printLang()}" dir="${printDir()}"><head><meta charset="utf-8"/>
     <title>${tr("reports.bulletinTitle")} — ${eleve.nom || ""} ${eleve.prenom || ""} — ${periode}</title>
     <style>${getBulletinStyles()}</style>
-  </head><body>${html}<script>window.onload=()=>window.print();</script></body></html>`);
+  </head><body>${html}<script>${PRINT_TRIGGER}</script></body></html>`);
   w.document.close();
 };
 
@@ -980,7 +1009,7 @@ export const imprimerBulletinsGroupes = (eleves, notes, matieres, periode, nivea
   <meta charset="utf-8"/>
   <title>${tr("reports.bulletinTitle")} ${classe || niveau} — ${periode} — ${tr("reports.schoolYear")} ${getAnnee()}</title>
   <style>${getBulletinStyles()}</style>
-  </head><body>${pages}<script>window.onload=()=>window.print();</script></body></html>`);
+  </head><body>${pages}<script>${PRINT_TRIGGER}</script></body></html>`);
   w.document.close();
 };
 
@@ -1096,7 +1125,7 @@ export const imprimerFicheCompositions = (classe, periode, notes, matieres, elev
     <div class="sig">${tr("reports.director")}<br/><br/><br/>${tr("reports.signature")} & ${tr("reports.stamp")}</div>
     <div class="sig">${tr("reports.headTeacher")}<br/><br/><br/>${tr("reports.signature")}</div>
   </div>
-  <script>window.onload=()=>window.print();</script>
+  <script>${PRINT_TRIGGER}</script>
   </body></html>`);
   w.document.close();
 };
