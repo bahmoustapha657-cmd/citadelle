@@ -57,6 +57,24 @@ export const PRINT_TRIGGER = `
 `;
 
 
+// Filigrane logo école : injecté dans chaque document imprimable.
+// `position: fixed` est traité par le moteur d'impression de Chrome comme un
+// élément répétant sur chaque page — c'est ce qu'on veut pour les documents
+// multi-pages (bulletins groupés, livret, certificat). `z-index: -1` envoie
+// le filigrane derrière tout le contenu sans bloquer la sélection ; on
+// compense avec `position: relative` sur les conteneurs principaux quand
+// nécessaire (déjà le cas dans les templates existants).
+export const WATERMARK_CSS = `
+.lc-watermark{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:9999}
+.lc-watermark img{width:55%;max-width:380px;height:auto;object-fit:contain;opacity:.05;transform:rotate(-28deg)}
+@media print{.lc-watermark{position:fixed;inset:0}.lc-watermark img{opacity:.06}}
+`;
+
+export const watermarkHtml = (schoolInfo = {}) => {
+  if (!schoolInfo?.logo) return "";
+  return `<div class="lc-watermark" aria-hidden="true"><img src="${schoolInfo.logo}" alt=""/></div>`;
+};
+
 export const MINISTERE_DEFAUT = "Ministère de l'Éducation Nationale, de l'Alphabétisation, de l'Enseignement Technique et de la Formation Professionnelle";
 
 // Helpers défensifs : tolèrent null/undefined/"" et chaînes blanches
@@ -389,7 +407,9 @@ export const imprimerCartesEleves = async (eleves, schoolInfo={}, annee="") => {
       body{background:#fff;padding:0}
       button{display:none}
     }
+    ${WATERMARK_CSS}
   </style></head><body>
+  ${watermarkHtml(schoolInfo)}
   <div class="grille">${eleves.map(carte).join("")}</div>
   <script>${PRINT_TRIGGER}</script>
   </body></html>`);
@@ -407,7 +427,9 @@ export const imprimerListeClasse = (classe, eleves, schoolInfo={}) => {
   th{background:#0A1628;color:#fff;padding:7px 10px;font-size:11px;text-align:start}
   td{padding:7px 10px;border-bottom:1px solid #eee}tr:nth-child(even){background:#f0f4f8}
   .footer{margin-top:30px;display:flex;justify-content:space-between;font-size:11px;color:#555}
-  @media print{button{display:none}}</style></head><body>
+  @media print{button{display:none}}
+  ${WATERMARK_CSS}</style></head><body>
+  ${watermarkHtml(schoolInfo)}
   ${enteteDoc(schoolInfo, schoolInfo.logo)}
   <h2>${tr("reports.listClass.title")} ${classe}</h2>
   <table><thead><tr><th>${tr("reports.listClass.headerN")}</th><th>${tr("reports.listClass.headerMatricule")}</th><th>${tr("reports.listClass.headerName")}</th><th>${tr("reports.listClass.headerSex")}</th><th>${tr("reports.listClass.headerDateOfBirth")}</th><th>${tr("reports.listClass.headerBirthPlace")}</th><th>${tr("reports.listClass.headerFiliation")}</th><th>${tr("reports.listClass.headerGuardian")}</th><th>${tr("reports.listClass.headerContact")}</th><th>${tr("reports.listClass.headerStatus")}</th></tr></thead>
@@ -519,7 +541,9 @@ export const genererRapportMensuel = (mois, eleves, absences, annee, schoolInfo=
     .page-footer{margin-top:24px;padding-top:10px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;font-size:9px;color:#94a3b8}
 
     @media print{button{display:none}}
+    ${WATERMARK_CSS}
   </style></head><body>
+  ${watermarkHtml(schoolInfo)}
 
   <div class="header">
     ${logo
@@ -637,7 +661,9 @@ export const imprimerAttestation = (eleve, niveau, annee, schoolInfo={}) => {
   .sig{border-top:2px solid #0A1628;padding-top:8px;text-align:center;font-size:11px;color:#555}
   .stamp{border:3px solid #0A1628;padding:8px 16px;display:inline-block;border-radius:4px;font-weight:bold;color:#0A1628;margin-top:6px;font-size:13px}
   .devise{text-align:center;font-size:11px;margin-top:20px;font-style:italic;color:#00C48C;font-weight:bold}
-  @media print{button{display:none}}</style></head><body>
+  @media print{button{display:none}}
+  ${WATERMARK_CSS}</style></head><body>
+  ${watermarkHtml(schoolInfo)}
   ${enteteDoc(schoolInfo, schoolInfo.logo)}
   <h2>${tr("reports.attestation.title")}</h2>
   <div class="body-txt">
@@ -964,8 +990,8 @@ export const imprimerBulletin = (eleve, notes, matieres, periode, niveau, maxNot
   const w = window.open("", "_blank");
   w.document.write(`<!DOCTYPE html><html lang="${printLang()}" dir="${printDir()}"><head><meta charset="utf-8"/>
     <title>${tr("reports.bulletinTitle")} — ${eleve.nom || ""} ${eleve.prenom || ""} — ${periode}</title>
-    <style>${getBulletinStyles()}</style>
-  </head><body>${html}<script>${PRINT_TRIGGER}</script></body></html>`);
+    <style>${getBulletinStyles()}${WATERMARK_CSS}</style>
+  </head><body>${watermarkHtml(schoolInfo)}${html}<script>${PRINT_TRIGGER}</script></body></html>`);
   w.document.close();
 };
 
@@ -1008,8 +1034,8 @@ export const imprimerBulletinsGroupes = (eleves, notes, matieres, periode, nivea
   w.document.write(`<!DOCTYPE html><html lang="${printLang()}" dir="${printDir()}"><head>
   <meta charset="utf-8"/>
   <title>${tr("reports.bulletinTitle")} ${classe || niveau} — ${periode} — ${tr("reports.schoolYear")} ${getAnnee()}</title>
-  <style>${getBulletinStyles()}</style>
-  </head><body>${pages}<script>${PRINT_TRIGGER}</script></body></html>`);
+  <style>${getBulletinStyles()}${WATERMARK_CSS}</style>
+  </head><body>${watermarkHtml(schoolInfo)}${pages}<script>${PRINT_TRIGGER}</script></body></html>`);
   w.document.close();
 };
 
@@ -1089,7 +1115,9 @@ export const imprimerFicheCompositions = (classe, periode, notes, matieres, elev
     .sigs{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:32px}
     .sig{border-top:2px solid #0A1628;padding-top:8px;text-align:center;font-size:11px;color:#555}
     @media print{button{display:none}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+    ${WATERMARK_CSS}
   </style></head><body>
+  ${watermarkHtml(schoolInfo)}
   ${enteteDoc(schoolInfo, schoolInfo.logo)}
   <h2>${tr("reports.compositionResults").toUpperCase()} — ${periode} — ${tr("reports.schoolYear")} ${getAnnee()}</h2>
   <h3>${tr("reports.class")} : <strong>${classe==="all"?tr("common.all"):classe}</strong> &nbsp;|&nbsp; <strong>${nb}</strong></h3>
@@ -1150,7 +1178,9 @@ export const imprimerOrdreMutation = (eleve, schoolInfo={}, ecoleDestination="",
     .sigs{display:flex;justify-content:space-between;margin-top:36px}
     .sig{text-align:center;font-size:11px;flex:1}
     @media print{button{display:none}}
+    ${WATERMARK_CSS}
   </style></head><body>
+  ${watermarkHtml(schoolInfo)}
   <div class="entete">
     <div class="entete-col">
       <strong>${schoolInfo.pays||"République de Guinée"}</strong><br/>
@@ -1208,7 +1238,9 @@ export const imprimerCertificatRadiation = (eleve, schoolInfo={}, annee="", sold
     .fin{margin-top:40px;text-align:end;font-size:11px}
     .sig{margin-top:30px;text-align:center;font-size:11px}
     @media print{button{display:none}}
+    ${WATERMARK_CSS}
   </style></head><body>
+  ${watermarkHtml(schoolInfo)}
   <div class="entete">
     <div class="entete-col">
       <strong>${schoolInfo.pays||"République de Guinée"}</strong><br/>
@@ -1338,7 +1370,9 @@ export const imprimerLivret = (livret, schoolInfo={}) => {
     .sigs-livret{display:flex;justify-content:space-between;margin-top:16px}
     .sig-livret{text-align:center;flex:1;font-size:10px;border-top:1px solid #999;padding-top:6px;margin:0 8px}
     @media print{button{display:none}.page-annee{page-break-before:always}}
+    ${WATERMARK_CSS}
   </style></head><body>
+  ${watermarkHtml(schoolInfo)}
   <!-- COUVERTURE -->
   <div class="couverture">
     <div class="couv-school">${schoolInfo.pays||"République de Guinée"} · ${schoolInfo.ministere||MINISTERE_DEFAUT}</div>
