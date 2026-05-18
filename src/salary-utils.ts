@@ -81,6 +81,8 @@ export type SalaryRecord = {
   paramSnapshot?: ParamSnapshot;
   bon?: number | string;
   revision?: number | string;
+  createdAt?: number;
+  updatedAt?: number;
 };
 
 export type SalaryTotals = {
@@ -477,6 +479,49 @@ export function findSalaryDuplicate(
     const otherNom = normalizeText(stripLegacyTeacherSuffix(String(s.nom || "")));
     return otherNom === nom;
   }) || null;
+}
+
+// Détecte les doublons préexistants dans une liste de fiches de paie
+// (même nom normalisé + mois + section). Retourne une Map dont les clés
+// sont les triplets nom-mois-section dédupliqués et les valeurs sont les
+// fiches concernées (>= 2). Utilisé par l'auto-générateur pour nettoyer
+// le legacy avant de régénérer.
+export function findExistingSalaryDuplicates(salaries: SalaryRecord[] = []): Map<string, SalaryRecord[]> {
+  const groups = new Map<string, SalaryRecord[]>();
+  for (const s of salaries) {
+    const nom = normalizeText(stripLegacyTeacherSuffix(String(s.nom || "")));
+    const mois = String(s.mois || "").trim();
+    const section = String(s.section || "").trim();
+    if (!nom || !mois || !section) continue;
+    const key = `${nom}__${mois}__${section}`;
+    const arr = groups.get(key) || [];
+    arr.push(s);
+    groups.set(key, arr);
+  }
+  const dups = new Map<string, SalaryRecord[]>();
+  for (const [key, arr] of groups) {
+    if (arr.length > 1) dups.set(key, arr);
+  }
+  return dups;
+}
+
+// Choisit la fiche à conserver dans un groupe de doublons. Priorité :
+//   1. Une fiche avec saisie manuelle (bon ou revision > 0) — ne pas
+//      perdre le travail du comptable.
+//   2. Sinon la fiche la plus récente (updatedAt > createdAt > 0).
+//   3. Sinon la première (stable, déterministe).
+export function pickBestSalaryFromGroup(group: SalaryRecord[] = []): SalaryRecord | null {
+  if (group.length === 0) return null;
+  if (group.length === 1) return group[0];
+  const withManual = group.filter(
+    (s) => Number(s.bon || 0) > 0 || Number(s.revision || 0) > 0,
+  );
+  const pool = withManual.length > 0 ? withManual : group;
+  return [...pool].sort((a, b) => {
+    const ta = Number(a.updatedAt || a.createdAt || 0);
+    const tb = Number(b.updatedAt || b.createdAt || 0);
+    return tb - ta;
+  })[0];
 }
 
 export type SalaryPersonMonth = {

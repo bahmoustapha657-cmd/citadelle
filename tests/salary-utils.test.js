@@ -7,7 +7,9 @@ import {
   buildPrimarySalaryRecord,
   buildSecondarySalaryRecord,
   buildTeacherFullName,
+  findExistingSalaryDuplicates,
   findSalaryDuplicate,
+  pickBestSalaryFromGroup,
   groupSalariesByPersonMonth,
   getFifthWeekDays,
   getForfaitNet,
@@ -363,4 +365,65 @@ test("groupSalariesByPersonMonth merges multi-function payslips per person/month
   const mamNov = groups.find((g) => g.mois === "Novembre");
   assert.equal(mamNov.parts.length, 1);
   assert.equal(mamNov.totalNet, 200000);
+});
+
+test("findExistingSalaryDuplicates regroupe les fiches partageant nom+mois+section (accents/casse/suffixes neutralises)", () => {
+  const existing = [
+    { _id: "a", nom: "Mamadou Diallo",       mois: "Octobre", section: "Primaire" },
+    { _id: "b", nom: "  mamadou DIALLO ",     mois: "Octobre", section: "Primaire" },
+    { _id: "c", nom: "Mamadou Diallo (prof)", mois: "Octobre", section: "Primaire" },
+    // Pas un doublon : section differente
+    { _id: "d", nom: "Mamadou Diallo",       mois: "Octobre", section: "Secondaire" },
+    // Pas un doublon : autre personne
+    { _id: "e", nom: "Aissatou Sow",         mois: "Octobre", section: "Primaire" },
+    // Pas un doublon : autre mois
+    { _id: "f", nom: "Mamadou Diallo",       mois: "Novembre", section: "Primaire" },
+  ];
+  const groups = findExistingSalaryDuplicates(existing);
+  assert.equal(groups.size, 1, "un seul groupe de doublons attendu");
+  const [group] = [...groups.values()];
+  assert.equal(group.length, 3);
+  assert.deepEqual(group.map((s) => s._id).sort(), ["a", "b", "c"]);
+});
+
+test("findExistingSalaryDuplicates ignore les fiches incompletes (nom/mois/section absent)", () => {
+  const groups = findExistingSalaryDuplicates([
+    { _id: "x", nom: "",      mois: "Octobre", section: "Primaire" },
+    { _id: "y", nom: "Toto",  mois: "",        section: "Primaire" },
+    { _id: "z", nom: "Toto",  mois: "Octobre", section: "" },
+  ]);
+  assert.equal(groups.size, 0);
+});
+
+test("pickBestSalaryFromGroup prefere la fiche avec saisie manuelle (bon ou revision > 0)", () => {
+  const a = { _id: "a", nom: "X", bon: 0,     revision: 0,     updatedAt: 100 };
+  const b = { _id: "b", nom: "X", bon: 5000,  revision: 0,     updatedAt: 50 };
+  const c = { _id: "c", nom: "X", bon: 0,     revision: 0,     updatedAt: 200 };
+  // b a saisie manuelle, meme s'il est plus ancien → gagne
+  assert.equal(pickBestSalaryFromGroup([a, b, c])?._id, "b");
+});
+
+test("pickBestSalaryFromGroup prend la plus recente quand aucune fiche n'a de saisie manuelle", () => {
+  const a = { _id: "a", nom: "X", bon: 0, revision: 0, updatedAt: 100 };
+  const b = { _id: "b", nom: "X", bon: 0, revision: 0, updatedAt: 300 };
+  const c = { _id: "c", nom: "X", bon: 0, revision: 0, updatedAt: 200 };
+  assert.equal(pickBestSalaryFromGroup([a, b, c])?._id, "b");
+});
+
+test("pickBestSalaryFromGroup retombe sur createdAt si updatedAt absent", () => {
+  const a = { _id: "a", nom: "X", createdAt: 100 };
+  const b = { _id: "b", nom: "X", createdAt: 300 };
+  assert.equal(pickBestSalaryFromGroup([a, b])?._id, "b");
+});
+
+test("pickBestSalaryFromGroup retourne null/single sans erreur", () => {
+  assert.equal(pickBestSalaryFromGroup([]), null);
+  const solo = { _id: "solo", nom: "X" };
+  assert.equal(pickBestSalaryFromGroup([solo]), solo);
+});
+
+test("pickBestSalaryFromGroup tranche par revision quand bon=0", () => {
+  const a = { _id: "a", nom: "X", bon: 0, revision: 0,    updatedAt: 100 };
+  const b = { _id: "b", nom: "X", bon: 0, revision: 2000, updatedAt: 50 };
+  assert.equal(pickBestSalaryFromGroup([a, b])?._id, "b");
 });

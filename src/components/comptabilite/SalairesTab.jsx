@@ -456,11 +456,14 @@ export function SalairesTab({
       {(modal==="add_b"&&canCreate||(modal==="edit_b"&&canEdit))&&(()=>{
         const moisBon = form.mois||moisModale;
         const secBon = form.section||"Secondaire";
-        const ensDisponibles = salaires
-          .filter(s=>s.mois===moisBon && s.section===secBon)
-          .map(s=>s.nom||"")
-          .filter(Boolean)
-          .sort();
+        // Dedup par nom : si la base contient des fiches en double (legacy
+        // pre-nettoyage), on n'affiche le prof qu'une fois dans le selecteur.
+        const ensDisponibles = [...new Set(
+          salaires
+            .filter(s=>s.mois===moisBon && s.section===secBon)
+            .map(s=>(s.nom||"").trim())
+            .filter(Boolean),
+        )].sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"}));
         return <Modale titre={modal==="add_b"?"Nouveau bon":"Modifier le bon"} fermer={()=>setModal(null)}>
           <Selec label="Mois" value={moisBon} onChange={chg("mois")}>
             {moisSalaire.map(m=><option key={m}>{m}</option>)}

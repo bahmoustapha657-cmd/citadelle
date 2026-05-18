@@ -50,6 +50,7 @@ import {
   buildPersonnelSalaryRecord,
   buildPrimarySalaryRecord,
   buildSecondarySalaryRecord,
+  findExistingSalaryDuplicates,
   findSalaryDuplicate,
   getFifthWeekDays,
   getForfaitNet,
@@ -58,6 +59,7 @@ import {
   getSalaryMontantBrut,
   getSalaryNet,
   mergeSalaryWithManualFields,
+  pickBestSalaryFromGroup,
   summarizeSalaryTotals,
 } from "../salary-utils";
 
@@ -321,7 +323,31 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
     // listener Firestore, ce qui peut arriver après la fin de la boucle
     // et produit des doublons (notamment quand un même nom apparait
     // plusieurs fois dans ensPrimaire, ou entre collège+lycée).
-    const acc = salaires.filter(s=>s.mois===mois).slice();
+    let acc = salaires.filter(s=>s.mois===mois).slice();
+
+    // ── Nettoyage des doublons préexistants ──
+    // Le dédup à la saisie/auto-gen empêche les nouveaux doublons, mais
+    // des fiches en double peuvent subsister (data legacy, race conditions
+    // d'une ancienne version, import). On fusionne par (nom normalisé,
+    // mois, section) : on garde la fiche avec saisie manuelle (bon ou
+    // revision > 0) ou à défaut la plus récente, et on supprime les autres.
+    let nbSupprime = 0;
+    const dupGroups = findExistingSalaryDuplicates(acc);
+    if (dupGroups.size > 0) {
+      const toDeleteIds = new Set();
+      for (const group of dupGroups.values()) {
+        const best = pickBestSalaryFromGroup(group);
+        for (const fiche of group) {
+          if (fiche._id && fiche._id !== best?._id) toDeleteIds.add(fiche._id);
+        }
+      }
+      for (const id of toDeleteIds) {
+        await supS(id);
+        nbSupprime++;
+      }
+      acc = acc.filter((s) => !toDeleteIds.has(s._id));
+    }
+
     // findSalaryDuplicate matche par nom+mois+section (normalisation
     // accents/casse/suffixe legacy). Une même personne dans 2 sections
     // distinctes (ex: prof secondaire + agent administratif) ne déclenche
@@ -390,7 +416,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
         nbCree++;
       }
     }
-    return {nbCree, nbResync};
+    return {nbCree, nbResync, nbSupprime};
   };
 
   const verifierFichesPaie = () => {
@@ -423,20 +449,22 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
       : "Seuls les nouveaux enseignants seront ajoutés.";
     if(moisSel==="__TOUS__"){
       if(!confirm(`${verbeAction} les salaires pour les ${moisSalaire.length} mois de l'année scolaire ?\n\n${detailMode}${warningMissing}`)) return;
-      let totalCree=0, totalResync=0;
+      let totalCree=0, totalResync=0, totalSupprime=0;
       for(const m of moisSalaire){
         const r = await genererPourMois(m,{resync});
-        totalCree += r.nbCree; totalResync += r.nbResync;
+        totalCree += r.nbCree; totalResync += r.nbResync; totalSupprime += r.nbSupprime;
       }
-      toast(`Prévision annuelle : ${totalCree} créé(s), ${totalResync} rafraîchi(s) sur ${moisSalaire.length} mois.`,"success");
-      logAction("Salaires auto-générés (annuel)",`${totalCree} créés · ${totalResync} rafraîchis · ${moisSalaire.join(", ")}`);
+      const dedupMsg = totalSupprime ? ` · ${totalSupprime} doublon(s) supprimé(s)` : "";
+      toast(`Prévision annuelle : ${totalCree} créé(s), ${totalResync} rafraîchi(s)${dedupMsg} sur ${moisSalaire.length} mois.`,"success");
+      logAction("Salaires auto-générés (annuel)",`${totalCree} créés · ${totalResync} rafraîchis · ${totalSupprime} doublons supprimés · ${moisSalaire.join(", ")}`);
       return;
     }
     const jours5eme = getFifthWeekDays(moisSel);
     const info5eme = jours5eme.length ? `\n📅 5ème semaine détectée : ${jours5eme.join(", ")} → heures supplémentaires calculées automatiquement.` : "";
     if(!confirm(`${verbeAction} automatiquement les salaires pour ${moisSel} ?${info5eme}\n\n${detailMode}${warningMissing}`)) return;
-    const {nbCree, nbResync} = await genererPourMois(moisSel,{resync});
+    const {nbCree, nbResync, nbSupprime} = await genererPourMois(moisSel,{resync});
     const parts = [];
+    if(nbSupprime) parts.push(`${nbSupprime} doublon(s) supprimé(s)`);
     if(nbCree) parts.push(`${nbCree} créé(s)`);
     if(nbResync) parts.push(`${nbResync} rafraîchi(s)`);
     if(!parts.length) parts.push("rien à faire");
@@ -445,7 +473,7 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
       ? `${baseMsg} ${totalMissing} fiche(s) sans paie — complétez-les dans l'onglet Enseignants/Personnel.`
       : baseMsg;
     toast(msg, totalMissing > 0 ? "warning" : "success");
-    logAction(resync?"Salaires rafraîchis":"Salaires auto-générés",`Mois : ${moisSel} · ${nbCree} créés · ${nbResync} rafraîchis`);
+    logAction(resync?"Salaires rafraîchis":"Salaires auto-générés",`Mois : ${moisSel} · ${nbCree} créés · ${nbResync} rafraîchis · ${nbSupprime} doublons supprimés`);
   };
 
   const imprimerSalaires = () => {
