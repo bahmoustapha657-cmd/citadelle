@@ -631,7 +631,7 @@ export const genererRapportMensuel = (mois, eleves, absences, annee, schoolInfo=
 // l'année scolaire. Lancé depuis TableauDeBord — destiné à la DG
 // et à l'archivage en fin d'année.
 //
-// data = { annee, moisAnnee, eleves[], absences[], recettes[],
+// data = { annee, moisAnnee, eleves[], absences[], notes[], recettes[],
 //          depenses[], salaires[], ensC[], ensL[], ensP[] }
 export const genererRapportAnnuel = (data = {}, schoolInfo = {}) => {
   const {
@@ -639,6 +639,7 @@ export const genererRapportAnnuel = (data = {}, schoolInfo = {}) => {
     moisAnnee = MOIS_ANNEE,
     eleves = [],
     absences = [],
+    notes = [],
     recettes = [],
     depenses = [],
     salaires = [],
@@ -737,8 +738,9 @@ export const genererRapportAnnuel = (data = {}, schoolInfo = {}) => {
   }
   const tauxRecouvrement = totalDu > 0 ? Math.round((totalPercu / totalDu) * 100) : 0;
 
-  // ── Absences ──
+  // ── Absences (par classe et par élève) ──
   const absencesParClasse = {};
+  const absencesParEleve = {};
   for (const a of absences) {
     const eleveAbs = elevesActifs.find((e) => e._id === a.eleveId || `${e.nom} ${e.prenom}` === a.eleveNom);
     if (!eleveAbs) continue;
@@ -747,9 +749,95 @@ export const genererRapportAnnuel = (data = {}, schoolInfo = {}) => {
     absencesParClasse[cls].total++;
     if (a.justifie === "Oui") absencesParClasse[cls].justif++;
     else absencesParClasse[cls].nonJust++;
+    const eleveKey = eleveAbs._id || `${eleveAbs.nom} ${eleveAbs.prenom}`;
+    if (!absencesParEleve[eleveKey]) {
+      absencesParEleve[eleveKey] = {
+        nom: `${eleveAbs.nom || ""} ${eleveAbs.prenom || ""}`.trim(),
+        classe: cls,
+        total: 0,
+        justif: 0,
+        nonJust: 0,
+      };
+    }
+    absencesParEleve[eleveKey].total++;
+    if (a.justifie === "Oui") absencesParEleve[eleveKey].justif++;
+    else absencesParEleve[eleveKey].nonJust++;
   }
   const topAbsences = Object.values(absencesParClasse).sort((a, b) => b.total - a.total).slice(0, 10);
+  const topElevesAbsents = Object.values(absencesParEleve).sort((a, b) => b.total - a.total).slice(0, 10);
   const totAbsences = absences.length;
+
+  // ── Pédagogie : moyenne indicative par classe ──
+  // Moyenne arithmétique (non pondérée par coefficient matière), suffisante
+  // pour un indicateur de fin d'année. Le bulletin officiel reste la
+  // référence pour la moyenne pondérée d'un élève donné.
+  const notesParEleve = {};
+  for (const n of notes) {
+    if (n.eleveId == null) continue;
+    const val = Number(n.note);
+    if (!Number.isFinite(val)) continue;
+    if (!notesParEleve[n.eleveId]) notesParEleve[n.eleveId] = [];
+    notesParEleve[n.eleveId].push(val);
+  }
+  const moyennesParClasse = {};
+  for (const e of elevesActifs) {
+    const cls = e.classe || "—";
+    if (!moyennesParClasse[cls]) {
+      moyennesParClasse[cls] = { classe: cls, section: sectionPourEleve(e), effectif: 0, moyennes: [] };
+    }
+    moyennesParClasse[cls].effectif++;
+    const notesEleve = notesParEleve[e._id] || [];
+    if (notesEleve.length > 0) {
+      const moy = notesEleve.reduce((s, v) => s + v, 0) / notesEleve.length;
+      moyennesParClasse[cls].moyennes.push(moy);
+    }
+  }
+  const lignesPedagogie = Object.values(moyennesParClasse)
+    .map((g) => {
+      const moys = g.moyennes;
+      const seuil = g.section === "Primaire" ? 5 : 10; // /10 pour primaire, /20 sinon
+      const max = g.section === "Primaire" ? 10 : 20;
+      const moyClasse = moys.length > 0 ? moys.reduce((s, v) => s + v, 0) / moys.length : null;
+      const reussite = moys.filter((m) => m >= seuil).length;
+      const tauxReussite = moys.length > 0 ? Math.round((reussite / moys.length) * 100) : null;
+      return { classe: g.classe, section: g.section, effectif: g.effectif, nbAvecNotes: moys.length, moyClasse, max, tauxReussite };
+    })
+    .sort((a, b) => (a.section + a.classe).localeCompare(b.section + b.classe, "fr"));
+
+  // ── Mensualités par classe ──
+  const mensParClasse = {};
+  for (const e of elevesActifs) {
+    const cls = e.classe || "—";
+    if (!mensParClasse[cls]) {
+      mensParClasse[cls] = { classe: cls, section: sectionPourEleve(e), effectif: 0, due: 0, paye: 0 };
+    }
+    mensParClasse[cls].effectif++;
+    const mens = e.mens || {};
+    for (const mois of moisAnnee) {
+      mensParClasse[cls].due++;
+      if (mens[mois] === "Payé") mensParClasse[cls].paye++;
+    }
+  }
+  const lignesMens = Object.values(mensParClasse)
+    .map((m) => ({ ...m, taux: m.due > 0 ? Math.round((m.paye / m.due) * 100) : 0 }))
+    .sort((a, b) => (a.section + a.classe).localeCompare(b.section + b.classe, "fr"));
+
+  // ── Salaires par section ──
+  const salairesParSection = {};
+  for (const s of salaires) {
+    const sec = s.section || "—";
+    if (!salairesParSection[sec]) salairesParSection[sec] = { section: sec, effectif: new Set(), masse: 0 };
+    const isForfait = sec === "Primaire" || sec === "Personnel";
+    const net = isForfait
+      ? Number(s.montantForfait || 0) - Number(s.bon || 0) + Number(s.revision || 0)
+      : (Number(s.vhExecute || 0) + Number(s.cinqSem || 0)) * Number(s.primeHoraire || 0) - Number(s.bon || 0) + Number(s.revision || 0);
+    salairesParSection[sec].masse += net;
+    if (s.nom) salairesParSection[sec].effectif.add(s.nom);
+  }
+  const lignesSalSection = Object.values(salairesParSection)
+    .map((sec) => ({ section: sec.section, effectif: sec.effectif.size, masse: sec.masse }))
+    .sort((a, b) => b.masse - a.masse);
+  const masseTotale = lignesSalSection.reduce((s, l) => s + l.masse, 0);
 
   // ── Pavé HTML ──
   const barreLargeur = (value, max) => Math.max(0, Math.min(100, max > 0 ? Math.round((value / max) * 100) : 0));
@@ -785,6 +873,7 @@ export const genererRapportAnnuel = (data = {}, schoolInfo = {}) => {
     .kpi.amber .kpi-val{color:#d97706}
 
     .section-title{font-size:11px;font-weight:800;color:${c1};text-transform:uppercase;letter-spacing:.06em;margin:14px 0 6px;padding-left:8px;border-left:3px solid ${c2}}
+    .section-title.page-break{page-break-before:always}
 
     table{width:100%;border-collapse:collapse;margin-bottom:10px;font-size:10px}
     thead tr{background:${c1};color:#fff}
@@ -872,6 +961,90 @@ export const genererRapportAnnuel = (data = {}, schoolInfo = {}) => {
     </tr></tfoot>
   </table>
 
+  <div class="section-title page-break">Performance pédagogique par classe</div>
+  ${lignesPedagogie.length === 0
+    ? `<p style="font-size:11px;color:#94a3b8;font-style:italic;margin:6px 0">Aucune note enregistrée sur l'année.</p>`
+    : `<table>
+        <thead><tr>
+          <th>Classe</th>
+          <th>Section</th>
+          <th class="num">Effectif</th>
+          <th class="num">Notés</th>
+          <th class="num">Moy. classe</th>
+          <th class="num">% réussite</th>
+        </tr></thead>
+        <tbody>
+          ${lignesPedagogie.map((p) => `<tr>
+            <td><strong>${p.classe}</strong></td>
+            <td>${p.section}</td>
+            <td class="num">${p.effectif}</td>
+            <td class="num">${p.nbAvecNotes}</td>
+            <td class="num" style="font-weight:800;color:${p.moyClasse == null ? "#94a3b8" : p.moyClasse >= (p.max / 2) ? "#059669" : "#dc2626"}">${p.moyClasse == null ? "—" : `${p.moyClasse.toFixed(2)} / ${p.max}`}</td>
+            <td class="num" style="font-weight:700;color:${p.tauxReussite == null ? "#94a3b8" : p.tauxReussite >= 60 ? "#059669" : p.tauxReussite >= 40 ? "#d97706" : "#dc2626"}">${p.tauxReussite == null ? "—" : `${p.tauxReussite}%`}</td>
+          </tr>`).join("")}
+        </tbody>
+      </table>
+      <p style="font-size:9px;color:#94a3b8;font-style:italic;margin:4px 0 0">Moyenne indicative (arithmétique non pondérée). Le bulletin officiel reste la référence pour la moyenne par coefficient.</p>`}
+
+  <div class="section-title">Mensualités — recouvrement par classe</div>
+  ${lignesMens.length === 0
+    ? `<p style="font-size:11px;color:#94a3b8;font-style:italic;margin:6px 0">Aucune donnée de mensualité.</p>`
+    : `<table>
+        <thead><tr>
+          <th>Classe</th>
+          <th>Section</th>
+          <th class="num">Effectif</th>
+          <th class="num">Mois dus</th>
+          <th class="num">Mois payés</th>
+          <th class="num">Impayés</th>
+          <th class="num">Taux</th>
+        </tr></thead>
+        <tbody>
+          ${lignesMens.map((m) => `<tr>
+            <td><strong>${m.classe}</strong></td>
+            <td>${m.section}</td>
+            <td class="num">${m.effectif}</td>
+            <td class="num">${m.due}</td>
+            <td class="num" style="color:#059669">${m.paye}</td>
+            <td class="num" style="color:#dc2626">${m.due - m.paye}</td>
+            <td class="num" style="font-weight:800;color:${m.taux >= 80 ? "#059669" : m.taux >= 50 ? "#d97706" : "#dc2626"}">${m.taux}%</td>
+          </tr>`).join("")}
+        </tbody>
+        <tfoot><tr>
+          <td>Total annuel</td><td>—</td>
+          <td class="num">${totEleves}</td>
+          <td class="num">${totalDu}</td>
+          <td class="num">${totalPercu}</td>
+          <td class="num">${totalDu - totalPercu}</td>
+          <td class="num">${tauxRecouvrement}%</td>
+        </tr></tfoot>
+      </table>`}
+
+  <div class="section-title page-break">Masse salariale par section</div>
+  ${lignesSalSection.length === 0
+    ? `<p style="font-size:11px;color:#94a3b8;font-style:italic;margin:6px 0">Aucune fiche de paie enregistrée.</p>`
+    : `<table>
+        <thead><tr>
+          <th>Section</th>
+          <th class="num">Effectif distinct</th>
+          <th class="num">Masse annuelle</th>
+          <th class="num">% du total</th>
+        </tr></thead>
+        <tbody>
+          ${lignesSalSection.map((sec) => `<tr>
+            <td><strong>${sec.section}</strong></td>
+            <td class="num">${sec.effectif}</td>
+            <td class="num">${fmtMoney(sec.masse)}</td>
+            <td class="num">${masseTotale > 0 ? Math.round((sec.masse / masseTotale) * 100) : 0}%</td>
+          </tr>`).join("")}
+        </tbody>
+        <tfoot><tr>
+          <td>Total</td><td class="num">—</td>
+          <td class="num">${fmtMoney(masseTotale)}</td>
+          <td class="num">100%</td>
+        </tr></tfoot>
+      </table>`}
+
   <div class="section-title">Absences — Top 10 classes</div>
   ${topAbsences.length === 0
     ? `<p style="font-size:11px;color:#94a3b8;font-style:italic;margin:6px 0">Aucune absence enregistrée sur l'année.</p>`
@@ -886,6 +1059,22 @@ export const genererRapportAnnuel = (data = {}, schoolInfo = {}) => {
           </tr>`).join("")}
         </tbody>
         <tfoot><tr><td>Total annuel (toutes classes)</td><td class="num">${totAbsences}</td><td class="num">—</td><td class="num">—</td></tr></tfoot>
+      </table>`}
+
+  <div class="section-title">Absences — Top 10 élèves</div>
+  ${topElevesAbsents.length === 0
+    ? `<p style="font-size:11px;color:#94a3b8;font-style:italic;margin:6px 0">Aucun élève absentéiste détecté.</p>`
+    : `<table>
+        <thead><tr><th>Élève</th><th>Classe</th><th class="num">Total</th><th class="num">Justifiées</th><th class="num">Non justifiées</th></tr></thead>
+        <tbody>
+          ${topElevesAbsents.map((e) => `<tr>
+            <td><strong>${e.nom}</strong></td>
+            <td>${e.classe}</td>
+            <td class="num" style="font-weight:800;color:${e.total >= 10 ? "#dc2626" : "#1e293b"}">${e.total}</td>
+            <td class="num" style="color:#059669">${e.justif}</td>
+            <td class="num" style="color:#dc2626">${e.nonJust}</td>
+          </tr>`).join("")}
+        </tbody>
       </table>`}
 
   <div class="sigs">

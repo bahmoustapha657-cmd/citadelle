@@ -25,6 +25,13 @@ function TableauDeBord({annee}) {
   const {items:absences}= useFirestore("absencesCollege");
   const {items:absP}    = useFirestore("absencesPrimaire");
   const {items:absL}    = useFirestore("elevesLycee_absences");
+  // Notes : utilisées uniquement par le rapport annuel pour la section
+  // pédagogie. useFirestore = listener temps réel → coût acceptable car
+  // le dashboard est l'écran d'atterrissage et ces collections sont
+  // déjà cachées une fois la session ouverte.
+  const {items:notesC} = useFirestore("notesCollege");
+  const {items:notesP} = useFirestore("notesPrimaire");
+  const {items:notesL} = useFirestore("notesLycee");
   const [moisRapport,setMoisRapport] = useState(moisSalaire[moisSalaire.length-1]||"");
   const [demandeOuverte, setDemandeOuverte] = useState(false);
   const [demandePlan, setDemandePlan] = useState("starter");
@@ -147,6 +154,7 @@ function TableauDeBord({annee}) {
             moisAnnee,
             eleves: [...elevesC,...elevesL,...elevesP],
             absences: [...absences,...absL,...absP],
+            notes: [...notesC,...notesL,...notesP],
             recettes, depenses, salaires,
             ensC, ensL, ensP,
           }, schoolInfo)}>📊 {t("dashboard.annualReport")}</Btn>
