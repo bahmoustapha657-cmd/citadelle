@@ -424,7 +424,7 @@ function DemoEduGest({ onConnexion, onInscription, onRetour }) {
           </div>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <Btn v="ghost" onClick={onRetour}>Retour</Btn>
-            <Btn v="ghost" onClick={onConnexion}>Connexion</Btn>
+            <Btn v="ghost" onClick={onConnexion}>Accéder à mon école</Btn>
             <Btn onClick={onInscription}>Créer mon école</Btn>
           </div>
         </div>

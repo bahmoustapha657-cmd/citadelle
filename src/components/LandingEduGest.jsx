@@ -650,7 +650,7 @@ function LandingEduGest({ onConnexion, onInscription, onDemo }) {
             Voir une démo
           </button>
           <button onClick={onConnexion} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", color: "#fff", padding: "8px 20px", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-            Connexion
+            {t("landing.ctaLogin")}
           </button>
           <button onClick={onInscription} style={{ background: "#00C48C", border: "none", color: "#fff", padding: "8px 20px", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
             Créer mon école
@@ -1030,7 +1030,7 @@ function LandingEduGest({ onConnexion, onInscription, onDemo }) {
             Voir une démo
           </button>
           <button className="landing-cta" onClick={onConnexion} style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", padding: "16px 32px", borderRadius: 30, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
-            Se connecter
+            {t("landing.ctaLogin")}
           </button>
         </div>
       </section>
