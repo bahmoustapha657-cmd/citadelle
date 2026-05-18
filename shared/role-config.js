@@ -16,6 +16,73 @@ export const ROLE_REQUIRED_MODULES = {
   direction: ["admin_panel", "parametres"],
 };
 
+// Modules dans lesquels le DG peut autoriser l'admin a ecrire. Les autres
+// (compta, admin_panel, parametres, fondation, historique, accueil) restent
+// en lecture stricte pour l'admin meme si actives dans roleSettings.modules.
+// Ce sont les "modules systeme" : ecriture reservee aux roles direction /
+// comptable / pedagogie pour empecher un admin de s'auto-promouvoir,
+// d'effacer ses traces ou de manipuler la tresorerie via un client direct.
+export const ADMIN_WRITABLE_MODULES = [
+  "primaire",
+  "secondaire",
+  "calendrier",
+  "examens",
+  "messages",
+];
+
+// Mapping module -> collections Firestore. Sert a la fois aux rules
+// (declenchement de canRead/canWrite par collection) et a la doc fonctionnelle
+// du perimetre d'un module. Garder synchrone avec collectionsBackOffice() et
+// les match /<collection>/ explicites de firestore.rules.
+export const MODULE_COLLECTIONS = {
+  primaire: [
+    "elevesPrimaire",
+    "classesPrimaire",
+    "ensPrimaire",
+    "ensPrimaire_enseignements",
+    "classesPrimaire_emplois",
+    "classesPrimaire_matieres",
+    "notesPrimaire",
+    "appreciationsPrimaire",
+    "elevesPrimaire_absences",
+  ],
+  secondaire: [
+    "elevesCollege",
+    "elevesLycee",
+    "classesCollege",
+    "classesLycee",
+    "ensCollege",
+    "ensLycee",
+    "ensCollege_enseignements",
+    "ensLycee_enseignements",
+    "classesCollege_emplois",
+    "classesLycee_emplois",
+    "classesCollege_matieres",
+    "classesLycee_matieres",
+    "notesCollege",
+    "notesLycee",
+    "appreciationsCollege",
+    "appreciationsLycee",
+    "elevesCollege_absences",
+    "elevesLycee_absences",
+  ],
+  calendrier: ["evenements"],
+  examens: ["examens", "livrets"],
+  messages: ["messages"],
+  compta: ["recettes", "depenses", "salaires", "bons", "personnel", "versements", "tarifs", "documents"],
+  fondation: ["membres"],
+  historique: ["historique"],
+};
+
+// Reverse-lookup utile aux rules et a l'UI : collection -> module proprietaire.
+export const COLLECTION_TO_MODULE = Object.entries(MODULE_COLLECTIONS).reduce(
+  (accumulator, [moduleId, collections]) => {
+    for (const collection of collections) accumulator[collection] = moduleId;
+    return accumulator;
+  },
+  {},
+);
+
 export const ROLE_SETTINGS_DEFAULT = {
   direction: {
     role: "direction",
@@ -95,18 +162,34 @@ function normalizeModules(role, requestedModules, active) {
   return dedupe([...requiredModules, ...allowedModules]);
 }
 
+// writeModules est intentionnellement reserve au role admin : les autres roles
+// systeme ont un perimetre d'ecriture deja code en dur dans les rules. On filtre
+// strictement contre ADMIN_WRITABLE_MODULES + presence dans modules visibles
+// (on ne peut pas ecrire dans un module qu'on ne voit pas).
+function normalizeAdminWriteModules(role, requestedWriteModules, modules) {
+  if (role !== "admin") return [];
+  if (!Array.isArray(requestedWriteModules)) return [];
+  return dedupe(
+    requestedWriteModules.filter(
+      (moduleId) => ADMIN_WRITABLE_MODULES.includes(moduleId) && modules.includes(moduleId),
+    ),
+  );
+}
+
 export function normalizeRoleSettings(rawSettings = {}) {
   return ROLE_ORDER.reduce((accumulator, role) => {
     const defaults = ROLE_SETTINGS_DEFAULT[role];
     const current = rawSettings?.[role] || {};
     const active = role === "direction" ? true : current.active !== false;
+    const modules = normalizeModules(role, current.modules, active);
     accumulator[role] = {
       role,
       nom: sanitizeText(current.nom, defaults.nom),
       login: normalizeRoleLogin(current.login, defaults.login),
       label: sanitizeText(current.label, defaults.label),
       active,
-      modules: normalizeModules(role, current.modules, active),
+      modules,
+      writeModules: normalizeAdminWriteModules(role, current.writeModules, modules),
     };
     return accumulator;
   }, {});
@@ -139,6 +222,10 @@ export function getRoleModules(role, source = {}) {
   return getRoleConfig(role, source).modules;
 }
 
+export function getAdminWriteModules(source = {}) {
+  return getRoleConfig("admin", source).writeModules || [];
+}
+
 export function getPrimaryModuleForRole(role, source = {}) {
   const modules = getRoleModules(role, source);
   return modules[0] || null;
@@ -157,5 +244,6 @@ export function getActiveRoleAccounts(source = {}) {
       label: config.label,
       active: config.active,
       modules: [...config.modules],
+      writeModules: [...(config.writeModules || [])],
     }));
 }

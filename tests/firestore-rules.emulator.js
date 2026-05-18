@@ -1,9 +1,9 @@
 // Tests des règles firestore.rules contre l'émulateur Firestore.
 // Démarré via `npm run test:rules` (qui lance l'émulateur puis ce fichier).
 //
-// Couvre 15 invariants :
+// Couvre 16 invariants :
 //   1. Isolation multi-tenant
-//   2. Admin lecture seule (pas d'écriture client sur recettes/depenses/salaires/notes)
+//   2. Admin sans claims = aucun accès (par défaut lecture/écriture refusées)
 //   3. Comptes intouchables côté client
 //   4. Catch-all : collections non whitelistées refusées
 //   5. Cloisonnement pédagogique primaire / collège / lycée
@@ -17,6 +17,9 @@
 //  13. Top-level (/users, /superadmins, /config, /transferts)
 //  14. /superadmin_messages + sous-collection lectures + collection group demandes_plan
 //  15. Archive multi-années : lecture cross-année autorisée (isolation par schoolId, pas par annee)
+//  16. Admin granulaire : adminReadModules / adminWriteModules portés par JWT,
+//      whitelist défensive ADMIN_WRITABLE_MODULES (compta/admin_panel/parametres/
+//      fondation/historique restent en lecture seule pour l'admin)
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -68,8 +71,11 @@ beforeEach(async () => {
   await testEnv.clearFirestore();
 });
 
-function asUser({ uid = "u1", schoolId, role }) {
-  return testEnv.authenticatedContext(uid, { schoolId, role }).firestore();
+function asUser({ uid = "u1", schoolId, role, adminReadModules, adminWriteModules }) {
+  const claims = { schoolId, role };
+  if (adminReadModules !== undefined) claims.adminReadModules = adminReadModules;
+  if (adminWriteModules !== undefined) claims.adminWriteModules = adminWriteModules;
+  return testEnv.authenticatedContext(uid, claims).firestore();
 }
 
 function asAnon() {
@@ -126,37 +132,60 @@ describe("1. Isolation multi-tenant", () => {
 });
 
 // ───────────────────────────────────────────────────────────
-// 2. Admin = lecture seule sur les collections back-office
+// 2. Admin sans claims = aucun accès aux collections back-office
+//    (modèle granulaire piloté par DG — voir suite #16 pour les
+//    permissions activées par roleSettings.admin.{modules,writeModules})
 // ───────────────────────────────────────────────────────────
-describe("2. Admin lecture seule", () => {
-  test("admin peut LIRE recettes / depenses / salaires", async () => {
+describe("2. Admin sans claims = aucun accès", () => {
+  test("admin sans adminReadModules NE PEUT PAS lire recettes", async () => {
     await seed(async (db) => {
       await setDoc(doc(db, `ecoles/${SCHOOL_A}/recettes/r1`), { montant: 100 });
-      await setDoc(doc(db, `ecoles/${SCHOOL_A}/depenses/d1`), { montant: 50 });
-      await setDoc(doc(db, `ecoles/${SCHOOL_A}/salaires/s1`), { montant: 800 });
     });
     const db = asUser({ schoolId: SCHOOL_A, role: "admin" });
-    await assertSucceeds(getDoc(doc(db, `ecoles/${SCHOOL_A}/recettes/r1`)));
-    await assertSucceeds(getDoc(doc(db, `ecoles/${SCHOOL_A}/depenses/d1`)));
-    await assertSucceeds(getDoc(doc(db, `ecoles/${SCHOOL_A}/salaires/s1`)));
+    await assertFails(getDoc(doc(db, `ecoles/${SCHOOL_A}/recettes/r1`)));
   });
 
-  test("admin NE PEUT PAS créer une recette", async () => {
+  test("admin sans claims NE PEUT PAS lire notesCollege ni notesPrimaire", async () => {
+    await seed(async (db) => {
+      await setDoc(doc(db, `ecoles/${SCHOOL_A}/notesCollege/n1`), { val: 12 });
+      await setDoc(doc(db, `ecoles/${SCHOOL_A}/notesPrimaire/n2`), { val: 8 });
+    });
     const db = asUser({ schoolId: SCHOOL_A, role: "admin" });
+    await assertFails(getDoc(doc(db, `ecoles/${SCHOOL_A}/notesCollege/n1`)));
+    await assertFails(getDoc(doc(db, `ecoles/${SCHOOL_A}/notesPrimaire/n2`)));
+  });
+
+  test("admin NE PEUT PAS créer une recette (compta = module système, jamais en écriture)", async () => {
+    const db = asUser({
+      schoolId: SCHOOL_A,
+      role: "admin",
+      adminReadModules: ["compta"],
+      adminWriteModules: [],
+    });
     await assertFails(
       setDoc(doc(db, `ecoles/${SCHOOL_A}/recettes/r-bad`), { montant: 1 }),
     );
   });
 
   test("admin NE PEUT PAS créer une dépense", async () => {
-    const db = asUser({ schoolId: SCHOOL_A, role: "admin" });
+    const db = asUser({
+      schoolId: SCHOOL_A,
+      role: "admin",
+      adminReadModules: ["compta"],
+      adminWriteModules: [],
+    });
     await assertFails(
       setDoc(doc(db, `ecoles/${SCHOOL_A}/depenses/d-bad`), { montant: 1 }),
     );
   });
 
   test("admin NE PEUT PAS créer un salaire", async () => {
-    const db = asUser({ schoolId: SCHOOL_A, role: "admin" });
+    const db = asUser({
+      schoolId: SCHOOL_A,
+      role: "admin",
+      adminReadModules: ["compta"],
+      adminWriteModules: [],
+    });
     await assertFails(
       setDoc(doc(db, `ecoles/${SCHOOL_A}/salaires/s-bad`), { montant: 1 }),
     );
@@ -166,7 +195,11 @@ describe("2. Admin lecture seule", () => {
     await seed(async (db) => {
       await setDoc(doc(db, `ecoles/${SCHOOL_A}/recettes/r1`), { montant: 100 });
     });
-    const db = asUser({ schoolId: SCHOOL_A, role: "admin" });
+    const db = asUser({
+      schoolId: SCHOOL_A,
+      role: "admin",
+      adminReadModules: ["compta"],
+    });
     await assertFails(
       updateDoc(doc(db, `ecoles/${SCHOOL_A}/recettes/r1`), { montant: 999 }),
     );
@@ -176,12 +209,21 @@ describe("2. Admin lecture seule", () => {
     await seed(async (db) => {
       await setDoc(doc(db, `ecoles/${SCHOOL_A}/recettes/r1`), { montant: 100 });
     });
-    const db = asUser({ schoolId: SCHOOL_A, role: "admin" });
+    const db = asUser({
+      schoolId: SCHOOL_A,
+      role: "admin",
+      adminReadModules: ["compta"],
+    });
     await assertFails(deleteDoc(doc(db, `ecoles/${SCHOOL_A}/recettes/r1`)));
   });
 
-  test("admin NE PEUT PAS écrire des notes (notesCollege)", async () => {
-    const db = asUser({ schoolId: SCHOOL_A, role: "admin" });
+  test("admin sans writeModules NE PEUT PAS écrire des notes (notesCollege)", async () => {
+    const db = asUser({
+      schoolId: SCHOOL_A,
+      role: "admin",
+      adminReadModules: ["secondaire"],
+      adminWriteModules: [],
+    });
     await assertFails(
       setDoc(doc(db, `ecoles/${SCHOOL_A}/notesCollege/n1`), { val: 15 }),
     );
@@ -667,11 +709,23 @@ describe("11. paiements", () => {
     });
   });
 
-  test("direction / admin / comptable PEUVENT lire", async () => {
-    for (const role of ["direction", "admin", "comptable"]) {
+  test("direction / comptable PEUVENT lire", async () => {
+    for (const role of ["direction", "comptable"]) {
       const db = asUser({ schoolId: SCHOOL_A, role });
       await assertSucceeds(getDoc(doc(db, `ecoles/${SCHOOL_A}/paiements/p1`)));
     }
+  });
+
+  test("admin PEUT lire uniquement si DG l'a autorise sur le module compta", async () => {
+    const dbAvecAcces = asUser({
+      schoolId: SCHOOL_A,
+      role: "admin",
+      adminReadModules: ["compta"],
+    });
+    await assertSucceeds(getDoc(doc(dbAvecAcces, `ecoles/${SCHOOL_A}/paiements/p1`)));
+
+    const dbSansAcces = asUser({ schoolId: SCHOOL_A, role: "admin" });
+    await assertFails(getDoc(doc(dbSansAcces, `ecoles/${SCHOOL_A}/paiements/p1`)));
   });
 
   test("primaire / college / parent NE PEUVENT PAS lire", async () => {
@@ -924,5 +978,211 @@ describe("15. Archive multi-années — lecture cross-année", () => {
   test("isolation préservée : direction de A NE PEUT PAS lire recette de B même année passée", async () => {
     const db = asUser({ schoolId: SCHOOL_A, role: "direction" });
     await assertFails(getDoc(doc(db, `ecoles/${SCHOOL_B}/recettes/r-b-passe`)));
+  });
+});
+
+// ───────────────────────────────────────────────────────────
+// 16. Admin granulaire — adminReadModules / adminWriteModules portés par JWT
+// ───────────────────────────────────────────────────────────
+// Le DG configure roleSettings.admin.{modules,writeModules} via AdminPanel ;
+// l'API account-manage:sync_role_settings injecte ces listes dans les custom
+// claims du compte admin. Les rules autorisent lecture/ecriture par module.
+// "modules systeme" (compta, admin_panel, parametres, fondation, historique)
+// restent en lecture seule par construction : compta n'est PAS dans
+// ADMIN_WRITABLE_MODULES (whitelist defensive dans la rule adminWritableModules()).
+describe("16. Admin granulaire — perimetre par module", () => {
+  beforeEach(async () => {
+    await seed(async (db) => {
+      await setDoc(doc(db, `ecoles/${SCHOOL_A}/recettes/r1`), { montant: 100 });
+      await setDoc(doc(db, `ecoles/${SCHOOL_A}/depenses/d1`), { montant: 50 });
+      await setDoc(doc(db, `ecoles/${SCHOOL_A}/notesPrimaire/np1`), { val: 8 });
+      await setDoc(doc(db, `ecoles/${SCHOOL_A}/notesCollege/nc1`), { val: 14 });
+      await setDoc(doc(db, `ecoles/${SCHOOL_A}/elevesPrimaire/ep1`), { nom: "Alice" });
+      await setDoc(doc(db, `ecoles/${SCHOOL_A}/elevesCollege/ec1`), { nom: "Bob" });
+      await setDoc(doc(db, `ecoles/${SCHOOL_A}/messages/m1`), { corps: "hello" });
+      await setDoc(doc(db, `ecoles/${SCHOOL_A}/evenements/e1`), { titre: "rentree" });
+      await setDoc(doc(db, `ecoles/${SCHOOL_A}/historique/h1`), { action: "test" });
+    });
+  });
+
+  test("admin avec read=[primaire] lit notesPrimaire, pas notesCollege ni recettes", async () => {
+    const db = asUser({
+      schoolId: SCHOOL_A,
+      role: "admin",
+      adminReadModules: ["primaire"],
+      adminWriteModules: [],
+    });
+    await assertSucceeds(getDoc(doc(db, `ecoles/${SCHOOL_A}/notesPrimaire/np1`)));
+    await assertSucceeds(getDoc(doc(db, `ecoles/${SCHOOL_A}/elevesPrimaire/ep1`)));
+    await assertFails(getDoc(doc(db, `ecoles/${SCHOOL_A}/notesCollege/nc1`)));
+    await assertFails(getDoc(doc(db, `ecoles/${SCHOOL_A}/elevesCollege/ec1`)));
+    await assertFails(getDoc(doc(db, `ecoles/${SCHOOL_A}/recettes/r1`)));
+  });
+
+  test("admin avec read=[compta] lit recettes/depenses mais ne peut PAS ecrire (module systeme)", async () => {
+    const db = asUser({
+      schoolId: SCHOOL_A,
+      role: "admin",
+      adminReadModules: ["compta"],
+      adminWriteModules: ["compta"], // meme avec writeModules forge, refuse
+    });
+    await assertSucceeds(getDoc(doc(db, `ecoles/${SCHOOL_A}/recettes/r1`)));
+    await assertSucceeds(getDoc(doc(db, `ecoles/${SCHOOL_A}/depenses/d1`)));
+    await assertFails(
+      setDoc(doc(db, `ecoles/${SCHOOL_A}/recettes/r-bad`), { montant: 999 }),
+    );
+    await assertFails(
+      updateDoc(doc(db, `ecoles/${SCHOOL_A}/recettes/r1`), { montant: 999 }),
+    );
+  });
+
+  test("admin avec write=[primaire] ECRIT notesPrimaire mais pas notesCollege", async () => {
+    const db = asUser({
+      schoolId: SCHOOL_A,
+      role: "admin",
+      adminReadModules: ["primaire"],
+      adminWriteModules: ["primaire"],
+    });
+    await assertSucceeds(
+      setDoc(doc(db, `ecoles/${SCHOOL_A}/notesPrimaire/np2`), { val: 9, annee: "2025-2026" }),
+    );
+    await assertSucceeds(
+      updateDoc(doc(db, `ecoles/${SCHOOL_A}/notesPrimaire/np1`), { val: 7 }),
+    );
+    await assertFails(
+      setDoc(doc(db, `ecoles/${SCHOOL_A}/notesCollege/nc2`), { val: 15 }),
+    );
+  });
+
+  test("admin avec write=[secondaire] ECRIT notesCollege+notesLycee+elevesCollege", async () => {
+    const db = asUser({
+      schoolId: SCHOOL_A,
+      role: "admin",
+      adminReadModules: ["secondaire"],
+      adminWriteModules: ["secondaire"],
+    });
+    await assertSucceeds(
+      setDoc(doc(db, `ecoles/${SCHOOL_A}/notesCollege/nc2`), { val: 15, annee: "2025-2026" }),
+    );
+    await assertSucceeds(
+      setDoc(doc(db, `ecoles/${SCHOOL_A}/notesLycee/nl1`), { val: 14, annee: "2025-2026" }),
+    );
+    await assertSucceeds(
+      setDoc(doc(db, `ecoles/${SCHOOL_A}/elevesCollege/ec2`), { nom: "Charlie" }),
+    );
+    await assertFails(
+      setDoc(doc(db, `ecoles/${SCHOOL_A}/notesPrimaire/np2`), { val: 5 }),
+    );
+  });
+
+  test("admin avec write=[messages] ECRIT messages, pas evenements", async () => {
+    const db = asUser({
+      schoolId: SCHOOL_A,
+      role: "admin",
+      adminReadModules: ["messages"],
+      adminWriteModules: ["messages"],
+    });
+    await assertSucceeds(
+      setDoc(doc(db, `ecoles/${SCHOOL_A}/messages/m2`), { corps: "info", expediteur: "admin" }),
+    );
+    await assertFails(
+      setDoc(doc(db, `ecoles/${SCHOOL_A}/evenements/e2`), { titre: "test" }),
+    );
+  });
+
+  test("admin avec write=[calendrier] ECRIT evenements, pas messages", async () => {
+    const db = asUser({
+      schoolId: SCHOOL_A,
+      role: "admin",
+      adminReadModules: ["calendrier"],
+      adminWriteModules: ["calendrier"],
+    });
+    await assertSucceeds(
+      setDoc(doc(db, `ecoles/${SCHOOL_A}/evenements/e2`), { titre: "examen" }),
+    );
+    await assertFails(
+      setDoc(doc(db, `ecoles/${SCHOOL_A}/messages/m3`), { corps: "x", expediteur: "admin" }),
+    );
+  });
+
+  test("admin avec read=[historique] LIT historique mais NE PEUT PAS l'ecrire (write systeme)", async () => {
+    const db = asUser({
+      schoolId: SCHOOL_A,
+      role: "admin",
+      adminReadModules: ["historique"],
+      adminWriteModules: ["historique"], // hors whitelist => refuse cote rule
+    });
+    await assertSucceeds(getDoc(doc(db, `ecoles/${SCHOOL_A}/historique/h1`)));
+    await assertFails(
+      setDoc(doc(db, `ecoles/${SCHOOL_A}/historique/h2`), { action: "purge" }),
+    );
+  });
+
+  test("admin avec write=[parametres] (claim forge) NE PEUT PAS muter ecoles/{id}", async () => {
+    const db = asUser({
+      schoolId: SCHOOL_A,
+      role: "admin",
+      adminReadModules: ["parametres"],
+      adminWriteModules: ["parametres"], // parametres hors whitelist + rule update direction-only
+    });
+    await assertFails(
+      updateDoc(doc(db, `ecoles/${SCHOOL_A}`), { nom: "Hacked" }),
+    );
+  });
+
+  test("admin avec multi-modules : lit primaire+compta+messages, ecrit primaire+messages", async () => {
+    const db = asUser({
+      schoolId: SCHOOL_A,
+      role: "admin",
+      adminReadModules: ["primaire", "compta", "messages"],
+      adminWriteModules: ["primaire", "messages"],
+    });
+    await assertSucceeds(getDoc(doc(db, `ecoles/${SCHOOL_A}/notesPrimaire/np1`)));
+    await assertSucceeds(getDoc(doc(db, `ecoles/${SCHOOL_A}/recettes/r1`)));
+    await assertSucceeds(getDoc(doc(db, `ecoles/${SCHOOL_A}/messages/m1`)));
+    await assertFails(getDoc(doc(db, `ecoles/${SCHOOL_A}/notesCollege/nc1`)));
+    await assertSucceeds(
+      setDoc(doc(db, `ecoles/${SCHOOL_A}/notesPrimaire/np2`), { val: 9, annee: "2025-2026" }),
+    );
+    await assertSucceeds(
+      setDoc(doc(db, `ecoles/${SCHOOL_A}/messages/m2`), { corps: "ok" }),
+    );
+    await assertFails(
+      setDoc(doc(db, `ecoles/${SCHOOL_A}/recettes/r-bad`), { montant: 1 }),
+    );
+  });
+
+  test("admin avec claims null/manquants = aucun acces (token legacy pre-deploy)", async () => {
+    const db = asUser({
+      schoolId: SCHOOL_A,
+      role: "admin",
+      // adminReadModules/adminWriteModules absents — comportement attendu post-deploy
+      // avant que le DG ne resynchro les comptes
+    });
+    await assertFails(getDoc(doc(db, `ecoles/${SCHOOL_A}/recettes/r1`)));
+    await assertFails(getDoc(doc(db, `ecoles/${SCHOOL_A}/notesPrimaire/np1`)));
+    await assertFails(
+      setDoc(doc(db, `ecoles/${SCHOOL_A}/messages/m-x`), { corps: "x" }),
+    );
+  });
+
+  test("direction reste pleinement habilitee (regression non admin)", async () => {
+    const db = asUser({ schoolId: SCHOOL_A, role: "direction" });
+    await assertSucceeds(getDoc(doc(db, `ecoles/${SCHOOL_A}/recettes/r1`)));
+    await assertSucceeds(getDoc(doc(db, `ecoles/${SCHOOL_A}/notesPrimaire/np1`)));
+    await assertSucceeds(
+      setDoc(doc(db, `ecoles/${SCHOOL_A}/recettes/r-dir`), { montant: 200 }),
+    );
+    await assertSucceeds(
+      setDoc(doc(db, `ecoles/${SCHOOL_A}/notesCollege/nc-dir`), { val: 18 }),
+    );
+  });
+
+  test("comptable reste pleinement habilite sur compta (regression non admin)", async () => {
+    const db = asUser({ schoolId: SCHOOL_A, role: "comptable" });
+    await assertSucceeds(getDoc(doc(db, `ecoles/${SCHOOL_A}/recettes/r1`)));
+    await assertSucceeds(
+      setDoc(doc(db, `ecoles/${SCHOOL_A}/recettes/r-cpt`), { montant: 300 }),
+    );
   });
 });

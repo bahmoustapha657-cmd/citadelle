@@ -1,8 +1,11 @@
 import {
+  ADMIN_WRITABLE_MODULES,
+  MODULE_COLLECTIONS,
   ROLE_ORDER,
   ROLE_MODULE_CAPABILITIES,
   ROLE_SETTINGS_DEFAULT,
   getActiveRoleAccounts,
+  getAdminWriteModules,
   getPrimaryModuleForRole as getPrimaryModuleForRoleConfig,
   getRoleConfig as getRoleConfigFromSettings,
   getRoleLabel as getRoleLabelFromSettings,
@@ -10,6 +13,8 @@ import {
   getRoleSettingsMap,
   normalizeRoleLogin,
 } from "../shared/role-config.js";
+
+export { ADMIN_WRITABLE_MODULES, MODULE_COLLECTIONS, getAdminWriteModules };
 
 // Couleurs marque/UI. `blue`/`blueDark` restent la couleur marque
 // littérale (utilisée à la fois comme texte et comme background dans

@@ -6,6 +6,7 @@ import { apiFetch, getAuthHeaders } from "../apiClient";
 import { db } from "../firebaseDb";
 import {
   ACCES,
+  ADMIN_WRITABLE_MODULES,
   C,
   ROLE_IDS_PERSONNALISABLES,
   TOUTES_ANNEES,
@@ -85,14 +86,45 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId, userRole}) {
   const toggleModuleRole = (role, moduleId) => {
     setRoleConfigForm((prev) => {
       const currentModules = prev[role]?.modules || [];
-      const nextModules = currentModules.includes(moduleId)
-        ? currentModules.filter((currentModuleId) => currentModuleId !== moduleId)
-        : [...currentModules, moduleId];
+      const willInclude = !currentModules.includes(moduleId);
+      const nextModules = willInclude
+        ? [...currentModules, moduleId]
+        : currentModules.filter((currentModuleId) => currentModuleId !== moduleId);
+      // Si on retire la lecture, on retire aussi l'ecriture (pas d'ecriture
+      // sans lecture). Pour le role admin uniquement, writeModules existe.
+      const currentWrite = prev[role]?.writeModules || [];
+      const nextWrite = willInclude
+        ? currentWrite
+        : currentWrite.filter((currentModuleId) => currentModuleId !== moduleId);
       return {
         ...prev,
         [role]: {
           ...prev[role],
           modules: nextModules,
+          writeModules: nextWrite,
+        },
+      };
+    });
+  };
+
+  // Toggle ecriture pour un module de l'admin. N'a de sens que pour role==="admin"
+  // ET module dans ADMIN_WRITABLE_MODULES (compta/admin_panel/parametres/fondation/
+  // historique restent en lecture seule par construction).
+  const toggleWriteModuleRole = (role, moduleId) => {
+    if (role !== "admin" || !ADMIN_WRITABLE_MODULES.includes(moduleId)) return;
+    setRoleConfigForm((prev) => {
+      const currentWrite = prev[role]?.writeModules || [];
+      const currentModules = prev[role]?.modules || [];
+      // Garde-fou : impossible d'autoriser l'ecriture sur un module pas visible.
+      if (!currentModules.includes(moduleId)) return prev;
+      const nextWrite = currentWrite.includes(moduleId)
+        ? currentWrite.filter((currentModuleId) => currentModuleId !== moduleId)
+        : [...currentWrite, moduleId];
+      return {
+        ...prev,
+        [role]: {
+          ...prev[role],
+          writeModules: nextWrite,
         },
       };
     });
@@ -445,7 +477,7 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId, userRole}) {
       </Modale>}
 
       <div style={{background:"#e0ebf8",borderRadius:10,padding:"12px 16px",marginBottom:20,fontSize:13,color:C.blueDark}}>
-        <strong>🔐 Rôle Administrateur :</strong> Vous pouvez modifier les mots de passe de tous les utilisateurs. Vous avez accès en lecture seule à tous les modules.
+        <strong>🔐 Rôle Administrateur :</strong> par défaut en lecture seule. La Direction Générale peut autoriser l'écriture module par module (Primaire, Secondaire, Calendrier, Examens, Messages). Comptabilité, Paramètres, Fondation, Gestion Accès et Historique restent systématiquement en lecture seule (modules système).
         {!peutGererRoles && <div style={{marginTop:6,fontSize:12,color:"#6b7280"}}>La configuration des rôles et l'accès Fondation sont réservés à la Direction Générale.</div>}
       </div>
 
@@ -488,16 +520,39 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId, userRole}) {
                   </div>
                 </div>
                 <div style={{marginTop:12}}>
-                  <p style={{margin:"0 0 8px",fontSize:11,fontWeight:700,color:C.blueDark}}>Modules visibles</p>
+                  <p style={{margin:"0 0 8px",fontSize:11,fontWeight:700,color:C.blueDark}}>
+                    Modules visibles
+                    {role === "admin" && <span style={{marginLeft:8,fontWeight:500,color:"#64748b"}}>(cochez ✏️ pour autoriser l'écriture)</span>}
+                  </p>
                   <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
-                    {modulesOptions.map((moduleOption) => (
-                      <label key={moduleOption.id} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 10px",borderRadius:999,border:"1px solid #dbe4ee",background:"#fff",fontSize:12,color:C.blueDark,cursor:"pointer"}}>
-                        <input type="checkbox" checked={(config.modules||[]).includes(moduleOption.id)} onChange={()=>toggleModuleRole(role,moduleOption.id)} />
-                        <span>{moduleOption.label}</span>
-                      </label>
-                    ))}
+                    {modulesOptions.map((moduleOption) => {
+                      const isVisible = (config.modules||[]).includes(moduleOption.id);
+                      const canWrite = role === "admin" && ADMIN_WRITABLE_MODULES.includes(moduleOption.id);
+                      const writeChecked = canWrite && (config.writeModules||[]).includes(moduleOption.id);
+                      return (
+                        <div key={moduleOption.id} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 10px",borderRadius:999,border:"1px solid #dbe4ee",background:"#fff",fontSize:12,color:C.blueDark}}>
+                          <label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer"}}>
+                            <input type="checkbox" checked={isVisible} onChange={()=>toggleModuleRole(role,moduleOption.id)} />
+                            <span>{moduleOption.label}</span>
+                          </label>
+                          {canWrite && (
+                            <label
+                              title={isVisible ? "Autoriser l'écriture sur ce module" : "Activez d'abord le module pour autoriser l'écriture"}
+                              style={{display:"flex",alignItems:"center",gap:3,paddingLeft:6,borderLeft:"1px solid #e5e7eb",cursor:isVisible?"pointer":"not-allowed",opacity:isVisible?1:0.4}}>
+                              <input type="checkbox" disabled={!isVisible} checked={writeChecked} onChange={()=>toggleWriteModuleRole(role,moduleOption.id)} />
+                              <span style={{fontSize:11,fontWeight:700,color:writeChecked?C.greenDk:"#94a3b8"}}>✏️</span>
+                            </label>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-                  {ACCES[role]?.includes("admin_panel") && (
+                  {role === "admin" && (
+                    <p style={{margin:"8px 0 0",fontSize:11,color:"#64748b",lineHeight:1.5}}>
+                      🔒 <strong>Modules système</strong> (toujours en lecture seule pour l'administrateur, même si cochés) : Comptabilité, Paramètres, Fondation, Gestion Accès, Historique. Garde-fou anti-auto-promotion et traçabilité.
+                    </p>
+                  )}
+                  {role !== "admin" && ACCES[role]?.includes("admin_panel") && (
                     <p style={{margin:"8px 0 0",fontSize:11,color:"#9ca3af"}}>Les accès sensibles indispensables sont conservés automatiquement pour ce rôle.</p>
                   )}
                 </div>

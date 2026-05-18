@@ -1,7 +1,7 @@
 ﻿import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import bcrypt from "bcryptjs";
-import { ROLE_ORDER, getRoleSettingsMap } from "../../../shared/role-config.js";
+import { ROLE_ORDER, getRoleSettingsMap, ADMIN_WRITABLE_MODULES } from "../../../shared/role-config.js";
 import { generateSecurePassword } from "../passwords.js";
 import { findLogicalAccountConflict } from "../account-conflicts.js";
 import {
@@ -175,6 +175,40 @@ async function syncUserProfile({ db, uid, schoolId, login, email, compteDocId, a
   }), { merge: true });
 }
 
+// Custom claims portes par le JWT Firebase. Pour l'admin, on injecte
+// adminReadModules + adminWriteModules pour que les rules Firestore puissent
+// appliquer le perimetre exact decide par le DG sans get() additionnel.
+// Les autres roles n'ont pas besoin de ce detail (leur perimetre est code
+// en dur dans les rules).
+async function buildClaimsForRole({ db, role, schoolId, roleSettings = null }) {
+  const claims = { role, schoolId };
+  if (role !== "admin") return claims;
+
+  let adminConfig = roleSettings?.admin;
+  if (!adminConfig) {
+    const snap = await db.collection("ecoles").doc(schoolId).get();
+    adminConfig = getRoleSettingsMap(snap.exists ? snap.data() : {}).admin;
+  }
+
+  const readModules = Array.isArray(adminConfig?.modules) ? adminConfig.modules : [];
+  const rawWriteModules = Array.isArray(adminConfig?.writeModules) ? adminConfig.writeModules : [];
+  const writeModules = rawWriteModules.filter(
+    (moduleId) => ADMIN_WRITABLE_MODULES.includes(moduleId) && readModules.includes(moduleId),
+  );
+
+  return {
+    ...claims,
+    adminReadModules: readModules,
+    adminWriteModules: writeModules,
+  };
+}
+
+async function setRoleClaims(authAdmin, uid, params) {
+  const claims = await buildClaimsForRole(params);
+  await authAdmin.setCustomUserClaims(uid, claims);
+  return claims;
+}
+
 async function updateAuthIdentity(authAdmin, uid, { email, nom, active }) {
   if (!uid) return;
   await authAdmin.updateUser(uid, {
@@ -266,7 +300,8 @@ async function handler(req, res) {
 
           if (householdMatch.uid) {
             const householdEmail = buildEmail(householdMatch.login, normalizedSchoolId);
-            await authAdmin.setCustomUserClaims(householdMatch.uid, {
+            await setRoleClaims(authAdmin, householdMatch.uid, {
+              db,
               role: "parent",
               schoolId: normalizedSchoolId,
             });
@@ -320,7 +355,8 @@ async function handler(req, res) {
       });
 
       await ref.update({ uid: userRecord.uid, updatedAt: Date.now() });
-      await authAdmin.setCustomUserClaims(userRecord.uid, {
+      await setRoleClaims(authAdmin, userRecord.uid, {
+        db,
         role,
         schoolId: normalizedSchoolId,
       });
@@ -412,9 +448,11 @@ async function handler(req, res) {
               nom: config.nom,
               active,
             });
-            await authAdmin.setCustomUserClaims(existing.data.uid, {
+            await setRoleClaims(authAdmin, existing.data.uid, {
+              db,
               role,
               schoolId: normalizedSchoolId,
+              roleSettings: normalizedRoleSettings,
             });
             await syncUserProfile({
               db,
@@ -464,9 +502,11 @@ async function handler(req, res) {
           updatedAt: createdAt,
         });
 
-        await authAdmin.setCustomUserClaims(userRecord.uid, {
+        await setRoleClaims(authAdmin, userRecord.uid, {
+          db,
           role,
           schoolId: normalizedSchoolId,
+          roleSettings: normalizedRoleSettings,
         });
         await syncUserProfile({
           db,
@@ -506,7 +546,12 @@ async function handler(req, res) {
         schoolId: normalizedSchoolId,
         auteur: session.profile,
         action: "sync_role_settings",
-        cible: { rolesAffectes: updatedRoles, comptesGeneres: generatedAccounts.length },
+        cible: {
+          rolesAffectes: updatedRoles,
+          comptesGeneres: generatedAccounts.length,
+          adminWriteModules: normalizedRoleSettings.admin?.writeModules || [],
+          adminReadModules: normalizedRoleSettings.admin?.modules || [],
+        },
       });
 
       return res.status(200).json({
@@ -569,7 +614,8 @@ async function handler(req, res) {
         updatedAt: Date.now(),
       });
 
-      await authAdmin.setCustomUserClaims(userRecord.uid, {
+      await setRoleClaims(authAdmin, userRecord.uid, {
+        db,
         role: account.data.role,
         schoolId: normalizedSchoolId,
       });
