@@ -164,6 +164,7 @@
     "consolidatedView": "Vue consolidée",
     "yearLabel": "Année",
     "monthlyReport": "Rapport mensuel",
+    "annualReport": "Rapport annuel",
     "studentDistribution": "Répartition des élèves par section",
     "allSections": "Toutes sections"
   },
@@ -396,6 +397,10 @@
       "totalStudents": "Total élèves",
       "absencesTotal": "Total absences",
       "presenceRate": "Taux de présence"
+    },
+    "annualReport": {
+      "title": "Rapport annuel",
+      "noData": "Pas assez de données pour générer un rapport annuel."
     },
     "ordreMutation": {
       "title": "Ordre de mutation",

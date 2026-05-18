@@ -6,7 +6,7 @@ import { db } from "../firebaseDb";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
 import { C, PLANS, fmt, getAnnee } from "../constants";
-import { genererRapportMensuel } from "../reports";
+import { genererRapportAnnuel, genererRapportMensuel } from "../reports";
 import { Badge, Btn, Card, Chargement, Stat, TR, Vide } from "./ui";
 
 function TableauDeBord({annee}) {
@@ -142,6 +142,14 @@ function TableauDeBord({annee}) {
             schoolInfo,
             moisAnnee
           )}>📄 {t("dashboard.monthlyReport")}</Btn>
+          <Btn v="success" sm onClick={()=>genererRapportAnnuel({
+            annee: annee||getAnnee(),
+            moisAnnee,
+            eleves: [...elevesC,...elevesL,...elevesP],
+            absences: [...absences,...absL,...absP],
+            recettes, depenses, salaires,
+            ensC, ensL, ensP,
+          }, schoolInfo)}>📊 {t("dashboard.annualReport")}</Btn>
         </div>
       </div>
 

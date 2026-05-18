@@ -164,6 +164,7 @@
     "consolidatedView": "عرض موحد",
     "yearLabel": "السنة",
     "monthlyReport": "التقرير الشهري",
+    "annualReport": "التقرير السنوي",
     "studentDistribution": "الطلاب حسب القسم",
     "allSections": "كل الأقسام"
   },
@@ -388,6 +389,10 @@
       "registration": "التسجيل",
       "otherFees": "رسوم أخرى",
       "thanks": "شكرًا على ثقتكم"
+    },
+    "annualReport": {
+      "title": "التقرير السنوي",
+      "noData": "بيانات غير كافية لإنشاء تقرير سنوي."
     },
     "monthlyReport": {
       "title": "التقرير الشهري",

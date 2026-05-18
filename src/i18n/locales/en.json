@@ -164,6 +164,7 @@
     "consolidatedView": "Consolidated view",
     "yearLabel": "Year",
     "monthlyReport": "Monthly report",
+    "annualReport": "Annual report",
     "studentDistribution": "Students by section",
     "allSections": "All sections"
   },
@@ -388,6 +389,10 @@
       "registration": "Registration",
       "otherFees": "Other fees",
       "thanks": "Thank you for your trust"
+    },
+    "annualReport": {
+      "title": "Annual report",
+      "noData": "Not enough data to generate an annual report."
     },
     "monthlyReport": {
       "title": "Monthly report",
