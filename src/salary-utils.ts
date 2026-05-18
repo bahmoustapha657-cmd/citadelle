@@ -481,6 +481,48 @@ export function findSalaryDuplicate(
   }) || null;
 }
 
+// Normalise un nom pour les comparaisons côté paie (accents, casse,
+// whitespace, suffixe legacy "(prof)" / "(titulaire)"). Exposé pour
+// que les callers UI (filtre bons, regroupement, exports) partagent
+// la même règle que findSalaryDuplicate.
+export function normalizeSalaryName(name: string = ""): string {
+  return normalizeText(stripLegacyTeacherSuffix(String(name || "")));
+}
+
+export type BonRecord = {
+  _id?: string;
+  nom?: string;
+  mois?: string;
+  section?: string;
+  montant?: number | string;
+  motif?: string;
+};
+
+// Récupère les bons qui s'appliquent à une fiche de paie donnée :
+// matching strict sur nom normalisé + mois + section. Sans le filtre
+// section, un bon enregistré pour la section Secondaire serait appliqué
+// aussi à la fiche Personnel du même agent (cas légitime prof+admin) et
+// le montant net se retrouvait doublé.
+export function findBonsForSalary(salary: SalaryRecord = {}, bons: BonRecord[] = []): BonRecord[] {
+  const targetName = normalizeSalaryName(salary.nom || "");
+  const targetSection = String(salary.section || "").trim();
+  const targetMois = String(salary.mois || "").trim();
+  if (!targetName || !targetSection || !targetMois) return [];
+  return bons.filter((b) => {
+    if (normalizeSalaryName(b.nom || "") !== targetName) return false;
+    if (String(b.section || "").trim() !== targetSection) return false;
+    if (String(b.mois || "").trim() !== targetMois) return false;
+    return true;
+  });
+}
+
+export function sumBonsForSalary(salary: SalaryRecord = {}, bons: BonRecord[] = []): number {
+  return findBonsForSalary(salary, bons).reduce(
+    (sum, b) => sum + Number(b.montant || 0),
+    0,
+  );
+}
+
 // Détecte les doublons préexistants dans une liste de fiches de paie
 // (même nom normalisé + mois + section). Retourne une Map dont les clés
 // sont les triplets nom-mois-section dédupliqués et les valeurs sont les

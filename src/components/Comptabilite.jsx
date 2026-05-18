@@ -60,6 +60,7 @@ import {
   getSalaryNet,
   mergeSalaryWithManualFields,
   pickBestSalaryFromGroup,
+  sumBonsForSalary,
   summarizeSalaryTotals,
 } from "../salary-utils";
 
@@ -271,9 +272,6 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   const salairesPrim = salairesMois.filter(s=>s.section==="Primaire");
   const salairesPers = salairesMois.filter(s=>s.section==="Personnel");
   const bonsMois = bons.filter(b=>b.mois===moisSel);
-  const getBonTotal = (nomSalaire) => bonsMois
-    .filter(b=>(b.nom||"").toLowerCase().trim()===(nomSalaire||"").toLowerCase().trim())
-    .reduce((sum,b)=>sum+Number(b.montant||0),0);
 
   const appliquerBons = async () => {
     if(readOnly) return;
@@ -281,8 +279,11 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
     if(!bonsMois.length){toast("Aucun bon enregistré pour ce mois.","warning");return;}
     if(!confirm(`Appliquer les bons du mois de ${moisSel} aux salaires ?\n\nLe champ "Bon" de chaque enseignant sera mis à jour.`)) return;
     let nb=0;
+    // sumBonsForSalary matche par (nom normalisé, mois, section) — sans le
+    // filtre section, un bon Secondaire serait dupliqué sur la fiche
+    // Personnel du même agent (prof + admin) et le net se retrouvait doublé.
     for(const sal of salairesMois){
-      const total=getBonTotal(sal.nom);
+      const total=sumBonsForSalary(sal,bonsMois);
       if(total!==Number(sal.bon||0)){await modS({...sal,bon:total});nb++;}
     }
     toast(`${nb} salaire(s) mis à jour.`,"success");

@@ -7,9 +7,11 @@ import {
   buildPrimarySalaryRecord,
   buildSecondarySalaryRecord,
   buildTeacherFullName,
+  findBonsForSalary,
   findExistingSalaryDuplicates,
   findSalaryDuplicate,
   pickBestSalaryFromGroup,
+  sumBonsForSalary,
   groupSalariesByPersonMonth,
   getFifthWeekDays,
   getForfaitNet,
@@ -426,4 +428,43 @@ test("pickBestSalaryFromGroup tranche par revision quand bon=0", () => {
   const a = { _id: "a", nom: "X", bon: 0, revision: 0,    updatedAt: 100 };
   const b = { _id: "b", nom: "X", bon: 0, revision: 2000, updatedAt: 50 };
   assert.equal(pickBestSalaryFromGroup([a, b])?._id, "b");
+});
+
+test("sumBonsForSalary filtre par (nom normalise, mois, section) — pas de bon cross-section", () => {
+  const fiche = { nom: "Mamadou DIALLO", mois: "Octobre", section: "Secondaire" };
+  const bons = [
+    { _id: "1", nom: "Mamadou Diallo",      mois: "Octobre",  section: "Secondaire", montant: 50000 },
+    { _id: "2", nom: "mamadou DIALLO",      mois: "Octobre",  section: "Secondaire", montant: 20000 },
+    // Bon enregistré pour le même agent en Personnel — ne doit PAS s'appliquer
+    { _id: "3", nom: "Mamadou Diallo",      mois: "Octobre",  section: "Personnel",  montant: 99999 },
+    // Bon enregistré pour un autre mois — ignoré
+    { _id: "4", nom: "Mamadou Diallo",      mois: "Novembre", section: "Secondaire", montant: 77777 },
+    // Bon enregistré pour un autre prof — ignoré
+    { _id: "5", nom: "Aissatou Sow",        mois: "Octobre",  section: "Secondaire", montant: 11111 },
+  ];
+  assert.equal(sumBonsForSalary(fiche, bons), 70000);
+});
+
+test("sumBonsForSalary neutralise les suffixes legacy '(prof)'", () => {
+  const fiche = { nom: "Mamadou Diallo (prof)", mois: "Octobre", section: "Primaire" };
+  const bons = [
+    { nom: "Mamadou Diallo", mois: "Octobre", section: "Primaire", montant: 30000 },
+  ];
+  assert.equal(sumBonsForSalary(fiche, bons), 30000);
+});
+
+test("sumBonsForSalary retourne 0 si la fiche est incomplete (nom/mois/section absent)", () => {
+  assert.equal(sumBonsForSalary({}, [{ nom: "X", mois: "Octobre", section: "Primaire", montant: 1000 }]), 0);
+  assert.equal(sumBonsForSalary({ nom: "X" }, []), 0);
+});
+
+test("findBonsForSalary retourne les bons exacts d'une fiche pour traçabilité", () => {
+  const fiche = { nom: "Aissatou Sow", mois: "Octobre", section: "Primaire" };
+  const bons = [
+    { _id: "a", nom: "Aissatou Sow", mois: "Octobre", section: "Primaire", montant: 10000 },
+    { _id: "b", nom: "Aissatou Sow", mois: "Octobre", section: "Personnel", montant: 99999 },
+  ];
+  const result = findBonsForSalary(fiche, bons);
+  assert.equal(result.length, 1);
+  assert.equal(result[0]._id, "a");
 });
