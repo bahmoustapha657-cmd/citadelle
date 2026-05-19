@@ -3,7 +3,7 @@ import { CLASSES_LYCEE, CLASSES_PRIMAIRE, MOIS_ANNEE, TOUS_MOIS_COURTS, TOUS_MOI
 import { getGeneralAverage, getSubjectAverage } from "./note-utils.js";
 import { getPeriodesForSection } from "./period-utils.js";
 import { getNationalDeviseHTML } from "./national-symbols.js";
-import { getOfficialLegalFooterHTML, legalProfileMock, mapNiveauToCycle } from "./legal-utils.js";
+import { getOfficialLegalFooterHTML, legalProfileMock, mapNiveauToCycle, resolveLegalFields } from "./legal-utils.js";
 import i18n from "./i18n";
 
 const loadXLSX = () => import("xlsx");
@@ -83,22 +83,23 @@ const orDefault = (v, def) => (typeof v === "string" && v.trim() ? v : def);
 
 export const enteteDoc = (si = {}, logoUrl) => {
   const pays = orDefault(si.pays, "République de Guinée");
-  const ministere = orDefault(si.ministere, MINISTERE_DEFAUT);
+  const lf = resolveLegalFields(si);
+  const ministere = orDefault(lf.ministere, MINISTERE_DEFAUT);
   return `
 <div style="display:flex;align-items:flex-start;gap:14px;border-bottom:3px solid #0A1628;padding-bottom:12px;margin-bottom:16px">
   <div style="flex:1;font-size:10px;color:#444;line-height:1.8;min-width:0">
     <strong style="font-size:11px;color:#0A1628">${pays}</strong><br/>
     ${getNationalDeviseHTML(si.pays)}<br/>
     <strong>${ministere}</strong><br/>
-    ${si.ire?`${si.ire}<br/>`:""}
-    ${si.dpe||""}
+    ${lf.ire?`${lf.ire}<br/>`:""}
+    ${lf.dpe||""}
   </div>
   <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0">
     ${logoUrl?`<img src="${logoUrl}" alt="Logo" style="width:78px;height:78px;object-fit:contain"/>`:`<div style="width:78px;height:78px"></div>`}
   </div>
   <div style="flex:1;text-align:right;min-width:0">
     <strong style="display:block;font-size:15px;color:#0A1628;line-height:1.3">${si.nom||""}</strong>
-    ${si.agrement?`<span style="font-size:10px;color:#555">Agrément : ${si.agrement}</span>`:""}
+    ${lf.agrement?`<span style="font-size:10px;color:#555">Agrément : ${lf.agrement}</span>`:""}
   </div>
 </div>`;
 };
@@ -122,6 +123,7 @@ export const imprimerRecu = (eleve, montantUnit, schoolInfo={}, moisAnnee=MOIS_A
   const w = window.open("","_blank");
 
   // En-tête compacte pour les reçus (logo + infos en ligne) — sans doublon type/nom
+  const lf = resolveLegalFields(schoolInfo);
   const enteteCompact = () => `
   <div style="display:flex;align-items:center;gap:8px;border-bottom:2px solid #0A1628;padding-bottom:6px;margin-bottom:6px">
     ${schoolInfo.logo?`<img src="${schoolInfo.logo}" alt="" style="width:38px;height:38px;object-fit:contain;flex-shrink:0"/>`:''}
@@ -129,11 +131,11 @@ export const imprimerRecu = (eleve, montantUnit, schoolInfo={}, moisAnnee=MOIS_A
       <div style="font-size:8px;color:#444;line-height:1.5">
         <strong style="font-size:9px;color:#0A1628">${schoolInfo.pays||"République de Guinée"}</strong><br/>
         ${getNationalDeviseHTML(schoolInfo.pays)}<br/>
-        ${schoolInfo.ministere||MINISTERE_DEFAUT}${schoolInfo.ire?` / ${schoolInfo.ire}`:""}${schoolInfo.dpe?` / ${schoolInfo.dpe}`:""}
+        ${lf.ministere||MINISTERE_DEFAUT}${lf.ire?` / ${lf.ire}`:""}${lf.dpe?` / ${lf.dpe}`:""}
       </div>
       <div style="text-align:right">
         <strong style="font-size:13px;color:#0A1628;display:block">${schoolInfo.nom||""}</strong>
-        ${schoolInfo.agrement?`<span style="font-size:7px;color:#555">Agrém. : ${schoolInfo.agrement}</span>`:""}
+        ${lf.agrement?`<span style="font-size:7px;color:#555">Agrém. : ${lf.agrement}</span>`:""}
       </div>
     </div>
   </div>`;
@@ -1636,6 +1638,7 @@ export const imprimerFicheCompositions = (classe, periode, notes, matieres, elev
 //  IMPRESSION — ORDRE DE MUTATION
 // ══════════════════════════════════════════════════════════════
 export const imprimerOrdreMutation = (eleve, schoolInfo={}, ecoleDestination="", annee="") => {
+  const lf = resolveLegalFields(schoolInfo);
   const w = window.open("","_blank");
   w.document.write(`<!DOCTYPE html><html lang="${printLang()}" dir="${printDir()}"><head><title>${tr("reports.ordreMutation.title")}</title>
   <meta charset="utf-8"/>
@@ -1658,13 +1661,13 @@ export const imprimerOrdreMutation = (eleve, schoolInfo={}, ecoleDestination="",
   <div class="entete">
     <div class="entete-col">
       <strong>${schoolInfo.pays||"République de Guinée"}</strong><br/>
-      ${schoolInfo.ministere||MINISTERE_DEFAUT}<br/>
-      ${schoolInfo.ire||""} ${schoolInfo.dpe?`/ ${schoolInfo.dpe}`:""}
+      ${lf.ministere||MINISTERE_DEFAUT}<br/>
+      ${lf.ire||""} ${lf.dpe?`/ ${lf.dpe}`:""}
     </div>
     ${schoolInfo.logo?`<img src="${schoolInfo.logo}" style="height:55px;object-fit:contain"/>`:""}
     <div class="entete-col" style="text-align:end">
       <strong>${schoolInfo.nom||""}</strong><br/>
-      ${schoolInfo.agrement?`${tr("reports.livret.agrement")} : ${schoolInfo.agrement}`:""}
+      ${lf.agrement?`${tr("reports.livret.agrement")} : ${lf.agrement}`:""}
     </div>
   </div>
   <h1>${tr("reports.ordreMutation.title")}</h1>
@@ -1698,6 +1701,7 @@ export const imprimerOrdreMutation = (eleve, schoolInfo={}, ecoleDestination="",
 //  IMPRESSION — CERTIFICAT DE RADIATION
 // ══════════════════════════════════════════════════════════════
 export const imprimerCertificatRadiation = (eleve, schoolInfo={}, annee="", soldeRestant=0) => {
+  const lf = resolveLegalFields(schoolInfo);
   const w = window.open("","_blank");
   w.document.write(`<!DOCTYPE html><html lang="${printLang()}" dir="${printDir()}"><head><title>${tr("reports.radiation.title")}</title>
   <meta charset="utf-8"/>
@@ -1718,13 +1722,13 @@ export const imprimerCertificatRadiation = (eleve, schoolInfo={}, annee="", sold
   <div class="entete">
     <div class="entete-col">
       <strong>${schoolInfo.pays||"République de Guinée"}</strong><br/>
-      ${schoolInfo.ministere||MINISTERE_DEFAUT}<br/>
-      ${schoolInfo.ire||""} ${schoolInfo.dpe?`/ ${schoolInfo.dpe}`:""}
+      ${lf.ministere||MINISTERE_DEFAUT}<br/>
+      ${lf.ire||""} ${lf.dpe?`/ ${lf.dpe}`:""}
     </div>
     ${schoolInfo.logo?`<img src="${schoolInfo.logo}" style="height:55px;object-fit:contain"/>`:""}
     <div class="entete-col" style="text-align:end">
       <strong>${schoolInfo.nom||""}</strong><br/>
-      ${schoolInfo.agrement?`${tr("reports.livret.agrement")} : ${schoolInfo.agrement}`:""}
+      ${lf.agrement?`${tr("reports.livret.agrement")} : ${lf.agrement}`:""}
     </div>
   </div>
   <h1>${tr("reports.radiation.title")}</h1>
@@ -1756,6 +1760,7 @@ export const imprimerCertificatRadiation = (eleve, schoolInfo={}, annee="", sold
 //  IMPRESSION — LIVRET SCOLAIRE OFFICIEL
 // ══════════════════════════════════════════════════════════════
 export const imprimerLivret = (livret, schoolInfo={}) => {
+  const lf = resolveLegalFields(schoolInfo);
   const c1 = schoolInfo.couleur1||"#0A1628";
   const annees = livret.annees||[];
   // Le livret hérite de la section de l'élève (livret.section : "primaire" /
@@ -1854,10 +1859,10 @@ export const imprimerLivret = (livret, schoolInfo={}) => {
   ${watermarkHtml(schoolInfo)}
   <!-- COUVERTURE -->
   <div class="couverture">
-    <div class="couv-school">${schoolInfo.pays||"République de Guinée"} · ${schoolInfo.ministere||MINISTERE_DEFAUT}</div>
+    <div class="couv-school">${schoolInfo.pays||"République de Guinée"} · ${lf.ministere||MINISTERE_DEFAUT}</div>
     ${schoolInfo.logo?`<img src="${schoolInfo.logo}" style="height:50px;margin-bottom:8px"/>`:""}
     <div style="font-size:13px;font-weight:700;color:#111">${schoolInfo.nom||""}</div>
-    <div style="font-size:10px;color:#6b7280;margin-bottom:12px">${schoolInfo.agrement?`${tr("reports.livret.agrement")} ${schoolInfo.agrement}`:""}</div>
+    <div style="font-size:10px;color:#6b7280;margin-bottom:12px">${lf.agrement?`${tr("reports.livret.agrement")} ${lf.agrement}`:""}</div>
     <div class="couv-titre">${tr("reports.livret.schoolBook")}</div>
     <div class="couv-num">${tr("reports.livret.number")} ${livret.numeroLivret||"—"}</div>
     ${livret.photo?`<img src="${livret.photo}" class="couv-photo"/>`:`<div class="couv-photo" style="display:flex;align-items:center;justify-content:center;font-size:36px;background:#f0f4f8">👤</div>`}

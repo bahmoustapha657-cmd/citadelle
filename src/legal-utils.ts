@@ -40,6 +40,12 @@ export interface LegalProfile {
     commune: string;
     region: string;
     email: string;
+    // Tutelle administrative (ex-champs legacy `schoolInfo.ministere`,
+    // `schoolInfo.ire`, `schoolInfo.dpe` — migrés ici). Optionnels car
+    // toutes les écoles ne les renseignent pas.
+    ministereTutelle?: string; // libellé complet du ministère
+    ire?: string;              // Inspection Régionale (abrégé)
+    dpe?: string;              // Direction Préfectorale (abrégé)
     coordonnees?: { latitude: number; longitude: number };
   };
 }
@@ -75,6 +81,9 @@ export const legalProfileMock: LegalProfile = {
     commune: "Commune urbaine de Kindia",
     region: "Région de Kindia",
     email: "lacitadelle16@gmail.com",
+    ministereTutelle: "Ministère de l'Enseignement Pré-Universitaire et de l'Éducation Civique",
+    ire: "IRE de Kindia",
+    dpe: "DPE de Kindia",
     // coordonnees laissées vides — note manuscrite illisible
   },
 };
@@ -144,6 +153,30 @@ export function mapNiveauToCycle(niveau: string | undefined | null): CycleLegal 
   if (n === "maternelle") return "maternelle";
   if (n === "primaire") return "primaire";
   return "secondaire"; // college, lycee, secondaire → secondaire
+}
+
+// Résout les 4 champs (agrement, ministere, ire, dpe) en piochant
+// d'abord dans le profil légal structuré (schoolInfo.legal), avec
+// fallback sur les champs legacy de schoolInfo. Utilisé par reports.js
+// pour les en-têtes de bulletins / attestations / livrets.
+//
+// Pourquoi un helper plutôt que d'inliner : reports.js a 12+ usages
+// répartis dans 4 fonctions ; centraliser évite d'oublier un endroit
+// et garde la sémantique "legal d'abord" en un seul point.
+export function resolveLegalFields(schoolInfo: {
+  legal?: LegalProfile;
+  ministere?: string;
+  agrement?: string;
+  ire?: string;
+  dpe?: string;
+}): { ministere: string; agrement: string; ire: string; dpe: string } {
+  const legal = schoolInfo.legal;
+  return {
+    ministere: legal?.etablissement?.ministereTutelle || schoolInfo.ministere || "",
+    agrement: legal?.arreteOuverture?.numero || schoolInfo.agrement || "",
+    ire: legal?.etablissement?.ire || schoolInfo.ire || "",
+    dpe: legal?.etablissement?.dpe || schoolInfo.dpe || "",
+  };
 }
 
 // ── HTML helper pour les documents imprimés (bulletins, attestations) ──

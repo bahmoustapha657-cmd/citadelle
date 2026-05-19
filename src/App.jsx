@@ -152,6 +152,9 @@ export default function App() {
   const { t } = useTranslation();
   const [utilisateur,setUtilisateur]=useState(null);
   const [page,setPage]=useState(null);
+  // Onglet initial à afficher quand on entre dans ParametresEcole — permet
+  // au TableauDeBord (alerte conformité) de pointer directement sur "officiel".
+  const [paramInitialTab, setParamInitialTab] = useState(null);
   const [rechercheOuverte,setRechercheOuverte]=useState(false);
   const [notifOuvert,setNotifOuvert]=useState(false);
   const [notifListe,setNotifListe]=useState([]);
@@ -906,9 +909,9 @@ export default function App() {
           <ErrorBoundary key={page}>
             <Suspense fallback={<PageFallback/>}>
               {page==="superadmin_panel" && <SuperAdminPanel/>}
-              {page==="accueil"         && <TableauDeBord annee={annee} userRole={utilisateur.role}/>}
+              {page==="accueil"         && <TableauDeBord annee={annee} userRole={utilisateur.role} onOpenLegalSettings={()=>{setParamInitialTab("officiel");setPage("parametres");}}/>}
               {page==="historique"      && <HistoriqueActions/>}
-              {page==="parametres"      && <ParametresEcole utilisateurRole={utilisateur.role} onSchoolClosed={deconnecter}/>}
+              {page==="parametres"      && <ParametresEcole utilisateurRole={utilisateur.role} onSchoolClosed={deconnecter} initialTab={paramInitialTab} onTabConsumed={()=>setParamInitialTab(null)}/>}
               {page==="admin_panel" && <AdminPanel annee={annee} setAnnee={setAnnee} verrous={verrous} schoolId={schoolId} userRole={utilisateur.role}/>}
               {page==="fondation"   && <Fondation readOnly={readOnly} annee={annee} userRole={utilisateur.role}/>}
               {page==="compta"      && <Comptabilite readOnly={readOnly} annee={annee} userRole={utilisateur.role} verrouOuvert={!!verrous.comptable}/>}

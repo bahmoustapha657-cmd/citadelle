@@ -65,6 +65,9 @@ const profile = {
     commune: "Commune urbaine de Kindia",
     region: "Région de Kindia",
     email: "lacitadelle16@gmail.com",
+    ministereTutelle: "Ministère de l'Enseignement Pré-Universitaire et de l'Éducation Civique",
+    ire: "IRE de Kindia",
+    dpe: "DPE de Kindia",
     // coordonnees: { latitude: ..., longitude: ... }  // note manuscrite illisible
   },
 };

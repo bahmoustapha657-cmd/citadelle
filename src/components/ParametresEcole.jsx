@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { doc, updateDoc } from "firebase/firestore";
 import { C, MONNAIES, TOUS_MOIS_LONGS, calcMoisAnnee, setMonnaie } from "../constants";
 import { PERIODICITES, getPeriodesForSchool } from "../period-utils";
@@ -11,11 +11,22 @@ import { AffichageSettings } from "./AffichageSettings";
 import { MatriculeSettings } from "./MatriculeSettings";
 import { MigrationPeriodesModal } from "./MigrationPeriodesModal";
 import { Btn, Input, Modale, Selec } from "./ui";
+import ComplianceWidget from "./ComplianceWidget";
 
-function ParametresEcole({ utilisateurRole = "", onSchoolClosed = null }) {
+function ParametresEcole({ utilisateurRole = "", onSchoolClosed = null, initialTab = null, onTabConsumed = null }) {
   const {schoolId,schoolInfo,setSchoolInfo,toast} = useContext(SchoolContext);
   const {items:honneurs, ajouter:ajHonneur, modifier:modHonneur, supprimer:supHonneur} = useFirestore("honneurs");
-  const [tabParam, setTabParam] = useState("identite");
+  const [tabParam, setTabParam] = useState(initialTab || "identite");
+  // Si App nous transmet un onglet initial (deep-link depuis dashboard),
+  // on l'applique au mount puis on demande à App de le réinitialiser
+  // pour ne pas re-écraser le choix de l'utilisateur lors d'un retour.
+  useEffect(() => {
+    if (initialTab) {
+      setTabParam(initialTab);
+      if (typeof onTabConsumed === "function") onTabConsumed();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialTab]);
   const [form,setForm] = useState({
     nom: schoolInfo.nom||"",
     type: schoolInfo.type||"Groupe Scolaire Privé",
@@ -87,6 +98,8 @@ function ParametresEcole({ utilisateurRole = "", onSchoolClosed = null }) {
 
   const [couleursDetectees, setCouleursDetectees] = useState(null);
   const canManageLifecycle = schoolId && schoolId !== "superadmin" && ["direction","superadmin"].includes(utilisateurRole);
+  // Profil légal : direction/admin/superadmin (cf. règle Firestore).
+  const peutEditerLegal = ["direction","admin","superadmin"].includes(utilisateurRole);
   // Le comptable n'a accès qu'au sélecteur de monnaie (rules Firestore autorisent
   // uniquement update de `monnaie` pour ce rôle — cf. firestore.rules §/ecoles).
   const isComptableSeul = utilisateurRole === "comptable";
@@ -204,10 +217,11 @@ function ParametresEcole({ utilisateurRole = "", onSchoolClosed = null }) {
         logo: form.logo||null,
         devise: form.devise.trim(),
         monnaie: (form.monnaie||"GNF").trim().toUpperCase(),
-        ministere: form.ministere.trim(),
-        ire: form.ire.trim(),
-        dpe: form.dpe.trim(),
-        agrement: form.agrement.trim(),
+        // ministere / ire / dpe / agrement : MIGRÉS vers /ecoles/{schoolId}/config/legal
+        // (édités via le widget Conformité). Plus écrits par ce formulaire.
+        // Les valeurs Firestore existantes restent en place (updateDoc merge),
+        // utilisées par resolveLegalFields() comme fallback tant que le profil
+        // légal structuré n'est pas complet.
         moisDebut: form.moisDebut,
         periodicite: form.periodicite || "trimestre",
         periodicitePrimaire: form.periodicitePrimaire || "trimestre",
@@ -812,28 +826,12 @@ function ParametresEcole({ utilisateurRole = "", onSchoolClosed = null }) {
 
       {/* ══ TAB OFFICIEL & ANNÉE ══ */}
       {tabParam==="officiel"&&<>
-      {/* Informations officielles */}
-      <div style={sec}>
-        <h3 style={{margin:"0 0 16px",fontSize:14,fontWeight:800,color:C.blueDark}}>🏛️ Informations officielles</h3>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
-          <div>
-            <label style={lbl}>Ministère</label>
-            <input style={inp} value={form.ministere} onChange={chg("ministere")} placeholder="Ex. : Ministère de l'Enseignement Pré-Universitaire et de l'Éducation Civique"/>
-          </div>
-          <div>
-            <label style={lbl}>N° Agrément</label>
-            <input style={inp} value={form.agrement} onChange={chg("agrement")} placeholder="Ex. : 2024/001"/>
-          </div>
-          <div>
-            <label style={lbl}>Inspection Régionale (abrégé)</label>
-            <input style={inp} value={form.ire} onChange={chg("ire")} placeholder="Ex. : IRE de Kindia"/>
-          </div>
-          <div>
-            <label style={lbl}>Direction Préfectorale (abrégé)</label>
-            <input style={inp} value={form.dpe} onChange={chg("dpe")} placeholder="Ex. : DPE de Kindia"/>
-          </div>
-        </div>
-      </div>
+      {/* Conformité légale — profil officiel structuré (agrément, codes
+          statistiques, tutelle, identité). Remplace les anciens champs
+          libres ministere/agrement/ire/dpe : ces données sont désormais
+          stockées sur /ecoles/{schoolId}/config/legal et éditées via
+          la modale du widget (réservée direction/admin). */}
+      {peutEditerLegal && <ComplianceWidget canEdit={true}/>}
 
       {/* Année scolaire */}
       <div style={sec}>

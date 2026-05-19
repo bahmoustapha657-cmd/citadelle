@@ -8,9 +8,9 @@ import { useFirestore } from "../hooks/useFirestore";
 import { C, PLANS, fmt, getAnnee } from "../constants";
 import { genererRapportAnnuel, genererRapportMensuel } from "../reports";
 import { Badge, Btn, Card, Chargement, Stat, TR, Vide } from "./ui";
-import ComplianceWidget from "./ComplianceWidget";
+import ComplianceAlert from "./ComplianceAlert";
 
-function TableauDeBord({annee, userRole}) {
+function TableauDeBord({annee, userRole, onOpenLegalSettings}) {
   const { t } = useTranslation();
   const {schoolId, schoolInfo, moisAnnee, moisSalaire, planInfo} = useContext(SchoolContext);
   const {items:elevesC, chargement:cEC} = useFirestore("elevesCollege");
@@ -172,9 +172,10 @@ function TableauDeBord({annee, userRole}) {
         <KPI label={t("dashboard.absencesEntered")} value={totalAbs} icon="📝" sub={t("dashboard.allSections")}/>
       </div>
 
-      {/* Widget Conformité légale — réservé directeur/admin */}
+      {/* Alerte Conformité légale (compact) — réservé directeur/admin.
+          Le widget complet d'édition vit dans Paramètres → onglet Officiel. */}
       {["direction","admin","superadmin"].includes(userRole) && (
-        <ComplianceWidget canEdit={["direction","admin","superadmin"].includes(userRole)}/>
+        <ComplianceAlert onOpenSettings={onOpenLegalSettings}/>
       )}
 
       {/* Graphiques */}

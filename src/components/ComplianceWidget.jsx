@@ -152,6 +152,7 @@ export default function ComplianceWidget({ profile: profileOverride, canEdit = t
       {modalOpen && (
         <LegalEditModal
           profile={profile}
+          schoolInfo={schoolInfo}
           saving={saving}
           error={error}
           onClose={() => { if (!saving) { setError(""); setModalOpen(false); } }}
@@ -178,6 +179,27 @@ export default function ComplianceWidget({ profile: profileOverride, canEdit = t
   );
 }
 
+// Renvoie un draft initial = profile, complété par les champs legacy
+// (schoolInfo.ministere/agrement/ire/dpe) là où le profil structuré est
+// vide. N'écrase JAMAIS une valeur déjà saisie dans /config/legal.
+function mergeLegacyFallback(profile, schoolInfo) {
+  if (!schoolInfo) return profile;
+  const next = structuredClone(profile);
+  if (!next.arreteOuverture?.numero && schoolInfo.agrement) {
+    next.arreteOuverture = { ...next.arreteOuverture, numero: schoolInfo.agrement };
+  }
+  if (!next.etablissement?.ministereTutelle && schoolInfo.ministere) {
+    next.etablissement = { ...next.etablissement, ministereTutelle: schoolInfo.ministere };
+  }
+  if (!next.etablissement?.ire && schoolInfo.ire) {
+    next.etablissement = { ...next.etablissement, ire: schoolInfo.ire };
+  }
+  if (!next.etablissement?.dpe && schoolInfo.dpe) {
+    next.etablissement = { ...next.etablissement, dpe: schoolInfo.dpe };
+  }
+  return next;
+}
+
 // ── Styles partagés et sous-composants déclarés au module ──
 const L_STYLE = { fontSize: 10, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4, display: "block" };
 const I_STYLE = { width: "100%", border: "1.5px solid #cbd5e1", borderRadius: 8, padding: "8px 11px", fontSize: 13, boxSizing: "border-box", outline: "none" };
@@ -192,8 +214,12 @@ function Section({ title, children }) {
 }
 
 // ── Modale d'édition (réservée directeur/admin) ──────────────────
-function LegalEditModal({ profile, onClose, onSave, saving = false, error = "" }) {
-  const [draft, setDraft] = useState(profile);
+// Pré-remplissage automatique depuis les champs legacy de `schoolInfo`
+// (ministere, agrement, ire, dpe) tant que les champs structurés du
+// profil légal sont vides. Permet la migration en douceur : la 1ère
+// sauvegarde matérialise les valeurs dans /config/legal.
+function LegalEditModal({ profile, schoolInfo, onClose, onSave, saving = false, error = "" }) {
+  const [draft, setDraft] = useState(() => mergeLegacyFallback(profile, schoolInfo));
   const set = (path) => (e) => {
     const v = e.target.value;
     setDraft((p) => {
@@ -253,6 +279,12 @@ function LegalEditModal({ profile, onClose, onSave, saving = false, error = "" }
         <div><label style={L_STYLE}>Commune</label><input style={I_STYLE} value={draft.etablissement.commune} onChange={set("etablissement.commune")} /></div>
         <div><label style={L_STYLE}>Région</label><input style={I_STYLE} value={draft.etablissement.region} onChange={set("etablissement.region")} /></div>
         <div><label style={L_STYLE}>Email</label><input style={I_STYLE} type="email" value={draft.etablissement.email} onChange={set("etablissement.email")} /></div>
+      </Section>
+
+      <Section title="Tutelle administrative">
+        <div style={{ gridColumn: "1 / -1" }}><label style={L_STYLE}>Ministère de tutelle</label><input style={I_STYLE} value={draft.etablissement.ministereTutelle || ""} onChange={set("etablissement.ministereTutelle")} placeholder="Ex. : Ministère de l'Enseignement Pré-Universitaire et de l'Éducation Civique" /></div>
+        <div><label style={L_STYLE}>Inspection Régionale (IRE)</label><input style={I_STYLE} value={draft.etablissement.ire || ""} onChange={set("etablissement.ire")} placeholder="Ex. : IRE de Kindia" /></div>
+        <div><label style={L_STYLE}>Direction Préfectorale (DPE)</label><input style={I_STYLE} value={draft.etablissement.dpe || ""} onChange={set("etablissement.dpe")} placeholder="Ex. : DPE de Kindia" /></div>
       </Section>
 
       {error && (
