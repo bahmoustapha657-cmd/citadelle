@@ -11,9 +11,22 @@
 import { initializeApp, cert } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { createRequire } from "module";
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 
 const require = createRequire(import.meta.url);
-const sa = require("./serviceAccount.json");
+
+// Tolère `serviceAccount.json` ou `serviceAccount.json.json` (téléchargement
+// Firebase Console renommé sous Windows qui ajoute parfois un .json en trop).
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const SA_CANDIDATES = ["./serviceAccount.json", "./serviceAccount.json.json"];
+const saPath = SA_CANDIDATES.find((p) => existsSync(join(__dirname, p)));
+if (!saPath) {
+  console.error(`❌ Aucun fichier de service account trouvé. Cherché : ${SA_CANDIDATES.join(", ")}`);
+  process.exit(1);
+}
+const sa = require(saPath);
 
 initializeApp({ credential: cert(sa) });
 const db = getFirestore();
