@@ -142,6 +142,43 @@ export default function ComplianceWidget({ profile: profileOverride, canEdit = t
           </div>
         </div>
 
+        {/* Tutelle administrative (ex-champs legacy ministere/ire/dpe) */}
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>
+            Tutelle administrative
+          </div>
+          <div style={{ background: "#f8fafc", borderRadius: 8, padding: "10px 12px" }}>
+            <ReadRow label="Ministère de tutelle" value={profile.etablissement.ministereTutelle} />
+            <ReadRow label="Inspection Régionale (IRE)" value={profile.etablissement.ire} />
+            <ReadRow label="Direction Préfectorale (DPE)" value={profile.etablissement.dpe} />
+          </div>
+        </div>
+
+        {/* Identité de l'établissement */}
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>
+            Identité de l'établissement
+          </div>
+          <div style={{ background: "#f8fafc", borderRadius: 8, padding: "10px 12px" }}>
+            <ReadRow label="Dénomination" value={profile.etablissement.denomination} />
+            <ReadRow label="Quartier" value={profile.etablissement.quartier} />
+            <ReadRow label="Commune" value={profile.etablissement.commune} />
+            <ReadRow label="Région" value={profile.etablissement.region} />
+            <ReadRow label="Email" value={profile.etablissement.email} />
+          </div>
+        </div>
+
+        {/* Promoteur */}
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>
+            Promoteur
+          </div>
+          <div style={{ background: "#f8fafc", borderRadius: 8, padding: "10px 12px" }}>
+            <ReadRow label="Nom" value={profile.promoteur.nom} />
+            <ReadRow label="Naissance" value={[profile.promoteur.anneeNaissance, profile.promoteur.lieuNaissance].filter(Boolean).join(" — ")} />
+          </div>
+        </div>
+
         {canEdit && (
           <Btn v="ghost" sm onClick={() => setModalOpen(true)} style={{ width: "100%" }}>
             ✏️ Modifier les informations légales
@@ -203,6 +240,18 @@ function mergeLegacyFallback(profile, schoolInfo) {
 // ── Styles partagés et sous-composants déclarés au module ──
 const L_STYLE = { fontSize: 10, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4, display: "block" };
 const I_STYLE = { width: "100%", border: "1.5px solid #cbd5e1", borderRadius: 8, padding: "8px 11px", fontSize: 13, boxSizing: "border-box", outline: "none" };
+
+// Ligne label/valeur en lecture seule pour l'affichage du widget.
+function ReadRow({ label, value }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, padding: "3px 0", fontSize: 11, lineHeight: 1.5 }}>
+      <span style={{ color: "#64748b", flexShrink: 0 }}>{label}</span>
+      <span style={{ color: "#0A1628", fontWeight: 600, textAlign: "right", wordBreak: "break-word" }}>
+        {value || <span style={{ color: "#cbd5e1", fontWeight: 400 }}>—</span>}
+      </span>
+    </div>
+  );
+}
 
 function Section({ title, children }) {
   return (
