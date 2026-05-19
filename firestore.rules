@@ -206,6 +206,19 @@ service cloud.firestore {
 
       allow delete: if false;
 
+      // Profil légal officiel de l'établissement (arrêté d'agrément,
+      // autorisation de création, codes statistiques, identité).
+      // Lecture : tout rôle de l'école — utilisé en pied de bulletin /
+      // attestation / certificat (donc tous les rôles imprimant un
+      // document doivent pouvoir lire).
+      // Écriture : direction/admin uniquement (pas de gating granulaire :
+      // c'est un document d'identité juridique, pas un module métier).
+      match /config/{docId} {
+        allow read: if appartientEcole(schoolId) || aUnRole(["superadmin"]);
+        allow write: if (appartientEcole(schoolId) && aUnRole(["direction", "admin"]))
+                      || aUnRole(["superadmin"]);
+      }
+
       match /comptes/{docId} {
         // Les comptes ne sont JAMAIS modifiables cote client.
         // Toute mutation passe par l'API serveur (Firebase Admin SDK)

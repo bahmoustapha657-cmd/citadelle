@@ -1,7 +1,7 @@
 // Tests des règles firestore.rules contre l'émulateur Firestore.
 // Démarré via `npm run test:rules` (qui lance l'émulateur puis ce fichier).
 //
-// Couvre 16 invariants :
+// Couvre 17 invariants :
 //   1. Isolation multi-tenant
 //   2. Admin sans claims = aucun accès (par défaut lecture/écriture refusées)
 //   3. Comptes intouchables côté client
@@ -20,6 +20,8 @@
 //  16. Admin granulaire : adminReadModules / adminWriteModules portés par JWT,
 //      whitelist défensive ADMIN_WRITABLE_MODULES (compta/admin_panel/parametres/
 //      fondation/historique restent en lecture seule pour l'admin)
+//  17. Conformité légale (/config/legal) : lecture tout rôle école,
+//      écriture direction/admin uniquement, isolation multi-tenant
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -1262,5 +1264,92 @@ describe("16. Admin granulaire — perimetre par module", () => {
     await assertSucceeds(updateDoc(doc(dgDb, `ecoles/${SCHOOL_A}`), { "verrous.comptable": true }));
     // Comptable : refusé (sauf champ monnaie, qui n'est pas verrous.*)
     await assertFails(updateDoc(doc(cptDb, `ecoles/${SCHOOL_A}`), { "verrous.comptable": false }));
+  });
+});
+
+// ───────────────────────────────────────────────────────────
+// 17. Conformité légale — /ecoles/{schoolId}/config/legal
+//     Lecture : tout rôle de l'école (back-office, parent,
+//     enseignant — utilisé en pied de bulletin imprimé).
+//     Écriture : direction/admin uniquement (+ superadmin).
+//     Isolation multi-tenant : ecole A ne voit pas le config
+//     de l'ecole B.
+// ───────────────────────────────────────────────────────────
+describe("17. Conformité légale (/config/legal)", () => {
+  const LEGAL_PATH_A = `ecoles/${SCHOOL_A}/config/legal`;
+  const LEGAL_PATH_B = `ecoles/${SCHOOL_B}/config/legal`;
+
+  beforeEach(async () => {
+    await seed(async (db) => {
+      await setDoc(doc(db, LEGAL_PATH_A), {
+        arreteOuverture: { numero: "A/2022/1065", dateSignature: "2022-05-17", dureeValiditeAnnees: 5 },
+        codesStatistiques: { primaire: "541 10 13" },
+      });
+      await setDoc(doc(db, LEGAL_PATH_B), {
+        arreteOuverture: { numero: "B/2023/9999", dateSignature: "2023-01-01", dureeValiditeAnnees: 5 },
+      });
+    });
+  });
+
+  test("direction de A LIT son /config/legal", async () => {
+    const db = asUser({ schoolId: SCHOOL_A, role: "direction" });
+    await assertSucceeds(getDoc(doc(db, LEGAL_PATH_A)));
+  });
+
+  test("admin/comptable/primaire/college/parent/enseignant de A LISENT le /config/legal (footer bulletin)", async () => {
+    for (const role of ["admin", "comptable", "primaire", "college", "parent", "enseignant"]) {
+      const db = asUser({ schoolId: SCHOOL_A, role });
+      await assertSucceeds(getDoc(doc(db, LEGAL_PATH_A)));
+    }
+  });
+
+  test("direction de A NE LIT PAS le /config/legal de B (isolation multi-tenant)", async () => {
+    const db = asUser({ schoolId: SCHOOL_A, role: "direction" });
+    await assertFails(getDoc(doc(db, LEGAL_PATH_B)));
+  });
+
+  test("anonyme NE LIT PAS /config/legal", async () => {
+    await assertFails(getDoc(doc(asAnon(), LEGAL_PATH_A)));
+  });
+
+  test("direction de A ÉCRIT son /config/legal", async () => {
+    const db = asUser({ schoolId: SCHOOL_A, role: "direction" });
+    await assertSucceeds(
+      updateDoc(doc(db, LEGAL_PATH_A), {
+        "arreteOuverture.numero": "A/2022/1065-bis",
+      }),
+    );
+  });
+
+  test("admin de A ÉCRIT son /config/legal (pas de gating par module — c'est un doc d'identité juridique)", async () => {
+    const db = asUser({ schoolId: SCHOOL_A, role: "admin" });
+    await assertSucceeds(
+      updateDoc(doc(db, LEGAL_PATH_A), { "etablissement.email": "nouveau@ecole.gn" }),
+    );
+  });
+
+  test("comptable/primaire/college/parent/enseignant NE PEUVENT PAS écrire /config/legal", async () => {
+    for (const role of ["comptable", "primaire", "college", "parent", "enseignant"]) {
+      const db = asUser({ schoolId: SCHOOL_A, role });
+      await assertFails(
+        updateDoc(doc(db, LEGAL_PATH_A), { "etablissement.email": "x@x.gn" }),
+      );
+    }
+  });
+
+  test("direction de A NE PEUT PAS écrire le /config/legal de B (isolation)", async () => {
+    const db = asUser({ schoolId: SCHOOL_A, role: "direction" });
+    await assertFails(
+      updateDoc(doc(db, LEGAL_PATH_B), { "etablissement.email": "pirate@a.gn" }),
+    );
+  });
+
+  test("superadmin lit et écrit n'importe quel /config/legal", async () => {
+    const db = asUser({ schoolId: "central", role: "superadmin" });
+    await assertSucceeds(getDoc(doc(db, LEGAL_PATH_A)));
+    await assertSucceeds(getDoc(doc(db, LEGAL_PATH_B)));
+    await assertSucceeds(
+      updateDoc(doc(db, LEGAL_PATH_A), { "arreteOuverture.numero": "ADMIN-OVERRIDE" }),
+    );
   });
 });

@@ -1,8 +1,9 @@
 // eslint-disable-next-line no-unused-vars
-import { CLASSES_LYCEE, CLASSES_PRIMAIRE, MOIS_ANNEE, TOUS_MOIS_COURTS, TOUS_MOIS_LONGS, fmt, fmtN, getAnnee, today } from "./constants.js";
+import { CLASSES_LYCEE, CLASSES_PRIMAIRE, MOIS_ANNEE, TOUS_MOIS_COURTS, TOUS_MOIS_LONGS, fmt, fmtN, getAnnee, getSectionForClasse, today } from "./constants.js";
 import { getGeneralAverage, getSubjectAverage } from "./note-utils.js";
 import { getPeriodesForSection } from "./period-utils.js";
 import { getNationalDeviseHTML } from "./national-symbols.js";
+import { getOfficialLegalFooterHTML, legalProfileMock, mapNiveauToCycle } from "./legal-utils.js";
 import i18n from "./i18n";
 
 const loadXLSX = () => import("xlsx");
@@ -1156,6 +1157,7 @@ export const imprimerAttestation = (eleve, niveau, annee, schoolInfo={}) => {
     <div class="sig">${tr("reports.director")}<br/><div class="stamp">${schoolInfo.nom||""}</div></div>
   </div>
   <div class="devise">${schoolInfo.devise || "Travail – Rigueur – Réussite"}</div>
+  ${getOfficialLegalFooterHTML(schoolInfo.legal || legalProfileMock, mapNiveauToCycle(niveau))}
   <script>${PRINT_TRIGGER}</script></body></html>`);
   w.document.close();
 };
@@ -1410,6 +1412,8 @@ function buildBulletinPageHTML({
     </div>
 
     <div class="devise" style="color:${c2}">${schoolInfo.devise || "Travail – Rigueur – Réussite"}</div>
+
+    ${getOfficialLegalFooterHTML(schoolInfo.legal || legalProfileMock, mapNiveauToCycle(niveau))}
   </div>`;
 }
 
@@ -1742,6 +1746,7 @@ export const imprimerCertificatRadiation = (eleve, schoolInfo={}, annee="", sold
   </p>
   <div class="fin">${tr("reports.radiation.issuedAtCity")} ${schoolInfo.ville||"—"}, ${tr("reports.ordreMutation.on")} ${today()}</div>
   <div class="sig"><br/>${tr("reports.livret.directorSignature")}<br/><br/><br/><br/>${tr("reports.radiation.officialStamp")}</div>
+  ${getOfficialLegalFooterHTML(schoolInfo.legal || legalProfileMock, mapNiveauToCycle(getSectionForClasse(eleve.classe || "")))}
   <button onclick="window.print()" style="position:fixed;bottom:20px;right:20px;padding:8px 20px;background:#0A1628;color:#fff;border:none;border-radius:8px;cursor:pointer">🖨️ ${tr("reports.livret.print")}</button>
   </body></html>`);
   w.document.close();

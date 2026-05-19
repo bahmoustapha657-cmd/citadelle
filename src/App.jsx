@@ -12,6 +12,7 @@ const moduleLabel = (m, t) => t(`modules.${m.id}.label`, m.label);
 const moduleDesc = (m, t) => t(`modules.${m.id}.desc`, m.desc);
 import { getCurrentUser, signOutCurrentUser, watchAuthState } from "./firebaseAuth";
 import { db } from "./firebaseDb";
+import { subscribeLegalProfile } from "./legal-utils";
 import {
   collection, onSnapshot, addDoc, doc, setDoc, getDoc, getDocFromServer, query, orderBy, limit
 } from "firebase/firestore";
@@ -341,6 +342,18 @@ export default function App() {
       unsub();
     };
   },[schoolId, utilisateur]);
+
+  // Profil légal officiel — listener sur /ecoles/{schoolId}/config/legal
+  // Merge dans schoolInfo.legal pour que reports.js (bulletins/attestations)
+  // y accède via schoolInfo.legal sans appel Firestore supplémentaire.
+  useEffect(()=>{
+    if(!schoolId||schoolId==="superadmin") return;
+    const unsub = subscribeLegalProfile(schoolId,(legal)=>{
+      setSchoolInfo(prev=>({...prev, legal}));
+    });
+    return ()=>unsub();
+  },[schoolId]);
+
   // Badge messages non lus (cÃ´te ecole) â€” ecoute en temps reel
   useEffect(()=>{
     if(!utilisateur||!schoolId||schoolId==="superadmin") return;
@@ -893,7 +906,7 @@ export default function App() {
           <ErrorBoundary key={page}>
             <Suspense fallback={<PageFallback/>}>
               {page==="superadmin_panel" && <SuperAdminPanel/>}
-              {page==="accueil"         && <TableauDeBord annee={annee}/>}
+              {page==="accueil"         && <TableauDeBord annee={annee} userRole={utilisateur.role}/>}
               {page==="historique"      && <HistoriqueActions/>}
               {page==="parametres"      && <ParametresEcole utilisateurRole={utilisateur.role} onSchoolClosed={deconnecter}/>}
               {page==="admin_panel" && <AdminPanel annee={annee} setAnnee={setAnnee} verrous={verrous} schoolId={schoolId} userRole={utilisateur.role}/>}

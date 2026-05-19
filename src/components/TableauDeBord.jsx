@@ -8,8 +8,9 @@ import { useFirestore } from "../hooks/useFirestore";
 import { C, PLANS, fmt, getAnnee } from "../constants";
 import { genererRapportAnnuel, genererRapportMensuel } from "../reports";
 import { Badge, Btn, Card, Chargement, Stat, TR, Vide } from "./ui";
+import ComplianceWidget from "./ComplianceWidget";
 
-function TableauDeBord({annee}) {
+function TableauDeBord({annee, userRole}) {
   const { t } = useTranslation();
   const {schoolId, schoolInfo, moisAnnee, moisSalaire, planInfo} = useContext(SchoolContext);
   const {items:elevesC, chargement:cEC} = useFirestore("elevesCollege");
@@ -170,6 +171,11 @@ function TableauDeBord({annee}) {
         <KPI label={t("dashboard.salaryTotal")} value={fmt(masseSal)} icon="📋" sub={`${salMois.length} · ${moisActuel}`}/>
         <KPI label={t("dashboard.absencesEntered")} value={totalAbs} icon="📝" sub={t("dashboard.allSections")}/>
       </div>
+
+      {/* Widget Conformité légale — réservé directeur/admin */}
+      {["direction","admin","superadmin"].includes(userRole) && (
+        <ComplianceWidget canEdit={["direction","admin","superadmin"].includes(userRole)}/>
+      )}
 
       {/* Graphiques */}
       <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:16,marginBottom:20}}>
