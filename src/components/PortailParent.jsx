@@ -2,9 +2,9 @@ import React, { useContext, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { PolarAngleAxis, PolarGrid, Radar, RadarChart, ResponsiveContainer, Tooltip } from "recharts";
 import { apiFetch, getAuthHeaders } from "../apiClient";
-import { C, fmt, getTarifAutreValue, getTarifMensuelTotal } from "../constants";
+import { C, CLASSES_PRIMAIRE, fmt, getTarifAutreValue, getTarifMensuelTotal } from "../constants";
 import { getGeneralAverage, getSubjectAverage } from "../note-utils";
-import { getPeriodesForSchool } from "../period-utils";
+import { getPeriodesForSection } from "../period-utils";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { imprimerBulletin } from "../reports";
 import { GlobalStyles } from "../styles";
@@ -24,7 +24,6 @@ function PortailParent({ utilisateur, deconnecter, annee, schoolInfo }) {
   const { toast, moisAnnee } = useContext(SchoolContext);
   const c1 = schoolInfo.couleur1 || C.blue;
   const c2 = schoolInfo.couleur2 || C.green;
-  const periodes = getPeriodesForSchool(schoolInfo, moisAnnee);
 
   const [tab, setTab] = useState("dashboard");
   const [sujet, setSujet] = useState("");
@@ -51,6 +50,9 @@ function PortailParent({ utilisateur, deconnecter, annee, schoolInfo }) {
   const eleve = eleves.find((item) => item._id === eleveActifId) || eleves[0] || {};
   const eleveId = eleve._id || utilisateur.eleveId || null;
   const eleveNom = `${eleve.prenom || ""} ${eleve.nom || ""}`.trim() || utilisateur.eleveNom || "";
+  // Périodicité dépend de la section de l'enfant courant (primaire vs secondaire).
+  const sectionPeriode = CLASSES_PRIMAIRE.includes(eleve.classe) ? "primaire" : "secondaire";
+  const periodes = getPeriodesForSection(schoolInfo, sectionPeriode, moisAnnee);
   const section = eleve.section || utilisateur.section || "college";
 
   const mesNotes = useMemo(

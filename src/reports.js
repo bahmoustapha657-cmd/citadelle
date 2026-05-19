@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-unused-vars
 import { CLASSES_LYCEE, CLASSES_PRIMAIRE, MOIS_ANNEE, TOUS_MOIS_COURTS, TOUS_MOIS_LONGS, fmt, fmtN, getAnnee, today } from "./constants.js";
 import { getGeneralAverage, getSubjectAverage } from "./note-utils.js";
-import { getPeriodesForSchool } from "./period-utils.js";
+import { getPeriodesForSection } from "./period-utils.js";
 import { getNationalDeviseHTML } from "./national-symbols.js";
 import i18n from "./i18n";
 
@@ -1250,7 +1250,8 @@ function getRangEleve(eleve, elevesClasse, notes, matieres, periode, classe, niv
 }
 
 function getEvolutionPeriode(eleve, allNotes, matieres, classe, niveau, periodeActuelle, schoolInfo = {}) {
-  const periodes = getPeriodesForSchool(schoolInfo);
+  const sectionPeriode = niveau === "primaire" ? "primaire" : "secondaire";
+  const periodes = getPeriodesForSection(schoolInfo, sectionPeriode);
   const idx = periodes.indexOf(periodeActuelle);
   if (idx <= 0) return null;
   const periodePrec = periodes[idx - 1];
@@ -1752,7 +1753,11 @@ export const imprimerCertificatRadiation = (eleve, schoolInfo={}, annee="", sold
 export const imprimerLivret = (livret, schoolInfo={}) => {
   const c1 = schoolInfo.couleur1||"#0A1628";
   const annees = livret.annees||[];
-  const periodes = getPeriodesForSchool(schoolInfo);
+  // Le livret hérite de la section de l'élève (livret.section : "primaire" /
+  // "college" / "lycee"). Primaire suit periodicitePrimaire, le reste suit
+  // periodiciteSecondaire.
+  const sectionPeriode = livret.section === "primaire" ? "primaire" : "secondaire";
+  const periodes = getPeriodesForSection(schoolInfo, sectionPeriode);
   // Mapping décisions FR (stockées en base) → clés i18n
   const decisionLabel = (d) => {
     if (d === "Admis avec félicitations") return tr("reports.livret.decisionDistinction");

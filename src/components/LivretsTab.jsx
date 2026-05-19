@@ -4,7 +4,7 @@ import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
 import { C, getAnnee, today } from "../constants";
 import { getSubjectAverage } from "../note-utils";
-import { getPeriodesForSchool } from "../period-utils";
+import { getPeriodesForSection } from "../period-utils";
 import { imprimerLivret } from "../reports";
 import { Badge, Btn, Card, Input, Modale, Selec, Stat, TD, THead, TR, Vide } from "./ui";
 
@@ -20,7 +20,7 @@ function LivretsTab({cleEleves, cleNotes, matieres, maxNote, userRole, annee}) {
   const {items:notes}  = useFirestore(cleNotes);
   const section = cleEleves.includes("Primaire")?"primaire":cleEleves.includes("Lycee")?"lycee":"college";
   const canEdit = ["direction","admin","comptable"].includes(userRole);
-  const periodes = getPeriodesForSchool(schoolInfo);
+  const periodes = getPeriodesForSection(schoolInfo, section === "primaire" ? "primaire" : "secondaire");
 
   const [livretSelId, setLivretSelId] = useState(null);
   const [filtreClasse, setFiltreClasse] = useState("all");

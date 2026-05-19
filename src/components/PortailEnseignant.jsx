@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { apiFetch, getAuthHeaders } from "../apiClient";
 import { C } from "../constants";
-import { getPeriodesForSchool } from "../period-utils";
+import { getPeriodesForSection } from "../period-utils";
 import { groupSalariesByPersonMonth } from "../salary-utils";
 import { getActiveNoteForms, getEvaluationLabel, resolveCanonicalNoteType } from "../evaluation-forms";
 import { GlobalStyles } from "../styles";
@@ -16,7 +16,9 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
   const c2 = schoolInfo.couleur2 || C.green;
   const noteForms = getActiveNoteForms(schoolInfo, utilisateur.section || "secondaire");
   const defaultNoteType = noteForms[0]?.value || "Devoir";
-  const periodes = getPeriodesForSchool(schoolInfo, moisAnnee);
+  // Périodicité selon la section enseignée par le prof (primaire = trimestre, secondaire = trimestre ou semestre selon le DG).
+  const sectionPeriode = (utilisateur.section === "primaire") ? "primaire" : "secondaire";
+  const periodes = getPeriodesForSection(schoolInfo, sectionPeriode, moisAnnee);
 
   const [tab, setTab] = useState("dashboard");
   const [periodeN, setPeriodeN] = useState(periodes[0] || "");

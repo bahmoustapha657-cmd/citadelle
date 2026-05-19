@@ -32,6 +32,10 @@ function ParametresEcole({ utilisateurRole = "", onSchoolClosed = null }) {
     agrement: schoolInfo.agrement||"",
     moisDebut: schoolInfo.moisDebut||"Octobre",
     periodicite: schoolInfo.periodicite||"trimestre",
+    // Périodicité par section : permet "Primaire trimestre / Secondaire semestre".
+    // Fallback sur le champ legacy `periodicite` pour rétrocompat.
+    periodicitePrimaire: schoolInfo.periodicitePrimaire||schoolInfo.periodicite||"trimestre",
+    periodiciteSecondaire: schoolInfo.periodiciteSecondaire||schoolInfo.periodicite||"trimestre",
   });
   const acc0 = schoolInfo.accueil||{};
   const [accueil, setAccueil] = useState({
@@ -206,6 +210,8 @@ function ParametresEcole({ utilisateurRole = "", onSchoolClosed = null }) {
         agrement: form.agrement.trim(),
         moisDebut: form.moisDebut,
         periodicite: form.periodicite || "trimestre",
+        periodicitePrimaire: form.periodicitePrimaire || "trimestre",
+        periodiciteSecondaire: form.periodiciteSecondaire || "trimestre",
         evaluationForms,
         accueil: {
           active: accueil.active,
@@ -536,25 +542,48 @@ function ParametresEcole({ utilisateurRole = "", onSchoolClosed = null }) {
         </p>
       </div>
 
-      {/* Périodicité scolaire */}
+      {/* Périodicité scolaire — par section */}
       <div style={sec}>
         <h3 style={{margin:"0 0 16px",fontSize:14,fontWeight:800,color:C.blueDark}}>🗓️ Périodicité scolaire</h3>
-        <select style={{...inp,cursor:"pointer"}} value={form.periodicite||"trimestre"} onChange={chg("periodicite")}>
-          {PERIODICITES.map(p=>(
-            <option key={p.value} value={p.value}>{p.label} — {p.description}</option>
-          ))}
-        </select>
-        <p style={{margin:"6px 0 0",fontSize:11,color:"#9ca3af"}}>
-          Périodes utilisées pour les notes, bulletins, livrets et recettes/dépenses :{" "}
-          <strong style={{color:C.blue}}>
-            {getPeriodesForSchool({periodicite: form.periodicite, moisDebut: form.moisDebut}).join(" · ")}
-          </strong>
+        <p style={{margin:"0 0 12px",fontSize:12,color:"#64748b"}}>
+          Le primaire et le secondaire peuvent suivre des rythmes différents. Convention typique en Guinée : <strong>Primaire trimestre</strong>, <strong>Secondaire semestre</strong>.
         </p>
-        {schoolInfo.periodicite && schoolInfo.periodicite !== form.periodicite && (
+
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:8}}>
+          <div>
+            <label style={{display:"block",fontSize:12,fontWeight:700,color:C.blueDark,marginBottom:6}}>Primaire</label>
+            <select style={{...inp,cursor:"pointer"}} value={form.periodicitePrimaire||"trimestre"} onChange={chg("periodicitePrimaire")}>
+              {PERIODICITES.map(p=>(
+                <option key={p.value} value={p.value}>{p.label} — {p.description}</option>
+              ))}
+            </select>
+            <p style={{margin:"6px 0 0",fontSize:11,color:"#9ca3af"}}>
+              <strong style={{color:C.blue}}>
+                {getPeriodesForSchool({periodicite: form.periodicitePrimaire, moisDebut: form.moisDebut}).join(" · ")}
+              </strong>
+            </p>
+          </div>
+          <div>
+            <label style={{display:"block",fontSize:12,fontWeight:700,color:C.blueDark,marginBottom:6}}>Secondaire (collège + lycée)</label>
+            <select style={{...inp,cursor:"pointer"}} value={form.periodiciteSecondaire||"trimestre"} onChange={chg("periodiciteSecondaire")}>
+              {PERIODICITES.map(p=>(
+                <option key={p.value} value={p.value}>{p.label} — {p.description}</option>
+              ))}
+            </select>
+            <p style={{margin:"6px 0 0",fontSize:11,color:"#9ca3af"}}>
+              <strong style={{color:C.blue}}>
+                {getPeriodesForSchool({periodicite: form.periodiciteSecondaire, moisDebut: form.moisDebut}).join(" · ")}
+              </strong>
+            </p>
+          </div>
+        </div>
+
+        {((schoolInfo.periodicitePrimaire||schoolInfo.periodicite) && (schoolInfo.periodicitePrimaire||schoolInfo.periodicite) !== form.periodicitePrimaire)
+          || ((schoolInfo.periodiciteSecondaire||schoolInfo.periodicite) && (schoolInfo.periodiciteSecondaire||schoolInfo.periodicite) !== form.periodiciteSecondaire) ? (
           <p style={{margin:"8px 0 0",padding:"8px 12px",background:"#fef3c7",border:"1px solid #fbbf24",borderRadius:6,fontSize:11,color:"#92400e"}}>
             ⚠️ Changer la périodicité après que des notes ont été saisies peut rendre certaines invisibles dans les bulletins. Après enregistrement, utilisez « Migrer les notes existantes » ci-dessous.
           </p>
-        )}
+        ) : null}
         <div style={{marginTop:12,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
           <Btn sm v="ghost" onClick={()=>setMigrationOuverte(true)}>🔁 Migrer les notes existantes…</Btn>
           <span style={{fontSize:11,color:"#64748b"}}>

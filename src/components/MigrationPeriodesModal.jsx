@@ -2,20 +2,29 @@ import React, { useContext, useEffect, useState } from "react";
 import { collection, getDocs, writeBatch, doc } from "firebase/firestore";
 import { db } from "../firebaseDb";
 import { SchoolContext } from "../contexts/SchoolContext";
-import { getPeriodesForSchool } from "../period-utils";
+import { getPeriodesForSection } from "../period-utils";
 import { C } from "../constants";
 import { Btn, Modale, Selec } from "./ui";
 
-const NOTES_COLLECTIONS = ["notesCollege", "notesPrimaire", "notesLycee"];
+// Une collection → la section dont la périodicité s'y applique. notesPrimaire
+// suit periodicitePrimaire, notesCollege/notesLycee suivent periodiciteSecondaire.
+const NOTES_COLLECTIONS = [
+  { name: "notesCollege",  section: "secondaire" },
+  { name: "notesPrimaire", section: "primaire" },
+  { name: "notesLycee",    section: "secondaire" },
+];
 const BATCH_LIMIT = 450; // marge sous la limite Firestore de 500
 
 // Scanne les 3 collections de notes et retourne les périodes orphelines
-// (présentes en base mais hors de la périodicité actuelle de l'école).
-async function collecterPeriodesOrphelines(schoolId, periodesActuelles) {
-  const set = new Set(periodesActuelles);
+// (présentes en base mais hors de la périodicité actuelle de la section
+// correspondante). Une période "T1" peut être orpheline en secondaire si
+// le DG est passé en semestre, mais reste valide en primaire — d'où le
+// scan par section.
+async function collecterPeriodesOrphelines(schoolId, periodesParSection) {
   const compteur = new Map(); // periode -> nombre de notes
   for (const col of NOTES_COLLECTIONS) {
-    const snap = await getDocs(collection(db, "ecoles", schoolId, col));
+    const set = new Set(periodesParSection[col.section] || []);
+    const snap = await getDocs(collection(db, "ecoles", schoolId, col.name));
     snap.forEach((d) => {
       const p = d.data().periode;
       if (!p || set.has(p)) return;
@@ -30,14 +39,14 @@ async function appliquerMapping(schoolId, mapping) {
   let totalMaj = 0;
   let totalSup = 0;
   for (const col of NOTES_COLLECTIONS) {
-    const snap = await getDocs(collection(db, "ecoles", schoolId, col));
+    const snap = await getDocs(collection(db, "ecoles", schoolId, col.name));
     let batch = writeBatch(db);
     let ops = 0;
     for (const d of snap.docs) {
       const p = d.data().periode;
       if (!p || !(p in mapping)) continue;
       const cible = mapping[p];
-      const ref = doc(db, "ecoles", schoolId, col, d.id);
+      const ref = doc(db, "ecoles", schoolId, col.name, d.id);
       if (cible === "_delete_") {
         batch.delete(ref);
         totalSup++;
@@ -59,7 +68,13 @@ async function appliquerMapping(schoolId, mapping) {
 
 export function MigrationPeriodesModal({ fermer }) {
   const { schoolId, schoolInfo, moisAnnee, toast } = useContext(SchoolContext);
-  const periodesActuelles = getPeriodesForSchool(schoolInfo, moisAnnee);
+  const periodesParSection = {
+    primaire: getPeriodesForSection(schoolInfo, "primaire", moisAnnee),
+    secondaire: getPeriodesForSection(schoolInfo, "secondaire", moisAnnee),
+  };
+  // Union des deux pour les selects de mapping (l'enseignant peut vouloir
+  // mapper une période orpheline vers T1 OU S1 selon la section).
+  const periodesActuelles = [...new Set([...periodesParSection.primaire, ...periodesParSection.secondaire])];
   const [chargement, setChargement] = useState(true);
   const [orphelines, setOrphelines] = useState([]);
   const [mapping, setMapping] = useState({}); // { ancienne: nouvelleOuDelete }
@@ -69,7 +84,7 @@ export function MigrationPeriodesModal({ fermer }) {
     let annule = false;
     (async () => {
       try {
-        const liste = await collecterPeriodesOrphelines(schoolId, periodesActuelles);
+        const liste = await collecterPeriodesOrphelines(schoolId, periodesParSection);
         if (annule) return;
         setOrphelines(liste);
         const initial = {};

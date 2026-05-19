@@ -8,6 +8,7 @@ import {
   ACCES,
   ADMIN_WRITABLE_MODULES,
   C,
+  CLASSES_PRIMAIRE,
   ROLE_IDS_PERSONNALISABLES,
   TOUTES_ANNEES,
   genererMdp,
@@ -16,8 +17,10 @@ import {
   getRoleSettingsForSchool,
   normalizeRoleLogin,
 } from "../constants";
+
+const CLASSES_PRIMAIRE_SET = new Set(CLASSES_PRIMAIRE);
 import { getGeneralAverage } from "../note-utils";
-import { getPeriodesForSchool } from "../period-utils";
+import { getPeriodesForSection } from "../period-utils";
 import { Badge, Btn, Card, Chargement, Input, Modale, TD, THead, TR } from "./ui";
 
 // ══════════════════════════════════════════════════════════════
@@ -130,10 +133,12 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId, userRole}) {
     });
   };
 
-  // Calcule la moyenne annuelle d'un eleve a partir de ses notes (toutes periodes)
+  // Calcule la moyenne annuelle d'un eleve a partir de ses notes (toutes periodes
+  // de SA section : primaire = trimestre, secondaire = peut être semestre).
   const calcMoyenneAnnuelle = (notes, classe, matieres) => {
     if(!notes || notes.length===0) return null;
-    const periodes = getPeriodesForSchool(schoolInfo);
+    const sectionPeriode = CLASSES_PRIMAIRE_SET.has(classe) ? "primaire" : "secondaire";
+    const periodes = getPeriodesForSection(schoolInfo, sectionPeriode);
     const moyennes = periodes
       .map((periode) => getGeneralAverage(notes.filter((note) => note.periode === periode), matieres, classe))
       .filter((value) => value != null);
