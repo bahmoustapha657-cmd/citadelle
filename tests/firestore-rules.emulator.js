@@ -1178,6 +1178,30 @@ describe("16. Admin granulaire — perimetre par module", () => {
     );
   });
 
+  test("direction PEUT ecrire dans membres et documents (module fondation/compta)", async () => {
+    const db = asUser({ schoolId: SCHOOL_A, role: "direction" });
+    await assertSucceeds(
+      setDoc(doc(db, `ecoles/${SCHOOL_A}/membres/m-dir`), { nom: "Diallo", statut: "Président" }),
+    );
+    await assertSucceeds(
+      setDoc(doc(db, `ecoles/${SCHOOL_A}/documents/d-dir`), { titre: "PV CA", url: "https://example.com/x.pdf" }),
+    );
+    await assertSucceeds(
+      updateDoc(doc(db, `ecoles/${SCHOOL_A}/membres/m-dir`), { statut: "Vice-président" }),
+    );
+    await assertSucceeds(deleteDoc(doc(db, `ecoles/${SCHOOL_A}/membres/m-dir`)));
+  });
+
+  test("admin sans claims NE PEUT PAS ecrire membres/documents (modules systeme)", async () => {
+    const db = asUser({ schoolId: SCHOOL_A, role: "admin" });
+    await assertFails(
+      setDoc(doc(db, `ecoles/${SCHOOL_A}/membres/m-bad`), { nom: "X" }),
+    );
+    await assertFails(
+      setDoc(doc(db, `ecoles/${SCHOOL_A}/documents/d-bad`), { titre: "X" }),
+    );
+  });
+
   test("comptable reste pleinement habilite sur compta (regression non admin)", async () => {
     const db = asUser({ schoolId: SCHOOL_A, role: "comptable" });
     await assertSucceeds(getDoc(doc(db, `ecoles/${SCHOOL_A}/recettes/r1`)));

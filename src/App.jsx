@@ -648,10 +648,19 @@ export default function App() {
   const modulesActifsIds = getModulesForRole(utilisateur.role, schoolInfo);
   const modulesVisibles = MODULES.filter((module) => modulesActifsIds.includes(module.id));
   const role = utilisateur.role;
-  const estAdmin = role==="admin" || role==="direction";
-  // Admin/direction : lecture seule totale (ni crÃ©er ni modifier)
-  // Les autres rÃ´les : peuvent toujours crÃ©er ; modifier/supprimer selon le verrou de l'admin
-  const readOnly = estAdmin;
+  const isAdmin = role === "admin";
+  // estAdmin garde son sens initial pour l'onboarding (admin + direction voient le guide)
+  const estAdmin = isAdmin || role === "direction";
+  // readOnly :
+  //  - direction (DG) → false (boss, plein accès partout)
+  //  - admin          → true SAUF si le DG a coché ce module dans
+  //                     roleSettings.admin.writeModules (cf. AdminPanel
+  //                     "Modules visibles" + case ✏️). Aligné sur le
+  //                     modèle granulaire firestore.rules + JWT claims.
+  //  - autres rôles   → false (les rules Firestore restreignent leur périmètre métier)
+  const adminCanWriteCurrentPage = isAdmin
+    && (schoolInfo?.roleSettings?.admin?.writeModules || []).includes(page);
+  const readOnly = isAdmin && !adminCanWriteCurrentPage;
   const couleur2 = schoolInfo.couleur2 || C.green;
   const utilisateurLabel = getRoleLabelForSchool(utilisateur.role, schoolInfo) || utilisateur.label || utilisateur.role;
 
