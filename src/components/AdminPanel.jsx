@@ -19,7 +19,7 @@ import {
 } from "../constants";
 
 const CLASSES_PRIMAIRE_SET = new Set(CLASSES_PRIMAIRE);
-import { getGeneralAverage } from "../note-utils";
+import { getAnnualAverage, getGeneralAverage } from "../note-utils";
 import { getPeriodesForSection } from "../period-utils";
 import { Badge, Btn, Card, Chargement, Input, Modale, TD, THead, TR } from "./ui";
 
@@ -135,15 +135,16 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId, userRole}) {
 
   // Calcule la moyenne annuelle d'un eleve a partir de ses notes (toutes periodes
   // de SA section : primaire = trimestre, secondaire = peut être semestre).
+  // Diviseur FIXE au nombre total de périodes ((T1+T2+T3)/3 ou (S1+S2)/2),
+  // les périodes vides sont traitées comme 0 (cf. getAnnualAverage).
   const calcMoyenneAnnuelle = (notes, classe, matieres) => {
     if(!notes || notes.length===0) return null;
     const sectionPeriode = CLASSES_PRIMAIRE_SET.has(classe) ? "primaire" : "secondaire";
     const periodes = getPeriodesForSection(schoolInfo, sectionPeriode);
-    const moyennes = periodes
-      .map((periode) => getGeneralAverage(notes.filter((note) => note.periode === periode), matieres, classe))
-      .filter((value) => value != null);
-    if(!moyennes.length) return null;
-    return moyennes.reduce((sum, value) => sum + value, 0) / moyennes.length;
+    const moyennes = periodes.map((periode) =>
+      getGeneralAverage(notes.filter((note) => note.periode === periode), matieres, classe),
+    );
+    return getAnnualAverage(moyennes);
   };
 
   const lancerPromotion = async () => {

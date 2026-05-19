@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
 import { C, getAnnee, today } from "../constants";
-import { getSubjectAverage } from "../note-utils";
+import { getAnnualAverage, getSubjectAverage } from "../note-utils";
 import { getPeriodesForSection } from "../period-utils";
 import { imprimerLivret } from "../reports";
 import { Badge, Btn, Card, Input, Modale, Selec, Stat, TD, THead, TR, Vide } from "./ui";
@@ -75,8 +75,9 @@ function LivretsTab({cleEleves, cleNotes, matieres, maxNote, userRole, annee}) {
         acc[p] = getSubjectAverage(ns, eleve.classe, section);
         return acc;
       },{});
-      const avec = Object.values(notesParPeriode).filter(v=>v!==null);
-      const ann = avec.length ? avec.reduce((s,v)=>s+v,0)/avec.length : null;
+      // Moyenne annuelle par matière : diviseur fixe au nombre de périodes
+      // (3 trimestres, 2 semestres ou 9 mois), périodes vides comptées 0.
+      const ann = getAnnualAverage(periodes.map((p) => notesParPeriode[p]));
       return {matiere:mat.nom, coef:mat.coefficient||1, maxNote,
         ...notesParPeriode,
         annuelle:ann};

@@ -107,3 +107,21 @@ export const getGeneralAverage = (
   if (!totalCoef) return null;
   return total / totalCoef;
 };
+
+// Moyenne sur N périodes — diviseur FIXE au nombre total de périodes,
+// les périodes manquantes étant traitées comme 0. Convention guinéenne :
+//   (T1 + T2 + T3) / 3   pour le primaire (trimestre)
+//   (S1 + S2) / 2        pour le secondaire (semestre)
+//   (M1 + … + M9) / 9    pour le mensuel
+// Retourne null UNIQUEMENT si TOUTES les périodes sont vides — sinon
+// une période sans note pénalise (zéro), ce qui correspond au choix
+// pédagogique "année en cours" demandé par la direction.
+export const getAnnualAverage = (
+  periodAverages: Array<number | null> = [],
+): number | null => {
+  if (!Array.isArray(periodAverages) || periodAverages.length === 0) return null;
+  const valides = periodAverages.filter((v): v is number => v != null && Number.isFinite(v));
+  if (valides.length === 0) return null;
+  const sum = valides.reduce((acc, v) => acc + v, 0);
+  return sum / periodAverages.length;
+};
