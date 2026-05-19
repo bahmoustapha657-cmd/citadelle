@@ -615,10 +615,12 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId, userRole}) {
         </Card>
       )}
 
-      {/* ── CONTRÔLE DES MODIFICATIONS ── */}
-      <Card style={{marginTop:20,padding:"20px 24px"}}>
+      {/* ── CONTRÔLE DES MODIFICATIONS — réservé direction (verrou pose la
+              question du droit de modifier des enregistrements déjà saisis ;
+              les rules ecoles/{id} update interdisent toute modif sauf direction) ── */}
+      {peutGererRoles && <Card style={{marginTop:20,padding:"20px 24px"}}>
         <p style={{margin:"0 0 6px",fontWeight:800,fontSize:14,color:C.blueDark}}>🔒 Autorisation de modification</p>
-        <p style={{margin:"0 0 18px",fontSize:12,color:"#6b7280"}}>Chaque rôle peut toujours <strong>creer</strong> des enregistrements. Une fois sauvegardes, ils sont verrouilles. Activez le verrou pour permettre les corrections.</p>
+        <p style={{margin:"0 0 18px",fontSize:12,color:"#6b7280"}}>Réservé à la Direction Générale. Chaque rôle peut toujours <strong>créer</strong> des enregistrements ; une fois sauvegardés, ils sont verrouillés. Activez le verrou pour permettre les corrections par le rôle concerné.</p>
         <div style={{display:"flex",flexDirection:"column",gap:12}}>
           {[
             {cle:"comptable", label:"Comptable",   desc:"Finances, salaires, mensualites", icon:"💰", color:"#0e7490"},
@@ -659,7 +661,7 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId, userRole}) {
         <p style={{margin:"14px 0 0",fontSize:11,color:"#9ca3af"}}>
           💡 Les modifications sont effectives immédiatement pour tous les utilisateurs connectés.
         </p>
-      </Card>
+      </Card>}
 
       {modal==="mdp" && (
         <Modale titre={`Modifier le mot de passe — ${form.nom}`} fermer={()=>setModal(null)}>

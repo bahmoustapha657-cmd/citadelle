@@ -303,10 +303,10 @@ describe("4. Catch-all whitelist", () => {
     await assertFails(getDoc(doc(db, `ecoles/${SCHOOL_A}/foobar/x`)));
   });
 
-  test("direction PEUT créer dans une collection whitelistée (recettes)", async () => {
+  test("direction PEUT créer dans une collection whitelistée non-compta (evenements)", async () => {
     const db = asUser({ schoolId: SCHOOL_A, role: "direction" });
     await assertSucceeds(
-      setDoc(doc(db, `ecoles/${SCHOOL_A}/recettes/r1`), { montant: 100 }),
+      setDoc(doc(db, `ecoles/${SCHOOL_A}/evenements/e1`), { titre: "rentree" }),
     );
   });
 });
@@ -1166,15 +1166,17 @@ describe("16. Admin granulaire — perimetre par module", () => {
     );
   });
 
-  test("direction reste pleinement habilitee (regression non admin)", async () => {
+  test("direction reste pleinement habilitee hors compta (regression non admin)", async () => {
     const db = asUser({ schoolId: SCHOOL_A, role: "direction" });
+    // Lecture : tout, y compris compta (supervision)
     await assertSucceeds(getDoc(doc(db, `ecoles/${SCHOOL_A}/recettes/r1`)));
     await assertSucceeds(getDoc(doc(db, `ecoles/${SCHOOL_A}/notesPrimaire/np1`)));
-    await assertSucceeds(
-      setDoc(doc(db, `ecoles/${SCHOOL_A}/recettes/r-dir`), { montant: 200 }),
-    );
+    // Écriture : tout SAUF compta
     await assertSucceeds(
       setDoc(doc(db, `ecoles/${SCHOOL_A}/notesCollege/nc-dir`), { val: 18 }),
+    );
+    await assertSucceeds(
+      setDoc(doc(db, `ecoles/${SCHOOL_A}/evenements/e-dir`), { titre: "fête" }),
     );
   });
 
@@ -1208,5 +1210,57 @@ describe("16. Admin granulaire — perimetre par module", () => {
     await assertSucceeds(
       setDoc(doc(db, `ecoles/${SCHOOL_A}/recettes/r-cpt`), { montant: 300 }),
     );
+  });
+
+  test("DG NE PEUT PAS ecrire dans compta (recettes/depenses/salaires/bons/personnel/versements/tarifs)", async () => {
+    const db = asUser({ schoolId: SCHOOL_A, role: "direction" });
+    await assertFails(setDoc(doc(db, `ecoles/${SCHOOL_A}/recettes/r-dg`),   { montant: 1 }));
+    await assertFails(setDoc(doc(db, `ecoles/${SCHOOL_A}/depenses/d-dg`),   { montant: 1 }));
+    await assertFails(setDoc(doc(db, `ecoles/${SCHOOL_A}/salaires/s-dg`),   { montant: 1 }));
+    await assertFails(setDoc(doc(db, `ecoles/${SCHOOL_A}/bons/b-dg`),       { montant: 1 }));
+    await assertFails(setDoc(doc(db, `ecoles/${SCHOOL_A}/personnel/p-dg`),  { nom: "X" }));
+    await assertFails(setDoc(doc(db, `ecoles/${SCHOOL_A}/versements/v-dg`), { montant: 1 }));
+    await assertFails(setDoc(doc(db, `ecoles/${SCHOOL_A}/tarifs/t-dg`),     { montant: 1 }));
+    // Modif d'une recette existante : également refusée
+    await assertFails(updateDoc(doc(db, `ecoles/${SCHOOL_A}/recettes/r1`),  { montant: 999 }));
+  });
+
+  test("DG PEUT toujours LIRE compta (supervision)", async () => {
+    const db = asUser({ schoolId: SCHOOL_A, role: "direction" });
+    await assertSucceeds(getDoc(doc(db, `ecoles/${SCHOOL_A}/recettes/r1`)));
+  });
+
+  test("DG PEUT ecrire dans documents (Fondation, plus dans compta)", async () => {
+    const db = asUser({ schoolId: SCHOOL_A, role: "direction" });
+    await assertSucceeds(
+      setDoc(doc(db, `ecoles/${SCHOOL_A}/documents/d-fond`), { titre: "PV CA" }),
+    );
+  });
+
+  test("comptable PEUT toujours ecrire compta (cas nominal)", async () => {
+    const db = asUser({ schoolId: SCHOOL_A, role: "comptable" });
+    await assertSucceeds(setDoc(doc(db, `ecoles/${SCHOOL_A}/depenses/d-cpt`),  { montant: 50 }));
+    await assertSucceeds(setDoc(doc(db, `ecoles/${SCHOOL_A}/salaires/s-cpt`),  { montant: 400 }));
+    await assertSucceeds(setDoc(doc(db, `ecoles/${SCHOOL_A}/personnel/p-cpt`), { nom: "Y" }));
+  });
+
+  test("primaire/college NE PEUVENT PAS ecrire compta", async () => {
+    for (const role of ["primaire", "college"]) {
+      const db = asUser({ schoolId: SCHOOL_A, role });
+      await assertFails(setDoc(doc(db, `ecoles/${SCHOOL_A}/recettes/r-${role}`), { montant: 1 }));
+      await assertFails(setDoc(doc(db, `ecoles/${SCHOOL_A}/salaires/s-${role}`), { montant: 1 }));
+    }
+  });
+
+  test("DG seul peut toggler les verrous (rule ecoles/{id} update)", async () => {
+    const dgDb = asUser({ schoolId: SCHOOL_A, role: "direction" });
+    const cptDb = asUser({ schoolId: SCHOOL_A, role: "comptable" });
+    await seed(async (db) => {
+      await setDoc(doc(db, `ecoles/${SCHOOL_A}`), { nom: "École A", verrous: { comptable: false } });
+    });
+    // DG : OK
+    await assertSucceeds(updateDoc(doc(dgDb, `ecoles/${SCHOOL_A}`), { "verrous.comptable": true }));
+    // Comptable : refusé (sauf champ monnaie, qui n'est pas verrous.*)
+    await assertFails(updateDoc(doc(cptDb, `ecoles/${SCHOOL_A}`), { "verrous.comptable": false }));
   });
 });

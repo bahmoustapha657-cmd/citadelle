@@ -162,17 +162,25 @@ service cloud.firestore {
     // Mapping collection -> module (catch-all). Doit rester synchrone avec
     // MODULE_COLLECTIONS dans shared/role-config.js.
     function moduleOfCollection(coll) {
-      return ["recettes","depenses","salaires","bons","personnel","versements","tarifs","documents"].hasAny([coll]) ? "compta"
+      return ["recettes","depenses","salaires","bons","personnel","versements","tarifs"].hasAny([coll]) ? "compta"
            : ["elevesPrimaire","classesPrimaire","ensPrimaire","ensPrimaire_enseignements","classesPrimaire_emplois","classesPrimaire_matieres"].hasAny([coll]) ? "primaire"
            : ["elevesCollege","elevesLycee","classesCollege","classesLycee","ensCollege","ensLycee","ensCollege_enseignements","ensLycee_enseignements","classesCollege_emplois","classesLycee_emplois","classesCollege_matieres","classesLycee_matieres"].hasAny([coll]) ? "secondaire"
            : ["evenements"].hasAny([coll]) ? "calendrier"
            : ["examens","livrets"].hasAny([coll]) ? "examens"
-           : ["membres"].hasAny([coll]) ? "fondation"
+           : ["membres","documents"].hasAny([coll]) ? "fondation"
            : "";
     }
 
     function adminPeutLireCollection(coll) {
       return adminPeutLireModule(moduleOfCollection(coll));
+    }
+
+    // Collections où SEUL le comptable peut écrire (le DG supervise, n'enregistre
+    // pas). Le DG conserve l'autorisation via le verrou (toggleVerrou dans
+    // AdminPanel) — ouvrir/fermer le verrou est réservé à direction via la
+    // rule ecoles/{id} update.
+    function isComptaCollection(coll) {
+      return ["recettes","depenses","salaires","bons","personnel","versements","tarifs"].hasAny([coll]);
     }
 
     function adminPeutEcrireCollection(coll) {
@@ -373,6 +381,11 @@ service cloud.firestore {
       // L'admin dispose d'un acces par module (claims adminReadModules /
       // adminWriteModules portes par le JWT). Sans entree dans
       // moduleOfCollection(), l'admin est refuse en lecture comme en ecriture.
+      //
+      // Cas particulier compta : recettes/depenses/salaires/bons/personnel/
+      // versements/tarifs ne sont ecrits QUE par le comptable (+ superadmin).
+      // Le DG supervise et controle l'ouverture du verrou (cf. toggleVerrou
+      // dans AdminPanel), mais ne saisit pas lui-meme.
       match /{collection}/{docId} {
         allow read: if collection in collectionsBackOffice()
                     && ((appartientEcole(schoolId)
@@ -380,7 +393,12 @@ service cloud.firestore {
                         || aUnRole(["superadmin"]));
         allow write: if collection in collectionsBackOffice()
                      && ((appartientEcole(schoolId)
-                           && (aUnRole(backOfficeWriteRolesSansAdmin()) || adminPeutEcrireCollection(collection)))
+                           && (
+                             (isComptaCollection(collection)
+                               ? aUnRole(["comptable"])
+                               : aUnRole(backOfficeWriteRolesSansAdmin()))
+                             || adminPeutEcrireCollection(collection)
+                           ))
                          || aUnRole(["superadmin"]));
       }
     }

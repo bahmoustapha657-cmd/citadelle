@@ -69,8 +69,8 @@ export const MODULE_COLLECTIONS = {
   calendrier: ["evenements"],
   examens: ["examens", "livrets"],
   messages: ["messages"],
-  compta: ["recettes", "depenses", "salaires", "bons", "personnel", "versements", "tarifs", "documents"],
-  fondation: ["membres"],
+  compta: ["recettes", "depenses", "salaires", "bons", "personnel", "versements", "tarifs"],
+  fondation: ["membres", "documents"],
   historique: ["historique"],
 };
 

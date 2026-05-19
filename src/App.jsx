@@ -649,10 +649,13 @@ export default function App() {
   const modulesVisibles = MODULES.filter((module) => modulesActifsIds.includes(module.id));
   const role = utilisateur.role;
   const isAdmin = role === "admin";
+  const isDirection = role === "direction";
   // estAdmin garde son sens initial pour l'onboarding (admin + direction voient le guide)
-  const estAdmin = isAdmin || role === "direction";
+  const estAdmin = isAdmin || isDirection;
   // readOnly :
-  //  - direction (DG) → false (boss, plein accès partout)
+  //  - direction (DG) → false partout SAUF compta (le DG supervise, ne saisit
+  //                     pas la trésorerie ; il contrôle l'ouverture du verrou
+  //                     via AdminPanel pour autoriser les modifications)
   //  - admin          → true SAUF si le DG a coché ce module dans
   //                     roleSettings.admin.writeModules (cf. AdminPanel
   //                     "Modules visibles" + case ✏️). Aligné sur le
@@ -660,7 +663,8 @@ export default function App() {
   //  - autres rôles   → false (les rules Firestore restreignent leur périmètre métier)
   const adminCanWriteCurrentPage = isAdmin
     && (schoolInfo?.roleSettings?.admin?.writeModules || []).includes(page);
-  const readOnly = isAdmin && !adminCanWriteCurrentPage;
+  const directionReadOnlyCurrentPage = isDirection && page === "compta";
+  const readOnly = (isAdmin && !adminCanWriteCurrentPage) || directionReadOnlyCurrentPage;
   const couleur2 = schoolInfo.couleur2 || C.green;
   const utilisateurLabel = getRoleLabelForSchool(utilisateur.role, schoolInfo) || utilisateur.label || utilisateur.role;
 
