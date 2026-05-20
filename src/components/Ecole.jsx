@@ -1,7 +1,7 @@
 import React, { useContext, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { C, getAnnee, peutModifier } from "../constants";
+import { C, getAnnee, peutCreerComptesParent, peutModifier } from "../constants";
 import { getDefaultPeriodeForSection, getPeriodesForSection } from "../period-utils";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
@@ -84,6 +84,10 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
   const [grilleType,setGrilleType]=useState(defaultNoteType);
   const canCreate = !readOnly && !enModeArchive;
   const canEdit = !readOnly && !enModeArchive && (peutModifier(userRole) || verrouOuvert);
+  // Création de compte parent : gate plus large que canEdit pour inclure
+  // le comptable (front-line inscription/paiement). Ignore le verrou car
+  // c'est une action de service au tuteur, pas une édition de données scolaires.
+  const canCreateParent = !readOnly && !enModeArchive && peutCreerComptesParent(userRole);
   const moy=notes.length?(notes.reduce((s,n)=>s+Number(n.note),0)/notes.length).toFixed(1):"—";
   const classesUniq=[...new Set(eleves.map(e=>e.classe))].filter(Boolean);
   const sortAlphaEcole = arr => {
@@ -246,6 +250,7 @@ function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns
         toast={toast}
         logAction={logAction}
         canEdit={canEdit}
+        canCreateParent={canCreateParent}
         parentEleve={parentEleve}
         setParentEleve={setParentEleve}
         formP={formP}

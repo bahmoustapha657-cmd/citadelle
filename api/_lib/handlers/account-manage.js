@@ -57,6 +57,12 @@ export function canManageTargetRole(session, targetRole, targetData = {}) {
     if (ROLES_SYSTEME_ECRITURE.has(targetRole)) return false;
     return ["enseignant", "parent"].includes(targetRole);
   }
+  // Comptable : limité à la création/édition de comptes parent. Il gère
+  // l'inscription/le paiement et délivre les identifiants parents en
+  // première ligne. Aucun accès aux comptes système ni aux enseignants.
+  if (session.profile.role === "comptable") {
+    return targetRole === "parent";
+  }
   if (session.profile.role === "primaire" || session.profile.role === "college") {
     if (targetRole !== "enseignant") return false;
     return canManageTeacherScope(session, targetData.section);
@@ -256,7 +262,7 @@ async function handler(req, res) {
     }
 
     const session = await requireSession(req, res, {
-      roles: ["direction", "admin", "primaire", "college"],
+      roles: ["direction", "admin", "comptable", "primaire", "college"],
       schoolId: normalizedSchoolId,
       allowSuperadmin: true,
     });
@@ -582,7 +588,7 @@ async function handler(req, res) {
     }
 
     const session = await requireSession(req, res, {
-      roles: ["direction", "admin", "primaire", "college"],
+      roles: ["direction", "admin", "comptable", "primaire", "college"],
       schoolId: normalizedSchoolId,
       allowSuperadmin: true,
     });

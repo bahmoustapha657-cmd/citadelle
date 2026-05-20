@@ -52,3 +52,41 @@ test("college ne peut pas creer un compte parent", () => {
 
   assert.equal(allowed, false);
 });
+
+test("comptable peut creer un compte parent", () => {
+  const allowed = canManageTargetRole(
+    { profile: { role: "comptable" } },
+    "parent",
+  );
+
+  assert.equal(allowed, true);
+});
+
+test("comptable ne peut PAS creer un compte enseignant", () => {
+  const allowed = canManageTargetRole(
+    { profile: { role: "comptable" } },
+    "enseignant",
+    { section: "primaire" },
+  );
+
+  assert.equal(allowed, false);
+});
+
+test("comptable ne peut PAS creer un compte direction/admin/comptable/section", () => {
+  for (const role of ["direction", "admin", "comptable", "primaire", "college"]) {
+    assert.equal(
+      canManageTargetRole({ profile: { role: "comptable" } }, role),
+      false,
+      `comptable ne devrait pas pouvoir creer un compte ${role}`,
+    );
+  }
+});
+
+test("admin peut toujours creer un compte parent", () => {
+  const allowed = canManageTargetRole(
+    { profile: { role: "admin" } },
+    "parent",
+  );
+
+  assert.equal(allowed, true);
+});

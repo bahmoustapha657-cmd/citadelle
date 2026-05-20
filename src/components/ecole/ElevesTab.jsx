@@ -20,11 +20,15 @@ export function ElevesTab({
   toast,
   logAction,
   canEdit,
+  canCreateParent,
   parentEleve,
   setParentEleve,
   formP,
   setFormP,
 }) {
+  // Compat : si l'appelant ne fournit pas canCreateParent, on retombe sur
+  // canEdit (le comportement précédent : direction/admin uniquement).
+  const peutCreerParent = canCreateParent ?? canEdit;
   const { t } = useTranslation();
   const chgP = (k) => (e) => setFormP((p) => ({ ...p, [k]: e.target.value }));
 
@@ -69,7 +73,7 @@ export function ElevesTab({
               </TD>
               <TD><Badge color={e.statut==="Actif"?"vert":"gray"}>{e.statut}</Badge></TD>
               <TD>
-                {canEdit&&<Btn sm v="purple" onClick={()=>{
+                {peutCreerParent&&<Btn sm v="purple" onClick={()=>{
                   const loginSuggere=`parent.${(e.nom||"").toLowerCase().replace(/\s+/g,"").slice(0,12)}`;
                   setParentEleve(e);
                   setFormP({login:loginSuggere, mdp:genererMdp()});

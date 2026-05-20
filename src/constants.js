@@ -178,6 +178,10 @@ export const PLAN_DUREES = [
 
 export const peutModifierEleves = (role) => role === "comptable" || role === "admin" || role === "direction";
 export const peutModifier = (role) => role === "admin" || role === "direction";
+// Création de comptes parents : direction + admin (gestion globale) +
+// comptable (en première ligne sur l'inscription/paiement, c'est lui
+// qui ouvre l'accès parent en pratique).
+export const peutCreerComptesParent = (role) => role === "direction" || role === "admin" || role === "comptable";
 
 export const MODULES = [
   { id: "superadmin_panel", label: "Super Admin", icon: "⚙️", desc: "Gestion des écoles" },
