@@ -35,3 +35,4 @@ export {
   imprimerOrdreMutation,
 } from "./reports/mutation-radiation.js";
 export { imprimerLivret } from "./reports/livret.js";
+export { imprimerEtatsSalaires } from "./reports/etats-salaires.js";
