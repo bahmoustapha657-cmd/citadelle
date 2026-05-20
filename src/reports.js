@@ -36,3 +36,4 @@ export {
 } from "./reports/mutation-radiation.js";
 export { imprimerLivret } from "./reports/livret.js";
 export { imprimerEtatsSalaires } from "./reports/etats-salaires.js";
+export { imprimerEdtEnseignant, imprimerPaiesEnseignant } from "./reports/teacher-prints.js";

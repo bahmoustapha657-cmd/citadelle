@@ -4,10 +4,23 @@ import { SchoolContext } from "../contexts/SchoolContext";
 import { apiFetch, getAuthHeaders } from "../apiClient";
 import { C } from "../constants";
 import { getPeriodesForSection } from "../period-utils";
-import { groupSalariesByPersonMonth } from "../salary-utils";
-import { getActiveNoteForms, getEvaluationLabel, resolveCanonicalNoteType } from "../evaluation-forms";
+import { getActiveNoteForms, getEvaluationLabel } from "../evaluation-forms";
 import { GlobalStyles } from "../styles";
 import { Badge, Btn, Card, Chargement, Input, LectureSeule, Modale, Selec, Stat, TD, THead, TR, Vide } from "./ui";
+import { imprimerEdtEnseignant, imprimerPaiesEnseignant } from "../reports";
+import {
+  construireGrille as construireGrilleHelper,
+  enregistrerGrille as enregistrerGrilleAction,
+  enregistrerNote as enregistrerNoteAction,
+  supprimerNote as supprimerNoteAction,
+} from "./portail-enseignant/notes-actions";
+import {
+  enregistrerIncident as enregistrerIncidentAction,
+  supprimerIncident as supprimerIncidentAction,
+} from "./portail-enseignant/incidents-actions";
+import { NotesTab } from "./portail-enseignant/NotesTab";
+import { AbsencesTab } from "./portail-enseignant/AbsencesTab";
+import { SalaireTab } from "./portail-enseignant/SalaireTab";
 
 function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
   const { t } = useTranslation();
@@ -104,20 +117,12 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
     setModalNote("add");
   };
 
-  // Initialise / réinitialise la grille à partir de mesNotes existantes
-  // (préremplit si une note existe déjà pour ce trio eleve/type/periode).
-  const construireGrille = (classe, type, periode) => {
-    const map = {};
-    (portalData.eleves || [])
-      .filter((e) => e.classe === classe)
-      .forEach((e) => {
-        const existante = mesNotes.find(
-          (n) => n.eleveId === e._id && n.periode === periode && resolveCanonicalNoteType(n.type, schoolInfo, utilisateur.section || "secondaire") === type,
-        );
-        map[e._id] = existante ? String(existante.note ?? "") : "";
-      });
-    return map;
-  };
+  // Wrapper : injecte eleves/notes/schoolInfo/utilisateur au helper.
+  const construireGrille = (classe, type, periode) => construireGrilleHelper({
+    classe, type, periode,
+    eleves: portalData.eleves || [],
+    mesNotes, schoolInfo, utilisateur,
+  });
 
   const ouvrirGrille = () => {
     const classe = mesClasses[0] || "";
@@ -144,65 +149,10 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
     });
   };
 
-  const enregistrerGrille = async () => {
-    const canonical = resolveCanonicalNoteType(gridForm.type, schoolInfo, utilisateur.section || "secondaire");
-    // Ne pousse que les cases non vides
-    const aSauver = Object.entries(gridForm.notes)
-      .filter(([, val]) => val !== "" && val != null)
-      .map(([eleveId, val]) => {
-        const existante = mesNotes.find(
-          (n) => n.eleveId === eleveId && n.periode === gridForm.periode && resolveCanonicalNoteType(n.type, schoolInfo, utilisateur.section || "secondaire") === canonical,
-        );
-        return { eleveId, note: Number(val), noteId: existante?._id || "" };
-      });
-    if (aSauver.length === 0) {
-      toast("Saisis au moins une note avant d'enregistrer.", "warning");
-      return;
-    }
-    const invalide = aSauver.find((n) => !Number.isFinite(n.note) || n.note < 0 || n.note > 20);
-    if (invalide) {
-      toast("Note invalide détectée (doit être un nombre entre 0 et 20).", "warning");
-      return;
-    }
-    setEnregistrement(true);
-    setGridProgress({ done: 0, total: aSauver.length });
-    let nbOk = 0;
-    let nbKo = 0;
-    try {
-      for (const item of aSauver) {
-        try {
-          const headers = await getAuthHeaders({ "Content-Type": "application/json" });
-          const res = await apiFetch("/teacher-portal", {
-            method: "POST",
-            headers,
-            body: JSON.stringify({
-              action: "save_note",
-              noteId: item.noteId,
-              eleveId: item.eleveId,
-              type: canonical,
-              periode: gridForm.periode,
-              note: item.note,
-            }),
-          });
-          const data = await res.json().catch(() => ({}));
-          if (res.ok && data.ok) nbOk++;
-          else nbKo++;
-        } catch {
-          nbKo++;
-        }
-        setGridProgress((p) => ({ ...p, done: p.done + 1 }));
-      }
-      await chargerPortail();
-      if (nbKo === 0) {
-        toast(`${nbOk} note(s) enregistrée(s).`, "success");
-        setModalNote(null);
-      } else {
-        toast(`${nbOk} OK / ${nbKo} échec(s). Réessaie pour les lignes en rouge.`, "warning");
-      }
-    } finally {
-      setEnregistrement(false);
-    }
-  };
+  const enregistrerGrille = () => enregistrerGrilleAction({
+    gridForm, mesNotes, schoolInfo, utilisateur,
+    setEnregistrement, setGridProgress, setModalNote, chargerPortail, toast,
+  });
 
   const ouvrirEditionNote = (note) => {
     setFormNote({
@@ -215,69 +165,13 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
     setModalNote("edit");
   };
 
-  const enregistrerNote = async () => {
-    if (!formNote.eleveId || formNote.note === "" || !formNote.periode) {
-      toast("Eleve, periode et note requis.", "warning");
-      return;
-    }
-
-    setEnregistrement(true);
-    try {
-      const headers = await getAuthHeaders({ "Content-Type": "application/json" });
-      const res = await apiFetch("/teacher-portal", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          action: "save_note",
-          noteId: formNote.noteId || "",
-          eleveId: formNote.eleveId,
-          type: resolveCanonicalNoteType(formNote.type || defaultNoteType, schoolInfo, utilisateur.section || "secondaire"),
-          periode: formNote.periode,
-          note: Number(formNote.note),
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok) {
-        throw new Error(data.error || "Enregistrement impossible.");
-      }
-      setModalNote(null);
-      await chargerPortail();
-      toast("Note enregistree.", "success");
-    } catch (error) {
-      toast(error.message || "Erreur d'enregistrement.", "error");
-    } finally {
-      setEnregistrement(false);
-    }
-  };
-
-  const supprimerNote = async (noteId) => {
-    if (!noteId || !window.confirm("Supprimer cette note ?")) {
-      return;
-    }
-
-    setEnregistrement(true);
-    try {
-      const headers = await getAuthHeaders({ "Content-Type": "application/json" });
-      const res = await apiFetch("/teacher-portal", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          action: "delete_note",
-          noteId,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok) {
-        throw new Error(data.error || "Suppression impossible.");
-      }
-      await chargerPortail();
-      toast("Note supprimee.", "success");
-    } catch (error) {
-      toast(error.message || "Erreur de suppression.", "error");
-    } finally {
-      setEnregistrement(false);
-    }
-  };
+  const enregistrerNote = () => enregistrerNoteAction({
+    formNote, defaultNoteType, schoolInfo, utilisateur,
+    setEnregistrement, setModalNote, chargerPortail, toast,
+  });
+  const supprimerNote = (noteId) => supprimerNoteAction(noteId, {
+    setEnregistrement, chargerPortail, toast,
+  });
 
   const ouvrirSignalementEleve = (eleve) => {
     setFormIncident({
@@ -306,123 +200,20 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
     setModalIncident("edit");
   };
 
-  const enregistrerIncident = async () => {
-    if (!formIncident.eleveId || !formIncident.type || !formIncident.date) {
-      toast("Élève, type et date requis.", "warning");
-      return;
-    }
-    setEnregistrement(true);
-    try {
-      const headers = await getAuthHeaders({ "Content-Type": "application/json" });
-      const res = await apiFetch("/teacher-portal", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          action: "save_incident",
-          incidentId: formIncident.incidentId || "",
-          eleveId: formIncident.eleveId,
-          type: formIncident.type,
-          date: formIncident.date,
-          justifie: formIncident.justifie || "Non",
-          motif: formIncident.motif || "",
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok) {
-        throw new Error(data.error || "Enregistrement impossible.");
-      }
-      // Notification push aux parents — uniquement à la création (pas en
-      // édition) pour éviter de spammer si l'enseignant corrige une faute
-      // de frappe.
-      if (!formIncident.incidentId && envoyerPush) {
-        const type = formIncident.type || "Absence";
-        const eleveNom = formIncident.eleveNom || "Votre enfant";
-        const date = formIncident.date || new Date().toISOString().slice(0, 10);
-        const motif = formIncident.motif ? ` : ${formIncident.motif}` : "";
-        envoyerPush(
-          ["parent"],
-          `⚠️ ${type} signalée par l'enseignant`,
-          `${eleveNom} — ${type} du ${date}${motif}`,
-          "/absences",
-        );
-      }
-      setModalIncident(null);
-      await chargerPortail();
-      toast("Signalement enregistré. Les parents ont été notifiés.", "success");
-    } catch (error) {
-      toast(error.message || "Erreur d'enregistrement.", "error");
-    } finally {
-      setEnregistrement(false);
-    }
-  };
-
-  const supprimerIncident = async (incidentId) => {
-    if (!incidentId || !window.confirm("Supprimer ce signalement ?")) {
-      return;
-    }
-    setEnregistrement(true);
-    try {
-      const headers = await getAuthHeaders({ "Content-Type": "application/json" });
-      const res = await apiFetch("/teacher-portal", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ action: "delete_incident", incidentId }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok) {
-        throw new Error(data.error || "Suppression impossible.");
-      }
-      await chargerPortail();
-      toast("Signalement supprimé.", "success");
-    } catch (error) {
-      toast(error.message || "Erreur de suppression.", "error");
-    } finally {
-      setEnregistrement(false);
-    }
-  };
+  const enregistrerIncident = () => enregistrerIncidentAction({
+    formIncident, envoyerPush, setEnregistrement, setModalIncident, chargerPortail, toast,
+  });
+  const supprimerIncident = (incidentId) => supprimerIncidentAction(incidentId, {
+    setEnregistrement, chargerPortail, toast,
+  });
 
   const notesPeriode = useMemo(
     () => mesNotes.filter((item) => item.periode === periodeN),
     [mesNotes, periodeN],
   );
 
-  const imprimerEdt = () => {
-    const rows = emplois.map((emploi) => (
-      `<tr><td>${emploi.jour || "-"}</td><td>${formatEmploiHeure(emploi)}</td><td>${emploi.classe || "-"}</td><td>${emploi.matiere || matiere || "-"}</td></tr>`
-    )).join("");
-    const w = window.open("", "_blank");
-    w.document.write(`<!DOCTYPE html><html><head><title>EDT - ${nomEns}</title><style>@page{size:A4 portrait;margin:0}@media print{html,body{margin:0}button{display:none}}body{font-family:Arial,sans-serif;padding:14mm 12mm;margin:0}table{border-collapse:collapse;width:100%}th,td{border:1px solid #d0dce8;padding:8px 10px;font-size:12px}th{background:#0A1628;color:#fff}</style></head><body><h2 style="color:#0A1628">Emploi du temps - ${nomEns}</h2><p style="color:#555">${matiere} - ${schoolInfo.nom} - ${annee}</p><table><tr><th>Jour</th><th>Heure</th><th>Classe</th><th>Matiere</th></tr>${rows}</table><br/><button onclick="window.print()">Imprimer</button></body></html>`);
-    w.document.close();
-  };
-
-  const imprimerPaies = () => {
-    // Un bulletin = 1 ligne consolidée par mois. Si l'enseignant cumule
-    // plusieurs fonctions (ex: secondaire + personnel), on ajoute des
-    // sous-lignes détaillant chaque source.
-    const groupes = groupSalariesByPersonMonth(salaires);
-    const lignes = groupes.map((g) => {
-      const sections = g.sections.join(" + ") || "—";
-      const detail = g.parts.length === 1
-        ? (() => {
-            const s = g.parts[0];
-            const heuresExec = Number(s.vhPrevu || 0) + Number(s.cinqSem || 0) - Number(s.nonExecute || 0);
-            return s.section === "Secondaire"
-              ? (s.primesVariables ? `${heuresExec} h - primes variables` : `${heuresExec} h x ${(s.primeHoraire || 0).toLocaleString("fr-FR")} GNF`)
-              : `Forfait ${Number(s.montantForfait || 0).toLocaleString("fr-FR")} GNF`;
-          })()
-        : g.parts.map((s) => {
-            const heuresExec = Number(s.vhPrevu || 0) + Number(s.cinqSem || 0) - Number(s.nonExecute || 0);
-            const lib = s.section === "Secondaire"
-              ? `${heuresExec} h x ${(s.primeHoraire || 0).toLocaleString("fr-FR")} GNF`
-              : `Forfait ${Number(s.montantForfait || 0).toLocaleString("fr-FR")} GNF`;
-            return `<div style="font-size:11px;color:#475569">• ${s.section} : ${lib}</div>`;
-          }).join("");
-      return `<tr><td>${g.mois}</td><td>${sections}</td><td>${detail}</td><td>${g.totalBon > 0 ? `-${g.totalBon.toLocaleString("fr-FR")}` : "-"}</td><td>${g.totalRevision > 0 ? `+${g.totalRevision.toLocaleString("fr-FR")}` : "-"}</td><td style="font-weight:900;color:#0A1628">${g.totalNet.toLocaleString("fr-FR")} GNF</td></tr>`;
-    }).join("");
-    const w = window.open("", "_blank");
-    w.document.write(`<!DOCTYPE html><html><head><title>Paies - ${nomEns}</title><style>@page{size:A4 portrait;margin:0}@media print{html,body{margin:0}button{display:none}}body{font-family:Arial,sans-serif;padding:14mm 12mm;font-size:13px;margin:0}h2{color:#0A1628}table{width:100%;border-collapse:collapse;margin-top:16px}th{background:#0A1628;color:#fff;padding:8px 10px}td{padding:8px 10px;border-bottom:1px solid #e5e7eb;vertical-align:top}</style></head><body><h2>${schoolInfo.nom || "Ecole"} - Fiches de paie</h2><p>${nomEns} - ${matiere || "Enseignant"} - Annee ${annee}</p><table><tr><th>Mois</th><th>Fonction(s)</th><th>Detail</th><th>Bon</th><th>Revision</th><th>Net a payer</th></tr>${lignes}</table><br/><button onclick="window.print()">Imprimer</button></body></html>`);
-    w.document.close();
-  };
+  const imprimerEdt = () => imprimerEdtEnseignant({ emplois, nomEns, matiere, schoolInfo, annee });
+  const imprimerPaies = () => imprimerPaiesEnseignant({ salaires, nomEns, matiere, schoolInfo, annee });
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "'Inter','Segoe UI',sans-serif" }}>
@@ -561,175 +352,25 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
             )}
 
             {tab === "notes" && (
-              <>
-                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
-                  <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900, color: c1, flex: 1 }}>Saisie des notes - {matiere || "Matiere"}</h2>
-                  <select value={periodeN} onChange={(event) => setPeriodeN(event.target.value)} style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "7px 12px", fontSize: 13, background: "#fff" }}>
-                    {periodes.map((p) => <option key={p}>{p}</option>)}
-                  </select>
-                  {mesClasses.length > 0 && <Btn v="vert" onClick={ouvrirGrille}>📊 Saisie en grille</Btn>}
-                  <Btn onClick={ouvrirCreationNote}>Nouvelle note</Btn>
-                </div>
-
-                {notesPeriode.length === 0 ? (
-                  <Vide icone="Notes" msg={`Aucune note pour ${periodeN}`} />
-                ) : (
-                  <Card>
-                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                      <THead cols={["Eleve", "Type", "Note /20", "Actions"]} />
-                      <tbody>
-                        {notesPeriode.map((note) => (
-                          <TR key={note._id}>
-                            <TD bold>{note.eleveNom}</TD>
-                            <TD><Badge color="blue">{getEvaluationLabel(note.type, schoolInfo, { section: utilisateur.section || "secondaire" })}</Badge></TD>
-                            <TD center><strong style={{ fontSize: 14, color: Number(note.note) >= 10 ? C.greenDk : "#b91c1c" }}>{note.note}</strong></TD>
-                            <TD center>
-                              <div style={{ display: "flex", justifyContent: "center", gap: 6 }}>
-                                <Btn sm v="ghost" onClick={() => ouvrirEditionNote(note)}>Modifier</Btn>
-                                <Btn sm v="danger" onClick={() => supprimerNote(note._id)} disabled={enregistrement}>Supprimer</Btn>
-                              </div>
-                            </TD>
-                          </TR>
-                        ))}
-                      </tbody>
-                    </table>
-                  </Card>
-                )}
-
-                {modalNote === "grid" && (
-                  <Modale xlarge titre={`Saisie en grille — ${matiere || "Matière"}`} fermer={() => setModalNote(null)}>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 14 }}>
-                      <Selec label="Classe" value={gridForm.classe} onChange={(e) => majGrid({ classe: e.target.value })}>
-                        {mesClasses.map((cl) => <option key={cl} value={cl}>{cl}</option>)}
-                      </Selec>
-                      <Selec label="Type d'évaluation" value={gridForm.type} onChange={(e) => majGrid({ type: e.target.value })}>
-                        {noteForms.map((item) => <option key={item.id} value={item.value}>{item.label}</option>)}
-                      </Selec>
-                      <Selec label="Période" value={gridForm.periode} onChange={(e) => majGrid({ periode: e.target.value })}>
-                        {periodes.map((p) => <option key={p} value={p}>{p}</option>)}
-                      </Selec>
-                    </div>
-
-                    {(() => {
-                      const elevesClasse = (portalData.eleves || []).filter((e) => e.classe === gridForm.classe);
-                      if (elevesClasse.length === 0) return <Vide icone="Élèves" msg="Aucun élève dans cette classe." />;
-                      const remplies = Object.values(gridForm.notes).filter((v) => v !== "" && v != null).length;
-                      return (
-                        <>
-                          <div style={{ padding: "8px 12px", background: "#f0f7ff", border: "1px solid #bfdbfe", borderRadius: 8, fontSize: 12, color: "#1e40af", marginBottom: 10 }}>
-                            <strong>{remplies}</strong> note(s) saisie(s) sur <strong>{elevesClasse.length}</strong> élève(s). Les notes existantes sont préremplies — modifier/effacer met à jour ou laisse en l'état.
-                          </div>
-                          <div style={{ maxHeight: "55vh", overflowY: "auto", border: "1px solid #e2e8f0", borderRadius: 8 }}>
-                            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                              <thead style={{ position: "sticky", top: 0, background: "#0A1628", color: "#fff", zIndex: 1 }}>
-                                <tr>
-                                  <th style={{ padding: "8px 10px", fontSize: 11, textAlign: "start", width: 50 }}>#</th>
-                                  <th style={{ padding: "8px 10px", fontSize: 11, textAlign: "start" }}>Élève</th>
-                                  <th style={{ padding: "8px 10px", fontSize: 11, textAlign: "center", width: 110 }}>Note /20</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {elevesClasse.map((e, i) => {
-                                  const val = gridForm.notes[e._id] ?? "";
-                                  const num = val === "" ? null : Number(val);
-                                  const invalid = val !== "" && (Number.isNaN(num) || num < 0 || num > 20);
-                                  return (
-                                    <tr key={e._id} style={{ background: i % 2 === 0 ? "#fff" : "#f8fafc" }}>
-                                      <td style={{ padding: "6px 10px", fontSize: 11, color: "#94a3b8" }}>{i + 1}</td>
-                                      <td style={{ padding: "6px 10px", fontSize: 13 }}>
-                                        <strong>{e.nom} {e.prenom}</strong>
-                                        {e.matricule && <span style={{ marginInlineStart: 6, fontSize: 10, color: "#94a3b8", fontFamily: "monospace" }}>{e.matricule}</span>}
-                                      </td>
-                                      <td style={{ padding: "6px 10px", textAlign: "center" }}>
-                                        <input
-                                          type="number"
-                                          min={0}
-                                          max={20}
-                                          step={0.25}
-                                          value={val}
-                                          onChange={(ev) => setGridForm((g) => ({ ...g, notes: { ...g.notes, [e._id]: ev.target.value } }))}
-                                          style={{
-                                            width: 80,
-                                            padding: "6px 8px",
-                                            border: `1.5px solid ${invalid ? "#ef4444" : (val !== "" ? C.green : "#e2e8f0")}`,
-                                            borderRadius: 6,
-                                            fontSize: 13,
-                                            textAlign: "center",
-                                            background: invalid ? "#fef2f2" : "#fff",
-                                            outline: "none",
-                                          }}
-                                          placeholder="—"
-                                        />
-                                      </td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
-                          </div>
-                        </>
-                      );
-                    })()}
-
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginTop: 16 }}>
-                      <div style={{ fontSize: 12, color: "#64748b" }}>
-                        {gridProgress.total > 0 && enregistrement && `Enregistrement ${gridProgress.done}/${gridProgress.total}…`}
-                      </div>
-                      <div style={{ display: "flex", gap: 8 }}>
-                        <Btn v="ghost" onClick={() => setModalNote(null)} disabled={enregistrement}>Fermer</Btn>
-                        <Btn v="vert" onClick={enregistrerGrille} disabled={enregistrement}>
-                          {enregistrement ? "Enregistrement…" : "💾 Enregistrer la grille"}
-                        </Btn>
-                      </div>
-                    </div>
-                  </Modale>
-                )}
-
-                {modalNote && modalNote !== "grid" && (
-                  <Modale titre={modalNote === "add" ? "Nouvelle note" : "Modifier la note"} fermer={() => setModalNote(null)}>
-                    <Selec
-                      label="Eleve"
-                      value={formNote.eleveId || ""}
-                      onChange={(event) => setFormNote((current) => ({ ...current, eleveId: event.target.value }))}
-                    >
-                      <option value="">- Choisir un eleve -</option>
-                      {eleves.map((eleveItem) => (
-                        <option key={eleveItem._id} value={eleveItem._id}>
-                          {eleveItem.nom} {eleveItem.prenom} ({eleveItem.classe})
-                        </option>
-                      ))}
-                    </Selec>
-                    <div style={{ height: 10 }} />
-                    <Selec
-                      label="Type"
-                      value={formNote.type || defaultNoteType}
-                      onChange={(event) => setFormNote((current) => ({ ...current, type: event.target.value }))}
-                    >
-                      {noteForms.map((item) => <option key={item.id} value={item.value}>{item.label}</option>)}
-                    </Selec>
-                    <div style={{ height: 10 }} />
-                    <Selec
-                      label="Periode"
-                      value={formNote.periode || periodeN}
-                      onChange={(event) => setFormNote((current) => ({ ...current, periode: event.target.value }))}
-                    >
-                      {periodes.map((p) => <option key={p}>{p}</option>)}
-                    </Selec>
-                    <div style={{ height: 10 }} />
-                    <Input
-                      label="Note /20"
-                      type="number"
-                      value={formNote.note ?? ""}
-                      onChange={(event) => setFormNote((current) => ({ ...current, note: event.target.value }))}
-                      placeholder="Ex : 14"
-                    />
-                    <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
-                      <Btn v="ghost" onClick={() => setModalNote(null)}>Annuler</Btn>
-                      <Btn onClick={enregistrerNote} disabled={enregistrement}>{enregistrement ? "Enregistrement..." : "Enregistrer"}</Btn>
-                    </div>
-                  </Modale>
-                )}
-              </>
+              <NotesTab
+                c1={c1} matiere={matiere} schoolInfo={schoolInfo} utilisateur={utilisateur}
+                periodeN={periodeN} setPeriodeN={setPeriodeN} periodes={periodes}
+                mesClasses={mesClasses} notesPeriode={notesPeriode}
+                noteForms={noteForms} defaultNoteType={defaultNoteType}
+                eleves={eleves} portalData={portalData}
+                modalNote={modalNote} setModalNote={setModalNote}
+                formNote={formNote} setFormNote={setFormNote}
+                gridForm={gridForm} setGridForm={setGridForm}
+                gridProgress={gridProgress}
+                enregistrement={enregistrement}
+                ouvrirCreationNote={ouvrirCreationNote}
+                ouvrirGrille={ouvrirGrille}
+                ouvrirEditionNote={ouvrirEditionNote}
+                supprimerNote={supprimerNote}
+                enregistrerNote={enregistrerNote}
+                enregistrerGrille={enregistrerGrille}
+                majGrid={majGrid}
+              />
             )}
 
             {tab === "eleves" && (
@@ -769,157 +410,17 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
             )}
 
             {tab === "absences" && (
-              <>
-                <h2 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 900, color: c1 }}>Signalements et événements</h2>
-
-                <Card style={{ marginBottom: 16 }}>
-                  <div style={{ padding: "12px 18px", borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-                    <strong style={{ fontSize: 13, color: c1 }}>Mes signalements sur élèves ({incidents.length})</strong>
-                    <span style={{ fontSize: 11, color: "#64748b" }}>Visibles par la direction et les parents concernés.</span>
-                  </div>
-                  {incidents.length === 0 ? (
-                    <div style={{ padding: "20px", textAlign: "center", color: "#9ca3af", fontSize: 12 }}>
-                      Aucun signalement. Allez dans <strong>Mes élèves</strong> pour signaler une absence, un retard, une indiscipline.
-                    </div>
-                  ) : (
-                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                      <THead cols={["Date", "Élève", "Classe", "Type", "Justifié", "Motif", "Action"]} />
-                      <tbody>
-                        {incidents.map((inc) => {
-                          const mine = enseignantId && inc.signaledByEnseignantId === enseignantId;
-                          const typeColor = inc.type === "Absence" ? "red" : inc.type === "Retard" ? "amber" : inc.type === "Avertissement" ? "amber" : inc.type === "Sanction" ? "red" : inc.type === "Renvoi temporaire" ? "red" : "blue";
-                          return (
-                            <TR key={inc._id}>
-                              <TD>{inc.date || "-"}</TD>
-                              <TD bold>{inc.eleveNom || "-"}</TD>
-                              <TD><Badge color="blue">{inc.classe || "-"}</Badge></TD>
-                              <TD><Badge color={typeColor}>{inc.type || "-"}</Badge></TD>
-                              <TD><Badge color={inc.justifie === "Oui" ? "vert" : "gray"}>{inc.justifie || "Non"}</Badge></TD>
-                              <TD>{inc.motif || "-"}</TD>
-                              <TD>
-                                {mine ? (
-                                  <div style={{ display: "flex", gap: 4 }}>
-                                    <Btn sm v="ghost" onClick={() => ouvrirEditionIncident(inc)}>✏️</Btn>
-                                    <Btn sm v="danger" onClick={() => supprimerIncident(inc._id)}>🗑</Btn>
-                                  </div>
-                                ) : (
-                                  <span title={`Signalé par ${inc.signaledByEnseignantNom || "la direction"}`} style={{ fontSize: 10, color: "#9ca3af", fontStyle: "italic" }}>
-                                    {inc.signaledByEnseignantNom ? `par ${inc.signaledByEnseignantNom.split(" ").slice(-1)[0]}` : "Direction"}
-                                  </span>
-                                )}
-                              </TD>
-                            </TR>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  )}
-                </Card>
-
-                <Card>
-                  <div style={{ padding: "12px 18px", borderBottom: "1px solid #f1f5f9" }}>
-                    <strong style={{ fontSize: 13, color: c1 }}>Mes événements d'enseignement ({mesEvenements.length})</strong>
-                    <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>Cours effectués, absents, non effectués (saisis par la comptabilité).</div>
-                  </div>
-                  {mesEvenements.length === 0 ? (
-                    <div style={{ padding: "20px", textAlign: "center", color: "#9ca3af", fontSize: 12 }}>Aucun événement enregistré.</div>
-                  ) : (
-                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                      <THead cols={["Date", "Classe", "Matière", "Statut", "Motif"]} />
-                      <tbody>
-                        {mesEvenements.map((item) => (
-                          <TR key={item._id}>
-                            <TD>{item.date || "-"}</TD>
-                            <TD><Badge color="blue">{item.classe || "-"}</Badge></TD>
-                            <TD>{item.matiere || matiere || "-"}</TD>
-                            <TD><Badge color={item.statut === "Absent" ? "red" : item.statut === "Non effectue" ? "amber" : "vert"}>{item.statut || "-"}</Badge></TD>
-                            <TD>{item.motif || "-"}</TD>
-                          </TR>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-                </Card>
-              </>
+              <AbsencesTab
+                c1={c1} matiere={matiere}
+                incidents={incidents} mesEvenements={mesEvenements}
+                enseignantId={enseignantId}
+                ouvrirEditionIncident={ouvrirEditionIncident}
+                supprimerIncident={supprimerIncident}
+              />
             )}
 
             {tab === "salaire" && (
-              <>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
-                  <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900, color: c1 }}>Ma fiche de paie</h2>
-                  {salaires.length > 0 && <Btn sm v="ghost" onClick={imprimerPaies}>Imprimer fiches</Btn>}
-                </div>
-                <LectureSeule />
-                {salaires.length === 0 ? (
-                  <Vide icone="Paie" msg="Aucune fiche de paie disponible" />
-                ) : (
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))", gap: 12 }}>
-                    {groupSalariesByPersonMonth(salaires).map((g) => {
-                      const cumul = g.parts.length > 1;
-                      return (
-                        <Card key={`${g.mois}-${g.nom}`} style={{ padding: 0 }}>
-                          <div style={{ background: `linear-gradient(135deg,${c1},${c1}cc)`, padding: "12px 16px", borderRadius: "14px 14px 0 0" }}>
-                            <div style={{ color: c2, fontWeight: 900, fontSize: 13 }}>{g.mois}</div>
-                            <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 11 }}>
-                              {cumul ? `${g.parts.length} fonctions : ${g.sections.join(" + ")}` : `Section ${g.sections[0] || "—"}`}
-                            </div>
-                          </div>
-                          <div style={{ padding: "14px 16px" }}>
-                            {g.parts.map((salaire, idx) => {
-                              const heuresExec = Number(salaire.vhPrevu || 0) + Number(salaire.cinqSem || 0) - Number(salaire.nonExecute || 0);
-                              return (
-                                <div key={salaire._id || idx} style={{ marginBottom: cumul ? 10 : 0, paddingBottom: cumul ? 10 : 0, borderBottom: cumul && idx < g.parts.length - 1 ? "1px dashed #e2e8f0" : "none" }}>
-                                  {cumul && <div style={{ fontSize: 10, fontWeight: 800, color: c1, textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 4 }}>{salaire.section}</div>}
-                                  {salaire.section === "Secondaire" ? (
-                                    <>
-                                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
-                                        <span style={{ color: "#64748b" }}>V.H. execute</span>
-                                        <strong>{heuresExec} h</strong>
-                                      </div>
-                                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
-                                        <span style={{ color: "#64748b" }}>Prime horaire</span>
-                                        <strong>{salaire.primesVariables ? "Variable" : `${Number(salaire.primeHoraire || 0).toLocaleString("fr-FR")} GNF`}</strong>
-                                      </div>
-                                      {salaire.primesVariables && (
-                                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
-                                          <span style={{ color: "#64748b" }}>Montant brut</span>
-                                          <strong>{Number(salaire.montantBrut || 0).toLocaleString("fr-FR")} GNF</strong>
-                                        </div>
-                                      )}
-                                    </>
-                                  ) : (
-                                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
-                                      <span style={{ color: "#64748b" }}>Forfait</span>
-                                      <strong>{Number(salaire.montantForfait || 0).toLocaleString("fr-FR")} GNF</strong>
-                                    </div>
-                                  )}
-                                  {Number(salaire.bon || 0) > 0 && (
-                                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4, color: "#b91c1c" }}>
-                                      <span>Bon deduit</span>
-                                      <strong>-{Number(salaire.bon).toLocaleString("fr-FR")} GNF</strong>
-                                    </div>
-                                  )}
-                                  {Number(salaire.revision || 0) > 0 && (
-                                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4, color: C.greenDk }}>
-                                      <span>Revision</span>
-                                      <strong>+{Number(salaire.revision).toLocaleString("fr-FR")} GNF</strong>
-                                    </div>
-                                  )}
-                                  {salaire.observation && <p style={{ fontSize: 11, color: "#94a3b8", marginTop: 4, marginBottom: 0 }}>{salaire.observation}</p>}
-                                </div>
-                              );
-                            })}
-                            <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 12px", background: `${c1}0d`, borderRadius: 8, marginTop: 8 }}>
-                              <span style={{ fontWeight: 700, fontSize: 13, color: c1 }}>{cumul ? "TOTAL NET A PAYER" : "NET A PAYER"}</span>
-                              <strong style={{ fontSize: 15, color: c1 }}>{g.totalNet.toLocaleString("fr-FR")} GNF</strong>
-                            </div>
-                          </div>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                )}
-              </>
+              <SalaireTab c1={c1} c2={c2} salaires={salaires} imprimerPaies={imprimerPaies}/>
             )}
           </>
         )}
