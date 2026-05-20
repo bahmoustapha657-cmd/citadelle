@@ -10,24 +10,26 @@ import { LanguageSwitcher } from "./components/LanguageSwitcher";
 // Fallback sur le champ FR du MODULES si la clé i18n manque.
 const moduleLabel = (m, t) => t(`modules.${m.id}.label`, m.label);
 const moduleDesc = (m, t) => t(`modules.${m.id}.desc`, m.desc);
-import { getCurrentUser, signOutCurrentUser, watchAuthState } from "./firebaseAuth";
+import { getCurrentUser, signOutCurrentUser } from "./firebaseAuth";
 import { db } from "./firebaseDb";
-import { subscribeLegalProfile } from "./legal-utils";
 import {
-  collection, onSnapshot, addDoc, doc, setDoc, getDoc, getDocFromServer, query, orderBy, limit
+  collection, addDoc, doc, setDoc, getDoc,
 } from "firebase/firestore";
 import {
   C,
   calcMoisAnnee, calcMoisSalaire, getAnnee,
   CLASSES_PRIMAIRE,
   MATIERES_PRIMAIRE, PLANS, MODULES,
-  getModulesForRole, getPrimaryModuleForRole, getRoleLabelForSchool, getRoleSettingsForSchool,
-  setMonnaie,
+  getModulesForRole, getPrimaryModuleForRole, getRoleLabelForSchool,
 } from "./constants";
 import { GlobalStyles } from "./styles";
 import {
   Badge, Btn, Chargement,
 } from "./components/ui";
+import { usePwaState } from "./hooks/use-pwa-state";
+import { useSchoolData } from "./hooks/use-school-data";
+import { useKeyboardShortcuts } from "./hooks/use-keyboard-shortcuts";
+import { useAuthSession } from "./hooks/use-auth-session";
 
 const lazyNamedExport = (loader, exportName) =>
   lazy(() => loader().then((module) => ({ default: module[exportName] })));
@@ -150,15 +152,13 @@ class ErrorBoundary extends React.Component {
 
 export default function App() {
   const { t } = useTranslation();
-  const [utilisateur,setUtilisateur]=useState(null);
   const [page,setPage]=useState(null);
   // Onglet initial à afficher quand on entre dans ParametresEcole — permet
   // au TableauDeBord (alerte conformité) de pointer directement sur "officiel".
   const [paramInitialTab, setParamInitialTab] = useState(null);
   const [rechercheOuverte,setRechercheOuverte]=useState(false);
   const [notifOuvert,setNotifOuvert]=useState(false);
-  const [notifListe,setNotifListe]=useState([]);
-  const [notifNonLues,setNotifNonLues]=useState(0);
+  // notifListe + notifNonLues : fournis par useSchoolData (cf. plus bas).
   const [profilOuvert,setProfilOuvert]=useState(false);
   const [aideOuverte,setAideOuverte]=useState(false);
   const [schoolId,setSchoolId]=useState(()=>{
@@ -167,12 +167,7 @@ export default function App() {
     if(fromUrl){localStorage.setItem("LC_schoolId",fromUrl);}
     return fromUrl||localStorage.getItem("LC_schoolId")||"citadelle";
   });
-  const [schoolInfoState,setSchoolInfo]=useState(SCHOOL_INFO_DEFAUT);
   const [annee,setAnneeState]=useState(()=>localStorage.getItem("LC_annee")||"2025-2026");
-  const [verrous,setVerrous]=useState({comptable:false,primaire:false,secondaire:false});
-  const [msgsNonLus,setMsgsNonLus]=useState(0); // badge messages sidebar
-  const [totalElevesActifs,setTotalElevesActifs]=useState(0); // comptage toutes sections
-  const [nowTs,setNowTs]=useState(() => Date.now());
   const [toasts,setToasts]=useState([]);
   const toast=(msg,type="success")=>{
     const id=Date.now()+Math.random();
@@ -182,6 +177,7 @@ export default function App() {
   const logAction=(action,details="",auteur="")=>{
     try{
       const sid=localStorage.getItem("LC_schoolId")||"citadelle";
+      // eslint-disable-next-line react-hooks/purity
       addDoc(collection(db,"ecoles",sid,"historique"),{action,details,auteur,date:Date.now()}).catch(()=>{});
     }catch{
       // Logging is best-effort only.
@@ -189,74 +185,29 @@ export default function App() {
   };
   const [onboardingOuvert,setOnboardingOuvert]=useState(false);
   const [sidebarOuvert,setSidebarOuvert]=useState(false);
-  const [modeSombre,setModeSombre]=useState(()=>localStorage.getItem("LC_theme")==="dark");
-  const [estHorsLigne,setEstHorsLigne]=useState(!navigator.onLine);
-  const [promptInstall,setPromptInstall]=useState(null);
-  const [installVisible,setInstallVisible]=useState(false);
 
-  useEffect(()=>{
-    const timer = window.setInterval(()=>setNowTs(Date.now()), 60000);
-    return ()=>window.clearInterval(timer);
-  },[]);
+  // Shell PWA : nowTs, online/offline, install prompt, isMobile, mode sombre.
+  const {
+    nowTs, estHorsLigne, installVisible, setInstallVisible, installerApp,
+    isMobile, modeSombre, setModeSombre,
+  } = usePwaState();
 
-  // â”€â”€ PWA : detection hors ligne â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  useEffect(()=>{
-    const goOn  = ()=>setEstHorsLigne(false);
-    const goOff = ()=>setEstHorsLigne(true);
-    window.addEventListener("online",  goOn);
-    window.addEventListener("offline", goOff);
-    return ()=>{ window.removeEventListener("online",goOn); window.removeEventListener("offline",goOff); };
-  },[]);
+  // Auth Firebase + profil /users/{uid} → utilisateur courant.
+  // Appelé avant useSchoolData qui dépend d'utilisateur (visibilité des
+  // listeners back-office vs portails enseignant/parent).
+  const { utilisateur, setUtilisateur } = useAuthSession({ setSchoolId, setPage });
 
-  // â”€â”€ PWA : prompt d'installation (Android Chrome / Edge) â”€â”€â”€â”€â”€â”€
-  useEffect(()=>{
-    const handler=(e)=>{ e.preventDefault(); setPromptInstall(e); setInstallVisible(true); };
-    window.addEventListener("beforeinstallprompt", handler);
-    return ()=>window.removeEventListener("beforeinstallprompt", handler);
-  },[]);
+  // Listeners Firestore liés à l'école courante (schoolInfo, verrous,
+  // legal profile, badges messages/élèves/notifs).
+  const {
+    schoolInfoState, setSchoolInfo, verrous,
+    msgsNonLus, totalElevesActifs, notifListe, notifNonLues, setNotifNonLues,
+  } = useSchoolData({ schoolId, utilisateur });
 
-  const installerApp=async()=>{
-    if(!promptInstall)return;
-    promptInstall.prompt();
-    const {outcome}=await promptInstall.userChoice;
-    if(outcome==="accepted") setInstallVisible(false);
-    setPromptInstall(null);
-  };
-  const [isMobile,setIsMobile]=useState(()=>window.innerWidth<768);
-  useEffect(()=>{
-    const fn=()=>setIsMobile(window.innerWidth<768);
-    window.addEventListener("resize",fn);
-    return ()=>window.removeEventListener("resize",fn);
-  },[]);
-
-  useEffect(()=>{
-    document.body.classList.toggle("mode-sombre", modeSombre);
-    localStorage.setItem("LC_theme", modeSombre?"dark":"light");
-  },[modeSombre]);
-
-  // Ctrl+K / âŒ˜K â€” ouvrir la recherche globale  |  ? â€” aide raccourcis
-  useEffect(()=>{
-    const fn=(e)=>{
-      if((e.ctrlKey||e.metaKey) && e.key==="k"){
-        e.preventDefault();
-        if(utilisateur && !["enseignant","parent"].includes(utilisateur.role))
-          setRechercheOuverte(o=>!o);
-      }
-      // ? â€” aide clavier (seulement si pas de champ texte actif)
-      if(e.key==="?" && !["INPUT","TEXTAREA","SELECT"].includes(document.activeElement?.tagName)){
-        e.preventDefault();
-        if(utilisateur) setAideOuverte(o=>!o);
-      }
-      // Escape â€” fermer les dropdowns/panneaux
-      if(e.key==="Escape"){
-        setNotifOuvert(false);
-        setProfilOuvert(false);
-        setAideOuverte(false);
-      }
-    };
-    window.addEventListener("keydown",fn);
-    return ()=>window.removeEventListener("keydown",fn);
-  },[utilisateur]);
+  // Ctrl+K / ? / Escape — voir use-keyboard-shortcuts pour le détail.
+  useKeyboardShortcuts({
+    utilisateur, setRechercheOuverte, setAideOuverte, setNotifOuvert, setProfilOuvert,
+  });
 
   const setAnnee=(val)=>{
     setAnneeState(val);
@@ -272,201 +223,14 @@ export default function App() {
     }).catch(()=>{});
   },[]);
 
-  // Charger les infos de l'Ã©cole depuis Firestore (temps rÃ©el)
-  useEffect(()=>{
-    let actif = true;
-    let accepterCache = false;
-    const estSessionPrivee = !!utilisateur && schoolId !== "superadmin";
-    const schoolRef = schoolId
-      ? doc(db, estSessionPrivee ? "ecoles" : "ecoles_public", schoolId)
-      : null;
-    const reinitialiserBranding = () => {
-      setSchoolInfo(SCHOOL_INFO_DEFAUT);
-      setMonnaie(SCHOOL_INFO_DEFAUT.monnaie);
-      setVerrous({comptable:false,primaire:false,secondaire:false});
-      document.documentElement.style.setProperty("--sc1","#0A1628");
-      document.documentElement.style.setProperty("--sc2","#00C48C");
-    };
-    const appliquerDonneesEcole = (d) => {
-      const D = SCHOOL_INFO_DEFAUT;
-      setSchoolInfo({
-        ...D,
-        ...d,           // tous les champs Firestore (blocageParentImpaye, triEleves, matricule*, etc.)
-        nom:       d.nom       || D.nom,
-        type:      d.type      || D.type,
-        ville:     d.ville     || D.ville,
-        pays:      d.pays      || D.pays,
-        couleur1:  d.couleur1  || D.couleur1,
-        couleur2:  d.couleur2  || D.couleur2,
-        logo:      d.logo      || D.logo,
-        devise:    d.devise    || D.devise,
-        monnaie:   d.monnaie   || D.monnaie,
-        ministere: d.ministere || D.ministere,
-        ire:       d.ire       || D.ire,
-        dpe:       d.dpe       || D.dpe,
-        agrement:  d.agrement  || D.agrement,
-        moisDebut: d.moisDebut || D.moisDebut,
-        plan:      d.plan      || "gratuit",
-        planExpiry:d.planExpiry|| null,
-        accueil:   d.accueil   || D.accueil,
-        roleSettings: getRoleSettingsForSchool(d.roleSettings || D.roleSettings),
-      });
-      setMonnaie(d.monnaie || D.monnaie);
-      setVerrous(d.verrous || {comptable:false,primaire:false,secondaire:false});
-      const r = document.documentElement.style;
-      r.setProperty("--sc1", d.couleur1 || "#0A1628");
-      r.setProperty("--sc2", d.couleur2 || "#00C48C");
-    };
+  // Note : tous les listeners Firestore liés à l'école (schoolInfo,
+  // verrous, profil légal, badge messages, comptage élèves, historique)
+  // vivent dans useSchoolData (src/hooks/use-school-data.js), appelé
+  // au-dessus avec { schoolId, utilisateur }.
 
-    reinitialiserBranding();
-    if(!schoolId||schoolId==="superadmin"||!schoolRef){
-      return;
-    }
-
-    getDocFromServer(schoolRef).then((snap)=>{
-      if(!actif) return;
-      accepterCache = true;
-      if(snap.exists()) appliquerDonneesEcole(snap.data());
-      else reinitialiserBranding();
-    }).catch(()=>{
-      if(!actif) return;
-      accepterCache = true;
-    });
-
-    const unsub = onSnapshot(schoolRef,(snap)=>{
-      if(!actif) return;
-      if(!accepterCache && snap.metadata?.fromCache) return;
-      if(snap.exists()) appliquerDonneesEcole(snap.data());
-      else reinitialiserBranding();
-    });
-
-    return ()=>{
-      actif = false;
-      unsub();
-    };
-  },[schoolId, utilisateur]);
-
-  // Profil légal officiel — listener sur /ecoles/{schoolId}/config/legal
-  // Merge dans schoolInfo.legal pour que reports.js (bulletins/attestations)
-  // y accède via schoolInfo.legal sans appel Firestore supplémentaire.
-  useEffect(()=>{
-    if(!schoolId||schoolId==="superadmin") return;
-    const unsub = subscribeLegalProfile(schoolId,(legal)=>{
-      setSchoolInfo(prev=>({...prev, legal}));
-    });
-    return ()=>unsub();
-  },[schoolId]);
-
-  // Badge messages non lus (cÃ´te ecole) â€” ecoute en temps reel
-  useEffect(()=>{
-    if(!utilisateur||!schoolId||schoolId==="superadmin") return;
-    if(["enseignant","parent"].includes(utilisateur.role)) return;
-    const unsub = onSnapshot(collection(db,"ecoles",schoolId,"messages"),(snap)=>{
-      const nonLus = snap.docs.filter(d=>d.data().expediteur==="parent"&&!d.data().lu).length;
-      setMsgsNonLus(nonLus);
-    });
-    return ()=>unsub();
-  },[schoolId, utilisateur]);
-
-  // Comptage eleves actifs toutes sections (pour verification plan)
-  useEffect(()=>{
-    if(!utilisateur||!schoolId||schoolId==="superadmin") return;
-    if(["enseignant","parent"].includes(utilisateur.role)) return;
-    const colls = ["elevesCollege","elevesPrimaire","elevesLycee"];
-    const counts = {elevesCollege:0, elevesPrimaire:0, elevesLycee:0};
-    const unsubs = colls.map(coll=>
-      onSnapshot(collection(db,"ecoles",schoolId,coll),(snap)=>{
-        counts[coll] = snap.docs.filter(d=>d.data().statut==="Actif").length;
-        setTotalElevesActifs(Object.values(counts).reduce((a,b)=>a+b,0));
-      })
-    );
-    return ()=>unsubs.forEach(u=>u());
-  },[schoolId, utilisateur]);
-
-  // Centre de notifications â€” 10 dernieres actions de l'historique
-  useEffect(()=>{
-    if(!utilisateur||!schoolId||schoolId==="superadmin") return;
-    if(["enseignant","parent"].includes(utilisateur.role)) return;
-    const q=query(collection(db,"ecoles",schoolId,"historique"),orderBy("date","desc"),limit(10));
-    const unsub=onSnapshot(q,(snap)=>{
-      const liste=snap.docs.map(d=>({id:d.id,...d.data()}));
-      setNotifListe(liste);
-      // Non lues = actions < 5 minutes
-      const cinqMin=Date.now()-5*60*1000;
-      setNotifNonLues(liste.filter(n=>n.date>cinqMin).length);
-    });
-    return ()=>unsub();
-  },[schoolId, utilisateur]);
-
-  // Ã‰coute l'?tat Firebase Auth â€” charge le profil depuis /users/{uid}
-  useEffect(()=>{
-    let actif = true;
-    let unsub = () => {};
-
-    watchAuthState(async(firebaseUser)=>{
-      if(!actif) return;
-      if(!firebaseUser){
-        // Session Firebase expiree ou deconnexion - vider l'etat
-        setUtilisateur(null);
-        setPage(null);
-        return;
-      }
-      try{
-        const profil=await getDoc(doc(db,"users",firebaseUser.uid));
-        if(profil.exists() && actif){
-          const d=profil.data();
-          if(d.statut && d.statut!=="Actif"){
-            signOutCurrentUser().catch(()=>{});
-            setUtilisateur(null);
-            setPage(null);
-            return;
-          }
-          const sid=d.schoolId;
-          setSchoolId(sid);
-          localStorage.setItem("LC_schoolId",sid);
-          const premiereCo=!!d.premiereCo;
-          const compteDocId=d.compteDocId||null;
-          setUtilisateur({
-            uid:firebaseUser.uid,
-            login:d.login,
-            nom:d.nom,
-            role:d.role,
-            label:d.label||d.role,
-            premiereCo,
-            compteDocId,
-            schoolId:sid,
-            section:d.section||null,
-            sections:Array.isArray(d.sections)?d.sections:[],
-            eleveId:d.eleveId||null,
-            eleveIds:Array.isArray(d.eleveIds)?d.eleveIds:[],
-            eleveNom:d.eleveNom||"",
-            eleveClasse:d.eleveClasse||"",
-            elevesAssocies:Array.isArray(d.elevesAssocies)?d.elevesAssocies:[],
-            enseignantId:d.enseignantId||null,
-            enseignantNom:d.enseignantNom||"",
-            matiere:d.matiere||"",
-            tuteur:d.tuteur||"",
-            contactTuteur:d.contactTuteur||"",
-            filiation:d.filiation||"",
-          });
-          setPage(p=>p||getPrimaryModuleForRole(d.role));
-          // Prefetch des pages les plus utilisees pendant que le dashboard se rend
-          import("./components/Comptabilite").catch(()=>{});
-          import("./components/Ecole").catch(()=>{});
-        }
-      }catch(e){
-        console.error("Erreur chargement profil:", e);
-      }
-    }).then((cleanup)=>{
-      if(actif) unsub = cleanup;
-      else cleanup();
-    }).catch(()=>{});
-
-    return ()=>{
-      actif = false;
-      unsub();
-    };
-  },[]);
+  // Auth Firebase + profil utilisateur (cf. use-auth-session.js).
+  // Le hook gère la synchro avec /users/{uid} et bascule schoolId/page
+  // au login. La déclaration est ci-dessus avec les autres hooks d'état.
 
   // â”€â”€ Calcul planInfo (freemium + periode de grÃ¢ce 7 jours) â”€â”€â”€
   const GRACE_MS      = 7 * 86400000; // 7 jours de grÃ¢ce apres expiration
@@ -544,6 +308,7 @@ export default function App() {
         role: utilisateurCo.role,
         nom: utilisateurCo.nom,
         uid: currentUser.uid,
+        // eslint-disable-next-line react-hooks/purity
         updatedAt: Date.now(),
       });
     }catch{
@@ -701,7 +466,7 @@ export default function App() {
     )}
 
 {/* â”€â”€ Bandeau INSTALLER L'APPLICATION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-    {installVisible&&promptInstall&&(
+    {installVisible&&(
       <div style={{position:"fixed",bottom:16,left:"50%",transform:"translateX(-50%)",
         zIndex:9998,background:"#0A1628",color:"#fff",borderRadius:14,
         padding:"12px 20px",display:"flex",alignItems:"center",gap:14,
