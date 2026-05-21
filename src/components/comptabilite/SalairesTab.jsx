@@ -235,35 +235,47 @@ export function SalairesTab({
         <div style={{background:C.blue,color:"#fff",padding:"8px 14px",borderRadius:"8px 8px 0 0",fontWeight:700,fontSize:13}}>
           {t("accounting.section").toUpperCase()} {t("dashboard.secondary").toUpperCase()} — {moisLabel} {annee||getAnnee()}
         </div>
-        <div style={{overflowX:"auto",marginBottom:16}}>
-          <table style={{width:"100%",borderCollapse:"collapse",minWidth:900}}>
-            <thead>
-              <tr style={{background:"#e0ebf8"}}>
-                <th rowSpan={2} style={{padding:"7px 10px",fontSize:10,fontWeight:700,color:C.blueDark,border:"1px solid #b0c4d8",textAlign:"center"}}>N°</th>
-                <th rowSpan={2} style={{padding:"7px 10px",fontSize:10,fontWeight:700,color:C.blueDark,border:"1px solid #b0c4d8"}}>Prénoms et Nom</th>
-                <th rowSpan={2} style={{padding:"7px 10px",fontSize:10,fontWeight:700,color:C.blueDark,border:"1px solid #b0c4d8"}}>Matière</th>
-                <th rowSpan={2} style={{padding:"7px 10px",fontSize:10,fontWeight:700,color:C.blueDark,border:"1px solid #b0c4d8"}}>Niveau</th>
-                <th rowSpan={2} style={{padding:"7px 10px",fontSize:10,fontWeight:700,color:C.blueDark,border:"1px solid #b0c4d8",textAlign:"center"}}>V.H.<br/>Hebdo</th>
-                <th colSpan={4} style={{padding:"7px 10px",fontSize:10,fontWeight:700,color:C.blueDark,border:"1px solid #b0c4d8",textAlign:"center"}}>V.H. Mensuel</th>
-                <th rowSpan={2} style={{padding:"7px 10px",fontSize:10,fontWeight:700,color:C.blueDark,border:"1px solid #b0c4d8",textAlign:"center"}}>Prime<br/>Horaire</th>
-                <th rowSpan={2} style={{padding:"7px 10px",fontSize:10,fontWeight:700,color:C.blueDark,border:"1px solid #b0c4d8",textAlign:"center"}}>Montant</th>
-                <th rowSpan={2} style={{padding:"7px 10px",fontSize:10,fontWeight:700,color:C.blueDark,border:"1px solid #b0c4d8",textAlign:"center"}}>Bon</th>
-                <th rowSpan={2} style={{padding:"7px 10px",fontSize:10,fontWeight:700,color:C.blueDark,border:"1px solid #b0c4d8",textAlign:"center",background:"#fef3e0"}}>Révision</th>
-                <th rowSpan={2} style={{padding:"7px 10px",fontSize:10,fontWeight:700,color:C.blueDark,border:"1px solid #b0c4d8",textAlign:"center",background:"#eaf4e0"}}>Net à<br/>Payer</th>
-                <th rowSpan={2} style={{padding:"7px 10px",fontSize:10,fontWeight:700,color:C.blueDark,border:"1px solid #b0c4d8"}}>Obs.</th>
-                {canEdit&&<th rowSpan={2} style={{padding:"7px 10px",fontSize:10,fontWeight:700,color:C.blueDark,border:"1px solid #b0c4d8"}}>Act.</th>}
-              </tr>
-              <tr style={{background:"#e0ebf8"}}>
-                {["Prévu","5è Sem","Non Exé.","Exécuté"].map(h=><th key={h} style={{padding:"5px 8px",fontSize:10,fontWeight:700,color:C.blueDark,border:"1px solid #b0c4d8",textAlign:"center"}}>{h}</th>)}
-              </tr>
-            </thead>
+        {/* Sticky : header (top) + colonnes N° et Nom (left). Le wrapper passe
+            en overflow:auto avec une hauteur max pour activer le sticky-top
+            sans dépendre du scroll de la page. */}
+        <div style={{overflow:"auto",marginBottom:16,maxHeight:"calc(100vh - 360px)",minHeight:280}}>
+          <table style={{width:"100%",borderCollapse:"separate",borderSpacing:0,minWidth:900}}>
+            {(()=>{
+              const thBase = {padding:"7px 10px",fontSize:10,fontWeight:700,color:C.blueDark,border:"1px solid #b0c4d8",background:"#e0ebf8"};
+              // Hauteur approx d'une ligne de header (10px font + padding) → 2e ligne sticky en dessous.
+              const ROW1_H = 34;
+              return (
+                <thead>
+                  <tr>
+                    <th rowSpan={2} style={{...thBase,textAlign:"center",position:"sticky",top:0,left:0,zIndex:4}}>N°</th>
+                    <th rowSpan={2} style={{...thBase,position:"sticky",top:0,left:40,zIndex:4}}>Prénoms et Nom</th>
+                    <th rowSpan={2} style={{...thBase,position:"sticky",top:0,zIndex:3}}>Matière</th>
+                    <th rowSpan={2} style={{...thBase,position:"sticky",top:0,zIndex:3}}>Niveau</th>
+                    <th rowSpan={2} style={{...thBase,textAlign:"center",position:"sticky",top:0,zIndex:3}}>V.H.<br/>Hebdo</th>
+                    <th colSpan={4} style={{...thBase,textAlign:"center",position:"sticky",top:0,zIndex:3}}>V.H. Mensuel</th>
+                    <th rowSpan={2} style={{...thBase,textAlign:"center",position:"sticky",top:0,zIndex:3}}>Prime<br/>Horaire</th>
+                    <th rowSpan={2} style={{...thBase,textAlign:"center",position:"sticky",top:0,zIndex:3}}>Montant</th>
+                    <th rowSpan={2} style={{...thBase,textAlign:"center",position:"sticky",top:0,zIndex:3}}>Bon</th>
+                    <th rowSpan={2} style={{...thBase,textAlign:"center",background:"#fef3e0",position:"sticky",top:0,zIndex:3}}>Révision</th>
+                    <th rowSpan={2} style={{...thBase,textAlign:"center",background:"#eaf4e0",position:"sticky",top:0,zIndex:3}}>Net à<br/>Payer</th>
+                    <th rowSpan={2} style={{...thBase,position:"sticky",top:0,zIndex:3}}>Obs.</th>
+                    {canEdit&&<th rowSpan={2} style={{...thBase,position:"sticky",top:0,zIndex:3}}>Act.</th>}
+                  </tr>
+                  <tr>
+                    {["Prévu","5è Sem","Non Exé.","Exécuté"].map(h=><th key={h} style={{...thBase,padding:"5px 8px",textAlign:"center",position:"sticky",top:ROW1_H,zIndex:3}}>{h}</th>)}
+                  </tr>
+                </thead>
+              );
+            })()}
             <tbody>
               {salairesSec.length===0?
                 <tr><td colSpan={canEdit?15:14} style={{padding:"20px",textAlign:"center",color:"#9ca3af",fontStyle:"italic"}}>Aucun enseignant secondaire pour ce mois</td></tr>
-                :salairesSec.map((s,i)=>(
-                  <tr key={s._id} style={{borderBottom:"1px solid #e8f0e8",background:i%2===0?"#fff":"#f9fbf9"}}>
-                    <td style={{padding:"7px 10px",textAlign:"center",fontSize:12,border:"1px solid #e8f0e8"}}>{i+1}</td>
-                    <td style={{padding:"7px 10px",fontWeight:700,fontSize:12,color:C.blueDark,border:"1px solid #e8f0e8"}}>{s.nom}</td>
+                :salairesSec.map((s,i)=>{
+                  const rowBg = i%2===0?"#fff":"#f9fbf9";
+                  return (
+                  <tr key={s._id} style={{borderBottom:"1px solid #e8f0e8",background:rowBg}}>
+                    <td style={{padding:"7px 10px",textAlign:"center",fontSize:12,border:"1px solid #e8f0e8",position:"sticky",left:0,background:rowBg,zIndex:1}}>{i+1}</td>
+                    <td style={{padding:"7px 10px",fontWeight:700,fontSize:12,color:C.blueDark,border:"1px solid #e8f0e8",position:"sticky",left:40,background:rowBg,zIndex:1,boxShadow:"inset -1px 0 0 #d1dce8"}}>{s.nom}</td>
                     <td style={{padding:"7px 10px",fontSize:12,border:"1px solid #e8f0e8"}}>{s.matiere}</td>
                     <td style={{padding:"7px 10px",fontSize:12,border:"1px solid #e8f0e8"}}>{s.niveau}</td>
                     <td style={{padding:"7px 10px",textAlign:"center",fontSize:12,border:"1px solid #e8f0e8"}}>{s.vhHebdo||0}</td>
@@ -294,7 +306,7 @@ export function SalairesTab({
                       </div>
                     </td>}
                   </tr>
-              ))}
+                );})}
               <tr style={{background:"#e0ebf8",fontWeight:800}}>
                 <td colSpan={13} style={{padding:"8px 12px",textAlign:"right",color:C.blueDark,border:"1px solid #b0c4d8"}}>TOTAL NET SECONDAIRE</td>
                 <td style={{padding:"8px 12px",textAlign:"right",color:C.greenDk,fontSize:14,border:"1px solid #b0c4d8"}}>{fmtN(totNetSec)}</td>

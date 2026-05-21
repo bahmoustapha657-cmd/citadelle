@@ -1,7 +1,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { C } from "../../constants";
-import { Badge, Btn, Card, Modale, TD, Textarea, THead, TR, Vide } from "../ui";
+import { Badge, Btn, Card, Modale, TD, Textarea, TR, Vide } from "../ui";
 import { imprimerBulletin, imprimerBulletinsGroupes, imprimerFicheCompositions } from "../../reports";
 import { getGeneralAverage } from "../../note-utils";
 
@@ -70,9 +70,22 @@ export function BulletinsTab({
         </Btn>
       </div>
       {elevesB.length===0?<Vide icone="📊" msg={t("school.bulletins.noStudent")}/>
-        :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
-          <THead cols={[t("school.bulletins.matricule"),t("school.bulletins.student"),t("school.bulletins.class"),t("school.bulletins.average"),t("school.bulletins.mention"),t("school.bulletins.appreciation"),t("school.bulletins.bulletin")]}/>
-          <tbody>{elevesB.map(e=>{
+        :<Card><div style={{maxHeight:"calc(100vh - 320px)",minHeight:280,overflow:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"separate",borderSpacing:0}}>
+            {(()=>{
+              const cols = [t("school.bulletins.matricule"),t("school.bulletins.student"),t("school.bulletins.class"),t("school.bulletins.average"),t("school.bulletins.mention"),t("school.bulletins.appreciation"),t("school.bulletins.bulletin")];
+              const thBase = {textAlign:"start",padding:"10px 13px",fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.9)",textTransform:"uppercase",letterSpacing:"0.08em",whiteSpace:"nowrap",borderBottom:"2px solid var(--sc2)",background:"linear-gradient(135deg,var(--sc1),var(--sc1-dk))",position:"sticky",top:0};
+              return (
+                <thead>
+                  <tr>
+                    <th style={{...thBase,left:0,zIndex:4}}>{cols[0]}</th>
+                    <th style={{...thBase,left:95,zIndex:4}}>{cols[1]}</th>
+                    {cols.slice(2).map((c,i)=>(<th key={i} style={{...thBase,zIndex:3}}>{c}</th>))}
+                  </tr>
+                </thead>
+              );
+            })()}
+          <tbody>{elevesB.map((e,rowIdx)=>{
             const notesE=notes.filter(n=>n.eleveId===e._id&&n.periode===periodeB);
             const moyenneGenerale = getGeneralAverage(notesE, matieresForClasse(e.classe), e.classe);
             const moyGene=moyenneGenerale!=null?moyenneGenerale.toFixed(2):"—";
@@ -80,9 +93,11 @@ export function BulletinsTab({
             const eleveImpayeBloq = !!schoolInfo.blocageParentImpaye && moisAnnee.filter(m=>(e.mens||{})[m]!=="Payé").length>0;
             const apprec=getAppreciation(e._id,periodeB);
             const apprecTexte=apprec?.texte||"";
+            // Background sticky alterné pour préserver le zébrage
+            const stickyBg = rowIdx%2===0 ? "var(--lc-surface)" : "var(--lc-surface-alt, #f8fafc)";
             return <TR key={e._id}>
-              <TD><span style={{fontSize:11,fontFamily:"monospace",background:"#e0ebf8",padding:"2px 5px",borderRadius:4,color:C.blue,fontWeight:700}}>{e.matricule||"—"}</span></TD>
-              <TD bold>{e.nom} {e.prenom}</TD>
+              <TD style={{position:"sticky",left:0,zIndex:1,background:stickyBg}}><span style={{fontSize:11,fontFamily:"monospace",background:"#e0ebf8",padding:"2px 5px",borderRadius:4,color:C.blue,fontWeight:700}}>{e.matricule||"—"}</span></TD>
+              <TD bold style={{position:"sticky",left:95,zIndex:1,background:stickyBg,boxShadow:"inset -1px 0 0 var(--lc-border-soft)"}}>{e.nom} {e.prenom}</TD>
               <TD><Badge color="blue">{e.classe}</Badge></TD>
               <TD><span style={{fontWeight:800,fontSize:14,color:moyGene!=="—"&&Number(moyGene)>=10?C.greenDk:"#b91c1c"}}>{moyGene}/20</span></TD>
               <TD><Badge color={mention==="Très Bien"||mention==="Bien"?"vert":mention==="Assez Bien"||mention==="Passable"?"blue":"red"}>{mention}</Badge></TD>
@@ -102,7 +117,8 @@ export function BulletinsTab({
               }</TD>
             </TR>;
           })}</tbody>
-        </table></Card>}
+          </table>
+        </div></Card>}
 
       {modal==="apprec"&&(canCreate||canEdit)&&<Modale titre={`${t("school.bulletins.appreciation")} — ${form.nomComplet||""} · ${periodeB}`} fermer={()=>setModal(null)}>
         <div style={{marginBottom:12,padding:"10px 14px",background:"#f0f7ff",borderRadius:8,fontSize:12,color:C.blueDark}}>
