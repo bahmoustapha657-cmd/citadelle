@@ -1,7 +1,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { C, fmt, initMens, getAnnee, getSectionLabelForClasse } from "../../constants";
-import { Badge, Btn, THead, TR, TD, Vide } from "../ui";
+import { Badge, Btn, TR, TD, Vide } from "../ui";
 import { exportExcel, imprimerRecu } from "../../reports";
 import {
   countUnpaidMonths,
@@ -110,17 +110,59 @@ export function MensualitesTab({
               <Badge color="purple">{fmt(overview.totalInscriptionsPercues)} inscriptions perçues</Badge>
               <Badge color="gray">{fmt(overview.totalAutresPercus)} autres frais perçus</Badge>
             </div>
-            <div style={{overflowX:"auto"}}>
-              <table style={{width:"100%",borderCollapse:"collapse",minWidth:1080}}>
-                <THead cols={["Matricule","Nom & Prénom","Classe","Tuteur","Contact",...moisAnnee,"Payés","Ins.","Autre","Reçu"]}/>
-                <tbody>{elevesFiltres.map(e=>{
+            {/* Conteneur scroll : maxHeight pour activer sticky top sur l'en-tête,
+                overflow:auto pour activer sticky left sur les 2 premières colonnes
+                (Matricule + Nom). Le scroll vertical reste fluide dans la table sans
+                que l'utilisateur perde le contexte. */}
+            <div style={{
+              maxHeight:"calc(100vh - 320px)",
+              minHeight:300,
+              overflow:"auto",
+              border:"1px solid var(--lc-border)",
+              borderRadius:8,
+            }}>
+              <table style={{width:"100%",borderCollapse:"separate",borderSpacing:0,minWidth:1080}}>
+                {(()=>{
+                  // Styles partagés des en-têtes (gradient + texte clair) avec sticky-top.
+                  // Les 2 premières colonnes ajoutent sticky-left → coin haut-gauche
+                  // (z-index 3 pour passer au-dessus des autres TH).
+                  const thBase = {
+                    textAlign:"start",padding:"10px 13px",fontSize:10,fontWeight:700,
+                    color:"rgba(255,255,255,0.9)",textTransform:"uppercase",letterSpacing:"0.08em",
+                    whiteSpace:"nowrap",borderBottom:"2px solid var(--sc2)",
+                    background:"linear-gradient(135deg,var(--sc1),var(--sc1-dk))",
+                    position:"sticky",top:0,
+                  };
+                  const thStickyLeft = (left, z=3) => ({...thBase,left,zIndex:z});
+                  const cols = ["Matricule","Nom & Prénom","Classe","Tuteur","Contact",...moisAnnee,"Payés","Ins.","Autre","Reçu"];
+                  return (
+                    <thead>
+                      <tr>
+                        <th style={thStickyLeft(0)}>{cols[0]}</th>
+                        <th style={thStickyLeft(95)}>{cols[1]}</th>
+                        {cols.slice(2).map((c,i)=>(
+                          <th key={i} style={{...thBase,zIndex:2}}>{c}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                  );
+                })()}
+                <tbody>{elevesFiltres.map((e,rowIdx)=>{
                   const mens=e.mens||initMens();
                   const snapshot = getEleveMensualiteSnapshot(e, moisAnnee, tarifsClasses);
                   const montantInscription = getTarifInscriptionEleve(e);
                   const montantAutre = getTarifAutre(e.classe);
+                  // Background explicite sur les cellules sticky : sinon le contenu
+                  // des colonnes suivantes glisse "derrière" lors du scroll horizontal.
+                  // Alterné pour préserver le zébrage visuel.
+                  const stickyBg = rowIdx%2===0 ? "var(--lc-surface)" : "var(--lc-surface-alt, #f8fafc)";
+                  const tdSticky = (left) => ({
+                    position:"sticky",left,zIndex:1,background:stickyBg,
+                    boxShadow: left>0 ? "inset -1px 0 0 var(--lc-border-soft)" : undefined,
+                  });
                   return <TR key={e._id}>
-                    <TD><span style={{fontSize:11,fontFamily:"monospace",background:"#e0ebf8",padding:"2px 6px",borderRadius:4,color:C.blue,fontWeight:700}}>{e.matricule}</span></TD>
-                    <TD bold>{e.nom} {e.prenom}</TD>
+                    <TD style={tdSticky(0)}><span style={{fontSize:11,fontFamily:"monospace",background:"#e0ebf8",padding:"2px 6px",borderRadius:4,color:C.blue,fontWeight:700}}>{e.matricule}</span></TD>
+                    <TD bold style={tdSticky(95)}>{e.nom} {e.prenom}</TD>
                     <TD><Badge color="blue">{e.classe}</Badge></TD>
                     <TD>{e.tuteur}</TD><TD>{e.contactTuteur}</TD>
                     {moisAnnee.map(m=>{
