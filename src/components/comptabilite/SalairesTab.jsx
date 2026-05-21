@@ -45,6 +45,13 @@ export function SalairesTab({
   ajBon,
   modBon,
   supBon,
+  // listes enseignants actuelles (pour filtrer le sélecteur de bons
+  // sur les profs encore présents — évite que des noms renommés ou
+  // supprimés restent visibles via les anciens salaires)
+  ensPrimaire = [],
+  ensCollege = [],
+  ensLycee = [],
+  personnel = [],
   // filtres primaire
   filtrePrimNom,
   setFiltrePrimNom,
@@ -456,14 +463,37 @@ export function SalairesTab({
       {(modal==="add_b"&&canCreate||(modal==="edit_b"&&canEdit))&&(()=>{
         const moisBon = form.mois||moisModale;
         const secBon = form.section||"Secondaire";
-        // Dedup par nom : si la base contient des fiches en double (legacy
-        // pre-nettoyage), on n'affiche le prof qu'une fois dans le selecteur.
-        const ensDisponibles = [...new Set(
-          salaires
-            .filter(s=>s.mois===moisBon && s.section===secBon)
-            .map(s=>(s.nom||"").trim())
-            .filter(Boolean),
-        )].sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"}));
+        // Liste des enseignants/personnel ACTUELLEMENT en fiche pour cette
+        // section. Sert à filtrer les options du sélecteur : si un prof a
+        // été renommé ou supprimé, son ancien nom reste dans les `salaires`
+        // déjà saisis — sans cette intersection, il continuerait à apparaître.
+        const normNom = (s) => (s || "").trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ");
+        const ensActuelsSet = (() => {
+          const list = secBon === "Secondaire"
+            ? [...ensCollege, ...ensLycee]
+            : secBon === "Primaire"
+              ? ensPrimaire
+              : /* Personnel */ personnel;
+          const out = new Set();
+          for (const e of (list || [])) {
+            const full = `${e.prenom || ""} ${e.nom || ""}`.trim();
+            if (full) out.add(normNom(full));
+          }
+          return out;
+        })();
+        // Noms uniques des salaires du mois (dedup par normalisation) +
+        // intersection avec les fiches actuelles. Si la base contient des
+        // fiches doublons legacy, on n'affiche le prof qu'une fois.
+        const noms = new Map(); // nomNormalisé → libellé d'affichage
+        for (const s of salaires) {
+          if (s.mois !== moisBon || s.section !== secBon) continue;
+          const display = (s.nom || "").trim();
+          if (!display) continue;
+          const norm = normNom(display);
+          if (!ensActuelsSet.has(norm)) continue; // prof supprimé/renommé
+          if (!noms.has(norm)) noms.set(norm, display);
+        }
+        const ensDisponibles = [...noms.values()].sort((a, b) => a.localeCompare(b, "fr", { sensitivity: "base" }));
         return <Modale titre={modal==="add_b"?"Nouveau bon":"Modifier le bon"} fermer={()=>setModal(null)}>
           <Selec label="Mois" value={moisBon} onChange={chg("mois")}>
             {moisSalaire.map(m=><option key={m}>{m}</option>)}
