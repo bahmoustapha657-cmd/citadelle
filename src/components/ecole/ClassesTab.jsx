@@ -60,7 +60,7 @@ export function ClassesTab({
         </div>
       </div>
       {cC?<Chargement/>:classes.length===0?<Vide icone="🏫" msg={t("school.classes.noClass")}/>
-        :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
+        :<Card><div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
           <THead cols={["Classe","Effectif","Enseignant Principal","Salle","Imprimer liste",canEdit?"Actions":""]}/>
           <tbody>{classes.map(c=><TR key={c._id}>
             <TD bold>{c.nom}</TD><TD><Badge color="blue">{effectifReel(c.nom)} élèves</Badge></TD>
@@ -71,7 +71,7 @@ export function ClassesTab({
               <Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ?"))supC(c._id);}}>Suppr.</Btn>
             </div></TD>}
           </TR>)}</tbody>
-        </table></Card>}
+        </table></div></Card>}
       {(modal==="add_c"&&canCreate||(modal==="edit_c"&&canEdit))&&<Modale titre={modal==="add_c"?"Nouvelle classe":"Modifier"} fermer={()=>setModal(null)}>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
           <div style={{gridColumn:"1/-1"}}>

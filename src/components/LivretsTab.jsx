@@ -244,7 +244,7 @@ function LivretsTab({cleEleves, cleNotes, matieres, maxNote, userRole, annee}) {
       {elevesFiltr.length===0
         ? <Vide icone="📋" msg="Aucun élève dans cette sélection"/>
         : <Card>
-            <table style={{width:"100%",borderCollapse:"collapse"}}>
+            <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="2">
               <THead cols={["Matricule","Nom & Prénom","Classe","Livret","Années saisies","Action"]}/>
               <tbody>{elevesFiltr.map(e=>{
                 const lv = livrets.find(l=>l.eleveId===e._id);
@@ -265,7 +265,7 @@ function LivretsTab({cleEleves, cleNotes, matieres, maxNote, userRole, annee}) {
                   </TD>
                 </TR>;
               })}</tbody>
-            </table>
+            </table></div>
           </Card>
       }
     </div>

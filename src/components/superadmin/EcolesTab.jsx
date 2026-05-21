@@ -101,7 +101,8 @@ export function EcolesTab({
             {recherche ? "Aucune ecole ne correspond a la recherche." : "Aucune ecole enregistree."}
           </div>
         ) : (
-          <table style={{width:"100%",borderCollapse:"collapse"}}>
+          <div className="lc-sticky-wrap" style={{border:"none",borderRadius:0}}>
+          <table className="lc-sticky-table" data-fix-left="2" style={{"--col2-left":"120px"}}>
             <thead>
               <tr>
                 {["Code","Ecole","Ville/Pays","Creee le","Statut","Plan","Eleves","Comptes","Actions"].map(h=>(
@@ -182,6 +183,7 @@ export function EcolesTab({
               })}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

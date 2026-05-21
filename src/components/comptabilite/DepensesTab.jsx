@@ -29,7 +29,7 @@ export function DepensesTab({
         {canCreate&&<Btn onClick={()=>{setForm({periode:defaultPeriode});setModal("add_d");}}>{t("accounting.addExpense")}</Btn>}
       </div>
       {cD?<Chargement/>:depenses.length===0?<Vide icone="💸" msg={t("accounting.noExpense")}/>
-        :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
+        :<Card><div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
           <THead cols={[t("accounting.label"),t("accounting.categoryField"),t("accounting.period"),t("accounting.amountField"),t("accounting.dateField"),canEdit?t("common.actions"):""]}/>
           <tbody>{depenses.map(d=><TR key={d._id}>
             <TD bold>{d.libelle}</TD><TD><Badge color="red">{d.categorie}</Badge></TD>
@@ -39,7 +39,7 @@ export function DepensesTab({
               <Btn sm v="danger" onClick={()=>{if(confirm(t("accounting.deleteConfirm")))supD(d._id);}}>{t("common.delete")}</Btn>
             </div></TD>}
           </TR>)}</tbody>
-        </table></Card>}
+        </table></div></Card>}
       {(modal==="add_d"&&canCreate||(modal==="edit_d2"&&canEdit))&&<Modale titre={modal==="add_d"?t("accounting.newExpenseTitle"):t("accounting.editTitle")} fermer={()=>setModal(null)}>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
           <div style={{gridColumn:"1/-1"}}><Input label={t("accounting.label")} value={form.libelle||""} onChange={chg("libelle")}/></div>

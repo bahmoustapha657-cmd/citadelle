@@ -37,7 +37,7 @@ export function MatieresTab({
         💡 Si une matière n'est assignée à <strong>aucune classe</strong>, elle apparaît dans <strong>toutes les classes</strong>. Sinon, elle n'apparaît que dans les classes sélectionnées.
       </div>
       {cMat?<Chargement/>:matieres.length===0?<Vide icone="📚" msg={t("school.subjects.noSubject")}/>
-        :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
+        :<Card><div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
           <THead cols={["Matière","Coefficient","Classes concernées",canEdit?"Actions":""]}/>
           <tbody>{matieres.map(m=><TR key={m._id}>
             <TD bold>{m.nom}</TD>
@@ -54,7 +54,7 @@ export function MatieresTab({
               <Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ?"))supMat(m._id);}}>Suppr.</Btn>
             </div></TD>}
           </TR>)}</tbody>
-        </table></Card>}
+        </table></div></Card>}
 
       {/* Modal ajout matière */}
       {modal==="add_mat"&&canCreate&&<Modale titre="Nouvelle matière" fermer={()=>setModal(null)}>

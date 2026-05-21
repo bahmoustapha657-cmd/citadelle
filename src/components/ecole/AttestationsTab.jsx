@@ -46,7 +46,7 @@ export function AttestationsTab({
         <span>Cliquez sur <strong>Imprimer</strong> pour générer l'attestation officielle de niveau pour chaque élève.</span>
       </div>
       {cE?<Chargement/>:elevesAtt.length===0?<Vide icone="📜" msg="Aucun élève pour cette sélection"/>
-        :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
+        :<Card><div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="2">
           <THead cols={["Matricule","Nom & Prénom","Classe","Niveau","Statut","Attestation"]}/>
           <tbody>{elevesAtt.map(e=><TR key={e._id}>
             <TD><span style={{fontSize:11,fontFamily:"monospace",background:"#e0ebf8",padding:"2px 5px",borderRadius:4,color:C.blue,fontWeight:700}}>{e.matricule||"—"}</span></TD>
@@ -56,7 +56,7 @@ export function AttestationsTab({
             <TD><Badge color={e.statut==="Actif"?"vert":"gray"}>{e.statut||"Actif"}</Badge></TD>
             <TD><Btn sm v="amber" onClick={()=>imprimerAttestation(e,avecEns?"college":"primaire",annee,schoolInfo)}>🖨️ Imprimer</Btn></TD>
           </TR>)}</tbody>
-        </table></Card>}
+        </table></div></Card>}
     </div>
   );
 }

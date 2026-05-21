@@ -27,7 +27,7 @@ export function FondationTab({
         {canCreate&&<Btn onClick={()=>{setForm({});setModal("add_v");}}>+ {t("common.new")}</Btn>}
       </div>
       {cV?<Chargement/>:versements.length===0?<Vide icone="🏛️" msg={t("common.empty")}/>
-        :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
+        :<Card><div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
           <THead cols={[t("accounting.label"),t("common.description"),t("accounting.amountField"),t("accounting.dateField"),canEdit?t("common.actions"):""]}/>
           <tbody>{versements.map(v=><TR key={v._id}>
             <TD bold>{v.libelle}</TD><TD>{v.description}</TD>
@@ -37,7 +37,7 @@ export function FondationTab({
               <Btn sm v="danger" onClick={()=>{if(confirm(t("accounting.deleteConfirm")))supV(v._id);}}>{t("common.delete")}</Btn>
             </div></TD>}
           </TR>)}</tbody>
-        </table></Card>}
+        </table></div></Card>}
       {(modal==="add_v"&&canCreate||(modal==="edit_v"&&canEdit))&&<Modale titre={modal==="add_v"?t("common.new"):t("accounting.editTitle")} fermer={()=>setModal(null)}>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
           <div style={{gridColumn:"1/-1"}}><Input label={t("accounting.label")} value={form.libelle||""} onChange={chg("libelle")}/></div>

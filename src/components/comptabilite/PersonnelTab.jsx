@@ -43,7 +43,7 @@ export function PersonnelTab({
       </div>}
 
       {cPers?<Chargement/>:personnel.length===0?<Vide icone="👥" msg={t("common.empty")}/>
-        :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
+        :<Card><div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
           <THead cols={["Prénoms et Nom","Poste","Catégorie","Salaire de base","Statut","Observation",canEdit?"Actions":""]}/>
           <tbody>{personnel.map(p=><TR key={p._id}>
             <TD bold>{p.prenom||""} {p.nom||""}</TD>
@@ -65,7 +65,7 @@ export function PersonnelTab({
             <td colSpan={canEdit?3:2}></td>
           </tr>
           </tbody>
-        </table></Card>
+        </table></div></Card>
       }
 
       {/* MODAL PERSONNEL */}

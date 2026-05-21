@@ -118,7 +118,7 @@ export function SalairesTab({
       {sousTabSal==="bons"&&<>
         {bonsMois.length===0
           ?<Vide icone="📋" msg={`Aucun bon enregistré pour ${moisLabel}`}/>
-          :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
+          :<Card><div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
             <THead cols={["Enseignant","Section","Mois","Montant (GNF)","Motif",canEdit?"Actions":""]}/>
             <tbody>{bonsMois.map(b=><TR key={b._id}>
               <TD bold>{b.nom}</TD>
@@ -137,7 +137,7 @@ export function SalairesTab({
               <td colSpan={2}></td>
             </tr>
             </tbody>
-          </table></Card>
+          </table></div></Card>
         }
         <div style={{marginTop:12,padding:"12px 16px",background:"#fef3e0",border:"1px solid #fbbf24",borderRadius:10,fontSize:13,color:"#92400e"}}>
           <strong>Comment ça marche :</strong> Enregistrez ici les bons de chaque enseignant pour ce mois.
@@ -329,12 +329,12 @@ export function SalairesTab({
             {CLASSES_PRIMAIRE.map(c=><option key={c}>{c}</option>)}
           </select>
         </div>
-        <div style={{overflowX:"auto",marginBottom:8}}>
+        <div className="lc-sticky-wrap" style={{marginBottom:8}}>
           {(()=>{
           const salairesPrimFiltres = salairesPrim
             .filter(s=>!filtrePrimNom||(s.nom||"").toLowerCase().includes(filtrePrimNom.toLowerCase()))
             .filter(s=>filtrePrimClasse==="all"||(s.niveau||"")===filtrePrimClasse);
-          return <table style={{width:"100%",borderCollapse:"collapse"}}>
+          return <table className="lc-sticky-table" data-fix-left="2" style={{"--col2-left":"50px"}}>
             <THead cols={["N°","Prénoms et Nom","Classe","Bon","Révision","Net à Payer","Observation",canEdit?"Actions":""]}/>
             <tbody>
               {salairesPrimFiltres.length===0?
@@ -377,8 +377,8 @@ export function SalairesTab({
         <div style={{background:"#7c3aed",color:"#fff",padding:"8px 14px",borderRadius:"8px 8px 0 0",fontWeight:700,fontSize:13,display:"flex",alignItems:"center",gap:10}}>
           <span style={{flex:1}}>{t("accounting.section").toUpperCase()} {t("accounting.tabs.staff").toUpperCase()} — {moisLabel} {annee||getAnnee()}</span>
         </div>
-        <div style={{overflowX:"auto",marginBottom:8}}>
-          <table style={{width:"100%",borderCollapse:"collapse"}}>
+        <div className="lc-sticky-wrap" style={{marginBottom:8}}>
+          <table className="lc-sticky-table" data-fix-left="2" style={{"--col2-left":"50px"}}>
             <THead cols={["N°","Prénoms et Nom","Poste","Catégorie","Salaire de base","Bon","Révision","Net à Payer","Observation",canEdit?"Actions":""]}/>
             <tbody>
               {salairesPers.length===0

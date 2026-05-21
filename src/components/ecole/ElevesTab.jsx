@@ -50,8 +50,8 @@ export function ElevesTab({
         )}>📥 {t("common.export")} Excel</Btn>
       </div>
       {cE?<Chargement/>:elevesFiltres.length===0?<Vide icone="🎓" msg={t("school.students.noStudent")}/>
-        :<div style={{overflowX:"auto"}}>
-          <table style={{width:"100%",borderCollapse:"collapse",minWidth:900}}>
+        :<div className="lc-sticky-wrap">
+          <table className="lc-sticky-table" data-fix-left="2" style={{minWidth:900}}>
             <THead cols={["Matricule","IEN","Nom & Prénom","Classe","Sexe","Date Nais.","Lieu Nais.","Filiation","Tuteur","Contact","Domicile","Documents","Statut","Accès"]}/>
             <tbody>{elevesFiltres.map(e=><TR key={e._id}>
               <TD><span style={{fontSize:11,fontFamily:"monospace",background:"#e0ebf8",padding:"2px 5px",borderRadius:4,color:C.blue,fontWeight:700}}>{e.matricule}</span></TD>

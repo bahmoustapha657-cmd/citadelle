@@ -11,7 +11,8 @@ export function DemandesTab({ demandes, validerDemande, rejeterDemande, S }) {
       {demandes.length===0 ? (
         <div style={{padding:40,textAlign:"center",color:"#9ca3af"}}>Aucune demande de souscription.</div>
       ) : (
-        <table style={{width:"100%",borderCollapse:"collapse"}}>
+        <div className="lc-sticky-wrap" style={{border:"none",borderRadius:0}}>
+        <table className="lc-sticky-table" data-fix-left="1">
           <thead>
             <tr>
               {["Ecole","Plan demande","Operateur","Telephone","Reference","Date","Statut","Actions"].map(h=>(
@@ -60,6 +61,7 @@ export function DemandesTab({ demandes, validerDemande, rejeterDemande, S }) {
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </div>
   );

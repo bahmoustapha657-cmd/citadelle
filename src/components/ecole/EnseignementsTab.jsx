@@ -43,7 +43,7 @@ export function EnseignementsTab({
       </div>}
 
       {cEng?<Chargement/>:enseignements.length===0?<Vide icone="📚" msg="Aucun enseignement enregistré"/>
-        :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
+        :<Card><div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
           <THead cols={["Enseignant","Matière","Classe","Date","Heure","Type","Statut","Observation",canEdit?"Actions":""]}/>
           <tbody>{enseignements.sort((a,b)=>b.date>a.date?1:-1).map(e=><TR key={e._id}>
             <TD bold>{e.enseignantNom}</TD>
@@ -63,7 +63,7 @@ export function EnseignementsTab({
               <Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ?"))supEng(e._id);}}>Suppr.</Btn>
             </div></TD>}
           </TR>)}</tbody>
-        </table></Card>}
+        </table></div></Card>}
 
       {(modal==="add_eng"&&canCreate||(modal==="edit_eng"&&canEdit))&&<Modale titre={modal==="add_eng"?"Enregistrer un enseignement":"Modifier"} fermer={()=>setModal(null)}>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>

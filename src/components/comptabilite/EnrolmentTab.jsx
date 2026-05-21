@@ -127,8 +127,8 @@ export function EnrolmentTab({
       </div>
       {!afficherDeparts&&(
         (cEC||cEL||cEP)?<Chargement/>:elevesEnrol.length===0?<Vide icone="🎓" msg="Aucun élève enregistré"/>
-        :<div style={{overflowX:"auto"}}>
-          <table style={{width:"100%",borderCollapse:"collapse",minWidth:900}}>
+        :<div className="lc-sticky-wrap">
+          <table className="lc-sticky-table" data-fix-left="2" style={{minWidth:900}}>
             <THead cols={["Matricule","IEN","Nom & Prénom","Classe","Sexe","Filiation","Tuteur","Contact","Domicile","Statut","Actions"]}/>
             <tbody>{elevesEnrol.map(e=><TR key={e._id}>
               <TD><span style={{fontSize:11,fontFamily:"monospace",background:"#e0ebf8",padding:"2px 5px",borderRadius:4,color:C.blue,fontWeight:700}}>{e.matricule}</span></TD>
@@ -192,8 +192,8 @@ export function EnrolmentTab({
           </Card>}
           {/* ── Liste des partis ── */}
           {partis.length===0?<Vide icone="✅" msg="Aucun départ enregistré pour cette section"/>
-          :<div style={{overflowX:"auto"}}>
-            <table style={{width:"100%",borderCollapse:"collapse",minWidth:700}}>
+          :<div className="lc-sticky-wrap">
+            <table className="lc-sticky-table" data-fix-left="2" style={{minWidth:700}}>
               <THead cols={["Matricule","Nom & Prénom","Classe","Motif","Date départ","Destination / Détail","Actions"]}/>
               <tbody>{partis.map(e=>(
                 <TR key={e._id}>

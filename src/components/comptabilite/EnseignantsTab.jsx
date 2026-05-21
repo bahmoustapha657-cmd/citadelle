@@ -89,7 +89,7 @@ export function EnseignantsTab({
     </div>
 
     {ensTous.length===0?<Vide icone="🎓" msg="Aucun enseignant enregistré"/>
-      :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
+      :<Card><div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
         <THead cols={["Prénoms et Nom","Section","Matière","Classe titulaire","Statut","Paie",canEdit?"Actions":""]}/>
         <tbody>{ensTous.map(e=>{
           const isPrim=e._section==="Primaire";
@@ -108,7 +108,7 @@ export function EnseignantsTab({
             </TD>}
           </TR>;
         })}</tbody>
-      </table></Card>
+      </table></div></Card>
     }
 
     {/* MODAL création / édition paie */}

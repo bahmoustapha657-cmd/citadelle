@@ -104,6 +104,74 @@ const GLOBAL_CSS = `
     .lc-header-actions span { display: none; }
   }
 
+  /* ─────────────────────────────────────────────────────────
+     Sticky tables — pattern utilitaire
+     ─────────────────────────────────────────────────────────
+     Usage :
+       <div className="lc-sticky-wrap">
+         <table className="lc-sticky-table" data-fix-left="2">
+           ...
+         </table>
+       </div>
+
+     - .lc-sticky-wrap : conteneur scrollable (max-height viewport)
+     - .lc-sticky-table : table avec border-collapse separate (requis sticky)
+     - data-fix-left="N" : N premières colonnes figées à gauche (1 ou 2).
+       La 2e colonne sticky utilise la variable --col2-left (défaut 95px).
+       Override possible via style={{"--col2-left":"120px"}} sur la table.
+
+     Le background des cellules sticky est piloté par la CSS variable
+     --row-bg propagée depuis le tr (zébrage natural via :nth-child).
+     Pour conserver un zébrage inline, appliquer le tr-style background
+     ET définir explicitement --row-bg de la même couleur.
+  */
+  .lc-sticky-wrap {
+    overflow: auto;
+    max-height: calc(100vh - 320px);
+    min-height: 280px;
+    border: 1px solid var(--lc-border, #e2e8f0);
+    border-radius: 8px;
+  }
+  .lc-sticky-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+  .lc-sticky-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+  }
+  .lc-sticky-table[data-fix-left="1"] thead th:first-child,
+  .lc-sticky-table[data-fix-left="2"] thead th:first-child {
+    left: 0;
+    z-index: 4;
+  }
+  .lc-sticky-table[data-fix-left="2"] thead th:nth-child(2) {
+    left: var(--col2-left, 95px);
+    z-index: 4;
+  }
+  .lc-sticky-table tbody tr {
+    --row-bg: var(--lc-surface, #fff);
+  }
+  .lc-sticky-table tbody tr:nth-child(even) {
+    --row-bg: var(--lc-surface-alt, #f8fafc);
+  }
+  .lc-sticky-table[data-fix-left="1"] tbody td:first-child,
+  .lc-sticky-table[data-fix-left="2"] tbody td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--row-bg);
+  }
+  .lc-sticky-table[data-fix-left="2"] tbody td:nth-child(2) {
+    position: sticky;
+    left: var(--col2-left, 95px);
+    z-index: 1;
+    background: var(--row-bg);
+    box-shadow: inset -1px 0 0 var(--lc-border-soft, #e2e8f0);
+  }
+
   /* Mode sombre : la palette et les overrides sont gérés dans
      index.css (CSS variables). Cette feuille ne contient plus
      le filtre invert (technique abandonnée — voir commit). */

@@ -62,7 +62,7 @@ export function DisciplineTab({
         ):null;
       })()}
       {cAbs?<Chargement/>:absences.length===0?<Vide icone="📋" msg="Aucun événement de discipline enregistré"/>
-        :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
+        :<Card><div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
           <THead cols={["Élève","Classe","Type","Date","Motif","Justifié",canEdit?"Action":""]}/>
           <tbody>{absences.map(a=><TR key={a._id}>
             <TD bold>{a.eleveNom}</TD><TD>{a.classe}</TD>
@@ -71,7 +71,7 @@ export function DisciplineTab({
             <TD><Badge color={a.justifie==="Oui"?"vert":"red"}>{a.justifie}</Badge></TD>
             {canEdit&&<TD><Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ?"))supAbs(a._id);}}>Suppr.</Btn></TD>}
           </TR>)}</tbody>
-        </table></Card>}
+        </table></div></Card>}
       {modal==="add_abs"&&canCreate&&<Modale titre="Enregistrer un événement disciplinaire" fermer={()=>setModal(null)}>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
           <div style={{gridColumn:"1/-1"}}>

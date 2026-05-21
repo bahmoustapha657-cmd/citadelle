@@ -29,7 +29,7 @@ export function RecettesTab({
         {canCreate&&<Btn onClick={()=>{setForm({periode:defaultPeriode});setModal("add_r");}}>{t("accounting.addRevenue")}</Btn>}
       </div>
       {cR?<Chargement/>:recettes.length===0?<Vide icone="💰" msg={t("accounting.noRevenue")}/>
-        :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
+        :<Card><div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
           <THead cols={[t("accounting.label"),t("accounting.categoryField"),t("accounting.period"),t("accounting.amountField"),t("accounting.dateField"),canEdit?t("common.actions"):""]}/>
           <tbody>{recettes.map(r=><TR key={r._id}>
             <TD bold>{r.libelle}</TD><TD><Badge color="vert">{r.categorie}</Badge></TD>
@@ -39,7 +39,7 @@ export function RecettesTab({
               <Btn sm v="danger" onClick={()=>{if(confirm(t("accounting.deleteConfirm")))supR(r._id);}}>{t("common.delete")}</Btn>
             </div></TD>}
           </TR>)}</tbody>
-        </table></Card>}
+        </table></div></Card>}
       {(modal==="add_r"&&canCreate||(modal==="edit_r"&&canEdit))&&<Modale titre={modal==="add_r"?t("accounting.newRevenueTitle"):t("accounting.editTitle")} fermer={()=>setModal(null)}>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
           <div style={{gridColumn:"1/-1"}}><Input label={t("accounting.label")} value={form.libelle||""} onChange={chg("libelle")}/></div>
