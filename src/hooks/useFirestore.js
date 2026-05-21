@@ -4,12 +4,12 @@ import {
   collection,
   deleteDoc,
   doc,
-  onSnapshot,
   query,
   updateDoc,
   where,
 } from "firebase/firestore";
 import { db } from "../firebaseDb";
+import { safeOnSnapshot } from "../firestore-safe";
 import { SchoolContext } from "../contexts/SchoolContext";
 
 const initialState = {
@@ -38,7 +38,7 @@ export function useFirestore(nomCollection, options = {}) {
     dispatch({ type: "loading" });
     const ref = collection(db, "ecoles", schoolId, nomCollection);
     const q = anneeFiltre ? query(ref, where("annee", "==", anneeFiltre)) : ref;
-    const unsub = onSnapshot(q, (snap) => {
+    const unsub = safeOnSnapshot(q, (snap) => {
       dispatch({
         type: "success",
         items: snap.docs.map((item) => ({ ...item.data(), _id: item.id })),

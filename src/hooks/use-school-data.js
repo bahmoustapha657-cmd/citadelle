@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import {
-  collection, doc, getDocFromServer, limit, onSnapshot, orderBy, query,
+  collection, doc, getDocFromServer, limit, orderBy, query,
 } from "firebase/firestore";
 import { db } from "../firebaseDb";
 import { SCHOOL_INFO_DEFAUT } from "../contexts/SchoolContext";
 import { getRoleSettingsForSchool, setMonnaie } from "../constants";
 import { subscribeLegalProfile } from "../legal-utils";
+import { safeOnSnapshot } from "../firestore-safe";
 
 // Hook regroupant les listeners Firestore liés à l'école courante :
 // - schoolInfo (doc /ecoles/{id} en privé, /ecoles_public/{id} en non auth)
@@ -83,7 +84,7 @@ export function useSchoolData({ schoolId, utilisateur }) {
       accepterCache = true;
     });
 
-    const unsub = onSnapshot(schoolRef, (snap) => {
+    const unsub = safeOnSnapshot(schoolRef, (snap) => {
       if (!actif) return;
       if (!accepterCache && snap.metadata?.fromCache) return;
       if (snap.exists()) appliquerDonneesEcole(snap.data());
@@ -109,7 +110,7 @@ export function useSchoolData({ schoolId, utilisateur }) {
   useEffect(() => {
     if (!utilisateur || !schoolId || schoolId === "superadmin") return;
     if (["enseignant", "parent"].includes(utilisateur.role)) return;
-    const unsub = onSnapshot(collection(db, "ecoles", schoolId, "messages"), (snap) => {
+    const unsub = safeOnSnapshot(collection(db, "ecoles", schoolId, "messages"), (snap) => {
       const nonLus = snap.docs.filter((d) => d.data().expediteur === "parent" && !d.data().lu).length;
       setMsgsNonLus(nonLus);
     });
@@ -123,7 +124,7 @@ export function useSchoolData({ schoolId, utilisateur }) {
     const colls = ["elevesCollege", "elevesPrimaire", "elevesLycee"];
     const counts = { elevesCollege: 0, elevesPrimaire: 0, elevesLycee: 0 };
     const unsubs = colls.map((coll) =>
-      onSnapshot(collection(db, "ecoles", schoolId, coll), (snap) => {
+      safeOnSnapshot(collection(db, "ecoles", schoolId, coll), (snap) => {
         counts[coll] = snap.docs.filter((d) => d.data().statut === "Actif").length;
         setTotalElevesActifs(Object.values(counts).reduce((a, b) => a + b, 0));
       }),
@@ -136,7 +137,7 @@ export function useSchoolData({ schoolId, utilisateur }) {
     if (!utilisateur || !schoolId || schoolId === "superadmin") return;
     if (["enseignant", "parent"].includes(utilisateur.role)) return;
     const q = query(collection(db, "ecoles", schoolId, "historique"), orderBy("date", "desc"), limit(10));
-    const unsub = onSnapshot(q, (snap) => {
+    const unsub = safeOnSnapshot(q, (snap) => {
       const liste = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       setNotifListe(liste);
       // Non lues = actions < 5 minutes

@@ -193,7 +193,8 @@ export function getOfficialLegalFooterHTML(profile: LegalProfile, cycle: CycleLe
 // ── Firestore ─────────────────────────────────────────────────
 // Doc unique : /ecoles/{schoolId}/config/legal
 
-import { doc, getDoc, onSnapshot, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { safeOnSnapshot } from "./firestore-safe";
 import { db } from "./firebaseDb";
 
 const LEGAL_DOC_ID = "legal";
@@ -227,7 +228,7 @@ export function subscribeLegalProfile(
   schoolId: string,
   cb: (profile: LegalProfile) => void,
 ): () => void {
-  return onSnapshot(legalDocRef(schoolId), (snap) => {
+  return safeOnSnapshot(legalDocRef(schoolId), (snap) => {
     cb(snap.exists() ? (snap.data() as LegalProfile) : legalProfileMock);
   });
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useContext } from "react";
-import { doc, onSnapshot, addDoc, collection } from "firebase/firestore";
+import { doc, addDoc, collection } from "firebase/firestore";
 import { db } from "../firebaseDb";
+import { safeOnSnapshot } from "../firestore-safe";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { PLANS } from "../contexts/PlanContext";
 
@@ -26,7 +27,7 @@ export default function UpgradeModal({ onFermer }) {
   // Écoute temps réel : plan activé par le SuperAdmin
   useEffect(() => {
     if (etape !== "attente") return;
-    const unsub = onSnapshot(doc(db, "ecoles", schoolId), snap => {
+    const unsub = safeOnSnapshot(doc(db, "ecoles", schoolId), snap => {
       if (snap.exists() && snap.data().plan === "pro") {
         setSchoolInfo(prev => ({
           ...prev, plan: "pro", planExpiry: snap.data().planExpiry,

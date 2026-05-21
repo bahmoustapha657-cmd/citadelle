@@ -5,11 +5,11 @@ import {
   deleteDoc,
   doc,
   getDocs,
-  onSnapshot,
   orderBy,
   query,
 } from "firebase/firestore";
 import { db } from "../firebaseDb";
+import { safeOnSnapshot } from "../firestore-safe";
 import { C, PLANS } from "../constants";
 
 // Rôles ciblables — jamais "parent" ni "superadmin".
@@ -44,7 +44,7 @@ function CommunicationsAdmin({ ecoles = [], auteur = "superadmin" }) {
 
   useEffect(() => {
     const q = query(collection(db, "superadmin_messages"), orderBy("createdAt", "desc"));
-    const unsub = onSnapshot(q, (snap) => {
+    const unsub = safeOnSnapshot(q, (snap) => {
       const liste = snap.docs.map((d) => ({ ...d.data(), _id: d.id }));
       setMessages(liste);
     });

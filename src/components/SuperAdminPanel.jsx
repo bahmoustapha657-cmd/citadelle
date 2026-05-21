@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { apiFetch, getAuthHeaders } from "../apiClient";
 import { C, PLANS } from "../constants";
 import { db } from "../firebaseDb";
-import { addDoc, collection, collectionGroup, doc, getDoc, getDocs, onSnapshot, setDoc, updateDoc, writeBatch } from "firebase/firestore";
+import { addDoc, collection, collectionGroup, doc, getDoc, getDocs, setDoc, updateDoc, writeBatch } from "firebase/firestore";
+import { safeOnSnapshot } from "../firestore-safe";
 
 import { EcolesTab } from "./superadmin/EcolesTab";
 import { PlansTab } from "./superadmin/PlansTab";
@@ -200,7 +201,7 @@ function SuperAdminPanel() {
   const chargerDemandes = () => {
     try {
       const q = collectionGroup(db,"demandes_plan");
-      return onSnapshot(q, snap => {
+      return safeOnSnapshot(q, snap => {
         const liste = snap.docs
           .map(d=>({...d.data(),_id:d.id,_schoolId:d.ref.parent.parent.id}))
           .sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
