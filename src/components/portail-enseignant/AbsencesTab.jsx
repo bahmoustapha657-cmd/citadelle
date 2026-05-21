@@ -25,7 +25,7 @@ export function AbsencesTab({
             Aucun signalement. Allez dans <strong>Mes élèves</strong> pour signaler une absence, un retard, une indiscipline.
           </div>
         ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
             <THead cols={["Date", "Élève", "Classe", "Type", "Justifié", "Motif", "Action"]} />
             <tbody>
               {incidents.map((inc) => {
@@ -55,7 +55,7 @@ export function AbsencesTab({
                 );
               })}
             </tbody>
-          </table>
+          </table></div>
         )}
       </Card>
 
@@ -67,7 +67,7 @@ export function AbsencesTab({
         {mesEvenements.length === 0 ? (
           <div style={{ padding: "20px", textAlign: "center", color: "#9ca3af", fontSize: 12 }}>Aucun événement enregistré.</div>
         ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
             <THead cols={["Date", "Classe", "Matière", "Statut", "Motif"]} />
             <tbody>
               {mesEvenements.map((item) => (
@@ -80,7 +80,7 @@ export function AbsencesTab({
                 </TR>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
       </Card>
     </>

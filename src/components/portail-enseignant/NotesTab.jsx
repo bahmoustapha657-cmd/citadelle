@@ -48,7 +48,7 @@ export function NotesTab({
         <Vide icone="Notes" msg={`Aucune note pour ${periodeN}`} />
       ) : (
         <Card>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
             <THead cols={["Eleve", "Type", "Note /20", "Actions"]} />
             <tbody>
               {notesPeriode.map((note) => (
@@ -65,7 +65,7 @@ export function NotesTab({
                 </TR>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </Card>
       )}
 
@@ -93,8 +93,8 @@ export function NotesTab({
                   <strong>{remplies}</strong> note(s) saisie(s) sur <strong>{elevesClasse.length}</strong> élève(s). Les notes existantes sont préremplies — modifier/effacer met à jour ou laisse en l'état.
                 </div>
                 <div style={{ maxHeight: "55vh", overflowY: "auto", border: "1px solid #e2e8f0", borderRadius: 8 }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                    <thead style={{ position: "sticky", top: 0, background: "#0A1628", color: "#fff", zIndex: 1 }}>
+                  <table className="lc-sticky-table" data-fix-left="1">
+                    <thead style={{ background: "#0A1628", color: "#fff" }}>
                       <tr>
                         <th style={{ padding: "8px 10px", fontSize: 11, textAlign: "start", width: 50 }}>#</th>
                         <th style={{ padding: "8px 10px", fontSize: 11, textAlign: "start" }}>Élève</th>

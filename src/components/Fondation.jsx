@@ -48,7 +48,7 @@ function Fondation({readOnly, userRole}) {
           {!readOnly&&<Btn onClick={()=>{setForm({statut:"Membre"});setModal("add_m");}}>+ Ajouter</Btn>}
         </div>
         {cM?<Chargement/>:membres.length===0?<Vide icone="👥" msg="Aucun membre"/>
-          :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
+          :<Card><div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
             <THead cols={["Nom & Prénom","Rôle","Statut","Téléphone","Documents",canEdit?"Actions":""]}/>
             <tbody>{membres.map(m=><TR key={m._id}>
               <TD bold>{m.prenom} {m.nom}</TD><TD>{m.role}</TD>
@@ -66,7 +66,7 @@ function Fondation({readOnly, userRole}) {
                 <Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ?"))supM(m._id);}}>Suppr.</Btn>
               </div></TD>}
             </TR>)}</tbody>
-          </table></Card>}
+          </table></div></Card>}
 
         {(modal==="add_m"||modal==="edit_m")&&!readOnly&&<Modale titre={modal==="add_m"?"Nouveau membre":"Modifier"} fermer={()=>setModal(null)}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
@@ -94,7 +94,7 @@ function Fondation({readOnly, userRole}) {
           {!readOnly&&<Btn onClick={()=>{setForm({statut:"Valide"});setModal("add_d");}}>+ Ajouter</Btn>}
         </div>
         {cD?<Chargement/>:docs.length===0?<Vide icone="📄" msg="Aucun document"/>
-          :<Card><table style={{width:"100%",borderCollapse:"collapse"}}>
+          :<Card><div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
             <THead cols={["Document","Type","Date","Statut","Fichier",canEdit?"Actions":""]}/>
             <tbody>{docs.map(d=><TR key={d._id}>
               <TD bold>{d.titre}</TD><TD><Badge color="gray">{d.type}</Badge></TD><TD>{d.date}</TD>
@@ -105,7 +105,7 @@ function Fondation({readOnly, userRole}) {
                 <Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ?"))supD(d._id);}}>Suppr.</Btn>
               </div></TD>}
             </TR>)}</tbody>
-          </table></Card>}
+          </table></div></Card>}
 
         {(modal==="add_d"||modal==="edit_d")&&!readOnly&&<Modale titre={modal==="add_d"?"Nouveau document":"Modifier"} fermer={()=>setModal(null)}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>

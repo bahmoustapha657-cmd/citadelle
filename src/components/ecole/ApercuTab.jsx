@@ -106,7 +106,7 @@ export function ApercuTab({
                 🏆 Tableau d'Honneur — 5 meilleurs élèves
               </div>
               <Card style={{borderRadius:"0 0 10px 10px"}}>
-                <table style={{width:"100%",borderCollapse:"collapse"}}>
+                <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
                   <thead><tr style={{background:"#fef3e0"}}>
                     <th style={{padding:"8px 12px",fontSize:11,fontWeight:700,color:"#92400e",textAlign:"center"}}>Rang</th>
                     <th style={{padding:"8px 12px",fontSize:11,fontWeight:700,color:"#92400e"}}>Élève</th>
@@ -127,7 +127,7 @@ export function ApercuTab({
                       <td style={{padding:"9px 12px",textAlign:"center"}}><Badge color={mentionColor}>{mention}</Badge></td>
                     </tr>;
                   })}</tbody>
-                </table>
+                </table></div>
               </Card>
             </div>
           );

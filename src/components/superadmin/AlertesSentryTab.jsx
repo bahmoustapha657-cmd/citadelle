@@ -66,7 +66,7 @@ export function AlertesSentryTab({
 
       {sentryIssues.length>0 && (
         <div style={S.card}>
-          <table style={{width:"100%",borderCollapse:"collapse"}}>
+          <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
             <thead>
               <tr>
                 {["Niveau","Titre","Occurrences","Utilisateurs","Derniere vue",""].map(h=>(
@@ -96,7 +96,7 @@ export function AlertesSentryTab({
                 );
               })}
             </tbody>
-          </table>
+          </table></div>
         </div>
       )}
     </div>

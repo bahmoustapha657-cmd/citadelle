@@ -121,7 +121,7 @@ function TransfertsPanel({userRole, annee, setTab}) {
         {partis.length===0
           ? <Vide icone="📤" msg="Aucun élève marqué 'Transféré' — déclarez un départ depuis l'onglet Enrôlement"/>
           : <Card>
-              <table style={{width:"100%",borderCollapse:"collapse"}}>
+              <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
                 <THead cols={["Matricule","Élève","Classe","Date départ","Destination","Solde dû","Documents","Token EduGest"]}/>
                 <tbody>{partis.map(e=>{
                   const solde = getSolde(e);
@@ -149,7 +149,7 @@ function TransfertsPanel({userRole, annee, setTab}) {
                     </TD>
                   </TR>;
                 })}</tbody>
-              </table>
+              </table></div>
             </Card>
         }
 

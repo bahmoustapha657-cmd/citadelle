@@ -271,7 +271,7 @@ function PortailParent({ utilisateur, deconnecter, annee, schoolInfo }) {
                       <button onClick={() => setTab("notes")} style={{ fontSize: 12, color: c1, background: "none", border: "none", cursor: "pointer", fontWeight: 700 }}>Voir tout</button>
                     </div>
                     <div style={{ overflowX: "auto" }}>
-                      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
                         <THead cols={["Matiere", "Type", "Periode", "Note"]} />
                         <tbody>
                           {mesNotes.slice(-6).reverse().map((item, index) => (
@@ -283,7 +283,7 @@ function PortailParent({ utilisateur, deconnecter, annee, schoolInfo }) {
                             </TR>
                           ))}
                         </tbody>
-                      </table>
+                      </table></div>
                     </div>
                   </Card>
                 )}
@@ -294,7 +294,7 @@ function PortailParent({ utilisateur, deconnecter, annee, schoolInfo }) {
                       <strong style={{ fontSize: 13, color: "#b91c1c" }}>Absences recentes</strong>
                     </div>
                     <div style={{ overflowX: "auto" }}>
-                      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
                         <THead cols={["Date", "Matiere", "Statut", "Motif"]} />
                         <tbody>
                           {mesAbsences.filter((item) => normalizeText(item.statut) === "absent").slice(-5).map((item, index) => (
@@ -306,7 +306,7 @@ function PortailParent({ utilisateur, deconnecter, annee, schoolInfo }) {
                             </TR>
                           ))}
                         </tbody>
-                      </table>
+                      </table></div>
                     </div>
                   </Card>
                 )}
@@ -354,7 +354,7 @@ function PortailParent({ utilisateur, deconnecter, annee, schoolInfo }) {
                           <span style={{ background: Number(moyenne) >= 10 ? "#dcfce7" : "#fee2e2", color: Number(moyenne) >= 10 ? "#166534" : "#b91c1c", fontWeight: 900, fontSize: 13, padding: "4px 12px", borderRadius: 20 }}>Moy. {moyenne}/20</span>
                         </div>
                         <div style={{ overflowX: "auto" }}>
-                          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                          <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
                             <THead cols={["Type", "Periode", "Note /20"]} />
                             <tbody>
                               {notesMatiere.map((item, index) => (
@@ -365,7 +365,7 @@ function PortailParent({ utilisateur, deconnecter, annee, schoolInfo }) {
                                 </TR>
                               ))}
                             </tbody>
-                          </table>
+                          </table></div>
                         </div>
                       </Card>
                     );
@@ -395,7 +395,7 @@ function PortailParent({ utilisateur, deconnecter, annee, schoolInfo }) {
                   <Vide icone="Absences" msg="Aucune absence enregistree" />
                 ) : (
                   <Card>
-                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
                       <THead cols={["Date", "Matiere", "Statut", "Motif"]} />
                       <tbody>
                         {mesAbsences.map((item, index) => (
@@ -407,7 +407,7 @@ function PortailParent({ utilisateur, deconnecter, annee, schoolInfo }) {
                           </TR>
                         ))}
                       </tbody>
-                    </table>
+                    </table></div>
                   </Card>
                 )}
               </>
@@ -445,7 +445,7 @@ function PortailParent({ utilisateur, deconnecter, annee, schoolInfo }) {
                             </button>
                           </div>
                         </div>
-                        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                        <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
                           <THead cols={["Matiere", "Type", "Note /20"]} />
                           <tbody>
                             {notesPeriode.map((item, index) => (
@@ -456,7 +456,7 @@ function PortailParent({ utilisateur, deconnecter, annee, schoolInfo }) {
                               </TR>
                             ))}
                           </tbody>
-                        </table>
+                        </table></div>
                       </Card>
                     );
                   })}

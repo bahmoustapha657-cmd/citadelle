@@ -392,7 +392,7 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId, userRole}) {
                   Voir le détail ({promoRes.details.length} élèves)
                 </summary>
                 <div style={{overflowX:"auto",marginTop:8}}>
-                  <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                  <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1" style={{fontSize:12}}>
                     <thead><tr style={{background:"#f0f6ff"}}>
                       <th style={{padding:"5px 8px",textAlign:"left"}}>Éleve</th>
                       <th style={{padding:"5px 8px"}}>Classe actuelle</th>
@@ -420,7 +420,7 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId, userRole}) {
                         </td>
                       </tr>
                     ))}</tbody>
-                  </table>
+                  </table></div>
                 </div>
               </details>}
             </>}
@@ -573,7 +573,7 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId, userRole}) {
         <p style={{fontSize:13,color:"#b91c1c",fontWeight:700,marginBottom:12}}>
           ⚠️ Ces mots de passe ne seront plus jamais affichés. Notez-les maintenant.
         </p>
-        <table style={{width:"100%",borderCollapse:"collapse",marginBottom:16}}>
+        <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1" style={{marginBottom:16}}>
           <THead cols={["Login","Rôle","Mot de passe temporaire"]}/>
           <tbody>{mdpsInitiaux.map((compte)=>(
             <TR key={`${compte.role}-${compte.login}`}>
@@ -582,13 +582,13 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId, userRole}) {
               <TD><span style={{fontFamily:"monospace",fontWeight:800,fontSize:14,color:C.blueDark,letterSpacing:"0.05em"}}>{compte.mdp}</span></TD>
             </TR>
           ))}</tbody>
-        </table>
+        </table></div>
         <Btn v="success" onClick={()=>setMdpsInitiaux(null)}>✅ J'ai noté tous les mots de passe</Btn>
       </Modale>}
 
       {chargement||initEnCours ? <Chargement/> : (
         <Card>
-          <table style={{width:"100%",borderCollapse:"collapse"}}>
+          <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
             <THead cols={["Utilisateur","Login","Rôle","Mot de passe","Action"]}/>
             <tbody>
               {comptes.map((c,i)=>{
@@ -611,7 +611,7 @@ function AdminPanel({annee, setAnnee, verrous={}, schoolId, userRole}) {
                 );
               })}
             </tbody>
-          </table>
+          </table></div>
         </Card>
       )}
 

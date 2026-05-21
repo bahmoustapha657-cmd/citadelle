@@ -301,7 +301,7 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
                       <strong style={{ fontSize: 13, color: c1 }}>Dernieres notes saisies</strong>
                     </div>
                     <div style={{ overflowX: "auto" }}>
-                      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
                         <THead cols={["Eleve", "Matiere", "Type", "Periode", "Note"]} />
                         <tbody>
                           {mesNotes.slice(0, 10).map((note) => (
@@ -314,7 +314,7 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
                             </TR>
                           ))}
                         </tbody>
-                      </table>
+                      </table></div>
                     </div>
                   </Card>
                 )}
@@ -332,7 +332,7 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
                 ) : (
                   <Card>
                     <div style={{ overflowX: "auto" }}>
-                      <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 600 }}>
+                      <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1" style={{minWidth: 600}}>
                         <THead cols={["Jour", "Heure", "Classe", "Matiere"]} />
                         <tbody>
                           {emplois.map((emploi, index) => (
@@ -344,7 +344,7 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
                             </TR>
                           ))}
                         </tbody>
-                      </table>
+                      </table></div>
                     </div>
                   </Card>
                 )}
@@ -386,7 +386,7 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
                       ))}
                     </div>
                     <Card>
-                      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
                         <THead cols={["Matricule", "Nom et prenom", "Classe", "Sexe", "Statut", "Action"]} />
                         <tbody>
                           {eleves.map((eleveItem) => (
@@ -402,7 +402,7 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
                             </TR>
                           ))}
                         </tbody>
-                      </table>
+                      </table></div>
                     </Card>
                   </>
                 )}
