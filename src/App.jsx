@@ -41,7 +41,7 @@ const PortailPublic = lazyNamedExport(() => import("./components/PortailPublic")
 const ChangerMotDePasseModal = lazyNamedExport(() => import("./components/ChangerMotDePasseModal"), "ChangerMotDePasseModal");
 const PortailEnseignant = lazyNamedExport(() => import("./components/PortailEnseignant"), "PortailEnseignant");
 const PortailParent = lazyNamedExport(() => import("./components/PortailParent"), "PortailParent");
-const SuperAdminPanel = lazyNamedExport(() => import("./components/SuperAdminPanel"), "SuperAdminPanel");
+const SuperAdminPanel = lazy(() => import("./components/SuperAdminPanel"));
 const TableauDeBord = lazyNamedExport(() => import("./components/TableauDeBord"), "TableauDeBord");
 const HistoriqueActions = lazyNamedExport(() => import("./components/HistoriqueActions"), "HistoriqueActions");
 const ParametresEcole = lazyNamedExport(() => import("./components/ParametresEcole"), "ParametresEcole");
