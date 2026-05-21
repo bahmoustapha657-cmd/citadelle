@@ -168,14 +168,21 @@ function SuperAdminPanel() {
       // Charger les stats en parallele
       const statsMap = {};
       await Promise.all(liste.map(async (e) => {
-        const [eleves, comptes, enseignants] = await Promise.all([
-          getDocs(collection(db,"ecoles",e._id,"elevesPrimaire")).then(s=>s.size).catch(()=>0),
-          getDocs(collection(db,"ecoles",e._id,"comptes")).then(s=>s.size).catch(()=>0),
-          getDocs(collection(db,"ecoles",e._id,"ensPrimaire")).then(s=>s.size).catch(()=>0),
+        const sizeOf = (coll) => getDocs(collection(db,"ecoles",e._id,coll)).then(s=>s.size).catch(()=>0);
+        const [elevesP, elevesC, elevesL, comptes, ensP, ensC, ensL] = await Promise.all([
+          sizeOf("elevesPrimaire"),
+          sizeOf("elevesCollege"),
+          sizeOf("elevesLycee"),
+          sizeOf("comptes"),
+          sizeOf("ensPrimaire"),
+          sizeOf("ensCollege"),
+          sizeOf("ensLycee"),
         ]);
-        // Eleves secondaire aussi
-        const elevesS = await getDocs(collection(db,"ecoles",e._id,"elevesSecondaire")).then(s=>s.size).catch(()=>0);
-        statsMap[e._id] = { eleves: eleves + elevesS, comptes, enseignants };
+        statsMap[e._id] = {
+          eleves: elevesP + elevesC + elevesL,
+          comptes,
+          enseignants: ensP + ensC + ensL,
+        };
       }));
       setStats(statsMap);
     } catch(err) {
