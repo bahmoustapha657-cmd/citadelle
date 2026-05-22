@@ -86,13 +86,23 @@ export function NotesTab({
           .sort((a,b)=>(a.nom+a.prenom).localeCompare(b.nom+b.prenom));
         const matieresCols = matieresForClasse(grilleClasse==="all"?null:grilleClasse).map(m=>m.nom);
 
-        const getNoteExist = (eleveId, mat) =>
-          notes.find(n=>(n.eleveId===eleveId||n.eleveNom)&&n.matiere===mat&&n.periode===grillePeriode&&n.type===grilleType);
+        // Recherche d'une note existante pour CET élève (et pas un autre).
+        // Match par eleveId en priorité ; fallback strict sur eleveNom complet
+        // (legacy : anciennes notes sans eleveId).
+        const getNoteExist = (eleve, mat) => {
+          if(!eleve) return undefined;
+          const fullName = `${eleve.nom||""} ${eleve.prenom||""}`.trim();
+          return notes.find(n => {
+            if(n.matiere!==mat || n.periode!==grillePeriode || n.type!==grilleType) return false;
+            if(n.eleveId) return n.eleveId === eleve._id;
+            return !!fullName && String(n.eleveNom||"").trim() === fullName;
+          });
+        };
 
-        const valeurCellule = (eleveId, mat) => {
-          const key = `${eleveId}|${mat}`;
+        const valeurCellule = (eleve, mat) => {
+          const key = `${eleve._id}|${mat}`;
           if(key in grilleChanges) return grilleChanges[key];
-          return getNoteExist(eleveId, mat)?.note ?? "";
+          return getNoteExist(eleve, mat)?.note ?? "";
         };
 
         const couleurNote = (v) => {
@@ -111,10 +121,11 @@ export function NotesTab({
             const [eleveId, ...matParts] = key.split("|");
             const mat = matParts.join("|");
             if(val===""||isNaN(Number(val))) continue;
-            const exist = getNoteExist(eleveId, mat);
             const eleve = eleves.find(e=>e._id===eleveId);
+            if(!eleve) continue;
+            const exist = getNoteExist(eleve, mat);
             if(exist){ await ajN({...exist,note:Number(val),annee:exist.annee||annee||getAnnee()}); }
-            else { await ajN({eleveId,eleveNom:`${eleve?.nom||""} ${eleve?.prenom||""}`.trim(),matiere:mat,type:grilleType,periode:grillePeriode,note:Number(val),annee:annee||getAnnee()}); }
+            else { await ajN({eleveId,eleveNom:`${eleve.nom||""} ${eleve.prenom||""}`.trim(),matiere:mat,type:grilleType,periode:grillePeriode,note:Number(val),annee:annee||getAnnee()}); }
             nb++;
           }
           setGrilleChanges({});
@@ -164,9 +175,9 @@ export function NotesTab({
                 <tbody>
                   {elevesGrille.map((e,ri)=>{
                     const moy = matieresCols.reduce((s,m)=>{
-                      const v=Number(valeurCellule(e._id,m));
+                      const v=Number(valeurCellule(e,m));
                       return s+(isNaN(v)?0:v);
-                    },0)/matieresCols.filter(m=>valeurCellule(e._id,m)!=="").length||0;
+                    },0)/matieresCols.filter(m=>valeurCellule(e,m)!=="").length||0;
                     const rowBg = ri%2===0?"#fff":"#f8fafc";
                     return (
                       <tr key={e._id} style={{background:rowBg,borderBottom:"1px solid #f1f5f9"}}>
@@ -177,7 +188,7 @@ export function NotesTab({
                         </td>
                         {matieresCols.map(m=>{
                           const key=`${e._id}|${m}`;
-                          const val=valeurCellule(e._id,m);
+                          const val=valeurCellule(e,m);
                           const modif=key in grilleChanges;
                           return (
                             <td key={m} style={{padding:"4px 6px",textAlign:"center",borderLeft:"1px solid #f1f5f9"}}>

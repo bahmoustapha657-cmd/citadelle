@@ -83,9 +83,36 @@ EduGest est disponible en **Français / Anglais / Arabe** (avec support RTL auto
 
 ### 2.1 Première connexion
 
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                                                                 │
+│                   [Logo EduGest]                                │
+│                                                                 │
+│                   Connexion à votre école                       │
+│                                                                 │
+│   École     [ École Citadelle                              ▾ ]  │
+│                                                                 │
+│   Rôle      [ Direction ▾ ]                                     │
+│             ( ) Direction                                       │
+│             ( ) Admin                                           │
+│             ( ) Comptable                                       │
+│             ( ) Primaire                                        │
+│             ( ) Collège / Lycée                                 │
+│             ( ) Enseignant                                      │
+│             ( ) Parent                                          │
+│                                                                 │
+│   Identifiant  [ direction                                   ]  │
+│   Mot de passe [ ••••••••••                                  ]  │
+│                                                                 │
+│                  [ Se connecter ]                               │
+│                                                                 │
+│              🌐 FR · EN · AR                                    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
 1. Le Super-Admin a créé votre école avec un compte **Direction** initial.
 2. Rendez-vous sur l'URL EduGest fournie (ex : `https://edugest-gn.vercel.app`).
-3. Cliquez sur **Connexion**, choisissez le rôle **Direction**, entrez votre identifiant et mot de passe initial.
+3. Sélectionnez votre **école** (si plusieurs hébergées), choisissez le **rôle** (Direction au début), entrez **identifiant + mot de passe**.
 4. À la première connexion, EduGest vous demande de **changer votre mot de passe** (modale automatique).
 
 ### 2.2 Guide de démarrage (DG/Admin)
@@ -109,55 +136,147 @@ Le DG et l'Admin créent les autres comptes depuis `Panneau Admin`. Le Comptable
 
 ## 3. Interface générale
 
-### 3.1 Sidebar (menu principal)
+### 3.1 Vue d'ensemble de l'écran
 
-À gauche de l'écran, le menu liste les pages accessibles selon votre rôle :
+```text
+┌─────────────────────────────────────────────────────────────────────────┐
+│ [Logo École]      🔍 Rechercher (Ctrl+K)   [2025-2026 ▾]  🔔  [👤 Nom ▾] │
+├──────────────┬──────────────────────────────────────────────────────────┤
+│              │                                                          │
+│ 🏠 Accueil   │                                                          │
+│ 📚 Primaire  │              ZONE PRINCIPALE                             │
+│ 🎓 Collège   │           (contenu de la page)                           │
+│ 🎓 Lycée     │                                                          │
+│ 💰 Compta.   │     • Onglets (selon page)                               │
+│ 🏛 Fondation │     • Filtres                                            │
+│ 📅 Calendr.  │     • Tableau ou formulaire                              │
+│ 📝 Examens   │     • Actions (boutons)                                  │
+│ 💬 Messages  │                                                          │
+│ 🛡 Admin     │                                                          │
+│ 🗂 Histo.    │                                                          │
+│              │                                                          │
+│ [🚀 Guide]   │                                                          │
+└──────────────┴──────────────────────────────────────────────────────────┘
+```
 
-- 🏠 **Accueil** (Tableau de bord)
-- 📚 **Primaire** *(selon profil de l'école)*
-- 🎓 **Secondaire / Collège / Lycée**
-- 💰 **Comptabilité**
-- 🏛 **Fondation** *(si activée)*
-- 📅 **Calendrier**
-- 📝 **Examens**
-- 💬 **Messages parents**
-- 🛡 **Panneau Admin**
-- 🗂 **Historique**
-- ⚙️ **Paramètres** *(via menu profil)*
+### 3.2 Sidebar (menu principal)
 
-Sur mobile, la sidebar se replie en hamburger.
+À gauche de l'écran, le menu liste les pages accessibles selon votre rôle. Les libellés varient selon les renommages effectués dans `Paramètres → Affichage` :
 
-### 3.2 Header (barre du haut)
+| Icône | Libellé | Visible pour |
+|---|---|---|
+| 🏠 | Accueil | Tous les rôles |
+| 📚 | Primaire | DG, Admin, Comptable, Primaire |
+| 🎓 | Collège / Lycée | DG, Admin, Comptable, sections secondaire |
+| 💰 | Comptabilité | DG, Admin, Comptable |
+| 🏛 | Fondation | DG, Admin (si fondation activée) |
+| 📅 | Calendrier | Tous les rôles |
+| 📝 | Examens | DG, Admin, sections |
+| 💬 | Messages parents | DG, Admin, Comptable |
+| 🛡 | Panneau Admin | DG, Admin |
+| 🗂 | Historique | DG, Admin |
+| ⚙️ | Paramètres | DG, Admin, Comptable, Super-Admin (via menu profil) |
 
-De gauche à droite :
+Sur mobile (< 768 px), la sidebar se replie derrière un hamburger ☰.
 
-- **🔍 Recherche globale** (raccourci `Ctrl+K`) — trouve un élève, un enseignant, un parent, ou navigue vers un module
+### 3.3 Header (barre du haut)
+
+```text
+┌──────────────────────────────────────────────────────────────────────────┐
+│                                                                          │
+│ ☰  [🔍 Rechercher Ctrl+K          ]   [2025-2026 ▾]   🔔(3)   [DM ▾]    │
+│                                                          ↑     ↑    ↑    │
+│                                                       Année  Notif Profil│
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+- **🔍 Recherche globale** (`Ctrl + K`) — trouve un élève, un enseignant, un parent, ou navigue vers un module
 - **Année scolaire active** — chip indiquant l'année en cours de saisie
-- **🔔 Notifications** — 10 dernières actions, badge rouge si actions < 5 min
+- **🔔 Notifications** — 10 dernières actions ; pastille verte si action < 5 min
 - **Avatar + menu profil** — accès à Paramètres, Raccourcis, Langue, Déconnexion
 
-### 3.3 Indicateurs visuels
+**Menu profil déroulé :**
 
-- **Badge couleur du rôle** : admin = mauve, comptable = sarcelle, direction = bleu
-- **Bandeau orange** « lecture seule » : l'année consultée ≠ année active, ou votre rôle n'a que la lecture
-- **Bandeau rouge** « Action requise » : conformité légale incomplète, paiement à valider, etc.
+```text
+┌──────────────────────────────┐
+│ Diallo Mamadou               │
+│ Direction · École Citadelle  │
+├──────────────────────────────┤
+│ 🏫 Paramètres école          │
+│ ⌨️  Raccourcis clavier   [?] │
+│ 🌐 Langue            FR/EN/AR│
+├──────────────────────────────┤
+│ ⬅ Se déconnecter            │
+└──────────────────────────────┘
+```
+
+### 3.4 Indicateurs visuels (badges & bandeaux)
+
+| Élément | Apparence | Signification |
+|---|---|---|
+| Badge rôle bleu | `[ Direction ]` | DG / direction |
+| Badge rôle mauve | `[ Admin ]` | Administrateur |
+| Badge rôle sarcelle | `[ Comptable ]` | Comptable |
+| Bandeau orange | « 🔒 Année 2023-2024 consultée — lecture seule » | Année consultée ≠ année active |
+| Bandeau rouge | « ⚠ Action requise : conformité incomplète » | Donnée légale manquante ou paiement à valider |
+| Bandeau vert | « ✓ Salaires de mai générés » | Confirmation d'action |
 
 ---
 
 ## 4. Tableau de bord (Accueil)
 
-L'écran d'accueil affiche des **statistiques temps réel** :
+L'écran d'accueil affiche des **statistiques temps réel** liées au sélecteur d'année.
 
-- **Cartes KPI** : nombre d'élèves actifs (par section), enseignants, recettes du mois, dépenses du mois, taux de paiement
-- **Graphique évolution** : recettes vs dépenses sur les 12 derniers mois
-- **Top 5 classes** : effectif, moyenne générale
+### 4.1 Maquette de l'écran
+
+```text
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                         Tableau de bord                                   ║
+╠═══════════════════════════════════════════════════════════════════════════╣
+║                                                                           ║
+║  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐     ║
+║  │  ÉLÈVES     │  │ ENSEIGNANTS │  │ RECETTES    │  │ DÉPENSES    │     ║
+║  │             │  │             │  │   du mois   │  │   du mois   │     ║
+║  │   1 247     │  │     86      │  │ 12 850 000  │  │  8 420 000  │     ║
+║  │  +23 ▲      │  │   = stable  │  │   +12% ▲    │  │   -3%  ▼    │     ║
+║  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘     ║
+║                                                                           ║
+║  ┌─ Évolution recettes / dépenses (12 derniers mois) ─────────────────┐ ║
+║  │                                                                     │ ║
+║  │  15M ┤        ●─●                                                  │ ║
+║  │      │      ●     ●─●                                              │ ║
+║  │  10M ┤    ●         ●─●                                            │ ║
+║  │      │  ●─●           ●─●─●                                        │ ║
+║  │   5M ┤●                   ●─●                                      │ ║
+║  │      └─────────────────────────────────────────────────────        │ ║
+║  │       Jun Jul Aoû Sep Oct Nov Déc Jan Fév Mar Avr Mai             │ ║
+║  │       ● Recettes   ● Dépenses                                     │ ║
+║  └────────────────────────────────────────────────────────────────────┘ ║
+║                                                                           ║
+║  ┌─ Top 5 classes ────────────────────────┐  ┌─ Conformité ──────────┐ ║
+║  │ Classe       Effectif   Moyenne        │  │ ⏳ Agrément expire    │ ║
+║  │ 6ème A        38         13.4/20       │  │    dans 47 jours      │ ║
+║  │ 5ème B        36         12.8/20       │  │ [Mettre à jour →]     │ ║
+║  │ 4ème A        34         12.1/20       │  └───────────────────────┘ ║
+║  │ CM2 A         33         8.2/10        │                            ║
+║  │ Terminale C   30         11.9/20       │  ⚠ 18 mensualités impayées║
+║  └────────────────────────────────────────┘    ce mois [Voir →]        ║
+║                                                                           ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+```
+
+### 4.2 Composants
+
+- **Cartes KPI** (4 en haut) : élèves actifs, enseignants, recettes mois, dépenses mois — avec tendance vs mois précédent
+- **Graphique 12 mois** : courbes recettes vs dépenses (recharts)
+- **Top 5 classes** : effectif + moyenne générale, cliquable pour ouvrir la classe
+- **Widget Conformité** : compte à rebours d'expiration de l'agrément. S'affiche en orange à < 90 j, rouge à < 30 j. Le bouton ouvre `Paramètres → Officiel`
 - **Alertes** :
-  - Conformité légale incomplète → cliquer ouvre `Paramètres → Officiel`
-  - Mensualités impayées du mois > seuil → cliquer ouvre `Comptabilité → Mensualités`
+  - Conformité légale incomplète → ouvre `Paramètres → Officiel`
+  - Mensualités impayées du mois > seuil → ouvre `Comptabilité → Mensualités`
   - Plan expirant dans < 7 jours → ouvre la modale de mise à niveau
-- **Widget « Compte à rebours »** : agrément officiel arrivant à échéance (cf. § Conformité)
 
-Les KPI sont liés au sélecteur d'année. Changer d'année recalcule tout.
+> **[CAPTURE_REELLE]** Un PNG du vrai tableau de bord avec les données de l'école sera inséré ici.
 
 ---
 
@@ -167,10 +286,37 @@ Accès : menu profil → **🏫 Paramètres école**. Réservé à Direction / A
 
 ### 5.1 Onglet « Identité »
 
-- **Nom de l'école**, **slogan**, **logo** (upload PNG/JPG)
-- **Couleur principale** + **couleur secondaire** (sélecteur HEX) — appliqué automatiquement à toute l'interface et aux PDF
+```text
+┌─ Paramètres école ─────────────────────────────────────────────────┐
+│ [Identité] [Accueil] [Officiel] [Évaluations] [Matricules] ...     │
+├────────────────────────────────────────────────────────────────────┤
+│                                                                    │
+│   Nom de l'école *      [ École Citadelle                       ]  │
+│   Slogan                [ L'excellence au quotidien             ]  │
+│                                                                    │
+│   Logo                  ┌──────────┐  [Téléverser]                 │
+│                         │  [logo]  │  PNG/JPG, 512×512 max         │
+│                         └──────────┘                               │
+│                                                                    │
+│   Couleur principale    [ #0A1628 ] [▣]                            │
+│   Couleur secondaire    [ #00C48C ] [▣]                            │
+│                                                                    │
+│   Adresse               [ Quartier Almamya, Conakry             ]  │
+│   Téléphone             [ +224 622 00 00 00                     ]  │
+│   Email                 [ contact@citadelle.gn                  ]  │
+│   Site web              [ https://www.citadelle.gn              ]  │
+│                                                                    │
+│   Sections actives :                                               │
+│     [✓] Primaire    [✓] Collège    [✓] Lycée    [ ] Fondation     │
+│                                                                    │
+│   [ Annuler ]                              [ Enregistrer ]         │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+- **Nom de l'école**, **slogan**, **logo** (upload PNG/JPG, 512×512 max)
+- **Couleur principale** + **couleur secondaire** (sélecteur HEX) — appliqué automatiquement à toute l'interface et aux PDF générés
 - **Coordonnées** : adresse, téléphone, email, site web
-- **Sections actives** : cocher *Primaire*, *Collège*, *Lycée*, *Fondation* (active/désactive les menus correspondants)
+- **Sections actives** : cocher *Primaire*, *Collège*, *Lycée*, *Fondation* (active/désactive les menus correspondants — les données restent sauvegardées même si la section est désactivée)
 
 ### 5.2 Onglet « Accueil »
 
@@ -180,15 +326,48 @@ Accès : menu profil → **🏫 Paramètres école**. Réservé à Direction / A
 
 ### 5.3 Onglet « Officiel » — Conformité légale
 
-Données stockées dans `/ecoles/{id}/config/legal` :
+Données stockées dans `/ecoles/{id}/config/legal`. Apparaissent dans le **footer des bulletins, attestations et PDF officiels**.
+
+```text
+┌─ Conformité légale ────────────────────────────────────────────────┐
+│                                                                    │
+│  ▼ Promoteur                                                       │
+│    Nom complet           [ M. Camara Sékou                       ] │
+│    Année de naissance    [ 1965                                  ] │
+│    Lieu de naissance     [ Kankan                                ] │
+│                                                                    │
+│  ▼ Autorisation de création                                        │
+│    N° de l'arrêté        [ A/2008/MEPU/CAB/0142                  ] │
+│    Date                  [ 12/09/2008                            ] │
+│    Autorité émettrice    [ Ministère de l'Éducation              ] │
+│                                                                    │
+│  ▼ Agrément officiel                                               │
+│    Numéro                [ AGR/2023/0089                         ] │
+│    Date d'obtention      [ 03/02/2023                            ] │
+│    Date d'expiration     [ 02/02/2028 ]  ⏳ Expire dans 1287 j    │
+│                                                                    │
+│  ▼ Codes statistiques                                              │
+│    Code MEN              [ 224-CKY-0156                          ] │
+│    Code commune          [ KAL-001                               ] │
+│    Code circonscription  [ DCE-CONAKRY-3                         ] │
+│                                                                    │
+│  ▼ Cycles enseignés      [✓] Maternelle [✓] Primaire [✓] Second.  │
+│                                                                    │
+│  ▼ Personnes ressources                                            │
+│    Directeur(trice)      [ Diallo Mamadou                        ] │
+│    Fondateur(trice)      [ Camara Sékou                          ] │
+│    Secrétariat           [ Bah Aminata                           ] │
+│                                                                    │
+│  [ Enregistrer le profil légal ]                                   │
+└────────────────────────────────────────────────────────────────────┘
+```
+
 - **Promoteur** : nom, année et lieu de naissance
 - **Autorisation de création** : numéro d'arrêté, date, autorité émettrice
 - **Agrément** : numéro, date, **date d'expiration** (déclenche le compte à rebours sur le tableau de bord)
 - **Codes statistiques** : code MEN, code commune, code circonscription
 - **Cycles enseignés** (maternelle, primaire, secondaire)
 - **Personnes ressources** : directeur, fondateur, secrétariat
-
-Ces données apparaissent dans le **footer des bulletins, attestations et PDF officiels**.
 
 ### 5.4 Onglet « Évaluations »
 
@@ -239,14 +418,34 @@ Vue d'ensemble de la section :
 
 ### 6.3 Onglet « Élèves »
 
-- **Tableau sticky** : matricule, nom, prénom, classe, sexe, date naissance, parents, statut, actions
+```text
+┌─ Élèves — Primaire ────────────────────────────────────────────────────────┐
+│ [Aperçu] [Classes] [ÉLÈVES] [Ens] [Notes] [Discipline] [Bulletins] ...     │
+├────────────────────────────────────────────────────────────────────────────┤
+│  🔍 [Rechercher nom/matricule]   Classe [Toutes ▾]  Statut [Actif ▾]      │
+│                                                  [+ Ajouter] [⬆ Importer] │
+├────────┬─────────────┬────────────┬─────┬──────────┬──────────┬───────────┤
+│ Matr.  │ Nom Prénom  │ Classe     │ Sex │ Date nais│ Statut   │ Actions   │
+├────────┼─────────────┼────────────┼─────┼──────────┼──────────┼───────────┤
+│ EDU001 │ Diallo M.   │ CM2 A      │  M  │ 15/03/14 │ ● Actif  │ 👁 ✏ 🗑   │
+│ EDU002 │ Bah Aïssata │ CM2 A      │  F  │ 22/07/14 │ ● Actif  │ 👁 ✏ 🗑   │
+│ EDU003 │ Camara S.   │ CM1 B      │  M  │ 08/11/15 │ ● Actif  │ 👁 ✏ 🗑   │
+│ EDU004 │ Sow Fatou   │ CE2 A      │  F  │ 30/05/16 │ ◌ Transf │ 👁 ✏ 🗑   │
+│ EDU005 │ Touré I.    │ CM2 A      │  M  │ 12/02/14 │ ● Actif  │ 👁 ✏ 🗑   │
+│ ...    │             │            │     │          │          │           │
+├────────┴─────────────┴────────────┴─────┴──────────┴──────────┴───────────┤
+│ 384 élèves affichés · 1 247 au total                  [< 1 2 3 ... 24 >]  │
+└────────────────────────────────────────────────────────────────────────────┘
+```
+
+- **Tableau sticky** (en-tête fixe au scroll, 2 colonnes gauches figées) : matricule, nom, classe, sexe, date naissance, statut, actions
 - **Recherche/filtres** : par classe, statut (actif, transféré, sorti), genre
-- **Ajouter un élève** :
+- **Ajouter un élève** : modale en 4 étapes
   1. Informations civiles (matricule auto, nom, prénom, date/lieu de naissance, genre, nationalité)
   2. Affectation classe
-  3. Parents (lier comptes existants ou créer)
-  4. Photo
-- **Actions ligne** : voir détail, modifier, transférer de classe, marquer sorti, supprimer
+  3. Parents (lier comptes existants ou créer un nouveau compte parent)
+  4. Photo (optionnel)
+- **Actions par ligne** : 👁 voir détail, ✏ modifier, 🗑 supprimer, transférer de classe, marquer sorti
 - **Imports/exports** : CSV ou Excel (selon plan)
 
 ### 6.4 Onglet « Enseignants » (Ens)
@@ -261,11 +460,29 @@ Vue d'ensemble de la section :
 
 ### 6.5 Onglet « Notes »
 
+```text
+┌─ Notes — Collège ──────────────────────────────────────────────────────────┐
+│ Classe [6ème A ▾]  Matière [Maths ▾]  Période [Trim. 1 ▾]  Type [Devoir ▾] │
+│                                                       [+ Saisir en grille] │
+├──────────────┬─────────┬─────────┬─────────┬───────────┬───────────────────┤
+│ Élève        │ Devoir 1│ Devoir 2│ Compo   │ Moyenne   │ Actions           │
+├──────────────┼─────────┼─────────┼─────────┼───────────┼───────────────────┤
+│ Bah Aïssata  │  14.5   │  16.0   │  15.5   │  15.33    │ ✏ ✏ ✏            │
+│ Camara Sou.  │  09.0   │  10.5   │  11.0   │  10.16    │ ✏ ✏ ✏            │
+│ Diallo Mam.  │  12.0   │  13.5   │  14.0   │  13.16    │ ✏ ✏ ✏            │
+│ Sow Fatou    │   —     │   8.0   │   —     │   8.00    │ + ✏ +             │
+│ Touré Ibra.  │  18.0   │  17.5   │  17.0   │  17.50    │ ✏ ✏ ✏            │
+├──────────────┼─────────┼─────────┼─────────┼───────────┼───────────────────┤
+│ MOYENNE CLASSE│ 13.4   │ 13.1    │ 14.4    │   13.45   │                   │
+└──────────────┴─────────┴─────────┴─────────┴───────────┴───────────────────┘
+```
+
 - **Filtres** : classe, matière, période, type d'évaluation
-- **Saisie par élève** : ouvrir la fiche élève, ajouter une note (matière, type, valeur, date)
-- **Saisie en grille** : tableau classe × élèves, remplir toute la classe en une page
-- **Validation** : si la note dépasse la note max, alerte rouge
-- **Génération automatique des moyennes** : périodique et annuelle, en bas de tableau
+- **Saisie par élève** : cliquer la cellule, taper la note, **Enter** pour valider
+- **Saisie en grille** : ouvre une modale tableau classe × élèves, remplir toute la classe en une page (un input par élève)
+- **Validation** : si la note dépasse la note max (10 primaire / 20 secondaire), encadré rouge
+- **Génération automatique des moyennes** : périodique et annuelle, ligne du bas du tableau
+- **Cellule vide** : icône `+` pour ajouter, sinon `✏` pour modifier
 
 ### 6.6 Onglet « Enseignements » (cours effectués)
 
@@ -282,11 +499,58 @@ Vue d'ensemble de la section :
 
 ### 6.8 Onglet « Bulletins »
 
-- **Génération** : choisir classe → période → générer tous les bulletins en PDF
+Aperçu structurel d'un bulletin imprimé (PDF) :
+
+```text
+╔═════════════════════════════════════════════════════════════════════╗
+║   [Logo]              ÉCOLE CITADELLE                               ║
+║                    « L'excellence au quotidien »                    ║
+║              Quartier Almamya, Conakry · +224 622 00 00 00          ║
+║─────────────────────────────────────────────────────────────────────║
+║                                                                     ║
+║                BULLETIN DE NOTES — TRIMESTRE 1                      ║
+║                       Année 2025-2026                               ║
+║                                                                     ║
+║   Élève     : Bah Aïssata                Matricule : EDU002         ║
+║   Classe    : 6ème A                     Effectif  : 38             ║
+║   Né(e) le  : 22/07/2014 à Conakry                                  ║
+║─────────────────────────────────────────────────────────────────────║
+║                                                                     ║
+║   Matière         Coef    Note    Moy.Cl   Rang    Appréciation     ║
+║   ─────────       ────    ────    ──────   ────    ────────────     ║
+║   Mathématiques     4    15.33    13.45     5/38    Très bien       ║
+║   Français          4    14.00    12.10     8/38    Bien            ║
+║   Anglais           3    12.50    11.80    12/38    Assez bien      ║
+║   Hist-Géo          2    16.00    13.20     2/38    Excellent       ║
+║   Sciences          3    13.50    12.50     9/38    Bien            ║
+║   Éducation Phys.   1    15.00    14.00     7/38    Bien            ║
+║   ─────────────────────────────────────────────────                 ║
+║   TOTAL             17   239.0                                      ║
+║                                                                     ║
+║   MOYENNE GÉNÉRALE : 14.06 / 20    RANG : 6 / 38                    ║
+║   MENTION         : Bien                                            ║
+║   DÉCISION        : Admis(e) à passer au Trimestre 2                ║
+║                                                                     ║
+║   Observations Conseil de classe :                                  ║
+║   ─────────────────────────────────────────────────────────         ║
+║   Bon trimestre. Continue ainsi !                                   ║
+║                                                                     ║
+║                                                                     ║
+║   Le Professeur principal           Le Directeur                    ║
+║                                                                     ║
+║─────────────────────────────────────────────────────────────────────║
+║ École Citadelle · Agrément AGR/2023/0089 du 03/02/2023              ║
+║ Promoteur : M. Camara Sékou · Code MEN : 224-CKY-0156               ║
+╚═════════════════════════════════════════════════════════════════════╝
+```
+
+- **Génération** : choisir classe → période → bouton `Générer tous les bulletins`
 - **Aperçu** : prévisualisation avant impression
-- **Personnalisation** (plan Pro+) : modèle, ordre des matières, appréciations automatiques
+- **Personnalisation** (plan Pro+) : modèle, ordre des matières, appréciations automatiques (selon seuils de moyenne)
 - **Téléchargement** : individuel ou ZIP de toute la classe
-- **Le footer du bulletin** intègre les informations légales (cf. § Conformité)
+- **Footer légal** : intègre automatiquement les données de `Paramètres → Officiel` (agrément, promoteur, code MEN)
+
+> **[CAPTURE_REELLE]** Un PDF de bulletin réel (anonymisé) sera capturé ici.
 
 ### 6.9 Onglet « Livrets » (livret scolaire annuel)
 
@@ -303,10 +567,39 @@ Vue d'ensemble de la section :
 ### 6.11 Onglet « Emploi du temps » (EDT)
 
 *(Section avec enseignants uniquement)*
-- **Grille hebdomadaire** : lundi → samedi/dimanche, créneaux horaires
+
+```text
+┌─ Emploi du temps — Classe 6ème A ──────────────────────────────────────────────┐
+│ Classe [6ème A ▾]    Semaine type [Standard ▾]    [🖨 Imprimer EDT]            │
+├──────┬───────────┬───────────┬───────────┬───────────┬───────────┬─────────────┤
+│ Heur │  Lundi    │  Mardi    │ Mercredi  │  Jeudi    │ Vendredi  │  Samedi     │
+├──────┼───────────┼───────────┼───────────┼───────────┼───────────┼─────────────┤
+│ 8h00 │ MATHS     │ FRANÇAIS  │ MATHS     │ ANGLAIS   │ HIST-GÉO  │ SCIENCES    │
+│ 9h00 │ M. Bah    │ Mme Diallo│ M. Bah    │ M. Touré  │ Mme Sow   │ M. Camara   │
+├──────┼───────────┼───────────┼───────────┼───────────┼───────────┼─────────────┤
+│ 9h00 │ FRANÇAIS  │ MATHS     │ ANGLAIS   │ FRANÇAIS  │ SCIENCES  │  RÉCRÉ      │
+│10h00 │ Mme Diallo│ M. Bah    │ M. Touré  │ Mme Diallo│ M. Camara │             │
+├──────┼───────────┼───────────┼───────────┼───────────┼───────────┼─────────────┤
+│10h00 │  RÉCRÉ    │  RÉCRÉ    │  RÉCRÉ    │  RÉCRÉ    │  RÉCRÉ    │ ÉDU. CIV.   │
+│10h15 │           │           │           │           │           │ Mme Bah     │
+├──────┼───────────┼───────────┼───────────┼───────────┼───────────┼─────────────┤
+│10h15 │ HIST-GÉO  │ SCIENCES  │ FRANÇAIS  │ MATHS     │ ANGLAIS   │   ―         │
+│11h15 │ Mme Sow   │ M. Camara │ Mme Diallo│ M. Bah    │ M. Touré  │             │
+├──────┼───────────┼───────────┼───────────┼───────────┼───────────┼─────────────┤
+│ ...  │           │           │           │           │           │             │
+└──────┴───────────┴───────────┴───────────┴───────────┴───────────┴─────────────┘
+
+[Glisser une matière depuis le panneau de droite vers un créneau libre]
+```
+
+- **Grille hebdomadaire** : lundi → samedi/dimanche, créneaux horaires personnalisables
 - **Glisser-déposer** : placer une matière dans un créneau (enseignant proposé selon affectations)
-- **Conflit détecté** : enseignant déjà occupé → alerte rouge
-- **Impression** : EDT classe ou EDT enseignant
+- **Conflit détecté** : enseignant déjà occupé sur ce créneau dans une autre classe → alerte rouge avec le détail du conflit
+- **Récréations / pauses** : créneaux protégés (non remplaçables par drag)
+- **Impression** : EDT classe (PDF avec en-tête école) ou EDT enseignant
+- **Modèle de semaine** : possibilité de définir des « semaines types » (semaine A / B / examens)
+
+> **[CAPTURE_REELLE]** L'EDT complet de l'école sera capturé ici.
 
 ### 6.12 Onglet « Attestations »
 
@@ -344,12 +637,38 @@ Accès : sidebar `💰 Comptabilité`. 10 onglets.
 
 L'onglet le plus dense de la compta. Trois sections : **Primaire**, **Secondaire**, **Personnel**.
 
-- **Générer les salaires d'un mois** : bouton `Auto-générer` calcule, pour chaque enseignant, son salaire mois = (heures effectuées × prime horaire) + frais annexes − retenues
-- **Frais annexes** : prime de déplacement, prime de soir, etc. (toggle par enseignant)
-- **Bons** : avances ou retenues sur salaire — sélecteur de bénéficiaire qui exclut désormais les enseignants supprimés ou renommés
-- **Tableau** : matricule, nom, total heures, salaire de base, frais annexes, bons, net à payer, payé (oui/non)
-- **Marquer payé** : enregistre la dépense automatiquement
-- **Imprimer fiches de paie** : individuelles ou batch (ZIP PDF)
+```text
+┌─ Salaires — Secondaire ────────────────────────────────────────────────────────────┐
+│ Mois [Mai 2026 ▾]    [Auto-générer]  [+ Bon/Avance]  [🖨 Toutes fiches]  Total: 28M │
+├──────────────────────┬─────────┬──────────┬──────────┬──────────┬─────────┬────────┤
+│                      │  Heures │ Prime/h  │ Salaire  │ + Annexes│ - Bons  │  NET   │
+│ Enseignant           │   eff.  │ (FCFA)   │  brut    │          │         │ à payer│
+├──────────────────────┼─────────┼──────────┼──────────┼──────────┼─────────┼────────┤
+│ Bah Mamadou (Maths)  │   76    │  4 000   │ 304 000  │  +15 000 │ -20 000 │ 299 000│
+│ Diallo F. (Français) │   80    │  4 000   │ 320 000  │  +10 000 │   0     │ 330 000│
+│ Touré I. (Anglais)   │   60    │  4 500   │ 270 000  │  +5 000  │ -10 000 │ 265 000│
+│ Sow A. (Hist-Géo)    │   54    │  4 000   │ 216 000  │   0      │   0     │ 216 000│
+│ Camara S. (Sciences) │   72    │  4 500   │ 324 000  │  +20 000 │ -50 000 │ 294 000│
+│ ...                  │         │          │          │          │         │        │
+├──────────────────────┴─────────┴──────────┴──────────┴──────────┴─────────┴────────┤
+│   ●Payé   ◌En attente                              Status: 12 payés / 18 attente   │
+└────────────────────────────────────────────────────────────────────────────────────┘
+
+[ Bons octroyés ce mois ]
+┌────────────┬──────────────────┬──────────┬────────────────────┐
+│ Date       │ Bénéficiaire     │ Montant  │ Motif              │
+├────────────┼──────────────────┼──────────┼────────────────────┤
+│ 12/05/2026 │ Bah Mamadou      │ 20 000   │ Avance santé       │
+│ 18/05/2026 │ Touré Ibrahima   │ 10 000   │ Transport          │
+│ 20/05/2026 │ Camara Sékou     │ 50 000   │ Avance loyer       │
+└────────────┴──────────────────┴──────────┴────────────────────┘
+```
+
+- **Auto-générer** : calcule, pour chaque enseignant, salaire = (heures effectuées × prime horaire) + frais annexes − bons
+- **Frais annexes** : prime de déplacement, soir, examens, etc. — toggle par enseignant
+- **Bons** : avances ou retenues sur salaire — le sélecteur de bénéficiaire **n'affiche que les enseignants actifs** (les renommés/supprimés sont filtrés depuis 2026-05-21)
+- **Marquer payé** : un clic sur la pastille `◌` → enregistre la dépense automatiquement dans Dépenses
+- **Imprimer fiches de paie** : individuelles ou batch (ZIP de tous les PDF du mois)
 
 ### 7.5 Onglet « Enseignants » (vue comptable)
 
@@ -380,11 +699,49 @@ Compta dédiée à la fondation (si activée) :
 
 L'onglet le plus consulté par le comptable.
 
+```text
+┌─ Mensualités — Comptabilité ─────────────────────────────────────────────────────────┐
+│ Classe [6ème A ▾]  Statut [Tous ▾]    [🖨 Relances]  Mois écolier : Oct 2025 → Jun 2026│
+├────────┬──────────────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬────────┤
+│ Matr.  │ Élève        │ Oct │ Nov │ Déc │ Jan │ Fév │ Mar │ Avr │ Mai │ Jun │ Total  │
+├────────┼──────────────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼────────┤
+│ EDU001 │ Diallo M.    │  ●  │  ●  │  ●  │  ●  │  ●  │  ●  │  ●  │  ◯  │  ◯  │ 280k/360k│
+│ EDU002 │ Bah Aïssata  │  ●  │  ●  │  ●  │  ●  │  ●  │  ●  │  ●  │  ●  │  ◯  │ 320k/360k│
+│ EDU003 │ Camara Sou.  │  ●  │  ●  │  ●  │  ●  │  ●  │  ●  │  ◯  │  ◯  │  ◯  │ 240k/360k│
+│ EDU004 │ Sow Fatou    │  ●  │  ●  │  ●  │  ●  │  ⚠  │  ⚠  │  ⚠  │  ⚠  │  ◯  │ 160k/360k│
+│ EDU005 │ Touré Ibra.  │  ●  │  ●  │  ●  │  ●  │  ●  │  ●  │  ●  │  ●  │  ●  │ 360k/360k│
+├────────┴──────────────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴────────┤
+│ Légende :  ● Payé   ⚠ En retard   ◯ À venir   ─ Non dû                               │
+│ Effectif classe : 38 · À jour : 25 · En retard : 8 · À venir : 5                     │
+└──────────────────────────────────────────────────────────────────────────────────────┘
+
+[Clic sur une cellule] :
+   ┌─ Paiement mensualité ─────────────────┐
+   │ Élève     : Diallo Mamadou            │
+   │ Mois      : Mai 2026                  │
+   │ Montant   : [ 40 000           ] FCFA │
+   │ Date      : [ 22/05/2026       ]      │
+   │ Mode      : ( ) Espèces               │
+   │             (●) Mobile Money          │
+   │             ( ) Virement              │
+   │ Reçu n°   : auto (R-2026-0142)        │
+   │                                       │
+   │ [ Annuler ]      [ Encaisser & Reçu ] │
+   └───────────────────────────────────────┘
+```
+
 - **Tableau sticky** (en-tête fixe, 2 colonnes gauches fixes) : élève × mois de l'année
-- **Cellule** : verte (payé), rouge (impayé), grise (non dû — élève pas encore inscrit ce mois-là)
-- **Cliquer une cellule** : ouvre une modale avec montant, date, mode de paiement → marque payé
-- **Cliquer le mois (colonne)** : encaisser tout le mois pour la classe
-- **Filtres** : classe, statut (à jour / en retard), genre
+- **Pastilles colorées** :
+  - `●` vert : payé
+  - `⚠` rouge : impayé (mois échu)
+  - `◯` gris clair : à venir
+  - `─` gris foncé : non dû (élève pas encore inscrit / sorti)
+- **Cliquer une cellule** : modale d'encaissement (montant, date, mode, reçu automatique)
+- **Cliquer l'en-tête de mois** : encaisser tout le mois pour la classe en bloc
+- **Filtres** : classe, statut (à jour / en retard / à venir), genre
+- **Bouton « Relances »** : génère un PDF des élèves en retard à imprimer
+
+> **[CAPTURE_REELLE]** Le vrai tableau de mensualités de l'école sera inséré ici (anonymisé si compte de prod).
 
 ### 7.10 Onglet « Transferts »
 
@@ -470,6 +827,40 @@ Accès : sidebar `🛡 Panneau Admin`. Réservé à Direction / Admin.
 
 ### 12.5 Promotion de fin d'année
 
+```text
+┌─ Promotion de fin d'année scolaire ──────────────────────────────────┐
+│                                                                      │
+│  Année source       :  [ 2025-2026 ▾ ]                               │
+│  Année cible        :  [ 2026-2027 ▾ ]                               │
+│                                                                      │
+│  Seuil de passage :                                                  │
+│    • Primaire (sur 10)        [ 5.0 ]                                │
+│    • Collège / Lycée (sur 20) [ 10.0 ]                               │
+│                                                                      │
+│  Comportement si l'élève n'a aucune note :                           │
+│    (●) Promouvoir (par défaut)                                       │
+│    ( ) Faire redoubler                                               │
+│                                                                      │
+│  ┌─ Aperçu ───────────────────────────────────────────────────┐     │
+│  │                                                            │     │
+│  │  Total élèves analysés       :  1 247                      │     │
+│  │  ✓ Élèves promus              :  1 089  (87.3%)             │     │
+│  │  ↩ Élèves redoublants        :    98   ( 7.9%)             │     │
+│  │  ⨯ Élèves exclus (Terminale) :    60   ( 4.8%)             │     │
+│  │                                                            │     │
+│  │  Mapping classes (extrait) :                               │     │
+│  │    CM2 A     →  6ème A                                     │     │
+│  │    6ème A    →  5ème A                                     │     │
+│  │    5ème A    →  4ème A                                     │     │
+│  │    ... (cf. table PROMOTION_SUIVANTE)                      │     │
+│  └────────────────────────────────────────────────────────────┘     │
+│                                                                      │
+│   ⚠ Cette action est IRRÉVERSIBLE. Sauvegardez avant de lancer.     │
+│                                                                      │
+│   [ Annuler ]                              [ Lancer la promotion ]   │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
 Bouton **Lancer la promotion** :
 1. Choisir l'année source et l'année cible (typiquement N → N+1)
 2. **Seuils** : moyenne minimale primaire (5/10), collège/lycée (10/20)
@@ -499,9 +890,41 @@ Accès : un enseignant se connecte avec son login. 6 onglets.
 
 ### 14.1 Dashboard
 
+```text
+┌─ Portail Enseignant — M. Bah Mamadou (Mathématiques) ─────────────────┐
+│                                                                       │
+│ ┌───────────────┐  ┌───────────────┐  ┌───────────────┐               │
+│ │ MES CLASSES   │  │ HEURES SEMAINE│  │ NOTES         │               │
+│ │      4        │  │      18 h     │  │ en attente    │               │
+│ │ 6ème A/B,     │  │ Lun-Sam       │  │      23       │               │
+│ │ 5ème A,4ème C │  │               │  │ [Saisir →]    │               │
+│ └───────────────┘  └───────────────┘  └───────────────┘               │
+│                                                                       │
+│ ┌─ Mes prochaines séances ──────────────────────────────────────────┐│
+│ │  Demain (mardi)                                                   ││
+│ │   08:00 - 09:00   6ème A   Mathématiques   Salle 12               ││
+│ │   09:00 - 10:00   6ème B   Mathématiques   Salle 12               ││
+│ │   11:15 - 12:15   4ème C   Mathématiques   Salle 8                ││
+│ │                                                                   ││
+│ │  Mercredi                                                         ││
+│ │   08:00 - 09:00   6ème A   Mathématiques   Salle 12               ││
+│ │   ... [Voir EDT complet →]                                        ││
+│ └───────────────────────────────────────────────────────────────────┘│
+│                                                                       │
+│ ┌─ Mes signalements récents ────────────────────────────────────────┐│
+│ │  18/05  Sow Fatou (5ème A)     Absence non justifiée              ││
+│ │  15/05  Camara M. (6ème A)     Retard                             ││
+│ │  10/05  Bah Ousmane (4ème C)   Indiscipline en cours              ││
+│ └───────────────────────────────────────────────────────────────────┘│
+│                                                                       │
+└───────────────────────────────────────────────────────────────────────┘
+```
+
 - Cartes : mes classes, mes heures cette semaine, mes notes en attente
-- Mes prochaines séances (extrait EDT)
-- Mes signalements récents
+- Mes prochaines séances (extrait EDT — 2 jours à venir)
+- Mes signalements récents (5 derniers)
+
+> **[CAPTURE_REELLE]** Le vrai dashboard enseignant sera capturé ici.
 
 ### 14.2 EDT (Emploi du temps)
 
@@ -510,10 +933,33 @@ Accès : un enseignant se connecte avec son login. 6 onglets.
 
 ### 14.3 Notes
 
-- Sélectionner classe + type d'évaluation + période
-- Mode **liste** : ajouter une note unique par élève
-- Mode **saisie en grille** : tableau de toute la classe, saisir toutes les notes en une page
-- Modifier / supprimer une note précédemment saisie
+```text
+┌─ Saisie en grille — Mathématiques ──────────────────────────────────┐
+│ Classe [6ème A ▾]   Type [Devoir 1 ▾]   Période [Trim. 1 ▾]         │
+│                                                                     │
+│ 15 note(s) saisie(s) sur 38 élève(s).                               │
+│ Les notes existantes sont préremplies — modifier/effacer pour MAJ.  │
+├─────┬──────────────────────────────────┬──────────────────────────┬─┤
+│  #  │ Élève                            │      Note / 20           │ │
+├─────┼──────────────────────────────────┼──────────────────────────┼─┤
+│  1  │ Bah Aïssata           EDU002     │      [ 14.5 ]            │ │
+│  2  │ Camara Sou.           EDU003     │      [ 10.5 ]            │ │
+│  3  │ Diallo Mam.           EDU001     │      [ 13.5 ]            │ │
+│  4  │ Sow Fatou             EDU004     │      [  8.0 ]            │ │
+│  5  │ Touré Ibra.           EDU005     │      [ 17.5 ]            │ │
+│  6  │ Bangoura Awa          EDU006     │      [  —  ]             │ │
+│  7  │ Camara Hadja          EDU007     │      [ 12.0 ]            │ │
+│  ... │ ...                              │                          │ │
+├─────┴──────────────────────────────────┴──────────────────────────┴─┤
+│                          [ Fermer ]    [ 💾 Enregistrer la grille ] │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+- Sélectionner **classe** + **type d'évaluation** + **période**
+- Mode **liste** : ajouter une note unique par élève (bouton « Nouvelle note »)
+- Mode **saisie en grille** (recommandé) : tableau de toute la classe avec un input par élève — saisir toutes les notes en une page, valider d'un clic
+- **Notes existantes préremplies** : modifier la valeur ou laisser vide pour ne pas écraser
+- Modifier / supprimer une note précédemment saisie via le bouton ✏ ou 🗑 en mode liste
 
 ### 14.4 Élèves
 
@@ -541,9 +987,39 @@ Accès : un parent se connecte avec son login. 6 onglets.
 
 ### 15.1 Dashboard
 
-- **Mes enfants** : carte par enfant avec photo, classe, moyenne en cours
-- **Alertes** : mensualités impayées, message non lu, devoirs en retard
-- **Bandeau blocage paiement** (si applicable) : si une école active le blocage, le parent voit un bandeau l'invitant à régulariser avant d'accéder aux notes/bulletins
+```text
+┌─ Mon espace parent ────────────────────────────────────────────────────┐
+│                                                                        │
+│ Bonjour Mme Bah Aminata 👋                                             │
+│                                                                        │
+│ ┌─ Mes enfants ──────────────────────────────────────────────────────┐│
+│ │                                                                    ││
+│ │  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐         ││
+│ │  │ [Photo]      │    │ [Photo]      │    │ [Photo]      │         ││
+│ │  │ Bah Aïssata  │    │ Bah Mariam   │    │ Bah Souleman │         ││
+│ │  │ 6ème A       │    │ CE2 B        │    │ Terminale C  │         ││
+│ │  │              │    │              │    │              │         ││
+│ │  │ Moy: 13.4/20 │    │ Moy: 7.5/10  │    │ Moy: 11.8/20 │         ││
+│ │  │ 📈 +0.6      │    │ 📉 -0.2      │    │ 📈 +0.3      │         ││
+│ │  │              │    │              │    │              │         ││
+│ │  │ [Voir →]     │    │ [Voir →]     │    │ [Voir →]     │         ││
+│ │  └──────────────┘    └──────────────┘    └──────────────┘         ││
+│ └────────────────────────────────────────────────────────────────────┘│
+│                                                                        │
+│ ┌─ Alertes ──────────────────────────────────────────────────────────┐│
+│ │  ⚠ 2 mensualités impayées pour Bah Souleman (Avr, Mai)             ││
+│ │  💬 Nouveau message du Comptable                                    ││
+│ │  📋 Bulletin Trim. 2 disponible pour Bah Aïssata                   ││
+│ └────────────────────────────────────────────────────────────────────┘│
+│                                                                        │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+- **Mes enfants** : carte par enfant avec photo, classe, moyenne courante + tendance (📈 / 📉)
+- **Alertes** : mensualités impayées, messages non lus, bulletins publiés
+- **Bandeau blocage paiement** (si applicable) : si l'école active le blocage paiement, le parent voit un bandeau orange l'invitant à régulariser avant d'accéder aux notes/bulletins
+
+> **[CAPTURE_REELLE]** Le vrai dashboard parent sera capturé ici (avec données anonymisées).
 
 ### 15.2 Notes
 
