@@ -30,3 +30,6 @@ serviceAccount.json
 serviceAccount.json.json
 
 .env*.local
+
+# PDF généré localement (artefact dérivable de MANUEL-UTILISATEUR.md via md-to-pdf)
+MANUEL-UTILISATEUR.pdf
