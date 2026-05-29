@@ -1,13 +1,6 @@
-import React, { useContext, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { C, getAnnee, peutCreerComptesParent, peutModifier } from "../constants";
-import { getDefaultPeriodeForSection, getPeriodesForSection } from "../period-utils";
-import { SchoolContext } from "../contexts/SchoolContext";
-import { useFirestore } from "../hooks/useFirestore";
-import { getActiveNoteForms } from "../evaluation-forms";
-import { findStaffDuplicate, getStaffDuplicateMessage } from "../staff-utils";
-import { Badge, Card, Modale, Champ, Input, Selec, Textarea, Btn, THead, TR, TD, Stat, Tabs, Vide, Chargement, LectureSeule, UploadFichiers } from "./ui";
+import { C } from "../constants";
+import { Badge, Tabs, LectureSeule } from "./ui";
 import { LivretsTab } from "./LivretsTab";
 import { EmploiDuTempsTab } from "./ecole/EmploiDuTempsTab";
 import { AttestationsTab } from "./ecole/AttestationsTab";
@@ -20,445 +13,310 @@ import { ApercuTab } from "./ecole/ApercuTab";
 import { EnsTab } from "./ecole/EnsTab";
 import { ElevesTab } from "./ecole/ElevesTab";
 import { NotesTab } from "./ecole/NotesTab";
+import { useEcole } from "./ecole/use-ecole";
 
-function Ecole({titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns, userRole, annee, classesPredefinies, maxNote=20, matieresPredefinies=[], readOnly=false, verrouOuvert=false}) {
+// Orchestrateur du module École : la logique vit dans useEcole,
+// chaque onglet dans ecole/*Tab.jsx.
+function Ecole({ titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns, userRole, annee, classesPredefinies, maxNote = 20, matieresPredefinies = [], readOnly = false, verrouOuvert = false }) {
   const { t } = useTranslation();
-  const isPrimarySection = cleEns === "ensPrimaire";
-  const anneeCourante = annee || getAnnee();
-  const [anneeConsultee, setAnneeConsultee] = useState(anneeCourante);
-  // Vue archive : filtre les notes (les autres collections restent persistantes).
-  const enModeArchive = anneeConsultee !== anneeCourante;
-  const anneeFiltre = enModeArchive ? anneeConsultee : null;
-  const {items:classes,chargement:cC,ajouter:ajC,modifier:modC,supprimer:supC}=useFirestore(cleClasses);
-  const {items:ens,chargement:cEns,ajouter:ajEns,modifier:modEns,supprimer:supEns}=useFirestore(cleEns);
-  const {items:notes,chargement:cN,ajouter:ajN,supprimer:supN}=useFirestore(cleNotes,{annee:anneeFiltre});
-  const {items:eleves,chargement:cE,modifier:modE}=useFirestore(cleEleves);
-  const {items:absences,chargement:cAbs,ajouter:ajAbs,supprimer:supAbs}=useFirestore(cleEleves+"_absences");
-  const {items:enseignements,chargement:cEng,ajouter:ajEng,modifier:modEng,supprimer:supEng}=useFirestore(cleEns+"_enseignements");
-  const {items:matieres,chargement:cMat,ajouter:ajMat,modifier:modMat,supprimer:supMat}=useFirestore(cleClasses+"_matieres");
-  const {items:emplois,chargement:cEmp,ajouter:ajEmp,modifier:modEmp,supprimer:supEmp}=useFirestore(cleClasses+"_emplois");
-  const cleAppreciations=cleNotes.replace("notes","appreciations");
-  const {items:appreciations,ajouter:ajApp,modifier:modApp}=useFirestore(cleAppreciations);
-  const getAppreciation=(eleveId,periode)=>appreciations.find(a=>a.eleveId===eleveId&&a.periode===periode);
-  const saveAppreciation=async(eleveId,periode,texte)=>{
-    const existant=getAppreciation(eleveId,periode);
-    const data={eleveId,periode,texte:String(texte||"").trim(),updatedAt:Date.now()};
-    if(existant)await modApp({...existant,...data});
-    else await ajApp(data);
-  };
-  const appreciationsParEleveB=(periode)=>Object.fromEntries(
-    appreciations.filter(a=>a.periode===periode&&a.texte).map(a=>[a.eleveId,a.texte])
-  );
+  const e = useEcole({ cleClasses, cleEns, cleNotes, cleEleves, userRole, annee, readOnly, verrouOuvert });
 
-  const [tab,setTab]=useState("apercu");
-  const [modal,setModal]=useState(null);
-  const [form,setForm]=useState({});
-  const [filtreClasse,setFiltreClasse]=useState("all");
-  // Matières filtrées par classe : si la matière a des classes assignées, on filtre ; sinon elle s'applique à tout
-  const matieresForClasse = (classe) => {
-    if(!classe||classe==="all") return matieres;
-    return matieres.filter(m=>!m.classes||!m.classes.length||m.classes.includes(classe));
-  };
-  // Périodes scolaires actives (T1/T2/T3 par défaut, ou S1/S2 ou mois selon schoolInfo.periodicite).
-  // Calculées dans le composant pour pouvoir initialiser les states ci-dessous.
-  const [rechercheMatricule,setRechercheMatricule]=useState("");
-  const [ensCompte,setEnsCompte]=useState(null);
-  const [formC,setFormC]=useState({});
-  const [parentEleve,setParentEleve]=useState(null);
-  const [formP,setFormP]=useState({});
-  const [importPreview,setImportPreview]=useState(null);
-  const [importEnCours,setImportEnCours]=useState(false);
-  const [notesVue,setNotesVue]=useState("liste"); // "liste" | "grille"
-  const [grilleClasse,setGrilleClasse]=useState("all");
-  const [grilleChanges,setGrilleChanges]=useState({}); // {"eleveId|matiere": note}
-  const [grilleSaving,setGrilleSaving]=useState(false);
-  const chg=k=>e=>setForm(p=>({...p,[k]:e.target.value}));
-  const {schoolId, schoolInfo, moisAnnee, toast, logAction, envoyerPush} = useContext(SchoolContext);
-  const sectionPeriode = isPrimarySection ? "primaire" : "secondaire";
-  const periodes = getPeriodesForSection(schoolInfo, sectionPeriode, moisAnnee);
-  const defaultPeriode = periodes[0] || getDefaultPeriodeForSection(schoolInfo, sectionPeriode);
-  const [periodeB,setPeriodeB]=useState(defaultPeriode);
-  const [grillePeriode,setGrillePeriode]=useState(defaultPeriode);
-  const noteForms = getActiveNoteForms(schoolInfo, isPrimarySection ? "primaire" : "secondaire");
-  const defaultNoteType = noteForms[0]?.value || "Devoir";
-  const [grilleType,setGrilleType]=useState(defaultNoteType);
-  const canCreate = !readOnly && !enModeArchive;
-  const canEdit = !readOnly && !enModeArchive && (peutModifier(userRole) || verrouOuvert);
-  // Création de compte parent : gate plus large que canEdit pour inclure
-  // le comptable (front-line inscription/paiement). Ignore le verrou car
-  // c'est une action de service au tuteur, pas une édition de données scolaires.
-  const canCreateParent = !readOnly && !enModeArchive && peutCreerComptesParent(userRole);
-  const moy=notes.length?(notes.reduce((s,n)=>s+Number(n.note),0)/notes.length).toFixed(1):"—";
-  const classesUniq=[...new Set(eleves.map(e=>e.classe))].filter(Boolean);
-  const sortAlphaEcole = arr => {
-    const tri = schoolInfo.triEleves || "prenom_nom";
-    return [...arr].sort((a,b)=>{
-      const withClasse = tri==="classe_prenom"||tri==="classe_nom";
-      const sa = withClasse
-        ? (tri==="classe_nom" ? `${a.classe||""} ${a.nom} ${a.prenom}` : `${a.classe||""} ${a.prenom} ${a.nom}`)
-        : (tri==="nom_prenom" ? `${a.nom} ${a.prenom}` : `${a.prenom} ${a.nom}`);
-      const sb = withClasse
-        ? (tri==="classe_nom" ? `${b.classe||""} ${b.nom} ${b.prenom}` : `${b.classe||""} ${b.prenom} ${b.nom}`)
-        : (tri==="nom_prenom" ? `${b.nom} ${b.prenom}` : `${b.prenom} ${b.nom}`);
-      return sa.localeCompare(sb,"fr",{sensitivity:"base"});
-    });
-  };
-  const elevesFiltres=sortAlphaEcole(filtreClasse==="all"?eleves:eleves.filter(e=>e.classe===filtreClasse));
-  // Effectif réel = nombre d'élèves dont le champ classe correspond
-  const effectifReel = (nomClasse) => eleves.filter(e=>e.classe===nomClasse && e.statut!=="Départ").length;
-
-  const tabItems=[
-    {id:"apercu",label:t("school.tabs.overview")},
-    {id:"classes",label:`${t("school.tabs.classes")} (${classes.length})`},
-    {id:"eleves",label:`${t("school.tabs.students")} (${eleves.length})`},
-    ...(avecEns?[{id:"ens",label:`${t("school.tabs.teachers")} (${ens.length})`}]:[]),
-    {id:"notes",label:`${t("school.tabs.notes")} (${notes.length})`},
-    {id:"enseignements",label:t("school.tabs.teachings")},
-    {id:"discipline",label:t("school.tabs.discipline")},
-    {id:"bulletins",label:t("school.tabs.bulletins")},
-    {id:"livrets",label:"📋 Livrets"},
-    {id:"matieres",label:t("school.tabs.subjects")},
-    ...(avecEns?[{id:"emploidutemps",label:t("school.tabs.schedule")}]:[]),
-    {id:"attestations",label:t("school.tabs.certificates")},
+  const tabItems = [
+    { id: "apercu", label: t("school.tabs.overview") },
+    { id: "classes", label: `${t("school.tabs.classes")} (${e.classes.length})` },
+    { id: "eleves", label: `${t("school.tabs.students")} (${e.eleves.length})` },
+    ...(avecEns ? [{ id: "ens", label: `${t("school.tabs.teachers")} (${e.ens.length})` }] : []),
+    { id: "notes", label: `${t("school.tabs.notes")} (${e.notes.length})` },
+    { id: "enseignements", label: t("school.tabs.teachings") },
+    { id: "discipline", label: t("school.tabs.discipline") },
+    { id: "bulletins", label: t("school.tabs.bulletins") },
+    { id: "livrets", label: "📋 Livrets" },
+    { id: "matieres", label: t("school.tabs.subjects") },
+    ...(avecEns ? [{ id: "emploidutemps", label: t("school.tabs.schedule") }] : []),
+    { id: "attestations", label: t("school.tabs.certificates") },
   ];
 
-  const saveClasse=()=>{
-    const row={...form,effectif:Number(form.effectif||0)};
-    if(modal==="add_c"){ajC(row);}
-    else {
-      const ancienNom=classes.find(c=>c._id===form._id)?.nom;
-      modC(row);
-      if(ancienNom&&ancienNom!==form.nom)
-        eleves.filter(e=>e.classe===ancienNom).forEach(e=>modE({...e,classe:form.nom}));
-    }
-    setModal(null);
-  };
-
-  const saveEnseignant = async () => {
-    const row = { ...form };
-    const doublon = findStaffDuplicate(row, ens, {
-      excludeId: modal === "edit_ens" ? row._id : null,
-    });
-    if (doublon) {
-      toast(getStaffDuplicateMessage(doublon, { label: "cet enseignant" }), "warning");
-      return;
-    }
-
-    if (modal === "add_ens") {
-      await ajEns(row);
-    } else {
-      await modEns(row);
-    }
-
-    if (row.classeTitle) {
-      const nomEns = `${row.prenom || ""} ${row.nom || ""}`.trim();
-      const existante = classes.find((c) => c.nom === row.classeTitle);
-      if (!existante) {
-        await ajC({ nom: row.classeTitle, effectif: 0, enseignant: nomEns });
-      } else if (nomEns && existante.enseignant !== nomEns) {
-        await modC({ ...existante, enseignant: nomEns });
-      }
-    }
-
-    setModal(null);
-  };
-
-  const anneeBase = Number(String(anneeCourante).split("-")[0]) || new Date().getFullYear();
-  const anneesDispo = Array.from({length:7},(_,i)=>`${anneeBase-i}-${anneeBase-i+1}`);
-
   return (
-    <div style={{padding:"22px 26px"}}>
-      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18,flexWrap:"wrap"}}>
-        {schoolInfo?.logo&&<img src={schoolInfo.logo} alt="" style={{width:48,height:48,objectFit:"contain"}}/>}
-        <div style={{flex:1,minWidth:200}}>
-          <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.blueDark}}>{titre}</h2>
-          <p style={{margin:0,fontSize:12,color:couleur,fontWeight:700}}>{t("school.subtitle")}</p>
+    <div style={{ padding: "22px 26px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18, flexWrap: "wrap" }}>
+        {e.schoolInfo?.logo && <img src={e.schoolInfo.logo} alt="" style={{ width: 48, height: 48, objectFit: "contain" }} />}
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: C.blueDark }}>{titre}</h2>
+          <p style={{ margin: 0, fontSize: 12, color: couleur, fontWeight: 700 }}>{t("school.subtitle")}</p>
         </div>
-        <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <label style={{fontSize:12,color:"#64748b",fontWeight:600}}>{t("common.yearViewed")} :</label>
-          <select value={anneeConsultee} onChange={e=>setAnneeConsultee(e.target.value)}
-            style={{padding:"6px 10px",borderRadius:8,border:`1px solid ${enModeArchive?"#f59e0b":"#cbd5e1"}`,fontSize:13,fontWeight:700,
-              background:enModeArchive?"#fef3c7":"#fff",color:enModeArchive?"#92400e":C.blueDark,cursor:"pointer"}}>
-            {anneesDispo.map(a=><option key={a} value={a}>{a}{a===anneeCourante?` (${t("common.current")})`:""}</option>)}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <label style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>{t("common.yearViewed")} :</label>
+          <select value={e.anneeConsultee} onChange={(ev) => e.setAnneeConsultee(ev.target.value)}
+            style={{ padding: "6px 10px", borderRadius: 8, border: `1px solid ${e.enModeArchive ? "#f59e0b" : "#cbd5e1"}`, fontSize: 13, fontWeight: 700,
+              background: e.enModeArchive ? "#fef3c7" : "#fff", color: e.enModeArchive ? "#92400e" : C.blueDark, cursor: "pointer" }}>
+            {e.anneesDispo.map((a) => <option key={a} value={a}>{a}{a === e.anneeCourante ? ` (${t("common.current")})` : ""}</option>)}
           </select>
-          {enModeArchive&&<Badge color="orange">📚 {t("common.archive")} — {t("common.readOnly")}</Badge>}
+          {e.enModeArchive && <Badge color="orange">📚 {t("common.archive")} — {t("common.readOnly")}</Badge>}
         </div>
       </div>
-      {readOnly&&<LectureSeule/>}
-      <div style={{background:"#fef3e0",border:"1px solid #fbbf24",borderRadius:8,padding:"9px 14px",fontSize:12,color:"#92400e",marginBottom:14,display:"flex",alignItems:"center",gap:8}}>
-        <span style={{fontSize:16}}>🔒</span>
+      {readOnly && <LectureSeule />}
+      <div style={{ background: "#fef3e0", border: "1px solid #fbbf24", borderRadius: 8, padding: "9px 14px", fontSize: 12, color: "#92400e", marginBottom: 14, display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 16 }}>🔒</span>
         <span>{t("school.enrollmentNotice")}</span>
       </div>
-      <Tabs items={tabItems} actif={tab} onChange={setTab}/>
+      <Tabs items={tabItems} actif={e.tab} onChange={e.setTab} />
 
       {/* ── APERÇU ── */}
-      {tab==="apercu"&&<ApercuTab
-        classes={classes}
-        eleves={eleves}
-        ens={ens}
-        notes={notes}
-        absences={absences}
+      {e.tab === "apercu" && <ApercuTab
+        classes={e.classes}
+        eleves={e.eleves}
+        ens={e.ens}
+        notes={e.notes}
+        absences={e.absences}
         avecEns={avecEns}
-        moy={moy}
+        moy={e.moy}
         maxNote={maxNote}
-        cC={cC}
-        cE={cE}
-        classesUniq={classesUniq}
-        effectifReel={effectifReel}
-        matieresForClasse={matieresForClasse}
+        cC={e.cC}
+        cE={e.cE}
+        classesUniq={e.classesUniq}
+        effectifReel={e.effectifReel}
+        matieresForClasse={e.matieresForClasse}
         couleur={couleur}
-        schoolInfo={schoolInfo}
+        schoolInfo={e.schoolInfo}
       />}
-
 
       {/* ── CLASSES ── */}
-      {tab==="classes"&&<ClassesTab
-        classes={classes}
-        eleves={eleves}
-        ens={ens}
-        cC={cC}
-        ajC={ajC}
-        modC={modC}
-        supC={supC}
-        schoolInfo={schoolInfo}
-        form={form}
-        setForm={setForm}
-        modal={modal}
-        setModal={setModal}
-        canCreate={canCreate}
-        canEdit={canEdit}
+      {e.tab === "classes" && <ClassesTab
+        classes={e.classes}
+        eleves={e.eleves}
+        ens={e.ens}
+        cC={e.cC}
+        ajC={e.ajC}
+        modC={e.modC}
+        supC={e.supC}
+        schoolInfo={e.schoolInfo}
+        form={e.form}
+        setForm={e.setForm}
+        modal={e.modal}
+        setModal={e.setModal}
+        canCreate={e.canCreate}
+        canEdit={e.canEdit}
         classesPredefinies={classesPredefinies}
-        effectifReel={effectifReel}
-        saveClasse={saveClasse}
-        toast={toast}
+        effectifReel={e.effectifReel}
+        saveClasse={e.saveClasse}
+        toast={e.toast}
       />}
-
 
       {/* ── ÉLÈVES (lecture seule — enrôlement dans Comptabilité) ── */}
-      {tab==="eleves"&&<ElevesTab
-        eleves={eleves}
-        elevesFiltres={elevesFiltres}
-        cE={cE}
+      {e.tab === "eleves" && <ElevesTab
+        eleves={e.eleves}
+        elevesFiltres={e.elevesFiltres}
+        cE={e.cE}
         cleEleves={cleEleves}
-        filtreClasse={filtreClasse}
-        setFiltreClasse={setFiltreClasse}
-        classesUniq={classesUniq}
+        filtreClasse={e.filtreClasse}
+        setFiltreClasse={e.setFiltreClasse}
+        classesUniq={e.classesUniq}
         avecEns={avecEns}
         annee={annee}
-        schoolInfo={schoolInfo}
-        schoolId={schoolId}
-        toast={toast}
-        logAction={logAction}
-        canEdit={canEdit}
-        canCreateParent={canCreateParent}
-        parentEleve={parentEleve}
-        setParentEleve={setParentEleve}
-        formP={formP}
-        setFormP={setFormP}
+        schoolInfo={e.schoolInfo}
+        schoolId={e.schoolId}
+        toast={e.toast}
+        logAction={e.logAction}
+        canEdit={e.canEdit}
+        canCreateParent={e.canCreateParent}
+        parentEleve={e.parentEleve}
+        setParentEleve={e.setParentEleve}
+        formP={e.formP}
+        setFormP={e.setFormP}
       />}
-
 
       {/* ── ENSEIGNANTS ── */}
-      {tab==="ens"&&avecEns&&<EnsTab
-        ens={ens}
-        cEns={cEns}
-        supEns={supEns}
+      {e.tab === "ens" && avecEns && <EnsTab
+        ens={e.ens}
+        cEns={e.cEns}
+        supEns={e.supEns}
         cleEns={cleEns}
-        isPrimarySection={isPrimarySection}
+        isPrimarySection={e.isPrimarySection}
         couleur={couleur}
-        schoolId={schoolId}
-        toast={toast}
-        logAction={logAction}
-        form={form}
-        setForm={setForm}
-        modal={modal}
-        setModal={setModal}
-        canCreate={canCreate}
-        canEdit={canEdit}
-        ensCompte={ensCompte}
-        setEnsCompte={setEnsCompte}
-        formC={formC}
-        setFormC={setFormC}
-        saveEnseignant={saveEnseignant}
+        schoolId={e.schoolId}
+        toast={e.toast}
+        logAction={e.logAction}
+        form={e.form}
+        setForm={e.setForm}
+        modal={e.modal}
+        setModal={e.setModal}
+        canCreate={e.canCreate}
+        canEdit={e.canEdit}
+        ensCompte={e.ensCompte}
+        setEnsCompte={e.setEnsCompte}
+        formC={e.formC}
+        setFormC={e.setFormC}
+        saveEnseignant={e.saveEnseignant}
       />}
 
-
       {/* ── NOTES ── */}
-      {tab==="notes"&&<NotesTab
+      {e.tab === "notes" && <NotesTab
         annee={annee}
-        periodes={periodes}
-        notes={notes}
-        cN={cN}
-        ajN={ajN}
-        supN={supN}
-        eleves={eleves}
-        matieres={matieres}
-        matieresForClasse={matieresForClasse}
-        noteForms={noteForms}
-        defaultNoteType={defaultNoteType}
-        schoolInfo={schoolInfo}
-        isPrimarySection={isPrimarySection}
+        periodes={e.periodes}
+        notes={e.notes}
+        cN={e.cN}
+        ajN={e.ajN}
+        supN={e.supN}
+        eleves={e.eleves}
+        matieres={e.matieres}
+        matieresForClasse={e.matieresForClasse}
+        noteForms={e.noteForms}
+        defaultNoteType={e.defaultNoteType}
+        schoolInfo={e.schoolInfo}
+        isPrimarySection={e.isPrimarySection}
         avecEns={avecEns}
         maxNote={maxNote}
         readOnly={readOnly}
-        canCreate={canCreate}
-        canEdit={canEdit}
-        form={form}
-        setForm={setForm}
-        modal={modal}
-        setModal={setModal}
-        notesVue={notesVue}
-        setNotesVue={setNotesVue}
-        grilleClasse={grilleClasse}
-        setGrilleClasse={setGrilleClasse}
-        grillePeriode={grillePeriode}
-        setGrillePeriode={setGrillePeriode}
-        grilleType={grilleType}
-        setGrilleType={setGrilleType}
-        grilleChanges={grilleChanges}
-        setGrilleChanges={setGrilleChanges}
-        grilleSaving={grilleSaving}
-        setGrilleSaving={setGrilleSaving}
-        importPreview={importPreview}
-        setImportPreview={setImportPreview}
-        importEnCours={importEnCours}
-        setImportEnCours={setImportEnCours}
-        toast={toast}
+        canCreate={e.canCreate}
+        canEdit={e.canEdit}
+        form={e.form}
+        setForm={e.setForm}
+        modal={e.modal}
+        setModal={e.setModal}
+        notesVue={e.notesVue}
+        setNotesVue={e.setNotesVue}
+        grilleClasse={e.grilleClasse}
+        setGrilleClasse={e.setGrilleClasse}
+        grillePeriode={e.grillePeriode}
+        setGrillePeriode={e.setGrillePeriode}
+        grilleType={e.grilleType}
+        setGrilleType={e.setGrilleType}
+        grilleChanges={e.grilleChanges}
+        setGrilleChanges={e.setGrilleChanges}
+        grilleSaving={e.grilleSaving}
+        setGrilleSaving={e.setGrilleSaving}
+        importPreview={e.importPreview}
+        setImportPreview={e.setImportPreview}
+        importEnCours={e.importEnCours}
+        setImportEnCours={e.setImportEnCours}
+        toast={e.toast}
       />}
-
 
       {/* ── ENSEIGNEMENTS ── */}
-      {tab==="enseignements"&&<EnseignementsTab
-        enseignements={enseignements}
-        cEng={cEng}
-        ajEng={ajEng}
-        modEng={modEng}
-        supEng={supEng}
-        classes={classes}
-        ens={ens}
-        matieres={matieres}
-        form={form}
-        setForm={setForm}
-        modal={modal}
-        setModal={setModal}
-        canCreate={canCreate}
-        canEdit={canEdit}
+      {e.tab === "enseignements" && <EnseignementsTab
+        enseignements={e.enseignements}
+        cEng={e.cEng}
+        ajEng={e.ajEng}
+        modEng={e.modEng}
+        supEng={e.supEng}
+        classes={e.classes}
+        ens={e.ens}
+        matieres={e.matieres}
+        form={e.form}
+        setForm={e.setForm}
+        modal={e.modal}
+        setModal={e.setModal}
+        canCreate={e.canCreate}
+        canEdit={e.canEdit}
       />}
-
 
       {/* ── DISCIPLINE ── */}
-      {tab==="discipline"&&<DisciplineTab
-        absences={absences}
-        cAbs={cAbs}
-        ajAbs={ajAbs}
-        supAbs={supAbs}
-        eleves={eleves}
+      {e.tab === "discipline" && <DisciplineTab
+        absences={e.absences}
+        cAbs={e.cAbs}
+        ajAbs={e.ajAbs}
+        supAbs={e.supAbs}
+        eleves={e.eleves}
         avecEns={avecEns}
-        form={form}
-        setForm={setForm}
-        modal={modal}
-        setModal={setModal}
-        canCreate={canCreate}
-        canEdit={canEdit}
-        envoyerPush={envoyerPush}
+        form={e.form}
+        setForm={e.setForm}
+        modal={e.modal}
+        setModal={e.setModal}
+        canCreate={e.canCreate}
+        canEdit={e.canEdit}
+        envoyerPush={e.envoyerPush}
       />}
-
 
       {/* ── BULLETINS ── */}
-      {tab==="bulletins"&&<BulletinsTab
-        periodes={periodes}
-        rechercheMatricule={rechercheMatricule}
-        setRechercheMatricule={setRechercheMatricule}
-        periodeB={periodeB}
-        setPeriodeB={setPeriodeB}
-        filtreClasse={filtreClasse}
-        setFiltreClasse={setFiltreClasse}
-        classesUniq={classesUniq}
-        elevesFiltres={elevesFiltres}
-        eleves={eleves}
-        notes={notes}
-        matieres={matieres}
-        matieresForClasse={matieresForClasse}
-        schoolInfo={schoolInfo}
-        moisAnnee={moisAnnee}
+      {e.tab === "bulletins" && <BulletinsTab
+        periodes={e.periodes}
+        rechercheMatricule={e.rechercheMatricule}
+        setRechercheMatricule={e.setRechercheMatricule}
+        periodeB={e.periodeB}
+        setPeriodeB={e.setPeriodeB}
+        filtreClasse={e.filtreClasse}
+        setFiltreClasse={e.setFiltreClasse}
+        classesUniq={e.classesUniq}
+        elevesFiltres={e.elevesFiltres}
+        eleves={e.eleves}
+        notes={e.notes}
+        matieres={e.matieres}
+        matieresForClasse={e.matieresForClasse}
+        schoolInfo={e.schoolInfo}
+        moisAnnee={e.moisAnnee}
         maxNote={maxNote}
         avecEns={avecEns}
-        form={form}
-        setForm={setForm}
-        modal={modal}
-        setModal={setModal}
-        canCreate={canCreate}
-        canEdit={canEdit}
-        getAppreciation={getAppreciation}
-        saveAppreciation={saveAppreciation}
-        appreciationsParEleveB={appreciationsParEleveB}
+        form={e.form}
+        setForm={e.setForm}
+        modal={e.modal}
+        setModal={e.setModal}
+        canCreate={e.canCreate}
+        canEdit={e.canEdit}
+        getAppreciation={e.getAppreciation}
+        saveAppreciation={e.saveAppreciation}
+        appreciationsParEleveB={e.appreciationsParEleveB}
       />}
 
-
       {/* ── LIVRETS ── */}
-      {tab==="livrets"&&<LivretsTab
-        periodes={periodes}
+      {e.tab === "livrets" && <LivretsTab
+        periodes={e.periodes}
         cleEleves={cleEleves} cleNotes={cleNotes}
-        matieres={matieres} maxNote={maxNote}
+        matieres={e.matieres} maxNote={maxNote}
         userRole={userRole} annee={annee}
       />}
 
       {/* ── MATIÈRES ── */}
-      {tab==="matieres"&&<MatieresTab
-        matieres={matieres}
-        cMat={cMat}
-        ajMat={ajMat}
-        modMat={modMat}
-        supMat={supMat}
-        classes={classes}
+      {e.tab === "matieres" && <MatieresTab
+        matieres={e.matieres}
+        cMat={e.cMat}
+        ajMat={e.ajMat}
+        modMat={e.modMat}
+        supMat={e.supMat}
+        classes={e.classes}
         matieresPredefinies={matieresPredefinies}
-        form={form}
-        setForm={setForm}
-        modal={modal}
-        setModal={setModal}
-        canCreate={canCreate}
-        canEdit={canEdit}
+        form={e.form}
+        setForm={e.setForm}
+        modal={e.modal}
+        setModal={e.setModal}
+        canCreate={e.canCreate}
+        canEdit={e.canEdit}
       />}
 
-
-      {tab==="emploidutemps"&&avecEns&&<EmploiDuTempsTab
+      {e.tab === "emploidutemps" && avecEns && <EmploiDuTempsTab
         maxNote={maxNote}
-        canCreate={canCreate}
-        canEdit={canEdit}
-        isPrimarySection={isPrimarySection}
-        form={form}
-        setForm={setForm}
-        chg={chg}
-        filtreClasse={filtreClasse}
-        setFiltreClasse={setFiltreClasse}
-        classes={classes}
-        matieres={matieres}
-        ens={ens}
-        emplois={emplois}
-        cEmp={cEmp}
-        ajEmp={ajEmp}
-        modEmp={modEmp}
-        supEmp={supEmp}
+        canCreate={e.canCreate}
+        canEdit={e.canEdit}
+        isPrimarySection={e.isPrimarySection}
+        form={e.form}
+        setForm={e.setForm}
+        chg={e.chg}
+        filtreClasse={e.filtreClasse}
+        setFiltreClasse={e.setFiltreClasse}
+        classes={e.classes}
+        matieres={e.matieres}
+        ens={e.ens}
+        emplois={e.emplois}
+        cEmp={e.cEmp}
+        ajEmp={e.ajEmp}
+        modEmp={e.modEmp}
+        supEmp={e.supEmp}
       />}
 
       {/* ── ATTESTATIONS DE NIVEAU ── */}
-      {tab==="attestations"&&<AttestationsTab
-        rechercheMatricule={rechercheMatricule}
-        setRechercheMatricule={setRechercheMatricule}
-        filtreClasse={filtreClasse}
-        setFiltreClasse={setFiltreClasse}
-        classesUniq={classesUniq}
-        elevesFiltres={elevesFiltres}
-        schoolInfo={schoolInfo}
+      {e.tab === "attestations" && <AttestationsTab
+        rechercheMatricule={e.rechercheMatricule}
+        setRechercheMatricule={e.setRechercheMatricule}
+        filtreClasse={e.filtreClasse}
+        setFiltreClasse={e.setFiltreClasse}
+        classesUniq={e.classesUniq}
+        elevesFiltres={e.elevesFiltres}
+        schoolInfo={e.schoolInfo}
         annee={annee}
         avecEns={avecEns}
-        cE={cE}
+        cE={e.cE}
       />}
     </div>
   );
 }
 
-
 export { Ecole };
-
-
