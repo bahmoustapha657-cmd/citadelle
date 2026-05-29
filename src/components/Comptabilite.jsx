@@ -1,26 +1,18 @@
 import React, { useContext, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { doc, updateDoc } from "firebase/firestore";
 import {
   C,
   getAnnee,
-  CLASSES_PRIMAIRE,
-  CLASSES_COLLEGE,
-  CLASSES_LYCEE,
   peutModifierEleves,
   peutModifier,
 } from "../constants";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
 import { db } from "../firebaseDb";
-import { Badge, Card, Modale, Champ, Input, Selec, Btn, THead, TR, TD, Stat, Tabs, Vide, Chargement, LectureSeule } from "./ui";
-import { imprimerEtatsSalaires } from "../reports";
-import { autoGenererSalairesAction, genererSalairesPourMois } from "./comptabilite/salary-actions";
-import { appliquerBons as appliquerBonsAction, toggleFraisAnnexe as toggleFraisAnnexeAction, toggleMens as toggleMensAction } from "./comptabilite/payment-actions";
+import { Badge, Tabs, LectureSeule } from "./ui";
+import { toggleFraisAnnexe as toggleFraisAnnexeAction, toggleMens as toggleMensAction } from "./comptabilite/payment-actions";
 import { ensureClasse as ensureClasseHelper, sortAlphaEleves } from "./comptabilite/eleves-helpers";
-import { Fondation } from "./Fondation";
-import { TarifsClasses } from "./TarifsClasses";
 import { TransfertsPanel } from "./TransfertsPanel";
 import { EnrolmentTab } from "./comptabilite/EnrolmentTab";
 import { RecettesTab } from "./comptabilite/RecettesTab";
@@ -31,6 +23,7 @@ import { BilanTab } from "./comptabilite/BilanTab";
 import { MensualitesTab } from "./comptabilite/MensualitesTab";
 import { EnseignantsTab } from "./comptabilite/EnseignantsTab";
 import { SalairesTab } from "./comptabilite/SalairesTab";
+import { useComptaSalaires } from "./comptabilite/useComptaSalaires";
 import { findStaffDuplicate, getStaffDuplicateMessage } from "../staff-utils";
 import { getPeriodesForSchool } from "../period-utils";
 import {
@@ -44,14 +37,7 @@ import {
   getTarifReinscriptionForClasse,
   getTarifRevisionForClasse,
 } from "../mensualite-utils";
-import {
-  findSalaryDuplicate,
-  getForfaitNet,
-  getSalaryExecutionHours,
-  getSalaryMontantBrut,
-  getSalaryNet,
-  summarizeSalaryTotals,
-} from "../salary-utils";
+import { findSalaryDuplicate } from "../salary-utils";
 
 function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   const { t } = useTranslation();
@@ -193,38 +179,21 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
     setModal(null);
   };
 
-  // Salaires du mois sélectionné
-  const moisLabel = moisSel==="__TOUS__" ? "Tous les mois (prévision)" : moisSel;
-  const moisModale = moisSel==="__TOUS__" ? (moisSalaire[0]||"Octobre") : moisSel;
-  const salairesMois = moisSel==="__TOUS__" ? [] : salaires.filter(s=>s.mois===moisSel);
-  const salairesSec = salairesMois.filter(s=>s.section==="Secondaire");
-  const salairesPrim = salairesMois.filter(s=>s.section==="Primaire");
-  const salairesPers = salairesMois.filter(s=>s.section==="Personnel");
-  const bonsMois = bons.filter(b=>b.mois===moisSel);
-
-  const appliquerBons = () => appliquerBonsAction({
-    moisSel, bonsMois, salairesMois, readOnly, toast, modS,
+  // Domaine paie : état dérivé (filtrage mois/section, totaux) + actions
+  // (génération auto, application des bons, impression). Voir useComptaSalaires.
+  const {
+    moisLabel, moisModale, salairesMois, salairesSec, salairesPrim, salairesPers, bonsMois,
+    appliquerBons, calcExecute, calcMontant, calcNet, calcNetF,
+    totNetSec, totNetPrim, totNetPers,
+    autoGenererSalaires, imprimerSalaires,
+  } = useComptaSalaires({
+    salaires, bons, moisSel, moisSalaire,
+    ensCollege, ensLycee, ensPrimaire, personnel,
+    emploisCollege, emploisLycee, engCollege, engLycee,
+    primeDefaut, annee, anneeConsultee, schoolInfo,
+    modS, ajS, supS, readOnly, toast, logAction,
   });
 
-  const calcExecute = (salary) => getSalaryExecutionHours(salary);
-  const calcMontant = (salary) => getSalaryMontantBrut(salary);
-  const calcNet = (salary) => getSalaryNet(salary);
-  const calcNetF = (salary) => getForfaitNet(salary);
-  const totalsSec = summarizeSalaryTotals(salairesSec);
-  const totalsPrim = summarizeSalaryTotals(salairesPrim);
-  const totalsPers = summarizeSalaryTotals(salairesPers);
-  const totNetSec = totalsSec.net;
-  const totMontantSec = totalsSec.montant;
-  const totBonSec = totalsSec.bon;
-  const totNetPrim = totalsPrim.net;
-  const totMontantPrim = totalsPrim.montant;
-  const totBonPrim = totalsPrim.bon;
-  const totNetPers = totalsPers.net;
-  const totMontantPers = totalsPers.montant;
-  const totBonPers = totalsPers.bon;
-  const totMontantGlobal = totalsSec.montant + totalsPrim.montant + totalsPers.montant;
-  const totBonGlobal = totalsSec.bon + totalsPrim.bon + totalsPers.bon;
-  const totNetGlobal = totalsSec.net + totalsPrim.net + totalsPers.net;
   const mensualiteOverview = getMensualiteOverview(tousElevesScolarite, moisAnnee, tarifsClasses);
   const periodes = getPeriodesForSchool(schoolInfo, moisAnnee);
   const defaultPeriode = periodes[0] || "T1";
@@ -232,49 +201,6 @@ function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
   const pctImpaye = mensualiteOverview.totalDu > 0
     ? ((impaye / mensualiteOverview.totalDu) * 100).toFixed(1)
     : 0;
-
-  // Wrapper qui passe l'état React à la fonction pure salary-actions.
-  // La logique métier (dédup, génération, resync) vit dans le helper ;
-  // ici on injecte juste les datasets + mutators Firestore.
-  const genererPourMois = (mois, {resync=false}={}) => genererSalairesPourMois(mois, {
-    salaires,
-    ensCollege, ensLycee, ensPrimaire, personnel,
-    emploisCollege, emploisLycee, engCollege, engLycee,
-    primeDefaut,
-    annee: annee || anneeConsultee,
-    modS, ajS, supS,
-    resync,
-  });
-
-  // Délègue à autoGenererSalairesAction (UI-coupled mais découplé du
-  // parent : il reçoit toast/confirm/logAction par injection).
-  const autoGenererSalaires = (opts={}) => {
-    if(readOnly) return;
-    return autoGenererSalairesAction({
-      ...opts,
-      moisSel, moisSalaire, genererPourMois,
-      ensCollege, ensLycee, ensPrimaire, personnel, primeDefaut,
-      toast, confirm, logAction,
-    });
-  };
-
-  // Wrapper qui rassemble l'état React et délègue le rendu HTML au helper
-  // src/reports/etats-salaires.js. La fonction d'impression elle-même
-  // (~170 LOC de template) vit avec les autres documents imprimables.
-  const imprimerSalaires = () => {
-    if(moisSel==="__TOUS__"){toast("Sélectionnez un mois précis pour imprimer.","warning");return;}
-    imprimerEtatsSalaires({
-      moisSel, anneeConsultee, schoolInfo,
-      salairesSec, salairesPrim, salairesPers,
-      totals: {
-        totMontantGlobal, totBonGlobal, totNetGlobal,
-        totMontantSec, totBonSec, totNetSec,
-        totMontantPrim, totBonPrim, totNetPrim,
-        totMontantPers, totBonPers, totNetPers,
-      },
-      calcExecute, calcMontant, calcNet,
-    });
-  };
 
   const tabs=[{id:"bilan",label:t("accounting.tabs.bilan")},{id:"recettes",label:`${t("accounting.tabs.revenues")} (${recettes.length})`},
     {id:"depenses",label:`${t("accounting.tabs.expenses")} (${depenses.length})`},
