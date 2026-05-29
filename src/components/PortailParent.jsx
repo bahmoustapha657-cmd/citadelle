@@ -1,23 +1,18 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { PolarAngleAxis, PolarGrid, Radar, RadarChart, ResponsiveContainer, Tooltip } from "recharts";
 import { apiFetch, getAuthHeaders } from "../apiClient";
-import { C, CLASSES_PRIMAIRE, fmt, getTarifAutreValue, getTarifMensuelTotal } from "../constants";
-import { getGeneralAverage, getSubjectAverage } from "../note-utils";
+import { C, CLASSES_PRIMAIRE, getTarifAutreValue, getTarifMensuelTotal } from "../constants";
 import { getPeriodesForSection } from "../period-utils";
 import { SchoolContext } from "../contexts/SchoolContext";
-import { imprimerBulletin } from "../reports";
 import { GlobalStyles } from "../styles";
-import { BlocagePaiement } from "./BlocagePaiement";
-import { Badge, Btn, Card, Champ, Chargement, Input, TD, THead, TR, Vide } from "./ui";
-
-function normalizeText(value = "") {
-  return String(value || "")
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-}
+import { Badge, Chargement } from "./ui";
+import { normalizeText } from "./portail-parent/helpers";
+import { DashboardTab } from "./portail-parent/DashboardTab";
+import { NotesTab } from "./portail-parent/NotesTab";
+import { AbsencesTab } from "./portail-parent/AbsencesTab";
+import { BulletinsTab } from "./portail-parent/BulletinsTab";
+import { PaiementsTab } from "./portail-parent/PaiementsTab";
+import { MessagesTab } from "./portail-parent/MessagesTab";
 
 function PortailParent({ utilisateur, deconnecter, annee, schoolInfo }) {
   const { t } = useTranslation();
@@ -249,348 +244,75 @@ function PortailParent({ utilisateur, deconnecter, annee, schoolInfo }) {
         ) : (
           <>
             {tab === "dashboard" && (
-              <>
-                {annonces.length > 0 && (
-                  <div style={{ marginBottom: 20 }}>
-                    {[...annonces].sort((left, right) => Number(right.date || 0) - Number(left.date || 0)).slice(0, 3).map((annonce, index) => (
-                      <div key={index} style={{ background: annonce.important ? "linear-gradient(135deg,#fef3c7,#fffbeb)" : "#f8fafc", border: `1px solid ${annonce.important ? "#fcd34d" : "#e2e8f0"}`, borderLeft: `4px solid ${annonce.important ? "#f59e0b" : c1}`, borderRadius: "0 12px 12px 0", padding: "12px 18px", marginBottom: 8 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                          <strong style={{ fontSize: 13, color: "#0A1628" }}>{annonce.titre}</strong>
-                          <span style={{ marginLeft: "auto", fontSize: 10, color: "#94a3b8" }}>{annonce.auteur} - {annonce.date ? new Date(annonce.date).toLocaleDateString("fr-FR") : ""}</span>
-                        </div>
-                        <p style={{ margin: 0, fontSize: 12, color: "#475569", lineHeight: 1.6 }}>{annonce.corps}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {mesNotes.length > 0 && (
-                  <Card style={{ marginBottom: 16 }}>
-                    <div style={{ padding: "14px 18px", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <strong style={{ fontSize: 13, color: c1 }}>Dernieres notes</strong>
-                      <button onClick={() => setTab("notes")} style={{ fontSize: 12, color: c1, background: "none", border: "none", cursor: "pointer", fontWeight: 700 }}>Voir tout</button>
-                    </div>
-                    <div style={{ overflowX: "auto" }}>
-                      <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
-                        <THead cols={["Matiere", "Type", "Periode", "Note"]} />
-                        <tbody>
-                          {mesNotes.slice(-6).reverse().map((item, index) => (
-                            <TR key={index}>
-                              <TD bold>{item.matiere}</TD>
-                              <TD><Badge color="blue">{item.type}</Badge></TD>
-                              <TD>{item.periode}</TD>
-                              <TD center><strong style={{ color: Number(item.note) >= 10 ? C.greenDk : "#b91c1c", fontSize: 14 }}>{item.note}/20</strong></TD>
-                            </TR>
-                          ))}
-                        </tbody>
-                      </table></div>
-                    </div>
-                  </Card>
-                )}
-
-                {mesAbsences.filter((item) => normalizeText(item.statut) === "absent").length > 0 && (
-                  <Card style={{ marginBottom: 16 }}>
-                    <div style={{ padding: "14px 18px", borderBottom: "1px solid #f1f5f9" }}>
-                      <strong style={{ fontSize: 13, color: "#b91c1c" }}>Absences recentes</strong>
-                    </div>
-                    <div style={{ overflowX: "auto" }}>
-                      <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
-                        <THead cols={["Date", "Matiere", "Statut", "Motif"]} />
-                        <tbody>
-                          {mesAbsences.filter((item) => normalizeText(item.statut) === "absent").slice(-5).map((item, index) => (
-                            <TR key={index}>
-                              <TD>{item.date || "-"}</TD>
-                              <TD>{item.matiere || "-"}</TD>
-                              <TD><Badge color="red">Absent</Badge></TD>
-                              <TD>{item.motif || "-"}</TD>
-                            </TR>
-                          ))}
-                        </tbody>
-                      </table></div>
-                    </div>
-                  </Card>
-                )}
-
-                {mesNotes.length > 0 && matieres.length >= 3 && (
-                  <Card style={{ marginBottom: 16 }}>
-                    <div style={{ padding: "14px 18px" }}>
-                      <p style={{ margin: "0 0 8px", fontWeight: 800, fontSize: 13, color: c1 }}>Profil par matiere</p>
-                      <ResponsiveContainer width="100%" height={220}>
-                        <RadarChart data={matieres.map((matiere) => {
-                          const notesMatiere = mesNotes.filter((item) => item.matiere === matiere);
-                          const moyenne = getSubjectAverage(notesMatiere, eleve.classe) || 0;
-                          return { matiere: matiere.length > 10 ? `${matiere.slice(0, 10)}...` : matiere, valeur: Math.round(moyenne * 10) / 10, plein: 20 };
-                        })}>
-                          <PolarGrid stroke="#e2e8f0" />
-                          <PolarAngleAxis dataKey="matiere" tick={{ fontSize: 10 }} />
-                          <Radar name="Note" dataKey="valeur" stroke={c1} fill={c1} fillOpacity={0.25} />
-                          <Radar name="Max" dataKey="plein" stroke="transparent" fill="transparent" />
-                          <Tooltip formatter={(value) => `${value}/20`} />
-                        </RadarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </Card>
-                )}
-
-                {mesNotes.length === 0 && mesAbsences.length === 0 && <Vide icone="Info" msg="Aucune donnee disponible pour le moment" />}
-              </>
+              <DashboardTab
+                annonces={annonces}
+                mesNotes={mesNotes}
+                mesAbsences={mesAbsences}
+                matieres={matieres}
+                eleve={eleve}
+                c1={c1}
+                onVoirNotes={() => setTab("notes")}
+              />
             )}
 
             {tab === "notes" && (
-              <>
-                <h2 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 900, color: c1 }}>Notes de {eleveNom}</h2>
-                {accesBloqueParPaiement ? (
-                  <BlocagePaiement moisImpayes={moisImpayes} schoolInfo={schoolInfo} onPaiements={() => setTab("paiements")} />
-                ) : mesNotes.length === 0 ? (
-                  <Vide icone="Notes" msg="Aucune note disponible" />
-                ) : (
-                  matieres.map((matiere) => {
-                    const notesMatiere = mesNotes.filter((item) => item.matiere === matiere);
-                    const moyenne = (getSubjectAverage(notesMatiere, eleve.classe) || 0).toFixed(1);
-                    return (
-                      <Card key={matiere} style={{ marginBottom: 12 }}>
-                        <div style={{ padding: "12px 18px", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: 10 }}>
-                          <strong style={{ fontSize: 13, color: c1, flex: 1 }}>{matiere}</strong>
-                          <span style={{ background: Number(moyenne) >= 10 ? "#dcfce7" : "#fee2e2", color: Number(moyenne) >= 10 ? "#166534" : "#b91c1c", fontWeight: 900, fontSize: 13, padding: "4px 12px", borderRadius: 20 }}>Moy. {moyenne}/20</span>
-                        </div>
-                        <div style={{ overflowX: "auto" }}>
-                          <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
-                            <THead cols={["Type", "Periode", "Note /20"]} />
-                            <tbody>
-                              {notesMatiere.map((item, index) => (
-                                <TR key={index}>
-                                  <TD><Badge color="blue">{item.type}</Badge></TD>
-                                  <TD>{item.periode}</TD>
-                                  <TD center><strong style={{ color: Number(item.note) >= 10 ? C.greenDk : "#b91c1c" }}>{item.note}/20</strong></TD>
-                                </TR>
-                              ))}
-                            </tbody>
-                          </table></div>
-                        </div>
-                      </Card>
-                    );
-                  })
-                )}
-              </>
+              <NotesTab
+                accesBloqueParPaiement={accesBloqueParPaiement}
+                moisImpayes={moisImpayes}
+                schoolInfo={schoolInfo}
+                onPaiements={() => setTab("paiements")}
+                mesNotes={mesNotes}
+                matieres={matieres}
+                eleve={eleve}
+                eleveNom={eleveNom}
+                c1={c1}
+              />
             )}
 
             {tab === "absences" && (
-              <>
-                <h2 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 900, color: c1 }}>Absences et presences</h2>
-                <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
-                  <div style={{ padding: "12px 20px", background: "#fee2e2", borderRadius: 10, textAlign: "center" }}>
-                    <div style={{ fontWeight: 900, fontSize: 22, color: "#b91c1c" }}>{mesAbsences.filter((item) => normalizeText(item.statut) === "absent").length}</div>
-                    <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>Absences</div>
-                  </div>
-                  <div style={{ padding: "12px 20px", background: "#fef3c7", borderRadius: 10, textAlign: "center" }}>
-                    <div style={{ fontWeight: 900, fontSize: 22, color: "#d97706" }}>{mesAbsences.filter((item) => normalizeText(item.statut) === "retard").length}</div>
-                    <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>Retards</div>
-                  </div>
-                  <div style={{ padding: "12px 20px", background: "#dcfce7", borderRadius: 10, textAlign: "center" }}>
-                    <div style={{ fontWeight: 900, fontSize: 22, color: "#166534" }}>{mesAbsences.filter((item) => normalizeText(item.statut) === "present").length}</div>
-                    <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>Presences</div>
-                  </div>
-                </div>
-                {mesAbsences.length === 0 ? (
-                  <Vide icone="Absences" msg="Aucune absence enregistree" />
-                ) : (
-                  <Card>
-                    <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
-                      <THead cols={["Date", "Matiere", "Statut", "Motif"]} />
-                      <tbody>
-                        {mesAbsences.map((item, index) => (
-                          <TR key={index}>
-                            <TD>{item.date || "-"}</TD>
-                            <TD>{item.matiere || "-"}</TD>
-                            <TD><Badge color={normalizeText(item.statut) === "absent" ? "red" : normalizeText(item.statut) === "retard" ? "amber" : "vert"}>{item.statut || "-"}</Badge></TD>
-                            <TD>{item.motif || "-"}</TD>
-                          </TR>
-                        ))}
-                      </tbody>
-                    </table></div>
-                  </Card>
-                )}
-              </>
+              <AbsencesTab mesAbsences={mesAbsences} c1={c1} />
             )}
 
             {tab === "bulletins" && (
-              <>
-                <h2 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 900, color: c1 }}>Bulletins</h2>
-                {accesBloqueParPaiement && <BlocagePaiement moisImpayes={moisImpayes} schoolInfo={schoolInfo} onPaiements={() => setTab("paiements")} />}
-                {!accesBloqueParPaiement && <>
-                  {periodes.map((periode) => {
-                    const notesPeriode = mesNotes.filter((item) => item.periode === periode);
-                    if (notesPeriode.length === 0) return null;
-                    const matieresPeriode = [...new Set(notesPeriode.map((item) => item.matiere))].map((nom) => ({ nom }));
-                    const moyenne = (getGeneralAverage(notesPeriode, matieresPeriode, eleve.classe) || 0).toFixed(1);
-                    return (
-                      <Card key={periode} style={{ marginBottom: 12 }}>
-                        <div style={{ padding: "12px 18px", background: `linear-gradient(135deg,${c1},${c1}cc)`, borderRadius: "14px 14px 0 0", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-                          <strong style={{ color: "#fff", fontSize: 14 }}>Bulletin - {periode}</strong>
-                          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                            <span style={{ background: c2, color: "#fff", fontWeight: 900, fontSize: 13, padding: "4px 14px", borderRadius: 20 }}>Moy. {moyenne}/20</span>
-                            <button
-                              onClick={() => imprimerBulletin(
-                                { ...eleve, nom: eleve.nom || eleveNom.split(" ").slice(-1)[0] || eleveNom, prenom: eleve.prenom || eleveNom.split(" ").slice(0, -1).join(" ") },
-                                notesPeriode,
-                                [...new Set(notesPeriode.map((item) => item.matiere))].map((nom) => ({ nom })),
-                                periode,
-                                section === "primaire" ? "Primaire" : "Secondaire",
-                                section === "primaire" ? 10 : 20,
-                                schoolInfo,
-                              )}
-                              style={{ background: "rgba(255,255,255,0.2)", border: "1px solid rgba(255,255,255,0.4)", color: "#fff", padding: "4px 10px", borderRadius: 8, fontSize: 11, cursor: "pointer", fontWeight: 700 }}
-                            >
-                              Imprimer
-                            </button>
-                          </div>
-                        </div>
-                        <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
-                          <THead cols={["Matiere", "Type", "Note /20"]} />
-                          <tbody>
-                            {notesPeriode.map((item, index) => (
-                              <TR key={index}>
-                                <TD bold>{item.matiere}</TD>
-                                <TD><Badge color="blue">{item.type}</Badge></TD>
-                                <TD center><strong style={{ color: Number(item.note) >= 10 ? C.greenDk : "#b91c1c" }}>{item.note}/20</strong></TD>
-                              </TR>
-                            ))}
-                          </tbody>
-                        </table></div>
-                      </Card>
-                    );
-                  })}
-                  {mesNotes.length === 0 && <Vide icone="Bulletins" msg="Aucun bulletin disponible pour le moment" />}
-                </>}
-              </>
+              <BulletinsTab
+                accesBloqueParPaiement={accesBloqueParPaiement}
+                moisImpayes={moisImpayes}
+                schoolInfo={schoolInfo}
+                onPaiements={() => setTab("paiements")}
+                periodes={periodes}
+                mesNotes={mesNotes}
+                eleve={eleve}
+                eleveNom={eleveNom}
+                section={section}
+                c1={c1}
+                c2={c2}
+              />
             )}
 
             {tab === "paiements" && (
-              <>
-                <h2 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 900, color: c1 }}>Suivi des paiements</h2>
-                {(() => {
-                  const mens = eleve.mens || {};
-                  const mensDates = eleve.mensDates || {};
-                  const moisList = moisAnnee.length ? moisAnnee : Object.keys(mens);
-                  const nbPayes = moisList.filter((mois) => normalizeText(mens[mois]) === "paye").length;
-                  const nbImpayes = moisList.filter((mois) => normalizeText(mens[mois]) !== "paye").length;
-                  const fraisAnnexes = [
-                    {
-                      id: "inscription",
-                      label: estReinscription ? "Reinscription" : "Inscription",
-                      montant: montantInscription,
-                      paye: !!eleve.inscriptionPayee,
-                      date: eleve.inscriptionDate || "",
-                      couleur: eleve.inscriptionPayee ? "#dbeafe" : "#fee2e2",
-                      bordure: eleve.inscriptionPayee ? "#93c5fd" : "#fca5a5",
-                      texte: eleve.inscriptionPayee ? "#1d4ed8" : "#b91c1c",
-                    },
-                    {
-                      id: "autre",
-                      label: "Autre frais",
-                      montant: montantAutre,
-                      paye: !!eleve.autrePayee,
-                      date: eleve.autreDate || "",
-                      couleur: eleve.autrePayee ? "#e2e8f0" : "#fee2e2",
-                      bordure: eleve.autrePayee ? "#94a3b8" : "#fca5a5",
-                      texte: eleve.autrePayee ? "#334155" : "#b91c1c",
-                    },
-                  ].filter((item) => item.montant > 0);
-
-                  return (
-                    <>
-                      <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
-                        <div style={{ padding: "14px 20px", background: "#dcfce7", borderRadius: 12, textAlign: "center", minWidth: 120 }}>
-                          <div style={{ fontWeight: 900, fontSize: 24, color: "#166534" }}>{nbPayes}</div>
-                          <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>Mois payes</div>
-                        </div>
-                        <div style={{ padding: "14px 20px", background: "#fee2e2", borderRadius: 12, textAlign: "center", minWidth: 120 }}>
-                          <div style={{ fontWeight: 900, fontSize: 24, color: "#b91c1c" }}>{nbImpayes}</div>
-                          <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>Mois impayes</div>
-                        </div>
-                        <div style={{ padding: "14px 20px", background: "#f0fdf4", borderRadius: 12, textAlign: "center", minWidth: 120 }}>
-                          <div style={{ fontWeight: 900, fontSize: 24, color: c2 }}>{moisList.length ? Math.round((nbPayes / moisList.length) * 100) : 0}%</div>
-                          <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>Taux</div>
-                        </div>
-                        <div style={{ padding: "14px 20px", background: "#eff6ff", borderRadius: 12, textAlign: "center", minWidth: 150 }}>
-                          <div style={{ fontWeight: 900, fontSize: 20, color: "#1d4ed8" }}>{fmt(montantMensuel)}</div>
-                          <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>Mensualite</div>
-                        </div>
-                      </div>
-
-                      {fraisAnnexes.length > 0 && (
-                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(210px,1fr))", gap: 10, marginBottom: 18 }}>
-                          {fraisAnnexes.map((frais) => (
-                            <div key={frais.id} style={{ padding: "14px 16px", borderRadius: 14, background: frais.couleur, border: `1px solid ${frais.bordure}` }}>
-                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                                <strong style={{ fontSize: 13, color: frais.texte }}>{frais.label}</strong>
-                                <Badge color={frais.paye ? "green" : "red"}>{frais.paye ? "Paye" : "Impaye"}</Badge>
-                              </div>
-                              <div style={{ fontSize: 20, fontWeight: 900, color: frais.texte, marginTop: 10 }}>{fmt(frais.montant)}</div>
-                              <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>{frais.paye && frais.date ? `Regle le ${frais.date}` : "En attente de reglement"}</div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(130px,1fr))", gap: 8 }}>
-                        {moisList.map((mois) => {
-                          const paye = normalizeText(mens[mois]) === "paye";
-                          return (
-                            <div key={mois} style={{ padding: "12px 16px", borderRadius: 12, background: paye ? "#dcfce7" : "#fee2e2", border: `2px solid ${paye ? "#86efac" : "#fca5a5"}` }}>
-                              <div style={{ fontWeight: 800, fontSize: 13, color: paye ? "#166534" : "#b91c1c" }}>{mois}</div>
-                              <div style={{ fontSize: 11, marginTop: 4, color: paye ? "#15803d" : "#dc2626", fontWeight: 700 }}>{paye ? "Paye" : "Impaye"}</div>
-                              {paye && mensDates[mois] && <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2 }}>{mensDates[mois]}</div>}
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {moisList.length === 0 && fraisAnnexes.length === 0 && <Vide icone="Paiements" msg="Aucune information de paiement" />}
-                    </>
-                  );
-                })()}
-              </>
+              <PaiementsTab
+                eleve={eleve}
+                moisAnnee={moisAnnee}
+                estReinscription={estReinscription}
+                montantInscription={montantInscription}
+                montantAutre={montantAutre}
+                montantMensuel={montantMensuel}
+                c1={c1}
+                c2={c2}
+              />
             )}
 
             {tab === "messages" && (
-              <>
-                <h2 style={{ margin: "0 0 20px", fontSize: 16, fontWeight: 900, color: c1 }}>Messages avec l'ecole</h2>
-
-                <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 }}>
-                  {mesMessages.length === 0 && <Vide icone="Messages" msg="Aucun message pour le moment" />}
-                  {mesMessages.map((message, index) => {
-                    const estParent = message.expediteur === "parent";
-                    return (
-                      <div key={index} style={{ display: "flex", flexDirection: "column", alignItems: estParent ? "flex-end" : "flex-start" }}>
-                        <div style={{ maxWidth: "75%", background: estParent ? `${c1}15` : "#fff", border: `1px solid ${estParent ? `${c1}33` : "#e2e8f0"}`, borderRadius: estParent ? "16px 16px 4px 16px" : "16px 16px 16px 4px", padding: "12px 16px" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                            <span style={{ fontSize: 11, fontWeight: 700, color: estParent ? c1 : "#64748b" }}>{estParent ? "Vous" : message.expediteurNom || "Ecole"}</span>
-                            <span style={{ fontSize: 10, color: "#94a3b8", marginLeft: "auto" }}>{message.date ? new Date(message.date).toLocaleDateString("fr-FR") : ""}</span>
-                          </div>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: "#0A1628", marginBottom: 4 }}>{message.sujet}</div>
-                          <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.6 }}>{message.corps}</div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <Card>
-                  <div style={{ padding: "14px 18px", borderBottom: "1px solid #f1f5f9" }}>
-                    <strong style={{ fontSize: 13, color: c1 }}>Envoyer un message a l'ecole</strong>
-                  </div>
-                  <div style={{ padding: "16px 18px", display: "flex", flexDirection: "column", gap: 10 }}>
-                    <Input label="Sujet" value={sujet} onChange={(event) => setSujet(event.target.value)} placeholder="Ex : Justification d'absence" />
-                    <Champ label="Message">
-                      <textarea value={corps} onChange={(event) => setCorps(event.target.value)} rows={4} placeholder="Ecrivez votre message ici..." style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "10px 12px", fontSize: 13, resize: "vertical", outline: "none", fontFamily: "inherit" }} />
-                    </Champ>
-                    <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                      <Btn onClick={envoyer} disabled={envoi}>{envoi ? "Envoi..." : "Envoyer"}</Btn>
-                    </div>
-                  </div>
-                </Card>
-              </>
+              <MessagesTab
+                mesMessages={mesMessages}
+                sujet={sujet}
+                setSujet={setSujet}
+                corps={corps}
+                setCorps={setCorps}
+                envoi={envoi}
+                envoyer={envoyer}
+                c1={c1}
+              />
             )}
           </>
         )}
