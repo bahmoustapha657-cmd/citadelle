@@ -1,18 +1,6 @@
-import React, { useContext, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { doc, updateDoc } from "firebase/firestore";
-import {
-  C,
-  getAnnee,
-  peutModifierEleves,
-  peutModifier,
-} from "../constants";
-import { SchoolContext } from "../contexts/SchoolContext";
-import { useFirestore } from "../hooks/useFirestore";
-import { db } from "../firebaseDb";
+import { C } from "../constants";
 import { Badge, Tabs, LectureSeule } from "./ui";
-import { toggleFraisAnnexe as toggleFraisAnnexeAction, toggleMens as toggleMensAction } from "./comptabilite/payment-actions";
-import { ensureClasse as ensureClasseHelper, sortAlphaEleves } from "./comptabilite/eleves-helpers";
 import { TransfertsPanel } from "./TransfertsPanel";
 import { EnrolmentTab } from "./comptabilite/EnrolmentTab";
 import { RecettesTab } from "./comptabilite/RecettesTab";
@@ -23,445 +11,265 @@ import { BilanTab } from "./comptabilite/BilanTab";
 import { MensualitesTab } from "./comptabilite/MensualitesTab";
 import { EnseignantsTab } from "./comptabilite/EnseignantsTab";
 import { SalairesTab } from "./comptabilite/SalairesTab";
-import { useComptaSalaires } from "./comptabilite/useComptaSalaires";
-import { findStaffDuplicate, getStaffDuplicateMessage } from "../staff-utils";
-import { getPeriodesForSchool } from "../period-utils";
-import {
-  getMensualiteOverview,
-  getTarifAutreForClasse,
-  getTarifBaseForClasse,
-  getTarifConfigForClasse,
-  getTarifInscriptionForClasse,
-  getTarifInscriptionForEleve as getTarifInscriptionForEleveValue,
-  getTarifMensuelForClasse,
-  getTarifReinscriptionForClasse,
-  getTarifRevisionForClasse,
-} from "../mensualite-utils";
-import { findSalaryDuplicate } from "../salary-utils";
+import { useComptabilite } from "./comptabilite/use-comptabilite";
 
-function Comptabilite({readOnly, annee, userRole, verrouOuvert=false}) {
+// Orchestrateur du module Comptabilité : la logique vit dans
+// useComptabilite, chaque onglet dans comptabilite/*Tab.jsx.
+function Comptabilite({ readOnly, annee, userRole, verrouOuvert = false }) {
   const { t } = useTranslation();
-  // readOnly=true → admin/direction : zéro action
-  // canEdit → modifier/supprimer des enregistrements existants (verrou admin requis sauf admin lui-même — mais admin est readOnly)
-  // canCreate → ajouter de nouveaux enregistrements (toujours permis si !readOnly)
-  const anneeCourante = annee || getAnnee();
-  const [anneeConsultee, setAnneeConsultee] = useState(anneeCourante);
-  // Vue archive : filtre lecture mais désactive la création (les écritures iraient sur l'année courante).
-  const enModeArchive = anneeConsultee !== anneeCourante;
-  const anneeFiltre = enModeArchive ? anneeConsultee : null;
-  const canCreate = !readOnly && !enModeArchive;
-  const canEdit = !readOnly && !enModeArchive && (peutModifier(userRole) || verrouOuvert);
-  const canEditEleves = !readOnly && !enModeArchive && (peutModifierEleves(userRole) || verrouOuvert);
-  const {schoolId, schoolInfo, moisAnnee, moisSalaire, toast, logAction, envoyerPush} = useContext(SchoolContext);
-  const {items:recettes,chargement:cR,ajouter:ajR,modifier:modR,supprimer:supR}=useFirestore("recettes",{annee:anneeFiltre});
-  const {items:depenses,chargement:cD,ajouter:ajD,modifier:modD,supprimer:supD}=useFirestore("depenses",{annee:anneeFiltre});
-  const {items:salaires,chargement:cS,ajouter:ajS,modifier:modS,supprimer:supS}=useFirestore("salaires",{annee:anneeFiltre});
-  const {items:bons,ajouter:ajBon,modifier:modBon,supprimer:supBon}=useFirestore("bons",{annee:anneeFiltre});
-  const {items:personnel,chargement:cPers,ajouter:ajPers,modifier:modPers,supprimer:supPers}=useFirestore("personnel");
-  const {items:versements,chargement:cV,ajouter:ajV,modifier:modV,supprimer:supV}=useFirestore("versements",{annee:anneeFiltre});
-  const {items:elevesC,chargement:cEC,ajouter:ajEC,modifier:modEC_full,supprimer:supEC,modifierChamp:modEC}=useFirestore("elevesCollege");
-  const {items:elevesP,chargement:cEP,ajouter:ajEP,modifier:modEP_full,supprimer:supEP,modifierChamp:modEP}=useFirestore("elevesPrimaire");
-  const {items:elevesL,chargement:cEL,ajouter:ajEL,modifier:modEL_full,supprimer:supEL,modifierChamp:modEL}=useFirestore("elevesLycee");
-  const {items:tarifsClasses,ajouter:ajTarif,modifier:modTarif}=useFirestore("tarifs");
-  const {items:classesCollegeList,ajouter:ajClasseCollege}=useFirestore("classesCollege");
-  const {items:classesPrimaireList,ajouter:ajClassePrimaire}=useFirestore("classesPrimaire");
-  const {items:classesLyceeList,ajouter:ajClasseLycee}=useFirestore("classesLycee");
-  // Enseignants — création/édition de la paie depuis Compta (vue hybride)
-  const {items:ensCollege,ajouter:ajEnsCol,modifier:modEnsCol,supprimer:supEnsCol}=useFirestore("ensCollege");
-  const {items:ensLycee,ajouter:ajEnsLyc,modifier:modEnsLyc,supprimer:supEnsLyc}=useFirestore("ensLycee");
-  const {items:ensPrimaire,ajouter:ajEnsPrim,modifier:modEnsPrim,supprimer:supEnsPrim}=useFirestore("ensPrimaire");
-  const {items:emploisCollege}=useFirestore("classesCollege_emplois");
-  const {items:emploisLycee}=useFirestore("classesLycee_emplois");
-  const {items:engCollege}=useFirestore("ensCollege_enseignements");
-  const {items:engLycee}=useFirestore("ensLycee_enseignements");
+  const c = useComptabilite({ readOnly, annee, userRole, verrouOuvert });
+  const sd = c.salairesDomaine;
 
-  const [tab,setTab]=useState("bilan");
-  const [sousTabSal,setSousTabSal]=useState("etats");
-  const [modal,setModal]=useState(null);
-  const [form,setForm]=useState({});
-  const [niveau,setNiveau]=useState("college");
-  const [filtClasse,setFiltClasse]=useState("all");
-  const [moisSel,setMoisSel]=useState(()=>moisSalaire[0]||"Octobre");
-  const [primeDefaut,setPrimeDefaut]=useState(0);
-  const [filtrePrimNom,setFiltrePrimNom]=useState("");
-  const [filtrePrimClasse,setFiltrePrimClasse]=useState("all");
-
-  const elevesParNiveau = { college: elevesC, lycee: elevesL, primaire: elevesP };
-  const modChampParNiveau = { college: modEC, lycee: modEL, primaire: modEP };
-  const ajoutParNiveau = { college: ajEC, lycee: ajEL, primaire: ajEP };
-  const suppressionParNiveau = { college: supEC, lycee: supEL, primaire: supEP };
-  const modifParNiveau = { college: modEC_full, lycee: modEL_full, primaire: modEP_full };
-  // Wrappers : injectent les listes de classes + ajouts Firestore au helper.
-  const sortAlpha = (arr) => sortAlphaEleves(arr, schoolInfo.triEleves);
-  const ensureClasse = (nom, niveau, dejaCreees) => {
-    const cfg = niveau==="primaire" ? { classesList: classesPrimaireList, ajClasse: ajClassePrimaire }
-      : niveau==="lycee" ? { classesList: classesLyceeList, ajClasse: ajClasseLycee }
-      : { classesList: classesCollegeList, ajClasse: ajClasseCollege };
-    return ensureClasseHelper(nom, { ...cfg, dejaCreees });
-  };
-
-  const totR=recettes.reduce((s,x)=>s+Number(x.montant),0);
-  const totD=depenses.reduce((s,x)=>s+Number(x.montant),0);
-  const totVers=versements.reduce((s,x)=>s+Number(x.montant),0);
-
-  const eleves=elevesParNiveau[niveau] || elevesC;
-  const modEleves=modChampParNiveau[niveau] || modEC;
-  const classesU=[...new Set(eleves.map(e=>e.classe))].filter(Boolean);
-  const tousElevesScolarite=[...elevesC,...elevesL,...elevesP];
-
-  const getTarifConfig = (classe) => getTarifConfigForClasse(tarifsClasses, classe);
-  const getTarif = (classe) => getTarifMensuelForClasse(tarifsClasses, classe);
-  const getTarifBase = (classe) => getTarifBaseForClasse(tarifsClasses, classe);
-  const getTarifRevision = (classe) => getTarifRevisionForClasse(tarifsClasses, classe);
-  const getTarifAutre = (classe) => getTarifAutreForClasse(tarifsClasses, classe);
-  const getTarifIns = (classe) => getTarifInscriptionForClasse(tarifsClasses, classe);
-  const getTarifReinsc = (classe) => getTarifReinscriptionForClasse(tarifsClasses, classe);
-  const getTarifInscriptionEleve = (eleve = {}) => getTarifInscriptionForEleveValue(eleve, tarifsClasses);
-  const saveTarif = async (classe, montant, inscription=null, reinscription=null, revision=null, autre=null) => {
-    const existing = getTarifConfig(classe);
-    const data = {
-      montant:Number(montant)||0,
-      ...(inscription!==null?{inscription:Number(inscription)||0}:{}),
-      ...(reinscription!==null?{reinscription:Number(reinscription)||0}:{}),
-      ...(revision!==null?{revision:Number(revision)||0}:{}),
-      ...(autre!==null?{autre:Number(autre)||0}:{})
-    };
-    if(existing) await modTarif({_id: existing._id, ...data});
-    else await ajTarif({classe, ...data});
-  };
-  const elevesFiltres=sortAlpha(filtClasse==="all"?eleves:eleves.filter(e=>e.classe===filtClasse));
-
-  // Wrappers : injectent les deps (modEleves, readOnly, canEdit, toast,
-  // envoyerPush) à chaque appel. Le helper extrait porte la logique métier.
-  const toggleFraisAnnexe = (_id, opts) => toggleFraisAnnexeAction(_id, opts, {
-    readOnly, canEdit, toast, modEleves,
-  });
-  const toggleMens = (_id, mois, mensActuels, mensDatesActuels, nomEleve) =>
-    toggleMensAction(_id, mois, mensActuels, mensDatesActuels, nomEleve, {
-      readOnly, canEdit, toast, modEleves, envoyerPush,
-    });
-
-  const enreg=(aj,mod,extra={})=>{
-    if(readOnly) return;
-    const r={...form,...extra};
-    if(modal.startsWith("add"))aj({...r,annee:annee||anneeConsultee});else mod(r);
-    setModal(null);
-  };
-
-  // Sauvegarde d'une fiche de paie avec garde anti-doublon
-  // (nom + mois + section) — évite 2 bulletins pour le même agent
-  // le même mois via le formulaire manuel.
-  const saveSalaire = async (extra={}) => {
-    if(readOnly) return;
-    const r = {...form, ...extra};
-    const isEdit = modal === "edit_s";
-    const doublon = findSalaryDuplicate(r, salaires, { excludeId: isEdit ? r._id : null });
-    if(doublon){
-      toast(`Une fiche existe déjà pour ${doublon.nom} en ${doublon.mois} (${doublon.section}).`, "warning");
-      return;
-    }
-    if(isEdit) await modS(r);
-    else await ajS({...r, annee: annee || anneeConsultee});
-    setModal(null);
-  };
-
-  const savePersonnel = async () => {
-    if(readOnly) return;
-    const r={...form,salaireBase:Number(form.salaireBase||0)};
-    const doublon = findStaffDuplicate(r, personnel, {
-      excludeId: modal==="edit_p" ? r._id : null,
-    });
-    if(doublon){
-      toast(getStaffDuplicateMessage(doublon, { label: "ce membre du personnel" }),"warning");
-      return;
-    }
-    if(modal==="add_p") await ajPers(r); else await modPers(r);
-    setModal(null);
-  };
-
-  // Domaine paie : état dérivé (filtrage mois/section, totaux) + actions
-  // (génération auto, application des bons, impression). Voir useComptaSalaires.
-  const {
-    moisLabel, moisModale, salairesMois, salairesSec, salairesPrim, salairesPers, bonsMois,
-    appliquerBons, calcExecute, calcMontant, calcNet, calcNetF,
-    totNetSec, totNetPrim, totNetPers,
-    autoGenererSalaires, imprimerSalaires,
-  } = useComptaSalaires({
-    salaires, bons, moisSel, moisSalaire,
-    ensCollege, ensLycee, ensPrimaire, personnel,
-    emploisCollege, emploisLycee, engCollege, engLycee,
-    primeDefaut, annee, anneeConsultee, schoolInfo,
-    modS, ajS, supS, readOnly, toast, logAction,
-  });
-
-  const mensualiteOverview = getMensualiteOverview(tousElevesScolarite, moisAnnee, tarifsClasses);
-  const periodes = getPeriodesForSchool(schoolInfo, moisAnnee);
-  const defaultPeriode = periodes[0] || "T1";
-  const impaye = mensualiteOverview.totalDu - mensualiteOverview.totalPercu;
-  const pctImpaye = mensualiteOverview.totalDu > 0
-    ? ((impaye / mensualiteOverview.totalDu) * 100).toFixed(1)
-    : 0;
-
-  const tabs=[{id:"bilan",label:t("accounting.tabs.bilan")},{id:"recettes",label:`${t("accounting.tabs.revenues")} (${recettes.length})`},
-    {id:"depenses",label:`${t("accounting.tabs.expenses")} (${depenses.length})`},
-    {id:"salaires",label:t("accounting.tabs.salaries")},
-    {id:"enseignants",label:`${t("accounting.tabs.teachers")} (${ensPrimaire.length+ensCollege.length+ensLycee.length})`},
-    {id:"personnel",label:`${t("accounting.tabs.staff")} (${personnel.length})`},
-    {id:"fondation",label:`${t("accounting.tabs.donations")} (${versements.length})`},
-    {id:"enrolment",label:`${t("accounting.tabs.students")} (${elevesC.length+elevesL.length+elevesP.length})`},
-    {id:"mens",label:t("accounting.tabs.monthlyFees")},
-    {id:"transferts",label:`🔄 ${t("accounting.tabs.transfers")}`}];
-
-  const anneeBase = Number(String(anneeCourante).split("-")[0]) || new Date().getFullYear();
-  const anneesDispo = Array.from({length:7},(_,i)=>`${anneeBase-i}-${anneeBase-i+1}`);
+  const tabs = [
+    { id: "bilan", label: t("accounting.tabs.bilan") },
+    { id: "recettes", label: `${t("accounting.tabs.revenues")} (${c.recettes.length})` },
+    { id: "depenses", label: `${t("accounting.tabs.expenses")} (${c.depenses.length})` },
+    { id: "salaires", label: t("accounting.tabs.salaries") },
+    { id: "enseignants", label: `${t("accounting.tabs.teachers")} (${c.ensPrimaire.length + c.ensCollege.length + c.ensLycee.length})` },
+    { id: "personnel", label: `${t("accounting.tabs.staff")} (${c.personnel.length})` },
+    { id: "fondation", label: `${t("accounting.tabs.donations")} (${c.versements.length})` },
+    { id: "enrolment", label: `${t("accounting.tabs.students")} (${c.elevesC.length + c.elevesL.length + c.elevesP.length})` },
+    { id: "mens", label: t("accounting.tabs.monthlyFees") },
+    { id: "transferts", label: `🔄 ${t("accounting.tabs.transfers")}` },
+  ];
 
   return (
-    <div style={{padding:"22px 26px"}}>
-      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18,flexWrap:"wrap"}}>
-        {schoolInfo?.logo&&<img src={schoolInfo.logo} alt="" style={{width:48,height:48,objectFit:"contain"}}/>}
-        <div style={{flex:1,minWidth:200}}>
-          <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.blueDark}}>{t("accounting.title")}</h2>
-          <p style={{margin:0,fontSize:12,color:C.green,fontWeight:600}}>{t("accounting.subtitle")}</p>
+    <div style={{ padding: "22px 26px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18, flexWrap: "wrap" }}>
+        {c.schoolInfo?.logo && <img src={c.schoolInfo.logo} alt="" style={{ width: 48, height: 48, objectFit: "contain" }} />}
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: C.blueDark }}>{t("accounting.title")}</h2>
+          <p style={{ margin: 0, fontSize: 12, color: C.green, fontWeight: 600 }}>{t("accounting.subtitle")}</p>
         </div>
-        <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <label style={{fontSize:12,color:"#64748b",fontWeight:600}}>{t("common.yearViewed")} :</label>
-          <select value={anneeConsultee} onChange={e=>setAnneeConsultee(e.target.value)}
-            style={{padding:"6px 10px",borderRadius:8,border:`1px solid ${enModeArchive?"#f59e0b":"#cbd5e1"}`,fontSize:13,fontWeight:700,
-              background:enModeArchive?"#fef3c7":"#fff",color:enModeArchive?"#92400e":C.blueDark,cursor:"pointer"}}>
-            {anneesDispo.map(a=><option key={a} value={a}>{a}{a===anneeCourante?` (${t("common.current")})`:""}</option>)}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <label style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>{t("common.yearViewed")} :</label>
+          <select value={c.anneeConsultee} onChange={(e) => c.setAnneeConsultee(e.target.value)}
+            style={{ padding: "6px 10px", borderRadius: 8, border: `1px solid ${c.enModeArchive ? "#f59e0b" : "#cbd5e1"}`, fontSize: 13, fontWeight: 700,
+              background: c.enModeArchive ? "#fef3c7" : "#fff", color: c.enModeArchive ? "#92400e" : C.blueDark, cursor: "pointer" }}>
+            {c.anneesDispo.map((a) => <option key={a} value={a}>{a}{a === c.anneeCourante ? ` (${t("common.current")})` : ""}</option>)}
           </select>
-          {enModeArchive&&<Badge color="orange">📚 {t("common.archive")} — {t("common.readOnly")}</Badge>}
+          {c.enModeArchive && <Badge color="orange">📚 {t("common.archive")} — {t("common.readOnly")}</Badge>}
         </div>
       </div>
-      {readOnly&&<LectureSeule/>}
-      <Tabs items={tabs} actif={tab} onChange={setTab}/>
+      {readOnly && <LectureSeule />}
+      <Tabs items={tabs} actif={c.tab} onChange={c.setTab} />
 
-      {tab==="bilan"&&<BilanTab
-        schoolInfo={schoolInfo}
-        periodes={periodes}
-        canCreate={canCreate}
-        toggleBlocage={async()=>{
-          const blocage=!!schoolInfo.blocageParentImpaye;
-          if(!canCreate){toast("Action réservée au comptable ou à l'administrateur.","warning");return;}
-          await updateDoc(doc(db,"ecoles",schoolId),{blocageParentImpaye:!blocage});
-          toast(blocage?"🔓 Accès parents rétabli":"🔒 Accès parents bloqué pour les impayés","success");
-        }}
-        recettes={recettes}
-        depenses={depenses}
-        cR={cR}
-        cD={cD}
-        totR={totR}
-        totD={totD}
-        totVers={totVers}
-        totNetSec={totNetSec}
-        totNetPrim={totNetPrim}
-        totNetPers={totNetPers}
-        impaye={impaye}
-        pctImpaye={pctImpaye}
-        salairesMois={salairesMois}
-        moisLabel={moisLabel}
-        mensualiteOverview={mensualiteOverview}
+      {c.tab === "bilan" && <BilanTab
+        schoolInfo={c.schoolInfo}
+        periodes={c.periodes}
+        canCreate={c.canCreate}
+        toggleBlocage={c.toggleBlocage}
+        recettes={c.recettes}
+        depenses={c.depenses}
+        cR={c.cR}
+        cD={c.cD}
+        totR={c.totR}
+        totD={c.totD}
+        totVers={c.totVers}
+        totNetSec={c.totNetSec}
+        totNetPrim={c.totNetPrim}
+        totNetPers={c.totNetPers}
+        impaye={c.impaye}
+        pctImpaye={c.pctImpaye}
+        salairesMois={c.salairesMois}
+        moisLabel={c.moisLabel}
+        mensualiteOverview={c.mensualiteOverview}
       />}
 
-      {tab==="recettes"&&<RecettesTab
-        form={form}
-        setForm={setForm}
-        modal={modal}
-        setModal={setModal}
-        canCreate={canCreate}
-        canEdit={canEdit}
-        recettes={recettes}
-        cR={cR}
-        ajR={ajR}
-        modR={modR}
-        supR={supR}
-        enreg={enreg}
-        periodes={periodes}
-        defaultPeriode={defaultPeriode}
+      {c.tab === "recettes" && <RecettesTab
+        form={c.form}
+        setForm={c.setForm}
+        modal={c.modal}
+        setModal={c.setModal}
+        canCreate={c.canCreate}
+        canEdit={c.canEdit}
+        recettes={c.recettes}
+        cR={c.cR}
+        ajR={c.ajR}
+        modR={c.modR}
+        supR={c.supR}
+        enreg={c.enreg}
+        periodes={c.periodes}
+        defaultPeriode={c.defaultPeriode}
       />}
 
-      {tab==="depenses"&&<DepensesTab
-        form={form}
-        setForm={setForm}
-        modal={modal}
-        setModal={setModal}
-        canCreate={canCreate}
-        canEdit={canEdit}
-        depenses={depenses}
-        cD={cD}
-        ajD={ajD}
-        modD={modD}
-        supD={supD}
-        enreg={enreg}
-        periodes={periodes}
-        defaultPeriode={defaultPeriode}
+      {c.tab === "depenses" && <DepensesTab
+        form={c.form}
+        setForm={c.setForm}
+        modal={c.modal}
+        setModal={c.setModal}
+        canCreate={c.canCreate}
+        canEdit={c.canEdit}
+        depenses={c.depenses}
+        cD={c.cD}
+        ajD={c.ajD}
+        modD={c.modD}
+        supD={c.supD}
+        enreg={c.enreg}
+        periodes={c.periodes}
+        defaultPeriode={c.defaultPeriode}
       />}
 
       {/* ── ÉTATS DE SALAIRES MODÈLE EXCEL ── */}
-      {tab==="salaires"&&<SalairesTab
-        sousTabSal={sousTabSal}
-        setSousTabSal={setSousTabSal}
-        moisSel={moisSel}
-        setMoisSel={setMoisSel}
-        moisSalaire={moisSalaire}
-        moisLabel={moisLabel}
-        moisModale={moisModale}
+      {c.tab === "salaires" && <SalairesTab
+        sousTabSal={c.sousTabSal}
+        setSousTabSal={c.setSousTabSal}
+        moisSel={c.moisSel}
+        setMoisSel={c.setMoisSel}
+        moisSalaire={c.moisSalaire}
+        moisLabel={sd.moisLabel}
+        moisModale={sd.moisModale}
         annee={annee}
-        primeDefaut={primeDefaut}
-        setPrimeDefaut={setPrimeDefaut}
-        form={form}
-        setForm={setForm}
-        modal={modal}
-        setModal={setModal}
-        canCreate={canCreate}
-        canEdit={canEdit}
+        primeDefaut={c.primeDefaut}
+        setPrimeDefaut={c.setPrimeDefaut}
+        form={c.form}
+        setForm={c.setForm}
+        modal={c.modal}
+        setModal={c.setModal}
+        canCreate={c.canCreate}
+        canEdit={c.canEdit}
         readOnly={readOnly}
-        salaires={salaires}
-        cS={cS}
-        ajS={ajS}
-        modS={modS}
-        supS={supS}
-        salairesMois={salairesMois}
-        salairesSec={salairesSec}
-        salairesPrim={salairesPrim}
-        salairesPers={salairesPers}
-        totNetSec={totNetSec}
-        totNetPrim={totNetPrim}
-        totNetPers={totNetPers}
-        bonsMois={bonsMois}
-        ajBon={ajBon}
-        modBon={modBon}
-        supBon={supBon}
-        ensPrimaire={ensPrimaire}
-        ensCollege={ensCollege}
-        ensLycee={ensLycee}
-        personnel={personnel}
-        filtrePrimNom={filtrePrimNom}
-        setFiltrePrimNom={setFiltrePrimNom}
-        filtrePrimClasse={filtrePrimClasse}
-        setFiltrePrimClasse={setFiltrePrimClasse}
-        calcExecute={calcExecute}
-        calcMontant={calcMontant}
-        calcNet={calcNet}
-        calcNetF={calcNetF}
-        autoGenererSalaires={autoGenererSalaires}
-        appliquerBons={appliquerBons}
-        imprimerSalaires={imprimerSalaires}
-        enreg={enreg}
-        saveSalaire={saveSalaire}
+        salaires={c.salaires}
+        cS={c.cS}
+        ajS={c.ajS}
+        modS={c.modS}
+        supS={c.supS}
+        salairesMois={sd.salairesMois}
+        salairesSec={sd.salairesSec}
+        salairesPrim={sd.salairesPrim}
+        salairesPers={sd.salairesPers}
+        totNetSec={sd.totNetSec}
+        totNetPrim={sd.totNetPrim}
+        totNetPers={sd.totNetPers}
+        bonsMois={sd.bonsMois}
+        ajBon={c.ajBon}
+        modBon={c.modBon}
+        supBon={c.supBon}
+        ensPrimaire={c.ensPrimaire}
+        ensCollege={c.ensCollege}
+        ensLycee={c.ensLycee}
+        personnel={c.personnel}
+        filtrePrimNom={c.filtrePrimNom}
+        setFiltrePrimNom={c.setFiltrePrimNom}
+        filtrePrimClasse={c.filtrePrimClasse}
+        setFiltrePrimClasse={c.setFiltrePrimClasse}
+        calcExecute={sd.calcExecute}
+        calcMontant={sd.calcMontant}
+        calcNet={sd.calcNet}
+        calcNetF={sd.calcNetF}
+        autoGenererSalaires={sd.autoGenererSalaires}
+        appliquerBons={sd.appliquerBons}
+        imprimerSalaires={sd.imprimerSalaires}
+        enreg={c.enreg}
+        saveSalaire={c.saveSalaire}
       />}
 
       {/* ══ ONGLET PERSONNEL ENSEIGNANT (vue hybride) ══ */}
-      {tab==="enseignants"&&<EnseignantsTab
-        form={form}
-        setForm={setForm}
-        modal={modal}
-        setModal={setModal}
-        canCreate={canCreate}
-        canEdit={canEdit}
-        toast={toast}
-        logAction={logAction}
-        ensPrimaire={ensPrimaire}
-        ensCollege={ensCollege}
-        ensLycee={ensLycee}
-        ajEnsPrim={ajEnsPrim}
-        ajEnsCol={ajEnsCol}
-        ajEnsLyc={ajEnsLyc}
-        modEnsPrim={modEnsPrim}
-        modEnsCol={modEnsCol}
-        modEnsLyc={modEnsLyc}
-        supEnsPrim={supEnsPrim}
-        supEnsCol={supEnsCol}
-        supEnsLyc={supEnsLyc}
+      {c.tab === "enseignants" && <EnseignantsTab
+        form={c.form}
+        setForm={c.setForm}
+        modal={c.modal}
+        setModal={c.setModal}
+        canCreate={c.canCreate}
+        canEdit={c.canEdit}
+        toast={c.toast}
+        logAction={c.logAction}
+        ensPrimaire={c.ensPrimaire}
+        ensCollege={c.ensCollege}
+        ensLycee={c.ensLycee}
+        ajEnsPrim={c.ajEnsPrim}
+        ajEnsCol={c.ajEnsCol}
+        ajEnsLyc={c.ajEnsLyc}
+        modEnsPrim={c.modEnsPrim}
+        modEnsCol={c.modEnsCol}
+        modEnsLyc={c.modEnsLyc}
+        supEnsPrim={c.supEnsPrim}
+        supEnsCol={c.supEnsCol}
+        supEnsLyc={c.supEnsLyc}
       />}
 
       {/* ══ ONGLET PERSONNEL ══ */}
-      {tab==="personnel"&&<PersonnelTab
-        form={form}
-        setForm={setForm}
-        modal={modal}
-        setModal={setModal}
-        canCreate={canCreate}
-        canEdit={canEdit}
-        personnel={personnel}
-        cPers={cPers}
-        supPers={supPers}
-        savePersonnel={savePersonnel}
+      {c.tab === "personnel" && <PersonnelTab
+        form={c.form}
+        setForm={c.setForm}
+        modal={c.modal}
+        setModal={c.setModal}
+        canCreate={c.canCreate}
+        canEdit={c.canEdit}
+        personnel={c.personnel}
+        cPers={c.cPers}
+        supPers={c.supPers}
+        savePersonnel={c.savePersonnel}
       />}
 
-      {tab==="fondation"&&<FondationTab
-        form={form}
-        setForm={setForm}
-        modal={modal}
-        setModal={setModal}
-        canCreate={canCreate}
-        canEdit={canEdit}
-        versements={versements}
-        cV={cV}
-        ajV={ajV}
-        modV={modV}
-        supV={supV}
-        enreg={enreg}
+      {c.tab === "fondation" && <FondationTab
+        form={c.form}
+        setForm={c.setForm}
+        modal={c.modal}
+        setModal={c.setModal}
+        canCreate={c.canCreate}
+        canEdit={c.canEdit}
+        versements={c.versements}
+        cV={c.cV}
+        ajV={c.ajV}
+        modV={c.modV}
+        supV={c.supV}
+        enreg={c.enreg}
       />}
 
-      {tab==="enrolment"&&<EnrolmentTab
-        form={form}
-        setForm={setForm}
-        modal={modal}
-        setModal={setModal}
-        canCreate={canCreate}
-        canEdit={canEdit}
+      {c.tab === "enrolment" && <EnrolmentTab
+        form={c.form}
+        setForm={c.setForm}
+        modal={c.modal}
+        setModal={c.setModal}
+        canCreate={c.canCreate}
+        canEdit={c.canEdit}
         readOnly={readOnly}
-        elevesC={elevesC}
-        elevesL={elevesL}
-        elevesP={elevesP}
-        cEC={cEC}
-        cEL={cEL}
-        cEP={cEP}
-        tousElevesScolarite={tousElevesScolarite}
-        ajoutParNiveau={ajoutParNiveau}
-        suppressionParNiveau={suppressionParNiveau}
-        modifParNiveau={modifParNiveau}
-        ensureClasse={ensureClasse}
-        sortAlpha={sortAlpha}
+        elevesC={c.elevesC}
+        elevesL={c.elevesL}
+        elevesP={c.elevesP}
+        cEC={c.cEC}
+        cEL={c.cEL}
+        cEP={c.cEP}
+        tousElevesScolarite={c.tousElevesScolarite}
+        ajoutParNiveau={c.ajoutParNiveau}
+        suppressionParNiveau={c.suppressionParNiveau}
+        modifParNiveau={c.modifParNiveau}
+        ensureClasse={c.ensureClasse}
+        sortAlpha={c.sortAlpha}
       />}
 
-      {tab==="mens"&&<MensualitesTab
-        tarifsClasses={tarifsClasses}
-        saveTarif={saveTarif}
-        getTarifBase={getTarifBase}
-        getTarifRevision={getTarifRevision}
-        getTarifAutre={getTarifAutre}
-        getTarifIns={getTarifIns}
-        getTarifReinsc={getTarifReinsc}
-        canEditEleves={canEditEleves}
-        eleves={eleves}
-        elevesFiltres={elevesFiltres}
-        classesU={classesU}
-        niveau={niveau}
-        setNiveau={setNiveau}
-        filtClasse={filtClasse}
-        setFiltClasse={setFiltClasse}
-        moisAnnee={moisAnnee}
+      {c.tab === "mens" && <MensualitesTab
+        tarifsClasses={c.tarifsClasses}
+        saveTarif={c.saveTarif}
+        getTarifBase={c.getTarifBase}
+        getTarifRevision={c.getTarifRevision}
+        getTarifAutre={c.getTarifAutre}
+        getTarifIns={c.getTarifIns}
+        getTarifReinsc={c.getTarifReinsc}
+        canEditEleves={c.canEditEleves}
+        eleves={c.eleves}
+        elevesFiltres={c.elevesFiltres}
+        classesU={c.classesU}
+        niveau={c.niveau}
+        setNiveau={c.setNiveau}
+        filtClasse={c.filtClasse}
+        setFiltClasse={c.setFiltClasse}
+        moisAnnee={c.moisAnnee}
         annee={annee}
         readOnly={readOnly}
-        canCreate={canCreate}
-        canEdit={canEdit}
-        schoolInfo={schoolInfo}
-        toggleMens={toggleMens}
-        toggleFraisAnnexe={toggleFraisAnnexe}
-        getTarifInscriptionEleve={getTarifInscriptionEleve}
-        getTarif={getTarif}
+        canCreate={c.canCreate}
+        canEdit={c.canEdit}
+        schoolInfo={c.schoolInfo}
+        toggleMens={c.toggleMens}
+        toggleFraisAnnexe={c.toggleFraisAnnexe}
+        getTarifInscriptionEleve={c.getTarifInscriptionEleve}
+        getTarif={c.getTarif}
       />}
 
-
-      {tab==="transferts"&&<TransfertsPanel userRole={userRole} annee={annee} setTab={setTab}/>}
+      {c.tab === "transferts" && <TransfertsPanel userRole={userRole} annee={annee} setTab={c.setTab} />}
     </div>
   );
 }
-
-// ══════════════════════════════════════════════════════════════
-//  MODULE ÉCOLE — avec Discipline + Bulletins
-// ══════════════════════════════════════════════════════════════
 
 export { Comptabilite };
