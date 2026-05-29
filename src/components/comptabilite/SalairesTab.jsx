@@ -1,9 +1,15 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import { C, CLASSES_PRIMAIRE, fmtN, getAnnee } from "../../constants";
-import { Badge, Btn, Card, Chargement, Input, Modale, Selec, TD, THead, TR, Vide } from "../ui";
+import { C } from "../../constants";
+import { Btn, Chargement } from "../ui";
 import { getFifthWeekDays } from "../../salary-utils";
+import { BonsSousOnglet } from "./salaires/BonsSousOnglet";
+import { SalairesBilan } from "./salaires/SalairesBilan";
+import { SecondaireTable } from "./salaires/SecondaireTable";
+import { PrimaireTable } from "./salaires/PrimaireTable";
+import { PersonnelTable } from "./salaires/PersonnelTable";
+import { SalaireModale } from "./salaires/SalaireModale";
+import { BonModale } from "./salaires/BonModale";
 
 export function SalairesTab({
   // sous-onglet
@@ -70,7 +76,6 @@ export function SalairesTab({
   saveSalaire,
 }) {
   const { t } = useTranslation();
-  const chg = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
   return (
     <div>
@@ -115,115 +120,23 @@ export function SalairesTab({
       </div>
 
       {/* ── SOUS-ONGLET BONS ── */}
-      {sousTabSal==="bons"&&<>
-        {bonsMois.length===0
-          ?<Vide icone="📋" msg={`Aucun bon enregistré pour ${moisLabel}`}/>
-          :<Card><div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
-            <THead cols={["Enseignant","Section","Mois","Montant (GNF)","Motif",canEdit?"Actions":""]}/>
-            <tbody>{bonsMois.map(b=><TR key={b._id}>
-              <TD bold>{b.nom}</TD>
-              <TD><Badge color={b.section==="Primaire"?"vert":"blue"}>{b.section}</Badge></TD>
-              <TD>{b.mois}</TD>
-              <TD center style={{color:"#b91c1c",fontWeight:700}}>{fmtN(b.montant||0)}</TD>
-              <TD>{b.motif||"—"}</TD>
-              {canEdit&&<TD center>
-                <Btn sm v="ghost" onClick={()=>{setForm({...b});setModal("edit_b");}}>✏️</Btn>
-                <Btn sm v="red" onClick={()=>confirm("Supprimer ce bon ?")&&supBon(b._id)}>🗑</Btn>
-              </TD>}
-            </TR>)}
-            <tr style={{background:"#fce8e8",fontWeight:800}}>
-              <td colSpan={3} style={{padding:"8px 12px",textAlign:"right",color:"#9b2020"}}>TOTAL BONS — {moisLabel}</td>
-              <td style={{padding:"8px 12px",textAlign:"center",color:"#9b2020",fontSize:14}}>{fmtN(bonsMois.reduce((s,b)=>s+Number(b.montant||0),0))}</td>
-              <td colSpan={2}></td>
-            </tr>
-            </tbody>
-          </table></div></Card>
-        }
-        <div style={{marginTop:12,padding:"12px 16px",background:"#fef3e0",border:"1px solid #fbbf24",borderRadius:10,fontSize:13,color:"#92400e"}}>
-          <strong>Comment ça marche :</strong> Enregistrez ici les bons de chaque enseignant pour ce mois.
-          Ensuite, dans <em>États de salaires</em>, cliquez sur <strong>✔ Appliquer les bons</strong> pour reporter automatiquement les montants dans la colonne "Bon" de chaque enseignant.
-        </div>
-      </>}
+      {sousTabSal==="bons"&&
+        <BonsSousOnglet bonsMois={bonsMois} moisLabel={moisLabel} canEdit={canEdit} supBon={supBon} setForm={setForm} setModal={setModal}/>
+      }
 
       {/* ── SOUS-ONGLET ÉTATS ── */}
       {sousTabSal==="etats"&&<>
 
       {/* ── BILAN SALAIRES ── */}
-      {!cS&&(()=>{
-        const totGen=totNetSec+totNetPrim+totNetPers;
-        const nbEns=salairesMois.length;
-        const dataEvol=moisSalaire.map(m=>{
-          const ms=salaires.filter(s=>s.mois===m);
-          const sec=ms.filter(s=>s.section==="Secondaire").reduce((sum,s)=>sum+calcNet(s),0);
-          const prim=ms.filter(s=>s.section==="Primaire").reduce((sum,s)=>sum+Number(s.montantForfait||0)-Number(s.bon||0)+Number(s.revision||0),0);
-          const pers=ms.filter(s=>s.section==="Personnel").reduce((sum,s)=>sum+Number(s.montantForfait||0)-Number(s.bon||0)+Number(s.revision||0),0);
-          return {mois:m.slice(0,4),Secondaire:sec,Primaire:prim,Personnel:pers,Total:sec+prim+pers};
-        });
-        return <>
-          {/* Cartes récap */}
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:10,marginBottom:16}}>
-            <div style={{background:"linear-gradient(135deg,#0A1628,#1d4ed8)",borderRadius:10,padding:"14px 16px",color:"#fff",textAlign:"center"}}>
-              <div style={{fontSize:11,opacity:.85,marginBottom:4}}>Masse salariale</div>
-              <div style={{fontSize:18,fontWeight:900}}>{(totGen/1e6).toFixed(3)}M</div>
-              <div style={{fontSize:10,opacity:.75,marginTop:2}}>GNF — {moisLabel}</div>
-            </div>
-            <div style={{background:"linear-gradient(135deg,#0A1628,#1a6baa)",borderRadius:10,padding:"14px 16px",color:"#fff",textAlign:"center"}}>
-              <div style={{fontSize:11,opacity:.85,marginBottom:4}}>Secondaire</div>
-              <div style={{fontSize:18,fontWeight:900}}>{(totNetSec/1e6).toFixed(3)}M</div>
-              <div style={{fontSize:10,opacity:.75,marginTop:2}}>{salairesSec.length} enseignant(s)</div>
-            </div>
-            <div style={{background:"linear-gradient(135deg,#00A876,#00C48C)",borderRadius:10,padding:"14px 16px",color:"#fff",textAlign:"center"}}>
-              <div style={{fontSize:11,opacity:.85,marginBottom:4}}>Primaire</div>
-              <div style={{fontSize:18,fontWeight:900}}>{(totNetPrim/1e6).toFixed(3)}M</div>
-              <div style={{fontSize:10,opacity:.75,marginTop:2}}>{salairesPrim.length} enseignant(s)</div>
-            </div>
-            <div style={{background:"linear-gradient(135deg,#7c3aed,#a855f7)",borderRadius:10,padding:"14px 16px",color:"#fff",textAlign:"center"}}>
-              <div style={{fontSize:11,opacity:.85,marginBottom:4}}>Personnel</div>
-              <div style={{fontSize:18,fontWeight:900}}>{(totNetPers/1e6).toFixed(3)}M</div>
-              <div style={{fontSize:10,opacity:.75,marginTop:2}}>{salairesPers.length} employé(s)</div>
-            </div>
-            <div style={{background:"linear-gradient(135deg,#0A1628,#1565c0)",borderRadius:10,padding:"14px 16px",color:"#fff",textAlign:"center"}}>
-              <div style={{fontSize:11,opacity:.85,marginBottom:4}}>Total agents</div>
-              <div style={{fontSize:28,fontWeight:900}}>{nbEns}</div>
-              <div style={{fontSize:10,opacity:.75,marginTop:2}}>ce mois</div>
-            </div>
-            <div style={{background:"linear-gradient(135deg,#b45309,#f59e0b)",borderRadius:10,padding:"14px 16px",color:"#fff",textAlign:"center"}}>
-              <div style={{fontSize:11,opacity:.85,marginBottom:4}}>Moy. par agent</div>
-              <div style={{fontSize:18,fontWeight:900}}>{nbEns>0?Math.round(totGen/nbEns).toLocaleString("fr-FR"):0}</div>
-              <div style={{fontSize:10,opacity:.75,marginTop:2}}>GNF</div>
-            </div>
-          </div>
-          {/* Barre de répartition */}
-          {totGen>0&&<div style={{marginBottom:16,background:"#f0f4f8",borderRadius:10,padding:"12px 16px"}}>
-            <div style={{display:"flex",justifyContent:"space-between",fontSize:11,fontWeight:700,marginBottom:6,flexWrap:"wrap",gap:4}}>
-              <span style={{color:C.blue}}>Secondaire : {totNetSec>0?((totNetSec/totGen)*100).toFixed(1):0}%</span>
-              <span style={{color:C.green}}>Primaire : {totNetPrim>0?((totNetPrim/totGen)*100).toFixed(1):0}%</span>
-              <span style={{color:"#7c3aed"}}>Personnel : {totNetPers>0?((totNetPers/totGen)*100).toFixed(1):0}%</span>
-            </div>
-            <div style={{display:"flex",borderRadius:6,overflow:"hidden",height:12}}>
-              <div style={{background:C.blue,width:`${totGen>0?(totNetSec/totGen*100):0}%`,transition:"width .4s"}}/>
-              <div style={{background:C.green,width:`${totGen>0?(totNetPrim/totGen*100):0}%`,transition:"width .4s"}}/>
-              <div style={{background:"#a855f7",flex:1}}/>
-            </div>
-          </div>}
-          {/* Graphique évolution annuelle */}
-          {salaires.length>0&&<Card style={{marginBottom:16}}><div style={{padding:"14px 16px"}}>
-            <p style={{margin:"0 0 12px",fontWeight:800,fontSize:13,color:C.blueDark}}>Évolution de la masse salariale — Année {annee||getAnnee()}</p>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={dataEvol} barGap={2}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e0ebf8"/>
-                <XAxis dataKey="mois" tick={{fontSize:10}}/>
-                <YAxis tick={{fontSize:10}} tickFormatter={v=>v===0?"0":`${(v/1e6).toFixed(1)}M`}/>
-                <Tooltip formatter={(v,n)=>[fmtN(v)+" GNF",n]}/>
-                <Legend wrapperStyle={{fontSize:11}}/>
-                <Bar dataKey="Secondaire" fill={C.blue} radius={[3,3,0,0]}/>
-                <Bar dataKey="Primaire" fill={C.green} radius={[3,3,0,0]}/>
-                <Bar dataKey="Personnel" fill="#a855f7" radius={[3,3,0,0]}/>
-              </BarChart>
-            </ResponsiveContainer>
-          </div></Card>}
-        </>;
-      })()}
+      {!cS&&
+        <SalairesBilan
+          totNetSec={totNetSec} totNetPrim={totNetPrim} totNetPers={totNetPers}
+          salairesMois={salairesMois} moisSalaire={moisSalaire} salaires={salaires}
+          calcNet={calcNet} moisLabel={moisLabel}
+          salairesSec={salairesSec} salairesPrim={salairesPrim} salairesPers={salairesPers}
+          annee={annee}
+        />
+      }
 
       {cS?<Chargement/>:<>
         {moisSel==="__TOUS__"&&<div style={{background:"linear-gradient(135deg,#fef3c7,#fde68a)",border:"1px solid #f59e0b",borderRadius:10,padding:"12px 16px",marginBottom:14,fontSize:13,color:"#92400e"}}>
@@ -231,311 +144,46 @@ export function SalairesTab({
           Cliquez sur <strong>⚡ Auto-générer</strong> pour remplir d'un coup les {moisSalaire.length} mois de l'année scolaire.
         </div>}
 
-        {/* Section Secondaire */}
-        <div style={{background:C.blue,color:"#fff",padding:"8px 14px",borderRadius:"8px 8px 0 0",fontWeight:700,fontSize:13}}>
-          {t("accounting.section").toUpperCase()} {t("dashboard.secondary").toUpperCase()} — {moisLabel} {annee||getAnnee()}
-        </div>
-        {/* Sticky : header (top) + colonnes N° et Nom (left). Le wrapper passe
-            en overflow:auto avec une hauteur max pour activer le sticky-top
-            sans dépendre du scroll de la page. */}
-        <div style={{overflow:"auto",marginBottom:16,maxHeight:"calc(100vh - 360px)",minHeight:280}}>
-          <table style={{width:"100%",borderCollapse:"separate",borderSpacing:0,minWidth:900}}>
-            {(()=>{
-              const thBase = {padding:"7px 10px",fontSize:10,fontWeight:700,color:C.blueDark,border:"1px solid #b0c4d8",background:"#e0ebf8"};
-              // Hauteur approx d'une ligne de header (10px font + padding) → 2e ligne sticky en dessous.
-              const ROW1_H = 34;
-              return (
-                <thead>
-                  <tr>
-                    <th rowSpan={2} style={{...thBase,textAlign:"center",position:"sticky",top:0,left:0,zIndex:4}}>N°</th>
-                    <th rowSpan={2} style={{...thBase,position:"sticky",top:0,left:40,zIndex:4}}>Prénoms et Nom</th>
-                    <th rowSpan={2} style={{...thBase,position:"sticky",top:0,zIndex:3}}>Matière</th>
-                    <th rowSpan={2} style={{...thBase,position:"sticky",top:0,zIndex:3}}>Niveau</th>
-                    <th rowSpan={2} style={{...thBase,textAlign:"center",position:"sticky",top:0,zIndex:3}}>V.H.<br/>Hebdo</th>
-                    <th colSpan={4} style={{...thBase,textAlign:"center",position:"sticky",top:0,zIndex:3}}>V.H. Mensuel</th>
-                    <th rowSpan={2} style={{...thBase,textAlign:"center",position:"sticky",top:0,zIndex:3}}>Prime<br/>Horaire</th>
-                    <th rowSpan={2} style={{...thBase,textAlign:"center",position:"sticky",top:0,zIndex:3}}>Montant</th>
-                    <th rowSpan={2} style={{...thBase,textAlign:"center",position:"sticky",top:0,zIndex:3}}>Bon</th>
-                    <th rowSpan={2} style={{...thBase,textAlign:"center",background:"#fef3e0",position:"sticky",top:0,zIndex:3}}>Révision</th>
-                    <th rowSpan={2} style={{...thBase,textAlign:"center",background:"#eaf4e0",position:"sticky",top:0,zIndex:3}}>Net à<br/>Payer</th>
-                    <th rowSpan={2} style={{...thBase,position:"sticky",top:0,zIndex:3}}>Obs.</th>
-                    {canEdit&&<th rowSpan={2} style={{...thBase,position:"sticky",top:0,zIndex:3}}>Act.</th>}
-                  </tr>
-                  <tr>
-                    {["Prévu","5è Sem","Non Exé.","Exécuté"].map(h=><th key={h} style={{...thBase,padding:"5px 8px",textAlign:"center",position:"sticky",top:ROW1_H,zIndex:3}}>{h}</th>)}
-                  </tr>
-                </thead>
-              );
-            })()}
-            <tbody>
-              {salairesSec.length===0?
-                <tr><td colSpan={canEdit?15:14} style={{padding:"20px",textAlign:"center",color:"#9ca3af",fontStyle:"italic"}}>Aucun enseignant secondaire pour ce mois</td></tr>
-                :salairesSec.map((s,i)=>{
-                  const rowBg = i%2===0?"#fff":"#f9fbf9";
-                  return (
-                  <tr key={s._id} style={{borderBottom:"1px solid #e8f0e8",background:rowBg}}>
-                    <td style={{padding:"7px 10px",textAlign:"center",fontSize:12,border:"1px solid #e8f0e8",position:"sticky",left:0,background:rowBg,zIndex:1}}>{i+1}</td>
-                    <td style={{padding:"7px 10px",fontWeight:700,fontSize:12,color:C.blueDark,border:"1px solid #e8f0e8",position:"sticky",left:40,background:rowBg,zIndex:1,boxShadow:"inset -1px 0 0 #d1dce8"}}>{s.nom}</td>
-                    <td style={{padding:"7px 10px",fontSize:12,border:"1px solid #e8f0e8"}}>{s.matiere}</td>
-                    <td style={{padding:"7px 10px",fontSize:12,border:"1px solid #e8f0e8"}}>{s.niveau}</td>
-                    <td style={{padding:"7px 10px",textAlign:"center",fontSize:12,border:"1px solid #e8f0e8"}}>{s.vhHebdo||0}</td>
-                    <td style={{padding:"7px 10px",textAlign:"center",fontSize:12,border:"1px solid #e8f0e8"}}>{s.vhPrevu||0}</td>
-                    <td style={{padding:"7px 10px",textAlign:"center",fontSize:12,border:"1px solid #e8f0e8"}}>{s.cinqSem||0}</td>
-                    <td style={{padding:"7px 10px",textAlign:"center",fontSize:12,border:"1px solid #e8f0e8"}}>{s.nonExecute||0}</td>
-                    <td style={{padding:"7px 10px",textAlign:"center",fontWeight:700,fontSize:12,border:"1px solid #e8f0e8",background:"#f0f8ff"}}>{calcExecute(s)}</td>
-                    <td style={{padding:"7px 10px",textAlign:"right",fontSize:12,border:"1px solid #e8f0e8"}} title={s.primesVariables?"Primes par classe — voir observation":""}>{s.primesVariables?<span style={{color:"#9a3412",fontWeight:700,fontSize:11}}>Variable</span>:fmtN(s.primeHoraire)}</td>
-                    <td style={{padding:"7px 10px",textAlign:"right",fontSize:12,border:"1px solid #e8f0e8"}}>{fmtN(calcMontant(s))}</td>
-                    <td style={{padding:"7px 10px",textAlign:"right",fontSize:12,color:"#b91c1c",border:"1px solid #e8f0e8"}}>{fmtN(s.bon||0)}</td>
-                    <td style={{padding:"4px 6px",textAlign:"center",border:"1px solid #e8f0e8",background:"#fffbeb"}}>
-                      {canEdit
-                        ?<input type="number" value={s.revision||0} onChange={e=>modS({...s,revision:Number(e.target.value)})}
-                          style={{width:80,border:"1px solid #fbbf24",borderRadius:5,padding:"3px 5px",fontSize:11,textAlign:"right"}}/>
-                        :<span style={{fontSize:12}}>{fmtN(s.revision||0)}</span>}
-                    </td>
-                    <td style={{padding:"7px 10px",textAlign:"right",fontWeight:800,fontSize:13,color:C.greenDk,background:"#eaf4e0",border:"1px solid #b0c4d8"}}>{fmtN(calcNet(s))}</td>
-                    <td
-                      title={s.observation||""}
-                      style={{padding:"7px 10px",fontSize:11,color:"#6b7280",border:"1px solid #e8f0e8",maxWidth:280,whiteSpace:"normal",lineHeight:1.4}}
-                    >
-                      {s.observation}
-                    </td>
-                    {canEdit&&<td style={{padding:"7px 6px",border:"1px solid #e8f0e8"}}>
-                      <div style={{display:"flex",gap:4}}>
-                        <Btn sm v="ghost" onClick={()=>{setForm({...s});setModal("edit_s");}}>✏️</Btn>
-                        <Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ?"))supS(s._id);}}>×</Btn>
-                      </div>
-                    </td>}
-                  </tr>
-                );})}
-              <tr style={{background:"#e0ebf8",fontWeight:800}}>
-                <td colSpan={13} style={{padding:"8px 12px",textAlign:"right",color:C.blueDark,border:"1px solid #b0c4d8"}}>TOTAL NET SECONDAIRE</td>
-                <td style={{padding:"8px 12px",textAlign:"right",color:C.greenDk,fontSize:14,border:"1px solid #b0c4d8"}}>{fmtN(totNetSec)}</td>
-                <td colSpan={readOnly?1:2} style={{border:"1px solid #b0c4d8"}}></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <SecondaireTable
+          salairesSec={salairesSec} canEdit={canEdit} readOnly={readOnly}
+          calcExecute={calcExecute} calcMontant={calcMontant} calcNet={calcNet}
+          modS={modS} supS={supS} setForm={setForm} setModal={setModal}
+          totNetSec={totNetSec} moisLabel={moisLabel} annee={annee}
+        />
 
-        {/* Section Primaire */}
-        <div style={{background:C.green,color:"#fff",padding:"8px 14px",borderRadius:"8px 8px 0 0",fontWeight:700,fontSize:13,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
-          <span style={{flex:1}}>{t("accounting.section").toUpperCase()} {t("dashboard.primary").toUpperCase()} — {moisLabel} {annee||getAnnee()}</span>
-          <input
-            placeholder="🔍 Recherche par nom..."
-            value={filtrePrimNom} onChange={e=>setFiltrePrimNom(e.target.value)}
-            style={{border:"none",borderRadius:6,padding:"4px 10px",fontSize:12,color:"#0A1628",width:160,outline:"none"}}/>
-          <select value={filtrePrimClasse} onChange={e=>setFiltrePrimClasse(e.target.value)}
-            style={{border:"none",borderRadius:6,padding:"4px 8px",fontSize:12,color:"#0A1628",background:"#fff"}}>
-            <option value="all">Toutes les classes</option>
-            {CLASSES_PRIMAIRE.map(c=><option key={c}>{c}</option>)}
-          </select>
-        </div>
-        <div className="lc-sticky-wrap" style={{marginBottom:8}}>
-          {(()=>{
-          const salairesPrimFiltres = salairesPrim
-            .filter(s=>!filtrePrimNom||(s.nom||"").toLowerCase().includes(filtrePrimNom.toLowerCase()))
-            .filter(s=>filtrePrimClasse==="all"||(s.niveau||"")===filtrePrimClasse);
-          return <table className="lc-sticky-table" data-fix-left="2" style={{"--col2-left":"50px"}}>
-            <THead cols={["N°","Prénoms et Nom","Classe","Bon","Révision","Net à Payer","Observation",canEdit?"Actions":""]}/>
-            <tbody>
-              {salairesPrimFiltres.length===0?
-                <tr><td colSpan={canEdit?8:7} style={{padding:"20px",textAlign:"center",color:"#9ca3af",fontStyle:"italic"}}>{salairesPrim.length===0?"Aucun enseignant primaire pour ce mois":"Aucun résultat pour ce filtre"}</td></tr>
-                :salairesPrimFiltres.map((s,i)=>(
-                  <TR key={s._id}>
-                    <TD center>{i+1}</TD>
-                    <TD bold>{s.nom}</TD>
-                    <TD>{s.niveau}</TD>
-                    <TD center style={{color:"#b91c1c"}}>{fmtN(s.bon||0)}</TD>
-                    <TD center style={{background:"#fffbeb"}}>
-                      {canEdit
-                        ?<input type="number" value={s.revision||0} onChange={e=>modS({...s,revision:Number(e.target.value)})}
-                          style={{width:80,border:"1px solid #fbbf24",borderRadius:5,padding:"3px 5px",fontSize:11,textAlign:"right"}}/>
-                        :<span style={{fontSize:12}}>{fmtN(s.revision||0)}</span>}
-                    </TD>
-                    <TD center style={{fontWeight:800,color:C.greenDk,background:"#eaf4e0"}}>{fmtN(Number(s.montantForfait||0)-Number(s.bon||0)+Number(s.revision||0))}</TD>
-                    <TD>{s.observation}</TD>
-                    {canEdit&&<TD><div style={{display:"flex",gap:4}}>
-                      <Btn sm v="ghost" onClick={()=>{setForm({...s});setModal("edit_s");}}>✏️</Btn>
-                      <Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ?"))supS(s._id);}}>×</Btn>
-                    </div></TD>}
-                  </TR>
-              ))}
-              <tr style={{background:"#e0ebf8",fontWeight:800}}>
-                <td colSpan={5} style={{padding:"8px 12px",textAlign:"right",color:C.blueDark}}>
-                  TOTAL NET PRIMAIRE {filtrePrimClasse!=="all"||filtrePrimNom?`(filtre : ${salairesPrimFiltres.length}/${salairesPrim.length})` : ""}
-                </td>
-                <td style={{padding:"8px 12px",textAlign:"center",color:C.greenDk,fontSize:14}}>
-                  {fmtN(salairesPrimFiltres.reduce((s,e)=>s+Number(e.montantForfait||0)-Number(e.bon||0)+Number(e.revision||0),0))}
-                </td>
-                <td colSpan={2}></td>
-              </tr>
-            </tbody>
-          </table>;
-          })()}
-        </div>
+        <PrimaireTable
+          salairesPrim={salairesPrim}
+          filtrePrimNom={filtrePrimNom} setFiltrePrimNom={setFiltrePrimNom}
+          filtrePrimClasse={filtrePrimClasse} setFiltrePrimClasse={setFiltrePrimClasse}
+          canEdit={canEdit} modS={modS} supS={supS} setForm={setForm} setModal={setModal}
+          moisLabel={moisLabel} annee={annee}
+        />
 
-        {/* Section Personnel */}
-        <div style={{background:"#7c3aed",color:"#fff",padding:"8px 14px",borderRadius:"8px 8px 0 0",fontWeight:700,fontSize:13,display:"flex",alignItems:"center",gap:10}}>
-          <span style={{flex:1}}>{t("accounting.section").toUpperCase()} {t("accounting.tabs.staff").toUpperCase()} — {moisLabel} {annee||getAnnee()}</span>
-        </div>
-        <div className="lc-sticky-wrap" style={{marginBottom:8}}>
-          <table className="lc-sticky-table" data-fix-left="2" style={{"--col2-left":"50px"}}>
-            <THead cols={["N°","Prénoms et Nom","Poste","Catégorie","Salaire de base","Bon","Révision","Net à Payer","Observation",canEdit?"Actions":""]}/>
-            <tbody>
-              {salairesPers.length===0
-                ?<tr><td colSpan={canEdit?10:9} style={{padding:"20px",textAlign:"center",color:"#9ca3af",fontStyle:"italic"}}>Aucun employé pour ce mois</td></tr>
-                :salairesPers.map((s,i)=>(
-                  <TR key={s._id}>
-                    <TD center>{i+1}</TD>
-                    <TD bold>{s.nom}</TD>
-                    <TD>{s.poste||"—"}</TD>
-                    <TD><Badge color="purple">{s.categorie||"—"}</Badge></TD>
-                    <TD center>{fmtN(s.montantForfait||0)}</TD>
-                    <TD center style={{color:"#b91c1c"}}>{fmtN(s.bon||0)}</TD>
-                    <TD center style={{color:C.greenDk}}>{fmtN(s.revision||0)}</TD>
-                    <TD center><strong style={{color:C.greenDk}}>{fmtN(calcNetF(s))}</strong></TD>
-                    <TD>{s.observation||""}</TD>
-                    {canEdit&&<TD center>
-                      <Btn sm v="ghost" onClick={()=>{setForm({...s});setModal("edit_s");}}>✏️</Btn>
-                      <Btn sm v="red" onClick={()=>confirm("Supprimer ?")&&supS(s._id)}>🗑</Btn>
-                    </TD>}
-                  </TR>
-                ))
-              }
-              <tr style={{background:"#ede9fe",fontWeight:800}}>
-                <td colSpan={7} style={{padding:"8px 12px",textAlign:"right",color:"#7c3aed"}}>TOTAL NET PERSONNEL</td>
-                <td style={{padding:"8px 12px",textAlign:"center",color:"#7c3aed",fontSize:14}}>{fmtN(totNetPers)}</td>
-                <td colSpan={canEdit?2:1}></td>
-              </tr>
-              <tr style={{background:C.blue,color:"#fff",fontWeight:900}}>
-                <td colSpan={7} style={{padding:"10px 12px",textAlign:"right",fontSize:14,letterSpacing:".4px"}}>TOTAL GÉNÉRAL NET À PAYER</td>
-                <td style={{padding:"10px 12px",textAlign:"center",fontSize:16,fontWeight:900}}>{fmtN(totNetSec+totNetPrim+totNetPers)} GNF</td>
-                <td colSpan={canEdit?2:1}></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <PersonnelTable
+          salairesPers={salairesPers} canEdit={canEdit} calcNetF={calcNetF}
+          supS={supS} setForm={setForm} setModal={setModal}
+          totNetSec={totNetSec} totNetPrim={totNetPrim} totNetPers={totNetPers}
+          moisLabel={moisLabel} annee={annee}
+        />
       </>}
 
       </>}
 
-      {/* MODAL AJOUT/MODIF SALAIRE */}
-      {(modal==="add_s"&&canCreate||(modal==="edit_s"&&canEdit))&&<Modale large titre={modal==="add_s"?"Nouveau salaire":"Modifier le salaire"} fermer={()=>setModal(null)}>
-        <div style={{marginBottom:14}}>
-          <Selec label="Section" value={form.section||"Secondaire"} onChange={chg("section")}>
-            <option>Secondaire</option><option>Primaire</option><option>Personnel</option>
-          </Selec>
-        </div>
-        <Selec label="Mois" value={form.mois||moisModale} onChange={chg("mois")}>
-          {moisSalaire.map(m=><option key={m}>{m}</option>)}
-        </Selec>
-        <div style={{height:12}}/>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-          <div style={{gridColumn:"1/-1"}}><Input label="Prénoms et Nom" value={form.nom||""} onChange={chg("nom")}/></div>
-          {form.section==="Secondaire"?<>
-            <Input label="Matière" value={form.matiere||""} onChange={chg("matiere")}/>
-            <Input label="Niveau" value={form.niveau||""} onChange={chg("niveau")}/>
-            <Input label="V.H. Hebdomadaire" type="number" value={form.vhHebdo||""} onChange={e=>{const v=Number(e.target.value);setForm(p=>({...p,vhHebdo:v,vhPrevu:v*4}));}}/>
-            <Input label="V.H. Mensuel Prévu" type="number" value={form.vhPrevu||""} onChange={chg("vhPrevu")}/>
-            <Input label="5ème Semaine" type="number" value={form.cinqSem||0} onChange={chg("cinqSem")}/>
-            <Input label="Non Exécuté" type="number" value={form.nonExecute||0} onChange={chg("nonExecute")}/>
-            <Input label="Prime Horaire (GNF)" type="number" value={form.primeHoraire||""} onChange={chg("primeHoraire")}/>
-            <Input label="Bon (GNF)" type="number" value={form.bon||0} onChange={chg("bon")}/>
-            <Input label="Révision (GNF)" type="number" value={form.revision||0} onChange={chg("revision")}/>
-          </>:form.section==="Personnel"?<>
-            <Input label="Poste" value={form.poste||""} onChange={chg("poste")} placeholder="Ex : Gardien, Secrétaire…"/>
-            <Selec label="Catégorie" value={form.categorie||""} onChange={chg("categorie")}>
-              <option value="">— Catégorie —</option>
-              {["Administration","Surveillance","Entretien","Cuisine","Sécurité","Divers"].map(c=><option key={c}>{c}</option>)}
-            </Selec>
-            <Input label="Salaire de base (GNF)" type="number" value={form.montantForfait||""} onChange={chg("montantForfait")}/>
-            <Input label="Bon (GNF)" type="number" value={form.bon||0} onChange={chg("bon")}/>
-            <Input label="Révision (GNF)" type="number" value={form.revision||0} onChange={chg("revision")}/>
-          </>:<>
-            <Input label="Classe" value={form.niveau||""} onChange={chg("niveau")}/>
-            <Input label="Montant Forfaitaire (GNF)" type="number" value={form.montantForfait||""} onChange={chg("montantForfait")}/>
-            <Input label="Bon (GNF)" type="number" value={form.bon||0} onChange={chg("bon")}/>
-            <Input label="Révision (GNF)" type="number" value={form.revision||0} onChange={chg("revision")}/>
-          </>}
-          <div style={{gridColumn:"1/-1"}}><Input label="Observation" value={form.observation||""} onChange={chg("observation")}/></div>
-        </div>
-        {form.section==="Secondaire"&&<div style={{marginTop:12,padding:"10px 14px",background:"#e0ebf8",borderRadius:8,fontSize:13}}>
-          <strong>Aperçu :</strong> Exécuté = {calcExecute(form)} h &nbsp;|&nbsp;
-          Montant = {fmtN(calcMontant(form))} GNF &nbsp;|&nbsp;
-          Bon = -{fmtN(form.bon||0)} &nbsp;|&nbsp;
-          Révision = +{fmtN(form.revision||0)} &nbsp;|&nbsp;
-          <strong style={{color:C.greenDk}}>Net = {fmtN(calcNet(form))} GNF</strong>
-        </div>}
-        <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
-          <Btn v="ghost" onClick={()=>setModal(null)}>Annuler</Btn>
-          <Btn onClick={()=>saveSalaire({vhHebdo:Number(form.vhHebdo||0),vhPrevu:Number(form.vhPrevu||0),cinqSem:Number(form.cinqSem||0),nonExecute:Number(form.nonExecute||0),primeHoraire:Number(form.primeHoraire||0),bon:Number(form.bon||0),revision:Number(form.revision||0),montantForfait:Number(form.montantForfait||0),montantBrut:null,primesVariables:false})}>Enregistrer</Btn>
-        </div>
-      </Modale>}
+      <SalaireModale
+        modal={modal} canCreate={canCreate} canEdit={canEdit}
+        form={form} setForm={setForm} setModal={setModal}
+        moisModale={moisModale} moisSalaire={moisSalaire}
+        calcExecute={calcExecute} calcMontant={calcMontant} calcNet={calcNet}
+        saveSalaire={saveSalaire}
+      />
 
-      {/* MODAL AJOUT/MODIF BON */}
-      {(modal==="add_b"&&canCreate||(modal==="edit_b"&&canEdit))&&(()=>{
-        const moisBon = form.mois||moisModale;
-        const secBon = form.section||"Secondaire";
-        // Liste des enseignants/personnel ACTUELLEMENT en fiche pour cette
-        // section. Sert à filtrer les options du sélecteur : si un prof a
-        // été renommé ou supprimé, son ancien nom reste dans les `salaires`
-        // déjà saisis — sans cette intersection, il continuerait à apparaître.
-        const normNom = (s) => (s || "").trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ");
-        const ensActuelsSet = (() => {
-          const list = secBon === "Secondaire"
-            ? [...ensCollege, ...ensLycee]
-            : secBon === "Primaire"
-              ? ensPrimaire
-              : /* Personnel */ personnel;
-          const out = new Set();
-          for (const e of (list || [])) {
-            const full = `${e.prenom || ""} ${e.nom || ""}`.trim();
-            if (full) out.add(normNom(full));
-          }
-          return out;
-        })();
-        // Noms uniques des salaires du mois (dedup par normalisation) +
-        // intersection avec les fiches actuelles. Si la base contient des
-        // fiches doublons legacy, on n'affiche le prof qu'une fois.
-        const noms = new Map(); // nomNormalisé → libellé d'affichage
-        for (const s of salaires) {
-          if (s.mois !== moisBon || s.section !== secBon) continue;
-          const display = (s.nom || "").trim();
-          if (!display) continue;
-          const norm = normNom(display);
-          if (!ensActuelsSet.has(norm)) continue; // prof supprimé/renommé
-          if (!noms.has(norm)) noms.set(norm, display);
-        }
-        const ensDisponibles = [...noms.values()].sort((a, b) => a.localeCompare(b, "fr", { sensitivity: "base" }));
-        return <Modale titre={modal==="add_b"?"Nouveau bon":"Modifier le bon"} fermer={()=>setModal(null)}>
-          <Selec label="Mois" value={moisBon} onChange={chg("mois")}>
-            {moisSalaire.map(m=><option key={m}>{m}</option>)}
-          </Selec>
-          <div style={{height:10}}/>
-          <Selec label="Section" value={secBon} onChange={e=>{chg("section")(e);setForm(p=>({...p,nom:""}));}}>
-            <option>Secondaire</option><option>Primaire</option><option>Personnel</option>
-          </Selec>
-          <div style={{height:10}}/>
-          <Selec label="Enseignant" value={form.nom||""} onChange={chg("nom")}>
-            <option value="">— Sélectionner un enseignant —</option>
-            {ensDisponibles.map(n=><option key={n} value={n}>{n}</option>)}
-            {ensDisponibles.length===0&&<option disabled>Aucun enseignant pour ce mois/section</option>}
-          </Selec>
-          {ensDisponibles.length===0&&<div style={{fontSize:11,color:"#b45309",marginTop:4}}>
-            Générez d'abord les salaires pour ce mois avant d'ajouter des bons.
-          </div>}
-          <div style={{height:10}}/>
-          <Input label="Montant du bon (GNF)" type="number" value={form.montant||""} onChange={chg("montant")} placeholder="Ex : 50000"/>
-          <div style={{height:10}}/>
-          <Input label="Motif" value={form.motif||""} onChange={chg("motif")} placeholder="Ex : Retard, Absence injustifiée…"/>
-          <div style={{marginTop:12,padding:"10px 14px",background:"#fce8e8",borderRadius:8,fontSize:12,color:"#9b2020"}}>
-            Le bon sera déduit du salaire net de l'enseignant lors de l'application.
-          </div>
-          <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
-            <Btn v="ghost" onClick={()=>setModal(null)}>Annuler</Btn>
-            <Btn onClick={()=>enreg(ajBon,modBon,{montant:Number(form.montant||0)})}>Enregistrer</Btn>
-          </div>
-        </Modale>;
-      })()}
+      <BonModale
+        modal={modal} canCreate={canCreate} canEdit={canEdit}
+        form={form} setForm={setForm} setModal={setModal}
+        moisModale={moisModale} moisSalaire={moisSalaire} salaires={salaires}
+        ensCollege={ensCollege} ensLycee={ensLycee} ensPrimaire={ensPrimaire} personnel={personnel}
+        ajBon={ajBon} modBon={modBon} enreg={enreg}
+      />
     </div>
   );
 }
