@@ -1,30 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { doc, setDoc } from "firebase/firestore";
-import { db } from "../../firebaseDb";
-import { apiFetch, getAuthHeaders } from "../../apiClient";
-
-const cleStockage = (uid) => `LC_messagesLus_${uid}`;
-
-function lireLusLocal(uid) {
-  if (!uid) return {};
-  try {
-    return JSON.parse(localStorage.getItem(cleStockage(uid)) || "{}");
-  } catch {
-    return {};
-  }
-}
-
-function ecrireLusLocal(uid, lus) {
-  if (!uid) return;
-  try {
-    localStorage.setItem(cleStockage(uid), JSON.stringify(lus));
-  } catch {
-    // Quota localStorage dépassé : on ignore.
-  }
-}
+import { lireLusLocal, ecrireLusLocal } from "./messages-storage";
+import { fetchSuperadminMessages, enregistrerLecture } from "./messages-api";
 
 // Logique des messages SuperAdmin reçus par une école : polling /school,
 // suivi des messages lus (localStorage + Firestore), bandeaux et compteurs.
+// La persistance locale vit dans messages-storage.js, les appels réseau
+// dans messages-api.js.
 export function useMessagesEcole({ utilisateur, schoolId }) {
   const uid = utilisateur?.uid;
   const role = utilisateur?.role;
@@ -43,32 +24,13 @@ export function useMessagesEcole({ utilisateur, schoolId }) {
     if (!uid || !role || role === "parent") return undefined;
     let cancelled = false;
 
-    const chargerMessages = async () => {
-      try {
-        const headers = await getAuthHeaders();
-        const response = await apiFetch("/school", {
-          method: "GET",
-          query: { op: "superadmin-messages" },
-          headers,
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-
-        const payload = await response.json();
-        if (!cancelled) {
-          setMessages(Array.isArray(payload.messages) ? payload.messages : []);
-        }
-      } catch {
-        if (!cancelled) {
-          setMessages([]);
-        }
-      }
+    const charger = async () => {
+      const msgs = await fetchSuperadminMessages();
+      if (!cancelled) setMessages(msgs);
     };
 
-    chargerMessages();
-    const timer = window.setInterval(chargerMessages, 60000);
+    charger();
+    const timer = window.setInterval(charger, 60000);
 
     return () => {
       cancelled = true;
@@ -91,20 +53,7 @@ export function useMessagesEcole({ utilisateur, schoolId }) {
     const nouveauxLus = { ...lus, [msg._id]: Date.now() };
     setLus(nouveauxLus);
     ecrireLusLocal(uid, nouveauxLus);
-
-    try {
-      await setDoc(
-        doc(db, "superadmin_messages", msg._id, "lectures", uid),
-        {
-          schoolId,
-          role,
-          login: utilisateur?.login || null,
-          readAt: Date.now(),
-        },
-      );
-    } catch {
-      // Pas d'accès réseau ou règles plus strictes : on garde le marquage local.
-    }
+    await enregistrerLecture(msg._id, { schoolId, role, login: utilisateur?.login }, uid);
   };
 
   const marquerToutLu = () => {
