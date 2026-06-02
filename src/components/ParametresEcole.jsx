@@ -2,6 +2,7 @@ import { C } from "../constants";
 import { AffichageSettings } from "./AffichageSettings";
 import { MatriculeSettings } from "./MatriculeSettings";
 import { MigrationPeriodesModal } from "./MigrationPeriodesModal";
+import { ParametresTabs } from "./parametres/ParametresTabs";
 import { IdentiteTab } from "./parametres/IdentiteTab";
 import { EvaluationsTab } from "./parametres/EvaluationsTab";
 import { AccueilTab } from "./parametres/AccueilTab";
@@ -50,19 +51,7 @@ function ParametresEcole({ utilisateurRole = "", onSchoolClosed = null, initialT
       <h2 style={{margin:"0 0 4px",fontSize:20,fontWeight:900,color:C.blueDark}}>⚙️ Paramètres de l'école</h2>
       <p style={{margin:"0 0 16px",fontSize:12,color:"#9ca3af"}}>Personnalisez l'identité visuelle et les informations de votre établissement</p>
 
-      {/* Tabs */}
-      <div style={{display:"flex",gap:4,background:"#f1f5f9",borderRadius:12,padding:4,marginBottom:24,width:"fit-content"}}>
-        {tabItems.map(t=>(
-          <button key={t.id} onClick={()=>setTabParam(t.id)} style={{
-            padding:"8px 18px",border:"none",borderRadius:9,cursor:"pointer",
-            fontSize:13,fontWeight:700,
-            background:tabParam===t.id?"#fff":"transparent",
-            color:tabParam===t.id?C.blueDark:"#64748b",
-            boxShadow:tabParam===t.id?"0 1px 4px rgba(0,0,0,0.08)":"none",
-            transition:"all .15s",
-          }}>{t.label}</button>
-        ))}
-      </div>
+      <ParametresTabs tabItems={tabItems} tabParam={tabParam} setTabParam={setTabParam}/>
 
       {msgSucces&&<div style={{background:"#d1fae5",border:"1px solid #6ee7b7",borderRadius:8,padding:"10px 16px",marginBottom:16,fontSize:13,color:"#065f46",fontWeight:600}}>✅ {msgSucces}</div>}
       {erreur&&<div style={{background:"#fee2e2",border:"1px solid #fca5a5",borderRadius:8,padding:"10px 16px",marginBottom:16,fontSize:13,color:"#991b1b"}}>{erreur}</div>}
