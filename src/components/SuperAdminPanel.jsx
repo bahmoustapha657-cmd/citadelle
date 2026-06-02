@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
-import { C } from "../constants";
+import { useEffect, useState } from "react";
 
+import { SuperAdminTabs } from "./superadmin/SuperAdminTabs";
 import { EcolesTab } from "./superadmin/EcolesTab";
 import { PlansTab } from "./superadmin/PlansTab";
 import { DemandesTab } from "./superadmin/DemandesTab";
@@ -48,22 +48,10 @@ function SuperAdminPanel() {
         </div>
       )}
 
-      {/* Onglets */}
-      <div style={{display:"flex",gap:8,marginBottom:20,flexWrap:"wrap"}}>
-        {[
-          {id:"ecoles",label:"Ecoles"},
-          {id:"plans",label:"Plans"},
-          {id:"outils",label:"Comms & Assistant"},
-          {id:"demandes",label:`Demandes${ea.demandes.filter(d=>d.statut==="en_attente").length>0?" ("+ea.demandes.filter(d=>d.statut==="en_attente").length+")":""}`},
-          {id:"alertes",label:"Alertes Sentry"},
-        ].map(o=>(
-          <button key={o.id} onClick={()=>{setOngletSA(o.id);ea.setPlanModal(null);ea.setConfirmDowngrade(false);}}
-            style={{padding:"9px 18px",borderRadius:9,border:"none",cursor:"pointer",fontWeight:700,fontSize:13,
-              background:ongletSA===o.id?C.blue:"#f0f4f8",color:ongletSA===o.id?"#fff":"#6b7280"}}>
-            {o.label}
-          </button>
-        ))}
-      </div>
+      <SuperAdminTabs
+        ongletSA={ongletSA} setOngletSA={setOngletSA} demandes={ea.demandes}
+        setPlanModal={ea.setPlanModal} setConfirmDowngrade={ea.setConfirmDowngrade}
+      />
 
       {ongletSA==="outils" && (
         <OutilsTab outilsTab={outilsTab} setOutilsTab={setOutilsTab} ecoles={ea.ecoles}/>
