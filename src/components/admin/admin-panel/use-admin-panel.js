@@ -1,9 +1,9 @@
 import { useState, useEffect, useContext } from "react";
 import { SchoolContext } from "../../../contexts/SchoolContext";
 import { useFirestore } from "../../../hooks/useFirestore";
-import { apiFetch, getAuthHeaders } from "../../../apiClient";
 import { genererMdp, getComptesDefautForSchool } from "../../../constants";
 import { ROLES_SYSTEME_RESERVES } from "../admin-helpers";
+import { creerCompte, reinitialiserMotDePasse } from "./admin-panel-api";
 
 // Logique du panneau Admin : comptes Firestore, initialisation automatique
 // des comptes manquants et réinitialisation de mot de passe.
@@ -30,6 +30,8 @@ export function useAdminPanel({ schoolId, userRole }) {
       !comptes.some((compteExistant) => compteExistant.role === compteDefaut.role),
     );
     if (comptesManquants.length === 0) return;
+    // Garde-fou anti-réentrance : on verrouille avant l'initialisation async.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setInitEnCours(true);
     (async () => {
       const comptesCrees = [];
@@ -42,22 +44,14 @@ export function useAdminPanel({ schoolId, userRole }) {
           mdp: mdpClair,
         });
         try {
-          const headers = await getAuthHeaders({ "Content-Type": "application/json" });
-          const res = await apiFetch("/account-manage", {
-            method: "POST", headers,
-            body: JSON.stringify({
-              action: "create",
-              schoolId,
-              login: compteDefaut.login,
-              mdp: mdpClair,
-              role: compteDefaut.role,
-              nom: compteDefaut.nom,
-              label: compteDefaut.label,
-              statut: "Actif",
-            }),
+          await creerCompte({
+            schoolId,
+            login: compteDefaut.login,
+            mdp: mdpClair,
+            role: compteDefaut.role,
+            nom: compteDefaut.nom,
+            label: compteDefaut.label,
           });
-          const data = await res.json().catch(() => ({}));
-          if (!res.ok || !data.ok) throw new Error(data.error || `Création du compte ${compteDefaut.login} impossible.`);
         } catch (e) {
           toast(e.message || "Erreur création comptes.", "error");
           setInitEnCours(false);
@@ -75,19 +69,7 @@ export function useAdminPanel({ schoolId, userRole }) {
       return;
     }
     try {
-      const headers = await getAuthHeaders({ "Content-Type": "application/json" });
-      const res = await apiFetch("/account-manage", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          action: "reset_password",
-          schoolId,
-          accountId: form._id,
-          mdp: form.mdp,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok) throw new Error(data.error || "Réinitialisation impossible.");
+      await reinitialiserMotDePasse({ schoolId, accountId: form._id, mdp: form.mdp });
       toast(`Mot de passe réinitialisé pour ${form.nom}.`, "success");
       setModal(null);
     } catch (e) {
