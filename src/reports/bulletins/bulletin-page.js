@@ -20,7 +20,7 @@ import {
   getMentionColors,
   getNumeroBulletin,
   ordinalFr,
-} from "./bulletin-helpers.js";
+} from "./bulletin-format.js";
 
 export function buildBulletinPageHTML({
   eleve,
