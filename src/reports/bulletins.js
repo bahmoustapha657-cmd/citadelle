@@ -6,21 +6,15 @@
 // compositions dans bulletins/fiche-compositions.js (réexportée ci-dessous).
 
 import { getAnnee } from "../constants.js";
-import {
-  PRINT_TRIGGER,
-  WATERMARK_CSS,
-  printDir,
-  printLang,
-  tr,
-  watermarkHtml,
-} from "./print-helpers.js";
+import { tr } from "./print-helpers.js";
 import {
   getEvolutionPeriode,
   getMoyenneClasseParMatiere,
   getRangEleve,
   getStatsClasse,
 } from "./bulletins/bulletin-helpers.js";
-import { buildBulletinPageHTML, getBulletinStyles } from "./bulletins/bulletin-page.js";
+import { buildBulletinPageHTML } from "./bulletins/bulletin-page.js";
+import { ouvrirFenetreBulletin } from "./bulletins/bulletin-doc.js";
 
 export { imprimerFicheCompositions } from "./bulletins/fiche-compositions.js";
 
@@ -51,12 +45,11 @@ export const imprimerBulletin = (eleve, notes, matieres, periode, niveau, maxNot
     appreciation: options.appreciation || "",
   });
 
-  const w = window.open("", "_blank");
-  w.document.write(`<!DOCTYPE html><html lang="${printLang()}" dir="${printDir()}"><head><meta charset="utf-8"/>
-    <title>${tr("reports.bulletinTitle")} — ${eleve.nom || ""} ${eleve.prenom || ""} — ${periode}</title>
-    <style>${getBulletinStyles()}${WATERMARK_CSS}</style>
-  </head><body>${watermarkHtml(schoolInfo)}${html}<script>${PRINT_TRIGGER}</script></body></html>`);
-  w.document.close();
+  ouvrirFenetreBulletin({
+    title: `${tr("reports.bulletinTitle")} — ${eleve.nom || ""} ${eleve.prenom || ""} — ${periode}`,
+    body: html,
+    schoolInfo,
+  });
 };
 
 // ── IMPRESSION GROUPÉE : tous les bulletins d'une classe en un seul PDF ──
@@ -94,11 +87,9 @@ export const imprimerBulletinsGroupes = (eleves, notes, matieres, periode, nivea
     });
   }).join("");
 
-  const w = window.open("", "_blank");
-  w.document.write(`<!DOCTYPE html><html lang="${printLang()}" dir="${printDir()}"><head>
-  <meta charset="utf-8"/>
-  <title>${tr("reports.bulletinTitle")} ${classe || niveau} — ${periode} — ${tr("reports.schoolYear")} ${getAnnee()}</title>
-  <style>${getBulletinStyles()}${WATERMARK_CSS}</style>
-  </head><body>${watermarkHtml(schoolInfo)}${pages}<script>${PRINT_TRIGGER}</script></body></html>`);
-  w.document.close();
+  ouvrirFenetreBulletin({
+    title: `${tr("reports.bulletinTitle")} ${classe || niveau} — ${periode} — ${tr("reports.schoolYear")} ${getAnnee()}`,
+    body: pages,
+    schoolInfo,
+  });
 };
