@@ -3,10 +3,11 @@ import { SchoolContext } from "../../contexts/SchoolContext";
 import { useFirestore } from "../../hooks/useFirestore";
 import { today } from "../../constants";
 import { getEleveSolde } from "../../mensualite-utils";
-import { apiFetch, getAuthHeaders } from "../../apiClient";
+import { apiGenererToken, apiVerifierToken, apiAccepterTransfert } from "./transferts-api";
 
 // État et logique du panneau de transferts : datasets élèves/tarifs, sous-onglet
 // courant, et les appels API (génération/vérification/acceptation de token).
+// Les appels réseau bruts vivent dans transferts-api.js.
 export function useTransferts({ userRole }) {
   const { schoolId, schoolInfo, moisAnnee, toast } = useContext(SchoolContext);
   const { items: elevesC } = useFirestore("elevesCollege");
@@ -31,22 +32,8 @@ export function useTransferts({ userRole }) {
   const genererToken = async (eleve, ecoleDestination) => {
     setLoading(true);
     try {
-      const headers = await getAuthHeaders({ "Content-Type": "application/json" });
-      const res = await apiFetch("/transfert", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          action: "generer",
-          schoolId,
-          eleveSnapshot: {
-            ...eleve,
-            schoolNom: schoolInfo.nom || "",
-            solde: getSolde(eleve),
-          },
-          ecoleDestination,
-        }),
-      });
-      const data = await res.json();
+      const eleveSnapshot = { ...eleve, schoolNom: schoolInfo.nom || "", solde: getSolde(eleve) };
+      const data = await apiGenererToken({ schoolId, eleveSnapshot, ecoleDestination });
       if (data.token) {
         setTransfertsSortants(prev => [{ ...data, eleveNom: `${eleve.nom} ${eleve.prenom}`, classe: eleve.classe, dateCreation: today() }, ...prev]);
         toast(`Token généré : ${data.token}`, "success");
@@ -64,9 +51,7 @@ export function useTransferts({ userRole }) {
     if (!tokenInput.trim()) { toast("Saisissez un token", "warning"); return; }
     setLoading(true);
     try {
-      const headers = await getAuthHeaders({});
-      const res = await apiFetch("/transfert", { headers, query: { token: tokenInput.trim() } });
-      const data = await res.json();
+      const data = await apiVerifierToken(tokenInput.trim());
       if (data.eleveSnapshot) setTransfertData(data);
       else toast(data.error || "Token introuvable ou expiré", "error");
     } catch (e) {
@@ -79,12 +64,7 @@ export function useTransferts({ userRole }) {
     if (!transfertData) return;
     setLoading(true);
     try {
-      const headers = await getAuthHeaders({ "Content-Type": "application/json" });
-      const res = await apiFetch("/transfert", {
-        method: "POST", headers,
-        body: JSON.stringify({ action: "accepter", token: tokenInput, targetSchoolId: schoolId }),
-      });
-      const data = await res.json();
+      const data = await apiAccepterTransfert({ token: tokenInput, targetSchoolId: schoolId });
       if (data.ok) {
         toast("Élève importé avec succès", "success");
         setTransfertData(null); setTokenInput("");
