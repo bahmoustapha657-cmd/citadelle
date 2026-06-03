@@ -4,7 +4,14 @@ import { getDefaultPeriodeForSection, getPeriodesForSection } from "../../period
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { useFirestore } from "../../hooks/useFirestore";
 import { getActiveNoteForms } from "../../evaluation-forms";
-import { findStaffDuplicate, getStaffDuplicateMessage } from "../../staff-utils";
+import {
+  sortAlphaEcole as sortAlphaEcoleFn,
+  matieresForClasse as matieresForClasseFn,
+  effectifReel as effectifReelFn,
+  computeMoyenne,
+  computeAnneesDispo,
+} from "./ecole-logic";
+import { saveClasseAction, saveEnseignantAction, saveAppreciationAction } from "./ecole-saves";
 
 // Toute la logique du module École (générique primaire/collège/lycée) :
 // chargement Firestore des collections dérivées des clés passées en props,
@@ -30,12 +37,8 @@ export function useEcole({
   const cleAppreciations = cleNotes.replace("notes", "appreciations");
   const { items: appreciations, ajouter: ajApp, modifier: modApp } = useFirestore(cleAppreciations);
   const getAppreciation = (eleveId, periode) => appreciations.find((a) => a.eleveId === eleveId && a.periode === periode);
-  const saveAppreciation = async (eleveId, periode, texte) => {
-    const existant = getAppreciation(eleveId, periode);
-    const data = { eleveId, periode, texte: String(texte || "").trim(), updatedAt: Date.now() };
-    if (existant) await modApp({ ...existant, ...data });
-    else await ajApp(data);
-  };
+  const saveAppreciation = (eleveId, periode, texte) =>
+    saveAppreciationAction(eleveId, periode, texte, { getAppreciation, ajApp, modApp });
   const appreciationsParEleveB = (periode) => Object.fromEntries(
     appreciations.filter((a) => a.periode === periode && a.texte).map((a) => [a.eleveId, a.texte]),
   );
@@ -45,10 +48,7 @@ export function useEcole({
   const [form, setForm] = useState({});
   const [filtreClasse, setFiltreClasse] = useState("all");
   // Matières filtrées par classe : si la matière a des classes assignées, on filtre ; sinon elle s'applique à tout
-  const matieresForClasse = (classe) => {
-    if (!classe || classe === "all") return matieres;
-    return matieres.filter((m) => !m.classes || !m.classes.length || m.classes.includes(classe));
-  };
+  const matieresForClasse = (classe) => matieresForClasseFn(matieres, classe);
   const [rechercheMatricule, setRechercheMatricule] = useState("");
   const [ensCompte, setEnsCompte] = useState(null);
   const [formC, setFormC] = useState({});
@@ -76,68 +76,23 @@ export function useEcole({
   // le comptable (front-line inscription/paiement). Ignore le verrou car
   // c'est une action de service au tuteur, pas une édition de données scolaires.
   const canCreateParent = !readOnly && !enModeArchive && peutCreerComptesParent(userRole);
-  const moy = notes.length ? (notes.reduce((s, n) => s + Number(n.note), 0) / notes.length).toFixed(1) : "—";
+  const moy = computeMoyenne(notes);
   const classesUniq = [...new Set(eleves.map((e) => e.classe))].filter(Boolean);
-  const sortAlphaEcole = (arr) => {
-    const tri = schoolInfo.triEleves || "prenom_nom";
-    return [...arr].sort((a, b) => {
-      const withClasse = tri === "classe_prenom" || tri === "classe_nom";
-      const sa = withClasse
-        ? (tri === "classe_nom" ? `${a.classe || ""} ${a.nom} ${a.prenom}` : `${a.classe || ""} ${a.prenom} ${a.nom}`)
-        : (tri === "nom_prenom" ? `${a.nom} ${a.prenom}` : `${a.prenom} ${a.nom}`);
-      const sb = withClasse
-        ? (tri === "classe_nom" ? `${b.classe || ""} ${b.nom} ${b.prenom}` : `${b.classe || ""} ${b.prenom} ${b.nom}`)
-        : (tri === "nom_prenom" ? `${b.nom} ${b.prenom}` : `${b.prenom} ${b.nom}`);
-      return sa.localeCompare(sb, "fr", { sensitivity: "base" });
-    });
-  };
+  const sortAlphaEcole = (arr) => sortAlphaEcoleFn(arr, schoolInfo.triEleves || "prenom_nom");
   const elevesFiltres = sortAlphaEcole(filtreClasse === "all" ? eleves : eleves.filter((e) => e.classe === filtreClasse));
-  // Effectif réel = nombre d'élèves dont le champ classe correspond
-  const effectifReel = (nomClasse) => eleves.filter((e) => e.classe === nomClasse && e.statut !== "Départ").length;
+  const effectifReel = (nomClasse) => effectifReelFn(eleves, nomClasse);
 
   const saveClasse = () => {
-    const row = { ...form, effectif: Number(form.effectif || 0) };
-    if (modal === "add_c") { ajC(row); }
-    else {
-      const ancienNom = classes.find((c) => c._id === form._id)?.nom;
-      modC(row);
-      if (ancienNom && ancienNom !== form.nom)
-        eleves.filter((e) => e.classe === ancienNom).forEach((e) => modE({ ...e, classe: form.nom }));
-    }
+    saveClasseAction({ form, modal, classes, eleves, ajC, modC, modE });
     setModal(null);
   };
 
   const saveEnseignant = async () => {
-    const row = { ...form };
-    const doublon = findStaffDuplicate(row, ens, {
-      excludeId: modal === "edit_ens" ? row._id : null,
-    });
-    if (doublon) {
-      toast(getStaffDuplicateMessage(doublon, { label: "cet enseignant" }), "warning");
-      return;
-    }
-
-    if (modal === "add_ens") {
-      await ajEns(row);
-    } else {
-      await modEns(row);
-    }
-
-    if (row.classeTitle) {
-      const nomEns = `${row.prenom || ""} ${row.nom || ""}`.trim();
-      const existante = classes.find((c) => c.nom === row.classeTitle);
-      if (!existante) {
-        await ajC({ nom: row.classeTitle, effectif: 0, enseignant: nomEns });
-      } else if (nomEns && existante.enseignant !== nomEns) {
-        await modC({ ...existante, enseignant: nomEns });
-      }
-    }
-
-    setModal(null);
+    const ok = await saveEnseignantAction({ form, modal, ens, classes, toast, ajEns, modEns, ajC, modC });
+    if (ok) setModal(null);
   };
 
-  const anneeBase = Number(String(anneeCourante).split("-")[0]) || new Date().getFullYear();
-  const anneesDispo = Array.from({ length: 7 }, (_, i) => `${anneeBase - i}-${anneeBase - i + 1}`);
+  const anneesDispo = computeAnneesDispo(anneeCourante);
 
   return {
     isPrimarySection, anneeCourante, anneeConsultee, setAnneeConsultee, enModeArchive,
