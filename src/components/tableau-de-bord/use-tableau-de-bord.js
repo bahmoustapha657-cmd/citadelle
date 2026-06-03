@@ -1,9 +1,15 @@
 import { useContext, useState } from "react";
-import { addDoc, collection } from "firebase/firestore";
-import { db } from "../../firebaseDb";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { useFirestore } from "../../hooks/useFirestore";
 import { C } from "../../constants";
+import { creerDemandePlan } from "./tableau-de-bord-api";
+import {
+  calcTauxPaiement,
+  computeEvenementsAVenir,
+  computeFinances,
+  computeMasseSalariale,
+  computeTendance,
+} from "./tableau-de-bord-derive";
 
 // Charge toutes les collections du dashboard, calcule les indicateurs
 // consolidés (effectifs, taux de paiement, finances, masse salariale,
@@ -42,14 +48,11 @@ export function useTableauDeBord() {
     if (!demandeForm.telephone.trim() || !demandeForm.reference.trim()) return;
     setDemandeEnvoi(true);
     try {
-      await addDoc(collection(db, "ecoles", schoolId, "demandes_plan"), {
+      await creerDemandePlan({
+        schoolId,
         ecoleNom: schoolInfo.nom,
-        planDemande: demandePlan,
-        operateur: demandeForm.operateur,
-        telephone: demandeForm.telephone.trim(),
-        reference: demandeForm.reference.trim(),
-        statut: "en_attente",
-        createdAt: Date.now(),
+        plan: demandePlan,
+        form: demandeForm,
       });
       setDemandeSucces(true);
       // Ne pas fermer le formulaire — montrer le succès à l'intérieur
@@ -69,55 +72,26 @@ export function useTableauDeBord() {
   const moisActuel = moisSalaire[moisSalaire.length - 1] || "";
 
   // Taux de paiement mensualités
-  const calcTauxPaiement = (eleves) => {
-    if (!eleves.length) return 0;
-    const mois = Object.keys((eleves[0]?.mens || {}));
-    if (!mois.length) return 0;
-    const total = eleves.length * mois.length;
-    const payes = eleves.reduce((s, e) => s + Object.values(e.mens || {}).filter((v) => v === "Payé").length, 0);
-    return total > 0 ? Math.round(payes / total * 100) : 0;
-  };
   const tauxPayC = calcTauxPaiement(elevesC);
   const tauxPayL = calcTauxPaiement(elevesL);
   const tauxPayP = calcTauxPaiement(elevesP);
   const tauxPay = calcTauxPaiement([...elevesC, ...elevesL, ...elevesP]);
 
   // Finances
-  const totalRec = recettes.reduce((s, r) => s + Number(r.montant || 0), 0);
-  const totalDep = depenses.reduce((s, d) => s + Number(d.montant || 0), 0);
-  const solde = totalRec - totalDep;
+  const { totalRec, totalDep, solde } = computeFinances(recettes, depenses);
 
   // Masse salariale mois courant
   const salMois = salaires.filter((s) => s.mois === moisActuel);
-  const masseSal = salMois.reduce((s, sal) => {
-    const baseSec = (sal.montantBrut !== undefined && sal.montantBrut !== null && Number.isFinite(Number(sal.montantBrut)))
-      ? Number(sal.montantBrut)
-      : Number(sal.vhExecute || 0) * Number(sal.primeHoraire || 0)
-        + Number(sal.cinqSem || 0) * Number(sal.primeHoraire || 0);
-    const net = baseSec
-      + Number(sal.bon || 0)
-      + Number(sal.revision || 0)
-      + Number(sal.montantForfait || 0);
-    return s + net;
-  }, 0);
+  const masseSal = computeMasseSalariale(salMois);
 
   // Événements à venir
-  const today = new Date().toISOString().slice(0, 10);
-  const evAVenir = evenements.filter((e) => e.date && e.date >= today).sort((a, b) => (a.date > b.date ? 1 : -1)).slice(0, 4);
+  const evAVenir = computeEvenementsAVenir(evenements);
 
   // Absences ce mois
   const totalAbs = absences.length + absP.length + absL.length;
 
   // Tendances mensuelles (taux paiement + absences mois par mois)
-  const tousEleves = [...elevesC, ...elevesL, ...elevesP];
-  const dataTendance = moisAnnee.map((m) => {
-    const payesMois = tousEleves.filter((e) => (e.mens || {})[m] === "Payé").length;
-    const taux = tousEleves.length ? Math.round(payesMois / tousEleves.length * 100) : 0;
-    const absencesMois = [...absences, ...absP, ...absL].filter((a) => {
-      try { return new Date(a.date).toLocaleDateString("fr-FR", { month: "long" }).toLowerCase() === m.toLowerCase(); } catch { return false; }
-    }).length;
-    return { mois: m.slice(0, 3), taux, absences: absencesMois, payes: payesMois };
-  });
+  const dataTendance = computeTendance(moisAnnee, [...elevesC, ...elevesL, ...elevesP], [...absences, ...absP, ...absL]);
 
   return {
     schoolInfo, moisAnnee, planInfo, c1, c2, enChargement,
