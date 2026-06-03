@@ -1,0 +1,24 @@
+// Appels réseau /teacher-portal pour les notes : sauvegarde et suppression.
+// Renvoient { ok, data } sans lever, pour laisser l'appelant gérer l'UI.
+import { apiFetch, getAuthHeaders } from "../../apiClient";
+
+async function postTeacherPortal(body) {
+  const headers = await getAuthHeaders({ "Content-Type": "application/json" });
+  const res = await apiFetch("/teacher-portal", {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  return { ok: res.ok && data.ok, data };
+}
+
+// Crée ou met à jour une note (création si noteId vide).
+export function saveNoteApi({ noteId, eleveId, type, periode, note }) {
+  return postTeacherPortal({ action: "save_note", noteId: noteId || "", eleveId, type, periode, note });
+}
+
+// Supprime une note.
+export function deleteNoteApi(noteId) {
+  return postTeacherPortal({ action: "delete_note", noteId });
+}
