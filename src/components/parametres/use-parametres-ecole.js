@@ -1,18 +1,24 @@
 // ══════════════════════════════════════════════════════════════
 //  Hook métier de l'écran « Paramètres de l'école »
 // ══════════════════════════════════════════════════════════════
-// Centralise tout l'état partagé (form, accueil, evaluationForms, danger…),
-// les handlers (uploads, couleurs, sauvegarde, cycle de vie) et les styles
-// partagés. La vue (ParametresEcole.jsx) ne fait que consommer ce hook.
+// Centralise l'état partagé (form, accueil, evaluationForms, danger…) et
+// orchestre les handlers (uploads, couleurs, sauvegarde, cycle de vie).
+// Les données/styles purs vivent dans ./use-parametres/parametres-config,
+// les appels réseau dans ./use-parametres/parametres-api. La vue
+// (ParametresEcole.jsx) ne fait que consommer ce hook.
 import { useContext, useEffect, useState } from "react";
-import { doc, updateDoc } from "firebase/firestore";
-import { C, setMonnaie } from "../../constants";
+import { setMonnaie } from "../../constants";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { useFirestore } from "../../hooks/useFirestore";
-import { db } from "../../firebaseDb";
-import { apiFetch, getAuthHeaders } from "../../apiClient";
 import { getEvaluationFormsConfig } from "../../evaluation-forms";
 import { extraireCouleurs } from "./extraire-couleurs";
+import {
+  buildFormInitial, buildAccueilInitial, dangerConfig, buildTabItems, inp, lbl, sec,
+} from "./use-parametres/parametres-config";
+import {
+  sauvegarderMonnaie, sauvegarderParametres, executerCycleVie,
+} from "./use-parametres/parametres-api";
+import { lireImageEnBase64 } from "./use-parametres/parametres-uploads";
 
 export function useParametresEcole({ utilisateurRole = "", onSchoolClosed = null, initialTab = null, onTabConsumed = null }) {
   const {schoolId,schoolInfo,setSchoolInfo,toast} = useContext(SchoolContext);
@@ -28,43 +34,8 @@ export function useParametresEcole({ utilisateurRole = "", onSchoolClosed = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialTab]);
-  const [form,setForm] = useState({
-    nom: schoolInfo.nom||"",
-    type: schoolInfo.type||"Groupe Scolaire Privé",
-    ville: schoolInfo.ville||"",
-    pays: schoolInfo.pays||"République de Guinée",
-    couleur1: schoolInfo.couleur1||"#0A1628",
-    couleur2: schoolInfo.couleur2||"#00C48C",
-    logo: schoolInfo.logo||"",
-    devise: schoolInfo.devise||"",
-    monnaie: schoolInfo.monnaie||"GNF",
-    ministere: schoolInfo.ministere||"",
-    ire: schoolInfo.ire||"",
-    dpe: schoolInfo.dpe||"",
-    agrement: schoolInfo.agrement||"",
-    moisDebut: schoolInfo.moisDebut||"Octobre",
-    periodicite: schoolInfo.periodicite||"trimestre",
-    // Périodicité par section : permet "Primaire trimestre / Secondaire semestre".
-    // Fallback sur le champ legacy `periodicite` pour rétrocompat.
-    periodicitePrimaire: schoolInfo.periodicitePrimaire||schoolInfo.periodicite||"trimestre",
-    periodiciteSecondaire: schoolInfo.periodiciteSecondaire||schoolInfo.periodicite||"trimestre",
-  });
-  const acc0 = schoolInfo.accueil||{};
-  const [accueil, setAccueil] = useState({
-    active: acc0.active||false,
-    slogan: acc0.slogan||"",
-    texteAccueil: acc0.texteAccueil||"",
-    bannerUrl: acc0.bannerUrl||"",
-    photos: acc0.photos||[],
-    showAnnonces: acc0.showAnnonces!==false,
-    showHonneurs: acc0.showHonneurs!==false,
-    showContact: acc0.showContact!==false,
-    telephone: acc0.telephone||"",
-    email: acc0.email||"",
-    facebook: acc0.facebook||"",
-    whatsapp: acc0.whatsapp||"",
-    adresse: acc0.adresse||"",
-  });
+  const [form,setForm] = useState(() => buildFormInitial(schoolInfo));
+  const [accueil, setAccueil] = useState(() => buildAccueilInitial(schoolInfo));
   const [formHonneur, setFormHonneur] = useState({});
   const [modalH, setModalH] = useState(null);
   const [evaluationForms, setEvaluationForms] = useState(() => getEvaluationFormsConfig(schoolInfo));
@@ -104,43 +75,20 @@ export function useParametresEcole({ utilisateurRole = "", onSchoolClosed = null
   // Le comptable n'a accès qu'au sélecteur de monnaie (rules Firestore autorisent
   // uniquement update de `monnaie` pour ce rôle — cf. firestore.rules §/ecoles).
   const isComptableSeul = utilisateurRole === "comptable";
-  const dangerConfig = {
-    deactivate: {
-      title: "Desactiver l'ecole",
-      confirmation: "DESACTIVER",
-      tone: "#b45309",
-      bg: "#fff7ed",
-      border: "#fdba74",
-      button: "#f59e0b",
-      description: "L'acces sera bloque pour tous les comptes de cette ecole jusqu'a reactivation.",
-    },
-    delete: {
-      title: "Supprimer l'ecole",
-      confirmation: "SUPPRIMER",
-      tone: "#b91c1c",
-      bg: "#fef2f2",
-      border: "#fca5a5",
-      button: "#dc2626",
-      description: "Suppression logique uniquement : les donnees sont preservees, mais l'ecole disparait de l'acces normal.",
-    },
-  };
 
   // Upload logo fichier → base64 + extraction couleurs
   const handleLogoFile = e => {
     const file = e.target.files[0];
     if(!file) return;
     if(file.size > 500*1024){ setErreur("Logo trop grand (max 500 Ko)."); return; }
-    const reader = new FileReader();
-    reader.onload = ev => {
-      const src = ev.target.result;
+    lireImageEnBase64(file).then(src => {
       setForm(p=>({...p,logo:src}));
       setApercu(src);
       setCouleursDetectees(null);
       extraireCouleurs(src, (c1, c2) => {
         if(c1) setCouleursDetectees({c1, c2});
       });
-    };
-    reader.readAsDataURL(file);
+    });
   };
 
   const appliquerCouleursDetectees = () => {
@@ -153,8 +101,7 @@ export function useParametresEcole({ utilisateurRole = "", onSchoolClosed = null
     if(isComptableSeul) {
       setChargement(true); setErreur("");
       try {
-        const monnaie = (form.monnaie||"GNF").trim().toUpperCase();
-        await updateDoc(doc(db,"ecoles",schoolId), { monnaie });
+        const monnaie = await sauvegarderMonnaie({ schoolId, monnaie: form.monnaie });
         setSchoolInfo(prev=>({...prev,monnaie}));
         setMonnaie(monnaie);
         setMsgSucces("Monnaie enregistrée.");
@@ -169,53 +116,9 @@ export function useParametresEcole({ utilisateurRole = "", onSchoolClosed = null
     if(!form.nom.trim()){setErreur("Le nom de l'école est requis.");return;}
     setChargement(true); setErreur("");
     try {
-      const data = {
-        nom: form.nom.trim(),
-        type: form.type.trim(),
-        ville: form.ville.trim(),
-        pays: form.pays.trim(),
-        couleur1: form.couleur1,
-        couleur2: form.couleur2,
-        logo: form.logo||null,
-        devise: form.devise.trim(),
-        monnaie: (form.monnaie||"GNF").trim().toUpperCase(),
-        // ministere / ire / dpe / agrement : MIGRÉS vers /ecoles/{schoolId}/config/legal
-        // (édités via le widget Conformité). Plus écrits par ce formulaire.
-        // Les valeurs Firestore existantes restent en place (updateDoc merge),
-        // utilisées par resolveLegalFields() comme fallback tant que le profil
-        // légal structuré n'est pas complet.
-        moisDebut: form.moisDebut,
-        periodicite: form.periodicite || "trimestre",
-        periodicitePrimaire: form.periodicitePrimaire || "trimestre",
-        periodiciteSecondaire: form.periodiciteSecondaire || "trimestre",
-        evaluationForms,
-        accueil: {
-          active: accueil.active,
-          slogan: accueil.slogan.trim(),
-          texteAccueil: accueil.texteAccueil.trim(),
-          bannerUrl: accueil.bannerUrl.trim(),
-          photos: accueil.photos,
-          showAnnonces: accueil.showAnnonces,
-          showHonneurs: accueil.showHonneurs,
-          showContact: accueil.showContact,
-          telephone: accueil.telephone.trim(),
-          email: accueil.email.trim(),
-          facebook: accueil.facebook.trim(),
-          whatsapp: accueil.whatsapp.trim(),
-          adresse: accueil.adresse.trim(),
-        },
-      };
-      await updateDoc(doc(db,"ecoles",schoolId), data);
+      const data = await sauvegarderParametres({ schoolId, form, accueil, evaluationForms });
       setSchoolInfo(prev=>({...prev,...data}));
       setMonnaie(data.monnaie);
-      try {
-        const headers = await getAuthHeaders({ "Content-Type": "application/json" });
-        await apiFetch("/ecole-public-sync", {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ action: "sync", schoolId }),
-        });
-      } catch { /* non-bloquant : la source privée est à jour */ }
       if(data.couleur1) document.documentElement.style.setProperty("--sc1", data.couleur1);
       if(data.couleur2) document.documentElement.style.setProperty("--sc2", data.couleur2);
       setMsgSucces("Paramètres enregistrés avec succès.");
@@ -233,41 +136,19 @@ export function useParametresEcole({ utilisateurRole = "", onSchoolClosed = null
     setErreur("");
     setMsgSucces("");
     try {
-      const headers = await getAuthHeaders({ "Content-Type": "application/json" });
-      const response = await apiFetch("/school-lifecycle", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          schoolId,
-          action: dangerAction,
-          confirmation: dangerConfirmation,
-        }),
+      const { ok, data } = await executerCycleVie({
+        schoolId, action: dangerAction, confirmation: dangerConfirmation,
       });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data.ok) {
+      if (!ok) {
         setErreur(data.error || "Action impossible pour le moment.");
         return;
       }
-
-      const nextInfo = {
-        ...schoolInfo,
-        actif: data.actif,
-        supprime: data.supprime,
-      };
-      setSchoolInfo(nextInfo);
+      setSchoolInfo({ ...schoolInfo, actif: data.actif, supprime: data.supprime });
       setDangerAction("");
       setDangerConfirmation("");
-
-      if (dangerAction === "delete") {
-        toast("Ecole supprimee.", "success");
-      } else {
-        toast("Ecole desactivee.", "success");
-      }
-
+      toast(dangerAction === "delete" ? "Ecole supprimee." : "Ecole desactivee.", "success");
       localStorage.removeItem("LC_schoolId");
-      if (typeof onSchoolClosed === "function") {
-        onSchoolClosed();
-      }
+      if (typeof onSchoolClosed === "function") onSchoolClosed();
     } catch {
       setErreur("Erreur lors de la mise a jour de l'ecole.");
     } finally {
@@ -280,11 +161,9 @@ export function useParametresEcole({ utilisateurRole = "", onSchoolClosed = null
     const files = Array.from(e.target.files);
     files.forEach(file => {
       if(file.size > 800*1024){ toast(`${file.name} trop grande (max 800 Ko).`,"warning"); return; }
-      const reader = new FileReader();
-      reader.onload = ev => {
-        setAccueil(p=>({...p, photos:[...(p.photos||[]), {url:ev.target.result, caption:""}]}));
-      };
-      reader.readAsDataURL(file);
+      lireImageEnBase64(file).then(url => {
+        setAccueil(p=>({...p, photos:[...(p.photos||[]), {url, caption:""}]}));
+      });
     });
     e.target.value = "";
   };
@@ -294,35 +173,13 @@ export function useParametresEcole({ utilisateurRole = "", onSchoolClosed = null
     const file = e.target.files[0];
     if(!file) return;
     if(file.size > 1024*1024){ setErreur("Bannière trop grande (max 1 Mo)."); return; }
-    const reader = new FileReader();
-    reader.onload = ev => setAccueil(p=>({...p, bannerUrl:ev.target.result}));
-    reader.readAsDataURL(file);
+    lireImageEnBase64(file).then(url => setAccueil(p=>({...p, bannerUrl:url})));
     e.target.value = "";
   };
 
   const resetLogo = () => { setForm(p=>({...p,logo:""})); setApercu(null); };
 
-  const inp = {
-    width:"100%",border:"1px solid #d1d5db",borderRadius:8,
-    padding:"9px 12px",fontSize:13,outline:"none",boxSizing:"border-box",
-  };
-  const lbl = {
-    display:"block",fontSize:11,fontWeight:700,color:C.blueDark,
-    textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:4,marginTop:14,
-  };
-  const sec = {
-    background:"#fff",borderRadius:14,padding:"24px 28px",
-    boxShadow:"0 2px 16px rgba(0,32,80,0.07)",marginBottom:20,
-  };
-  const tabItems = [
-    {id:"identite", label:"Identite"},
-    {id:"accueil", label:"Accueil"},
-    {id:"officiel", label:"Officiel"},
-    {id:"evaluations", label:"Evaluations"},
-    {id:"matricules", label:"Matricules"},
-    {id:"affichage", label:"Affichage"},
-    ...(canManageLifecycle ? [{id:"danger", label:"Danger"}] : []),
-  ];
+  const tabItems = buildTabItems(canManageLifecycle);
 
   return {
     schoolId, schoolInfo, toast,
