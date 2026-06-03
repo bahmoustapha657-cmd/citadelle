@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
-import { doc, getDoc, getDocFromServer } from "firebase/firestore";
 import { signInWithCustomTokenClient } from "../../firebaseAuth";
-import { db } from "../../firebaseDb";
-import { apiFetch } from "../../apiClient";
+import { ecoleLogin, fetchEtatEcole, superadminLogin } from "./connexion-api";
 
 // Logique de connexion : état du formulaire, résolution de l'école saisie
 // (lookup Firestore débounce) et appel d'authentification.
@@ -21,48 +19,20 @@ export function useConnexion({ onLogin }) {
     if (!sid || sid === "superadmin") {
       setInfoEcole(null);
       setStatutEcole("");
-      return;
+      return undefined;
     }
 
     setInfoEcole(null);
     setStatutEcole("");
 
-    const appliquerEtatEcole = (snap) => {
-      if (!snap.exists()) {
+    const timer = setTimeout(async () => {
+      try {
+        const { info, statut } = await fetchEtatEcole(sid);
+        setInfoEcole(info);
+        setStatutEcole(statut);
+      } catch {
         setInfoEcole(null);
         setStatutEcole("");
-        return;
-      }
-
-      const data = snap.data() || {};
-      if (data.supprime === true) {
-        setInfoEcole(null);
-        setStatutEcole("supprimee");
-        return;
-      }
-      if (data.actif === false) {
-        setInfoEcole(null);
-        setStatutEcole("inactive");
-        return;
-      }
-
-      setInfoEcole(data);
-      setStatutEcole("");
-    };
-
-    const timer = setTimeout(async () => {
-      const publicRef = doc(db, "ecoles_public", sid);
-      const privateRef = doc(db, "ecoles", sid);
-      try {
-        const snap = await getDocFromServer(privateRef).catch(async () => getDocFromServer(publicRef));
-        appliquerEtatEcole(snap);
-      } catch {
-        getDoc(publicRef)
-          .then(appliquerEtatEcole)
-          .catch(() => {
-            setInfoEcole(null);
-            setStatutEcole("");
-          });
       }
     }, 600);
 
@@ -85,13 +55,8 @@ export function useConnexion({ onLogin }) {
 
     try {
       if (sid === "superadmin") {
-        const reponse = await apiFetch("/superadmin-login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ login: login.trim(), mdp }),
-        });
-        const data = await reponse.json().catch(() => ({}));
-        if (!reponse.ok || !data.ok) {
+        const { ok, data } = await superadminLogin({ login, mdp });
+        if (!ok) {
           setErreur(data.error || "Identifiants superadmin incorrects.");
           return;
         }
@@ -103,17 +68,8 @@ export function useConnexion({ onLogin }) {
         return;
       }
 
-      const reponse = await apiFetch("/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          login: login.trim().toLowerCase(),
-          mdp,
-          schoolId: sid,
-        }),
-      });
-      const data = await reponse.json().catch(() => ({}));
-      if (!reponse.ok || !data.ok) {
+      const { ok, data } = await ecoleLogin({ login, mdp, schoolId: sid });
+      if (!ok) {
         setErreur(data.error || "Identifiant ou mot de passe incorrect.");
         return;
       }
