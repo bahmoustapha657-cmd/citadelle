@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { apiFetch, getAuthHeaders } from "../../apiClient";
 import { PLANS } from "../../constants";
-import { db } from "../../firebaseDb";
-import { addDoc, collection, collectionGroup, doc, getDoc, getDocs, setDoc, updateDoc } from "firebase/firestore";
-import { safeOnSnapshot } from "../../firestore-safe";
-import { LIFECYCLE_LABELS, NEW_SCHOOL_DEFAULTS } from "./constants";
+import { LIFECYCLE_LABELS } from "./constants";
+import { genSlug, buildPlanUpdate, filtrerEcoles } from "./ecoles-admin/ecoles-admin-logic";
+import {
+  chargerEcolesAvecStats, souscrireDemandes, validerDemandeApi, rejeterDemandeApi,
+  appliquerPlan, executerCycleVieApi, creerEcoleApi,
+} from "./ecoles-admin/ecoles-admin-api";
 
 // Données et handlers métier des onglets Écoles / Plans / Demandes du panel
-// super-admin : chargement des écoles + stats, demandes de plan temps réel,
-// cycle de vie des écoles, création, et gestion des abonnements.
+// super-admin. L'état et les mises à jour optimistes vivent ici ; les accès
+// Firestore/réseau sont dans ./ecoles-admin/ecoles-admin-api et les helpers
+// purs dans ./ecoles-admin/ecoles-admin-logic.
 // `setMsgSucces` sert au feedback transverse de l'orchestrateur.
 export function useEcolesAdmin(setMsgSucces) {
   const [ecoles, setEcoles] = useState([]);
@@ -32,28 +34,8 @@ export function useEcolesAdmin(setMsgSucces) {
   const chargerEcoles = async () => {
     setChargement(true);
     try {
-      const snap = await getDocs(collection(db,"ecoles"));
-      const liste = snap.docs.map(d=>({...d.data(),_id:d.id}));
+      const { liste, statsMap } = await chargerEcolesAvecStats();
       setEcoles(liste);
-      // Charger les stats en parallele
-      const statsMap = {};
-      await Promise.all(liste.map(async (e) => {
-        const sizeOf = (coll) => getDocs(collection(db,"ecoles",e._id,coll)).then(s=>s.size).catch(()=>0);
-        const [elevesP, elevesC, elevesL, comptes, ensP, ensC, ensL] = await Promise.all([
-          sizeOf("elevesPrimaire"),
-          sizeOf("elevesCollege"),
-          sizeOf("elevesLycee"),
-          sizeOf("comptes"),
-          sizeOf("ensPrimaire"),
-          sizeOf("ensCollege"),
-          sizeOf("ensLycee"),
-        ]);
-        statsMap[e._id] = {
-          eleves: elevesP + elevesC + elevesL,
-          comptes,
-          enseignants: ensP + ensC + ensL,
-        };
-      }));
       setStats(statsMap);
     } catch(err) {
       console.error(err);
@@ -62,37 +44,14 @@ export function useEcolesAdmin(setMsgSucces) {
     }
   };
 
-  const chargerDemandes = () => {
-    try {
-      const q = collectionGroup(db,"demandes_plan");
-      return safeOnSnapshot(q, snap => {
-        const liste = snap.docs
-          .map(d=>({...d.data(),_id:d.id,_schoolId:d.ref.parent.parent.id}))
-          .sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-        setDemandes(liste);
-      }, ()=>{});
-    } catch { return ()=>{}; }
-  };
-
   useEffect(() => {
     chargerEcoles();
-    const unsub = chargerDemandes();
+    const unsub = souscrireDemandes(setDemandes);
     return () => unsub && unsub();
   }, []);
 
   const validerDemande = async (demande) => {
-    const plan = demande.planDemande || "starter";
-    const update = {
-      plan, planExpiry: Date.now()+365*86400000,
-      planActivatedBy:"superadmin", planActivatedAt:Date.now(),
-    };
-    await updateDoc(doc(db,"ecoles",demande._schoolId), update);
-    await updateDoc(doc(db,"ecoles",demande._schoolId,"demandes_plan",demande._id),{statut:"validee"});
-    await addDoc(collection(db,"ecoles",demande._schoolId,"historique"),{
-      action:"Plan active",
-      details:`Plan ${PLANS[plan]?.label||plan} active par le superadmin - valable 1 an`,
-      auteur:"EduGest", date:Date.now(),
-    }).catch(()=>{});
+    const { plan, update } = await validerDemandeApi(demande);
     setDemandes(prev=>prev.map(d=>d._id===demande._id?{...d,statut:"validee"}:d));
     setEcoles(prev=>prev.map(e=>e._id===demande._schoolId?{...e,...update}:e));
     setMsgSucces(`Plan ${PLANS[plan]?.label||plan} active pour ${demande.ecoleNom}`);
@@ -100,7 +59,7 @@ export function useEcolesAdmin(setMsgSucces) {
   };
 
   const rejeterDemande = async (demande) => {
-    await updateDoc(doc(db,"ecoles",demande._schoolId,"demandes_plan",demande._id),{statut:"rejetee"});
+    await rejeterDemandeApi(demande);
     setDemandes(prev=>prev.map(d=>d._id===demande._id?{...d,statut:"rejetee"}:d));
   };
 
@@ -115,45 +74,18 @@ export function useEcolesAdmin(setMsgSucces) {
     setConfirmDowngrade(false);
     setPlanSaving(true);
     try {
-      const update = planChoix === "gratuit"
-        ? { plan:"gratuit", planExpiry:null, planActivatedBy:"superadmin", planActivatedAt:Date.now() }
-        : { plan:planChoix, planExpiry:Date.now()+planDuree*86400000, planActivatedBy:"superadmin", planActivatedAt:Date.now() };
-
-      // 1. Sauvegarde principale (bloquante)
-      await updateDoc(doc(db,"ecoles",planModal._id), update);
-      setEcoles(prev=>prev.map(e=>e._id===planModal._id?{...e,...update}:e));
-
+      const update = buildPlanUpdate(planChoix, planDuree);
       const planLabel = PLANS[planChoix]?.label ?? "Gratuit";
       const expMsg = update.planExpiry
         ? ` - expire le ${new Date(update.planExpiry).toLocaleDateString("fr-FR")}`
         : "";
 
-      // 2. Feedback immediat + fermeture differee
+      await appliquerPlan(planModal._id, update, { planLabel, expMsg });
+      setEcoles(prev=>prev.map(e=>e._id===planModal._id?{...e,...update}:e));
+
       setMsgSucces(`Plan ${planLabel} active pour ${planModal.nom}`);
       setTimeout(()=>{ setPlanModal(null);setConfirmDowngrade(false); setMsgSucces(""); }, 2500);
       planPanelRef.current?.scrollIntoView({behavior:"smooth",block:"start"});
-
-      // 3. Notification et push (best-effort, ne bloque pas)
-      addDoc(collection(db,"ecoles",planModal._id,"historique"),{
-        action: "Plan mis a jour",
-        details: `Plan ${planLabel} active par le superadmin${expMsg}`,
-        auteur: "EduGest",
-        date: Date.now(),
-      }).catch(()=>{});
-
-      getAuthHeaders({"Content-Type":"application/json"}).then(headers =>
-        apiFetch("/push",{
-          method:"POST", headers,
-          body: JSON.stringify({
-            schoolId: planModal._id,
-            cibles: ["admin","direction"],
-            titre: `Plan ${planLabel} active`,
-            corps: `Votre abonnement ${planLabel} est maintenant actif${expMsg}.`,
-            url: "/",
-          }),
-        })
-      ).catch(()=>{});
-
     } catch(err) {
       console.error("Erreur sauvegarderPlan:", err);
       setMsgSucces("Erreur lors de la sauvegarde. Verifiez votre connexion.");
@@ -176,18 +108,12 @@ export function useEcolesAdmin(setMsgSucces) {
 
     setConfirmationLoading(true);
     try {
-      const headers = await getAuthHeaders({ "Content-Type": "application/json" });
-      const response = await apiFetch("/school-lifecycle", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          schoolId: confirmation.ecole._id,
-          action: confirmation.action,
-          confirmation: config.confirmation,
-        }),
+      const { ok, data } = await executerCycleVieApi({
+        schoolId: confirmation.ecole._id,
+        action: confirmation.action,
+        confirmation: config.confirmation,
       });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data.ok) {
+      if (!ok) {
         setMsgSucces(`Erreur: ${data.error || "action impossible"}`);
         setTimeout(() => setMsgSucces(""), 5000);
         return;
@@ -211,35 +137,15 @@ export function useEcolesAdmin(setMsgSucces) {
     }
   };
 
-  const genSlug = (nom) =>
-    nom.toLowerCase().trim()
-      .normalize("NFD").replace(/[̀-ͯ]/g,"")
-      .replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,30)||"ecole";
-
   const creerEcole = async () => {
     if(!nouvelleEcole.nom.trim()||!nouvelleEcole.ville.trim()) return;
     const sid = genSlug(nouvelleEcole.nom);
-    const existing = await getDoc(doc(db,"ecoles",sid));
-    if(existing.exists()){
+    const { ok } = await creerEcoleApi(nouvelleEcole, sid);
+    if(!ok){
       setMsgSucces(`Le code ecole "${sid}" existe deja. Choisissez un nom different.`);
       setTimeout(()=>setMsgSucces(""),4000);
       return;
     }
-    await setDoc(doc(db,"ecoles",sid),{
-      ...NEW_SCHOOL_DEFAULTS,
-      nom: nouvelleEcole.nom.trim(),
-      ville: nouvelleEcole.ville.trim(),
-      pays: nouvelleEcole.pays.trim()||"Guinee",
-      createdAt: Date.now(),
-    });
-    try {
-      const headers = await getAuthHeaders({ "Content-Type": "application/json" });
-      await apiFetch("/ecole-public-sync", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ action: "sync", schoolId: sid }),
-      });
-    } catch { /* non-bloquant */ }
     setMsgSucces(`Ecole "${nouvelleEcole.nom}" creee (code: ${sid})`);
     setNouvelleEcole({nom:"",ville:"",pays:"Guinee"});
     setCreationOuverte(false);
@@ -247,11 +153,7 @@ export function useEcolesAdmin(setMsgSucces) {
     setTimeout(()=>setMsgSucces(""),4000);
   };
 
-  const ecolesFiltrees = ecoles.filter(e =>
-    e.nom?.toLowerCase().includes(recherche.toLowerCase()) ||
-    e.ville?.toLowerCase().includes(recherche.toLowerCase()) ||
-    e._id?.toLowerCase().includes(recherche.toLowerCase())
-  );
+  const ecolesFiltrees = filtrerEcoles(ecoles, recherche);
 
   return {
     ecoles, chargement, stats, recherche, setRecherche,
