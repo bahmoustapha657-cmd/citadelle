@@ -1,16 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  getDocs,
-  orderBy,
-  query,
-} from "firebase/firestore";
-import { db } from "../../firebaseDb";
-import { safeOnSnapshot } from "../../firestore-safe";
-import { PLANS } from "../../constants";
+  subscribeMessages,
+  fetchStatsLectures,
+  envoyerMessage,
+  supprimerMessageApi,
+} from "./communications-admin-api";
+import {
+  computeEcolesParPlan,
+  construireCibleSchools,
+  validerMessage,
+  messageSucces,
+  buildPreviewCible,
+} from "./communications-admin-logic";
 
 // Logique du module Communications superadmin : flux Firestore des messages,
 // calcul des statistiques de lecture, état du formulaire et envoi/suppression.
@@ -29,51 +30,22 @@ export function useCommunicationsAdmin({ ecoles, auteur }) {
   const [statsLectures, setStatsLectures] = useState({});
 
   useEffect(() => {
-    const q = query(collection(db, "superadmin_messages"), orderBy("createdAt", "desc"));
-    const unsub = safeOnSnapshot(q, (snap) => {
-      const liste = snap.docs.map((d) => ({ ...d.data(), _id: d.id }));
-      setMessages(liste);
-    });
+    const unsub = subscribeMessages(setMessages);
     return () => unsub();
   }, []);
 
   useEffect(() => {
     if (messages.length === 0) return;
     let annule = false;
-    (async () => {
-      const stats = {};
-      await Promise.all(
-        messages.map(async (m) => {
-          try {
-            const lectSnap = await getDocs(
-              collection(db, "superadmin_messages", m._id, "lectures"),
-            );
-            const ecolesUniques = new Set();
-            lectSnap.docs.forEach((d) => {
-              const data = d.data();
-              if (data?.schoolId) ecolesUniques.add(data.schoolId);
-            });
-            stats[m._id] = { lectures: lectSnap.size, ecoles: ecolesUniques.size };
-          } catch {
-            stats[m._id] = { lectures: 0, ecoles: 0 };
-          }
-        }),
-      );
+    fetchStatsLectures(messages).then((stats) => {
       if (!annule) setStatsLectures(stats);
-    })();
+    });
     return () => {
       annule = true;
     };
   }, [messages]);
 
-  const ecolesParPlan = useMemo(() => {
-    const map = {};
-    ecoles.forEach((e) => {
-      const plan = e.plan || "gratuit";
-      map[plan] = (map[plan] || 0) + 1;
-    });
-    return map;
-  }, [ecoles]);
+  const ecolesParPlan = useMemo(() => computeEcolesParPlan(ecoles), [ecoles]);
 
   const toggleRole = (id) => {
     setRolesChoisis((prev) =>
@@ -96,45 +68,25 @@ export function useCommunicationsAdmin({ ecoles, auteur }) {
     setRolesChoisis(["direction", "admin"]);
   };
 
-  const construireCibleSchools = () => {
-    if (modeCible === "toutes") return ["*"];
-    if (modeCible === "plan") {
-      return ecoles.filter((e) => (e.plan || "gratuit") === planChoisi).map((e) => e._id);
-    }
-    return schoolsChoisies;
-  };
-
   const envoyer = async () => {
     setErreur("");
-    if (!titre.trim() || titre.trim().length < 3) {
-      setErreur("Le titre doit faire au moins 3 caractères.");
-      return;
-    }
-    if (!corps.trim() || corps.trim().length < 5) {
-      setErreur("Le message doit faire au moins 5 caractères.");
-      return;
-    }
-    if (rolesChoisis.length === 0) {
-      setErreur("Choisissez au moins un rôle ciblé.");
-      return;
-    }
-    const cibleSchools = construireCibleSchools();
-    if (cibleSchools.length === 0) {
-      setErreur("Aucune école ne correspond à la cible.");
+    const cibleSchools = construireCibleSchools({ modeCible, ecoles, planChoisi, schoolsChoisies });
+    const invalide = validerMessage({ titre, corps, rolesChoisis, cibleSchools });
+    if (invalide) {
+      setErreur(invalide);
       return;
     }
     setEnvoiEnCours(true);
     try {
-      await addDoc(collection(db, "superadmin_messages"), {
+      await envoyerMessage({
         titre: titre.trim(),
         corps: corps.trim(),
         niveau,
         cibleSchools,
         cibleRoles: rolesChoisis,
         auteur,
-        createdAt: Date.now(),
       });
-      setSucces(`Message envoyé à ${cibleSchools[0] === "*" ? "toutes les écoles" : `${cibleSchools.length} école${cibleSchools.length > 1 ? "s" : ""}`}.`);
+      setSucces(messageSucces(cibleSchools));
       reinitFormulaire();
       setTimeout(() => setSucces(""), 4000);
     } catch (e) {
@@ -147,18 +99,13 @@ export function useCommunicationsAdmin({ ecoles, auteur }) {
   const supprimerMessage = async (id) => {
     if (!confirm("Supprimer ce message ? Les destinataires ne le verront plus.")) return;
     try {
-      await deleteDoc(doc(db, "superadmin_messages", id));
+      await supprimerMessageApi(id);
     } catch (e) {
       alert(`Suppression impossible : ${e?.message || "erreur"}`);
     }
   };
 
-  const previewCible =
-    modeCible === "toutes"
-      ? `Toutes les écoles (${ecoles.length})`
-      : modeCible === "plan"
-        ? `Plan ${PLANS[planChoisi]?.label || planChoisi} — ${ecolesParPlan[planChoisi] || 0} école(s)`
-        : `${schoolsChoisies.length} école(s) sélectionnée(s)`;
+  const previewCible = buildPreviewCible({ modeCible, ecoles, planChoisi, ecolesParPlan, schoolsChoisies });
 
   return {
     titre, setTitre, corps, setCorps, niveau, setNiveau,
