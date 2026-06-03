@@ -7,20 +7,10 @@ import { db } from "../../firebaseDb";
 import { toggleFraisAnnexe as toggleFraisAnnexeAction, toggleMens as toggleMensAction } from "./payment-actions";
 import { ensureClasse as ensureClasseHelper, sortAlphaEleves } from "./eleves-helpers";
 import { useComptaSalaires } from "./useComptaSalaires";
-import { findStaffDuplicate, getStaffDuplicateMessage } from "../../staff-utils";
 import { getPeriodesForSchool } from "../../period-utils";
-import {
-  getMensualiteOverview,
-  getTarifAutreForClasse,
-  getTarifBaseForClasse,
-  getTarifConfigForClasse,
-  getTarifInscriptionForClasse,
-  getTarifInscriptionForEleve as getTarifInscriptionForEleveValue,
-  getTarifMensuelForClasse,
-  getTarifReinscriptionForClasse,
-  getTarifRevisionForClasse,
-} from "../../mensualite-utils";
-import { findSalaryDuplicate } from "../../salary-utils";
+import { getMensualiteOverview } from "../../mensualite-utils";
+import { buildTarifGetters, buildTarifData } from "./compta-tarifs";
+import { saveSalaireAction, savePersonnelAction } from "./compta-saves";
 
 // Toute la logique du module Comptabilité : chargement Firestore de
 // toutes les collections (filtrées par année consultée), permissions,
@@ -94,23 +84,13 @@ export function useComptabilite({ readOnly, annee, userRole, verrouOuvert = fals
   const classesU = [...new Set(eleves.map((e) => e.classe))].filter(Boolean);
   const tousElevesScolarite = [...elevesC, ...elevesL, ...elevesP];
 
-  const getTarifConfig = (classe) => getTarifConfigForClasse(tarifsClasses, classe);
-  const getTarif = (classe) => getTarifMensuelForClasse(tarifsClasses, classe);
-  const getTarifBase = (classe) => getTarifBaseForClasse(tarifsClasses, classe);
-  const getTarifRevision = (classe) => getTarifRevisionForClasse(tarifsClasses, classe);
-  const getTarifAutre = (classe) => getTarifAutreForClasse(tarifsClasses, classe);
-  const getTarifIns = (classe) => getTarifInscriptionForClasse(tarifsClasses, classe);
-  const getTarifReinsc = (classe) => getTarifReinscriptionForClasse(tarifsClasses, classe);
-  const getTarifInscriptionEleve = (eleve = {}) => getTarifInscriptionForEleveValue(eleve, tarifsClasses);
+  const {
+    getTarifConfig, getTarif, getTarifBase, getTarifRevision, getTarifAutre,
+    getTarifIns, getTarifReinsc, getTarifInscriptionEleve,
+  } = buildTarifGetters(tarifsClasses);
   const saveTarif = async (classe, montant, inscription = null, reinscription = null, revision = null, autre = null) => {
     const existing = getTarifConfig(classe);
-    const data = {
-      montant: Number(montant) || 0,
-      ...(inscription !== null ? { inscription: Number(inscription) || 0 } : {}),
-      ...(reinscription !== null ? { reinscription: Number(reinscription) || 0 } : {}),
-      ...(revision !== null ? { revision: Number(revision) || 0 } : {}),
-      ...(autre !== null ? { autre: Number(autre) || 0 } : {}),
-    };
+    const data = buildTarifData(montant, { inscription, reinscription, revision, autre });
     if (existing) await modTarif({ _id: existing._id, ...data });
     else await ajTarif({ classe, ...data });
   };
@@ -133,35 +113,23 @@ export function useComptabilite({ readOnly, annee, userRole, verrouOuvert = fals
     setModal(null);
   };
 
-  // Sauvegarde d'une fiche de paie avec garde anti-doublon
-  // (nom + mois + section) — évite 2 bulletins pour le même agent
-  // le même mois via le formulaire manuel.
   const saveSalaire = async (extra = {}) => {
     if (readOnly) return;
     const r = { ...form, ...extra };
-    const isEdit = modal === "edit_s";
-    const doublon = findSalaryDuplicate(r, salaires, { excludeId: isEdit ? r._id : null });
-    if (doublon) {
-      toast(`Une fiche existe déjà pour ${doublon.nom} en ${doublon.mois} (${doublon.section}).`, "warning");
-      return;
-    }
-    if (isEdit) await modS(r);
-    else await ajS({ ...r, annee: annee || anneeConsultee });
-    setModal(null);
+    const ok = await saveSalaireAction(r, {
+      isEdit: modal === "edit_s", salaires, toast, modS, ajS,
+      anneeRecord: annee || anneeConsultee,
+    });
+    if (ok) setModal(null);
   };
 
   const savePersonnel = async () => {
     if (readOnly) return;
     const r = { ...form, salaireBase: Number(form.salaireBase || 0) };
-    const doublon = findStaffDuplicate(r, personnel, {
-      excludeId: modal === "edit_p" ? r._id : null,
+    const ok = await savePersonnelAction(r, {
+      isEdit: modal === "edit_p", personnel, toast, ajPers, modPers,
     });
-    if (doublon) {
-      toast(getStaffDuplicateMessage(doublon, { label: "ce membre du personnel" }), "warning");
-      return;
-    }
-    if (modal === "add_p") await ajPers(r); else await modPers(r);
-    setModal(null);
+    if (ok) setModal(null);
   };
 
   // Domaine paie : état dérivé (filtrage mois/section, totaux) + actions
