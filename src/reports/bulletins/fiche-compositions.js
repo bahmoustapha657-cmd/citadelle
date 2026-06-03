@@ -12,41 +12,20 @@ import {
   tr,
   watermarkHtml,
 } from "../print-helpers.js";
+import { apprecComposition, computeFicheResultats } from "./fiche-compositions-data.js";
 
 export const imprimerFicheCompositions = (classe, periode, notes, matieres, eleves, maxNote=20, schoolInfo={}) => {
   const mi = maxNote / 2;
-  const apprec = (v) => Number(v)>=(maxNote*0.8)?"Très Bien":Number(v)>=(maxNote*0.7)?"Bien":Number(v)>=(maxNote*0.6)?"Assez Bien":Number(v)>=mi?"Passable":"Insuffisant";
+  const apprec = (v) => apprecComposition(v, maxNote);
   const mentionColor = (m) => m==="Très Bien"?"#166534":m==="Bien"?"#1e40af":m==="Assez Bien"?"#92400e":m==="Passable"?"#0369a1":"#991b1b";
   const mentionBg    = (m) => m==="Très Bien"?"#dcfce7":m==="Bien"?"#dbeafe":m==="Assez Bien"?"#fef3c7":m==="Passable"?"#e0f2fe":"#fee2e2";
 
-  const elevesClasse = classe==="all" ? eleves : eleves.filter(e=>e.classe===classe);
-
-  // Calcul des résultats par élève (notes de type Composition)
-  const resultats = elevesClasse.map(e => {
-    const ne = notes.filter(n=>n.eleveId===e._id && n.periode===periode && n.type==="Composition");
-    let tot=0, totC=0;
-    const notesMat = matieres.map(mat => {
-      const nm = ne.filter(n=>n.matiere===mat.nom);
-      const moy = nm.length ? nm.reduce((s,n)=>s+Number(n.note),0)/nm.length : null;
-      const coef = mat.coefficient||1;
-      totC+=coef; // toutes les matières comptent au dénominateur
-      if(moy!==null){ tot+=moy*coef; }
-      return {nom:mat.nom, coef, moy};
-    });
-    const moyGene = totC>0 ? tot/totC : null;
-    return {eleve:e, notesMat, moyGene};
-  }).filter(r=>r.moyGene!==null).sort((a,b)=>b.moyGene-a.moyGene);
+  const { resultats, stats } = computeFicheResultats({ classe, periode, notes, matieres, eleves, maxNote });
 
   if(resultats.length===0){ alert("Aucun résultat de composition trouvé pour cette sélection."); return; }
 
   // Stats récapitulatives
-  const nb = resultats.length;
-  const moyClasse = resultats.reduce((s,r)=>s+r.moyGene,0)/nb;
-  const plus_haute = Math.max(...resultats.map(r=>r.moyGene));
-  const plus_basse = Math.min(...resultats.map(r=>r.moyGene));
-  const admis = resultats.filter(r=>r.moyGene>=mi).length;
-  const dist = {"Très Bien":0,"Bien":0,"Assez Bien":0,"Passable":0,"Insuffisant":0};
-  resultats.forEach(r=>{ dist[apprec(r.moyGene.toFixed(2))]++; });
+  const { nb, moyClasse, plus_haute, plus_basse, admis, dist } = stats;
 
   // Colonnes matières
   const thMat = matieres.map(m=>`<th style="text-align:center;font-size:10px;padding:6px 4px">${m.nom}<br/><small style="font-weight:normal">Coef ${m.coefficient||1}</small></th>`).join("");
