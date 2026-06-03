@@ -10,7 +10,7 @@ import {
   toItem,
   uniqueById,
 } from "../portal-data.js";
-import { applyCors, normalizeSchoolId, requireSession } from "../security.js";
+import { applyCors, isSchoolReadOnly, normalizeSchoolId, requireSession } from "../security.js";
 import { captureServerError, withObservability } from "../observability.js";
 
 function getTeacherSection(profile = {}) {
@@ -177,6 +177,15 @@ async function handler(req, res) {
   if (NOTE_ACTIONS.includes(action) && section !== "primaire" && !session.profile.matiere) {
     return res.status(403).json({
       error: "Profil enseignant incomplet : la matière n'est pas définie. Contactez la direction.",
+    });
+  }
+
+  // Abonnement expire (apres grace) => etablissement en lecture seule : toute
+  // ecriture passant par l'Admin SDK (qui contourne firestore.rules) est refusee
+  // ici aussi. Cf. isSchoolReadOnly / abonnementActif (firestore.rules).
+  if (await isSchoolReadOnly(db, schoolId)) {
+    return res.status(403).json({
+      error: "Abonnement expiré : l'établissement est en lecture seule. Contactez la direction.",
     });
   }
 

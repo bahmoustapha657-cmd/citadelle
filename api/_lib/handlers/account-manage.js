@@ -16,12 +16,28 @@ import { buildSessionAccountPayload, buildUserProfilePayload } from "../user-pro
 import {
   applyCors,
   isAllowedSchoolRole,
+  isSchoolReadOnly,
   isValidLogin,
   isValidSchoolId,
   normalizeLogin,
   normalizeSchoolId,
   requireSession,
 } from "../security.js";
+
+// Abonnement expire (apres grace) => administration de l'ecole figee, en
+// miroir de firestore.rules / isSchoolReadOnly. Superadmin n'est jamais bloque.
+// On laisse passer self_password_sync (changement de son propre mot de passe,
+// necessaire au flux de premiere connexion).
+async function refuseSiAbonnementExpire(db, schoolId, session, res) {
+  if (session?.isSuperadmin || session?.profile?.role === "superadmin") return false;
+  if (await isSchoolReadOnly(db, schoolId)) {
+    res.status(403).json({
+      error: "Abonnement expiré : l'établissement est en lecture seule. Contactez la direction.",
+    });
+    return true;
+  }
+  return false;
+}
 
 function buildEmail(login, schoolId) {
   return `${login}.${schoolId}@edugest.app`;
@@ -267,6 +283,7 @@ async function handler(req, res) {
       allowSuperadmin: true,
     });
     if (!session) return;
+    if (await refuseSiAbonnementExpire(db, normalizedSchoolId, session, res)) return;
 
     if (!canManageTargetRole(session, role, sanitizeAccountPayload({ ...req.body, role, login: normalizedLogin }))) {
       return res.status(403).json({ error: "Droits insuffisants pour creer ce compte." });
@@ -406,6 +423,7 @@ async function handler(req, res) {
       allowSuperadmin: true,
     });
     if (!session) return;
+    if (await refuseSiAbonnementExpire(db, normalizedSchoolId, session, res)) return;
 
     try {
       const normalizedRoleSettings = getRoleSettingsMap(req.body?.roleSettings || {});
@@ -593,6 +611,7 @@ async function handler(req, res) {
       allowSuperadmin: true,
     });
     if (!session) return;
+    if (await refuseSiAbonnementExpire(db, normalizedSchoolId, session, res)) return;
 
     try {
       const account = await findAccount({ db, schoolId: normalizedSchoolId, accountId });

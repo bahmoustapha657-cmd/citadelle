@@ -71,6 +71,14 @@ after(async () => {
 
 beforeEach(async () => {
   await testEnv.clearFirestore();
+  // La rule abonnementActif lit ecoles/{schoolId} via get() pour figer les
+  // ecritures quand l'abonnement est expire. En prod ce doc existe toujours ;
+  // on le seede donc ici pour que get() ne refuse pas les ecritures legitimes.
+  // Sans plan/planExpiry => abonnement actif (cf. abonnementActifData).
+  await seed(async (db) => {
+    await setDoc(doc(db, `ecoles/${SCHOOL_A}`), { nom: "École A" });
+    await setDoc(doc(db, `ecoles/${SCHOOL_B}`), { nom: "École B" });
+  });
 });
 
 function asUser({ uid = "u1", schoolId, role, adminReadModules, adminWriteModules }) {
@@ -1350,6 +1358,85 @@ describe("17. Conformité légale (/config/legal)", () => {
     await assertSucceeds(getDoc(doc(db, LEGAL_PATH_B)));
     await assertSucceeds(
       updateDoc(doc(db, LEGAL_PATH_A), { "arreteOuverture.numero": "ADMIN-OVERRIDE" }),
+    );
+  });
+});
+
+// ───────────────────────────────────────────────────────────
+// 18. Abonnement expiré → établissement en lecture seule
+//     (rule abonnementActif, miroir serveur isSchoolReadOnly et
+//      client computePlanInfo). Grâce de 3 jours = 259200000 ms.
+//     Renouvellement (demandes_plan) et superadmin restent ouverts.
+// ───────────────────────────────────────────────────────────
+describe("18. Abonnement expiré → lecture seule", () => {
+  const JOUR = 86400000;
+  async function seedPlan(fields) {
+    await seed(async (db) => {
+      await setDoc(doc(db, `ecoles/${SCHOOL_A}`), { nom: "École A", ...fields });
+    });
+  }
+
+  test("plan payant expiré (après grâce) : college NE PEUT PAS écrire notesCollege", async () => {
+    await seedPlan({ plan: "premium", planExpiry: Date.now() - 10 * JOUR });
+    const db = asUser({ schoolId: SCHOOL_A, role: "college" });
+    await assertFails(
+      setDoc(doc(db, `ecoles/${SCHOOL_A}/notesCollege/n1`), { val: 12 }),
+    );
+  });
+
+  test("plan payant expiré : direction NE PEUT PAS créer un événement (catch-all)", async () => {
+    await seedPlan({ plan: "premium", planExpiry: Date.now() - 10 * JOUR });
+    const db = asUser({ schoolId: SCHOOL_A, role: "direction" });
+    await assertFails(
+      setDoc(doc(db, `ecoles/${SCHOOL_A}/evenements/e1`), { titre: "rentree" }),
+    );
+  });
+
+  test("plan payant expiré : direction NE PEUT PAS modifier l'école (sauf champs plan superadmin)", async () => {
+    await seedPlan({ plan: "premium", planExpiry: Date.now() - 10 * JOUR });
+    const db = asUser({ schoolId: SCHOOL_A, role: "direction" });
+    await assertFails(
+      updateDoc(doc(db, `ecoles/${SCHOOL_A}`), { nom: "École Alpha" }),
+    );
+  });
+
+  test("plan payant expiré : direction PEUT toujours demander un renouvellement (demandes_plan)", async () => {
+    await seedPlan({ plan: "premium", planExpiry: Date.now() - 10 * JOUR });
+    const db = asUser({ schoolId: SCHOOL_A, role: "direction" });
+    await assertSucceeds(
+      setDoc(doc(db, `ecoles/${SCHOOL_A}/demandes_plan/d1`), { plan: "premium" }),
+    );
+  });
+
+  test("plan payant expiré : superadmin écrit toujours (override)", async () => {
+    await seedPlan({ plan: "premium", planExpiry: Date.now() - 10 * JOUR });
+    const db = asUser({ schoolId: "central", role: "superadmin" });
+    await assertSucceeds(
+      setDoc(doc(db, `ecoles/${SCHOOL_A}/notesCollege/n1`), { val: 12 }),
+    );
+  });
+
+  test("période de grâce (expiré il y a 1 jour, < 3 jours) : college PEUT encore écrire", async () => {
+    await seedPlan({ plan: "premium", planExpiry: Date.now() - 1 * JOUR });
+    const db = asUser({ schoolId: SCHOOL_A, role: "college" });
+    await assertSucceeds(
+      setDoc(doc(db, `ecoles/${SCHOOL_A}/notesCollege/n1`), { val: 12 }),
+    );
+  });
+
+  test("plan payant non expiré : college écrit normalement", async () => {
+    await seedPlan({ plan: "premium", planExpiry: Date.now() + 30 * JOUR });
+    const db = asUser({ schoolId: SCHOOL_A, role: "college" });
+    await assertSucceeds(
+      setDoc(doc(db, `ecoles/${SCHOOL_A}/notesCollege/n1`), { val: 12 }),
+    );
+  });
+
+  test("plan gratuit avec planExpiry passé : jamais expiré, écriture autorisée", async () => {
+    await seedPlan({ plan: "gratuit", planExpiry: Date.now() - 100 * JOUR });
+    const db = asUser({ schoolId: SCHOOL_A, role: "college" });
+    await assertSucceeds(
+      setDoc(doc(db, `ecoles/${SCHOOL_A}/notesCollege/n1`), { val: 12 }),
     );
   });
 });

@@ -1,7 +1,7 @@
-// Calcul pur du plan d'abonnement (freemium + période de grâce 7 jours).
+// Calcul pur du plan d'abonnement (freemium + période de grâce 3 jours).
 import { PLANS } from "../../constants";
 
-const GRACE_MS = 7 * 86400000; // 7 jours de grâce après expiration
+const GRACE_MS = 3 * 86400000; // 3 jours de grâce après expiration
 
 export function computePlanInfo({ schoolInfoState, nowTs, totalElevesActifs, t }) {
   const planCourant = schoolInfoState.plan || "gratuit";

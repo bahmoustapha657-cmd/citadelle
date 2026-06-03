@@ -6,6 +6,23 @@ service cloud.firestore {
       return ["plan", "planExpiry", "planActivatedBy", "planActivatedAt", "lastSuccessfulPaymentId"];
     }
 
+    // Abonnement actif = plan gratuit (jamais expire) OU plan payant non encore
+    // expire (apres 3 jours de grace = 259200000 ms). Quand l'abonnement est
+    // expire, tout l'etablissement bascule en lecture seule cote regles, en
+    // miroir de computePlanInfo (app-shell-plan.js, GRACE_MS = 3 jours).
+    // Le renouvellement reste possible : demandes_plan (create direction/comptable)
+    // et la mutation des planFields par superadmin ne sont pas gatees ici.
+    function abonnementActifData(data) {
+      return !(data.get("plan", "gratuit") != "gratuit"
+        && data.get("planExpiry", 0) is int
+        && data.get("planExpiry", 0) > 0
+        && request.time.toMillis() > data.get("planExpiry", 0) + 259200000);
+    }
+
+    function abonnementActif(schoolId) {
+      return abonnementActifData(get(/databases/$(database)/documents/ecoles/$(schoolId)).data);
+    }
+
     function tokenRole() {
       return request.auth != null && request.auth.token.role is string
         ? request.auth.token.role
@@ -199,10 +216,12 @@ service cloud.firestore {
       allow update: if aUnRole(["superadmin"])
                    || (appartientEcole(schoolId)
                        && aUnRole(["direction"])
-                       && !request.resource.data.diff(resource.data).affectedKeys().hasAny(planFields()))
+                       && !request.resource.data.diff(resource.data).affectedKeys().hasAny(planFields())
+                       && abonnementActifData(resource.data))
                    || (appartientEcole(schoolId)
                        && aUnRole(["comptable"])
-                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["monnaie"]));
+                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["monnaie"])
+                       && abonnementActifData(resource.data));
 
       allow delete: if false;
 
@@ -215,7 +234,7 @@ service cloud.firestore {
       // c'est un document d'identité juridique, pas un module métier).
       match /config/{docId} {
         allow read: if appartientEcole(schoolId) || aUnRole(["superadmin"]);
-        allow write: if (appartientEcole(schoolId) && aUnRole(["direction", "admin"]))
+        allow write: if (appartientEcole(schoolId) && aUnRole(["direction", "admin"]) && abonnementActif(schoolId))
                       || aUnRole(["superadmin"]);
       }
 
@@ -261,13 +280,13 @@ service cloud.firestore {
 
       match /annonces/{docId} {
         allow read: if true;
-        allow write: if (appartientEcole(schoolId) && aUnRole(["direction", "primaire", "college"]))
+        allow write: if (appartientEcole(schoolId) && aUnRole(["direction", "primaire", "college"]) && abonnementActif(schoolId))
                       || aUnRole(["superadmin"]);
       }
 
       match /honneurs/{docId} {
         allow read: if true;
-        allow write: if (appartientEcole(schoolId) && aUnRole(["direction", "primaire", "college"]))
+        allow write: if (appartientEcole(schoolId) && aUnRole(["direction", "primaire", "college"]) && abonnementActif(schoolId))
                       || aUnRole(["superadmin"]);
       }
 
@@ -276,11 +295,13 @@ service cloud.firestore {
                         && (aUnRole(backOfficeRolesSansAdmin()) || adminPeutLireModule("messages")))
                      || aUnRole(["superadmin"]);
         allow create: if ((appartientEcole(schoolId)
-                            && (aUnRole(backOfficeWriteRolesSansAdmin()) || adminPeutEcrireModule("messages")))
+                            && (aUnRole(backOfficeWriteRolesSansAdmin()) || adminPeutEcrireModule("messages"))
+                            && abonnementActif(schoolId))
                           || messageParentValide(schoolId)
                           || aUnRole(["superadmin"]));
         allow update, delete: if (appartientEcole(schoolId)
-                                   && (aUnRole(backOfficeWriteRolesSansAdmin()) || adminPeutEcrireModule("messages")))
+                                   && (aUnRole(backOfficeWriteRolesSansAdmin()) || adminPeutEcrireModule("messages"))
+                                   && abonnementActif(schoolId))
                                || aUnRole(["superadmin"]);
       }
 
@@ -313,7 +334,8 @@ service cloud.firestore {
                         && (aUnRole(pedagogieRolesSansAdmin("college")) || adminPeutLireModule("secondaire")))
                      || aUnRole(["superadmin"]);
         allow write: if (appartientEcole(schoolId)
-                        && (aUnRole(pedagogieWriteRolesSansAdmin("college")) || adminPeutEcrireModule("secondaire")))
+                        && (aUnRole(pedagogieWriteRolesSansAdmin("college")) || adminPeutEcrireModule("secondaire"))
+                        && abonnementActif(schoolId))
                       || aUnRole(["superadmin"]);
       }
 
@@ -322,7 +344,8 @@ service cloud.firestore {
                         && (aUnRole(pedagogieRolesSansAdmin("primaire")) || adminPeutLireModule("primaire")))
                      || aUnRole(["superadmin"]);
         allow write: if (appartientEcole(schoolId)
-                        && (aUnRole(pedagogieWriteRolesSansAdmin("primaire")) || adminPeutEcrireModule("primaire")))
+                        && (aUnRole(pedagogieWriteRolesSansAdmin("primaire")) || adminPeutEcrireModule("primaire"))
+                        && abonnementActif(schoolId))
                       || aUnRole(["superadmin"]);
       }
 
@@ -331,7 +354,8 @@ service cloud.firestore {
                         && (aUnRole(pedagogieRolesSansAdmin("college")) || adminPeutLireModule("secondaire")))
                      || aUnRole(["superadmin"]);
         allow write: if (appartientEcole(schoolId)
-                        && (aUnRole(pedagogieWriteRolesSansAdmin("college")) || adminPeutEcrireModule("secondaire")))
+                        && (aUnRole(pedagogieWriteRolesSansAdmin("college")) || adminPeutEcrireModule("secondaire"))
+                        && abonnementActif(schoolId))
                       || aUnRole(["superadmin"]);
       }
 
@@ -340,7 +364,8 @@ service cloud.firestore {
                         && (aUnRole(pedagogieRolesSansAdmin("college")) || adminPeutLireModule("secondaire")))
                      || aUnRole(["superadmin"]);
         allow write: if (appartientEcole(schoolId)
-                        && (aUnRole(pedagogieWriteRolesSansAdmin("college")) || adminPeutEcrireModule("secondaire")))
+                        && (aUnRole(pedagogieWriteRolesSansAdmin("college")) || adminPeutEcrireModule("secondaire"))
+                        && abonnementActif(schoolId))
                       || aUnRole(["superadmin"]);
       }
 
@@ -349,7 +374,8 @@ service cloud.firestore {
                         && (aUnRole(pedagogieRolesSansAdmin("primaire")) || adminPeutLireModule("primaire")))
                      || aUnRole(["superadmin"]);
         allow write: if (appartientEcole(schoolId)
-                        && (aUnRole(pedagogieWriteRolesSansAdmin("primaire")) || adminPeutEcrireModule("primaire")))
+                        && (aUnRole(pedagogieWriteRolesSansAdmin("primaire")) || adminPeutEcrireModule("primaire"))
+                        && abonnementActif(schoolId))
                       || aUnRole(["superadmin"]);
       }
 
@@ -358,7 +384,8 @@ service cloud.firestore {
                         && (aUnRole(pedagogieRolesSansAdmin("college")) || adminPeutLireModule("secondaire")))
                      || aUnRole(["superadmin"]);
         allow write: if (appartientEcole(schoolId)
-                        && (aUnRole(pedagogieWriteRolesSansAdmin("college")) || adminPeutEcrireModule("secondaire")))
+                        && (aUnRole(pedagogieWriteRolesSansAdmin("college")) || adminPeutEcrireModule("secondaire"))
+                        && abonnementActif(schoolId))
                       || aUnRole(["superadmin"]);
       }
 
@@ -367,7 +394,8 @@ service cloud.firestore {
                         && (aUnRole(pedagogieRolesSansAdmin("primaire")) || adminPeutLireModule("primaire")))
                      || aUnRole(["superadmin"]);
         allow write: if (appartientEcole(schoolId)
-                        && (aUnRole(pedagogieWriteRolesSansAdmin("primaire")) || adminPeutEcrireModule("primaire")))
+                        && (aUnRole(pedagogieWriteRolesSansAdmin("primaire")) || adminPeutEcrireModule("primaire"))
+                        && abonnementActif(schoolId))
                       || aUnRole(["superadmin"]);
       }
 
@@ -376,7 +404,8 @@ service cloud.firestore {
                         && (aUnRole(pedagogieRolesSansAdmin("college")) || adminPeutLireModule("secondaire")))
                      || aUnRole(["superadmin"]);
         allow write: if (appartientEcole(schoolId)
-                        && (aUnRole(pedagogieWriteRolesSansAdmin("college")) || adminPeutEcrireModule("secondaire")))
+                        && (aUnRole(pedagogieWriteRolesSansAdmin("college")) || adminPeutEcrireModule("secondaire"))
+                        && abonnementActif(schoolId))
                       || aUnRole(["superadmin"]);
       }
 
@@ -385,7 +414,8 @@ service cloud.firestore {
                         && (aUnRole(pedagogieRolesSansAdmin("college")) || adminPeutLireModule("secondaire")))
                      || aUnRole(["superadmin"]);
         allow write: if (appartientEcole(schoolId)
-                        && (aUnRole(pedagogieWriteRolesSansAdmin("college")) || adminPeutEcrireModule("secondaire")))
+                        && (aUnRole(pedagogieWriteRolesSansAdmin("college")) || adminPeutEcrireModule("secondaire"))
+                        && abonnementActif(schoolId))
                       || aUnRole(["superadmin"]);
       }
 
@@ -411,7 +441,8 @@ service cloud.firestore {
                                ? aUnRole(["comptable"])
                                : aUnRole(backOfficeWriteRolesSansAdmin()))
                              || adminPeutEcrireCollection(collection)
-                           ))
+                           )
+                           && abonnementActif(schoolId))
                          || aUnRole(["superadmin"]));
       }
     }
