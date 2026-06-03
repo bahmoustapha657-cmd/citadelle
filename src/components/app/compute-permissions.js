@@ -11,7 +11,12 @@ import { C, MODULES, getModulesForRole, getRoleLabelForSchool } from "../../cons
 //                     "Modules visibles" + case ✏️). Aligné sur le
 //                     modèle granulaire firestore.rules + JWT claims.
 //  - autres rôles   → false (les rules Firestore restreignent leur périmètre métier)
-export function computeAppPermissions({ utilisateur, schoolInfo, page }) {
+//
+// Abonnement expiré (planEstExpire, après la période de grâce) → tout
+// l'établissement bascule en lecture seule, quel que soit le rôle (sauf
+// superadmin). Le renouvellement reste possible depuis le tableau de bord,
+// qui n'est pas soumis à readOnly.
+export function computeAppPermissions({ utilisateur, schoolInfo, page, planInfo }) {
   const modulesActifsIds = getModulesForRole(utilisateur.role, schoolInfo);
   const modulesVisibles = MODULES.filter((module) => modulesActifsIds.includes(module.id));
   const role = utilisateur.role;
@@ -22,9 +27,12 @@ export function computeAppPermissions({ utilisateur, schoolInfo, page }) {
   const adminCanWriteCurrentPage = isAdmin
     && (schoolInfo?.roleSettings?.admin?.writeModules || []).includes(page);
   const directionReadOnlyCurrentPage = isDirection && page === "compta";
-  const readOnly = (isAdmin && !adminCanWriteCurrentPage) || directionReadOnlyCurrentPage;
+  const abonnementExpire = role !== "superadmin" && !!planInfo?.planEstExpire;
+  const readOnly = abonnementExpire
+    || (isAdmin && !adminCanWriteCurrentPage)
+    || directionReadOnlyCurrentPage;
   const couleur2 = schoolInfo.couleur2 || C.green;
   const utilisateurLabel = getRoleLabelForSchool(utilisateur.role, schoolInfo) || utilisateur.label || utilisateur.role;
 
-  return { modulesVisibles, role, estAdmin, readOnly, couleur2, utilisateurLabel };
+  return { modulesVisibles, role, estAdmin, readOnly, abonnementExpire, couleur2, utilisateurLabel };
 }

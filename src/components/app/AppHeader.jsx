@@ -7,7 +7,7 @@ import { NotificationsMenu } from "./header/NotificationsMenu";
 import { ProfilMenu } from "./header/ProfilMenu";
 
 export function AppHeader({
-  isMobile, setSidebarOuvert, modulesVisibles, page, readOnly, t,
+  isMobile, setSidebarOuvert, modulesVisibles, page, readOnly, abonnementExpire, t,
   estHorsLigne, planInfo, utilisateur, utilisateurLabel, schoolInfo,
   setRechercheOuverte, modeSombre, setModeSombre,
   notifOuvert, setNotifOuvert, notifNonLues, setNotifNonLues, notifListe, nowTs,
@@ -23,7 +23,9 @@ export function AppHeader({
         <span style={{fontSize:14,fontWeight:800,color:C.blueDark,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",display:"block"}}>
           {modulesVisibles.find(m=>m.id===page)?.icon} {(()=>{const m=modulesVisibles.find(m=>m.id===page);return m?moduleLabel(m,t):"";})()}
         </span>
-        {readOnly&&!isMobile&&<span style={{marginInlineStart:10,fontSize:11,color:"#d97706",fontWeight:700,background:"#fef3e0",padding:"2px 8px",borderRadius:10}}>👁️ {t("common.readOnly")}</span>}
+        {readOnly&&!isMobile&&(abonnementExpire
+          ? <span style={{marginInlineStart:10,fontSize:11,color:"#b91c1c",fontWeight:700,background:"#fee2e2",padding:"2px 8px",borderRadius:10}}>🔒 {t("common.subscriptionExpiredReadOnly")}</span>
+          : <span style={{marginInlineStart:10,fontSize:11,color:"#d97706",fontWeight:700,background:"#fef3e0",padding:"2px 8px",borderRadius:10}}>👁️ {t("common.readOnly")}</span>)}
       </div>
       <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
         {estHorsLigne&&(

@@ -46,7 +46,7 @@ export function AppShell(p) {
         <main style={{ flex: 1, marginInlineStart: p.isMobile ? 0 : 228, minWidth: 0, display: "flex", flexDirection: "column", height: "100dvh", overflow: "hidden" }}>
           <AppHeader
             isMobile={p.isMobile} setSidebarOuvert={p.setSidebarOuvert}
-            modulesVisibles={p.modulesVisibles} page={p.page} readOnly={p.readOnly} t={p.t}
+            modulesVisibles={p.modulesVisibles} page={p.page} readOnly={p.readOnly} abonnementExpire={p.abonnementExpire} t={p.t}
             estHorsLigne={p.estHorsLigne} planInfo={p.planInfo}
             utilisateur={p.utilisateur} utilisateurLabel={p.utilisateurLabel} schoolInfo={p.schoolInfo}
             setRechercheOuverte={p.setRechercheOuverte} modeSombre={p.modeSombre} setModeSombre={p.setModeSombre}

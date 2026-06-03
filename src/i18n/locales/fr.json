@@ -38,6 +38,7 @@
     "yearViewed": "Année consultée",
     "current": "courante",
     "readOnly": "Lecture seule",
+    "subscriptionExpiredReadOnly": "Abonnement expiré · lecture seule",
     "archive": "Archive",
     "template": "Modèle"
   },

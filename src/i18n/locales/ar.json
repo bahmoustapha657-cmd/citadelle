@@ -38,6 +38,7 @@
     "yearViewed": "السنة المعروضة",
     "current": "الحالية",
     "readOnly": "للقراءة فقط",
+    "subscriptionExpiredReadOnly": "انتهى الاشتراك · للقراءة فقط",
     "archive": "أرشيف",
     "template": "نموذج"
   },
