@@ -1,6 +1,5 @@
 import { useContext, useEffect, useMemo, useState } from "react";
 import { SchoolContext } from "../../contexts/SchoolContext";
-import { apiFetch, getAuthHeaders } from "../../apiClient";
 import { C } from "../../constants";
 import { getPeriodesForSection } from "../../period-utils";
 import { getActiveNoteForms } from "../../evaluation-forms";
@@ -15,6 +14,14 @@ import {
   enregistrerIncident as enregistrerIncidentAction,
   supprimerIncident as supprimerIncidentAction,
 } from "./incidents-actions";
+import { fetchTeacherPortal } from "./portail-api";
+import {
+  formatEmploiHeure,
+  buildFormNoteCreation,
+  buildFormNoteEdition,
+  buildFormIncidentCreation,
+  buildFormIncidentEdition,
+} from "./portail-forms";
 
 // Toute la logique du portail enseignant : chargement des données via
 // /teacher-portal, état des modales notes/incidents, et les wrappers
@@ -63,34 +70,10 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
   const mesNotes = [...notes].sort((left, right) => Number(right.updatedAt || right.createdAt || 0) - Number(left.updatedAt || left.createdAt || 0));
   const mesEvenements = [...enseignements].sort((left, right) => Number(right.date || 0) - Number(left.date || 0));
 
-  const formatEmploiHeure = (emploi) => {
-    if (emploi.heure) {
-      return emploi.heure;
-    }
-    if (emploi.heureDebut || emploi.heureFin) {
-      return [emploi.heureDebut || "", emploi.heureFin || ""].filter(Boolean).join(" - ");
-    }
-    return "-";
-  };
-
   const chargerPortail = async () => {
     setChargement(true);
     try {
-      const headers = await getAuthHeaders();
-      const res = await apiFetch("/teacher-portal", { headers });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok) {
-        throw new Error(data.error || "Chargement impossible.");
-      }
-      setPortalData({
-        section: data.section || utilisateur.section || "college",
-        emplois: Array.isArray(data.emplois) ? data.emplois : [],
-        eleves: Array.isArray(data.eleves) ? data.eleves : [],
-        notes: Array.isArray(data.notes) ? data.notes : [],
-        enseignements: Array.isArray(data.enseignements) ? data.enseignements : [],
-        salaires: Array.isArray(data.salaires) ? data.salaires : [],
-        incidents: Array.isArray(data.incidents) ? data.incidents : [],
-      });
+      setPortalData(await fetchTeacherPortal(utilisateur));
     } catch (error) {
       toast(error.message || "Erreur de chargement du portail enseignant.", "error");
     } finally {
@@ -104,12 +87,7 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
   }, []);
 
   const ouvrirCreationNote = () => {
-    setFormNote({
-      eleveId: "",
-      type: defaultNoteType,
-      periode: periodeN,
-      note: "",
-    });
+    setFormNote(buildFormNoteCreation({ defaultNoteType, periodeN }));
     setModalNote("add");
   };
 
@@ -151,13 +129,7 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
   });
 
   const ouvrirEditionNote = (note) => {
-    setFormNote({
-      noteId: note._id,
-      eleveId: note.eleveId || "",
-      type: note.type || defaultNoteType,
-      periode: note.periode || periodeN,
-      note: note.note ?? "",
-    });
+    setFormNote(buildFormNoteEdition(note, { defaultNoteType, periodeN }));
     setModalNote("edit");
   };
 
@@ -170,29 +142,12 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
   });
 
   const ouvrirSignalementEleve = (eleve) => {
-    setFormIncident({
-      eleveId: eleve._id,
-      eleveNom: `${eleve.nom} ${eleve.prenom}`,
-      classe: eleve.classe || "",
-      type: "Absence",
-      date: new Date().toISOString().slice(0, 10),
-      justifie: "Non",
-      motif: "",
-    });
+    setFormIncident(buildFormIncidentCreation(eleve));
     setModalIncident("add");
   };
 
   const ouvrirEditionIncident = (inc) => {
-    setFormIncident({
-      incidentId: inc._id,
-      eleveId: inc.eleveId,
-      eleveNom: inc.eleveNom,
-      classe: inc.classe || "",
-      type: inc.type || "Absence",
-      date: inc.date || new Date().toISOString().slice(0, 10),
-      justifie: inc.justifie || "Non",
-      motif: inc.motif || "",
-    });
+    setFormIncident(buildFormIncidentEdition(inc));
     setModalIncident("edit");
   };
 
