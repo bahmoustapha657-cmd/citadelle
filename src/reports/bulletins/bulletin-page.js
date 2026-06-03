@@ -2,7 +2,6 @@
 //  Bulletins — gabarit HTML d'une page (bulletin individuel) + styles
 // ══════════════════════════════════════════════════════════════
 import { getAnnee } from "../../constants.js";
-import { getGeneralAverage, getSubjectAverage } from "../../note-utils.js";
 import {
   getOfficialLegalFooterHTML,
   legalProfileMock,
@@ -14,13 +13,9 @@ import {
   enteteDoc,
   tr,
 } from "../print-helpers.js";
-import {
-  getInitiales,
-  getMention,
-  getMentionColors,
-  getNumeroBulletin,
-  ordinalFr,
-} from "./bulletin-format.js";
+import { getInitiales, ordinalFr } from "./bulletin-format.js";
+import { computeBulletinModel } from "./bulletin-page-data.js";
+import { buildLignesRows } from "./bulletin-page-rows.js";
 
 export function buildBulletinPageHTML({
   eleve,
@@ -40,49 +35,11 @@ export function buildBulletinPageHTML({
   const c2 = schoolInfo.couleur2 || "#00C48C";
   const annee = getAnnee();
 
-  const notesEleve = notes.filter((n) => n.eleveId === eleve._id && n.periode === periode);
-  const lignes = matieres.map((mat) => {
-    const noteMat = notesEleve.filter((n) => n.matiere === mat.nom);
-    const moyenneMatiere = getSubjectAverage(noteMat, eleve.classe, niveau);
-    const moy = moyenneMatiere != null ? moyenneMatiere.toFixed(2) : "—";
-    return { mat: mat.nom, coef: mat.coefficient || 1, moy, moyClasse: matiereClasseAvg[mat.nom] };
+  const { lignes, totalCoef, moyGene, mention, ms, numero } = computeBulletinModel({
+    eleve, notes, matieres, periode, niveau, maxNote, schoolInfo, annee, matiereClasseAvg,
   });
-  const totalCoef = matieres.reduce((s, mat) => s + Number(mat.coefficient || 1), 0);
-  const moyenneGenerale = getGeneralAverage(notesEleve, matieres, eleve.classe, niveau);
-  const moyGene = moyenneGenerale != null ? moyenneGenerale.toFixed(2) : "—";
-  const mention = getMention(moyGene, maxNote);
-  const ms = getMentionColors(mention);
-  const numero = getNumeroBulletin(eleve, periode, schoolInfo, annee);
 
-  const tbody = lignes.map((l) => {
-    const moyVal = l.moy === "—" ? null : Number(l.moy);
-    const mLigne = getMention(l.moy, maxNote);
-    const lc = getMentionColors(mLigne);
-    const pct = moyVal != null ? Math.min(100, Math.max(0, (moyVal / maxNote) * 100)) : 0;
-    const compare = (moyVal != null && l.moyClasse != null)
-      ? (moyVal > l.moyClasse + 0.05
-          ? `<span style="color:#16a34a;font-weight:700">↑ +${(moyVal - l.moyClasse).toFixed(1)}</span>`
-          : moyVal < l.moyClasse - 0.05
-            ? `<span style="color:#dc2626;font-weight:700">↓ ${(moyVal - l.moyClasse).toFixed(1)}</span>`
-            : `<span style="color:#6b7280">=</span>`)
-      : "";
-    const moyClasseDisplay = l.moyClasse != null ? l.moyClasse.toFixed(1) : "—";
-    return `<tr>
-      <td>${l.mat}</td>
-      <td style="text-align:center">${l.coef}</td>
-      <td style="text-align:center">
-        <div style="display:inline-flex;align-items:center;gap:6px">
-          <strong style="color:${lc.color};min-width:32px;display:inline-block;text-align:right">${l.moy}</strong>
-          <div style="width:48px;height:5px;background:#e5e7eb;border-radius:3px;overflow:hidden">
-            <div style="width:${pct}%;height:100%;background:${lc.color}"></div>
-          </div>
-        </div>
-      </td>
-      <td style="text-align:center">${l.moy !== "—" ? (Number(l.moy) * l.coef).toFixed(2) : "—"}</td>
-      <td style="text-align:center;font-size:10px;color:#6b7280">${moyClasseDisplay} ${compare}</td>
-      <td style="background:${lc.bg};color:${lc.color};font-weight:600;font-size:10.5px">${mLigne}</td>
-    </tr>`;
-  }).join("");
+  const tbody = buildLignesRows(lignes, maxNote);
 
   return `
   <div class="page">
