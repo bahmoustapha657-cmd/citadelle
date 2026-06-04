@@ -159,8 +159,13 @@ export function useComptabilite({ readOnly, annee, userRole, verrouOuvert = fals
   const toggleBlocage = async () => {
     const blocage = !!schoolInfo.blocageParentImpaye;
     if (!canCreate) { toast("Action réservée au comptable ou à l'administrateur.", "warning"); return; }
-    await updateDoc(doc(db, "ecoles", schoolId), { blocageParentImpaye: !blocage });
-    toast(blocage ? "🔓 Accès parents rétabli" : "🔒 Accès parents bloqué pour les impayés", "success");
+    try {
+      await updateDoc(doc(db, "ecoles", schoolId), { blocageParentImpaye: !blocage });
+      toast(blocage ? "🔓 Accès parents rétabli" : "🔒 Accès parents bloqué pour les impayés", "success");
+    } catch (e) {
+      console.error("toggleBlocage error:", e);
+      toast("Impossible de modifier le blocage. Vérifiez vos droits ou réessayez.", "error");
+    }
   };
 
   return {

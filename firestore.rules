@@ -220,7 +220,7 @@ service cloud.firestore {
                        && abonnementActifData(resource.data))
                    || (appartientEcole(schoolId)
                        && aUnRole(["comptable"])
-                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["monnaie"])
+                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["monnaie", "blocageParentImpaye"])
                        && abonnementActifData(resource.data));
 
       allow delete: if false;

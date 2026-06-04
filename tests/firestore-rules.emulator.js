@@ -481,10 +481,17 @@ describe("7. Champs plan protégés", () => {
     );
   });
 
-  test("comptable PEUT muter UNIQUEMENT le champ monnaie", async () => {
+  test("comptable PEUT muter le champ monnaie", async () => {
     const db = asUser({ schoolId: SCHOOL_A, role: "comptable" });
     await assertSucceeds(
       updateDoc(doc(db, `ecoles/${SCHOOL_A}`), { monnaie: "XOF" }),
+    );
+  });
+
+  test("comptable PEUT basculer blocageParentImpaye (bouton Bilan)", async () => {
+    const db = asUser({ schoolId: SCHOOL_A, role: "comptable" });
+    await assertSucceeds(
+      updateDoc(doc(db, `ecoles/${SCHOOL_A}`), { blocageParentImpaye: true }),
     );
   });
 
