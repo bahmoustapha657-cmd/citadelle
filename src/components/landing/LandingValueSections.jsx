@@ -4,15 +4,21 @@ import { AVANTAGES, SITUATIONS } from "./landing-content";
 export function LandingValueSections() {
   return (
     <>
-      <section data-landing-reveal className="landing-reveal landing-section" style={{ padding: "42px 24px 60px", background: "rgba(0,196,140,0.05)", borderTop: "1px solid rgba(0,196,140,0.12)", borderBottom: "1px solid rgba(0,196,140,0.12)" }}>
+      <section data-landing-reveal className="landing-reveal landing-section" style={{ padding: "52px 24px 64px", background: "rgba(0,196,140,0.05)", borderTop: "1px solid rgba(0,196,140,0.12)", borderBottom: "1px solid rgba(0,196,140,0.12)" }}>
         <div style={{ maxWidth: 980, margin: "0 auto" }}>
-          <h2 style={{ textAlign: "center", fontSize: "clamp(20px,3vw,28px)", fontWeight: 800, marginBottom: 10 }}>Pourquoi choisir EduGest ?</h2>
-          <p style={{ textAlign: "center", color: "rgba(255,255,255,0.45)", fontSize: 13, marginBottom: 34 }}>Un produit terrain, pensé pour les besoins réels des écoles.</p>
+          <div style={{ textAlign: "center", marginBottom: 14 }}>
+            <span className="landing-eyebrow">Avantages</span>
+          </div>
+          <h2 style={{ textAlign: "center", fontSize: "clamp(20px,3vw,28px)", fontWeight: 900, marginBottom: 10, letterSpacing: "-0.5px" }}>Pourquoi choisir EduGest ?</h2>
+          <p style={{ textAlign: "center", color: "rgba(255,255,255,0.5)", fontSize: 13.5, marginBottom: 36, maxWidth: 540, marginLeft: "auto", marginRight: "auto", lineHeight: 1.7 }}>Un produit terrain, pensé pour les besoins réels des écoles.</p>
           <div className="landing-stagger" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 18 }}>
             {AVANTAGES.map((item) => (
               <div key={item.title} className="landing-card" style={cardStyle("rgba(0,196,140,0.18)", "rgba(255,255,255,0.03)")}>
-                <div style={{ fontSize: 14, fontWeight: 800, color: "#00C48C", marginBottom: 8 }}>{item.title}</div>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.58)", lineHeight: 1.65 }}>{item.description}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                  <span style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(0,196,140,0.12)", border: "1px solid rgba(0,196,140,0.25)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>{item.icon}</span>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: "#fff" }}>{item.title}</div>
+                </div>
+                <div style={{ fontSize: 12.5, color: "rgba(255,255,255,0.58)", lineHeight: 1.65 }}>{item.description}</div>
               </div>
             ))}
           </div>
@@ -21,9 +27,9 @@ export function LandingValueSections() {
 
       <section data-landing-reveal className="landing-reveal landing-section" style={{ padding: "60px 24px", maxWidth: 980, margin: "0 auto" }}>
         <div style={{ textAlign: "center", marginBottom: 14 }}>
-          <span style={{ display: "inline-block", background: "rgba(0,196,140,0.12)", border: "1px solid rgba(0,196,140,0.3)", color: "#00C48C", fontSize: 11, fontWeight: 800, letterSpacing: "1.5px", textTransform: "uppercase", padding: "5px 14px", borderRadius: 20 }}>Notre obsession</span>
+          <span className="landing-eyebrow">Notre obsession</span>
         </div>
-        <h2 style={{ textAlign: "center", fontSize: "clamp(20px,3.5vw,30px)", fontWeight: 900, marginBottom: 10, lineHeight: 1.2 }}>
+        <h2 style={{ textAlign: "center", fontSize: "clamp(20px,3.5vw,30px)", fontWeight: 900, marginBottom: 10, lineHeight: 1.2, letterSpacing: "-0.5px" }}>
           La transparence comptable. <span style={{ color: "#00C48C" }}>Tout est tracé.</span>
         </h2>
         <p style={{ textAlign: "center", color: "rgba(255,255,255,0.55)", fontSize: 14, maxWidth: 700, margin: "0 auto 34px", lineHeight: 1.65 }}>

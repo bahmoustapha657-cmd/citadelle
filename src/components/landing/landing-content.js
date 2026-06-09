@@ -5,26 +5,32 @@
 export const MODULES = [
   {
     title: "Primaire",
+    icon: "🏫",
     description: "Classes, notes, bulletins, absences et emplois du temps pour la maternelle et le primaire.",
   },
   {
     title: "Secondaire",
+    icon: "🎓",
     description: "Collège et lycée avec matières, coefficients, moyennes et bulletins trimestriels.",
   },
   {
     title: "Comptabilité",
+    icon: "💰",
     description: "Scolarités, salaires, personnel, recettes, dépenses et suivi des impayés.",
   },
   {
     title: "Portail enseignant",
+    icon: "👨‍🏫",
     description: "Emploi du temps, saisie des notes et suivi des paies dans un espace dédié.",
   },
   {
     title: "Portail parent",
+    icon: "👨‍👩‍👧",
     description: "Notes, absences, bulletins, paiements et messages depuis un seul compte.",
   },
   {
     title: "Communication",
+    icon: "💬",
     description: "Annonces, messagerie et informations de l'école diffusées simplement.",
   },
 ];
@@ -32,18 +38,22 @@ export const MODULES = [
 export const AVANTAGES = [
   {
     title: "Démarrage rapide",
+    icon: "⚡",
     description: "Votre espace école peut être opérationnel le jour même, sans installation lourde.",
   },
   {
     title: "Identité personnalisée",
+    icon: "🎨",
     description: "Logo, couleurs et informations de l'école apparaissent partout de façon cohérente.",
   },
   {
     title: "Données cloisonnées",
+    icon: "🔐",
     description: "Chaque école reste isolée, chaque rôle ne voit que son périmètre utile.",
   },
   {
     title: "Accès mobile",
+    icon: "📱",
     description: "L'application fonctionne sur ordinateur, tablette et téléphone, sans installation spéciale.",
   },
 ];

@@ -10,13 +10,13 @@ export function LandingNav({ onConnexion, onInscription, onDemo }) {
         <span className="landing-nav-tag" style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase" }}>SaaS scolaire</span>
       </div>
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
-        <button onClick={onDemo} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", color: "#fff", padding: "8px 20px", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+        <button className="landing-nav-btn landing-nav-demo" onClick={onDemo} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", color: "#fff", padding: "8px 20px", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
           Voir une démo
         </button>
-        <button onClick={onConnexion} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", color: "#fff", padding: "8px 20px", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+        <button className="landing-nav-btn" onClick={onConnexion} style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)", color: "#fff", padding: "8px 20px", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
           {t("landing.ctaLogin")}
         </button>
-        <button onClick={onInscription} style={{ background: "#00C48C", border: "none", color: "#fff", padding: "8px 20px", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+        <button className="landing-nav-btn landing-nav-btn-primary" onClick={onInscription} style={{ color: "#fff", padding: "8px 20px", borderRadius: 9, fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
           Créer mon école
         </button>
       </div>

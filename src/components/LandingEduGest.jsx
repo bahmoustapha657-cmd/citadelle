@@ -7,6 +7,7 @@ import { LandingSeoSections } from "./landing/LandingSeoSections";
 import { LandingValueSections } from "./landing/LandingValueSections";
 import { LandingTarifs } from "./landing/LandingTarifs";
 import { LandingFaqCta } from "./landing/LandingFaqCta";
+import { LandingFooter } from "./landing/LandingFooter";
 
 // Orchestrateur de la landing : chaque section vit dans landing/Landing*.jsx,
 // le contenu dans landing-content.js, les styles dans landing-styles.js.
@@ -19,11 +20,12 @@ function LandingEduGest({ onConnexion, onInscription, onDemo }) {
       <style>{LANDING_STYLES}</style>
 
       <LandingNav onConnexion={onConnexion} onInscription={onInscription} onDemo={onDemo} />
-      <LandingHero onConnexion={onConnexion} onInscription={onInscription} onDemo={onDemo} />
+      <LandingHero onInscription={onInscription} onDemo={onDemo} />
       <LandingSeoSections />
       <LandingValueSections />
       <LandingTarifs onInscription={onInscription} />
       <LandingFaqCta onConnexion={onConnexion} onInscription={onInscription} onDemo={onDemo} />
+      <LandingFooter onConnexion={onConnexion} onInscription={onInscription} onDemo={onDemo} />
     </div>
   );
 }

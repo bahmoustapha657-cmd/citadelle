@@ -2,9 +2,12 @@ import { OFFRES } from "./landing-content";
 
 export function LandingTarifs({ onInscription }) {
   return (
-    <section data-landing-reveal className="landing-reveal landing-section" style={{ padding: "58px 24px", maxWidth: 1060, margin: "0 auto" }}>
-      <h2 style={{ textAlign: "center", fontSize: "clamp(20px,3vw,28px)", fontWeight: 800, marginBottom: 8 }}>Tarification transparente</h2>
-      <p style={{ textAlign: "center", color: "rgba(255,255,255,0.45)", fontSize: 13, marginBottom: 36 }}>Démarrez gratuitement, puis évoluez selon la taille de votre école.</p>
+    <section id="tarifs" data-landing-reveal className="landing-reveal landing-section" style={{ padding: "58px 24px", maxWidth: 1060, margin: "0 auto", scrollMarginTop: 80 }}>
+      <div style={{ textAlign: "center", marginBottom: 14 }}>
+        <span className="landing-eyebrow">Tarifs</span>
+      </div>
+      <h2 style={{ textAlign: "center", fontSize: "clamp(20px,3vw,28px)", fontWeight: 900, marginBottom: 8, letterSpacing: "-0.5px" }}>Tarification transparente</h2>
+      <p style={{ textAlign: "center", color: "rgba(255,255,255,0.5)", fontSize: 13.5, marginBottom: 36, lineHeight: 1.7 }}>Démarrez gratuitement, puis évoluez selon la taille de votre école. Sans engagement.</p>
       <div className="landing-stagger" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 16, alignItems: "stretch" }}>
         {OFFRES.map((plan) => (
           <div
