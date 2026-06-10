@@ -6,7 +6,7 @@ const GLOBAL_CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
   *, *::before, *::after { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; padding: 0; }
-  body { font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; background: ${C.bg}; -webkit-text-size-adjust: 100%; }
+  body { font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; background: var(--lc-bg, ${C.bg}); -webkit-text-size-adjust: 100%; }
 
   /* ── Couleurs école (surchargées dynamiquement via JS) ── */
   :root {
@@ -33,9 +33,9 @@ const GLOBAL_CSS = `
   button:hover:not(:disabled) { filter: brightness(1.09); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
   button:active:not(:disabled) { transform: translateY(0px); box-shadow: none; }
 
-  /* Hover lignes tableau */
+  /* Hover lignes tableau — var pour rester lisible en mode sombre */
   tbody tr { transition: background .1s; }
-  tbody tr:hover td { background: #f0f7ff !important; }
+  tbody tr:hover td { background: var(--lc-surface-hov, #f0f7ff) !important; }
 
   /* Focus inputs */
   input:focus, select:focus, textarea:focus {
@@ -48,7 +48,7 @@ const GLOBAL_CSS = `
   @keyframes spin { to { transform: rotate(360deg); } }
   .lc-spinner {
     width: 36px; height: 36px; border-radius: 50%;
-    border: 3px solid #d0dce8;
+    border: 3px solid var(--lc-border, #d0dce8);
     border-top-color: var(--sc2);
     animation: spin .7s linear infinite;
     margin: 0 auto 12px;

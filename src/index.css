@@ -103,109 +103,143 @@ body {
 
 /* ── Catch-all : composants applicatifs qui hardcodent un fond
    clair en style inline → on les force au surface sombre.
-   Préfère un sélecteur attribut précis pour limiter les effets de bord. */
-body.mode-sombre [style*="background:#fff"],
-body.mode-sombre [style*="background: #fff"],
-body.mode-sombre [style*='background:"#fff"'],
-body.mode-sombre [style*="background:#ffffff"],
-body.mode-sombre [style*="background: #ffffff"] {
+
+   IMPORTANT : React pose les styles via le CSSOM, et le navigateur
+   sérialise l'attribut style en notation rgb() — `background:"#fff"`
+   devient `background: rgb(255, 255, 255)` dans le DOM. Les sélecteurs
+   doivent donc matcher la forme rgb(), jamais l'hex. Pour les bordures
+   on matche « solid rgb(...) » : toutes les épaisseurs (1px, 1.5px,
+   2px…) et tous les côtés sont couverts. */
+body.mode-sombre [style*="background: rgb(255, 255, 255)"] {
   background: var(--lc-surface) !important;
 }
-body.mode-sombre [style*="background:#f8fafc"],
-body.mode-sombre [style*="background: #f8fafc"],
-body.mode-sombre [style*="background:#fafbfc"],
-body.mode-sombre [style*="background: #fafbfc"] {
+body.mode-sombre [style*="background: rgb(248, 250, 252)"], /* #f8fafc */
+body.mode-sombre [style*="background: rgb(250, 251, 252)"], /* #fafbfc */
+body.mode-sombre [style*="background: rgb(249, 250, 251)"]  /* #f9fafb */ {
   background: var(--lc-surface-alt) !important;
 }
-body.mode-sombre [style*="background:#f0f4f8"],
-body.mode-sombre [style*="background: #f0f4f8"],
-body.mode-sombre [style*="background:#e0ebf8"],
-body.mode-sombre [style*="background: #e0ebf8"],
-body.mode-sombre [style*="background:#f1f5f9"],
-body.mode-sombre [style*="background: #f1f5f9"],
-body.mode-sombre [style*="background:#f3f4f6"],
-body.mode-sombre [style*="background: #f3f4f6"],
-body.mode-sombre [style*="background:#f0f7ff"],
-body.mode-sombre [style*="background: #f0f7ff"],
-body.mode-sombre [style*="background:#f0f6ff"],
-body.mode-sombre [style*="background: #f0f6ff"],
-body.mode-sombre [style*="background:#eef2ff"],
-body.mode-sombre [style*="background: #eef2ff"],
-body.mode-sombre [style*="background:#f5f3ff"],
-body.mode-sombre [style*="background: #f5f3ff"],
-body.mode-sombre [style*="background:#f0f9ff"],
-body.mode-sombre [style*="background: #f0f9ff"],
-body.mode-sombre [style*="background:#fef3e0"],
-body.mode-sombre [style*="background: #fef3e0"],
-body.mode-sombre [style*="background:#e8f0f7"],
-body.mode-sombre [style*="background: #e8f0f7"],
-body.mode-sombre [style*="background:#e0f2fe"],
-body.mode-sombre [style*="background: #e0f2fe"] {
+body.mode-sombre [style*="background: rgb(240, 244, 248)"], /* #f0f4f8 */
+body.mode-sombre [style*="background: rgb(224, 235, 248)"], /* #e0ebf8 */
+body.mode-sombre [style*="background: rgb(241, 245, 249)"], /* #f1f5f9 */
+body.mode-sombre [style*="background: rgb(243, 244, 246)"], /* #f3f4f6 */
+body.mode-sombre [style*="background: rgb(240, 247, 255)"], /* #f0f7ff */
+body.mode-sombre [style*="background: rgb(240, 246, 255)"], /* #f0f6ff */
+body.mode-sombre [style*="background: rgb(238, 242, 255)"], /* #eef2ff */
+body.mode-sombre [style*="background: rgb(254, 243, 224)"], /* #fef3e0 */
+body.mode-sombre [style*="background: rgb(232, 240, 247)"]  /* #e8f0f7 */ {
   background: var(--lc-surface-hov) !important;
 }
-/* Bordures et séparateurs claires → sombres */
-body.mode-sombre [style*="border:1px solid #e2e8f0"],
-body.mode-sombre [style*="border: 1px solid #e2e8f0"],
-body.mode-sombre [style*="border-bottom:1px solid #f1f5f9"],
-body.mode-sombre [style*="border-bottom: 1px solid #f1f5f9"],
-body.mode-sombre [style*="border:1px solid #e5e7eb"],
-body.mode-sombre [style*="border: 1px solid #e5e7eb"] {
+
+/* ── Teintes sémantiques : badges/alertes pastel.
+   En sombre, ils gardent leur identité de couleur (fond translucide
+   foncé) au lieu de rester des taches claires éblouissantes ; leurs
+   textes foncés associés sont éclaircis plus bas. */
+/* Rouge — erreurs, impayés */
+body.mode-sombre [style*="background: rgb(254, 226, 226)"], /* #fee2e2 */
+body.mode-sombre [style*="background: rgb(254, 242, 242)"], /* #fef2f2 */
+body.mode-sombre [style*="background: rgb(252, 232, 232)"]  /* #fce8e8 */ {
+  background: rgba(239, 68, 68, 0.14) !important;
+}
+/* Ambre — avertissements, « important » */
+body.mode-sombre [style*="background: rgb(254, 243, 199)"], /* #fef3c7 */
+body.mode-sombre [style*="background: rgb(255, 251, 235)"], /* #fffbeb */
+body.mode-sombre [style*="background: rgb(254, 252, 232)"], /* #fefce8 */
+body.mode-sombre [style*="background: rgb(255, 247, 237)"]  /* #fff7ed */ {
+  background: rgba(245, 158, 11, 0.14) !important;
+}
+/* Vert — succès, payé */
+body.mode-sombre [style*="background: rgb(240, 253, 244)"], /* #f0fdf4 */
+body.mode-sombre [style*="background: rgb(220, 252, 231)"], /* #dcfce7 */
+body.mode-sombre [style*="background: rgb(209, 250, 229)"], /* #d1fae5 */
+body.mode-sombre [style*="background: rgb(234, 244, 224)"]  /* #eaf4e0 */ {
+  background: rgba(16, 185, 129, 0.14) !important;
+}
+/* Bleu — informations */
+body.mode-sombre [style*="background: rgb(219, 234, 254)"], /* #dbeafe */
+body.mode-sombre [style*="background: rgb(239, 246, 255)"], /* #eff6ff */
+body.mode-sombre [style*="background: rgb(224, 242, 254)"], /* #e0f2fe */
+body.mode-sombre [style*="background: rgb(240, 249, 255)"]  /* #f0f9ff */ {
+  background: rgba(59, 130, 246, 0.14) !important;
+}
+/* Violet — examens, divers */
+body.mode-sombre [style*="background: rgb(237, 233, 254)"], /* #ede9fe */
+body.mode-sombre [style*="background: rgb(245, 243, 255)"]  /* #f5f3ff */ {
+  background: rgba(139, 92, 246, 0.16) !important;
+}
+
+/* Bordures et séparateurs clairs → sombres (toutes épaisseurs/côtés) */
+body.mode-sombre [style*="solid rgb(226, 232, 240)"], /* #e2e8f0 */
+body.mode-sombre [style*="solid rgb(229, 231, 235)"], /* #e5e7eb */
+body.mode-sombre [style*="solid rgb(209, 213, 219)"], /* #d1d5db */
+body.mode-sombre [style*="solid rgb(203, 213, 225)"], /* #cbd5e1 */
+body.mode-sombre [style*="solid rgb(224, 235, 248)"], /* #e0ebf8 */
+body.mode-sombre [style*="solid rgb(176, 196, 216)"], /* #b0c4d8 */
+body.mode-sombre [style*="solid rgb(232, 240, 232)"], /* #e8f0e8 */
+body.mode-sombre [style*="solid rgb(241, 245, 249)"], /* #f1f5f9 */
+body.mode-sombre [style*="solid rgb(248, 250, 252)"], /* #f8fafc */
+body.mode-sombre [style*="solid rgb(240, 244, 248)"], /* #f0f4f8 */
+body.mode-sombre [style*="dashed rgb(226, 232, 240)"],
+body.mode-sombre [style*="dashed rgb(203, 213, 225)"],
+body.mode-sombre [style*="dashed rgb(176, 196, 216)"] {
   border-color: var(--lc-border) !important;
 }
+
 /* Textes : les couleurs sombres explicites perdent leur lisibilité.
    On remappe les plus communes. */
-body.mode-sombre [style*="color:#0A1628"],
-body.mode-sombre [style*="color: #0A1628"],
-body.mode-sombre [style*="color:#1e293b"],
-body.mode-sombre [style*="color: #1e293b"],
-body.mode-sombre [style*="color:#1f2937"],
-body.mode-sombre [style*="color: #1f2937"],
-body.mode-sombre [style*="color:#0f172a"],
-body.mode-sombre [style*="color: #0f172a"],
-body.mode-sombre [style*="color:#374151"],
-body.mode-sombre [style*="color: #374151"],
-body.mode-sombre [style*="color:#111"],
-body.mode-sombre [style*="color: #111"] {
+body.mode-sombre [style*="color: rgb(10, 22, 40)"],   /* #0A1628 */
+body.mode-sombre [style*="color: rgb(30, 41, 59)"],   /* #1e293b */
+body.mode-sombre [style*="color: rgb(31, 41, 55)"],   /* #1f2937 */
+body.mode-sombre [style*="color: rgb(15, 23, 42)"],   /* #0f172a */
+body.mode-sombre [style*="color: rgb(55, 65, 81)"],   /* #374151 */
+body.mode-sombre [style*="color: rgb(51, 65, 85)"],   /* #334155 */
+body.mode-sombre [style*="color: rgb(17, 17, 17)"]    /* #111 */ {
   color: var(--lc-text) !important;
 }
-body.mode-sombre [style*="color:#64748b"],
-body.mode-sombre [style*="color: #64748b"],
-body.mode-sombre [style*="color:#475569"],
-body.mode-sombre [style*="color: #475569"],
-body.mode-sombre [style*="color:#6b7280"],
-body.mode-sombre [style*="color: #6b7280"] {
+body.mode-sombre [style*="color: rgb(100, 116, 139)"], /* #64748b */
+body.mode-sombre [style*="color: rgb(71, 85, 105)"],   /* #475569 */
+body.mode-sombre [style*="color: rgb(107, 114, 128)"], /* #6b7280 */
+body.mode-sombre [style*="color: rgb(85, 85, 85)"]     /* #555 */ {
   color: var(--lc-text-muted) !important;
 }
-body.mode-sombre [style*="color:#94a3b8"],
-body.mode-sombre [style*="color: #94a3b8"],
-body.mode-sombre [style*="color:#9ca3af"],
-body.mode-sombre [style*="color: #9ca3af"] {
+body.mode-sombre [style*="color: rgb(148, 163, 184)"], /* #94a3b8 */
+body.mode-sombre [style*="color: rgb(156, 163, 175)"]  /* #9ca3af */ {
   color: var(--lc-text-faint) !important;
 }
 
-/* Bordures de séparateurs claires supplémentaires */
-body.mode-sombre [style*="border-bottom:1px solid #e0ebf8"],
-body.mode-sombre [style*="border-bottom: 1px solid #e0ebf8"],
-body.mode-sombre [style*="border-bottom:2px solid #e0ebf8"],
-body.mode-sombre [style*="border-bottom: 2px solid #e0ebf8"],
-body.mode-sombre [style*="border-bottom:1px solid #f8fafc"],
-body.mode-sombre [style*="border-bottom: 1px solid #f8fafc"],
-body.mode-sombre [style*="border-top:1px solid #f1f5f9"],
-body.mode-sombre [style*="border-top: 1px solid #f1f5f9"],
-body.mode-sombre [style*="border:1px solid #e0ebf8"],
-body.mode-sombre [style*="border: 1px solid #e0ebf8"],
-body.mode-sombre [style*="border:1px solid #d1d5db"],
-body.mode-sombre [style*="border: 1px solid #d1d5db"],
-body.mode-sombre [style*="border:1px solid #cbd5e1"],
-body.mode-sombre [style*="border: 1px solid #cbd5e1"],
-body.mode-sombre [style*="border:2px dashed #e2e8f0"],
-body.mode-sombre [style*="border: 2px dashed #e2e8f0"] {
-  border-color: var(--lc-border) !important;
+/* Textes sémantiques foncés → variantes claires (paires des badges pastel) */
+body.mode-sombre [style*="color: rgb(146, 64, 14)"],  /* #92400e */
+body.mode-sombre [style*="color: rgb(180, 83, 9)"],   /* #b45309 */
+body.mode-sombre [style*="color: rgb(154, 52, 18)"],  /* #9a3412 */
+body.mode-sombre [style*="color: rgb(217, 119, 6)"]   /* #d97706 */ {
+  color: #fbbf24 !important;
+}
+body.mode-sombre [style*="color: rgb(153, 27, 27)"],  /* #991b1b */
+body.mode-sombre [style*="color: rgb(185, 28, 28)"],  /* #b91c1c */
+body.mode-sombre [style*="color: rgb(155, 32, 32)"],  /* #9b2020 */
+body.mode-sombre [style*="color: rgb(127, 29, 29)"],  /* #7f1d1d */
+body.mode-sombre [style*="color: rgb(220, 38, 38)"]   /* #dc2626 */ {
+  color: #f87171 !important;
+}
+body.mode-sombre [style*="color: rgb(22, 101, 52)"],  /* #166534 */
+body.mode-sombre [style*="color: rgb(6, 95, 70)"],    /* #065f46 */
+body.mode-sombre [style*="color: rgb(21, 128, 61)"],  /* #15803d */
+body.mode-sombre [style*="color: rgb(20, 83, 45)"]    /* #14532d */ {
+  color: #34d399 !important;
+}
+body.mode-sombre [style*="color: rgb(3, 105, 161)"],  /* #0369a1 */
+body.mode-sombre [style*="color: rgb(29, 78, 216)"],  /* #1d4ed8 */
+body.mode-sombre [style*="color: rgb(30, 64, 175)"],  /* #1e40af */
+body.mode-sombre [style*="color: rgb(7, 89, 133)"]    /* #075985 */ {
+  color: #60a5fa !important;
+}
+body.mode-sombre [style*="color: rgb(124, 58, 237)"], /* #7c3aed */
+body.mode-sombre [style*="color: rgb(109, 40, 217)"], /* #6d28d9 */
+body.mode-sombre [style*="color: rgb(91, 33, 182)"]   /* #5b21b6 */ {
+  color: #a78bfa !important;
 }
 
-/* Headers sticky en fond clair — passer en surface-alt */
-body.mode-sombre header[style*="background:#fff"],
-body.mode-sombre header[style*="background: #fff"] {
+/* Headers sticky en fond clair — passer en surface */
+body.mode-sombre header[style*="background: rgb(255, 255, 255)"] {
   background: var(--lc-surface) !important;
 }
 
