@@ -13,7 +13,9 @@ export function useMessagesParents() {
   const [tab, setTab] = useState("messages");
   const [selMsg, setSelMsg] = useState(null);
   const [reponse, setRep] = useState("");
-  const [formAnn, setFormAnn] = useState({ titre: "", corps: "", important: false });
+  // publique=false par défaut : une annonce est destinée aux parents ;
+  // elle n'apparaît sur la page publique de l'école que sur opt-in explicite.
+  const [formAnn, setFormAnn] = useState({ titre: "", corps: "", important: false, publique: false });
   const [modal, setModal] = useState(null);
 
   const threads = Object.values(
@@ -60,7 +62,7 @@ export function useMessagesParents() {
   const publierAnnonce = () => {
     if (!formAnn.titre.trim() || !formAnn.corps.trim()) { toast("Titre et contenu requis.", "warning"); return; }
     ajAnn({ ...formAnn, auteur: schoolInfo.nom || "École", date: Date.now() });
-    setFormAnn({ titre: "", corps: "", important: false });
+    setFormAnn({ titre: "", corps: "", important: false, publique: false });
     setModal(null);
   };
 

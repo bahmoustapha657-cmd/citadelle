@@ -22,7 +22,10 @@ function PortailPublic({ onConnexion }) {
   const c2 = schoolInfo.couleur2 || "#00C48C";
   const [galIndex, setGalIndex] = useState(null); // lightbox
   const photos = acc.photos || [];
-  const annoncesPub = annonces.filter(a => a.date).sort((a, b) => b.date - a.date).slice(0, 4);
+  // Seules les annonces explicitement marquées « publiques » à la publication
+  // apparaissent sur la page publique : celles du module Messages Parents
+  // sont destinées aux familles par défaut (jamais affichées ici sans opt-in).
+  const annoncesPub = annonces.filter(a => a.date && a.publique === true).sort((a, b) => b.date - a.date).slice(0, 4);
 
   return (
     <div style={{ minHeight: "100vh", background: "#f8fafc", fontFamily: "'Inter','Segoe UI',sans-serif", color: "#0A1628" }}>
