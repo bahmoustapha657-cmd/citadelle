@@ -8,17 +8,20 @@
  *   API routes Vercel (/api/) → NetworkFirst avec fallback
  */
 
-const CACHE_APP    = "edugest-app-v7";
-const CACHE_DATA   = "edugest-data-v7";
-const CACHE_PHOTOS = "edugest-photos-v7";
+const CACHE_APP    = "edugest-app-v8";
+const CACHE_DATA   = "edugest-data-v8";
+const CACHE_PHOTOS = "edugest-photos-v8";
 
+// ?v=2 : cache-busting du nouveau logo (les navigateurs cachent les favicons
+// très longtemps ; les téléphones ne rafraîchissent l'icône PWA que si l'URL
+// du manifest change). Garder en phase avec index.html et manifest.json.
 const APP_SHELL = [
   "/",
   "/index.html",
-  "/favicon.svg",
-  "/icons/pwa-192.png",
-  "/icons/pwa-512.png",
-  "/icons/apple-touch-icon.png",
+  "/favicon.svg?v=2",
+  "/icons/pwa-192.png?v=2",
+  "/icons/pwa-512.png?v=2",
+  "/icons/apple-touch-icon.png?v=2",
 ];
 
 // ── Installation : mise en cache de l'app shell ───────────────
