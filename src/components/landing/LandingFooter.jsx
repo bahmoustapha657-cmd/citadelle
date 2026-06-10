@@ -30,6 +30,13 @@ export function LandingFooter({ onConnexion, onInscription, onDemo }) {
             <a key={item.href} className="landing-footer-link" href={item.href}>{item.title}</a>
           ))}
         </div>
+        <div>
+          <h4>Contact &amp; assistance</h4>
+          <a className="landing-footer-link" href="tel:+224627738579">📞 +224 627 73 85 79</a>
+          <a className="landing-footer-link" href="tel:+224662980896">📞 +224 662 98 08 96</a>
+          <a className="landing-footer-link" href="https://wa.me/224627738579" target="_blank" rel="noreferrer">💬 WhatsApp</a>
+          <a className="landing-footer-link" href="mailto:edugest26@gmail.com">✉️ edugest26@gmail.com</a>
+        </div>
       </div>
       <div className="landing-footer-bottom">
         <span>© {new Date().getFullYear()} EduGest — Gestion scolaire moderne</span>

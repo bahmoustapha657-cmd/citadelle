@@ -512,8 +512,8 @@ export const LANDING_STYLES = `
     max-width: 1060px;
     margin: 0 auto;
     display: grid;
-    grid-template-columns: 1.5fr 1fr 1.2fr;
-    gap: 40px;
+    grid-template-columns: 1.4fr 0.9fr 1.2fr 1fr;
+    gap: 36px;
   }
   .landing-footer h4 {
     font-size: 11px;
