@@ -69,16 +69,26 @@ export const dangerConfig = {
   },
 };
 
-// Onglets de l'écran ; « Danger » réservé aux profils habilités au cycle de vie.
+// Onglets de l'écran, groupés par thème pour une navigation lisible.
+// Les ids sont stables (liens profonds : initialTab="officiel" depuis le
+// tableau de bord). « Zone dangereuse » réservée aux profils habilités
+// au cycle de vie.
 export function buildTabItems(canManageLifecycle) {
   return [
-    { id: "identite", label: "Identite" },
-    { id: "accueil", label: "Accueil" },
-    { id: "officiel", label: "Officiel" },
-    { id: "evaluations", label: "Evaluations" },
-    { id: "matricules", label: "Matricules" },
-    { id: "affichage", label: "Affichage" },
-    ...(canManageLifecycle ? [{ id: "danger", label: "Danger" }] : []),
+    { id: "identite", label: "Identité", icon: "🏫", groupe: "École",
+      desc: "Nom, logo, couleurs, devise, année scolaire et périodicité des bulletins." },
+    { id: "officiel", label: "Officiel", icon: "📜", groupe: "École",
+      desc: "Agrément, autorisations et codes statistiques — imprimés en pied des documents officiels." },
+    { id: "evaluations", label: "Évaluations", icon: "📝", groupe: "Pédagogie",
+      desc: "Libellés et activation des périodes d'évaluation (compositions, devoirs…)." },
+    { id: "matricules", label: "Matricules", icon: "🆔", groupe: "Pédagogie",
+      desc: "Format et numérotation des matricules élèves." },
+    { id: "accueil", label: "Page publique", icon: "🌍", groupe: "Présentation",
+      desc: "Site vitrine de l'école : bannière, photos, annonces, tableau d'honneur et contact." },
+    { id: "affichage", label: "Affichage", icon: "🎨", groupe: "Présentation",
+      desc: "Préférences d'affichage de l'application." },
+    ...(canManageLifecycle ? [{ id: "danger", label: "Zone dangereuse", icon: "⚠️", groupe: "Avancé", danger: true,
+      desc: "Désactivation ou suppression de l'établissement — actions sensibles et réversibles uniquement par EduGest." }] : []),
   ];
 }
 
