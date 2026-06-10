@@ -12,11 +12,14 @@ export function useAppUiState() {
   const [notifOuvert, setNotifOuvert] = useState(false);
   const [profilOuvert, setProfilOuvert] = useState(false);
   const [aideOuverte, setAideOuverte] = useState(false);
+  // Pas d'école par défaut : un nouveau visiteur (ni ?school= dans l'URL,
+  // ni école mémorisée) arrive sur l'écran de connexion neutre et saisit
+  // son code école — il ne doit jamais tomber sur l'école d'un tiers.
   const [schoolId, setSchoolId] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const fromUrl = params.get("school");
     if (fromUrl) { localStorage.setItem("LC_schoolId", fromUrl); }
-    return fromUrl || localStorage.getItem("LC_schoolId") || "citadelle";
+    return fromUrl || localStorage.getItem("LC_schoolId") || "";
   });
   const [onboardingOuvert, setOnboardingOuvert] = useState(false);
   const [sidebarOuvert, setSidebarOuvert] = useState(false);

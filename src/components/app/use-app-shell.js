@@ -62,8 +62,8 @@ export function useAppShell({
     setPage(getPrimaryModuleForRole(c.role, schoolInfo));
     const labelConnexion = getRoleLabelForSchool(c.role, schoolInfo) || c.label || c.role;
     logAction("Connexion", `${c.nom} (${labelConnexion})`, c.nom);
-    const schoolIdEffectif = sid || localStorage.getItem("LC_schoolId") || "citadelle";
-    sAbonnerAuxPush(c, schoolIdEffectif);
+    const schoolIdEffectif = sid || localStorage.getItem("LC_schoolId");
+    if (schoolIdEffectif) sAbonnerAuxPush(c, schoolIdEffectif);
   };
 
   const deconnecter = () => {

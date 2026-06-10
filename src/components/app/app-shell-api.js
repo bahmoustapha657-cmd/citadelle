@@ -8,7 +8,8 @@ import { getCurrentUser } from "../../firebaseAuth";
 // Journalise une action (best-effort, jamais bloquant).
 export function logActionDoc(action, details = "", auteur = "") {
   try {
-    const sid = localStorage.getItem("LC_schoolId") || "citadelle";
+    const sid = localStorage.getItem("LC_schoolId");
+    if (!sid) return; // jamais de fallback vers une école par défaut
     addDoc(collection(db, "ecoles", sid, "historique"), { action, details, auteur, date: Date.now() }).catch(() => {});
   } catch {
     // Logging is best-effort only.
@@ -40,7 +41,8 @@ export async function syncEcolePublic(schoolId) {
 
 // Envoie une notification push (best-effort).
 export async function envoyerPushApi(cibles, titre, corps, url = "/") {
-  const sid = localStorage.getItem("LC_schoolId") || "citadelle";
+  const sid = localStorage.getItem("LC_schoolId");
+  if (!sid) return; // jamais de fallback vers une école par défaut
   const headers = await getAuthHeaders({ "Content-Type": "application/json" });
   apiFetch("/push", {
     method: "POST",
