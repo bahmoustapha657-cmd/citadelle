@@ -4,16 +4,17 @@ import {
   computeDateExpiration,
   daysUntilExpiration,
   getComplianceStatus,
-  legalProfileMock,
+  legalProfileVide,
   updateLegalProfile,
 } from "../../legal-utils";
 
 // État et logique du widget Conformité. La source de vérité est
-// `schoolInfo.legal` (listener posé dans App.jsx) ; retombe sur
-// `legalProfileMock` tant que le doc Firestore n'existe pas.
+// `schoolInfo.legal` (listener posé dans App.jsx, fallback par école) ;
+// profil vide tant que rien n'est chargé — jamais les données d'une
+// autre école.
 export function useComplianceWidget(profileOverride) {
   const { schoolId, schoolInfo } = useContext(SchoolContext);
-  const source = profileOverride || schoolInfo?.legal || legalProfileMock;
+  const source = profileOverride || schoolInfo?.legal || legalProfileVide;
   const [profile, setProfile] = useState(source);
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);

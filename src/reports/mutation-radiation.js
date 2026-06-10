@@ -6,7 +6,7 @@
 import { fmt, getAnnee, getSectionForClasse, today } from "../constants.js";
 import {
   getOfficialLegalFooterHTML,
-  legalProfileMock,
+  legalProfileVide,
   mapNiveauToCycle,
   resolveLegalFields,
 } from "../legal-utils.js";
@@ -130,7 +130,7 @@ export const imprimerCertificatRadiation = (eleve, schoolInfo={}, annee="", sold
   </p>
   <div class="fin">${tr("reports.radiation.issuedAtCity")} ${schoolInfo.ville||"—"}, ${tr("reports.ordreMutation.on")} ${today()}</div>
   <div class="sig"><br/>${tr("reports.livret.directorSignature")}<br/><br/><br/><br/>${tr("reports.radiation.officialStamp")}</div>
-  ${getOfficialLegalFooterHTML(schoolInfo.legal || legalProfileMock, mapNiveauToCycle(getSectionForClasse(eleve.classe || "")))}
+  ${getOfficialLegalFooterHTML(schoolInfo.legal || legalProfileVide, mapNiveauToCycle(getSectionForClasse(eleve.classe || "")))}
   <button onclick="window.print()" style="position:fixed;bottom:20px;right:20px;padding:8px 20px;background:#0A1628;color:#fff;border:none;border-radius:8px;cursor:pointer">🖨️ ${tr("reports.livret.print")}</button>
   </body></html>`);
   w.document.close();

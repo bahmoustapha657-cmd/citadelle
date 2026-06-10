@@ -4,7 +4,7 @@
 import { getAnnee } from "../../constants.js";
 import {
   getOfficialLegalFooterHTML,
-  legalProfileMock,
+  legalProfileVide,
   mapNiveauToCycle,
 } from "../../legal-utils.js";
 import {
@@ -127,7 +127,7 @@ export function buildBulletinPageHTML({
 
     <div class="devise" style="color:${c2}">${schoolInfo.devise || "Travail – Rigueur – Réussite"}</div>
 
-    ${getOfficialLegalFooterHTML(schoolInfo.legal || legalProfileMock, mapNiveauToCycle(niveau))}
+    ${getOfficialLegalFooterHTML(schoolInfo.legal || legalProfileVide, mapNiveauToCycle(niveau))}
   </div>`;
 }
 

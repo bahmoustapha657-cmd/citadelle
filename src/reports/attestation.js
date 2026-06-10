@@ -5,7 +5,7 @@
 import { getAnnee, today } from "../constants.js";
 import {
   getOfficialLegalFooterHTML,
-  legalProfileMock,
+  legalProfileVide,
   mapNiveauToCycle,
 } from "../legal-utils.js";
 import {
@@ -59,7 +59,7 @@ export const imprimerAttestation = (eleve, niveau, annee, schoolInfo={}) => {
     <div class="sig">${tr("reports.director")}<br/><div class="stamp">${schoolInfo.nom||""}</div></div>
   </div>
   <div class="devise">${schoolInfo.devise || "Travail – Rigueur – Réussite"}</div>
-  ${getOfficialLegalFooterHTML(schoolInfo.legal || legalProfileMock, mapNiveauToCycle(niveau))}
+  ${getOfficialLegalFooterHTML(schoolInfo.legal || legalProfileVide, mapNiveauToCycle(niveau))}
   <script>${PRINT_TRIGGER}</script></body></html>`);
   w.document.close();
 };

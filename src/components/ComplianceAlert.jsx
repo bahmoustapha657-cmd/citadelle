@@ -6,7 +6,8 @@ import {
   formatCountdown,
   formatDateFR,
   getComplianceStatus,
-  legalProfileMock,
+  isLegalProfileEmpty,
+  legalProfileVide,
 } from "../legal-utils";
 
 // Mini-alerte de conformité affichée sur le TableauDeBord.
@@ -21,8 +22,12 @@ import {
 //    Si absent, l'alerte reste affichée sans action.
 export default function ComplianceAlert({ onOpenSettings }) {
   const { schoolInfo } = useContext(SchoolContext);
-  const profile = schoolInfo?.legal || legalProfileMock;
+  const profile = schoolInfo?.legal || legalProfileVide;
 
+  // Profil jamais renseigné → invitation neutre à compléter le dossier
+  // officiel, plutôt qu'une fausse alerte « Urgent » (ou pire, l'agrément
+  // d'une autre école comme avant le fallback vide).
+  const manquant = isLegalProfileEmpty(profile);
   const status = getComplianceStatus(profile);
   const days = daysUntilExpiration(profile);
   const expDate = computeDateExpiration(profile);
@@ -32,8 +37,9 @@ export default function ComplianceAlert({ onOpenSettings }) {
     warning: { bg: "#fffbeb", border: "#f59e0b", text: "#92400e", icon: "⚠", label: "À renouveler" },
     critical: { bg: "#fef2f2", border: "#f97316", text: "#9a3412", icon: "⚠", label: "Urgent" },
     expired: { bg: "#fee2e2", border: "#dc2626", text: "#991b1b", icon: "✕", label: "Expiré" },
+    manquant: { bg: "#eff6ff", border: "#3b82f6", text: "#1e40af", icon: "ℹ", label: "À renseigner" },
   };
-  const palette = PALETTE[status];
+  const palette = manquant ? PALETTE.manquant : PALETTE[status];
   const clickable = typeof onOpenSettings === "function";
 
   return (
@@ -69,9 +75,11 @@ export default function ComplianceAlert({ onOpenSettings }) {
             Agrément · {palette.label}
           </span>
           <span style={{ fontSize: 12, fontWeight: 700, color: palette.text }}>
-            {status === "expired" ? formatCountdown(profile) : `Expire dans ${formatCountdown(profile)}`}
+            {manquant
+              ? "Renseignez votre agrément et vos codes statistiques"
+              : status === "expired" ? formatCountdown(profile) : `Expire dans ${formatCountdown(profile)}`}
           </span>
-          {Number.isFinite(days) && days > 0 && (
+          {!manquant && Number.isFinite(days) && days > 0 && (
             <span style={{ fontSize: 10, color: "#64748b" }}>
               (échéance {formatDateFR(expDate)})
             </span>

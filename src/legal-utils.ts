@@ -4,9 +4,9 @@
 // Stocké à /ecoles/{schoolId}/config/legal.
 // Règles Firestore : lecture = tout rôle de l'école ;
 //                    écriture = direction/admin uniquement.
-// Le mock `legalProfileMock` ci-dessous sert (a) au seed initial,
-// (b) de fallback en attendant que le document Firestore soit créé
-// — pour ne pas casser les bulletins imprimés.
+// Fallback quand le doc n'existe pas : `legalProfileVide` (profil neutre
+// à compléter dans Paramètres → Officiel). `legalProfileMock` contient
+// les données réelles de La Citadelle et n'est servi qu'à elle.
 
 export type CycleLegal = "maternelle" | "primaire" | "secondaire";
 
@@ -50,7 +50,25 @@ export interface LegalProfile {
   };
 }
 
-// Données réelles La Citadelle (seed)
+// Profil légal VIDE — fallback pour toute école n'ayant pas encore
+// renseigné son dossier officiel (Paramètres → Officiel). On ne retombe
+// JAMAIS sur les données d'une autre école : avant ce garde-fou, les
+// nouvelles écoles voyaient (et imprimaient !) l'agrément de La Citadelle.
+export const legalProfileVide: LegalProfile = {
+  promoteur: { nom: "", anneeNaissance: 0, lieuNaissance: "" },
+  autorisationCreation: { numero: "", dateSignature: "", ministre: "", ministere: "" },
+  arreteOuverture: { numero: "", dateSignature: "", ministre: "", ministere: "", dureeValiditeAnnees: 0 },
+  codesStatistiques: { maternelle: "", primaire: "", secondaire: "" },
+  etablissement: { denomination: "", quartier: "", commune: "", region: "", email: "" },
+};
+
+// Vrai si l'école n'a encore rien renseigné (ni numéro ni date d'arrêté).
+export function isLegalProfileEmpty(profile?: LegalProfile | null): boolean {
+  return !profile?.arreteOuverture?.numero && !profile?.arreteOuverture?.dateSignature;
+}
+
+// Données réelles La Citadelle (seed historique) — servies UNIQUEMENT
+// comme fallback de l'école « citadelle », jamais aux autres.
 export const legalProfileMock: LegalProfile = {
   promoteur: {
     nom: "Souleymane DIALLO",
@@ -181,7 +199,10 @@ export function resolveLegalFields(schoolInfo: {
 
 // ── HTML helper pour les documents imprimés (bulletins, attestations) ──
 // Style discret, centré, petite police grise. Compatible avec @page A4.
+// Renvoie une chaîne vide si l'école n'a pas renseigné son arrêté :
+// on n'imprime jamais une mention « agréé » fabriquée.
 export function getOfficialLegalFooterHTML(profile: LegalProfile, cycle: CycleLegal): string {
+  if (!profile?.arreteOuverture?.numero) return "";
   const code = getCodeStatistique(profile, cycle);
   const num = profile.arreteOuverture.numero;
   const date = formatDateFR(profile.arreteOuverture.dateSignature);
@@ -203,11 +224,18 @@ function legalDocRef(schoolId: string) {
   return doc(db, "ecoles", schoolId, "config", LEGAL_DOC_ID);
 }
 
-// Lit le profil légal une fois. Renvoie le mock si le doc n'existe pas
-// encore (premier lancement avant seed) pour ne pas casser les bulletins.
+// Fallback quand le doc /config/legal n'existe pas encore : le mock ne
+// contient QUE les données de La Citadelle (seed historique), donc on ne
+// le sert qu'à elle — toute autre école part d'un profil vide qu'elle
+// renseigne dans Paramètres → Officiel.
+function fallbackLegalProfile(schoolId: string): LegalProfile {
+  return schoolId === "citadelle" ? legalProfileMock : legalProfileVide;
+}
+
+// Lit le profil légal une fois (fallback par école si le doc n'existe pas).
 export async function getLegalProfile(schoolId: string): Promise<LegalProfile> {
   const snap = await getDoc(legalDocRef(schoolId));
-  if (!snap.exists()) return legalProfileMock;
+  if (!snap.exists()) return fallbackLegalProfile(schoolId);
   return snap.data() as LegalProfile;
 }
 
@@ -222,13 +250,13 @@ export async function updateLegalProfile(
   await setDoc(legalDocRef(schoolId), profile, { merge: true });
 }
 
-// Listener temps réel. Renvoie le mock tant que le doc n'existe pas.
+// Listener temps réel (fallback par école tant que le doc n'existe pas).
 // Retourne la fonction unsubscribe.
 export function subscribeLegalProfile(
   schoolId: string,
   cb: (profile: LegalProfile) => void,
 ): () => void {
   return safeOnSnapshot(legalDocRef(schoolId), (snap) => {
-    cb(snap.exists() ? (snap.data() as LegalProfile) : legalProfileMock);
+    cb(snap.exists() ? (snap.data() as LegalProfile) : fallbackLegalProfile(schoolId));
   });
 }

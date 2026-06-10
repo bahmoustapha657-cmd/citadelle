@@ -1,5 +1,5 @@
 import React from "react";
-import { formatDateFR, getCodeStatistique, legalProfileMock } from "../legal-utils";
+import { formatDateFR, getCodeStatistique, legalProfileVide } from "../legal-utils";
 
 // Mention légale officielle réutilisable.
 // Style discret (petite police, gris), centré, n'apparaît qu'à
@@ -8,13 +8,16 @@ import { formatDateFR, getCodeStatistique, legalProfileMock } from "../legal-uti
 //
 // Props :
 //  - cycle: "maternelle" | "primaire" | "secondaire" — détermine le code statistique
-//  - profile?: LegalProfile — par défaut le mock La Citadelle (phase 1)
+//  - profile?: LegalProfile — profil vide par défaut : rien ne s'affiche
+//    tant que l'école n'a pas renseigné son arrêté (jamais les données
+//    d'une autre école)
 //  - alwaysVisible?: boolean — si true, visible aussi à l'écran (utile pour la prévisualisation
 //    dans le widget de conformité)
-export default function OfficialLegalFooter({ cycle, profile = legalProfileMock, alwaysVisible = false }) {
+export default function OfficialLegalFooter({ cycle, profile = legalProfileVide, alwaysVisible = false }) {
   const code = getCodeStatistique(profile, cycle);
-  const num = profile.arreteOuverture.numero;
-  const date = formatDateFR(profile.arreteOuverture.dateSignature);
+  const num = profile?.arreteOuverture?.numero;
+  const date = formatDateFR(profile?.arreteOuverture?.dateSignature);
+  if (!num) return null;
 
   const baseStyle = {
     marginTop: 14,
