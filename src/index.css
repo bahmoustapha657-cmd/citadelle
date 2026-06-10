@@ -116,6 +116,7 @@ body.mode-sombre [style*="background: rgb(255, 255, 255)"] {
 body.mode-sombre [style*="background: rgb(248, 250, 252)"], /* #f8fafc */
 body.mode-sombre [style*="background: rgb(250, 251, 252)"], /* #fafbfc */
 body.mode-sombre [style*="background: rgb(249, 250, 251)"], /* #f9fafb */
+body.mode-sombre [style*="background: rgb(249, 251, 249)"], /* #f9fbf9 (zèbre salaires) */
 body.mode-sombre [style*="background: rgb(250, 250, 250)"]  /* #fafafa */ {
   background: var(--lc-surface-alt) !important;
 }
@@ -161,6 +162,7 @@ body.mode-sombre [style*="background: rgb(234, 244, 224)"]  /* #eaf4e0 */ {
 body.mode-sombre [style*="background: rgb(219, 234, 254)"], /* #dbeafe */
 body.mode-sombre [style*="background: rgb(239, 246, 255)"], /* #eff6ff */
 body.mode-sombre [style*="background: rgb(224, 242, 254)"], /* #e0f2fe */
+body.mode-sombre [style*="background: rgb(240, 248, 255)"], /* #f0f8ff (col. Exécuté salaires) */
 body.mode-sombre [style*="background: rgb(240, 249, 255)"]  /* #f0f9ff */ {
   background: rgba(59, 130, 246, 0.14) !important;
 }
@@ -195,6 +197,12 @@ body.mode-sombre [style*="solid rgb(245, 193, 193)"]  /* #f5c1c1 (alertes rouges
 }
 body.mode-sombre [style*="solid rgb(209, 250, 229)"]  /* #d1fae5 (succès) */ {
   border-color: rgba(52, 211, 153, 0.45) !important;
+}
+
+/* Liseré inset de la colonne sticky (tables salaires).
+   Sérialisation : box-shadow: rgb(...) -1px 0px 0px inset (couleur en tête). */
+body.mode-sombre [style*="box-shadow: rgb(209, 220, 232)"]  /* #d1dce8 */ {
+  box-shadow: inset -1px 0 0 var(--lc-border) !important;
 }
 
 /* Bordures et séparateurs clairs → sombres (toutes épaisseurs/côtés) */
@@ -306,6 +314,19 @@ body.mode-sombre .recharts-legend-item-text {
 }
 body.mode-sombre .recharts-cartesian-grid line {
   stroke: var(--lc-border) !important;
+}
+/* Tooltip Recharts : blanc par défaut (style inline backgroundColor) →
+   surface sombre + textes clairs. */
+body.mode-sombre .recharts-default-tooltip {
+  background-color: var(--lc-surface) !important;
+  border-color: var(--lc-border) !important;
+  box-shadow: var(--lc-shadow-modal);
+}
+body.mode-sombre .recharts-tooltip-label {
+  color: var(--lc-text) !important;
+}
+body.mode-sombre .recharts-default-tooltip .recharts-tooltip-item {
+  color: var(--lc-text-muted) !important;
 }
 
 #root {
