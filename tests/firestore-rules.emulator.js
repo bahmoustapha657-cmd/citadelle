@@ -528,7 +528,7 @@ describe("7. Champs plan protégés", () => {
 describe("8. Anonyme", () => {
   beforeEach(async () => {
     await seed(async (db) => {
-      await setDoc(doc(db, `ecoles/${SCHOOL_A}/annonces/a1`), { titre: "Bienvenue" });
+      await setDoc(doc(db, `ecoles/${SCHOOL_A}/annonces/a1`), { titre: "Bienvenue", publique: true });
       await setDoc(doc(db, `ecoles/${SCHOOL_A}/honneurs/h1`), { eleve: "X" });
       await setDoc(doc(db, `ecoles/${SCHOOL_A}/recettes/r1`), { montant: 100 });
       await setDoc(doc(db, `ecoles/${SCHOOL_A}/comptes/c1`), { login: "x" });
@@ -536,7 +536,7 @@ describe("8. Anonyme", () => {
     });
   });
 
-  test("anonyme PEUT lire les annonces", async () => {
+  test("anonyme PEUT lire les annonces PUBLIQUES uniquement", async () => {
     const db = asAnon();
     await assertSucceeds(getDoc(doc(db, `ecoles/${SCHOOL_A}/annonces/a1`)));
   });
@@ -1444,6 +1444,63 @@ describe("18. Abonnement expiré → lecture seule", () => {
     const db = asUser({ schoolId: SCHOOL_A, role: "college" });
     await assertSucceeds(
       setDoc(doc(db, `ecoles/${SCHOOL_A}/notesCollege/n1`), { val: 12 }),
+    );
+  });
+});
+
+// ───────────────────────────────────────────────────────────
+// 19. Annonces — confidentialité des annonces parents
+//     (lecture anonyme limitée à publique==true) + année scolaire
+//     par école (champ anneeScolaire modifiable par la direction)
+// ───────────────────────────────────────────────────────────
+describe("19. Annonces publiques/privées & année scolaire", () => {
+  beforeEach(async () => {
+    await seed(async (db) => {
+      await setDoc(doc(db, `ecoles/${SCHOOL_A}/annonces/pub`), {
+        titre: "Rentrée", corps: "Le 1er octobre", publique: true, date: 1,
+      });
+      await setDoc(doc(db, `ecoles/${SCHOOL_A}/annonces/priv`), {
+        titre: "Réunion parents", corps: "Vendredi 18h", date: 2,
+      });
+    });
+  });
+
+  test("anonyme PEUT lire une annonce publique", async () => {
+    await assertSucceeds(getDoc(doc(asAnon(), `ecoles/${SCHOOL_A}/annonces/pub`)));
+  });
+
+  test("anonyme NE PEUT PAS lire une annonce parents (sans publique=true)", async () => {
+    await assertFails(getDoc(doc(asAnon(), `ecoles/${SCHOOL_A}/annonces/priv`)));
+  });
+
+  test("anonyme PEUT lister les annonces filtrées publique==true (portail public)", async () => {
+    const q = query(
+      collection(asAnon(), `ecoles/${SCHOOL_A}/annonces`),
+      where("publique", "==", true),
+    );
+    await assertSucceeds(getDocs(q));
+  });
+
+  test("anonyme NE PEUT PAS lister toutes les annonces sans filtre", async () => {
+    await assertFails(getDocs(collection(asAnon(), `ecoles/${SCHOOL_A}/annonces`)));
+  });
+
+  test("un compte de l'école (parent) PEUT lire les annonces privées", async () => {
+    const db = asUser({ schoolId: SCHOOL_A, role: "parent" });
+    await assertSucceeds(getDoc(doc(db, `ecoles/${SCHOOL_A}/annonces/priv`)));
+  });
+
+  test("direction PEUT modifier anneeScolaire (année par école)", async () => {
+    const db = asUser({ schoolId: SCHOOL_A, role: "direction" });
+    await assertSucceeds(
+      updateDoc(doc(db, `ecoles/${SCHOOL_A}`), { anneeScolaire: "2026-2027" }),
+    );
+  });
+
+  test("admin NE PEUT PAS modifier anneeScolaire", async () => {
+    const db = asUser({ schoolId: SCHOOL_A, role: "admin" });
+    await assertFails(
+      updateDoc(doc(db, `ecoles/${SCHOOL_A}`), { anneeScolaire: "2026-2027" }),
     );
   });
 });

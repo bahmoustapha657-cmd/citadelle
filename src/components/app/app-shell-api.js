@@ -16,13 +16,19 @@ export function logActionDoc(action, details = "", auteur = "") {
   }
 }
 
-// Persiste l'année courante (localStorage + config Firestore).
-export function persisterAnnee(val) {
+// Persiste l'année courante de l'ÉCOLE (champ anneeScolaire de ecoles/{id})
+// + cache local. Renvoie la promesse pour que l'appelant puisse signaler un
+// refus (seule la Direction peut modifier le doc école).
+// Ancien design corrigé : doc global config/annee partagé entre TOUTES les
+// écoles et réservé au superadmin → l'écriture échouait en silence.
+export function persisterAnnee(schoolId, val) {
   localStorage.setItem("LC_annee", val);
-  setDoc(doc(db, "config", "annee"), { valeur: val }).catch(() => {});
+  if (!schoolId || schoolId === "superadmin") return Promise.resolve();
+  return setDoc(doc(db, "ecoles", schoolId), { anneeScolaire: val }, { merge: true });
 }
 
-// Charge l'année courante depuis Firestore (null si absente/erreur).
+// Legacy : lit l'ancien doc global config/annee (écoles d'avant la migration
+// vers ecoles/{id}.anneeScolaire). Null si absent/erreur.
 export function chargerAnnee() {
   return getDoc(doc(db, "config", "annee"))
     .then((snap) => (snap.exists() ? snap.data().valeur || "2025-2026" : null))

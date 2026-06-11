@@ -1,7 +1,8 @@
 ﻿import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import bcrypt from "bcryptjs";
-import { ROLE_ORDER, getRoleSettingsMap, ADMIN_WRITABLE_MODULES } from "../../../shared/role-config.js";
+import { ROLE_ORDER, getRoleSettingsMap } from "../../../shared/role-config.js";
+import { setRoleClaims } from "../claims.js";
 import { generateSecurePassword } from "../passwords.js";
 import { findLogicalAccountConflict } from "../account-conflicts.js";
 import {
@@ -197,39 +198,8 @@ async function syncUserProfile({ db, uid, schoolId, login, email, compteDocId, a
   }), { merge: true });
 }
 
-// Custom claims portes par le JWT Firebase. Pour l'admin, on injecte
-// adminReadModules + adminWriteModules pour que les rules Firestore puissent
-// appliquer le perimetre exact decide par le DG sans get() additionnel.
-// Les autres roles n'ont pas besoin de ce detail (leur perimetre est code
-// en dur dans les rules).
-async function buildClaimsForRole({ db, role, schoolId, roleSettings = null }) {
-  const claims = { role, schoolId };
-  if (role !== "admin") return claims;
-
-  let adminConfig = roleSettings?.admin;
-  if (!adminConfig) {
-    const snap = await db.collection("ecoles").doc(schoolId).get();
-    adminConfig = getRoleSettingsMap(snap.exists ? snap.data() : {}).admin;
-  }
-
-  const readModules = Array.isArray(adminConfig?.modules) ? adminConfig.modules : [];
-  const rawWriteModules = Array.isArray(adminConfig?.writeModules) ? adminConfig.writeModules : [];
-  const writeModules = rawWriteModules.filter(
-    (moduleId) => ADMIN_WRITABLE_MODULES.includes(moduleId) && readModules.includes(moduleId),
-  );
-
-  return {
-    ...claims,
-    adminReadModules: readModules,
-    adminWriteModules: writeModules,
-  };
-}
-
-async function setRoleClaims(authAdmin, uid, params) {
-  const claims = await buildClaimsForRole(params);
-  await authAdmin.setCustomUserClaims(uid, claims);
-  return claims;
-}
+// Custom claims : construction centralisée dans ../claims.js (partagée avec
+// login.js pour ne plus écraser les modules délégués de l'admin au relogin).
 
 async function updateAuthIdentity(authAdmin, uid, { email, nom, active }) {
   if (!uid) return;

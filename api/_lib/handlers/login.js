@@ -2,6 +2,7 @@ import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import bcrypt from "bcryptjs";
 import { applyPasswordTarpit } from "../auth-tarpit.js";
+import { setRoleClaims } from "../claims.js";
 import { initAdmin } from "../firebase-admin.js";
 import { captureServerError, withObservability } from "../observability.js";
 import { migrateParentAccountLinks } from "../parent-links-migration.js";
@@ -152,7 +153,11 @@ async function handler(req, res) {
       }
     }
 
-    await authAdmin.setCustomUserClaims(uid, {
+    // Claims complets (modules délégués inclus pour l'admin) : ne JAMAIS
+    // poser { role, schoolId } nus ici, cela écraserait adminReadModules/
+    // adminWriteModules à chaque connexion.
+    await setRoleClaims(authAdmin, uid, {
+      db,
       role: compte.role,
       schoolId: normalizedSchoolId,
     });

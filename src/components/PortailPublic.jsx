@@ -1,4 +1,7 @@
-import { useState, useContext } from "react";
+import { useState, useEffect, useContext } from "react";
+import { collection, query, where } from "firebase/firestore";
+import { db } from "../firebaseDb";
+import { safeOnSnapshot } from "../firestore-safe";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
 import { GlobalStyles } from "../styles";
@@ -13,19 +16,27 @@ import { PublicFooter } from "./portail-public/PublicFooter";
 // Portail public d'une école : page d'accueil en sections (hero, annonces,
 // honneurs, galerie, contact). Aiguille les données vers chaque section.
 function PortailPublic({ onConnexion }) {
-  const { schoolInfo } = useContext(SchoolContext);
-  const { items: annonces } = useFirestore("annonces");
+  const { schoolId, schoolInfo } = useContext(SchoolContext);
   const { items: honneurs } = useFirestore("honneurs");
+
+  // Annonces : requête FILTRÉE publique==true — obligatoire car la règle
+  // Firestore ne laisse lire anonymement que les annonces publiques (les
+  // annonces destinées aux parents resteraient sinon lisibles par tous).
+  const [annonces, setAnnonces] = useState([]);
+  useEffect(() => {
+    if (!schoolId) return undefined;
+    const q = query(collection(db, "ecoles", schoolId, "annonces"), where("publique", "==", true));
+    return safeOnSnapshot(q, (snap) => {
+      setAnnonces(snap.docs.map((d) => ({ ...d.data(), _id: d.id })));
+    });
+  }, [schoolId]);
 
   const acc = schoolInfo.accueil || {};
   const c1 = schoolInfo.couleur1 || "#0A1628";
   const c2 = schoolInfo.couleur2 || "#00C48C";
   const [galIndex, setGalIndex] = useState(null); // lightbox
   const photos = acc.photos || [];
-  // Seules les annonces explicitement marquées « publiques » à la publication
-  // apparaissent sur la page publique : celles du module Messages Parents
-  // sont destinées aux familles par défaut (jamais affichées ici sans opt-in).
-  const annoncesPub = annonces.filter(a => a.date && a.publique === true).sort((a, b) => b.date - a.date).slice(0, 4);
+  const annoncesPub = annonces.filter(a => a.date).sort((a, b) => b.date - a.date).slice(0, 4);
 
   return (
     <div style={{ minHeight: "100vh", background: "#f8fafc", fontFamily: "'Inter','Segoe UI',sans-serif", color: "#0A1628" }}>

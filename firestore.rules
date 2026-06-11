@@ -279,7 +279,13 @@ service cloud.firestore {
       }
 
       match /annonces/{docId} {
-        allow read: if true;
+        // Lecture anonyme limitée aux annonces explicitement publiques
+        // (page vitrine) : les annonces destinées aux parents ne sont
+        // lisibles que par les comptes de l'école. Le portail public doit
+        // requêter avec where("publique","==",true).
+        allow read: if resource.data.publique == true
+                     || appartientEcole(schoolId)
+                     || aUnRole(["superadmin"]);
         allow write: if (appartientEcole(schoolId) && aUnRole(["direction", "primaire", "college"]) && abonnementActif(schoolId))
                       || aUnRole(["superadmin"]);
       }

@@ -30,10 +30,26 @@ export function useAppShell({
   const [annee, setAnneeState] = useState(() => localStorage.getItem("LC_annee") || "2025-2026");
   const setAnnee = (val) => {
     setAnneeState(val);
-    persisterAnnee(val);
+    persisterAnnee(schoolId, val).catch(() => {
+      toast("Année non enregistrée pour l'école : seule la Direction peut la modifier.", "warning");
+    });
   };
+  // Année scolaire PAR ÉCOLE : ecoles/{id}.anneeScolaire est la source de
+  // vérité partagée entre tous les appareils/utilisateurs de l'école.
+  // (Ancien design : doc global config/annee commun à TOUTES les écoles,
+  // inaccessible en écriture hors superadmin → échec silencieux.)
+  const anneePartagee = schoolInfoState?.anneeScolaire;
   useEffect(() => {
+    if (!anneePartagee) return;
+    setAnneeState(anneePartagee);
+    localStorage.setItem("LC_annee", anneePartagee);
+  }, [anneePartagee]);
+  useEffect(() => {
+    // Legacy : ancien doc global, uniquement si l'école n'a pas encore
+    // son propre champ (écoles existantes avant la migration).
+    if (anneePartagee) return;
     chargerAnnee().then((val) => { if (val) setAnneeState(val); });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const planInfo = computePlanInfo({ schoolInfoState, nowTs, totalElevesActifs, t });
