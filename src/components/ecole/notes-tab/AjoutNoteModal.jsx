@@ -6,9 +6,28 @@ import { resolveCanonicalNoteType } from "../../../evaluation-forms";
 export function AjoutNoteModal({
   form, setForm, setModal,
   eleves, matieresForClasse, noteForms, defaultNoteType, maxNote,
-  schoolInfo, isPrimarySection, periodes, annee, ajN,
+  schoolInfo, isPrimarySection, periodes, annee, ajN, toast,
 }) {
   const chg = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
+
+  // Les attributs min/max de l'input ne bloquent pas la saisie clavier :
+  // le barème est validé à l'enregistrement (0 → maxNote) pour qu'aucune
+  // note aberrante (ex. 99/20) ne corrompe moyennes et bulletins.
+  const enregistrer = () => {
+    const valeur = Number(form.note);
+    if (!Number.isFinite(valeur) || valeur < 0 || valeur > maxNote) {
+      const msg = `Note invalide : saisissez une valeur entre 0 et ${maxNote}.`;
+      if (toast) toast(msg, "warning"); else alert(msg);
+      return;
+    }
+    ajN({
+      ...form,
+      type: resolveCanonicalNoteType(form.type, schoolInfo, isPrimarySection ? "primaire" : "secondaire"),
+      note: valeur,
+      annee: annee || getAnnee(),
+    });
+    setModal(null);
+  };
 
   return (
     <Modale titre="Saisir une note" fermer={() => setModal(null)}>
@@ -39,7 +58,7 @@ export function AjoutNoteModal({
       </div>
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
         <Btn v="ghost" onClick={() => setModal(null)}>Annuler</Btn>
-        <Btn onClick={() => { ajN({ ...form, type: resolveCanonicalNoteType(form.type, schoolInfo, isPrimarySection ? "primaire" : "secondaire"), note: Number(form.note), annee: annee || getAnnee() }); setModal(null); }}>Enregistrer</Btn>
+        <Btn onClick={enregistrer}>Enregistrer</Btn>
       </div>
     </Modale>
   );

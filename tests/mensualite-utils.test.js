@@ -161,7 +161,31 @@ test("getEleveSolde sums unpaid months, unpaid inscription and unpaid other fees
 
 test("MENSUALITE_ALGO_VERSION est un entier ≥ 1 (canari pour repérer les bumps non documentés)", () => {
   assert.equal(typeof MENSUALITE_ALGO_VERSION, "number");
-  assert.equal(MENSUALITE_ALGO_VERSION, 1);
+  // v2 : montants perçus figés au paiement (mensMontants) — cf. toggleMens.
+  assert.equal(MENSUALITE_ALGO_VERSION, 2);
+});
+
+test("v2 : un changement de tarif ne réécrit pas les mois déjà payés (montants figés)", () => {
+  const moisAnnee = ["Octobre", "Novembre", "Décembre"];
+  // Octobre payé à 150 000 (figé), Novembre payé avant la v2 (pas de montant
+  // figé → tarif courant), Décembre impayé. Tarif courant passé à 200 000.
+  const eleve = {
+    classe: "6e A",
+    mens: { Octobre: "Payé", Novembre: "Payé", Décembre: "Impayé" },
+    mensMontants: { Octobre: 150000 },
+  };
+  const tarifs = [{ classe: "6e A", montant: 200000 }];
+
+  const snap = getEleveMensualiteSnapshot(eleve, moisAnnee, tarifs);
+  // Perçu = 150 000 (figé) + 200 000 (legacy au tarif courant) = 350 000
+  assert.equal(snap.montantMensualitesPercu, 350000);
+  // Reste dû = 1 mois impayé au tarif courant
+  assert.equal(snap.soldeMensualites, 200000);
+
+  const overview = getMensualiteOverview([eleve], moisAnnee, tarifs);
+  // Dû total = perçu réel + reste à percevoir (et non 3 × tarif courant)
+  assert.equal(overview.totalDu, 550000);
+  assert.equal(overview.totalPercu, 350000);
 });
 
 test("getElevesCritiques returns only students with enough consecutive unpaid months", () => {

@@ -8,6 +8,7 @@ import { getSectionForClasse } from "../constants";
 import { getAnnualAverage, getGeneralAverage } from "../note-utils";
 import { getPeriodesForSection } from "../period-utils";
 import { classeSuivante } from "../promotion-utils";
+import { matieresForClasse } from "./ecole/ecole-logic";
 
 // Limite Firestore : 500 opérations par batch (marge de sécurité à 450).
 const BATCH_MAX = 450;
@@ -33,9 +34,9 @@ function calcMoyenneAnnuelle(schoolInfo, notes, classe, matieres) {
 //           classesInconnues, sansNotes, simulation, details }.
 export async function runPromotion({ schoolId, schoolInfo, seuilCollege, seuilPrimaire, sansNotesBehavior, simulate = false }) {
   const SECTIONS = [
-    { eleves: "elevesCollege", notes: "notesCollege", seuil: Number(seuilCollege), maxNote: 20 },
-    { eleves: "elevesPrimaire", notes: "notesPrimaire", seuil: Number(seuilPrimaire), maxNote: 10 },
-    { eleves: "elevesLycee", notes: "notesLycee", seuil: Number(seuilCollege), maxNote: 20 },
+    { eleves: "elevesCollege", notes: "notesCollege", matieres: "classesCollege_matieres", seuil: Number(seuilCollege), maxNote: 20 },
+    { eleves: "elevesPrimaire", notes: "notesPrimaire", matieres: "classesPrimaire_matieres", seuil: Number(seuilPrimaire), maxNote: 10 },
+    { eleves: "elevesLycee", notes: "notesLycee", matieres: "classesLycee_matieres", seuil: Number(seuilCollege), maxNote: 20 },
   ];
   let total = 0, promus = 0, redoublants = 0, terminalistes = 0, sansNotes = 0, inconnus = 0;
   const classesInconnues = new Set();
@@ -43,11 +44,13 @@ export async function runPromotion({ schoolId, schoolInfo, seuilCollege, seuilPr
   const updates = []; // { ref, classe } à écrire en batch après l'analyse
 
   for (const sec of SECTIONS) {
-    const [snapEleves, snapNotes] = await Promise.all([
+    const [snapEleves, snapNotes, snapMatieres] = await Promise.all([
       getDocs(collection(db, "ecoles", schoolId, sec.eleves)),
       getDocs(collection(db, "ecoles", schoolId, sec.notes)),
+      getDocs(collection(db, "ecoles", schoolId, sec.matieres)),
     ]);
     const notesToutes = snapNotes.docs.map(d => ({ ...d.data(), _id: d.id }));
+    const matieresSection = snapMatieres.docs.map(d => ({ ...d.data(), _id: d.id }));
     for (const d of snapEleves.docs) {
       const e = d.data();
       if (e.statut !== "Actif") continue;
@@ -61,7 +64,13 @@ export async function runPromotion({ schoolId, schoolInfo, seuilCollege, seuilPr
         continue;
       }
       const notesEleve = notesToutes.filter(n => n.eleveId === d.id);
-      const matieresEleve = [...new Set(notesEleve.map((note) => note.matiere).filter(Boolean))].map((nom) => ({ nom }));
+      // Mêmes matières/coefficients que les bulletins (matieresForClasse).
+      // Fallback : matières déduites des notes de l'élève (coef 1) si
+      // l'école n'a pas configuré ses matières pour cette section.
+      const matieresClasse = matieresForClasse(matieresSection, classeActuelle);
+      const matieresEleve = matieresClasse.length > 0
+        ? matieresClasse
+        : [...new Set(notesEleve.map((note) => note.matiere).filter(Boolean))].map((nom) => ({ nom }));
       const moy = calcMoyenneAnnuelle(schoolInfo, notesEleve, classeActuelle, matieresEleve);
       let decision;
       if (moy === null) {

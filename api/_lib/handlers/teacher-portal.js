@@ -308,6 +308,14 @@ async function handler(req, res) {
       return res.status(400).json({ error: "Champs requis : eleveId, periode, note" });
     }
 
+    // Barème : le portail enseignant écrit via l'Admin SDK (les règles client
+    // ne s'appliquent pas) — on refuse toute note hors 0..maxNote pour ne pas
+    // corrompre moyennes et bulletins (primaire /10, secondaire /20).
+    const maxNote = section === "primaire" ? 10 : 20;
+    if (noteValue < 0 || noteValue > maxNote) {
+      return res.status(400).json({ error: `Note invalide : doit être comprise entre 0 et ${maxNote}.` });
+    }
+
     const payload = {
       eleveId,
       eleveNom: `${eleve.prenom || ""} ${eleve.nom || ""}`.trim(),

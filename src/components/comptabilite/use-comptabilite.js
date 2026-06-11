@@ -8,7 +8,7 @@ import { toggleFraisAnnexe as toggleFraisAnnexeAction, toggleMens as toggleMensA
 import { ensureClasse as ensureClasseHelper, sortAlphaEleves } from "./eleves-helpers";
 import { useComptaSalaires } from "./useComptaSalaires";
 import { getPeriodesForSchool } from "../../period-utils";
-import { getMensualiteOverview } from "../../mensualite-utils";
+import { getMensualiteOverview, getTarifMensuelForClasse } from "../../mensualite-utils";
 import { buildTarifGetters, buildTarifData } from "./compta-tarifs";
 import { saveSalaireAction, savePersonnelAction } from "./compta-saves";
 
@@ -101,10 +101,16 @@ export function useComptabilite({ readOnly, annee, userRole, verrouOuvert = fals
   const toggleFraisAnnexe = (_id, opts) => toggleFraisAnnexeAction(_id, opts, {
     readOnly, canEdit, toast, modEleves,
   });
-  const toggleMens = (_id, mois, mensActuels, mensDatesActuels, nomEleve) =>
-    toggleMensAction(_id, mois, mensActuels, mensDatesActuels, nomEleve, {
+  const toggleMens = (_id, mois, mensActuels, mensDatesActuels, nomEleve) => {
+    // Fige le tarif en vigueur au moment du paiement (mensMontants[mois]) :
+    // les totaux perçus ne bougent plus si le tarif change en cours d'année.
+    const eleve = tousElevesScolarite.find((e) => e._id === _id);
+    return toggleMensAction(_id, mois, mensActuels, mensDatesActuels, nomEleve, {
       readOnly, canEdit, toast, modEleves, envoyerPush,
+      montantMois: getTarifMensuelForClasse(tarifsClasses, eleve?.classe || ""),
+      mensMontantsActuels: eleve?.mensMontants || null,
     });
+  };
 
   const enreg = (aj, mod, extra = {}) => {
     if (readOnly) return;

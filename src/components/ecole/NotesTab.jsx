@@ -122,6 +122,7 @@ export function NotesTab({
           periodes={periodes}
           annee={annee}
           ajN={ajN}
+          toast={toast}
         />
       )}
     </div>

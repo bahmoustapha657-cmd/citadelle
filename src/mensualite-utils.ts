@@ -7,7 +7,11 @@ import {
 
 // Bumper à chaque changement de formule (mensualité, solde, snapshot) qui
 // rendrait les calculs antérieurs non reproductibles.
-export const MENSUALITE_ALGO_VERSION = 1;
+// v2 : montants perçus figés au paiement (mensMontants[mois]) — un mois payé
+// garde le tarif en vigueur au moment de l'encaissement ; seuls les mois
+// impayés suivent le tarif courant. Fallback tarif courant pour les
+// paiements antérieurs à la v2 (sans montant figé).
+export const MENSUALITE_ALGO_VERSION = 2;
 
 export type TarifClasse = {
   classe?: string;
@@ -24,6 +28,8 @@ export type MensualiteEleve = {
   inscriptionPayee?: boolean;
   autrePayee?: boolean;
   mens?: Record<string, string>;
+  // Tarif mensuel figé au moment du paiement, par mois (cf. toggleMens).
+  mensMontants?: Record<string, number | string>;
 };
 
 export type MensualiteSnapshot = {
@@ -110,8 +116,17 @@ export function getElevesCritiques<T extends MensualiteEleve>(eleves: T[] = [], 
   return eleves.filter((eleve) => isEleveCritique(eleve, moisAnnee, minimumUnpaid));
 }
 
+// Montant perçu pour un mois payé : tarif figé au paiement si présent
+// (mensMontants), sinon tarif courant (paiements antérieurs à la v2).
+function montantMoisPaye(eleve: MensualiteEleve, mois: string, mensualiteCourante: number): number {
+  const fige = Number((eleve.mensMontants || {})[mois]);
+  return Number.isFinite(fige) && fige > 0 ? fige : mensualiteCourante;
+}
+
 export function getEleveMensualiteSnapshot(eleve: MensualiteEleve = {}, moisAnnee: string[] = [], tarifsClasses: TarifClasse[] = []): MensualiteSnapshot {
-  const nbPayes = countPaidMonths(eleve, moisAnnee);
+  const mens = eleve.mens || {};
+  const moisPayes = moisAnnee.filter((mois) => mens[mois] === "Payé");
+  const nbPayes = moisPayes.length;
   const nbImpayes = moisAnnee.length - nbPayes;
   const mensualite = getTarifMensuelForClasse(tarifsClasses, eleve.classe);
   const inscriptionTarif = getTarifInscriptionForEleve(eleve, tarifsClasses);
@@ -123,7 +138,7 @@ export function getEleveMensualiteSnapshot(eleve: MensualiteEleve = {}, moisAnne
     algoVersion: MENSUALITE_ALGO_VERSION,
     nbPayes,
     nbImpayes,
-    montantMensualitesPercu: nbPayes * mensualite,
+    montantMensualitesPercu: moisPayes.reduce((somme, mois) => somme + montantMoisPaye(eleve, mois, mensualite), 0),
     montantInscriptionPercu: inscriptionPercu,
     montantAutrePercu: autrePercu,
     soldeMensualites: nbImpayes * mensualite,
@@ -140,7 +155,8 @@ export function getEleveSolde(eleve: MensualiteEleve = {}, moisAnnee: string[] =
 export function getMensualiteOverview(eleves: MensualiteEleve[] = [], moisAnnee: string[] = [], tarifsClasses: TarifClasse[] = []): MensualiteOverview {
   return eleves.reduce<MensualiteOverview>((summary, eleve) => {
     const snapshot = getEleveMensualiteSnapshot(eleve, moisAnnee, tarifsClasses);
-    const totalDuEleve = moisAnnee.length * getTarifMensuelForClasse(tarifsClasses, eleve.classe);
+    // Dû = perçu réel (montants figés) + reste à percevoir au tarif courant.
+    const totalDuEleve = snapshot.montantMensualitesPercu + snapshot.soldeMensualites;
 
     return {
       totalDu: summary.totalDu + totalDuEleve,

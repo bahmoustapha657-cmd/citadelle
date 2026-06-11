@@ -4,7 +4,7 @@ import { getAnnee } from "../../../constants";
 // résolution de la note existante par élève, valeur de cellule (édition locale
 // prioritaire) et enregistrement groupé du lot de modifications.
 export function useNotesGrille({
-  eleves, notes, matieresForClasse, annee, ajN, toast,
+  eleves, notes, matieresForClasse, annee, ajN, toast, maxNote = 20,
   grilleClasse, grillePeriode, grilleType,
   grilleChanges, setGrilleChanges, setGrilleSaving,
 }) {
@@ -37,20 +37,30 @@ export function useNotesGrille({
     if (!Object.keys(grilleChanges).length) { toast("Aucune modification.", "info"); return; }
     setGrilleSaving(true);
     let nb = 0;
+    const horsBareme = {};
     for (const [key, val] of Object.entries(grilleChanges)) {
       const [eleveId, ...matParts] = key.split("|");
       const mat = matParts.join("|");
       if (val === "" || isNaN(Number(val))) continue;
+      // Barème : aucune note hors 0..maxNote ne doit corrompre les moyennes.
+      // Les cellules invalides restent en attente pour correction.
+      const valeur = Number(val);
+      if (valeur < 0 || valeur > maxNote) { horsBareme[key] = val; continue; }
       const eleve = eleves.find(e => e._id === eleveId);
       if (!eleve) continue;
       const exist = getNoteExist(eleve, mat);
-      if (exist) { await ajN({ ...exist, note: Number(val), annee: exist.annee || annee || getAnnee() }); }
-      else { await ajN({ eleveId, eleveNom: `${eleve.nom || ""} ${eleve.prenom || ""}`.trim(), matiere: mat, type: grilleType, periode: grillePeriode, note: Number(val), annee: annee || getAnnee() }); }
+      if (exist) { await ajN({ ...exist, note: valeur, annee: exist.annee || annee || getAnnee() }); }
+      else { await ajN({ eleveId, eleveNom: `${eleve.nom || ""} ${eleve.prenom || ""}`.trim(), matiere: mat, type: grilleType, periode: grillePeriode, note: valeur, annee: annee || getAnnee() }); }
       nb++;
     }
-    setGrilleChanges({});
+    setGrilleChanges(horsBareme);
     setGrilleSaving(false);
-    toast(`${nb} note(s) enregistrée(s)`, "success");
+    const nbInvalides = Object.keys(horsBareme).length;
+    if (nbInvalides > 0) {
+      toast(`${nb} note(s) enregistrée(s) — ${nbInvalides} hors barème (0–${maxNote}) à corriger.`, "warning");
+    } else {
+      toast(`${nb} note(s) enregistrée(s)`, "success");
+    }
   };
 
   return { classesUniqN, elevesGrille, matieresCols, valeurCellule, sauvegarderGrille };

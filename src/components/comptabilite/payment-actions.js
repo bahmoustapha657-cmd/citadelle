@@ -33,8 +33,11 @@ export async function toggleFraisAnnexe(_id, opts, { readOnly, canEdit, toast, m
 // Toggle de mensualité d'un élève (Payé/Impayé) avec push parent.
 // Le décochage exige le verrou admin (canEdit) ; le push de confirmation
 // est envoyé au parent dans les 2 sens (payé → confirmation, impayé → rappel).
+// Le MONTANT du tarif en vigueur est figé au moment du paiement
+// (mensMontants[mois]) : un changement de tarif en cours d'année ne
+// réécrit plus rétroactivement les totaux perçus.
 export async function toggleMens(_id, mois, mensActuels, mensDatesActuels, nomEleve, {
-  readOnly, canEdit, toast, modEleves, envoyerPush,
+  readOnly, canEdit, toast, modEleves, envoyerPush, montantMois = null, mensMontantsActuels = null,
 }) {
   if(readOnly) return;
   const mens={...(mensActuels||initMens())};
@@ -49,9 +52,15 @@ export async function toggleMens(_id, mois, mensActuels, mensDatesActuels, nomEl
   if(!confirm(msg)) return;
   mens[mois]=estPaye?"Impayé":"Payé";
   const mensDates={...(mensDatesActuels||{})};
-  if(!estPaye) mensDates[mois]=new Date().toLocaleDateString("fr-FR");
-  else delete mensDates[mois];
-  await modEleves(_id,{mens,mensDates});
+  const mensMontants={...(mensMontantsActuels||{})};
+  if(!estPaye){
+    mensDates[mois]=new Date().toLocaleDateString("fr-FR");
+    if(Number.isFinite(Number(montantMois))) mensMontants[mois]=Number(montantMois);
+  } else {
+    delete mensDates[mois];
+    delete mensMontants[mois];
+  }
+  await modEleves(_id,{mens,mensDates,mensMontants});
   if(!estPaye){
     envoyerPush(["parent"],"✅ Paiement enregistré",`Mensualité ${mois} de ${nomEleve||"votre enfant"} confirmée.`,"/paiements");
   } else {

@@ -10,7 +10,7 @@ export function NotesGrille({
   grilleChanges, setGrilleChanges, grilleSaving, setGrilleSaving,
 }) {
   const { classesUniqN, elevesGrille, matieresCols, valeurCellule, sauvegarderGrille } = useNotesGrille({
-    eleves, notes, matieresForClasse, annee, ajN, toast,
+    eleves, notes, matieresForClasse, annee, ajN, toast, maxNote,
     grilleClasse, grillePeriode, grilleType, grilleChanges, setGrilleChanges, setGrilleSaving,
   });
 
