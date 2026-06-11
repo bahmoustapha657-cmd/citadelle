@@ -37,7 +37,7 @@ export function PromotionConfigModale({
           Élèves sans notes (aucun devoir saisi)
         </label>
         <div style={{display:"flex",flexDirection:"column",gap:6}}>
-          {[["promouvoir","OK Promouvoir automatiquement"],["redoubler","🔁 Faire redoubler automatiquement"]].map(([v,lbl])=>(
+          {[["promouvoir","✅ Promouvoir automatiquement"],["redoubler","🔁 Faire redoubler automatiquement"]].map(([v,lbl])=>(
             <label key={v} style={{display:"flex",alignItems:"center",gap:8,fontSize:13,cursor:"pointer"}}>
               <input type="radio" name="sansNotes" value={v}
                 checked={sansNotesBehavior===v} onChange={()=>setSansNotesBehavior(v)}/>
@@ -47,11 +47,13 @@ export function PromotionConfigModale({
         </div>
       </div>
       <div style={{background:"#fef3c7",border:"1px solid #fcd34d",borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:12,color:"#92400e"}}>
-        Attention : cette action est <strong>irréversible</strong>. Les classes de tous les élèves promus seront immédiatement mises à jour dans Firestore.
+        Attention : l'application est <strong>irréversible</strong> — les classes des élèves promus sont mises à jour immédiatement.
+        Commencez par la <strong>simulation</strong> : elle montre le résultat complet sans rien modifier.
       </div>
-      <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+      <div style={{display:"flex",gap:8,justifyContent:"flex-end",flexWrap:"wrap"}}>
         <Btn v="ghost" onClick={fermer}>Annuler</Btn>
-        <Btn v="amber" onClick={lancerPromotion}>Promotion Confirmer et lancer</Btn>
+        <Btn onClick={()=>lancerPromotion(true)}>🔍 Simuler (aucune modification)</Btn>
+        <Btn v="amber" onClick={()=>lancerPromotion(false)}>🎓 Lancer définitivement</Btn>
       </div>
     </Modale>
   );

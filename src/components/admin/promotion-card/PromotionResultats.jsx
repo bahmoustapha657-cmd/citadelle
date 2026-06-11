@@ -6,10 +6,13 @@ export function PromotionResultats({ promoRes }) {
   if (!promoRes) return null;
   return (
     <>
+      {promoRes.simulation&&<div style={{background:"#eff6ff",border:"1px solid #93c5fd",borderRadius:8,padding:"8px 14px",marginBottom:10,fontSize:12,color:"#1e40af",fontWeight:700}}>
+        🔍 Simulation — aucune modification n'a été appliquée. Vérifiez le détail puis cliquez « Appliquer cette promotion ».
+      </div>}
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))",gap:8,marginBottom:12}}>
         <div style={{background:"#dcfce7",borderRadius:8,padding:"8px 12px",textAlign:"center"}}>
           <div style={{fontSize:20,fontWeight:900,color:"#15803d"}}>{promoRes.promus}</div>
-          <div style={{fontSize:11,color:"#15803d"}}>OK Promus</div>
+          <div style={{fontSize:11,color:"#15803d"}}>✅ Promus</div>
         </div>
         <div style={{background:"#fee2e2",borderRadius:8,padding:"8px 12px",textAlign:"center"}}>
           <div style={{fontSize:20,fontWeight:900,color:"#b91c1c"}}>{promoRes.redoublants}</div>
@@ -23,7 +26,15 @@ export function PromotionResultats({ promoRes }) {
           <div style={{fontSize:20,fontWeight:900,color:"#6b7280"}}>{promoRes.sansNotes}</div>
           <div style={{fontSize:11,color:"#6b7280"}}>📭 Sans notes</div>
         </div>}
+        {promoRes.inconnus>0&&<div style={{background:"#fef2f2",borderRadius:8,padding:"8px 12px",textAlign:"center"}}>
+          <div style={{fontSize:20,fontWeight:900,color:"#b91c1c"}}>{promoRes.inconnus}</div>
+          <div style={{fontSize:11,color:"#b91c1c"}}>❓ Classe non reconnue</div>
+        </div>}
       </div>
+      {promoRes.classesInconnues?.length>0&&<p style={{margin:"0 0 12px",fontSize:11,color:"#b91c1c"}}>
+        Classes non reconnues (élèves non touchés) : <strong>{promoRes.classesInconnues.join(", ")}</strong>.
+        Renommez-les au format « Nème Année X » ou promouvez ces élèves manuellement.
+      </p>}
       {promoRes.details&&promoRes.details.length>0&&<details style={{marginBottom:12}}>
         <summary style={{fontSize:12,cursor:"pointer",color:C.blue,fontWeight:700}}>
           Voir le détail ({promoRes.details.length} élèves)

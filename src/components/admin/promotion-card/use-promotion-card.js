@@ -2,7 +2,8 @@ import { useState } from "react";
 import { runPromotion } from "../../admin-promotion";
 
 // État et logique de la promotion de fin d'année : seuils, comportement
-// "sans notes", lancement async et résultats. La vue reste dans PromotionCard.
+// "sans notes", simulation préalable puis application réelle.
+// La vue reste dans PromotionCard.
 export function usePromotionCard({ schoolId, schoolInfo, toast }) {
   const [promoEn, setPromoEn] = useState(false);
   const [promoRes, setPromoRes] = useState(null);
@@ -11,13 +12,17 @@ export function usePromotionCard({ schoolId, schoolInfo, toast }) {
   const [seuilPrimaire, setSeuilPrimaire] = useState(5);
   const [sansNotesBehavior, setSansNotesBehavior] = useState("promouvoir"); // "promouvoir" | "redoubler"
 
-  const lancerPromotion = async () => {
+  const lancerPromotion = async (simulate = false) => {
     setPromoModal(false);
     setPromoEn(true);
     try {
-      const res = await runPromotion({ schoolId, schoolInfo, seuilCollege, seuilPrimaire, sansNotesBehavior });
+      const res = await runPromotion({ schoolId, schoolInfo, seuilCollege, seuilPrimaire, sansNotesBehavior, simulate });
       setPromoRes(res);
-      toast(`Promotion terminee — ${res.promus} promus, ${res.redoublants} redoublants`, "success");
+      if (simulate) {
+        toast(`Simulation : ${res.promus} promus, ${res.redoublants} redoublants — aucune modification appliquée`, "info");
+      } else {
+        toast(`Promotion terminée — ${res.promus} promus, ${res.redoublants} redoublants`, "success");
+      }
     } catch (e) {
       toast("Erreur lors de la promotion : " + e.message, "error");
     } finally {

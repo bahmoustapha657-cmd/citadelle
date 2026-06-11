@@ -25,7 +25,7 @@ function AdminPanel({ annee, setAnnee, verrous = {}, schoolId, userRole }) {
 
       <AnneeScolaireCard annee={annee} setAnnee={setAnnee} />
 
-      <PromotionCard schoolId={schoolId} schoolInfo={a.schoolInfo} toast={a.toast} />
+      <PromotionCard schoolId={schoolId} schoolInfo={a.schoolInfo} toast={a.toast} userRole={userRole} />
 
       <div style={{background:"#e0ebf8",borderRadius:10,padding:"12px 16px",marginBottom:20,fontSize:13,color:C.blueDark}}>
         <strong>🔐 Rôle Administrateur :</strong> par défaut en lecture seule. La Direction Générale peut autoriser l'écriture module par module (Primaire, Secondaire, Calendrier, Examens, Messages). Comptabilité, Paramètres, Fondation, Gestion Accès et Historique restent systématiquement en lecture seule (modules système).

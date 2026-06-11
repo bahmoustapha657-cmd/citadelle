@@ -147,6 +147,7 @@ body.mode-sombre [style*="background: rgb(254, 243, 199)"], /* #fef3c7 */
 body.mode-sombre [style*="background: rgb(255, 251, 235)"], /* #fffbeb */
 body.mode-sombre [style*="background: rgb(254, 252, 232)"], /* #fefce8 */
 body.mode-sombre [style*="background: rgb(254, 243, 224)"], /* #fef3e0 */
+body.mode-sombre [style*="background: rgb(254, 249, 195)"], /* #fef9c3 */
 body.mode-sombre [style*="background: rgb(255, 247, 237)"]  /* #fff7ed */ {
   background: rgba(245, 158, 11, 0.14) !important;
 }
