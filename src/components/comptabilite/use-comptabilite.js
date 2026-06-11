@@ -99,14 +99,14 @@ export function useComptabilite({ readOnly, annee, userRole, verrouOuvert = fals
   // Wrappers : injectent les deps (modEleves, readOnly, canEdit, toast,
   // envoyerPush) à chaque appel. Le helper extrait porte la logique métier.
   const toggleFraisAnnexe = (_id, opts) => toggleFraisAnnexeAction(_id, opts, {
-    readOnly, canEdit, toast, modEleves,
+    readOnly, canEdit, toast, modEleves, logAction,
   });
   const toggleMens = (_id, mois, mensActuels, mensDatesActuels, nomEleve) => {
     // Fige le tarif en vigueur au moment du paiement (mensMontants[mois]) :
     // les totaux perçus ne bougent plus si le tarif change en cours d'année.
     const eleve = tousElevesScolarite.find((e) => e._id === _id);
     return toggleMensAction(_id, mois, mensActuels, mensDatesActuels, nomEleve, {
-      readOnly, canEdit, toast, modEleves, envoyerPush,
+      readOnly, canEdit, toast, modEleves, envoyerPush, logAction,
       montantMois: getTarifMensuelForClasse(tarifsClasses, eleve?.classe || ""),
       mensMontantsActuels: eleve?.mensMontants || null,
     });

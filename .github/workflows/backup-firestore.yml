@@ -1,0 +1,44 @@
+# Sauvegarde Firestore quotidienne — exporte toute la base vers Cloud Storage.
+# Nécessite le secret GCP_SA_KEY (clé JSON d'un compte de service) — voir
+# docs/sauvegardes-firestore.md pour la mise en place et la restauration.
+# Tant que le secret n'est pas configuré, le job se termine sans erreur
+# avec un avertissement.
+name: Sauvegarde Firestore
+
+on:
+  schedule:
+    - cron: "0 3 * * *" # chaque nuit à 03h00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Vérifier la configuration
+        id: cfg
+        run: |
+          if [ -n "${{ secrets.GCP_SA_KEY }}" ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Secret GCP_SA_KEY absent — sauvegarde ignorée (voir docs/sauvegardes-firestore.md)"
+          fi
+
+      - name: Authentification GCP
+        if: steps.cfg.outputs.ok == 'true'
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Installer gcloud
+        if: steps.cfg.outputs.ok == 'true'
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: citadelle-school
+
+      - name: Export Firestore vers Cloud Storage
+        if: steps.cfg.outputs.ok == 'true'
+        run: |
+          DEST="gs://citadelle-school-backups/exports/$(date -u +%Y-%m-%d_%H%M)"
+          echo "Export vers $DEST"
+          gcloud firestore export "$DEST" --project=citadelle-school

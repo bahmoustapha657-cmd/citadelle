@@ -53,12 +53,15 @@ Chaque rôle a un mot de passe individuel ; un même utilisateur peut être lié
 
 EduGest propose plusieurs plans (visibles dans `Paramètres → Officiel`) :
 
-- **Découverte** — version d'essai limitée
-- **Standard** — gestion complète d'une section
-- **Pro** — multi-sections, modules avancés (bulletins personnalisés, EDT, etc.)
-- **Premium** — fonctions étendues (rapports, exports, fondation)
+| Plan | Prix | Élèves | Inclus |
+|---|---|---|---|
+| **Gratuit** | 0 GNF / mois | jusqu'à 50 | Notes et bulletins, une section active, support de base |
+| **Starter** | 100 000 GNF / mois | jusqu'à 200 | Primaire et collège, comptabilité de base, portail enseignant |
+| **Standard** ★ | 200 000 GNF / mois | jusqu'à 500 | Toutes les sections, comptabilité complète, portails parent et enseignant |
+| **Premium** | 500 000 GNF / mois | illimités | Toutes les fonctions, personnalisation avancée, support prioritaire |
 
-Si vous atteignez un quota (ex: nombre d'élèves), une **modale de mise à niveau** s'ouvre automatiquement avec les contacts paiement de l'éditeur.
+- Si vous atteignez un quota (ex. nombre d'élèves), une **modale de mise à niveau** s'ouvre avec les contacts de l'éditeur ; la demande de renouvellement se fait depuis le **tableau de bord**.
+- À l'expiration d'un plan payant, une **période de grâce de 3 jours** s'applique ; au-delà, l'établissement passe en **lecture seule** (aucune donnée perdue, tout revient au renouvellement). Le plan Gratuit n'expire jamais.
 
 ### 1.4 Périodicité scolaire
 
@@ -318,11 +321,15 @@ Accès : menu profil → **🏫 Paramètres école**. Réservé à Direction / A
 - **Coordonnées** : adresse, téléphone, email, site web
 - **Sections actives** : cocher *Primaire*, *Collège*, *Lycée*, *Fondation* (active/désactive les menus correspondants — les données restent sauvegardées même si la section est désactivée)
 
-### 5.2 Onglet « Accueil »
+### 5.2 Onglet « Page publique » (anciennement « Accueil »)
 
 - **Photo de couverture** du portail public
 - **Message de bienvenue** (visible sur la page d'accueil du portail externe)
 - **Activation du portail public** (sans connexion) : on/off
+
+> Les onglets des Paramètres sont regroupés par thème : **École** (Identité, Officiel), **Pédagogie** (Évaluations, Matricules), **Présentation** (Page publique, Affichage), **Avancé** (Zone dangereuse).
+>
+> **Annonces** : une annonce publiée dans `Messages Parents` est **réservée aux familles par défaut**. Pour qu'elle apparaisse sur la page publique, cochez « Afficher aussi sur la page publique de l'école 🌍 » à la publication (badge 🌍 *Site public* / 🔒 *Parents* dans la liste).
 
 ### 5.3 Onglet « Officiel » — Conformité légale
 
@@ -806,6 +813,7 @@ Accès : sidebar `🛡 Panneau Admin`. Réservé à Direction / Admin.
 
 - **Sélecteur année active** : c'est l'année en cours de saisie (ne pas confondre avec « Année consultée »)
 - **Changer d'année active** : à utiliser au moment de la rentrée pour basculer toute la saisie sur la nouvelle année
+- La modification est **réservée à la Direction Générale** ; l'année est **partagée entre tous les appareils et utilisateurs de l'école** (stockée sur la fiche école, pas seulement dans le navigateur)
 
 ### 12.2 Verrous de saisie
 
@@ -825,50 +833,33 @@ Accès : sidebar `🛡 Panneau Admin`. Réservé à Direction / Admin.
 - **Définir l'accès** module par module pour chaque rôle Admin (lecture/écriture/aucun)
 - Les modules système (compta, admin_panel, parametres, fondation, historique) restent **bloqués en écriture** sauf pour le DG.
 
-### 12.5 Promotion de fin d'année
+### 12.5 Promotion de fin d'année (Direction uniquement)
 
 ```text
-┌─ Promotion de fin d'année scolaire ──────────────────────────────────┐
-│                                                                      │
-│  Année source       :  [ 2025-2026 ▾ ]                               │
-│  Année cible        :  [ 2026-2027 ▾ ]                               │
+┌─ ⚙️ Configuration de la promotion ───────────────────────────────────┐
 │                                                                      │
 │  Seuil de passage :                                                  │
-│    • Primaire (sur 10)        [ 5.0 ]                                │
 │    • Collège / Lycée (sur 20) [ 10.0 ]                               │
+│    • Primaire (sur 10)        [ 5.0 ]                                │
 │                                                                      │
-│  Comportement si l'élève n'a aucune note :                           │
-│    (●) Promouvoir (par défaut)                                       │
-│    ( ) Faire redoubler                                               │
+│  Élèves sans notes (aucun devoir saisi) :                            │
+│    (●) ✅ Promouvoir automatiquement                                  │
+│    ( ) 🔁 Faire redoubler automatiquement                             │
 │                                                                      │
-│  ┌─ Aperçu ───────────────────────────────────────────────────┐     │
-│  │                                                            │     │
-│  │  Total élèves analysés       :  1 247                      │     │
-│  │  ✓ Élèves promus              :  1 089  (87.3%)             │     │
-│  │  ↩ Élèves redoublants        :    98   ( 7.9%)             │     │
-│  │  ⨯ Élèves exclus (Terminale) :    60   ( 4.8%)             │     │
-│  │                                                            │     │
-│  │  Mapping classes (extrait) :                               │     │
-│  │    CM2 A     →  6ème A                                     │     │
-│  │    6ème A    →  5ème A                                     │     │
-│  │    5ème A    →  4ème A                                     │     │
-│  │    ... (cf. table PROMOTION_SUIVANTE)                      │     │
-│  └────────────────────────────────────────────────────────────┘     │
+│  ⚠ L'application est IRRÉVERSIBLE — commencez par la simulation :    │
+│    elle montre le résultat complet sans rien modifier.               │
 │                                                                      │
-│   ⚠ Cette action est IRRÉVERSIBLE. Sauvegardez avant de lancer.     │
-│                                                                      │
-│   [ Annuler ]                              [ Lancer la promotion ]   │
+│  [ Annuler ]  [ 🔍 Simuler (aucune modification) ]  [ 🎓 Lancer ]    │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-Bouton **Lancer la promotion** :
-1. Choisir l'année source et l'année cible (typiquement N → N+1)
-2. **Seuils** : moyenne minimale primaire (5/10), collège/lycée (10/20)
-3. **Comportement si pas de notes** : promouvoir / faire redoubler
-4. Aperçu : nombre d'élèves promus, redoublés, exclus
-5. **Valider** : duplique les fiches élèves dans l'année cible avec leur nouvelle classe (via la table `PROMOTION_SUIVANTE`)
+Fonctionnement :
+1. **Seuils** : moyenne annuelle minimale primaire (5/10), collège/lycée (10/20). La moyenne est calculée avec **les mêmes matières et coefficients que les bulletins**.
+2. **Classe suivante automatique** : `Maternelle → 1ère Année → … → 6ème Année → 7ème Année (collège) → … → 10ème → 11ème (lycée) → 12ème → Terminale → fin de cycle`. La division est conservée (8ème Année C → 9ème Année C), quel que soit le suffixe.
+3. **🔍 Simuler d'abord** (recommandé) : affiche promus / redoublants / fins de cycle / sans notes et le détail par élève, **sans rien écrire**. Un bouton « ✅ Appliquer cette promotion » exécute ensuite pour de vrai.
+4. **Classes non reconnues** : si un nom de classe ne suit pas le format « Nème Année … », ses élèves ne sont pas touchés et la liste des classes concernées est affichée pour correction.
 
-> Cette action est **irréversible** : sauvegardez avant de lancer.
+> L'application est **irréversible** : utilisez toujours la simulation avant de lancer.
 
 ---
 

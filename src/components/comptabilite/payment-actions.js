@@ -12,7 +12,7 @@ import { sumBonsForSalary } from "../../salary-utils";
 // élève. Bloqué si readOnly. Le retrait d'un frais déjà payé exige
 // canEdit (verrou admin), pour éviter qu'un comptable annule un encaissement
 // sans validation.
-export async function toggleFraisAnnexe(_id, opts, { readOnly, canEdit, toast, modEleves }) {
+export async function toggleFraisAnnexe(_id, opts, { readOnly, canEdit, toast, modEleves, logAction }) {
   const { payKey, dateKey, valeurActuelle=false, label, montant=0, nomEleve="" } = opts;
   if(readOnly) return;
   if(valeurActuelle && !canEdit){
@@ -28,6 +28,11 @@ export async function toggleFraisAnnexe(_id, opts, { readOnly, canEdit, toast, m
     [payKey]:!valeurActuelle,
     [dateKey]:!valeurActuelle ? new Date().toLocaleDateString("fr-FR") : null,
   });
+  // Journal d'audit : chaque encaissement/retrait de frais laisse une trace.
+  logAction?.(
+    valeurActuelle ? "Frais annexe retiré" : "Frais annexe encaissé",
+    `${nomEleve} · ${label}${montant>0?` · ${fmt(montant)}`:""}`,
+  );
 }
 
 // Toggle de mensualité d'un élève (Payé/Impayé) avec push parent.
@@ -37,7 +42,7 @@ export async function toggleFraisAnnexe(_id, opts, { readOnly, canEdit, toast, m
 // (mensMontants[mois]) : un changement de tarif en cours d'année ne
 // réécrit plus rétroactivement les totaux perçus.
 export async function toggleMens(_id, mois, mensActuels, mensDatesActuels, nomEleve, {
-  readOnly, canEdit, toast, modEleves, envoyerPush, montantMois = null, mensMontantsActuels = null,
+  readOnly, canEdit, toast, modEleves, envoyerPush, logAction, montantMois = null, mensMontantsActuels = null,
 }) {
   if(readOnly) return;
   const mens={...(mensActuels||initMens())};
@@ -61,6 +66,15 @@ export async function toggleMens(_id, mois, mensActuels, mensDatesActuels, nomEl
     delete mensMontants[mois];
   }
   await modEleves(_id,{mens,mensDates,mensMontants});
+  // Journal d'audit : chaque encaissement ET chaque décochage laisse une
+  // trace (élève, mois, montant) — cœur de la promesse de traçabilité.
+  const montantJournal = Number.isFinite(Number(montantMois)) && Number(montantMois) > 0
+    ? ` · ${fmt(Number(montantMois))}`
+    : "";
+  logAction?.(
+    estPaye ? "Mensualité décochée (impayé)" : "Mensualité encaissée",
+    `${nomEleve||"Élève"} · ${mois}${montantJournal}`,
+  );
   if(!estPaye){
     envoyerPush(["parent"],"✅ Paiement enregistré",`Mensualité ${mois} de ${nomEleve||"votre enfant"} confirmée.`,"/paiements");
   } else {
