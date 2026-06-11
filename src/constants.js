@@ -48,26 +48,24 @@ export const calcMoisSalaire = (debut = "Octobre") => {
 };
 export const getAnnee = () => localStorage.getItem("LC_annee") || "2025-2026";
 
-export const CLASSES_PRIMAIRE = [
-  "Maternelle A", "Maternelle B",
-  "1ère Année A", "1ère Année B",
-  "2ème Année A", "2ème Année B",
-  "3ème Année A", "3ème Année B",
-  "4ème Année A", "4ème Année B",
-  "5ème Année A", "5ème Année B",
-  "6ème Année A", "6ème Année B",
-];
-export const CLASSES_COLLEGE = [
-  "7ème Année A", "7ème Année B",
-  "8ème Année A", "8ème Année B",
-  "9ème Année A", "9ème Année B",
-  "10ème Année A", "10ème Année B",
-];
-export const CLASSES_LYCEE = [
-  "11ème Année A", "11ème Année B",
-  "12ème Année A", "12ème Année B",
-  "Terminale A", "Terminale B",
-];
+// Classes prédéfinies : générées par niveau avec 4 divisions (A→D), car
+// certaines écoles ont 3-4 classes par niveau. La saisie reste libre dans
+// la modale Classe : un suffixe hors liste (E, Rouge…) fonctionne aussi,
+// la section étant détectée par motif (cf. getSectionForClasse).
+const DIVISIONS_NIVEAU = ["A", "B", "C", "D"];
+const genClasses = (niveaux) =>
+  niveaux.flatMap((niveau) => DIVISIONS_NIVEAU.map((division) => `${niveau} ${division}`));
+
+export const CLASSES_PRIMAIRE = genClasses([
+  "Maternelle", "1ère Année", "2ème Année", "3ème Année",
+  "4ème Année", "5ème Année", "6ème Année",
+]);
+export const CLASSES_COLLEGE = genClasses([
+  "7ème Année", "8ème Année", "9ème Année", "10ème Année",
+]);
+export const CLASSES_LYCEE = genClasses([
+  "11ème Année", "12ème Année", "Terminale",
+]);
 
 export const MATIERES_PRIMAIRE = [
   "Calcul", "Écriture", "Lecture", "Histoire", "Géographie",
@@ -79,9 +77,25 @@ export const TOUTES_ANNEES = Array.from({ length: 30 }, (_, index) => `${2025 + 
 export const MENSUALITE = { college: 150000, lycee: 150000, primaire: 120000 };
 export const initMens = () => MOIS_ANNEE.reduce((accumulator, mois) => ({ ...accumulator, [mois]: "Impayé" }), {});
 
+// Détection de section par MOTIF (et non par correspondance exacte avec
+// les listes prédéfinies) : une classe saisie librement (« 3ème Année E »,
+// « Maternelle Rouge ») est rattachée à la bonne section quel que soit
+// son suffixe. Niveaux 1-6 = primaire, 7-10 = collège, 11-12 et
+// Terminale = lycée. Repli sur les listes pour les noms hors motif.
+const RE_CLASSE_ANNEE = /^\s*(\d+)\s*(?:ère|ere|ème|eme|e)?\s*ann[ée]e\b/i;
 export const getSectionForClasse = (classe = "") => {
-  if (CLASSES_PRIMAIRE.includes(classe)) return "primaire";
-  if (CLASSES_LYCEE.includes(classe)) return "lycee";
+  const c = String(classe || "");
+  if (/^\s*maternelle\b/i.test(c)) return "primaire";
+  if (/^\s*terminale\b/i.test(c)) return "lycee";
+  const m = c.match(RE_CLASSE_ANNEE);
+  if (m) {
+    const n = Number(m[1]);
+    if (n >= 1 && n <= 6) return "primaire";
+    if (n >= 11) return "lycee";
+    return "college";
+  }
+  if (CLASSES_PRIMAIRE.includes(c)) return "primaire";
+  if (CLASSES_LYCEE.includes(c)) return "lycee";
   return "college";
 };
 

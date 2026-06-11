@@ -4,12 +4,10 @@
 
 import { collection, doc, getDocs, writeBatch } from "firebase/firestore";
 import { db } from "../firebaseDb";
-import { CLASSES_PRIMAIRE } from "../constants";
+import { getSectionForClasse } from "../constants";
 import { getAnnualAverage, getGeneralAverage } from "../note-utils";
 import { getPeriodesForSection } from "../period-utils";
 import { classeSuivante } from "../promotion-utils";
-
-const CLASSES_PRIMAIRE_SET = new Set(CLASSES_PRIMAIRE);
 
 // Limite Firestore : 500 opérations par batch (marge de sécurité à 450).
 const BATCH_MAX = 450;
@@ -20,7 +18,7 @@ const BATCH_MAX = 450;
 // les périodes vides sont traitées comme 0 (cf. getAnnualAverage).
 function calcMoyenneAnnuelle(schoolInfo, notes, classe, matieres) {
   if (!notes || notes.length === 0) return null;
-  const sectionPeriode = CLASSES_PRIMAIRE_SET.has(classe) ? "primaire" : "secondaire";
+  const sectionPeriode = getSectionForClasse(classe) === "primaire" ? "primaire" : "secondaire";
   const periodes = getPeriodesForSection(schoolInfo, sectionPeriode);
   const moyennes = periodes.map((periode) =>
     getGeneralAverage(notes.filter((note) => note.periode === periode), matieres, classe),

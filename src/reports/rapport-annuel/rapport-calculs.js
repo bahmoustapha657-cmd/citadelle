@@ -5,17 +5,16 @@
 // (rapport-data.js) les compose. Aucune dépendance au DOM.
 
 import {
-  CLASSES_LYCEE,
-  CLASSES_PRIMAIRE,
   TOUS_MOIS_COURTS,
   TOUS_MOIS_LONGS,
+  getSectionForClasse,
 } from "../../constants.js";
 
-// Section d'un élève d'après sa classe.
+// Section d'un élève d'après sa classe (détection par motif : couvre les
+// classes hors listes prédéfinies, ex. « 3ème Année E »).
 export const sectionPourEleve = (e) => {
-  if (CLASSES_PRIMAIRE.includes(e.classe)) return "Primaire";
-  if (CLASSES_LYCEE.includes(e.classe)) return "Lycée";
-  return "Collège";
+  const section = getSectionForClasse(e.classe);
+  return section === "primaire" ? "Primaire" : section === "lycee" ? "Lycée" : "Collège";
 };
 
 // Net d'une fiche de paie (forfait pour Primaire/Personnel, VH sinon).
@@ -38,9 +37,9 @@ export function computeEffectifs(elevesActifs, { ensC, ensL, ensP }) {
   }
   const lignesEffectif = Object.values(effectifsClasse).sort(triSectionClasse);
   const totEleves = elevesActifs.length;
-  const totC = elevesActifs.filter((e) => CLASSES_PRIMAIRE.indexOf(e.classe) === -1 && CLASSES_LYCEE.indexOf(e.classe) === -1).length;
-  const totL = elevesActifs.filter((e) => CLASSES_LYCEE.includes(e.classe)).length;
-  const totP = elevesActifs.filter((e) => CLASSES_PRIMAIRE.includes(e.classe)).length;
+  const totC = elevesActifs.filter((e) => getSectionForClasse(e.classe) === "college").length;
+  const totL = elevesActifs.filter((e) => getSectionForClasse(e.classe) === "lycee").length;
+  const totP = elevesActifs.filter((e) => getSectionForClasse(e.classe) === "primaire").length;
   const totEnseignants = ensC.length + ensL.length + ensP.length;
   return {
     lignesEffectif, totEleves, totC, totL, totP, totEnseignants,

@@ -1,6 +1,6 @@
 import { useContext, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { CLASSES_PRIMAIRE } from "../../constants";
+import { getSectionForClasse } from "../../constants";
 import { getPeriodesForSection } from "../../period-utils";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { fetchParentPortal, envoyerMessageParent } from "./portail-parent-api";
@@ -45,7 +45,8 @@ export function usePortailParent({ utilisateur, schoolInfo }) {
   const eleveId = eleve._id || utilisateur.eleveId || null;
   const eleveNom = `${eleve.prenom || ""} ${eleve.nom || ""}`.trim() || utilisateur.eleveNom || "";
   // Périodicité dépend de la section de l'enfant courant (primaire vs secondaire).
-  const sectionPeriode = CLASSES_PRIMAIRE.includes(eleve.classe) ? "primaire" : "secondaire";
+  // Détection par motif : fonctionne aussi pour les classes hors listes (3ème Année E…).
+  const sectionPeriode = getSectionForClasse(eleve.classe) === "primaire" ? "primaire" : "secondaire";
   const periodes = getPeriodesForSection(schoolInfo, sectionPeriode, moisAnnee);
   const section = eleve.section || utilisateur.section || "college";
 
