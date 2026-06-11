@@ -17,6 +17,34 @@ const initialState = {
   chargement: true,
 };
 
+// ── Trace d'audit des suppressions ─────────────────────────────
+// Toute suppression passant par ce hook laisse dans `historique` le
+// contenu intégral du document supprimé (cliquable dans l'écran
+// Historique pour le détail). Le DG contrôle le DROIT de supprimer via
+// les verrous ; ici on garantit que l'acte laisse toujours une trace.
+const LIBELLES_COLLECTIONS = {
+  elevesPrimaire: "Élève (Primaire)", elevesCollege: "Élève (Collège)", elevesLycee: "Élève (Lycée)",
+  notesPrimaire: "Note (Primaire)", notesCollege: "Note (Collège)", notesLycee: "Note (Lycée)",
+  elevesPrimaire_absences: "Absence (Primaire)", elevesCollege_absences: "Absence (Collège)", elevesLycee_absences: "Absence (Lycée)",
+  classesPrimaire: "Classe (Primaire)", classesCollege: "Classe (Collège)", classesLycee: "Classe (Lycée)",
+  ensPrimaire: "Enseignant (Primaire)", ensCollege: "Enseignant (Collège)", ensLycee: "Enseignant (Lycée)",
+  recettes: "Recette", depenses: "Dépense", salaires: "Salaire", bons: "Bon",
+  personnel: "Personnel", membres: "Membre (Fondation)", versements: "Versement", tarifs: "Tarif",
+  documents: "Document", examens: "Examen", livrets: "Livret", evenements: "Événement",
+  annonces: "Annonce", honneurs: "Tableau d'honneur", messages: "Message",
+};
+// Collections techniques : pas de trace (et surtout pas le journal lui-même).
+const COLLECTIONS_SANS_TRACE = new Set(["historique", "pushSubs"]);
+const CHAMPS_RESUME = ["nom", "prenom", "eleveNom", "titre", "matiere", "classe", "mois", "periode", "montant", "note", "date", "type"];
+
+function resumeSuppression(item = {}) {
+  return CHAMPS_RESUME
+    .filter((cle) => item[cle] !== undefined && item[cle] !== null && item[cle] !== "")
+    .slice(0, 4)
+    .map((cle) => `${cle} : ${String(item[cle]).slice(0, 60)}`)
+    .join(" · ");
+}
+
 function firestoreReducer(state, action) {
   switch (action.type) {
     case "loading":
@@ -57,7 +85,23 @@ export function useFirestore(nomCollection, options = {}) {
   };
 
   const supprimer = async (id) => {
+    // Snapshot AVANT la suppression : c'est lui qui part dans la trace.
+    const snapshot = items.find((item) => item._id === id) || null;
     await deleteDoc(doc(db, "ecoles", schoolId, nomCollection, id));
+    if (COLLECTIONS_SANS_TRACE.has(nomCollection)) return;
+    try {
+      const libelle = LIBELLES_COLLECTIONS[nomCollection] || nomCollection;
+      const { _id: _ignore, ...donnees } = snapshot || {};
+      addDoc(collection(db, "ecoles", schoolId, "historique"), {
+        action: `Suppression — ${libelle}`,
+        details: snapshot ? resumeSuppression(snapshot) : `Document ${id}`,
+        auteur: "",
+        date: Date.now(),
+        suppression: { collection: nomCollection, docId: id, donnees },
+      }).catch(() => {});
+    } catch {
+      // Trace best-effort : la suppression elle-même n'est jamais bloquée.
+    }
   };
 
   const modifier = async (item) => {

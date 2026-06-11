@@ -312,15 +312,19 @@ service cloud.firestore {
       }
 
       match /historique/{docId} {
-        // Journal d'audit : admin peut lire si module "historique" coche par DG,
-        // mais "historique" n'est PAS dans ADMIN_WRITABLE_MODULES cote shared/
-        // role-config.js, donc adminPeutEcrireModule("historique") = false
-        // par construction. Garde-fou anti-effacement-de-traces.
+        // Journal d'audit « append-only » : tout role d'ecriture (admin
+        // compris, pour tracer SES suppressions) peut AJOUTER une entree ;
+        // personne ne peut la modifier ni l'effacer (sauf superadmin).
+        // C'est la garantie « rien ne peut etre efface » : la suppression
+        // d'un document metier reste possible (verrous du DG), mais sa
+        // trace, elle, est inalterable.
         allow read: if (appartientEcole(schoolId)
                         && (aUnRole(backOfficeRolesSansAdmin()) || adminPeutLireModule("historique")))
                      || aUnRole(["superadmin"]);
-        allow write: if (appartientEcole(schoolId) && aUnRole(backOfficeWriteRolesSansAdmin()))
-                      || aUnRole(["superadmin"]);
+        allow create: if (appartientEcole(schoolId)
+                          && (aUnRole(backOfficeWriteRolesSansAdmin()) || tokenRole() == "admin"))
+                       || aUnRole(["superadmin"]);
+        allow update, delete: if aUnRole(["superadmin"]);
       }
 
       match /demandes_plan/{docId} {

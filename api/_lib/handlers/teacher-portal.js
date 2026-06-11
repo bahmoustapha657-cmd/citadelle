@@ -222,6 +222,15 @@ async function handler(req, res) {
         return res.status(403).json({ error: "Élève hors périmètre." });
       }
       await incSnap.ref.delete();
+      // Trace d'audit : contenu intégral du signalement supprimé.
+      const { _id: _incId, ...incDonnees } = inc;
+      await db.collection("ecoles").doc(schoolId).collection("historique").add({
+        action: "Suppression — Signalement (portail enseignant)",
+        details: `${inc.eleveNom || ""} · ${inc.type || ""} · ${inc.date || ""}`.trim(),
+        auteur: session.profile.enseignantNom || session.profile.nom || "Enseignant",
+        date: Date.now(),
+        suppression: { collection: `${collections.eleves}_absences`, docId: incidentId, donnees: incDonnees },
+      }).catch(() => {});
       return res.status(200).json({ ok: true });
     }
 
@@ -294,6 +303,15 @@ async function handler(req, res) {
       }
 
       await noteSnap.ref.delete();
+      // Trace d'audit : contenu intégral de la note supprimée.
+      const { _id: _noteId, ...noteDonnees } = note;
+      await db.collection("ecoles").doc(schoolId).collection("historique").add({
+        action: "Suppression — Note (portail enseignant)",
+        details: `${note.eleveNom || ""} · ${note.matiere || ""} · ${note.periode || ""} · note : ${note.note ?? "—"}`,
+        auteur: session.profile.enseignantNom || session.profile.nom || "Enseignant",
+        date: Date.now(),
+        suppression: { collection: collections.notes, docId: noteId, donnees: noteDonnees },
+      }).catch(() => {});
       return res.status(200).json({ ok: true });
     }
 

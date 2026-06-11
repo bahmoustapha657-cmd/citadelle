@@ -1122,16 +1122,33 @@ describe("16. Admin granulaire — perimetre par module", () => {
     );
   });
 
-  test("admin avec read=[historique] LIT historique mais NE PEUT PAS l'ecrire (write systeme)", async () => {
+  test("historique append-only : admin LIT et AJOUTE une trace, mais NE PEUT NI modifier NI supprimer", async () => {
     const db = asUser({
       schoolId: SCHOOL_A,
       role: "admin",
       adminReadModules: ["historique"],
-      adminWriteModules: ["historique"], // hors whitelist => refuse cote rule
+      adminWriteModules: [],
     });
     await assertSucceeds(getDoc(doc(db, `ecoles/${SCHOOL_A}/historique/h1`)));
+    // Ajouter une trace (ex. suppression effectuée par l'admin) : autorisé
+    await assertSucceeds(
+      setDoc(doc(db, `ecoles/${SCHOOL_A}/historique/h2`), { action: "Suppression — Note", date: 1 }),
+    );
+    // Altérer ou effacer une trace existante : refusé (anti-falsification)
     await assertFails(
-      setDoc(doc(db, `ecoles/${SCHOOL_A}/historique/h2`), { action: "purge" }),
+      updateDoc(doc(db, `ecoles/${SCHOOL_A}/historique/h1`), { action: "purge" }),
+    );
+    await assertFails(deleteDoc(doc(db, `ecoles/${SCHOOL_A}/historique/h1`)));
+  });
+
+  test("historique append-only : même la direction NE PEUT PAS effacer une trace", async () => {
+    const db = asUser({ schoolId: SCHOOL_A, role: "direction" });
+    await assertSucceeds(
+      setDoc(doc(db, `ecoles/${SCHOOL_A}/historique/h3`), { action: "Connexion", date: 1 }),
+    );
+    await assertFails(deleteDoc(doc(db, `ecoles/${SCHOOL_A}/historique/h1`)));
+    await assertFails(
+      updateDoc(doc(db, `ecoles/${SCHOOL_A}/historique/h1`), { details: "réécrit" }),
     );
   });
 
