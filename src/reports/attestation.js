@@ -17,6 +17,7 @@ import {
   printLang,
   tr,
   watermarkHtml,
+  edugestBrandHTML,
 } from "./print-helpers.js";
 
 export const imprimerAttestation = (eleve, niveau, annee, schoolInfo={}) => {
@@ -60,6 +61,7 @@ export const imprimerAttestation = (eleve, niveau, annee, schoolInfo={}) => {
   </div>
   <div class="devise">${schoolInfo.devise || "Travail – Rigueur – Réussite"}</div>
   ${getOfficialLegalFooterHTML(schoolInfo.legal || legalProfileVide, mapNiveauToCycle(niveau))}
+  ${edugestBrandHTML(schoolInfo)}
   <script>${PRINT_TRIGGER}</script></body></html>`);
   w.document.close();
 };

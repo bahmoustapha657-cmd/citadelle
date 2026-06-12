@@ -1,3 +1,4 @@
+import { edugestBrandHTML } from "./print-helpers.js";
 // ══════════════════════════════════════════════════════════════
 //  Impressions Portail Enseignant — EDT + fiches de paie
 // ══════════════════════════════════════════════════════════════
@@ -22,7 +23,7 @@ export function imprimerEdtEnseignant({ emplois, nomEns, matiere, schoolInfo, an
     `<tr><td>${emploi.jour || "-"}</td><td>${formatEmploiHeure(emploi)}</td><td>${emploi.classe || "-"}</td><td>${emploi.matiere || matiere || "-"}</td></tr>`
   )).join("");
   const w = window.open("", "_blank");
-  w.document.write(`<!DOCTYPE html><html><head><title>EDT - ${nomEns}</title><style>@page{size:A4 portrait;margin:0}@media print{html,body{margin:0}button{display:none}}body{font-family:Arial,sans-serif;padding:14mm 12mm;margin:0}table{border-collapse:collapse;width:100%}th,td{border:1px solid #d0dce8;padding:8px 10px;font-size:12px}th{background:#0A1628;color:#fff}</style></head><body><h2 style="color:#0A1628">Emploi du temps - ${nomEns}</h2><p style="color:#555">${matiere} - ${schoolInfo.nom} - ${annee}</p><table><tr><th>Jour</th><th>Heure</th><th>Classe</th><th>Matiere</th></tr>${rows}</table><br/><button onclick="window.print()">Imprimer</button></body></html>`);
+  w.document.write(`<!DOCTYPE html><html><head><title>EDT - ${nomEns}</title><style>@page{size:A4 portrait;margin:0}@media print{html,body{margin:0}button{display:none}}body{font-family:Arial,sans-serif;padding:14mm 12mm;margin:0}table{border-collapse:collapse;width:100%}th,td{border:1px solid #d0dce8;padding:8px 10px;font-size:12px}th{background:#0A1628;color:#fff}</style></head><body><h2 style="color:#0A1628">Emploi du temps - ${nomEns}</h2><p style="color:#555">${matiere} - ${schoolInfo.nom} - ${annee}</p><table><tr><th>Jour</th><th>Heure</th><th>Classe</th><th>Matiere</th></tr>${rows}</table>${edugestBrandHTML(schoolInfo)}<br/><button onclick="window.print()">Imprimer</button></body></html>`);
   w.document.close();
 }
 
@@ -51,6 +52,6 @@ export function imprimerPaiesEnseignant({ salaires, nomEns, matiere, schoolInfo,
     return `<tr><td>${g.mois}</td><td>${sections}</td><td>${detail}</td><td>${g.totalBon > 0 ? `-${g.totalBon.toLocaleString("fr-FR")}` : "-"}</td><td>${g.totalRevision > 0 ? `+${g.totalRevision.toLocaleString("fr-FR")}` : "-"}</td><td style="font-weight:900;color:#0A1628">${g.totalNet.toLocaleString("fr-FR")} GNF</td></tr>`;
   }).join("");
   const w = window.open("", "_blank");
-  w.document.write(`<!DOCTYPE html><html><head><title>Paies - ${nomEns}</title><style>@page{size:A4 portrait;margin:0}@media print{html,body{margin:0}button{display:none}}body{font-family:Arial,sans-serif;padding:14mm 12mm;font-size:13px;margin:0}h2{color:#0A1628}table{width:100%;border-collapse:collapse;margin-top:16px}th{background:#0A1628;color:#fff;padding:8px 10px}td{padding:8px 10px;border-bottom:1px solid #e5e7eb;vertical-align:top}</style></head><body><h2>${schoolInfo.nom || "Ecole"} - Fiches de paie</h2><p>${nomEns} - ${matiere || "Enseignant"} - Annee ${annee}</p><table><tr><th>Mois</th><th>Fonction(s)</th><th>Detail</th><th>Bon</th><th>Revision</th><th>Net a payer</th></tr>${lignes}</table><br/><button onclick="window.print()">Imprimer</button></body></html>`);
+  w.document.write(`<!DOCTYPE html><html><head><title>Paies - ${nomEns}</title><style>@page{size:A4 portrait;margin:0}@media print{html,body{margin:0}button{display:none}}body{font-family:Arial,sans-serif;padding:14mm 12mm;font-size:13px;margin:0}h2{color:#0A1628}table{width:100%;border-collapse:collapse;margin-top:16px}th{background:#0A1628;color:#fff;padding:8px 10px}td{padding:8px 10px;border-bottom:1px solid #e5e7eb;vertical-align:top}</style></head><body><h2>${schoolInfo.nom || "Ecole"} - Fiches de paie</h2><p>${nomEns} - ${matiere || "Enseignant"} - Annee ${annee}</p><table><tr><th>Mois</th><th>Fonction(s)</th><th>Detail</th><th>Bon</th><th>Revision</th><th>Net a payer</th></tr>${lignes}</table>${edugestBrandHTML(schoolInfo)}<br/><button onclick="window.print()">Imprimer</button></body></html>`);
   w.document.close();
 }

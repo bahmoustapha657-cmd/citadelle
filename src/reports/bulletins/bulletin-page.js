@@ -10,12 +10,26 @@ import {
 import {
   PRINT_RESET,
   WATERMARK_CSS,
+  edugestBrandHTML,
   enteteDoc,
   tr,
 } from "../print-helpers.js";
 import { getInitiales, ordinalFr } from "./bulletin-format.js";
 import { computeBulletinModel } from "./bulletin-page-data.js";
 import { buildLignesRows } from "./bulletin-page-rows.js";
+
+// Modèle de bulletin choisi par l'école (Paramètres → Évaluations) :
+//  - classique : gabarit historique (défaut)
+//  - compact   : 2 bulletins par feuille A4 (économie papier)
+//  - moderne   : bandeau aux deux couleurs de l'école, blocs arrondis
+export const MODELES_BULLETIN = [
+  { id: "classique", label: "Classique", desc: "Le gabarit historique — un bulletin par page." },
+  { id: "compact", label: "Compact (2 par page)", desc: "Deux bulletins par feuille A4 — économie de papier." },
+  { id: "moderne", label: "Moderne", desc: "Bandeau aux couleurs de l'école, blocs arrondis." },
+];
+
+export const getModeleBulletin = (schoolInfo = {}) =>
+  (MODELES_BULLETIN.some((m) => m.id === schoolInfo.modeleBulletin) ? schoolInfo.modeleBulletin : "classique");
 
 export function buildBulletinPageHTML({
   eleve,
@@ -34,6 +48,17 @@ export function buildBulletinPageHTML({
   const c1 = schoolInfo.couleur1 || "#0A1628";
   const c2 = schoolInfo.couleur2 || "#00C48C";
   const annee = getAnnee();
+  const modele = getModeleBulletin(schoolInfo);
+  const compact = modele === "compact";
+  // Dimensions par modèle : le compact réduit photo/typo/espacements pour
+  // tenir deux bulletins par feuille ; le moderne change le bandeau (c1→c2)
+  // et arrondit les blocs. Les calculs sont strictement identiques.
+  const dim = compact
+    ? { photo: 42, moyFont: 21, bandPad: "5px 12px", radius: 6, gap: 8, mb: 7 }
+    : { photo: 60, moyFont: 30, bandPad: "9px 16px", radius: modele === "moderne" ? 12 : 8, gap: 12, mb: 12 };
+  const bandeau = modele === "moderne"
+    ? `linear-gradient(135deg,${c1},${c2})`
+    : `linear-gradient(135deg,${c1},${c1}dd)`;
 
   const { lignes, totalCoef, moyGene, mention, ms, numero } = computeBulletinModel({
     eleve, notes, matieres, periode, niveau, maxNote, schoolInfo, annee, matiereClasseAvg,
@@ -45,7 +70,7 @@ export function buildBulletinPageHTML({
   <div class="page">
     ${enteteDoc(schoolInfo, schoolInfo.logo)}
 
-    <div style="background:linear-gradient(135deg,${c1},${c1}dd);color:#fff;padding:9px 16px;border-radius:8px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+    <div style="background:${bandeau};color:#fff;padding:${dim.bandPad};border-radius:${dim.radius}px;margin-bottom:${dim.mb}px;display:flex;justify-content:space-between;align-items:center">
       <div>
         <div style="font-size:13px;font-weight:800;letter-spacing:0.04em">${tr("reports.bulletinTitle").toUpperCase()}</div>
         <div style="font-size:11px;opacity:0.85">${periode} — ${tr("reports.schoolYear")} ${annee}</div>
@@ -56,8 +81,8 @@ export function buildBulletinPageHTML({
     <div style="display:grid;grid-template-columns:1.55fr 1fr;gap:12px;margin-bottom:12px">
       <div style="border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;display:flex;gap:12px;align-items:center">
         ${eleve.photo
-          ? `<img src="${eleve.photo}" alt="" style="width:60px;height:60px;border-radius:8px;object-fit:cover;border:2px solid ${c1};flex-shrink:0"/>`
-          : `<div style="width:60px;height:60px;border-radius:8px;background:${c1};color:#fff;font-weight:900;font-size:22px;display:flex;align-items:center;justify-content:center;flex-shrink:0">${getInitiales(eleve)}</div>`}
+          ? `<img src="${eleve.photo}" alt="" style="width:${dim.photo}px;height:${dim.photo}px;border-radius:8px;object-fit:cover;border:2px solid ${c1};flex-shrink:0"/>`
+          : `<div style="width:${dim.photo}px;height:${dim.photo}px;border-radius:8px;background:${c1};color:#fff;font-weight:900;font-size:22px;display:flex;align-items:center;justify-content:center;flex-shrink:0">${getInitiales(eleve)}</div>`}
         <div style="flex:1;font-size:10.5px;line-height:1.6;min-width:0">
           <div style="font-size:14px;font-weight:800;color:${c1};margin-bottom:2px">${eleve.nom || ""} ${eleve.prenom || ""}</div>
           <div><strong>${tr("reports.class")} :</strong> ${eleve.classe || "—"} &nbsp;·&nbsp; <strong>${tr("school.bulletins.matricule")} :</strong> ${eleve.ien || "—"}</div>
@@ -67,7 +92,7 @@ export function buildBulletinPageHTML({
 
       <div style="border:2px solid ${ms.border};border-radius:8px;padding:10px 8px;text-align:center;background:${ms.bg}">
         <div style="font-size:8.5px;text-transform:uppercase;letter-spacing:0.08em;color:${ms.color};font-weight:700;margin-bottom:1px">${tr("reports.generalAverage")}</div>
-        <div style="font-size:30px;font-weight:900;color:${ms.color};line-height:1.05">${moyGene}<span style="font-size:13px;opacity:0.65">/${maxNote}</span></div>
+        <div style="font-size:${dim.moyFont}px;font-weight:900;color:${ms.color};line-height:1.05">${moyGene}<span style="font-size:13px;opacity:0.65">/${maxNote}</span></div>
         <div style="font-size:11px;font-weight:800;color:${ms.color};margin-top:3px;text-transform:uppercase;letter-spacing:0.04em">${mention}</div>
         ${rang ? `<div style="font-size:10px;margin-top:5px;padding-top:4px;border-top:1px solid ${ms.border};color:${ms.color}"><strong>${tr("reports.rank")} : ${rang.rang}<sup>${ordinalFr(rang.rang)}</sup> / ${rang.effectif}</strong></div>` : ""}
       </div>
@@ -120,7 +145,7 @@ export function buildBulletinPageHTML({
     </div>
 
     <div class="sigs">
-      <div class="sig">${tr("reports.director")}<br/><br/><br/>${tr("reports.signature")}</div>
+      <div class="sig">${tr("reports.director")}${schoolInfo.signatureUrl ? `<img src="${schoolInfo.signatureUrl}" alt="" style="display:block;height:34px;object-fit:contain;margin:4px auto 2px"/>` : "<br/><br/><br/>"}${tr("reports.signature")}</div>
       <div class="sig">${tr("reports.headTeacher")}<br/><br/><br/>${tr("reports.signature")}</div>
       <div class="sig">${tr("school.students.parent")}<br/><br/><br/>${tr("reports.signature")}</div>
     </div>
@@ -128,11 +153,12 @@ export function buildBulletinPageHTML({
     <div class="devise" style="color:${c2}">${schoolInfo.devise || "Travail – Rigueur – Réussite"}</div>
 
     ${getOfficialLegalFooterHTML(schoolInfo.legal || legalProfileVide, mapNiveauToCycle(niveau))}
+    ${edugestBrandHTML(schoolInfo)}
   </div>`;
 }
 
-export function getBulletinStyles() {
-  return `
+export function getBulletinStyles(modele = "classique") {
+  const base = `
     ${PRINT_RESET}
     body{font-family:Arial,sans-serif;padding:0;margin:0;font-size:11px;color:#1f2937}
     .page{padding:14mm 12mm;page-break-after:always;box-sizing:border-box}
@@ -146,4 +172,31 @@ export function getBulletinStyles() {
     .devise{text-align:center;font-size:10px;margin-top:8px;font-style:italic;font-weight:700}
     @media print{body{margin:0}button{display:none}.page{padding:18px 22px}}
   `;
+  if (modele === "compact") {
+    // Deux bulletins par feuille : chaque .page est bornée à une
+    // demi-page A4, le saut de page se fait au niveau de la .feuille
+    // (paire de bulletins, assemblée dans bulletins.js).
+    return `${base}
+    body{font-size:9px}
+    .page{padding:5mm 9mm;max-height:138mm;overflow:hidden;page-break-after:auto}
+    .feuille{page-break-after:always}
+    .feuille:last-child{page-break-after:auto}
+    th{padding:4px 7px;font-size:9px}
+    td{padding:3px 7px;font-size:9px}
+    .sigs{margin-top:8px;gap:12px}
+    .sig{font-size:8.5px;padding-top:3px}
+    .devise{font-size:8.5px;margin-top:4px}
+    @media print{.page{padding:5mm 9mm}}
+    `;
+  }
+  if (modele === "moderne") {
+    return `${base}
+    td{border-bottom:1px solid #eef2f7}
+    tbody tr:nth-child(odd){background:#f7fbf9}
+    th:first-child{border-radius:8px 0 0 0}
+    th:last-child{border-radius:0 8px 0 0}
+    .sig{border-top:1.5px solid #94a3b8;color:#475569}
+    `;
+  }
+  return base;
 }

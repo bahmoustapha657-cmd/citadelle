@@ -91,6 +91,17 @@ export function useParametresEcole({ utilisateurRole = "", onSchoolClosed = null
     });
   };
 
+  // Upload de la signature scannée du directeur → base64 (apposée sur
+  // les bulletins dans le bloc signature, les 3 modèles).
+  const handleSignatureFile = e => {
+    const file = e.target.files[0];
+    if(!file) return;
+    if(file.size > 300*1024){ setErreur("Signature trop grande (max 300 Ko)."); return; }
+    lireImageEnBase64(file).then(src => {
+      setForm(p=>({...p,signatureUrl:src}));
+    });
+  };
+
   const appliquerCouleursDetectees = () => {
     if(!couleursDetectees) return;
     setForm(p=>({...p, couleur1:couleursDetectees.c1, couleur2:couleursDetectees.c2}));
@@ -193,7 +204,7 @@ export function useParametresEcole({ utilisateurRole = "", onSchoolClosed = null
     apercu, couleursDetectees, setCouleursDetectees,
     dangerAction, setDangerAction, dangerConfirmation, setDangerConfirmation, dangerLoading,
     canManageLifecycle, peutEditerLegal, isComptableSeul, dangerConfig,
-    handleLogoFile, appliquerCouleursDetectees, sauvegarder, lancerActionEcole,
+    handleLogoFile, handleSignatureFile, appliquerCouleursDetectees, sauvegarder, lancerActionEcole,
     handlePhotoGalerie, handleBanniere, resetLogo,
     inp, lbl, sec, tabItems,
   };

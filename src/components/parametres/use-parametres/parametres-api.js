@@ -34,6 +34,8 @@ export async function sauvegarderParametres({ schoolId, form, accueil, evaluatio
     // légal structuré n'est pas complet.
     moisDebut: form.moisDebut,
     systemeScolaire: form.systemeScolaire || "guineen",
+    modeleBulletin: form.modeleBulletin || "classique",
+    signatureUrl: form.signatureUrl || null,
     periodicite: form.periodicite || "trimestre",
     periodicitePrimaire: form.periodicitePrimaire || "trimestre",
     periodiciteSecondaire: form.periodiciteSecondaire || "trimestre",

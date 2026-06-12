@@ -104,3 +104,14 @@ export const enteteDoc = (si = {}, logoUrl) => {
 // sous-modules puissent les utiliser sans dupliquer la fonction.
 export const loadXLSX = () => import("xlsx");
 export const loadQRCode = async () => (await import("qrcode")).default;
+
+// ── Marque EduGest sur les documents imprimés ──────────────────
+// Une seule ligne, discrète et grise : le document reste celui de
+// l'ÉCOLE (logo, couleurs), mais chaque bulletin remis à un parent
+// devient une carte de visite d'EduGest. Retirée pour le plan Premium
+// (« votre image, 100 % à vous » — levier commercial).
+export const edugestBrandHTML = (si = {}) => (
+  si.plan === "premium"
+    ? ""
+    : `<div style="text-align:center;font-size:7.5px;color:#9ca3af;margin-top:6px;font-family:Arial,sans-serif;letter-spacing:0.02em">Édité avec <strong>EduGest</strong> — la gestion scolaire moderne · edugest26@gmail.com · +224 627 73 85 79</div>`
+);

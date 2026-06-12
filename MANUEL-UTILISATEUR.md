@@ -378,11 +378,13 @@ Données stockées dans `/ecoles/{id}/config/legal`. Apparaissent dans le **foot
 
 ### 5.4 Onglet « Évaluations »
 
-- **Périodicité** : trimestre / semestre / mensuel (réglable par section)
-- **Types d'évaluation** : Devoir, Composition, Interrogation, etc. — créer, renommer, désactiver
-- **Coefficients de calcul** : pondération des notes pour la moyenne périodique
-- **Note maximale** : généralement 20 (secondaire), 10 (primaire)
-- **Mention** : seuils pour Passable / Bien / Très Bien / Excellent
+- **Modèle de bulletin** : Classique (1 par page), **Compact (2 par feuille A4** — économie papier**)** ou Moderne (bandeau aux couleurs de l'école). Moyennes, rangs et appréciations identiques dans les trois.
+- **Signature scannée du directeur** : déposée ici (PNG/JPG, max 300 Ko), elle est apposée automatiquement dans le bloc « Directeur » des bulletins.
+- **Types d'évaluation** : Devoir, Composition, Interrogation, etc. — renommer, activer/désactiver
+- **Périodicité** : voir Identité (trimestre / semestre, réglable par section)
+- **Note maximale** : 20 (secondaire), 10 (primaire)
+
+> Les documents imprimés (bulletins, reçus, états de salaires, attestations, ordres de mutation, fiches de paie) portent une mention discrète « Édité avec EduGest » en pied de page. Elle est **retirée automatiquement pour le plan Premium**.
 
 ### 5.5 Onglet « Matricules »
 

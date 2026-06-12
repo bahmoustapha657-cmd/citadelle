@@ -13,7 +13,7 @@ import {
   getRangEleve,
   getStatsClasse,
 } from "./bulletins/bulletin-helpers.js";
-import { buildBulletinPageHTML } from "./bulletins/bulletin-page.js";
+import { buildBulletinPageHTML, getModeleBulletin } from "./bulletins/bulletin-page.js";
 import { ouvrirFenetreBulletin } from "./bulletins/bulletin-doc.js";
 
 export { imprimerFicheCompositions } from "./bulletins/fiche-compositions.js";
@@ -75,7 +75,7 @@ export const imprimerBulletinsGroupes = (eleves, notes, matieres, periode, nivea
     return classCache.get(cl);
   };
 
-  const pages = eleves.map((eleve) => {
+  const pagesListe = eleves.map((eleve) => {
     const matsEleve = getMat(eleve);
     const cache = getCacheClasse(eleve.classe);
     const rang = getRangEleve(eleve, cache.elevesClasse, notes, matsEleve, periode, eleve.classe, niveau);
@@ -85,7 +85,20 @@ export const imprimerBulletinsGroupes = (eleves, notes, matieres, periode, nivea
       rang, classStats: cache.stats, matiereClasseAvg: cache.matieresAvg, evolution,
       appreciation: (appreciationsParEleve && appreciationsParEleve[eleve._id]) || "",
     });
-  }).join("");
+  });
+
+  // Modèle compact : deux bulletins par feuille A4 — on apparie les pages
+  // dans des conteneurs .feuille qui portent le saut de page.
+  let pages;
+  if (getModeleBulletin(schoolInfo) === "compact") {
+    const feuilles = [];
+    for (let i = 0; i < pagesListe.length; i += 2) {
+      feuilles.push(`<div class="feuille">${pagesListe.slice(i, i + 2).join("")}</div>`);
+    }
+    pages = feuilles.join("");
+  } else {
+    pages = pagesListe.join("");
+  }
 
   ouvrirFenetreBulletin({
     title: `${tr("reports.bulletinTitle")} ${classe || niveau} — ${periode} — ${tr("reports.schoolYear")} ${getAnnee()}`,

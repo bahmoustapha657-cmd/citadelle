@@ -7,7 +7,7 @@
 // blocs de sections (./etats-salaires/etats-blocs).
 
 import { fmtN, today } from "../constants.js";
-import { enteteDoc } from "./print-helpers.js";
+import { edugestBrandHTML, enteteDoc } from "./print-helpers.js";
 import { etatsCss } from "./etats-salaires/etats-styles.js";
 import { blocSecondaire, blocPrimaire, blocPersonnel } from "./etats-salaires/etats-blocs.js";
 
@@ -81,6 +81,7 @@ export function imprimerEtatsSalaires({
     </div>
 
     <div class="footer-note">État émis le ${today()} — ${schoolInfo?.nom||"École"} — Tous montants en Francs Guinéens (GNF)</div>
+    ${edugestBrandHTML(schoolInfo)}
 
     <script>window.onload=()=>window.print();</script>
   </body></html>`);

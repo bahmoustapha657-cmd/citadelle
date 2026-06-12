@@ -7,7 +7,7 @@
 
 import { MOIS_ANNEE } from "../constants.js";
 import { resolveLegalFields } from "../legal-utils.js";
-import { PRINT_RESET, PRINT_TRIGGER, printDir, printLang, tr } from "./print-helpers.js";
+import { PRINT_RESET, PRINT_TRIGGER, edugestBrandHTML, printDir, printLang, tr } from "./print-helpers.js";
 import { blocRecu } from "./recus/recu-blocs.js";
 import { RECU_STYLES } from "./recus/recus-styles.js";
 
@@ -38,6 +38,7 @@ export const imprimerRecu = (eleve, montantUnit, schoolInfo={}, moisAnnee=MOIS_A
   </style></head><body>
   ${blocRecu("Exemplaire — Comptable", ctx)}
   ${blocRecu("Exemplaire — Payant", ctx)}
+  ${edugestBrandHTML(schoolInfo)}
   <script>${PRINT_TRIGGER}</script>
   </body></html>`);
   w.document.close();

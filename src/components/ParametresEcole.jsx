@@ -28,7 +28,7 @@ function ParametresEcole({ utilisateurRole = "", onSchoolClosed = null, initialT
     apercu, couleursDetectees, setCouleursDetectees,
     dangerAction, setDangerAction, dangerConfirmation, setDangerConfirmation, dangerLoading,
     canManageLifecycle, peutEditerLegal, isComptableSeul, dangerConfig,
-    handleLogoFile, appliquerCouleursDetectees, sauvegarder, lancerActionEcole,
+    handleLogoFile, handleSignatureFile, appliquerCouleursDetectees, sauvegarder, lancerActionEcole,
     handlePhotoGalerie, handleBanniere, resetLogo,
     inp, lbl, sec, tabItems,
   } = p;
@@ -74,6 +74,8 @@ function ParametresEcole({ utilisateurRole = "", onSchoolClosed = null, initialT
           evaluationForms={evaluationForms}
           setEvaluationLabel={setEvaluationLabel}
           toggleEvaluationActive={toggleEvaluationActive}
+          form={form} setForm={setForm} chg={chg}
+          handleSignatureFile={handleSignatureFile}
           inp={inp} sec={sec}
         />
       )}

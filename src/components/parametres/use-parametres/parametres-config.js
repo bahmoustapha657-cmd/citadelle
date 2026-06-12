@@ -21,6 +21,8 @@ export function buildFormInitial(schoolInfo) {
     agrement: schoolInfo.agrement || "",
     moisDebut: schoolInfo.moisDebut || "Octobre",
     systemeScolaire: schoolInfo.systemeScolaire || "guineen",
+    modeleBulletin: schoolInfo.modeleBulletin || "classique",
+    signatureUrl: schoolInfo.signatureUrl || "",
     periodicite: schoolInfo.periodicite || "trimestre",
     // Périodicité par section : permet "Primaire trimestre / Secondaire semestre".
     // Fallback sur le champ legacy `periodicite` pour rétrocompat.
