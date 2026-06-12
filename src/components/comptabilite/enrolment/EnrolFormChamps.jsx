@@ -1,8 +1,11 @@
-import { C, getClassesForSection } from "../../../constants";
+import { useContext } from "react";
+import { SchoolContext } from "../../../contexts/SchoolContext";
+import { C, getClassesForSection, getSystemeScolaire } from "../../../constants";
 import { Champ, Input, Selec } from "../../ui";
 
 // Grille de champs du formulaire d'inscription d'un élève.
 export function EnrolFormChamps({ form, chg, niveauEnrol }) {
+  const { schoolInfo } = useContext(SchoolContext);
   return (
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
       <Input label="Nom" value={form.nom||""} onChange={chg("nom")}/>
@@ -26,7 +29,7 @@ export function EnrolFormChamps({ form, chg, niveauEnrol }) {
         <select value={form.classe||""} onChange={chg("classe")}
           style={{width:"100%",border:"1px solid #b0c4d8",borderRadius:7,padding:"7px 10px",fontSize:13,background:"#fff",boxSizing:"border-box",outline:"none"}}>
           <option value="">— Sélectionner —</option>
-          {getClassesForSection(niveauEnrol).map(c=><option key={c}>{c}</option>)}
+          {getClassesForSection(niveauEnrol, getSystemeScolaire(schoolInfo)).map(c=><option key={c}>{c}</option>)}
         </select>
       </Champ>
       <Selec label="Sexe" value={form.sexe||"M"} onChange={chg("sexe")}>

@@ -1,4 +1,6 @@
-import { C, getClassesForSection, getSectionLabel } from "../../constants";
+import { useContext } from "react";
+import { SchoolContext } from "../../contexts/SchoolContext";
+import { C, getClassesForSection, getSectionLabel, getSystemeScolaire } from "../../constants";
 
 // Tableau des tarifs d'une section (primaire/college/lycee) : une ligne par
 // classe, un input par champ (orange si modifié localement) et le total
@@ -7,7 +9,8 @@ export function TarifsSectionTable({
   section, editing, canEdit, handleChange, getPreviewTotal,
   getTarifBase, getTarifRevision, getTarifAutre, getTarifIns, getTarifReinsc,
 }) {
-  const classes = getClassesForSection(section);
+  const { schoolInfo } = useContext(SchoolContext);
+  const classes = getClassesForSection(section, getSystemeScolaire(schoolInfo));
 
   const field = (classe, champ, getVal, color) => {
     const cur = editing[classe]?.[champ];

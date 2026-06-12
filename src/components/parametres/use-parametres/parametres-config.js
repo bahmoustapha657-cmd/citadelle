@@ -20,6 +20,7 @@ export function buildFormInitial(schoolInfo) {
     dpe: schoolInfo.dpe || "",
     agrement: schoolInfo.agrement || "",
     moisDebut: schoolInfo.moisDebut || "Octobre",
+    systemeScolaire: schoolInfo.systemeScolaire || "guineen",
     periodicite: schoolInfo.periodicite || "trimestre",
     // Périodicité par section : permet "Primaire trimestre / Secondaire semestre".
     // Fallback sur le champ legacy `periodicite` pour rétrocompat.

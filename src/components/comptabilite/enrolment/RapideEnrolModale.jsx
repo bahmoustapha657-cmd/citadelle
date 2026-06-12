@@ -1,5 +1,5 @@
 import React from "react";
-import { C, initMens, genererMatricule, getClassesForSection } from "../../../constants";
+import { C, initMens, genererMatricule, getClassesForSection, getSystemeScolaire } from "../../../constants";
 import { Btn, Champ, Input, Modale, Selec } from "../../ui";
 import { findEnrollmentDuplicate, getEnrollmentDuplicateMessage } from "../../../enrollment-utils";
 
@@ -50,7 +50,7 @@ export function RapideEnrolModale({
           <select value={form.classe||""} onChange={chg("classe")}
             style={{width:"100%",border:"1px solid #b0c4d8",borderRadius:7,padding:"7px 10px",fontSize:13,background:"#fff",boxSizing:"border-box",outline:"none"}}>
             <option value="">— Sélectionner —</option>
-        {getClassesForSection(niveauEnrol).map(c=><option key={c}>{c}</option>)}
+        {getClassesForSection(niveauEnrol, getSystemeScolaire(schoolInfo)).map(c=><option key={c}>{c}</option>)}
           </select>
         </Champ>
         <Selec label="Sexe" value={form.sexe||"M"} onChange={chg("sexe")}>

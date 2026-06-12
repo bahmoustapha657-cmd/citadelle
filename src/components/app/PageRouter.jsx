@@ -1,7 +1,7 @@
 // ══════════════════════════════════════════════════════════════
 //  Routeur de modules (mappe page → composant lazy)
 // ══════════════════════════════════════════════════════════════
-import { C, CLASSES_PRIMAIRE, MATIERES_PRIMAIRE, getRoleLabelForSchool } from "../../constants";
+import { C, MATIERES_PRIMAIRE, getClassesForSection, getRoleLabelForSchool, getSystemeScolaire } from "../../constants";
 import {
   AdminPanel, Calendrier, Comptabilite, Ecole, Fondation, GestionExamens,
   HistoriqueActions, MessagesParents, ParametresEcole, Secondaire,
@@ -21,7 +21,7 @@ export function PageRouter({
       {page==="admin_panel" && <AdminPanel annee={annee} setAnnee={setAnnee} verrous={verrous} schoolId={schoolId} userRole={utilisateur.role}/>}
       {page==="fondation"   && <Fondation readOnly={readOnly} annee={annee} userRole={utilisateur.role}/>}
       {page==="compta"      && <Comptabilite readOnly={readOnly} annee={annee} userRole={utilisateur.role} verrouOuvert={!!verrous.comptable}/>}
-      {page==="primaire"    && <Ecole titre={getRoleLabelForSchool("primaire", schoolInfo)} couleur={C.green} cleClasses="classesPrimaire" cleEns="ensPrimaire" cleNotes="notesPrimaire" cleEleves="elevesPrimaire" avecEns={true} userRole={utilisateur.role} annee={annee} classesPredefinies={CLASSES_PRIMAIRE} maxNote={10} matieresPredefinies={MATIERES_PRIMAIRE} readOnly={readOnly} verrouOuvert={!!verrous.primaire}/>}
+      {page==="primaire"    && <Ecole titre={getRoleLabelForSchool("primaire", schoolInfo)} couleur={C.green} cleClasses="classesPrimaire" cleEns="ensPrimaire" cleNotes="notesPrimaire" cleEleves="elevesPrimaire" avecEns={true} userRole={utilisateur.role} annee={annee} classesPredefinies={getClassesForSection("primaire", getSystemeScolaire(schoolInfo))} maxNote={10} matieresPredefinies={MATIERES_PRIMAIRE} readOnly={readOnly} verrouOuvert={!!verrous.primaire}/>}
       {page==="secondaire"  && <Secondaire userRole={utilisateur.role} annee={annee} readOnly={readOnly} verrouOuvert={!!verrous.secondaire} collegeLabel={getRoleLabelForSchool("college", schoolInfo)}/>}
       {page==="calendrier"  && <Calendrier annee={annee}/>}
       {page==="examens"     && <GestionExamens/>}

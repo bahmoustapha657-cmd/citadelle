@@ -1,6 +1,6 @@
 // Conversion des lignes brutes d'un fichier d'import en candidats élèves,
 // avec validation (erreurs / avertissements) et détection des doublons.
-import { CLASSES_PRIMAIRE, CLASSES_COLLEGE, CLASSES_LYCEE } from "../../../constants";
+import { getToutesClassesConnues } from "../../../constants";
 import { findEnrollmentDuplicate, getEnrollmentDuplicateMessage } from "../../../enrollment-utils";
 
 // Normalise une date vers le format ISO yyyy-mm-dd quand c'est possible.
@@ -29,7 +29,9 @@ const splitNomPrenom = (complet, ordreNomImport) => {
 // Construit la liste des lignes (candidats + erreurs/avertissements).
 export function parseEnrolmentRows({ allRows, headerRowIdx, cols, classeDefautImport, ordreNomImport, tousElevesScolarite }) {
   const get = (row, idx) => idx >= 0 ? String(row[idx] || "").trim() : "";
-  const classesConnues = [...CLASSES_COLLEGE, ...CLASSES_PRIMAIRE, ...CLASSES_LYCEE].map(c => c.toLowerCase());
+  // Tous systèmes confondus (guinéen + francophone) : l'import reconnaît
+  // les classes des deux nomenclatures.
+  const classesConnues = getToutesClassesConnues().map(c => c.toLowerCase());
   const classesEcole = [...new Set(tousElevesScolarite.map(e => e.classe || "").filter(Boolean))].map(c => c.toLowerCase());
 
   const rows = allRows.slice(headerRowIdx + 1).filter(r => r.some(c => String(c || "").trim()));

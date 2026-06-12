@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { C, getClassesForSection } from "../../../constants";
+import { C, getClassesForSection, getSystemeScolaire } from "../../../constants";
 import { Btn, Modale } from "../../ui";
 import { useImportEnrol } from "./use-import-enrol";
 import { ImportEnrolPreview } from "./ImportEnrolPreview";
@@ -36,7 +36,7 @@ export function ImportEnrolModale({
       <select value={classeDefautImport} onChange={e=>setClasseDefautImport(e.target.value)}
         style={{border:"1.5px solid #fbbf24",borderRadius:7,padding:"6px 10px",fontSize:12,background:"#fff",fontWeight:700,color:"#0A1628"}}>
         <option value="">— Classe du fichier —</option>
-        {getClassesForSection(niveauEnrol).map(c=><option key={c} value={c}>{c}</option>)}
+        {getClassesForSection(niveauEnrol, getSystemeScolaire(schoolInfo)).map(c=><option key={c} value={c}>{c}</option>)}
       </select>
     </div>
 

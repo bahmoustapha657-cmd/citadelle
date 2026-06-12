@@ -4,6 +4,7 @@ import { useLandingReveal } from "./landing/landing-helpers";
 import { LandingNav } from "./landing/LandingNav";
 import { LandingHero } from "./landing/LandingHero";
 import { LandingSeoSections } from "./landing/LandingSeoSections";
+import { LandingAdaptabilite } from "./landing/LandingAdaptabilite";
 import { LandingValueSections } from "./landing/LandingValueSections";
 import { LandingTarifs } from "./landing/LandingTarifs";
 import { LandingFaqCta } from "./landing/LandingFaqCta";
@@ -22,6 +23,7 @@ function LandingEduGest({ onConnexion, onInscription, onDemo }) {
       <LandingNav onConnexion={onConnexion} onInscription={onInscription} onDemo={onDemo} />
       <LandingHero onInscription={onInscription} onDemo={onDemo} />
       <LandingSeoSections />
+      <LandingAdaptabilite />
       <LandingValueSections />
       <LandingTarifs onInscription={onInscription} />
       <LandingFaqCta onConnexion={onConnexion} onInscription={onInscription} onDemo={onDemo} />

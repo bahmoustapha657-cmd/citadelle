@@ -48,24 +48,47 @@ export const calcMoisSalaire = (debut = "Octobre") => {
 };
 export const getAnnee = () => localStorage.getItem("LC_annee") || "2025-2026";
 
-// Classes prédéfinies : générées par niveau avec 4 divisions (A→D), car
-// certaines écoles ont 3-4 classes par niveau. La saisie reste libre dans
-// la modale Classe : un suffixe hors liste (E, Rouge…) fonctionne aussi,
-// la section étant détectée par motif (cf. getSectionForClasse).
+// ── Systèmes de classes (adaptabilité par école) ────────────────
+// Le système choisi dans Paramètres → Identité détermine les listes de
+// classes PROPOSÉES (pastilles, sélecteurs, import). La détection de
+// section (getSectionForClasse) et la promotion (classeSuivante)
+// reconnaissent les DEUX nomenclatures par motif, indépendamment du
+// réglage — une école qui mélange les noms reste cohérente.
+// 4 divisions (A→D) par niveau ; la saisie libre couvre au-delà.
 const DIVISIONS_NIVEAU = ["A", "B", "C", "D"];
 const genClasses = (niveaux) =>
   niveaux.flatMap((niveau) => DIVISIONS_NIVEAU.map((division) => `${niveau} ${division}`));
 
-export const CLASSES_PRIMAIRE = genClasses([
-  "Maternelle", "1ère Année", "2ème Année", "3ème Année",
-  "4ème Année", "5ème Année", "6ème Année",
-]);
-export const CLASSES_COLLEGE = genClasses([
-  "7ème Année", "8ème Année", "9ème Année", "10ème Année",
-]);
-export const CLASSES_LYCEE = genClasses([
-  "11ème Année", "12ème Année", "Terminale",
-]);
+const NIVEAUX_PAR_SYSTEME = {
+  guineen: {
+    primaire: ["Maternelle", "1ère Année", "2ème Année", "3ème Année", "4ème Année", "5ème Année", "6ème Année"],
+    college: ["7ème Année", "8ème Année", "9ème Année", "10ème Année"],
+    lycee: ["11ème Année", "12ème Année", "Terminale"],
+  },
+  francophone: {
+    primaire: ["Petite Section", "Moyenne Section", "Grande Section", "CP", "CE1", "CE2", "CM1", "CM2"],
+    college: ["6ème", "5ème", "4ème", "3ème"],
+    lycee: ["Seconde", "Première", "Terminale"],
+  },
+};
+
+export const SYSTEMES_SCOLAIRES = [
+  { id: "guineen", label: "Système guinéen — 1ère à 12ème Année, Terminale" },
+  { id: "francophone", label: "Système francophone — CP à CM2, 6ème à 3ème, Seconde à Terminale" },
+];
+
+export const getSystemeScolaire = (schoolInfo = {}) =>
+  (NIVEAUX_PAR_SYSTEME[schoolInfo.systemeScolaire] ? schoolInfo.systemeScolaire : "guineen");
+
+// Exports historiques (système guinéen) — conservés pour compat.
+export const CLASSES_PRIMAIRE = genClasses(NIVEAUX_PAR_SYSTEME.guineen.primaire);
+export const CLASSES_COLLEGE = genClasses(NIVEAUX_PAR_SYSTEME.guineen.college);
+export const CLASSES_LYCEE = genClasses(NIVEAUX_PAR_SYSTEME.guineen.lycee);
+
+// Toutes les classes connues, tous systèmes confondus (import Excel…).
+export const getToutesClassesConnues = () =>
+  Object.values(NIVEAUX_PAR_SYSTEME).flatMap((systeme) =>
+    ["primaire", "college", "lycee"].flatMap((section) => genClasses(systeme[section])));
 
 export const MATIERES_PRIMAIRE = [
   "Calcul", "Écriture", "Lecture", "Histoire", "Géographie",
@@ -79,9 +102,14 @@ export const initMens = () => MOIS_ANNEE.reduce((accumulator, mois) => ({ ...acc
 
 // Détection de section par MOTIF (et non par correspondance exacte avec
 // les listes prédéfinies) : une classe saisie librement (« 3ème Année E »,
-// « Maternelle Rouge ») est rattachée à la bonne section quel que soit
-// son suffixe. Niveaux 1-6 = primaire, 7-10 = collège, 11-12 et
-// Terminale = lycée. Repli sur les listes pour les noms hors motif.
+// « CM2 Rouge ») est rattachée à la bonne section quel que soit son
+// suffixe. Les DEUX nomenclatures sont reconnues :
+//  - guinéenne : « Nème Année » (1-6 primaire, 7-10 collège, 11-12 lycée)
+//  - francophone : Petite/Moyenne/Grande Section, CP, CE1-2, CM1-2
+//    (primaire) ; 6ème-3ème SANS « Année » (collège) ; Seconde, Première
+//    (lycée). « 1ère Année » (guinéen, primaire) ≠ « 1ère » seule
+//    (Première, lycée) — le mot « Année » discrimine.
+// Repli sur les listes pour les noms hors motif.
 const RE_CLASSE_ANNEE = /^\s*(\d+)\s*(?:ère|ere|ème|eme|e)?\s*ann[ée]e\b/i;
 export const getSectionForClasse = (classe = "") => {
   const c = String(classe || "");
@@ -94,6 +122,11 @@ export const getSectionForClasse = (classe = "") => {
     if (n >= 11) return "lycee";
     return "college";
   }
+  // Système francophone (le motif « Année » a déjà été traité ci-dessus)
+  if (/^\s*(petite|moyenne|grande)\s+section\b/i.test(c)) return "primaire";
+  if (/^\s*(cp|ce\s*[12]|cm\s*[12])\b/i.test(c)) return "primaire";
+  if (/^\s*(seconde|2nde|premi[èe]re|1\s*[èe]re)\b/i.test(c)) return "lycee";
+  if (/^\s*[3-6]\s*(?:ème|eme|e)\b/i.test(c)) return "college";
   if (CLASSES_PRIMAIRE.includes(c)) return "primaire";
   if (CLASSES_LYCEE.includes(c)) return "lycee";
   return "college";
@@ -105,9 +138,14 @@ export const getSectionLabel = (section = "college") => (
 
 export const getSectionLabelForClasse = (classe = "") => getSectionLabel(getSectionForClasse(classe));
 
-export const getClassesForSection = (section = "college") => (
-  section === "primaire" ? CLASSES_PRIMAIRE : section === "lycee" ? CLASSES_LYCEE : CLASSES_COLLEGE
-);
+// Listes proposées pour une section, selon le système de l'école
+// (2e argument : id du système, ex. getSystemeScolaire(schoolInfo)).
+export const getClassesForSection = (section = "college", systeme = "guineen") => {
+  const niveaux = NIVEAUX_PAR_SYSTEME[systeme] || NIVEAUX_PAR_SYSTEME.guineen;
+  return genClasses(
+    section === "primaire" ? niveaux.primaire : section === "lycee" ? niveaux.lycee : niveaux.college,
+  );
+};
 
 export const getDefaultMensualiteForClasse = (classe = "") => {
   const section = getSectionForClasse(classe);

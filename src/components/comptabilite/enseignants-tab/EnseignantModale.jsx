@@ -1,9 +1,12 @@
-import { C, CLASSES_COLLEGE, CLASSES_LYCEE } from "../../../constants";
+import { useContext } from "react";
+import { SchoolContext } from "../../../contexts/SchoolContext";
+import { C, getClassesForSection, getSystemeScolaire } from "../../../constants";
 import { Btn, Input, Modale, Selec } from "../../ui";
 
 // Modale de création / édition de la paie d'un enseignant (forfait primaire
 // ou prime horaire + primes par classe pour le secondaire).
 export function EnseignantModale({ form, setForm, modal, setModal, canCreate, canEdit, chg, saveEns }) {
+  const { schoolInfo } = useContext(SchoolContext);
   if (!((modal === "add_ens_compta" && canCreate) || (modal === "edit_ens_compta" && canEdit))) return null;
   const isEdit = modal === "edit_ens_compta";
   const isPrim = (form._section || "Primaire") === "Primaire";
@@ -39,7 +42,7 @@ export function EnseignantModale({ form, setForm, modal, setModal, canCreate, ca
       </div>
       {!isPrim&&(()=>{
         const sec=form._section||"Collège";
-        const classesDispo=sec==="Lycée"?CLASSES_LYCEE:CLASSES_COLLEGE;
+        const classesDispo=getClassesForSection(sec==="Lycée"?"lycee":"college", getSystemeScolaire(schoolInfo));
         return <div style={{marginTop:14,borderTop:"1px solid #e2e8f0",paddingTop:12}}>
           <div style={{fontSize:12,fontWeight:700,color:C.blueDark,marginBottom:8}}>
             Primes par classe <span style={{fontWeight:400,color:"#94a3b8",fontSize:11}}>(si la prime varie selon la classe enseignée — sinon laissez vide)</span>

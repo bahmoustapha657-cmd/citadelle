@@ -76,6 +76,41 @@ export const SITUATIONS = [
   },
 ];
 
+// Section « Adaptabilité » : la promesse-clé — EduGest s'adapte à chaque
+// école, pas l'inverse. Chaque item correspond à un réglage réel du produit.
+export const ADAPTABILITE = [
+  {
+    icon: "🎓",
+    title: "Vos classes, votre système",
+    description: "Cursus guinéen (1ère–12ème Année) ou francophone (CP–CM2, 6ème–3ème, Seconde–Terminale), jusqu'à 4 divisions par niveau et saisie libre au-delà.",
+  },
+  {
+    icon: "🎨",
+    title: "Votre identité partout",
+    description: "Logo, couleurs et devise de l'école sur l'application, les bulletins, les reçus et tous les documents imprimés.",
+  },
+  {
+    icon: "💰",
+    title: "Vos tarifs, classe par classe",
+    description: "Mensualités, inscription, réinscription et frais propres à chaque classe — avec votre monnaie (GNF, XOF…).",
+  },
+  {
+    icon: "🗓️",
+    title: "Votre rythme scolaire",
+    description: "Trimestres ou semestres, différents entre primaire et secondaire, mois de rentrée au choix, périodes d'évaluation renommables.",
+  },
+  {
+    icon: "🔐",
+    title: "Vos rôles, vos droits",
+    description: "Libellés de postes personnalisés et délégation module par module : chacun ne voit et ne modifie que son périmètre.",
+  },
+  {
+    icon: "🌍",
+    title: "Votre langue, votre vitrine",
+    description: "Interface en français, anglais ou arabe, et page publique de l'école activable avec vos photos et annonces.",
+  },
+];
+
 export const SEO_POINTS = [
   "Logiciel de gestion scolaire pour école privée en Guinée",
   "Gestion des notes, bulletins et moyennes par classe",

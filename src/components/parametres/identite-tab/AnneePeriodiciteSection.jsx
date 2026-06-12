@@ -1,4 +1,4 @@
-import { C, TOUS_MOIS_LONGS, calcMoisAnnee } from "../../../constants";
+import { C, TOUS_MOIS_LONGS, SYSTEMES_SCOLAIRES, calcMoisAnnee, getClassesForSection } from "../../../constants";
 import { PERIODICITES, getPeriodesForSchool } from "../../../period-utils";
 import { Btn } from "../../ui";
 
@@ -8,8 +8,29 @@ export function AnneePeriodiciteSection({ form, chg, schoolInfo, setMigrationOuv
   const periodiciteChange =
     ((schoolInfo.periodicitePrimaire || schoolInfo.periodicite) && (schoolInfo.periodicitePrimaire || schoolInfo.periodicite) !== form.periodicitePrimaire)
     || ((schoolInfo.periodiciteSecondaire || schoolInfo.periodicite) && (schoolInfo.periodiciteSecondaire || schoolInfo.periodicite) !== form.periodiciteSecondaire);
+  const systemeChoisi = form.systemeScolaire || "guineen";
+  const apercuClasses = [
+    getClassesForSection("primaire", systemeChoisi)[0],
+    getClassesForSection("college", systemeChoisi)[0],
+    getClassesForSection("lycee", systemeChoisi)[0],
+  ].join(" · ");
+
   return (
     <>
+      <div style={sec}>
+        <h3 style={{ margin: "0 0 16px", fontSize: 14, fontWeight: 800, color: C.blueDark }}>🏫 Système de classes</h3>
+        <p style={{ margin: "0 0 12px", fontSize: 12, color: "#64748b" }}>
+          Détermine les classes proposées dans les sélecteurs (élèves, tarifs, enseignants).
+          Le suivi des sections et la promotion de fin d'année reconnaissent les deux nomenclatures.
+        </p>
+        <select style={{ ...inp, cursor: "pointer" }} value={systemeChoisi} onChange={chg("systemeScolaire")}>
+          {SYSTEMES_SCOLAIRES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+        </select>
+        <p style={{ margin: "6px 0 0", fontSize: 11, color: "#9ca3af" }}>
+          Exemples : <strong style={{ color: C.blue }}>{apercuClasses}</strong>… (divisions A à D, saisie libre possible)
+        </p>
+      </div>
+
       <div style={sec}>
         <h3 style={{ margin: "0 0 16px", fontSize: 14, fontWeight: 800, color: C.blueDark }}>📅 Mois de début de l'année</h3>
         <select style={{ ...inp, cursor: "pointer" }} value={form.moisDebut} onChange={chg("moisDebut")}>

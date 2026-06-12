@@ -50,11 +50,39 @@ test("Suffixes personnalisés conservés tels quels", () => {
   assert.equal(classeSuivante("8ème Année C"), "9ème Année C");
 });
 
+test("Système francophone : maternelle → primaire", () => {
+  assert.equal(classeSuivante("Petite Section A"), "Moyenne Section A");
+  assert.equal(classeSuivante("Moyenne Section B"), "Grande Section B");
+  assert.equal(classeSuivante("Grande Section"), "CP");
+  assert.equal(classeSuivante("CP A"), "CE1 A");
+  assert.equal(classeSuivante("CE1 B"), "CE2 B");
+  assert.equal(classeSuivante("CE2 A"), "CM1 A");
+  assert.equal(classeSuivante("CM1 C"), "CM2 C");
+});
+
+test("Système francophone : passage collège puis lycée", () => {
+  assert.equal(classeSuivante("CM2 A"), "6ème A");
+  assert.equal(classeSuivante("6ème A"), "5ème A");
+  assert.equal(classeSuivante("5ème D"), "4ème D");
+  assert.equal(classeSuivante("4ème B"), "3ème B");
+  assert.equal(classeSuivante("3ème A"), "Seconde A");
+  assert.equal(classeSuivante("Seconde A"), "Première A");
+  assert.equal(classeSuivante("2nde C"), "Première C");
+  assert.equal(classeSuivante("Première S"), "Terminale S");
+  assert.equal(classeSuivante("1ère L"), "Terminale L");
+});
+
+test("Désambiguïsation : « Année » = guinéen, sans = francophone", () => {
+  assert.equal(classeSuivante("1ère Année A"), "2ème Année A"); // primaire guinéen
+  assert.equal(classeSuivante("1ère A"), "Terminale A");        // Première lycée
+  assert.equal(classeSuivante("6ème Année A"), "7ème Année A"); // primaire→collège guinéen
+  assert.equal(classeSuivante("6ème A"), "5ème A");             // collège francophone
+});
+
 test("Classes non reconnues → undefined (aucune écriture)", () => {
-  assert.equal(classeSuivante("CM2"), undefined);
-  assert.equal(classeSuivante("Seconde A"), undefined);
   assert.equal(classeSuivante(""), undefined);
   assert.equal(classeSuivante(null), undefined);
   assert.equal(classeSuivante("13ème Année A"), undefined);
   assert.equal(classeSuivante("0ème Année"), undefined);
+  assert.equal(classeSuivante("Classe Spéciale"), undefined);
 });

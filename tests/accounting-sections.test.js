@@ -24,6 +24,29 @@ test("les listes prédéfinies offrent 4 divisions (A→D) par niveau", () => {
   assert.equal(getClassesForSection("college").length, 4 * 4);
 });
 
+test("système francophone : listes dédiées et détection de section", () => {
+  // Listes proposées selon le système choisi par l'école
+  const primaireFr = getClassesForSection("primaire", "francophone");
+  assert.ok(primaireFr.includes("CP A"));
+  assert.ok(primaireFr.includes("CM2 D"));
+  assert.ok(getClassesForSection("college", "francophone").includes("6ème C"));
+  assert.ok(getClassesForSection("lycee", "francophone").includes("Seconde B"));
+  // Détection par motif, indépendante du réglage
+  assert.equal(getSectionForClasse("CP A"), "primaire");
+  assert.equal(getSectionForClasse("CE2 B"), "primaire");
+  assert.equal(getSectionForClasse("CM2 Rouge"), "primaire");
+  assert.equal(getSectionForClasse("Grande Section A"), "primaire");
+  assert.equal(getSectionForClasse("6ème A"), "college");      // sans « Année » = francophone
+  assert.equal(getSectionForClasse("3ème B"), "college");
+  assert.equal(getSectionForClasse("Seconde A"), "lycee");
+  assert.equal(getSectionForClasse("2nde C"), "lycee");
+  assert.equal(getSectionForClasse("Première S"), "lycee");
+  assert.equal(getSectionForClasse("1ère L"), "lycee");
+  // Le mot « Année » discrimine : guinéen primaire vs Première lycée
+  assert.equal(getSectionForClasse("1ère Année A"), "primaire");
+  assert.equal(getSectionForClasse("6ème Année A"), "primaire");
+});
+
 test("détection de section par motif — suffixes libres hors listes", () => {
   // Primaire (niveaux 1-6 + maternelle), quel que soit le suffixe
   assert.equal(getSectionForClasse("Maternelle Rouge"), "primaire");

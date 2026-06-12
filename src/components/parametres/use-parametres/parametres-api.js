@@ -33,6 +33,7 @@ export async function sauvegarderParametres({ schoolId, form, accueil, evaluatio
     // utilisées par resolveLegalFields() comme fallback tant que le profil
     // légal structuré n'est pas complet.
     moisDebut: form.moisDebut,
+    systemeScolaire: form.systemeScolaire || "guineen",
     periodicite: form.periodicite || "trimestre",
     periodicitePrimaire: form.periodicitePrimaire || "trimestre",
     periodiciteSecondaire: form.periodiciteSecondaire || "trimestre",

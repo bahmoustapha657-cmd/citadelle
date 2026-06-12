@@ -1,9 +1,12 @@
-import React, { useState } from "react";
-import { C, CLASSES_COLLEGE, CLASSES_LYCEE } from "../constants";
+import React, { useContext, useState } from "react";
+import { SchoolContext } from "../contexts/SchoolContext";
+import { C, getClassesForSection, getSystemeScolaire } from "../constants";
 import { Ecole } from "./Ecole";
 
 function Secondaire({ userRole, annee, readOnly = false, verrouOuvert = false, collegeLabel = "Bureau College" }) {
   const [sousModule, setSousModule] = useState("college");
+  const { schoolInfo } = useContext(SchoolContext);
+  const systeme = getSystemeScolaire(schoolInfo);
 
   return (
     <div>
@@ -52,7 +55,7 @@ function Secondaire({ userRole, annee, readOnly = false, verrouOuvert = false, c
           avecEns={true}
           userRole={userRole}
           annee={annee}
-          classesPredefinies={CLASSES_COLLEGE}
+          classesPredefinies={getClassesForSection("college", systeme)}
           maxNote={20}
           readOnly={readOnly}
           verrouOuvert={verrouOuvert}
@@ -70,7 +73,7 @@ function Secondaire({ userRole, annee, readOnly = false, verrouOuvert = false, c
           avecEns={true}
           userRole={userRole}
           annee={annee}
-          classesPredefinies={CLASSES_LYCEE}
+          classesPredefinies={getClassesForSection("lycee", systeme)}
           maxNote={20}
           readOnly={readOnly}
           verrouOuvert={verrouOuvert}

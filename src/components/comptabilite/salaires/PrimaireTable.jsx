@@ -1,10 +1,12 @@
-import React from "react";
+import React, { useContext } from "react";
 import { useTranslation } from "react-i18next";
-import { C, CLASSES_PRIMAIRE, fmtN, getAnnee } from "../../../constants";
+import { SchoolContext } from "../../../contexts/SchoolContext";
+import { C, fmtN, getAnnee, getClassesForSection, getSystemeScolaire } from "../../../constants";
 import { Btn, TD, THead, TR } from "../../ui";
 
 export function PrimaireTable({ salairesPrim, filtrePrimNom, setFiltrePrimNom, filtrePrimClasse, setFiltrePrimClasse, canEdit, modS, supS, setForm, setModal, moisLabel, annee }) {
   const { t } = useTranslation();
+  const { schoolInfo } = useContext(SchoolContext);
   const salairesPrimFiltres = salairesPrim
     .filter(s=>!filtrePrimNom||(s.nom||"").toLowerCase().includes(filtrePrimNom.toLowerCase()))
     .filter(s=>filtrePrimClasse==="all"||(s.niveau||"")===filtrePrimClasse);
@@ -19,7 +21,7 @@ export function PrimaireTable({ salairesPrim, filtrePrimNom, setFiltrePrimNom, f
         <select value={filtrePrimClasse} onChange={e=>setFiltrePrimClasse(e.target.value)}
           style={{border:"none",borderRadius:6,padding:"4px 8px",fontSize:12,color:"#0A1628",background:"#fff"}}>
           <option value="all">Toutes les classes</option>
-          {CLASSES_PRIMAIRE.map(c=><option key={c}>{c}</option>)}
+          {getClassesForSection("primaire", getSystemeScolaire(schoolInfo)).map(c=><option key={c}>{c}</option>)}
         </select>
       </div>
       <div className="lc-sticky-wrap" style={{marginBottom:8}}>
