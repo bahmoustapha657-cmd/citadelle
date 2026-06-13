@@ -10,25 +10,25 @@ export function ChartsRow({ t, c1, c2, elevesC, elevesL, elevesP, tauxPayC, taux
         <p style={{ margin: "0 0 14px", fontWeight: 800, fontSize: 13, color: c1 }}>{t("dashboard.studentDistribution")}</p>
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={[
-            { section: "Collège", Actifs: elevesC.filter((e) => e.statut === "Actif").length, Inactifs: elevesC.filter((e) => e.statut !== "Actif").length },
-            { section: "Lycée", Actifs: elevesL.filter((e) => e.statut === "Actif").length, Inactifs: elevesL.filter((e) => e.statut !== "Actif").length },
-            { section: "Primaire", Actifs: elevesP.filter((e) => e.statut === "Actif").length, Inactifs: elevesP.filter((e) => e.statut !== "Actif").length },
+            { section: t("dashboard.college"), Actifs: elevesC.filter((e) => e.statut === "Actif").length, Inactifs: elevesC.filter((e) => e.statut !== "Actif").length },
+            { section: t("dashboard.lycee"), Actifs: elevesL.filter((e) => e.statut === "Actif").length, Inactifs: elevesL.filter((e) => e.statut !== "Actif").length },
+            { section: t("dashboard.primary"), Actifs: elevesP.filter((e) => e.statut === "Actif").length, Inactifs: elevesP.filter((e) => e.statut !== "Actif").length },
           ]}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e0ebf8" />
             <XAxis dataKey="section" tick={{ fontSize: 11 }} />
             <YAxis tick={{ fontSize: 11 }} />
             <Tooltip />
-            <Bar dataKey="Actifs" fill={c2} radius={[4, 4, 0, 0]} name="Actifs" />
-            <Bar dataKey="Inactifs" fill="#e2e8f0" radius={[4, 4, 0, 0]} name="Inactifs" />
+            <Bar dataKey="Actifs" fill={c2} radius={[4, 4, 0, 0]} name={t("dashboard.chartActive")} />
+            <Bar dataKey="Inactifs" fill="#e2e8f0" radius={[4, 4, 0, 0]} name={t("dashboard.chartInactive")} />
           </BarChart>
         </ResponsiveContainer>
       </div></Card>
 
       {/* Taux de paiement */}
       <Card><div style={{ padding: "16px 18px" }}>
-        <p style={{ margin: "0 0 14px", fontWeight: 800, fontSize: 13, color: c1 }}>Taux de paiement</p>
+        <p style={{ margin: "0 0 14px", fontWeight: 800, fontSize: 13, color: c1 }}>{t("dashboard.paymentRate")}</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 16, marginTop: 8 }}>
-          {[["Collège", tauxPayC], ["Lycée", tauxPayL], ["Primaire", tauxPayP]].map(([label, taux]) => (
+          {[[t("dashboard.college"), tauxPayC], [t("dashboard.lycee"), tauxPayL], [t("dashboard.primary"), tauxPayP]].map(([label, taux]) => (
             <div key={label}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
                 <span style={{ fontSize: 12, fontWeight: 700, color: c1 }}>{label}</span>
@@ -40,7 +40,7 @@ export function ChartsRow({ t, c1, c2, elevesC, elevesL, elevesP, tauxPayC, taux
             </div>
           ))}
           <div style={{ marginTop: 8, padding: "10px 12px", background: "#f0fdf8", borderRadius: 8, borderLeft: `3px solid ${c2}` }}>
-            <div style={{ fontSize: 11, color: "#374151" }}>Taux global</div>
+            <div style={{ fontSize: 11, color: "#374151" }}>{t("dashboard.globalRate")}</div>
             <div style={{ fontSize: 22, fontWeight: 900, color: c2 }}>{tauxPay}%</div>
           </div>
         </div>
