@@ -58,7 +58,23 @@
     "schoolNotFound": "Code école introuvable.",
     "forgotPassword": "Mot de passe oublié ?",
     "noAccount": "Pas encore d'école ?",
-    "registerLink": "Créer une école"
+    "registerLink": "Créer une école",
+    "logoutAction": "Se déconnecter",
+    "offlineMode": "Mode hors ligne",
+    "offlineNav": "Navigation disponible",
+    "headerOffline": "Mode hors ligne — données depuis le cache",
+    "planExpired": "EXPIRÉ",
+    "errEnterSchoolCode": "Veuillez entrer le code de votre école.",
+    "errEnterUsername": "Veuillez entrer votre identifiant.",
+    "errSuperadminWrong": "Identifiants superadmin incorrects.",
+    "errServerUnreachable": "Impossible de joindre le serveur. Vérifiez le code école.",
+    "offlineShort": "Hors ligne"
+  },
+  "subscription": {
+    "label": "Abonnement",
+    "expired": "EXPIRÉ",
+    "daysShort": "{{days}}j",
+    "expiresTitle": "Abonnement {{plan}} — expire dans {{days}} jour(s)"
   },
   "register": {
     "title": "Créer votre espace école",

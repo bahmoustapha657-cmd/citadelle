@@ -58,7 +58,23 @@
     "schoolNotFound": "School code not found.",
     "forgotPassword": "Forgot password?",
     "noAccount": "No school yet?",
-    "registerLink": "Create a school"
+    "registerLink": "Create a school",
+    "logoutAction": "Sign out",
+    "offlineMode": "Offline mode",
+    "offlineNav": "Navigation available",
+    "headerOffline": "Offline mode — data from cache",
+    "planExpired": "EXPIRED",
+    "errEnterSchoolCode": "Please enter your school code.",
+    "errEnterUsername": "Please enter your username.",
+    "errSuperadminWrong": "Incorrect superadmin credentials.",
+    "errServerUnreachable": "Unable to reach the server. Check the school code.",
+    "offlineShort": "Offline"
+  },
+  "subscription": {
+    "label": "Subscription",
+    "expired": "EXPIRED",
+    "daysShort": "{{days}}d",
+    "expiresTitle": "{{plan}} plan — expires in {{days}} day(s)"
   },
   "register": {
     "title": "Create your school workspace",

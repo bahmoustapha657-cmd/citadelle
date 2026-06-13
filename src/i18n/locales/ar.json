@@ -58,7 +58,23 @@
     "schoolNotFound": "رمز المدرسة غير موجود.",
     "forgotPassword": "نسيت كلمة المرور؟",
     "noAccount": "لا توجد مدرسة بعد؟",
-    "registerLink": "إنشاء مدرسة"
+    "registerLink": "إنشاء مدرسة",
+    "logoutAction": "تسجيل الخروج",
+    "offlineMode": "وضع عدم الاتصال",
+    "offlineNav": "التصفح متاح",
+    "headerOffline": "وضع عدم الاتصال — بيانات من ذاكرة التخزين المؤقت",
+    "planExpired": "منتهٍ",
+    "errEnterSchoolCode": "يرجى إدخال رمز مدرستك.",
+    "errEnterUsername": "يرجى إدخال اسم المستخدم.",
+    "errSuperadminWrong": "بيانات اعتماد المشرف العام غير صحيحة.",
+    "errServerUnreachable": "تعذّر الوصول إلى الخادم. تحقق من رمز المدرسة.",
+    "offlineShort": "غير متصل"
+  },
+  "subscription": {
+    "label": "الاشتراك",
+    "expired": "منتهٍ",
+    "daysShort": "{{days}} ي",
+    "expiresTitle": "اشتراك {{plan}} — ينتهي خلال {{days}} يوم"
   },
   "register": {
     "title": "أنشئ مساحة مدرستك",

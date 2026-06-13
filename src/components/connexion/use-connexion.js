@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { signInWithCustomTokenClient } from "../../firebaseAuth";
 import { ecoleLogin, fetchEtatEcole, superadminLogin } from "./connexion-api";
 
 // Logique de connexion : état du formulaire, résolution de l'école saisie
 // (lookup Firestore débounce) et appel d'authentification.
 export function useConnexion({ onLogin }) {
+  const { t } = useTranslation();
   const [codeEcole, setCodeEcole] = useState(() => localStorage.getItem("LC_schoolId") || "");
   const [login, setLogin] = useState("");
   const [mdp, setMdp] = useState("");
@@ -42,11 +44,11 @@ export function useConnexion({ onLogin }) {
   const connecter = async () => {
     const sid = codeEcole.trim().toLowerCase();
     if (!sid) {
-      setErreur("Veuillez entrer le code de votre ecole.");
+      setErreur(t("auth.errEnterSchoolCode"));
       return;
     }
     if (!login.trim()) {
-      setErreur("Veuillez entrer votre identifiant.");
+      setErreur(t("auth.errEnterUsername"));
       return;
     }
 
@@ -57,7 +59,7 @@ export function useConnexion({ onLogin }) {
       if (sid === "superadmin") {
         const { ok, data } = await superadminLogin({ login, mdp });
         if (!ok) {
-          setErreur(data.error || "Identifiants superadmin incorrects.");
+          setErreur(data.error || t("auth.errSuperadminWrong"));
           return;
         }
 
@@ -70,7 +72,7 @@ export function useConnexion({ onLogin }) {
 
       const { ok, data } = await ecoleLogin({ login, mdp, schoolId: sid });
       if (!ok) {
-        setErreur(data.error || "Identifiant ou mot de passe incorrect.");
+        setErreur(data.error || t("auth.wrongCredentials"));
         return;
       }
 
@@ -80,7 +82,7 @@ export function useConnexion({ onLogin }) {
         onLogin(data.compte, sid);
       }
     } catch {
-      setErreur("Impossible de joindre le serveur. Verifiez le code ecole.");
+      setErreur(t("auth.errServerUnreachable"));
     } finally {
       setChargement(false);
     }

@@ -29,21 +29,21 @@ export function AppHeader({
       </div>
       <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
         {estHorsLigne&&(
-          <div title="Mode hors ligne — données depuis le cache" style={{display:"flex",alignItems:"center",gap:4,background:"#fef3c7",border:"1px solid #f59e0b",borderRadius:8,padding:"4px 9px",fontSize:11,fontWeight:700,color:"#92400e",flexShrink:0}}>
+          <div title={t("auth.headerOffline")} style={{display:"flex",alignItems:"center",gap:4,background:"#fef3c7",border:"1px solid #f59e0b",borderRadius:8,padding:"4px 9px",fontSize:11,fontWeight:700,color:"#92400e",flexShrink:0}}>
             <span style={{fontSize:13}}>📡</span>
-            {!isMobile&&<span>Hors ligne</span>}
+            {!isMobile&&<span>{t("auth.offlineShort")}</span>}
           </div>
         )}
         {/* ── Alerte expiration abonnement ── */}
         {planInfo && planInfo.joursRestants !== null && planInfo.joursRestants <= 30 && ["admin","direction"].includes(utilisateur?.role) && (
-          <div title={`Abonnement ${planInfo.planLabel} — expire dans ${planInfo.joursRestants} jour(s)`}
+          <div title={t("subscription.expiresTitle", { plan: planInfo.planLabel, days: planInfo.joursRestants })}
             style={{display:"flex",alignItems:"center",gap:4,
               background: planInfo.joursRestants<=7?"#fee2e2":"#fef3c7",
               border:`1px solid ${planInfo.joursRestants<=7?"#f87171":"#f59e0b"}`,
               borderRadius:8,padding:"4px 9px",fontSize:11,fontWeight:700,
               color:planInfo.joursRestants<=7?"#b91c1c":"#92400e",flexShrink:0,cursor:"default"}}>
             <span style={{fontSize:13}}>{planInfo.joursRestants<=7?"🔴":"🟡"}</span>
-            {!isMobile&&<span>Abonnement : {planInfo.joursRestants<=0?"EXPIRÉ":`${planInfo.joursRestants}j`}</span>}
+            {!isMobile&&<span>{t("subscription.label")} : {planInfo.joursRestants<=0?t("subscription.expired"):t("subscription.daysShort",{days:planInfo.joursRestants})}</span>}
           </div>
         )}
         <button onClick={()=>setRechercheOuverte(true)}

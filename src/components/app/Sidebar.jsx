@@ -54,14 +54,14 @@ export function Sidebar({
           </div>
         </div>
         <button onClick={deconnecter} style={{width:"100%",background:"rgba(255,255,255,0.08)",border:"none",color:"rgba(255,255,255,0.5)",padding:"6px",borderRadius:6,fontSize:11,cursor:"pointer",fontWeight:600}}>
-          ⬅ Se déconnecter
+          ⬅ {t("auth.logoutAction")}
         </button>
         {estHorsLigne&&(
           <div style={{marginTop:8,background:"rgba(245,158,11,0.15)",border:"1px solid rgba(245,158,11,0.3)",borderRadius:6,padding:"6px 10px",display:"flex",alignItems:"center",gap:6}}>
             <span style={{fontSize:14}}>📡</span>
             <div>
-              <p style={{margin:0,fontSize:10,fontWeight:800,color:"#fbbf24"}}>Mode hors ligne</p>
-              <p style={{margin:0,fontSize:9,color:"rgba(255,255,255,0.4)"}}>Navigation disponible</p>
+              <p style={{margin:0,fontSize:10,fontWeight:800,color:"#fbbf24"}}>{t("auth.offlineMode")}</p>
+              <p style={{margin:0,fontSize:9,color:"rgba(255,255,255,0.4)"}}>{t("auth.offlineNav")}</p>
             </div>
           </div>
         )}
