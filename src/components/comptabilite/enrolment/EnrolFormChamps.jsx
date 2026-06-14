@@ -1,63 +1,74 @@
 import { useContext } from "react";
+import { useTranslation } from "react-i18next";
 import { SchoolContext } from "../../../contexts/SchoolContext";
 import { C, getClassesForSection, getSystemeScolaire } from "../../../constants";
 import { Champ, Input, Selec } from "../../ui";
 
 // Grille de champs du formulaire d'inscription d'un élève.
+// Les `value` des options (statut, type d'inscription, sexe) restent en
+// français : ce sont les valeurs STOCKÉES et comparées ailleurs dans le
+// code — seul l'affichage est traduit via t().
 export function EnrolFormChamps({ form, chg, niveauEnrol }) {
   const { schoolInfo } = useContext(SchoolContext);
+  const { t } = useTranslation();
   return (
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
-      <Input label="Nom" value={form.nom||""} onChange={chg("nom")}/>
-      <Input label="Prénom" value={form.prenom||""} onChange={chg("prenom")}/>
-      <Champ label="Matricule (auto-généré)">
+      <Input label={t("enrolment.lastName")} value={form.nom||""} onChange={chg("nom")}/>
+      <Input label={t("enrolment.firstName")} value={form.prenom||""} onChange={chg("prenom")}/>
+      <Champ label={t("enrolment.matricule")}>
         <div style={{display:"flex",gap:6,alignItems:"center"}}>
           <input value={form.matricule||""} onChange={chg("matricule")}
             style={{flex:1,border:"1px solid #b0c4d8",borderRadius:7,padding:"7px 10px",fontSize:13,boxSizing:"border-box",outline:"none",fontFamily:"monospace",fontWeight:700,color:C.blue,background:"#e0ebf8"}}/>
-          <span style={{fontSize:10,color:"#9ca3af",whiteSpace:"nowrap"}}>Modifiable si besoin</span>
+          <span style={{fontSize:10,color:"#9ca3af",whiteSpace:"nowrap"}}>{t("enrolment.matriculeEditable")}</span>
         </div>
       </Champ>
-      <Champ label="Identifiant National (IEN)">
+      <Champ label={t("enrolment.ien")}>
         <div style={{position:"relative"}}>
           <input value={form.ien||""} onChange={chg("ien")}
-            placeholder="Ex : GN-2024-000123"
+            placeholder={t("enrolment.ienPlaceholder")}
             style={{width:"100%",border:"1.5px solid #c7d2fe",borderRadius:8,padding:"7px 10px 7px 30px",fontSize:13,boxSizing:"border-box",outline:"none",background:"#eef2ff",fontFamily:"monospace",fontWeight:700,color:"#3730a3"}}/>
           <span style={{position:"absolute",left:9,top:"50%",transform:"translateY(-50%)",fontSize:13}}>🪪</span>
         </div>
       </Champ>
-      <Champ label="Classe">
+      <Champ label={t("enrolment.class")}>
         <select value={form.classe||""} onChange={chg("classe")}
           style={{width:"100%",border:"1px solid #b0c4d8",borderRadius:7,padding:"7px 10px",fontSize:13,background:"#fff",boxSizing:"border-box",outline:"none"}}>
-          <option value="">— Sélectionner —</option>
+          <option value="">{t("enrolment.select")}</option>
           {getClassesForSection(niveauEnrol, getSystemeScolaire(schoolInfo)).map(c=><option key={c}>{c}</option>)}
         </select>
       </Champ>
-      <Selec label="Sexe" value={form.sexe||"M"} onChange={chg("sexe")}>
-        <option value="M">Masculin</option><option value="F">Féminin</option>
+      <Selec label={t("enrolment.sex")} value={form.sexe||"M"} onChange={chg("sexe")}>
+        <option value="M">{t("enrolment.male")}</option><option value="F">{t("enrolment.female")}</option>
       </Selec>
-      <Selec label="Statut" value={form.statut||"Actif"} onChange={chg("statut")}>
-        <option>Actif</option><option>Inactif</option><option>Transféré</option><option>Exclu</option><option>Abandonné</option><option>Décédé</option>
+      <Selec label={t("enrolment.status")} value={form.statut||"Actif"} onChange={chg("statut")}>
+        <option value="Actif">{t("enrolment.statusActive")}</option>
+        <option value="Inactif">{t("enrolment.statusInactive")}</option>
+        <option value="Transféré">{t("enrolment.statusTransferred")}</option>
+        <option value="Exclu">{t("enrolment.statusExpelled")}</option>
+        <option value="Abandonné">{t("enrolment.statusDroppedOut")}</option>
+        <option value="Décédé">{t("enrolment.statusDeceased")}</option>
       </Selec>
-      <Selec label="Type d'inscription" value={form.typeInscription||"Première inscription"} onChange={chg("typeInscription")}>
-        <option>Première inscription</option><option>Réinscription</option>
+      <Selec label={t("enrolment.enrollmentType")} value={form.typeInscription||"Première inscription"} onChange={chg("typeInscription")}>
+        <option value="Première inscription">{t("enrolment.firstEnrollment")}</option>
+        <option value="Réinscription">{t("enrolment.reEnrollment")}</option>
       </Selec>
       {["Transféré","Exclu","Abandonné","Décédé"].includes(form.statut)&&<>
-        <Input label="Date de départ" type="date" value={form.dateDepart||""} onChange={chg("dateDepart")}/>
+        <Input label={t("enrolment.departureDate")} type="date" value={form.dateDepart||""} onChange={chg("dateDepart")}/>
         <div style={{gridColumn:"1/-1"}}>
-          <Input label="Motif du départ" value={form.motifDepart||""} onChange={chg("motifDepart")} placeholder="Ex: Transfert vers Lycée Donka, fin d'année..."/>
+          <Input label={t("enrolment.departureReason")} value={form.motifDepart||""} onChange={chg("motifDepart")} placeholder={t("enrolment.departureReasonPlaceholder")}/>
         </div>
         {form.statut==="Transféré"&&<div style={{gridColumn:"1/-1"}}>
-          <Input label="École de destination" value={form.destinationDepart||""} onChange={chg("destinationDepart")} placeholder="Nom de l'école d'accueil"/>
+          <Input label={t("enrolment.destinationSchool")} value={form.destinationDepart||""} onChange={chg("destinationDepart")} placeholder={t("enrolment.destinationSchoolPlaceholder")}/>
         </div>}
       </>}
-      <div style={{gridColumn:"1/-1"}}><Input label="Filiation (Père / Mère)" value={form.filiation||""} onChange={chg("filiation")}/></div>
-      <Input label="Nom du Tuteur" value={form.tuteur||""} onChange={chg("tuteur")}/>
-      <Input label="Contact Tuteur" value={form.contactTuteur||""} onChange={chg("contactTuteur")}/>
-      <Input label="Domicile Tuteur" value={form.domicile||""} onChange={chg("domicile")}/>
-      <Input label="Date de naissance" type="date" value={form.dateNaissance||""} onChange={chg("dateNaissance")}/>
-      <Input label="Lieu de naissance" value={form.lieuNaissance||""} onChange={chg("lieuNaissance")}/>
+      <div style={{gridColumn:"1/-1"}}><Input label={t("enrolment.parentage")} value={form.filiation||""} onChange={chg("filiation")}/></div>
+      <Input label={t("enrolment.guardianName")} value={form.tuteur||""} onChange={chg("tuteur")}/>
+      <Input label={t("enrolment.guardianContact")} value={form.contactTuteur||""} onChange={chg("contactTuteur")}/>
+      <Input label={t("enrolment.guardianAddress")} value={form.domicile||""} onChange={chg("domicile")}/>
+      <Input label={t("enrolment.dateOfBirth")} type="date" value={form.dateNaissance||""} onChange={chg("dateNaissance")}/>
+      <Input label={t("enrolment.placeOfBirth")} value={form.lieuNaissance||""} onChange={chg("lieuNaissance")}/>
       {form.typeInscription==="Réinscription"&&
-        <Input label="Établissement d'origine (si transféré)" value={form.etablissementOrigine||""} onChange={chg("etablissementOrigine")} placeholder="Nom de l'ancienne école"/>
+        <Input label={t("enrolment.previousSchool")} value={form.etablissementOrigine||""} onChange={chg("etablissementOrigine")} placeholder={t("enrolment.previousSchoolPlaceholder")}/>
       }
     </div>
   );
