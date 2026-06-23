@@ -42,6 +42,10 @@ export function NotesTab({
   setGrilleChanges,
   grilleSaving,
   setGrilleSaving,
+  grilleMultiPeriode,
+  setGrilleMultiPeriode,
+  grilleMatiere,
+  setGrilleMatiere,
   importPreview,
   setImportPreview,
   importEnCours,
@@ -76,6 +80,8 @@ export function NotesTab({
           grilleType={grilleType} setGrilleType={setGrilleType}
           grilleChanges={grilleChanges} setGrilleChanges={setGrilleChanges}
           grilleSaving={grilleSaving} setGrilleSaving={setGrilleSaving}
+          grilleMultiPeriode={grilleMultiPeriode} setGrilleMultiPeriode={setGrilleMultiPeriode}
+          grilleMatiere={grilleMatiere} setGrilleMatiere={setGrilleMatiere}
         />
       )}
 

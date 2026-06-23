@@ -58,8 +58,12 @@ export function useEcole({
   const [importEnCours, setImportEnCours] = useState(false);
   const [notesVue, setNotesVue] = useState("liste"); // "liste" | "grille"
   const [grilleClasse, setGrilleClasse] = useState("all");
-  const [grilleChanges, setGrilleChanges] = useState({}); // {"eleveId|matiere": note}
+  const [grilleChanges, setGrilleChanges] = useState({}); // {"eleveId|periode|matiere": note}
   const [grilleSaving, setGrilleSaving] = useState(false);
+  // Mode multi-périodes : fige une matière, colonnes = périodes (saisir les
+  // 2-3 compositions de l'année en une grille). grilleMatiere = matière figée.
+  const [grilleMultiPeriode, setGrilleMultiPeriode] = useState(false);
+  const [grilleMatiere, setGrilleMatiere] = useState("");
   const chg = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
   const { schoolId, schoolInfo, moisAnnee, toast, logAction, envoyerPush } = useContext(SchoolContext);
   const sectionPeriode = isPrimarySection ? "primaire" : "secondaire";
@@ -113,6 +117,7 @@ export function useEcole({
     importPreview, setImportPreview, importEnCours, setImportEnCours,
     notesVue, setNotesVue, grilleClasse, setGrilleClasse,
     grilleChanges, setGrilleChanges, grilleSaving, setGrilleSaving,
+    grilleMultiPeriode, setGrilleMultiPeriode, grilleMatiere, setGrilleMatiere,
     schoolId, schoolInfo, moisAnnee, toast, logAction, envoyerPush,
     periodes, defaultPeriode, periodeB, setPeriodeB, grillePeriode, setGrillePeriode,
     noteForms, defaultNoteType, grilleType, setGrilleType,
