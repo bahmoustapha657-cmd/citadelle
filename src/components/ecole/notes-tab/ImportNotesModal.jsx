@@ -80,17 +80,24 @@ export function ImportNotesModal({
 
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
         <Btn v="ghost" onClick={() => { setModal(null); setImportPreview(null); }}>Annuler</Btn>
-        {importPreview?.valides.length > 0 && <Btn v="vert" disabled={importEnCours} onClick={async () => {
+        {importPreview?.valides.length > 0 && <Btn v="vert" disabled={importEnCours} onClick={() => {
           setImportEnCours(true);
-          let count = 0;
-          for (const l of importPreview.valides) {
-            await ajN({ eleveNom: l.eleveNom, eleveId: l.eleveId, matiere: l.matiere, type: l.type, periode: l.periode, note: l.note, annee: annee || getAnnee() });
-            count++;
-          }
+          // Ne pas « await » : avec la persistance hors ligne, les écritures
+          // s'appliquent au cache local immédiatement et se synchronisent au
+          // retour en ligne. Les attendre bloquerait l'import hors ligne.
+          const ecritures = importPreview.valides.map(l =>
+            ajN({ eleveNom: l.eleveNom, eleveId: l.eleveId, matiere: l.matiere, type: l.type, periode: l.periode, note: l.note, annee: annee || getAnnee() }),
+          );
+          const count = ecritures.length;
+          Promise.allSettled(ecritures).then((res) => {
+            const echecs = res.filter(r => r.status === "rejected").length;
+            if (echecs > 0) toast(`${echecs} note(s) non importée(s) — vérifiez vos droits ou réessayez.`, "error");
+          });
           setImportEnCours(false);
           setModal(null);
           setImportPreview(null);
-          toast(`${count} note(s) importée(s) avec succès`, "success");
+          const horsLigne = typeof navigator !== "undefined" && navigator.onLine === false;
+          toast(`${count} note(s) importée(s)${horsLigne ? " (hors ligne — synchronisé au retour en ligne)" : " avec succès"}`, "success");
         }}>{importEnCours ? "Import en cours…" : `⬆️ Importer ${importPreview.valides.length} note(s)`}</Btn>}
       </div>
     </Modale>

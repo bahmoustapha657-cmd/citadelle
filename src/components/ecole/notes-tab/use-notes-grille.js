@@ -77,6 +77,7 @@ export function useNotesGrille({
     setGrilleSaving(true);
     let nb = 0;
     const horsBareme = {};
+    const ecritures = [];
     for (const [key, val] of Object.entries(grilleChanges)) {
       const [eleveId, periode, ...matParts] = key.split("|");
       const mat = matParts.join("|");
@@ -86,17 +87,34 @@ export function useNotesGrille({
       const eleve = eleveById(eleveId);
       if (!eleve || !mat || !periode) continue;
       const exist = getNoteExist(eleveId, mat, periode);
-      if (exist) { await ajN({ ...exist, note: valeur, annee: exist.annee || annee || getAnnee() }); }
-      else { await ajN({ eleveId, eleveNom: nomEleve(eleve), matiere: mat, type: grilleType, periode, note: valeur, annee: annee || getAnnee() }); }
+      // IMPORTANT : ne PAS « await » chaque écriture. Avec la persistance
+      // hors ligne, addDoc/updateDoc s'appliquent au cache local tout de
+      // suite mais leur promesse n'est tenue qu'après confirmation serveur —
+      // l'attendre bloquerait toute la sauvegarde hors ligne. On déclenche
+      // l'écriture (mise en file locale) et on poursuit l'UI immédiatement.
+      ecritures.push(
+        exist
+          ? ajN({ ...exist, note: valeur, annee: exist.annee || annee || getAnnee() })
+          : ajN({ eleveId, eleveNom: nomEleve(eleve), matiere: mat, type: grilleType, periode, note: valeur, annee: annee || getAnnee() }),
+      );
       nb++;
     }
+    // Remontée d'erreur en arrière-plan (ex. permission refusée en ligne).
+    // Hors ligne, ces promesses restent en attente sans erreur — normal.
+    Promise.allSettled(ecritures).then((res) => {
+      const echecs = res.filter(r => r.status === "rejected").length;
+      if (echecs > 0) toast(`${echecs} note(s) non enregistrée(s) — vérifiez vos droits ou réessayez.`, "error");
+    });
+
     setGrilleChanges(horsBareme);
     setGrilleSaving(false);
     const nbInvalides = Object.keys(horsBareme).length;
+    const horsLigne = typeof navigator !== "undefined" && navigator.onLine === false;
+    const suffixeOffline = horsLigne ? " (hors ligne — synchronisé au retour en ligne)" : "";
     if (nbInvalides > 0) {
-      toast(`${nb} note(s) enregistrée(s) — ${nbInvalides} hors barème (0–${maxNote}) à corriger.`, "warning");
+      toast(`${nb} note(s) enregistrée(s)${suffixeOffline} — ${nbInvalides} hors barème (0–${maxNote}) à corriger.`, "warning");
     } else {
-      toast(`${nb} note(s) enregistrée(s)`, "success");
+      toast(`${nb} note(s) enregistrée(s)${suffixeOffline}`, "success");
     }
   };
 

@@ -28,7 +28,10 @@ export function useEcole({
   const anneeFiltre = enModeArchive ? anneeConsultee : null;
   const { items: classes, chargement: cC, ajouter: ajC, modifier: modC, supprimer: supC } = useFirestore(cleClasses);
   const { items: ens, chargement: cEns, ajouter: ajEns, modifier: modEns, supprimer: supEns } = useFirestore(cleEns);
-  const { items: notes, chargement: cN, ajouter: ajN, supprimer: supN } = useFirestore(cleNotes, { annee: anneeFiltre });
+  const { items: notes, chargement: cN, ajouter: ajNraw, modifier: modN, supprimer: supN } = useFirestore(cleNotes, { annee: anneeFiltre });
+  // Upsert : une note existante (avec _id) est MISE À JOUR, sinon créée.
+  // Évite les doublons quand la grille réenregistre une note déjà saisie.
+  const ajN = (item) => ((item && item._id) ? modN(item) : ajNraw(item));
   const { items: eleves, chargement: cE, modifier: modE } = useFirestore(cleEleves);
   const { items: absences, chargement: cAbs, ajouter: ajAbs, supprimer: supAbs } = useFirestore(cleEleves + "_absences");
   const { items: enseignements, chargement: cEng, ajouter: ajEng, modifier: modEng, supprimer: supEng } = useFirestore(cleEns + "_enseignements");
