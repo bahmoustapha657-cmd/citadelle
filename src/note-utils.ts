@@ -108,14 +108,14 @@ export const getGeneralAverage = (
   return total / totalCoef;
 };
 
-// Moyenne sur N périodes — diviseur FIXE au nombre total de périodes,
-// les périodes manquantes étant traitées comme 0. Convention guinéenne :
-//   (T1 + T2 + T3) / 3   pour le primaire (trimestre)
-//   (S1 + S2) / 2        pour le secondaire (semestre)
-//   (M1 + … + M9) / 9    pour le mensuel
-// Retourne null UNIQUEMENT si TOUTES les périodes sont vides — sinon
-// une période sans note pénalise (zéro), ce qui correspond au choix
-// pédagogique "année en cours" demandé par la direction.
+// Moyenne annuelle = moyenne des périodes, diviseur FIXE au nombre total
+// de périodes de l'année :
+//   (T1 + T2 + T3) / 3   trimestre
+//   (S1 + S2) / 2        semestre
+//   (M1 + … + M9) / 9    mensuel
+// Les périodes sans moyenne comptent 0 (diviseur inchangé) ; en fin d'année
+// toutes les périodes sont renseignées → vraie moyenne arithmétique.
+// Retourne null UNIQUEMENT si TOUTES les périodes sont vides.
 export const getAnnualAverage = (
   periodAverages: Array<number | null> = [],
 ): number | null => {

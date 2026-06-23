@@ -6,6 +6,7 @@
 // compositions dans bulletins/fiche-compositions.js (réexportée ci-dessous).
 
 import { getAnnee } from "../constants.js";
+import { getPeriodesForSection } from "../period-utils.js";
 import { tr } from "./print-helpers.js";
 import {
   getEvolutionPeriode,
@@ -15,8 +16,10 @@ import {
 } from "./bulletins/bulletin-helpers.js";
 import { buildBulletinPageHTML, getModeleBulletin } from "./bulletins/bulletin-page.js";
 import { ouvrirFenetreBulletin } from "./bulletins/bulletin-doc.js";
+import { PERIODE_ANNEE, buildBulletinNotesAnnuelles } from "./bulletins/annual-notes.js";
 
 export { imprimerFicheCompositions } from "./bulletins/fiche-compositions.js";
+export { PERIODE_ANNEE } from "./bulletins/annual-notes.js";
 
 export const imprimerBulletin = (eleve, notes, matieres, periode, niveau, maxNote = 20, schoolInfo = {}, options = {}) => {
   const allEleves = Array.isArray(options.allEleves) ? options.allEleves : null;
@@ -56,6 +59,14 @@ export const imprimerBulletin = (eleve, notes, matieres, periode, niveau, maxNot
 export const imprimerBulletinsGroupes = (eleves, notes, matieres, periode, niveau, maxNote = 20, schoolInfo = {}, classe = "", matieresParClasseFn = null, appreciationsParEleve = {}) => {
   if (!eleves.length) { alert("Aucun élève pour cette sélection."); return; }
   const getMat = (eleve) => (matieresParClasseFn ? matieresParClasseFn(eleve.classe) : matieres);
+
+  // Mode « Fin d'année » : on remplace les notes par des notes annuelles
+  // synthétiques (moyenne des périodes), puis le pipeline normal calcule
+  // moyennes, rang et mention sur la période sentinelle PERIODE_ANNEE.
+  if (periode === PERIODE_ANNEE) {
+    const periodesReelles = getPeriodesForSection(schoolInfo, niveau === "primaire" ? "primaire" : "secondaire");
+    notes = buildBulletinNotesAnnuelles({ eleves, notes, matsFor: getMat, periodes: periodesReelles, niveau });
+  }
 
   // Cache par classe : stats + moyennes par matière
   const classCache = new Map();
@@ -100,8 +111,9 @@ export const imprimerBulletinsGroupes = (eleves, notes, matieres, periode, nivea
     pages = pagesListe.join("");
   }
 
+  const titrePeriode = periode === PERIODE_ANNEE ? tr("reports.annual") : periode;
   ouvrirFenetreBulletin({
-    title: `${tr("reports.bulletinTitle")} ${classe || niveau} — ${periode} — ${tr("reports.schoolYear")} ${getAnnee()}`,
+    title: `${tr("reports.bulletinTitle")} ${classe || niveau} — ${titrePeriode} — ${tr("reports.schoolYear")} ${getAnnee()}`,
     body: pages,
     schoolInfo,
   });

@@ -405,6 +405,8 @@
   },
   "reports": {
     "schoolYear": "Année scolaire",
+    "annual": "Fin d'année",
+    "annualBulletinTitle": "Bulletin annuel",
     "period": "Période",
     "subject": "Matière",
     "coefficient": "Coef.",

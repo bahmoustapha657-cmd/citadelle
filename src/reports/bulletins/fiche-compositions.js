@@ -13,14 +13,23 @@ import {
   watermarkHtml,
 } from "../print-helpers.js";
 import { apprecComposition, computeFicheResultats } from "./fiche-compositions-data.js";
+import { PERIODE_ANNEE, buildFicheNotesAnnuelles } from "./annual-notes.js";
 
-export const imprimerFicheCompositions = (classe, periode, notes, matieres, eleves, maxNote=20, schoolInfo={}) => {
+export const imprimerFicheCompositions = (classe, periode, notes, matieres, eleves, maxNote=20, schoolInfo={}, periodes=[], matieresForClasse=null) => {
   const mi = maxNote / 2;
   const apprec = (v) => apprecComposition(v, maxNote);
   const mentionColor = (m) => m==="Très Bien"?"#166534":m==="Bien"?"#1e40af":m==="Assez Bien"?"#92400e":m==="Passable"?"#0369a1":"#991b1b";
   const mentionBg    = (m) => m==="Très Bien"?"#dcfce7":m==="Bien"?"#dbeafe":m==="Assez Bien"?"#fef3c7":m==="Passable"?"#e0f2fe":"#fee2e2";
 
-  const { resultats, stats } = computeFicheResultats({ classe, periode, notes, matieres, eleves, maxNote });
+  // Mode « Fin d'année » : notes de composition annuelles synthétiques
+  // (moyenne des compositions de chaque période), classées sur PERIODE_ANNEE.
+  const estAnnuel = periode === PERIODE_ANNEE;
+  const notesEff = estAnnuel
+    ? buildFicheNotesAnnuelles({ eleves, notes, matsFor: matieresForClasse || (() => matieres), periodes })
+    : notes;
+  const labelPeriode = estAnnuel ? tr("reports.annual") : periode;
+
+  const { resultats, stats } = computeFicheResultats({ classe, periode, notes: notesEff, matieres, eleves, maxNote });
 
   if(resultats.length===0){ alert("Aucun résultat de composition trouvé pour cette sélection."); return; }
 
@@ -48,7 +57,7 @@ export const imprimerFicheCompositions = (classe, periode, notes, matieres, elev
 
   const w = window.open("","_blank");
   w.document.write(`<!DOCTYPE html><html lang="${printLang()}" dir="${printDir()}"><head><meta charset="utf-8"/>
-  <title>${tr("reports.compositionResults")} — ${periode}</title>
+  <title>${tr("reports.compositionResults")} — ${labelPeriode}</title>
   <style>
     ${PRINT_RESET}
     body{font-family:Arial,sans-serif;padding:14mm 12mm;font-size:12px;color:#1a1a1a;margin:0}
@@ -72,7 +81,7 @@ export const imprimerFicheCompositions = (classe, periode, notes, matieres, elev
   </style></head><body>
   ${watermarkHtml(schoolInfo)}
   ${enteteDoc(schoolInfo, schoolInfo.logo)}
-  <h2>${tr("reports.compositionResults").toUpperCase()} — ${periode} — ${tr("reports.schoolYear")} ${getAnnee()}</h2>
+  <h2>${tr("reports.compositionResults").toUpperCase()} — ${labelPeriode} — ${tr("reports.schoolYear")} ${getAnnee()}</h2>
   <h3>${tr("reports.class")} : <strong>${classe==="all"?tr("common.all"):classe}</strong> &nbsp;|&nbsp; <strong>${nb}</strong></h3>
 
   <table>

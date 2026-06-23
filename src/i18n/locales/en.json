@@ -405,6 +405,8 @@
   },
   "reports": {
     "schoolYear": "School year",
+    "annual": "Year-end",
+    "annualBulletinTitle": "Year-end report card",
     "period": "Period",
     "subject": "Subject",
     "coefficient": "Coef.",

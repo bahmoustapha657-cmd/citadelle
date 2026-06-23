@@ -17,6 +17,7 @@ import {
 import { getInitiales, ordinalFr } from "./bulletin-format.js";
 import { computeBulletinModel } from "./bulletin-page-data.js";
 import { buildLignesRows } from "./bulletin-page-rows.js";
+import { PERIODE_ANNEE } from "./annual-notes.js";
 
 // Modèle de bulletin choisi par l'école (Paramètres → Évaluations) :
 //  - classique : gabarit historique (défaut)
@@ -66,14 +67,18 @@ export function buildBulletinPageHTML({
 
   const tbody = buildLignesRows(lignes, maxNote);
 
+  const estAnnuel = periode === PERIODE_ANNEE;
+  const titreBulletin = estAnnuel ? tr("reports.annualBulletinTitle") : tr("reports.bulletinTitle");
+  const labelPeriode = estAnnuel ? tr("reports.annual") : periode;
+
   return `
   <div class="page">
     ${enteteDoc(schoolInfo, schoolInfo.logo)}
 
     <div style="background:${bandeau};color:#fff;padding:${dim.bandPad};border-radius:${dim.radius}px;margin-bottom:${dim.mb}px;display:flex;justify-content:space-between;align-items:center">
       <div>
-        <div style="font-size:13px;font-weight:800;letter-spacing:0.04em">${tr("reports.bulletinTitle").toUpperCase()}</div>
-        <div style="font-size:11px;opacity:0.85">${periode} — ${tr("reports.schoolYear")} ${annee}</div>
+        <div style="font-size:13px;font-weight:800;letter-spacing:0.04em">${titreBulletin.toUpperCase()}</div>
+        <div style="font-size:11px;opacity:0.85">${labelPeriode} — ${tr("reports.schoolYear")} ${annee}</div>
       </div>
       <div style="font-size:9.5px;opacity:0.78;font-family:monospace;text-align:end">${tr("reports.bulletinNumber")} ${numero}</div>
     </div>

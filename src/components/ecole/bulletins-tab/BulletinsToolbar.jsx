@@ -1,6 +1,6 @@
 import { C } from "../../../constants";
 import { Btn } from "../../ui";
-import { imprimerBulletinsGroupes, imprimerFicheCompositions } from "../../../reports";
+import { imprimerBulletinsGroupes, imprimerFicheCompositions, PERIODE_ANNEE } from "../../../reports";
 
 // Barre d'outils des bulletins : recherche, sélecteurs période/classe et
 // boutons d'impression (résultats d'évaluation, bulletins groupés).
@@ -18,6 +18,7 @@ export function BulletinsToolbar({
       <select value={periodeB} onChange={e=>setPeriodeB(e.target.value)}
         style={{border:"1px solid #b0c4d8",borderRadius:7,padding:"6px 10px",fontSize:12,background:"#fff"}}>
         {periodes.map(p=><option key={p} value={p}>{p}</option>)}
+        <option value={PERIODE_ANNEE}>🏁 {t("reports.annual")}</option>
       </select>
       <select value={filtreClasse} onChange={e=>setFiltreClasse(e.target.value)}
         style={{border:"1px solid #b0c4d8",borderRadius:7,padding:"6px 10px",fontSize:12,background:"#fff"}}>
@@ -27,7 +28,7 @@ export function BulletinsToolbar({
       <Btn v="success" onClick={()=>{
         const elevesC=(filtreClasse==="all"?elevesFiltres:elevesFiltres.filter(e=>e.classe===filtreClasse))
           .filter(e=>!(!!schoolInfo.blocageParentImpaye && moisAnnee.filter(m=>(e.mens||{})[m]!=="Payé").length>0));
-        imprimerFicheCompositions(filtreClasse,periodeB,notes,matieres,elevesC,maxNote,schoolInfo);
+        imprimerFicheCompositions(filtreClasse,periodeB,notes,matieres,elevesC,maxNote,schoolInfo,periodes,matieresForClasse);
       }}>
         {t("school.bulletins.evaluationResults")}
       </Btn>

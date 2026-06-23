@@ -405,6 +405,8 @@
   },
   "reports": {
     "schoolYear": "السنة الدراسية",
+    "annual": "نهاية السنة",
+    "annualBulletinTitle": "كشف نهاية السنة",
     "period": "الفترة",
     "subject": "المادة",
     "coefficient": "المعامل",

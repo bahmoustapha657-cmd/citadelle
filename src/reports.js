@@ -29,6 +29,7 @@ export {
   imprimerBulletin,
   imprimerBulletinsGroupes,
   imprimerFicheCompositions,
+  PERIODE_ANNEE,
 } from "./reports/bulletins.js";
 export {
   imprimerCertificatRadiation,
