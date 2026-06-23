@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Btn } from "../../ui";
 
 // Barre de filtres de la grille, selon le mode de saisie :
@@ -19,6 +20,13 @@ export function NotesGrilleToolbar({
   const nbModif = Object.keys(grilleChanges).length;
   const selStyle = { border: "1px solid #b0c4d8", borderRadius: 7, padding: "6px 10px", fontSize: 12 };
   const changerMode = (id) => { setGrilleMode(id); setGrilleChanges({}); };
+
+  // Recherche d'élève (mode « Par élève ») : filtre la liste par nom/prénom.
+  const [rechEleve, setRechEleve] = useState("");
+  const norm = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  const elevesFiltres = rechEleve.trim()
+    ? elevesGrille.filter(e => e._id === grilleEleve || norm(`${e.nom} ${e.prenom}`).includes(norm(rechEleve)) || norm(`${e.prenom} ${e.nom}`).includes(norm(rechEleve)))
+    : elevesGrille;
 
   return (
     <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap", alignItems: "center" }}>
@@ -51,10 +59,18 @@ export function NotesGrilleToolbar({
         </select>
       )}
       {grilleMode === "eleve" && (
-        <select value={grilleEleve} onChange={e => setGrilleEleve(e.target.value)} style={{ ...selStyle, minWidth: 180 }}>
-          <option value="">— Élève —</option>
-          {elevesGrille.map(e => <option key={e._id} value={e._id}>{e.nom} {e.prenom}</option>)}
-        </select>
+        <>
+          <input
+            value={rechEleve}
+            onChange={e => setRechEleve(e.target.value)}
+            placeholder="🔍 Rechercher un élève…"
+            style={{ ...selStyle, minWidth: 170 }}
+          />
+          <select value={grilleEleve} onChange={e => setGrilleEleve(e.target.value)} style={{ ...selStyle, minWidth: 180 }}>
+            <option value="">{elevesFiltres.length ? "— Élève —" : "Aucun élève trouvé"}</option>
+            {elevesFiltres.map(e => <option key={e._id} value={e._id}>{e.nom} {e.prenom}</option>)}
+          </select>
+        </>
       )}
 
       <select value={grilleType} onChange={e => setGrilleType(e.target.value)} style={selStyle}>
