@@ -60,10 +60,14 @@ export function useEcole({
   const [grilleClasse, setGrilleClasse] = useState("all");
   const [grilleChanges, setGrilleChanges] = useState({}); // {"eleveId|periode|matiere": note}
   const [grilleSaving, setGrilleSaving] = useState(false);
-  // Mode multi-périodes : fige une matière, colonnes = périodes (saisir les
-  // 2-3 compositions de l'année en une grille). grilleMatiere = matière figée.
-  const [grilleMultiPeriode, setGrilleMultiPeriode] = useState(false);
+  // Mode de saisie de la grille (les 3 axes élève × matière × période ne
+  // tiennent pas en 2D, donc un axe est figé selon le mode) :
+  //   "periode" : période figée → lignes élèves, colonnes matières (défaut)
+  //   "matiere" : matière figée → lignes élèves, colonnes périodes
+  //   "eleve"   : élève figé    → lignes matières, colonnes périodes (bulletin)
+  const [grilleMode, setGrilleMode] = useState("periode");
   const [grilleMatiere, setGrilleMatiere] = useState("");
+  const [grilleEleve, setGrilleEleve] = useState("");
   const chg = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
   const { schoolId, schoolInfo, moisAnnee, toast, logAction, envoyerPush } = useContext(SchoolContext);
   const sectionPeriode = isPrimarySection ? "primaire" : "secondaire";
@@ -117,7 +121,7 @@ export function useEcole({
     importPreview, setImportPreview, importEnCours, setImportEnCours,
     notesVue, setNotesVue, grilleClasse, setGrilleClasse,
     grilleChanges, setGrilleChanges, grilleSaving, setGrilleSaving,
-    grilleMultiPeriode, setGrilleMultiPeriode, grilleMatiere, setGrilleMatiere,
+    grilleMode, setGrilleMode, grilleMatiere, setGrilleMatiere, grilleEleve, setGrilleEleve,
     schoolId, schoolInfo, moisAnnee, toast, logAction, envoyerPush,
     periodes, defaultPeriode, periodeB, setPeriodeB, grillePeriode, setGrillePeriode,
     noteForms, defaultNoteType, grilleType, setGrilleType,

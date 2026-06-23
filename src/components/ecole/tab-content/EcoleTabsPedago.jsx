@@ -132,10 +132,12 @@ export function EcoleTabsPedago({ e, avecEns, annee, classesPredefinies, maxNote
         setGrilleChanges={e.setGrilleChanges}
         grilleSaving={e.grilleSaving}
         setGrilleSaving={e.setGrilleSaving}
-        grilleMultiPeriode={e.grilleMultiPeriode}
-        setGrilleMultiPeriode={e.setGrilleMultiPeriode}
+        grilleMode={e.grilleMode}
+        setGrilleMode={e.setGrilleMode}
         grilleMatiere={e.grilleMatiere}
         setGrilleMatiere={e.setGrilleMatiere}
+        grilleEleve={e.grilleEleve}
+        setGrilleEleve={e.setGrilleEleve}
         importPreview={e.importPreview}
         setImportPreview={e.setImportPreview}
         importEnCours={e.importEnCours}

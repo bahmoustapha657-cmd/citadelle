@@ -1,54 +1,76 @@
 import { getAnnee } from "../../../constants";
 
-// Logique de la grille de saisie. Deux modes :
-//  - normal       : période + type figés ; colonnes = matières.
-//  - multipériode : matière + type figés ; colonnes = périodes (saisir les
-//                   2-3 compositions de l'année d'un coup).
-// Clé de modification UNIFIÉE : `${eleveId}|${periode}|${matiere}`.
-// eleveId (id Firestore) et periode (T1, S1…) ne contiennent jamais « | » ;
-// la matière peut en contenir → on la reconstitue avec le reste.
+// Logique de la grille de saisie. Trois modes (un axe figé car élève ×
+// matière × période ne tient pas en 2D) :
+//   "periode" : période figée  → lignes = élèves,   colonnes = matières
+//   "matiere" : matière figée  → lignes = élèves,   colonnes = périodes
+//   "eleve"   : élève figé      → lignes = matières, colonnes = périodes (bulletin)
+// Chaque cellule est résolue en (eleveId, periode, matiere). Clé de
+// modification UNIFIÉE : `${eleveId}|${periode}|${matiere}` (eleveId et
+// periode ne contiennent jamais « | » ; la matière est reconstituée).
 export function useNotesGrille({
   eleves, notes, matieresForClasse, annee, ajN, toast, maxNote = 20,
   grilleClasse, grillePeriode, grilleType, periodes = [],
-  multiPeriode = false, grilleMatiere = "",
+  grilleMode = "periode", grilleMatiere = "", grilleEleve = "",
   grilleChanges, setGrilleChanges, setGrilleSaving,
 }) {
   const classesUniqN = [...new Set(eleves.map(e => e.classe || ""))].filter(Boolean).sort();
   const elevesGrille = (grilleClasse === "all" ? eleves : eleves.filter(e => e.classe === grilleClasse))
     .filter(e => e.statut === "Actif" || !e.statut)
     .sort((a, b) => (a.nom + a.prenom).localeCompare(b.nom + b.prenom));
-  const matieresClasse = matieresForClasse(grilleClasse === "all" ? null : grilleClasse).map(m => m.nom);
 
-  // Colonnes selon le mode : matières (normal) ou périodes (multipériode,
-  // une fois la matière choisie — sinon rien à saisir).
-  const colonnes = multiPeriode ? (grilleMatiere ? periodes : []) : matieresClasse;
+  const eleveById = (id) => eleves.find(e => e._id === id) || null;
+  const eleveCourant = grilleMode === "eleve" ? eleveById(grilleEleve) : null;
+  // Matières applicables : à la classe filtrée, ou à la classe de l'élève
+  // figé en mode "eleve".
+  const matieresClasse = matieresForClasse(
+    grilleMode === "eleve" ? (eleveCourant?.classe || null) : (grilleClasse === "all" ? null : grilleClasse),
+  ).map(m => m.nom);
 
-  // Recherche d'une note existante pour CET élève (match eleveId, fallback
-  // eleveNom complet pour les anciennes notes sans eleveId).
-  const getNoteExist = (eleve, mat, periode) => {
-    if (!eleve) return undefined;
-    const fullName = `${eleve.nom || ""} ${eleve.prenom || ""}`.trim();
+  // Lignes et colonnes selon le mode.
+  const nomEleve = (e) => `${e.nom} ${e.prenom}`.trim();
+  let lignes = [];
+  let colonnes = [];
+  if (grilleMode === "eleve") {
+    colonnes = eleveCourant ? periodes : [];
+    lignes = eleveCourant ? matieresClasse.map(m => ({ key: m, label: m, sub: "" })) : [];
+  } else if (grilleMode === "matiere") {
+    colonnes = grilleMatiere ? periodes : [];
+    lignes = elevesGrille.map(e => ({ key: e._id, label: nomEleve(e), sub: e.classe }));
+  } else {
+    colonnes = matieresClasse;
+    lignes = elevesGrille.map(e => ({ key: e._id, label: nomEleve(e), sub: e.classe }));
+  }
+
+  // (ligneKey, colonne) → { eleveId, periode, matiere } selon le mode.
+  const resoudre = (ligneKey, col) => {
+    if (grilleMode === "eleve") return { eleveId: grilleEleve, periode: col, matiere: ligneKey };
+    if (grilleMode === "matiere") return { eleveId: ligneKey, periode: col, matiere: grilleMatiere };
+    return { eleveId: ligneKey, periode: grillePeriode, matiere: col };
+  };
+
+  // Recherche d'une note existante (match eleveId, fallback eleveNom complet).
+  const getNoteExist = (eleveId, mat, periode) => {
+    const eleve = eleveById(eleveId);
+    const fullName = eleve ? nomEleve(eleve) : "";
     return notes.find(n => {
       if (n.matiere !== mat || n.periode !== periode || n.type !== grilleType) return false;
-      if (n.eleveId) return n.eleveId === eleve._id;
+      if (n.eleveId) return n.eleveId === eleveId;
       return !!fullName && String(n.eleveNom || "").trim() === fullName;
     });
   };
 
-  // En multipériode, la colonne EST la période et la matière est figée ;
-  // sinon la colonne est la matière et la période est grillePeriode.
-  const matierePour = (col) => (multiPeriode ? grilleMatiere : col);
-  const periodePour = (col) => (multiPeriode ? col : grillePeriode);
-
-  const valeurCellule = (eleve, col) => {
-    const mat = matierePour(col);
-    const periode = periodePour(col);
-    const key = `${eleve._id}|${periode}|${mat}`;
-    if (key in grilleChanges) return grilleChanges[key];
-    return getNoteExist(eleve, mat, periode)?.note ?? "";
+  const cleCellule = (ligneKey, col) => {
+    const { eleveId, periode, matiere } = resoudre(ligneKey, col);
+    return `${eleveId}|${periode}|${matiere}`;
   };
 
-  const cleCellule = (eleve, col) => `${eleve._id}|${periodePour(col)}|${matierePour(col)}`;
+  const valeurCellule = (ligneKey, col) => {
+    const { eleveId, periode, matiere } = resoudre(ligneKey, col);
+    const key = `${eleveId}|${periode}|${matiere}`;
+    if (key in grilleChanges) return grilleChanges[key];
+    return getNoteExist(eleveId, matiere, periode)?.note ?? "";
+  };
 
   const sauvegarderGrille = async () => {
     if (!Object.keys(grilleChanges).length) { toast("Aucune modification.", "info"); return; }
@@ -59,14 +81,13 @@ export function useNotesGrille({
       const [eleveId, periode, ...matParts] = key.split("|");
       const mat = matParts.join("|");
       if (val === "" || isNaN(Number(val))) continue;
-      // Barème : aucune note hors 0..maxNote ne doit corrompre les moyennes.
       const valeur = Number(val);
       if (valeur < 0 || valeur > maxNote) { horsBareme[key] = val; continue; }
-      const eleve = eleves.find(e => e._id === eleveId);
+      const eleve = eleveById(eleveId);
       if (!eleve || !mat || !periode) continue;
-      const exist = getNoteExist(eleve, mat, periode);
+      const exist = getNoteExist(eleveId, mat, periode);
       if (exist) { await ajN({ ...exist, note: valeur, annee: exist.annee || annee || getAnnee() }); }
-      else { await ajN({ eleveId, eleveNom: `${eleve.nom || ""} ${eleve.prenom || ""}`.trim(), matiere: mat, type: grilleType, periode, note: valeur, annee: annee || getAnnee() }); }
+      else { await ajN({ eleveId, eleveNom: nomEleve(eleve), matiere: mat, type: grilleType, periode, note: valeur, annee: annee || getAnnee() }); }
       nb++;
     }
     setGrilleChanges(horsBareme);
@@ -79,5 +100,5 @@ export function useNotesGrille({
     }
   };
 
-  return { classesUniqN, elevesGrille, matieresClasse, colonnes, valeurCellule, cleCellule, sauvegarderGrille };
+  return { classesUniqN, elevesGrille, matieresClasse, lignes, colonnes, valeurCellule, cleCellule, sauvegarderGrille };
 }
