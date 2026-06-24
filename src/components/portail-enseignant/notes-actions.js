@@ -43,7 +43,7 @@ export async function enregistrerGrille({
           noteId: item.noteId,
           eleveId: item.eleveId,
           type: canonical,
-          periode: gridForm.periode,
+          periode: item.periode || gridForm.periode,
           note: item.note,
         });
         if (ok) nbOk++;

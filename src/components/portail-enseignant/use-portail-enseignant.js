@@ -92,8 +92,8 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
   };
 
   // Wrapper : injecte eleves/notes/schoolInfo/utilisateur au helper.
-  const construireGrille = (classe, type, periode) => construireGrilleHelper({
-    classe, type, periode,
+  const construireGrille = (classe, type, periode, multiPeriode = false) => construireGrilleHelper({
+    classe, type, periode, periodes, multiPeriode,
     eleves: portalData.eleves || [],
     mesNotes, schoolInfo, utilisateur,
   });
@@ -106,7 +106,8 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
       classe,
       type,
       periode,
-      notes: classe ? construireGrille(classe, type, periode) : {},
+      multiPeriode: false,
+      notes: classe ? construireGrille(classe, type, periode, false) : {},
     });
     setGridProgress({ done: 0, total: 0 });
     setModalNote("grid");
@@ -115,9 +116,9 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
   const majGrid = (patch) => {
     setGridForm((current) => {
       const next = { ...current, ...patch };
-      // Si on change classe/type/période, on reconstruit le tableau
-      if (patch.classe !== undefined || patch.type !== undefined || patch.periode !== undefined) {
-        next.notes = next.classe ? construireGrille(next.classe, next.type, next.periode) : {};
+      // Reconstruit le tableau si classe/type/période/mode change.
+      if (patch.classe !== undefined || patch.type !== undefined || patch.periode !== undefined || patch.multiPeriode !== undefined) {
+        next.notes = next.classe ? construireGrille(next.classe, next.type, next.periode, next.multiPeriode) : {};
       }
       return next;
     });
