@@ -1,7 +1,6 @@
 import { getFirestore } from "firebase-admin/firestore";
 import { initAdmin } from "../firebase-admin.js";
 import {
-  getDocsByFieldValues,
   getSectionCollections,
   getTeacherAliases,
   matchesTeacherAlias,
@@ -22,7 +21,8 @@ function normalizeText(value = "") {
     .trim()
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ");
 }
 
 // Restreint le périmètre d'une note à la classe ET à la matière de l'enseignant.
@@ -87,12 +87,21 @@ async function loadTeacherPortalPayload({ db, schoolId, profile }) {
 
   // Registre des enseignants : classe(s) dont le prof est TITULAIRE
   // (essentiel au primaire, où il n'y a souvent ni EDT ni cahier de textes).
-  // Le nom du registre est "Prénom Nom".
+  // Le compte enseignant porte `enseignantId` = l'_id de SA fiche dans le
+  // registre : on matche PAR ID en priorité (infaillible), puis par nom
+  // "Prénom Nom" en repli (anciens comptes sans enseignantId). Sans cela, un
+  // nom de compte légèrement différent (civilité, ordre prénom/nom) empêchait
+  // de retrouver la classe titulaire → aucun élève au primaire.
+  const enseignantId = String(profile.enseignantId || "").trim();
   const monRoster = rosterSnap.docs.map(toItem).filter((r) =>
-    matchesTeacherAlias(`${r.prenom || ""} ${r.nom || ""}`, aliases) || matchesTeacherAlias(r.enseignantNom, aliases));
+    (enseignantId && String(r._id) === enseignantId)
+    || matchesTeacherAlias(`${r.prenom || ""} ${r.nom || ""}`, aliases)
+    || matchesTeacherAlias(r.enseignantNom, aliases));
   // Classes qui désignent ce prof comme enseignant/titulaire (champ posé par
   // la fiche enseignant lorsqu'une classe titulaire est renseignée).
-  const mesClassesTitulaire = classesSnap.docs.map(toItem).filter((c) => matchesTeacherAlias(c.enseignant, aliases));
+  const mesClassesTitulaire = classesSnap.docs.map(toItem).filter((c) =>
+    (enseignantId && String(c.enseignantId || "") === enseignantId)
+    || matchesTeacherAlias(c.enseignant, aliases));
 
   // Classes de l'enseignant = UNION de toutes ses sources d'affectation,
   // pas seulement l'emploi du temps (souvent incomplet). Avant, un prof
@@ -120,7 +129,14 @@ async function loadTeacherPortalPayload({ db, schoolId, profile }) {
     return mat.classes.some((c) => teacherClasses.has(c));
   });
 
-  const eleves = uniqueById(await getDocsByFieldValues(schoolRef.collection(collections.eleves), "classe", classes));
+  // Récupération robuste des élèves : on compare les noms de classe de façon
+  // normalisée (casse / accents / espaces). Une égalité stricte Firestore
+  // ratait les élèves dès qu'un libellé différait un tant soit peu de la classe
+  // du titulaire (ex. « 3ème Année A » vs « 3eme annee A ») — fréquent au
+  // primaire où la classe du titulaire est saisie à la main.
+  const classSet = new Set(classes.map((c) => normalizeText(c)).filter(Boolean));
+  const allEleves = (await schoolRef.collection(collections.eleves).get()).docs.map(toItem);
+  const eleves = uniqueById(allEleves.filter((el) => classSet.has(normalizeText(el.classe))));
   const studentIds = new Set(eleves.map((student) => String(student._id || "").trim()).filter(Boolean));
   const studentNames = new Set(
     eleves

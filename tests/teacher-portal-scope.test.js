@@ -89,6 +89,16 @@ test("fallback eleveNom: matching name + bonne matière (sans teacherClasses →
   );
 });
 
+test("fallback eleveNom: espaces multiples normalisés (collapse) → match", () => {
+  // normalizeText réduit les espaces consécutifs : un nom saisi « Aminata  Bah »
+  // (double espace) doit matcher « aminata bah » du scope.
+  const note = { eleveNom: "Aminata  Bah", matiere: "Mathematiques" };
+  assert.equal(
+    noteBelongsToTeacherScope(note, studentIds, "Mathematiques", studentNames, "college"),
+    true,
+  );
+});
+
 test("fallback eleveNom: nom inconnu → refus", () => {
   const note = { eleveNom: "Mariama Sow", matiere: "Mathematiques" };
   assert.equal(
