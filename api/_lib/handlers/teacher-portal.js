@@ -120,13 +120,16 @@ async function loadTeacherPortalPayload({ db, schoolId, profile }) {
     ...classesTitulaire,
   ].map((c) => String(c || "").trim()).filter(Boolean))];
   const teacherClasses = new Set(classes);
+  const teacherClassesNorm = new Set(classes.map((c) => normalizeText(c)));
 
   // Matières applicables aux classes du prof (pour le primaire : le titulaire
   // saisit toutes les matières de sa classe). Une matière s'applique à une
-  // classe si elle n'a pas de liste `classes` ou si elle la contient.
+  // classe si elle n'a pas de liste `classes` ou si elle la contient. La
+  // comparaison est normalisée (casse / accents / espaces) pour les mêmes
+  // raisons que la résolution des élèves.
   const matieres = uniqueById(matieresSnap.docs.map(toItem)).filter((mat) => {
     if (!Array.isArray(mat.classes) || mat.classes.length === 0) return true;
-    return mat.classes.some((c) => teacherClasses.has(c));
+    return mat.classes.some((c) => teacherClassesNorm.has(normalizeText(c)));
   });
 
   // Récupération robuste des élèves : on compare les noms de classe de façon

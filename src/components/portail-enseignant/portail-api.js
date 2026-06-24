@@ -11,6 +11,7 @@ export async function fetchTeacherPortal(utilisateur) {
   }
   return {
     section: data.section || utilisateur.section || "college",
+    matieres: Array.isArray(data.matieres) ? data.matieres : [],
     emplois: Array.isArray(data.emplois) ? data.emplois : [],
     eleves: Array.isArray(data.eleves) ? data.eleves : [],
     notes: Array.isArray(data.notes) ? data.notes : [],
