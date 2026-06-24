@@ -29,15 +29,20 @@ export const imprimerFicheCompositions = (classe, periode, notes, matieres, elev
     : notes;
   const labelPeriode = estAnnuel ? tr("reports.annual") : periode;
 
-  const { resultats, stats } = computeFicheResultats({ classe, periode, notes: notesEff, matieres, eleves, maxNote });
+  // Colonnes : matières de la classe quand une classe précise est choisie
+  // (sinon liste globale pour la vue « toutes classes »). Le calcul par
+  // élève ne compte de toute façon que ses matières de classe.
+  const matieresAff = (classe !== "all" && matieresForClasse) ? (matieresForClasse(classe) || matieres) : matieres;
+
+  const { resultats, stats } = computeFicheResultats({ classe, periode, notes: notesEff, matieres: matieresAff, eleves, maxNote, matieresForClasse });
 
   if(resultats.length===0){ alert("Aucun résultat de composition trouvé pour cette sélection."); return; }
 
   // Stats récapitulatives
   const { nb, moyClasse, plus_haute, plus_basse, admis, dist } = stats;
 
-  // Colonnes matières
-  const thMat = matieres.map(m=>`<th style="text-align:center;font-size:10px;padding:6px 4px">${m.nom}<br/><small style="font-weight:normal">Coef ${m.coefficient||1}</small></th>`).join("");
+  // Colonnes matières (de la classe si une classe précise est sélectionnée)
+  const thMat = matieresAff.map(m=>`<th style="text-align:center;font-size:10px;padding:6px 4px">${m.nom}<br/><small style="font-weight:normal">Coef ${m.coefficient||1}</small></th>`).join("");
 
   // Lignes élèves avec rang
   let rang=1;

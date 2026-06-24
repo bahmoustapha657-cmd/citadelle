@@ -12,19 +12,28 @@ export const apprecComposition = (v, maxNote) => {
 };
 
 // Classement et statistiques de la classe pour une période donnée.
+// `matieresForClasse` (optionnel) : fn classe → matières de la classe. Quand
+// elle est fournie, SEULES les matières prises en charge par la classe de
+// l'élève comptent dans la moyenne (dénominateur) — les autres colonnes
+// affichent « — » et ne sont pas comptées. Sans elle, toutes les matières
+// passées comptent (rétrocompat).
 // Retourne { resultats, stats } ; resultats trié par moyenne décroissante.
-export function computeFicheResultats({ classe, periode, notes, matieres, eleves, maxNote = 20 }) {
+export function computeFicheResultats({ classe, periode, notes, matieres, eleves, maxNote = 20, matieresForClasse = null }) {
   const mi = maxNote / 2;
   const elevesClasse = classe === "all" ? eleves : eleves.filter((e) => e.classe === classe);
 
   const resultats = elevesClasse.map((e) => {
+    const matsEleve = matieresForClasse ? (matieresForClasse(e.classe) || matieres) : matieres;
+    const classSet = new Set(matsEleve.map((m) => m.nom));
     const ne = notes.filter((n) => n.eleveId === e._id && n.periode === periode && n.type === "Composition");
     let tot = 0, totC = 0;
     const notesMat = matieres.map((mat) => {
+      const dansClasse = classSet.has(mat.nom);
+      const coef = mat.coefficient || 1;
+      if (!dansClasse) return { nom: mat.nom, coef, moy: null }; // matière hors classe : ignorée
       const nm = ne.filter((n) => n.matiere === mat.nom);
       const moy = nm.length ? nm.reduce((s, n) => s + Number(n.note), 0) / nm.length : null;
-      const coef = mat.coefficient || 1;
-      totC += coef; // toutes les matières comptent au dénominateur
+      totC += coef; // SEULES les matières de la classe comptent au dénominateur
       if (moy !== null) { tot += moy * coef; }
       return { nom: mat.nom, coef, moy };
     });
