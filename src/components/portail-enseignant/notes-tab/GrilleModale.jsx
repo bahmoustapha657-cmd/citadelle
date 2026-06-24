@@ -8,12 +8,14 @@ import { Btn, Modale, Selec, Vide } from "../../ui";
 //                   coup). Recherche d'élève par nom dans les deux modes.
 export function GrilleModale({
   matiere, mesClasses, noteForms, periodes,
+  isPrimaire = false, matieresDispo = [],
   gridForm, setGridForm, majGrid, portalData,
   gridProgress, enregistrement, setModalNote, enregistrerGrille,
 }) {
   const [rech, setRech] = useState("");
   const norm = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
   const multi = !!gridForm.multiPeriode;
+  const maxNote = isPrimaire ? 10 : 20;
 
   const elevesClasse = (portalData.eleves || []).filter((e) => e.classe === gridForm.classe);
   const elevesAff = rech.trim()
@@ -23,12 +25,20 @@ export function GrilleModale({
   const cle = (eleveId, col) => (multi ? `${eleveId}|${col}` : eleveId);
   const remplies = Object.values(gridForm.notes).filter((v) => v !== "" && v != null).length;
 
+  const titreMatiere = isPrimaire ? (gridForm.matiere || "Matière") : (matiere || "Matière");
+
   return (
-    <Modale xlarge titre={`Saisie en grille — ${matiere || "Matière"}`} fermer={() => setModalNote(null)}>
-      <div style={{ display: "grid", gridTemplateColumns: multi ? "1fr 1fr" : "1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
+    <Modale xlarge titre={`Saisie en grille — ${titreMatiere}`} fermer={() => setModalNote(null)}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 12 }}>
         <Selec label="Classe" value={gridForm.classe} onChange={(e) => majGrid({ classe: e.target.value })}>
           {mesClasses.map((cl) => <option key={cl} value={cl}>{cl}</option>)}
         </Selec>
+        {isPrimaire && (
+          <Selec label="Matière" value={gridForm.matiere || ""} onChange={(e) => majGrid({ matiere: e.target.value })}>
+            <option value="">— Matière —</option>
+            {matieresDispo.map((m) => <option key={m._id || m.nom} value={m.nom}>{m.nom}</option>)}
+          </Selec>
+        )}
         <Selec label="Type d'évaluation" value={gridForm.type} onChange={(e) => majGrid({ type: e.target.value })}>
           {noteForms.map((item) => <option key={item.id} value={item.value}>{item.label}</option>)}
         </Selec>
@@ -64,7 +74,7 @@ export function GrilleModale({
                   <th style={{ padding: "8px 10px", fontSize: 11, textAlign: "start" }}>Élève</th>
                   {cols.map((col) => (
                     <th key={col || "note"} style={{ padding: "8px 10px", fontSize: 11, textAlign: "center", width: multi ? 90 : 110 }}>
-                      {multi ? col : "Note"} /20
+                      {multi ? col : "Note"} /{maxNote}
                     </th>
                   ))}
                 </tr>
@@ -81,11 +91,11 @@ export function GrilleModale({
                       const key = cle(e._id, col);
                       const val = gridForm.notes[key] ?? "";
                       const num = val === "" ? null : Number(val);
-                      const invalid = val !== "" && (Number.isNaN(num) || num < 0 || num > 20);
+                      const invalid = val !== "" && (Number.isNaN(num) || num < 0 || num > maxNote);
                       return (
                         <td key={col || "note"} style={{ padding: "6px 8px", textAlign: "center" }}>
                           <input
-                            type="number" min={0} max={20} step={0.25} value={val}
+                            type="number" min={0} max={maxNote} step={0.25} value={val}
                             onChange={(ev) => setGridForm((g) => ({ ...g, notes: { ...g.notes, [key]: ev.target.value } }))}
                             style={{
                               width: 76, padding: "6px 8px",

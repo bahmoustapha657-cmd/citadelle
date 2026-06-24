@@ -15,6 +15,8 @@ export function NotesTab({
   notesPeriode,
   noteForms,
   defaultNoteType,
+  isPrimaire,
+  matieresDispo,
   eleves,
   portalData,
   modalNote, setModalNote,
@@ -43,6 +45,7 @@ export function NotesTab({
       {modalNote === "grid" && (
         <GrilleModale
           matiere={matiere} mesClasses={mesClasses} noteForms={noteForms} periodes={periodes}
+          isPrimaire={isPrimaire} matieresDispo={matieresDispo}
           gridForm={gridForm} setGridForm={setGridForm} majGrid={majGrid} portalData={portalData}
           gridProgress={gridProgress} enregistrement={enregistrement}
           setModalNote={setModalNote} enregistrerGrille={enregistrerGrille}

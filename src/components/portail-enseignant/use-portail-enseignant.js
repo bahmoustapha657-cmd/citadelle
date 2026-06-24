@@ -44,6 +44,7 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
     emplois: [],
     eleves: [],
     notes: [],
+    matieres: [],
     enseignements: [],
     salaires: [],
     incidents: [],
@@ -58,6 +59,11 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
 
   const nomEns = utilisateur.enseignantNom || utilisateur.nom || "";
   const matiere = utilisateur.matiere || "";
+  // Au primaire, le titulaire saisit TOUTES les matières de sa classe : la
+  // grille propose un sélecteur de matière (matières renvoyées par le portail).
+  const isPrimaire = (portalData.section || utilisateur.section) === "primaire";
+  const matieresDispo = portalData.matieres || [];
+  const matiereParDefaut = isPrimaire ? (matieresDispo[0]?.nom || "") : matiere;
   const emplois = portalData.emplois || [];
   const eleves = portalData.eleves || [];
   const notes = portalData.notes || [];
@@ -92,8 +98,8 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
   };
 
   // Wrapper : injecte eleves/notes/schoolInfo/utilisateur au helper.
-  const construireGrille = (classe, type, periode, multiPeriode = false) => construireGrilleHelper({
-    classe, type, periode, periodes, multiPeriode,
+  const construireGrille = (classe, type, periode, multiPeriode = false, matiereSel = "") => construireGrilleHelper({
+    classe, type, periode, matiere: matiereSel, periodes, multiPeriode,
     eleves: portalData.eleves || [],
     mesNotes, schoolInfo, utilisateur,
   });
@@ -102,12 +108,14 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
     const classe = mesClasses[0] || "";
     const type = defaultNoteType;
     const periode = periodeN;
+    const matiereSel = matiereParDefaut;
     setGridForm({
       classe,
       type,
       periode,
+      matiere: matiereSel,
       multiPeriode: false,
-      notes: classe ? construireGrille(classe, type, periode, false) : {},
+      notes: classe ? construireGrille(classe, type, periode, false, matiereSel) : {},
     });
     setGridProgress({ done: 0, total: 0 });
     setModalNote("grid");
@@ -116,9 +124,10 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
   const majGrid = (patch) => {
     setGridForm((current) => {
       const next = { ...current, ...patch };
-      // Reconstruit le tableau si classe/type/période/mode change.
-      if (patch.classe !== undefined || patch.type !== undefined || patch.periode !== undefined || patch.multiPeriode !== undefined) {
-        next.notes = next.classe ? construireGrille(next.classe, next.type, next.periode, next.multiPeriode) : {};
+      // Reconstruit le tableau si classe/type/période/matière/mode change.
+      if (patch.classe !== undefined || patch.type !== undefined || patch.periode !== undefined
+          || patch.matiere !== undefined || patch.multiPeriode !== undefined) {
+        next.notes = next.classe ? construireGrille(next.classe, next.type, next.periode, next.multiPeriode, next.matiere) : {};
       }
       return next;
     });
@@ -169,6 +178,7 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
 
   return {
     c1, c2, nomEns, matiere, noteForms, defaultNoteType, periodes,
+    isPrimaire, matieresDispo,
     tab, setTab, periodeN, setPeriodeN, chargement, portalData,
     emplois, eleves, salaires, incidents, enseignantId,
     mesClasses, mesNotes, mesEvenements, notesPeriode,

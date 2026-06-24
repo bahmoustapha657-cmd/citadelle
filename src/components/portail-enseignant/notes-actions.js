@@ -27,7 +27,8 @@ export async function enregistrerGrille({
   toast,
 }) {
   const { canonical, aSauver } = collectGridNotes({ gridForm, mesNotes, schoolInfo, utilisateur });
-  const invalide = validateGridNotes(aSauver);
+  const maxNote = (utilisateur.section === "primaire") ? 10 : 20;
+  const invalide = validateGridNotes(aSauver, maxNote);
   if (invalide) {
     toast(invalide, "warning");
     return;
@@ -45,6 +46,7 @@ export async function enregistrerGrille({
           type: canonical,
           periode: item.periode || gridForm.periode,
           note: item.note,
+          matiere: item.matiere || gridForm.matiere || "",
         });
         if (ok) nbOk++;
         else nbKo++;
@@ -82,6 +84,7 @@ export async function enregistrerNote({
       type: resolveCanonicalNoteType(formNote.type || defaultNoteType, schoolInfo, utilisateur.section || "secondaire"),
       periode: formNote.periode,
       note: Number(formNote.note),
+      matiere: formNote.matiere || "",
     });
     if (!ok) throw new Error(data.error || "Enregistrement impossible.");
     setModalNote(null);

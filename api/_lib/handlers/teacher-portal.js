@@ -71,13 +71,14 @@ async function loadTeacherPortalPayload({ db, schoolId, profile }) {
   const aliases = getTeacherAliases(profile);
   const collections = getSectionCollections(section);
   const absencesCollName = `${collections.eleves}_absences`;
-  const [emploisSnap, enseignementsSnap, salairesSnap, absencesSnap, rosterSnap, classesSnap] = await Promise.all([
+  const [emploisSnap, enseignementsSnap, salairesSnap, absencesSnap, rosterSnap, classesSnap, matieresSnap] = await Promise.all([
     schoolRef.collection(collections.emplois).get(),
     schoolRef.collection(collections.enseignements).get(),
     schoolRef.collection("salaires").get(),
     schoolRef.collection(absencesCollName).get(),
     schoolRef.collection(collections.roster).get(),
     schoolRef.collection(collections.classes).get(),
+    schoolRef.collection(`${collections.classes}_matieres`).get(),
   ]);
 
   const emplois = emploisSnap.docs.map(toItem).filter((item) => matchesTeacherAlias(item.enseignant, aliases));
@@ -110,6 +111,15 @@ async function loadTeacherPortalPayload({ db, schoolId, profile }) {
     ...classesTitulaire,
   ].map((c) => String(c || "").trim()).filter(Boolean))];
   const teacherClasses = new Set(classes);
+
+  // Matières applicables aux classes du prof (pour le primaire : le titulaire
+  // saisit toutes les matières de sa classe). Une matière s'applique à une
+  // classe si elle n'a pas de liste `classes` ou si elle la contient.
+  const matieres = uniqueById(matieresSnap.docs.map(toItem)).filter((mat) => {
+    if (!Array.isArray(mat.classes) || mat.classes.length === 0) return true;
+    return mat.classes.some((c) => teacherClasses.has(c));
+  });
+
   const eleves = uniqueById(await getDocsByFieldValues(schoolRef.collection(collections.eleves), "classe", classes));
   const studentIds = new Set(eleves.map((student) => String(student._id || "").trim()).filter(Boolean));
   const studentNames = new Set(
@@ -134,6 +144,7 @@ async function loadTeacherPortalPayload({ db, schoolId, profile }) {
 
   return {
     section,
+    matieres,
     emplois: sortByDateDesc(uniqueById(emplois), "updatedAt"),
     eleves,
     notes: sortByDateDesc(uniqueById(notes), "updatedAt"),
@@ -360,10 +371,22 @@ async function handler(req, res) {
       return res.status(400).json({ error: `Note invalide : doit être comprise entre 0 et ${maxNote}.` });
     }
 
+    // Matière de la note. Au secondaire l'enseignant a UNE matière (profil).
+    // Au primaire le titulaire saisit toutes les matières de sa classe → la
+    // matière vient de la requête (obligatoire). Le périmètre élève reste
+    // vérifié par teacherScope (au primaire, le scope note ignore la matière).
+    let matiereNote = session.profile.matiere || "";
+    if (section === "primaire") {
+      matiereNote = String(req.body?.matiere || "").trim();
+      if (!matiereNote) {
+        return res.status(400).json({ error: "Champ requis : matiere (sélectionnez la matière)." });
+      }
+    }
+
     const payload = {
       eleveId,
       eleveNom: `${eleve.prenom || ""} ${eleve.nom || ""}`.trim(),
-      matiere: session.profile.matiere || "",
+      matiere: matiereNote,
       type,
       periode,
       note: noteValue,

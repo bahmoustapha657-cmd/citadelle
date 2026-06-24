@@ -31,6 +31,7 @@ export function PortailTabContent({ p, schoolInfo, utilisateur, t }) {
           periodeN={p.periodeN} setPeriodeN={p.setPeriodeN} periodes={p.periodes}
           mesClasses={p.mesClasses} notesPeriode={p.notesPeriode}
           noteForms={p.noteForms} defaultNoteType={p.defaultNoteType}
+          isPrimaire={p.isPrimaire} matieresDispo={p.matieresDispo}
           eleves={p.eleves} portalData={p.portalData}
           modalNote={p.modalNote} setModalNote={p.setModalNote}
           formNote={p.formNote} setFormNote={p.setFormNote}

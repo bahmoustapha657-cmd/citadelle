@@ -13,9 +13,11 @@ async function postTeacherPortal(body) {
   return { ok: res.ok && data.ok, data };
 }
 
-// Crée ou met à jour une note (création si noteId vide).
-export function saveNoteApi({ noteId, eleveId, type, periode, note }) {
-  return postTeacherPortal({ action: "save_note", noteId: noteId || "", eleveId, type, periode, note });
+// Crée ou met à jour une note (création si noteId vide). `matiere` n'est
+// utilisée par le serveur qu'au primaire (titulaire multi-matières) ;
+// au secondaire, la matière de l'enseignant prime.
+export function saveNoteApi({ noteId, eleveId, type, periode, note, matiere }) {
+  return postTeacherPortal({ action: "save_note", noteId: noteId || "", eleveId, type, periode, note, matiere: matiere || "" });
 }
 
 // Supprime une note.
