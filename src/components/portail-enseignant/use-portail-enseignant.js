@@ -72,7 +72,14 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
   const incidents = portalData.incidents || [];
   const enseignantId = utilisateur.enseignantId || null;
 
-  const mesClasses = [...new Set(emplois.map((item) => item.classe).filter(Boolean))];
+  // Classes du prof = union de l'emploi du temps ET des classes des élèves
+  // renvoyés par le serveur (qui couvre titulaire/enseignements/EDT). Sans
+  // cela, un titulaire du primaire (sans EDT) avait mesClasses vide → pas de
+  // bouton « Saisie en grille » ni de sélecteur de classe dans la grille.
+  const mesClasses = [...new Set([
+    ...emplois.map((item) => item.classe),
+    ...eleves.map((item) => item.classe),
+  ].filter(Boolean))];
   const mesNotes = [...notes].sort((left, right) => Number(right.updatedAt || right.createdAt || 0) - Number(left.updatedAt || left.createdAt || 0));
   const mesEvenements = [...enseignements].sort((left, right) => Number(right.date || 0) - Number(left.date || 0));
 
