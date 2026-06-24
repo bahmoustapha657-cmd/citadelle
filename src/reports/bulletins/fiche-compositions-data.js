@@ -23,7 +23,11 @@ export function computeFicheResultats({ classe, periode, notes, matieres, eleves
   const elevesClasse = classe === "all" ? eleves : eleves.filter((e) => e.classe === classe);
 
   const resultats = elevesClasse.map((e) => {
-    const matsEleve = matieresForClasse ? (matieresForClasse(e.classe) || matieres) : matieres;
+    // Repli sur la liste globale si la classe n'a aucune matière dédiée : un
+    // tableau vide (mais « truthy ») vidait classSet → moyGene null → l'élève
+    // disparaissait du classement et toutes ses notes étaient ignorées.
+    const matsClasse = matieresForClasse ? matieresForClasse(e.classe) : null;
+    const matsEleve = (matsClasse && matsClasse.length) ? matsClasse : matieres;
     const classSet = new Set(matsEleve.map((m) => m.nom));
     const ne = notes.filter((n) => n.eleveId === e._id && n.periode === periode && n.type === "Composition");
     let tot = 0, totC = 0;

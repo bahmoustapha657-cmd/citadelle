@@ -40,6 +40,18 @@ test("ancien comportement (sans matieresForClasse) : Anglais non pris en charge 
   assert.ok(Math.abs(resultats[0].moyGene - 8.5) < 1e-9, `obtenu ${resultats[0].moyGene}`);
 });
 
+test("repli matières : classe sans matière dédiée → élève conservé (liste globale)", () => {
+  // matieresForClasse renvoie [] pour cette classe : avant le fix, classSet
+  // était vide → moyGene null → l'élève disparaissait du classement.
+  const { resultats } = computeFicheResultats({
+    classe, periode: "T1", notes, matieres: matsClasse, eleves, maxNote: 20,
+    matieresForClasse: () => [],
+  });
+  assert.equal(resultats.length, 1, "l'élève doit rester classé");
+  // Repli sur matsClasse (Maths, Français) : (12×2 + 10×1)/3 = 34/3.
+  assert.ok(Math.abs(resultats[0].moyGene - 34 / 3) < 1e-9, `obtenu ${resultats[0].moyGene}`);
+});
+
 test("fiche (compositions) = moyenne compositions du bulletin (mêmes matières de classe)", () => {
   const { resultats } = computeFicheResultats({
     classe, periode: "T1", notes, matieres: matsClasse, eleves, maxNote: 20, matieresForClasse,

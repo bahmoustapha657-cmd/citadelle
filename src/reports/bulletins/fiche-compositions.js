@@ -31,8 +31,11 @@ export const imprimerFicheCompositions = (classe, periode, notes, matieres, elev
 
   // Colonnes : matières de la classe quand une classe précise est choisie
   // (sinon liste globale pour la vue « toutes classes »). Le calcul par
-  // élève ne compte de toute façon que ses matières de classe.
-  const matieresAff = (classe !== "all" && matieresForClasse) ? (matieresForClasse(classe) || matieres) : matieres;
+  // élève ne compte de toute façon que ses matières de classe. Repli sur la
+  // liste globale si la classe n'a aucune matière dédiée (sinon un tableau
+  // vide — qui reste « truthy » — masquait toutes les colonnes matières).
+  const matsClasse = (classe !== "all" && matieresForClasse) ? matieresForClasse(classe) : null;
+  const matieresAff = (matsClasse && matsClasse.length) ? matsClasse : matieres;
 
   const { resultats, stats } = computeFicheResultats({ classe, periode, notes: notesEff, matieres: matieresAff, eleves, maxNote, matieresForClasse });
 
@@ -40,6 +43,19 @@ export const imprimerFicheCompositions = (classe, periode, notes, matieres, elev
 
   // Stats récapitulatives
   const { nb, moyClasse, plus_haute, plus_basse, admis, dist } = stats;
+
+  // Répartition par genre : effectif, part, moyenne et admis pour chaque sexe.
+  // Le champ `sexe` vaut « M » ou « F » (à défaut on classe sur l'initiale).
+  const statGenre = (predicat) => {
+    const grp = resultats.filter((r) => predicat(String(r.eleve.sexe || "").trim().toUpperCase()));
+    const n = grp.length;
+    const moy = n ? grp.reduce((s, r) => s + r.moyGene, 0) / n : 0;
+    const adm = grp.filter((r) => r.moyGene >= mi).length;
+    return { n, moy, adm };
+  };
+  const garcons = statGenre((s) => s.startsWith("M"));
+  const filles = statGenre((s) => s.startsWith("F"));
+  const pct = (x) => (nb ? Math.round((x / nb) * 100) : 0);
 
   // Colonnes matières (de la classe si une classe précise est sélectionnée)
   const thMat = matieresAff.map(m=>`<th style="text-align:center;font-size:10px;padding:6px 4px">${m.nom}<br/><small style="font-weight:normal">Coef ${m.coefficient||1}</small></th>`).join("");
@@ -54,6 +70,7 @@ export const imprimerFicheCompositions = (classe, periode, notes, matieres, elev
       <td style="text-align:center;font-weight:800;color:${rang===1?"#d97706":rang===2?"#6b7280":rang===3?"#92400e":"#374151"};font-size:14px">${rang===1?"🥇":rang===2?"🥈":rang===3?"🥉":rang}</td>
       <td style="font-weight:700;padding:7px 8px">${r.eleve.nom} ${r.eleve.prenom}</td>
       <td style="text-align:center;font-size:11px;color:#555">${r.eleve.matricule||"—"}</td>
+      <td style="text-align:center;font-size:11px;font-family:monospace;color:#3730a3">${r.eleve.ien||"—"}</td>
       ${tdMat}
       <td style="text-align:center;font-weight:800;font-size:14px;color:${r.moyGene>=mi?"#1a6b30":"#b91c1c"}">${r.moyGene.toFixed(2)}</td>
       <td style="text-align:center"><span style="padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;background:${mentionBg(m)};color:${mentionColor(m)}">${m}</span></td>
@@ -94,6 +111,7 @@ export const imprimerFicheCompositions = (classe, periode, notes, matieres, elev
       <th style="text-align:center;width:40px">${tr("reports.rank")}</th>
       <th>${tr("reports.studentName")}</th>
       <th style="text-align:center">${tr("school.bulletins.matricule")}</th>
+      <th style="text-align:center">IEN</th>
       ${thMat}
       <th style="text-align:center">${tr("reports.average")}/${maxNote}</th>
       <th style="text-align:center">${tr("reports.mention")}</th>
@@ -113,6 +131,18 @@ export const imprimerFicheCompositions = (classe, periode, notes, matieres, elev
     </div>
     <div class="dist" style="margin-top:12px">
       ${Object.entries(dist).map(([men,cnt])=>`<div class="dist-item" style="background:${mentionBg(men)}"><div class="dv" style="color:${mentionColor(men)}">${cnt}</div><div class="dl" style="color:${mentionColor(men)}">${men}</div></div>`).join("")}
+    </div>
+
+    <strong style="font-size:13px;color:#0A1628;display:block;margin:18px 0 10px">RÉPARTITION PAR GENRE</strong>
+    <div class="recap">
+      <div class="recap-card" style="border-left-color:#1e40af;background:#eff6ff">
+        <div class="val" style="color:#1e40af">${garcons.n} <small style="font-size:12px">(${pct(garcons.n)}%)</small></div>
+        <div class="lbl">Garçons — moy ${garcons.moy.toFixed(2)} · ${garcons.adm} admis</div>
+      </div>
+      <div class="recap-card" style="border-left-color:#9d174d;background:#fdf2f8">
+        <div class="val" style="color:#9d174d">${filles.n} <small style="font-size:12px">(${pct(filles.n)}%)</small></div>
+        <div class="lbl">Filles — moy ${filles.moy.toFixed(2)} · ${filles.adm} admis</div>
+      </div>
     </div>
   </div>
 
