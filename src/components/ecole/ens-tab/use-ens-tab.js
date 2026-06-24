@@ -11,8 +11,16 @@ export function useEnsTab({
   const chgC = (k) => (e) => setFormC((p) => ({ ...p, [k]: e.target.value }));
   const sectionEns = cleEns.includes("Lycee") ? "lycee" : cleEns.includes("College") ? "college" : "primaire";
 
+  // Identifiant valide côté serveur : minuscules, sans accents, uniquement
+  // [a-z0-9] par segment (le pattern d'API n'accepte ni é/è/à ni espaces).
+  const slugLogin = (s) => (s || "").toLowerCase()
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "");
+
   const ouvrirCompteEns = (e) => {
-    const loginSuggere = `${(e.prenom || "").toLowerCase().replace(/\s+/g, "")}${e.nom ? "." + e.nom.toLowerCase().replace(/\s+/g, "") : ""}`;
+    const prenom = slugLogin(e.prenom);
+    const nom = slugLogin(e.nom);
+    const loginSuggere = [prenom, nom].filter(Boolean).join(".");
     setEnsCompte(e);
     setFormC({ login: loginSuggere, mdp: genererMdp() });
   };

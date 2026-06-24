@@ -12,8 +12,14 @@ export function useElevesTab({
   const peutCreerParent = canCreateParent ?? canEdit;
   const chgP = (k) => (e) => setFormP((p) => ({ ...p, [k]: e.target.value }));
 
+  // Identifiant valide côté serveur : minuscules, sans accents, [a-z0-9]
+  // uniquement (le pattern d'API rejette é/è/à et les espaces).
+  const slugLogin = (s) => (s || "").toLowerCase()
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "");
+
   const ouvrirCompte = (e) => {
-    const loginSuggere = `parent.${(e.nom || "").toLowerCase().replace(/\s+/g, "").slice(0, 12)}`;
+    const loginSuggere = `parent.${slugLogin(e.nom).slice(0, 12)}`;
     setParentEleve(e);
     setFormP({ login: loginSuggere, mdp: genererMdp() });
   };
