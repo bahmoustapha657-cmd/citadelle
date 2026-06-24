@@ -82,7 +82,20 @@ async function loadTeacherPortalPayload({ db, schoolId, profile }) {
   const enseignements = enseignementsSnap.docs.map(toItem).filter((item) => matchesTeacherAlias(item.enseignantNom, aliases));
   const salaires = salairesSnap.docs.map(toItem).filter((item) => matchesTeacherAlias(item.nom, aliases));
 
-  const classes = [...new Set(emplois.map((emploi) => emploi.classe).filter(Boolean))];
+  // Classes de l'enseignant = UNION de toutes ses sources d'affectation,
+  // pas seulement l'emploi du temps (souvent incomplet). Avant, un prof
+  // ayant des matières assignées (enseignements) mais pas d'EDT ne voyait
+  // AUCUN élève. On ajoute donc les classes du cahier de textes
+  // (enseignements) et la/les classe(s) dont il est titulaire.
+  const classesTitulaire = [
+    profile.classeTitle, profile.classeTitre, profile.classe,
+    ...(Array.isArray(profile.classesTitulaire) ? profile.classesTitulaire : []),
+  ];
+  const classes = [...new Set([
+    ...emplois.map((emploi) => emploi.classe),
+    ...enseignements.map((ens) => ens.classe),
+    ...classesTitulaire,
+  ].map((c) => String(c || "").trim()).filter(Boolean))];
   const teacherClasses = new Set(classes);
   const eleves = uniqueById(await getDocsByFieldValues(schoolRef.collection(collections.eleves), "classe", classes));
   const studentIds = new Set(eleves.map((student) => String(student._id || "").trim()).filter(Boolean));
