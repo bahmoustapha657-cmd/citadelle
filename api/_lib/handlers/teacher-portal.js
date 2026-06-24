@@ -71,16 +71,27 @@ async function loadTeacherPortalPayload({ db, schoolId, profile }) {
   const aliases = getTeacherAliases(profile);
   const collections = getSectionCollections(section);
   const absencesCollName = `${collections.eleves}_absences`;
-  const [emploisSnap, enseignementsSnap, salairesSnap, absencesSnap] = await Promise.all([
+  const [emploisSnap, enseignementsSnap, salairesSnap, absencesSnap, rosterSnap, classesSnap] = await Promise.all([
     schoolRef.collection(collections.emplois).get(),
     schoolRef.collection(collections.enseignements).get(),
     schoolRef.collection("salaires").get(),
     schoolRef.collection(absencesCollName).get(),
+    schoolRef.collection(collections.roster).get(),
+    schoolRef.collection(collections.classes).get(),
   ]);
 
   const emplois = emploisSnap.docs.map(toItem).filter((item) => matchesTeacherAlias(item.enseignant, aliases));
   const enseignements = enseignementsSnap.docs.map(toItem).filter((item) => matchesTeacherAlias(item.enseignantNom, aliases));
   const salaires = salairesSnap.docs.map(toItem).filter((item) => matchesTeacherAlias(item.nom, aliases));
+
+  // Registre des enseignants : classe(s) dont le prof est TITULAIRE
+  // (essentiel au primaire, où il n'y a souvent ni EDT ni cahier de textes).
+  // Le nom du registre est "Prénom Nom".
+  const monRoster = rosterSnap.docs.map(toItem).filter((r) =>
+    matchesTeacherAlias(`${r.prenom || ""} ${r.nom || ""}`, aliases) || matchesTeacherAlias(r.enseignantNom, aliases));
+  // Classes qui désignent ce prof comme enseignant/titulaire (champ posé par
+  // la fiche enseignant lorsqu'une classe titulaire est renseignée).
+  const mesClassesTitulaire = classesSnap.docs.map(toItem).filter((c) => matchesTeacherAlias(c.enseignant, aliases));
 
   // Classes de l'enseignant = UNION de toutes ses sources d'affectation,
   // pas seulement l'emploi du temps (souvent incomplet). Avant, un prof
@@ -94,6 +105,8 @@ async function loadTeacherPortalPayload({ db, schoolId, profile }) {
   const classes = [...new Set([
     ...emplois.map((emploi) => emploi.classe),
     ...enseignements.map((ens) => ens.classe),
+    ...monRoster.map((r) => r.classeTitle),
+    ...mesClassesTitulaire.map((c) => c.nom),
     ...classesTitulaire,
   ].map((c) => String(c || "").trim()).filter(Boolean))];
   const teacherClasses = new Set(classes);

@@ -7,18 +7,24 @@ const SECTION_COLLECTIONS = {
     eleves: "elevesPrimaire",
     enseignements: "ensPrimaire_enseignements",
     emplois: "classesPrimaire_emplois",
+    roster: "ensPrimaire",
+    classes: "classesPrimaire",
   },
   college: {
     notes: "notesCollege",
     eleves: "elevesCollege",
     enseignements: "ensCollege_enseignements",
     emplois: "classesCollege_emplois",
+    roster: "ensCollege",
+    classes: "classesCollege",
   },
   lycee: {
     notes: "notesLycee",
     eleves: "elevesLycee",
     enseignements: "ensLycee_enseignements",
     emplois: "classesLycee_emplois",
+    roster: "ensLycee",
+    classes: "classesLycee",
   },
 };
 
