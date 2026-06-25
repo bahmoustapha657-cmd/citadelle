@@ -9,6 +9,7 @@
 import { construireGrille, collectGridNotes, validateGridNotes } from "./notes-grid";
 import { saveNoteApi, saveNotesApi, deleteNoteApi } from "./notes-api";
 import { resolveCanonicalNoteType } from "../../evaluation-forms";
+import { getAnnee } from "../../constants";
 
 // Ré-export pour préserver le point d'import unique du parent.
 export { construireGrille };
@@ -35,6 +36,7 @@ export async function enregistrerGrille({
     toast(invalide, "warning");
     return;
   }
+  const annee = getAnnee();
   const notesPayload = aSauver.map((item) => ({
     noteId: item.noteId,
     eleveId: item.eleveId,
@@ -42,6 +44,7 @@ export async function enregistrerGrille({
     periode: item.periode || gridForm.periode,
     note: item.note,
     matiere: item.matiere || gridForm.matiere || "",
+    annee,
   }));
 
   // Hors-ligne connu d'avance → on met en file sans tenter l'appel.
@@ -106,6 +109,7 @@ export async function enregistrerNote({
       periode: formNote.periode,
       note: Number(formNote.note),
       matiere: formNote.matiere || "",
+      annee: getAnnee(),
     });
     if (!ok) throw new Error(data.error || "Enregistrement impossible.");
     setModalNote(null);

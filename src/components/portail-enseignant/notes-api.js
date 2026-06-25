@@ -16,13 +16,14 @@ async function postTeacherPortal(body) {
 // Crée ou met à jour une note (création si noteId vide). `matiere` n'est
 // utilisée par le serveur qu'au primaire (titulaire multi-matières) ;
 // au secondaire, la matière de l'enseignant prime.
-export function saveNoteApi({ noteId, eleveId, type, periode, note, matiere }) {
-  return postTeacherPortal({ action: "save_note", noteId: noteId || "", eleveId, type, periode, note, matiere: matiere || "" });
+export function saveNoteApi({ noteId, eleveId, type, periode, note, matiere, annee }) {
+  return postTeacherPortal({ action: "save_note", noteId: noteId || "", eleveId, type, periode, note, matiere: matiere || "", annee: annee || "" });
 }
 
 // Enregistre PLUSIEURS notes en une seule requête (écriture Firestore batchée
 // côté serveur). Bien plus rapide que N appels saveNoteApi pour la grille.
-// `notes` : [{ noteId, eleveId, type, periode, note, matiere }].
+// `notes` : [{ noteId, eleveId, type, periode, note, matiere, annee }]. L'année
+// est portée par chaque note pour survivre à la file de synchro hors-ligne.
 export function saveNotesApi(notes) {
   return postTeacherPortal({
     action: "save_notes",
@@ -33,6 +34,7 @@ export function saveNotesApi(notes) {
       periode: n.periode,
       note: n.note,
       matiere: n.matiere || "",
+      annee: n.annee || "",
     })),
   });
 }

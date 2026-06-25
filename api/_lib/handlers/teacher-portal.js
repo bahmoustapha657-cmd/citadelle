@@ -423,6 +423,10 @@ async function handler(req, res) {
           type,
           periode,
           note: noteValue,
+          // Année scolaire (réglage client) : indispensable pour que les
+          // bulletins/archives synchronisent ces notes comme celles saisies
+          // côté École (qui posent toujours `annee`).
+          annee: String(raw?.annee || "").trim() || "2025-2026",
           enseignantId: session.profile.enseignantId || null,
           enseignantNom: session.profile.enseignantNom || session.profile.nom || "",
           section,
@@ -493,6 +497,7 @@ async function handler(req, res) {
       type,
       periode,
       note: noteValue,
+      annee: String(req.body?.annee || "").trim() || "2025-2026",
       enseignantId: session.profile.enseignantId || null,
       enseignantNom: session.profile.enseignantNom || session.profile.nom || "",
       section,
