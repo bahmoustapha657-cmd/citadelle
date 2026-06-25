@@ -4,10 +4,11 @@ import { Btn, Card, Chargement, Stat, Vide } from "../ui";
 import { imprimerListeClasse } from "../../reports";
 import { ApercuGraphiques } from "./apercu-tab/ApercuGraphiques";
 import { ApercuHonneur } from "./apercu-tab/ApercuHonneur";
+import { ApercuAnalytics } from "./apercu-tab/ApercuAnalytics";
 
 export function ApercuTab({
   classes, eleves, ens, notes, absences, avecEns, moy, maxNote,
-  cC, cE, classesUniq, effectifReel, matieresForClasse, couleur, schoolInfo,
+  cC, cE, classesUniq, effectifReel, matieresForClasse, couleur, schoolInfo, periodes,
 }) {
   const { t } = useTranslation();
   return (
@@ -43,6 +44,11 @@ export function ApercuTab({
       <ApercuGraphiques
         classes={classes} eleves={eleves} notes={notes} effectifReel={effectifReel}
         matieresForClasse={matieresForClasse} couleur={couleur} maxNote={maxNote}
+      />
+
+      <ApercuAnalytics
+        classes={classes} eleves={eleves} notes={notes}
+        matieresForClasse={matieresForClasse} periodes={periodes} maxNote={maxNote} couleur={couleur}
       />
 
       <ApercuHonneur eleves={eleves} notes={notes} matieresForClasse={matieresForClasse}/>

@@ -25,6 +25,7 @@ export function EcoleTabsPedago({ e, avecEns, annee, classesPredefinies, maxNote
         matieresForClasse={e.matieresForClasse}
         couleur={couleur}
         schoolInfo={e.schoolInfo}
+        periodes={e.periodes}
       />}
 
       {/* ── CLASSES ── */}
