@@ -81,7 +81,10 @@ export function buildBulletinPageHTML({
         <div style="font-size:13px;font-weight:800;letter-spacing:0.04em">${titreBulletin.toUpperCase()}</div>
         <div style="font-size:11px;opacity:0.85">${labelPeriode} — ${tr("reports.schoolYear")} ${annee}</div>
       </div>
-      <div style="font-size:9.5px;opacity:0.78;font-family:monospace;text-align:end">${tr("reports.bulletinNumber")} ${numero}</div>
+      <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+        <div style="font-size:9.5px;opacity:0.78;font-family:monospace;text-align:end">${tr("reports.bulletinNumber")} ${numero}</div>
+        ${qr ? `<div style="background:#fff;padding:3px;border-radius:5px;line-height:0;flex-shrink:0">${qr}</div>` : ""}
+      </div>
     </div>
 
     <div style="display:grid;grid-template-columns:1.55fr 1fr;gap:12px;margin-bottom:12px">
@@ -151,12 +154,10 @@ export function buildBulletinPageHTML({
     </div>
 
     <div class="sigs">
-      <div class="sig">${tr("reports.director")}${schoolInfo.signatureUrl ? `<img src="${schoolInfo.signatureUrl}" alt="" style="display:block;height:34px;object-fit:contain;margin:4px auto 2px"/>` : "<br/><br/><br/>"}${tr("reports.signature")}</div>
-      <div class="sig">${tr("reports.headTeacher")}<br/><br/><br/>${tr("reports.signature")}</div>
       <div class="sig">${tr("school.students.parent")}<br/><br/><br/>${tr("reports.signature")}</div>
+      <div class="sig">${tr("reports.headTeacher")}<br/><br/><br/>${tr("reports.signature")}</div>
+      <div class="sig">${tr("reports.director")}${schoolInfo.signatureUrl ? `<img src="${schoolInfo.signatureUrl}" alt="" style="display:block;height:34px;object-fit:contain;margin:4px auto 2px"/>` : "<br/><br/><br/>"}${tr("reports.signature")}</div>
     </div>
-
-    ${qr ? `<div style="display:flex;justify-content:flex-end;align-items:center;margin-top:6px"><div style="text-align:center">${qr}<div style="font-size:7px;color:#94a3b8;margin-top:1px">${tr("reports.qrVerify")}</div></div></div>` : ""}
 
     <div class="devise" style="color:${c2}">${schoolInfo.devise || "Travail – Rigueur – Réussite"}</div>
 

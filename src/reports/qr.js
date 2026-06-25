@@ -3,6 +3,7 @@
 // pour vérifier l'authenticité (toute falsification du papier ne correspondra
 // plus au contenu encodé).
 import QRCode from "qrcode";
+import { encryptQrPayload, schoolSecret } from "./qr-crypto.js";
 
 // Construit une charge utile compacte « clé:valeur » séparée par « | ».
 // Les champs vides sont ignorés.
@@ -29,4 +30,12 @@ export async function qrImgHtml(payload, { size = 92, alt = "QR de vérification
   } catch {
     return "";
   }
+}
+
+// QR CHIFFRÉ pour un document : le contenu est chiffré avec le secret de
+// l'école → illisible par un lecteur QR grand public, déchiffrable seulement
+// par le scanner EduGest de la direction. Renvoie un fragment <img> (ou "").
+export async function qrSecuriseImgHtml(payload, schoolInfo = {}, opts = {}) {
+  const token = await encryptQrPayload(payload, schoolSecret(schoolInfo));
+  return qrImgHtml(token, opts);
 }

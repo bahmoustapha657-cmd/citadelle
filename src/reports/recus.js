@@ -10,7 +10,7 @@ import { resolveLegalFields } from "../legal-utils.js";
 import { PRINT_RESET, PRINT_TRIGGER, edugestBrandHTML, printDir, printLang, tr } from "./print-helpers.js";
 import { blocRecu } from "./recus/recu-blocs.js";
 import { RECU_STYLES } from "./recus/recus-styles.js";
-import { qrImgHtml, qrPayload } from "./qr.js";
+import { qrSecuriseImgHtml, qrPayload } from "./qr.js";
 
 export const getRecuTotals = (eleve, montantUnit, moisAnnee=MOIS_ANNEE, fraisAnnexes={}) => {
   const mens = eleve.mens||{};
@@ -34,15 +34,15 @@ export const imprimerRecu = async (eleve, montantUnit, schoolInfo={}, moisAnnee=
   const w = window.open("","_blank");
 
   // QR de vérification : école, élève, total payé, période.
-  const qr = await qrImgHtml(qrPayload({
+  const qr = await qrSecuriseImgHtml(qrPayload({
     EduGest: "Recu",
     Ecole: schoolInfo.nom,
     Eleve: `${eleve.nom||""} ${eleve.prenom||""}`,
     Classe: eleve.classe,
     IEN: eleve.ien,
-    Total: `${totalGeneral} ${schoolInfo.devise||"GNF"}`,
+    Total: `${totalGeneral} GNF`,
     Mois: moisPayes.join(","),
-  }));
+  }), schoolInfo, { size: 56, alt: "QR recu" });
   const ctx = { schoolInfo, lf, eleve, moisAnnee, mens, mensDates, fraisIns, fraisAutre, totalMensualites, moisPayes, totalGeneral, qr };
 
   w.document.write(`<!DOCTYPE html><html lang="${printLang()}" dir="${printDir()}"><head><title>${tr("reports.receipt.title")}</title>

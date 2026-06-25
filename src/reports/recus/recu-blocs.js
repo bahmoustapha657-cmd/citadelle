@@ -28,8 +28,13 @@ export const blocRecu = (titre, ctx) => {
     ${schoolInfo.logo?`<div class="watermark"><img src="${schoolInfo.logo}" alt=""/></div>`:""}
     <div style="position:relative;z-index:1;display:flex;flex-direction:column;height:100%">
     ${enteteCompact(schoolInfo, lf)}
-    <div class="badge">${tr("reports.receipt.title").toUpperCase()}</div>
-    <div class="exemplaire">${titre}</div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+      <div>
+        <div class="badge">${tr("reports.receipt.title").toUpperCase()}</div>
+        <div class="exemplaire">${titre}</div>
+      </div>
+      ${qr ? `<div style="flex-shrink:0;text-align:center"><div style="line-height:0">${qr}</div><div style="font-size:6px;color:#94a3b8;margin-top:1px">${tr("reports.qrVerify")}</div></div>` : ""}
+    </div>
     <div class="grid">
       <div class="row"><span class="lbl">${tr("reports.studentName")} : </span>${eleve.nom} ${eleve.prenom}</div>
       <div class="row"><span class="lbl">${tr("school.bulletins.matricule")} : </span>${eleve.matricule||"—"}</div>
@@ -61,10 +66,9 @@ export const blocRecu = (titre, ctx) => {
     </div>`:""}
     <div class="total">${tr("reports.receipt.monthlyFee")} : ${fmt(totalMensualites)} <span style="font-weight:400;font-size:9px">(${moisPayes.length}/${moisAnnee.length})</span></div>
     <div class="total" style="background:#e0f2fe;border-color:#38bdf8">${tr("reports.receipt.amount")} : <strong>${fmt(totalGeneral)}</strong></div>
-    <div class="sigs" style="align-items:flex-end">
-      <div class="sig">${tr("reports.accountant")}<br/><br/><br/>${tr("reports.signature")} &amp; ${tr("reports.stamp")}</div>
-      ${qr ? `<div style="text-align:center;flex-shrink:0">${qr}<div style="font-size:6px;color:#94a3b8;margin-top:1px">${tr("reports.qrVerify")}</div></div>` : ""}
+    <div class="sigs">
       <div class="sig">${tr("school.students.parent")}<br/><br/><br/>${tr("reports.signature")}</div>
+      <div class="sig">${tr("reports.accountant")}<br/><br/><br/>${tr("reports.signature")} &amp; ${tr("reports.stamp")}</div>
     </div>
     </div>
   </div>`;

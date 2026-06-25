@@ -9,7 +9,7 @@ import { getAnnee } from "../constants.js";
 import { getPeriodesForSection } from "../period-utils.js";
 import { getGeneralAverage } from "../note-utils";
 import { tr } from "./print-helpers.js";
-import { qrImgHtml, qrPayload } from "./qr.js";
+import { qrSecuriseImgHtml, qrPayload } from "./qr.js";
 import {
   getEvolutionPeriode,
   getMoyenneClasseParMatiere,
@@ -27,7 +27,7 @@ export { PERIODE_ANNEE } from "./bulletins/annual-notes.js";
 async function bulletinQrHtml({ eleve, notes, matieres, periode, niveau, maxNote, schoolInfo }) {
   const notesE = notes.filter((n) => n.eleveId === eleve._id && n.periode === periode);
   const moy = getGeneralAverage(notesE, matieres, eleve.classe, niveau);
-  return qrImgHtml(qrPayload({
+  return qrSecuriseImgHtml(qrPayload({
     EduGest: "Bulletin",
     Ecole: schoolInfo.nom,
     Eleve: `${eleve.nom || ""} ${eleve.prenom || ""}`,
@@ -36,7 +36,7 @@ async function bulletinQrHtml({ eleve, notes, matieres, periode, niveau, maxNote
     Periode: periode === PERIODE_ANNEE ? "Annee" : periode,
     Moy: moy != null ? `${moy.toFixed(2)}/${maxNote}` : "",
     Annee: getAnnee(),
-  }), { size: 66, alt: "QR bulletin" });
+  }), schoolInfo, { size: getModeleBulletin(schoolInfo) === "compact" ? 44 : 54, alt: "QR bulletin" });
 }
 
 export const imprimerBulletin = async (eleve, notes, matieres, periode, niveau, maxNote = 20, schoolInfo = {}, options = {}) => {
