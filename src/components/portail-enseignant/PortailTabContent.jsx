@@ -38,6 +38,7 @@ export function PortailTabContent({ p, schoolInfo, utilisateur, t }) {
           gridForm={p.gridForm} setGridForm={p.setGridForm}
           gridProgress={p.gridProgress}
           enregistrement={p.enregistrement}
+          pendingSync={p.pendingSync} syncing={p.syncing} synchroniser={p.synchroniser}
           ouvrirCreationNote={p.ouvrirCreationNote}
           ouvrirGrille={p.ouvrirGrille}
           ouvrirEditionNote={p.ouvrirEditionNote}

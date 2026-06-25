@@ -26,6 +26,7 @@ export async function enregistrerGrille({
   chargerPortail,
   toast,
   onSuccess,
+  onQueued,
 }) {
   const { canonical, aSauver } = collectGridNotes({ gridForm, mesNotes, schoolInfo, utilisateur });
   const maxNote = (utilisateur.section === "primaire") ? 10 : 20;
@@ -34,20 +35,34 @@ export async function enregistrerGrille({
     toast(invalide, "warning");
     return;
   }
+  const notesPayload = aSauver.map((item) => ({
+    noteId: item.noteId,
+    eleveId: item.eleveId,
+    type: canonical,
+    periode: item.periode || gridForm.periode,
+    note: item.note,
+    matiere: item.matiere || gridForm.matiere || "",
+  }));
+
+  // Hors-ligne connu d'avance → on met en file sans tenter l'appel.
+  if (onQueued && typeof navigator !== "undefined" && navigator.onLine === false) {
+    onQueued(notesPayload);
+    toast("Hors-ligne : saisie mise en file, synchronisation auto au retour du réseau.", "warning");
+    setModalNote(null);
+    return;
+  }
+
   setEnregistrement(true);
   setGridProgress({ done: 0, total: aSauver.length });
   try {
     // Un seul appel réseau : le serveur écrit toutes les notes en lot
     // (Firestore batch). Bien plus rapide que N requêtes séquentielles.
-    const { ok, data } = await saveNotesApi(aSauver.map((item) => ({
-      noteId: item.noteId,
-      eleveId: item.eleveId,
-      type: canonical,
-      periode: item.periode || gridForm.periode,
-      note: item.note,
-      matiere: item.matiere || gridForm.matiere || "",
-    })));
-    if (!ok) throw new Error(data.error || "Enregistrement impossible.");
+    const { ok, data } = await saveNotesApi(notesPayload);
+    if (!ok) {
+      const err = new Error(data.error || "Enregistrement impossible.");
+      err.serverRejected = true; // réponse reçue → ce n'est PAS un souci réseau
+      throw err;
+    }
     const nbOk = Number(data.saved || 0);
     const nbKo = Number(data.failed || 0);
     setGridProgress({ done: nbOk, total: aSauver.length });
@@ -60,7 +75,14 @@ export async function enregistrerGrille({
       toast(`${nbOk} OK / ${nbKo} échec(s). Vérifie les lignes en rouge.`, "warning");
     }
   } catch (error) {
-    toast(error.message || "Erreur d'enregistrement.", "error");
+    // Échec réseau (fetch lève, pas de réponse serveur) → mise en file + retry auto.
+    if (onQueued && !error.serverRejected) {
+      onQueued(notesPayload);
+      toast("Réseau indisponible : saisie mise en file, synchronisation auto au retour.", "warning");
+      setModalNote(null);
+    } else {
+      toast(error.message || "Erreur d'enregistrement.", "error");
+    }
   } finally {
     setEnregistrement(false);
   }

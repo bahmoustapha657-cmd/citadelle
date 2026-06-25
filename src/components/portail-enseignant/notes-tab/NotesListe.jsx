@@ -7,12 +7,22 @@ export function NotesListe({
   c1, matiere, schoolInfo, utilisateur,
   periodeN, setPeriodeN, periodes, mesClasses,
   notesPeriode, enregistrement,
+  pendingSync = 0, syncing = false, synchroniser,
   ouvrirGrille, ouvrirCreationNote, ouvrirEditionNote, supprimerNote,
 }) {
   return (
     <>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
         <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900, color: c1, flex: 1 }}>Saisie des notes - {matiere || "Matiere"}</h2>
+        {pendingSync > 0 && (
+          <button
+            type="button" onClick={syncing ? undefined : synchroniser} disabled={syncing}
+            title="Notes saisies hors-ligne en attente d'envoi. Cliquez pour synchroniser maintenant."
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, border: "1px solid #f59e0b", background: "#fffbeb", color: "#92400e", borderRadius: 999, padding: "5px 12px", fontSize: 12, fontWeight: 700, cursor: syncing ? "default" : "pointer" }}
+          >
+            {syncing ? "⏳ Synchronisation…" : `⏳ ${pendingSync} note(s) en attente — synchroniser`}
+          </button>
+        )}
         <select value={periodeN} onChange={(event) => setPeriodeN(event.target.value)} style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "7px 12px", fontSize: 13, background: "#fff" }}>
           {periodes.map((p) => <option key={p}>{p}</option>)}
         </select>

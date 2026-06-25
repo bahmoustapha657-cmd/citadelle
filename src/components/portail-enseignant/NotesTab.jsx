@@ -24,6 +24,7 @@ export function NotesTab({
   gridForm, setGridForm,
   gridProgress,
   enregistrement,
+  pendingSync, syncing, synchroniser,
   ouvrirCreationNote,
   ouvrirGrille,
   ouvrirEditionNote,
@@ -38,6 +39,7 @@ export function NotesTab({
         c1={c1} matiere={matiere} schoolInfo={schoolInfo} utilisateur={utilisateur}
         periodeN={periodeN} setPeriodeN={setPeriodeN} periodes={periodes} mesClasses={mesClasses}
         notesPeriode={notesPeriode} enregistrement={enregistrement}
+        pendingSync={pendingSync} syncing={syncing} synchroniser={synchroniser}
         ouvrirGrille={ouvrirGrille} ouvrirCreationNote={ouvrirCreationNote}
         ouvrirEditionNote={ouvrirEditionNote} supprimerNote={supprimerNote}
       />

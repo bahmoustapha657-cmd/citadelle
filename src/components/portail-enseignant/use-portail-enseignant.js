@@ -1,4 +1,4 @@
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { C } from "../../constants";
 import { getPeriodesForSection } from "../../period-utils";
@@ -15,7 +15,9 @@ import {
   supprimerIncident as supprimerIncidentAction,
 } from "./incidents-actions";
 import { fetchTeacherPortal } from "./portail-api";
+import { saveNotesApi } from "./notes-api";
 import { draftKey, loadDraft, saveDraft, clearDraft } from "./notes-draft";
+import { enqueue, queueCount, processQueue } from "./notes-sync-queue";
 import {
   formatEmploiHeure,
   buildFormNoteCreation,
@@ -166,11 +168,58 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gridForm, modalNote, ownerId]);
 
+  // ── File de synchro hors-ligne (étape B) ───────────────────────────────
+  const [pendingSync, setPendingSync] = useState(0);
+  const [syncing, setSyncing] = useState(false);
+
+  const synchroniser = async () => {
+    if (!ownerId || syncing) return;
+    if (typeof navigator !== "undefined" && navigator.onLine === false) return;
+    if (queueCount(ownerId) === 0) return;
+    setSyncing(true);
+    try {
+      const r = await processQueue(ownerId, (notes) => saveNotesApi(notes));
+      setPendingSync(queueCount(ownerId));
+      if (r.saved > 0) {
+        await chargerPortail();
+        toast(`${r.saved} note(s) synchronisée(s).`, "success");
+      }
+      if (r.failed > 0) {
+        toast(`${r.failed} note(s) non synchronisées (rejetées par le serveur).`, "warning");
+      }
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  // Ref vers la dernière version de synchroniser : l'effet de montage n'a ainsi
+  // pas à dépendre de la fonction (recréée à chaque render), ce qui évite une
+  // ré-exécution en boucle.
+  const synchroniserRef = useRef(synchroniser);
+  synchroniserRef.current = synchroniser;
+
+  // Au montage : reflète la file et tente une synchro ; rejoue au retour réseau.
+  useEffect(() => {
+    setPendingSync(queueCount(ownerId));
+    const onOnline = () => synchroniserRef.current();
+    if (typeof window !== "undefined") window.addEventListener("online", onOnline);
+    synchroniserRef.current();
+    return () => {
+      if (typeof window !== "undefined") window.removeEventListener("online", onOnline);
+    };
+  }, [ownerId]);
+
   const enregistrerGrille = () => enregistrerGrilleAction({
     gridForm, mesNotes, schoolInfo, utilisateur,
     setEnregistrement, setGridProgress, setModalNote, chargerPortail, toast,
     // Enregistrement complet réussi → le brouillon local n'a plus de raison d'être.
     onSuccess: () => clearDraft(cleBrouillon(gridForm)),
+    // Hors-ligne → mise en file pour synchro auto ; le brouillon devient inutile
+    // (les données sont dans la file persistante).
+    onQueued: (notesPayload) => {
+      setPendingSync(enqueue(ownerId, notesPayload));
+      clearDraft(cleBrouillon(gridForm));
+    },
   });
 
   const ouvrirEditionNote = (note) => {
@@ -221,6 +270,7 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
     gridForm, setGridForm, gridProgress,
     modalIncident, setModalIncident, formIncident, setFormIncident,
     enregistrement,
+    pendingSync, syncing, synchroniser,
     formatEmploiHeure,
     ouvrirCreationNote, ouvrirGrille, majGrid, enregistrerGrille,
     ouvrirEditionNote, enregistrerNote, supprimerNote,
