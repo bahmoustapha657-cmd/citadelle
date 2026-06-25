@@ -18,7 +18,16 @@ export function construireGrille({ classe, type, periode, matiere = "", periodes
   eleves
     .filter((e) => e.classe === classe)
     .forEach((e) => {
-      if (multiPeriode) {
+      if (multiPeriode && multiMatiere) {
+        // Grille complète : une colonne par couple (période, matière). Clé
+        // `${eleveId}|${periode}|${matiere}`. On saisit tout puis 1 seul save.
+        periodes.forEach((per) => {
+          matieres.forEach((mat) => {
+            const ex = find(e._id, per, mat);
+            map[`${e._id}|${per}|${mat}`] = ex ? String(ex.note ?? "") : "";
+          });
+        });
+      } else if (multiPeriode) {
         periodes.forEach((per) => {
           const ex = find(e._id, per, matiere);
           map[`${e._id}|${per}`] = ex ? String(ex.note ?? "") : "";
@@ -51,7 +60,16 @@ export function collectGridNotes({ gridForm, mesNotes, schoolInfo, utilisateur }
       let eleveId = key;
       let periode = gridForm.periode;
       let matiere = matiereFixe;
-      if (gridForm.multiPeriode) {
+      if (gridForm.multiPeriode && gridForm.multiMatiere) {
+        // Clé = `${eleveId}|${periode}|${matiere}`. eleveId et periode ne
+        // contiennent jamais « | » : on coupe aux deux premiers séparateurs.
+        const first = key.indexOf("|");
+        const rest = key.slice(first + 1);
+        const second = rest.indexOf("|");
+        eleveId = key.slice(0, first);
+        periode = rest.slice(0, second);
+        matiere = rest.slice(second + 1);
+      } else if (gridForm.multiPeriode) {
         const idx = key.lastIndexOf("|");
         eleveId = key.slice(0, idx);
         periode = key.slice(idx + 1);

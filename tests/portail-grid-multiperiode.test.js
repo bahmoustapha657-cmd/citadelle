@@ -101,6 +101,39 @@ test("multi-matières : colonnes = matières, période figée, collecte par mati
   assert.equal(parMat["Éveil"].note, 10);
 });
 
+test("combiné périodes × matières : clé `${id}|${periode}|${matiere}`, collecte complète", () => {
+  const ensPrimaire = { section: "primaire" };
+  const elevesP = [{ _id: "e1", nom: "Diallo", prenom: "A", classe: "CM2" }];
+  const periodesP = ["T1", "T2"];
+  const matieres = ["Mathématiques", "Français"];
+  const notesP = [
+    { _id: "m1", eleveId: "e1", periode: "T1", type: "Composition", matiere: "Mathématiques", note: 8 },
+  ];
+  const grille = construireGrille({
+    classe: "CM2", type: "Composition", periodes: periodesP, matieres, multiPeriode: true, multiMatiere: true,
+    eleves: elevesP, mesNotes: notesP, schoolInfo, utilisateur: ensPrimaire,
+  });
+  // 2 périodes × 2 matières = 4 cellules ; seule T1/Maths préremplie.
+  assert.equal(Object.keys(grille).length, 4);
+  assert.equal(grille["e1|T1|Mathématiques"], "8");
+  assert.equal(grille["e1|T2|Français"], "");
+
+  grille["e1|T1|Mathématiques"] = "9";
+  grille["e1|T2|Français"] = "7";
+  const { aSauver } = collectGridNotes({
+    gridForm: { type: "Composition", multiPeriode: true, multiMatiere: true, notes: grille },
+    mesNotes: notesP, schoolInfo, utilisateur: ensPrimaire,
+  });
+  const cle = (x) => `${x.periode}|${x.matiere}`;
+  const parCle = Object.fromEntries(aSauver.map((x) => [cle(x), x]));
+  assert.equal(aSauver.length, 2);
+  assert.equal(parCle["T1|Mathématiques"].noteId, "m1"); // update
+  assert.equal(parCle["T1|Mathématiques"].note, 9);
+  assert.equal(parCle["T2|Français"].noteId, "");        // nouvelle
+  assert.equal(parCle["T2|Français"].periode, "T2");
+  assert.equal(parCle["T2|Français"].matiere, "Français");
+});
+
 test("mode normal : clé = eleveId, période figée conservée", () => {
   const notes = construireGrille({
     classe: "7ème", type: "Composition", periode: "T1", multiPeriode: false,

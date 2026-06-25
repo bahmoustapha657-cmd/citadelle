@@ -25,13 +25,21 @@ export function GrilleModale({
   const elevesAff = rech.trim()
     ? elevesClasse.filter((e) => norm(`${e.nom} ${e.prenom}`).includes(norm(rech)) || norm(`${e.prenom} ${e.nom}`).includes(norm(rech)))
     : elevesClasse;
-  // Colonnes = périodes (multi), matières (multiMat) ou une seule (null).
-  const cols = multi ? periodes : multiMat ? matCols : [null];
+  const combine = multi && multiMat;
+  // Descripteurs de colonnes : { sub, label, group }. sub = suffixe de clé
+  // (null = colonne unique). group = en-tête de regroupement (mode combiné).
+  const colDefs = combine
+    ? periodes.flatMap((p) => matCols.map((m) => ({ sub: `${p}|${m}`, label: m, group: p })))
+    : multi ? periodes.map((p) => ({ sub: p, label: p, group: null }))
+      : multiMat ? matCols.map((m) => ({ sub: m, label: m, group: null }))
+        : [{ sub: null, label: "Note", group: null }];
   const enColonnes = multi || multiMat;
-  const cle = (eleveId, col) => (enColonnes ? `${eleveId}|${col}` : eleveId);
+  const cle = (eleveId, sub) => (sub == null ? eleveId : `${eleveId}|${sub}`);
   const remplies = Object.values(gridForm.notes).filter((v) => v !== "" && v != null).length;
 
-  const titreMatiere = multiMat ? "Toutes les matières" : isPrimaire ? (gridForm.matiere || "Matière") : (matiere || "Matière");
+  const titreMatiere = combine ? "Toutes périodes × matières"
+    : multiMat ? "Toutes les matières"
+      : isPrimaire ? (gridForm.matiere || "Matière") : (matiere || "Matière");
 
   return (
     <Modale xlarge titre={`Saisie en grille — ${titreMatiere}`} fermer={() => setModalNote(null)}>
@@ -62,12 +70,12 @@ export function GrilleModale({
           style={{ flex: 1, minWidth: 180, border: "1px solid #b0c4d8", borderRadius: 7, padding: "7px 10px", fontSize: 13 }}
         />
         <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: "#334155", cursor: "pointer", border: "1px solid #b0c4d8", borderRadius: 7, padding: "6px 10px", background: multi ? "#e0ebf8" : "#fff" }}>
-          <input type="checkbox" checked={multi} onChange={(e) => majGrid({ multiPeriode: e.target.checked, multiMatiere: false })} />
+          <input type="checkbox" checked={multi} onChange={(e) => majGrid({ multiPeriode: e.target.checked })} />
           🗓️ Toutes les périodes
         </label>
         {isPrimaire && matCols.length > 0 && (
           <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: "#334155", cursor: "pointer", border: "1px solid #b0c4d8", borderRadius: 7, padding: "6px 10px", background: multiMat ? "#dcfce7" : "#fff" }}>
-            <input type="checkbox" checked={multiMat} onChange={(e) => majGrid({ multiMatiere: e.target.checked, multiPeriode: false })} />
+            <input type="checkbox" checked={multiMat} onChange={(e) => majGrid({ multiMatiere: e.target.checked })} />
             📚 Toutes les matières
           </label>
         )}
@@ -78,18 +86,35 @@ export function GrilleModale({
           <div style={{ padding: "8px 12px", background: "#f0f7ff", border: "1px solid #bfdbfe", borderRadius: 8, fontSize: 12, color: "#1e40af", marginBottom: 10 }}>
             <strong>{remplies}</strong> note(s) saisie(s). Les notes existantes sont préremplies — modifier/effacer met à jour ou laisse en l'état.
           </div>
-          <div style={{ maxHeight: "52vh", overflowY: "auto", border: "1px solid #e2e8f0", borderRadius: 8 }}>
+          <div style={{ maxHeight: "52vh", overflowY: "auto", overflowX: "auto", border: "1px solid #e2e8f0", borderRadius: 8 }}>
             <table className="lc-sticky-table" data-fix-left="1">
               <thead style={{ background: "#0A1628", color: "#fff" }}>
-                <tr>
-                  <th style={{ padding: "8px 10px", fontSize: 11, textAlign: "start", width: 50 }}>#</th>
-                  <th style={{ padding: "8px 10px", fontSize: 11, textAlign: "start" }}>Élève</th>
-                  {cols.map((col) => (
-                    <th key={col || "note"} style={{ padding: "8px 10px", fontSize: 11, textAlign: "center", width: enColonnes ? 100 : 110 }}>
-                      {enColonnes ? col : "Note"} /{maxNote}
-                    </th>
-                  ))}
-                </tr>
+                {combine ? (
+                  <>
+                    <tr>
+                      <th rowSpan={2} style={{ padding: "8px 10px", fontSize: 11, textAlign: "start", width: 50 }}>#</th>
+                      <th rowSpan={2} style={{ padding: "8px 10px", fontSize: 11, textAlign: "start" }}>Élève</th>
+                      {periodes.map((p) => (
+                        <th key={p} colSpan={matCols.length} style={{ padding: "6px 10px", fontSize: 11, textAlign: "center", borderInlineStart: "2px solid #334155" }}>{p}</th>
+                      ))}
+                    </tr>
+                    <tr>
+                      {periodes.map((p) => matCols.map((m, idx) => (
+                        <th key={`${p}|${m}`} style={{ padding: "6px 8px", fontSize: 10, textAlign: "center", width: 84, borderInlineStart: idx === 0 ? "2px solid #334155" : undefined }}>{m}<br/><small style={{ fontWeight: "normal" }}>/{maxNote}</small></th>
+                      )))}
+                    </tr>
+                  </>
+                ) : (
+                  <tr>
+                    <th style={{ padding: "8px 10px", fontSize: 11, textAlign: "start", width: 50 }}>#</th>
+                    <th style={{ padding: "8px 10px", fontSize: 11, textAlign: "start" }}>Élève</th>
+                    {colDefs.map((d) => (
+                      <th key={d.sub || "note"} style={{ padding: "8px 10px", fontSize: 11, textAlign: "center", width: enColonnes ? 100 : 110 }}>
+                        {d.label} /{maxNote}
+                      </th>
+                    ))}
+                  </tr>
+                )}
               </thead>
               <tbody>
                 {elevesAff.map((e, i) => (
@@ -99,13 +124,13 @@ export function GrilleModale({
                       <strong>{e.nom} {e.prenom}</strong>
                       {e.matricule && <span style={{ marginInlineStart: 6, fontSize: 10, color: "#94a3b8", fontFamily: "monospace" }}>{e.matricule}</span>}
                     </td>
-                    {cols.map((col) => {
-                      const key = cle(e._id, col);
+                    {colDefs.map((d) => {
+                      const key = cle(e._id, d.sub);
                       const val = gridForm.notes[key] ?? "";
                       const num = val === "" ? null : Number(val);
                       const invalid = val !== "" && (Number.isNaN(num) || num < 0 || num > maxNote);
                       return (
-                        <td key={col || "note"} style={{ padding: "6px 8px", textAlign: "center" }}>
+                        <td key={d.sub || "note"} style={{ padding: "6px 8px", textAlign: "center" }}>
                           <input
                             type="number" min={0} max={maxNote} step={0.25} value={val}
                             onChange={(ev) => setGridForm((g) => ({ ...g, notes: { ...g.notes, [key]: ev.target.value } }))}
