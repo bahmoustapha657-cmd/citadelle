@@ -7,7 +7,7 @@
 // reçoivent leurs dépendances UI/data en injection pour rester découplées.
 
 import { construireGrille, collectGridNotes, validateGridNotes } from "./notes-grid";
-import { saveNoteApi, deleteNoteApi } from "./notes-api";
+import { saveNoteApi, saveNotesApi, deleteNoteApi } from "./notes-api";
 import { resolveCanonicalNoteType } from "../../evaluation-forms";
 
 // Ré-export pour préserver le point d'import unique du parent.
@@ -35,33 +35,30 @@ export async function enregistrerGrille({
   }
   setEnregistrement(true);
   setGridProgress({ done: 0, total: aSauver.length });
-  let nbOk = 0;
-  let nbKo = 0;
   try {
-    for (const item of aSauver) {
-      try {
-        const { ok } = await saveNoteApi({
-          noteId: item.noteId,
-          eleveId: item.eleveId,
-          type: canonical,
-          periode: item.periode || gridForm.periode,
-          note: item.note,
-          matiere: item.matiere || gridForm.matiere || "",
-        });
-        if (ok) nbOk++;
-        else nbKo++;
-      } catch {
-        nbKo++;
-      }
-      setGridProgress((p) => ({ ...p, done: p.done + 1 }));
-    }
+    // Un seul appel réseau : le serveur écrit toutes les notes en lot
+    // (Firestore batch). Bien plus rapide que N requêtes séquentielles.
+    const { ok, data } = await saveNotesApi(aSauver.map((item) => ({
+      noteId: item.noteId,
+      eleveId: item.eleveId,
+      type: canonical,
+      periode: item.periode || gridForm.periode,
+      note: item.note,
+      matiere: item.matiere || gridForm.matiere || "",
+    })));
+    if (!ok) throw new Error(data.error || "Enregistrement impossible.");
+    const nbOk = Number(data.saved || 0);
+    const nbKo = Number(data.failed || 0);
+    setGridProgress({ done: nbOk, total: aSauver.length });
     await chargerPortail();
     if (nbKo === 0) {
       toast(`${nbOk} note(s) enregistrée(s).`, "success");
       setModalNote(null);
     } else {
-      toast(`${nbOk} OK / ${nbKo} échec(s). Réessaie pour les lignes en rouge.`, "warning");
+      toast(`${nbOk} OK / ${nbKo} échec(s). Vérifie les lignes en rouge.`, "warning");
     }
+  } catch (error) {
+    toast(error.message || "Erreur d'enregistrement.", "error");
   } finally {
     setEnregistrement(false);
   }

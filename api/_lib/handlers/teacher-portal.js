@@ -221,7 +221,7 @@ async function handler(req, res) {
   }
 
   const action = String(req.body?.action || "").trim();
-  const NOTE_ACTIONS = ["save_note", "delete_note"];
+  const NOTE_ACTIONS = ["save_note", "save_notes", "delete_note"];
   const INCIDENT_ACTIONS = ["save_incident", "delete_incident"];
   if (![...NOTE_ACTIONS, ...INCIDENT_ACTIONS].includes(action)) {
     return res.status(400).json({ error: "Action inconnue." });
@@ -369,6 +369,90 @@ async function handler(req, res) {
         suppression: { collection: collections.notes, docId: noteId, donnees: noteDonnees },
       }).catch(() => {});
       return res.status(200).json({ ok: true });
+    }
+
+    // ── Enregistrement par LOT (grille) ────────────────────────────────────
+    // Une seule requête + écritures Firestore batchées : remplace N appels
+    // save_note (un par cellule), qui rendaient la grille très lente.
+    if (action === "save_notes") {
+      const rawNotes = Array.isArray(req.body?.notes) ? req.body.notes : [];
+      if (rawNotes.length === 0) {
+        return res.status(400).json({ error: "Aucune note à enregistrer." });
+      }
+      if (rawNotes.length > 2000) {
+        return res.status(400).json({ error: "Trop de notes en une fois (max 2000)." });
+      }
+      const maxNote = section === "primaire" ? 10 : 20;
+
+      // Pré-chargement des notes existantes (mises à jour) en un seul getAll.
+      const ids = [...new Set(rawNotes.map((n) => String(n?.noteId || "").trim()).filter(Boolean))];
+      const existingById = new Map();
+      if (ids.length) {
+        const snaps = await db.getAll(...ids.map((id) => notesRef.doc(id)));
+        snaps.forEach((snap) => { if (snap.exists) existingById.set(snap.id, toItem(snap)); });
+      }
+
+      const now = Date.now();
+      let writeBatch = db.batch();
+      let pending = 0;
+      let saved = 0;
+      let failed = 0;
+      const commits = [];
+
+      for (const raw of rawNotes) {
+        const noteId = String(raw?.noteId || "").trim();
+        const eleveId = String(raw?.eleveId || "").trim();
+        const type = String(raw?.type || "Devoir").trim();
+        const periode = String(raw?.periode || "").trim();
+        const noteValue = Number(raw?.note);
+        const eleve = teacherScope.eleves.find((s) => s._id === eleveId);
+
+        if (!eleveId || !eleve || !periode || !Number.isFinite(noteValue)) { failed++; continue; }
+        if (noteValue < 0 || noteValue > maxNote) { failed++; continue; }
+
+        let matiereNote = session.profile.matiere || "";
+        if (section === "primaire") {
+          matiereNote = String(raw?.matiere || "").trim();
+          if (!matiereNote) { failed++; continue; }
+        }
+
+        const payload = {
+          eleveId,
+          eleveNom: `${eleve.prenom || ""} ${eleve.nom || ""}`.trim(),
+          matiere: matiereNote,
+          type,
+          periode,
+          note: noteValue,
+          enseignantId: session.profile.enseignantId || null,
+          enseignantNom: session.profile.enseignantNom || session.profile.nom || "",
+          section,
+          updatedAt: now,
+        };
+
+        if (noteId) {
+          const existing = existingById.get(noteId);
+          // Anti-tamper : on ne met à jour qu'une note déjà dans le périmètre.
+          if (!existing || !noteBelongsToTeacherScope(existing, teacherScope.studentIds, session.profile.matiere || "", teacherScope.studentNames, section, teacherScope.teacherClasses)) {
+            failed++;
+            continue;
+          }
+          writeBatch.update(notesRef.doc(noteId), payload);
+        } else {
+          writeBatch.set(notesRef.doc(), { ...payload, createdAt: now });
+        }
+        saved++;
+        pending++;
+        // Firestore limite chaque batch à 500 opérations.
+        if (pending >= 450) {
+          commits.push(writeBatch.commit());
+          writeBatch = db.batch();
+          pending = 0;
+        }
+      }
+      if (pending > 0) commits.push(writeBatch.commit());
+      await Promise.all(commits);
+
+      return res.status(200).json({ ok: true, saved, failed });
     }
 
     const noteId = String(req.body?.noteId || "").trim();
