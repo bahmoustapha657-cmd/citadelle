@@ -77,6 +77,13 @@ export function ConnexionForm({
           {t("auth.registerLink")}
         </button>
       </p>
+
+      <p style={{ textAlign: "center", margin: "2px 0 0", color: "#9ca3af", fontSize: 11, lineHeight: 1.5 }}>
+        {t("auth.privacyConsent")}{" "}
+        <a href="/politique-confidentialite.html" target="_blank" rel="noreferrer" style={{ color: C.blue, fontWeight: 700 }}>
+          {t("auth.privacyPolicy")}
+        </a>.
+      </p>
     </div>
   );
 }

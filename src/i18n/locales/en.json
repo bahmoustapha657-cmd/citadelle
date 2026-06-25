@@ -59,6 +59,8 @@
     "forgotPassword": "Forgot password?",
     "noAccount": "No school yet?",
     "registerLink": "Create a school",
+    "privacyConsent": "By signing in or creating an account, you accept our",
+    "privacyPolicy": "Privacy policy",
     "logoutAction": "Sign out",
     "offlineMode": "Offline mode",
     "offlineNav": "Navigation available",

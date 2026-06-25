@@ -59,6 +59,8 @@
     "forgotPassword": "نسيت كلمة المرور؟",
     "noAccount": "لا توجد مدرسة بعد؟",
     "registerLink": "إنشاء مدرسة",
+    "privacyConsent": "بتسجيل الدخول أو إنشاء حساب، فإنك تقبل",
+    "privacyPolicy": "سياسة الخصوصية",
     "logoutAction": "تسجيل الخروج",
     "offlineMode": "وضع عدم الاتصال",
     "offlineNav": "التصفح متاح",
