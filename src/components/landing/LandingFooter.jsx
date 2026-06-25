@@ -40,6 +40,7 @@ export function LandingFooter({ onConnexion, onInscription, onDemo }) {
       </div>
       <div className="landing-footer-bottom">
         <span>© {new Date().getFullYear()} EduGest — Gestion scolaire moderne</span>
+        <a className="landing-footer-link" href="/politique-confidentialite.html" style={{ display: "inline" }}>Politique de confidentialité</a>
         <span>FR · EN · AR — Web, tablette et mobile</span>
       </div>
     </footer>
