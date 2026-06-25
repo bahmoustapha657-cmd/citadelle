@@ -428,6 +428,8 @@
     "bulletinTitle": "كشف العلامات",
     "bulletinNumber": "كشف رقم",
     "studentName": "الطالب",
+    "studentFullName": "الاسم واللقب",
+    "rowNumber": "الرقم",
     "class": "الفصل",
     "dateOfBirth": "تاريخ الميلاد",
     "compositionResults": "نتائج التقييمات",

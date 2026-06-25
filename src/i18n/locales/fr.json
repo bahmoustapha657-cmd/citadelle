@@ -428,6 +428,8 @@
     "bulletinTitle": "Bulletin de notes",
     "bulletinNumber": "Bulletin N°",
     "studentName": "Élève",
+    "studentFullName": "Prénoms et Nom",
+    "rowNumber": "N°",
     "class": "Classe",
     "dateOfBirth": "Date de naissance",
     "compositionResults": "Résultats des évaluations",

@@ -44,34 +44,33 @@ export const imprimerFicheCompositions = (classe, periode, notes, matieres, elev
   // Stats récapitulatives
   const { nb, moyClasse, plus_haute, plus_basse, admis, dist } = stats;
 
-  // Répartition par genre : effectif, part, moyenne et admis pour chaque sexe.
-  // Le champ `sexe` vaut « M » ou « F » (à défaut on classe sur l'initiale).
+  // Répartition par genre : effectif, part, moyenne, admis/non-admis, taux de
+  // réussite et bornes pour chaque sexe. `sexe` vaut « M » ou « F » (à défaut
+  // on classe sur l'initiale). `sansGenre` = élèves au sexe non renseigné.
   const statGenre = (predicat) => {
     const grp = resultats.filter((r) => predicat(String(r.eleve.sexe || "").trim().toUpperCase()));
     const n = grp.length;
     const moy = n ? grp.reduce((s, r) => s + r.moyGene, 0) / n : 0;
     const adm = grp.filter((r) => r.moyGene >= mi).length;
-    return { n, moy, adm };
+    const haute = n ? Math.max(...grp.map((r) => r.moyGene)) : 0;
+    const basse = n ? Math.min(...grp.map((r) => r.moyGene)) : 0;
+    return { n, moy, adm, nonAdm: n - adm, haute, basse, taux: n ? (adm / n) * 100 : 0 };
   };
   const garcons = statGenre((s) => s.startsWith("M"));
   const filles = statGenre((s) => s.startsWith("F"));
+  const sansGenre = nb - garcons.n - filles.n;
   const pct = (x) => (nb ? Math.round((x / nb) * 100) : 0);
 
-  // Colonnes matières (de la classe si une classe précise est sélectionnée)
-  const thMat = matieresAff.map(m=>`<th style="text-align:center;font-size:10px;padding:6px 4px">${m.nom}<br/><small style="font-weight:normal">Coef ${m.coefficient||1}</small></th>`).join("");
-
-  // Lignes élèves avec rang
+  // Lignes élèves : N° (ordre) + rang (avec gestion des ex æquo).
   let rang=1;
   const rows = resultats.map((r,i)=>{
     if(i>0 && r.moyGene.toFixed(2)!==resultats[i-1].moyGene.toFixed(2)) rang=i+1;
     const m = apprec(r.moyGene.toFixed(2));
-    const tdMat = r.notesMat.map(n=>`<td style="text-align:center;font-size:12px">${n.moy!==null?n.moy.toFixed(2):"—"}</td>`).join("");
     return `<tr style="background:${i%2===0?"#fff":"#f9f9f9"}">
+      <td style="text-align:center;font-size:11px;color:#94a3b8">${i+1}</td>
       <td style="text-align:center;font-weight:800;color:${rang===1?"#d97706":rang===2?"#6b7280":rang===3?"#92400e":"#374151"};font-size:14px">${rang===1?"🥇":rang===2?"🥈":rang===3?"🥉":rang}</td>
-      <td style="font-weight:700;padding:7px 8px">${r.eleve.nom} ${r.eleve.prenom}</td>
-      <td style="text-align:center;font-size:11px;color:#555">${r.eleve.matricule||"—"}</td>
+      <td style="font-weight:700;padding:7px 8px">${r.eleve.prenom||""} ${r.eleve.nom||""}</td>
       <td style="text-align:center;font-size:11px;font-family:monospace;color:#3730a3">${r.eleve.ien||"—"}</td>
-      ${tdMat}
       <td style="text-align:center;font-weight:800;font-size:14px;color:${r.moyGene>=mi?"#1a6b30":"#b91c1c"}">${r.moyGene.toFixed(2)}</td>
       <td style="text-align:center"><span style="padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;background:${mentionBg(m)};color:${mentionColor(m)}">${m}</span></td>
     </tr>`;
@@ -96,6 +95,9 @@ export const imprimerFicheCompositions = (classe, periode, notes, matieres, elev
     .dist-item{flex:1;min-width:80px;padding:8px;border-radius:6px;text-align:center}
     .dist-item .dv{font-size:18px;font-weight:800}
     .dist-item .dl{font-size:10px;margin-top:2px}
+    .genre{margin-top:4px;font-size:11px}
+    .genre th{font-size:10px;padding:6px}
+    .genre td{padding:6px;border-bottom:1px solid #eee}
     .sigs{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:32px}
     .sig{border-top:2px solid #0A1628;padding-top:8px;text-align:center;font-size:11px;color:#555}
     @media print{button{display:none}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
@@ -108,11 +110,10 @@ export const imprimerFicheCompositions = (classe, periode, notes, matieres, elev
 
   <table>
     <thead><tr>
-      <th style="text-align:center;width:40px">${tr("reports.rank")}</th>
-      <th>${tr("reports.studentName")}</th>
-      <th style="text-align:center">${tr("school.bulletins.matricule")}</th>
+      <th style="text-align:center;width:34px">${tr("reports.rowNumber")}</th>
+      <th style="text-align:center;width:46px">${tr("reports.rank")}</th>
+      <th>${tr("reports.studentFullName")}</th>
       <th style="text-align:center">IEN</th>
-      ${thMat}
       <th style="text-align:center">${tr("reports.average")}/${maxNote}</th>
       <th style="text-align:center">${tr("reports.mention")}</th>
     </tr></thead>
@@ -133,17 +134,48 @@ export const imprimerFicheCompositions = (classe, periode, notes, matieres, elev
       ${Object.entries(dist).map(([men,cnt])=>`<div class="dist-item" style="background:${mentionBg(men)}"><div class="dv" style="color:${mentionColor(men)}">${cnt}</div><div class="dl" style="color:${mentionColor(men)}">${men}</div></div>`).join("")}
     </div>
 
-    <strong style="font-size:13px;color:#0A1628;display:block;margin:18px 0 10px">RÉPARTITION PAR GENRE</strong>
-    <div class="recap">
-      <div class="recap-card" style="border-left-color:#1e40af;background:#eff6ff">
-        <div class="val" style="color:#1e40af">${garcons.n} <small style="font-size:12px">(${pct(garcons.n)}%)</small></div>
-        <div class="lbl">Garçons — moy ${garcons.moy.toFixed(2)} · ${garcons.adm} admis</div>
-      </div>
-      <div class="recap-card" style="border-left-color:#9d174d;background:#fdf2f8">
-        <div class="val" style="color:#9d174d">${filles.n} <small style="font-size:12px">(${pct(filles.n)}%)</small></div>
-        <div class="lbl">Filles — moy ${filles.moy.toFixed(2)} · ${filles.adm} admis</div>
-      </div>
-    </div>
+    <strong style="font-size:13px;color:#0A1628;display:block;margin:18px 0 8px">RÉPARTITION PAR GENRE</strong>
+    <table class="genre">
+      <thead><tr>
+        <th>Genre</th>
+        <th style="text-align:center">Effectif</th>
+        <th style="text-align:center">Part</th>
+        <th style="text-align:center">Moyenne</th>
+        <th style="text-align:center">Admis</th>
+        <th style="text-align:center">Non admis</th>
+        <th style="text-align:center">Taux de réussite</th>
+        <th style="text-align:center">Meilleure</th>
+        <th style="text-align:center">Plus basse</th>
+      </tr></thead>
+      <tbody>
+        ${[
+          { lbl: "Garçons", c: "#1e40af", bg: "#eff6ff", s: garcons },
+          { lbl: "Filles", c: "#9d174d", bg: "#fdf2f8", s: filles },
+        ].map(({ lbl, c, bg, s }) => `<tr style="background:${bg}">
+          <td style="font-weight:800;color:${c}">${lbl}</td>
+          <td style="text-align:center;font-weight:700">${s.n}</td>
+          <td style="text-align:center">${pct(s.n)}%</td>
+          <td style="text-align:center;font-weight:700">${s.n ? s.moy.toFixed(2) : "—"}</td>
+          <td style="text-align:center;color:#1a6b30;font-weight:700">${s.adm}</td>
+          <td style="text-align:center;color:#b91c1c;font-weight:700">${s.nonAdm}</td>
+          <td style="text-align:center;font-weight:700">${s.n ? s.taux.toFixed(1) + "%" : "—"}</td>
+          <td style="text-align:center">${s.n ? s.haute.toFixed(2) : "—"}</td>
+          <td style="text-align:center">${s.n ? s.basse.toFixed(2) : "—"}</td>
+        </tr>`).join("")}
+        <tr style="background:#0A1628;color:#fff;font-weight:800">
+          <td>Total</td>
+          <td style="text-align:center">${nb}</td>
+          <td style="text-align:center">100%</td>
+          <td style="text-align:center">${moyClasse.toFixed(2)}</td>
+          <td style="text-align:center">${admis}</td>
+          <td style="text-align:center">${nb - admis}</td>
+          <td style="text-align:center">${nb ? Math.round((admis / nb) * 100) : 0}%</td>
+          <td style="text-align:center">${plus_haute.toFixed(2)}</td>
+          <td style="text-align:center">${plus_basse.toFixed(2)}</td>
+        </tr>
+      </tbody>
+    </table>
+    ${sansGenre > 0 ? `<div style="font-size:10px;color:#94a3b8;margin-top:6px">${sansGenre} élève(s) au sexe non renseigné — comptés dans le total uniquement.</div>` : ""}
   </div>
 
   <div class="sigs">

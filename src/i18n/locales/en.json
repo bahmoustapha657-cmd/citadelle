@@ -428,6 +428,8 @@
     "bulletinTitle": "Report card",
     "bulletinNumber": "Card No.",
     "studentName": "Student",
+    "studentFullName": "First & Last name",
+    "rowNumber": "No.",
     "class": "Class",
     "dateOfBirth": "Date of birth",
     "compositionResults": "Evaluation results",
