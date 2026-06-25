@@ -107,7 +107,7 @@ export function GrilleModale({
       {elevesClasse.length === 0 ? <Vide icone="👥" msg="Aucun élève dans cette classe." /> : (
         <>
           <div style={{ padding: "8px 12px", background: "#f0f7ff", border: "1px solid #bfdbfe", borderRadius: 8, fontSize: 12, color: "#1e40af", marginBottom: 10 }}>
-            <strong>{remplies}</strong> note(s) saisie(s). Les notes existantes sont préremplies — modifier/effacer met à jour ou laisse en l'état.
+            <strong>{remplies}</strong> note(s) saisie(s). Les notes existantes sont préremplies — modifier/effacer met à jour ou laisse en l'état. <span style={{ color: "#15803d" }}>💾 Sauvegarde locale automatique (la saisie est conservée même en cas de coupure).</span>
           </div>
           <div style={{ maxHeight: "52vh", overflowY: "auto", overflowX: "auto", border: "1px solid #e2e8f0", borderRadius: 8 }}>
             <table className="lc-sticky-table" data-fix-left="1">

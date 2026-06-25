@@ -15,6 +15,7 @@ import {
   supprimerIncident as supprimerIncidentAction,
 } from "./incidents-actions";
 import { fetchTeacherPortal } from "./portail-api";
+import { draftKey, loadDraft, saveDraft, clearDraft } from "./notes-draft";
 import {
   formatEmploiHeure,
   buildFormNoteCreation,
@@ -115,20 +116,30 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
     mesNotes, schoolInfo, utilisateur,
   });
 
+  // Identité de l'enseignant pour la clé de brouillon local (par appareil).
+  const ownerId = utilisateur.enseignantId || utilisateur.login || utilisateur.uid || "";
+  const cleBrouillon = (ctx) => draftKey({ ownerId, ...ctx });
+
+  // Préremplit la grille depuis le serveur PUIS superpose l'éventuel brouillon
+  // local (la saisie en cours non encore enregistrée gagne sur le prérempli).
+  const construireGrilleAvecBrouillon = (ctx) => {
+    const base = ctx.classe
+      ? construireGrille(ctx.classe, ctx.type, ctx.periode, ctx.multiPeriode, ctx.matiere, ctx.multiMatiere)
+      : {};
+    const brouillon = loadDraft(cleBrouillon(ctx));
+    return brouillon ? { ...base, ...brouillon.notes } : base;
+  };
+
   const ouvrirGrille = () => {
-    const classe = mesClasses[0] || "";
-    const type = defaultNoteType;
-    const periode = periodeN;
-    const matiereSel = matiereParDefaut;
-    setGridForm({
-      classe,
-      type,
-      periode,
-      matiere: matiereSel,
+    const ctx = {
+      classe: mesClasses[0] || "",
+      type: defaultNoteType,
+      periode: periodeN,
+      matiere: matiereParDefaut,
       multiPeriode: false,
       multiMatiere: false,
-      notes: classe ? construireGrille(classe, type, periode, false, matiereSel, false) : {},
-    });
+    };
+    setGridForm({ ...ctx, notes: construireGrilleAvecBrouillon(ctx) });
     setGridProgress({ done: 0, total: 0 });
     setModalNote("grid");
   };
@@ -139,17 +150,27 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
       // Reconstruit le tableau si classe/type/période/matière/mode change.
       if (patch.classe !== undefined || patch.type !== undefined || patch.periode !== undefined
           || patch.matiere !== undefined || patch.multiPeriode !== undefined || patch.multiMatiere !== undefined) {
-        next.notes = next.classe
-          ? construireGrille(next.classe, next.type, next.periode, next.multiPeriode, next.matiere, next.multiMatiere)
-          : {};
+        next.notes = next.classe ? construireGrilleAvecBrouillon(next) : {};
       }
       return next;
     });
   };
 
+  // Autosave du brouillon au fil de la frappe (anti-rebond 400 ms). Ne touche
+  // au stockage que tant que la grille est ouverte.
+  useEffect(() => {
+    if (modalNote !== "grid" || !gridForm.classe) return undefined;
+    const key = cleBrouillon(gridForm);
+    const id = setTimeout(() => saveDraft(key, gridForm.notes), 400);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gridForm, modalNote, ownerId]);
+
   const enregistrerGrille = () => enregistrerGrilleAction({
     gridForm, mesNotes, schoolInfo, utilisateur,
     setEnregistrement, setGridProgress, setModalNote, chargerPortail, toast,
+    // Enregistrement complet réussi → le brouillon local n'a plus de raison d'être.
+    onSuccess: () => clearDraft(cleBrouillon(gridForm)),
   });
 
   const ouvrirEditionNote = (note) => {

@@ -25,6 +25,7 @@ export async function enregistrerGrille({
   setModalNote,
   chargerPortail,
   toast,
+  onSuccess,
 }) {
   const { canonical, aSauver } = collectGridNotes({ gridForm, mesNotes, schoolInfo, utilisateur });
   const maxNote = (utilisateur.section === "primaire") ? 10 : 20;
@@ -53,6 +54,7 @@ export async function enregistrerGrille({
     await chargerPortail();
     if (nbKo === 0) {
       toast(`${nbOk} note(s) enregistrée(s).`, "success");
+      onSuccess?.();
       setModalNote(null);
     } else {
       toast(`${nbOk} OK / ${nbKo} échec(s). Vérifie les lignes en rouge.`, "warning");
