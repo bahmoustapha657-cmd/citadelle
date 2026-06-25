@@ -41,6 +41,29 @@ export function GrilleModale({
     : multiMat ? "Toutes les matières"
       : isPrimaire ? (gridForm.matiere || "Matière") : (matiere || "Matière");
 
+  // Rendu d'une cellule de saisie (partagé par tous les modes). `key` est la
+  // clé de la note dans gridForm.notes (eleveId, ou eleveId|… selon le mode).
+  const renderCell = (key) => {
+    const val = gridForm.notes[key] ?? "";
+    const num = val === "" ? null : Number(val);
+    const invalid = val !== "" && (Number.isNaN(num) || num < 0 || num > maxNote);
+    return (
+      <td key={key} style={{ padding: "6px 8px", textAlign: "center" }}>
+        <input
+          type="number" min={0} max={maxNote} step={0.25} value={val}
+          onChange={(ev) => setGridForm((g) => ({ ...g, notes: { ...g.notes, [key]: ev.target.value } }))}
+          style={{
+            width: 76, padding: "6px 8px",
+            border: `1.5px solid ${invalid ? "#ef4444" : (val !== "" ? C.green : "#e2e8f0")}`,
+            borderRadius: 6, fontSize: 13, textAlign: "center",
+            background: invalid ? "#fef2f2" : "#fff", outline: "none",
+          }}
+          placeholder="—"
+        />
+      </td>
+    );
+  };
+
   return (
     <Modale xlarge titre={`Saisie en grille — ${titreMatiere}`} fermer={() => setModalNote(null)}>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 12 }}>
@@ -90,20 +113,14 @@ export function GrilleModale({
             <table className="lc-sticky-table" data-fix-left="1">
               <thead style={{ background: "#0A1628", color: "#fff" }}>
                 {combine ? (
-                  <>
-                    <tr>
-                      <th rowSpan={2} style={{ padding: "8px 10px", fontSize: 11, textAlign: "start", width: 50 }}>#</th>
-                      <th rowSpan={2} style={{ padding: "8px 10px", fontSize: 11, textAlign: "start" }}>Élève</th>
-                      {periodes.map((p) => (
-                        <th key={p} colSpan={matCols.length} style={{ padding: "6px 10px", fontSize: 11, textAlign: "center", borderInlineStart: "2px solid #334155" }}>{p}</th>
-                      ))}
-                    </tr>
-                    <tr>
-                      {periodes.map((p) => matCols.map((m, idx) => (
-                        <th key={`${p}|${m}`} style={{ padding: "6px 8px", fontSize: 10, textAlign: "center", width: 84, borderInlineStart: idx === 0 ? "2px solid #334155" : undefined }}>{m}<br/><small style={{ fontWeight: "normal" }}>/{maxNote}</small></th>
-                      )))}
-                    </tr>
-                  </>
+                  <tr>
+                    <th style={{ padding: "8px 10px", fontSize: 11, textAlign: "start", width: 50 }}>#</th>
+                    <th style={{ padding: "8px 10px", fontSize: 11, textAlign: "start" }}>Élève</th>
+                    <th style={{ padding: "8px 10px", fontSize: 11, textAlign: "center", width: 80 }}>Période</th>
+                    {matCols.map((m) => (
+                      <th key={m} style={{ padding: "8px 8px", fontSize: 11, textAlign: "center", width: 90 }}>{m}<br/><small style={{ fontWeight: "normal" }}>/{maxNote}</small></th>
+                    ))}
+                  </tr>
                 ) : (
                   <tr>
                     <th style={{ padding: "8px 10px", fontSize: 11, textAlign: "start", width: 50 }}>#</th>
@@ -117,36 +134,30 @@ export function GrilleModale({
                 )}
               </thead>
               <tbody>
-                {elevesAff.map((e, i) => (
-                  <tr key={e._id} style={{ background: i % 2 === 0 ? "#fff" : "#f8fafc" }}>
-                    <td style={{ padding: "6px 10px", fontSize: 11, color: "#94a3b8" }}>{i + 1}</td>
-                    <td style={{ padding: "6px 10px", fontSize: 13 }}>
-                      <strong>{e.nom} {e.prenom}</strong>
-                      {e.matricule && <span style={{ marginInlineStart: 6, fontSize: 10, color: "#94a3b8", fontFamily: "monospace" }}>{e.matricule}</span>}
-                    </td>
-                    {colDefs.map((d) => {
-                      const key = cle(e._id, d.sub);
-                      const val = gridForm.notes[key] ?? "";
-                      const num = val === "" ? null : Number(val);
-                      const invalid = val !== "" && (Number.isNaN(num) || num < 0 || num > maxNote);
-                      return (
-                        <td key={d.sub || "note"} style={{ padding: "6px 8px", textAlign: "center" }}>
-                          <input
-                            type="number" min={0} max={maxNote} step={0.25} value={val}
-                            onChange={(ev) => setGridForm((g) => ({ ...g, notes: { ...g.notes, [key]: ev.target.value } }))}
-                            style={{
-                              width: 76, padding: "6px 8px",
-                              border: `1.5px solid ${invalid ? "#ef4444" : (val !== "" ? C.green : "#e2e8f0")}`,
-                              borderRadius: 6, fontSize: 13, textAlign: "center",
-                              background: invalid ? "#fef2f2" : "#fff", outline: "none",
-                            }}
-                            placeholder="—"
-                          />
+                {combine
+                  ? elevesAff.flatMap((e, i) => periodes.map((per, pIdx) => (
+                    <tr key={`${e._id}|${per}`} style={{ background: i % 2 === 0 ? "#fff" : "#f8fafc", borderTop: pIdx === 0 ? "2px solid #cbd5e1" : undefined }}>
+                      {pIdx === 0 && <td rowSpan={periodes.length} style={{ padding: "6px 10px", fontSize: 11, color: "#94a3b8", verticalAlign: "top" }}>{i + 1}</td>}
+                      {pIdx === 0 && (
+                        <td rowSpan={periodes.length} style={{ padding: "6px 10px", fontSize: 13, verticalAlign: "top" }}>
+                          <strong>{e.nom} {e.prenom}</strong>
+                          {e.matricule && <span style={{ marginInlineStart: 6, fontSize: 10, color: "#94a3b8", fontFamily: "monospace" }}>{e.matricule}</span>}
                         </td>
-                      );
-                    })}
-                  </tr>
-                ))}
+                      )}
+                      <td style={{ padding: "6px 10px", fontSize: 12, fontWeight: 700, color: "#475569", textAlign: "center" }}>{per}</td>
+                      {matCols.map((m) => renderCell(`${e._id}|${per}|${m}`))}
+                    </tr>
+                  )))
+                  : elevesAff.map((e, i) => (
+                    <tr key={e._id} style={{ background: i % 2 === 0 ? "#fff" : "#f8fafc" }}>
+                      <td style={{ padding: "6px 10px", fontSize: 11, color: "#94a3b8" }}>{i + 1}</td>
+                      <td style={{ padding: "6px 10px", fontSize: 13 }}>
+                        <strong>{e.nom} {e.prenom}</strong>
+                        {e.matricule && <span style={{ marginInlineStart: 6, fontSize: 10, color: "#94a3b8", fontFamily: "monospace" }}>{e.matricule}</span>}
+                      </td>
+                      {colDefs.map((d) => renderCell(cle(e._id, d.sub)))}
+                    </tr>
+                  ))}
               </tbody>
             </table>
           </div>
