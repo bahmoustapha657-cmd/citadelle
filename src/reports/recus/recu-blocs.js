@@ -22,7 +22,7 @@ export const enteteCompact = (schoolInfo, lf) => `
 
 // Bloc reçu compact — deux par page A4. ctx regroupe les données calculées.
 export const blocRecu = (titre, ctx) => {
-  const { schoolInfo, lf, eleve, moisAnnee, mens, mensDates, fraisIns, fraisAutre, totalMensualites, moisPayes, totalGeneral } = ctx;
+  const { schoolInfo, lf, eleve, moisAnnee, mens, mensDates, fraisIns, fraisAutre, totalMensualites, moisPayes, totalGeneral, qr } = ctx;
   return `
   <div class="recu">
     ${schoolInfo.logo?`<div class="watermark"><img src="${schoolInfo.logo}" alt=""/></div>`:""}
@@ -61,8 +61,9 @@ export const blocRecu = (titre, ctx) => {
     </div>`:""}
     <div class="total">${tr("reports.receipt.monthlyFee")} : ${fmt(totalMensualites)} <span style="font-weight:400;font-size:9px">(${moisPayes.length}/${moisAnnee.length})</span></div>
     <div class="total" style="background:#e0f2fe;border-color:#38bdf8">${tr("reports.receipt.amount")} : <strong>${fmt(totalGeneral)}</strong></div>
-    <div class="sigs">
+    <div class="sigs" style="align-items:flex-end">
       <div class="sig">${tr("reports.accountant")}<br/><br/><br/>${tr("reports.signature")} &amp; ${tr("reports.stamp")}</div>
+      ${qr ? `<div style="text-align:center;flex-shrink:0">${qr}<div style="font-size:6px;color:#94a3b8;margin-top:1px">${tr("reports.qrVerify")}</div></div>` : ""}
       <div class="sig">${tr("school.students.parent")}<br/><br/><br/>${tr("reports.signature")}</div>
     </div>
     </div>

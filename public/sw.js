@@ -8,9 +8,9 @@
  *   API routes Vercel (/api/) → NetworkFirst avec fallback
  */
 
-const CACHE_APP    = "edugest-app-v8";
-const CACHE_DATA   = "edugest-data-v8";
-const CACHE_PHOTOS = "edugest-photos-v8";
+const CACHE_APP    = "edugest-app-v9";
+const CACHE_DATA   = "edugest-data-v9";
+const CACHE_PHOTOS = "edugest-photos-v9";
 
 // ?v=2 : cache-busting du nouveau logo (les navigateurs cachent les favicons
 // très longtemps ; les téléphones ne rafraîchissent l'icône PWA que si l'URL
@@ -79,9 +79,16 @@ self.addEventListener("fetch", (e) => {
     return;
   }
 
-  // 4. API routes Vercel → NetworkFirst (fallback cache court)
+  // 4. API routes Vercel → NetworkFirst (fallback cache court).
+  // Isolation par compte : si la requête porte X-Account-Scope (cf. portail
+  // enseignant), on cache sous une clé incluant cet identifiant pour qu'un
+  // appareil PARTAGÉ ne serve pas hors-ligne les données d'un autre compte.
   if (url.pathname.startsWith("/api/")) {
-    e.respondWith(networkFirst(request, CACHE_DATA, 8000));
+    const scope = request.headers.get("x-account-scope");
+    const cacheKey = scope
+      ? new Request(`${url.href}${url.search ? "&" : "?"}__acct=${encodeURIComponent(scope)}`)
+      : request;
+    e.respondWith(networkFirst(request, CACHE_DATA, 8000, cacheKey));
     return;
   }
 
@@ -119,18 +126,19 @@ async function cacheFirst(request, cacheName, maxAgeSeconds) {
   }
 }
 
-/** NetworkFirst : réseau d'abord, fallback cache si timeout/erreur */
-async function networkFirst(request, cacheName, timeoutMs) {
+/** NetworkFirst : réseau d'abord, fallback cache si timeout/erreur.
+ *  `cacheKey` (défaut = request) permet d'isoler l'entrée de cache (par compte). */
+async function networkFirst(request, cacheName, timeoutMs, cacheKey = request) {
   const cache = await caches.open(cacheName);
   try {
     const controller = new AbortController();
     const tid = setTimeout(() => controller.abort(), timeoutMs);
     const response = await fetch(request, { signal: controller.signal });
     clearTimeout(tid);
-    if (response.ok && request.method === "GET") cache.put(request, response.clone());
+    if (response.ok && request.method === "GET") cache.put(cacheKey, response.clone());
     return response;
   } catch {
-    const cached = await cache.match(request);
+    const cached = await cache.match(cacheKey);
     return cached || new Response(
       JSON.stringify({ error: "Hors ligne", offline: true }),
       { status: 503, headers: { "Content-Type": "application/json" } }

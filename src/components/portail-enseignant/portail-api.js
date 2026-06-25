@@ -3,7 +3,11 @@ import { apiFetch, getAuthHeaders } from "../../apiClient";
 // Charge et normalise les données du portail enseignant via /teacher-portal.
 // Renvoie un portalData complet (tableaux garantis) ou lève une erreur.
 export async function fetchTeacherPortal(utilisateur) {
-  const headers = await getAuthHeaders();
+  // Identifiant de compte STABLE (≠ jeton qui tourne) : permet au service
+  // worker d'isoler la réponse en cache par enseignant, pour qu'un appareil
+  // partagé ne serve pas les données d'un collègue hors-ligne.
+  const scope = utilisateur?.uid || utilisateur?.enseignantId || utilisateur?.login || "";
+  const headers = await getAuthHeaders(scope ? { "X-Account-Scope": String(scope) } : {});
   const res = await apiFetch("/teacher-portal", { headers });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data.ok) {

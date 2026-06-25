@@ -10,6 +10,7 @@ import { resolveLegalFields } from "../legal-utils.js";
 import { PRINT_RESET, PRINT_TRIGGER, edugestBrandHTML, printDir, printLang, tr } from "./print-helpers.js";
 import { blocRecu } from "./recus/recu-blocs.js";
 import { RECU_STYLES } from "./recus/recus-styles.js";
+import { qrImgHtml, qrPayload } from "./qr.js";
 
 export const getRecuTotals = (eleve, montantUnit, moisAnnee=MOIS_ANNEE, fraisAnnexes={}) => {
   const mens = eleve.mens||{};
@@ -23,14 +24,27 @@ export const getRecuTotals = (eleve, montantUnit, moisAnnee=MOIS_ANNEE, fraisAnn
   return { moisPayes, fraisIns, fraisAutre, totalMensualites, totalGeneral };
 };
 
-export const imprimerRecu = (eleve, montantUnit, schoolInfo={}, moisAnnee=MOIS_ANNEE, fraisAnnexes={}) => {
+export const imprimerRecu = async (eleve, montantUnit, schoolInfo={}, moisAnnee=MOIS_ANNEE, fraisAnnexes={}) => {
   const mens = eleve.mens||{};
   const mensDates = eleve.mensDates||{};
   const {moisPayes, fraisIns, fraisAutre, totalMensualites, totalGeneral} = getRecuTotals(eleve, montantUnit, moisAnnee, fraisAnnexes);
   const lf = resolveLegalFields(schoolInfo);
-  const ctx = { schoolInfo, lf, eleve, moisAnnee, mens, mensDates, fraisIns, fraisAutre, totalMensualites, moisPayes, totalGeneral };
 
+  // window.open AVANT l'await (geste utilisateur) pour éviter le blocage popup.
   const w = window.open("","_blank");
+
+  // QR de vérification : école, élève, total payé, période.
+  const qr = await qrImgHtml(qrPayload({
+    EduGest: "Recu",
+    Ecole: schoolInfo.nom,
+    Eleve: `${eleve.nom||""} ${eleve.prenom||""}`,
+    Classe: eleve.classe,
+    IEN: eleve.ien,
+    Total: `${totalGeneral} ${schoolInfo.devise||"GNF"}`,
+    Mois: moisPayes.join(","),
+  }));
+  const ctx = { schoolInfo, lf, eleve, moisAnnee, mens, mensDates, fraisIns, fraisAutre, totalMensualites, moisPayes, totalGeneral, qr };
+
   w.document.write(`<!DOCTYPE html><html lang="${printLang()}" dir="${printDir()}"><head><title>${tr("reports.receipt.title")}</title>
   <meta charset="utf-8"/>
   <style>

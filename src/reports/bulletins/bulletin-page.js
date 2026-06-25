@@ -45,6 +45,7 @@ export function buildBulletinPageHTML({
   classStats = null,
   matiereClasseAvg = {},
   appreciation = "",
+  qr = "",
 }) {
   const c1 = schoolInfo.couleur1 || "#0A1628";
   const c2 = schoolInfo.couleur2 || "#00C48C";
@@ -154,6 +155,8 @@ export function buildBulletinPageHTML({
       <div class="sig">${tr("reports.headTeacher")}<br/><br/><br/>${tr("reports.signature")}</div>
       <div class="sig">${tr("school.students.parent")}<br/><br/><br/>${tr("reports.signature")}</div>
     </div>
+
+    ${qr ? `<div style="display:flex;justify-content:flex-end;align-items:center;margin-top:6px"><div style="text-align:center">${qr}<div style="font-size:7px;color:#94a3b8;margin-top:1px">${tr("reports.qrVerify")}</div></div></div>` : ""}
 
     <div class="devise" style="color:${c2}">${schoolInfo.devise || "Travail – Rigueur – Réussite"}</div>
 

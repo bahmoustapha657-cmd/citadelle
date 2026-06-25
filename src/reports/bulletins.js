@@ -7,7 +7,9 @@
 
 import { getAnnee } from "../constants.js";
 import { getPeriodesForSection } from "../period-utils.js";
+import { getGeneralAverage } from "../note-utils";
 import { tr } from "./print-helpers.js";
+import { qrImgHtml, qrPayload } from "./qr.js";
 import {
   getEvolutionPeriode,
   getMoyenneClasseParMatiere,
@@ -21,7 +23,25 @@ import { PERIODE_ANNEE, buildBulletinNotesAnnuelles } from "./bulletins/annual-n
 export { imprimerFicheCompositions } from "./bulletins/fiche-compositions.js";
 export { PERIODE_ANNEE } from "./bulletins/annual-notes.js";
 
-export const imprimerBulletin = (eleve, notes, matieres, periode, niveau, maxNote = 20, schoolInfo = {}, options = {}) => {
+// QR de vérification d'un bulletin : identité de l'élève + période + moyenne.
+async function bulletinQrHtml({ eleve, notes, matieres, periode, niveau, maxNote, schoolInfo }) {
+  const notesE = notes.filter((n) => n.eleveId === eleve._id && n.periode === periode);
+  const moy = getGeneralAverage(notesE, matieres, eleve.classe, niveau);
+  return qrImgHtml(qrPayload({
+    EduGest: "Bulletin",
+    Ecole: schoolInfo.nom,
+    Eleve: `${eleve.nom || ""} ${eleve.prenom || ""}`,
+    IEN: eleve.ien,
+    Classe: eleve.classe,
+    Periode: periode === PERIODE_ANNEE ? "Annee" : periode,
+    Moy: moy != null ? `${moy.toFixed(2)}/${maxNote}` : "",
+    Annee: getAnnee(),
+  }), { size: 66, alt: "QR bulletin" });
+}
+
+export const imprimerBulletin = async (eleve, notes, matieres, periode, niveau, maxNote = 20, schoolInfo = {}, options = {}) => {
+  // Fenêtre ouverte AVANT l'await QR (geste utilisateur) pour éviter le blocage.
+  const win = window.open("", "_blank");
   const allEleves = Array.isArray(options.allEleves) ? options.allEleves : null;
   const allNotes = Array.isArray(options.allNotes) ? options.allNotes : notes;
   const elevesClasse = allEleves ? allEleves.filter((e) => e.classe === eleve.classe) : null;
@@ -42,22 +62,27 @@ export const imprimerBulletin = (eleve, notes, matieres, periode, niveau, maxNot
     ? getEvolutionPeriode(eleve, allNotes, matieres, eleve.classe, niveau, periode, schoolInfo)
     : null;
 
+  const qr = await bulletinQrHtml({ eleve, notes: allNotes, matieres, periode, niveau, maxNote, schoolInfo });
+
   const html = buildBulletinPageHTML({
     eleve, notes: allNotes, matieres, periode, niveau, maxNote, schoolInfo,
     rang, classStats, matiereClasseAvg, evolution,
-    appreciation: options.appreciation || "",
+    appreciation: options.appreciation || "", qr,
   });
 
   ouvrirFenetreBulletin({
     title: `${tr("reports.bulletinTitle")} — ${eleve.nom || ""} ${eleve.prenom || ""} — ${periode}`,
     body: html,
     schoolInfo,
+    win,
   });
 };
 
 // ── IMPRESSION GROUPÉE : tous les bulletins d'une classe en un seul PDF ──
-export const imprimerBulletinsGroupes = (eleves, notes, matieres, periode, niveau, maxNote = 20, schoolInfo = {}, classe = "", matieresParClasseFn = null, appreciationsParEleve = {}) => {
+export const imprimerBulletinsGroupes = async (eleves, notes, matieres, periode, niveau, maxNote = 20, schoolInfo = {}, classe = "", matieresParClasseFn = null, appreciationsParEleve = {}) => {
   if (!eleves.length) { alert("Aucun élève pour cette sélection."); return; }
+  // Fenêtre ouverte AVANT tout await QR (geste utilisateur).
+  const win = window.open("", "_blank");
   const getMat = (eleve) => (matieresParClasseFn ? matieresParClasseFn(eleve.classe) : matieres);
 
   // Mode « Fin d'année » : on remplace les notes par des notes annuelles
@@ -86,17 +111,18 @@ export const imprimerBulletinsGroupes = (eleves, notes, matieres, periode, nivea
     return classCache.get(cl);
   };
 
-  const pagesListe = eleves.map((eleve) => {
+  const pagesListe = await Promise.all(eleves.map(async (eleve) => {
     const matsEleve = getMat(eleve);
     const cache = getCacheClasse(eleve.classe);
     const rang = getRangEleve(eleve, cache.elevesClasse, notes, matsEleve, periode, eleve.classe, niveau);
     const evolution = getEvolutionPeriode(eleve, notes, matsEleve, eleve.classe, niveau, periode, schoolInfo);
+    const qr = await bulletinQrHtml({ eleve, notes, matieres: matsEleve, periode, niveau, maxNote, schoolInfo });
     return buildBulletinPageHTML({
       eleve, notes, matieres: matsEleve, periode, niveau, maxNote, schoolInfo,
       rang, classStats: cache.stats, matiereClasseAvg: cache.matieresAvg, evolution,
-      appreciation: (appreciationsParEleve && appreciationsParEleve[eleve._id]) || "",
+      appreciation: (appreciationsParEleve && appreciationsParEleve[eleve._id]) || "", qr,
     });
-  });
+  }));
 
   // Modèle compact : deux bulletins par feuille A4 — on apparie les pages
   // dans des conteneurs .feuille qui portent le saut de page.
@@ -116,5 +142,6 @@ export const imprimerBulletinsGroupes = (eleves, notes, matieres, periode, nivea
     title: `${tr("reports.bulletinTitle")} ${classe || niveau} — ${titrePeriode} — ${tr("reports.schoolYear")} ${getAnnee()}`,
     body: pages,
     schoolInfo,
+    win,
   });
 };
