@@ -6,25 +6,32 @@ import { resolveCanonicalNoteType } from "../../evaluation-forms";
 //  - mode normal      : clé = eleveId (une période figée).
 //  - multipériode     : clé = `${eleveId}|${periode}` (toutes les périodes,
 //                       pour saisir les 2-3 compositions d'un coup).
-export function construireGrille({ classe, type, periode, matiere = "", periodes = [], multiPeriode = false, eleves, mesNotes, schoolInfo, utilisateur }) {
+export function construireGrille({ classe, type, periode, matiere = "", periodes = [], matieres = [], multiPeriode = false, multiMatiere = false, eleves, mesNotes, schoolInfo, utilisateur }) {
   const section = utilisateur.section || "secondaire";
   const map = {};
-  const find = (eleveId, per) => mesNotes.find(
+  const find = (eleveId, per, mat) => mesNotes.find(
     (n) => n.eleveId === eleveId && n.periode === per
       && resolveCanonicalNoteType(n.type, schoolInfo, section) === type
-      // Au primaire (multi-matières), on cible la matière sélectionnée.
-      && (!matiere || n.matiere === matiere),
+      // On cible la matière de la cellule (sélecteur, ou colonne au multi-matières).
+      && (!mat || n.matiere === mat),
   );
   eleves
     .filter((e) => e.classe === classe)
     .forEach((e) => {
       if (multiPeriode) {
         periodes.forEach((per) => {
-          const ex = find(e._id, per);
+          const ex = find(e._id, per, matiere);
           map[`${e._id}|${per}`] = ex ? String(ex.note ?? "") : "";
         });
+      } else if (multiMatiere) {
+        // Une colonne par matière de la classe (titulaire du primaire) : on
+        // saisit toutes les matières d'un coup, période figée.
+        matieres.forEach((mat) => {
+          const ex = find(e._id, periode, mat);
+          map[`${e._id}|${mat}`] = ex ? String(ex.note ?? "") : "";
+        });
       } else {
-        const ex = find(e._id, periode);
+        const ex = find(e._id, periode, matiere);
         map[e._id] = ex ? String(ex.note ?? "") : "";
       }
     });
@@ -37,16 +44,23 @@ export function construireGrille({ classe, type, periode, matiere = "", periodes
 export function collectGridNotes({ gridForm, mesNotes, schoolInfo, utilisateur }) {
   const section = utilisateur.section || "secondaire";
   const canonical = resolveCanonicalNoteType(gridForm.type, schoolInfo, section);
-  const matiere = gridForm.matiere || "";
+  const matiereFixe = gridForm.matiere || "";
   const aSauver = Object.entries(gridForm.notes)
     .filter(([, val]) => val !== "" && val != null)
     .map(([key, val]) => {
       let eleveId = key;
       let periode = gridForm.periode;
+      let matiere = matiereFixe;
       if (gridForm.multiPeriode) {
         const idx = key.lastIndexOf("|");
         eleveId = key.slice(0, idx);
         periode = key.slice(idx + 1);
+      } else if (gridForm.multiMatiere) {
+        // Clé = `${eleveId}|${matiere}` ; eleveId (id Firestore) ne contient
+        // jamais « | », on coupe donc au premier séparateur.
+        const idx = key.indexOf("|");
+        eleveId = key.slice(0, idx);
+        matiere = key.slice(idx + 1);
       }
       const existante = mesNotes.find(
         (n) => n.eleveId === eleveId && n.periode === periode

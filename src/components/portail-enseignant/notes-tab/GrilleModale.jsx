@@ -2,10 +2,12 @@ import { useState } from "react";
 import { C } from "../../../constants";
 import { Btn, Modale, Selec, Vide } from "../../ui";
 
-// Modale de saisie en grille (portail enseignant). Deux modes :
-//  - normal       : une période figée, une colonne « Note ».
-//  - multipériode : colonnes = périodes (saisir les 2-3 compositions d'un
-//                   coup). Recherche d'élève par nom dans les deux modes.
+// Modale de saisie en grille (portail enseignant). Trois modes :
+//  - normal        : une période + une matière figées, une colonne « Note ».
+//  - multipériode  : colonnes = périodes (saisir les 2-3 compositions d'un coup).
+//  - multi-matières: colonnes = matières de la classe (titulaire du primaire) →
+//                    saisir toutes les matières d'un élève puis enregistrer une
+//                    seule fois. Recherche d'élève par nom dans tous les modes.
 export function GrilleModale({
   matiere, mesClasses, noteForms, periodes,
   isPrimaire = false, matieresDispo = [],
@@ -15,17 +17,21 @@ export function GrilleModale({
   const [rech, setRech] = useState("");
   const norm = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
   const multi = !!gridForm.multiPeriode;
+  const multiMat = !!gridForm.multiMatiere;
   const maxNote = isPrimaire ? 10 : 20;
+  const matCols = matieresDispo.map((m) => m.nom).filter(Boolean);
 
   const elevesClasse = (portalData.eleves || []).filter((e) => e.classe === gridForm.classe);
   const elevesAff = rech.trim()
     ? elevesClasse.filter((e) => norm(`${e.nom} ${e.prenom}`).includes(norm(rech)) || norm(`${e.prenom} ${e.nom}`).includes(norm(rech)))
     : elevesClasse;
-  const cols = multi ? periodes : [null]; // null = colonne unique (période figée)
-  const cle = (eleveId, col) => (multi ? `${eleveId}|${col}` : eleveId);
+  // Colonnes = périodes (multi), matières (multiMat) ou une seule (null).
+  const cols = multi ? periodes : multiMat ? matCols : [null];
+  const enColonnes = multi || multiMat;
+  const cle = (eleveId, col) => (enColonnes ? `${eleveId}|${col}` : eleveId);
   const remplies = Object.values(gridForm.notes).filter((v) => v !== "" && v != null).length;
 
-  const titreMatiere = isPrimaire ? (gridForm.matiere || "Matière") : (matiere || "Matière");
+  const titreMatiere = multiMat ? "Toutes les matières" : isPrimaire ? (gridForm.matiere || "Matière") : (matiere || "Matière");
 
   return (
     <Modale xlarge titre={`Saisie en grille — ${titreMatiere}`} fermer={() => setModalNote(null)}>
@@ -33,7 +39,7 @@ export function GrilleModale({
         <Selec label="Classe" value={gridForm.classe} onChange={(e) => majGrid({ classe: e.target.value })}>
           {mesClasses.map((cl) => <option key={cl} value={cl}>{cl}</option>)}
         </Selec>
-        {isPrimaire && (
+        {isPrimaire && !multiMat && (
           <Selec label="Matière" value={gridForm.matiere || ""} onChange={(e) => majGrid({ matiere: e.target.value })}>
             <option value="">— Matière —</option>
             {matieresDispo.map((m) => <option key={m._id || m.nom} value={m.nom}>{m.nom}</option>)}
@@ -56,9 +62,15 @@ export function GrilleModale({
           style={{ flex: 1, minWidth: 180, border: "1px solid #b0c4d8", borderRadius: 7, padding: "7px 10px", fontSize: 13 }}
         />
         <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: "#334155", cursor: "pointer", border: "1px solid #b0c4d8", borderRadius: 7, padding: "6px 10px", background: multi ? "#e0ebf8" : "#fff" }}>
-          <input type="checkbox" checked={multi} onChange={(e) => majGrid({ multiPeriode: e.target.checked })} />
+          <input type="checkbox" checked={multi} onChange={(e) => majGrid({ multiPeriode: e.target.checked, multiMatiere: false })} />
           🗓️ Toutes les périodes
         </label>
+        {isPrimaire && matCols.length > 0 && (
+          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: "#334155", cursor: "pointer", border: "1px solid #b0c4d8", borderRadius: 7, padding: "6px 10px", background: multiMat ? "#dcfce7" : "#fff" }}>
+            <input type="checkbox" checked={multiMat} onChange={(e) => majGrid({ multiMatiere: e.target.checked, multiPeriode: false })} />
+            📚 Toutes les matières
+          </label>
+        )}
       </div>
 
       {elevesClasse.length === 0 ? <Vide icone="👥" msg="Aucun élève dans cette classe." /> : (
@@ -73,8 +85,8 @@ export function GrilleModale({
                   <th style={{ padding: "8px 10px", fontSize: 11, textAlign: "start", width: 50 }}>#</th>
                   <th style={{ padding: "8px 10px", fontSize: 11, textAlign: "start" }}>Élève</th>
                   {cols.map((col) => (
-                    <th key={col || "note"} style={{ padding: "8px 10px", fontSize: 11, textAlign: "center", width: multi ? 90 : 110 }}>
-                      {multi ? col : "Note"} /{maxNote}
+                    <th key={col || "note"} style={{ padding: "8px 10px", fontSize: 11, textAlign: "center", width: enColonnes ? 100 : 110 }}>
+                      {enColonnes ? col : "Note"} /{maxNote}
                     </th>
                   ))}
                 </tr>

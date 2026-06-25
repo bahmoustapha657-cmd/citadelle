@@ -68,6 +68,39 @@ test("primaire : la grille cible la matière sélectionnée (notes par matière 
   assert.equal(e1.note, 7);
 });
 
+test("multi-matières : colonnes = matières, période figée, collecte par matière", () => {
+  const ensPrimaire = { section: "primaire" };
+  const elevesP = [{ _id: "e1", nom: "Diallo", prenom: "A", classe: "CM2" }];
+  const notesP = [
+    { _id: "m1", eleveId: "e1", periode: "T1", type: "Composition", matiere: "Mathématiques", note: 8 },
+  ];
+  const matieres = ["Mathématiques", "Français", "Éveil"];
+  const grille = construireGrille({
+    classe: "CM2", type: "Composition", periode: "T1", matieres, multiMatiere: true,
+    eleves: elevesP, mesNotes: notesP, schoolInfo, utilisateur: ensPrimaire,
+  });
+  // Une cellule par matière ; Maths préremplie, les autres vides.
+  assert.equal(grille["e1|Mathématiques"], "8");
+  assert.equal(grille["e1|Français"], "");
+  assert.equal(grille["e1|Éveil"], "");
+
+  // L'utilisateur saisit Français et Éveil, modifie Maths : 1 seul enregistrement.
+  grille["e1|Mathématiques"] = "9";
+  grille["e1|Français"] = "7";
+  grille["e1|Éveil"] = "10";
+  const { aSauver } = collectGridNotes({
+    gridForm: { type: "Composition", periode: "T1", multiMatiere: true, notes: grille },
+    mesNotes: notesP, schoolInfo, utilisateur: ensPrimaire,
+  });
+  const parMat = Object.fromEntries(aSauver.map((x) => [x.matiere, x]));
+  assert.equal(aSauver.length, 3);
+  assert.equal(parMat["Mathématiques"].noteId, "m1"); // existante → update
+  assert.equal(parMat["Mathématiques"].note, 9);
+  assert.equal(parMat["Français"].noteId, "");        // nouvelle
+  assert.equal(parMat["Français"].periode, "T1");
+  assert.equal(parMat["Éveil"].note, 10);
+});
+
 test("mode normal : clé = eleveId, période figée conservée", () => {
   const notes = construireGrille({
     classe: "7ème", type: "Composition", periode: "T1", multiPeriode: false,

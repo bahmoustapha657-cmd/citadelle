@@ -104,9 +104,13 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
     setModalNote("add");
   };
 
+  // Noms des matières disponibles (colonnes du mode multi-matières au primaire).
+  const nomsMatieres = matieresDispo.map((m) => m.nom).filter(Boolean);
+
   // Wrapper : injecte eleves/notes/schoolInfo/utilisateur au helper.
-  const construireGrille = (classe, type, periode, multiPeriode = false, matiereSel = "") => construireGrilleHelper({
-    classe, type, periode, matiere: matiereSel, periodes, multiPeriode,
+  const construireGrille = (classe, type, periode, multiPeriode = false, matiereSel = "", multiMatiere = false) => construireGrilleHelper({
+    classe, type, periode, matiere: matiereSel,
+    periodes, matieres: nomsMatieres, multiPeriode, multiMatiere,
     eleves: portalData.eleves || [],
     mesNotes, schoolInfo, utilisateur,
   });
@@ -122,7 +126,8 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
       periode,
       matiere: matiereSel,
       multiPeriode: false,
-      notes: classe ? construireGrille(classe, type, periode, false, matiereSel) : {},
+      multiMatiere: false,
+      notes: classe ? construireGrille(classe, type, periode, false, matiereSel, false) : {},
     });
     setGridProgress({ done: 0, total: 0 });
     setModalNote("grid");
@@ -133,8 +138,10 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
       const next = { ...current, ...patch };
       // Reconstruit le tableau si classe/type/période/matière/mode change.
       if (patch.classe !== undefined || patch.type !== undefined || patch.periode !== undefined
-          || patch.matiere !== undefined || patch.multiPeriode !== undefined) {
-        next.notes = next.classe ? construireGrille(next.classe, next.type, next.periode, next.multiPeriode, next.matiere) : {};
+          || patch.matiere !== undefined || patch.multiPeriode !== undefined || patch.multiMatiere !== undefined) {
+        next.notes = next.classe
+          ? construireGrille(next.classe, next.type, next.periode, next.multiPeriode, next.matiere, next.multiMatiere)
+          : {};
       }
       return next;
     });
