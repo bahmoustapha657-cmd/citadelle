@@ -1,6 +1,7 @@
 import { getFirestore } from "firebase-admin/firestore";
 import { initAdmin } from "../firebase-admin.js";
 import {
+  getDocsByFieldValues,
   getSectionCollections,
   getTeacherAliases,
   matchesTeacherAlias,
@@ -71,11 +72,10 @@ async function loadTeacherPortalPayload({ db, schoolId, profile }) {
   const aliases = getTeacherAliases(profile);
   const collections = getSectionCollections(section);
   const absencesCollName = `${collections.eleves}_absences`;
-  const [emploisSnap, enseignementsSnap, salairesSnap, absencesSnap, rosterSnap, classesSnap, matieresSnap] = await Promise.all([
+  const [emploisSnap, enseignementsSnap, salairesSnap, rosterSnap, classesSnap, matieresSnap] = await Promise.all([
     schoolRef.collection(collections.emplois).get(),
     schoolRef.collection(collections.enseignements).get(),
     schoolRef.collection("salaires").get(),
-    schoolRef.collection(absencesCollName).get(),
     schoolRef.collection(collections.roster).get(),
     schoolRef.collection(collections.classes).get(),
     schoolRef.collection(`${collections.classes}_matieres`).get(),
@@ -137,29 +137,33 @@ async function loadTeacherPortalPayload({ db, schoolId, profile }) {
   // ratait les élèves dès qu'un libellé différait un tant soit peu de la classe
   // du titulaire (ex. « 3ème Année A » vs « 3eme annee A ») — fréquent au
   // primaire où la classe du titulaire est saisie à la main.
+  // Lecture CIBLÉE des élèves par classe (requête `where classe in …`) au lieu
+  // de lire TOUTE la collection : c'était la principale source de lectures
+  // Firestore (et de depassement de quota). Repli sur lecture complète + filtre
+  // normalisé UNIQUEMENT si la requête ciblée ne renvoie rien (libellés de
+  // classe divergents — cas rare).
   const classSet = new Set(classes.map((c) => normalizeText(c)).filter(Boolean));
-  const allEleves = (await schoolRef.collection(collections.eleves).get()).docs.map(toItem);
-  const eleves = uniqueById(allEleves.filter((el) => classSet.has(normalizeText(el.classe))));
+  let eleves = uniqueById(await getDocsByFieldValues(schoolRef.collection(collections.eleves), "classe", classes));
+  if (eleves.length === 0 && classes.length > 0) {
+    const allEleves = (await schoolRef.collection(collections.eleves).get()).docs.map(toItem);
+    eleves = uniqueById(allEleves.filter((el) => classSet.has(normalizeText(el.classe))));
+  }
   const studentIds = new Set(eleves.map((student) => String(student._id || "").trim()).filter(Boolean));
   const studentNames = new Set(
     eleves
       .map((student) => normalizeText(`${student.prenom || ""} ${student.nom || ""}`))
       .filter(Boolean),
   );
-  const rawNotes = (await schoolRef.collection(collections.notes).get()).docs.map(toItem);
+  // Lecture CIBLÉE des notes par eleveId (au lieu de toute la collection notes).
+  // On ne lit que les notes des élèves du périmètre de l'enseignant.
+  const rawNotes = uniqueById(await getDocsByFieldValues(schoolRef.collection(collections.notes), "eleveId", [...studentIds]));
   const notes = rawNotes.filter((note) => noteBelongsToTeacherScope(note, studentIds, profile.matiere || "", studentNames, section, teacherClasses));
 
-  // Incidents (absences/retard/indiscipline) sur les élèves dans le scope
-  // de l'enseignant. Filtrage par eleveId de préférence, fallback eleveNom +
-  // classe (durcissement F2 2026-05-12) pour les anciens enregistrements.
-  const incidents = absencesSnap.docs.map(toItem).filter((inc) => {
-    const incId = String(inc.eleveId || "").trim();
-    if (incId) return studentIds.has(incId);
-    const incName = normalizeText(inc.eleveNom);
-    if (!incName || !studentNames.has(incName)) return false;
-    const incClasse = String(inc.classe || "").trim();
-    return !!incClasse && teacherClasses.has(incClasse);
-  });
+  // Incidents (absences/retard/indiscipline) : lecture CIBLÉE par eleveId au
+  // lieu de toute la collection. Les anciens incidents sans eleveId (matchés
+  // par nom) ne remontent plus — cas rare, acceptable face au quota.
+  const incidentsRaw = uniqueById(await getDocsByFieldValues(schoolRef.collection(absencesCollName), "eleveId", [...studentIds]));
+  const incidents = incidentsRaw.filter((inc) => studentIds.has(String(inc.eleveId || "").trim()));
 
   return {
     section,
