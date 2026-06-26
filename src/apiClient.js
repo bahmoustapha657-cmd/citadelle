@@ -63,6 +63,19 @@ export async function getAuthHeaders(baseHeaders = {}) {
 }
 
 export async function apiFetch(path, options = {}) {
-  const { query, ...fetchOptions } = options || {};
-  return fetch(buildApiUrl(path, query), fetchOptions);
+  const { query, timeoutMs, ...fetchOptions } = options || {};
+  const url = buildApiUrl(path, query);
+  if (!timeoutMs) return fetch(url, fetchOptions);
+
+  // Garde-fou : sans timeout, une requete qui pend (reseau lent, fonction
+  // serverless qui demarre a froid) ferait tourner l'UI indefiniment. On
+  // abandonne au-dela de timeoutMs -> fetch rejette -> l'appelant affiche une
+  // erreur claire. On respecte un signal deja fourni par l'appelant.
+  const controller = new AbortController();
+  const tid = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...fetchOptions, signal: fetchOptions.signal || controller.signal });
+  } finally {
+    clearTimeout(tid);
+  }
 }

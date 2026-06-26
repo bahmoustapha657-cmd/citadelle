@@ -3,6 +3,15 @@ import { useTranslation } from "react-i18next";
 import { signInWithCustomTokenClient } from "../../firebaseAuth";
 import { ecoleLogin, fetchEtatEcole, superadminLogin } from "./connexion-api";
 
+// Course contre la montre : empeche une promesse (sign-in Firebase) de bloquer
+// la connexion indefiniment.
+function avecDelai(promesse, ms) {
+  return Promise.race([
+    promesse,
+    new Promise((_, rejeter) => setTimeout(() => rejeter(new Error("timeout")), ms)),
+  ]);
+}
+
 // Logique de connexion : état du formulaire, résolution de l'école saisie
 // (lookup Firestore débounce) et appel d'authentification.
 export function useConnexion({ onLogin }) {
@@ -77,7 +86,9 @@ export function useConnexion({ onLogin }) {
       }
 
       try {
-        await signInWithCustomTokenClient(data.customToken);
+        // 15 s max : si Firebase Auth pend, on bascule sur le repli onLogin
+        // plutot que de bloquer l'ecran de connexion.
+        await avecDelai(signInWithCustomTokenClient(data.customToken), 15000);
       } catch {
         onLogin(data.compte, sid);
       }
