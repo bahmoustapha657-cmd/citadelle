@@ -26,6 +26,27 @@ On reproduit le modèle actuel (pas d'email réel : code école + login + mot de
 
 > Mapping direct depuis l'existant : c'est exactement ce que fait déjà `api/_lib/handlers/account-manage.js` avec Firebase Auth (`{login}.{schoolId}@edugest.app`).
 
+## 2 bis. Tester l'auth + la RLS (P1)
+
+Une fois `schema.sql` et `rls.sql` appliqués :
+
+```bash
+npm i @supabase/supabase-js
+
+# Seed : crée une école démo + un compte direction (clé service_role)
+export SUPABASE_URL="https://xxxx.supabase.co"
+export SUPABASE_SERVICE_ROLE="eyJ...service_role..."
+node supabase/seed.mjs
+
+# Test : se connecte (clé anon, comme un vrai client) et vérifie la RLS
+export SUPABASE_ANON_KEY="eyJ...anon..."
+node supabase/login-test.mjs
+```
+
+`login-test.mjs` doit afficher : l'état public de l'école, la connexion réussie, **une seule école visible** (RLS), et le profil courant. Si c'est le cas → schéma + auth + RLS validés, on peut attaquer une tranche verticale (P2).
+
+Identifiants de démo : code `demo`, login `direction`, mot de passe `Demo1234!`.
+
 ## 3. Correspondance Firestore → Postgres
 
 | Firestore (collections) | Postgres (table) | Note |
