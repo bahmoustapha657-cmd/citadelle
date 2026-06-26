@@ -8,9 +8,9 @@
  *   API routes Vercel (/api/) → NetworkFirst avec fallback
  */
 
-const CACHE_APP    = "edugest-app-v9";
-const CACHE_DATA   = "edugest-data-v9";
-const CACHE_PHOTOS = "edugest-photos-v9";
+const CACHE_APP    = "edugest-app-v10";
+const CACHE_DATA   = "edugest-data-v10";
+const CACHE_PHOTOS = "edugest-photos-v10";
 
 // ?v=2 : cache-busting du nouveau logo (les navigateurs cachent les favicons
 // très longtemps ; les téléphones ne rafraîchissent l'icône PWA que si l'URL
@@ -84,6 +84,11 @@ self.addEventListener("fetch", (e) => {
   // enseignant), on cache sous une clé incluant cet identifiant pour qu'un
   // appareil PARTAGÉ ne serve pas hors-ligne les données d'un autre compte.
   if (url.pathname.startsWith("/api/")) {
+    // Les requetes NON-GET (login, ecritures) ne passent JAMAIS par le SW :
+    // rien a mettre en cache, et le timeout/abort transformait une requete
+    // simplement lente (ex. demarrage a froid de la fonction) en echec 503.
+    // On laisse le navigateur les traiter nativement.
+    if (request.method !== "GET") return;
     const scope = request.headers.get("x-account-scope");
     const cacheKey = scope
       ? new Request(`${url.href}${url.search ? "&" : "?"}__acct=${encodeURIComponent(scope)}`)
