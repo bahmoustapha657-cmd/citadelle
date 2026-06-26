@@ -8,9 +8,9 @@
  *   API routes Vercel (/api/) → NetworkFirst avec fallback
  */
 
-const CACHE_APP    = "edugest-app-v10";
-const CACHE_DATA   = "edugest-data-v10";
-const CACHE_PHOTOS = "edugest-photos-v10";
+const CACHE_APP    = "edugest-app-v11";
+const CACHE_DATA   = "edugest-data-v11";
+const CACHE_PHOTOS = "edugest-photos-v11";
 
 // ?v=2 : cache-busting du nouveau logo (les navigateurs cachent les favicons
 // très longtemps ; les téléphones ne rafraîchissent l'icône PWA que si l'URL
@@ -29,9 +29,13 @@ self.addEventListener("install", (e) => {
   e.waitUntil(
     caches.open(CACHE_APP).then((cache) => cache.addAll(APP_SHELL))
   );
-  // Note : on n'appelle PAS self.skipWaiting() ici. Le client décide
-  // (via postMessage SKIP_WAITING) — auto-reload si pas de modale,
-  // bannière sinon. Voir src/components/UpdateBanner.jsx.
+  // skipWaiting : le nouveau SW prend la main IMMEDIATEMENT au lieu de rester
+  // « en attente » derriere l'ancien. Sans cela, un utilisateur bloque sur une
+  // ancienne version en cache (cf. login casse servi par un vieux SW) ne
+  // recevait jamais la correction. Couple a clients.claim (activate) et au
+  // rechargement unique sur controllerchange (sw-register.js), la mise a jour
+  // se propage des le prochain chargement.
+  self.skipWaiting();
 });
 
 // Permet au client de prendre la main sur le nouveau SW
