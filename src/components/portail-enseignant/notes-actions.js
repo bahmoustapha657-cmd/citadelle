@@ -28,6 +28,7 @@ export async function enregistrerGrille({
   toast,
   onSuccess,
   onQueued,
+  onSavedNotes,
 }) {
   const { canonical, aSauver } = collectGridNotes({ gridForm, mesNotes, schoolInfo, utilisateur });
   const maxNote = (utilisateur.section === "primaire") ? 10 : 20;
@@ -69,13 +70,24 @@ export async function enregistrerGrille({
     const nbOk = Number(data.saved || 0);
     const nbKo = Number(data.failed || 0);
     setGridProgress({ done: nbOk, total: aSauver.length });
-    await chargerPortail();
-    if (nbKo === 0) {
+    if (nbKo === 0 && onSavedNotes && Array.isArray(data.notes)) {
+      // Mise à jour LOCALE de l'état (le serveur a renvoyé les notes écrites +
+      // leurs IDs) → PAS de rechargement complet du portail = lectures
+      // Firestore économisées à chaque enregistrement.
+      onSavedNotes(data.notes);
       toast(`${nbOk} note(s) enregistrée(s).`, "success");
       onSuccess?.();
       setModalNote(null);
     } else {
-      toast(`${nbOk} OK / ${nbKo} échec(s). Vérifie les lignes en rouge.`, "warning");
+      // Échec partiel (ou pas de retour serveur) : rechargement de sécurité.
+      await chargerPortail();
+      if (nbKo === 0) {
+        toast(`${nbOk} note(s) enregistrée(s).`, "success");
+        onSuccess?.();
+        setModalNote(null);
+      } else {
+        toast(`${nbOk} OK / ${nbKo} échec(s). Vérifie les lignes en rouge.`, "warning");
+      }
     }
   } catch (error) {
     // Échec réseau (fetch lève, pas de réponse serveur) → mise en file + retry auto.

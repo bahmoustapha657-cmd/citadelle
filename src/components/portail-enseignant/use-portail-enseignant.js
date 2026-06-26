@@ -209,6 +209,17 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
     };
   }, [ownerId]);
 
+  // Fusionne les notes renvoyées par le serveur dans l'état local (par _id) :
+  // évite un rechargement complet du portail après chaque enregistrement.
+  const fusionnerNotes = (nouvelles) => {
+    if (!Array.isArray(nouvelles) || nouvelles.length === 0) return;
+    setPortalData((cur) => {
+      const parId = new Map((cur.notes || []).map((n) => [n._id, n]));
+      nouvelles.forEach((n) => { if (n && n._id) parId.set(n._id, n); });
+      return { ...cur, notes: [...parId.values()] };
+    });
+  };
+
   const enregistrerGrille = () => enregistrerGrilleAction({
     gridForm, mesNotes, schoolInfo, utilisateur,
     setEnregistrement, setGridProgress, setModalNote, chargerPortail, toast,
@@ -220,6 +231,8 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
       setPendingSync(enqueue(ownerId, notesPayload));
       clearDraft(cleBrouillon(gridForm));
     },
+    // Mise à jour locale (pas de rechargement) avec les notes renvoyées.
+    onSavedNotes: fusionnerNotes,
   });
 
   const ouvrirEditionNote = (note) => {

@@ -66,24 +66,23 @@ export function noteBelongsToTeacherScope(note = {}, studentIds = new Set(), mat
   return true;
 }
 
-async function loadTeacherPortalPayload({ db, schoolId, profile }) {
+async function loadTeacherPortalPayload({ db, schoolId, profile, scopeOnly = false }) {
   const schoolRef = db.collection("ecoles").doc(schoolId);
   const section = getTeacherSection(profile);
   const aliases = getTeacherAliases(profile);
   const collections = getSectionCollections(section);
   const absencesCollName = `${collections.eleves}_absences`;
-  const [emploisSnap, enseignementsSnap, salairesSnap, rosterSnap, classesSnap, matieresSnap] = await Promise.all([
+  // Lectures du périmètre (classes du prof). salaires/matieres sont lus plus bas
+  // et seulement pour l'affichage (pas pour la validation d'écriture scopeOnly).
+  const [emploisSnap, enseignementsSnap, rosterSnap, classesSnap] = await Promise.all([
     schoolRef.collection(collections.emplois).get(),
     schoolRef.collection(collections.enseignements).get(),
-    schoolRef.collection("salaires").get(),
     schoolRef.collection(collections.roster).get(),
     schoolRef.collection(collections.classes).get(),
-    schoolRef.collection(`${collections.classes}_matieres`).get(),
   ]);
 
   const emplois = emploisSnap.docs.map(toItem).filter((item) => matchesTeacherAlias(item.enseignant, aliases));
   const enseignements = enseignementsSnap.docs.map(toItem).filter((item) => matchesTeacherAlias(item.enseignantNom, aliases));
-  const salaires = salairesSnap.docs.map(toItem).filter((item) => matchesTeacherAlias(item.nom, aliases));
 
   // Registre des enseignants : classe(s) dont le prof est TITULAIRE
   // (essentiel au primaire, où il n'y a souvent ni EDT ni cahier de textes).
@@ -122,16 +121,6 @@ async function loadTeacherPortalPayload({ db, schoolId, profile }) {
   const teacherClasses = new Set(classes);
   const teacherClassesNorm = new Set(classes.map((c) => normalizeText(c)));
 
-  // Matières applicables aux classes du prof (pour le primaire : le titulaire
-  // saisit toutes les matières de sa classe). Une matière s'applique à une
-  // classe si elle n'a pas de liste `classes` ou si elle la contient. La
-  // comparaison est normalisée (casse / accents / espaces) pour les mêmes
-  // raisons que la résolution des élèves.
-  const matieres = uniqueById(matieresSnap.docs.map(toItem)).filter((mat) => {
-    if (!Array.isArray(mat.classes) || mat.classes.length === 0) return true;
-    return mat.classes.some((c) => teacherClassesNorm.has(normalizeText(c)));
-  });
-
   // Récupération robuste des élèves : on compare les noms de classe de façon
   // normalisée (casse / accents / espaces). Une égalité stricte Firestore
   // ratait les élèves dès qu'un libellé différait un tant soit peu de la classe
@@ -154,6 +143,32 @@ async function loadTeacherPortalPayload({ db, schoolId, profile }) {
       .map((student) => normalizeText(`${student.prenom || ""} ${student.nom || ""}`))
       .filter(Boolean),
   );
+
+  // Validation d'écriture : seuls eleves/studentIds/studentNames/teacherClasses
+  // sont nécessaires. On évite ainsi de lire notes/incidents/salaires/matières à
+  // CHAQUE enregistrement (lectures Firestore en moins, cf. quota).
+  if (scopeOnly) {
+    return {
+      eleves,
+      studentIds,
+      studentNames,
+      teacherClasses: new Set(eleves.map((student) => String(student.classe || "").trim()).filter(Boolean)),
+    };
+  }
+
+  // ── Données pour l'AFFICHAGE seulement (jamais lues pour une écriture) ──
+  const [salairesSnap, matieresSnap] = await Promise.all([
+    schoolRef.collection("salaires").get(),
+    schoolRef.collection(`${collections.classes}_matieres`).get(),
+  ]);
+  const salaires = salairesSnap.docs.map(toItem).filter((item) => matchesTeacherAlias(item.nom, aliases));
+  // Matières applicables aux classes du prof (titulaire primaire = toutes ses
+  // matières). Comparaison normalisée (casse / accents / espaces).
+  const matieres = uniqueById(matieresSnap.docs.map(toItem)).filter((mat) => {
+    if (!Array.isArray(mat.classes) || mat.classes.length === 0) return true;
+    return mat.classes.some((c) => teacherClassesNorm.has(normalizeText(c)));
+  });
+
   // Lecture CIBLÉE des notes par eleveId (au lieu de toute la collection notes).
   // On ne lit que les notes des élèves du périmètre de l'enseignant.
   const rawNotes = uniqueById(await getDocsByFieldValues(schoolRef.collection(collections.notes), "eleveId", [...studentIds]));
@@ -177,19 +192,11 @@ async function loadTeacherPortalPayload({ db, schoolId, profile }) {
   };
 }
 
+// Validation d'écriture : périmètre minimal (classes + élèves), SANS lire
+// notes/incidents/salaires/matières → bien moins de lectures par enregistrement.
 async function resolveTeacherScope({ db, schoolId, profile }) {
-  const payload = await loadTeacherPortalPayload({ db, schoolId, profile });
-    return {
-      ...payload,
-      studentIds: new Set(payload.eleves.map((student) => String(student._id || "").trim()).filter(Boolean)),
-      studentNames: new Set(
-        payload.eleves
-          .map((student) => normalizeText(`${student.prenom || ""} ${student.nom || ""}`))
-          .filter(Boolean),
-      ),
-      teacherClasses: new Set(payload.eleves.map((student) => String(student.classe || "").trim()).filter(Boolean)),
-    };
-  }
+  return loadTeacherPortalPayload({ db, schoolId, profile, scopeOnly: true });
+}
 
 async function handler(req, res) {
   if (!applyCors(req, res, "GET,POST,OPTIONS")) return;
@@ -402,6 +409,9 @@ async function handler(req, res) {
       let saved = 0;
       let failed = 0;
       const commits = [];
+      // Notes effectivement écrites (avec leur _id) : renvoyées au client pour
+      // qu'il mette à jour son état local SANS recharger tout le portail.
+      const savedNotes = [];
 
       for (const raw of rawNotes) {
         const noteId = String(raw?.noteId || "").trim();
@@ -445,8 +455,11 @@ async function handler(req, res) {
             continue;
           }
           writeBatch.update(notesRef.doc(noteId), payload);
+          savedNotes.push({ _id: noteId, ...payload });
         } else {
-          writeBatch.set(notesRef.doc(), { ...payload, createdAt: now });
+          const newRef = notesRef.doc();
+          writeBatch.set(newRef, { ...payload, createdAt: now });
+          savedNotes.push({ _id: newRef.id, ...payload, createdAt: now });
         }
         saved++;
         pending++;
@@ -460,7 +473,7 @@ async function handler(req, res) {
       if (pending > 0) commits.push(writeBatch.commit());
       await Promise.all(commits);
 
-      return res.status(200).json({ ok: true, saved, failed });
+      return res.status(200).json({ ok: true, saved, failed, notes: savedNotes });
     }
 
     const noteId = String(req.body?.noteId || "").trim();
