@@ -12,6 +12,7 @@ export function useAppUiState() {
   const [notifOuvert, setNotifOuvert] = useState(false);
   const [profilOuvert, setProfilOuvert] = useState(false);
   const [aideOuverte, setAideOuverte] = useState(false);
+  const [centreAideOuvert, setCentreAideOuvert] = useState(false);
   // Pas d'école par défaut : un nouveau visiteur (ni ?school= dans l'URL,
   // ni école mémorisée) arrive sur l'écran de connexion neutre et saisit
   // son code école — il ne doit jamais tomber sur l'école d'un tiers.
@@ -31,6 +32,7 @@ export function useAppUiState() {
     notifOuvert, setNotifOuvert,
     profilOuvert, setProfilOuvert,
     aideOuverte, setAideOuverte,
+    centreAideOuvert, setCentreAideOuvert,
     schoolId, setSchoolId,
     onboardingOuvert, setOnboardingOuvert,
     sidebarOuvert, setSidebarOuvert,

@@ -11,7 +11,7 @@ export function AppHeader({
   estHorsLigne, planInfo, utilisateur, utilisateurLabel, schoolInfo,
   setRechercheOuverte, modeSombre, setModeSombre,
   notifOuvert, setNotifOuvert, notifNonLues, setNotifNonLues, notifListe, nowTs,
-  profilOuvert, setProfilOuvert, setPage, setAideOuverte, deconnecter,
+  profilOuvert, setProfilOuvert, setPage, setAideOuverte, setCentreAideOuvert, deconnecter,
 }) {
   return (
     <header style={{background:"#fff",borderBottom:`3px solid ${C.green}`,padding:"0 12px",height:52,display:"flex",alignItems:"center",gap:8,position:"sticky",top:0,zIndex:30,minWidth:0}}>
@@ -66,7 +66,7 @@ export function AppHeader({
         <ProfilMenu
           profilOuvert={profilOuvert} setProfilOuvert={setProfilOuvert} setNotifOuvert={setNotifOuvert}
           isMobile={isMobile} utilisateur={utilisateur} utilisateurLabel={utilisateurLabel}
-          schoolInfo={schoolInfo} t={t} setPage={setPage} setAideOuverte={setAideOuverte} deconnecter={deconnecter}
+          schoolInfo={schoolInfo} t={t} setPage={setPage} setAideOuverte={setAideOuverte} setCentreAideOuvert={setCentreAideOuvert} deconnecter={deconnecter}
         />
       </div>
     </header>

@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { MessagesEcole } from "../lazy-pages";
 import { OnboardingModal } from "../OnboardingModal";
 import { RaccourcisModal } from "../RaccourcisModal";
+import { CentreAideModal } from "../../centre-aide/CentreAideModal";
 
 // Éléments flottants superposés au shell : bouton + modale d'onboarding,
 // capteur de clic pour fermer les dropdowns, modale de raccourcis et
@@ -28,6 +29,8 @@ export function AppShellOverlays({ p }) {
       )}
 
       {p.aideOuverte && <RaccourcisModal onClose={() => p.setAideOuverte(false)} />}
+
+      {p.centreAideOuvert && <CentreAideModal utilisateur={p.utilisateur} onClose={() => p.setCentreAideOuvert(false)} />}
 
       {p.schoolId && p.schoolId !== "superadmin" && (
         <Suspense fallback={null}>

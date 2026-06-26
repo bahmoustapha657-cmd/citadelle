@@ -53,7 +53,7 @@ export function AppShell(p) {
             notifOuvert={p.notifOuvert} setNotifOuvert={p.setNotifOuvert}
             notifNonLues={p.notifNonLues} setNotifNonLues={p.setNotifNonLues} notifListe={p.notifListe} nowTs={p.nowTs}
             profilOuvert={p.profilOuvert} setProfilOuvert={p.setProfilOuvert}
-            setPage={p.setPage} setAideOuverte={p.setAideOuverte} deconnecter={p.deconnecter}
+            setPage={p.setPage} setAideOuverte={p.setAideOuverte} setCentreAideOuvert={p.setCentreAideOuvert} deconnecter={p.deconnecter}
           />
           <div style={{ flex: 1, overflowY: "auto" }}>
             <PageErrorBoundary key={p.page}>

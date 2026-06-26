@@ -5,7 +5,7 @@ import { LanguageSwitcher } from "../../LanguageSwitcher";
 // Avatar + menu profil : paramètres école, raccourcis, langue, déconnexion.
 export function ProfilMenu({
   profilOuvert, setProfilOuvert, setNotifOuvert, isMobile,
-  utilisateur, utilisateurLabel, schoolInfo, t, setPage, setAideOuverte, deconnecter,
+  utilisateur, utilisateurLabel, schoolInfo, t, setPage, setAideOuverte, setCentreAideOuvert, deconnecter,
 }) {
   return (
     <div style={{position:"relative",flexShrink:0}}>
@@ -31,6 +31,9 @@ export function ProfilMenu({
               🏫 <span>Paramètres école</span>
             </button>
           )}
+          <button onClick={()=>{setProfilOuvert(false);setCentreAideOuvert&&setCentreAideOuvert(true);}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 16px",background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#374151",textAlign:"start",fontWeight:600}}>
+            ❓ <span>Centre d'aide</span>
+          </button>
           <button onClick={()=>{setProfilOuvert(false);setAideOuverte(true);}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 16px",background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#374151",textAlign:"start",fontWeight:600,borderBottom:"1px solid #f1f5f9"}}>
             ⌨️ <span>{t("nav.shortcuts")}</span><kbd style={{marginInlineStart:"auto",background:"#f1f5f9",border:"1px solid #e2e8f0",borderRadius:4,padding:"1px 5px",fontSize:10,color:"#94a3b8"}}>?</kbd>
           </button>
