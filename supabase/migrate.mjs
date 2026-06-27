@@ -23,6 +23,7 @@ import { dirname, join } from "node:path";
 import admin from "firebase-admin";
 import { createClient } from "@supabase/supabase-js";
 import { SUPABASE_URL, SUPABASE_SERVICE_ROLE } from "./_config.mjs";
+import { emailFor } from "./_brand.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const onlySchool = process.argv[2] || null;            // code d'école optionnel
@@ -205,7 +206,7 @@ async function migrerEcole(code, d) {
   for (const s of await getColl("comptes")) {
     const x = s.data();
     const login = x.login; if (!login) continue;
-    const email = `${login}.${code}@edugest.app`;
+    const email = emailFor(login, code);
     let userId;
     const { data: created, error: e } = await sb.auth.admin.createUser({ email, password: rnd(), email_confirm: true });
     if (e && !/already|exists|registered/i.test(e.message)) { console.warn("  ⚠ auth:", login, e.message); continue; }

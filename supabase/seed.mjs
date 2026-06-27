@@ -13,6 +13,7 @@
 // ════════════════════════════════════════════════════════════════════════
 import { createClient } from "@supabase/supabase-js";
 import { SUPABASE_URL, SUPABASE_SERVICE_ROLE } from "./_config.mjs";
+import { emailFor } from "./_brand.mjs";
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE) {
   console.error("❌ Renseigne `url` et `serviceRole` dans supabase/config.local.mjs (copie de config.example.mjs).");
@@ -25,7 +26,6 @@ const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE, { auth: { autoRefre
 const CODE = "demo";
 const LOGIN = "direction";
 const PASSWORD = "Demo1234!";
-const emailFor = (login, code) => `${login}.${code}@edugest.app`;
 
 async function main() {
   // 1) École démo (idempotent sur `code`).

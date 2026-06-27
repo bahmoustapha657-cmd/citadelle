@@ -13,6 +13,7 @@
 // ════════════════════════════════════════════════════════════════════════
 import { createClient } from "@supabase/supabase-js";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./_config.mjs";
+import { emailFor } from "./_brand.mjs";
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   console.error("❌ Renseigne `url` et `anonKey` dans supabase/config.local.mjs (copie de config.example.mjs).");
@@ -25,7 +26,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSessio
 const CODE = "demo";
 const LOGIN = "direction";
 const PASSWORD = "Demo1234!";
-const email = `${LOGIN}.${CODE}@edugest.app`;
+const email = emailFor(LOGIN, CODE);
 
 async function main() {
   // 0) État public de l'école (avant connexion) — via la fonction RPC publique.
