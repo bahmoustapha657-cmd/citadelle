@@ -12,15 +12,14 @@
 //   node supabase/eleves-demo.mjs
 // ════════════════════════════════════════════════════════════════════════
 import { createClient } from "@supabase/supabase-js";
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./_config.mjs";
 
-const URL = process.env.SUPABASE_URL;
-const ANON = process.env.SUPABASE_ANON_KEY;
-if (!URL || !ANON) {
-  console.error("❌ Définis SUPABASE_URL et SUPABASE_ANON_KEY.");
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  console.error("❌ Renseigne `url` et `anonKey` dans supabase/config.local.mjs (copie de config.example.mjs).");
   process.exit(1);
 }
 
-const sb = createClient(URL, ANON, { auth: { persistSession: false } });
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false } });
 
 const CODE = "demo";
 const email = `direction.${CODE}@edugest.app`;

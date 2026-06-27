@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Supabase : clés privées (à ne JAMAIS committer)
+supabase/config.local.mjs
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

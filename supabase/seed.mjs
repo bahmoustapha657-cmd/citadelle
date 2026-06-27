@@ -12,15 +12,14 @@
 //   node supabase/seed.mjs
 // ════════════════════════════════════════════════════════════════════════
 import { createClient } from "@supabase/supabase-js";
+import { SUPABASE_URL, SUPABASE_SERVICE_ROLE } from "./_config.mjs";
 
-const URL = process.env.SUPABASE_URL;
-const SERVICE = process.env.SUPABASE_SERVICE_ROLE;
-if (!URL || !SERVICE) {
-  console.error("❌ Définis SUPABASE_URL et SUPABASE_SERVICE_ROLE.");
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE) {
+  console.error("❌ Renseigne `url` et `serviceRole` dans supabase/config.local.mjs (copie de config.example.mjs).");
   process.exit(1);
 }
 
-const sb = createClient(URL, SERVICE, { auth: { autoRefreshToken: false, persistSession: false } });
+const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE, { auth: { autoRefreshToken: false, persistSession: false } });
 
 const CODE = "demo";
 const LOGIN = "direction";
