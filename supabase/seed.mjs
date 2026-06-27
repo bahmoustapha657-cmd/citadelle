@@ -19,6 +19,7 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE) {
   process.exit(1);
 }
 
+console.log("→ Supabase URL utilisée :", JSON.stringify(SUPABASE_URL));
 const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE, { auth: { autoRefreshToken: false, persistSession: false } });
 
 const CODE = "demo";
