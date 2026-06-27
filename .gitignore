@@ -14,6 +14,8 @@ dist-ssr
 
 # Supabase : clés privées (à ne JAMAIS committer)
 supabase/config.local.mjs
+supabase/*.json
+*firebase-adminsdk*.json
 
 # Editor directories and files
 .vscode/*
