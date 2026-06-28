@@ -114,19 +114,19 @@ export function GrilleModale({
               <thead style={{ background: "#0A1628", color: "#fff" }}>
                 {combine ? (
                   <tr>
-                    <th style={{ padding: "8px 10px", fontSize: 11, textAlign: "start", width: 50 }}>#</th>
-                    <th style={{ padding: "8px 10px", fontSize: 11, textAlign: "start" }}>Élève</th>
-                    <th style={{ padding: "8px 10px", fontSize: 11, textAlign: "center", width: 80 }}>Période</th>
+                    <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#0A1628", padding: "8px 10px", fontSize: 11, textAlign: "start", width: 50 }}>#</th>
+                    <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#0A1628", padding: "8px 10px", fontSize: 11, textAlign: "start" }}>Élève</th>
+                    <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#0A1628", padding: "8px 10px", fontSize: 11, textAlign: "center", width: 80 }}>Période</th>
                     {matCols.map((m) => (
-                      <th key={m} style={{ padding: "8px 8px", fontSize: 11, textAlign: "center", width: 90 }}>{m}<br/><small style={{ fontWeight: "normal" }}>/{maxNote}</small></th>
+                      <th key={m} style={{ position: "sticky", top: 0, zIndex: 2, background: "#0A1628", padding: "8px 8px", fontSize: 11, textAlign: "center", width: 90 }}>{m}<br/><small style={{ fontWeight: "normal" }}>/{maxNote}</small></th>
                     ))}
                   </tr>
                 ) : (
                   <tr>
-                    <th style={{ padding: "8px 10px", fontSize: 11, textAlign: "start", width: 50 }}>#</th>
-                    <th style={{ padding: "8px 10px", fontSize: 11, textAlign: "start" }}>Élève</th>
+                    <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#0A1628", padding: "8px 10px", fontSize: 11, textAlign: "start", width: 50 }}>#</th>
+                    <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#0A1628", padding: "8px 10px", fontSize: 11, textAlign: "start" }}>Élève</th>
                     {colDefs.map((d) => (
-                      <th key={d.sub || "note"} style={{ padding: "8px 10px", fontSize: 11, textAlign: "center", width: enColonnes ? 100 : 110 }}>
+                      <th key={d.sub || "note"} style={{ position: "sticky", top: 0, zIndex: 2, background: "#0A1628", padding: "8px 10px", fontSize: 11, textAlign: "center", width: enColonnes ? 100 : 110 }}>
                         {d.label} /{maxNote}
                       </th>
                     ))}
