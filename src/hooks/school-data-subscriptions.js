@@ -1,31 +1,47 @@
-// Listeners Firestore du hook useSchoolData : messages non lus, comptage des
-// élèves actifs et centre de notifications. Chaque fonction renvoie un unsub.
-import { collection, limit, orderBy, query } from "firebase/firestore";
+// Données d'école du hook useSchoolData. Stratégie « temps réel économe » :
+// les COMPTEURS (élèves actifs, messages non lus) ne sont plus des listeners
+// temps réel sur des collections entières (très coûteux en lectures Firestore),
+// mais des lectures ciblées / agrégées à la demande. Seul le centre de
+// notifications reste en temps réel (10 docs seulement).
+import {
+  collection, getCountFromServer, getDocs, limit, orderBy, query, where,
+} from "firebase/firestore";
 import { db } from "../firebaseDb";
 import { safeOnSnapshot } from "../firestore-safe";
 
-// Badge des messages parents non lus.
-export function subscribeMessagesNonLus(schoolId, onCount) {
-  return safeOnSnapshot(collection(db, "ecoles", schoolId, "messages"), (snap) => {
-    onCount(snap.docs.filter((d) => d.data().expediteur === "parent" && !d.data().lu).length);
-  });
+// Messages parents non lus : lecture CIBLÉE des seuls non-lus (au lieu de lire
+// toute la collection en continu), puis filtre expéditeur en mémoire.
+export async function countMessagesNonLus(schoolId) {
+  try {
+    const snap = await getDocs(
+      query(collection(db, "ecoles", schoolId, "messages"), where("lu", "==", false)),
+    );
+    return snap.docs.filter((d) => d.data().expediteur === "parent").length;
+  } catch {
+    return 0;
+  }
 }
 
-// Comptage des élèves actifs sur les trois sections (vérification du plan).
-export function subscribeElevesActifs(schoolId, onTotal) {
+// Élèves actifs sur les 3 sections : requêtes d'AGRÉGATION (count) → ~3 lectures
+// au lieu de la collection entière. Sert à la vérification du plan.
+export async function countElevesActifs(schoolId) {
   const colls = ["elevesCollege", "elevesPrimaire", "elevesLycee"];
-  const counts = { elevesCollege: 0, elevesPrimaire: 0, elevesLycee: 0 };
-  const unsubs = colls.map((coll) =>
-    safeOnSnapshot(collection(db, "ecoles", schoolId, coll), (snap) => {
-      counts[coll] = snap.docs.filter((d) => d.data().statut === "Actif").length;
-      onTotal(Object.values(counts).reduce((a, b) => a + b, 0));
-    }),
-  );
-  return () => unsubs.forEach((u) => u());
+  try {
+    const counts = await Promise.all(colls.map(async (coll) => {
+      const agg = await getCountFromServer(
+        query(collection(db, "ecoles", schoolId, coll), where("statut", "==", "Actif")),
+      );
+      return agg.data().count;
+    }));
+    return counts.reduce((a, b) => a + b, 0);
+  } catch {
+    return 0;
+  }
 }
 
-// Centre de notifications : 10 dernières actions de l'historique. Le callback
-// reçoit { liste, nonLues } (non lues = actions de moins de 5 minutes).
+// Centre de notifications : 10 dernières actions de l'historique. Reste en
+// temps réel (limité à 10 docs → coût négligeable). Callback reçoit
+// { liste, nonLues } (non lues = actions de moins de 5 minutes).
 export function subscribeNotifications(schoolId, onData) {
   const q = query(collection(db, "ecoles", schoolId, "historique"), orderBy("date", "desc"), limit(10));
   return safeOnSnapshot(q, (snap) => {

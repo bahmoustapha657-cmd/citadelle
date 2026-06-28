@@ -7,8 +7,8 @@ import { subscribeLegalProfile } from "../legal-utils";
 import { safeOnSnapshot } from "../firestore-safe";
 import { DEFAULT_VERROUS, mergeSchoolInfo, applyBrandingColors } from "./school-data-helpers";
 import {
-  subscribeMessagesNonLus,
-  subscribeElevesActifs,
+  countMessagesNonLus,
+  countElevesActifs,
   subscribeNotifications,
 } from "./school-data-subscriptions";
 
@@ -85,20 +85,22 @@ export function useSchoolData({ schoolId, utilisateur }) {
     return () => unsub();
   }, [schoolId]);
 
-  // ── Badge messages non lus ───────────────────────────────────
+  // ── Badge messages non lus (lecture ciblée à la demande) ─────
   useEffect(() => {
     if (!utilisateur || !schoolId || schoolId === "superadmin") return;
     if (["enseignant", "parent"].includes(utilisateur.role)) return;
-    const unsub = subscribeMessagesNonLus(schoolId, setMsgsNonLus);
-    return () => unsub();
+    let actif = true;
+    countMessagesNonLus(schoolId).then((n) => { if (actif) setMsgsNonLus(n); });
+    return () => { actif = false; };
   }, [schoolId, utilisateur]);
 
-  // ── Comptage élèves actifs (vérification plan) ──────────────
+  // ── Comptage élèves actifs (agrégation, vérification plan) ───
   useEffect(() => {
     if (!utilisateur || !schoolId || schoolId === "superadmin") return;
     if (["enseignant", "parent"].includes(utilisateur.role)) return;
-    const unsub = subscribeElevesActifs(schoolId, setTotalElevesActifs);
-    return () => unsub();
+    let actif = true;
+    countElevesActifs(schoolId).then((n) => { if (actif) setTotalElevesActifs(n); });
+    return () => { actif = false; };
   }, [schoolId, utilisateur]);
 
   // ── Centre de notifications (10 dernières actions) ──────────
