@@ -56,7 +56,8 @@ create or replace view ecoles_public as
 create table if not exists comptes (
   id              uuid primary key default gen_random_uuid(),
   user_id         uuid unique references auth.users(id) on delete cascade,
-  ecole_id        uuid not null references ecoles(id) on delete cascade,
+  -- nullable : le superadmin est transversal (aucune école). Voir superadmin.sql / rls.sql.
+  ecole_id        uuid references ecoles(id) on delete cascade,
   login           text not null,
   role            role_compte not null,
   nom             text,

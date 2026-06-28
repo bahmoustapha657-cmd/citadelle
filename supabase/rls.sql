@@ -41,6 +41,12 @@ create or replace function can_grade() returns boolean
   select coalesce(is_staff() or auth_role() = 'enseignant', false);
 $$;
 
+-- Superadmin : compte transversal (aucune école) avec accès complet.
+create or replace function is_superadmin() returns boolean
+  language sql stable security definer set search_path = public as $$
+  select coalesce(auth_role() = 'superadmin', false);
+$$;
+
 -- Élèves rattachés au parent courant.
 create or replace function my_eleve_ids() returns setof uuid
   language sql stable security definer set search_path = public as $$
@@ -173,3 +179,19 @@ drop policy if exists audit_select on audit;
 create policy audit_select on audit for select to authenticated
   using (ecole_id = auth_ecole_id() and is_staff());
 -- (Pas de policy update/delete → impossible par défaut sous RLS.)
+
+-- ── SUPERADMIN : accès complet à toutes les écoles (politique permissive) ───
+do $$
+declare t text;
+begin
+  for t in select unnest(array[
+    'ecoles','comptes','enseignants','classes','matieres','eleves','notes',
+    'absences','emplois','enseignements','appreciations','paiements','tarifs',
+    'salaires','parent_eleves','audit'])
+  loop
+    execute format('drop policy if exists %1$s_superadmin on %1$s;', t);
+    execute format(
+      'create policy %1$s_superadmin on %1$s for all to authenticated
+         using (is_superadmin()) with check (is_superadmin());', t);
+  end loop;
+end $$;
