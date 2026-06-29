@@ -1,5 +1,7 @@
 import { genererMdp } from "../../../constants";
 import { apiFetch, getAuthHeaders } from "../../../apiClient";
+import { isSupabase } from "../../../backend";
+import { creerCompte as creerCompteSb } from "../../../backend/account-manage-supabase";
 
 // Logique de l'onglet Élèves : droit de création de compte parent, édition
 // du formulaire et création/rattachement du compte parent via /account-manage.
@@ -29,38 +31,42 @@ export function useElevesTab({
     if (!formP.mdp || formP.mdp.length < 8) { toast("Mot de passe minimum 8 caracteres.", "warning"); return; }
     try {
       const section = cleEleves.includes("Primaire") ? "primaire" : cleEleves.includes("Lycee") ? "lycee" : "college";
-      const headers = await getAuthHeaders({ "Content-Type": "application/json" });
-      const res = await apiFetch("/account-manage", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          action: "create",
-          schoolId,
-          login: formP.login.trim().toLowerCase(),
-          mdp: formP.mdp,
-          role: "parent",
-          label: "Parent",
-          nom: (parentEleve.tuteur || `Parent de ${parentEleve.prenom}`),
+      const payload = {
+        schoolId,
+        login: formP.login.trim().toLowerCase(),
+        mdp: formP.mdp,
+        role: "parent",
+        label: "Parent",
+        nom: (parentEleve.tuteur || `Parent de ${parentEleve.prenom}`),
+        eleveId: parentEleve._id,
+        eleveNom: `${parentEleve.prenom} ${parentEleve.nom}`,
+        eleveClasse: parentEleve.classe || "",
+        section,
+        sections: [section],
+        eleveIds: [parentEleve._id],
+        elevesAssocies: [{
           eleveId: parentEleve._id,
           eleveNom: `${parentEleve.prenom} ${parentEleve.nom}`,
           eleveClasse: parentEleve.classe || "",
           section,
-          sections: [section],
-          eleveIds: [parentEleve._id],
-          elevesAssocies: [{
-            eleveId: parentEleve._id,
-            eleveNom: `${parentEleve.prenom} ${parentEleve.nom}`,
-            eleveClasse: parentEleve.classe || "",
-            section,
-          }],
-          tuteur: parentEleve.tuteur || "",
-          contactTuteur: parentEleve.contactTuteur || "",
-          filiation: parentEleve.filiation || "",
-          statut: "Actif",
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok) throw new Error(data.error || "Creation du compte impossible.");
+        }],
+        tuteur: parentEleve.tuteur || "",
+        contactTuteur: parentEleve.contactTuteur || "",
+        filiation: parentEleve.filiation || "",
+        statut: "Actif",
+      };
+      let data;
+      if (isSupabase) {
+        data = await creerCompteSb(payload);
+      } else {
+        const headers = await getAuthHeaders({ "Content-Type": "application/json" });
+        const res = await apiFetch("/account-manage", {
+          method: "POST", headers,
+          body: JSON.stringify({ action: "create", ...payload }),
+        });
+        data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) throw new Error(data.error || "Creation du compte impossible.");
+      }
       const loginUtilise = data.compte?.login || formP.login;
       if (data.merged || data.mergedIntoExisting) {
         toast(`${parentEleve.prenom} a ete rattache au compte parent ${loginUtilise}. Le mot de passe actuel est conserve.`, "success");

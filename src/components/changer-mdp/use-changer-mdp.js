@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { apiFetch, getAuthHeaders } from "../../apiClient";
 import { updateCurrentUserPassword } from "../../firebaseAuth";
+import { isSupabase } from "../../backend";
+import { changerMotDePassePerso } from "../../backend/account-manage-supabase";
 
 // Logique du changement de mot de passe imposé : validation, mise à jour
 // Firebase Auth et synchronisation côté serveur.
@@ -26,17 +28,21 @@ export function useChangerMdp({ onDone }) {
 
     setBusy(true);
     try {
-      await updateCurrentUserPassword(mdp1);
+      if (isSupabase) {
+        await changerMotDePassePerso(mdp1);
+      } else {
+        await updateCurrentUserPassword(mdp1);
 
-      const headers = await getAuthHeaders({ "Content-Type": "application/json" });
-      const res = await apiFetch("/account-manage", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ action: "self_password_sync", mdp: mdp1 }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok) {
-        throw new Error(data.error || "Erreur de synchronisation du mot de passe.");
+        const headers = await getAuthHeaders({ "Content-Type": "application/json" });
+        const res = await apiFetch("/account-manage", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ action: "self_password_sync", mdp: mdp1 }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) {
+          throw new Error(data.error || "Erreur de synchronisation du mot de passe.");
+        }
       }
 
       setOk(true);

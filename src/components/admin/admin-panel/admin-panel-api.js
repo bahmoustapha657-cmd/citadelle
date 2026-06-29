@@ -1,4 +1,6 @@
 import { apiFetch, getAuthHeaders } from "../../../apiClient";
+import { isSupabase } from "../../../backend";
+import { creerCompte as creerCompteSb, reinitialiserMotDePasse as resetMdpSb } from "../../../backend/account-manage-supabase";
 
 // Appels /account-manage du panneau Admin. Lèvent une erreur explicite en
 // cas d'échec ; la gestion d'état et des toasts reste dans useAdminPanel.
@@ -12,6 +14,7 @@ async function postAccountManage(body, messageEchec) {
 }
 
 export function creerCompte({ schoolId, login, mdp, role, nom, label }) {
+  if (isSupabase) return creerCompteSb({ schoolId, login, mdp, role, nom, label });
   return postAccountManage(
     { action: "create", schoolId, login, mdp, role, nom, label, statut: "Actif" },
     `Création du compte ${login} impossible.`,
@@ -19,6 +22,7 @@ export function creerCompte({ schoolId, login, mdp, role, nom, label }) {
 }
 
 export function reinitialiserMotDePasse({ schoolId, accountId, mdp }) {
+  if (isSupabase) return resetMdpSb({ schoolId, accountId, mdp });
   return postAccountManage(
     { action: "reset_password", schoolId, accountId, mdp },
     "Réinitialisation impossible.",
