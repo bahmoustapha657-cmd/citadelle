@@ -1,8 +1,11 @@
 import { apiFetch, getAuthHeaders } from "../../apiClient";
+import { isSupabase } from "../../backend";
+import { fetchTeacherPortal as fetchTeacherPortalSupabase } from "../../backend/teacher-portal-supabase";
 
 // Charge et normalise les données du portail enseignant via /teacher-portal.
 // Renvoie un portalData complet (tableaux garantis) ou lève une erreur.
 export async function fetchTeacherPortal(utilisateur) {
+  if (isSupabase) return fetchTeacherPortalSupabase(utilisateur);
   // Identifiant de compte STABLE (≠ jeton qui tourne) : permet au service
   // worker d'isoler la réponse en cache par enseignant, pour qu'un appareil
   // partagé ne serve pas les données d'un collègue hors-ligne.
