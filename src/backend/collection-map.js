@@ -29,7 +29,16 @@ const FLAT_TABLE = {
   // Comptabilité (Tranche 4) :
   recettes: "recettes", depenses: "depenses", versements: "versements",
   bons: "bons", personnel: "personnel",
+  // Modules « document » (Tranche 5) — tables uniformes id+ecole_id+extra :
+  messages: "messages", annonces: "annonces", documents: "documents",
+  examens: "examens", livrets: "livrets", honneurs: "honneurs",
+  membres: "membres", evenements: "evenements", historique: "historique",
 };
+
+// Tables « document » : tout le contenu vit dans `extra` (jsonb).
+const JSONB_TABLES = ["messages", "annonces", "documents", "examens", "livrets",
+  "honneurs", "membres", "evenements", "historique"];
+const jsonbDoc = (r) => ({ _id: r.id, ...(r.extra || {}) });
 
 export function resolveCollection(nomCollection) {
   const m = SECTIONAL.exec(nomCollection);
@@ -110,6 +119,8 @@ const TRANSFORMERS = {
   bons: (r) => ({ _id: r.id, annee: r.annee, date: r.date, montant: Number(r.montant), ...(r.extra || {}) }),
   personnel: (r) => ({ _id: r.id, nom: r.nom, prenom: r.prenom, ...(r.extra || {}) }),
 };
+// Tables « document » : forward = { _id, ...extra }.
+for (const t of JSONB_TABLES) TRANSFORMERS[t] = jsonbDoc;
 
 export function transformRow(table, row) {
   const fn = TRANSFORMERS[table];
@@ -151,6 +162,8 @@ const COLUMN_DEFS = {
   bons: { extraCol: "extra", cols: { annee: "annee", date: "date", montant: "montant" } },
   personnel: { extraCol: "extra", cols: { nom: "nom", prenom: "prenom" } },
 };
+// Tables « document » : reverse = tous les champs vers `extra`.
+for (const t of JSONB_TABLES) COLUMN_DEFS[t] = { extraCol: "extra", cols: {} };
 
 // Tables dont l'écriture est portée (Tranche 3). Les autres restent en garde-fou.
 export function ecritureSupportee(table) {
