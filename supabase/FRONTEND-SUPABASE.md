@@ -17,7 +17,14 @@ Défaut sans ces variables = `firebase` (prod intacte). Interrupteur : `src/back
 ## Pré-requis base de données (SQL Editor, dans l'ordre)
 
 1. `schema.sql` · 2. `rls.sql` · 3. `superadmin.sql` · 4. `comptabilite.sql` ·
-5. `modules.sql` · 6. `parent-access.sql`
+5. `modules.sql` · 6. `parent-access.sql` · 7. `teacher-security.sql`
+
+Puis peupler le périmètre d'écriture des enseignants (et le re-lancer quand les
+affectations changent) :
+
+```
+node supabase/populate-teacher-classes.mjs
+```
 
 Et déployer l'Edge Function de gestion de comptes :
 
@@ -64,7 +71,7 @@ Vérifié en live contre l'école **citadelle** :
 
 ## Limites assumées / reste à faire
 
-- **Sécurité périmètre enseignant** : la RLS autorise un enseignant à écrire toute note de **son école** ; le filtrage fin (ses classes) n'est appliqué que côté client. À durcir via une table de mapping enseignant↔classes en RLS, ou en déplaçant les écritures dans une Edge Function.
+- **Sécurité périmètre enseignant** : ✅ durci. `teacher-security.sql` impose en RLS que l'enseignant n'écrive notes/absences que pour les élèves de **ses classes** (table `enseignant_classes`, écrite par le staff uniquement, peuplée par `populate-teacher-classes.mjs`). Un trigger empêche aussi l'auto-élévation de privilège (modif de role/école/login sur sa propre ligne `comptes`). À relancer le peuplement quand les affectations changent.
 - **Encore côté serveur** (Firebase/Vercel) sous Supabase, à porter en Edge Functions : `superadmin-login`/`superadmin-messages`, `inscription`, `ecole-public-sync`, `school-lifecycle`, `transferts`, `push`, assistant IA.
 - **Création de comptes** : pas de fusion de foyer parent, ni de génération auto de comptes à l'activation d'un rôle (création manuelle).
 - **Hors-ligne** : non porté (Firestore natif → évaluer PowerSync/ElectricSQL).
