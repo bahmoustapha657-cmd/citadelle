@@ -5,6 +5,9 @@
 import { getSupabase } from "../supabaseClient";
 import { resolveCollection, transformRow, toRow, ecritureSupportee } from "./collection-map";
 
+// Tables filtrables par année (colonne `annee`).
+const ANNEE_TABLES = new Set(["notes", "recettes", "depenses", "versements", "bons"]);
+
 // schoolId applicatif = CODE de l'école ; les tables référencent l'uuid.
 const ecoleIdCache = new Map();
 async function ecoleIdFromCode(sb, code) {
@@ -26,7 +29,7 @@ export async function chargerCollection(schoolCode, nomCollection, { annee } = {
 
   let q = sb.from(map.table).select("*").eq("ecole_id", ecoleId);
   if (map.section) q = q.eq("section", map.section);
-  if (annee && map.table === "notes") q = q.eq("annee", annee);
+  if (annee && ANNEE_TABLES.has(map.table)) q = q.eq("annee", annee);
 
   const { data, error } = await q;
   if (error) {

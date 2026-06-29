@@ -24,7 +24,12 @@ const SUFFIX_TABLE = {
 const SECTIONAL = /^(eleves|notes|classes|ens|absences|appreciations)(Primaire|College|Lycee)(?:_(absences|emplois|enseignements|matieres))?$/;
 
 // Entités au niveau école (sans section) qui ONT une table Supabase.
-const FLAT_TABLE = { comptes: "comptes", tarifs: "tarifs", salaires: "salaires" };
+const FLAT_TABLE = {
+  comptes: "comptes", tarifs: "tarifs", salaires: "salaires",
+  // Comptabilité (Tranche 4) :
+  recettes: "recettes", depenses: "depenses", versements: "versements",
+  bons: "bons", personnel: "personnel",
+};
 
 export function resolveCollection(nomCollection) {
   const m = SECTIONAL.exec(nomCollection);
@@ -98,6 +103,12 @@ const TRANSFORMERS = {
     _id: r.id, nom: r.nom, section: r.section, mois: r.mois,
     montantNet: Number(r.montant_net), ...(r.details || {}),
   }),
+  // Grands livres : montant numérique + champs libres dans extra.
+  recettes: (r) => ({ _id: r.id, annee: r.annee, date: r.date, montant: Number(r.montant), ...(r.extra || {}) }),
+  depenses: (r) => ({ _id: r.id, annee: r.annee, date: r.date, montant: Number(r.montant), ...(r.extra || {}) }),
+  versements: (r) => ({ _id: r.id, annee: r.annee, date: r.date, montant: Number(r.montant), ...(r.extra || {}) }),
+  bons: (r) => ({ _id: r.id, annee: r.annee, date: r.date, montant: Number(r.montant), ...(r.extra || {}) }),
+  personnel: (r) => ({ _id: r.id, nom: r.nom, prenom: r.prenom, ...(r.extra || {}) }),
 };
 
 export function transformRow(table, row) {
@@ -134,6 +145,11 @@ const COLUMN_DEFS = {
   appreciations: { cols: { eleveId: "eleve_id", periode: "periode", texte: "texte" } },
   tarifs: { extraCol: "extra", cols: { classe: "classe", montant: "montant" } },
   salaires: { extraCol: "details", cols: { nom: "nom", section: "section", mois: "mois", montantNet: "montant_net" } },
+  recettes: { extraCol: "extra", cols: { annee: "annee", date: "date", montant: "montant" } },
+  depenses: { extraCol: "extra", cols: { annee: "annee", date: "date", montant: "montant" } },
+  versements: { extraCol: "extra", cols: { annee: "annee", date: "date", montant: "montant" } },
+  bons: { extraCol: "extra", cols: { annee: "annee", date: "date", montant: "montant" } },
+  personnel: { extraCol: "extra", cols: { nom: "nom", prenom: "prenom" } },
 };
 
 // Tables dont l'écriture est portée (Tranche 3). Les autres restent en garde-fou.

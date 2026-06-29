@@ -152,7 +152,8 @@
       "Bash(grep -rhoE 'useFirestore\\\\\\(\\\\s*[__CMDSUB_OUTPUT__')",
       "Bash(awk '/create table if not exists notes \\\\\\(/,/\\\\\\);/' supabase/schema.sql)",
       "Bash(awk '/create table if not exists eleves \\\\\\(/,/\\\\\\);/' supabase/schema.sql)",
-      "Bash(awk '/create table if not exists ecoles \\\\\\(/,/\\\\\\);/' supabase/schema.sql)"
+      "Bash(awk '/create table if not exists ecoles \\\\\\(/,/\\\\\\);/' supabase/schema.sql)",
+      "Bash(awk '/create table if not exists paiements \\\\\\(/,/\\\\\\);/' supabase/schema.sql)"
     ]
   }
 }
