@@ -36,7 +36,8 @@ const FLAT_TABLE = {
 };
 
 // Tables « document » : tout le contenu vit dans `extra` (jsonb).
-const JSONB_TABLES = ["messages", "annonces", "documents", "examens", "livrets",
+// `messages` est traité à part : colonne réelle eleve_id (filtre RLS parent).
+const JSONB_TABLES = ["annonces", "documents", "examens", "livrets",
   "honneurs", "membres", "evenements", "historique"];
 const jsonbDoc = (r) => ({ _id: r.id, ...(r.extra || {}) });
 
@@ -118,6 +119,8 @@ const TRANSFORMERS = {
   versements: (r) => ({ _id: r.id, annee: r.annee, date: r.date, montant: Number(r.montant), ...(r.extra || {}) }),
   bons: (r) => ({ _id: r.id, annee: r.annee, date: r.date, montant: Number(r.montant), ...(r.extra || {}) }),
   personnel: (r) => ({ _id: r.id, nom: r.nom, prenom: r.prenom, ...(r.extra || {}) }),
+  // eleve_id en colonne (filtre RLS parent) ; le reste dans extra.
+  messages: (r) => ({ _id: r.id, eleveId: r.eleve_id, ...(r.extra || {}) }),
 };
 // Tables « document » : forward = { _id, ...extra }.
 for (const t of JSONB_TABLES) TRANSFORMERS[t] = jsonbDoc;
@@ -161,6 +164,7 @@ const COLUMN_DEFS = {
   versements: { extraCol: "extra", cols: { annee: "annee", date: "date", montant: "montant" } },
   bons: { extraCol: "extra", cols: { annee: "annee", date: "date", montant: "montant" } },
   personnel: { extraCol: "extra", cols: { nom: "nom", prenom: "prenom" } },
+  messages: { extraCol: "extra", cols: { eleveId: "eleve_id" } },
 };
 // Tables « document » : reverse = tous les champs vers `extra`.
 for (const t of JSONB_TABLES) COLUMN_DEFS[t] = { extraCol: "extra", cols: {} };
