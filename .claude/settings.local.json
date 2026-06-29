@@ -147,7 +147,12 @@
       "Bash(node supabase/rebrand-auth.mjs)",
       "Bash(git mv *)",
       "Bash(node supabase/_diag.mjs)",
-      "Bash(curl -s -o /dev/null -w \"preview root: %{http_code}\\\\n\" http://localhost:58303/)"
+      "Bash(curl -s -o /dev/null -w \"preview root: %{http_code}\\\\n\" http://localhost:58303/)",
+      "Bash('a-zA-Z] src/ | grep -v '\\\\'' | head *)",
+      "Bash(grep -rhoE 'useFirestore\\\\\\(\\\\s*[__CMDSUB_OUTPUT__')",
+      "Bash(awk '/create table if not exists notes \\\\\\(/,/\\\\\\);/' supabase/schema.sql)",
+      "Bash(awk '/create table if not exists eleves \\\\\\(/,/\\\\\\);/' supabase/schema.sql)",
+      "Bash(awk '/create table if not exists ecoles \\\\\\(/,/\\\\\\);/' supabase/schema.sql)"
     ]
   }
 }

@@ -12,6 +12,8 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebaseDb";
 import { SchoolContext } from "../contexts/SchoolContext";
+import { isSupabase } from "../backend";
+import { chargerCollection, ERREUR_ECRITURE } from "../backend/data-supabase";
 
 const initialState = {
   items: [],
@@ -72,6 +74,14 @@ export function useFirestore(nomCollection, options = {}) {
 
   const charger = useCallback(async (forceServer = false) => {
     if (!schoolId) { dispatch({ type: "success", items: [] }); return; }
+
+    // ── Backend Supabase : lecture via l'adaptateur (collection → table+section).
+    if (isSupabase) {
+      const { items } = await chargerCollection(schoolId, nomCollection, { annee: anneeFiltre });
+      dispatch({ type: "success", items });
+      return;
+    }
+
     const ref = collection(db, "ecoles", schoolId, nomCollection);
     const q = anneeFiltre ? query(ref, where("annee", "==", anneeFiltre)) : ref;
     const k = `${schoolId}|${nomCollection}|${anneeFiltre || ""}`;
@@ -106,6 +116,7 @@ export function useFirestore(nomCollection, options = {}) {
   }, [charger]);
 
   const ajouter = async (item) => {
+    if (isSupabase) throw new Error(ERREUR_ECRITURE);
     const { id: _idIgnored, _id, ...data } = item;
     const ref = await addDoc(collection(db, "ecoles", schoolId, nomCollection), {
       ...data,
@@ -116,6 +127,7 @@ export function useFirestore(nomCollection, options = {}) {
   };
 
   const supprimer = async (id) => {
+    if (isSupabase) throw new Error(ERREUR_ECRITURE);
     // Snapshot AVANT la suppression : c'est lui qui part dans la trace.
     const snapshot = items.find((item) => item._id === id) || null;
     await deleteDoc(doc(db, "ecoles", schoolId, nomCollection, id));
@@ -137,12 +149,14 @@ export function useFirestore(nomCollection, options = {}) {
   };
 
   const modifier = async (item) => {
+    if (isSupabase) throw new Error(ERREUR_ECRITURE);
     const { _id, ...data } = item;
     await updateDoc(doc(db, "ecoles", schoolId, nomCollection, _id), data);
     charger(false);
   };
 
   const modifierChamp = async (_id, champs) => {
+    if (isSupabase) throw new Error(ERREUR_ECRITURE);
     await updateDoc(doc(db, "ecoles", schoolId, nomCollection, _id), champs);
     charger(false);
   };

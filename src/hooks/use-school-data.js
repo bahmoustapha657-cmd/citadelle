@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { doc, getDocFromServer } from "firebase/firestore";
 import { db } from "../firebaseDb";
+import { isSupabase } from "../backend";
+import { chargerEcole } from "../backend/data-supabase";
 import { SCHOOL_INFO_DEFAUT } from "../contexts/SchoolContext";
 import { setMonnaie } from "../constants";
 import { subscribeLegalProfile } from "../legal-utils";
@@ -51,8 +53,17 @@ export function useSchoolData({ schoolId, utilisateur }) {
     };
 
     reinitialiserBranding();
-    if (!schoolId || schoolId === "superadmin" || !schoolRef) return;
+    if (!schoolId || schoolId === "superadmin") return;
 
+    // ── Backend Supabase : lecture unique de l'école (pas de listener). ──
+    if (isSupabase) {
+      chargerEcole(schoolId).then((d) => {
+        if (actif && d) appliquerDonneesEcole(d);
+      }).catch(() => {});
+      return () => { actif = false; };
+    }
+
+    if (!schoolRef) return;
     getDocFromServer(schoolRef).then((snap) => {
       if (!actif) return;
       accepterCache = true;
@@ -78,6 +89,7 @@ export function useSchoolData({ schoolId, utilisateur }) {
 
   // ── Profil légal officiel ────────────────────────────────────
   useEffect(() => {
+    if (isSupabase) return; // non porté (Firestore) — Tranche ultérieure
     if (!schoolId || schoolId === "superadmin") return;
     const unsub = subscribeLegalProfile(schoolId, (legal) => {
       setSchoolInfo((prev) => ({ ...prev, legal }));
@@ -87,6 +99,7 @@ export function useSchoolData({ schoolId, utilisateur }) {
 
   // ── Badge messages non lus (lecture ciblée à la demande) ─────
   useEffect(() => {
+    if (isSupabase) return; // non porté (Firestore) — Tranche ultérieure
     if (!utilisateur || !schoolId || schoolId === "superadmin") return;
     if (["enseignant", "parent"].includes(utilisateur.role)) return;
     let actif = true;
@@ -96,6 +109,7 @@ export function useSchoolData({ schoolId, utilisateur }) {
 
   // ── Comptage élèves actifs (agrégation, vérification plan) ───
   useEffect(() => {
+    if (isSupabase) return; // non porté (Firestore) — Tranche ultérieure
     if (!utilisateur || !schoolId || schoolId === "superadmin") return;
     if (["enseignant", "parent"].includes(utilisateur.role)) return;
     let actif = true;
@@ -105,6 +119,7 @@ export function useSchoolData({ schoolId, utilisateur }) {
 
   // ── Centre de notifications (10 dernières actions) ──────────
   useEffect(() => {
+    if (isSupabase) return; // non porté (Firestore) — Tranche ultérieure
     if (!utilisateur || !schoolId || schoolId === "superadmin") return;
     if (["enseignant", "parent"].includes(utilisateur.role)) return;
     const unsub = subscribeNotifications(schoolId, ({ liste, nonLues }) => {
