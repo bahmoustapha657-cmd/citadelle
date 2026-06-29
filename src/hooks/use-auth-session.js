@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebaseDb";
 import { signOutCurrentUser, watchAuthState } from "../firebaseAuth";
+import { isSupabase } from "../backend";
+import { watchAuthState as watchAuthStateSupabase } from "../backend/auth-supabase";
 import { getPrimaryModuleForRole } from "../constants";
 
 // Hook qui synchronise l'état utilisateur + page courante avec l'auth
@@ -18,6 +20,25 @@ export function useAuthSession({ setSchoolId, setPage }) {
   useEffect(() => {
     let actif = true;
     let unsub = () => {};
+
+    // ── Backend Supabase : la session fournit déjà l'utilisateur complet
+    // (construit depuis la table `comptes`). Pas de lecture /users/{uid}.
+    if (isSupabase) {
+      watchAuthStateSupabase((u) => {
+        if (!actif) return;
+        if (!u) { setUtilisateur(null); setPage(null); return; }
+        if (u.schoolId) {
+          setSchoolId(u.schoolId);
+          localStorage.setItem("LC_schoolId", u.schoolId);
+        }
+        setUtilisateur(u);
+        setPage((p) => p || getPrimaryModuleForRole(u.role));
+      }).then((cleanup) => {
+        if (actif) unsub = cleanup; else cleanup();
+      }).catch(() => {});
+
+      return () => { actif = false; unsub(); };
+    }
 
     watchAuthState(async (firebaseUser) => {
       if (!actif) return;

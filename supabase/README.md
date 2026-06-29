@@ -1,8 +1,8 @@
-# GANDAL (ex-EduGest) sur Supabase — reconstruction parallèle
+# EduGest sur Supabase — reconstruction parallèle
 
-Piste **parallèle** : Firebase reste la production (toujours sous le nom EduGest). On reconstruit ici, sous la nouvelle marque **GANDAL**, jusqu'à ce que la version Supabase soit complète et testée. Rien dans ce dossier n'affecte l'app Firebase.
+Piste **parallèle** : Firebase reste la production. On reconstruit ici la même app **EduGest** sur Supabase (Postgres), jusqu'à ce que la version soit complète et testée. Rien dans ce dossier n'affecte l'app Firebase.
 
-> Marque centralisée dans `_brand.mjs` (`APP_NAME`, domaine e-mail interne `@gandal.app`). Le domaine est un identifiant de connexion interne, jamais une vraie adresse.
+> Marque centralisée dans `_brand.mjs` (`APP_NAME`, domaine e-mail interne `@edugest.app` — identique à la prod Firebase). Le domaine est un identifiant de connexion interne, jamais une vraie adresse.
 
 ## 1. Mettre la base debout (5 min)
 
@@ -19,7 +19,7 @@ Piste **parallèle** : Firebase reste la production (toujours sous le nom EduGes
 On reproduit le modèle actuel (pas d'email réel : code école + login + mot de passe). À la création d'un compte, on crée un utilisateur `auth.users` avec un **email synthétique** :
 
 ```
-{login}.{codeEcole}@gandal.app      ex.  prof.diallo.lacitadelle@gandal.app
+{login}.{codeEcole}@edugest.app      ex.  prof.diallo.lacitadelle@edugest.app
 ```
 
 - **Connexion** (front) : `supabase.auth.signInWithPassword({ email, password })` où `email` est reconstruit depuis le code école + login saisis.

@@ -3,6 +3,8 @@
 import { doc, getDoc, getDocFromServer } from "firebase/firestore";
 import { db } from "../../firebaseDb";
 import { apiFetch } from "../../apiClient";
+import { isSupabase } from "../../backend";
+import * as sbAuth from "../../backend/auth-supabase";
 
 // Interprète un snapshot d'école → { info, statut }.
 // statut ∈ "" (ok), "supprimee", "inactive" ; info=null si indisponible.
@@ -16,6 +18,7 @@ function interpreterEtat(snap) {
 
 // Lookup de l'état d'une école (privé d'abord, repli public).
 export async function fetchEtatEcole(sid) {
+  if (isSupabase) return sbAuth.fetchEtatEcole(sid);
   const publicRef = doc(db, "ecoles_public", sid);
   const privateRef = doc(db, "ecoles", sid);
   try {
@@ -42,10 +45,12 @@ async function postLogin(route, body) {
 
 // Authentification superadmin.
 export function superadminLogin({ login, mdp }) {
+  if (isSupabase) return sbAuth.superadminLogin({ login, mdp });
   return postLogin("/superadmin-login", { login: login.trim(), mdp });
 }
 
 // Authentification d'un utilisateur d'école.
 export function ecoleLogin({ login, mdp, schoolId }) {
+  if (isSupabase) return sbAuth.ecoleLogin({ login, mdp, schoolId });
   return postLogin("/login", { login: login.trim().toLowerCase(), mdp, schoolId });
 }

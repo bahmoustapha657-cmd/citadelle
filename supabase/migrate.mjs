@@ -146,7 +146,7 @@ async function migrerEcole(code, d) {
         date_naissance: x.dateNaissance || null, lieu_naissance: x.lieuNaissance || null,
         filiation: x.filiation || null, tuteur: x.tuteur || null, contact_tuteur: x.contactTuteur || null,
         domicile: x.domicile || null, photo: x.photo || null, statut: x.statut || "Actif",
-        extra: rest(x, ["nom","prenom","sexe","matricule","ien","classe","dateNaissance","lieuNaissance","filiation","tuteur","contactTuteur","domicile","photo","statut"]),
+        extra: { firestore_id: s.id, ...rest(x, ["nom","prenom","sexe","matricule","ien","classe","dateNaissance","lieuNaissance","filiation","tuteur","contactTuteur","domicile","photo","statut"]) },
       }).select("id").single();
       if (e || !data) { console.warn("  ⚠ eleve:", e?.message); continue; }
       eleveMap[s.id] = data.id; bump("eleves");
@@ -166,8 +166,7 @@ async function migrerEcole(code, d) {
       if (!eid) { bump("notes_orphelines"); continue; }
       notes.push({ ecole_id: ecoleId, section, eleve_id: eid, matiere: x.matiere || "?",
         type: x.type || "Devoir", periode: x.periode || "?", note: Number(x.note || 0),
-        annee: x.annee || "2025-2026", enseignant_nom: x.enseignantNom || null,
-        extra: rest(x, ["eleveId","matiere","type","periode","note","annee","enseignantNom","enseignantId","eleveNom","section","updatedAt","createdAt"]) });
+        annee: x.annee || "2025-2026", enseignant_nom: x.enseignantNom || null });
     }
     bump("notes", (await insertChunked("notes", notes)).length);
 
@@ -178,8 +177,7 @@ async function migrerEcole(code, d) {
       if (!eid) { bump("absences_orphelines"); continue; }
       absences.push({ ecole_id: ecoleId, section, eleve_id: eid, type: x.type || "Absence",
         date: x.date || null, justifie: x.justifie || "Non", motif: x.motif || null,
-        matiere: x.matiere || null, signale_par_nom: x.signaledByEnseignantNom || null,
-        extra: rest(x, ["eleveId","type","date","justifie","motif","matiere","signaledByEnseignantNom","signaledByEnseignantId","eleveNom","classe"]) });
+        matiere: x.matiere || null, signale_par_nom: x.signaledByEnseignantNom || null });
     }
     bump("absences", (await insertChunked("absences", absences)).length);
 

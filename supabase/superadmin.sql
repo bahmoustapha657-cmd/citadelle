@@ -1,5 +1,5 @@
 -- ════════════════════════════════════════════════════════════════════════
---  EduGest/GANDAL — Support du SUPERADMIN (transversal, sans école)   [delta]
+--  EduGest — Support du SUPERADMIN (transversal, sans école)   [delta]
 -- ════════════════════════════════════════════════════════════════════════
 -- À exécuter UNE FOIS dans Supabase → SQL Editor (sur une base déjà créée via
 -- schema.sql + rls.sql). Rend `comptes.ecole_id` nullable (le superadmin n'a

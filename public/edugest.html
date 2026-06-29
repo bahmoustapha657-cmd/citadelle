@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>EduGest — démo Supabase</title>
+  <style>
+    :root { --bg:#0f172a; --card:#1e293b; --line:#334155; --txt:#e2e8f0; --muted:#94a3b8; --accent:#00b483; --ok:#22c55e; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:var(--bg); color:var(--txt); }
+    .wrap { max-width: 1000px; margin: 0 auto; padding: 24px; }
+    .brand { display:flex; align-items:center; gap:12px; margin-bottom:8px; }
+    .logo { width:44px; height:44px; display:block; filter: drop-shadow(0 2px 5px rgba(0,0,0,.35)); }
+    .wordmark { font-weight:800; }
+    .wordmark .g { color:#00C48C; }
+    h1 { font-size:22px; margin:0; }
+    .sub { color:var(--muted); font-size:13px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px; margin-top:18px; }
+    label { display:block; font-size:13px; color:var(--muted); margin:10px 0 4px; }
+    input { width:100%; padding:10px 12px; border-radius:9px; border:1px solid var(--line); background:#0b1220; color:var(--txt); font-size:14px; }
+    button { margin-top:16px; width:100%; padding:11px; border:0; border-radius:9px; background:var(--accent); color:#fff; font-weight:600; font-size:14px; cursor:pointer; }
+    button.secondary { background:transparent; border:1px solid var(--line); width:auto; padding:8px 14px; margin:0; }
+    .row { display:flex; gap:12px; }
+    .row > div { flex:1; }
+    .err { color:#f87171; font-size:13px; margin-top:10px; min-height:18px; }
+    .topbar { display:flex; justify-content:space-between; align-items:center; }
+    .stats { display:flex; gap:14px; margin:16px 0; flex-wrap:wrap; }
+    .stat { background:#0b1220; border:1px solid var(--line); border-radius:10px; padding:12px 16px; }
+    .stat b { font-size:22px; display:block; }
+    .stat span { color:var(--muted); font-size:12px; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); }
+    th { color:var(--muted); font-weight:600; position:sticky; top:0; background:var(--card); }
+    .scroll { max-height:420px; overflow:auto; border:1px solid var(--line); border-radius:10px; }
+    .pill { font-size:11px; padding:2px 8px; border-radius:20px; background:#0b1220; border:1px solid var(--line); color:var(--muted); }
+    .badge-ok { color:var(--ok); font-size:12px; }
+    #search { margin-top:0; }
+    .hidden { display:none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="brand">
+      <svg class="logo" viewBox="14 14 132 132" xmlns="http://www.w3.org/2000/svg" aria-label="EduGest">
+        <defs>
+          <linearGradient id="fv-badge" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#00DC9C"/><stop offset="1" stop-color="#00916B"/></linearGradient>
+          <linearGradient id="fv-page" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#D2EFE3"/></linearGradient>
+        </defs>
+        <rect x="20" y="20" width="120" height="120" rx="30" fill="url(#fv-badge)"/>
+        <rect x="21" y="21" width="118" height="118" rx="29" fill="none" stroke="#FFFFFF" stroke-opacity="0.22" stroke-width="1.5"/>
+        <path d="M24 78 L24 50 Q24 24 50 24 L110 24 Q136 24 136 50 L136 78 Q80 64 24 78 Z" fill="#FFFFFF" opacity="0.07"/>
+        <ellipse cx="80" cy="118" rx="31" ry="4.5" fill="#022C1F" opacity="0.22"/>
+        <path d="M80 79 C72 71 60 68 47 71 L47 107 C60 104 72 107 80 115 Z" fill="url(#fv-page)"/>
+        <path d="M80 79 C88 71 100 68 113 71 L113 107 C100 104 88 107 80 115 Z" fill="url(#fv-page)"/>
+        <path d="M80 79 C88 71 100 68 113 71 L113 107 C100 104 88 107 80 115 Z" fill="#0A1628" opacity="0.05"/>
+        <path d="M53 79 C61 77.5 69 79 75 83" stroke="#0A1628" stroke-opacity="0.16" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <path d="M53 87 C61 85.5 69 87 75 91" stroke="#0A1628" stroke-opacity="0.12" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <path d="M107 79 C99 77.5 91 79 85 83" stroke="#0A1628" stroke-opacity="0.16" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <path d="M107 87 C99 85.5 91 87 85 91" stroke="#0A1628" stroke-opacity="0.12" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <path d="M80 79 L80 115" stroke="#04321F" stroke-opacity="0.30" stroke-width="2.5" stroke-linecap="round"/>
+        <path d="M67 56 L93 56 L93 68 C93 72.5 67 72.5 67 68 Z" fill="#0A1C36"/>
+        <path d="M80 35 L118 50 L80 65 L42 50 Z" fill="#0F2440"/>
+        <path d="M80 38.5 L112.5 50 L80 61.5 L47.5 50 Z" fill="#FFFFFF" opacity="0.06"/>
+        <circle cx="80" cy="50" r="3" fill="#FFB547"/>
+        <path d="M118 50 C119.5 56 119.5 61 118.5 66" stroke="#FFB547" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <circle cx="118.5" cy="69.5" r="4.5" fill="#FFB547"/>
+        <path d="M116.5 72.5 L116.5 76 M118.5 73.5 L118.5 77 M120.5 72.5 L120.5 76" stroke="#E89A2B" stroke-width="1.6" stroke-linecap="round"/>
+      </svg>
+      <div>
+        <h1><span class="wordmark">Edu<span class="g">Gest</span></span> <span class="pill">démo Supabase</span></h1>
+        <div class="sub">Reconstruction sur Postgres — données réelles migrées depuis Firebase</div>
+      </div>
+    </div>
+
+    <!-- LOGIN -->
+    <div id="loginCard" class="card" style="max-width:420px;">
+      <div style="font-weight:600; margin-bottom:6px;">Connexion</div>
+      <div class="sub">Auth Supabase + isolation par RLS</div>
+      <div class="row">
+        <div><label>Code école</label><input id="code" value="citadelle" /></div>
+        <div><label>Login</label><input id="login" value="directeur" /></div>
+      </div>
+      <label>Mot de passe</label>
+      <input id="password" type="password" value="Test1234!" />
+      <button id="btnLogin">Se connecter</button>
+      <div class="err" id="loginErr"></div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div id="dash" class="card hidden">
+      <div class="topbar">
+        <div>
+          <div style="font-weight:700; font-size:18px;" id="schoolName"></div>
+          <div class="sub badge-ok" id="who"></div>
+        </div>
+        <button class="secondary" id="btnLogout">Déconnexion</button>
+      </div>
+      <div class="stats">
+        <div class="stat"><b id="nEleves">—</b><span>Élèves (visibles par RLS)</span></div>
+        <div class="stat"><b id="nClasses">—</b><span>Classes</span></div>
+        <div class="stat"><b id="nNotes">—</b><span>Notes</span></div>
+      </div>
+      <label>Rechercher un élève</label>
+      <input id="search" placeholder="Nom, prénom ou classe…" />
+      <div class="scroll" style="margin-top:10px;">
+        <table>
+          <thead><tr><th>Nom</th><th>Prénom</th><th>Classe</th><th>Section</th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    // Clé ANON publique (sans danger : c'est la clé client, la sécurité vient de la RLS).
+    const SUPABASE_URL = "https://pfzanslrcowkjjipuzpa.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBmemFuc2xyY293a2pqaXB1enBhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI0ODUxODUsImV4cCI6MjA5ODA2MTE4NX0.aVnpBFRBkCcdAB0GvaZvITiKqTN-J5rgFKtSTFiY9oI";
+    const DOMAIN = "edugest.app";
+
+    const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: true } });
+    const $ = (id) => document.getElementById(id);
+    let allEleves = [];
+
+    async function showDash(user) {
+      $("loginCard").classList.add("hidden");
+      $("dash").classList.remove("hidden");
+      $("who").textContent = "Connecté : " + user.email;
+
+      const { data: ecoles } = await sb.from("ecoles").select("nom");
+      $("schoolName").textContent = ecoles?.[0]?.nom || "(école)";
+
+      const [{ count: nE }, { count: nC }, { count: nN }] = await Promise.all([
+        sb.from("eleves").select("*", { count: "exact", head: true }),
+        sb.from("classes").select("*", { count: "exact", head: true }),
+        sb.from("notes").select("*", { count: "exact", head: true }),
+      ]);
+      $("nEleves").textContent = nE ?? "—";
+      $("nClasses").textContent = nC ?? "—";
+      $("nNotes").textContent = nN ?? "—";
+
+      const { data: el } = await sb.from("eleves").select("nom,prenom,classe,section").order("nom");
+      allEleves = el || [];
+      render(allEleves);
+    }
+
+    function render(list) {
+      $("rows").innerHTML = list.map((e) =>
+        `<tr><td>${e.nom||""}</td><td>${e.prenom||""}</td><td>${e.classe||""}</td><td><span class="pill">${e.section||""}</span></td></tr>`
+      ).join("");
+    }
+
+    $("search").addEventListener("input", (ev) => {
+      const q = ev.target.value.toLowerCase();
+      render(allEleves.filter((e) => `${e.nom} ${e.prenom} ${e.classe}`.toLowerCase().includes(q)));
+    });
+
+    $("btnLogin").addEventListener("click", async () => {
+      $("loginErr").textContent = "";
+      const email = `${$("login").value.trim()}.${$("code").value.trim()}@${DOMAIN}`;
+      const { data, error } = await sb.auth.signInWithPassword({ email, password: $("password").value });
+      if (error) { $("loginErr").textContent = "❌ " + error.message; return; }
+      showDash(data.user);
+    });
+
+    $("btnLogout").addEventListener("click", async () => {
+      await sb.auth.signOut();
+      $("dash").classList.add("hidden");
+      $("loginCard").classList.remove("hidden");
+    });
+
+    // Session persistée ?
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) showDash(session.user);
+  </script>
+</body>
+</html>

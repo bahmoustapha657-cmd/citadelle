@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { signInWithCustomTokenClient } from "../../firebaseAuth";
+import { isSupabase } from "../../backend";
 import { ecoleLogin, fetchEtatEcole, superadminLogin } from "./connexion-api";
 
 // Course contre la montre : empeche une promesse (sign-in Firebase) de bloquer
@@ -73,7 +74,8 @@ export function useConnexion({ onLogin }) {
         }
 
         onLogin(data.compte, "superadmin");
-        if (data.customToken) {
+        // Supabase : session déjà établie par signInWithPassword (pas de token).
+        if (!isSupabase && data.customToken) {
           signInWithCustomTokenClient(data.customToken).catch(() => {});
         }
         return;
@@ -82,6 +84,12 @@ export function useConnexion({ onLogin }) {
       const { ok, data } = await ecoleLogin({ login, mdp, schoolId: sid });
       if (!ok) {
         setErreur(data.error || t("auth.wrongCredentials"));
+        return;
+      }
+
+      if (isSupabase) {
+        // Session Supabase déjà ouverte → useAuthSession prend le relais.
+        onLogin(data.compte, sid);
         return;
       }
 

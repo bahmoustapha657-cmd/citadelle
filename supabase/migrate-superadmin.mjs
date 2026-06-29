@@ -1,9 +1,9 @@
 // ════════════════════════════════════════════════════════════════════════
-//  GANDAL — Migration du/des compte(s) SUPERADMIN (collection globale)
+//  EduGest — Migration du/des compte(s) SUPERADMIN (collection globale)
 // ════════════════════════════════════════════════════════════════════════
 // Le superadmin vit dans la collection Firestore top-level `superadmins`
 // (hors écoles) → ignoré par migrate.mjs. Ici on le recrée dans Supabase Auth
-// (email login@superadmin.gandal.app, mot de passe aléatoire → reset à la 1re
+// (email login@superadmin.edugest.app, mot de passe aléatoire → reset à la 1re
 // connexion) + une ligne `comptes` role='superadmin', ecole_id=NULL.
 //
 // PRÉREQUIS : avoir exécuté supabase/superadmin.sql (ecole_id nullable + RLS).

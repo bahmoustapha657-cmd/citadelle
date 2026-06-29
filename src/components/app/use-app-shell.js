@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { signOutCurrentUser } from "../../firebaseAuth";
+import { signOutSession } from "../../backend/session";
 import { getPrimaryModuleForRole, getRoleLabelForSchool } from "../../constants";
 import { computePlanInfo } from "./app-shell-plan";
 import {
@@ -83,7 +83,7 @@ export function useAppShell({
   };
 
   const deconnecter = () => {
-    signOutCurrentUser().catch(() => {});
+    signOutSession().catch(() => {});
     setUtilisateur(null);
     setPage(null);
   };

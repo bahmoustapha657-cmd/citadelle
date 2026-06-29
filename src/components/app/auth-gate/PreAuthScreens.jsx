@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { signOutCurrentUser } from "../../../firebaseAuth";
+import { signOutSession } from "../../../backend/session";
 import { SchoolContext } from "../../../contexts/SchoolContext";
 import { GlobalStyles } from "../../../styles";
 import {
@@ -54,7 +54,7 @@ export function PreAuthScreens({ utilisateur, page, schoolInfo, schoolContextVal
     <SchoolContext.Provider value={schoolContextValue}>
       <GlobalStyles />
       <Suspense fallback={<FullScreenFallback />}>
-        <Connexion onLogin={connecter} onInscription={() => { signOutCurrentUser().catch(() => {}); setUtilisateur(null); setPage("inscription"); }} />
+        <Connexion onLogin={connecter} onInscription={() => { signOutSession().catch(() => {}); setUtilisateur(null); setPage("inscription"); }} />
       </Suspense>
     </SchoolContext.Provider>
   );
