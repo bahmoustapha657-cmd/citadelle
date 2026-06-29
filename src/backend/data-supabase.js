@@ -3,7 +3,7 @@
 // (avec `_id`) identiques à Firestore. La sécurité reste assurée par la RLS
 // (filtrage par école + rôle) ; on filtre aussi explicitement par ecole_id.
 import { getSupabase } from "../supabaseClient";
-import { resolveCollection, transformRow } from "./collection-map";
+import { resolveCollection, transformRow, toRow, ecritureSupportee } from "./collection-map";
 
 // schoolId applicatif = CODE de l'école ; les tables référencent l'uuid.
 const ecoleIdCache = new Map();
@@ -51,6 +51,53 @@ export async function chargerEcole(schoolCode) {
   };
 }
 
-// Les écritures ne sont pas encore portées (Tranche 3). On échoue clairement
-// plutôt que de corrompre/perdre des données silencieusement.
-export const ERREUR_ECRITURE = "Mode Supabase : écriture non encore disponible (lecture seule — Tranche 2).";
+// ── Écritures (Tranche 3) ───────────────────────────────────────────────────
+// Message d'erreur pour les collections sans table/écriture portée.
+export const ERREUR_ECRITURE = "Mode Supabase : écriture non disponible pour cette section (non encore modélisée).";
+
+// Résout map + ecole_id ou lève une erreur claire si la collection n'est pas portée.
+async function contexteEcriture(schoolCode, nomCollection) {
+  const map = resolveCollection(nomCollection);
+  if (!map || !ecritureSupportee(map.table)) throw new Error(ERREUR_ECRITURE);
+  const sb = getSupabase();
+  const ecoleId = await ecoleIdFromCode(sb, schoolCode);
+  if (!ecoleId) throw new Error("École introuvable.");
+  return { sb, map, ecoleId };
+}
+
+export async function ajouterDoc(schoolCode, nomCollection, item) {
+  const { sb, map, ecoleId } = await contexteEcriture(schoolCode, nomCollection);
+  const { row } = toRow(map.table, item);
+  row.ecole_id = ecoleId;
+  if (map.section) row.section = map.section;
+  const { data, error } = await sb.from(map.table).insert(row).select("*").single();
+  if (error) throw new Error(error.message);
+  return transformRow(map.table, data);
+}
+
+export async function modifierDoc(schoolCode, nomCollection, item) {
+  const { sb, map } = await contexteEcriture(schoolCode, nomCollection);
+  const { row } = toRow(map.table, item);
+  const { error } = await sb.from(map.table).update(row).eq("id", item._id);
+  if (error) throw new Error(error.message);
+}
+
+// Update partiel : ne touche que les champs fournis. Si certains partent dans le
+// jsonb (extra/details), on fusionne avec l'existant (read-modify-write) pour ne
+// pas écraser les autres clés.
+export async function modifierChampDoc(schoolCode, nomCollection, id, champs) {
+  const { sb, map } = await contexteEcriture(schoolCode, nomCollection);
+  const { row, extraKeys, extraCol } = toRow(map.table, champs);
+  if (extraCol && extraKeys.length) {
+    const { data: actuel } = await sb.from(map.table).select(extraCol).eq("id", id).maybeSingle();
+    row[extraCol] = { ...(actuel?.[extraCol] || {}), ...row[extraCol] };
+  }
+  const { error } = await sb.from(map.table).update(row).eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+export async function supprimerDoc(schoolCode, nomCollection, id) {
+  const { sb, map } = await contexteEcriture(schoolCode, nomCollection);
+  const { error } = await sb.from(map.table).delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}

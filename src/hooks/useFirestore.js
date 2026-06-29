@@ -13,7 +13,13 @@ import {
 import { db } from "../firebaseDb";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { isSupabase } from "../backend";
-import { chargerCollection, ERREUR_ECRITURE } from "../backend/data-supabase";
+import {
+  chargerCollection,
+  ajouterDoc,
+  modifierDoc,
+  modifierChampDoc,
+  supprimerDoc,
+} from "../backend/data-supabase";
 
 const initialState = {
   items: [],
@@ -116,7 +122,11 @@ export function useFirestore(nomCollection, options = {}) {
   }, [charger]);
 
   const ajouter = async (item) => {
-    if (isSupabase) throw new Error(ERREUR_ECRITURE);
+    if (isSupabase) {
+      const cree = await ajouterDoc(schoolId, nomCollection, item);
+      await charger(true);
+      return { id: cree._id, ...cree };
+    }
     const { id: _idIgnored, _id, ...data } = item;
     const ref = await addDoc(collection(db, "ecoles", schoolId, nomCollection), {
       ...data,
@@ -127,7 +137,11 @@ export function useFirestore(nomCollection, options = {}) {
   };
 
   const supprimer = async (id) => {
-    if (isSupabase) throw new Error(ERREUR_ECRITURE);
+    if (isSupabase) {
+      await supprimerDoc(schoolId, nomCollection, id);
+      await charger(true);
+      return;
+    }
     // Snapshot AVANT la suppression : c'est lui qui part dans la trace.
     const snapshot = items.find((item) => item._id === id) || null;
     await deleteDoc(doc(db, "ecoles", schoolId, nomCollection, id));
@@ -149,14 +163,22 @@ export function useFirestore(nomCollection, options = {}) {
   };
 
   const modifier = async (item) => {
-    if (isSupabase) throw new Error(ERREUR_ECRITURE);
+    if (isSupabase) {
+      await modifierDoc(schoolId, nomCollection, item);
+      await charger(true);
+      return;
+    }
     const { _id, ...data } = item;
     await updateDoc(doc(db, "ecoles", schoolId, nomCollection, _id), data);
     charger(false);
   };
 
   const modifierChamp = async (_id, champs) => {
-    if (isSupabase) throw new Error(ERREUR_ECRITURE);
+    if (isSupabase) {
+      await modifierChampDoc(schoolId, nomCollection, _id, champs);
+      await charger(true);
+      return;
+    }
     await updateDoc(doc(db, "ecoles", schoolId, nomCollection, _id), champs);
     charger(false);
   };

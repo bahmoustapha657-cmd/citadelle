@@ -104,3 +104,58 @@ export function transformRow(table, row) {
   const fn = TRANSFORMERS[table];
   return fn ? fn(row) : { _id: row.id, ...row };
 }
+
+// ── Sens inverse : item camelCase → ligne Postgres (pour les écritures) ─────
+// Pour chaque table : correspondance itemKey → colonne. `extraCol` collecte les
+// champs restants (non colonnes) dans le jsonb (extra/details). Les tables sans
+// extraCol ignorent ces champs surnuméraires.
+const COLUMN_DEFS = {
+  eleves: { extraCol: "extra", cols: {
+    nom: "nom", prenom: "prenom", sexe: "sexe", matricule: "matricule", ien: "ien",
+    classe: "classe", dateNaissance: "date_naissance", lieuNaissance: "lieu_naissance",
+    filiation: "filiation", tuteur: "tuteur", contactTuteur: "contact_tuteur",
+    domicile: "domicile", photo: "photo", statut: "statut" } },
+  notes: { cols: {
+    eleveId: "eleve_id", matiere: "matiere", type: "type", periode: "periode",
+    note: "note", annee: "annee", enseignantId: "enseignant_id", enseignantNom: "enseignant_nom" } },
+  absences: { cols: {
+    eleveId: "eleve_id", type: "type", date: "date", justifie: "justifie", motif: "motif",
+    matiere: "matiere", signaledByEnseignantId: "signale_par_id", signaledByEnseignantNom: "signale_par_nom" } },
+  classes: { extraCol: "extra", cols: {
+    nom: "nom", effectif: "effectif", enseignantId: "enseignant_id", salle: "salle" } },
+  enseignants: { extraCol: "extra", cols: {
+    nom: "nom", prenom: "prenom", matiere: "matiere", contact: "contact", statut: "statut" } },
+  matieres: { extraCol: "extra", cols: { nom: "nom", coefficient: "coefficient" } },
+  emplois: { extraCol: "extra", cols: {
+    classe: "classe", jour: "jour", heureDebut: "heure_debut", heureFin: "heure_fin",
+    matiere: "matiere", enseignant: "enseignant", salle: "salle" } },
+  enseignements: { extraCol: "extra", cols: {
+    classe: "classe", matiere: "matiere", enseignantNom: "enseignant_nom", contenu: "contenu" } },
+  appreciations: { cols: { eleveId: "eleve_id", periode: "periode", texte: "texte" } },
+  tarifs: { extraCol: "extra", cols: { classe: "classe", montant: "montant" } },
+  salaires: { extraCol: "details", cols: { nom: "nom", section: "section", mois: "mois", montantNet: "montant_net" } },
+};
+
+// Tables dont l'écriture est portée (Tranche 3). Les autres restent en garde-fou.
+export function ecritureSupportee(table) {
+  return Object.prototype.hasOwnProperty.call(COLUMN_DEFS, table);
+}
+
+// item camelCase → { ...colonnes, [extraCol]: {restes} }. `champsConnus` permet,
+// pour un update partiel, de ne mapper que les clés fournies (toRow renvoie aussi
+// `extraKeys` = les clés parties dans le jsonb, utile pour le merge read-modify-write).
+export function toRow(table, item) {
+  const def = COLUMN_DEFS[table];
+  if (!def) return { row: { ...item }, extraKeys: [] };
+  const row = {};
+  const ignore = new Set(["_id", "id", "section", "createdAt", "updatedAt"]);
+  const extra = {};
+  const extraKeys = [];
+  for (const [key, val] of Object.entries(item)) {
+    if (ignore.has(key)) continue;
+    if (def.cols[key]) { row[def.cols[key]] = val; continue; }
+    if (def.extraCol) { extra[key] = val; extraKeys.push(key); }
+  }
+  if (def.extraCol && extraKeys.length) row[def.extraCol] = extra;
+  return { row, extraKeys, extraCol: def.extraCol };
+}
