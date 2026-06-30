@@ -4,6 +4,8 @@ import { db } from "../../firebaseDb";
 import { safeOnSnapshot } from "../../firestore-safe";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { PLANS } from "../../contexts/PlanContext";
+import { isSupabase } from "../../backend";
+import { demanderPlan } from "../../backend/superadmin-supabase";
 
 export function useUpgradeModal() {
   const { schoolId, schoolInfo, setSchoolInfo } = useContext(SchoolContext);
@@ -35,16 +37,21 @@ export function useUpgradeModal() {
     if (!form.reference.trim()) { setErreur("Entrez la référence/code de votre transaction."); return; }
     setChargement(true); setErreur("");
     try {
-      await addDoc(collection(db, "ecoles", schoolId, "demandes_plan"), {
+      const champs = {
         telephone: form.telephone.trim(),
         operateur: form.operateur,
         reference: form.reference.trim(),
         montant: PLANS.pro.prix,
-        statut: "en_attente",
         ecoleNom: schoolInfo?.nom || schoolId,
-        schoolId,
         createdAt: Date.now(),
-      });
+      };
+      if (isSupabase) {
+        await demanderPlan(schoolId, "pro", champs);
+      } else {
+        await addDoc(collection(db, "ecoles", schoolId, "demandes_plan"), {
+          ...champs, statut: "en_attente", schoolId,
+        });
+      }
       setEtape("attente");
     } catch {
       setErreur("Erreur lors de la soumission. Réessayez.");

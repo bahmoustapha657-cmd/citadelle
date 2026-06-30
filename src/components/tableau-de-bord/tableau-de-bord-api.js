@@ -1,16 +1,20 @@
 // Écriture Firestore du tableau de bord : demande d'abonnement à un plan.
 import { addDoc, collection } from "firebase/firestore";
 import { db } from "../../firebaseDb";
+import { isSupabase } from "../../backend";
+import { demanderPlan } from "../../backend/superadmin-supabase";
 
 // Crée une demande de changement de plan en attente de validation.
 export async function creerDemandePlan({ schoolId, ecoleNom, plan, form }) {
-  await addDoc(collection(db, "ecoles", schoolId, "demandes_plan"), {
+  const extra = {
     ecoleNom,
-    planDemande: plan,
     operateur: form.operateur,
     telephone: form.telephone.trim(),
     reference: form.reference.trim(),
-    statut: "en_attente",
     createdAt: Date.now(),
+  };
+  if (isSupabase) return demanderPlan(schoolId, plan, extra);
+  await addDoc(collection(db, "ecoles", schoolId, "demandes_plan"), {
+    ...extra, planDemande: plan, statut: "en_attente",
   });
 }

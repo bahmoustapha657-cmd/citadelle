@@ -7,9 +7,12 @@ import { PLANS } from "../../../constants";
 import { db } from "../../../firebaseDb";
 import { safeOnSnapshot } from "../../../firestore-safe";
 import { NEW_SCHOOL_DEFAULTS } from "../constants";
+import { isSupabase } from "../../../backend";
+import * as sbAdmin from "../../../backend/superadmin-supabase";
 
 // Charge toutes les écoles + leurs stats (effectifs, comptes, enseignants).
 export async function chargerEcolesAvecStats() {
+  if (isSupabase) return sbAdmin.chargerEcolesAvecStats();
   const snap = await getDocs(collection(db, "ecoles"));
   const liste = snap.docs.map(d => ({ ...d.data(), _id: d.id }));
   const statsMap = {};
@@ -35,6 +38,7 @@ export async function chargerEcolesAvecStats() {
 
 // Abonnement temps réel aux demandes de plan (collectionGroup). Renvoie l'unsub.
 export function souscrireDemandes(onData) {
+  if (isSupabase) return sbAdmin.souscrireDemandes(onData);
   try {
     const q = collectionGroup(db, "demandes_plan");
     return safeOnSnapshot(q, snap => {
@@ -49,6 +53,7 @@ export function souscrireDemandes(onData) {
 // Valide une demande : active le plan, marque la demande, trace l'historique.
 // Renvoie { plan, update } pour la mise à jour optimiste côté hook.
 export async function validerDemandeApi(demande) {
+  if (isSupabase) return sbAdmin.validerDemandeApi(demande);
   const plan = demande.planDemande || "starter";
   const update = {
     plan, planExpiry: Date.now() + 365 * 86400000,
@@ -65,11 +70,13 @@ export async function validerDemandeApi(demande) {
 }
 
 export async function rejeterDemandeApi(demande) {
+  if (isSupabase) return sbAdmin.rejeterDemandeApi(demande);
   await updateDoc(doc(db, "ecoles", demande._schoolId, "demandes_plan", demande._id), { statut: "rejetee" });
 }
 
 // Applique un plan (updateDoc bloquant) + notifications best-effort (historique, push).
 export async function appliquerPlan(ecoleId, update, { planLabel, expMsg }) {
+  if (isSupabase) return sbAdmin.appliquerPlan(ecoleId, update);
   await updateDoc(doc(db, "ecoles", ecoleId), update);
   addDoc(collection(db, "ecoles", ecoleId, "historique"), {
     action: "Plan mis a jour",
@@ -92,6 +99,7 @@ export async function appliquerPlan(ecoleId, update, { planLabel, expMsg }) {
 
 // Action de cycle de vie sur une école. Renvoie { ok, data }.
 export async function executerCycleVieApi({ schoolId, action, confirmation }) {
+  if (isSupabase) return sbAdmin.executerCycleVieApi({ schoolId, action, confirmation });
   const headers = await getAuthHeaders({ "Content-Type": "application/json" });
   const response = await apiFetch("/school-lifecycle", {
     method: "POST", headers,
@@ -104,6 +112,7 @@ export async function executerCycleVieApi({ schoolId, action, confirmation }) {
 // Crée une école si le code (slug) est libre, puis sync la page publique.
 // Renvoie { ok:false } si le code existe déjà, sinon { ok:true }.
 export async function creerEcoleApi(nouvelleEcole, sid) {
+  if (isSupabase) return sbAdmin.creerEcoleApi(nouvelleEcole, sid);
   const existing = await getDoc(doc(db, "ecoles", sid));
   if (existing.exists()) return { ok: false };
   await setDoc(doc(db, "ecoles", sid), {
