@@ -36,6 +36,8 @@ supabase functions deploy account-manage    # création/reset de comptes (privil
 supabase functions deploy inscription        # auto-enregistrement public d'une école
 supabase functions deploy push               # envoi de notifications push
 supabase secrets set VAPID_PUBLIC_KEY="..." VAPID_PRIVATE_KEY="..." VAPID_SUBJECT="mailto:contact@edugest.app"
+supabase functions deploy ia                  # assistant IA (appréciations + superadmin)
+supabase secrets set ANTHROPIC_API_KEY="sk-ant-..."
 ```
 
 ## Architecture de la couche d'accès (`src/backend/`)
@@ -67,6 +69,7 @@ Vérifié en live contre l'école **citadelle** :
 - **Transferts** : transfert d'élève entre écoles par token (table `transferts` + RPC). ✅ (→ `transferts.sql`)
 - **Push** : abonnement (table `push_subs`) + envoi (Edge Function `push` / VAPID). ⚠️ envoi réel non vérifié ici (nécessite un navigateur abonné).
 - **Diffusion superadmin** : messages superadmin → écoles ciblées + accusés de lecture (tables `superadmin_messages` / `superadmin_message_lectures`). ✅ (→ `superadmin-messages.sql`)
+- **Assistant IA** : génération d'appréciation de bulletin (primaire/secondaire) + assistant superadmin, via Edge Function `ia` (Anthropic `claude-opus-4-8`). Marche aussi en prod Firebase via `/api/ia`. ⚠️ génération réelle non vérifiée ici (clé Anthropic requise).
 - **Photos / logos** : base64 en champ — aucun stockage externe à migrer. ✅
 
 ## Identifiants de test (citadelle)
