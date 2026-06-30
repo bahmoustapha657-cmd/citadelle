@@ -4,6 +4,8 @@ import { addDoc, collection, doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "../../firebaseDb";
 import { apiFetch, getAuthHeaders } from "../../apiClient";
 import { getCurrentUser } from "../../firebaseAuth";
+import { isSupabase } from "../../backend";
+import { sAbonnerAuxPush as sAbonnerSupabase, envoyerPush as envoyerPushSupabase } from "../../backend/push-supabase";
 
 // Journalise une action (best-effort, jamais bloquant).
 export function logActionDoc(action, details = "", auteur = "") {
@@ -47,6 +49,7 @@ export async function syncEcolePublic(schoolId) {
 
 // Envoie une notification push (best-effort).
 export async function envoyerPushApi(cibles, titre, corps, url = "/") {
+  if (isSupabase) return envoyerPushSupabase(cibles, titre, corps, url);
   const sid = localStorage.getItem("LC_schoolId");
   if (!sid) return; // jamais de fallback vers une école par défaut
   const headers = await getAuthHeaders({ "Content-Type": "application/json" });
@@ -59,6 +62,7 @@ export async function envoyerPushApi(cibles, titre, corps, url = "/") {
 
 // Abonnement push après login (silencieux si refus).
 export async function sAbonnerAuxPush(utilisateurCo, sid) {
+  if (isSupabase) return sAbonnerSupabase(utilisateurCo, sid);
   try {
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
     const perm = await Notification.requestPermission();
