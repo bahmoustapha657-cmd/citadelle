@@ -18,7 +18,7 @@ Défaut sans ces variables = `firebase` (prod intacte). Interrupteur : `src/back
 
 1. `schema.sql` · 2. `rls.sql` · 3. `superadmin.sql` · 4. `comptabilite.sql` ·
 5. `modules.sql` · 6. `parent-access.sql` · 7. `teacher-security.sql` ·
-8. `superadmin-extend.sql`
+8. `superadmin-extend.sql` · 9. `transferts.sql`
 
 Puis peupler le périmètre d'écriture des enseignants (et le re-lancer quand les
 affectations changent) :
@@ -61,6 +61,7 @@ Vérifié en live contre l'école **citadelle** :
 - **Comptes** : création (parent/enseignant/staff), reset mot de passe, changement perso, réglages de rôles. ✅ (logique vérifiée ; déployer l'Edge Function)
 - **Superadmin** : connexion + gestion multi-écoles (liste + stats, plans, cycle de vie create/deactivate/reactivate/delete) via bypass RLS. ✅ (demandes de plan → `superadmin-extend.sql`)
 - **Inscription** : auto-enregistrement public d'une école + compte direction (Edge Function `inscription`). ✅
+- **Transferts** : transfert d'élève entre écoles par token (table `transferts` + RPC). ✅ (→ `transferts.sql`)
 - **Photos / logos** : base64 en champ — aucun stockage externe à migrer. ✅
 
 ## Identifiants de test (citadelle)
@@ -77,7 +78,7 @@ Vérifié en live contre l'école **citadelle** :
 ## Limites assumées / reste à faire
 
 - **Sécurité périmètre enseignant** : ✅ durci. `teacher-security.sql` impose en RLS que l'enseignant n'écrive notes/absences que pour les élèves de **ses classes** (table `enseignant_classes`, écrite par le staff uniquement, peuplée par `populate-teacher-classes.mjs`). Un trigger empêche aussi l'auto-élévation de privilège (modif de role/école/login sur sa propre ligne `comptes`). À relancer le peuplement quand les affectations changent.
-- **Encore côté serveur** (Firebase/Vercel) sous Supabase : `transferts` (entre écoles), `push` (notifications web), assistant IA superadmin, alertes Sentry, `superadmin-messages`. (`ecole-public-sync` inutile ; `school-lifecycle`, `superadmin-login`, `inscription` portés.)
+- **Encore côté serveur** (Firebase/Vercel) sous Supabase : `push` (notifications web), assistant IA superadmin, alertes Sentry, `superadmin-messages`. (Portés : school-lifecycle, superadmin-login, inscription, transferts ; `ecole-public-sync` inutile.)
 - **Création de comptes** : pas de fusion de foyer parent, ni de génération auto de comptes à l'activation d'un rôle (création manuelle).
 - **Hors-ligne** : non porté (Firestore natif → évaluer PowerSync/ElectricSQL).
 
