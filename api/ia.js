@@ -3,8 +3,40 @@ import { initAdmin } from "./_lib/firebase-admin.js";
 import { captureServerError, withObservability } from "./_lib/observability.js";
 import { applyCors, requireEnv, requireSession } from "./_lib/security.js";
 
-const DEFAULT_MODEL = "claude-opus-4-5";
+const DEFAULT_MODEL = "claude-opus-4-8";
 const DEFAULT_MODE = "support";
+
+// Rôles autorisés à générer une appréciation de bulletin (personnel pédagogique).
+const ROLES_APPRECIATION = new Set(["direction", "admin", "primaire", "college", "enseignant"]);
+
+// Construit le prompt de génération d'une appréciation de bulletin à partir du
+// contexte de l'élève (moyenne, mention, résultats par matière).
+export function buildAppreciationPrompt(payload = {}) {
+  const nom = String(payload.nom || "l'élève").trim();
+  const classe = String(payload.classe || "").trim();
+  const periode = String(payload.periode || "").trim();
+  const moyenne = payload.moyenne != null && payload.moyenne !== "—" ? String(payload.moyenne) : "";
+  const mention = String(payload.mention || "").trim();
+  const consigne = String(payload.consigne || "").trim();
+  const lignes = Array.isArray(payload.notesMatieres)
+    ? payload.notesMatieres
+        .filter((x) => x && x.matiere && x.moyenne != null)
+        .map((x) => `- ${x.matiere} : ${Number(x.moyenne).toFixed(1)}/20`)
+        .join("\n")
+    : "";
+
+  return [
+    "Tu es un enseignant expérimenté qui rédige l'appréciation de bulletin d'un élève.",
+    "Rédige UNE appréciation en français, de 1 à 3 phrases, au ton bienveillant mais honnête, fondée sur les résultats fournis (progrès, points forts, axes à travailler).",
+    "Réponds UNIQUEMENT par le texte de l'appréciation : pas de préambule, pas de guillemets, pas de salutation, et ne mentionne jamais d'IA.",
+    `Élève : ${nom}${classe ? ` — Classe ${classe}` : ""}${periode ? ` — Période ${periode}` : ""}.`,
+    moyenne ? `Moyenne générale : ${moyenne}/20${mention ? ` (mention ${mention})` : ""}.` : "",
+    lignes ? `Résultats par matière :\n${lignes}` : "",
+    consigne ? `Consigne du professeur à intégrer : ${consigne}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+}
 
 const MODE_INSTRUCTIONS = {
   support: "Redige une reponse de support claire, calme et utile. Va droit au but, propose des etapes concretes et evite le jargon inutile.",
@@ -64,20 +96,30 @@ async function handler(req, res) {
     return res.status(500).json({ error: "Erreur serveur (init)" });
   }
 
-  const session = await requireSession(req, res, { allowSuperadmin: true });
-  if (!session) return;
-
-  if (session.profile.role !== "superadmin") {
-    return res.status(403).json({ error: "Acces reserve au superadmin." });
-  }
-
   const { action, payload } = req.body || {};
-  if (action !== "assistant_superadmin") {
-    return res.status(400).json({ error: "Action inconnue." });
-  }
 
-  if (!payload?.prompt || typeof payload.prompt !== "string" || !payload.prompt.trim()) {
-    return res.status(400).json({ error: "Le champ prompt est requis." });
+  // Sélection du périmètre d'auth + du prompt selon l'action.
+  let session;
+  let promptText;
+  let maxTokens;
+  if (action === "assistant_superadmin") {
+    session = await requireSession(req, res, { allowSuperadmin: true });
+    if (!session) return;
+    if (session.profile.role !== "superadmin") {
+      return res.status(403).json({ error: "Acces reserve au superadmin." });
+    }
+    if (!payload?.prompt || typeof payload.prompt !== "string" || !payload.prompt.trim()) {
+      return res.status(400).json({ error: "Le champ prompt est requis." });
+    }
+    promptText = buildSuperadminAssistantPrompt(payload);
+    maxTokens = 700;
+  } else if (action === "assistant_appreciation") {
+    session = await requireSession(req, res, { roles: [...ROLES_APPRECIATION] });
+    if (!session) return;
+    promptText = buildAppreciationPrompt(payload);
+    maxTokens = 320;
+  } else {
+    return res.status(400).json({ error: "Action inconnue." });
   }
 
   let apiKey;
@@ -92,13 +134,8 @@ async function handler(req, res) {
   try {
     const message = await client.messages.create({
       model: process.env.ANTHROPIC_MODEL || DEFAULT_MODEL,
-      max_tokens: 700,
-      messages: [
-        {
-          role: "user",
-          content: buildSuperadminAssistantPrompt(payload),
-        },
-      ],
+      max_tokens: maxTokens,
+      messages: [{ role: "user", content: promptText }],
     });
 
     const result = extractTextContent(message);

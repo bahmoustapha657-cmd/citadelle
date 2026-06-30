@@ -34,7 +34,7 @@ export function BulletinsTab({
       />
 
       {modal==="apprec"&&(canCreate||canEdit)&&<AppreciationModale
-        t={t} form={form} chg={chg} periodeB={periodeB}
+        t={t} form={form} chg={chg} setForm={setForm} periodeB={periodeB}
         getAppreciation={getAppreciation} saveAppreciation={saveAppreciation} setModal={setModal}
       />}
     </div>

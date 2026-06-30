@@ -1,7 +1,7 @@
 import { C } from "../../../constants";
 import { Badge, Btn, Card, TD, TR, Vide } from "../../ui";
 import { imprimerBulletin } from "../../../reports";
-import { getGeneralAverage } from "../../../note-utils";
+import { getGeneralAverage, getSubjectAverage } from "../../../note-utils";
 
 // Table des bulletins : moyenne générale, mention, accès à l'appréciation et
 // impression individuelle (bloquée si frais impayés).
@@ -44,7 +44,12 @@ export function BulletinsTable({
           <TD><Badge color={mention==="Très Bien"||mention==="Bien"?"vert":mention==="Assez Bien"||mention==="Passable"?"blue":"red"}>{mention}</Badge></TD>
           <TD>
             {(canCreate||canEdit)
-              ? <Btn sm v={apprecTexte?"vert":"ghost"} title={apprecTexte||t("school.bulletins.addAppreciation")} onClick={()=>{setForm({eleveId:e._id,nomComplet:`${e.nom} ${e.prenom}`,texte:apprecTexte});setModal("apprec");}}>
+              ? <Btn sm v={apprecTexte?"vert":"ghost"} title={apprecTexte||t("school.bulletins.addAppreciation")} onClick={()=>{
+                  const matieresE=matieresForClasse(e.classe);
+                  const notesMatieres=matieresE.map(m=>({matiere:m.nom,moyenne:getSubjectAverage(notesE.filter(n=>n.matiere===m.nom),e.classe)})).filter(x=>x.moyenne!=null);
+                  setForm({eleveId:e._id,nomComplet:`${e.nom} ${e.prenom}`,classe:e.classe,moyenne:moyGene,mention,notesMatieres,texte:apprecTexte});
+                  setModal("apprec");
+                }}>
                   {apprecTexte?t("school.bulletins.editAppreciation"):t("school.bulletins.addAppreciation")}
                 </Btn>
               : (apprecTexte

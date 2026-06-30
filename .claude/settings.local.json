@@ -156,7 +156,10 @@
       "Bash(awk '/create table if not exists paiements \\\\\\(/,/\\\\\\);/' supabase/schema.sql)",
       "Bash(node -e \"import\\('./src/backend/teacher-scope.js'\\).then\\(m=>{console.log\\('normalizeText\\(\\\\\"Conté É\\\\\"\\) =>', JSON.stringify\\(m.normalizeText\\('Conté É'\\)\\); console.log\\('alias match:', m.matchesTeacherAlias\\('CONTÉ \\(Prof\\)', ['conté']\\)\\)}\\).catch\\(e=>console.log\\('ERR',e.message\\)\\)\")",
       "Bash(node citadelle/../tmp/t.mjs)",
-      "Bash(node supabase/_t.mjs)"
+      "Bash(node supabase/_t.mjs)",
+      "Skill(claude-api)",
+      "Skill(claude-api:*)",
+      "Bash(node --input-type=module -e ' *)"
     ]
   }
 }

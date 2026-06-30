@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { apiFetch, getAuthHeaders } from "../../apiClient";
+import { assistantSuperadmin } from "../../backend/ia";
 import {
   buildAssistantHistoryEntry,
   MAX_SUPERADMIN_HISTORY,
@@ -94,23 +94,8 @@ export function useSuperadminAssistant() {
     setResult("");
 
     try {
-      const headers = await getAuthHeaders({ "Content-Type": "application/json" });
-      const response = await apiFetch("/ia", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          action: "assistant_superadmin",
-          payload: {
-            mode,
-            schoolName,
-            context,
-            prompt,
-          },
-        }),
-      });
-
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data.ok) {
+      const data = await assistantSuperadmin({ mode, schoolName, context, prompt });
+      if (!data.ok) {
         throw new Error(data.error || "Erreur assistant");
       }
 
