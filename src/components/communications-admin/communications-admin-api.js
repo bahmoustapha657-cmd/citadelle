@@ -11,9 +11,12 @@ import {
 } from "firebase/firestore";
 import { db } from "../../firebaseDb";
 import { safeOnSnapshot } from "../../firestore-safe";
+import { isSupabase } from "../../backend";
+import * as sbMsg from "../../backend/superadmin-messages-supabase";
 
 // S'abonne au flux des messages superadmin (du plus récent au plus ancien).
 export function subscribeMessages(onData) {
+  if (isSupabase) return sbMsg.subscribeMessages(onData);
   const q = query(collection(db, "superadmin_messages"), orderBy("createdAt", "desc"));
   return safeOnSnapshot(q, (snap) => {
     onData(snap.docs.map((d) => ({ ...d.data(), _id: d.id })));
@@ -22,6 +25,7 @@ export function subscribeMessages(onData) {
 
 // Agrège, par message, le nombre de lectures et d'écoles distinctes.
 export async function fetchStatsLectures(messages) {
+  if (isSupabase) return sbMsg.fetchStatsLectures(messages);
   const stats = {};
   await Promise.all(
     messages.map(async (m) => {
@@ -45,6 +49,7 @@ export async function fetchStatsLectures(messages) {
 
 // Crée un nouveau message superadmin.
 export function envoyerMessage({ titre, corps, niveau, cibleSchools, cibleRoles, auteur }) {
+  if (isSupabase) return sbMsg.envoyerMessage({ titre, corps, niveau, cibleSchools, cibleRoles, auteur });
   return addDoc(collection(db, "superadmin_messages"), {
     titre,
     corps,
@@ -58,5 +63,6 @@ export function envoyerMessage({ titre, corps, niveau, cibleSchools, cibleRoles,
 
 // Supprime un message superadmin.
 export function supprimerMessageApi(id) {
+  if (isSupabase) return sbMsg.supprimerMessageApi(id);
   return deleteDoc(doc(db, "superadmin_messages", id));
 }
