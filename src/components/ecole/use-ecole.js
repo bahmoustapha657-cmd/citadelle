@@ -78,7 +78,10 @@ export function useEcole({
   const defaultPeriode = periodes[0] || getDefaultPeriodeForSection(schoolInfo, sectionPeriode);
   const [periodeB, setPeriodeB] = useState(defaultPeriode);
   const [grillePeriode, setGrillePeriode] = useState(defaultPeriode);
-  const noteForms = getActiveNoteForms(schoolInfo, isPrimarySection ? "primaire" : "secondaire");
+  // Section précise (primaire/college/lycee) pour offrir les rubriques
+  // Dictée/Rédaction au collège uniquement.
+  const sectionReelle = cleEns === "ensPrimaire" ? "primaire" : cleEns === "ensLycee" ? "lycee" : "college";
+  const noteForms = getActiveNoteForms(schoolInfo, sectionReelle);
   const defaultNoteType = noteForms[0]?.value || "Devoir";
   const [grilleType, setGrilleType] = useState(defaultNoteType);
   const canCreate = !readOnly && !enModeArchive;

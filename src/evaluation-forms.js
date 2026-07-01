@@ -17,11 +17,12 @@ const DEFAULT_EVALUATION_FORMS = {
     { id: "evaluation_ecrite", value: "Évaluation écrite", label: "Évaluation écrite", active: true },
     { id: "examen", value: "Examen", label: "Examen", active: true },
     { id: "composition", value: "Composition", label: "Composition", active: true },
-    // Rubriques du Français au collège : Dictée/Questions (coef 2) + Rédaction
-    // (coef 1). Dès qu'elles sont présentes, la moyenne de la matière est leur
-    // moyenne pondérée 2:1 (voir getSubjectAverage / RUBRIQUE_WEIGHTS).
-    { id: "dictee_questions", value: "Dictée/Questions", label: "Dictée/Questions (Français)", active: true },
-    { id: "redaction", value: "Rédaction", label: "Rédaction (Français)", active: true },
+    // Rubriques du Français au COLLÈGE uniquement (flag `college`) :
+    // Dictée/Questions (coef 2) + Rédaction (coef 1). Dès qu'elles sont
+    // présentes, la moyenne de la matière est leur moyenne pondérée 2:1
+    // (voir getSubjectAverage / RUBRIQUE_WEIGHTS). Masquées hors collège.
+    { id: "dictee_questions", value: "Dictée/Questions", label: "Dictée/Questions (Français)", active: true, college: true },
+    { id: "redaction", value: "Rédaction", label: "Rédaction (Français)", active: true, college: true },
     // Saisie directe de la moyenne d'une matière (fournie par l'enseignant) :
     // prime sur tout le reste dans le calcul (voir getSubjectAverage).
     { id: "moyenne", value: "Moyenne", label: "Moyenne de la matière", active: true },
@@ -63,8 +64,12 @@ export const getEvaluationFormsConfig = (schoolInfo = {}) => {
 export const getActiveNoteForms = (schoolInfo = {}, section = "secondaire") => {
   const config = getEvaluationFormsConfig(schoolInfo);
   const key = section === "primaire" ? "primaire" : "secondaire";
-  const forms = config[key].filter((item) => item.active);
-  return forms.length ? forms : DEFAULT_EVALUATION_FORMS[key].filter((item) => item.active);
+  const active = config[key].filter((item) => item.active);
+  let forms = active.length ? active : DEFAULT_EVALUATION_FORMS[key].filter((item) => item.active);
+  // Rubriques marquées `college` (Dictée/Questions, Rédaction) : disponibles
+  // uniquement quand la section précise est le collège (pas au lycée).
+  if (section !== "college") forms = forms.filter((item) => !item.college);
+  return forms;
 };
 
 export const getActiveExamForms = (schoolInfo = {}) => {

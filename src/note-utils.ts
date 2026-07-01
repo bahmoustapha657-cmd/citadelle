@@ -99,21 +99,24 @@ export const getSubjectAverage = (
     return averageNumbers(moyennes.map((note) => note.note ?? null));
   }
 
-  // Rubriques (Français collège) : moyenne pondérée 2:1 dès qu'elles existent.
-  const rubriques = notes.filter((note) => RUBRIQUE_WEIGHTS.has(normalizeType(note.type)));
-  if (rubriques.length) {
-    let total = 0;
-    let totalPoids = 0;
-    RUBRIQUE_WEIGHTS.forEach((poids, cle) => {
-      const moy = averageNumbers(
-        rubriques.filter((note) => normalizeType(note.type) === cle).map((note) => note.note ?? null),
-      );
-      if (moy != null) { total += moy * poids; totalPoids += poids; }
-    });
-    if (totalPoids) return total / totalPoids;
+  const effectiveSection = section || getSectionForClasse(classe);
+
+  // Rubriques (Français) : moyenne pondérée 2:1 — COLLÈGE uniquement.
+  if (effectiveSection === "college") {
+    const rubriques = notes.filter((note) => RUBRIQUE_WEIGHTS.has(normalizeType(note.type)));
+    if (rubriques.length) {
+      let total = 0;
+      let totalPoids = 0;
+      RUBRIQUE_WEIGHTS.forEach((poids, cle) => {
+        const moy = averageNumbers(
+          rubriques.filter((note) => normalizeType(note.type) === cle).map((note) => note.note ?? null),
+        );
+        if (moy != null) { total += moy * poids; totalPoids += poids; }
+      });
+      if (totalPoids) return total / totalPoids;
+    }
   }
 
-  const effectiveSection = section || getSectionForClasse(classe);
   if (isSecondarySection(effectiveSection)) {
     return getSecondarySubjectAverage(notes);
   }
