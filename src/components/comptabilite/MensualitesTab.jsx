@@ -49,8 +49,6 @@ export function MensualitesTab({
         canEdit={canEditEleves}
       />
 
-      <AlertesCritiques eleves={eleves} moisAnnee={moisAnnee} />
-
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
         <strong style={{ fontSize: 14, flex: 1, color: C.blueDark }}>{t("accounting.monthly")} — {annee || getAnnee()}</strong>
         <select value={niveau} onChange={e => { setNiveau(e.target.value); setFiltClasse("all"); }}
@@ -65,6 +63,9 @@ export function MensualitesTab({
           {classesU.map(c => <option key={c}>{c}</option>)}
         </select>}
       </div>
+
+      {/* Alertes impayés : repliées derrière un bouton, filtrées cycle + classe. */}
+      <AlertesCritiques eleves={elevesFiltres} moisAnnee={moisAnnee} />
 
       <MensualitesTable
         eleves={eleves}
