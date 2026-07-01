@@ -9,8 +9,11 @@
 --   • Lecture : le personnel voit toute son école ; un PARENT ne voit que les
 --     données de SES enfants (table parent_eleves).
 --   • Écriture : réservée au personnel (et aux enseignants pour notes/absences).
---   • Le filtrage fin « enseignant → seulement ses classes » reste à porter
---     (phase 2 — aujourd'hui assuré côté serveur dans /api/teacher-portal).
+--   • Le filtrage fin « enseignant → seulement ses classes (+ sa matière au
+--     secondaire) » est porté par teacher-security.sql, qui REMPLACE les
+--     policies notes_write / absences_write ci-dessous. ⚠️ Après tout re-run
+--     de ce fichier, RÉ-APPLIQUER teacher-security.sql (sinon retour au
+--     périmètre large can_grade).
 -- ════════════════════════════════════════════════════════════════════════
 
 -- ── Helpers (SECURITY DEFINER : lisent le profil de l'utilisateur courant) ──
@@ -124,6 +127,8 @@ create policy eleves_write on eleves for all to authenticated
   with check (ecole_id = auth_ecole_id() and is_staff());
 
 -- ── NOTES (parent : enfants ; écriture : personnel + enseignant) ───────────
+-- ⚠️ notes_write ci-dessous est une version LARGE (bootstrap) : elle est
+-- remplacée par la version scopée de teacher-security.sql (à appliquer après).
 drop policy if exists notes_select on notes;
 create policy notes_select on notes for select to authenticated
   using (ecole_id = auth_ecole_id()
@@ -133,7 +138,7 @@ create policy notes_write on notes for all to authenticated
   using (ecole_id = auth_ecole_id() and can_grade())
   with check (ecole_id = auth_ecole_id() and can_grade());
 
--- ── ABSENCES (idem notes) ──────────────────────────────────────────────────
+-- ── ABSENCES (idem notes — absences_write aussi remplacée ensuite) ─────────
 drop policy if exists absences_select on absences;
 create policy absences_select on absences for select to authenticated
   using (ecole_id = auth_ecole_id()

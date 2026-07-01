@@ -10,6 +10,11 @@ Piste **parallèle** : Firebase reste la production. On reconstruit ici la même
 2. Studio → **SQL Editor** → exécute, dans l'ordre :
    - `schema.sql` (tables, index, triggers)
    - `rls.sql` (sécurité par ligne)
+   - `teacher-security.sql` (périmètre d'écriture des enseignants — à
+     RÉ-APPLIQUER après tout re-run de `rls.sql`), puis
+     `node supabase/populate-teacher-classes.mjs` (peuplement du périmètre ;
+     à relancer quand les affectations changent).
+     Vérification : `node supabase/teacher-security-test.mjs` (école demo).
 3. Récupère dans **Project Settings → API** :
    - `Project URL` et `anon public key` (pour le front),
    - `service_role key` (pour le back / scripts de migration — **jamais** côté client).

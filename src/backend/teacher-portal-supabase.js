@@ -3,11 +3,11 @@
 // (chargerCollection / ajouter / modifier / supprimer) puis applique le même
 // filtrage de PÉRIMÈTRE que le handler (classes du prof → élèves → notes).
 //
-// ⚠️ Sécurité : la RLS Supabase autorise un enseignant (can_grade) à écrire
-// N'IMPORTE quelle note de SON école — le périmètre fin (ses classes/matière)
-// est ici filtré CÔTÉ CLIENT (affichage) mais PAS imposé à l'écriture, alors que
-// le serveur le validait. À durcir via une table de mapping enseignant↔classes
-// en RLS, ou une Edge Function. Acceptable pour la bascule ; à traiter ensuite.
+// Sécurité : le périmètre fin est IMPOSÉ par la RLS (supabase/teacher-security.sql) :
+// un enseignant n'écrit notes/absences que pour les élèves de SES classes (table
+// enseignant_classes, peuplée par populate-teacher-classes.mjs) et, au secondaire,
+// dans SA matière (teacher_can_write_note). Le filtrage ci-dessous ne sert donc
+// qu'à l'AFFICHAGE ; une écriture hors périmètre est rejetée par Postgres.
 import { chargerCollection, ajouterDoc, ajouterDocs, upsertDocs, modifierDoc, supprimerDoc } from "./data-supabase";
 import { teacherAliases, matchesTeacherAlias, noteBelongsToTeacherScope, normalizeText, normalizeSection } from "./teacher-scope";
 
@@ -154,7 +154,14 @@ function absencesColl() {
 }
 
 export async function saveIncident({ incidentId, eleveId, type, date, justifie, motif }) {
-  const item = { eleveId, type, date, justifie: justifie || "Non", motif: motif || "" };
+  const item = {
+    eleveId, type, date, justifie: justifie || "Non", motif: motif || "",
+    // Auteur du signalement (le handler serveur les posait) : trace côté École
+    // et prérequis pour restreindre un jour update/delete aux SIENS.
+    matiere: ctx?.matiere || "",
+    signaledByEnseignantId: ctx?.enseignantId || null,
+    signaledByEnseignantNom: ctx?.enseignantNom || "",
+  };
   if (incidentId) await modifierDoc(ctx.code, absencesColl(), { _id: incidentId, ...item });
   else await ajouterDoc(ctx.code, absencesColl(), item);
   return { ok: true };
