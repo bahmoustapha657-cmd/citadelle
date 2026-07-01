@@ -33,9 +33,16 @@ Deno.serve(async (req) => {
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
   try {
-    const { nomEcole, ville, pays, adminLogin, adminMdp } = await req.json().catch(() => ({}));
+    const { nomEcole, ville, pays, responsable, telephone, email: contactEmail, website, adminLogin, adminMdp } = await req.json().catch(() => ({}));
+    // Honeypot anti-bot : champ masqué côté client, un humain ne le remplit jamais.
+    // On répond succès factice pour ne pas révéler la détection au bot.
+    if (website?.trim()) return json({ ok: true, schoolId: genSlug(nomEcole) });
     if (!nomEcole?.trim()) return json({ error: "Le nom de l'école est requis." }, 400);
     if (!ville?.trim()) return json({ error: "La ville est requise." }, 400);
+    if (!responsable?.trim()) return json({ error: "Le nom du responsable est requis." }, 400);
+    const telDigits = String(telephone || "").replace(/[^0-9]/g, "");
+    if (telDigits.length < 8) return json({ error: "Numéro de téléphone invalide." }, 400);
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(contactEmail || "").trim())) return json({ error: "Adresse email invalide." }, 400);
     const login = String(adminLogin || "").trim().toLowerCase();
     if (!/^[a-z0-9._-]{3,30}$/.test(login)) return json({ error: "Identifiant admin invalide (3 à 30 caractères : lettres, chiffres, . _ -)." }, 400);
     if (!adminMdp || adminMdp.length < 8) return json({ error: "Le mot de passe doit contenir au moins 8 caractères." }, 400);
@@ -46,11 +53,15 @@ Deno.serve(async (req) => {
     const { data: exist } = await admin.from("ecoles").select("id").eq("code", code).maybeSingle();
     if (exist) return json({ error: "Une école avec ce nom existe déjà. Choisissez un autre nom." }, 409);
 
-    // École
+    // École créée inactive : en attente de validation par le superadmin
+    // (voir Panel Super-Admin > Écoles > Réactiver).
     const { data: ecole, error: eErr } = await admin.from("ecoles").insert({
       code, nom: nomEcole.trim(), pays: (pays || "Guinée").trim(),
-      plan: "gratuit", actif: true,
-      extra: { ville: ville.trim(), createdAt: Date.now(), securityVersion: 2 },
+      plan: "gratuit", actif: false,
+      extra: {
+        ville: ville.trim(), createdAt: Date.now(), securityVersion: 2,
+        responsable: responsable.trim(), telephone: telDigits, email: contactEmail.trim(),
+      },
     }).select("id").single();
     if (eErr) return json({ error: eErr.message }, 500);
 

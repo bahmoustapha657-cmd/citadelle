@@ -14,6 +14,9 @@ export function SuccesEtape({ form, comptesSecondaires }) {
           <br />
           {t("register.successInstructions")}
         </p>
+        <div style={{ background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 10, padding: "12px 16px", textAlign: "start", fontSize: 13, color: "#9a3412", marginBottom: 20 }}>
+          ⏳ <strong>En attente de validation.</strong> Votre établissement doit être validé par l'administrateur avant de pouvoir vous connecter. Conservez vos identifiants ci-dessous — vous serez notifié de l'activation.
+        </div>
         <div style={{ background: "#f0f6f2", borderRadius: 10, padding: "14px 18px", textAlign: "start", fontSize: 13, marginBottom: 20 }}>
           <div style={{ marginBottom: 8 }}><strong>{t("register.directionAccount")} :</strong></div>
           <div style={{ fontFamily: "monospace", background: "#e0ebf8", borderRadius: 6, padding: "6px 10px", marginBottom: 12 }}>

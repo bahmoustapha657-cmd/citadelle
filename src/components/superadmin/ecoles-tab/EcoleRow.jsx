@@ -17,7 +17,14 @@ export function EcoleRow({
           {ecole._id}
         </code>
       </td>
-      <td style={S.td}><strong>{ecole.nom}</strong></td>
+      <td style={S.td}>
+        <strong>{ecole.nom}</strong>
+        {ecole.responsable && (
+          <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>
+            {ecole.responsable}{ecole.telephone ? ` · ${ecole.telephone}` : ""}{ecole.email ? ` · ${ecole.email}` : ""}
+          </div>
+        )}
+      </td>
       <td style={S.td}>{ecole.ville}{ecole.pays && ecole.pays !== "Guinee" ? `, ${ecole.pays}` : ""}</td>
       <td style={S.td}>{ecole.createdAt ? new Date(ecole.createdAt).toLocaleDateString("fr-FR") : "-"}</td>
       <td style={S.td}>

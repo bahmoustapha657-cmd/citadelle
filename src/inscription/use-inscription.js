@@ -15,9 +15,13 @@ export function useInscription() {
     nomEcole: "",
     ville: "",
     pays: "Guinee",
+    responsable: "",
+    telephone: "",
+    email: "",
     adminLogin: "",
     adminMdp: "",
     adminMdp2: "",
+    website: "", // honeypot anti-bot : doit rester vide (champ masqué)
   });
 
   const chg = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));

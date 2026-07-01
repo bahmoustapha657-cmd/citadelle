@@ -159,7 +159,19 @@
       "Bash(node supabase/_t.mjs)",
       "Skill(claude-api)",
       "Skill(claude-api:*)",
-      "Bash(node --input-type=module -e ' *)"
+      "Bash(node --input-type=module -e ' *)",
+      "Bash(git grep *)",
+      "Bash(ls supabase/)",
+      "Bash(ls supabase/functions/)",
+      "Bash(ls -la supabase/FRONTEND-SUPABASE.md)",
+      "Bash(npx supabase *)",
+      "Bash(curl -s 'https://pfzanslrcowkjjipuzpa.supabase.co/rest/v1/ecoles?code=eq.citadelle&select=id' -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBmemFuc2xyY293a2pqaXB1enBhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MjQ4NTE4NSwiZXhwIjoyMDk4MDYxMTg1fQ.uooI2vBPtV7m2XCufcHvkzMSoYObLUS3EiOaeDEHpfc' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBmemFuc2xyY293a2pqaXB1enBhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MjQ4NTE4NSwiZXhwIjoyMDk4MDYxMTg1fQ.uooI2vBPtV7m2XCufcHvkzMSoYObLUS3EiOaeDEHpfc')",
+      "Bash(npm.cmd run *)",
+      "Bash(npx.cmd vercel *)",
+      "Bash(git symbolic-ref *)",
+      "Bash(grep -iA4 \"functions\")",
+      "Bash(xargs grep -l \"actif\")",
+      "Bash(npx deno *)"
     ]
   }
 }

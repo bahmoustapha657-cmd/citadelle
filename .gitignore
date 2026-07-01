@@ -15,7 +15,11 @@ dist-ssr
 # Supabase : clés privées (à ne JAMAIS committer)
 supabase/config.local.mjs
 supabase/*.json
+supabase/.temp/
 *firebase-adminsdk*.json
+
+# Deno (edge functions) : lockfile généré localement par `deno check`
+deno.lock
 
 # Editor directories and files
 .vscode/*

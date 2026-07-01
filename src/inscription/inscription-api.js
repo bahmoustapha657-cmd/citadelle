@@ -9,6 +9,10 @@ export async function soumettreInscription(form) {
     nomEcole: form.nomEcole,
     ville: form.ville,
     pays: form.pays,
+    responsable: form.responsable,
+    telephone: form.telephone,
+    email: form.email,
+    website: form.website,
     adminLogin: form.adminLogin,
     adminMdp: form.adminMdp,
   };
@@ -24,13 +28,7 @@ export async function soumettreInscription(form) {
   const r = await apiFetch("/inscription", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      nomEcole: form.nomEcole,
-      ville: form.ville,
-      pays: form.pays,
-      adminLogin: form.adminLogin,
-      adminMdp: form.adminMdp,
-    }),
+    body: JSON.stringify(payload),
   });
   const data = await r.json().catch(() => ({}));
   return { ok: r.ok, data };
