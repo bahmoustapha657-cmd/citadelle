@@ -13,7 +13,7 @@ import {
   watermarkHtml,
 } from "../print-helpers.js";
 import { apprecComposition, computeFicheResultats } from "./fiche-compositions-data.js";
-import { PERIODE_ANNEE, buildFicheNotesAnnuelles } from "./annual-notes.js";
+import { PERIODE_ANNEE, buildBulletinNotesAnnuelles } from "./annual-notes.js";
 
 export const imprimerFicheCompositions = (classe, periode, notes, matieres, eleves, maxNote=20, schoolInfo={}, periodes=[], matieresForClasse=null) => {
   const mi = maxNote / 2;
@@ -21,11 +21,12 @@ export const imprimerFicheCompositions = (classe, periode, notes, matieres, elev
   const mentionColor = (m) => m==="Très Bien"?"#166534":m==="Bien"?"#1e40af":m==="Assez Bien"?"#92400e":m==="Passable"?"#0369a1":"#991b1b";
   const mentionBg    = (m) => m==="Très Bien"?"#dcfce7":m==="Bien"?"#dbeafe":m==="Assez Bien"?"#fef3c7":m==="Passable"?"#e0f2fe":"#fee2e2";
 
-  // Mode « Fin d'année » : notes de composition annuelles synthétiques
-  // (moyenne des compositions de chaque période), classées sur PERIODE_ANNEE.
+  // Mode « Fin d'année » : notes annuelles synthétiques calculées comme le
+  // bulletin (moyenne de matière par période via getSubjectAverage), classées
+  // sur PERIODE_ANNEE — pour que fiche et bulletin annuels coïncident.
   const estAnnuel = periode === PERIODE_ANNEE;
   const notesEff = estAnnuel
-    ? buildFicheNotesAnnuelles({ eleves, notes, matsFor: matieresForClasse || (() => matieres), periodes })
+    ? buildBulletinNotesAnnuelles({ eleves, notes, matsFor: matieresForClasse || (() => matieres), periodes })
     : notes;
   const labelPeriode = estAnnuel ? tr("reports.annual") : periode;
 

@@ -1,5 +1,6 @@
-// Calculs purs de la fiche de compositions : classement des élèves par
-// moyenne de composition + statistiques récapitulatives de la classe.
+// Calculs purs de la fiche de résultats : classement des élèves par moyenne
+// (identique au bulletin, via getSubjectAverage) + statistiques de la classe.
+import { getSubjectAverage } from "../../note-utils.js";
 
 // Mention/appréciation à partir d'une moyenne et de la note max.
 export const apprecComposition = (v, maxNote) => {
@@ -29,14 +30,16 @@ export function computeFicheResultats({ classe, periode, notes, matieres, eleves
     const matsClasse = matieresForClasse ? matieresForClasse(e.classe) : null;
     const matsEleve = (matsClasse && matsClasse.length) ? matsClasse : matieres;
     const classSet = new Set(matsEleve.map((m) => m.nom));
-    const ne = notes.filter((n) => n.eleveId === e._id && n.periode === periode && n.type === "Composition");
+    // Toutes les notes de l'élève sur la période : la moyenne par matière est
+    // calculée par getSubjectAverage → EXACTEMENT comme le bulletin (rubriques
+    // Français, type « Moyenne », formule Cours/Composition).
+    const ne = notes.filter((n) => n.eleveId === e._id && n.periode === periode);
     let tot = 0, totC = 0;
     const notesMat = matieres.map((mat) => {
       const dansClasse = classSet.has(mat.nom);
       const coef = mat.coefficient || 1;
       if (!dansClasse) return { nom: mat.nom, coef, moy: null }; // matière hors classe : ignorée
-      const nm = ne.filter((n) => n.matiere === mat.nom);
-      const moy = nm.length ? nm.reduce((s, n) => s + Number(n.note), 0) / nm.length : null;
+      const moy = getSubjectAverage(ne.filter((n) => n.matiere === mat.nom), e.classe);
       totC += coef; // SEULES les matières de la classe comptent au dénominateur
       if (moy !== null) { tot += moy * coef; }
       return { nom: mat.nom, coef, moy };
