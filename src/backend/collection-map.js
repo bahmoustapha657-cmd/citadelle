@@ -68,6 +68,9 @@ const TRANSFORMERS = {
     _id: r.id, section: r.section, eleveId: r.eleve_id, matiere: r.matiere,
     type: r.type, periode: r.periode, note: Number(r.note), annee: r.annee,
     enseignantId: r.enseignant_id, enseignantNom: r.enseignant_nom,
+    // Epoch ms comme Firestore : le portail trie les notes récentes en tête.
+    createdAt: r.created_at ? Date.parse(r.created_at) : null,
+    updatedAt: r.updated_at ? Date.parse(r.updated_at) : null,
   }),
   absences: (r) => ({
     _id: r.id, section: r.section, eleveId: r.eleve_id, type: r.type,

@@ -8,7 +8,7 @@
 // est ici filtré CÔTÉ CLIENT (affichage) mais PAS imposé à l'écriture, alors que
 // le serveur le validait. À durcir via une table de mapping enseignant↔classes
 // en RLS, ou une Edge Function. Acceptable pour la bascule ; à traiter ensuite.
-import { chargerCollection, ajouterDoc, modifierDoc, supprimerDoc } from "./data-supabase";
+import { chargerCollection, ajouterDoc, ajouterDocs, upsertDocs, modifierDoc, supprimerDoc } from "./data-supabase";
 import { teacherAliases, matchesTeacherAlias, noteBelongsToTeacherScope, normalizeText, normalizeSection } from "./teacher-scope";
 
 const CAP = { primaire: "Primaire", college: "College", lycee: "Lycee" };
@@ -19,7 +19,13 @@ export async function fetchTeacherPortal(utilisateur) {
   const section = normalizeSection(utilisateur.section || utilisateur.sections?.[0] || "college");
   const C = CAP[section];
   const aliases = teacherAliases(utilisateur);
-  ctx = { code, section, C, matiere: utilisateur.matiere || "" };
+  ctx = {
+    code, section, C, matiere: utilisateur.matiere || "",
+    // Auteur des notes (le handler serveur les posait ; indispensable pour
+    // tracer qui a saisi quoi côté École).
+    enseignantId: utilisateur.enseignantId || null,
+    enseignantNom: utilisateur.enseignantNom || utilisateur.nom || "",
+  };
 
   const lire = async (nom) => (await chargerCollection(code, nom)).items;
   const [emploisAll, ensAll, classesAll, matieresAll, salairesAll, rosterAll] = await Promise.all([
@@ -85,18 +91,55 @@ function matiereEffective(matiere) {
   return ctx?.section === "primaire" ? (matiere || "") : (ctx?.matiere || matiere || "");
 }
 
+// Payload complet d'une note (auteur inclus, comme le handler serveur).
+function noteItem({ eleveId, type, periode, note, matiere, annee }) {
+  return {
+    eleveId, type, periode, note: Number(note),
+    matiere: matiereEffective(matiere), annee: annee || "",
+    enseignantId: ctx?.enseignantId || null,
+    enseignantNom: ctx?.enseignantNom || "",
+  };
+}
+
 export async function saveNote({ noteId, eleveId, type, periode, note, matiere, annee }) {
-  const item = { eleveId, type, periode, note: Number(note), matiere: matiereEffective(matiere), annee: annee || "" };
+  const item = noteItem({ eleveId, type, periode, note, matiere, annee });
   if (noteId) await modifierDoc(ctx.code, notesColl(), { _id: noteId, ...item });
   else await ajouterDoc(ctx.code, notesColl(), item);
   return { ok: true, data: { ok: true } };
 }
 
+// Enregistrement par LOT (grille) : 2 requêtes max (insert groupé des
+// créations + upsert groupé des mises à jour) au lieu de N écritures
+// séquentielles. Renvoie { saved, failed, notes } comme le handler serveur,
+// pour que le portail fusionne l'état local sans rechargement complet.
 export async function saveNotes(notes) {
-  for (const n of notes) {
-    await saveNote(n);
+  const coll = notesColl();
+  const creations = notes.filter((n) => !n.noteId).map(noteItem);
+  const majs = notes.filter((n) => n.noteId).map((n) => ({ _id: n.noteId, ...noteItem(n) }));
+
+  const savedNotes = [];
+  let failed = 0;
+  const erreurs = [];
+  const tenter = async (fn, items) => {
+    if (!items.length) return;
+    try {
+      savedNotes.push(...await fn(ctx.code, coll, items));
+    } catch (e) {
+      failed += items.length;
+      erreurs.push(e.message);
+    }
+  };
+  await Promise.all([tenter(ajouterDocs, creations), tenter(upsertDocs, majs)]);
+
+  if (savedNotes.length === 0 && failed > 0) {
+    // Échec réseau (aucune réponse serveur) → on RELÈVE pour que l'appelant
+    // mette la saisie en file hors-ligne (voir enregistrerGrille). Un rejet
+    // serveur (RLS, validation) renvoie ok:false, sans mise en file.
+    const reseau = /failed to fetch|networkerror|network request failed|load failed|fetch failed/i;
+    if (erreurs.every((m) => reseau.test(m || ""))) throw new Error(erreurs[0]);
+    return { ok: false, data: { error: erreurs[0] || "Enregistrement impossible." } };
   }
-  return { ok: true, data: { ok: true } };
+  return { ok: true, data: { ok: true, saved: savedNotes.length, failed, notes: savedNotes } };
 }
 
 export async function deleteNote(noteId) {

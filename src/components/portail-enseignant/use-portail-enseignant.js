@@ -90,6 +90,10 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
     setChargement(true);
     try {
       setPortalData(await fetchTeacherPortal(utilisateur));
+      // Mode Supabase : le contexte d'écriture des notes n'existe qu'après ce
+      // fetch — la synchro de la file hors-ligne tentée au montage a pu échouer,
+      // on la retente maintenant. (Sans effet si la file est vide.)
+      synchroniserRef.current?.();
     } catch (error) {
       toast(error.message || "Erreur de chargement du portail enseignant.", "error");
     } finally {

@@ -78,6 +78,39 @@ export async function ajouterDoc(schoolCode, nomCollection, item) {
   return transformRow(map.table, data);
 }
 
+// Insert en LOT : une seule requête PostgREST pour N items (vs N ajouterDoc).
+// Renvoie les items créés (avec _id) au format camelCase.
+export async function ajouterDocs(schoolCode, nomCollection, items) {
+  if (!items.length) return [];
+  const { sb, map, ecoleId } = await contexteEcriture(schoolCode, nomCollection);
+  const rows = items.map((item) => {
+    const { row } = toRow(map.table, item);
+    row.ecole_id = ecoleId;
+    if (map.section) row.section = map.section;
+    return row;
+  });
+  const { data, error } = await sb.from(map.table).insert(rows).select("*");
+  if (error) throw new Error(error.message);
+  return (data || []).map((r) => transformRow(map.table, r));
+}
+
+// Upsert en LOT (items avec _id) : une seule requête pour N mises à jour.
+// Chaque row doit porter toutes les colonnes not-null (l'ON CONFLICT réécrit la ligne).
+export async function upsertDocs(schoolCode, nomCollection, items) {
+  if (!items.length) return [];
+  const { sb, map, ecoleId } = await contexteEcriture(schoolCode, nomCollection);
+  const rows = items.map((item) => {
+    const { row } = toRow(map.table, item);
+    row.id = item._id;
+    row.ecole_id = ecoleId;
+    if (map.section) row.section = map.section;
+    return row;
+  });
+  const { data, error } = await sb.from(map.table).upsert(rows, { onConflict: "id" }).select("*");
+  if (error) throw new Error(error.message);
+  return (data || []).map((r) => transformRow(map.table, r));
+}
+
 export async function modifierDoc(schoolCode, nomCollection, item) {
   const { sb, map } = await contexteEcriture(schoolCode, nomCollection);
   const { row } = toRow(map.table, item);
