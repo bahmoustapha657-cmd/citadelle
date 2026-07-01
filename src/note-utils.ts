@@ -34,6 +34,15 @@ const MOYENNE_TYPES = new Set([
   "moyenne de la matiere",
 ]);
 
+// Rubriques du Français au collège : Dictée/Questions (coef 2) + Rédaction
+// (coef 1), chacune notée /20. Dès qu'une rubrique est présente, la moyenne de
+// la matière est leur moyenne pondérée (résultat /20). Détection par type de
+// note (seul le Français utilise ces rubriques en pratique).
+const RUBRIQUE_WEIGHTS = new Map<string, number>([
+  ["dictee/questions", 2],
+  ["redaction", 1],
+]);
+
 const normalizeType = (value: string = ""): string => String(value || "")
   .trim()
   .toLowerCase()
@@ -89,6 +98,21 @@ export const getSubjectAverage = (
   if (moyennes.length) {
     return averageNumbers(moyennes.map((note) => note.note ?? null));
   }
+
+  // Rubriques (Français collège) : moyenne pondérée 2:1 dès qu'elles existent.
+  const rubriques = notes.filter((note) => RUBRIQUE_WEIGHTS.has(normalizeType(note.type)));
+  if (rubriques.length) {
+    let total = 0;
+    let totalPoids = 0;
+    RUBRIQUE_WEIGHTS.forEach((poids, cle) => {
+      const moy = averageNumbers(
+        rubriques.filter((note) => normalizeType(note.type) === cle).map((note) => note.note ?? null),
+      );
+      if (moy != null) { total += moy * poids; totalPoids += poids; }
+    });
+    if (totalPoids) return total / totalPoids;
+  }
+
   const effectiveSection = section || getSectionForClasse(classe);
   if (isSecondarySection(effectiveSection)) {
     return getSecondarySubjectAverage(notes);
