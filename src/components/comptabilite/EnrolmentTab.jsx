@@ -19,13 +19,22 @@ export function EnrolmentTab({
   const { t } = useTranslation();
   const { schoolId, schoolInfo, toast, planInfo } = useContext(SchoolContext);
 
-  const [niveauEnrol, setNiveauEnrol] = useState("college");
+  const [niveauEnrol, setNiveauEnrolRaw] = useState("college");
+  const [classeEnrol, setClasseEnrol] = useState("all");
   const [afficherDeparts, setAfficherDeparts] = useState(false);
+
+  // Changer de cycle réinitialise le filtre classe (les classes diffèrent).
+  const setNiveauEnrol = (v) => { setNiveauEnrolRaw(v); setClasseEnrol("all"); };
 
   const chg = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
   const elevesParNiveau = { college: elevesC, lycee: elevesL, primaire: elevesP };
+  // Liste complète du cycle : sert aux matricules et au compteur de plan.
   const elevesEnrol = sortAlpha(elevesParNiveau[niveauEnrol] || []);
+  // Classes disponibles dans le cycle + liste affichée (filtrée par classe).
+  const classesEnrol = [...new Set(elevesEnrol.map((e) => e.classe).filter(Boolean))]
+    .sort((a, b) => String(a).localeCompare(String(b), "fr", { numeric: true }));
+  const elevesAffiches = classeEnrol === "all" ? elevesEnrol : elevesEnrol.filter((e) => e.classe === classeEnrol);
   const ajEnrol = ajoutParNiveau[niveauEnrol] || ajoutParNiveau.college;
   const supEnrol = suppressionParNiveau[niveauEnrol] || suppressionParNiveau.college;
   const modEnrol = modifParNiveau[niveauEnrol] || modifParNiveau.college;
@@ -37,6 +46,7 @@ export function EnrolmentTab({
       <EnrolToolbar
         t={t} afficherDeparts={afficherDeparts} setAfficherDeparts={setAfficherDeparts}
         planInfo={planInfo} niveauEnrol={niveauEnrol} setNiveauEnrol={setNiveauEnrol}
+        classeEnrol={classeEnrol} setClasseEnrol={setClasseEnrol} classesEnrol={classesEnrol}
         elevesC={elevesC} elevesL={elevesL} elevesP={elevesP} canCreate={canCreate}
         elevesEnrol={elevesEnrol} schoolInfo={schoolInfo} setForm={setForm} setModal={setModal}
       />
@@ -46,11 +56,11 @@ export function EnrolmentTab({
       </div>
 
       {!afficherDeparts&&<EnrolTable
-        cEC={cEC} cEL={cEL} cEP={cEP} elevesEnrol={elevesEnrol} canEdit={canEdit}
+        cEC={cEC} cEL={cEL} cEP={cEP} elevesEnrol={elevesAffiches} canEdit={canEdit}
         canCreate={canCreate} planInfo={planInfo} niveauEnrol={niveauEnrol}
         schoolInfo={schoolInfo} setForm={setForm} setModal={setModal} supEnrol={supEnrol}
       />}
-      {afficherDeparts&&<DepartsView elevesEnrol={elevesEnrol} canEdit={canEdit} modEnrol={modEnrol} toast={toast}/>}
+      {afficherDeparts&&<DepartsView elevesEnrol={elevesAffiches} canEdit={canEdit} modEnrol={modEnrol} toast={toast}/>}
 
       {((modal==="add_enrol"&&canCreate)||(modal==="edit_enrol"&&canEdit))&&<EnrolModale
         modal={modal} setModal={setModal} form={form} setForm={setForm} chg={chg} niveauEnrol={niveauEnrol}

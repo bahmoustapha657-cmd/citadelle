@@ -6,6 +6,7 @@ import { Btn } from "../../ui";
 export function EnrolToolbar({
   t, afficherDeparts, setAfficherDeparts, planInfo,
   niveauEnrol, setNiveauEnrol, elevesC, elevesL, elevesP,
+  classeEnrol, setClasseEnrol, classesEnrol = [],
   canCreate, elevesEnrol, schoolInfo, setForm, setModal,
 }) {
   return (
@@ -23,6 +24,13 @@ export function EnrolToolbar({
         <option value="lycee">Lycée ({elevesL.length} élèves)</option>
         <option value="primaire">Primaire ({elevesP.length} élèves)</option>
       </select>
+      {classesEnrol.length>0&&(
+        <select value={classeEnrol} onChange={e=>setClasseEnrol(e.target.value)}
+          style={{border:"1px solid #b0c4d8",borderRadius:7,padding:"6px 10px",fontSize:12,background:"#fff",color:C.blueDark,fontWeight:600}}>
+          <option value="all">Toutes les classes</option>
+          {classesEnrol.map(c=><option key={c} value={c}>{c}</option>)}
+        </select>
+      )}
       <Btn sm v={afficherDeparts?"blue":"ghost"} onClick={()=>setAfficherDeparts(d=>!d)}>
         {afficherDeparts?"👥 Élèves actifs":"📤 Départs"}
       </Btn>
