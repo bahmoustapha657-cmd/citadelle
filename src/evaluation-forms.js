@@ -6,6 +6,9 @@ const DEFAULT_EVALUATION_FORMS = {
     { id: "evaluation_ecrite", value: "Évaluation écrite", label: "Évaluation écrite", active: true },
     { id: "examen", value: "Examen", label: "Examen", active: false },
     { id: "composition", value: "Composition", label: "Composition", active: false },
+    // Saisie directe de la moyenne d'une matière (fournie par l'enseignant) :
+    // prime sur tout le reste dans le calcul (voir getSubjectAverage).
+    { id: "moyenne", value: "Moyenne", label: "Moyenne de la matière", active: true },
   ],
   secondaire: [
     { id: "devoir", value: "Devoir", label: "Devoir", active: true },
@@ -14,6 +17,9 @@ const DEFAULT_EVALUATION_FORMS = {
     { id: "evaluation_ecrite", value: "Évaluation écrite", label: "Évaluation écrite", active: true },
     { id: "examen", value: "Examen", label: "Examen", active: true },
     { id: "composition", value: "Composition", label: "Composition", active: true },
+    // Saisie directe de la moyenne d'une matière (fournie par l'enseignant) :
+    // prime sur tout le reste dans le calcul (voir getSubjectAverage).
+    { id: "moyenne", value: "Moyenne", label: "Moyenne de la matière", active: true },
   ],
   examens: [
     { id: "composition", value: "Composition", label: "Composition", active: true },

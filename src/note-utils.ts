@@ -26,6 +26,14 @@ const COMPOSITION_TYPES = new Set([
   "compo",
 ]);
 
+// Saisie directe de la moyenne d'une matière : si présente, elle prime sur
+// tout le reste (Cours/Composition) dans le calcul, quelle que soit la section.
+const MOYENNE_TYPES = new Set([
+  "moyenne",
+  "moyenne matiere",
+  "moyenne de la matiere",
+]);
+
 const normalizeType = (value: string = ""): string => String(value || "")
   .trim()
   .toLowerCase()
@@ -76,6 +84,11 @@ export const getSubjectAverage = (
   classe: string = "",
   section: SectionName = "",
 ): number | null => {
+  // Priorité absolue à une moyenne de matière saisie directement.
+  const moyennes = notes.filter((note) => MOYENNE_TYPES.has(normalizeType(note.type)));
+  if (moyennes.length) {
+    return averageNumbers(moyennes.map((note) => note.note ?? null));
+  }
   const effectiveSection = section || getSectionForClasse(classe);
   if (isSecondarySection(effectiveSection)) {
     return getSecondarySubjectAverage(notes);
