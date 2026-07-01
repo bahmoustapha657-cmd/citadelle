@@ -8,6 +8,7 @@ export function BulletinsToolbar({
   t, rechercheMatricule, setRechercheMatricule, periodeB, setPeriodeB, periodes,
   filtreClasse, setFiltreClasse, classesUniq, elevesFiltres, schoolInfo, moisAnnee,
   notes, matieres, maxNote, avecEns, matieresForClasse, appreciationsParEleveB,
+  batchAppr, canGenererLot,
 }) {
   return (
     <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16,flexWrap:"wrap"}}>
@@ -40,6 +41,14 @@ export function BulletinsToolbar({
       }}>
         {t("school.bulletins.allBulletins")} {filtreClasse!=="all"?`— ${filtreClasse}`:""}
       </Btn>
+      {canGenererLot && batchAppr && (
+        <Btn v="vert" sm onClick={batchAppr.lancer} disabled={batchAppr.running}
+          title="Génère par IA une appréciation pour chaque élève affiché qui n'en a pas encore (période sélectionnée)">
+          {batchAppr.running
+            ? `✨ Génération… ${batchAppr.progress.done}/${batchAppr.progress.total}`
+            : "✨ Générer les appréciations (IA)"}
+        </Btn>
+      )}
     </div>
   );
 }
