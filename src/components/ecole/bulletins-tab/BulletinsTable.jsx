@@ -6,9 +6,13 @@ import { getGeneralAverage, getSubjectAverage } from "../../../note-utils";
 // Table des bulletins : moyenne générale, mention, accès à l'appréciation et
 // impression individuelle (bloquée si frais impayés).
 export function BulletinsTable({
-  t, elevesB, notes, matieresForClasse, periodeB, schoolInfo, moisAnnee,
+  t, elevesB, notes, notesStats, matieresForClasse, periodeB, schoolInfo, moisAnnee,
   maxNote, avecEns, eleves, canCreate, canEdit, getAppreciation, setForm, setModal,
 }) {
+  // notesStats = notes réelles en mode période ; notes annuelles synthétiques
+  // en mode « fin d'année » (pour l'affichage des moyennes et le contexte IA).
+  // `notes` reste les notes réelles (impression, qui gère l'annuel elle-même).
+  const notesAff = notesStats || notes;
   if (elevesB.length===0) return <Vide icone="📊" msg={t("school.bulletins.noStudent")}/>;
   return (
     <Card><div style={{maxHeight:"calc(100vh - 320px)",minHeight:280,overflow:"auto"}}>
@@ -27,7 +31,7 @@ export function BulletinsTable({
           );
         })()}
       <tbody>{elevesB.map((e,rowIdx)=>{
-        const notesE=notes.filter(n=>n.eleveId===e._id&&n.periode===periodeB);
+        const notesE=notesAff.filter(n=>n.eleveId===e._id&&n.periode===periodeB);
         const moyenneGenerale = getGeneralAverage(notesE, matieresForClasse(e.classe), e.classe);
         const moyGene=moyenneGenerale!=null?moyenneGenerale.toFixed(2):"—";
         const mention=moyGene==="—"?"—":Number(moyGene)>=16?"Très Bien":Number(moyGene)>=14?"Bien":Number(moyGene)>=12?"Assez Bien":Number(moyGene)>=10?"Passable":"Insuffisant";

@@ -43,7 +43,18 @@ export const imprimerBulletin = async (eleve, notes, matieres, periode, niveau, 
   // Fenêtre ouverte AVANT l'await QR (geste utilisateur) pour éviter le blocage.
   const win = window.open("", "_blank");
   const allEleves = Array.isArray(options.allEleves) ? options.allEleves : null;
-  const allNotes = Array.isArray(options.allNotes) ? options.allNotes : notes;
+  let allNotes = Array.isArray(options.allNotes) ? options.allNotes : notes;
+
+  // Mode « Fin d'année » : on remplace les notes réelles par des notes
+  // annuelles synthétiques (comme l'impression groupée), sinon le bulletin
+  // individuel annuel serait vide (aucune note taguée sur PERIODE_ANNEE).
+  if (periode === PERIODE_ANNEE) {
+    const periodesReelles = getPeriodesForSection(schoolInfo, niveau === "primaire" ? "primaire" : "secondaire");
+    const baseEleves = (allEleves || [eleve]).filter((e) => e.classe === eleve.classe);
+    allNotes = buildBulletinNotesAnnuelles({ eleves: baseEleves, notes: allNotes, matsFor: () => matieres, periodes: periodesReelles, niveau });
+    notes = allNotes;
+  }
+
   const elevesClasse = allEleves ? allEleves.filter((e) => e.classe === eleve.classe) : null;
 
   const rang = elevesClasse

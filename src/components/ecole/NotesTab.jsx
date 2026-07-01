@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { NotesToolbar } from "./notes-tab/NotesToolbar";
 import { NotesGrille } from "./notes-tab/NotesGrille";
 import { NotesListe } from "./notes-tab/NotesListe";
+import { NotesApercu } from "./notes-tab/NotesApercu";
 import { ImportNotesModal } from "./notes-tab/ImportNotesModal";
 import { AjoutNoteModal } from "./notes-tab/AjoutNoteModal";
 
@@ -58,6 +59,13 @@ export function NotesTab({
 
   return (
     <div>
+      {(canCreate || canEdit) && (
+        <NotesApercu
+          eleves={eleves} notes={notes} matieresForClasse={matieresForClasse}
+          periodes={periodes} cycleLabel={isPrimarySection ? "Primaire" : "Secondaire"}
+        />
+      )}
+
       <NotesToolbar
         t={t} notes={notes} notesVue={notesVue} setNotesVue={setNotesVue}
         avecEns={avecEns} maxNote={maxNote} schoolInfo={schoolInfo} isPrimarySection={isPrimarySection}

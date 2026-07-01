@@ -3,6 +3,9 @@ import { BulletinsToolbar } from "./bulletins-tab/BulletinsToolbar";
 import { BulletinsTable } from "./bulletins-tab/BulletinsTable";
 import { AppreciationModale } from "./bulletins-tab/AppreciationModale";
 import { useBatchAppreciation } from "./bulletins-tab/use-batch-appreciation";
+import { PERIODE_ANNEE } from "../../reports";
+import { buildBulletinNotesAnnuelles } from "../../reports/bulletins/annual-notes";
+import { getPeriodesForSection } from "../../period-utils";
 
 export function BulletinsTab({
   periodes = ["T1", "T2", "T3"],
@@ -16,8 +19,20 @@ export function BulletinsTab({
   const chg = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
   const elevesB = elevesFiltres.filter(e=>!rechercheMatricule||(e.matricule||"").toLowerCase().includes(rechercheMatricule.toLowerCase())||(e.nom+" "+e.prenom).toLowerCase().includes(rechercheMatricule.toLowerCase()));
 
+  // En mode « fin d'année », les moyennes/mentions affichées et le contexte
+  // fourni à l'IA reposent sur des notes annuelles synthétiques (moyenne des
+  // périodes). Les notes réelles restent utilisées pour l'impression, qui
+  // reconstruit l'annuel elle-même.
+  const notesStats = periodeB === PERIODE_ANNEE
+    ? buildBulletinNotesAnnuelles({
+        eleves: elevesFiltres, notes, matsFor: matieresForClasse,
+        periodes: getPeriodesForSection(schoolInfo, avecEns ? "secondaire" : "primaire"),
+        niveau: avecEns ? "college" : "primaire",
+      })
+    : notes;
+
   const batchAppr = useBatchAppreciation({
-    elevesB, notes, matieresForClasse, periodeB, getAppreciation, saveAppreciation, toast,
+    elevesB, notes: notesStats, matieresForClasse, periodeB, getAppreciation, saveAppreciation, toast,
   });
 
   return (
@@ -33,7 +48,7 @@ export function BulletinsTab({
       />
 
       <BulletinsTable
-        t={t} elevesB={elevesB} notes={notes} matieresForClasse={matieresForClasse}
+        t={t} elevesB={elevesB} notes={notes} notesStats={notesStats} matieresForClasse={matieresForClasse}
         periodeB={periodeB} schoolInfo={schoolInfo} moisAnnee={moisAnnee} maxNote={maxNote}
         avecEns={avecEns} eleves={eleves} canCreate={canCreate} canEdit={canEdit}
         getAppreciation={getAppreciation} setForm={setForm} setModal={setModal}
