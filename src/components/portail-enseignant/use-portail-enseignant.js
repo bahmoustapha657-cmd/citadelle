@@ -54,7 +54,7 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
   });
   const [modalNote, setModalNote] = useState(null);
   const [formNote, setFormNote] = useState({});
-  const [gridForm, setGridForm] = useState({ classe: "", type: "", periode: "", notes: {} });
+  const [gridForm, setGridForm] = useState({ classe: "", type: "", periode: "", notes: {}, initiales: {} });
   const [gridProgress, setGridProgress] = useState({ done: 0, total: 0 });
   const [modalIncident, setModalIncident] = useState(null);
   const [formIncident, setFormIncident] = useState({});
@@ -128,12 +128,14 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
 
   // Préremplit la grille depuis le serveur PUIS superpose l'éventuel brouillon
   // local (la saisie en cours non encore enregistrée gagne sur le prérempli).
+  // Renvoie aussi `initiales` = le prérempli SEUL : à l'enregistrement, seules
+  // les cellules qui en diffèrent sont envoyées (cf. collectGridNotes).
   const construireGrilleAvecBrouillon = (ctx) => {
     const base = ctx.classe
       ? construireGrille(ctx.classe, ctx.type, ctx.periode, ctx.multiPeriode, ctx.matiere, ctx.multiMatiere)
       : {};
     const brouillon = loadDraft(cleBrouillon(ctx));
-    return brouillon ? { ...base, ...brouillon.notes } : base;
+    return { initiales: base, notes: brouillon ? { ...base, ...brouillon.notes } : base };
   };
 
   const ouvrirGrille = () => {
@@ -145,7 +147,7 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
       multiPeriode: false,
       multiMatiere: false,
     };
-    setGridForm({ ...ctx, notes: construireGrilleAvecBrouillon(ctx) });
+    setGridForm({ ...ctx, ...construireGrilleAvecBrouillon(ctx) });
     setGridProgress({ done: 0, total: 0 });
     setModalNote("grid");
   };
@@ -156,7 +158,9 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
       // Reconstruit le tableau si classe/type/période/matière/mode change.
       if (patch.classe !== undefined || patch.type !== undefined || patch.periode !== undefined
           || patch.matiere !== undefined || patch.multiPeriode !== undefined || patch.multiMatiere !== undefined) {
-        next.notes = next.classe ? construireGrilleAvecBrouillon(next) : {};
+        const grille = next.classe ? construireGrilleAvecBrouillon(next) : { notes: {}, initiales: {} };
+        next.notes = grille.notes;
+        next.initiales = grille.initiales;
       }
       return next;
     });

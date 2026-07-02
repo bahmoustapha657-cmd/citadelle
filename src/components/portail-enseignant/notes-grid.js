@@ -47,15 +47,29 @@ export function construireGrille({ classe, type, periode, matiere = "", periodes
   return map;
 }
 
-// Construit la liste des notes à sauvegarder (cellules non vides), avec le
-// type canonique, la période de chaque cellule et l'éventuel noteId existant.
+// Une cellule doit-elle être enregistrée ? Non vide ET différente de sa valeur
+// INITIALE (le prérempli serveur) : la grille précharge les notes existantes,
+// on ne réécrit pas celles que l'enseignant n'a pas touchées (écritures — et
+// lectures de validation côté serveur — en moins ; crucial sous quota).
+// `init` absent/vide = cellule nouvellement saisie → à enregistrer.
+export function celluleASauver(val, init) {
+  if (val === "" || val == null) return false;
+  if (init === "" || init == null) return true;
+  return Number(val) !== Number(init);
+}
+
+// Construit la liste des notes à sauvegarder (cellules non vides ET nouvelles
+// ou modifiées par rapport à gridForm.initiales — sans `initiales`, toutes les
+// cellules non vides, comme avant), avec le type canonique, la période de
+// chaque cellule et l'éventuel noteId existant.
 // eleveId (id Firestore) et periode ne contiennent jamais « | ».
 export function collectGridNotes({ gridForm, mesNotes, schoolInfo, utilisateur }) {
   const section = utilisateur.section || "secondaire";
   const canonical = resolveCanonicalNoteType(gridForm.type, schoolInfo, section);
   const matiereFixe = gridForm.matiere || "";
+  const initiales = gridForm.initiales || null;
   const aSauver = Object.entries(gridForm.notes)
-    .filter(([, val]) => val !== "" && val != null)
+    .filter(([key, val]) => (initiales ? celluleASauver(val, initiales[key]) : val !== "" && val != null))
     .map(([key, val]) => {
       let eleveId = key;
       let periode = gridForm.periode;
@@ -93,7 +107,7 @@ export function collectGridNotes({ gridForm, mesNotes, schoolInfo, utilisateur }
 // Valide une liste de notes. Renvoie un message d'erreur ou null si valide.
 // maxNote : 20 au secondaire, 10 au primaire.
 export function validateGridNotes(aSauver, maxNote = 20) {
-  if (aSauver.length === 0) return "Saisis au moins une note avant d'enregistrer.";
+  if (aSauver.length === 0) return "Aucune note nouvelle ou modifiée à enregistrer.";
   const invalide = aSauver.find((n) => !Number.isFinite(n.note) || n.note < 0 || n.note > maxNote);
   if (invalide) return `Note invalide détectée (doit être un nombre entre 0 et ${maxNote}).`;
   return null;

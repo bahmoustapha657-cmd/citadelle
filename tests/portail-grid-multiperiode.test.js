@@ -134,6 +134,62 @@ test("combiné périodes × matières : clé `${id}|${periode}|${matiere}`, coll
   assert.equal(parCle["T2|Français"].matiere, "Français");
 });
 
+test("initiales : seules les cellules nouvelles ou modifiées sont collectées", () => {
+  // Grille préremplie : e1 a déjà 12 en T1 (n1), e2 est vide.
+  const initiales = construireGrille({
+    classe: "7ème", type: "Composition", periode: "T1", multiPeriode: false,
+    eleves, mesNotes, schoolInfo, utilisateur,
+  });
+  assert.equal(initiales.e1, "12");
+
+  // L'enseignant ne saisit QUE e2 : la note préremplie de e1 ne repart pas.
+  let notes = { ...initiales, e2: "8" };
+  let { aSauver } = collectGridNotes({
+    gridForm: { type: "Composition", periode: "T1", multiPeriode: false, notes, initiales },
+    mesNotes, schoolInfo, utilisateur,
+  });
+  assert.equal(aSauver.length, 1);
+  assert.equal(aSauver[0].eleveId, "e2");
+  assert.equal(aSauver[0].note, 8);
+
+  // Il modifie ensuite e1 (12 → 15) : la cellule repart (update, noteId n1).
+  notes = { ...initiales, e1: "15" };
+  ({ aSauver } = collectGridNotes({
+    gridForm: { type: "Composition", periode: "T1", multiPeriode: false, notes, initiales },
+    mesNotes, schoolInfo, utilisateur,
+  }));
+  assert.equal(aSauver.length, 1);
+  assert.equal(aSauver[0].noteId, "n1");
+  assert.equal(aSauver[0].note, 15);
+
+  // Égalité NUMÉRIQUE : « 12.0 » ≡ « 12 » → rien à enregistrer ; une cellule
+  // effacée n'est pas envoyée non plus (pas de suppression via la grille).
+  notes = { ...initiales, e1: "12.0" };
+  ({ aSauver } = collectGridNotes({
+    gridForm: { type: "Composition", periode: "T1", multiPeriode: false, notes, initiales },
+    mesNotes, schoolInfo, utilisateur,
+  }));
+  assert.equal(aSauver.length, 0);
+  notes = { ...initiales, e1: "" };
+  ({ aSauver } = collectGridNotes({
+    gridForm: { type: "Composition", periode: "T1", multiPeriode: false, notes, initiales },
+    mesNotes, schoolInfo, utilisateur,
+  }));
+  assert.equal(aSauver.length, 0);
+});
+
+test("sans initiales (rétrocompat) : toutes les cellules non vides sont collectées", () => {
+  const notes = construireGrille({
+    classe: "7ème", type: "Composition", periode: "T1", multiPeriode: false,
+    eleves, mesNotes, schoolInfo, utilisateur,
+  });
+  const { aSauver } = collectGridNotes({
+    gridForm: { type: "Composition", periode: "T1", multiPeriode: false, notes }, mesNotes, schoolInfo, utilisateur,
+  });
+  assert.equal(aSauver.length, 1); // e1 prérempli (12) repart, e2 vide non.
+  assert.equal(aSauver[0].noteId, "n1");
+});
+
 test("mode normal : clé = eleveId, période figée conservée", () => {
   const notes = construireGrille({
     classe: "7ème", type: "Composition", periode: "T1", multiPeriode: false,

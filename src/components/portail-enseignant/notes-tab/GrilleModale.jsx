@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { C } from "../../../constants";
 import { Btn, Modale, Selec, Vide } from "../../ui";
+import { celluleASauver } from "../notes-grid";
 
 // Modale de saisie en grille (portail enseignant). Trois modes :
 //  - normal        : une période + une matière figées, une colonne « Note ».
@@ -35,7 +36,10 @@ export function GrilleModale({
         : [{ sub: null, label: "Note", group: null }];
   const enColonnes = multi || multiMat;
   const cle = (eleveId, sub) => (sub == null ? eleveId : `${eleveId}|${sub}`);
-  const remplies = Object.values(gridForm.notes).filter((v) => v !== "" && v != null).length;
+  // Cellules qui partiront à l'enregistrement : nouvelles ou modifiées par
+  // rapport au prérempli (les notes existantes non touchées ne comptent pas).
+  const aEnregistrer = Object.entries(gridForm.notes)
+    .filter(([k, v]) => celluleASauver(v, (gridForm.initiales || {})[k])).length;
 
   const titreMatiere = combine ? "Toutes périodes × matières"
     : multiMat ? "Toutes les matières"
@@ -107,7 +111,7 @@ export function GrilleModale({
       {elevesClasse.length === 0 ? <Vide icone="👥" msg="Aucun élève dans cette classe." /> : (
         <>
           <div style={{ padding: "8px 12px", background: "#f0f7ff", border: "1px solid #bfdbfe", borderRadius: 8, fontSize: 12, color: "#1e40af", marginBottom: 10 }}>
-            <strong>{remplies}</strong> note(s) saisie(s). Les notes existantes sont préremplies — modifier/effacer met à jour ou laisse en l'état. <span style={{ color: "#15803d" }}>💾 Sauvegarde locale automatique (la saisie est conservée même en cas de coupure).</span>
+            <strong>{aEnregistrer}</strong> note(s) à enregistrer. Les notes existantes sont préremplies — seules les cases <strong>nouvelles ou modifiées</strong> sont envoyées, le reste est laissé en l'état. <span style={{ color: "#15803d" }}>💾 Sauvegarde locale automatique (la saisie est conservée même en cas de coupure).</span>
           </div>
           <div style={{ maxHeight: "52vh", overflowY: "auto", overflowX: "auto", border: "1px solid #e2e8f0", borderRadius: 8 }}>
             <table className="lc-sticky-table" data-fix-left="1">
