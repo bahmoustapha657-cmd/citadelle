@@ -55,7 +55,7 @@ async function upsertAuthUser(authAdmin, { email, password, displayName, disable
   }
 }
 
-const ROLES_SYSTEME_ECRITURE = new Set(["direction", "admin", "comptable", "primaire", "college"]);
+const ROLES_SYSTEME_ECRITURE = new Set(["direction", "admin", "comptable", "surveillant", "primaire", "college"]);
 
 export function canManageTeacherScope(session, targetSection) {
   if (session.profile.role === "primaire") {

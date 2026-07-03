@@ -46,7 +46,9 @@ export function useEcole({
     appreciations.filter((a) => a.periode === periode && a.texte).map((a) => [a.eleveId, a.texte]),
   );
 
-  const [tab, setTab] = useState("apercu");
+  // Le surveillant général n'a pas l'onglet Aperçu (stats académiques) :
+  // il arrive directement sur la Discipline, son espace de travail.
+  const [tab, setTab] = useState(userRole === "surveillant" ? "discipline" : "apercu");
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState({});
   const [filtreClasse, setFiltreClasse] = useState("all");

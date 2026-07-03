@@ -1,4 +1,4 @@
-export const ROLE_ORDER = ["direction", "admin", "comptable", "primaire", "college"];
+export const ROLE_ORDER = ["direction", "admin", "comptable", "surveillant", "primaire", "college"];
 
 export const ROLE_MODULE_CAPABILITIES = {
   superadmin: ["superadmin_panel"],
@@ -10,6 +10,10 @@ export const ROLE_MODULE_CAPABILITIES = {
   // de classe se fait depuis l'onglet Inscriptions de la compta (EnrolToolbar),
   // pas via les modules pedagogiques.
   comptable: ["compta"],
+  // Surveillant general : discipline/absences des DEUX sections. Il voit les
+  // modules Primaire et Secondaire mais l'UI (Ecole.jsx) restreint ses onglets
+  // a Eleves / Discipline / Emploi du temps — jamais notes, bulletins ni compta.
+  surveillant: ["primaire", "secondaire", "calendrier"],
   enseignant: ["portail_enseignant"],
   parent: ["portail_parent"],
 };
@@ -110,6 +114,14 @@ export const ROLE_SETTINGS_DEFAULT = {
     label: "Comptabilite",
     active: true,
     modules: ROLE_MODULE_CAPABILITIES.comptable,
+  },
+  surveillant: {
+    role: "surveillant",
+    nom: "Surveillant General",
+    login: "surveillant",
+    label: "Surveillance Generale",
+    active: true,
+    modules: ROLE_MODULE_CAPABILITIES.surveillant,
   },
   primaire: {
     role: "primaire",

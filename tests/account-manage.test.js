@@ -73,11 +73,26 @@ test("comptable ne peut PAS creer un compte enseignant", () => {
 });
 
 test("comptable ne peut PAS creer un compte direction/admin/comptable/section", () => {
-  for (const role of ["direction", "admin", "comptable", "primaire", "college"]) {
+  for (const role of ["direction", "admin", "comptable", "surveillant", "primaire", "college"]) {
     assert.equal(
       canManageTargetRole({ profile: { role: "comptable" } }, role),
       false,
       `comptable ne devrait pas pouvoir creer un compte ${role}`,
+    );
+  }
+});
+
+test("surveillant : gere par la direction seulement, et ne gere personne", () => {
+  // Direction : oui (role systeme comme les autres).
+  assert.equal(canManageTargetRole({ profile: { role: "direction" } }, "surveillant"), true);
+  // Admin : non (ROLES_SYSTEME_ECRITURE le protege de l'admin).
+  assert.equal(canManageTargetRole({ profile: { role: "admin" } }, "surveillant"), false);
+  // Le surveillant lui-meme ne peut creer aucun compte.
+  for (const role of ["direction", "admin", "comptable", "surveillant", "enseignant", "parent"]) {
+    assert.equal(
+      canManageTargetRole({ profile: { role: "surveillant" } }, role),
+      false,
+      `surveillant ne devrait pas pouvoir creer un compte ${role}`,
     );
   }
 });

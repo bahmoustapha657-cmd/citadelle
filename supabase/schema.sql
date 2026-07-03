@@ -19,8 +19,10 @@ exception when duplicate_object then null; end $$;
 
 do $$ begin
   create type role_compte as enum
-    ('superadmin','direction','admin','comptable','primaire','college','enseignant','parent');
+    ('superadmin','direction','admin','comptable','surveillant','primaire','college','enseignant','parent');
 exception when duplicate_object then null; end $$;
+-- Base existante (le bloc ci-dessus ne fait rien si le type existe deja) :
+-- appliquer supabase/surveillant.sql pour ajouter la valeur 'surveillant'.
 
 -- ── Écoles ─────────────────────────────────────────────────────────────────
 create table if not exists ecoles (

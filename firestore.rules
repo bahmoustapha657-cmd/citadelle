@@ -116,6 +116,14 @@ service cloud.firestore {
       return ["direction", sectionRole];
     }
 
+    // Discipline (absences) : le surveillant general saisit et corrige les
+    // absences des DEUX sections, en plus de la direction et du role de
+    // section. Ne s'applique QU'AUX collections *_absences — les notes et
+    // appreciations restent sur pedagogieRoles (sans surveillant).
+    function disciplineRolesSansAdmin(sectionRole) {
+      return ["direction", sectionRole, "surveillant"];
+    }
+
     function pushSubPayloadValide(uid) {
       return request.auth != null
              && request.auth.uid == uid
@@ -190,6 +198,14 @@ service cloud.firestore {
 
     function adminPeutLireCollection(coll) {
       return adminPeutLireModule(moduleOfCollection(coll));
+    }
+
+    // Perimetre de LECTURE du surveillant general : les collections des
+    // modules pedagogiques (eleves, classes, enseignants, emplois du temps)
+    // et du calendrier — jamais la compta, la fondation ni les examens.
+    // Son ecriture est limitee aux *_absences (matches dedies ci-dessous).
+    function surveillantPeutLireCollection(coll) {
+      return ["primaire", "secondaire", "calendrier"].hasAny([moduleOfCollection(coll)]);
     }
 
     // Collections où SEUL le comptable peut écrire (le DG supervise, n'enregistre
@@ -321,8 +337,9 @@ service cloud.firestore {
         allow read: if (appartientEcole(schoolId)
                         && (aUnRole(backOfficeRolesSansAdmin()) || adminPeutLireModule("historique")))
                      || aUnRole(["superadmin"]);
+        // Le surveillant journalise aussi (trace de ses corrections d'absences).
         allow create: if (appartientEcole(schoolId)
-                          && (aUnRole(backOfficeWriteRolesSansAdmin()) || tokenRole() == "admin"))
+                          && (aUnRole(backOfficeWriteRolesSansAdmin()) || aUnRole(["surveillant"]) || tokenRole() == "admin"))
                        || aUnRole(["superadmin"]);
         allow update, delete: if aUnRole(["superadmin"]);
       }
@@ -371,30 +388,30 @@ service cloud.firestore {
 
       match /elevesCollege_absences/{docId} {
         allow read: if (appartientEcole(schoolId)
-                        && (aUnRole(pedagogieRolesSansAdmin("college")) || adminPeutLireModule("secondaire")))
+                        && (aUnRole(disciplineRolesSansAdmin("college")) || adminPeutLireModule("secondaire")))
                      || aUnRole(["superadmin"]);
         allow write: if (appartientEcole(schoolId)
-                        && (aUnRole(pedagogieWriteRolesSansAdmin("college")) || adminPeutEcrireModule("secondaire"))
+                        && (aUnRole(disciplineRolesSansAdmin("college")) || adminPeutEcrireModule("secondaire"))
                         && abonnementActif(schoolId))
                       || aUnRole(["superadmin"]);
       }
 
       match /elevesPrimaire_absences/{docId} {
         allow read: if (appartientEcole(schoolId)
-                        && (aUnRole(pedagogieRolesSansAdmin("primaire")) || adminPeutLireModule("primaire")))
+                        && (aUnRole(disciplineRolesSansAdmin("primaire")) || adminPeutLireModule("primaire")))
                      || aUnRole(["superadmin"]);
         allow write: if (appartientEcole(schoolId)
-                        && (aUnRole(pedagogieWriteRolesSansAdmin("primaire")) || adminPeutEcrireModule("primaire"))
+                        && (aUnRole(disciplineRolesSansAdmin("primaire")) || adminPeutEcrireModule("primaire"))
                         && abonnementActif(schoolId))
                       || aUnRole(["superadmin"]);
       }
 
       match /elevesLycee_absences/{docId} {
         allow read: if (appartientEcole(schoolId)
-                        && (aUnRole(pedagogieRolesSansAdmin("college")) || adminPeutLireModule("secondaire")))
+                        && (aUnRole(disciplineRolesSansAdmin("college")) || adminPeutLireModule("secondaire")))
                      || aUnRole(["superadmin"]);
         allow write: if (appartientEcole(schoolId)
-                        && (aUnRole(pedagogieWriteRolesSansAdmin("college")) || adminPeutEcrireModule("secondaire"))
+                        && (aUnRole(disciplineRolesSansAdmin("college")) || adminPeutEcrireModule("secondaire"))
                         && abonnementActif(schoolId))
                       || aUnRole(["superadmin"]);
       }
@@ -442,7 +459,9 @@ service cloud.firestore {
       match /{collection}/{docId} {
         allow read: if collection in collectionsBackOffice()
                     && ((appartientEcole(schoolId)
-                          && (aUnRole(backOfficeRolesSansAdmin()) || adminPeutLireCollection(collection)))
+                          && (aUnRole(backOfficeRolesSansAdmin())
+                              || (aUnRole(["surveillant"]) && surveillantPeutLireCollection(collection))
+                              || adminPeutLireCollection(collection)))
                         || aUnRole(["superadmin"]));
         allow write: if collection in collectionsBackOffice()
                      && ((appartientEcole(schoolId)

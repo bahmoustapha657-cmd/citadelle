@@ -4,6 +4,9 @@ import { useEcole } from "./ecole/use-ecole";
 import { EcoleHeader } from "./ecole/EcoleHeader";
 import { EcoleTabContent } from "./ecole/EcoleTabContent";
 
+// Onglets visibles par le surveillant général (discipline des deux sections).
+const TABS_SURVEILLANT = new Set(["eleves", "discipline", "emploidutemps"]);
+
 // Orchestrateur du module École : la logique vit dans useEcole, l'en-tête dans
 // EcoleHeader et l'aiguillage des onglets dans EcoleTabContent.
 function Ecole({ titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns, userRole, annee, classesPredefinies, maxNote = 20, matieresPredefinies = [], readOnly = false, verrouOuvert = false }) {
@@ -23,7 +26,10 @@ function Ecole({ titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEn
     { id: "matieres", label: t("school.tabs.subjects") },
     ...(avecEns ? [{ id: "emploidutemps", label: t("school.tabs.schedule") }] : []),
     { id: "attestations", label: t("school.tabs.certificates") },
-  ];
+    // Surveillance générale : périmètre discipline uniquement — élèves
+    // (lecture + impression des listes), absences et emploi du temps.
+    // Les notes/bulletins lui sont aussi refusés côté règles serveur.
+  ].filter((item) => userRole !== "surveillant" || TABS_SURVEILLANT.has(item.id));
 
   return (
     <div style={{ padding: "22px 26px" }}>

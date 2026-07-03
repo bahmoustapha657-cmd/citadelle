@@ -35,7 +35,7 @@ $$;
 create or replace function is_staff() returns boolean
   language sql stable security definer set search_path = public as $$
   select coalesce(auth_role() in
-    ('superadmin','direction','admin','comptable','primaire','college'), false);
+    ('superadmin','direction','admin','comptable','surveillant','primaire','college'), false);
 $$;
 
 -- Peut écrire des notes/absences : personnel + enseignant.

@@ -30,6 +30,8 @@ export function EcoleTabsAdmin({ e, avecEns, userRole, annee, maxNote, matieresP
       />}
 
       {/* ── DISCIPLINE ── */}
+      {/* Le surveillant général gère pleinement les absences (saisie +
+          correction) sans détenir le droit d'édition global du module. */}
       {e.tab === "discipline" && <DisciplineTab
         absences={e.absences}
         cAbs={e.cAbs}
@@ -42,7 +44,7 @@ export function EcoleTabsAdmin({ e, avecEns, userRole, annee, maxNote, matieresP
         modal={e.modal}
         setModal={e.setModal}
         canCreate={e.canCreate}
-        canEdit={e.canEdit}
+        canEdit={e.canEdit || (userRole === "surveillant" && e.canCreate)}
         envoyerPush={e.envoyerPush}
       />}
 

@@ -34,8 +34,9 @@ async function handler(req, res) {
     return res.status(500).json({ error: "Erreur serveur" });
   }
 
+  // surveillant : notifie les parents lors de la saisie d'une absence.
   const isAuthorized = await requireSession(req, res, {
-    roles: ["direction", "admin", "comptable"],
+    roles: ["direction", "admin", "comptable", "surveillant"],
     schoolId: normalizedSchoolId,
     allowSuperadmin: true,
   });

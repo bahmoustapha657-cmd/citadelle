@@ -17,8 +17,8 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const DOMAIN = "edugest.app";
 
-const ROLES_VALIDES = new Set(["direction", "admin", "comptable", "primaire", "college", "enseignant", "parent"]);
-const ROLES_SYSTEME = new Set(["direction", "admin", "comptable", "primaire", "college"]);
+const ROLES_VALIDES = new Set(["direction", "admin", "comptable", "surveillant", "primaire", "college", "enseignant", "parent"]);
+const ROLES_SYSTEME = new Set(["direction", "admin", "comptable", "surveillant", "primaire", "college"]);
 
 const cors = {
   "Access-Control-Allow-Origin": "*",

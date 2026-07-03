@@ -1300,6 +1300,61 @@ describe("16. Admin granulaire — perimetre par module", () => {
 });
 
 // ───────────────────────────────────────────────────────────
+// 16bis. Surveillant général — discipline des deux sections,
+//        rien d'autre : lecture élèves/classes/emplois +
+//        écriture absences ; notes, appréciations et compta
+//        strictement refusées.
+// ───────────────────────────────────────────────────────────
+describe("16bis. Surveillant général : périmètre discipline", () => {
+  test("surveillant PEUT lire élèves/classes/emplois des deux sections + calendrier", async () => {
+    const db = asUser({ schoolId: SCHOOL_A, role: "surveillant" });
+    await assertSucceeds(getDoc(doc(db, `ecoles/${SCHOOL_A}/elevesPrimaire/ep1`)));
+    await assertSucceeds(getDoc(doc(db, `ecoles/${SCHOOL_A}/elevesCollege/ec1`)));
+    await assertSucceeds(getDoc(doc(db, `ecoles/${SCHOOL_A}/classesCollege/cc1`)));
+    await assertSucceeds(getDoc(doc(db, `ecoles/${SCHOOL_A}/classesCollege_emplois/edt1`)));
+    await assertSucceeds(getDoc(doc(db, `ecoles/${SCHOOL_A}/evenements/ev1`)));
+  });
+
+  test("surveillant PEUT saisir/corriger les absences des deux sections", async () => {
+    const db = asUser({ schoolId: SCHOOL_A, role: "surveillant" });
+    await assertSucceeds(
+      setDoc(doc(db, `ecoles/${SCHOOL_A}/elevesPrimaire_absences/abs-sg-p`), { eleveNom: "A", type: "Absence" }),
+    );
+    await assertSucceeds(
+      setDoc(doc(db, `ecoles/${SCHOOL_A}/elevesCollege_absences/abs-sg-c`), { eleveNom: "B", type: "Retard" }),
+    );
+    await assertSucceeds(deleteDoc(doc(db, `ecoles/${SCHOOL_A}/elevesCollege_absences/abs-sg-c`)));
+  });
+
+  test("surveillant NE PEUT PAS lire ni écrire notes/appréciations", async () => {
+    const db = asUser({ schoolId: SCHOOL_A, role: "surveillant" });
+    await assertFails(getDoc(doc(db, `ecoles/${SCHOOL_A}/notesPrimaire/np1`)));
+    await assertFails(getDoc(doc(db, `ecoles/${SCHOOL_A}/notesCollege/nc1`)));
+    await assertFails(setDoc(doc(db, `ecoles/${SCHOOL_A}/notesCollege/nc-sg`), { val: 12 }));
+    await assertFails(setDoc(doc(db, `ecoles/${SCHOOL_A}/appreciationsCollege/ap-sg`), { texte: "x" }));
+  });
+
+  test("surveillant NE PEUT PAS toucher la compta ni la fondation", async () => {
+    const db = asUser({ schoolId: SCHOOL_A, role: "surveillant" });
+    await assertFails(getDoc(doc(db, `ecoles/${SCHOOL_A}/recettes/r1`)));
+    await assertFails(setDoc(doc(db, `ecoles/${SCHOOL_A}/recettes/r-sg`), { montant: 1 }));
+    await assertFails(setDoc(doc(db, `ecoles/${SCHOOL_A}/membres/m-sg`), { nom: "X" }));
+  });
+
+  test("surveillant NE PEUT PAS écrire hors absences (élèves, classes, emplois)", async () => {
+    const db = asUser({ schoolId: SCHOOL_A, role: "surveillant" });
+    await assertFails(setDoc(doc(db, `ecoles/${SCHOOL_A}/elevesCollege/ec-sg`), { nom: "X" }));
+    await assertFails(setDoc(doc(db, `ecoles/${SCHOOL_A}/classesCollege/cc-sg`), { nom: "6e" }));
+    await assertFails(setDoc(doc(db, `ecoles/${SCHOOL_A}/classesCollege_emplois/edt-sg`), { jour: "Lundi" }));
+  });
+
+  test("surveillant d'une école NE VOIT PAS l'autre école (isolation)", async () => {
+    const db = asUser({ schoolId: SCHOOL_A, role: "surveillant" });
+    await assertFails(getDoc(doc(db, `ecoles/${SCHOOL_B}/elevesCollege/ec1`)));
+  });
+});
+
+// ───────────────────────────────────────────────────────────
 // 17. Conformité légale — /ecoles/{schoolId}/config/legal
 //     Lecture : tout rôle de l'école (back-office, parent,
 //     enseignant — utilisé en pied de bulletin imprimé).

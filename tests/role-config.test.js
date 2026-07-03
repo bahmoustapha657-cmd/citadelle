@@ -38,6 +38,19 @@ test("comptable est strictement limité au module compta, même avec une config 
   assert.equal(getPrimaryModuleForRole("comptable", schoolInfo), "compta");
 });
 
+test("surveillant : modules pedagogiques + calendrier, compte par defaut actif", () => {
+  const settings = getRoleSettingsMap({});
+
+  assert.deepEqual(settings.surveillant.modules, ["primaire", "secondaire", "calendrier"]);
+  assert.equal(settings.surveillant.active, true);
+  assert.equal(settings.surveillant.login, "surveillant");
+  // Present dans les comptes par defaut → auto-cree par Gestion Acces.
+  assert.equal(getActiveRoleAccounts({}).some((a) => a.role === "surveillant"), true);
+  // Jamais de module compta, meme si une config stockee le demandait.
+  const force = getRoleSettingsMap({ surveillant: { modules: ["compta", "primaire"] } });
+  assert.deepEqual(force.surveillant.modules, ["primaire"]);
+});
+
 test("getActiveRoleAccounts filters disabled roles and getPrimaryModuleForRole uses school config", () => {
   const schoolInfo = {
     roleSettings: {
