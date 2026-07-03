@@ -24,6 +24,20 @@ test("getRoleSettingsMap keeps direction active and preserves required admin mod
   assert.equal(settings.admin.modules.includes("parametres"), true);
 });
 
+test("comptable est strictement limité au module compta, même avec une config stockée plus large", () => {
+  // Une école ayant enregistré l'ancien périmètre (primaire/secondaire/etc.)
+  // doit être ramenée à ["compta"] : normalizeModules filtre contre les
+  // capacités du rôle, côté client ET côté API (shared/role-config.js).
+  const schoolInfo = {
+    roleSettings: {
+      comptable: { modules: ["compta", "primaire", "secondaire", "calendrier", "examens"] },
+    },
+  };
+
+  assert.deepEqual(getRoleSettingsMap(schoolInfo).comptable.modules, ["compta"]);
+  assert.equal(getPrimaryModuleForRole("comptable", schoolInfo), "compta");
+});
+
 test("getActiveRoleAccounts filters disabled roles and getPrimaryModuleForRole uses school config", () => {
   const schoolInfo = {
     roleSettings: {

@@ -1,8 +1,10 @@
 import { C, genererMatricule } from "../../../constants";
 import { Btn } from "../../ui";
+import { imprimerListeClasse } from "../../../reports";
 
 // Barre d'outils de l'enrôlement : titre + compteur de plan, sélecteur de
-// niveau, bascule Départs et boutons d'ajout (normal/rapide/import Excel).
+// niveau, filtre classe + impression de la liste de classe, bascule Départs
+// et boutons d'ajout (normal/rapide/import Excel).
 export function EnrolToolbar({
   t, afficherDeparts, setAfficherDeparts, planInfo,
   niveauEnrol, setNiveauEnrol, elevesC, elevesL, elevesP,
@@ -30,6 +32,12 @@ export function EnrolToolbar({
           <option value="all">Toutes les classes</option>
           {classesEnrol.map(c=><option key={c} value={c}>{c}</option>)}
         </select>
+      )}
+      {!afficherDeparts&&classeEnrol!=="all"&&(
+        <Btn sm v="ghost" title="Imprimer la liste des élèves de la classe sélectionnée"
+          onClick={()=>imprimerListeClasse(classeEnrol, elevesEnrol, schoolInfo)}>
+          🖨️ Liste de la classe
+        </Btn>
       )}
       <Btn sm v={afficherDeparts?"blue":"ghost"} onClick={()=>setAfficherDeparts(d=>!d)}>
         {afficherDeparts?"👥 Élèves actifs":"📤 Départs"}

@@ -6,7 +6,10 @@ export const ROLE_MODULE_CAPABILITIES = {
   direction: ["accueil", "historique", "admin_panel", "parametres", "fondation", "compta", "primaire", "secondaire", "calendrier", "examens", "messages"],
   primaire: ["primaire", "calendrier", "examens"],
   college: ["secondaire", "calendrier", "examens"],
-  comptable: ["compta", "primaire", "secondaire", "calendrier", "examens"],
+  // Comptable : strictement limite a la Comptabilite. L'impression des listes
+  // de classe se fait depuis l'onglet Inscriptions de la compta (EnrolToolbar),
+  // pas via les modules pedagogiques.
+  comptable: ["compta"],
   enseignant: ["portail_enseignant"],
   parent: ["portail_parent"],
 };
