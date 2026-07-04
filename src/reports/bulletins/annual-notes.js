@@ -11,7 +11,7 @@
 // classe se recalculent SANS code dédié. C'est mathématiquement identique à
 // la moyenne des moyennes générales périodiques (le dénominateur des
 // coefficients étant constant d'une période à l'autre).
-import { getAnnualAverage, getSubjectAverage } from "../../note-utils.js";
+import { getAnnualAverage, getDirectSubjectAverage, getSubjectAverage } from "../../note-utils.js";
 
 export const PERIODE_ANNEE = "__ANNEE__";
 
@@ -24,8 +24,14 @@ function buildCore({ eleves, notes, matsFor, periodes, valeurPeriode, type }) {
     const notesE = notes.filter((n) => n.eleveId === e._id);
     for (const mat of mats) {
       const notesMat = notesE.filter((n) => n.matiere === mat.nom);
-      const parPeriode = periodes.map((p) => valeurPeriode(notesMat.filter((n) => n.periode === p), e.classe));
-      const annuelle = getAnnualAverage(parPeriode);
+      // Moyenne de la matière saisie DIRECTEMENT (type « Moyenne », grille) :
+      // elle prime et IGNORE le découpage en périodes — on ne divise pas par
+      // le nombre de trimestres/semestres. Plusieurs saisies (une par
+      // période, correction…) → moyenne simple de ces seules notes.
+      const directe = getDirectSubjectAverage(notesMat);
+      const annuelle = directe != null
+        ? directe
+        : getAnnualAverage(periodes.map((p) => valeurPeriode(notesMat.filter((n) => n.periode === p), e.classe)));
       if (annuelle == null) continue;
       out.push({
         eleveId: e._id, eleveNom: nomEleve(e), matiere: mat.nom,

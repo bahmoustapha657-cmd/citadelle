@@ -53,6 +53,34 @@ test("matière non notée sur une période → comptée 0 (diviseur = nb périod
   assert.equal(synth.note, 9);
 });
 
+// « Moyenne de la matière » saisie directement (grille) : elle prime en fin
+// d'année et IGNORE le découpage en périodes — pas de division par le nombre
+// de trimestres/semestres (sinon une moyenne saisie une fois valait moy/3).
+test("moyenne directe saisie une seule fois → moyenne annuelle telle quelle (pas divisée par les périodes)", () => {
+  const eleves = [{ _id: "e1", nom: "Sow", prenom: "Kadiatou", classe: "7ème Année A" }];
+  const matsFor = () => [{ nom: "Maths", coefficient: 1 }];
+  const notes = [
+    // Notes classiques sur T1/T2 (seraient moyennées avec T3=0 sans la saisie directe)
+    { eleveId: "e1", matiere: "Maths", periode: "T1", type: "Composition", note: 8 },
+    { eleveId: "e1", matiere: "Maths", periode: "T2", type: "Composition", note: 10 },
+    // Moyenne de la matière fournie par l'enseignant : PRIME sur tout.
+    { eleveId: "e1", matiere: "Maths", periode: "T1", type: "Moyenne", note: 14 },
+  ];
+  const [synth] = buildBulletinNotesAnnuelles({ eleves, notes, matsFor, periodes: ["T1", "T2", "T3"] });
+  assert.equal(synth.note, 14, "la moyenne directe ne doit PAS être divisée par 3");
+});
+
+test("plusieurs moyennes directes (une par période) → moyenne simple de ces seules saisies", () => {
+  const eleves = [{ _id: "e1", nom: "Sow", prenom: "Kadiatou", classe: "7ème Année A" }];
+  const matsFor = () => [{ nom: "Maths", coefficient: 1 }];
+  const notes = [
+    { eleveId: "e1", matiere: "Maths", periode: "S1", type: "Moyenne", note: 12 },
+    { eleveId: "e1", matiere: "Maths", periode: "S2", type: "Moyenne", note: 16 },
+  ];
+  const [synth] = buildBulletinNotesAnnuelles({ eleves, notes, matsFor, periodes: ["S1", "S2"] });
+  assert.equal(synth.note, 14); // (12+16)/2 — sans remplissage de zéros
+});
+
 // Régression : au PRIMAIRE (module avec avecEns=true), le mode « Fin d'année »
 // reconstruisait les périodes via `avecEns ? "secondaire" : "primaire"` → avec
 // une école en périodicités mixtes (citadelle : primaire=trimestre,

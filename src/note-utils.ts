@@ -88,16 +88,25 @@ export const getSecondarySubjectAverage = (notes: Note[] = []): number | null =>
   return noteCours;
 };
 
+// Moyenne de matière saisie DIRECTEMENT (type « Moyenne de la matière ») :
+// moyenne de ces seules notes, ou null s'il n'y en a aucune. Elle prime sur
+// tout le reste — y compris sur le découpage en périodes pour la moyenne
+// annuelle (voir annual-notes.js) : si l'école saisit la moyenne de la
+// matière, on ne divise pas par le nombre de trimestres/semestres.
+export const getDirectSubjectAverage = (notes: Note[] = []): number | null => {
+  const moyennes = notes.filter((note) => MOYENNE_TYPES.has(normalizeType(note.type)));
+  if (!moyennes.length) return null;
+  return averageNumbers(moyennes.map((note) => note.note ?? null));
+};
+
 export const getSubjectAverage = (
   notes: Note[] = [],
   classe: string = "",
   section: SectionName = "",
 ): number | null => {
   // Priorité absolue à une moyenne de matière saisie directement.
-  const moyennes = notes.filter((note) => MOYENNE_TYPES.has(normalizeType(note.type)));
-  if (moyennes.length) {
-    return averageNumbers(moyennes.map((note) => note.note ?? null));
-  }
+  const directe = getDirectSubjectAverage(notes);
+  if (directe != null) return directe;
 
   const effectiveSection = section || getSectionForClasse(classe);
 
