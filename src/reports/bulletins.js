@@ -48,8 +48,14 @@ export const imprimerBulletin = async (eleve, notes, matieres, periode, niveau, 
   // Mode « Fin d'année » : on remplace les notes réelles par des notes
   // annuelles synthétiques (comme l'impression groupée), sinon le bulletin
   // individuel annuel serait vide (aucune note taguée sur PERIODE_ANNEE).
+  // `options.periodes` = périodes réelles de la section (fournies par l'onglet
+  // Bulletins). Le repli sur `niveau` est FAUX pour le module Primaire (qui
+  // passe niveau="college" via avecEns) quand primaire et secondaire n'ont pas
+  // la même périodicité — ne sert qu'aux anciens appelants.
   if (periode === PERIODE_ANNEE) {
-    const periodesReelles = getPeriodesForSection(schoolInfo, niveau === "primaire" ? "primaire" : "secondaire");
+    const periodesReelles = (Array.isArray(options.periodes) && options.periodes.length)
+      ? options.periodes
+      : getPeriodesForSection(schoolInfo, niveau === "primaire" ? "primaire" : "secondaire");
     const baseEleves = (allEleves || [eleve]).filter((e) => e.classe === eleve.classe);
     allNotes = buildBulletinNotesAnnuelles({ eleves: baseEleves, notes: allNotes, matsFor: () => matieres, periodes: periodesReelles, niveau });
     notes = allNotes;
@@ -90,7 +96,7 @@ export const imprimerBulletin = async (eleve, notes, matieres, periode, niveau, 
 };
 
 // ── IMPRESSION GROUPÉE : tous les bulletins d'une classe en un seul PDF ──
-export const imprimerBulletinsGroupes = async (eleves, notes, matieres, periode, niveau, maxNote = 20, schoolInfo = {}, classe = "", matieresParClasseFn = null, appreciationsParEleve = {}) => {
+export const imprimerBulletinsGroupes = async (eleves, notes, matieres, periode, niveau, maxNote = 20, schoolInfo = {}, classe = "", matieresParClasseFn = null, appreciationsParEleve = {}, periodesSection = null) => {
   if (!eleves.length) { alert("Aucun élève pour cette sélection."); return; }
   // Fenêtre ouverte AVANT tout await QR (geste utilisateur).
   const win = window.open("", "_blank");
@@ -99,8 +105,11 @@ export const imprimerBulletinsGroupes = async (eleves, notes, matieres, periode,
   // Mode « Fin d'année » : on remplace les notes par des notes annuelles
   // synthétiques (moyenne des périodes), puis le pipeline normal calcule
   // moyennes, rang et mention sur la période sentinelle PERIODE_ANNEE.
+  // `periodesSection` = périodes réelles de la section (voir imprimerBulletin).
   if (periode === PERIODE_ANNEE) {
-    const periodesReelles = getPeriodesForSection(schoolInfo, niveau === "primaire" ? "primaire" : "secondaire");
+    const periodesReelles = (Array.isArray(periodesSection) && periodesSection.length)
+      ? periodesSection
+      : getPeriodesForSection(schoolInfo, niveau === "primaire" ? "primaire" : "secondaire");
     notes = buildBulletinNotesAnnuelles({ eleves, notes, matsFor: getMat, periodes: periodesReelles, niveau });
   }
 

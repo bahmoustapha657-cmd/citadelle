@@ -5,7 +5,6 @@ import { AppreciationModale } from "./bulletins-tab/AppreciationModale";
 import { useBatchAppreciation } from "./bulletins-tab/use-batch-appreciation";
 import { PERIODE_ANNEE } from "../../reports";
 import { buildBulletinNotesAnnuelles } from "../../reports/bulletins/annual-notes";
-import { getPeriodesForSection } from "../../period-utils";
 
 export function BulletinsTab({
   periodes = ["T1", "T2", "T3"],
@@ -23,11 +22,15 @@ export function BulletinsTab({
   // fourni à l'IA reposent sur des notes annuelles synthétiques (moyenne des
   // périodes). Les notes réelles restent utilisées pour l'impression, qui
   // reconstruit l'annuel elle-même.
+  // `periodes` (prop de useEcole) = périodes RÉELLES de la section courante.
+  // Ne pas les recalculer via avecEns : le module Primaire passe avecEns=true,
+  // ce qui prenait la périodicité du secondaire (S1/S2) et ne trouvait aucune
+  // note du primaire (T1..T3) → moyennes vides, génération IA sans effet.
+  // Le niveau est volontairement omis : getSubjectAverage le déduit de la
+  // classe de chaque élève, exactement comme l'affichage en mode période.
   const notesStats = periodeB === PERIODE_ANNEE
     ? buildBulletinNotesAnnuelles({
-        eleves: elevesFiltres, notes, matsFor: matieresForClasse,
-        periodes: getPeriodesForSection(schoolInfo, avecEns ? "secondaire" : "primaire"),
-        niveau: avecEns ? "college" : "primaire",
+        eleves: elevesFiltres, notes, matsFor: matieresForClasse, periodes,
       })
     : notes;
 
@@ -49,7 +52,7 @@ export function BulletinsTab({
 
       <BulletinsTable
         t={t} elevesB={elevesB} notes={notes} notesStats={notesStats} matieresForClasse={matieresForClasse}
-        periodeB={periodeB} schoolInfo={schoolInfo} moisAnnee={moisAnnee} maxNote={maxNote}
+        periodeB={periodeB} periodes={periodes} schoolInfo={schoolInfo} moisAnnee={moisAnnee} maxNote={maxNote}
         avecEns={avecEns} eleves={eleves} canCreate={canCreate} canEdit={canEdit}
         getAppreciation={getAppreciation} setForm={setForm} setModal={setModal}
       />

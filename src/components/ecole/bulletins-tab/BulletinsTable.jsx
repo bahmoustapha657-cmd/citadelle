@@ -6,7 +6,7 @@ import { getGeneralAverage, getSubjectAverage } from "../../../note-utils";
 // Table des bulletins : moyenne générale, mention, accès à l'appréciation et
 // impression individuelle (bloquée si frais impayés).
 export function BulletinsTable({
-  t, elevesB, notes, notesStats, matieresForClasse, periodeB, schoolInfo, moisAnnee,
+  t, elevesB, notes, notesStats, matieresForClasse, periodeB, periodes, schoolInfo, moisAnnee,
   maxNote, avecEns, eleves, canCreate, canEdit, getAppreciation, setForm, setModal,
 }) {
   // notesStats = notes réelles en mode période ; notes annuelles synthétiques
@@ -63,7 +63,7 @@ export function BulletinsTable({
           </TD>
           <TD>{eleveImpayeBloq
             ? <span title="Frais impayés — impression bloquée" style={{fontSize:18}}>🔒</span>
-            : <Btn sm v="amber" onClick={()=>imprimerBulletin(e,notes,matieresForClasse(e.classe),periodeB,avecEns?"college":"primaire",maxNote,schoolInfo,{allEleves:eleves,allNotes:notes,appreciation:apprecTexte})}>{t("school.bulletins.printBulletin")}</Btn>
+            : <Btn sm v="amber" onClick={()=>imprimerBulletin(e,notes,matieresForClasse(e.classe),periodeB,avecEns?"college":"primaire",maxNote,schoolInfo,{allEleves:eleves,allNotes:notes,appreciation:apprecTexte,periodes})}>{t("school.bulletins.printBulletin")}</Btn>
           }</TD>
         </TR>;
       })}</tbody>

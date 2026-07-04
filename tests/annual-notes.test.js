@@ -3,7 +3,7 @@
 // ((genT1+genT2+genT3)/3) — l'égalité algébrique qui justifie l'approche.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildBulletinNotesAnnuelles } from "../src/reports/bulletins/annual-notes.js";
+import { PERIODE_ANNEE, buildBulletinNotesAnnuelles } from "../src/reports/bulletins/annual-notes.js";
 import { getGeneralAverage } from "../src/note-utils.js";
 
 test("moyenne générale annuelle (synthétique) = moyenne des moyennes générales périodiques", () => {
@@ -51,4 +51,29 @@ test("matière non notée sur une période → comptée 0 (diviseur = nb périod
   const [synth] = buildBulletinNotesAnnuelles({ eleves, notes, matsFor, periodes, niveau });
   // (12 + 15 + 0) / 3 = 9
   assert.equal(synth.note, 9);
+});
+
+// Régression : au PRIMAIRE (module avec avecEns=true), le mode « Fin d'année »
+// reconstruisait les périodes via `avecEns ? "secondaire" : "primaire"` → avec
+// une école en périodicités mixtes (citadelle : primaire=trimestre,
+// secondaire=semestre), on cherchait S1/S2 sur des notes T1..T3 → aucune note
+// annuelle → moyennes vides et génération IA « sans notes ». Le correctif
+// passe les périodes RÉELLES de la section (prop `periodes` de useEcole).
+test("BUG corrigé : périodes de la mauvaise section → aucune note annuelle (IA sans effet)", () => {
+  const eleves = [{ _id: "e1", nom: "Diallo", prenom: "Awa", classe: "4ème Année A" }];
+  const matsFor = () => [{ nom: "Maths", coefficient: 1 }];
+  const notes = [
+    { eleveId: "e1", matiere: "Maths", periode: "T1", type: "Devoir", note: 8 },
+    { eleveId: "e1", matiere: "Maths", periode: "T2", type: "Devoir", note: 9 },
+    { eleveId: "e1", matiere: "Maths", periode: "T3", type: "Devoir", note: 10 },
+  ];
+
+  // Périodes du secondaire (S1/S2) sur des notes du primaire (T1..T3) : vide.
+  const synthFaux = buildBulletinNotesAnnuelles({ eleves, notes, matsFor, periodes: ["S1", "S2"] });
+  assert.equal(synthFaux.length, 0);
+
+  // Périodes réelles de la section : la note annuelle existe, sur PERIODE_ANNEE.
+  const [synth] = buildBulletinNotesAnnuelles({ eleves, notes, matsFor, periodes: ["T1", "T2", "T3"] });
+  assert.equal(synth.periode, PERIODE_ANNEE);
+  assert.ok(Math.abs(synth.note - 9) < 1e-9, `obtenu ${synth.note}`); // (8+9+10)/3
 });
