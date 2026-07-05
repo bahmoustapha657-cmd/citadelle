@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useRef } from "react";
 import { SchoolContext } from "../../../contexts/SchoolContext";
 import { useFirestore } from "../../../hooks/useFirestore";
 import { genererMdp, getComptesDefautForSchool } from "../../../constants";
@@ -15,22 +15,28 @@ export function useAdminPanel({ schoolId, userRole }) {
     return false;
   };
   const { toast, schoolInfo, setSchoolInfo } = useContext(SchoolContext);
-  const { items: comptes, chargement } = useFirestore("comptes");
+  const { items: comptes, chargement, refresh: refreshComptes } = useFirestore("comptes");
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState({});
   const [mdpsInitiaux, setMdpsInitiaux] = useState(null);
   const [initEnCours, setInitEnCours] = useState(false);
+  // UNE seule tentative d'initialisation par montage (succès OU échec) :
+  // sans ce garde, l'effet retentait en boucle — après un échec (ex. CORS,
+  // fonction froide) l'écran mitraillait l'Edge Function, et après un succès
+  // la liste `comptes` pas encore rafraîchie relançait des créations en 409.
+  const initTenteeRef = useRef(false);
   const chg = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
   const comptesDefaut = getComptesDefautForSchool(schoolInfo);
 
   // Initialiser les comptes actifs manquants avec la configuration de l'école
   useEffect(() => {
-    if (chargement || initEnCours) return;
+    if (chargement || initEnCours || initTenteeRef.current) return;
     const comptesManquants = comptesDefaut.filter((compteDefaut) =>
       !comptes.some((compteExistant) => compteExistant.role === compteDefaut.role),
     );
     if (comptesManquants.length === 0) return;
     // Garde-fou anti-réentrance : on verrouille avant l'initialisation async.
+    initTenteeRef.current = true;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setInitEnCours(true);
     (async () => {
@@ -59,9 +65,10 @@ export function useAdminPanel({ schoolId, userRole }) {
         }
       }
       if (comptesCrees.length > 0) setMdpsInitiaux(comptesCrees);
+      refreshComptes();
       setInitEnCours(false);
     })();
-  }, [chargement, comptes, comptesDefaut, initEnCours, schoolId, toast]);
+  }, [chargement, comptes, comptesDefaut, initEnCours, schoolId, toast, refreshComptes]);
 
   const sauvegarder = async () => {
     if (!form.mdp || form.mdp.length < 8) {

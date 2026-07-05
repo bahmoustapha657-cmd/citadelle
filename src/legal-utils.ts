@@ -109,8 +109,10 @@ export const legalProfileMock: LegalProfile = {
 // ── Helpers ──────────────────────────────────────────────────────
 
 // Date d'expiration dérivée — JAMAIS saisie en dur.
+// Garde : un profil partiel (ex. `legal: {}` migré côté Supabase, truthy donc
+// non remplacé par legalProfileVide) ne doit pas faire planter le dashboard.
 export function computeDateExpiration(profile: LegalProfile): string {
-  const { dateSignature, dureeValiditeAnnees } = profile.arreteOuverture;
+  const { dateSignature, dureeValiditeAnnees } = profile?.arreteOuverture || ({} as LegalProfile["arreteOuverture"]);
   if (!dateSignature || !Number.isFinite(dureeValiditeAnnees)) return "";
   const d = new Date(dateSignature);
   if (Number.isNaN(d.getTime())) return "";

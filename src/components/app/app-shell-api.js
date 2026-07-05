@@ -38,7 +38,11 @@ export function chargerAnnee() {
 }
 
 // Synchronise le profil public de l'école.
+// Firebase uniquement : sur Supabase il n'y a pas de miroir ecoles_public
+// (la résolution publique passe par la RPC etat_ecole) — appeler l'API
+// Vercel depuis Cloudflare Pages renvoyait un 405 inutile.
 export async function syncEcolePublic(schoolId) {
+  if (isSupabase) return;
   const headers = await getAuthHeaders({ "Content-Type": "application/json" });
   await apiFetch("/ecole-public-sync", {
     method: "POST",

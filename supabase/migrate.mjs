@@ -63,6 +63,11 @@ async function insertChunked(table, rows) {
 
 async function migrerEcole(code, d) {
   console.log(`\n━━ École « ${code} » ━━`);
+  // Profil légal officiel : il vit dans le SOUS-doc /config/legal (pas sur le
+  // doc école) — sans cette lecture, ecoles.legal restait vide côté Supabase
+  // (arrêté d'ouverture absent des bulletins et du tableau de bord).
+  const legalSnap = await fdb.collection("ecoles").doc(code).collection("config").doc("legal").get();
+  const legal = legalSnap.exists ? legalSnap.data() : (d.legal || {});
   // 1) École
   const { data: ecole, error } = await sb.from("ecoles").upsert({
     code,
@@ -76,7 +81,7 @@ async function migrerEcole(code, d) {
     plan_expiry: Number.isInteger(d.planExpiry) ? d.planExpiry : null,
     modele_bulletin: d.modeleBulletin || "classique",
     role_settings: d.roleSettings || {},
-    legal: d.legal || {},
+    legal,
     actif: d.actif !== false,
     supprime: d.supprime === true,
     extra: rest(d, ["nom","logo","couleur1","couleur2","pays","devise","plan","planExpiry","modeleBulletin","roleSettings","legal","actif","supprime"]),
