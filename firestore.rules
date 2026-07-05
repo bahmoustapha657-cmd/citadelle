@@ -12,8 +12,14 @@ service cloud.firestore {
     // miroir de computePlanInfo (app-shell-plan.js, GRACE_MS = 3 jours).
     // Le renouvellement reste possible : demandes_plan (create direction/comptable)
     // et la mutation des planFields par superadmin ne sont pas gatees ici.
+    //
+    // basculeSupabase == true (pose par script admin apres migration d'une
+    // ecole vers la version Supabase) : l'ecole passe en lecture seule ici,
+    // pour empecher toute saisie qui divergerait de la nouvelle base.
+    // Miroir : isSchoolReadOnly (api/_lib/security.js) et compute-permissions.
     function abonnementActifData(data) {
-      return !(data.get("plan", "gratuit") != "gratuit"
+      return !(data.get("basculeSupabase", false) == true)
+        && !(data.get("plan", "gratuit") != "gratuit"
         && data.get("planExpiry", 0) is int
         && data.get("planExpiry", 0) > 0
         && request.time.toMillis() > data.get("planExpiry", 0) + 259200000);

@@ -405,6 +405,10 @@
     "Novembre": "Novembre",
     "Décembre": "Décembre"
   },
+  "migration": {
+    "banner": "EduGest a déménagé : cette adresse est désormais en lecture seule. Continuez votre travail sur la nouvelle adresse.",
+    "open": "Ouvrir la nouvelle adresse"
+  },
   "reports": {
     "schoolYear": "Année scolaire",
     "annual": "Fin d'année",

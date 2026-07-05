@@ -1442,6 +1442,50 @@ describe("17. Conformité légale (/config/legal)", () => {
 });
 
 // ───────────────────────────────────────────────────────────
+// 17bis. Bascule Supabase → école Firebase figée en lecture seule
+//        (drapeau basculeSupabase posé par verrouiller-firebase.mjs
+//        après migration ; même chemin que l'abonnement expiré).
+// ───────────────────────────────────────────────────────────
+describe("17bis. Bascule Supabase → lecture seule", () => {
+  async function seedBascule(fields) {
+    await seed(async (db) => {
+      await setDoc(doc(db, `ecoles/${SCHOOL_A}`), { nom: "École A", ...fields });
+    });
+  }
+
+  test("école basculée : toutes les écritures métier sont bloquées (notes, compta, catch-all, absences)", async () => {
+    await seedBascule({ basculeSupabase: true });
+    const dir = asUser({ schoolId: SCHOOL_A, role: "direction" });
+    const cpt = asUser({ schoolId: SCHOOL_A, role: "comptable" });
+    const sg = asUser({ schoolId: SCHOOL_A, role: "surveillant" });
+    await assertFails(setDoc(doc(dir, `ecoles/${SCHOOL_A}/notesCollege/n-b`), { val: 12 }));
+    await assertFails(setDoc(doc(dir, `ecoles/${SCHOOL_A}/evenements/e-b`), { titre: "x" }));
+    await assertFails(setDoc(doc(cpt, `ecoles/${SCHOOL_A}/recettes/r-b`), { montant: 1 }));
+    await assertFails(setDoc(doc(sg, `ecoles/${SCHOOL_A}/elevesCollege_absences/a-b`), { type: "Absence" }));
+  });
+
+  test("école basculée : la LECTURE reste ouverte (consultation de l'historique)", async () => {
+    await seedBascule({ basculeSupabase: true });
+    const db = asUser({ schoolId: SCHOOL_A, role: "direction" });
+    await assertSucceeds(getDoc(doc(db, `ecoles/${SCHOOL_A}/notesCollege/n1`)));
+    await assertSucceeds(getDoc(doc(db, `ecoles/${SCHOOL_A}/recettes/r1`)));
+    await assertSucceeds(getDoc(doc(db, `ecoles/${SCHOOL_A}`)));
+  });
+
+  test("école basculée : superadmin écrit toujours (déblocage/correctifs)", async () => {
+    await seedBascule({ basculeSupabase: true });
+    const db = asUser({ schoolId: "central", role: "superadmin" });
+    await assertSucceeds(setDoc(doc(db, `ecoles/${SCHOOL_A}/notesCollege/n-sa`), { val: 12 }));
+  });
+
+  test("drapeau absent ou false : aucune incidence (écriture normale)", async () => {
+    await seedBascule({ basculeSupabase: false });
+    const db = asUser({ schoolId: SCHOOL_A, role: "college" });
+    await assertSucceeds(setDoc(doc(db, `ecoles/${SCHOOL_A}/notesCollege/n-ok`), { val: 12 }));
+  });
+});
+
+// ───────────────────────────────────────────────────────────
 // 18. Abonnement expiré → établissement en lecture seule
 //     (rule abonnementActif, miroir serveur isSchoolReadOnly et
 //      client computePlanInfo). Grâce de 3 jours = 259200000 ms.

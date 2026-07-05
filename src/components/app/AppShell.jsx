@@ -55,6 +55,18 @@ export function AppShell(p) {
             profilOuvert={p.profilOuvert} setProfilOuvert={p.setProfilOuvert}
             setPage={p.setPage} setAideOuverte={p.setAideOuverte} setCentreAideOuvert={p.setCentreAideOuvert} deconnecter={p.deconnecter}
           />
+          {/* École migrée vers la nouvelle version (Supabase) : cette adresse
+              est en lecture seule — bannière permanente vers la nouvelle URL. */}
+          {p.basculeSupabase && (
+            <div style={{ background: "#7c2d12", color: "#fff", padding: "10px 16px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", fontSize: 13, fontWeight: 600 }}>
+              <span style={{ fontSize: 18 }}>🚚</span>
+              <span style={{ flex: 1, minWidth: 220 }}>{p.t("migration.banner")}</span>
+              <a href={p.schoolInfo?.basculeUrl || "https://edugest.pages.dev"}
+                style={{ background: "#fff", color: "#7c2d12", padding: "6px 14px", borderRadius: 8, fontWeight: 800, textDecoration: "none", whiteSpace: "nowrap" }}>
+                {p.t("migration.open")} →
+              </a>
+            </div>
+          )}
           <div style={{ flex: 1, overflowY: "auto" }}>
             <PageErrorBoundary key={p.page}>
               <Suspense fallback={<PageFallback />}>

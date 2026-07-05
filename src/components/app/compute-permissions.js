@@ -1,4 +1,5 @@
 import { C, MODULES, getModulesForRole, getRoleLabelForSchool } from "../../constants";
+import { isSupabase } from "../../backend";
 
 // Dérive les modules visibles et les droits d'écriture du rôle courant.
 //
@@ -28,11 +29,17 @@ export function computeAppPermissions({ utilisateur, schoolInfo, page, planInfo 
     && (schoolInfo?.roleSettings?.admin?.writeModules || []).includes(page);
   const directionReadOnlyCurrentPage = isDirection && page === "compta";
   const abonnementExpire = role !== "superadmin" && !!planInfo?.planEstExpire;
-  const readOnly = abonnementExpire
+  // École migrée vers la version Supabase : l'ANCIENNE version (backend
+  // Firebase) passe en lecture seule avec bannière de redirection. Le drapeau
+  // est ignoré côté Supabase (il peut avoir été copié dans les données lors
+  // de la migration) et pour le superadmin.
+  const basculeSupabase = !isSupabase && role !== "superadmin" && schoolInfo?.basculeSupabase === true;
+  const readOnly = basculeSupabase
+    || abonnementExpire
     || (isAdmin && !adminCanWriteCurrentPage)
     || directionReadOnlyCurrentPage;
   const couleur2 = schoolInfo.couleur2 || C.green;
   const utilisateurLabel = getRoleLabelForSchool(utilisateur.role, schoolInfo) || utilisateur.label || utilisateur.role;
 
-  return { modulesVisibles, role, estAdmin, readOnly, abonnementExpire, couleur2, utilisateurLabel };
+  return { modulesVisibles, role, estAdmin, readOnly, abonnementExpire, basculeSupabase, couleur2, utilisateurLabel };
 }
