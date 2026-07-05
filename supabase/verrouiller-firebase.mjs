@@ -5,7 +5,7 @@
 //   - firestore.rules (abonnementActifData) → toutes les écritures client bloquées
 //   - api/_lib/security.js (isSchoolReadOnly) → APIs d'écriture bloquées
 //   - compute-permissions + AppShell → lecture seule + bannière vers la
-//     nouvelle adresse (schoolInfo.basculeUrl, défaut https://edugest.pages.dev)
+//     nouvelle adresse (schoolInfo.basculeUrl, défaut https://edugest-gn.pages.dev)
 // Le drapeau est ignoré par la version Supabase (voir compute-permissions).
 //
 // Usage :
@@ -21,7 +21,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const code = process.argv[2];
 const off = process.argv.includes("--off");
 const urlArg = process.argv.find((a) => a.startsWith("--url="));
-const basculeUrl = urlArg ? urlArg.slice(6) : "https://edugest.pages.dev";
+const basculeUrl = urlArg ? urlArg.slice(6) : "https://edugest-gn.pages.dev";
 
 if (!code) { console.error("Usage : node supabase/verrouiller-firebase.mjs <codeEcole> [--off] [--url=…]"); process.exit(1); }
 

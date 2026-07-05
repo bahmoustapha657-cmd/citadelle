@@ -18,7 +18,7 @@
     "pwa-icons": "node generate-pwa-icons.mjs",
     "deploy:functions": "firebase deploy --only functions:backend",
     "build:supabase": "vite build --mode supabase",
-    "deploy:pages": "npm run build:supabase && wrangler pages deploy dist --project-name=edugest --branch=master --commit-dirty=true"
+    "deploy:pages": "npm run build:supabase && wrangler pages deploy dist --project-name=edugest-gn --branch=master --commit-dirty=true"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.82.0",

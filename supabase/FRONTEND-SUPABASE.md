@@ -43,7 +43,7 @@ supabase secrets set ANTHROPIC_API_KEY="sk-ant-..."
 ## Déploiement du frontend Supabase — Cloudflare Pages
 
 Le build Supabase est hébergé sur **Cloudflare Pages** (projet `edugest`,
-gratuit, usage commercial autorisé) : **https://edugest.pages.dev**. Aucun
+gratuit, usage commercial autorisé) : **https://edugest-gn.pages.dev**. Aucun
 serveur applicatif : le backend est Supabase (RLS + Edge Functions).
 
 ```bash
