@@ -4,7 +4,19 @@ import { db } from "../firebaseDb";
 import { signOutCurrentUser, watchAuthState } from "../firebaseAuth";
 import { isSupabase } from "../backend";
 import { watchAuthState as watchAuthStateSupabase } from "../backend/auth-supabase";
+import { powerSyncConfigured } from "../backend/powersync/tables";
 import { getPrimaryModuleForRole } from "../constants";
+
+// `import()` dynamique + garde `powerSyncConfigured` : évite de charger
+// @powersync/web/wa-sqlite tant que VITE_POWERSYNC_URL n'est pas renseigné
+// (feature désactivée par défaut) — zéro coût réseau en plus du zéro coût de
+// bundle côté Firebase (isSupabase=false, jamais appelé du tout).
+const connectPowerSync = () => (powerSyncConfigured
+  ? import("../backend/powersync/client").then((m) => m.connectPowerSync())
+  : Promise.resolve());
+const disconnectPowerSync = () => (powerSyncConfigured
+  ? import("../backend/powersync/client").then((m) => m.disconnectPowerSync())
+  : Promise.resolve());
 
 // Hook qui synchronise l'état utilisateur + page courante avec l'auth
 // Firebase. Au démarrage et à chaque changement d'état Firebase :
@@ -26,13 +38,19 @@ export function useAuthSession({ setSchoolId, setPage }) {
     if (isSupabase) {
       watchAuthStateSupabase((u) => {
         if (!actif) return;
-        if (!u) { setUtilisateur(null); setPage(null); return; }
+        if (!u) {
+          setUtilisateur(null);
+          setPage(null);
+          disconnectPowerSync().catch(() => {});
+          return;
+        }
         if (u.schoolId) {
           setSchoolId(u.schoolId);
           localStorage.setItem("LC_schoolId", u.schoolId);
         }
         setUtilisateur(u);
         setPage((p) => p || getPrimaryModuleForRole(u.role));
+        connectPowerSync().catch(() => {});
       }).then((cleanup) => {
         if (actif) unsub = cleanup; else cleanup();
       }).catch(() => {});

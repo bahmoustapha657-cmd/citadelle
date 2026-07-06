@@ -70,7 +70,9 @@
     "errEnterUsername": "Please enter your username.",
     "errSuperadminWrong": "Incorrect superadmin credentials.",
     "errServerUnreachable": "Unable to reach the server. Check the school code.",
-    "offlineShort": "Offline"
+    "offlineShort": "Offline",
+    "syncPendingTitle": "{{count}} change(s) waiting to sync",
+    "syncPendingShort": "{{count}} pending"
   },
   "subscription": {
     "label": "Subscription",

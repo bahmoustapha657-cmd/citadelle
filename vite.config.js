@@ -4,6 +4,15 @@ import react from "@vitejs/plugin-react";
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  // PowerSync (mode hors ligne, branche Supabase) : wa-sqlite tourne dans un
+  // worker + charge un binaire WASM. Le pré-bundling Vite (esbuild) casse ces
+  // deux paquets → on les en exclut explicitement (recette officielle PowerSync).
+  worker: {
+    format: "es",
+  },
+  optimizeDeps: {
+    exclude: ["@journeyapps/wa-sqlite", "@powersync/web"],
+  },
   server: {
     headers: {
       // En local, Vite injecte un preamble inline pour React Fast Refresh.

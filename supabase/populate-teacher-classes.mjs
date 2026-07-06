@@ -66,7 +66,7 @@ for (const ec of ecoles) {
     await sb.from("enseignant_classes").delete().eq("compte_id", c.id);
     if (classes.length) {
       await sb.from("enseignant_classes").insert(classes.map((classe) => ({
-        compte_id: c.id, ecole_id: ec.id, section, classe,
+        compte_id: c.id, ecole_id: ec.id, section, classe, user_id: c.user_id,
       })));
       total += classes.length;
     }

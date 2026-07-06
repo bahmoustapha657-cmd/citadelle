@@ -2,21 +2,53 @@
 // Reproduit le contrat de lecture de useFirestore : renvoie des items camelCase
 // (avec `_id`) identiques à Firestore. La sécurité reste assurée par la RLS
 // (filtrage par école + rôle) ; on filtre aussi explicitement par ecole_id.
+//
+// Mode hors ligne (PowerSync, vague 1) : pour les tables de TABLES_HORS_LIGNE,
+// lecture/écriture passent par le miroir SQLite local (local-data.js) au lieu
+// d'un appel réseau direct — mêmes signatures, mêmes formes de retour, donc
+// aucun changement côté appelants (useFirestore.js, teacher-portal-supabase.js…).
 import { getSupabase } from "../supabaseClient";
 import { resolveCollection, transformRow, toRow, ecritureSupportee } from "./collection-map";
+// `tables.js` est un module léger (aucune dépendance @powersync/web/wa-sqlite) :
+// import statique sûr dans les deux builds (Firebase et Supabase). Le reste de
+// powersync/ (client/connector/local-data, qui embarquent le SQLite WASM) n'est
+// chargé qu'en `import()` dynamique, uniquement quand `horsLigne()` est vrai —
+// zéro coût de bundle pour les utilisateurs Firebase (prod).
+import { estCouvertHorsLigne, powerSyncConfigured } from "./powersync/tables";
+
+let localDataPromise = null;
+function localData() {
+  if (!localDataPromise) localDataPromise = import("./powersync/local-data");
+  return localDataPromise;
+}
 
 // Tables filtrables par année (colonne `annee`).
 const ANNEE_TABLES = new Set(["notes", "recettes", "depenses", "versements", "bons"]);
 
 // schoolId applicatif = CODE de l'école ; les tables référencent l'uuid.
+// Mis aussi en cache localStorage : nécessaire pour résoudre l'ecole_id hors
+// ligne (premier chargement après un rechargement de page sans réseau).
 const ecoleIdCache = new Map();
 async function ecoleIdFromCode(sb, code) {
   if (ecoleIdCache.has(code)) return ecoleIdCache.get(code);
-  const { data } = await sb.from("ecoles").select("id").eq("code", code).maybeSingle();
-  const id = data?.id || null;
-  if (id) ecoleIdCache.set(code, id);
-  return id;
+  const clefLocale = `LC_ecole_id_${code}`;
+  try {
+    const { data } = await sb.from("ecoles").select("id").eq("code", code).maybeSingle();
+    const id = data?.id || null;
+    if (id) {
+      ecoleIdCache.set(code, id);
+      localStorage.setItem(clefLocale, id);
+      return id;
+    }
+  } catch { /* hors ligne : bascule sur le cache local ci-dessous */ }
+  const idLocal = localStorage.getItem(clefLocale);
+  if (idLocal) ecoleIdCache.set(code, idLocal);
+  return idLocal || null;
 }
+
+// Utilise le miroir local uniquement si la table est couverte ET que
+// l'instance PowerSync est configurée (sinon comportement en ligne inchangé).
+const horsLigne = (table) => powerSyncConfigured && estCouvertHorsLigne(table);
 
 // Renvoie { items, unsupported? }. `unsupported` = collection sans table Supabase.
 export async function chargerCollection(schoolCode, nomCollection, { annee } = {}) {
@@ -26,6 +58,17 @@ export async function chargerCollection(schoolCode, nomCollection, { annee } = {
   const sb = getSupabase();
   const ecoleId = await ecoleIdFromCode(sb, schoolCode);
   if (!ecoleId) return { items: [] };
+
+  if (horsLigne(map.table)) {
+    try {
+      const { lireLocal } = await localData();
+      const rows = await lireLocal(map.table, { ecoleId, section: map.section, annee });
+      return { items: rows.map((r) => transformRow(map.table, r)) };
+    } catch (err) {
+      console.warn(`[powersync] lecture locale ${nomCollection} (${map.table}):`, err?.message || err);
+      return { items: [] };
+    }
+  }
 
   let q = sb.from(map.table).select("*").eq("ecole_id", ecoleId);
   if (map.section) q = q.eq("section", map.section);
@@ -73,6 +116,13 @@ export async function ajouterDoc(schoolCode, nomCollection, item) {
   const { row } = toRow(map.table, item);
   row.ecole_id = ecoleId;
   if (map.section) row.section = map.section;
+
+  if (horsLigne(map.table)) {
+    const { insererLocal } = await localData();
+    const cree = await insererLocal(map.table, row);
+    return transformRow(map.table, cree);
+  }
+
   const { data, error } = await sb.from(map.table).insert(row).select("*").single();
   if (error) throw new Error(error.message);
   return transformRow(map.table, data);
@@ -89,6 +139,14 @@ export async function ajouterDocs(schoolCode, nomCollection, items) {
     if (map.section) row.section = map.section;
     return row;
   });
+
+  if (horsLigne(map.table)) {
+    const { insererLocal } = await localData();
+    const crees = [];
+    for (const row of rows) crees.push(await insererLocal(map.table, row));
+    return crees.map((r) => transformRow(map.table, r));
+  }
+
   const { data, error } = await sb.from(map.table).insert(rows).select("*");
   if (error) throw new Error(error.message);
   return (data || []).map((r) => transformRow(map.table, r));
@@ -101,12 +159,20 @@ export async function upsertDocs(schoolCode, nomCollection, items) {
   const { sb, map, ecoleId } = await contexteEcriture(schoolCode, nomCollection);
   const rows = items.map((item) => {
     const { row } = toRow(map.table, item);
-    row.id = item._id;
     row.ecole_id = ecoleId;
     if (map.section) row.section = map.section;
-    return row;
+    return { id: item._id, row };
   });
-  const { data, error } = await sb.from(map.table).upsert(rows, { onConflict: "id" }).select("*");
+
+  if (horsLigne(map.table)) {
+    const { upsertLocal } = await localData();
+    const upserted = [];
+    for (const { id, row } of rows) upserted.push(await upsertLocal(map.table, id, row));
+    return upserted.map((r) => transformRow(map.table, r));
+  }
+
+  const { data, error } = await sb.from(map.table)
+    .upsert(rows.map(({ id, row }) => ({ ...row, id })), { onConflict: "id" }).select("*");
   if (error) throw new Error(error.message);
   return (data || []).map((r) => transformRow(map.table, r));
 }
@@ -114,16 +180,35 @@ export async function upsertDocs(schoolCode, nomCollection, items) {
 export async function modifierDoc(schoolCode, nomCollection, item) {
   const { sb, map } = await contexteEcriture(schoolCode, nomCollection);
   const { row } = toRow(map.table, item);
+
+  if (horsLigne(map.table)) {
+    const { majLocal } = await localData();
+    await majLocal(map.table, item._id, row);
+    return;
+  }
+
   const { error } = await sb.from(map.table).update(row).eq("id", item._id);
   if (error) throw new Error(error.message);
 }
 
 // Update partiel : ne touche que les champs fournis. Si certains partent dans le
 // jsonb (extra/details), on fusionne avec l'existant (read-modify-write) pour ne
-// pas écraser les autres clés.
+// pas écraser les autres clés. Fonctionne identiquement en local (hors ligne) :
+// seule la source de la lecture préalable change.
 export async function modifierChampDoc(schoolCode, nomCollection, id, champs) {
   const { sb, map } = await contexteEcriture(schoolCode, nomCollection);
   const { row, extraKeys, extraCol } = toRow(map.table, champs);
+
+  if (horsLigne(map.table)) {
+    const { majLocal, lireUneLocal } = await localData();
+    if (extraCol && extraKeys.length) {
+      const actuel = await lireUneLocal(map.table, id);
+      row[extraCol] = { ...(actuel?.[extraCol] || {}), ...row[extraCol] };
+    }
+    await majLocal(map.table, id, row);
+    return;
+  }
+
   if (extraCol && extraKeys.length) {
     const { data: actuel } = await sb.from(map.table).select(extraCol).eq("id", id).maybeSingle();
     row[extraCol] = { ...(actuel?.[extraCol] || {}), ...row[extraCol] };
@@ -134,6 +219,13 @@ export async function modifierChampDoc(schoolCode, nomCollection, id, champs) {
 
 export async function supprimerDoc(schoolCode, nomCollection, id) {
   const { sb, map } = await contexteEcriture(schoolCode, nomCollection);
+
+  if (horsLigne(map.table)) {
+    const { supprimerLocal } = await localData();
+    await supprimerLocal(map.table, id);
+    return;
+  }
+
   const { error } = await sb.from(map.table).delete().eq("id", id);
   if (error) throw new Error(error.message);
 }

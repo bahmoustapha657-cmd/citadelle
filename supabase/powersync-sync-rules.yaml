@@ -1,0 +1,76 @@
+# ════════════════════════════════════════════════════════════════════════
+#  PowerSync — Sync Rules (mode hors ligne, vague 1 : périmètre académique)
+# ════════════════════════════════════════════════════════════════════════
+# Ce fichier n'est PAS exécuté par l'app ni par une CLI locale : il se colle
+# dans le dashboard PowerSync Cloud (Sync Rules → éditeur). Il MIROITE le
+# modèle RLS déjà en vigueur (rls.sql + teacher-security.sql) — il ne le
+# remplace pas : la RLS reste seule autorité d'écriture (voir connector.js,
+# uploadData() rejoue chaque écriture via le client supabase-js normal).
+#
+# Périmètre couvert (9 tables, cf. src/backend/powersync/tables.js) :
+#   eleves, classes, matieres, enseignants, emplois, enseignements,
+#   notes, absences, appreciations.
+#
+# Prérequis Supabase (à faire une fois, dans le dashboard Supabase, PAS ici) :
+#   1. Database → Replication : activer la réplication logique si ce n'est
+#      pas déjà fait (certains tiers gratuits restreignent les slots — à
+#      vérifier avant de commencer).
+#   2. Créer un rôle Postgres dédié en lecture seule pour PowerSync (suivre
+#      le guide officiel « PowerSync + Supabase »), lui donner accès en
+#      lecture aux tables ci-dessous + `comptes` + `enseignant_classes`.
+#   3. Exécuter supabase/powersync-scope.sql (APRÈS teacher-security.sql) :
+#      ajoute `user_id` sur `enseignant_classes` — les Parameter Queries
+#      PowerSync ne supportent qu'UNE table (pas de JOIN), donc le bucket
+#      teacher_notes ci-dessous ne peut pas joindre enseignant_classes↔comptes.
+#   4. Renseigner l'URL de l'instance PowerSync Cloud dans VITE_POWERSYNC_URL
+#      (.env.supabase) une fois l'étape précédente faite.
+
+bucket_definitions:
+  # Tout le personnel + les enseignants voient les données de LEUR école
+  # (lecture) — équivalent de auth_ecole_id() dans rls.sql.
+  school_data:
+    parameters: SELECT ecole_id FROM comptes WHERE user_id = request.user_id()
+    data:
+      - SELECT * FROM eleves WHERE ecole_id = bucket.ecole_id
+      - SELECT * FROM classes WHERE ecole_id = bucket.ecole_id
+      - SELECT * FROM matieres WHERE ecole_id = bucket.ecole_id
+      - SELECT * FROM enseignants WHERE ecole_id = bucket.ecole_id
+      - SELECT * FROM emplois WHERE ecole_id = bucket.ecole_id
+      - SELECT * FROM enseignements WHERE ecole_id = bucket.ecole_id
+      - SELECT * FROM appreciations WHERE ecole_id = bucket.ecole_id
+
+  # Notes/absences : un enseignant ne doit voir HORS LIGNE que celles de ses
+  # classes (même périmètre que enseignant_classes / teacher-security.sql).
+  # Le staff (direction/admin/comptable/surveillant/primaire/college) voit
+  # tout via school_data ci-dessus (notes/absences dupliquées dans ce bucket
+  # pour son école — PowerSync dédoublonne par id entre buckets).
+  teacher_notes:
+    # Table UNIQUE (pas de JOIN — non supporté par les Parameter Queries) :
+    # `user_id` est dupliqué sur enseignant_classes par powersync-scope.sql.
+    parameters: SELECT classe, section, ecole_id FROM enseignant_classes WHERE user_id = request.user_id()
+    data:
+      - SELECT * FROM notes WHERE ecole_id = bucket.ecole_id AND section = bucket.section
+      - SELECT * FROM absences WHERE ecole_id = bucket.ecole_id AND section = bucket.section
+
+  # Staff : notes/absences de toute l'école (direction/admin/comptable/
+  # surveillant/primaire/college — cf. is_staff() dans rls.sql).
+  staff_notes:
+    parameters: |
+      SELECT ecole_id FROM comptes
+      WHERE user_id = request.user_id()
+        AND role IN ('superadmin','direction','admin','comptable','surveillant','primaire','college')
+    data:
+      - SELECT * FROM notes WHERE ecole_id = bucket.ecole_id
+      - SELECT * FROM absences WHERE ecole_id = bucket.ecole_id
+
+# ── Vague 2 (portail parent, PAS encore actif) ──────────────────────────
+# À activer avec la réécriture de parent-portal-supabase.js. ⚠️ Même piège
+# que teacher_notes : parent_eleves n'a pas de user_id direct (que compte_id)
+# → prévoir une colonne user_id dupliquée sur parent_eleves (même pattern que
+# powersync-scope.sql) avant d'écrire cette Parameter Query (PAS de JOIN/
+# sous-requête possible) :
+#   parent_scope:
+#     parameters: SELECT eleve_id FROM parent_eleves WHERE user_id = request.user_id()
+#     data:
+#       - SELECT * FROM notes WHERE eleve_id = bucket.eleve_id
+#       - SELECT * FROM absences WHERE eleve_id = bucket.eleve_id

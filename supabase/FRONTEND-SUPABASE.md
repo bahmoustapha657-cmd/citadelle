@@ -103,12 +103,54 @@ Vérifié en live contre l'école **citadelle** :
 
 > ⚠️ Ce sont de vrais comptes citadelle avec un mot de passe de test connu (posés pour la recette Supabase). À **réinitialiser** avant toute mise en production de la base Supabase.
 
+## Mode hors ligne (PowerSync) — vague 1, périmètre académique
+
+Contrepartie du cache local Firestore (`persistentLocalCache`) pour la branche
+Supabase : `eleves`, `classes`, `matieres`, `enseignants`, `emplois`,
+`enseignements`, `notes`, `absences`, `appreciations` sont mises en miroir
+localement (SQLite via [PowerSync](https://www.powersync.com)) — lecture/
+écriture instantanées hors ligne, remontée automatique vers Supabase (RLS
+toujours seule autorité d'écriture) au retour réseau.
+
+- **Code** : `src/backend/powersync/` (schema, connector, client, local-data) ;
+  branchement transparent dans `src/backend/data-supabase.js` (mêmes
+  signatures — aucun écran à modifier). Cycle de vie connecté à l'auth dans
+  `src/hooks/use-auth-session.js` ; badge « N en attente de synchronisation »
+  dans `AppHeader.jsx` (`src/hooks/use-powersync-status.js`).
+- **Reste en ligne seule pour l'instant** (pas une régression, juste pas
+  encore fait) : portail parent (`parent-portal-supabase.js` — appels directs,
+  hors du point de levier générique), comptabilité, superadmin, transferts,
+  Edge Functions (`account-manage`/`inscription`/`push`/`ia`).
+- **⚠️ Étapes d'infra restant à faire manuellement (dashboard, hors de portée
+  d'un agent de code) avant que le hors-ligne fonctionne réellement** :
+  1. Exécuter `supabase/powersync-scope.sql` (après `teacher-security.sql`) :
+     duplique `user_id` sur `enseignant_classes` — nécessaire car les
+     Parameter Queries PowerSync ne supportent qu'UNE table (pas de JOIN).
+  2. Créer un rôle Postgres dédié (`powersync_role`, `REPLICATION BYPASSRLS`,
+     lecture sur tout le schéma) et une instance **PowerSync Cloud** connectée
+     au projet Supabase (connexion **directe**, pas le pooler) — voir le
+     guide officiel « PowerSync + Supabase ».
+  3. Coller les **Sync Rules** de `supabase/powersync-sync-rules.yaml` dans le
+     dashboard PowerSync (onglet Sync Streams), Validate puis Deploy.
+  4. Renseigner `VITE_POWERSYNC_URL` dans `.env.supabase` (et `.env.local`
+     pour tester en dev) avec l'URL de l'instance.
+  5. `npm install` (ajoute `@powersync/web` + `@journeyapps/wa-sqlite`).
+  Tant que `VITE_POWERSYNC_URL` est vide, le hors-ligne est simplement
+  désactivé — le reste de l'app Supabase tourne normalement (comportement
+  actuel inchangé, zéro risque de régression).
+- **Vérification** : recette live (comme les autres tranches) — portail
+  enseignant, couper le réseau (DevTools → Offline), saisir des notes, les
+  voir instantanément, reconnecter, vérifier la remontée dans Supabase Studio.
+- **Vagues suivantes** (non commencées) : portail parent, comptabilité, reste
+  admin/superadmin (probablement en ligne seule en permanence — agrégation
+  multi-écoles incompatible avec un miroir local par école).
+
 ## Limites assumées / reste à faire
 
 - **Sécurité périmètre enseignant** : ✅ durci. `teacher-security.sql` impose en RLS que l'enseignant n'écrive notes/absences que pour les élèves de **ses classes** (table `enseignant_classes`, écrite par le staff uniquement, peuplée par `populate-teacher-classes.mjs`). Un trigger empêche aussi l'auto-élévation de privilège (modif de role/école/login sur sa propre ligne `comptes`). À relancer le peuplement quand les affectations changent.
 - **Encore côté serveur** (Firebase/Vercel) sous Supabase : assistant IA superadmin (clé Anthropic), alertes Sentry (API externe). (Portés : school-lifecycle, superadmin-login, inscription, transferts, push, superadmin-messages ; `ecole-public-sync` inutile.)
 - **Création de comptes** : pas de fusion de foyer parent, ni de génération auto de comptes à l'activation d'un rôle (création manuelle).
-- **Hors-ligne** : non porté (Firestore natif → évaluer PowerSync/ElectricSQL).
+- **Hors-ligne** : vague 1 (périmètre académique) codée — voir section dédiée ci-dessus ; infra PowerSync à finaliser côté dashboard avant activation réelle.
 
 ## Vérification
 

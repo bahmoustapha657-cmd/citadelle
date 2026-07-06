@@ -8,7 +8,7 @@ import { ProfilMenu } from "./header/ProfilMenu";
 
 export function AppHeader({
   isMobile, setSidebarOuvert, modulesVisibles, page, readOnly, abonnementExpire, t,
-  estHorsLigne, planInfo, utilisateur, utilisateurLabel, schoolInfo,
+  estHorsLigne, syncPendantes, planInfo, utilisateur, utilisateurLabel, schoolInfo,
   setRechercheOuverte, modeSombre, setModeSombre,
   notifOuvert, setNotifOuvert, notifNonLues, setNotifNonLues, notifListe, nowTs,
   profilOuvert, setProfilOuvert, setPage, setAideOuverte, setCentreAideOuvert, deconnecter,
@@ -32,6 +32,13 @@ export function AppHeader({
           <div title={t("auth.headerOffline")} style={{display:"flex",alignItems:"center",gap:4,background:"#fef3c7",border:"1px solid #f59e0b",borderRadius:8,padding:"4px 9px",fontSize:11,fontWeight:700,color:"#92400e",flexShrink:0}}>
             <span style={{fontSize:13}}>📡</span>
             {!isMobile&&<span>{t("auth.offlineShort")}</span>}
+          </div>
+        )}
+        {/* ── Notes/absences saisies hors ligne pas encore remontées (PowerSync) ── */}
+        {!!syncPendantes&&(
+          <div title={t("auth.syncPendingTitle", { count: syncPendantes })} style={{display:"flex",alignItems:"center",gap:4,background:"#dbeafe",border:"1px solid #60a5fa",borderRadius:8,padding:"4px 9px",fontSize:11,fontWeight:700,color:"#1e40af",flexShrink:0}}>
+            <span style={{fontSize:13}}>🔄</span>
+            {!isMobile&&<span>{t("auth.syncPendingShort", { count: syncPendantes })}</span>}
           </div>
         )}
         {/* ── Alerte expiration abonnement ── */}

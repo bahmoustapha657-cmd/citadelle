@@ -70,7 +70,9 @@
     "errEnterUsername": "يرجى إدخال اسم المستخدم.",
     "errSuperadminWrong": "بيانات اعتماد المشرف العام غير صحيحة.",
     "errServerUnreachable": "تعذّر الوصول إلى الخادم. تحقق من رمز المدرسة.",
-    "offlineShort": "غير متصل"
+    "offlineShort": "غير متصل",
+    "syncPendingTitle": "{{count}} تعديل بانتظار المزامنة",
+    "syncPendingShort": "{{count}} بالانتظار"
   },
   "subscription": {
     "label": "الاشتراك",

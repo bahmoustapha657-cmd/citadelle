@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { SchoolContext, SCHOOL_INFO_DEFAUT } from "./contexts/SchoolContext";
 import { calcMoisAnnee, calcMoisSalaire, getModulesForRole } from "./constants";
 import { usePwaState } from "./hooks/use-pwa-state";
+import { usePowerSyncStatus } from "./hooks/use-powersync-status";
 import { useSchoolData } from "./hooks/use-school-data";
 import { useKeyboardShortcuts } from "./hooks/use-keyboard-shortcuts";
 import { useAuthSession } from "./hooks/use-auth-session";
@@ -27,6 +28,10 @@ export default function App() {
     nowTs, estHorsLigne, installVisible, setInstallVisible, installerApp,
     isMobile, modeSombre, setModeSombre,
   } = usePwaState();
+
+  // Nb de changements locaux (notes/absences saisies hors ligne) en attente
+  // de synchronisation — no-op hors mode Supabase/PowerSync.
+  const { syncPendantes } = usePowerSyncStatus();
 
   // Auth Firebase + profil /users/{uid} → utilisateur courant.
   // Appelé avant useSchoolData qui dépend d'utilisateur (visibilité des
@@ -90,7 +95,7 @@ export default function App() {
         schoolInfo={schoolInfo} couleur2={couleur2} annee={annee} setAnnee={setAnnee}
         page={page} setPage={setPage} isMobile={isMobile}
         msgsNonLus={msgsNonLus} utilisateur={utilisateur} utilisateurLabel={utilisateurLabel}
-        deconnecter={deconnecter} estHorsLigne={estHorsLigne} t={t}
+        deconnecter={deconnecter} estHorsLigne={estHorsLigne} syncPendantes={syncPendantes} t={t}
         readOnly={readOnly} abonnementExpire={abonnementExpire} basculeSupabase={basculeSupabase} planInfo={planInfo} modeSombre={modeSombre} setModeSombre={setModeSombre}
         notifOuvert={notifOuvert} setNotifOuvert={setNotifOuvert}
         notifNonLues={notifNonLues} setNotifNonLues={setNotifNonLues} notifListe={notifListe} nowTs={nowTs}

@@ -70,7 +70,9 @@
     "errEnterUsername": "Veuillez entrer votre identifiant.",
     "errSuperadminWrong": "Identifiants superadmin incorrects.",
     "errServerUnreachable": "Impossible de joindre le serveur. Vérifiez le code école.",
-    "offlineShort": "Hors ligne"
+    "offlineShort": "Hors ligne",
+    "syncPendingTitle": "{{count}} modification(s) en attente de synchronisation",
+    "syncPendingShort": "{{count}} en attente"
   },
   "subscription": {
     "label": "Abonnement",
