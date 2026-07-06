@@ -1,22 +1,30 @@
 import { useEffect, useRef, useState } from "react";
-import { Modale, Btn, Vide } from "../ui";
+import jsQR from "jsqr";
+import { Modale, Btn } from "../ui";
 import { decryptQrPayload, parseQrPayload, schoolSecret } from "../../reports/qr-crypto";
 
 // Scanner de vérification des QR codes EduGest (réservé à la direction). Les QR
 // des documents (bulletins, reçus, fiches de paie) sont chiffrés avec le secret
 // de l'école : un lecteur grand public n'y voit que du charabia ; ce scanner les
-// déchiffre et affiche les champs authentiques. Utilise l'API BarcodeDetector
-// (Chrome/Android) ; repli par import d'une photo.
+// déchiffre et affiche les champs authentiques.
+//
+// Décodage en pur JS (jsQR, via canvas) plutôt que l'API native BarcodeDetector :
+// celle-ci n'existe pas du tout sur Safari/iOS, et sur Android elle dépend d'un
+// module Google Play Services parfois absent/désactivé — elle apparaît alors
+// "supportée" (présente dans window) mais ne détecte jamais rien, silencieusement.
+// jsQR fonctionne partout (caméra ou photo importée), sans dépendance externe.
 export function QrScannerModal({ schoolInfo = {}, fermer }) {
   const videoRef = useRef(null);
+  const canvasRef = useRef(null);
   const streamRef = useRef(null);
-  const [etat, setEtat] = useState("init"); // init | scan | resultat | nosupport | erreur
+  const rafRef = useRef(null);
+  const [etat, setEtat] = useState("init"); // init | scan | resultat | erreur
   const [resultat, setResultat] = useState(null); // { ok, champs }
   const [message, setMessage] = useState("");
   const secret = schoolSecret(schoolInfo);
-  const supporte = typeof window !== "undefined" && "BarcodeDetector" in window;
 
   const stop = () => {
+    if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
@@ -38,7 +46,6 @@ export function QrScannerModal({ schoolInfo = {}, fermer }) {
   };
 
   const demarrer = async () => {
-    if (!supporte) { setEtat("nosupport"); return; }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
       streamRef.current = stream;
@@ -47,40 +54,52 @@ export function QrScannerModal({ schoolInfo = {}, fermer }) {
         await videoRef.current.play();
       }
       setEtat("scan");
-      const detector = new window.BarcodeDetector({ formats: ["qr_code"] });
-      const boucle = async () => {
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      const boucle = () => {
         if (!streamRef.current || !videoRef.current) return;
-        try {
-          const codes = await detector.detect(videoRef.current);
-          if (codes && codes.length) { await traiter(codes[0].rawValue); return; }
-        } catch { /* erreurs de frame ignorées */ }
-        requestAnimationFrame(boucle);
+        const video = videoRef.current;
+        if (video.readyState === video.HAVE_ENOUGH_DATA && video.videoWidth) {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(image.data, image.width, image.height);
+          if (code) { traiter(code.data); return; }
+        }
+        rafRef.current = requestAnimationFrame(boucle);
       };
-      requestAnimationFrame(boucle);
+      rafRef.current = requestAnimationFrame(boucle);
     } catch {
       setEtat("erreur");
       setMessage("Caméra indisponible. Autorisez l'accès ou importez une photo du QR.");
     }
   };
 
-  const onFichier = async (e) => {
+  const onFichier = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!supporte) { setEtat("nosupport"); return; }
-    try {
-      const bitmap = await createImageBitmap(file);
-      const detector = new window.BarcodeDetector({ formats: ["qr_code"] });
-      const codes = await detector.detect(bitmap);
-      if (codes && codes.length) await traiter(codes[0].rawValue);
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0);
+      const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const code = jsQR(image.data, image.width, image.height);
+      if (code) traiter(code.data);
       else { setResultat({ ok: false }); setEtat("resultat"); }
-    } catch {
-      setMessage("Lecture de l'image impossible.");
-    }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); setMessage("Lecture de l'image impossible."); };
+    img.src = url;
   };
 
   const fermerTout = () => { stop(); fermer(); };
 
-  const rejouer = () => { setResultat(null); setEtat("init"); };
+  const rejouer = () => { setResultat(null); setMessage(""); setEtat("init"); };
 
   return (
     <Modale titre="🔍 Vérifier un QR code" fermer={fermerTout}>
@@ -126,21 +145,16 @@ export function QrScannerModal({ schoolInfo = {}, fermer }) {
       {etat === "scan" && (
         <div>
           <video ref={videoRef} playsInline muted style={{ width: "100%", borderRadius: 10, background: "#000", aspectRatio: "1/1", objectFit: "cover" }} />
+          <canvas ref={canvasRef} style={{ display: "none" }} />
           <p style={{ fontSize: 12, color: "#64748b", textAlign: "center", marginTop: 8 }}>Visez le QR code du document…</p>
           <Btn v="ghost" onClick={fermerTout}>Annuler</Btn>
         </div>
       )}
 
-      {etat === "nosupport" && (
-        <Vide icone="📷" msg="Le scan caméra n'est pas pris en charge par ce navigateur. Utilisez Chrome sur Android, ou importez une photo du QR ci-dessous." />
-      )}
-
-      {(etat === "init" || etat === "nosupport" || etat === "erreur") && (
+      {(etat === "init" || etat === "erreur") && (
         <div style={{ textAlign: "center", padding: "8px 0" }}>
           {message && <p style={{ color: "#b91c1c", fontSize: 13, marginBottom: 10 }}>{message}</p>}
-          {supporte && etat !== "nosupport" && (
-            <div style={{ marginBottom: 12 }}><Btn v="vert" onClick={demarrer}>📷 Démarrer le scan</Btn></div>
-          )}
+          <div style={{ marginBottom: 12 }}><Btn v="vert" onClick={demarrer}>📷 Démarrer le scan</Btn></div>
           <div style={{ marginTop: 8 }}>
             <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 700, color: "#334155", border: "1px solid #b0c4d8", borderRadius: 8, padding: "8px 14px", cursor: "pointer" }}>
               🖼️ Importer une photo du QR
