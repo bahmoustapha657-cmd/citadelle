@@ -1,10 +1,10 @@
-import { useContext, useState, useEffect } from "react";
+import { useContext, useState, useEffect, useMemo } from "react";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import {
   computeDateExpiration,
   daysUntilExpiration,
   getComplianceStatus,
-  legalProfileVide,
+  legalProfileComplet,
   updateLegalProfile,
 } from "../../legal-utils";
 
@@ -14,7 +14,11 @@ import {
 // autre école.
 export function useComplianceWidget(profileOverride) {
   const { schoolId, schoolInfo } = useContext(SchoolContext);
-  const source = profileOverride || schoolInfo?.legal || legalProfileVide;
+  const rawSource = profileOverride || schoolInfo?.legal;
+  // legalProfileComplet() reconstruit un objet à chaque appel — le mémoïser
+  // sur `rawSource` évite qu'il change de référence à chaque rendu (l'effet
+  // ci-dessous, qui dépend de `source`, boucle sinon indéfiniment).
+  const source = useMemo(() => legalProfileComplet(rawSource), [rawSource]);
   const [profile, setProfile] = useState(source);
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);

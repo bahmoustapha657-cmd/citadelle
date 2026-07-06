@@ -67,6 +67,22 @@ export function isLegalProfileEmpty(profile?: LegalProfile | null): boolean {
   return !profile?.arreteOuverture?.numero && !profile?.arreteOuverture?.dateSignature;
 }
 
+// Complète un profil PARTIEL avec les valeurs vides par défaut, section par
+// section. Un `legal: {}` migré (Supabase) est truthy — donc jamais remplacé
+// par `legalProfileVide` — mais peut manquer arreteOuverture/etablissement/…
+// Les lectures directes (ComplianceAgrement/ComplianceDetails accèdent à
+// `profile.arreteOuverture.numero` sans garde) plantaient sur ce cas.
+export function legalProfileComplet(profile?: Partial<LegalProfile> | null): LegalProfile {
+  const p = profile || {};
+  return {
+    promoteur: { ...legalProfileVide.promoteur, ...p.promoteur },
+    autorisationCreation: { ...legalProfileVide.autorisationCreation, ...p.autorisationCreation },
+    arreteOuverture: { ...legalProfileVide.arreteOuverture, ...p.arreteOuverture },
+    codesStatistiques: { ...legalProfileVide.codesStatistiques, ...p.codesStatistiques },
+    etablissement: { ...legalProfileVide.etablissement, ...p.etablissement },
+  };
+}
+
 // Données réelles La Citadelle (seed historique) — servies UNIQUEMENT
 // comme fallback de l'école « citadelle », jamais aux autres.
 export const legalProfileMock: LegalProfile = {
