@@ -15,6 +15,7 @@ import {
   getMoyenneClasseParMatiere,
   getRangEleve,
   getStatsClasse,
+  ordonnerParClassement,
 } from "./bulletins/bulletin-helpers.js";
 import { buildBulletinPageHTML, getModeleBulletin } from "./bulletins/bulletin-page.js";
 import { ouvrirFenetreBulletin } from "./bulletins/bulletin-doc.js";
@@ -100,7 +101,8 @@ export const imprimerBulletinsGroupes = async (eleves, notes, matieres, periode,
   if (!eleves.length) { alert("Aucun élève pour cette sélection."); return; }
   // Fenêtre ouverte AVANT tout await QR (geste utilisateur).
   const win = window.open("", "_blank");
-  const getMat = (eleve) => (matieresParClasseFn ? matieresParClasseFn(eleve.classe) : matieres);
+  const getMatCl = (cl) => (matieresParClasseFn ? matieresParClasseFn(cl) : matieres);
+  const getMat = (eleve) => getMatCl(eleve.classe);
 
   // Mode « Fin d'année » : on remplace les notes par des notes annuelles
   // synthétiques (moyenne des périodes), puis le pipeline normal calcule
@@ -131,10 +133,14 @@ export const imprimerBulletinsGroupes = async (eleves, notes, matieres, periode,
     return classCache.get(cl);
   };
 
-  const pagesListe = await Promise.all(eleves.map(async (eleve) => {
+  // Ordre d'impression : classes regroupées, puis par CLASSEMENT (meilleure
+  // moyenne en premier) au sein de chaque classe.
+  const { ordonnes: elevesOrdonnes, rangParEleve } = ordonnerParClassement(eleves, notes, getMatCl, periode, niveau);
+
+  const pagesListe = await Promise.all(elevesOrdonnes.map(async (eleve) => {
     const matsEleve = getMat(eleve);
     const cache = getCacheClasse(eleve.classe);
-    const rang = getRangEleve(eleve, cache.elevesClasse, notes, matsEleve, periode, eleve.classe, niveau);
+    const rang = rangParEleve.get(eleve._id);
     const evolution = getEvolutionPeriode(eleve, notes, matsEleve, eleve.classe, niveau, periode, schoolInfo);
     const qr = await bulletinQrHtml({ eleve, notes, matieres: matsEleve, periode, niveau, maxNote, schoolInfo });
     return buildBulletinPageHTML({

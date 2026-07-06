@@ -51,6 +51,33 @@ export function getRangEleve(eleve, elevesClasse, notes, matieres, periode, clas
   return null;
 }
 
+// Ordonne des élèves (une ou plusieurs classes) pour l'impression groupée :
+// classes regroupées (ordre d'apparition dans `eleves`), puis par CLASSEMENT
+// au sein de chaque classe (meilleure moyenne en premier). Élèves sans
+// moyenne (aucune note saisie) imprimés en dernier ; à égalité de rang,
+// ordre alphabétique. Renvoie aussi `rangParEleve` (Map id→rang) pour éviter
+// de recalculer le rang une seconde fois lors de la construction des pages.
+export function ordonnerParClassement(eleves, notes, getMatieresClasse, periode, niveau) {
+  const rangParEleve = new Map();
+  const classesOrdre = [...new Set(eleves.map((e) => e.classe))];
+  const ordonnes = classesOrdre.flatMap((cl) => {
+    const elevesClasse = eleves.filter((e) => e.classe === cl);
+    const matsCl = getMatieresClasse(cl);
+    return elevesClasse
+      .map((e) => {
+        rangParEleve.set(e._id, getRangEleve(e, elevesClasse, notes, matsCl, periode, cl, niveau));
+        return e;
+      })
+      .sort((a, b) => {
+        const ra = rangParEleve.get(a._id), rb = rangParEleve.get(b._id);
+        if (ra && rb && ra.rang !== rb.rang) return ra.rang - rb.rang;
+        if (!!ra !== !!rb) return ra ? -1 : 1;
+        return `${a.nom} ${a.prenom}`.localeCompare(`${b.nom} ${b.prenom}`);
+      });
+  });
+  return { ordonnes, rangParEleve };
+}
+
 export function getEvolutionPeriode(eleve, allNotes, matieres, classe, niveau, periodeActuelle, schoolInfo = {}) {
   const sectionPeriode = niveau === "primaire" ? "primaire" : "secondaire";
   const periodes = getPeriodesForSection(schoolInfo, sectionPeriode);
