@@ -97,6 +97,17 @@ export async function chargerEcole(schoolCode) {
   };
 }
 
+// Bascule d'un verrou de correction (AdminPanel, direction). Les verrous
+// vivent dans ecoles.extra.verrous — lecture/fusion/écriture du jsonb.
+export async function majVerrou(schoolCode, cle, valeur) {
+  const sb = getSupabase();
+  const { data, error } = await sb.from("ecoles").select("id, extra").eq("code", schoolCode).maybeSingle();
+  if (error || !data) throw new Error(error?.message || "École introuvable.");
+  const extra = { ...(data.extra || {}), verrous: { ...((data.extra || {}).verrous || {}), [cle]: valeur } };
+  const { error: e2 } = await sb.from("ecoles").update({ extra }).eq("id", data.id);
+  if (e2) throw new Error(e2.message);
+}
+
 // ── Écritures (Tranche 3) ───────────────────────────────────────────────────
 // Message d'erreur pour les collections sans table/écriture portée.
 export const ERREUR_ECRITURE = "Mode Supabase : écriture non disponible pour cette section (non encore modélisée).";

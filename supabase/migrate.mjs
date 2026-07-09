@@ -24,6 +24,9 @@ import admin from "firebase-admin";
 import { createClient } from "@supabase/supabase-js";
 import { SUPABASE_URL, SUPABASE_SERVICE_ROLE } from "./_config.mjs";
 import { emailFor } from "./_brand.mjs";
+// Mapping colonnes IDENTIQUE au frontend (module pur, aucune dépendance) :
+// garantit que les lignes migrées ont la même forme que celles que l'app écrit.
+import { resolveCollection, toRow } from "../src/backend/collection-map.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const onlySchool = process.argv[2] || null;            // code d'école optionnel
@@ -191,8 +194,9 @@ async function migrerEcole(code, d) {
     for (const s of await getColl(`appreciations${Cap}`)) {
       const x = s.data(); const eid = eleveMap[x.eleveId];
       if (!eid) continue;
+      // La table appreciations n'a PAS de colonne extra (eleve_id/periode/texte).
       apprs.push({ ecole_id: ecoleId, section, eleve_id: eid, periode: x.periode || "?",
-        texte: x.texte || x.appreciation || x.contenu || null, extra: rest(x, ["eleveId","periode","texte","appreciation","contenu"]) });
+        texte: x.texte || x.appreciation || x.contenu || null });
     }
     bump("appreciations", (await insertChunked("appreciations", apprs)).length);
   }
@@ -204,6 +208,29 @@ async function migrerEcole(code, d) {
       montant_net: Number(x.totalNet || x.montantNet || 0), details: rest(x, ["nom","section","mois","totalNet","montantNet"]) };
   });
   bump("salaires", (await insertChunked("salaires", salaires)).length);
+
+  // Collections plates (école entière) restantes : compta annexe (tarifs,
+  // recettes, dépenses, versements, bons, personnel) + modules « document »
+  // (événements, examens, livrets, messages, annonces, documents, membres,
+  // honneurs, historique). Le mapping colonnes vient de collection-map
+  // (toRow) — mêmes lignes que celles écrites par l'app. Les références
+  // élève (messages) sont converties via eleveMap (null si introuvable,
+  // la donnée d'origine reste dans extra).
+  const FLAT_SYNC = ["tarifs", "recettes", "depenses", "versements", "bons",
+    "personnel", "evenements", "examens", "livrets", "messages", "annonces",
+    "documents", "membres", "honneurs", "historique"];
+  for (const coll of FLAT_SYNC) {
+    const map = resolveCollection(coll);
+    if (!map) continue;
+    const rows = (await getColl(coll)).map((s) => {
+      const x = { ...s.data() };
+      if (x.eleveId !== undefined) x.eleveId = eleveMap[x.eleveId] || null;
+      const { row } = toRow(map.table, x);
+      row.ecole_id = ecoleId;
+      return row;
+    });
+    if (rows.length) bump(coll, (await insertChunked(map.table, rows)).length);
+  }
 
   // Comptes → utilisateurs auth (mot de passe aléatoire, reset à la 1re connexion)
   for (const s of await getColl("comptes")) {
