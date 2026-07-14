@@ -5,6 +5,22 @@
 import { getSupabase } from "../supabaseClient";
 import { transformRow } from "./collection-map";
 
+// PostgREST plafonne chaque réponse à 1000 lignes : au-delà, notes et absences
+// (qui croissent avec les années) étaient tronquées en silence. Même motif de
+// pagination que chargerCollection (data-supabase.js) : tri par id en dernier
+// critère pour que les pages ne se chevauchent pas.
+const PAGE = 1000;
+async function lireTout(construireRequete) {
+  const rows = [];
+  for (let de = 0; ; de += PAGE) {
+    const { data, error } = await construireRequete().order("id").range(de, de + PAGE - 1);
+    if (error || !data) return { data: rows, error };
+    rows.push(...data);
+    if (data.length < PAGE) break;
+  }
+  return { data: rows, error: null };
+}
+
 export async function fetchParentPortal() {
   const sb = getSupabase();
 
@@ -16,11 +32,11 @@ export async function fetchParentPortal() {
 
   const vide = { data: [] };
   const [notes, absences, tarifs, annonces, messages] = await Promise.all([
-    ids.length ? sb.from("notes").select("*").in("eleve_id", ids) : vide,
-    ids.length ? sb.from("absences").select("*").in("eleve_id", ids) : vide,
-    sb.from("tarifs").select("*"),
+    ids.length ? lireTout(() => sb.from("notes").select("*").in("eleve_id", ids)) : vide,
+    ids.length ? lireTout(() => sb.from("absences").select("*").in("eleve_id", ids)) : vide,
+    lireTout(() => sb.from("tarifs").select("*")),
     sb.from("annonces").select("*").order("created_at", { ascending: false }).limit(10),
-    ids.length ? sb.from("messages").select("*").in("eleve_id", ids).order("created_at", { ascending: false }) : vide,
+    ids.length ? lireTout(() => sb.from("messages").select("*").in("eleve_id", ids).order("created_at", { ascending: false })) : vide,
   ]);
 
   const map = (res, table) => (res.data || []).map((r) => transformRow(table, r));
