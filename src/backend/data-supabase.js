@@ -70,16 +70,27 @@ export async function chargerCollection(schoolCode, nomCollection, { annee } = {
     }
   }
 
-  let q = sb.from(map.table).select("*").eq("ecole_id", ecoleId);
-  if (map.section) q = q.eq("section", map.section);
-  if (annee && ANNEE_TABLES.has(map.table)) q = q.eq("annee", annee);
+  // PostgREST plafonne chaque réponse à 1000 lignes : sans pagination, les
+  // grosses collections (ex. 7 496 notes du primaire) étaient tronquées en
+  // silence — l'app ne voyait que les 1 000 premières. On pagine par .range(),
+  // trié par id pour que les pages ne se chevauchent pas.
+  const PAGE = 1000;
+  const rows = [];
+  for (let de = 0; ; de += PAGE) {
+    let q = sb.from(map.table).select("*").eq("ecole_id", ecoleId)
+      .order("id").range(de, de + PAGE - 1);
+    if (map.section) q = q.eq("section", map.section);
+    if (annee && ANNEE_TABLES.has(map.table)) q = q.eq("annee", annee);
 
-  const { data, error } = await q;
-  if (error) {
-    console.warn(`[supabase] lecture ${nomCollection} (${map.table}):`, error.message);
-    return { items: [] };
+    const { data, error } = await q;
+    if (error) {
+      console.warn(`[supabase] lecture ${nomCollection} (${map.table}):`, error.message);
+      return { items: [] };
+    }
+    rows.push(...(data || []));
+    if (!data || data.length < PAGE) break;
   }
-  return { items: (data || []).map((r) => transformRow(map.table, r)) };
+  return { items: rows.map((r) => transformRow(map.table, r)) };
 }
 
 // Info école (branding + plan) → objet camelCase prêt pour mergeSchoolInfo.
