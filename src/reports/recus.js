@@ -6,6 +6,7 @@
 // dans recus/recus-styles.js.
 
 import { MOIS_ANNEE } from "../constants.js";
+import { montantMoisPaye } from "../mensualite-utils.js";
 import { resolveLegalFields } from "../legal-utils.js";
 import { PRINT_RESET, PRINT_TRIGGER, edugestBrandHTML, printDir, printLang, tr } from "./print-helpers.js";
 import { blocRecu } from "./recus/recu-blocs.js";
@@ -17,7 +18,10 @@ export const getRecuTotals = (eleve, montantUnit, moisAnnee=MOIS_ANNEE, fraisAnn
   const moisPayes = moisAnnee.filter(m=>mens[m]==="Payé");
   const fraisIns = Number(fraisAnnexes?.inscription||0);
   const fraisAutre = Number(fraisAnnexes?.autre||0);
-  const totalMensualites = moisPayes.length*montantUnit;
+  // v2 : chaque mois payé garde le tarif figé à l'encaissement (mensMontants),
+  // repli sur le tarif courant pour les paiements antérieurs à la v2 — mêmes
+  // montants que la grille des mensualités (getEleveMensualiteSnapshot).
+  const totalMensualites = moisPayes.reduce((somme, m) => somme + montantMoisPaye(eleve, m, montantUnit), 0);
   const totalGeneral = totalMensualites
     + (eleve.inscriptionPayee&&fraisIns>0?fraisIns:0)
     + (eleve.autrePayee&&fraisAutre>0?fraisAutre:0);
