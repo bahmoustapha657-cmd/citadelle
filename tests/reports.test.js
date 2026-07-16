@@ -22,6 +22,27 @@ test("getRecuTotals inclut les autres frais et l'inscription quand ils sont rég
   assert.equal(totals.totalGeneral, 465000);
 });
 
+test("getRecuTotals utilise les montants figés au paiement (v2), repli tarif courant", () => {
+  const eleve = {
+    mens: { Octobre: "Payé", Novembre: "Payé", Décembre: "Payé" },
+    // Octobre et Novembre encaissés à l'ancien tarif ; Décembre payé avant la
+    // v2 (pas de montant figé) → tarif courant.
+    mensMontants: { Octobre: 150000, Novembre: 150000 },
+    inscriptionPayee: false,
+    autrePayee: false,
+  };
+
+  const totals = getRecuTotals(
+    eleve,
+    200000,
+    ["Octobre", "Novembre", "Décembre"],
+    {},
+  );
+
+  assert.equal(totals.totalMensualites, 150000 + 150000 + 200000);
+  assert.equal(totals.totalGeneral, 500000);
+});
+
 test("getRecuTotals n'ajoute pas les frais annexes non réglés", () => {
   const eleve = {
     mens: { Octobre: "Payé" },

@@ -118,7 +118,9 @@ export function getElevesCritiques<T extends MensualiteEleve>(eleves: T[] = [], 
 
 // Montant perçu pour un mois payé : tarif figé au paiement si présent
 // (mensMontants), sinon tarif courant (paiements antérieurs à la v2).
-function montantMoisPaye(eleve: MensualiteEleve, mois: string, mensualiteCourante: number): number {
+// Exporté pour que le reçu imprimé (reports/recus.js) affiche les mêmes
+// montants que la grille des mensualités.
+export function montantMoisPaye(eleve: MensualiteEleve, mois: string, mensualiteCourante: number): number {
   const fige = Number((eleve.mensMontants || {})[mois]);
   return Number.isFinite(fige) && fige > 0 ? fige : mensualiteCourante;
 }

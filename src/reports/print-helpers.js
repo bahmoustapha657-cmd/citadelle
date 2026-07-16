@@ -108,8 +108,8 @@ export const loadQRCode = async () => (await import("qrcode")).default;
 // ── Marque EduGest sur les documents imprimés ──────────────────
 // Une seule ligne, discrète et grise : le document reste celui de
 // l'ÉCOLE (logo, couleurs), mais chaque bulletin remis à un parent
-// devient une carte de visite d'EduGest. Retirée pour le plan Premium
-// (« votre image, 100 % à vous » — levier commercial).
+// devient une carte de visite d'EduGest. Affichée pour tous les plans,
+// Premium compris (décision 2026-07).
 //
 // Lien officiel du site (cohérent avec la balise canonical d'index.html).
 export const EDUGEST_SITE = "edugest-gn.vercel.app";
@@ -119,8 +119,6 @@ export const EDUGEST_SITE = "edugest-gn.vercel.app";
 // dépendre d'un fichier externe que l'aperçu d'impression ne chargerait pas.
 const EDUGEST_LOGO_SVG = `<svg width="13" height="13" viewBox="14 14 132 132" xmlns="http://www.w3.org/2000/svg" style="vertical-align:-2px;flex-shrink:0"><defs><linearGradient id="egb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#00DC9C"/><stop offset="1" stop-color="#00916B"/></linearGradient></defs><rect x="20" y="20" width="120" height="120" rx="30" fill="url(#egb)"/><path d="M80 79 C72 71 60 68 47 71 L47 107 C60 104 72 107 80 115 Z" fill="#fff"/><path d="M80 79 C88 71 100 68 113 71 L113 107 C100 104 88 107 80 115 Z" fill="#fff"/><path d="M80 79 L80 115" stroke="#04321F" stroke-opacity="0.3" stroke-width="2.5" stroke-linecap="round"/><path d="M80 35 L118 50 L80 65 L42 50 Z" fill="#0F2440"/><circle cx="80" cy="50" r="3" fill="#FFB547"/></svg>`;
 
-export const edugestBrandHTML = (si = {}) => (
-  si.plan === "premium"
-    ? ""
-    : `<div style="text-align:center;font-size:7.5px;color:#9ca3af;margin-top:6px;font-family:Arial,sans-serif;letter-spacing:0.02em;line-height:1.4">${EDUGEST_LOGO_SVG} Édité avec <strong>EduGest</strong> — la gestion scolaire moderne · <strong>${EDUGEST_SITE}</strong> · edugest26@gmail.com · +224 627 73 85 79</div>`
+export const edugestBrandHTML = () => (
+  `<div style="text-align:center;font-size:7.5px;color:#9ca3af;margin-top:6px;font-family:Arial,sans-serif;letter-spacing:0.02em;line-height:1.4">${EDUGEST_LOGO_SVG} Édité avec <strong>EduGest</strong> — la gestion scolaire moderne · <strong>${EDUGEST_SITE}</strong> · edugest26@gmail.com · +224 627 73 85 79</div>`
 );
