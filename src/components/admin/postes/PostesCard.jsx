@@ -32,25 +32,32 @@ function MatricePermissions({ permissions, onCycle, verrouille }) {
 }
 
 // ── Comptes rattachés à un poste + ajout d'un nouveau compte ────────────────
-function ComptesDuPoste({ poste, comptes, onCreer, toast }) {
+function ComptesDuPoste({ poste, comptes, onCreer, onEmail, peutGerer, toast }) {
   const [ajout, setAjout] = useState(false);
   const [nom, setNom] = useState("");
   const [login, setLogin] = useState("");
+  const [email, setEmail] = useState("");
   const [creationEnCours, setCreationEnCours] = useState(false);
+  const [emailEditeId, setEmailEditeId] = useState(null);
+  const [emailBrouillon, setEmailBrouillon] = useState("");
 
-  const ouvrir = () => { setAjout(true); setNom(""); setLogin(suggererLogin(poste, comptes)); };
+  const ouvrir = () => { setAjout(true); setNom(""); setEmail(""); setLogin(suggererLogin(poste, comptes)); };
   const creer = async () => {
     const loginPropre = login.trim().toLowerCase();
     if (loginPropre.length < 3) { toast("Identifiant : 3 caractères minimum.", "warning"); return; }
     setCreationEnCours(true);
     try {
-      await onCreer(poste, { nom: nom.trim(), login: loginPropre });
+      await onCreer(poste, { nom: nom.trim(), login: loginPropre, email: email.trim().toLowerCase() });
       setAjout(false);
     } catch (e) {
       toast(e.message || "Création du compte impossible.", "error");
     } finally {
       setCreationEnCours(false);
     }
+  };
+  const validerEmail = async (compte) => {
+    await onEmail(compte, emailBrouillon.trim().toLowerCase());
+    setEmailEditeId(null);
   };
 
   return (
@@ -62,10 +69,26 @@ function ComptesDuPoste({ poste, comptes, onCreer, toast }) {
         {poste.actif && <Btn sm v="success" onClick={ouvrir}>+ Ajouter un compte</Btn>}
       </div>
       {comptes.map((c) => (
-        <div key={c._id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, padding: "5px 0", color: "#334155" }}>
+        <div key={c._id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, padding: "5px 0", color: "#334155", flexWrap: "wrap" }}>
           <span style={{ fontFamily: "monospace", background: "#f1f5f9", padding: "1px 6px", borderRadius: 4 }}>{c.login}</span>
           <span style={{ fontWeight: 600 }}>{c.nom}</span>
+          {c.email && <span style={{ color: "#64748b" }}>✉️ {c.email}</span>}
           {c.premiereCo && <Badge color="amber">1ère connexion à faire</Badge>}
+          {peutGerer && emailEditeId !== c._id && (
+            <button type="button" onClick={() => { setEmailEditeId(c._id); setEmailBrouillon(c.email || ""); }}
+              title="E-mail de connexion (le compte pourra se connecter avec cet e-mail)"
+              style={{ border: "none", background: "none", cursor: "pointer", fontSize: 11, color: "#2563eb", fontWeight: 700, padding: 0 }}>
+              {c.email ? "modifier l'e-mail" : "+ e-mail de connexion"}
+            </button>
+          )}
+          {emailEditeId === c._id && (
+            <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
+              <input value={emailBrouillon} onChange={(e) => setEmailBrouillon(e.target.value)} placeholder="ex. admin@gmail.com"
+                style={{ width: 200, padding: "4px 8px", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: 12 }} />
+              <Btn sm v="primary" onClick={() => validerEmail(c)}>OK</Btn>
+              <Btn sm v="ghost" onClick={() => setEmailEditeId(null)}>Annuler</Btn>
+            </span>
+          )}
         </div>
       ))}
       {comptes.length === 0 && <p style={{ margin: "6px 0 0", fontSize: 12, color: "#94a3b8" }}>Aucun compte pour ce poste.</p>}
@@ -75,10 +98,13 @@ function ComptesDuPoste({ poste, comptes, onCreer, toast }) {
             style={{ flex: 1, minWidth: 140, padding: "7px 10px", borderRadius: 7, border: "1px solid #cbd5e1", fontSize: 12 }} />
           <input value={login} onChange={(e) => setLogin(e.target.value)} placeholder="identifiant"
             style={{ width: 140, padding: "7px 10px", borderRadius: 7, border: "1px solid #cbd5e1", fontSize: 12, fontFamily: "monospace" }} />
+          <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="e-mail (optionnel)"
+            style={{ width: 190, padding: "7px 10px", borderRadius: 7, border: "1px solid #cbd5e1", fontSize: 12 }} />
           <Btn sm v="primary" disabled={creationEnCours} onClick={creer}>{creationEnCours ? "…" : "Créer"}</Btn>
           <Btn sm v="ghost" onClick={() => setAjout(false)}>Annuler</Btn>
           <span style={{ width: "100%", fontSize: 11, color: "#64748b" }}>
             Mot de passe généré automatiquement — affiché une seule fois après création.
+            Avec un e-mail, le compte peut se connecter par identifiant OU par e-mail.
           </span>
         </div>
       )}
@@ -160,7 +186,8 @@ export function PostesCard({ schoolId, peutGererRoles, comptes, refreshComptes, 
               <MatricePermissions permissions={poste.permissions} verrouille onCycle={() => {}} />
             )}
 
-            <ComptesDuPoste poste={poste} comptes={p.comptesDuPoste(poste)} onCreer={p.creerCompteDuPoste} toast={toast} />
+            <ComptesDuPoste poste={poste} comptes={p.comptesDuPoste(poste)} onCreer={p.creerCompteDuPoste}
+              onEmail={p.definirEmail} peutGerer={peutGererRoles} toast={toast} />
           </div>
         );
       })}

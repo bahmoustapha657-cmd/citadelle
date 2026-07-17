@@ -126,9 +126,15 @@ Deno.serve(async (req) => {
       if (eleveIds.length) extra.eleveIds = eleveIds;
       if (body.eleveId) extra.eleveId = body.eleveId;
 
+      // E-mail réel optionnel (connexion par e-mail) — unicité par école.
+      const emailReel = body.email ? String(body.email).trim().toLowerCase() : null;
+      if (emailReel && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailReel)) {
+        return json({ error: "Adresse e-mail invalide." }, 400);
+      }
+
       const { data: compte, error: insErr } = await admin.from("comptes").insert({
         user_id: uid, ecole_id: ecoleId, login, role,
-        poste_id: posteId,
+        poste_id: posteId, email: emailReel,
         nom: body.nom || login, label: body.label || role,
         section: body.section || null,
         sections: Array.isArray(body.sections) ? body.sections : null,
@@ -139,7 +145,10 @@ Deno.serve(async (req) => {
         premiere_co: true,
         extra,
       }).select("id").single();
-      if (insErr) return json({ error: insErr.message }, 500);
+      if (insErr) {
+        const dup = /idx_comptes_ecole_email|duplicate/i.test(insErr.message);
+        return json({ error: dup ? "Cet e-mail est déjà utilisé par un autre compte de l'école." : insErr.message }, dup ? 409 : 500);
+      }
 
       // Parent : liens parent_eleves (RLS my_eleve_ids).
       if (role === "parent" && eleveIds.length) {

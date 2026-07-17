@@ -45,6 +45,7 @@ async function chargerCompte(sb, userId, schoolCode) {
   return {
     uid: userId,
     login: c.login,
+    email: c.email || "",
     nom: c.nom || c.login,
     role: c.role,
     label: c.poste?.label || c.label || c.role,
@@ -89,9 +90,21 @@ async function connexionParEmail(email, mdp, schoolCode) {
   return { ok: true, data: { compte } };
 }
 
-// Connexion d'un utilisateur d'école.
-export function ecoleLogin({ login, mdp, schoolId }) {
-  return connexionParEmail(emailFor(login, schoolId), mdp, schoolId);
+// Connexion d'un utilisateur d'école. La saisie peut être l'identifiant
+// interne OU l'e-mail réel du compte (résolu via la RPC publique
+// login_pour_email — l'authentification reste l'e-mail synthétique).
+export async function ecoleLogin({ login, mdp, schoolId }) {
+  let identifiant = String(login || "").trim();
+  if (identifiant.includes("@")) {
+    const { data, error } = await getSupabase()
+      .rpc("login_pour_email", { p_code: schoolId, p_email: identifiant });
+    if (error || !data) {
+      // Même message générique qu'un mauvais mot de passe (pas d'énumération).
+      return { ok: false, data: { error: "Identifiant ou mot de passe incorrect." } };
+    }
+    identifiant = data;
+  }
+  return connexionParEmail(emailFor(identifiant, schoolId), mdp, schoolId);
 }
 
 // Connexion superadmin (transversal, sans école).
