@@ -7,6 +7,9 @@ export function ProfilMenu({
   profilOuvert, setProfilOuvert, setNotifOuvert, isMobile,
   utilisateur, utilisateurLabel, schoolInfo, t, setPage, setAideOuverte, setCentreAideOuvert, deconnecter,
 }) {
+  // Postes flexibles : la clé du poste prime sur le rôle enum (postes
+  // système = mêmes clés que les rôles historiques).
+  const cleRole = utilisateur.posteCle || utilisateur.role;
   return (
     <div style={{position:"relative",flexShrink:0}}>
       <button onClick={()=>{setProfilOuvert(v=>!v);setNotifOuvert(false);}}
@@ -17,7 +20,7 @@ export function ProfilMenu({
         </div>
         {!isMobile&&<>
           <span style={{fontSize:12,fontWeight:700,color:C.blueDark}}>{utilisateur.nom}</span>
-          <Badge color={utilisateur.role==="admin"?"purple":utilisateur.role==="comptable"?"teal":"blue"}>{utilisateurLabel}</Badge>
+          <Badge color={cleRole==="admin"?"purple":cleRole==="comptable"?"teal":"blue"}>{utilisateurLabel}</Badge>
         </>}
       </button>
       {profilOuvert&&(
@@ -26,7 +29,7 @@ export function ProfilMenu({
             <p style={{margin:0,fontSize:13,fontWeight:800,color:"#0f172a"}}>{utilisateur.nom}</p>
             <p style={{margin:"2px 0 0",fontSize:11,color:"#64748b"}}>{utilisateurLabel} · {schoolInfo.nom}</p>
           </div>
-          {["admin","direction","comptable","superadmin"].includes(utilisateur.role)&&(
+          {["admin","direction","comptable","superadmin"].includes(cleRole)&&(
             <button onClick={()=>{setProfilOuvert(false);setPage("parametres");}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 16px",background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#374151",textAlign:"start",fontWeight:600}}>
               🏫 <span>Paramètres école</span>
             </button>

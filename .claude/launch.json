@@ -7,6 +7,12 @@
       "runtimeArgs": ["run", "dev"],
       "port": 5173,
       "autoPort": true
+    },
+    {
+      "name": "vite-supabase",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite", "--mode", "supabase", "--port", "5174"],
+      "port": 5174
     }
   ]
 }

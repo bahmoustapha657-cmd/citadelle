@@ -17,7 +17,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const DOMAIN = "edugest.app";
 
-const ROLES_VALIDES = new Set(["direction", "admin", "comptable", "surveillant", "primaire", "college", "enseignant", "parent"]);
+const ROLES_VALIDES = new Set(["direction", "admin", "comptable", "surveillant", "primaire", "college", "staff", "enseignant", "parent"]);
 const ROLES_SYSTEME = new Set(["direction", "admin", "comptable", "surveillant", "primaire", "college"]);
 
 const cors = {
@@ -29,12 +29,19 @@ const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 
 // Mêmes règles d'autorisation que api/_lib/handlers/account-manage.js.
-function peutGererRole(callerRole: string, targetRole: string, targetSection?: string): boolean {
+// `callerAdminPanel` : le poste de l'appelant écrit-il le module admin_panel ?
+// (postes flexibles — permet de gérer les comptes de personnel `staff`).
+function peutGererRole(callerRole: string, targetRole: string, targetSection?: string, callerAdminPanel = false): boolean {
   if (callerRole === "superadmin" || callerRole === "direction") return true;
-  if (callerRole === "admin") return !ROLES_SYSTEME.has(targetRole) && ["enseignant", "parent"].includes(targetRole);
+  // Personne d'autre ne touche à la direction (anti-escalade).
+  if (targetRole === "direction") return false;
+  if (targetRole === "staff" || ROLES_SYSTEME.has(targetRole)) return callerAdminPanel;
+  if (callerRole === "admin") return ["enseignant", "parent"].includes(targetRole);
   if (callerRole === "comptable") return targetRole === "parent";
   if (callerRole === "primaire") return targetRole === "enseignant" && targetSection === "primaire";
   if (callerRole === "college") return targetRole === "enseignant" && (targetSection === "college" || targetSection === "lycee");
+  // Poste flexible : parents/enseignants gérables avec l'écriture admin_panel.
+  if (callerRole === "staff") return callerAdminPanel && ["enseignant", "parent"].includes(targetRole);
   return false;
 }
 
@@ -51,6 +58,15 @@ Deno.serve(async (req) => {
 
     const { data: caller } = await admin.from("comptes").select("*").eq("user_id", user.id).maybeSingle();
     if (!caller) return json({ error: "Compte appelant introuvable." }, 403);
+
+    // Postes flexibles : l'écriture admin_panel du poste de l'appelant ouvre
+    // la gestion des comptes de personnel (jamais la direction).
+    let callerAdminPanel = false;
+    if (caller.poste_id) {
+      const { data: postePerm } = await admin.from("postes")
+        .select("permissions, actif").eq("id", caller.poste_id).maybeSingle();
+      callerAdminPanel = !!postePerm?.actif && postePerm?.permissions?.admin_panel === "ecriture";
+    }
 
     const body = await req.json().catch(() => ({}));
     const action = body.action;
@@ -75,7 +91,15 @@ Deno.serve(async (req) => {
       if (!login || !role || !mdp) return json({ error: "Champs requis : login, role, mdp." }, 400);
       if (!ROLES_VALIDES.has(role)) return json({ error: "Rôle invalide." }, 400);
       if (mdp.length < 8) return json({ error: "Mot de passe : 8 caractères minimum." }, 400);
-      if (!peutGererRole(caller.role, role, body.section)) return json({ error: "Droits insuffisants pour créer ce compte." }, 403);
+      if (!peutGererRole(caller.role, role, body.section, callerAdminPanel)) return json({ error: "Droits insuffisants pour créer ce compte." }, 403);
+
+      // Poste : requis pour un compte `staff`, et toujours de la même école.
+      const posteId = body.posteId ? String(body.posteId) : null;
+      if (role === "staff" && !posteId) return json({ error: "Un compte de personnel doit être rattaché à un poste." }, 400);
+      if (posteId) {
+        const { data: poste } = await admin.from("postes").select("id, ecole_id").eq("id", posteId).maybeSingle();
+        if (!poste || poste.ecole_id !== ecoleId) return json({ error: "Poste introuvable pour cette école." }, 404);
+      }
 
       // Doublon de login dans l'école ?
       const { data: exist } = await admin.from("comptes").select("id").eq("ecole_id", ecoleId).eq("login", login).maybeSingle();
@@ -104,6 +128,7 @@ Deno.serve(async (req) => {
 
       const { data: compte, error: insErr } = await admin.from("comptes").insert({
         user_id: uid, ecole_id: ecoleId, login, role,
+        poste_id: posteId,
         nom: body.nom || login, label: body.label || role,
         section: body.section || null,
         sections: Array.isArray(body.sections) ? body.sections : null,
@@ -132,7 +157,7 @@ Deno.serve(async (req) => {
       if (!accountId || mdp.length < 8) return json({ error: "Compte ou mot de passe invalide (8 car. min)." }, 400);
       const { data: cible } = await admin.from("comptes").select("*").eq("id", accountId).maybeSingle();
       if (!cible || cible.ecole_id !== ecoleId) return json({ error: "Compte cible introuvable." }, 404);
-      if (!peutGererRole(caller.role, cible.role, cible.section)) return json({ error: "Droits insuffisants." }, 403);
+      if (!peutGererRole(caller.role, cible.role, cible.section, callerAdminPanel)) return json({ error: "Droits insuffisants." }, 403);
       if (!cible.user_id) return json({ error: "Compte sans utilisateur auth." }, 409);
       const { error: pErr } = await admin.auth.admin.updateUserById(cible.user_id, { password: mdp });
       if (pErr) return json({ error: pErr.message }, 500);

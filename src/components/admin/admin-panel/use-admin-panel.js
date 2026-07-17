@@ -86,7 +86,7 @@ export function useAdminPanel({ schoolId, userRole }) {
 
   return {
     peutGererRoles, peutResetCompte, schoolInfo, setSchoolInfo,
-    comptes, chargement, modal, setModal, form, setForm,
-    mdpsInitiaux, setMdpsInitiaux, initEnCours, chg, sauvegarder,
+    comptes, chargement, refreshComptes, modal, setModal, form, setForm,
+    mdpsInitiaux, setMdpsInitiaux, initEnCours, chg, sauvegarder, toast,
   };
 }

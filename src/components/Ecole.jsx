@@ -9,9 +9,9 @@ const TABS_SURVEILLANT = new Set(["eleves", "discipline", "emploidutemps"]);
 
 // Orchestrateur du module École : la logique vit dans useEcole, l'en-tête dans
 // EcoleHeader et l'aiguillage des onglets dans EcoleTabContent.
-function Ecole({ titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns, userRole, annee, classesPredefinies, maxNote = 20, matieresPredefinies = [], readOnly = false, verrouOuvert = false }) {
+function Ecole({ titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns, userRole, permissions = null, annee, classesPredefinies, maxNote = 20, matieresPredefinies = [], readOnly = false, verrouOuvert = false }) {
   const { t } = useTranslation();
-  const e = useEcole({ cleClasses, cleEns, cleNotes, cleEleves, userRole, annee, readOnly, verrouOuvert });
+  const e = useEcole({ cleClasses, cleEns, cleNotes, cleEleves, userRole, permissions, annee, readOnly, verrouOuvert });
 
   const tabItems = [
     { id: "apercu", label: t("school.tabs.overview") },

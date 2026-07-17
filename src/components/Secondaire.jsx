@@ -1,12 +1,21 @@
 import React, { useContext, useState } from "react";
 import { SchoolContext } from "../contexts/SchoolContext";
-import { C, getClassesForSection, getSystemeScolaire } from "../constants";
+import { C, getClassesForSection, getSystemeScolaire, isSectionActive } from "../constants";
 import { Ecole } from "./Ecole";
 
-function Secondaire({ userRole, annee, readOnly = false, verrouOuvert = false, collegeLabel = "Bureau College" }) {
-  const [sousModule, setSousModule] = useState("college");
+function Secondaire({ userRole, permissions = null, annee, readOnly = false, verrouOuvert = false, collegeLabel = "Bureau College" }) {
   const { schoolInfo } = useContext(SchoolContext);
   const systeme = getSystemeScolaire(schoolInfo);
+  // Sections déclarées dans Paramètres → Identité : une école sans lycée
+  // n'affiche que le collège (et inversement).
+  const sousModules = [
+    { id: "college", label: collegeLabel },
+    { id: "lycee", label: "Lycee" },
+  ].filter((m) => isSectionActive(schoolInfo, m.id));
+  const [sousModule, setSousModule] = useState(sousModules[0]?.id || "college");
+  // Si la section sélectionnée vient d'être fermée dans Paramètres, on
+  // retombe sur la première section encore ouverte.
+  const actif = sousModules.some((m) => m.id === sousModule) ? sousModule : (sousModules[0]?.id || "college");
 
   return (
     <div>
@@ -19,10 +28,7 @@ function Secondaire({ userRole, annee, readOnly = false, verrouOuvert = false, c
           borderBottom: `3px solid ${C.green}`,
         }}
       >
-        {[
-          { id: "college", label: collegeLabel },
-          { id: "lycee", label: "Lycee" },
-        ].map((moduleItem) => (
+        {sousModules.map((moduleItem) => (
           <button
             key={moduleItem.id}
             onClick={() => setSousModule(moduleItem.id)}
@@ -32,9 +38,9 @@ function Secondaire({ userRole, annee, readOnly = false, verrouOuvert = false, c
               cursor: "pointer",
               fontWeight: 800,
               fontSize: 13,
-              background: sousModule === moduleItem.id ? C.green : "transparent",
-              color: sousModule === moduleItem.id ? "#fff" : "rgba(255,255,255,0.6)",
-              borderBottom: sousModule === moduleItem.id ? `3px solid ${C.green}` : "3px solid transparent",
+              background: actif === moduleItem.id ? C.green : "transparent",
+              color: actif === moduleItem.id ? "#fff" : "rgba(255,255,255,0.6)",
+              borderBottom: actif === moduleItem.id ? `3px solid ${C.green}` : "3px solid transparent",
               marginBottom: -3,
               transition: "all 0.15s",
             }}
@@ -44,7 +50,7 @@ function Secondaire({ userRole, annee, readOnly = false, verrouOuvert = false, c
         ))}
       </div>
 
-      {sousModule === "college" && (
+      {actif === "college" && (
         <Ecole
           titre={collegeLabel}
           couleur={C.blue}
@@ -54,6 +60,7 @@ function Secondaire({ userRole, annee, readOnly = false, verrouOuvert = false, c
           cleEleves="elevesCollege"
           avecEns={true}
           userRole={userRole}
+          permissions={permissions}
           annee={annee}
           classesPredefinies={getClassesForSection("college", systeme)}
           maxNote={20}
@@ -62,7 +69,7 @@ function Secondaire({ userRole, annee, readOnly = false, verrouOuvert = false, c
         />
       )}
 
-      {sousModule === "lycee" && (
+      {actif === "lycee" && (
         <Ecole
           titre="Lycee"
           couleur="#00C48C"
@@ -72,6 +79,7 @@ function Secondaire({ userRole, annee, readOnly = false, verrouOuvert = false, c
           cleEleves="elevesLycee"
           avecEns={true}
           userRole={userRole}
+          permissions={permissions}
           annee={annee}
           classesPredefinies={getClassesForSection("lycee", systeme)}
           maxNote={20}

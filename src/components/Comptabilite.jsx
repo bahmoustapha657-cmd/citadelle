@@ -6,9 +6,9 @@ import { ComptaTabContent } from "./comptabilite/ComptaTabContent";
 
 // Orchestrateur du module Comptabilité : la logique vit dans useComptabilite,
 // l'en-tête dans ComptaHeader et l'aiguillage des onglets dans ComptaTabContent.
-function Comptabilite({ readOnly, annee, userRole, verrouOuvert = false }) {
+function Comptabilite({ readOnly, annee, userRole, permissions = null, verrouOuvert = false }) {
   const { t } = useTranslation();
-  const c = useComptabilite({ readOnly, annee, userRole, verrouOuvert });
+  const c = useComptabilite({ readOnly, annee, userRole, permissions, verrouOuvert });
 
   const tabs = [
     { id: "bilan", label: t("accounting.tabs.bilan") },

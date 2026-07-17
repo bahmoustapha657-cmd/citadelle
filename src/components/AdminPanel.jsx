@@ -1,7 +1,9 @@
 import { C } from "../constants";
+import { isSupabase } from "../backend";
 import { AnneeScolaireCard } from "./admin/AnneeScolaireCard";
 import { PromotionCard } from "./admin/PromotionCard";
 import { RolesConfigCard } from "./admin/RolesConfigCard";
+import { PostesCard } from "./admin/postes/PostesCard";
 import { VerrousCard } from "./admin/VerrousCard";
 import { useAdminPanel } from "./admin/admin-panel/use-admin-panel";
 import { ComptesTable } from "./admin/admin-panel/ComptesTable";
@@ -27,15 +29,30 @@ function AdminPanel({ annee, setAnnee, verrous = {}, schoolId, userRole }) {
 
       <PromotionCard schoolId={schoolId} schoolInfo={a.schoolInfo} toast={a.toast} userRole={userRole} />
 
-      <div style={{background:"#e0ebf8",borderRadius:10,padding:"12px 16px",marginBottom:20,fontSize:13,color:C.blueDark}}>
-        <strong>🔐 Rôle Administrateur :</strong> par défaut en lecture seule. La Direction Générale peut autoriser l'écriture module par module (Primaire, Secondaire, Calendrier, Examens, Messages). Comptabilité, Paramètres, Fondation, Gestion Accès et Historique restent systématiquement en lecture seule (modules système).
-        {!a.peutGererRoles && <div style={{marginTop:6,fontSize:12,color:"#6b7280"}}>La configuration des rôles et l'accès Fondation sont réservés à la Direction Générale.</div>}
-      </div>
-
-      {a.peutGererRoles && <RolesConfigCard
-        schoolInfo={a.schoolInfo} setSchoolInfo={a.setSchoolInfo}
-        schoolId={schoolId} toast={a.toast} setMdpsInitiaux={a.setMdpsInitiaux}
-      />}
+      {isSupabase ? (
+        <>
+          <div style={{background:"#e0ebf8",borderRadius:10,padding:"12px 16px",marginBottom:20,fontSize:13,color:C.blueDark}}>
+            <strong>🧩 Postes flexibles :</strong> chaque poste porte ses propres droits (invisible / lecture / écriture) module par module, et peut avoir plusieurs comptes. Le poste Direction garde toujours tous les droits.
+            {!a.peutGererRoles && <div style={{marginTop:6,fontSize:12,color:"#6b7280"}}>La gestion des postes est réservée à la Direction Générale.</div>}
+          </div>
+          <PostesCard
+            schoolId={schoolId} peutGererRoles={a.peutGererRoles}
+            comptes={a.comptes} refreshComptes={a.refreshComptes}
+            toast={a.toast} setMdpsInitiaux={a.setMdpsInitiaux}
+          />
+        </>
+      ) : (
+        <>
+          <div style={{background:"#e0ebf8",borderRadius:10,padding:"12px 16px",marginBottom:20,fontSize:13,color:C.blueDark}}>
+            <strong>🔐 Rôle Administrateur :</strong> par défaut en lecture seule. La Direction Générale peut autoriser l'écriture module par module (Primaire, Secondaire, Calendrier, Examens, Messages). Comptabilité, Paramètres, Fondation, Gestion Accès et Historique restent systématiquement en lecture seule (modules système).
+            {!a.peutGererRoles && <div style={{marginTop:6,fontSize:12,color:"#6b7280"}}>La configuration des rôles et l'accès Fondation sont réservés à la Direction Générale.</div>}
+          </div>
+          {a.peutGererRoles && <RolesConfigCard
+            schoolInfo={a.schoolInfo} setSchoolInfo={a.setSchoolInfo}
+            schoolId={schoolId} toast={a.toast} setMdpsInitiaux={a.setMdpsInitiaux}
+          />}
+        </>
+      )}
 
       {/* Modale mots de passe initiaux — affichée une seule fois */}
       {a.mdpsInitiaux && <MdpsInitiauxModale mdpsInitiaux={a.mdpsInitiaux} setMdpsInitiaux={a.setMdpsInitiaux} />}

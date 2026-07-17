@@ -2,6 +2,9 @@
 --  EduGest — Durcissement RLS : périmètre d'écriture de l'enseignant
 -- ════════════════════════════════════════════════════════════════════════
 -- À exécuter dans Supabase → SQL Editor (après rls.sql). Idempotent.
+-- ⚠️ Après tout re-run de ce fichier, RÉ-APPLIQUER postes.sql : il redéfinit
+--    comptes_guard() (colonne poste_id) et les policies notes/absences_write
+--    avec les permissions par module.
 --
 -- Problème : la RLS laissait un enseignant (can_grade) écrire N'IMPORTE quelle
 -- note/absence de son école — le périmètre fin (ses classes) n'était imposé que

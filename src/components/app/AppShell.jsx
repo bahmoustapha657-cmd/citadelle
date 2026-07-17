@@ -73,6 +73,7 @@ export function AppShell(p) {
                 <PageRouter
                   page={p.page} annee={p.annee} setAnnee={p.setAnnee} verrous={p.verrous}
                   schoolId={p.schoolId} utilisateur={p.utilisateur} readOnly={p.readOnly}
+                  permissions={p.permissions} roleEffectif={p.roleEffectif}
                   schoolInfo={p.schoolInfo} paramInitialTab={p.paramInitialTab}
                   setParamInitialTab={p.setParamInitialTab} setPage={p.setPage} deconnecter={p.deconnecter}
                 />

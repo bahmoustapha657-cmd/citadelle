@@ -1,10 +1,19 @@
-import { C, TOUS_MOIS_LONGS, SYSTEMES_SCOLAIRES, calcMoisAnnee, getClassesForSection } from "../../../constants";
+import { C, TOUS_MOIS_LONGS, SYSTEMES_SCOLAIRES, SECTIONS_ECOLE, calcMoisAnnee, getClassesForSection, getSectionLabel } from "../../../constants";
 import { PERIODICITES, getPeriodesForSchool } from "../../../period-utils";
 import { Btn } from "../../ui";
 
 // Sections "Mois de début d'année" et "Périodicité scolaire" (primaire + secondaire),
 // avec avertissement de migration des notes si la périodicité change.
-export function AnneePeriodiciteSection({ form, chg, schoolInfo, setMigrationOuverte, inp, sec }) {
+export function AnneePeriodiciteSection({ form, setForm, chg, schoolInfo, setMigrationOuverte, inp, sec }) {
+  const sectionsChoisies = Array.isArray(form.sectionsActives) && form.sectionsActives.length
+    ? form.sectionsActives : [...SECTIONS_ECOLE];
+  const basculerSection = (section) => {
+    const suivantes = sectionsChoisies.includes(section)
+      ? sectionsChoisies.filter((s) => s !== section)
+      : [...sectionsChoisies, section];
+    if (!suivantes.length) return; // au moins une section ouverte
+    setForm((p) => ({ ...p, sectionsActives: SECTIONS_ECOLE.filter((s) => suivantes.includes(s)) }));
+  };
   const periodiciteChange =
     ((schoolInfo.periodicitePrimaire || schoolInfo.periodicite) && (schoolInfo.periodicitePrimaire || schoolInfo.periodicite) !== form.periodicitePrimaire)
     || ((schoolInfo.periodiciteSecondaire || schoolInfo.periodicite) && (schoolInfo.periodiciteSecondaire || schoolInfo.periodicite) !== form.periodiciteSecondaire);
@@ -29,6 +38,28 @@ export function AnneePeriodiciteSection({ form, chg, schoolInfo, setMigrationOuv
         <p style={{ margin: "6px 0 0", fontSize: 11, color: "#9ca3af" }}>
           Exemples : <strong style={{ color: C.blue }}>{apercuClasses}</strong>… (divisions A à D, saisie libre possible)
         </p>
+      </div>
+
+      <div style={sec}>
+        <h3 style={{ margin: "0 0 16px", fontSize: 14, fontWeight: 800, color: C.blueDark }}>🏛️ Sections de l'établissement</h3>
+        <p style={{ margin: "0 0 12px", fontSize: 12, color: "#64748b" }}>
+          Cochez les sections réellement ouvertes : une école sans lycée ne verra plus l'onglet Lycée
+          ni ses classes proposées. Au moins une section reste ouverte.
+        </p>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          {SECTIONS_ECOLE.map((section) => {
+            const active = sectionsChoisies.includes(section);
+            return (
+              <button key={section} type="button" onClick={() => basculerSection(section)}
+                style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 16px", borderRadius: 9,
+                  border: active ? `2px solid ${C.green}` : "2px solid #e2e8f0",
+                  background: active ? "#ecfdf5" : "#f8fafc", cursor: "pointer",
+                  fontSize: 13, fontWeight: 700, color: active ? "#065f46" : "#94a3b8" }}>
+                {active ? "✅" : "☐"} {getSectionLabel(section)}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div style={sec}>

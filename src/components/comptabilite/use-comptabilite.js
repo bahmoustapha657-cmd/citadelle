@@ -1,6 +1,7 @@
 import { useContext, useState } from "react";
 import { doc, updateDoc } from "firebase/firestore";
 import { getAnnee, peutModifierEleves, peutModifier } from "../../constants";
+import { hasWrite } from "../../../shared/postes-config.js";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { useFirestore } from "../../hooks/useFirestore";
 import { db } from "../../firebaseDb";
@@ -15,7 +16,7 @@ import { saveSalaireAction, savePersonnelAction } from "./compta-saves";
 // Toute la logique du module Comptabilité : chargement Firestore de
 // toutes les collections (filtrées par année consultée), permissions,
 // totaux, tarifs, et les handlers d'enregistrement avec gardes anti-doublon.
-export function useComptabilite({ readOnly, annee, userRole, verrouOuvert = false }) {
+export function useComptabilite({ readOnly, annee, userRole, permissions = null, verrouOuvert = false }) {
   // readOnly=true → admin/direction : zéro action
   // canEdit → modifier/supprimer des enregistrements existants (verrou admin requis sauf admin lui-même — mais admin est readOnly)
   // canCreate → ajouter de nouveaux enregistrements (toujours permis si !readOnly)
@@ -26,7 +27,10 @@ export function useComptabilite({ readOnly, annee, userRole, verrouOuvert = fals
   const anneeFiltre = enModeArchive ? anneeConsultee : null;
   const canCreate = !readOnly && !enModeArchive;
   const canEdit = !readOnly && !enModeArchive && (peutModifier(userRole) || verrouOuvert);
-  const canEditEleves = !readOnly && !enModeArchive && (peutModifierEleves(userRole) || verrouOuvert);
+  // Postes flexibles : tout poste qui écrit la compta gère aussi la fiche
+  // élève (inscriptions, mensualités) — même périmètre que le comptable.
+  const canEditEleves = !readOnly && !enModeArchive
+    && (peutModifierEleves(userRole) || hasWrite(permissions, "compta") || verrouOuvert);
   const { schoolId, schoolInfo, moisAnnee, moisSalaire, toast, logAction, envoyerPush } = useContext(SchoolContext);
   const { items: recettes, chargement: cR, ajouter: ajR, modifier: modR, supprimer: supR } = useFirestore("recettes", { annee: anneeFiltre });
   const { items: depenses, chargement: cD, ajouter: ajD, modifier: modD, supprimer: supD } = useFirestore("depenses", { annee: anneeFiltre });

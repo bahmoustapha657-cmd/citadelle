@@ -80,6 +80,17 @@ export const SYSTEMES_SCOLAIRES = [
 export const getSystemeScolaire = (schoolInfo = {}) =>
   (NIVEAUX_PAR_SYSTEME[schoolInfo.systemeScolaire] ? schoolInfo.systemeScolaire : "guineen");
 
+// ── Sections réellement ouvertes dans l'école ───────────────────────────────
+// Une école sans lycée (ou primaire seul) le déclare dans Paramètres →
+// Identité ; l'UI (onglets Secondaire, sélecteurs) suit. Défaut : tout.
+export const SECTIONS_ECOLE = ["primaire", "college", "lycee"];
+export const getSectionsActives = (schoolInfo = {}) => {
+  const brut = Array.isArray(schoolInfo.sectionsActives)
+    ? schoolInfo.sectionsActives.filter((s) => SECTIONS_ECOLE.includes(s)) : [];
+  return brut.length ? brut : [...SECTIONS_ECOLE];
+};
+export const isSectionActive = (schoolInfo, section) => getSectionsActives(schoolInfo).includes(section);
+
 // Exports historiques (système guinéen) — conservés pour compat.
 export const CLASSES_PRIMAIRE = genClasses(NIVEAUX_PAR_SYSTEME.guineen.primaire);
 export const CLASSES_COLLEGE = genClasses(NIVEAUX_PAR_SYSTEME.guineen.college);

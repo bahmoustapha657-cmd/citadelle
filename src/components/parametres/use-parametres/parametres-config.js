@@ -21,6 +21,8 @@ export function buildFormInitial(schoolInfo) {
     agrement: schoolInfo.agrement || "",
     moisDebut: schoolInfo.moisDebut || "Octobre",
     systemeScolaire: schoolInfo.systemeScolaire || "guineen",
+    sectionsActives: Array.isArray(schoolInfo.sectionsActives) && schoolInfo.sectionsActives.length
+      ? [...schoolInfo.sectionsActives] : ["primaire", "college", "lycee"],
     modeleBulletin: schoolInfo.modeleBulletin || "classique",
     signatureUrl: schoolInfo.signatureUrl || "",
     periodicite: schoolInfo.periodicite || "trimestre",

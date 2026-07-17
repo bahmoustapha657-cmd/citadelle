@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { signOutSession } from "../../backend/session";
 import { getPrimaryModuleForRole, getRoleLabelForSchool } from "../../constants";
+import { getPrimaryModuleForCompte } from "../../../shared/postes-config.js";
 import { computePlanInfo } from "./app-shell-plan";
 import {
   chargerAnnee,
@@ -57,7 +58,7 @@ export function useAppShell({
   // Synchronise le profil public de l'école (direction/admin uniquement).
   useEffect(() => {
     if (!utilisateur || !schoolId || schoolId === "superadmin") return undefined;
-    if (!["direction", "admin"].includes(utilisateur.role)) return undefined;
+    if (!["direction", "admin"].includes(utilisateur.posteCle || utilisateur.role)) return undefined;
     let annule = false;
     (async () => {
       try {
@@ -75,8 +76,9 @@ export function useAppShell({
   const connecter = (c, sid) => {
     if (sid) { setSchoolId(sid); localStorage.setItem("LC_schoolId", sid); }
     setUtilisateur(c);
-    setPage(getPrimaryModuleForRole(c.role, schoolInfo));
-    const labelConnexion = getRoleLabelForSchool(c.role, schoolInfo) || c.label || c.role;
+    // Module d'atterrissage : permissions du poste d'abord, repli rôle legacy.
+    setPage(getPrimaryModuleForCompte(c, schoolInfo) || getPrimaryModuleForRole(c.role, schoolInfo));
+    const labelConnexion = c.posteLabel || getRoleLabelForSchool(c.role, schoolInfo) || c.label || c.role;
     logAction("Connexion", `${c.nom} (${labelConnexion})`, c.nom);
     const schoolIdEffectif = sid || localStorage.getItem("LC_schoolId");
     if (schoolIdEffectif) sAbonnerAuxPush(c, schoolIdEffectif);
