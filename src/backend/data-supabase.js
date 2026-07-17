@@ -102,7 +102,10 @@ export async function chargerEcole(schoolCode) {
   return {
     ...x,
     nom: data.nom, logo: data.logo, couleur1: data.couleur1, couleur2: data.couleur2,
-    pays: data.pays, devise: data.devise, monnaie: data.devise || x.monnaie,
+    // La colonne `devise` porte la MAXIME de l'école (héritage Firebase, cf.
+    // migration) ; la monnaie vit dans extra.monnaie. L'ancien mapping
+    // `monnaie: data.devise || …` affichait la maxime devant les montants.
+    pays: data.pays, devise: data.devise, monnaie: x.monnaie || "GNF",
     plan: data.plan, planExpiry: data.plan_expiry, modeleBulletin: data.modele_bulletin,
     roleSettings: data.role_settings, legal: data.legal, verrous: x.verrous,
   };
@@ -111,13 +114,13 @@ export async function chargerEcole(schoolCode) {
 // Sauvegarde des Paramètres de l'école côté Supabase : les champs qui ont une
 // colonne réelle y vont, tout le reste est FUSIONNÉ dans extra (jsonb) — le
 // miroir exact de chargerEcole ci-dessus (extra étalé + colonnes par-dessus).
-// NB : la colonne `devise` porte la MONNAIE (cf. chargerEcole) ; la devise
-// « slogan » du formulaire vit dans extra.
+// NB : la colonne `devise` porte la MAXIME de l'école (héritage Firebase) ;
+// la monnaie va dans extra.monnaie.
 export async function sauverParametresEcole(schoolCode, champs) {
   const sb = getSupabase();
   const { data, error } = await sb.from("ecoles").select("id, extra").eq("code", schoolCode).maybeSingle();
   if (error || !data) throw new Error(error?.message || "École introuvable.");
-  const COLONNES = { nom: "nom", logo: "logo", couleur1: "couleur1", couleur2: "couleur2", pays: "pays", monnaie: "devise", modeleBulletin: "modele_bulletin" };
+  const COLONNES = { nom: "nom", logo: "logo", couleur1: "couleur1", couleur2: "couleur2", pays: "pays", devise: "devise", modeleBulletin: "modele_bulletin" };
   const patch = {};
   const extraPatch = {};
   for (const [cle, valeur] of Object.entries(champs)) {
