@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { genererMdp } from "../../../constants";
 import { DEFAULT_POSTES } from "../../../../shared/postes-config.js";
 import {
-  chargerPostes, sauverPoste, supprimerPoste, rattacherComptesAuxPostes, creerCompte,
+  chargerPostes, sauverPoste, supprimerPoste, rattacherComptesAuxPostes, creerCompte, majEmailCompte,
 } from "../../../backend/account-manage-supabase";
 import { genererClePoste, roleCompteDuPoste } from "./postes-logic";
 
@@ -100,15 +100,26 @@ export function usePostesCard({ schoolId, peutGererRoles, comptes, refreshCompte
 
   // Crée un compte de personnel rattaché au poste ; le mot de passe généré
   // est montré UNE fois via la modale des mots de passe initiaux.
-  const creerCompteDuPoste = async (poste, { nom, login }) => {
+  const creerCompteDuPoste = async (poste, { nom, login, email }) => {
     const mdp = genererMdp();
     await creerCompte({
-      schoolId, login, mdp, nom: nom || login,
+      schoolId, login, mdp, nom: nom || login, email: email || null,
       role: roleCompteDuPoste(poste), posteId: poste.id, label: poste.label,
     });
     setMdpsInitiaux?.([{ login, label: poste.label, role: poste.cle, mdp }]);
     refreshComptes?.();
     await recharger();
+  };
+
+  // E-mail réel d'un compte existant (connexion par e-mail).
+  const definirEmail = async (compte, email) => {
+    try {
+      await majEmailCompte(compte._id, email);
+      toast(email ? `E-mail enregistré pour ${compte.nom}.` : `E-mail retiré pour ${compte.nom}.`, "success");
+      refreshComptes?.();
+    } catch (e) {
+      toast(e.message || "Enregistrement de l'e-mail impossible.", "error");
+    }
   };
 
   const comptesDuPoste = (poste) => comptes.filter((c) => c.posteId === poste.id
@@ -117,6 +128,6 @@ export function usePostesCard({ schoolId, peutGererRoles, comptes, refreshCompte
   return {
     postes, chargementPostes, posteEdite, setPosteEdite, sauvegardeEnCours,
     nouveauPoste, editerPoste, enregistrerPoste, retirerPoste, basculerActif,
-    creerCompteDuPoste, comptesDuPoste,
+    creerCompteDuPoste, comptesDuPoste, definirEmail,
   };
 }

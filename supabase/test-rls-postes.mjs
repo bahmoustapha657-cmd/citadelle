@@ -112,6 +112,22 @@ async function main() {
     attendu("REFUS de créer une recette", !!paRec);
   }
 
+  console.log("\n— Connexion par e-mail (login_pour_email) —");
+  // On pose un e-mail réel sur le compte comptable de test et on vérifie que
+  // la résolution anonyme e-mail → login fonctionne (chemin de l'écran de
+  // connexion). L'authentification elle-même reste l'e-mail synthétique.
+  {
+    const emailReel = "test-rls-comptable@exemple.gn";
+    await svc.from("comptes").update({ email: emailReel }).eq("id", comptesTests[0].compteId);
+    const anon = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false } });
+    const { data: loginResolu } = await anon.rpc("login_pour_email", { p_code: "demo", p_email: emailReel });
+    attendu("résout l'e-mail vers l'identifiant", loginResolu === "test-rls-comptable");
+    const { data: loginInconnu } = await anon.rpc("login_pour_email", { p_code: "demo", p_email: "inconnu@exemple.gn" });
+    attendu("e-mail inconnu → null (message générique côté app)", !loginInconnu);
+    const { data: mauvaiseEcole } = await anon.rpc("login_pour_email", { p_code: "citadelle", p_email: emailReel });
+    attendu("même e-mail sur une AUTRE école → null (cloisonné)", !mauvaiseEcole);
+  }
+
   // ── Nettoyage complet ──
   await svc.from("recettes").delete().eq("id", temoin.id);
   for (const t of comptesTests) {
