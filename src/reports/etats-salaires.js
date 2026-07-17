@@ -7,7 +7,7 @@
 // blocs de sections (./etats-salaires/etats-blocs).
 
 import { fmtN, today } from "../constants.js";
-import { edugestBrandHTML, enteteDoc } from "./print-helpers.js";
+import { edugestBrandHTML, enteteDoc, signataireHTML } from "./print-helpers.js";
 import { etatsCss } from "./etats-salaires/etats-styles.js";
 import { blocSecondaire, blocPrimaire, blocPersonnel } from "./etats-salaires/etats-blocs.js";
 
@@ -75,8 +75,8 @@ export function imprimerEtatsSalaires({
     </div>
 
     <div class="signatures">
-      <div class="sig">Le Comptable<br/><br/><br/>Signature</div>
-      <div class="sig">Le Directeur<br/><br/><br/>Signature</div>
+      <div class="sig">${signataireHTML(schoolInfo, "comptable", "Le Comptable")}<br/><br/><br/>Signature</div>
+      <div class="sig">${signataireHTML(schoolInfo, "direction", "Le Directeur")}<br/><br/><br/>Signature</div>
       <div class="sig">Le Fondateur<br/><br/><br/>Signature</div>
     </div>
 

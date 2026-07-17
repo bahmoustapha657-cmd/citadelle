@@ -47,6 +47,7 @@ create table if not exists postes (
   label       text not null,                      -- libellé affiché, libre
   systeme     boolean not null default false,     -- issu des 6 rôles historiques
   actif       boolean not null default true,
+  responsable text,                               -- prénom et nom du signataire (documents imprimés)
   permissions jsonb not null default '{}'::jsonb, -- { module: 'lecture'|'ecriture' }
   created_at  timestamptz default now(),
   updated_at  timestamptz default now(),
@@ -60,6 +61,8 @@ create trigger trg_postes_updated before update on postes
 
 alter table comptes add column if not exists poste_id uuid references postes(id) on delete set null;
 create index if not exists idx_comptes_poste on comptes (poste_id);
+-- Bases créées avant l'ajout du responsable (signataire des documents).
+alter table postes add column if not exists responsable text;
 
 -- ── 3. is_staff() : inclut le rôle générique 'staff' ───────────────────────
 -- Comparaison en ::text : évite « unsafe use of new value » quand l'enum

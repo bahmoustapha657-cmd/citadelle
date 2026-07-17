@@ -15,6 +15,7 @@ import {
   enteteDoc,
   printDir,
   printLang,
+  signataireHTML,
   tr,
   watermarkHtml,
   edugestBrandHTML,
@@ -57,7 +58,7 @@ export const imprimerAttestation = (eleve, niveau, annee, schoolInfo={}) => {
   </div>
   <div class="sigs">
     <div class="sig">${tr("school.students.parent")}<br/><br/><br/>${tr("reports.signature")}</div>
-    <div class="sig">${tr("reports.director")}<br/><div class="stamp">${schoolInfo.nom||""}</div></div>
+    <div class="sig">${signataireHTML(schoolInfo, "direction", tr("reports.director"))}<br/><div class="stamp">${schoolInfo.nom||""}</div></div>
   </div>
   <div class="devise">${schoolInfo.devise || "Travail – Rigueur – Réussite"}</div>
   ${getOfficialLegalFooterHTML(schoolInfo.legal || legalProfileVide, mapNiveauToCycle(niveau))}

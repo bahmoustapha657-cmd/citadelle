@@ -18,6 +18,21 @@ export const tr = (k, opts) => i18n.t(k, opts);
 export const printDir = () => (["ar", "ar-SA", "ar-EG"].includes(i18n.resolvedLanguage || i18n.language) ? "rtl" : "ltr");
 export const printLang = () => i18n.resolvedLanguage || i18n.language || "fr";
 
+// ── Responsables de postes sur les documents ────────────────────
+// Le prénom + nom du responsable d'un poste (saisi dans Comptes & Postes,
+// dénormalisé dans ecoles.extra.responsables par sauverPoste) s'imprime sous
+// le titre du bloc de signature. Sans responsable renseigné : titre seul,
+// rendu inchangé.
+export const responsableNom = (schoolInfo = {}, cle) =>
+  String(schoolInfo?.responsables?.[cle] || "").trim();
+
+export const signataireHTML = (schoolInfo, cle, titre) => {
+  const nom = responsableNom(schoolInfo, cle);
+  return nom
+    ? `${titre}<br/><span style="font-size:1.05em;font-weight:800">${nom}</span>`
+    : titre;
+};
+
 // Supprime les en-têtes / pieds automatiques du navigateur ("about:blank",
 // URL, date, n° de page). Force aussi `print-color-adjust:exact` sur tous
 // les éléments pour conserver les couleurs des badges, bandeaux et notes
