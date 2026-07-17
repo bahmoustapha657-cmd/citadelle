@@ -420,6 +420,26 @@ create policy historique_delete on historique for delete to authenticated
 -- 'direction'…) continuent de matcher les postes système de même clé.
 alter table if exists push_subs add column if not exists poste_cle text;
 
--- ── 13. Bypass superadmin sur les nouvelles tables ─────────────────────────
+-- ── 13. Connexion par e-mail ────────────────────────────────────────────────
+-- Chaque compte de personnel peut porter un e-mail RÉEL (optionnel, unique
+-- par école). À l'écran de connexion, une saisie contenant « @ » est résolue
+-- vers l'identifiant interne via la RPC publique ci-dessous (même modèle que
+-- etat_ecole) ; l'authentification reste l'e-mail synthétique login.code@….
+alter table comptes add column if not exists email text;
+create unique index if not exists idx_comptes_ecole_email
+  on comptes (ecole_id, lower(email)) where email is not null;
+
+create or replace function login_pour_email(p_code text, p_email text) returns text
+  language sql stable security definer set search_path = public as $$
+  select c.login
+  from comptes c
+  join ecoles e on e.id = c.ecole_id
+  where e.code = lower(btrim(p_code))
+    and lower(c.email) = lower(btrim(p_email))
+  limit 1;
+$$;
+grant execute on function login_pour_email(text, text) to anon, authenticated;
+
+-- ── 14. Bypass superadmin sur les nouvelles tables ─────────────────────────
 -- (postes couvert au § 5 ; les policies superadmin existantes des autres
 --  tables restent en place — politiques permissives, rien à retoucher.)

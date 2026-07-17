@@ -103,7 +103,7 @@ const TRANSFORMERS = {
     periode: r.periode, texte: r.texte,
   }),
   comptes: (r) => ({
-    _id: r.id, login: r.login, role: r.role, nom: r.nom, label: r.label,
+    _id: r.id, login: r.login, email: r.email || "", role: r.role, nom: r.nom, label: r.label,
     section: r.section, sections: r.sections || [], enseignantId: r.enseignant_id,
     enseignantNom: r.enseignant_nom, matiere: r.matiere, statut: r.statut,
     premiereCo: !!r.premiere_co, posteId: r.poste_id || null, ...(r.extra || {}),

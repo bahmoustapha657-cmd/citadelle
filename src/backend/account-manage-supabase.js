@@ -105,6 +105,23 @@ export async function supprimerPoste(posteId) {
   return { ok: true };
 }
 
+// E-mail réel d'un compte (connexion par e-mail) — update direct, RLS :
+// direction / écriture admin_panel (comptes_write + comptes_guard).
+export async function majEmailCompte(compteId, email) {
+  const sb = getSupabase();
+  const valeur = (email || "").trim().toLowerCase() || null;
+  if (valeur && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valeur)) {
+    throw new Error("Adresse e-mail invalide.");
+  }
+  const { error } = await sb.from("comptes").update({ email: valeur }).eq("id", compteId);
+  if (error) {
+    throw new Error(/idx_comptes_ecole_email|duplicate/i.test(error.message)
+      ? "Cet e-mail est déjà utilisé par un autre compte de l'école."
+      : error.message || "Enregistrement de l'e-mail impossible.");
+  }
+  return { ok: true };
+}
+
 // Rattache les comptes legacy (role enum) aux postes système de même clé —
 // bootstrap des nouvelles écoles et rattrapage après création des postes.
 export async function rattacherComptesAuxPostes(postes) {
