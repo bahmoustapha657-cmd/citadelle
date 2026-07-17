@@ -10,6 +10,7 @@ import {
   enteteDoc,
   printDir,
   printLang,
+  signataireHTML,
   tr,
   watermarkHtml,
 } from "../print-helpers.js";
@@ -240,7 +241,7 @@ export const imprimerFicheCompositions = (classe, periode, notes, matieres, elev
   </div>
 
   <div class="sigs">
-    <div class="sig">${tr("reports.director")}<br/><br/><br/>${tr("reports.signature")} & ${tr("reports.stamp")}</div>
+    <div class="sig">${signataireHTML(schoolInfo, "direction", tr("reports.director"))}<br/><br/><br/>${tr("reports.signature")} & ${tr("reports.stamp")}</div>
     <div class="sig">${tr("reports.headTeacher")}<br/><br/><br/>${tr("reports.signature")}</div>
   </div>
   <script>${PRINT_TRIGGER}</script>

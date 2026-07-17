@@ -1,7 +1,7 @@
 // Fragments HTML des reçus de paiement : en-tête compacte et bloc reçu.
 import { fmt, today } from "../../constants.js";
 import { getNationalDeviseHTML } from "../../national-symbols.js";
-import { MINISTERE_DEFAUT, tr } from "../print-helpers.js";
+import { MINISTERE_DEFAUT, signataireHTML, tr } from "../print-helpers.js";
 
 // En-tête compacte (logo + infos en ligne) — sans doublon type/nom.
 export const enteteCompact = (schoolInfo, lf) => `
@@ -68,7 +68,7 @@ export const blocRecu = (titre, ctx) => {
     <div class="total" style="background:#e0f2fe;border-color:#38bdf8">${tr("reports.receipt.amount")} : <strong>${fmt(totalGeneral)}</strong></div>
     <div class="sigs">
       <div class="sig">${tr("school.students.parent")}<br/><br/><br/>${tr("reports.signature")}</div>
-      <div class="sig">${tr("reports.accountant")}<br/><br/><br/>${tr("reports.signature")} &amp; ${tr("reports.stamp")}</div>
+      <div class="sig">${signataireHTML(schoolInfo, "comptable", tr("reports.accountant"))}<br/><br/><br/>${tr("reports.signature")} &amp; ${tr("reports.stamp")}</div>
     </div>
     </div>
   </div>`;

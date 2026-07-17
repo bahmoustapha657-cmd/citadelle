@@ -70,8 +70,22 @@ export async function chargerPostes() {
   if (error) throw new Error(error.message || "Chargement des postes impossible.");
   return (data || []).map((p) => ({
     id: p.id, cle: p.cle, label: p.label, systeme: !!p.systeme, actif: !!p.actif,
+    responsable: p.responsable || "",
     permissions: p.permissions || {}, nbComptes: p.comptes?.[0]?.count ?? 0,
   }));
+}
+
+// Recopie {cle: responsable} dans ecoles.extra.responsables : les documents
+// imprimés lisent schoolInfo.responsables (chargerEcole étale extra) pour
+// afficher le signataire sous les blocs de signature.
+async function syncResponsable(sb, schoolCode, cle, responsable) {
+  const { data } = await sb.from("ecoles").select("id, extra").eq("code", schoolCode).maybeSingle();
+  if (!data) return;
+  const responsables = { ...((data.extra || {}).responsables || {}) };
+  const nom = (responsable || "").trim();
+  if (nom) responsables[cle] = nom; else delete responsables[cle];
+  const extra = { ...(data.extra || {}), responsables };
+  await sb.from("ecoles").update({ extra }).eq("id", data.id);
 }
 
 // Crée ou met à jour un poste (RLS : direction/superadmin uniquement).
@@ -79,18 +93,22 @@ export async function sauverPoste(schoolCode, poste) {
   const sb = getSupabase();
   const champs = {
     cle: poste.cle, label: poste.label, actif: poste.actif !== false,
-    systeme: !!poste.systeme, permissions: poste.permissions || {},
+    systeme: !!poste.systeme, responsable: (poste.responsable || "").trim() || null,
+    permissions: poste.permissions || {},
   };
-  if (poste.id) {
-    const { error } = await sb.from("postes").update(champs).eq("id", poste.id);
+  let id = poste.id;
+  if (id) {
+    const { error } = await sb.from("postes").update(champs).eq("id", id);
     if (error) throw new Error(error.message || "Enregistrement du poste impossible.");
-    return { ok: true, id: poste.id };
+  } else {
+    const ecoleId = await ecoleIdDepuisCode(sb, schoolCode);
+    const { data, error } = await sb.from("postes")
+      .insert({ ...champs, ecole_id: ecoleId }).select("id").single();
+    if (error) throw new Error(error.message || "Création du poste impossible.");
+    id = data.id;
   }
-  const ecoleId = await ecoleIdDepuisCode(sb, schoolCode);
-  const { data, error } = await sb.from("postes")
-    .insert({ ...champs, ecole_id: ecoleId }).select("id").single();
-  if (error) throw new Error(error.message || "Création du poste impossible.");
-  return { ok: true, id: data.id };
+  await syncResponsable(sb, schoolCode, champs.cle, champs.responsable).catch(() => {});
+  return { ok: true, id };
 }
 
 // Supprime un poste SANS comptes rattachés (garde-fou côté client).

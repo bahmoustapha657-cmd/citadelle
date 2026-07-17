@@ -146,16 +146,19 @@ export function PostesCard({ schoolId, peutGererRoles, comptes, refreshComptes, 
               {poste.systeme && <Badge color="blue">Système</Badge>}
               {verrouille && <Badge color="green">Tous droits</Badge>}
               {!poste.actif && <Badge color="red">Désactivé</Badge>}
+              {poste.responsable && <span style={{ fontSize: 11, color: "#475569" }}>🖋️ {poste.responsable}</span>}
               <span style={{ flex: 1 }} />
-              {peutGererRoles && !verrouille && (
+              {peutGererRoles && (
                 <>
                   <Btn sm v="ghost" onClick={() => (enEdition ? p.setPosteEdite(null) : p.editerPoste(poste))}>
-                    {enEdition ? "Fermer" : "✏️ Droits & nom"}
+                    {enEdition ? "Fermer" : verrouille ? "✏️ Nom & signataire" : "✏️ Droits & nom"}
                   </Btn>
-                  <Btn sm v={poste.actif ? "amber" : "success"} onClick={() => p.basculerActif(poste)}>
-                    {poste.actif ? "Désactiver" : "Réactiver"}
-                  </Btn>
-                  {estPosteSupprimable(poste) && (
+                  {!verrouille && (
+                    <Btn sm v={poste.actif ? "amber" : "success"} onClick={() => p.basculerActif(poste)}>
+                      {poste.actif ? "Désactiver" : "Réactiver"}
+                    </Btn>
+                  )}
+                  {!verrouille && estPosteSupprimable(poste) && (
                     <Btn sm v="red" onClick={() => p.retirerPoste(poste)}>Supprimer</Btn>
                   )}
                 </>
@@ -164,13 +167,23 @@ export function PostesCard({ schoolId, peutGererRoles, comptes, refreshComptes, 
 
             {enEdition && p.posteEdite && (
               <div style={{ marginTop: 10 }}>
-                <input value={p.posteEdite.label}
-                  onChange={(e) => p.setPosteEdite((prev) => ({ ...prev, label: e.target.value }))}
-                  placeholder="Nom du poste (ex. Censeur des études)"
-                  style={{ width: "100%", maxWidth: 380, padding: "8px 10px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13, fontWeight: 600 }} />
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <input value={p.posteEdite.label}
+                    onChange={(e) => p.setPosteEdite((prev) => ({ ...prev, label: e.target.value }))}
+                    placeholder="Nom du poste (ex. Censeur des études)"
+                    style={{ flex: 1, minWidth: 220, maxWidth: 380, padding: "8px 10px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13, fontWeight: 600 }} />
+                  <input value={p.posteEdite.responsable || ""}
+                    onChange={(e) => p.setPosteEdite((prev) => ({ ...prev, responsable: e.target.value }))}
+                    placeholder="🖋️ Responsable — prénom et nom (signe les documents)"
+                    style={{ flex: 1, minWidth: 260, maxWidth: 380, padding: "8px 10px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13 }} />
+                </div>
+                <p style={{ margin: "6px 0 0", fontSize: 11, color: "#64748b" }}>
+                  Le responsable apparaît sous les blocs de signature des documents imprimés
+                  (reçus, bulletins, attestations, états de salaires…).
+                </p>
                 <MatricePermissions
                   permissions={p.posteEdite.permissions}
-                  verrouille={false}
+                  verrouille={verrouille}
                   onCycle={(moduleId) => p.setPosteEdite((prev) => ({ ...prev, permissions: cyclePermission(prev.permissions, moduleId) }))}
                 />
                 <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
@@ -182,7 +195,7 @@ export function PostesCard({ schoolId, peutGererRoles, comptes, refreshComptes, 
               </div>
             )}
 
-            {verrouille && (
+            {verrouille && !enEdition && (
               <MatricePermissions permissions={poste.permissions} verrouille onCycle={() => {}} />
             )}
 
@@ -197,10 +210,16 @@ export function PostesCard({ schoolId, peutGererRoles, comptes, refreshComptes, 
         <div style={{ border: "2px dashed #93c5fd", borderRadius: 10, padding: "12px 14px", marginTop: 10, background: "#f0f9ff" }}>
           <strong style={{ fontSize: 13, color: C.blueDark }}>Nouveau poste</strong>
           <div style={{ marginTop: 8 }}>
-            <input value={p.posteEdite.label} autoFocus
-              onChange={(e) => p.setPosteEdite((prev) => ({ ...prev, label: e.target.value }))}
-              placeholder="Nom du poste (ex. Censeur des études)"
-              style={{ width: "100%", maxWidth: 380, padding: "8px 10px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13, fontWeight: 600 }} />
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <input value={p.posteEdite.label} autoFocus
+                onChange={(e) => p.setPosteEdite((prev) => ({ ...prev, label: e.target.value }))}
+                placeholder="Nom du poste (ex. Censeur des études)"
+                style={{ flex: 1, minWidth: 220, maxWidth: 380, padding: "8px 10px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13, fontWeight: 600 }} />
+              <input value={p.posteEdite.responsable || ""}
+                onChange={(e) => p.setPosteEdite((prev) => ({ ...prev, responsable: e.target.value }))}
+                placeholder="🖋️ Responsable — prénom et nom (optionnel)"
+                style={{ flex: 1, minWidth: 260, maxWidth: 380, padding: "8px 10px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13 }} />
+            </div>
             <MatricePermissions
               permissions={p.posteEdite.permissions}
               verrouille={false}

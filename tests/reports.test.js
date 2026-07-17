@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { getRecuTotals } from "../src/reports.js";
+import { responsableNom, signataireHTML } from "../src/reports/print-helpers.js";
 
 test("getRecuTotals inclut les autres frais et l'inscription quand ils sont réglés", () => {
   const eleve = {
@@ -20,6 +21,21 @@ test("getRecuTotals inclut les autres frais et l'inscription quand ils sont rég
   assert.equal(totals.fraisIns, 50000);
   assert.equal(totals.fraisAutre, 15000);
   assert.equal(totals.totalGeneral, 465000);
+});
+
+test("signataireHTML affiche le responsable du poste sous le titre", () => {
+  const schoolInfo = { responsables: { comptable: "Mamadou Diallo", direction: "  Aïssatou Bah  " } };
+  assert.equal(responsableNom(schoolInfo, "comptable"), "Mamadou Diallo");
+  assert.equal(responsableNom(schoolInfo, "direction"), "Aïssatou Bah");
+  assert.equal(responsableNom(schoolInfo, "surveillant"), "");
+  assert.equal(responsableNom({}, "comptable"), "");
+
+  const html = signataireHTML(schoolInfo, "comptable", "Le Comptable");
+  assert.ok(html.startsWith("Le Comptable<br/>"));
+  assert.ok(html.includes("Mamadou Diallo"));
+  // Sans responsable renseigné : titre seul, rendu historique inchangé.
+  assert.equal(signataireHTML(schoolInfo, "surveillant", "Le Surveillant"), "Le Surveillant");
+  assert.equal(signataireHTML(undefined, "direction", "Le Directeur"), "Le Directeur");
 });
 
 test("getRecuTotals utilise les montants figés au paiement (v2), repli tarif courant", () => {

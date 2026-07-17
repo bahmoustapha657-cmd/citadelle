@@ -12,6 +12,7 @@ import {
   WATERMARK_CSS,
   edugestBrandHTML,
   enteteDoc,
+  signataireHTML,
   tr,
 } from "../print-helpers.js";
 import { getInitiales, ordinalFr } from "./bulletin-format.js";
@@ -156,7 +157,7 @@ export function buildBulletinPageHTML({
     <div class="sigs">
       <div class="sig">${tr("school.students.parent")}<br/><br/><br/>${tr("reports.signature")}</div>
       <div class="sig">${tr("reports.headTeacher")}<br/><br/><br/>${tr("reports.signature")}</div>
-      <div class="sig">${tr("reports.director")}${schoolInfo.signatureUrl ? `<img src="${schoolInfo.signatureUrl}" alt="" style="display:block;height:34px;object-fit:contain;margin:4px auto 2px"/>` : "<br/><br/><br/>"}${tr("reports.signature")}</div>
+      <div class="sig">${signataireHTML(schoolInfo, "direction", tr("reports.director"))}${schoolInfo.signatureUrl ? `<img src="${schoolInfo.signatureUrl}" alt="" style="display:block;height:34px;object-fit:contain;margin:4px auto 2px"/>` : "<br/><br/><br/>"}${tr("reports.signature")}</div>
     </div>
 
     <div class="devise" style="color:${c2}">${schoolInfo.devise || "Travail – Rigueur – Réussite"}</div>

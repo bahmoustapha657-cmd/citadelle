@@ -11,6 +11,7 @@ import {
   WATERMARK_CSS,
   printDir,
   printLang,
+  signataireHTML,
   tr,
   watermarkHtml,
 } from "./print-helpers.js";
@@ -78,7 +79,7 @@ export const imprimerLivret = (livret, schoolInfo={}) => {
         <span class="decision-badge" style="background:${decisionColor}">${decisionLabel(an.decision)}</span>
       </div>
       <div class="sigs-livret">
-        <div class="sig-livret">${tr("reports.livret.directorSignature")}<br/><br/>${an.signe?`<em style="font-size:9px;color:#14532d">✅ ${tr("reports.livret.signedOn")} ${an.dateSigne||""}</em>`:"<br/>"+tr("reports.livret.signStamp")}</div>
+        <div class="sig-livret">${signataireHTML(schoolInfo, "direction", tr("reports.livret.directorSignature"))}<br/><br/>${an.signe?`<em style="font-size:9px;color:#14532d">✅ ${tr("reports.livret.signedOn")} ${an.dateSigne||""}</em>`:"<br/>"+tr("reports.livret.signStamp")}</div>
         <div class="sig-livret">${tr("reports.livret.parentTutor")}<br/><br/><br/>${tr("reports.signature")}</div>
         <div class="sig-livret">${tr("reports.livret.inspectorVisa")}<br/><br/><br/>&nbsp;</div>
       </div>
