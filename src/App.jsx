@@ -81,7 +81,7 @@ export default function App() {
   });
   if (ecranAuth) return ecranAuth;
 
-  const { modulesVisibles, estAdmin, readOnly, abonnementExpire, basculeSupabase, couleur2, utilisateurLabel } =
+  const { modulesVisibles, permissions, roleEffectif, estAdmin, readOnly, abonnementExpire, basculeSupabase, couleur2, utilisateurLabel } =
     computeAppPermissions({ utilisateur, schoolInfo, page, planInfo });
 
   return (
@@ -96,7 +96,7 @@ export default function App() {
         page={page} setPage={setPage} isMobile={isMobile}
         msgsNonLus={msgsNonLus} utilisateur={utilisateur} utilisateurLabel={utilisateurLabel}
         deconnecter={deconnecter} estHorsLigne={estHorsLigne} syncPendantes={syncPendantes} t={t}
-        readOnly={readOnly} abonnementExpire={abonnementExpire} basculeSupabase={basculeSupabase} planInfo={planInfo} modeSombre={modeSombre} setModeSombre={setModeSombre}
+        readOnly={readOnly} permissions={permissions} roleEffectif={roleEffectif} abonnementExpire={abonnementExpire} basculeSupabase={basculeSupabase} planInfo={planInfo} modeSombre={modeSombre} setModeSombre={setModeSombre}
         notifOuvert={notifOuvert} setNotifOuvert={setNotifOuvert}
         notifNonLues={notifNonLues} setNotifNonLues={setNotifNonLues} notifListe={notifListe} nowTs={nowTs}
         profilOuvert={profilOuvert} setProfilOuvert={setProfilOuvert}

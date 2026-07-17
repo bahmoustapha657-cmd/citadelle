@@ -42,7 +42,11 @@ Deno.serve(async (req) => {
     const { data: ec } = await admin.from("ecoles").select("id").eq("code", String(schoolId).toLowerCase()).maybeSingle();
     if (!ec) return json({ error: "École introuvable." }, 404);
 
-    const { data: subs } = await admin.from("push_subs").select("user_id, subscription").eq("ecole_id", ec.id).in("role", cibles);
+    // Cible par rôle legacy OU clé de poste (postes flexibles) : les cibles
+    // historiques ('admin', 'direction'…) matchent les postes système.
+    const liste = cibles.map((c: unknown) => String(c).replace(/[^a-z0-9._-]/gi, "")).filter(Boolean).join(",");
+    const { data: subs } = await admin.from("push_subs").select("user_id, subscription")
+      .eq("ecole_id", ec.id).or(`role.in.(${liste}),poste_cle.in.(${liste})`);
     if (!subs?.length) return json({ ok: true, envoyes: 0 });
 
     webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);

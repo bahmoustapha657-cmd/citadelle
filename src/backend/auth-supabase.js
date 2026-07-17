@@ -22,9 +22,18 @@ export async function fetchEtatEcole(sid) {
 
 // Construit l'utilisateur de session depuis la table `comptes` (filtrée par RLS).
 // `schoolCode` est fourni à la connexion ; au refresh on le résout via ecole_id.
+// Le poste (permissions par module) est joint ; poste désactivé → connexion
+// refusée (signalée par { desactive: true }).
 async function chargerCompte(sb, userId, schoolCode) {
-  const { data: c } = await sb.from("comptes").select("*").eq("user_id", userId).maybeSingle();
+  let { data: c, error } = await sb.from("comptes")
+    .select("*, poste:postes(id, cle, label, permissions, actif)")
+    .eq("user_id", userId).maybeSingle();
+  if (error) {
+    // Base pas encore migrée (table postes absente) : repli sans jointure.
+    ({ data: c } = await sb.from("comptes").select("*").eq("user_id", userId).maybeSingle());
+  }
   if (!c) return null;
+  if (c.poste && c.poste.actif === false) return { desactive: true };
 
   let code = schoolCode || null;
   if (!code && c.ecole_id) {
@@ -38,7 +47,13 @@ async function chargerCompte(sb, userId, schoolCode) {
     login: c.login,
     nom: c.nom || c.login,
     role: c.role,
-    label: c.label || c.role,
+    label: c.poste?.label || c.label || c.role,
+    // Poste flexible : permissions par module (null = compte legacy, repli
+    // rôle via getSessionPermissions côté UI).
+    posteId: c.poste?.id || c.poste_id || null,
+    posteCle: c.poste?.cle || null,
+    posteLabel: c.poste?.label || null,
+    permissions: c.poste?.permissions || null,
     premiereCo: !!c.premiere_co,
     compteDocId: c.id,
     schoolId: code,
@@ -66,9 +81,10 @@ async function connexionParEmail(email, mdp, schoolCode) {
     return { ok: false, data: { error: "Identifiant ou mot de passe incorrect." } };
   }
   const compte = await chargerCompte(sb, auth.user.id, schoolCode);
-  if (!compte) {
+  if (!compte || compte.desactive) {
     await sb.auth.signOut().catch(() => {});
-    return { ok: false, data: { error: "Compte introuvable." } };
+    return { ok: false, data: { error: compte?.desactive
+      ? "Compte désactivé par la direction." : "Compte introuvable." } };
   }
   return { ok: true, data: { compte } };
 }
@@ -86,11 +102,17 @@ export function superadminLogin({ login, mdp }) {
 // Observe l'état d'auth Supabase ; appelle cb(utilisateur|null). Renvoie un cleanup.
 export async function watchAuthState(callback) {
   const sb = getSupabase();
+  // Poste désactivé pendant la session → traité comme déconnecté.
+  const resoudre = async (session) => {
+    if (!session?.user) return null;
+    const compte = await chargerCompte(sb, session.user.id, null);
+    return compte?.desactive ? null : compte;
+  };
   const { data: { session } } = await sb.auth.getSession();
-  callback(session?.user ? await chargerCompte(sb, session.user.id, null) : null);
+  callback(await resoudre(session));
 
   const { data: sub } = sb.auth.onAuthStateChange(async (_event, session) => {
-    callback(session?.user ? await chargerCompte(sb, session.user.id, null) : null);
+    callback(await resoudre(session));
   });
   return () => sub.subscription.unsubscribe();
 }

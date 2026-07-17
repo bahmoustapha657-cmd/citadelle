@@ -6,6 +6,7 @@ import { isSupabase } from "../backend";
 import { watchAuthState as watchAuthStateSupabase } from "../backend/auth-supabase";
 import { powerSyncConfigured } from "../backend/powersync/tables";
 import { getPrimaryModuleForRole } from "../constants";
+import { getPrimaryModuleForCompte } from "../../shared/postes-config.js";
 
 // `import()` dynamique + garde `powerSyncConfigured` : évite de charger
 // @powersync/web/wa-sqlite tant que VITE_POWERSYNC_URL n'est pas renseigné
@@ -49,7 +50,7 @@ export function useAuthSession({ setSchoolId, setPage }) {
           localStorage.setItem("LC_schoolId", u.schoolId);
         }
         setUtilisateur(u);
-        setPage((p) => p || getPrimaryModuleForRole(u.role));
+        setPage((p) => p || getPrimaryModuleForCompte(u) || getPrimaryModuleForRole(u.role));
         connectPowerSync().catch(() => {});
       }).then((cleanup) => {
         if (actif) unsub = cleanup; else cleanup();

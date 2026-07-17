@@ -11,9 +11,12 @@
 --   • Écriture : réservée au personnel (et aux enseignants pour notes/absences).
 --   • Le filtrage fin « enseignant → seulement ses classes (+ sa matière au
 --     secondaire) » est porté par teacher-security.sql, qui REMPLACE les
---     policies notes_write / absences_write ci-dessous. ⚠️ Après tout re-run
---     de ce fichier, RÉ-APPLIQUER teacher-security.sql (sinon retour au
---     périmètre large can_grade).
+--     policies notes_write / absences_write ci-dessous.
+--   • Les permissions PAR MODULE (postes flexibles) sont portées par
+--     postes.sql, qui REMPLACE la plupart des policies d'écriture ci-dessous.
+--   ⚠️ ORDRE : après tout re-run de ce fichier, RÉ-APPLIQUER
+--     teacher-security.sql PUIS postes.sql (sinon régression vers le
+--     périmètre large is_staff/can_grade).
 -- ════════════════════════════════════════════════════════════════════════
 
 -- ── Helpers (SECURITY DEFINER : lisent le profil de l'utilisateur courant) ──

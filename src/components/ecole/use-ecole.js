@@ -1,5 +1,6 @@
 import { useContext, useState } from "react";
 import { getAnnee, peutCreerComptesParent, peutModifier } from "../../constants";
+import { hasWrite } from "../../../shared/postes-config.js";
 import { getDefaultPeriodeForSection, getPeriodesForSection } from "../../period-utils";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { useFirestore } from "../../hooks/useFirestore";
@@ -18,7 +19,7 @@ import { saveClasseAction, saveEnseignantAction, saveAppreciationAction } from "
 // permissions, périodes scolaires, tri des élèves et handlers de sauvegarde.
 export function useEcole({
   cleClasses, cleEns, cleNotes, cleEleves,
-  userRole, annee, readOnly = false, verrouOuvert = false,
+  userRole, permissions = null, annee, readOnly = false, verrouOuvert = false,
 }) {
   const isPrimarySection = cleEns === "ensPrimaire";
   const anneeCourante = annee || getAnnee();
@@ -89,9 +90,11 @@ export function useEcole({
   const canCreate = !readOnly && !enModeArchive;
   const canEdit = !readOnly && !enModeArchive && (peutModifier(userRole) || verrouOuvert);
   // Création de compte parent : gate plus large que canEdit pour inclure
-  // le comptable (front-line inscription/paiement). Ignore le verrou car
+  // le comptable (front-line inscription/paiement) et, via les postes
+  // flexibles, tout poste qui écrit la compta. Ignore le verrou car
   // c'est une action de service au tuteur, pas une édition de données scolaires.
-  const canCreateParent = !readOnly && !enModeArchive && peutCreerComptesParent(userRole);
+  const canCreateParent = !readOnly && !enModeArchive
+    && (peutCreerComptesParent(userRole) || hasWrite(permissions, "compta"));
   const moy = computeMoyenne(notes);
   const classesUniq = [...new Set(eleves.map((e) => e.classe))].filter(Boolean);
   const sortAlphaEcole = (arr) => sortAlphaEcoleFn(arr, schoolInfo.triEleves || "prenom_nom");

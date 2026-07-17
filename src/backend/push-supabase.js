@@ -25,7 +25,11 @@ export async function sAbonnerAuxPush(utilisateurCo, sid) {
     });
     await sb.from("push_subs").upsert({
       ecole_id: ecoleId, user_id: user.id, subscription: sub.toJSON(),
-      role: utilisateurCo.role, nom: utilisateurCo.nom, updated_at: new Date().toISOString(),
+      role: utilisateurCo.role, nom: utilisateurCo.nom,
+      // Postes flexibles : la clé du poste sert de dimension de ciblage
+      // (postes système = mêmes clés que les rôles historiques).
+      poste_cle: utilisateurCo.posteCle || utilisateurCo.role,
+      updated_at: new Date().toISOString(),
     });
   } catch {
     // L'abonnement push est optionnel.

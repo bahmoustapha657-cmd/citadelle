@@ -4,13 +4,16 @@
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "../../../firebaseDb";
 import { apiFetch, getAuthHeaders } from "../../../apiClient";
+import { isSupabase } from "../../../backend";
+import { sauverParametresEcole } from "../../../backend/data-supabase";
 
 const normaliserMonnaie = (m) => (m || "GNF").trim().toUpperCase();
 
 // Sauvegarde restreinte au seul champ `monnaie` (rôle comptable).
 export async function sauvegarderMonnaie({ schoolId, monnaie }) {
   const valeur = normaliserMonnaie(monnaie);
-  await updateDoc(doc(db, "ecoles", schoolId), { monnaie: valeur });
+  if (isSupabase) await sauverParametresEcole(schoolId, { monnaie: valeur });
+  else await updateDoc(doc(db, "ecoles", schoolId), { monnaie: valeur });
   return valeur;
 }
 
@@ -34,6 +37,9 @@ export async function sauvegarderParametres({ schoolId, form, accueil, evaluatio
     // légal structuré n'est pas complet.
     moisDebut: form.moisDebut,
     systemeScolaire: form.systemeScolaire || "guineen",
+    // Sections réellement ouvertes (école sans lycée…) — pilote l'UI.
+    sectionsActives: Array.isArray(form.sectionsActives) && form.sectionsActives.length
+      ? form.sectionsActives : ["primaire", "college", "lycee"],
     modeleBulletin: form.modeleBulletin || "classique",
     signatureUrl: form.signatureUrl || null,
     periodicite: form.periodicite || "trimestre",
@@ -56,7 +62,8 @@ export async function sauvegarderParametres({ schoolId, form, accueil, evaluatio
       adresse: accueil.adresse.trim(),
     },
   };
-  await updateDoc(doc(db, "ecoles", schoolId), data);
+  if (isSupabase) await sauverParametresEcole(schoolId, data);
+  else await updateDoc(doc(db, "ecoles", schoolId), data);
   try {
     const headers = await getAuthHeaders({ "Content-Type": "application/json" });
     await apiFetch("/ecole-public-sync", {

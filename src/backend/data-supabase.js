@@ -108,6 +108,29 @@ export async function chargerEcole(schoolCode) {
   };
 }
 
+// Sauvegarde des Paramètres de l'école côté Supabase : les champs qui ont une
+// colonne réelle y vont, tout le reste est FUSIONNÉ dans extra (jsonb) — le
+// miroir exact de chargerEcole ci-dessus (extra étalé + colonnes par-dessus).
+// NB : la colonne `devise` porte la MONNAIE (cf. chargerEcole) ; la devise
+// « slogan » du formulaire vit dans extra.
+export async function sauverParametresEcole(schoolCode, champs) {
+  const sb = getSupabase();
+  const { data, error } = await sb.from("ecoles").select("id, extra").eq("code", schoolCode).maybeSingle();
+  if (error || !data) throw new Error(error?.message || "École introuvable.");
+  const COLONNES = { nom: "nom", logo: "logo", couleur1: "couleur1", couleur2: "couleur2", pays: "pays", monnaie: "devise", modeleBulletin: "modele_bulletin" };
+  const patch = {};
+  const extraPatch = {};
+  for (const [cle, valeur] of Object.entries(champs)) {
+    if (valeur === undefined) continue;
+    if (COLONNES[cle]) patch[COLONNES[cle]] = valeur;
+    else extraPatch[cle] = valeur;
+  }
+  patch.extra = { ...(data.extra || {}), ...extraPatch };
+  const { error: e2 } = await sb.from("ecoles").update(patch).eq("id", data.id);
+  if (e2) throw new Error(e2.message);
+  return { ok: true };
+}
+
 // Bascule d'un verrou de correction (AdminPanel, direction). Les verrous
 // vivent dans ecoles.extra.verrous — lecture/fusion/écriture du jsonb.
 export async function majVerrou(schoolCode, cle, valeur) {
