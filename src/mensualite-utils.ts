@@ -1,8 +1,10 @@
 import {
   getDefaultMensualiteForClasse,
   getTarifAutreValue,
+  getTarifFraisDivers,
   getTarifMensuelTotal,
   getTarifRevisionValue,
+  isFraisAnnexePaye,
 } from "./constants.js";
 
 // Bumper à chaque changement de formule (mensualité, solde, snapshot) qui
@@ -20,6 +22,8 @@ export type TarifClasse = {
   reinscription?: number | string;
   revision?: number | string;
   autre?: number | string;
+  // Catalogue de frais annexes configurables : { uniforme: 50000, … }.
+  fraisDivers?: Record<string, number | string>;
 };
 
 export type MensualiteEleve = {
@@ -30,6 +34,8 @@ export type MensualiteEleve = {
   mens?: Record<string, string>;
   // Tarif mensuel figé au moment du paiement, par mois (cf. toggleMens).
   mensMontants?: Record<string, number | string>;
+  // Frais annexes du catalogue payés : { uniforme: "16/07/2026", … }.
+  fraisPayes?: Record<string, string>;
 };
 
 export type MensualiteSnapshot = {
@@ -135,6 +141,15 @@ export function getEleveMensualiteSnapshot(eleve: MensualiteEleve = {}, moisAnne
   const autreTarif = getTarifAutreForClasse(tarifsClasses, eleve.classe);
   const inscriptionPercu = eleve.inscriptionPayee ? inscriptionTarif : 0;
   const autrePercu = eleve.autrePayee ? autreTarif : 0;
+  // Frais annexes du catalogue (hors « autre », compté ci-dessus) : perçu si
+  // payé par l'élève, sinon reste dû.
+  const fraisDivers = getTarifFraisDivers(getTarifConfigForClasse(tarifsClasses, eleve.classe) || {});
+  let diversPercu = 0;
+  let soldeDivers = 0;
+  for (const [fraisId, montant] of Object.entries(fraisDivers)) {
+    if (isFraisAnnexePaye(eleve, fraisId)) diversPercu += Number(montant);
+    else soldeDivers += Number(montant);
+  }
 
   return {
     algoVersion: MENSUALITE_ALGO_VERSION,
@@ -142,10 +157,10 @@ export function getEleveMensualiteSnapshot(eleve: MensualiteEleve = {}, moisAnne
     nbImpayes,
     montantMensualitesPercu: moisPayes.reduce((somme, mois) => somme + montantMoisPaye(eleve, mois, mensualite), 0),
     montantInscriptionPercu: inscriptionPercu,
-    montantAutrePercu: autrePercu,
+    montantAutrePercu: autrePercu + diversPercu,
     soldeMensualites: nbImpayes * mensualite,
     soldeInscription: eleve.inscriptionPayee ? 0 : inscriptionTarif,
-    soldeAutre: eleve.autrePayee ? 0 : autreTarif,
+    soldeAutre: (eleve.autrePayee ? 0 : autreTarif) + soldeDivers,
   };
 }
 

@@ -90,11 +90,11 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
 
   const {
     getTarifConfig, getTarif, getTarifBase, getTarifRevision, getTarifAutre,
-    getTarifIns, getTarifReinsc, getTarifInscriptionEleve,
+    getTarifIns, getTarifReinsc, getTarifInscriptionEleve, getTarifFraisDivers,
   } = buildTarifGetters(tarifsClasses);
-  const saveTarif = async (classe, montant, inscription = null, reinscription = null, revision = null, autre = null) => {
+  const saveTarif = async (classe, montant, inscription = null, reinscription = null, revision = null, autre = null, fraisDivers = null) => {
     const existing = getTarifConfig(classe);
-    const data = buildTarifData(montant, { inscription, reinscription, revision, autre });
+    const data = buildTarifData(montant, { inscription, reinscription, revision, autre, fraisDivers });
     if (existing) await modTarif({ _id: existing._id, ...data });
     else await ajTarif({ classe, ...data });
   };
@@ -198,7 +198,7 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
     ajoutParNiveau, suppressionParNiveau, modifParNiveau, ensureClasse, sortAlpha,
     totR, totD, totVers, eleves, classesU, tousElevesScolarite, elevesFiltres,
     getTarif, getTarifBase, getTarifRevision, getTarifAutre, getTarifIns, getTarifReinsc,
-    getTarifInscriptionEleve, saveTarif,
+    getTarifInscriptionEleve, getTarifFraisDivers, saveTarif,
     toggleFraisAnnexe, toggleMens, enreg, saveSalaire, savePersonnel,
     salairesDomaine, moisLabel, totNetSec, totNetPrim, totNetPers, salairesMois,
     mensualiteOverview, periodes, defaultPeriode, impaye, pctImpaye,

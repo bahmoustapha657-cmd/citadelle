@@ -1,35 +1,61 @@
-import { C } from "../constants";
+import { useContext } from "react";
+import { SchoolContext } from "../contexts/SchoolContext";
+import { C, getClassesForSection, getSectionsActives, getSystemeScolaire } from "../constants";
 import { Btn } from "./ui";
 import { useTarifsClasses } from "./tarifs-classes/use-tarifs-classes";
 import { TarifsSectionTable } from "./tarifs-classes/TarifsSectionTable";
 
 function TarifsClasses({
-  saveTarif, getTarifBase, getTarifRevision, getTarifAutre, getTarifIns, getTarifReinsc, canEdit,
+  saveTarif, getTarifBase, getTarifRevision, getTarifAutre, getTarifIns, getTarifReinsc, getTarifFraisDivers, canEdit,
 }) {
-  const getters = { saveTarif, getTarifBase, getTarifRevision, getTarifAutre, getTarifIns, getTarifReinsc };
-  const { ouvert, setOuvert, editing, saving, feedback, handleChange, sauvegarderTout, modifie, getPreviewTotal, setEditing } =
-    useTarifsClasses(getters);
+  const { schoolInfo } = useContext(SchoolContext);
+  const systeme = getSystemeScolaire(schoolInfo);
+  const sections = getSectionsActives(schoolInfo);
+  const toutesClasses = sections.flatMap((section) => getClassesForSection(section, systeme));
+
+  const getters = { saveTarif, getTarifBase, getTarifRevision, getTarifAutre, getTarifIns, getTarifReinsc, getTarifFraisDivers, toutesClasses };
+  const {
+    ouvert, setOuvert, editing, saving, feedback, handleChange, sauvegarderTout, modifie, getPreviewTotal, setEditing,
+    fraisVisibles, fraisDisponibles, ajouterFrais, getFraisDiversVal,
+  } = useTarifsClasses(getters);
 
   return (
     <div style={{marginBottom:16,border:"1px solid #b0c4d8",borderRadius:10,overflow:"hidden"}}>
       <button onClick={()=>setOuvert(o=>!o)}
         style={{width:"100%",background:"#f0f6ff",border:"none",padding:"11px 16px",cursor:"pointer",
           display:"flex",alignItems:"center",justifyContent:"space-between",fontSize:13,fontWeight:700,color:C.blueDark}}>
-        <span>Tarifs par classe (mensualité, révision incluse, autre, inscription, réinscription)</span>
+        <span>Tarifs par classe (mensualité, révision, inscription, réinscription, frais annexes)</span>
         <span style={{fontSize:11,fontWeight:400,color:"#6b7280"}}>{ouvert?"Fermer":"Voir / Modifier"}</span>
       </button>
       {ouvert&&(
-        <div style={{padding:"16px 18px",background:"#fff"}}>
+        <div style={{padding:"16px 18px",background:"var(--lc-surface, #fff)"}}>
           {!canEdit&&<p style={{margin:"0 0 12px",fontSize:12,color:"#9ca3af"}}>Lecture seule - seuls le comptable, l'administrateur et la direction peuvent modifier les tarifs.</p>}
           <p style={{margin:"0 0 12px",fontSize:12,color:"#64748b"}}>
-            La mensualité facturée par élève additionne automatiquement la mensualité de base et le frais de révision.
+            Tous les frais démarrent à <strong>0</strong> tant qu'ils ne sont pas configurés ici.
+            La mensualité facturée additionne la mensualité de base et le frais de révision.
           </p>
-          {["primaire", "college", "lycee"].map((section) => (
+
+          {/* Frais annexes du catalogue : une pastille = une colonne en plus. */}
+          {canEdit && fraisDisponibles.length > 0 && (
+            <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",marginBottom:12}}>
+              <span style={{fontSize:11,fontWeight:700,color:"#475569"}}>Ajouter un frais :</span>
+              {fraisDisponibles.map((f)=>(
+                <button key={f.id} type="button" onClick={()=>ajouterFrais(f.id)}
+                  style={{border:"1px dashed #94a3b8",background:"#f8fafc",borderRadius:14,padding:"3px 10px",
+                    fontSize:11,fontWeight:600,color:"#475569",cursor:"pointer"}}>
+                  + {f.label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {sections.map((section) => (
             <TarifsSectionTable
               key={section} section={section} editing={editing} canEdit={canEdit}
               handleChange={handleChange} getPreviewTotal={getPreviewTotal}
               getTarifBase={getTarifBase} getTarifRevision={getTarifRevision} getTarifAutre={getTarifAutre}
               getTarifIns={getTarifIns} getTarifReinsc={getTarifReinsc}
+              fraisVisibles={fraisVisibles} getFraisDiversVal={getFraisDiversVal}
             />
           ))}
           {feedback&&(

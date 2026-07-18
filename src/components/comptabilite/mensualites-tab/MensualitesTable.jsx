@@ -7,6 +7,7 @@ import { MensualitesRow } from "./MensualitesRow";
 export function MensualitesTable({
   eleves, elevesFiltres, moisAnnee, tarifsClasses, readOnly, canCreate, canEdit,
   schoolInfo, toggleMens, toggleFraisAnnexe, getTarifInscriptionEleve, getTarifAutre, getTarif,
+  getTarifFraisDivers,
 }) {
   if (eleves.length === 0) return <Vide icone="🎓" msg="Aucun élève" />;
 
@@ -37,7 +38,7 @@ export function MensualitesTable({
               position: "sticky", top: 0,
             };
             const thStickyLeft = (left, z = 3) => ({ ...thBase, left, zIndex: z });
-            const cols = ["Matricule", "Nom & Prénom", "Classe", "Tuteur", "Contact", ...moisAnnee, "Payés", "Ins.", "Autre", "Reçu"];
+            const cols = ["Matricule", "Nom & Prénom", "Classe", "Tuteur", "Contact", ...moisAnnee, "Payés", "Ins.", "Frais", "Reçu"];
             return (
               <thead>
                 <tr>
@@ -56,6 +57,7 @@ export function MensualitesTable({
               readOnly={readOnly} canCreate={canCreate} canEdit={canEdit} schoolInfo={schoolInfo}
               toggleMens={toggleMens} toggleFraisAnnexe={toggleFraisAnnexe}
               getTarifInscriptionEleve={getTarifInscriptionEleve} getTarifAutre={getTarifAutre} getTarif={getTarif}
+              getTarifFraisDivers={getTarifFraisDivers}
             />
           ))}</tbody>
         </table>

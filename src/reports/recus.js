@@ -5,7 +5,7 @@
 // Les fragments HTML vivent dans recus/recu-blocs.js et le style
 // dans recus/recus-styles.js.
 
-import { MOIS_ANNEE } from "../constants.js";
+import { MOIS_ANNEE, getFraisAnnexeLabel, isFraisAnnexePaye } from "../constants.js";
 import { montantMoisPaye } from "../mensualite-utils.js";
 import { resolveLegalFields } from "../legal-utils.js";
 import { PRINT_RESET, PRINT_TRIGGER, edugestBrandHTML, printDir, printLang, tr } from "./print-helpers.js";
@@ -18,20 +18,26 @@ export const getRecuTotals = (eleve, montantUnit, moisAnnee=MOIS_ANNEE, fraisAnn
   const moisPayes = moisAnnee.filter(m=>mens[m]==="Payé");
   const fraisIns = Number(fraisAnnexes?.inscription||0);
   const fraisAutre = Number(fraisAnnexes?.autre||0);
+  // Frais annexes du catalogue (uniforme, cantine…) PAYÉS par l'élève :
+  // chacun devient une ligne du reçu et entre dans le total général.
+  const fraisDiversPayes = Object.entries(fraisAnnexes?.divers || {})
+    .filter(([id, montant]) => Number(montant) > 0 && isFraisAnnexePaye(eleve, id))
+    .map(([id, montant]) => ({ id, label: getFraisAnnexeLabel(id), montant: Number(montant) }));
   // v2 : chaque mois payé garde le tarif figé à l'encaissement (mensMontants),
   // repli sur le tarif courant pour les paiements antérieurs à la v2 — mêmes
   // montants que la grille des mensualités (getEleveMensualiteSnapshot).
   const totalMensualites = moisPayes.reduce((somme, m) => somme + montantMoisPaye(eleve, m, montantUnit), 0);
   const totalGeneral = totalMensualites
     + (eleve.inscriptionPayee&&fraisIns>0?fraisIns:0)
-    + (eleve.autrePayee&&fraisAutre>0?fraisAutre:0);
-  return { moisPayes, fraisIns, fraisAutre, totalMensualites, totalGeneral };
+    + (eleve.autrePayee&&fraisAutre>0?fraisAutre:0)
+    + fraisDiversPayes.reduce((somme, f) => somme + f.montant, 0);
+  return { moisPayes, fraisIns, fraisAutre, fraisDiversPayes, totalMensualites, totalGeneral };
 };
 
 export const imprimerRecu = async (eleve, montantUnit, schoolInfo={}, moisAnnee=MOIS_ANNEE, fraisAnnexes={}) => {
   const mens = eleve.mens||{};
   const mensDates = eleve.mensDates||{};
-  const {moisPayes, fraisIns, fraisAutre, totalMensualites, totalGeneral} = getRecuTotals(eleve, montantUnit, moisAnnee, fraisAnnexes);
+  const {moisPayes, fraisIns, fraisAutre, fraisDiversPayes, totalMensualites, totalGeneral} = getRecuTotals(eleve, montantUnit, moisAnnee, fraisAnnexes);
   const lf = resolveLegalFields(schoolInfo);
 
   // window.open AVANT l'await (geste utilisateur) pour éviter le blocage popup.
@@ -47,7 +53,7 @@ export const imprimerRecu = async (eleve, montantUnit, schoolInfo={}, moisAnnee=
     Total: `${totalGeneral} GNF`,
     Mois: moisPayes.join(","),
   }), schoolInfo, { size: 56, alt: "QR recu" });
-  const ctx = { schoolInfo, lf, eleve, moisAnnee, mens, mensDates, fraisIns, fraisAutre, totalMensualites, moisPayes, totalGeneral, qr };
+  const ctx = { schoolInfo, lf, eleve, moisAnnee, mens, mensDates, fraisIns, fraisAutre, fraisDiversPayes, totalMensualites, moisPayes, totalGeneral, qr };
 
   w.document.write(`<!DOCTYPE html><html lang="${printLang()}" dir="${printDir()}"><head><title>${tr("reports.receipt.title")}</title>
   <meta charset="utf-8"/>

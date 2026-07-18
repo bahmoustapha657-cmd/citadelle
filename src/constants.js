@@ -108,7 +108,9 @@ export const MATIERES_PRIMAIRE = [
 ].map((nom) => ({ nom, coefficient: 1 }));
 
 export const TOUTES_ANNEES = Array.from({ length: 30 }, (_, index) => `${2025 + index}-${2026 + index}`);
-export const MENSUALITE = { college: 150000, lycee: 150000, primaire: 120000 };
+// Aucun montant inventé : tous les frais restent à 0 tant que l'école n'a pas
+// configuré ses tarifs (Compta → Mensualités → Tarifs par classe).
+export const MENSUALITE = { college: 0, lycee: 0, primaire: 0 };
 export const initMens = () => MOIS_ANNEE.reduce((accumulator, mois) => ({ ...accumulator, [mois]: "Impayé" }), {});
 
 // Détection de section par MOTIF (et non par correspondance exacte avec
@@ -166,6 +168,58 @@ export const getDefaultMensualiteForClasse = (classe = "") => {
 export const getTarifRevisionValue = (tarif = {}) => Number(tarif?.revision || 0);
 
 export const getTarifAutreValue = (tarif = {}) => Number(tarif?.autre || 0);
+
+// ── Frais scolaires annexes (catalogue configurable) ────────────────────────
+// Chaque école active les frais qui la concernent en saisissant un montant
+// par classe (Tarifs par classe) ; les montants vivent dans
+// tarifs.extra.fraisDivers = { id: montant }, et le suivi par élève dans
+// eleves.extra.fraisPayes = { id: "date de paiement" }.
+// « Autre frais » reste la colonne legacy tarif.autre + eleve.autrePayee.
+export const CATALOGUE_FRAIS_ANNEXES = [
+  { id: "autre", label: "Autre frais" },
+  { id: "uniforme", label: "Tenue / Uniforme" },
+  { id: "fournitures", label: "Fournitures & livres" },
+  { id: "cantine", label: "Cantine" },
+  { id: "transport", label: "Transport" },
+  { id: "examens", label: "Frais d'examen" },
+  { id: "assurance", label: "Assurance scolaire" },
+  { id: "carte", label: "Carte scolaire / badge" },
+  { id: "activites", label: "Activités & sorties" },
+  { id: "internat", label: "Internat" },
+  { id: "apeae", label: "Cotisation APEAE" },
+];
+
+export const getFraisAnnexeLabel = (id) =>
+  CATALOGUE_FRAIS_ANNEXES.find((f) => f.id === id)?.label || id;
+
+// Frais divers configurés d'un tarif (hors « autre », qui garde sa colonne) :
+// ne renvoie que les montants > 0, filtrés sur le catalogue.
+export const getTarifFraisDivers = (tarif = {}) => {
+  const source = tarif?.fraisDivers || {};
+  return CATALOGUE_FRAIS_ANNEXES.reduce((acc, f) => {
+    if (f.id === "autre") return acc;
+    const montant = Number(source[f.id] || 0);
+    if (montant > 0) acc[f.id] = montant;
+    return acc;
+  }, {});
+};
+
+// Tous les frais annexes actifs d'un tarif (« autre » inclus) : { id: montant }.
+export const getTarifFraisAnnexes = (tarif = {}) => {
+  const frais = getTarifFraisDivers(tarif);
+  const autre = getTarifAutreValue(tarif);
+  if (autre > 0) frais.autre = autre;
+  return frais;
+};
+
+// Un frais annexe est-il payé pour cet élève ? (« autre » = drapeau legacy)
+export const isFraisAnnexePaye = (eleve = {}, id) => (id === "autre"
+  ? !!eleve.autrePayee
+  : !!(eleve.fraisPayes || {})[id]);
+
+export const getFraisAnnexeDate = (eleve = {}, id) => (id === "autre"
+  ? (eleve.autreDate || "")
+  : ((eleve.fraisPayes || {})[id] || ""));
 
 export const getTarifMensuelTotal = (tarif = null, classe = "") => {
   const montantBase = tarif ? Number(tarif?.montant || 0) : getDefaultMensualiteForClasse(classe);
