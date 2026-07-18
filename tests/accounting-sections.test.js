@@ -11,9 +11,9 @@ import {
   getTarifRevisionValue,
 } from "../src/constants.js";
 
-test("lycee classes resolve to the lycee section and default monthly fee", () => {
+test("lycee classes resolve to the lycee section — mensualité par défaut 0 (aucun montant inventé)", () => {
   assert.equal(getSectionForClasse("Terminale A"), "lycee");
-  assert.equal(getDefaultMensualiteForClasse("Terminale A"), 150000);
+  assert.equal(getDefaultMensualiteForClasse("Terminale A"), 0);
   assert.deepEqual(getClassesForSection("lycee"), CLASSES_LYCEE);
 });
 

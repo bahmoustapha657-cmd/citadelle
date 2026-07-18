@@ -34,6 +34,7 @@ export function MensualitesTab({
   toggleFraisAnnexe,
   getTarifInscriptionEleve,
   getTarif,
+  getTarifFraisDivers,
 }) {
   const { t } = useTranslation();
   return (
@@ -46,6 +47,7 @@ export function MensualitesTab({
         getTarifAutre={getTarifAutre}
         getTarifIns={getTarifIns}
         getTarifReinsc={getTarifReinsc}
+        getTarifFraisDivers={getTarifFraisDivers}
         canEdit={canEditEleves}
       />
 
@@ -81,6 +83,7 @@ export function MensualitesTab({
         getTarifInscriptionEleve={getTarifInscriptionEleve}
         getTarifAutre={getTarifAutre}
         getTarif={getTarif}
+        getTarifFraisDivers={getTarifFraisDivers}
       />
     </div>
   );

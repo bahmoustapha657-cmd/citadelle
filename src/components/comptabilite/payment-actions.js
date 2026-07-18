@@ -8,12 +8,14 @@
 import { fmt, initMens } from "../../constants";
 import { sumBonsForSalary } from "../../salary-utils";
 
-// Marque un frais annexe (inscription, autre) comme payé/impayé sur un
-// élève. Bloqué si readOnly. Le retrait d'un frais déjà payé exige
-// canEdit (verrou admin), pour éviter qu'un comptable annule un encaissement
-// sans validation.
+// Marque un frais annexe comme payé/impayé sur un élève. Deux formes :
+//   • legacy (inscription, « autre ») : drapeaux dédiés payKey/dateKey ;
+//   • catalogue (uniforme, cantine…)  : opts.fraisId + fraisPayesActuels →
+//     carte eleves.fraisPayes = { id: "date de paiement" }.
+// Bloqué si readOnly. Le retrait d'un frais déjà payé exige canEdit (verrou
+// admin), pour éviter qu'un comptable annule un encaissement sans validation.
 export async function toggleFraisAnnexe(_id, opts, { readOnly, canEdit, toast, modEleves, logAction }) {
-  const { payKey, dateKey, valeurActuelle=false, label, montant=0, nomEleve="" } = opts;
+  const { payKey, dateKey, fraisId=null, fraisPayesActuels=null, valeurActuelle=false, label, montant=0, nomEleve="" } = opts;
   if(readOnly) return;
   if(valeurActuelle && !canEdit){
     toast(`Le retrait de ${label.toLowerCase()} nécessite l'autorisation de l'administrateur (verrou activé).`,"warning");
@@ -24,10 +26,17 @@ export async function toggleFraisAnnexe(_id, opts, { readOnly, canEdit, toast, m
     ? `Retirer ${label.toLowerCase()}${montantLabel} pour ${nomEleve} ?`
     : `Marquer ${label.toLowerCase()}${montantLabel} comme payé pour ${nomEleve} ?`;
   if(!confirm(message)) return;
-  await modEleves(_id,{
-    [payKey]:!valeurActuelle,
-    [dateKey]:!valeurActuelle ? new Date().toLocaleDateString("fr-FR") : null,
-  });
+  if (fraisId) {
+    const fraisPayes = { ...(fraisPayesActuels || {}) };
+    if (valeurActuelle) delete fraisPayes[fraisId];
+    else fraisPayes[fraisId] = new Date().toLocaleDateString("fr-FR");
+    await modEleves(_id, { fraisPayes });
+  } else {
+    await modEleves(_id,{
+      [payKey]:!valeurActuelle,
+      [dateKey]:!valeurActuelle ? new Date().toLocaleDateString("fr-FR") : null,
+    });
+  }
   // Journal d'audit : chaque encaissement/retrait de frais laisse une trace.
   logAction?.(
     valeurActuelle ? "Frais annexe retiré" : "Frais annexe encaissé",

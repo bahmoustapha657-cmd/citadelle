@@ -22,7 +22,7 @@ export const enteteCompact = (schoolInfo, lf) => `
 
 // Bloc reçu compact — deux par page A4. ctx regroupe les données calculées.
 export const blocRecu = (titre, ctx) => {
-  const { schoolInfo, lf, eleve, moisAnnee, mens, mensDates, fraisIns, fraisAutre, totalMensualites, moisPayes, totalGeneral, qr } = ctx;
+  const { schoolInfo, lf, eleve, moisAnnee, mens, mensDates, fraisIns, fraisAutre, fraisDiversPayes = [], totalMensualites, moisPayes, totalGeneral, qr } = ctx;
   return `
   <div class="recu">
     ${schoolInfo.logo?`<div class="watermark"><img src="${schoolInfo.logo}" alt=""/></div>`:""}
@@ -64,6 +64,11 @@ export const blocRecu = (titre, ctx) => {
       ${tr("reports.receipt.otherFees")} : <strong>${fmt(fraisAutre)}</strong>
       <span style="font-weight:400;margin-inline-start:4px">✓ ${tr("accounting.paid")}</span>
     </div>`:""}
+    ${fraisDiversPayes.map((f)=>`
+    <div class="total" style="font-size:9px;padding:4px 8px;background:#ecfeff;border-color:#67e8f9">
+      ${f.label} : <strong>${fmt(f.montant)}</strong>
+      <span style="font-weight:400;margin-inline-start:4px">✓ ${tr("accounting.paid")}</span>
+    </div>`).join("")}
     <div class="total">${tr("reports.receipt.monthlyFee")} : ${fmt(totalMensualites)} <span style="font-weight:400;font-size:9px">(${moisPayes.length}/${moisAnnee.length})</span></div>
     <div class="total" style="background:#e0f2fe;border-color:#38bdf8">${tr("reports.receipt.amount")} : <strong>${fmt(totalGeneral)}</strong></div>
     <div class="sigs">
