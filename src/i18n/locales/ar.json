@@ -159,7 +159,7 @@
     "superadmin_panel": { "label": "المشرف الأعلى", "desc": "إدارة المدارس" },
     "accueil": { "label": "لوحة التحكم", "desc": "نظرة عامة" },
     "historique": { "label": "السجل", "desc": "سجل الإجراءات" },
-    "admin_panel": { "label": "إدارة الوصول", "desc": "كلمات المرور" },
+    "admin_panel": { "label": "الحسابات والمناصب", "desc": "الحسابات والصلاحيات والموقعون" },
     "parametres": { "label": "الإعدادات", "desc": "هوية المدرسة" },
     "fondation": { "label": "المؤسسة", "desc": "الحوكمة" },
     "compta": { "label": "المحاسبة", "desc": "الشؤون المالية" },
