@@ -159,7 +159,7 @@
     "superadmin_panel": { "label": "Super Admin", "desc": "Schools management" },
     "accueil": { "label": "Dashboard", "desc": "Overview" },
     "historique": { "label": "History", "desc": "Action log" },
-    "admin_panel": { "label": "Access Management", "desc": "Passwords" },
+    "admin_panel": { "label": "Accounts & Positions", "desc": "Accounts, rights and signatories" },
     "parametres": { "label": "Settings", "desc": "School identity" },
     "fondation": { "label": "Foundation", "desc": "Governance" },
     "compta": { "label": "Accounting", "desc": "Finances" },

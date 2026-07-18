@@ -250,7 +250,7 @@ export const MODULES = [
   { id: "superadmin_panel", label: "Super Admin", icon: "⚙️", desc: "Gestion des écoles" },
   { id: "accueil", label: "Tableau de bord", icon: "📈", desc: "Vue d'ensemble" },
   { id: "historique", label: "Historique", icon: "📋", desc: "Journal des actions" },
-  { id: "admin_panel", label: "Gestion Accès", icon: "🔐", desc: "Mots de passe" },
+  { id: "admin_panel", label: "Comptes & Postes", icon: "🧩", desc: "Comptes, droits et signataires" },
   { id: "parametres", label: "Paramètres", icon: "🏫", desc: "Identité de l'école" },
   { id: "fondation", label: "Fondation", icon: "🏛️", desc: "Gouvernance" },
   { id: "compta", label: "Comptabilité", icon: "📊", desc: "Finances" },
