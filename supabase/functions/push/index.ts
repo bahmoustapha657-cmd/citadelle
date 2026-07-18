@@ -36,17 +36,34 @@ Deno.serve(async (req) => {
     const { data: { user } } = await admin.auth.getUser(jwt);
     if (!user) return json({ error: "Non authentifié." }, 401);
 
-    const { schoolId, cibles, titre, corps, url } = await req.json().catch(() => ({}));
-    if (!schoolId || !Array.isArray(cibles) || !cibles.length) return json({ error: "Paramètres manquants." }, 400);
+    const { schoolId, cibles, userIds, tousStaff, titre, corps, url } = await req.json().catch(() => ({}));
+    const aCibles = Array.isArray(cibles) && cibles.length > 0;
+    const aUserIds = Array.isArray(userIds) && userIds.length > 0;
+    if (!schoolId || (!aCibles && !aUserIds && !tousStaff)) return json({ error: "Paramètres manquants." }, 400);
 
     const { data: ec } = await admin.from("ecoles").select("id").eq("code", String(schoolId).toLowerCase()).maybeSingle();
     if (!ec) return json({ error: "École introuvable." }, 404);
 
-    // Cible par rôle legacy OU clé de poste (postes flexibles) : les cibles
-    // historiques ('admin', 'direction'…) matchent les postes système.
-    const liste = cibles.map((c: unknown) => String(c).replace(/[^a-z0-9._-]/gi, "")).filter(Boolean).join(",");
-    const { data: subs } = await admin.from("push_subs").select("user_id, subscription")
-      .eq("ecole_id", ec.id).or(`role.in.(${liste}),poste_cle.in.(${liste})`);
+    // Ciblage : rôle legacy OU clé de poste (les cibles historiques 'admin',
+    // 'direction'… matchent les postes système), OU utilisateurs précis
+    // (messagerie individuelle), OU tout le personnel (hors parents/enseignants).
+    let query = admin.from("push_subs").select("user_id, subscription").eq("ecole_id", ec.id);
+    if (tousStaff) {
+      query = query.not("role", "in", '("parent","enseignant")');
+    } else {
+      const filtres: string[] = [];
+      if (aCibles) {
+        const liste = cibles.map((c: unknown) => String(c).replace(/[^a-z0-9._-]/gi, "")).filter(Boolean).join(",");
+        if (liste) filtres.push(`role.in.(${liste})`, `poste_cle.in.(${liste})`);
+      }
+      if (aUserIds) {
+        const uids = userIds.map((u: unknown) => String(u).replace(/[^a-f0-9-]/gi, "")).filter(Boolean).join(",");
+        if (uids) filtres.push(`user_id.in.(${uids})`);
+      }
+      if (!filtres.length) return json({ ok: true, envoyes: 0 });
+      query = query.or(filtres.join(","));
+    }
+    const { data: subs } = await query;
     if (!subs?.length) return json({ ok: true, envoyes: 0 });
 
     webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);

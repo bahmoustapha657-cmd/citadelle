@@ -112,6 +112,45 @@ async function main() {
     attendu("REFUS de créer une recette", !!paRec);
   }
 
+  console.log("\n— Messagerie interne (confidentialité RLS) —");
+  // comptable → poste direction : le surveillant ne doit RIEN voir ;
+  // surveillant → compte comptable : visible par le comptable seul ;
+  // a_tous : visible par tout le personnel.
+  {
+    const co2 = sessions.comptable, su2 = sessions.surveillant;
+    const { data: coCompte } = await co2.from("comptes").select("id").eq("login", "test-rls-comptable").single();
+    const { error: envErr } = await co2.from("messages_internes").insert({
+      ecole_id: demo.id, de_compte_id: comptesTests[0].compteId, de_nom: "Test comptable",
+      a_postes: ["direction"], corps: "PRIVE-DIRECTION",
+    });
+    attendu("le comptable envoie au poste direction", !envErr);
+    const { error: env2Err } = await su2.from("messages_internes").insert({
+      ecole_id: demo.id, de_compte_id: comptesTests[1].compteId, de_nom: "Test surveillant",
+      a_compte_id: coCompte?.id || comptesTests[0].compteId, corps: "PRIVE-COMPTABLE",
+    });
+    attendu("le surveillant envoie au compte comptable", !env2Err);
+    const { error: env3Err } = await su2.from("messages_internes").insert({
+      ecole_id: demo.id, de_compte_id: comptesTests[1].compteId, de_nom: "Test surveillant",
+      a_tous: true, corps: "POUR-TOUS",
+    });
+    attendu("le surveillant envoie à tout le personnel", !env3Err);
+    const { error: usurpErr } = await su2.from("messages_internes").insert({
+      ecole_id: demo.id, de_compte_id: comptesTests[0].compteId, de_nom: "Faux comptable",
+      a_tous: true, corps: "USURPATION",
+    });
+    attendu("REFUS d'envoyer au nom d'un autre compte", !!usurpErr);
+
+    const { data: vusSu } = await su2.from("messages_internes").select("corps");
+    const corpsSu = (vusSu || []).map((x) => x.corps);
+    attendu("le surveillant NE voit PAS le message privé direction", !corpsSu.includes("PRIVE-DIRECTION"));
+    attendu("le surveillant voit son envoi et le message à tous", corpsSu.includes("PRIVE-COMPTABLE") && corpsSu.includes("POUR-TOUS"));
+    const { data: vusCo } = await co2.from("messages_internes").select("corps");
+    const corpsCo = (vusCo || []).map((x) => x.corps);
+    attendu("le comptable voit le privé qui lui est adressé + le message à tous", corpsCo.includes("PRIVE-COMPTABLE") && corpsCo.includes("POUR-TOUS"));
+    await svc.from("messages_internes").delete().eq("ecole_id", demo.id).like("corps", "P%");
+    await svc.from("messages_internes").delete().eq("ecole_id", demo.id).eq("corps", "POUR-TOUS");
+  }
+
   console.log("\n— Connexion par e-mail (login_pour_email) —");
   // On pose un e-mail réel sur le compte comptable de test et on vérifie que
   // la résolution anonyme e-mail → login fonctionne (chemin de l'écran de

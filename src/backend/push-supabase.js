@@ -47,3 +47,25 @@ export async function envoyerPush(cibles, titre, corps, url = "/") {
     // Best-effort.
   }
 }
+
+// Push ciblé sur des utilisateurs précis (messagerie interne individuelle).
+export async function envoyerPushUtilisateurs(userIds, titre, corps, url = "/") {
+  const sid = localStorage.getItem("LC_schoolId");
+  if (!sid || !userIds?.length) return;
+  try {
+    await getSupabase().functions.invoke("push", {
+      body: { schoolId: sid, userIds, titre, corps, url },
+    });
+  } catch { /* best-effort */ }
+}
+
+// Push à tout le personnel (messagerie interne « tout le personnel »).
+export async function envoyerPushTousStaff(titre, corps, url = "/") {
+  const sid = localStorage.getItem("LC_schoolId");
+  if (!sid) return;
+  try {
+    await getSupabase().functions.invoke("push", {
+      body: { schoolId: sid, tousStaff: true, titre, corps, url },
+    });
+  } catch { /* best-effort */ }
+}
