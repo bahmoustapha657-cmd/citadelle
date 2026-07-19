@@ -13,15 +13,25 @@
 // uniquement à l'e-mail enregistré sur le compte.
 //
 // Déploiement : supabase functions deploy password-reset
-// Secrets (optionnels, pour la voie e-mail) :
-//   supabase secrets set RESEND_API_KEY="re_..." RESEND_FROM="EduGest <noreply@mondomaine>"
-//   supabase secrets set APP_URL="https://edugest-gn.pages.dev"
+// Secrets (optionnels, pour la voie e-mail — 2 fournisseurs possibles) :
+//   • SMTP (ex. Gmail, SANS domaine) :
+//     supabase secrets set SMTP_USER="edugest26@gmail.com" SMTP_PASS="<mot de passe d'application 16 car.>" APP_URL="https://edugest-gn.pages.dev"
+//     (Gmail : activer la validation en 2 étapes puis créer un « mot de passe d'application ».
+//      Optionnel : SMTP_HOST/SMTP_PORT si autre que smtp.gmail.com:465.)
+//   • Resend (nécessite un domaine vérifié) :
+//     supabase secrets set RESEND_API_KEY="re_..." RESEND_FROM="EduGest <noreply@mondomaine>" APP_URL="https://edugest-gn.pages.dev"
+// Priorité : SMTP si configuré, sinon Resend, sinon repli notification Direction.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
 const RESEND_FROM = Deno.env.get("RESEND_FROM") ?? "";
+const SMTP_USER = Deno.env.get("SMTP_USER") ?? "";
+const SMTP_PASS = Deno.env.get("SMTP_PASS") ?? "";
+const SMTP_HOST = Deno.env.get("SMTP_HOST") ?? "smtp.gmail.com";
+const SMTP_PORT = Number(Deno.env.get("SMTP_PORT") ?? "465");
 const APP_URL = Deno.env.get("APP_URL") ?? "https://edugest-gn.pages.dev";
 const DOMAIN = "edugest.app";
 
@@ -33,25 +43,53 @@ const cors = {
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { ...cors, "Content-Type": "application/json" } });
 const masque = (email: string) => email.replace(/^(.).*(@.*)$/, (_m, a, b) => `${a}•••${b}`);
 
-async function envoyerEmail(to: string, lien: string, nomEcole: string): Promise<boolean> {
-  if (!RESEND_API_KEY || !RESEND_FROM) return false;
-  const html = `
+function corpsHtml(lien: string, nomEcole: string): string {
+  return `
     <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;color:#1e293b">
       <h2 style="color:#0A1628">Réinitialisation de votre mot de passe</h2>
       <p>Une demande de réinitialisation a été faite pour votre compte EduGest${nomEcole ? ` (${nomEcole})` : ""}.</p>
       <p><a href="${lien}" style="display:inline-block;background:#00C48C;color:#fff;text-decoration:none;padding:12px 22px;border-radius:10px;font-weight:700">Choisir un nouveau mot de passe</a></p>
       <p style="font-size:13px;color:#64748b">Ce lien expire après un court délai. Si vous n'êtes pas à l'origine de cette demande, ignorez cet e-mail : votre mot de passe reste inchangé.</p>
     </div>`;
+}
+
+const SUJET = "EduGest — réinitialisation de mot de passe";
+
+// SMTP (Gmail par défaut) — prioritaire, ne nécessite pas de domaine.
+async function envoyerSmtp(to: string, html: string): Promise<boolean> {
+  if (!SMTP_USER || !SMTP_PASS) return false;
+  const client = new SMTPClient({
+    connection: { hostname: SMTP_HOST, port: SMTP_PORT, tls: SMTP_PORT === 465, auth: { username: SMTP_USER, password: SMTP_PASS } },
+  });
+  try {
+    await client.send({ from: `EduGest <${SMTP_USER}>`, to, subject: SUJET, content: "text/html", html });
+    return true;
+  } catch (e) {
+    console.error("smtp:", String((e as Error)?.message || e));
+    return false;
+  } finally {
+    try { await client.close(); } catch { /* ignore */ }
+  }
+}
+
+// Resend — repli (nécessite un domaine vérifié).
+async function envoyerResend(to: string, html: string): Promise<boolean> {
+  if (!RESEND_API_KEY || !RESEND_FROM) return false;
   try {
     const r = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { "Authorization": `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from: RESEND_FROM, to, subject: "EduGest — réinitialisation de mot de passe", html }),
+      body: JSON.stringify({ from: RESEND_FROM, to, subject: SUJET, html }),
     });
     return r.ok;
   } catch {
     return false;
   }
+}
+
+async function envoyerEmail(to: string, lien: string, nomEcole: string): Promise<boolean> {
+  const html = corpsHtml(lien, nomEcole);
+  return (await envoyerSmtp(to, html)) || (await envoyerResend(to, html));
 }
 
 async function notifierDirection(admin: ReturnType<typeof createClient>, compte: Record<string, unknown>) {
