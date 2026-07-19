@@ -10,6 +10,9 @@ export function LandingNav({ onConnexion, onInscription, onDemo }) {
         <span className="landing-nav-tag" style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase" }}>SaaS scolaire</span>
       </div>
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
+        <a className="landing-nav-btn landing-nav-demo" href="/aide.html" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", color: "#fff", padding: "8px 20px", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer", textDecoration: "none", display: "inline-flex", alignItems: "center" }}>
+          ❓ Aide
+        </a>
         <button className="landing-nav-btn landing-nav-demo" onClick={onDemo} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", color: "#fff", padding: "8px 20px", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
           Voir une démo
         </button>
