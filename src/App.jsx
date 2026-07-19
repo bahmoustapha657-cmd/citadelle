@@ -7,14 +7,19 @@ import { usePowerSyncStatus } from "./hooks/use-powersync-status";
 import { useSchoolData } from "./hooks/use-school-data";
 import { useKeyboardShortcuts } from "./hooks/use-keyboard-shortcuts";
 import { useAuthSession } from "./hooks/use-auth-session";
+import { useRecovery } from "./hooks/use-recovery";
 import { useAppUiState } from "./components/app/use-app-ui-state";
 import { useAppShell } from "./components/app/use-app-shell";
 import { computeAppPermissions } from "./components/app/compute-permissions";
 import { AuthGate } from "./components/app/AuthGate";
 import { AppShell } from "./components/app/AppShell";
+import { ResetPasswordScreen } from "./components/connexion/ResetPasswordScreen";
 
 export default function App() {
   const { t } = useTranslation();
+
+  // Retour d'un lien « mot de passe oublié » : prime sur tout le reste.
+  const { recoveryActif, recoveryPret, terminerRecovery } = useRecovery();
   const {
     page, setPage, paramInitialTab, setParamInitialTab,
     rechercheOuverte, setRechercheOuverte, notifOuvert, setNotifOuvert,
@@ -72,6 +77,13 @@ export default function App() {
       setPage(fallbackPage);
     }
   }, [page, schoolInfo, utilisateur, setPage]);
+
+  // Récupération de mot de passe : écran dédié avant tout le reste.
+  if (recoveryActif) {
+    return recoveryPret
+      ? <ResetPasswordScreen onTermine={terminerRecovery} />
+      : <div style={{ minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b", fontFamily: "sans-serif" }}>Ouverture du lien de réinitialisation…</div>;
+  }
 
   // Écrans avant le shell : landing/démo, portail public, connexion,
   // changement de mot de passe, portails enseignant/parent.
