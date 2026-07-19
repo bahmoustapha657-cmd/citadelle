@@ -32,6 +32,7 @@ export function LandingFooter({ onConnexion, onInscription, onDemo }) {
         </div>
         <div>
           <h4>Contact &amp; assistance</h4>
+          <a className="landing-footer-link" href="/aide.html">❓ Centre d'aide</a>
           <a className="landing-footer-link" href="tel:+224627738579">📞 +224 627 73 85 79</a>
           <a className="landing-footer-link" href="tel:+224662980896">📞 +224 662 98 08 96</a>
           <a className="landing-footer-link" href="https://wa.me/224627738579" target="_blank" rel="noreferrer">💬 WhatsApp</a>

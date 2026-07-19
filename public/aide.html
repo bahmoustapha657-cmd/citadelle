@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Centre d'aide EduGest - guide et assistance</title>
+  <meta name="description" content="Centre d'aide EduGest : guides pas a pas pour configurer votre ecole, inscrire les eleves, saisir les notes, imprimer les bulletins, gerer la comptabilite, les comptes et postes, la messagerie interne et les portails parent et enseignant." />
+  <link rel="canonical" href="https://edugest-gn.pages.dev/aide.html" />
+  <meta name="robots" content="index,follow" />
+  <style>
+    body { margin:0; font-family:"Inter","Segoe UI",sans-serif; background:#f7f8fb; color:#162235; line-height:1.7; }
+    .hero { background:linear-gradient(135deg,#0A1628 0%,#11233f 100%); color:#fff; padding:64px 24px 48px; }
+    .wrap { max-width:960px; margin:0 auto; }
+    h1 { font-size:clamp(28px,5vw,46px); line-height:1.1; margin:0 0 14px; }
+    h2 { font-size:clamp(20px,3vw,27px); margin:0 0 12px; color:#0A1628; }
+    h3 { font-size:16px; margin:16px 0 6px; color:#0A1628; }
+    p { margin:0 0 12px; }
+    .lead { max-width:760px; color:rgba(255,255,255,.80); font-size:18px; }
+    main { padding:36px 24px 72px; }
+    .card { background:#fff; border:1px solid #dbe3ef; border-radius:18px; padding:24px 26px; box-shadow:0 12px 30px rgba(10,22,40,.06); margin-bottom:18px; }
+    ol, ul { margin:0 0 10px; padding-left:22px; }
+    li { margin-bottom:5px; }
+    .toc { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+    .toc a { display:inline-block; background:rgba(255,255,255,.12); color:#fff; text-decoration:none; border-radius:999px; padding:7px 14px; font-size:13px; font-weight:700; }
+    .cta { display:inline-block; margin-top:6px; padding:13px 22px; border-radius:12px; background:#00C48C; color:#fff; text-decoration:none; font-weight:800; }
+    .contact a { display:inline-flex; align-items:center; gap:6px; border-radius:10px; padding:10px 16px; font-weight:700; text-decoration:none; margin:0 8px 8px 0; font-size:14px; }
+    .wa { background:#22c55e; color:#fff; }
+    .tel, .mail { border:1px solid #b0c4d8; color:#334155; }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="wrap">
+      <h1>Centre d'aide EduGest</h1>
+      <p class="lead">Des guides simples, pas a pas, pour tirer le meilleur d'EduGest : configuration, eleves, notes, bulletins, comptabilite, comptes et communication.</p>
+      <nav class="toc">
+        <a href="#demarrage">Demarrage</a>
+        <a href="#eleves">Eleves</a>
+        <a href="#notes">Notes &amp; bulletins</a>
+        <a href="#compta">Comptabilite</a>
+        <a href="#comptes">Comptes &amp; Postes</a>
+        <a href="#communication">Communication</a>
+        <a href="#portails">Portails</a>
+        <a href="#contact">Contact</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="wrap">
+      <div class="card">
+        <p>💡 <strong>Astuce :</strong> une fois connecte, retrouvez ce centre d'aide directement dans l'application en cliquant sur l'icone <strong>❓</strong> en haut a droite. Les articles y sont filtres selon votre role.</p>
+      </div>
+
+      <section class="card" id="demarrage">
+        <h2>🚀 Demarrage</h2>
+        <h3>Configurer mon ecole</h3>
+        <ol>
+          <li>Parametres &rarr; Identite : nom, logo, couleurs de l'ecole.</li>
+          <li>Cochez les sections reellement ouvertes (Primaire, College, Lycee) : une ecole sans lycee ne verra plus l'onglet Lycee.</li>
+          <li>Creez vos classes, puis les matieres et leurs coefficients.</li>
+          <li>Inscrivez vos eleves ou importez-les depuis un fichier Excel.</li>
+          <li>Configurez vos tarifs (Comptabilite &rarr; Mensualites) : tous les frais sont a 0 tant qu'ils ne sont pas saisis.</li>
+        </ol>
+      </section>
+
+      <section class="card" id="eleves">
+        <h2>🎒 Eleves &amp; inscriptions</h2>
+        <h3>Inscrire un eleve</h3>
+        <p>Module Primaire/Secondaire &rarr; onglet Eleves &rarr; « Ajouter ». Renseignez nom, prenom, sexe, classe et, si disponible, le matricule national (IEN). Le tuteur et son contact permettent de creer ensuite un compte parent.</p>
+        <h3>Importer une liste (Excel)</h3>
+        <p>Comptabilite &rarr; Inscriptions &rarr; « Importer ». EduGest detecte les colonnes automatiquement et signale les doublons (meme IEN/matricule).</p>
+      </section>
+
+      <section class="card" id="notes">
+        <h2>📝 Notes &amp; bulletins</h2>
+        <h3>Saisir les notes</h3>
+        <p>Onglet Notes &rarr; « Saisie en grille » pour toute une classe d'un coup, sur plusieurs periodes et matieres. La saisie est conservee localement : rien n'est perdu en cas de coupure reseau.</p>
+        <h3>Imprimer un bulletin</h3>
+        <p>Onglet Bulletins &rarr; choisissez la periode et la classe &rarr; « Imprimer » (un eleve) ou « Tous les bulletins ». Chaque bulletin porte un QR code de verification.</p>
+      </section>
+
+      <section class="card" id="compta">
+        <h2>💰 Comptabilite &amp; paiements</h2>
+        <h3>Configurer les tarifs et les frais annexes</h3>
+        <p>Comptabilite &rarr; Mensualites &rarr; « Tarifs par classe ». Saisissez la mensualite, l'inscription et la reinscription. Avec « + Ajouter un frais », activez les frais annexes du catalogue : tenue, fournitures, cantine, transport, examen, assurance, carte, activites, internat, cotisation APEAE.</p>
+        <h3>Encaisser et imprimer un recu</h3>
+        <p>Cochez les mois payes et les frais regles ; l'icone 🖨️ imprime un recu avec QR de verification. Impayes et encaissements sont suivis automatiquement.</p>
+      </section>
+
+      <section class="card" id="comptes">
+        <h2>🧩 Comptes &amp; Postes</h2>
+        <p>Un <strong>poste</strong> definit un metier (Direction, Comptabilite, Censeur…) et ses droits module par module : invisible, lecture ou ecriture. Un <strong>compte</strong> est une personne rattachee a un poste.</p>
+        <ul>
+          <li><strong>Creer un poste sur mesure</strong> : « + Nouveau poste », nommez-le et reglez la matrice de droits.</li>
+          <li><strong>Plusieurs comptes par poste</strong> : 2 comptables, 3 surveillants… chacun sa connexion.</li>
+          <li><strong>Connexion par e-mail</strong> : ajoutez un e-mail a un compte pour se connecter avec code ecole + e-mail + mot de passe.</li>
+          <li><strong>Responsable signataire</strong> : le prenom et nom d'un responsable s'imprime sous la signature des documents.</li>
+        </ul>
+      </section>
+
+      <section class="card" id="communication">
+        <h2>💬 Communication</h2>
+        <h3>Messagerie interne</h3>
+        <p>L'icone 💬 dans l'en-tete permet d'ecrire aux autres membres du personnel : a tout le monde, a un ou plusieurs postes, ou a une personne precise. Le destinataire recoit une notification et voit un badge de messages non lus.</p>
+      </section>
+
+      <section class="card" id="portails">
+        <h2>📱 Portails parent / enseignant</h2>
+        <p><strong>Enseignant</strong> : se connecte, voit ses classes, saisit les notes et signale les absences. <strong>Parent</strong> : suit notes, bulletins, absences et paiements de son/ses enfant(s). EduGest s'installe aussi comme une application sur telephone (PWA) et fonctionne meme hors-ligne pour la saisie.</p>
+      </section>
+
+      <section class="card" id="contact">
+        <h2>Besoin d'aide supplementaire ?</h2>
+        <p class="contact">
+          <a class="wa" href="https://wa.me/224627738579" target="_blank" rel="noreferrer">💬 WhatsApp</a>
+          <a class="tel" href="tel:+224627738579">📞 +224 627 73 85 79</a>
+          <a class="mail" href="mailto:edugest26@gmail.com">✉️ edugest26@gmail.com</a>
+        </p>
+        <a class="cta" href="https://edugest-gn.pages.dev/">Ouvrir EduGest</a>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

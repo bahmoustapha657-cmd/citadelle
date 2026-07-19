@@ -69,6 +69,13 @@ export function AppHeader({
           {modeSombre?"☀️":"🌙"}
         </button>
 
+        {/* Centre d'aide : accès direct depuis l'en-tête (aussi dans le menu profil). */}
+        <button onClick={()=>setCentreAideOuvert&&setCentreAideOuvert(true)}
+          title="Centre d'aide"
+          style={{background:"#f0f4f0",border:"1px solid #e0ebf8",borderRadius:8,padding:"5px 10px",cursor:"pointer",fontSize:16,lineHeight:1}}>
+          ❓
+        </button>
+
         {/* Messagerie interne du personnel (mode Supabase uniquement). */}
         {isSupabase && utilisateur && !SANS_MESSAGERIE.has(utilisateur.role) && (
           <MessagerieInterne utilisateur={utilisateur} />

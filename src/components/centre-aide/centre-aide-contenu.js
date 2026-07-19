@@ -1,14 +1,15 @@
 // Contenu du Centre d'aide EduGest. Chaque article : { id, cat, titre, roles?,
-// etapes[] }. `roles` (optionnel) restreint l'affichage à certains rôles ;
-// absent = visible par tous. Le contenu est volontairement simple et orienté
-// « pas à pas » pour des utilisateurs non techniques.
+// etapes[] }. `roles` (optionnel) restreint l'affichage à certaines clés de
+// rôle/poste ; absent = visible par tous. Le contenu est volontairement simple
+// et orienté « pas à pas » pour des utilisateurs non techniques.
 
 export const CATEGORIES = [
   { id: "demarrage", label: "🚀 Démarrage" },
   { id: "eleves", label: "🎒 Élèves & inscriptions" },
   { id: "notes", label: "📝 Notes & bulletins" },
   { id: "compta", label: "💰 Comptabilité & paiements" },
-  { id: "comptes", label: "👥 Comptes & rôles" },
+  { id: "comptes", label: "🧩 Comptes & Postes" },
+  { id: "communication", label: "💬 Communication" },
   { id: "portails", label: "📱 Portails parent / enseignant" },
   { id: "horsligne", label: "📶 Hors-ligne & impression" },
   { id: "securite", label: "🔒 Sécurité & vérification" },
@@ -21,9 +22,11 @@ export const ARTICLES = [
     titre: "Premiers pas : configurer mon école",
     etapes: [
       "Ouvrez Paramètres → Identité pour renseigner le nom, le logo et les couleurs de l'école.",
+      "Toujours dans Identité, cochez les sections réellement ouvertes (Primaire, Collège, Lycée) : une école sans lycée ne verra plus l'onglet Lycée.",
       "Créez vos classes dans le module Primaire ou Secondaire (onglet Classes).",
       "Ajoutez les matières et leurs coefficients (onglet Matières).",
       "Inscrivez vos élèves (onglet Élèves) ou importez-les depuis un fichier Excel.",
+      "Configurez vos tarifs (Comptabilité → Mensualités → Tarifs par classe) : tous les frais sont à 0 tant qu'ils ne sont pas saisis.",
     ],
   },
   {
@@ -34,6 +37,17 @@ export const ARTICLES = [
     etapes: [
       "Le bouton flottant 🚀 en bas de l'écran ouvre le guide de démarrage pas à pas.",
       "Il liste les étapes recommandées pour rendre votre école opérationnelle.",
+    ],
+  },
+  {
+    id: "sections-actives",
+    cat: "demarrage",
+    roles: ["admin", "direction", "superadmin"],
+    titre: "Mon école n'a pas de lycée (ou pas de primaire)",
+    etapes: [
+      "Paramètres → Identité → « Sections de l'établissement ».",
+      "Décochez les sections que votre école n'a pas ; il en faut au moins une.",
+      "Les onglets et les listes de classes s'adaptent : plus rien d'inutile à l'écran.",
     ],
   },
   {
@@ -49,7 +63,6 @@ export const ARTICLES = [
   {
     id: "importer-eleves",
     cat: "eleves",
-    roles: ["admin", "direction", "comptable", "superadmin"],
     titre: "Importer une liste d'élèves (Excel)",
     etapes: [
       "Comptabilité → Inscriptions → « Importer ».",
@@ -89,13 +102,38 @@ export const ARTICLES = [
     ],
   },
   {
+    id: "configurer-tarifs",
+    cat: "compta",
+    roles: ["admin", "direction", "comptable", "superadmin"],
+    titre: "Configurer les tarifs (mensualité, inscription, frais)",
+    etapes: [
+      "Comptabilité → Mensualités → dépliez « Tarifs par classe ».",
+      "Tous les montants démarrent à 0 : saisissez la mensualité de base, la révision, l'inscription et la réinscription par classe.",
+      "Le tableau défile horizontalement si votre écran est petit — toutes les colonnes restent accessibles.",
+      "Cliquez « Enregistrer les tarifs ». La mensualité facturée = mensualité de base + révision.",
+    ],
+  },
+  {
+    id: "frais-annexes",
+    cat: "compta",
+    roles: ["admin", "direction", "comptable", "superadmin"],
+    titre: "Ajouter des frais annexes (tenue, cantine, transport…)",
+    etapes: [
+      "Comptabilité → Mensualités → « Tarifs par classe » : rangée « + Ajouter un frais ».",
+      "Choisissez un frais du catalogue (tenue, fournitures, cantine, transport, examen, assurance, carte, activités, internat, APEAE) : une colonne s'ajoute.",
+      "Saisissez le montant par classe (0 = désactivé pour cette classe), puis enregistrez.",
+      "Dans la grille des mensualités, la colonne « Frais » montre un compteur ; cliquez pour cocher chaque frais payé par l'élève.",
+      "Chaque frais payé apparaît sur le reçu et entre dans le total et le solde de l'élève.",
+    ],
+  },
+  {
     id: "recu-paiement",
     cat: "compta",
     roles: ["admin", "direction", "comptable", "superadmin"],
     titre: "Encaisser un paiement et imprimer un reçu",
     etapes: [
       "Comptabilité → Mensualités : cochez les mois payés par l'élève.",
-      "Cliquez sur l'icône reçu pour imprimer un reçu (avec QR de vérification).",
+      "Cliquez sur l'icône reçu 🖨️ pour imprimer un reçu (avec QR de vérification).",
       "Les impayés et encaissements sont suivis automatiquement dans l'Aperçu.",
     ],
   },
@@ -107,6 +145,63 @@ export const ARTICLES = [
     etapes: [
       "Comptabilité → Salaires : définissez la rémunération (forfait ou taux horaire).",
       "Imprimez les fiches de paie ; elles portent un QR de vérification.",
+    ],
+  },
+  {
+    id: "comptes-postes",
+    cat: "comptes",
+    roles: ["admin", "direction", "superadmin"],
+    titre: "Comptes & Postes : comprendre le principe",
+    etapes: [
+      "Ouvrez le module « Comptes & Postes » (ancien « Gestion des Accès »).",
+      "Un POSTE définit un métier (Direction, Comptabilité, Censeur…) et ses droits, module par module : invisible, 👁 lecture ou ✏️ écriture.",
+      "Un COMPTE est une personne rattachée à un poste. Modifier les droits d'un poste s'applique à tous ses comptes.",
+      "Le poste Direction garde toujours tous les droits (impossible de s'enfermer dehors).",
+    ],
+  },
+  {
+    id: "creer-poste",
+    cat: "comptes",
+    roles: ["direction", "superadmin"],
+    titre: "Créer un poste sur mesure (censeur, économe…)",
+    etapes: [
+      "Comptes & Postes → « + Nouveau poste ».",
+      "Donnez un nom au poste (ex. « Censeur des études »).",
+      "Dans la matrice, cliquez chaque module pour choisir son droit : ∅ invisible → 👁 lecture → ✏️ écriture.",
+      "Enregistrez le poste, puis ajoutez-lui un ou plusieurs comptes.",
+    ],
+  },
+  {
+    id: "plusieurs-comptes",
+    cat: "comptes",
+    roles: ["admin", "direction", "superadmin"],
+    titre: "Créer plusieurs comptes pour un même poste",
+    etapes: [
+      "Comptes & Postes → sous le poste voulu → « + Ajouter un compte ».",
+      "Saisissez le nom et l'identifiant ; le mot de passe est généré et affiché une seule fois.",
+      "Vous pouvez ainsi avoir 2 comptables, 3 surveillants… chacun avec sa propre connexion.",
+    ],
+  },
+  {
+    id: "connexion-email",
+    cat: "comptes",
+    roles: ["admin", "direction", "superadmin"],
+    titre: "Se connecter avec un e-mail (au lieu de l'identifiant)",
+    etapes: [
+      "Comptes & Postes → sur la ligne d'un compte → « + e-mail de connexion ».",
+      "Saisissez l'adresse e-mail réelle de la personne.",
+      "Elle pourra alors se connecter avec code école + e-mail + mot de passe (l'identifiant classique marche toujours).",
+    ],
+  },
+  {
+    id: "responsable-signataire",
+    cat: "comptes",
+    roles: ["admin", "direction", "superadmin"],
+    titre: "Faire apparaître le nom du responsable sur les documents",
+    etapes: [
+      "Comptes & Postes → « ✏️ Droits & nom » (ou « Nom & signataire » pour la Direction).",
+      "Renseignez « 🖋️ Responsable — prénom et nom ».",
+      "Ce nom s'imprime sous le bloc de signature des documents (reçus pour le comptable, bulletins et attestations pour la direction…).",
     ],
   },
   {
@@ -132,14 +227,14 @@ export const ARTICLES = [
     ],
   },
   {
-    id: "roles",
-    cat: "comptes",
-    roles: ["admin", "direction", "superadmin"],
-    titre: "Comprendre les rôles et leurs droits",
+    id: "messagerie-interne",
+    cat: "communication",
+    titre: "Écrire aux autres membres du personnel (messagerie interne)",
     etapes: [
-      "Direction : accès complet. Comptable : inscriptions, paiements, comptes parents.",
-      "Enseignant : ses classes, notes et signalements. Parent : suivi de son/ses enfant(s).",
-      "Les droits se règlent dans Paramètres → Rôles.",
+      "Cliquez l'icône 💬 dans l'en-tête (en haut à droite).",
+      "« ✍️ Nouveau » : choisissez le destinataire — tout le personnel, un ou plusieurs postes, ou un compte précis.",
+      "Écrivez un sujet (optionnel) et votre message, puis envoyez. Le destinataire reçoit une notification.",
+      "Le badge rouge indique vos messages non lus ; ils se marquent lus au clic.",
     ],
   },
   {
