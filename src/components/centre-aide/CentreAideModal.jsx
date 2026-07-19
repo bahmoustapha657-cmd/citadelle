@@ -8,7 +8,9 @@ const norm = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-
 // l'utilisateur, recherche plein texte, et bloc de contact (WhatsApp / tél /
 // e-mail). Accessible depuis le menu profil.
 export function CentreAideModal({ utilisateur = {}, onClose }) {
-  const role = utilisateur.role || "";
+  // Clé effective : le poste prime sur le rôle enum (postes système = mêmes
+  // clés que les rôles historiques ; direction voit tout).
+  const role = utilisateur.posteCle || utilisateur.role || "";
   const [q, setQ] = useState("");
   const [ouvert, setOuvert] = useState(null); // id article déplié
 
