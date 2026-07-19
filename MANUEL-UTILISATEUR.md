@@ -114,7 +114,7 @@ EduGest est disponible en **Français / Anglais / Arabe** (avec support RTL auto
 ```
 
 1. Le Super-Admin a créé votre école avec un compte **Direction** initial.
-2. Rendez-vous sur l'URL EduGest fournie (ex : `https://edugest-gn.vercel.app`).
+2. Rendez-vous sur l'URL EduGest fournie (ex : `https://edugest-gn.pages.dev`).
 3. Sélectionnez votre **école** (si plusieurs hébergées), choisissez le **rôle** (Direction au début), entrez **identifiant + mot de passe**.
 4. À la première connexion, EduGest vous demande de **changer votre mot de passe** (modale automatique).
 

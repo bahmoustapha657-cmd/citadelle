@@ -19,20 +19,9 @@ export default defineConfig({
       // On autorise donc explicitement les scripts inline uniquement sur le serveur de dev.
       "Content-Security-Policy": "default-src 'self' data: blob: http: https: ws: wss:; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: http: https:; script-src-elem 'self' 'unsafe-inline' blob: http: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: http: https:; connect-src 'self' http: https: ws: wss:; worker-src 'self' blob:; frame-src 'self';",
     },
-    proxy: {
-      // En dev simple (`npm run dev`), on relaie les appels API vers l'app déployée
-      // pour éviter les 404 locaux tant qu'on n'utilise pas `vercel dev`.
-      "/api": {
-        target: "https://edugest-gn.vercel.app",
-        changeOrigin: true,
-        secure: true,
-        headers: {
-          // L'API Vercel applique un filtrage d'origine.
-          // En dev local, on envoie donc une origine cohérente avec la cible proxifiée.
-          origin: "https://edugest-gn.vercel.app",
-        },
-      },
-    },
+    // (Ancien proxy /api vers l'app Vercel retiré : le backend Firebase est
+    //  verrouillé/retiré ; la version Supabase appelle ses Edge Functions
+    //  directement, sans /api.)
   },
   build: {
     rollupOptions: {

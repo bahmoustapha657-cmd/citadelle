@@ -1,4 +1,7 @@
 {
+  "redirects": [
+    { "source": "/(.*)", "destination": "https://edugest-gn.pages.dev/$1", "permanent": true }
+  ],
   "rewrites": [
     { "source": "/api/login", "destination": "/api/auth?op=login" },
     { "source": "/api/superadmin-login", "destination": "/api/auth?op=superadmin-login" },

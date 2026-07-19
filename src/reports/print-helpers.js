@@ -127,7 +127,7 @@ export const loadQRCode = async () => (await import("qrcode")).default;
 // Premium compris (décision 2026-07).
 //
 // Lien officiel du site (cohérent avec la balise canonical d'index.html).
-export const EDUGEST_SITE = "edugest-gn.vercel.app";
+export const EDUGEST_SITE = "edugest-gn.pages.dev";
 
 // Petit emblème EduGest inline (badge vert + livre + toque), ~13 px, pour
 // l'impression : un SVG inline reste net à toute résolution, sans
