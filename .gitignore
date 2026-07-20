@@ -18,6 +18,10 @@ supabase/*.json
 supabase/.temp/
 *firebase-adminsdk*.json
 
+# Sauvegardes de données (données RÉELLES d'élèves/paiements — jamais sur GitHub)
+backups/
+*.backup.json
+
 # Deno (edge functions) : lockfile généré localement par `deno check`
 deno.lock
 
