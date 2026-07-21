@@ -1,0 +1,21 @@
+bucket_definitions:
+  school_data:
+    parameters: SELECT ecole_id FROM comptes WHERE user_id = request.user_id() AND role != 'parent'
+    data:
+      - SELECT * FROM eleves WHERE ecole_id = bucket.ecole_id
+      - SELECT * FROM classes WHERE ecole_id = bucket.ecole_id
+      - SELECT * FROM matieres WHERE ecole_id = bucket.ecole_id
+      - SELECT * FROM enseignants WHERE ecole_id = bucket.ecole_id
+      - SELECT * FROM emplois WHERE ecole_id = bucket.ecole_id
+      - SELECT * FROM enseignements WHERE ecole_id = bucket.ecole_id
+      - SELECT * FROM appreciations WHERE ecole_id = bucket.ecole_id
+  teacher_notes:
+    parameters: SELECT classe, section, ecole_id FROM enseignant_classes WHERE user_id = request.user_id()
+    data:
+      - SELECT * FROM notes WHERE ecole_id = bucket.ecole_id AND section = bucket.section
+      - SELECT * FROM absences WHERE ecole_id = bucket.ecole_id AND section = bucket.section
+  staff_notes:
+    parameters: SELECT ecole_id FROM comptes WHERE user_id = request.user_id() AND role IN ('superadmin','direction','admin','comptable','surveillant','primaire','college','staff')
+    data:
+      - SELECT * FROM notes WHERE ecole_id = bucket.ecole_id
+      - SELECT * FROM absences WHERE ecole_id = bucket.ecole_id
