@@ -24,6 +24,7 @@ export default function App() {
     page, setPage, paramInitialTab, setParamInitialTab,
     rechercheOuverte, setRechercheOuverte, notifOuvert, setNotifOuvert,
     profilOuvert, setProfilOuvert, aideOuverte, setAideOuverte,
+    centreAideOuvert, setCentreAideOuvert,
     schoolId, setSchoolId, onboardingOuvert, setOnboardingOuvert,
     sidebarOuvert, setSidebarOuvert,
   } = useAppUiState();
@@ -113,6 +114,7 @@ export default function App() {
         notifNonLues={notifNonLues} setNotifNonLues={setNotifNonLues} notifListe={notifListe} nowTs={nowTs}
         profilOuvert={profilOuvert} setProfilOuvert={setProfilOuvert}
         setAideOuverte={setAideOuverte} aideOuverte={aideOuverte}
+        centreAideOuvert={centreAideOuvert} setCentreAideOuvert={setCentreAideOuvert}
         verrous={verrous} schoolId={schoolId}
         paramInitialTab={paramInitialTab} setParamInitialTab={setParamInitialTab}
         estAdmin={estAdmin} onboardingOuvert={onboardingOuvert} setOnboardingOuvert={setOnboardingOuvert}
