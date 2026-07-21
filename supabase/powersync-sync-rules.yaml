@@ -51,7 +51,11 @@ bucket_definitions:
   teacher_notes:
     # Table UNIQUE (pas de JOIN — non supporté par les Parameter Queries) :
     # `user_id` est dupliqué sur enseignant_classes par powersync-scope.sql.
-    parameters: SELECT classe, section, ecole_id FROM enseignant_classes WHERE user_id = request.user_id()
+    # NB : PowerSync exige que CHAQUE paramètre soit utilisé dans `data` et
+    # n'accepte ni DISTINCT ni JOIN → on sélectionne (section, ecole_id) seuls
+    # (notes/absences n'ont pas de colonne classe) ; les lignes en double sont
+    # regroupées par PowerSync (même bucket).
+    parameters: SELECT section, ecole_id FROM enseignant_classes WHERE user_id = request.user_id()
     data:
       - SELECT * FROM notes WHERE ecole_id = bucket.ecole_id AND section = bucket.section
       - SELECT * FROM absences WHERE ecole_id = bucket.ecole_id AND section = bucket.section
@@ -59,10 +63,10 @@ bucket_definitions:
   # Staff : notes/absences de toute l'école (direction/admin/comptable/
   # surveillant/primaire/college — cf. is_staff() dans rls.sql).
   staff_notes:
-    parameters: |
-      SELECT ecole_id FROM comptes
-      WHERE user_id = request.user_id()
-        AND role IN ('superadmin','direction','admin','comptable','surveillant','primaire','college','staff')
+    # PowerSync n'accepte pas `IN (liste)` dans une Parameter Query → on
+    # exprime « personnel » comme « ni parent ni enseignant » (les enseignants
+    # passent par teacher_notes, scopé à leurs sections).
+    parameters: SELECT ecole_id FROM comptes WHERE user_id = request.user_id() AND role != 'parent' AND role != 'enseignant'
     data:
       - SELECT * FROM notes WHERE ecole_id = bucket.ecole_id
       - SELECT * FROM absences WHERE ecole_id = bucket.ecole_id
