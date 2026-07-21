@@ -29,7 +29,11 @@ bucket_definitions:
   # Tout le personnel + les enseignants voient les données de LEUR école
   # (lecture) — équivalent de auth_ecole_id() dans rls.sql.
   school_data:
-    parameters: SELECT ecole_id FROM comptes WHERE user_id = request.user_id()
+    # `role != 'parent'` : défense en profondeur — même si une session parent
+    # se connectait, elle ne synchroniserait AUCUNE donnée d'école (leur
+    # périmètre = leurs enfants, cf. vague 2). Le client exclut déjà les
+    # parents de la connexion PowerSync (use-auth-session.js).
+    parameters: SELECT ecole_id FROM comptes WHERE user_id = request.user_id() AND role != 'parent'
     data:
       - SELECT * FROM eleves WHERE ecole_id = bucket.ecole_id
       - SELECT * FROM classes WHERE ecole_id = bucket.ecole_id
@@ -58,7 +62,7 @@ bucket_definitions:
     parameters: |
       SELECT ecole_id FROM comptes
       WHERE user_id = request.user_id()
-        AND role IN ('superadmin','direction','admin','comptable','surveillant','primaire','college')
+        AND role IN ('superadmin','direction','admin','comptable','surveillant','primaire','college','staff')
     data:
       - SELECT * FROM notes WHERE ecole_id = bucket.ecole_id
       - SELECT * FROM absences WHERE ecole_id = bucket.ecole_id

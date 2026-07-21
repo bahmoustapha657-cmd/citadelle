@@ -51,7 +51,11 @@ export function useAuthSession({ setSchoolId, setPage }) {
         }
         setUtilisateur(u);
         setPage((p) => p || getPrimaryModuleForCompte(u) || getPrimaryModuleForRole(u.role));
-        connectPowerSync().catch(() => {});
+        // Mode hors ligne (vague 1 = académique) : personnel + enseignants
+        // seulement. Les PARENTS ne se connectent PAS à PowerSync — leur
+        // périmètre (leurs enfants) n'est pas couvert par les Sync Rules, qui
+        // synchroniseraient sinon toute l'école. (Portail parent = vague 2.)
+        if (u.role !== "parent") connectPowerSync().catch(() => {});
       }).then((cleanup) => {
         if (actif) unsub = cleanup; else cleanup();
       }).catch(() => {});
