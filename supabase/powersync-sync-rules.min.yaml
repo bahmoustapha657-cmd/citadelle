@@ -10,12 +10,12 @@ bucket_definitions:
       - SELECT * FROM enseignements WHERE ecole_id = bucket.ecole_id
       - SELECT * FROM appreciations WHERE ecole_id = bucket.ecole_id
   teacher_notes:
-    parameters: SELECT classe, section, ecole_id FROM enseignant_classes WHERE user_id = request.user_id()
+    parameters: SELECT section, ecole_id FROM enseignant_classes WHERE user_id = request.user_id()
     data:
       - SELECT * FROM notes WHERE ecole_id = bucket.ecole_id AND section = bucket.section
       - SELECT * FROM absences WHERE ecole_id = bucket.ecole_id AND section = bucket.section
   staff_notes:
-    parameters: SELECT ecole_id FROM comptes WHERE user_id = request.user_id() AND role IN ('superadmin','direction','admin','comptable','surveillant','primaire','college','staff')
+    parameters: SELECT ecole_id FROM comptes WHERE user_id = request.user_id() AND role != 'parent' AND role != 'enseignant'
     data:
       - SELECT * FROM notes WHERE ecole_id = bucket.ecole_id
       - SELECT * FROM absences WHERE ecole_id = bucket.ecole_id
