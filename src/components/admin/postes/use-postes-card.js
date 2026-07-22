@@ -18,13 +18,13 @@ export function usePostesCard({ schoolId, peutGererRoles, comptes, refreshCompte
 
   const recharger = useCallback(async () => {
     try {
-      setPostes(await chargerPostes());
+      setPostes(await chargerPostes(schoolId));
     } catch (e) {
       toast(e.message || "Chargement des postes impossible.", "error");
     } finally {
       setChargementPostes(false);
     }
-  }, [toast]);
+  }, [toast, schoolId]);
 
   useEffect(() => { recharger(); }, [recharger]);
 

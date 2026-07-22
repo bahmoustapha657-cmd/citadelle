@@ -6,6 +6,7 @@
 // contourne jamais.
 import { UpdateType } from "@powersync/web";
 import { getSupabase } from "../../supabaseClient";
+import { parseJsonCols } from "./tables";
 
 const POWERSYNC_URL = String(import.meta.env.VITE_POWERSYNC_URL || "").trim();
 
@@ -32,12 +33,14 @@ export class SupabaseConnector {
     const sb = getSupabase();
     try {
       for (const op of transaction.crud) {
-        const record = { ...op.opData, id: op.id };
+        // Les colonnes jsonb Postgres vivent en TEXT côté SQLite : re-parser
+        // avant l'envoi, sinon PostgREST stockerait une CHAÎNE dans le jsonb.
+        const record = parseJsonCols(op.table, { ...op.opData, id: op.id });
         if (op.op === UpdateType.PUT) {
           const { error } = await sb.from(op.table).upsert(record);
           if (error) throw error;
         } else if (op.op === UpdateType.PATCH) {
-          const { error } = await sb.from(op.table).update(op.opData).eq("id", op.id);
+          const { error } = await sb.from(op.table).update(parseJsonCols(op.table, op.opData)).eq("id", op.id);
           if (error) throw error;
         } else if (op.op === UpdateType.DELETE) {
           const { error } = await sb.from(op.table).delete().eq("id", op.id);

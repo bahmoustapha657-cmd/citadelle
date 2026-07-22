@@ -9,6 +9,9 @@ bucket_definitions:
       - SELECT * FROM emplois WHERE ecole_id = bucket.ecole_id
       - SELECT * FROM enseignements WHERE ecole_id = bucket.ecole_id
       - SELECT * FROM appreciations WHERE ecole_id = bucket.ecole_id
+      - SELECT * FROM ecoles WHERE id = bucket.ecole_id
+      - SELECT * FROM annonces WHERE ecole_id = bucket.ecole_id
+      - SELECT * FROM postes WHERE ecole_id = bucket.ecole_id
   teacher_notes:
     parameters: SELECT section, ecole_id FROM enseignant_classes WHERE user_id = request.user_id()
     data:
@@ -19,3 +22,40 @@ bucket_definitions:
     data:
       - SELECT * FROM notes WHERE ecole_id = bucket.ecole_id
       - SELECT * FROM absences WHERE ecole_id = bucket.ecole_id
+  compta_data:
+    parameters: SELECT ecole_id FROM comptes WHERE user_id = request.user_id() AND perm_compta = true
+    data:
+      - SELECT * FROM recettes WHERE ecole_id = bucket.ecole_id
+      - SELECT * FROM depenses WHERE ecole_id = bucket.ecole_id
+      - SELECT * FROM versements WHERE ecole_id = bucket.ecole_id
+      - SELECT * FROM bons WHERE ecole_id = bucket.ecole_id
+      - SELECT * FROM personnel WHERE ecole_id = bucket.ecole_id
+      - SELECT * FROM salaires WHERE ecole_id = bucket.ecole_id
+      - SELECT * FROM tarifs WHERE ecole_id = bucket.ecole_id
+  calendrier_data:
+    parameters: SELECT ecole_id FROM comptes WHERE user_id = request.user_id() AND perm_calendrier = true
+    data:
+      - SELECT * FROM evenements WHERE ecole_id = bucket.ecole_id
+  examens_data:
+    parameters: SELECT ecole_id FROM comptes WHERE user_id = request.user_id() AND perm_examens = true
+    data:
+      - SELECT * FROM examens WHERE ecole_id = bucket.ecole_id
+      - SELECT * FROM livrets WHERE ecole_id = bucket.ecole_id
+      - SELECT * FROM honneurs WHERE ecole_id = bucket.ecole_id
+  messages_data:
+    parameters: SELECT ecole_id FROM comptes WHERE user_id = request.user_id() AND perm_messages = true
+    data:
+      - SELECT * FROM messages WHERE ecole_id = bucket.ecole_id
+  fondation_data:
+    parameters: SELECT ecole_id FROM comptes WHERE user_id = request.user_id() AND perm_fondation = true
+    data:
+      - SELECT * FROM membres WHERE ecole_id = bucket.ecole_id
+      - SELECT * FROM documents WHERE ecole_id = bucket.ecole_id
+  historique_data:
+    parameters: SELECT ecole_id FROM comptes WHERE user_id = request.user_id() AND perm_historique = true
+    data:
+      - SELECT * FROM historique WHERE ecole_id = bucket.ecole_id
+  admin_data:
+    parameters: SELECT ecole_id FROM comptes WHERE user_id = request.user_id() AND perm_admin_panel = true
+    data:
+      - SELECT * FROM comptes WHERE ecole_id = bucket.ecole_id

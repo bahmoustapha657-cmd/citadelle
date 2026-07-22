@@ -4,6 +4,7 @@
 // - changement de SON propre mot de passe : direct (auth.updateUser).
 // - role_settings de l'école : direct (update ecoles, RLS staff).
 import { getSupabase } from "../supabaseClient";
+import { powerSyncConfigured } from "./powersync/tables";
 
 async function invoke(body, messageEchec) {
   const sb = getSupabase();
@@ -61,8 +62,26 @@ async function ecoleIdDepuisCode(sb, schoolCode) {
 }
 
 // Postes de l'école + nombre de comptes rattachés à chacun.
-export async function chargerPostes() {
+// Mode hors ligne : lecture du miroir local d'abord (frais — PowerSync
+// streame en continu), repli réseau si la première sync n'a pas fini.
+export async function chargerPostes(schoolCode) {
   const sb = getSupabase();
+  if (powerSyncConfigured && schoolCode) {
+    try {
+      const ecoleId = localStorage.getItem(`LC_ecole_id_${schoolCode}`);
+      if (ecoleId) {
+        const { lirePostesLocal } = await import("./powersync/local-data");
+        const locaux = await lirePostesLocal(ecoleId);
+        if (locaux.length) {
+          return locaux.map((p) => ({
+            id: p.id, cle: p.cle, label: p.label, systeme: !!p.systeme, actif: !!p.actif,
+            responsable: p.responsable || "",
+            permissions: p.permissions || {}, nbComptes: p.nb_comptes ?? 0,
+          }));
+        }
+      }
+    } catch { /* miroir pas encore prêt → réseau */ }
+  }
   const { data, error } = await sb.from("postes")
     .select("*, comptes(count)")
     .order("systeme", { ascending: false })

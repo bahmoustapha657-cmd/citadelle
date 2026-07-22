@@ -94,10 +94,7 @@ export async function chargerCollection(schoolCode, nomCollection, { annee } = {
 }
 
 // Info école (branding + plan) → objet camelCase prêt pour mergeSchoolInfo.
-export async function chargerEcole(schoolCode) {
-  const sb = getSupabase();
-  const { data } = await sb.from("ecoles").select("*").eq("code", schoolCode).maybeSingle();
-  if (!data) return null;
+function ecoleVersInfo(data) {
   const x = data.extra || {};
   return {
     ...x,
@@ -109,6 +106,22 @@ export async function chargerEcole(schoolCode) {
     plan: data.plan, planExpiry: data.plan_expiry, modeleBulletin: data.modele_bulletin,
     roleSettings: data.role_settings, legal: data.legal, verrous: x.verrous,
   };
+}
+
+export async function chargerEcole(schoolCode) {
+  // Miroir local d'abord (frais : PowerSync streame en continu) ; repli
+  // réseau si la première sync n'a pas encore livré la ligne.
+  if (horsLigne("ecoles")) {
+    try {
+      const { lireEcoleLocale } = await localData();
+      const locale = await lireEcoleLocale(schoolCode);
+      if (locale) return ecoleVersInfo(locale);
+    } catch { /* miroir pas encore prêt → réseau */ }
+  }
+  const sb = getSupabase();
+  const { data } = await sb.from("ecoles").select("*").eq("code", schoolCode).maybeSingle();
+  if (!data) return null;
+  return ecoleVersInfo(data);
 }
 
 // Sauvegarde des Paramètres de l'école côté Supabase : les champs qui ont une
