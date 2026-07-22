@@ -7,7 +7,8 @@
 import { getPowerSync } from "./client";
 import { parseJsonCols, stringifyJsonCols } from "./tables";
 
-const ANNEE_TABLES_LOCAL = new Set(["notes"]);
+// Doit rester aligné sur ANNEE_TABLES (data-supabase.js).
+const ANNEE_TABLES_LOCAL = new Set(["notes", "recettes", "depenses", "versements", "bons"]);
 
 export async function lireLocal(table, { ecoleId, section, annee }) {
   const ps = getPowerSync();
@@ -62,4 +63,27 @@ export async function lireUneLocal(table, id) {
   const ps = getPowerSync();
   const row = await ps.getOptional(`SELECT * FROM ${table} WHERE id = ?`, [id]);
   return row ? parseJsonCols(table, row) : null;
+}
+
+// ── Lecteurs dédiés (tables sans colonne ecole_id ou à forme spéciale) ──────
+
+// Fiche école par code (branding/plan/verrous) — miroir de chargerEcole.
+export async function lireEcoleLocale(code) {
+  const ps = getPowerSync();
+  const row = await ps.getOptional("SELECT * FROM ecoles WHERE code = ?", [code]);
+  return row ? parseJsonCols("ecoles", row) : null;
+}
+
+// Postes de l'école + nb de comptes rattachés — miroir de chargerPostes.
+// (comptes n'est synchronisé que pour les porteurs d'admin_panel — les seuls
+// à ouvrir ce panneau ; pour les autres le count vaut 0 sans conséquence.)
+export async function lirePostesLocal(ecoleId) {
+  const ps = getPowerSync();
+  const rows = await ps.getAll(
+    `SELECT p.*, (SELECT count(*) FROM comptes c WHERE c.poste_id = p.id) AS nb_comptes
+       FROM postes p WHERE p.ecole_id = ?
+       ORDER BY p.systeme DESC, p.label`,
+    [ecoleId],
+  );
+  return rows.map((r) => parseJsonCols("postes", r));
 }

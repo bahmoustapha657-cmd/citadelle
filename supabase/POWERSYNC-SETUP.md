@@ -1,86 +1,80 @@
-# Mode hors ligne (PowerSync) — runbook de mise en service
+# Mode hors ligne (PowerSync) — runbook
 
-Le **code est prêt** (client, connecteur, schéma local, statut de sync) et les
-**Sync Rules** sont écrites (`powersync-sync-rules.yaml`). Il ne reste que la
-mise en place de l'instance PowerSync Cloud et sa connexion à Supabase — les
-étapes ci‑dessous, à faire **une seule fois**. Tant que `VITE_POWERSYNC_URL`
-est vide, le hors‑ligne est simplement **désactivé** (l'app tourne normalement
-en ligne).
+L'instance PowerSync Cloud est **en service** (vague 1 académique déployée le
+2026-07-22). Ce document décrit la **mise à niveau « hors ligne TOTAL »**
+(tous les modules du personnel, sauf portail parent) et, en annexe, la mise en
+service initiale.
 
-Périmètre « vague 1 » = **académique** (élèves, classes, matières, enseignants,
-emplois, enseignements, notes, absences, appréciations). Réservé au personnel
-et aux enseignants ; les parents ne se connectent pas à PowerSync.
+Périmètre « hors ligne total » :
+- **Académique** (tout le personnel + enseignants) : élèves, classes,
+  matières, enseignants, emplois, enseignements, appréciations, notes,
+  absences (+ fiche école, annonces, postes).
+- **Par module, selon les permissions du poste** : Comptabilité (recettes,
+  dépenses, versements, bons, personnel, salaires, tarifs), Calendrier
+  (événements), Examens (examens, livrets, honneurs), Messages Parents,
+  Fondation (membres, documents), Historique, Comptes (lecture, AdminPanel).
+- **Restent en ligne** : portail parent (vague ultérieure), messagerie
+  interne, création de comptes / reset mdp (Edge Functions), sauvegarde des
+  Paramètres de l'école, superadmin.
 
 ---
 
-## 1. Côté Supabase (SQL Editor)
+## Mise à niveau « hors ligne total » (à faire UNE fois, dans CET ordre)
 
-**a. Portée enseignant** (si pas déjà fait) — après `teacher-security.sql` :
-```
-\i powersync-scope.sql        (ou coller le contenu de supabase/powersync-scope.sql)
-```
+⚠️ **Le front ne doit être redéployé QU'APRÈS les 3 étapes ci‑dessous**,
+sinon les modules non-académiques liraient un miroir local vide.
 
-**b. Publication de réplication logique** — indique à PowerSync quelles tables
-répliquer. Coller et exécuter :
+**1. Supabase → SQL Editor** — colonnes de permissions dénormalisées :
+coller et exécuter `supabase/powersync-perms.sql` (idempotent ; le SELECT
+final montre la répartition perm_* par rôle — vérifier que direction a tout).
+
+**2. Supabase → SQL Editor** — étendre la publication :
 ```sql
+drop publication if exists powersync;
 create publication powersync for table
   eleves, classes, matieres, enseignants, emplois, enseignements,
-  notes, absences, appreciations, comptes, enseignant_classes;
+  notes, absences, appreciations, comptes, enseignant_classes,
+  ecoles, annonces, postes, recettes, depenses, versements, bons,
+  personnel, salaires, tarifs, evenements, examens, livrets,
+  honneurs, messages, membres, documents, historique;
 ```
-(`comptes` et `enseignant_classes` servent aux *Parameter Queries* côté serveur
-PowerSync ; elles ne sont PAS envoyées aux appareils — seules les requêtes
-`data:` des Sync Rules atteignent les clients.)
 
-**c. Chaîne de connexion** : Supabase → **Settings → Database → Connection
-string** → onglet **URI**. Notez l'hôte, le port **5432** (connexion directe)
-et le **mot de passe** de la base (celui défini à la création du projet).
+**3. PowerSync dashboard → Sync Rules** : remplacer tout par le contenu de
+`supabase/powersync-sync-rules.min.yaml` (version sans commentaires, collage
+sûr) → **Validate** → **Deploy**. Attendre que l'instance repasse « Active ».
 
-**d. Secret JWT** (pour que PowerSync valide les jetons de session) : Supabase →
-**Settings → API → JWT Settings → JWT Secret**. Copiez‑le.
+**4. Redéployer le front** : `npm run deploy:pages`.
 
----
-
-## 2. Côté PowerSync Cloud (dashboard, powersync.com)
-
-1. **Create instance** (région proche, ex. Europe).
-2. **Connections → Add connection → Postgres/Supabase** : collez l'URI de 1c,
-   renseignez le mot de passe. Laissez le nom de publication = **`powersync`**.
-   Cliquez **Test connection** → doit être vert.
-3. **Sync Rules** : ouvrez l'éditeur, **remplacez tout** par le contenu de
-   `supabase/powersync-sync-rules.yaml`, puis **Validate** (doit passer sans
-   erreur).
-4. **Client Auth** : type **Supabase** (ou « Custom / JWT »), collez le **JWT
-   Secret** de 1d. (PowerSync valide ainsi l'`access_token` de la session — cf.
-   `connector.js`, aucune auth séparée.)
-5. **Deploy** (Validate & Deploy). Attendez que l'instance passe « Active ».
-6. Copiez l'**URL de l'instance** (Instance → General, forme
-   `https://xxxxx.powersync.journeyapps.com`).
+**Vérification** : se connecter (direction) → ouvrir Comptabilité et
+Calendrier → couper le réseau → les données restent, la saisie d'une recette
+ou d'un événement passe → rétablir → badge de sync puis remontée.
 
 ---
 
-## 3. Activer côté app
+## Annexe — mise en service initiale (déjà faite)
 
-1. Dans `.env.supabase`, renseigner :
-   ```
-   VITE_POWERSYNC_URL=https://xxxxx.powersync.journeyapps.com
-   ```
-2. Redéployer : `npm run deploy:pages`.
-3. Vérifier : se connecter (compte du personnel ou enseignant) → l'app
-   télécharge les données ; couper le réseau → la saisie de notes/absences
-   reste possible ; rétablir → la file remonte (badge « notes en attente »).
+1. **Supabase SQL Editor** : `rls.sql` → `teacher-security.sql` →
+   `postes.sql` → `powersync-scope.sql` (user_id sur enseignant_classes)
+   → `powersync-perms.sql`.
+2. **Chaîne de connexion** : Settings → Database → Connection string → URI,
+   port **5432** (direct, pas le pooler 6543) + mot de passe de la base.
+3. **Secret JWT** : Settings → API → JWT Settings → JWT Secret.
+4. **PowerSync Cloud** : Create instance → Connections (URI + mdp, publication
+   `powersync`, Test connection vert) → Sync Rules (coller le .min.yaml,
+   Validate) → Client Auth (Supabase / JWT Secret) → Deploy.
+5. **App** : `VITE_POWERSYNC_URL=https://xxxxx.powersync.journeyapps.com`
+   dans `.env.supabase` → `npm run deploy:pages`.
 
----
+## Pièges connus
 
-## Pièges connus (cause du blocage au Validate/Deploy)
-
-- **Réplication logique indisponible** : sur les tiers Supabase très restreints,
-  le slot de réplication peut manquer. Vérifier Database → Replication.
-- **Connexion refusée** : utiliser le port **5432** (connexion directe), pas le
-  pooler 6543, et le bon mot de passe de base.
-- **Sync Rules invalides** : ne pas modifier la structure du YAML ; les
-  *Parameter Queries* n'acceptent **qu'une seule table** (pas de JOIN) — c'est
-  pourquoi `enseignant_classes.user_id` est dupliqué (étape 1a).
-- **Auth** : sans le bon JWT Secret, les clients sont rejetés (401) même si
-  l'instance est déployée.
-
-Une fois l'instance « Active » et l'URL renseignée, plus rien à coder.
+- **Collage YAML** : coller la version `.min.yaml` (les commentaires
+  multi-lignes cassent l'indentation → « All mapping items must start at the
+  same column »).
+- **Parameter Queries** : une seule table, pas de JOIN, pas de `IN (liste)`,
+  pas de DISTINCT, pas de jsonb — d'où `enseignant_classes.user_id`
+  (powersync-scope.sql) et les colonnes `perm_*` (powersync-perms.sql).
+- **Publication** : après tout `drop/create publication`, PowerSync reprend
+  un snapshot initial des nouvelles tables (quelques minutes).
+- **Auth** : sans le bon JWT Secret, les clients sont rejetés (401).
+- **Webview/preview** : le SharedWorker PowerSync n'y tourne pas
+  (`connected:false` trompeur) — tester dans un vrai Chrome.

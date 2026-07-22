@@ -8,11 +8,22 @@ import { isSupabase } from "../../backend";
 import { sAbonnerAuxPush as sAbonnerSupabase, envoyerPush as envoyerPushSupabase } from "../../backend/push-supabase";
 
 // Journalise une action (best-effort, jamais bloquant).
+// Mode Supabase : table `historique` via ajouterDoc — passe par le miroir
+// local hors ligne (l'écriture est mise en file et remonte à la reconnexion).
+// L'ancien chemin écrivait TOUJOURS dans Firestore, même côté Supabase → le
+// journal restait muet depuis la migration.
 export function logActionDoc(action, details = "", auteur = "") {
   try {
     const sid = localStorage.getItem("LC_schoolId");
     if (!sid) return; // jamais de fallback vers une école par défaut
-    addDoc(collection(db, "ecoles", sid, "historique"), { action, details, auteur, date: Date.now() }).catch(() => {});
+    const item = { action, details, auteur, date: Date.now() };
+    if (isSupabase) {
+      import("../../backend/data-supabase")
+        .then(({ ajouterDoc }) => ajouterDoc(sid, "historique", item))
+        .catch(() => {});
+      return;
+    }
+    addDoc(collection(db, "ecoles", sid, "historique"), item).catch(() => {});
   } catch {
     // Logging is best-effort only.
   }
@@ -23,9 +34,15 @@ export function logActionDoc(action, details = "", auteur = "") {
 // refus (seule la Direction peut modifier le doc école).
 // Ancien design corrigé : doc global config/annee partagé entre TOUTES les
 // écoles et réservé au superadmin → l'écriture échouait en silence.
+// Mode Supabase : ecoles.extra.anneeScolaire (l'ancien chemin écrivait dans
+// Firestore même côté Supabase — l'année ne se partageait pas entre postes).
 export function persisterAnnee(schoolId, val) {
   localStorage.setItem("LC_annee", val);
   if (!schoolId || schoolId === "superadmin") return Promise.resolve();
+  if (isSupabase) {
+    return import("../../backend/data-supabase")
+      .then(({ sauverParametresEcole }) => sauverParametresEcole(schoolId, { anneeScolaire: val }));
+  }
   return setDoc(doc(db, "ecoles", schoolId), { anneeScolaire: val }, { merge: true });
 }
 
