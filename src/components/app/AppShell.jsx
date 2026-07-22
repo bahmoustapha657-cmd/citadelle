@@ -8,11 +8,21 @@ import { InstallBanner } from "./InstallBanner";
 import { Sidebar } from "./Sidebar";
 import { AppHeader } from "./AppHeader";
 import { PageRouter } from "./PageRouter";
+import { ModuleHorsLignePlaceholder } from "./ModuleHorsLignePlaceholder";
 import { AppShellOverlays } from "./app-shell/AppShellOverlays";
+import { isSupabase } from "../../backend";
+import { powerSyncConfigured, moduleDisponibleHorsLigne } from "../../backend/powersync/tables";
 
 // Coquille de l'application après authentification : toasts, recherche globale,
 // bannière d'installation, sidebar, en-tête, routeur de pages et modales/dropdowns.
 export function AppShell(p) {
+  // Mode hors ligne (vague 1) : sans réseau, un module non couvert par le
+  // miroir local enchaînerait des requêtes Supabase en échec → on affiche un
+  // état « indisponible hors ligne » au lieu de monter le module. Sans effet
+  // en ligne, en mode Firebase (cache Firestore) ou si PowerSync est désactivé.
+  const bloqueHorsLigne = isSupabase && powerSyncConfigured
+    && p.estHorsLigne && !moduleDisponibleHorsLigne(p.page);
+
   return (
     <>
       <GlobalStyles />
@@ -69,15 +79,21 @@ export function AppShell(p) {
           )}
           <div style={{ flex: 1, overflowY: "auto" }}>
             <PageErrorBoundary key={p.page}>
-              <Suspense fallback={<PageFallback />}>
-                <PageRouter
-                  page={p.page} annee={p.annee} setAnnee={p.setAnnee} verrous={p.verrous}
-                  schoolId={p.schoolId} utilisateur={p.utilisateur} readOnly={p.readOnly}
-                  permissions={p.permissions} roleEffectif={p.roleEffectif}
-                  schoolInfo={p.schoolInfo} paramInitialTab={p.paramInitialTab}
-                  setParamInitialTab={p.setParamInitialTab} setPage={p.setPage} deconnecter={p.deconnecter}
+              {bloqueHorsLigne ? (
+                <ModuleHorsLignePlaceholder
+                  page={p.page} modulesVisibles={p.modulesVisibles} setPage={p.setPage}
                 />
-              </Suspense>
+              ) : (
+                <Suspense fallback={<PageFallback />}>
+                  <PageRouter
+                    page={p.page} annee={p.annee} setAnnee={p.setAnnee} verrous={p.verrous}
+                    schoolId={p.schoolId} utilisateur={p.utilisateur} readOnly={p.readOnly}
+                    permissions={p.permissions} roleEffectif={p.roleEffectif}
+                    schoolInfo={p.schoolInfo} paramInitialTab={p.paramInitialTab}
+                    setParamInitialTab={p.setParamInitialTab} setPage={p.setPage} deconnecter={p.deconnecter}
+                  />
+                </Suspense>
+              )}
             </PageErrorBoundary>
           </div>
         </main>

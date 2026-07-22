@@ -4,9 +4,24 @@ import { db } from "../firebaseDb";
 import { signOutCurrentUser, watchAuthState } from "../firebaseAuth";
 import { isSupabase } from "../backend";
 import { watchAuthState as watchAuthStateSupabase } from "../backend/auth-supabase";
-import { powerSyncConfigured } from "../backend/powersync/tables";
+import { powerSyncConfigured, moduleDisponibleHorsLigne } from "../backend/powersync/tables";
 import { getPrimaryModuleForRole } from "../constants";
-import { getPrimaryModuleForCompte } from "../../shared/postes-config.js";
+import { getPrimaryModuleForCompte, getOfflineModuleForCompte } from "../../shared/postes-config.js";
+
+// Page d'atterrissage : module principal habituel, SAUF si l'app démarre sans
+// réseau et que ce module n'est pas utilisable hors ligne — dans ce cas on
+// bascule sur un module académique accessible (élèves/notes) pour éviter
+// d'ouvrir un écran voué aux erreurs réseau (mode hors ligne, vague 1).
+function choisirPageInitiale(u) {
+  const principal = getPrimaryModuleForCompte(u) || getPrimaryModuleForRole(u.role);
+  if (
+    powerSyncConfigured && u.role !== "parent"
+    && !navigator.onLine && !moduleDisponibleHorsLigne(principal)
+  ) {
+    return getOfflineModuleForCompte(u) || principal;
+  }
+  return principal;
+}
 
 // `import()` dynamique + garde `powerSyncConfigured` : évite de charger
 // @powersync/web/wa-sqlite tant que VITE_POWERSYNC_URL n'est pas renseigné
@@ -50,7 +65,7 @@ export function useAuthSession({ setSchoolId, setPage }) {
           localStorage.setItem("LC_schoolId", u.schoolId);
         }
         setUtilisateur(u);
-        setPage((p) => p || getPrimaryModuleForCompte(u) || getPrimaryModuleForRole(u.role));
+        setPage((p) => p || choisirPageInitiale(u));
         // Mode hors ligne (vague 1 = académique) : personnel + enseignants
         // seulement. Les PARENTS ne se connectent PAS à PowerSync — leur
         // périmètre (leurs enfants) n'est pas couvert par les Sync Rules, qui

@@ -20,6 +20,19 @@ export function estCouvertHorsLigne(table) {
   return TABLES_HORS_LIGNE.has(table);
 }
 
+// Modules (pages) utilisables SANS réseau : ceux dont les lectures se limitent
+// aux tables miroir ci-dessus. Le personnel académique (Dir. Primaire /
+// Secondaire) et le portail enseignant lisent élèves/notes/absences… tous
+// synchronisés. Les autres (Comptes & Postes, Comptabilité, Paramètres,
+// Calendrier, Examens, Messages…) tapent des tables non couvertes et doivent
+// afficher un état « indisponible hors ligne » plutôt que d'enchaîner des
+// requêtes réseau vouées à l'échec.
+export const MODULES_HORS_LIGNE = new Set(["primaire", "secondaire", "portail_enseignant"]);
+
+export function moduleDisponibleHorsLigne(page) {
+  return MODULES_HORS_LIGNE.has(page);
+}
+
 // Colonnes jsonb (Postgres) → stockées en TEXT côté SQLite local ; ce module
 // est la SEULE frontière qui (dé)sérialise, pour que collection-map.js
 // (transformRow/toRow) reste inchangé et identique en ligne/hors ligne.

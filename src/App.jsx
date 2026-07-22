@@ -2,6 +2,8 @@ import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { SchoolContext, SCHOOL_INFO_DEFAUT } from "./contexts/SchoolContext";
 import { calcMoisAnnee, calcMoisSalaire, getModulesForRole } from "./constants";
+import { isSupabase } from "./backend";
+import { ROLES_HORS_POSTES, getSessionPermissions, readableModules } from "../shared/postes-config.js";
 import { usePwaState } from "./hooks/use-pwa-state";
 import { usePowerSyncStatus } from "./hooks/use-powersync-status";
 import { useSchoolData } from "./hooks/use-school-data";
@@ -70,9 +72,17 @@ export default function App() {
     utilisateur, setRechercheOuverte, setAideOuverte, setNotifOuvert, setProfilOuvert,
   });
 
+  // Garde-fou : si la page courante n'est pas un module du compte, on rabat
+  // sur son premier module. En mode Supabase (postes flexibles), la référence
+  // est la carte de permissions du poste — MÊME source que la sidebar
+  // (compute-permissions). getModulesForRole (rôle enum) sous-évaluait les
+  // modules des comptes à poste (role_settings vide ⇒ seuls les modules
+  // requis) et éjectait la direction des pages académiques.
   useEffect(() => {
     if (!utilisateur) return;
-    const modulesCourants = getModulesForRole(utilisateur.role, schoolInfo);
+    const modulesCourants = isSupabase && !ROLES_HORS_POSTES.includes(utilisateur.role)
+      ? readableModules(getSessionPermissions(utilisateur, schoolInfo))
+      : getModulesForRole(utilisateur.role, schoolInfo);
     const fallbackPage = modulesCourants[0] || null;
     if (fallbackPage && !modulesCourants.includes(page)) {
       setPage(fallbackPage);
