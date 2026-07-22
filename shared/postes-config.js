@@ -110,3 +110,13 @@ export function getPrimaryModuleForCompte(compte = {}, schoolInfo = {}) {
   if (ROLES_HORS_POSTES.includes(compte.role)) return null;
   return readableModules(getSessionPermissions(compte, schoolInfo))[0] || null;
 }
+
+// Premier module ACADÉMIQUE lisible par le compte (élèves/notes/absences —
+// utilisables hors ligne). Sert à choisir la page d'atterrissage quand l'app
+// démarre sans réseau, pour ne pas tomber sur un module réseau (Comptes &
+// Postes, Compta…). null si le compte n'a aucun accès académique.
+export function getOfflineModuleForCompte(compte = {}, schoolInfo = {}) {
+  if (compte.role === "enseignant") return "portail_enseignant";
+  const lisibles = readableModules(getSessionPermissions(compte, schoolInfo));
+  return lisibles.find((moduleId) => moduleId === "primaire" || moduleId === "secondaire") || null;
+}
