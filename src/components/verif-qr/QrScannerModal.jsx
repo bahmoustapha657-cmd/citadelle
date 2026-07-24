@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import jsQR from "jsqr";
 import { Modale, Btn } from "../ui";
+import { getCameraErrorMessage } from "../camera-capture/camera-errors";
 import { decryptQrPayload, parseQrPayload, schoolSecret } from "../../reports/qr-crypto";
 
 // Scanner de vérification des QR codes EduGest (réservé à la direction). Les QR
@@ -45,9 +46,32 @@ export function QrScannerModal({ schoolInfo = {}, fermer }) {
     setEtat("resultat");
   };
 
+  // Ouvre la caméra en dégradant les contraintes : caméra arrière SOUHAITÉE
+  // (`ideal`, pas `exact`) puis n'importe quelle caméra. Un poste fixe n'a
+  // souvent qu'une webcam frontale : exiger `environment` y faisait échouer
+  // l'ouverture, alors que la prise de photo (même stratégie de repli)
+  // fonctionnait — d'où un scanner cassé sur PC uniquement.
+  const ouvrirCamera = async () => {
+    const contraintes = [
+      { video: { facingMode: { ideal: "environment" } }, audio: false },
+      { video: true, audio: false },
+    ];
+    let derniereErreur = null;
+    for (const config of contraintes) {
+      try {
+        return await navigator.mediaDevices.getUserMedia(config);
+      } catch (e) {
+        derniereErreur = e;
+        // Refus explicite de l'utilisateur : inutile de réessayer.
+        if (e?.name === "NotAllowedError" || e?.name === "PermissionDeniedError") break;
+      }
+    }
+    throw derniereErreur;
+  };
+
   const demarrer = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      const stream = await ouvrirCamera();
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -70,9 +94,12 @@ export function QrScannerModal({ schoolInfo = {}, fermer }) {
         rafRef.current = requestAnimationFrame(boucle);
       };
       rafRef.current = requestAnimationFrame(boucle);
-    } catch {
+    } catch (e) {
       setEtat("erreur");
-      setMessage("Caméra indisponible. Autorisez l'accès ou importez une photo du QR.");
+      // Message précis (même diagnostic que la prise de photo) : « accès
+      // refusé », « aucune caméra », « déjà utilisée »… Le générique
+      // précédent envoyait tout le monde chercher une autorisation.
+      setMessage(`${getCameraErrorMessage(e)} Vous pouvez aussi importer une photo du QR.`);
     }
   };
 
