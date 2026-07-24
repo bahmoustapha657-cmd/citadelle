@@ -46,7 +46,11 @@ export function useSchoolData({ schoolId, utilisateur }) {
       applyBrandingColors("#0A1628", "#00C48C");
     };
     const appliquerDonneesEcole = (d) => {
-      setSchoolInfo(mergeSchoolInfo(d));
+      // `code` : identifiant immuable de l'école, garanti présent dans
+      // schoolInfo (Supabase le renvoie ; côté Firestore le document ne le
+      // porte pas, mais schoolId EST ce code). Il sert de secret stable au
+      // chiffrement des QR des documents imprimés — cf. src/reports/qr-crypto.js.
+      setSchoolInfo(mergeSchoolInfo({ ...d, code: d.code || schoolId }));
       setMonnaie(d.monnaie || SCHOOL_INFO_DEFAUT.monnaie);
       setVerrous(d.verrous || DEFAULT_VERROUS);
       applyBrandingColors(d.couleur1, d.couleur2);

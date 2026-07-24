@@ -98,6 +98,11 @@ function ecoleVersInfo(data) {
   const x = data.extra || {};
   return {
     ...x,
+    // `code` (immuable) est exposé exprès : c'est le secret de chiffrement des
+    // QR des documents imprimés (cf. src/reports/qr-crypto.js). Sans lui, le
+    // secret retombait sur le NOM de l'école — un renommage rendait alors
+    // illisibles tous les bulletins/reçus/fiches déjà imprimés.
+    code: data.code,
     nom: data.nom, logo: data.logo, couleur1: data.couleur1, couleur2: data.couleur2,
     // La colonne `devise` porte la MAXIME de l'école (héritage Firebase, cf.
     // migration) ; la monnaie vit dans extra.monnaie. L'ancien mapping
