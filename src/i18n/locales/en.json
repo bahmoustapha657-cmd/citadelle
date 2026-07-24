@@ -441,6 +441,7 @@
     "rowNumber": "No.",
     "class": "Class",
     "dateOfBirth": "Date of birth",
+    "filiation": "Parents",
     "compositionResults": "Evaluation results",
     "studentsHeader": "Students",
     "averagesBySubject": "Averages / Subjects",

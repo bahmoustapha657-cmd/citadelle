@@ -13,6 +13,11 @@
 // INACTIF tant qu'aucun secret fournisseur n'est posé → répond
 // { ok:true, method:"inactif" } sans rien envoyer (aucun risque en prod).
 //
+// ⚠️ PREMIUM : chaque message est facturé → réservé aux écoles du plan
+// Premium. Ce contrôle est l'autorité (le gating de l'UI n'est qu'un
+// confort) ; il duplique volontairement estPremiumActif de
+// shared/plan-features.js (Deno ne partage pas ce module) — garder alignés.
+//
 // Déploiement :  supabase functions deploy notify
 // Secrets WhatsApp (Meta Cloud API) :
 //   supabase secrets set WHATSAPP_TOKEN="EAAG..." WHATSAPP_PHONE_ID="123..." \
@@ -39,6 +44,15 @@ const SMS_SENDER = Deno.env.get("SMS_SENDER") ?? "EduGest";
 
 const SMS_ACTIF = Boolean(SMS_API_URL && SMS_API_KEY);
 const WA_ACTIF = Boolean(WHATSAPP_TOKEN && WHATSAPP_PHONE_ID);
+
+// ── Premium (miroir de shared/plan-features.js) ─────────────────────────────
+const PLANS_PREMIUM = ["premium"];
+const GRACE_MS = 3 * 86400000;
+function estPremiumActif(plan: string | null, planExpiry: number | null): boolean {
+  if (!plan || !PLANS_PREMIUM.includes(plan)) return false;
+  if (!planExpiry) return true;
+  return Date.now() < Number(planExpiry) + GRACE_MS;
+}
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -181,8 +195,13 @@ Deno.serve(async (req) => {
     if (!WA_ACTIF && !SMS_ACTIF) return json({ ok: true, method: "inactif" });
 
     const { data: ec } = await admin.from("ecoles")
-      .select("id, nom, extra").eq("code", String(schoolId).toLowerCase()).maybeSingle();
+      .select("id, nom, extra, plan, plan_expiry").eq("code", String(schoolId).toLowerCase()).maybeSingle();
     if (!ec) return json({ error: "École introuvable." }, 404);
+
+    // Premium : chaque SMS/WhatsApp est facturé → plan Premium exigé.
+    if (!estPremiumActif((ec.plan as string) ?? null, (ec.plan_expiry as number) ?? null)) {
+      return json({ ok: true, method: "non_premium" });
+    }
 
     // Réglages de l'école : le déclencheur doit être activé (opt-in) + heures.
     const prefs = (ec.extra?.notifications ?? {}) as Charge;

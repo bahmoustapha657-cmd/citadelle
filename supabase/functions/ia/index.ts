@@ -5,6 +5,12 @@
 // (personnel pédagogique → génération d'appréciation de bulletin). La clé
 // Anthropic reste côté serveur. Modèle : claude-opus-4-8.
 //
+// ⚠️ PREMIUM : `assistant_appreciation` est facturé au jeton → réservé aux
+// écoles du plan Premium. Ce contrôle est l'autorité (le gating de l'UI n'est
+// qu'un confort) : il duplique volontairement estPremiumActif de
+// shared/plan-features.js (Deno ne partage pas ce module) — garder les deux
+// alignés. Le superadmin n'est pas soumis à cette règle.
+//
 // Déploiement : supabase functions deploy ia
 //   supabase secrets set ANTHROPIC_API_KEY="sk-ant-..."   (ANTHROPIC_MODEL optionnel)
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -15,7 +21,17 @@ const SERVICE_ROLE = Deno.env.get("SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY")!;
 const MODEL = Deno.env.get("ANTHROPIC_MODEL") ?? "claude-opus-4-8";
 
-const ROLES_APPRECIATION = new Set(["direction", "admin", "primaire", "college", "enseignant"]);
+const ROLES_APPRECIATION = new Set(["direction", "admin", "primaire", "college", "enseignant", "staff"]);
+
+// ── Premium (miroir de shared/plan-features.js) ─────────────────────────────
+const PLANS_PREMIUM = ["premium"];
+const GRACE_MS = 3 * 86400000;
+const MESSAGE_PREMIUM = "Cette fonctionnalité est réservée au plan Premium.";
+function estPremiumActif(plan: string | null, planExpiry: number | null): boolean {
+  if (!plan || !PLANS_PREMIUM.includes(plan)) return false;
+  if (!planExpiry) return true;
+  return Date.now() < Number(planExpiry) + GRACE_MS;
+}
 const MODES: Record<string, string> = {
   support: "Rédige une réponse de support claire, calme et utile, avec des étapes concrètes.",
   annonce: "Rédige une annonce officielle courte et professionnelle pour les écoles.",
@@ -67,7 +83,7 @@ Deno.serve(async (req) => {
     const jwt = (req.headers.get("Authorization") || "").replace("Bearer ", "").trim();
     const { data: { user } } = await admin.auth.getUser(jwt);
     if (!user) return json({ error: "Non authentifié." }, 401);
-    const { data: compte } = await admin.from("comptes").select("role").eq("user_id", user.id).maybeSingle();
+    const { data: compte } = await admin.from("comptes").select("role, ecole_id").eq("user_id", user.id).maybeSingle();
     if (!compte) return json({ error: "Compte introuvable." }, 403);
 
     const { action, payload } = await req.json().catch(() => ({}));
@@ -79,6 +95,12 @@ Deno.serve(async (req) => {
       promptText = promptSuperadmin(payload); maxTokens = 700;
     } else if (action === "assistant_appreciation") {
       if (!ROLES_APPRECIATION.has(compte.role)) return json({ error: "Droits insuffisants." }, 403);
+      // Premium : la génération est facturée au jeton → plan Premium exigé.
+      const { data: ec } = await admin.from("ecoles")
+        .select("plan, plan_expiry").eq("id", compte.ecole_id).maybeSingle();
+      if (!estPremiumActif(ec?.plan ?? null, ec?.plan_expiry ?? null)) {
+        return json({ error: MESSAGE_PREMIUM, premium: true }, 402);
+      }
       promptText = promptAppreciation(payload || {}); maxTokens = 320;
     } else {
       return json({ error: "Action inconnue." }, 400);
