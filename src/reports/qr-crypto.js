@@ -10,10 +10,36 @@
 const PEPPER = "EduGest-QR-v1";
 const PREFIX = "EQR1.";
 
-// Secret stable de l'école (mêmes valeurs à l'impression et au scan, via le
-// même schoolInfo du contexte).
+// Secrets candidats de l'école, du PLUS STABLE au moins stable.
+//
+// `code` (le code école, immuable — c'est la clé d'identification de l'école
+// partout dans l'app) vient en tête : c'est lui qui sert à CHIFFRER. Les
+// suivants ne servent qu'à DÉCHIFFRER, pour rester compatible avec les
+// documents DÉJÀ IMPRIMÉS : jusqu'au 2026-07-24, ni Firebase ni Supabase
+// n'exposaient `code`/`id`/`schoolId` dans schoolInfo, et le secret retombait
+// donc sur le NOM de l'école — un renommage (accent corrigé, changement de
+// dénomination) rendait alors illisibles tous les QR déjà en circulation.
+//
+// À NE PAS FAIRE ÉVOLUER À LA LÉGÈRE : le secret doit rester stable dans le
+// temps, et toute valeur retirée de cette liste rend définitivement illisibles
+// les documents imprimés avec elle. On n'y normalise donc rien (ni trim, ni
+// casse, ni accents) : la chaîne doit être reproduite à l'octet près.
+export function schoolSecretCandidates(schoolInfo = {}) {
+  const candidats = [schoolInfo.code, schoolInfo.id, schoolInfo.schoolId, schoolInfo.nom, "edugest"];
+  const vus = new Set();
+  const liste = [];
+  candidats.forEach((v) => {
+    const s = v === undefined || v === null ? "" : String(v);
+    if (!s || vus.has(s)) return;
+    vus.add(s);
+    liste.push(s);
+  });
+  return liste;
+}
+
+// Secret utilisé à l'IMPRESSION : le plus stable disponible.
 export function schoolSecret(schoolInfo = {}) {
-  return String(schoolInfo.id || schoolInfo.code || schoolInfo.schoolId || schoolInfo.nom || "edugest");
+  return schoolSecretCandidates(schoolInfo)[0];
 }
 
 function b64urlEncode(bytes) {
@@ -55,19 +81,33 @@ export async function encryptQrPayload(text, secret) {
 }
 
 // Déchiffre un jeton EQR1. → texte, ou null si ce n'est pas un QR EduGest
-// chiffré ou si le secret ne correspond pas (autre école / falsification).
+// chiffré ou si aucun secret ne correspond (autre école / falsification).
+//
+// `secret` accepte une LISTE de secrets candidats (cf. schoolSecretCandidates) :
+// on les essaie dans l'ordre, le premier qui déchiffre gagne. C'est ce qui rend
+// le scanner tolérant aux renommages d'école et aux documents anciens, imprimés
+// avec un secret qui n'est plus celui du chiffrement. Aucun risque de faux
+// positif : AES-GCM est authentifié, un mauvais secret échoue toujours.
 export async function decryptQrPayload(token, secret) {
   if (typeof token !== "string" || !token.startsWith(PREFIX)) return null;
+  let iv;
+  let ct;
   try {
     const combined = b64urlDecode(token.slice(PREFIX.length));
-    const iv = combined.slice(0, 12);
-    const ct = combined.slice(12);
-    const key = await deriveKey(secret);
-    const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ct);
-    return new TextDecoder().decode(pt);
+    iv = combined.slice(0, 12);
+    ct = combined.slice(12);
   } catch {
-    return null;
+    return null; // jeton tronqué / base64 invalide
   }
+  const secrets = Array.isArray(secret) ? secret : [secret];
+  for (const s of secrets) {
+    try {
+      const key = await deriveKey(s);
+      const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ct);
+      return new TextDecoder().decode(pt);
+    } catch { /* secret suivant */ }
+  }
+  return null;
 }
 
 // Parse une charge utile "clé:valeur|clé:valeur" en objet (pour l'affichage scanner).

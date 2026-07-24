@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import jsQR from "jsqr";
 import { Modale, Btn } from "../ui";
 import { getCameraErrorMessage } from "../camera-capture/camera-errors";
-import { decryptQrPayload, parseQrPayload, schoolSecret } from "../../reports/qr-crypto";
+import { decryptQrPayload, parseQrPayload, schoolSecretCandidates } from "../../reports/qr-crypto";
 
 // Scanner de vérification des QR codes EduGest (réservé à la direction). Les QR
 // des documents (bulletins, reçus, fiches de paie) sont chiffrés avec le secret
@@ -22,7 +22,10 @@ export function QrScannerModal({ schoolInfo = {}, fermer }) {
   const [etat, setEtat] = useState("init"); // init | scan | resultat | erreur
   const [resultat, setResultat] = useState(null); // { ok, champs }
   const [message, setMessage] = useState("");
-  const secret = schoolSecret(schoolInfo);
+  // Plusieurs secrets candidats plutôt qu'un seul : les documents déjà imprimés
+  // l'ont été avec le secret en vigueur à l'époque (longtemps le NOM de
+  // l'école). On reste ainsi lisible après un renommage. Cf. qr-crypto.js.
+  const secrets = schoolSecretCandidates(schoolInfo);
 
   const stop = () => {
     if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
@@ -36,7 +39,7 @@ export function QrScannerModal({ schoolInfo = {}, fermer }) {
 
   const traiter = async (raw) => {
     stop();
-    const clair = await decryptQrPayload(raw, secret);
+    const clair = await decryptQrPayload(raw, secrets);
     if (!clair) {
       setResultat({ ok: false });
     } else {
