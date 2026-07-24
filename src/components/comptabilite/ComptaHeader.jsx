@@ -1,10 +1,17 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { C } from "../../constants";
-import { Badge, LectureSeule } from "../ui";
+import { Badge, Btn, LectureSeule } from "../ui";
+import { QrScannerModal } from "../verif-qr/QrScannerModal";
 
-// En-tête du module Comptabilité : logo, titre et sélecteur d'année.
+// En-tête du module Comptabilité : logo, titre, vérification de QR et
+// sélecteur d'année. Le scanner est aussi ici (et pas seulement dans
+// Primaire/Secondaire → Aperçu) : c'est la comptabilité qui reçoit les REÇUS
+// de paiement présentés par les familles et doit pouvoir en vérifier
+// l'authenticité.
 export function ComptaHeader({ c, readOnly }) {
   const { t } = useTranslation();
+  const [scanQr, setScanQr] = useState(false);
   return (
     <>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18, flexWrap: "wrap" }}>
@@ -14,6 +21,7 @@ export function ComptaHeader({ c, readOnly }) {
           <p style={{ margin: 0, fontSize: 12, color: C.green, fontWeight: 600 }}>{t("accounting.subtitle")}</p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Btn sm v="ghost" onClick={() => setScanQr(true)}>🔍 Vérifier un QR</Btn>
           <label style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>{t("common.yearViewed")} :</label>
           <select value={c.anneeConsultee} onChange={(e) => c.setAnneeConsultee(e.target.value)}
             style={{ padding: "6px 10px", borderRadius: 8, border: `1px solid ${c.enModeArchive ? "#f59e0b" : "#cbd5e1"}`, fontSize: 13, fontWeight: 700,
@@ -24,6 +32,7 @@ export function ComptaHeader({ c, readOnly }) {
         </div>
       </div>
       {readOnly && <LectureSeule />}
+      {scanQr && <QrScannerModal schoolInfo={c.schoolInfo} fermer={() => setScanQr(false)} />}
     </>
   );
 }
