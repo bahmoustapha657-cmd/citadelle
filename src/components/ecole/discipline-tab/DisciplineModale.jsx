@@ -1,5 +1,6 @@
 import { today } from "../../../constants";
 import { Btn, Input, Modale, Selec, Textarea } from "../../ui";
+import { notifierParents } from "../../../backend/notify-supabase";
 
 // Modale d'enregistrement d'un événement disciplinaire (+ push parents).
 export function DisciplineModale({ form, setForm, chg, eleves, ajAbs, setModal, envoyerPush }) {
@@ -36,6 +37,12 @@ export function DisciplineModale({ form, setForm, chg, eleves, ajAbs, setModal, 
             `${abs.eleveNom||"Votre enfant"} — ${abs.type||"Absence"} du ${abs.date}${abs.motif?` : ${abs.motif}`:""}`,
             "/absences"
           );
+          // Notification SMS/WhatsApp au tuteur (best-effort, inactive si non
+          // configurée). Uniquement pour Absence/Retard (pas les sanctions).
+          if(abs.type==="Absence"||abs.type==="Retard"){
+            const el=eleves.find(ev=>`${ev.nom} ${ev.prenom}`===abs.eleveNom);
+            if(el?._id) notifierParents("absence",{ eleveId:el._id, data:{ nomEleve:abs.eleveNom, date:abs.date } });
+          }
         }}>Enregistrer</Btn>
       </div>
     </Modale>

@@ -2,6 +2,7 @@ import { useState, useContext } from "react";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { useFirestore } from "../../hooks/useFirestore";
 import { C } from "../../constants";
+import { notifierParents } from "../../backend/notify-supabase";
 
 // Logique de la liaison École–Famille : regroupement des messages en
 // conversations, lecture/réponse et publication d'annonces.
@@ -61,7 +62,14 @@ export function useMessagesParents() {
 
   const publierAnnonce = () => {
     if (!formAnn.titre.trim() || !formAnn.corps.trim()) { toast("Titre et contenu requis.", "warning"); return; }
-    ajAnn({ ...formAnn, auteur: schoolInfo.nom || "École", date: Date.now() });
+    const date = Date.now();
+    ajAnn({ ...formAnn, auteur: schoolInfo.nom || "École", date });
+    // Diffusion SMS/WhatsApp aux tuteurs (best-effort ; le serveur ne diffuse
+    // que si l'école a activé les notifications d'annonces). annonceId stable
+    // (titre+date) pour l'anti-doublon en cas de double-clic.
+    notifierParents("annonce", {
+      data: { annonceId: `${formAnn.titre.trim()}-${date}`, titre: formAnn.titre.trim(), corps: formAnn.corps.trim() },
+    });
     setFormAnn({ titre: "", corps: "", important: false, publique: false });
     setModal(null);
   };

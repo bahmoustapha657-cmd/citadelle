@@ -7,6 +7,7 @@
 
 import { fmt, initMens } from "../../constants";
 import { sumBonsForSalary } from "../../salary-utils";
+import { notifierParents } from "../../backend/notify-supabase";
 
 // Marque un frais annexe comme payé/impayé sur un élève. Deux formes :
 //   • legacy (inscription, « autre ») : drapeaux dédiés payKey/dateKey ;
@@ -88,6 +89,11 @@ export async function toggleMens(_id, mois, mensActuels, mensDatesActuels, nomEl
     envoyerPush(["parent"],"✅ Paiement enregistré",`Mensualité ${mois} de ${nomEleve||"votre enfant"} confirmée.`,"/paiements");
   } else {
     envoyerPush(["parent"],"⚠️ Rappel de paiement",`La mensualité ${mois} de ${nomEleve||"votre enfant"} est marquée impayée.`,"/paiements");
+  }
+  // Notification SMS/WhatsApp au tuteur (best-effort, inactive si non configurée).
+  // Seul l'encaissement notifie ; le décochage (impayé) reste un push interne.
+  if(!estPaye){
+    notifierParents("paiement", { eleveId: _id, data: { nomEleve, mois, paye: true } });
   }
 }
 
