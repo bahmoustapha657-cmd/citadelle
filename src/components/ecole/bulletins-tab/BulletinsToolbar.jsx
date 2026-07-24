@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useContext } from "react";
 import { C } from "../../../constants";
+import { SchoolContext } from "../../../contexts/SchoolContext";
 import { Btn } from "../../ui";
 import { imprimerBulletinsGroupes, imprimerFicheCompositions, PERIODE_ANNEE } from "../../../reports";
 
@@ -14,6 +15,11 @@ export function BulletinsToolbar({
   // Format de la fiche de résultats : "simple" (moyenne générale seule) ou
   // "matieres" (une colonne de moyenne par matière, imprimée en paysage).
   const [formatFiche, setFormatFiche] = useState("simple");
+  // Génération d'appréciations : facturée au jeton → plan Premium (le serveur
+  // refuse aussi). Bouton laissé VISIBLE mais verrouillé : l'école doit voir
+  // ce que le Premium apporte.
+  const { planInfo } = useContext(SchoolContext);
+  const estPremium = !!planInfo?.estPremium;
   return (
     <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16,flexWrap:"wrap"}}>
       <strong style={{fontSize:14,color:C.blueDark,flex:1}}>{t("school.bulletins.title")}</strong>
@@ -52,11 +58,15 @@ export function BulletinsToolbar({
         {t("school.bulletins.allBulletins")} {filtreClasse!=="all"?`— ${filtreClasse}`:""}
       </Btn>
       {canGenererLot && batchAppr && (
-        <Btn v="vert" sm onClick={batchAppr.lancer} disabled={batchAppr.running}
-          title="Génère par IA une appréciation pour chaque élève affiché qui n'en a pas encore (période sélectionnée)">
+        <Btn v="vert" sm onClick={batchAppr.lancer} disabled={batchAppr.running || !estPremium}
+          title={estPremium
+            ? "Génère par IA une appréciation pour chaque élève affiché qui n'en a pas encore (période sélectionnée)"
+            : "Fonctionnalité incluse dans le plan Premium."}>
           {batchAppr.running
             ? `✨ Génération… ${batchAppr.progress.done}/${batchAppr.progress.total}`
-            : "✨ Générer les appréciations (IA)"}
+            : estPremium
+              ? "✨ Générer les appréciations (IA)"
+              : "🔒 Générer les appréciations (Premium)"}
         </Btn>
       )}
     </div>

@@ -97,6 +97,7 @@ export function buildBulletinPageHTML({
           <div style="font-size:14px;font-weight:800;color:${c1};margin-bottom:2px">${eleve.nom || ""} ${eleve.prenom || ""}</div>
           <div><strong>${tr("reports.class")} :</strong> ${eleve.classe || "—"} &nbsp;·&nbsp; <strong>${tr("school.bulletins.matricule")} :</strong> ${eleve.ien || "—"}</div>
           <div><strong>${tr("reports.dateOfBirth")} :</strong> ${eleve.dateNaissance || "—"}${eleve.lieuNaissance ? ` — ${eleve.lieuNaissance}` : ""}</div>
+          ${eleve.filiation ? `<div><strong>${tr("reports.filiation")} :</strong> ${eleve.filiation}</div>` : ""}
         </div>
       </div>
 

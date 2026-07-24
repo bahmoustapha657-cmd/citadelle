@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useContext } from "react";
 import { C } from "../../../constants";
+import { SchoolContext } from "../../../contexts/SchoolContext";
 import { Btn, Modale, Textarea } from "../../ui";
 import { genererAppreciation } from "../../../backend/ia";
 
@@ -9,6 +10,10 @@ export function AppreciationModale({
 }) {
   const [genLoading, setGenLoading] = useState(false);
   const [genErr, setGenErr] = useState("");
+  // Génération facturée au jeton → réservée au plan Premium (le serveur
+  // refuse de toute façon ; ici on évite un aller-retour et une erreur brute).
+  const { planInfo } = useContext(SchoolContext);
+  const estPremium = !!planInfo?.estPremium;
 
   const genererIA = async () => {
     setGenLoading(true);
@@ -37,9 +42,13 @@ export function AppreciationModale({
       <div style={{marginBottom:12,padding:"10px 14px",background:"#f0f7ff",borderRadius:8,fontSize:12,color:C.blueDark}}>
         {t("school.bulletins.appreciationHelp")}
       </div>
-      <div style={{display:"flex",justifyContent:"flex-end",marginBottom:6}}>
-        <Btn v="vert" sm onClick={genererIA} disabled={genLoading}>
-          {genLoading ? "✨ Génération…" : "✨ Générer avec l'IA"}
+      <div style={{display:"flex",justifyContent:"flex-end",alignItems:"center",gap:8,marginBottom:6}}>
+        {!estPremium && (
+          <span style={{fontSize:11,color:"#92400e"}}>Réservé au plan Premium</span>
+        )}
+        <Btn v="vert" sm onClick={genererIA} disabled={genLoading || !estPremium}
+          title={estPremium ? "" : "La génération d'appréciations est incluse dans le plan Premium."}>
+          {genLoading ? "✨ Génération…" : estPremium ? "✨ Générer avec l'IA" : "🔒 Générer avec l'IA"}
         </Btn>
       </div>
       <Textarea label={t("school.bulletins.appreciation")} rows={4} value={form.texte||""} onChange={chg("texte")} placeholder="Ex : Trimestre satisfaisant. Doit poursuivre ses efforts en mathématiques." maxLength={500}/>

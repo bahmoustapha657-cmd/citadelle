@@ -1,5 +1,6 @@
 // Calcul pur du plan d'abonnement (freemium + période de grâce 3 jours).
 import { PLANS } from "../../constants";
+import { estPremiumActif } from "../../../shared/plan-features.js";
 
 const GRACE_MS = 3 * 86400000; // 3 jours de grâce après expiration
 
@@ -26,6 +27,10 @@ export function computePlanInfo({ schoolInfoState, nowTs, totalElevesActifs, t }
     eleveLimit,
     totalElevesActifs,
     peutAjouterEleve: totalElevesActifs < eleveLimit,
+    // Fonctions facturées à l'usage (notifications SMS/WhatsApp, génération
+    // d'appréciations). Sert uniquement à griser l'UI : l'autorité reste le
+    // contrôle serveur des Edge Functions `notify` et `ia`.
+    estPremium: estPremiumActif({ plan: planCourant, planExpiry, now }),
     planLabel: t(`plans.${planCourant}`, PLANS[planCourant]?.label ?? "Gratuit"),
   };
 }
