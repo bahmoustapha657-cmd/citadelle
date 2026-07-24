@@ -1,7 +1,9 @@
+import { useMemo } from "react";
 import { C } from "../../../constants";
 import { Badge, Btn, Card, TD, TR, Vide } from "../../ui";
 import { imprimerBulletin } from "../../../reports";
 import { getGeneralAverage, getSubjectAverage } from "../../../note-utils";
+import { indexerNotesParEleve, notesDeLEleve } from "../../../note-index";
 
 // Table des bulletins : moyenne générale, mention, accès à l'appréciation et
 // impression individuelle (bloquée si frais impayés).
@@ -13,6 +15,12 @@ export function BulletinsTable({
   // en mode « fin d'année » (pour l'affichage des moyennes et le contexte IA).
   // `notes` reste les notes réelles (impression, qui gère l'annuel elle-même).
   const notesAff = notesStats || notes;
+  // Index eleveId → notes de la période : construit une seule fois par jeu de
+  // données au lieu d'un filter complet par élève (cf. src/note-index.js).
+  const notesParEleve = useMemo(
+    () => indexerNotesParEleve(notesAff, periodeB),
+    [notesAff, periodeB],
+  );
   if (elevesB.length===0) return <Vide icone="📊" msg={t("school.bulletins.noStudent")}/>;
   return (
     <Card><div style={{maxHeight:"calc(100vh - 320px)",minHeight:280,overflow:"auto"}}>
@@ -31,7 +39,7 @@ export function BulletinsTable({
           );
         })()}
       <tbody>{elevesB.map((e,rowIdx)=>{
-        const notesE=notesAff.filter(n=>n.eleveId===e._id&&n.periode===periodeB);
+        const notesE=notesDeLEleve(notesParEleve,e._id);
         const moyenneGenerale = getGeneralAverage(notesE, matieresForClasse(e.classe), e.classe);
         const moyGene=moyenneGenerale!=null?moyenneGenerale.toFixed(2):"—";
         const mention=moyGene==="—"?"—":Number(moyGene)>=16?"Très Bien":Number(moyGene)>=14?"Bien":Number(moyGene)>=12?"Assez Bien":Number(moyGene)>=10?"Passable":"Insuffisant";
