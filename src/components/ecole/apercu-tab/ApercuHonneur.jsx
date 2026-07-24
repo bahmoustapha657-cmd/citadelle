@@ -1,13 +1,18 @@
+import { useMemo } from "react";
 import { C } from "../../../constants";
 import { Badge, Card } from "../../ui";
 import { getGeneralAverage } from "../../../note-utils";
+import { indexerNotesParEleve, notesDeLEleve } from "../../../note-index";
 
 // Tableau d'honneur : les 5 meilleurs élèves par moyenne générale, avec
 // médailles et mention.
 export function ApercuHonneur({ eleves, notes, matieresForClasse }) {
+  // Index construit une fois plutôt qu'un filter complet par élève
+  // (cf. src/note-index.js) : le classement parcourt TOUS les élèves.
+  const notesParEleve = useMemo(() => indexerNotesParEleve(notes), [notes]);
   if (eleves.length === 0) return null;
   const classement=eleves.map(e=>{
-    const notesPeriode=notes.filter(n=>n.eleveId===e._id);
+    const notesPeriode=notesDeLEleve(notesParEleve,e._id);
     const moyenne = getGeneralAverage(notesPeriode, matieresForClasse(e.classe), e.classe);
     return {...e, moyGene:moyenne||0};
   }).filter(e=>e.moyGene>0).sort((a,b)=>b.moyGene-a.moyGene).slice(0,5);
