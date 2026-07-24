@@ -73,12 +73,18 @@ export function QrScannerModal({ schoolInfo = {}, fermer }) {
     try {
       const stream = await ouvrirCamera();
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
       setEtat("scan");
+      // <video>/<canvas> sont montés en permanence (masqués hors scan) : leurs
+      // refs sont donc déjà disponibles ici. Auparavant ils n'étaient rendus
+      // que dans l'état "scan" — le code s'exécutant avant le re-rendu de
+      // React, canvasRef.current valait null et `.getContext` levait
+      // « Cannot read properties of null », capturé par le catch qui affichait
+      // à tort « Caméra indisponible » alors que la caméra s'était bien ouverte.
+      const video = videoRef.current;
       const canvas = canvasRef.current;
+      if (!video || !canvas) throw new Error("Affichage du scanner indisponible.");
+      video.srcObject = stream;
+      await video.play();
       const ctx = canvas.getContext("2d", { willReadFrequently: true });
       const boucle = () => {
         if (!streamRef.current || !videoRef.current) return;
@@ -169,14 +175,14 @@ export function QrScannerModal({ schoolInfo = {}, fermer }) {
         </div>
       )}
 
-      {etat === "scan" && (
-        <div>
-          <video ref={videoRef} playsInline muted style={{ width: "100%", borderRadius: 10, background: "#000", aspectRatio: "1/1", objectFit: "cover" }} />
-          <canvas ref={canvasRef} style={{ display: "none" }} />
-          <p style={{ fontSize: 12, color: "#64748b", textAlign: "center", marginTop: 8 }}>Visez le QR code du document…</p>
-          <Btn v="ghost" onClick={fermerTout}>Annuler</Btn>
-        </div>
-      )}
+      {/* Toujours montés (masqués hors scan) : les refs doivent exister AVANT
+          que demarrer() n'attache le flux et ne lise le contexte 2D. */}
+      <div style={{ display: etat === "scan" ? "block" : "none" }}>
+        <video ref={videoRef} playsInline muted style={{ width: "100%", borderRadius: 10, background: "#000", aspectRatio: "1/1", objectFit: "cover" }} />
+        <p style={{ fontSize: 12, color: "#64748b", textAlign: "center", marginTop: 8 }}>Visez le QR code du document…</p>
+        <Btn v="ghost" onClick={fermerTout}>Annuler</Btn>
+      </div>
+      <canvas ref={canvasRef} style={{ display: "none" }} />
 
       {(etat === "init" || etat === "erreur") && (
         <div style={{ textAlign: "center", padding: "8px 0" }}>
