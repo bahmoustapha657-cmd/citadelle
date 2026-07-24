@@ -88,6 +88,8 @@ export function buildTabItems(canManageLifecycle) {
       desc: "Libellés et activation des périodes d'évaluation (compositions, devoirs…)." },
     { id: "matricules", label: "Matricules", icon: "🆔", groupe: "Pédagogie",
       desc: "Format et numérotation des matricules élèves." },
+    { id: "notifications", label: "Notifications", icon: "🔔", groupe: "École",
+      desc: "Alertes SMS / WhatsApp aux tuteurs : paiements, absences et annonces." },
     { id: "accueil", label: "Page publique", icon: "🌍", groupe: "Présentation",
       desc: "Site vitrine de l'école : bannière, photos, annonces, tableau d'honneur et contact." },
     { id: "affichage", label: "Affichage", icon: "🎨", groupe: "Présentation",
