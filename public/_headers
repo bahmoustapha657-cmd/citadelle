@@ -6,12 +6,19 @@
 # mode hors ligne). Sans iframe/embed tiers dans l'app → aucun impact connu ;
 # vérifier au premier build que les polices Google Fonts/Sentry se chargent
 # toujours (COEP peut bloquer une ressource cross-origin sans en-tête CORP).
+#
+# ⚠️ Permissions-Policy `camera=(self)` — NE PAS remettre `camera=()` : la
+# liste vide interdit la caméra à TOUT LE MONDE, y compris à l'app elle-même,
+# et getUserMedia échoue en NotAllowedError sans que l'utilisateur puisse rien
+# autoriser. Cela cassait la photo d'élève (CameraCapture) et le scanner QR de
+# vérification des documents (QrScannerModal). `(self)` = autorisé pour notre
+# origine uniquement, refusé à tout tiers/iframe. Idem dans vercel.json.
 /*
   Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; script-src-elem 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.powersync.journeyapps.com wss://*.powersync.journeyapps.com https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://*.ingest.sentry.io https://*.ingest.de.sentry.io https://*.ingest.us.sentry.io; frame-src 'self'; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
-  Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()
+  Permissions-Policy: geolocation=(), microphone=(), camera=(self), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()
   Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
   Cross-Origin-Opener-Policy: same-origin
   Cross-Origin-Embedder-Policy: require-corp
