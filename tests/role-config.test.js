@@ -41,7 +41,8 @@ test("comptable est strictement limité au module compta, même avec une config 
 test("surveillant : modules pedagogiques + calendrier, compte par defaut actif", () => {
   const settings = getRoleSettingsMap({});
 
-  assert.deepEqual(settings.surveillant.modules, ["primaire", "secondaire", "calendrier"]);
+  // Le surveillant général couvre aussi le préscolaire (discipline/absences).
+  assert.deepEqual(settings.surveillant.modules, ["prescolaire", "primaire", "secondaire", "calendrier"]);
   assert.equal(settings.surveillant.active, true);
   assert.equal(settings.surveillant.login, "surveillant");
   // Present dans les comptes par defaut → auto-cree par Gestion Acces.

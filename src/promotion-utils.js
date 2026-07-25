@@ -32,7 +32,13 @@ const RE_SECONDE = /^\s*(?:seconde|2nde)\s*(.*)$/i;
 const RE_PREMIERE = /^\s*(?:premi[èe]re|1\s*[èe]re)\s*(.*)$/i;
 const RE_COLLEGE_FR = /^\s*([3-6])\s*(?:ème|eme|e)\s*(.*)$/i;
 
-const SECTION_MAT_SUIVANTE = { petite: "Moyenne Section", moyenne: "Grande Section", grande: "CP" };
+// Après la Grande Section, l'élève entre au primaire — dont le premier niveau
+// dépend du système de l'école : « CP » en francophone, « 1ère Année » en
+// guinéen. Depuis que le préscolaire est une section à part (2026-07), ces
+// trois niveaux servent dans LES DEUX systèmes : sans cette distinction, une
+// école guinéenne aurait vu ses grandes sections promues en « CP ».
+const SECTION_MAT_SUIVANTE = { petite: "Moyenne Section", moyenne: "Grande Section" };
+const APRES_GRANDE_SECTION = { guineen: "1ère Année", francophone: "CP" };
 const COLLEGE_FR_SUIVANT = { 6: "5ème", 5: "4ème", 4: "3ème", 3: "Seconde" };
 
 const ordinal = (n) => (n === 1 ? "1ère" : `${n}ème`);
@@ -41,7 +47,10 @@ const avecSuffixe = (base, suffixe) => {
   return s ? `${base} ${s}` : base;
 };
 
-export function classeSuivante(classe) {
+// `systeme` (« guineen » par défaut, comme getSystemeScolaire) ne sert
+// aujourd'hui qu'à la sortie de Grande Section — le reste des cursus est
+// reconnu par motif, indépendamment du réglage de l'école.
+export function classeSuivante(classe, systeme = "guineen") {
   const c = String(classe || "").trim();
   if (!c) return undefined;
 
@@ -58,9 +67,14 @@ export function classeSuivante(classe) {
     return avecSuffixe(`${ordinal(n + 1)} Année`, annee[2]);
   }
 
-  // ── Système francophone ──
+  // ── Préscolaire (les deux systèmes) puis francophone ──
   const sectionMat = c.match(RE_SECTION_MAT);
-  if (sectionMat) return avecSuffixe(SECTION_MAT_SUIVANTE[sectionMat[1].toLowerCase()], sectionMat[2]);
+  if (sectionMat) {
+    const niveau = sectionMat[1].toLowerCase();
+    const suivante = SECTION_MAT_SUIVANTE[niveau]
+      || APRES_GRANDE_SECTION[systeme] || APRES_GRANDE_SECTION.guineen;
+    return avecSuffixe(suivante, sectionMat[2]);
+  }
 
   const cp = c.match(RE_CP);
   if (cp) return avecSuffixe("CE1", cp[1]);

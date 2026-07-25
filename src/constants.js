@@ -59,14 +59,22 @@ const DIVISIONS_NIVEAU = ["A", "B", "C", "D"];
 const genClasses = (niveaux) =>
   niveaux.flatMap((niveau) => DIVISIONS_NIVEAU.map((division) => `${niveau} ${division}`));
 
+// Le PRÉSCOLAIRE (maternelle) est une section à part entière depuis 2026-07 :
+// mêmes niveaux dans les deux systèmes (Petite / Moyenne / Grande Section).
+// Auparavant ces classes étaient rattachées au primaire (« Maternelle » côté
+// guinéen, « … Section » côté francophone) — elles en ont été retirées ici.
+const NIVEAUX_PRESCOLAIRE = ["Petite Section", "Moyenne Section", "Grande Section"];
+
 const NIVEAUX_PAR_SYSTEME = {
   guineen: {
-    primaire: ["Maternelle", "1ère Année", "2ème Année", "3ème Année", "4ème Année", "5ème Année", "6ème Année"],
+    prescolaire: NIVEAUX_PRESCOLAIRE,
+    primaire: ["1ère Année", "2ème Année", "3ème Année", "4ème Année", "5ème Année", "6ème Année"],
     college: ["7ème Année", "8ème Année", "9ème Année", "10ème Année"],
     lycee: ["11ème Année", "12ème Année", "Terminale"],
   },
   francophone: {
-    primaire: ["Petite Section", "Moyenne Section", "Grande Section", "CP", "CE1", "CE2", "CM1", "CM2"],
+    prescolaire: NIVEAUX_PRESCOLAIRE,
+    primaire: ["CP", "CE1", "CE2", "CM1", "CM2"],
     college: ["6ème", "5ème", "4ème", "3ème"],
     lycee: ["Seconde", "Première", "Terminale"],
   },
@@ -83,7 +91,7 @@ export const getSystemeScolaire = (schoolInfo = {}) =>
 // ── Sections réellement ouvertes dans l'école ───────────────────────────────
 // Une école sans lycée (ou primaire seul) le déclare dans Paramètres →
 // Identité ; l'UI (onglets Secondaire, sélecteurs) suit. Défaut : tout.
-export const SECTIONS_ECOLE = ["primaire", "college", "lycee"];
+export const SECTIONS_ECOLE = ["prescolaire", "primaire", "college", "lycee"];
 export const getSectionsActives = (schoolInfo = {}) => {
   const brut = Array.isArray(schoolInfo.sectionsActives)
     ? schoolInfo.sectionsActives.filter((s) => SECTIONS_ECOLE.includes(s)) : [];
@@ -92,6 +100,7 @@ export const getSectionsActives = (schoolInfo = {}) => {
 export const isSectionActive = (schoolInfo, section) => getSectionsActives(schoolInfo).includes(section);
 
 // Exports historiques (système guinéen) — conservés pour compat.
+export const CLASSES_PRESCOLAIRE = genClasses(NIVEAUX_PRESCOLAIRE);
 export const CLASSES_PRIMAIRE = genClasses(NIVEAUX_PAR_SYSTEME.guineen.primaire);
 export const CLASSES_COLLEGE = genClasses(NIVEAUX_PAR_SYSTEME.guineen.college);
 export const CLASSES_LYCEE = genClasses(NIVEAUX_PAR_SYSTEME.guineen.lycee);
@@ -99,7 +108,7 @@ export const CLASSES_LYCEE = genClasses(NIVEAUX_PAR_SYSTEME.guineen.lycee);
 // Toutes les classes connues, tous systèmes confondus (import Excel…).
 export const getToutesClassesConnues = () =>
   Object.values(NIVEAUX_PAR_SYSTEME).flatMap((systeme) =>
-    ["primaire", "college", "lycee"].flatMap((section) => genClasses(systeme[section])));
+    SECTIONS_ECOLE.flatMap((section) => genClasses(systeme[section])));
 
 export const MATIERES_PRIMAIRE = [
   "Calcul", "Écriture", "Lecture", "Histoire", "Géographie",
@@ -107,10 +116,19 @@ export const MATIERES_PRIMAIRE = [
   "Sciences d'Observation", "Éducation Physique",
 ].map((nom) => ({ nom, coefficient: 1 }));
 
+// Domaines d'apprentissage du préscolaire (programme de maternelle) plutôt
+// que les matières du primaire : l'évaluation reste chiffrée, mais les
+// intitulés doivent parler aux éducatrices.
+export const MATIERES_PRESCOLAIRE = [
+  "Langage et Communication", "Graphisme et Écriture", "Pré-mathématiques",
+  "Découverte du Monde", "Activités Artistiques", "Chant et Comptines",
+  "Motricité et Jeux", "Vie Collective et Autonomie",
+].map((nom) => ({ nom, coefficient: 1 }));
+
 export const TOUTES_ANNEES = Array.from({ length: 30 }, (_, index) => `${2025 + index}-${2026 + index}`);
 // Aucun montant inventé : tous les frais restent à 0 tant que l'école n'a pas
 // configuré ses tarifs (Compta → Mensualités → Tarifs par classe).
-export const MENSUALITE = { college: 0, lycee: 0, primaire: 0 };
+export const MENSUALITE = { prescolaire: 0, college: 0, lycee: 0, primaire: 0 };
 export const initMens = () => MOIS_ANNEE.reduce((accumulator, mois) => ({ ...accumulator, [mois]: "Impayé" }), {});
 
 // Détection de section par MOTIF (et non par correspondance exacte avec
@@ -124,9 +142,14 @@ export const initMens = () => MOIS_ANNEE.reduce((accumulator, mois) => ({ ...acc
 //    (Première, lycée) — le mot « Année » discrimine.
 // Repli sur les listes pour les noms hors motif.
 const RE_CLASSE_ANNEE = /^\s*(\d+)\s*(?:ère|ere|ème|eme|e)?\s*ann[ée]e\b/i;
+// Préscolaire : « Maternelle … » (ancienne nomenclature guinéenne, conservée
+// pour que les classes déjà saisies restent reconnues) et « Petite/Moyenne/
+// Grande Section ». Ces classes renvoyaient « primaire » avant que le
+// préscolaire ne devienne une section à part entière.
+const RE_CLASSE_PRESCOLAIRE = /^\s*(maternelle|(petite|moyenne|grande)\s+section|[pmg]\s*s\b)/i;
 export const getSectionForClasse = (classe = "") => {
   const c = String(classe || "");
-  if (/^\s*maternelle\b/i.test(c)) return "primaire";
+  if (RE_CLASSE_PRESCOLAIRE.test(c)) return "prescolaire";
   if (/^\s*terminale\b/i.test(c)) return "lycee";
   const m = c.match(RE_CLASSE_ANNEE);
   if (m) {
@@ -135,18 +158,21 @@ export const getSectionForClasse = (classe = "") => {
     if (n >= 11) return "lycee";
     return "college";
   }
-  // Système francophone (le motif « Année » a déjà été traité ci-dessus)
-  if (/^\s*(petite|moyenne|grande)\s+section\b/i.test(c)) return "primaire";
+  // Système francophone (le motif « Année » a déjà été traité ci-dessus ;
+  // les niveaux de maternelle le sont en tête, cf. RE_CLASSE_PRESCOLAIRE)
   if (/^\s*(cp|ce\s*[12]|cm\s*[12])\b/i.test(c)) return "primaire";
   if (/^\s*(seconde|2nde|premi[èe]re|1\s*[èe]re)\b/i.test(c)) return "lycee";
   if (/^\s*[3-6]\s*(?:ème|eme|e)\b/i.test(c)) return "college";
+  if (CLASSES_PRESCOLAIRE.includes(c)) return "prescolaire";
   if (CLASSES_PRIMAIRE.includes(c)) return "primaire";
   if (CLASSES_LYCEE.includes(c)) return "lycee";
   return "college";
 };
 
 export const getSectionLabel = (section = "college") => (
-  section === "primaire" ? "Primaire" : section === "lycee" ? "Lycée" : "Collège"
+  section === "prescolaire" ? "Préscolaire"
+    : section === "primaire" ? "Primaire"
+      : section === "lycee" ? "Lycée" : "Collège"
 );
 
 export const getSectionLabelForClasse = (classe = "") => getSectionLabel(getSectionForClasse(classe));
@@ -155,9 +181,7 @@ export const getSectionLabelForClasse = (classe = "") => getSectionLabel(getSect
 // (2e argument : id du système, ex. getSystemeScolaire(schoolInfo)).
 export const getClassesForSection = (section = "college", systeme = "guineen") => {
   const niveaux = NIVEAUX_PAR_SYSTEME[systeme] || NIVEAUX_PAR_SYSTEME.guineen;
-  return genClasses(
-    section === "primaire" ? niveaux.primaire : section === "lycee" ? niveaux.lycee : niveaux.college,
-  );
+  return genClasses(niveaux[section] || niveaux.college);
 };
 
 export const getDefaultMensualiteForClasse = (classe = "") => {
@@ -308,6 +332,7 @@ export const MODULES = [
   { id: "parametres", label: "Paramètres", icon: "🏫", desc: "Identité de l'école" },
   { id: "fondation", label: "Fondation", icon: "🏛️", desc: "Gouvernance" },
   { id: "compta", label: "Comptabilité", icon: "📊", desc: "Finances" },
+  { id: "prescolaire", label: "Préscolaire", icon: "🧸", desc: "Maternelle" },
   { id: "primaire", label: "Dir. Primaire", icon: "🎒", desc: "Primaire" },
   { id: "secondaire", label: "Secondaire", icon: "🏫", desc: "Bureau Collège" },
   { id: "calendrier", label: "Calendrier", icon: "📅", desc: "Événements scolaires" },

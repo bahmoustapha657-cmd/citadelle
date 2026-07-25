@@ -1,7 +1,7 @@
 // ══════════════════════════════════════════════════════════════
 //  Routeur de modules (mappe page → composant lazy)
 // ══════════════════════════════════════════════════════════════
-import { C, MATIERES_PRIMAIRE, getClassesForSection, getRoleLabelForSchool, getSystemeScolaire } from "../../constants";
+import { C, MATIERES_PRESCOLAIRE, MATIERES_PRIMAIRE, getClassesForSection, getRoleLabelForSchool, getSectionLabel, getSystemeScolaire } from "../../constants";
 import {
   AdminPanel, Calendrier, Comptabilite, Ecole, Fondation, GestionExamens,
   HistoriqueActions, MessagesParents, ParametresEcole, Secondaire,
@@ -25,6 +25,9 @@ export function PageRouter({
       {page==="admin_panel" && <AdminPanel annee={annee} setAnnee={setAnnee} verrous={verrous} schoolId={schoolId} userRole={userRole}/>}
       {page==="fondation"   && <Fondation readOnly={readOnly} annee={annee} userRole={userRole}/>}
       {page==="compta"      && <Comptabilite readOnly={readOnly} annee={annee} userRole={userRole} permissions={permissions} verrouOuvert={!!verrous.comptable}/>}
+      {/* Préscolaire (maternelle) : même écran que le primaire, sur les
+          collections *Prescolaire. Notes sur 10 comme au primaire. */}
+      {page==="prescolaire" && <Ecole titre={getSectionLabel("prescolaire")} couleur={C.gold} cleClasses="classesPrescolaire" cleEns="ensPrescolaire" cleNotes="notesPrescolaire" cleEleves="elevesPrescolaire" avecEns={true} userRole={userRole} permissions={permissions} annee={annee} classesPredefinies={getClassesForSection("prescolaire", getSystemeScolaire(schoolInfo))} maxNote={10} matieresPredefinies={MATIERES_PRESCOLAIRE} readOnly={readOnly} verrouOuvert={!!verrous.prescolaire}/>}
       {page==="primaire"    && <Ecole titre={getRoleLabelForSchool("primaire", schoolInfo)} couleur={C.green} cleClasses="classesPrimaire" cleEns="ensPrimaire" cleNotes="notesPrimaire" cleEleves="elevesPrimaire" avecEns={true} userRole={userRole} permissions={permissions} annee={annee} classesPredefinies={getClassesForSection("primaire", getSystemeScolaire(schoolInfo))} maxNote={10} matieresPredefinies={MATIERES_PRIMAIRE} readOnly={readOnly} verrouOuvert={!!verrous.primaire}/>}
       {page==="secondaire"  && <Secondaire userRole={userRole} permissions={permissions} annee={annee} readOnly={readOnly} verrouOuvert={!!verrous.secondaire} collegeLabel={getRoleLabelForSchool("college", schoolInfo)}/>}
       {page==="calendrier"  && <Calendrier annee={annee}/>}

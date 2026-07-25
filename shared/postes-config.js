@@ -16,7 +16,7 @@ import {
 // Modules permissibles (MODULES de constants.js, hors portails et superadmin).
 export const MODULES_PERMISSIBLES = [
   "accueil", "historique", "admin_panel", "parametres", "compta",
-  "primaire", "secondaire", "calendrier", "examens", "messages", "fondation",
+  "prescolaire", "primaire", "secondaire", "calendrier", "examens", "messages", "fondation",
 ];
 
 export const PERMISSION_LEVELS = ["lecture", "ecriture"];

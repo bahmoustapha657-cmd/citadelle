@@ -53,7 +53,11 @@ test("Suffixes personnalisés conservés tels quels", () => {
 test("Système francophone : maternelle → primaire", () => {
   assert.equal(classeSuivante("Petite Section A"), "Moyenne Section A");
   assert.equal(classeSuivante("Moyenne Section B"), "Grande Section B");
-  assert.equal(classeSuivante("Grande Section"), "CP");
+  // Sortie de Grande Section : dépend du système de l'école (le préscolaire
+  // emploie les mêmes niveaux dans les deux nomenclatures depuis 2026-07).
+  assert.equal(classeSuivante("Grande Section", "francophone"), "CP");
+  assert.equal(classeSuivante("Grande Section", "guineen"), "1ère Année");
+  assert.equal(classeSuivante("Grande Section"), "1ère Année"); // défaut = guinéen
   assert.equal(classeSuivante("CP A"), "CE1 A");
   assert.equal(classeSuivante("CE1 B"), "CE2 B");
   assert.equal(classeSuivante("CE2 A"), "CM1 A");

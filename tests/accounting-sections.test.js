@@ -20,8 +20,10 @@ test("lycee classes resolve to the lycee section — mensualité par défaut 0 (
 test("les listes prédéfinies offrent 4 divisions (A→D) par niveau", () => {
   assert.ok(CLASSES_LYCEE.includes("Terminale C"));
   assert.ok(CLASSES_LYCEE.includes("11ème Année D"));
-  assert.equal(getClassesForSection("primaire").length, 7 * 4);
+  // 6 niveaux depuis que la maternelle a sa propre section (préscolaire).
+  assert.equal(getClassesForSection("primaire").length, 6 * 4);
   assert.equal(getClassesForSection("college").length, 4 * 4);
+  assert.equal(getClassesForSection("prescolaire").length, 3 * 4);
 });
 
 test("système francophone : listes dédiées et détection de section", () => {
@@ -35,7 +37,8 @@ test("système francophone : listes dédiées et détection de section", () => {
   assert.equal(getSectionForClasse("CP A"), "primaire");
   assert.equal(getSectionForClasse("CE2 B"), "primaire");
   assert.equal(getSectionForClasse("CM2 Rouge"), "primaire");
-  assert.equal(getSectionForClasse("Grande Section A"), "primaire");
+  // La maternelle a sa propre section depuis 2026-07 (préscolaire).
+  assert.equal(getSectionForClasse("Grande Section A"), "prescolaire");
   assert.equal(getSectionForClasse("6ème A"), "college");      // sans « Année » = francophone
   assert.equal(getSectionForClasse("3ème B"), "college");
   assert.equal(getSectionForClasse("Seconde A"), "lycee");
@@ -48,8 +51,9 @@ test("système francophone : listes dédiées et détection de section", () => {
 });
 
 test("détection de section par motif — suffixes libres hors listes", () => {
-  // Primaire (niveaux 1-6 + maternelle), quel que soit le suffixe
-  assert.equal(getSectionForClasse("Maternelle Rouge"), "primaire");
+  // Préscolaire : « Maternelle … » reste reconnu (classes déjà saisies).
+  assert.equal(getSectionForClasse("Maternelle Rouge"), "prescolaire");
+  // Primaire (niveaux 1-6), quel que soit le suffixe
   assert.equal(getSectionForClasse("3ème Année E"), "primaire");
   assert.equal(getSectionForClasse("6ème Année F"), "primaire");
   // Collège (7-10)

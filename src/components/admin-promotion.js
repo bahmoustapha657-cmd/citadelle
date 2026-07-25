@@ -8,7 +8,7 @@ import { collection, doc, getDocs, writeBatch } from "firebase/firestore";
 import { db } from "../firebaseDb";
 import { isSupabase } from "../backend";
 import { chargerCollection, modifierChampDoc } from "../backend/data-supabase";
-import { getSectionForClasse } from "../constants";
+import { getSectionForClasse, getSystemeScolaire } from "../constants";
 import { getAnnualAverage, getGeneralAverage } from "../note-utils";
 import { getPeriodesForSection } from "../period-utils";
 import { classeSuivante } from "../promotion-utils";
@@ -59,7 +59,7 @@ function analyserSection(schoolInfo, sec, data, sansNotesBehavior, acc) {
     if (e.statut !== "Actif") continue;
     acc.total++;
     const classeActuelle = e.classe || "";
-    const suivante = classeSuivante(classeActuelle);
+    const suivante = classeSuivante(classeActuelle, getSystemeScolaire(schoolInfo));
     if (suivante === null) { acc.terminalistes++; continue; }
     if (suivante === undefined) {
       acc.inconnus++;
