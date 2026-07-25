@@ -9,6 +9,7 @@ export function useRechercheGlobale({ modules, onNaviguer, onFermer }) {
   const { items: elevesC } = useFirestore("elevesCollege");
   const { items: elevesP } = useFirestore("elevesPrimaire");
   const { items: elevesL } = useFirestore("elevesLycee");
+  const { items: elevesPre } = useFirestore("elevesPrescolaire");
   const { items: ensP } = useFirestore("ensPrimaire");
   const { items: ensC } = useFirestore("ensCollege");
   const { items: ensL } = useFirestore("ensLycee");
@@ -26,9 +27,10 @@ export function useRechercheGlobale({ modules, onNaviguer, onFermer }) {
     const r = [];
     modules.filter(m => m.label.toLowerCase().includes(q2) || m.desc.toLowerCase().includes(q2))
       .forEach(m => r.push({ type: "module", label: m.label, sub: m.desc, icon: m.icon, data: null, section: m.id }));
-    [...elevesC, ...elevesP, ...elevesL].filter(e =>
+    [...elevesC, ...elevesP, ...elevesL, ...elevesPre].filter(e =>
       `${e.nom} ${e.prenom} ${e.matricule || ""} ${e.classe || ""} ${e.ien || ""}`.toLowerCase().includes(q2)
     ).slice(0, 8).forEach(e => {
+      // Le préscolaire ouvre le module « primaire » (il en est un sous-onglet).
       const section = elevesC.find(x => x._id === e._id) ? "college"
         : elevesL.find(x => x._id === e._id) ? "lycee" : "primaire";
       r.push({ type: "élève", label: `${e.nom} ${e.prenom}`, sub: `${e.classe || ""} · ${e.matricule || "—"}`, icon: "🎓", data: e, section });
@@ -41,7 +43,7 @@ export function useRechercheGlobale({ modules, onNaviguer, onFermer }) {
       r.push({ type: "enseignant", label: `${e.nom}${e.prenom ? " " + e.prenom : ""}`, sub: e.matiere || "Enseignant", icon: "👨‍🏫", data: e, section });
     });
     return r;
-  }, [q2, modules, elevesC, elevesP, elevesL, ensP, ensC, ensL]);
+  }, [q2, modules, elevesC, elevesP, elevesL, elevesPre, ensP, ensC, ensL]);
 
   const executer = (res) => {
     if (!res) return;

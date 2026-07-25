@@ -41,10 +41,13 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   const { items: elevesC, chargement: cEC, ajouter: ajEC, modifier: modEC_full, supprimer: supEC, modifierChamp: modEC } = useFirestore("elevesCollege");
   const { items: elevesP, chargement: cEP, ajouter: ajEP, modifier: modEP_full, supprimer: supEP, modifierChamp: modEP } = useFirestore("elevesPrimaire");
   const { items: elevesL, chargement: cEL, ajouter: ajEL, modifier: modEL_full, supprimer: supEL, modifierChamp: modEL } = useFirestore("elevesLycee");
+  // Préscolaire : section à part entière, donc scolarité/inscriptions à part.
+  const { items: elevesPre, chargement: cEPre, ajouter: ajEPre, modifier: modEPre_full, supprimer: supEPre, modifierChamp: modEPre } = useFirestore("elevesPrescolaire");
   const { items: tarifsClasses, ajouter: ajTarif, modifier: modTarif } = useFirestore("tarifs");
   const { items: classesCollegeList, ajouter: ajClasseCollege } = useFirestore("classesCollege");
   const { items: classesPrimaireList, ajouter: ajClassePrimaire } = useFirestore("classesPrimaire");
   const { items: classesLyceeList, ajouter: ajClasseLycee } = useFirestore("classesLycee");
+  const { items: classesPrescolaireList, ajouter: ajClassePrescolaire } = useFirestore("classesPrescolaire");
   // Enseignants — création/édition de la paie depuis Compta (vue hybride)
   const { items: ensCollege, ajouter: ajEnsCol, modifier: modEnsCol, supprimer: supEnsCol } = useFirestore("ensCollege");
   const { items: ensLycee, ajouter: ajEnsLyc, modifier: modEnsLyc, supprimer: supEnsLyc } = useFirestore("ensLycee");
@@ -65,17 +68,18 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   const [filtrePrimNom, setFiltrePrimNom] = useState("");
   const [filtrePrimClasse, setFiltrePrimClasse] = useState("all");
 
-  const elevesParNiveau = { college: elevesC, lycee: elevesL, primaire: elevesP };
-  const modChampParNiveau = { college: modEC, lycee: modEL, primaire: modEP };
-  const ajoutParNiveau = { college: ajEC, lycee: ajEL, primaire: ajEP };
-  const suppressionParNiveau = { college: supEC, lycee: supEL, primaire: supEP };
-  const modifParNiveau = { college: modEC_full, lycee: modEL_full, primaire: modEP_full };
+  const elevesParNiveau = { college: elevesC, lycee: elevesL, primaire: elevesP, prescolaire: elevesPre };
+  const modChampParNiveau = { college: modEC, lycee: modEL, primaire: modEP, prescolaire: modEPre };
+  const ajoutParNiveau = { college: ajEC, lycee: ajEL, primaire: ajEP, prescolaire: ajEPre };
+  const suppressionParNiveau = { college: supEC, lycee: supEL, primaire: supEP, prescolaire: supEPre };
+  const modifParNiveau = { college: modEC_full, lycee: modEL_full, primaire: modEP_full, prescolaire: modEPre_full };
   // Wrappers : injectent les listes de classes + ajouts Firestore au helper.
   const sortAlpha = (arr) => sortAlphaEleves(arr, schoolInfo.triEleves);
   const ensureClasse = (nom, niv, dejaCreees) => {
-    const cfg = niv === "primaire" ? { classesList: classesPrimaireList, ajClasse: ajClassePrimaire }
-      : niv === "lycee" ? { classesList: classesLyceeList, ajClasse: ajClasseLycee }
-        : { classesList: classesCollegeList, ajClasse: ajClasseCollege };
+    const cfg = niv === "prescolaire" ? { classesList: classesPrescolaireList, ajClasse: ajClassePrescolaire }
+      : niv === "primaire" ? { classesList: classesPrimaireList, ajClasse: ajClassePrimaire }
+        : niv === "lycee" ? { classesList: classesLyceeList, ajClasse: ajClasseLycee }
+          : { classesList: classesCollegeList, ajClasse: ajClasseCollege };
     return ensureClasseHelper(nom, { ...cfg, dejaCreees });
   };
 
@@ -86,7 +90,7 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   const eleves = elevesParNiveau[niveau] || elevesC;
   const modEleves = modChampParNiveau[niveau] || modEC;
   const classesU = [...new Set(eleves.map((e) => e.classe))].filter(Boolean);
-  const tousElevesScolarite = [...elevesC, ...elevesL, ...elevesP];
+  const tousElevesScolarite = [...elevesC, ...elevesL, ...elevesP, ...elevesPre];
 
   const {
     getTarifConfig, getTarif, getTarifBase, getTarifRevision, getTarifAutre,
@@ -188,7 +192,7 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
     bons, ajBon, modBon, supBon,
     personnel, cPers, supPers,
     versements, cV, ajV, modV, supV,
-    elevesC, elevesP, elevesL, cEC, cEP, cEL,
+    elevesC, elevesP, elevesL, elevesPre, cEC, cEP, cEL, cEPre,
     tarifsClasses,
     ensCollege, ensLycee, ensPrimaire,
     ajEnsCol, ajEnsLyc, ajEnsPrim, modEnsCol, modEnsLyc, modEnsPrim, supEnsCol, supEnsLyc, supEnsPrim,

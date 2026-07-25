@@ -1,4 +1,4 @@
-import { fmt } from "../../constants";
+import { fmt, getSectionLabel } from "../../constants";
 
 function KPI({ c1, c2, label, value, sub, icon, color = "white", trend }) {
   return (
@@ -15,14 +15,27 @@ function KPI({ c1, c2, label, value, sub, icon, color = "white", trend }) {
 }
 
 export function KpiGrid({
-  t, c1, c2, totalEleves, elevesC, elevesL, elevesP,
-  totalEns, ensC, ensL, ensP, tauxPay, solde, totalRec, totalDep,
+  t, c1, c2, totalEleves, elevesC, elevesL, elevesP, elevesPre = [],
+  totalEns, ensC, ensL, ensP, ensPre = [], tauxPay, solde, totalRec, totalDep,
   masseSal, salMois, moisActuel, totalAbs,
 }) {
+  // Le détail n'affiche une section que si elle a des effectifs : une école
+  // sans maternelle garde exactement la même ligne qu'avant.
+  const actifs = (liste) => liste.filter((e) => e.statut === "Actif").length;
+  const detailEleves = [
+    [actifs(elevesPre), getSectionLabel("prescolaire")],
+    [actifs(elevesC), t("dashboard.secondary")],
+    [actifs(elevesL), t("dashboard.lycee")],
+    [actifs(elevesP), t("dashboard.primary")],
+  ].filter(([n], i) => n > 0 || i > 0).map(([n, label]) => `${n} ${label}`).join(" · ");
+  const detailEns = [
+    [ensPre.length, "M"], [ensC.length, "C"], [ensL.length, "L"], [ensP.length, "P"],
+  ].filter(([n], i) => n > 0 || i > 0).map(([n, s]) => `${n}${s}`).join(" · ");
+
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12, marginBottom: 24 }}>
-      <KPI c1={c1} c2={c2} label={t("dashboard.activeStudents")} value={totalEleves} icon="🎓" sub={`${elevesC.filter((e) => e.statut === "Actif").length} ${t("dashboard.secondary")} · ${elevesL.filter((e) => e.statut === "Actif").length} ${t("dashboard.lycee")} · ${elevesP.filter((e) => e.statut === "Actif").length} ${t("dashboard.primary")}`} />
-      <KPI c1={c1} c2={c2} label={t("dashboard.totalTeachers")} value={totalEns} icon="👨‍🏫" sub={`${ensC.length}C · ${ensL.length}L · ${ensP.length}P`} />
+      <KPI c1={c1} c2={c2} label={t("dashboard.activeStudents")} value={totalEleves} icon="🎓" sub={detailEleves} />
+      <KPI c1={c1} c2={c2} label={t("dashboard.totalTeachers")} value={totalEns} icon="👨‍🏫" sub={detailEns} />
       <KPI c1={c1} c2={c2} label={t("dashboard.paymentRate")} value={`${tauxPay}%`} icon="💳" color="green" sub={t("dashboard.allSections")} />
       <KPI c1={c1} c2={c2} label={t("dashboard.treasury")} value={fmt(solde)} icon="💰" color={solde >= 0 ? "green" : "white"} sub={`${fmt(totalRec)} / ${fmt(totalDep)}`} />
       <KPI c1={c1} c2={c2} label={t("dashboard.salaryTotal")} value={fmt(masseSal)} icon="📋" sub={`${salMois.length} · ${moisActuel}`} />

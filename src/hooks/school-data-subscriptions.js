@@ -22,10 +22,11 @@ export async function countMessagesNonLus(schoolId) {
   }
 }
 
-// Élèves actifs sur les 3 sections : requêtes d'AGRÉGATION (count) → ~3 lectures
-// au lieu de la collection entière. Sert à la vérification du plan.
+// Élèves actifs sur toutes les sections : requêtes d'AGRÉGATION (count) → une
+// lecture par section au lieu de la collection entière. Sert à la vérification
+// du plan : oublier le préscolaire sous-estimerait l'effectif facturable.
 export async function countElevesActifs(schoolId) {
-  const colls = ["elevesCollege", "elevesPrimaire", "elevesLycee"];
+  const colls = ["elevesPrescolaire", "elevesCollege", "elevesPrimaire", "elevesLycee"];
   try {
     const counts = await Promise.all(colls.map(async (coll) => {
       const agg = await getCountFromServer(

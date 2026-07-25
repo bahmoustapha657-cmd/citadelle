@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { C, getAnnee } from "../../constants";
+import { C, getAnnee, getSectionLabel } from "../../constants";
 import { TarifsClasses } from "../TarifsClasses";
 import { AlertesCritiques } from "./mensualites-tab/AlertesCritiques";
 import { MensualitesTable } from "./mensualites-tab/MensualitesTable";
@@ -58,6 +58,7 @@ export function MensualitesTab({
           <option value="college">{t("dashboard.secondary")}</option>
           <option value="lycee">{t("dashboard.lycee")}</option>
           <option value="primaire">{t("dashboard.primary")}</option>
+          <option value="prescolaire">{getSectionLabel("prescolaire")}</option>
         </select>
         {classesU.length > 0 && <select value={filtClasse} onChange={e => setFiltClasse(e.target.value)}
           style={{ border: "1px solid #b0c4d8", borderRadius: 7, padding: "6px 10px", fontSize: 12, background: "#fff", color: C.blueDark }}>

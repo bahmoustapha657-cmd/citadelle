@@ -13,6 +13,7 @@ export function useTransferts({ userRole }) {
   const { items: elevesC } = useFirestore("elevesCollege");
   const { items: elevesP } = useFirestore("elevesPrimaire");
   const { items: elevesL } = useFirestore("elevesLycee");
+  const { items: elevesPre } = useFirestore("elevesPrescolaire");
   const { items: tarifsClasses } = useFirestore("tarifs");
   const canEdit = !["enseignant"].includes(userRole);
 
@@ -23,7 +24,7 @@ export function useTransferts({ userRole }) {
   const [loading, setLoading] = useState(false);
   const [transfertsSortants, setTransfertsSortants] = useState([]);
 
-  const tousEleves = [...elevesC, ...elevesP, ...elevesL];
+  const tousEleves = [...elevesC, ...elevesP, ...elevesL, ...elevesPre];
   const partis = tousEleves.filter(e => ["Transféré"].includes(e.statut));
 
   const getSolde = (eleve) => getEleveSolde(eleve, moisAnnee, tarifsClasses);

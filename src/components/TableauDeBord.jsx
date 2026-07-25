@@ -31,8 +31,8 @@ function TableauDeBord({ annee, userRole, onOpenLegalSettings }) {
 
       <KpiGrid
         t={t} c1={d.c1} c2={d.c2}
-        totalEleves={d.totalEleves} elevesC={d.elevesC} elevesL={d.elevesL} elevesP={d.elevesP}
-        totalEns={d.totalEns} ensC={d.ensC} ensL={d.ensL} ensP={d.ensP}
+        totalEleves={d.totalEleves} elevesC={d.elevesC} elevesL={d.elevesL} elevesP={d.elevesP} elevesPre={d.elevesPre}
+        totalEns={d.totalEns} ensC={d.ensC} ensL={d.ensL} ensP={d.ensP} ensPre={d.ensPre}
         tauxPay={d.tauxPay} solde={d.solde} totalRec={d.totalRec} totalDep={d.totalDep}
         masseSal={d.masseSal} salMois={d.salMois} moisActuel={d.moisActuel} totalAbs={d.totalAbs}
       />

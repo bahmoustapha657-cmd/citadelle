@@ -19,9 +19,13 @@ export function useTableauDeBord() {
   const { items: elevesC, chargement: cEC } = useFirestore("elevesCollege");
   const { items: elevesP, chargement: cEP } = useFirestore("elevesPrimaire");
   const { items: elevesL, chargement: cEL } = useFirestore("elevesLycee");
+  // Préscolaire : sans lui, les effectifs du tableau de bord excluaient
+  // silencieusement toute la maternelle (97 élèves à la citadelle).
+  const { items: elevesPre, chargement: cEPre } = useFirestore("elevesPrescolaire");
   const { items: ensC } = useFirestore("ensCollege");
   const { items: ensL } = useFirestore("ensLycee");
   const { items: ensP } = useFirestore("ensPrimaire");
+  const { items: ensPre } = useFirestore("ensPrescolaire");
   const { items: recettes } = useFirestore("recettes");
   const { items: depenses } = useFirestore("depenses");
   const { items: salaires } = useFirestore("salaires");
@@ -65,17 +69,19 @@ export function useTableauDeBord() {
 
   const c1 = schoolInfo.couleur1 || C.blue;
   const c2 = schoolInfo.couleur2 || C.green;
-  const enChargement = cEC || cEP || cEL;
+  const enChargement = cEC || cEP || cEL || cEPre;
 
-  const totalEleves = elevesC.filter((e) => e.statut === "Actif").length + elevesL.filter((e) => e.statut === "Actif").length + elevesP.filter((e) => e.statut === "Actif").length;
-  const totalEns = ensC.length + ensL.length + ensP.length;
+  const actifs = (liste) => liste.filter((e) => e.statut === "Actif").length;
+  const totalEleves = actifs(elevesC) + actifs(elevesL) + actifs(elevesP) + actifs(elevesPre);
+  const totalEns = ensC.length + ensL.length + ensP.length + ensPre.length;
   const moisActuel = moisSalaire[moisSalaire.length - 1] || "";
 
   // Taux de paiement mensualités
   const tauxPayC = calcTauxPaiement(elevesC);
   const tauxPayL = calcTauxPaiement(elevesL);
   const tauxPayP = calcTauxPaiement(elevesP);
-  const tauxPay = calcTauxPaiement([...elevesC, ...elevesL, ...elevesP]);
+  const tauxPayPre = calcTauxPaiement(elevesPre);
+  const tauxPay = calcTauxPaiement([...elevesC, ...elevesL, ...elevesP, ...elevesPre]);
 
   // Finances
   const { totalRec, totalDep, solde } = computeFinances(recettes, depenses);
@@ -91,11 +97,11 @@ export function useTableauDeBord() {
   const totalAbs = absences.length + absP.length + absL.length;
 
   // Tendances mensuelles (taux paiement + absences mois par mois)
-  const dataTendance = computeTendance(moisAnnee, [...elevesC, ...elevesL, ...elevesP], [...absences, ...absP, ...absL]);
+  const dataTendance = computeTendance(moisAnnee, [...elevesC, ...elevesL, ...elevesP, ...elevesPre], [...absences, ...absP, ...absL]);
 
   return {
     schoolInfo, moisAnnee, planInfo, c1, c2, enChargement,
-    elevesC, elevesP, elevesL, ensC, ensL, ensP,
+    elevesC, elevesP, elevesL, elevesPre, ensC, ensL, ensP, ensPre, tauxPayPre,
     recettes, depenses, salaires, notesC, notesP, notesL,
     absences, absP, absL,
     moisRapport, setMoisRapport,
