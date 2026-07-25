@@ -45,13 +45,15 @@ const renommages = (() => {
 // Motif des classes de maternelle (miroir de RE_CLASSE_PRESCOLAIRE côté app).
 const EST_PRESCOLAIRE = (nom) => /^\s*(maternelle|(petite|moyenne|grande)\s+section)/i.test(nom || "");
 
-// Tables portant une colonne `section` à recaler, et leur lien à l'élève/classe.
+// Chaque table liée a sa propre structure — vérifiée en base, ne pas
+// supposer : `matieres` et `appreciations` n'ont PAS de colonne `classe`
+// (matieres porte un TABLEAU `classes`), tandis que emplois/enseignements/
+// tarifs en ont une.
 const TABLES_PAR_ELEVE = ["notes", "absences", "appreciations"];
-const TABLES_PAR_CLASSE = ["matieres", "emplois", "enseignements"];
-// `tarifs` référence la classe par son NOM mais garde `section` à null (les
-// tarifs sont résolus par nom de classe, cf. collection-map). En cas de
-// renommage il faut donc suivre le nom, SANS toucher à la section : sinon la
-// scolarité des élèves migrés devient introuvable (montant remis à 0).
+const TABLES_PAR_CLASSE = ["emplois", "enseignements"];
+// `tarifs` référence la classe par son NOM : c'est la clé fonctionnelle qui
+// porte le montant de scolarité. En cas de renommage il DOIT suivre, sinon les
+// élèves migrés se retrouvent sans tarif.
 const TABLES_RENOMMAGE_SEUL = ["tarifs"];
 
 async function pagineTout(table, colonnes, ecoleId) {
@@ -92,6 +94,15 @@ async function migrerEcole(ecole) {
     compte[t] = count || 0;
   }
 
+  // `matieres` : pas de colonne `classe` mais un TABLEAU `classes`. On ne
+  // retient que les matières explicitement rattachées à une classe de
+  // maternelle — celles sans rattachement appartiennent au primaire et ne
+  // doivent PAS bouger (rien ne permettrait de les départager).
+  const matieres = await pagineTout("matieres", "id, nom, section, classes", ecole.id);
+  const matieresCibles = matieres.filter((m) => Array.isArray(m.classes)
+    && m.classes.some((c) => EST_PRESCOLAIRE(c)));
+  compte.matieres = matieresCibles.length;
+
   const parClasse = elevesCibles.reduce((acc, e) => {
     acc[e.classe] = (acc[e.classe] || 0) + 1;
     return acc;
@@ -126,9 +137,16 @@ async function migrerEcole(ecole) {
       .eq("ecole_id", ecole.id).in("classe", nomsClasses);
     if (error) throw new Error(`${t}: ${error.message}`);
   }
+  // `matieres` : section + renommage à l'intérieur du tableau `classes`.
+  for (const mat of matieresCibles) {
+    const classesMaj = (mat.classes || []).map((c) => renommages[c] || c);
+    const { error } = await sb.from("matieres")
+      .update({ section: "prescolaire", classes: classesMaj }).eq("id", mat.id);
+    if (error) throw new Error(`matieres(${mat.nom}): ${error.message}`);
+  }
   // Renommage : le nom de classe est une clé fonctionnelle (élèves, emplois,
-  // matières, enseignements ET tarifs). Tout doit suivre, sinon la scolarité
-  // et l'emploi du temps se retrouvent orphelins.
+  // enseignements ET tarifs). Tout doit suivre, sinon la scolarité et
+  // l'emploi du temps se retrouvent orphelins.
   for (const [de, vers] of Object.entries(renommages)) {
     const { error } = await sb.from("eleves").update({ classe: vers })
       .eq("ecole_id", ecole.id).eq("classe", de);
