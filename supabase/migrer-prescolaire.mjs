@@ -7,7 +7,7 @@
 // appréciations, matières, emplois, enseignements) dont la colonne `section`
 // doit rester cohérente.
 //
-// PRÉREQUIS : exécuter supabase/prescolaire.sql AVANT (la valeur d'enum
+// PRÉREQUIS : exécuter supabase/prescolaire-1-enum.sql puis prescolaire-2-permissions.sql AVANT (la valeur d'enum
 // 'prescolaire' doit exister).
 //
 // Usage :
