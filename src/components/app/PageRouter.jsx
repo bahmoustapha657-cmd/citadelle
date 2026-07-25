@@ -27,7 +27,7 @@ export function PageRouter({
       {page==="compta"      && <Comptabilite readOnly={readOnly} annee={annee} userRole={userRole} permissions={permissions} verrouOuvert={!!verrous.comptable}/>}
       {/* Dir. Primaire = préscolaire + primaire en sous-onglets (comme
           Secondaire = collège + lycée). */}
-      {page==="primaire"    && <Primaire primaireLabel={getRoleLabelForSchool("primaire", schoolInfo)} userRole={userRole} permissions={permissions} annee={annee} readOnly={readOnly} verrouOuvert={!!verrous.primaire}/>}
+      {page==="primaire"    && <Primaire userRole={userRole} permissions={permissions} annee={annee} readOnly={readOnly} verrouOuvert={!!verrous.primaire}/>}
       {page==="secondaire"  && <Secondaire userRole={userRole} permissions={permissions} annee={annee} readOnly={readOnly} verrouOuvert={!!verrous.secondaire} collegeLabel={getRoleLabelForSchool("college", schoolInfo)}/>}
       {page==="calendrier"  && <Calendrier annee={annee}/>}
       {page==="examens"     && <GestionExamens/>}

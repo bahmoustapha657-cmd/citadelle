@@ -2,7 +2,7 @@ import React, { useContext, useState } from "react";
 import { SchoolContext } from "../contexts/SchoolContext";
 import {
   C, MATIERES_PRESCOLAIRE, MATIERES_PRIMAIRE,
-  getClassesForSection, getSystemeScolaire, isSectionActive,
+  getClassesForSection, getSectionLabel, getSystemeScolaire, isSectionActive,
 } from "../constants";
 import { Ecole } from "./Ecole";
 
@@ -13,14 +13,17 @@ import { Ecole } from "./Ecole";
 // Une école sans maternelle ferme la section dans Paramètres → Identité :
 // l'onglet disparaît (isSectionActive).
 function Primaire({
-  userRole, permissions = null, annee, readOnly = false,
-  verrouOuvert = false, primaireLabel = "Direction Primaire",
+  userRole, permissions = null, annee, readOnly = false, verrouOuvert = false,
 }) {
   const { schoolInfo } = useContext(SchoolContext);
   const systeme = getSystemeScolaire(schoolInfo);
+  // Les onglets portent le nom des SECTIONS (« Prescolaire », « Primaire »),
+  // pas le libellé du poste : celui-ci nomme une fonction et peut être
+  // personnalisé par l'école (ex. « Le Directeur »), ce qui donnait un
+  // intitulé d'onglet incompréhensible à côté de « Prescolaire ».
   const sousModules = [
-    { id: "prescolaire", label: "Prescolaire" },
-    { id: "primaire", label: primaireLabel },
+    { id: "prescolaire", label: getSectionLabel("prescolaire") },
+    { id: "primaire", label: getSectionLabel("primaire") },
   ].filter((m) => isSectionActive(schoolInfo, m.id));
   // Par défaut on ouvre le primaire (le gros des effectifs) plutôt que la
   // maternelle, sauf si l'école n'a que le préscolaire d'actif.
@@ -65,7 +68,7 @@ function Primaire({
 
       {actif === "prescolaire" && (
         <Ecole
-          titre="Prescolaire"
+          titre={getSectionLabel("prescolaire")}
           couleur={C.gold}
           cleClasses="classesPrescolaire"
           cleEns="ensPrescolaire"
@@ -85,7 +88,7 @@ function Primaire({
 
       {actif === "primaire" && (
         <Ecole
-          titre={primaireLabel}
+          titre={getSectionLabel("primaire")}
           couleur={C.green}
           cleClasses="classesPrimaire"
           cleEns="ensPrimaire"
