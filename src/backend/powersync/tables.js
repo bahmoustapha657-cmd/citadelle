@@ -38,7 +38,7 @@ export function estCouvertHorsLigne(table) {
 // soumission avec leur message d'erreur habituel.
 export const MODULES_HORS_LIGNE = new Set([
   "accueil", "historique", "admin_panel", "parametres", "compta",
-  "prescolaire", "primaire", "secondaire", "calendrier", "examens", "messages",
+  "primaire", "secondaire", "calendrier", "examens", "messages",
   "fondation", "portail_enseignant",
 ]);
 

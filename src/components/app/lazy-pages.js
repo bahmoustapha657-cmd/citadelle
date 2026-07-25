@@ -21,6 +21,8 @@ export const AdminPanel = lazyNamedExport(() => import("../AdminPanel"), "AdminP
 export const Fondation = lazyNamedExport(() => import("../Fondation"), "Fondation");
 export const Comptabilite = lazyNamedExport(() => import("../Comptabilite"), "Comptabilite");
 export const Ecole = lazyNamedExport(() => import("../Ecole"), "Ecole");
+// Module « Dir. Primaire » = préscolaire + primaire en sous-onglets.
+export const Primaire = lazyNamedExport(() => import("../Primaire"), "Primaire");
 export const Secondaire = lazyNamedExport(() => import("../Secondaire"), "Secondaire");
 export const Calendrier = lazyNamedExport(() => import("../Calendrier"), "Calendrier");
 export const GestionExamens = lazyNamedExport(() => import("../GestionExamens"), "GestionExamens");

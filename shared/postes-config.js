@@ -14,9 +14,11 @@ import {
 } from "./role-config.js";
 
 // Modules permissibles (MODULES de constants.js, hors portails et superadmin).
+// Le préscolaire n'y figure pas : c'est un sous-onglet du module `primaire`
+// (comme le lycée pour `secondaire`), donc gouverné par sa permission.
 export const MODULES_PERMISSIBLES = [
   "accueil", "historique", "admin_panel", "parametres", "compta",
-  "prescolaire", "primaire", "secondaire", "calendrier", "examens", "messages", "fondation",
+  "primaire", "secondaire", "calendrier", "examens", "messages", "fondation",
 ];
 
 export const PERMISSION_LEVELS = ["lecture", "ecriture"];

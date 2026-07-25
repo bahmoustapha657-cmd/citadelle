@@ -332,8 +332,9 @@ export const MODULES = [
   { id: "parametres", label: "Paramètres", icon: "🏫", desc: "Identité de l'école" },
   { id: "fondation", label: "Fondation", icon: "🏛️", desc: "Gouvernance" },
   { id: "compta", label: "Comptabilité", icon: "📊", desc: "Finances" },
-  { id: "prescolaire", label: "Préscolaire", icon: "🧸", desc: "Maternelle" },
-  { id: "primaire", label: "Dir. Primaire", icon: "🎒", desc: "Primaire" },
+  // Le préscolaire (maternelle) est un SOUS-ONGLET de ce module, comme le
+  // lycée l'est du secondaire — il n'a donc pas d'entrée propre au menu.
+  { id: "primaire", label: "Dir. Primaire", icon: "🎒", desc: "Préscolaire & Primaire" },
   { id: "secondaire", label: "Secondaire", icon: "🏫", desc: "Bureau Collège" },
   { id: "calendrier", label: "Calendrier", icon: "📅", desc: "Événements scolaires" },
   { id: "examens", label: "Examens", icon: "📝", desc: "Planning & convocations" },
