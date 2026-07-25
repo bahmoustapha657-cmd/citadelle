@@ -102,29 +102,51 @@ export function QrScannerModal({ schoolInfo = {}, fermer }) {
       // (webcam d'ordinateur portable souvent limitée à 640×480). L'afficher
       // évite de chercher au hasard quand un QR ne passe pas.
       const piste = stream.getVideoTracks()[0];
+      // Mise au point CONTINUE : c'est le facteur décisif. Mesuré : à partir
+      // de ~2 px de flou, un QR devient illisible quelle que soit sa taille ou
+      // la définition du capteur. Beaucoup de navigateurs démarrent en mise au
+      // point fixe ; on la demande explicitement (ignorée silencieusement là où
+      // elle n'est pas supportée — d'où le try/catch sans message).
+      try {
+        const possibles = piste?.getCapabilities?.() || {};
+        if (possibles.focusMode?.includes("continuous")) {
+          await piste.applyConstraints({ advanced: [{ focusMode: "continuous" }] });
+        }
+      } catch { /* réglage non supporté : on scanne quand même */ }
       const reglages = piste?.getSettings?.() || {};
       setResolution({ w: reglages.width || 0, h: reglages.height || 0 });
 
       const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      // Canvas de repli réutilisé (pas de réallocation par image).
+      const plein = document.createElement("canvas");
+      const pctx = plein.getContext("2d", { willReadFrequently: true });
+
       const boucle = () => {
         if (!streamRef.current || !videoRef.current) return;
         const video = videoRef.current;
         if (video.readyState === video.HAVE_ENOUGH_DATA && video.videoWidth) {
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          // 1re passe : image telle quelle. 2e passe : moitié de résolution —
-          // jsQR retrouve parfois un QR trop finement échantillonné une fois
-          // l'image réduite (moyennage des pixels = modules plus francs).
+          const vw = video.videoWidth;
+          const vh = video.videoHeight;
+          // On n'analyse que le CARRÉ CENTRAL — exactement la zone que
+          // l'utilisateur voit (la vidéo est affichée en 1:1 « cover ») et
+          // où il place le QR. Analyser les 1080×1920 entiers coûtait ~2 M
+          // de pixels par image : trop lent, donc peu de tentatives par
+          // seconde et le moindre tremblement faisait rater la lecture.
+          const cote = Math.min(vw, vh);
+          canvas.width = cote;
+          canvas.height = cote;
+          ctx.drawImage(video, (vw - cote) / 2, (vh - cote) / 2, cote, cote, 0, 0, cote, cote);
+          const image = ctx.getImageData(0, 0, cote, cote);
           let code = jsQR(image.data, image.width, image.height, { inversionAttempts: "attemptBoth" });
-          if (!code && canvas.width > 640) {
-            const demi = document.createElement("canvas");
-            demi.width = Math.round(canvas.width / 2);
-            demi.height = Math.round(canvas.height / 2);
-            const dctx = demi.getContext("2d");
-            dctx.drawImage(canvas, 0, 0, demi.width, demi.height);
-            const img2 = dctx.getImageData(0, 0, demi.width, demi.height);
+
+          // Repli : image entière réduite — rattrape un QR placé hors du
+          // centre, et le sous-échantillonnage rend les modules plus francs.
+          if (!code) {
+            const ech = Math.min(1, 800 / Math.max(vw, vh));
+            plein.width = Math.round(vw * ech);
+            plein.height = Math.round(vh * ech);
+            pctx.drawImage(video, 0, 0, plein.width, plein.height);
+            const img2 = pctx.getImageData(0, 0, plein.width, plein.height);
             code = jsQR(img2.data, img2.width, img2.height, { inversionAttempts: "attemptBoth" });
           }
           if (code) { traiter(code.data); return; }
@@ -210,16 +232,33 @@ export function QrScannerModal({ schoolInfo = {}, fermer }) {
       {/* Toujours montés (masqués hors scan) : les refs doivent exister AVANT
           que demarrer() n'attache le flux et ne lise le contexte 2D. */}
       <div style={{ display: etat === "scan" ? "block" : "none" }}>
-        <video ref={videoRef} playsInline muted style={{ width: "100%", borderRadius: 10, background: "#000", aspectRatio: "1/1", objectFit: "cover" }} />
-        <p style={{ fontSize: 12, color: "#64748b", textAlign: "center", marginTop: 8 }}>
-          Visez le QR code du document — approchez jusqu'à ce qu'il remplisse le cadre.
+        {/* Cadre de visée : matérialise la zone réellement analysée. */}
+        <div style={{ position: "relative" }}>
+          <video ref={videoRef} playsInline muted style={{ width: "100%", borderRadius: 10, background: "#000", aspectRatio: "1/1", objectFit: "cover", display: "block" }} />
+          <div aria-hidden="true" style={{
+            position: "absolute", inset: "12%", border: "3px solid rgba(255,255,255,0.85)",
+            borderRadius: 12, boxShadow: "0 0 0 9999px rgba(0,0,0,0.25)", pointerEvents: "none",
+          }} />
+        </div>
+        <p style={{ fontSize: 12, color: "#64748b", textAlign: "center", marginTop: 8, lineHeight: 1.5 }}>
+          Placez le QR dans le cadre, à <strong>15–20 cm</strong> environ.<br />
+          <span style={{ fontSize: 11 }}>
+            Trop près, l'appareil ne fait plus la mise au point et l'image devient floue :
+            reculez un peu jusqu'à ce que le QR soit net.
+          </span>
         </p>
-        {resolution?.w > 0 && (
-          <p style={{ fontSize: 11, textAlign: "center", margin: "0 0 8px", color: resolution.w >= 1280 ? "#16a34a" : "#b45309" }}>
-            Caméra : {resolution.w}×{resolution.h}
-            {resolution.w < 1280 && " — définition limitée : approchez bien le document, ou utilisez « Importer une photo du QR » prise au téléphone."}
-          </p>
-        )}
+        {resolution?.w > 0 && (() => {
+          // En mode PORTRAIT (téléphone), la largeur vaut 1080 et la hauteur
+          // 1920 : juger sur la seule largeur qualifiait à tort une caméra
+          // Full HD de « limitée ». On compare donc le plus GRAND côté.
+          const grandCote = Math.max(resolution.w, resolution.h);
+          const bonne = grandCote >= 1280;
+          return (
+            <p style={{ fontSize: 11, textAlign: "center", margin: "0 0 8px", color: bonne ? "#16a34a" : "#b45309" }}>
+              Caméra : {resolution.w}×{resolution.h}{bonne ? " — définition suffisante" : " — définition limitée : approchez le document ou importez une photo."}
+            </p>
+          );
+        })()}
         <Btn v="ghost" onClick={fermerTout}>Annuler</Btn>
       </div>
       <canvas ref={canvasRef} style={{ display: "none" }} />
@@ -231,7 +270,11 @@ export function QrScannerModal({ schoolInfo = {}, fermer }) {
           <div style={{ marginTop: 8 }}>
             <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 700, color: "#334155", border: "1px solid #b0c4d8", borderRadius: 8, padding: "8px 14px", cursor: "pointer" }}>
               🖼️ Importer une photo du QR
-              <input type="file" accept="image/*" capture="environment" onChange={onFichier} style={{ display: "none" }} />
+              {/* PAS d'attribut `capture` : sur téléphone il force la prise de
+                  photo immédiate et empêche de choisir une image déjà prise
+                  dans la galerie — c'est justement ce qu'on veut proposer en
+                  secours quand le scan direct ne passe pas. */}
+              <input type="file" accept="image/*" onChange={onFichier} style={{ display: "none" }} />
             </label>
           </div>
           <p style={{ fontSize: 11, color: "#94a3b8", marginTop: 12 }}>
