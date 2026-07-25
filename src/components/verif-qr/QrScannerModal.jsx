@@ -19,6 +19,7 @@ export function QrScannerModal({ schoolInfo = {}, fermer }) {
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
   const rafRef = useRef(null);
+  const detecteurRef = useRef(null);
   const [etat, setEtat] = useState("init"); // init | scan | resultat | erreur
   const [resultat, setResultat] = useState(null); // { ok, champs }
   const [message, setMessage] = useState("");
@@ -29,7 +30,7 @@ export function QrScannerModal({ schoolInfo = {}, fermer }) {
   const secrets = schoolSecretCandidates(schoolInfo);
 
   const stop = () => {
-    if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
+    if (rafRef.current) { clearTimeout(rafRef.current); rafRef.current = null; }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
@@ -121,39 +122,82 @@ export function QrScannerModal({ schoolInfo = {}, fermer }) {
       const plein = document.createElement("canvas");
       const pctx = plein.getContext("2d", { willReadFrequently: true });
 
-      const boucle = () => {
-        if (!streamRef.current || !videoRef.current) return;
-        const video = videoRef.current;
-        if (video.readyState === video.HAVE_ENOUGH_DATA && video.videoWidth) {
-          const vw = video.videoWidth;
-          const vh = video.videoHeight;
-          // On n'analyse que le CARRÉ CENTRAL — exactement la zone que
-          // l'utilisateur voit (la vidéo est affichée en 1:1 « cover ») et
-          // où il place le QR. Analyser les 1080×1920 entiers coûtait ~2 M
-          // de pixels par image : trop lent, donc peu de tentatives par
-          // seconde et le moindre tremblement faisait rater la lecture.
-          const cote = Math.min(vw, vh);
-          canvas.width = cote;
-          canvas.height = cote;
-          ctx.drawImage(video, (vw - cote) / 2, (vh - cote) / 2, cote, cote, 0, 0, cote, cote);
-          const image = ctx.getImageData(0, 0, cote, cote);
-          let code = jsQR(image.data, image.width, image.height, { inversionAttempts: "attemptBoth" });
-
-          // Repli : image entière réduite — rattrape un QR placé hors du
-          // centre, et le sous-échantillonnage rend les modules plus francs.
-          if (!code) {
-            const ech = Math.min(1, 800 / Math.max(vw, vh));
-            plein.width = Math.round(vw * ech);
-            plein.height = Math.round(vh * ech);
-            pctx.drawImage(video, 0, 0, plein.width, plein.height);
-            const img2 = pctx.getImageData(0, 0, plein.width, plein.height);
-            code = jsQR(img2.data, img2.width, img2.height, { inversionAttempts: "attemptBoth" });
+      // Détecteur NATIF du navigateur, s'il existe : il s'appuie sur le moteur
+      // du système (accéléré, tolérant au flou et aux angles) et rattrape des
+      // QR que jsQR laisse passer. Il n'est pas fiable partout (absent de
+      // Safari/iOS, dépendant de Google Play Services sur Android), d'où son
+      // usage en PREMIÈRE tentative seulement, jsQR restant le filet.
+      let detecteurNatif = null;
+      try {
+        if (typeof window.BarcodeDetector === "function") {
+          const formats = await window.BarcodeDetector.getSupportedFormats?.();
+          if (!formats || formats.includes("qr_code")) {
+            detecteurNatif = new window.BarcodeDetector({ formats: ["qr_code"] });
           }
-          if (code) { traiter(code.data); return; }
         }
-        rafRef.current = requestAnimationFrame(boucle);
+      } catch { /* pas de détecteur natif : jsQR fera le travail */ }
+      detecteurRef.current = detecteurNatif;
+
+      // ⚠️ La boucle est ASYNCHRONE (le détecteur natif renvoie une promesse).
+      // Toute exception non capturée y rejetterait la promesse en silence et
+      // la ré-planification ne serait jamais atteinte : le scan s'arrêterait
+      // sans le moindre message. D'où le try/catch enveloppant TOUT le corps
+      // et la ré-planification dans le `finally` — la boucle survit à
+      // n'importe quelle erreur d'une image.
+      const boucle = async () => {
+        if (!streamRef.current || !videoRef.current) return;
+        let trouve = false;
+        try {
+          const video = videoRef.current;
+          if (video.readyState === video.HAVE_ENOUGH_DATA && video.videoWidth) {
+            const vw = video.videoWidth;
+            const vh = video.videoHeight;
+
+            // 1) Détecteur natif du navigateur (le plus tolérant au flou).
+            if (detecteurRef.current) {
+              try {
+                const trouves = await detecteurRef.current.detect(video);
+                if (trouves?.length && trouves[0].rawValue) {
+                  trouve = true;
+                  traiter(trouves[0].rawValue);
+                }
+              } catch { detecteurRef.current = null; /* défaillant : on s'en passe */ }
+            }
+
+            // 2) jsQR sur le CARRÉ CENTRAL — la zone que l'utilisateur voit
+            // (vidéo affichée en 1:1 « cover ») et où il place le QR.
+            if (!trouve) {
+              const cote = Math.min(vw, vh);
+              canvas.width = cote;
+              canvas.height = cote;
+              ctx.drawImage(video, (vw - cote) / 2, (vh - cote) / 2, cote, cote, 0, 0, cote, cote);
+              const image = ctx.getImageData(0, 0, cote, cote);
+              let code = jsQR(image.data, image.width, image.height, { inversionAttempts: "attemptBoth" });
+
+              // 3) Repli : image entière réduite — rattrape un QR hors du
+              // centre, et le sous-échantillonnage rend les modules plus francs.
+              if (!code) {
+                const ech = Math.min(1, 800 / Math.max(vw, vh));
+                plein.width = Math.round(vw * ech);
+                plein.height = Math.round(vh * ech);
+                pctx.drawImage(video, 0, 0, plein.width, plein.height);
+                const img2 = pctx.getImageData(0, 0, plein.width, plein.height);
+                code = jsQR(img2.data, img2.width, img2.height, { inversionAttempts: "attemptBoth" });
+              }
+              if (code) { trouve = true; traiter(code.data); }
+            }
+          }
+        } catch { /* image illisible : on retente à la suivante */ }
+        finally {
+          // setTimeout et NON requestAnimationFrame : rAF est SUSPENDU dès que
+          // la page passe en arrière-plan (appel entrant, changement d'appli,
+          // onglet masqué) et le scan ne repartait jamais. ~12 images/seconde
+          // suffisent très largement pour lire un QR, et c'est plus économe en
+          // batterie que les 60 fps de rAF.
+          if (!trouve && streamRef.current) rafRef.current = setTimeout(boucle, 80);
+        }
       };
-      rafRef.current = requestAnimationFrame(boucle);
+      rafRef.current = setTimeout(boucle, 0);
     } catch (e) {
       setEtat("erreur");
       // Message précis (même diagnostic que la prise de photo) : « accès
@@ -161,6 +205,40 @@ export function QrScannerModal({ schoolInfo = {}, fermer }) {
       // précédent envoyait tout le monde chercher une autorisation.
       setMessage(`${getCameraErrorMessage(e)} Vous pouvez aussi importer une photo du QR.`);
     }
+  };
+
+  // Capture MANUELLE : l'utilisateur cadre, attend que ce soit net, puis
+  // déclenche. On analyse alors UNE image — sans la contrainte de temps réel,
+  // on peut tenter plusieurs échelles et le détecteur natif. C'est la voie la
+  // plus sûre quand le flux direct échoue (l'import de photo, qui fonctionne
+  // déjà, repose sur le même principe : une image figée et nette).
+  const capturer = async () => {
+    const video = videoRef.current;
+    if (!video || !video.videoWidth) return;
+    setMessage("");
+    const vw = video.videoWidth, vh = video.videoHeight;
+    const cv = document.createElement("canvas");
+    const cx = cv.getContext("2d", { willReadFrequently: true });
+
+    // Détecteur natif d'abord (le plus tolérant), puis jsQR à plusieurs
+    // échelles : le sous-échantillonnage rend souvent les modules plus francs.
+    if (detecteurRef.current) {
+      try {
+        const trouves = await detecteurRef.current.detect(video);
+        if (trouves?.length && trouves[0].rawValue) { traiter(trouves[0].rawValue); return; }
+      } catch { /* on continue avec jsQR */ }
+    }
+    const cote = Math.min(vw, vh);
+    for (const facteur of [1, 0.6, 0.4, 1.5]) {
+      const taille = Math.round(cote * facteur);
+      cv.width = taille; cv.height = taille;
+      cx.imageSmoothingEnabled = true;
+      cx.drawImage(video, (vw - cote) / 2, (vh - cote) / 2, cote, cote, 0, 0, taille, taille);
+      const img = cx.getImageData(0, 0, taille, taille);
+      const code = jsQR(img.data, img.width, img.height, { inversionAttempts: "attemptBoth" });
+      if (code) { traiter(code.data); return; }
+    }
+    setMessage("QR non détecté sur cette image. Vérifiez que le QR est net (reculez un peu) puis réessayez.");
   };
 
   const onFichier = (e) => {
@@ -259,7 +337,11 @@ export function QrScannerModal({ schoolInfo = {}, fermer }) {
             </p>
           );
         })()}
-        <Btn v="ghost" onClick={fermerTout}>Annuler</Btn>
+        {message && <p style={{ fontSize: 12, color: "#b91c1c", textAlign: "center", margin: "0 0 8px" }}>{message}</p>}
+        <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+          <Btn v="vert" onClick={capturer}>📸 Capturer maintenant</Btn>
+          <Btn v="ghost" onClick={fermerTout}>Annuler</Btn>
+        </div>
       </div>
       <canvas ref={canvasRef} style={{ display: "none" }} />
 
