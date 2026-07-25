@@ -52,6 +52,8 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   const { items: ensCollege, ajouter: ajEnsCol, modifier: modEnsCol, supprimer: supEnsCol } = useFirestore("ensCollege");
   const { items: ensLycee, ajouter: ajEnsLyc, modifier: modEnsLyc, supprimer: supEnsLyc } = useFirestore("ensLycee");
   const { items: ensPrimaire, ajouter: ajEnsPrim, modifier: modEnsPrim, supprimer: supEnsPrim } = useFirestore("ensPrimaire");
+  // Enseignants de maternelle : ils doivent figurer sur la paie comme les autres.
+  const { items: ensPrescolaire, ajouter: ajEnsPresco, modifier: modEnsPresco, supprimer: supEnsPresco } = useFirestore("ensPrescolaire");
   const { items: emploisCollege } = useFirestore("classesCollege_emplois");
   const { items: emploisLycee } = useFirestore("classesLycee_emplois");
   const { items: engCollege } = useFirestore("ensCollege_enseignements");
@@ -194,8 +196,8 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
     versements, cV, ajV, modV, supV,
     elevesC, elevesP, elevesL, elevesPre, cEC, cEP, cEL, cEPre,
     tarifsClasses,
-    ensCollege, ensLycee, ensPrimaire,
-    ajEnsCol, ajEnsLyc, ajEnsPrim, modEnsCol, modEnsLyc, modEnsPrim, supEnsCol, supEnsLyc, supEnsPrim,
+    ensCollege, ensLycee, ensPrimaire, ensPrescolaire,
+    ajEnsCol, ajEnsLyc, ajEnsPrim, ajEnsPresco, modEnsCol, modEnsLyc, modEnsPrim, modEnsPresco, supEnsCol, supEnsLyc, supEnsPrim, supEnsPresco,
     tab, setTab, sousTabSal, setSousTabSal, modal, setModal, form, setForm,
     niveau, setNiveau, filtClasse, setFiltClasse, moisSel, setMoisSel,
     primeDefaut, setPrimeDefaut, filtrePrimNom, setFiltrePrimNom, filtrePrimClasse, setFiltrePrimClasse,

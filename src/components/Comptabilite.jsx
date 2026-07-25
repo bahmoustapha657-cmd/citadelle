@@ -15,10 +15,12 @@ function Comptabilite({ readOnly, annee, userRole, permissions = null, verrouOuv
     { id: "recettes", label: `${t("accounting.tabs.revenues")} (${c.recettes.length})` },
     { id: "depenses", label: `${t("accounting.tabs.expenses")} (${c.depenses.length})` },
     { id: "salaires", label: t("accounting.tabs.salaries") },
-    { id: "enseignants", label: `${t("accounting.tabs.teachers")} (${c.ensPrimaire.length + c.ensCollege.length + c.ensLycee.length})` },
+    { id: "enseignants", label: `${t("accounting.tabs.teachers")} (${c.ensPrimaire.length + c.ensCollege.length + c.ensLycee.length + c.ensPrescolaire.length})` },
     { id: "personnel", label: `${t("accounting.tabs.staff")} (${c.personnel.length})` },
     { id: "fondation", label: `${t("accounting.tabs.donations")} (${c.versements.length})` },
-    { id: "enrolment", label: `${t("accounting.tabs.students")} (${c.elevesC.length + c.elevesL.length + c.elevesP.length})` },
+    // Toutes les sections, préscolaire compris (sinon le compteur excluait
+    // silencieusement la maternelle : 404 affichés pour 501 inscrits).
+    { id: "enrolment", label: `${t("accounting.tabs.students")} (${c.elevesC.length + c.elevesL.length + c.elevesP.length + c.elevesPre.length})` },
     { id: "mens", label: t("accounting.tabs.monthlyFees") },
     { id: "transferts", label: `🔄 ${t("accounting.tabs.transfers")}` },
   ];

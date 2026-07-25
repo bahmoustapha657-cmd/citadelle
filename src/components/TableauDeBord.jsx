@@ -22,7 +22,7 @@ function TableauDeBord({ annee, userRole, onOpenLegalSettings }) {
       <DashboardHeader
         t={t} c1={d.c1} schoolInfo={d.schoolInfo} annee={annee} moisAnnee={d.moisAnnee}
         moisRapport={d.moisRapport} setMoisRapport={d.setMoisRapport}
-        elevesC={d.elevesC} elevesL={d.elevesL} elevesP={d.elevesP}
+        elevesC={d.elevesC} elevesL={d.elevesL} elevesP={d.elevesP} elevesPre={d.elevesPre}
         absences={d.absences} absL={d.absL} absP={d.absP}
         notesC={d.notesC} notesL={d.notesL} notesP={d.notesP}
         recettes={d.recettes} depenses={d.depenses} salaires={d.salaires}

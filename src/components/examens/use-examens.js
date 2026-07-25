@@ -11,8 +11,13 @@ import { imprimerConvocations } from "./convocations-print";
 export function useExamens() {
   const { schoolInfo, toast } = useContext(SchoolContext);
   const { items: examens, ajouter: ajEx, modifier: modEx, supprimer: supEx } = useFirestore("examens");
+  // Toutes les sections : le lycée manquait déjà (les classes de lycée
+  // n'apparaissaient donc pas dans le filtre des examens), et le préscolaire
+  // s'y ajoute.
   const { items: elevesC } = useFirestore("elevesCollege");
   const { items: elevesP } = useFirestore("elevesPrimaire");
+  const { items: elevesL } = useFirestore("elevesLycee");
+  const { items: elevesPre } = useFirestore("elevesPrescolaire");
   const c1 = schoolInfo.couleur1 || C.blue;
   const c2 = schoolInfo.couleur2 || C.green;
   const examForms = getActiveExamForms(schoolInfo);
@@ -22,7 +27,7 @@ export function useExamens() {
   const [filtre, setFiltre] = useState("all");
   const chg = k => e => setForm(p => ({ ...p, [k]: e.target.value }));
 
-  const tousEleves = [...elevesC, ...elevesP];
+  const tousEleves = [...elevesC, ...elevesP, ...elevesL, ...elevesPre];
   const classes = [...new Set(tousEleves.map(e => e.classe || ""))].filter(Boolean).sort();
 
   const examensFiltres = filtre === "all" ? examens : examens.filter(e => e.classe === filtre || e.classe === "Toutes");

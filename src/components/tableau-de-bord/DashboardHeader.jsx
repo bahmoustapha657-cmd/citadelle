@@ -4,7 +4,7 @@ import { Btn } from "../ui";
 
 export function DashboardHeader({
   t, c1, schoolInfo, annee, moisAnnee, moisRapport, setMoisRapport,
-  elevesC, elevesL, elevesP, absences, absL, absP,
+  elevesC, elevesL, elevesP, elevesPre = [], absences, absL, absP,
   notesC, notesL, notesP, recettes, depenses, salaires, ensC, ensL, ensP,
 }) {
   return (
@@ -22,7 +22,7 @@ export function DashboardHeader({
         </select>
         <Btn v="primary" sm onClick={() => genererRapportMensuel(
           moisRapport,
-          [...elevesC, ...elevesL, ...elevesP],
+          [...elevesC, ...elevesL, ...elevesP, ...elevesPre],
           [...absences, ...absL, ...absP],
           annee || getAnnee(),
           schoolInfo,
@@ -31,7 +31,7 @@ export function DashboardHeader({
         <Btn v="success" sm onClick={() => genererRapportAnnuel({
           annee: annee || getAnnee(),
           moisAnnee,
-          eleves: [...elevesC, ...elevesL, ...elevesP],
+          eleves: [...elevesC, ...elevesL, ...elevesP, ...elevesPre],
           absences: [...absences, ...absL, ...absP],
           notes: [...notesC, ...notesL, ...notesP],
           recettes, depenses, salaires,
