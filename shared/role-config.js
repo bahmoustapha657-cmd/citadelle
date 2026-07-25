@@ -2,9 +2,11 @@ export const ROLE_ORDER = ["direction", "admin", "comptable", "surveillant", "pr
 
 export const ROLE_MODULE_CAPABILITIES = {
   superadmin: ["superadmin_panel"],
-  admin: ["accueil", "historique", "admin_panel", "parametres", "compta", "primaire", "secondaire", "calendrier", "examens", "messages"],
-  direction: ["accueil", "historique", "admin_panel", "parametres", "fondation", "compta", "primaire", "secondaire", "calendrier", "examens", "messages"],
-  primaire: ["primaire", "calendrier", "examens"],
+  admin: ["accueil", "historique", "admin_panel", "parametres", "compta", "prescolaire", "primaire", "secondaire", "calendrier", "examens", "messages"],
+  direction: ["accueil", "historique", "admin_panel", "parametres", "fondation", "compta", "prescolaire", "primaire", "secondaire", "calendrier", "examens", "messages"],
+  // La direction du primaire encadre aussi la maternelle (usage courant en
+  // Guinée : le préscolaire est rattaché à la direction primaire).
+  primaire: ["prescolaire", "primaire", "calendrier", "examens"],
   college: ["secondaire", "calendrier", "examens"],
   // Comptable : strictement limite a la Comptabilite. L'impression des listes
   // de classe se fait depuis l'onglet Inscriptions de la compta (EnrolToolbar),
@@ -13,7 +15,7 @@ export const ROLE_MODULE_CAPABILITIES = {
   // Surveillant general : discipline/absences des DEUX sections. Il voit les
   // modules Primaire et Secondaire mais l'UI (Ecole.jsx) restreint ses onglets
   // a Eleves / Discipline / Emploi du temps — jamais notes, bulletins ni compta.
-  surveillant: ["primaire", "secondaire", "calendrier"],
+  surveillant: ["prescolaire", "primaire", "secondaire", "calendrier"],
   enseignant: ["portail_enseignant"],
   parent: ["portail_parent"],
 };
@@ -30,6 +32,7 @@ export const ROLE_REQUIRED_MODULES = {
 // comptable / pedagogie pour empecher un admin de s'auto-promouvoir,
 // d'effacer ses traces ou de manipuler la tresorerie via un client direct.
 export const ADMIN_WRITABLE_MODULES = [
+  "prescolaire",
   "primaire",
   "secondaire",
   "calendrier",
@@ -42,6 +45,17 @@ export const ADMIN_WRITABLE_MODULES = [
 // du perimetre d'un module. Garder synchrone avec collectionsBackOffice() et
 // les match /<collection>/ explicites de firestore.rules.
 export const MODULE_COLLECTIONS = {
+  prescolaire: [
+    "elevesPrescolaire",
+    "classesPrescolaire",
+    "ensPrescolaire",
+    "ensPrescolaire_enseignements",
+    "classesPrescolaire_emplois",
+    "classesPrescolaire_matieres",
+    "notesPrescolaire",
+    "appreciationsPrescolaire",
+    "elevesPrescolaire_absences",
+  ],
   primaire: [
     "elevesPrimaire",
     "classesPrimaire",

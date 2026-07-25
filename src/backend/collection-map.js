@@ -10,7 +10,7 @@
 // versements) renvoient `null` → l'adaptateur retourne [] (écran vide, pas de
 // crash). À modéliser dans une tranche ultérieure.
 
-const SECTIONS = { Primaire: "primaire", College: "college", Lycee: "lycee" };
+const SECTIONS = { Prescolaire: "prescolaire", Primaire: "primaire", College: "college", Lycee: "lycee" };
 
 // Entités sectionnées : {base}{Section} éventuellement suffixé _{sous-entité}.
 const BASE_TABLE = {
@@ -21,7 +21,7 @@ const SUFFIX_TABLE = {
   absences: "absences", emplois: "emplois",
   enseignements: "enseignements", matieres: "matieres",
 };
-const SECTIONAL = /^(eleves|notes|classes|ens|absences|appreciations)(Primaire|College|Lycee)(?:_(absences|emplois|enseignements|matieres))?$/;
+const SECTIONAL = /^(eleves|notes|classes|ens|absences|appreciations)(Prescolaire|Primaire|College|Lycee)(?:_(absences|emplois|enseignements|matieres))?$/;
 
 // Entités au niveau école (sans section) qui ONT une table Supabase.
 const FLAT_TABLE = {
