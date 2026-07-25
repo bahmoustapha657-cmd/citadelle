@@ -7,7 +7,7 @@ import { imprimerListeClasse } from "../../../reports";
 // et boutons d'ajout (normal/rapide/import Excel).
 export function EnrolToolbar({
   t, afficherDeparts, setAfficherDeparts, planInfo,
-  niveauEnrol, setNiveauEnrol, elevesC, elevesL, elevesP,
+  niveauEnrol, setNiveauEnrol, elevesC, elevesL, elevesP, elevesPre = [],
   classeEnrol, setClasseEnrol, classesEnrol = [],
   canCreate, elevesEnrol, schoolInfo, setForm, setModal,
 }) {
@@ -25,6 +25,7 @@ export function EnrolToolbar({
         <option value="college">Collège ({elevesC.length} élèves)</option>
         <option value="lycee">Lycée ({elevesL.length} élèves)</option>
         <option value="primaire">Primaire ({elevesP.length} élèves)</option>
+        <option value="prescolaire">Préscolaire ({elevesPre.length} élèves)</option>
       </select>
       {classesEnrol.length>0&&(
         <select value={classeEnrol} onChange={e=>setClasseEnrol(e.target.value)}

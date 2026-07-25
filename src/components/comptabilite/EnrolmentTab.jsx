@@ -12,7 +12,7 @@ import { EnrolTable } from "./enrolment/EnrolTable";
 
 export function EnrolmentTab({
   form, setForm, modal, setModal, canCreate, canEdit,
-  elevesC, elevesL, elevesP, cEC, cEL, cEP,
+  elevesC, elevesL, elevesP, elevesPre = [], cEC, cEL, cEP,
   tousElevesScolarite, ajoutParNiveau, suppressionParNiveau,
   modifParNiveau, ensureClasse, sortAlpha,
 }) {
@@ -28,7 +28,7 @@ export function EnrolmentTab({
 
   const chg = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
-  const elevesParNiveau = { college: elevesC, lycee: elevesL, primaire: elevesP };
+  const elevesParNiveau = { college: elevesC, lycee: elevesL, primaire: elevesP, prescolaire: elevesPre };
   // Liste complète du cycle : sert aux matricules et au compteur de plan.
   const elevesEnrol = sortAlpha(elevesParNiveau[niveauEnrol] || []);
   // Classes disponibles dans le cycle + liste affichée (filtrée par classe).
@@ -47,7 +47,7 @@ export function EnrolmentTab({
         t={t} afficherDeparts={afficherDeparts} setAfficherDeparts={setAfficherDeparts}
         planInfo={planInfo} niveauEnrol={niveauEnrol} setNiveauEnrol={setNiveauEnrol}
         classeEnrol={classeEnrol} setClasseEnrol={setClasseEnrol} classesEnrol={classesEnrol}
-        elevesC={elevesC} elevesL={elevesL} elevesP={elevesP} canCreate={canCreate}
+        elevesC={elevesC} elevesL={elevesL} elevesP={elevesP} elevesPre={elevesPre} canCreate={canCreate}
         elevesEnrol={elevesEnrol} schoolInfo={schoolInfo} setForm={setForm} setModal={setModal}
       />
 

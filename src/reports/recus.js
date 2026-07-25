@@ -52,7 +52,7 @@ export const imprimerRecu = async (eleve, montantUnit, schoolInfo={}, moisAnnee=
     IEN: eleve.ien,
     Total: `${totalGeneral} GNF`,
     Mois: moisPayes.join(","),
-  }), schoolInfo, { size: 56, alt: "QR recu" });
+  }), schoolInfo, { size: 84, alt: "QR recu" });
   const ctx = { schoolInfo, lf, eleve, moisAnnee, mens, mensDates, fraisIns, fraisAutre, fraisDiversPayes, totalMensualites, moisPayes, totalGeneral, qr };
 
   w.document.write(`<!DOCTYPE html><html lang="${printLang()}" dir="${printDir()}"><head><title>${tr("reports.receipt.title")}</title>

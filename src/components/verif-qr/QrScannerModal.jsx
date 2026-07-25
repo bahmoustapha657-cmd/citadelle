@@ -55,7 +55,16 @@ export function QrScannerModal({ schoolInfo = {}, fermer }) {
   // l'ouverture, alors que la prise de photo (même stratégie de repli)
   // fonctionnait — d'où un scanner cassé sur PC uniquement.
   const ouvrirCamera = async () => {
+    // Résolution la plus haute possible : un QR de document est petit et
+    // dense (le contenu est chiffré, donc long). En 640×480 — ce que la
+    // plupart des navigateurs donnent par défaut — les modules du QR
+    // tombent sous le seuil de détection de jsQR. On demande donc du
+    // 1920×1080 en `ideal` (jamais `exact` : la caméra dégrade d'elle-même
+    // si elle ne sait pas faire, plutôt que d'échouer).
+    const HD = { width: { ideal: 1920 }, height: { ideal: 1080 } };
     const contraintes = [
+      { video: { facingMode: { ideal: "environment" }, ...HD }, audio: false },
+      { video: { ...HD }, audio: false },
       { video: { facingMode: { ideal: "environment" } }, audio: false },
       { video: true, audio: false },
     ];

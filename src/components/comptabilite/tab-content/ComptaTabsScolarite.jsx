@@ -74,6 +74,7 @@ export function ComptaTabsScolarite({ c, readOnly, annee, userRole }) {
         elevesC={c.elevesC}
         elevesL={c.elevesL}
         elevesP={c.elevesP}
+        elevesPre={c.elevesPre}
         cEC={c.cEC}
         cEL={c.cEL}
         cEP={c.cEP}

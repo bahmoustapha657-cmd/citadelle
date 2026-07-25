@@ -253,11 +253,13 @@ export const getTarifMensuelTotal = (tarif = null, classe = "") => {
 export const genererMatricule = (eleves, type, config = {}) => {
   const anneeShort = getAnnee().split("-")[0].slice(-2);
   const anneeFull = getAnnee().split("-")[0];
-  const prefixe = type === "primaire"
-    ? (config.matriculePrefixPrim || "P")
-    : type === "lycee"
-      ? (config.matriculePrefixLyc || "L")
-      : (config.matriculePrefixColl || "C");
+  const prefixe = type === "prescolaire"
+    ? (config.matriculePrefixPresco || "M") // M comme Maternelle (P est pris par le primaire)
+    : type === "primaire"
+      ? (config.matriculePrefixPrim || "P")
+      : type === "lycee"
+        ? (config.matriculePrefixLyc || "L")
+        : (config.matriculePrefixColl || "C");
   const separateur = config.matriculeSep != null ? config.matriculeSep : "-";
   const avecAnnee = config.matriculeAnnee !== false;
   const annee = avecAnnee ? (config.matriculeAnnee4 ? anneeFull : anneeShort) : "";
