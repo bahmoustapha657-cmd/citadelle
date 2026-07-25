@@ -22,6 +22,7 @@ export function QrScannerModal({ schoolInfo = {}, fermer }) {
   const [etat, setEtat] = useState("init"); // init | scan | resultat | erreur
   const [resultat, setResultat] = useState(null); // { ok, champs }
   const [message, setMessage] = useState("");
+  const [resolution, setResolution] = useState(null); // { w, h } réellement obtenus
   // Plusieurs secrets candidats plutôt qu'un seul : les documents déjà imprimés
   // l'ont été avec le secret en vigueur à l'époque (longtemps le NOM de
   // l'école). On reste ainsi lisible après un renommage. Cf. qr-crypto.js.
@@ -97,6 +98,13 @@ export function QrScannerModal({ schoolInfo = {}, fermer }) {
       if (!video || !canvas) throw new Error("Affichage du scanner indisponible.");
       video.srcObject = stream;
       await video.play();
+      // Résolution réellement obtenue : la caméra peut ignorer notre demande
+      // (webcam d'ordinateur portable souvent limitée à 640×480). L'afficher
+      // évite de chercher au hasard quand un QR ne passe pas.
+      const piste = stream.getVideoTracks()[0];
+      const reglages = piste?.getSettings?.() || {};
+      setResolution({ w: reglages.width || 0, h: reglages.height || 0 });
+
       const ctx = canvas.getContext("2d", { willReadFrequently: true });
       const boucle = () => {
         if (!streamRef.current || !videoRef.current) return;
@@ -106,7 +114,19 @@ export function QrScannerModal({ schoolInfo = {}, fermer }) {
           canvas.height = video.videoHeight;
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
           const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          const code = jsQR(image.data, image.width, image.height);
+          // 1re passe : image telle quelle. 2e passe : moitié de résolution —
+          // jsQR retrouve parfois un QR trop finement échantillonné une fois
+          // l'image réduite (moyennage des pixels = modules plus francs).
+          let code = jsQR(image.data, image.width, image.height, { inversionAttempts: "attemptBoth" });
+          if (!code && canvas.width > 640) {
+            const demi = document.createElement("canvas");
+            demi.width = Math.round(canvas.width / 2);
+            demi.height = Math.round(canvas.height / 2);
+            const dctx = demi.getContext("2d");
+            dctx.drawImage(canvas, 0, 0, demi.width, demi.height);
+            const img2 = dctx.getImageData(0, 0, demi.width, demi.height);
+            code = jsQR(img2.data, img2.width, img2.height, { inversionAttempts: "attemptBoth" });
+          }
           if (code) { traiter(code.data); return; }
         }
         rafRef.current = requestAnimationFrame(boucle);
@@ -191,7 +211,15 @@ export function QrScannerModal({ schoolInfo = {}, fermer }) {
           que demarrer() n'attache le flux et ne lise le contexte 2D. */}
       <div style={{ display: etat === "scan" ? "block" : "none" }}>
         <video ref={videoRef} playsInline muted style={{ width: "100%", borderRadius: 10, background: "#000", aspectRatio: "1/1", objectFit: "cover" }} />
-        <p style={{ fontSize: 12, color: "#64748b", textAlign: "center", marginTop: 8 }}>Visez le QR code du document…</p>
+        <p style={{ fontSize: 12, color: "#64748b", textAlign: "center", marginTop: 8 }}>
+          Visez le QR code du document — approchez jusqu'à ce qu'il remplisse le cadre.
+        </p>
+        {resolution?.w > 0 && (
+          <p style={{ fontSize: 11, textAlign: "center", margin: "0 0 8px", color: resolution.w >= 1280 ? "#16a34a" : "#b45309" }}>
+            Caméra : {resolution.w}×{resolution.h}
+            {resolution.w < 1280 && " — définition limitée : approchez bien le document, ou utilisez « Importer une photo du QR » prise au téléphone."}
+          </p>
+        )}
         <Btn v="ghost" onClick={fermerTout}>Annuler</Btn>
       </div>
       <canvas ref={canvasRef} style={{ display: "none" }} />
