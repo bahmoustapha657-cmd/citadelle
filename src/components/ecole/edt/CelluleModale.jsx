@@ -13,8 +13,15 @@ export function CelluleModale({
   if (!edtCellule || !(canCreate || canEdit)) return null;
 
   const enregistrer = () => {
-    if(!form.matiere){toast("Choisissez une matière.","warning");return;}
-    if(!form.enseignant){toast("Choisissez un enseignant.","warning");return;}
+    // Une récréation / pause n'a ni matière au programme ni enseignant
+    // affecté : son libellé est facultatif (« Récréation » par défaut). Les
+    // deux contrôles ci-dessous ne valent donc que pour un cours ou une
+    // révision.
+    const estRecreation = (form.type || "cours") === "recreation";
+    if(!estRecreation){
+      if(!form.matiere){toast("Choisissez une matière.","warning");return;}
+      if(!form.enseignant){toast("Choisissez un enseignant.","warning");return;}
+    }
     const data=buildCreneauData(form, classeEdtActuelle, edtCellule);
     if(edtCellule.existing)modEmp({...data,_id:edtCellule.existing._id});
     else ajEmp(data);

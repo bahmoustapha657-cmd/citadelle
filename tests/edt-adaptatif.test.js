@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   enMinutes, enHeure, genTranchesAdaptatives, planifierJour,
 } from "../src/components/ecole/edt/edt-utils.js";
+import { buildCreneauData } from "../src/components/ecole/edt/cellule-data.js";
 
 test("conversions heure ↔ minutes", () => {
   assert.equal(enMinutes("08:15"), 495);
@@ -97,4 +98,39 @@ test("entrées vides ou incohérentes ne cassent pas le calcul", () => {
   assert.deepEqual(tranches, ["08:00", "09:00", "10:00"]);
   const { debuts } = planifierJour([{ heureDebut: null }], tranches);
   assert.equal(debuts.size, 0);
+});
+
+// ── Récréation : ni matière imposée, ni enseignant ──────────────────────────
+const CELLULE = { jour: "Lundi", heureDebut: "10:00", heureFin: "10:15" };
+
+test("récréation : libellé par défaut si laissé vide", () => {
+  const d = buildCreneauData({ type: "recreation" }, "Petite Section A", CELLULE);
+  assert.equal(d.matiere, "Récréation");
+  assert.equal(d.type, "recreation");
+});
+
+test("récréation : libellé libre conservé", () => {
+  const d = buildCreneauData({ type: "recreation", matiere: "Pause déjeuner" }, "PS A", CELLULE);
+  assert.equal(d.matiere, "Pause déjeuner");
+});
+
+test("récréation : aucun enseignant ni salle n'est conservé", () => {
+  // Cas réel : l'utilisateur saisit un cours puis bascule en récréation.
+  const d = buildCreneauData(
+    { type: "recreation", enseignant: "Fally BAH", salle: "B12", matiere: "  " },
+    "PS A", CELLULE,
+  );
+  assert.equal(d.enseignant, "", "un enseignant résiduel fausserait la détection de conflit");
+  assert.equal(d.salle, "");
+  assert.equal(d.matiere, "Récréation");
+});
+
+test("un cours garde bien sa matière, son enseignant et sa salle", () => {
+  const d = buildCreneauData(
+    { type: "cours", matiere: "Lecture", enseignant: "Fally BAH", salle: "A1" },
+    "PS A", CELLULE,
+  );
+  assert.equal(d.matiere, "Lecture");
+  assert.equal(d.enseignant, "Fally BAH");
+  assert.equal(d.salle, "A1");
 });
