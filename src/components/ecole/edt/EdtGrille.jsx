@@ -1,10 +1,19 @@
 import { C } from "../../../constants";
-import { JOURS, affNom } from "./edt-utils";
+import { JOURS, affNom, planifierJour } from "./edt-utils";
 
 // Vue grille de l'emploi du temps : tableau horaires × jours, cellules cliquables
 // pour créer/modifier un créneau, avec détection de conflit enseignant.
+// Les rubriques peuvent avoir des durées DIFFÉRENTES dans une même journée
+// (15/30/45/60 min…) : chaque créneau occupe autant de lignes que sa durée
+// réelle (rowSpan), et les lignes qu'il recouvre ne rendent pas de cellule.
 export function EdtGrille({ h, emplois, canCreate, canEdit, setForm }) {
-  const { TRANCHES, matCouleur, findEns, getCreneau, classeEdtActuelle, setEdtCellule } = h;
+  const { TRANCHES, matCouleur, findEns, classeEdtActuelle, setEdtCellule, emploisClasse } = h;
+  // Plan de chaque colonne (un jour) : où commence chaque créneau et sur
+  // combien de lignes il s'étend.
+  const plans = {};
+  for (const jour of JOURS) {
+    plans[jour] = planifierJour(emploisClasse.filter((e) => e.jour === jour), TRANCHES);
+  }
   return (
     <div style={{ overflowX: "auto" }}>
       <table style={{ borderCollapse: "collapse", minWidth: 700, width: "100%", fontSize: 12 }}>
@@ -22,12 +31,18 @@ export function EdtGrille({ h, emplois, canCreate, canEdit, setForm }) {
                 {hd.slice(0, 5)}–{hf.slice(0, 5)}
               </td>
               {JOURS.map(jour => {
-                const cr = getCreneau(jour, hd);
-                const conflit = cr && emplois.some(x => x._id !== cr._id && x.enseignant && x.enseignant === cr.enseignant && x.jour === jour && x.heureDebut === hd);
-                return <td key={jour}
+                const { debuts, occupees } = plans[jour];
+                // Ligne recouverte par un créneau démarré plus haut : on ne
+                // rend rien, sinon la colonne se décalerait d'une case.
+                if (occupees.has(i)) return null;
+                const debut = debuts.get(i);
+                const cr = debut?.creneau || null;
+                const span = debut?.span || 1;
+                const conflit = cr && emplois.some(x => x._id !== cr._id && x.enseignant && x.enseignant === cr.enseignant && x.jour === jour && x.heureDebut === cr.heureDebut);
+                return <td key={jour} rowSpan={span}
                   onClick={() => {
                     if (!canCreate && !canEdit) return;
-                    if (cr) { setForm({ ...cr }); setEdtCellule({ jour, heureDebut: hd, heureFin: hf, existing: cr }); }
+                    if (cr) { setForm({ ...cr }); setEdtCellule({ jour, heureDebut: cr.heureDebut, heureFin: cr.heureFin, existing: cr }); }
                     else { setForm({ classe: classeEdtActuelle, jour, heureDebut: hd, heureFin: hf, matiere: "", enseignant: "", salle: "" }); setEdtCellule({ jour, heureDebut: hd, heureFin: hf, existing: null }); }
                   }}
                   style={{
@@ -41,6 +56,13 @@ export function EdtGrille({ h, emplois, canCreate, canEdit, setForm }) {
                     {conflit && <span title="Conflit enseignant" style={{ position: "absolute", top: 2, right: 3, fontSize: 10 }}>⚠️</span>}
                     {cr.type === "revision" && <span style={{ position: "absolute", top: 2, left: 3, background: "#f97316", color: "#fff", fontSize: 8, fontWeight: 900, padding: "1px 4px", borderRadius: 3, lineHeight: 1.4 }}>RÉV</span>}
                     <div style={{ fontWeight: 800, fontSize: 11, color: cr.type === "revision" ? "#9a3412" : "#1e3a5f", lineHeight: 1.3, marginTop: cr.type === "revision" ? 10 : 0 }}>{cr.matiere || "—"}</div>
+                    {/* Horaire réel rappelé quand la rubrique ne couvre pas
+                        toute la ligne (durées mélangées dans la journée). */}
+                    {cr.heureFin && (cr.heureDebut !== hd || cr.heureFin !== TRANCHES[i + span]) && (
+                      <div style={{ fontSize: 9, color: "#64748b", fontWeight: 700 }}>
+                        {String(cr.heureDebut).slice(0, 5)}–{String(cr.heureFin).slice(0, 5)}
+                      </div>
+                    )}
                     {cr.enseignant && (() => {
                       const e = findEns(cr.enseignant);
                       return <div style={{ fontSize: 10, color: "#475569", marginTop: 1 }}>

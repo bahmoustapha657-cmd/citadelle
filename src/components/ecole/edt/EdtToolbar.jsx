@@ -18,11 +18,12 @@ export function EdtToolbar({ h, maxNote, canCreate, setFiltreClasse, setEdtDuree
       <Btn sm v={!h.edtVueGrille ? "blue" : "ghost"} onClick={() => h.setEdtVueGrille(false)}>☰ Liste</Btn>
       {maxNote === 10
         ? <select value={edtDuree} onChange={e => setEdtDuree(Number(e.target.value))}
-            title="Durée des rubriques"
+            title="Découpage par défaut de la grille. Chaque rubrique garde sa propre durée : la grille s'adapte aux horaires que vous saisissez."
             style={{ border: "1px solid #b0c4d8", borderRadius: 7, padding: "5px 10px", fontSize: 12, background: "#fff", color: C.blueDark }}>
-            <option value={30}>Rubriques 30 min</option>
-            <option value={45}>Rubriques 45 min</option>
-            <option value={60}>Rubriques 1 h</option>
+            <option value={15}>Pas de 15 min</option>
+            <option value={30}>Pas de 30 min</option>
+            <option value={45}>Pas de 45 min</option>
+            <option value={60}>Pas de 1 h</option>
           </select>
         : <span style={{ fontSize: 11, color: "#9ca3af", padding: "4px 8px", background: "#f8fafc", borderRadius: 6, border: "1px solid #e2e8f0" }}>⏱ Séances 2h</span>
       }

@@ -2,27 +2,41 @@
 // L'EDT général vit dans edt-print-general.js.
 
 import { enteteDoc } from "../../../reports";
-import { JOURS, COULEURS, affNom } from "./edt-utils";
+import { JOURS, COULEURS, affNom, planifierJour } from "./edt-utils";
 
 export { voirEdtGeneral } from "./edt-print-general";
 
+// Même logique que la grille à l'écran : les rubriques ont des durées
+// variables (15/30/45/60 min…), chacune occupe autant de lignes que sa durée
+// réelle. Sans cela la feuille imprimée perdait les créneaux dont l'heure de
+// début ne tombait pas pile sur une tranche.
 export function imprimerEDT({ emploisClasse, TRANCHES, classeEdtActuelle, schoolInfo, findEns }) {
   const allMat = [...new Set(emploisClasse.map((e) => e.matiere).filter(Boolean))];
   const mc = {}; allMat.forEach((m, i) => { mc[m] = COULEURS[i % COULEURS.length]; });
-  const getCr = (jour, hd) => emploisClasse.find((e) => e.jour === jour && e.heureDebut === hd);
+  const plans = {};
+  for (const jour of JOURS) {
+    plans[jour] = planifierJour(emploisClasse.filter((e) => e.jour === jour), TRANCHES);
+  }
   const ths = JOURS.map((j) => "<th style='background:#0A1628;color:#fff;padding:8px 10px;font-size:11px;text-align:center;min-width:80px'>" + j + "</th>").join("");
   const rows = TRANCHES.slice(0, -1).map((_, i) => {
     const hd = TRANCHES[i], hf = TRANCHES[i + 1];
     const tds = JOURS.map((jour) => {
-      const cr = getCr(jour, hd);
-      if (!cr) return "<td style='background:#fafcff;border:1px solid #e2e8f0;padding:6px'></td>";
+      const { debuts, occupees } = plans[jour];
+      if (occupees.has(i)) return ""; // ligne couverte par un créneau plus haut
+      const debut = debuts.get(i);
+      const cr = debut?.creneau;
+      const span = debut?.span || 1;
+      const attrSpan = span > 1 ? " rowspan='" + span + "'" : "";
+      if (!cr) return "<td" + attrSpan + " style='background:#fafcff;border:1px solid #e2e8f0;padding:6px'></td>";
       const isRev = cr.type === "revision";
       const bg = isRev ? "#fff7ed" : (mc[cr.matiere] || "#e0ebf8");
       const borderColor = isRev ? "#fdba74" : "#e2e8f0";
       const ensObj = findEns(cr.enseignant);
-      return "<td style='background:" + bg + ";border:1px solid " + borderColor + ";padding:6px;vertical-align:top'>"
+      return "<td" + attrSpan + " style='background:" + bg + ";border:1px solid " + borderColor + ";padding:6px;vertical-align:top'>"
         + (isRev ? "<span style='background:#f97316;color:#fff;font-size:8px;font-weight:900;padding:1px 4px;border-radius:3px;display:inline-block;margin-bottom:2px'>RÉV</span><br>" : "")
         + "<b style='font-size:11px;color:" + (isRev ? "#9a3412" : "#1e3a5f") + ";display:block'>" + cr.matiere + "</b>"
+        + (cr.heureFin && (cr.heureDebut !== hd || cr.heureFin !== TRANCHES[i + span])
+          ? "<span style='font-size:9px;color:#64748b;font-weight:700;display:block'>" + String(cr.heureDebut).slice(0, 5) + "–" + String(cr.heureFin).slice(0, 5) + "</span>" : "")
         + (cr.enseignant ? "<span style='font-size:10px;color:#475569'>" + affNom(cr.enseignant) + "</span>" : "")
         + (ensObj?.telephone ? "<br><span style='font-size:9px;color:#00876a;font-weight:600'>" + ensObj.telephone + "</span>" : "")
         + (cr.salle ? "<br><span style='font-size:9px;color:#94a3b8'>📍" + cr.salle + "</span>" : "")

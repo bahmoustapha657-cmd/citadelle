@@ -51,6 +51,65 @@ export function genTranches(step, heureDebut, heureFin) {
   return t;
 }
 
+// ── Grille ADAPTATIVE (durées de rubriques variables) ───────────────────────
+// Une maternelle enchaîne des activités de durées différentes : accueil
+// 15 min, regroupement 30, atelier 45, sieste 1 h… Une grille à pas FIXE ne
+// sait pas les représenter : un créneau qui ne commence pas pile sur une
+// tranche n'était tout simplement PAS affiché (getCreneau cherchait une
+// égalité exacte sur l'heure de début). Les lignes sont donc désormais
+// déduites des horaires RÉELLEMENT saisis, complétés par le pas régulier.
+
+export const enMinutes = (hhmm) => {
+  const [h, m] = String(hhmm || "").split(":").map(Number);
+  return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : null;
+};
+
+export const enHeure = (min) =>
+  `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+
+// Bornes de lignes = pas régulier ∪ débuts/fins des créneaux du jour, triés
+// et dédoublonnés, limités à la plage [heureDebut, heureFin] de la journée.
+export function genTranchesAdaptatives(step, heureDebut, heureFin, creneaux = []) {
+  const debut = enMinutes(heureDebut) ?? 8 * 60;
+  const fin = enMinutes(heureFin) ?? 14 * 60;
+  const bornes = new Set();
+  for (let t = debut; t <= fin; t += step) bornes.add(t);
+  bornes.add(fin);
+  for (const c of creneaux) {
+    const d = enMinutes(c.heureDebut);
+    const f = enMinutes(c.heureFin);
+    if (d != null && d >= debut && d <= fin) bornes.add(d);
+    if (f != null && f >= debut && f <= fin) bornes.add(f);
+  }
+  return [...bornes].sort((a, b) => a - b).map(enHeure);
+}
+
+// Pour un jour : à quelle ligne commence chaque créneau, et sur combien de
+// lignes il s'étend (rowSpan). Les lignes couvertes par un créneau sont
+// marquées « occupées » pour ne pas rendre de cellule vide en trop, ce qui
+// décalerait toute la colonne.
+export function planifierJour(creneaux, tranches) {
+  const debuts = new Map(); // index de ligne → { creneau, span }
+  const occupees = new Set(); // index de lignes couvertes (hors ligne de début)
+  const bornes = tranches.map(enMinutes);
+  for (const c of creneaux) {
+    const d = enMinutes(c.heureDebut);
+    const f = enMinutes(c.heureFin);
+    if (d == null) continue;
+    let i = bornes.findIndex((b) => b === d);
+    // Créneau hors bornes (saisi en dehors de la plage) : on l'accroche à la
+    // première ligne qui le contient, plutôt que de le faire disparaître.
+    if (i < 0) i = bornes.findIndex((b, k) => bornes[k + 1] != null && b <= d && d < bornes[k + 1]);
+    if (i < 0 || i >= tranches.length - 1) continue;
+    let j = f != null ? bornes.findIndex((b) => b === f) : -1;
+    if (j < 0 && f != null) j = bornes.findIndex((b) => b >= f);
+    const span = Math.max(1, (j > i ? j : i + 1) - i);
+    debuts.set(i, { creneau: c, span });
+    for (let k = i + 1; k < i + span; k++) occupees.add(k);
+  }
+  return { debuts, occupees };
+}
+
 export const affNom = (nomStr) => nomStr ? nomStr.replace(/\s*\([^)]*\)$/, "") : "";
 
 // Nombre de sous-lignes d'un créneau dans l'EDT général : la 10e tranche

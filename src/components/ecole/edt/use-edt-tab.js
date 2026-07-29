@@ -1,6 +1,6 @@
 import { useContext, useState } from "react";
 import { SchoolContext } from "../../../contexts/SchoolContext";
-import { COULEURS, niveauRank, genTranches, makeFindEns } from "./edt-utils";
+import { COULEURS, niveauRank, genTranchesAdaptatives, makeFindEns } from "./edt-utils";
 
 // État et dérivations de l'onglet emploi du temps : vue grille/liste, plage
 // horaire et durée des tranches, classe active, couleurs matières, et la copie
@@ -16,14 +16,18 @@ export function useEdtTab({ maxNote, classes, matieres, ens, emplois, filtreClas
   const [edtHeureFin, setEdtHeureFin] = useState("14:00");
 
   const duree = maxNote === 10 ? edtDuree : 120;
-  const TRANCHES = genTranches(duree, edtHeureDebut, edtHeureFin);
-  const nbTranches = TRANCHES.length - 1;
   const classesTriees = [...classes].sort((a, b) => niveauRank(a.nom) - niveauRank(b.nom));
   const classeEdtActuelle = filtreClasse === "all" && classesTriees.length > 0 ? classesTriees[0].nom : filtreClasse;
   const matCouleur = {};
   matieres.forEach((m, i) => { matCouleur[m.nom] = COULEURS[i % COULEURS.length]; });
   const findEns = makeFindEns(ens);
   const emploisClasse = emplois.filter((e) => e.classe === classeEdtActuelle);
+  // Les lignes de la grille suivent les horaires RÉELLEMENT saisis pour cette
+  // classe (en plus du pas régulier) : une rubrique de 15 min ou un créneau
+  // qui ne tombe pas pile sur une tranche reste visible. `duree` ne sert plus
+  // qu'à proposer un pas de départ et la durée par défaut d'un nouveau créneau.
+  const TRANCHES = genTranchesAdaptatives(duree, edtHeureDebut, edtHeureFin, emploisClasse);
+  const nbTranches = TRANCHES.length - 1;
   const getCreneau = (jour, hd) => emploisClasse.find((e) => e.jour === jour && e.heureDebut === hd);
 
   const copierEDT = () => {
