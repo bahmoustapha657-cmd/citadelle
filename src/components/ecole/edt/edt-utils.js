@@ -69,9 +69,24 @@ export const enHeure = (min) =>
 
 // Bornes de lignes = pas régulier ∪ débuts/fins des créneaux du jour, triés
 // et dédoublonnés, limités à la plage [heureDebut, heureFin] de la journée.
-export function genTranchesAdaptatives(step, heureDebut, heureFin, creneaux = []) {
-  const debut = enMinutes(heureDebut) ?? 8 * 60;
-  const fin = enMinutes(heureFin) ?? 14 * 60;
+// `ajuster` (par défaut) resserre la grille sur la journée RÉELLE : elle
+// commence au premier créneau et s'arrête au dernier. Sans cela, une plage
+// large (08:00–14:00) affichait de longues traînées de lignes vides avant et
+// après les cours, qui n'apportent rien et allongent l'impression.
+export function genTranchesAdaptatives(step, heureDebut, heureFin, creneaux = [], ajuster = true) {
+  let debut = enMinutes(heureDebut) ?? 8 * 60;
+  let fin = enMinutes(heureFin) ?? 14 * 60;
+
+  const debutsCreneaux = creneaux.map((c) => enMinutes(c.heureDebut)).filter((v) => v != null);
+  const finsCreneaux = creneaux.map((c) => enMinutes(c.heureFin)).filter((v) => v != null);
+  if (ajuster && debutsCreneaux.length) {
+    // On ne resserre QUE vers l'intérieur : la plage réglée reste la borne
+    // maximale, et un créneau saisi hors plage l'élargit plutôt que d'être perdu.
+    debut = Math.min(Math.max(debut, Math.min(...debutsCreneaux)), ...debutsCreneaux);
+    if (finsCreneaux.length) fin = Math.max(...finsCreneaux, Math.min(fin, Math.max(...finsCreneaux)));
+  }
+  if (fin <= debut) fin = debut + step;
+
   const bornes = new Set();
   for (let t = debut; t <= fin; t += step) bornes.add(t);
   bornes.add(fin);

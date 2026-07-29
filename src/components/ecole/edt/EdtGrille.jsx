@@ -46,13 +46,26 @@ export function EdtGrille({ h, emplois, canCreate, canEdit, setForm }) {
                     else { setForm({ classe: classeEdtActuelle, jour, heureDebut: hd, heureFin: hf, matiere: "", enseignant: "", salle: "" }); setEdtCellule({ jour, heureDebut: hd, heureFin: hf, existing: null }); }
                   }}
                   style={{
-                    padding: "4px 5px", border: `1px solid ${cr?.type === "revision" ? "#fdba74" : "#e2e8f0"}`,
+                    padding: "4px 5px",
+                    border: `1px solid ${cr?.type === "revision" ? "#fdba74" : cr?.type === "recreation" ? "#6ee7b7" : "#e2e8f0"}`,
                     cursor: canCreate || canEdit ? "pointer" : "default",
-                    background: cr ? (cr.type === "revision" ? "#fff7ed" : matCouleur[cr.matiere] || "#e0ebf8") : "#fafcff",
-                    minWidth: 90, verticalAlign: "top", position: "relative",
-                    transition: "filter .15s",
+                    background: cr
+                      ? (cr.type === "revision" ? "#fff7ed" : cr.type === "recreation" ? "#ecfdf5" : matCouleur[cr.matiere] || "#e0ebf8")
+                      : "#fafcff",
+                    minWidth: 90, verticalAlign: cr?.type === "recreation" ? "middle" : "top",
+                    textAlign: cr?.type === "recreation" ? "center" : "start",
+                    position: "relative", transition: "filter .15s",
                   }}>
-                  {cr ? <>
+                  {cr && cr.type === "recreation" ? (
+                    // Récréation / pause : pas de matière ni d'enseignant, un
+                    // bandeau lisible d'un coup d'œil au milieu de la journée.
+                    <div style={{ fontWeight: 800, fontSize: 11, color: "#047857" }}>
+                      🍎 {cr.matiere || "Récréation"}
+                      <div style={{ fontSize: 9, fontWeight: 700, color: "#059669", opacity: 0.85 }}>
+                        {String(cr.heureDebut).slice(0, 5)}–{String(cr.heureFin || "").slice(0, 5)}
+                      </div>
+                    </div>
+                  ) : cr ? <>
                     {conflit && <span title="Conflit enseignant" style={{ position: "absolute", top: 2, right: 3, fontSize: 10 }}>⚠️</span>}
                     {cr.type === "revision" && <span style={{ position: "absolute", top: 2, left: 3, background: "#f97316", color: "#fff", fontSize: 8, fontWeight: 900, padding: "1px 4px", borderRadius: 3, lineHeight: 1.4 }}>RÉV</span>}
                     <div style={{ fontWeight: 800, fontSize: 11, color: cr.type === "revision" ? "#9a3412" : "#1e3a5f", lineHeight: 1.3, marginTop: cr.type === "revision" ? 10 : 0 }}>{cr.matiere || "—"}</div>

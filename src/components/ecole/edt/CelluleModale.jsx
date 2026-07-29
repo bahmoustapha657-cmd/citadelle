@@ -29,29 +29,52 @@ export function CelluleModale({
         <span>🏫 <strong>{form.classe||classeEdtActuelle}</strong></span>
       </div>
       <div style={{display:"flex",gap:8,marginBottom:14}}>
-        {[{v:"cours",label:"📚 Cours"},{v:"revision",label:"📝 Révision"}].map(t=>(
-          <button key={t.v} onClick={()=>setForm(p=>({...p,type:t.v}))}
-            style={{flex:1,padding:"9px 0",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13,
-              background:(form.type||"cours")===t.v?(t.v==="revision"?"#fff7ed":"#eff6ff"):"#f9fafb",
-              border:`2px solid ${(form.type||"cours")===t.v?(t.v==="revision"?"#f97316":"#3b82f6"):"#e5e7eb"}`,
-              color:(form.type||"cours")===t.v?(t.v==="revision"?"#9a3412":"#1d4ed8"):"#6b7280"}}>
-            {t.label}
-          </button>
-        ))}
+        {[
+          {v:"cours",label:"📚 Cours",c:"#3b82f6",bg:"#eff6ff",txt:"#1d4ed8"},
+          {v:"revision",label:"📝 Révision",c:"#f97316",bg:"#fff7ed",txt:"#9a3412"},
+          {v:"recreation",label:"🍎 Récréation",c:"#10b981",bg:"#ecfdf5",txt:"#047857"},
+        ].map(t=>{
+          const actif=(form.type||"cours")===t.v;
+          return (
+            <button key={t.v} onClick={()=>setForm(p=>({
+              ...p, type:t.v,
+              // Une récréation (ou une pause) n'a ni matière ni enseignant :
+              // on nettoie ces champs pour ne pas laisser de résidu d'un
+              // cours saisi avant la bascule.
+              ...(t.v==="recreation" ? { matiere:"", enseignant:"", salle:"" } : {}),
+            }))}
+              style={{flex:1,padding:"9px 0",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:12.5,
+                background:actif?t.bg:"#f9fafb",
+                border:`2px solid ${actif?t.c:"#e5e7eb"}`,
+                color:actif?t.txt:"#6b7280"}}>
+              {t.label}
+            </button>
+          );
+        })}
       </div>
 
-      <CelluleRevisionPrime form={form} setForm={setForm}/>
+      {(form.type||"cours")!=="recreation" && <CelluleRevisionPrime form={form} setForm={setForm}/>}
 
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-        <Selec label="Matière" value={form.matiere||""} onChange={e=>{setForm(p=>({...p,matiere:e.target.value,enseignant:""}));}}>
-          <option value="">— Sélectionner —</option>
-          {matieres.map(m=><option key={m._id}>{m.nom}</option>)}
-        </Selec>
-        <CelluleEnseignantSelect
-          form={form} chg={chg} edtCellule={edtCellule} classeEdtActuelle={classeEdtActuelle}
-          ens={ens} emplois={emplois} isPrimarySection={isPrimarySection}
-        />
-        <Input label="Salle (optionnel)" value={form.salle||""} onChange={chg("salle")}/>
+        {(form.type||"cours")==="recreation" ? (
+          <>
+            <Input label="Libellé" value={form.matiere||""} onChange={chg("matiere")}
+              placeholder="Récréation, Pause déjeuner, Sieste…"/>
+            <div/>
+          </>
+        ) : (
+          <>
+            <Selec label="Matière" value={form.matiere||""} onChange={e=>{setForm(p=>({...p,matiere:e.target.value,enseignant:""}));}}>
+              <option value="">— Sélectionner —</option>
+              {matieres.map(m=><option key={m._id}>{m.nom}</option>)}
+            </Selec>
+            <CelluleEnseignantSelect
+              form={form} chg={chg} edtCellule={edtCellule} classeEdtActuelle={classeEdtActuelle}
+              ens={ens} emplois={emplois} isPrimarySection={isPrimarySection}
+            />
+            <Input label="Salle (optionnel)" value={form.salle||""} onChange={chg("salle")}/>
+          </>
+        )}
         <div style={{display:"flex",alignItems:"flex-end",gap:8}}>
           <Input label="Début" type="time" value={form.heureDebut||edtCellule.heureDebut} onChange={chg("heureDebut")}/>
           <Input label="Fin" type="time" value={form.heureFin||edtCellule.heureFin} onChange={chg("heureFin")}/>

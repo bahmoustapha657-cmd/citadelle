@@ -25,8 +25,27 @@ test("les horaires réellement saisis créent leurs propres lignes", () => {
     { heureDebut: "08:45", heureFin: "09:30" }, // atelier 45 min
     { heureDebut: "09:30", heureFin: "10:30" }, // sieste 1 h
   ];
+  // La grille s'arrête au dernier créneau (10:30) : pas de ligne vide jusqu'à 11:00.
   const t = genTranchesAdaptatives(60, "08:00", "11:00", creneaux);
-  assert.deepEqual(t, ["08:00", "08:15", "08:45", "09:00", "09:30", "10:00", "10:30", "11:00"]);
+  assert.deepEqual(t, ["08:00", "08:15", "08:45", "09:00", "09:30", "10:00", "10:30"]);
+  // …sauf si l'on demande explicitement la plage complète.
+  const complet = genTranchesAdaptatives(60, "08:00", "11:00", creneaux, false);
+  assert.equal(complet[complet.length - 1], "11:00");
+});
+
+test("la grille se resserre sur la journée réelle (pas de lignes vides)", () => {
+  // Plage large réglée par l'école, mais une seule activité en fin de matinée.
+  const t = genTranchesAdaptatives(60, "08:00", "14:00", [
+    { heureDebut: "10:00", heureFin: "11:00" },
+  ]);
+  assert.deepEqual(t, ["10:00", "11:00"], "ni les 2 h avant ni les 3 h après ne doivent apparaître");
+});
+
+test("un créneau hors plage élargit la grille au lieu d'être perdu", () => {
+  const t = genTranchesAdaptatives(60, "09:00", "10:00", [
+    { heureDebut: "07:30", heureFin: "08:00" },
+  ]);
+  assert.equal(t[0], "07:30", "la grille doit descendre jusqu'au créneau");
 });
 
 test("chaque créneau couvre exactement ses lignes (rowSpan)", () => {

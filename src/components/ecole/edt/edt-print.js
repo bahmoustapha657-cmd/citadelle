@@ -29,6 +29,14 @@ export function imprimerEDT({ emploisClasse, TRANCHES, classeEdtActuelle, school
       const attrSpan = span > 1 ? " rowspan='" + span + "'" : "";
       if (!cr) return "<td" + attrSpan + " style='background:#fafcff;border:1px solid #e2e8f0;padding:6px'></td>";
       const isRev = cr.type === "revision";
+      const isRecre = cr.type === "recreation";
+      // Récréation / pause : bandeau vert centré, sans matière ni enseignant.
+      if (isRecre) {
+        return "<td" + attrSpan + " style='background:#ecfdf5;border:1px solid #6ee7b7;padding:6px;text-align:center;vertical-align:middle'>"
+          + "<b style='font-size:11px;color:#047857'>🍎 " + (cr.matiere || "Récréation") + "</b>"
+          + "<br><span style='font-size:9px;color:#059669;font-weight:700'>"
+          + String(cr.heureDebut).slice(0, 5) + "–" + String(cr.heureFin || "").slice(0, 5) + "</span></td>";
+      }
       const bg = isRev ? "#fff7ed" : (mc[cr.matiere] || "#e0ebf8");
       const borderColor = isRev ? "#fdba74" : "#e2e8f0";
       const ensObj = findEns(cr.enseignant);
