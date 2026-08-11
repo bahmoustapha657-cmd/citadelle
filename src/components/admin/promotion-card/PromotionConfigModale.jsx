@@ -24,7 +24,7 @@ export function PromotionConfigModale({
         </div>
         <div>
           <label style={{fontSize:12,fontWeight:700,color:C.blueDark,display:"block",marginBottom:4}}>
-            Seuil Primaire (sur 10)
+            Seuil Prescolaire / Primaire (sur 10)
           </label>
           <input type="number" min={0} max={10} step={0.5} value={seuilPrimaire}
             onChange={e=>setSeuilPrimaire(e.target.value)}

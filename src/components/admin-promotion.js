@@ -23,6 +23,9 @@ const SB_PARALLELE = 40;
 // de SA section : primaire = trimestre, secondaire = peut être semestre).
 // Diviseur FIXE au nombre total de périodes ((T1+T2+T3)/3 ou (S1+S2)/2),
 // les périodes vides sont traitées comme 0 (cf. getAnnualAverage).
+// Le préscolaire tombe volontairement du côté « secondaire » : c'est la
+// périodicité sous laquelle ses notes ont été SAISIES (use-ecole.js ne classe
+// « primaire » que ensPrimaire), donc celle qui doit servir au diviseur.
 function calcMoyenneAnnuelle(schoolInfo, notes, classe, matieres) {
   if (!notes || notes.length === 0) return null;
   const sectionPeriode = getSectionForClasse(classe) === "primaire" ? "primaire" : "secondaire";
@@ -118,8 +121,12 @@ async function appliquerUpdates(schoolId, updates) {
 // Renvoie { total, promus, redoublants, terminalistes, inconnus,
 //           classesInconnues, sansNotes, simulation, details }.
 export async function runPromotion({ schoolId, schoolInfo, seuilCollege, seuilPrimaire, sansNotesBehavior, simulate = false }) {
+  // Le préscolaire est une section à part entière depuis 2026-07 : sans lui,
+  // les élèves de maternelle restaient dans leur classe d'une année sur l'autre.
+  // Il est noté sur 10 comme le primaire (cf. Primaire.jsx) → même seuil.
   const SECTIONS = [
     { eleves: "elevesCollege", notes: "notesCollege", matieres: "classesCollege_matieres", seuil: Number(seuilCollege), maxNote: 20 },
+    { eleves: "elevesPrescolaire", notes: "notesPrescolaire", matieres: "classesPrescolaire_matieres", seuil: Number(seuilPrimaire), maxNote: 10 },
     { eleves: "elevesPrimaire", notes: "notesPrimaire", matieres: "classesPrimaire_matieres", seuil: Number(seuilPrimaire), maxNote: 10 },
     { eleves: "elevesLycee", notes: "notesLycee", matieres: "classesLycee_matieres", seuil: Number(seuilCollege), maxNote: 20 },
   ];
