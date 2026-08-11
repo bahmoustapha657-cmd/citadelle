@@ -2,7 +2,7 @@
 // L'EDT général vit dans edt-print-general.js.
 
 import { enteteDoc } from "../../../reports";
-import { JOURS, COULEURS, affNom, planifierJour } from "./edt-utils";
+import { JOURS_SEMAINE, COULEURS, affNom, planifierJour } from "./edt-utils";
 
 export { voirEdtGeneral } from "./edt-print-general";
 
@@ -10,7 +10,9 @@ export { voirEdtGeneral } from "./edt-print-general";
 // variables (15/30/45/60 min…), chacune occupe autant de lignes que sa durée
 // réelle. Sans cela la feuille imprimée perdait les créneaux dont l'heure de
 // début ne tombait pas pile sur une tranche.
-export function imprimerEDT({ emploisClasse, TRANCHES, classeEdtActuelle, schoolInfo, findEns }) {
+export function imprimerEDT({ emploisClasse, TRANCHES, classeEdtActuelle, schoolInfo, findEns, jours }) {
+  // Jours ouvrés de l ecole (repli : semaine complete).
+  const JOURS = Array.isArray(jours) && jours.length ? jours : JOURS_SEMAINE;
   const allMat = [...new Set(emploisClasse.map((e) => e.matiere).filter(Boolean))];
   const mc = {}; allMat.forEach((m, i) => { mc[m] = COULEURS[i % COULEURS.length]; });
   const plans = {};

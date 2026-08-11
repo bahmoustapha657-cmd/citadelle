@@ -1,7 +1,51 @@
 // Helpers purs de l'emploi du temps extraits de EmploiDuTempsTab.jsx
 // (découpage 2026-05-29).
 
-export const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
+import { JOURS_SEMAINE, getSectionForClasse } from "../../../constants";
+
+// Réexporté pour que les modules EDT gardent un point d'entrée unique.
+export { JOURS_SEMAINE };
+
+// Le réglage est PAR SECTION, comme la périodicité : le primaire s'arrête
+// souvent le vendredi quand le secondaire travaille le samedi.
+// Le préscolaire suit le primaire (mêmes horaires, mêmes familles).
+const CLE_JOURS = {
+  primaire: "joursOuvrablesPrimaire",
+  secondaire: "joursOuvrablesSecondaire",
+};
+
+export const sectionJours = (section = "secondaire") =>
+  (section === "primaire" || section === "prescolaire" ? "primaire" : "secondaire");
+
+// Garde l'ordre canonique de la semaine quel que soit l'ordre d'enregistrement,
+// et rejette les listes vides ou illisibles (→ null, l'appelant se replie).
+function normaliserJours(brut) {
+  if (!Array.isArray(brut) || !brut.length) return null;
+  const retenus = JOURS_SEMAINE.filter((j) => brut.includes(j));
+  return retenus.length ? retenus : null;
+}
+
+// Jours ouvrés d'une section (ecoles.extra.joursOuvrable{Primaire,Secondaire}).
+// Priorité : champ de la section → champ global legacy → semaine complète.
+export function getJoursOuvrables(schoolInfo = {}, section = "secondaire") {
+  return normaliserJours(schoolInfo?.[CLE_JOURS[sectionJours(section)]])
+    || normaliserJours(schoolInfo?.joursOuvrables)
+    || [...JOURS_SEMAINE];
+}
+
+// Jours ouvrés applicables à une classe, sa section étant déduite de son nom.
+export function getJoursOuvrablesPourClasse(schoolInfo = {}, classe = "") {
+  return getJoursOuvrables(schoolInfo, getSectionForClasse(classe));
+}
+
+// EDT général : toutes les classes partagent un seul tableau, donc les colonnes
+// sont l'UNION des deux sections (une colonne Samedi vide pour le primaire vaut
+// mieux qu'un samedi du secondaire escamoté).
+export function getJoursOuvrablesUnion(schoolInfo = {}) {
+  const primaire = getJoursOuvrables(schoolInfo, "primaire");
+  const secondaire = getJoursOuvrables(schoolInfo, "secondaire");
+  return JOURS_SEMAINE.filter((j) => primaire.includes(j) || secondaire.includes(j));
+}
 
 export const COULEURS = ["#dbeafe", "#dcfce7", "#fef9c3", "#ffe4e6", "#f3e8ff", "#ffedd5", "#e0f2fe", "#d1fae5", "#fce7f3", "#ecfdf5"];
 

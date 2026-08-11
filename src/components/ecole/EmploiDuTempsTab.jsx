@@ -50,7 +50,7 @@ export function EmploiDuTempsTab({
       edtGeneralOuvert={h.edtGeneralOuvert} setEdtGeneralOuvert={h.setEdtGeneralOuvert}
       classes={classes} classesTriees={h.classesTriees} emplois={emplois}
       TRANCHES={h.TRANCHES} nbTranches={h.nbTranches}
-      matCouleur={h.matCouleur} findEns={h.findEns} schoolInfo={h.schoolInfo}
+      matCouleur={h.matCouleur} findEns={h.findEns} schoolInfo={h.schoolInfo} jours={h.joursGeneral}
     />
   </div>;
 }

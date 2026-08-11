@@ -1,5 +1,5 @@
 import { C } from "../../../constants";
-import { JOURS, affNom, planifierJour } from "./edt-utils";
+import { affNom, planifierJour } from "./edt-utils";
 
 // Vue grille de l'emploi du temps : tableau horaires × jours, cellules cliquables
 // pour créer/modifier un créneau, avec détection de conflit enseignant.
@@ -7,7 +7,7 @@ import { JOURS, affNom, planifierJour } from "./edt-utils";
 // (15/30/45/60 min…) : chaque créneau occupe autant de lignes que sa durée
 // réelle (rowSpan), et les lignes qu'il recouvre ne rendent pas de cellule.
 export function EdtGrille({ h, emplois, canCreate, canEdit, setForm }) {
-  const { TRANCHES, matCouleur, findEns, classeEdtActuelle, setEdtCellule, emploisClasse } = h;
+  const { TRANCHES, matCouleur, findEns, classeEdtActuelle, setEdtCellule, emploisClasse, jours: JOURS } = h;
   // Plan de chaque colonne (un jour) : où commence chaque créneau et sur
   // combien de lignes il s'étend.
   const plans = {};

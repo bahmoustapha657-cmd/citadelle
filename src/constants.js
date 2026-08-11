@@ -99,6 +99,13 @@ export const getSectionsActives = (schoolInfo = {}) => {
 };
 export const isSectionActive = (schoolInfo, section) => getSectionsActives(schoolInfo).includes(section);
 
+// ── Jours de classe ─────────────────────────────────────────────────────────
+// Semaine complète possible. Les jours RÉELLEMENT ouvrés se règlent par section
+// dans Paramètres → Identité (lundi-vendredi, lundi-samedi, parfois sans
+// mercredi) et pilotent les colonnes de l'emploi du temps. Les helpers de
+// lecture vivent dans components/ecole/edt/edt-utils.js.
+export const JOURS_SEMAINE = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
+
 // Exports historiques (système guinéen) — conservés pour compat.
 export const CLASSES_PRESCOLAIRE = genClasses(NIVEAUX_PRESCOLAIRE);
 export const CLASSES_PRIMAIRE = genClasses(NIVEAUX_PAR_SYSTEME.guineen.primaire);

@@ -2,9 +2,11 @@
 // Extraite de edt-print.js (découpage par ordre de grandeur).
 
 import { enteteDoc } from "../../../reports";
-import { JOURS, COULEURS, SOUS_LABELS, affNom, nbSousLignes, totalLignesClasse } from "./edt-utils";
+import { JOURS_SEMAINE, COULEURS, SOUS_LABELS, affNom, nbSousLignes, totalLignesClasse } from "./edt-utils";
 
-function getEdtGeneralHTML({ emplois, classesTriees, TRANCHES, nbTranches, schoolInfo, findEns }) {
+function getEdtGeneralHTML({ emplois, classesTriees, TRANCHES, nbTranches, schoolInfo, findEns, jours }) {
+  // Jours ouvrés de l'école (repli : semaine complète).
+  const JOURS = Array.isArray(jours) && jours.length ? jours : JOURS_SEMAINE;
   const allMat = [...new Set(emplois.map((e) => e.matiere).filter(Boolean))];
   const mc = {}; allMat.forEach((m, i) => { mc[m] = COULEURS[i % COULEURS.length]; });
   const ths = JOURS.map((j) => "<th style='background:#0A1628;color:#fff;padding:7px 8px;font-size:11px;text-align:center;min-width:90px'>" + j + "</th>").join("");

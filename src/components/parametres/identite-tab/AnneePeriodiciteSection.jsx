@@ -1,4 +1,4 @@
-import { C, TOUS_MOIS_LONGS, SYSTEMES_SCOLAIRES, SECTIONS_ECOLE, calcMoisAnnee, getClassesForSection, getSectionLabel } from "../../../constants";
+import { C, TOUS_MOIS_LONGS, SYSTEMES_SCOLAIRES, SECTIONS_ECOLE, JOURS_SEMAINE, calcMoisAnnee, getClassesForSection, getSectionLabel } from "../../../constants";
 import { PERIODICITES, getPeriodesForSchool } from "../../../period-utils";
 import { Btn } from "../../ui";
 
@@ -13,6 +13,22 @@ export function AnneePeriodiciteSection({ form, setForm, chg, schoolInfo, setMig
       : [...sectionsChoisies, section];
     if (!suivantes.length) return; // au moins une section ouverte
     setForm((p) => ({ ...p, sectionsActives: SECTIONS_ECOLE.filter((s) => suivantes.includes(s)) }));
+  };
+  // Jours ouvrables, réglés par section (le primaire s'arrête souvent le
+  // vendredi quand le secondaire travaille le samedi). Champ vide = semaine
+  // complète, et on retombe TOUJOURS sur l'ordre canonique de la semaine.
+  const joursDe = (champ) => {
+    const brut = form[champ];
+    const retenus = Array.isArray(brut) ? JOURS_SEMAINE.filter((j) => brut.includes(j)) : [];
+    return retenus.length ? retenus : [...JOURS_SEMAINE];
+  };
+  const basculerJour = (champ, jour) => {
+    const actuels = joursDe(champ);
+    const suivants = actuels.includes(jour)
+      ? actuels.filter((j) => j !== jour)
+      : [...actuels, jour];
+    if (!suivants.length) return; // au moins un jour de classe
+    setForm((p) => ({ ...p, [champ]: JOURS_SEMAINE.filter((j) => suivants.includes(j)) }));
   };
   const periodiciteChange =
     ((schoolInfo.periodicitePrimaire || schoolInfo.periodicite) && (schoolInfo.periodicitePrimaire || schoolInfo.periodicite) !== form.periodicitePrimaire)
@@ -57,6 +73,45 @@ export function AnneePeriodiciteSection({ form, setForm, chg, schoolInfo, setMig
                   fontSize: 13, fontWeight: 700, color: active ? "#065f46" : "#94a3b8" }}>
                 {active ? "✅" : "☐"} {getSectionLabel(section)}
               </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div style={sec}>
+        <h3 style={{ margin: "0 0 16px", fontSize: 14, fontWeight: 800, color: C.blueDark }}>🗓️ Jours ouvrables</h3>
+        <p style={{ margin: "0 0 12px", fontSize: 12, color: "#64748b" }}>
+          Jours de classe, réglables séparément pour le primaire et le secondaire : ils déterminent
+          les colonnes de l'emploi du temps, à l'écran comme à l'impression. Le préscolaire suit le
+          primaire. Au moins un jour reste ouvert de chaque côté.
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          {[
+            { champ: "joursOuvrablesPrimaire", label: "Primaire (+ préscolaire)" },
+            { champ: "joursOuvrablesSecondaire", label: "Secondaire (collège + lycée)" },
+          ].map(({ champ, label }) => {
+            const joursChoisis = joursDe(champ);
+            return (
+              <div key={champ}>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: C.blueDark, marginBottom: 6 }}>{label}</label>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {JOURS_SEMAINE.map((jour) => {
+                    const ouvert = joursChoisis.includes(jour);
+                    return (
+                      <button key={jour} type="button" onClick={() => basculerJour(champ, jour)}
+                        style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 14px", borderRadius: 9,
+                          border: ouvert ? `2px solid ${C.green}` : "2px solid #e2e8f0",
+                          background: ouvert ? "#ecfdf5" : "#f8fafc", cursor: "pointer",
+                          fontSize: 13, fontWeight: 700, color: ouvert ? "#065f46" : "#94a3b8" }}>
+                        {ouvert ? "✅" : "☐"} {jour}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p style={{ margin: "6px 0 0", fontSize: 11, color: "#9ca3af" }}>
+                  Semaine actuelle : <strong style={{ color: C.blue }}>{joursChoisis.join(" · ")}</strong>
+                </p>
+              </div>
             );
           })}
         </div>

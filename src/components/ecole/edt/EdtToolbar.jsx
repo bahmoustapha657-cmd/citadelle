@@ -36,7 +36,7 @@ export function EdtToolbar({ h, maxNote, canCreate, setFiltreClasse, setEdtDuree
           style={{ border: "1px solid #b0c4d8", borderRadius: 6, padding: "4px 6px", fontSize: 12, width: 90 }} />
       </label>
       {canCreate && <Btn sm v="vert" onClick={h.copierEDT}>📋 Copier vers…</Btn>}
-      {h.classeEdtActuelle !== "all" && <Btn sm v="ghost" onClick={() => imprimerEDT({ emploisClasse: h.emploisClasse, TRANCHES: h.TRANCHES, classeEdtActuelle: h.classeEdtActuelle, schoolInfo: h.schoolInfo, findEns: h.findEns })}>🖨️ Imprimer</Btn>}
+      {h.classeEdtActuelle !== "all" && <Btn sm v="ghost" onClick={() => imprimerEDT({ emploisClasse: h.emploisClasse, TRANCHES: h.TRANCHES, classeEdtActuelle: h.classeEdtActuelle, schoolInfo: h.schoolInfo, findEns: h.findEns, jours: h.jours })}>🖨️ Imprimer</Btn>}
       <Btn sm v="blue" onClick={() => h.setEdtGeneralOuvert(true)}>📊 EDT Général</Btn>
     </div>
   );
