@@ -20,6 +20,7 @@ import {
   getTarifMensuelForClasse,
   montantMoisPaye,
 } from "../../../mensualite-utils";
+import { clePaiement, mouvementsDepuisJournal } from "../paiements-journal";
 
 export const PERIODES_CAISSE = [
   { id: "jour", label: "Journée" },
@@ -116,6 +117,7 @@ export const SOURCES = {
   recette: { label: "Recettes diverses", sens: "entree", couleur: "#22c55e" },
   don: { label: "Dons & versements", sens: "entree", couleur: "#14b8a6" },
   depense: { label: "Dépenses", sens: "sortie", couleur: "#ef4444" },
+  annulation: { label: "Annulations", sens: "sortie", couleur: "#f97316" },
 };
 
 // Mouvements portés par les documents comptables (date déjà au format ISO).
@@ -151,7 +153,7 @@ function mouvementsDocuments({ recettes = [], depenses = [], versements = [] }) 
 // Mouvements encaissés sur la fiche élève : mensualités, inscription et frais
 // annexes. Le montant d'une mensualité est celui FIGÉ au paiement quand il
 // existe (mensMontants), sinon le tarif courant de la classe.
-function mouvementsEleves({ eleves = [], moisAnnee = [], tarifsClasses = [] }) {
+function mouvementsEleves({ eleves = [], moisAnnee = [], tarifsClasses = [], annee = "" }) {
   const lignes = [];
   for (const eleve of eleves) {
     const nom = `${eleve.prenom || ""} ${eleve.nom || ""}`.trim() || "Élève";
@@ -165,7 +167,9 @@ function mouvementsEleves({ eleves = [], moisAnnee = [], tarifsClasses = [] }) {
       const date = parseDateSouple(mensDates[mois]);
       if (!date) continue; // paiement sans date : invisible dans un journal daté
       lignes.push({
-        id: `mens-${eleve._id}-${mois}`, date, sens: "entree", source: "scolarite",
+        id: `mens-${eleve._id}-${mois}`,
+        cle: clePaiement({ annee, eleveId: eleve._id, type: "mensualite", mois }),
+        date, sens: "entree", source: "scolarite",
         libelle: nom, detail: `${mois}${classe ? ` · ${classe}` : ""}`,
         montant: montantMoisPaye(eleve, mois, tarifMensuel),
       });
@@ -175,7 +179,9 @@ function mouvementsEleves({ eleves = [], moisAnnee = [], tarifsClasses = [] }) {
       const date = parseDateSouple(eleve.inscriptionDate);
       if (date) {
         lignes.push({
-          id: `insc-${eleve._id}`, date, sens: "entree", source: "inscription",
+          id: `insc-${eleve._id}`,
+          cle: clePaiement({ annee, eleveId: eleve._id, type: "inscription", mois: "inscription" }),
+          date, sens: "entree", source: "inscription",
           libelle: nom, detail: `Inscription${classe ? ` · ${classe}` : ""}`,
           montant: getTarifInscriptionForEleve(eleve, tarifsClasses),
         });
@@ -192,7 +198,9 @@ function mouvementsEleves({ eleves = [], moisAnnee = [], tarifsClasses = [] }) {
       const date = parseDateSouple(brut);
       if (!date) continue;
       lignes.push({
-        id: `frais-${eleve._id}-${frais.id}`, date, sens: "entree", source: "frais",
+        id: `frais-${eleve._id}-${frais.id}`,
+        cle: clePaiement({ annee, eleveId: eleve._id, type: "frais", mois: frais.id }),
+        date, sens: "entree", source: "frais",
         libelle: nom, detail: `${getFraisAnnexeLabel(frais.id)}${classe ? ` · ${classe}` : ""}`,
         montant: frais.id === "autre"
           ? getTarifAutreForClasse(tarifsClasses, classe)
@@ -204,8 +212,21 @@ function mouvementsEleves({ eleves = [], moisAnnee = [], tarifsClasses = [] }) {
 }
 
 // Tous les mouvements datés, du plus récent au plus ancien.
+//
+// Deux sources se recouvrent pour la scolarité : le JOURNAL des encaissements
+// (source de vérité depuis sa mise en service) et les champs de la FICHE
+// élève (seule trace des paiements antérieurs). Une clé métier commune permet
+// de garder le journal quand il connaît le mouvement, et de ne retomber sur
+// la fiche que pour l'historique d'avant — sans jamais compter deux fois.
 export function collecterMouvements(sources) {
-  return [...mouvementsDocuments(sources), ...mouvementsEleves(sources)]
+  const { paiements = [] } = sources;
+  const duJournal = mouvementsDepuisJournal(paiements).map((m) => ({
+    ...m, date: parseDateSouple(m.dateBrute),
+  })).filter((m) => m.date);
+  const clesJournal = new Set(duJournal.map((m) => m.cle));
+  const desFiches = mouvementsEleves(sources).filter((m) => !clesJournal.has(m.cle));
+
+  return [...mouvementsDocuments(sources), ...duJournal, ...desFiches]
     .sort((a, b) => b.date - a.date || a.libelle.localeCompare(b.libelle));
 }
 

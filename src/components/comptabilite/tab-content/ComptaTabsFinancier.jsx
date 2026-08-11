@@ -39,6 +39,7 @@ export function ComptaTabsFinancier({ c, readOnly, annee }) {
         eleves={c.tousElevesScolarite}
         moisAnnee={c.moisAnnee}
         tarifsClasses={c.tarifsClasses}
+        paiements={c.paiements}
         enModeArchive={c.enModeArchive}
         anneeConsultee={c.anneeConsultee}
       />}

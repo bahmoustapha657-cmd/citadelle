@@ -29,6 +29,8 @@ const FLAT_TABLE = {
   // Comptabilité (Tranche 4) :
   recettes: "recettes", depenses: "depenses", versements: "versements",
   bons: "bons", personnel: "personnel",
+  // Journal des encaissements de scolarité (grand livre, ajout seul) :
+  paiements: "paiements",
   // Modules « document » (Tranche 5) — tables uniformes id+ecole_id+extra :
   messages: "messages", annonces: "annonces", documents: "documents",
   examens: "examens", livrets: "livrets", honneurs: "honneurs",
@@ -122,6 +124,16 @@ const TRANSFORMERS = {
   versements: (r) => ({ _id: r.id, annee: r.annee, date: r.date, montant: Number(r.montant), ...(r.extra || {}) }),
   bons: (r) => ({ _id: r.id, annee: r.annee, date: r.date, montant: Number(r.montant), ...(r.extra || {}) }),
   personnel: (r) => ({ _id: r.id, nom: r.nom, prenom: r.prenom, ...(r.extra || {}) }),
+  // Journal des encaissements : l'élève, la classe et le nom sont FIGÉS au
+  // moment du paiement (la fiche peut changer de classe, ou disparaître).
+  paiements: (r) => ({
+    _id: r.id, annee: r.annee, type: r.type, statut: r.statut,
+    eleveId: r.eleve_id, eleveNom: r.eleve_nom, classe: r.classe,
+    mois: r.mois, libelle: r.libelle, montant: Number(r.montant),
+    date: r.date_paiement, auteur: r.auteur,
+    createdAt: r.created_at ? Date.parse(r.created_at) : null,
+    ...(r.extra || {}),
+  }),
   // eleve_id en colonne (filtre RLS parent) ; le reste dans extra.
   messages: (r) => ({ _id: r.id, eleveId: r.eleve_id, ...(r.extra || {}) }),
 };
@@ -167,6 +179,10 @@ const COLUMN_DEFS = {
   versements: { extraCol: "extra", cols: { annee: "annee", date: "date", montant: "montant" } },
   bons: { extraCol: "extra", cols: { annee: "annee", date: "date", montant: "montant" } },
   personnel: { extraCol: "extra", cols: { nom: "nom", prenom: "prenom" } },
+  paiements: { extraCol: "extra", cols: {
+    annee: "annee", type: "type", statut: "statut", eleveId: "eleve_id",
+    eleveNom: "eleve_nom", classe: "classe", mois: "mois", libelle: "libelle",
+    montant: "montant", date: "date_paiement", auteur: "auteur" } },
   messages: { extraCol: "extra", cols: { eleveId: "eleve_id" } },
 };
 // Tables « document » : reverse = tous les champs vers `extra`.

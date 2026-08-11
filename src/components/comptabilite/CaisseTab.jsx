@@ -12,15 +12,18 @@ import {
 // une semaine ou un mois. Complète le Bilan, qui raisonne par période
 // scolaire (T1/T2…) et ne répond pas à « combien a-t-on encaissé aujourd'hui ».
 export function CaisseTab({
-  recettes, depenses, versements, eleves, moisAnnee, tarifsClasses,
+  recettes, depenses, versements, eleves, moisAnnee, tarifsClasses, paiements = [],
   enModeArchive, anneeConsultee,
 }) {
   const [periode, setPeriode] = useState("jour");
   const [reference, setReference] = useState(() => new Date());
 
   const mouvements = useMemo(
-    () => collecterMouvements({ recettes, depenses, versements, eleves, moisAnnee, tarifsClasses }),
-    [recettes, depenses, versements, eleves, moisAnnee, tarifsClasses],
+    () => collecterMouvements({
+      recettes, depenses, versements, eleves, moisAnnee, tarifsClasses,
+      paiements, annee: anneeConsultee,
+    }),
+    [recettes, depenses, versements, eleves, moisAnnee, tarifsClasses, paiements, anneeConsultee],
   );
   const duJour = useMemo(() => filtrerPeriode(mouvements, reference, periode), [mouvements, reference, periode]);
   const totaux = useMemo(() => totauxMouvements(duJour), [duJour]);
@@ -134,8 +137,10 @@ export function CaisseTab({
       )}
 
       <p style={{ margin: "12px 0 0", fontSize: 11, color: "var(--lc-text-faint)" }}>
-        Les salaires n'apparaissent pas ici : une fiche de paie porte un mois, pas une date de décaissement.
-        Un paiement de scolarité enregistré sans date (import ancien) reste également invisible dans le journal.
+        Les encaissements de scolarité proviennent du journal des paiements, qui enregistre chaque mouvement
+        et ses annulations. Les paiements antérieurs à sa mise en service sont reconstitués depuis les fiches
+        élèves — sans doublon, mais sans annulations ni auteur. Les salaires n'apparaissent pas ici : une fiche
+        de paie porte un mois, pas une date de décaissement.
       </p>
     </div>
   );

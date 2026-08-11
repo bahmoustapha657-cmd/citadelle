@@ -8,6 +8,21 @@
 import { fmt, initMens } from "../../constants";
 import { sumBonsForSalary } from "../../salary-utils";
 import { notifierParents } from "../../backend/notify-supabase";
+import { ecritureAnnulation, ecritureEncaissement } from "./paiements-journal";
+
+// Écrit une ligne au journal des encaissements. BEST-EFFORT : si le journal
+// refuse l'écriture (droits, réseau), l'encaissement lui-même reste acquis —
+// perdre le paiement parce que sa trace a échoué serait pire que l'inverse.
+// L'utilisateur est averti pour pouvoir régulariser.
+async function journaliser(ajPaiement, ecriture, toast) {
+  if (typeof ajPaiement !== "function") return;
+  try {
+    await ajPaiement(ecriture);
+  } catch (e) {
+    console.error("journal des paiements:", e);
+    toast?.("Paiement enregistré, mais non inscrit au journal de caisse.", "warning");
+  }
+}
 
 // Marque un frais annexe comme payé/impayé sur un élève. Deux formes :
 //   • legacy (inscription, « autre ») : drapeaux dédiés payKey/dateKey ;
@@ -15,7 +30,10 @@ import { notifierParents } from "../../backend/notify-supabase";
 //     carte eleves.fraisPayes = { id: "date de paiement" }.
 // Bloqué si readOnly. Le retrait d'un frais déjà payé exige canEdit (verrou
 // admin), pour éviter qu'un comptable annule un encaissement sans validation.
-export async function toggleFraisAnnexe(_id, opts, { readOnly, canEdit, toast, modEleves, logAction }) {
+export async function toggleFraisAnnexe(_id, opts, {
+  readOnly, canEdit, toast, modEleves, logAction,
+  ajPaiement = null, annee = "", auteur = "", eleve = null,
+}) {
   const { payKey, dateKey, fraisId=null, fraisPayesActuels=null, valeurActuelle=false, label, montant=0, nomEleve="" } = opts;
   if(readOnly) return;
   if(valeurActuelle && !canEdit){
@@ -43,6 +61,19 @@ export async function toggleFraisAnnexe(_id, opts, { readOnly, canEdit, toast, m
     valeurActuelle ? "Frais annexe retiré" : "Frais annexe encaissé",
     `${nomEleve} · ${label}${montant>0?` · ${fmt(montant)}`:""}`,
   );
+  // Grand livre : l'inscription et les frais annexes sont des encaissements
+  // au même titre que les mensualités.
+  const estInscription = payKey === "inscriptionPayee";
+  const params = {
+    annee,
+    eleve: eleve || { _id, nom: nomEleve },
+    type: estInscription ? "inscription" : "frais",
+    mois: estInscription ? "inscription" : (fraisId || payKey || "autre"),
+    libelle: label,
+    montant,
+    auteur,
+  };
+  await journaliser(ajPaiement, valeurActuelle ? ecritureAnnulation(params) : ecritureEncaissement(params), toast);
 }
 
 // Toggle de mensualité d'un élève (Payé/Impayé) avec push parent.
@@ -53,6 +84,7 @@ export async function toggleFraisAnnexe(_id, opts, { readOnly, canEdit, toast, m
 // réécrit plus rétroactivement les totaux perçus.
 export async function toggleMens(_id, mois, mensActuels, mensDatesActuels, nomEleve, {
   readOnly, canEdit, toast, modEleves, envoyerPush, logAction, montantMois = null, mensMontantsActuels = null,
+  ajPaiement = null, annee = "", auteur = "", eleve = null,
 }) {
   if(readOnly) return;
   const mens={...(mensActuels||initMens())};
@@ -85,6 +117,20 @@ export async function toggleMens(_id, mois, mensActuels, mensDatesActuels, nomEl
     estPaye ? "Mensualité décochée (impayé)" : "Mensualité encaissée",
     `${nomEleve||"Élève"} · ${mois}${montantJournal}`,
   );
+  // Grand livre : le décochage n'efface pas la ligne d'encaissement, il ajoute
+  // une contre-passation. C'est ce qui permet à la caisse de rester juste et à
+  // l'historique de survivre à la clôture d'année.
+  const montantLigne = Number.isFinite(Number(montantMois)) ? Number(montantMois) : 0;
+  const params = {
+    annee,
+    eleve: eleve || { _id, nom: nomEleve },
+    type: "mensualite",
+    mois,
+    libelle: mois,
+    montant: mensMontantsActuels?.[mois] ?? montantLigne,
+    auteur,
+  };
+  await journaliser(ajPaiement, estPaye ? ecritureAnnulation(params) : ecritureEncaissement(params), toast);
   if(!estPaye){
     envoyerPush(["parent"],"✅ Paiement enregistré",`Mensualité ${mois} de ${nomEleve||"votre enfant"} confirmée.`,"/paiements");
   } else {
