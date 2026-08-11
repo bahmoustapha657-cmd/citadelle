@@ -24,7 +24,9 @@ export function PageRouter({
       {page==="parametres"      && <ParametresEcole utilisateurRole={userRole} onSchoolClosed={deconnecter} initialTab={paramInitialTab} onTabConsumed={()=>setParamInitialTab(null)}/>}
       {page==="admin_panel" && <AdminPanel annee={annee} setAnnee={setAnnee} verrous={verrous} schoolId={schoolId} userRole={userRole}/>}
       {page==="fondation"   && <Fondation readOnly={readOnly} annee={annee} userRole={userRole}/>}
-      {page==="compta"      && <Comptabilite readOnly={readOnly} annee={annee} userRole={userRole} permissions={permissions} verrouOuvert={!!verrous.comptable}/>}
+      {/* `auteur` : nom de la personne connectée — signe les écritures du
+          journal des paiements (« qui a encaissé »), et non son poste. */}
+      {page==="compta"      && <Comptabilite readOnly={readOnly} annee={annee} userRole={userRole} permissions={permissions} verrouOuvert={!!verrous.comptable} auteur={utilisateur?.nom || ""}/>}
       {/* Dir. Primaire = préscolaire + primaire en sous-onglets (comme
           Secondaire = collège + lycée). */}
       {page==="primaire"    && <Primaire userRole={userRole} permissions={permissions} annee={annee} readOnly={readOnly} verrouOuvert={!!verrous.primaire}/>}
