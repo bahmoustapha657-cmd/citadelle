@@ -16,7 +16,7 @@
 //    utilisateurs referont leur mot de passe (bouton « Réinitialiser » /
 //    « Mot de passe oublié »). Les DONNÉES métier, elles, sont intégrales.
 import { createClient } from "@supabase/supabase-js";
-import { mkdirSync, writeFileSync, readdirSync, rmSync } from "node:fs";
+import { mkdirSync, writeFileSync, readdirSync, renameSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { SUPABASE_URL, SUPABASE_SERVICE_ROLE } from "./_config.mjs";
 
@@ -60,11 +60,17 @@ async function exporterTable(table) {
   return { rows };
 }
 
+// Dossier de la sauvegarde en cours — retenu pour pouvoir le supprimer s'il
+// reste vide après un échec (une coupure réseau laissait sinon des dossiers
+// « backup-… » vides qui comptaient dans la rétention).
+let dossierEnCours = null;
+
 async function main() {
   const ts = new Date().toISOString().slice(0, 16).replace("T", "-").replace(":", "h");
   const base = process.env.EDUGEST_BACKUP_DIR || "C:/Users/ADMIN/edugest-backups";
   const dir = join(base, `backup-${ts}`);
   mkdirSync(dir, { recursive: true });
+  dossierEnCours = dir;
   console.log(`🗄️  Sauvegarde EduGest → ${dir}\n`);
 
   const manifest = { date: new Date().toISOString(), source: new URL(SUPABASE_URL).host, tables: {} };
@@ -105,4 +111,19 @@ async function main() {
   console.log(`   ⤷ Copiez-le hors de ce PC (Google Drive, disque externe…) pour une vraie protection.`);
 }
 
-main().catch((e) => { console.error("❌", e); process.exit(1); });
+main().catch((e) => {
+  console.error("❌", e);
+  // Une coupure réseau laissait derrière elle un dossier « backup-… » vide ou
+  // à moitié rempli, impossible à distinguer d'une vraie sauvegarde : le vide
+  // est supprimé, le partiel est marqué INCOMPLET (un export tronqué qui a
+  // l'air complet est plus dangereux que pas de sauvegarde du tout).
+  try {
+    if (!dossierEnCours) { /* rien à nettoyer */ }
+    else if (readdirSync(dossierEnCours).length === 0) rmSync(dossierEnCours, { recursive: true, force: true });
+    else {
+      renameSync(dossierEnCours, `${dossierEnCours}-INCOMPLET`);
+      console.error(`   ⚠️  Export partiel conservé sous ${dossierEnCours}-INCOMPLET`);
+    }
+  } catch { /* nettoyage best-effort */ }
+  process.exit(1);
+});

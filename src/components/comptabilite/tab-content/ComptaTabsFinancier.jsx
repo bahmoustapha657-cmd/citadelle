@@ -1,9 +1,11 @@
 import { RecettesTab } from "../RecettesTab";
 import { DepensesTab } from "../DepensesTab";
 import { BilanTab } from "../BilanTab";
+import { CaisseTab } from "../CaisseTab";
 import { SalairesTab } from "../SalairesTab";
 
-// Onglets financiers : bilan, recettes, dépenses, états de salaires.
+// Onglets financiers : bilan, caisse (journal daté), recettes, dépenses,
+// états de salaires.
 export function ComptaTabsFinancier({ c, readOnly, annee }) {
   const sd = c.salairesDomaine;
   return (
@@ -28,6 +30,17 @@ export function ComptaTabsFinancier({ c, readOnly, annee }) {
         salairesMois={c.salairesMois}
         moisLabel={c.moisLabel}
         mensualiteOverview={c.mensualiteOverview}
+      />}
+
+      {c.tab === "caisse" && <CaisseTab
+        recettes={c.recettes}
+        depenses={c.depenses}
+        versements={c.versements}
+        eleves={c.tousElevesScolarite}
+        moisAnnee={c.moisAnnee}
+        tarifsClasses={c.tarifsClasses}
+        enModeArchive={c.enModeArchive}
+        anneeConsultee={c.anneeConsultee}
       />}
 
       {c.tab === "recettes" && <RecettesTab
