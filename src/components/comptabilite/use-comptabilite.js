@@ -39,6 +39,9 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   const { items: bons, ajouter: ajBon, modifier: modBon, supprimer: supBon } = useFirestore("bons", { annee: anneeFiltre });
   const { items: personnel, chargement: cPers, ajouter: ajPers, modifier: modPers, supprimer: supPers } = useFirestore("personnel");
   const { items: versements, chargement: cV, ajouter: ajV, modifier: modV, supprimer: supV } = useFirestore("versements", { annee: anneeFiltre });
+  // Journal des encaissements de scolarité (grand livre, ajout seul) : la
+  // source d'historique que les champs de la fiche élève ne peuvent pas être.
+  const { items: paiements, chargement: cPaie, ajouter: ajPaiement } = useFirestore("paiements", { annee: anneeFiltre });
   const { items: elevesCBrut, chargement: cEC, ajouter: ajEC, modifier: modEC_full, supprimer: supEC, modifierChamp: modEC } = useFirestore("elevesCollege");
   const { items: elevesPBrut, chargement: cEP, ajouter: ajEP, modifier: modEP_full, supprimer: supEP, modifierChamp: modEP } = useFirestore("elevesPrimaire");
   const { items: elevesLBrut, chargement: cEL, ajouter: ajEL, modifier: modEL_full, supprimer: supEL, modifierChamp: modEL } = useFirestore("elevesLycee");
@@ -120,8 +123,13 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
 
   // Wrappers : injectent les deps (modEleves, readOnly, canEdit, toast,
   // envoyerPush) à chaque appel. Le helper extrait porte la logique métier.
+  // Année portée par les écritures du journal : celle de l'exercice en cours
+  // (on n'écrit jamais en mode archive, canCreate/canEdit y sont faux).
+  const anneeEcriture = annee || anneeConsultee;
   const toggleFraisAnnexe = (_id, opts) => toggleFraisAnnexeAction(_id, opts, {
     readOnly, canEdit, toast, modEleves, logAction,
+    ajPaiement, annee: anneeEcriture, auteur: userRole || "",
+    eleve: tousElevesScolarite.find((e) => e._id === _id) || null,
   });
   const toggleMens = (_id, mois, mensActuels, mensDatesActuels, nomEleve) => {
     // Fige le tarif en vigueur au moment du paiement (mensMontants[mois]) :
@@ -131,6 +139,7 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
       readOnly, canEdit, toast, modEleves, envoyerPush, logAction,
       montantMois: getTarifMensuelForClasse(tarifsClasses, eleve?.classe || ""),
       mensMontantsActuels: eleve?.mensMontants || null,
+      ajPaiement, annee: anneeEcriture, auteur: userRole || "", eleve: eleve || null,
     });
   };
 
@@ -206,6 +215,7 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
     bons, ajBon, modBon, supBon,
     personnel, cPers, supPers,
     versements, cV, ajV, modV, supV,
+    paiements, cPaie, ajPaiement,
     elevesC, elevesP, elevesL, elevesPre, cEC, cEP, cEL, cEPre,
     tarifsClasses,
     ensCollege, ensLycee, ensPrimaire, ensPrescolaire,
