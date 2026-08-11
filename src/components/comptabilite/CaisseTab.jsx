@@ -56,8 +56,9 @@ export function CaisseTab({
 
       {enModeArchive && (
         <p style={{ margin: "10px 0 0", padding: "8px 12px", background: "#fef3c7", border: "1px solid #fbbf24", borderRadius: 6, fontSize: 11, color: "#92400e" }}>
-          📚 Année {anneeConsultee} : recettes, dépenses et dons sont ceux de l'archive, mais les paiements de
-          scolarité sont lus sur les fiches élèves, qui ne sont pas archivées par année.
+          📚 Année {anneeConsultee} : recettes, dépenses et dons sont ceux de l'archive ; les paiements de
+          scolarité proviennent de l'instantané figé à la clôture de cette année. Si elle n'a jamais été
+          clôturée, ce sont les fiches élèves actuelles qui s'affichent.
         </p>
       )}
 
