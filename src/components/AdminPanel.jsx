@@ -25,7 +25,10 @@ function AdminPanel({ annee, setAnnee, verrous = {}, schoolId, userRole }) {
         </div>
       </div>
 
-      <AnneeScolaireCard annee={annee} setAnnee={setAnnee} canEdit={a.peutGererRoles} />
+      <AnneeScolaireCard
+        annee={annee} setAnnee={setAnnee} canEdit={a.peutGererRoles}
+        schoolId={schoolId} toast={a.toast}
+      />
 
       <PromotionCard schoolId={schoolId} schoolInfo={a.schoolInfo} toast={a.toast} userRole={userRole} />
 

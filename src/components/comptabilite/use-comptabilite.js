@@ -11,6 +11,7 @@ import { useComptaSalaires } from "./useComptaSalaires";
 import { getPeriodesForSchool } from "../../period-utils";
 import { getMensualiteOverview, getTarifMensuelForClasse } from "../../mensualite-utils";
 import { buildTarifGetters, buildTarifData } from "./compta-tarifs";
+import { scolaritePourAnnee } from "../admin/cloture-annee-utils";
 import { saveSalaireAction, savePersonnelAction } from "./compta-saves";
 
 // Toute la logique du module Comptabilité : chargement Firestore de
@@ -38,11 +39,22 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   const { items: bons, ajouter: ajBon, modifier: modBon, supprimer: supBon } = useFirestore("bons", { annee: anneeFiltre });
   const { items: personnel, chargement: cPers, ajouter: ajPers, modifier: modPers, supprimer: supPers } = useFirestore("personnel");
   const { items: versements, chargement: cV, ajouter: ajV, modifier: modV, supprimer: supV } = useFirestore("versements", { annee: anneeFiltre });
-  const { items: elevesC, chargement: cEC, ajouter: ajEC, modifier: modEC_full, supprimer: supEC, modifierChamp: modEC } = useFirestore("elevesCollege");
-  const { items: elevesP, chargement: cEP, ajouter: ajEP, modifier: modEP_full, supprimer: supEP, modifierChamp: modEP } = useFirestore("elevesPrimaire");
-  const { items: elevesL, chargement: cEL, ajouter: ajEL, modifier: modEL_full, supprimer: supEL, modifierChamp: modEL } = useFirestore("elevesLycee");
+  const { items: elevesCBrut, chargement: cEC, ajouter: ajEC, modifier: modEC_full, supprimer: supEC, modifierChamp: modEC } = useFirestore("elevesCollege");
+  const { items: elevesPBrut, chargement: cEP, ajouter: ajEP, modifier: modEP_full, supprimer: supEP, modifierChamp: modEP } = useFirestore("elevesPrimaire");
+  const { items: elevesLBrut, chargement: cEL, ajouter: ajEL, modifier: modEL_full, supprimer: supEL, modifierChamp: modEL } = useFirestore("elevesLycee");
   // Préscolaire : section à part entière, donc scolarité/inscriptions à part.
-  const { items: elevesPre, chargement: cEPre, ajouter: ajEPre, modifier: modEPre_full, supprimer: supEPre, modifierChamp: modEPre } = useFirestore("elevesPrescolaire");
+  const { items: elevesPreBrut, chargement: cEPre, ajouter: ajEPre, modifier: modEPre_full, supprimer: supEPre, modifierChamp: modEPre } = useFirestore("elevesPrescolaire");
+  // Vue archive : les élèves ne sont pas dupliqués par année, c'est la clôture
+  // d'année qui fige leur scolarité dans la fiche (extra.historique[annee]).
+  // On lit donc l'instantané de l'année consultée — repli sur la fiche
+  // courante si cette année-là n'a jamais été clôturée.
+  const projeterAnnee = (liste) => (enModeArchive
+    ? liste.map((e) => scolaritePourAnnee(e, anneeConsultee, anneeCourante))
+    : liste);
+  const elevesC = projeterAnnee(elevesCBrut);
+  const elevesP = projeterAnnee(elevesPBrut);
+  const elevesL = projeterAnnee(elevesLBrut);
+  const elevesPre = projeterAnnee(elevesPreBrut);
   const { items: tarifsClasses, ajouter: ajTarif, modifier: modTarif } = useFirestore("tarifs");
   const { items: classesCollegeList, ajouter: ajClasseCollege } = useFirestore("classesCollege");
   const { items: classesPrimaireList, ajouter: ajClassePrimaire } = useFirestore("classesPrimaire");
