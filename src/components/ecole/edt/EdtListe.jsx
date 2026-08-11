@@ -1,5 +1,5 @@
 import { Btn, Card, THead, TR, TD, Vide } from "../../ui";
-import { JOURS } from "./edt-utils";
+import { JOURS_SEMAINE as JOURS } from "./edt-utils";
 
 // Vue liste de l'emploi du temps : créneaux de la classe groupés par jour,
 // avec actions modifier/supprimer si l'utilisateur a les droits d'édition.

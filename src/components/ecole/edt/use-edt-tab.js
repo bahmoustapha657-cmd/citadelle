@@ -1,6 +1,6 @@
 import { useContext, useState } from "react";
 import { SchoolContext } from "../../../contexts/SchoolContext";
-import { COULEURS, niveauRank, genTranchesAdaptatives, makeFindEns } from "./edt-utils";
+import { COULEURS, niveauRank, genTranchesAdaptatives, makeFindEns, getJoursOuvrablesPourClasse, getJoursOuvrablesUnion } from "./edt-utils";
 
 // État et dérivations de l'onglet emploi du temps : vue grille/liste, plage
 // horaire et durée des tranches, classe active, couleurs matières, et la copie
@@ -28,6 +28,11 @@ export function useEdtTab({ maxNote, classes, matieres, ens, emplois, filtreClas
   // qu'à proposer un pas de départ et la durée par défaut d'un nouveau créneau.
   const TRANCHES = genTranchesAdaptatives(duree, edtHeureDebut, edtHeureFin, emploisClasse);
   const nbTranches = TRANCHES.length - 1;
+  // Jours ouvrés (Paramètres → Identité), réglés PAR SECTION : la grille et
+  // l'impression d'une classe suivent sa section, l'EDT général — qui mélange
+  // toutes les classes — prend l'union des deux.
+  const jours = getJoursOuvrablesPourClasse(schoolInfo, classeEdtActuelle);
+  const joursGeneral = getJoursOuvrablesUnion(schoolInfo);
   const getCreneau = (jour, hd) => emploisClasse.find((e) => e.jour === jour && e.heureDebut === hd);
 
   const copierEDT = () => {
@@ -50,7 +55,7 @@ export function useEdtTab({ maxNote, classes, matieres, ens, emplois, filtreClas
     edtGeneralOuvert, setEdtGeneralOuvert,
     edtHeureDebut, setEdtHeureDebut,
     edtHeureFin, setEdtHeureFin,
-    TRANCHES, nbTranches,
+    TRANCHES, nbTranches, jours, joursGeneral,
     classesTriees, classeEdtActuelle,
     matCouleur, findEns,
     emploisClasse, getCreneau,

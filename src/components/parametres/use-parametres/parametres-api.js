@@ -2,12 +2,19 @@
 // sauvegarde de la monnaie (comptable), sauvegarde complète des paramètres
 // + sync de la page publique, et cycle de vie (désactiver / supprimer).
 import { doc, updateDoc } from "firebase/firestore";
+import { JOURS_SEMAINE } from "../../../constants";
 import { db } from "../../../firebaseDb";
 import { apiFetch, getAuthHeaders } from "../../../apiClient";
 import { isSupabase } from "../../../backend";
 import { sauverParametresEcole } from "../../../backend/data-supabase";
 
 const normaliserMonnaie = (m) => (m || "GNF").trim().toUpperCase();
+
+// Jours de classe : ordre canonique de la semaine, intrus écartés, jamais vide.
+const joursValides = (brut) => {
+  const retenus = Array.isArray(brut) ? JOURS_SEMAINE.filter((j) => brut.includes(j)) : [];
+  return retenus.length ? retenus : [...JOURS_SEMAINE];
+};
 
 // Sauvegarde restreinte au seul champ `monnaie` (rôle comptable).
 export async function sauvegarderMonnaie({ schoolId, monnaie }) {
@@ -45,6 +52,9 @@ export async function sauvegarderParametres({ schoolId, form, accueil, evaluatio
     periodicite: form.periodicite || "trimestre",
     periodicitePrimaire: form.periodicitePrimaire || "trimestre",
     periodiciteSecondaire: form.periodiciteSecondaire || "trimestre",
+    // Jours de classe par section — colonnes de l'emploi du temps (écran + PDF).
+    joursOuvrablesPrimaire: joursValides(form.joursOuvrablesPrimaire),
+    joursOuvrablesSecondaire: joursValides(form.joursOuvrablesSecondaire),
     evaluationForms,
     accueil: {
       active: accueil.active,

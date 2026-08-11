@@ -1,20 +1,22 @@
 import React from "react";
 import { Btn, Modale } from "../../ui";
 import { C } from "../../../constants";
-import { JOURS, SOUS_LABELS, affNom, nbSousLignes, totalLignesClasse } from "./edt-utils";
+import { JOURS_SEMAINE, SOUS_LABELS, affNom, nbSousLignes, totalLignesClasse } from "./edt-utils";
 import { voirEdtGeneral } from "./edt-print";
 
 export function EdtGeneralModale({
   edtGeneralOuvert, setEdtGeneralOuvert,
   classes, classesTriees, emplois, TRANCHES, nbTranches,
-  matCouleur, findEns, schoolInfo,
+  matCouleur, findEns, schoolInfo, jours,
 }) {
+  // Jours ouvres de l ecole (repli : semaine complete).
+  const JOURS = Array.isArray(jours) && jours.length ? jours : JOURS_SEMAINE;
   if (!edtGeneralOuvert) return null;
   return (
     <Modale titre="📊 Emploi du Temps Général" fermer={() => setEdtGeneralOuvert(false)}>
       <div style={{marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
         <span style={{fontSize:12,color:"#64748b"}}>{classes.length} classe(s) · {emplois.length} créneaux</span>
-        <Btn onClick={()=>voirEdtGeneral({ emplois, classesTriees, TRANCHES, nbTranches, schoolInfo, findEns })}>🖨️ Imprimer / PDF</Btn>
+        <Btn onClick={()=>voirEdtGeneral({ emplois, classesTriees, TRANCHES, nbTranches, schoolInfo, findEns, jours })}>🖨️ Imprimer / PDF</Btn>
       </div>
       <div style={{overflowX:"auto",maxHeight:"70dvh",overflowY:"auto"}}>
         <table style={{borderCollapse:"collapse",fontSize:11,width:"100%",minWidth:700}}>

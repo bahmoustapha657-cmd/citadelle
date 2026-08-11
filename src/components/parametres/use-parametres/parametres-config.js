@@ -1,7 +1,7 @@
 // Données et styles purs de l'écran « Paramètres de l'école » :
 // constructeurs d'état initial (form / accueil), config des actions
 // dangereuses, onglets et styles partagés. Aucun état React ici.
-import { C } from "../../../constants";
+import { C, JOURS_SEMAINE } from "../../../constants";
 
 // État initial du formulaire d'identité à partir de schoolInfo.
 export function buildFormInitial(schoolInfo) {
@@ -30,7 +30,18 @@ export function buildFormInitial(schoolInfo) {
     // Fallback sur le champ legacy `periodicite` pour rétrocompat.
     periodicitePrimaire: schoolInfo.periodicitePrimaire || schoolInfo.periodicite || "trimestre",
     periodiciteSecondaire: schoolInfo.periodiciteSecondaire || schoolInfo.periodicite || "trimestre",
+    // Jours de classe par section (colonnes de l'emploi du temps). Même logique
+    // que la périodicité : champ de la section → champ global legacy → défaut.
+    joursOuvrablesPrimaire: joursOuOuvres(schoolInfo.joursOuvrablesPrimaire || schoolInfo.joursOuvrables),
+    joursOuvrablesSecondaire: joursOuOuvres(schoolInfo.joursOuvrablesSecondaire || schoolInfo.joursOuvrables),
   };
+}
+
+// Liste de jours propre (ordre canonique, doublons et intrus écartés) ou
+// semaine complète si l'école n'a rien réglé.
+function joursOuOuvres(brut) {
+  const retenus = Array.isArray(brut) ? JOURS_SEMAINE.filter((j) => brut.includes(j)) : [];
+  return retenus.length ? retenus : [...JOURS_SEMAINE];
 }
 
 // État initial de l'onglet « Accueil » (page publique) à partir de schoolInfo.
