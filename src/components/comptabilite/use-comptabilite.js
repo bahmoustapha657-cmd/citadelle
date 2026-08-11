@@ -17,7 +17,7 @@ import { saveSalaireAction, savePersonnelAction } from "./compta-saves";
 // Toute la logique du module Comptabilité : chargement Firestore de
 // toutes les collections (filtrées par année consultée), permissions,
 // totaux, tarifs, et les handlers d'enregistrement avec gardes anti-doublon.
-export function useComptabilite({ readOnly, annee, userRole, permissions = null, verrouOuvert = false }) {
+export function useComptabilite({ readOnly, annee, userRole, permissions = null, verrouOuvert = false, auteur = "" }) {
   // readOnly=true → admin/direction : zéro action
   // canEdit → modifier/supprimer des enregistrements existants (verrou admin requis sauf admin lui-même — mais admin est readOnly)
   // canCreate → ajouter de nouveaux enregistrements (toujours permis si !readOnly)
@@ -126,9 +126,12 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   // Année portée par les écritures du journal : celle de l'exercice en cours
   // (on n'écrit jamais en mode archive, canCreate/canEdit y sont faux).
   const anneeEcriture = annee || anneeConsultee;
+  // Signature des écritures : le NOM de la personne connectée. Repli sur son
+  // poste si le profil n'a pas de nom — mieux vaut « comptable » que rien.
+  const signature = auteur || userRole || "";
   const toggleFraisAnnexe = (_id, opts) => toggleFraisAnnexeAction(_id, opts, {
     readOnly, canEdit, toast, modEleves, logAction,
-    ajPaiement, annee: anneeEcriture, auteur: userRole || "",
+    ajPaiement, annee: anneeEcriture, auteur: signature,
     eleve: tousElevesScolarite.find((e) => e._id === _id) || null,
   });
   const toggleMens = (_id, mois, mensActuels, mensDatesActuels, nomEleve) => {
@@ -139,7 +142,7 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
       readOnly, canEdit, toast, modEleves, envoyerPush, logAction,
       montantMois: getTarifMensuelForClasse(tarifsClasses, eleve?.classe || ""),
       mensMontantsActuels: eleve?.mensMontants || null,
-      ajPaiement, annee: anneeEcriture, auteur: userRole || "", eleve: eleve || null,
+      ajPaiement, annee: anneeEcriture, auteur: signature, eleve: eleve || null,
     });
   };
 
