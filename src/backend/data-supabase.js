@@ -59,8 +59,13 @@ export function resoudreEcoleId(code) {
 // l'instance PowerSync est configurée (sinon comportement en ligne inchangé).
 const horsLigne = (table) => powerSyncConfigured && estCouvertHorsLigne(table);
 
+// Tables portant une colonne `periode` (T1/S1/M1…), filtrable au chargement.
+const PERIODE_TABLES = new Set(["notes", "appreciations"]);
+
 // Renvoie { items, unsupported? }. `unsupported` = collection sans table Supabase.
-export async function chargerCollection(schoolCode, nomCollection, { annee } = {}) {
+// `periode` / `saufPeriode` : chargement en deux temps (cf. useFirestore) — la
+// période affichée d'abord, tout le reste en parallèle.
+export async function chargerCollection(schoolCode, nomCollection, { annee, periode, saufPeriode } = {}) {
   const map = resolveCollection(nomCollection);
   if (!map) return { items: [], unsupported: true };
 
@@ -110,6 +115,10 @@ export async function chargerCollection(schoolCode, nomCollection, { annee } = {
     q = q.eq("ecole_id", ecoleId).order("id").range(de, de + PAGE - 1);
     if (map.section) q = q.eq("section", map.section);
     if (annee && ANNEE_TABLES.has(map.table)) q = q.eq("annee", annee);
+    if (PERIODE_TABLES.has(map.table)) {
+      if (periode) q = q.eq("periode", periode);
+      else if (saufPeriode) q = q.neq("periode", saufPeriode);
+    }
     return q;
   };
   const echec = (error) => {
