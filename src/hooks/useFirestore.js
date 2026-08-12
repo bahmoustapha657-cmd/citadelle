@@ -108,15 +108,41 @@ export function useFirestore(nomCollection, options = {}) {
   const [{ items, chargement }, dispatch] = useReducer(firestoreReducer, initialState);
 
   const anneeFiltre = options.annee || null;
+  // Période à charger EN PREMIER. Volontairement figée au montage (ref) : si
+  // elle suivait le sélecteur de l'écran, changer de période relancerait tout
+  // le chargement alors que les données sont déjà là.
+  const periodePrioritaireRef = useRef(options.periodePrioritaire || null);
 
   const charger = useCallback(async (forceServer = false) => {
     if (!schoolId) { dispatch({ type: "success", items: [] }); return; }
 
     // ── Backend Supabase : lecture via l'adaptateur (collection → table+section).
     if (isSupabase) {
+      const marquerFrais = () =>
+        // Horodate aussi côté Supabase : c'est ce qui borne le rafraîchissement au focus.
+        dernierServeur.set(cleFraicheur(schoolId, nomCollection, anneeFiltre), Date.now());
+
+      // Chargement en DEUX TEMPS quand une période est affichée à l'ouverture
+      // (les notes d'une année entière pèsent 6 700 lignes, l'écran n'en montre
+      // qu'une période) : les deux requêtes partent ENSEMBLE, la petite peint
+      // l'écran en ~400 ms, la grosse complète la liste dès qu'elle arrive.
+      // Rien n'est perdu : bulletin annuel, moyenne annuelle et grille par
+      // élève retrouvent bien toutes les périodes.
+      const prioritaire = periodePrioritaireRef.current;
+      if (prioritaire) {
+        const base = { annee: anneeFiltre };
+        const pDabord = chargerCollection(schoolId, nomCollection, { ...base, periode: prioritaire });
+        const pReste = chargerCollection(schoolId, nomCollection, { ...base, saufPeriode: prioritaire });
+        const dabord = await pDabord;
+        dispatch({ type: "success", items: dabord.items });
+        const reste = await pReste;
+        marquerFrais();
+        dispatch({ type: "success", items: [...dabord.items, ...reste.items] });
+        return;
+      }
+
       const { items } = await chargerCollection(schoolId, nomCollection, { annee: anneeFiltre });
-      // Horodate aussi côté Supabase : c'est ce qui borne le rafraîchissement au focus.
-      dernierServeur.set(cleFraicheur(schoolId, nomCollection, anneeFiltre), Date.now());
+      marquerFrais();
       dispatch({ type: "success", items });
       return;
     }

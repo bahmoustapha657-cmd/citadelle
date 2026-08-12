@@ -30,9 +30,19 @@ export function useEcole({
   // et pas seulement en vue archive : sinon, dès la rentrée suivante, un T1
   // de la nouvelle année se confondrait avec le T1 de l'ancienne dans les
   // grilles, les moyennes et les bulletins.
+  // Périodes de la section : nécessaires AVANT le chargement des notes, pour
+  // savoir laquelle afficher en premier (cf. periodePrioritaire).
+  const { schoolId, schoolInfo, moisAnnee, toast, logAction, envoyerPush } = useContext(SchoolContext);
+  const sectionPeriode = isPrimarySection ? "primaire" : "secondaire";
+  const periodes = getPeriodesForSection(schoolInfo, sectionPeriode, moisAnnee);
+  const defaultPeriode = periodes[0] || getDefaultPeriodeForSection(schoolInfo, sectionPeriode);
+
   const { items: classes, chargement: cC, ajouter: ajC, modifier: modC, supprimer: supC } = useFirestore(cleClasses);
   const { items: ens, chargement: cEns, ajouter: ajEns, modifier: modEns, supprimer: supEns } = useFirestore(cleEns);
-  const { items: notes, chargement: cN, ajouter: ajNraw, modifier: modN, supprimer: supN } = useFirestore(cleNotes, { annee: anneeConsultee });
+  // Les notes d'une année entière pèsent des milliers de lignes alors que
+  // l'écran n'en affiche qu'une période : on charge celle-ci d'abord, le reste
+  // suit dans la foulée (les deux requêtes partent ensemble).
+  const { items: notes, chargement: cN, ajouter: ajNraw, modifier: modN, supprimer: supN } = useFirestore(cleNotes, { annee: anneeConsultee, periodePrioritaire: defaultPeriode });
   // Upsert : une note existante (avec _id) est MISE À JOUR, sinon créée.
   // Évite les doublons quand la grille réenregistre une note déjà saisie.
   const ajN = (item) => ((item && item._id) ? modN(item) : ajNraw(item));
@@ -78,10 +88,8 @@ export function useEcole({
   const [grilleMatiere, setGrilleMatiere] = useState("");
   const [grilleEleve, setGrilleEleve] = useState("");
   const chg = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
-  const { schoolId, schoolInfo, moisAnnee, toast, logAction, envoyerPush } = useContext(SchoolContext);
-  const sectionPeriode = isPrimarySection ? "primaire" : "secondaire";
-  const periodes = getPeriodesForSection(schoolInfo, sectionPeriode, moisAnnee);
-  const defaultPeriode = periodes[0] || getDefaultPeriodeForSection(schoolInfo, sectionPeriode);
+  // schoolInfo, périodes et période par défaut sont déclarés plus haut : le
+  // chargement des notes en a besoin avant de partir.
   const [periodeB, setPeriodeB] = useState(defaultPeriode);
   const [grillePeriode, setGrillePeriode] = useState(defaultPeriode);
   // Section précise (primaire/college/lycee) pour offrir les rubriques
