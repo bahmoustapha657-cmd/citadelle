@@ -4,6 +4,7 @@ import { DEFAULT_POSTES } from "../../../../shared/postes-config.js";
 import {
   chargerPostes, sauverPoste, supprimerPoste, rattacherComptesAuxPostes, creerCompte, majEmailCompte,
 } from "../../../backend/account-manage-supabase";
+import { subscribeTable } from "../../../backend/realtime-supabase";
 import { genererClePoste, roleCompteDuPoste } from "./postes-logic";
 
 // Logique du panneau Comptes & Postes (mode Supabase uniquement) :
@@ -27,6 +28,12 @@ export function usePostesCard({ schoolId, peutGererRoles, comptes, refreshCompte
   }, [toast, schoolId]);
 
   useEffect(() => { recharger(); }, [recharger]);
+
+  // Temps réel : un poste créé, renommé, désactivé ou supprimé change les
+  // DROITS de quelqu'un. Deux responsables qui administrent en même temps
+  // doivent voir la même matrice — sans quoi le second écrase le travail du
+  // premier en enregistrant une version périmée.
+  useEffect(() => subscribeTable(schoolId, "postes", recharger), [schoolId, recharger]);
 
   // École sans postes (première ouverture après migration) : créer les 6
   // gabarits système et rattacher les comptes legacy de même rôle.

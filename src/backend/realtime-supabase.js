@@ -22,6 +22,11 @@ import { construirePatch } from "./realtime-patch";
 import { resoudreEcoleId } from "./data-supabase";
 import { estCouvertHorsLigne, powerSyncConfigured } from "./powersync/tables";
 
+// Colonne qui porte l'école, quand ce n'est pas `ecole_id`. La table `ecoles`
+// n'en a pas : la ligne EST l'école, on filtre donc sur sa clé primaire.
+const COLONNE_ECOLE = { ecoles: "id" };
+const colonneEcole = (table) => COLONNE_ECOLE[table] || "ecole_id";
+
 // clé `table|ecoleId` → { channel, abonnes:Set<fn> }
 const canaux = new Map();
 let erreurSignalee = false;
@@ -36,7 +41,7 @@ function canalPour(sb, table, ecoleId) {
     .channel(`rt:${cle}`)
     .on(
       "postgres_changes",
-      { event: "*", schema: "public", table, filter: `ecole_id=eq.${ecoleId}` },
+      { event: "*", schema: "public", table, filter: `${colonneEcole(table)}=eq.${ecoleId}` },
       (payload) => {
         for (const fn of [...entree.abonnes]) {
           try { fn(payload); } catch { /* un abonné en échec n'en pénalise pas un autre */ }
@@ -57,28 +62,11 @@ function canalPour(sb, table, ecoleId) {
   return entree;
 }
 
-// S'abonne aux changements d'une collection (au sens Firestore : `notesPrimaire`,
-// `elevesCollege`, `recettes`…). `onChange` reçoit un patch :
-//   { type: "upsert", item }  ·  { type: "delete", id }  ·  { type: "reload" }
-// Renvoie la fonction de désabonnement (appelable immédiatement, même si la
-// résolution de l'école est encore en vol).
-export function subscribeCollection(schoolCode, nomCollection, options, onChange) {
-  const { annee = null } = options || {};
-  if (!supabaseConfigured || !schoolCode || typeof onChange !== "function") return () => {};
-
-  const map = resolveCollection(nomCollection);
-  if (!map) return () => {}; // collection sans table Supabase
-
-  // PowerSync pousse déjà ses tables dans le miroir local : pas de double canal.
-  if (powerSyncConfigured && estCouvertHorsLigne(map.table)) return () => {};
-
+// Branche un écouteur sur le canal (table, école) et renvoie son détachement.
+// Facteur commun de subscribeCollection et subscribeTable.
+function attacher(schoolCode, table, ecouteur) {
   let annule = false;
   let detacher = null;
-
-  const ecouteur = (payload) => {
-    const patch = construirePatch(payload, map.table, map.section, annee);
-    if (patch) onChange(patch);
-  };
 
   (async () => {
     try {
@@ -86,7 +74,7 @@ export function subscribeCollection(schoolCode, nomCollection, options, onChange
       const ecoleId = await resoudreEcoleId(schoolCode);
       if (!ecoleId || annule) return;
 
-      const entree = canalPour(sb, map.table, ecoleId);
+      const entree = canalPour(sb, table, ecoleId);
       entree.abonnes.add(ecouteur);
       detacher = () => {
         entree.abonnes.delete(ecouteur);
@@ -105,4 +93,35 @@ export function subscribeCollection(schoolCode, nomCollection, options, onChange
     annule = true;
     if (detacher) detacher();
   };
+}
+
+// S'abonne aux changements d'une collection (au sens Firestore : `notesPrimaire`,
+// `elevesCollege`, `recettes`…). `onChange` reçoit un patch :
+//   { type: "upsert", item }  ·  { type: "delete", id }  ·  { type: "reload" }
+// Renvoie la fonction de désabonnement (appelable immédiatement, même si la
+// résolution de l'école est encore en vol).
+export function subscribeCollection(schoolCode, nomCollection, options, onChange) {
+  const { annee = null } = options || {};
+  if (!supabaseConfigured || !schoolCode || typeof onChange !== "function") return () => {};
+
+  const map = resolveCollection(nomCollection);
+  if (!map) return () => {}; // collection sans table Supabase
+
+  // PowerSync pousse déjà ses tables dans le miroir local : pas de double canal.
+  if (powerSyncConfigured && estCouvertHorsLigne(map.table)) return () => {};
+
+  return attacher(schoolCode, map.table, (payload) => {
+    const patch = construirePatch(payload, map.table, map.section, annee);
+    if (patch) onChange(patch);
+  });
+}
+
+// S'abonne aux changements BRUTS d'une table, hors mapping des collections :
+// `ecoles` (paramètres de l'établissement) et `postes` (droits) ne se lisent
+// pas via useFirestore, elles ont leur propre chargement. `onChange` est
+// appelée SANS argument utile — ces écrans se contentent de recharger, ce qui
+// évite d'avoir à reconstruire un item à partir du payload.
+export function subscribeTable(schoolCode, table, onChange) {
+  if (!supabaseConfigured || !schoolCode || !table || typeof onChange !== "function") return () => {};
+  return attacher(schoolCode, table, () => onChange());
 }

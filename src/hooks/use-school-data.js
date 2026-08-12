@@ -3,6 +3,7 @@ import { doc, getDocFromServer } from "firebase/firestore";
 import { db } from "../firebaseDb";
 import { isSupabase } from "../backend";
 import { chargerEcole } from "../backend/data-supabase";
+import { subscribeTable } from "../backend/realtime-supabase";
 import { SCHOOL_INFO_DEFAUT } from "../contexts/SchoolContext";
 import { setMonnaie } from "../constants";
 import { subscribeLegalProfile } from "../legal-utils";
@@ -59,12 +60,22 @@ export function useSchoolData({ schoolId, utilisateur }) {
     reinitialiserBranding();
     if (!schoolId || schoolId === "superadmin") return;
 
-    // ── Backend Supabase : lecture unique de l'école (pas de listener). ──
+    // ── Backend Supabase : lecture initiale + abonnement temps réel. ──
+    // Les paramètres d'école changent rarement mais concernent TOUT LE MONDE :
+    // année scolaire, périodicité, jours ouvrables, verrous, branding. Sans
+    // abonnement, un poste gardait l'ancien réglage jusqu'au rechargement de
+    // la page — le cas le plus visible étant la bascule d'année, invisible des
+    // autres écrans. La table `ecoles` est publiée sans son logo (72 ko) : on
+    // ignore le contenu de l'événement et on recharge la fiche.
     if (isSupabase) {
-      chargerEcole(schoolId).then((d) => {
-        if (actif && d) appliquerDonneesEcole(d);
-      }).catch(() => {});
-      return () => { actif = false; };
+      const recharger = () => {
+        chargerEcole(schoolId).then((d) => {
+          if (actif && d) appliquerDonneesEcole(d);
+        }).catch(() => {});
+      };
+      recharger();
+      const desabonner = subscribeTable(schoolId, "ecoles", recharger);
+      return () => { actif = false; desabonner(); };
     }
 
     if (!schoolRef) return;
