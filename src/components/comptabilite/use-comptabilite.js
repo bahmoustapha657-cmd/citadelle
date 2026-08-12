@@ -33,12 +33,18 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   const canEditEleves = !readOnly && !enModeArchive
     && (peutModifierEleves(userRole) || hasWrite(permissions, "compta") || verrouOuvert);
   const { schoolId, schoolInfo, moisAnnee, moisSalaire, toast, logAction, envoyerPush } = useContext(SchoolContext);
-  const { items: recettes, chargement: cR, ajouter: ajR, modifier: modR, supprimer: supR } = useFirestore("recettes", { annee: anneeFiltre });
-  const { items: depenses, chargement: cD, ajouter: ajD, modifier: modD, supprimer: supD } = useFirestore("depenses", { annee: anneeFiltre });
+  // Grands livres filtrés sur l'année consultée en PERMANENCE. Auparavant le
+  // filtre ne s'appliquait qu'en mode archive : en mode normal, recettes,
+  // dépenses et versements de TOUTES les années étaient chargés, et le Bilan
+  // les additionnait. Invisible tant qu'une seule année existe, faux dès la
+  // rentrée suivante — d'autant que les graphiques par période raisonnent sur
+  // T1/T2/T3 sans regarder l'année, donc deux T1 se seraient confondus.
+  const { items: recettes, chargement: cR, ajouter: ajR, modifier: modR, supprimer: supR } = useFirestore("recettes", { annee: anneeConsultee });
+  const { items: depenses, chargement: cD, ajouter: ajD, modifier: modD, supprimer: supD } = useFirestore("depenses", { annee: anneeConsultee });
   const { items: salaires, chargement: cS, ajouter: ajS, modifier: modS, supprimer: supS } = useFirestore("salaires", { annee: anneeFiltre });
   const { items: bons, ajouter: ajBon, modifier: modBon, supprimer: supBon } = useFirestore("bons", { annee: anneeFiltre });
   const { items: personnel, chargement: cPers, ajouter: ajPers, modifier: modPers, supprimer: supPers } = useFirestore("personnel");
-  const { items: versements, chargement: cV, ajouter: ajV, modifier: modV, supprimer: supV } = useFirestore("versements", { annee: anneeFiltre });
+  const { items: versements, chargement: cV, ajouter: ajV, modifier: modV, supprimer: supV } = useFirestore("versements", { annee: anneeConsultee });
   // Journal des encaissements de scolarité (grand livre, ajout seul) : la
   // source d'historique que les champs de la fiche élève ne peuvent pas être.
   // Filtré sur l'année consultée, TOUJOURS — et pas seulement en mode archive
