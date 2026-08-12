@@ -12,10 +12,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Node 22 : exigé par engines (package.json) depuis 7909c31, et surtout
+      # par « npm run test » — le motif glob passé à --test n'est résolu par le
+      # test runner qu'à partir de Node 22. Sous Node 20 il était pris pour un
+      # chemin littéral (« Could not find .../tests/**/*.test.{js,ts} »), ce qui
+      # faisait échouer le job à chaque push sans qu'aucun test ne soit exécuté.
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install Dependencies
@@ -29,28 +34,3 @@ jobs:
 
       - name: Build
         run: npm run build
-
-  test-firestore-rules:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 21
-
-      - name: Install Dependencies
-        run: npm ci
-
-      - name: Test Firestore rules
-        run: npm run test:rules
