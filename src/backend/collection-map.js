@@ -117,6 +117,9 @@ const TRANSFORMERS = {
   salaires: (r) => ({
     _id: r.id, nom: r.nom, section: r.section, mois: r.mois,
     montantNet: Number(r.montant_net), ...(r.details || {}),
+    // Après le spread : la colonne fait foi. Repli sur details pour les fiches
+    // saisies avant que la colonne n'existe et qui n'auraient pas été reprises.
+    annee: r.annee ?? r.details?.annee ?? null,
   }),
   // Grands livres : montant numérique + champs libres dans extra.
   recettes: (r) => ({ _id: r.id, annee: r.annee, date: r.date, montant: Number(r.montant), ...(r.extra || {}) }),
@@ -173,7 +176,8 @@ const COLUMN_DEFS = {
     classe: "classe", matiere: "matiere", enseignantNom: "enseignant_nom", contenu: "contenu" } },
   appreciations: { cols: { eleveId: "eleve_id", periode: "periode", texte: "texte" } },
   tarifs: { extraCol: "extra", cols: { classe: "classe", montant: "montant" } },
-  salaires: { extraCol: "details", cols: { nom: "nom", section: "section", mois: "mois", montantNet: "montant_net" } },
+  salaires: { extraCol: "details", cols: {
+    nom: "nom", section: "section", mois: "mois", montantNet: "montant_net", annee: "annee" } },
   recettes: { extraCol: "extra", cols: { annee: "annee", date: "date", montant: "montant" } },
   depenses: { extraCol: "extra", cols: { annee: "annee", date: "date", montant: "montant" } },
   versements: { extraCol: "extra", cols: { annee: "annee", date: "date", montant: "montant" } },

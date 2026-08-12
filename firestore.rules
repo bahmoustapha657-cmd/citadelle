@@ -293,19 +293,11 @@ service cloud.firestore {
       }
 
       match /paiements/{docId} {
-        // Journal des encaissements de scolarite (grand livre). Finance :
-        // admin doit avoir "compta" dans adminReadModules.
+        // Finance : admin doit avoir "compta" dans adminReadModules.
         allow read: if (appartientEcole(schoolId)
                         && (aUnRole(["direction", "comptable"]) || adminPeutLireModule("compta")))
                      || aUnRole(["superadmin"]);
-        // AJOUT SEUL : une annulation ajoute une ligne (statut "annule"), elle
-        // n'en supprime jamais. Ni update ni delete, pour personne — c'est ce
-        // qui rend le journal opposable. Les memes profils que ceux qui
-        // encaissent (cf. peutModifierEleves) peuvent ecrire.
-        allow create: if appartientEcole(schoolId)
-                         && (aUnRole(["direction", "comptable"]) || adminPeutEcrireModule("compta"))
-                         && abonnementActif(schoolId);
-        allow update, delete: if false;
+        allow write: if false;
       }
 
       match /annonces/{docId} {
