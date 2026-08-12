@@ -26,10 +26,13 @@ export function useEcole({
   const [anneeConsultee, setAnneeConsultee] = useState(anneeCourante);
   // Vue archive : filtre les notes (les autres collections restent persistantes).
   const enModeArchive = anneeConsultee !== anneeCourante;
-  const anneeFiltre = enModeArchive ? anneeConsultee : null;
+  // Notes et appréciations sont filtrées sur l'année consultée EN PERMANENCE,
+  // et pas seulement en vue archive : sinon, dès la rentrée suivante, un T1
+  // de la nouvelle année se confondrait avec le T1 de l'ancienne dans les
+  // grilles, les moyennes et les bulletins.
   const { items: classes, chargement: cC, ajouter: ajC, modifier: modC, supprimer: supC } = useFirestore(cleClasses);
   const { items: ens, chargement: cEns, ajouter: ajEns, modifier: modEns, supprimer: supEns } = useFirestore(cleEns);
-  const { items: notes, chargement: cN, ajouter: ajNraw, modifier: modN, supprimer: supN } = useFirestore(cleNotes, { annee: anneeFiltre });
+  const { items: notes, chargement: cN, ajouter: ajNraw, modifier: modN, supprimer: supN } = useFirestore(cleNotes, { annee: anneeConsultee });
   // Upsert : une note existante (avec _id) est MISE À JOUR, sinon créée.
   // Évite les doublons quand la grille réenregistre une note déjà saisie.
   const ajN = (item) => ((item && item._id) ? modN(item) : ajNraw(item));
@@ -39,10 +42,10 @@ export function useEcole({
   const { items: matieres, chargement: cMat, ajouter: ajMat, modifier: modMat, supprimer: supMat } = useFirestore(cleClasses + "_matieres");
   const { items: emplois, chargement: cEmp, ajouter: ajEmp, modifier: modEmp, supprimer: supEmp } = useFirestore(cleClasses + "_emplois");
   const cleAppreciations = cleNotes.replace("notes", "appreciations");
-  const { items: appreciations, ajouter: ajApp, modifier: modApp } = useFirestore(cleAppreciations);
+  const { items: appreciations, ajouter: ajApp, modifier: modApp } = useFirestore(cleAppreciations, { annee: anneeConsultee });
   const getAppreciation = (eleveId, periode) => appreciations.find((a) => a.eleveId === eleveId && a.periode === periode);
   const saveAppreciation = (eleveId, periode, texte) =>
-    saveAppreciationAction(eleveId, periode, texte, { getAppreciation, ajApp, modApp });
+    saveAppreciationAction(eleveId, periode, texte, { getAppreciation, ajApp, modApp, annee: anneeCourante });
   const appreciationsParEleveB = (periode) => Object.fromEntries(
     appreciations.filter((a) => a.periode === periode && a.texte).map((a) => [a.eleveId, a.texte]),
   );

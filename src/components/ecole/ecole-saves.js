@@ -40,9 +40,12 @@ export async function saveEnseignantAction({ form, modal, ens, classes, toast, a
 }
 
 // Enregistre (ou met à jour) l'appréciation d'un élève pour une période.
-export async function saveAppreciationAction(eleveId, periode, texte, { getAppreciation, ajApp, modApp }) {
+// L'ANNÉE est portée par l'enregistrement : sans elle, l'appréciation de T1
+// de la rentrée écrasait celle du T1 précédent (l'unicité en base porte sur
+// élève + période + année).
+export async function saveAppreciationAction(eleveId, periode, texte, { getAppreciation, ajApp, modApp, annee = "" }) {
   const existant = getAppreciation(eleveId, periode);
-  const data = { eleveId, periode, texte: String(texte || "").trim(), updatedAt: Date.now() };
+  const data = { eleveId, periode, texte: String(texte || "").trim(), annee, updatedAt: Date.now() };
   if (existant) await modApp({ ...existant, ...data });
   else await ajApp(data);
 }

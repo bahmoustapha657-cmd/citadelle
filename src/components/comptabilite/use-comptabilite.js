@@ -23,9 +23,10 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   // canCreate → ajouter de nouveaux enregistrements (toujours permis si !readOnly)
   const anneeCourante = annee || getAnnee();
   const [anneeConsultee, setAnneeConsultee] = useState(anneeCourante);
-  // Vue archive : filtre lecture mais désactive la création (les écritures iraient sur l'année courante).
+  // Vue archive : désactive la création (les écritures iraient sur l'année
+  // courante). La LECTURE, elle, est filtrée sur `anneeConsultee` en toutes
+  // circonstances — voir les chargements ci-dessous.
   const enModeArchive = anneeConsultee !== anneeCourante;
-  const anneeFiltre = enModeArchive ? anneeConsultee : null;
   const canCreate = !readOnly && !enModeArchive;
   const canEdit = !readOnly && !enModeArchive && (peutModifier(userRole) || verrouOuvert);
   // Postes flexibles : tout poste qui écrit la compta gère aussi la fiche
@@ -41,8 +42,13 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   // T1/T2/T3 sans regarder l'année, donc deux T1 se seraient confondus.
   const { items: recettes, chargement: cR, ajouter: ajR, modifier: modR, supprimer: supR } = useFirestore("recettes", { annee: anneeConsultee });
   const { items: depenses, chargement: cD, ajouter: ajD, modifier: modD, supprimer: supD } = useFirestore("depenses", { annee: anneeConsultee });
-  const { items: salaires, chargement: cS, ajouter: ajS, modifier: modS, supprimer: supS } = useFirestore("salaires", { annee: anneeFiltre });
-  const { items: bons, ajouter: ajBon, modifier: modBon, supprimer: supBon } = useFirestore("bons", { annee: anneeFiltre });
+  // Même raison que les bons : les fiches de paie sont regroupées par MOIS,
+  // deux exercices se seraient superposés sur le même mois.
+  const { items: salaires, chargement: cS, ajouter: ajS, modifier: modS, supprimer: supS } = useFirestore("salaires", { annee: anneeConsultee });
+  // Bons filtrés en permanence eux aussi : ils sont appariés par MOIS sur les
+  // fiches de paie, donc un bon de « Nov » de l'an dernier se serait cumulé au
+  // « Nov » de la nouvelle année pour la même personne.
+  const { items: bons, ajouter: ajBon, modifier: modBon, supprimer: supBon } = useFirestore("bons", { annee: anneeConsultee });
   const { items: personnel, chargement: cPers, ajouter: ajPers, modifier: modPers, supprimer: supPers } = useFirestore("personnel");
   const { items: versements, chargement: cV, ajouter: ajV, modifier: modV, supprimer: supV } = useFirestore("versements", { annee: anneeConsultee });
   // Journal des encaissements de scolarité (grand livre, ajout seul) : la

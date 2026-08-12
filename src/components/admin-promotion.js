@@ -4,11 +4,11 @@
 // Deux backends : Firebase (writeBatch) et Supabase (chargerCollection +
 // modifierChampDoc) — même logique de décision, sélectionnée par isSupabase.
 
-import { collection, doc, getDocs, writeBatch } from "firebase/firestore";
+import { collection, doc, getDocs, query, where, writeBatch } from "firebase/firestore";
 import { db } from "../firebaseDb";
 import { isSupabase } from "../backend";
 import { chargerCollection, modifierChampDoc } from "../backend/data-supabase";
-import { getSectionForClasse, getSystemeScolaire } from "../constants";
+import { getAnnee, getSectionForClasse, getSystemeScolaire } from "../constants";
 import { getAnnualAverage, getGeneralAverage } from "../note-utils";
 import { getPeriodesForSection } from "../period-utils";
 import { classeSuivante } from "../promotion-utils";
@@ -38,18 +38,22 @@ function calcMoyenneAnnuelle(schoolInfo, notes, classe, matieres) {
 
 // Charge (eleves, notes, matieres) d'une section — Supabase ou Firebase.
 // Renvoie des items uniformes portant `_id` (comme les snapshots Firestore).
-async function chargerSection(schoolId, sec) {
+// `annee` : les notes sont filtrées sur l'année qui s'achève. Sans ce filtre,
+// la moyenne annuelle mélangeait les notes de TOUTES les années dès qu'une
+// seconde rentrée existait — et la décision de passage avec.
+async function chargerSection(schoolId, sec, annee) {
   if (isSupabase) {
     const [re, rn, rm] = await Promise.all([
       chargerCollection(schoolId, sec.eleves),
-      chargerCollection(schoolId, sec.notes),
+      chargerCollection(schoolId, sec.notes, { annee }),
       chargerCollection(schoolId, sec.matieres),
     ]);
     return { eleves: re.items || [], notes: rn.items || [], matieres: rm.items || [] };
   }
+  const refNotes = collection(db, "ecoles", schoolId, sec.notes);
   const [snapE, snapN, snapM] = await Promise.all([
     getDocs(collection(db, "ecoles", schoolId, sec.eleves)),
-    getDocs(collection(db, "ecoles", schoolId, sec.notes)),
+    getDocs(annee ? query(refNotes, where("annee", "==", annee)) : refNotes),
     getDocs(collection(db, "ecoles", schoolId, sec.matieres)),
   ]);
   const m = (snap) => snap.docs.map((d) => ({ ...d.data(), _id: d.id }));
@@ -120,7 +124,10 @@ async function appliquerUpdates(schoolId, updates) {
 // à proposer AVANT l'application réelle (l'action est irréversible).
 // Renvoie { total, promus, redoublants, terminalistes, inconnus,
 //           classesInconnues, sansNotes, simulation, details }.
-export async function runPromotion({ schoolId, schoolInfo, seuilCollege, seuilPrimaire, sansNotesBehavior, simulate = false }) {
+export async function runPromotion({ schoolId, schoolInfo, seuilCollege, seuilPrimaire, sansNotesBehavior, simulate = false, annee = "" }) {
+  // Année dont on juge les résultats : celle de l'école (partagée entre tous
+  // les postes), à défaut celle de l'appareil.
+  const anneeQuiSAcheve = annee || schoolInfo?.anneeScolaire || getAnnee();
   // Le préscolaire est une section à part entière depuis 2026-07 : sans lui,
   // les élèves de maternelle restaient dans leur classe d'une année sur l'autre.
   // Il est noté sur 10 comme le primaire (cf. Primaire.jsx) → même seuil.
@@ -136,7 +143,7 @@ export async function runPromotion({ schoolId, schoolInfo, seuilCollege, seuilPr
   };
 
   for (const sec of SECTIONS) {
-    const data = await chargerSection(schoolId, sec);
+    const data = await chargerSection(schoolId, sec, anneeQuiSAcheve);
     analyserSection(schoolInfo, sec, data, sansNotesBehavior, acc);
   }
 

@@ -102,7 +102,7 @@ const TRANSFORMERS = {
   }),
   appreciations: (r) => ({
     _id: r.id, section: r.section, eleveId: r.eleve_id,
-    periode: r.periode, texte: r.texte,
+    periode: r.periode, texte: r.texte, annee: r.annee,
   }),
   comptes: (r) => ({
     _id: r.id, login: r.login, email: r.email || "", role: r.role, nom: r.nom, label: r.label,
@@ -174,7 +174,7 @@ const COLUMN_DEFS = {
     matiere: "matiere", enseignant: "enseignant", salle: "salle" } },
   enseignements: { extraCol: "extra", cols: {
     classe: "classe", matiere: "matiere", enseignantNom: "enseignant_nom", contenu: "contenu" } },
-  appreciations: { cols: { eleveId: "eleve_id", periode: "periode", texte: "texte" } },
+  appreciations: { cols: { eleveId: "eleve_id", periode: "periode", texte: "texte", annee: "annee" } },
   tarifs: { extraCol: "extra", cols: { classe: "classe", montant: "montant" } },
   salaires: { extraCol: "details", cols: {
     nom: "nom", section: "section", mois: "mois", montantNet: "montant_net", annee: "annee" } },

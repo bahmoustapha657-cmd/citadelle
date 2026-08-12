@@ -23,7 +23,9 @@ function localData() {
 }
 
 // Tables filtrables par année (colonne `annee`).
-const ANNEE_TABLES = new Set(["notes", "recettes", "depenses", "versements", "bons", "paiements", "salaires"]);
+const ANNEE_TABLES = new Set([
+  "notes", "recettes", "depenses", "versements", "bons", "paiements", "salaires", "appreciations",
+]);
 
 // schoolId applicatif = CODE de l'école ; les tables référencent l'uuid.
 // Mis aussi en cache localStorage : nécessaire pour résoudre l'ecole_id hors
