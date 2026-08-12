@@ -34,3 +34,10 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      # Le bundle réellement mis en production : « npm run deploy:pages »
+      # déploie la sortie de build:supabase sur Cloudflare Pages (edugest-gn).
+      # Le build par défaut ci-dessus est la variante Firebase — le CI validait
+      # donc un artefact que plus personne ne sert.
+      - name: Build (Supabase — bundle deploye)
+        run: npm run build:supabase

@@ -1,5 +1,7 @@
-# Cloudflare Pages — en-têtes de sécurité (équivalent des headers de vercel.json).
-# Ignoré par Vercel (simple fichier statique). CSP adaptée au build SUPABASE :
+# Cloudflare Pages — en-têtes de sécurité du site. SEULE source de ces en-têtes
+# depuis le retrait de vercel.json (Cloudflare est le seul hébergeur) : toute
+# modification ici est directement celle qui part en production.
+# CSP adaptée au build SUPABASE :
 # connect-src autorise l'API/Realtime Supabase (les domaines Firebase restent
 # listés pour qu'un build Firebase servi ici ne soit pas cassé pour autant).
 # COOP/COEP : requis par PowerSync (SQLite local via wa-sqlite/OPFS threadé,
@@ -12,7 +14,7 @@
 # et getUserMedia échoue en NotAllowedError sans que l'utilisateur puisse rien
 # autoriser. Cela cassait la photo d'élève (CameraCapture) et le scanner QR de
 # vérification des documents (QrScannerModal). `(self)` = autorisé pour notre
-# origine uniquement, refusé à tout tiers/iframe. Idem dans vercel.json.
+# origine uniquement, refusé à tout tiers/iframe.
 /*
   Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; script-src-elem 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.powersync.journeyapps.com wss://*.powersync.journeyapps.com https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://*.ingest.sentry.io https://*.ingest.de.sentry.io https://*.ingest.us.sentry.io; frame-src 'self'; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
   X-Frame-Options: DENY
