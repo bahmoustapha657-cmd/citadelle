@@ -41,7 +41,12 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   const { items: versements, chargement: cV, ajouter: ajV, modifier: modV, supprimer: supV } = useFirestore("versements", { annee: anneeFiltre });
   // Journal des encaissements de scolarité (grand livre, ajout seul) : la
   // source d'historique que les champs de la fiche élève ne peuvent pas être.
-  const { items: paiements, chargement: cPaie, ajouter: ajPaiement } = useFirestore("paiements", { annee: anneeFiltre });
+  // Filtré sur l'année consultée, TOUJOURS — et pas seulement en mode archive
+  // comme les autres grands livres : le journal grossit d'une ligne par
+  // encaissement (ordre de 4 500/an pour une école de 500 élèves) et il n'y a
+  // aucune raison de charger les exercices passés pour afficher l'exercice en
+  // cours.
+  const { items: paiements, chargement: cPaie, ajouter: ajPaiement } = useFirestore("paiements", { annee: anneeConsultee });
   const { items: elevesCBrut, chargement: cEC, ajouter: ajEC, modifier: modEC_full, supprimer: supEC, modifierChamp: modEC } = useFirestore("elevesCollege");
   const { items: elevesPBrut, chargement: cEP, ajouter: ajEP, modifier: modEP_full, supprimer: supEP, modifierChamp: modEP } = useFirestore("elevesPrimaire");
   const { items: elevesLBrut, chargement: cEL, ajouter: ajEL, modifier: modEL_full, supprimer: supEL, modifierChamp: modEL } = useFirestore("elevesLycee");
