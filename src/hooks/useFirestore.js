@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useReducer } from "react";
+import { useCallback, useContext, useEffect, useReducer, useRef } from "react";
 import {
   addDoc,
   collection,
@@ -20,6 +20,7 @@ import {
   modifierChampDoc,
   supprimerDoc,
 } from "../backend/data-supabase";
+import { subscribeCollection } from "../backend/realtime-supabase";
 
 const initialState = {
   items: [],
@@ -37,6 +38,21 @@ const initialState = {
 // locales en attente).
 const dernierServeur = new Map(); // clé (schoolId|collection|annee) → timestamp du dernier fetch serveur
 const TTL_MS = 5 * 60 * 1000;
+const cleFraicheur = (schoolId, collection, annee) => `${schoolId}|${collection}|${annee || ""}`;
+
+// ── Instantanéité rétablie ─────────────────────────────────────
+// Le cache-first ci-dessus protège le quota Firestore, mais il a un effet de
+// bord : un changement écrit par un AUTRE poste n'apparaissait qu'au remontage
+// du composant. Deux mécanismes le corrigent, sans revenir aux listeners
+// permanents qui avaient vidé le quota :
+//   • Temps réel Supabase (WebSocket, aucune requête facturée) → rechargement
+//     quasi immédiat, avec coalescence des rafales : une grille de 30 notes
+//     enregistrée d'un coup ne déclenche qu'UN rechargement.
+//   • Filet universel (Firebase compris) : retour sur l'onglet ou reconnexion
+//     réseau → rafraîchissement, borné pour qu'un alt-tab répété ne relance pas
+//     la requête à chaque va-et-vient.
+const RT_DEBOUNCE_MS = 600;
+const FOCUS_MIN_MS = 15 * 1000;
 
 // ── Trace d'audit des suppressions ─────────────────────────────
 const LIBELLES_COLLECTIONS = {
@@ -67,6 +83,21 @@ function firestoreReducer(state, action) {
       return { ...state, chargement: true };
     case "success":
       return { items: action.items, chargement: false };
+    // ── Patches temps réel (Supabase) ──
+    // Insertion/modification distante : on remplace l'item en place, sinon on
+    // l'ajoute. Les écrans trient eux-mêmes, l'ordre d'arrivée est sans effet.
+    case "upsert": {
+      const i = state.items.findIndex((it) => it._id === action.item._id);
+      if (i === -1) return { ...state, items: [...state.items, action.item] };
+      const items = state.items.slice();
+      items[i] = action.item;
+      return { ...state, items };
+    }
+    case "remove":
+      // Id absent : rien à faire — on garde la même référence pour ne pas
+      // re-rendre inutilement toute la liste.
+      if (!state.items.some((it) => it._id === action.id)) return state;
+      return { ...state, items: state.items.filter((it) => it._id !== action.id) };
     default:
       return state;
   }
@@ -84,13 +115,15 @@ export function useFirestore(nomCollection, options = {}) {
     // ── Backend Supabase : lecture via l'adaptateur (collection → table+section).
     if (isSupabase) {
       const { items } = await chargerCollection(schoolId, nomCollection, { annee: anneeFiltre });
+      // Horodate aussi côté Supabase : c'est ce qui borne le rafraîchissement au focus.
+      dernierServeur.set(cleFraicheur(schoolId, nomCollection, anneeFiltre), Date.now());
       dispatch({ type: "success", items });
       return;
     }
 
     const ref = collection(db, "ecoles", schoolId, nomCollection);
     const q = anneeFiltre ? query(ref, where("annee", "==", anneeFiltre)) : ref;
-    const k = `${schoolId}|${nomCollection}|${anneeFiltre || ""}`;
+    const k = cleFraicheur(schoolId, nomCollection, anneeFiltre);
     const frais = Date.now() - (dernierServeur.get(k) || 0) < TTL_MS;
     const toItems = (snap) => snap.docs.map((d) => ({ ...d.data(), _id: d.id }));
 
@@ -120,6 +153,52 @@ export function useFirestore(nomCollection, options = {}) {
     dispatch({ type: "loading" });
     charger(false);
   }, [charger]);
+
+  // ── Temps réel (Supabase) ────────────────────────────────────
+  // Cas nominal : la ligne reçue est appliquée en mémoire → 0 requête, quelle
+  // que soit la taille de la collection. Le rechargement complet n'intervient
+  // qu'en repli (payload inexploitable), et coalescé : une rafale de patches
+  // dégradés ne déclenche qu'UNE relecture.
+  const rechargeTimer = useRef(null);
+  useEffect(() => () => clearTimeout(rechargeTimer.current), []);
+
+  useEffect(() => {
+    if (!isSupabase || !schoolId) return undefined;
+    const programmerRecharge = () => {
+      if (rechargeTimer.current) return; // rechargement déjà en attente
+      rechargeTimer.current = setTimeout(() => {
+        rechargeTimer.current = null;
+        charger(true);
+      }, RT_DEBOUNCE_MS);
+    };
+    const appliquer = (patch) => {
+      if (patch.type === "upsert") dispatch({ type: "upsert", item: patch.item });
+      else if (patch.type === "delete") dispatch({ type: "remove", id: patch.id });
+      else programmerRecharge();
+    };
+    return subscribeCollection(schoolId, nomCollection, { annee: anneeFiltre }, appliquer);
+  }, [schoolId, nomCollection, anneeFiltre, charger]);
+
+  // ── Filet : retour sur l'onglet / reconnexion ────────────────
+  useEffect(() => {
+    if (!schoolId) return undefined;
+    const auRetour = () => {
+      if (document.visibilityState === "hidden") return;
+      const k = cleFraicheur(schoolId, nomCollection, anneeFiltre);
+      if (Date.now() - (dernierServeur.get(k) || 0) < FOCUS_MIN_MS) return;
+      // Supabase : on force la relecture. Firebase : charger(false) sert le cache
+      // et ne va au serveur que si le TTL est dépassé → quota préservé.
+      charger(isSupabase);
+    };
+    document.addEventListener("visibilitychange", auRetour);
+    window.addEventListener("focus", auRetour);
+    window.addEventListener("online", auRetour);
+    return () => {
+      document.removeEventListener("visibilitychange", auRetour);
+      window.removeEventListener("focus", auRetour);
+      window.removeEventListener("online", auRetour);
+    };
+  }, [schoolId, nomCollection, anneeFiltre, charger]);
 
   const ajouter = async (item) => {
     if (isSupabase) {
