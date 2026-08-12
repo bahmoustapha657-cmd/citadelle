@@ -48,6 +48,13 @@ async function ecoleIdFromCode(sb, code) {
   return idLocal || null;
 }
 
+// Exposé pour le temps réel (realtime-supabase.js) : réutilise le MÊME cache et
+// le même repli localStorage, donc s'abonner ne coûte pas un aller-retour de
+// résolution d'école supplémentaire.
+export function resoudreEcoleId(code) {
+  return ecoleIdFromCode(getSupabase(), code);
+}
+
 // Utilise le miroir local uniquement si la table est couverte ET que
 // l'instance PowerSync est configurée (sinon comportement en ligne inchangé).
 const horsLigne = (table) => powerSyncConfigured && estCouvertHorsLigne(table);
