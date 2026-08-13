@@ -39,7 +39,11 @@ export const signataireHTML = (schoolInfo, cle, titre) => {
 // (sans ça Chrome/Edge basculent en niveaux de gris à l'impression).
 // `.no-print` permet de masquer la notice "passer en Couleur" lors de
 // l'impression effective.
-export const PRINT_RESET = `@page{size:A4 portrait;margin:0}html{color-scheme:light}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}@media print{html,body{margin:0;background:#fff}.no-print{display:none!important}}`;
+// `pageCss` décrit le format papier (`size` + `margin`) : A4 pour les
+// documents classiques, rouleau `58mm auto` pour les tickets thermiques.
+export const printResetFor = (pageCss) => `@page{${pageCss}}html{color-scheme:light}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}@media print{html,body{margin:0;background:#fff}.no-print{display:none!important}}`;
+
+export const PRINT_RESET = printResetFor("size:A4 portrait;margin:0");
 
 // Notice insérée en haut de chaque document imprimable. Cachée à
 // l'impression réelle (.no-print). Sur Chrome desktop, l'utilisateur

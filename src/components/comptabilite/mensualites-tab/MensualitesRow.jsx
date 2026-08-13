@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { C, getFraisAnnexeLabel, initMens, isFraisAnnexePaye } from "../../../constants";
 import { Badge, Btn, TR, TD } from "../../ui";
-import { imprimerRecu } from "../../../reports";
+import { imprimerRecu, imprimerRecuTicket } from "../../../reports";
 import { getEleveMensualiteSnapshot } from "../../../mensualite-utils";
+import { FORMATS_RECU, getRecuFormat, labelRecuFormat, setRecuFormat } from "./recu-format";
 
 // Une ligne élève de la grille des mensualités : colonnes figées (matricule,
 // nom), bascules mensuelles, frais d'inscription/annexes et impression du reçu.
@@ -24,6 +25,18 @@ export function MensualitesRow({
   const idsFrais = Object.keys(fraisActifs);
   const nbFraisPayes = idsFrais.filter((id) => isFraisAnnexePaye(e, id)).length;
   const [menuFrais, setMenuFrais] = useState(false);
+  // Impression du reçu : le 🖨️ imprime aussitôt dans le format retenu sur ce
+  // poste (un clic pour le caissier) ; le ▾ permet d'en changer.
+  const [menuImpr, setMenuImpr] = useState(false);
+  const [formatRecu, setFormatRecu] = useState(getRecuFormat);
+  const imprimer = (format) => {
+    setMenuImpr(false);
+    setFormatRecu(format);
+    setRecuFormat(format);
+    const frais = { inscription: montantInscription, autre: montantAutre, divers: fraisDivers };
+    if (format === "a4") imprimerRecu(e, getTarif(e.classe), schoolInfo, moisAnnee, frais);
+    else imprimerRecuTicket(e, getTarif(e.classe), schoolInfo, moisAnnee, frais, Number(format));
+  };
   const basculerFrais = (id) => toggleFraisAnnexe(e._id, id === "autre" ? {
     payKey: "autrePayee",
     dateKey: "autreDate",
@@ -121,12 +134,30 @@ export function MensualitesRow({
           </>
         )}
       </td>
-      <td style={{ padding: "4px 6px", textAlign: "center" }}>
-        <Btn sm v="amber" onClick={() => imprimerRecu(e, getTarif(e.classe), schoolInfo, moisAnnee, {
-          inscription: montantInscription,
-          autre: montantAutre,
-          divers: fraisDivers,
-        })}>🖨️</Btn>
+      <td style={{ padding: "4px 6px", textAlign: "center", position: "relative", whiteSpace: "nowrap" }}>
+        <Btn sm v="amber" title={`Imprimer le reçu — ${labelRecuFormat(formatRecu)}`}
+          onClick={() => imprimer(formatRecu)}>🖨️</Btn>
+        <button onClick={() => setMenuImpr((v) => !v)} title="Choisir le format d'impression"
+          style={{ marginInlineStart: 3, width: 20, height: 24, borderRadius: 6, border: "1px solid var(--lc-border)",
+            background: "var(--lc-surface)", color: "var(--lc-text-muted, #64748b)", cursor: "pointer", fontSize: 10, fontWeight: 700, padding: 0 }}>
+          ▾
+        </button>
+        {menuImpr && (
+          <div onMouseLeave={() => setMenuImpr(false)}
+            style={{ position: "absolute", top: "100%", insetInlineEnd: 0, zIndex: 20, minWidth: 250,
+              background: "var(--lc-surface, #fff)", border: "1px solid #cbd5e1", borderRadius: 10,
+              boxShadow: "0 8px 30px rgba(0,0,0,0.18)", padding: 8, textAlign: "start" }}>
+            {FORMATS_RECU.map((f) => (
+              <button key={f.id} onClick={() => imprimer(f.id)}
+                style={{ display: "block", width: "100%", border: "none", cursor: "pointer", padding: "6px 8px",
+                  borderRadius: 6, textAlign: "start", color: "#334155",
+                  background: f.id === formatRecu ? "#fef3c7" : "none" }}>
+                <span style={{ fontSize: 12, fontWeight: 700 }}>{f.icone} {f.label}</span>
+                <span style={{ display: "block", fontSize: 10, color: "#64748b" }}>{f.aide}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </td>
     </TR>
   );

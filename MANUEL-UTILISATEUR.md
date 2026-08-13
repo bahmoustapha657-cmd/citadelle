@@ -750,6 +750,20 @@ L'onglet le plus consulté par le comptable.
 - **Filtres** : classe, statut (à jour / en retard / à venir), genre
 - **Bouton « Relances »** : génère un PDF des élèves en retard à imprimer
 
+**Impression du reçu — A4 ou ticket thermique**
+
+Le bouton 🖨️ de la colonne « Reçu » imprime dans le format retenu sur le poste ; le petit ▾ à côté permet d'en changer :
+
+| Format | Usage | Contenu |
+|---|---|---|
+| **A4 — 2 exemplaires** | imprimante bureau | exemplaire comptable + exemplaire payant, tous les mois (payés et impayés) |
+| **Ticket 58 mm** | terminal POS Android à imprimante intégrée | mois réglés seulement, solde restant en une ligne |
+| **Ticket 80 mm** | imprimante de caisse large | idem, sur rouleau large |
+
+Le choix est mémorisé **par appareil** (la caisse imprime en ticket, le bureau garde l'A4). Les deux formats portent le **même QR de vérification** : un ticket se contrôle avec le scanner EduGest comme un reçu A4.
+
+*Mise en route d'un terminal POS Android* : ouvrir EduGest dans Chrome → imprimer → choisir l'imprimante intégrée. Si elle n'est pas proposée, installer le service d'impression du fabricant (Play Store) puis l'activer dans Paramètres → Impression. Dans la fenêtre d'impression, régler le format de papier sur 58 mm (ou 80 mm) et les marges sur « Aucune ».
+
 > **[CAPTURE_REELLE]** Le vrai tableau de mensualités de l'école sera inséré ici (anonymisé si compte de prod).
 
 ### 7.10 Onglet « Transferts »

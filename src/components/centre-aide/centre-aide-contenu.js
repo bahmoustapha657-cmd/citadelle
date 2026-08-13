@@ -138,6 +138,19 @@ export const ARTICLES = [
     ],
   },
   {
+    id: "recu-thermique",
+    cat: "compta",
+    roles: ["admin", "direction", "comptable", "superadmin"],
+    titre: "Imprimer les reçus sur une imprimante thermique (ticket de caisse)",
+    etapes: [
+      "Dans la grille des mensualités, à côté du 🖨️, cliquez sur le petit ▾ : choisissez « Ticket 58 mm » (terminaux POS Android) ou « Ticket 80 mm » (imprimante de caisse large).",
+      "Le format choisi est mémorisé sur CE poste : la caisse imprime en ticket, le bureau garde l'A4. Les clics suivants sur 🖨️ impriment directement dans ce format.",
+      "Sur un terminal POS Android : ouvrez EduGest dans Chrome, imprimez, puis sélectionnez l'imprimante intégrée dans la fenêtre d'impression. Si elle n'apparaît pas, installez le service d'impression fourni par le fabricant (Play Store), puis Paramètres → Impression → activez-le.",
+      "Réglez « Format du papier » sur 58 mm (ou 80 mm) et les marges sur « Aucune » : le ticket sort à la bonne largeur, sans page blanche.",
+      "Le ticket ne détaille que les mois réglés (le solde restant tient en une ligne) et porte le même QR de vérification que le reçu A4.",
+    ],
+  },
+  {
     id: "salaires",
     cat: "compta",
     roles: ["admin", "direction", "comptable", "superadmin"],

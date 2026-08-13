@@ -475,7 +475,8 @@
       "monthlyFee": "Monthly fee",
       "registration": "Registration",
       "otherFees": "Other fees",
-      "thanks": "Thank you for your trust"
+      "thanks": "Thank you for your trust",
+      "remaining": "Remaining"
     },
     "annualReport": {
       "title": "Annual report",
