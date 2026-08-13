@@ -1,7 +1,7 @@
 import React, { useState, useRef, useContext } from "react";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { C, today } from "../constants";
-import { uploadFichier } from "../storageUtils";
+import { cheminFichier, uploadFichier } from "../storageUtils";
 
 // ══════════════════════════════════════════════════════════════
 //  COMPOSANTS UI
@@ -178,7 +178,9 @@ function UploadFichiers({dossier, fichiers=[], onAjouter, onSupprimer, readOnly=
     if (!schoolId) { toast("Session école manquante.","error"); return; }
     setUploading(true);
     try {
-      const url = await uploadFichier(file, `ecoles/${schoolId}/${dossier}/${Date.now()}_${file.name}`);
+      // Le premier segment DOIT être le code de l'école : c'est ce que la
+      // policy de storage compare pour interdire le dépôt chez les autres.
+      const url = await uploadFichier(file, cheminFichier(schoolId, dossier, `${Date.now()}_${file.name}`));
       onAjouter({nom: file.name, url, type: file.type, date: today()});
     } catch(e) {
       toast("Erreur upload: " + e.message,"error");
