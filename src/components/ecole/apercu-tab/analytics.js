@@ -3,13 +3,14 @@
 // de données des graphiques. Cohérent avec les bulletins (mêmes moyennes via
 // getGeneralAverage / getSubjectAverage et SEULES les matières de la classe).
 import { getGeneralAverage, getSubjectAverage } from "../../../note-utils";
+import { notesDeLEleve } from "../../../notes-index";
 
 // Moyenne générale d'un élève pour une période donnée (toutes périodes si vide).
 // Un élève SANS aucune note sur la période n'est pas « évalué » (renvoie null) :
 // sinon getGeneralAverage renverrait 0 (dénominateur = liste des matières) et
 // gonflerait l'effectif évalué en plombant moyenne et taux de réussite.
 function moyenneEleve(eleve, notes, matieresForClasse, periode) {
-  const notesE = notes.filter((n) => n.eleveId === eleve._id && (!periode || n.periode === periode));
+  const notesE = notesDeLEleve(notes, eleve._id, periode);
   if (notesE.length === 0) return null;
   return getGeneralAverage(notesE, matieresForClasse(eleve.classe), eleve.classe);
 }
@@ -43,7 +44,7 @@ export function moyenneParMatiere(eleves, notes, matieresForClasse, periode) {
   const acc = new Map(); // nom -> { somme, n }
   eleves.forEach((e) => {
     const mats = matieresForClasse(e.classe);
-    const notesE = notes.filter((n) => n.eleveId === e._id && (!periode || n.periode === periode));
+    const notesE = notesDeLEleve(notes, e._id, periode);
     mats.forEach((mat) => {
       const moy = getSubjectAverage(notesE.filter((n) => n.matiere === mat.nom), e.classe);
       if (moy == null) return;

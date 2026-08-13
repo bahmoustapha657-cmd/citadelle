@@ -1,13 +1,14 @@
 // Calculs purs d'un bulletin individuel : moyennes par matière, moyenne
 // générale, mention et numéro. Aucune dépendance au DOM.
 import { getGeneralAverage, getSubjectAverage } from "../../note-utils.js";
+import { notesDeLEleve } from "../../notes-index.js";
 import { getMention, getMentionColors, getNumeroBulletin } from "./bulletin-format.js";
 
 // Renvoie le modèle exploité par le gabarit :
 //  - lignes : { mat, coef, moy, moyClasse } par matière
 //  - totalCoef, moyGene, mention, ms (couleurs), numero
 export function computeBulletinModel({ eleve, notes, matieres, periode, niveau, maxNote, schoolInfo, annee, matiereClasseAvg = {} }) {
-  const notesEleve = notes.filter((n) => n.eleveId === eleve._id && n.periode === periode);
+  const notesEleve = notesDeLEleve(notes, eleve._id, periode);
   const lignes = matieres.map((mat) => {
     const noteMat = notesEleve.filter((n) => n.matiere === mat.nom);
     const moyenneMatiere = getSubjectAverage(noteMat, eleve.classe, niveau);

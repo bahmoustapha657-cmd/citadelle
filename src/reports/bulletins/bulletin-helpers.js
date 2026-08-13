@@ -4,12 +4,13 @@
 // Les helpers de présentation (mention, couleurs, n°…) vivent dans
 // bulletin-format.js.
 import { getGeneralAverage, getSubjectAverage } from "../../note-utils.js";
+import { notesDeLEleve } from "../../notes-index.js";
 import { getPeriodesForSection } from "../../period-utils.js";
 
 export function getStatsClasse(elevesClasse, notes, matieres, periode, classe, niveau) {
   const moyennes = elevesClasse
     .map((e) => {
-      const notesE = notes.filter((n) => n.eleveId === e._id && n.periode === periode);
+      const notesE = notesDeLEleve(notes, e._id, periode);
       return getGeneralAverage(notesE, matieres, classe, niveau);
     })
     .filter((v) => v != null);
@@ -27,7 +28,7 @@ export function getStatsClasse(elevesClasse, notes, matieres, periode, classe, n
 export function getMoyenneClasseParMatiere(elevesClasse, notes, matiereNom, periode, classe, niveau) {
   const moyennes = elevesClasse
     .map((e) => {
-      const nm = notes.filter((n) => n.eleveId === e._id && n.periode === periode && n.matiere === matiereNom);
+      const nm = notesDeLEleve(notes, e._id, periode).filter((n) => n.matiere === matiereNom);
       return getSubjectAverage(nm, classe, niveau);
     })
     .filter((v) => v != null);
@@ -37,7 +38,7 @@ export function getMoyenneClasseParMatiere(elevesClasse, notes, matiereNom, peri
 export function getRangEleve(eleve, elevesClasse, notes, matieres, periode, classe, niveau) {
   const avecMoy = elevesClasse
     .map((e) => {
-      const notesE = notes.filter((n) => n.eleveId === e._id && n.periode === periode);
+      const notesE = notesDeLEleve(notes, e._id, periode);
       return { id: e._id, moy: getGeneralAverage(notesE, matieres, classe, niveau) };
     })
     .filter((x) => x.moy != null);

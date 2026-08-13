@@ -1,5 +1,6 @@
 import { getAnnee } from "../../constants";
 import { getAnnualAverage, getSubjectAverage } from "../../note-utils";
+import { notesDeLEleve } from "../../notes-index";
 
 // Helpers purs des livrets scolaires (sans état React).
 
@@ -31,7 +32,7 @@ export function buildNouveauLivret(eleve, { section, numeroLivret, annee }) {
 
 // Pré-remplit une entrée annuelle depuis les notes actuelles de l'élève.
 export function buildAnneePreRemplie(eleve, { notes, matieres, periodes, section, maxNote, eleves, annee }) {
-  const notesEleve = notes.filter((n) => n.eleveId === eleve._id);
+  const notesEleve = notesDeLEleve(notes, eleve._id);
   const matieresList = matieres.map((mat) => {
     const notesParPeriode = periodes.reduce((acc, p) => {
       const ns = notesEleve.filter((n) => n.matiere === mat.nom && n.periode === p);

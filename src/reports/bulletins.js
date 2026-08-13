@@ -8,6 +8,7 @@
 import { getAnnee } from "../constants.js";
 import { getPeriodesForSection } from "../period-utils.js";
 import { getGeneralAverage } from "../note-utils";
+import { notesDeLEleve } from "../notes-index.js";
 import { tr } from "./print-helpers.js";
 import { qrSecuriseImgHtml, qrPayload } from "./qr.js";
 import {
@@ -26,7 +27,7 @@ export { PERIODE_ANNEE } from "./bulletins/annual-notes.js";
 
 // QR de vérification d'un bulletin : identité de l'élève + période + moyenne.
 async function bulletinQrHtml({ eleve, notes, matieres, periode, niveau, maxNote, schoolInfo }) {
-  const notesE = notes.filter((n) => n.eleveId === eleve._id && n.periode === periode);
+  const notesE = notesDeLEleve(notes, eleve._id, periode);
   const moy = getGeneralAverage(notesE, matieres, eleve.classe, niveau);
   return qrSecuriseImgHtml(qrPayload({
     EduGest: "Bulletin",
