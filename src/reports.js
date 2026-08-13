@@ -19,7 +19,8 @@ export {
   watermarkHtml,
 } from "./reports/print-helpers.js";
 
-export { getRecuTotals, imprimerRecu } from "./reports/recus.js";
+export { getRecuTotals, imprimerRecu, imprimerRecuTicket } from "./reports/recus.js";
+export { TICKET_LARGEURS } from "./reports/recus/recu-ticket.js";
 export { imprimerCartesEleves, imprimerListeClasse } from "./reports/cartes-listes.js";
 export { genererRapportMensuel } from "./reports/rapport-mensuel.js";
 export { genererRapportAnnuel } from "./reports/rapport-annuel.js";

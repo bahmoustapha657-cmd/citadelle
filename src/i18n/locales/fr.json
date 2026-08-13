@@ -475,7 +475,8 @@
       "monthlyFee": "Mensualité",
       "registration": "Inscription",
       "otherFees": "Autres frais",
-      "thanks": "Merci de votre confiance"
+      "thanks": "Merci de votre confiance",
+      "remaining": "Reste à régler"
     },
     "monthlyReport": {
       "title": "Rapport mensuel",

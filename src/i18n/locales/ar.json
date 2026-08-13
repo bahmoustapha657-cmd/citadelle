@@ -475,7 +475,8 @@
       "monthlyFee": "قسط شهري",
       "registration": "التسجيل",
       "otherFees": "رسوم أخرى",
-      "thanks": "شكرًا على ثقتكم"
+      "thanks": "شكرًا على ثقتكم",
+      "remaining": "المتبقّي"
     },
     "annualReport": {
       "title": "التقرير السنوي",
