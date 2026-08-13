@@ -12,6 +12,7 @@
 // la moyenne des moyennes générales périodiques (le dénominateur des
 // coefficients étant constant d'une période à l'autre).
 import { getAnnualAverage, getDirectSubjectAverage, getSubjectAverage } from "../../note-utils.js";
+import { notesDeLEleve } from "../../notes-index.js";
 
 export const PERIODE_ANNEE = "__ANNEE__";
 
@@ -21,7 +22,7 @@ function buildCore({ eleves, notes, matsFor, periodes, valeurPeriode, type }) {
   const out = [];
   for (const e of eleves) {
     const mats = matsFor(e.classe) || [];
-    const notesE = notes.filter((n) => n.eleveId === e._id);
+    const notesE = notesDeLEleve(notes, e._id);
     for (const mat of mats) {
       const notesMat = notesE.filter((n) => n.matiere === mat.nom);
       // Moyenne de la matière saisie DIRECTEMENT (type « Moyenne », grille) :

@@ -9,6 +9,7 @@ import { db } from "../firebaseDb";
 import { isSupabase } from "../backend";
 import { chargerCollection, modifierChampDoc } from "../backend/data-supabase";
 import { getAnnee, getSectionForClasse, getSystemeScolaire } from "../constants";
+import { notesDeLEleve } from "../notes-index";
 import { getAnnualAverage, getGeneralAverage } from "../note-utils";
 import { getPeriodesForSection } from "../period-utils";
 import { classeSuivante } from "../promotion-utils";
@@ -73,7 +74,7 @@ function analyserSection(schoolInfo, sec, data, sansNotesBehavior, acc) {
       if (classeActuelle) acc.classesInconnues.add(classeActuelle);
       continue;
     }
-    const notesEleve = data.notes.filter((n) => n.eleveId === e._id);
+    const notesEleve = notesDeLEleve(data.notes, e._id);
     // Mêmes matières/coefficients que les bulletins (matieresForClasse).
     // Fallback : matières déduites des notes de l'élève (coef 1) si l'école
     // n'a pas configuré ses matières pour cette section.

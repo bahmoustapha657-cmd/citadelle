@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { genererAppreciation } from "../../../backend/ia";
 import { getGeneralAverage, getSubjectAverage } from "../../../note-utils";
+import { notesDeLEleve } from "../../../notes-index";
 
 // Mention à partir de la moyenne générale (identique à BulletinsTable).
 const mentionFor = (moy) =>
@@ -42,7 +43,7 @@ export function useBatchAppreciation({
     for (let i = 0; i < cibles.length; i++) {
       const e = cibles[i];
       const mats = matieresForClasse(e.classe);
-      const notesE = notes.filter((n) => n.eleveId === e._id && n.periode === periodeB);
+      const notesE = notesDeLEleve(notes, e._id, periodeB);
       const notesMatieres = mats
         .map((m) => ({ matiere: m.nom, moyenne: getSubjectAverage(notesE.filter((n) => n.matiere === m.nom), e.classe) }))
         .filter((x) => x.moyenne != null);

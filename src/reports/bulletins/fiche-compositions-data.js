@@ -1,6 +1,7 @@
 // Calculs purs de la fiche de résultats : classement des élèves par moyenne
 // (identique au bulletin, via getSubjectAverage) + statistiques de la classe.
 import { getSubjectAverage } from "../../note-utils.js";
+import { notesDeLEleve } from "../../notes-index.js";
 
 // Mention/appréciation à partir d'une moyenne et de la note max.
 export const apprecComposition = (v, maxNote) => {
@@ -33,7 +34,7 @@ export function computeFicheResultats({ classe, periode, notes, matieres, eleves
     // Toutes les notes de l'élève sur la période : la moyenne par matière est
     // calculée par getSubjectAverage → EXACTEMENT comme le bulletin (rubriques
     // Français, type « Moyenne », formule Cours/Composition).
-    const ne = notes.filter((n) => n.eleveId === e._id && n.periode === periode);
+    const ne = notesDeLEleve(notes, e._id, periode);
     let tot = 0, totC = 0;
     const notesMat = matieres.map((mat) => {
       const dansClasse = classSet.has(mat.nom);
