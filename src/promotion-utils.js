@@ -18,6 +18,8 @@
 //   null       → fin de cycle (Terminale)
 //   undefined  → nom de classe non reconnu (aucune écriture, signalé au bilan)
 
+import { getNiveauxExamen } from "./constants";
+
 const RE_TERMINALE = /^\s*terminale\b/i;
 const RE_MATERNELLE = /^\s*maternelle\s*(.*)$/i;
 // « 1ère Année A », « 7ème Année B », tolère l'ASCII legacy (« 1ere Annee A »)
@@ -97,4 +99,28 @@ export function classeSuivante(classe, systeme = "guineen") {
   if (collegeFr) return avecSuffixe(COLLEGE_FR_SUIVANT[Number(collegeFr[1])], collegeFr[2]);
 
   return undefined;
+}
+
+// ── Classes d'examen ────────────────────────────────────────────────────────
+// Le passage de ces classes se joue devant un JURY NATIONAL (CEE, BEPC, BAC),
+// pas sur nos évaluations : la promotion automatique n'a pas à en décider.
+// Sans cette garde, un élève à 12/20 recalé au CEE partait quand même en
+// 7ème Année, et un élève à 9/20 reçu restait en 6ème.
+//
+// La Terminale était déjà épargnée, mais par accident : elle n'a pas de classe
+// suivante. La 6ème et la 10ème Année, elles, en ont une — d'où le traitement
+// ordinaire dont elles faisaient l'objet.
+//
+// Les niveaux concernés sont DÉDUITS des listes de l'école (dernier niveau de
+// chaque cycle) : 6ème Année / 10ème Année / Terminale en guinéen, CM2 / 3ème
+// / Terminale en francophone. Un nouveau système hérite de la règle sans rien
+// ajouter ici.
+export function estClasseExamen(classe, systeme = "guineen") {
+  const c = String(classe || "").trim().toLowerCase();
+  if (!c) return false;
+  return getNiveauxExamen(systeme).some((niveau) => {
+    const n = String(niveau).trim().toLowerCase();
+    // « 6ème Année » doit matcher « 6ème Année A » mais PAS « 16ème Année ».
+    return c === n || c.startsWith(`${n} `);
+  });
 }
