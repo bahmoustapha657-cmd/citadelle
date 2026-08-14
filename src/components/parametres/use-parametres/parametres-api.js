@@ -35,6 +35,18 @@ export async function sauvegarderParametres({ schoolId, form, accueil, evaluatio
   // téléverser, donc enregistrer deux fois de suite ne duplique aucun fichier.
   const logo = await uploadImage(form.logo, schoolId, "logo");
   const signatureUrl = await uploadImage(form.signatureUrl, schoolId, "signatures");
+  // Page publique : la bannière et la galerie suivaient le même chemin que le
+  // logo — du base64 stocké dans extra.accueil, donc relu à chaque lecture de
+  // la fiche école. Une galerie de dix photos pèse plus lourd qu'un logo.
+  // Les photos partent EN PARALLÈLE : une galerie fraîchement remplie ferait
+  // sinon patienter l'utilisateur sur autant d'envois enchaînés.
+  const bannerUrl = await uploadImage(accueil.bannerUrl, schoolId, "accueil");
+  const photos = await Promise.all(
+    (accueil.photos || []).map(async (p) => ({
+      ...p,
+      url: await uploadImage(p.url, schoolId, "accueil"),
+    })),
+  );
   const data = {
     nom: form.nom.trim(),
     type: form.type.trim(),
@@ -68,8 +80,8 @@ export async function sauvegarderParametres({ schoolId, form, accueil, evaluatio
       active: accueil.active,
       slogan: accueil.slogan.trim(),
       texteAccueil: accueil.texteAccueil.trim(),
-      bannerUrl: accueil.bannerUrl.trim(),
-      photos: accueil.photos,
+      bannerUrl: bannerUrl.trim(),
+      photos,
       showAnnonces: accueil.showAnnonces,
       showHonneurs: accueil.showHonneurs,
       showContact: accueil.showContact,
