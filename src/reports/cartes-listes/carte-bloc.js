@@ -27,7 +27,7 @@ export function carteEleve(e, { logo, nomEcole, ville, annee, qrMap }) {
       <div class="carte-header">
         <div class="logo-wrap">
           ${logo
-            ? `<img src="${logo}" class="carte-logo"/>`
+            ? `<img crossOrigin="anonymous" src="${logo}" class="carte-logo"/>`
             : `<div class="logo-initiales">${nomEcole.slice(0, 2).toUpperCase()}</div>`}
         </div>
         <div class="carte-titre">
@@ -45,7 +45,7 @@ export function carteEleve(e, { logo, nomEcole, ville, annee, qrMap }) {
       <div class="carte-body">
         <div class="carte-photo">
           ${e.photo
-            ? `<img src="${e.photo}" class="photo-img"/>`
+            ? `<img crossOrigin="anonymous" src="${e.photo}" class="photo-img"/>`
             : `<div class="photo-initiales">${(e.prenom || "?")[0].toUpperCase()}${(e.nom || "?")[0].toUpperCase()}</div>`}
         </div>
         <div class="carte-infos">
@@ -66,7 +66,7 @@ export function carteEleve(e, { logo, nomEcole, ville, annee, qrMap }) {
         </div>
         <div class="footer-center">
           ${qrMap[e._id]
-            ? `<div class="qr-wrap"><img src="${qrMap[e._id]}" class="qr-img"/><div class="mat-badge">${e.matricule || ""}</div></div>`
+            ? `<div class="qr-wrap"><img crossOrigin="anonymous" src="${qrMap[e._id]}" class="qr-img"/><div class="mat-badge">${e.matricule || ""}</div></div>`
             : `<div class="mat-badge">${e.matricule || ""}</div>`}
         </div>
         <div class="footer-right">

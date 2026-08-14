@@ -15,7 +15,7 @@ export function ComptaHeader({ c, readOnly }) {
   return (
     <>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18, flexWrap: "wrap" }}>
-        {c.schoolInfo?.logo && <img src={c.schoolInfo.logo} alt="" style={{ width: 48, height: 48, objectFit: "contain" }} />}
+        {c.schoolInfo?.logo && <img crossOrigin="anonymous" src={c.schoolInfo.logo} alt="" style={{ width: 48, height: 48, objectFit: "contain" }} />}
         <div style={{ flex: 1, minWidth: 200 }}>
           <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: C.blueDark }}>{t("accounting.title")}</h2>
           <p style={{ margin: 0, fontSize: 12, color: C.green, fontWeight: 600 }}>{t("accounting.subtitle")}</p>

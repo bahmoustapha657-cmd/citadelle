@@ -6,7 +6,7 @@ import { MINISTERE_DEFAUT, signataireHTML, tr } from "../print-helpers.js";
 // En-tête compacte (logo + infos en ligne) — sans doublon type/nom.
 export const enteteCompact = (schoolInfo, lf) => `
   <div style="display:flex;align-items:center;gap:8px;border-bottom:2px solid #0A1628;padding-bottom:6px;margin-bottom:6px">
-    ${schoolInfo.logo?`<img src="${schoolInfo.logo}" alt="" style="width:38px;height:38px;object-fit:contain;flex-shrink:0"/>`:''}
+    ${schoolInfo.logo?`<img crossOrigin="anonymous" src="${schoolInfo.logo}" alt="" style="width:38px;height:38px;object-fit:contain;flex-shrink:0"/>`:''}
     <div style="flex:1;display:flex;justify-content:space-between;align-items:center">
       <div style="font-size:8px;color:#444;line-height:1.5">
         <strong style="font-size:9px;color:#0A1628">${schoolInfo.pays||"République de Guinée"}</strong><br/>
@@ -25,7 +25,7 @@ export const blocRecu = (titre, ctx) => {
   const { schoolInfo, lf, eleve, moisAnnee, mens, mensDates, fraisIns, fraisAutre, fraisDiversPayes = [], totalMensualites, moisPayes, totalGeneral, qr } = ctx;
   return `
   <div class="recu">
-    ${schoolInfo.logo?`<div class="watermark"><img src="${schoolInfo.logo}" alt=""/></div>`:""}
+    ${schoolInfo.logo?`<div class="watermark"><img crossOrigin="anonymous" src="${schoolInfo.logo}" alt=""/></div>`:""}
     <div style="position:relative;z-index:1;display:flex;flex-direction:column;height:100%">
     ${enteteCompact(schoolInfo, lf)}
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">

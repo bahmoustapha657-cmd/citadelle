@@ -46,7 +46,7 @@ export const genererRapportMensuel = (mois, eleves, absences, annee, schoolInfo=
 
   <div class="header">
     ${logo
-      ?`<img src="${logo}" class="header-logo"/>`
+      ?`<img crossOrigin="anonymous" src="${logo}" class="header-logo"/>`
       :`<div class="header-logo-ph">${nomEcole.slice(0,2).toUpperCase()}</div>`}
     <div class="header-text">
       <div class="header-ecole">${nomEcole}</div>

@@ -22,7 +22,7 @@ const fmtMoney = (n) => fmt(Math.round(Number(n) || 0));
 const buildHeader = (m, c1, c2, nomEcole, logo) => `
   <div class="header">
     ${logo
-      ? `<img src="${logo}" class="header-logo"/>`
+      ? `<img crossOrigin="anonymous" src="${logo}" class="header-logo"/>`
       : `<div class="header-logo-ph">${nomEcole.slice(0, 2).toUpperCase()}</div>`}
     <div class="header-text">
       <div class="header-ecole">${nomEcole}</div>

@@ -41,7 +41,7 @@ export function ConnexionHeader({ infoEcole }) {
           }}
         >
           {infoEcole.logo && (
-            <img
+            <img crossOrigin="anonymous"
               src={infoEcole.logo}
               alt="logo ecole"
               style={{ width: 36, height: 36, objectFit: "contain", borderRadius: 6, flexShrink: 0 }}

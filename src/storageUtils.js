@@ -8,6 +8,15 @@
 // migration : une photo prise aujourd'hui partait vers un projet qui n'est
 // plus la production. Firebase n'est conservé ici qu'en repli, chargé à la
 // demande pour ne rien peser dans le bundle Supabase.
+// ⚠️ TOUTE BALISE <img> QUI AFFICHE UNE DE CES URL DOIT PORTER
+//    crossOrigin="anonymous" — sans exception, y compris dans le HTML des
+//    documents imprimés.
+//    Le site envoie `Cross-Origin-Embedder-Policy: require-corp` (exigé par
+//    PowerSync pour le SQLite local). Sous cette politique, une image d'une
+//    autre origine n'est acceptée que si elle porte un en-tête CORP — que
+//    Supabase Storage n'envoie PAS — OU si elle est demandée en mode CORS,
+//    ce que fait précisément l'attribut crossOrigin. Vérifié sur la
+//    production : sans l'attribut l'image est BLOQUÉE, avec elle charge.
 import { isSupabase } from "./backend";
 import { getSupabase } from "./supabaseClient";
 

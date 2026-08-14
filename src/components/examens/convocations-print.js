@@ -37,7 +37,7 @@ export function imprimerConvocations(exam, tousEleves, schoolInfo) {
   ${elevesCible.map(e => `
   <div class="convoc">
     <div class="header">
-      ${logo ? `<img src="${logo}" class="logo"/>` : `<div class="logo-ph">${nomEcole.slice(0, 2).toUpperCase()}</div>`}
+      ${logo ? `<img crossOrigin="anonymous" src="${logo}" class="logo"/>` : `<div class="logo-ph">${nomEcole.slice(0, 2).toUpperCase()}</div>`}
       <div>
         <div class="ecole-name">${nomEcole}</div>
         <div class="ecole-sub">CONVOCATION D'EXAMEN</div>

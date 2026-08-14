@@ -11,7 +11,7 @@ export function GalerieSection({ accueil, setAccueil, handlePhotoGalerie, inp, s
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:10,marginTop:8}}>
         {(accueil.photos||[]).map((p,i)=>(
           <div key={i} style={{position:"relative",borderRadius:8,overflow:"hidden",background:"#f1f5f9"}}>
-            <img src={p.url} alt="" style={{width:"100%",height:90,objectFit:"cover",display:"block"}}/>
+            <img crossOrigin="anonymous" src={p.url} alt="" style={{width:"100%",height:90,objectFit:"cover",display:"block"}}/>
             <input value={p.caption||""} onChange={e=>{
               const photos=[...accueil.photos];
               photos[i]={...photos[i],caption:e.target.value};

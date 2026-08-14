@@ -117,12 +117,12 @@ export const imprimerLivret = (livret, schoolInfo={}) => {
   <!-- COUVERTURE -->
   <div class="couverture">
     <div class="couv-school">${schoolInfo.pays||"République de Guinée"} · ${lf.ministere||MINISTERE_DEFAUT}</div>
-    ${schoolInfo.logo?`<img src="${schoolInfo.logo}" style="height:50px;margin-bottom:8px"/>`:""}
+    ${schoolInfo.logo?`<img crossOrigin="anonymous" src="${schoolInfo.logo}" style="height:50px;margin-bottom:8px"/>`:""}
     <div style="font-size:13px;font-weight:700;color:#111">${schoolInfo.nom||""}</div>
     <div style="font-size:10px;color:#6b7280;margin-bottom:12px">${lf.agrement?`${tr("reports.livret.agrement")} ${lf.agrement}`:""}</div>
     <div class="couv-titre">${tr("reports.livret.schoolBook")}</div>
     <div class="couv-num">${tr("reports.livret.number")} ${livret.numeroLivret||"—"}</div>
-    ${livret.photo?`<img src="${livret.photo}" class="couv-photo"/>`:`<div class="couv-photo" style="display:flex;align-items:center;justify-content:center;font-size:36px;background:#f0f4f8">👤</div>`}
+    ${livret.photo?`<img crossOrigin="anonymous" src="${livret.photo}" class="couv-photo"/>`:`<div class="couv-photo" style="display:flex;align-items:center;justify-content:center;font-size:36px;background:#f0f4f8">👤</div>`}
     <div class="couv-nom">${livret.eleveNom||"—"}</div>
     <div class="couv-info">
       ${tr("reports.livret.bornOn")} <strong>${livret.dateNaissance||"—"}</strong> ${tr("reports.livret.at")} <strong>${livret.lieuNaissance||"—"}</strong><br/>

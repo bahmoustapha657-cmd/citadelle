@@ -12,7 +12,7 @@ export function FicheEleve({ data, section, moisAnnee, onNaviguer, onFermer }) {
       <div style={{ display: "flex", gap: 16, alignItems: "center", padding: "20px 24px", background: "linear-gradient(135deg,#0A1628,#1e3a5f)" }}>
         <div style={{ width: 64, height: 64, borderRadius: 12, overflow: "hidden", border: "2px solid rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.1)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
           {data.photo
-            ? <img src={data.photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            ? <img crossOrigin="anonymous" src={data.photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
             : <span style={{ fontSize: 28 }}>👤</span>}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>

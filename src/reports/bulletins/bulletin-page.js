@@ -91,7 +91,7 @@ export function buildBulletinPageHTML({
     <div style="display:grid;grid-template-columns:1.55fr 1fr;gap:12px;margin-bottom:12px">
       <div style="border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;display:flex;gap:12px;align-items:center">
         ${eleve.photo
-          ? `<img src="${eleve.photo}" alt="" style="width:${dim.photo}px;height:${dim.photo}px;border-radius:8px;object-fit:cover;border:2px solid ${c1};flex-shrink:0"/>`
+          ? `<img crossOrigin="anonymous" src="${eleve.photo}" alt="" style="width:${dim.photo}px;height:${dim.photo}px;border-radius:8px;object-fit:cover;border:2px solid ${c1};flex-shrink:0"/>`
           : `<div style="width:${dim.photo}px;height:${dim.photo}px;border-radius:8px;background:${c1};color:#fff;font-weight:900;font-size:22px;display:flex;align-items:center;justify-content:center;flex-shrink:0">${getInitiales(eleve)}</div>`}
         <div style="flex:1;font-size:10.5px;line-height:1.6;min-width:0">
           <div style="font-size:14px;font-weight:800;color:${c1};margin-bottom:2px">${eleve.nom || ""} ${eleve.prenom || ""}</div>
@@ -158,7 +158,7 @@ export function buildBulletinPageHTML({
     <div class="sigs">
       <div class="sig">${tr("school.students.parent")}<br/><br/><br/>${tr("reports.signature")}</div>
       <div class="sig">${tr("reports.headTeacher")}<br/><br/><br/>${tr("reports.signature")}</div>
-      <div class="sig">${signataireHTML(schoolInfo, "direction", tr("reports.director"))}${schoolInfo.signatureUrl ? `<img src="${schoolInfo.signatureUrl}" alt="" style="display:block;height:34px;object-fit:contain;margin:4px auto 2px"/>` : "<br/><br/><br/>"}${tr("reports.signature")}</div>
+      <div class="sig">${signataireHTML(schoolInfo, "direction", tr("reports.director"))}${schoolInfo.signatureUrl ? `<img crossOrigin="anonymous" src="${schoolInfo.signatureUrl}" alt="" style="display:block;height:34px;object-fit:contain;margin:4px auto 2px"/>` : "<br/><br/><br/>"}${tr("reports.signature")}</div>
     </div>
 
     <div class="devise" style="color:${c2}">${schoolInfo.devise || "Travail – Rigueur – Réussite"}</div>
