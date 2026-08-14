@@ -12,7 +12,7 @@ import { getAnnee, getSectionForClasse, getSystemeScolaire } from "../constants"
 import { notesDeLEleve } from "../notes-index";
 import { getAnnualAverage, getGeneralAverage } from "../note-utils";
 import { getPeriodesForSection } from "../period-utils";
-import { classeSuivante } from "../promotion-utils";
+import { classeSuivante, estClasseExamen } from "../promotion-utils";
 import { matieresForClasse } from "./ecole/ecole-logic";
 
 // Limite Firestore : 500 opérations par batch (marge de sécurité à 450).
@@ -67,7 +67,18 @@ function analyserSection(schoolInfo, sec, data, sansNotesBehavior, acc) {
     if (e.statut !== "Actif") continue;
     acc.total++;
     const classeActuelle = e.classe || "";
-    const suivante = classeSuivante(classeActuelle, getSystemeScolaire(schoolInfo));
+    const systeme = getSystemeScolaire(schoolInfo);
+    // Classe d'examen : le passage dépend d'un jury national (CEE, BEPC, BAC),
+    // pas de nos moyennes. On ne touche à RIEN et on les compte à part — la
+    // direction fera passer les admis quand les résultats seront publiés.
+    // Terminale comprise : elle était déjà épargnée, mais seulement parce
+    // qu'elle n'a pas de classe suivante.
+    if (estClasseExamen(classeActuelle, systeme)) {
+      acc.examens++;
+      acc.classesExamen.add(classeActuelle);
+      continue;
+    }
+    const suivante = classeSuivante(classeActuelle, systeme);
     if (suivante === null) { acc.terminalistes++; continue; }
     if (suivante === undefined) {
       acc.inconnus++;
@@ -140,6 +151,7 @@ export async function runPromotion({ schoolId, schoolInfo, seuilCollege, seuilPr
   ];
   const acc = {
     total: 0, promus: 0, redoublants: 0, terminalistes: 0, sansNotes: 0, inconnus: 0,
+    examens: 0, classesExamen: new Set(),
     classesInconnues: new Set(), details: [], updates: [],
   };
 
@@ -153,6 +165,7 @@ export async function runPromotion({ schoolId, schoolInfo, seuilCollege, seuilPr
   return {
     total: acc.total, promus: acc.promus, redoublants: acc.redoublants,
     terminalistes: acc.terminalistes, sansNotes: acc.sansNotes, inconnus: acc.inconnus,
+    examens: acc.examens, classesExamen: [...acc.classesExamen],
     classesInconnues: [...acc.classesInconnues],
     simulation: simulate,
     details: acc.details,

@@ -191,6 +191,21 @@ export const getClassesForSection = (section = "college", systeme = "guineen") =
   return genClasses(niveaux[section] || niveaux.college);
 };
 
+// Niveaux BRUTS d'une section (sans les divisions A/B/C/D).
+export const getNiveauxForSection = (section = "college", systeme = "guineen") => {
+  const niveaux = NIVEAUX_PAR_SYSTEME[systeme] || NIVEAUX_PAR_SYSTEME.guineen;
+  return niveaux[section] || niveaux.college;
+};
+
+// Derniers niveaux de chaque cycle : ce sont les CLASSES D'EXAMEN, celles dont
+// le passage se joue devant un jury national et non sur nos évaluations —
+// 6ème Année (CEE), 10ème Année (BEPC) et Terminale (BAC) en système guinéen,
+// CM2, 3ème et Terminale en francophone. Déduites des listes de niveaux plutôt
+// qu'écrites en dur : un nouveau système hérite de la règle sans rien ajouter.
+export const getNiveauxExamen = (systeme = "guineen") => ["primaire", "college", "lycee"]
+  .map((section) => getNiveauxForSection(section, systeme).slice(-1)[0])
+  .filter(Boolean);
+
 export const getDefaultMensualiteForClasse = (classe = "") => {
   const section = getSectionForClasse(classe);
   return MENSUALITE[section] ?? MENSUALITE.college;
