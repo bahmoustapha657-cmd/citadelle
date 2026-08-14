@@ -1,4 +1,4 @@
-import { C, genererMatricule } from "../../../constants";
+import { C, aReinscrire, genererMatricule } from "../../../constants";
 import { Badge, Btn, THead, TR, TD, Vide, Chargement } from "../../ui";
 
 // Tableau des élèves enrôlés pour le niveau courant, avec actions :
@@ -21,7 +21,16 @@ export function EnrolTable({
           <TD><span style={{fontSize:11,color:"#6b7280"}}>{e.filiation}</span></TD>
           <TD>{e.tuteur}</TD><TD>{e.contactTuteur}</TD>
           <TD><span style={{fontSize:11,color:"#6b7280"}}>{e.domicile}</span></TD>
-          <TD><Badge color={e.statut==="Actif"?"vert":"gray"}>{e.statut}</Badge></TD>
+          <TD>
+            <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+              <Badge color={e.statut==="Actif"?"vert":"gray"}>{e.statut}</Badge>
+              {/* « À réinscrire » = inscription pas encore encaissée pour
+                  l'année en cours. L'élève compte toujours dans l'effectif de
+                  sa classe : la pastille signale un dossier à finir, pas une
+                  absence. */}
+              {aReinscrire(e)&&<Badge color="amber" title="Inscription non encaissée pour cette année">À réinscrire</Badge>}
+            </div>
+          </TD>
           {canEdit&&<TD><div style={{display:"flex",gap:6}}>
             <Btn sm v="ghost" onClick={()=>{setForm({...e,niveau:niveauEnrol});setModal("edit_enrol");}}>Modifier</Btn>
             {canCreate&&planInfo?.peutAjouterEleve&&<Btn sm v="ghost" title="Dupliquer — même tuteur/contact (frère/sœur)" onClick={()=>{

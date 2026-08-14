@@ -243,6 +243,16 @@ export const getTarifFraisAnnexes = (tarif = {}) => {
   return frais;
 };
 
+// ── Réinscription ───────────────────────────────────────────────────────────
+// Un élève est « réinscrit » pour l'année en cours dès que son inscription est
+// encaissée. Rien de nouveau n'est stocké : la clôture d'année remet déjà
+// inscriptionPayee à false (après l'avoir archivée), donc chaque rentrée
+// repart avec tout le monde à réinscrire, sans aucune opération à lancer.
+// L'élève reste compté dans l'effectif de sa classe — seule la pastille et le
+// filtre changent.
+export const estReinscrit = (eleve = {}) => !!eleve.inscriptionPayee;
+export const aReinscrire = (eleve = {}) => eleve.statut === "Actif" && !estReinscrit(eleve);
+
 // Un frais annexe est-il payé pour cet élève ? (« autre » = drapeau legacy)
 export const isFraisAnnexePaye = (eleve = {}, id) => (id === "autre"
   ? !!eleve.autrePayee

@@ -14,6 +14,9 @@ export const COLLECTIONS_ELEVES = [
 export const CHAMPS_SCOLARITE = [
   "mens", "mensDates", "mensMontants", "fraisPayes",
   "inscriptionPayee", "inscriptionDate", "autrePayee", "autreDate",
+  // Archivé ET restauré : la clôture bascule les élèves actifs en
+  // « Réinscription », l'annulation doit pouvoir revenir en arrière.
+  "typeInscription",
 ];
 
 // Instantané de l'année pour un élève : les champs de scolarité + la classe
@@ -62,7 +65,17 @@ export function champsCloture(eleve = {}, annee = "", { moisAnnee = null, mainte
   const historique = { ...(eleve.historique || {}) };
   if (historique[annee]) return null;
   historique[annee] = { ...instantaneEleve(eleve), clotureLe: maintenant.toISOString() };
-  return { historique, ...etatVierge(moisAnnee) };
+  // Un élève encore présent l'année suivante EST un réinscrit : on bascule son
+  // type d'inscription pour que le tarif de réinscription s'applique de
+  // lui-même. Sans cela, il fallait ouvrir les fiches une par une — 501 fois
+  // pour La Citadelle. Les élèves déjà partis gardent leur type d'origine :
+  // leur fiche n'a pas vocation à décrire une rentrée qu'ils ne feront pas.
+  const typeInscription = eleve.statut === "Actif" ? "Réinscription" : eleve.typeInscription;
+  return {
+    historique,
+    ...etatVierge(moisAnnee),
+    ...(typeInscription ? { typeInscription } : {}),
+  };
 }
 
 // Champs à écrire pour restaurer l'année archivée sur la fiche. Renvoie null

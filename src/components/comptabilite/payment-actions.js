@@ -34,7 +34,10 @@ export async function toggleFraisAnnexe(_id, opts, {
   readOnly, canEdit, toast, modEleves, logAction,
   ajPaiement = null, annee = "", auteur = "", eleve = null,
 }) {
-  const { payKey, dateKey, fraisId=null, fraisPayesActuels=null, valeurActuelle=false, label, montant=0, nomEleve="" } = opts;
+  // `confirmer:false` : la question a déjà été posée UNE fois pour tout un
+  // lot (encaissement groupé des inscriptions). Sans cela, réinscrire une
+  // classe de 50 élèves ouvrirait 50 fenêtres de confirmation.
+  const { payKey, dateKey, fraisId=null, fraisPayesActuels=null, valeurActuelle=false, label, montant=0, nomEleve="", confirmer=true } = opts;
   if(readOnly) return;
   if(valeurActuelle && !canEdit){
     toast(`Le retrait de ${label.toLowerCase()} nécessite l'autorisation de l'administrateur (verrou activé).`,"warning");
@@ -44,7 +47,7 @@ export async function toggleFraisAnnexe(_id, opts, {
   const message = valeurActuelle
     ? `Retirer ${label.toLowerCase()}${montantLabel} pour ${nomEleve} ?`
     : `Marquer ${label.toLowerCase()}${montantLabel} comme payé pour ${nomEleve} ?`;
-  if(!confirm(message)) return;
+  if(confirmer && !confirm(message)) return;
   if (fraisId) {
     const fraisPayes = { ...(fraisPayesActuels || {}) };
     if (valeurActuelle) delete fraisPayes[fraisId];

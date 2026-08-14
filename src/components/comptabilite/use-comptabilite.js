@@ -1,6 +1,6 @@
 import { useContext, useState } from "react";
 import { doc, updateDoc } from "firebase/firestore";
-import { getAnnee, peutModifierEleves, peutModifier } from "../../constants";
+import { fmt, getAnnee, peutModifierEleves, peutModifier } from "../../constants";
 import { hasWrite } from "../../../shared/postes-config.js";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { useFirestore } from "../../hooks/useFirestore";
@@ -151,6 +151,33 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
     ajPaiement, annee: anneeEcriture, auteur: signature,
     eleve: tousElevesScolarite.find((e) => e._id === _id) || null,
   });
+  // Encaissement GROUPÉ des inscriptions (rentrée : réinscrire une classe).
+  // Une seule confirmation, qui annonce le nombre d'élèves ET le total —
+  // c'est de l'argent qu'on déclare reçu, la question doit être explicite.
+  // Chaque élève passe ensuite par le chemin normal : fiche, journal des
+  // paiements daté et signé, trace d'audit.
+  const encaisserInscriptions = async (elevesCibles = []) => {
+    const aTraiter = elevesCibles.filter((e) => !e.inscriptionPayee);
+    if (!aTraiter.length) { toast("Tous ces élèves ont déjà réglé leur inscription.", "info"); return; }
+    const total = aTraiter.reduce((s, e) => s + getTarifInscriptionEleve(e), 0);
+    const message = `Encaisser l'inscription de ${aTraiter.length} élève(s) ?\n\n`
+      + `Total : ${fmt(total)}\n\n`
+      + "Chaque élève sera marqué comme réinscrit, avec une ligne au journal de caisse.";
+    if (!confirm(message)) return;
+    for (const eleve of aTraiter) {
+      await toggleFraisAnnexe(eleve._id, {
+        payKey: "inscriptionPayee",
+        dateKey: "inscriptionDate",
+        valeurActuelle: false,
+        label: eleve.typeInscription === "Réinscription" ? "Réinscription" : "Inscription",
+        montant: getTarifInscriptionEleve(eleve),
+        nomEleve: `${eleve.nom} ${eleve.prenom}`,
+        confirmer: false,
+      });
+    }
+    toast(`${aTraiter.length} élève(s) réinscrit(s) — ${fmt(total)} encaissés.`, "success");
+  };
+
   const toggleMens = (_id, mois, mensActuels, mensDatesActuels, nomEleve) => {
     // Fige le tarif en vigueur au moment du paiement (mensMontants[mois]) :
     // les totaux perçus ne bougent plus si le tarif change en cours d'année.
@@ -247,7 +274,7 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
     totR, totD, totVers, eleves, classesU, tousElevesScolarite, elevesFiltres,
     getTarif, getTarifBase, getTarifRevision, getTarifAutre, getTarifIns, getTarifReinsc,
     getTarifInscriptionEleve, getTarifFraisDivers, saveTarif,
-    toggleFraisAnnexe, toggleMens, enreg, saveSalaire, savePersonnel,
+    toggleFraisAnnexe, toggleMens, encaisserInscriptions, enreg, saveSalaire, savePersonnel,
     salairesDomaine, moisLabel, totNetSec, totNetPrim, totNetPers, salairesMois,
     mensualiteOverview, periodes, defaultPeriode, impaye, pctImpaye,
   };
