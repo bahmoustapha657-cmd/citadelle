@@ -3,6 +3,7 @@
 // + sync de la page publique, et cycle de vie (désactiver / supprimer).
 import { doc, updateDoc } from "firebase/firestore";
 import { JOURS_SEMAINE } from "../../../constants";
+import { uploadImage } from "../../../storageUtils";
 import { db } from "../../../firebaseDb";
 import { apiFetch, getAuthHeaders } from "../../../apiClient";
 import { isSupabase } from "../../../backend";
@@ -27,6 +28,13 @@ export async function sauvegarderMonnaie({ schoolId, monnaie }) {
 // Sauvegarde complète des paramètres puis sync de la page publique.
 // Renvoie l'objet `data` écrit (pour mettre à jour schoolInfo côté hook).
 export async function sauvegarderParametres({ schoolId, form, accueil, evaluationForms }) {
+  // Logo et signature arrivent en base64 (l'écran en a besoin pour l'aperçu
+  // et l'extraction des couleurs) mais ne doivent pas FINIR en base64 dans la
+  // colonne : un logo de 339 ko repartait à chaque lecture de la fiche école.
+  // uploadImage est idempotent — une valeur déjà en URL traverse sans rien
+  // téléverser, donc enregistrer deux fois de suite ne duplique aucun fichier.
+  const logo = await uploadImage(form.logo, schoolId, "logo");
+  const signatureUrl = await uploadImage(form.signatureUrl, schoolId, "signatures");
   const data = {
     nom: form.nom.trim(),
     type: form.type.trim(),
@@ -34,7 +42,7 @@ export async function sauvegarderParametres({ schoolId, form, accueil, evaluatio
     pays: form.pays.trim(),
     couleur1: form.couleur1,
     couleur2: form.couleur2,
-    logo: form.logo || null,
+    logo: logo || null,
     devise: form.devise.trim(),
     monnaie: normaliserMonnaie(form.monnaie),
     // ministere / ire / dpe / agrement : MIGRÉS vers /ecoles/{schoolId}/config/legal
@@ -48,7 +56,7 @@ export async function sauvegarderParametres({ schoolId, form, accueil, evaluatio
     sectionsActives: Array.isArray(form.sectionsActives) && form.sectionsActives.length
       ? form.sectionsActives : ["primaire", "college", "lycee"],
     modeleBulletin: form.modeleBulletin || "classique",
-    signatureUrl: form.signatureUrl || null,
+    signatureUrl: signatureUrl || null,
     periodicite: form.periodicite || "trimestre",
     periodicitePrimaire: form.periodicitePrimaire || "trimestre",
     periodiciteSecondaire: form.periodiciteSecondaire || "trimestre",
