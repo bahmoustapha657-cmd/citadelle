@@ -53,11 +53,16 @@ Deno.serve(async (req) => {
     const { data: exist } = await admin.from("ecoles").select("id").eq("code", code).maybeSingle();
     if (exist) return json({ error: "Une école avec ce nom existe déjà. Choisissez un autre nom." }, 409);
 
-    // École créée inactive : en attente de validation par le superadmin
-    // (voir Panel Super-Admin > Écoles > Réactiver).
+    // École ACTIVE dès l'inscription : la direction se connecte immédiatement.
+    // Il y avait auparavant une validation par le superadmin (école créée
+    // `actif: false`, activée depuis Panel Super-Admin > Écoles > Réactiver) —
+    // retirée sur décision produit le 2026-08-14 pour ne plus faire attendre
+    // les établissements. Contrepartie assumée : n'importe qui peut créer une
+    // école fonctionnelle. Le superadmin garde la main a posteriori
+    // (Désactiver / Supprimer) et voit les nouvelles écoles dans son panneau.
     const { data: ecole, error: eErr } = await admin.from("ecoles").insert({
       code, nom: nomEcole.trim(), pays: (pays || "Guinée").trim(),
-      plan: "gratuit", actif: false,
+      plan: "gratuit", actif: true,
       extra: {
         ville: ville.trim(), createdAt: Date.now(), securityVersion: 2,
         responsable: responsable.trim(), telephone: telDigits, email: contactEmail.trim(),
