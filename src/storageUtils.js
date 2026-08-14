@@ -65,14 +65,21 @@ export async function supprimerFichier(url) {
   } catch { /* déjà supprimé, ou URL non gérée */ }
 }
 
-// Photo d'élève : accepte une image base64 (appareil photo, import) ou une URL
-// déjà stockée — dans ce cas elle est renvoyée telle quelle, ce qui rend la
-// fonction idempotente et permet de la rappeler à chaque enregistrement.
-export async function uploadPhotoEleve(photoBase64OuUrl, schoolId) {
-  if (!photoBase64OuUrl) return "";
-  if (photoBase64OuUrl.startsWith("http")) return photoBase64OuUrl;
-  const res = await fetch(photoBase64OuUrl);
+// Envoie une image fournie en base64 et renvoie son URL. Si la valeur est
+// DÉJÀ une URL, elle est renvoyée telle quelle : la fonction est idempotente,
+// on peut donc l'appeler à chaque enregistrement sans re-téléverser.
+// Les écrans continuent de manipuler du base64 pour l'aperçu immédiat et
+// l'extraction des couleurs ; la conversion n'a lieu qu'à la sauvegarde.
+export async function uploadImage(base64OuUrl, schoolId, categorie = "photos") {
+  if (!base64OuUrl) return "";
+  if (base64OuUrl.startsWith("http")) return base64OuUrl;
+  if (!base64OuUrl.startsWith("data:")) return base64OuUrl; // valeur inattendue : on n'y touche pas
+  const res = await fetch(base64OuUrl);
   const blob = await res.blob();
   const ext = blob.type === "image/png" ? "png" : blob.type === "image/webp" ? "webp" : "jpg";
-  return uploadFichier(blob, cheminFichier(schoolId, "photos", nomAleatoire(ext)));
+  return uploadFichier(blob, cheminFichier(schoolId, categorie, nomAleatoire(ext)));
 }
+
+// Photo d'élève (appareil photo, import).
+export const uploadPhotoEleve = (photoBase64OuUrl, schoolId) =>
+  uploadImage(photoBase64OuUrl, schoolId, "photos");
