@@ -84,6 +84,8 @@ export function ComptaTabsScolarite({ c, readOnly, annee, userRole }) {
         modifParNiveau={c.modifParNiveau}
         ensureClasse={c.ensureClasse}
         sortAlpha={c.sortAlpha}
+        encaisserInscriptions={c.encaisserInscriptions}
+        getTarifInscriptionEleve={c.getTarifInscriptionEleve}
       />}
 
       {c.tab === "mens" && <MensualitesTab

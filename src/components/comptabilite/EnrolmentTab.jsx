@@ -1,6 +1,6 @@
 import { useContext, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { C } from "../../constants";
+import { C, aReinscrire, estReinscrit } from "../../constants";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { DepartsView } from "./enrolment/DepartsView";
 import { EnrolModale } from "./enrolment/EnrolModale";
@@ -15,6 +15,7 @@ export function EnrolmentTab({
   elevesC, elevesL, elevesP, elevesPre = [], cEC, cEL, cEP,
   tousElevesScolarite, ajoutParNiveau, suppressionParNiveau,
   modifParNiveau, ensureClasse, sortAlpha,
+  encaisserInscriptions, getTarifInscriptionEleve,
 }) {
   const { t } = useTranslation();
   const { schoolId, schoolInfo, toast, planInfo } = useContext(SchoolContext);
@@ -22,6 +23,8 @@ export function EnrolmentTab({
   const [niveauEnrol, setNiveauEnrolRaw] = useState("college");
   const [classeEnrol, setClasseEnrol] = useState("all");
   const [afficherDeparts, setAfficherDeparts] = useState(false);
+  // Filtre de rentrée : « qui n'a pas encore réglé son inscription ? ».
+  const [filtreReinscription, setFiltreReinscription] = useState("all");
 
   // Changer de cycle réinitialise le filtre classe (les classes diffèrent).
   const setNiveauEnrol = (v) => { setNiveauEnrolRaw(v); setClasseEnrol("all"); };
@@ -34,7 +37,13 @@ export function EnrolmentTab({
   // Classes disponibles dans le cycle + liste affichée (filtrée par classe).
   const classesEnrol = [...new Set(elevesEnrol.map((e) => e.classe).filter(Boolean))]
     .sort((a, b) => String(a).localeCompare(String(b), "fr", { numeric: true }));
-  const elevesAffiches = classeEnrol === "all" ? elevesEnrol : elevesEnrol.filter((e) => e.classe === classeEnrol);
+  const elevesClasse = classeEnrol === "all" ? elevesEnrol : elevesEnrol.filter((e) => e.classe === classeEnrol);
+  const elevesAffiches = filtreReinscription === "all" ? elevesClasse
+    : filtreReinscription === "a_reinscrire" ? elevesClasse.filter(aReinscrire)
+      : elevesClasse.filter(estReinscrit);
+  // Compteurs de la sélection courante (cycle + classe), affichés dans la
+  // barre d'outils : c'est l'indicateur de rentrée de la direction.
+  const nbAReinscrire = elevesClasse.filter(aReinscrire).length;
   const ajEnrol = ajoutParNiveau[niveauEnrol] || ajoutParNiveau.college;
   const supEnrol = suppressionParNiveau[niveauEnrol] || suppressionParNiveau.college;
   const modEnrol = modifParNiveau[niveauEnrol] || modifParNiveau.college;
@@ -49,6 +58,11 @@ export function EnrolmentTab({
         classeEnrol={classeEnrol} setClasseEnrol={setClasseEnrol} classesEnrol={classesEnrol}
         elevesC={elevesC} elevesL={elevesL} elevesP={elevesP} elevesPre={elevesPre} canCreate={canCreate}
         elevesEnrol={elevesEnrol} schoolInfo={schoolInfo} setForm={setForm} setModal={setModal}
+        filtreReinscription={filtreReinscription} setFiltreReinscription={setFiltreReinscription}
+        nbAReinscrire={nbAReinscrire} nbSelection={elevesClasse.length}
+        totalAReinscrire={elevesClasse.filter(aReinscrire)
+          .reduce((s, e) => s + (getTarifInscriptionEleve ? getTarifInscriptionEleve(e) : 0), 0)}
+        onEncaisserInscriptions={() => encaisserInscriptions?.(elevesClasse.filter(aReinscrire))}
       />
 
       <div style={{background:"#e0ebf8",borderRadius:8,padding:"9px 14px",marginBottom:14,fontSize:12,color:C.blueDark}}>

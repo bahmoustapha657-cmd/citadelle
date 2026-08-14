@@ -1,4 +1,4 @@
-import { C, genererMatricule } from "../../../constants";
+import { C, fmt, genererMatricule } from "../../../constants";
 import { Btn } from "../../ui";
 import { imprimerListeClasse } from "../../../reports";
 
@@ -10,6 +10,8 @@ export function EnrolToolbar({
   niveauEnrol, setNiveauEnrol, elevesC, elevesL, elevesP, elevesPre = [],
   classeEnrol, setClasseEnrol, classesEnrol = [],
   canCreate, elevesEnrol, schoolInfo, setForm, setModal,
+  filtreReinscription = "all", setFiltreReinscription = () => {},
+  nbAReinscrire = 0, nbSelection = 0, totalAReinscrire = 0, onEncaisserInscriptions,
 }) {
   return (
     <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,flexWrap:"wrap"}}>
@@ -33,6 +35,26 @@ export function EnrolToolbar({
           <option value="all">Toutes les classes</option>
           {classesEnrol.map(c=><option key={c} value={c}>{c}</option>)}
         </select>
+      )}
+      {/* Filtre de rentrée. Le compteur donne l'état d'avancement de la
+          sélection courante sans avoir à ouvrir quoi que ce soit. */}
+      {!afficherDeparts&&(
+        <select value={filtreReinscription} onChange={e=>setFiltreReinscription(e.target.value)}
+          title="Réinscription = inscription encaissée pour l'année en cours"
+          style={{border:"1px solid "+(nbAReinscrire?"#fbbf24":"#b0c4d8"),borderRadius:7,padding:"6px 10px",fontSize:12,
+            background:nbAReinscrire?"#fffbeb":"#fff",color:C.blueDark,fontWeight:600}}>
+          <option value="all">Tous ({nbSelection})</option>
+          <option value="a_reinscrire">À réinscrire ({nbAReinscrire})</option>
+          <option value="reinscrits">Réinscrits ({Math.max(0, nbSelection - nbAReinscrire)})</option>
+        </select>
+      )}
+      {/* Encaissement groupé. Le libellé annonce le MONTANT : c'est de
+          l'argent déclaré reçu, pas une simple case à cocher. */}
+      {!afficherDeparts&&canCreate&&nbAReinscrire>0&&onEncaisserInscriptions&&(
+        <Btn sm v="success" title="Marque l'inscription comme encaissée pour les élèves à réinscrire de la sélection"
+          onClick={onEncaisserInscriptions}>
+          💰 Réinscrire {nbAReinscrire} élève(s){totalAReinscrire>0?` — ${fmt(totalAReinscrire)}`:""}
+        </Btn>
       )}
       {!afficherDeparts&&classeEnrol!=="all"&&(
         <Btn sm v="ghost" title="Imprimer la liste des élèves de la classe sélectionnée"
