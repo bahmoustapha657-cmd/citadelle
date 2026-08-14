@@ -18,7 +18,7 @@ function AdminPanel({ annee, setAnnee, verrous = {}, schoolId, userRole }) {
   return (
     <div style={{padding:"22px 26px"}}>
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18}}>
-        {a.schoolInfo?.logo&&<img src={a.schoolInfo.logo} alt="" style={{width:48,height:48,objectFit:"contain"}}/>}
+        {a.schoolInfo?.logo&&<img crossOrigin="anonymous" src={a.schoolInfo.logo} alt="" style={{width:48,height:48,objectFit:"contain"}}/>}
         <div>
           <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.blueDark}}>Comptes & Postes</h2>
           <p style={{margin:0,fontSize:12,color:C.green,fontWeight:600}}>Comptes, droits, signataires & Année scolaire</p>

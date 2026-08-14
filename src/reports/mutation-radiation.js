@@ -49,7 +49,7 @@ export const imprimerOrdreMutation = (eleve, schoolInfo={}, ecoleDestination="",
       ${lf.ministere||MINISTERE_DEFAUT}<br/>
       ${lf.ire||""} ${lf.dpe?`/ ${lf.dpe}`:""}
     </div>
-    ${schoolInfo.logo?`<img src="${schoolInfo.logo}" style="height:55px;object-fit:contain"/>`:""}
+    ${schoolInfo.logo?`<img crossOrigin="anonymous" src="${schoolInfo.logo}" style="height:55px;object-fit:contain"/>`:""}
     <div class="entete-col" style="text-align:end">
       <strong>${schoolInfo.nom||""}</strong><br/>
       ${lf.agrement?`${tr("reports.livret.agrement")} : ${lf.agrement}`:""}
@@ -108,7 +108,7 @@ export const imprimerCertificatRadiation = (eleve, schoolInfo={}, annee="", sold
       ${lf.ministere||MINISTERE_DEFAUT}<br/>
       ${lf.ire||""} ${lf.dpe?`/ ${lf.dpe}`:""}
     </div>
-    ${schoolInfo.logo?`<img src="${schoolInfo.logo}" style="height:55px;object-fit:contain"/>`:""}
+    ${schoolInfo.logo?`<img crossOrigin="anonymous" src="${schoolInfo.logo}" style="height:55px;object-fit:contain"/>`:""}
     <div class="entete-col" style="text-align:end">
       <strong>${schoolInfo.nom||""}</strong><br/>
       ${lf.agrement?`${tr("reports.livret.agrement")} : ${lf.agrement}`:""}

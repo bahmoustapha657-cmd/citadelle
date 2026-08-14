@@ -22,7 +22,7 @@ export function LogoSection({
         {/* Aperçu */}
         <div style={{ width: 100, height: 100, borderRadius: 12, border: "2px dashed #d1d5db", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", background: "#f9fafb", flexShrink: 0 }}>
           {(apercu || form.logo)
-            ? <img src={apercu || form.logo} alt="Logo" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+            ? <img crossOrigin="anonymous" src={apercu || form.logo} alt="Logo" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
             : <span style={{ fontSize: 32 }}>🏫</span>}
         </div>
         <div style={{ flex: 1, minWidth: 200 }}>

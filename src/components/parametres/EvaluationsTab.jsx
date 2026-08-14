@@ -39,7 +39,7 @@ export function EvaluationsTab({
       </p>
       <div style={{display:"flex",alignItems:"center",gap:14,flexWrap:"wrap"}}>
         {form.signatureUrl
-          ? <img src={form.signatureUrl} alt="Signature" style={{height:46,maxWidth:200,objectFit:"contain",border:"1px solid #e2e8f0",borderRadius:8,padding:"4px 10px",background:"#fff"}}/>
+          ? <img crossOrigin="anonymous" src={form.signatureUrl} alt="Signature" style={{height:46,maxWidth:200,objectFit:"contain",border:"1px solid #e2e8f0",borderRadius:8,padding:"4px 10px",background:"#fff"}}/>
           : <span style={{fontSize:12,color:"#9ca3af",fontStyle:"italic"}}>Aucune signature déposée — la ligne reste vierge sur les bulletins.</span>}
         <label style={{display:"inline-block"}}>
           <input type="file" accept="image/*" onChange={handleSignatureFile} style={{display:"none"}}/>

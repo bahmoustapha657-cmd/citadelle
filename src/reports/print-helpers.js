@@ -87,7 +87,7 @@ export const WATERMARK_CSS = `
 
 export const watermarkHtml = (schoolInfo = {}) => {
   if (!schoolInfo?.logo) return "";
-  return `<div class="lc-watermark" aria-hidden="true"><img src="${schoolInfo.logo}" alt=""/></div>`;
+  return `<div class="lc-watermark" aria-hidden="true"><img crossOrigin="anonymous" src="${schoolInfo.logo}" alt=""/></div>`;
 };
 
 export const MINISTERE_DEFAUT = "Ministère de l'Éducation Nationale, de l'Alphabétisation, de l'Enseignement Technique et de la Formation Professionnelle";
@@ -109,7 +109,7 @@ export const enteteDoc = (si = {}, logoUrl) => {
     ${lf.dpe||""}
   </div>
   <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0">
-    ${logoUrl?`<img src="${logoUrl}" alt="Logo" style="width:78px;height:78px;object-fit:contain"/>`:`<div style="width:78px;height:78px"></div>`}
+    ${logoUrl?`<img crossOrigin="anonymous" src="${logoUrl}" alt="Logo" style="width:78px;height:78px;object-fit:contain"/>`:`<div style="width:78px;height:78px"></div>`}
   </div>
   <div style="flex:1;text-align:right;min-width:0">
     <strong style="display:block;font-size:15px;color:#0A1628;line-height:1.3">${si.nom||""}</strong>

@@ -18,7 +18,7 @@ export function HeroSection({ schoolInfo, acc, c1, c2, onConnexion }) {
 
       {/* Contenu hero */}
       <div style={{ position: "relative", zIndex: 1, maxWidth: 680 }}>
-        {schoolInfo.logo && <img src={schoolInfo.logo} alt="logo"
+        {schoolInfo.logo && <img crossOrigin="anonymous" src={schoolInfo.logo} alt="logo"
           style={{ width: 110, height: 110, objectFit: "contain", borderRadius: 20,
             background: "rgba(255,255,255,0.12)", padding: 12, marginBottom: 24,
             boxShadow: "0 8px 32px rgba(0,0,0,0.3)", backdropFilter: "blur(4px)" }} />}

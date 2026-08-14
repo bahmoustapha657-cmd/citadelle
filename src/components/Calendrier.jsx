@@ -26,7 +26,7 @@ function Calendrier({annee}) {
   return (
     <div style={{padding:"22px 26px"}}>
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18,flexWrap:"wrap"}}>
-        {schoolInfo?.logo&&<img src={schoolInfo.logo} alt="" style={{width:48,height:48,objectFit:"contain"}}/>}
+        {schoolInfo?.logo&&<img crossOrigin="anonymous" src={schoolInfo.logo} alt="" style={{width:48,height:48,objectFit:"contain"}}/>}
         <div style={{flex:1}}>
           <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.blueDark}}>{t("nav.calendar")}</h2>
           <p style={{margin:0,fontSize:12,color:C.green,fontWeight:700}}>{annee}</p>

@@ -8,7 +8,7 @@ export function EcoleHeader({ e, titre, couleur, readOnly }) {
   return (
     <>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18, flexWrap: "wrap" }}>
-        {e.schoolInfo?.logo && <img src={e.schoolInfo.logo} alt="" style={{ width: 48, height: 48, objectFit: "contain" }} />}
+        {e.schoolInfo?.logo && <img crossOrigin="anonymous" src={e.schoolInfo.logo} alt="" style={{ width: 48, height: 48, objectFit: "contain" }} />}
         <div style={{ flex: 1, minWidth: 200 }}>
           <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: C.blueDark }}>{titre}</h2>
           <p style={{ margin: 0, fontSize: 12, color: couleur, fontWeight: 700 }}>{t("school.subtitle")}</p>

@@ -21,7 +21,7 @@ export function EnrolModale({
       <div style={{display:"flex",alignItems:"center",gap:16,flexWrap:"wrap"}}>
         <div style={{width:80,height:80,borderRadius:10,overflow:"hidden",border:`2px solid ${C.blue}`,background:"#f0f4f8",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
           {form.photo
-            ? <img src={form.photo} alt="photo" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+            ? <img crossOrigin="anonymous" src={form.photo} alt="photo" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
             : <span style={{fontSize:32}}>👤</span>}
         </div>
         <div style={{display:"flex",flexDirection:"column",gap:8}}>

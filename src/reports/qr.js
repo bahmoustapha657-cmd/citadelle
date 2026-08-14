@@ -14,7 +14,7 @@ export function qrPayload(champs = {}) {
     .join("|");
 }
 
-// Renvoie un fragment HTML <img> avec le QR en data URL (ou "" si échec).
+// Renvoie un fragment HTML <img crossOrigin="anonymous"> avec le QR en data URL (ou "" si échec).
 // À générer APRÈS window.open (await) pour ne pas casser l'ouverture liée au
 // geste utilisateur.
 // `size` est la taille IMPRIMÉE en px CSS (≈ 3,8 px par mm). En dessous de
@@ -30,7 +30,7 @@ export async function qrImgHtml(payload, { size = 92, alt = "QR de vérification
       width: size * 4, // sur-échantillonnage pour un rendu net à l'impression
       errorCorrectionLevel: "Q", // 25 % de redondance : tolère l'encre baveuse et les plis
     });
-    return `<img src="${dataUrl}" width="${size}" height="${size}" alt="${alt}" style="display:block"/>`;
+    return `<img crossOrigin="anonymous" src="${dataUrl}" width="${size}" height="${size}" alt="${alt}" style="display:block"/>`;
   } catch {
     return "";
   }
@@ -38,7 +38,7 @@ export async function qrImgHtml(payload, { size = 92, alt = "QR de vérification
 
 // QR CHIFFRÉ pour un document : le contenu est chiffré avec le secret de
 // l'école → illisible par un lecteur QR grand public, déchiffrable seulement
-// par le scanner EduGest de la direction. Renvoie un fragment <img> (ou "").
+// par le scanner EduGest de la direction. Renvoie un fragment <img crossOrigin="anonymous"> (ou "").
 export async function qrSecuriseImgHtml(payload, schoolInfo = {}, opts = {}) {
   const token = await encryptQrPayload(payload, schoolSecret(schoolInfo));
   return qrImgHtml(token, opts);

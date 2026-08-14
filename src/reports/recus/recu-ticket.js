@@ -86,7 +86,7 @@ export const blocTicket = (ctx) => {
 
   return `
   <div class="t-recu">
-    ${schoolInfo.logo ? `<img class="t-logo" src="${schoolInfo.logo}" alt=""/>` : ""}
+    ${schoolInfo.logo ? `<img crossOrigin="anonymous" class="t-logo" src="${schoolInfo.logo}" alt=""/>` : ""}
     <div class="t-ecole">${schoolInfo.nom || ""}</div>
     ${contactEcole ? `<div class="t-sous">${contactEcole}</div>` : ""}
     <div class="t-titre">${tr("reports.receipt.title")}</div>
