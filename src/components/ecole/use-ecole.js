@@ -33,7 +33,12 @@ export function useEcole({
   // Périodes de la section : nécessaires AVANT le chargement des notes, pour
   // savoir laquelle afficher en premier (cf. periodePrioritaire).
   const { schoolId, schoolInfo, moisAnnee, toast, logAction, envoyerPush } = useContext(SchoolContext);
-  const sectionPeriode = isPrimarySection ? "primaire" : "secondaire";
+  // Trois rythmes possibles, plus deux : la maternelle a sa propre
+  // périodicité. Tant qu'elle n'en avait pas, tout ce qui n'était pas
+  // « primaire » basculait sur le secondaire — la maternelle se voyait donc
+  // proposer les semestres du collège alors que ses notes sont en trimestres.
+  const sectionPeriode = cleEns === "ensPrescolaire" ? "prescolaire"
+    : isPrimarySection ? "primaire" : "secondaire";
   const periodes = getPeriodesForSection(schoolInfo, sectionPeriode, moisAnnee);
   const defaultPeriode = periodes[0] || getDefaultPeriodeForSection(schoolInfo, sectionPeriode);
 

@@ -29,7 +29,9 @@ const SB_PARALLELE = 40;
 // « primaire » que ensPrimaire), donc celle qui doit servir au diviseur.
 function calcMoyenneAnnuelle(schoolInfo, notes, classe, matieres) {
   if (!notes || notes.length === 0) return null;
-  const sectionPeriode = getSectionForClasse(classe) === "primaire" ? "primaire" : "secondaire";
+  // La section est passee telle quelle : le resolveur connait desormais le
+  // prescolaire, qui a sa propre periodicite.
+  const sectionPeriode = getSectionForClasse(classe);
   const periodes = getPeriodesForSection(schoolInfo, sectionPeriode);
   const moyennes = periodes.map((periode) =>
     getGeneralAverage(notes.filter((note) => note.periode === periode), matieres, classe),

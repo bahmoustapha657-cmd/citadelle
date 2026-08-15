@@ -80,13 +80,13 @@ export function ordonnerParClassement(eleves, notes, getMatieresClasse, periode,
 }
 
 export function getEvolutionPeriode(eleve, allNotes, matieres, classe, niveau, periodeActuelle, schoolInfo = {}) {
-  const sectionPeriode = niveau === "primaire" ? "primaire" : "secondaire";
+  const sectionPeriode = niveau;
   const periodes = getPeriodesForSection(schoolInfo, sectionPeriode);
   const idx = periodes.indexOf(periodeActuelle);
   if (idx <= 0) return null;
   const periodePrec = periodes[idx - 1];
-  const notesActu = allNotes.filter((n) => n.eleveId === eleve._id && n.periode === periodeActuelle);
-  const notesPrec = allNotes.filter((n) => n.eleveId === eleve._id && n.periode === periodePrec);
+  const notesActu = notesDeLEleve(allNotes, eleve._id, periodeActuelle);
+  const notesPrec = notesDeLEleve(allNotes, eleve._id, periodePrec);
   const moyActu = getGeneralAverage(notesActu, matieres, classe, niveau);
   const moyPrec = getGeneralAverage(notesPrec, matieres, classe, niveau);
   if (moyActu == null || moyPrec == null) return null;
