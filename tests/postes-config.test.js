@@ -79,8 +79,17 @@ test("repli legacy admin : lecture sur les modules visibles, écriture selon wri
 });
 
 test("repli legacy surveillant / sections : écriture sur leur périmètre", () => {
-  assert.equal(hasWrite(legacyPermissionsForRole("surveillant"), "primaire"), true);
+  // Le surveillant n'écrit QUE la discipline : il voyait les sections en
+  // écriture, ce qui lui ouvrait aussi les notes, les élèves et les classes.
+  // Il les garde en lecture — il a besoin de voir les élèves pour saisir.
+  assert.equal(hasWrite(legacyPermissionsForRole("surveillant"), "discipline"), true);
+  assert.equal(hasWrite(legacyPermissionsForRole("surveillant"), "primaire"), false);
+  assert.equal(hasRead(legacyPermissionsForRole("surveillant"), "primaire"), true);
   assert.equal(hasRead(legacyPermissionsForRole("surveillant"), "compta"), false);
+  // Les autres rôles gardent la discipline via leur module de section : la
+  // nouvelle permission ajoute une façon d'obtenir le droit, elle n'en
+  // retire aucune.
+  assert.equal(hasWrite(legacyPermissionsForRole("primaire"), "discipline"), false);
   assert.equal(hasWrite(legacyPermissionsForRole("primaire"), "primaire"), true);
   assert.equal(hasRead(legacyPermissionsForRole("primaire"), "secondaire"), false);
   assert.equal(hasWrite(legacyPermissionsForRole("college"), "secondaire"), true);

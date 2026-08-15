@@ -100,6 +100,13 @@ export function useEcole({
   const [grilleType, setGrilleType] = useState(defaultNoteType);
   const canCreate = !readOnly && !enModeArchive;
   const canEdit = !readOnly && !enModeArchive && (peutModifier(userRole) || verrouOuvert);
+  // La Discipline a sa propre permission : un surveillant l'écrit sans avoir
+  // l'écriture sur tout le module (notes, élèves, classes). L'ancien droit
+  // reste valable — un poste qui écrit la section écrit toujours la
+  // discipline —, donc aucun poste existant ne perd quoi que ce soit.
+  const peutEcrireDiscipline = hasWrite(permissions, "discipline");
+  const canCreateDiscipline = !enModeArchive && (canCreate || peutEcrireDiscipline);
+  const canEditDiscipline = !enModeArchive && (canEdit || peutEcrireDiscipline);
   // Création de compte parent : gate plus large que canEdit pour inclure
   // le comptable (front-line inscription/paiement) et, via les postes
   // flexibles, tout poste qui écrit la compta. Ignore le verrou car
@@ -147,7 +154,7 @@ export function useEcole({
     schoolId, schoolInfo, moisAnnee, toast, logAction, envoyerPush,
     periodes, defaultPeriode, periodeB, setPeriodeB, grillePeriode, setGrillePeriode,
     noteForms, defaultNoteType, grilleType, setGrilleType,
-    canCreate, canEdit, canCreateParent, moy, classesUniq,
+    canCreate, canEdit, canCreateDiscipline, canEditDiscipline, canCreateParent, moy, classesUniq,
     elevesFiltres, effectifReel, saveClasse, saveEnseignant, anneesDispo,
   };
 }

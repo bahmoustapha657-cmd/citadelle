@@ -43,8 +43,8 @@ export function EcoleTabsAdmin({ e, avecEns, userRole, annee, maxNote, matieresP
         setForm={e.setForm}
         modal={e.modal}
         setModal={e.setModal}
-        canCreate={e.canCreate}
-        canEdit={e.canEdit || (userRole === "surveillant" && e.canCreate)}
+        canCreate={e.canCreateDiscipline}
+        canEdit={e.canEditDiscipline}
         envoyerPush={e.envoyerPush}
       />}
 
