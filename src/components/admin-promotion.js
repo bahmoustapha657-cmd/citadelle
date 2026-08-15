@@ -9,7 +9,7 @@ import { db } from "../firebaseDb";
 import { isSupabase } from "../backend";
 import { chargerCollection, modifierChampDoc } from "../backend/data-supabase";
 import { getAnnee, getSectionForClasse, getSystemeScolaire } from "../constants";
-import { notesDeLEleve } from "../notes-index";
+import { notesDeLEleve } from "../note-index";
 import { getAnnualAverage, getGeneralAverage } from "../note-utils";
 import { getPeriodesForSection } from "../period-utils";
 import { classeSuivante, estClasseExamen } from "../promotion-utils";

@@ -8,7 +8,7 @@
 import { getAnnee } from "../constants.js";
 import { getPeriodesForSection } from "../period-utils.js";
 import { getGeneralAverage } from "../note-utils";
-import { notesDeLEleve } from "../notes-index.js";
+import { notesDeLEleve } from "../note-index.js";
 import { tr } from "./print-helpers.js";
 import { qrSecuriseImgHtml, qrPayload } from "./qr.js";
 import {

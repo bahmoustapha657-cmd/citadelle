@@ -1,7 +1,7 @@
 // Calculs purs de la fiche de résultats : classement des élèves par moyenne
 // (identique au bulletin, via getSubjectAverage) + statistiques de la classe.
 import { getSubjectAverage } from "../../note-utils.js";
-import { notesDeLEleve } from "../../notes-index.js";
+import { notesDeLEleve } from "../../note-index.js";
 
 // Mention/appréciation à partir d'une moyenne et de la note max.
 export const apprecComposition = (v, maxNote) => {

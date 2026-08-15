@@ -1,6 +1,6 @@
 import { getAnnee } from "../../constants";
 import { getAnnualAverage, getSubjectAverage } from "../../note-utils";
-import { notesDeLEleve } from "../../notes-index";
+import { notesDeLEleve } from "../../note-index";
 
 // Helpers purs des livrets scolaires (sans état React).
 

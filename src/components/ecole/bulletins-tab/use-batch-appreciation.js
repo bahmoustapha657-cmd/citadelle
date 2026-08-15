@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { genererAppreciation } from "../../../backend/ia";
 import { getGeneralAverage, getSubjectAverage } from "../../../note-utils";
-import { notesDeLEleve } from "../../../notes-index";
+import { notesDeLEleve } from "../../../note-index";
 
 // Mention à partir de la moyenne générale (identique à BulletinsTable).
 const mentionFor = (moy) =>
