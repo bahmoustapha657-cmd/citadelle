@@ -36,7 +36,7 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
   const noteForms = getActiveNoteForms(schoolInfo, utilisateur.section || "secondaire");
   const defaultNoteType = noteForms[0]?.value || "Devoir";
   // Périodicité selon la section enseignée par le prof (primaire = trimestre, secondaire = trimestre ou semestre selon le DG).
-  const sectionPeriode = (utilisateur.section === "primaire") ? "primaire" : "secondaire";
+  const sectionPeriode = utilisateur.section;
   const periodes = getPeriodesForSection(schoolInfo, sectionPeriode, moisAnnee);
 
   const [tab, setTab] = useState("dashboard");

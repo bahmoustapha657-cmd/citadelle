@@ -72,6 +72,7 @@ export async function sauvegarderParametres({ schoolId, form, accueil, evaluatio
     periodicite: form.periodicite || "trimestre",
     periodicitePrimaire: form.periodicitePrimaire || "trimestre",
     periodiciteSecondaire: form.periodiciteSecondaire || "trimestre",
+    periodicitePrescolaire: form.periodicitePrescolaire || form.periodicitePrimaire || "trimestre",
     // Jours de classe par section — colonnes de l'emploi du temps (écran + PDF).
     joursOuvrablesPrimaire: joursValides(form.joursOuvrablesPrimaire),
     joursOuvrablesSecondaire: joursValides(form.joursOuvrablesSecondaire),

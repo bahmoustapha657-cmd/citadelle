@@ -46,7 +46,7 @@ export function usePortailParent({ utilisateur, schoolInfo }) {
   const eleveNom = `${eleve.prenom || ""} ${eleve.nom || ""}`.trim() || utilisateur.eleveNom || "";
   // Périodicité dépend de la section de l'enfant courant (primaire vs secondaire).
   // Détection par motif : fonctionne aussi pour les classes hors listes (3ème Année E…).
-  const sectionPeriode = getSectionForClasse(eleve.classe) === "primaire" ? "primaire" : "secondaire";
+  const sectionPeriode = getSectionForClasse(eleve.classe);
   const periodes = getPeriodesForSection(schoolInfo, sectionPeriode, moisAnnee);
   const section = eleve.section || utilisateur.section || "college";
 

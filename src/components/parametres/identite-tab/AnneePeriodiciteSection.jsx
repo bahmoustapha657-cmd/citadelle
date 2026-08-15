@@ -130,10 +130,24 @@ export function AnneePeriodiciteSection({ form, setForm, chg, schoolInfo, setMig
       <div style={sec}>
         <h3 style={{ margin: "0 0 16px", fontSize: 14, fontWeight: 800, color: C.blueDark }}>🗓️ Périodicité scolaire</h3>
         <p style={{ margin: "0 0 12px", fontSize: 12, color: "#64748b" }}>
-          Le primaire et le secondaire peuvent suivre des rythmes différents. Convention typique en Guinée : <strong>Primaire trimestre</strong>, <strong>Secondaire semestre</strong>.
+          Chaque cycle peut suivre son propre rythme. Convention typique en Guinée : <strong>Primaire trimestre</strong>, <strong>Secondaire semestre</strong>.
+          La <strong>maternelle</strong> a son réglage à elle — sans quoi elle héritait de celui du secondaire, et ses notes trimestrielles n'apparaissaient nulle part.
         </p>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 8 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 14, marginBottom: 8 }}>
+          <div>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: C.blueDark, marginBottom: 6 }}>Préscolaire (maternelle)</label>
+            <select style={{ ...inp, cursor: "pointer" }} value={form.periodicitePrescolaire || form.periodicitePrimaire || "trimestre"} onChange={chg("periodicitePrescolaire")}>
+              {PERIODICITES.map(p => (
+                <option key={p.value} value={p.value}>{p.label} — {p.description}</option>
+              ))}
+            </select>
+            <p style={{ margin: "6px 0 0", fontSize: 11, color: "#9ca3af" }}>
+              <strong style={{ color: C.blue }}>
+                {getPeriodesForSchool({ periodicite: form.periodicitePrescolaire || form.periodicitePrimaire, moisDebut: form.moisDebut }).join(" · ")}
+              </strong>
+            </p>
+          </div>
           <div>
             <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: C.blueDark, marginBottom: 6 }}>Primaire</label>
             <select style={{ ...inp, cursor: "pointer" }} value={form.periodicitePrimaire || "trimestre"} onChange={chg("periodicitePrimaire")}>

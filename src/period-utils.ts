@@ -19,10 +19,11 @@ import { calcMoisAnnee } from "./constants.js";
 
 export type Periodicite = "trimestre" | "semestre" | "mensuel";
 
-export type SchoolSection = "primaire" | "secondaire" | "college" | "lycee";
+export type SchoolSection = "prescolaire" | "primaire" | "secondaire" | "college" | "lycee";
 
 export type SchoolPeriodInfo = {
   periodicite?: string;
+  periodicitePrescolaire?: string;
   periodicitePrimaire?: string;
   periodiciteSecondaire?: string;
   moisDebut?: string;
@@ -32,9 +33,21 @@ function isValidPeriodicite(value: unknown): value is Periodicite {
   return value === "trimestre" || value === "semestre" || value === "mensuel";
 }
 
-function normalizeSection(section: SchoolSection | string = ""): "primaire" | "secondaire" {
+// Le PRÉSCOLAIRE a sa propre périodicité depuis le 2026-08-15. Auparavant,
+// tout ce qui n'était pas « primaire » basculait sur le secondaire : la
+// maternelle se voyait donc proposer les semestres du collège alors que ses
+// notes étaient saisies en trimestres — elles devenaient invisibles dans les
+// grilles et les bulletins (783 notes concernées à La Citadelle).
+function normalizeSection(section: SchoolSection | string = ""): "prescolaire" | "primaire" | "secondaire" {
+  if (section === "prescolaire") return "prescolaire";
   return section === "primaire" ? "primaire" : "secondaire";
 }
+
+const CLE_PERIODICITE = {
+  prescolaire: "periodicitePrescolaire",
+  primaire: "periodicitePrimaire",
+  secondaire: "periodiciteSecondaire",
+} as const;
 
 export const PERIODICITES: Array<{
   value: Periodicite;
@@ -61,11 +74,15 @@ export function getSchoolPeriodiciteForSection(
   schoolInfo: SchoolPeriodInfo = {},
   section: SchoolSection | string = "secondaire",
 ): Periodicite {
-  const key = normalizeSection(section) === "primaire"
-    ? "periodicitePrimaire"
-    : "periodiciteSecondaire";
-  const fromSection = schoolInfo?.[key];
+  const normalisee = normalizeSection(section);
+  const fromSection = schoolInfo?.[CLE_PERIODICITE[normalisee]];
   if (isValidPeriodicite(fromSection)) return fromSection;
+  // Maternelle non réglée : elle suit le PRIMAIRE, pas le secondaire — c'est
+  // le cycle dont elle partage le module et le rythme.
+  if (normalisee === "prescolaire") {
+    const duPrimaire = schoolInfo?.periodicitePrimaire;
+    if (isValidPeriodicite(duPrimaire)) return duPrimaire;
+  }
   const legacy = schoolInfo?.periodicite;
   if (isValidPeriodicite(legacy)) return legacy;
   return "trimestre";

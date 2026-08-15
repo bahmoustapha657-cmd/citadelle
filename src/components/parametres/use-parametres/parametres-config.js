@@ -30,6 +30,10 @@ export function buildFormInitial(schoolInfo) {
     // Fallback sur le champ legacy `periodicite` pour rétrocompat.
     periodicitePrimaire: schoolInfo.periodicitePrimaire || schoolInfo.periodicite || "trimestre",
     periodiciteSecondaire: schoolInfo.periodiciteSecondaire || schoolInfo.periodicite || "trimestre",
+    // Maternelle : son propre rythme. Non réglée, elle suit le PRIMAIRE — pas
+    // le secondaire, dont elle héritait par défaut faute de champ à elle.
+    periodicitePrescolaire: schoolInfo.periodicitePrescolaire
+      || schoolInfo.periodicitePrimaire || schoolInfo.periodicite || "trimestre",
     // Jours de classe par section (colonnes de l'emploi du temps). Même logique
     // que la périodicité : champ de la section → champ global legacy → défaut.
     joursOuvrablesPrimaire: joursOuOuvres(schoolInfo.joursOuvrablesPrimaire || schoolInfo.joursOuvrables),

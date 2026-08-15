@@ -15,7 +15,7 @@ export function useLivretsTab({ cleEleves, cleNotes, matieres, maxNote, userRole
   const { items: notes } = useFirestore(cleNotes);
   const section = cleEleves.includes("Primaire") ? "primaire" : cleEleves.includes("Lycee") ? "lycee" : "college";
   const canEdit = ["direction", "admin", "comptable"].includes(userRole);
-  const periodes = getPeriodesForSection(schoolInfo, section === "primaire" ? "primaire" : "secondaire");
+  const periodes = getPeriodesForSection(schoolInfo, section);
 
   const [livretSelId, setLivretSelId] = useState(null);
   const [filtreClasse, setFiltreClasse] = useState("all");
