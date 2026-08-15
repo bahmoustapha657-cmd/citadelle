@@ -10,8 +10,9 @@ import { isSupabase } from "../backend";
 import { chargerCollection, modifierChampDoc } from "../backend/data-supabase";
 import { getAnnee, getSectionForClasse, getSystemeScolaire } from "../constants";
 import { notesDeLEleve } from "../note-index";
-import { getAnnualAverage, getGeneralAverage } from "../note-utils";
+import { getGeneralAverage } from "../note-utils";
 import { getPeriodesForSection } from "../period-utils";
+import { buildBulletinNotesAnnuelles } from "../reports/bulletins/annual-notes";
 import { classeSuivante, estClasseExamen } from "../promotion-utils";
 import { matieresForClasse } from "./ecole/ecole-logic";
 
@@ -20,23 +21,33 @@ const BATCH_MAX = 450;
 // Supabase : nb d'updates lancés en parallèle (modifierChampDoc = 1 par appel).
 const SB_PARALLELE = 40;
 
-// Calcule la moyenne annuelle d'un eleve a partir de ses notes (toutes periodes
-// de SA section : primaire = trimestre, secondaire = peut être semestre).
-// Diviseur FIXE au nombre total de périodes ((T1+T2+T3)/3 ou (S1+S2)/2),
-// les périodes vides sont traitées comme 0 (cf. getAnnualAverage).
-// Le préscolaire tombe volontairement du côté « secondaire » : c'est la
-// périodicité sous laquelle ses notes ont été SAISIES (use-ecole.js ne classe
-// « primaire » que ensPrimaire), donc celle qui doit servir au diviseur.
+// Moyenne annuelle d'un élève — EXACTEMENT celle du bulletin annuel.
+//
+// Elle était calculée ici d'une autre façon : moyenne des moyennes générales
+// PAR PÉRIODE, diviseur figé au nombre de périodes, une période sans note
+// comptant zéro. Le bulletin, lui, calcule matière par matière et respecte la
+// règle « une note de type Moyenne prime sur le découpage en périodes ».
+//
+// Les deux écrans se contredisaient donc. Constaté sur La Citadelle :
+//   CONDE Moustapha (4ème Année A) — bulletin 5,54 ADMIS · promotion 3,73
+//   REDOUBLE. Rapport 2/3 : l'élève est noté sur deux trimestres sur trois,
+//   et le troisième, vide, divisait sa moyenne d'un tiers.
+//
+// Un élève déclaré admis sur son bulletin ne peut pas être redoublant à la
+// promotion : on appelle donc le MÊME constructeur que le bulletin annuel.
+// Une seule définition de la moyenne annuelle dans toute l'application.
 function calcMoyenneAnnuelle(schoolInfo, notes, classe, matieres) {
   if (!notes || notes.length === 0) return null;
-  // La section est passee telle quelle : le resolveur connait desormais le
-  // prescolaire, qui a sa propre periodicite.
-  const sectionPeriode = getSectionForClasse(classe);
-  const periodes = getPeriodesForSection(schoolInfo, sectionPeriode);
-  const moyennes = periodes.map((periode) =>
-    getGeneralAverage(notes.filter((note) => note.periode === periode), matieres, classe),
-  );
-  return getAnnualAverage(moyennes);
+  const periodes = getPeriodesForSection(schoolInfo, getSectionForClasse(classe));
+  const eleveFictif = { _id: "__promo__", classe };
+  const notesAnnuelles = buildBulletinNotesAnnuelles({
+    eleves: [eleveFictif],
+    notes: notes.map((n) => ({ ...n, eleveId: "__promo__" })),
+    matsFor: () => matieres,
+    periodes,
+  });
+  if (!notesAnnuelles.length) return null;
+  return getGeneralAverage(notesAnnuelles, matieres, classe);
 }
 
 // Charge (eleves, notes, matieres) d'une section — Supabase ou Firebase.
