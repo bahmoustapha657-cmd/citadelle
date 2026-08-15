@@ -71,13 +71,31 @@ function analyserSection(schoolInfo, sec, data, sansNotesBehavior, acc) {
     const classeActuelle = e.classe || "";
     const systeme = getSystemeScolaire(schoolInfo);
     // Classe d'examen : le passage dépend d'un jury national (CEE, BEPC, BAC),
-    // pas de nos moyennes. On ne touche à RIEN et on les compte à part — la
-    // direction fera passer les admis quand les résultats seront publiés.
-    // Terminale comprise : elle était déjà épargnée, mais seulement parce
-    // qu'elle n'a pas de classe suivante.
+    // pas de nos moyennes. La promotion suit donc le RÉSULTAT DE FIN D'ANNÉE
+    // saisi sur la fiche, et rien d'autre :
+    //   Admis  → passage (ou fin de cycle pour la Terminale, qui n'a pas de
+    //            classe suivante : diplômé, on ne le déplace pas) ;
+    //   Refusé → maintien dans la classe ;
+    //   vide   → résultats pas encore publiés : on ne touche à rien et on
+    //            le compte à part, pour que la direction sache quoi finir.
     if (estClasseExamen(classeActuelle, systeme)) {
-      acc.examens++;
-      acc.classesExamen.add(classeActuelle);
+      const resultat = e.resultatExamen || "";
+      const suivanteExamen = classeSuivante(classeActuelle, systeme);
+      if (resultat === "Admis") {
+        if (suivanteExamen) {
+          acc.updates.push({ collection: sec.eleves, id: e._id, classe: suivanteExamen });
+          acc.promus++;
+          acc.details.push({ nom: `${e.nom} ${e.prenom}`, classe: classeActuelle, moy: null, statut: "promu", nouvClasse: suivanteExamen, motif: "Examen : admis" });
+        } else {
+          acc.diplomes++;
+        }
+      } else if (resultat === "Refusé") {
+        acc.redoublants++;
+        acc.details.push({ nom: `${e.nom} ${e.prenom}`, classe: classeActuelle, moy: null, statut: "redoublant", nouvClasse: classeActuelle, motif: "Examen : refusé" });
+      } else {
+        acc.examens++;
+        acc.classesExamen.add(classeActuelle);
+      }
       continue;
     }
     const suivante = classeSuivante(classeActuelle, systeme);
@@ -153,7 +171,7 @@ export async function runPromotion({ schoolId, schoolInfo, seuilCollege, seuilPr
   ];
   const acc = {
     total: 0, promus: 0, redoublants: 0, terminalistes: 0, sansNotes: 0, inconnus: 0,
-    examens: 0, classesExamen: new Set(),
+    examens: 0, diplomes: 0, classesExamen: new Set(),
     classesInconnues: new Set(), details: [], updates: [],
   };
 
@@ -167,7 +185,7 @@ export async function runPromotion({ schoolId, schoolInfo, seuilCollege, seuilPr
   return {
     total: acc.total, promus: acc.promus, redoublants: acc.redoublants,
     terminalistes: acc.terminalistes, sansNotes: acc.sansNotes, inconnus: acc.inconnus,
-    examens: acc.examens, classesExamen: [...acc.classesExamen],
+    examens: acc.examens, diplomes: acc.diplomes, classesExamen: [...acc.classesExamen],
     classesInconnues: [...acc.classesInconnues],
     simulation: simulate,
     details: acc.details,

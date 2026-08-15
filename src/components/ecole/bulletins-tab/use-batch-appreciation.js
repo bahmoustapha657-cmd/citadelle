@@ -2,22 +2,20 @@ import { useState } from "react";
 import { genererAppreciation } from "../../../backend/ia";
 import { getGeneralAverage, getSubjectAverage } from "../../../note-utils";
 import { notesDeLEleve } from "../../../note-index";
+import { getMention } from "../../../reports/bulletins/bulletin-format";
 
-// Mention à partir de la moyenne générale (identique à BulletinsTable).
-const mentionFor = (moy) =>
-  moy === "—" ? "—"
-    : Number(moy) >= 16 ? "Très Bien"
-    : Number(moy) >= 14 ? "Bien"
-    : Number(moy) >= 12 ? "Assez Bien"
-    : Number(moy) >= 10 ? "Passable"
-    : "Insuffisant";
+// Mention à partir de la moyenne générale, EN POURCENTAGE du barème : le
+// primaire et le préscolaire sont notés sur 10. Avec des seuils figés sur 20,
+// l'IA recevait « Insuffisant » pour un élève de primaire à 8,5/10 et rédigeait
+// une appréciation sévère à contresens.
+const mentionFor = (moy, maxNote = 20) => (moy === "—" ? "—" : getMention(moy, maxNote));
 
 // Génération d'appréciations IA EN LOT pour les élèves affichés (sélecteur de
 // classe + recherche). Ne modifie jamais une appréciation déjà saisie. Appels
 // séquentiels pour ménager l'API. Marche sur Firebase ET Supabase, car
 // genererAppreciation aiguille tout seul (voir src/backend/ia.js).
 export function useBatchAppreciation({
-  elevesB, notes, matieresForClasse, periodeB,
+  elevesB, notes, matieresForClasse, periodeB, maxNote = 20,
   getAppreciation, saveAppreciation, toast,
 }) {
   const [running, setRunning] = useState(false);
@@ -60,7 +58,7 @@ export function useBatchAppreciation({
       try {
         const { ok: r, result } = await genererAppreciation({
           nom: `${e.nom} ${e.prenom}`, classe: e.classe, periode: periodeB,
-          moyenne: moyGene, mention: mentionFor(moyGene), notesMatieres, consigne: "",
+          moyenne: moyGene, mention: mentionFor(moyGene, maxNote), notesMatieres, consigne: "",
         });
         if (r && result) { await saveAppreciation(e._id, periodeB, result); ok++; }
         else echecs++;

@@ -35,7 +35,7 @@ export function BulletinsTab({
     : notes;
 
   const batchAppr = useBatchAppreciation({
-    elevesB, notes: notesStats, matieresForClasse, periodeB, getAppreciation, saveAppreciation, toast,
+    elevesB, notes: notesStats, matieresForClasse, periodeB, maxNote, getAppreciation, saveAppreciation, toast,
   });
 
   return (
