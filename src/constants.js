@@ -375,6 +375,7 @@ export const MODULES = [
   // surveillant à saisir une absence revenait à lui ouvrir aussi les notes,
   // les élèves et les classes — tout le module.
   { id: "discipline", label: "Discipline", icon: "⚠️", desc: "Absences & sanctions", sousModule: true },
+  { id: "statistiques", label: "Statistiques", icon: "📈", desc: "Analyses avancées (Premium)" },
   { id: "calendrier", label: "Calendrier", icon: "📅", desc: "Événements scolaires" },
   { id: "examens", label: "Examens", icon: "📝", desc: "Planning & convocations" },
   { id: "portail_enseignant", label: "Mon Espace", icon: "👨‍🏫", desc: "Portail enseignant" },

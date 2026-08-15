@@ -18,7 +18,7 @@ import {
 // (comme le lycée pour `secondaire`), donc gouverné par sa permission.
 export const MODULES_PERMISSIBLES = [
   "accueil", "historique", "admin_panel", "parametres", "compta",
-  "primaire", "secondaire", "discipline", "calendrier", "examens", "messages", "fondation",
+  "primaire", "secondaire", "discipline", "statistiques", "calendrier", "examens", "messages", "fondation",
 ];
 
 export const PERMISSION_LEVELS = ["lecture", "ecriture"];

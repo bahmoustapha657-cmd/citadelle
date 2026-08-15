@@ -18,6 +18,7 @@ export const TableauDeBord = lazyNamedExport(() => import("../TableauDeBord"), "
 export const HistoriqueActions = lazyNamedExport(() => import("../HistoriqueActions"), "HistoriqueActions");
 export const ParametresEcole = lazyNamedExport(() => import("../ParametresEcole"), "ParametresEcole");
 export const AdminPanel = lazyNamedExport(() => import("../AdminPanel"), "AdminPanel");
+export const Statistiques = lazyNamedExport(() => import("../Statistiques"), "Statistiques");
 export const Fondation = lazyNamedExport(() => import("../Fondation"), "Fondation");
 export const Comptabilite = lazyNamedExport(() => import("../Comptabilite"), "Comptabilite");
 export const Ecole = lazyNamedExport(() => import("../Ecole"), "Ecole");
