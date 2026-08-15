@@ -64,7 +64,7 @@ export function ApercuTab({
           celui du collège. */}
       <ApercuHonneur
         eleves={eleves} notes={notes} matieresForClasse={matieresForClasse}
-        schoolInfo={schoolInfo} annee={anneeConsultee}
+        schoolInfo={schoolInfo} annee={anneeConsultee} maxNote={maxNote}
         portee={avecEns ? "Secondaire" : "Primaire"}
       />
     </div>

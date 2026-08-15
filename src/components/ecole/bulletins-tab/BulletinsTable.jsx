@@ -4,6 +4,7 @@ import { Badge, Btn, Card, TD, TR, Vide } from "../../ui";
 import { imprimerBulletin } from "../../../reports";
 import { getGeneralAverage, getSubjectAverage } from "../../../note-utils";
 import { indexerNotesParEleve, notesDeLEleve } from "../../../note-index";
+import { getMention } from "../../../reports/bulletins/bulletin-format";
 
 // Table des bulletins : moyenne générale, mention, accès à l'appréciation et
 // impression individuelle (bloquée si frais impayés).
@@ -42,7 +43,10 @@ export function BulletinsTable({
         const notesE=notesDeLEleve(notesParEleve,e._id);
         const moyenneGenerale = getGeneralAverage(notesE, matieresForClasse(e.classe), e.classe);
         const moyGene=moyenneGenerale!=null?moyenneGenerale.toFixed(2):"—";
-        const mention=moyGene==="—"?"—":Number(moyGene)>=16?"Très Bien":Number(moyGene)>=14?"Bien":Number(moyGene)>=12?"Assez Bien":Number(moyGene)>=10?"Passable":"Insuffisant";
+        // Mention EN POURCENTAGE du barème : le primaire et le préscolaire
+        // sont notés sur 10, pas sur 20. Les seuils figés à 16/14/12/10
+        // rendaient « Insuffisant » un élève de primaire à 8,5/10.
+        const mention=moyGene==="—"?"—":getMention(moyGene,maxNote);
         const eleveImpayeBloq = !!schoolInfo.blocageParentImpaye && moisAnnee.filter(m=>(e.mens||{})[m]!=="Payé").length>0;
         const apprec=getAppreciation(e._id,periodeB);
         const apprecTexte=apprec?.texte||"";

@@ -22,9 +22,13 @@ export function PromotionResultats({ promoRes }) {
           <div style={{fontSize:20,fontWeight:900,color:"#854d0e"}}>{promoRes.terminalistes}</div>
           <div style={{fontSize:11,color:"#854d0e"}}>🏁 Fin de cycle</div>
         </div>
+        {promoRes.diplomes>0&&<div style={{background:"#ede9fe",borderRadius:8,padding:"8px 12px",textAlign:"center"}}>
+          <div style={{fontSize:20,fontWeight:900,color:"#6d28d9"}}>{promoRes.diplomes}</div>
+          <div style={{fontSize:11,color:"#6d28d9"}}>🎓 Diplômés</div>
+        </div>}
         {promoRes.examens>0&&<div style={{background:"#e0ebf8",borderRadius:8,padding:"8px 12px",textAlign:"center"}}>
           <div style={{fontSize:20,fontWeight:900,color:"#1e40af"}}>{promoRes.examens}</div>
-          <div style={{fontSize:11,color:"#1e40af"}}>🎓 Classes d'examen</div>
+          <div style={{fontSize:11,color:"#1e40af"}}>⏳ Résultats attendus</div>
         </div>}
         {promoRes.sansNotes>0&&<div style={{background:"#f3f4f6",borderRadius:8,padding:"8px 12px",textAlign:"center"}}>
           <div style={{fontSize:20,fontWeight:900,color:"#6b7280"}}>{promoRes.sansNotes}</div>
@@ -36,10 +40,11 @@ export function PromotionResultats({ promoRes }) {
         </div>}
       </div>
       {promoRes.examens>0&&<p style={{margin:"0 0 12px",padding:"8px 12px",background:"#e0ebf8",borderRadius:8,fontSize:11,color:"#1e40af"}}>
-        🎓 <strong>{promoRes.examens} élève(s) en classe d'examen</strong>
+        ⏳ <strong>{promoRes.examens} élève(s) en classe d'examen sans résultat saisi</strong>
         {promoRes.classesExamen?.length>0?` (${promoRes.classesExamen.join(", ")})`:""} — <strong>non touchés</strong>.
         Leur passage se joue au CEE, au BEPC ou au BAC, pas sur nos moyennes.
-        Faites-les changer de classe vous-même à la publication des résultats.
+        Renseignez « Résultat d'examen » sur leur fiche (Comptabilité → Élèves),
+        puis relancez : les admis passeront, les refusés resteront.
       </p>}
       {promoRes.classesInconnues?.length>0&&<p style={{margin:"0 0 12px",fontSize:11,color:"#b91c1c"}}>
         Classes non reconnues (élèves non touchés) : <strong>{promoRes.classesInconnues.join(", ")}</strong>.

@@ -2,6 +2,7 @@ import { useContext } from "react";
 import { useTranslation } from "react-i18next";
 import { SchoolContext } from "../../../contexts/SchoolContext";
 import { C, getClassesForSection, getSystemeScolaire } from "../../../constants";
+import { estClasseExamen } from "../../../promotion-utils";
 import { Champ, Input, Selec } from "../../ui";
 
 // Grille de champs du formulaire d'inscription d'un élève.
@@ -52,6 +53,16 @@ export function EnrolFormChamps({ form, chg, niveauEnrol }) {
         <option value="Première inscription">{t("enrolment.firstEnrollment")}</option>
         <option value="Réinscription">{t("enrolment.reEnrollment")}</option>
       </Selec>
+      {/* Classe d'examen (CEE, BEPC, BAC) : c'est CE champ, et lui seul, qui
+          décide du passage — la promotion ne se sert pas des moyennes ici.
+          Tant qu'il est vide, l'élève est laissé tel quel. */}
+      {estClasseExamen(form.classe, getSystemeScolaire(schoolInfo))&&(
+        <Selec label="Résultat d'examen (fin d'année)" value={form.resultatExamen||""} onChange={chg("resultatExamen")}>
+          <option value="">En attente des résultats</option>
+          <option value="Admis">Admis</option>
+          <option value="Refusé">Refusé</option>
+        </Selec>
+      )}
       {["Transféré","Exclu","Abandonné","Décédé"].includes(form.statut)&&<>
         <Input label={t("enrolment.departureDate")} type="date" value={form.dateDepart||""} onChange={chg("dateDepart")}/>
         <div style={{gridColumn:"1/-1"}}>
