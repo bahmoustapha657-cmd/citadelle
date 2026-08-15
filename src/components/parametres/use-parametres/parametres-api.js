@@ -7,6 +7,7 @@ import { uploadImage } from "../../../storageUtils";
 import { db } from "../../../firebaseDb";
 import { apiFetch, getAuthHeaders } from "../../../apiClient";
 import { isSupabase } from "../../../backend";
+import { syncEcolePublic } from "../../app/app-shell-api";
 import { sauverParametresEcole } from "../../../backend/data-supabase";
 
 const normaliserMonnaie = (m) => (m || "GNF").trim().toUpperCase();
@@ -95,20 +96,33 @@ export async function sauvegarderParametres({ schoolId, form, accueil, evaluatio
   };
   if (isSupabase) await sauverParametresEcole(schoolId, data);
   else await updateDoc(doc(db, "ecoles", schoolId), data);
+  // Miroir public : Firebase UNIQUEMENT. Sur Supabase la page vitrine passe
+  // par la RPC etat_ecole, il n'y a rien à synchroniser — et l'API Vercel
+  // n'existe plus depuis que Cloudflare est seul hébergeur : chaque
+  // enregistrement des paramètres tirait un 405 dans la console.
+  // syncEcolePublic porte déjà la garde ; on l'appelle au lieu de refaire
+  // l'appel à la main, pour qu'il n'y ait qu'un seul endroit à corriger.
   try {
-    const headers = await getAuthHeaders({ "Content-Type": "application/json" });
-    await apiFetch("/ecole-public-sync", {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ action: "sync", schoolId }),
-    });
+    await syncEcolePublic(schoolId);
   } catch { /* non-bloquant : la source privée est à jour */ }
   return data;
 }
 
 // Action de cycle de vie (désactivation / suppression logique).
 // Renvoie { ok, data } ; le décodage JSON est tolérant aux réponses vides.
+// Même piège que la synchro publique : `/school-lifecycle` est une fonction
+// VERCEL, et Cloudflare répond 405 depuis qu'il est seul hébergeur. Côté
+// Supabase, l'opération passe par l'adaptateur superadmin (RLS is_superadmin).
 export async function executerCycleVie({ schoolId, action, confirmation }) {
+  if (isSupabase) {
+    const { executerCycleVieApi } = await import("../../../backend/superadmin-supabase");
+    try {
+      // Renvoie déjà { ok, data } : on ne réemballe pas.
+      return await executerCycleVieApi({ schoolId, action, confirmation });
+    } catch (e) {
+      return { ok: false, data: { error: e.message } };
+    }
+  }
   const headers = await getAuthHeaders({ "Content-Type": "application/json" });
   const response = await apiFetch("/school-lifecycle", {
     method: "POST",
