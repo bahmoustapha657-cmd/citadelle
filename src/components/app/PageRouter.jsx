@@ -5,7 +5,7 @@ import { C, getRoleLabelForSchool } from "../../constants";
 import {
   AdminPanel, Calendrier, Comptabilite, Fondation, GestionExamens,
   HistoriqueActions, MessagesParents, ParametresEcole, Primaire, Secondaire,
-  SuperAdminPanel, TableauDeBord,
+  Statistiques, SuperAdminPanel, TableauDeBord,
 } from "./lazy-pages";
 
 export function PageRouter({
@@ -21,6 +21,7 @@ export function PageRouter({
       {page==="superadmin_panel" && <SuperAdminPanel/>}
       {page==="accueil"         && <TableauDeBord annee={annee} userRole={userRole} onOpenLegalSettings={()=>{setParamInitialTab("officiel");setPage("parametres");}}/>}
       {page==="historique"      && <HistoriqueActions/>}
+      {page==="statistiques"    && <Statistiques annee={annee}/>}
       {page==="parametres"      && <ParametresEcole utilisateurRole={userRole} onSchoolClosed={deconnecter} initialTab={paramInitialTab} onTabConsumed={()=>setParamInitialTab(null)}/>}
       {page==="admin_panel" && <AdminPanel annee={annee} setAnnee={setAnnee} verrous={verrous} schoolId={schoolId} userRole={userRole}/>}
       {page==="fondation"   && <Fondation readOnly={readOnly} annee={annee} userRole={userRole}/>}
