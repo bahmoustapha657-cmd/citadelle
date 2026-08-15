@@ -36,7 +36,8 @@ export function computeAppPermissions({ utilisateur, schoolInfo, page, planInfo 
 
   const permissions = surPostes ? getSessionPermissions(utilisateur, schoolInfo) : null;
   const modulesActifsIds = surPostes ? null : getModulesForRole(role, schoolInfo);
-  const modulesVisibles = MODULES.filter((module) => (surPostes
+  // `sousModule` : permission fine (Discipline), pas une entrée de menu.
+  const modulesVisibles = MODULES.filter((module) => !module.sousModule && (surPostes
     ? hasRead(permissions, module.id)
     : modulesActifsIds.includes(module.id)));
 

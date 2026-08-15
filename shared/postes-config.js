@@ -18,7 +18,7 @@ import {
 // (comme le lycée pour `secondaire`), donc gouverné par sa permission.
 export const MODULES_PERMISSIBLES = [
   "accueil", "historique", "admin_panel", "parametres", "compta",
-  "primaire", "secondaire", "calendrier", "examens", "messages", "fondation",
+  "primaire", "secondaire", "discipline", "calendrier", "examens", "messages", "fondation",
 ];
 
 export const PERMISSION_LEVELS = ["lecture", "ecriture"];
@@ -57,7 +57,13 @@ export function legacyPermissionsForRole(role, schoolInfo = {}) {
   if (role === "direction" || role === "superadmin") return { ...FULL_PERMISSIONS };
   if (!ROLE_SETTINGS_DEFAULT[role]) return {};
 
-  const visibles = getRoleModules(role, schoolInfo);
+  // `discipline` est une permission FINE (onglet), absente des modules de
+  // menu : on l'ajoute aux modules visibles de tout rôle qui voit une section,
+  // sinon la matrice de permissions ne pourrait jamais l'accorder.
+  const modulesRole = getRoleModules(role, schoolInfo);
+  const visibles = modulesRole.some((m) => m === "primaire" || m === "secondaire")
+    ? [...modulesRole, "discipline"]
+    : modulesRole;
   const ecriture = new Set();
   if (role === "admin") {
     getAdminWriteModules(schoolInfo).forEach((moduleId) => ecriture.add(moduleId));
@@ -66,7 +72,11 @@ export function legacyPermissionsForRole(role, schoolInfo = {}) {
     ecriture.add("parametres");
   }
   if (role === "comptable") ecriture.add("compta");
-  if (role === "surveillant") ["primaire", "secondaire", "calendrier"].forEach((m) => ecriture.add(m));
+  // Surveillant : il n'écrit QUE la discipline. Il voyait les modules
+  // Primaire/Secondaire en écriture, ce qui lui ouvrait aussi les notes, les
+  // élèves et les classes — bien au-delà de son office. Il les garde en
+  // lecture (il a besoin de voir les élèves pour saisir une absence).
+  if (role === "surveillant") ecriture.add("discipline");
   if (role === "primaire") ["primaire", "calendrier", "examens"].forEach((m) => ecriture.add(m));
   if (role === "college") ["secondaire", "calendrier", "examens"].forEach((m) => ecriture.add(m));
 

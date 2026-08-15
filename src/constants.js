@@ -370,6 +370,11 @@ export const MODULES = [
   // lycée l'est du secondaire — il n'a donc pas d'entrée propre au menu.
   { id: "primaire", label: "Dir. Primaire", icon: "🎒", desc: "Préscolaire & Primaire" },
   { id: "secondaire", label: "Secondaire", icon: "🏫", desc: "Bureau Collège" },
+  // `sousModule` : permission FINE, pas une page de menu. La Discipline est un
+  // onglet de Primaire/Secondaire ; sans permission propre, autoriser un
+  // surveillant à saisir une absence revenait à lui ouvrir aussi les notes,
+  // les élèves et les classes — tout le module.
+  { id: "discipline", label: "Discipline", icon: "⚠️", desc: "Absences & sanctions", sousModule: true },
   { id: "calendrier", label: "Calendrier", icon: "📅", desc: "Événements scolaires" },
   { id: "examens", label: "Examens", icon: "📝", desc: "Planning & convocations" },
   { id: "portail_enseignant", label: "Mon Espace", icon: "👨‍🏫", desc: "Portail enseignant" },
