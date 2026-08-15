@@ -1,12 +1,13 @@
 import { useMemo } from "react";
 import { C } from "../../../constants";
-import { Badge, Card } from "../../ui";
+import { Badge, Btn, Card } from "../../ui";
+import { imprimerTableauHonneur } from "../../../reports";
 import { getGeneralAverage } from "../../../note-utils";
 import { indexerNotesParEleve, notesDeLEleve } from "../../../note-index";
 
 // Tableau d'honneur : les 5 meilleurs élèves par moyenne générale, avec
 // médailles et mention.
-export function ApercuHonneur({ eleves, notes, matieresForClasse }) {
+export function ApercuHonneur({ eleves, notes, matieresForClasse, schoolInfo = {}, periodeLabel = "", portee = "", annee = "", nbHonneur = 5 }) {
   // Index construit une fois plutôt qu'un filter complet par élève
   // (cf. src/note-index.js) : le classement parcourt TOUS les élèves.
   const notesParEleve = useMemo(() => indexerNotesParEleve(notes), [notes]);
@@ -15,12 +16,20 @@ export function ApercuHonneur({ eleves, notes, matieresForClasse }) {
     const notesPeriode=notesDeLEleve(notesParEleve,e._id);
     const moyenne = getGeneralAverage(notesPeriode, matieresForClasse(e.classe), e.classe);
     return {...e, moyGene:moyenne||0};
-  }).filter(e=>e.moyGene>0).sort((a,b)=>b.moyGene-a.moyGene).slice(0,5);
+  }).filter(e=>e.moyGene>0).sort((a,b)=>b.moyGene-a.moyGene).slice(0,nbHonneur);
   if(!classement.length) return null;
   return (
     <div style={{marginTop:16}}>
       <div style={{background:"linear-gradient(90deg,#d97706,#f59e0b)",color:"#fff",padding:"10px 16px",borderRadius:"10px 10px 0 0",fontWeight:800,fontSize:14,display:"flex",alignItems:"center",gap:8}}>
-        🏆 Tableau d'Honneur — 5 meilleurs élèves
+        <span style={{ flex: 1 }}>🏆 Tableau d'Honneur — {classement.length} meilleurs élèves</span>
+        {/* Affiche destinée au MUR : A4 paysage, noms en grand, podium
+            détaché. Le classement affiché est celui qu'on imprime — pas de
+            recalcul, donc aucun risque d'écart entre l'écran et l'affiche. */}
+        <Btn sm v="ghost" title="Imprimer l'affiche pour le tableau d'honneur de l'école"
+          onClick={() => imprimerTableauHonneur(
+            classement.map((e) => ({ ...e, moyenne: e.moyGene })),
+            schoolInfo, { periodeLabel, portee, annee },
+          )}>🖨️ Afficher</Btn>
       </div>
       <Card style={{borderRadius:"0 0 10px 10px"}}>
         <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">

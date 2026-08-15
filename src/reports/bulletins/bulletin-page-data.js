@@ -1,7 +1,7 @@
 // Calculs purs d'un bulletin individuel : moyennes par matière, moyenne
 // générale, mention et numéro. Aucune dépendance au DOM.
 import { getGeneralAverage, getSubjectAverage } from "../../note-utils.js";
-import { notesDeLEleve } from "../../notes-index.js";
+import { notesDeLEleve } from "../../note-index.js";
 import { getMention, getMentionColors, getNumeroBulletin } from "./bulletin-format.js";
 
 // Renvoie le modèle exploité par le gabarit :

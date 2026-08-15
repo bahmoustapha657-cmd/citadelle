@@ -11,6 +11,7 @@ import { QrScannerModal } from "../verif-qr/QrScannerModal";
 export function ApercuTab({
   classes, eleves, ens, notes, absences, avecEns, moy, maxNote,
   cC, cE, classesUniq, effectifReel, matieresForClasse, couleur, schoolInfo, periodes,
+  anneeConsultee = "",
 }) {
   const { t } = useTranslation();
   const [scanQr, setScanQr] = useState(false);
@@ -58,7 +59,14 @@ export function ApercuTab({
         matieresForClasse={matieresForClasse} periodes={periodes} maxNote={maxNote} couleur={couleur}
       />
 
-      <ApercuHonneur eleves={eleves} notes={notes} matieresForClasse={matieresForClasse}/>
+      {/* `portee` : le classement porte sur la section affichée, l'affiche
+          doit le dire — un palmarès « toutes classes » du primaire n'est pas
+          celui du collège. */}
+      <ApercuHonneur
+        eleves={eleves} notes={notes} matieresForClasse={matieresForClasse}
+        schoolInfo={schoolInfo} annee={anneeConsultee}
+        portee={avecEns ? "Secondaire" : "Primaire"}
+      />
     </div>
   );
 }

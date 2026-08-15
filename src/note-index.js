@@ -26,8 +26,32 @@ export function indexerNotesParEleve(notes = [], periode = null) {
   return index;
 }
 
-// Accès sûr : un élève sans note renvoie toujours le MÊME tableau vide gelé
-// (pas de nouvelle allocation à chaque rendu, et pas de mutation possible).
-export function notesDeLEleve(index, eleveId) {
-  return index.get(eleveId) || VIDE;
+// Mémo pour les appelants qui passent le TABLEAU brut (calculs hors rendu :
+// bulletins imprimés, promotion, analytique). L'index est mémoïsé sur
+// l'IDENTITÉ du tableau : tous les appels d'un même jeu de données le
+// partagent, et il se reconstruit tout seul au rechargement puisque le
+// tableau est alors un nouvel objet. La WeakMap libère l'entrée avec lui.
+const MEMO = new WeakMap();
+function indexMemoise(notes) {
+  let index = MEMO.get(notes);
+  if (!index) {
+    index = indexerNotesParEleve(notes);
+    MEMO.set(notes, index);
+  }
+  return index;
+}
+
+// Accès sûr aux notes d'un élève. `source` accepte les DEUX formes :
+//   • une Map déjà construite (usage React : indexerNotesParEleve dans un
+//     useMemo, puis lecture à chaque ligne rendue) ;
+//   • le tableau brut des notes, alors indexé et mémoïsé à la volée.
+// Un élève sans note renvoie toujours le MÊME tableau vide gelé — pas de
+// nouvelle allocation à chaque rendu, pas de mutation possible.
+export function notesDeLEleve(source, eleveId, periode = null) {
+  if (!source || !eleveId) return VIDE;
+  const index = source instanceof Map ? source : indexMemoise(source);
+  const liste = index.get(eleveId) || VIDE;
+  // La liste d'un élève tient en quelques dizaines d'entrées : la filtrer par
+  // période reste négligeable, inutile d'indexer plus finement.
+  return periode ? liste.filter((n) => n.periode === periode) : liste;
 }

@@ -3,7 +3,7 @@
 // de données des graphiques. Cohérent avec les bulletins (mêmes moyennes via
 // getGeneralAverage / getSubjectAverage et SEULES les matières de la classe).
 import { getGeneralAverage, getSubjectAverage } from "../../../note-utils";
-import { notesDeLEleve } from "../../../notes-index";
+import { notesDeLEleve } from "../../../note-index";
 
 // Moyenne générale d'un élève pour une période donnée (toutes périodes si vide).
 // Un élève SANS aucune note sur la période n'est pas « évalué » (renvoie null) :

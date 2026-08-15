@@ -12,7 +12,7 @@
 // la moyenne des moyennes générales périodiques (le dénominateur des
 // coefficients étant constant d'une période à l'autre).
 import { getAnnualAverage, getDirectSubjectAverage, getSubjectAverage } from "../../note-utils.js";
-import { notesDeLEleve } from "../../notes-index.js";
+import { notesDeLEleve } from "../../note-index.js";
 
 export const PERIODE_ANNEE = "__ANNEE__";
 

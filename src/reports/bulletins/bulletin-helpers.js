@@ -4,7 +4,7 @@
 // Les helpers de présentation (mention, couleurs, n°…) vivent dans
 // bulletin-format.js.
 import { getGeneralAverage, getSubjectAverage } from "../../note-utils.js";
-import { notesDeLEleve } from "../../notes-index.js";
+import { notesDeLEleve } from "../../note-index.js";
 import { getPeriodesForSection } from "../../period-utils.js";
 
 export function getStatsClasse(elevesClasse, notes, matieres, periode, classe, niveau) {
