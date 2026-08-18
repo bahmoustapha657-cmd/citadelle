@@ -88,7 +88,19 @@ export function legacyPermissionsForRole(role, schoolInfo = {}) {
 
 // Permissions effectives d'un compte de session : poste s'il existe (les
 // permissions jointes par chargerCompte), sinon repli legacy sur le rôle.
+//
+// LA DIRECTION N'EST PAS FILTRABLE PAR SON POSTE.
+// Un poste est enregistré avec la liste des modules qui existaient CE JOUR-LÀ ;
+// une clé absente vaut « invisible ». Tout module ajouté au produit ensuite est
+// donc invisible à vie pour les écoles déjà installées — c'est ce qui a rendu
+// Statistiques introuvable chez le DG alors que le menu et le routeur étaient
+// en place. La règle n'est pas un élargissement de droits : le DG écrit déjà
+// sur toutes les pages quel que soit son poste (cf. compute-permissions,
+// `pageSansEcriture`), la carte ne gouvernait donc pour lui que l'affichage du
+// menu. On aligne la visibilité sur l'écriture, et les nouveaux modules
+// arrivent sans migration de données.
 export function getSessionPermissions(compte = {}, schoolInfo = {}) {
+  if (compte.role === "direction") return { ...FULL_PERMISSIONS };
   if (compte.permissions && typeof compte.permissions === "object") {
     return normalizePermissions(compte.permissions);
   }

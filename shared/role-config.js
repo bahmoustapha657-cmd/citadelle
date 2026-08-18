@@ -2,8 +2,8 @@ export const ROLE_ORDER = ["direction", "admin", "comptable", "surveillant", "pr
 
 export const ROLE_MODULE_CAPABILITIES = {
   superadmin: ["superadmin_panel"],
-  admin: ["accueil", "historique", "admin_panel", "parametres", "compta", "primaire", "secondaire", "calendrier", "examens", "messages"],
-  direction: ["accueil", "historique", "admin_panel", "parametres", "fondation", "compta", "primaire", "secondaire", "calendrier", "examens", "messages"],
+  admin: ["accueil", "historique", "admin_panel", "parametres", "compta", "primaire", "secondaire", "statistiques", "calendrier", "examens", "messages"],
+  direction: ["accueil", "historique", "admin_panel", "parametres", "fondation", "compta", "primaire", "secondaire", "statistiques", "calendrier", "examens", "messages"],
   // Le module `primaire` couvre le PRÉSCOLAIRE et le primaire (sous-onglets),
   // comme `secondaire` couvre collège et lycée : pas de permission séparée.
   primaire: ["primaire", "calendrier", "examens"],
@@ -20,9 +20,18 @@ export const ROLE_MODULE_CAPABILITIES = {
   parent: ["portail_parent"],
 };
 
+// Modules TOUJOURS presents, meme si l'ecole a enregistre sa propre liste.
+//
+// Le piege : `normalizeModules` renvoie la liste ENREGISTREE des qu'elle
+// existe. Une ecole qui a touche a ses roles une seule fois a fige son menu —
+// un module ajoute au produit APRES coup ne lui parvient jamais. C'est ce qui
+// est arrive a Statistiques : ajoute au menu et au routeur, il restait
+// invisible pour toutes les ecoles ayant deja des role_settings.
+// Le rattacher ici le fait apparaitre sans migration de donnees. L'acces reel
+// reste gouverne par le plan premium, pas par cette liste.
 export const ROLE_REQUIRED_MODULES = {
   admin: ["admin_panel", "parametres"],
-  direction: ["admin_panel", "parametres"],
+  direction: ["admin_panel", "parametres", "statistiques"],
 };
 
 // Modules dans lesquels le DG peut autoriser l'admin a ecrire. Les autres

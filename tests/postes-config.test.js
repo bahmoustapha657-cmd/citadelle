@@ -131,3 +131,30 @@ test("readableModules liste les modules visibles dans l'ordre canonique", () => 
     ["compta", "examens"],
   );
 });
+
+// Regression : un poste enregistre AVANT l'arrivee d'un module n'a pas sa cle,
+// ce qui vaut « invisible ». C'est ce qui rendait Statistiques introuvable chez
+// le DG de La Citadelle alors que le menu et le routeur etaient en place — le
+// poste `direction` de l'ecole ne portait que les 11 modules d'alors.
+test("la direction voit un module ajoute apres l'enregistrement de son poste", () => {
+  const posteFige = {
+    role: "direction",
+    // Permissions REELLES de La Citadelle avant correctif : pas de statistiques.
+    permissions: {
+      compta: "ecriture", accueil: "ecriture", examens: "ecriture",
+      messages: "ecriture", primaire: "ecriture", fondation: "ecriture",
+      calendrier: "ecriture", historique: "ecriture", parametres: "ecriture",
+      secondaire: "ecriture", admin_panel: "ecriture",
+    },
+  };
+  const perms = getSessionPermissions(posteFige, {});
+  assert.ok(hasRead(perms, "statistiques"), "le DG doit voir Statistiques");
+  assert.deepEqual(readableModules(perms), MODULES_PERMISSIBLES);
+});
+
+test("les autres postes restent gouvernes par leur carte de permissions", () => {
+  const comptable = { role: "comptable", permissions: { compta: "ecriture" } };
+  const perms = getSessionPermissions(comptable, {});
+  assert.equal(hasRead(perms, "statistiques"), false);
+  assert.deepEqual(readableModules(perms), ["compta"]);
+});
