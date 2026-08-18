@@ -9,7 +9,7 @@ import { ApercuAnalytics } from "./apercu-tab/ApercuAnalytics";
 import { QrScannerModal } from "../verif-qr/QrScannerModal";
 
 export function ApercuTab({
-  classes, eleves, ens, notes, absences, avecEns, moy, maxNote,
+  titre = "", classes, eleves, ens, notes, absences, avecEns, moy, maxNote,
   cC, cE, classesUniq, effectifReel, matieresForClasse, couleur, schoolInfo, periodes,
   anneeConsultee = "",
 }) {
@@ -61,11 +61,18 @@ export function ApercuTab({
 
       {/* `portee` : le classement porte sur la section affichée, l'affiche
           doit le dire — un palmarès « toutes classes » du primaire n'est pas
-          celui du collège. */}
+          celui du collège.
+          La source est `titre`, le libellé de la section que Primaire.jsx et
+          Secondaire.jsx passent déjà à Ecole (Préscolaire / Primaire /
+          Collège / Lycée). Surtout PAS `avecEns` : ce drapeau dit « cette
+          section gère des enseignants », et le module Primaire le passe à
+          true lui aussi — toutes les affiches sortaient donc marquées
+          « Secondaire ». Même piège que celui documenté dans BulletinsTab
+          pour la périodicité. */}
       <ApercuHonneur
         eleves={eleves} notes={notes} matieresForClasse={matieresForClasse}
         schoolInfo={schoolInfo} annee={anneeConsultee} maxNote={maxNote}
-        portee={avecEns ? "Secondaire" : "Primaire"}
+        portee={titre}
       />
     </div>
   );

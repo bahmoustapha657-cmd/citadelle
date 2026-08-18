@@ -37,6 +37,7 @@ function Ecole({ titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEn
       <Tabs items={tabItems} actif={e.tab} onChange={e.setTab} />
       <EcoleTabContent
         e={e}
+        titre={titre}
         avecEns={avecEns}
         userRole={userRole}
         annee={annee}

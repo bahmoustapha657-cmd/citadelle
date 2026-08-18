@@ -5,11 +5,12 @@ import { EnsTab } from "../EnsTab";
 import { NotesTab } from "../NotesTab";
 
 // Onglets pédagogiques : aperçu, classes, élèves, enseignants, notes.
-export function EcoleTabsPedago({ e, avecEns, annee, classesPredefinies, maxNote, readOnly, cleEns, cleEleves, couleur }) {
+export function EcoleTabsPedago({ e, titre, avecEns, annee, classesPredefinies, maxNote, readOnly, cleEns, cleEleves, couleur }) {
   return (
     <>
       {/* ── APERÇU ── */}
       {e.tab === "apercu" && <ApercuTab
+        titre={titre}
         classes={e.classes}
         eleves={e.eleves}
         ens={e.ens}
