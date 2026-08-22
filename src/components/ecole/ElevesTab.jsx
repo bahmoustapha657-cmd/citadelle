@@ -24,6 +24,7 @@ export function ElevesTab({
       <ElevesTable
         cE={cE} elevesFiltres={elevesFiltres} peutCreerParent={peutCreerParent}
         ouvrirCompte={ouvrirCompte} t={t}
+        schoolInfo={schoolInfo} annee={annee} userRole={userRole}
       />
       <ParentCompteModale
         parentEleve={parentEleve} setParentEleve={setParentEleve} formP={formP}

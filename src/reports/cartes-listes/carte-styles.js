@@ -10,6 +10,10 @@ export function carteCss({ c1, c2 }) {
     body{font-family:'Inter',Arial,sans-serif;background:#f0f0f0;padding:8mm}
 
     .grille{display:grid;grid-template-columns:repeat(2,86mm);gap:5mm;justify-content:center}
+    /* Carte a l'unite : la planche garde sinon ses DEUX colonnes et la carte
+       seule se retrouve calee a gauche d'un bloc centre, donc de travers sur
+       la page. Une seule colonne la recentre vraiment. */
+    .grille.solo{grid-template-columns:86mm}
 
     /* Carte principale */
     .carte{
