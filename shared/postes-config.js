@@ -128,6 +128,19 @@ export function getDefaultPoste(cle) {
 // Rôles hors du système de postes (portails dédiés + superadmin).
 export const ROLES_HORS_POSTES = ["superadmin", "enseignant", "parent"];
 
+// La CARTE SCOLAIRE n'est pas une impression de travail : c'est une pièce
+// d'identité (photo de l'élève, matricule, QR signé avec le code de l'école)
+// qui engage l'établissement vis-à-vis de l'extérieur. Elle relève du bureau
+// qui inscrit l'élève, pas de la surveillance.
+// Le surveillant général garde tout ce dont l'appel a besoin : l'onglet Élèves
+// en lecture et l'impression de la liste de classe.
+// ⚠️ Garde-fou d'INTERFACE : le surveillant lit déjà les élèves (il lui faut
+// la liste pour saisir une absence), rien ne l'empêcherait de reconstituer ces
+// données autrement. C'est le geste officiel qu'on lui retire, pas l'accès.
+export function peutImprimerCartesEleves(roleOuPosteCle = "") {
+  return roleOuPosteCle !== "surveillant";
+}
+
 // Module d'atterrissage d'un compte du personnel (null pour les rôles hors
 // postes — l'appelant retombe sur getPrimaryModuleForRole legacy).
 export function getPrimaryModuleForCompte(compte = {}, schoolInfo = {}) {
