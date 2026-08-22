@@ -10,6 +10,7 @@ import {
   hasWrite,
   legacyPermissionsForRole,
   normalizePermissions,
+  peutImprimerCartesEleves,
   readableModules,
 } from "../shared/postes-config.js";
 
@@ -157,4 +158,21 @@ test("les autres postes restent gouvernes par leur carte de permissions", () => 
   const perms = getSessionPermissions(comptable, {});
   assert.equal(hasRead(perms, "statistiques"), false);
   assert.deepEqual(readableModules(perms), ["compta"]);
+});
+
+// La carte scolaire est une piece d'identite (photo, matricule, QR signe) :
+// elle engage l'ecole vis-a-vis de l'exterieur et releve du bureau qui inscrit
+// l'eleve. Le surveillant general garde la liste de classe, dont l'appel a
+// besoin, mais plus le bouton Cartes.
+test("le surveillant ne produit pas de cartes scolaires", () => {
+  assert.equal(peutImprimerCartesEleves("surveillant"), false);
+});
+
+test("les autres postes impriment toujours les cartes", () => {
+  for (const cle of ["direction", "admin", "primaire", "college", "comptable"]) {
+    assert.ok(peutImprimerCartesEleves(cle), `${cle} doit pouvoir imprimer`);
+  }
+  // Poste sans cle connue (personnalise par l'ecole) : on n'invente pas de
+  // restriction, seul le surveillant systeme est vise.
+  assert.ok(peutImprimerCartesEleves(""));
 });
