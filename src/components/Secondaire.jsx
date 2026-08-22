@@ -58,6 +58,7 @@ function Secondaire({ userRole, permissions = null, annee, readOnly = false, ver
           cleEns="ensCollege"
           cleNotes="notesCollege"
           cleEleves="elevesCollege"
+          section="college"
           avecEns={true}
           userRole={userRole}
           permissions={permissions}
@@ -77,6 +78,7 @@ function Secondaire({ userRole, permissions = null, annee, readOnly = false, ver
           cleEns="ensLycee"
           cleNotes="notesLycee"
           cleEleves="elevesLycee"
+          section="lycee"
           avecEns={true}
           userRole={userRole}
           permissions={permissions}

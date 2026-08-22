@@ -21,8 +21,19 @@ import {
   edugestBrandHTML,
 } from "./print-helpers.js";
 
+// `niveau` = identifiant de section ("prescolaire" | "primaire" | "college" |
+// "lycee"). Le collège et le lycée partagent le libellé « Secondaire », comme
+// avant ; seule la maternelle, qui tombait dans le repli « Primaire », a
+// désormais le sien.
+const CLE_LABEL_NIVEAU = {
+  prescolaire: "dashboard.preschool",
+  primaire: "dashboard.primary",
+  college: "dashboard.secondary",
+  lycee: "dashboard.secondary",
+};
+
 export const imprimerAttestation = (eleve, niveau, annee, schoolInfo={}) => {
-  const niveauLabel = niveau === "college" ? tr("dashboard.secondary") : tr("dashboard.primary");
+  const niveauLabel = tr(CLE_LABEL_NIVEAU[niveau] || "dashboard.primary");
   const w = window.open("","_blank");
   w.document.write(`<!DOCTYPE html><html lang="${printLang()}" dir="${printDir()}"><head><title>${tr("reports.attestation.title")} — ${eleve.nom}</title>
   <style>${PRINT_RESET}

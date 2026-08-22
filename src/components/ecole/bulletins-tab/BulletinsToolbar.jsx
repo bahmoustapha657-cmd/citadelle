@@ -9,7 +9,7 @@ import { imprimerBulletinsGroupes, imprimerFicheCompositions, PERIODE_ANNEE } fr
 export function BulletinsToolbar({
   t, rechercheMatricule, setRechercheMatricule, periodeB, setPeriodeB, periodes,
   filtreClasse, setFiltreClasse, classesUniq, elevesFiltres, schoolInfo, moisAnnee,
-  notes, matieres, maxNote, avecEns, matieresForClasse, appreciationsParEleveB,
+  notes, matieres, maxNote, section = "college", matieresForClasse, appreciationsParEleveB,
   batchAppr, canGenererLot,
 }) {
   // Format de la fiche de résultats : "simple" (moyenne générale seule) ou
@@ -53,7 +53,7 @@ export function BulletinsToolbar({
         const elevesBtn=elevesFiltres
           .filter(e=>!rechercheMatricule||(e.matricule||"").toLowerCase().includes(rechercheMatricule.toLowerCase())||(e.nom+" "+e.prenom).toLowerCase().includes(rechercheMatricule.toLowerCase()))
           .filter(e=>!(!!schoolInfo.blocageParentImpaye && moisAnnee.filter(m=>(e.mens||{})[m]!=="Payé").length>0));
-        imprimerBulletinsGroupes(elevesBtn,notes,matieres,periodeB,avecEns?"college":"primaire",maxNote,schoolInfo,filtreClasse==="all"?"Toutes classes":filtreClasse,matieresForClasse,appreciationsParEleveB(periodeB),periodes);
+        imprimerBulletinsGroupes(elevesBtn,notes,matieres,periodeB,section,maxNote,schoolInfo,filtreClasse==="all"?"Toutes classes":filtreClasse,matieresForClasse,appreciationsParEleveB(periodeB),periodes);
       }}>
         {t("school.bulletins.allBulletins")} {filtreClasse!=="all"?`— ${filtreClasse}`:""}
       </Btn>

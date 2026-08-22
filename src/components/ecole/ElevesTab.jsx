@@ -6,7 +6,7 @@ import { ParentCompteModale } from "./eleves-tab/ParentCompteModale";
 
 export function ElevesTab({
   eleves, elevesFiltres, cE, cleEleves, filtreClasse, setFiltreClasse, classesUniq,
-  avecEns, annee, schoolInfo, schoolId, toast, logAction, canEdit, canCreateParent,
+  section = "college", annee, schoolInfo, schoolId, toast, logAction, canEdit, canCreateParent,
   parentEleve, setParentEleve, formP, setFormP, userRole = "",
 }) {
   const { t } = useTranslation();
@@ -18,7 +18,7 @@ export function ElevesTab({
     <div>
       <ElevesToolbar
         eleves={eleves} elevesFiltres={elevesFiltres} filtreClasse={filtreClasse}
-        setFiltreClasse={setFiltreClasse} classesUniq={classesUniq} avecEns={avecEns}
+        setFiltreClasse={setFiltreClasse} classesUniq={classesUniq} section={section}
         annee={annee} schoolInfo={schoolInfo} userRole={userRole}
       />
       <ElevesTable

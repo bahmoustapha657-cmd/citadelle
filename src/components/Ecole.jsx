@@ -9,7 +9,13 @@ const TABS_SURVEILLANT = new Set(["eleves", "discipline", "emploidutemps"]);
 
 // Orchestrateur du module École : la logique vit dans useEcole, l'en-tête dans
 // EcoleHeader et l'aiguillage des onglets dans EcoleTabContent.
-function Ecole({ titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEns, userRole, permissions = null, annee, classesPredefinies, maxNote = 20, matieresPredefinies = [], readOnly = false, verrouOuvert = false }) {
+// `section` : identifiant de la section affichée ("prescolaire" | "primaire" |
+// "college" | "lycee"). C'est la SEULE source fiable pour tout ce qui dépend
+// du cycle — calcul des moyennes, code statistique du pied de page officiel,
+// libellés et noms de fichiers. Ni `avecEns` (qui dit « cette section gère des
+// enseignants », vrai partout) ni `titre` (libellé personnalisable par
+// l'école, cf. collegeLabel) ne peuvent en tenir lieu.
+function Ecole({ titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, section = "college", avecEns, userRole, permissions = null, annee, classesPredefinies, maxNote = 20, matieresPredefinies = [], readOnly = false, verrouOuvert = false }) {
   const { t } = useTranslation();
   const e = useEcole({ cleClasses, cleEns, cleNotes, cleEleves, userRole, permissions, annee, readOnly, verrouOuvert });
 
@@ -38,6 +44,7 @@ function Ecole({ titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, avecEn
       <EcoleTabContent
         e={e}
         titre={titre}
+        section={section}
         avecEns={avecEns}
         userRole={userRole}
         annee={annee}

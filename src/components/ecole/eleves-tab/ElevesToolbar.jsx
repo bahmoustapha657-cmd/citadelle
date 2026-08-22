@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { C } from "../../../constants";
+import { C, getSectionSlug } from "../../../constants";
 import { Btn } from "../../ui";
 import { imprimerCartesEleves, imprimerListeClasse, exportExcel } from "../../../reports";
 import { peutImprimerCartesEleves } from "../../../../shared/postes-config.js";
@@ -8,7 +8,7 @@ import { peutImprimerCartesEleves } from "../../../../shared/postes-config.js";
 // liste/cartes et export Excel.
 export function ElevesToolbar({
   eleves, elevesFiltres, filtreClasse, setFiltreClasse, classesUniq,
-  avecEns, annee, schoolInfo, userRole = "",
+  section = "college", annee, schoolInfo, userRole = "",
 }) {
   const { t } = useTranslation();
   return (
@@ -26,7 +26,7 @@ export function ElevesToolbar({
       {peutImprimerCartesEleves(userRole)
         && <Btn sm v="blue" onClick={()=>imprimerCartesEleves(elevesFiltres,schoolInfo,annee)}>🪪 {t("reports.card.title")}</Btn>}
       <Btn sm v="ghost" onClick={()=>exportExcel(
-        `${t("reports.excel.files.students")}_${avecEns?"College":"Primaire"}`,
+        `${t("reports.excel.files.students")}_${getSectionSlug(section)}`,
         [t("reports.excel.headers.matricule"),t("reports.excel.headers.ien"),t("reports.excel.headers.lastName"),t("reports.excel.headers.firstName"),t("reports.excel.headers.class"),t("reports.excel.headers.sex"),t("reports.excel.headers.dateOfBirth"),t("reports.excel.headers.birthPlace"),t("reports.excel.headers.filiation"),t("reports.excel.headers.guardian"),t("reports.excel.headers.contact"),t("reports.excel.headers.domicile"),t("reports.excel.headers.status")],
         elevesFiltres.map(e=>[e.matricule||"",e.ien||"",e.nom,e.prenom,e.classe,e.sexe||"",e.dateNaissance||"",e.lieuNaissance||"",e.filiation||"",e.tuteur||"",e.contactTuteur||"",e.domicile||"",e.statut||t("school.students.active")])
       )}>📥 {t("common.export")} Excel</Btn>

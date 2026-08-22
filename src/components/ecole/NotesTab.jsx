@@ -22,7 +22,7 @@ export function NotesTab({
   defaultNoteType,
   schoolInfo,
   isPrimarySection,
-  avecEns,
+  section = "college",
   maxNote,
   readOnly,
   canCreate,
@@ -68,7 +68,7 @@ export function NotesTab({
 
       <NotesToolbar
         t={t} notes={notes} notesVue={notesVue} setNotesVue={setNotesVue}
-        avecEns={avecEns} maxNote={maxNote} schoolInfo={schoolInfo} isPrimarySection={isPrimarySection}
+        section={section} maxNote={maxNote} schoolInfo={schoolInfo} isPrimarySection={isPrimarySection}
         eleves={eleves} matieres={matieres} noteForms={noteForms} periodes={periodes}
         canCreate={canCreate} setForm={setForm} setModal={setModal} defaultNoteType={defaultNoteType}
       />
