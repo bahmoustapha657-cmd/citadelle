@@ -74,6 +74,7 @@ function Primaire({
           cleEns="ensPrescolaire"
           cleNotes="notesPrescolaire"
           cleEleves="elevesPrescolaire"
+          section="prescolaire"
           avecEns={true}
           userRole={userRole}
           permissions={permissions}
@@ -94,6 +95,7 @@ function Primaire({
           cleEns="ensPrimaire"
           cleNotes="notesPrimaire"
           cleEleves="elevesPrimaire"
+          section="primaire"
           avecEns={true}
           userRole={userRole}
           permissions={permissions}

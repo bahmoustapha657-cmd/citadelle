@@ -8,9 +8,16 @@ import { getMention } from "../../../reports/bulletins/bulletin-format";
 
 // Table des bulletins : moyenne générale, mention, accès à l'appréciation et
 // impression individuelle (bloquée si frais impayés).
+//
+// `section` part à l'impression comme niveau. Il valait `avecEns ? "college"
+// : "primaire"`, donc TOUJOURS "college" — le bulletin imprimé du primaire
+// calculait ses moyennes avec la formule du secondaire (cours + 2×compo)/3 et
+// portait le code statistique du secondaire, alors que la moyenne affichée
+// juste à côté, elle, déduit la section de la classe. Deux chiffres pour un
+// même élève.
 export function BulletinsTable({
   t, elevesB, notes, notesStats, matieresForClasse, periodeB, periodes, schoolInfo, moisAnnee,
-  maxNote, avecEns, eleves, canCreate, canEdit, getAppreciation, setForm, setModal,
+  maxNote, section = "college", eleves, canCreate, canEdit, getAppreciation, setForm, setModal,
 }) {
   // notesStats = notes réelles en mode période ; notes annuelles synthétiques
   // en mode « fin d'année » (pour l'affichage des moyennes et le contexte IA).
@@ -75,7 +82,7 @@ export function BulletinsTable({
           </TD>
           <TD>{eleveImpayeBloq
             ? <span title="Frais impayés — impression bloquée" style={{fontSize:18}}>🔒</span>
-            : <Btn sm v="amber" onClick={()=>imprimerBulletin(e,notes,matieresForClasse(e.classe),periodeB,avecEns?"college":"primaire",maxNote,schoolInfo,{allEleves:eleves,allNotes:notes,appreciation:apprecTexte,periodes})}>{t("school.bulletins.printBulletin")}</Btn>
+            : <Btn sm v="amber" onClick={()=>imprimerBulletin(e,notes,matieresForClasse(e.classe),periodeB,section,maxNote,schoolInfo,{allEleves:eleves,allNotes:notes,appreciation:apprecTexte,periodes})}>{t("school.bulletins.printBulletin")}</Btn>
           }</TD>
         </TR>;
       })}</tbody>

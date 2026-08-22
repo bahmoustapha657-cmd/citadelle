@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { C } from "../../constants";
+import { C, getSectionSlug } from "../../constants";
 import { Btn } from "../ui";
 import { exportExcel } from "../../reports";
 import { DisciplineAlertes } from "./discipline-tab/DisciplineAlertes";
@@ -8,7 +8,7 @@ import { DisciplineTable } from "./discipline-tab/DisciplineTable";
 import { DisciplineModale } from "./discipline-tab/DisciplineModale";
 
 export function DisciplineTab({
-  absences, cAbs, ajAbs, supAbs, eleves, avecEns,
+  absences, cAbs, ajAbs, supAbs, eleves, section = "college",
   form, setForm, modal, setModal, canCreate, canEdit, envoyerPush,
 }) {
   const { t } = useTranslation();
@@ -47,7 +47,7 @@ export function DisciplineTab({
           </select>
         )}
         <Btn sm v="ghost" onClick={()=>exportExcel(
-          `${t("reports.excel.files.discipline")}_${avecEns?"College":"Primaire"}${classeFiltre!=="all"?`_${classeFiltre}`:""}`,
+          `${t("reports.excel.files.discipline")}_${getSectionSlug(section)}${classeFiltre!=="all"?`_${classeFiltre}`:""}`,
           [t("reports.excel.headers.student"),t("reports.excel.headers.class"),t("reports.excel.headers.type"),t("reports.excel.headers.date"),t("reports.excel.headers.motive"),t("reports.excel.headers.justified")],
           absencesFiltrees.map(a=>[a.eleveNom,a.classe,a.type,a.date,a.motif||"",a.justifie])
         )}>📥 {t("common.export")} Excel</Btn>

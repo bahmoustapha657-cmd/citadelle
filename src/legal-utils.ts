@@ -182,11 +182,18 @@ export function getCodeStatistique(profile: LegalProfile, cycle: CycleLegal): st
   return profile.codesStatistiques[cycle] || "";
 }
 
-// Mappe le niveau interne ("college" | "lycee" | "primaire" | "maternelle" | "secondaire")
-// vers les 3 cycles officiels du code statistique.
+// Mappe le niveau interne ("college" | "lycee" | "primaire" | "prescolaire"
+// | "maternelle" | "secondaire") vers les 3 cycles officiels du code
+// statistique.
+//
+// « prescolaire » est l'identifiant de section employé PARTOUT ailleurs dans
+// l'application (getSectionForClasse, clés de collection, périodicité) ;
+// « maternelle » est le nom du cycle côté profil légal. Sans cet alias, un
+// bulletin de maternelle retombait sur le repli « secondaire » et imprimait
+// le code statistique du collège.
 export function mapNiveauToCycle(niveau: string | undefined | null): CycleLegal {
   const n = (niveau || "").toLowerCase();
-  if (n === "maternelle") return "maternelle";
+  if (n === "maternelle" || n === "prescolaire") return "maternelle";
   if (n === "primaire") return "primaire";
   return "secondaire"; // college, lycee, secondaire → secondaire
 }

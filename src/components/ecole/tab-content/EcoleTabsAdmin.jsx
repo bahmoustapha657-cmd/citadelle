@@ -8,7 +8,7 @@ import { MatieresTab } from "../MatieresTab";
 
 // Onglets de gestion : enseignements, discipline, bulletins, livrets,
 // matières, emploi du temps, attestations.
-export function EcoleTabsAdmin({ e, avecEns, userRole, annee, maxNote, matieresPredefinies, cleNotes, cleEleves }) {
+export function EcoleTabsAdmin({ e, section, avecEns, userRole, annee, maxNote, matieresPredefinies, cleNotes, cleEleves }) {
   return (
     <>
       {/* ── ENSEIGNEMENTS ── */}
@@ -38,7 +38,7 @@ export function EcoleTabsAdmin({ e, avecEns, userRole, annee, maxNote, matieresP
         ajAbs={e.ajAbs}
         supAbs={e.supAbs}
         eleves={e.eleves}
-        avecEns={avecEns}
+        section={section}
         form={e.form}
         setForm={e.setForm}
         modal={e.modal}
@@ -66,7 +66,7 @@ export function EcoleTabsAdmin({ e, avecEns, userRole, annee, maxNote, matieresP
         schoolInfo={e.schoolInfo}
         moisAnnee={e.moisAnnee}
         maxNote={maxNote}
-        avecEns={avecEns}
+        section={section}
         form={e.form}
         setForm={e.setForm}
         modal={e.modal}
@@ -134,7 +134,7 @@ export function EcoleTabsAdmin({ e, avecEns, userRole, annee, maxNote, matieresP
         elevesFiltres={e.elevesFiltres}
         schoolInfo={e.schoolInfo}
         annee={annee}
-        avecEns={avecEns}
+        section={section}
         cE={e.cE}
       />}
     </>

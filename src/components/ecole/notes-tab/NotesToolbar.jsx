@@ -1,4 +1,4 @@
-import { C } from "../../../constants";
+import { C, getSectionSlug } from "../../../constants";
 import { Btn } from "../../ui";
 import { exportExcel } from "../../../reports";
 import { getEvaluationLabel } from "../../../evaluation-forms";
@@ -6,7 +6,7 @@ import { getEvaluationLabel } from "../../../evaluation-forms";
 // Barre d'outils des notes : bascule liste/grille, export Excel, modèle
 // d'import, et boutons import/ajout (réservés à la création).
 export function NotesToolbar({
-  t, notes, notesVue, setNotesVue, avecEns, maxNote, schoolInfo, isPrimarySection,
+  t, notes, notesVue, setNotesVue, section = "college", maxNote, schoolInfo, isPrimarySection,
   eleves, matieres, noteForms, periodes, canCreate, setForm, setModal, defaultNoteType,
 }) {
   return (
@@ -22,7 +22,7 @@ export function NotesToolbar({
         ))}
       </div>
       <Btn sm v="ghost" onClick={() => exportExcel(
-        `${t("reports.excel.files.notes")}_${avecEns ? "College" : "Primaire"}`,
+        `${t("reports.excel.files.notes")}_${getSectionSlug(section)}`,
         [t("reports.excel.headers.student"), t("reports.excel.headers.subject"), t("reports.excel.headers.type"), t("reports.excel.headers.period"), `${t("reports.excel.headers.grade")} /${maxNote}`],
         notes.map(n => [n.eleveNom, n.matiere, getEvaluationLabel(n.type, schoolInfo, { section: isPrimarySection ? "primaire" : "secondaire" }), n.periode, n.note])
       )}>📥 {t("common.export")}</Btn>

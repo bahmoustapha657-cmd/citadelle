@@ -51,13 +51,14 @@ export const imprimerBulletin = async (eleve, notes, matieres, periode, niveau, 
   // annuelles synthétiques (comme l'impression groupée), sinon le bulletin
   // individuel annuel serait vide (aucune note taguée sur PERIODE_ANNEE).
   // `options.periodes` = périodes réelles de la section (fournies par l'onglet
-  // Bulletins). Le repli sur `niveau` est FAUX pour le module Primaire (qui
-  // passe niveau="college" via avecEns) quand primaire et secondaire n'ont pas
-  // la même périodicité — ne sert qu'aux anciens appelants.
+  // Bulletins). Le repli déduit la périodicité de `niveau`, qui porte
+  // désormais la vraie section — getPeriodesForSection distingue préscolaire,
+  // primaire et secondaire, alors que le test « === "primaire" » d'avant
+  // rangeait la maternelle avec le collège.
   if (periode === PERIODE_ANNEE) {
     const periodesReelles = (Array.isArray(options.periodes) && options.periodes.length)
       ? options.periodes
-      : getPeriodesForSection(schoolInfo, niveau === "primaire" ? "primaire" : "secondaire");
+      : getPeriodesForSection(schoolInfo, niveau);
     const baseEleves = (allEleves || [eleve]).filter((e) => e.classe === eleve.classe);
     allNotes = buildBulletinNotesAnnuelles({ eleves: baseEleves, notes: allNotes, matsFor: () => matieres, periodes: periodesReelles, niveau });
     notes = allNotes;
@@ -112,7 +113,7 @@ export const imprimerBulletinsGroupes = async (eleves, notes, matieres, periode,
   if (periode === PERIODE_ANNEE) {
     const periodesReelles = (Array.isArray(periodesSection) && periodesSection.length)
       ? periodesSection
-      : getPeriodesForSection(schoolInfo, niveau === "primaire" ? "primaire" : "secondaire");
+      : getPeriodesForSection(schoolInfo, niveau);
     notes = buildBulletinNotesAnnuelles({ eleves, notes, matsFor: getMat, periodes: periodesReelles, niveau });
   }
 

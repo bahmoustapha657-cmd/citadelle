@@ -10,7 +10,7 @@ export function BulletinsTab({
   periodes = ["T1", "T2", "T3"],
   rechercheMatricule, setRechercheMatricule, periodeB, setPeriodeB,
   filtreClasse, setFiltreClasse, classesUniq, elevesFiltres, eleves, notes,
-  matieres, matieresForClasse, schoolInfo, moisAnnee, maxNote, avecEns,
+  matieres, matieresForClasse, schoolInfo, moisAnnee, maxNote, section = "college",
   form, setForm, modal, setModal, canCreate, canEdit,
   getAppreciation, saveAppreciation, appreciationsParEleveB, toast,
 }) {
@@ -45,7 +45,7 @@ export function BulletinsTab({
         periodeB={periodeB} setPeriodeB={setPeriodeB} periodes={periodes}
         filtreClasse={filtreClasse} setFiltreClasse={setFiltreClasse} classesUniq={classesUniq}
         elevesFiltres={elevesFiltres} schoolInfo={schoolInfo} moisAnnee={moisAnnee}
-        notes={notes} matieres={matieres} maxNote={maxNote} avecEns={avecEns}
+        notes={notes} matieres={matieres} maxNote={maxNote} section={section}
         matieresForClasse={matieresForClasse} appreciationsParEleveB={appreciationsParEleveB}
         batchAppr={batchAppr} canGenererLot={canCreate || canEdit}
       />
@@ -53,7 +53,7 @@ export function BulletinsTab({
       <BulletinsTable
         t={t} elevesB={elevesB} notes={notes} notesStats={notesStats} matieresForClasse={matieresForClasse}
         periodeB={periodeB} periodes={periodes} schoolInfo={schoolInfo} moisAnnee={moisAnnee} maxNote={maxNote}
-        avecEns={avecEns} eleves={eleves} canCreate={canCreate} canEdit={canEdit}
+        section={section} eleves={eleves} canCreate={canCreate} canEdit={canEdit}
         getAppreciation={getAppreciation} setForm={setForm} setModal={setModal}
       />
 

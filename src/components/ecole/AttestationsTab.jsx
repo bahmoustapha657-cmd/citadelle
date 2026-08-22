@@ -1,6 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { C } from "../../constants";
+import { C, getSectionLabel } from "../../constants";
 import { Badge, Btn, Card, Chargement, TD, THead, TR, Vide } from "../ui";
 import { imprimerAttestation } from "../../reports";
 
@@ -13,10 +13,16 @@ export function AttestationsTab({
   elevesFiltres,
   schoolInfo,
   annee,
-  avecEns,
+  section = "college",
   cE,
 }) {
   const { t } = useTranslation();
+  // Le niveau imprimé sur l'attestation et le code statistique de son pied de
+  // page officiel viennent de la SECTION du module, pas de `avecEns` : ce
+  // drapeau vaut true partout (y compris au primaire et en maternelle), et
+  // toutes les attestations sortaient donc marquées « Collège ».
+  const sectionLabel = getSectionLabel(section);
+  const badgeCouleur = section === "college" || section === "lycee" ? "purple" : "amber";
   const elevesAtt = elevesFiltres.filter(e=>!rechercheMatricule
     ||(e.matricule||"").toLowerCase().includes(rechercheMatricule.toLowerCase())
     ||(e.nom+" "+e.prenom).toLowerCase().includes(rechercheMatricule.toLowerCase()));
@@ -52,9 +58,9 @@ export function AttestationsTab({
             <TD><span style={{fontSize:11,fontFamily:"monospace",background:"#e0ebf8",padding:"2px 5px",borderRadius:4,color:C.blue,fontWeight:700}}>{e.matricule||"—"}</span></TD>
             <TD bold>{e.nom} {e.prenom}</TD>
             <TD><Badge color="blue">{e.classe}</Badge></TD>
-            <TD><Badge color={avecEns?"purple":"amber"}>{avecEns?"Collège":"Primaire"}</Badge></TD>
+            <TD><Badge color={badgeCouleur}>{sectionLabel}</Badge></TD>
             <TD><Badge color={e.statut==="Actif"?"vert":"gray"}>{e.statut||"Actif"}</Badge></TD>
-            <TD><Btn sm v="amber" onClick={()=>imprimerAttestation(e,avecEns?"college":"primaire",annee,schoolInfo)}>🖨️ Imprimer</Btn></TD>
+            <TD><Btn sm v="amber" onClick={()=>imprimerAttestation(e,section,annee,schoolInfo)}>🖨️ Imprimer</Btn></TD>
           </TR>)}</tbody>
         </table></div></Card>}
     </div>

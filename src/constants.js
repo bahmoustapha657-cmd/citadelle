@@ -184,6 +184,15 @@ export const getSectionLabel = (section = "college") => (
 
 export const getSectionLabelForClasse = (classe = "") => getSectionLabel(getSectionForClasse(classe));
 
+// Nom de section SANS accent, pour les noms de fichiers exportés
+// (« Eleves_Primaire.xlsx »). C'est le même segment que dans les clés de
+// collection (elevesPrimaire, notesCollege…), donc aucun caractère à risque.
+export const getSectionSlug = (section = "college") => (
+  section === "prescolaire" ? "Prescolaire"
+    : section === "primaire" ? "Primaire"
+      : section === "lycee" ? "Lycee" : "College"
+);
+
 // Listes proposées pour une section, selon le système de l'école
 // (2e argument : id du système, ex. getSystemeScolaire(schoolInfo)).
 export const getClassesForSection = (section = "college", systeme = "guineen") => {
