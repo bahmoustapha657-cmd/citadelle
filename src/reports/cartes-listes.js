@@ -1,8 +1,14 @@
 // ══════════════════════════════════════════════════════════════
 //  Cartes élèves + Listes de classe
 // ══════════════════════════════════════════════════════════════
-// imprimerCartesEleves : cartes d'identité avec QR code (2/page A4)
+// imprimerCartesEleves : cartes d'identité avec QR code, format ID-1
+//                        (86 × 54 mm, comme une carte bancaire), 2 par ligne
 // imprimerListeClasse : tableau de la classe (impression A4 portrait)
+//
+// `imprimerCartesEleves` prend une LISTE, ce qui couvre les deux usages sans
+// second module : la planche complète depuis la barre d'outils, et la carte
+// d'un seul élève depuis sa ligne du tableau — un remplacement perdu, un
+// nouvel arrivant en cours d'année — en passant [eleve].
 
 import { today } from "../constants.js";
 import {
@@ -20,8 +26,13 @@ import { carteEleve, genererQrMap } from "./cartes-listes/carte-bloc.js";
 
 export const imprimerCartesEleves = async (eleves, schoolInfo={}, annee="") => {
   if(!eleves.length){alert("Aucun élève à imprimer.");return;}
-  const qrMap = await genererQrMap(eleves);
+  // Fenêtre ouverte AVANT l'await du QR : passé l'await, le navigateur ne
+  // rattache plus l'ouverture au clic et le bloqueur de fenêtres intervient.
+  // Même précaution que dans imprimerBulletin. Le défaut existait déjà mais
+  // passait inaperçu sur la planche complète, lancée une fois par an ; le
+  // bouton par ligne, lui, sera cliqué souvent.
   const w = window.open("","_blank");
+  const qrMap = await genererQrMap(eleves);
   const c1 = schoolInfo.couleur1||"#0A1628";
   const c2 = schoolInfo.couleur2||"#00C48C";
   const ctx = {
@@ -36,7 +47,7 @@ export const imprimerCartesEleves = async (eleves, schoolInfo={}, annee="") => {
   <title>${tr("reports.card.title")} — ${ctx.nomEcole}</title>
   <style>${carteCss({ c1, c2 })}</style></head><body>
   ${watermarkHtml(schoolInfo)}
-  <div class="grille">${eleves.map(e=>carteEleve(e, ctx)).join("")}</div>
+  <div class="grille${eleves.length===1?" solo":""}">${eleves.map(e=>carteEleve(e, ctx)).join("")}</div>
   <script>${PRINT_TRIGGER}</script>
   </body></html>`);
   w.document.close();
