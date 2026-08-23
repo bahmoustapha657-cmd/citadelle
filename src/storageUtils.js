@@ -19,6 +19,7 @@
 //    production : sans l'attribut l'image est BLOQUÉE, avec elle charge.
 import { isSupabase } from "./backend";
 import { getSupabase } from "./supabaseClient";
+import { dataUrlToBlob } from "./data-url.js";
 
 const BUCKET = "photos";
 
@@ -83,8 +84,9 @@ export async function uploadImage(base64OuUrl, schoolId, categorie = "photos") {
   if (!base64OuUrl) return "";
   if (base64OuUrl.startsWith("http")) return base64OuUrl;
   if (!base64OuUrl.startsWith("data:")) return base64OuUrl; // valeur inattendue : on n'y touche pas
-  const res = await fetch(base64OuUrl);
-  const blob = await res.blob();
+  // Décodage LOCAL : `fetch("data:…")` est refusé par la CSP de production
+  // (connect-src), ce qui faisait échouer tout envoi de photo ou de logo.
+  const blob = dataUrlToBlob(base64OuUrl);
   const ext = blob.type === "image/png" ? "png" : blob.type === "image/webp" ? "webp" : "jpg";
   return uploadFichier(blob, cheminFichier(schoolId, categorie, nomAleatoire(ext)));
 }
