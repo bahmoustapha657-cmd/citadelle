@@ -168,6 +168,17 @@ Deno.serve(async (req) => {
       if (!cible || cible.ecole_id !== ecoleId) return json({ error: "Compte cible introuvable." }, 404);
       if (!peutGererRole(caller.role, cible.role, cible.section, callerAdminPanel)) return json({ error: "Droits insuffisants." }, 403);
       if (!cible.user_id) return json({ error: "Compte sans utilisateur auth." }, 409);
+      // Se réinitialiser SOI-MÊME par la voie administrateur est un piège :
+      // `auth.admin.updateUserById` révoque les jetons de rafraîchissement du
+      // compte visé. L'appelant se coupait donc l'herbe sous le pied — l'action
+      // réussissait, puis tout répondait 401 et le rafraîchissement 400.
+      // Le changement personnel (auth.updateUser, écran « Changer mon mot de
+      // passe ») fait la même chose EN CONSERVANT la session.
+      if (cible.user_id === user.id) {
+        return json({
+          error: "Pour votre propre mot de passe, utilisez « Changer mon mot de passe » : la réinitialisation administrateur déconnecterait votre session.",
+        }, 409);
+      }
       const { error: pErr } = await admin.auth.admin.updateUserById(cible.user_id, { password: mdp });
       if (pErr) return json({ error: pErr.message }, 500);
       // Forcer le changement à la première connexion suivante.
