@@ -5,7 +5,6 @@
 // sections de données (rapport-sections.js), signatures et pied de page.
 // Ne fait aucun calcul métier.
 
-import { SEUIL_APLAT, lisibleSur } from "../../couleur-lisible.js";
 import { fmt, today } from "../../constants.js";
 import { PRINT_TRIGGER, printDir, printLang, signataireHTML, tr, watermarkHtml } from "../print-helpers.js";
 import { getRapportAnnuelStyles } from "./rapport-styles.js";
@@ -46,8 +45,8 @@ const buildKpis = (m) => `
   </div>`;
 
 export const buildRapportAnnuelHTML = (model, schoolInfo = {}) => {
-  const c1 = lisibleSur(schoolInfo.couleur1 || "#0A1628", "#ffffff", SEUIL_APLAT);
-  const c2 = lisibleSur(schoolInfo.couleur2 || "#00C48C", "#ffffff", SEUIL_APLAT);
+  const c1 = schoolInfo.couleur1 || "#0A1628";
+  const c2 = schoolInfo.couleur2 || "#00C48C";
   const nomEcole = schoolInfo.nom || "École";
   const logo = schoolInfo.logo || "";
 

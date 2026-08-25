@@ -35,7 +35,7 @@ export function BulletinsTable({
       <table style={{width:"100%",borderCollapse:"separate",borderSpacing:0}}>
         {(()=>{
           const cols = [t("school.bulletins.matricule"),t("school.bulletins.student"),t("school.bulletins.class"),t("school.bulletins.average"),t("school.bulletins.mention"),t("school.bulletins.appreciation"),t("school.bulletins.bulletin")];
-          const thBase = {textAlign:"start",padding:"10px 13px",fontSize:10,fontWeight:700,color:"var(--sur-sc1)",textTransform:"uppercase",letterSpacing:"0.08em",whiteSpace:"nowrap",borderBottom:"2px solid var(--sc2)",background:"linear-gradient(135deg,var(--sc1),var(--sc1-dk))",position:"sticky",top:0};
+          const thBase = {textAlign:"start",padding:"10px 13px",fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.9)",textTransform:"uppercase",letterSpacing:"0.08em",whiteSpace:"nowrap",borderBottom:"2px solid var(--sc2)",background:"linear-gradient(135deg,var(--sc1),var(--sc1-dk))",position:"sticky",top:0};
           return (
             <thead>
               <tr>
