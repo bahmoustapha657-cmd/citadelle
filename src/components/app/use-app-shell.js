@@ -26,7 +26,11 @@ export function useAppShell({
     setTimeout(() => setToasts((prev) => prev.filter((x) => x.id !== id)), 4000);
   };
 
-  const logAction = logActionDoc;
+  // L'auteur ne remontait JAMAIS : logActionDoc accepte un 3e argument que
+  // personne ne passait. On le lie ICI, une fois, plutôt que dans chacun des
+  // appelants — même principe que le journal des paiements.
+  const logAction = (action, details = "", auteur = utilisateur?.nom || "") =>
+    logActionDoc(action, details, auteur);
 
   const [annee, setAnneeState] = useState(() => localStorage.getItem("LC_annee") || "2025-2026");
   const setAnnee = (val) => {

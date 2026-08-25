@@ -51,5 +51,7 @@ export const SchoolContext = createContext({
   moisSalaire: [],
   toast: () => {},
   logAction: () => {},
+  // Nom de la personne connectée — signe les entrées du journal des actions.
+  auteur: "",
   envoyerPush: () => {},
 });

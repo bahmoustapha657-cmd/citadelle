@@ -11,7 +11,10 @@ import { annulerCloture, cloturerAnnee } from "../cloture-annee";
 export function useClotureAnnee({ schoolId, annee, setAnnee, toast }) {
   // Mois réels de l'école (elle peut démarrer en septembre) : la remise à
   // zéro doit écrire les bonnes clés de mois, pas la liste par défaut.
-  const { moisAnnee } = useContext(SchoolContext);
+  // `logAction` : la cloture et son annulation reecrivent la scolarite de TOUTES
+  // les fiches. Elles ne laissaient aucune trace au journal — on ne pouvait ni
+  // dater ni attribuer une operation de cette portee.
+  const { moisAnnee, logAction } = useContext(SchoolContext);
   const [enCours, setEnCours] = useState(false);
   const [resultat, setResultat] = useState(null); // bilan de la dernière clôture
   const [annulation, setAnnulation] = useState(null); // bilan de la dernière annulation
@@ -25,6 +28,7 @@ export function useClotureAnnee({ schoolId, annee, setAnnee, toast }) {
       const bilan = await cloturerAnnee({ schoolId, annee, moisAnnee });
       setAnnee(nouvelle);
       setResultat({ ...bilan, nouvelle });
+      logAction(`Cloture de l'annee ${annee}`, `${bilan.archives} fiche(s) archivee(s) sur ${bilan.total} — nouvelle annee : ${nouvelle}`);
       setAnnulation(null);
       toast(
         bilan.archives > 0
@@ -58,6 +62,10 @@ export function useClotureAnnee({ schoolId, annee, setAnnee, toast }) {
       setAnnee(anneeCible);
       setAnnulation(bilan);
       setResultat(null);
+      logAction(
+        `Annulation de la clôture ${anneeCible}`,
+        `${bilan.restaures} fiche(s) restaurée(s)${apercu.ecrases > 0 ? ` — ${apercu.ecrases} avec des encaissements écrasés` : ""}`,
+      );
       toast(`Clôture annulée — ${bilan.restaures} fiche(s) restaurée(s), année active revenue à ${anneeCible}.`, "success");
     } catch (e) {
       toast("Annulation impossible : " + e.message, "error");
