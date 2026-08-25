@@ -72,14 +72,21 @@ function ComptesDuPoste({ poste, comptes, onCreer, onEmail, peutGerer, toast }) 
         <div key={c._id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, padding: "5px 0", color: "#334155", flexWrap: "wrap" }}>
           <span style={{ fontFamily: "monospace", background: "#f1f5f9", padding: "1px 6px", borderRadius: 4 }}>{c.login}</span>
           <span style={{ fontWeight: 600 }}>{c.nom}</span>
-          {c.email && <span style={{ color: "#64748b" }}>✉️ {c.email}</span>}
+          {/* L'e-mail se règle sur le COMPTE, jamais sur le poste : c'est le
+              compte qui se connecte, et un poste peut en porter plusieurs.
+              L'état « aucun e-mail » est affiché EXPLICITEMENT : quand la
+              ligne ne montrait rien et n'offrait qu'un lien bleu discret, la
+              direction concluait que les postes par défaut n'avaient nulle
+              part où saisir une adresse. */}
+          <span style={{ color: c.email ? "#334155" : "#94a3b8" }}>
+            ✉️ {c.email || "aucun e-mail"}
+          </span>
           {c.premiereCo && <Badge color="amber">1ère connexion à faire</Badge>}
           {peutGerer && emailEditeId !== c._id && (
-            <button type="button" onClick={() => { setEmailEditeId(c._id); setEmailBrouillon(c.email || ""); }}
-              title="E-mail de connexion (le compte pourra se connecter avec cet e-mail)"
-              style={{ border: "none", background: "none", cursor: "pointer", fontSize: 11, color: "#2563eb", fontWeight: 700, padding: 0 }}>
-              {c.email ? "modifier l'e-mail" : "+ e-mail de connexion"}
-            </button>
+            <Btn sm v="ghost" onClick={() => { setEmailEditeId(c._id); setEmailBrouillon(c.email || ""); }}
+              title="E-mail de connexion : le compte pourra se connecter avec cet e-mail au lieu de son identifiant">
+              {c.email ? "✏️ Modifier l'e-mail" : "✉️ Ajouter un e-mail"}
+            </Btn>
           )}
           {emailEditeId === c._id && (
             <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
