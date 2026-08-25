@@ -55,8 +55,8 @@ export async function reinitialiserMotDePasse({ schoolId, accountId, mdp }) {
     const { data: cible } = await sb
       .from("comptes").select("user_id").eq("id", accountId).maybeSingle();
     if (cible?.user_id && cible.user_id === user.id) {
-      await changerMotDePassePerso(mdp);
-      return { ok: true, perso: true };
+      const r = await changerMotDePassePerso(mdp);
+      return { ok: true, perso: true, autresDeconnectes: r.autresDeconnectes };
     }
   }
   return invoke(
@@ -66,14 +66,35 @@ export async function reinitialiserMotDePasse({ schoolId, accountId, mdp }) {
 }
 
 // Un utilisateur change SON propre mot de passe (pas besoin d'admin).
+//
+// LE CHANGEMENT DOIT CHASSER LES AUTRES SESSIONS.
+// `auth.updateUser` remplace le mot de passe mais ne révoque AUCUNE session :
+// un appareil déjà connecté le reste indéfiniment, sans jamais avoir à
+// ressaisir quoi que ce soit. Constaté en vrai — deux personnes partageant un
+// compte, le mot de passe changé d'un côté, l'accès toujours ouvert de
+// l'autre. Or changer son mot de passe, c'est très souvent vouloir
+// précisément mettre quelqu'un dehors.
+//
+// `signOut({ scope: "others" })` révoque toutes les sessions du compte SAUF
+// celle qui appelle. C'est l'exact complément de ce qui manquait : l'ancienne
+// voie administrateur, elle, coupait tout le monde y compris l'auteur du
+// changement, ce qui le déconnectait lui-même.
 export async function changerMotDePassePerso(nouveauMdp) {
   const sb = getSupabase();
   const { error } = await sb.auth.updateUser({ password: nouveauMdp });
   if (error) throw new Error(error.message || "Changement de mot de passe impossible.");
+  // Best-effort : le mot de passe est déjà changé, un échec ici ne doit pas
+  // faire croire le contraire. Les autres appareils tomberont de toute façon
+  // à l'expiration de leur jeton d'accès.
+  let autresDeconnectes = true;
+  try {
+    const { error: e } = await sb.auth.signOut({ scope: "others" });
+    if (e) autresDeconnectes = false;
+  } catch { autresDeconnectes = false; }
   // Lever le drapeau première connexion sur son propre compte.
   const { data: { user } } = await sb.auth.getUser();
   if (user) await sb.from("comptes").update({ premiere_co: false }).eq("user_id", user.id);
-  return { ok: true };
+  return { ok: true, autresDeconnectes };
 }
 
 // Réglages de rôles de l'école (update direct, RLS staff).

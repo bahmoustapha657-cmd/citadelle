@@ -3,7 +3,7 @@
 // ══════════════════════════════════════════════════════════════
 // Document multi-pages : couverture + 1 page par année scolaire.
 
-import { lisibleSur } from "../couleur-lisible.js";
+import { SEUIL_APLAT, lisibleSur } from "../couleur-lisible.js";
 import { getPeriodesForSection } from "../period-utils.js";
 import { resolveLegalFields } from "../legal-utils.js";
 import {
@@ -19,7 +19,7 @@ import {
 
 export const imprimerLivret = (livret, schoolInfo={}) => {
   const lf = resolveLegalFields(schoolInfo);
-  const c1 = lisibleSur(schoolInfo.couleur1||"#0A1628");
+  const c1 = lisibleSur(schoolInfo.couleur1||"#0A1628", "#ffffff", SEUIL_APLAT);
   const annees = livret.annees||[];
   // Le livret hérite de la section de l'élève (livret.section : "primaire" /
   // "college" / "lycee"). Primaire suit periodicitePrimaire, le reste suit

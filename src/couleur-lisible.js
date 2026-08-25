@@ -20,6 +20,24 @@
 const NOIR = "#0f172a";
 const BLANC = "#ffffff";
 
+// ── Les deux seuils, réglés séparément parce que les usages diffèrent ───────
+//
+// SEUIL_TEXTE — la couleur porte du TEXTE COURANT sur fond blanc (moyennes,
+// rangs, intitulés). C'est le seuil AA de la norme : 4,5. On n'y touche pas,
+// c'est là que la lisibilité se joue vraiment.
+//
+// SEUIL_APLAT — la couleur est un APLAT : cadre d'affiche, bandeau de
+// bulletin, fond d'en-tête de tableau. Un aplat n'a pas à se lire lui-même ;
+// il doit seulement être assez franc pour porter son propre texte. Le pousser
+// à 4,5 le noircissait inutilement et faisait perdre son identité à l'école —
+// le vert citron de La Citadelle virait au vert forêt (#428202).
+// À 3,5 il reste un vert franc (#4c9603) tout en restant imprimable.
+//
+// Pour éclaircir encore : baisser SEUIL_APLAT (3,0 donne #51a003). Pour
+// assombrir : le remonter. C'est le seul endroit à changer.
+export const SEUIL_TEXTE = 4.5;
+export const SEUIL_APLAT = 3.5;
+
 // #abc et #aabbcc acceptés ; renvoie null si la valeur n'est pas exploitable.
 export function versRvb(couleur) {
   const h = String(couleur || "").trim().replace(/^#/, "");
@@ -69,7 +87,7 @@ export function texteSur(fond) {
 // clair (fond sombre) jusqu'à atteindre la cible. Renvoie la couleur d'origine
 // si elle convient déjà, et la meilleure approchée si la cible est hors
 // d'atteinte (un jaune pur ne montera jamais à 4.5 sans virer au brun).
-export function lisibleSur(couleur, fond = BLANC, cible = 4.5) {
+export function lisibleSur(couleur, fond = BLANC, cible = SEUIL_TEXTE) {
   const rvb = versRvb(couleur);
   if (!rvb) return couleur;
   const actuel = contraste(couleur, fond);
