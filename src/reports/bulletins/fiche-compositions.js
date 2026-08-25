@@ -1,7 +1,7 @@
 // ══════════════════════════════════════════════════════════════
 //  Fiche de compositions — classement de classe (notes de composition)
 // ══════════════════════════════════════════════════════════════
-import { getAnnee } from "../../constants.js";
+import { getAnnee, getSectionForClasse } from "../../constants.js";
 import { getPeriodeLongLabel } from "../../period-utils.js";
 import {
   PRINT_RESET,
@@ -10,7 +10,7 @@ import {
   enteteDoc,
   printDir,
   printLang,
-  signataireHTML,
+  signataireSection,
   tr,
   watermarkHtml,
 } from "../print-helpers.js";
@@ -241,7 +241,7 @@ export const imprimerFicheCompositions = (classe, periode, notes, matieres, elev
   </div>
 
   <div class="sigs">
-    <div class="sig">${signataireHTML(schoolInfo, "direction", tr("reports.director"))}<br/><br/><br/>${tr("reports.signature")} & ${tr("reports.stamp")}</div>
+    <div class="sig">${signataireSection(schoolInfo, getSectionForClasse(classe), tr("reports.director"))}<br/><br/><br/>${tr("reports.signature")} & ${tr("reports.stamp")}</div>
     <div class="sig">${tr("reports.headTeacher")}<br/><br/><br/>${tr("reports.signature")}</div>
   </div>
   <script>${PRINT_TRIGGER}</script>

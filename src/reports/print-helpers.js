@@ -7,6 +7,7 @@
 
 import { getNationalDeviseHTML } from "../national-symbols.js";
 import { resolveLegalFields } from "../legal-utils.js";
+import { getRoleLabelForSchool } from "../constants.js";
 import i18n from "../i18n";
 
 // Helper i18n hors React : raccourci vers i18n.t().
@@ -31,6 +32,37 @@ export const signataireHTML = (schoolInfo, cle, titre) => {
   return nom
     ? `${titre}<br/><span style="font-size:1.05em;font-weight:800">${nom}</span>`
     : titre;
+};
+
+// Poste qui signe les documents D'UNE SECTION. Le préscolaire relève de la
+// direction primaire, le lycée du bureau collège — mêmes regroupements que
+// les modules de menu.
+const POSTE_SECTION = {
+  prescolaire: "primaire", maternelle: "primaire", primaire: "primaire",
+  college: "college", lycee: "college", secondaire: "college",
+};
+
+// Signataire d'un document de section : bulletin, attestation, fiche de
+// compositions. Ces pièces engagent le CHEF DE LA SECTION, pas le directeur
+// général — c'est lui qui répond des notes qu'elles portent.
+//
+// Tous les documents pédagogiques signaient `direction`, alors que les écoles
+// renseignent bien leurs responsables de section (Comptes & Postes les
+// dénormalise dans extra.responsables). À La Citadelle, un bulletin de collège
+// sortait donc « Le Directeur / Mamadou Lamarana DIALLO » au lieu de
+// « La Principale / Djiba Oury DIALLO ».
+//
+// Le TITRE suit le libellé que l'école a donné au poste : elle a le droit
+// d'appeler son bureau collège « La Principale » ou « Le Censeur », et le
+// document doit le refléter plutôt qu'imposer « Le Directeur ».
+// Repli sur la direction si la section n'a pas de responsable désigné : mieux
+// vaut le DG qu'une ligne de signature anonyme.
+export const signataireSection = (schoolInfo = {}, section = "", titreParDefaut = "") => {
+  const cle = POSTE_SECTION[String(section || "").toLowerCase()] || "";
+  if (cle && responsableNom(schoolInfo, cle)) {
+    return signataireHTML(schoolInfo, cle, getRoleLabelForSchool(cle, schoolInfo) || titreParDefaut);
+  }
+  return signataireHTML(schoolInfo, "direction", titreParDefaut);
 };
 
 // Supprime les en-têtes / pieds automatiques du navigateur ("about:blank",

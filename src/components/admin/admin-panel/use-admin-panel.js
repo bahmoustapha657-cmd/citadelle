@@ -76,8 +76,16 @@ export function useAdminPanel({ schoolId, userRole }) {
       return;
     }
     try {
-      await reinitialiserMotDePasse({ schoolId, accountId: form._id, mdp: form.mdp });
-      toast(`Mot de passe réinitialisé pour ${form.nom}.`, "success");
+      // `perso` : le DG a visé SON propre compte. Le changement est passé par
+      // la voie personnelle, qui conserve la session — on le dit, sinon on
+      // laisse craindre la déconnexion que ce chemin provoquait avant.
+      const res = await reinitialiserMotDePasse({ schoolId, accountId: form._id, mdp: form.mdp });
+      toast(
+        res?.perso
+          ? "Votre mot de passe est changé. Votre session reste ouverte."
+          : `Mot de passe réinitialisé pour ${form.nom}.`,
+        "success",
+      );
       setModal(null);
     } catch (e) {
       toast(e.message || "Erreur lors de la réinitialisation.", "error");
