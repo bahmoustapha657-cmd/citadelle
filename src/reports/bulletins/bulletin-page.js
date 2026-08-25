@@ -1,7 +1,6 @@
 // ══════════════════════════════════════════════════════════════
 //  Bulletins — gabarit HTML d'une page (bulletin individuel) + styles
 // ══════════════════════════════════════════════════════════════
-import { SEUIL_APLAT, lisibleSur } from "../../couleur-lisible.js";
 import { getAnnee } from "../../constants.js";
 import {
   getOfficialLegalFooterHTML,
@@ -49,8 +48,8 @@ export function buildBulletinPageHTML({
   appreciation = "",
   qr = "",
 }) {
-  const c1 = lisibleSur(schoolInfo.couleur1 || "#0A1628", "#ffffff", SEUIL_APLAT);
-  const c2 = lisibleSur(schoolInfo.couleur2 || "#00C48C", "#ffffff", SEUIL_APLAT);
+  const c1 = schoolInfo.couleur1 || "#0A1628";
+  const c2 = schoolInfo.couleur2 || "#00C48C";
   const annee = getAnnee();
   const modele = getModeleBulletin(schoolInfo);
   const compact = modele === "compact";

@@ -32,7 +32,7 @@ export function MensualitesTable({
             // (z-index 3 pour passer au-dessus des autres TH).
             const thBase = {
               textAlign: "start", padding: "10px 13px", fontSize: 10, fontWeight: 700,
-              color: "var(--sur-sc1)", textTransform: "uppercase", letterSpacing: "0.08em",
+              color: "rgba(255,255,255,0.9)", textTransform: "uppercase", letterSpacing: "0.08em",
               whiteSpace: "nowrap", borderBottom: "2px solid var(--sc2)",
               background: "linear-gradient(135deg,var(--sc1),var(--sc1-dk))",
               position: "sticky", top: 0,

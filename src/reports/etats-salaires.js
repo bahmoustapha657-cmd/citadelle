@@ -6,7 +6,6 @@
 // Orchestrateur : assemble styles (./etats-salaires/etats-styles) et
 // blocs de sections (./etats-salaires/etats-blocs).
 
-import { SEUIL_APLAT, lisibleSur } from "../couleur-lisible.js";
 import { fmtN, today } from "../constants.js";
 import { edugestBrandHTML, enteteDoc, signataireHTML } from "./print-helpers.js";
 import { etatsCss } from "./etats-salaires/etats-styles.js";
@@ -42,7 +41,7 @@ export function imprimerEtatsSalaires({
     totMontantPers, totBonPers, totNetPers,
   } = totals;
 
-  const c1 = lisibleSur(schoolInfo?.couleur1 || "#0A1628", "#ffffff", SEUIL_APLAT);
+  const c1 = schoolInfo?.couleur1 || "#0A1628";
 
   const totRevSec  = salairesSec.reduce((sum,s)=>sum+Number(s.revision||0),0);
   const totRevPrim = salairesPrim.reduce((sum,s)=>sum+Number(s.revision||0),0);
