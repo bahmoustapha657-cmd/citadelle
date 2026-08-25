@@ -78,6 +78,24 @@ export function champsCloture(eleve = {}, annee = "", { moisAnnee = null, mainte
   };
 }
 
+// Archive l'instantané de l'année SANS remettre la scolarité à zéro.
+//
+// La clôture, elle, archive ET repart d'une année vierge — c'est son office.
+// La promotion n'a pas à toucher aux compteurs de paiement : elle ne fait
+// qu'écraser la classe. Mais elle l'écrasait SANS RIEN GARDER quand l'école
+// promouvait avant d'avoir clôturé — la classe de l'année écoulée était alors
+// perdue, et avec elle la possibilité de réafficher les bulletins, le
+// classement et le tableau d'honneur de cette année-là.
+// Renvoie null si l'année est déjà archivée : le vrai instantané de clôture
+// prime toujours, on ne l'écrase jamais.
+export function champsArchivageClasse(eleve = {}, annee = "", { maintenant = new Date() } = {}) {
+  if (!annee) return null;
+  const historique = { ...(eleve.historique || {}) };
+  if (historique[annee]) return null;
+  historique[annee] = { ...instantaneEleve(eleve), archiveLe: maintenant.toISOString() };
+  return { historique };
+}
+
 // Champs à écrire pour restaurer l'année archivée sur la fiche. Renvoie null
 // si cet élève n'a pas d'archive pour cette année. On repart de l'état vierge
 // pour que les champs ABSENTS de l'instantané soient remis à zéro plutôt que

@@ -36,7 +36,29 @@ export function creerCompte({ schoolId, login, mdp, role, nom, label, ...reste }
   );
 }
 
-export function reinitialiserMotDePasse({ schoolId, accountId, mdp }) {
+// Réinitialisation d'un mot de passe depuis Comptes & Postes.
+//
+// SON PROPRE COMPTE : la voie administrateur passe par
+// `auth.admin.updateUserById`, qui RÉVOQUE les jetons de rafraîchissement du
+// compte visé — se viser soi-même revenait donc à se déconnecter en pleine
+// action (401 en série, rafraîchissement en 400). On bascule sur
+// `auth.updateUser`, qui fait exactement le même changement mais rend les
+// nouveaux jetons AU NAVIGATEUR : la session survit.
+// Le drapeau « changement à la première connexion » n'est pas posé dans ce
+// cas — on vient de choisir le mot de passe soi-même, le redemander n'aurait
+// aucun sens. C'est aussi ce qui distingue les deux voies côté métier :
+// l'administrateur impose un mot de passe TEMPORAIRE à quelqu'un d'autre.
+export async function reinitialiserMotDePasse({ schoolId, accountId, mdp }) {
+  const sb = getSupabase();
+  const { data: { user } } = await sb.auth.getUser();
+  if (user) {
+    const { data: cible } = await sb
+      .from("comptes").select("user_id").eq("id", accountId).maybeSingle();
+    if (cible?.user_id && cible.user_id === user.id) {
+      await changerMotDePassePerso(mdp);
+      return { ok: true, perso: true };
+    }
+  }
   return invoke(
     { action: "reset_password", schoolId, accountId, mdp },
     "Réinitialisation impossible.",

@@ -15,6 +15,7 @@ import { getPeriodesForSection } from "../period-utils";
 import { buildBulletinNotesAnnuelles } from "../reports/bulletins/annual-notes";
 import { classeSuivante, estClasseExamen } from "../promotion-utils";
 import { matieresForClasse } from "./ecole/ecole-logic";
+import { champsArchivageClasse } from "./admin/cloture-annee-utils";
 
 // Limite Firestore : 500 opérations par batch (marge de sécurité à 450).
 const BATCH_MAX = 450;
@@ -75,7 +76,7 @@ async function chargerSection(schoolId, sec, annee) {
 }
 
 // Décisions d'une section (logique pure) → accumule dans `acc`.
-function analyserSection(schoolInfo, sec, data, sansNotesBehavior, acc) {
+function analyserSection(schoolInfo, sec, data, sansNotesBehavior, acc, anneeQuiSAcheve = "") {
   for (const e of data.eleves) {
     if (e.statut !== "Actif") continue;
     acc.total++;
@@ -94,7 +95,7 @@ function analyserSection(schoolInfo, sec, data, sansNotesBehavior, acc) {
       const suivanteExamen = classeSuivante(classeActuelle, systeme);
       if (resultat === "Admis") {
         if (suivanteExamen) {
-          acc.updates.push({ collection: sec.eleves, id: e._id, classe: suivanteExamen });
+          acc.updates.push({ collection: sec.eleves, id: e._id, classe: suivanteExamen, ...(champsArchivageClasse(e, anneeQuiSAcheve) || {}) });
           acc.promus++;
           acc.details.push({ nom: `${e.nom} ${e.prenom}`, classe: classeActuelle, moy: null, statut: "promu", nouvClasse: suivanteExamen, motif: "Examen : admis" });
         } else {
@@ -133,7 +134,7 @@ function analyserSection(schoolInfo, sec, data, sansNotesBehavior, acc) {
       decision = moy >= sec.seuil ? "promouvoir" : "redoubler";
     }
     if (decision === "promouvoir") {
-      acc.updates.push({ collection: sec.eleves, id: e._id, classe: suivante });
+      acc.updates.push({ collection: sec.eleves, id: e._id, classe: suivante, ...(champsArchivageClasse(e, anneeQuiSAcheve) || {}) });
       acc.promus++;
       acc.details.push({ nom: `${e.nom} ${e.prenom}`, classe: classeActuelle, nouvClasse: suivante, moy, statut: "promu" });
     } else {
@@ -144,11 +145,21 @@ function analyserSection(schoolInfo, sec, data, sansNotesBehavior, acc) {
 }
 
 // Applique les changements de classe (écriture réelle) — Supabase ou Firebase.
+// Champs réellement écrits : la nouvelle classe, et l'instantané de l'année
+// qui s'achève quand la clôture ne l'a pas déjà figé (cf.
+// champsArchivageClasse). Sans lui, promouvoir AVANT de clôturer effaçait la
+// classe de l'année écoulée : ses notes se retrouvaient moyennées contre le
+// programme de la classe suivante, et le tableau d'honneur de cette année-là
+// changeait sous les yeux de la direction.
+const champsEcrits = (u) => (u.historique
+  ? { classe: u.classe, historique: u.historique }
+  : { classe: u.classe });
+
 async function appliquerUpdates(schoolId, updates) {
   if (isSupabase) {
     for (let i = 0; i < updates.length; i += SB_PARALLELE) {
       await Promise.all(updates.slice(i, i + SB_PARALLELE).map(
-        (u) => modifierChampDoc(schoolId, u.collection, u.id, { classe: u.classe }),
+        (u) => modifierChampDoc(schoolId, u.collection, u.id, champsEcrits(u)),
       ));
     }
     return;
@@ -156,7 +167,7 @@ async function appliquerUpdates(schoolId, updates) {
   for (let i = 0; i < updates.length; i += BATCH_MAX) {
     const batch = writeBatch(db);
     for (const u of updates.slice(i, i + BATCH_MAX)) {
-      batch.update(doc(db, "ecoles", schoolId, u.collection, u.id), { classe: u.classe });
+      batch.update(doc(db, "ecoles", schoolId, u.collection, u.id), champsEcrits(u));
     }
     await batch.commit();
   }
@@ -188,7 +199,7 @@ export async function runPromotion({ schoolId, schoolInfo, seuilCollege, seuilPr
 
   for (const sec of SECTIONS) {
     const data = await chargerSection(schoolId, sec, anneeQuiSAcheve);
-    analyserSection(schoolInfo, sec, data, sansNotesBehavior, acc);
+    analyserSection(schoolInfo, sec, data, sansNotesBehavior, acc, anneeQuiSAcheve);
   }
 
   if (!simulate && acc.updates.length) await appliquerUpdates(schoolId, acc.updates);

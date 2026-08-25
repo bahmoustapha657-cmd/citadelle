@@ -1,5 +1,6 @@
-import { useContext, useState } from "react";
+import { useContext, useMemo, useState } from "react";
 import { getAnnee, peutCreerComptesParent, peutModifier } from "../../constants";
+import { scolaritePourAnnee } from "../admin/cloture-annee-utils";
 import { hasWrite } from "../../../shared/postes-config.js";
 import { getDefaultPeriodeForSection, getPeriodesForSection } from "../../period-utils";
 import { SchoolContext } from "../../contexts/SchoolContext";
@@ -51,7 +52,21 @@ export function useEcole({
   // Upsert : une note existante (avec _id) est MISE À JOUR, sinon créée.
   // Évite les doublons quand la grille réenregistre une note déjà saisie.
   const ajN = (item) => ((item && item._id) ? modN(item) : ajNraw(item));
-  const { items: eleves, chargement: cE, modifier: modE } = useFirestore(cleEleves);
+  // Année archivée : on rejoue l'instantané figé par la clôture, comme le fait
+  // déjà la Comptabilité (use-comptabilite, `projeterAnnee`). Sans cela l'élève
+  // arrivait ici avec sa classe D'AUJOURD'HUI — celle que la promotion vient de
+  // lui donner. Ses notes de 6ème étaient alors moyennées contre le programme
+  // de 5ème : moyennes fausses, classement bouleversé, et le tableau d'honneur
+  // de l'année écoulée changeait sous les yeux de la direction dès qu'elle
+  // lançait la promotion. L'instantané contient la classe (instantaneEleve),
+  // il ne restait qu'à s'en servir.
+  const { items: elevesBruts, chargement: cE, modifier: modE } = useFirestore(cleEleves);
+  const eleves = useMemo(
+    () => (enModeArchive
+      ? elevesBruts.map((e) => scolaritePourAnnee(e, anneeConsultee, anneeCourante))
+      : elevesBruts),
+    [elevesBruts, enModeArchive, anneeConsultee, anneeCourante],
+  );
   const { items: absences, chargement: cAbs, ajouter: ajAbs, supprimer: supAbs } = useFirestore(cleEleves + "_absences");
   const { items: enseignements, chargement: cEng, ajouter: ajEng, modifier: modEng, supprimer: supEng } = useFirestore(cleEns + "_enseignements");
   const { items: matieres, chargement: cMat, ajouter: ajMat, modifier: modMat, supprimer: supMat } = useFirestore(cleClasses + "_matieres");
