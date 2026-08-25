@@ -6,7 +6,7 @@
 // Orchestrateur : calculs dans ./rapport-mensuel/mensuel-data, styles
 // dans ./rapport-mensuel/mensuel-styles.
 
-import { lisibleSur } from "../couleur-lisible.js";
+import { SEUIL_APLAT, lisibleSur } from "../couleur-lisible.js";
 import {
   PRINT_TRIGGER,
   printDir,
@@ -29,8 +29,8 @@ import { mensuelCss } from "./rapport-mensuel/mensuel-styles.js";
 export const genererRapportMensuel = (mois, eleves, absences, annee, schoolInfo={}, _moisAnnee=[]) => {
   if(!eleves.length){ alert("Aucun élève."); return; }
   void _moisAnnee;
-  const c1 = lisibleSur(schoolInfo.couleur1||"#0A1628");
-  const c2 = lisibleSur(schoolInfo.couleur2||"#00C48C");
+  const c1 = lisibleSur(schoolInfo.couleur1||"#0A1628", "#ffffff", SEUIL_APLAT);
+  const c2 = lisibleSur(schoolInfo.couleur2||"#00C48C", "#ffffff", SEUIL_APLAT);
   const nomEcole = schoolInfo.nom||"École";
   const logo = schoolInfo.logo||"";
 

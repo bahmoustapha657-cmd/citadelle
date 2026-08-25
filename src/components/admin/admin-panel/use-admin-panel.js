@@ -82,7 +82,9 @@ export function useAdminPanel({ schoolId, userRole }) {
       const res = await reinitialiserMotDePasse({ schoolId, accountId: form._id, mdp: form.mdp });
       toast(
         res?.perso
-          ? "Votre mot de passe est changé. Votre session reste ouverte."
+          ? (res.autresDeconnectes
+            ? "Mot de passe changé. Vous restez connecté ; tous les AUTRES appareils ont été déconnectés."
+            : "Mot de passe changé. Vous restez connecté — les autres appareils n'ont pas pu être déconnectés, ils le seront à l'expiration de leur session.")
           : `Mot de passe réinitialisé pour ${form.nom}.`,
         "success",
       );

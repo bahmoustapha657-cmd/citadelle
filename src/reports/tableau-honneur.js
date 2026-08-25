@@ -11,7 +11,7 @@
 // le préscolaire sont notés sur 10, des seuils figés sur 20 y auraient
 // affiché « Insuffisant » sous le nom d'un excellent élève — sur un mur.
 
-import { lisibleSur } from "../couleur-lisible.js";
+import { SEUIL_APLAT, lisibleSur } from "../couleur-lisible.js";
 import { today } from "../constants.js";
 import {
   PRINT_TRIGGER,
@@ -110,8 +110,8 @@ const carte = (e, rang, maxNote) => `
 export function imprimerTableauHonneur(classement = [], schoolInfo = {}, options = {}) {
   if (!classement.length) { alert("Aucun élève classé à afficher."); return; }
   const { periodeLabel = "", portee = "", annee = "", maxNote = 20 } = options;
-  const c1 = lisibleSur(schoolInfo.couleur1 || "#0A1628");
-  const c2 = lisibleSur(schoolInfo.couleur2 || "#00C48C");
+  const c1 = lisibleSur(schoolInfo.couleur1 || "#0A1628", "#ffffff", SEUIL_APLAT);
+  const c2 = lisibleSur(schoolInfo.couleur2 || "#00C48C", "#ffffff", SEUIL_APLAT);
   const podium = classement.slice(0, 3);
   const suite = classement.slice(3);
 
