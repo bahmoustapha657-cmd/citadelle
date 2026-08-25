@@ -23,17 +23,26 @@ export function useEcole({
   userRole, permissions = null, annee, readOnly = false, verrouOuvert = false,
 }) {
   const isPrimarySection = cleEns === "ensPrimaire";
+  const { schoolId, schoolInfo, moisAnnee, toast, logAction, envoyerPush } = useContext(SchoolContext);
   const anneeCourante = annee || getAnnee();
   const [anneeConsultee, setAnneeConsultee] = useState(anneeCourante);
   // Vue archive : filtre les notes (les autres collections restent persistantes).
-  const enModeArchive = anneeConsultee !== anneeCourante;
+  //
+  // La référence est l'année OFFICIELLE de l'école (schoolInfo.anneeScolaire),
+  // pas l'année affichée. Les deux se confondaient, et « revenir consulter une
+  // année clôturée » alignait donc l'affichée sur la consultée : le mode
+  // archive s'éteignait au moment précis où on en avait besoin. Les élèves
+  // repassaient à leur classe de la rentrée suivante — d'où des promus
+  // affichés en 4ème/5ème sur le tableau d'honneur de l'année d'avant — et les
+  // écrans redevenaient modifiables sur une année close.
+  const anneeOfficielle = schoolInfo?.anneeScolaire || anneeCourante;
+  const enModeArchive = anneeConsultee !== anneeOfficielle;
   // Notes et appréciations sont filtrées sur l'année consultée EN PERMANENCE,
   // et pas seulement en vue archive : sinon, dès la rentrée suivante, un T1
   // de la nouvelle année se confondrait avec le T1 de l'ancienne dans les
   // grilles, les moyennes et les bulletins.
   // Périodes de la section : nécessaires AVANT le chargement des notes, pour
   // savoir laquelle afficher en premier (cf. periodePrioritaire).
-  const { schoolId, schoolInfo, moisAnnee, toast, logAction, envoyerPush } = useContext(SchoolContext);
   // Trois rythmes possibles, plus deux : la maternelle a sa propre
   // périodicité. Tant qu'elle n'en avait pas, tout ce qui n'était pas
   // « primaire » basculait sur le secondaire — la maternelle se voyait donc

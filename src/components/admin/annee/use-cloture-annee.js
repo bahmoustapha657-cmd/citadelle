@@ -21,8 +21,12 @@ export function useClotureAnnee({ schoolId, annee, setAnnee, toast }) {
 
   const changerAnnee = async (nouvelle) => {
     if (!nouvelle || nouvelle === annee) return;
-    // Retour en arrière : simple consultation, aucune écriture.
-    if (nouvelle < annee) { setAnnee(nouvelle); return; }
+    // Retour en arrière : simple consultation, aucune écriture — y compris
+    // sur l'année officielle de l'école. `persister: false` le garantit.
+    // Sans lui, « revenir voir 2025-2026 » redéfinissait l'année courante de
+    // l'établissement, et le mode archive s'éteignait : les élèves
+    // réapparaissaient avec leur classe de la rentrée suivante.
+    if (nouvelle < annee) { setAnnee(nouvelle, { persister: false }); return; }
     setEnCours(true);
     try {
       const bilan = await cloturerAnnee({ schoolId, annee, moisAnnee });
