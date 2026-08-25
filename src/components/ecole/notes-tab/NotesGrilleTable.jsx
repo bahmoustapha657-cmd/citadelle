@@ -16,9 +16,9 @@ export function NotesGrilleTable({
       <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, minWidth: 600 }}>
         <thead>
           <tr>
-            <th style={{ padding: "8px 12px", textAlign: "left", color: "rgba(255,255,255,0.9)", fontSize: 11, fontWeight: 700, textTransform: "uppercase", whiteSpace: "nowrap", minWidth: 150, background: "linear-gradient(135deg,var(--sc1),var(--sc1-dk))", position: "sticky", top: 0, left: 0, zIndex: 4 }}>{ligneHeader}</th>
+            <th style={{ padding: "8px 12px", textAlign: "left", color: "var(--sur-sc1)", fontSize: 11, fontWeight: 700, textTransform: "uppercase", whiteSpace: "nowrap", minWidth: 150, background: "linear-gradient(135deg,var(--sc1),var(--sc1-dk))", position: "sticky", top: 0, left: 0, zIndex: 4 }}>{ligneHeader}</th>
             {colonnes.map(col => (
-              <th key={col} style={{ padding: "8px 10px", textAlign: "center", color: "rgba(255,255,255,0.9)", fontSize: 10, fontWeight: 700, textTransform: "uppercase", whiteSpace: "nowrap", borderLeft: "1px solid rgba(255,255,255,0.1)", background: "linear-gradient(135deg,var(--sc1),var(--sc1-dk))", position: "sticky", top: 0, zIndex: 3 }}>
+              <th key={col} style={{ padding: "8px 10px", textAlign: "center", color: "var(--sur-sc1)", fontSize: 10, fontWeight: 700, textTransform: "uppercase", whiteSpace: "nowrap", borderLeft: "1px solid rgba(255,255,255,0.1)", background: "linear-gradient(135deg,var(--sc1),var(--sc1-dk))", position: "sticky", top: 0, zIndex: 3 }}>
                 {col}<div style={{ fontSize: 9, opacity: 0.6, fontWeight: 400 }}>/{maxNote}</div>
               </th>
             ))}

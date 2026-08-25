@@ -2,6 +2,7 @@
 // par défaut et application du branding (variables CSS).
 import { SCHOOL_INFO_DEFAUT } from "../contexts/SchoolContext";
 import { getRoleSettingsForSchool } from "../constants";
+import { paletteLisible } from "../couleur-lisible.js";
 
 export const DEFAULT_VERROUS = { comptable: false, primaire: false, secondaire: false };
 
@@ -34,8 +35,23 @@ export function mergeSchoolInfo(d) {
 }
 
 // Applique les couleurs de branding aux variables CSS racine.
+//
+// Trois variables par couleur, parce que l'application en fait trois usages :
+//   --scN      la couleur CHOISIE, pour l'identité — aplats, filets, cadres ;
+//   --scN-txt  la même, poussée jusqu'à être lisible EN TEXTE sur fond blanc ;
+//   --sur-scN  ce qu'on écrit PAR-DESSUS la couleur (noir ou blanc).
+// Sans cette dérivation, une école en vert citron (#a8fc54, contraste 1,26)
+// affichait du blanc sur vert clair dans tous ses en-têtes de tableaux.
 export function applyBrandingColors(couleur1, couleur2) {
   const r = document.documentElement.style;
-  r.setProperty("--sc1", couleur1 || "#0A1628");
-  r.setProperty("--sc2", couleur2 || "#00C48C");
+  const c1 = couleur1 || "#0A1628";
+  const c2 = couleur2 || "#00C48C";
+  const p1 = paletteLisible(c1);
+  const p2 = paletteLisible(c2);
+  r.setProperty("--sc1", c1);
+  r.setProperty("--sc2", c2);
+  r.setProperty("--sc1-txt", p1.texte);
+  r.setProperty("--sc2-txt", p2.texte);
+  r.setProperty("--sur-sc1", p1.dessus);
+  r.setProperty("--sur-sc2", p2.dessus);
 }
