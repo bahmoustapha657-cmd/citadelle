@@ -10,6 +10,7 @@
 // d'un seul élève depuis sa ligne du tableau — un remplacement perdu, un
 // nouvel arrivant en cours d'année — en passant [eleve].
 
+import { lisibleSur } from "../couleur-lisible.js";
 import { today } from "../constants.js";
 import {
   PRINT_RESET,
@@ -33,8 +34,8 @@ export const imprimerCartesEleves = async (eleves, schoolInfo={}, annee="") => {
   // bouton par ligne, lui, sera cliqué souvent.
   const w = window.open("","_blank");
   const qrMap = await genererQrMap(eleves);
-  const c1 = schoolInfo.couleur1||"#0A1628";
-  const c2 = schoolInfo.couleur2||"#00C48C";
+  const c1 = lisibleSur(schoolInfo.couleur1||"#0A1628");
+  const c2 = lisibleSur(schoolInfo.couleur2||"#00C48C");
   const ctx = {
     logo: schoolInfo.logo||"",
     nomEcole: schoolInfo.nom||"École",

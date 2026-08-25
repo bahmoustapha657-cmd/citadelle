@@ -10,6 +10,7 @@ import { useContext, useEffect, useState } from "react";
 import { setMonnaie } from "../../constants";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { useFirestore } from "../../hooks/useFirestore";
+import { applyBrandingColors } from "../../hooks/school-data-helpers";
 import { getEvaluationFormsConfig } from "../../evaluation-forms";
 import { extraireCouleurs } from "./extraire-couleurs";
 import {
@@ -130,8 +131,10 @@ export function useParametresEcole({ utilisateurRole = "", onSchoolClosed = null
       const data = await sauvegarderParametres({ schoolId, form, accueil, evaluationForms });
       setSchoolInfo(prev=>({...prev,...data}));
       setMonnaie(data.monnaie);
-      if(data.couleur1) document.documentElement.style.setProperty("--sc1", data.couleur1);
-      if(data.couleur2) document.documentElement.style.setProperty("--sc2", data.couleur2);
+      // Passe par applyBrandingColors : les variantes lisibles (--scN-txt,
+      // --sur-scN) doivent suivre, sinon l'aperçu immédiat après
+      // enregistrement repart avec les couleurs brutes.
+      if(data.couleur1 || data.couleur2) applyBrandingColors(data.couleur1, data.couleur2);
       setMsgSucces("Paramètres enregistrés avec succès.");
       setTimeout(()=>setMsgSucces(""),4000);
     } catch(e) {

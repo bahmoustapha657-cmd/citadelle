@@ -48,7 +48,7 @@ const Textarea=({label,...p})=><Champ label={label}><textarea style={{width:"100
 
 const Btn=({children,v="primary",sm,...p})=>{
   const S={
-    primary:{background:"linear-gradient(135deg,var(--sc1),var(--sc1-dk))",color:"#fff"},
+    primary:{background:"linear-gradient(135deg,var(--sc1),var(--sc1-dk))",color:"var(--sur-sc1)"},
     success:{background:`linear-gradient(135deg,${C.greenDk},${C.green})`,color:"#fff"},
     danger: {background:"linear-gradient(135deg,#991b1b,#b91c1c)",color:"#fff"},
     ghost:  {background:"var(--lc-surface)",color:"var(--sc1)",border:"1.5px solid var(--lc-border)"},
@@ -63,7 +63,7 @@ const Btn=({children,v="primary",sm,...p})=>{
 
 const THead=({cols})=>(
   <thead><tr style={{background:"linear-gradient(135deg,var(--sc1),var(--sc1-dk))"}}>
-    {cols.map((c,i)=><th key={i} style={{textAlign:"start",padding:"10px 13px",fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.9)",textTransform:"uppercase",letterSpacing:"0.08em",whiteSpace:"nowrap",borderBottom:"2px solid var(--sc2)"}}>{c}</th>)}
+    {cols.map((c,i)=><th key={i} style={{textAlign:"start",padding:"10px 13px",fontSize:10,fontWeight:700,color:"var(--sur-sc1)",textTransform:"uppercase",letterSpacing:"0.08em",whiteSpace:"nowrap",borderBottom:"2px solid var(--sc2)"}}>{c}</th>)}
   </tr></thead>
 );
 const TR=({children,bg})=><tr style={{borderBottom:"1px solid var(--lc-border-soft)",background:bg||"transparent"}}>{children}</tr>;

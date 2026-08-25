@@ -16,6 +16,16 @@ const GLOBAL_CSS = `
     --sc1-lt: color-mix(in srgb, var(--sc1) 12%, #fff);
     --sc2-dk: color-mix(in srgb, var(--sc2) 80%, #000);
     --sc2-lt: color-mix(in srgb, var(--sc2) 12%, #fff);
+    /* Variantes LISIBLES, calculées en JS (applyBrandingColors) : le contraste
+       ne se calcule pas en CSS. Le suffixe -txt donne la couleur poussée
+       jusqu'à se lire en texte sur blanc ; --sur-scN donne le noir ou le blanc
+       à écrire PAR-DESSUS la couleur. Les valeurs ci-dessous ne servent
+       qu'avant le chargement de l'école : ce sont celles des couleurs par
+       défaut. */
+    --sc1-txt: ${C.blue};
+    --sc2-txt: #008760;
+    --sur-sc1: #ffffff;
+    --sur-sc2: #0f172a;
   }
 
   /* Hauteur viewport dynamique (iOS Safari compatible) */
