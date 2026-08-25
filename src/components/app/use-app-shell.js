@@ -33,8 +33,24 @@ export function useAppShell({
     logActionDoc(action, details, auteur);
 
   const [annee, setAnneeState] = useState(() => localStorage.getItem("LC_annee") || "2025-2026");
-  const setAnnee = (val) => {
+  // `persister` distingue DEUX gestes que l'écran confondait :
+  //
+  //  • AVANCER d'une année — c'est la clôture. L'année officielle de l'école
+  //    change pour tout le monde : on l'enregistre.
+  //  • RECULER pour consulter une année passée — c'est de la lecture. Cela ne
+  //    doit RIEN changer pour les autres.
+  //
+  // Le recul enregistrait pourtant l'année, comme une avance. Conséquences en
+  // chaîne : l'année officielle de l'école redevenait l'ancienne (pour tous
+  // les comptes, y compris à l'autre bout du monde), et surtout
+  // `anneeConsultee === anneeCourante` faisait retomber useEcole hors du mode
+  // archive — les élèves réapparaissaient alors avec leur classe D'AUJOURD'HUI
+  // au lieu de celle de l'année consultée, et les écrans redevenaient
+  // modifiables sur une année censée être close.
+  const setAnnee = (val, { persister = true } = {}) => {
     setAnneeState(val);
+    localStorage.setItem("LC_annee", val);
+    if (!persister) return;
     persisterAnnee(schoolId, val).catch(() => {
       toast("Année non enregistrée pour l'école : seule la Direction peut la modifier.", "warning");
     });
