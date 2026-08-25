@@ -77,6 +77,18 @@ async function chargerSection(schoolId, sec, annee) {
 
 // Décisions d'une section (logique pure) → accumule dans `acc`.
 function analyserSection(schoolInfo, sec, data, sansNotesBehavior, acc, anneeQuiSAcheve = "") {
+  // N'archiver la classe QUE si l'année visée a réellement été enseignée.
+  // `runPromotion` est appelé sans année : il prend donc l'année COURANTE de
+  // l'école. Or si la clôture est déjà passée, celle-ci est la NOUVELLE année —
+  // et estampiller son instantané serait grave à deux titres : la vue archive
+  // rejouerait une année qui n'a pas commencé, et la vraie clôture de fin
+  // d'année refuserait ensuite d'archiver (champsCloture ne réécrit jamais un
+  // instantané existant), perdant le seul état qui comptait.
+  // La présence de notes sur l'année est le signal simple qu'elle a été vécue.
+  const anneeVecue = anneeQuiSAcheve && data.notes.length > 0;
+  const archiverClasse = (eleve) => (anneeVecue
+    ? champsArchivageClasse(eleve, anneeQuiSAcheve) || {}
+    : {});
   for (const e of data.eleves) {
     if (e.statut !== "Actif") continue;
     acc.total++;
@@ -95,7 +107,7 @@ function analyserSection(schoolInfo, sec, data, sansNotesBehavior, acc, anneeQui
       const suivanteExamen = classeSuivante(classeActuelle, systeme);
       if (resultat === "Admis") {
         if (suivanteExamen) {
-          acc.updates.push({ collection: sec.eleves, id: e._id, classe: suivanteExamen, ...(champsArchivageClasse(e, anneeQuiSAcheve) || {}) });
+          acc.updates.push({ collection: sec.eleves, id: e._id, classe: suivanteExamen, ...archiverClasse(e) });
           acc.promus++;
           acc.details.push({ nom: `${e.nom} ${e.prenom}`, classe: classeActuelle, moy: null, statut: "promu", nouvClasse: suivanteExamen, motif: "Examen : admis" });
         } else {
@@ -134,7 +146,7 @@ function analyserSection(schoolInfo, sec, data, sansNotesBehavior, acc, anneeQui
       decision = moy >= sec.seuil ? "promouvoir" : "redoubler";
     }
     if (decision === "promouvoir") {
-      acc.updates.push({ collection: sec.eleves, id: e._id, classe: suivante, ...(champsArchivageClasse(e, anneeQuiSAcheve) || {}) });
+      acc.updates.push({ collection: sec.eleves, id: e._id, classe: suivante, ...archiverClasse(e) });
       acc.promus++;
       acc.details.push({ nom: `${e.nom} ${e.prenom}`, classe: classeActuelle, nouvClasse: suivante, moy, statut: "promu" });
     } else {
