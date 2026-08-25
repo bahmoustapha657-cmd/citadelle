@@ -2,7 +2,9 @@
 // Les écritures vivent dans cloture-annee.js ; ce fichier reste importable
 // partout (Compta le lit pour projeter une année archivée) et testable.
 
-import { initMens } from "../../constants";
+// Extension explicite : ce module est couvert par des tests Node, dont la
+// résolution ESM n'infère pas les extensions comme le fait Vite.
+import { initMens } from "../../constants.js";
 
 // Toutes les sections, préscolaire compris.
 export const COLLECTIONS_ELEVES = [
@@ -63,8 +65,22 @@ export function aDesPaiements(eleve = {}) {
 // écrirait l'état vierge par-dessus le vrai instantané.
 export function champsCloture(eleve = {}, annee = "", { moisAnnee = null, maintenant = new Date() } = {}) {
   const historique = { ...(eleve.historique || {}) };
-  if (historique[annee]) return null;
-  historique[annee] = { ...instantaneEleve(eleve), clotureLe: maintenant.toISOString() };
+  const snap = historique[annee];
+  // Deux instantanés très différents peuvent déjà exister pour cette année :
+  //
+  //  • `clotureLe` — une VRAIE clôture est passée. On s'arrête : rejouer
+  //    l'état vierge effacerait les encaissements de la nouvelle année.
+  //  • `archiveLe` — la PROMOTION a figé la classe avant de la déplacer, sans
+  //    toucher aux compteurs. L'année n'est donc pas close pour autant : il
+  //    reste à remettre la scolarité à zéro. Sans cette distinction, une école
+  //    qui promeut avant de clôturer voyait la clôture sauter tous ses élèves
+  //    et démarrer l'année neuve avec les paiements de l'ancienne.
+  if (snap?.clotureLe) return null;
+  historique[annee] = snap
+    // La classe vient de l'instantané de promotion (prise AVANT le
+    // déplacement) ; le reste est relu sur la fiche, plus à jour.
+    ? { ...instantaneEleve(eleve), classe: snap.classe || eleve.classe || "", archiveLe: snap.archiveLe, clotureLe: maintenant.toISOString() }
+    : { ...instantaneEleve(eleve), clotureLe: maintenant.toISOString() };
   // Un élève encore présent l'année suivante EST un réinscrit : on bascule son
   // type d'inscription pour que le tarif de réinscription s'applique de
   // lui-même. Sans cela, il fallait ouvrir les fiches une par une — 501 fois
