@@ -65,7 +65,10 @@ export default function App() {
     utilisateur, setUtilisateur, setPage, nowTs, totalElevesActifs, t,
   });
 
-  const schoolContextValue = { schoolId, setSchoolId, schoolInfo, setSchoolInfo, moisAnnee, moisSalaire, toast, logAction, envoyerPush, planInfo };
+  // `auteur` : nom de la personne connectée. Le journal des actions le laissait
+  // vide (152 entrées anonymes sur 203 à La Citadelle, dont 53 suppressions
+  // d'élèves et de classes) — on ne pouvait pas savoir qui avait supprimé quoi.
+  const schoolContextValue = { schoolId, setSchoolId, schoolInfo, setSchoolInfo, moisAnnee, moisSalaire, toast, logAction, envoyerPush, planInfo, auteur: utilisateur?.nom || "" };
 
   // Ctrl+K / ? / Escape — voir use-keyboard-shortcuts pour le détail.
   useKeyboardShortcuts({

@@ -104,7 +104,7 @@ function firestoreReducer(state, action) {
 }
 
 export function useFirestore(nomCollection, options = {}) {
-  const { schoolId } = useContext(SchoolContext);
+  const { schoolId, auteur } = useContext(SchoolContext);
   const [{ items, chargement }, dispatch] = useReducer(firestoreReducer, initialState);
 
   const anneeFiltre = options.annee || null;
@@ -242,26 +242,45 @@ export function useFirestore(nomCollection, options = {}) {
   };
 
   const supprimer = async (id) => {
+    // Snapshot AVANT la suppression : c'est lui qui part dans la trace, et
+    // c'est lui que le journal déplie quand on clique sur l'entrée.
+    const snapshot = items.find((item) => item._id === id) || null;
+
+    // La trace de suppression était écrite UNIQUEMENT sur la branche Firebase :
+    // la branche Supabase sortait par `return` avant d'y arriver. Depuis la
+    // migration, plus une seule suppression n'était journalisée — à La
+    // Citadelle, la dernière trace date du 7 juillet alors que le reste du
+    // journal court jusqu'à aujourd'hui. Supprimer un élève ou une classe ne
+    // laissait donc plus rien. Le journal est desormais commun aux deux
+    // backends, et porte le nom de la personne connectée.
+    const tracer = () => {
+      if (COLLECTIONS_SANS_TRACE.has(nomCollection)) return null;
+      const libelle = LIBELLES_COLLECTIONS[nomCollection] || nomCollection;
+      const { _id: _ignore, ...donnees } = snapshot || {};
+      return {
+        action: `Suppression — ${libelle}`,
+        details: snapshot ? resumeSuppression(snapshot) : `Document ${id}`,
+        auteur,
+        date: Date.now(),
+        suppression: { collection: nomCollection, docId: id, donnees },
+      };
+    };
+
     if (isSupabase) {
       await supprimerDoc(schoolId, nomCollection, id);
       await charger(true);
+      const trace = tracer();
+      // Best-effort : une trace qui échoue ne doit jamais faire croire que la
+      // suppression a échoué, elle est déjà faite.
+      if (trace) ajouterDoc(schoolId, "historique", trace).catch(() => {});
       return;
     }
-    // Snapshot AVANT la suppression : c'est lui qui part dans la trace.
-    const snapshot = items.find((item) => item._id === id) || null;
     await deleteDoc(doc(db, "ecoles", schoolId, nomCollection, id));
     charger(false);
-    if (COLLECTIONS_SANS_TRACE.has(nomCollection)) return;
+    const trace = tracer();
+    if (!trace) return;
     try {
-      const libelle = LIBELLES_COLLECTIONS[nomCollection] || nomCollection;
-      const { _id: _ignore, ...donnees } = snapshot || {};
-      addDoc(collection(db, "ecoles", schoolId, "historique"), {
-        action: `Suppression — ${libelle}`,
-        details: snapshot ? resumeSuppression(snapshot) : `Document ${id}`,
-        auteur: "",
-        date: Date.now(),
-        suppression: { collection: nomCollection, docId: id, donnees },
-      }).catch(() => {});
+      addDoc(collection(db, "ecoles", schoolId, "historique"), trace).catch(() => {});
     } catch {
       // Trace best-effort : la suppression elle-même n'est jamais bloquée.
     }
