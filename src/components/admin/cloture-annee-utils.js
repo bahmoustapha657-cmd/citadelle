@@ -94,6 +94,21 @@ export function champsCloture(eleve = {}, annee = "", { moisAnnee = null, mainte
   };
 }
 
+// Classe qu'occupait l'élève PENDANT l'année demandée.
+//
+// Dès qu'un instantané existe pour cette année, il fait autorité : il a été
+// pris avant que la promotion ne déplace l'élève. La fiche vivante, elle,
+// décrit la rentrée SUIVANTE.
+//
+// Volontairement indépendant du « mode archive » : celui-ci compare l'année
+// consultée à l'année courante, et les deux se confondent dès qu'on revient
+// sur une année close. La question « quelle classe, cette année-là ? » a une
+// réponse dans les données ; elle n'a pas à dépendre d'un état d'écran.
+export function classePourAnnee(eleve = {}, annee = "") {
+  const snap = (eleve.historique || {})[annee];
+  return (snap && snap.classe) || eleve.classe || "";
+}
+
 // Archive l'instantané de l'année SANS remettre la scolarité à zéro.
 //
 // La clôture, elle, archive ET repart d'une année vierge — c'est son office.

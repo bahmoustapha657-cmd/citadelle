@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   champsArchivageClasse,
+  classePourAnnee,
   champsCloture,
   scolaritePourAnnee,
 } from "../src/components/admin/cloture-annee-utils.js";
@@ -75,4 +76,24 @@ test("lecture d'une annee passee : la classe archivee prime", () => {
   assert.equal(scolaritePourAnnee(eleve, ANNEE, "2026-2027").classe, "4ème Année A");
   // Annee courante : c'est la fiche vivante qui fait foi.
   assert.equal(scolaritePourAnnee(eleve, "2026-2027", "2026-2027").classe, "5ème Année A");
+});
+
+// C'est la reponse a « quelle classe, cette annee-la ? ». Elle vient des
+// DONNEES, sans dependre d'un etat d'ecran : le mode archive compare l'annee
+// consultee a l'annee courante, et les deux se confondent des qu'on revient
+// sur une annee close — le mode s'eteignait alors au moment ou il servait.
+test("classePourAnnee : l instantane fait autorite sur la fiche du jour", () => {
+  const promu = {
+    classe: "4ème Année A", // la promotion l'a deja avance
+    historique: { [ANNEE]: { classe: "3ème Année A", clotureLe: "x" } },
+  };
+  assert.equal(classePourAnnee(promu, ANNEE), "3ème Année A");
+  // Annee sans instantane : la fiche du jour, faute de mieux.
+  assert.equal(classePourAnnee(promu, "2026-2027"), "4ème Année A");
+  assert.equal(classePourAnnee(promu, ""), "4ème Année A");
+});
+
+test("classePourAnnee : tolere une fiche vide", () => {
+  assert.equal(classePourAnnee({}, ANNEE), "");
+  assert.equal(classePourAnnee({ historique: { [ANNEE]: {} } }, ANNEE), "");
 });

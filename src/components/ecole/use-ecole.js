@@ -1,6 +1,6 @@
 import { useContext, useMemo, useState } from "react";
 import { getAnnee, peutCreerComptesParent, peutModifier } from "../../constants";
-import { scolaritePourAnnee } from "../admin/cloture-annee-utils";
+import { classePourAnnee } from "../admin/cloture-annee-utils";
 import { hasWrite } from "../../../shared/postes-config.js";
 import { getDefaultPeriodeForSection, getPeriodesForSection } from "../../period-utils";
 import { SchoolContext } from "../../contexts/SchoolContext";
@@ -61,20 +61,28 @@ export function useEcole({
   // Upsert : une note existante (avec _id) est MISE À JOUR, sinon créée.
   // Évite les doublons quand la grille réenregistre une note déjà saisie.
   const ajN = (item) => ((item && item._id) ? modN(item) : ajNraw(item));
-  // Année archivée : on rejoue l'instantané figé par la clôture, comme le fait
-  // déjà la Comptabilité (use-comptabilite, `projeterAnnee`). Sans cela l'élève
-  // arrivait ici avec sa classe D'AUJOURD'HUI — celle que la promotion vient de
-  // lui donner. Ses notes de 6ème étaient alors moyennées contre le programme
-  // de 5ème : moyennes fausses, classement bouleversé, et le tableau d'honneur
-  // de l'année écoulée changeait sous les yeux de la direction dès qu'elle
-  // lançait la promotion. L'instantané contient la classe (instantaneEleve),
-  // il ne restait qu'à s'en servir.
+  // La classe suit l'ANNÉE CONSULTÉE, pas la fiche du jour.
+  //
+  // Sans cela l'élève arrive ici avec la classe que la promotion vient de lui
+  // donner : ses notes de 3ème sont moyennées contre le programme de 4ème, et
+  // le tableau d'honneur de l'année écoulée affiche tout le monde avancé d'un
+  // cran. C'est exactement ce que la direction voyait.
+  //
+  // Le déclencheur est la DONNÉE — l'existence d'un instantané pour cette
+  // année — et non le « mode archive ». Ce dernier compare l'année consultée à
+  // l'année courante, or les deux se confondent dès qu'on revient sur une
+  // année close : le mode s'éteignait au moment précis où il servait.
+  //
+  // Seule la classe est reprise de l'instantané. La scolarité complète
+  // (mensualités, frais) reste l'affaire de la Comptabilité, qui a sa propre
+  // projection et d'autres règles.
   const { items: elevesBruts, chargement: cE, modifier: modE } = useFirestore(cleEleves);
   const eleves = useMemo(
-    () => (enModeArchive
-      ? elevesBruts.map((e) => scolaritePourAnnee(e, anneeConsultee, anneeCourante))
-      : elevesBruts),
-    [elevesBruts, enModeArchive, anneeConsultee, anneeCourante],
+    () => elevesBruts.map((e) => {
+      const classe = classePourAnnee(e, anneeConsultee);
+      return classe === e.classe ? e : { ...e, classe };
+    }),
+    [elevesBruts, anneeConsultee],
   );
   const { items: absences, chargement: cAbs, ajouter: ajAbs, supprimer: supAbs } = useFirestore(cleEleves + "_absences");
   const { items: enseignements, chargement: cEng, ajouter: ajEng, modifier: modEng, supprimer: supEng } = useFirestore(cleEns + "_enseignements");
