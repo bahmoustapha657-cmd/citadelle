@@ -91,8 +91,14 @@ export function useEcole({
   const cleAppreciations = cleNotes.replace("notes", "appreciations");
   const { items: appreciations, ajouter: ajApp, modifier: modApp } = useFirestore(cleAppreciations, { annee: anneeConsultee });
   const getAppreciation = (eleveId, periode) => appreciations.find((a) => a.eleveId === eleveId && a.periode === periode);
+  // L'appréciation est écrite sur l'année QU'ON REGARDE, pas sur l'année
+  // courante de l'école. Les deux divergent dès qu'une clôture est passée :
+  // on lisait alors les appréciations de l'année consultée (`anneeConsultee`
+  // ci-dessus) mais on les enregistrait sur la nouvelle. Chaque appréciation
+  // saisie ou générée disparaissait donc du bulletin sous les yeux de son
+  // auteur — elle était partie dans l'année suivante.
   const saveAppreciation = (eleveId, periode, texte) =>
-    saveAppreciationAction(eleveId, periode, texte, { getAppreciation, ajApp, modApp, annee: anneeCourante });
+    saveAppreciationAction(eleveId, periode, texte, { getAppreciation, ajApp, modApp, annee: anneeConsultee });
   const appreciationsParEleveB = (periode) => Object.fromEntries(
     appreciations.filter((a) => a.periode === periode && a.texte).map((a) => [a.eleveId, a.texte]),
   );
