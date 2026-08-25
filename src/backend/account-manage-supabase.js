@@ -10,6 +10,16 @@ async function invoke(body, messageEchec) {
   const sb = getSupabase();
   const { data, error } = await sb.functions.invoke("account-manage", { body });
   if (error) {
+    // 401 = jeton absent, expiré ou révoqué. La fonction ne répond JAMAIS 401
+    // pour un manque de droits — c'est 403 — donc un 401 signifie que la
+    // session est réellement morte. Sans ce traitement, l'écran restait
+    // « connecté » et chaque clic rejouait le même échec, la console
+    // empilant des 401 et un 400 sur /token?grant_type=refresh_token.
+    // On termine la session pour ramener l'utilisateur à l'écran de connexion.
+    if (error.context?.status === 401) {
+      try { await sb.auth.signOut(); } catch { /* session déjà perdue */ }
+      throw new Error("Votre session a expiré. Reconnectez-vous.");
+    }
     // L'Edge Function renvoie { error } avec un status non-2xx → message utile.
     let msg = messageEchec;
     try { msg = (await error.context?.json())?.error || msg; } catch { /* garde le défaut */ }
