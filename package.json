@@ -16,6 +16,8 @@
     "test:rules": "firebase emulators:exec --only firestore --project edugest-rules-test \"node --test tests/firestore-rules.emulator.js\"",
     "preview": "vite preview",
     "pwa-icons": "node generate-pwa-icons.mjs",
+    "sauvegarde": "node supabase/backup-donnees.mjs",
+    "sauvegarde:verifier": "node supabase/verifier-sauvegardes.mjs --profond",
     "deploy:functions": "firebase deploy --only functions:backend",
     "build:supabase": "vite build --mode supabase",
     "deploy:pages": "npm run build:supabase && npx wrangler pages deploy dist --project-name=edugest-gn --branch=master --commit-dirty=true"
