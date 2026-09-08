@@ -33,8 +33,6 @@ export function EcolesTab({
   sauvegarderPlan,
   planPanelRef,
   chargerEcoles,
-  lancerBackfillPublic, backfillEnCours,
-  lancerMigrationAnnee, migrationAnneeEnCours,
   S,
 }) {
   return (
@@ -43,8 +41,6 @@ export function EcolesTab({
         recherche={recherche} setRecherche={setRecherche}
         setCreationOuverte={setCreationOuverte}
         chargerEcoles={chargerEcoles}
-        lancerBackfillPublic={lancerBackfillPublic} backfillEnCours={backfillEnCours}
-        lancerMigrationAnnee={lancerMigrationAnnee} migrationAnneeEnCours={migrationAnneeEnCours}
         S={S}
       />
 

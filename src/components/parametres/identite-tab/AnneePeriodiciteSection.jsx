@@ -1,10 +1,9 @@
 import { C, TOUS_MOIS_LONGS, SYSTEMES_SCOLAIRES, SECTIONS_ECOLE, JOURS_SEMAINE, calcMoisAnnee, getClassesForSection, getSectionLabel } from "../../../constants";
 import { PERIODICITES, getPeriodesForSchool } from "../../../period-utils";
-import { Btn } from "../../ui";
 
 // Sections "Mois de début d'année" et "Périodicité scolaire" (primaire + secondaire),
-// avec avertissement de migration des notes si la périodicité change.
-export function AnneePeriodiciteSection({ form, setForm, chg, schoolInfo, setMigrationOuverte, inp, sec }) {
+// avec avertissement si la périodicité change alors que des notes existent.
+export function AnneePeriodiciteSection({ form, setForm, chg, schoolInfo, inp, sec }) {
   const sectionsChoisies = Array.isArray(form.sectionsActives) && form.sectionsActives.length
     ? form.sectionsActives : [...SECTIONS_ECOLE];
   const basculerSection = (section) => {
@@ -178,15 +177,9 @@ export function AnneePeriodiciteSection({ form, setForm, chg, schoolInfo, setMig
 
         {periodiciteChange ? (
           <p style={{ margin: "8px 0 0", padding: "8px 12px", background: "#fef3c7", border: "1px solid #fbbf24", borderRadius: 6, fontSize: 11, color: "#92400e" }}>
-            ⚠️ Changer la périodicité après que des notes ont été saisies peut rendre certaines invisibles dans les bulletins. Après enregistrement, utilisez « Migrer les notes existantes » ci-dessous.
+            ⚠️ Changer la périodicité après que des notes ont été saisies peut rendre certaines invisibles dans les bulletins : chaque note garde la période sous laquelle elle a été saisie (T1, S1…). Vérifiez les bulletins après le changement.
           </p>
         ) : null}
-        <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <Btn sm v="ghost" onClick={() => setMigrationOuverte(true)}>🔁 Migrer les notes existantes…</Btn>
-          <span style={{ fontSize: 11, color: "#64748b" }}>
-            Détecte les notes saisies sous une ancienne périodicité et propose un mapping vers la périodicité actuelle.
-          </span>
-        </div>
       </div>
     </>
   );

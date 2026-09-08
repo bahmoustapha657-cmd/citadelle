@@ -17,7 +17,6 @@ export function IdentiteTab({
   couleursDetectees,
   setCouleursDetectees,
   appliquerCouleursDetectees,
-  setMigrationOuverte,
   inp,
   lbl,
   sec,
@@ -39,7 +38,7 @@ export function IdentiteTab({
         lbl={lbl}
         sec={sec}
       />
-      <AnneePeriodiciteSection form={form} setForm={setForm} chg={chg} schoolInfo={schoolInfo} setMigrationOuverte={setMigrationOuverte} inp={inp} sec={sec} />
+      <AnneePeriodiciteSection form={form} setForm={setForm} chg={chg} schoolInfo={schoolInfo} inp={inp} sec={sec} />
     </>
   );
 }
