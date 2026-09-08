@@ -4,10 +4,10 @@
 // lecture de la collection les retéléchargerait toutes. Elles vivent
 // désormais dans le stockage objet ; la colonne ne garde qu'une URL.
 //
-// Le chemin d'envoi visait encore FIREBASE Storage, resté en place après la
-// migration : une photo prise aujourd'hui partait vers un projet qui n'est
-// plus la production. Firebase n'est conservé ici qu'en repli, chargé à la
-// demande pour ne rien peser dans le bundle Supabase.
+// Le stockage est Supabase, sans repli : le repli Firebase a été retiré avec
+// le reste du backend (liquidation, lot 1). Vérifié avant retrait sur l'export
+// complet des 36 tables : AUCUNE donnée ne référençait encore une URL
+// firebasestorage — pas une photo d'élève, pas un logo d'école.
 // ⚠️ TOUTE BALISE <img> QUI AFFICHE UNE DE CES URL DOIT PORTER
 //    crossOrigin="anonymous" — sans exception, y compris dans le HTML des
 //    documents imprimés.
@@ -17,7 +17,6 @@
 //    Supabase Storage n'envoie PAS — OU si elle est demandée en mode CORS,
 //    ce que fait précisément l'attribut crossOrigin. Vérifié sur la
 //    production : sans l'attribut l'image est BLOQUÉE, avec elle charge.
-import { isSupabase } from "./backend";
 import { getSupabase } from "./supabaseClient";
 import { dataUrlToBlob } from "./data-url.js";
 
@@ -35,43 +34,25 @@ function nomAleatoire(extension) {
   return `${alea}.${extension}`;
 }
 
-async function firebase() {
-  const [{ getStorage, ref, uploadBytes, getDownloadURL, deleteObject }] = await Promise.all([
-    import("firebase/storage"),
-  ]);
-  return { getStorage, ref, uploadBytes, getDownloadURL, deleteObject };
-}
-
 export async function uploadFichier(fichier, chemin) {
-  if (isSupabase) {
-    const sb = getSupabase();
-    const { error } = await sb.storage.from(BUCKET).upload(chemin, fichier, {
-      upsert: true,
-      contentType: fichier?.type || undefined,
-    });
-    if (error) throw new Error(error.message);
-    return sb.storage.from(BUCKET).getPublicUrl(chemin).data.publicUrl;
-  }
-  const { getStorage, ref, uploadBytes, getDownloadURL } = await firebase();
-  const storageRef = ref(getStorage(), chemin);
-  await uploadBytes(storageRef, fichier);
-  return getDownloadURL(storageRef);
+  const sb = getSupabase();
+  const { error } = await sb.storage.from(BUCKET).upload(chemin, fichier, {
+    upsert: true,
+    contentType: fichier?.type || undefined,
+  });
+  if (error) throw new Error(error.message);
+  return sb.storage.from(BUCKET).getPublicUrl(chemin).data.publicUrl;
 }
 
 // Supprime un fichier à partir de son URL publique. Best-effort : un fichier
 // déjà absent n'est pas une erreur pour l'appelant.
 export async function supprimerFichier(url) {
   try {
-    if (isSupabase) {
-      const marqueur = `/object/public/${BUCKET}/`;
-      const i = String(url || "").indexOf(marqueur);
-      if (i === -1) return; // URL étrangère (ancienne Firebase) : rien à faire ici
-      const chemin = decodeURIComponent(String(url).slice(i + marqueur.length));
-      await getSupabase().storage.from(BUCKET).remove([chemin]);
-      return;
-    }
-    const { getStorage, ref, deleteObject } = await firebase();
-    await deleteObject(ref(getStorage(), url));
+    const marqueur = `/object/public/${BUCKET}/`;
+    const i = String(url || "").indexOf(marqueur);
+    if (i === -1) return; // URL hors de notre bucket : rien à supprimer ici
+    const chemin = decodeURIComponent(String(url).slice(i + marqueur.length));
+    await getSupabase().storage.from(BUCKET).remove([chemin]);
   } catch { /* déjà supprimé, ou URL non gérée */ }
 }
 
