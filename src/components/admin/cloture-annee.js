@@ -18,48 +18,30 @@
 // La logique pure (instantané, état vierge, projection d'une année) vit dans
 // cloture-annee-utils.js — ce fichier ne porte que les accès aux données.
 
-import { collection, doc, getDocs, writeBatch } from "firebase/firestore";
-import { db } from "../../firebaseDb";
-import { isSupabase } from "../../backend";
 import { chargerCollection, modifierChampDoc } from "../../backend/data-supabase";
 import {
   COLLECTIONS_ELEVES, aDesPaiements, champsCloture, champsRestauration,
 } from "./cloture-annee-utils";
 
-// Limite Firestore : 500 opérations par batch (marge de sécurité à 450).
-const BATCH_MAX = 450;
-// Supabase : nb d'updates lancés en parallèle (modifierChampDoc = 1 par appel).
+// Nombre d'updates lancés en parallèle (modifierChampDoc = 1 appel par fiche).
+// Assez pour que la clôture d'un établissement entier reste rapide, assez peu
+// pour ne pas saturer la connexion d'une école.
 const SB_PARALLELE = 40;
 
 async function chargerEleves(schoolId) {
   const parCollection = [];
   for (const nom of COLLECTIONS_ELEVES) {
-    if (isSupabase) {
-      const { items } = await chargerCollection(schoolId, nom);
-      parCollection.push({ collection: nom, eleves: items || [] });
-    } else {
-      const snap = await getDocs(collection(db, "ecoles", schoolId, nom));
-      parCollection.push({ collection: nom, eleves: snap.docs.map((d) => ({ ...d.data(), _id: d.id })) });
-    }
+    const { items } = await chargerCollection(schoolId, nom);
+    parCollection.push({ collection: nom, eleves: items || [] });
   }
   return parCollection;
 }
 
 async function appliquerUpdates(schoolId, updates) {
-  if (isSupabase) {
-    for (let i = 0; i < updates.length; i += SB_PARALLELE) {
-      await Promise.all(updates.slice(i, i + SB_PARALLELE).map(
-        (u) => modifierChampDoc(schoolId, u.collection, u.id, u.champs),
-      ));
-    }
-    return;
-  }
-  for (let i = 0; i < updates.length; i += BATCH_MAX) {
-    const batch = writeBatch(db);
-    for (const u of updates.slice(i, i + BATCH_MAX)) {
-      batch.update(doc(db, "ecoles", schoolId, u.collection, u.id), u.champs);
-    }
-    await batch.commit();
+  for (let i = 0; i < updates.length; i += SB_PARALLELE) {
+    await Promise.all(updates.slice(i, i + SB_PARALLELE).map(
+      (u) => modifierChampDoc(schoolId, u.collection, u.id, u.champs),
+    ));
   }
 }
 
