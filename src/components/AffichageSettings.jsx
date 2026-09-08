@@ -1,6 +1,5 @@
 import React, { useState, useContext } from "react";
-import { doc, updateDoc } from "firebase/firestore";
-import { db } from "../firebaseDb";
+import { sauverParametresEcole } from "../backend/data-supabase";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { C } from "../constants";
 import { Stat } from "./ui";
@@ -13,7 +12,10 @@ function AffichageSettings({sec, setMsgSucces, setErreur}) {
   const sauvegarder = async () => {
     setSaving(true);
     try {
-      await updateDoc(doc(db,"ecoles",schoolId), { triEleves });
+      // Écrivait dans FIRESTORE alors que la production lit Supabase : le
+      // réglage s'affichait « enregistré » et l'ordre des listes ne changeait
+      // jamais (liquidation Firebase, lot 2).
+      await sauverParametresEcole(schoolId, { triEleves });
       setSchoolInfo(p=>({...p, triEleves}));
       setMsgSucces("Paramètres d'affichage enregistrés !");
       setTimeout(()=>setMsgSucces(""),3000);

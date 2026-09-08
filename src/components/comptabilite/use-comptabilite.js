@@ -1,10 +1,9 @@
 import { useContext, useState } from "react";
-import { doc, updateDoc } from "firebase/firestore";
 import { fmt, getAnnee, peutModifierEleves, peutModifier } from "../../constants";
 import { hasWrite } from "../../../shared/postes-config.js";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { useFirestore } from "../../hooks/useFirestore";
-import { db } from "../../firebaseDb";
+import { sauverParametresEcole } from "../../backend/data-supabase";
 import { toggleFraisAnnexe as toggleFraisAnnexeAction, toggleMens as toggleMensAction } from "./payment-actions";
 import { ensureClasse as ensureClasseHelper, sortAlphaEleves } from "./eleves-helpers";
 import { useComptaSalaires } from "./useComptaSalaires";
@@ -244,7 +243,11 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
     const blocage = !!schoolInfo.blocageParentImpaye;
     if (!canCreate) { toast("Action réservée au comptable ou à l'administrateur.", "warning"); return; }
     try {
-      await updateDoc(doc(db, "ecoles", schoolId), { blocageParentImpaye: !blocage });
+      // Écrivait dans FIRESTORE alors que la production lit Supabase : le
+      // message « Accès parents bloqué » s'affichait sans que le blocage ne
+      // s'applique jamais. schoolInfo se rafraîchit ensuite tout seul, les
+      // paramètres d'école étant en temps réel (liquidation Firebase, lot 2).
+      await sauverParametresEcole(schoolId, { blocageParentImpaye: !blocage });
       toast(blocage ? "🔓 Accès parents rétabli" : "🔒 Accès parents bloqué pour les impayés", "success");
     } catch (e) {
       console.error("toggleBlocage error:", e);
