@@ -1,6 +1,5 @@
 import React, { useState, useContext } from "react";
-import { doc, updateDoc } from "firebase/firestore";
-import { db } from "../firebaseDb";
+import { sauverParametresEcole } from "../backend/data-supabase";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { C, getAnnee } from "../constants";
 import { Btn, Stat, TR } from "./ui";
@@ -30,7 +29,10 @@ function MatriculeSettings({sec, lbl, inp, setMsgSucces, setErreur}) {
   const sauvegarderMat = async () => {
     setSavingMat(true);
     try {
-      await updateDoc(doc(db,"ecoles",schoolId), cfgLocal);
+      // Écrivait dans FIRESTORE alors que la production lit Supabase : le
+      // modèle de matricule repartait sur les valeurs par défaut au
+      // rechargement (liquidation Firebase, lot 2).
+      await sauverParametresEcole(schoolId, cfgLocal);
       setSchoolInfo(prev=>({...prev,...cfgLocal}));
       setMsgSucces("Modèle de matricule enregistré."); setTimeout(()=>setMsgSucces(""),3000);
     } catch(e) { setErreur(e.message); } finally { setSavingMat(false); }
