@@ -61,28 +61,30 @@ export function useEcole({
   // Upsert : une note existante (avec _id) est MISE À JOUR, sinon créée.
   // Évite les doublons quand la grille réenregistre une note déjà saisie.
   const ajN = (item) => ((item && item._id) ? modN(item) : ajNraw(item));
-  // La classe suit l'ANNÉE CONSULTÉE, pas la fiche du jour.
+  // DEUX listes, parce que « la classe de l'élève » n'a pas la même réponse
+  // selon la question posée :
   //
-  // Sans cela l'élève arrive ici avec la classe que la promotion vient de lui
-  // donner : ses notes de 3ème sont moyennées contre le programme de 4ème, et
-  // le tableau d'honneur de l'année écoulée affiche tout le monde avancé d'un
-  // cran. C'est exactement ce que la direction voyait.
+  //   `eleves`       — la classe RÉELLE, celle d'aujourd'hui. C'est la liste de
+  //                    la gestion : effectifs, listes de classe, filtres,
+  //                    discipline, saisie des notes.
+  //   `elevesAnnee`  — la classe de l'ANNÉE CONSULTÉE, reprise de l'instantané
+  //                    de clôture. C'est la liste des RÉSULTATS : tableau
+  //                    d'honneur et bulletins, qui rendent compte d'une année
+  //                    précise et doivent la nommer correctement.
   //
-  // Le déclencheur est la DONNÉE — l'existence d'un instantané pour cette
-  // année — et non le « mode archive ». Ce dernier compare l'année consultée à
-  // l'année courante, or les deux se confondent dès qu'on revient sur une
-  // année close : le mode s'éteignait au moment précis où il servait.
-  //
-  // Seule la classe est reprise de l'instantané. La scolarité complète
-  // (mensualités, frais) reste l'affaire de la Comptabilité, qui a sa propre
-  // projection et d'autres règles.
-  const { items: elevesBruts, chargement: cE, modifier: modE } = useFirestore(cleEleves);
-  const eleves = useMemo(
-    () => elevesBruts.map((e) => {
+  // La projection s'appliquait à `eleves`, donc à tout le module. Dès qu'un
+  // instantané existait pour l'année consultée — le cas de toutes les fiches
+  // d'une école qui a clôturé — les effectifs affichaient la répartition
+  // D'AVANT la promotion. Pire : un élève inscrit après la clôture n'a pas
+  // d'instantané et gardait sa vraie classe, si bien que la même liste mêlait
+  // deux populations. Les effectifs n'étaient pas décalés, ils étaient faux.
+  const { items: eleves, chargement: cE, modifier: modE } = useFirestore(cleEleves);
+  const elevesAnnee = useMemo(
+    () => eleves.map((e) => {
       const classe = classePourAnnee(e, anneeConsultee);
       return classe === e.classe ? e : { ...e, classe };
     }),
-    [elevesBruts, anneeConsultee],
+    [eleves, anneeConsultee],
   );
   const { items: absences, chargement: cAbs, ajouter: ajAbs, supprimer: supAbs } = useFirestore(cleEleves + "_absences");
   const { items: enseignements, chargement: cEng, ajouter: ajEng, modifier: modEng, supprimer: supEng } = useFirestore(cleEns + "_enseignements");
@@ -199,5 +201,6 @@ export function useEcole({
     noteForms, defaultNoteType, grilleType, setGrilleType,
     canCreate, canEdit, canCreateDiscipline, canEditDiscipline, canCreateParent, moy, classesUniq,
     elevesFiltres, effectifReel, saveClasse, saveEnseignant, anneesDispo,
+    elevesAnnee,
   };
 }
