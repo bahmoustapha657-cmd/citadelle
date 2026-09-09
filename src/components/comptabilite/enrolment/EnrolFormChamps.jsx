@@ -53,6 +53,12 @@ export function EnrolFormChamps({ form, chg, niveauEnrol }) {
         <option value="Première inscription">{t("enrolment.firstEnrollment")}</option>
         <option value="Réinscription">{t("enrolment.reEnrollment")}</option>
       </Selec>
+      {/* Date d'arrivée : saisie pour TOUS les élèves (la date de départ, elle,
+          n'apparaît qu'aux statuts de sortie). Laissée vide par défaut plutôt
+          que pré-remplie à aujourd'hui — les fiches créées par import portent
+          des élèves déjà présents depuis des années, une date du jour
+          automatique écrirait une fausse date d'entrée sur leur attestation. */}
+      <Input label={t("enrolment.arrivalDate")} type="date" value={form.dateArrivee||""} onChange={chg("dateArrivee")}/>
       {/* Classe d'examen (CEE, BEPC, BAC) : c'est CE champ, et lui seul, qui
           décide du passage — la promotion ne se sert pas des moyennes ici.
           Tant qu'il est vide, l'élève est laissé tel quel. */}

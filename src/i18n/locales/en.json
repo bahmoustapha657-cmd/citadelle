@@ -102,6 +102,7 @@
     "enrollmentType": "Enrollment type",
     "firstEnrollment": "First enrollment",
     "reEnrollment": "Re-enrollment",
+    "arrivalDate": "Date joined the school",
     "departureDate": "Departure date",
     "departureReason": "Departure reason",
     "departureReasonPlaceholder": "E.g. transfer to Lycée Donka, end of year...",
@@ -442,6 +443,8 @@
     "rowNumber": "No.",
     "class": "Class",
     "dateOfBirth": "Date of birth",
+    "placeOfBirth": "Place of birth",
+    "ien": "National student ID",
     "filiation": "Parents",
     "compositionResults": "Evaluation results",
     "studentsHeader": "Students",
@@ -459,7 +462,13 @@
     },
     "attestation": {
       "title": "Enrollment certificate",
-      "intro": "I, the undersigned Director of this institution, certify that the student named below is duly enrolled for the school year",
+      "number": "Certificate No.",
+      "certifies": "I, the undersigned Director of this institution, certify that the student named below",
+      "enrolled": "is duly enrolled in our institution for the school year",
+      "enrolledPast": "was duly enrolled in our institution for the school year",
+      "arrival": "Date joined",
+      "departure": "Date left",
+      "annualAverage": "Annual average",
       "issued": "Issued to serve and assert as appropriate"
     },
     "card": {

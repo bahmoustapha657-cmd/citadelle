@@ -22,6 +22,7 @@ export function RapideEnrolModale({
     if(!fermer){
       const mat=genererMatricule([...elevesEnrol,r],niveauEnrol,schoolInfo);
       setForm(p=>({tuteur:p.tuteur,contactTuteur:p.contactTuteur,filiation:p.filiation,domicile:p.domicile,
+        dateArrivee:p.dateArrivee,
         statut:"Actif",sexe:"M",niveau:niveauEnrol,matricule:mat,typeInscription:"Première inscription"}));
     }
     return true;
@@ -37,6 +38,9 @@ export function RapideEnrolModale({
         <Input label="Contact Tuteur" value={form.contactTuteur||""} onChange={chg("contactTuteur")} placeholder="622 000 000"/>
         <div style={{gridColumn:"1/-1"}}><Input label="Filiation (Père / Mère)" value={form.filiation||""} onChange={chg("filiation")} placeholder="Père: … / Mère: …"/></div>
         <div style={{gridColumn:"1/-1"}}><Input label="Domicile" value={form.domicile||""} onChange={chg("domicile")} placeholder="Quartier, commune…"/></div>
+        {/* Une fratrie arrive le même jour : la date est conservée d'un élève
+            au suivant, comme le tuteur et le domicile. */}
+        <Input label="Date d'arrivée" type="date" value={form.dateArrivee||""} onChange={chg("dateArrivee")}/>
       </div>
     </div>
     <div style={{background:"#fafafa",border:"1px solid #e5e7eb",borderRadius:10,padding:"12px 14px"}}>

@@ -15,6 +15,10 @@ export function AttestationsTab({
   annee,
   section = "college",
   cE,
+  notes = [],
+  matieresForClasse,
+  periodes = [],
+  maxNote = 20,
 }) {
   const { t } = useTranslation();
   // Le niveau imprimé sur l'attestation et le code statistique de son pied de
@@ -60,7 +64,14 @@ export function AttestationsTab({
             <TD><Badge color="blue">{e.classe}</Badge></TD>
             <TD><Badge color={badgeCouleur}>{sectionLabel}</Badge></TD>
             <TD><Badge color={e.statut==="Actif"?"vert":"gray"}>{e.statut||"Actif"}</Badge></TD>
-            <TD><Btn sm v="amber" onClick={()=>imprimerAttestation(e,section,annee,schoolInfo)}>🖨️ Imprimer</Btn></TD>
+            <TD><Btn sm v="amber" onClick={()=>imprimerAttestation(e,section,annee,schoolInfo,{
+              notes,
+              // Les matières de SA classe, comme le bulletin : une moyenne
+              // calculée sur le catalogue complet ne correspondrait plus.
+              matieres: matieresForClasse ? matieresForClasse(e.classe) : [],
+              periodes,
+              maxNote,
+            })}>🖨️ Imprimer</Btn></TD>
           </TR>)}</tbody>
         </table></div></Card>}
     </div>

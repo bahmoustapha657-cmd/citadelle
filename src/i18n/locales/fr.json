@@ -102,6 +102,7 @@
     "enrollmentType": "Type d'inscription",
     "firstEnrollment": "Première inscription",
     "reEnrollment": "Réinscription",
+    "arrivalDate": "Date d'arrivée dans l'établissement",
     "departureDate": "Date de départ",
     "departureReason": "Motif du départ",
     "departureReasonPlaceholder": "Ex: Transfert vers Lycée Donka, fin d'année...",
@@ -442,6 +443,8 @@
     "rowNumber": "N°",
     "class": "Classe",
     "dateOfBirth": "Date de naissance",
+    "placeOfBirth": "Lieu de naissance",
+    "ien": "IEN",
     "filiation": "Filiation",
     "compositionResults": "Résultats des évaluations",
     "studentsHeader": "Élèves",
@@ -459,7 +462,13 @@
     },
     "attestation": {
       "title": "Attestation de niveau",
-      "intro": "Je soussigné, Directeur de l'établissement, atteste que l'élève désigné ci-dessous est régulièrement inscrit dans notre établissement pour l'année scolaire",
+      "number": "Attestation N°",
+      "certifies": "Je soussigné(e), Directeur de l'établissement, atteste que l'élève désigné ci-dessous",
+      "enrolled": "est régulièrement inscrit(e) dans notre établissement pour l'année scolaire",
+      "enrolledPast": "a été régulièrement inscrit(e) dans notre établissement pour l'année scolaire",
+      "arrival": "Date d'arrivée",
+      "departure": "Date de départ",
+      "annualAverage": "Moyenne annuelle",
       "issued": "Délivré pour servir et valoir ce que de droit"
     },
     "card": {
