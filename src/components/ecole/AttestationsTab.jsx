@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import { C, getSectionLabel } from "../../constants";
 import { Badge, Btn, Card, Chargement, TD, THead, TR, Vide } from "../ui";
 import { imprimerAttestation } from "../../reports";
+import { anneePrecedente } from "../../reports/attestation/attestation-moyenne";
+import { useFirestore } from "../../hooks/useFirestore";
 
 export function AttestationsTab({
   rechercheMatricule,
@@ -19,8 +21,18 @@ export function AttestationsTab({
   matieresForClasse,
   periodes = [],
   maxNote = 20,
+  cleNotes,
 }) {
   const { t } = useTranslation();
+  // Notes de l'année écoulée : à la rentrée, l'année en cours est vide et
+  // l'attestation sortirait sans moyenne. Le chargement ne coûte que dans CET
+  // onglet — le composant n'est monté que lorsqu'il est ouvert — et il est
+  // ignoré si l'écran ne fournit pas la collection.
+  // La collection est passée VIDE tant qu'on n'a pas d'année précédente
+  // exploitable : `useFirestore` sans filtre d'année chargerait toutes les
+  // notes de toutes les années de la section.
+  const anneePrec = anneePrecedente(annee);
+  const { items: notesPrecedentes } = useFirestore(anneePrec ? (cleNotes || "") : "", { annee: anneePrec });
   // Le niveau imprimé sur l'attestation et le code statistique de son pied de
   // page officiel viennent de la SECTION du module, pas de `avecEns` : ce
   // drapeau vaut true partout (y compris au primaire et en maternelle), et
@@ -66,6 +78,7 @@ export function AttestationsTab({
             <TD><Badge color={e.statut==="Actif"?"vert":"gray"}>{e.statut||"Actif"}</Badge></TD>
             <TD><Btn sm v="amber" onClick={()=>imprimerAttestation(e,section,annee,schoolInfo,{
               notes,
+              notesPrecedentes,
               // Les matières de SA classe, comme le bulletin : une moyenne
               // calculée sur le catalogue complet ne correspondrait plus.
               matieres: matieresForClasse ? matieresForClasse(e.classe) : [],

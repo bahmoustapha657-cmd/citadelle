@@ -140,6 +140,7 @@ export function EcoleTabsAdmin({ e, section, avecEns, userRole, annee, maxNote, 
         matieresForClasse={e.matieresForClasse}
         periodes={e.periodes}
         maxNote={maxNote}
+        cleNotes={cleNotes}
       />}
     </>
   );

@@ -32,3 +32,35 @@ export function getMoyenneAnnuelleEleve({ eleve, notes = [], matieres = [], peri
 export function formatMoyenneAnnuelle(moyenne, maxNote = 20) {
   return moyenne == null ? "" : `${moyenne.toFixed(2).replace(".", ",")}/${maxNote}`;
 }
+
+// « 2026-2027 » → « 2025-2026 ». Renvoie "" si le format n'est pas reconnu.
+export function anneePrecedente(annee) {
+  const m = /^(\d{4})-(\d{4})$/.exec(String(annee || "").trim());
+  return m ? `${Number(m[1]) - 1}-${m[1]}` : "";
+}
+
+// Moyenne à IMPRIMER, avec son année.
+//
+// À la rentrée, l'année en cours n'a encore aucune note : l'attestation
+// sortait alors sans moyenne, au moment précis où les familles en réclament une
+// (dossier d'inscription ailleurs, bourse, concours). On retombe donc sur
+// l'ANNÉE ÉCOULÉE — c'est la dernière moyenne réellement acquise, et le
+// document imprime l'année à laquelle elle se rapporte, jamais un chiffre
+// orphelin qu'on croirait de l'année en cours.
+//
+// L'année en cours reste prioritaire dès qu'elle porte une seule note : une
+// moyenne de première période vaut mieux qu'une moyenne périmée.
+export function getMoyenneAttestation({
+  eleve, matieres = [], periodes = [], niveau = "", annee = "",
+  notes = [], notesPrecedentes = [],
+} = {}) {
+  const commun = { eleve, matieres, periodes, niveau };
+
+  const courante = getMoyenneAnnuelleEleve({ ...commun, notes });
+  if (courante != null) return { moyenne: courante, annee };
+
+  const precedente = getMoyenneAnnuelleEleve({ ...commun, notes: notesPrecedentes });
+  if (precedente != null) return { moyenne: precedente, annee: anneePrecedente(annee) };
+
+  return { moyenne: null, annee: "" };
+}

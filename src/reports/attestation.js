@@ -6,7 +6,7 @@
 // de vérification comme les bulletins et reçus, et une formule administrative
 // en une seule phrase continue.
 
-import { getAnnee, today } from "../constants.js";
+import { anneeScolaireDeDate, estSorti, getAnnee, today } from "../constants.js";
 import {
   getOfficialLegalFooterHTML,
   legalProfileVide,
@@ -19,13 +19,14 @@ import {
   enteteDoc,
   printDir,
   printLang,
+  signataireIdentite,
   signataireSection,
   tr,
   watermarkHtml,
   edugestBrandHTML,
 } from "./print-helpers.js";
 import { qrPayload, qrSecuriseImgHtml } from "./qr.js";
-import { formatMoyenneAnnuelle, getMoyenneAnnuelleEleve } from "./attestation/attestation-moyenne.js";
+import { formatMoyenneAnnuelle, getMoyenneAttestation } from "./attestation/attestation-moyenne.js";
 
 // `niveau` = identifiant de section ("prescolaire" | "primaire" | "college" |
 // "lycee"). Le collège et le lycée partagent le libellé « Secondaire », comme
@@ -74,22 +75,67 @@ const ligneInfo = (label, valeur, fort = false) => {
     + `<span class="val">${val}</span></div>`;
 };
 
-// `options` : { notes, matieres, periodes, maxNote } — fournis par l'onglet
-// Attestations. Absents (appel historique), la moyenne annuelle est
-// simplement omise du document.
+// `options` : { notes, notesPrecedentes, matieres, periodes, maxNote } —
+// fournis par l'onglet Attestations. Absents (appel historique), la moyenne
+// annuelle est simplement omise du document.
 export const imprimerAttestation = async (eleve, niveau, annee, schoolInfo = {}, options = {}) => {
-  const { notes = [], matieres = [], periodes = [], maxNote = 20 } = options;
+  const { notes = [], notesPrecedentes = [], matieres = [], periodes = [], maxNote = 20 } = options;
   const niveauLabel = tr(CLE_LABEL_NIVEAU[niveau] || "dashboard.primary");
   const anneeScolaire = annee || getAnnee();
-  const numero = numeroAttestation(eleve, schoolInfo, anneeScolaire);
-  const moyenne = getMoyenneAnnuelleEleve({ eleve, notes, matieres, periodes, niveau });
-  const moyenneTexte = formatMoyenneAnnuelle(moyenne, maxNote);
   const arrivee = dateFr(eleve.dateArrivee);
   const depart = dateFr(eleve.dateDepart);
-  // Élève parti (date de départ renseignée) : la formule passe au PASSÉ.
-  // Certifier qu'un élève « est régulièrement inscrit » alors qu'il a quitté
-  // l'établissement en février serait une fausse attestation.
-  const cleFormule = depart ? "reports.attestation.enrolledPast" : "reports.attestation.enrolled";
+
+  // Année scolaire que le document CERTIFIE — distincte de celle de l'écran.
+  // Un élève parti en février 2026 dont on réimprime l'attestation en
+  // 2026-2027 relève de 2025-2026 : c'est cette année-là qui doit figurer au
+  // numéro de pièce et dans le QR, sans quoi la pièce se référence sous une
+  // année où l'élève n'était plus là. Sans date de départ exploitable, on n'a
+  // rien de mieux que l'année de l'écran.
+  const anneeAttestee = (estSorti(eleve) && anneeScolaireDeDate(eleve.dateDepart)) || anneeScolaire;
+  const numero = numeroAttestation(eleve, schoolInfo, anneeAttestee);
+
+  // Moyenne de l'année en cours, ou à défaut de l'année écoulée : `anneeMoyenne`
+  // dit toujours à quelle année le chiffre imprimé se rapporte.
+  const { moyenne, annee: anneeMoyenne } = getMoyenneAttestation({
+    eleve, matieres, periodes, niveau, annee: anneeScolaire, notes, notesPrecedentes,
+  });
+  const moyenneTexte = formatMoyenneAnnuelle(moyenne, maxNote);
+  // Ce que le document CERTIFIE exactement.
+  //
+  // Pour un élève parti, l'année scolaire en cours est un contresens : celui
+  // qui est arrivé en septembre 2025 et parti en février 2026 n'a jamais été
+  // inscrit en 2026-2027, année de l'écran d'où l'on imprime. On atteste donc
+  // la PÉRIODE réellement passée dans l'établissement, et l'année scolaire ne
+  // sert plus que lorsqu'on ignore ces dates.
+  //
+  // Le passé se déclenche sur un statut de sortie autant que sur une date :
+  // la date de départ est facultative, un élève « Transféré » sans date reste
+  // un élève parti et ne peut pas être certifié inscrit aujourd'hui.
+  // `fort` met en évidence ce que le document certifie — la période ou l'année.
+  const fort = (v) => `<strong>${v}</strong>`;
+  const formuleEnrolement = (() => {
+    if (!estSorti(eleve)) {
+      // Élève présent : la date d'arrivée devient une ancienneté, ce qui fait
+      // de l'attestation une preuve de scolarité CONTINUE et non plus du seul
+      // millésime en cours.
+      return arrivee
+        ? tr("reports.attestation.enrolledSince", { du: fort(arrivee), annee: fort(anneeScolaire) })
+        : tr("reports.attestation.enrolled", { annee: fort(anneeScolaire) });
+    }
+    if (arrivee && depart) return tr("reports.attestation.enrolledFromTo", { du: fort(arrivee), au: fort(depart) });
+    if (depart) return tr("reports.attestation.enrolledUntil", { au: fort(depart) });
+    return tr("reports.attestation.enrolledPast", { annee: fort(anneeAttestee) });
+  })();
+
+  // Qui atteste. La formule d'ouverture nomme le signataire et son VRAI poste
+  // — « Djiba Oury Diallo, La Principale » — au lieu du « Directeur » générique :
+  // c'est le même responsable de section que le bloc de signature en bas de
+  // page, les deux ne peuvent donc pas se contredire. Sans responsable désigné
+  // dans Comptes & Postes, on retombe sur le titre générique, sans nom.
+  const signataire = signataireIdentite(schoolInfo, niveau, tr("reports.director"));
+  const formuleCertifie = signataire.nom
+    ? tr("reports.attestation.certifiesNamed", { nom: signataire.nom, poste: signataire.titre })
+    : tr("reports.attestation.certifies", { poste: signataire.titre });
 
   // Fenêtre ouverte AVANT l'await du QR (geste utilisateur) : sinon le
   // navigateur classe l'ouverture comme popup et la bloque.
@@ -107,7 +153,7 @@ export const imprimerAttestation = async (eleve, niveau, annee, schoolInfo = {},
     Eleve: `${eleve.nom || ""} ${eleve.prenom || ""}`,
     IEN: eleve.ien,
     Classe: eleve.classe,
-    Annee: anneeScolaire,
+    Annee: anneeAttestee,
     Moy: moyenneTexte,
     Du: arrivee,
     Au: depart,
@@ -180,7 +226,7 @@ export const imprimerAttestation = async (eleve, niveau, annee, schoolInfo = {},
   <div class="titre"><h2>${tr("reports.attestation.title")}</h2></div>
   <div class="losange">◆ ◆ ◆</div>
   <div class="numero">${tr("reports.attestation.number")} ${numero}</div>
-  <p class="formule">${tr("reports.attestation.certifies")} :</p>
+  <p class="formule">${formuleCertifie} :</p>
   <div class="infos">
     ${ligneInfo(tr("reports.studentName"), `${eleve.nom || ""} ${eleve.prenom || ""}`, true)}
     ${ligneInfo(tr("school.bulletins.matricule"), eleve.matricule)}
@@ -193,10 +239,10 @@ export const imprimerAttestation = async (eleve, niveau, annee, schoolInfo = {},
     ${ligneInfo(tr("reports.attestation.departure"), depart)}
   </div>
   ${moyenneTexte ? `<div class="moy">
-    <span class="moy-lbl">${tr("reports.attestation.annualAverage")} — ${anneeScolaire}</span>
+    <span class="moy-lbl">${tr("reports.attestation.annualAverage")} — ${anneeMoyenne}</span>
     <span class="moy-val">${moyenneTexte}</span>
   </div>` : ""}
-  <p class="formule">${tr(cleFormule)} <strong>${anneeScolaire}</strong>.</p>
+  <p class="formule">${formuleEnrolement}.</p>
   <p class="formule issued">${tr("reports.attestation.issued")}.</p>
   <p class="lieu-date">${tr("reports.ordreMutation.issuedAt")} ${schoolInfo.ville || "—"}, ${tr("reports.ordreMutation.on")} ${today()}</p>
   <div class="pied">

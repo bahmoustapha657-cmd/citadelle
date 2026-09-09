@@ -1,7 +1,7 @@
 import { useContext } from "react";
 import { useTranslation } from "react-i18next";
 import { SchoolContext } from "../../../contexts/SchoolContext";
-import { C, getClassesForSection, getSystemeScolaire } from "../../../constants";
+import { C, STATUTS_SORTIE, getClassesForSection, getSystemeScolaire } from "../../../constants";
 import { estClasseExamen } from "../../../promotion-utils";
 import { Champ, Input, Selec } from "../../ui";
 
@@ -69,7 +69,7 @@ export function EnrolFormChamps({ form, chg, niveauEnrol }) {
           <option value="Refusé">Refusé</option>
         </Selec>
       )}
-      {["Transféré","Exclu","Abandonné","Décédé"].includes(form.statut)&&<>
+      {STATUTS_SORTIE.includes(form.statut)&&<>
         <Input label={t("enrolment.departureDate")} type="date" value={form.dateDepart||""} onChange={chg("dateDepart")}/>
         <div style={{gridColumn:"1/-1"}}>
           <Input label={t("enrolment.departureReason")} value={form.motifDepart||""} onChange={chg("motifDepart")} placeholder={t("enrolment.departureReasonPlaceholder")}/>
