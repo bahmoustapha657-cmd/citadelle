@@ -292,3 +292,38 @@ test("élève présent sans date d'arrivée : formule inchangée, aucune ancienn
   assert.ok(html.includes("est régulièrement inscrit(e)"));
   assert.ok(html.includes("<strong>2026-2027</strong>"));
 });
+
+// ── Couleurs de l'école ───────────────────────────────────────────────────
+const imprimerAvecEcole = async (schoolInfoTest) => {
+  let html = "";
+  globalThis.window = { open: () => ({ document: { write: (s) => { html += s; }, close: () => {} } }) };
+  const { imprimerAttestation } = await import("../src/reports/attestation.js");
+  await imprimerAttestation(eleve, "college", "2025-2026", schoolInfoTest);
+  return html;
+};
+
+test("le document prend les couleurs de l'école, comme les bulletins", async () => {
+  const html = await imprimerAvecEcole({
+    nom: "La Citadelle", ville: "Conakry", couleur1: "#7B1E3A", couleur2: "#C9A227",
+  });
+
+  assert.ok(html.includes("#7B1E3A"));
+  assert.ok(html.includes("#C9A227"));
+  // Filet et lavis de l'encadré dérivent de la couleur principale.
+  assert.ok(html.includes("#7B1E3A33"));
+  assert.ok(html.includes("#7B1E3A0a"));
+  // Le corps du document ne porte plus la charte EduGest. Seul l'en-tête
+  // officiel (enteteDoc, partagé avec les bulletins, les fiches de
+  // compositions et l'emploi du temps) garde son bleu marine figé : le
+  // changer déborderait sur ces documents-là.
+  const styles = html.slice(html.indexOf("<style>"), html.indexOf("</style>"));
+  assert.ok(!styles.includes("#0A1628"));
+  assert.ok(!styles.includes("#00C48C"));
+});
+
+test("école sans couleurs définies : rendu d'origine inchangé", async () => {
+  const html = await imprimerAvecEcole({ nom: "La Citadelle", ville: "Conakry" });
+
+  assert.ok(html.includes("#0A1628"));
+  assert.ok(html.includes("#00C48C"));
+});
