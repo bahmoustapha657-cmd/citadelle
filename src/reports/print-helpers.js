@@ -57,12 +57,31 @@ const POSTE_SECTION = {
 // document doit le refléter plutôt qu'imposer « Le Directeur ».
 // Repli sur la direction si la section n'a pas de responsable désigné : mieux
 // vaut le DG qu'une ligne de signature anonyme.
-export const signataireSection = (schoolInfo = {}, section = "", titreParDefaut = "") => {
+// Identité du signataire, en DEUX morceaux : { titre, nom }. Le bloc de
+// signature les empile ; la formule d'ouverture d'une attestation les met en
+// ligne (« Je soussigné(e), Djiba Oury Diallo, La Principale… »). Elle a donc
+// besoin des morceaux séparés, pas du HTML tout fait.
+export const signataireIdentite = (schoolInfo = {}, section = "", titreParDefaut = "") => {
   const cle = POSTE_SECTION[String(section || "").toLowerCase()] || "";
   if (cle && responsableNom(schoolInfo, cle)) {
-    return signataireHTML(schoolInfo, cle, getRoleLabelForSchool(cle, schoolInfo) || titreParDefaut);
+    return { cle, titre: getRoleLabelForSchool(cle, schoolInfo) || titreParDefaut, nom: responsableNom(schoolInfo, cle) };
   }
-  return signataireHTML(schoolInfo, "direction", titreParDefaut);
+  // Repli sur la direction. Son titre suit lui aussi le libellé de l'école
+  // (« Le Proviseur », « La Directrice ») dès qu'un responsable y est nommé :
+  // le titre générique ne sert plus que pour une signature anonyme.
+  const nomDirection = responsableNom(schoolInfo, "direction");
+  return {
+    cle: "direction",
+    titre: (nomDirection && getRoleLabelForSchool("direction", schoolInfo)) || titreParDefaut,
+    nom: nomDirection,
+  };
+};
+
+export const signataireSection = (schoolInfo = {}, section = "", titreParDefaut = "") => {
+  const { titre, nom } = signataireIdentite(schoolInfo, section, titreParDefaut);
+  return nom
+    ? `${titre}<br/><span style="font-size:1.05em;font-weight:800">${nom}</span>`
+    : titre;
 };
 
 // Supprime les en-têtes / pieds automatiques du navigateur ("about:blank",

@@ -48,6 +48,22 @@ export const calcMoisSalaire = (debut = "Octobre") => {
 };
 export const getAnnee = () => localStorage.getItem("LC_annee") || "2025-2026";
 
+// Année scolaire à laquelle appartient une DATE : « 14/02/2026 » → 2025-2026.
+// Septembre ouvre l'année (TOUS_MOIS_COURTS commence à « Sep ») : de septembre
+// à décembre on est dans AAAA-AAAA+1, de janvier à août dans AAAA-1-AAAA.
+// Accepte l'ISO des <input type="date"> et le JJ/MM/AAAA des imports Excel ;
+// renvoie "" sur tout le reste, à charge de l'appelant de se replier.
+export const anneeScolaireDeDate = (valeur) => {
+  const v = String(valeur ?? "").trim();
+  const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
+  const local = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(v);
+  if (!iso && !local) return "";
+  const an = Number(iso ? iso[1] : local[3]);
+  const mois = Number(iso ? iso[2] : local[2]);
+  if (!an || mois < 1 || mois > 12) return "";
+  return mois >= 9 ? `${an}-${an + 1}` : `${an - 1}-${an}`;
+};
+
 // ── Systèmes de classes (adaptabilité par école) ────────────────
 // Le système choisi dans Paramètres → Identité détermine les listes de
 // classes PROPOSÉES (pastilles, sélecteurs, import). La détection de
@@ -276,6 +292,14 @@ export const getTarifFraisAnnexes = (tarif = {}) => {
 // filtre changent.
 export const estReinscrit = (eleve = {}) => !!eleve.inscriptionPayee;
 export const aReinscrire = (eleve = {}) => eleve.statut === "Actif" && !estReinscrit(eleve);
+
+// ── Sortie de l'établissement ───────────────────────────────────────────────
+// Statuts qui signent un DÉPART définitif : ils ouvrent la saisie de la date
+// de départ dans la fiche d'enrôlement, et l'attestation les rédige au passé.
+// « Inactif » n'en est pas : l'élève est toujours inscrit, simplement en
+// sommeil (l'écran Départs le compte à part, pour ses statistiques).
+export const STATUTS_SORTIE = ["Transféré", "Exclu", "Abandonné", "Décédé"];
+export const estSorti = (eleve = {}) => STATUTS_SORTIE.includes(eleve.statut) || !!eleve.dateDepart;
 
 // Un frais annexe est-il payé pour cet élève ? (« autre » = drapeau legacy)
 export const isFraisAnnexePaye = (eleve = {}, id) => (id === "autre"
