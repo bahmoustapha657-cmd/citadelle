@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { isSupabase } from "../backend";
 import { powerSyncConfigured } from "../backend/powersync/tables";
 
 // Nombre de changements locaux pas encore remontés à Supabase (mode hors
@@ -11,7 +10,7 @@ export function usePowerSyncStatus() {
   const [syncPendantes, setSyncPendantes] = useState(0);
 
   useEffect(() => {
-    if (!isSupabase || !powerSyncConfigured) return;
+    if (!powerSyncConfigured) return;
     let actif = true;
     let unsub = null;
     let timer = null;

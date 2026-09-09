@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { C } from "../../constants";
-import { isSupabase } from "../../backend";
 import { LanguageSwitcher } from "../LanguageSwitcher";
 import { ConnexionChamps } from "./ConnexionChamps";
 import { MotDePasseOublieModal } from "./MotDePasseOublieModal";
@@ -71,7 +70,7 @@ export function ConnexionForm({
         {chargement ? t("auth.loggingIn") : t("auth.loginButton")}
       </button>
 
-      {isSupabase && codeEcole.trim().toLowerCase() !== "superadmin" && (
+      {codeEcole.trim().toLowerCase() !== "superadmin" && (
         <p style={{ textAlign: "center", margin: "0", fontSize: 12 }}>
           <button type="button" onClick={() => setOubliOuvert(true)}
             style={{ background: "none", border: "none", padding: 0, color: C.blue, cursor: "pointer", fontWeight: 700, fontSize: "inherit", fontFamily: "inherit" }}>

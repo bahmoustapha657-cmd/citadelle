@@ -1,5 +1,4 @@
 import { C, MODULES, getModulesForRole, getRoleLabelForSchool } from "../../constants";
-import { isSupabase } from "../../backend";
 import {
   ROLES_HORS_POSTES,
   getSessionPermissions,
@@ -32,7 +31,7 @@ export function computeAppPermissions({ utilisateur, schoolInfo, page, planInfo 
   const isDirection = role === "direction";
   // estAdmin garde son sens initial pour l'onboarding (admin + direction voient le guide)
   const estAdmin = isAdmin || isDirection;
-  const surPostes = isSupabase && !ROLES_HORS_POSTES.includes(role);
+  const surPostes = !ROLES_HORS_POSTES.includes(role);
 
   const permissions = surPostes ? getSessionPermissions(utilisateur, schoolInfo) : null;
   const modulesActifsIds = surPostes ? null : getModulesForRole(role, schoolInfo);
@@ -45,16 +44,13 @@ export function computeAppPermissions({ utilisateur, schoolInfo, page, planInfo 
     && (schoolInfo?.roleSettings?.admin?.writeModules || []).includes(page);
   const directionReadOnlyCurrentPage = isDirection && page === "compta";
   const abonnementExpire = role !== "superadmin" && !!planInfo?.planEstExpire;
-  // École migrée vers la version Supabase : l'ANCIENNE version (backend
-  // Firebase) passe en lecture seule avec bannière de redirection. Le drapeau
-  // est ignoré côté Supabase (il peut avoir été copié dans les données lors
-  // de la migration) et pour le superadmin.
-  const basculeSupabase = !isSupabase && role !== "superadmin" && schoolInfo?.basculeSupabase === true;
+  // `basculeSupabase` a disparu avec la liquidation (lot 6) : ce drapeau mettait
+  // l'ANCIENNE version Firebase en lecture seule, avec une bannière renvoyant
+  // vers la nouvelle. Il n'existe plus de version à quitter.
   const pageSansEcriture = surPostes
     ? (!isDirection && !hasWrite(permissions, page))
     : (isAdmin && !adminCanWriteCurrentPage);
-  const readOnly = basculeSupabase
-    || abonnementExpire
+  const readOnly = abonnementExpire
     || pageSansEcriture
     || directionReadOnlyCurrentPage;
   const couleur2 = schoolInfo.couleur2 || C.green;
@@ -68,6 +64,6 @@ export function computeAppPermissions({ utilisateur, schoolInfo, page, planInfo 
 
   return {
     modulesVisibles, permissions, role, roleEffectif, estAdmin, readOnly,
-    abonnementExpire, basculeSupabase, couleur2, utilisateurLabel,
+    abonnementExpire, couleur2, utilisateurLabel,
   };
 }
