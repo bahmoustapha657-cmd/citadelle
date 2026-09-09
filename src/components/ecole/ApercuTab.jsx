@@ -9,7 +9,7 @@ import { ApercuAnalytics } from "./apercu-tab/ApercuAnalytics";
 import { QrScannerModal } from "../verif-qr/QrScannerModal";
 
 export function ApercuTab({
-  titre = "", classes, eleves, ens, notes, absences, avecEns, moy, maxNote,
+  titre = "", classes, eleves, elevesAnnee, ens, notes, absences, avecEns, moy, maxNote,
   cC, cE, classesUniq, effectifReel, matieresForClasse, couleur, schoolInfo, periodes,
   anneeConsultee = "",
 }) {
@@ -69,8 +69,12 @@ export function ApercuTab({
           true lui aussi — toutes les affiches sortaient donc marquées
           « Secondaire ». Même piège que celui documenté dans BulletinsTab
           pour la périodicité. */}
+      {/* `elevesAnnee` et non `eleves` : le palmarès rend compte d'une année
+          précise, il doit donc nommer la classe que l'élève occupait CETTE
+          année-là. Les compteurs ci-dessus, eux, décrivent l'école
+          d'aujourd'hui et gardent la classe réelle. */}
       <ApercuHonneur
-        eleves={eleves} notes={notes} matieresForClasse={matieresForClasse}
+        eleves={elevesAnnee || eleves} notes={notes} matieresForClasse={matieresForClasse}
         schoolInfo={schoolInfo} annee={anneeConsultee} maxNote={maxNote}
         portee={titre}
       />

@@ -1,10 +1,8 @@
 import { genererMdp } from "../../../constants";
-import { apiFetch, getAuthHeaders } from "../../../apiClient";
-import { isSupabase } from "../../../backend";
 import { creerCompte as creerCompteSb } from "../../../backend/account-manage-supabase";
 
 // Logique de l'onglet Élèves : droit de création de compte parent, édition
-// du formulaire et création/rattachement du compte parent via /account-manage.
+// du formulaire et création/rattachement du compte parent.
 export function useElevesTab({
   cleEleves, schoolId, toast, logAction, canEdit, canCreateParent,
   parentEleve, setParentEleve, setFormP,
@@ -55,18 +53,7 @@ export function useElevesTab({
         filiation: parentEleve.filiation || "",
         statut: "Actif",
       };
-      let data;
-      if (isSupabase) {
-        data = await creerCompteSb(payload);
-      } else {
-        const headers = await getAuthHeaders({ "Content-Type": "application/json" });
-        const res = await apiFetch("/account-manage", {
-          method: "POST", headers,
-          body: JSON.stringify({ action: "create", ...payload }),
-        });
-        data = await res.json().catch(() => ({}));
-        if (!res.ok || !data.ok) throw new Error(data.error || "Creation du compte impossible.");
-      }
+      const data = await creerCompteSb(payload);
       const loginUtilise = data.compte?.login || formP.login;
       if (data.merged || data.mergedIntoExisting) {
         toast(`${parentEleve.prenom} a ete rattache au compte parent ${loginUtilise}. Le mot de passe actuel est conserve.`, "success");

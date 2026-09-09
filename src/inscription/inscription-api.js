@@ -1,9 +1,8 @@
-import { apiFetch } from "../apiClient";
-import { isSupabase } from "../backend";
 import { getSupabase } from "../supabaseClient";
 
-// Soumet la création d'une nouvelle école via /inscription.
-// Renvoie { ok, data } ; le décodage JSON est tolérant aux réponses vides.
+// Soumet la création d'une nouvelle école (Edge Function `inscription` : elle
+// crée l'école ET le premier compte admin, ce qu'un client anonyme ne peut pas
+// faire lui-même). Renvoie { ok, data }.
 export async function soumettreInscription(form) {
   const payload = {
     nomEcole: form.nomEcole,
@@ -16,20 +15,11 @@ export async function soumettreInscription(form) {
     adminLogin: form.adminLogin,
     adminMdp: form.adminMdp,
   };
-  if (isSupabase) {
-    const { data, error } = await getSupabase().functions.invoke("inscription", { body: payload });
-    if (error) {
-      let msg = "Inscription impossible.";
-      try { msg = (await error.context?.json())?.error || msg; } catch { /* défaut */ }
-      return { ok: false, data: { error: msg } };
-    }
-    return { ok: !!data?.ok, data };
+  const { data, error } = await getSupabase().functions.invoke("inscription", { body: payload });
+  if (error) {
+    let msg = "Inscription impossible.";
+    try { msg = (await error.context?.json())?.error || msg; } catch { /* défaut */ }
+    return { ok: false, data: { error: msg } };
   }
-  const r = await apiFetch("/inscription", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  const data = await r.json().catch(() => ({}));
-  return { ok: r.ok, data };
+  return { ok: !!data?.ok, data };
 }

@@ -5,11 +5,11 @@ import {
   daysUntilExpiration,
   getComplianceStatus,
   legalProfileComplet,
-  updateLegalProfile,
 } from "../../legal-utils";
+import { sauverParametresEcole } from "../../backend/data-supabase";
 
 // État et logique du widget Conformité. La source de vérité est
-// `schoolInfo.legal` (listener posé dans App.jsx, fallback par école) ;
+// `schoolInfo.legal` (colonne `legal` de la fiche école, en temps réel) ;
 // profil vide tant que rien n'est chargé — jamais les données d'une
 // autre école.
 export function useComplianceWidget(profileOverride) {
@@ -45,7 +45,10 @@ export function useComplianceWidget(profileOverride) {
     setSaving(true);
     setError("");
     try {
-      await updateLegalProfile(schoolId, next);
+      // Écrivait dans FIRESTORE jusqu'ici : l'agrément saisi paraissait
+      // enregistré et disparaissait au rechargement, alors même que les
+      // documents officiels (attestations, bulletins, reçus) s'appuient dessus.
+      await sauverParametresEcole(schoolId, { legal: next });
       setProfile(next);
       setModalOpen(false);
     } catch (e) {

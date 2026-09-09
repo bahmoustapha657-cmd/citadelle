@@ -1,7 +1,5 @@
 import { useState, useEffect, useContext } from "react";
-import { collection, query, where } from "firebase/firestore";
-import { db } from "../firebaseDb";
-import { safeOnSnapshot } from "../firestore-safe";
+import { fetchAnnoncesPubliques } from "../backend/portail-public-supabase";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { useFirestore } from "../hooks/useFirestore";
 import { GlobalStyles } from "../styles";
@@ -19,16 +17,17 @@ function PortailPublic({ onConnexion }) {
   const { schoolId, schoolInfo } = useContext(SchoolContext);
   const { items: honneurs } = useFirestore("honneurs");
 
-  // Annonces : requête FILTRÉE publique==true — obligatoire car la règle
-  // Firestore ne laisse lire anonymement que les annonces publiques (les
-  // annonces destinées aux parents resteraient sinon lisibles par tous).
+  // Annonces : le visiteur n'est pas authentifié, il ne peut donc lire aucune
+  // table (la RLS des annonces est réservée au personnel — et c'est voulu, les
+  // annonces aux parents ne doivent pas fuiter). La RPC ne renvoie que celles
+  // marquées « publique ». Lisait FIRESTORE jusqu'ici, donc ne ramenait plus
+  // rien depuis la migration (liquidation Firebase, lot 4).
   const [annonces, setAnnonces] = useState([]);
   useEffect(() => {
     if (!schoolId) return undefined;
-    const q = query(collection(db, "ecoles", schoolId, "annonces"), where("publique", "==", true));
-    return safeOnSnapshot(q, (snap) => {
-      setAnnonces(snap.docs.map((d) => ({ ...d.data(), _id: d.id })));
-    });
+    let actif = true;
+    fetchAnnoncesPubliques(schoolId).then((liste) => { if (actif) setAnnonces(liste); });
+    return () => { actif = false; };
   }, [schoolId]);
 
   const acc = schoolInfo.accueil || {};

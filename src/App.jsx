@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { SchoolContext, SCHOOL_INFO_DEFAUT } from "./contexts/SchoolContext";
 import { calcMoisAnnee, calcMoisSalaire, getModulesForRole } from "./constants";
-import { isSupabase } from "./backend";
 import { ROLES_HORS_POSTES, getSessionPermissions, readableModules } from "../shared/postes-config.js";
 import { usePwaState } from "./hooks/use-pwa-state";
 import { usePowerSyncStatus } from "./hooks/use-powersync-status";
@@ -83,7 +82,7 @@ export default function App() {
   // requis) et éjectait la direction des pages académiques.
   useEffect(() => {
     if (!utilisateur) return;
-    const modulesCourants = isSupabase && !ROLES_HORS_POSTES.includes(utilisateur.role)
+    const modulesCourants = !ROLES_HORS_POSTES.includes(utilisateur.role)
       ? readableModules(getSessionPermissions(utilisateur, schoolInfo))
       : getModulesForRole(utilisateur.role, schoolInfo);
     const fallbackPage = modulesCourants[0] || null;
@@ -107,7 +106,7 @@ export default function App() {
   });
   if (ecranAuth) return ecranAuth;
 
-  const { modulesVisibles, permissions, roleEffectif, estAdmin, readOnly, abonnementExpire, basculeSupabase, couleur2, utilisateurLabel } =
+  const { modulesVisibles, permissions, roleEffectif, estAdmin, readOnly, abonnementExpire, couleur2, utilisateurLabel } =
     computeAppPermissions({ utilisateur, schoolInfo, page, planInfo });
 
   return (
@@ -122,7 +121,7 @@ export default function App() {
         page={page} setPage={setPage} isMobile={isMobile}
         msgsNonLus={msgsNonLus} utilisateur={utilisateur} utilisateurLabel={utilisateurLabel}
         deconnecter={deconnecter} estHorsLigne={estHorsLigne} syncPendantes={syncPendantes} t={t}
-        readOnly={readOnly} permissions={permissions} roleEffectif={roleEffectif} abonnementExpire={abonnementExpire} basculeSupabase={basculeSupabase} planInfo={planInfo} modeSombre={modeSombre} setModeSombre={setModeSombre}
+        readOnly={readOnly} permissions={permissions} roleEffectif={roleEffectif} abonnementExpire={abonnementExpire} planInfo={planInfo} modeSombre={modeSombre} setModeSombre={setModeSombre}
         notifOuvert={notifOuvert} setNotifOuvert={setNotifOuvert}
         notifNonLues={notifNonLues} setNotifNonLues={setNotifNonLues} notifListe={notifListe} nowTs={nowTs}
         profilOuvert={profilOuvert} setProfilOuvert={setProfilOuvert}

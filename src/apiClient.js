@@ -1,4 +1,9 @@
-import { getCurrentUserIdToken } from "./firebaseAuth";
+// Client HTTP des endpoints /api. Il n'en reste qu'un appelant vivant, le
+// panneau Sentry du superadmin ; les autres sont passés aux Edge Functions
+// Supabase (liquidation Firebase, lot 6). Le jeton porté ici est désormais
+// celui de la session Supabase — c'est ce qui a permis de retirer le SDK
+// Firebase du client sans supprimer ce panneau.
+import { getSupabase } from "./supabaseClient";
 
 const RAW_API_BASE_URL = String(import.meta.env.VITE_API_BASE_URL || "").trim();
 
@@ -51,10 +56,12 @@ export function buildApiUrl(path = "/", query) {
 }
 
 export async function getAuthHeaders(baseHeaders = {}) {
-  const token = await getCurrentUserIdToken();
-  if (!token) {
-    return baseHeaders;
-  }
+  let token = null;
+  try {
+    const { data: { session } } = await getSupabase().auth.getSession();
+    token = session?.access_token || null;
+  } catch { /* pas de session : requête anonyme */ }
+  if (!token) return baseHeaders;
 
   return {
     ...baseHeaders,

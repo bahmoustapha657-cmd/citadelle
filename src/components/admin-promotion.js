@@ -1,12 +1,7 @@
 // Promotion de fin d'année : classe suivante dérivée dynamiquement
 // (src/promotion-utils.js) + exécution en batch avec mode simulation.
 // Extrait de AdminPanel.jsx au refactor découpage 2026-05-29.
-// Deux backends : Firebase (writeBatch) et Supabase (chargerCollection +
-// modifierChampDoc) — même logique de décision, sélectionnée par isSupabase.
 
-import { collection, doc, getDocs, query, where, writeBatch } from "firebase/firestore";
-import { db } from "../firebaseDb";
-import { isSupabase } from "../backend";
 import { chargerCollection, modifierChampDoc } from "../backend/data-supabase";
 import { getAnnee, getSectionForClasse, getSystemeScolaire } from "../constants";
 import { notesDeLEleve } from "../note-index";
@@ -17,9 +12,7 @@ import { classeSuivante, estClasseExamen } from "../promotion-utils";
 import { matieresForClasse } from "./ecole/ecole-logic";
 import { champsArchivageClasse } from "./admin/cloture-annee-utils";
 
-// Limite Firestore : 500 opérations par batch (marge de sécurité à 450).
-const BATCH_MAX = 450;
-// Supabase : nb d'updates lancés en parallèle (modifierChampDoc = 1 par appel).
+// Nombre d'updates lancés en parallèle (modifierChampDoc = 1 appel par fiche).
 const SB_PARALLELE = 40;
 
 // Moyenne annuelle d'un élève — EXACTEMENT celle du bulletin annuel.
@@ -57,22 +50,12 @@ function calcMoyenneAnnuelle(schoolInfo, notes, classe, matieres) {
 // la moyenne annuelle mélangeait les notes de TOUTES les années dès qu'une
 // seconde rentrée existait — et la décision de passage avec.
 async function chargerSection(schoolId, sec, annee) {
-  if (isSupabase) {
-    const [re, rn, rm] = await Promise.all([
-      chargerCollection(schoolId, sec.eleves),
-      chargerCollection(schoolId, sec.notes, { annee }),
-      chargerCollection(schoolId, sec.matieres),
-    ]);
-    return { eleves: re.items || [], notes: rn.items || [], matieres: rm.items || [] };
-  }
-  const refNotes = collection(db, "ecoles", schoolId, sec.notes);
-  const [snapE, snapN, snapM] = await Promise.all([
-    getDocs(collection(db, "ecoles", schoolId, sec.eleves)),
-    getDocs(annee ? query(refNotes, where("annee", "==", annee)) : refNotes),
-    getDocs(collection(db, "ecoles", schoolId, sec.matieres)),
+  const [re, rn, rm] = await Promise.all([
+    chargerCollection(schoolId, sec.eleves),
+    chargerCollection(schoolId, sec.notes, { annee }),
+    chargerCollection(schoolId, sec.matieres),
   ]);
-  const m = (snap) => snap.docs.map((d) => ({ ...d.data(), _id: d.id }));
-  return { eleves: m(snapE), notes: m(snapN), matieres: m(snapM) };
+  return { eleves: re.items || [], notes: rn.items || [], matieres: rm.items || [] };
 }
 
 // Décisions d'une section (logique pure) → accumule dans `acc`.
@@ -168,20 +151,10 @@ const champsEcrits = (u) => (u.historique
   : { classe: u.classe });
 
 async function appliquerUpdates(schoolId, updates) {
-  if (isSupabase) {
-    for (let i = 0; i < updates.length; i += SB_PARALLELE) {
-      await Promise.all(updates.slice(i, i + SB_PARALLELE).map(
-        (u) => modifierChampDoc(schoolId, u.collection, u.id, champsEcrits(u)),
-      ));
-    }
-    return;
-  }
-  for (let i = 0; i < updates.length; i += BATCH_MAX) {
-    const batch = writeBatch(db);
-    for (const u of updates.slice(i, i + BATCH_MAX)) {
-      batch.update(doc(db, "ecoles", schoolId, u.collection, u.id), champsEcrits(u));
-    }
-    await batch.commit();
+  for (let i = 0; i < updates.length; i += SB_PARALLELE) {
+    await Promise.all(updates.slice(i, i + SB_PARALLELE).map(
+      (u) => modifierChampDoc(schoolId, u.collection, u.id, champsEcrits(u)),
+    ));
   }
 }
 

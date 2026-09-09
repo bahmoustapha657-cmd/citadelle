@@ -1,9 +1,4 @@
-// Aiguillage des opérations de session selon le backend actif (VITE_BACKEND).
-// Garde la prod Firebase strictement inchangée par défaut.
-import { isSupabase } from "../backend";
-import { signOutCurrentUser } from "../firebaseAuth";
-import { signOut as signOutSupabase } from "./auth-supabase";
-
-export function signOutSession() {
-  return isSupabase ? signOutSupabase() : signOutCurrentUser();
-}
+// Déconnexion. Façade conservée : les appelants n'ont pas à connaître le
+// backend, et le jour où la session change de fournisseur, seul ce fichier
+// bouge. Le chemin Firebase a disparu avec la liquidation (lot 5).
+export { signOut as signOutSession } from "./auth-supabase";

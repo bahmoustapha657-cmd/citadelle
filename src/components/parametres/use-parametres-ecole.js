@@ -43,7 +43,6 @@ export function useParametresEcole({ utilisateurRole = "", onSchoolClosed = null
   const [chargement,setChargement] = useState(false);
   const [msgSucces,setMsgSucces] = useState("");
   const [erreur,setErreur] = useState("");
-  const [migrationOuverte, setMigrationOuverte] = useState(false);
   const [apercu,setApercu] = useState(null); // aperçu logo uploadé
 
   const [dangerAction,setDangerAction] = useState("");
@@ -200,7 +199,6 @@ export function useParametresEcole({ utilisateurRole = "", onSchoolClosed = null
     formHonneur, setFormHonneur, modalH, setModalH,
     evaluationForms, setEvaluationLabel, toggleEvaluationActive,
     chargement, msgSucces, setMsgSucces, erreur, setErreur,
-    migrationOuverte, setMigrationOuverte,
     apercu, couleursDetectees, setCouleursDetectees,
     dangerAction, setDangerAction, dangerConfirmation, setDangerConfirmation, dangerLoading,
     canManageLifecycle, peutEditerLegal, isComptableSeul, dangerConfig,
