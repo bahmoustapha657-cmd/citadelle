@@ -435,6 +435,14 @@
     "qrVerify": "تحقق",
     "director": "الإدارة",
     "accountant": "المحاسب",
+    "posteTitles": {
+      "direction": "الإدارة العامة",
+      "admin": "الإدارة",
+      "comptable": "المحاسبة",
+      "surveillant": "المراقبة العامة",
+      "primaire": "إدارة الابتدائي",
+      "college": "مكتب الإعدادي"
+    },
     "headTeacher": "الأستاذ الرئيسي",
     "bulletinTitle": "كشف العلامات",
     "bulletinNumber": "كشف رقم",

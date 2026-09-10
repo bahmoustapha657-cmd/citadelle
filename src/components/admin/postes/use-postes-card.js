@@ -87,7 +87,7 @@ export function usePostesCard({ schoolId, peutGererRoles, comptes, refreshCompte
 
   const retirerPoste = async (poste) => {
     try {
-      await supprimerPoste(poste.id);
+      await supprimerPoste(poste.id, { schoolCode: schoolId, cle: poste.cle });
       toast(`Poste « ${poste.label} » supprimé.`, "success");
       setPosteEdite(null);
       await recharger();

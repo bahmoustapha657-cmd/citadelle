@@ -3,7 +3,7 @@ import test from "node:test";
 import {
   anneePrecedente, formatMoyenneAnnuelle, getMoyenneAnnuelleEleve, getMoyenneAttestation,
 } from "../src/reports/attestation/attestation-moyenne.js";
-import { signataireIdentite, signataireSection } from "../src/reports/print-helpers.js";
+import { identiteHTML, signatairesDocument } from "../src/reports/signatures.js";
 import { anneeScolaireDeDate } from "../src/constants.js";
 
 const eleve = {
@@ -183,25 +183,28 @@ const ecoleAvecPostes = {
   roleSettings: { college: { label: "La Principale" }, direction: { label: "Le Proviseur" } },
 };
 
+const signataireAttestation = (schoolInfo, section) =>
+  signatairesDocument(schoolInfo, "attestation", { section })[0];
+
 test("le signataire d'une section porte son nom et le libellé que l'école a donné au poste", () => {
-  const s = signataireIdentite(ecoleAvecPostes, "college", "Direction");
+  const s = signataireAttestation(ecoleAvecPostes, "college");
 
   assert.equal(s.nom, "Djiba Oury Diallo");
   assert.equal(s.titre, "La Principale");
   // Le bloc de signature en bas de page dit la même chose que la formule.
-  assert.ok(signataireSection(ecoleAvecPostes, "college", "Direction").includes("Djiba Oury Diallo"));
-  assert.ok(signataireSection(ecoleAvecPostes, "college", "Direction").includes("La Principale"));
+  assert.ok(identiteHTML(s).includes("Djiba Oury Diallo"));
+  assert.ok(identiteHTML(s).includes("La Principale"));
 });
 
 test("section sans responsable : repli sur la direction, avec SON libellé", () => {
-  const s = signataireIdentite(ecoleAvecPostes, "primaire", "Direction");
+  const s = signataireAttestation(ecoleAvecPostes, "primaire");
 
   assert.equal(s.nom, "Mamadou Lamarana Diallo");
   assert.equal(s.titre, "Le Proviseur");
 });
 
 test("aucun responsable désigné : titre générique et pas de nom inventé", () => {
-  const s = signataireIdentite({ nom: "École X" }, "college", "Direction");
+  const s = signataireAttestation({ nom: "École X" }, "college");
 
   assert.equal(s.nom, "");
   assert.equal(s.titre, "Direction");

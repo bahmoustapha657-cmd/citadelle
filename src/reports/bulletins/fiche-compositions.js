@@ -10,10 +10,10 @@ import {
   enteteDoc,
   printDir,
   printLang,
-  signataireSection,
   tr,
   watermarkHtml,
 } from "../print-helpers.js";
+import { blocsSignatures } from "../signatures.js";
 import { apprecComposition, computeFicheResultats } from "./fiche-compositions-data.js";
 import { PERIODE_ANNEE, buildBulletinNotesAnnuelles } from "./annual-notes.js";
 
@@ -167,7 +167,8 @@ export const imprimerFicheCompositions = (classe, periode, notes, matieres, elev
     .genre{margin-top:4px;font-size:11px}
     .genre th{font-size:10px;padding:6px}
     .genre td{padding:6px;border-bottom:1px solid #eee}
-    .sigs{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:32px}
+    /* Une colonne par bloc : un visa (matrice des signatures) s'aligne. */
+    .sigs{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:40px;margin-top:32px}
     .sig{border-top:2px solid #0A1628;padding-top:8px;text-align:center;font-size:11px;color:#555}
     @media print{button{display:none}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
     ${WATERMARK_CSS}
@@ -241,7 +242,8 @@ export const imprimerFicheCompositions = (classe, periode, notes, matieres, elev
   </div>
 
   <div class="sigs">
-    <div class="sig">${signataireSection(schoolInfo, getSectionForClasse(classe), tr("reports.director"))}<br/><br/><br/>${tr("reports.signature")} & ${tr("reports.stamp")}</div>
+    ${blocsSignatures(schoolInfo, "ficheCompositions", (identite, s) => `<div class="sig">${identite}<br/><br/><br/>${tr("reports.signature")}${s.role === "principal" ? ` & ${tr("reports.stamp")}` : ""}</div>`,
+      { section: getSectionForClasse(classe) })}
     <div class="sig">${tr("reports.headTeacher")}<br/><br/><br/>${tr("reports.signature")}</div>
   </div>
   <script>${PRINT_TRIGGER}</script>

@@ -147,16 +147,27 @@ export async function chargerPostes(schoolCode) {
   }));
 }
 
-// Recopie {cle: responsable} dans ecoles.extra.responsables : les documents
-// imprimés lisent schoolInfo.responsables (chargerEcole étale extra) pour
-// afficher le signataire sous les blocs de signature.
-async function syncResponsable(sb, schoolCode, cle, responsable) {
+// Recopie un poste dans ecoles.extra, là où les documents imprimés le lisent
+// (chargerEcole étale extra dans schoolInfo) :
+//   responsables[cle]   → nom imprimé sous le bloc de signature ;
+//   libellesPostes[cle] → titre du bloc, si l'école a renommé le poste.
+// Le libellé était jusqu'ici oublié : renommer « Bureau College » en « La
+// Principale » ne changeait rien sur les papiers, et un poste créé par
+// l'école n'y aurait figuré que sous sa clé technique.
+// `poste: null` (suppression) retire les deux entrées : la matrice des
+// signatures retombe alors sur le signataire d'origine au lieu d'imprimer un
+// poste qui n'existe plus.
+async function syncPosteDansEcole(sb, schoolCode, cle, poste) {
   const { data } = await sb.from("ecoles").select("id, extra").eq("code", schoolCode).maybeSingle();
-  if (!data) return;
-  const responsables = { ...((data.extra || {}).responsables || {}) };
-  const nom = (responsable || "").trim();
+  if (!data || !cle) return;
+  const extraActuel = data.extra || {};
+  const responsables = { ...(extraActuel.responsables || {}) };
+  const libellesPostes = { ...(extraActuel.libellesPostes || {}) };
+  const nom = (poste?.responsable || "").trim();
+  const label = (poste?.label || "").trim();
   if (nom) responsables[cle] = nom; else delete responsables[cle];
-  const extra = { ...(data.extra || {}), responsables };
+  if (label) libellesPostes[cle] = label; else delete libellesPostes[cle];
+  const extra = { ...extraActuel, responsables, libellesPostes };
   await sb.from("ecoles").update({ extra }).eq("id", data.id);
 }
 
@@ -179,12 +190,13 @@ export async function sauverPoste(schoolCode, poste) {
     if (error) throw new Error(error.message || "Création du poste impossible.");
     id = data.id;
   }
-  await syncResponsable(sb, schoolCode, champs.cle, champs.responsable).catch(() => {});
+  await syncPosteDansEcole(sb, schoolCode, champs.cle, champs).catch(() => {});
   return { ok: true, id };
 }
 
 // Supprime un poste SANS comptes rattachés (garde-fou côté client).
-export async function supprimerPoste(posteId) {
+// `schoolCode` + `cle` : retire aussi le poste des documents imprimés.
+export async function supprimerPoste(posteId, { schoolCode = "", cle = "" } = {}) {
   const sb = getSupabase();
   const { count, error: cErr } = await sb.from("comptes")
     .select("id", { count: "exact", head: true }).eq("poste_id", posteId);
@@ -192,6 +204,7 @@ export async function supprimerPoste(posteId) {
   if ((count ?? 0) > 0) throw new Error("Des comptes sont rattachés à ce poste — détachez-les d'abord.");
   const { error } = await sb.from("postes").delete().eq("id", posteId);
   if (error) throw new Error(error.message || "Suppression du poste impossible.");
+  if (schoolCode && cle) await syncPosteDansEcole(sb, schoolCode, cle, null).catch(() => {});
   return { ok: true };
 }
 

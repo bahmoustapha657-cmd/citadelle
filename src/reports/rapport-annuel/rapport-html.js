@@ -6,7 +6,8 @@
 // Ne fait aucun calcul métier.
 
 import { fmt, today } from "../../constants.js";
-import { PRINT_TRIGGER, printDir, printLang, signataireHTML, tr, watermarkHtml } from "../print-helpers.js";
+import { PRINT_TRIGGER, printDir, printLang, tr, watermarkHtml } from "../print-helpers.js";
+import { blocsSignatures } from "../signatures.js";
 import { getRapportAnnuelStyles } from "./rapport-styles.js";
 import {
   buildAbsences,
@@ -65,7 +66,7 @@ export const buildRapportAnnuelHTML = (model, schoolInfo = {}) => {
   ${buildAbsences(model)}
 
   <div class="sigs">
-    <div class="sig">${signataireHTML(schoolInfo, "direction", "Directeur Général")}<br/><br/><br/>Signature & Cachet</div>
+    ${blocsSignatures(schoolInfo, "rapportAnnuel", (identite, s) => `<div class="sig">${identite}<br/><br/><br/>${s.role === "principal" ? "Signature & Cachet" : "Signature"}</div>`)}
     <div class="sig">Fondateur / Conseil d'administration<br/><br/><br/>Signature</div>
   </div>
 

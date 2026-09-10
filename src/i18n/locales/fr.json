@@ -435,6 +435,14 @@
     "qrVerify": "Vérification",
     "director": "Direction",
     "accountant": "Comptable",
+    "posteTitles": {
+      "direction": "Direction Générale",
+      "admin": "Administration",
+      "comptable": "Comptabilité",
+      "surveillant": "Surveillance Générale",
+      "primaire": "Direction du Primaire",
+      "college": "Bureau du Collège"
+    },
     "headTeacher": "Professeur principal",
     "bulletinTitle": "Bulletin de notes",
     "bulletinNumber": "Bulletin N°",

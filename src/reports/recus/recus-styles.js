@@ -17,6 +17,8 @@ export const RECU_STYLES = `
     .mois-table tr.paye td{color:#166534;background:#f0fdf4}
     .mois-table tr.impaye td{color:#9ca3af}
     .total{text-align:right;font-size:10px;font-weight:bold;padding:4px 8px;background:#e8f0e8;color:#0A1628;margin-top:4px;border-radius:2px}
-    .sigs{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:auto;padding-top:10px}
+    /* Une colonne par bloc, quel qu'en soit le nombre : un second signataire
+       (visa, matrice des signatures) s'aligne sans passer à la ligne. */
+    .sigs{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:12px;margin-top:auto;padding-top:10px}
     .sig{border-top:1.5px solid #0A1628;padding-top:4px;text-align:center;font-size:8.5px;color:#333;font-weight:600}
     @media print{body{height:282mm}button{display:none}}`;

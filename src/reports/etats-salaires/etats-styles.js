@@ -35,7 +35,8 @@ export function etatsCss(c1) {
     .global-total.montant{background:linear-gradient(135deg,#1E40AF,#1D4ED8)}
     .global-total.bon{background:linear-gradient(135deg,#991B1B,#B91C1C)}
     .global-total.net{background:linear-gradient(135deg,#15803D,#166534)}
-    .signatures{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;margin-top:32px;page-break-inside:avoid}
+    /* Une colonne par bloc : le nombre de signataires dépend de la matrice. */
+    .signatures{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:18px;margin-top:32px;page-break-inside:avoid}
     .sig{border-top:1.5px solid #1f2937;padding-top:6px;text-align:center;font-size:10px;color:#475569;font-weight:600}
     .footer-note{text-align:center;margin-top:14px;font-size:9px;color:#94a3b8;font-style:italic}`;
 }

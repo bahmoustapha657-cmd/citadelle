@@ -7,7 +7,6 @@
 
 import { getNationalDeviseHTML } from "../national-symbols.js";
 import { resolveLegalFields } from "../legal-utils.js";
-import { getRoleLabelForSchool } from "../constants.js";
 import i18n from "../i18n";
 
 // Helper i18n hors React : raccourci vers i18n.t().
@@ -19,70 +18,8 @@ export const tr = (k, opts) => i18n.t(k, opts);
 export const printDir = () => (["ar", "ar-SA", "ar-EG"].includes(i18n.resolvedLanguage || i18n.language) ? "rtl" : "ltr");
 export const printLang = () => i18n.resolvedLanguage || i18n.language || "fr";
 
-// ── Responsables de postes sur les documents ────────────────────
-// Le prénom + nom du responsable d'un poste (saisi dans Comptes & Postes,
-// dénormalisé dans ecoles.extra.responsables par sauverPoste) s'imprime sous
-// le titre du bloc de signature. Sans responsable renseigné : titre seul,
-// rendu inchangé.
-export const responsableNom = (schoolInfo = {}, cle) =>
-  String(schoolInfo?.responsables?.[cle] || "").trim();
-
-export const signataireHTML = (schoolInfo, cle, titre) => {
-  const nom = responsableNom(schoolInfo, cle);
-  return nom
-    ? `${titre}<br/><span style="font-size:1.05em;font-weight:800">${nom}</span>`
-    : titre;
-};
-
-// Poste qui signe les documents D'UNE SECTION. Le préscolaire relève de la
-// direction primaire, le lycée du bureau collège — mêmes regroupements que
-// les modules de menu.
-const POSTE_SECTION = {
-  prescolaire: "primaire", maternelle: "primaire", primaire: "primaire",
-  college: "college", lycee: "college", secondaire: "college",
-};
-
-// Signataire d'un document de section : bulletin, attestation, fiche de
-// compositions. Ces pièces engagent le CHEF DE LA SECTION, pas le directeur
-// général — c'est lui qui répond des notes qu'elles portent.
-//
-// Tous les documents pédagogiques signaient `direction`, alors que les écoles
-// renseignent bien leurs responsables de section (Comptes & Postes les
-// dénormalise dans extra.responsables). À La Citadelle, un bulletin de collège
-// sortait donc « Le Directeur / Mamadou Lamarana DIALLO » au lieu de
-// « La Principale / Djiba Oury DIALLO ».
-//
-// Le TITRE suit le libellé que l'école a donné au poste : elle a le droit
-// d'appeler son bureau collège « La Principale » ou « Le Censeur », et le
-// document doit le refléter plutôt qu'imposer « Le Directeur ».
-// Repli sur la direction si la section n'a pas de responsable désigné : mieux
-// vaut le DG qu'une ligne de signature anonyme.
-// Identité du signataire, en DEUX morceaux : { titre, nom }. Le bloc de
-// signature les empile ; la formule d'ouverture d'une attestation les met en
-// ligne (« Je soussigné(e), Djiba Oury Diallo, La Principale… »). Elle a donc
-// besoin des morceaux séparés, pas du HTML tout fait.
-export const signataireIdentite = (schoolInfo = {}, section = "", titreParDefaut = "") => {
-  const cle = POSTE_SECTION[String(section || "").toLowerCase()] || "";
-  if (cle && responsableNom(schoolInfo, cle)) {
-    return { cle, titre: getRoleLabelForSchool(cle, schoolInfo) || titreParDefaut, nom: responsableNom(schoolInfo, cle) };
-  }
-  // Repli sur la direction. Son titre suit lui aussi le libellé de l'école
-  // (« Le Proviseur », « La Directrice ») dès qu'un responsable y est nommé :
-  // le titre générique ne sert plus que pour une signature anonyme.
-  const nomDirection = responsableNom(schoolInfo, "direction");
-  return {
-    cle: "direction",
-    titre: (nomDirection && getRoleLabelForSchool("direction", schoolInfo)) || titreParDefaut,
-    nom: nomDirection,
-  };
-};
-
-export const signataireSection = (schoolInfo = {}, section = "", titreParDefaut = "") => {
-  const { titre, nom } = signataireIdentite(schoolInfo, section, titreParDefaut);
-  return nom
-    ? `${titre}<br/><span style="font-size:1.05em;font-weight:800">${nom}</span>`
-    : titre;
-};
+// Les blocs de signature (qui signe quel document, sous quel titre) vivent
+// dans ./signatures.js — la matrice des signatures réglée dans Comptes & Postes.
 
 // Supprime les en-têtes / pieds automatiques du navigateur ("about:blank",
 // URL, date, n° de page). Force aussi `print-color-adjust:exact` sur tous
