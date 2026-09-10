@@ -42,7 +42,8 @@ export const getRapportAnnuelStyles = (c1, c2) => `
     .bar{display:inline-block;height:6px;border-radius:3px;background:${c2};vertical-align:middle;margin-right:4px}
 
     .footer{margin-top:18px;padding-top:8px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;font-size:9px;color:#94a3b8}
-    .sigs{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:24px}
+    /* Une colonne par bloc : un visa (matrice des signatures) s'aligne. */
+    .sigs{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:30px;margin-top:24px}
     .sig{border-top:1.5px solid ${c1};padding-top:8px;text-align:center;font-size:10px;color:#475569;font-weight:600}
 
     @media print{button{display:none}}

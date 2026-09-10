@@ -435,6 +435,14 @@
     "qrVerify": "Verification",
     "director": "Director",
     "accountant": "Accountant",
+    "posteTitles": {
+      "direction": "General Management",
+      "admin": "Administration",
+      "comptable": "Accounting Office",
+      "surveillant": "General Supervision",
+      "primaire": "Primary School Management",
+      "college": "Middle School Office"
+    },
     "headTeacher": "Head teacher",
     "bulletinTitle": "Report card",
     "bulletinNumber": "Card No.",

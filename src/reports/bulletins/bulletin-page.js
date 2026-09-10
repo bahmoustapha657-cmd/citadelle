@@ -12,9 +12,9 @@ import {
   WATERMARK_CSS,
   edugestBrandHTML,
   enteteDoc,
-  signataireSection,
   tr,
 } from "../print-helpers.js";
+import { blocsSignatures } from "../signatures.js";
 import { getInitiales, ordinalFr } from "./bulletin-format.js";
 import { computeBulletinModel } from "./bulletin-page-data.js";
 import { buildLignesRows } from "./bulletin-page-rows.js";
@@ -158,7 +158,11 @@ export function buildBulletinPageHTML({
     <div class="sigs">
       <div class="sig">${tr("school.students.parent")}<br/><br/><br/>${tr("reports.signature")}</div>
       <div class="sig">${tr("reports.headTeacher")}<br/><br/><br/>${tr("reports.signature")}</div>
-      <div class="sig">${signataireSection(schoolInfo, niveau, tr("reports.director"))}${schoolInfo.signatureUrl ? `<img crossOrigin="anonymous" src="${schoolInfo.signatureUrl}" alt="" style="display:block;height:34px;object-fit:contain;margin:4px auto 2px"/>` : "<br/><br/><br/>"}${tr("reports.signature")}</div>
+      ${blocsSignatures(schoolInfo, "bulletin", (identite, s) => `<div class="sig">${identite}${
+        // La signature scannée est unique pour l'école : elle reste au
+        // signataire principal, comme avant la matrice.
+        s.role === "principal" && schoolInfo.signatureUrl ? `<img crossOrigin="anonymous" src="${schoolInfo.signatureUrl}" alt="" style="display:block;height:34px;object-fit:contain;margin:4px auto 2px"/>` : "<br/><br/><br/>"}${tr("reports.signature")}</div>`,
+        { section: niveau })}
     </div>
 
     <div class="devise" style="color:${c2}">${schoolInfo.devise || "Travail – Rigueur – Réussite"}</div>
@@ -178,7 +182,8 @@ export function getBulletinStyles(modele = "classique") {
     th{color:#fff;padding:7px 9px;font-size:10.5px;text-align:left;border:1px solid rgba(0,0,0,0.05)}
     td{padding:6px 9px;border-bottom:1px solid #f1f5f9;font-size:11px;vertical-align:middle}
     tbody tr:nth-child(odd){background:#fafafa}
-    .sigs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;margin-top:18px}
+    /* Une colonne par bloc : un visa (matrice des signatures) s'aligne. */
+    .sigs{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:18px;margin-top:18px}
     .sig{border-top:1.5px solid #1f2937;padding-top:6px;text-align:center;font-size:10px;color:#555}
     .devise{text-align:center;font-size:10px;margin-top:8px;font-style:italic;font-weight:700}
     @media print{body{margin:0}button{display:none}.page{padding:18px 22px}}

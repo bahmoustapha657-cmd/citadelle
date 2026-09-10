@@ -4,6 +4,7 @@ import { AnneeScolaireCard } from "./admin/AnneeScolaireCard";
 import { PromotionCard } from "./admin/PromotionCard";
 import { RolesConfigCard } from "./admin/RolesConfigCard";
 import { PostesCard } from "./admin/postes/PostesCard";
+import { SignaturesCard } from "./admin/signatures/SignaturesCard";
 import { VerrousCard } from "./admin/VerrousCard";
 import { useAdminPanel } from "./admin/admin-panel/use-admin-panel";
 import { ComptesTable } from "./admin/admin-panel/ComptesTable";
@@ -43,6 +44,7 @@ function AdminPanel({ annee, setAnnee, verrous = {}, schoolId, userRole }) {
             comptes={a.comptes} refreshComptes={a.refreshComptes}
             toast={a.toast} setMdpsInitiaux={a.setMdpsInitiaux}
           />
+          <SignaturesCard schoolId={schoolId} peutGererRoles={a.peutGererRoles} toast={a.toast} />
         </>
       ) : (
         <>

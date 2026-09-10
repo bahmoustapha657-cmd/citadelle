@@ -11,10 +11,10 @@ import {
   WATERMARK_CSS,
   printDir,
   printLang,
-  signataireHTML,
   tr,
   watermarkHtml,
 } from "./print-helpers.js";
+import { blocsSignatures } from "./signatures.js";
 
 export const imprimerLivret = (livret, schoolInfo={}) => {
   const lf = resolveLegalFields(schoolInfo);
@@ -79,7 +79,11 @@ export const imprimerLivret = (livret, schoolInfo={}) => {
         <span class="decision-badge" style="background:${decisionColor}">${decisionLabel(an.decision)}</span>
       </div>
       <div class="sigs-livret">
-        <div class="sig-livret">${signataireHTML(schoolInfo, "direction", tr("reports.livret.directorSignature"))}<br/><br/>${an.signe?`<em style="font-size:9px;color:#14532d">✅ ${tr("reports.livret.signedOn")} ${an.dateSigne||""}</em>`:"<br/>"+tr("reports.livret.signStamp")}</div>
+        ${blocsSignatures(schoolInfo, "livret", (identite, s) => s.role === "principal"
+          // La mention « signé le … » est celle du signataire principal.
+          ? `<div class="sig-livret">${identite}<br/><br/>${an.signe?`<em style="font-size:9px;color:#14532d">✅ ${tr("reports.livret.signedOn")} ${an.dateSigne||""}</em>`:"<br/>"+tr("reports.livret.signStamp")}</div>`
+          : `<div class="sig-livret">${identite}<br/><br/><br/>${tr("reports.signature")}</div>`,
+          { section: livret.section })}
         <div class="sig-livret">${tr("reports.livret.parentTutor")}<br/><br/><br/>${tr("reports.signature")}</div>
         <div class="sig-livret">${tr("reports.livret.inspectorVisa")}<br/><br/><br/>&nbsp;</div>
       </div>

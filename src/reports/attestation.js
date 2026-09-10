@@ -19,12 +19,11 @@ import {
   enteteDoc,
   printDir,
   printLang,
-  signataireIdentite,
-  signataireSection,
   tr,
   watermarkHtml,
   edugestBrandHTML,
 } from "./print-helpers.js";
+import { identiteHTML, signatairesDocument } from "./signatures.js";
 import { qrPayload, qrSecuriseImgHtml } from "./qr.js";
 import { formatMoyenneAnnuelle, getMoyenneAttestation } from "./attestation/attestation-moyenne.js";
 
@@ -135,10 +134,10 @@ export const imprimerAttestation = async (eleve, niveau, annee, schoolInfo = {},
 
   // Qui atteste. La formule d'ouverture nomme le signataire et son VRAI poste
   // — « Djiba Oury Diallo, La Principale » — au lieu du « Directeur » générique :
-  // c'est le même responsable de section que le bloc de signature en bas de
-  // page, les deux ne peuvent donc pas se contredire. Sans responsable désigné
-  // dans Comptes & Postes, on retombe sur le titre générique, sans nom.
-  const signataire = signataireIdentite(schoolInfo, niveau, tr("reports.director"));
+  // c'est le signataire principal de la matrice des signatures, le même que le
+  // bloc en bas de page, les deux ne peuvent donc pas se contredire. Sans
+  // responsable désigné, on retombe sur le titre générique, sans nom.
+  const [signataire, visa] = signatairesDocument(schoolInfo, "attestation", { section: niveau });
   const formuleCertifie = signataire.nom
     ? tr("reports.attestation.certifiesNamed", { nom: signataire.nom, poste: signataire.titre })
     : tr("reports.attestation.certifies", { poste: signataire.titre });
@@ -224,6 +223,8 @@ export const imprimerAttestation = async (eleve, niveau, annee, schoolInfo = {},
   .qr .legende{font-size:8px;color:#94a3b8;margin-top:2px;letter-spacing:.05em;text-transform:uppercase}
   .sig{border-top:2px solid ${c1};padding-top:8px;text-align:center;font-size:12px;color:#333;
        min-width:235px;font-weight:600}
+  /* Visa : entre le QR et le signataire, qui garde la droite et le cachet. */
+  .sig.visa{min-width:170px}
   .stamp{border:2.5px solid ${c1};padding:7px 16px;display:inline-block;border-radius:4px;
          font-weight:bold;color:${c1};margin-top:8px;font-size:12px;letter-spacing:.04em}
   .devise{text-align:center;font-size:11px;margin-top:16px;font-style:italic;color:${c2};font-weight:bold}
@@ -256,7 +257,8 @@ export const imprimerAttestation = async (eleve, niveau, annee, schoolInfo = {},
   <p class="lieu-date">${tr("reports.ordreMutation.issuedAt")} ${schoolInfo.ville || "—"}, ${tr("reports.ordreMutation.on")} ${today()}</p>
   <div class="pied">
     <div class="qr">${qr}<div class="legende">${tr("reports.qrVerify")}</div></div>
-    <div class="sig">${signataireSection(schoolInfo, niveau, tr("reports.director"))}<br/><div class="stamp">${schoolInfo.nom || ""}</div></div>
+    ${visa ? `<div class="sig visa">${identiteHTML(visa)}<br/><br/><br/>${tr("reports.signature")}</div>` : ""}
+    <div class="sig">${identiteHTML(signataire)}<br/><div class="stamp">${schoolInfo.nom || ""}</div></div>
   </div>
   <div class="devise">${schoolInfo.devise || "Travail – Rigueur – Réussite"}</div>
   ${getOfficialLegalFooterHTML(schoolInfo.legal || legalProfileVide, mapNiveauToCycle(niveau))}

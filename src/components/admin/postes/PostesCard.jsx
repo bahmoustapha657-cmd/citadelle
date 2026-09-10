@@ -185,8 +185,8 @@ export function PostesCard({ schoolId, peutGererRoles, comptes, refreshComptes, 
                     style={{ flex: 1, minWidth: 260, maxWidth: 380, padding: "8px 10px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13 }} />
                 </div>
                 <p style={{ margin: "6px 0 0", fontSize: 11, color: "#64748b" }}>
-                  Le responsable apparaît sous les blocs de signature des documents imprimés
-                  (reçus, bulletins, attestations, états de salaires…).
+                  Le responsable apparaît sous les blocs de signature des documents que ce
+                  poste signe — à régler dans « 🖋️ Qui signe quoi », plus bas.
                 </p>
                 <MatricePermissions
                   permissions={p.posteEdite.permissions}

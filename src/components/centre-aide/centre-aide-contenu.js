@@ -214,7 +214,21 @@ export const ARTICLES = [
     etapes: [
       "Comptes & Postes → « ✏️ Droits & nom » (ou « Nom & signataire » pour la Direction).",
       "Renseignez « 🖋️ Responsable — prénom et nom ».",
-      "Ce nom s'imprime sous le bloc de signature des documents (reçus pour le comptable, bulletins et attestations pour la direction…).",
+      "Ce nom s'imprime sous le bloc de signature des documents que ce poste signe — voir « Qui signe quoi » pour choisir lesquels.",
+    ],
+  },
+  {
+    id: "qui-signe-quoi",
+    cat: "comptes",
+    roles: ["admin", "direction", "superadmin"],
+    titre: "Choisir qui signe chaque document (Qui signe quoi)",
+    etapes: [
+      "Comptes & Postes → carte « 🖋️ Qui signe quoi », sous la liste des postes (réglage réservé à la Direction Générale).",
+      "Pour chaque document (reçu, bulletin, attestation, livret, états de salaires…), choisissez le poste qui signe — y compris un poste que vous avez créé, comme « Censeur des études ».",
+      "« Chef de la section de l'élève » : la Direction primaire ou le Bureau collège selon l'élève, la Direction Générale si la section n'a pas de responsable.",
+      "Ajoutez si besoin un second signataire (visa) : il s'imprime à côté du signataire principal, qui garde le cachet.",
+      "La colonne « Imprimera » montre le résultat réel. « ⚠️ sans nom » : nommez un responsable sur ce poste.",
+      "Le titre imprimé est le nom que vous avez donné au poste. Si vous avez gardé le nom d'origine, le document garde son titre habituel (« Comptable », « Le Directeur »…).",
     ],
   },
   {
