@@ -15,6 +15,19 @@ const BROUILLON_VIDE = { taux: 100, mensualites: 100, inscription: 100, fraisAnn
 
 const nomComplet = (e) => `${e.nom || ""} ${e.prenom || ""}`.trim();
 
+// Identité de l'élève : matricule, IEN et filiation. Les homonymes sont
+// courants ; dispenser le mauvais « DIALLO Mamadou » se verrait tard, et
+// l'IEN comme les parents sont ce qui les départage.
+function Identite({ eleve, bloc = false }) {
+  const reperes = [eleve.matricule, eleve.ien && `IEN ${eleve.ien}`].filter(Boolean).join(" · ");
+  return (
+    <span style={{ display: bloc ? "block" : "inline", fontSize: 11, color: "#64748b", lineHeight: 1.4 }}>
+      {reperes}
+      {eleve.filiation && <span style={{ display: bloc ? "block" : "inline" }}>{bloc ? "" : " · "}{eleve.filiation}</span>}
+    </span>
+  );
+}
+
 // ══════════════════════════════════════════════════════════════
 //  Dispenses de paiement — accorder, retirer, reconduire
 // ══════════════════════════════════════════════════════════════
@@ -45,7 +58,9 @@ export function ExonerationsModale({
     const q = recherche.trim().toLowerCase();
     if (!q) return [];
     return eleves
-      .filter((e) => nomComplet(e).toLowerCase().includes(q) || (e.matricule || "").toLowerCase().includes(q))
+      .filter((e) => nomComplet(e).toLowerCase().includes(q)
+        || (e.matricule || "").toLowerCase().includes(q)
+        || (e.ien || "").toLowerCase().includes(q))
       .slice(0, 8);
   }, [eleves, recherche]);
 
@@ -89,23 +104,27 @@ export function ExonerationsModale({
           {!choisi ? (
             <>
               <input value={recherche} onChange={(e) => setRecherche(e.target.value)} autoFocus
-                placeholder="Rechercher un élève (nom ou matricule)…"
+                placeholder="Rechercher un élève (nom, matricule ou IEN)…"
                 style={{ ...champ, width: "100%", boxSizing: "border-box" }} />
               {candidats.map((e) => (
                 <button key={e._id} onClick={() => setChoisi(e)}
                   style={{ display: "block", width: "100%", textAlign: "start", border: "none", background: "none", cursor: "pointer", padding: "7px 6px", borderBottom: "1px solid #f1f5f9", fontSize: 12.5, color: "#334155" }}>
                   <strong>{nomComplet(e)}</strong> · {e.classe}
                   {aUneExoneration(e) && <span style={{ color: "#b45309" }}> · déjà dispensé ({resumeExoneration(e)})</span>}
+                  <Identite eleve={e} bloc />
                 </button>
               ))}
             </>
           ) : (
             <>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                 <strong style={{ fontSize: 13 }}>{nomComplet(choisi)}</strong>
                 <Badge color="blue">{choisi.classe}</Badge>
                 <Btn sm v="ghost" onClick={() => setChoisi(null)}>Changer d'élève</Btn>
               </div>
+              {/* Relire l'identité AVANT de dispenser : c'est le dernier moment
+                  où l'on peut s'apercevoir qu'on tient un homonyme. */}
+              <div style={{ marginBottom: 10 }}><Identite eleve={choisi} bloc /></div>
               <div style={{ display: "flex", gap: 18, flexWrap: "wrap", marginBottom: 10 }}>
                 {POSTES_EXONERABLES.map((poste) => (
                   <label key={poste} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, cursor: "pointer" }}>
@@ -148,7 +167,10 @@ export function ExonerationsModale({
           </p>
           {aReconduire.map((e) => (
             <div key={e._id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0", fontSize: 12.5 }}>
-              <span style={{ flex: 1 }}>{nomComplet(e)} · {e.classe} — {resumeExoneration({ exoneration: (e.historique || {})[anneePrecedente(annee)].exoneration })}</span>
+              <span style={{ flex: 1 }}>
+                {nomComplet(e)} · {e.classe} — {resumeExoneration({ exoneration: (e.historique || {})[anneePrecedente(annee)].exoneration })}
+                <Identite eleve={e} bloc />
+              </span>
               <Btn sm v="amber" disabled={enCours} onClick={() => reconduire(e)}>Reconduire</Btn>
             </div>
           ))}
@@ -168,7 +190,10 @@ export function ExonerationsModale({
                   const exo = getExoneration(e);
                   return (
                     <tr key={e._id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                      <td style={{ padding: "7px 6px", fontWeight: 700, whiteSpace: "nowrap" }}>{nomComplet(e)}</td>
+                      <td style={{ padding: "7px 6px" }}>
+                        <span style={{ fontWeight: 700, whiteSpace: "nowrap" }}>{nomComplet(e)}</span>
+                        <Identite eleve={e} bloc />
+                      </td>
                       <td style={{ padding: "7px 6px" }}><Badge color="blue">{e.classe}</Badge></td>
                       <td style={{ padding: "7px 6px" }}>{resumeExoneration(e)}</td>
                       <td style={{ padding: "7px 6px", color: "#475569" }}>
