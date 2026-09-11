@@ -15,6 +15,18 @@ import {
 
 export const REFUS_NON_DIRECTION = "Seule la Direction Générale peut accorder ou retirer une dispense de paiement.";
 
+// De quel élève parle-t-on, exactement : les homonymes sont courants, et
+// l'IEN comme la filiation sont ce qui les départage. Repris dans la
+// confirmation ET dans le journal, pour qu'une relecture ultérieure sache sur
+// qui la dispense est tombée.
+const identite = (eleve = {}) => [
+  `${eleve.nom || ""} ${eleve.prenom || ""}`.trim(),
+  eleve.classe,
+  eleve.matricule,
+  eleve.ien && `IEN ${eleve.ien}`,
+  eleve.filiation,
+].filter(Boolean).join(" · ");
+
 export async function accorderExoneration(eleve, brouillon, {
   estDirection, modEleves, logAction, toast, auteur = "", annee = "",
 }) {
@@ -32,11 +44,11 @@ export async function accorderExoneration(eleve, brouillon, {
   }
 
   const nom = `${eleve.nom || ""} ${eleve.prenom || ""}`.trim();
-  if (!confirm(`Dispenser ${nom} — ${resumeExoneration({ exoneration })} ?`)) return false;
+  if (!confirm(`Dispenser cet élève ?\n\n${identite(eleve)}\n\n${resumeExoneration({ exoneration })}`)) return false;
 
   await modEleves(eleve._id, { exoneration });
   logAction?.("Dispense de paiement accordée",
-    `${nom} · ${resumeExoneration({ exoneration })} · ${libelleMotif(exoneration.motif)}${exoneration.precision ? ` (${exoneration.precision})` : ""}`);
+    `${identite(eleve)} · ${resumeExoneration({ exoneration })} · ${libelleMotif(exoneration.motif)}${exoneration.precision ? ` (${exoneration.precision})` : ""}`);
   toast?.(`Dispense accordée à ${nom}.`, "success");
   return true;
 }
@@ -45,10 +57,10 @@ export async function retirerExoneration(eleve, { estDirection, modEleves, logAc
   if (!estDirection) { toast?.(REFUS_NON_DIRECTION, "warning"); return false; }
 
   const nom = `${eleve.nom || ""} ${eleve.prenom || ""}`.trim();
-  if (!confirm(`Retirer la dispense de ${nom} ? Les mois non réglés redeviendront des impayés.`)) return false;
+  if (!confirm(`Retirer la dispense de cet élève ?\n\n${identite(eleve)}\n\nLes mois non réglés redeviendront des impayés.`)) return false;
 
   await modEleves(eleve._id, { exoneration: null });
-  logAction?.("Dispense de paiement retirée", `${nom} · ${resumeExoneration(eleve) || "—"}`);
+  logAction?.("Dispense de paiement retirée", `${identite(eleve)} · ${resumeExoneration(eleve) || "—"}`);
   toast?.(`Dispense retirée pour ${nom}.`, "success");
   return true;
 }
