@@ -3,6 +3,7 @@ import { C, getFraisAnnexeLabel, initMens, isFraisAnnexePaye } from "../../../co
 import { Badge, Btn, TR, TD } from "../../ui";
 import { imprimerRecu, imprimerRecuTicket } from "../../../reports";
 import { getEleveMensualiteSnapshot } from "../../../mensualite-utils";
+import { aUneExoneration, estExonereTotal, resumeExoneration } from "../../../exoneration-utils";
 import { FORMATS_RECU, getRecuFormat, labelRecuFormat, setRecuFormat } from "./recu-format";
 
 // Une ligne élève de la grille des mensualités : colonnes figées (matricule,
@@ -14,6 +15,11 @@ export function MensualitesRow({
 }) {
   const mens = e.mens || initMens();
   const snapshot = getEleveMensualiteSnapshot(e, moisAnnee, tarifsClasses);
+  // Dispense de paiement : un mois non coché n'est plus un impayé, et il n'y a
+  // rien à encaisser — la case devient « Exo » et ne se clique plus.
+  const exonere = aUneExoneration(e);
+  const exonereTotal = estExonereTotal(e, "mensualites");
+  const resume = resumeExoneration(e);
   const montantInscription = getTarifInscriptionEleve(e);
   const montantAutre = getTarifAutre(e.classe);
   // Frais annexes actifs pour la classe : « autre » (legacy) + catalogue.
@@ -62,19 +68,27 @@ export function MensualitesRow({
   return (
     <TR>
       <TD style={tdSticky(0)}><span style={{ fontSize: 11, fontFamily: "monospace", background: "#e0ebf8", padding: "2px 6px", borderRadius: 4, color: C.blue, fontWeight: 700 }}>{e.matricule}</span></TD>
-      <TD bold style={tdSticky(95)}>{e.nom} {e.prenom}</TD>
+      <TD bold style={tdSticky(95)}>
+        {e.nom} {e.prenom}
+        {exonere && <span title={`Dispense de paiement — ${resume}`}
+          style={{ marginInlineStart: 6, fontSize: 11, background: "#fef3c7", color: "#92400e", borderRadius: 4, padding: "1px 5px", fontWeight: 700 }}>🎓</span>}
+      </TD>
       <TD><Badge color="blue">{e.classe}</Badge></TD>
       <TD>{e.tuteur}</TD><TD>{e.contactTuteur}</TD>
       {moisAnnee.map(m => {
         const paye = mens[m] === "Payé";
         const datePaie = (e.mensDates || {})[m] || "";
-        const peutCliquer = paye ? (canCreate && canEdit) : canCreate;
+        // Mois couvert par une dispense totale : rien à encaisser.
+        const moisExonere = exonereTotal && !paye;
+        const peutCliquer = moisExonere ? false : (paye ? (canCreate && canEdit) : canCreate);
         return <td key={m} style={{ padding: "4px 2px", textAlign: "center" }}>
           <button onClick={() => peutCliquer && toggleMens(e._id, m, mens, e.mensDates || {}, `${e.nom} ${e.prenom}`)}
-            title={`${m} — ${mens[m] || "Impayé"}${datePaie ? " (" + datePaie + ")" : ""}`}
-            style={{ width: 26, height: 26, borderRadius: 5, border: "none", cursor: peutCliquer ? "pointer" : "default", fontSize: 12,
-              background: paye ? C.green : "#e8f0e8", color: paye ? "#fff" : "#9ca3af", fontWeight: 700, opacity: (readOnly || (!peutCliquer && !paye)) ? 0.6 : 1 }}>
-            {paye ? "✓" : "·"}
+            title={moisExonere ? `${m} — dispensé (${resume})` : `${m} — ${mens[m] || "Impayé"}${datePaie ? " (" + datePaie + ")" : ""}`}
+            style={{ width: 26, height: 26, borderRadius: 5, border: "none", cursor: peutCliquer ? "pointer" : "default", fontSize: moisExonere ? 9 : 12,
+              background: paye ? C.green : moisExonere ? "#fef3c7" : "#e8f0e8",
+              color: paye ? "#fff" : moisExonere ? "#92400e" : "#9ca3af",
+              fontWeight: 700, opacity: (readOnly || (!peutCliquer && !paye && !moisExonere)) ? 0.6 : 1 }}>
+            {paye ? "✓" : moisExonere ? "Exo" : "·"}
           </button>
         </td>;
       })}

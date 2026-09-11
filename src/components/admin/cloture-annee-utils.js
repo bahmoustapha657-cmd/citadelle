@@ -16,6 +16,9 @@ export const COLLECTIONS_ELEVES = [
 export const CHAMPS_SCOLARITE = [
   "mens", "mensDates", "mensMontants", "fraisPayes",
   "inscriptionPayee", "inscriptionDate", "autrePayee", "autreDate",
+  // La dispense de paiement vaut pour UNE année : archivée ici, effacée par
+  // l'état vierge, la rentrée propose de la reconduire (cf. exoneration-utils).
+  "exoneration",
   // Archivé ET restauré : la clôture bascule les élèves actifs en
   // « Réinscription », l'annulation doit pouvoir revenir en arrière.
   "typeInscription",
@@ -47,6 +50,7 @@ export function etatVierge(moisAnnee = null) {
     inscriptionDate: null,
     autrePayee: false,
     autreDate: null,
+    exoneration: null,
   };
 }
 

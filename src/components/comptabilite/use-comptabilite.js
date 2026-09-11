@@ -177,6 +177,11 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
     toast(`${aTraiter.length} élève(s) réinscrit(s) — ${fmt(total)} encaissés.`, "success");
   };
 
+  // Dispenses de paiement : les dépendances d'écriture, la garde « Direction »
+  // vivant dans exoneration-actions. `modEleves` suit le niveau affiché, comme
+  // pour les paiements.
+  const exonerationDeps = { modEleves, logAction, toast, auteur: signature };
+
   const toggleMens = (_id, mois, mensActuels, mensDatesActuels, nomEleve) => {
     // Fige le tarif en vigueur au moment du paiement (mensMontants[mois]) :
     // les totaux perçus ne bougent plus si le tarif change en cours d'année.
@@ -277,7 +282,7 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
     totR, totD, totVers, eleves, classesU, tousElevesScolarite, elevesFiltres,
     getTarif, getTarifBase, getTarifRevision, getTarifAutre, getTarifIns, getTarifReinsc,
     getTarifInscriptionEleve, getTarifFraisDivers, saveTarif,
-    toggleFraisAnnexe, toggleMens, encaisserInscriptions, enreg, saveSalaire, savePersonnel,
+    toggleFraisAnnexe, toggleMens, encaisserInscriptions, exonerationDeps, enreg, saveSalaire, savePersonnel,
     salairesDomaine, moisLabel, totNetSec, totNetPrim, totNetPers, salairesMois,
     mensualiteOverview, periodes, defaultPeriode, impaye, pctImpaye,
   };

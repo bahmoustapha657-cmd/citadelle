@@ -1,6 +1,7 @@
 // Dérivations pures du portail parent : filtrage par enfant courant, calcul
 // des tarifs et du blocage pour impayés. Aucun état React.
 import { getTarifAutreValue, getTarifMensuelTotal } from "../../constants";
+import { estExonereTotal } from "../../exoneration-utils";
 import { normalizeText } from "./helpers";
 
 // Notes de l'enfant courant.
@@ -30,7 +31,10 @@ export function computeTarifInfos(tarifs, eleve) {
 }
 
 // Mois impayés et accès bloqué si l'option de blocage est active.
+// Un élève dispensé de la mensualité ne doit rien : aucun mois impayé à
+// annoncer à sa famille, et aucun accès retenu.
 export function computeBlocage(schoolInfo, eleve, moisAnnee) {
+  if (estExonereTotal(eleve, "mensualites")) return { moisImpayes: [], accesBloqueParPaiement: false };
   const blocageActif = !!schoolInfo.blocageParentImpaye;
   const moisImpayes = moisAnnee.filter((mois) => normalizeText((eleve.mens || {})[mois]) !== "paye");
   const accesBloqueParPaiement = blocageActif && moisImpayes.length > 0;

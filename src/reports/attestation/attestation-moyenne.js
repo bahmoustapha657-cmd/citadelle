@@ -6,6 +6,7 @@
 // courir le risque qu'une attestation et le bulletin de la même année
 // annoncent deux moyennes différentes — le premier parent qui compare les deux
 // feuilles a raison contre nous.
+import { anneePrecedente } from "../../constants.js";
 import { getGeneralAverage } from "../../note-utils.js";
 import { buildBulletinNotesAnnuelles } from "../bulletins/annual-notes.js";
 
@@ -33,11 +34,10 @@ export function formatMoyenneAnnuelle(moyenne, maxNote = 20) {
   return moyenne == null ? "" : `${moyenne.toFixed(2).replace(".", ",")}/${maxNote}`;
 }
 
-// « 2026-2027 » → « 2025-2026 ». Renvoie "" si le format n'est pas reconnu.
-export function anneePrecedente(annee) {
-  const m = /^(\d{4})-(\d{4})$/.exec(String(annee || "").trim());
-  return m ? `${Number(m[1]) - 1}-${m[1]}` : "";
-}
+// Helper d'année scolaire commun (il sert aussi aux dispenses de paiement,
+// reconduites d'une année sur l'autre) ; réexporté pour les appelants
+// historiques de ce module.
+export { anneePrecedente };
 
 // Moyenne à IMPRIMER, avec son année.
 //

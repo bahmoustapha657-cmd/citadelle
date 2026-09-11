@@ -15,6 +15,13 @@ export function MensualitesSynthese({ elevesFiltres, moisAnnee, tarifsClasses })
       <span style={{ fontSize: 12, color: C.blue, fontWeight: 700 }}>💰 {fmt(overview.totalPercu)}</span>
       <Badge color="purple">{fmt(overview.totalInscriptionsPercues)} inscriptions perçues</Badge>
       <Badge color="gray">{fmt(overview.totalAutresPercus)} autres frais perçus</Badge>
+      {/* Les dispenses ne sont pas des impayés : on les montre à part, avec ce
+          qu'elles coûtent, pour qu'elles restent une décision visible. */}
+      {overview.totalElevesExoneres > 0 && (
+        <Badge color="amber">
+          🎓 {overview.totalElevesExoneres} dispensé(s) · {fmt(overview.totalExonere)} non perçus
+        </Badge>
+      )}
     </div>
   );
 }

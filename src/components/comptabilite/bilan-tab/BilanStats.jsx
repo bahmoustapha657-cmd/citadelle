@@ -15,6 +15,12 @@ export function BilanStats({
       <Stat label={t("accounting.totalSalaries")} value={`${((totNetSec+totNetPrim+totNetPers)/1e6).toFixed(3)}M`} sub={`${cur} — ${moisLabel} (${salairesMois.length})`} bg="#fef3e0"/>
       <Stat label={t("accounting.outstanding")} value={`${(impaye/1e6).toFixed(2)}M`} sub={`${cur} — ${pctImpaye}%`} bg="#fce8e8"/>
       <Stat label={t("accounting.totalReceived")} value={`${(mensualiteOverview.totalPercu/1e6).toFixed(2)}M`} sub={`${mensualiteOverview.totalDu>0?(100-Number(pctImpaye)).toFixed(1):0}%`} bg="#eaf4e0"/>
+      {/* Dispenses de paiement : ce que l'école a décidé de ne pas percevoir.
+          Ce n'est ni une recette ni un impayé — c'est un choix, et il se chiffre. */}
+      {mensualiteOverview.totalElevesExoneres > 0 && (
+        <Stat label="Dispenses accordées" value={`${(mensualiteOverview.totalExonere/1e6).toFixed(2)}M`}
+          sub={`${cur} — ${mensualiteOverview.totalElevesExoneres} élève(s)`} bg="#fef3c7"/>
+      )}
     </div>
   );
 }

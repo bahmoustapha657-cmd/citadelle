@@ -151,6 +151,21 @@ export const ARTICLES = [
     ],
   },
   {
+    id: "exoneration",
+    cat: "compta",
+    roles: ["admin", "direction", "comptable", "superadmin"],
+    titre: "Dispenser un élève de payer (gratuité, bourse, réduction)",
+    etapes: [
+      "Comptabilité → Mensualités → bouton « 🎓 Dispenses ».",
+      "Accordez la dispense à un élève : choisissez ce qui est dispensé (mensualités, inscription, frais annexes), le taux (100 % ou une réduction) et le motif — enfant du personnel, orphelin, boursier, cas social, mérite, fratrie.",
+      "Seule la Direction Générale accorde ou retire une dispense ; la comptabilité la consulte. Chaque décision est inscrite au journal des actions.",
+      "Un élève dispensé à 100 % n'est plus compté parmi les impayés : ses mois affichent « Exo », il sort des alertes, et ses bulletins ne sont plus retenus par le blocage des parents en impayé.",
+      "Une réduction (50 % par exemple) allège le solde : l'élève reste attendu pour sa part.",
+      "Le bandeau de la grille et le Bilan affichent le nombre de dispensés et le manque à gagner — ce que l'école renonce à percevoir.",
+      "La dispense vaut pour une année scolaire : la clôture l'archive, et la rentrée propose de la reconduire en un clic.",
+    ],
+  },
+  {
     id: "salaires",
     cat: "compta",
     roles: ["admin", "direction", "comptable", "superadmin"],
