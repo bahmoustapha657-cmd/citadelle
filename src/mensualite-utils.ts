@@ -6,6 +6,12 @@ import {
   getTarifRevisionValue,
   isFraisAnnexePaye,
 } from "./constants.js";
+import {
+  type EleveExonerable,
+  aUneExoneration,
+  estExonereTotal,
+  montantApresExoneration,
+} from "./exoneration-utils.js";
 
 // Bumper à chaque changement de formule (mensualité, solde, snapshot) qui
 // rendrait les calculs antérieurs non reproductibles.
@@ -26,7 +32,7 @@ export type TarifClasse = {
   fraisDivers?: Record<string, number | string>;
 };
 
-export type MensualiteEleve = {
+export type MensualiteEleve = EleveExonerable & {
   classe?: string;
   typeInscription?: string;
   inscriptionPayee?: boolean;
@@ -42,6 +48,10 @@ export type MensualiteSnapshot = {
   algoVersion: number;
   nbPayes: number;
   nbImpayes: number;
+  // Mois couverts par une dispense totale : ni payés, ni dus.
+  nbExoneres: number;
+  // Ce que l'école renonce à percevoir sur cet élève cette année.
+  montantExonere: number;
   montantMensualitesPercu: number;
   montantInscriptionPercu: number;
   montantAutrePercu: number;
@@ -57,6 +67,9 @@ export type MensualiteOverview = {
   totalImpayes: number;
   totalInscriptionsPercues: number;
   totalAutresPercus: number;
+  // Dispenses accordées : combien d'élèves, et ce que l'école y renonce.
+  totalElevesExoneres: number;
+  totalExonere: number;
 };
 
 export function getTarifConfigForClasse(tarifsClasses: TarifClasse[] = [], classe: string = ""): TarifClasse | null {
@@ -104,11 +117,29 @@ export function countPaidMonths(eleve: MensualiteEleve = {}, moisAnnee: string[]
   return moisAnnee.filter((mois) => (eleve.mens || {})[mois] === "Payé").length;
 }
 
+// Un élève dispensé de TOUTE la mensualité ne doit rien : ses mois non cochés
+// ne sont pas des impayés, et il n'a donc rien à faire dans les alertes, les
+// relances ou le blocage des bulletins.
 export function countUnpaidMonths(eleve: MensualiteEleve = {}, moisAnnee: string[] = []): number {
+  if (estExonereTotal(eleve, "mensualites")) return 0;
   return moisAnnee.length - countPaidMonths(eleve, moisAnnee);
 }
 
+// Les bulletins de cet élève sont-ils retenus pour impayé ? La règle vivait en
+// trois exemplaires (grille des bulletins, impression groupée, portail parent),
+// chacun recomptant les mois non cochés à la main — un élève dispensé s'y
+// retrouvait bloqué pour une dette qu'il n'a pas.
+export function estBloquePourImpaye(
+  schoolInfo: { blocageParentImpaye?: boolean } = {},
+  eleve: MensualiteEleve = {},
+  moisAnnee: string[] = [],
+): boolean {
+  if (!schoolInfo?.blocageParentImpaye) return false;
+  return countUnpaidMonths(eleve, moisAnnee) > 0;
+}
+
 export function getConsecutiveUnpaidMonths(eleve: MensualiteEleve = {}, moisAnnee: string[] = []): number {
+  if (estExonereTotal(eleve, "mensualites")) return 0;
   const mens = eleve.mens || {};
   const firstPaidFromEnd = moisAnnee.slice().reverse().findIndex((mois) => mens[mois] === "Payé");
   return firstPaidFromEnd === -1 ? moisAnnee.length : firstPaidFromEnd;
@@ -145,22 +176,38 @@ export function getEleveMensualiteSnapshot(eleve: MensualiteEleve = {}, moisAnne
   // payé par l'élève, sinon reste dû.
   const fraisDivers = getTarifFraisDivers(getTarifConfigForClasse(tarifsClasses, eleve.classe) || {});
   let diversPercu = 0;
-  let soldeDivers = 0;
+  let soldeDiversPlein = 0;
   for (const [fraisId, montant] of Object.entries(fraisDivers)) {
     if (isFraisAnnexePaye(eleve, fraisId)) diversPercu += Number(montant);
-    else soldeDivers += Number(montant);
+    else soldeDiversPlein += Number(montant);
   }
+
+  // Dispense : on ne touche JAMAIS à ce qui a déjà été encaissé (montants figés
+  // au paiement) — seul le reste à devoir est allégé, chaque poste à son taux.
+  const exonereMois = estExonereTotal(eleve, "mensualites");
+  const nbExoneres = exonereMois ? nbImpayes : 0;
+  const nbRestants = exonereMois ? 0 : nbImpayes;
+  const soldeMensualitesPlein = nbImpayes * mensualite;
+  const soldeMensualites = nbRestants * montantApresExoneration(mensualite, eleve, "mensualites");
+  const soldeInscriptionPlein = eleve.inscriptionPayee ? 0 : inscriptionTarif;
+  const soldeInscription = montantApresExoneration(soldeInscriptionPlein, eleve, "inscription");
+  const soldeAutrePlein = (eleve.autrePayee ? 0 : autreTarif) + soldeDiversPlein;
+  const soldeAutre = montantApresExoneration(soldeAutrePlein, eleve, "fraisAnnexes");
 
   return {
     algoVersion: MENSUALITE_ALGO_VERSION,
     nbPayes,
-    nbImpayes,
+    nbImpayes: nbRestants,
+    nbExoneres,
+    montantExonere: (soldeMensualitesPlein - soldeMensualites)
+      + (soldeInscriptionPlein - soldeInscription)
+      + (soldeAutrePlein - soldeAutre),
     montantMensualitesPercu: moisPayes.reduce((somme, mois) => somme + montantMoisPaye(eleve, mois, mensualite), 0),
     montantInscriptionPercu: inscriptionPercu,
     montantAutrePercu: autrePercu + diversPercu,
-    soldeMensualites: nbImpayes * mensualite,
-    soldeInscription: eleve.inscriptionPayee ? 0 : inscriptionTarif,
-    soldeAutre: (eleve.autrePayee ? 0 : autreTarif) + soldeDivers,
+    soldeMensualites,
+    soldeInscription,
+    soldeAutre,
   };
 }
 
@@ -182,6 +229,8 @@ export function getMensualiteOverview(eleves: MensualiteEleve[] = [], moisAnnee:
       totalImpayes: summary.totalImpayes + snapshot.nbImpayes,
       totalInscriptionsPercues: summary.totalInscriptionsPercues + snapshot.montantInscriptionPercu,
       totalAutresPercus: summary.totalAutresPercus + snapshot.montantAutrePercu,
+      totalElevesExoneres: summary.totalElevesExoneres + (aUneExoneration(eleve) ? 1 : 0),
+      totalExonere: summary.totalExonere + snapshot.montantExonere,
     };
   }, {
     totalDu: 0,
@@ -190,5 +239,7 @@ export function getMensualiteOverview(eleves: MensualiteEleve[] = [], moisAnnee:
     totalImpayes: 0,
     totalInscriptionsPercues: 0,
     totalAutresPercus: 0,
+    totalElevesExoneres: 0,
+    totalExonere: 0,
   });
 }

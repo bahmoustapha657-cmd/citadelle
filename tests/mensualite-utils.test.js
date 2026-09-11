@@ -96,6 +96,9 @@ test("snapshot and overview aggregate scolarite and one-time fees", () => {
     algoVersion: MENSUALITE_ALGO_VERSION,
     nbPayes: 2,
     nbImpayes: 1,
+    // Élève sans dispense de paiement (cf. exoneration.test.js).
+    nbExoneres: 0,
+    montantExonere: 0,
     montantMensualitesPercu: 400000,
     montantInscriptionPercu: 50000,
     montantAutrePercu: 15000,
@@ -112,6 +115,9 @@ test("snapshot and overview aggregate scolarite and one-time fees", () => {
     totalImpayes: 4,
     totalInscriptionsPercues: 50000,
     totalAutresPercus: 15000,
+    // Aucun élève dispensé de paiement ici (cf. exoneration.test.js).
+    totalElevesExoneres: 0,
+    totalExonere: 0,
   });
 });
 

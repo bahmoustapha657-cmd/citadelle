@@ -115,6 +115,8 @@ export function ComptaTabsScolarite({ c, readOnly, annee, userRole }) {
         getTarifInscriptionEleve={c.getTarifInscriptionEleve}
         getTarif={c.getTarif}
         getTarifFraisDivers={c.getTarifFraisDivers}
+        estDirection={userRole === "direction"}
+        exonerationDeps={c.exonerationDeps}
       />}
 
       {c.tab === "transferts" && <TransfertsPanel userRole={userRole} annee={annee} setTab={c.setTab} />}

@@ -1,7 +1,10 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { C, getAnnee, getSectionLabel } from "../../constants";
+import { Btn } from "../ui";
 import { TarifsClasses } from "../TarifsClasses";
 import { AlertesCritiques } from "./mensualites-tab/AlertesCritiques";
+import { ExonerationsModale } from "./mensualites-tab/ExonerationsModale";
 import { MensualitesTable } from "./mensualites-tab/MensualitesTable";
 
 // Onglet mensualités : tarifs par classe, alertes impayés, filtres niveau/classe
@@ -35,8 +38,11 @@ export function MensualitesTab({
   getTarifInscriptionEleve,
   getTarif,
   getTarifFraisDivers,
+  estDirection,
+  exonerationDeps,
 }) {
   const { t } = useTranslation();
+  const [exonerations, setExonerations] = useState(false);
   return (
     <div>
       <TarifsClasses
@@ -65,7 +71,16 @@ export function MensualitesTab({
           <option value="all">{t("common.all")}</option>
           {classesU.map(c => <option key={c}>{c}</option>)}
         </select>}
+        {/* Élèves dispensés de payer : la Direction les accorde, la
+            comptabilité les consulte (cf. exoneration-actions). */}
+        <Btn sm v="ghost" onClick={() => setExonerations(true)}>🎓 Dispenses</Btn>
       </div>
+
+      {exonerations && <ExonerationsModale
+        eleves={eleves} moisAnnee={moisAnnee} tarifsClasses={tarifsClasses}
+        annee={annee || getAnnee()} estDirection={estDirection}
+        deps={exonerationDeps} fermer={() => setExonerations(false)}
+      />}
 
       {/* Alertes impayés : repliées derrière un bouton, filtrées cycle + classe. */}
       <AlertesCritiques eleves={elevesFiltres} moisAnnee={moisAnnee} />

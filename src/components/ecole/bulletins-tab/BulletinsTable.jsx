@@ -3,6 +3,7 @@ import { C } from "../../../constants";
 import { Badge, Btn, Card, TD, TR, Vide } from "../../ui";
 import { imprimerBulletin } from "../../../reports";
 import { getGeneralAverage, getSubjectAverage } from "../../../note-utils";
+import { estBloquePourImpaye } from "../../../mensualite-utils";
 import { indexerNotesParEleve, notesDeLEleve } from "../../../note-index";
 import { getMention } from "../../../reports/bulletins/bulletin-format";
 
@@ -54,7 +55,7 @@ export function BulletinsTable({
         // sont notés sur 10, pas sur 20. Les seuils figés à 16/14/12/10
         // rendaient « Insuffisant » un élève de primaire à 8,5/10.
         const mention=moyGene==="—"?"—":getMention(moyGene,maxNote);
-        const eleveImpayeBloq = !!schoolInfo.blocageParentImpaye && moisAnnee.filter(m=>(e.mens||{})[m]!=="Payé").length>0;
+        const eleveImpayeBloq = estBloquePourImpaye(schoolInfo, e, moisAnnee);
         const apprec=getAppreciation(e._id,periodeB);
         const apprecTexte=apprec?.texte||"";
         // Background sticky alterné pour préserver le zébrage

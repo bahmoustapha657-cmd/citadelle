@@ -3,6 +3,7 @@ import { C } from "../../../constants";
 import { SchoolContext } from "../../../contexts/SchoolContext";
 import { Btn } from "../../ui";
 import { imprimerBulletinsGroupes, imprimerFicheCompositions, PERIODE_ANNEE } from "../../../reports";
+import { estBloquePourImpaye } from "../../../mensualite-utils";
 
 // Barre d'outils des bulletins : recherche, sélecteurs période/classe et
 // boutons d'impression (résultats d'évaluation, bulletins groupés).
@@ -44,7 +45,7 @@ export function BulletinsToolbar({
       </select>
       <Btn v="success" onClick={()=>{
         const elevesC=(filtreClasse==="all"?elevesFiltres:elevesFiltres.filter(e=>e.classe===filtreClasse))
-          .filter(e=>!(!!schoolInfo.blocageParentImpaye && moisAnnee.filter(m=>(e.mens||{})[m]!=="Payé").length>0));
+          .filter(e=>!estBloquePourImpaye(schoolInfo, e, moisAnnee));
         imprimerFicheCompositions(filtreClasse,periodeB,notes,matieres,elevesC,maxNote,schoolInfo,periodes,matieresForClasse,formatFiche);
       }}>
         {t("school.bulletins.evaluationResults")}
@@ -52,7 +53,7 @@ export function BulletinsToolbar({
       <Btn v="vert" onClick={()=>{
         const elevesBtn=elevesFiltres
           .filter(e=>!rechercheMatricule||(e.matricule||"").toLowerCase().includes(rechercheMatricule.toLowerCase())||(e.nom+" "+e.prenom).toLowerCase().includes(rechercheMatricule.toLowerCase()))
-          .filter(e=>!(!!schoolInfo.blocageParentImpaye && moisAnnee.filter(m=>(e.mens||{})[m]!=="Payé").length>0));
+          .filter(e=>!estBloquePourImpaye(schoolInfo, e, moisAnnee));
         imprimerBulletinsGroupes(elevesBtn,notes,matieres,periodeB,section,maxNote,schoolInfo,filtreClasse==="all"?"Toutes classes":filtreClasse,matieresForClasse,appreciationsParEleveB(periodeB),periodes);
       }}>
         {t("school.bulletins.allBulletins")} {filtreClasse!=="all"?`— ${filtreClasse}`:""}

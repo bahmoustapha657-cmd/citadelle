@@ -48,6 +48,12 @@ export const calcMoisSalaire = (debut = "Octobre") => {
 };
 export const getAnnee = () => localStorage.getItem("LC_annee") || "2025-2026";
 
+// « 2026-2027 » → « 2025-2026 ». Renvoie "" si le format n'est pas reconnu.
+export const anneePrecedente = (annee) => {
+  const m = /^(\d{4})-(\d{4})$/.exec(String(annee || "").trim());
+  return m ? `${Number(m[1]) - 1}-${m[1]}` : "";
+};
+
 // Année scolaire à laquelle appartient une DATE : « 14/02/2026 » → 2025-2026.
 // Septembre ouvre l'année (TOUS_MOIS_COURTS commence à « Sep ») : de septembre
 // à décembre on est dans AAAA-AAAA+1, de janvier à août dans AAAA-1-AAAA.
