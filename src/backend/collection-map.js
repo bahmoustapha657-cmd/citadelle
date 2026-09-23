@@ -197,6 +197,21 @@ export function ecritureSupportee(table) {
   return Object.prototype.hasOwnProperty.call(COLUMN_DEFS, table);
 }
 
+// Clés d'item jamais écrites par toRow (identifiants, horodatages, section —
+// cette dernière est imposée par data-supabase pour les collections sectionnées).
+const CLES_IGNOREES = new Set(["_id", "id", "section", "createdAt", "updatedAt"]);
+
+// Colonnes que toRow peut émettre pour une table (ecole_id et section, ajoutées
+// par data-supabase, en sus). Le miroir hors ligne doit toutes les porter : une
+// vue PowerSync refuse l'écriture d'une colonne absente de son schéma
+// (cf. tests/powersync-schema.test.js).
+export function colonnesEcrites(table) {
+  const def = COLUMN_DEFS[table];
+  if (!def) return [];
+  const cols = Object.entries(def.cols).filter(([cle]) => !CLES_IGNOREES.has(cle)).map(([, col]) => col);
+  return def.extraCol ? [...cols, def.extraCol] : cols;
+}
+
 // item camelCase → { ...colonnes, [extraCol]: {restes} }. `champsConnus` permet,
 // pour un update partiel, de ne mapper que les clés fournies (toRow renvoie aussi
 // `extraKeys` = les clés parties dans le jsonb, utile pour le merge read-modify-write).
@@ -204,11 +219,10 @@ export function toRow(table, item) {
   const def = COLUMN_DEFS[table];
   if (!def) return { row: { ...item }, extraKeys: [] };
   const row = {};
-  const ignore = new Set(["_id", "id", "section", "createdAt", "updatedAt"]);
   const extra = {};
   const extraKeys = [];
   for (const [key, val] of Object.entries(item)) {
-    if (ignore.has(key)) continue;
+    if (CLES_IGNOREES.has(key)) continue;
     if (def.cols[key]) { row[def.cols[key]] = val; continue; }
     if (def.extraCol) { extra[key] = val; extraKeys.push(key); }
   }

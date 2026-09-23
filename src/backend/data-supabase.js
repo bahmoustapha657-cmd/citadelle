@@ -15,17 +15,15 @@ import { resolveCollection, transformRow, toRow, ecritureSupportee } from "./col
 // chargé qu'en `import()` dynamique, uniquement quand `horsLigne()` est vrai —
 // zéro coût de bundle pour les utilisateurs Firebase (prod).
 import { estCouvertHorsLigne, powerSyncConfigured } from "./powersync/tables";
+// Tables filtrables par année / par période : listes PARTAGÉES avec la lecture
+// hors ligne (local-data.js), pour que les deux chemins ne divergent plus.
+import { ANNEE_TABLES, PERIODE_TABLES } from "./filtres-lecture";
 
 let localDataPromise = null;
 function localData() {
   if (!localDataPromise) localDataPromise = import("./powersync/local-data");
   return localDataPromise;
 }
-
-// Tables filtrables par année (colonne `annee`).
-const ANNEE_TABLES = new Set([
-  "notes", "recettes", "depenses", "versements", "bons", "paiements", "salaires", "appreciations",
-]);
 
 // schoolId applicatif = CODE de l'école ; les tables référencent l'uuid.
 // Mis aussi en cache localStorage : nécessaire pour résoudre l'ecole_id hors
@@ -59,9 +57,6 @@ export function resoudreEcoleId(code) {
 // l'instance PowerSync est configurée (sinon comportement en ligne inchangé).
 const horsLigne = (table) => powerSyncConfigured && estCouvertHorsLigne(table);
 
-// Tables portant une colonne `periode` (T1/S1/M1…), filtrable au chargement.
-const PERIODE_TABLES = new Set(["notes", "appreciations"]);
-
 // Renvoie { items, unsupported?, erreur? }. `unsupported` = collection sans
 // table Supabase ; `erreur` = lecture en échec (items vides) — la plupart des
 // écrans s'en contentent, mais un outil qui conclut « rien à faire » sur une
@@ -69,9 +64,10 @@ const PERIODE_TABLES = new Set(["notes", "appreciations"]);
 // `periode` / `saufPeriode` : chargement en deux temps (cf. useFirestore) — la
 // période affichée d'abord, tout le reste en parallèle.
 // `saufPeriodes` : exclut une LISTE de périodes (migration des périodes : seules
-// les notes hors périodicité voyagent). Comme les deux précédents, ces filtres
-// ne s'appliquent qu'en ligne : la lecture hors ligne renvoie la tranche
-// entière, à l'appelant de refiltrer s'il en dépend.
+// les notes hors périodicité voyagent).
+// Ces filtres, comme `annee`, s'appliquent en ligne ET hors ligne
+// (filtres-lecture.js) : les deux temps du chargement doivent se compléter sans
+// se recouvrir, sinon chaque ligne arrive en double.
 export async function chargerCollection(schoolCode, nomCollection, { annee, periode, saufPeriode, saufPeriodes } = {}) {
   const map = resolveCollection(nomCollection);
   if (!map) return { items: [], unsupported: true };
@@ -83,7 +79,7 @@ export async function chargerCollection(schoolCode, nomCollection, { annee, peri
   if (horsLigne(map.table)) {
     try {
       const { lireLocal } = await localData();
-      const rows = await lireLocal(map.table, { ecoleId, section: map.section, annee });
+      const rows = await lireLocal(map.table, { ecoleId, section: map.section, annee, periode, saufPeriode, saufPeriodes });
       return { items: rows.map((r) => transformRow(map.table, r)) };
     } catch (err) {
       console.warn(`[powersync] lecture locale ${nomCollection} (${map.table}):`, err?.message || err);
@@ -403,8 +399,9 @@ function colonnesExactes(table, champs, quoi) {
 }
 
 // Périmètre complet d'une écriture en lot : école + section de la collection
-// (jamais surchargeables : `section` est refusée ci-dessus) + le filtre, dont
-// chaque valeur doit être un scalaire — `null` n'égale rien en SQL.
+// (jamais surchargeables : toRow écarte la clé `section` des tables
+// sectionnées, qui est donc refusée ci-dessus) + le filtre, dont chaque valeur
+// doit être un scalaire — `null` n'égale rien en SQL.
 function perimetreEnLot(map, ecoleId, filtre) {
   const ou = colonnesExactes(map.table, filtre, "filtre");
   if (Object.values(ou).some((v) => v == null || typeof v === "object")) {

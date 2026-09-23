@@ -78,10 +78,13 @@ const enseignements = new Table(
   { indexes: { ecole_section: ["ecole_id", "section"] } },
 );
 
+// `annee` (ajoutée côté Postgres le 2026-08-12) : sans elle, la vue locale
+// refusait toute écriture d'appréciation (« has no column named annee ») et
+// la lecture ne pouvait pas filtrer par année.
 const appreciations = new Table(
   {
     ecole_id: column.text, section: column.text, eleve_id: column.text,
-    periode: column.text, texte: column.text,
+    periode: column.text, texte: column.text, annee: column.text,
   },
   { indexes: { eleve: ["eleve_id"] } },
 );
@@ -103,10 +106,13 @@ const personnel = new Table(
   { indexes: { ecole: ["ecole_id"] } },
 );
 
+// `annee` : même défaut que les appréciations (écrite par toRow depuis le
+// 2026-08-12, absente de la vue locale).
 const salaires = new Table(
   {
     ecole_id: column.text, nom: column.text, section: column.text,
     mois: column.text, montant_net: column.real, details: column.text,
+    annee: column.text,
   },
   { indexes: { ecole: ["ecole_id"] } },
 );
