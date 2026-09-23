@@ -22,6 +22,9 @@ const SUFFIX_TABLE = {
   enseignements: "enseignements", matieres: "matieres",
 };
 const SECTIONAL = /^(eleves|notes|classes|ens|absences|appreciations)(Prescolaire|Primaire|College|Lycee)(?:_(absences|emplois|enseignements|matieres))?$/;
+// Tables atteintes par une collection sectionnée : leur section vient du NOM
+// de la collection, data-supabase l'impose (row.section = map.section).
+const TABLES_SECTIONNEES = new Set([...Object.values(BASE_TABLE), ...Object.values(SUFFIX_TABLE)]);
 
 // Entités au niveau école (sans section) qui ONT une table Supabase.
 const FLAT_TABLE = {
@@ -197,18 +200,26 @@ export function ecritureSupportee(table) {
   return Object.prototype.hasOwnProperty.call(COLUMN_DEFS, table);
 }
 
-// Clés d'item jamais écrites par toRow (identifiants, horodatages, section —
-// cette dernière est imposée par data-supabase pour les collections sectionnées).
-const CLES_IGNOREES = new Set(["_id", "id", "section", "createdAt", "updatedAt"]);
+// Clés d'item jamais écrites par toRow : identifiants et horodatages. `section`
+// ne s'y ajoute que pour les tables sectionnées : l'item ne doit pas pouvoir la
+// choisir (data-supabase l'impose), et dans `extra` elle masquerait la colonne à
+// la lecture. Pour une table plate, c'est une donnée comme une autre : sa colonne
+// (salaires) ou le jsonb (bons, livrets). L'ignorer partout faisait perdre leur
+// section aux fiches de paie dès la création.
+const CLES_TECHNIQUES = ["_id", "id", "createdAt", "updatedAt"];
+const IGNOREES_PLATE = new Set(CLES_TECHNIQUES);
+const IGNOREES_SECTIONNEE = new Set([...CLES_TECHNIQUES, "section"]);
+const clesIgnorees = (table) => (TABLES_SECTIONNEES.has(table) ? IGNOREES_SECTIONNEE : IGNOREES_PLATE);
 
-// Colonnes que toRow peut émettre pour une table (ecole_id et section, ajoutées
-// par data-supabase, en sus). Le miroir hors ligne doit toutes les porter : une
-// vue PowerSync refuse l'écriture d'une colonne absente de son schéma
-// (cf. tests/powersync-schema.test.js).
+// Colonnes que toRow peut émettre pour une table (ecole_id, et la section des
+// tables sectionnées, ajoutées par data-supabase, en sus). Le miroir hors ligne
+// doit toutes les porter : une vue PowerSync refuse l'écriture d'une colonne
+// absente de son schéma (cf. tests/powersync-schema.test.js).
 export function colonnesEcrites(table) {
   const def = COLUMN_DEFS[table];
   if (!def) return [];
-  const cols = Object.entries(def.cols).filter(([cle]) => !CLES_IGNOREES.has(cle)).map(([, col]) => col);
+  const ignorees = clesIgnorees(table);
+  const cols = Object.entries(def.cols).filter(([cle]) => !ignorees.has(cle)).map(([, col]) => col);
   return def.extraCol ? [...cols, def.extraCol] : cols;
 }
 
@@ -219,10 +230,11 @@ export function toRow(table, item) {
   const def = COLUMN_DEFS[table];
   if (!def) return { row: { ...item }, extraKeys: [] };
   const row = {};
+  const ignorees = clesIgnorees(table);
   const extra = {};
   const extraKeys = [];
   for (const [key, val] of Object.entries(item)) {
-    if (CLES_IGNOREES.has(key)) continue;
+    if (ignorees.has(key)) continue;
     if (def.cols[key]) { row[def.cols[key]] = val; continue; }
     if (def.extraCol) { extra[key] = val; extraKeys.push(key); }
   }
