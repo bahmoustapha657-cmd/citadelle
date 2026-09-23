@@ -30,8 +30,9 @@ test("toute colonne écrite par l'app existe dans le schéma du miroir local", (
 
 test("colonnesEcrites suit toRow : clés ignorées exclues, jsonb inclus", () => {
   assert.ok(colonnesEcrites("appreciations").includes("annee"));
-  // `section` figure dans COLUMN_DEFS.salaires mais toRow ne l'écrit jamais.
-  assert.ok(!colonnesEcrites("salaires").includes("section"));
+  // Table plate : la section de la fiche de paie est une donnée de l'item,
+  // écrite dans sa colonne — le miroir local doit donc la porter.
+  assert.ok(colonnesEcrites("salaires").includes("section"));
   assert.ok(colonnesEcrites("salaires").includes("details"));
   assert.deepEqual(colonnesEcrites("table_inconnue"), []);
 });
