@@ -3,14 +3,18 @@ import { SchoolContext } from "../../contexts/SchoolContext";
 import { useFirestore } from "../../hooks/useFirestore";
 import { today } from "../../constants";
 import { getPeriodesForSection } from "../../period-utils";
-import { genNumeroLivret, buildNouveauLivret, buildAnneePreRemplie } from "./livrets-logic";
+import {
+  genNumeroLivret, buildNouveauLivret, buildAnneePreRemplie, anneesApresSaisie, anneesApresSignature,
+} from "./livrets-logic";
 
 // Logique des livrets scolaires : chargement, dérivations et opérations
 // (création, pré-remplissage annuel, sauvegarde et signature d'une année).
 // Les constructeurs purs vivent dans livrets-logic.js.
 export function useLivretsTab({ cleEleves, cleNotes, matieres, maxNote, userRole, annee }) {
   const { schoolInfo, toast } = useContext(SchoolContext);
-  const { items: livrets, ajouter: ajLivret, modifier: modLivret } = useFirestore("livrets");
+  // modifierChamp(id, champs) : mise à jour partielle, fusionnée dans le jsonb `extra`.
+  // (`modifier` attend un item complet portant `_id` : appelé en (id, champs), il n'écrit rien.)
+  const { items: livrets, ajouter: ajLivret, modifierChamp: modLivret } = useFirestore("livrets");
   const { items: eleves } = useFirestore(cleEleves);
   const { items: notes } = useFirestore(cleNotes);
   const section = cleEleves.includes("Primaire") ? "primaire" : cleEleves.includes("Lycee") ? "lycee" : "college";
@@ -34,8 +38,9 @@ export function useLivretsTab({ cleEleves, cleNotes, matieres, maxNote, userRole
     if (!canEdit) { toast("Création réservée à la direction/admin.", "warning"); return; }
     setSavingL(true);
     try {
-      const id = await ajLivret(buildNouveauLivret(eleve, { section, numeroLivret: genNumeroLivret(livrets), annee }));
-      setLivretSelId(id);
+      // `ajouter` renvoie le livret créé (sa référence en Firebase), pas son id.
+      const cree = await ajLivret(buildNouveauLivret(eleve, { section, numeroLivret: genNumeroLivret(livrets), annee }));
+      setLivretSelId(cree.id);
       toast("Livret créé", "success");
     } finally { setSavingL(false); }
   };
@@ -47,10 +52,7 @@ export function useLivretsTab({ cleEleves, cleNotes, matieres, maxNote, userRole
     if (!livretSel) return;
     setSavingL(true);
     try {
-      const annees = [...(livretSel.annees || [])];
-      if (formAnnee._idx != null) annees[formAnnee._idx] = { ...formAnnee, _idx: undefined };
-      else annees.push({ ...formAnnee });
-      await modLivret(livretSel._id, { annees });
+      await modLivret(livretSel._id, { annees: anneesApresSaisie(livretSel.annees, formAnnee) });
       setModal(null);
       toast("Année enregistrée", "success");
     } finally { setSavingL(false); }
@@ -59,9 +61,7 @@ export function useLivretsTab({ cleEleves, cleNotes, matieres, maxNote, userRole
   const signerAnnee = async (livretId, idx) => {
     const lv = livrets.find(l => l._id === livretId);
     if (!lv) return;
-    const annees = [...lv.annees];
-    annees[idx] = { ...annees[idx], signe: true, dateSigne: today() };
-    await modLivret(livretId, { annees });
+    await modLivret(livretId, { annees: anneesApresSignature(lv.annees, idx, today()) });
     toast("Année signée et verrouillée", "success");
   };
 
