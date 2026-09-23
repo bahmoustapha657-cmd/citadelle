@@ -15,9 +15,9 @@ import { resolveCollection, transformRow, toRow, ecritureSupportee } from "./col
 // chargé qu'en `import()` dynamique, uniquement quand `horsLigne()` est vrai —
 // zéro coût de bundle pour les utilisateurs Firebase (prod).
 import { estCouvertHorsLigne, powerSyncConfigured } from "./powersync/tables";
-// Tables filtrables par année : liste PARTAGÉE avec la lecture hors ligne
-// (local-data.js), pour que les deux chemins ne divergent plus.
-import { ANNEE_TABLES } from "./filtres-lecture";
+// Tables filtrables par année / par période : listes PARTAGÉES avec la lecture
+// hors ligne (local-data.js), pour que les deux chemins ne divergent plus.
+import { ANNEE_TABLES, PERIODE_TABLES } from "./filtres-lecture";
 
 let localDataPromise = null;
 function localData() {
@@ -57,12 +57,12 @@ export function resoudreEcoleId(code) {
 // l'instance PowerSync est configurée (sinon comportement en ligne inchangé).
 const horsLigne = (table) => powerSyncConfigured && estCouvertHorsLigne(table);
 
-// Tables portant une colonne `periode` (T1/S1/M1…), filtrable au chargement.
-const PERIODE_TABLES = new Set(["notes", "appreciations"]);
-
 // Renvoie { items, unsupported? }. `unsupported` = collection sans table Supabase.
 // `periode` / `saufPeriode` : chargement en deux temps (cf. useFirestore) — la
-// période affichée d'abord, tout le reste en parallèle.
+// période affichée d'abord, tout le reste en parallèle. Ces filtres, comme
+// `annee`, s'appliquent en ligne ET hors ligne (filtres-lecture.js) : les deux
+// temps doivent se compléter sans se recouvrir, sinon chaque ligne arrive en
+// double.
 export async function chargerCollection(schoolCode, nomCollection, { annee, periode, saufPeriode } = {}) {
   const map = resolveCollection(nomCollection);
   if (!map) return { items: [], unsupported: true };
@@ -74,7 +74,7 @@ export async function chargerCollection(schoolCode, nomCollection, { annee, peri
   if (horsLigne(map.table)) {
     try {
       const { lireLocal } = await localData();
-      const rows = await lireLocal(map.table, { ecoleId, section: map.section, annee });
+      const rows = await lireLocal(map.table, { ecoleId, section: map.section, annee, periode, saufPeriode });
       return { items: rows.map((r) => transformRow(map.table, r)) };
     } catch (err) {
       console.warn(`[powersync] lecture locale ${nomCollection} (${map.table}):`, err?.message || err);

@@ -1,6 +1,6 @@
 // ── Accès générique au miroir local (lecture/écriture) ──────────────────────
 // Contrepartie hors ligne des appels supabase-js de data-supabase.js : mêmes
-// filtres (ecole_id/section/annee, cf. filtres-lecture.js), mêmes
+// filtres (ecole_id/section/annee/periode, cf. filtres-lecture.js), mêmes
 // formes de ligne (toRow/transformRow de collection-map.js restent la seule
 // source de vérité pour le mapping camelCase ↔ snake_case). Les écritures ici
 // passent par `db.execute`, que PowerSync met automatiquement en file pour
