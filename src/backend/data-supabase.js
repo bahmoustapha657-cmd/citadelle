@@ -62,16 +62,23 @@ const horsLigne = (table) => powerSyncConfigured && estCouvertHorsLigne(table);
 // Tables portant une colonne `periode` (T1/S1/M1…), filtrable au chargement.
 const PERIODE_TABLES = new Set(["notes", "appreciations"]);
 
-// Renvoie { items, unsupported? }. `unsupported` = collection sans table Supabase.
+// Renvoie { items, unsupported?, erreur? }. `unsupported` = collection sans
+// table Supabase ; `erreur` = lecture en échec (items vides) — la plupart des
+// écrans s'en contentent, mais un outil qui conclut « rien à faire » sur une
+// liste vide doit pouvoir distinguer l'échec du vide.
 // `periode` / `saufPeriode` : chargement en deux temps (cf. useFirestore) — la
 // période affichée d'abord, tout le reste en parallèle.
-export async function chargerCollection(schoolCode, nomCollection, { annee, periode, saufPeriode } = {}) {
+// `saufPeriodes` : exclut une LISTE de périodes (migration des périodes : seules
+// les notes hors périodicité voyagent). Comme les deux précédents, ces filtres
+// ne s'appliquent qu'en ligne : la lecture hors ligne renvoie la tranche
+// entière, à l'appelant de refiltrer s'il en dépend.
+export async function chargerCollection(schoolCode, nomCollection, { annee, periode, saufPeriode, saufPeriodes } = {}) {
   const map = resolveCollection(nomCollection);
   if (!map) return { items: [], unsupported: true };
 
   const sb = getSupabase();
   const ecoleId = await ecoleIdFromCode(sb, schoolCode);
-  if (!ecoleId) return { items: [] };
+  if (!ecoleId) return { items: [], erreur: "École introuvable." };
 
   if (horsLigne(map.table)) {
     try {
@@ -80,7 +87,7 @@ export async function chargerCollection(schoolCode, nomCollection, { annee, peri
       return { items: rows.map((r) => transformRow(map.table, r)) };
     } catch (err) {
       console.warn(`[powersync] lecture locale ${nomCollection} (${map.table}):`, err?.message || err);
-      return { items: [] };
+      return { items: [], erreur: err?.message || String(err) };
     }
   }
 
@@ -118,12 +125,13 @@ export async function chargerCollection(schoolCode, nomCollection, { annee, peri
     if (PERIODE_TABLES.has(map.table)) {
       if (periode) q = q.eq("periode", periode);
       else if (saufPeriode) q = q.neq("periode", saufPeriode);
+      else if (saufPeriodes?.length) q = q.notIn("periode", saufPeriodes);
     }
     return q;
   };
   const echec = (error) => {
     console.warn(`[supabase] lecture ${nomCollection} (${map.table}):`, error.message);
-    return { items: [] };
+    return { items: [], erreur: error.message };
   };
 
   const premiere = await requete(0, true);
@@ -346,4 +354,73 @@ export async function supprimerDoc(schoolCode, nomCollection, id) {
 
   const { error } = await sb.from(map.table).delete().eq("id", id);
   if (error) throw new Error(error.message);
+}
+
+// ── Écritures EN LOT par filtre ─────────────────────────────────────────────
+// UNE requête pour toutes les lignes de la collection qui vérifient `filtre`
+// (égalités sur des colonnes réelles, clés camelCase comme un item), au lieu
+// d'une par ligne : la migration des périodes renomme ainsi des milliers de
+// notes en quelques allers-retours.
+//
+// Renvoient le nombre de lignes RÉELLEMENT touchées : la RLS n'oppose aucune
+// erreur aux lignes qu'elle refuse, elle les ignore. Ce compte est le seul
+// moyen, pour l'appelant, de s'en apercevoir. Hors ligne, c'est le compte du
+// miroir local : la RLS ne tranchera qu'à la remontée par PowerSync.
+
+// item camelCase → colonnes, SANS perte. Une clé que toRow écarte (section,
+// _id, champ du jsonb, faute de frappe) élargirait le filtre à des lignes non
+// visées, ou écraserait en masse un jsonb qu'on ne sait fusionner que ligne à
+// ligne (modifierChampDoc) : on refuse plutôt que d'approximer.
+function colonnesExactes(table, champs, quoi) {
+  const cles = Object.keys(champs || {});
+  const { row, extraKeys } = toRow(table, champs || {});
+  if (!cles.length || extraKeys.length || Object.keys(row).length !== cles.length
+      || Object.values(row).includes(undefined)) {
+    throw new Error(`Écriture en lot sur ${table} : ${quoi} invalide (${cles.join(", ") || "vide"}).`);
+  }
+  return row;
+}
+
+// Périmètre complet d'une écriture en lot : école + section de la collection
+// (jamais surchargeables : `section` est refusée ci-dessus) + le filtre, dont
+// chaque valeur doit être un scalaire — `null` n'égale rien en SQL.
+function perimetreEnLot(map, ecoleId, filtre) {
+  const ou = colonnesExactes(map.table, filtre, "filtre");
+  if (Object.values(ou).some((v) => v == null || typeof v === "object")) {
+    throw new Error(`Écriture en lot sur ${map.table} : filtre invalide (valeur non scalaire).`);
+  }
+  return { ecole_id: ecoleId, ...(map.section ? { section: map.section } : {}), ...ou };
+}
+
+export async function modifierDocsParFiltre(schoolCode, nomCollection, filtre, champs) {
+  const { sb, map, ecoleId } = await contexteEcriture(schoolCode, nomCollection);
+  const perimetre = perimetreEnLot(map, ecoleId, filtre);
+  const row = colonnesExactes(map.table, champs, "champs");
+
+  if (horsLigne(map.table)) {
+    const { majLocalParFiltre } = await localData();
+    return majLocalParFiltre(map.table, perimetre, row);
+  }
+
+  let q = sb.from(map.table).update(row, { count: "exact" });
+  for (const [col, val] of Object.entries(perimetre)) q = q.eq(col, val);
+  const { count, error } = await q;
+  if (error) throw new Error(error.message);
+  return count ?? 0;
+}
+
+export async function supprimerDocsParFiltre(schoolCode, nomCollection, filtre) {
+  const { sb, map, ecoleId } = await contexteEcriture(schoolCode, nomCollection);
+  const perimetre = perimetreEnLot(map, ecoleId, filtre);
+
+  if (horsLigne(map.table)) {
+    const { supprimerLocalParFiltre } = await localData();
+    return supprimerLocalParFiltre(map.table, perimetre);
+  }
+
+  let q = sb.from(map.table).delete({ count: "exact" });
+  for (const [col, val] of Object.entries(perimetre)) q = q.eq(col, val);
+  const { count, error } = await q;
+  if (error) throw new Error(error.message);
+  return count ?? 0;
 }

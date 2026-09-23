@@ -1,9 +1,9 @@
 import { C, TOUS_MOIS_LONGS, SYSTEMES_SCOLAIRES, SECTIONS_ECOLE, JOURS_SEMAINE, calcMoisAnnee, getClassesForSection, getSectionLabel } from "../../../constants";
-import { PERIODICITES, getPeriodesForSchool } from "../../../period-utils";
+import { PERIODICITES, getPeriodesForSchool, getSchoolPeriodiciteForSection } from "../../../period-utils";
 import { Btn } from "../../ui";
 
-// Sections "Mois de début d'année" et "Périodicité scolaire" (primaire + secondaire),
-// avec avertissement de migration des notes si la périodicité change.
+// Sections "Mois de début d'année" et "Périodicité scolaire" (préscolaire, primaire,
+// secondaire), avec avertissement de migration des notes si la périodicité change.
 export function AnneePeriodiciteSection({ form, setForm, chg, schoolInfo, setMigrationOuverte, inp, sec }) {
   const sectionsChoisies = Array.isArray(form.sectionsActives) && form.sectionsActives.length
     ? form.sectionsActives : [...SECTIONS_ECOLE];
@@ -30,9 +30,11 @@ export function AnneePeriodiciteSection({ form, setForm, chg, schoolInfo, setMig
     if (!suivants.length) return; // au moins un jour de classe
     setForm((p) => ({ ...p, [champ]: JOURS_SEMAINE.filter((j) => suivants.includes(j)) }));
   };
-  const periodiciteChange =
-    ((schoolInfo.periodicitePrimaire || schoolInfo.periodicite) && (schoolInfo.periodicitePrimaire || schoolInfo.periodicite) !== form.periodicitePrimaire)
-    || ((schoolInfo.periodiciteSecondaire || schoolInfo.periodicite) && (schoolInfo.periodiciteSecondaire || schoolInfo.periodicite) !== form.periodiciteSecondaire);
+  // Réglage EFFECTIF avant/après, groupe par groupe — préscolaire compris :
+  // sans lui, passer la maternelle au semestre n'invitait pas à migrer ses notes.
+  const periodiciteChange = ["prescolaire", "primaire", "secondaire"].some(
+    (s) => getSchoolPeriodiciteForSection(schoolInfo, s) !== getSchoolPeriodiciteForSection(form, s),
+  );
   const systemeChoisi = form.systemeScolaire || "guineen";
   const apercuClasses = [
     getClassesForSection("primaire", systemeChoisi)[0],
