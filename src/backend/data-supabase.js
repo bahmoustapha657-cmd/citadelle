@@ -204,6 +204,24 @@ export async function sauverParametresEcole(schoolCode, champs) {
   return { ok: true };
 }
 
+// Profil légal (Paramètres → Officiel : agrément, autorisation, codes
+// statistiques…). Il vit dans la COLONNE `legal`, que chargerEcole expose
+// telle quelle : sauverParametresEcole le rangerait dans extra, où personne
+// ne le lit. Fusion au premier niveau, comme l'ancien setDoc({ merge }) de
+// Firestore : une clé que le formulaire ignore n'est pas effacée.
+// `.select()` : si la RLS refuse la mise à jour, PostgREST ne renvoie pas
+// d'erreur mais zéro ligne — sans ce contrôle, l'écran annoncerait un succès.
+export async function sauverProfilLegal(schoolCode, profil) {
+  const sb = getSupabase();
+  const { data, error } = await sb.from("ecoles").select("id, legal").eq("code", schoolCode).maybeSingle();
+  if (error || !data) throw new Error(error?.message || "École introuvable.");
+  const legal = { ...(data.legal || {}), ...profil, updatedAt: Date.now() };
+  const { data: majs, error: e2 } = await sb.from("ecoles").update({ legal }).eq("id", data.id).select("id");
+  if (e2) throw new Error(e2.message);
+  if (!majs?.length) throw new Error("Enregistrement refusé : votre compte ne peut pas modifier les paramètres de l'école.");
+  return legal;
+}
+
 // Bascule d'un verrou de correction (AdminPanel, direction). Les verrous
 // vivent dans ecoles.extra.verrous — lecture/fusion/écriture du jsonb.
 export async function majVerrou(schoolCode, cle, valeur) {

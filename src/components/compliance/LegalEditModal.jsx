@@ -6,7 +6,7 @@ import { LegalEditFields } from "./legal-edit-modal/LegalEditFields";
 // Pré-remplissage automatique depuis les champs legacy de `schoolInfo`
 // (ministere, agrement, ire, dpe) tant que les champs structurés du
 // profil légal sont vides. Permet la migration en douceur : la 1ère
-// sauvegarde matérialise les valeurs dans /config/legal.
+// sauvegarde matérialise les valeurs dans le profil légal (ecoles.legal).
 export function LegalEditModal({ profile, schoolInfo, onClose, onSave, saving = false, error = "" }) {
   const { draft, set, setNum } = useLegalDraft(profile, schoolInfo);
 
