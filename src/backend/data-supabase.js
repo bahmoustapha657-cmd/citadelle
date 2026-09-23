@@ -165,10 +165,13 @@ function ecoleVersInfo(data) {
   };
 }
 
-export async function chargerEcole(schoolCode) {
+// `reseau` : relire le SERVEUR sans passer par le miroir local. Voulu après un
+// événement temps réel : il prouve qu'on est en ligne ET que la ligne vient de
+// changer, alors que le miroir PowerSync peut ne pas l'avoir encore reçue.
+export async function chargerEcole(schoolCode, { reseau = false } = {}) {
   // Miroir local d'abord (frais : PowerSync streame en continu) ; repli
   // réseau si la première sync n'a pas encore livré la ligne.
-  if (horsLigne("ecoles")) {
+  if (!reseau && horsLigne("ecoles")) {
     try {
       const { lireEcoleLocale } = await localData();
       const locale = await lireEcoleLocale(schoolCode);
