@@ -143,7 +143,7 @@ export function SalairesTab({
       <BonModale
         modal={modal} canCreate={canCreate} canEdit={canEdit}
         form={form} setForm={setForm} setModal={setModal}
-        moisModale={moisModale} moisSalaire={moisSalaire} salaires={salaires}
+        moisModale={moisModale} moisSalaire={moisSalaire}
         ensCollege={ensCollege} ensLycee={ensLycee} ensPrimaire={ensPrimaire} personnel={personnel}
         ajBon={ajBon} modBon={modBon} enreg={enreg}
       />
