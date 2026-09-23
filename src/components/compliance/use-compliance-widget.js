@@ -1,19 +1,19 @@
 import { useContext, useState, useEffect, useMemo } from "react";
 import { SchoolContext } from "../../contexts/SchoolContext";
+import { sauverProfilLegal } from "../../backend/data-supabase";
 import {
   computeDateExpiration,
   daysUntilExpiration,
   getComplianceStatus,
   legalProfileComplet,
-  updateLegalProfile,
 } from "../../legal-utils";
 
 // État et logique du widget Conformité. La source de vérité est
-// `schoolInfo.legal` (listener posé dans App.jsx, fallback par école) ;
+// `schoolInfo.legal` (colonne ecoles.legal, rechargée en temps réel) ;
 // profil vide tant que rien n'est chargé — jamais les données d'une
 // autre école.
 export function useComplianceWidget(profileOverride) {
-  const { schoolId, schoolInfo } = useContext(SchoolContext);
+  const { schoolId, schoolInfo, setSchoolInfo } = useContext(SchoolContext);
   const rawSource = profileOverride || schoolInfo?.legal;
   // legalProfileComplet() reconstruit un objet à chaque appel — le mémoïser
   // sur `rawSource` évite qu'il change de référence à chaque rendu (l'effet
@@ -45,7 +45,12 @@ export function useComplianceWidget(profileOverride) {
     setSaving(true);
     setError("");
     try {
-      await updateLegalProfile(schoolId, next);
+      // Écrivait dans FIRESTORE (/config/legal) alors que la production lit
+      // Supabase : aucun agrément ne pouvait être enregistré (liquidation
+      // Firebase). schoolInfo est mis à jour tout de suite — sinon, à la
+      // fermeture de la modale, l'effet ci-dessus ré-affichait l'ancien profil.
+      const legal = await sauverProfilLegal(schoolId, next);
+      setSchoolInfo((prev) => ({ ...prev, legal }));
       setProfile(next);
       setModalOpen(false);
     } catch (e) {

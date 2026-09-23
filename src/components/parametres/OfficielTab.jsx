@@ -6,7 +6,7 @@ import ComplianceWidget from "../ComplianceWidget";
 // Conformité légale (widget ComplianceWidget réservé direction/admin)
 // + sélection du mois de début d'année scolaire. Les anciens champs
 // libres ministere/agrement/ire/dpe ont été migrés vers le profil
-// légal structuré (`/ecoles/{schoolId}/config/legal`).
+// légal structuré (colonne `ecoles.legal`).
 export function OfficielTab({
   form,
   chg,

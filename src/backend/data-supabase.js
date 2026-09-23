@@ -165,10 +165,13 @@ function ecoleVersInfo(data) {
   };
 }
 
-export async function chargerEcole(schoolCode) {
+// `reseau` : relire le SERVEUR sans passer par le miroir local. Voulu après un
+// événement temps réel : il prouve qu'on est en ligne ET que la ligne vient de
+// changer, alors que le miroir PowerSync peut ne pas l'avoir encore reçue.
+export async function chargerEcole(schoolCode, { reseau = false } = {}) {
   // Miroir local d'abord (frais : PowerSync streame en continu) ; repli
   // réseau si la première sync n'a pas encore livré la ligne.
-  if (horsLigne("ecoles")) {
+  if (!reseau && horsLigne("ecoles")) {
     try {
       const { lireEcoleLocale } = await localData();
       const locale = await lireEcoleLocale(schoolCode);
@@ -202,6 +205,24 @@ export async function sauverParametresEcole(schoolCode, champs) {
   const { error: e2 } = await sb.from("ecoles").update(patch).eq("id", data.id);
   if (e2) throw new Error(e2.message);
   return { ok: true };
+}
+
+// Profil légal (Paramètres → Officiel : agrément, autorisation, codes
+// statistiques…). Il vit dans la COLONNE `legal`, que chargerEcole expose
+// telle quelle : sauverParametresEcole le rangerait dans extra, où personne
+// ne le lit. Fusion au premier niveau, comme l'ancien setDoc({ merge }) de
+// Firestore : une clé que le formulaire ignore n'est pas effacée.
+// `.select()` : si la RLS refuse la mise à jour, PostgREST ne renvoie pas
+// d'erreur mais zéro ligne — sans ce contrôle, l'écran annoncerait un succès.
+export async function sauverProfilLegal(schoolCode, profil) {
+  const sb = getSupabase();
+  const { data, error } = await sb.from("ecoles").select("id, legal").eq("code", schoolCode).maybeSingle();
+  if (error || !data) throw new Error(error?.message || "École introuvable.");
+  const legal = { ...(data.legal || {}), ...profil, updatedAt: Date.now() };
+  const { data: majs, error: e2 } = await sb.from("ecoles").update({ legal }).eq("id", data.id).select("id");
+  if (e2) throw new Error(e2.message);
+  if (!majs?.length) throw new Error("Enregistrement refusé : votre compte ne peut pas modifier les paramètres de l'école.");
+  return legal;
 }
 
 // Bascule d'un verrou de correction (AdminPanel, direction). Les verrous

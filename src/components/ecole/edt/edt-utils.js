@@ -111,29 +111,44 @@ export const enMinutes = (hhmm) => {
 export const enHeure = (min) =>
   `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
 
-// Bornes de lignes = pas régulier ∪ débuts/fins des créneaux du jour, triés
-// et dédoublonnés, limités à la plage [heureDebut, heureFin] de la journée.
-// `ajuster` (par défaut) resserre la grille sur la journée RÉELLE : elle
-// commence au premier créneau et s'arrête au dernier. Sans cela, une plage
-// large (08:00–14:00) affichait de longues traînées de lignes vides avant et
-// après les cours, qui n'apportent rien et allongent l'impression.
+// Bornes de lignes = pas régulier ∪ débuts/fins des créneaux, triés et
+// dédoublonnés. Deux cadrages selon l'usage :
+//  - `ajuster` (défaut) — IMPRESSION et EDT général : la grille se resserre
+//    sur la journée RÉELLE, du premier au dernier créneau. Sur papier, les
+//    lignes vides avant et après les cours n'apportent rien et allongent la
+//    feuille.
+//  - `ajuster = false` — GRILLE DE SAISIE à l'écran : la plage réglée
+//    [heureDebut, heureFin] reste entière, car ses lignes vides sont justement
+//    celles où l'on clique pour ajouter un créneau. Resserrée elle aussi, la
+//    grille perdait ses lignes 10:00–12:00 et 12:00–14:00 dès qu'on avait
+//    rempli les 08:00–10:00 : plus moyen de saisir la suite de la journée.
+// Dans les deux cas, un créneau saisi hors plage l'ÉLARGIT au lieu d'être perdu.
 export function genTranchesAdaptatives(step, heureDebut, heureFin, creneaux = [], ajuster = true) {
-  let debut = enMinutes(heureDebut) ?? 8 * 60;
+  const plageDebut = enMinutes(heureDebut) ?? 8 * 60;
+  let debut = plageDebut;
   let fin = enMinutes(heureFin) ?? 14 * 60;
 
   const debutsCreneaux = creneaux.map((c) => enMinutes(c.heureDebut)).filter((v) => v != null);
   const finsCreneaux = creneaux.map((c) => enMinutes(c.heureFin)).filter((v) => v != null);
-  if (ajuster && debutsCreneaux.length) {
-    // On ne resserre QUE vers l'intérieur : la plage réglée reste la borne
-    // maximale, et un créneau saisi hors plage l'élargit plutôt que d'être perdu.
-    debut = Math.min(Math.max(debut, Math.min(...debutsCreneaux)), ...debutsCreneaux);
-    if (finsCreneaux.length) fin = Math.max(...finsCreneaux, Math.min(fin, Math.max(...finsCreneaux)));
+  if (debutsCreneaux.length) {
+    const premier = Math.min(...debutsCreneaux);
+    const dernier = finsCreneaux.length ? Math.max(...finsCreneaux) : null;
+    if (ajuster) {
+      debut = premier;
+      if (dernier != null) fin = dernier;
+    } else {
+      debut = Math.min(debut, premier);
+      if (dernier != null) fin = Math.max(fin, dernier);
+    }
   }
   if (fin <= debut) fin = debut + step;
 
-  const bornes = new Set();
-  for (let t = debut; t <= fin; t += step) bornes.add(t);
-  bornes.add(fin);
+  // Pas régulier ANCRÉ sur le début de la plage réglée (08:00, 10:00, 12:00…)
+  // et prolongé de part et d'autre si la grille a été élargie : un créneau de
+  // 07:30 ne décale pas toutes les lignes de la journée d'une demi-heure.
+  const bornes = new Set([debut, fin]);
+  for (let t = plageDebut; t <= fin; t += step) if (t >= debut) bornes.add(t);
+  for (let t = plageDebut - step; t >= debut; t -= step) bornes.add(t);
   for (const c of creneaux) {
     const d = enMinutes(c.heureDebut);
     const f = enMinutes(c.heureFin);
@@ -141,6 +156,20 @@ export function genTranchesAdaptatives(step, heureDebut, heureFin, creneaux = []
     if (f != null && f >= debut && f <= fin) bornes.add(f);
   }
   return [...bornes].sort((a, b) => a - b).map(enHeure);
+}
+
+// Les trois jeux de lignes de l'onglet EDT, chacun cadré pour son usage :
+//  - ecran      grille de saisie de la classe : plage réglée entière ;
+//  - impression feuille de la classe : resserrée sur sa journée réelle ;
+//  - general    EDT général : calculé sur TOUTES les classes. Reprendre les
+//               lignes de la classe affichée faisait disparaître les créneaux
+//               posés ailleurs à d'autres heures (révisions de 14:00–16:00…).
+export function tranchesEdt({ pas, heureDebut, heureFin, emploisClasse = [], emplois = [] }) {
+  return {
+    ecran: genTranchesAdaptatives(pas, heureDebut, heureFin, emploisClasse, false),
+    impression: genTranchesAdaptatives(pas, heureDebut, heureFin, emploisClasse),
+    general: genTranchesAdaptatives(pas, heureDebut, heureFin, emplois),
+  };
 }
 
 // Pour un jour : à quelle ligne commence chaque créneau, et sur combien de
