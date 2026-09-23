@@ -1,6 +1,6 @@
 import { useContext, useState } from "react";
 import { SchoolContext } from "../../../contexts/SchoolContext";
-import { COULEURS, niveauRank, genTranchesAdaptatives, makeFindEns, getJoursOuvrablesPourClasse, getJoursOuvrablesUnion } from "./edt-utils";
+import { COULEURS, niveauRank, tranchesEdt, makeFindEns, getJoursOuvrablesPourClasse, getJoursOuvrablesUnion } from "./edt-utils";
 
 // État et dérivations de l'onglet emploi du temps : vue grille/liste, plage
 // horaire et durée des tranches, classe active, couleurs matières, et la copie
@@ -26,8 +26,11 @@ export function useEdtTab({ maxNote, classes, matieres, ens, emplois, filtreClas
   // classe (en plus du pas régulier) : une rubrique de 15 min ou un créneau
   // qui ne tombe pas pile sur une tranche reste visible. `duree` ne sert plus
   // qu'à proposer un pas de départ et la durée par défaut d'un nouveau créneau.
-  const TRANCHES = genTranchesAdaptatives(duree, edtHeureDebut, edtHeureFin, emploisClasse);
-  const nbTranches = TRANCHES.length - 1;
+  // Trois cadrages (saisie, impression, EDT général) : cf. tranchesEdt.
+  const { ecran: TRANCHES, impression: TRANCHES_IMPRESSION, general: TRANCHES_GENERAL } = tranchesEdt({
+    pas: duree, heureDebut: edtHeureDebut, heureFin: edtHeureFin, emploisClasse, emplois,
+  });
+  const nbTranchesGeneral = TRANCHES_GENERAL.length - 1;
   // Jours ouvrés (Paramètres → Identité), réglés PAR SECTION : la grille et
   // l'impression d'une classe suivent sa section, l'EDT général — qui mélange
   // toutes les classes — prend l'union des deux.
@@ -55,7 +58,7 @@ export function useEdtTab({ maxNote, classes, matieres, ens, emplois, filtreClas
     edtGeneralOuvert, setEdtGeneralOuvert,
     edtHeureDebut, setEdtHeureDebut,
     edtHeureFin, setEdtHeureFin,
-    TRANCHES, nbTranches, jours, joursGeneral,
+    TRANCHES, TRANCHES_IMPRESSION, TRANCHES_GENERAL, nbTranchesGeneral, jours, joursGeneral,
     classesTriees, classeEdtActuelle,
     matCouleur, findEns,
     emploisClasse, getCreneau,

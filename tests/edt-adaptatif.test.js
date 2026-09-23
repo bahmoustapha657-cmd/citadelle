@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  enMinutes, enHeure, genTranchesAdaptatives, planifierJour,
+  enMinutes, enHeure, genTranchesAdaptatives, planifierJour, tranchesEdt,
 } from "../src/components/ecole/edt/edt-utils.js";
 import { buildCreneauData } from "../src/components/ecole/edt/cellule-data.js";
 
@@ -47,6 +47,55 @@ test("un créneau hors plage élargit la grille au lieu d'être perdu", () => {
     { heureDebut: "07:30", heureFin: "08:00" },
   ]);
   assert.equal(t[0], "07:30", "la grille doit descendre jusqu'au créneau");
+});
+
+// ── Onglet EDT : grille de saisie, feuille imprimée, EDT général ────────────
+const PLAGE_SECONDAIRE = { pas: 120, heureDebut: "08:00", heureFin: "14:00" };
+
+test("saisie : remplir 08:00–10:00 ne fait pas disparaître le reste de la journée", () => {
+  // Cas signalé au secondaire (séances de 2 h) : une fois la première séance
+  // saisie sur toute la semaine, les lignes 10–12 et 12–14 disparaissaient et
+  // on ne pouvait plus cliquer dessus pour les remplir.
+  const emploisClasse = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
+    .map((jour) => ({ classe: "7ème Année A", jour, heureDebut: "08:00", heureFin: "10:00" }));
+  const { ecran, impression } = tranchesEdt({ ...PLAGE_SECONDAIRE, emploisClasse, emplois: emploisClasse });
+  assert.deepEqual(ecran, ["08:00", "10:00", "12:00", "14:00"]);
+  // La feuille imprimée, elle, reste resserrée sur la journée réelle.
+  assert.deepEqual(impression, ["08:00", "10:00"]);
+});
+
+test("saisie : un créneau qui déborde de la plage l'élargit (révision 14:00–16:00)", () => {
+  const emploisClasse = [
+    { _id: "cours", heureDebut: "08:00", heureFin: "10:00" },
+    { _id: "rev", heureDebut: "14:00", heureFin: "16:00" },
+  ];
+  const { ecran } = tranchesEdt({ ...PLAGE_SECONDAIRE, emploisClasse, emplois: emploisClasse });
+  assert.deepEqual(ecran, ["08:00", "10:00", "12:00", "14:00", "16:00"]);
+  const { debuts } = planifierJour(emploisClasse, ecran);
+  assert.equal(debuts.get(ecran.indexOf("14:00")).creneau._id, "rev", "la révision doit s'afficher");
+});
+
+test("saisie : le pas reste calé sur la plage quand un créneau la précède", () => {
+  const t = genTranchesAdaptatives(120, "08:00", "14:00", [
+    { heureDebut: "07:30", heureFin: "08:00" },
+  ], false);
+  assert.deepEqual(t, ["07:30", "08:00", "10:00", "12:00", "14:00"]);
+});
+
+test("EDT général : les lignes couvrent les horaires de toutes les classes", () => {
+  // Les lignes étaient celles de la classe affichée : les révisions de
+  // 14:00–16:00 d'une autre classe n'apparaissaient pas dans le tableau.
+  const emploisClasse = [
+    { classe: "7ème Année A", jour: "Lundi", heureDebut: "08:00", heureFin: "10:00" },
+    { classe: "7ème Année A", jour: "Lundi", heureDebut: "12:00", heureFin: "14:00" },
+  ];
+  const emplois = [
+    ...emploisClasse,
+    { classe: "10ème Année A", jour: "Mardi", heureDebut: "14:00", heureFin: "16:00" },
+  ];
+  const { ecran, general } = tranchesEdt({ ...PLAGE_SECONDAIRE, emploisClasse, emplois });
+  assert.equal(ecran.at(-1), "14:00", "la classe affichée s'arrête à 14:00");
+  assert.deepEqual(general, ["08:00", "10:00", "12:00", "14:00", "16:00"]);
 });
 
 test("chaque créneau couvre exactement ses lignes (rowSpan)", () => {
