@@ -1,19 +1,40 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { C, anneePrecedente, fmt } from "../../../constants";
 import { Badge, Btn, Modale } from "../../ui";
 import {
   LIBELLES_POSTES, MOTIFS_EXONERATION, POSTES_EXONERABLES,
-  aUneExoneration, getExoneration, libelleMotif, resumeExoneration,
+  aUneExoneration, clampPourcentage, getExoneration, libelleMotif, resumeExoneration,
 } from "../../../exoneration-utils";
 import { getMensualiteOverview } from "../../../mensualite-utils";
 import { accorderExoneration, retirerExoneration } from "../exoneration-actions";
-
-const TAUX_PROPOSES = [100, 75, 50, 25];
-// `taux` pilote les postes cochés ; il n'est pas enregistré (normaliserExoneration
-// ne garde que les trois postes, le motif et la traçabilité).
-const BROUILLON_VIDE = { taux: 100, mensualites: 100, inscription: 100, fraisAnnexes: 0, motif: "personnel", precision: "" };
+import { brouillonDepuis, versExoneration } from "./exoneration-brouillon";
 
 const nomComplet = (e) => `${e.nom || ""} ${e.prenom || ""}`.trim();
+
+// Taux d'un poste, de 1 à 100 %. Le TEXTE vit ici le temps de la frappe :
+// vider le champ pour retaper un taux ne touche ni à la case cochée ni au
+// taux retenu, et quitter un champ vide ou illisible rend le taux d'avant.
+function ChampTaux({ taux, actif, onTaux, label, style }) {
+  const [texte, setTexte] = useState(null); // null : aucune frappe en cours
+  const avant = useRef(taux);
+  return (
+    <input type="number" min={1} max={100} step={1} disabled={!actif} aria-label={label}
+      value={actif ? (texte ?? String(taux)) : ""}
+      onFocus={() => { avant.current = taux; setTexte(String(taux)); }}
+      onChange={(ev) => {
+        const brut = ev.target.value;
+        // Borné à la frappe : « 250 » s'affiche aussitôt 100.
+        setTexte(Number(brut) > 100 ? "100" : brut);
+        const n = clampPourcentage(brut);
+        if (n > 0) onTaux(n);
+      }}
+      onBlur={() => {
+        if (clampPourcentage(texte) === 0) onTaux(avant.current);
+        setTexte(null);
+      }}
+      style={{ ...style, opacity: actif ? 1 : 0.4 }} />
+  );
+}
 
 // Identité de l'élève : matricule, IEN et filiation. Les homonymes sont
 // courants ; dispenser le mauvais « DIALLO Mamadou » se verrait tard, et
@@ -38,7 +59,7 @@ export function ExonerationsModale({
 }) {
   const [recherche, setRecherche] = useState("");
   const [choisi, setChoisi] = useState(null);
-  const [brouillon, setBrouillon] = useState(BROUILLON_VIDE);
+  const [brouillon, setBrouillon] = useState(() => brouillonDepuis());
   const [enCours, setEnCours] = useState(false);
 
   const exoneres = useMemo(() => eleves.filter(aUneExoneration), [eleves]);
@@ -69,9 +90,13 @@ export function ExonerationsModale({
     try { await action(); } finally { setEnCours(false); }
   };
 
+  // Choisir un élève déjà dispensé reprend sa dispense : la modifier ne
+  // doit pas obliger à ressaisir tous les taux.
+  const choisir = (eleve) => { setChoisi(eleve); setBrouillon(brouillonDepuis(getExoneration(eleve))); };
+
   const accorder = () => executer(async () => {
-    if (await accorderExoneration(choisi, brouillon, { estDirection, annee, ...deps })) {
-      setChoisi(null); setRecherche(""); setBrouillon(BROUILLON_VIDE);
+    if (await accorderExoneration(choisi, versExoneration(brouillon), { estDirection, annee, ...deps })) {
+      setChoisi(null); setRecherche(""); setBrouillon(brouillonDepuis());
     }
   });
 
@@ -107,7 +132,7 @@ export function ExonerationsModale({
                 placeholder="Rechercher un élève (nom, matricule ou IEN)…"
                 style={{ ...champ, width: "100%", boxSizing: "border-box" }} />
               {candidats.map((e) => (
-                <button key={e._id} onClick={() => setChoisi(e)}
+                <button key={e._id} onClick={() => choisir(e)}
                   style={{ display: "block", width: "100%", textAlign: "start", border: "none", background: "none", cursor: "pointer", padding: "7px 6px", borderBottom: "1px solid #f1f5f9", fontSize: 12.5, color: "#334155" }}>
                   <strong>{nomComplet(e)}</strong> · {e.classe}
                   {aUneExoneration(e) && <span style={{ color: "#b45309" }}> · déjà dispensé ({resumeExoneration(e)})</span>}
@@ -125,27 +150,31 @@ export function ExonerationsModale({
               {/* Relire l'identité AVANT de dispenser : c'est le dernier moment
                   où l'on peut s'apercevoir qu'on tient un homonyme. */}
               <div style={{ marginBottom: 10 }}><Identite eleve={choisi} bloc /></div>
+              {aUneExoneration(choisi) && (
+                <p style={{ margin: "0 0 10px", fontSize: 12, color: "#b45309" }}>
+                  Dispense en cours : {resumeExoneration(choisi)}. Les taux ci-dessous la remplaceront.
+                </p>
+              )}
+              {/* Un taux LIBRE par poste : une école dispense rarement au même
+                  niveau partout (mensualités à 100 %, inscription à 30 %…), et
+                  les paliers ronds ne couvrent pas les arrangements réels. */}
               <div style={{ display: "flex", gap: 18, flexWrap: "wrap", marginBottom: 10 }}>
                 {POSTES_EXONERABLES.map((poste) => (
-                  <label key={poste} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, cursor: "pointer" }}>
-                    <input type="checkbox" checked={brouillon[poste] > 0}
-                      onChange={(ev) => setBrouillon((p) => ({ ...p, [poste]: ev.target.checked ? p.taux : 0 }))} />
-                    {LIBELLES_POSTES[poste]}
-                  </label>
+                  <div key={poste} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5 }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                      <input type="checkbox" checked={brouillon.actifs[poste]}
+                        onChange={(ev) => setBrouillon((p) => ({ ...p, actifs: { ...p.actifs, [poste]: ev.target.checked } }))} />
+                      {LIBELLES_POSTES[poste]}
+                    </label>
+                    <ChampTaux taux={brouillon.taux[poste]} actif={brouillon.actifs[poste]}
+                      label={`Taux — ${LIBELLES_POSTES[poste]}`}
+                      onTaux={(taux) => setBrouillon((p) => ({ ...p, taux: { ...p.taux, [poste]: taux } }))}
+                      style={{ ...champ, width: 66, padding: "6px 8px" }} />
+                    <span style={{ color: "#64748b" }}>%</span>
+                  </div>
                 ))}
               </div>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                <select value={brouillon.taux}
-                  onChange={(ev) => {
-                    const taux = Number(ev.target.value);
-                    setBrouillon((p) => ({
-                      ...p, taux,
-                      ...Object.fromEntries(POSTES_EXONERABLES.map((poste) => [poste, p[poste] > 0 ? taux : 0])),
-                    }));
-                  }}
-                  style={{ ...champ, cursor: "pointer" }}>
-                  {TAUX_PROPOSES.map((t) => <option key={t} value={t}>{t === 100 ? "Dispense totale (100 %)" : `Réduction de ${t} %`}</option>)}
-                </select>
                 <select value={brouillon.motif} onChange={(ev) => setBrouillon((p) => ({ ...p, motif: ev.target.value }))}
                   style={{ ...champ, cursor: "pointer" }}>
                   {MOTIFS_EXONERATION.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}

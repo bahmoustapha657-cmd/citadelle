@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  aUneExoneration, estExonereTotal, montantApresExoneration, normaliserExoneration,
-  resumeExoneration, tauxExoneration,
+  aUneExoneration, clampPourcentage, estExonereTotal, montantApresExoneration,
+  normaliserExoneration, resumeExoneration, tauxExoneration,
 } from "../src/exoneration-utils.js";
 import {
   countUnpaidMonths, estBloquePourImpaye, getConsecutiveUnpaidMonths, getEleveMensualiteSnapshot,
@@ -11,6 +11,7 @@ import {
 } from "../src/mensualite-utils.js";
 import { computeBlocage } from "../src/components/portail-parent/portail-parent-derive.js";
 import { CHAMPS_SCOLARITE, champsCloture, etatVierge } from "../src/components/admin/cloture-annee-utils.js";
+import { brouillonDepuis, versExoneration } from "../src/components/comptabilite/mensualites-tab/exoneration-brouillon.js";
 
 const tarifs = [{ classe: "6e A", montant: 200000, inscription: 50000, autre: 15000 }];
 const moisAnnee = ["Octobre", "Novembre", "Décembre"];
@@ -28,6 +29,50 @@ test("une exonération à 0 % partout n'est pas une exonération", () => {
   assert.equal(normaliserExoneration(null), null);
   assert.equal(aUneExoneration(eleve(null)), false);
   assert.equal(aUneExoneration(eleve(exoMoitie)), true);
+});
+
+test("un taux saisi librement est borné à la frappe, entier, entre 0 et 100", () => {
+  assert.equal(clampPourcentage("37"), 37);
+  assert.equal(clampPourcentage(250), 100);
+  assert.equal(clampPourcentage(-5), 0);
+  assert.equal(clampPourcentage("33,4"), 0, "une virgule n'est pas un nombre : on n'invente rien");
+  assert.equal(clampPourcentage(33.4), 33);
+  assert.equal(clampPourcentage(""), 0);
+});
+
+// ── Le brouillon de saisie (modale Dispenses) ─────────────────────────────
+test("brouillon de départ : mensualités et inscription à 100 %, frais annexes non cochés", () => {
+  const b = brouillonDepuis();
+  assert.deepEqual(b.actifs, { mensualites: true, inscription: true, fraisAnnexes: false });
+  assert.equal(b.taux.fraisAnnexes, 100, "taux proposé si l'on coche les frais annexes");
+  assert.deepEqual(versExoneration(b), { mensualites: 100, inscription: 100, fraisAnnexes: 0, motif: "personnel", precision: "" });
+});
+
+test("modifier une dispense repart de ses taux, de son motif et de sa précision", () => {
+  const b = brouillonDepuis({ mensualites: 100, inscription: 30, fraisAnnexes: 0, motif: "autre", precision: "accord du 12/09" });
+  assert.deepEqual(b.actifs, { mensualites: true, inscription: true, fraisAnnexes: false });
+  assert.equal(b.taux.inscription, 30);
+  assert.equal(b.motif, "autre");
+  assert.equal(b.precision, "accord du 12/09");
+});
+
+test("décocher un poste le retire de la dispense sans oublier son taux", () => {
+  // Le bug d'origine : cocher/taux ne faisaient qu'un, et recocher rendait
+  // l'étape « 1 » de l'effacement — une dispense de 1 %.
+  const b = brouillonDepuis({ mensualites: 100, inscription: 30, fraisAnnexes: 0, motif: "social" });
+  const decoche = { ...b, actifs: { ...b.actifs, inscription: false } };
+  assert.equal(versExoneration(decoche).inscription, 0);
+  const recoche = { ...decoche, actifs: { ...decoche.actifs, inscription: true } };
+  assert.equal(versExoneration(recoche).inscription, 30);
+});
+
+test("le brouillon enregistré redonne exactement la dispense saisie", () => {
+  const saisie = { mensualites: 75, inscription: 0, fraisAnnexes: 40, motif: "fratrie", precision: "" };
+  const exo = normaliserExoneration(versExoneration(brouillonDepuis(saisie)));
+  assert.equal(exo.mensualites, 75);
+  assert.equal(exo.inscription, 0);
+  assert.equal(exo.fraisAnnexes, 40);
+  assert.equal(exo.motif, "fratrie");
 });
 
 test("les taux sont bornés entre 0 et 100, et le motif est conservé", () => {
