@@ -11,10 +11,9 @@ import {
 
 // Scanne les notes de TOUTES les années : la vue archive les affiche avec la
 // périodicité actuelle, une année close y est donc tout aussi invisible.
-// En ligne, seules les notes HORS périodicité voyagent (`saufPeriodes`, filtré
-// par PostgREST) : rien à migrer = quatre réponses vides. Avec PowerSync (la
-// prod), la lecture est locale et renvoie la section entière. Dans les deux
-// cas, c'est detecterPeriodesOrphelines qui tranche.
+// Seules les notes HORS périodicité sont lues (`saufPeriodes`, appliqué par
+// PostgREST en ligne comme par le miroir PowerSync — la prod) : rien à migrer
+// = quatre lectures vides. detecterPeriodesOrphelines reste seul juge.
 export async function collecterPeriodesOrphelines(schoolId, periodes) {
   const lectures = await Promise.all(GROUPES_PERIODICITE.flatMap(({ groupe, collections }) => (
     collections.map((nom) => chargerCollection(schoolId, nom, { saufPeriodes: periodes[groupe] }))

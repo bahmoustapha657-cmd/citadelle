@@ -21,13 +21,16 @@ export const ANNEE_TABLES = new Set([
 export const PERIODE_TABLES = new Set(["notes", "appreciations"]);
 
 // Clause WHERE de la lecture locale, même sémantique que la requête en ligne :
-//   annee       → annee = ?     (.eq,  tables d'ANNEE_TABLES)
-//   periode     → periode = ?   (.eq,  tables de PERIODE_TABLES)
-//   saufPeriode → periode <> ?  (.neq, ignoré si `periode` est fourni)
+//   annee        → annee = ?              (.eq,    tables d'ANNEE_TABLES)
+//   periode      → periode = ?            (.eq,    tables de PERIODE_TABLES)
+//   saufPeriode  → periode <> ?           (.neq,   ignoré si `periode` est fourni)
+//   saufPeriodes → periode NOT IN (?, …)  (.notIn, ignoré si `periode` ou
+//                  `saufPeriode` est fourni — migration des périodes : seules
+//                  les notes hors périodicité remontent)
 // Écrite en SQL plutôt qu'en filtre JS : la comparaison se fait comme côté
 // serveur, l'index local (ecole_id, section, annee, periode) des notes sert,
 // et seule la tranche utile traverse le worker SQLite.
-export function clauseLectureLocale(table, { ecoleId, section, annee, periode, saufPeriode } = {}) {
+export function clauseLectureLocale(table, { ecoleId, section, annee, periode, saufPeriode, saufPeriodes } = {}) {
   const conditions = ["ecole_id = ?"];
   const params = [ecoleId];
   if (section) { conditions.push("section = ?"); params.push(section); }
@@ -35,6 +38,10 @@ export function clauseLectureLocale(table, { ecoleId, section, annee, periode, s
   if (PERIODE_TABLES.has(table)) {
     if (periode) { conditions.push("periode = ?"); params.push(periode); }
     else if (saufPeriode) { conditions.push("periode <> ?"); params.push(saufPeriode); }
+    else if (saufPeriodes?.length) {
+      conditions.push(`periode NOT IN (${saufPeriodes.map(() => "?").join(", ")})`);
+      params.push(...saufPeriodes);
+    }
   }
   return { where: conditions.join(" AND "), params };
 }

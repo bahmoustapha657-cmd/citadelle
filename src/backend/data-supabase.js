@@ -62,13 +62,12 @@ const horsLigne = (table) => powerSyncConfigured && estCouvertHorsLigne(table);
 // écrans s'en contentent, mais un outil qui conclut « rien à faire » sur une
 // liste vide doit pouvoir distinguer l'échec du vide.
 // `periode` / `saufPeriode` : chargement en deux temps (cf. useFirestore) — la
-// période affichée d'abord, tout le reste en parallèle. Ces filtres, comme
-// `annee`, s'appliquent en ligne ET hors ligne (filtres-lecture.js) : les deux
-// temps doivent se compléter sans se recouvrir, sinon chaque ligne arrive en
-// double.
+// période affichée d'abord, tout le reste en parallèle.
 // `saufPeriodes` : exclut une LISTE de périodes (migration des périodes : seules
-// les notes hors périodicité voyagent). En ligne seulement : hors ligne, la
-// tranche revient entière et l'appelant refiltre.
+// les notes hors périodicité voyagent).
+// Ces filtres, comme `annee`, s'appliquent en ligne ET hors ligne
+// (filtres-lecture.js) : les deux temps du chargement doivent se compléter sans
+// se recouvrir, sinon chaque ligne arrive en double.
 export async function chargerCollection(schoolCode, nomCollection, { annee, periode, saufPeriode, saufPeriodes } = {}) {
   const map = resolveCollection(nomCollection);
   if (!map) return { items: [], unsupported: true };
@@ -80,7 +79,7 @@ export async function chargerCollection(schoolCode, nomCollection, { annee, peri
   if (horsLigne(map.table)) {
     try {
       const { lireLocal } = await localData();
-      const rows = await lireLocal(map.table, { ecoleId, section: map.section, annee, periode, saufPeriode });
+      const rows = await lireLocal(map.table, { ecoleId, section: map.section, annee, periode, saufPeriode, saufPeriodes });
       return { items: rows.map((r) => transformRow(map.table, r)) };
     } catch (err) {
       console.warn(`[powersync] lecture locale ${nomCollection} (${map.table}):`, err?.message || err);
@@ -400,8 +399,9 @@ function colonnesExactes(table, champs, quoi) {
 }
 
 // Périmètre complet d'une écriture en lot : école + section de la collection
-// (jamais surchargeables : `section` est refusée ci-dessus) + le filtre, dont
-// chaque valeur doit être un scalaire — `null` n'égale rien en SQL.
+// (jamais surchargeables : toRow écarte la clé `section` des tables
+// sectionnées, qui est donc refusée ci-dessus) + le filtre, dont chaque valeur
+// doit être un scalaire — `null` n'égale rien en SQL.
 function perimetreEnLot(map, ecoleId, filtre) {
   const ou = colonnesExactes(map.table, filtre, "filtre");
   if (Object.values(ou).some((v) => v == null || typeof v === "object")) {

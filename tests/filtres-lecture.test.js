@@ -87,6 +87,22 @@ test("`periode` l'emporte sur `saufPeriode`, comme la requête en ligne", { skip
   assert.ok(lignes.every((n) => n.periode === "T2"));
 });
 
+// Migration des périodes (Paramètres → Périodicité) : l'outil ne lit que les
+// notes HORS périodicité. Hors ligne, la liste était ignorée : la section
+// entière remontait du miroir, là où PostgREST n'en renvoyait qu'une poignée.
+test("`saufPeriodes` exclut toute une liste, comme .notIn en ligne", { skip: sansSqlite }, () => {
+  const db = notesPrimaire();
+  assert.deepEqual(lire(db, "notes", { ...PRIMAIRE, saufPeriodes: ["T1", "T2"] }).map((n) => n.periode), ["T3"]);
+  // Liste vide : aucun filtre de période.
+  assert.equal(lire(db, "notes", { ...PRIMAIRE, saufPeriodes: [] }).length, 6);
+  // `periode` et `saufPeriode` priment, dans le même ordre que la requête en ligne.
+  assert.equal(lire(db, "notes", { ...PRIMAIRE, periode: "T1", saufPeriodes: ["T1"] }).length, 3);
+  assert.equal(lire(db, "notes", { ...PRIMAIRE, saufPeriode: "T3", saufPeriodes: ["T1", "T2"] }).length, 5);
+  // Table sans colonne `periode` : option ignorée, pas de « no such column ».
+  inserer(db, "eleves", [{ id: "e1", ecole_id: "ec1", section: "primaire", nom: "Bah" }]);
+  assert.deepEqual(ids(lire(db, "eleves", { ...PRIMAIRE, saufPeriodes: ["T1"] })), ["e1"]);
+});
+
 test("sans filtre de période, toute la tranche section × année", { skip: sansSqlite }, () => {
   const db = notesPrimaire();
   assert.equal(lire(db, "notes", PRIMAIRE).length, 6);
