@@ -55,3 +55,18 @@ export function buildAnneePreRemplie(eleve, { notes, matieres, periodes, section
     signe: false, dateSigne: null,
   };
 }
+
+// Années du livret après saisie : remplace l'entrée éditée, sinon en ajoute une.
+// `_idx` (index édité) est un marqueur du formulaire, jamais persisté.
+export function anneesApresSaisie(annees, formAnnee) {
+  const { _idx, ...entree } = formAnnee;
+  const liste = [...(annees || [])];
+  if (_idx != null) liste[_idx] = entree;
+  else liste.push(entree);
+  return liste;
+}
+
+// Années du livret après signature de l'entrée `idx` (verrouillée ensuite).
+export function anneesApresSignature(annees, idx, dateSigne) {
+  return (annees || []).map((an, i) => (i === idx ? { ...an, signe: true, dateSigne } : an));
+}
