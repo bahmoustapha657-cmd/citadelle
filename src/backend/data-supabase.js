@@ -15,17 +15,15 @@ import { resolveCollection, transformRow, toRow, ecritureSupportee } from "./col
 // chargé qu'en `import()` dynamique, uniquement quand `horsLigne()` est vrai —
 // zéro coût de bundle pour les utilisateurs Firebase (prod).
 import { estCouvertHorsLigne, powerSyncConfigured } from "./powersync/tables";
+// Tables filtrables par année : liste PARTAGÉE avec la lecture hors ligne
+// (local-data.js), pour que les deux chemins ne divergent plus.
+import { ANNEE_TABLES } from "./filtres-lecture";
 
 let localDataPromise = null;
 function localData() {
   if (!localDataPromise) localDataPromise = import("./powersync/local-data");
   return localDataPromise;
 }
-
-// Tables filtrables par année (colonne `annee`).
-const ANNEE_TABLES = new Set([
-  "notes", "recettes", "depenses", "versements", "bons", "paiements", "salaires", "appreciations",
-]);
 
 // schoolId applicatif = CODE de l'école ; les tables référencent l'uuid.
 // Mis aussi en cache localStorage : nécessaire pour résoudre l'ecole_id hors

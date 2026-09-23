@@ -1,23 +1,18 @@
 // ── Accès générique au miroir local (lecture/écriture) ──────────────────────
 // Contrepartie hors ligne des appels supabase-js de data-supabase.js : mêmes
-// filtres (ecole_id/section/annee), mêmes formes de ligne (toRow/transformRow
-// de collection-map.js restent la seule source de vérité pour le mapping
-// camelCase ↔ snake_case). Les écritures ici passent par `db.execute`, que
-// PowerSync met automatiquement en file pour upload (voir connector.js).
+// filtres (ecole_id/section/annee, cf. filtres-lecture.js), mêmes
+// formes de ligne (toRow/transformRow de collection-map.js restent la seule
+// source de vérité pour le mapping camelCase ↔ snake_case). Les écritures ici
+// passent par `db.execute`, que PowerSync met automatiquement en file pour
+// upload (voir connector.js).
 import { getPowerSync } from "./client";
 import { parseJsonCols, stringifyJsonCols } from "./tables";
+import { clauseLectureLocale } from "../filtres-lecture";
 
-// Doit rester aligné sur ANNEE_TABLES (data-supabase.js).
-const ANNEE_TABLES_LOCAL = new Set(["notes", "recettes", "depenses", "versements", "bons"]);
-
-export async function lireLocal(table, { ecoleId, section, annee }) {
+export async function lireLocal(table, filtres) {
   const ps = getPowerSync();
-  const conditions = ["ecole_id = ?"];
-  const params = [ecoleId];
-  if (section) { conditions.push("section = ?"); params.push(section); }
-  if (annee && ANNEE_TABLES_LOCAL.has(table)) { conditions.push("annee = ?"); params.push(annee); }
-  const sql = `SELECT * FROM ${table} WHERE ${conditions.join(" AND ")}`;
-  const rows = await ps.getAll(sql, params);
+  const { where, params } = clauseLectureLocale(table, filtres);
+  const rows = await ps.getAll(`SELECT * FROM ${table} WHERE ${where}`, params);
   return rows.map((r) => parseJsonCols(table, r));
 }
 
