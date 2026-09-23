@@ -1,10 +1,11 @@
 // ══════════════════════════════════════════════════════════════
 //  Module Conformité / Légal — Profil officiel de l'établissement
 // ══════════════════════════════════════════════════════════════
-// Stocké à /ecoles/{schoolId}/config/legal.
-// Règles Firestore : lecture = tout rôle de l'école ;
-//                    écriture = direction/admin uniquement.
-// Fallback quand le doc n'existe pas : `legalProfileVide` (profil neutre
+// Stocké dans la colonne `ecoles.legal` (Supabase), exposé en
+// `schoolInfo.legal` et enregistré par sauverProfilLegal (backend/
+// data-supabase). Le doc Firestore /ecoles/{schoolId}/config/legal n'est
+// plus lu que par l'ancienne version Firebase.
+// Fallback quand le profil est absent : `legalProfileVide` (profil neutre
 // à compléter dans Paramètres → Officiel). `legalProfileMock` contient
 // les données réelles de La Citadelle et n'est servi qu'à elle.
 
@@ -236,10 +237,11 @@ export function getOfficialLegalFooterHTML(profile: LegalProfile, cycle: CycleLe
   </div>`;
 }
 
-// ── Firestore ─────────────────────────────────────────────────
-// Doc unique : /ecoles/{schoolId}/config/legal
+// ── Firestore (ancienne version, lecture seule) ───────────────
+// Doc unique : /ecoles/{schoolId}/config/legal. L'écriture passe désormais
+// par sauverProfilLegal (colonne ecoles.legal, Supabase).
 
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { safeOnSnapshot } from "./firestore-safe";
 import { db } from "./firebaseDb";
 
@@ -262,17 +264,6 @@ export async function getLegalProfile(schoolId: string): Promise<LegalProfile> {
   const snap = await getDoc(legalDocRef(schoolId));
   if (!snap.exists()) return fallbackLegalProfile(schoolId);
   return snap.data() as LegalProfile;
-}
-
-// Écrit le profil complet (merge avec l'existant). Le formulaire de la
-// modale fournit l'objet entier — on n'expose pas de patch partiel pour
-// éviter les états incohérents (ex. dateSignature changée mais pas la
-// durée, qui invaliderait l'expiration calculée).
-export async function updateLegalProfile(
-  schoolId: string,
-  profile: LegalProfile,
-): Promise<void> {
-  await setDoc(legalDocRef(schoolId), profile, { merge: true });
 }
 
 // Listener temps réel (fallback par école tant que le doc n'existe pas).

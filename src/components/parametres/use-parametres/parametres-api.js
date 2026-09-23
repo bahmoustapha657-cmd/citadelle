@@ -58,8 +58,8 @@ export async function sauvegarderParametres({ schoolId, form, accueil, evaluatio
     logo: logo || null,
     devise: form.devise.trim(),
     monnaie: normaliserMonnaie(form.monnaie),
-    // ministere / ire / dpe / agrement : MIGRÉS vers /ecoles/{schoolId}/config/legal
-    // (édités via le widget Conformité). Plus écrits par ce formulaire.
+    // ministere / ire / dpe / agrement : MIGRÉS vers le profil légal (colonne
+    // ecoles.legal, édité via le widget Conformité). Plus écrits par ce formulaire.
     // Les valeurs Firestore existantes restent en place (updateDoc merge),
     // utilisées par resolveLegalFields() comme fallback tant que le profil
     // légal structuré n'est pas complet.

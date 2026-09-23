@@ -52,6 +52,42 @@ export async function supprimerLocal(table, id) {
   await ps.execute(`DELETE FROM ${table} WHERE id = ?`, [id]);
 }
 
+// ── Écritures EN LOT par filtre d'égalités (cf. modifierDocsParFiltre) ──────
+// UNE instruction SQL ; PowerSync consigne tout de même une opération PAR
+// LIGNE dans sa file d'upload (triggers de ses vues), que connector.js rejoue.
+// Le nombre de lignes est compté AVANT l'écriture, dans la même transaction :
+// les tables PowerSync sont des vues à triggers INSTEAD OF, dont SQLite ne
+// compte pas les changements (`rowsAffected` vaudrait toujours 0).
+function clauseEgalites(filtre) {
+  const cols = Object.keys(filtre);
+  return { where: cols.map((c) => `${c} = ?`).join(" AND "), params: cols.map((c) => filtre[c]) };
+}
+
+export async function majLocalParFiltre(table, filtre, row) {
+  const complet = stringifyJsonCols(table, row);
+  const cols = Object.keys(complet);
+  const { where, params } = clauseEgalites(filtre);
+  return getPowerSync().writeTransaction(async (tx) => {
+    const { n } = await tx.get(`SELECT count(*) AS n FROM ${table} WHERE ${where}`, params);
+    if (n && cols.length) {
+      await tx.execute(
+        `UPDATE ${table} SET ${cols.map((c) => `${c} = ?`).join(", ")} WHERE ${where}`,
+        [...cols.map((c) => complet[c]), ...params],
+      );
+    }
+    return n;
+  });
+}
+
+export async function supprimerLocalParFiltre(table, filtre) {
+  const { where, params } = clauseEgalites(filtre);
+  return getPowerSync().writeTransaction(async (tx) => {
+    const { n } = await tx.get(`SELECT count(*) AS n FROM ${table} WHERE ${where}`, params);
+    if (n) await tx.execute(`DELETE FROM ${table} WHERE ${where}`, params);
+    return n;
+  });
+}
+
 // Lecture d'une seule ligne — utilisée pour le read-modify-write des colonnes
 // jsonb (modifierChampDoc), identique en ligne/hors ligne.
 export async function lireUneLocal(table, id) {
