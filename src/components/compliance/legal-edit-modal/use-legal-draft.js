@@ -2,7 +2,7 @@ import { useState } from "react";
 
 // Renvoie un draft initial = profile, complété par les champs legacy
 // (schoolInfo.ministere/agrement/ire/dpe) là où le profil structuré est
-// vide. N'écrase JAMAIS une valeur déjà saisie dans /config/legal.
+// vide. N'écrase JAMAIS une valeur déjà saisie dans le profil légal.
 function mergeLegacyFallback(profile, schoolInfo) {
   if (!schoolInfo) return profile;
   const next = structuredClone(profile);

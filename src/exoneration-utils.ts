@@ -50,11 +50,16 @@ export type Exoneration = {
 
 export type EleveExonerable = { exoneration?: Exoneration | null };
 
-const pourcentage = (valeur: unknown): number => {
+// Un taux saisi librement reste un pourcentage : entier, entre 0 et 100.
+// Exporté parce que l'écran de saisie borne à la frappe — un « 250 » corrigé
+// à l'enregistrement seulement laisserait l'utilisateur croire à 250 %.
+export const clampPourcentage = (valeur: unknown): number => {
   const n = Number(valeur);
   if (!Number.isFinite(n) || n <= 0) return 0;
   return Math.min(100, Math.round(n));
 };
+
+const pourcentage = clampPourcentage;
 
 export const libelleMotif = (motif?: string): string =>
   MOTIFS_EXONERATION.find((m) => m.id === motif)?.label || "Autre";

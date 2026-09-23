@@ -1,62 +1,42 @@
-import { collection, getDocs, writeBatch, doc } from "firebase/firestore";
-import { db } from "../../firebaseDb";
+// Accès aux données de la migration des périodes — Supabase, via l'adaptateur.
+// Liquidation Firebase : l'ancien chemin Firestore (getDocs/writeBatch) ne
+// voyait plus AUCUNE note depuis la bascule de la prod sur Supabase ; l'outil
+// annonçait « aucune note orpheline » et ne migrait rien.
+// La logique (qu'est-ce qu'une orpheline, quelles écritures) vit dans
+// migration-periodes-utils.js ; ce fichier ne porte que lectures et écritures.
+import { chargerCollection, modifierDocsParFiltre, supprimerDocsParFiltre } from "../../backend/data-supabase";
+import {
+  GROUPES_PERIODICITE, SUPPRIMER, bilanMigration, detecterPeriodesOrphelines, planifierMigration,
+} from "./migration-periodes-utils";
 
-// Une collection → la section dont la périodicité s'y applique. notesPrimaire
-// suit periodicitePrimaire, notesCollege/notesLycee suivent periodiciteSecondaire.
-const NOTES_COLLECTIONS = [
-  { name: "notesCollege",  section: "secondaire" },
-  { name: "notesPrimaire", section: "primaire" },
-  { name: "notesLycee",    section: "secondaire" },
-];
-const BATCH_LIMIT = 450; // marge sous la limite Firestore de 500
-
-// Scanne les 3 collections de notes et retourne les périodes orphelines
-// (présentes en base mais hors de la périodicité actuelle de la section
-// correspondante). Une période "T1" peut être orpheline en secondaire si
-// le DG est passé en semestre, mais reste valide en primaire — d'où le
-// scan par section.
-export async function collecterPeriodesOrphelines(schoolId, periodesParSection) {
-  const compteur = new Map(); // periode -> nombre de notes
-  for (const col of NOTES_COLLECTIONS) {
-    const set = new Set(periodesParSection[col.section] || []);
-    const snap = await getDocs(collection(db, "ecoles", schoolId, col.name));
-    snap.forEach((d) => {
-      const p = d.data().periode;
-      if (!p || set.has(p)) return;
-      compteur.set(p, (compteur.get(p) || 0) + 1);
-    });
-  }
-  return [...compteur.entries()].map(([periode, count]) => ({ periode, count }));
+// Scanne les notes de TOUTES les années : la vue archive les affiche avec la
+// périodicité actuelle, une année close y est donc tout aussi invisible.
+// Seules les notes HORS périodicité sont lues (`saufPeriodes`, appliqué par
+// PostgREST en ligne comme par le miroir PowerSync — la prod) : rien à migrer
+// = quatre lectures vides. detecterPeriodesOrphelines reste seul juge.
+export async function collecterPeriodesOrphelines(schoolId, periodes) {
+  const lectures = await Promise.all(GROUPES_PERIODICITE.flatMap(({ groupe, collections }) => (
+    collections.map((nom) => chargerCollection(schoolId, nom, { saufPeriodes: periodes[groupe] }))
+  )));
+  // Une lecture en échec n'est pas « zéro orpheline » : l'annoncer ainsi
+  // ferait croire à la direction que tout est en ordre.
+  const echec = lectures.find((r) => r.erreur || r.unsupported);
+  if (echec) throw new Error(echec.erreur || "Notes indisponibles.");
+  return detecterPeriodesOrphelines(lectures.flatMap((r) => r.items), periodes);
 }
 
-// Applique le mapping : periode orpheline -> nouvelle (ou "_delete_")
-export async function appliquerMapping(schoolId, mapping) {
-  let totalMaj = 0;
-  let totalSup = 0;
-  for (const col of NOTES_COLLECTIONS) {
-    const snap = await getDocs(collection(db, "ecoles", schoolId, col.name));
-    let batch = writeBatch(db);
-    let ops = 0;
-    for (const d of snap.docs) {
-      const p = d.data().periode;
-      if (!p || !(p in mapping)) continue;
-      const cible = mapping[p];
-      const ref = doc(db, "ecoles", schoolId, col.name, d.id);
-      if (cible === "_delete_") {
-        batch.delete(ref);
-        totalSup++;
-      } else {
-        batch.update(ref, { periode: cible });
-        totalMaj++;
-      }
-      ops++;
-      if (ops >= BATCH_LIMIT) {
-        await batch.commit();
-        batch = writeBatch(db);
-        ops = 0;
-      }
-    }
-    if (ops > 0) await batch.commit();
-  }
-  return { totalMaj, totalSup };
+// Applique le mapping validé : UNE écriture par (collection, période) au lieu
+// d'une par note — une requête PostgREST, ou une instruction SQL sur le miroir
+// PowerSync, qui remonte ensuite les lignes à Supabase à son rythme. Les
+// écritures partent ensemble : elles visent des lignes disjointes, une période
+// orpheline n'étant jamais la destination d'une autre.
+// Renvoie le bilan réel { totalMaj, totalSup, nonTraitees, erreurs }.
+export async function appliquerMapping(schoolId, orphelines, mapping, periodes) {
+  const operations = planifierMigration(orphelines, mapping, periodes);
+  const issues = await Promise.all(operations.map((op) => Promise.allSettled(op.collections.map((nom) => (
+    op.cible === SUPPRIMER
+      ? supprimerDocsParFiltre(schoolId, nom, { periode: op.periode })
+      : modifierDocsParFiltre(schoolId, nom, { periode: op.periode }, { periode: op.cible })
+  )))));
+  return bilanMigration(operations, issues);
 }

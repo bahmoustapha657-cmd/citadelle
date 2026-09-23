@@ -68,13 +68,17 @@ export function useSchoolData({ schoolId, utilisateur }) {
     // autres écrans. La table `ecoles` est publiée sans son logo (72 ko) : on
     // ignore le contenu de l'événement et on recharge la fiche.
     if (isSupabase) {
-      const recharger = () => {
-        chargerEcole(schoolId).then((d) => {
+      const recharger = (reseau = false) => {
+        chargerEcole(schoolId, { reseau }).then((d) => {
           if (actif && d) appliquerDonneesEcole(d);
         }).catch(() => {});
       };
       recharger();
-      const desabonner = subscribeTable(schoolId, "ecoles", recharger);
+      // Sur événement, relecture SERVEUR : le miroir PowerSync peut ne pas
+      // avoir encore reçu la modification, et le relire à cet instant
+      // ré-affichait l'ancienne valeur (un agrément tout juste enregistré
+      // « revenait » jusqu'au rechargement de la page).
+      const desabonner = subscribeTable(schoolId, "ecoles", () => recharger(true));
       return () => { actif = false; desabonner(); };
     }
 
