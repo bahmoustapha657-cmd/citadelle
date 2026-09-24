@@ -33,13 +33,19 @@ function OptionsPostes({ doc, postes, valeur, avecAucun }) {
 // « Imprimera : La Principale · Djiba Oury Diallo » — le résultat réel du
 // réglage, calculé par le même résolveur que les documents. `nomsComptes` :
 // noms propres aux comptes d'un poste — chacun signe à son nom ce qu'il imprime.
-function Apercu({ signataires, nomsComptes = {} }) {
+// `libelles` : nom de chaque poste. Il s'affiche quand le titre imprimé ne le
+// dit pas : « Direction » seul se lisait comme le DG alors que c'était la
+// Direction primaire, sans nom, qui signait.
+const sansAccents = (t) => String(t || "").trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+function Apercu({ signataires, nomsComptes = {}, libelles = {} }) {
   return signataires.map((s) => {
     const noms = nomsComptes[s.cle] || [];
+    const poste = libelles[s.cle];
     return (
       <div key={s.role} style={{ fontSize: 11, lineHeight: 1.45, color: "#334155" }}>
         {s.role === "visa" && <span style={{ color: "#64748b" }}>visa : </span>}
         <strong>{s.titre}</strong>
+        {poste && sansAccents(poste) !== sansAccents(s.titre) && <span style={{ color: "#94a3b8" }}> ({poste})</span>}
         {s.nom && <span> · {s.nom}</span>}
         {!s.nom && !noms.length && <span style={{ color: "#b45309" }}> · ⚠️ sans nom</span>}
         {noms.length > 0 && (
@@ -58,6 +64,7 @@ export function MatriceSignatures({ s, peutGererRoles }) {
   const select = { width: "100%", minWidth: 190, padding: "6px 8px", borderRadius: 7, border: "1px solid #cbd5e1",
     fontSize: 12, background: peutGererRoles ? "#fff" : "#f8fafc", color: "#1f2937" };
   const groupes = [...new Set(DOCUMENTS_SIGNES.map((d) => d.groupe))];
+  const libelles = Object.fromEntries((s.postes || []).map((p) => [p.cle, p.label]));
 
   return (
     <>
@@ -100,10 +107,10 @@ export function MatriceSignatures({ s, peutGererRoles }) {
                         ? SECTIONS_APERCU.map(([section, libelle]) => (
                           <div key={section} style={{ marginBottom: 3 }}>
                             <div style={{ fontSize: 10, color: "#94a3b8", fontWeight: 700 }}>{libelle}</div>
-                            <Apercu signataires={s.apercu(doc.id, section)} nomsComptes={s.nomsComptes} />
+                            <Apercu signataires={s.apercu(doc.id, section)} nomsComptes={s.nomsComptes} libelles={libelles} />
                           </div>
                         ))
-                        : <Apercu signataires={s.apercu(doc.id, "college")} nomsComptes={s.nomsComptes} />}
+                        : <Apercu signataires={s.apercu(doc.id, "college")} nomsComptes={s.nomsComptes} libelles={libelles} />}
                     </td>
                   </tr>
                 );
