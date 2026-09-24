@@ -1,12 +1,14 @@
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 import { doc, updateDoc } from "firebase/firestore";
-import { C } from "../../constants";
+import { SchoolContext } from "../../contexts/SchoolContext";
+import { C, isModuleOuvertPourEcole } from "../../constants";
 import { db } from "../../firebaseDb";
 import { isSupabase } from "../../backend";
 import { majVerrou } from "../../backend/data-supabase";
 import { Card } from "../ui";
 
 export function VerrousCard({ verrous = {}, schoolId }) {
+  const { schoolInfo } = useContext(SchoolContext);
   const [savingVerrou, setSavingVerrou] = useState(null);
   // État local optimiste : sur Supabase (pas d'écoute temps réel du doc
   // école) l'interrupteur resterait figé jusqu'au rechargement sinon.
@@ -34,7 +36,9 @@ export function VerrousCard({ verrous = {}, schoolId }) {
           {cle:"comptable", label:"Comptable",   desc:"Finances, salaires, mensualites", icon:"💰", color:"#0e7490"},
           {cle:"primaire",  label:"Primaire",     desc:"Classes, élèves, bulletins, notes", icon:"🌱", color:C.greenDk},
           {cle:"secondaire",label:"Secondaire",   desc:"College, lycee, enseignants, EDT", icon:"🏫", color:C.blue},
-        ].map(({cle,label,desc,icon,color})=>{
+        // Pas de verrou « Secondaire » dans une école sans collège ni lycée
+        // (idem Primaire) : les clés sont celles des modules du menu.
+        ].filter(({cle})=>isModuleOuvertPourEcole(cle, schoolInfo)).map(({cle,label,desc,icon,color})=>{
           const actif = etatVerrou(cle);
           const enCours = savingVerrou === cle;
           return (

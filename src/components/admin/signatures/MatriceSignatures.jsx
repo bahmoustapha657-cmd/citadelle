@@ -104,7 +104,7 @@ export function MatriceSignatures({ s, peutGererRoles }) {
                     </td>
                     <td style={{ padding: "8px", minWidth: 200 }}>
                       {parSection
-                        ? SECTIONS_APERCU.map(([section, libelle]) => (
+                        ? SECTIONS_APERCU.filter(([section]) => (s.sectionsApercu || ["primaire", "college"]).includes(section)).map(([section, libelle]) => (
                           <div key={section} style={{ marginBottom: 3 }}>
                             <div style={{ fontSize: 10, color: "#94a3b8", fontWeight: 700 }}>{libelle}</div>
                             <Apercu signataires={s.apercu(doc.id, section)} nomsComptes={s.nomsComptes} libelles={libelles} />

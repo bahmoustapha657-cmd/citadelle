@@ -13,6 +13,16 @@ import { buildTeacherFullName, normalizeSalaryName } from "../../../salary-utils
 
 export const SECTIONS_BON = ["Secondaire", "Primaire", "Personnel"];
 
+// Sections proposées dans les fenêtres « salaire » et « bon » : les groupes de
+// paie affichés par SalairesTab (une école sans collège ni lycée n'a pas de
+// Secondaire), Personnel toujours. La section de la fiche ouverte reste
+// proposée même si son groupe est fermé — sinon le sélecteur mentirait.
+export function sectionsPaieProposees(groupesPaie = {}, sectionCourante = "") {
+  return SECTIONS_BON.filter((section) => section === "Personnel"
+    || section === sectionCourante
+    || groupesPaie[section === "Secondaire" ? "secondaire" : "primaire"] !== false);
+}
+
 function agentsDeLaSection(section, { ensCollege = [], ensLycee = [], ensPrimaire = [], personnel = [] } = {}) {
   if (section === "Secondaire") return [...ensCollege, ...ensLycee];
   if (section === "Primaire") return ensPrimaire;

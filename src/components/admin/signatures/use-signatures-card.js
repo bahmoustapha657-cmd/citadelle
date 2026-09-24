@@ -1,5 +1,6 @@
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { SchoolContext } from "../../../contexts/SchoolContext";
+import { isGroupeActif } from "../../../constants";
 import { chargerPostes } from "../../../backend/account-manage-supabase";
 import { sauverParametresEcole } from "../../../backend/data-supabase";
 import { subscribeTable } from "../../../backend/realtime-supabase";
@@ -57,6 +58,10 @@ export function useSignaturesCard({ schoolId, toast, comptes = [] }) {
   // poste s'affichent à part (nomsComptes).
   const apercu = (docId, section) => signatairesDocument(infoApercu, docId, { section, signataire: null });
   const nomsComptes = useMemo(() => nomsSignatureParPoste(postes, comptes), [postes, comptes]);
+  // Sections de l'aperçu « par section » : pas d'aperçu Collège (= tout le
+  // secondaire) dans une école sans collège ni lycée, et inversement.
+  const sectionsApercu = ["primaire", "college"]
+    .filter((section) => isGroupeActif(schoolInfo, section === "college" ? "secondaire" : "primaire"));
 
   const choisir = (docId, emplacement, valeur) => setBrouillon((prec) => {
     const base = prec || enregistree;
@@ -84,5 +89,5 @@ export function useSignaturesCard({ schoolId, toast, comptes = [] }) {
     }
   };
 
-  return { postes, chargement, matrice, modifie, apercu, nomsComptes, choisir, retablir, annuler, enregistrer, enregistrement };
+  return { postes, chargement, matrice, modifie, apercu, nomsComptes, sectionsApercu, choisir, retablir, annuler, enregistrer, enregistrement };
 }

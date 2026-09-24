@@ -1,8 +1,15 @@
+import { useContext } from "react";
+import { SchoolContext } from "../../contexts/SchoolContext";
+import { getSectionLabel, getSectionsActives } from "../../constants";
 import { Btn, Input, Modale, Selec, Textarea } from "../ui";
 import { TYPES_EV } from "./calendrier-data";
 
 // Modale d'ajout d'un événement au calendrier.
 export function CalendrierModale({ form, chg, ajEv, setModal, toast }) {
+  const { schoolInfo } = useContext(SchoolContext);
+  // Niveaux proposés : les sections ouvertes dans l'école (Paramètres →
+  // Identité) — pas de « Collège » dans une école primaire.
+  const niveaux = ["Tous", ...getSectionsActives(schoolInfo).map(getSectionLabel)];
   return (
     <Modale titre="Nouvel événement" fermer={()=>setModal(null)}>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
@@ -11,7 +18,7 @@ export function CalendrierModale({ form, chg, ajEv, setModal, toast }) {
           {TYPES_EV.map(t=><option key={t.id} value={t.id}>{t.label}</option>)}
         </Selec>
         <Selec label="Niveau concerné" value={form.niveau||"Tous"} onChange={chg("niveau")}>
-          <option>Tous</option><option>Primaire</option><option>Collège</option>
+          {niveaux.map((niveau) => <option key={niveau}>{niveau}</option>)}
         </Selec>
         <Input label="Date début" type="date" value={form.date||""} onChange={chg("date")}/>
         <Input label="Date fin (optionnel)" type="date" value={form.dateFin||""} onChange={chg("dateFin")}/>

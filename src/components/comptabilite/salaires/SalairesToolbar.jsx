@@ -9,8 +9,11 @@ export function SalairesToolbar({
   sousTabSal, setSousTabSal, moisSel, setMoisSel, moisSalaire, bonsMois,
   canCreate, primeDefaut, setPrimeDefaut,
   autoGenererSalaires, appliquerBons, imprimerSalaires, setForm, setModal, moisModale,
+  groupesPaie = { secondaire: true, primaire: true },
 }) {
   const { t } = useTranslation();
+  // Section proposée à l'ajout : une école sans secondaire part sur Primaire.
+  const sectionDefaut = groupesPaie.secondaire ? "Secondaire" : "Primaire";
   return (
     <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14,flexWrap:"wrap"}}>
       {[{id:"etats",label:t("accounting.salaryHeader")},{id:"bons",label:`${t("accounting.salaryBonus")}s (${bonsMois.length})`}].map(tab=>(
@@ -37,7 +40,7 @@ export function SalairesToolbar({
         {canCreate&&<Btn v="amber" onClick={()=>autoGenererSalaires()}>⚡ {t("accounting.generateSalaries")}</Btn>}
         {canCreate&&<Btn v="amber" onClick={()=>autoGenererSalaires({resync:true})} title="Recalcule V/H et prime horaire des lignes existantes à partir de la fiche enseignant et de l'EDT actuels (bons et révisions préservés)">🔄 {t("common.refresh")}</Btn>}
         {canCreate&&bonsMois.length>0&&<Btn v="amber" onClick={appliquerBons}>✔ {t("accounting.applyBonus")}</Btn>}
-        {canCreate&&<Btn onClick={()=>{setForm({section:"Secondaire",mois:moisModale,nonExecute:0,cinqSem:0,bon:0,revision:0});setModal("add_s");}}>+ {t("common.add")}</Btn>}
+        {canCreate&&<Btn onClick={()=>{setForm({section:sectionDefaut,mois:moisModale,nonExecute:0,cinqSem:0,bon:0,revision:0});setModal("add_s");}}>+ {t("common.add")}</Btn>}
         <Btn v="vert" onClick={imprimerSalaires}>🖨️ {t("accounting.printSalaries")}</Btn>
       </>}
       {(()=>{const j5=getFifthWeekDays(moisSel);return j5.length>0&&(
@@ -48,7 +51,7 @@ export function SalairesToolbar({
           <span style={{color:"#92400e",fontSize:11}}>→ Les enseignants qui ont cours ces jours ont des heures supplémentaires. Cliquez sur ⚡ Auto-générer pour les calculer automatiquement.</span>
         </div>
       );})()}
-      {sousTabSal==="bons"&&canCreate&&<Btn onClick={()=>{setForm({mois:moisModale,section:"Secondaire"});setModal("add_b");}}>+ Nouveau bon</Btn>}
+      {sousTabSal==="bons"&&canCreate&&<Btn onClick={()=>{setForm({mois:moisModale,section:sectionDefaut});setModal("add_b");}}>+ Nouveau bon</Btn>}
     </div>
   );
 }

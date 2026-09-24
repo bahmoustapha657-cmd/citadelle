@@ -1,7 +1,7 @@
 import React, { useState, useContext } from "react";
 import { sauverParametresEcole } from "../backend/data-supabase";
 import { SchoolContext } from "../contexts/SchoolContext";
-import { C, getAnnee } from "../constants";
+import { C, getAnnee, isSectionActive } from "../constants";
 import { Btn, Stat, TR } from "./ui";
 
 function MatriculeSettings({sec, lbl, inp, setMsgSucces, setErreur}) {
@@ -39,19 +39,23 @@ function MatriculeSettings({sec, lbl, inp, setMsgSucces, setErreur}) {
   };
 
   const upd = k => e => setCfgLocal(p=>({...p,[k]:e.target.type==="checkbox"?e.target.checked:e.target.value}));
+  // Préfixes réglables ici : primaire et collège — seulement si l'école a la
+  // section (Paramètres → Identité). Un préfixe masqué garde sa valeur.
+  const avecPrimaire = isSectionActive(schoolInfo, "primaire");
+  const avecCollege = isSectionActive(schoolInfo, "college");
 
   return (
     <div style={sec}>
       <h3 style={{margin:"0 0 16px",fontSize:14,fontWeight:800,color:C.blueDark}}>🔢 Modèle de matricule</h3>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
-        <div>
+        {avecPrimaire&&<div>
           <label style={lbl}>Préfixe — Primaire</label>
           <input style={inp} value={cfgLocal.matriculePrefixPrim} onChange={upd("matriculePrefixPrim")} placeholder="P"/>
-        </div>
-        <div>
+        </div>}
+        {avecCollege&&<div>
           <label style={lbl}>Préfixe — Collège / Secondaire</label>
           <input style={inp} value={cfgLocal.matriculePrefixColl} onChange={upd("matriculePrefixColl")} placeholder="C"/>
-        </div>
+        </div>}
         <div>
           <label style={lbl}>Séparateur (entre préfixe+année et numéro)</label>
           <input style={inp} value={cfgLocal.matriculeSep} onChange={upd("matriculeSep")} placeholder="-" maxLength={3}/>
@@ -75,11 +79,11 @@ function MatriculeSettings({sec, lbl, inp, setMsgSucces, setErreur}) {
           Année sur 4 chiffres ({anneeFull} au lieu de {anneeShort})
         </label>}
       </div>
-      <div style={{background:"#f0f9ff",border:"1px solid #7dd3fc",borderRadius:10,padding:"12px 16px",marginBottom:16}}>
+      {(avecPrimaire||avecCollege)&&<div style={{background:"#f0f9ff",border:"1px solid #7dd3fc",borderRadius:10,padding:"12px 16px",marginBottom:16}}>
         <p style={{margin:"0 0 6px",fontSize:12,fontWeight:700,color:C.blueDark}}>Aperçu</p>
-        <p style={{margin:"0 0 4px",fontSize:12,color:"#0369a1"}}>Primaire : <strong>{previewFor("primaire")}</strong></p>
-        <p style={{margin:0,fontSize:12,color:"#0369a1"}}>Collège : <strong>{previewFor("college")}</strong></p>
-      </div>
+        {avecPrimaire&&<p style={{margin:"0 0 4px",fontSize:12,color:"#0369a1"}}>Primaire : <strong>{previewFor("primaire")}</strong></p>}
+        {avecCollege&&<p style={{margin:0,fontSize:12,color:"#0369a1"}}>Collège : <strong>{previewFor("college")}</strong></p>}
+      </div>}
       <p style={{margin:"0 0 14px",fontSize:11,color:"#9ca3af"}}>
         ⚠️ Ce modèle s'applique uniquement aux <strong>nouveaux élèves</strong>. Les matricules existants ne sont pas modifiés.
       </p>

@@ -133,14 +133,41 @@ export const getSystemeScolaire = (schoolInfo = {}) =>
 
 // ── Sections réellement ouvertes dans l'école ───────────────────────────────
 // Une école sans lycée (ou primaire seul) le déclare dans Paramètres →
-// Identité ; l'UI (onglets Secondaire, sélecteurs) suit. Défaut : tout.
+// Identité ; l'UI (menu, onglets, filtres et sélecteurs de section, tableau
+// de bord, paie…) suit. Défaut : tout.
 export const SECTIONS_ECOLE = ["prescolaire", "primaire", "college", "lycee"];
 export const getSectionsActives = (schoolInfo = {}) => {
-  const brut = Array.isArray(schoolInfo.sectionsActives)
+  const brut = Array.isArray(schoolInfo?.sectionsActives)
     ? schoolInfo.sectionsActives.filter((s) => SECTIONS_ECOLE.includes(s)) : [];
   return brut.length ? brut : [...SECTIONS_ECOLE];
 };
 export const isSectionActive = (schoolInfo, section) => getSectionsActives(schoolInfo).includes(section);
+
+// Groupes de sections tels que les découpent le menu (modules « Dir.
+// Primaire » et « Secondaire »), la paie, les verrous et les réglages de jours
+// et de périodicité : un groupe est ouvert dès qu'une de ses sections l'est.
+const SECTIONS_PAR_GROUPE = {
+  primaire: ["prescolaire", "primaire"],
+  secondaire: ["college", "lycee"],
+};
+export const isGroupeActif = (schoolInfo, groupe) =>
+  (SECTIONS_PAR_GROUPE[groupe] || []).some((section) => isSectionActive(schoolInfo, section));
+
+// Modules du menu adossés à un groupe : une école sans collège ni lycée n'a
+// pas de module Secondaire, une école sans maternelle ni primaire pas de
+// module Dir. Primaire. Les autres modules ne dépendent d'aucune section.
+export const isModuleOuvertPourEcole = (moduleId, schoolInfo) =>
+  (moduleId === "primaire" || moduleId === "secondaire" ? isGroupeActif(schoolInfo, moduleId) : true);
+
+// Section retenue par un sélecteur de section : le choix courant s'il est
+// ouvert, sinon la première section ouverte — primaire et collège (les gros
+// effectifs) avant le lycée et la maternelle. Évite qu'un choix par défaut
+// (« college ») ou mémorisé pointe une section que l'école a fermée.
+const ORDRE_REPLI_SECTIONS = ["primaire", "college", "lycee", "prescolaire"];
+export const sectionOuverte = (schoolInfo, choix) => {
+  const actives = getSectionsActives(schoolInfo);
+  return actives.includes(choix) ? choix : ORDRE_REPLI_SECTIONS.find((section) => actives.includes(section));
+};
 
 // ── Jours de classe ─────────────────────────────────────────────────────────
 // Semaine complète possible. Les jours RÉELLEMENT ouvrés se règlent par section

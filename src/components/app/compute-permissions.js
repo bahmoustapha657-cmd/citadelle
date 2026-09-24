@@ -1,4 +1,4 @@
-import { C, MODULES, getModulesForRole, getRoleLabelForSchool } from "../../constants";
+import { C, MODULES, getModulesForRole, getRoleLabelForSchool, isModuleOuvertPourEcole } from "../../constants";
 import { isSupabase } from "../../backend";
 import {
   ROLES_HORS_POSTES,
@@ -37,9 +37,13 @@ export function computeAppPermissions({ utilisateur, schoolInfo, page, planInfo 
   const permissions = surPostes ? getSessionPermissions(utilisateur, schoolInfo) : null;
   const modulesActifsIds = surPostes ? null : getModulesForRole(role, schoolInfo);
   // `sousModule` : permission fine (Discipline), pas une entrée de menu.
-  const modulesVisibles = MODULES.filter((module) => !module.sousModule && (surPostes
-    ? hasRead(permissions, module.id)
-    : modulesActifsIds.includes(module.id)));
+  // Une école sans collège ni lycée n'a pas de module Secondaire (idem pour
+  // Dir. Primaire) : les sections se déclarent dans Paramètres → Identité.
+  const modulesVisibles = MODULES.filter((module) => !module.sousModule
+    && isModuleOuvertPourEcole(module.id, schoolInfo)
+    && (surPostes
+      ? hasRead(permissions, module.id)
+      : modulesActifsIds.includes(module.id)));
 
   const adminCanWriteCurrentPage = isAdmin
     && (schoolInfo?.roleSettings?.admin?.writeModules || []).includes(page);

@@ -1,4 +1,4 @@
-import { C, fmt, genererMatricule } from "../../../constants";
+import { C, fmt, genererMatricule, isSectionActive } from "../../../constants";
 import { Btn } from "../../ui";
 import { imprimerListeClasse } from "../../../reports";
 
@@ -24,10 +24,15 @@ export function EnrolToolbar({
       </strong>
       <select value={niveauEnrol} onChange={e=>setNiveauEnrol(e.target.value)}
         style={{border:"1px solid #b0c4d8",borderRadius:7,padding:"6px 10px",fontSize:12,background:"#fff",color:C.blueDark,fontWeight:600}}>
-        <option value="college">Collège ({elevesC.length} élèves)</option>
-        <option value="lycee">Lycée ({elevesL.length} élèves)</option>
-        <option value="primaire">Primaire ({elevesP.length} élèves)</option>
-        <option value="prescolaire">Préscolaire ({elevesPre.length} élèves)</option>
+        {/* Seules les sections ouvertes dans l'école (Paramètres → Identité). */}
+        {[
+          ["college", "Collège", elevesC],
+          ["lycee", "Lycée", elevesL],
+          ["primaire", "Primaire", elevesP],
+          ["prescolaire", "Préscolaire", elevesPre],
+        ].filter(([section]) => isSectionActive(schoolInfo, section)).map(([section, label, liste]) => (
+          <option key={section} value={section}>{label} ({liste.length} élèves)</option>
+        ))}
       </select>
       {classesEnrol.length>0&&(
         <select value={classeEnrol} onChange={e=>setClasseEnrol(e.target.value)}

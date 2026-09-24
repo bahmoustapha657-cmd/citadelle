@@ -1,4 +1,4 @@
-import { fmt, getSectionLabel } from "../../constants";
+import { fmt, getSectionLabel, isSectionActive } from "../../constants";
 
 function KPI({ c1, c2, label, value, sub, icon, color = "white", trend }) {
   return (
@@ -15,22 +15,26 @@ function KPI({ c1, c2, label, value, sub, icon, color = "white", trend }) {
 }
 
 export function KpiGrid({
-  t, c1, c2, totalEleves, elevesC, elevesL, elevesP, elevesPre = [],
+  t, c1, c2, schoolInfo = {}, totalEleves, elevesC, elevesL, elevesP, elevesPre = [],
   totalEns, ensC, ensL, ensP, ensPre = [], tauxPay, solde, totalRec, totalDep,
   masseSal, salMois, moisActuel, totalAbs,
 }) {
-  // Le détail n'affiche une section que si elle a des effectifs : une école
-  // sans maternelle garde exactement la même ligne qu'avant.
+  // Le détail ne cite que les sections ouvertes dans l'école (Paramètres →
+  // Identité) : une école sans lycée n'affiche pas « 0 Lycée ». La maternelle
+  // n'y figure en plus que si elle a des effectifs, comme avant.
   const actifs = (liste) => liste.filter((e) => e.statut === "Actif").length;
+  const aAfficher = ([n, , section]) => isSectionActive(schoolInfo, section)
+    && (n > 0 || section !== "prescolaire");
   const detailEleves = [
-    [actifs(elevesPre), getSectionLabel("prescolaire")],
-    [actifs(elevesC), t("dashboard.secondary")],
-    [actifs(elevesL), t("dashboard.lycee")],
-    [actifs(elevesP), t("dashboard.primary")],
-  ].filter(([n], i) => n > 0 || i > 0).map(([n, label]) => `${n} ${label}`).join(" · ");
+    [actifs(elevesPre), getSectionLabel("prescolaire"), "prescolaire"],
+    [actifs(elevesC), t("dashboard.secondary"), "college"],
+    [actifs(elevesL), t("dashboard.lycee"), "lycee"],
+    [actifs(elevesP), t("dashboard.primary"), "primaire"],
+  ].filter(aAfficher).map(([n, label]) => `${n} ${label}`).join(" · ");
   const detailEns = [
-    [ensPre.length, "M"], [ensC.length, "C"], [ensL.length, "L"], [ensP.length, "P"],
-  ].filter(([n], i) => n > 0 || i > 0).map(([n, s]) => `${n}${s}`).join(" · ");
+    [ensPre.length, "M", "prescolaire"], [ensC.length, "C", "college"],
+    [ensL.length, "L", "lycee"], [ensP.length, "P", "primaire"],
+  ].filter(aAfficher).map(([n, s]) => `${n}${s}`).join(" · ");
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12, marginBottom: 24 }}>

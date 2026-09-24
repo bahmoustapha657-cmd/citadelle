@@ -1,15 +1,17 @@
 import React from "react";
 import { C, fmtN } from "../../../constants";
 import { Btn, Input, Modale, Selec } from "../../ui";
+import { sectionsPaieProposees } from "./bon-agents";
 
-export function SalaireModale({ modal, canCreate, canEdit, form, setForm, setModal, moisModale, moisSalaire, calcExecute, calcMontant, calcNet, saveSalaire }) {
+export function SalaireModale({ modal, canCreate, canEdit, form, setForm, setModal, moisModale, moisSalaire, calcExecute, calcMontant, calcNet, saveSalaire, groupesPaie }) {
   if (!((modal==="add_s"&&canCreate)||(modal==="edit_s"&&canEdit))) return null;
   const chg = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
+  const sections = sectionsPaieProposees(groupesPaie, form.section);
   return (
     <Modale large titre={modal==="add_s"?"Nouveau salaire":"Modifier le salaire"} fermer={()=>setModal(null)}>
       <div style={{marginBottom:14}}>
-        <Selec label="Section" value={form.section||"Secondaire"} onChange={chg("section")}>
-          <option>Secondaire</option><option>Primaire</option><option>Personnel</option>
+        <Selec label="Section" value={form.section||sections[0]} onChange={chg("section")}>
+          {sections.map(s=><option key={s}>{s}</option>)}
         </Selec>
       </div>
       <Selec label="Mois" value={form.mois||moisModale} onChange={chg("mois")}>

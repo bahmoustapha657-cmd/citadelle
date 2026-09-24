@@ -1,17 +1,20 @@
 // ══════════════════════════════════════════════════════════════
 //  Modal « Guide de démarrage » (onboarding admin/direction)
 // ══════════════════════════════════════════════════════════════
-import { C } from "../../constants";
+import { C, isModuleOuvertPourEcole } from "../../constants";
 import { Btn } from "../ui";
 
 export function OnboardingModal({ schoolInfo, setPage, onClose }) {
   const go = (id) => { setPage(id); onClose(); };
+  // Une école sans maternelle ni primaire n'a pas de module Dir. Primaire :
+  // classes, enseignants et emplois du temps se gèrent dans Secondaire.
+  const moduleSections = isModuleOuvertPourEcole("primaire", schoolInfo) ? "primaire" : "secondaire";
   const steps = [
     {done:schoolInfo.nom!=="EduGest"&&!!schoolInfo.nom, label:"Configurer l'identité de l'école", desc:"Nom, logo, couleurs, coordonnées", action:()=>go("parametres")},
-    {done:true, label:"Creer les classes", desc:"Primaire et/ou Secondaire selon votre etablissement", action:()=>go("primaire")},
-    {done:true, label:"Ajouter les enseignants", desc:"Profil, matière, prime horaire", action:()=>go("primaire")},
+    {done:true, label:"Creer les classes", desc:"Primaire et/ou Secondaire selon votre etablissement", action:()=>go(moduleSections)},
+    {done:true, label:"Ajouter les enseignants", desc:"Profil, matière, prime horaire", action:()=>go(moduleSections)},
     {done:true, label:"Enrôler les élèves", desc:"Via le module Comptabilité → Élèves", action:()=>go("compta")},
-    {done:true, label:"Configurer les emplois du temps", desc:"Par classe, dans chaque section", action:()=>go("primaire")},
+    {done:true, label:"Configurer les emplois du temps", desc:"Par classe, dans chaque section", action:()=>go(moduleSections)},
     {done:true, label:"Générer les états de salaires", desc:"Via Comptabilité → Salaires → Auto-générer", action:()=>go("compta")},
   ];
 

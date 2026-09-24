@@ -30,7 +30,7 @@ function TableauDeBord({ annee, userRole, onOpenLegalSettings }) {
       />
 
       <KpiGrid
-        t={t} c1={d.c1} c2={d.c2}
+        t={t} c1={d.c1} c2={d.c2} schoolInfo={d.schoolInfo}
         totalEleves={d.totalEleves} elevesC={d.elevesC} elevesL={d.elevesL} elevesP={d.elevesP} elevesPre={d.elevesPre}
         totalEns={d.totalEns} ensC={d.ensC} ensL={d.ensL} ensP={d.ensP} ensPre={d.ensPre}
         tauxPay={d.tauxPay} solde={d.solde} totalRec={d.totalRec} totalDep={d.totalDep}
@@ -44,7 +44,7 @@ function TableauDeBord({ annee, userRole, onOpenLegalSettings }) {
       )}
 
       <ChartsRow
-        t={t} c1={d.c1} c2={d.c2}
+        t={t} c1={d.c1} c2={d.c2} schoolInfo={d.schoolInfo}
         elevesC={d.elevesC} elevesL={d.elevesL} elevesP={d.elevesP}
         tauxPayC={d.tauxPayC} tauxPayL={d.tauxPayL} tauxPayP={d.tauxPayP} tauxPay={d.tauxPay}
       />

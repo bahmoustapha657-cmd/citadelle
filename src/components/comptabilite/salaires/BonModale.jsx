@@ -1,15 +1,17 @@
 import React from "react";
 import { Btn, Input, Modale, Selec } from "../../ui";
-import { agentsPourBon, sectionDuBon } from "./bon-agents";
+import { agentsPourBon, sectionDuBon, sectionsPaieProposees } from "./bon-agents";
 
-export function BonModale({ modal, canCreate, canEdit, form, setForm, setModal, moisModale, moisSalaire, ensCollege = [], ensLycee = [], ensPrimaire = [], personnel = [], ajBon, modBon, enreg }) {
+export function BonModale({ modal, canCreate, canEdit, form, setForm, setModal, moisModale, moisSalaire, ensCollege = [], ensLycee = [], ensPrimaire = [], personnel = [], ajBon, modBon, enreg, groupesPaie }) {
   if (!((modal==="add_b"&&canCreate)||(modal==="edit_b"&&canEdit))) return null;
   const chg = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
   const listes = { ensCollege, ensLycee, ensPrimaire, personnel };
   const moisBon = form.mois||moisModale;
   // Un bon repris de l'ancienne base n'a pas de section : on retrouve celle de
   // l'agent dans les fiches actuelles, et l'enregistrement la fixe.
-  const secBon = form.section||sectionDuBon(form.nom, listes)||"Secondaire";
+  const secBon = form.section||sectionDuBon(form.nom, listes)||sectionsPaieProposees(groupesPaie)[0];
+  // Groupes ouverts dans l'école (+ la section du bon ouvert).
+  const sections = sectionsPaieProposees(groupesPaie, secBon);
   // Agents en fiche pour la section — sans attendre que la paie du mois soit
   // générée : un bon est une avance consentie en cours de mois.
   const agents = agentsPourBon(secBon, listes, form.nom);
@@ -21,7 +23,7 @@ export function BonModale({ modal, canCreate, canEdit, form, setForm, setModal, 
       </Selec>
       <div style={{height:10}}/>
       <Selec label="Section" value={secBon} onChange={e=>{chg("section")(e);setForm(p=>({...p,nom:""}));}}>
-        <option>Secondaire</option><option>Primaire</option><option>Personnel</option>
+        {sections.map(s=><option key={s}>{s}</option>)}
       </Selec>
       <div style={{height:10}}/>
       <Selec label={libelle} value={form.nom||""} onChange={chg("nom")}>

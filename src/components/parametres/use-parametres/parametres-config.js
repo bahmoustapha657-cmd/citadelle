@@ -1,7 +1,7 @@
 // Données et styles purs de l'écran « Paramètres de l'école » :
 // constructeurs d'état initial (form / accueil), config des actions
 // dangereuses, onglets et styles partagés. Aucun état React ici.
-import { C, JOURS_SEMAINE } from "../../../constants";
+import { C, JOURS_SEMAINE, getSectionsActives } from "../../../constants";
 
 // État initial du formulaire d'identité à partir de schoolInfo.
 export function buildFormInitial(schoolInfo) {
@@ -21,8 +21,11 @@ export function buildFormInitial(schoolInfo) {
     agrement: schoolInfo.agrement || "",
     moisDebut: schoolInfo.moisDebut || "Octobre",
     systemeScolaire: schoolInfo.systemeScolaire || "guineen",
-    sectionsActives: Array.isArray(schoolInfo.sectionsActives) && schoolInfo.sectionsActives.length
-      ? [...schoolInfo.sectionsActives] : ["primaire", "college", "lycee"],
+    // Même lecture que le reste de l'appli (réglage absent = toutes les
+    // sections). L'ancien défaut, antérieur au préscolaire, l'omettait : la
+    // case s'affichait décochée et le moindre enregistrement fermait la
+    // maternelle d'une école qui n'avait jamais réglé ses sections.
+    sectionsActives: getSectionsActives(schoolInfo),
     modeleBulletin: schoolInfo.modeleBulletin || "classique",
     signatureUrl: schoolInfo.signatureUrl || "",
     periodicite: schoolInfo.periodicite || "trimestre",

@@ -1,19 +1,24 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { C } from "../../constants";
+import { C, isSectionActive } from "../../constants";
 import { Card } from "../ui";
 
-export function ChartsRow({ t, c1, c2, elevesC, elevesL, elevesP, tauxPayC, tauxPayL, tauxPayP, tauxPay }) {
+export function ChartsRow({ t, c1, c2, schoolInfo = {}, elevesC, elevesL, elevesP, tauxPayC, tauxPayL, tauxPayP, tauxPay }) {
+  // Une barre et une jauge par section OUVERTE dans l'école (Paramètres →
+  // Identité) : une école sans lycée n'affiche pas un « Lycée » vide.
+  const sections = [
+    { section: "college", label: t("dashboard.college"), eleves: elevesC, taux: tauxPayC },
+    { section: "lycee", label: t("dashboard.lycee"), eleves: elevesL, taux: tauxPayL },
+    { section: "primaire", label: t("dashboard.primary"), eleves: elevesP, taux: tauxPayP },
+  ].filter((s) => isSectionActive(schoolInfo, s.section));
   return (
     <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16, marginBottom: 20 }}>
       {/* Répartition élèves par classe */}
       <Card><div style={{ padding: "16px 18px" }}>
         <p style={{ margin: "0 0 14px", fontWeight: 800, fontSize: 13, color: c1 }}>{t("dashboard.studentDistribution")}</p>
         <ResponsiveContainer width="100%" height={200}>
-          <BarChart data={[
-            { section: t("dashboard.college"), Actifs: elevesC.filter((e) => e.statut === "Actif").length, Inactifs: elevesC.filter((e) => e.statut !== "Actif").length },
-            { section: t("dashboard.lycee"), Actifs: elevesL.filter((e) => e.statut === "Actif").length, Inactifs: elevesL.filter((e) => e.statut !== "Actif").length },
-            { section: t("dashboard.primary"), Actifs: elevesP.filter((e) => e.statut === "Actif").length, Inactifs: elevesP.filter((e) => e.statut !== "Actif").length },
-          ]}>
+          <BarChart data={sections.map(({ label, eleves }) => (
+            { section: label, Actifs: eleves.filter((e) => e.statut === "Actif").length, Inactifs: eleves.filter((e) => e.statut !== "Actif").length }
+          ))}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e0ebf8" />
             <XAxis dataKey="section" tick={{ fontSize: 11 }} />
             <YAxis tick={{ fontSize: 11 }} />
@@ -28,7 +33,7 @@ export function ChartsRow({ t, c1, c2, elevesC, elevesL, elevesP, tauxPayC, taux
       <Card><div style={{ padding: "16px 18px" }}>
         <p style={{ margin: "0 0 14px", fontWeight: 800, fontSize: 13, color: c1 }}>{t("dashboard.paymentRate")}</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 16, marginTop: 8 }}>
-          {[[t("dashboard.college"), tauxPayC], [t("dashboard.lycee"), tauxPayL], [t("dashboard.primary"), tauxPayP]].map(([label, taux]) => (
+          {sections.map(({ label, taux }) => (
             <div key={label}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
                 <span style={{ fontSize: 12, fontWeight: 700, color: c1 }}>{label}</span>

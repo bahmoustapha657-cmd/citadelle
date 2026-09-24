@@ -1,3 +1,6 @@
+import { useContext } from "react";
+import { SchoolContext } from "../../contexts/SchoolContext";
+import { isGroupeActif } from "../../constants";
 import { Chargement } from "../ui";
 import { SalairesToolbar } from "./salaires/SalairesToolbar";
 import { BonsSousOnglet } from "./salaires/BonsSousOnglet";
@@ -72,6 +75,15 @@ export function SalairesTab({
   enreg,
   saveSalaire,
 }) {
+  const { schoolInfo } = useContext(SchoolContext);
+  // Groupes de paie affichés et proposés : ceux que l'école a ouverts
+  // (Paramètres → Identité)… ou qui ont déjà des fiches cette année — une
+  // fiche de paie compte dans la masse salariale, elle ne doit pas disparaître
+  // de l'écran.
+  const groupesPaie = {
+    secondaire: isGroupeActif(schoolInfo, "secondaire") || salaires.some((s) => s.section === "Secondaire"),
+    primaire: isGroupeActif(schoolInfo, "primaire") || salaires.some((s) => s.section === "Primaire"),
+  };
   return (
     <div>
       <SalairesToolbar
@@ -80,6 +92,7 @@ export function SalairesTab({
         canCreate={canCreate} primeDefaut={primeDefaut} setPrimeDefaut={setPrimeDefaut}
         autoGenererSalaires={autoGenererSalaires} appliquerBons={appliquerBons}
         imprimerSalaires={imprimerSalaires} setForm={setForm} setModal={setModal} moisModale={moisModale}
+        groupesPaie={groupesPaie}
       />
 
       {/* ── SOUS-ONGLET BONS ── */}
@@ -97,7 +110,7 @@ export function SalairesTab({
           salairesMois={salairesMois} moisSalaire={moisSalaire} salaires={salaires}
           calcNet={calcNet} moisLabel={moisLabel}
           salairesSec={salairesSec} salairesPrim={salairesPrim} salairesPers={salairesPers}
-          annee={annee}
+          annee={annee} groupesPaie={groupesPaie}
         />
       }
 
@@ -107,20 +120,20 @@ export function SalairesTab({
           Cliquez sur <strong>⚡ Auto-générer</strong> pour remplir d'un coup les {moisSalaire.length} mois de l'année scolaire.
         </div>}
 
-        <SecondaireTable
+        {groupesPaie.secondaire&&<SecondaireTable
           salairesSec={salairesSec} canEdit={canEdit} readOnly={readOnly}
           calcExecute={calcExecute} calcMontant={calcMontant} calcNet={calcNet}
           modS={modS} supS={supS} setForm={setForm} setModal={setModal}
           totNetSec={totNetSec} moisLabel={moisLabel} annee={annee}
-        />
+        />}
 
-        <PrimaireTable
+        {groupesPaie.primaire&&<PrimaireTable
           salairesPrim={salairesPrim}
           filtrePrimNom={filtrePrimNom} setFiltrePrimNom={setFiltrePrimNom}
           filtrePrimClasse={filtrePrimClasse} setFiltrePrimClasse={setFiltrePrimClasse}
           canEdit={canEdit} modS={modS} supS={supS} setForm={setForm} setModal={setModal}
           moisLabel={moisLabel} annee={annee}
-        />
+        />}
 
         <PersonnelTable
           salairesPers={salairesPers} canEdit={canEdit} calcNetF={calcNetF}
@@ -137,7 +150,7 @@ export function SalairesTab({
         form={form} setForm={setForm} setModal={setModal}
         moisModale={moisModale} moisSalaire={moisSalaire}
         calcExecute={calcExecute} calcMontant={calcMontant} calcNet={calcNet}
-        saveSalaire={saveSalaire}
+        saveSalaire={saveSalaire} groupesPaie={groupesPaie}
       />
 
       <BonModale
@@ -145,7 +158,7 @@ export function SalairesTab({
         form={form} setForm={setForm} setModal={setModal}
         moisModale={moisModale} moisSalaire={moisSalaire}
         ensCollege={ensCollege} ensLycee={ensLycee} ensPrimaire={ensPrimaire} personnel={personnel}
-        ajBon={ajBon} modBon={modBon} enreg={enreg}
+        ajBon={ajBon} modBon={modBon} enreg={enreg} groupesPaie={groupesPaie}
       />
     </div>
   );

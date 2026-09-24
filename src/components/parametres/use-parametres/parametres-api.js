@@ -2,7 +2,7 @@
 // sauvegarde de la monnaie (comptable), sauvegarde complète des paramètres
 // + sync de la page publique, et cycle de vie (désactiver / supprimer).
 import { doc, updateDoc } from "firebase/firestore";
-import { JOURS_SEMAINE } from "../../../constants";
+import { JOURS_SEMAINE, getSectionsActives } from "../../../constants";
 import { uploadImage } from "../../../storageUtils";
 import { db } from "../../../firebaseDb";
 import { apiFetch, getAuthHeaders } from "../../../apiClient";
@@ -66,8 +66,8 @@ export async function sauvegarderParametres({ schoolId, form, accueil, evaluatio
     moisDebut: form.moisDebut,
     systemeScolaire: form.systemeScolaire || "guineen",
     // Sections réellement ouvertes (école sans lycée…) — pilote l'UI.
-    sectionsActives: Array.isArray(form.sectionsActives) && form.sectionsActives.length
-      ? form.sectionsActives : ["primaire", "college", "lycee"],
+    // Vide ou invalide : toutes, préscolaire compris.
+    sectionsActives: getSectionsActives(form),
     modeleBulletin: form.modeleBulletin || "classique",
     signatureUrl: signatureUrl || null,
     periodicite: form.periodicite || "trimestre",
