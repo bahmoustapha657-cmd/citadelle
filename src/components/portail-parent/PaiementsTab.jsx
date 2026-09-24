@@ -1,35 +1,37 @@
 import React from "react";
-import { fmt } from "../../constants";
+import { fmt, getFraisAnnexeDate, getFraisAnnexeMontantFige, isFraisAnnexePaye } from "../../constants";
+import { montantInscriptionPaye } from "../../mensualite-utils";
 import { Badge, Vide } from "../ui";
 import { normalizeText } from "./helpers";
 
-export function PaiementsTab({ eleve, moisAnnee, estReinscription, montantInscription, montantAutre, montantMensuel, c1, c2 }) {
+// Carte d'un frais ponctuel : réglé (au montant encaissé) ou en attente (au
+// tarif de la classe).
+const carteFrais = (id, label, montant, paye, date, [fond, bord, texte]) => ({
+  id, label, montant, paye, date,
+  couleur: paye ? fond : "#fee2e2",
+  bordure: paye ? bord : "#fca5a5",
+  texte: paye ? texte : "#b91c1c",
+});
+
+export function PaiementsTab({ eleve, moisAnnee, estReinscription, montantInscription, montantAutre, montantRevision = 0, montantMensuel, c1, c2 }) {
   const mens = eleve.mens || {};
   const mensDates = eleve.mensDates || {};
   const moisList = moisAnnee.length ? moisAnnee : Object.keys(mens);
   const nbPayes = moisList.filter((mois) => normalizeText(mens[mois]) === "paye").length;
   const nbImpayes = moisList.filter((mois) => normalizeText(mens[mois]) !== "paye").length;
+  const frais = (id, label, tarif, couleurs) => {
+    const paye = isFraisAnnexePaye(eleve, id);
+    return carteFrais(id, label, paye ? (getFraisAnnexeMontantFige(eleve, id) ?? tarif) : tarif,
+      paye, getFraisAnnexeDate(eleve, id), couleurs);
+  };
   const fraisAnnexes = [
-    {
-      id: "inscription",
-      label: estReinscription ? "Reinscription" : "Inscription",
-      montant: montantInscription,
-      paye: !!eleve.inscriptionPayee,
-      date: eleve.inscriptionDate || "",
-      couleur: eleve.inscriptionPayee ? "#dbeafe" : "#fee2e2",
-      bordure: eleve.inscriptionPayee ? "#93c5fd" : "#fca5a5",
-      texte: eleve.inscriptionPayee ? "#1d4ed8" : "#b91c1c",
-    },
-    {
-      id: "autre",
-      label: "Autre frais",
-      montant: montantAutre,
-      paye: !!eleve.autrePayee,
-      date: eleve.autreDate || "",
-      couleur: eleve.autrePayee ? "#e2e8f0" : "#fee2e2",
-      bordure: eleve.autrePayee ? "#94a3b8" : "#fca5a5",
-      texte: eleve.autrePayee ? "#334155" : "#b91c1c",
-    },
+    carteFrais("inscription", estReinscription ? "Reinscription" : "Inscription",
+      eleve.inscriptionPayee ? montantInscriptionPaye(eleve, montantInscription) : montantInscription,
+      !!eleve.inscriptionPayee, eleve.inscriptionDate || "", ["#dbeafe", "#93c5fd", "#1d4ed8"]),
+    // La révision est due une fois par an : elle ne fait plus partie de la
+    // mensualité affichée ci-dessous.
+    frais("revision", "Frais de revision (annuel)", montantRevision, ["#fef3c7", "#fcd34d", "#92400e"]),
+    frais("autre", "Autre frais", montantAutre, ["#e2e8f0", "#94a3b8", "#334155"]),
   ].filter((item) => item.montant > 0);
 
   return (

@@ -296,12 +296,20 @@ export const getTarifAutreValue = (tarif = {}) => Number(tarif?.autre || 0);
 
 // ── Frais scolaires annexes (catalogue configurable) ────────────────────────
 // Chaque école active les frais qui la concernent en saisissant un montant
-// par classe (Tarifs par classe) ; les montants vivent dans
-// tarifs.extra.fraisDivers = { id: montant }, et le suivi par élève dans
-// eleves.extra.fraisPayes = { id: "date de paiement" }.
-// « Autre frais » reste la colonne legacy tarif.autre + eleve.autrePayee.
+// par classe (Tarifs par classe). Le montant vit :
+//   • dans une colonne dédiée du tarif pour les frais marqués `colonne` —
+//     « Autre frais » (tarif.autre) et la révision (tarif.revision) ;
+//   • dans tarifs.extra.fraisDivers = { id: montant } pour tous les autres.
+// Le suivi par élève est le même pour tous : eleves.extra.fraisPayes =
+// { id: "date de paiement" } et fraisMontants = { id: montant figé au
+// paiement }. « Autre frais » a d'abord vécu dans des drapeaux à part
+// (autrePayee / autreDate) : ils sont encore LUS, plus jamais écrits.
+//
+// La révision est un frais ANNUEL, dû une seule fois : elle était ajoutée à
+// chaque mensualité, ce qui la faisait payer autant de fois qu'il y a de mois.
 export const CATALOGUE_FRAIS_ANNEXES = [
-  { id: "autre", label: "Autre frais" },
+  { id: "autre", label: "Autre frais", colonne: "autre" },
+  { id: "revision", label: "Frais de révision", colonne: "revision" },
   { id: "uniforme", label: "Tenue / Uniforme" },
   { id: "fournitures", label: "Fournitures & livres" },
   { id: "cantine", label: "Cantine" },
@@ -317,24 +325,27 @@ export const CATALOGUE_FRAIS_ANNEXES = [
 export const getFraisAnnexeLabel = (id) =>
   CATALOGUE_FRAIS_ANNEXES.find((f) => f.id === id)?.label || id;
 
-// Frais divers configurés d'un tarif (hors « autre », qui garde sa colonne) :
-// ne renvoie que les montants > 0, filtrés sur le catalogue.
+// Frais divers configurés d'un tarif (hors frais à colonne dédiée) : ne
+// renvoie que les montants > 0, filtrés sur le catalogue.
 export const getTarifFraisDivers = (tarif = {}) => {
   const source = tarif?.fraisDivers || {};
   return CATALOGUE_FRAIS_ANNEXES.reduce((acc, f) => {
-    if (f.id === "autre") return acc;
+    if (f.colonne) return acc;
     const montant = Number(source[f.id] || 0);
     if (montant > 0) acc[f.id] = montant;
     return acc;
   }, {});
 };
 
-// Tous les frais annexes actifs d'un tarif (« autre » inclus) : { id: montant }.
+// Tous les frais annexes actifs d'un tarif, autre et révision compris :
+// { id: montant }, dans l'ordre du catalogue.
 export const getTarifFraisAnnexes = (tarif = {}) => {
-  const frais = getTarifFraisDivers(tarif);
-  const autre = getTarifAutreValue(tarif);
-  if (autre > 0) frais.autre = autre;
-  return frais;
+  const divers = getTarifFraisDivers(tarif);
+  return CATALOGUE_FRAIS_ANNEXES.reduce((acc, f) => {
+    const montant = f.colonne ? Number(tarif?.[f.colonne] || 0) : (divers[f.id] || 0);
+    if (montant > 0) acc[f.id] = montant;
+    return acc;
+  }, {});
 };
 
 // ── Réinscription ───────────────────────────────────────────────────────────
@@ -358,19 +369,26 @@ export const aReinscrire = (eleve = {}) => eleve.statut === "Actif" && !estReins
 export const STATUTS_SORTIE = ["Transféré", "Exclu", "Abandonné", "Décédé", "Diplômé"];
 export const estSorti = (eleve = {}) => STATUTS_SORTIE.includes(eleve.statut) || !!eleve.dateDepart;
 
-// Un frais annexe est-il payé pour cet élève ? (« autre » = drapeau legacy)
-export const isFraisAnnexePaye = (eleve = {}, id) => (id === "autre"
-  ? !!eleve.autrePayee
-  : !!(eleve.fraisPayes || {})[id]);
+// Un frais annexe est-il payé pour cet élève ? Pour « autre », les anciens
+// drapeaux autrePayee / autreDate comptent encore.
+export const isFraisAnnexePaye = (eleve = {}, id) => !!(eleve.fraisPayes || {})[id]
+  || (id === "autre" && !!eleve.autrePayee);
 
-export const getFraisAnnexeDate = (eleve = {}, id) => (id === "autre"
-  ? (eleve.autreDate || "")
-  : ((eleve.fraisPayes || {})[id] || ""));
+export const getFraisAnnexeDate = (eleve = {}, id) => (eleve.fraisPayes || {})[id]
+  || (id === "autre" && eleve.autrePayee ? (eleve.autreDate || "") : "");
 
-export const getTarifMensuelTotal = (tarif = null, classe = "") => {
-  const montantBase = tarif ? Number(tarif?.montant || 0) : getDefaultMensualiteForClasse(classe);
-  return montantBase + getTarifRevisionValue(tarif);
+// Montant encaissé pour ce frais, figé au paiement (fraisMontants). null si le
+// frais a été payé avant qu'on le fige : l'appelant retombe sur le tarif.
+export const getFraisAnnexeMontantFige = (eleve = {}, id) => {
+  const fige = Number((eleve.fraisMontants || {})[id]);
+  return Number.isFinite(fige) && fige > 0 ? fige : null;
 };
+
+// Mensualité facturée chaque mois. La révision n'en fait plus partie : c'est
+// un frais annuel (cf. CATALOGUE_FRAIS_ANNEXES), dû une seule fois.
+export const getTarifMensuelTotal = (tarif = null, classe = "") => (
+  tarif ? Number(tarif?.montant || 0) : getDefaultMensualiteForClasse(classe)
+);
 
 export const genererMatricule = (eleves, type, config = {}) => {
   const anneeShort = getAnnee().split("-")[0].slice(-2);

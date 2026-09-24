@@ -80,10 +80,11 @@ test("lycee matricules default to the L prefix", () => {
   }
 });
 
-test("tarif helpers include revision in the monthly total and expose other fees", () => {
+test("tarif helpers : la révision est un frais annuel, hors de la mensualité", () => {
   const tarif = { montant: 180000, revision: 20000, autre: 15000 };
 
   assert.equal(getTarifRevisionValue(tarif), 20000);
   assert.equal(getTarifAutreValue(tarif), 15000);
-  assert.equal(getTarifMensuelTotal(tarif, "Terminale A"), 200000);
+  // v3 : la révision était ajoutée à CHAQUE mois (payée 9 fois par an).
+  assert.equal(getTarifMensuelTotal(tarif, "Terminale A"), 180000);
 });

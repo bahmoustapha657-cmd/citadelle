@@ -1,7 +1,10 @@
 import {
+  CATALOGUE_FRAIS_ANNEXES,
   getDefaultMensualiteForClasse,
+  getFraisAnnexeDate,
+  getFraisAnnexeMontantFige,
   getTarifAutreValue,
-  getTarifFraisDivers,
+  getTarifFraisAnnexes,
   getTarifMensuelTotal,
   getTarifRevisionValue,
   isFraisAnnexePaye,
@@ -19,7 +22,10 @@ import {
 // garde le tarif en vigueur au moment de l'encaissement ; seuls les mois
 // impayés suivent le tarif courant. Fallback tarif courant pour les
 // paiements antérieurs à la v2 (sans montant figé).
-export const MENSUALITE_ALGO_VERSION = 2;
+// v3 : la révision devient un frais ANNUEL (elle était ajoutée à chaque
+// mensualité) ; l'inscription et les frais annexes figent eux aussi leur
+// montant au paiement (inscriptionMontant, fraisMontants[id]).
+export const MENSUALITE_ALGO_VERSION = 3;
 
 export type TarifClasse = {
   classe?: string;
@@ -36,12 +42,31 @@ export type MensualiteEleve = EleveExonerable & {
   classe?: string;
   typeInscription?: string;
   inscriptionPayee?: boolean;
+  // Montant de l'inscription figé au paiement (v3).
+  inscriptionMontant?: number | string | null;
+  // Anciens drapeaux d'« Autre frais », encore lus (cf. isFraisAnnexePaye).
   autrePayee?: boolean;
+  autreDate?: string | null;
   mens?: Record<string, string>;
   // Tarif mensuel figé au moment du paiement, par mois (cf. toggleMens).
   mensMontants?: Record<string, number | string>;
-  // Frais annexes du catalogue payés : { uniforme: "16/07/2026", … }.
+  // Frais annexes payés : { uniforme: "16/07/2026", … }.
   fraisPayes?: Record<string, string>;
+  // Montant de chaque frais annexe, figé au paiement (v3).
+  fraisMontants?: Record<string, number | string>;
+};
+
+// Un frais annexe tel que l'élève le voit : facturé par sa classe, déjà payé,
+// ou les deux.
+export type LigneFraisAnnexe = {
+  id: string;
+  label: string;
+  // Tarif actuel de la classe (0 s'il n'est plus facturé).
+  du: number;
+  paye: boolean;
+  date: string;
+  // Payé : montant figé au paiement (repli sur le tarif actuel) ; sinon le dû.
+  montant: number;
 };
 
 export type MensualiteSnapshot = {
@@ -162,6 +187,36 @@ export function montantMoisPaye(eleve: MensualiteEleve, mois: string, mensualite
   return Number.isFinite(fige) && fige > 0 ? fige : mensualiteCourante;
 }
 
+// Inscription encaissée : montant figé au paiement, sinon (encaissée avant la
+// v3) le tarif courant.
+export function montantInscriptionPaye(eleve: MensualiteEleve, inscriptionCourante: number): number {
+  const fige = Number(eleve.inscriptionMontant);
+  return Number.isFinite(fige) && fige > 0 ? fige : inscriptionCourante;
+}
+
+// Frais annexes d'un élève, un par ligne, dans l'ordre du catalogue : ceux que
+// sa classe facture ET ceux qu'il a déjà payés, même si le tarif ne les
+// facture plus (frais remis à 0, changement de classe). Un encaissement ne
+// doit pas disparaître des comptes parce que le tarif a changé depuis.
+export function getFraisAnnexesEleve(eleve: MensualiteEleve = {}, tarif: TarifClasse | null = null): LigneFraisAnnexe[] {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const factures: Record<string, number> = getTarifFraisAnnexes((tarif || {}) as any);
+  return CATALOGUE_FRAIS_ANNEXES
+    .filter((f) => factures[f.id] > 0 || isFraisAnnexePaye(eleve, f.id))
+    .map((f) => {
+      const du = Number(factures[f.id] || 0);
+      const paye = isFraisAnnexePaye(eleve, f.id);
+      return {
+        id: f.id,
+        label: f.label,
+        du,
+        paye,
+        date: paye ? getFraisAnnexeDate(eleve, f.id) : "",
+        montant: paye ? (getFraisAnnexeMontantFige(eleve, f.id) ?? du) : du,
+      };
+    });
+}
+
 export function getEleveMensualiteSnapshot(eleve: MensualiteEleve = {}, moisAnnee: string[] = [], tarifsClasses: TarifClasse[] = []): MensualiteSnapshot {
   const mens = eleve.mens || {};
   const moisPayes = moisAnnee.filter((mois) => mens[mois] === "Payé");
@@ -169,17 +224,14 @@ export function getEleveMensualiteSnapshot(eleve: MensualiteEleve = {}, moisAnne
   const nbImpayes = moisAnnee.length - nbPayes;
   const mensualite = getTarifMensuelForClasse(tarifsClasses, eleve.classe);
   const inscriptionTarif = getTarifInscriptionForEleve(eleve, tarifsClasses);
-  const autreTarif = getTarifAutreForClasse(tarifsClasses, eleve.classe);
-  const inscriptionPercu = eleve.inscriptionPayee ? inscriptionTarif : 0;
-  const autrePercu = eleve.autrePayee ? autreTarif : 0;
-  // Frais annexes du catalogue (hors « autre », compté ci-dessus) : perçu si
-  // payé par l'élève, sinon reste dû.
-  const fraisDivers = getTarifFraisDivers(getTarifConfigForClasse(tarifsClasses, eleve.classe) || {});
-  let diversPercu = 0;
-  let soldeDiversPlein = 0;
-  for (const [fraisId, montant] of Object.entries(fraisDivers)) {
-    if (isFraisAnnexePaye(eleve, fraisId)) diversPercu += Number(montant);
-    else soldeDiversPlein += Number(montant);
+  const inscriptionPercu = eleve.inscriptionPayee ? montantInscriptionPaye(eleve, inscriptionTarif) : 0;
+  // Frais annexes (autre, révision, catalogue) : perçu au montant figé s'il
+  // est payé, sinon reste dû au tarif actuel.
+  let fraisPercu = 0;
+  let soldeFraisPlein = 0;
+  for (const ligne of getFraisAnnexesEleve(eleve, getTarifConfigForClasse(tarifsClasses, eleve.classe))) {
+    if (ligne.paye) fraisPercu += ligne.montant;
+    else soldeFraisPlein += ligne.du;
   }
 
   // Dispense : on ne touche JAMAIS à ce qui a déjà été encaissé (montants figés
@@ -191,8 +243,7 @@ export function getEleveMensualiteSnapshot(eleve: MensualiteEleve = {}, moisAnne
   const soldeMensualites = nbRestants * montantApresExoneration(mensualite, eleve, "mensualites");
   const soldeInscriptionPlein = eleve.inscriptionPayee ? 0 : inscriptionTarif;
   const soldeInscription = montantApresExoneration(soldeInscriptionPlein, eleve, "inscription");
-  const soldeAutrePlein = (eleve.autrePayee ? 0 : autreTarif) + soldeDiversPlein;
-  const soldeAutre = montantApresExoneration(soldeAutrePlein, eleve, "fraisAnnexes");
+  const soldeAutre = montantApresExoneration(soldeFraisPlein, eleve, "fraisAnnexes");
 
   return {
     algoVersion: MENSUALITE_ALGO_VERSION,
@@ -201,10 +252,10 @@ export function getEleveMensualiteSnapshot(eleve: MensualiteEleve = {}, moisAnne
     nbExoneres,
     montantExonere: (soldeMensualitesPlein - soldeMensualites)
       + (soldeInscriptionPlein - soldeInscription)
-      + (soldeAutrePlein - soldeAutre),
+      + (soldeFraisPlein - soldeAutre),
     montantMensualitesPercu: moisPayes.reduce((somme, mois) => somme + montantMoisPaye(eleve, mois, mensualite), 0),
     montantInscriptionPercu: inscriptionPercu,
-    montantAutrePercu: autrePercu + diversPercu,
+    montantAutrePercu: fraisPercu,
     soldeMensualites,
     soldeInscription,
     soldeAutre,

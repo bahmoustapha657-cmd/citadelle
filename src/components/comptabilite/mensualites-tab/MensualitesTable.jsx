@@ -6,8 +6,7 @@ import { MensualitesRow } from "./MensualitesRow";
 // scrollable (en-tête figé en haut, colonnes Matricule/Nom figées à gauche).
 export function MensualitesTable({
   eleves, elevesFiltres, moisAnnee, tarifsClasses, readOnly, canCreate, canEdit,
-  schoolInfo, toggleMens, toggleFraisAnnexe, getTarifInscriptionEleve, getTarifAutre, getTarif,
-  getTarifFraisDivers,
+  schoolInfo, toggleMens, toggleFraisAnnexe, getTarifInscriptionEleve, getTarif,
 }) {
   if (eleves.length === 0) return <Vide icone="🎓" msg="Aucun élève" />;
 
@@ -56,8 +55,7 @@ export function MensualitesTable({
               key={e._id} e={e} rowIdx={rowIdx} moisAnnee={moisAnnee} tarifsClasses={tarifsClasses}
               readOnly={readOnly} canCreate={canCreate} canEdit={canEdit} schoolInfo={schoolInfo}
               toggleMens={toggleMens} toggleFraisAnnexe={toggleFraisAnnexe}
-              getTarifInscriptionEleve={getTarifInscriptionEleve} getTarifAutre={getTarifAutre} getTarif={getTarif}
-              getTarifFraisDivers={getTarifFraisDivers}
+              getTarifInscriptionEleve={getTarifInscriptionEleve} getTarif={getTarif}
             />
           ))}</tbody>
         </table>

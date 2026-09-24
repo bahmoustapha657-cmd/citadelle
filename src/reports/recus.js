@@ -7,8 +7,8 @@
 // Les fragments HTML vivent dans recus/recu-blocs.js (A4) et
 // recus/recu-ticket.js (thermique), le style A4 dans recus/recus-styles.js.
 
-import { MOIS_ANNEE, getFraisAnnexeLabel, isFraisAnnexePaye } from "../constants.js";
-import { montantMoisPaye } from "../mensualite-utils.js";
+import { MOIS_ANNEE } from "../constants.js";
+import { getFraisAnnexesEleve, montantInscriptionPaye, montantMoisPaye } from "../mensualite-utils.js";
 import { resolveLegalFields } from "../legal-utils.js";
 import { PRINT_RESET, PRINT_TRIGGER, edugestBrandHTML, printDir, printLang, tr } from "./print-helpers.js";
 import { blocRecu } from "./recus/recu-blocs.js";
@@ -16,25 +16,26 @@ import { RECU_STYLES } from "./recus/recus-styles.js";
 import { documentTicket, normaliserLargeur } from "./recus/recu-ticket.js";
 import { qrSecuriseImgHtml, qrPayload } from "./qr.js";
 
+// `fraisAnnexes` : tarifs de la classe — { inscription, autre, revision,
+// divers: { uniforme: 50000, … } }. Chaque montant réglé est celui FIGÉ au
+// paiement quand il existe, sinon le tarif courant : mêmes montants que la
+// grille des mensualités (getEleveMensualiteSnapshot).
 export const getRecuTotals = (eleve, montantUnit, moisAnnee=MOIS_ANNEE, fraisAnnexes={}) => {
   const mens = eleve.mens||{};
   const moisPayes = moisAnnee.filter(m=>mens[m]==="Payé");
-  const fraisIns = Number(fraisAnnexes?.inscription||0);
-  const fraisAutre = Number(fraisAnnexes?.autre||0);
-  // Frais annexes du catalogue (uniforme, cantine…) PAYÉS par l'élève :
-  // chacun devient une ligne du reçu et entre dans le total général.
-  const fraisDiversPayes = Object.entries(fraisAnnexes?.divers || {})
-    .filter(([id, montant]) => Number(montant) > 0 && isFraisAnnexePaye(eleve, id))
-    .map(([id, montant]) => ({ id, label: getFraisAnnexeLabel(id), montant: Number(montant) }));
-  // v2 : chaque mois payé garde le tarif figé à l'encaissement (mensMontants),
-  // repli sur le tarif courant pour les paiements antérieurs à la v2 — mêmes
-  // montants que la grille des mensualités (getEleveMensualiteSnapshot).
+  // Inscription : 0 tant qu'elle n'est pas réglée.
+  const fraisIns = eleve.inscriptionPayee ? montantInscriptionPaye(eleve, Number(fraisAnnexes?.inscription||0)) : 0;
+  // Frais annexes PAYÉS (autre, révision, uniforme, cantine…) : chacun devient
+  // une ligne du reçu et entre dans le total général — y compris un frais que
+  // la classe ne facture plus.
+  const tarifFrais = { autre: fraisAnnexes?.autre, revision: fraisAnnexes?.revision, fraisDivers: fraisAnnexes?.divers };
+  const fraisDiversPayes = getFraisAnnexesEleve(eleve, tarifFrais)
+    .filter((f) => f.paye && f.montant > 0)
+    .map(({ id, label, montant }) => ({ id, label, montant }));
   const totalMensualites = moisPayes.reduce((somme, m) => somme + montantMoisPaye(eleve, m, montantUnit), 0);
-  const totalGeneral = totalMensualites
-    + (eleve.inscriptionPayee&&fraisIns>0?fraisIns:0)
-    + (eleve.autrePayee&&fraisAutre>0?fraisAutre:0)
+  const totalGeneral = totalMensualites + fraisIns
     + fraisDiversPayes.reduce((somme, f) => somme + f.montant, 0);
-  return { moisPayes, fraisIns, fraisAutre, fraisDiversPayes, totalMensualites, totalGeneral };
+  return { moisPayes, fraisIns, fraisDiversPayes, totalMensualites, totalGeneral };
 };
 
 // QR de vérification : école, élève, total payé, période. Partagé par les deux
@@ -52,14 +53,14 @@ const payloadRecu = (eleve, schoolInfo, totalGeneral, moisPayes) => qrPayload({
 export const imprimerRecu = async (eleve, montantUnit, schoolInfo={}, moisAnnee=MOIS_ANNEE, fraisAnnexes={}) => {
   const mens = eleve.mens||{};
   const mensDates = eleve.mensDates||{};
-  const {moisPayes, fraisIns, fraisAutre, fraisDiversPayes, totalMensualites, totalGeneral} = getRecuTotals(eleve, montantUnit, moisAnnee, fraisAnnexes);
+  const {moisPayes, fraisIns, fraisDiversPayes, totalMensualites, totalGeneral} = getRecuTotals(eleve, montantUnit, moisAnnee, fraisAnnexes);
   const lf = resolveLegalFields(schoolInfo);
 
   // window.open AVANT l'await (geste utilisateur) pour éviter le blocage popup.
   const w = window.open("","_blank");
 
   const qr = await qrSecuriseImgHtml(payloadRecu(eleve, schoolInfo, totalGeneral, moisPayes), schoolInfo, { size: 84, alt: "QR recu" });
-  const ctx = { schoolInfo, lf, eleve, moisAnnee, mens, mensDates, fraisIns, fraisAutre, fraisDiversPayes, totalMensualites, moisPayes, totalGeneral, qr };
+  const ctx = { schoolInfo, lf, eleve, moisAnnee, mens, mensDates, fraisIns, fraisDiversPayes, totalMensualites, moisPayes, totalGeneral, qr };
 
   w.document.write(`<!DOCTYPE html><html lang="${printLang()}" dir="${printDir()}"><head><title>${tr("reports.receipt.title")}</title>
   <meta charset="utf-8"/>
@@ -80,7 +81,7 @@ export const imprimerRecu = async (eleve, montantUnit, schoolInfo={}, moisAnnee=
 // (le solde restant est résumé en une ligne).
 export const imprimerRecuTicket = async (eleve, montantUnit, schoolInfo={}, moisAnnee=MOIS_ANNEE, fraisAnnexes={}, largeurMm=58) => {
   const mensDates = eleve.mensDates||{};
-  const {moisPayes, fraisIns, fraisAutre, fraisDiversPayes, totalMensualites, totalGeneral} = getRecuTotals(eleve, montantUnit, moisAnnee, fraisAnnexes);
+  const {moisPayes, fraisIns, fraisDiversPayes, totalMensualites, totalGeneral} = getRecuTotals(eleve, montantUnit, moisAnnee, fraisAnnexes);
 
   // window.open AVANT l'await (geste utilisateur) pour éviter le blocage popup.
   const w = window.open("","_blank");
@@ -92,7 +93,7 @@ export const imprimerRecuTicket = async (eleve, montantUnit, schoolInfo={}, mois
 
   w.document.write(documentTicket({
     schoolInfo, eleve, moisAnnee, mensDates, montantUnit,
-    fraisIns, fraisAutre, fraisDiversPayes, totalMensualites, moisPayes, totalGeneral,
+    fraisIns, fraisDiversPayes, totalMensualites, moisPayes, totalGeneral,
     qr, largeurMm: normaliserLargeur(largeurMm),
   }, PRINT_TRIGGER, printLang(), printDir()));
   w.document.close();

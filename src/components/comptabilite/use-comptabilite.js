@@ -149,7 +149,7 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   // poste si le profil n'a pas de nom — mieux vaut « comptable » que rien.
   const signature = auteur || userRole || "";
   const toggleFraisAnnexe = (_id, opts) => toggleFraisAnnexeAction(_id, opts, {
-    readOnly, canEdit, toast, modEleves, logAction,
+    readOnly, canCreate, canEdit, toast, modEleves, logAction,
     ajPaiement, annee: anneeEcriture, auteur: signature,
     eleve: tousElevesScolarite.find((e) => e._id === _id) || null,
   });
@@ -168,8 +168,8 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
     if (!confirm(message)) return;
     for (const eleve of aTraiter) {
       await toggleFraisAnnexe(eleve._id, {
-        payKey: "inscriptionPayee",
-        dateKey: "inscriptionDate",
+        poste: "inscription",
+        eleve,
         valeurActuelle: false,
         label: eleve.typeInscription === "Réinscription" ? "Réinscription" : "Inscription",
         montant: getTarifInscriptionEleve(eleve),
@@ -190,7 +190,7 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
     // les totaux perçus ne bougent plus si le tarif change en cours d'année.
     const eleve = tousElevesScolarite.find((e) => e._id === _id);
     return toggleMensAction(_id, mois, mensActuels, mensDatesActuels, nomEleve, {
-      readOnly, canEdit, toast, modEleves, envoyerPush, logAction,
+      readOnly, canCreate, canEdit, toast, modEleves, envoyerPush, logAction,
       montantMois: getTarifMensuelForClasse(tarifsClasses, eleve?.classe || ""),
       mensMontantsActuels: eleve?.mensMontants || null,
       ajPaiement, annee: anneeEcriture, auteur: signature, eleve: eleve || null,

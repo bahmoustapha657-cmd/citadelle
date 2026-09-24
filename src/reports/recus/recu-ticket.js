@@ -76,7 +76,7 @@ const ligne = (libelle, montant) =>
 export const blocTicket = (ctx) => {
   const {
     schoolInfo = {}, eleve = {}, moisAnnee = [], mensDates = {}, montantUnit,
-    fraisIns, fraisAutre, fraisDiversPayes = [], totalMensualites, moisPayes = [],
+    fraisIns = 0, fraisDiversPayes = [], totalMensualites, moisPayes = [],
     totalGeneral, qr,
   } = ctx;
   const nbImpayes = moisAnnee.length - moisPayes.length;
@@ -104,10 +104,9 @@ export const blocTicket = (ctx) => {
         montantMoisPaye(eleve, m, montantUnit),
       )).join("")}
       ${moisPayes.length ? `<tr><td colspan="2" style="text-align:right;font-weight:700">${fmtN(totalMensualites)}</td></tr>` : ""}
-      ${(eleve.inscriptionPayee && fraisIns > 0) || (eleve.autrePayee && fraisAutre > 0) || fraisDiversPayes.length
+      ${fraisIns > 0 || fraisDiversPayes.length
         ? `<tr><td colspan="2" class="t-groupe">${tr("reports.receipt.otherFees")}</td></tr>` : ""}
-      ${eleve.inscriptionPayee && fraisIns > 0 ? ligne(tr("reports.receipt.registration"), fraisIns) : ""}
-      ${eleve.autrePayee && fraisAutre > 0 ? ligne(tr("reports.receipt.otherFees"), fraisAutre) : ""}
+      ${fraisIns > 0 ? ligne(tr("reports.receipt.registration"), fraisIns) : ""}
       ${fraisDiversPayes.map((f) => ligne(f.label, f.montant)).join("")}
     </table>
     <div class="t-sep"></div>

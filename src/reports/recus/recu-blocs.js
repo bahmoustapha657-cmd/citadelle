@@ -23,7 +23,7 @@ export const enteteCompact = (schoolInfo, lf) => `
 
 // Bloc reçu compact — deux par page A4. ctx regroupe les données calculées.
 export const blocRecu = (titre, ctx) => {
-  const { schoolInfo, lf, eleve, moisAnnee, mens, mensDates, fraisIns, fraisAutre, fraisDiversPayes = [], totalMensualites, moisPayes, totalGeneral, qr } = ctx;
+  const { schoolInfo, lf, eleve, moisAnnee, mens, mensDates, fraisIns, fraisDiversPayes = [], totalMensualites, moisPayes, totalGeneral, qr } = ctx;
   return `
   <div class="recu">
     ${schoolInfo.logo?`<div class="watermark"><img crossOrigin="anonymous" src="${schoolInfo.logo}" alt=""/></div>`:""}
@@ -55,14 +55,9 @@ export const blocRecu = (titre, ctx) => {
         </tr>`;
       }).join("")}
     </tbody></table>
-    ${eleve.inscriptionPayee&&fraisIns>0?`
+    ${fraisIns>0?`
     <div class="total" style="font-size:9px;padding:4px 8px;background:#f0f9ff;border-color:#7dd3fc">
       ${tr("reports.receipt.registration")} : <strong>${fmt(fraisIns)}</strong>
-      <span style="font-weight:400;margin-inline-start:4px">✓ ${tr("accounting.paid")}</span>
-    </div>`:""}
-    ${eleve.autrePayee&&fraisAutre>0?`
-    <div class="total" style="font-size:9px;padding:4px 8px;background:#f8fafc;border-color:#94a3b8">
-      ${tr("reports.receipt.otherFees")} : <strong>${fmt(fraisAutre)}</strong>
       <span style="font-weight:400;margin-inline-start:4px">✓ ${tr("accounting.paid")}</span>
     </div>`:""}
     ${fraisDiversPayes.map((f)=>`

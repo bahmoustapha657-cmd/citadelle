@@ -102,9 +102,7 @@ export function MensualitesTab({
         toggleMens={toggleMens}
         toggleFraisAnnexe={toggleFraisAnnexe}
         getTarifInscriptionEleve={getTarifInscriptionEleve}
-        getTarifAutre={getTarifAutre}
         getTarif={getTarif}
-        getTarifFraisDivers={getTarifFraisDivers}
       />
     </div>
   );
