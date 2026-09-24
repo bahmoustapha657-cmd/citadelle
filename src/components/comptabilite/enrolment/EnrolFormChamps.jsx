@@ -48,6 +48,7 @@ export function EnrolFormChamps({ form, chg, niveauEnrol }) {
         <option value="Exclu">{t("enrolment.statusExpelled")}</option>
         <option value="Abandonné">{t("enrolment.statusDroppedOut")}</option>
         <option value="Décédé">{t("enrolment.statusDeceased")}</option>
+        <option value="Diplômé">{t("enrolment.statusGraduated")}</option>
       </Selec>
       <Selec label={t("enrolment.enrollmentType")} value={form.typeInscription||"Première inscription"} onChange={chg("typeInscription")}>
         <option value="Première inscription">{t("enrolment.firstEnrollment")}</option>

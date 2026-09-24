@@ -1,21 +1,26 @@
-import React, { useState } from "react";
+import React from "react";
 import { C, TOUTES_ANNEES } from "../../constants";
 import { Btn, Card } from "../ui";
 import { useClotureAnnee } from "./annee/use-cloture-annee";
+import { dateLongue } from "./cloture-annee-utils";
 
 // Année scolaire de l'école (ecoles/{id}.anneeScolaire — partagée entre tous
 // les appareils). Modification réservée à la Direction : les règles Firestore
 // refusent l'écriture aux autres rôles, autant ne pas leur montrer les
 // contrôles.
 //
-// Avancer d'une année CLÔTURE celle qui se termine : la scolarité de chaque
-// élève (mois payés, dates, montants, frais, inscription) est archivée sur sa
-// fiche, puis les compteurs repartent à zéro. Sans cela, la rentrée héritait
-// des mois cochés de l'année précédente. L'opération reste réversible.
+// Avancer au-delà de l'année officielle CLÔTURE celle-ci : la scolarité de
+// chaque élève (mois payés, dates, montants, frais, inscription) est archivée
+// sur sa fiche, puis les compteurs repartent à zéro. Sans cela, la rentrée
+// héritait des mois cochés de l'année précédente. L'opération reste
+// réversible — tant que ni la promotion ni le passage des admis n'ont suivi.
 export function AnneeScolaireCard({ annee, setAnnee, canEdit = true, schoolId, toast = () => {} }) {
   const cl = useClotureAnnee({ schoolId, annee, setAnnee, toast });
-  const [anneeAAnnuler, setAnneeAAnnuler] = useState("");
-  const anneesAnterieures = TOUTES_ANNEES.filter((a) => a < annee);
+  const { cloture } = cl;
+  // Le bouton suivant clôture seulement depuis l'année officielle ; depuis une
+  // année consultée, il ne fait que revenir vers elle.
+  const clotureBloquee = annee >= cl.anneeOfficielle && !cloture.possible;
+  const finPrevue = cloture.fin ? new Date(cloture.fin.getTime() - 1) : null;
 
   return (
     <Card style={{marginBottom:20,padding:"16px 20px"}}>
@@ -25,12 +30,14 @@ export function AnneeScolaireCard({ annee, setAnnee, canEdit = true, schoolId, t
           <>
             <select value={annee} disabled={cl.enCours} onChange={e=>cl.changerAnnee(e.target.value)}
               style={{border:"2px solid "+C.blue,borderRadius:8,padding:"8px 14px",fontSize:15,fontWeight:800,color:C.blueDark,background:"#fff"}}>
-              {TOUTES_ANNEES.map(a=><option key={a}>{a}</option>)}
+              {TOUTES_ANNEES.map(a=>(
+                <option key={a} disabled={a>cloture.suivante||(a===cloture.suivante&&!cloture.possible)}>{a}</option>
+              ))}
             </select>
-            <Btn v="success" disabled={cl.enCours} onClick={()=>{
+            <Btn v="success" disabled={cl.enCours||clotureBloquee} title={clotureBloquee?`Clôture possible à partir du ${dateLongue(cloture.fin)}`:""} onClick={()=>{
               const idx=TOUTES_ANNEES.indexOf(annee);
               if(idx<TOUTES_ANNEES.length-1)cl.changerAnnee(TOUTES_ANNEES[idx+1]);
-            }}>{cl.enCours ? "⏳ Clôture en cours…" : "▶ Année suivante"}</Btn>
+            }}>{cl.enCours ? "⏳ Clôture en cours…" : annee<cl.anneeOfficielle ? "▶ Année suivante" : `▶ Clôturer ${cl.anneeOfficielle}`}</Btn>
             <Btn v="ghost" disabled={cl.enCours} onClick={()=>{
               const idx=TOUTES_ANNEES.indexOf(annee);
               if(idx>0)cl.changerAnnee(TOUTES_ANNEES[idx-1]);
@@ -39,13 +46,21 @@ export function AnneeScolaireCard({ annee, setAnnee, canEdit = true, schoolId, t
         ) : (
           <span style={{fontSize:12,color:"#9ca3af",fontStyle:"italic"}}>🔒 Modification réservée à la Direction Générale.</span>
         )}
-        <span style={{fontSize:13,color:C.green,fontWeight:700}}>Année active : <strong>{annee}</strong></span>
+        <span style={{fontSize:13,color:C.green,fontWeight:700}}>Année active : <strong>{cl.anneeOfficielle}</strong></span>
+        {annee!==cl.anneeOfficielle&&<span style={{fontSize:12,color:"#92400e",fontWeight:700}}>(consultation de {annee})</span>}
       </div>
 
+      {finPrevue&&<p style={{fontSize:12,margin:"10px 0 0",fontWeight:600,color:cloture.possible?C.greenDk:"#92400e"}}>
+        {cloture.possible
+          ? `✅ Année ${cl.anneeOfficielle} terminée (fin prévue le ${dateLongue(finPrevue)}) : elle peut être clôturée.`
+          : `🔒 Fin prévue de l'année ${cl.anneeOfficielle} : ${dateLongue(finPrevue)}. Clôture possible à partir du ${dateLongue(cloture.fin)}.`}
+      </p>}
+
       {canEdit&&<p style={{fontSize:11,color:"#9ca3af",margin:"8px 0 0"}}>
-        Passer à l'année suivante archive la scolarité de l'année qui se termine (mois payés, dates,
-        montants, frais, inscription) sur chaque fiche élève, puis remet les compteurs à zéro.
-        Reculer d'une année ne modifie rien. L'opération est réversible ci-dessous.
+        Clôturer l'année archive sa scolarité (mois payés, dates, montants, frais, inscription) sur chaque
+        fiche élève, puis remet les compteurs à zéro. Elle n'est possible qu'une fois l'année terminée — fin
+        calculée depuis le mois de début réglé dans Paramètres — et ouvre la promotion et le passage des admis.
+        Reculer d'une année ne modifie rien.
       </p>}
 
       {/* ── Bilan de la dernière clôture, avec annulation immédiate ── */}
@@ -75,18 +90,16 @@ export function AnneeScolaireCard({ annee, setAnnee, canEdit = true, schoolId, t
         </div>
       )}
 
-      {/* ── Annuler la clôture d'une année plus ancienne ── */}
-      {canEdit && anneesAnterieures.length > 0 && (
+      {/* ── Rouvrir la dernière année clôturée ── */}
+      {canEdit && cl.anneeRouvrable && !cl.resultat && (
         <div style={{marginTop:14,paddingTop:12,borderTop:"1px solid var(--lc-border)",display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
-          <span style={{fontSize:12,color:"#64748b",fontWeight:600}}>Rouvrir une année clôturée :</span>
-          <select value={anneeAAnnuler} disabled={cl.enCours} onChange={(e)=>setAnneeAAnnuler(e.target.value)}
-            style={{border:"1px solid #cbd5e1",borderRadius:8,padding:"6px 10px",fontSize:12}}>
-            <option value="">— choisir —</option>
-            {anneesAnterieures.map(a=><option key={a} value={a}>{a}</option>)}
-          </select>
-          <Btn sm v="ghost" disabled={cl.enCours || !anneeAAnnuler} onClick={()=>cl.annulerPour(anneeAAnnuler)}>
+          <span style={{fontSize:12,color:"#64748b",fontWeight:600}}>Rouvrir l'année clôturée {cl.anneeRouvrable} :</span>
+          <Btn sm v="ghost" disabled={cl.enCours || !cl.rouvrable} onClick={()=>cl.annulerPour(cl.anneeRouvrable)}>
             ↩️ Restaurer cette année
           </Btn>
+          {!cl.rouvrable&&<span style={{fontSize:11,color:"#9ca3af"}}>
+            Impossible : sa promotion ou le passage de ses admis a déjà été appliqué.
+          </span>}
         </div>
       )}
     </Card>

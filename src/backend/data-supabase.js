@@ -8,7 +8,7 @@
 // d'un appel réseau direct — mêmes signatures, mêmes formes de retour, donc
 // aucun changement côté appelants (useFirestore.js, teacher-portal-supabase.js…).
 import { getSupabase } from "../supabaseClient";
-import { resolveCollection, transformRow, toRow, ecritureSupportee } from "./collection-map";
+import { resolveCollection, transformRow, toRow, ecritureSupportee, SECTIONS_SCOLAIRES } from "./collection-map";
 // `tables.js` est un module léger (aucune dépendance @powersync/web/wa-sqlite) :
 // import statique sûr dans les deux builds (Firebase et Supabase). Le reste de
 // powersync/ (client/connector/local-data, qui embarquent le SQLite WASM) n'est
@@ -358,6 +358,45 @@ export async function modifierChampDoc(schoolCode, nomCollection, id, champs) {
   }
   const { error } = await sb.from(map.table).update(row).eq("id", id);
   if (error) throw new Error(error.message);
+}
+
+// Déplace une ligne vers une autre SECTION de sa table, en écrivant `champs`
+// dans la même requête : jamais de fiche à moitié déplacée (nouvelle classe,
+// ancienne section — précisément le défaut corrigé ici).
+//
+// Seule la promotion s'en sert : l'élève de Grande Section promu en 1ère Année
+// quitte le préscolaire pour le primaire, l'admis au CEE le primaire pour le
+// collège. toRow écarte `section` des champs d'un item (un écran ordinaire ne
+// doit pas déplacer une fiche en passant) : le déplacement a donc son chemin
+// explicite.
+export async function changerSectionDoc(schoolCode, nomCollection, id, section, champs = {}) {
+  const { sb, map } = await contexteEcriture(schoolCode, nomCollection);
+  if (!map.section || !SECTIONS_SCOLAIRES.includes(section)) {
+    throw new Error(`Déplacement impossible : section « ${section} » invalide pour ${nomCollection}.`);
+  }
+  const { row, extraKeys, extraCol } = toRow(map.table, champs);
+  row.section = section;
+
+  if (horsLigne(map.table)) {
+    const { majLocal, lireUneLocal } = await localData();
+    if (extraCol && extraKeys.length) {
+      const actuel = await lireUneLocal(map.table, id);
+      row[extraCol] = { ...(actuel?.[extraCol] || {}), ...row[extraCol] };
+    }
+    await majLocal(map.table, id, row);
+    return;
+  }
+
+  if (extraCol && extraKeys.length) {
+    const { data: actuel } = await sb.from(map.table).select(extraCol).eq("id", id).maybeSingle();
+    row[extraCol] = { ...(actuel?.[extraCol] || {}), ...row[extraCol] };
+  }
+  // Relu : la RLS ignore sans erreur la ligne qu'elle refuse, et déplacer
+  // exige le droit d'écriture sur la section de départ COMME sur celle
+  // d'arrivée. Sans ce contrôle, un refus passerait pour un succès.
+  const { data, error } = await sb.from(map.table).update(row).eq("id", id).select("id");
+  if (error) throw new Error(error.message);
+  if (!data?.length) throw new Error("Déplacement refusé : droits insuffisants sur l'une des deux sections.");
 }
 
 export async function supprimerDoc(schoolCode, nomCollection, id) {

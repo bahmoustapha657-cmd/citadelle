@@ -11,6 +11,8 @@
 // crash). À modéliser dans une tranche ultérieure.
 
 const SECTIONS = { Prescolaire: "prescolaire", Primaire: "primaire", College: "college", Lycee: "lycee" };
+// Valeurs admises par la colonne `section` (enum Postgres section_scolaire).
+export const SECTIONS_SCOLAIRES = Object.freeze(Object.values(SECTIONS));
 
 // Entités sectionnées : {base}{Section} éventuellement suffixé _{sous-entité}.
 const BASE_TABLE = {
