@@ -4,12 +4,10 @@ import { getPrimaryModuleForRole, getRoleLabelForSchool } from "../../constants"
 import { getPrimaryModuleForCompte } from "../../../shared/postes-config.js";
 import { computePlanInfo } from "./app-shell-plan";
 import {
-  chargerAnnee,
   envoyerPushApi,
   logActionDoc,
   persisterAnnee,
   sAbonnerAuxPush,
-  syncEcolePublic,
 } from "./app-shell-api";
 
 // Logique transverse du shell applicatif : toasts, journal d'actions,
@@ -65,31 +63,7 @@ export function useAppShell({
     setAnneeState(anneePartagee);
     localStorage.setItem("LC_annee", anneePartagee);
   }, [anneePartagee]);
-  useEffect(() => {
-    // Legacy : ancien doc global, uniquement si l'école n'a pas encore
-    // son propre champ (écoles existantes avant la migration).
-    if (anneePartagee) return;
-    chargerAnnee().then((val) => { if (val) setAnneeState(val); });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const planInfo = computePlanInfo({ schoolInfoState, nowTs, totalElevesActifs, t });
-
-  // Synchronise le profil public de l'école (direction/admin uniquement).
-  useEffect(() => {
-    if (!utilisateur || !schoolId || schoolId === "superadmin") return undefined;
-    if (!["direction", "admin"].includes(utilisateur.posteCle || utilisateur.role)) return undefined;
-    let annule = false;
-    (async () => {
-      try {
-        if (annule) return;
-        await syncEcolePublic(schoolId);
-      } catch {
-        // Best effort only: keep the public school profile aligned.
-      }
-    })();
-    return () => { annule = true; };
-  }, [schoolId, utilisateur]);
 
   const envoyerPush = (cibles, titre, corps, url = "/") => envoyerPushApi(cibles, titre, corps, url);
 

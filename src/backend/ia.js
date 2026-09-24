@@ -1,29 +1,20 @@
-// ── Assistant IA — aiguillage backend ───────────────────────────────────────
-// Firebase (prod) : POST /api/ia. Supabase : Edge Function `ia`. Même contrat
-// { action, payload } → { ok, result } | { ok:false, error }.
-import { isSupabase } from "../backend";
-import { apiFetch, getAuthHeaders } from "../apiClient";
+// ── Assistant IA ────────────────────────────────────────────────────────────
+// Edge Function `ia` : contrat { action, payload } → { ok, result } |
+// { ok:false, error }. La clé du modèle reste côté serveur, et c'est aussi là
+// qu'est vérifié le plan (le gating premium ne peut pas dépendre du client).
 import { getSupabase } from "../supabaseClient";
 
 async function appelerIA(action, payload) {
-  if (isSupabase) {
-    const { data, error } = await getSupabase().functions.invoke("ia", { body: { action, payload } });
-    if (error) {
-      let msg = "Service IA indisponible.";
-      try { msg = (await error.context?.json())?.error || msg; } catch { /* défaut */ }
-      return { ok: false, error: msg };
-    }
-    return data?.ok ? data : { ok: false, error: data?.error || "Réponse vide." };
+  const { data, error } = await getSupabase().functions.invoke("ia", { body: { action, payload } });
+  if (error) {
+    let msg = "Service IA indisponible.";
+    try { msg = (await error.context?.json())?.error || msg; } catch { /* défaut */ }
+    return { ok: false, error: msg };
   }
-  const headers = await getAuthHeaders({ "Content-Type": "application/json" });
-  const res = await apiFetch("/ia", { method: "POST", headers, body: JSON.stringify({ action, payload }) });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || !data.ok) return { ok: false, error: data.error || "Service IA indisponible." };
-  return data;
+  return data?.ok ? data : { ok: false, error: data?.error || "Réponse vide." };
 }
 
-// Génère une appréciation de bulletin (personnel pédagogique). Marche en prod
-// Firebase ET sur Supabase.
+// Génère une appréciation de bulletin (personnel pédagogique).
 export function genererAppreciation(payload) {
   return appelerIA("assistant_appreciation", payload);
 }

@@ -13,6 +13,7 @@ export function EcoleTabsPedago({ e, titre, section, avecEns, annee, classesPred
         titre={titre}
         classes={e.classes}
         eleves={e.eleves}
+        elevesAnnee={e.elevesAnnee}
         ens={e.ens}
         notes={e.notes}
         absences={e.absences}

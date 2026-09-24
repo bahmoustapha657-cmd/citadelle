@@ -2,7 +2,6 @@
 //  En-tête du shell : titre module, recherche, thème, cloche, profil
 // ══════════════════════════════════════════════════════════════
 import { C } from "../../constants";
-import { isSupabase } from "../../backend";
 import { moduleLabel } from "./module-i18n";
 import { NotificationsMenu } from "./header/NotificationsMenu";
 import { ProfilMenu } from "./header/ProfilMenu";
@@ -76,8 +75,8 @@ export function AppHeader({
           ❓
         </button>
 
-        {/* Messagerie interne du personnel (mode Supabase uniquement). */}
-        {isSupabase && utilisateur && !SANS_MESSAGERIE.has(utilisateur.role) && (
+        {/* Messagerie interne du personnel. */}
+        {utilisateur && !SANS_MESSAGERIE.has(utilisateur.role) && (
           <MessagerieInterne utilisateur={utilisateur} />
         )}
 

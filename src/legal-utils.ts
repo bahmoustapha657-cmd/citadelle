@@ -3,8 +3,7 @@
 // ══════════════════════════════════════════════════════════════
 // Stocké dans la colonne `ecoles.legal` (Supabase), exposé en
 // `schoolInfo.legal` et enregistré par sauverProfilLegal (backend/
-// data-supabase). Le doc Firestore /ecoles/{schoolId}/config/legal n'est
-// plus lu que par l'ancienne version Firebase.
+// data-supabase).
 // Fallback quand le profil est absent : `legalProfileVide` (profil neutre
 // à compléter dans Paramètres → Officiel). `legalProfileMock` contient
 // les données réelles de La Citadelle et n'est servi qu'à elle.
@@ -237,42 +236,16 @@ export function getOfficialLegalFooterHTML(profile: LegalProfile, cycle: CycleLe
   </div>`;
 }
 
-// ── Firestore (ancienne version, lecture seule) ───────────────
-// Doc unique : /ecoles/{schoolId}/config/legal. L'écriture passe désormais
-// par sauverProfilLegal (colonne ecoles.legal, Supabase).
-
-import { doc, getDoc } from "firebase/firestore";
-import { safeOnSnapshot } from "./firestore-safe";
-import { db } from "./firebaseDb";
-
-const LEGAL_DOC_ID = "legal";
-
-function legalDocRef(schoolId: string) {
-  return doc(db, "ecoles", schoolId, "config", LEGAL_DOC_ID);
-}
-
-// Fallback quand le doc /config/legal n'existe pas encore : le mock ne
-// contient QUE les données de La Citadelle (seed historique), donc on ne
-// le sert qu'à elle — toute autre école part d'un profil vide qu'elle
-// renseigne dans Paramètres → Officiel.
-function fallbackLegalProfile(schoolId: string): LegalProfile {
-  return schoolId === "citadelle" ? legalProfileMock : legalProfileVide;
-}
-
-// Lit le profil légal une fois (fallback par école si le doc n'existe pas).
-export async function getLegalProfile(schoolId: string): Promise<LegalProfile> {
-  const snap = await getDoc(legalDocRef(schoolId));
-  if (!snap.exists()) return fallbackLegalProfile(schoolId);
-  return snap.data() as LegalProfile;
-}
-
-// Listener temps réel (fallback par école tant que le doc n'existe pas).
-// Retourne la fonction unsubscribe.
-export function subscribeLegalProfile(
-  schoolId: string,
-  cb: (profile: LegalProfile) => void,
-): () => void {
-  return safeOnSnapshot(legalDocRef(schoolId), (snap) => {
-    cb(snap.exists() ? (snap.data() as LegalProfile) : fallbackLegalProfile(schoolId));
-  });
-}
+// ── Persistance : volontairement AILLEURS ─────────────────────
+// Ce module est de la logique pure (formatage, calculs d'expiration, rendu des
+// mentions légales) et il est importé par tous les générateurs de documents,
+// eux-mêmes testés sous Node. Y importer le client Supabase le rendrait
+// intestable : supabaseClient lit `import.meta.env` au chargement, indéfini
+// hors de Vite — quatre suites de tests sont tombées en le tentant.
+//
+// La lecture arrive donc par schoolInfo.legal (colonne `legal` de `ecoles`,
+// chargée avec la fiche école et déjà en temps réel), et l'écriture passe par
+// sauverProfilLegal (backend/data-supabase), qu'appelle use-compliance-widget.
+// Les anciens getLegalProfile / updateLegalProfile / subscribeLegalProfile
+// visaient le doc Firestore /ecoles/{id}/config/legal et sont partis avec lui
+// (liquidation Firebase).

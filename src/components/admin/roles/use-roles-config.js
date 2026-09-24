@@ -1,7 +1,5 @@
 import { useState, useEffect } from "react";
 import { getRoleSettingsForSchool } from "../../../constants";
-import { apiFetch, getAuthHeaders } from "../../../apiClient";
-import { isSupabase } from "../../../backend";
 import { syncRoleSettings } from "../../../backend/account-manage-supabase";
 import {
   applyModuleToggle,
@@ -44,26 +42,10 @@ export function useRolesConfig({ schoolInfo, setSchoolInfo, schoolId, toast, set
 
     setSavingRoles(true);
     try {
-      let data;
-      if (isSupabase) {
-        // Supabase : on enregistre les réglages (RLS staff). Pas de génération
-        // auto de comptes — l'admin crée les comptes manquants manuellement.
-        await syncRoleSettings(schoolId, preparedRoleSettings);
-        data = { ok: true, roleSettings: preparedRoleSettings };
-      } else {
-        const headers = await getAuthHeaders({ "Content-Type": "application/json" });
-        const res = await apiFetch("/account-manage", {
-          method: "POST",
-          headers,
-          body: JSON.stringify({
-            action: "sync_role_settings",
-            schoolId,
-            roleSettings: preparedRoleSettings,
-          }),
-        });
-        data = await res.json().catch(() => ({}));
-        if (!res.ok || !data.ok) throw new Error(data.error || "Synchronisation des comptes impossible.");
-      }
+      // On enregistre les réglages (RLS staff). Pas de génération automatique
+      // de comptes : l'admin crée les comptes manquants lui-même.
+      await syncRoleSettings(schoolId, preparedRoleSettings);
+      const data = { ok: true, roleSettings: preparedRoleSettings };
       const roleSettings = getRoleSettingsForSchool(data.roleSettings || preparedRoleSettings);
       setRoleConfigForm(roleSettings);
       setSchoolInfo((prev) => ({ ...prev, roleSettings }));

@@ -149,6 +149,25 @@ export async function chargerCollection(schoolCode, nomCollection, { annee, peri
   return { items: rows.map((r) => transformRow(map.table, r)) };
 }
 
+// Effectif ACTIF de l'école, toutes sections confondues. Sert à la vérification
+// du plan : c'est ce nombre qui s'affiche « X/40 élèves » et qui autorise (ou
+// non) un nouvel enrôlement. Un count serveur, pas un chargement : inutile de
+// rapatrier 3 000 fiches pour en connaître le nombre.
+export async function compterElevesActifs(schoolCode) {
+  const sb = getSupabase();
+  const ecoleId = await ecoleIdFromCode(sb, schoolCode);
+  if (!ecoleId) return 0;
+  const { count, error } = await sb.from("eleves")
+    .select("id", { count: "exact", head: true })
+    .eq("ecole_id", ecoleId)
+    .eq("statut", "Actif");
+  if (error) {
+    console.warn("[supabase] comptage des élèves actifs :", error.message);
+    return 0;
+  }
+  return count || 0;
+}
+
 // Info école (branding + plan) → objet camelCase prêt pour mergeSchoolInfo.
 function ecoleVersInfo(data) {
   const x = data.extra || {};

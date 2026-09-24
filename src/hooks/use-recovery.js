@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { isSupabase } from "../backend";
 import { lireJetonRecovery, ouvrirSessionRecovery } from "../backend/password-reset-supabase";
 
 // Détecte un retour de lien « mot de passe oublié » (jeton dans l'URL), ouvre
@@ -7,7 +6,7 @@ import { lireJetonRecovery, ouvrirSessionRecovery } from "../backend/password-re
 // mot de passe — avant tout le reste de l'application.
 export function useRecovery() {
   // Lu synchroniquement au 1er rendu : le hash est présent dès le chargement.
-  const [jeton] = useState(() => (isSupabase ? lireJetonRecovery() : null));
+  const [jeton] = useState(() => lireJetonRecovery());
   const [actif, setActif] = useState(!!jeton);
   const [pret, setPret] = useState(false);
 

@@ -1,20 +1,14 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { signInWithCustomTokenClient } from "../../firebaseAuth";
-import { isSupabase } from "../../backend";
 import { ecoleLogin, fetchEtatEcole, superadminLogin } from "./connexion-api";
 
-// Course contre la montre : empeche une promesse (sign-in Firebase) de bloquer
-// la connexion indefiniment.
-function avecDelai(promesse, ms) {
-  return Promise.race([
-    promesse,
-    new Promise((_, rejeter) => setTimeout(() => rejeter(new Error("timeout")), ms)),
-  ]);
-}
-
 // Logique de connexion : état du formulaire, résolution de l'école saisie
-// (lookup Firestore débounce) et appel d'authentification.
+// (lookup débouncé via la RPC etat_ecole) et appel d'authentification.
+//
+// Le double temps de l'ère Firebase a disparu (liquidation, lot 5) : il fallait
+// alors échanger un jeton personnalisé après le login serveur, avec une course
+// contre la montre de 15 s pour que l'écran ne reste pas figé si Firebase Auth
+// pendait. La session Supabase est ouverte par le login lui-même.
 export function useConnexion({ onLogin }) {
   const { t } = useTranslation();
   const [codeEcole, setCodeEcole] = useState(() => localStorage.getItem("LC_schoolId") || "");
@@ -73,11 +67,9 @@ export function useConnexion({ onLogin }) {
           return;
         }
 
+        // La session est déjà établie par signInWithPassword : pas de jeton
+        // à échanger, useAuthSession prend le relais.
         onLogin(data.compte, "superadmin");
-        // Supabase : session déjà établie par signInWithPassword (pas de token).
-        if (!isSupabase && data.customToken) {
-          signInWithCustomTokenClient(data.customToken).catch(() => {});
-        }
         return;
       }
 
@@ -86,20 +78,7 @@ export function useConnexion({ onLogin }) {
         setErreur(data.error || t("auth.wrongCredentials"));
         return;
       }
-
-      if (isSupabase) {
-        // Session Supabase déjà ouverte → useAuthSession prend le relais.
-        onLogin(data.compte, sid);
-        return;
-      }
-
-      try {
-        // 15 s max : si Firebase Auth pend, on bascule sur le repli onLogin
-        // plutot que de bloquer l'ecran de connexion.
-        await avecDelai(signInWithCustomTokenClient(data.customToken), 15000);
-      } catch {
-        onLogin(data.compte, sid);
-      }
+      onLogin(data.compte, sid);
     } catch {
       setErreur(t("auth.errServerUnreachable"));
     } finally {

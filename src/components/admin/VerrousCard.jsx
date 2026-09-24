@@ -1,9 +1,6 @@
 import React, { useContext, useState } from "react";
-import { doc, updateDoc } from "firebase/firestore";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { C, isModuleOuvertPourEcole } from "../../constants";
-import { db } from "../../firebaseDb";
-import { isSupabase } from "../../backend";
 import { majVerrou } from "../../backend/data-supabase";
 import { Card } from "../ui";
 
@@ -19,10 +16,8 @@ export function VerrousCard({ verrous = {}, schoolId }) {
     setSavingVerrou(cle);
     try {
       const nvVal = !etatVerrou(cle);
-      // Supabase : les verrous vivent dans ecoles.extra.verrous — l'appel
-      // Firestore direct levait « Missing or insufficient permissions ».
-      if (isSupabase) await majVerrou(schoolId, cle, nvVal);
-      else await updateDoc(doc(db,"ecoles",schoolId), { [`verrous.${cle}`]: nvVal });
+      // Les verrous vivent dans ecoles.extra.verrous.
+      await majVerrou(schoolId, cle, nvVal);
       setLocaux((p) => ({ ...p, [cle]: nvVal }));
     } finally { setSavingVerrou(null); }
   };

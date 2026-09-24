@@ -39,9 +39,8 @@ export default defineConfig({
       ],
       output: {
         manualChunks(id) {
-          if (id.includes("node_modules/firebase/") || id.includes("node_modules/@firebase/") || id.includes("node_modules/idb")) {
-            return "firebase-vendor";
-          }
+          // Le chunk « firebase-vendor » a disparu avec le SDK client
+          // (liquidation, lot 6) : il pesait 314 ko chargés au démarrage.
           if (id.includes("node_modules/recharts/") || id.includes("node_modules/d3-")) {
             return "charts-vendor";
           }

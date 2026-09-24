@@ -9,16 +9,14 @@ import { OutilsTab } from "./superadmin/OutilsTab";
 import { LIFECYCLE_LABELS, S_STYLES } from "./superadmin/constants";
 import { useEcolesAdmin } from "./superadmin/useEcolesAdmin";
 import { useSentryMonitoring } from "./superadmin/useSentryMonitoring";
-import { useSchoolMaintenance } from "./superadmin/useSchoolMaintenance";
 
 // =============================================================
 //  PANEL SUPER-ADMIN — orchestrateur
 // =============================================================
-// La logique métier est répartie dans trois hooks (useEcolesAdmin pour
-// écoles/plans/demandes, useSentryMonitoring pour les alertes, et
-// useSchoolMaintenance pour migration/backfill). Ce composant ne garde que
-// le feedback transverse (msgSucces) et la navigation entre onglets. Chaque
-// onglet vit dans src/components/superadmin/.
+// La logique métier est répartie dans deux hooks (useEcolesAdmin pour
+// écoles/plans/demandes, useSentryMonitoring pour les alertes). Ce composant
+// ne garde que le feedback transverse (msgSucces) et la navigation entre
+// onglets. Chaque onglet vit dans src/components/superadmin/.
 function SuperAdminPanel() {
   const [msgSucces, setMsgSucces] = useState("");
   const [ongletSA, setOngletSA] = useState("ecoles");
@@ -26,7 +24,6 @@ function SuperAdminPanel() {
 
   const ea = useEcolesAdmin(setMsgSucces);
   const sentry = useSentryMonitoring(setMsgSucces);
-  const maint = useSchoolMaintenance(setMsgSucces);
 
   useEffect(() => {
     if (ongletSA === "alertes" && sentry.sentryConfig === null) {
@@ -121,8 +118,6 @@ function SuperAdminPanel() {
           sauvegarderPlan={ea.sauvegarderPlan}
           planPanelRef={ea.planPanelRef}
           chargerEcoles={ea.chargerEcoles}
-          lancerBackfillPublic={maint.lancerBackfillPublic} backfillEnCours={maint.backfillEnCours}
-          lancerMigrationAnnee={maint.lancerMigrationAnnee} migrationAnneeEnCours={maint.migrationAnneeEnCours}
           S={S}
         />
       )}
