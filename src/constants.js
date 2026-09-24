@@ -355,8 +355,13 @@ export const aReinscrire = (eleve = {}) => eleve.statut === "Actif" && !estReins
 // « Diplômé » : admis à l'examen de fin de cycle sans classe suivante dans
 // l'établissement (BAC, ou BEPC dans une école sans lycée) — posé par le
 // passage des admis.
+// Le statut fait foi dès qu'il est renseigné : un élève « Actif » dont la
+// fiche garde une date de départ (repassé Actif, la date masquée restait
+// enregistrée) est un élève présent. La date seule ne compte que pour les
+// fiches sans statut. Ce que doit un élève parti : cf. depart-utils.js.
 export const STATUTS_SORTIE = ["Transféré", "Exclu", "Abandonné", "Décédé", "Diplômé"];
-export const estSorti = (eleve = {}) => STATUTS_SORTIE.includes(eleve.statut) || !!eleve.dateDepart;
+export const estSorti = (eleve = {}) => STATUTS_SORTIE.includes(eleve.statut)
+  || (!eleve.statut && !!eleve.dateDepart);
 
 // Un frais annexe est-il payé pour cet élève ? (« autre » = drapeau legacy)
 export const isFraisAnnexePaye = (eleve = {}, id) => (id === "autre"

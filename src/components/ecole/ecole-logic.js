@@ -1,5 +1,6 @@
 // Helpers purs du module École : tri des élèves selon la préférence de l'école,
 // filtrage des matières par classe, effectif réel, moyenne et années dispo.
+import { estSorti } from "../../constants.js";
 
 // Tri alphabétique des élèves selon la préférence `triEleves` de l'école.
 export function sortAlphaEcole(arr, tri = "prenom_nom") {
@@ -18,8 +19,10 @@ export function matieresForClasse(matieres, classe) {
 }
 
 // Effectif réel d'une classe = élèves dont le champ classe correspond (hors départs).
+// Le filtre visait un statut « Départ » qui n'existe pas : tous les élèves
+// partis — transférés, exclus, abandons — restaient comptés dans leur classe.
 export function effectifReel(eleves, nomClasse) {
-  return eleves.filter((e) => e.classe === nomClasse && e.statut !== "Départ").length;
+  return eleves.filter((e) => e.classe === nomClasse && !estSorti(e)).length;
 }
 
 // Moyenne générale des notes (ou "—" si aucune note).

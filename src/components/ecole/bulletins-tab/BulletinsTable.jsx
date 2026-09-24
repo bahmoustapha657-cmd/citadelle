@@ -55,7 +55,9 @@ export function BulletinsTable({
         // sont notés sur 10, pas sur 20. Les seuils figés à 16/14/12/10
         // rendaient « Insuffisant » un élève de primaire à 8,5/10.
         const mention=moyGene==="—"?"—":getMention(moyGene,maxNote);
-        const eleveImpayeBloq = estBloquePourImpaye(schoolInfo, e, moisAnnee);
+        // Fiche courante = année officielle : un élève parti n'y doit que ses mois
+        // d'avant le départ.
+        const eleveImpayeBloq = estBloquePourImpaye(schoolInfo, e, moisAnnee, schoolInfo?.anneeScolaire);
         const apprec=getAppreciation(e._id,periodeB);
         const apprecTexte=apprec?.texte||"";
         // Background sticky alterné pour préserver le zébrage

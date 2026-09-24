@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { C, getSectionSlug } from "../../constants";
+import { C, estSorti, getSectionSlug } from "../../constants";
 import { Btn } from "../ui";
 import { exportExcel } from "../../reports";
 import { DisciplineAlertes } from "./discipline-tab/DisciplineAlertes";
@@ -8,7 +8,7 @@ import { DisciplineTable } from "./discipline-tab/DisciplineTable";
 import { DisciplineModale } from "./discipline-tab/DisciplineModale";
 
 export function DisciplineTab({
-  absences, cAbs, ajAbs, supAbs, eleves, section = "college",
+  absences, cAbs, ajAbs, supAbs, eleves: tousEleves, section = "college",
   form, setForm, modal, setModal, canCreate, canEdit, envoyerPush,
 }) {
   const { t } = useTranslation();
@@ -16,6 +16,9 @@ export function DisciplineTab({
   // Un surveillant travaille classe par classe : sans ce filtre, il devait
   // lire toute l'école pour retrouver les absences d'une seule.
   const [classeFiltre, setClasseFiltre] = useState("all");
+  // Un élève parti ne reçoit plus d'absence et ne déclenche plus d'alerte.
+  // Ses absences passées restent listées (elles portent leur classe).
+  const eleves = tousEleves.filter((e) => !estSorti(e));
 
   // Classes tirées des ÉLÈVES, pas des absences : une classe sans incident
   // doit rester sélectionnable (c'est même l'information utile).

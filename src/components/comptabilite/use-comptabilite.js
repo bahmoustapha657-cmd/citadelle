@@ -8,7 +8,7 @@ import { toggleFraisAnnexe as toggleFraisAnnexeAction, toggleMens as toggleMensA
 import { ensureClasse as ensureClasseHelper, sortAlphaEleves } from "./eleves-helpers";
 import { useComptaSalaires } from "./useComptaSalaires";
 import { getPeriodesForSchool } from "../../period-utils";
-import { getMensualiteOverview, getTarifMensuelForClasse } from "../../mensualite-utils";
+import { concerneParAnnee, getMensualiteOverview, getTarifMensuelForClasse } from "../../mensualite-utils";
 import { buildTarifGetters, buildTarifData } from "./compta-tarifs";
 import { scolaritePourAnnee } from "../admin/cloture-annee-utils";
 import { saveSalaireAction, savePersonnelAction } from "./compta-saves";
@@ -125,7 +125,11 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
 
   const eleves = elevesParNiveau[niveau] || elevesC;
   const modEleves = modChampParNiveau[niveau] || modEC;
-  const classesU = [...new Set(eleves.map((e) => e.classe))].filter(Boolean);
+  // Grille des mensualités : les élèves qui relèvent de l'année consultée. Un
+  // élève parti avant sa rentrée, sans rien d'encaissé, n'y a plus sa place —
+  // il y traînait avec neuf mois « impayés » qu'il ne devait pas.
+  const elevesScolarite = eleves.filter((e) => concerneParAnnee(e, moisAnnee, anneeConsultee));
+  const classesU = [...new Set(elevesScolarite.map((e) => e.classe))].filter(Boolean);
   const tousElevesScolarite = [...elevesC, ...elevesL, ...elevesP, ...elevesPre];
 
   const {
@@ -138,7 +142,7 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
     if (existing) await modTarif({ _id: existing._id, ...data });
     else await ajTarif({ classe, ...data });
   };
-  const elevesFiltres = sortAlpha(filtClasse === "all" ? eleves : eleves.filter((e) => e.classe === filtClasse));
+  const elevesFiltres = sortAlpha(filtClasse === "all" ? elevesScolarite : elevesScolarite.filter((e) => e.classe === filtClasse));
 
   // Wrappers : injectent les deps (modEleves, readOnly, canEdit, toast,
   // envoyerPush) à chaque appel. Le helper extrait porte la logique métier.
@@ -236,7 +240,7 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
     moisLabel, totNetSec, totNetPrim, totNetPers, salairesMois,
   } = salairesDomaine;
 
-  const mensualiteOverview = getMensualiteOverview(tousElevesScolarite, moisAnnee, tarifsClasses);
+  const mensualiteOverview = getMensualiteOverview(tousElevesScolarite, moisAnnee, tarifsClasses, anneeConsultee);
   const periodes = getPeriodesForSchool(schoolInfo, moisAnnee);
   const defaultPeriode = periodes[0] || "T1";
   const impaye = mensualiteOverview.totalDu - mensualiteOverview.totalPercu;

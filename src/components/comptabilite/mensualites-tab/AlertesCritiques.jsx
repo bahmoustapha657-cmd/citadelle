@@ -7,10 +7,11 @@ import { countUnpaidMonths, getElevesCritiques } from "../../../mensualite-utils
 
 // Alertes des élèves avec 3 mois ou plus impayés. Repliées derrière un bouton
 // cliquable ; suivent le filtre cycle + classe (via `eleves`, déjà filtré).
-export function AlertesCritiques({ eleves, moisAnnee }) {
+// `annee` : année scolaire affichée — les mois d'après un départ ne comptent pas.
+export function AlertesCritiques({ eleves, moisAnnee, annee }) {
   const { t } = useTranslation();
   const [ouvert, setOuvert] = useState(false);
-  const elevesCritiques = getElevesCritiques(eleves, moisAnnee, 3);
+  const elevesCritiques = getElevesCritiques(eleves, moisAnnee, 3, annee);
   if (elevesCritiques.length === 0) return null;
 
   return (
@@ -36,14 +37,14 @@ export function AlertesCritiques({ eleves, moisAnnee }) {
               [t("reports.excel.headers.matricule"), t("reports.excel.headers.lastName"), t("reports.excel.headers.firstName"), t("reports.excel.headers.class"), t("reports.excel.headers.level"), t("reports.excel.headers.unpaidMonths"), t("reports.excel.headers.guardian"), t("reports.excel.headers.contact")],
               elevesCritiques.map((e) => {
                 const niv = getSectionLabelForClasse(e.classe);
-                const nbImp = countUnpaidMonths(e, moisAnnee);
+                const nbImp = countUnpaidMonths(e, moisAnnee, annee);
                 return [e.matricule || "", e.nom, e.prenom, e.classe, niv, nbImp, e.tuteur || "", e.contactTuteur || ""];
               })
             )}>📥 {t("common.export")}</Btn>
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             {elevesCritiques.map((e) => {
-              const nbImp = countUnpaidMonths(e, moisAnnee);
+              const nbImp = countUnpaidMonths(e, moisAnnee, annee);
               return <div key={e._id} style={{ background: "#fff", border: "1px solid #f5c1c1", borderRadius: 7, padding: "6px 10px", fontSize: 12 }}>
                 <span style={{ fontWeight: 800, color: "#9b2020" }}>{e.nom} {e.prenom}</span>
                 <span style={{ color: "#6b7280" }}> · {e.classe} · </span>
