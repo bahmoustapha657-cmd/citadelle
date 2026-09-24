@@ -3,9 +3,10 @@ import { genererMdp } from "../../../constants";
 import { DEFAULT_POSTES } from "../../../../shared/postes-config.js";
 import {
   chargerPostes, sauverPoste, supprimerPoste, rattacherComptesAuxPostes, creerCompte, majEmailCompte,
+  majNomSignatureCompte,
 } from "../../../backend/account-manage-supabase";
 import { subscribeTable } from "../../../backend/realtime-supabase";
-import { genererClePoste, roleCompteDuPoste } from "./postes-logic";
+import { comptesRattaches, genererClePoste, roleCompteDuPoste } from "./postes-logic";
 
 // Logique du panneau Comptes & Postes (mode Supabase uniquement) :
 // chargement des postes, bootstrap des gabarits pour une école vierge,
@@ -129,12 +130,26 @@ export function usePostesCard({ schoolId, peutGererRoles, comptes, refreshCompte
     }
   };
 
-  const comptesDuPoste = (poste) => comptes.filter((c) => c.posteId === poste.id
-    || (!c.posteId && poste.systeme && c.role === poste.cle));
+  // Nom qu'un compte imprime sous sa signature (poste à plusieurs comptes).
+  const definirNomSignature = async (compte, nom) => {
+    try {
+      await majNomSignatureCompte(compte._id, nom);
+      // La session du compte lit ce nom à la connexion : effet à sa prochaine
+      // ouverture d'EduGest, pas dans un onglet déjà ouvert.
+      toast(nom
+        ? `${compte.login} signera « ${nom} » dès sa prochaine ouverture d'EduGest.`
+        : `${compte.login} signera au nom du responsable du poste.`, "success");
+      refreshComptes?.();
+    } catch (e) {
+      toast(e.message || "Enregistrement du nom impossible.", "error");
+    }
+  };
+
+  const comptesDuPoste = (poste) => comptesRattaches(poste, comptes);
 
   return {
     postes, chargementPostes, posteEdite, setPosteEdite, sauvegardeEnCours,
     nouveauPoste, editerPoste, enregistrerPoste, retirerPoste, basculerActif,
-    creerCompteDuPoste, comptesDuPoste, definirEmail,
+    creerCompteDuPoste, comptesDuPoste, definirEmail, definirNomSignature,
   };
 }

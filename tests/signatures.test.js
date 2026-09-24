@@ -4,6 +4,7 @@ import {
   SECTION, blocsSignatures, compacterMatrice, normaliserMatrice, signatairesDocument,
 } from "../src/reports/signatures.js";
 import { blocRecu } from "../src/reports/recus/recu-blocs.js";
+import { definirSignataireSession, signataireSession } from "../src/reports/signataire-session.js";
 
 const ecole = {
   nom: "La Citadelle",
@@ -127,4 +128,51 @@ test("blocsSignatures confie au gabarit le rendu de chaque bloc", () => {
   const html = blocsSignatures(ecole, "etatSalaires", (identite, s) => `[${s.role}:${identite}]`);
   assert.ok(html.startsWith("[principal:Le Comptable<br/>"));
   assert.ok(html.includes("[visa:Le Directeur<br/>"));
+});
+
+// ── Poste à plusieurs comptes : chacun signe à son nom ─────────────────────
+// Deux comptables sur le poste Comptabilité : chacun imprime SON nom sur ce
+// qu'il signe. Sans nom propre au compte, rien ne change (responsable du poste).
+const nomsSignes = (schoolInfo, doc, signataire, section = "college") =>
+  signatairesDocument(schoolInfo, doc, { section, signataire }).map((s) => `${s.cle}:${s.nom}`);
+
+test("deux comptes sur un poste : chacun signe à son nom les documents qu'il imprime", () => {
+  assert.deepEqual(nomsSignes(ecole, "recu", { cle: "comptable", nom: "Binta Camara" }), ["comptable:Binta Camara"]);
+  assert.deepEqual(nomsSignes(ecole, "recu", { cle: "comptable", nom: "Alpha Barry" }), ["comptable:Alpha Barry"]);
+  // Compte sans nom propre, ou aucun compte désigné : le responsable du poste.
+  assert.deepEqual(nomsSignes(ecole, "recu", null), ["comptable:Aïssatou Bah"]);
+  assert.deepEqual(nomsSignes(ecole, "recu", { cle: "comptable", nom: "" }), ["comptable:Aïssatou Bah"]);
+});
+
+test("un compte n'impose son nom que sur le poste qu'il occupe", () => {
+  // La direction imprime un reçu : le comptable reste le signataire, sous son nom.
+  assert.deepEqual(nomsSignes(ecole, "recu", { cle: "direction", nom: "Fatou Sylla" }), ["comptable:Aïssatou Bah"]);
+  // États de salaires imprimés par un comptable : son nom, et le visa garde la direction.
+  assert.deepEqual(nomsSignes(ecole, "etatSalaires", { cle: "comptable", nom: "Binta Camara" }),
+    ["comptable:Binta Camara", "direction:Mamadou Lamarana Diallo"]);
+});
+
+test("chef de section sans responsable : le compte de la section qui imprime signe à son nom", () => {
+  const sansPrimaire = { ...ecole, responsables: { direction: "Mamadou Lamarana Diallo" } };
+  // Avant : faute de responsable, la direction signait les bulletins du primaire.
+  assert.deepEqual(nomsSignes(sansPrimaire, "bulletin", null, "primaire"), ["direction:Mamadou Lamarana Diallo"]);
+  // Un compte de la direction primaire qui a son nom signe à la place de la direction.
+  assert.deepEqual(nomsSignes(sansPrimaire, "bulletin", { cle: "primaire", nom: "Kadiatou Barry" }, "primaire"),
+    ["primaire:Kadiatou Barry"]);
+});
+
+test("le signataire de session sert par défaut, et se retire à la déconnexion", () => {
+  try {
+    definirSignataireSession({ cle: "comptable", nom: "Binta Camara" });
+    assert.equal(signatairesDocument(ecole, "recu")[0].nom, "Binta Camara");
+    assert.ok(blocsSignatures(ecole, "recu", (identite) => identite).includes("Binta Camara"));
+    // Aperçu générique (Qui signe quoi) : `signataire: null` l'ignore.
+    assert.equal(signatairesDocument(ecole, "recu", { signataire: null })[0].nom, "Aïssatou Bah");
+    // Poste ou nom manquant : pas de signataire de session.
+    definirSignataireSession({ cle: "comptable", nom: "  " });
+    assert.equal(signataireSession(), null);
+  } finally {
+    definirSignataireSession(null);
+  }
+  assert.equal(signatairesDocument(ecole, "recu")[0].nom, "Aïssatou Bah");
 });

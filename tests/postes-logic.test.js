@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   MODULE_OPTIONS,
+  comptesRattaches,
   cyclePermission,
+  nomsSignatureParPoste,
   estPosteSupprimable,
   estPosteVerrouille,
   genererClePoste,
@@ -60,4 +62,33 @@ test("suggererLogin : cle libre, puis suffixes -2, -3…", () => {
     suggererLogin(poste, [{ login: "comptable" }, { login: "comptable-2" }]),
     "comptable-3",
   );
+});
+
+// Poste à plusieurs comptes : quels comptes lui appartiennent, et quels noms ils
+// impriment sous leur signature (Qui signe quoi).
+const POSTES = [
+  { id: "p-compta", cle: "comptable", systeme: true },
+  { id: "p-censeur", cle: "censeur", systeme: false },
+];
+const COMPTES = [
+  { _id: "c1", posteId: "p-compta", role: "comptable", nomSignature: "Binta Camara" },
+  { _id: "c2", posteId: "p-compta", role: "comptable", nomSignature: " Alpha Barry " },
+  // Compte legacy sans poste : rattaché au poste système de même clé.
+  { _id: "c3", posteId: null, role: "comptable", nomSignature: "" },
+  { _id: "c4", posteId: "p-censeur", role: "staff" },
+  // Même rôle mais rattaché à un autre poste : pas au comptable.
+  { _id: "c5", posteId: "p-censeur", role: "comptable", nomSignature: "Ibrahima Sow" },
+];
+
+test("comptesRattaches : par poste, et comptes legacy par rôle sur un poste système", () => {
+  assert.deepEqual(comptesRattaches(POSTES[0], COMPTES).map((c) => c._id), ["c1", "c2", "c3"]);
+  assert.deepEqual(comptesRattaches(POSTES[1], COMPTES).map((c) => c._id), ["c4", "c5"]);
+});
+
+test("nomsSignatureParPoste : seuls les comptes nommés, sans doublon", () => {
+  assert.deepEqual(nomsSignatureParPoste(POSTES, COMPTES), {
+    comptable: ["Binta Camara", "Alpha Barry"],
+    censeur: ["Ibrahima Sow"],
+  });
+  assert.deepEqual(nomsSignatureParPoste(POSTES, []), {});
 });

@@ -44,7 +44,7 @@ function AdminPanel({ annee, setAnnee, verrous = {}, schoolId, userRole }) {
             comptes={a.comptes} refreshComptes={a.refreshComptes}
             toast={a.toast} setMdpsInitiaux={a.setMdpsInitiaux}
           />
-          <SignaturesCard schoolId={schoolId} peutGererRoles={a.peutGererRoles} toast={a.toast} />
+          <SignaturesCard schoolId={schoolId} peutGererRoles={a.peutGererRoles} toast={a.toast} comptes={a.comptes} />
         </>
       ) : (
         <>

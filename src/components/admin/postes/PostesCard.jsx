@@ -32,7 +32,7 @@ function MatricePermissions({ permissions, onCycle, verrouille }) {
 }
 
 // ── Comptes rattachés à un poste + ajout d'un nouveau compte ────────────────
-function ComptesDuPoste({ poste, comptes, onCreer, onEmail, peutGerer, toast }) {
+function ComptesDuPoste({ poste, comptes, onCreer, onEmail, onNomSignature, peutGerer, toast }) {
   const [ajout, setAjout] = useState(false);
   const [nom, setNom] = useState("");
   const [login, setLogin] = useState("");
@@ -40,6 +40,11 @@ function ComptesDuPoste({ poste, comptes, onCreer, onEmail, peutGerer, toast }) 
   const [creationEnCours, setCreationEnCours] = useState(false);
   const [emailEditeId, setEmailEditeId] = useState(null);
   const [emailBrouillon, setEmailBrouillon] = useState("");
+  const [signatureEditeId, setSignatureEditeId] = useState(null);
+  const [signatureBrouillon, setSignatureBrouillon] = useState("");
+  // Plusieurs comptes sur le poste, pas tous nommés : ceux-là signent tous au
+  // nom du responsable du poste.
+  const signatairesAnonymes = comptes.length > 1 && comptes.some((c) => !c.nomSignature);
 
   const ouvrir = () => { setAjout(true); setNom(""); setEmail(""); setLogin(suggererLogin(poste, comptes)); };
   const creer = async () => {
@@ -58,6 +63,10 @@ function ComptesDuPoste({ poste, comptes, onCreer, onEmail, peutGerer, toast }) 
   const validerEmail = async (compte) => {
     await onEmail(compte, emailBrouillon.trim().toLowerCase());
     setEmailEditeId(null);
+  };
+  const validerSignature = async (compte) => {
+    await onNomSignature(compte, signatureBrouillon.trim());
+    setSignatureEditeId(null);
   };
 
   return (
@@ -96,9 +105,37 @@ function ComptesDuPoste({ poste, comptes, onCreer, onEmail, peutGerer, toast }) 
               <Btn sm v="ghost" onClick={() => setEmailEditeId(null)}>Annuler</Btn>
             </span>
           )}
+          {/* Nom imprimé sous la signature des documents que CE compte imprime
+              pour le poste : sur un poste à plusieurs comptes, chacun signe à
+              son nom. Vide : le responsable du poste, comme avant. */}
+          <span style={{ color: c.nomSignature ? "#334155" : "#94a3b8" }}
+            title="Nom imprimé sous la signature des documents que ce compte imprime pour ce poste">
+            🖋️ {c.nomSignature || `signe au nom du responsable${poste.responsable ? ` (${poste.responsable})` : " — aucun nommé"}`}
+          </span>
+          {peutGerer && signatureEditeId !== c._id && (
+            <Btn sm v="ghost" onClick={() => { setSignatureEditeId(c._id); setSignatureBrouillon(c.nomSignature || ""); }}
+              title="Le nom de la personne qui utilise ce compte, imprimé sur les documents qu'elle signe">
+              {c.nomSignature ? "✏️ Nom imprimé" : "🖋️ Donner son nom"}
+            </Btn>
+          )}
+          {signatureEditeId === c._id && (
+            <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
+              <input value={signatureBrouillon} onChange={(e) => setSignatureBrouillon(e.target.value)} maxLength={80}
+                placeholder="Prénom et nom imprimés"
+                style={{ width: 200, padding: "4px 8px", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: 12 }} />
+              <Btn sm v="primary" onClick={() => validerSignature(c)}>OK</Btn>
+              <Btn sm v="ghost" onClick={() => setSignatureEditeId(null)}>Annuler</Btn>
+            </span>
+          )}
         </div>
       ))}
       {comptes.length === 0 && <p style={{ margin: "6px 0 0", fontSize: 12, color: "#94a3b8" }}>Aucun compte pour ce poste.</p>}
+      {signatairesAnonymes && (
+        <p style={{ margin: "6px 0 0", fontSize: 11, color: "#b45309" }}>
+          Plusieurs comptes partagent ce poste : donnez à chacun son nom (« 🖋️ Donner son nom ») pour qu'il signe
+          à son nom les documents qu'il imprime. Sans nom, il signe au nom du responsable du poste.
+        </p>
+      )}
       {ajout && (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8, alignItems: "center", background: "#f8fafc", padding: "8px 10px", borderRadius: 8 }}>
           <input value={nom} onChange={(e) => setNom(e.target.value)} placeholder="Nom complet"
@@ -186,7 +223,8 @@ export function PostesCard({ schoolId, peutGererRoles, comptes, refreshComptes, 
                 </div>
                 <p style={{ margin: "6px 0 0", fontSize: 11, color: "#64748b" }}>
                   Le responsable apparaît sous les blocs de signature des documents que ce
-                  poste signe — à régler dans « 🖋️ Qui signe quoi », plus bas.
+                  poste signe — à régler dans « 🖋️ Qui signe quoi », plus bas. Un compte du
+                  poste qui a son propre nom imprimé signe à son nom ce qu'il imprime.
                 </p>
                 <MatricePermissions
                   permissions={p.posteEdite.permissions}
@@ -207,7 +245,7 @@ export function PostesCard({ schoolId, peutGererRoles, comptes, refreshComptes, 
             )}
 
             <ComptesDuPoste poste={poste} comptes={p.comptesDuPoste(poste)} onCreer={p.creerCompteDuPoste}
-              onEmail={p.definirEmail} peutGerer={peutGererRoles} toast={toast} />
+              onEmail={p.definirEmail} onNomSignature={p.definirNomSignature} peutGerer={peutGererRoles} toast={toast} />
           </div>
         );
       })}
