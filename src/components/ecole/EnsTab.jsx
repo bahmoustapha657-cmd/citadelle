@@ -7,13 +7,13 @@ import { EnsCompteModale } from "./ens-tab/EnsCompteModale";
 import { EnsFormModale } from "./ens-tab/EnsFormModale";
 
 export function EnsTab({
-  ens, cEns, supEns, cleEns, isPrimarySection, couleur, schoolId, toast, logAction,
+  ens, cEns, supEns, cleEns, section, isPrimarySection, couleur, schoolId, toast, logAction,
   form, setForm, modal, setModal, canCreate, canEdit,
   ensCompte, setEnsCompte, formC, setFormC, saveEnseignant,
 }) {
   const { t } = useTranslation();
   const { chg, chgC, sectionEns, ouvrirCompteEns, creerCompteEns } = useEnsTab({
-    cleEns, schoolId, toast, logAction, ensCompte, setEnsCompte, formC, setFormC, setForm,
+    section, schoolId, toast, logAction, ensCompte, setEnsCompte, formC, setFormC, setForm,
   });
 
   return <div>

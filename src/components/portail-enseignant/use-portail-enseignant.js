@@ -4,6 +4,7 @@ import { C } from "../../constants";
 import { getPeriodesForSection } from "../../period-utils";
 import { getActiveNoteForms } from "../../evaluation-forms";
 import { imprimerEdtEnseignant, imprimerPaiesEnseignant } from "../../reports";
+import { isTitulaireSection } from "../../backend/teacher-scope";
 import {
   construireGrille as construireGrilleHelper,
   enregistrerGrille as enregistrerGrilleAction,
@@ -62,9 +63,10 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
 
   const nomEns = utilisateur.enseignantNom || utilisateur.nom || "";
   const matiere = utilisateur.matiere || "";
-  // Au primaire, le titulaire saisit TOUTES les matières de sa classe : la
-  // grille propose un sélecteur de matière (matières renvoyées par le portail).
-  const isPrimaire = (portalData.section || utilisateur.section) === "primaire";
+  // En maternelle et au primaire, le titulaire saisit TOUTES les matières de
+  // sa classe : la grille propose un sélecteur de matière (matières renvoyées
+  // par le portail) et note sur 10.
+  const isPrimaire = isTitulaireSection(portalData.section || utilisateur.section);
   const matieresDispo = portalData.matieres || [];
   const matiereParDefaut = isPrimaire ? (matieresDispo[0]?.nom || "") : matiere;
   const emplois = portalData.emplois || [];

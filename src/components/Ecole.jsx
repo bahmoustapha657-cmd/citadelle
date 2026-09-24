@@ -17,7 +17,7 @@ const TABS_SURVEILLANT = new Set(["eleves", "discipline", "emploidutemps"]);
 // l'école, cf. collegeLabel) ne peuvent en tenir lieu.
 function Ecole({ titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, section = "college", avecEns, userRole, permissions = null, annee, classesPredefinies, maxNote = 20, matieresPredefinies = [], readOnly = false, verrouOuvert = false }) {
   const { t } = useTranslation();
-  const e = useEcole({ cleClasses, cleEns, cleNotes, cleEleves, userRole, permissions, annee, readOnly, verrouOuvert });
+  const e = useEcole({ cleClasses, cleEns, cleNotes, cleEleves, section, userRole, permissions, annee, readOnly, verrouOuvert });
 
   const tabItems = [
     { id: "apercu", label: t("school.tabs.overview") },
