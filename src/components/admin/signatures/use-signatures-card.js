@@ -4,10 +4,11 @@ import { chargerPostes } from "../../../backend/account-manage-supabase";
 import { sauverParametresEcole } from "../../../backend/data-supabase";
 import { subscribeTable } from "../../../backend/realtime-supabase";
 import { compacterMatrice, normaliserMatrice, signatairesDocument } from "../../../reports/signatures";
+import { nomsSignatureParPoste } from "../postes/postes-logic";
 
 // Logique de la carte « Qui signe quoi » : postes de l'école (temps réel),
 // brouillon de la matrice, aperçu de ce que chaque document imprimera.
-export function useSignaturesCard({ schoolId, toast }) {
+export function useSignaturesCard({ schoolId, toast, comptes = [] }) {
   const { schoolInfo, setSchoolInfo } = useContext(SchoolContext);
   const [postes, setPostes] = useState([]);
   // Tant que les postes ne sont pas là, la matrice n'est pas affichée : chaque
@@ -51,7 +52,11 @@ export function useSignaturesCard({ schoolId, toast }) {
     },
   }), [schoolInfo, matrice, libellesPostes, postes]);
 
-  const apercu = (docId, section) => signatairesDocument(infoApercu, docId, { section });
+  // Aperçu générique : sans le nom propre du compte qui regarde (la direction
+  // verrait sinon SON nom sur ses documents). Les noms des comptes de chaque
+  // poste s'affichent à part (nomsComptes).
+  const apercu = (docId, section) => signatairesDocument(infoApercu, docId, { section, signataire: null });
+  const nomsComptes = useMemo(() => nomsSignatureParPoste(postes, comptes), [postes, comptes]);
 
   const choisir = (docId, emplacement, valeur) => setBrouillon((prec) => {
     const base = prec || enregistree;
@@ -79,5 +84,5 @@ export function useSignaturesCard({ schoolId, toast }) {
     }
   };
 
-  return { postes, chargement, matrice, modifie, apercu, choisir, retablir, annuler, enregistrer, enregistrement };
+  return { postes, chargement, matrice, modifie, apercu, nomsComptes, choisir, retablir, annuler, enregistrer, enregistrement };
 }

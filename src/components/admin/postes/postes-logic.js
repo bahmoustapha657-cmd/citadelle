@@ -37,6 +37,25 @@ export const estPosteSupprimable = (poste) =>
 export const roleCompteDuPoste = (poste) =>
   (poste?.systeme && poste.cle !== "staff" ? poste.cle : "staff");
 
+// Comptes rattachés à un poste : par son id, ou — comptes legacy sans poste —
+// par le rôle historique de même clé pour un poste système.
+export const comptesRattaches = (poste, comptes = []) => comptes.filter((c) => c.posteId === poste.id
+  || (!c.posteId && poste.systeme && c.role === poste.cle));
+
+// Noms que les comptes d'un poste impriment sous leur signature (poste à
+// plusieurs comptes), par clé de poste : { comptable: ["Alpha Barry", …] }.
+// Seuls les comptes qui en ont un figurent : les autres signent au nom du
+// responsable du poste.
+export function nomsSignatureParPoste(postes = [], comptes = []) {
+  const noms = {};
+  for (const poste of postes) {
+    const liste = comptesRattaches(poste, comptes)
+      .map((c) => String(c.nomSignature || "").trim()).filter(Boolean);
+    if (liste.length) noms[poste.cle] = [...new Set(liste)];
+  }
+  return noms;
+}
+
 // Suggestion de login pour un nouveau compte d'un poste : cle, cle-2, cle-3…
 export function suggererLogin(poste, comptesExistants = []) {
   const pris = new Set(comptesExistants.map((c) => c.login));

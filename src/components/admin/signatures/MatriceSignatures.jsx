@@ -31,17 +31,26 @@ function OptionsPostes({ doc, postes, valeur, avecAucun }) {
 }
 
 // « Imprimera : La Principale · Djiba Oury Diallo » — le résultat réel du
-// réglage, calculé par le même résolveur que les documents.
-function Apercu({ signataires }) {
-  return signataires.map((s) => (
-    <div key={s.role} style={{ fontSize: 11, lineHeight: 1.45, color: "#334155" }}>
-      {s.role === "visa" && <span style={{ color: "#64748b" }}>visa : </span>}
-      <strong>{s.titre}</strong>
-      {s.nom
-        ? <span> · {s.nom}</span>
-        : <span style={{ color: "#b45309" }}> · ⚠️ sans nom</span>}
-    </div>
-  ));
+// réglage, calculé par le même résolveur que les documents. `nomsComptes` :
+// noms propres aux comptes d'un poste — chacun signe à son nom ce qu'il imprime.
+function Apercu({ signataires, nomsComptes = {} }) {
+  return signataires.map((s) => {
+    const noms = nomsComptes[s.cle] || [];
+    return (
+      <div key={s.role} style={{ fontSize: 11, lineHeight: 1.45, color: "#334155" }}>
+        {s.role === "visa" && <span style={{ color: "#64748b" }}>visa : </span>}
+        <strong>{s.titre}</strong>
+        {s.nom && <span> · {s.nom}</span>}
+        {!s.nom && !noms.length && <span style={{ color: "#b45309" }}> · ⚠️ sans nom</span>}
+        {noms.length > 0 && (
+          <div style={{ fontSize: 10.5, color: "#475569" }}>
+            {s.nom ? "imprimé par l'un de ses comptes : " : "au nom du compte qui imprime : "}{noms.join(" · ")}
+            {!s.nom && <span style={{ color: "#b45309" }}> — autre compte : ⚠️ sans nom</span>}
+          </div>
+        )}
+      </div>
+    );
+  });
 }
 
 // Tableau de la matrice, sans état propre : `s` vient de useSignaturesCard.
@@ -91,10 +100,10 @@ export function MatriceSignatures({ s, peutGererRoles }) {
                         ? SECTIONS_APERCU.map(([section, libelle]) => (
                           <div key={section} style={{ marginBottom: 3 }}>
                             <div style={{ fontSize: 10, color: "#94a3b8", fontWeight: 700 }}>{libelle}</div>
-                            <Apercu signataires={s.apercu(doc.id, section)} />
+                            <Apercu signataires={s.apercu(doc.id, section)} nomsComptes={s.nomsComptes} />
                           </div>
                         ))
-                        : <Apercu signataires={s.apercu(doc.id, "college")} />}
+                        : <Apercu signataires={s.apercu(doc.id, "college")} nomsComptes={s.nomsComptes} />}
                     </td>
                   </tr>
                 );
@@ -112,7 +121,7 @@ export function MatriceSignatures({ s, peutGererRoles }) {
           {s.modifie && <Btn sm v="ghost" onClick={s.annuler}>Annuler</Btn>}
           <Btn sm v="ghost" onClick={s.retablir}>Rétablir les signataires d'origine</Btn>
           <span style={{ fontSize: 11, color: "#94a3b8" }}>
-            « ⚠️ sans nom » : nommez un responsable sur ce poste, dans Comptes & Postes ci-dessus.
+            « ⚠️ sans nom » : nommez un responsable sur ce poste, ou donnez son nom à chacun de ses comptes, dans Comptes & Postes ci-dessus.
           </span>
         </div>
       )}

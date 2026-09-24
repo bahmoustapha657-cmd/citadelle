@@ -225,6 +225,25 @@ export async function majEmailCompte(compteId, email) {
   return { ok: true };
 }
 
+// Nom qu'un compte imprime sous les blocs de signature des documents qu'il
+// signe pour son poste — un poste peut porter plusieurs comptes (deux
+// comptables) et chacun signe alors à son nom. Rangé dans comptes.extra :
+// aucune migration. Vide : retiré, le responsable du poste reprend la main.
+// `.select()` : un refus RLS ne lève pas d'erreur, il ne touche aucune ligne.
+export async function majNomSignatureCompte(compteId, nom) {
+  const sb = getSupabase();
+  const valeur = String(nom || "").trim().replace(/\s+/g, " ");
+  if (valeur.length > 80) throw new Error("Nom imprimé : 80 caractères au plus.");
+  const { data, error } = await sb.from("comptes").select("extra").eq("id", compteId).maybeSingle();
+  if (error || !data) throw new Error(error?.message || "Compte introuvable.");
+  const extra = { ...(data.extra || {}) };
+  if (valeur) extra.nomSignature = valeur; else delete extra.nomSignature;
+  const { data: majs, error: e2 } = await sb.from("comptes").update({ extra }).eq("id", compteId).select("id");
+  if (e2) throw new Error(e2.message || "Enregistrement du nom impossible.");
+  if (!majs?.length) throw new Error("Enregistrement refusé : votre compte ne peut pas modifier ce compte.");
+  return { ok: true };
+}
+
 // Rattache les comptes legacy (role enum) aux postes système de même clé —
 // bootstrap des nouvelles écoles et rattrapage après création des postes.
 export async function rattacherComptesAuxPostes(postes) {

@@ -18,6 +18,7 @@
 import { getRoleLabelForSchool } from "../constants.js";
 import { getDefaultPoste } from "../../shared/postes-config.js";
 import { tr } from "./print-helpers.js";
+import { signataireSession } from "./signataire-session.js";
 
 export const SECTION = "section";
 
@@ -73,6 +74,12 @@ const POSTE_SECTION = {
 // ecoles.extra.responsables. Absent : le bloc sort avec le titre seul.
 export const responsableNom = (schoolInfo = {}, cle) =>
   String(schoolInfo?.responsables?.[cle] || "").trim();
+
+// Nom imprimé pour un poste : celui du compte qui imprime, s'il occupe ce poste
+// et s'est donné un nom (poste à plusieurs comptes) ; sinon le responsable.
+// `signataire` : { cle, nom } (voir signataire-session.js).
+const nomPourPoste = (schoolInfo, cle, signataire) =>
+  (signataire?.cle === cle && signataire.nom) || responsableNom(schoolInfo, cle);
 
 // Nom que l'école a DONNÉ au poste (ecoles.extra.libellesPostes, recopié par
 // sauverPoste et par la matrice). Les libellés d'origine des postes système
@@ -139,7 +146,7 @@ function valeurValide(schoolInfo, doc, emplacement, valeur) {
   return posteConnu(schoolInfo, valeur) ? valeur : doc.defaut[emplacement];
 }
 
-function resoudre(schoolInfo, doc, emplacement, valeur, section) {
+function resoudre(schoolInfo, doc, emplacement, valeur, section, signataire) {
   // Le titre habituel n'appartient qu'au réglage d'ORIGINE de l'emplacement.
   const titreHabituel = valeur === doc.defaut[emplacement] ? (doc.titres[emplacement]?.() || "") : "";
 
@@ -148,15 +155,16 @@ function resoudre(schoolInfo, doc, emplacement, valeur, section) {
     // responsable désigné : mieux vaut le DG qu'une signature anonyme.
     // Réglage d'origine : titres strictement identiques à ceux d'avant.
     const cleSection = POSTE_SECTION[String(section || "").toLowerCase()] || "";
-    if (cleSection && responsableNom(schoolInfo, cleSection)) {
+    const nomSection = cleSection ? nomPourPoste(schoolInfo, cleSection, signataire) : "";
+    if (nomSection) {
       return {
         cle: cleSection,
         titre: libelleChoisiParEcole(schoolInfo, cleSection) || getRoleLabelForSchool(cleSection, schoolInfo)
           || titreHabituel || titrePosteSysteme(cleSection),
-        nom: responsableNom(schoolInfo, cleSection),
+        nom: nomSection,
       };
     }
-    const nomDirection = responsableNom(schoolInfo, "direction");
+    const nomDirection = nomPourPoste(schoolInfo, "direction", signataire);
     return {
       cle: "direction",
       titre: libelleChoisiParEcole(schoolInfo, "direction")
@@ -173,24 +181,26 @@ function resoudre(schoolInfo, doc, emplacement, valeur, section) {
       || libelleRolePersonnalise(schoolInfo, valeur)
       || titrePosteSysteme(valeur)
       || String(schoolInfo?.libellesPostes?.[valeur] || valeur),
-    nom: responsableNom(schoolInfo, valeur),
+    nom: nomPourPoste(schoolInfo, valeur, signataire),
   };
 }
 
 // Signataires d'un document, dans l'ordre : principal, puis visa éventuel.
 // Chaque entrée : { role: "principal" | "visa", cle, titre, nom }.
 // `section` : section de l'élève ou de la classe (documents « section »).
-export function signatairesDocument(schoolInfo = {}, typeDocument, { section = "" } = {}) {
+// `signataire` : compte qui imprime, { cle, nom } — par défaut celui de la
+// session ; null pour ignorer les noms propres aux comptes (aperçu générique).
+export function signatairesDocument(schoolInfo = {}, typeDocument, { section = "", signataire = signataireSession() } = {}) {
   const doc = DOCUMENT[typeDocument];
   if (!doc) throw new Error(`Document inconnu de la matrice des signatures : ${typeDocument}`);
   const reglage = normaliserMatrice(schoolInfo?.signatures)[doc.id];
 
   const principal = { role: "principal",
-    ...resoudre(schoolInfo, doc, "principal", valeurValide(schoolInfo, doc, "principal", reglage.principal), section) };
+    ...resoudre(schoolInfo, doc, "principal", valeurValide(schoolInfo, doc, "principal", reglage.principal), section, signataire) };
   const valeurVisa = valeurValide(schoolInfo, doc, "visa", reglage.visa);
   if (!valeurVisa) return [principal];
 
-  const visa = { role: "visa", ...resoudre(schoolInfo, doc, "visa", valeurVisa, section) };
+  const visa = { role: "visa", ...resoudre(schoolInfo, doc, "visa", valeurVisa, section, signataire) };
   // Même personne aux deux places (ex. chef de section retombé sur la
   // direction, et direction en visa) : un seul bloc.
   return visa.cle === principal.cle ? [principal] : [principal, visa];

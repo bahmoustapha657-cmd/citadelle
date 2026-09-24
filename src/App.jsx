@@ -16,6 +16,7 @@ import { computeAppPermissions } from "./components/app/compute-permissions";
 import { AuthGate } from "./components/app/AuthGate";
 import { AppShell } from "./components/app/AppShell";
 import { ResetPasswordScreen } from "./components/connexion/ResetPasswordScreen";
+import { definirSignataireSession } from "./reports/signataire-session";
 
 export default function App() {
   const { t } = useTranslation();
@@ -69,6 +70,15 @@ export default function App() {
   // vide (152 entrées anonymes sur 203 à La Citadelle, dont 53 suppressions
   // d'élèves et de classes) — on ne pouvait pas savoir qui avait supprimé quoi.
   const schoolContextValue = { schoolId, setSchoolId, schoolInfo, setSchoolInfo, moisAnnee, moisSalaire, toast, logAction, envoyerPush, planInfo, auteur: utilisateur?.nom || "" };
+
+  // Signataire des documents imprimés pendant la session : poste du compte
+  // connecté et nom qu'il imprime. Sur un poste à plusieurs comptes (deux
+  // comptables), chacun signe ainsi à son nom — voir reports/signataire-session.
+  useEffect(() => {
+    definirSignataireSession(utilisateur
+      ? { cle: utilisateur.posteCle || utilisateur.role, nom: utilisateur.nomSignature }
+      : null);
+  }, [utilisateur]);
 
   // Ctrl+K / ? / Escape — voir use-keyboard-shortcuts pour le détail.
   useKeyboardShortcuts({

@@ -47,6 +47,9 @@ async function chargerCompte(sb, userId, schoolCode) {
     login: c.login,
     email: c.email || "",
     nom: c.nom || c.login,
+    // Nom imprimé sous les signatures des documents que ce compte signe pour
+    // son poste (Comptes & Postes) ; vide : le responsable du poste.
+    nomSignature: String(x.nomSignature || "").trim(),
     role: c.role,
     label: c.poste?.label || c.label || c.role,
     // Poste flexible : permissions par module (null = compte legacy, repli
