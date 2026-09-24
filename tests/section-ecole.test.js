@@ -148,14 +148,12 @@ test("livret imprimé de maternelle : ses périodes et son libellé, plus ceux d
   assert.ok(html.includes("Enseignement Préscolaire"));
 });
 
-test("compte enseignant créé depuis la maternelle : reste « primaire » tant que le portail ignore le préscolaire", () => {
-  assert.equal(teacherAccountSection("prescolaire"), "primaire");
-  for (const s of ["primaire", "college", "lycee"]) assert.equal(teacherAccountSection(s), s);
-  // Raison du repli : le portail enverrait un compte « prescolaire » sur les
-  // collections du collège. Si ce test casse, le portail a appris le
-  // préscolaire — revoir alors teacherAccountSection (et l'Edge Function
-  // account-manage, et la RLS teacher_can_write_note).
-  assert.equal(normalizeSection("prescolaire"), "college");
+test("compte enseignant créé depuis la maternelle : section « prescolaire », que le portail connaît", () => {
+  for (const s of ["prescolaire", "primaire", "college", "lycee"]) assert.equal(teacherAccountSection(s), s);
+  // Le repli sur « primaire » a duré tant que le portail envoyait un compte
+  // « prescolaire » sur les collections du collège. Portail, Edge Function
+  // account-manage et RLS : voir tests/portail-prescolaire.test.js.
+  assert.equal(normalizeSection("prescolaire"), "prescolaire");
 });
 
 test("garde-fou : aucun fichier du module École ne déduit la section d'un nom de collection", () => {

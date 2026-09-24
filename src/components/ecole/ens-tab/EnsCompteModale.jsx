@@ -1,4 +1,4 @@
-import { genererMdp } from "../../../constants";
+import { genererMdp, getSectionLabel } from "../../../constants";
 import { Btn, Champ, Input, Modale } from "../../ui";
 
 // Modale de création d'un compte de connexion pour un enseignant : login
@@ -8,7 +8,7 @@ export function EnsCompteModale({ ensCompte, setEnsCompte, sectionEns, formC, ch
   return (
     <Modale titre={`Compte — ${ensCompte.prenom} ${ensCompte.nom}`} fermer={()=>setEnsCompte(null)}>
       <div style={{marginBottom:14,padding:"10px 14px",background:"#f5f3ff",borderRadius:10,fontSize:12,color:"#6d28d9"}}>
-        <strong>Section :</strong> {sectionEns} &nbsp;|&nbsp; <strong>Matière :</strong> {ensCompte.matiere||"—"}
+        <strong>Section :</strong> {getSectionLabel(sectionEns)} &nbsp;|&nbsp; <strong>Matière :</strong> {ensCompte.matiere||"—"}
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr",gap:12}}>
         <Input label="Identifiant de connexion" value={formC.login||""} onChange={chgC("login")} placeholder="ex: jean.dupont"/>
