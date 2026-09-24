@@ -73,9 +73,26 @@ test("second signataire : le visa s'ajoute après le signataire principal", () =
 });
 
 test("visa et signataire principal confondus : un seul bloc", () => {
-  // Section primaire sans responsable → repli direction, déjà en visa.
-  const info = { ...ecole, signatures: { bulletin: { principal: SECTION, visa: "direction" } } };
-  assert.equal(signataires(info, "bulletin", "primaire").length, 1);
+  // Élève du collège : le chef de section EST le Bureau collège, déjà en visa.
+  const info = { ...ecole, signatures: { bulletin: { principal: SECTION, visa: "college" } } };
+  assert.equal(signataires(info, "bulletin", "college").length, 1);
+  // Élève du primaire : deux postes distincts, deux blocs.
+  assert.equal(signataires(info, "bulletin", "primaire").length, 2);
+});
+
+// Choisir « chef de la section » faisait signer le DG dès que le poste de la
+// section n'avait pas de nom — nom ET titre du DG. C'est ce qu'une école
+// voyait : bulletins réglés sur le chef de section, signés par le DG.
+test("chef de la section choisi : la section signe, jamais le DG, même sans nom", () => {
+  const dgSeul = { responsables: { direction: "Mamadou Lamarana Diallo" } };
+  assert.deepEqual(signataires(dgSeul, "bulletin", "primaire"),
+    [{ role: "principal", cle: "primaire", titre: "Direction", nom: "" }]);
+  assert.deepEqual(signataires(dgSeul, "bulletin", "lycee").map((s) => [s.cle, s.nom]), [["college", ""]]);
+  // École sans aucun nom : titre générique inchangé (« Direction »), rien d'inventé.
+  assert.deepEqual(signataires({}, "bulletin", "college").map((s) => [s.cle, s.titre, s.nom]), [["college", "Direction", ""]]);
+  // Un libellé que l'école a donné à la section reste son titre, même sans nom.
+  const renomme = { ...dgSeul, libellesPostes: { primaire: "Le Directeur du primaire" } };
+  assert.equal(signataires(renomme, "bulletin", "primaire")[0].titre, "Le Directeur du primaire");
 });
 
 test("le visa d'origine peut être retiré", () => {
@@ -154,11 +171,13 @@ test("un compte n'impose son nom que sur le poste qu'il occupe", () => {
 
 test("chef de section sans responsable : le compte de la section qui imprime signe à son nom", () => {
   const sansPrimaire = { ...ecole, responsables: { direction: "Mamadou Lamarana Diallo" } };
-  // Avant : faute de responsable, la direction signait les bulletins du primaire.
-  assert.deepEqual(nomsSignes(sansPrimaire, "bulletin", null, "primaire"), ["direction:Mamadou Lamarana Diallo"]);
-  // Un compte de la direction primaire qui a son nom signe à la place de la direction.
+  // Faute de responsable, la Direction primaire signe sans nom (plus le DG)…
+  assert.deepEqual(nomsSignes(sansPrimaire, "bulletin", null, "primaire"), ["primaire:"]);
+  // … et son compte qui a un nom signe à ce nom.
   assert.deepEqual(nomsSignes(sansPrimaire, "bulletin", { cle: "primaire", nom: "Kadiatou Barry" }, "primaire"),
     ["primaire:Kadiatou Barry"]);
+  // Le DG qui imprime un bulletin du primaire ne s'y substitue pas.
+  assert.deepEqual(nomsSignes(sansPrimaire, "bulletin", { cle: "direction", nom: "Fatou Sylla" }, "primaire"), ["primaire:"]);
 });
 
 test("le signataire de session sert par défaut, et se retire à la déconnexion", () => {

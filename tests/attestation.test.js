@@ -196,11 +196,14 @@ test("le signataire d'une section porte son nom et le libellé que l'école a do
   assert.ok(identiteHTML(s).includes("La Principale"));
 });
 
-test("section sans responsable : repli sur la direction, avec SON libellé", () => {
+test("section sans responsable : la section signe, sans nom emprunté au DG", () => {
+  // Autrefois le DG prenait la place — nom ET titre (« Le Proviseur ») — du chef
+  // d'une section sans responsable : l'attestation certifiait sous sa signature.
   const s = signataireAttestation(ecoleAvecPostes, "primaire");
 
-  assert.equal(s.nom, "Mamadou Lamarana Diallo");
-  assert.equal(s.titre, "Le Proviseur");
+  assert.equal(s.cle, "primaire");
+  assert.equal(s.nom, "");
+  assert.equal(s.titre, "Direction");
 });
 
 test("aucun responsable désigné : titre générique et pas de nom inventé", () => {

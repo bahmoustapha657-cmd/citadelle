@@ -151,19 +151,25 @@ function resoudre(schoolInfo, doc, emplacement, valeur, section, signataire) {
   const titreHabituel = valeur === doc.defaut[emplacement] ? (doc.titres[emplacement]?.() || "") : "";
 
   if (valeur === SECTION) {
-    // Chef de la section de l'élève, ou la direction si la section n'a pas de
-    // responsable désigné : mieux vaut le DG qu'une signature anonyme.
-    // Réglage d'origine : titres strictement identiques à ceux d'avant.
+    // Chef de la section de l'élève : Direction primaire (préscolaire compris)
+    // ou Bureau collège (lycée compris). Il signait autrefois à la place du DG
+    // seulement s'il avait un nom — sinon le DG prenait sa place, nom et titre
+    // compris : l'école choisissait « chef de la section » et c'est le DG qui
+    // signait. Désormais le chef de section reste le signataire ; sans nom
+    // connu, le bloc sort sous le titre habituel et l'aperçu de Qui signe quoi
+    // signale « ⚠️ sans nom ». Titres avec nom inchangés (libellé du poste).
     const cleSection = POSTE_SECTION[String(section || "").toLowerCase()] || "";
-    const nomSection = cleSection ? nomPourPoste(schoolInfo, cleSection, signataire) : "";
-    if (nomSection) {
+    if (cleSection) {
+      const nom = nomPourPoste(schoolInfo, cleSection, signataire);
       return {
         cle: cleSection,
-        titre: libelleChoisiParEcole(schoolInfo, cleSection) || getRoleLabelForSchool(cleSection, schoolInfo)
+        titre: libelleChoisiParEcole(schoolInfo, cleSection)
+          || (nom ? getRoleLabelForSchool(cleSection, schoolInfo) : libelleRolePersonnalise(schoolInfo, cleSection))
           || titreHabituel || titrePosteSysteme(cleSection),
-        nom: nomSection,
+        nom,
       };
     }
+    // Section inconnue (document sans élève rattaché) : la direction.
     const nomDirection = nomPourPoste(schoolInfo, "direction", signataire);
     return {
       cle: "direction",
@@ -201,8 +207,8 @@ export function signatairesDocument(schoolInfo = {}, typeDocument, { section = "
   if (!valeurVisa) return [principal];
 
   const visa = { role: "visa", ...resoudre(schoolInfo, doc, "visa", valeurVisa, section, signataire) };
-  // Même personne aux deux places (ex. chef de section retombé sur la
-  // direction, et direction en visa) : un seul bloc.
+  // Même poste aux deux places (ex. chef de section en principal et Bureau
+  // collège en visa, pour un élève du collège) : un seul bloc.
   return visa.cle === principal.cle ? [principal] : [principal, visa];
 }
 
