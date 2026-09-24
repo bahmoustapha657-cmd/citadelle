@@ -2,16 +2,18 @@ import { genererMdp } from "../../../constants";
 import { apiFetch, getAuthHeaders } from "../../../apiClient";
 import { isSupabase } from "../../../backend";
 import { creerCompte as creerCompteSb } from "../../../backend/account-manage-supabase";
+import { teacherAccountSection } from "../../../backend/teacher-scope";
 
-// Logique de l'onglet Enseignants : édition des formulaires, section déduite
-// de la clé, ouverture et création de compte enseignant via /account-manage.
+// Logique de l'onglet Enseignants : édition des formulaires, section du
+// compte (depuis la prop `section` d'Ecole), ouverture et création de compte
+// enseignant via /account-manage.
 export function useEnsTab({
-  cleEns, schoolId, toast, logAction,
+  section, schoolId, toast, logAction,
   ensCompte, setEnsCompte, formC, setFormC, setForm,
 }) {
   const chg = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
   const chgC = (k) => (e) => setFormC((p) => ({ ...p, [k]: e.target.value }));
-  const sectionEns = cleEns.includes("Lycee") ? "lycee" : cleEns.includes("College") ? "college" : "primaire";
+  const sectionEns = teacherAccountSection(section);
 
   // Identifiant valide côté serveur : minuscules, sans accents, uniquement
   // [a-z0-9] par segment (le pattern d'API n'accepte ni é/è/à ni espaces).

@@ -16,6 +16,18 @@ export function normalizeSection(section = "") {
   return ["primaire", "college", "lycee"].includes(s) ? s : "college";
 }
 
+// Section inscrite sur le compte d'un enseignant créé depuis le module École
+// (prop `section` d'Ecole). La maternelle y reste « primaire » : ni ce
+// portail (normalizeSection ci-dessus, CAP de teacher-portal-supabase.js),
+// ni l'Edge Function account-manage (la Direction primaire n'y crée que des
+// enseignants « primaire »), ni la RLS teacher_can_write_note (seul
+// « primaire » y est dispensé du filtre matière) ne connaissent encore
+// « prescolaire ». Seul, ce changement ferait refuser la création (403) et
+// lire au portail les collections du COLLÈGE : à basculer avec eux.
+export function teacherAccountSection(section = "") {
+  return section === "prescolaire" ? "primaire" : section;
+}
+
 export function teacherAliases(profile = {}) {
   return [...new Set([profile.enseignantNom, profile.nom]
     .filter(Boolean).map((s) => String(s).trim()).filter(Boolean))];

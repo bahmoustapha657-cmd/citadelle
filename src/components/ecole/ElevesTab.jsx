@@ -5,13 +5,13 @@ import { ElevesTable } from "./eleves-tab/ElevesTable";
 import { ParentCompteModale } from "./eleves-tab/ParentCompteModale";
 
 export function ElevesTab({
-  eleves, elevesFiltres, cE, cleEleves, filtreClasse, setFiltreClasse, classesUniq,
+  eleves, elevesFiltres, cE, filtreClasse, setFiltreClasse, classesUniq,
   section = "college", annee, schoolInfo, schoolId, toast, logAction, canEdit, canCreateParent,
   parentEleve, setParentEleve, formP, setFormP, userRole = "",
 }) {
   const { t } = useTranslation();
   const { peutCreerParent, chgP, ouvrirCompte, creerCompteParent } = useElevesTab({
-    cleEleves, schoolId, toast, logAction, canEdit, canCreateParent, parentEleve, setParentEleve, setFormP,
+    section, schoolId, toast, logAction, canEdit, canCreateParent, parentEleve, setParentEleve, setFormP,
   });
 
   return (

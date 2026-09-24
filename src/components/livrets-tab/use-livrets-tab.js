@@ -2,7 +2,6 @@ import { useState, useContext } from "react";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { useFirestore } from "../../hooks/useFirestore";
 import { today } from "../../constants";
-import { getPeriodesForSection } from "../../period-utils";
 import {
   genNumeroLivret, buildNouveauLivret, buildAnneePreRemplie, anneesApresSaisie, anneesApresSignature,
 } from "./livrets-logic";
@@ -10,16 +9,19 @@ import {
 // Logique des livrets scolaires : chargement, dérivations et opérations
 // (création, pré-remplissage annuel, sauvegarde et signature d'une année).
 // Les constructeurs purs vivent dans livrets-logic.js.
-export function useLivretsTab({ cleEleves, cleNotes, matieres, maxNote, userRole, annee }) {
+// `section` et `periodes` sont ceux du module École : la section était
+// jusqu'ici déduite du nom de collection, et la maternelle tombait dans
+// « college » — périodicité du secondaire et moyennes du secondaire
+// (Cours + 2 × Composition) sur ses livrets, alors que ses bulletins font une
+// moyenne simple.
+export function useLivretsTab({ section, periodes, cleEleves, cleNotes, matieres, maxNote, userRole, annee }) {
   const { schoolInfo, toast } = useContext(SchoolContext);
   // modifierChamp(id, champs) : mise à jour partielle, fusionnée dans le jsonb `extra`.
   // (`modifier` attend un item complet portant `_id` : appelé en (id, champs), il n'écrit rien.)
   const { items: livrets, ajouter: ajLivret, modifierChamp: modLivret } = useFirestore("livrets");
   const { items: eleves } = useFirestore(cleEleves);
   const { items: notes } = useFirestore(cleNotes);
-  const section = cleEleves.includes("Primaire") ? "primaire" : cleEleves.includes("Lycee") ? "lycee" : "college";
   const canEdit = ["direction", "admin", "comptable"].includes(userRole);
-  const periodes = getPeriodesForSection(schoolInfo, section);
 
   const [livretSelId, setLivretSelId] = useState(null);
   const [filtreClasse, setFiltreClasse] = useState("all");

@@ -61,9 +61,19 @@ export const getEvaluationFormsConfig = (schoolInfo = {}) => {
   };
 };
 
+// Groupe de Paramètres → Évaluations applicable à une section. La maternelle
+// (« prescolaire ») suit le PRIMAIRE : c'est le groupe qu'elle utilisait tant
+// qu'elle vivait dans le primaire (jusqu'au 2026-07-25), celui de ses notes
+// sur 10 — comme sa périodicité et ses jours ouvrés. Depuis sa séparation,
+// tout ce qui n'était pas « primaire » basculait sur le secondaire : la
+// maternelle se voyait proposer les formes du collège, Dictée et Rédaction
+// comprises.
+export const getNoteFormsGroup = (section = "secondaire") =>
+  (section === "primaire" || section === "prescolaire" ? "primaire" : "secondaire");
+
 export const getActiveNoteForms = (schoolInfo = {}, section = "secondaire") => {
   const config = getEvaluationFormsConfig(schoolInfo);
-  const key = section === "primaire" ? "primaire" : "secondaire";
+  const key = getNoteFormsGroup(section);
   const active = config[key].filter((item) => item.active);
   let forms = active.length ? active : DEFAULT_EVALUATION_FORMS[key].filter((item) => item.active);
   // Rubriques marquées `college` (Dictée/Questions, Rédaction) : disponibles
@@ -79,9 +89,7 @@ export const getActiveExamForms = (schoolInfo = {}) => {
 
 export const getEvaluationLabel = (value = "", schoolInfo = {}, options = {}) => {
   const normalizedValue = normalizeText(value);
-  const key = options.kind === "exam"
-    ? "examens"
-    : (options.section === "primaire" ? "primaire" : "secondaire");
+  const key = options.kind === "exam" ? "examens" : getNoteFormsGroup(options.section);
   const forms = getEvaluationFormsConfig(schoolInfo)[key];
   const match = forms.find((item) => normalizeText(item.value) === normalizedValue || normalizeText(item.label) === normalizedValue);
   return match?.label || value;
@@ -89,7 +97,7 @@ export const getEvaluationLabel = (value = "", schoolInfo = {}, options = {}) =>
 
 export const resolveCanonicalNoteType = (value = "", schoolInfo = {}, section = "secondaire") => {
   const normalizedValue = normalizeText(value);
-  const forms = getEvaluationFormsConfig(schoolInfo)[section === "primaire" ? "primaire" : "secondaire"];
+  const forms = getEvaluationFormsConfig(schoolInfo)[getNoteFormsGroup(section)];
   const match = forms.find((item) => normalizeText(item.value) === normalizedValue || normalizeText(item.label) === normalizedValue);
   return match?.value || String(value || "").trim() || "Devoir";
 };
