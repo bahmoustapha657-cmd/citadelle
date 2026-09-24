@@ -2,6 +2,7 @@ import { C } from "../constants";
 import { isSupabase } from "../backend";
 import { AnneeScolaireCard } from "./admin/AnneeScolaireCard";
 import { PromotionCard } from "./admin/PromotionCard";
+import { PassageAdmisCard } from "./admin/PassageAdmisCard";
 import { RolesConfigCard } from "./admin/RolesConfigCard";
 import { PostesCard } from "./admin/postes/PostesCard";
 import { SignaturesCard } from "./admin/signatures/SignaturesCard";
@@ -32,6 +33,8 @@ function AdminPanel({ annee, setAnnee, verrous = {}, schoolId, userRole }) {
       />
 
       <PromotionCard schoolId={schoolId} schoolInfo={a.schoolInfo} toast={a.toast} userRole={userRole} />
+
+      <PassageAdmisCard schoolId={schoolId} schoolInfo={a.schoolInfo} toast={a.toast} userRole={userRole} />
 
       {isSupabase ? (
         <>

@@ -18,7 +18,7 @@
 //   null       → fin de cycle (Terminale)
 //   undefined  → nom de classe non reconnu (aucune écriture, signalé au bilan)
 
-import { getNiveauxExamen } from "./constants";
+import { getNiveauxExamen, getSectionForClasse, getSystemeScolaire, isSectionActive } from "./constants";
 
 const RE_TERMINALE = /^\s*terminale\b/i;
 const RE_MATERNELLE = /^\s*maternelle\s*(.*)$/i;
@@ -101,6 +101,27 @@ export function classeSuivante(classe, systeme = "guineen") {
   return undefined;
 }
 
+// ── Changement de section ───────────────────────────────────────────────────
+// Section où doit être RANGÉE la fiche d'un élève promu en `suivante`, venant
+// de `sectionActuelle`.
+//
+// Changer la classe ne suffit pas : chaque fiche est rangée dans une section
+// (colonne `section` en base) et chaque module ne lit que la sienne. La
+// promotion ne touchait jamais ce rangement — à La Citadelle, les élèves de
+// Grande Section passés en « 1ère Année A » sont restés dans le préscolaire.
+// Même sort pour un admis au CEE (6ème → 7ème Année : primaire → collège) ou
+// au BEPC (10ème → 11ème Année : collège → lycée).
+//
+// null : l'école n'a pas ouvert la section d'arrivée. L'élève a achevé le
+// dernier cycle qu'elle propose (un admis au BEPC dans une école sans lycée
+// la quitte) ; le ranger dans une section fermée le cacherait de tous les
+// écrans.
+export function sectionApresPromotion(suivante, sectionActuelle, schoolInfo) {
+  const section = getSectionForClasse(suivante);
+  if (section === sectionActuelle) return section;
+  return isSectionActive(schoolInfo || {}, section) ? section : null;
+}
+
 // ── Classes d'examen ────────────────────────────────────────────────────────
 // Le passage de ces classes se joue devant un JURY NATIONAL (CEE, BEPC, BAC),
 // pas sur nos évaluations : la promotion automatique n'a pas à en décider.
@@ -123,4 +144,20 @@ export function estClasseExamen(classe, systeme = "guineen") {
     // « 6ème Année » doit matcher « 6ème Année A » mais PAS « 16ème Année ».
     return c === n || c.startsWith(`${n} `);
   });
+}
+
+// ── Passage des admis ───────────────────────────────────────────────────────
+// Décision pour un élève de classe d'examen, d'après le résultat saisi sur sa
+// fiche (et non d'après nos moyennes) :
+//   Admis  → "passe" dans la classe suivante et sa section, ou "diplome"
+//            quand l'établissement n'en a pas (Terminale ; BEPC dans une
+//            école sans lycée ; CEE dans une école sans collège) ;
+//   Refusé → "reste" : il redouble ;
+//   vide   → "attente" : résultats pas encore publiés ou pas saisis.
+export function decisionPassage(classe, resultat, sectionActuelle, schoolInfo) {
+  if (resultat === "Refusé") return { decision: "reste" };
+  if (resultat !== "Admis") return { decision: "attente" };
+  const suivante = classeSuivante(classe, getSystemeScolaire(schoolInfo || {}));
+  const section = suivante && sectionApresPromotion(suivante, sectionActuelle, schoolInfo);
+  return section ? { decision: "passe", classe: suivante, section } : { decision: "diplome" };
 }

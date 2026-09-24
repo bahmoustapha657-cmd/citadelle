@@ -54,6 +54,27 @@ export const anneePrecedente = (annee) => {
   return m ? `${Number(m[1]) - 1}-${m[1]}` : "";
 };
 
+// « 2025-2026 » → « 2026-2027 ». Renvoie "" si le format n'est pas reconnu.
+export const anneeSuivante = (annee) => {
+  const m = /^(\d{4})-(\d{4})$/.exec(String(annee || "").trim());
+  return m ? `${m[2]}-${Number(m[2]) + 1}` : "";
+};
+
+// Fin PRÉVUE de l'année scolaire : le premier jour qui suit ses neuf mois de
+// classe (calcMoisAnnee), d'après le mois de début réglé par l'école. Début
+// en octobre → dernier mois juin → « 2025-2026 » s'achève le 1er juillet 2026
+// à 0 h. Comme pour anneeScolaireDeDate, septembre ouvre l'année : un début de
+// septembre à décembre tombe en AAAA, de janvier à août en AAAA+1.
+// null si l'année n'est pas au format « AAAA-AAAA ».
+export const finAnneeScolaire = (annee, moisDebut = "Octobre") => {
+  const m = /^(\d{4})-(\d{4})$/.exec(String(annee || "").trim());
+  if (!m) return null;
+  const rangDebut = TOUS_MOIS_LONGS.indexOf(moisDebut);
+  // Rang, compté depuis septembre AAAA, du mois qui suit les neuf mois.
+  const rangFin = (rangDebut >= 0 ? rangDebut : 1) + 9;
+  return new Date(Number(m[1]), 8 + rangFin, 1);
+};
+
 // Année scolaire à laquelle appartient une DATE : « 14/02/2026 » → 2025-2026.
 // Septembre ouvre l'année (TOUS_MOIS_COURTS commence à « Sep ») : de septembre
 // à décembre on est dans AAAA-AAAA+1, de janvier à août dans AAAA-1-AAAA.
@@ -304,7 +325,10 @@ export const aReinscrire = (eleve = {}) => eleve.statut === "Actif" && !estReins
 // de départ dans la fiche d'enrôlement, et l'attestation les rédige au passé.
 // « Inactif » n'en est pas : l'élève est toujours inscrit, simplement en
 // sommeil (l'écran Départs le compte à part, pour ses statistiques).
-export const STATUTS_SORTIE = ["Transféré", "Exclu", "Abandonné", "Décédé"];
+// « Diplômé » : admis à l'examen de fin de cycle sans classe suivante dans
+// l'établissement (BAC, ou BEPC dans une école sans lycée) — posé par le
+// passage des admis.
+export const STATUTS_SORTIE = ["Transféré", "Exclu", "Abandonné", "Décédé", "Diplômé"];
 export const estSorti = (eleve = {}) => STATUTS_SORTIE.includes(eleve.statut) || !!eleve.dateDepart;
 
 // Un frais annexe est-il payé pour cet élève ? (« autre » = drapeau legacy)

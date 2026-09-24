@@ -47,7 +47,7 @@ export function PromotionConfigModale({
         </div>
       </div>
       <div style={{background:"#fef3c7",border:"1px solid #fcd34d",borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:12,color:"#92400e"}}>
-        Attention : l'application est <strong>irréversible</strong> — les classes des élèves promus sont mises à jour immédiatement.
+        Attention : l'application est <strong>irréversible</strong> et ne se fait <strong>qu'une fois par année</strong> — les classes des élèves promus sont mises à jour immédiatement.
         Commencez par la <strong>simulation</strong> : elle montre le résultat complet sans rien modifier.
       </div>
       <div style={{display:"flex",gap:8,justifyContent:"flex-end",flexWrap:"wrap"}}>

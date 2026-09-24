@@ -99,6 +99,7 @@
     "statusExpelled": "Expelled",
     "statusDroppedOut": "Dropped out",
     "statusDeceased": "Deceased",
+    "statusGraduated": "Graduated",
     "enrollmentType": "Enrollment type",
     "firstEnrollment": "First enrollment",
     "reEnrollment": "Re-enrollment",

@@ -1,43 +1,75 @@
 import { useContext, useState } from "react";
 import { SchoolContext } from "../../../contexts/SchoolContext";
-import { annulerCloture, cloturerAnnee } from "../cloture-annee";
+import { anneePrecedente } from "../../../constants";
+import { annulerCloture, cloturerAnnee, majFicheEcole } from "../cloture-annee";
+import { dateLongue, etatCloture, peutRouvrir } from "../cloture-annee-utils";
 
 // Changement d'année scolaire par la Direction : l'année qui se termine est
 // archivée AUTOMATIQUEMENT (instantané de la scolarité sur chaque fiche, puis
 // remise à zéro), et le résultat reste affiché avec un bouton d'annulation —
 // l'opération doit rester réversible.
 //
-// Reculer d'une année ne clôture rien : c'est de la consultation.
+// Seule l'année OFFICIELLE de l'école se clôture, une fois sa fin prévue
+// passée, et vers l'année qui la suit immédiatement. Tout autre déplacement
+// est de la consultation.
 export function useClotureAnnee({ schoolId, annee, setAnnee, toast }) {
   // Mois réels de l'école (elle peut démarrer en septembre) : la remise à
   // zéro doit écrire les bonnes clés de mois, pas la liste par défaut.
   // `logAction` : la cloture et son annulation reecrivent la scolarite de TOUTES
   // les fiches. Elles ne laissaient aucune trace au journal — on ne pouvait ni
   // dater ni attribuer une operation de cette portee.
-  const { moisAnnee, logAction } = useContext(SchoolContext);
+  const { moisAnnee, logAction, schoolInfo, setSchoolInfo, auteur } = useContext(SchoolContext);
+  // `annee` n'est que l'année AFFICHÉE : ce peut être une année passée qu'on
+  // consulte. On clôture l'année officielle, partagée par toute l'école.
+  const anneeOfficielle = schoolInfo?.anneeScolaire || annee;
+  const cloture = etatCloture(anneeOfficielle, schoolInfo?.moisDebut);
+  // Seule la DERNIÈRE année clôturée peut être rouverte.
+  const anneeRouvrable = anneePrecedente(anneeOfficielle);
   const [enCours, setEnCours] = useState(false);
   const [resultat, setResultat] = useState(null); // bilan de la dernière clôture
   const [annulation, setAnnulation] = useState(null); // bilan de la dernière annulation
 
   const changerAnnee = async (nouvelle) => {
     if (!nouvelle || nouvelle === annee) return;
-    // Retour en arrière : simple consultation, aucune écriture — y compris
-    // sur l'année officielle de l'école. `persister: false` le garantit.
-    // Sans lui, « revenir voir 2025-2026 » redéfinissait l'année courante de
-    // l'établissement, et le mode archive s'éteignait : les élèves
-    // réapparaissaient avec leur classe de la rentrée suivante.
-    if (nouvelle < annee) { setAnnee(nouvelle, { persister: false }); return; }
+    // Consultation — reculer, ou revenir vers l'année officielle : aucune
+    // écriture, y compris sur l'année officielle (`persister: false`).
+    // Avancer depuis une année consultée la CLÔTURAIT : une année ancienne
+    // sans archive voyait l'état du jour figé sous son nom, et les paiements
+    // en cours remis à zéro.
+    if (nouvelle <= anneeOfficielle) { setAnnee(nouvelle, { persister: false }); return; }
+    if (nouvelle !== cloture.suivante) {
+      toast(`Une année à la fois : clôturez d'abord ${anneeOfficielle}.`, "warning");
+      return;
+    }
+    // Clôturer une année en cours archivait des mois pas encore joués et
+    // remettait à zéro les paiements de l'année — constaté à La Citadelle
+    // (2026-2027 clôturée en août 2026, annulée dans la minute).
+    if (!cloture.possible) {
+      toast(`L'année ${anneeOfficielle} n'est pas terminée : clôture possible à partir du ${dateLongue(cloture.fin)}.`, "warning");
+      return;
+    }
+    if (!confirm(`Clôturer l'année ${anneeOfficielle} et passer en ${nouvelle} ?\n\n`
+      + "La scolarité de chaque élève (mois payés, frais, inscription) est archivée puis remise à zéro.\n"
+      + "La promotion et le passage des admis de l'année deviendront possibles.")) return;
     setEnCours(true);
     try {
-      const bilan = await cloturerAnnee({ schoolId, annee, moisAnnee });
-      setAnnee(nouvelle);
+      const bilan = await cloturerAnnee({ schoolId, annee: anneeOfficielle, moisAnnee });
+      // Nouvelle année et repère de clôture partent ENSEMBLE : c'est le repère
+      // qui ouvre la promotion de l'année close.
+      const clotures = {
+        ...(schoolInfo?.clotures || {}),
+        [anneeOfficielle]: { le: new Date().toISOString(), par: auteur || "" },
+      };
+      await majFicheEcole(schoolId, { anneeScolaire: nouvelle, clotures });
+      setSchoolInfo((prec) => ({ ...prec, anneeScolaire: nouvelle, clotures }));
+      setAnnee(nouvelle, { persister: false });
       setResultat({ ...bilan, nouvelle });
-      logAction(`Cloture de l'annee ${annee}`, `${bilan.archives} fiche(s) archivee(s) sur ${bilan.total} — nouvelle annee : ${nouvelle}`);
+      logAction(`Cloture de l'annee ${anneeOfficielle}`, `${bilan.archives} fiche(s) archivee(s) sur ${bilan.total} — nouvelle annee : ${nouvelle}`);
       setAnnulation(null);
       toast(
         bilan.archives > 0
-          ? `Année ${annee} clôturée — ${bilan.archives} fiche(s) archivée(s), compteurs remis à zéro.`
-          : `Année ${annee} déjà clôturée — aucune fiche à archiver.`,
+          ? `Année ${anneeOfficielle} clôturée — ${bilan.archives} fiche(s) archivée(s), compteurs remis à zéro.`
+          : `Année ${anneeOfficielle} déjà clôturée — aucune fiche à archiver.`,
         "success",
       );
     } catch (e) {
@@ -51,6 +83,14 @@ export function useClotureAnnee({ schoolId, annee, setAnnee, toast }) {
   // compte d'abord les fiches concernées et on demande confirmation.
   const annulerPour = async (anneeCible) => {
     if (!anneeCible) return;
+    if (anneeCible !== anneeRouvrable) {
+      toast(`Seule la dernière année clôturée (${anneeRouvrable}) peut être rouverte.`, "warning");
+      return;
+    }
+    if (!peutRouvrir(schoolInfo, anneeCible)) {
+      toast(`Impossible de rouvrir ${anneeCible} : sa promotion ou le passage de ses admis a déjà été appliqué.`, "error");
+      return;
+    }
     setEnCours(true);
     try {
       const apercu = await annulerCloture({ schoolId, annee: anneeCible, moisAnnee, simulate: true });
@@ -63,7 +103,11 @@ export function useClotureAnnee({ schoolId, annee, setAnnee, toast }) {
         : "";
       if (!confirm(`Restaurer l'année ${anneeCible} sur ${apercu.restaures} fiche(s) ?${avertissement}`)) return;
       const bilan = await annulerCloture({ schoolId, annee: anneeCible, moisAnnee });
-      setAnnee(anneeCible);
+      const clotures = { ...(schoolInfo?.clotures || {}) };
+      delete clotures[anneeCible];
+      await majFicheEcole(schoolId, { anneeScolaire: anneeCible, clotures });
+      setSchoolInfo((prec) => ({ ...prec, anneeScolaire: anneeCible, clotures }));
+      setAnnee(anneeCible, { persister: false });
       setAnnulation(bilan);
       setResultat(null);
       logAction(
@@ -78,5 +122,8 @@ export function useClotureAnnee({ schoolId, annee, setAnnee, toast }) {
     }
   };
 
-  return { enCours, resultat, setResultat, annulation, setAnnulation, changerAnnee, annulerPour };
+  return {
+    enCours, resultat, setResultat, annulation, setAnnulation, changerAnnee, annulerPour,
+    anneeOfficielle, cloture, anneeRouvrable, rouvrable: peutRouvrir(schoolInfo, anneeRouvrable),
+  };
 }

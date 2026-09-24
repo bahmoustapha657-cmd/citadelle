@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  champsArchivageClasse,
   classePourAnnee,
   champsCloture,
   scolaritePourAnnee,
@@ -52,20 +51,6 @@ test("cloture apres une promotion : garde la classe figee ET remet a zero", () =
     "la trace de la promotion est conservee");
   assert.equal(champs.inscriptionPayee, false, "les compteurs doivent bien repartir a zero");
   assert.deepEqual(champs.fraisPayes, {});
-});
-
-test("archivage de promotion : fige la classe sans toucher aux paiements", () => {
-  const champs = champsArchivageClasse(eleveType(), ANNEE);
-  assert.equal(champs.historique[ANNEE].classe, "4ème Année A");
-  assert.ok(champs.historique[ANNEE].archiveLe);
-  assert.equal(champs.inscriptionPayee, undefined, "la promotion ne remet aucun compteur a zero");
-  assert.equal(champs.mens, undefined);
-});
-
-test("archivage de promotion : n'ecrase jamais un instantane existant", () => {
-  const deja = { ...eleveType(), historique: { [ANNEE]: { classe: "3ème Année A", clotureLe: "x" } } };
-  assert.equal(champsArchivageClasse(deja, ANNEE), null);
-  assert.equal(champsArchivageClasse(eleveType(), ""), null, "sans annee, on ne fige rien");
 });
 
 test("lecture d'une annee passee : la classe archivee prime", () => {
