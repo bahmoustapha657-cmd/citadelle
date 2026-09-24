@@ -18,10 +18,10 @@
 // La logique pure (instantané, état vierge, projection d'une année) vit dans
 // cloture-annee-utils.js — ce fichier ne porte que les accès aux données.
 
-import { collection, doc, getDocs, writeBatch } from "firebase/firestore";
+import { collection, doc, getDocs, setDoc, writeBatch } from "firebase/firestore";
 import { db } from "../../firebaseDb";
 import { isSupabase } from "../../backend";
-import { chargerCollection, modifierChampDoc } from "../../backend/data-supabase";
+import { chargerCollection, modifierChampDoc, sauverParametresEcole } from "../../backend/data-supabase";
 import {
   COLLECTIONS_ELEVES, aDesPaiements, champsCloture, champsRestauration,
 } from "./cloture-annee-utils";
@@ -61,6 +61,14 @@ async function appliquerUpdates(schoolId, updates) {
     }
     await batch.commit();
   }
+}
+
+// Repères de fin d'année sur la fiche ÉCOLE (année officielle, `clotures`,
+// `promotions`, `passagesAdmis`) — fusionnés au premier niveau, comme les
+// Paramètres : passer l'objet complet d'un repère, pas sa seule nouvelle clé.
+export async function majFicheEcole(schoolId, champs) {
+  if (isSupabase) return sauverParametresEcole(schoolId, champs);
+  return setDoc(doc(db, "ecoles", schoolId), champs, { merge: true });
 }
 
 // Archive l'année `annee` sur chaque fiche puis remet la scolarité à zéro.

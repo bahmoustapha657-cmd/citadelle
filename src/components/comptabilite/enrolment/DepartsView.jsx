@@ -2,7 +2,7 @@ import React from "react";
 import { C } from "../../../constants";
 import { Badge, Btn, Card, Stat, THead, TR, TD, Vide } from "../../ui";
 
-const MOTIFS_DEPART = ["Transféré","Exclu","Abandonné","Décédé","Inactif"];
+const MOTIFS_DEPART = ["Transféré","Exclu","Abandonné","Décédé","Diplômé","Inactif"];
 
 export function DepartsView({ elevesEnrol, canEdit, modEnrol, toast }) {
   const partis = elevesEnrol.filter(e=>MOTIFS_DEPART.includes(e.statut));
@@ -20,7 +20,7 @@ export function DepartsView({ elevesEnrol, canEdit, modEnrol, toast }) {
       <Stat label="Total départs" value={partis.length} bg="#fee2e2" sub="cette année scolaire"/>
       {parMotif.map(x=>(
         <Stat key={x.motif} label={x.motif} value={x.count} bg={
-          x.motif==="Transféré"?"#dbeafe":x.motif==="Exclu"?"#fef9c3":x.motif==="Abandonné"?"#ffe4e6":x.motif==="Décédé"?"#f3f4f6":"#f0fdf4"
+          x.motif==="Transféré"?"#dbeafe":x.motif==="Exclu"?"#fef9c3":x.motif==="Abandonné"?"#ffe4e6":x.motif==="Décédé"?"#f3f4f6":x.motif==="Diplômé"?"#ede9fe":"#f0fdf4"
         }/>
       ))}
     </div>
@@ -46,7 +46,7 @@ export function DepartsView({ elevesEnrol, canEdit, modEnrol, toast }) {
             <TD><span style={{fontSize:11,fontFamily:"monospace",background:"#e0ebf8",padding:"2px 5px",borderRadius:4,color:C.blue,fontWeight:700}}>{e.matricule}</span></TD>
             <TD bold>{e.nom} {e.prenom}</TD>
             <TD><Badge color="blue">{e.classe}</Badge></TD>
-            <TD><Badge color={e.statut==="Exclu"?"red":e.statut==="Décédé"?"gray":"amber"}>{e.statut}</Badge></TD>
+            <TD><Badge color={e.statut==="Exclu"?"red":e.statut==="Décédé"?"gray":e.statut==="Diplômé"?"purple":"amber"}>{e.statut}</Badge></TD>
             <TD>{e.dateDepart||"—"}</TD>
             <TD><span style={{fontSize:11,color:"#6b7280"}}>{e.destinationDepart||e.motifDepart||"—"}</span></TD>
             {canEdit&&<TD>

@@ -3,7 +3,7 @@
 // undefined = classe non reconnue (aucune écriture).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { classeSuivante } from "../src/promotion-utils.js";
+import { classeSuivante, sectionApresPromotion } from "../src/promotion-utils.js";
 
 test("Maternelle → 1ère Année (suffixe conservé)", () => {
   assert.equal(classeSuivante("Maternelle A"), "1ère Année A");
@@ -89,4 +89,45 @@ test("Classes non reconnues → undefined (aucune écriture)", () => {
   assert.equal(classeSuivante("13ème Année A"), undefined);
   assert.equal(classeSuivante("0ème Année"), undefined);
   assert.equal(classeSuivante("Classe Spéciale"), undefined);
+});
+
+// Rangement de la fiche après promotion : changer la classe ne suffit pas,
+// chaque module ne lit que SA section. Défaut constaté à La Citadelle : les
+// Grande Section promus en « 1ère Année A » étaient restés au préscolaire.
+const TOUTES = { sectionsActives: ["prescolaire", "primaire", "college", "lycee"] };
+
+test("Promotion dans la même section : la fiche ne bouge pas", () => {
+  assert.equal(sectionApresPromotion("Moyenne Section A", "prescolaire", TOUTES), "prescolaire");
+  assert.equal(sectionApresPromotion("3ème Année A", "primaire", TOUTES), "primaire");
+  assert.equal(sectionApresPromotion("9ème Année B", "college", TOUTES), "college");
+});
+
+test("Sortie de Grande Section : la fiche passe au primaire (deux systèmes)", () => {
+  const guineen = classeSuivante("Grande Section A", "guineen");
+  const francophone = classeSuivante("Grande Section A", "francophone");
+  assert.equal(sectionApresPromotion(guineen, "prescolaire", TOUTES), "primaire");
+  assert.equal(sectionApresPromotion(francophone, "prescolaire", TOUTES), "primaire");
+});
+
+test("Admis au CEE / BEPC : primaire → collège, collège → lycée", () => {
+  assert.equal(sectionApresPromotion("7ème Année A", "primaire", TOUTES), "college");
+  assert.equal(sectionApresPromotion("11ème Année A", "college", TOUTES), "lycee");
+  assert.equal(sectionApresPromotion("6ème A", "primaire", TOUTES), "college");   // CM2 francophone
+  assert.equal(sectionApresPromotion("Seconde A", "college", TOUTES), "lycee");   // 3ème francophone
+});
+
+test("Section d'arrivée fermée dans l'école : fin de cycle (null)", () => {
+  // La Citadelle n'a pas de lycée : un admis au BEPC quitte l'école.
+  const sansLycee = { sectionsActives: ["prescolaire", "primaire", "college"] };
+  assert.equal(sectionApresPromotion("11ème Année A", "college", sansLycee), null);
+  assert.equal(sectionApresPromotion("7ème Année A", "primaire", { sectionsActives: ["prescolaire", "primaire"] }), null);
+  // Mais une promotion INTERNE à une section n'est jamais bloquée, même si
+  // l'école a (mal) déclaré ses sections.
+  assert.equal(sectionApresPromotion("8ème Année A", "college", { sectionsActives: ["primaire"] }), "college");
+});
+
+test("Réglage absent : toutes les sections sont ouvertes", () => {
+  assert.equal(sectionApresPromotion("1ère Année A", "prescolaire", {}), "primaire");
+  assert.equal(sectionApresPromotion("1ère Année A", "prescolaire", undefined), "primaire");
+  assert.equal(sectionApresPromotion("1ère Année A", "prescolaire", null), "primaire");
 });

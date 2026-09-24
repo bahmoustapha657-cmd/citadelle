@@ -4,7 +4,7 @@
 
 // Extension explicite : ce module est couvert par des tests Node, dont la
 // résolution ESM n'infère pas les extensions comme le fait Vite.
-import { initMens } from "../../constants.js";
+import { anneePrecedente, anneeSuivante, finAnneeScolaire, initMens } from "../../constants.js";
 
 // Toutes les sections, préscolaire compris.
 export const COLLECTIONS_ELEVES = [
@@ -74,7 +74,8 @@ export function champsCloture(eleve = {}, annee = "", { moisAnnee = null, mainte
   //
   //  • `clotureLe` — une VRAIE clôture est passée. On s'arrête : rejouer
   //    l'état vierge effacerait les encaissements de la nouvelle année.
-  //  • `archiveLe` — la PROMOTION a figé la classe avant de la déplacer, sans
+  //  • `archiveLe` — une promotion lancée avant la clôture (possible jusqu'en
+  //    septembre 2026, interdit depuis) a figé la classe avant de la déplacer, sans
   //    toucher aux compteurs. L'année n'est donc pas close pour autant : il
   //    reste à remettre la scolarité à zéro. Sans cette distinction, une école
   //    qui promeut avant de clôturer voyait la clôture sauter tous ses élèves
@@ -113,24 +114,6 @@ export function classePourAnnee(eleve = {}, annee = "") {
   return (snap && snap.classe) || eleve.classe || "";
 }
 
-// Archive l'instantané de l'année SANS remettre la scolarité à zéro.
-//
-// La clôture, elle, archive ET repart d'une année vierge — c'est son office.
-// La promotion n'a pas à toucher aux compteurs de paiement : elle ne fait
-// qu'écraser la classe. Mais elle l'écrasait SANS RIEN GARDER quand l'école
-// promouvait avant d'avoir clôturé — la classe de l'année écoulée était alors
-// perdue, et avec elle la possibilité de réafficher les bulletins, le
-// classement et le tableau d'honneur de cette année-là.
-// Renvoie null si l'année est déjà archivée : le vrai instantané de clôture
-// prime toujours, on ne l'écrase jamais.
-export function champsArchivageClasse(eleve = {}, annee = "", { maintenant = new Date() } = {}) {
-  if (!annee) return null;
-  const historique = { ...(eleve.historique || {}) };
-  if (historique[annee]) return null;
-  historique[annee] = { ...instantaneEleve(eleve), archiveLe: maintenant.toISOString() };
-  return { historique };
-}
-
 // Champs à écrire pour restaurer l'année archivée sur la fiche. Renvoie null
 // si cet élève n'a pas d'archive pour cette année. On repart de l'état vierge
 // pour que les champs ABSENTS de l'instantané soient remis à zéro plutôt que
@@ -146,6 +129,67 @@ export function champsRestauration(eleve = {}, annee = "", { moisAnnee = null } 
   }
   if (snap.classe) champs.classe = snap.classe;
   return champs;
+}
+
+// ── Ordre de fin d'année ────────────────────────────────────────────────────
+// Fin prévue de l'année → clôture → promotion et passage des admis. Chaque
+// étape suppose la précédente :
+//  • clôturer avant la fin prévue archivait une année encore en cours (et
+//    remettait ses paiements à zéro) ;
+//  • promouvoir avant la clôture faisait prendre à l'archive la classe
+//    d'ARRIVÉE — les archives 2025-2026 de La Citadelle en sont faussées ;
+//  • relancer une promotion faisait avancer chaque élève d'un cran de plus.
+// Les repères vivent sur la fiche école (ecoles.extra) : `clotures`,
+// `promotions` et `passagesAdmis`, indexés par année.
+
+// « 1er juillet 2027 » — pour les messages du calendrier de fin d'année.
+export function dateLongue(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "";
+  const texte = date.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+  return date.getDate() === 1 ? texte.replace(/^1 /, "1er ") : texte;
+}
+
+// Peut-on clôturer `annee` (l'année officielle de l'école) ? Seulement une
+// fois sa fin prévue passée. `suivante` : la seule année vers laquelle la
+// clôture peut mener — on n'avance que d'une année à la fois.
+export function etatCloture(annee = "", moisDebut = "Octobre", maintenant = new Date()) {
+  const fin = finAnneeScolaire(annee, moisDebut);
+  return { annee, suivante: anneeSuivante(annee), fin, possible: !!fin && maintenant >= fin };
+}
+
+// Promotion : elle porte sur l'année qui VIENT d'être clôturée (la précédente
+// de l'année officielle), une seule fois.
+//   "possible"  → clôturée par l'application, pas encore promue ;
+//   "appliquee" → déjà faite (`appliquee` porte sa date et son bilan) ;
+//   "attente"   → aucune clôture enregistrée pour cette année. C'est aussi le
+//                 cas d'une année clôturée AVANT ces repères : sa promotion,
+//                 faite à l'ancienne, ne peut pas être rejouée sans risque.
+export function etatPromotion(schoolInfo = {}, anneeOfficielle = "") {
+  const annee = anneePrecedente(anneeOfficielle);
+  const cloture = schoolInfo?.clotures?.[annee] || null;
+  const appliquee = schoolInfo?.promotions?.[annee] || null;
+  if (appliquee) return { annee, statut: "appliquee", cloture, appliquee };
+  if (cloture) return { annee, statut: "possible", cloture };
+  return { annee, statut: "attente" };
+}
+
+// Classe qu'occupait l'élève pendant l'année CLÔTURÉE `annee` — s'il relève
+// de la promotion ou du passage des admis de cette année-là. null sinon :
+//   • pas d'instantané de clôture : il n'était pas inscrit cette année-là ;
+//   • classe changée depuis la clôture : déjà traité (promu, admis passé,
+//     déplacé à la main). Le rejuger le ferait avancer une seconde fois.
+// C'est ce qui rend promotion et passage des admis rejouables sans danger.
+export function classeAnneeCloturee(eleve = {}, annee = "") {
+  const snap = (eleve.historique || {})[annee];
+  if (!snap?.clotureLe || !snap.classe) return null;
+  return snap.classe === (eleve.classe || "") ? snap.classe : null;
+}
+
+// Rouvrir une année déjà promue (ou dont des admis sont passés) restaurerait
+// leur ancienne classe sans leur ancienne section, et effacerait les
+// résultats d'examen archivés : on l'interdit.
+export function peutRouvrir(schoolInfo = {}, annee = "") {
+  return !schoolInfo?.promotions?.[annee] && !schoolInfo?.passagesAdmis?.[annee];
 }
 
 // Années déjà archivées sur au moins une fiche, de la plus récente à la plus
