@@ -1,18 +1,22 @@
 # EduGest sur Supabase — état du branchement frontend
 
-Reconstruction **parallèle** : le frontend React peut tourner sur **Firebase** (défaut, prod) ou **Supabase**, via un simple interrupteur. Rien n'est imposé en prod.
+Supabase est le **seul** backend du frontend depuis la liquidation Firebase
+(PR #87) : l'interrupteur `VITE_BACKEND`, qui a permis la reconstruction en
+parallèle de Firebase, a disparu avec le SDK Firebase du client. Ce document
+garde l'historique de la migration.
 
-## Activer le mode Supabase (local)
+## Lancer le frontend en local
 
-Dans `.env.local`, puis redémarrer `npm run dev` :
+`npx vite --mode supabase` lit `.env.supabase` (commité). Pour `npm run dev`,
+renseigner les mêmes variables dans `.env.local` :
 
 ```
-VITE_BACKEND=supabase
 VITE_SUPABASE_URL=https://pfzanslrcowkjjipuzpa.supabase.co
 VITE_SUPABASE_ANON_KEY=<clé anon publique>
 ```
 
-Défaut sans ces variables = `firebase` (prod intacte). Interrupteur : `src/backend.js`.
+Sans elles, l'application s'ouvre mais toute lecture échoue (« Supabase non
+configuré »).
 
 ## Pré-requis base de données (SQL Editor, dans l'ordre)
 
@@ -52,7 +56,7 @@ npm run deploy:pages       # = vite build --mode supabase (lit .env.supabase)
 ```
 
 - Pré-requis une seule fois : `npx wrangler login` (compte Cloudflare).
-- `.env.supabase` (commité — la clé anon est publique) fournit `VITE_BACKEND`,
+- `.env.supabase` (commité — la clé anon est publique) fournit
   `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` au mode `supabase` de Vite.
 - `public/_headers` porte les en-têtes de sécurité (équivalent Cloudflare des
   headers de `vercel.json`) avec une CSP qui autorise `*.supabase.co` —
@@ -64,7 +68,7 @@ npm run deploy:pages       # = vite build --mode supabase (lit .env.supabase)
 
 | Fichier | Rôle |
 |---|---|
-| `backend.js` | Interrupteur `VITE_BACKEND` + `emailFor` (domaine interne `@edugest.app`) |
+| `backend.js` | `emailFor` / `superadminEmailFor` (domaine interne `@edugest.app`) |
 | `supabaseClient.js` | Client Supabase (clé anon) |
 | `auth-supabase.js` | Connexion (école/superadmin), session, déconnexion |
 | `collection-map.js` | Firestore (collections par section) → tables Supabase unifiées ; transformateurs snake_case↔camelCase (2 sens) |
