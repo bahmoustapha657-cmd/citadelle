@@ -6,7 +6,7 @@
 // Orchestrateur : assemble styles (./etats-salaires/etats-styles) et
 // blocs de sections (./etats-salaires/etats-blocs).
 
-import { fmtN, today } from "../constants.js";
+import { fmtN, isGroupeActif, today } from "../constants.js";
 import { edugestBrandHTML, enteteDoc } from "./print-helpers.js";
 import { blocsSignatures } from "./signatures.js";
 import { etatsCss } from "./etats-salaires/etats-styles.js";
@@ -47,6 +47,10 @@ export function imprimerEtatsSalaires({
   const totRevSec  = salairesSec.reduce((sum,s)=>sum+Number(s.revision||0),0);
   const totRevPrim = salairesPrim.reduce((sum,s)=>sum+Number(s.revision||0),0);
   const totRevPers = salairesPers.reduce((sum,s)=>sum+Number(s.revision||0),0);
+  // Pas de « Section Secondaire — aucun enseignant » dans une école qui n'a
+  // pas de secondaire (idem primaire) ; une fiche existante s'imprime toujours.
+  const avecSecondaire = isGroupeActif(schoolInfo, "secondaire") || salairesSec.length > 0;
+  const avecPrimaire = isGroupeActif(schoolInfo, "primaire") || salairesPrim.length > 0;
 
   const w = window.open("","_blank");
   w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/>
@@ -65,8 +69,8 @@ export function imprimerEtatsSalaires({
       <div class="stat-card net"><div class="lib">Net à payer</div><div class="val">${fmtN(totNetGlobal)} GNF</div></div>
     </div>
 
-    ${blocSecondaire(salairesSec, { totMontantSec, totBonSec, totRevSec, totNetSec, calcExecute, calcMontant, calcNet })}
-    ${blocPrimaire(salairesPrim, { totMontantPrim, totBonPrim, totRevPrim, totNetPrim })}
+    ${avecSecondaire ? blocSecondaire(salairesSec, { totMontantSec, totBonSec, totRevSec, totNetSec, calcExecute, calcMontant, calcNet }) : ""}
+    ${avecPrimaire ? blocPrimaire(salairesPrim, { totMontantPrim, totBonPrim, totRevPrim, totNetPrim }) : ""}
     ${blocPersonnel(salairesPers, { totMontantPers, totBonPers, totRevPers, totNetPers })}
 
     <div class="global-totaux">

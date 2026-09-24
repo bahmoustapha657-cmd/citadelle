@@ -1,7 +1,7 @@
 import { useContext, useMemo, useState } from "react";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { useFirestore } from "../../hooks/useFirestore";
-import { getAnnee } from "../../constants";
+import { getAnnee, isSectionActive, sectionOuverte } from "../../constants";
 import { getPeriodesForSection } from "../../period-utils";
 import { matieresForClasse as matieresForClasseFn } from "../ecole/ecole-logic";
 import { statsAssiduite, statsEffectifs, statsEnseignants, statsFinances } from "./stats-logic";
@@ -19,8 +19,12 @@ const SECTIONS = [
 export function useStatistiques({ annee }) {
   const { schoolInfo, moisAnnee } = useContext(SchoolContext);
   const anneeCourante = annee || getAnnee();
-  const [sectionCle, setSectionCle] = useState("primaire");
+  const [sectionChoisie, setSectionCle] = useState("primaire");
   const [tab, setTab] = useState("resultats");
+  // Le sélecteur ne propose que les sections ouvertes dans l'école
+  // (Paramètres → Identité) ; un choix fermé retombe sur la première ouverte.
+  const sectionsOuvertes = SECTIONS.filter((s) => isSectionActive(schoolInfo, s.cle));
+  const sectionCle = sectionOuverte(schoolInfo, sectionChoisie);
 
   const section = SECTIONS.find((s) => s.cle === sectionCle) || SECTIONS[1];
   const periodes = getPeriodesForSection(schoolInfo, section.periodeSection, moisAnnee);
@@ -70,7 +74,7 @@ export function useStatistiques({ annee }) {
   const actifs = useMemo(() => elevesSection.filter((e) => (e.statut || "Actif") === "Actif"), [elevesSection]);
 
   return {
-    SECTIONS, section, sectionCle, setSectionCle,
+    SECTIONS: sectionsOuvertes, section, sectionCle, setSectionCle,
     tab, setTab,
     periodes, periode: periodeActive, setPeriode,
     schoolInfo, anneeCourante, moisAnnee,

@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { SchoolContext, SCHOOL_INFO_DEFAUT } from "./contexts/SchoolContext";
-import { calcMoisAnnee, calcMoisSalaire, getModulesForRole } from "./constants";
+import { calcMoisAnnee, calcMoisSalaire, getModulesForRole, isModuleOuvertPourEcole } from "./constants";
 import { isSupabase } from "./backend";
 import { ROLES_HORS_POSTES, getSessionPermissions, readableModules } from "../shared/postes-config.js";
 import { usePwaState } from "./hooks/use-pwa-state";
@@ -90,12 +90,15 @@ export default function App() {
   // est la carte de permissions du poste — MÊME source que la sidebar
   // (compute-permissions). getModulesForRole (rôle enum) sous-évaluait les
   // modules des comptes à poste (role_settings vide ⇒ seuls les modules
-  // requis) et éjectait la direction des pages académiques.
+  // requis) et éjectait la direction des pages académiques. Un module de
+  // section que l'école n'a pas (Secondaire sans collège ni lycée) est écarté
+  // comme dans la sidebar.
   useEffect(() => {
     if (!utilisateur) return;
-    const modulesCourants = isSupabase && !ROLES_HORS_POSTES.includes(utilisateur.role)
+    const modulesCourants = (isSupabase && !ROLES_HORS_POSTES.includes(utilisateur.role)
       ? readableModules(getSessionPermissions(utilisateur, schoolInfo))
-      : getModulesForRole(utilisateur.role, schoolInfo);
+      : getModulesForRole(utilisateur.role, schoolInfo))
+      .filter((moduleId) => isModuleOuvertPourEcole(moduleId, schoolInfo));
     const fallbackPage = modulesCourants[0] || null;
     if (fallbackPage && !modulesCourants.includes(page)) {
       setPage(fallbackPage);

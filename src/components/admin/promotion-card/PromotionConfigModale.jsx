@@ -1,4 +1,6 @@
-import { C } from "../../../constants";
+import { useContext } from "react";
+import { SchoolContext } from "../../../contexts/SchoolContext";
+import { C, isGroupeActif } from "../../../constants";
 import { Btn, Modale } from "../../ui";
 
 // Modale de configuration de la promotion : seuils de passage par section,
@@ -7,13 +9,18 @@ export function PromotionConfigModale({
   seuilCollege, setSeuilCollege, seuilPrimaire, setSeuilPrimaire,
   sansNotesBehavior, setSansNotesBehavior, fermer, lancerPromotion,
 }) {
+  const { schoolInfo } = useContext(SchoolContext);
+  // Un seuil par groupe ouvert dans l'école : pas de seuil Collège / Lycée
+  // dans une école primaire (le seuil masqué garde sa valeur, sans effet).
+  const avecSecondaire = isGroupeActif(schoolInfo, "secondaire");
+  const avecPrimaire = isGroupeActif(schoolInfo, "primaire");
   return (
     <Modale titre="⚙️ Configuration de la promotion" fermer={fermer}>
       <p style={{margin:"0 0 16px",fontSize:13,color:"#374151"}}>
         Définissez le seuil de passage pour chaque section. Les élèves dont la moyenne annuelle est inférieure au seuil redoublent.
       </p>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:16}}>
-        <div>
+      <div style={{display:"grid",gridTemplateColumns:avecSecondaire&&avecPrimaire?"1fr 1fr":"1fr",gap:14,marginBottom:16}}>
+        {avecSecondaire&&<div>
           <label style={{fontSize:12,fontWeight:700,color:C.blueDark,display:"block",marginBottom:4}}>
             Seuil College / Lycee (sur 20)
           </label>
@@ -21,8 +28,8 @@ export function PromotionConfigModale({
             onChange={e=>setSeuilCollege(e.target.value)}
             style={{width:"100%",border:"1.5px solid #b0c4d8",borderRadius:8,padding:"8px 12px",fontSize:14,fontWeight:700,color:C.blue}}/>
           <p style={{fontSize:11,color:"#9ca3af",margin:"4px 0 0"}}>Defaut recommande : 10/20</p>
-        </div>
-        <div>
+        </div>}
+        {avecPrimaire&&<div>
           <label style={{fontSize:12,fontWeight:700,color:C.blueDark,display:"block",marginBottom:4}}>
             Seuil Prescolaire / Primaire (sur 10)
           </label>
@@ -30,7 +37,7 @@ export function PromotionConfigModale({
             onChange={e=>setSeuilPrimaire(e.target.value)}
             style={{width:"100%",border:"1.5px solid #b0c4d8",borderRadius:8,padding:"8px 12px",fontSize:14,fontWeight:700,color:C.blue}}/>
           <p style={{fontSize:11,color:"#9ca3af",margin:"4px 0 0"}}>Defaut recommande : 5/10</p>
-        </div>
+        </div>}
       </div>
       <div style={{marginBottom:16}}>
         <label style={{fontSize:12,fontWeight:700,color:C.blueDark,display:"block",marginBottom:6}}>

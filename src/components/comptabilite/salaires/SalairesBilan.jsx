@@ -3,7 +3,9 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { C, fmtN, getAnnee } from "../../../constants";
 import { Card } from "../../ui";
 
-export function SalairesBilan({ totNetSec, totNetPrim, totNetPers, salairesMois, moisSalaire, salaires, calcNet, moisLabel, salairesSec, salairesPrim, salairesPers, annee }) {
+// `groupesPaie` : groupes affichés (cf. SalairesTab) — une école sans
+// secondaire n'a ni carte, ni part, ni barre « Secondaire ».
+export function SalairesBilan({ totNetSec, totNetPrim, totNetPers, salairesMois, moisSalaire, salaires, calcNet, moisLabel, salairesSec, salairesPrim, salairesPers, annee, groupesPaie = { secondaire: true, primaire: true } }) {
   const totGen=totNetSec+totNetPrim+totNetPers;
   const nbEns=salairesMois.length;
   const dataEvol=moisSalaire.map(m=>{
@@ -21,16 +23,16 @@ export function SalairesBilan({ totNetSec, totNetPrim, totNetPers, salairesMois,
         <div style={{fontSize:18,fontWeight:900}}>{(totGen/1e6).toFixed(3)}M</div>
         <div style={{fontSize:10,opacity:.75,marginTop:2}}>GNF — {moisLabel}</div>
       </div>
-      <div style={{background:"linear-gradient(135deg,#0A1628,#1a6baa)",borderRadius:10,padding:"14px 16px",color:"#fff",textAlign:"center"}}>
+      {groupesPaie.secondaire&&<div style={{background:"linear-gradient(135deg,#0A1628,#1a6baa)",borderRadius:10,padding:"14px 16px",color:"#fff",textAlign:"center"}}>
         <div style={{fontSize:11,opacity:.85,marginBottom:4}}>Secondaire</div>
         <div style={{fontSize:18,fontWeight:900}}>{(totNetSec/1e6).toFixed(3)}M</div>
         <div style={{fontSize:10,opacity:.75,marginTop:2}}>{salairesSec.length} enseignant(s)</div>
-      </div>
-      <div style={{background:"linear-gradient(135deg,#00A876,#00C48C)",borderRadius:10,padding:"14px 16px",color:"#fff",textAlign:"center"}}>
+      </div>}
+      {groupesPaie.primaire&&<div style={{background:"linear-gradient(135deg,#00A876,#00C48C)",borderRadius:10,padding:"14px 16px",color:"#fff",textAlign:"center"}}>
         <div style={{fontSize:11,opacity:.85,marginBottom:4}}>Primaire</div>
         <div style={{fontSize:18,fontWeight:900}}>{(totNetPrim/1e6).toFixed(3)}M</div>
         <div style={{fontSize:10,opacity:.75,marginTop:2}}>{salairesPrim.length} enseignant(s)</div>
-      </div>
+      </div>}
       <div style={{background:"linear-gradient(135deg,#7c3aed,#a855f7)",borderRadius:10,padding:"14px 16px",color:"#fff",textAlign:"center"}}>
         <div style={{fontSize:11,opacity:.85,marginBottom:4}}>Personnel</div>
         <div style={{fontSize:18,fontWeight:900}}>{(totNetPers/1e6).toFixed(3)}M</div>
@@ -50,8 +52,8 @@ export function SalairesBilan({ totNetSec, totNetPrim, totNetPers, salairesMois,
     {/* Barre de répartition */}
     {totGen>0&&<div style={{marginBottom:16,background:"#f0f4f8",borderRadius:10,padding:"12px 16px"}}>
       <div style={{display:"flex",justifyContent:"space-between",fontSize:11,fontWeight:700,marginBottom:6,flexWrap:"wrap",gap:4}}>
-        <span style={{color:C.blue}}>Secondaire : {totNetSec>0?((totNetSec/totGen)*100).toFixed(1):0}%</span>
-        <span style={{color:C.green}}>Primaire : {totNetPrim>0?((totNetPrim/totGen)*100).toFixed(1):0}%</span>
+        {groupesPaie.secondaire&&<span style={{color:C.blue}}>Secondaire : {totNetSec>0?((totNetSec/totGen)*100).toFixed(1):0}%</span>}
+        {groupesPaie.primaire&&<span style={{color:C.green}}>Primaire : {totNetPrim>0?((totNetPrim/totGen)*100).toFixed(1):0}%</span>}
         <span style={{color:"#7c3aed"}}>Personnel : {totNetPers>0?((totNetPers/totGen)*100).toFixed(1):0}%</span>
       </div>
       <div style={{display:"flex",borderRadius:6,overflow:"hidden",height:12}}>
@@ -70,8 +72,8 @@ export function SalairesBilan({ totNetSec, totNetPrim, totNetPers, salairesMois,
           <YAxis tick={{fontSize:10}} tickFormatter={v=>v===0?"0":`${(v/1e6).toFixed(1)}M`}/>
           <Tooltip formatter={(v,n)=>[fmtN(v)+" GNF",n]}/>
           <Legend wrapperStyle={{fontSize:11}}/>
-          <Bar dataKey="Secondaire" fill={C.blue} radius={[3,3,0,0]}/>
-          <Bar dataKey="Primaire" fill={C.green} radius={[3,3,0,0]}/>
+          {groupesPaie.secondaire&&<Bar dataKey="Secondaire" fill={C.blue} radius={[3,3,0,0]}/>}
+          {groupesPaie.primaire&&<Bar dataKey="Primaire" fill={C.green} radius={[3,3,0,0]}/>}
           <Bar dataKey="Personnel" fill="#a855f7" radius={[3,3,0,0]}/>
         </BarChart>
       </ResponsiveContainer>

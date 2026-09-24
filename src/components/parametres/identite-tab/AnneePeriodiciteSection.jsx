@@ -1,4 +1,4 @@
-import { C, TOUS_MOIS_LONGS, SYSTEMES_SCOLAIRES, SECTIONS_ECOLE, JOURS_SEMAINE, calcMoisAnnee, getClassesForSection, getSectionLabel } from "../../../constants";
+import { C, TOUS_MOIS_LONGS, SYSTEMES_SCOLAIRES, SECTIONS_ECOLE, JOURS_SEMAINE, calcMoisAnnee, getClassesForSection, getSectionLabel, isGroupeActif, isSectionActive } from "../../../constants";
 import { PERIODICITES, getPeriodesForSchool, getSchoolPeriodiciteForSection } from "../../../period-utils";
 import { Btn } from "../../ui";
 
@@ -35,6 +35,13 @@ export function AnneePeriodiciteSection({ form, setForm, chg, schoolInfo, setMig
   const periodiciteChange = ["prescolaire", "primaire", "secondaire"].some(
     (s) => getSchoolPeriodiciteForSection(schoolInfo, s) !== getSchoolPeriodiciteForSection(form, s),
   );
+  // Jours et périodicité ne se règlent que pour les sections cochées plus
+  // haut (lu en direct sur le formulaire) : une école sans collège ni lycée
+  // n'a pas de réglage « Secondaire ». Les valeurs masquées restent intactes.
+  const groupesJours = [
+    { groupe: "primaire", champ: "joursOuvrablesPrimaire", label: "Primaire (+ préscolaire)" },
+    { groupe: "secondaire", champ: "joursOuvrablesSecondaire", label: "Secondaire (collège + lycée)" },
+  ].filter(({ groupe }) => isGroupeActif(form, groupe));
   const systemeChoisi = form.systemeScolaire || "guineen";
   const apercuClasses = [
     getClassesForSection("primaire", systemeChoisi)[0],
@@ -61,8 +68,9 @@ export function AnneePeriodiciteSection({ form, setForm, chg, schoolInfo, setMig
       <div style={sec}>
         <h3 style={{ margin: "0 0 16px", fontSize: 14, fontWeight: 800, color: C.blueDark }}>🏛️ Sections de l'établissement</h3>
         <p style={{ margin: "0 0 12px", fontSize: 12, color: "#64748b" }}>
-          Cochez les sections réellement ouvertes : une école sans lycée ne verra plus l'onglet Lycée
-          ni ses classes proposées. Au moins une section reste ouverte.
+          Cochez les sections réellement ouvertes : une école sans lycée ne verra plus le Lycée nulle part
+          (onglets, filtres, tableau de bord, statistiques, paie…) ni ses classes proposées. Au moins une
+          section reste ouverte.
         </p>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           {SECTIONS_ECOLE.map((section) => {
@@ -87,11 +95,8 @@ export function AnneePeriodiciteSection({ form, setForm, chg, schoolInfo, setMig
           les colonnes de l'emploi du temps, à l'écran comme à l'impression. Le préscolaire suit le
           primaire. Au moins un jour reste ouvert de chaque côté.
         </p>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-          {[
-            { champ: "joursOuvrablesPrimaire", label: "Primaire (+ préscolaire)" },
-            { champ: "joursOuvrablesSecondaire", label: "Secondaire (collège + lycée)" },
-          ].map(({ champ, label }) => {
+        <div style={{ display: "grid", gridTemplateColumns: groupesJours.length > 1 ? "1fr 1fr" : "1fr", gap: 14 }}>
+          {groupesJours.map(({ champ, label }) => {
             const joursChoisis = joursDe(champ);
             return (
               <div key={champ}>
@@ -137,7 +142,7 @@ export function AnneePeriodiciteSection({ form, setForm, chg, schoolInfo, setMig
         </p>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 14, marginBottom: 8 }}>
-          <div>
+          {isSectionActive(form, "prescolaire") && <div>
             <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: C.blueDark, marginBottom: 6 }}>Préscolaire (maternelle)</label>
             <select style={{ ...inp, cursor: "pointer" }} value={form.periodicitePrescolaire || form.periodicitePrimaire || "trimestre"} onChange={chg("periodicitePrescolaire")}>
               {PERIODICITES.map(p => (
@@ -149,8 +154,8 @@ export function AnneePeriodiciteSection({ form, setForm, chg, schoolInfo, setMig
                 {getPeriodesForSchool({ periodicite: form.periodicitePrescolaire || form.periodicitePrimaire, moisDebut: form.moisDebut }).join(" · ")}
               </strong>
             </p>
-          </div>
-          <div>
+          </div>}
+          {isSectionActive(form, "primaire") && <div>
             <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: C.blueDark, marginBottom: 6 }}>Primaire</label>
             <select style={{ ...inp, cursor: "pointer" }} value={form.periodicitePrimaire || "trimestre"} onChange={chg("periodicitePrimaire")}>
               {PERIODICITES.map(p => (
@@ -162,8 +167,8 @@ export function AnneePeriodiciteSection({ form, setForm, chg, schoolInfo, setMig
                 {getPeriodesForSchool({ periodicite: form.periodicitePrimaire, moisDebut: form.moisDebut }).join(" · ")}
               </strong>
             </p>
-          </div>
-          <div>
+          </div>}
+          {isGroupeActif(form, "secondaire") && <div>
             <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: C.blueDark, marginBottom: 6 }}>Secondaire (collège + lycée)</label>
             <select style={{ ...inp, cursor: "pointer" }} value={form.periodiciteSecondaire || "trimestre"} onChange={chg("periodiciteSecondaire")}>
               {PERIODICITES.map(p => (
@@ -175,7 +180,7 @@ export function AnneePeriodiciteSection({ form, setForm, chg, schoolInfo, setMig
                 {getPeriodesForSchool({ periodicite: form.periodiciteSecondaire, moisDebut: form.moisDebut }).join(" · ")}
               </strong>
             </p>
-          </div>
+          </div>}
         </div>
 
         {periodiciteChange ? (

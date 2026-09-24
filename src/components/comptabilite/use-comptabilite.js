@@ -1,5 +1,5 @@
 import { useContext, useState } from "react";
-import { fmt, getAnnee, peutModifierEleves, peutModifier } from "../../constants";
+import { fmt, getAnnee, peutModifierEleves, peutModifier, sectionOuverte } from "../../constants";
 import { hasWrite } from "../../../shared/postes-config.js";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { useFirestore } from "../../hooks/useFirestore";
@@ -94,7 +94,10 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   const [sousTabSal, setSousTabSal] = useState("etats");
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState({});
-  const [niveau, setNiveau] = useState("college");
+  const [niveauChoisi, setNiveau] = useState("college");
+  // Cycle des mensualités : le choix s'il est ouvert dans l'école, sinon la
+  // première section ouverte (Paramètres → Identité).
+  const niveau = sectionOuverte(schoolInfo, niveauChoisi);
   const [filtClasse, setFiltClasse] = useState("all");
   const [moisSel, setMoisSel] = useState(() => moisSalaire[0] || "Octobre");
   const [primeDefaut, setPrimeDefaut] = useState(0);

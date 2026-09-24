@@ -1,6 +1,20 @@
+import { isSectionActive } from "../../../constants";
+
 // Logique de l'onglet "Personnel enseignant" côté comptabilité : agrégation
 // des trois sections, aiguillage des actions par section et enregistrement
 // de la paie (création / édition).
+
+// Sections proposées (cartes, choix à la création) : celles que l'école a
+// ouvertes dans Paramètres → Identité, sous le libellé que porte `_section`.
+// Une école de maternelle seule garde « Primaire » : tout autre libellé
+// serait aiguillé vers le lycée par les sélecteurs ci-dessous.
+export const sectionsEnsOuvertes = (schoolInfo) => {
+  const ouvertes = [["primaire", "Primaire"], ["college", "Collège"], ["lycee", "Lycée"]]
+    .filter(([section]) => isSectionActive(schoolInfo, section))
+    .map(([, libelle]) => libelle);
+  return ouvertes.length ? ouvertes : ["Primaire"];
+};
+
 export function useEnseignantsTab({
   form, setForm, modal, setModal, toast, logAction,
   ensPrimaire, ensCollege, ensLycee,

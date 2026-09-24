@@ -1,6 +1,6 @@
 import { useContext, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { C, aReinscrire, estReinscrit } from "../../constants";
+import { C, aReinscrire, estReinscrit, sectionOuverte } from "../../constants";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { DepartsView } from "./enrolment/DepartsView";
 import { EnrolModale } from "./enrolment/EnrolModale";
@@ -20,14 +20,17 @@ export function EnrolmentTab({
   const { t } = useTranslation();
   const { schoolId, schoolInfo, toast, planInfo } = useContext(SchoolContext);
 
-  const [niveauEnrol, setNiveauEnrolRaw] = useState("college");
+  const [niveauChoisi, setNiveauChoisi] = useState("college");
   const [classeEnrol, setClasseEnrol] = useState("all");
   const [afficherDeparts, setAfficherDeparts] = useState(false);
   // Filtre de rentrée : « qui n'a pas encore réglé son inscription ? ».
   const [filtreReinscription, setFiltreReinscription] = useState("all");
 
+  // Cycle affiché : le choix s'il est ouvert dans l'école, sinon la première
+  // section ouverte — une école sans collège ne s'ouvre pas sur une liste vide.
+  const niveauEnrol = sectionOuverte(schoolInfo, niveauChoisi);
   // Changer de cycle réinitialise le filtre classe (les classes diffèrent).
-  const setNiveauEnrol = (v) => { setNiveauEnrolRaw(v); setClasseEnrol("all"); };
+  const setNiveauEnrol = (v) => { setNiveauChoisi(v); setClasseEnrol("all"); };
 
   const chg = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { C, getAnnee, getSectionLabel } from "../../constants";
+import { C, getAnnee, getSectionLabel, isSectionActive } from "../../constants";
 import { Btn } from "../ui";
 import { TarifsClasses } from "../TarifsClasses";
 import { AlertesCritiques } from "./mensualites-tab/AlertesCritiques";
@@ -61,10 +61,15 @@ export function MensualitesTab({
         <strong style={{ fontSize: 14, flex: 1, color: C.blueDark }}>{t("accounting.monthly")} — {annee || getAnnee()}</strong>
         <select value={niveau} onChange={e => { setNiveau(e.target.value); setFiltClasse("all"); }}
           style={{ border: "1px solid #b0c4d8", borderRadius: 7, padding: "6px 10px", fontSize: 12, background: "#fff", color: C.blueDark, fontWeight: 600 }}>
-          <option value="college">{t("dashboard.secondary")}</option>
-          <option value="lycee">{t("dashboard.lycee")}</option>
-          <option value="primaire">{t("dashboard.primary")}</option>
-          <option value="prescolaire">{getSectionLabel("prescolaire")}</option>
+          {/* Seules les sections ouvertes dans l'école (Paramètres → Identité). */}
+          {[
+            ["college", t("dashboard.secondary")],
+            ["lycee", t("dashboard.lycee")],
+            ["primaire", t("dashboard.primary")],
+            ["prescolaire", getSectionLabel("prescolaire")],
+          ].filter(([section]) => isSectionActive(schoolInfo, section)).map(([section, label]) => (
+            <option key={section} value={section}>{label}</option>
+          ))}
         </select>
         {classesU.length > 0 && <select value={filtClasse} onChange={e => setFiltClasse(e.target.value)}
           style={{ border: "1px solid #b0c4d8", borderRadius: 7, padding: "6px 10px", fontSize: 12, background: "#fff", color: C.blueDark }}>

@@ -1,11 +1,16 @@
-import { useState } from "react";
-import { C } from "../../../constants";
+import { useContext, useState } from "react";
+import { SchoolContext } from "../../../contexts/SchoolContext";
+import { C, isModuleOuvertPourEcole } from "../../../constants";
 import { Btn, Badge } from "../../ui";
 import { usePostesCard } from "./use-postes-card";
 import { MODULE_OPTIONS, cyclePermission, estPosteSupprimable, estPosteVerrouille, suggererLogin } from "./postes-logic";
 
 // ── Matrice de permissions d'un poste : clic = ∅ → 👁 lecture → ✏️ écriture ──
 function MatricePermissions({ permissions, onCycle, verrouille }) {
+  const { schoolInfo } = useContext(SchoolContext);
+  // Pas de droit « Secondaire » à régler dans une école sans collège ni lycée
+  // (idem Dir. Primaire) : le module n'y apparaît pas au menu.
+  const modules = MODULE_OPTIONS.filter((m) => isModuleOuvertPourEcole(m.id, schoolInfo));
   const niveau = (moduleId) => permissions[moduleId] || null;
   const rendu = (moduleId) => (niveau(moduleId) === "ecriture" ? "✏️ Écriture"
     : niveau(moduleId) === "lecture" ? "👁 Lecture" : "— Invisible");
@@ -13,7 +18,7 @@ function MatricePermissions({ permissions, onCycle, verrouille }) {
     : niveau(moduleId) === "lecture" ? "#e0f2fe" : "#f1f5f9");
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))", gap: 6, marginTop: 10 }}>
-      {MODULE_OPTIONS.map((m) => (
+      {modules.map((m) => (
         <button key={m.id} type="button" disabled={verrouille}
           onClick={() => onCycle(m.id)}
           title={verrouille ? "Poste direction : tous droits, non modifiable" : `${m.label} — cliquer pour changer le droit`}

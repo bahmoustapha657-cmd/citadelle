@@ -2,6 +2,7 @@ import { useContext } from "react";
 import { SchoolContext } from "../../../contexts/SchoolContext";
 import { C, getClassesForSection, getSystemeScolaire } from "../../../constants";
 import { Btn, Input, Modale, Selec } from "../../ui";
+import { sectionsEnsOuvertes } from "./use-enseignants-tab";
 
 // Modale de création / édition de la paie d'un enseignant (forfait primaire
 // ou prime horaire + primes par classe pour le secondaire).
@@ -15,7 +16,7 @@ export function EnseignantModale({ form, setForm, modal, setModal, canCreate, ca
       {!isEdit&&<div style={{marginBottom:14}}>
         <div style={{fontSize:12,fontWeight:700,color:C.blueDark,marginBottom:6}}>Section</div>
         <div style={{display:"flex",gap:8}}>
-          {["Primaire","Collège","Lycée"].map(s=>(
+          {sectionsEnsOuvertes(schoolInfo).map(s=>(
             <button key={s} type="button" onClick={()=>setForm(p=>({...p,_section:s}))}
               style={{flex:1,padding:"8px",borderRadius:8,border:`2px solid ${form._section===s?C.blue:"#e2e8f0"}`,background:form._section===s?C.blue:"#fff",color:form._section===s?"#fff":"#475569",cursor:"pointer",fontWeight:700,fontSize:13}}>
               {s}

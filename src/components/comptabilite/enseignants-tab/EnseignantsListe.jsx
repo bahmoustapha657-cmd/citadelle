@@ -1,16 +1,23 @@
+import { useContext } from "react";
 import { useTranslation } from "react-i18next";
+import { SchoolContext } from "../../../contexts/SchoolContext";
 import { C, fmtN } from "../../../constants";
 import { Badge, Btn, Card, TD, THead, TR, Vide } from "../../ui";
+import { sectionsEnsOuvertes } from "./use-enseignants-tab";
 
 // En-tête + bandeau d'aide + statistiques par section + tableau des
 // enseignants (identité et paie).
 export function EnseignantsListe({ ensTous, ensPrimaire, ensCollege, ensLycee, canCreate, canEdit, setForm, setModal, supEnsForSection }) {
   const { t } = useTranslation();
+  const { schoolInfo } = useContext(SchoolContext);
+  // Une carte par section ouverte dans l'école : pas de « Lycée : 0 » dans
+  // une école sans lycée.
+  const sectionsOuvertes = sectionsEnsOuvertes(schoolInfo);
   return (
     <>
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16,flexWrap:"wrap"}}>
         <strong style={{fontSize:14,color:C.blueDark,flex:1}}>{t("accounting.tabs.teachers")} ({ensTous.length})</strong>
-        {canCreate&&<Btn onClick={()=>{setForm({_section:"Primaire",statut:"Titulaire"});setModal("add_ens_compta");}}>+ {t("common.add")}</Btn>}
+        {canCreate&&<Btn onClick={()=>{setForm({_section:sectionsOuvertes[0],statut:"Titulaire"});setModal("add_ens_compta");}}>+ {t("common.add")}</Btn>}
       </div>
 
       <div style={{padding:"10px 14px",background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:8,fontSize:12,color:"#1e40af",marginBottom:14}}>
@@ -23,7 +30,7 @@ export function EnseignantsListe({ ensTous, ensPrimaire, ensCollege, ensLycee, c
           {sec:"Primaire",n:ensPrimaire.length,col:"#0ea5e9",bg:"#e0f2fe"},
           {sec:"Collège",n:ensCollege.length,col:"#7c3aed",bg:"#f3e8ff"},
           {sec:"Lycée",n:ensLycee.length,col:"#db2777",bg:"#fce7f3"},
-        ].map(s=>(
+        ].filter(s=>sectionsOuvertes.includes(s.sec)).map(s=>(
           <div key={s.sec} style={{background:s.bg,borderRadius:10,padding:"12px 14px",textAlign:"center",border:`1px solid ${s.col}33`}}>
             <div style={{fontSize:11,color:s.col,fontWeight:700,marginBottom:4}}>{s.sec}</div>
             <div style={{fontSize:20,fontWeight:900,color:C.blueDark}}>{s.n}</div>
