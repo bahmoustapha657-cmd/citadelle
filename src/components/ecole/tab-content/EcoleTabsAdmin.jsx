@@ -81,7 +81,7 @@ export function EcoleTabsAdmin({ e, section, avecEns, userRole, annee, maxNote, 
 
       {/* ── LIVRETS ── */}
       {e.tab === "livrets" && <LivretsTab
-        periodes={e.periodes}
+        section={section} periodes={e.periodes}
         cleEleves={cleEleves} cleNotes={cleNotes}
         matieres={e.matieres} maxNote={maxNote}
         userRole={userRole} annee={annee}

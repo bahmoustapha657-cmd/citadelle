@@ -7,7 +7,7 @@ import { ElevesTable } from "./eleves-tab/ElevesTable";
 import { ParentCompteModale } from "./eleves-tab/ParentCompteModale";
 
 export function ElevesTab({
-  eleves, elevesFiltres, cE, cleEleves, filtreClasse, setFiltreClasse, classesUniq,
+  eleves, elevesFiltres, cE, filtreClasse, setFiltreClasse, classesUniq,
   section = "college", annee, schoolInfo, schoolId, toast, logAction, canEdit, canCreateParent,
   parentEleve, setParentEleve, formP, setFormP, userRole = "",
 }) {
@@ -18,7 +18,7 @@ export function ElevesTab({
   const nbPartis = eleves.filter(estSorti).length;
   const visibles = (liste) => (avecPartis ? liste : liste.filter((e) => !estSorti(e)));
   const { peutCreerParent, chgP, ouvrirCompte, creerCompteParent } = useElevesTab({
-    cleEleves, schoolId, toast, logAction, canEdit, canCreateParent, parentEleve, setParentEleve, setFormP,
+    section, schoolId, toast, logAction, canEdit, canCreateParent, parentEleve, setParentEleve, setFormP,
   });
 
   return (

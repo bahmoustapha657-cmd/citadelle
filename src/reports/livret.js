@@ -20,11 +20,12 @@ export const imprimerLivret = (livret, schoolInfo={}) => {
   const lf = resolveLegalFields(schoolInfo);
   const c1 = schoolInfo.couleur1||"#0A1628";
   const annees = livret.annees||[];
-  // Le livret hérite de la section de l'élève (livret.section : "primaire" /
-  // "college" / "lycee"). Primaire suit periodicitePrimaire, le reste suit
-  // periodiciteSecondaire.
-  const sectionPeriode = livret.section === "primaire" ? "primaire" : "secondaire";
-  const periodes = getPeriodesForSection(schoolInfo, sectionPeriode);
+  // Le livret hérite de la section de l'élève (livret.section :
+  // "prescolaire" / "primaire" / "college" / "lycee") ; period-utils ramène
+  // collège et lycée au réglage du secondaire. La maternelle ne doit pas y
+  // tomber : ses livrets sont pré-remplis avec SES périodes, les colonnes
+  // imprimées seraient restées vides.
+  const periodes = getPeriodesForSection(schoolInfo, livret.section);
   // Mapping décisions FR (stockées en base) → clés i18n
   const decisionLabel = (d) => {
     if (d === "Admis avec félicitations") return tr("reports.livret.decisionDistinction");
@@ -34,6 +35,7 @@ export const imprimerLivret = (livret, schoolInfo={}) => {
     return d || "—";
   };
   const sectionLabel = (s) => {
+    if (s === "prescolaire") return tr("reports.livret.sectionPreschool");
     if (s === "primaire") return tr("reports.livret.sectionPrimary");
     if (s === "lycee") return tr("reports.livret.sectionLycee");
     return tr("reports.livret.sectionCollege");

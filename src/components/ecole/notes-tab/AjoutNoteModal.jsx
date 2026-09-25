@@ -6,7 +6,7 @@ import { resolveCanonicalNoteType } from "../../../evaluation-forms";
 export function AjoutNoteModal({
   form, setForm, setModal,
   eleves, matieresForClasse, noteForms, defaultNoteType, maxNote,
-  schoolInfo, isPrimarySection, periodes, annee, ajN, toast,
+  schoolInfo, section, periodes, annee, ajN, toast,
 }) {
   const chg = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
@@ -22,7 +22,7 @@ export function AjoutNoteModal({
     }
     ajN({
       ...form,
-      type: resolveCanonicalNoteType(form.type, schoolInfo, isPrimarySection ? "primaire" : "secondaire"),
+      type: resolveCanonicalNoteType(form.type, schoolInfo, section),
       note: valeur,
       annee: annee || getAnnee(),
     });

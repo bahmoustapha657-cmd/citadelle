@@ -10,6 +10,7 @@ import { construireGrille, collectGridNotes, validateGridNotes } from "./notes-g
 import { saveNoteApi, saveNotesApi, deleteNoteApi } from "./notes-api";
 import { resolveCanonicalNoteType } from "../../evaluation-forms";
 import { getAnnee } from "../../constants";
+import { isTitulaireSection } from "../../backend/teacher-scope";
 
 // Ré-export pour préserver le point d'import unique du parent.
 export { construireGrille };
@@ -31,7 +32,8 @@ export async function enregistrerGrille({
   onSavedNotes,
 }) {
   const { canonical, aSauver } = collectGridNotes({ gridForm, mesNotes, schoolInfo, utilisateur });
-  const maxNote = (utilisateur.section === "primaire") ? 10 : 20;
+  // Même barème que la grille (GrilleModale) : maternelle et primaire sur 10.
+  const maxNote = isTitulaireSection(utilisateur.section) ? 10 : 20;
   const invalide = validateGridNotes(aSauver, maxNote);
   if (invalide) {
     toast(invalide, "warning");

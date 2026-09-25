@@ -5,8 +5,10 @@ import { creerCompte as creerCompteSb } from "../../../backend/account-manage-su
 
 // Logique de l'onglet Élèves : droit de création de compte parent, édition
 // du formulaire et création/rattachement du compte parent via /account-manage.
+// `section` : prop d'Ecole. Elle était déduite du nom de collection, et un
+// compte parent créé depuis la maternelle partait avec la section « college ».
 export function useElevesTab({
-  cleEleves, schoolId, toast, logAction, canEdit, canCreateParent,
+  section, schoolId, toast, logAction, canEdit, canCreateParent,
   parentEleve, setParentEleve, setFormP,
 }) {
   // Compat : si l'appelant ne fournit pas canCreateParent, on retombe sur
@@ -30,7 +32,6 @@ export function useElevesTab({
     if (!formP.login?.trim()) { toast("Identifiant requis.", "warning"); return; }
     if (!formP.mdp || formP.mdp.length < 8) { toast("Mot de passe minimum 8 caracteres.", "warning"); return; }
     try {
-      const section = cleEleves.includes("Primaire") ? "primaire" : cleEleves.includes("Lycee") ? "lycee" : "college";
       const payload = {
         schoolId,
         login: formP.login.trim().toLowerCase(),

@@ -15,14 +15,21 @@ import {
 } from "./ecole-logic";
 import { saveClasseAction, saveEnseignantAction, saveAppreciationAction } from "./ecole-saves";
 
-// Toute la logique du module École (générique primaire/collège/lycée) :
-// chargement Firestore des collections dérivées des clés passées en props,
-// permissions, périodes scolaires, tri des élèves et handlers de sauvegarde.
+// Toute la logique du module École (générique préscolaire/primaire/collège/
+// lycée) : chargement Firestore des collections dérivées des clés passées en
+// props, permissions, périodes scolaires, tri des élèves et handlers de
+// sauvegarde.
+// `section` : la prop d'Ecole, seule source fiable du cycle. Les clés de
+// collection ne servent qu'à charger les données — en déduire la section
+// faisait tomber la maternelle dans « college ».
 export function useEcole({
-  cleClasses, cleEns, cleNotes, cleEleves,
+  cleClasses, cleEns, cleNotes, cleEleves, section = "college",
   userRole, permissions = null, annee, readOnly = false, verrouOuvert = false,
 }) {
-  const isPrimarySection = cleEns === "ensPrimaire";
+  // Primaire au sens strict (forfait sur la fiche enseignant, EDT par
+  // titulaire, libellé « Primaire » du taux de saisie) : la maternelle en
+  // reste exclue, comme avant.
+  const isPrimarySection = section === "primaire";
   const { schoolId, schoolInfo, moisAnnee, toast, logAction, envoyerPush } = useContext(SchoolContext);
   const anneeCourante = annee || getAnnee();
   const [anneeConsultee, setAnneeConsultee] = useState(anneeCourante);
@@ -47,10 +54,9 @@ export function useEcole({
   // périodicité. Tant qu'elle n'en avait pas, tout ce qui n'était pas
   // « primaire » basculait sur le secondaire — la maternelle se voyait donc
   // proposer les semestres du collège alors que ses notes sont en trimestres.
-  const sectionPeriode = cleEns === "ensPrescolaire" ? "prescolaire"
-    : isPrimarySection ? "primaire" : "secondaire";
-  const periodes = getPeriodesForSection(schoolInfo, sectionPeriode, moisAnnee);
-  const defaultPeriode = periodes[0] || getDefaultPeriodeForSection(schoolInfo, sectionPeriode);
+  // (period-utils ramène college/lycee au réglage du secondaire.)
+  const periodes = getPeriodesForSection(schoolInfo, section, moisAnnee);
+  const defaultPeriode = periodes[0] || getDefaultPeriodeForSection(schoolInfo, section);
 
   const { items: classes, chargement: cC, ajouter: ajC, modifier: modC, supprimer: supC } = useFirestore(cleClasses);
   const { items: ens, chargement: cEns, ajouter: ajEns, modifier: modEns, supprimer: supEns } = useFirestore(cleEns);
@@ -135,10 +141,9 @@ export function useEcole({
   // chargement des notes en a besoin avant de partir.
   const [periodeB, setPeriodeB] = useState(defaultPeriode);
   const [grillePeriode, setGrillePeriode] = useState(defaultPeriode);
-  // Section précise (primaire/college/lycee) pour offrir les rubriques
-  // Dictée/Rédaction au collège uniquement.
-  const sectionReelle = cleEns === "ensPrimaire" ? "primaire" : cleEns === "ensLycee" ? "lycee" : "college";
-  const noteForms = getActiveNoteForms(schoolInfo, sectionReelle);
+  // Section précise : rubriques Dictée/Rédaction au collège uniquement, et
+  // groupe « Primaire » de Paramètres → Évaluations pour la maternelle.
+  const noteForms = getActiveNoteForms(schoolInfo, section);
   const defaultNoteType = noteForms[0]?.value || "Devoir";
   const [grilleType, setGrilleType] = useState(defaultNoteType);
   const canCreate = !readOnly && !enModeArchive;
