@@ -6,8 +6,8 @@
 // apercu-tab/analytics.js — une seule définition de la moyenne dans l'app,
 // donc pas de risque qu'un tableau de bord contredise un bulletin.
 
-import { CATALOGUE_FRAIS_ANNEXES, getFraisAnnexeLabel, aReinscrire, estReinscrit, isFraisAnnexePaye } from "../../constants";
-import { getEleveSolde, getMensualiteOverview, getTarifMensuelForClasse } from "../../mensualite-utils";
+import { CATALOGUE_FRAIS_ANNEXES, getFraisAnnexeLabel, aReinscrire, estReinscrit, estSorti, isFraisAnnexePaye } from "../../constants";
+import { concerneParAnnee, getEleveSolde, getMensualiteOverview, getTarifMensuelForClasse } from "../../mensualite-utils";
 import { notesDeLEleve } from "../../note-index";
 
 const parCle = (liste, cle) => liste.reduce((acc, item) => {
@@ -61,17 +61,21 @@ export function statsAssiduite(absences = [], eleves = []) {
 // La matière vit sur les FICHES élèves (mensualités, inscription, frais) et
 // dans le journal des paiements — pas dans les grands livres, quasi vides
 // dans les écoles observées.
-export function statsFinances(eleves = [], moisAnnee = [], tarifsClasses = [], paiements = []) {
-  const actifs = eleves.filter((e) => (e.statut || "Actif") === "Actif");
+export function statsFinances(eleves = [], moisAnnee = [], tarifsClasses = [], paiements = [], annee) {
   // getMensualiteOverview est le calcul de référence de la Comptabilité : on
-  // le réutilise tel quel, par classe puis globalement, pour que les chiffres
-  // des statistiques ne puissent pas contredire ceux de la Compta.
-  const global = getMensualiteOverview(actifs, moisAnnee, tarifsClasses);
+  // le réutilise tel quel, par classe puis globalement, et sur la MÊME
+  // population que sa grille — les élèves qui relèvent de l'année, un parti
+  // n'y devant que ses mois d'avant le départ. Ne garder que les « Actif »
+  // écartait les inactifs et l'argent perçu des partis : les deux modules
+  // ne donnaient pas les mêmes montants.
+  const concernes = eleves.filter((e) => concerneParAnnee(e, moisAnnee, annee));
+  const presents = eleves.filter((e) => !estSorti(e));
+  const global = getMensualiteOverview(concernes, moisAnnee, tarifsClasses, annee);
   const du = global.totalDu;
   const percu = global.totalPercu;
 
   const parClasse = new Map();
-  for (const e of actifs) {
+  for (const e of concernes) {
     const cle = e.classe || "—";
     if (!parClasse.has(cle)) parClasse.set(cle, []);
     parClasse.get(cle).push(e);
@@ -79,8 +83,8 @@ export function statsFinances(eleves = [], moisAnnee = [], tarifsClasses = [], p
 
   const classes = [...parClasse.entries()]
     .map(([classe, liste]) => {
-      const o = getMensualiteOverview(liste, moisAnnee, tarifsClasses);
-      const aJour = liste.filter((e) => getEleveSolde(e, moisAnnee, tarifsClasses) <= 0).length;
+      const o = getMensualiteOverview(liste, moisAnnee, tarifsClasses, annee);
+      const aJour = liste.filter((e) => getEleveSolde(e, moisAnnee, tarifsClasses, annee) <= 0).length;
       return {
         classe,
         eleves: liste.length,
@@ -117,8 +121,8 @@ export function statsFinances(eleves = [], moisAnnee = [], tarifsClasses = [], p
     classes,
     parMois: Object.entries(parMois).sort(([a], [b]) => a.localeCompare(b)).map(([mois, montant]) => ({ mois, montant })),
     frais,
-    tarifMoyen: actifs.length
-      ? actifs.reduce((s, e) => s + getTarifMensuelForClasse(tarifsClasses, e.classe), 0) / actifs.length
+    tarifMoyen: presents.length
+      ? presents.reduce((s, e) => s + getTarifMensuelForClasse(tarifsClasses, e.classe), 0) / presents.length
       : 0,
   };
 }
@@ -126,7 +130,9 @@ export function statsFinances(eleves = [], moisAnnee = [], tarifsClasses = [], p
 // ── EFFECTIFS ET PARCOURS ───────────────────────────────────────────────────
 export function statsEffectifs(eleves = []) {
   const actifs = eleves.filter((e) => (e.statut || "Actif") === "Actif");
-  const partis = eleves.filter((e) => e.statut && e.statut !== "Actif");
+  // Partis = statuts de sortie. « Inactif » (en sommeil, toujours inscrit)
+  // n'est pas un départ : le compter ici gonflait les départs.
+  const partis = eleves.filter(estSorti);
   const sexe = { F: actifs.filter((e) => String(e.sexe || "").toUpperCase().startsWith("F")).length, M: 0 };
   sexe.M = actifs.length - sexe.F;
 

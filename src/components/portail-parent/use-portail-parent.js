@@ -58,7 +58,7 @@ export function usePortailParent({ utilisateur, schoolInfo }) {
   const { montantMensuel, montantAutre, montantRevision, estReinscription, montantInscription } = computeTarifInfos(tarifs, eleve);
   const matieres = [...new Set(mesNotes.map((item) => item.matiere).filter(Boolean))];
 
-  const { moisImpayes, accesBloqueParPaiement } = computeBlocage(schoolInfo, eleve, moisAnnee);
+  const { moisImpayes, accesBloqueParPaiement } = computeBlocage(schoolInfo, eleve, moisAnnee, schoolInfo?.anneeScolaire);
 
   const chargerPortail = async () => {
     setChargement(true);

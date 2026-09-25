@@ -9,15 +9,17 @@
 // dans SA matière (teacher_can_write_note). Le filtrage ci-dessous ne sert donc
 // qu'à l'AFFICHAGE ; une écriture hors périmètre est rejetée par Postgres.
 import { chargerCollection, ajouterDoc, ajouterDocs, upsertDocs, modifierDoc, supprimerDoc } from "./data-supabase";
-import { teacherAliases, matchesTeacherAlias, noteBelongsToTeacherScope, normalizeText, normalizeSection } from "./teacher-scope";
+import {
+  teacherAliases, matchesTeacherAlias, noteBelongsToTeacherScope, normalizeText, normalizeSection,
+  teacherCollectionSlug, isTitulaireSection,
+} from "./teacher-scope";
 
-const CAP = { primaire: "Primaire", college: "College", lycee: "Lycee" };
 let ctx = null; // contexte enseignant courant (rempli au fetch, utilisé aux écritures)
 
 export async function fetchTeacherPortal(utilisateur) {
   const code = utilisateur.schoolId;
   const section = normalizeSection(utilisateur.section || utilisateur.sections?.[0] || "college");
-  const C = CAP[section];
+  const C = teacherCollectionSlug(section);
   const aliases = teacherAliases(utilisateur);
   ctx = {
     code, section, C, matiere: utilisateur.matiere || "",
@@ -36,9 +38,10 @@ export async function fetchTeacherPortal(utilisateur) {
   const emplois = emploisAll.filter((i) => matchesTeacherAlias(i.enseignant, aliases));
   const enseignements = ensAll.filter((i) => matchesTeacherAlias(i.enseignantNom, aliases));
 
-  // Classe(s) titulaire : fiche enseignant du registre (roster) — essentiel au
-  // primaire (souvent ni EDT ni cahier de textes). On matche par id puis par nom,
-  // et on récupère tous les champs « classe » plausibles de la fiche.
+  // Classe(s) titulaire : fiche enseignant du registre (roster) — essentiel en
+  // maternelle et au primaire (souvent ni EDT ni cahier de textes). On matche
+  // par id puis par nom, et on récupère tous les champs « classe » plausibles
+  // de la fiche.
   const mesFiches = rosterAll.filter((f) =>
     (utilisateur.enseignantId && f._id === utilisateur.enseignantId)
     || matchesTeacherAlias(`${f.nom || ""} ${f.prenom || ""}`, aliases)
@@ -86,9 +89,10 @@ function notesColl() {
   if (!ctx) throw new Error("Contexte enseignant absent — rechargez le portail.");
   return `notes${ctx.C}`;
 }
-// Secondaire : la matière du prof prime ; primaire : matière saisie (multi).
+// Secondaire : la matière du prof prime ; maternelle et primaire : matière
+// saisie (titulaire multi-matières).
 function matiereEffective(matiere) {
-  return ctx?.section === "primaire" ? (matiere || "") : (ctx?.matiere || matiere || "");
+  return isTitulaireSection(ctx?.section) ? (matiere || "") : (ctx?.matiere || matiere || "");
 }
 
 // Payload complet d'une note (auteur inclus, comme le handler serveur).

@@ -29,6 +29,8 @@ export function MensualitesTab({
   setFiltClasse,
   moisAnnee,
   annee,
+  // Année des fiches affichées : la consultée (archive) ou la courante.
+  anneeScolarite,
   readOnly,
   canCreate,
   canEdit,
@@ -88,12 +90,13 @@ export function MensualitesTab({
       />}
 
       {/* Alertes impayés : repliées derrière un bouton, filtrées cycle + classe. */}
-      <AlertesCritiques eleves={elevesFiltres} moisAnnee={moisAnnee} />
+      <AlertesCritiques eleves={elevesFiltres} moisAnnee={moisAnnee} annee={anneeScolarite} />
 
       <MensualitesTable
         eleves={eleves}
         elevesFiltres={elevesFiltres}
         moisAnnee={moisAnnee}
+        annee={anneeScolarite}
         tarifsClasses={tarifsClasses}
         readOnly={readOnly}
         canCreate={canCreate}

@@ -45,7 +45,7 @@ export function BulletinsToolbar({
       </select>
       <Btn v="success" onClick={()=>{
         const elevesC=(filtreClasse==="all"?elevesFiltres:elevesFiltres.filter(e=>e.classe===filtreClasse))
-          .filter(e=>!estBloquePourImpaye(schoolInfo, e, moisAnnee));
+          .filter(e=>!estBloquePourImpaye(schoolInfo, e, moisAnnee, schoolInfo?.anneeScolaire));
         imprimerFicheCompositions(filtreClasse,periodeB,notes,matieres,elevesC,maxNote,schoolInfo,periodes,matieresForClasse,formatFiche);
       }}>
         {t("school.bulletins.evaluationResults")}
@@ -53,7 +53,7 @@ export function BulletinsToolbar({
       <Btn v="vert" onClick={()=>{
         const elevesBtn=elevesFiltres
           .filter(e=>!rechercheMatricule||(e.matricule||"").toLowerCase().includes(rechercheMatricule.toLowerCase())||(e.nom+" "+e.prenom).toLowerCase().includes(rechercheMatricule.toLowerCase()))
-          .filter(e=>!estBloquePourImpaye(schoolInfo, e, moisAnnee));
+          .filter(e=>!estBloquePourImpaye(schoolInfo, e, moisAnnee, schoolInfo?.anneeScolaire));
         imprimerBulletinsGroupes(elevesBtn,notes,matieres,periodeB,section,maxNote,schoolInfo,filtreClasse==="all"?"Toutes classes":filtreClasse,matieresForClasse,appreciationsParEleveB(periodeB),periodes);
       }}>
         {t("school.bulletins.allBulletins")} {filtreClasse!=="all"?`— ${filtreClasse}`:""}

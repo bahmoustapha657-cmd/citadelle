@@ -3,6 +3,7 @@ import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend,
 } from "recharts";
 import { C } from "../../../constants";
+import { elevesPourPeriode } from "../../../depart-utils";
 import { Card, Stat } from "../../ui";
 import {
   statsGroupe, statsParClasse, moyenneParMatiere, evolutionMoyenne, statsGenre,
@@ -14,13 +15,18 @@ import {
 // périodes.
 export function ApercuAnalytics({ classes, eleves, notes, matieresForClasse, periodes = [], maxNote = 20, couleur }) {
   const seuil = maxNote / 2;
-  const elevesActifs = useMemo(() => eleves.filter((e) => e.statut !== "Inactif"), [eleves]);
   const [periode, setPeriode] = useState(periodes[0] || "");
+  // Les présents, plus les partis notés sur la période — comme les bulletins.
+  // Les partis sans note (partis avant, ou d'autres années) gonflaient le
+  // nombre d'élèves évaluables.
+  const nonInactifs = useMemo(() => eleves.filter((e) => e.statut !== "Inactif"), [eleves]);
+  const elevesActifs = useMemo(() => elevesPourPeriode(nonInactifs, notes, periode), [nonInactifs, notes, periode]);
+  const elevesAnnee = useMemo(() => elevesPourPeriode(nonInactifs, notes), [nonInactifs, notes]);
 
   const ecole = useMemo(() => statsGroupe(elevesActifs, notes, matieresForClasse, periode, seuil), [elevesActifs, notes, matieresForClasse, periode, seuil]);
   const parClasse = useMemo(() => statsParClasse(classes, elevesActifs, notes, matieresForClasse, periode, seuil), [classes, elevesActifs, notes, matieresForClasse, periode, seuil]);
   const parMatiere = useMemo(() => moyenneParMatiere(elevesActifs, notes, matieresForClasse, periode), [elevesActifs, notes, matieresForClasse, periode]);
-  const evolution = useMemo(() => evolutionMoyenne(elevesActifs, notes, matieresForClasse, periodes, seuil), [elevesActifs, notes, matieresForClasse, periodes, seuil]);
+  const evolution = useMemo(() => evolutionMoyenne(elevesAnnee, notes, matieresForClasse, periodes, seuil), [elevesAnnee, notes, matieresForClasse, periodes, seuil]);
   const genre = useMemo(() => statsGenre(elevesActifs, notes, matieresForClasse, periode, seuil), [elevesActifs, notes, matieresForClasse, periode, seuil]);
 
   if (classes.length === 0) return null;

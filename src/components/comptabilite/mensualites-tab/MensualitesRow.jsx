@@ -1,21 +1,29 @@
 import { useState } from "react";
-import { C, fmt, getTarifFraisDivers, initMens } from "../../../constants";
+import { C, estSorti, fmt, getTarifFraisDivers, initMens } from "../../../constants";
 import { Badge, Btn, TR, TD } from "../../ui";
 import { imprimerRecu, imprimerRecuTicket } from "../../../reports";
 import {
   getEleveMensualiteSnapshot, getFraisAnnexesEleve, getTarifConfigForClasse, montantInscriptionPaye,
 } from "../../../mensualite-utils";
+import { lireDate, moisExigibles } from "../../../depart-utils";
 import { aUneExoneration, estExonereTotal, resumeExoneration } from "../../../exoneration-utils";
 import { FORMATS_RECU, getRecuFormat, labelRecuFormat, setRecuFormat } from "./recu-format";
 
 // Une ligne élève de la grille des mensualités : colonnes figées (matricule,
 // nom), bascules mensuelles, frais d'inscription/annexes et impression du reçu.
 export function MensualitesRow({
-  e, rowIdx, moisAnnee, tarifsClasses, readOnly, canCreate, canEdit, schoolInfo,
+  e, rowIdx, moisAnnee, annee, tarifsClasses, readOnly, canCreate, canEdit, schoolInfo,
   toggleMens, toggleFraisAnnexe, getTarifInscriptionEleve, getTarif,
 }) {
   const mens = e.mens || initMens();
-  const snapshot = getEleveMensualiteSnapshot(e, moisAnnee, tarifsClasses);
+  const snapshot = getEleveMensualiteSnapshot(e, moisAnnee, tarifsClasses, annee);
+  // Élève parti : les mois qui suivent son départ ne sont pas des impayés —
+  // la case devient « — » et ne se clique plus (un mois déjà réglé reste
+  // affiché, donc annulable).
+  const sorti = estSorti(e);
+  const depart = lireDate(e.dateDepart)?.toLocaleDateString("fr-FR") || "";
+  const dus = new Set(moisExigibles(e, moisAnnee, annee));
+  const nbAttendus = moisAnnee.filter((m) => dus.has(m) || mens[m] === "Payé").length;
   // Dispense de paiement : un mois non coché n'est plus un impayé, et il n'y a
   // rien à encaisser — la case devient « Exo » et ne se clique plus.
   const exonere = aUneExoneration(e);
@@ -73,29 +81,37 @@ export function MensualitesRow({
         {e.nom} {e.prenom}
         {exonere && <span title={`Dispense de paiement — ${resume}`}
           style={{ marginInlineStart: 6, fontSize: 11, background: "#fef3c7", color: "#92400e", borderRadius: 4, padding: "1px 5px", fontWeight: 700 }}>🎓</span>}
+        {sorti && <span title={`${e.statut}${depart ? ` le ${depart}` : " (date de départ inconnue)"} — seuls les mois entamés avant le départ sont dus`}
+          style={{ marginInlineStart: 6, fontSize: 10, background: "#f1f5f9", color: "#475569", borderRadius: 4, padding: "1px 5px", fontWeight: 700, whiteSpace: "nowrap" }}>
+          📤 {e.statut}{depart ? ` le ${depart}` : ""}
+        </span>}
       </TD>
       <TD><Badge color="blue">{e.classe}</Badge></TD>
       <TD>{e.tuteur}</TD><TD>{e.contactTuteur}</TD>
       {moisAnnee.map(m => {
         const paye = mens[m] === "Payé";
         const datePaie = (e.mensDates || {})[m] || "";
+        // Mois postérieur au départ : rien à encaisser.
+        const apresDepart = !paye && !dus.has(m);
         // Mois couvert par une dispense totale : rien à encaisser.
-        const moisExonere = exonereTotal && !paye;
-        const peutCliquer = moisExonere ? false : (paye ? (canCreate && canEdit) : canCreate);
+        const moisExonere = !apresDepart && exonereTotal && !paye;
+        const peutCliquer = apresDepart || moisExonere ? false : (paye ? (canCreate && canEdit) : canCreate);
         return <td key={m} style={{ padding: "4px 2px", textAlign: "center" }}>
           <button onClick={() => peutCliquer && toggleMens(e._id, m, mens, e.mensDates || {}, `${e.nom} ${e.prenom}`)}
-            title={moisExonere ? `${m} — dispensé (${resume})` : `${m} — ${mens[m] || "Impayé"}${datePaie ? " (" + datePaie + ")" : ""}`}
+            title={apresDepart ? `${m} — après le départ${depart ? ` (${depart})` : ""} : non dû`
+              : moisExonere ? `${m} — dispensé (${resume})` : `${m} — ${mens[m] || "Impayé"}${datePaie ? " (" + datePaie + ")" : ""}`}
             style={{ width: 26, height: 26, borderRadius: 5, border: "none", cursor: peutCliquer ? "pointer" : "default", fontSize: moisExonere ? 9 : 12,
-              background: paye ? C.green : moisExonere ? "#fef3c7" : "#e8f0e8",
-              color: paye ? "#fff" : moisExonere ? "#92400e" : "#9ca3af",
-              fontWeight: 700, opacity: (readOnly || (!peutCliquer && !paye && !moisExonere)) ? 0.6 : 1 }}>
-            {paye ? "✓" : moisExonere ? "Exo" : "·"}
+              background: paye ? C.green : apresDepart ? "#f1f5f9" : moisExonere ? "#fef3c7" : "#e8f0e8",
+              color: paye ? "#fff" : apresDepart ? "#cbd5e1" : moisExonere ? "#92400e" : "#9ca3af",
+              fontWeight: 700, opacity: (readOnly || (!peutCliquer && !paye && !moisExonere && !apresDepart)) ? 0.6 : 1 }}>
+            {paye ? "✓" : apresDepart ? "—" : moisExonere ? "Exo" : "·"}
           </button>
         </td>;
       })}
       <td style={{ padding: "4px 8px", textAlign: "center" }}>
-        <span style={{ fontWeight: 800, fontSize: 13, color: snapshot.nbPayes === moisAnnee.length ? C.greenDk : snapshot.nbPayes > 0 ? "#d97706" : "#b91c1c" }}>
-          {snapshot.nbPayes}/{moisAnnee.length}
+        <span title={sorti ? "Mois payés / mois dus jusqu'au départ" : undefined}
+          style={{ fontWeight: 800, fontSize: 13, color: snapshot.nbPayes === nbAttendus ? C.greenDk : snapshot.nbPayes > 0 ? "#d97706" : "#b91c1c" }}>
+          {snapshot.nbPayes}/{nbAttendus}
         </span>
       </td>
       <td style={{ padding: "4px 4px", textAlign: "center" }}>

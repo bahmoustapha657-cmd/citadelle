@@ -23,7 +23,7 @@ import { db } from "../../firebaseDb";
 import { isSupabase } from "../../backend";
 import { chargerCollection, modifierChampDoc, sauverParametresEcole } from "../../backend/data-supabase";
 import {
-  COLLECTIONS_ELEVES, aDesPaiements, champsCloture, champsRestauration,
+  COLLECTIONS_ELEVES, aDesPaiements, champsCloture, champsRestauration, horsAnneeCloturee,
 } from "./cloture-annee-utils";
 
 // Limite Firestore : 500 opérations par batch (marge de sécurité à 450).
@@ -79,10 +79,12 @@ export async function cloturerAnnee({ schoolId, annee, moisAnnee = null, simulat
   let total = 0;
   let avecPaiements = 0;
   let dejaArchives = 0;
+  let partis = 0;
 
   for (const { collection: nom, eleves } of sections) {
     for (const eleve of eleves) {
       total++;
+      if (horsAnneeCloturee(eleve, annee, moisAnnee)) { partis++; continue; }
       const champs = champsCloture(eleve, annee, { moisAnnee });
       if (!champs) { dejaArchives++; continue; }
       if (aDesPaiements(eleve)) avecPaiements++;
@@ -92,7 +94,7 @@ export async function cloturerAnnee({ schoolId, annee, moisAnnee = null, simulat
 
   if (!simulate && updates.length) await appliquerUpdates(schoolId, updates);
 
-  return { annee, total, archives: updates.length, avecPaiements, dejaArchives, simulation: simulate };
+  return { annee, total, archives: updates.length, avecPaiements, dejaArchives, partis, simulation: simulate };
 }
 
 // Restaure l'instantané de `annee` sur les fiches et retire l'archive.

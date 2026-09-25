@@ -1,5 +1,5 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { C, isSectionActive } from "../../constants";
+import { C, estSorti, isSectionActive } from "../../constants";
 import { Card } from "../ui";
 
 export function ChartsRow({ t, c1, c2, schoolInfo = {}, elevesC, elevesL, elevesP, tauxPayC, tauxPayL, tauxPayP, tauxPay }) {
@@ -17,7 +17,7 @@ export function ChartsRow({ t, c1, c2, schoolInfo = {}, elevesC, elevesL, eleves
         <p style={{ margin: "0 0 14px", fontWeight: 800, fontSize: 13, color: c1 }}>{t("dashboard.studentDistribution")}</p>
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={sections.map(({ label, eleves }) => (
-            { section: label, Actifs: eleves.filter((e) => e.statut === "Actif").length, Inactifs: eleves.filter((e) => e.statut !== "Actif").length }
+            { section: label, Actifs: eleves.filter((e) => e.statut === "Actif").length, Inactifs: eleves.filter((e) => e.statut !== "Actif" && !estSorti(e)).length }
           ))}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e0ebf8" />
             <XAxis dataKey="section" tick={{ fontSize: 11 }} />

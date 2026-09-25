@@ -64,8 +64,8 @@ export function ExonerationsModale({
 
   const exoneres = useMemo(() => eleves.filter(aUneExoneration), [eleves]);
   const overview = useMemo(
-    () => getMensualiteOverview(eleves, moisAnnee, tarifsClasses),
-    [eleves, moisAnnee, tarifsClasses],
+    () => getMensualiteOverview(eleves, moisAnnee, tarifsClasses, annee),
+    [eleves, moisAnnee, tarifsClasses, annee],
   );
   // Dispenses de l'an dernier, archivées par la clôture : la rentrée les
   // repropose plutôt que de les reconduire toute seule — une situation change.

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { C } from "../../constants";
+import { C, estSorti } from "../../constants";
 import { Btn, Card, Chargement, Stat, Vide } from "../ui";
 import { imprimerListeClasse } from "../../reports";
 import { ApercuGraphiques } from "./apercu-tab/ApercuGraphiques";
@@ -15,6 +15,9 @@ export function ApercuTab({
 }) {
   const { t } = useTranslation();
   const [scanQr, setScanQr] = useState(false);
+  // Élèves présents : les partis ne sont plus dans l'effectif ni sur les
+  // listes de classe imprimées.
+  const presents = eleves.filter((e) => !estSorti(e));
   return (
     <div>
       <div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}>
@@ -23,7 +26,7 @@ export function ApercuTab({
       {scanQr && <QrScannerModal schoolInfo={schoolInfo} fermer={()=>setScanQr(false)} />}
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:10,marginBottom:16}}>
         <Stat label={t("school.classes.title")} value={classes.length}/>
-        <Stat label={t("school.students.active")} value={eleves.filter(e=>e.statut==="Actif").length} sub={`/ ${eleves.length}`}/>
+        <Stat label={t("school.students.active")} value={eleves.filter(e=>e.statut==="Actif").length} sub={`/ ${presents.length}`}/>
         {avecEns&&<Stat label={t("school.teachers.title")} value={ens.length}/>}
         <Stat label={t("school.bulletins.average")} value={`${moy}/${maxNote}`} bg="#eaf4e0"/>
         <Stat label={t("dashboard.absences")} value={absences.length} bg="#fef3e0"/>
@@ -34,7 +37,7 @@ export function ApercuTab({
             <p style={{margin:0,fontWeight:800,fontSize:14,color:C.blueDark}}>{t("school.overview.studentsByClass")}</p>
             <div style={{display:"flex",gap:8}}>
               {classesUniq.map(cl=>(
-                <Btn sm key={cl} v="ghost" onClick={()=>imprimerListeClasse(cl,eleves,schoolInfo)}>🖨️ {cl}</Btn>
+                <Btn sm key={cl} v="ghost" onClick={()=>imprimerListeClasse(cl,presents,schoolInfo)}>🖨️ {cl}</Btn>
               ))}
             </div>
           </div>

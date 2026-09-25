@@ -68,7 +68,7 @@ export function NotesTab({
 
       <NotesToolbar
         t={t} notes={notes} notesVue={notesVue} setNotesVue={setNotesVue}
-        section={section} maxNote={maxNote} schoolInfo={schoolInfo} isPrimarySection={isPrimarySection}
+        section={section} maxNote={maxNote} schoolInfo={schoolInfo}
         eleves={eleves} matieres={matieres} noteForms={noteForms} periodes={periodes}
         canCreate={canCreate} setForm={setForm} setModal={setModal} defaultNoteType={defaultNoteType}
       />
@@ -103,7 +103,7 @@ export function NotesTab({
           maxNote={maxNote}
           readOnly={readOnly}
           schoolInfo={schoolInfo}
-          isPrimarySection={isPrimarySection}
+          section={section}
           canEdit={canEdit}
           supN={supN}
         />
@@ -116,7 +116,7 @@ export function NotesTab({
           importEnCours={importEnCours} setImportEnCours={setImportEnCours}
           noteForms={noteForms}
           schoolInfo={schoolInfo}
-          isPrimarySection={isPrimarySection}
+          section={section}
           periodes={periodes}
           maxNote={maxNote}
           eleves={eleves}
@@ -135,7 +135,7 @@ export function NotesTab({
           defaultNoteType={defaultNoteType}
           maxNote={maxNote}
           schoolInfo={schoolInfo}
-          isPrimarySection={isPrimarySection}
+          section={section}
           periodes={periodes}
           annee={annee}
           ajN={ajN}

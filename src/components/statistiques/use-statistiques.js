@@ -81,7 +81,12 @@ export function useStatistiques({ annee }) {
     notes, cN, matieres, matieresForClasse, classes,
     eleves: actifs, tousEleves,
     assiduite: useMemo(() => statsAssiduite(absences, actifs), [absences, actifs]),
-    finances: useMemo(() => statsFinances(tousEleves, moisAnnee, tarifsClasses, paiements), [tousEleves, moisAnnee, tarifsClasses, paiements]),
+    // Les fiches décrivent l'année officielle : c'est elle qui situe les mois
+    // par rapport aux dates de départ.
+    finances: useMemo(
+      () => statsFinances(tousEleves, moisAnnee, tarifsClasses, paiements, schoolInfo?.anneeScolaire || anneeCourante),
+      [tousEleves, moisAnnee, tarifsClasses, paiements, schoolInfo?.anneeScolaire, anneeCourante],
+    ),
     effectifs: useMemo(() => statsEffectifs(tousEleves), [tousEleves]),
     enseignants: useMemo(() => statsEnseignants(enseignants, emplois, notes), [enseignants, emplois, notes]),
   };

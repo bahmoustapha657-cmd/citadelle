@@ -9,7 +9,7 @@ export function ImportNotesModal({
   setModal,
   importPreview, setImportPreview,
   importEnCours, setImportEnCours,
-  noteForms, schoolInfo, isPrimarySection, periodes, maxNote, eleves,
+  noteForms, schoolInfo, section, periodes, maxNote, eleves,
   ajN, annee, toast,
 }) {
   return (
@@ -29,7 +29,7 @@ export function ImportNotesModal({
         const lignes = rows.filter(r => r[0] || r[1]).map((r, i) => {
           const eleveNom = String(r[0] || "").trim();
           const matiere = String(r[1] || "").trim();
-          const type = resolveCanonicalNoteType(String(r[2] || (noteForms[0]?.label || "Devoir")).trim(), schoolInfo, isPrimarySection ? "primaire" : "secondaire");
+          const type = resolveCanonicalNoteType(String(r[2] || (noteForms[0]?.label || "Devoir")).trim(), schoolInfo, section);
           const periode = String(r[3] || periodes[0] || "T1").trim();
           const note = Number(String(r[4] || "").replace(",", "."));
           const eleve = eleves.find(e => `${e.nom} ${e.prenom}`.toLowerCase() === eleveNom.toLowerCase());
@@ -64,7 +64,7 @@ export function ImportNotesModal({
                 <td style={{ padding: "4px 8px", color: "#94a3b8", fontSize: 10 }}>{l.ligne}</td>
                 <td style={{ padding: "4px 8px", fontWeight: 600 }}>{l.eleveNom || "—"}</td>
                 <td style={{ padding: "4px 8px" }}>{l.matiere || "—"}</td>
-                <td style={{ padding: "4px 8px" }}>{getEvaluationLabel(l.type, schoolInfo, { section: isPrimarySection ? "primaire" : "secondaire" })}</td>
+                <td style={{ padding: "4px 8px" }}>{getEvaluationLabel(l.type, schoolInfo, { section })}</td>
                 <td style={{ padding: "4px 8px" }}>{l.periode}</td>
                 <td style={{ padding: "4px 8px", textAlign: "center", fontWeight: 700 }}>{isNaN(l.note) ? "—" : l.note}</td>
                 <td style={{ padding: "4px 8px" }}>
