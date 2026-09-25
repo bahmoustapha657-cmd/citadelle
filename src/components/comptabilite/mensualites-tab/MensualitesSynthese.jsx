@@ -5,9 +5,9 @@ import { getMensualiteOverview } from "../../../mensualite-utils";
 
 // Bandeau de synthèse au-dessus de la grille : payés / impayés, total perçu,
 // inscriptions et autres frais perçus.
-export function MensualitesSynthese({ elevesFiltres, moisAnnee, tarifsClasses }) {
+export function MensualitesSynthese({ elevesFiltres, moisAnnee, tarifsClasses, annee }) {
   const { t } = useTranslation();
-  const overview = getMensualiteOverview(elevesFiltres, moisAnnee, tarifsClasses);
+  const overview = getMensualiteOverview(elevesFiltres, moisAnnee, tarifsClasses, annee);
   return (
     <div style={{ marginBottom: 12, padding: "9px 14px", background: "#e0ebf8", borderRadius: 8, display: "flex", gap: 20, flexWrap: "wrap", alignItems: "center" }}>
       <span style={{ fontSize: 12, color: C.greenDk, fontWeight: 700 }}>✓ {overview.totalPayes} {t("accounting.paid").toLowerCase()}</span>

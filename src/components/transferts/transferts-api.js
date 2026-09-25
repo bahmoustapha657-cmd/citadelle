@@ -16,6 +16,13 @@ export async function apiGenererToken({ schoolId, eleveSnapshot, ecoleDestinatio
   return res.json();
 }
 
+// Transferts déjà émis par l'école. Seul Supabase sait les relister ; l'API
+// Firebase (legacy) n'a pas d'équivalent.
+export async function apiListerTransferts() {
+  if (isSupabase) return sbTransferts.apiListerTransferts();
+  return { transferts: [] };
+}
+
 export async function apiVerifierToken(token) {
   if (isSupabase) return sbTransferts.apiVerifierToken(token);
   const headers = await getAuthHeaders({});
@@ -23,8 +30,9 @@ export async function apiVerifierToken(token) {
   return res.json();
 }
 
-export async function apiAccepterTransfert({ token, targetSchoolId }) {
-  if (isSupabase) return sbTransferts.apiAccepterTransfert({ token, targetSchoolId });
+// `classe`, `matricule` : choisis par l'école d'accueil (Supabase seulement).
+export async function apiAccepterTransfert({ token, targetSchoolId, classe, matricule }) {
+  if (isSupabase) return sbTransferts.apiAccepterTransfert({ token, classe, matricule });
   const headers = await getAuthHeaders({ "Content-Type": "application/json" });
   const res = await apiFetch("/transfert", {
     method: "POST",

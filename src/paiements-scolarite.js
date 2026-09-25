@@ -17,6 +17,7 @@
 //    fraisMontants, inscriptionMontant), comme un paiement en une fois ;
 //  • rien ne s'encaisse au-delà du reste dû.
 
+import { moisExigibles } from "./depart-utils.js";
 import { estExonereTotal } from "./exoneration-utils.js";
 import {
   acompteFrais,
@@ -76,18 +77,22 @@ export const periodeTranche = (tranche) => {
 
 // ── Mois ────────────────────────────────────────────────────────────────────
 
-// État de chaque mois pour cet élève : payé, entamé (acompte), impayé ou
-// dispensé. `du` = mensualité après dispense ; `verse` = montant figé d'un
-// mois payé, ou acompte d'un mois entamé ; `reste` = ce qu'il reste à verser.
-export function etatsMois(eleve = {}, moisAnnee = [], mensualite = 0) {
+// État de chaque mois pour cet élève : payé, entamé (acompte), impayé,
+// dispensé, ou non dû (après le départ d'un élève parti — `annee` situe les
+// mois, cf. depart-utils). `du` = mensualité après dispense ; `verse` =
+// montant figé d'un mois payé, ou acompte d'un mois entamé ; `reste` = ce
+// qu'il reste à verser.
+export function etatsMois(eleve = {}, moisAnnee = [], mensualite = 0, annee) {
   const mens = eleve.mens || {};
   const du = montantDuMois(eleve, mensualite);
   const dispense = estExonereTotal(eleve, "mensualites");
+  const exigibles = new Set(moisExigibles(eleve, moisAnnee, annee));
   return moisAnnee.map((mois) => {
     if (mens[mois] === "Payé") {
       return { mois, statut: "paye", du, verse: montantMoisPaye(eleve, mois, mensualite), reste: 0 };
     }
     const acompte = acompteMois(eleve, mois);
+    if (!exigibles.has(mois)) return { mois, statut: "nonDu", du: 0, verse: acompte, reste: 0 };
     const reste = Math.max(0, du - acompte);
     const statut = acompte > 0 ? "partiel" : dispense ? "exonere" : "impaye";
     return { mois, statut, du, verse: acompte, reste };
@@ -197,11 +202,12 @@ export function champsRetraitAcompte(eleve = {}, { type, cle } = {}) {
 //   { type: "poste", poste, label, duNet }         — inscription ou frais
 // Renvoie { ok: true, champs, lignes, total, moisSoldes } — `lignes` pour le
 // journal (une par mois ou poste touché) — ou { ok: false, raison, reste }.
-export function planVersement({ eleve = {}, cible, montant, date = "", mensualite = 0 }) {
+// `annee` : celle des fiches (règle des départs, cf. etatsMois).
+export function planVersement({ eleve = {}, cible, montant, date = "", mensualite = 0, annee }) {
   const somme = entier(montant);
   if (!cible) return { ok: false, raison: "cible", reste: 0 };
   if (cible.type === "mois") {
-    const etats = etatsMois(eleve, cible.mois || [], mensualite);
+    const etats = etatsMois(eleve, cible.mois || [], mensualite, annee);
     const reste = etats.reduce((s, e) => s + e.reste, 0);
     if (somme <= 0) return { ok: false, raison: "montant", reste };
     if (somme > reste) return { ok: false, raison: "depasse", reste };

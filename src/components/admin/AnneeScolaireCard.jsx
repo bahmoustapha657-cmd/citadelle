@@ -72,7 +72,8 @@ export function AnneeScolaireCard({ annee, setAnnee, canEdit = true, schoolId, t
           <p style={{margin:"0 0 10px",fontSize:12,color:"#3f6212"}}>
             {cl.resultat.archives} fiche(s) archivée(s) sur {cl.resultat.total}
             {cl.resultat.avecPaiements > 0 ? ` · ${cl.resultat.avecPaiements} avec des encaissements` : ""}
-            {cl.resultat.dejaArchives > 0 ? ` · ${cl.resultat.dejaArchives} déjà archivée(s) auparavant` : ""}.
+            {cl.resultat.dejaArchives > 0 ? ` · ${cl.resultat.dejaArchives} déjà archivée(s) auparavant` : ""}
+            {cl.resultat.partis > 0 ? ` · ${cl.resultat.partis} élève(s) parti(s) avant cette année, laissé(s) tel(s) quel(s)` : ""}.
           </p>
           <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
             <Btn sm v="danger" disabled={cl.enCours} onClick={()=>cl.annulerPour(cl.resultat.annee)}>↩️ Annuler la clôture</Btn>

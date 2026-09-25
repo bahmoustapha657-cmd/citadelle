@@ -5,17 +5,25 @@ import { AppreciationModale } from "./bulletins-tab/AppreciationModale";
 import { useBatchAppreciation } from "./bulletins-tab/use-batch-appreciation";
 import { PERIODE_ANNEE } from "../../reports";
 import { buildBulletinNotesAnnuelles } from "../../reports/bulletins/annual-notes";
+import { elevesPourPeriode } from "../../depart-utils";
 
 export function BulletinsTab({
   periodes = ["T1", "T2", "T3"],
   rechercheMatricule, setRechercheMatricule, periodeB, setPeriodeB,
-  filtreClasse, setFiltreClasse, classesUniq, elevesFiltres, eleves, notes,
+  filtreClasse, setFiltreClasse, classesUniq, elevesFiltres: elevesFiltresTous, eleves: elevesTous, notes,
   matieres, matieresForClasse, schoolInfo, moisAnnee, maxNote, section = "college",
   form, setForm, modal, setModal, canCreate, canEdit,
   getAppreciation, saveAppreciation, appreciationsParEleveB, toast,
 }) {
   const { t } = useTranslation();
   const chg = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
+  // Élèves de la période : les présents, plus les partis qui y ont des notes
+  // — ils étaient en classe, leur bulletin et leur rang d'alors restent. Les
+  // autres partis n'ont rien à imprimer, et ne comptent plus dans l'effectif
+  // porté sur les bulletins de leurs anciens camarades.
+  const periodeNotes = periodeB === PERIODE_ANNEE ? null : periodeB;
+  const elevesFiltres = elevesPourPeriode(elevesFiltresTous, notes, periodeNotes);
+  const eleves = elevesPourPeriode(elevesTous, notes, periodeNotes);
   const elevesB = elevesFiltres.filter(e=>!rechercheMatricule||(e.matricule||"").toLowerCase().includes(rechercheMatricule.toLowerCase())||(e.nom+" "+e.prenom).toLowerCase().includes(rechercheMatricule.toLowerCase()));
 
   // En mode « fin d'année », les moyennes/mentions affichées et le contexte

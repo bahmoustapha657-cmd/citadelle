@@ -3,6 +3,7 @@ import { fmt, getFraisAnnexeDate, getFraisAnnexeMontantFige, isFraisAnnexePaye }
 import { acompteFrais, acompteInscription, acompteMois, montantInscriptionPaye } from "../../mensualite-utils";
 import { Badge, Vide } from "../ui";
 import { normalizeText } from "./helpers";
+import { moisExigibles, partiAvantAnnee } from "../../depart-utils";
 
 // Carte d'un frais ponctuel : réglé (au montant encaissé), entamé (acompte
 // versé) ou en attente (au tarif de la classe).
@@ -13,12 +14,19 @@ const carteFrais = (id, label, montant, paye, date, [fond, bord, texte], acompte
   texte: paye ? texte : acompte > 0 ? "#92400e" : "#b91c1c",
 });
 
-export function PaiementsTab({ eleve, moisAnnee, estReinscription, montantInscription, montantAutre, montantRevision = 0, montantMensuel, c1, c2 }) {
+// `annee` : année des fiches. Un élève parti ne doit que les mois entamés
+// avant son départ — les suivants s'affichent « Non dû », pas « Impayé ».
+export function PaiementsTab({ eleve, moisAnnee, annee, estReinscription, montantInscription, montantAutre, montantRevision = 0, montantMensuel, c1, c2 }) {
   const mens = eleve.mens || {};
   const mensDates = eleve.mensDates || {};
   const moisList = moisAnnee.length ? moisAnnee : Object.keys(mens);
-  const nbPayes = moisList.filter((mois) => normalizeText(mens[mois]) === "paye").length;
-  const nbImpayes = moisList.filter((mois) => normalizeText(mens[mois]) !== "paye").length;
+  const estPaye = (mois) => normalizeText(mens[mois]) === "paye";
+  const dus = new Set(moisExigibles(eleve, moisList, annee));
+  const nbPayes = moisList.filter(estPaye).length;
+  const nbImpayes = moisList.filter((mois) => dus.has(mois) && !estPaye(mois)).length;
+  const nbAttendus = moisList.filter((mois) => dus.has(mois) || estPaye(mois)).length;
+  // Parti avant la rentrée : ni inscription ni frais à réclamer pour l'année.
+  const rienDu = partiAvantAnnee(eleve, moisList, annee);
   const frais = (id, label, tarif, couleurs) => {
     const paye = isFraisAnnexePaye(eleve, id);
     return carteFrais(id, label, paye ? (getFraisAnnexeMontantFige(eleve, id) ?? tarif) : tarif,
@@ -33,7 +41,7 @@ export function PaiementsTab({ eleve, moisAnnee, estReinscription, montantInscri
     // mensualité affichée ci-dessous.
     frais("revision", "Frais de revision (annuel)", montantRevision, ["#fef3c7", "#fcd34d", "#92400e"]),
     frais("autre", "Autre frais", montantAutre, ["#e2e8f0", "#94a3b8", "#334155"]),
-  ].filter((item) => item.montant > 0);
+  ].filter((item) => item.montant > 0 && (item.paye || item.acompte > 0 || !rienDu));
 
   return (
     <>
@@ -48,7 +56,7 @@ export function PaiementsTab({ eleve, moisAnnee, estReinscription, montantInscri
           <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>Mois impayes</div>
         </div>
         <div style={{ padding: "14px 20px", background: "#f0fdf4", borderRadius: 12, textAlign: "center", minWidth: 120 }}>
-          <div style={{ fontWeight: 900, fontSize: 24, color: c2 }}>{moisList.length ? Math.round((nbPayes / moisList.length) * 100) : 0}%</div>
+          <div style={{ fontWeight: 900, fontSize: 24, color: c2 }}>{nbAttendus ? Math.round((nbPayes / nbAttendus) * 100) : 0}%</div>
           <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>Taux</div>
         </div>
         <div style={{ padding: "14px 20px", background: "#eff6ff", borderRadius: 12, textAlign: "center", minWidth: 150 }}>
@@ -80,9 +88,17 @@ export function PaiementsTab({ eleve, moisAnnee, estReinscription, montantInscri
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(130px,1fr))", gap: 8 }}>
         {moisList.map((mois) => {
-          const paye = normalizeText(mens[mois]) === "paye";
+          const paye = estPaye(mois);
           // Mois entamé : un acompte versé, pas encore soldé.
           const acompte = paye ? 0 : acompteMois(eleve, mois);
+          if (!paye && !acompte && !dus.has(mois)) {
+            return (
+              <div key={mois} style={{ padding: "12px 16px", borderRadius: 12, background: "#f8fafc", border: "2px solid #e2e8f0" }}>
+                <div style={{ fontWeight: 800, fontSize: 13, color: "#94a3b8" }}>{mois}</div>
+                <div style={{ fontSize: 11, marginTop: 4, color: "#94a3b8", fontWeight: 700 }}>Non du (apres le depart)</div>
+              </div>
+            );
+          }
           const [fond, bord, texte] = paye ? ["#dcfce7", "#86efac", "#166534"]
             : acompte > 0 ? ["#fef3c7", "#fcd34d", "#92400e"] : ["#fee2e2", "#fca5a5", "#b91c1c"];
           return (

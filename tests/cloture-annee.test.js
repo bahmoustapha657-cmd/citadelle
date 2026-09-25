@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   classePourAnnee,
   champsCloture,
+  horsAnneeCloturee,
   scolaritePourAnnee,
 } from "../src/components/admin/cloture-annee-utils.js";
 
@@ -81,4 +82,22 @@ test("classePourAnnee : l instantane fait autorite sur la fiche du jour", () => 
 test("classePourAnnee : tolere une fiche vide", () => {
   assert.equal(classePourAnnee({}, ANNEE), "");
   assert.equal(classePourAnnee({ historique: { [ANNEE]: {} } }, ANNEE), "");
+});
+
+// Un élève parti avant la rentrée de l'année clôturée n'a rien à y archiver :
+// sans cette règle, chaque clôture lui ajoutait une année vide à l'historique
+// et neuf mois « Impayé » de plus.
+test("cloture : laisse tel quel l'élève parti avant l'année, archive celui parti pendant", () => {
+  const avantLaRentree = { ...eleveType(), statut: "Transféré", dateDepart: "2025-09-15",
+    mens: { Oct: "Impayé" }, inscriptionPayee: false, fraisPayes: {} };
+  assert.equal(horsAnneeCloturee(avantLaRentree, ANNEE), true);
+  // Même départ, mais une inscription encaissée : elle doit rejoindre l'archive.
+  assert.equal(horsAnneeCloturee({ ...avantLaRentree, inscriptionPayee: true }, ANNEE), false);
+  // Parti en cours d'année : archivé comme les autres.
+  assert.equal(horsAnneeCloturee({ ...avantLaRentree, dateDepart: "2026-02-14" }, ANNEE), false);
+  // Parti les années précédentes : rien non plus.
+  assert.equal(horsAnneeCloturee({ ...avantLaRentree, dateDepart: "2024-03-01" }, ANNEE), true);
+  // Présent, ou parti sans date connue : archivé.
+  assert.equal(horsAnneeCloturee(eleveType(), ANNEE), false);
+  assert.equal(horsAnneeCloturee({ ...avantLaRentree, dateDepart: "" }, ANNEE), false);
 });

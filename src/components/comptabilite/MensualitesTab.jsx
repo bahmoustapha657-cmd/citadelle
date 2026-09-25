@@ -31,6 +31,8 @@ export function MensualitesTab({
   setFiltClasse,
   moisAnnee,
   annee,
+  // Année des fiches affichées : la consultée (archive) ou la courante.
+  anneeScolarite,
   readOnly,
   canCreate,
   canEdit,
@@ -108,19 +110,20 @@ export function MensualitesTab({
       />}
 
       {eleveEncaisse && <EncaisserModale
-        eleve={eleveEncaisse} moisAnnee={moisAnnee} tarifsClasses={tarifsClasses}
+        eleve={eleveEncaisse} moisAnnee={moisAnnee} annee={anneeScolarite} tarifsClasses={tarifsClasses}
         tranches={tranchesPaiement} schoolInfo={schoolInfo} canEdit={canEdit}
         encaisserVersement={encaisserVersement} retirerAcompte={retirerAcompte}
         fermer={() => setEncaisseId(null)}
       />}
 
       {/* Alertes impayés : repliées derrière un bouton, filtrées cycle + classe. */}
-      <AlertesCritiques eleves={elevesFiltres} moisAnnee={moisAnnee} />
+      <AlertesCritiques eleves={elevesFiltres} moisAnnee={moisAnnee} annee={anneeScolarite} />
 
       <MensualitesTable
         eleves={eleves}
         elevesFiltres={elevesFiltres}
         moisAnnee={moisAnnee}
+        annee={anneeScolarite}
         tarifsClasses={tarifsClasses}
         readOnly={readOnly}
         canCreate={canCreate}

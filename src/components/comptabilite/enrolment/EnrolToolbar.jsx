@@ -9,7 +9,7 @@ export function EnrolToolbar({
   t, afficherDeparts, setAfficherDeparts, planInfo,
   niveauEnrol, setNiveauEnrol, elevesC, elevesL, elevesP, elevesPre = [],
   classeEnrol, setClasseEnrol, classesEnrol = [],
-  canCreate, elevesEnrol, schoolInfo, setForm, setModal,
+  canCreate, elevesEnrol, elevesPresents = elevesEnrol, schoolInfo, setForm, setModal,
   filtreReinscription = "all", setFiltreReinscription = () => {},
   nbAReinscrire = 0, nbSelection = 0, totalAReinscrire = 0, onEncaisserInscriptions,
 }) {
@@ -63,7 +63,7 @@ export function EnrolToolbar({
       )}
       {!afficherDeparts&&classeEnrol!=="all"&&(
         <Btn sm v="ghost" title="Imprimer la liste des élèves de la classe sélectionnée"
-          onClick={()=>imprimerListeClasse(classeEnrol, elevesEnrol, schoolInfo)}>
+          onClick={()=>imprimerListeClasse(classeEnrol, elevesPresents, schoolInfo)}>
           🖨️ Liste de la classe
         </Btn>
       )}

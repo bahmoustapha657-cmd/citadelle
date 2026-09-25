@@ -2,13 +2,16 @@
 //  EduGest — Test bout-en-bout du périmètre d'écriture enseignant (RLS)
 // ════════════════════════════════════════════════════════════════════════
 // Vérifie teacher-security.sql sur la base réelle, avec l'école DEMO :
-//   1. crée 2 comptes enseignants temporaires (primaire + college) et un
-//      élève college temporaire, mappe leurs classes (enseignant_classes) ;
+//   1. crée 3 comptes enseignants temporaires (primaire, college, maternelle),
+//      un élève college et deux élèves de maternelle temporaires, mappe leurs
+//      classes (enseignant_classes) ;
 //   2. se connecte comme un VRAI client (clé anon) et vérifie :
 //      élève de ses classes → écriture OK ; élève hors classes → REFUS ;
 //      secondaire : matière du profil OK, autre matière → REFUS ;
+//      maternelle (prescolaire-3-enseignants.sql) : titulaire sans matière de
+//      profil → TOUTES les matières de sa classe OK ;
 //      anti-élévation : champs de périmètre de `comptes` non modifiables ;
-//   3. NETTOIE tout (notes/absences/élève/comptes/auth) même en cas d'échec.
+//   3. NETTOIE tout (notes/absences/élèves/comptes/auth) même en cas d'échec.
 //
 // Lancer : node supabase/teacher-security-test.mjs   (config.local.mjs requis)
 import { createClient } from "@supabase/supabase-js";
@@ -20,7 +23,10 @@ const CODE = "demo";
 const PASSWORD = "TestRls#2026!";
 const T1_LOGIN = "test.rls.prof.primaire";
 const T2_LOGIN = "test.rls.prof.college";
+const T3_LOGIN = "test.rls.prof.maternelle";
 const CLASSE_TMP = "7ème Test RLS";
+const CLASSE_MAT = "Petite Section Test RLS";
+const CLASSE_MAT_HORS = "Moyenne Section Test RLS";
 
 let echecs = 0;
 function verifier(libelle, ok, detail = "") {
@@ -31,14 +37,14 @@ function verifier(libelle, ok, detail = "") {
 // ── Nettoyage (idempotent : purge aussi les restes d'un run interrompu) ─────
 async function nettoyer(ecoleId) {
   const { data: comptes } = await admin.from("comptes").select("id, user_id")
-    .eq("ecole_id", ecoleId).in("login", [T1_LOGIN, T2_LOGIN]);
+    .eq("ecole_id", ecoleId).in("login", [T1_LOGIN, T2_LOGIN, T3_LOGIN]);
   for (const c of comptes || []) {
     await admin.from("enseignant_classes").delete().eq("compte_id", c.id);
     await admin.from("comptes").delete().eq("id", c.id);
     if (c.user_id) await admin.auth.admin.deleteUser(c.user_id).catch(() => {});
   }
   const { data: elevesTmp } = await admin.from("eleves").select("id")
-    .eq("ecole_id", ecoleId).eq("classe", CLASSE_TMP);
+    .eq("ecole_id", ecoleId).in("classe", [CLASSE_TMP, CLASSE_MAT, CLASSE_MAT_HORS]);
   for (const e of elevesTmp || []) {
     await admin.from("notes").delete().eq("eleve_id", e.id);
     await admin.from("absences").delete().eq("eleve_id", e.id);
@@ -92,11 +98,20 @@ async function main() {
     nom: "TEST", prenom: "Rls", statut: "Actif",
   }).select("id, classe").single();
   if (eClg) throw new Error(`élève college temp: ${eClg.message}`);
+  // Maternelle : un élève dans la classe du titulaire T3, un dans une autre.
+  const { data: elevesMat, error: eMat } = await admin.from("eleves").insert([CLASSE_MAT, CLASSE_MAT_HORS]
+    .map((classe) => ({ ecole_id: ecole.id, section: "prescolaire", classe, nom: "TEST", prenom: "Rls", statut: "Actif" })))
+    .select("id, classe");
+  if (eMat) throw new Error(`élèves maternelle temp: ${eMat.message}`);
+  const matDans = elevesMat.find((e) => e.classe === CLASSE_MAT);
+  const matHors = elevesMat.find((e) => e.classe === CLASSE_MAT_HORS);
 
   const t1 = await creerEnseignant(ecole.id, T1_LOGIN,
     { section: "primaire", matiere: null, classes: ["CM2"] });
   const t2 = await creerEnseignant(ecole.id, T2_LOGIN,
     { section: "college", matiere: "Français", classes: [CLASSE_TMP] });
+  const t3 = await creerEnseignant(ecole.id, T3_LOGIN,
+    { section: "prescolaire", matiere: null, classes: [CLASSE_MAT] });
 
   try {
     // ── T1 (primaire, titulaire CM2) : périmètre de CLASSE ──────────────────
@@ -141,6 +156,22 @@ async function main() {
     const { error: b3 } = await t2.client.from("notes")
       .insert(noteDe(ecole.id, eleveClg, "primaire", "Maths"));
     verifier("T2 note section falsifiée 'primaire' (esquive matière) → refusée", !!b3);
+
+    // ── T3 (maternelle, titulaire sans matière) : prescolaire-3-enseignants.sql
+    const { error: m1 } = await t3.client.from("notes")
+      .insert(noteDe(ecole.id, matDans, "prescolaire", "Langage et Communication"));
+    verifier("T3 note élève de SA classe (maternelle) → acceptée", !m1, m1?.message);
+    const { error: m2 } = await t3.client.from("notes")
+      .insert(noteDe(ecole.id, matDans, "prescolaire", "Graphisme et Écriture"));
+    verifier("T3 note dans un AUTRE domaine (titulaire multi-matières) → acceptée", !m2, m2?.message);
+    const { error: m3 } = await t3.client.from("notes")
+      .insert(noteDe(ecole.id, matHors, "prescolaire", "Langage et Communication"));
+    verifier("T3 note élève HORS classes (autre classe de maternelle) → refusée", !!m3);
+    const { error: m4 } = await t3.client.from("absences").insert({
+      ecole_id: ecole.id, section: "prescolaire", eleve_id: matDans.id,
+      type: "Absence", date: "2026-07-01", motif: "TEST-RLS",
+    });
+    verifier("T3 absence élève de SA classe → acceptée", !m4, m4?.message);
 
     // ── Anti-élévation : champs de périmètre de `comptes` verrouillés ───────
     const { data: g1 } = await t2.client.from("comptes")

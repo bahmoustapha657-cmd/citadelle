@@ -7,6 +7,17 @@
 -- elle. Le token (uuid imprévisible) autorise la lecture cross-école ; on passe
 -- par des fonctions SECURITY DEFINER pour ne pas exposer la table en lecture
 -- globale.
+--
+-- v2 (2026-09-24) — rejouer ce fichier en entier :
+--  • l'élève accueilli ne reçoit que son IDENTITÉ. L'instantané entier partait
+--    dans `extra`, qui prime sur les colonnes à la lecture : l'élève arrivait
+--    « Transféré » chez sa nouvelle école, avec les mois payés, les dispenses
+--    et l'historique de l'ancienne ;
+--  • validité de 30 jours, annoncée à l'écran mais jamais appliquée ;
+--  • une école n'accueille pas son propre transfert ;
+--  • classe et matricule sont choisis par l'école d'accueil (ses classes et
+--    sa numérotation ne sont pas celles de l'école d'origine) ;
+--  • EXECUTE retiré à PUBLIC/anon : seules les sessions connectées appellent.
 
 create table if not exists transferts (
   id                uuid primary key default gen_random_uuid(),
@@ -31,19 +42,26 @@ drop policy if exists transferts_superadmin on transferts;
 create policy transferts_superadmin on transferts for all to authenticated
   using (is_superadmin()) with check (is_superadmin());
 
--- ── Vérifier un token (cross-école) → renvoie le snapshot si en attente ─────
+-- ── Vérifier un token (cross-école) → renvoie le snapshot s'il est valable ──
 create or replace function transfert_verifier(p_token uuid)
   returns jsonb language sql stable security definer set search_path = public as $$
   select jsonb_build_object(
            'eleveSnapshot', eleve_snapshot,
            'ecoleDestination', ecole_destination,
-           'statut', statut)
-  from transferts where token = p_token and statut = 'en_attente';
+           'statut', statut,
+           'expireLe', created_at + interval '30 days')
+  from transferts
+  where token = p_token and statut = 'en_attente'
+    and created_at > now() - interval '30 days';
 $$;
+revoke execute on function transfert_verifier(uuid) from public, anon;
 grant execute on function transfert_verifier(uuid) to authenticated;
 
 -- ── Accepter un token → crée l'élève dans l'école de l'appelant ────────────
-create or replace function transfert_accepter(p_token uuid)
+-- v1 n'avait que (p_token) : la retirer, sinon l'appel à un seul argument
+-- serait ambigu entre les deux signatures.
+drop function if exists transfert_accepter(uuid);
+create or replace function transfert_accepter(p_token uuid, p_classe text default null, p_matricule text default null)
   returns jsonb language plpgsql security definer set search_path = public as $$
 declare
   t transferts%rowtype;
@@ -57,19 +75,47 @@ begin
   if not found then
     return jsonb_build_object('error', 'Token introuvable ou déjà utilisé.');
   end if;
+  if t.created_at <= now() - interval '30 days' then
+    return jsonb_build_object('error', 'Token expiré (validité 30 jours) : demandez-en un nouveau à l''école d''origine.');
+  end if;
+  if t.ecole_source_id = auth_ecole_id() then
+    return jsonb_build_object('error', 'Ce transfert vient de votre propre école.');
+  end if;
   snap := t.eleve_snapshot;
+  if coalesce(snap->>'section', '') = '' then
+    return jsonb_build_object('error', 'Dossier de transfert incomplet (section manquante).');
+  end if;
 
-  insert into eleves (ecole_id, section, nom, prenom, sexe, matricule, ien, classe, statut, extra)
+  -- L'identité seule, dans ses colonnes. Scolarité, paiements, dispenses,
+  -- départ et historique restent à l'école d'origine : l'élève arrive neuf,
+  -- inscrit comme tout élève venu d'ailleurs (réinscription + établissement
+  -- d'origine), daté de ce jour.
+  insert into eleves (
+    ecole_id, section, nom, prenom, sexe, matricule, ien, classe,
+    date_naissance, lieu_naissance, filiation, tuteur, contact_tuteur, domicile, photo,
+    statut, extra
+  )
   values (
     auth_ecole_id(),
     (snap->>'section')::section_scolaire,
-    snap->>'nom', snap->>'prenom', snap->>'sexe', snap->>'matricule', snap->>'ien',
-    snap->>'classe', 'Actif',
-    snap - '_id' - 'id'                                 -- évite d'écraser le nouvel _id
+    snap->>'nom', snap->>'prenom',
+    case when snap->>'sexe' in ('M', 'F') then snap->>'sexe' end,
+    coalesce(nullif(trim(p_matricule), ''), snap->>'matricule'),
+    snap->>'ien',
+    coalesce(nullif(trim(p_classe), ''), snap->>'classe'),
+    snap->>'dateNaissance', snap->>'lieuNaissance', snap->>'filiation',
+    snap->>'tuteur', snap->>'contactTuteur', snap->>'domicile', snap->>'photo',
+    'Actif',
+    jsonb_strip_nulls(jsonb_build_object(
+      'typeInscription', 'Réinscription',
+      'etablissementOrigine', snap->>'schoolNom',
+      'dateArrivee', to_char(current_date, 'YYYY-MM-DD')
+    ))
   )
   returning id into new_id;
 
   update transferts set statut = 'accepte', accepted_eleve_id = new_id where id = t.id;
   return jsonb_build_object('ok', true, 'eleveId', new_id);
 end; $$;
-grant execute on function transfert_accepter(uuid) to authenticated;
+revoke execute on function transfert_accepter(uuid, text, text) from public, anon;
+grant execute on function transfert_accepter(uuid, text, text) to authenticated;

@@ -62,6 +62,7 @@ export function PortailTabContent({ p, schoolInfo, c1, c2 }) {
         <PaiementsTab
           eleve={p.eleve}
           moisAnnee={p.moisAnnee}
+          annee={schoolInfo?.anneeScolaire}
           estReinscription={p.estReinscription}
           montantInscription={p.montantInscription}
           montantAutre={p.montantAutre}

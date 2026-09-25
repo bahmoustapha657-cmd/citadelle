@@ -4,7 +4,8 @@
 
 // Extension explicite : ce module est couvert par des tests Node, dont la
 // résolution ESM n'infère pas les extensions comme le fait Vite.
-import { anneePrecedente, anneeSuivante, finAnneeScolaire, initMens } from "../../constants.js";
+import { MOIS_ANNEE, anneePrecedente, anneeSuivante, finAnneeScolaire, initMens } from "../../constants.js";
+import { concerneParAnnee } from "../../mensualite-utils.js";
 
 // Toutes les sections, préscolaire compris.
 export const COLLECTIONS_ELEVES = [
@@ -59,6 +60,17 @@ export function etatVierge(moisAnnee = null) {
     inscriptionAcompte: null,
     exoneration: null,
   };
+}
+
+// Élève parti avant le premier mois de l'année clôturée, sans rien d'encaissé
+// sur sa fiche : il n'a rien à archiver pour elle, la clôture le laisse tel
+// quel. Sans cela, chaque clôture lui ajoutait une année qu'il n'a pas faite —
+// une archive vide dans son historique, et neuf mois « Impayé » de plus.
+// Un élève parti PENDANT l'année est archivé comme les autres : ses paiements
+// de l'année doivent rejoindre l'historique.
+export function horsAnneeCloturee(eleve = {}, annee = "", moisAnnee = null) {
+  const mois = Array.isArray(moisAnnee) && moisAnnee.length ? moisAnnee : MOIS_ANNEE;
+  return !concerneParAnnee(eleve, mois, annee);
 }
 
 // L'élève a-t-il quoi que ce soit d'encaissé sur son année courante ?

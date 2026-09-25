@@ -9,7 +9,7 @@ const COULEURS_TRANCHES = ["#fbbf24", "#34d399", "#60a5fa", "#f472b6", "#a78bfa"
 // Tableau sticky des mensualités : bandeau de synthèse, état vide, puis grille
 // scrollable (en-tête figé en haut, colonnes Matricule/Nom figées à gauche).
 export function MensualitesTable({
-  eleves, elevesFiltres, moisAnnee, tarifsClasses, readOnly, canCreate, canEdit,
+  eleves, elevesFiltres, moisAnnee, annee, tarifsClasses, readOnly, canCreate, canEdit,
   schoolInfo, toggleMens, toggleFraisAnnexe, getTarifInscriptionEleve, ouvrirEncaissement,
   tranches = [],
 }) {
@@ -17,7 +17,7 @@ export function MensualitesTable({
 
   return (
     <>
-      <MensualitesSynthese elevesFiltres={elevesFiltres} moisAnnee={moisAnnee} tarifsClasses={tarifsClasses} />
+      <MensualitesSynthese elevesFiltres={elevesFiltres} moisAnnee={moisAnnee} tarifsClasses={tarifsClasses} annee={annee} />
       {/* Conteneur scroll : maxHeight pour activer sticky top sur l'en-tête,
           overflow:auto pour activer sticky left sur les 2 premières colonnes
           (Matricule + Nom). Le scroll vertical reste fluide dans la table sans
@@ -69,7 +69,7 @@ export function MensualitesTable({
           })()}
           <tbody>{elevesFiltres.map((e, rowIdx) => (
             <MensualitesRow
-              key={e._id} e={e} rowIdx={rowIdx} moisAnnee={moisAnnee} tarifsClasses={tarifsClasses}
+              key={e._id} e={e} rowIdx={rowIdx} moisAnnee={moisAnnee} annee={annee} tarifsClasses={tarifsClasses}
               readOnly={readOnly} canCreate={canCreate} canEdit={canEdit} schoolInfo={schoolInfo}
               toggleMens={toggleMens} toggleFraisAnnexe={toggleFraisAnnexe}
               getTarifInscriptionEleve={getTarifInscriptionEleve} ouvrirEncaissement={ouvrirEncaissement}

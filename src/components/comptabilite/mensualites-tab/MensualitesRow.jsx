@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { C, fmt, initMens } from "../../../constants";
+import { C, estSorti, fmt, initMens } from "../../../constants";
 import { Badge, Btn, TR, TD } from "../../ui";
 import {
   acompteInscription, acompteMois, getEleveMensualiteSnapshot, getFraisAnnexesEleve, getTarifConfigForClasse,
   getTarifMensuelForClasse, montantDuInscription, montantDuMois, montantInscriptionPaye, montantMoisPaye,
 } from "../../../mensualite-utils";
+import { lireDate, moisExigibles } from "../../../depart-utils";
 import { aUneExoneration, estExonereTotal, resumeExoneration } from "../../../exoneration-utils";
 import { FORMATS_RECU, getRecuFormat, labelRecuFormat, setRecuFormat } from "./recu-format";
 import { imprimerRecuEleve } from "./recu-eleve";
@@ -16,11 +17,18 @@ const PARTIEL = { background: "#fde68a", color: "#92400e" };
 // nom), bascules mensuelles, frais d'inscription/annexes, encaissement d'un
 // montant libre et impression du reçu.
 export function MensualitesRow({
-  e, rowIdx, moisAnnee, tarifsClasses, readOnly, canCreate, canEdit, schoolInfo,
+  e, rowIdx, moisAnnee, annee, tarifsClasses, readOnly, canCreate, canEdit, schoolInfo,
   toggleMens, toggleFraisAnnexe, getTarifInscriptionEleve, ouvrirEncaissement,
 }) {
   const mens = e.mens || initMens();
-  const snapshot = getEleveMensualiteSnapshot(e, moisAnnee, tarifsClasses);
+  const snapshot = getEleveMensualiteSnapshot(e, moisAnnee, tarifsClasses, annee);
+  // Élève parti : les mois qui suivent son départ ne sont pas des impayés —
+  // la case devient « — » et ne se clique plus (un mois déjà réglé reste
+  // affiché, donc annulable).
+  const sorti = estSorti(e);
+  const depart = lireDate(e.dateDepart)?.toLocaleDateString("fr-FR") || "";
+  const dus = new Set(moisExigibles(e, moisAnnee, annee));
+  const nbAttendus = moisAnnee.filter((m) => dus.has(m) || mens[m] === "Payé").length;
   // Dispense de paiement : un mois non coché n'est plus un impayé, et il n'y a
   // rien à encaisser — la case devient « Exo » et ne se clique plus.
   const exonere = aUneExoneration(e);
@@ -51,7 +59,7 @@ export function MensualitesRow({
     setMenuImpr(false);
     setFormatRecu(format);
     setRecuFormat(format);
-    imprimerRecuEleve({ eleve: e, tarifsClasses, moisAnnee, schoolInfo, format });
+    imprimerRecuEleve({ eleve: e, tarifsClasses, moisAnnee, annee, schoolInfo, format });
   };
   // Un clic solde le frais : son dû net (l'acompte éventuel est déduit par
   // l'action) ; sur un frais payé, il le retire au montant encaissé.
@@ -77,6 +85,10 @@ export function MensualitesRow({
         {e.nom} {e.prenom}
         {exonere && <span title={`Dispense de paiement — ${resume}`}
           style={{ marginInlineStart: 6, fontSize: 11, background: "#fef3c7", color: "#92400e", borderRadius: 4, padding: "1px 5px", fontWeight: 700 }}>🎓</span>}
+        {sorti && <span title={`${e.statut}${depart ? ` le ${depart}` : " (date de départ inconnue)"} — seuls les mois entamés avant le départ sont dus`}
+          style={{ marginInlineStart: 6, fontSize: 10, background: "#f1f5f9", color: "#475569", borderRadius: 4, padding: "1px 5px", fontWeight: 700, whiteSpace: "nowrap" }}>
+          📤 {e.statut}{depart ? ` le ${depart}` : ""}
+        </span>}
       </TD>
       <TD><Badge color="blue">{e.classe}</Badge></TD>
       <TD>{e.tuteur}</TD><TD>{e.contactTuteur}</TD>
@@ -84,28 +96,37 @@ export function MensualitesRow({
         const paye = mens[m] === "Payé";
         const datePaie = (e.mensDates || {})[m] || "";
         const acompte = paye ? 0 : acompteMois(e, m);
+        // Mois postérieur au départ : rien à encaisser. Un acompte déjà versé
+        // reste affiché (◐), annulable depuis la fenêtre 💰.
+        const horsDu = !paye && !dus.has(m);
+        const apresDepart = horsDu && acompte === 0;
         // Mois couvert par une dispense totale : rien à encaisser.
-        const moisExonere = exonereTotal && !paye && acompte === 0;
-        const peutCliquer = moisExonere ? false : (paye ? (canCreate && canEdit) : canCreate);
-        const titre = moisExonere ? `${m} — dispensé (${resume})`
-          : paye ? `${m} — payé ${fmt(montantMoisPaye(e, m, mensualite))}${datePaie ? ` (${datePaie})` : ""}`
-            : acompte > 0 ? `${m} — acompte ${fmt(acompte)}, reste ${fmt(Math.max(0, duMois - acompte))}`
-              : `${m} — impayé (${fmt(duMois)})`;
+        const moisExonere = !horsDu && exonereTotal && !paye && acompte === 0;
+        const peutCliquer = horsDu || moisExonere ? false : (paye ? (canCreate && canEdit) : canCreate);
+        const titre = apresDepart ? `${m} — après le départ${depart ? ` (${depart})` : ""} : non dû`
+          : horsDu ? `${m} — après le départ : acompte ${fmt(acompte)} versé, à annuler depuis 💰`
+          : moisExonere ? `${m} — dispensé (${resume})`
+            : paye ? `${m} — payé ${fmt(montantMoisPaye(e, m, mensualite))}${datePaie ? ` (${datePaie})` : ""}`
+              : acompte > 0 ? `${m} — acompte ${fmt(acompte)}, reste ${fmt(Math.max(0, duMois - acompte))}`
+                : `${m} — impayé (${fmt(duMois)})`;
         return <td key={m} style={{ padding: "4px 2px", textAlign: "center" }}>
           <button onClick={() => peutCliquer && toggleMens(e._id, m, mens, e.mensDates || {}, nomEleve)}
             title={titre}
             style={{ width: 26, height: 26, borderRadius: 5, border: "none", cursor: peutCliquer ? "pointer" : "default", fontSize: moisExonere ? 9 : 12,
-              background: paye ? C.green : acompte > 0 ? PARTIEL.background : moisExonere ? "#fef3c7" : "#e8f0e8",
-              color: paye ? "#fff" : acompte > 0 ? PARTIEL.color : moisExonere ? "#92400e" : "#9ca3af",
-              fontWeight: 700, opacity: (readOnly || (!peutCliquer && !paye && !moisExonere && acompte === 0)) ? 0.6 : 1 }}>
-            {paye ? "✓" : acompte > 0 ? "◐" : moisExonere ? "Exo" : "·"}
+              background: paye ? C.green : acompte > 0 ? PARTIEL.background : apresDepart ? "#f1f5f9" : moisExonere ? "#fef3c7" : "#e8f0e8",
+              color: paye ? "#fff" : acompte > 0 ? PARTIEL.color : apresDepart ? "#cbd5e1" : moisExonere ? "#92400e" : "#9ca3af",
+              fontWeight: 700, opacity: (readOnly || (!peutCliquer && !paye && !moisExonere && !apresDepart && acompte === 0)) ? 0.6 : 1 }}>
+            {paye ? "✓" : acompte > 0 ? "◐" : apresDepart ? "—" : moisExonere ? "Exo" : "·"}
           </button>
         </td>;
       })}
       <td style={{ padding: "4px 8px", textAlign: "center" }}>
-        <span title={snapshot.nbPartiels > 0 ? `${snapshot.nbPartiels} mois entamé(s) par un acompte` : undefined}
-          style={{ fontWeight: 800, fontSize: 13, color: snapshot.nbPayes === moisAnnee.length ? C.greenDk : snapshot.nbPayes > 0 ? "#d97706" : "#b91c1c" }}>
-          {snapshot.nbPayes}/{moisAnnee.length}{snapshot.nbPartiels > 0 ? " ◐" : ""}
+        <span title={[
+          sorti ? "Mois payés / mois dus jusqu'au départ" : "",
+          snapshot.nbPartiels > 0 ? `${snapshot.nbPartiels} mois entamé(s) par un acompte` : "",
+        ].filter(Boolean).join(" — ") || undefined}
+          style={{ fontWeight: 800, fontSize: 13, color: snapshot.nbPayes === nbAttendus ? C.greenDk : snapshot.nbPayes > 0 ? "#d97706" : "#b91c1c" }}>
+          {snapshot.nbPayes}/{nbAttendus}{snapshot.nbPartiels > 0 ? " ◐" : ""}
         </span>
       </td>
       <td style={{ padding: "4px 4px", textAlign: "center" }}>

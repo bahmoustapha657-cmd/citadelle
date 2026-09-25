@@ -181,3 +181,22 @@ test("clôture : les acomptes comptent comme paiements et repartent à zéro", (
   const vierge = etatVierge(MOIS);
   assert.deepEqual([vierge.mensAcomptes, vierge.fraisAcomptes, vierge.inscriptionAcompte], [{}, {}, null]);
 });
+
+// ── Élève parti (règle des départs, cf. depart-utils) ─────────────────────
+test("élève parti : seuls les mois entamés avant le départ se paient ; un acompte reste perçu", () => {
+  const parti = eleve({ statut: "Transféré", dateDepart: "15/11/2026" });
+  const etats = etatsMois(parti, MOIS, 110000, "2026-2027");
+  assert.deepEqual(etats.slice(0, 3).map((e) => [e.mois, e.statut, e.reste]), [
+    ["Octobre", "impaye", 110000], ["Novembre", "impaye", 110000], ["Décembre", "nonDu", 0],
+  ]);
+  const cible = { type: "mois", mois: MOIS };
+  assert.equal(planVersement({ eleve: parti, cible, montant: 300000, mensualite: 110000, annee: "2026-2027" }).raison, "depasse");
+  const plan = planVersement({ eleve: parti, cible, montant: 220000, mensualite: 110000, annee: "2026-2027" });
+  assert.deepEqual(plan.moisSoldes, ["Octobre", "Novembre"]);
+
+  // Acompte versé sur Décembre avant l'annonce du départ : perçu, pas dû.
+  const avecAcompte = { ...parti, mensAcomptes: { Décembre: 30000 } };
+  const snap = getEleveMensualiteSnapshot(avecAcompte, MOIS, TARIFS, "2026-2027");
+  assert.equal(snap.montantMensualitesPercu, 30000);
+  assert.equal(snap.soldeMensualites, 2 * 110000);
+});

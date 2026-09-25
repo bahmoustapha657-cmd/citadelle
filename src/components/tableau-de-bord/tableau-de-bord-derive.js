@@ -1,15 +1,26 @@
 // Calculs purs du tableau de bord : indicateurs consolidés (taux de
 // paiement, masse salariale, finances, tendances mensuelles, événements).
 // Aucune dépendance React/Firestore — entièrement testable en isolation.
+import { moisExigibles } from "../../depart-utils.js";
 
-// Taux de paiement des mensualités pour un groupe d'élèves.
-export function calcTauxPaiement(eleves) {
+// Taux de paiement des mensualités pour un groupe d'élèves : mois payés sur
+// mois dus. Un élève parti ne doit que les mois entamés avant son départ
+// (depart-utils) : il faisait baisser le taux avec des mois qu'il ne devait
+// pas. `annee` : celle des fiches — sans elle, celle de l'écran.
+export function calcTauxPaiement(eleves, annee) {
   if (!eleves.length) return 0;
   const mois = Object.keys(eleves[0]?.mens || {});
   if (!mois.length) return 0;
-  const total = eleves.length * mois.length;
-  const payes = eleves.reduce((s, e) => s + Object.values(e.mens || {}).filter((v) => v === "Payé").length, 0);
-  return total > 0 ? Math.round(payes / total * 100) : 0;
+  let dus = 0;
+  let payes = 0;
+  for (const e of eleves) {
+    const mens = e.mens || {};
+    for (const m of moisExigibles(e, mois, annee)) {
+      dus++;
+      if (mens[m] === "Payé") payes++;
+    }
+  }
+  return dus > 0 ? Math.round(payes / dus * 100) : 0;
 }
 
 // Net d'un salaire (base secondaire ou montant brut + bon + révision + forfait).
@@ -44,11 +55,14 @@ export function computeEvenementsAVenir(evenements, today = new Date().toISOStri
     .slice(0, 4);
 }
 
-// Tendance mensuelle : taux de paiement + absences mois par mois.
-export function computeTendance(moisAnnee, tousEleves, absencesAll) {
+// Tendance mensuelle : taux de paiement + absences mois par mois. Le taux
+// d'un mois porte sur les élèves qui le devaient (pas les partis d'avant).
+export function computeTendance(moisAnnee, tousEleves, absencesAll, annee) {
+  const dusParEleve = new Map(tousEleves.map((e) => [e, new Set(moisExigibles(e, moisAnnee, annee))]));
   return moisAnnee.map((m) => {
-    const payesMois = tousEleves.filter((e) => (e.mens || {})[m] === "Payé").length;
-    const taux = tousEleves.length ? Math.round(payesMois / tousEleves.length * 100) : 0;
+    const concernes = tousEleves.filter((e) => dusParEleve.get(e).has(m));
+    const payesMois = concernes.filter((e) => (e.mens || {})[m] === "Payé").length;
+    const taux = concernes.length ? Math.round(payesMois / concernes.length * 100) : 0;
     const absencesMois = absencesAll.filter((a) => {
       try { return new Date(a.date).toLocaleDateString("fr-FR", { month: "long" }).toLowerCase() === m.toLowerCase(); } catch { return false; }
     }).length;

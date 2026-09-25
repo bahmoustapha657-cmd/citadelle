@@ -10,15 +10,16 @@
 //
 // Le client appelle via supabase.functions.invoke("account-manage", { body }).
 // Auth : le JWT de l'appelant (header Authorization) identifie son compte ; on
-// vérifie qu'il a le droit de gérer le rôle cible (mêmes règles que le serveur).
+// vérifie qu'il a le droit de gérer le rôle cible (droits.ts, mêmes règles que
+// le serveur).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { peutGererRole } from "./droits.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const DOMAIN = "edugest.app";
 
 const ROLES_VALIDES = new Set(["direction", "admin", "comptable", "surveillant", "primaire", "college", "staff", "enseignant", "parent"]);
-const ROLES_SYSTEME = new Set(["direction", "admin", "comptable", "surveillant", "primaire", "college"]);
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -27,23 +28,6 @@ const cors = {
 };
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
-
-// Mêmes règles d'autorisation que api/_lib/handlers/account-manage.js.
-// `callerAdminPanel` : le poste de l'appelant écrit-il le module admin_panel ?
-// (postes flexibles — permet de gérer les comptes de personnel `staff`).
-function peutGererRole(callerRole: string, targetRole: string, targetSection?: string, callerAdminPanel = false): boolean {
-  if (callerRole === "superadmin" || callerRole === "direction") return true;
-  // Personne d'autre ne touche à la direction (anti-escalade).
-  if (targetRole === "direction") return false;
-  if (targetRole === "staff" || ROLES_SYSTEME.has(targetRole)) return callerAdminPanel;
-  if (callerRole === "admin") return ["enseignant", "parent"].includes(targetRole);
-  if (callerRole === "comptable") return targetRole === "parent";
-  if (callerRole === "primaire") return targetRole === "enseignant" && targetSection === "primaire";
-  if (callerRole === "college") return targetRole === "enseignant" && (targetSection === "college" || targetSection === "lycee");
-  // Poste flexible : parents/enseignants gérables avec l'écriture admin_panel.
-  if (callerRole === "staff") return callerAdminPanel && ["enseignant", "parent"].includes(targetRole);
-  return false;
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });

@@ -176,9 +176,10 @@ test("getEleveSolde sums unpaid months, unpaid inscription and unpaid other fees
 test("MENSUALITE_ALGO_VERSION est un entier ≥ 1 (canari pour repérer les bumps non documentés)", () => {
   assert.equal(typeof MENSUALITE_ALGO_VERSION, "number");
   // v2 : montants perçus figés au paiement (mensMontants) — cf. toggleMens.
-  // v3 : révision annuelle ; inscription et frais annexes figés au paiement.
-  // v4 : acomptes (paiement en plusieurs fois) ; dû après dispense.
-  assert.equal(MENSUALITE_ALGO_VERSION, 4);
+  // v3 : élève parti — seuls les mois entamés avant son départ restent dus.
+  // v4 : révision annuelle ; inscription et frais annexes figés au paiement.
+  // v5 : acomptes (paiement en plusieurs fois) ; dû après dispense.
+  assert.equal(MENSUALITE_ALGO_VERSION, 5);
 });
 
 test("v2 : un changement de tarif ne réécrit pas les mois déjà payés (montants figés)", () => {

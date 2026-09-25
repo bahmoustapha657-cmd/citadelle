@@ -597,6 +597,7 @@
       "matriculeLabel": "Student ID:",
       "ienLabel": "National ID:",
       "sectionLabel": "Section:",
+      "sectionPreschool": "Preschool Education",
       "sectionPrimary": "Primary Education",
       "sectionCollege": "Middle School",
       "sectionLycee": "High School",

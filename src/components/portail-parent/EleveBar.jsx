@@ -1,4 +1,5 @@
-import { C } from "../../constants";
+import { C, estSorti } from "../../constants";
+import { lireDate } from "../../depart-utils";
 import { normalizeText } from "./helpers";
 
 // Barre d'identité de l'enfant courant : avatar, classe/matricule, sélecteur
@@ -15,6 +16,13 @@ export function EleveBar({ eleve, eleveNom, eleves, eleveId, setEleveActifId, me
           {eleve.classe && <span style={{ background: "#e0ebf8", color: c1, fontWeight: 700, padding: "2px 8px", borderRadius: 6, marginRight: 8 }}>{eleve.classe}</span>}
           {eleve.matricule && <span style={{ fontFamily: "monospace", fontSize: 11, color: "#64748b" }}>#{eleve.matricule}</span>}
         </div>
+        {/* Élève parti : la famille garde l'accès à ses notes et bulletins, mais
+            doit voir qu'il n'est plus inscrit. */}
+        {estSorti(eleve) && (
+          <div style={{ marginTop: 6, fontSize: 11, fontWeight: 700, color: "#92400e" }}>
+            📤 {eleve.statut}{lireDate(eleve.dateDepart) ? ` le ${lireDate(eleve.dateDepart).toLocaleDateString("fr-FR")}` : ""} — a quitté l'établissement
+          </div>
+        )}
         {eleves.length > 1 && (
           <div style={{ marginTop: 10, maxWidth: 280 }}>
             <select value={eleveId || ""} onChange={(event) => setEleveActifId(event.target.value)} style={{ width: "100%", border: "1.5px solid #dbe5f0", borderRadius: 8, padding: "7px 10px", fontSize: 12, background: "#fff" }}>

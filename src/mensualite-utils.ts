@@ -15,6 +15,7 @@ import {
   estExonereTotal,
   montantApresExoneration,
 } from "./exoneration-utils.js";
+import { moisExigibles, partiAvantAnnee } from "./depart-utils.js";
 
 // Bumper à chaque changement de formule (mensualité, solde, snapshot) qui
 // rendrait les calculs antérieurs non reproductibles.
@@ -22,14 +23,22 @@ import {
 // garde le tarif en vigueur au moment de l'encaissement ; seuls les mois
 // impayés suivent le tarif courant. Fallback tarif courant pour les
 // paiements antérieurs à la v2 (sans montant figé).
-// v3 : la révision devient un frais ANNUEL (elle était ajoutée à chaque
+// v3 : élève parti (cf. depart-utils) — seuls les mois entamés avant son
+// départ restent dus, et rien (inscription, frais) d'une année dont il n'a vu
+// aucun mois. Ce qui a été encaissé reste compté comme perçu.
+// v4 : la révision devient un frais ANNUEL (elle était ajoutée à chaque
 // mensualité) ; l'inscription et les frais annexes figent eux aussi leur
 // montant au paiement (inscriptionMontant, fraisMontants[id]).
-// v4 : paiements en plusieurs fois — un mois, un frais ou l'inscription peut
+// v5 : paiements en plusieurs fois — un mois, un frais ou l'inscription peut
 // porter un ACOMPTE (mensAcomptes, fraisAcomptes, inscriptionAcompte), compté
 // au perçu et déduit du reste dû. Le dû d'un mois ou d'un frais s'entend
 // après dispense (montantDuMois, duNet) : c'est ce qui s'encaisse.
-export const MENSUALITE_ALGO_VERSION = 4;
+//
+// `annee`, en dernier paramètre des fonctions ci-dessous : l'année scolaire de
+// `moisAnnee`, qui situe ces mois par rapport à la date de départ. Omise, c'est
+// celle de l'écran — juste partout, sauf quand on calcule sur la fiche
+// courante pendant qu'on consulte une année archivée : là, il faut la passer.
+export const MENSUALITE_ALGO_VERSION = 5;
 
 export type TarifClasse = {
   classe?: string;
@@ -163,10 +172,12 @@ export function countPaidMonths(eleve: MensualiteEleve = {}, moisAnnee: string[]
 
 // Un élève dispensé de TOUTE la mensualité ne doit rien : ses mois non cochés
 // ne sont pas des impayés, et il n'a donc rien à faire dans les alertes, les
-// relances ou le blocage des bulletins.
-export function countUnpaidMonths(eleve: MensualiteEleve = {}, moisAnnee: string[] = []): number {
+// relances ou le blocage des bulletins. Même chose pour les mois qui suivent
+// le départ d'un élève parti.
+export function countUnpaidMonths(eleve: MensualiteEleve = {}, moisAnnee: string[] = [], annee?: string): number {
   if (estExonereTotal(eleve, "mensualites")) return 0;
-  return moisAnnee.length - countPaidMonths(eleve, moisAnnee);
+  const mens = eleve.mens || {};
+  return moisExigibles(eleve, moisAnnee, annee).filter((mois) => mens[mois] !== "Payé").length;
 }
 
 // Les bulletins de cet élève sont-ils retenus pour impayé ? La règle vivait en
@@ -177,24 +188,40 @@ export function estBloquePourImpaye(
   schoolInfo: { blocageParentImpaye?: boolean } = {},
   eleve: MensualiteEleve = {},
   moisAnnee: string[] = [],
+  annee?: string,
 ): boolean {
   if (!schoolInfo?.blocageParentImpaye) return false;
-  return countUnpaidMonths(eleve, moisAnnee) > 0;
+  return countUnpaidMonths(eleve, moisAnnee, annee) > 0;
 }
 
-export function getConsecutiveUnpaidMonths(eleve: MensualiteEleve = {}, moisAnnee: string[] = []): number {
+export function getConsecutiveUnpaidMonths(eleve: MensualiteEleve = {}, moisAnnee: string[] = [], annee?: string): number {
   if (estExonereTotal(eleve, "mensualites")) return 0;
   const mens = eleve.mens || {};
-  const firstPaidFromEnd = moisAnnee.slice().reverse().findIndex((mois) => mens[mois] === "Payé");
-  return firstPaidFromEnd === -1 ? moisAnnee.length : firstPaidFromEnd;
+  const dus = moisExigibles(eleve, moisAnnee, annee);
+  const firstPaidFromEnd = dus.slice().reverse().findIndex((mois) => mens[mois] === "Payé");
+  return firstPaidFromEnd === -1 ? dus.length : firstPaidFromEnd;
 }
 
-export function isEleveCritique(eleve: MensualiteEleve = {}, moisAnnee: string[] = [], minimumUnpaid: number = 3): boolean {
-  return getConsecutiveUnpaidMonths(eleve, moisAnnee) >= minimumUnpaid;
+export function isEleveCritique(eleve: MensualiteEleve = {}, moisAnnee: string[] = [], minimumUnpaid: number = 3, annee?: string): boolean {
+  return getConsecutiveUnpaidMonths(eleve, moisAnnee, annee) >= minimumUnpaid;
 }
 
-export function getElevesCritiques<T extends MensualiteEleve>(eleves: T[] = [], moisAnnee: string[] = [], minimumUnpaid: number = 3): T[] {
-  return eleves.filter((eleve) => isEleveCritique(eleve, moisAnnee, minimumUnpaid));
+export function getElevesCritiques<T extends MensualiteEleve>(eleves: T[] = [], moisAnnee: string[] = [], minimumUnpaid: number = 3, annee?: string): T[] {
+  return eleves.filter((eleve) => isEleveCritique(eleve, moisAnnee, minimumUnpaid, annee));
+}
+
+// L'élève a-t-il sa place dans la scolarité de l'année `annee` ? Oui s'il est
+// présent, s'il l'a fréquentée avant de partir, ou s'il a déjà réglé quelque
+// chose sur sa fiche — un encaissement doit rester visible, donc annulable.
+// Non pour l'élève parti avant la rentrée sans rien avoir payé : il n'a rien
+// à faire dans la grille des mensualités de cette année-là.
+export function concerneParAnnee(eleve: MensualiteEleve = {}, moisAnnee: string[] = [], annee?: string): boolean {
+  if (!partiAvantAnnee(eleve, moisAnnee, annee)) return true;
+  // Un acompte est de l'argent reçu : il doit rester visible, donc annulable.
+  const acomptes = (carte?: Record<string, number | string>) => Object.values(carte || {}).some((v) => Number(v) > 0);
+  return countPaidMonths(eleve, moisAnnee) > 0 || !!eleve.inscriptionPayee || !!eleve.autrePayee
+    || Object.keys(eleve.fraisPayes || {}).length > 0
+    || acomptes(eleve.mensAcomptes) || acomptes(eleve.fraisAcomptes) || Number(eleve.inscriptionAcompte) > 0;
 }
 
 // Montant perçu pour un mois payé : tarif figé au paiement si présent
@@ -232,7 +259,7 @@ export const montantDuInscription = (eleve: MensualiteEleve = {}, inscription: n
   montantApresExoneration(inscription, eleve, "inscription");
 
 // Inscription encaissée : montant figé au paiement — 0 compris, pour un élève
-// dispensé validé sans encaissement — sinon (encaissée avant la v3) le tarif
+// dispensé validé sans encaissement — sinon (encaissée avant la v4) le tarif
 // courant.
 export function montantInscriptionPaye(eleve: MensualiteEleve, inscriptionCourante: number): number {
   const brut = eleve.inscriptionMontant;
@@ -271,8 +298,14 @@ export function getFraisAnnexesEleve(eleve: MensualiteEleve = {}, tarif: TarifCl
     });
 }
 
-export function getEleveMensualiteSnapshot(eleve: MensualiteEleve = {}, moisAnnee: string[] = [], tarifsClasses: TarifClasse[] = []): MensualiteSnapshot {
+export function getEleveMensualiteSnapshot(eleve: MensualiteEleve = {}, moisAnnee: string[] = [], tarifsClasses: TarifClasse[] = [], annee?: string): MensualiteSnapshot {
   const mens = eleve.mens || {};
+  // Ce qui a été encaissé (mois payés, acomptes) reste perçu, départ ou pas ;
+  // seul le reste à devoir se limite à ce que l'élève a réellement fréquenté.
+  const exigibles = new Set(moisExigibles(eleve, moisAnnee, annee));
+  // Parti avant le premier mois de l'année : ni inscription ni frais annexes
+  // à lui réclamer pour une année qu'il n'a pas faite.
+  const aFrequente = !partiAvantAnnee(eleve, moisAnnee, annee);
   const mensualite = getTarifMensuelForClasse(tarifsClasses, eleve.classe);
   const duMois = montantDuMois(eleve, mensualite);
   // Dispense : on ne touche JAMAIS à ce qui a déjà été encaissé (montants
@@ -292,9 +325,11 @@ export function getEleveMensualiteSnapshot(eleve: MensualiteEleve = {}, moisAnne
       continue;
     }
     const acompte = acompteMois(eleve, mois);
+    montantMensualitesPercu += acompte;
+    // Mois postérieur au départ : rien de dû.
+    if (!exigibles.has(mois)) continue;
     const reste = Math.max(0, duMois - acompte);
     nbNonPayes += 1;
-    montantMensualitesPercu += acompte;
     soldeMensualites += reste;
     exonere += mensualite - duMois;
     if (reste > 0) {
@@ -310,21 +345,25 @@ export function getEleveMensualiteSnapshot(eleve: MensualiteEleve = {}, moisAnne
   if (eleve.inscriptionPayee) {
     montantInscriptionPercu = montantInscriptionPaye(eleve, inscriptionTarif);
   } else {
-    const duInscription = montantDuInscription(eleve, inscriptionTarif);
     const acompte = acompteInscription(eleve);
     montantInscriptionPercu = acompte;
-    soldeInscription = Math.max(0, duInscription - acompte);
-    exonere += inscriptionTarif - duInscription;
+    if (aFrequente) {
+      const duInscription = montantDuInscription(eleve, inscriptionTarif);
+      soldeInscription = Math.max(0, duInscription - acompte);
+      exonere += inscriptionTarif - duInscription;
+    }
   }
 
   // Frais annexes (autre, révision, catalogue) : perçu au montant figé s'il
-  // est payé (ou l'acompte versé), sinon reste dû net de dispense.
+  // est payé (ou l'acompte versé), sinon reste dû net de dispense — pour une
+  // année fréquentée.
   let montantAutrePercu = 0;
   let soldeAutre = 0;
   for (const ligne of getFraisAnnexesEleve(eleve, getTarifConfigForClasse(tarifsClasses, eleve.classe))) {
     montantAutrePercu += ligne.verse;
+    if (ligne.paye || !aFrequente) continue;
     soldeAutre += ligne.reste;
-    if (!ligne.paye) exonere += ligne.du - ligne.duNet;
+    exonere += ligne.du - ligne.duNet;
   }
 
   return {
@@ -343,14 +382,14 @@ export function getEleveMensualiteSnapshot(eleve: MensualiteEleve = {}, moisAnne
   };
 }
 
-export function getEleveSolde(eleve: MensualiteEleve = {}, moisAnnee: string[] = [], tarifsClasses: TarifClasse[] = []): number {
-  const snapshot = getEleveMensualiteSnapshot(eleve, moisAnnee, tarifsClasses);
+export function getEleveSolde(eleve: MensualiteEleve = {}, moisAnnee: string[] = [], tarifsClasses: TarifClasse[] = [], annee?: string): number {
+  const snapshot = getEleveMensualiteSnapshot(eleve, moisAnnee, tarifsClasses, annee);
   return snapshot.soldeMensualites + snapshot.soldeInscription + snapshot.soldeAutre;
 }
 
-export function getMensualiteOverview(eleves: MensualiteEleve[] = [], moisAnnee: string[] = [], tarifsClasses: TarifClasse[] = []): MensualiteOverview {
+export function getMensualiteOverview(eleves: MensualiteEleve[] = [], moisAnnee: string[] = [], tarifsClasses: TarifClasse[] = [], annee?: string): MensualiteOverview {
   return eleves.reduce<MensualiteOverview>((summary, eleve) => {
-    const snapshot = getEleveMensualiteSnapshot(eleve, moisAnnee, tarifsClasses);
+    const snapshot = getEleveMensualiteSnapshot(eleve, moisAnnee, tarifsClasses, annee);
     // Dû = perçu réel (montants figés) + reste à percevoir au tarif courant.
     const totalDuEleve = snapshot.montantMensualitesPercu + snapshot.soldeMensualites;
 

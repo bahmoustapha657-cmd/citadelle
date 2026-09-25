@@ -5,6 +5,7 @@ import {
   acompteInscription, getEleveMensualiteSnapshot, getFraisAnnexesEleve, getTarifConfigForClasse,
   getTarifInscriptionForEleve, getTarifMensuelForClasse, montantDuInscription,
 } from "../../../mensualite-utils";
+import { partiAvantAnnee } from "../../../depart-utils";
 import { etatsMois, periodeTranche, planVersement } from "../../../paiements-scolarite";
 import { getRecuFormat, labelRecuFormat } from "./recu-format";
 import { imprimerRecuEleve } from "./recu-eleve";
@@ -13,10 +14,12 @@ const aujourdhui = () => new Date().toLocaleDateString("fr-FR");
 
 // Ce qu'un versement peut payer, avec le reste dû de chaque cible :
 // les mensualités (du plus ancien mois), chaque tranche, l'inscription et
-// chaque frais annexe pas encore soldé.
-function ciblesVersement({ eleve, moisAnnee, tarifsClasses, tranches }) {
+// chaque frais annexe pas encore soldé. Élève parti : seuls les mois entamés
+// avant son départ, et rien d'une année qu'il n'a pas fréquentée.
+function ciblesVersement({ eleve, moisAnnee, annee, tarifsClasses, tranches }) {
   const mensualite = getTarifMensuelForClasse(tarifsClasses, eleve.classe);
-  const etats = etatsMois(eleve, moisAnnee, mensualite);
+  const etats = etatsMois(eleve, moisAnnee, mensualite, annee);
+  const rienDu = partiAvantAnnee(eleve, moisAnnee, annee);
   const resteDe = (mois) => etats.filter((e) => mois.includes(e.mois)).reduce((s, e) => s + e.reste, 0);
   const cibles = [{
     cle: "mois", type: "mois", label: "Mensualités", detail: "à partir du plus ancien mois impayé",
@@ -25,7 +28,7 @@ function ciblesVersement({ eleve, moisAnnee, tarifsClasses, tranches }) {
   tranches.forEach((t, i) => cibles.push({
     cle: `tranche-${i}`, type: "mois", label: t.nom, detail: periodeTranche(t), mois: t.mois, reste: resteDe(t.mois),
   }));
-  if (!eleve.inscriptionPayee) {
+  if (!eleve.inscriptionPayee && !rienDu) {
     const duNet = montantDuInscription(eleve, getTarifInscriptionForEleve(eleve, tarifsClasses));
     cibles.push({
       cle: "inscription", type: "poste", poste: "inscription",
@@ -34,7 +37,7 @@ function ciblesVersement({ eleve, moisAnnee, tarifsClasses, tranches }) {
     });
   }
   for (const frais of getFraisAnnexesEleve(eleve, getTarifConfigForClasse(tarifsClasses, eleve.classe))) {
-    if (frais.paye) continue;
+    if (frais.paye || rienDu) continue;
     cibles.push({ cle: `frais-${frais.id}`, type: "poste", poste: frais.id, label: frais.label, duNet: frais.duNet, reste: frais.reste });
   }
   return { cibles, etats, mensualite };
@@ -55,15 +58,15 @@ function montantPropose(cible, etats) {
 // comment il se répartit (mois soldés, acompte sur le suivant), puis le reçu
 // du versement s'imprime avec le reste à payer.
 export function EncaisserModale({
-  eleve, moisAnnee, tarifsClasses, tranches = [], schoolInfo, canEdit,
+  eleve, moisAnnee, annee, tarifsClasses, tranches = [], schoolInfo, canEdit,
   encaisserVersement, retirerAcompte, fermer,
 }) {
   const nomEleve = `${eleve.nom || ""} ${eleve.prenom || ""}`.trim();
   const { cibles, etats, mensualite } = useMemo(
-    () => ciblesVersement({ eleve, moisAnnee, tarifsClasses, tranches }),
-    [eleve, moisAnnee, tarifsClasses, tranches],
+    () => ciblesVersement({ eleve, moisAnnee, annee, tarifsClasses, tranches }),
+    [eleve, moisAnnee, annee, tarifsClasses, tranches],
   );
-  const snapshot = getEleveMensualiteSnapshot(eleve, moisAnnee, tarifsClasses);
+  const snapshot = getEleveMensualiteSnapshot(eleve, moisAnnee, tarifsClasses, annee);
   const resteTotal = snapshot.soldeMensualites + snapshot.soldeInscription + snapshot.soldeAutre;
 
   const premiere = cibles.find((c) => c.reste > 0) || cibles[0];
@@ -73,7 +76,7 @@ export function EncaisserModale({
   const [resultat, setResultat] = useState(null); // { plan, date, eleveApres }
 
   const cible = cibles.find((c) => c.cle === cibleCle) || premiere;
-  const plan = cible ? planVersement({ eleve, cible, montant, date: aujourdhui(), mensualite }) : null;
+  const plan = cible ? planVersement({ eleve, cible, montant, date: aujourdhui(), mensualite, annee }) : null;
 
   const choisir = (c) => { setCibleCle(c.cle); setMontant(montantPropose(c, etats)); setResultat(null); };
 
@@ -95,7 +98,7 @@ export function EncaisserModale({
   };
 
   const imprimer = () => imprimerRecuEleve({
-    eleve: resultat.eleveApres, tarifsClasses, moisAnnee, schoolInfo, format: getRecuFormat(),
+    eleve: resultat.eleveApres, tarifsClasses, moisAnnee, annee, schoolInfo, format: getRecuFormat(),
     versement: {
       date: resultat.date, total: resultat.plan.total,
       lignes: resultat.plan.lignes.map(({ libelle, montant: m }) => ({ libelle, montant: m })),
@@ -104,8 +107,10 @@ export function EncaisserModale({
 
   // Acomptes en cours : mois, inscription et frais entamés — annulables en cas
   // d'erreur de saisie (verrou admin).
+  // (Un acompte sur un mois postérieur au départ n'est plus dû : il se rend.)
   const acomptes = [
-    ...etats.filter((e) => e.statut === "partiel").map((e) => ({ type: "mois", cle: e.mois, label: e.mois, montant: e.verse, reste: e.reste })),
+    ...etats.filter((e) => e.statut === "partiel" || (e.statut === "nonDu" && e.verse > 0))
+      .map((e) => ({ type: "mois", cle: e.mois, label: e.mois, montant: e.verse, reste: e.reste })),
     ...(!eleve.inscriptionPayee && acompteInscription(eleve) > 0
       ? [{ type: "inscription", cle: "inscription", label: "Inscription", montant: acompteInscription(eleve), reste: cibles.find((c) => c.cle === "inscription")?.reste || 0 }]
       : []),

@@ -57,7 +57,12 @@ grant execute on function my_teacher_eleve_ids() to authenticated;
 --     secondaire poserait section='primaire' pour esquiver le filtre matière) ;
 --   • au secondaire (college/lycee), la matière de la note = la matière du
 --     profil — profil sans matière ⇒ REFUS (échec sécurisé, comme le 403 du
---     handler). Au primaire, le titulaire est multi-matières : pas de filtre.
+--     handler). En maternelle et au primaire, le titulaire est multi-matières :
+--     pas de filtre. Comparaison en ::text : 'prescolaire' n'entre dans l'enum
+--     qu'avec prescolaire-1-enum.sql, APRÈS ce fichier dans l'ordre
+--     d'application — un littéral d'enum échouerait sur une base neuve.
+-- ⚠️ Définition reprise telle quelle dans prescolaire-3-enseignants.sql
+--    (tests/portail-prescolaire.test.js vérifie qu'elles restent identiques).
 create or replace function teacher_can_write_note(
     p_eleve uuid, p_matiere text, p_section section_scolaire) returns boolean
   language sql stable security definer set search_path = public as $$
@@ -70,7 +75,7 @@ create or replace function teacher_can_write_note(
     where c.user_id = auth.uid()
       and e.id = p_eleve
       and e.section = p_section
-      and (ec.section = 'primaire'
+      and (ec.section::text in ('primaire', 'prescolaire')
            or (coalesce(btrim(c.matiere), '') <> ''
                and lower(btrim(p_matiere)) = lower(btrim(c.matiere))))
   );

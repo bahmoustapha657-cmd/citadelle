@@ -1,6 +1,6 @@
 import { useContext, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { C, aReinscrire, estReinscrit, sectionOuverte } from "../../constants";
+import { C, aReinscrire, estReinscrit, estSorti, getAnnee, sectionOuverte } from "../../constants";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { DepartsView } from "./enrolment/DepartsView";
 import { EnrolModale } from "./enrolment/EnrolModale";
@@ -15,10 +15,10 @@ export function EnrolmentTab({
   elevesC, elevesL, elevesP, elevesPre = [], cEC, cEL, cEP,
   tousElevesScolarite, ajoutParNiveau, suppressionParNiveau,
   modifParNiveau, ensureClasse, sortAlpha,
-  encaisserInscriptions, getTarifInscriptionEleve,
+  encaisserInscriptions, getTarifInscriptionEleve, tarifsClasses = [],
 }) {
   const { t } = useTranslation();
-  const { schoolId, schoolInfo, toast, planInfo } = useContext(SchoolContext);
+  const { schoolId, schoolInfo, toast, planInfo, moisAnnee } = useContext(SchoolContext);
 
   const [niveauChoisi, setNiveauChoisi] = useState("college");
   const [classeEnrol, setClasseEnrol] = useState("all");
@@ -35,12 +35,18 @@ export function EnrolmentTab({
   const chg = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
   const elevesParNiveau = { college: elevesC, lycee: elevesL, primaire: elevesP, prescolaire: elevesPre };
-  // Liste complète du cycle : sert aux matricules et au compteur de plan.
+  // Liste complète du cycle, élèves partis compris : sert aux matricules (un
+  // matricule ne se réattribue pas) et à l'écran Départs.
   const elevesEnrol = sortAlpha(elevesParNiveau[niveauEnrol] || []);
-  // Classes disponibles dans le cycle + liste affichée (filtrée par classe).
-  const classesEnrol = [...new Set(elevesEnrol.map((e) => e.classe).filter(Boolean))]
+  // Les élèves partis ont leur écran (📤 Départs) : ils ne chargent plus la
+  // liste, les compteurs de rentrée ni la liste de classe imprimée.
+  const presents = (liste) => liste.filter((e) => !estSorti(e));
+  const elevesPresents = presents(elevesEnrol);
+  // Classes disponibles dans la vue + liste affichée (filtrée par classe).
+  const classesEnrol = [...new Set((afficherDeparts ? elevesEnrol : elevesPresents).map((e) => e.classe).filter(Boolean))]
     .sort((a, b) => String(a).localeCompare(String(b), "fr", { numeric: true }));
-  const elevesClasse = classeEnrol === "all" ? elevesEnrol : elevesEnrol.filter((e) => e.classe === classeEnrol);
+  const dansClasse = (e) => classeEnrol === "all" || e.classe === classeEnrol;
+  const elevesClasse = elevesPresents.filter(dansClasse);
   const elevesAffiches = filtreReinscription === "all" ? elevesClasse
     : filtreReinscription === "a_reinscrire" ? elevesClasse.filter(aReinscrire)
       : elevesClasse.filter(estReinscrit);
@@ -59,8 +65,8 @@ export function EnrolmentTab({
         t={t} afficherDeparts={afficherDeparts} setAfficherDeparts={setAfficherDeparts}
         planInfo={planInfo} niveauEnrol={niveauEnrol} setNiveauEnrol={setNiveauEnrol}
         classeEnrol={classeEnrol} setClasseEnrol={setClasseEnrol} classesEnrol={classesEnrol}
-        elevesC={elevesC} elevesL={elevesL} elevesP={elevesP} elevesPre={elevesPre} canCreate={canCreate}
-        elevesEnrol={elevesEnrol} schoolInfo={schoolInfo} setForm={setForm} setModal={setModal}
+        elevesC={presents(elevesC)} elevesL={presents(elevesL)} elevesP={presents(elevesP)} elevesPre={presents(elevesPre)} canCreate={canCreate}
+        elevesEnrol={elevesEnrol} elevesPresents={elevesPresents} schoolInfo={schoolInfo} setForm={setForm} setModal={setModal}
         filtreReinscription={filtreReinscription} setFiltreReinscription={setFiltreReinscription}
         nbAReinscrire={nbAReinscrire} nbSelection={elevesClasse.length}
         totalAReinscrire={elevesClasse.filter(aReinscrire)
@@ -77,7 +83,12 @@ export function EnrolmentTab({
         canCreate={canCreate} planInfo={planInfo} niveauEnrol={niveauEnrol}
         schoolInfo={schoolInfo} setForm={setForm} setModal={setModal} supEnrol={supEnrol}
       />}
-      {afficherDeparts&&<DepartsView elevesEnrol={elevesAffiches} canEdit={canEdit} modEnrol={modEnrol} toast={toast}/>}
+      {afficherDeparts&&<DepartsView
+        elevesEnrol={elevesEnrol.filter(dansClasse)} canEdit={canEdit} modEnrol={modEnrol} toast={toast}
+        setForm={setForm} setModal={setModal} niveauEnrol={niveauEnrol}
+        schoolInfo={schoolInfo} moisAnnee={moisAnnee} tarifsClasses={tarifsClasses}
+        anneeOfficielle={schoolInfo?.anneeScolaire || getAnnee()}
+      />}
 
       {((modal==="add_enrol"&&canCreate)||(modal==="edit_enrol"&&canEdit))&&<EnrolModale
         modal={modal} setModal={setModal} form={form} setForm={setForm} chg={chg} niveauEnrol={niveauEnrol}
