@@ -13,6 +13,9 @@ const mdp = () => "T!" + randomBytes(12).toString("base64url");
 
 let echecs = 0;
 const attendu = (nom, ok) => { console.log(`  ${ok ? "✅" : "❌"} ${nom}`); if (!ok) { echecs++; } };
+// Refus opposé PAR LA RLS (et non par le schéma : colonne inconnue, champ
+// obligatoire manquant… — un tel échec ne prouve rien sur les droits).
+const refusRls = (erreur) => erreur?.code === "42501";
 
 async function main() {
   const { data: demo } = await svc.from("ecoles").select("id, code").eq("code", "demo").single();
@@ -56,10 +59,23 @@ async function main() {
   attendu("crée une recette", !coInsErr && !!coIns);
   if (coIns) await svc.from("recettes").delete().eq("id", coIns.id);
   if (eleve) {
-    const { error: coNote } = await co.from("notes").insert({
-      ecole_id: demo.id, section: eleve.section, eleve_id: eleve.id, matiere: "Test", type: "Devoir", valeur: 10, periode: "T1",
-    });
-    attendu("REFUS d'écrire une note", !!coNote);
+    // Une VRAIE note (colonnes exactes, `annee` comprise), refus exigé DE LA
+    // RLS. L'ancienne sonde écrivait `valeur` et omettait `annee` : rejetée
+    // par le schéma, elle passait même quand notes_write laissait tout le
+    // personnel écrire (rejeu de teacher-security.sql, cf. restaurer-gardes.sql).
+    const { data: coNote, error: coNoteErr } = await co.from("notes").insert({
+      ecole_id: demo.id, section: eleve.section, eleve_id: eleve.id, matiere: "TEST-RLS", type: "Devoir",
+      note: 10, periode: "T1", annee: "2025-2026",
+    }).select("id");
+    attendu("REFUS d'écrire une note (RLS)", refusRls(coNoteErr));
+    if (!refusRls(coNoteErr)) console.log(`     ↳ ${coNoteErr ? `erreur: ${coNoteErr.message}` : "note CRÉÉE"}`);
+    if (coNote?.length) await svc.from("notes").delete().in("id", coNote.map((n) => n.id));
+    const { data: coAbs, error: coAbsErr } = await co.from("absences").insert({
+      ecole_id: demo.id, section: eleve.section, eleve_id: eleve.id, type: "Absence", date: "2026-07-16", motif: "TEST-RLS",
+    }).select("id");
+    attendu("REFUS de saisir une absence (RLS)", refusRls(coAbsErr));
+    if (!refusRls(coAbsErr)) console.log(`     ↳ ${coAbsErr ? `erreur: ${coAbsErr.message}` : "absence CRÉÉE"}`);
+    if (coAbs?.length) await svc.from("absences").delete().in("id", coAbs.map((a) => a.id));
   }
   const { error: coEcole } = await co.from("ecoles").update({ nom: "HACK" }).eq("id", demo.id).select("id").maybeSingle();
   const { data: nomApres } = await svc.from("ecoles").select("nom").eq("id", demo.id).single();
@@ -84,6 +100,11 @@ async function main() {
   const { data: suPoste, error: suPosteErr } = await su.from("comptes")
     .update({ poste_id: posteId.direction }).eq("user_id", comptesTests[1].userId).select("id");
   attendu("REFUS de changer son propre poste", !!suPosteErr || !(suPoste || []).length);
+  // Garde percée : on lui rend son poste tout de suite, sinon il resterait
+  // « direction » pour les sondes suivantes (la messagerie échouerait aussi).
+  if ((suPoste || []).length) {
+    await svc.from("comptes").update({ poste_id: posteId.surveillant }).eq("id", comptesTests[1].compteId);
+  }
 
   console.log("\n— PARENT rattaché (à tort) au poste direction —");
   // Même si un poste_id traîne sur un compte parent, il ne doit RIEN ouvrir.
@@ -106,6 +127,7 @@ async function main() {
     const pa = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false } });
     const { error: pe } = await pa.auth.signInWithPassword({ email, password: pass });
     if (pe) { console.error(`connexion parent impossible: ${pe.message}`); process.exit(1); }
+    sessions.parent = pa;
     const { data: paRecettes } = await pa.from("recettes").select("id");
     attendu("ne voit AUCUNE recette malgré le poste direction", (paRecettes || []).length === 0);
     const { error: paRec } = await pa.from("recettes").insert({ ecole_id: demo.id, extra: { libelle: "TEST-RLS-PA" } });
@@ -149,6 +171,21 @@ async function main() {
     attendu("le comptable voit le privé qui lui est adressé + le message à tous", corpsCo.includes("PRIVE-COMPTABLE") && corpsCo.includes("POUR-TOUS"));
     await svc.from("messages_internes").delete().eq("ecole_id", demo.id).like("corps", "P%");
     await svc.from("messages_internes").delete().eq("ecole_id", demo.id).eq("corps", "POUR-TOUS");
+  }
+
+  console.log("\n— Auto-promotion (comptes_guard) —");
+  // En DERNIER pour ces comptes : si la garde est percée, ils restent
+  // « direction » jusqu'au nettoyage, et aucune sonde ne doit ensuite agir avec
+  // des droits volés (le comptable promu pourrait renommer l'École Démo).
+  // Le parent départage deux pannes : garde d'amorçage (lui reste bloqué) ou
+  // garde absente (lui aussi passe).
+  {
+    const { data: coRole, error: coRoleErr } = await co.from("comptes")
+      .update({ role: "direction" }).eq("user_id", comptesTests[0].userId).select("id");
+    attendu("le comptable NE PEUT PAS se donner le rôle direction", !!coRoleErr || !(coRole || []).length);
+    const { data: paRole, error: paRoleErr } = await sessions.parent.from("comptes")
+      .update({ role: "direction" }).eq("user_id", comptesTests[2].userId).select("id");
+    attendu("le parent NE PEUT PAS se donner le rôle direction", !!paRoleErr || !(paRole || []).length);
   }
 
   console.log("\n— Connexion par e-mail (login_pour_email) —");
