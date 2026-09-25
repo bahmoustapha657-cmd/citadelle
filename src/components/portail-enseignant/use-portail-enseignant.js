@@ -5,6 +5,7 @@ import { getPeriodesForSection } from "../../period-utils";
 import { getActiveNoteForms } from "../../evaluation-forms";
 import { imprimerEdtEnseignant, imprimerPaiesEnseignant } from "../../reports";
 import { isTitulaireSection } from "../../backend/teacher-scope";
+import { presents } from "../../depart-utils";
 import {
   construireGrille as construireGrilleHelper,
   enregistrerGrille as enregistrerGrilleAction,
@@ -70,7 +71,9 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
   const matieresDispo = portalData.matieres || [];
   const matiereParDefaut = isPrimaire ? (matieresDispo[0]?.nom || "") : matiere;
   const emplois = portalData.emplois || [];
-  const eleves = portalData.eleves || [];
+  // Élèves encore inscrits : un élève parti ne figure plus dans « Mes élèves »
+  // ni dans les grilles de saisie de notes.
+  const eleves = presents(portalData.eleves || []);
   const notes = portalData.notes || [];
   const enseignements = portalData.enseignements || [];
   const salaires = portalData.salaires || [];
@@ -120,7 +123,7 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
   const construireGrille = (classe, type, periode, multiPeriode = false, matiereSel = "", multiMatiere = false) => construireGrilleHelper({
     classe, type, periode, matiere: matiereSel,
     periodes, matieres: nomsMatieres, multiPeriode, multiMatiere,
-    eleves: portalData.eleves || [],
+    eleves,
     mesNotes, schoolInfo, utilisateur,
   });
 

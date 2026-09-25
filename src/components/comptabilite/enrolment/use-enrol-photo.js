@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { initMens } from "../../../constants";
+import { normaliserDepart } from "../../../depart-utils";
 import { uploadPhotoEleve } from "../../../storageUtils";
 import { findEnrollmentDuplicate, getEnrollmentDuplicateMessage } from "../../../enrollment-utils";
 
@@ -22,13 +23,18 @@ export function useEnrolPhoto({
   };
 
   const enregistrer = async () => {
+    // Départ : date obligatoire pour une sortie (c'est elle qui arrête les
+    // mensualités), champs de départ vidés au retour à « Actif » ou
+    // « Inactif » — masqués dans le formulaire, ils restaient enregistrés.
+    const { fiche, erreur } = normaliserDepart(form);
+    if (erreur) { toast(erreur, "warning"); return; }
     setUploadEnCours(true);
     try {
-      let photoUrl = form.photo || "";
+      let photoUrl = fiche.photo || "";
       if (photoUrl.startsWith("data:")) {
         photoUrl = await uploadPhotoEleve(photoUrl, schoolId);
       }
-      const r = { ...form, photo: photoUrl, mens: form.mens || initMens() };
+      const r = { ...fiche, photo: photoUrl, mens: fiche.mens || initMens() };
       const doublon = findEnrollmentDuplicate(r, tousElevesScolarite, {
         excludeId: modal === "edit_enrol" ? r._id : null,
       });

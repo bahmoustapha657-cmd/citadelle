@@ -2,13 +2,21 @@ import React from "react";
 import { fmt } from "../../constants";
 import { Badge, Vide } from "../ui";
 import { normalizeText } from "./helpers";
+import { moisExigibles, partiAvantAnnee } from "../../depart-utils";
 
-export function PaiementsTab({ eleve, moisAnnee, estReinscription, montantInscription, montantAutre, montantMensuel, c1, c2 }) {
+// `annee` : année des fiches. Un élève parti ne doit que les mois entamés
+// avant son départ — les suivants s'affichent « Non dû », pas « Impayé ».
+export function PaiementsTab({ eleve, moisAnnee, annee, estReinscription, montantInscription, montantAutre, montantMensuel, c1, c2 }) {
   const mens = eleve.mens || {};
   const mensDates = eleve.mensDates || {};
   const moisList = moisAnnee.length ? moisAnnee : Object.keys(mens);
-  const nbPayes = moisList.filter((mois) => normalizeText(mens[mois]) === "paye").length;
-  const nbImpayes = moisList.filter((mois) => normalizeText(mens[mois]) !== "paye").length;
+  const estPaye = (mois) => normalizeText(mens[mois]) === "paye";
+  const dus = new Set(moisExigibles(eleve, moisList, annee));
+  const nbPayes = moisList.filter(estPaye).length;
+  const nbImpayes = moisList.filter((mois) => dus.has(mois) && !estPaye(mois)).length;
+  const nbAttendus = moisList.filter((mois) => dus.has(mois) || estPaye(mois)).length;
+  // Parti avant la rentrée : ni inscription ni frais à réclamer pour l'année.
+  const rienDu = partiAvantAnnee(eleve, moisList, annee);
   const fraisAnnexes = [
     {
       id: "inscription",
@@ -30,7 +38,7 @@ export function PaiementsTab({ eleve, moisAnnee, estReinscription, montantInscri
       bordure: eleve.autrePayee ? "#94a3b8" : "#fca5a5",
       texte: eleve.autrePayee ? "#334155" : "#b91c1c",
     },
-  ].filter((item) => item.montant > 0);
+  ].filter((item) => item.montant > 0 && (item.paye || !rienDu));
 
   return (
     <>
@@ -45,7 +53,7 @@ export function PaiementsTab({ eleve, moisAnnee, estReinscription, montantInscri
           <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>Mois impayes</div>
         </div>
         <div style={{ padding: "14px 20px", background: "#f0fdf4", borderRadius: 12, textAlign: "center", minWidth: 120 }}>
-          <div style={{ fontWeight: 900, fontSize: 24, color: c2 }}>{moisList.length ? Math.round((nbPayes / moisList.length) * 100) : 0}%</div>
+          <div style={{ fontWeight: 900, fontSize: 24, color: c2 }}>{nbAttendus ? Math.round((nbPayes / nbAttendus) * 100) : 0}%</div>
           <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>Taux</div>
         </div>
         <div style={{ padding: "14px 20px", background: "#eff6ff", borderRadius: 12, textAlign: "center", minWidth: 150 }}>
@@ -71,7 +79,15 @@ export function PaiementsTab({ eleve, moisAnnee, estReinscription, montantInscri
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(130px,1fr))", gap: 8 }}>
         {moisList.map((mois) => {
-          const paye = normalizeText(mens[mois]) === "paye";
+          const paye = estPaye(mois);
+          if (!paye && !dus.has(mois)) {
+            return (
+              <div key={mois} style={{ padding: "12px 16px", borderRadius: 12, background: "#f8fafc", border: "2px solid #e2e8f0" }}>
+                <div style={{ fontWeight: 800, fontSize: 13, color: "#94a3b8" }}>{mois}</div>
+                <div style={{ fontSize: 11, marginTop: 4, color: "#94a3b8", fontWeight: 700 }}>Non du (apres le depart)</div>
+              </div>
+            );
+          }
           return (
             <div key={mois} style={{ padding: "12px 16px", borderRadius: 12, background: paye ? "#dcfce7" : "#fee2e2", border: `2px solid ${paye ? "#86efac" : "#fca5a5"}` }}>
               <div style={{ fontWeight: 800, fontSize: 13, color: paye ? "#166534" : "#b91c1c" }}>{mois}</div>

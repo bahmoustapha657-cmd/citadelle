@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { C } from "../../../constants";
+import { C, estSorti } from "../../../constants";
 import { Btn, Modale, Selec, Vide } from "../../ui";
 import { celluleASauver } from "../notes-grid";
 
@@ -22,7 +22,7 @@ export function GrilleModale({
   const maxNote = isPrimaire ? 10 : 20;
   const matCols = matieresDispo.map((m) => m.nom).filter(Boolean);
 
-  const elevesClasse = (portalData.eleves || []).filter((e) => e.classe === gridForm.classe);
+  const elevesClasse = (portalData.eleves || []).filter((e) => e.classe === gridForm.classe && !estSorti(e));
   const elevesAff = rech.trim()
     ? elevesClasse.filter((e) => norm(`${e.nom} ${e.prenom}`).includes(norm(rech)) || norm(`${e.prenom} ${e.nom}`).includes(norm(rech)))
     : elevesClasse;

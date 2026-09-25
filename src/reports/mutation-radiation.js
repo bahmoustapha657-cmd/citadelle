@@ -2,6 +2,11 @@
 //  Ordre de mutation + Certificat de radiation
 // ══════════════════════════════════════════════════════════════
 // Deux documents officiels remis lors du départ d'un élève.
+//
+// `situation` (cf. components/transferts/situation-depart.js) : l'année que
+// l'élève a réellement faite en dernier, sa classe cette année-là et sa date
+// de départ. Les documents se dataient du jour d'IMPRESSION — réimprimé un
+// mois plus tard, un certificat changeait de date de radiation.
 
 import { fmt, getAnnee, getSectionForClasse, today } from "../constants.js";
 import {
@@ -22,7 +27,7 @@ import {
 } from "./print-helpers.js";
 import { blocsSignatures } from "./signatures.js";
 
-export const imprimerOrdreMutation = (eleve, schoolInfo={}, ecoleDestination="", annee="") => {
+export const imprimerOrdreMutation = (eleve, schoolInfo={}, ecoleDestination="", annee="", situation=null) => {
   const lf = resolveLegalFields(schoolInfo);
   const w = window.open("","_blank");
   w.document.write(`<!DOCTYPE html><html lang="${printLang()}" dir="${printDir()}"><head><title>${tr("reports.ordreMutation.title")}</title>
@@ -67,7 +72,7 @@ export const imprimerOrdreMutation = (eleve, schoolInfo={}, ecoleDestination="",
     <tr><td>${tr("reports.ordreMutation.guardian")}</td><td>${eleve.tuteur||"—"} — ${eleve.contactTuteur||"—"}</td></tr>
     <tr><td>${tr("reports.ordreMutation.originSchool")}</td><td><strong>${schoolInfo.nom||""}</strong></td></tr>
     <tr><td>${tr("reports.ordreMutation.destinationSchool")}</td><td><strong>${ecoleDestination||tr("reports.ordreMutation.toFill")}</strong></td></tr>
-    <tr><td>${tr("reports.ordreMutation.transferDate")}</td><td>${today()}</td></tr>
+    <tr><td>${tr("reports.ordreMutation.transferDate")}</td><td>${situation?.dateDepart||today()}</td></tr>
     <tr><td>${tr("reports.ordreMutation.motive")}</td><td>${eleve.motifDepart||tr("reports.ordreMutation.defaultMotive")}</td></tr>
   </table>
   <p style="font-size:11px;margin-bottom:30px">
@@ -84,7 +89,7 @@ export const imprimerOrdreMutation = (eleve, schoolInfo={}, ecoleDestination="",
   w.document.close();
 };
 
-export const imprimerCertificatRadiation = (eleve, schoolInfo={}, annee="", soldeRestant=0) => {
+export const imprimerCertificatRadiation = (eleve, schoolInfo={}, annee="", soldeRestant=0, situation=null) => {
   const lf = resolveLegalFields(schoolInfo);
   const w = window.open("","_blank");
   w.document.write(`<!DOCTYPE html><html lang="${printLang()}" dir="${printDir()}"><head><title>${tr("reports.radiation.title")}</title>
@@ -127,9 +132,9 @@ export const imprimerCertificatRadiation = (eleve, schoolInfo={}, annee="", sold
     &nbsp;&nbsp;&nbsp;${tr("reports.radiation.matricule")} : <strong>${eleve.matricule||"—"}</strong><br/>
     ${eleve.ien?`&nbsp;&nbsp;&nbsp;${tr("reports.radiation.ienShort")} : <strong>${eleve.ien}</strong><br/>`:""}
     &nbsp;&nbsp;&nbsp;${tr("reports.radiation.bornOn")} : <strong>${eleve.dateNaissance||"—"}</strong> ${tr("reports.radiation.at")} <strong>${eleve.lieuNaissance||"—"}</strong><br/>
-    &nbsp;&nbsp;&nbsp;${tr("reports.radiation.classAttended")} : <strong>${eleve.classe||"—"}</strong><br/>
+    &nbsp;&nbsp;&nbsp;${tr("reports.radiation.classAttended")} : <strong>${situation?.classe||eleve.classe||"—"}</strong><br/>
     &nbsp;&nbsp;&nbsp;${tr("reports.radiation.schoolYear")} : <strong>${annee||getAnnee()}</strong><br/><br/>
-    ${tr("reports.radiation.removedOn")} <strong>${today()}</strong>
+    ${tr("reports.radiation.removedOn")} <strong>${situation?.dateDepart||today()}</strong>
     ${tr("reports.radiation.forReason")} <strong>${eleve.motifDepart||tr("reports.radiation.defaultMotive")}</strong>.<br/><br/>
     ${tr("reports.radiation.financialSituation")} : <strong>${soldeRestant<=0?tr("reports.radiation.settled"):tr("reports.radiation.remainingDue")+" "+fmt(soldeRestant)}</strong>
   </div>

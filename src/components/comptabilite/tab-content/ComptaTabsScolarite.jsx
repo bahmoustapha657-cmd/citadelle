@@ -86,6 +86,7 @@ export function ComptaTabsScolarite({ c, readOnly, annee, userRole }) {
         sortAlpha={c.sortAlpha}
         encaisserInscriptions={c.encaisserInscriptions}
         getTarifInscriptionEleve={c.getTarifInscriptionEleve}
+        tarifsClasses={c.tarifsClasses}
       />}
 
       {c.tab === "mens" && <MensualitesTab
@@ -106,6 +107,7 @@ export function ComptaTabsScolarite({ c, readOnly, annee, userRole }) {
         setFiltClasse={c.setFiltClasse}
         moisAnnee={c.moisAnnee}
         annee={annee}
+        anneeScolarite={c.anneeConsultee}
         readOnly={readOnly}
         canCreate={c.canCreate}
         canEdit={c.canEdit}

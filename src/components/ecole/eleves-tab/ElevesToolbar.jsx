@@ -9,6 +9,7 @@ import { peutImprimerCartesEleves } from "../../../../shared/postes-config.js";
 export function ElevesToolbar({
   eleves, elevesFiltres, filtreClasse, setFiltreClasse, classesUniq,
   section = "college", annee, schoolInfo, userRole = "",
+  nbPartis = 0, avecPartis = false, setAvecPartis = () => {},
 }) {
   const { t } = useTranslation();
   return (
@@ -19,6 +20,11 @@ export function ElevesToolbar({
         <option value="all">{t("common.all")}</option>
         {classesUniq.map(c=><option key={c}>{c}</option>)}
       </select>
+      {nbPartis>0&&<label title="Élèves transférés, exclus, sortis… : hors des listes, cartes et exports par défaut"
+        style={{display:"flex",alignItems:"center",gap:5,fontSize:12,color:"#475569",cursor:"pointer"}}>
+        <input type="checkbox" checked={avecPartis} onChange={e=>setAvecPartis(e.target.checked)}/>
+        Afficher les élèves partis ({nbPartis})
+      </label>}
       {filtreClasse!=="all"&&<Btn sm v="ghost" onClick={()=>imprimerListeClasse(filtreClasse,eleves,schoolInfo)}>🖨️ {t("common.print")}</Btn>}
       {/* Carte scolaire = pièce d'identité, fermée au surveillant général
           (cf. peutImprimerCartesEleves). Il conserve la liste de classe
