@@ -9,15 +9,11 @@
 // tout ça à une seule liste normalisée.
 
 import {
-  CATALOGUE_FRAIS_ANNEXES,
-  getFraisAnnexeLabel,
-  getTarifFraisDivers,
-} from "../../../constants";
-import {
-  getTarifAutreForClasse,
+  getFraisAnnexesEleve,
   getTarifConfigForClasse,
   getTarifInscriptionForEleve,
   getTarifMensuelForClasse,
+  montantInscriptionPaye,
   montantMoisPaye,
 } from "../../../mensualite-utils";
 import { clePaiement, mouvementsDepuisJournal } from "../paiements-journal";
@@ -151,8 +147,8 @@ function mouvementsDocuments({ recettes = [], depenses = [], versements = [] }) 
 }
 
 // Mouvements encaissés sur la fiche élève : mensualités, inscription et frais
-// annexes. Le montant d'une mensualité est celui FIGÉ au paiement quand il
-// existe (mensMontants), sinon le tarif courant de la classe.
+// annexes. Le montant est celui FIGÉ au paiement quand il existe
+// (mensMontants, inscriptionMontant, fraisMontants), sinon le tarif courant.
 function mouvementsEleves({ eleves = [], moisAnnee = [], tarifsClasses = [], annee = "" }) {
   const lignes = [];
   for (const eleve of eleves) {
@@ -183,28 +179,21 @@ function mouvementsEleves({ eleves = [], moisAnnee = [], tarifsClasses = [], ann
           cle: clePaiement({ annee, eleveId: eleve._id, type: "inscription", mois: "inscription" }),
           date, sens: "entree", source: "inscription",
           libelle: nom, detail: `Inscription${classe ? ` · ${classe}` : ""}`,
-          montant: getTarifInscriptionForEleve(eleve, tarifsClasses),
+          montant: montantInscriptionPaye(eleve, getTarifInscriptionForEleve(eleve, tarifsClasses)),
         });
       }
     }
 
-    const fraisDivers = getTarifFraisDivers(getTarifConfigForClasse(tarifsClasses, classe) || {});
-    const fraisPayes = eleve.fraisPayes || {};
-    for (const frais of CATALOGUE_FRAIS_ANNEXES) {
-      // « Autre frais » garde ses drapeaux dédiés (autrePayee / autreDate).
-      const brut = frais.id === "autre"
-        ? (eleve.autrePayee ? eleve.autreDate : null)
-        : fraisPayes[frais.id];
-      const date = parseDateSouple(brut);
+    for (const frais of getFraisAnnexesEleve(eleve, getTarifConfigForClasse(tarifsClasses, classe))) {
+      if (!frais.paye) continue;
+      const date = parseDateSouple(frais.date);
       if (!date) continue;
       lignes.push({
         id: `frais-${eleve._id}-${frais.id}`,
         cle: clePaiement({ annee, eleveId: eleve._id, type: "frais", mois: frais.id }),
         date, sens: "entree", source: "frais",
-        libelle: nom, detail: `${getFraisAnnexeLabel(frais.id)}${classe ? ` · ${classe}` : ""}`,
-        montant: frais.id === "autre"
-          ? getTarifAutreForClasse(tarifsClasses, classe)
-          : Number(fraisDivers[frais.id] || 0),
+        libelle: nom, detail: `${frais.label}${classe ? ` · ${classe}` : ""}`,
+        montant: frais.montant,
       });
     }
   }

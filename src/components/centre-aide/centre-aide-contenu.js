@@ -108,9 +108,10 @@ export const ARTICLES = [
     titre: "Configurer les tarifs (mensualité, inscription, frais)",
     etapes: [
       "Comptabilité → Mensualités → dépliez « Tarifs par classe ».",
-      "Tous les montants démarrent à 0 : saisissez la mensualité de base, la révision, l'inscription et la réinscription par classe.",
+      "Tous les montants démarrent à 0 : saisissez la mensualité, la révision, l'inscription et la réinscription par classe.",
       "Le tableau défile horizontalement si votre écran est petit — toutes les colonnes restent accessibles.",
-      "Cliquez « Enregistrer les tarifs ». La mensualité facturée = mensualité de base + révision.",
+      "Cliquez « Enregistrer les tarifs ». La mensualité est facturée chaque mois ; la révision est un frais annuel, dû une seule fois (colonne « Frais » de la grille).",
+      "La dernière colonne donne le total de l'année pour la classe (mensualités + révision + frais, hors inscription).",
     ],
   },
   {
@@ -122,8 +123,8 @@ export const ARTICLES = [
       "Comptabilité → Mensualités → « Tarifs par classe » : rangée « + Ajouter un frais ».",
       "Choisissez un frais du catalogue (tenue, fournitures, cantine, transport, examen, assurance, carte, activités, internat, APEAE) : une colonne s'ajoute.",
       "Saisissez le montant par classe (0 = désactivé pour cette classe), puis enregistrez.",
-      "Dans la grille des mensualités, la colonne « Frais » montre un compteur ; cliquez pour cocher chaque frais payé par l'élève.",
-      "Chaque frais payé apparaît sur le reçu et entre dans le total et le solde de l'élève.",
+      "Dans la grille des mensualités, la colonne « Frais » montre un compteur ; cliquez pour cocher chaque frais payé par l'élève (révision et « autre frais » compris).",
+      "Chaque frais payé apparaît sur le reçu et entre dans le total et le solde de l'élève, au montant encaissé ce jour-là : changer le tarif ensuite ne modifie pas ce qui est déjà payé.",
     ],
   },
   {

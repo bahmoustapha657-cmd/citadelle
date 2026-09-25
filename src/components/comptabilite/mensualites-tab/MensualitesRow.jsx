@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { C, estSorti, getFraisAnnexeLabel, initMens, isFraisAnnexePaye } from "../../../constants";
+import { C, estSorti, fmt, getTarifFraisDivers, initMens } from "../../../constants";
 import { Badge, Btn, TR, TD } from "../../ui";
 import { imprimerRecu, imprimerRecuTicket } from "../../../reports";
-import { getEleveMensualiteSnapshot } from "../../../mensualite-utils";
+import {
+  getEleveMensualiteSnapshot, getFraisAnnexesEleve, getTarifConfigForClasse, montantInscriptionPaye,
+} from "../../../mensualite-utils";
 import { lireDate, moisExigibles } from "../../../depart-utils";
 import { aUneExoneration, estExonereTotal, resumeExoneration } from "../../../exoneration-utils";
 import { FORMATS_RECU, getRecuFormat, labelRecuFormat, setRecuFormat } from "./recu-format";
@@ -11,8 +13,7 @@ import { FORMATS_RECU, getRecuFormat, labelRecuFormat, setRecuFormat } from "./r
 // nom), bascules mensuelles, frais d'inscription/annexes et impression du reçu.
 export function MensualitesRow({
   e, rowIdx, moisAnnee, annee, tarifsClasses, readOnly, canCreate, canEdit, schoolInfo,
-  toggleMens, toggleFraisAnnexe, getTarifInscriptionEleve, getTarifAutre, getTarif,
-  getTarifFraisDivers,
+  toggleMens, toggleFraisAnnexe, getTarifInscriptionEleve, getTarif,
 }) {
   const mens = e.mens || initMens();
   const snapshot = getEleveMensualiteSnapshot(e, moisAnnee, tarifsClasses, annee);
@@ -28,16 +29,18 @@ export function MensualitesRow({
   const exonere = aUneExoneration(e);
   const exonereTotal = estExonereTotal(e, "mensualites");
   const resume = resumeExoneration(e);
+  const nomEleve = `${e.nom} ${e.prenom}`;
+  // Encaisser demande canCreate (faux en année archivée) ; retirer un
+  // encaissement, le verrou admin (canEdit). Même règle que les mois.
+  const peutBasculer = (paye) => (paye ? canEdit : canCreate);
+  const tarif = getTarifConfigForClasse(tarifsClasses, e.classe);
   const montantInscription = getTarifInscriptionEleve(e);
-  const montantAutre = getTarifAutre(e.classe);
-  // Frais annexes actifs pour la classe : « autre » (legacy) + catalogue.
-  const fraisDivers = getTarifFraisDivers ? getTarifFraisDivers(e.classe) : {};
-  const fraisActifs = {
-    ...(montantAutre > 0 ? { autre: montantAutre } : {}),
-    ...fraisDivers,
-  };
-  const idsFrais = Object.keys(fraisActifs);
-  const nbFraisPayes = idsFrais.filter((id) => isFraisAnnexePaye(e, id)).length;
+  const libelleInscription = e.typeInscription === "Réinscription" ? "Réinscription" : "Inscription";
+  const montantInscriptionAffiche = e.inscriptionPayee ? montantInscriptionPaye(e, montantInscription) : montantInscription;
+  // Frais annexes de l'élève : ceux que la classe facture (autre, révision,
+  // catalogue) ET ceux déjà payés que le tarif ne facture plus.
+  const lignesFrais = getFraisAnnexesEleve(e, tarif);
+  const nbFraisPayes = lignesFrais.filter((l) => l.paye).length;
   const [menuFrais, setMenuFrais] = useState(false);
   // Impression du reçu : le 🖨️ imprime aussitôt dans le format retenu sur ce
   // poste (un clic pour le caissier) ; le ▾ permet d'en changer.
@@ -47,24 +50,22 @@ export function MensualitesRow({
     setMenuImpr(false);
     setFormatRecu(format);
     setRecuFormat(format);
-    const frais = { inscription: montantInscription, autre: montantAutre, divers: fraisDivers };
+    const frais = {
+      inscription: montantInscription,
+      autre: Number(tarif?.autre || 0),
+      revision: Number(tarif?.revision || 0),
+      divers: getTarifFraisDivers(tarif || {}),
+    };
     if (format === "a4") imprimerRecu(e, getTarif(e.classe), schoolInfo, moisAnnee, frais);
     else imprimerRecuTicket(e, getTarif(e.classe), schoolInfo, moisAnnee, frais, Number(format));
   };
-  const basculerFrais = (id) => toggleFraisAnnexe(e._id, id === "autre" ? {
-    payKey: "autrePayee",
-    dateKey: "autreDate",
-    valeurActuelle: e.autrePayee,
-    label: "Autre frais",
-    montant: montantAutre,
-    nomEleve: `${e.nom} ${e.prenom}`,
-  } : {
-    fraisId: id,
-    fraisPayesActuels: e.fraisPayes || {},
-    valeurActuelle: isFraisAnnexePaye(e, id),
-    label: getFraisAnnexeLabel(id),
-    montant: fraisActifs[id],
-    nomEleve: `${e.nom} ${e.prenom}`,
+  const basculerFrais = (ligne) => toggleFraisAnnexe(e._id, {
+    poste: ligne.id,
+    eleve: e,
+    valeurActuelle: ligne.paye,
+    label: ligne.label,
+    montant: ligne.montant,
+    nomEleve,
   });
   // Background explicite sur les cellules sticky : sinon le contenu des colonnes
   // suivantes glisse "derrière" lors du scroll horizontal. Alterné pour le zébrage.
@@ -114,47 +115,56 @@ export function MensualitesRow({
         </span>
       </td>
       <td style={{ padding: "4px 4px", textAlign: "center" }}>
-        <button onClick={() => toggleFraisAnnexe(e._id, {
-          payKey: "inscriptionPayee",
-          dateKey: "inscriptionDate",
-          valeurActuelle: e.inscriptionPayee,
-          label: e.typeInscription === "Réinscription" ? "Réinscription" : "Inscription",
-          montant: montantInscription,
-          nomEleve: `${e.nom} ${e.prenom}`,
-        })} title={`${e.typeInscription === "Réinscription" ? "Réinscription" : "Inscription"}${e.inscriptionDate ? ` (${e.inscriptionDate})` : ""}`}
-          style={{ width: 26, height: 26, borderRadius: 5, border: "none", cursor: readOnly ? "default" : "pointer", fontSize: 11,
-            background: e.inscriptionPayee ? C.blue : "#f1f3f4", color: e.inscriptionPayee ? "#fff" : "#9ca3af", fontWeight: 700 }}>
-          {e.inscriptionPayee ? "✓" : "I"}
-        </button>
+        {(() => {
+          const peut = peutBasculer(e.inscriptionPayee);
+          return (
+            <button onClick={() => peut && toggleFraisAnnexe(e._id, {
+              poste: "inscription",
+              eleve: e,
+              valeurActuelle: !!e.inscriptionPayee,
+              label: libelleInscription,
+              montant: montantInscriptionAffiche,
+              nomEleve,
+            })} title={`${libelleInscription} — ${fmt(montantInscriptionAffiche)}${e.inscriptionDate ? ` (${e.inscriptionDate})` : ""}`}
+              style={{ width: 26, height: 26, borderRadius: 5, border: "none", cursor: peut ? "pointer" : "default", fontSize: 11,
+                background: e.inscriptionPayee ? C.blue : "#f1f3f4", color: e.inscriptionPayee ? "#fff" : "#9ca3af", fontWeight: 700,
+                opacity: !peut && !e.inscriptionPayee ? 0.6 : 1 }}>
+              {e.inscriptionPayee ? "✓" : "I"}
+            </button>
+          );
+        })()}
       </td>
       <td style={{ padding: "4px 4px", textAlign: "center", position: "relative" }}>
-        {idsFrais.length === 0 ? (
+        {lignesFrais.length === 0 ? (
           <span title="Aucun frais annexe configuré pour cette classe (Tarifs par classe)"
             style={{ fontSize: 11, color: "#cbd5e1" }}>—</span>
         ) : (
           <>
             <button onClick={() => setMenuFrais((v) => !v)}
-              title={`Frais annexes : ${nbFraisPayes}/${idsFrais.length} payé(s)`}
+              title={`Frais annexes : ${nbFraisPayes}/${lignesFrais.length} payé(s)`}
               style={{ minWidth: 34, height: 26, borderRadius: 5, border: "none", cursor: "pointer", fontSize: 10,
-                background: nbFraisPayes === idsFrais.length ? "#475569" : nbFraisPayes > 0 ? "#f59e0b" : "#f1f3f4",
-                color: nbFraisPayes > 0 || nbFraisPayes === idsFrais.length ? "#fff" : "#9ca3af", fontWeight: 700, padding: "0 6px" }}>
-              {nbFraisPayes}/{idsFrais.length}
+                background: nbFraisPayes === lignesFrais.length ? "#475569" : nbFraisPayes > 0 ? "#f59e0b" : "#f1f3f4",
+                color: nbFraisPayes > 0 ? "#fff" : "#9ca3af", fontWeight: 700, padding: "0 6px" }}>
+              {nbFraisPayes}/{lignesFrais.length}
             </button>
             {menuFrais && (
               <div onMouseLeave={() => setMenuFrais(false)}
                 style={{ position: "absolute", top: "100%", insetInlineEnd: 0, zIndex: 20, minWidth: 230,
                   background: "var(--lc-surface, #fff)", border: "1px solid #cbd5e1", borderRadius: 10,
                   boxShadow: "0 8px 30px rgba(0,0,0,0.18)", padding: 8, textAlign: "start" }}>
-                {idsFrais.map((id) => {
-                  const paye = isFraisAnnexePaye(e, id);
+                {lignesFrais.map((ligne) => {
+                  const peut = peutBasculer(ligne.paye);
                   return (
-                    <button key={id} onClick={() => { setMenuFrais(false); basculerFrais(id); }}
+                    <button key={ligne.id} onClick={() => { if (!peut) return; setMenuFrais(false); basculerFrais(ligne); }}
+                      title={ligne.paye
+                        ? `Payé le ${ligne.date || "—"}${ligne.du === 0 ? " — n'est plus facturé à cette classe" : ""}`
+                        : `À payer : ${fmt(ligne.du)}`}
                       style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, width: "100%",
-                        border: "none", background: "none", cursor: readOnly ? "default" : "pointer",
+                        border: "none", background: "none", cursor: peut ? "pointer" : "default", opacity: peut || ligne.paye ? 1 : 0.6,
                         padding: "6px 8px", borderRadius: 6, fontSize: 12, color: "#334155" }}>
-                      <span style={{ fontWeight: 600 }}>{getFraisAnnexeLabel(id)}</span>
-                      <span style={{ whiteSpace: "nowrap", fontWeight: 700, color: paye ? "#059669" : "#94a3b8" }}>
-                        {Number(fraisActifs[id]).toLocaleString("fr-FR")} {paye ? "✓" : "·"}
+                      <span style={{ fontWeight: 600 }}>{ligne.label}</span>
+                      <span style={{ whiteSpace: "nowrap", fontWeight: 700, color: ligne.paye ? "#059669" : "#94a3b8" }}>
+                        {Number(ligne.montant).toLocaleString("fr-FR")} {ligne.paye ? "✓" : "·"}
                       </span>
                     </button>
                   );

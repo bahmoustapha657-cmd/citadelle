@@ -15,8 +15,8 @@ export const COLLECTIONS_ELEVES = [
 // Les champs de scolarité portés par la fiche élève : c'est exactement ce
 // qu'on archive, et exactement ce qu'on remet à zéro.
 export const CHAMPS_SCOLARITE = [
-  "mens", "mensDates", "mensMontants", "fraisPayes",
-  "inscriptionPayee", "inscriptionDate", "autrePayee", "autreDate",
+  "mens", "mensDates", "mensMontants", "fraisPayes", "fraisMontants",
+  "inscriptionPayee", "inscriptionDate", "inscriptionMontant", "autrePayee", "autreDate",
   // La dispense de paiement vaut pour UNE année : archivée ici, effacée par
   // l'état vierge, la rentrée propose de la reconduire (cf. exoneration-utils).
   "exoneration",
@@ -47,8 +47,10 @@ export function etatVierge(moisAnnee = null) {
     mensDates: {},
     mensMontants: {},
     fraisPayes: {},
+    fraisMontants: {},
     inscriptionPayee: false,
     inscriptionDate: null,
+    inscriptionMontant: null,
     autrePayee: false,
     autreDate: null,
     exoneration: null,

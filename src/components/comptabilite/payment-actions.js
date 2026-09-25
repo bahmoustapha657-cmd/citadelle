@@ -8,7 +8,13 @@
 import { fmt, initMens } from "../../constants";
 import { sumBonsForSalary } from "../../salary-utils";
 import { notifierParents } from "../../backend/notify-supabase";
+import { champsBasculeFrais } from "./frais-bascule";
 import { ecritureAnnulation, ecritureEncaissement } from "./paiements-journal";
+
+// Année archivée affichée (canCreate faux sans lecture seule) : rien ne
+// s'encaisse. L'écriture partirait sur la fiche de l'année EN COURS, avec
+// l'état d'une autre année.
+const MSG_ARCHIVE = "Année archivée : consultation seule, aucun encaissement possible.";
 
 // Écrit une ligne au journal des encaissements. BEST-EFFORT : si le journal
 // refuse l'écriture (droits, réseau), l'encaissement lui-même reste acquis —
@@ -24,56 +30,55 @@ async function journaliser(ajPaiement, ecriture, toast) {
   }
 }
 
-// Marque un frais annexe comme payé/impayé sur un élève. Deux formes :
-//   • legacy (inscription, « autre ») : drapeaux dédiés payKey/dateKey ;
-//   • catalogue (uniforme, cantine…)  : opts.fraisId + fraisPayesActuels →
-//     carte eleves.fraisPayes = { id: "date de paiement" }.
-// Bloqué si readOnly. Le retrait d'un frais déjà payé exige canEdit (verrou
-// admin), pour éviter qu'un comptable annule un encaissement sans validation.
+// Marque un frais ponctuel comme payé/impayé sur un élève. `opts.poste` vaut
+// "inscription" ou l'id d'un frais du catalogue (autre, revision, uniforme…) ;
+// `opts.eleve` est la fiche affichée, dont on repart pour les cartes de frais
+// (cf. champsBasculeFrais, qui fige aussi le montant).
+// Bloqué si readOnly ou en année archivée. Le retrait d'un frais déjà payé
+// exige canEdit (verrou admin), pour éviter qu'un comptable annule un
+// encaissement sans validation.
 export async function toggleFraisAnnexe(_id, opts, {
-  readOnly, canEdit, toast, modEleves, logAction,
+  readOnly, canCreate = false, canEdit, toast, modEleves, logAction,
   ajPaiement = null, annee = "", auteur = "", eleve = null,
 }) {
   // `confirmer:false` : la question a déjà été posée UNE fois pour tout un
   // lot (encaissement groupé des inscriptions). Sans cela, réinscrire une
   // classe de 50 élèves ouvrirait 50 fenêtres de confirmation.
-  const { payKey, dateKey, fraisId=null, fraisPayesActuels=null, valeurActuelle=false, label, montant=0, nomEleve="", confirmer=true } = opts;
+  const { poste, valeurActuelle=false, label, montant=0, nomEleve="", confirmer=true } = opts;
   if(readOnly) return;
+  if(!canCreate){ toast(MSG_ARCHIVE,"warning"); return; }
   if(valeurActuelle && !canEdit){
     toast(`Le retrait de ${label.toLowerCase()} nécessite l'autorisation de l'administrateur (verrou activé).`,"warning");
     return;
   }
+  // Sans la fiche, on réécrirait les cartes de frais à partir de rien et les
+  // autres frais déjà payés disparaîtraient.
+  const fiche = opts.eleve || eleve;
+  if(!fiche){ toast("Fiche élève introuvable : rechargez la page puis réessayez.","error"); return; }
   const montantLabel = montant>0 ? ` (${fmt(montant)})` : "";
   const message = valeurActuelle
     ? `Retirer ${label.toLowerCase()}${montantLabel} pour ${nomEleve} ?`
     : `Marquer ${label.toLowerCase()}${montantLabel} comme payé pour ${nomEleve} ?`;
   if(confirmer && !confirm(message)) return;
-  if (fraisId) {
-    const fraisPayes = { ...(fraisPayesActuels || {}) };
-    if (valeurActuelle) delete fraisPayes[fraisId];
-    else fraisPayes[fraisId] = new Date().toLocaleDateString("fr-FR");
-    await modEleves(_id, { fraisPayes });
-  } else {
-    await modEleves(_id,{
-      [payKey]:!valeurActuelle,
-      [dateKey]:!valeurActuelle ? new Date().toLocaleDateString("fr-FR") : null,
-    });
-  }
+  const { champs, montantJournal } = champsBasculeFrais({
+    eleve: fiche, poste, valeurActuelle, montant, date: new Date().toLocaleDateString("fr-FR"),
+  });
+  await modEleves(_id, champs);
   // Journal d'audit : chaque encaissement/retrait de frais laisse une trace.
   logAction?.(
     valeurActuelle ? "Frais annexe retiré" : "Frais annexe encaissé",
-    `${nomEleve} · ${label}${montant>0?` · ${fmt(montant)}`:""}`,
+    `${nomEleve} · ${label}${montantJournal>0?` · ${fmt(montantJournal)}`:""}`,
   );
   // Grand livre : l'inscription et les frais annexes sont des encaissements
-  // au même titre que les mensualités.
-  const estInscription = payKey === "inscriptionPayee";
+  // au même titre que les mensualités. `mois` porte l'id du frais.
+  const estInscription = poste === "inscription";
   const params = {
     annee,
-    eleve: eleve || { _id, nom: nomEleve },
+    eleve: eleve || fiche || { _id, nom: nomEleve },
     type: estInscription ? "inscription" : "frais",
-    mois: estInscription ? "inscription" : (fraisId || payKey || "autre"),
+    mois: poste,
     libelle: label,
-    montant,
+    montant: montantJournal,
     auteur,
   };
   await journaliser(ajPaiement, valeurActuelle ? ecritureAnnulation(params) : ecritureEncaissement(params), toast);
@@ -86,10 +91,11 @@ export async function toggleFraisAnnexe(_id, opts, {
 // (mensMontants[mois]) : un changement de tarif en cours d'année ne
 // réécrit plus rétroactivement les totaux perçus.
 export async function toggleMens(_id, mois, mensActuels, mensDatesActuels, nomEleve, {
-  readOnly, canEdit, toast, modEleves, envoyerPush, logAction, montantMois = null, mensMontantsActuels = null,
+  readOnly, canCreate = false, canEdit, toast, modEleves, envoyerPush, logAction, montantMois = null, mensMontantsActuels = null,
   ajPaiement = null, annee = "", auteur = "", eleve = null,
 }) {
   if(readOnly) return;
+  if(!canCreate){ toast(MSG_ARCHIVE,"warning"); return; }
   const mens={...(mensActuels||initMens())};
   const estPaye=mens[mois]==="Payé";
   if(estPaye && !canEdit){

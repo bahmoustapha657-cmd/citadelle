@@ -8,12 +8,15 @@ import { TarifsSectionTable } from "./tarifs-classes/TarifsSectionTable";
 function TarifsClasses({
   saveTarif, getTarifBase, getTarifRevision, getTarifAutre, getTarifIns, getTarifReinsc, getTarifFraisDivers, canEdit,
 }) {
-  const { schoolInfo } = useContext(SchoolContext);
+  const { schoolInfo, moisAnnee = [] } = useContext(SchoolContext);
   const systeme = getSystemeScolaire(schoolInfo);
   const sections = getSectionsActives(schoolInfo);
   const toutesClasses = sections.flatMap((section) => getClassesForSection(section, systeme));
 
-  const getters = { saveTarif, getTarifBase, getTarifRevision, getTarifAutre, getTarifIns, getTarifReinsc, getTarifFraisDivers, toutesClasses };
+  const getters = {
+    saveTarif, getTarifBase, getTarifRevision, getTarifAutre, getTarifIns, getTarifReinsc, getTarifFraisDivers,
+    toutesClasses, nbMois: moisAnnee.length,
+  };
   const {
     ouvert, setOuvert, editing, saving, feedback, handleChange, sauvegarderTout, modifie, getPreviewTotal, setEditing,
     fraisVisibles, fraisDisponibles, ajouterFrais, getFraisDiversVal,
@@ -32,7 +35,8 @@ function TarifsClasses({
           {!canEdit&&<p style={{margin:"0 0 12px",fontSize:12,color:"#9ca3af"}}>Lecture seule - seuls le comptable, l'administrateur et la direction peuvent modifier les tarifs.</p>}
           <p style={{margin:"0 0 12px",fontSize:12,color:"#64748b"}}>
             Tous les frais démarrent à <strong>0</strong> tant qu'ils ne sont pas configurés ici.
-            La mensualité facturée additionne la mensualité de base et le frais de révision.
+            La mensualité est facturée chaque mois ; la <strong>révision</strong> et les frais annexes
+            sont dus <strong>une seule fois dans l'année</strong>.
           </p>
 
           {/* Frais annexes du catalogue : une pastille = une colonne en plus. */}

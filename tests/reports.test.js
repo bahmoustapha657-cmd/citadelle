@@ -19,7 +19,8 @@ test("getRecuTotals inclut les autres frais et l'inscription quand ils sont rég
 
   assert.equal(totals.totalMensualites, 400000);
   assert.equal(totals.fraisIns, 50000);
-  assert.equal(totals.fraisAutre, 15000);
+  // « Autre frais » payé avec l'ancien drapeau : une ligne comme les autres.
+  assert.deepEqual(totals.fraisDiversPayes, [{ id: "autre", label: "Autre frais", montant: 15000 }]);
   assert.equal(totals.totalGeneral, 465000);
 });
 
@@ -74,5 +75,7 @@ test("getRecuTotals n'ajoute pas les frais annexes non réglés", () => {
   );
 
   assert.equal(totals.totalMensualites, 180000);
+  assert.equal(totals.fraisIns, 0);
+  assert.deepEqual(totals.fraisDiversPayes, []);
   assert.equal(totals.totalGeneral, 180000);
 });

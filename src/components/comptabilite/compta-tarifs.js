@@ -28,11 +28,11 @@ export function buildTarifGetters(tarifsClasses) {
 }
 
 // Frais divers normalisés pour l'enregistrement : ids du catalogue seulement
-// (hors « autre »), montants numériques, les 0 sont conservés pour permettre
-// la désactivation d'un frais.
+// (hors frais à colonne dédiée : autre, révision), montants numériques, les 0
+// sont conservés pour permettre la désactivation d'un frais.
 export function normalizeFraisDivers(fraisDivers = {}) {
   return CATALOGUE_FRAIS_ANNEXES.reduce((acc, f) => {
-    if (f.id === "autre") return acc;
+    if (f.colonne) return acc;
     if (fraisDivers[f.id] === undefined || fraisDivers[f.id] === "") return acc;
     acc[f.id] = Number(fraisDivers[f.id]) || 0;
     return acc;

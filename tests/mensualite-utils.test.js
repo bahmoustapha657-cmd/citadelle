@@ -32,7 +32,8 @@ test("tarif helpers expose monthly, revision, other and reinscription values", (
   assert.equal(getTarifBaseForClasse(tarifs, "6e A"), 180000);
   assert.equal(getTarifRevisionForClasse(tarifs, "6e A"), 20000);
   assert.equal(getTarifAutreForClasse(tarifs, "6e A"), 15000);
-  assert.equal(getTarifMensuelForClasse(tarifs, "6e A"), 200000);
+  // La révision est annuelle (v3) : elle ne s'ajoute plus à la mensualité.
+  assert.equal(getTarifMensuelForClasse(tarifs, "6e A"), 180000);
   assert.equal(getTarifReinscriptionForClasse(tarifs, "6e A"), 30000);
 });
 
@@ -99,18 +100,20 @@ test("snapshot and overview aggregate scolarite and one-time fees", () => {
     // Élève sans dispense de paiement (cf. exoneration.test.js).
     nbExoneres: 0,
     montantExonere: 0,
-    montantMensualitesPercu: 400000,
+    // Mensualité = 180 000 : la révision n'est plus ajoutée à chaque mois.
+    montantMensualitesPercu: 360000,
     montantInscriptionPercu: 50000,
     montantAutrePercu: 15000,
-    soldeMensualites: 200000,
+    soldeMensualites: 180000,
     soldeInscription: 0,
-    soldeAutre: 0,
+    // La révision (20 000, due une fois) n'est pas encore réglée.
+    soldeAutre: 20000,
   });
 
   const overview = getMensualiteOverview(eleves, moisAnnee, tarifs);
   assert.deepEqual(overview, {
-    totalDu: 1200000,
-    totalPercu: 400000,
+    totalDu: 1080000,
+    totalPercu: 360000,
     totalPayes: 2,
     totalImpayes: 4,
     totalInscriptionsPercues: 50000,
@@ -132,13 +135,14 @@ test("getEleveSolde sums unpaid months, unpaid inscription and unpaid other fees
     reinscription: 30000,
   }];
 
-  // Élève à jour partout
+  // Élève à jour partout (révision annuelle comprise)
   const ok = {
     classe: "6e A",
     typeInscription: "Première inscription",
     mens: { Octobre: "Payé", Novembre: "Payé", Décembre: "Payé" },
     inscriptionPayee: true,
     autrePayee: true,
+    fraisPayes: { revision: "02/10/2026" },
   };
   assert.equal(getEleveSolde(ok, moisAnnee, tarifs), 0);
 
@@ -150,10 +154,11 @@ test("getEleveSolde sums unpaid months, unpaid inscription and unpaid other fees
     inscriptionPayee: false,
     autrePayee: false,
   };
-  // 3 * 200000 (mensualité) + 30000 (réinscription) + 15000 (autre) = 645000
-  assert.equal(getEleveSolde(debiteur, moisAnnee, tarifs), 645000);
+  // 3 * 180000 (mensualité) + 30000 (réinscription) + 15000 (autre)
+  // + 20000 (révision, UNE fois) = 605000
+  assert.equal(getEleveSolde(debiteur, moisAnnee, tarifs), 605000);
 
-  // Cas mixte : 1 mois impayé, inscription payée, autre impayé
+  // Cas mixte : 1 mois impayé, inscription payée, autre et révision impayés
   const mixte = {
     classe: "6e A",
     typeInscription: "Première inscription",
@@ -161,7 +166,7 @@ test("getEleveSolde sums unpaid months, unpaid inscription and unpaid other fees
     inscriptionPayee: true,
     autrePayee: false,
   };
-  // 1 * 200000 + 0 (inscription payée) + 15000 (autre impayé) = 215000
+  // 1 * 180000 + 0 (inscription payée) + 15000 (autre) + 20000 (révision) = 215000
   assert.equal(getEleveSolde(mixte, moisAnnee, tarifs), 215000);
 });
 
@@ -169,7 +174,8 @@ test("MENSUALITE_ALGO_VERSION est un entier ≥ 1 (canari pour repérer les bump
   assert.equal(typeof MENSUALITE_ALGO_VERSION, "number");
   // v2 : montants perçus figés au paiement (mensMontants) — cf. toggleMens.
   // v3 : élève parti — seuls les mois entamés avant son départ restent dus.
-  assert.equal(MENSUALITE_ALGO_VERSION, 3);
+  // v4 : révision annuelle ; inscription et frais annexes figés au paiement.
+  assert.equal(MENSUALITE_ALGO_VERSION, 4);
 });
 
 test("v2 : un changement de tarif ne réécrit pas les mois déjà payés (montants figés)", () => {

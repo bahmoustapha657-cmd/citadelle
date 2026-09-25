@@ -55,7 +55,7 @@ export function usePortailParent({ utilisateur, schoolInfo }) {
   const mesMessages = useMemo(() => trierMessages(messages, eleveId), [messages, eleveId]);
   const nonLus = mesMessages.filter((item) => item.expediteur === "ecole" && !item.lu).length;
 
-  const { montantMensuel, montantAutre, estReinscription, montantInscription } = computeTarifInfos(tarifs, eleve);
+  const { montantMensuel, montantAutre, montantRevision, estReinscription, montantInscription } = computeTarifInfos(tarifs, eleve);
   const matieres = [...new Set(mesNotes.map((item) => item.matiere).filter(Boolean))];
 
   const { moisImpayes, accesBloqueParPaiement } = computeBlocage(schoolInfo, eleve, moisAnnee, schoolInfo?.anneeScolaire);
@@ -130,6 +130,7 @@ export function usePortailParent({ utilisateur, schoolInfo }) {
     nonLus,
     montantMensuel,
     montantAutre,
+    montantRevision,
     estReinscription,
     montantInscription,
     matieres,
