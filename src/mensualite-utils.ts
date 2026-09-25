@@ -25,7 +25,11 @@ import {
 // v3 : la révision devient un frais ANNUEL (elle était ajoutée à chaque
 // mensualité) ; l'inscription et les frais annexes figent eux aussi leur
 // montant au paiement (inscriptionMontant, fraisMontants[id]).
-export const MENSUALITE_ALGO_VERSION = 3;
+// v4 : paiements en plusieurs fois — un mois, un frais ou l'inscription peut
+// porter un ACOMPTE (mensAcomptes, fraisAcomptes, inscriptionAcompte), compté
+// au perçu et déduit du reste dû. Le dû d'un mois ou d'un frais s'entend
+// après dispense (montantDuMois, duNet) : c'est ce qui s'encaisse.
+export const MENSUALITE_ALGO_VERSION = 4;
 
 export type TarifClasse = {
   classe?: string;
@@ -54,6 +58,10 @@ export type MensualiteEleve = EleveExonerable & {
   fraisPayes?: Record<string, string>;
   // Montant de chaque frais annexe, figé au paiement (v3).
   fraisMontants?: Record<string, number | string>;
+  // Acomptes (v4) : déjà versé sur ce qui n'est pas encore soldé.
+  mensAcomptes?: Record<string, number | string>;
+  fraisAcomptes?: Record<string, number | string>;
+  inscriptionAcompte?: number | string | null;
 };
 
 // Un frais annexe tel que l'élève le voit : facturé par sa classe, déjà payé,
@@ -63,16 +71,25 @@ export type LigneFraisAnnexe = {
   label: string;
   // Tarif actuel de la classe (0 s'il n'est plus facturé).
   du: number;
+  // Ce que l'élève doit pour ce frais, dispense déduite.
+  duNet: number;
   paye: boolean;
   date: string;
-  // Payé : montant figé au paiement (repli sur le tarif actuel) ; sinon le dû.
+  // Payé : montant figé au paiement (repli sur le tarif actuel) ; sinon le dû
+  // net de dispense.
   montant: number;
+  // Déjà versé : le montant payé, ou l'acompte d'un frais pas encore soldé.
+  verse: number;
+  // Ce qu'il reste à verser (0 une fois payé).
+  reste: number;
 };
 
 export type MensualiteSnapshot = {
   algoVersion: number;
   nbPayes: number;
   nbImpayes: number;
+  // Mois commencés : un acompte versé, pas encore soldés (comptés impayés).
+  nbPartiels: number;
   // Mois couverts par une dispense totale : ni payés, ni dus.
   nbExoneres: number;
   // Ce que l'école renonce à percevoir sur cet élève cette année.
@@ -90,6 +107,8 @@ export type MensualiteOverview = {
   totalPercu: number;
   totalPayes: number;
   totalImpayes: number;
+  // Mois entamés par un acompte (inclus dans totalImpayes).
+  totalPartiels: number;
   totalInscriptionsPercues: number;
   totalAutresPercus: number;
   // Dispenses accordées : combien d'élèves, et ce que l'école y renonce.
@@ -187,11 +206,40 @@ export function montantMoisPaye(eleve: MensualiteEleve, mois: string, mensualite
   return Number.isFinite(fige) && fige > 0 ? fige : mensualiteCourante;
 }
 
-// Inscription encaissée : montant figé au paiement, sinon (encaissée avant la
-// v3) le tarif courant.
+const positif = (valeur: unknown): number => {
+  const n = Number(valeur);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+};
+
+// Acomptes (v4) : ce qui a déjà été versé sur un mois, un frais ou
+// l'inscription pas encore soldé.
+export const acompteMois = (eleve: MensualiteEleve = {}, mois: string): number =>
+  positif((eleve.mensAcomptes || {})[mois]);
+export const acompteFrais = (eleve: MensualiteEleve = {}, id: string): number =>
+  positif((eleve.fraisAcomptes || {})[id]);
+export const acompteInscription = (eleve: MensualiteEleve = {}): number =>
+  positif(eleve.inscriptionAcompte);
+
+// Ce que l'élève doit pour un mois, dispense déduite : 0 s'il en est dispensé
+// en totalité, la part restante s'il n'a qu'une réduction.
+export function montantDuMois(eleve: MensualiteEleve = {}, mensualite: number = 0): number {
+  if (estExonereTotal(eleve, "mensualites")) return 0;
+  return montantApresExoneration(mensualite, eleve, "mensualites");
+}
+
+// Ce que l'élève doit pour l'inscription, dispense déduite.
+export const montantDuInscription = (eleve: MensualiteEleve = {}, inscription: number = 0): number =>
+  montantApresExoneration(inscription, eleve, "inscription");
+
+// Inscription encaissée : montant figé au paiement — 0 compris, pour un élève
+// dispensé validé sans encaissement — sinon (encaissée avant la v3) le tarif
+// courant.
 export function montantInscriptionPaye(eleve: MensualiteEleve, inscriptionCourante: number): number {
-  const fige = Number(eleve.inscriptionMontant);
-  return Number.isFinite(fige) && fige > 0 ? fige : inscriptionCourante;
+  const brut = eleve.inscriptionMontant;
+  const fige = Number(brut);
+  return brut !== null && brut !== undefined && brut !== "" && Number.isFinite(fige) && fige >= 0
+    ? fige
+    : inscriptionCourante;
 }
 
 // Frais annexes d'un élève, un par ligne, dans l'ordre du catalogue : ceux que
@@ -205,57 +253,90 @@ export function getFraisAnnexesEleve(eleve: MensualiteEleve = {}, tarif: TarifCl
     .filter((f) => factures[f.id] > 0 || isFraisAnnexePaye(eleve, f.id))
     .map((f) => {
       const du = Number(factures[f.id] || 0);
+      const duNet = montantApresExoneration(du, eleve, "fraisAnnexes");
       const paye = isFraisAnnexePaye(eleve, f.id);
+      const montant = paye ? (getFraisAnnexeMontantFige(eleve, f.id) ?? du) : duNet;
+      const acompte = paye ? 0 : acompteFrais(eleve, f.id);
       return {
         id: f.id,
         label: f.label,
         du,
+        duNet,
         paye,
         date: paye ? getFraisAnnexeDate(eleve, f.id) : "",
-        montant: paye ? (getFraisAnnexeMontantFige(eleve, f.id) ?? du) : du,
+        montant,
+        verse: paye ? montant : acompte,
+        reste: paye ? 0 : Math.max(0, duNet - acompte),
       };
     });
 }
 
 export function getEleveMensualiteSnapshot(eleve: MensualiteEleve = {}, moisAnnee: string[] = [], tarifsClasses: TarifClasse[] = []): MensualiteSnapshot {
   const mens = eleve.mens || {};
-  const moisPayes = moisAnnee.filter((mois) => mens[mois] === "Payé");
-  const nbPayes = moisPayes.length;
-  const nbImpayes = moisAnnee.length - nbPayes;
   const mensualite = getTarifMensuelForClasse(tarifsClasses, eleve.classe);
+  const duMois = montantDuMois(eleve, mensualite);
+  // Dispense : on ne touche JAMAIS à ce qui a déjà été encaissé (montants
+  // figés, acomptes) — seul le reste à devoir est allégé, chaque poste à son
+  // taux. Le « manque à gagner » est la part dispensée de ce qui reste dû.
+  let nbPayes = 0;
+  let nbImpayes = 0;
+  let nbPartiels = 0;
+  let nbNonPayes = 0;
+  let montantMensualitesPercu = 0;
+  let soldeMensualites = 0;
+  let exonere = 0;
+  for (const mois of moisAnnee) {
+    if (mens[mois] === "Payé") {
+      nbPayes += 1;
+      montantMensualitesPercu += montantMoisPaye(eleve, mois, mensualite);
+      continue;
+    }
+    const acompte = acompteMois(eleve, mois);
+    const reste = Math.max(0, duMois - acompte);
+    nbNonPayes += 1;
+    montantMensualitesPercu += acompte;
+    soldeMensualites += reste;
+    exonere += mensualite - duMois;
+    if (reste > 0) {
+      nbImpayes += 1;
+      if (acompte > 0) nbPartiels += 1;
+    }
+  }
+  const nbExoneres = estExonereTotal(eleve, "mensualites") ? nbNonPayes : 0;
+
   const inscriptionTarif = getTarifInscriptionForEleve(eleve, tarifsClasses);
-  const inscriptionPercu = eleve.inscriptionPayee ? montantInscriptionPaye(eleve, inscriptionTarif) : 0;
-  // Frais annexes (autre, révision, catalogue) : perçu au montant figé s'il
-  // est payé, sinon reste dû au tarif actuel.
-  let fraisPercu = 0;
-  let soldeFraisPlein = 0;
-  for (const ligne of getFraisAnnexesEleve(eleve, getTarifConfigForClasse(tarifsClasses, eleve.classe))) {
-    if (ligne.paye) fraisPercu += ligne.montant;
-    else soldeFraisPlein += ligne.du;
+  let montantInscriptionPercu = 0;
+  let soldeInscription = 0;
+  if (eleve.inscriptionPayee) {
+    montantInscriptionPercu = montantInscriptionPaye(eleve, inscriptionTarif);
+  } else {
+    const duInscription = montantDuInscription(eleve, inscriptionTarif);
+    const acompte = acompteInscription(eleve);
+    montantInscriptionPercu = acompte;
+    soldeInscription = Math.max(0, duInscription - acompte);
+    exonere += inscriptionTarif - duInscription;
   }
 
-  // Dispense : on ne touche JAMAIS à ce qui a déjà été encaissé (montants figés
-  // au paiement) — seul le reste à devoir est allégé, chaque poste à son taux.
-  const exonereMois = estExonereTotal(eleve, "mensualites");
-  const nbExoneres = exonereMois ? nbImpayes : 0;
-  const nbRestants = exonereMois ? 0 : nbImpayes;
-  const soldeMensualitesPlein = nbImpayes * mensualite;
-  const soldeMensualites = nbRestants * montantApresExoneration(mensualite, eleve, "mensualites");
-  const soldeInscriptionPlein = eleve.inscriptionPayee ? 0 : inscriptionTarif;
-  const soldeInscription = montantApresExoneration(soldeInscriptionPlein, eleve, "inscription");
-  const soldeAutre = montantApresExoneration(soldeFraisPlein, eleve, "fraisAnnexes");
+  // Frais annexes (autre, révision, catalogue) : perçu au montant figé s'il
+  // est payé (ou l'acompte versé), sinon reste dû net de dispense.
+  let montantAutrePercu = 0;
+  let soldeAutre = 0;
+  for (const ligne of getFraisAnnexesEleve(eleve, getTarifConfigForClasse(tarifsClasses, eleve.classe))) {
+    montantAutrePercu += ligne.verse;
+    soldeAutre += ligne.reste;
+    if (!ligne.paye) exonere += ligne.du - ligne.duNet;
+  }
 
   return {
     algoVersion: MENSUALITE_ALGO_VERSION,
     nbPayes,
-    nbImpayes: nbRestants,
+    nbImpayes,
+    nbPartiels,
     nbExoneres,
-    montantExonere: (soldeMensualitesPlein - soldeMensualites)
-      + (soldeInscriptionPlein - soldeInscription)
-      + (soldeFraisPlein - soldeAutre),
-    montantMensualitesPercu: moisPayes.reduce((somme, mois) => somme + montantMoisPaye(eleve, mois, mensualite), 0),
-    montantInscriptionPercu: inscriptionPercu,
-    montantAutrePercu: fraisPercu,
+    montantExonere: exonere,
+    montantMensualitesPercu,
+    montantInscriptionPercu,
+    montantAutrePercu,
     soldeMensualites,
     soldeInscription,
     soldeAutre,
@@ -278,6 +359,7 @@ export function getMensualiteOverview(eleves: MensualiteEleve[] = [], moisAnnee:
       totalPercu: summary.totalPercu + snapshot.montantMensualitesPercu,
       totalPayes: summary.totalPayes + snapshot.nbPayes,
       totalImpayes: summary.totalImpayes + snapshot.nbImpayes,
+      totalPartiels: summary.totalPartiels + snapshot.nbPartiels,
       totalInscriptionsPercues: summary.totalInscriptionsPercues + snapshot.montantInscriptionPercu,
       totalAutresPercus: summary.totalAutresPercus + snapshot.montantAutrePercu,
       totalElevesExoneres: summary.totalElevesExoneres + (aUneExoneration(eleve) ? 1 : 0),
@@ -288,6 +370,7 @@ export function getMensualiteOverview(eleves: MensualiteEleve[] = [], moisAnnee:
     totalPercu: 0,
     totalPayes: 0,
     totalImpayes: 0,
+    totalPartiels: 0,
     totalInscriptionsPercues: 0,
     totalAutresPercus: 0,
     totalElevesExoneres: 0,

@@ -499,7 +499,10 @@
       "registration": "Registration",
       "otherFees": "Other fees",
       "thanks": "Thank you for your trust",
-      "remaining": "Remaining"
+      "remaining": "Remaining",
+      "deposit": "Deposit",
+      "paymentOf": "Payment of",
+      "balanceDue": "Balance due"
     },
     "annualReport": {
       "title": "Annual report",

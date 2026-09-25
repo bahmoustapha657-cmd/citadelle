@@ -499,7 +499,10 @@
       "registration": "التسجيل",
       "otherFees": "رسوم أخرى",
       "thanks": "شكرًا على ثقتكم",
-      "remaining": "المتبقّي"
+      "remaining": "المتبقّي",
+      "deposit": "دفعة مقدّمة",
+      "paymentOf": "دفعة بتاريخ",
+      "balanceDue": "المبلغ المتبقّي للدفع"
     },
     "annualReport": {
       "title": "التقرير السنوي",

@@ -97,6 +97,8 @@ test("snapshot and overview aggregate scolarite and one-time fees", () => {
     algoVersion: MENSUALITE_ALGO_VERSION,
     nbPayes: 2,
     nbImpayes: 1,
+    // Aucun acompte versé (cf. paiements-scolarite.test.js).
+    nbPartiels: 0,
     // Élève sans dispense de paiement (cf. exoneration.test.js).
     nbExoneres: 0,
     montantExonere: 0,
@@ -116,6 +118,7 @@ test("snapshot and overview aggregate scolarite and one-time fees", () => {
     totalPercu: 360000,
     totalPayes: 2,
     totalImpayes: 4,
+    totalPartiels: 0,
     totalInscriptionsPercues: 50000,
     totalAutresPercus: 15000,
     // Aucun élève dispensé de paiement ici (cf. exoneration.test.js).
@@ -174,7 +177,8 @@ test("MENSUALITE_ALGO_VERSION est un entier ≥ 1 (canari pour repérer les bump
   assert.equal(typeof MENSUALITE_ALGO_VERSION, "number");
   // v2 : montants perçus figés au paiement (mensMontants) — cf. toggleMens.
   // v3 : révision annuelle ; inscription et frais annexes figés au paiement.
-  assert.equal(MENSUALITE_ALGO_VERSION, 3);
+  // v4 : acomptes (paiement en plusieurs fois) ; dû après dispense.
+  assert.equal(MENSUALITE_ALGO_VERSION, 4);
 });
 
 test("v2 : un changement de tarif ne réécrit pas les mois déjà payés (montants figés)", () => {

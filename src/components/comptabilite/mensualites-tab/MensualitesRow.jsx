@@ -1,18 +1,23 @@
 import { useState } from "react";
-import { C, fmt, getTarifFraisDivers, initMens } from "../../../constants";
+import { C, fmt, initMens } from "../../../constants";
 import { Badge, Btn, TR, TD } from "../../ui";
-import { imprimerRecu, imprimerRecuTicket } from "../../../reports";
 import {
-  getEleveMensualiteSnapshot, getFraisAnnexesEleve, getTarifConfigForClasse, montantInscriptionPaye,
+  acompteInscription, acompteMois, getEleveMensualiteSnapshot, getFraisAnnexesEleve, getTarifConfigForClasse,
+  getTarifMensuelForClasse, montantDuInscription, montantDuMois, montantInscriptionPaye, montantMoisPaye,
 } from "../../../mensualite-utils";
 import { aUneExoneration, estExonereTotal, resumeExoneration } from "../../../exoneration-utils";
 import { FORMATS_RECU, getRecuFormat, labelRecuFormat, setRecuFormat } from "./recu-format";
+import { imprimerRecuEleve } from "./recu-eleve";
+
+// Couleurs d'une case « entamée » : un acompte versé, pas encore soldé.
+const PARTIEL = { background: "#fde68a", color: "#92400e" };
 
 // Une ligne élève de la grille des mensualités : colonnes figées (matricule,
-// nom), bascules mensuelles, frais d'inscription/annexes et impression du reçu.
+// nom), bascules mensuelles, frais d'inscription/annexes, encaissement d'un
+// montant libre et impression du reçu.
 export function MensualitesRow({
   e, rowIdx, moisAnnee, tarifsClasses, readOnly, canCreate, canEdit, schoolInfo,
-  toggleMens, toggleFraisAnnexe, getTarifInscriptionEleve, getTarif,
+  toggleMens, toggleFraisAnnexe, getTarifInscriptionEleve, ouvrirEncaissement,
 }) {
   const mens = e.mens || initMens();
   const snapshot = getEleveMensualiteSnapshot(e, moisAnnee, tarifsClasses);
@@ -26,13 +31,17 @@ export function MensualitesRow({
   // encaissement, le verrou admin (canEdit). Même règle que les mois.
   const peutBasculer = (paye) => (paye ? canEdit : canCreate);
   const tarif = getTarifConfigForClasse(tarifsClasses, e.classe);
+  const mensualite = getTarifMensuelForClasse(tarifsClasses, e.classe);
+  const duMois = montantDuMois(e, mensualite);
   const montantInscription = getTarifInscriptionEleve(e);
   const libelleInscription = e.typeInscription === "Réinscription" ? "Réinscription" : "Inscription";
-  const montantInscriptionAffiche = e.inscriptionPayee ? montantInscriptionPaye(e, montantInscription) : montantInscription;
+  const duInscription = montantDuInscription(e, montantInscription);
+  const acompteIns = e.inscriptionPayee ? 0 : acompteInscription(e);
   // Frais annexes de l'élève : ceux que la classe facture (autre, révision,
   // catalogue) ET ceux déjà payés que le tarif ne facture plus.
   const lignesFrais = getFraisAnnexesEleve(e, tarif);
   const nbFraisPayes = lignesFrais.filter((l) => l.paye).length;
+  const nbFraisEntames = lignesFrais.filter((l) => !l.paye && l.verse > 0).length;
   const [menuFrais, setMenuFrais] = useState(false);
   // Impression du reçu : le 🖨️ imprime aussitôt dans le format retenu sur ce
   // poste (un clic pour le caissier) ; le ▾ permet d'en changer.
@@ -42,21 +51,16 @@ export function MensualitesRow({
     setMenuImpr(false);
     setFormatRecu(format);
     setRecuFormat(format);
-    const frais = {
-      inscription: montantInscription,
-      autre: Number(tarif?.autre || 0),
-      revision: Number(tarif?.revision || 0),
-      divers: getTarifFraisDivers(tarif || {}),
-    };
-    if (format === "a4") imprimerRecu(e, getTarif(e.classe), schoolInfo, moisAnnee, frais);
-    else imprimerRecuTicket(e, getTarif(e.classe), schoolInfo, moisAnnee, frais, Number(format));
+    imprimerRecuEleve({ eleve: e, tarifsClasses, moisAnnee, schoolInfo, format });
   };
+  // Un clic solde le frais : son dû net (l'acompte éventuel est déduit par
+  // l'action) ; sur un frais payé, il le retire au montant encaissé.
   const basculerFrais = (ligne) => toggleFraisAnnexe(e._id, {
     poste: ligne.id,
     eleve: e,
     valeurActuelle: ligne.paye,
     label: ligne.label,
-    montant: ligne.montant,
+    montant: ligne.paye ? ligne.montant : ligne.duNet,
     nomEleve,
   });
   // Background explicite sur les cellules sticky : sinon le contenu des colonnes
@@ -79,41 +83,53 @@ export function MensualitesRow({
       {moisAnnee.map(m => {
         const paye = mens[m] === "Payé";
         const datePaie = (e.mensDates || {})[m] || "";
+        const acompte = paye ? 0 : acompteMois(e, m);
         // Mois couvert par une dispense totale : rien à encaisser.
-        const moisExonere = exonereTotal && !paye;
+        const moisExonere = exonereTotal && !paye && acompte === 0;
         const peutCliquer = moisExonere ? false : (paye ? (canCreate && canEdit) : canCreate);
+        const titre = moisExonere ? `${m} — dispensé (${resume})`
+          : paye ? `${m} — payé ${fmt(montantMoisPaye(e, m, mensualite))}${datePaie ? ` (${datePaie})` : ""}`
+            : acompte > 0 ? `${m} — acompte ${fmt(acompte)}, reste ${fmt(Math.max(0, duMois - acompte))}`
+              : `${m} — impayé (${fmt(duMois)})`;
         return <td key={m} style={{ padding: "4px 2px", textAlign: "center" }}>
-          <button onClick={() => peutCliquer && toggleMens(e._id, m, mens, e.mensDates || {}, `${e.nom} ${e.prenom}`)}
-            title={moisExonere ? `${m} — dispensé (${resume})` : `${m} — ${mens[m] || "Impayé"}${datePaie ? " (" + datePaie + ")" : ""}`}
+          <button onClick={() => peutCliquer && toggleMens(e._id, m, mens, e.mensDates || {}, nomEleve)}
+            title={titre}
             style={{ width: 26, height: 26, borderRadius: 5, border: "none", cursor: peutCliquer ? "pointer" : "default", fontSize: moisExonere ? 9 : 12,
-              background: paye ? C.green : moisExonere ? "#fef3c7" : "#e8f0e8",
-              color: paye ? "#fff" : moisExonere ? "#92400e" : "#9ca3af",
-              fontWeight: 700, opacity: (readOnly || (!peutCliquer && !paye && !moisExonere)) ? 0.6 : 1 }}>
-            {paye ? "✓" : moisExonere ? "Exo" : "·"}
+              background: paye ? C.green : acompte > 0 ? PARTIEL.background : moisExonere ? "#fef3c7" : "#e8f0e8",
+              color: paye ? "#fff" : acompte > 0 ? PARTIEL.color : moisExonere ? "#92400e" : "#9ca3af",
+              fontWeight: 700, opacity: (readOnly || (!peutCliquer && !paye && !moisExonere && acompte === 0)) ? 0.6 : 1 }}>
+            {paye ? "✓" : acompte > 0 ? "◐" : moisExonere ? "Exo" : "·"}
           </button>
         </td>;
       })}
       <td style={{ padding: "4px 8px", textAlign: "center" }}>
-        <span style={{ fontWeight: 800, fontSize: 13, color: snapshot.nbPayes === moisAnnee.length ? C.greenDk : snapshot.nbPayes > 0 ? "#d97706" : "#b91c1c" }}>
-          {snapshot.nbPayes}/{moisAnnee.length}
+        <span title={snapshot.nbPartiels > 0 ? `${snapshot.nbPartiels} mois entamé(s) par un acompte` : undefined}
+          style={{ fontWeight: 800, fontSize: 13, color: snapshot.nbPayes === moisAnnee.length ? C.greenDk : snapshot.nbPayes > 0 ? "#d97706" : "#b91c1c" }}>
+          {snapshot.nbPayes}/{moisAnnee.length}{snapshot.nbPartiels > 0 ? " ◐" : ""}
         </span>
       </td>
       <td style={{ padding: "4px 4px", textAlign: "center" }}>
         {(() => {
-          const peut = peutBasculer(e.inscriptionPayee);
+          const paye = !!e.inscriptionPayee;
+          const peut = peutBasculer(paye);
+          const montantAffiche = paye ? montantInscriptionPaye(e, montantInscription) : duInscription;
+          const titre = paye ? `${libelleInscription} — ${fmt(montantAffiche)}${e.inscriptionDate ? ` (${e.inscriptionDate})` : ""}`
+            : acompteIns > 0 ? `${libelleInscription} — acompte ${fmt(acompteIns)}, reste ${fmt(Math.max(0, duInscription - acompteIns))}`
+              : `${libelleInscription} — ${duInscription > 0 ? fmt(duInscription) : "dispensée"}`;
           return (
             <button onClick={() => peut && toggleFraisAnnexe(e._id, {
               poste: "inscription",
               eleve: e,
-              valeurActuelle: !!e.inscriptionPayee,
+              valeurActuelle: paye,
               label: libelleInscription,
-              montant: montantInscriptionAffiche,
+              montant: montantAffiche,
               nomEleve,
-            })} title={`${libelleInscription} — ${fmt(montantInscriptionAffiche)}${e.inscriptionDate ? ` (${e.inscriptionDate})` : ""}`}
+            })} title={titre}
               style={{ width: 26, height: 26, borderRadius: 5, border: "none", cursor: peut ? "pointer" : "default", fontSize: 11,
-                background: e.inscriptionPayee ? C.blue : "#f1f3f4", color: e.inscriptionPayee ? "#fff" : "#9ca3af", fontWeight: 700,
-                opacity: !peut && !e.inscriptionPayee ? 0.6 : 1 }}>
-              {e.inscriptionPayee ? "✓" : "I"}
+                background: paye ? C.blue : acompteIns > 0 ? PARTIEL.background : "#f1f3f4",
+                color: paye ? "#fff" : acompteIns > 0 ? PARTIEL.color : "#9ca3af", fontWeight: 700,
+                opacity: !peut && !paye ? 0.6 : 1 }}>
+              {paye ? "✓" : acompteIns > 0 ? "◐" : "I"}
             </button>
           );
         })()}
@@ -125,40 +141,61 @@ export function MensualitesRow({
         ) : (
           <>
             <button onClick={() => setMenuFrais((v) => !v)}
-              title={`Frais annexes : ${nbFraisPayes}/${lignesFrais.length} payé(s)`}
+              title={`Frais annexes : ${nbFraisPayes}/${lignesFrais.length} payé(s)${nbFraisEntames ? `, ${nbFraisEntames} entamé(s)` : ""}`}
               style={{ minWidth: 34, height: 26, borderRadius: 5, border: "none", cursor: "pointer", fontSize: 10,
-                background: nbFraisPayes === lignesFrais.length ? "#475569" : nbFraisPayes > 0 ? "#f59e0b" : "#f1f3f4",
-                color: nbFraisPayes > 0 ? "#fff" : "#9ca3af", fontWeight: 700, padding: "0 6px" }}>
-              {nbFraisPayes}/{lignesFrais.length}
+                background: nbFraisPayes === lignesFrais.length ? "#475569" : nbFraisPayes + nbFraisEntames > 0 ? "#f59e0b" : "#f1f3f4",
+                color: nbFraisPayes + nbFraisEntames > 0 ? "#fff" : "#9ca3af", fontWeight: 700, padding: "0 6px" }}>
+              {nbFraisPayes}/{lignesFrais.length}{nbFraisEntames ? " ◐" : ""}
             </button>
             {menuFrais && (
               <div onMouseLeave={() => setMenuFrais(false)}
-                style={{ position: "absolute", top: "100%", insetInlineEnd: 0, zIndex: 20, minWidth: 230,
+                style={{ position: "absolute", top: "100%", insetInlineEnd: 0, zIndex: 20, minWidth: 250,
                   background: "var(--lc-surface, #fff)", border: "1px solid #cbd5e1", borderRadius: 10,
                   boxShadow: "0 8px 30px rgba(0,0,0,0.18)", padding: 8, textAlign: "start" }}>
                 {lignesFrais.map((ligne) => {
-                  const peut = peutBasculer(ligne.paye);
+                  const entame = !ligne.paye && ligne.verse > 0;
+                  const dispense = !ligne.paye && ligne.duNet === 0;
+                  const peut = !dispense && peutBasculer(ligne.paye);
                   return (
                     <button key={ligne.id} onClick={() => { if (!peut) return; setMenuFrais(false); basculerFrais(ligne); }}
                       title={ligne.paye
                         ? `Payé le ${ligne.date || "—"}${ligne.du === 0 ? " — n'est plus facturé à cette classe" : ""}`
-                        : `À payer : ${fmt(ligne.du)}`}
+                        : dispense ? "Dispensé (cf. 🎓 Dispenses)"
+                          : entame ? `Acompte ${fmt(ligne.verse)} — cliquer pour solder le reste (${fmt(ligne.reste)})`
+                            : `À payer : ${fmt(ligne.duNet)}`}
                       style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, width: "100%",
                         border: "none", background: "none", cursor: peut ? "pointer" : "default", opacity: peut || ligne.paye ? 1 : 0.6,
                         padding: "6px 8px", borderRadius: 6, fontSize: 12, color: "#334155" }}>
                       <span style={{ fontWeight: 600 }}>{ligne.label}</span>
-                      <span style={{ whiteSpace: "nowrap", fontWeight: 700, color: ligne.paye ? "#059669" : "#94a3b8" }}>
-                        {Number(ligne.montant).toLocaleString("fr-FR")} {ligne.paye ? "✓" : "·"}
+                      <span style={{ whiteSpace: "nowrap", fontWeight: 700,
+                        color: ligne.paye ? "#059669" : entame ? PARTIEL.color : "#94a3b8" }}>
+                        {ligne.paye ? `${fmt(ligne.montant)} ✓`
+                          : dispense ? "Exo"
+                            : entame ? `◐ ${fmt(ligne.verse)} / ${fmt(ligne.duNet)}`
+                              : `${fmt(ligne.duNet)} ·`}
                       </span>
                     </button>
                   );
                 })}
+                {canCreate && ouvrirEncaissement && (
+                  <button onClick={() => { setMenuFrais(false); ouvrirEncaissement(e); }}
+                    style={{ display: "block", width: "100%", marginTop: 4, padding: "6px 8px", borderRadius: 6, cursor: "pointer",
+                      border: "1px dashed #cbd5e1", background: "none", fontSize: 11, fontWeight: 700, color: C.blue, textAlign: "start" }}>
+                    💰 Payer un montant (acompte)…
+                  </button>
+                )}
               </div>
             )}
           </>
         )}
       </td>
       <td style={{ padding: "4px 6px", textAlign: "center", position: "relative", whiteSpace: "nowrap" }}>
+        {canCreate && ouvrirEncaissement && (
+          <span style={{ marginInlineEnd: 3 }}>
+            <Btn sm v="success" title="Encaisser un montant : réparti sur les mois, une tranche, ou un acompte sur un frais"
+              onClick={() => ouvrirEncaissement(e)}>💰</Btn>
+          </span>
+        )}
         <Btn sm v="amber" title={`Imprimer le reçu — ${labelRecuFormat(formatRecu)}`}
           onClick={() => imprimer(formatRecu)}>🖨️</Btn>
         <button onClick={() => setMenuImpr((v) => !v)} title="Choisir le format d'impression"

@@ -76,9 +76,10 @@ const ligne = (libelle, montant) =>
 export const blocTicket = (ctx) => {
   const {
     schoolInfo = {}, eleve = {}, moisAnnee = [], mensDates = {}, montantUnit,
-    fraisIns = 0, fraisDiversPayes = [], totalMensualites, moisPayes = [],
-    totalGeneral, qr,
+    fraisIns = 0, insPartielle = false, fraisDiversPayes = [], moisAcomptes = [], totalMensualites, moisPayes = [],
+    totalGeneral, qr, versement = null, resteAPayer,
   } = ctx;
+  const acompte = tr("reports.receipt.deposit").toLowerCase();
   const nbImpayes = moisAnnee.length - moisPayes.length;
   // Contact école : téléphone/adresse si renseignés, sinon rien (pas de ligne vide).
   const contactEcole = [schoolInfo.telephone, schoolInfo.adresse || schoolInfo.ville]
@@ -98,19 +99,26 @@ export const blocTicket = (ctx) => {
     <div class="t-info"><span>${tr("common.date")}</span><b>${today()}</b></div>
     <div class="t-sep"></div>
     <table class="t-lignes">
-      ${moisPayes.length ? `<tr><td colspan="2" class="t-groupe">${tr("reports.receipt.monthlyFee")}</td></tr>` : ""}
+      ${moisPayes.length || moisAcomptes.length ? `<tr><td colspan="2" class="t-groupe">${tr("reports.receipt.monthlyFee")}</td></tr>` : ""}
       ${moisPayes.map((m) => ligne(
         `${m}${mensDates[m] ? ` <span style="font-size:.85em">(${mensDates[m]})</span>` : ""}`,
         montantMoisPaye(eleve, m, montantUnit),
       )).join("")}
-      ${moisPayes.length ? `<tr><td colspan="2" style="text-align:right;font-weight:700">${fmtN(totalMensualites)}</td></tr>` : ""}
+      ${moisAcomptes.map((a) => ligne(`${a.mois} (${acompte})`, a.montant)).join("")}
+      ${moisPayes.length || moisAcomptes.length ? `<tr><td colspan="2" style="text-align:right;font-weight:700">${fmtN(totalMensualites)}</td></tr>` : ""}
       ${fraisIns > 0 || fraisDiversPayes.length
         ? `<tr><td colspan="2" class="t-groupe">${tr("reports.receipt.otherFees")}</td></tr>` : ""}
-      ${fraisIns > 0 ? ligne(tr("reports.receipt.registration"), fraisIns) : ""}
-      ${fraisDiversPayes.map((f) => ligne(f.label, f.montant)).join("")}
+      ${fraisIns > 0 ? ligne(`${tr("reports.receipt.registration")}${insPartielle ? ` (${acompte})` : ""}`, fraisIns) : ""}
+      ${fraisDiversPayes.map((f) => ligne(`${f.label}${f.partiel ? ` (${acompte})` : ""}`, f.montant)).join("")}
     </table>
+    ${versement ? `<div class="t-sep"></div>
+    <div class="t-groupe">${tr("reports.receipt.paymentOf")} ${versement.date}</div>
+    <table class="t-lignes">${versement.lignes.map((l) => ligne(l.libelle, l.montant)).join("")}</table>
+    <div style="text-align:right;font-weight:800">${fmt(versement.total)}</div>` : ""}
     <div class="t-sep"></div>
     <div class="t-total"><span>${tr("reports.receipt.amount")}</span><b>${fmt(totalGeneral)}</b></div>
+    ${resteAPayer !== undefined && resteAPayer !== null
+      ? `<div class="t-total"><span>${tr("reports.receipt.balanceDue")}</span><b>${fmt(resteAPayer)}</b></div>` : ""}
     <div class="t-reste">${tr("accounting.paid")} : ${moisPayes.length}/${moisAnnee.length} ${tr("accounting.month").toLowerCase()}${
       nbImpayes > 0 ? ` — ${tr("reports.receipt.remaining")} : ${nbImpayes}` : ""}</div>
     ${qr ? `<div class="t-qr">${qr}<div class="t-legende">${tr("reports.qrVerify")}</div></div>` : ""}
