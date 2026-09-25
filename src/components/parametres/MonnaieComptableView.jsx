@@ -2,8 +2,8 @@ import React from "react";
 import { C, MONNAIES } from "../../constants";
 
 // Vue ultra-minimaliste affichée quand l'utilisateur est comptable :
-// uniquement le sélecteur de monnaie (seul champ que les règles Firestore
-// autorisent ce rôle à modifier — cf. firestore.rules §/ecoles).
+// uniquement le sélecteur de monnaie (seul champ de l'écran que ce rôle peut
+// modifier — firestore.rules §/ecoles, RPC maj_reglages_compta sur Supabase).
 // Court-circuite le rendu à onglets complet de ParametresEcole.
 export function MonnaieComptableView({
   form,

@@ -3,7 +3,7 @@ import { fmt, getAnnee, peutModifierEleves, peutModifier, sectionOuverte } from 
 import { hasWrite } from "../../../shared/postes-config.js";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { useFirestore } from "../../hooks/useFirestore";
-import { sauverParametresEcole } from "../../backend/data-supabase";
+import { majReglagesCompta } from "../../backend/data-supabase";
 import { toggleFraisAnnexe as toggleFraisAnnexeAction, toggleMens as toggleMensAction } from "./payment-actions";
 import { ensureClasse as ensureClasseHelper, sortAlphaEleves } from "./eleves-helpers";
 import { useComptaSalaires } from "./useComptaSalaires";
@@ -32,7 +32,7 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   // élève (inscriptions, mensualités) — même périmètre que le comptable.
   const canEditEleves = !readOnly && !enModeArchive
     && (peutModifierEleves(userRole) || hasWrite(permissions, "compta") || verrouOuvert);
-  const { schoolId, schoolInfo, moisAnnee, moisSalaire, toast, logAction, envoyerPush } = useContext(SchoolContext);
+  const { schoolInfo, moisAnnee, moisSalaire, toast, logAction, envoyerPush } = useContext(SchoolContext);
   // Grands livres filtrés sur l'année consultée en PERMANENCE. Auparavant le
   // filtre ne s'appliquait qu'en mode archive : en mode normal, recettes,
   // dépenses et versements de TOUTES les années étaient chargés, et le Bilan
@@ -259,7 +259,9 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
       // message « Accès parents bloqué » s'affichait sans que le blocage ne
       // s'applique jamais. schoolInfo se rafraîchit ensuite tout seul, les
       // paramètres d'école étant en temps réel (liquidation Firebase, lot 2).
-      await sauverParametresEcole(schoolId, { blocageParentImpaye: !blocage });
+      // RPC dédiée : la policy ecoles_update est fermée au comptable, et
+      // l'update direct y était refusé EN SILENCE (0 ligne, succès affiché).
+      await majReglagesCompta({ blocageParentImpaye: !blocage });
       toast(blocage ? "🔓 Accès parents rétabli" : "🔒 Accès parents bloqué pour les impayés", "success");
     } catch (e) {
       console.error("toggleBlocage error:", e);

@@ -35,7 +35,7 @@ function ParametresEcole({ utilisateurRole = "", onSchoolClosed = null, initialT
   } = p;
 
   // Vue comptable : court-circuite le shell à onglets, sélecteur de
-  // monnaie uniquement (seul champ autorisé par les règles Firestore).
+  // monnaie uniquement (seul champ que la comptabilité peut modifier).
   if(isComptableSeul) {
     return (
       <MonnaieComptableView

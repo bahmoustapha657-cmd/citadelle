@@ -188,11 +188,18 @@ export async function chargerEcole(schoolCode, { reseau = false } = {}) {
   return ecoleVersInfo(data);
 }
 
+// Refus de la RLS sur la fiche école : PostgREST ne renvoie pas d'erreur mais
+// zéro ligne. D'où le `.select("id")` des mises à jour ci-dessous — sans ce
+// contrôle, l'écran annoncerait un succès alors que rien n'est écrit.
+const REFUS_ECOLE = "Enregistrement refusé : votre compte ne peut pas modifier les paramètres de l'école.";
+
 // Sauvegarde des Paramètres de l'école côté Supabase : les champs qui ont une
 // colonne réelle y vont, tout le reste est FUSIONNÉ dans extra (jsonb) — le
 // miroir exact de chargerEcole ci-dessus (extra étalé + colonnes par-dessus).
 // NB : la colonne `devise` porte la MAXIME de l'école (héritage Firebase) ;
 // la monnaie va dans extra.monnaie.
+// Réservée aux modules parametres / admin_panel (policy ecoles_update) : les
+// réglages du comptable passent par majReglagesCompta.
 export async function sauverParametresEcole(schoolCode, champs) {
   const sb = getSupabase();
   const { data, error } = await sb.from("ecoles").select("id, extra").eq("code", schoolCode).maybeSingle();
@@ -206,9 +213,21 @@ export async function sauverParametresEcole(schoolCode, champs) {
     else extraPatch[cle] = valeur;
   }
   patch.extra = { ...(data.extra || {}), ...extraPatch };
-  const { error: e2 } = await sb.from("ecoles").update(patch).eq("id", data.id);
+  const { data: majs, error: e2 } = await sb.from("ecoles").update(patch).eq("id", data.id).select("id");
   if (e2) throw new Error(e2.message);
+  if (!majs?.length) throw new Error(REFUS_ECOLE);
   return { ok: true };
+}
+
+// Réglages ouverts à la COMPTABILITÉ : blocage du portail parents pour
+// impayés, monnaie. La policy ecoles_update lui est fermée ; la RPC
+// maj_reglages_compta (supabase/reglages-compta.sql) n'accepte que ces clés,
+// pour qui écrit la compta, sur sa propre école — et LÈVE une erreur en cas
+// de refus. Renvoie les valeurs enregistrées (normalisées par le serveur).
+export async function majReglagesCompta(champs) {
+  const { data, error } = await getSupabase().rpc("maj_reglages_compta", { p_champs: champs });
+  if (error) throw new Error(error.message);
+  return data;
 }
 
 // Profil légal (Paramètres → Officiel : agrément, autorisation, codes
@@ -225,7 +244,7 @@ export async function sauverProfilLegal(schoolCode, profil) {
   const legal = { ...(data.legal || {}), ...profil, updatedAt: Date.now() };
   const { data: majs, error: e2 } = await sb.from("ecoles").update({ legal }).eq("id", data.id).select("id");
   if (e2) throw new Error(e2.message);
-  if (!majs?.length) throw new Error("Enregistrement refusé : votre compte ne peut pas modifier les paramètres de l'école.");
+  if (!majs?.length) throw new Error(REFUS_ECOLE);
   return legal;
 }
 
@@ -236,8 +255,9 @@ export async function majVerrou(schoolCode, cle, valeur) {
   const { data, error } = await sb.from("ecoles").select("id, extra").eq("code", schoolCode).maybeSingle();
   if (error || !data) throw new Error(error?.message || "École introuvable.");
   const extra = { ...(data.extra || {}), verrous: { ...((data.extra || {}).verrous || {}), [cle]: valeur } };
-  const { error: e2 } = await sb.from("ecoles").update({ extra }).eq("id", data.id);
+  const { data: majs, error: e2 } = await sb.from("ecoles").update({ extra }).eq("id", data.id).select("id");
   if (e2) throw new Error(e2.message);
+  if (!majs?.length) throw new Error(REFUS_ECOLE);
 }
 
 // ── Écritures (Tranche 3) ───────────────────────────────────────────────────
