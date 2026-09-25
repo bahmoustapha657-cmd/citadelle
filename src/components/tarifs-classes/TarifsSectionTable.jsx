@@ -4,7 +4,7 @@ import { C, getClassesForSection, getSectionLabel, getSystemeScolaire } from "..
 
 // Tableau des tarifs d'une section (primaire/college/lycee) : une ligne par
 // classe, un input par champ (orange si modifié localement), les colonnes de
-// frais annexes activés et le total mensuel prévisualisé. Le tableau défile
+// frais annexes activés et le total annuel prévisualisé. Le tableau défile
 // horizontalement pour rester entièrement visible sur petit écran.
 export function TarifsSectionTable({
   section, editing, canEdit, handleChange, getPreviewTotal,
@@ -27,8 +27,8 @@ export function TarifsSectionTable({
     );
   };
 
-  const th = (label, color) => (
-    <th style={{padding:"6px 10px",textAlign:"right",color,whiteSpace:"nowrap"}}>{label}</th>
+  const th = (label, color, title, key) => (
+    <th key={key} title={title} style={{padding:"6px 10px",textAlign:"right",color,whiteSpace:"nowrap"}}>{label}</th>
   );
 
   return (
@@ -41,13 +41,13 @@ export function TarifsSectionTable({
         <table style={{width:"100%",minWidth:640+fraisVisibles.length*110,borderCollapse:"collapse",fontSize:12}}>
           <thead><tr style={{background:"#f0f6ff"}}>
             <th style={{padding:"6px 10px",textAlign:"left",color:C.blueDark}}>Classe</th>
-            {th("Mensualité de base", C.blue)}
-            {th("Révision", "#b45309")}
+            {th("Mensualité", C.blue)}
+            {th("Révision (annuelle)", "#b45309", "Due une seule fois dans l'année, pas chaque mois")}
             {th("Inscription", "#059669")}
             {th("Réinscription", "#7c3aed")}
             {th("Autre frais", "#475569")}
-            {fraisVisibles.map((f)=>th(f.label, "#0e7490"))}
-            {th("Mensualité totale", "#0f172a")}
+            {fraisVisibles.map((f)=>th(f.label, "#0e7490", undefined, f.id))}
+            {th("Total annuel", "#0f172a", "Mensualité × nombre de mois + révision + frais annexes (hors inscription)")}
           </tr></thead>
           <tbody>{classes.map(classe=>(
             <tr key={classe} style={{borderBottom:"1px solid #e5e7eb"}}>

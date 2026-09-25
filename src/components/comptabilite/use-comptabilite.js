@@ -3,12 +3,20 @@ import { fmt, getAnnee, peutModifierEleves, peutModifier, sectionOuverte } from 
 import { hasWrite } from "../../../shared/postes-config.js";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { useFirestore } from "../../hooks/useFirestore";
-import { majReglagesCompta } from "../../backend/data-supabase";
-import { toggleFraisAnnexe as toggleFraisAnnexeAction, toggleMens as toggleMensAction } from "./payment-actions";
+import { majReglagesCompta, sauverParametresEcole } from "../../backend/data-supabase";
+import {
+  encaisserVersement as encaisserVersementAction,
+  retirerAcompte as retirerAcompteAction,
+  toggleFraisAnnexe as toggleFraisAnnexeAction,
+  toggleMens as toggleMensAction,
+} from "./payment-actions";
 import { ensureClasse as ensureClasseHelper, sortAlphaEleves } from "./eleves-helpers";
 import { useComptaSalaires } from "./useComptaSalaires";
 import { getPeriodesForSchool } from "../../period-utils";
-import { concerneParAnnee, getMensualiteOverview, getTarifMensuelForClasse } from "../../mensualite-utils";
+import {
+  acompteInscription, concerneParAnnee, getMensualiteOverview, getTarifMensuelForClasse, montantDuInscription, montantDuMois,
+} from "../../mensualite-utils";
+import { periodeTranche, tranchesValides } from "../../paiements-scolarite";
 import { buildTarifGetters, buildTarifData } from "./compta-tarifs";
 import { scolaritePourAnnee } from "../admin/cloture-annee-utils";
 import { saveSalaireAction, savePersonnelAction } from "./compta-saves";
@@ -32,7 +40,7 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   // élève (inscriptions, mensualités) — même périmètre que le comptable.
   const canEditEleves = !readOnly && !enModeArchive
     && (peutModifierEleves(userRole) || hasWrite(permissions, "compta") || verrouOuvert);
-  const { schoolInfo, moisAnnee, moisSalaire, toast, logAction, envoyerPush } = useContext(SchoolContext);
+  const { schoolId, schoolInfo, moisAnnee, moisSalaire, toast, logAction, envoyerPush } = useContext(SchoolContext);
   // Grands livres filtrés sur l'année consultée en PERMANENCE. Auparavant le
   // filtre ne s'appliquait qu'en mode archive : en mode normal, recettes,
   // dépenses et versements de TOUTES les années étaient chargés, et le Bilan
@@ -153,7 +161,7 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   // poste si le profil n'a pas de nom — mieux vaut « comptable » que rien.
   const signature = auteur || userRole || "";
   const toggleFraisAnnexe = (_id, opts) => toggleFraisAnnexeAction(_id, opts, {
-    readOnly, canEdit, toast, modEleves, logAction,
+    readOnly, canCreate, canEdit, toast, modEleves, logAction,
     ajPaiement, annee: anneeEcriture, auteur: signature,
     eleve: tousElevesScolarite.find((e) => e._id === _id) || null,
   });
@@ -165,18 +173,20 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   const encaisserInscriptions = async (elevesCibles = []) => {
     const aTraiter = elevesCibles.filter((e) => !e.inscriptionPayee);
     if (!aTraiter.length) { toast("Tous ces élèves ont déjà réglé leur inscription.", "info"); return; }
-    const total = aTraiter.reduce((s, e) => s + getTarifInscriptionEleve(e), 0);
+    // Dû après dispense, moins un éventuel acompte déjà versé.
+    const duNet = (e) => montantDuInscription(e, getTarifInscriptionEleve(e));
+    const total = aTraiter.reduce((s, e) => s + Math.max(0, duNet(e) - acompteInscription(e)), 0);
     const message = `Encaisser l'inscription de ${aTraiter.length} élève(s) ?\n\n`
       + `Total : ${fmt(total)}\n\n`
       + "Chaque élève sera marqué comme réinscrit, avec une ligne au journal de caisse.";
     if (!confirm(message)) return;
     for (const eleve of aTraiter) {
       await toggleFraisAnnexe(eleve._id, {
-        payKey: "inscriptionPayee",
-        dateKey: "inscriptionDate",
+        poste: "inscription",
+        eleve,
         valeurActuelle: false,
         label: eleve.typeInscription === "Réinscription" ? "Réinscription" : "Inscription",
-        montant: getTarifInscriptionEleve(eleve),
+        montant: duNet(eleve),
         nomEleve: `${eleve.nom} ${eleve.prenom}`,
         confirmer: false,
       });
@@ -190,15 +200,44 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   const exonerationDeps = { modEleves, logAction, toast, auteur: signature };
 
   const toggleMens = (_id, mois, mensActuels, mensDatesActuels, nomEleve) => {
-    // Fige le tarif en vigueur au moment du paiement (mensMontants[mois]) :
-    // les totaux perçus ne bougent plus si le tarif change en cours d'année.
+    // Fige le montant dû au moment du paiement (mensMontants[mois]) : les
+    // totaux perçus ne bougent plus si le tarif change en cours d'année. Dû
+    // après dispense : un élève à demi-tarif paie la moitié.
     const eleve = tousElevesScolarite.find((e) => e._id === _id);
     return toggleMensAction(_id, mois, mensActuels, mensDatesActuels, nomEleve, {
-      readOnly, canEdit, toast, modEleves, envoyerPush, logAction,
-      montantMois: getTarifMensuelForClasse(tarifsClasses, eleve?.classe || ""),
+      readOnly, canCreate, canEdit, toast, modEleves, envoyerPush, logAction,
+      montantMois: montantDuMois(eleve || {}, getTarifMensuelForClasse(tarifsClasses, eleve?.classe || "")),
       mensMontantsActuels: eleve?.mensMontants || null,
+      mensAcomptesActuels: eleve?.mensAcomptes || null,
       ajPaiement, annee: anneeEcriture, auteur: signature, eleve: eleve || null,
     });
+  };
+
+  // Versement d'un montant libre, d'une tranche ou d'un acompte sur un frais :
+  // le plan (paiements-scolarite) est calculé par la fenêtre d'encaissement.
+  const encaisserVersement = (_id, opts) => encaisserVersementAction(_id, {
+    ...opts, eleve: opts.eleve || tousElevesScolarite.find((e) => e._id === _id) || null,
+  }, {
+    readOnly, canCreate, toast, modEleves, envoyerPush, logAction,
+    ajPaiement, annee: anneeEcriture, auteur: signature,
+  });
+  const retirerAcompte = (_id, opts) => retirerAcompteAction(_id, {
+    ...opts, eleve: opts.eleve || tousElevesScolarite.find((e) => e._id === _id) || null,
+  }, {
+    readOnly, canEdit, toast, modEleves, logAction,
+    ajPaiement, annee: anneeEcriture, auteur: signature,
+  });
+
+  // Tranches de paiement : réglage d'école (ecoles.extra), donc modifiable par
+  // qui peut régler l'école — direction, administration. Le comptable s'en
+  // sert pour encaisser mais ne les change pas (la base le lui refuserait).
+  const tranchesPaiement = tranchesValides(schoolInfo?.tranchesPaiement, moisAnnee);
+  const peutReglerTranches = !enModeArchive && (userRole === "direction"
+    || (permissions ? (hasWrite(permissions, "parametres") || hasWrite(permissions, "admin_panel")) : userRole === "admin"));
+  const sauverTranches = async (tranches) => {
+    await sauverParametresEcole(schoolId, { tranchesPaiement: tranches });
+    logAction?.("Tranches de paiement modifiées",
+      tranches.map((t) => `${t.nom} : ${periodeTranche(t)}`).join(" · ") || "aucune tranche");
   };
 
   const enreg = (aj, mod, extra = {}) => {
@@ -292,6 +331,7 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
     getTarif, getTarifBase, getTarifRevision, getTarifAutre, getTarifIns, getTarifReinsc,
     getTarifInscriptionEleve, getTarifFraisDivers, saveTarif,
     toggleFraisAnnexe, toggleMens, encaisserInscriptions, exonerationDeps, enreg, saveSalaire, savePersonnel,
+    encaisserVersement, retirerAcompte, tranchesPaiement, peutReglerTranches, sauverTranches,
     salairesDomaine, moisLabel, totNetSec, totNetPrim, totNetPers, salairesMois,
     mensualiteOverview, periodes, defaultPeriode, impaye, pctImpaye,
   };

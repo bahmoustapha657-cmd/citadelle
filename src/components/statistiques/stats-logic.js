@@ -6,7 +6,7 @@
 // apercu-tab/analytics.js — une seule définition de la moyenne dans l'app,
 // donc pas de risque qu'un tableau de bord contredise un bulletin.
 
-import { CATALOGUE_FRAIS_ANNEXES, getFraisAnnexeLabel, aReinscrire, estReinscrit, estSorti } from "../../constants";
+import { CATALOGUE_FRAIS_ANNEXES, getFraisAnnexeLabel, aReinscrire, estReinscrit, estSorti, isFraisAnnexePaye } from "../../constants";
 import { concerneParAnnee, getEleveSolde, getMensualiteOverview, getTarifMensuelForClasse } from "../../mensualite-utils";
 import { notesDeLEleve } from "../../note-index";
 
@@ -110,7 +110,7 @@ export function statsFinances(eleves = [], moisAnnee = [], tarifsClasses = [], p
   // Frais annexes réellement encaissés, par type.
   const frais = CATALOGUE_FRAIS_ANNEXES.map((f) => ({
     frais: getFraisAnnexeLabel(f.id),
-    eleves: eleves.filter((e) => (f.id === "autre" ? e.autrePayee : (e.fraisPayes || {})[f.id])).length,
+    eleves: eleves.filter((e) => isFraisAnnexePaye(e, f.id)).length,
   })).filter((x) => x.eleves > 0).sort((a, b) => b.eleves - a.eleves);
 
   return {

@@ -499,7 +499,10 @@
       "registration": "Inscription",
       "otherFees": "Autres frais",
       "thanks": "Merci de votre confiance",
-      "remaining": "Reste à régler"
+      "remaining": "Reste à régler",
+      "deposit": "Acompte",
+      "paymentOf": "Versement du",
+      "balanceDue": "Reste à payer"
     },
     "monthlyReport": {
       "title": "Rapport mensuel",

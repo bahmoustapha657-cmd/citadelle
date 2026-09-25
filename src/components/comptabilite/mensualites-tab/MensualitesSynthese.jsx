@@ -12,6 +12,11 @@ export function MensualitesSynthese({ elevesFiltres, moisAnnee, tarifsClasses, a
     <div style={{ marginBottom: 12, padding: "9px 14px", background: "#e0ebf8", borderRadius: 8, display: "flex", gap: 20, flexWrap: "wrap", alignItems: "center" }}>
       <span style={{ fontSize: 12, color: C.greenDk, fontWeight: 700 }}>✓ {overview.totalPayes} {t("accounting.paid").toLowerCase()}</span>
       <span style={{ fontSize: 12, color: "#b91c1c", fontWeight: 700 }}>✗ {overview.totalImpayes} {t("accounting.unpaid").toLowerCase()}</span>
+      {overview.totalPartiels > 0 && (
+        <span title="Mois entamés par un acompte (comptés dans les impayés)" style={{ fontSize: 12, color: "#92400e", fontWeight: 700 }}>
+          ◐ {overview.totalPartiels} entamé(s)
+        </span>
+      )}
       <span style={{ fontSize: 12, color: C.blue, fontWeight: 700 }}>💰 {fmt(overview.totalPercu)}</span>
       <Badge color="purple">{fmt(overview.totalInscriptionsPercues)} inscriptions perçues</Badge>
       <Badge color="gray">{fmt(overview.totalAutresPercus)} autres frais perçus</Badge>

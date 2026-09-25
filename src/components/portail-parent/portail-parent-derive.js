@@ -1,6 +1,6 @@
 // Dérivations pures du portail parent : filtrage par enfant courant, calcul
 // des tarifs et du blocage pour impayés. Aucun état React.
-import { getTarifAutreValue, getTarifMensuelTotal } from "../../constants";
+import { getTarifMensuelTotal } from "../../constants";
 import { estExonereTotal } from "../../exoneration-utils";
 import { normalizeText } from "./helpers";
 import { moisExigibles } from "../../depart-utils";
@@ -19,16 +19,17 @@ export const trierMessages = (messages, eleveId) =>
     .filter((item) => item.eleveId === eleveId)
     .sort((left, right) => Number(right.date || 0) - Number(left.date || 0));
 
-// Montants (mensualité, autres frais, inscription/réinscription) pour l'enfant.
+// Montants (mensualité, inscription/réinscription) pour l'enfant. Les frais
+// annexes (révision, cantine…) se lisent dans le tarif de la classe, cf.
+// PaiementsTab.
 export function computeTarifInfos(tarifs, eleve) {
   const tarifEleve = tarifs.find((item) => item.classe === eleve.classe) || null;
   const montantMensuel = getTarifMensuelTotal(tarifEleve, eleve.classe);
-  const montantAutre = getTarifAutreValue(tarifEleve);
   const estReinscription = normalizeText(eleve.typeInscription) === "reinscription";
   const montantInscription = estReinscription
     ? Number(tarifEleve?.reinscription || 0)
     : Number(tarifEleve?.inscription || 0);
-  return { montantMensuel, montantAutre, estReinscription, montantInscription };
+  return { montantMensuel, estReinscription, montantInscription };
 }
 
 // Mois impayés et accès bloqué si l'option de blocage est active.

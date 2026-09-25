@@ -15,8 +15,10 @@ export const COLLECTIONS_ELEVES = [
 // Les champs de scolarité portés par la fiche élève : c'est exactement ce
 // qu'on archive, et exactement ce qu'on remet à zéro.
 export const CHAMPS_SCOLARITE = [
-  "mens", "mensDates", "mensMontants", "fraisPayes",
-  "inscriptionPayee", "inscriptionDate", "autrePayee", "autreDate",
+  "mens", "mensDates", "mensMontants", "fraisPayes", "fraisMontants",
+  "inscriptionPayee", "inscriptionDate", "inscriptionMontant", "autrePayee", "autreDate",
+  // Acomptes (paiements en plusieurs fois) : de l'argent reçu sur l'année.
+  "mensAcomptes", "fraisAcomptes", "inscriptionAcompte",
   // La dispense de paiement vaut pour UNE année : archivée ici, effacée par
   // l'état vierge, la rentrée propose de la reconduire (cf. exoneration-utils).
   "exoneration",
@@ -47,10 +49,15 @@ export function etatVierge(moisAnnee = null) {
     mensDates: {},
     mensMontants: {},
     fraisPayes: {},
+    fraisMontants: {},
     inscriptionPayee: false,
     inscriptionDate: null,
+    inscriptionMontant: null,
     autrePayee: false,
     autreDate: null,
+    mensAcomptes: {},
+    fraisAcomptes: {},
+    inscriptionAcompte: null,
     exoneration: null,
   };
 }
@@ -72,8 +79,9 @@ export function horsAnneeCloturee(eleve = {}, annee = "", moisAnnee = null) {
 export function aDesPaiements(eleve = {}) {
   const mens = eleve.mens || {};
   if (Object.values(mens).some((v) => v === "Payé")) return true;
-  if (eleve.inscriptionPayee || eleve.autrePayee) return true;
-  return Object.keys(eleve.fraisPayes || {}).length > 0;
+  if (eleve.inscriptionPayee || eleve.autrePayee || Number(eleve.inscriptionAcompte) > 0) return true;
+  const nonVide = (carte) => Object.values(carte || {}).some(Boolean);
+  return nonVide(eleve.fraisPayes) || nonVide(eleve.mensAcomptes) || nonVide(eleve.fraisAcomptes);
 }
 
 // Champs à écrire pour clôturer un élève : l'archive complétée + l'état

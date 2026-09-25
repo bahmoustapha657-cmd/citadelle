@@ -21,11 +21,16 @@ export const TYPES_PAIEMENT = {
 export const dateDuJour = (d = new Date()) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
+// « Autre frais » a d'abord été journalisé sous "autrePayee" (le nom de son
+// drapeau sur la fiche) alors que la fiche le désigne par "autre" : les deux
+// clés ne se reconnaissaient pas et la caisse le comptait DEUX fois.
+const moisCanonique = (type, mois) => (type === "frais" && mois === "autrePayee" ? "autre" : mois);
+
 // Clé métier d'un mouvement : ce qu'il désigne, indépendamment du support
 // (journal ou fiche élève). Sert à ne pas compter deux fois un paiement
-// présent des deux côtés — cf. fusionnerMouvements dans caisse-utils.
+// présent des deux côtés — cf. collecterMouvements dans caisse-utils.
 export const clePaiement = ({ annee = "", eleveId = "", type = "", mois = "" } = {}) =>
-  `${annee}|${eleveId}|${type}|${mois}`;
+  `${annee}|${eleveId}|${type}|${moisCanonique(type, mois)}`;
 
 // Écriture d'encaissement. `mois` porte le mois pour une mensualité, l'id du
 // frais pour un frais annexe, "inscription" pour l'inscription.

@@ -4,8 +4,10 @@ import { C, getAnnee, getSectionLabel, isSectionActive } from "../../constants";
 import { Btn } from "../ui";
 import { TarifsClasses } from "../TarifsClasses";
 import { AlertesCritiques } from "./mensualites-tab/AlertesCritiques";
+import { EncaisserModale } from "./mensualites-tab/EncaisserModale";
 import { ExonerationsModale } from "./mensualites-tab/ExonerationsModale";
 import { MensualitesTable } from "./mensualites-tab/MensualitesTable";
+import { TranchesPaiement } from "./mensualites-tab/TranchesPaiement";
 
 // Onglet mensualités : tarifs par classe, alertes impayés, filtres niveau/classe
 // puis tableau de suivi des paiements. Aiguille les données vers chaque bloc.
@@ -38,13 +40,24 @@ export function MensualitesTab({
   toggleMens,
   toggleFraisAnnexe,
   getTarifInscriptionEleve,
-  getTarif,
   getTarifFraisDivers,
   estDirection,
   exonerationDeps,
+  // paiements libres et tranches
+  encaisserVersement,
+  retirerAcompte,
+  tranchesPaiement = [],
+  peutReglerTranches = false,
+  sauverTranches,
+  toast,
 }) {
   const { t } = useTranslation();
   const [exonerations, setExonerations] = useState(false);
+  // Élève dont la fenêtre d'encaissement est ouverte. On garde son id et on
+  // relit la fiche dans la liste : après un versement, la fenêtre montre
+  // l'état à jour.
+  const [encaisseId, setEncaisseId] = useState(null);
+  const eleveEncaisse = encaisseId ? eleves.find((e) => e._id === encaisseId) : null;
   return (
     <div>
       <TarifsClasses
@@ -57,6 +70,13 @@ export function MensualitesTab({
         getTarifReinsc={getTarifReinsc}
         getTarifFraisDivers={getTarifFraisDivers}
         canEdit={canEditEleves}
+      />
+      <TranchesPaiement
+        tranches={tranchesPaiement}
+        moisAnnee={moisAnnee}
+        peutRegler={peutReglerTranches}
+        sauverTranches={sauverTranches}
+        toast={toast}
       />
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
@@ -89,6 +109,13 @@ export function MensualitesTab({
         deps={exonerationDeps} fermer={() => setExonerations(false)}
       />}
 
+      {eleveEncaisse && <EncaisserModale
+        eleve={eleveEncaisse} moisAnnee={moisAnnee} annee={anneeScolarite} tarifsClasses={tarifsClasses}
+        tranches={tranchesPaiement} schoolInfo={schoolInfo} canEdit={canEdit}
+        encaisserVersement={encaisserVersement} retirerAcompte={retirerAcompte}
+        fermer={() => setEncaisseId(null)}
+      />}
+
       {/* Alertes impayés : repliées derrière un bouton, filtrées cycle + classe. */}
       <AlertesCritiques eleves={elevesFiltres} moisAnnee={moisAnnee} annee={anneeScolarite} />
 
@@ -105,9 +132,8 @@ export function MensualitesTab({
         toggleMens={toggleMens}
         toggleFraisAnnexe={toggleFraisAnnexe}
         getTarifInscriptionEleve={getTarifInscriptionEleve}
-        getTarifAutre={getTarifAutre}
-        getTarif={getTarif}
-        getTarifFraisDivers={getTarifFraisDivers}
+        ouvrirEncaissement={encaisserVersement ? (e) => setEncaisseId(e._id) : null}
+        tranches={tranchesPaiement}
       />
     </div>
   );

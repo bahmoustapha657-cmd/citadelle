@@ -3,12 +3,13 @@ import { CATALOGUE_FRAIS_ANNEXES } from "../../constants";
 
 // Logique de l'éditeur de tarifs par classe : édition locale par classe,
 // sauvegarde groupée (Promise.allSettled, conserve les saisies en échec),
-// feedback temporaire et total mensuel prévisualisé (base + révision).
+// feedback temporaire et total annuel prévisualisé (mensualités de l'année +
+// révision + frais annexes, hors inscription).
 // Les frais annexes du catalogue s'éditent via des colonnes "fd:<id>"
 // activées par pastilles (visibles si un montant existe quelque part).
 export function useTarifsClasses({
   saveTarif, getTarifBase, getTarifRevision, getTarifAutre, getTarifIns, getTarifReinsc, getTarifFraisDivers,
-  toutesClasses = [],
+  toutesClasses = [], nbMois = 0,
 }) {
   const [ouvert, setOuvert] = useState(false);
   // editing: { "Classe X": {mens, revision, autre, ins, reinsc, "fd:uniforme", …} }
@@ -23,11 +24,12 @@ export function useTarifsClasses({
   for (const classe of toutesClasses) {
     for (const id of Object.keys(getTarifFraisDivers?.(classe) || {})) fraisConfigures.add(id);
   }
+  // Autre frais et révision ont leur colonne fixe : pas de pastille.
   const fraisVisibles = CATALOGUE_FRAIS_ANNEXES
-    .filter((f) => f.id !== "autre")
+    .filter((f) => !f.colonne)
     .filter((f) => fraisConfigures.has(f.id) || fraisAjoutes.includes(f.id));
   const fraisDisponibles = CATALOGUE_FRAIS_ANNEXES
-    .filter((f) => f.id !== "autre")
+    .filter((f) => !f.colonne)
     .filter((f) => !fraisConfigures.has(f.id) && !fraisAjoutes.includes(f.id));
   const ajouterFrais = (id) => setFraisAjoutes((p) => (p.includes(id) ? p : [...p, id]));
 
@@ -98,10 +100,12 @@ export function useTarifsClasses({
 
   const modifie = Object.keys(editing).length > 0;
 
+  // Ce qu'une classe coûte sur l'année, hors inscription (qui dépend de
+  // l'élève : inscription ou réinscription). La révision y compte UNE fois.
   const getPreviewTotal = (classe) => {
-    const base = editing[classe]?.mens!==undefined ? Number(editing[classe].mens || 0) : Number(getTarifBase(classe) || 0);
-    const revision = editing[classe]?.revision!==undefined ? Number(editing[classe].revision || 0) : Number(getTarifRevision(classe) || 0);
-    return base + revision;
+    const val = (champ, getter) => Number(editing[classe]?.[champ] !== undefined ? editing[classe][champ] : getter(classe)) || 0;
+    const frais = fraisVisibles.reduce((s, f) => s + (Number(getFraisDiversVal(classe, f.id)) || 0), 0);
+    return val("mens", getTarifBase) * nbMois + val("revision", getTarifRevision) + val("autre", getTarifAutre) + frais;
   };
 
   return {
