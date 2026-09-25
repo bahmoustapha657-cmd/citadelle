@@ -3,7 +3,8 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // Crée deux comptes de test JETABLES sur l'École Démo (comptable, surveillant),
 // vérifie que les droits par module sont appliqués PAR LA BASE (pas l'UI),
-// puis supprime tout. Lancer : node supabase/test-rls-postes.mjs
+// puis supprime tout — et remet les réglages de l'École Démo que les sondes
+// basculent (blocage parents, monnaie). Lancer : node supabase/test-rls-postes.mjs
 import { createClient } from "@supabase/supabase-js";
 import { randomBytes } from "node:crypto";
 import { SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE } from "./_config.mjs";
@@ -18,7 +19,12 @@ const attendu = (nom, ok) => { console.log(`  ${ok ? "✅" : "❌"} ${nom}`); if
 const refusRls = (erreur) => erreur?.code === "42501";
 
 async function main() {
-  const { data: demo } = await svc.from("ecoles").select("id, code").eq("code", "demo").single();
+  const { data: demo } = await svc.from("ecoles").select("id, code, extra").eq("code", "demo").single();
+  // Réglages que les sondes de maj_reglages_compta modifient (restaurés au nettoyage).
+  const reglagesInitiaux = {
+    blocageParentImpaye: demo.extra?.blocageParentImpaye,
+    monnaie: demo.extra?.monnaie,
+  };
   const { data: postes } = await svc.from("postes").select("id, cle").eq("ecole_id", demo.id);
   const posteId = Object.fromEntries(postes.map((p) => [p.cle, p.id]));
   const { data: eleve } = await svc.from("eleves").select("id, section, classe").eq("ecole_id", demo.id).limit(1).maybeSingle();
@@ -80,6 +86,20 @@ async function main() {
   const { error: coEcole } = await co.from("ecoles").update({ nom: "HACK" }).eq("id", demo.id).select("id").maybeSingle();
   const { data: nomApres } = await svc.from("ecoles").select("nom").eq("id", demo.id).single();
   attendu("REFUS de modifier l'école", !!coEcole || nomApres.nom !== "HACK");
+  // Réglages ouverts à la compta (reglages-compta.sql) : la RPC écrit les clés
+  // de sa liste blanche, et elles seules ; l'update direct ci-dessus reste fermé.
+  const { error: coBlocErr } = await co.rpc("maj_reglages_compta", {
+    p_champs: { blocageParentImpaye: !reglagesInitiaux.blocageParentImpaye, monnaie: " xof " },
+  });
+  const { data: reglagesApres } = await svc.from("ecoles").select("extra").eq("id", demo.id).single();
+  attendu("bascule le blocage parents et la monnaie (RPC)", !coBlocErr
+    && reglagesApres.extra?.blocageParentImpaye === !reglagesInitiaux.blocageParentImpaye
+    && reglagesApres.extra?.monnaie === "XOF");
+  if (coBlocErr) console.log(`     ↳ erreur: ${coBlocErr.message}`);
+  const { error: coNomErr } = await co.rpc("maj_reglages_compta", { p_champs: { nom: "HACK" } });
+  attendu("REFUS d'une clé hors liste blanche (RPC)", !!coNomErr);
+  const { error: coTypeErr } = await co.rpc("maj_reglages_compta", { p_champs: { blocageParentImpaye: "oui" } });
+  attendu("REFUS d'une valeur mal typée (RPC)", !!coTypeErr);
 
   console.log("\n— Poste SURVEILLANT (primaire/secondaire/calendrier: écriture) —");
   const su = sessions.surveillant;
@@ -97,6 +117,8 @@ async function main() {
     if (suAbsErr) console.log(`     ↳ erreur: ${suAbsErr.message}`);
     if (suAbs) await svc.from("absences").delete().eq("id", suAbs.id);
   }
+  const { error: suRegErr } = await su.rpc("maj_reglages_compta", { p_champs: { blocageParentImpaye: true } });
+  attendu("REFUS des réglages compta (RPC)", !!suRegErr);
   const { data: suPoste, error: suPosteErr } = await su.from("comptes")
     .update({ poste_id: posteId.direction }).eq("user_id", comptesTests[1].userId).select("id");
   attendu("REFUS de changer son propre poste", !!suPosteErr || !(suPoste || []).length);
@@ -204,7 +226,26 @@ async function main() {
     attendu("même e-mail sur une AUTRE école → null (cloisonné)", !mauvaiseEcole);
   }
 
+  console.log("\n— Visiteur NON connecté (anon) —");
+  {
+    const anon = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false } });
+    const { error: anonRegErr } = await anon.rpc("maj_reglages_compta", { p_champs: { blocageParentImpaye: true } });
+    // « permission denied » = refusé AVANT d'entrer dans la fonction : le
+    // revoke a pris (sinon ce serait le « Droits insuffisants » de son corps).
+    const revoque = /permission denied/i.test(anonRegErr?.message || "");
+    attendu("REFUS d'exécuter maj_reglages_compta (EXECUTE révoqué)", revoque);
+    if (!revoque) console.log(`     ↳ ${anonRegErr ? `erreur: ${anonRegErr.message}` : "aucune erreur"}`);
+  }
+
   // ── Nettoyage complet ──
+  // Réglages de l'École Démo remis en l'état (une clé absente le redevient).
+  const { data: extraFin } = await svc.from("ecoles").select("extra").eq("id", demo.id).single();
+  const extraRestaure = { ...(extraFin.extra || {}) };
+  for (const [cle, valeur] of Object.entries(reglagesInitiaux)) {
+    if (valeur === undefined) delete extraRestaure[cle];
+    else extraRestaure[cle] = valeur;
+  }
+  await svc.from("ecoles").update({ extra: extraRestaure }).eq("id", demo.id);
   await svc.from("recettes").delete().eq("id", temoin.id);
   for (const t of comptesTests) {
     await svc.from("comptes").delete().eq("id", t.compteId);

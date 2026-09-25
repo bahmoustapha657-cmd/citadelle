@@ -229,6 +229,8 @@ create policy comptes_write on comptes for all to authenticated
               or (is_staff() and role in ('parent', 'enseignant'))));
 
 -- ── 8. ÉCOLES : mise à jour réservée aux gestionnaires ─────────────────────
+-- Le comptable n'y entre pas : ses deux réglages (blocage parents, monnaie)
+-- passent par la RPC maj_reglages_compta (reglages-compta.sql).
 drop policy if exists ecoles_update on ecoles;
 create policy ecoles_update on ecoles for update to authenticated
   using (id = auth_ecole_id()

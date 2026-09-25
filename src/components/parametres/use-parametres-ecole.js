@@ -72,8 +72,8 @@ export function useParametresEcole({ utilisateurRole = "", onSchoolClosed = null
   const canManageLifecycle = schoolId && schoolId !== "superadmin" && ["direction","superadmin"].includes(utilisateurRole);
   // Profil légal : direction/admin/superadmin (cf. règle Firestore).
   const peutEditerLegal = ["direction","admin","superadmin"].includes(utilisateurRole);
-  // Le comptable n'a accès qu'au sélecteur de monnaie (rules Firestore autorisent
-  // uniquement update de `monnaie` pour ce rôle — cf. firestore.rules §/ecoles).
+  // Le comptable n'a accès qu'au sélecteur de monnaie (firestore.rules §/ecoles ;
+  // sur Supabase, RPC maj_reglages_compta — cf. supabase/reglages-compta.sql).
   const isComptableSeul = utilisateurRole === "comptable";
 
   // Upload logo fichier → base64 + extraction couleurs

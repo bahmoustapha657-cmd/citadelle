@@ -8,7 +8,7 @@ import { db } from "../../../firebaseDb";
 import { apiFetch, getAuthHeaders } from "../../../apiClient";
 import { isSupabase } from "../../../backend";
 import { syncEcolePublic } from "../../app/app-shell-api";
-import { sauverParametresEcole } from "../../../backend/data-supabase";
+import { majReglagesCompta, sauverParametresEcole } from "../../../backend/data-supabase";
 
 const normaliserMonnaie = (m) => (m || "GNF").trim().toUpperCase();
 
@@ -18,10 +18,12 @@ const joursValides = (brut) => {
   return retenus.length ? retenus : [...JOURS_SEMAINE];
 };
 
-// Sauvegarde restreinte au seul champ `monnaie` (rôle comptable).
+// Sauvegarde restreinte au seul champ `monnaie` (rôle comptable). Côté
+// Supabase, RPC dédiée : la policy ecoles_update est fermée au comptable, un
+// update direct y était refusé en silence (monnaie jamais enregistrée).
 export async function sauvegarderMonnaie({ schoolId, monnaie }) {
   const valeur = normaliserMonnaie(monnaie);
-  if (isSupabase) await sauverParametresEcole(schoolId, { monnaie: valeur });
+  if (isSupabase) await majReglagesCompta({ monnaie: valeur });
   else await updateDoc(doc(db, "ecoles", schoolId), { monnaie: valeur });
   return valeur;
 }

@@ -3,7 +3,7 @@ import { fmt, getAnnee, peutModifierEleves, peutModifier, sectionOuverte } from 
 import { hasWrite } from "../../../shared/postes-config.js";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { useFirestore } from "../../hooks/useFirestore";
-import { sauverParametresEcole } from "../../backend/data-supabase";
+import { majReglagesCompta, sauverParametresEcole } from "../../backend/data-supabase";
 import {
   encaisserVersement as encaisserVersementAction,
   retirerAcompte as retirerAcompteAction,
@@ -235,7 +235,7 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   const peutReglerTranches = !enModeArchive && (userRole === "direction"
     || (permissions ? (hasWrite(permissions, "parametres") || hasWrite(permissions, "admin_panel")) : userRole === "admin"));
   const sauverTranches = async (tranches) => {
-    await sauverParametresEcole(schoolId, { tranchesPaiement: tranches }, { exigerEcriture: true });
+    await sauverParametresEcole(schoolId, { tranchesPaiement: tranches });
     logAction?.("Tranches de paiement modifiées",
       tranches.map((t) => `${t.nom} : ${periodeTranche(t)}`).join(" · ") || "aucune tranche");
   };
@@ -298,7 +298,9 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
       // message « Accès parents bloqué » s'affichait sans que le blocage ne
       // s'applique jamais. schoolInfo se rafraîchit ensuite tout seul, les
       // paramètres d'école étant en temps réel (liquidation Firebase, lot 2).
-      await sauverParametresEcole(schoolId, { blocageParentImpaye: !blocage });
+      // RPC dédiée : la policy ecoles_update est fermée au comptable, et
+      // l'update direct y était refusé EN SILENCE (0 ligne, succès affiché).
+      await majReglagesCompta({ blocageParentImpaye: !blocage });
       toast(blocage ? "🔓 Accès parents rétabli" : "🔒 Accès parents bloqué pour les impayés", "success");
     } catch (e) {
       console.error("toggleBlocage error:", e);
