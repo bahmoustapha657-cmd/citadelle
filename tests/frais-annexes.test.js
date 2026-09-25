@@ -148,18 +148,29 @@ test("encaisser un frais fige son montant ; le retirer contre-passe ce montant-l
   assert.deepEqual(enc.champs, {
     fraisPayes: { cantine: "01/10/2026", revision: "05/10/2026" },
     fraisMontants: { cantine: 30000, revision: 200000 },
+    fraisAcomptes: {},
   });
   assert.equal(enc.montantJournal, 200000);
 
   // Tarif passé à 40 000 depuis : on annule les 30 000 réellement encaissés.
   const ret = champsBasculeFrais({ eleve, poste: "cantine", valeurActuelle: true, montant: 40000 });
-  assert.deepEqual(ret.champs, { fraisPayes: {}, fraisMontants: {} });
+  assert.deepEqual(ret.champs, { fraisPayes: {}, fraisMontants: {}, fraisAcomptes: {} });
   assert.equal(ret.montantJournal, 30000);
+});
+
+test("bascule d'un frais entamé : le clic solde le reste, le total est figé", () => {
+  const eleve = { fraisAcomptes: { cantine: 100000 } };
+  const enc = champsBasculeFrais({ eleve, poste: "cantine", montant: 300000, date: "05/11/2026" });
+  assert.deepEqual(enc.champs, {
+    fraisPayes: { cantine: "05/11/2026" }, fraisMontants: { cantine: 300000 }, fraisAcomptes: {},
+  });
+  assert.equal(enc.montantJournal, 200000); // l'acompte a déjà sa ligne au journal
+  assert.equal(enc.acompte, 100000);
 });
 
 test("bascule : « autre » s'écrit dans la carte, l'ancien drapeau s'éteint au retrait", () => {
   const enc = champsBasculeFrais({ eleve: {}, poste: "autre", montant: 15000, date: "05/10/2026" });
-  assert.deepEqual(enc.champs, { fraisPayes: { autre: "05/10/2026" }, fraisMontants: { autre: 15000 } });
+  assert.deepEqual(enc.champs, { fraisPayes: { autre: "05/10/2026" }, fraisMontants: { autre: 15000 }, fraisAcomptes: {} });
 
   const legacy = { autrePayee: true, autreDate: "01/10/2025" };
   const ret = champsBasculeFrais({ eleve: legacy, poste: "autre", valeurActuelle: true, montant: 15000 });
@@ -170,10 +181,14 @@ test("bascule : « autre » s'écrit dans la carte, l'ancien drapeau s'éteint a
 
 test("bascule de l'inscription : montant figé, retrait au montant encaissé", () => {
   const enc = champsBasculeFrais({ eleve: {}, poste: "inscription", montant: 45000, date: "05/10/2026" });
-  assert.deepEqual(enc.champs, { inscriptionPayee: true, inscriptionDate: "05/10/2026", inscriptionMontant: 45000 });
+  assert.deepEqual(enc.champs, {
+    inscriptionPayee: true, inscriptionDate: "05/10/2026", inscriptionMontant: 45000, inscriptionAcompte: null,
+  });
 
   const ret = champsBasculeFrais({ eleve: enc.champs, poste: "inscription", valeurActuelle: true, montant: 50000 });
-  assert.deepEqual(ret.champs, { inscriptionPayee: false, inscriptionDate: null, inscriptionMontant: null });
+  assert.deepEqual(ret.champs, {
+    inscriptionPayee: false, inscriptionDate: null, inscriptionMontant: null, inscriptionAcompte: null,
+  });
   assert.equal(ret.montantJournal, 45000);
 });
 

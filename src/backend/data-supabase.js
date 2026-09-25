@@ -193,7 +193,10 @@ export async function chargerEcole(schoolCode, { reseau = false } = {}) {
 // miroir exact de chargerEcole ci-dessus (extra étalé + colonnes par-dessus).
 // NB : la colonne `devise` porte la MAXIME de l'école (héritage Firebase) ;
 // la monnaie va dans extra.monnaie.
-export async function sauverParametresEcole(schoolCode, champs) {
+// `exigerEcriture` : la RLS refuse sans erreur (zéro ligne modifiée) — avec
+// cette option, un refus lève une erreur au lieu de passer pour un succès.
+// Optionnelle pour ne rien changer aux écrans existants.
+export async function sauverParametresEcole(schoolCode, champs, { exigerEcriture = false } = {}) {
   const sb = getSupabase();
   const { data, error } = await sb.from("ecoles").select("id, extra").eq("code", schoolCode).maybeSingle();
   if (error || !data) throw new Error(error?.message || "École introuvable.");
@@ -206,8 +209,12 @@ export async function sauverParametresEcole(schoolCode, champs) {
     else extraPatch[cle] = valeur;
   }
   patch.extra = { ...(data.extra || {}), ...extraPatch };
-  const { error: e2 } = await sb.from("ecoles").update(patch).eq("id", data.id);
+  const requete = sb.from("ecoles").update(patch).eq("id", data.id);
+  const { data: majs, error: e2 } = exigerEcriture ? await requete.select("id") : await requete;
   if (e2) throw new Error(e2.message);
+  if (exigerEcriture && !majs?.length) {
+    throw new Error("Enregistrement refusé : votre compte ne peut pas modifier les réglages de l'école.");
+  }
   return { ok: true };
 }
 

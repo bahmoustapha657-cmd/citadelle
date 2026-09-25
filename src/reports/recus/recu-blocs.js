@@ -23,7 +23,11 @@ export const enteteCompact = (schoolInfo, lf) => `
 
 // Bloc reçu compact — deux par page A4. ctx regroupe les données calculées.
 export const blocRecu = (titre, ctx) => {
-  const { schoolInfo, lf, eleve, moisAnnee, mens, mensDates, fraisIns, fraisDiversPayes = [], totalMensualites, moisPayes, totalGeneral, qr } = ctx;
+  const {
+    schoolInfo, lf, eleve, moisAnnee, mens, mensDates, fraisIns, insPartielle = false, fraisDiversPayes = [],
+    moisAcomptes = [], totalMensualites, moisPayes, totalGeneral, qr, versement = null, resteAPayer,
+  } = ctx;
+  const acompteDe = Object.fromEntries(moisAcomptes.map((a) => [a.mois, a.montant]));
   return `
   <div class="recu">
     ${schoolInfo.logo?`<div class="watermark"><img crossOrigin="anonymous" src="${schoolInfo.logo}" alt=""/></div>`:""}
@@ -47,10 +51,11 @@ export const blocRecu = (titre, ctx) => {
     <table class="mois-table"><thead><tr><th>${tr("accounting.month")}</th><th>${tr("common.status")}</th><th>${tr("common.date")}</th></tr></thead><tbody>
       ${moisAnnee.map(m=>{
         const paye=mens[m]==="Payé";
+        const acompte=!paye?acompteDe[m]:0;
         const datePaie=mensDates[m]||"—";
         return `<tr class="${paye?"paye":"impaye"}">
           <td style="font-weight:700">${m}</td>
-          <td style="text-align:center">${paye?"✓ "+tr("accounting.paid"):"✗ "+tr("accounting.unpaid")}</td>
+          <td style="text-align:center">${paye?"✓ "+tr("accounting.paid"):acompte?`◐ ${tr("reports.receipt.deposit")} ${fmt(acompte)}`:"✗ "+tr("accounting.unpaid")}</td>
           <td style="text-align:center">${paye?datePaie:"—"}</td>
         </tr>`;
       }).join("")}
@@ -58,15 +63,23 @@ export const blocRecu = (titre, ctx) => {
     ${fraisIns>0?`
     <div class="total" style="font-size:9px;padding:4px 8px;background:#f0f9ff;border-color:#7dd3fc">
       ${tr("reports.receipt.registration")} : <strong>${fmt(fraisIns)}</strong>
-      <span style="font-weight:400;margin-inline-start:4px">✓ ${tr("accounting.paid")}</span>
+      <span style="font-weight:400;margin-inline-start:4px">${insPartielle?`◐ ${tr("reports.receipt.deposit")}`:`✓ ${tr("accounting.paid")}`}</span>
     </div>`:""}
     ${fraisDiversPayes.map((f)=>`
     <div class="total" style="font-size:9px;padding:4px 8px;background:#ecfeff;border-color:#67e8f9">
       ${f.label} : <strong>${fmt(f.montant)}</strong>
-      <span style="font-weight:400;margin-inline-start:4px">✓ ${tr("accounting.paid")}</span>
+      <span style="font-weight:400;margin-inline-start:4px">${f.partiel?`◐ ${tr("reports.receipt.deposit")}`:`✓ ${tr("accounting.paid")}`}</span>
     </div>`).join("")}
     <div class="total">${tr("reports.receipt.monthlyFee")} : ${fmt(totalMensualites)} <span style="font-weight:400;font-size:9px">(${moisPayes.length}/${moisAnnee.length})</span></div>
-    <div class="total" style="background:#e0f2fe;border-color:#38bdf8">${tr("reports.receipt.amount")} : <strong>${fmt(totalGeneral)}</strong></div>
+    ${versement?`
+    <div class="total" style="background:#dcfce7;border-color:#4ade80">
+      ${tr("reports.receipt.paymentOf")} ${versement.date} : <strong>${fmt(versement.total)}</strong>
+      <span style="display:block;font-weight:400;font-size:8.5px">${versement.lignes.map((l)=>`${l.libelle} ${fmt(l.montant)}`).join(" · ")}</span>
+    </div>`:""}
+    <div class="total" style="background:#e0f2fe;border-color:#38bdf8">${tr("reports.receipt.amount")} : <strong>${fmt(totalGeneral)}</strong>${
+      resteAPayer!==undefined&&resteAPayer!==null
+        ? ` <span style="margin-inline-start:8px;color:${resteAPayer>0?"#b91c1c":"#166534"}">· ${tr("reports.receipt.balanceDue")} : <strong>${fmt(resteAPayer)}</strong></span>`
+        : ""}</div>
     <div class="sigs">
       <div class="sig">${tr("school.students.parent")}<br/><br/><br/>${tr("reports.signature")}</div>
       ${blocsSignatures(schoolInfo, "recu", (identite, s) => `<div class="sig">${identite}<br/><br/><br/>${tr("reports.signature")}${s.role === "principal" ? ` &amp; ${tr("reports.stamp")}` : ""}</div>`,

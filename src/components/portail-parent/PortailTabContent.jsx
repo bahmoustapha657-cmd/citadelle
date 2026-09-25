@@ -65,9 +65,9 @@ export function PortailTabContent({ p, schoolInfo, c1, c2 }) {
           annee={schoolInfo?.anneeScolaire}
           estReinscription={p.estReinscription}
           montantInscription={p.montantInscription}
-          montantAutre={p.montantAutre}
-          montantRevision={p.montantRevision}
           montantMensuel={p.montantMensuel}
+          tarifs={p.tarifs}
+          tranches={p.tranches}
           c1={c1}
           c2={c2}
         />

@@ -128,6 +128,31 @@ export const ARTICLES = [
     ],
   },
   {
+    id: "paiement-libre",
+    cat: "compta",
+    roles: ["admin", "direction", "comptable", "superadmin"],
+    titre: "Encaisser un montant libre, une tranche ou un acompte",
+    etapes: [
+      "Comptabilité → Mensualités : bouton 💰 sur la ligne de l'élève (colonne « Reçu »).",
+      "Choisissez ce qu'il paie : les mensualités, une tranche, l'inscription ou un frais (cantine, révision…). Chaque choix affiche son reste à payer.",
+      "Saisissez le montant versé. Pour les mensualités, il paie les mois du plus ancien au plus récent ; ce qui ne suffit pas à solder un mois devient un acompte (case ◐).",
+      "Vérifiez l'aperçu, cliquez « Encaisser », puis imprimez le reçu : il détaille le versement du jour et le reste à payer.",
+      "Un clic sur une case ◐ (ou sur un frais entamé) encaisse le reste. Un acompte saisi par erreur s'annule depuis la même fenêtre (verrou administrateur).",
+    ],
+  },
+  {
+    id: "tranches-paiement",
+    cat: "compta",
+    roles: ["admin", "direction", "superadmin"],
+    titre: "Définir des tranches de paiement (T1, T2, T3…)",
+    etapes: [
+      "Comptabilité → Mensualités → dépliez « Tranches de paiement », puis « Définir des tranches ».",
+      "Choisissez le nombre de tranches : l'année est découpée en périodes égales, que vous pouvez ajuster (dernier mois de chaque tranche) et renommer.",
+      "Enregistrez. Dans la fenêtre 💰 Encaisser, chaque tranche apparaît avec son reste à payer ; la grille garde les mois, repérés T1, T2…",
+      "Réglage d'école : seules la direction et l'administration peuvent le modifier.",
+    ],
+  },
+  {
     id: "recu-paiement",
     cat: "compta",
     roles: ["admin", "direction", "comptable", "superadmin"],

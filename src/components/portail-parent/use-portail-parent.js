@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { getSectionForClasse } from "../../constants";
 import { getPeriodesForSection } from "../../period-utils";
 import { SchoolContext } from "../../contexts/SchoolContext";
+import { tranchesValides } from "../../paiements-scolarite";
 import { fetchParentPortal, envoyerMessageParent } from "./portail-parent-api";
 import {
   filtrerNotes,
@@ -55,7 +56,9 @@ export function usePortailParent({ utilisateur, schoolInfo }) {
   const mesMessages = useMemo(() => trierMessages(messages, eleveId), [messages, eleveId]);
   const nonLus = mesMessages.filter((item) => item.expediteur === "ecole" && !item.lu).length;
 
-  const { montantMensuel, montantAutre, montantRevision, estReinscription, montantInscription } = computeTarifInfos(tarifs, eleve);
+  const { montantMensuel, estReinscription, montantInscription } = computeTarifInfos(tarifs, eleve);
+  // Tranches de paiement de l'école : l'onglet Paiements y regroupe les mois.
+  const tranches = tranchesValides(schoolInfo?.tranchesPaiement, moisAnnee);
   const matieres = [...new Set(mesNotes.map((item) => item.matiere).filter(Boolean))];
 
   const { moisImpayes, accesBloqueParPaiement } = computeBlocage(schoolInfo, eleve, moisAnnee, schoolInfo?.anneeScolaire);
@@ -129,8 +132,8 @@ export function usePortailParent({ utilisateur, schoolInfo }) {
     mesMessages,
     nonLus,
     montantMensuel,
-    montantAutre,
-    montantRevision,
+    tarifs,
+    tranches,
     estReinscription,
     montantInscription,
     matieres,

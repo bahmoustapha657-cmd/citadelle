@@ -1,12 +1,17 @@
 import { Vide } from "../../ui";
+import { trancheDuMois } from "../../../paiements-scolarite";
 import { MensualitesSynthese } from "./MensualitesSynthese";
 import { MensualitesRow } from "./MensualitesRow";
+
+// Filet sous l'en-tête d'un mois, une couleur par tranche de paiement.
+const COULEURS_TRANCHES = ["#fbbf24", "#34d399", "#60a5fa", "#f472b6", "#a78bfa", "#fb923c"];
 
 // Tableau sticky des mensualités : bandeau de synthèse, état vide, puis grille
 // scrollable (en-tête figé en haut, colonnes Matricule/Nom figées à gauche).
 export function MensualitesTable({
   eleves, elevesFiltres, moisAnnee, annee, tarifsClasses, readOnly, canCreate, canEdit,
-  schoolInfo, toggleMens, toggleFraisAnnexe, getTarifInscriptionEleve, getTarif,
+  schoolInfo, toggleMens, toggleFraisAnnexe, getTarifInscriptionEleve, ouvrirEncaissement,
+  tranches = [],
 }) {
   if (eleves.length === 0) return <Vide icone="🎓" msg="Aucun élève" />;
 
@@ -37,15 +42,27 @@ export function MensualitesTable({
               position: "sticky", top: 0,
             };
             const thStickyLeft = (left, z = 3) => ({ ...thBase, left, zIndex: z });
-            const cols = ["Matricule", "Nom & Prénom", "Classe", "Tuteur", "Contact", ...moisAnnee, "Payés", "Ins.", "Frais", "Reçu"];
+            const avant = ["Classe", "Tuteur", "Contact"];
+            const apres = ["Payés", "Ins.", "Frais", "Reçu"];
             return (
               <thead>
                 <tr>
-                  <th style={thStickyLeft(0)}>{cols[0]}</th>
-                  <th style={thStickyLeft(95)}>{cols[1]}</th>
-                  {cols.slice(2).map((c, i) => (
-                    <th key={i} style={{ ...thBase, zIndex: 2 }}>{c}</th>
-                  ))}
+                  <th style={thStickyLeft(0)}>Matricule</th>
+                  <th style={thStickyLeft(95)}>Nom & Prénom</th>
+                  {avant.map((c) => <th key={c} style={{ ...thBase, zIndex: 2 }}>{c}</th>)}
+                  {/* Tranches de paiement : chaque mois porte le repère de sa
+                      tranche (T1, T2…) et un filet de sa couleur. */}
+                  {moisAnnee.map((m) => {
+                    const t = trancheDuMois(tranches, m);
+                    return (
+                      <th key={m} title={t >= 0 ? `${tranches[t].nom}` : undefined}
+                        style={{ ...thBase, zIndex: 2, ...(t >= 0 ? { borderBottom: `3px solid ${COULEURS_TRANCHES[t % COULEURS_TRANCHES.length]}` } : {}) }}>
+                        {m}
+                        {t >= 0 && <span style={{ display: "block", fontSize: 8, opacity: 0.85, letterSpacing: 0 }}>T{t + 1}</span>}
+                      </th>
+                    );
+                  })}
+                  {apres.map((c) => <th key={c} style={{ ...thBase, zIndex: 2 }}>{c}</th>)}
                 </tr>
               </thead>
             );
@@ -55,7 +72,7 @@ export function MensualitesTable({
               key={e._id} e={e} rowIdx={rowIdx} moisAnnee={moisAnnee} annee={annee} tarifsClasses={tarifsClasses}
               readOnly={readOnly} canCreate={canCreate} canEdit={canEdit} schoolInfo={schoolInfo}
               toggleMens={toggleMens} toggleFraisAnnexe={toggleFraisAnnexe}
-              getTarifInscriptionEleve={getTarifInscriptionEleve} getTarif={getTarif}
+              getTarifInscriptionEleve={getTarifInscriptionEleve} ouvrirEncaissement={ouvrirEncaissement}
             />
           ))}</tbody>
         </table>
