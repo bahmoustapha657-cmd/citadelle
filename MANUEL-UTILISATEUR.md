@@ -135,6 +135,8 @@ Chaque étape est cliquable et vous amène directement à l'écran concerné.
 
 Le DG et l'Admin créent les autres comptes depuis `Panneau Admin`. Le Comptable peut, depuis sa propre interface, **créer les comptes parents** (utile pour onboarder rapidement les familles).
 
+**Un foyer = un compte parent.** Un parent a un seul compte pour tous ses enfants, dans toutes les sections. À la création d'un compte parent (fiche élève ou saisie rapide), EduGest cherche d'abord le compte du même tuteur : même nom **et** même téléphone — ou, faute de téléphone, même filiation. S'il existe, l'élève y est ajouté et le mot de passe ne change pas. Un numéro seul ne suffit pas (il peut être partagé, par exemple celui de l'école pour des internes) : si le nom du tuteur est écrit différemment d'une fiche à l'autre, harmonisez-le avant de créer le compte.
+
 ---
 
 ## 3. Interface générale
@@ -704,6 +706,7 @@ Compta dédiée à la fondation (si activée) :
 - **Suivi** des dossiers incomplets (papiers manquants)
 - **Bouton** : marquer un dossier complet, encaisser frais d'inscription
 - **⚡ Saisie rapide (fratrie / même tuteur)** : le tuteur, le contact et le domicile sont saisis une fois et conservés d'un élève au suivant. Chaque enfant est inscrit dans **sa section** (Primaire, Collège, Lycée…) : les classes proposées et le matricule suivent la section choisie. Un récapitulatif liste les élèves déjà inscrits pendant la saisie.
+  - **Compte parent de la fratrie** : en cliquant **✅ Terminer**, la saisie propose d'ouvrir **un seul compte parent pour tous les enfants inscrits**, quelle que soit leur section (facultatif : **Plus tard**). Identifiant proposé `parent.<nom>`, mot de passe généré : notez-les et remettez-les au tuteur. Si ce tuteur a déjà un compte (un aîné inscrit plus tôt), les enfants y sont simplement ajoutés et son mot de passe ne change pas.
 - **📸 Photo guidée** : la caméra s'ouvre à la meilleure définition de l'appareil (webcam, caméra avant ou arrière ; la caméra choisie est mémorisée). Un ovale et des consignes (« Approchez-vous », « Centrez le visage », « Redressez la tête »…) guident la prise. Quand le visage est bien cadré, la photo se prend seule (option désactivable), est recadrée au format portrait 3:4 centré sur le visage, puis affichée pour vérification avant d'être gardée.
 
 ### 7.9 Onglet « Mensualités »
@@ -992,7 +995,7 @@ Deux sections :
 
 ## 15. Portail Parent
 
-Accès : un parent se connecte avec son login. 6 onglets.
+Accès : un parent se connecte avec son login. 6 onglets. Un seul compte suffit pour tous ses enfants, quelle que soit leur section (maternelle, primaire, collège, lycée) : le sélecteur d'enfant passe de l'un à l'autre, et périodes, notes et bulletins suivent la section de l'enfant affiché.
 
 ### 15.1 Dashboard
 

@@ -11,7 +11,7 @@ import { EnrolToolbar } from "./enrolment/EnrolToolbar";
 import { EnrolTable } from "./enrolment/EnrolTable";
 
 export function EnrolmentTab({
-  form, setForm, modal, setModal, canCreate, canEdit,
+  form, setForm, modal, setModal, canCreate, canEdit, canCreateParent = false,
   elevesC, elevesL, elevesP, elevesPre = [], cEC, cEL, cEP,
   tousElevesScolarite, ajoutParNiveau, suppressionParNiveau,
   modifParNiveau, ensureClasse, sortAlpha,
@@ -96,9 +96,11 @@ export function EnrolmentTab({
         ajEnrol={ajEnrol} modEnrol={modEnrol} ensureClasse={ensureClasse}/>}
 
       {/* Saisie rapide : chaque élève choisit sa section dans la modale, d'où
-          les ajouts et listes de TOUTES les sections. */}
+          les ajouts et listes de TOUTES les sections — puis, en terminant,
+          un seul compte parent pour toute la fratrie. */}
       {modal==="rapide_enrol"&&canCreate&&<RapideEnrolModale
         setModal={setModal} form={form} setForm={setForm} chg={chg} niveauEnrol={niveauEnrol}
+        peutCreerParent={canCreateParent}
         schoolId={schoolId} schoolInfo={schoolInfo} toast={toast} tousElevesScolarite={tousElevesScolarite}
         ajoutParNiveau={ajoutParNiveau} ensureClasse={ensureClasse} elevesParNiveau={elevesParNiveau}/>}
 

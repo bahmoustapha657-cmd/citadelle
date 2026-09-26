@@ -14,6 +14,7 @@
 // le serveur).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { peutGererRole } from "./droits.ts";
+import { rattacherAuFoyer } from "./foyer.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -85,9 +86,31 @@ Deno.serve(async (req) => {
         if (!poste || poste.ecole_id !== ecoleId) return json({ error: "Poste introuvable pour cette école." }, 404);
       }
 
+      const eleveIds: string[] = [...new Set(
+        (Array.isArray(body.eleveIds) ? body.eleveIds : (body.eleveId ? [body.eleveId] : [])).map(String).filter(Boolean),
+      )];
+
+      // Parent : UN compte par foyer, toutes sections confondues. Si le foyer
+      // de ces élèves a déjà son compte, on les y rattache seulement — mot de
+      // passe inchangé, identifiant demandé ignoré (foyer.ts).
+      if (role === "parent" && eleveIds.length) {
+        const r = await rattacherAuFoyer(admin, {
+          ecoleId: ecoleId as string,
+          eleveIds,
+          foyer: { tuteur: body.tuteur, contactTuteur: body.contactTuteur, filiation: body.filiation },
+        });
+        if (r && "error" in r) return json({ error: r.error }, r.status);
+        if (r) {
+          return json({
+            ok: true, mergedIntoExisting: true, merged: r.rattaches > 0, dejaRattache: r.rattaches === 0,
+            rattaches: r.rattaches, id: r.compte.id, login: r.compte.login, compte: { login: r.compte.login },
+          });
+        }
+      }
+
       // Doublon de login dans l'école ?
       const { data: exist } = await admin.from("comptes").select("id").eq("ecole_id", ecoleId).eq("login", login).maybeSingle();
-      if (exist) return json({ error: "Un compte existe déjà avec cet identifiant." }, 409);
+      if (exist) return json({ error: "Un compte existe déjà avec cet identifiant : choisissez-en un autre." }, 409);
 
       const email = `${login}.${schoolCode}@${DOMAIN}`;
       const { data: created, error: cErr } = await admin.auth.admin.createUser({
@@ -106,7 +129,6 @@ Deno.serve(async (req) => {
 
       const extra: Record<string, unknown> = {};
       for (const k of ["eleveNom", "eleveClasse", "tuteur", "contactTuteur", "filiation"]) if (body[k]) extra[k] = body[k];
-      const eleveIds: string[] = Array.isArray(body.eleveIds) ? body.eleveIds : (body.eleveId ? [body.eleveId] : []);
       if (eleveIds.length) extra.eleveIds = eleveIds;
       if (body.eleveId) extra.eleveId = body.eleveId;
 
@@ -116,12 +138,16 @@ Deno.serve(async (req) => {
         return json({ error: "Adresse e-mail invalide." }, 400);
       }
 
+      // Un parent suit ses enfants dans TOUTES les sections (parent_eleves) :
+      // il n'a pas de section à lui — c'était celle de l'onglet d'où le
+      // compte avait été créé.
+      const sansSection = role === "parent";
       const { data: compte, error: insErr } = await admin.from("comptes").insert({
         user_id: uid, ecole_id: ecoleId, login, role,
         poste_id: posteId, email: emailReel,
         nom: body.nom || login, label: body.label || role,
-        section: body.section || null,
-        sections: Array.isArray(body.sections) ? body.sections : null,
+        section: sansSection ? null : (body.section || null),
+        sections: sansSection || !Array.isArray(body.sections) ? null : body.sections,
         enseignant_id: body.enseignantId || null,
         enseignant_nom: body.enseignantNom || null,
         matiere: body.matiere || null,

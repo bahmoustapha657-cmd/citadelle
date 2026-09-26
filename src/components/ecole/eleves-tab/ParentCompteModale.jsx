@@ -21,8 +21,8 @@ export function ParentCompteModale({ parentEleve, setParentEleve, formP, setForm
           </div>
         </Champ>
       </div>
-      <div style={{marginTop:12,padding:"10px 14px",background:"#fef3c7",borderRadius:8,fontSize:12,color:"#92400e"}}>
-        Notez ces identifiants avant de valider. Si un compte parent existe deja pour le meme tuteur et la meme filiation, l'eleve sera rattache a ce compte.
+      <div style={{marginTop:12,padding:"10px 14px",background:"#fef3c7",borderRadius:8,fontSize:12,color:"#92400e",lineHeight:1.5}}>
+        Un seul compte par foyer, pour tous ses enfants et toutes les sections : si ce tuteur a déjà un compte parent (même nom, et même téléphone ou même filiation), l'élève y est ajouté et le mot de passe ne change pas. Sinon, notez ces identifiants avant de valider.
       </div>
       <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
         <Btn v="ghost" onClick={()=>setParentEleve(null)}>Annuler</Btn>

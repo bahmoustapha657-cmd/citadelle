@@ -1,12 +1,13 @@
 import { genererMdp } from "../../../constants";
-import { apiFetch, getAuthHeaders } from "../../../apiClient";
-import { isSupabase } from "../../../backend";
-import { creerCompte as creerCompteSb } from "../../../backend/account-manage-supabase";
+import { creerOuRattacherCompteParent } from "../../../backend/compte-parent";
+import { loginParentSuggere, messageCompteParent } from "../../../comptes-parents";
 
 // Logique de l'onglet Élèves : droit de création de compte parent, édition
-// du formulaire et création/rattachement du compte parent via /account-manage.
-// `section` : prop d'Ecole. Elle était déduite du nom de collection, et un
-// compte parent créé depuis la maternelle partait avec la section « college ».
+// du formulaire, et création du compte parent — ou rattachement de l'élève
+// au compte de son foyer s'il en a déjà un (backend/compte-parent.js).
+// `section` : prop d'Ecole, celle de l'élève (pas du compte : un parent
+// suit ses enfants dans toutes les sections). Elle était déduite du nom de
+// collection, et un élève de maternelle partait avec la section « college ».
 export function useElevesTab({
   section, schoolId, toast, logAction, canEdit, canCreateParent,
   parentEleve, setParentEleve, setFormP,
@@ -16,65 +17,21 @@ export function useElevesTab({
   const peutCreerParent = canCreateParent ?? canEdit;
   const chgP = (k) => (e) => setFormP((p) => ({ ...p, [k]: e.target.value }));
 
-  // Identifiant valide côté serveur : minuscules, sans accents, [a-z0-9]
-  // uniquement (le pattern d'API rejette é/è/à et les espaces).
-  const slugLogin = (s) => (s || "").toLowerCase()
-    .normalize("NFD").replace(/[̀-ͯ]/g, "")
-    .replace(/[^a-z0-9]+/g, "");
-
   const ouvrirCompte = (e) => {
-    const loginSuggere = `parent.${slugLogin(e.nom).slice(0, 12)}`;
     setParentEleve(e);
-    setFormP({ login: loginSuggere, mdp: genererMdp() });
+    setFormP({ login: loginParentSuggere(e.nom), mdp: genererMdp() });
   };
 
   const creerCompteParent = async (formP) => {
     if (!formP.login?.trim()) { toast("Identifiant requis.", "warning"); return; }
     if (!formP.mdp || formP.mdp.length < 8) { toast("Mot de passe minimum 8 caracteres.", "warning"); return; }
+    const eleves = [{ ...parentEleve, section }];
     try {
-      const payload = {
-        schoolId,
-        login: formP.login.trim().toLowerCase(),
-        mdp: formP.mdp,
-        role: "parent",
-        label: "Parent",
-        nom: (parentEleve.tuteur || `Parent de ${parentEleve.prenom}`),
-        eleveId: parentEleve._id,
-        eleveNom: `${parentEleve.prenom} ${parentEleve.nom}`,
-        eleveClasse: parentEleve.classe || "",
-        section,
-        sections: [section],
-        eleveIds: [parentEleve._id],
-        elevesAssocies: [{
-          eleveId: parentEleve._id,
-          eleveNom: `${parentEleve.prenom} ${parentEleve.nom}`,
-          eleveClasse: parentEleve.classe || "",
-          section,
-        }],
-        tuteur: parentEleve.tuteur || "",
-        contactTuteur: parentEleve.contactTuteur || "",
-        filiation: parentEleve.filiation || "",
-        statut: "Actif",
-      };
-      let data;
-      if (isSupabase) {
-        data = await creerCompteSb(payload);
-      } else {
-        const headers = await getAuthHeaders({ "Content-Type": "application/json" });
-        const res = await apiFetch("/account-manage", {
-          method: "POST", headers,
-          body: JSON.stringify({ action: "create", ...payload }),
-        });
-        data = await res.json().catch(() => ({}));
-        if (!res.ok || !data.ok) throw new Error(data.error || "Creation du compte impossible.");
-      }
-      const loginUtilise = data.compte?.login || formP.login;
-      if (data.merged || data.mergedIntoExisting) {
-        toast(`${parentEleve.prenom} a ete rattache au compte parent ${loginUtilise}. Le mot de passe actuel est conserve.`, "success");
-        logAction("Eleve rattache compte parent", `Login: ${loginUtilise} - Eleve: ${parentEleve.prenom} ${parentEleve.nom}`);
-      } else {
-        toast(`Compte parent cree - ID : ${loginUtilise}. Remettez-le au tuteur de ${parentEleve.prenom}.`, "success");
-        logAction("Compte parent cree", `Login: ${loginUtilise} - Eleve: ${parentEleve.prenom} ${parentEleve.nom}`);
+      const r = await creerOuRattacherCompteParent({ schoolId, login: formP.login, mdp: formP.mdp, eleves });
+      toast(messageCompteParent(r, eleves), r.dejaRattache ? "info" : "success");
+      if (!r.dejaRattache) {
+        logAction(r.rattache ? "Eleve rattache compte parent" : "Compte parent cree",
+          `Login: ${r.login} - Eleve: ${parentEleve.prenom} ${parentEleve.nom}`);
       }
       setParentEleve(null);
     } catch (e) {

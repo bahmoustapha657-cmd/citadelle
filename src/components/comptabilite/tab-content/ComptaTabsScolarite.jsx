@@ -70,6 +70,7 @@ export function ComptaTabsScolarite({ c, readOnly, annee, userRole }) {
         setModal={c.setModal}
         canCreate={c.canCreate}
         canEdit={c.canEdit}
+        canCreateParent={c.canCreateParent}
         readOnly={readOnly}
         elevesC={c.elevesC}
         elevesL={c.elevesL}
