@@ -23,6 +23,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.82.0",
     "@journeyapps/wa-sqlite": "^1.7.0",
+    "@mediapipe/tasks-vision": "^1.0.1",
     "@powersync/common": "^1.57.0",
     "@powersync/web": "^1.38.6",
     "@sentry/node": "^10.49.0",
