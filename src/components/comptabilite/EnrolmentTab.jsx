@@ -95,10 +95,12 @@ export function EnrolmentTab({
         schoolId={schoolId} toast={toast} tousElevesScolarite={tousElevesScolarite}
         ajEnrol={ajEnrol} modEnrol={modEnrol} ensureClasse={ensureClasse}/>}
 
+      {/* Saisie rapide : chaque élève choisit sa section dans la modale, d'où
+          les ajouts et listes de TOUTES les sections. */}
       {modal==="rapide_enrol"&&canCreate&&<RapideEnrolModale
         setModal={setModal} form={form} setForm={setForm} chg={chg} niveauEnrol={niveauEnrol}
-        schoolInfo={schoolInfo} toast={toast} tousElevesScolarite={tousElevesScolarite}
-        ajEnrol={ajEnrol} ensureClasse={ensureClasse} elevesEnrol={elevesEnrol}/>}
+        schoolId={schoolId} schoolInfo={schoolInfo} toast={toast} tousElevesScolarite={tousElevesScolarite}
+        ajoutParNiveau={ajoutParNiveau} ensureClasse={ensureClasse} elevesParNiveau={elevesParNiveau}/>}
 
       {modal==="import_enrol"&&canCreate&&<ImportEnrolModale
         setModal={setModal} niveauEnrol={niveauEnrol} schoolInfo={schoolInfo} toast={toast}
