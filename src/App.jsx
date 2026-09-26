@@ -22,7 +22,7 @@ export default function App() {
   const { t } = useTranslation();
 
   // Retour d'un lien « mot de passe oublié » : prime sur tout le reste.
-  const { recoveryActif, recoveryPret, terminerRecovery } = useRecovery();
+  const { recovery, terminerRecovery } = useRecovery();
   const {
     page, setPage, paramInitialTab, setParamInitialTab,
     rechercheOuverte, setRechercheOuverte, notifOuvert, setNotifOuvert,
@@ -105,11 +105,20 @@ export default function App() {
     }
   }, [page, schoolInfo, utilisateur, setPage]);
 
-  // Récupération de mot de passe : écran dédié avant tout le reste.
-  if (recoveryActif) {
-    return recoveryPret
-      ? <ResetPasswordScreen onTermine={terminerRecovery} />
-      : <div style={{ minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b", fontFamily: "sans-serif" }}>Ouverture du lien de réinitialisation…</div>;
+  // Récupération de mot de passe : écran dédié avant tout le reste. En
+  // sortant, formulaire de connexion direct, code école pré-rempli
+  // (useConnexion le lit dans LC_schoolId).
+  if (recovery) {
+    return (
+      <ResetPasswordScreen
+        retour={recovery}
+        onTermine={(compte) => {
+          if (compte?.schoolId) localStorage.setItem("LC_schoolId", compte.schoolId);
+          setPage("connexion");
+          terminerRecovery();
+        }}
+      />
+    );
   }
 
   // Écrans avant le shell : landing/démo, portail public, connexion,

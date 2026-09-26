@@ -1120,7 +1120,9 @@ R.
 3. Rechargez avec **Ctrl + Shift + R**
 
 **Q. J'ai perdu mon mot de passe.**
-R. Un administrateur (DG ou Admin avec accès) peut le réinitialiser depuis `Panneau Admin → Comptes`.
+R. Sur l'écran de connexion, cliquez **🔑 Mot de passe oublié ?** et indiquez votre code école et votre identifiant (ou votre e-mail).
+- Si votre compte porte une adresse e-mail, vous recevez un lien : ouvrez-le, choisissez le nouveau mot de passe, puis **Se connecter** (le code école est pré-rempli et votre identifiant vous est rappelé). Le lien ne sert qu'une fois et expire au bout d'un court délai : s'il est refusé, refaites une demande.
+- Sinon, la Direction est prévenue dans sa messagerie interne et réinitialise le mot de passe depuis `Panneau Admin → Comptes`.
 
 **Q. Comment changer la langue de l'interface ?**
 R. Menu profil (en haut à droite) → 🌐 Langue → FR / EN / AR. Le RTL s'active automatiquement en arabe.
