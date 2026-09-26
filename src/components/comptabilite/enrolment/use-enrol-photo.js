@@ -4,23 +4,14 @@ import { normaliserDepart } from "../../../depart-utils";
 import { uploadPhotoEleve } from "../../../storageUtils";
 import { findEnrollmentDuplicate, getEnrollmentDuplicateMessage } from "../../../enrollment-utils";
 
-// Logique photo + enregistrement d'un élève en inscription.
+// Enregistrement d'un élève en inscription, photo comprise (téléversée au
+// moment de l'enregistrement). La prise de vue et l'import vivent dans
+// PhotoEleveChamp.
 export function useEnrolPhoto({
-  modal, setModal, form, setForm, niveauEnrol,
+  modal, setModal, form, niveauEnrol,
   schoolId, toast, tousElevesScolarite, ajEnrol, modEnrol, ensureClasse,
 }) {
-  const [cameraOuverte, setCameraOuverte] = useState(false);
   const [uploadEnCours, setUploadEnCours] = useState(false);
-
-  const handlePhotoFichier = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (file.size > 2 * 1024 * 1024) { toast("Image trop grande (max 2 Mo).", "warning"); return; }
-    const reader = new FileReader();
-    reader.onload = (ev) => setForm((p) => ({ ...p, photo: ev.target.result }));
-    reader.readAsDataURL(file);
-    e.target.value = "";
-  };
 
   const enregistrer = async () => {
     // Départ : date obligatoire pour une sortie (c'est elle qui arrête les
@@ -56,5 +47,5 @@ export function useEnrolPhoto({
     }
   };
 
-  return { cameraOuverte, setCameraOuverte, uploadEnCours, handlePhotoFichier, enregistrer };
+  return { uploadEnCours, enregistrer };
 }

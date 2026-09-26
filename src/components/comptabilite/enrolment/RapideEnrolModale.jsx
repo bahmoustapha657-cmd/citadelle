@@ -1,31 +1,71 @@
-import React from "react";
-import { C, initMens, genererMatricule, getClassesForSection, getSystemeScolaire } from "../../../constants";
+import { useState } from "react";
+import { C, initMens, getClassesForSection, getSectionLabel, getSystemeScolaire, sectionOuverte } from "../../../constants";
 import { Btn, Champ, Input, Modale, Selec } from "../../ui";
 import { findEnrollmentDuplicate, getEnrollmentDuplicateMessage } from "../../../enrollment-utils";
+import { uploadPhotoEleve } from "../../../storageUtils";
+import { PhotoEleveChamp } from "./PhotoEleveChamp";
+import {
+  changerSectionFormulaire, eleveVide, formulaireEleveSuivant, matriculeSaisieRapide, sectionsSaisieRapide,
+} from "./rapide-enrol";
 
 export function RapideEnrolModale({
   setModal, form, setForm, chg, niveauEnrol,
-  schoolInfo, toast, tousElevesScolarite, ajEnrol, ensureClasse, elevesEnrol,
+  schoolId, schoolInfo, toast, tousElevesScolarite, ajoutParNiveau, ensureClasse, elevesParNiveau,
 }) {
-  const sauvegarderRapide = async (fermer) => {
-    if(!form.nom||!form.prenom){toast("Nom et prénom obligatoires","warning");return false;}
-    if(!form.classe){toast("Classe obligatoire","warning");return false;}
-    const r={...form,statut:"Actif",mens:initMens()};
-    const doublon = findEnrollmentDuplicate(r, tousElevesScolarite);
+  // Élèves enregistrés depuis l'ouverture : matricules suivants, contrôle des
+  // doublons et récapitulatif, avant même que les listes soient rechargées.
+  const [ajoutes, setAjoutes] = useState([]);
+  const [enCours, setEnCours] = useState(false);
+  const sections = sectionsSaisieRapide(schoolInfo);
+  // Section de l'élève en cours : la sienne, pas celle de la barre d'outils.
+  const section = sectionOuverte(schoolInfo, form.niveau || niveauEnrol);
+  const matriculeDe = (s, dejaAjoutes = ajoutes) =>
+    matriculeSaisieRapide(s, { elevesParNiveau, ajoutes: dejaAjoutes, schoolInfo });
+
+  const changerSection = (e) => {
+    const s = e.target.value;
+    setForm((p) => changerSectionFormulaire(p, s, matriculeDe(s)));
+  };
+
+  // Enregistre l'élève en cours ; renvoie la liste des ajoutés, ou null.
+  const sauvegarderRapide = async () => {
+    if(!form.nom||!form.prenom){toast("Nom et prénom obligatoires","warning");return null;}
+    if(!form.classe){toast("Classe obligatoire","warning");return null;}
+    const ajouter = ajoutParNiveau[section];
+    const r={...form,niveau:section,statut:"Actif",mens:initMens()};
+    const doublon = findEnrollmentDuplicate(r, [...tousElevesScolarite, ...ajoutes]);
     if(doublon){
       toast(getEnrollmentDuplicateMessage(doublon, r),"warning");
-      return false;
+      return null;
     }
-    await ajEnrol(r);
-    await ensureClasse(r.classe, niveauEnrol);
-    toast(`${r.prenom} ${r.nom} ajoute(e)`,"success");
-    if(!fermer){
-      const mat=genererMatricule([...elevesEnrol,r],niveauEnrol,schoolInfo);
-      setForm(p=>({tuteur:p.tuteur,contactTuteur:p.contactTuteur,filiation:p.filiation,domicile:p.domicile,
-        dateArrivee:p.dateArrivee,
-        statut:"Actif",sexe:"M",niveau:niveauEnrol,matricule:mat,typeInscription:"Première inscription"}));
+    setEnCours(true);
+    try {
+      if(String(r.photo||"").startsWith("data:")) r.photo = await uploadPhotoEleve(r.photo, schoolId);
+      await ajouter(r);
+      await ensureClasse(r.classe, section);
+    } catch (e) {
+      toast("Élève non enregistré : " + (e?.message || e), "error");
+      return null;
+    } finally {
+      setEnCours(false);
     }
-    return true;
+    toast(`${r.prenom} ${r.nom} ajouté(e) — ${r.classe} (${getSectionLabel(section)})`,"success");
+    const nouveaux = [...ajoutes, r];
+    setAjoutes(nouveaux);
+    return nouveaux;
+  };
+
+  const eleveSuivant = async () => {
+    const nouveaux = await sauvegarderRapide();
+    if (!nouveaux) return;
+    const mat = matriculeDe(section, nouveaux);
+    setForm((p) => formulaireEleveSuivant(p, section, mat));
+  };
+
+  const terminer = async () => {
+    // Après « Élève suivant », la fiche en cours est vide : rien à enregistrer.
+    if (ajoutes.length && eleveVide(form)) { setModal(null); return; }
+    if (await sauvegarderRapide()) setModal(null);
   };
 
   return (<Modale titre="⚡ Saisie rapide — Fratrie / même tuteur" fermer={()=>setModal(null)}>
@@ -50,11 +90,16 @@ export function RapideEnrolModale({
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
         <Input label="Nom *" value={form.nom||""} onChange={chg("nom")} placeholder="Bah"/>
         <Input label="Prénom *" value={form.prenom||""} onChange={chg("prenom")} placeholder="Aminata"/>
+        {/* Une fratrie s'étale souvent sur plusieurs cycles : chaque élève
+            est inscrit dans SA section (classes, matricule, liste). */}
+        {sections.length>1&&<Selec label="Section *" value={section} onChange={changerSection}>
+          {sections.map(s=><option key={s} value={s}>{getSectionLabel(s)}</option>)}
+        </Selec>}
         <Champ label="Classe *">
           <select value={form.classe||""} onChange={chg("classe")}
             style={{width:"100%",border:"1px solid #b0c4d8",borderRadius:7,padding:"7px 10px",fontSize:13,background:"#fff",boxSizing:"border-box",outline:"none"}}>
             <option value="">— Sélectionner —</option>
-        {getClassesForSection(niveauEnrol, getSystemeScolaire(schoolInfo)).map(c=><option key={c}>{c}</option>)}
+            {getClassesForSection(section, getSystemeScolaire(schoolInfo)).map(c=><option key={c}>{c}</option>)}
           </select>
         </Champ>
         <Selec label="Sexe" value={form.sexe||"M"} onChange={chg("sexe")}>
@@ -68,12 +113,23 @@ export function RapideEnrolModale({
           <input value={form.matricule||""} onChange={chg("matricule")}
             style={{width:"100%",border:"1px solid #b0c4d8",borderRadius:7,padding:"7px 10px",fontSize:13,boxSizing:"border-box",outline:"none",fontFamily:"monospace",fontWeight:700,color:C.blue,background:"#e0ebf8"}}/>
         </Champ>
+        <div style={{gridColumn:"1/-1",borderTop:"1px solid #e5e7eb",paddingTop:10}}>
+          <PhotoEleveChamp photo={form.photo} onChange={photo=>setForm(p=>({...p,photo}))} toast={toast}/>
+        </div>
       </div>
     </div>
-    <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:14}}>
-      <Btn v="ghost" onClick={()=>setModal(null)}>Annuler</Btn>
-      <Btn v="ghost" onClick={async()=>{ await sauvegarderRapide(false); }}>➕ Élève suivant</Btn>
-      <Btn onClick={async()=>{ if(await sauvegarderRapide(true)) setModal(null); }}>✅ Terminer</Btn>
+    {ajoutes.length>0&&(
+      <div style={{marginTop:12,background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:10,padding:"10px 14px",fontSize:12,color:"#166534",textAlign:"left"}}>
+        <strong>✅ Déjà inscrits dans cette saisie ({ajoutes.length})</strong>
+        <ul style={{margin:"6px 0 0",paddingLeft:18}}>
+          {ajoutes.map((e,i)=><li key={`${e.matricule}-${i}`}>{e.prenom} {e.nom} — {e.classe} ({getSectionLabel(e.niveau)}) · <span style={{fontFamily:"monospace"}}>{e.matricule}</span></li>)}
+        </ul>
+      </div>
+    )}
+    <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:14,flexWrap:"wrap"}}>
+      <Btn v="ghost" onClick={()=>setModal(null)} disabled={enCours}>{ajoutes.length?"Fermer":"Annuler"}</Btn>
+      <Btn v="ghost" onClick={eleveSuivant} disabled={enCours}>➕ Élève suivant</Btn>
+      <Btn onClick={terminer} disabled={enCours}>{enCours?"⏳ Enregistrement…":"✅ Terminer"}</Btn>
     </div>
   </Modale>);
 }

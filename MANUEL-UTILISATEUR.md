@@ -703,6 +703,8 @@ Compta dédiée à la fondation (si activée) :
 - **Vue d'ensemble** des élèves de l'année : statut d'inscription, frais d'inscription payés, dossier complet
 - **Suivi** des dossiers incomplets (papiers manquants)
 - **Bouton** : marquer un dossier complet, encaisser frais d'inscription
+- **⚡ Saisie rapide (fratrie / même tuteur)** : le tuteur, le contact et le domicile sont saisis une fois et conservés d'un élève au suivant. Chaque enfant est inscrit dans **sa section** (Primaire, Collège, Lycée…) : les classes proposées et le matricule suivent la section choisie. Un récapitulatif liste les élèves déjà inscrits pendant la saisie.
+- **📸 Photo guidée** : la caméra s'ouvre à la meilleure définition de l'appareil (webcam, caméra avant ou arrière ; la caméra choisie est mémorisée). Un ovale et des consignes (« Approchez-vous », « Centrez le visage », « Redressez la tête »…) guident la prise. Quand le visage est bien cadré, la photo se prend seule (option désactivable), est recadrée au format portrait 3:4 centré sur le visage, puis affichée pour vérification avant d'être gardée.
 
 ### 7.9 Onglet « Mensualités »
 
