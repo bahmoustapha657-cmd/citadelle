@@ -68,12 +68,16 @@ export function useSchoolData({ schoolId, utilisateur }) {
     // autres écrans. La table `ecoles` est publiée sans son logo (72 ko) : on
     // ignore le contenu de l'événement et on recharge la fiche.
     if (isSupabase) {
-      const recharger = (reseau = false) => {
-        chargerEcole(schoolId, { reseau }).then((d) => {
-          if (actif && d) appliquerDonneesEcole(d);
-        }).catch(() => {});
-      };
-      recharger();
+      const recharger = (reseau = false) => chargerEcole(schoolId, { reseau }).then((d) => {
+        if (actif && d) appliquerDonneesEcole(d);
+      }).catch(() => {});
+      // Miroir local d'abord (affichage immédiat, hors ligne compris), PUIS
+      // le serveur. Le miroir d'un appareil éteint pendant la clôture porte
+      // encore l'ancienne année au lancement suivant ; aucun événement temps
+      // réel ne la corrigeait ensuite, et toute la session — notes du
+      // portail enseignant comprises — tournait sur l'année archivée. Les
+      // deux lectures s'enchaînent : la réponse serveur passe toujours après.
+      recharger().then(() => recharger(true));
       // Sur événement, relecture SERVEUR : le miroir PowerSync peut ne pas
       // avoir encore reçu la modification, et le relire à cet instant
       // ré-affichait l'ancienne valeur (un agrément tout juste enregistré
