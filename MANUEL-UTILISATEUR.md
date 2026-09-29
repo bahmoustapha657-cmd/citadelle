@@ -851,6 +851,13 @@ Accès : sidebar `🛡 Panneau Admin`. Réservé à Direction / Admin.
 - **Réinitialiser mot de passe** : génère un nouveau MDP, l'utilisateur devra le changer à la prochaine connexion
 - **Voir les identifiants temporaires** : tableau des MDP initiaux non encore changés (utile à l'onboarding)
 - **Suspendre/réactiver un compte**
+- **👪 Doublons parents** (Direction) : un parent qui a plusieurs comptes (un par enfant, créés avant le regroupement par foyer) se réunit ici en un seul.
+  1. **🔍 Rechercher les doublons** : EduGest regroupe les comptes parents qui ont le même numéro de téléphone, ou le même nom et la même filiation. Chaque groupe montre les comptes, leurs enfants, et si le parent s'en est déjà servi.
+  2. Badge **Même parent probable** (vert) ou **À vérifier : noms différents** (orange) : un même numéro peut servir à plusieurs familles, par exemple celui de l'école pour des internes. Dans le doute, **Pas le même parent — masquer**.
+  3. Choisissez le **compte à conserver** (EduGest propose celui que le parent utilise déjà), puis **Fusionner** : tous les enfants passent sur ce compte, qui garde son identifiant et son mot de passe ; les autres comptes sont désactivés et ne permettent plus de se connecter.
+  4. Si le parent ne connaît pas le mot de passe du compte conservé : **Réinitialiser le mot de passe**, puis remettez-lui le nouveau (il le changera à sa connexion).
+
+  Chaque fusion est inscrite au journal. Les numéros des comptes créés avant l'ajout du téléphone se remplissent avec `node supabase/telephones-parents.mjs --executer` (à lancer une fois, avant la recherche de doublons).
 
 ### 12.4 Configuration des rôles (DG uniquement)
 
@@ -1130,6 +1137,9 @@ R.
 R. Sur l'écran de connexion, cliquez **🔑 Mot de passe oublié ?** et indiquez votre code école et votre identifiant (ou votre e-mail ; un parent dont l'identifiant est son numéro peut l'écrire à sa façon).
 - Si votre compte porte une adresse e-mail, vous recevez un lien : ouvrez-le, choisissez le nouveau mot de passe, puis **Se connecter** (le code école est pré-rempli et votre identifiant vous est rappelé). Le lien ne sert qu'une fois et expire au bout d'un court délai : s'il est refusé, refaites une demande.
 - Sinon, la Direction est prévenue dans sa messagerie interne et réinitialise le mot de passe depuis `Panneau Admin → Comptes`.
+
+**Q. Un parent voit « Ce compte n'est plus actif : il a été regroupé… ».**
+R. L'école a fusionné ses comptes en double (`Comptes & Postes → Doublons parents`) : tous ses enfants sont sur le compte conservé. Donnez-lui cet identifiant — le journal de la fusion l'indique — et, s'il n'en connaît pas le mot de passe, réinitialisez-le.
 
 **Q. Comment changer la langue de l'interface ?**
 R. Menu profil (en haut à droite) → 🌐 Langue → FR / EN / AR. Le RTL s'active automatiquement en arabe.

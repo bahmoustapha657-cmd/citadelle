@@ -168,7 +168,7 @@ Deno.serve(async (req) => {
       login = String(loginEmail);
     }
     const chercher = (l: string) => admin.from("comptes")
-      .select("id, ecole_id, login, nom, label, email, role")
+      .select("id, ecole_id, login, nom, label, email, role, extra")
       .eq("ecole_id", ec.id).eq("login", l).maybeSingle();
     let { data: compte } = await chercher(login);
     // Parent dont l'identifiant est son numéro, écrit à sa façon
@@ -177,7 +177,9 @@ Deno.serve(async (req) => {
     const numero = identifiantConnexion(saisie);
     if (!compte && !saisie.includes("@") && numero !== saisie) ({ data: compte } = await chercher(numero));
     // Portails parent/enseignant : réinitialisation par l'école aussi (pas ici).
-    if (!compte) return json(generique);
+    // Compte parent absorbé par une fusion de doublons : bloqué, rien à
+    // réinitialiser (l'écran de connexion l'oriente vers l'école).
+    if (!compte || (compte.extra as Record<string, unknown> | null)?.fusionneDans) return json(generique);
 
     // Voie e-mail (self-service) si e-mail réel + envoi configuré.
     if (compte.email) {

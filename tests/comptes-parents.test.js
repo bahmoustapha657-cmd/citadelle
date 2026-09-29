@@ -19,13 +19,15 @@ import { readFileSync } from "node:fs";
 import { normaliserTelGuinee } from "../shared/phone.js";
 import * as telServeur from "../supabase/functions/_shared/telephone.ts";
 import {
-  chargerComptesParents, lienValide, memeFoyer, modifierLienParent, nomComparable, rattacherAuFoyer,
-  trouverCompteFoyer,
+  chargerComptesParents, fusionnerComptesParents, lienValide, memeFoyer, modifierLienParent, nomComparable,
+  rattacherAuFoyer, trouverCompteFoyer,
 } from "../supabase/functions/account-manage/foyer.ts";
+import { peutFusionnerParents } from "../supabase/functions/account-manage/droits.ts";
 import {
-  chercherComptesParents, identifiantConnexion, libelleLien, loginParentSuggere, messageCompteParent,
-  numeroNational, payloadCompteParent, telephoneLisible,
+  chercherComptesParents, identifiantConnexion, libelleLien, loginParentSuggere, memeParent, messageCompteParent,
+  nomComparable as nomComparableApp, numeroNational, payloadCompteParent, telephoneLisible,
 } from "../src/comptes-parents.js";
+import { groupesDoublons } from "../src/doublons-parents.js";
 import { attendreFileVide } from "../src/backend/powersync/file-envoi.js";
 import { numerosPartages, telephoneDuCompte } from "../supabase/_comptes-parents.mjs";
 
@@ -330,7 +332,7 @@ test("rattacher / détacher : compte et élève de l'école de l'appelant, compt
 
 test("Edge Functions : index.ts délègue à foyer.ts et au module téléphone partagé", () => {
   const source = lire("../supabase/functions/account-manage/index.ts");
-  assert.match(source, /import \{ lienValide, modifierLienParent, rattacherAuFoyer \} from "\.\/foyer\.ts";/);
+  assert.match(source, /import \{ fusionnerComptesParents, lienValide, modifierLienParent, rattacherAuFoyer \} from "\.\/foyer\.ts";/);
   assert.match(source, /import \{ normaliserTel \} from "\.\.\/_shared\/telephone\.ts";/);
   assert.match(source, /action === "rattacher_parent" \|\| action === "detacher_parent"/);
   assert.doesNotMatch(source, /function memeFoyer|function normaliserTel/);
@@ -438,4 +440,157 @@ test("numéros portés par plusieurs comptes : signalés, pour examen", () => {
   ]);
   assert.deepEqual(partages.map((p) => [p.telephone, p.comptes.map((c) => c.login)]),
     [["+224622123456", ["parent.bah", "parent.bah2"]]]);
+});
+
+// ── Étape 3 : doublons parents, fusion validée par la Direction ────────────
+test("app et serveur appliquent la même règle « même parent »", () => {
+  const cas = [
+    [{ tuteur: "Bah Alpha", contactTuteur: "622123456" }, { tuteur: "ALPHA bah", contactTuteur: "+224 622 12 34 56" }],
+    [{ tuteur: "Bah Alpha", contactTuteur: "622123456" }, { tuteur: "Bah Alpha", contactTuteur: "664000000" }],
+    [{ tuteur: "Bah Alpha", filiation: "Père: Bah / Mère: Sow" }, { tuteur: "Bah Alpha", filiation: "mère sow père bah" }],
+    [{ tuteur: "Bah Alpha" }, { tuteur: "Bah Alpha" }],
+    [{ tuteur: "", contactTuteur: "620000000" }, { tuteur: "", contactTuteur: "620000000" }],
+    [{ tuteur: "Sow Ibrahima", contactTuteur: "620000000" }, { tuteur: "Camara Fodé", contactTuteur: "620000000" }],
+  ];
+  for (const [a, b] of cas) assert.equal(memeParent(a, b), memeFoyer(a, b), JSON.stringify([a, b]));
+  for (const t of ["DIALLO Mamadou", "Aïssatou Barry-Sow", "", null, "  père : x / mère : y "]) {
+    assert.equal(nomComparableApp(t), nomComparable(t), String(t));
+  }
+});
+
+test("fusion : la Direction, ou un poste qui écrit Comptes & Postes — pas le comptable", () => {
+  assert.equal(peutFusionnerParents("direction"), true);
+  assert.equal(peutFusionnerParents("superadmin"), true);
+  assert.equal(peutFusionnerParents("staff", true), true);
+  assert.equal(peutFusionnerParents("staff", false), false);
+  assert.equal(peutFusionnerParents("comptable"), false);
+  assert.equal(peutFusionnerParents("admin"), false);
+});
+
+const baseFusion = () => ({
+  eleves: [],
+  comptes: [
+    { id: "T", ecole_id: "ec1", role: "parent", login: "622123456", statut: "Actif", telephone: null, user_id: "uT", extra: { tuteur: "Bah Alpha" } },
+    { id: "S1", ecole_id: "ec1", role: "parent", login: "parent.bah", statut: "Actif", telephone: "+224622123456", user_id: "u1", extra: { filiation: "Père: Bah Alpha" } },
+    { id: "S2", ecole_id: "ec1", role: "parent", login: "parent.bah2", statut: "Actif", telephone: null, user_id: null, extra: {} },
+    { id: "X", ecole_id: "ec2", role: "parent", login: "ailleurs", statut: "Actif", extra: {} },
+    { id: "P", ecole_id: "ec1", role: "staff", login: "compta", statut: "Actif", extra: {} },
+    { id: "I", ecole_id: "ec1", role: "parent", login: "inactif", statut: "Inactif", extra: {} },
+  ],
+  parent_eleves: [
+    { compte_id: "T", eleve_id: "e1", lien: null },
+    { compte_id: "S1", eleve_id: "e1", lien: "mere" }, // déjà suivi par le compte conservé
+    { compte_id: "S1", eleve_id: "e2", lien: "pere" },
+    { compte_id: "S2", eleve_id: "e3", lien: null },
+    { compte_id: "S2", eleve_id: "e2", lien: null }, // même enfant chez deux absorbés
+  ],
+});
+
+test("fusion : enfants rattachés au compte conservé, absorbés vidés et désactivés", async () => {
+  const db = baseFusion();
+  const admin = fauxAdmin(db);
+  const r = await fusionnerComptesParents(admin, { ecoleId: "ec1", cibleId: "T", sourceIds: ["S1", "S2", "T", "S1"] });
+  assert.deepEqual(r.cible, { id: "T", login: "622123456" });
+  assert.deepEqual(r.absorbes, [
+    { id: "S1", login: "parent.bah", user_id: "u1" },
+    { id: "S2", login: "parent.bah2", user_id: null },
+  ]);
+  assert.equal(r.liensDeplaces, 2);
+  const liens = db.parent_eleves.map((l) => `${l.compte_id}:${l.eleve_id}:${l.lien}`).sort();
+  assert.deepEqual(liens, ["T:e1:null", "T:e2:pere", "T:e3:null"]); // le lien existant de e1 est gardé
+  const [T, S1, S2] = ["T", "S1", "S2"].map((id) => db.comptes.find((c) => c.id === id));
+  assert.equal(T.telephone, "+224622123456"); // complété depuis un absorbé
+  assert.equal(T.extra.filiation, "Père: Bah Alpha");
+  assert.equal(T.extra.tuteur, "Bah Alpha"); // rien d'écrasé
+  for (const s of [S1, S2]) {
+    assert.equal(s.statut, "Inactif");
+    assert.equal(s.extra.fusionneDans, "T");
+  }
+  // Rejouer (fusion interrompue puis relancée) ne casse rien.
+  const encore = await fusionnerComptesParents(fauxAdmin(db), { ecoleId: "ec1", cibleId: "T", sourceIds: ["S1", "S2"] });
+  assert.equal(encore.liensDeplaces, 0);
+  assert.equal(db.parent_eleves.length, 3);
+});
+
+test("fusion refusée : autre école, pas un parent, compte conservé inactif ou absorbé, rien à fusionner", async () => {
+  for (const [cibleId, sourceIds, status, motif] of [
+    ["T", ["X"], 404, /introuvable/],
+    ["T", ["P"], 404, /introuvable/],
+    ["X", ["T"], 404, /introuvable/],
+    ["I", ["T"], 409, /compte actif/],
+    ["T", [], 400, /au moins un compte/],
+    ["T", ["T"], 400, /au moins un compte/],
+  ]) {
+    const db = baseFusion();
+    const admin = fauxAdmin(db);
+    const r = await fusionnerComptesParents(admin, { ecoleId: "ec1", cibleId, sourceIds });
+    assert.equal(r.status, status, `${cibleId} ← ${sourceIds}`);
+    assert.match(r.error, motif);
+    assert.deepEqual(admin.ecritures, []);
+  }
+  const db = baseFusion();
+  db.comptes[0].extra.fusionneDans = "autre";
+  const r = await fusionnerComptesParents(fauxAdmin(db), { ecoleId: "ec1", cibleId: "T", sourceIds: ["S1"] });
+  assert.equal(r.status, 409);
+});
+
+test("Edge Function : fusion réservée, comptes absorbés bloqués à la connexion, trace dans audit", () => {
+  const source = lire("../supabase/functions/account-manage/index.ts");
+  const bloc = source.slice(source.indexOf('if (action === "fusionner_parents")'), source.indexOf('if (action === "reset_password")'));
+  assert.match(bloc, /peutFusionnerParents\(caller\.role, callerAdminPanel\)/);
+  assert.match(bloc, /ban_duration: "876000h"/);
+  assert.match(bloc, /from\("audit"\)\.insert/);
+  const auth = lire("../src/backend/auth-supabase.js");
+  assert.match(auth, /error\?\.code === "user_banned"/);
+  assert.match(auth, /c\.extra\?\.fusionneDans\) return \{ desactive: true, regroupe: true \}/);
+  const reset = lire("../supabase/functions/password-reset/index.ts");
+  assert.match(reset, /\?\.fusionneDans\) return json\(generique\)/);
+});
+
+// Données de l'écran Doublons parents (comptes + liens avec fiche d'élève).
+const eleve = (prenom, classe, tuteur, contact = "", filiation = "") =>
+  ({ prenom, nom: "Bah", classe, section: "college", tuteur, contact_tuteur: contact, filiation });
+const doublons = () => {
+  const comptes = [
+    { id: "A", login: "622123456", nom: "Bah Alpha", telephone: "+224622123456", statut: "Actif", premiere_co: false, created_at: "2026-02-01", extra: { tuteur: "Bah Alpha" } },
+    { id: "B", login: "parent.bah", nom: "Parent", telephone: null, statut: "Actif", premiere_co: true, created_at: "2025-09-01", extra: {} },
+    { id: "C", login: "parent.bah2", nom: "Bah Alpha", telephone: null, statut: "Actif", premiere_co: true, created_at: "2025-10-01", extra: { tuteur: "Bah Alpha", contactTuteur: "622 12 34 56" } },
+    { id: "D1", login: "parent.sow", nom: "Sow Ibrahima", telephone: "+224620000000", statut: "Actif", premiere_co: true, created_at: "2025-09-01", extra: { tuteur: "Sow Ibrahima" } },
+    { id: "D2", login: "parent.camara", nom: "Camara Fodé", telephone: "+224620000000", statut: "Actif", premiere_co: true, created_at: "2025-09-02", extra: { tuteur: "Camara Fodé" } },
+    { id: "E1", login: "parent.diallo", nom: "Diallo Mamadou", telephone: null, statut: "Actif", premiere_co: true, created_at: "2025-09-01", extra: { tuteur: "Diallo Mamadou", filiation: "Père: Diallo Mamadou / Mère: Barry Aïssatou" } },
+    { id: "E2", login: "parent.diallo2", nom: "Diallo Mamadou", telephone: null, statut: "Actif", premiere_co: true, created_at: "2025-09-03", extra: { tuteur: "MAMADOU DIALLO", filiation: "mère barry aissatou, père diallo mamadou" } },
+    { id: "H", login: "parent.diallo3", nom: "Diallo Mamadou", telephone: null, statut: "Actif", premiere_co: true, created_at: "2025-09-04", extra: { tuteur: "Diallo Mamadou", filiation: "Père: Diallo Mamadou / Mère: Sow Fanta" } },
+    { id: "F", login: "parent.seul", nom: "Condé", telephone: "+224655000000", statut: "Actif", premiere_co: true, created_at: "2025-09-01", extra: { tuteur: "Condé Fatoumata" } },
+    { id: "G", login: "parent.absorbe", nom: "Bah Alpha", telephone: "+224622123456", statut: "Inactif", premiere_co: true, created_at: "2025-09-01", extra: { tuteur: "Bah Alpha", fusionneDans: "A" } },
+  ];
+  const liens = [
+    { compte_id: "A", eleve_id: "e1", lien: "pere", eleves: eleve("Aminata", "7ème A", "Bah Alpha", "622123456") },
+    { compte_id: "B", eleve_id: "e2", lien: null, eleves: eleve("Ibrahima", "2ème A", "Bah Alpha", "622 12 34 56") },
+    { compte_id: "C", eleve_id: "e3", lien: null, eleves: eleve("Moussa", "CP", "Bah Alpha", "622123456") },
+    { compte_id: "Z", eleve_id: "e9", lien: null, eleves: null }, // lien d'une autre école (RLS)
+  ];
+  return { comptes, liens };
+};
+
+test("doublons : même numéro (compte anonyme compris), ou même nom et même filiation", () => {
+  const { comptes, liens } = doublons();
+  const groupes = groupesDoublons(comptes, liens);
+  const resume = groupes.map((g) => [g.comptes.map((c) => c.id).join(","), g.verdict, g.telephone, g.cibleId]);
+  assert.deepEqual(resume, [
+    ["A,B,C", "meme", "+224622123456", "A"], // A déjà utilisé par le parent → conservé
+    ["E1,E2", "meme", null, "E1"], // même nom et même filiation, sans numéro
+    ["D2,D1", "a_verifier", "+224620000000", "D1"], // numéro de l'école : noms différents (tri par identifiant)
+  ]);
+  const bah = groupes[0].comptes.find((c) => c.id === "B");
+  assert.deepEqual(bah.enfants.map((e) => `${e.prenom} (${e.classe})`), ["Ibrahima (2ème A)"]);
+  // Compte absorbé (G), compte seul (F), homonyme d'une autre famille (H) : hors groupes.
+  assert.equal(groupes.some((g) => g.comptes.some((c) => ["F", "G", "H"].includes(c.id))), false);
+});
+
+test("doublons : un compte inactif n'est jamais proposé comme compte conservé", () => {
+  const { comptes, liens } = doublons();
+  comptes.find((c) => c.id === "A").statut = "Inactif";
+  const g = groupesDoublons(comptes, liens).find((x) => x.comptes.some((c) => c.id === "A"));
+  assert.notEqual(g.cibleId, "A");
+  assert.equal(g.cibleId, "B"); // à égalité (jamais connectés, 1 enfant), le plus ancien
 });

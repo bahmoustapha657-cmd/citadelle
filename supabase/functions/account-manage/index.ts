@@ -13,8 +13,8 @@
 // vérifie qu'il a le droit de gérer le rôle cible (droits.ts, mêmes règles que
 // le serveur).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { peutGererRole } from "./droits.ts";
-import { lienValide, modifierLienParent, rattacherAuFoyer } from "./foyer.ts";
+import { peutFusionnerParents, peutGererRole } from "./droits.ts";
+import { fusionnerComptesParents, lienValide, modifierLienParent, rattacherAuFoyer } from "./foyer.ts";
 import { normaliserTel } from "../_shared/telephone.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -188,6 +188,38 @@ Deno.serve(async (req) => {
       });
       if ("error" in r) return json({ error: r.error }, r.status);
       return json({ ok: true, login: r.login });
+    }
+
+    // Comptes & Postes → Doublons parents : fusion validée par la Direction
+    // (foyer.ts). Les comptes absorbés sont désactivés ET bloqués à la
+    // connexion : le statut Inactif n'est pas vérifié au login, un parent
+    // aurait encore ouvert un compte vide. L'écran de connexion lui dit de
+    // demander son identifiant à l'école (auth-supabase.js).
+    if (action === "fusionner_parents") {
+      if (!peutFusionnerParents(caller.role, callerAdminPanel)) return json({ error: "Fusion réservée à la Direction." }, 403);
+      const r = await fusionnerComptesParents(admin, {
+        ecoleId: ecoleId as string,
+        cibleId: String(body.cibleId || ""),
+        sourceIds: Array.isArray(body.sourceIds) ? body.sourceIds : [],
+      });
+      if ("error" in r) return json({ error: r.error }, r.status);
+      const nonBloques: string[] = [];
+      for (const a of r.absorbes) {
+        if (!a.user_id) continue;
+        const { error: banErr } = await admin.auth.admin.updateUserById(a.user_id, { ban_duration: "876000h" });
+        if (banErr) nonBloques.push(a.login);
+      }
+      // Journal inaltérable (table audit : insertion seule).
+      await admin.from("audit").insert({
+        ecole_id: ecoleId,
+        action: "fusion_comptes_parents",
+        auteur: { compteId: caller.id, login: caller.login, role: caller.role },
+        cible: { compteId: r.cible.id, login: r.cible.login },
+        details: { absorbes: r.absorbes.map((a) => ({ compteId: a.id, login: a.login })), liensDeplaces: r.liensDeplaces, nonBloques },
+      });
+      return json({
+        ok: true, login: r.cible.login, absorbes: r.absorbes.map((a) => a.login), liensDeplaces: r.liensDeplaces, nonBloques,
+      });
     }
 
     if (action === "reset_password") {

@@ -9,8 +9,10 @@
 // que les comptes encore sans numéro.
 //
 // Il liste aussi les numéros portés par plusieurs comptes parents : doublons
-// probables (un parent, plusieurs comptes) à examiner avant de les fusionner,
-// ou numéro vraiment partagé (celui de l'école pour des internes).
+// probables (un parent, plusieurs comptes), à examiner et fusionner dans
+// Comptes & Postes → Doublons parents, ou numéro vraiment partagé (celui de
+// l'école pour des internes). À lancer AVANT la recherche de doublons : un
+// compte qui porte son numéro est rapproché plus sûrement.
 //
 // PRÉREQUIS : supabase/comptes-parents.sql appliqué (colonne telephone).
 //

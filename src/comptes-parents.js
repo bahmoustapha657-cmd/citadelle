@@ -36,6 +36,25 @@ export function telephoneLisible(tel) {
   return n ? `+224 ${n.slice(0, 3)} ${n.slice(3, 5)} ${n.slice(5, 7)} ${n.slice(7)}` : String(tel || "");
 }
 
+// Nom comparable et « même parent » : miroir de nomComparable / memeFoyer de
+// supabase/functions/account-manage/foyer.ts (tests/comptes-parents.test.js
+// vérifie qu'ils répondent pareil). Même nom de tuteur des deux côtés, puis
+// même numéro — ou, faute de numéro, même filiation. Un numéro seul ne
+// suffit jamais.
+export const nomComparable = (brut) => String(brut ?? "").toLowerCase()
+  .normalize("NFD").replace(/[̀-ͯ]/g, "")
+  .replace(/[^a-z0-9]+/g, " ").trim().split(" ").filter(Boolean).sort().join(" ");
+
+export function memeParent(a, b) {
+  const nom = nomComparable(a.tuteur);
+  if (!nom || nom !== nomComparable(b.tuteur)) return false;
+  const telA = normaliserTelGuinee(a.contactTuteur);
+  const telB = normaliserTelGuinee(b.contactTuteur);
+  if (telA && telB) return telA === telB;
+  const filiation = nomComparable(a.filiation);
+  return Boolean(filiation) && filiation === nomComparable(b.filiation);
+}
+
 // Lien de parenté d'un rattachement (contrainte parent_eleves_lien_check).
 export const LIENS_PARENT = [
   { id: "pere", label: "Père" },

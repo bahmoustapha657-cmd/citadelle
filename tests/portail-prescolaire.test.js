@@ -78,7 +78,7 @@ test("account-manage : la Direction primaire gère aussi les enseignants de mate
 
 test("account-manage : index.ts applique droits.ts, sans copie locale des règles", () => {
   const source = readFileSync(new URL("../supabase/functions/account-manage/index.ts", import.meta.url), "utf8");
-  assert.match(source, /import \{ peutGererRole \} from "\.\/droits\.ts";/);
+  assert.match(source, /import \{[^}]*\bpeutGererRole\b[^}]*\} from "\.\/droits\.ts";/);
   assert.doesNotMatch(source, /function peutGererRole/);
 });
 

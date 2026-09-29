@@ -35,6 +35,9 @@ async function chargerCompte(sb, userId, schoolCode) {
   }
   if (!c) return null;
   if (c.poste && c.poste.actif === false) return { desactive: true };
+  // Compte parent absorbé par une fusion de doublons : refusé ici aussi, en
+  // plus du blocage Supabase Auth posé par l'Edge Function.
+  if (c.extra?.fusionneDans) return { desactive: true, regroupe: true };
 
   let code = schoolCode || null;
   if (!code && c.ecole_id) {
@@ -79,17 +82,23 @@ async function chargerCompte(sb, userId, schoolCode) {
   };
 }
 
+// Compte parent absorbé par une fusion de doublons (Comptes & Postes →
+// Doublons parents) : sa connexion est bloquée côté Supabase Auth. Le parent
+// doit apprendre pourquoi, plutôt que de croire son mot de passe faux.
+export const MSG_COMPTE_REGROUPE = "Ce compte n'est plus actif : il a été regroupé avec un autre compte parent de l'école. Demandez votre identifiant à l'école.";
+
 async function connexionParEmail(email, mdp, schoolCode) {
   const sb = getSupabase();
   const { data: auth, error } = await sb.auth.signInWithPassword({ email, password: mdp });
   if (error || !auth?.user) {
+    if (error?.code === "user_banned") return { ok: false, data: { error: MSG_COMPTE_REGROUPE } };
     return { ok: false, data: { error: "Identifiant ou mot de passe incorrect." } };
   }
   const compte = await chargerCompte(sb, auth.user.id, schoolCode);
   if (!compte || compte.desactive) {
     await sb.auth.signOut().catch(() => {});
-    return { ok: false, data: { error: compte?.desactive
-      ? "Compte désactivé par la direction." : "Compte introuvable." } };
+    return { ok: false, data: { error: compte?.regroupe ? MSG_COMPTE_REGROUPE
+      : compte?.desactive ? "Compte désactivé par la direction." : "Compte introuvable." } };
   }
   return { ok: true, data: { compte } };
 }
@@ -114,7 +123,7 @@ export async function ecoleLogin({ login, mdp, schoolId }) {
   // chiffres. L'identifiant exact passe toujours en premier, pour qu'aucun
   // compte existant ne change de comportement.
   const numero = identifiantConnexion(identifiant);
-  if (r.ok || numero === identifiant) return r;
+  if (r.ok || numero === identifiant || r.data?.error === MSG_COMPTE_REGROUPE) return r;
   return connexionParEmail(emailFor(numero, schoolId), mdp, schoolId);
 }
 

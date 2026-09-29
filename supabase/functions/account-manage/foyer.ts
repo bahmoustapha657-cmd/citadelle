@@ -225,3 +225,97 @@ export async function modifierLienParent(
   if (ecritErr) throw new Error(ecritErr.message);
   return { login: String(compte.login) };
 }
+
+// Fusion de comptes parents en double, validée par la Direction : les enfants
+// des comptes `sourceIds` passent au compte conservé `cibleId`, qui garde son
+// identifiant et son mot de passe ; les comptes absorbés sont désactivés
+// (statut Inactif, extra.fusionneDans) — l'appelant bloque aussi leur
+// connexion. Pas de transaction d'un bout à l'autre : chaque étape est
+// rejouable, une fusion interrompue se termine en la relançant.
+// Renvoie { cible, absorbes, liensDeplaces } ou { status, error }.
+export async function fusionnerComptesParents(
+  admin: Client,
+  { ecoleId, cibleId, sourceIds: demandes }: { ecoleId: string; cibleId: string; sourceIds: unknown[] },
+): Promise<
+  | { cible: { id: string; login: string }; absorbes: { id: string; login: string; user_id: string | null }[]; liensDeplaces: number }
+  | { status: number; error: string }
+> {
+  const sourceIds = [...new Set(demandes.map(String).filter((id) => id && id !== cibleId))];
+  if (!cibleId || !sourceIds.length) {
+    return { status: 400, error: "Choisissez le compte conservé et au moins un compte à fusionner." };
+  }
+  const ids = [cibleId, ...sourceIds];
+  const { data: trouves, error } = await admin.from("comptes")
+    .select("id, login, role, ecole_id, statut, telephone, user_id, extra").in("id", ids);
+  if (error) throw new Error(error.message);
+  const parId = new Map<string, Record<string, unknown>>((trouves || []).map((c: Record<string, unknown>) => [String(c.id), c]));
+  const horsEcole = ids.some((id) => {
+    const c = parId.get(id);
+    return !c || c.ecole_id !== ecoleId || c.role !== "parent";
+  });
+  if (horsEcole) return { status: 404, error: "Compte parent introuvable dans cette école." };
+  const cible = parId.get(cibleId)!;
+  const extraCible = (cible.extra || {}) as Record<string, unknown>;
+  if ((cible.statut && cible.statut !== "Actif") || extraCible.fusionneDans) {
+    return { status: 409, error: "Le compte conservé doit être un compte actif." };
+  }
+  const sources = sourceIds.map((id) => parId.get(id)!);
+
+  // 1. Les enfants des comptes absorbés passent au compte conservé ; un enfant
+  //    qu'il suit déjà garde son lien.
+  const { data: liens, error: liensErr } = await admin.from("parent_eleves")
+    .select("compte_id, eleve_id, lien").in("compte_id", ids);
+  if (liensErr) throw new Error(liensErr.message);
+  const suivis = new Set((liens || []).filter((l: Record<string, unknown>) => l.compte_id === cibleId).map((l: Record<string, unknown>) => l.eleve_id));
+  const aDeplacer = new Map<unknown, { compte_id: string; eleve_id: unknown; lien: string | null }>();
+  for (const l of (liens || []) as Record<string, unknown>[]) {
+    if (l.compte_id === cibleId || suivis.has(l.eleve_id)) continue;
+    const deja = aDeplacer.get(l.eleve_id);
+    if (!deja || (!deja.lien && lienValide(l.lien))) {
+      aDeplacer.set(l.eleve_id, { compte_id: cibleId, eleve_id: l.eleve_id, lien: lienValide(l.lien) });
+    }
+  }
+  if (aDeplacer.size) {
+    const { error: e } = await admin.from("parent_eleves")
+      .upsert([...aDeplacer.values()], { onConflict: "compte_id,eleve_id", ignoreDuplicates: true });
+    if (e) throw new Error(e.message);
+  }
+
+  // 2. Plus aucun enfant sur les comptes absorbés.
+  const { error: suppErr } = await admin.from("parent_eleves").delete().in("compte_id", sourceIds);
+  if (suppErr) throw new Error(suppErr.message);
+
+  // 3. Compte conservé : numéro et profil complétés depuis les absorbés, sans
+  //    rien écraser.
+  const extra = { ...extraCible };
+  let telephone = (cible.telephone as string | null) || null;
+  for (const s of sources) {
+    telephone = telephone || (s.telephone as string | null) || null;
+    const extraSource = (s.extra || {}) as Record<string, unknown>;
+    for (const cle of ["tuteur", "contactTuteur", "filiation"]) {
+      if (!String(extra[cle] ?? "").trim() && String(extraSource[cle] ?? "").trim()) extra[cle] = extraSource[cle];
+    }
+  }
+  const maj: Record<string, unknown> = {};
+  if (telephone !== ((cible.telephone as string | null) || null)) maj.telephone = telephone;
+  if (JSON.stringify(extra) !== JSON.stringify(extraCible)) maj.extra = extra;
+  if (Object.keys(maj).length) {
+    const { error: e } = await admin.from("comptes").update(maj).eq("id", cibleId);
+    if (e) throw new Error(e.message);
+  }
+
+  // 4. Comptes absorbés désactivés, avec la trace du compte conservé.
+  const le = new Date().toISOString();
+  for (const s of sources) {
+    const { error: e } = await admin.from("comptes")
+      .update({ statut: "Inactif", extra: { ...((s.extra || {}) as Record<string, unknown>), fusionneDans: cibleId, fusionneLe: le } })
+      .eq("id", s.id);
+    if (e) throw new Error(e.message);
+  }
+
+  return {
+    cible: { id: cibleId, login: String(cible.login) },
+    absorbes: sources.map((s) => ({ id: String(s.id), login: String(s.login), user_id: (s.user_id as string | null) || null })),
+    liensDeplaces: aDeplacer.size,
+  };
+}

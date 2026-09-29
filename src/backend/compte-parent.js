@@ -55,20 +55,47 @@ export async function comptesParentsDeLEleve(eleveId) {
     .sort((a, b) => a.login.localeCompare(b.login));
 }
 
-// Tous les comptes parents de l'école (la RLS limite à l'école), avec leur
-// nombre d'enfants — pour « Rattacher à un compte existant ». Par pages :
-// PostgREST plafonne chaque réponse à 1000 lignes.
-export async function comptesParentsEcole() {
-  const comptes = [];
+// PostgREST plafonne chaque réponse à 1000 lignes : lecture par pages.
+// `requete(de, a)` renvoie une requête neuve, triée, bornée à [de, a].
+async function toutesLesPages(requete) {
+  const lignes = [];
   for (let de = 0; ; de += 1000) {
-    const { data, error } = await getSupabase().from("comptes")
-      .select("id, login, nom, telephone, statut, extra, parent_eleves(count)")
-      .eq("role", "parent").order("id").range(de, de + 999);
+    const { data, error } = await requete(de, de + 999);
     if (error) throw new Error(error.message || "Lecture des comptes parents impossible.");
-    comptes.push(...(data || []).map((c) => ({ ...compteLu(c), nbEnfants: c.parent_eleves?.[0]?.count ?? 0 })));
-    if (!data || data.length < 1000) return comptes;
+    lignes.push(...(data || []));
+    if (!data || data.length < 1000) return lignes;
   }
 }
+
+// Tous les comptes parents de l'école (la RLS limite à l'école), avec leur
+// nombre d'enfants — pour « Rattacher à un compte existant ».
+export async function comptesParentsEcole() {
+  const comptes = await toutesLesPages((de, a) => getSupabase().from("comptes")
+    .select("id, login, nom, telephone, statut, extra, parent_eleves(count)")
+    .eq("role", "parent").order("id").range(de, a));
+  return comptes.map((c) => ({ ...compteLu(c), nbEnfants: c.parent_eleves?.[0]?.count ?? 0 }));
+}
+
+// Comptes parents de l'école et leurs liens, fiche des enfants comprise —
+// pour la détection des doublons (doublons-parents.js). La RLS limite les
+// deux lectures à l'école (supabase/comptes-parents.sql pour les liens).
+export async function donneesDoublonsParents() {
+  const sb = getSupabase();
+  const [comptes, liens] = await Promise.all([
+    toutesLesPages((de, a) => sb.from("comptes")
+      .select("id, login, nom, telephone, statut, premiere_co, created_at, extra")
+      .eq("role", "parent").order("id").range(de, a)),
+    toutesLesPages((de, a) => sb.from("parent_eleves")
+      .select("compte_id, eleve_id, lien, eleves(prenom, nom, classe, section, tuteur, contact_tuteur, filiation)")
+      .order("compte_id").order("eleve_id").range(de, a)),
+  ]);
+  return { comptes, liens };
+}
+
+// Fusion validée par la Direction : les enfants des comptes `sourceIds`
+// passent au compte `cibleId`, les autres sont désactivés et bloqués.
+export const fusionnerComptesParents = ({ schoolId, cibleId, sourceIds }) =>
+  invoke({ action: "fusionner_parents", schoolId, cibleId, sourceIds }, "Fusion impossible.");
 
 export const rattacherCompteParent = ({ schoolId, compteId, eleveId, lien }) =>
   invoke({ action: "rattacher_parent", schoolId, compteId, eleveId, lien: lien || null }, "Rattachement impossible.");
