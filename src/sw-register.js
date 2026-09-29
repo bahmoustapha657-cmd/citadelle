@@ -36,8 +36,19 @@ export function registerServiceWorker() {
       // Reload du tab dès que le nouveau SW prend le contrôle.
       // Garde-fou contre les boucles : on ne reload qu'une seule fois
       // par session de page.
+      // Uniquement si un SW contrôlait DÉJÀ la page (mise à jour) : à la
+      // 1re visite, clients.claim() (sw.js) déclenche aussi controllerchange
+      // alors que la page vient du réseau et est déjà à jour — recharger ne
+      // ferait que perdre la saisie en cours (connexion, nouveau mot de passe,
+      // inscription…).
+      let controle = !!navigator.serviceWorker.controller;
       let reloading = false;
       navigator.serviceWorker.addEventListener("controllerchange", () => {
+        // Première prise de contrôle (1re visite) : la page est déjà à jour.
+        if (!controle) {
+          controle = true;
+          return;
+        }
         if (reloading) return;
         reloading = true;
         window.location.reload();
