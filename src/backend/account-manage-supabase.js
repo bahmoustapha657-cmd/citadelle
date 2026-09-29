@@ -5,6 +5,7 @@
 // - role_settings de l'école : direct (update ecoles, RLS staff).
 import { getSupabase } from "../supabaseClient";
 import { powerSyncConfigured } from "./powersync/tables";
+import { ajusterCompteMemorise } from "./auth-supabase";
 
 // Exporté pour les actions propres aux comptes parents (backend/compte-parent.js).
 export async function invoke(body, messageEchec) {
@@ -94,7 +95,10 @@ export async function changerMotDePassePerso(nouveauMdp) {
   } catch { autresDeconnectes = false; }
   // Lever le drapeau première connexion sur son propre compte.
   const { data: { user } } = await sb.auth.getUser();
-  if (user) await sb.from("comptes").update({ premiere_co: false }).eq("user_id", user.id);
+  if (user) {
+    await sb.from("comptes").update({ premiere_co: false }).eq("user_id", user.id);
+    ajusterCompteMemorise(user.id, { premiereCo: false });
+  }
   return { ok: true, autresDeconnectes };
 }
 

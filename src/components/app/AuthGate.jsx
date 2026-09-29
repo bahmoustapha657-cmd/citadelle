@@ -13,7 +13,7 @@ import { PreAuthScreens } from "./auth-gate/PreAuthScreens";
 // Renvoie l'écran à afficher, ou null si le shell principal doit prendre le relais.
 export function AuthGate({
   utilisateur, page, schoolInfo, schoolId, schoolContextValue,
-  annee, connecter, deconnecter, setPage, setUtilisateur,
+  annee, connecter, deconnecter, setPage, setUtilisateur, premiereSynchro, estHorsLigne,
 }) {
   const preAuth = PreAuthScreens({ utilisateur, page, schoolInfo, schoolContextValue, connecter, setPage, setUtilisateur });
   if (preAuth) return preAuth;
@@ -35,7 +35,8 @@ export function AuthGate({
     <SchoolContext.Provider value={schoolContextValue}>
       <GlobalStyles />
       <Suspense fallback={<FullScreenFallback />}>
-        <PortailEnseignant utilisateur={utilisateur} deconnecter={deconnecter} annee={annee} schoolInfo={schoolInfo} />
+        <PortailEnseignant utilisateur={utilisateur} deconnecter={deconnecter} annee={annee} schoolInfo={schoolInfo}
+          premiereSynchro={premiereSynchro} estHorsLigne={estHorsLigne} />
       </Suspense>
       <Suspense fallback={null}>
         <MessagesEcole utilisateur={utilisateur} schoolId={schoolId} />

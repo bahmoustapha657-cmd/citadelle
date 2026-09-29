@@ -8,6 +8,14 @@ const ANON = String(import.meta.env.VITE_SUPABASE_ANON_KEY || "").trim();
 
 export const supabaseConfigured = Boolean(URL && ANON);
 
+// Clé de stockage de la session : la valeur PAR DÉFAUT de supabase-js
+// (`sb-<projet>-auth-token`), posée explicitement pour que auth-supabase.js
+// puisse relire la session enregistrée sans réseau (getSession() renouvelle
+// d'abord un jeton expiré). Même valeur qu'avant : aucune session perdue.
+export const CLE_SESSION = (() => {
+  try { return `sb-${new globalThis.URL(URL).hostname.split(".")[0]}-auth-token`; } catch { return ""; }
+})();
+
 let client = null;
 export function getSupabase() {
   if (client) return client;
@@ -17,9 +25,21 @@ export function getSupabase() {
     );
   }
   client = createClient(URL, ANON, {
-    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
+    auth: {
+      persistSession: true, autoRefreshToken: true, detectSessionInUrl: false,
+      ...(CLE_SESSION ? { storageKey: CLE_SESSION } : {}),
+    },
   });
   return client;
+}
+
+// Utilisateur de la session enregistrée, lu SANS réseau — ou null.
+export function uidSessionEnregistree() {
+  try {
+    return JSON.parse(localStorage.getItem(CLE_SESSION) || "null")?.user?.id || null;
+  } catch {
+    return null;
+  }
 }
 
 // Client JETABLE : session en mémoire seulement, clé de stockage distincte.

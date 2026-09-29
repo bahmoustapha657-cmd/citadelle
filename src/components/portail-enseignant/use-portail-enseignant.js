@@ -17,6 +17,8 @@ import {
   supprimerIncident as supprimerIncidentAction,
 } from "./incidents-actions";
 import { fetchTeacherPortal } from "./portail-api";
+import { isSupabase } from "../../backend";
+import { ecouterMiroir } from "../../backend/realtime-supabase";
 import { saveNotesApi } from "./notes-api";
 import { draftKey, loadDraft, saveDraft, clearDraft } from "./notes-draft";
 import { enqueue, queueCount, processQueue } from "./notes-sync-queue";
@@ -27,6 +29,12 @@ import {
   buildFormIncidentCreation,
   buildFormIncidentEdition,
 } from "./portail-forms";
+
+// Tables lues par fetchTeacherPortal (teacher-portal-supabase.js).
+const TABLES_PORTAIL = [
+  "eleves", "classes", "matieres", "enseignants", "emplois",
+  "enseignements", "notes", "absences", "salaires",
+];
 
 // Toute la logique du portail enseignant : chargement des données via
 // /teacher-portal, état des modales notes/incidents, et les wrappers
@@ -91,24 +99,48 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
   const mesNotes = [...notes].sort((left, right) => Number(right.updatedAt || right.createdAt || 0) - Number(left.updatedAt || left.createdAt || 0));
   const mesEvenements = [...enseignements].sort((left, right) => Number(right.date || 0) - Number(left.date || 0));
 
-  const chargerPortail = async () => {
-    setChargement(true);
+  // `silencieux` : relecture déclenchée par la synchro, sans indicateur de
+  // chargement ni message d'erreur (l'écran garde ses données en cas d'échec).
+  // Seule la lecture la plus récente s'affiche : une plus ancienne qui aboutit
+  // après elle n'écrase pas des données plus fraîches.
+  const derniereLecture = useRef(0);
+  const chargerPortail = async ({ silencieux = false } = {}) => {
+    const lecture = ++derniereLecture.current;
+    if (!silencieux) setChargement(true);
     try {
-      setPortalData(await fetchTeacherPortal(utilisateur));
+      const donnees = await fetchTeacherPortal(utilisateur);
+      if (lecture === derniereLecture.current) setPortalData(donnees);
       // Mode Supabase : le contexte d'écriture des notes n'existe qu'après ce
       // fetch — la synchro de la file hors-ligne tentée au montage a pu échouer,
       // on la retente maintenant. (Sans effet si la file est vide.)
       synchroniserRef.current?.();
     } catch (error) {
-      toast(error.message || "Erreur de chargement du portail enseignant.", "error");
+      if (!silencieux) toast(error.message || "Erreur de chargement du portail enseignant.", "error");
     } finally {
-      setChargement(false);
+      if (!silencieux) setChargement(false);
     }
   };
 
   useEffect(() => {
     chargerPortail();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Mode hors ligne (PowerSync) : le portail lit le miroir local, encore vide
+  // juste après la connexion. On le relit dès que la synchro livre les
+  // données (puis à chaque saisie arrivée d'un autre poste), au lieu d'attendre
+  // un rechargement de la page. Les saisies en cours (grille, modales) vivent
+  // dans leur propre état et ne sont pas touchées.
+  const rechargerDepuisMiroir = useRef(null);
+  rechargerDepuisMiroir.current = () => chargerPortail({ silencieux: true });
+  useEffect(() => {
+    if (!isSupabase) return undefined;
+    let minuteur = null;
+    const arreter = ecouterMiroir(TABLES_PORTAIL, () => {
+      clearTimeout(minuteur);
+      minuteur = setTimeout(() => rechargerDepuisMiroir.current?.(), 600);
+    });
+    return () => { clearTimeout(minuteur); arreter(); };
   }, []);
 
   const ouvrirCreationNote = () => {

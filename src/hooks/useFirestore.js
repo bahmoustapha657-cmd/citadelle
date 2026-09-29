@@ -112,12 +112,18 @@ export function useFirestore(nomCollection, options = {}) {
   // elle suivait le sélecteur de l'écran, changer de période relancerait tout
   // le chargement alors que les données sont déjà là.
   const periodePrioritaireRef = useRef(options.periodePrioritaire || null);
+  // Numéro de la dernière lecture lancée : une lecture plus ancienne qui
+  // aboutit après (ex. premier chargement encore en vol quand la synchro livre
+  // les données et relance une lecture) ne doit pas écraser la plus récente.
+  const derniereLecture = useRef(0);
 
   const charger = useCallback(async (forceServer = false) => {
     if (!schoolId) { dispatch({ type: "success", items: [] }); return; }
 
     // ── Backend Supabase : lecture via l'adaptateur (collection → table+section).
     if (isSupabase) {
+      const lecture = ++derniereLecture.current;
+      const aJour = () => lecture === derniereLecture.current;
       const marquerFrais = () =>
         // Horodate aussi côté Supabase : c'est ce qui borne le rafraîchissement au focus.
         dernierServeur.set(cleFraicheur(schoolId, nomCollection, anneeFiltre), Date.now());
@@ -128,20 +134,25 @@ export function useFirestore(nomCollection, options = {}) {
       // l'écran en ~400 ms, la grosse complète la liste dès qu'elle arrive.
       // Rien n'est perdu : bulletin annuel, moyenne annuelle et grille par
       // élève retrouvent bien toutes les périodes.
-      const prioritaire = periodePrioritaireRef.current;
+      // Premier chargement seulement : une relecture (après écriture, synchro,
+      // retour d'onglet) a déjà la liste à l'écran — la remplacer d'abord par
+      // la seule période ferait clignoter compteurs et moyennes annuelles.
+      const prioritaire = forceServer ? null : periodePrioritaireRef.current;
       if (prioritaire) {
         const base = { annee: anneeFiltre };
         const pDabord = chargerCollection(schoolId, nomCollection, { ...base, periode: prioritaire });
         const pReste = chargerCollection(schoolId, nomCollection, { ...base, saufPeriode: prioritaire });
         const dabord = await pDabord;
-        dispatch({ type: "success", items: dabord.items });
+        if (aJour()) dispatch({ type: "success", items: dabord.items });
         const reste = await pReste;
+        if (!aJour()) return;
         marquerFrais();
         dispatch({ type: "success", items: [...dabord.items, ...reste.items] });
         return;
       }
 
       const { items } = await chargerCollection(schoolId, nomCollection, { annee: anneeFiltre });
+      if (!aJour()) return;
       marquerFrais();
       dispatch({ type: "success", items });
       return;
@@ -184,7 +195,9 @@ export function useFirestore(nomCollection, options = {}) {
   // Cas nominal : la ligne reçue est appliquée en mémoire → 0 requête, quelle
   // que soit la taille de la collection. Le rechargement complet n'intervient
   // qu'en repli (payload inexploitable), et coalescé : une rafale de patches
-  // dégradés ne déclenche qu'UNE relecture.
+  // dégradés ne déclenche qu'UNE relecture. Tables en miroir local
+  // (PowerSync) : chaque changement du miroir arrive en « reload » — relecture
+  // du SQLite local, sans réseau (première synchro, saisies d'autres postes).
   const rechargeTimer = useRef(null);
   useEffect(() => () => clearTimeout(rechargeTimer.current), []);
 
