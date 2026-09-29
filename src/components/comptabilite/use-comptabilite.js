@@ -1,5 +1,5 @@
 import { useContext, useState } from "react";
-import { fmt, getAnnee, peutModifierEleves, peutModifier, sectionOuverte } from "../../constants";
+import { fmt, getAnnee, peutCreerComptesParent, peutModifierEleves, peutModifier, sectionOuverte } from "../../constants";
 import { hasWrite } from "../../../shared/postes-config.js";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { useFirestore } from "../../hooks/useFirestore";
@@ -40,6 +40,10 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   // élève (inscriptions, mensualités) — même périmètre que le comptable.
   const canEditEleves = !readOnly && !enModeArchive
     && (peutModifierEleves(userRole) || hasWrite(permissions, "compta") || verrouOuvert);
+  // Compte parent de la fratrie (saisie rapide) : même droit que depuis la
+  // fiche élève (use-ecole.js).
+  const canCreateParent = !readOnly && !enModeArchive
+    && (peutCreerComptesParent(userRole) || hasWrite(permissions, "compta"));
   const { schoolId, schoolInfo, moisAnnee, moisSalaire, toast, logAction, envoyerPush } = useContext(SchoolContext);
   // Grands livres filtrés sur l'année consultée en PERMANENCE. Auparavant le
   // filtre ne s'appliquait qu'en mode archive : en mode normal, recettes,
@@ -311,7 +315,7 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   return {
     schoolInfo, moisAnnee, moisSalaire, toast, logAction,
     anneeCourante, anneeConsultee, setAnneeConsultee, enModeArchive,
-    canCreate, canEdit, canEditEleves, anneesDispo, toggleBlocage,
+    canCreate, canEdit, canEditEleves, canCreateParent, anneesDispo, toggleBlocage,
     recettes, cR, ajR, modR, supR,
     depenses, cD, ajD, modD, supD,
     salaires, cS, ajS, modS, supS,

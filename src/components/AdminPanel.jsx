@@ -6,6 +6,7 @@ import { PassageAdmisCard } from "./admin/PassageAdmisCard";
 import { RolesConfigCard } from "./admin/RolesConfigCard";
 import { PostesCard } from "./admin/postes/PostesCard";
 import { SignaturesCard } from "./admin/signatures/SignaturesCard";
+import { DoublonsParentsCard } from "./admin/doublons/DoublonsParentsCard";
 import { VerrousCard } from "./admin/VerrousCard";
 import { useAdminPanel } from "./admin/admin-panel/use-admin-panel";
 import { ComptesTable } from "./admin/admin-panel/ComptesTable";
@@ -48,6 +49,8 @@ function AdminPanel({ annee, setAnnee, verrous = {}, schoolId, userRole }) {
             toast={a.toast} setMdpsInitiaux={a.setMdpsInitiaux}
           />
           <SignaturesCard schoolId={schoolId} peutGererRoles={a.peutGererRoles} toast={a.toast} comptes={a.comptes} />
+          {/* Un parent, plusieurs comptes : fusion validée par la Direction. */}
+          {a.peutGererRoles && <DoublonsParentsCard schoolId={schoolId} toast={a.toast} />}
         </>
       ) : (
         <>

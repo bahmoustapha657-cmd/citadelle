@@ -21,6 +21,9 @@ export function PortailTabContent({ p, schoolInfo, c1, c2 }) {
           eleve={p.eleve}
           c1={c1}
           onVoirNotes={() => p.setTab("notes")}
+          famille={p.famille}
+          eleveId={p.eleveId}
+          onVoirEnfant={p.voirEnfant}
         />
       )}
 
@@ -68,6 +71,8 @@ export function PortailTabContent({ p, schoolInfo, c1, c2 }) {
           montantMensuel={p.montantMensuel}
           tarifs={p.tarifs}
           tranches={p.tranches}
+          famille={p.famille}
+          onVueFamille={() => p.setTab("dashboard")}
           c1={c1}
           c2={c2}
         />

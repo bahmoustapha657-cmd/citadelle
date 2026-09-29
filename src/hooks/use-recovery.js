@@ -1,25 +1,26 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { isSupabase } from "../backend";
-import { lireJetonRecovery, ouvrirSessionRecovery } from "../backend/password-reset-supabase";
+import { lireRetourRecovery, nettoyerUrlRecovery } from "../backend/password-reset-supabase";
 
-// Détecte un retour de lien « mot de passe oublié » (jeton dans l'URL), ouvre
-// la session de récupération et signale à App d'afficher l'écran de nouveau
-// mot de passe — avant tout le reste de l'application.
+// Détecte un retour de lien « mot de passe oublié » et signale à App
+// d'afficher l'écran de nouveau mot de passe — avant tout le reste. Le jeton
+// n'est PAS consommé ici, seulement au clic « Enregistrer »
+// (ResetPasswordScreen) : un simple chargement de la page — analyseur de
+// liens d'une messagerie compris — ne l'invalide donc pas.
+//
+// Le jeton reste dans l'URL tant que l'écran est ouvert : à la première
+// visite sur un appareil, le service worker recharge la page en prenant la
+// main (sw-register.js), et l'écran disparaissait avec un jeton déjà retiré.
+// Il ne quitte la barre d'adresse qu'une fois inutile : mot de passe
+// enregistré, lien refusé (password-reset-supabase.js) ou sortie de l'écran.
 export function useRecovery() {
-  // Lu synchroniquement au 1er rendu : le hash est présent dès le chargement.
-  const [jeton] = useState(() => (isSupabase ? lireJetonRecovery() : null));
-  const [actif, setActif] = useState(!!jeton);
-  const [pret, setPret] = useState(false);
-
-  useEffect(() => {
-    if (!jeton) return;
-    ouvrirSessionRecovery(jeton).then(() => setPret(true)).catch(() => setActif(false));
-  }, [jeton]);
+  // Lu synchroniquement au 1er rendu : le fragment est présent dès le chargement.
+  const [retour, setRetour] = useState(() => (isSupabase ? lireRetourRecovery() : null));
 
   const terminerRecovery = () => {
-    setActif(false);
-    if (typeof window !== "undefined") window.location.replace(window.location.pathname);
+    nettoyerUrlRecovery();
+    setRetour(null);
   };
 
-  return { recoveryActif: actif, recoveryPret: pret, terminerRecovery };
+  return { recovery: retour, terminerRecovery };
 }

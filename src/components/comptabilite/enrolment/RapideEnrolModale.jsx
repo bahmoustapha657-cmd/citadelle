@@ -4,18 +4,24 @@ import { Btn, Champ, Input, Modale, Selec } from "../../ui";
 import { findEnrollmentDuplicate, getEnrollmentDuplicateMessage } from "../../../enrollment-utils";
 import { uploadPhotoEleve } from "../../../storageUtils";
 import { PhotoEleveChamp } from "./PhotoEleveChamp";
+import { CompteParentFratrie } from "./CompteParentFratrie";
+import { useCompteParentFratrie } from "./use-compte-parent-fratrie";
 import {
   changerSectionFormulaire, eleveVide, formulaireEleveSuivant, matriculeSaisieRapide, sectionsSaisieRapide,
 } from "./rapide-enrol";
 
 export function RapideEnrolModale({
-  setModal, form, setForm, chg, niveauEnrol,
+  setModal, form, setForm, chg, niveauEnrol, peutCreerParent = false,
   schoolId, schoolInfo, toast, tousElevesScolarite, ajoutParNiveau, ensureClasse, elevesParNiveau,
 }) {
   // Élèves enregistrés depuis l'ouverture : matricules suivants, contrôle des
   // doublons et récapitulatif, avant même que les listes soient rechargées.
   const [ajoutes, setAjoutes] = useState([]);
   const [enCours, setEnCours] = useState(false);
+  // « saisie » des élèves, puis « parent » : le compte parent de la fratrie,
+  // proposé en terminant (facultatif).
+  const [etape, setEtape] = useState("saisie");
+  const fratrie = useCompteParentFratrie({ eleves: ajoutes, schoolId, toast });
   const sections = sectionsSaisieRapide(schoolInfo);
   // Section de l'élève en cours : la sienne, pas celle de la barre d'outils.
   const section = sectionOuverte(schoolInfo, form.niveau || niveauEnrol);
@@ -41,7 +47,11 @@ export function RapideEnrolModale({
     setEnCours(true);
     try {
       if(String(r.photo||"").startsWith("data:")) r.photo = await uploadPhotoEleve(r.photo, schoolId);
-      await ajouter(r);
+      // Identifiant de la fiche créée : le compte parent de la fratrie s'y
+      // rattache. Jamais `_id: null` — findEnrollmentDuplicate écarterait
+      // l'élève du contrôle des doublons.
+      const cree = await ajouter(r);
+      if (cree?.id) r._id = cree.id;
       await ensureClasse(r.classe, section);
     } catch (e) {
       toast("Élève non enregistré : " + (e?.message || e), "error");
@@ -64,9 +74,20 @@ export function RapideEnrolModale({
 
   const terminer = async () => {
     // Après « Élève suivant », la fiche en cours est vide : rien à enregistrer.
-    if (ajoutes.length && eleveVide(form)) { setModal(null); return; }
-    if (await sauvegarderRapide()) setModal(null);
+    const inscrits = ajoutes.length && eleveVide(form) ? ajoutes : await sauvegarderRapide();
+    if (!inscrits) return;
+    // Avant de fermer, le compte parent de la fratrie — le tuteur est là.
+    if (peutCreerParent && inscrits.some((e) => e._id)) { setEtape("parent"); return; }
+    setModal(null);
   };
+
+  if (etape === "parent") return (<Modale titre="⚡ Saisie rapide — Fratrie / même tuteur" fermer={()=>setModal(null)}>
+    <RecapInscrits ajoutes={ajoutes}/>
+    <CompteParentFratrie fratrie={fratrie}/>
+    <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:14}}>
+      <Btn v="ghost" onClick={()=>setModal(null)} disabled={fratrie.enCours}>{fratrie.resultat?"Fermer":"Plus tard"}</Btn>
+    </div>
+  </Modale>);
 
   return (<Modale titre="⚡ Saisie rapide — Fratrie / même tuteur" fermer={()=>setModal(null)}>
     <div style={{background:"#f0f6ff",border:`1.5px solid ${C.blue}`,borderRadius:10,padding:"12px 14px",marginBottom:14}}>
@@ -118,18 +139,23 @@ export function RapideEnrolModale({
         </div>
       </div>
     </div>
-    {ajoutes.length>0&&(
-      <div style={{marginTop:12,background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:10,padding:"10px 14px",fontSize:12,color:"#166534",textAlign:"left"}}>
-        <strong>✅ Déjà inscrits dans cette saisie ({ajoutes.length})</strong>
-        <ul style={{margin:"6px 0 0",paddingLeft:18}}>
-          {ajoutes.map((e,i)=><li key={`${e.matricule}-${i}`}>{e.prenom} {e.nom} — {e.classe} ({getSectionLabel(e.niveau)}) · <span style={{fontFamily:"monospace"}}>{e.matricule}</span></li>)}
-        </ul>
-      </div>
-    )}
+    <RecapInscrits ajoutes={ajoutes}/>
     <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:14,flexWrap:"wrap"}}>
       <Btn v="ghost" onClick={()=>setModal(null)} disabled={enCours}>{ajoutes.length?"Fermer":"Annuler"}</Btn>
       <Btn v="ghost" onClick={eleveSuivant} disabled={enCours}>➕ Élève suivant</Btn>
       <Btn onClick={terminer} disabled={enCours}>{enCours?"⏳ Enregistrement…":"✅ Terminer"}</Btn>
     </div>
   </Modale>);
+}
+
+function RecapInscrits({ ajoutes }) {
+  if (!ajoutes.length) return null;
+  return (
+    <div style={{marginTop:12,background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:10,padding:"10px 14px",fontSize:12,color:"#166534",textAlign:"left"}}>
+      <strong>✅ Déjà inscrits dans cette saisie ({ajoutes.length})</strong>
+      <ul style={{margin:"6px 0 0",paddingLeft:18}}>
+        {ajoutes.map((e,i)=><li key={`${e.matricule}-${i}`}>{e.prenom} {e.nom} — {e.classe} ({getSectionLabel(e.niveau)}) · <span style={{fontFamily:"monospace"}}>{e.matricule}</span></li>)}
+      </ul>
+    </div>
+  );
 }

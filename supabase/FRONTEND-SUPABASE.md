@@ -21,6 +21,10 @@ Défaut sans ces variables = `firebase` (prod intacte). Interrupteur : `src/back
 8. `superadmin-extend.sql` · 9. `transferts.sql` · 10. `push.sql` ·
 11. `superadmin-messages.sql`
 
+Comptes parents : `comptes-parents.sql` (téléphone du parent, père / mère,
+RLS des liens), puis `reinitialisation-code.sql` (mot de passe oublié par code
+SMS, table réservée à l'Edge Function `password-reset`).
+
 Puis peupler le périmètre d'écriture des enseignants (et le re-lancer quand les
 affectations changent) :
 
@@ -38,7 +42,16 @@ supabase functions deploy push               # envoi de notifications push
 supabase secrets set VAPID_PUBLIC_KEY="..." VAPID_PRIVATE_KEY="..." VAPID_SUBJECT="mailto:contact@edugest.app"
 supabase functions deploy ia                  # assistant IA (appréciations + superadmin)
 supabase secrets set ANTHROPIC_API_KEY="sk-ant-..."
+supabase functions deploy password-reset      # mot de passe oublié : lien e-mail, code SMS (parents, Premium) ou Direction
+supabase functions deploy notify              # alertes SMS / WhatsApp aux tuteurs (Premium)
+supabase secrets set SMS_API_URL="https://..." SMS_API_KEY="..." SMS_SENDER="EduGest"
 ```
+
+SMS et WhatsApp passent par un seul adaptateur, `supabase/functions/_shared/messagerie.ts`
+(à ajuster au fournisseur SMS retenu), commun à `notify` et `password-reset`.
+Codes par WhatsApp : modèle Meta de catégorie « Authentification »,
+`WHATSAPP_TEMPLATE_CODE` (en plus de `WHATSAPP_TOKEN` / `WHATSAPP_PHONE_ID`) ;
+le SMS reste prioritaire pour les codes.
 
 ## Déploiement du frontend Supabase — Cloudflare Pages
 

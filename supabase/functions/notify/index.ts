@@ -15,8 +15,8 @@
 //
 // ⚠️ PREMIUM : chaque message est facturé → réservé aux écoles du plan
 // Premium. Ce contrôle est l'autorité (le gating de l'UI n'est qu'un
-// confort) ; il duplique volontairement estPremiumActif de
-// shared/plan-features.js (Deno ne partage pas ce module) — garder alignés.
+// confort) ; _shared/premium.ts est le miroir de shared/plan-features.js
+// (Deno ne partage pas ce module) — un test vérifie qu'ils restent alignés.
 //
 // Déploiement :  supabase functions deploy notify
 // Secrets WhatsApp (Meta Cloud API) :
@@ -25,34 +25,19 @@
 //   (le gabarit « edugest_notif » avec un paramètre {{1}} = corps, doit être
 //    approuvé dans le Meta Business Manager.)
 // Secrets SMS (générique HTTP — À ADAPTER au fournisseur choisi, cf.
-//   envoyerSms ci-dessous) :
+//   envoyerSms dans _shared/messagerie.ts, partagé avec password-reset) :
 //   supabase secrets set SMS_API_URL="https://..." SMS_API_KEY="..." \
 //     SMS_SENDER="EduGest"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { envoyerSms, envoyerWhatsApp, lireConfigMessagerie, smsActif, whatsappActif } from "../_shared/messagerie.ts";
+import { estPremiumActif } from "../_shared/premium.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-const WHATSAPP_TOKEN = Deno.env.get("WHATSAPP_TOKEN") ?? "";
-const WHATSAPP_PHONE_ID = Deno.env.get("WHATSAPP_PHONE_ID") ?? "";
-const WHATSAPP_TEMPLATE = Deno.env.get("WHATSAPP_TEMPLATE") ?? "edugest_notif";
-const WHATSAPP_LANG = Deno.env.get("WHATSAPP_LANG") ?? "fr";
-
-const SMS_API_URL = Deno.env.get("SMS_API_URL") ?? "";
-const SMS_API_KEY = Deno.env.get("SMS_API_KEY") ?? "";
-const SMS_SENDER = Deno.env.get("SMS_SENDER") ?? "EduGest";
-
-const SMS_ACTIF = Boolean(SMS_API_URL && SMS_API_KEY);
-const WA_ACTIF = Boolean(WHATSAPP_TOKEN && WHATSAPP_PHONE_ID);
-
-// ── Premium (miroir de shared/plan-features.js) ─────────────────────────────
-const PLANS_PREMIUM = ["premium"];
-const GRACE_MS = 3 * 86400000;
-function estPremiumActif(plan: string | null, planExpiry: number | null): boolean {
-  if (!plan || !PLANS_PREMIUM.includes(plan)) return false;
-  if (!planExpiry) return true;
-  return Date.now() < Number(planExpiry) + GRACE_MS;
-}
+const MESSAGERIE = lireConfigMessagerie((cle) => Deno.env.get(cle));
+const SMS_ACTIF = smsActif(MESSAGERIE);
+const WA_ACTIF = whatsappActif(MESSAGERIE);
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -96,58 +81,20 @@ function composer(type: string, data: Charge, nomEcole: string): string | null {
   return null;
 }
 
-// ── Canal WhatsApp (Meta Cloud API) — implémentation standard ───────────────
-async function envoyerWhatsApp(to: string, corps: string): Promise<boolean> {
-  if (!WA_ACTIF) return false;
-  try {
-    const r = await fetch(`https://graph.facebook.com/v20.0/${WHATSAPP_PHONE_ID}/messages`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${WHATSAPP_TOKEN}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        messaging_product: "whatsapp",
-        to: to.replace("+", ""),
-        type: "template",
-        template: {
-          name: WHATSAPP_TEMPLATE,
-          language: { code: WHATSAPP_LANG },
-          components: [{ type: "body", parameters: [{ type: "text", text: corps }] }],
-        },
-      }),
-    });
-    return r.ok;
-  } catch (e) {
-    console.error("whatsapp:", String((e as Error)?.message || e));
-    return false;
-  }
-}
-
-// ── Canal SMS (générique) — ⚠️ À ADAPTER au fournisseur retenu ───────────────
-// La forme exacte du corps (champs to/message/sender, en-têtes d'auth) dépend
-// du fournisseur (Nimba SMS, Twilio…). Ci-dessous : POST JSON avec Bearer, la
-// forme la plus courante. Vérifier la doc du fournisseur et ajuster body/headers.
-async function envoyerSms(to: string, corps: string): Promise<boolean> {
-  if (!SMS_ACTIF) return false;
-  try {
-    const r = await fetch(SMS_API_URL, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${SMS_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ to, message: corps, sender_name: SMS_SENDER }),
-    });
-    return r.ok;
-  } catch (e) {
-    console.error("sms:", String((e as Error)?.message || e));
-    return false;
-  }
-}
-
 // Envoie via WhatsApp puis repli SMS ; renvoie le canal utilisé ou null.
+// (Canaux : _shared/messagerie.ts. Modèle WhatsApp des notifications :
+// WHATSAPP_TEMPLATE, un paramètre {{1}} = corps.)
 async function envoyer(to: string, corps: string): Promise<string | null> {
-  if (await envoyerWhatsApp(to, corps)) return "whatsapp";
-  if (await envoyerSms(to, corps)) return "sms";
+  if (await envoyerWhatsApp(MESSAGERIE, to, MESSAGERIE.whatsappModele, [corps])) return "whatsapp";
+  if (await envoyerSms(MESSAGERIE, to, corps)) return "sms";
   return null;
 }
 
-type Admin = ReturnType<typeof createClient>;
+// Client service_role. Type tiré d'un appel concret : celui de
+// ReturnType<typeof createClient> (paramètres génériques par défaut) refuse
+// les lectures et écritures de tables non typées.
+const creerAdmin = () => createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+type Admin = ReturnType<typeof creerAdmin>;
 
 // Un envoi vers un élève (résout le tuteur, dedup, envoie, journalise).
 async function notifierEleve(
@@ -181,7 +128,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "Méthode non autorisée." }, 405);
 
-  const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+  const admin = creerAdmin();
   try {
     // Authentifie l'appelant (un membre du personnel déclenche l'événement).
     const jwt = (req.headers.get("Authorization") || "").replace("Bearer ", "").trim();

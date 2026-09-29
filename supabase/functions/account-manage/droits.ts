@@ -26,3 +26,10 @@ export function peutGererRole(callerRole: string, targetRole: string, targetSect
   if (callerRole === "staff") return callerAdminPanel && ["enseignant", "parent"].includes(targetRole);
   return false;
 }
+
+// Fusion de comptes parents en double (Comptes & Postes → Doublons parents).
+// Plus restreinte que la création, car elle désactive des comptes : la
+// Direction (et le superadmin), ou un poste qui écrit « Comptes & Postes ».
+export function peutFusionnerParents(callerRole: string, callerAdminPanel = false): boolean {
+  return callerRole === "superadmin" || callerRole === "direction" || callerAdminPanel;
+}

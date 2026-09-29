@@ -13,7 +13,9 @@
 // vérifie qu'il a le droit de gérer le rôle cible (droits.ts, mêmes règles que
 // le serveur).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { peutGererRole } from "./droits.ts";
+import { peutFusionnerParents, peutGererRole } from "./droits.ts";
+import { fusionnerComptesParents, lienValide, modifierLienParent, rattacherAuFoyer } from "./foyer.ts";
+import { normaliserTel } from "../_shared/telephone.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -85,9 +87,34 @@ Deno.serve(async (req) => {
         if (!poste || poste.ecole_id !== ecoleId) return json({ error: "Poste introuvable pour cette école." }, 404);
       }
 
+      const eleveIds: string[] = [...new Set<string>(
+        (Array.isArray(body.eleveIds) ? body.eleveIds : (body.eleveId ? [body.eleveId] : [])).map(String).filter(Boolean),
+      )];
+
+      // Parent : UN compte par parent, toutes sections confondues. S'il a
+      // déjà le sien, les élèves y sont seulement rattachés — mot de passe
+      // inchangé, identifiant demandé ignoré (foyer.ts). `telephone` : celui
+      // saisi pour ce parent (à défaut, le contact du tuteur).
+      const telephoneSaisi = body.telephone ?? body.contactTuteur;
+      if (role === "parent" && eleveIds.length) {
+        const r = await rattacherAuFoyer(admin, {
+          ecoleId: ecoleId as string,
+          eleveIds,
+          foyer: { tuteur: body.tuteur, contactTuteur: telephoneSaisi, filiation: body.filiation },
+          lien: body.lien,
+        });
+        if (r && "error" in r) return json({ error: r.error }, r.status);
+        if (r) {
+          return json({
+            ok: true, mergedIntoExisting: true, merged: r.rattaches > 0, dejaRattache: r.rattaches === 0,
+            rattaches: r.rattaches, id: r.compte.id, login: r.compte.login, compte: { login: r.compte.login },
+          });
+        }
+      }
+
       // Doublon de login dans l'école ?
       const { data: exist } = await admin.from("comptes").select("id").eq("ecole_id", ecoleId).eq("login", login).maybeSingle();
-      if (exist) return json({ error: "Un compte existe déjà avec cet identifiant." }, 409);
+      if (exist) return json({ error: "Un compte existe déjà avec cet identifiant : choisissez-en un autre." }, 409);
 
       const email = `${login}.${schoolCode}@${DOMAIN}`;
       const { data: created, error: cErr } = await admin.auth.admin.createUser({
@@ -106,7 +133,6 @@ Deno.serve(async (req) => {
 
       const extra: Record<string, unknown> = {};
       for (const k of ["eleveNom", "eleveClasse", "tuteur", "contactTuteur", "filiation"]) if (body[k]) extra[k] = body[k];
-      const eleveIds: string[] = Array.isArray(body.eleveIds) ? body.eleveIds : (body.eleveId ? [body.eleveId] : []);
       if (eleveIds.length) extra.eleveIds = eleveIds;
       if (body.eleveId) extra.eleveId = body.eleveId;
 
@@ -116,12 +142,17 @@ Deno.serve(async (req) => {
         return json({ error: "Adresse e-mail invalide." }, 400);
       }
 
+      // Un parent suit ses enfants dans TOUTES les sections (parent_eleves) :
+      // il n'a pas de section à lui — c'était celle de l'onglet d'où le
+      // compte avait été créé.
+      const sansSection = role === "parent";
       const { data: compte, error: insErr } = await admin.from("comptes").insert({
         user_id: uid, ecole_id: ecoleId, login, role,
         poste_id: posteId, email: emailReel,
         nom: body.nom || login, label: body.label || role,
-        section: body.section || null,
-        sections: Array.isArray(body.sections) ? body.sections : null,
+        section: sansSection ? null : (body.section || null),
+        sections: sansSection || !Array.isArray(body.sections) ? null : body.sections,
+        telephone: role === "parent" ? normaliserTel(telephoneSaisi) : null,
         enseignant_id: body.enseignantId || null,
         enseignant_nom: body.enseignantNom || null,
         matiere: body.matiere || null,
@@ -137,11 +168,58 @@ Deno.serve(async (req) => {
       // Parent : liens parent_eleves (RLS my_eleve_ids).
       if (role === "parent" && eleveIds.length) {
         await admin.from("parent_eleves").upsert(
-          eleveIds.map((eid) => ({ compte_id: compte.id, eleve_id: eid })),
+          eleveIds.map((eid) => ({ compte_id: compte.id, eleve_id: eid, lien: lienValide(body.lien) })),
           { onConflict: "compte_id,eleve_id" },
         );
       }
       return json({ ok: true, id: compte.id, login });
+    }
+
+    // Fiche élève : rattacher l'élève à un compte parent existant, ou l'en
+    // détacher. Mêmes droits que la création d'un compte parent ; compte et
+    // élève doivent être de l'école de l'appelant (foyer.ts).
+    if (action === "rattacher_parent" || action === "detacher_parent") {
+      if (!peutGererRole(caller.role, "parent", undefined, callerAdminPanel)) return json({ error: "Droits insuffisants." }, 403);
+      const compteId = String(body.compteId || "");
+      const eleveId = String(body.eleveId || "");
+      if (!compteId || !eleveId) return json({ error: "Champs requis : compteId, eleveId." }, 400);
+      const r = await modifierLienParent(admin, {
+        ecoleId: ecoleId as string, compteId, eleveId, lien: body.lien, rattacher: action === "rattacher_parent",
+      });
+      if ("error" in r) return json({ error: r.error }, r.status);
+      return json({ ok: true, login: r.login });
+    }
+
+    // Comptes & Postes → Doublons parents : fusion validée par la Direction
+    // (foyer.ts). Les comptes absorbés sont désactivés ET bloqués à la
+    // connexion : le statut Inactif n'est pas vérifié au login, un parent
+    // aurait encore ouvert un compte vide. L'écran de connexion lui dit de
+    // demander son identifiant à l'école (auth-supabase.js).
+    if (action === "fusionner_parents") {
+      if (!peutFusionnerParents(caller.role, callerAdminPanel)) return json({ error: "Fusion réservée à la Direction." }, 403);
+      const r = await fusionnerComptesParents(admin, {
+        ecoleId: ecoleId as string,
+        cibleId: String(body.cibleId || ""),
+        sourceIds: Array.isArray(body.sourceIds) ? body.sourceIds : [],
+      });
+      if ("error" in r) return json({ error: r.error }, r.status);
+      const nonBloques: string[] = [];
+      for (const a of r.absorbes) {
+        if (!a.user_id) continue;
+        const { error: banErr } = await admin.auth.admin.updateUserById(a.user_id, { ban_duration: "876000h" });
+        if (banErr) nonBloques.push(a.login);
+      }
+      // Journal inaltérable (table audit : insertion seule).
+      await admin.from("audit").insert({
+        ecole_id: ecoleId,
+        action: "fusion_comptes_parents",
+        auteur: { compteId: caller.id, login: caller.login, role: caller.role },
+        cible: { compteId: r.cible.id, login: r.cible.login },
+        details: { absorbes: r.absorbes.map((a) => ({ compteId: a.id, login: a.login })), liensDeplaces: r.liensDeplaces, nonBloques },
+      });
+      return json({
+        ok: true, login: r.cible.login, absorbes: r.absorbes.map((a) => a.login), liensDeplaces: r.liensDeplaces, nonBloques,
+      });
     }
 
     if (action === "reset_password") {

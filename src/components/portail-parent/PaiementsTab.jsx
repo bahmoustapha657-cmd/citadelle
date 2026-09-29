@@ -30,10 +30,12 @@ function carteFrais({ id, label, etat, montant, verse = 0, reste = 0, date = "" 
 // `annee` : année des fiches. Un élève parti ne doit que les mois entamés
 // avant son départ — les suivants s'affichent « Non dû », pas « Impayé ».
 // `tarifs` : tarifs de l'école (reste à payer, frais de la classe) ;
-// `tranches` : tranches de paiement de l'école, pour regrouper les mois.
+// `tranches` : tranches de paiement de l'école, pour regrouper les mois ;
+// `famille` : resumeFamille, rappel du total quand le compte suit plusieurs
+// enfants (`onVueFamille` : retour à l'Aperçu, qui le détaille).
 export function PaiementsTab({
   eleve, moisAnnee, annee, estReinscription, montantInscription, montantMensuel,
-  tarifs = [], tranches = [], c1, c2,
+  tarifs = [], tranches = [], famille = null, onVueFamille, c1, c2,
 }) {
   const mens = eleve.mens || {};
   const mensDates = eleve.mensDates || {};
@@ -96,6 +98,21 @@ export function PaiementsTab({
   return (
     <>
       <h2 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 900, color: c1 }}>Suivi des paiements</h2>
+      {famille?.enfants.length > 1 && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", padding: "10px 14px", marginBottom: 14, borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0", fontSize: 12.5, color: "#475569" }}>
+          <span>
+            👪 Pour vos {famille.enfants.length} enfants :{" "}
+            <strong style={{ color: famille.totalAPayer > 0 ? "#b91c1c" : "#166534" }}>
+              {famille.totalAPayer > 0 ? `${fmt(famille.totalAPayer)} à payer` : "tout est réglé"}
+            </strong>
+          </span>
+          {onVueFamille && (
+            <button type="button" onClick={onVueFamille} style={{ background: "none", border: "none", padding: 0, color: c1, fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+              Détail par enfant →
+            </button>
+          )}
+        </div>
+      )}
       <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
         {carteChiffre(fmt(resteAPayer), resteAPayer > 0 ? "Reste a payer" : "A jour", resteAPayer > 0 ? "#fee2e2" : "#dcfce7",
           resteAPayer > 0 ? "#b91c1c" : "#166534", 170)}

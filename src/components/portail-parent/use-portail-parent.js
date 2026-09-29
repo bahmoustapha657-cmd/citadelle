@@ -11,11 +11,12 @@ import {
   trierMessages,
   computeTarifInfos,
   computeBlocage,
+  resumeFamille,
 } from "./portail-parent-derive";
 
 // Logique du portail parent : chargement des données via /parent-portal,
 // dérivations par enfant courant (notes/absences/messages/tarifs/blocage),
-// envoi de message et définition des onglets.
+// vue « famille » (tous les enfants), envoi de message et onglets.
 export function usePortailParent({ utilisateur, schoolInfo }) {
   const { t } = useTranslation();
   const { toast, moisAnnee } = useContext(SchoolContext);
@@ -62,6 +63,23 @@ export function usePortailParent({ utilisateur, schoolInfo }) {
   const matieres = [...new Set(mesNotes.map((item) => item.matiere).filter(Boolean))];
 
   const { moisImpayes, accesBloqueParPaiement } = computeBlocage(schoolInfo, eleve, moisAnnee, schoolInfo?.anneeScolaire);
+
+  // Tous les enfants du compte, toutes sections confondues : total à payer
+  // pour la famille (Aperçu, Paiements).
+  const famille = useMemo(() => resumeFamille({
+    eleves: portalData.eleves || [],
+    absences: portalData.absences || [],
+    messages: portalData.messages || [],
+    tarifs: portalData.tarifs || [],
+    moisAnnee,
+    annee: schoolInfo?.anneeScolaire,
+    schoolInfo,
+  }), [portalData, moisAnnee, schoolInfo]);
+  // Depuis la vue famille : passer à un enfant, et à l'un de ses onglets.
+  const voirEnfant = (id, onglet) => {
+    setEleveActifId(id);
+    if (onglet) setTab(onglet);
+  };
 
   const chargerPortail = async () => {
     setChargement(true);
@@ -140,6 +158,8 @@ export function usePortailParent({ utilisateur, schoolInfo }) {
     moisImpayes,
     accesBloqueParPaiement,
     moisAnnee,
+    famille,
+    voirEnfant,
     envoyer,
     tabs,
   };

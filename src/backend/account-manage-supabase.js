@@ -6,7 +6,8 @@
 import { getSupabase } from "../supabaseClient";
 import { powerSyncConfigured } from "./powersync/tables";
 
-async function invoke(body, messageEchec) {
+// Exporté pour les actions propres aux comptes parents (backend/compte-parent.js).
+export async function invoke(body, messageEchec) {
   const sb = getSupabase();
   const { data, error } = await sb.functions.invoke("account-manage", { body });
   if (error) {

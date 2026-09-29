@@ -1,6 +1,6 @@
 import { C, estSorti } from "../../constants";
 import { lireDate } from "../../depart-utils";
-import { normalizeText } from "./helpers";
+import { estAbsence } from "./helpers";
 
 // Barre d'identité de l'enfant courant : avatar, classe/matricule, sélecteur
 // multi-enfants et compteurs (notes / absences / non lus).
@@ -41,7 +41,7 @@ export function EleveBar({ eleve, eleveNom, eleves, eleveId, setEleveActifId, me
           <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2 }}>Notes</div>
         </div>
         <div style={{ textAlign: "center", padding: "8px 16px", background: "#fff1f2", borderRadius: 10 }}>
-          <div style={{ fontWeight: 900, fontSize: 18, color: "#b91c1c" }}>{mesAbsences.filter((item) => normalizeText(item.statut) === "absent").length}</div>
+          <div style={{ fontWeight: 900, fontSize: 18, color: "#b91c1c" }}>{mesAbsences.filter(estAbsence).length}</div>
           <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2 }}>Absences</div>
         </div>
         {nonLus > 0 && (

@@ -135,6 +135,12 @@ Chaque étape est cliquable et vous amène directement à l'écran concerné.
 
 Le DG et l'Admin créent les autres comptes depuis `Panneau Admin`. Le Comptable peut, depuis sa propre interface, **créer les comptes parents** (utile pour onboarder rapidement les familles).
 
+**Un foyer = un compte parent.** Un parent a un seul compte pour tous ses enfants, dans toutes les sections. À la création d'un compte parent (fiche élève ou saisie rapide), EduGest cherche d'abord le compte de ce parent : même nom **et** même téléphone — ou, faute de téléphone, même filiation. S'il existe, l'élève y est ajouté et le mot de passe ne change pas. Un numéro seul ne suffit pas (il peut être partagé, par exemple celui de l'école pour des internes) : si le nom du tuteur est écrit différemment d'une fiche à l'autre, harmonisez-le avant de créer le compte.
+
+- **Identifiant = numéro de téléphone** : pour un nouveau compte, EduGest propose le numéro du parent (ex. `622123456`), facile à retenir. Le parent peut le taper à sa façon à la connexion (`622 12 34 56`, `+224 622…`). Les identifiants existants ne changent pas.
+- **Père et mère** peuvent avoir chacun leur compte pour les mêmes enfants.
+- **Fiche élève → 👨‍👩‍👧 Compte** : liste des comptes parents de l'élève (avec le lien : père, mère, tuteur), **Rattacher à un compte existant** (recherche par numéro, nom ou identifiant — utile pour un frère ou une sœur d'une autre section), **Détacher**, et **Créer un compte** (ou un autre, pour le second parent).
+
 ---
 
 ## 3. Interface générale
@@ -704,6 +710,7 @@ Compta dédiée à la fondation (si activée) :
 - **Suivi** des dossiers incomplets (papiers manquants)
 - **Bouton** : marquer un dossier complet, encaisser frais d'inscription
 - **⚡ Saisie rapide (fratrie / même tuteur)** : le tuteur, le contact et le domicile sont saisis une fois et conservés d'un élève au suivant. Chaque enfant est inscrit dans **sa section** (Primaire, Collège, Lycée…) : les classes proposées et le matricule suivent la section choisie. Un récapitulatif liste les élèves déjà inscrits pendant la saisie.
+  - **Compte parent de la fratrie** : en cliquant **✅ Terminer**, la saisie propose d'ouvrir **un seul compte parent pour tous les enfants inscrits**, quelle que soit leur section (facultatif : **Plus tard**). Identifiant proposé `parent.<nom>`, mot de passe généré : notez-les et remettez-les au tuteur. Si ce tuteur a déjà un compte (un aîné inscrit plus tôt), les enfants y sont simplement ajoutés et son mot de passe ne change pas.
 - **📸 Photo guidée** : la caméra s'ouvre à la meilleure définition de l'appareil (webcam, caméra avant ou arrière ; la caméra choisie est mémorisée). Un ovale et des consignes (« Approchez-vous », « Centrez le visage », « Redressez la tête »…) guident la prise. Quand le visage est bien cadré, la photo se prend seule (option désactivable), est recadrée au format portrait 3:4 centré sur le visage, puis affichée pour vérification avant d'être gardée.
 
 ### 7.9 Onglet « Mensualités »
@@ -844,6 +851,13 @@ Accès : sidebar `🛡 Panneau Admin`. Réservé à Direction / Admin.
 - **Réinitialiser mot de passe** : génère un nouveau MDP, l'utilisateur devra le changer à la prochaine connexion
 - **Voir les identifiants temporaires** : tableau des MDP initiaux non encore changés (utile à l'onboarding)
 - **Suspendre/réactiver un compte**
+- **👪 Doublons parents** (Direction) : un parent qui a plusieurs comptes (un par enfant, créés avant le regroupement par foyer) se réunit ici en un seul.
+  1. **🔍 Rechercher les doublons** : EduGest regroupe les comptes parents qui ont le même numéro de téléphone, ou le même nom et la même filiation. Chaque groupe montre les comptes, leurs enfants, et si le parent s'en est déjà servi.
+  2. Badge **Même parent probable** (vert) ou **À vérifier : noms différents** (orange) : un même numéro peut servir à plusieurs familles, par exemple celui de l'école pour des internes. Dans le doute, **Pas le même parent — masquer**.
+  3. Choisissez le **compte à conserver** (EduGest propose celui que le parent utilise déjà), puis **Fusionner** : tous les enfants passent sur ce compte, qui garde son identifiant et son mot de passe ; les autres comptes sont désactivés et ne permettent plus de se connecter.
+  4. Si le parent ne connaît pas le mot de passe du compte conservé : **Réinitialiser le mot de passe**, puis remettez-lui le nouveau (il le changera à sa connexion).
+
+  Chaque fusion est inscrite au journal. Les numéros des comptes créés avant l'ajout du téléphone se remplissent avec `node supabase/telephones-parents.mjs --executer` (à lancer une fois, avant la recherche de doublons).
 
 ### 12.4 Configuration des rôles (DG uniquement)
 
@@ -992,7 +1006,7 @@ Deux sections :
 
 ## 15. Portail Parent
 
-Accès : un parent se connecte avec son login. 6 onglets.
+Accès : un parent se connecte avec son identifiant — son numéro de téléphone pour les comptes récents. 6 onglets. Un seul compte suffit pour tous ses enfants, quelle que soit leur section (maternelle, primaire, collège, lycée) : le sélecteur d'enfant passe de l'un à l'autre, et périodes, notes et bulletins suivent la section de l'enfant affiché.
 
 ### 15.1 Dashboard
 
@@ -1024,6 +1038,7 @@ Accès : un parent se connecte avec son login. 6 onglets.
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
+- **👪 Ma famille** (compte qui suit plusieurs enfants, toutes sections confondues) : en tête de l'Aperçu, une ligne par enfant — classe, absences, messages non lus, **reste à payer** — et le **total à payer pour la famille**. Le reste à payer d'un enfant est celui de son onglet Paiements (mensualités, inscription et frais de l'année, dispenses déduites). Un clic sur un enfant l'affiche ; **Paiements →** ouvre directement son détail. Un enfant dont les notes sont bloquées pour impayés est signalé 🔒.
 - **Mes enfants** : carte par enfant avec photo, classe, moyenne courante + tendance (📈 / 📉)
 - **Alertes** : mensualités impayées, messages non lus, bulletins publiés
 - **Bandeau blocage paiement** (si applicable) : si l'école active le blocage paiement, le parent voit un bandeau orange l'invitant à régulariser avant d'accéder aux notes/bulletins
@@ -1039,7 +1054,7 @@ Accès : un parent se connecte avec son login. 6 onglets.
 
 ### 15.3 Absences
 
-- Liste des absences et incidents par enfant
+- Liste des absences et incidents par enfant ; compteurs Absences / Retards d'après le type saisi par l'école ou l'enseignant
 - Détail : date, type, justifié, motif, signalé par
 - Bouton **Justifier** : envoie un message à l'école
 
@@ -1052,6 +1067,7 @@ Accès : un parent se connecte avec son login. 6 onglets.
 ### 15.5 Paiements
 
 - Mes mensualités : statut par mois (payé / dû / à venir)
+- Parent de plusieurs enfants : un bandeau rappelle le **total à payer pour la famille**, avec un lien vers le détail par enfant (Aperçu)
 - Historique des reçus avec téléchargement PDF
 - **Bouton « Payer »** *(selon configuration de l'école)* : ouvre les contacts Mobile Money / instructions de virement
 
@@ -1120,7 +1136,13 @@ R.
 3. Rechargez avec **Ctrl + Shift + R**
 
 **Q. J'ai perdu mon mot de passe.**
-R. Un administrateur (DG ou Admin avec accès) peut le réinitialiser depuis `Panneau Admin → Comptes`.
+R. Sur l'écran de connexion, cliquez **🔑 Mot de passe oublié ?** et indiquez votre code école et votre identifiant (ou votre e-mail). Un parent peut aussi saisir **son numéro de téléphone**, écrit à sa façon (`622 12 34 56`, `+224 622…`) — utile s'il a oublié son identifiant.
+- Si votre compte porte une adresse e-mail, vous recevez un lien : ouvrez-le, choisissez le nouveau mot de passe, puis **Se connecter** (le code école est pré-rempli et votre identifiant vous est rappelé). Le lien ne sert qu'une fois et expire au bout d'un court délai : s'il est refusé, refaites une demande.
+- **Parent sans e-mail** (école au plan Premium) : un **code à 6 chiffres** arrive par SMS sur le numéro de votre compte. Dans la même fenêtre, saisissez-le avec votre nouveau mot de passe (deux fois), puis **Enregistrer le mot de passe** et **Se connecter** : votre identifiant est rappelé et pré-rempli. Le code vaut 15 minutes et 5 essais ; pas reçu ? **Renvoyer le code** après une minute (3 codes par heure au plus — chaque nouveau code annule le précédent). Le code ne part que vers le numéro enregistré par l'école : si ce numéro a changé, demandez à l'école de le corriger (fiche élève → **Compte parent**).
+- Sinon (ni e-mail ni numéro, école hors Premium, envoi SMS non configuré), la Direction est prévenue dans sa messagerie interne et réinitialise le mot de passe depuis `Panneau Admin → Comptes`.
+
+**Q. Un parent voit « Ce compte n'est plus actif : il a été regroupé… ».**
+R. L'école a fusionné ses comptes en double (`Comptes & Postes → Doublons parents`) : tous ses enfants sont sur le compte conservé. Donnez-lui cet identifiant — le journal de la fusion l'indique — et, s'il n'en connaît pas le mot de passe, réinitialisez-le.
 
 **Q. Comment changer la langue de l'interface ?**
 R. Menu profil (en haut à droite) → 🌐 Langue → FR / EN / AR. Le RTL s'active automatiquement en arabe.

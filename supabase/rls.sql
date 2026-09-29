@@ -171,13 +171,18 @@ create policy paiements_write on paiements for all to authenticated
   using (ecole_id = auth_ecole_id() and is_staff())
   with check (ecole_id = auth_ecole_id() and is_staff());
 
--- ── PARENT_ELEVES (liens) — gérés par le personnel ; parent lit les siens ──
+-- ── PARENT_ELEVES (liens) — parent lit les siens, personnel ceux de SON école ─
+-- Écriture : Edge Function account-manage (service_role) uniquement. L'ancienne
+-- policy `using (is_staff())` n'avait aucune condition d'école : le personnel
+-- de n'importe quelle école lisait, créait et supprimait les liens de toutes
+-- (corrigé en base par comptes-parents.sql).
 drop policy if exists parent_eleves_select on parent_eleves;
 create policy parent_eleves_select on parent_eleves for select to authenticated
-  using (compte_id = my_compte_id() or is_staff());
+  using (compte_id = my_compte_id()
+         or (is_staff() and exists (
+               select 1 from eleves e
+               where e.id = parent_eleves.eleve_id and e.ecole_id = auth_ecole_id())));
 drop policy if exists parent_eleves_write on parent_eleves;
-create policy parent_eleves_write on parent_eleves for all to authenticated
-  using (is_staff()) with check (is_staff());
 
 -- ── AUDIT (inaltérable : insertion par tout membre, jamais update/delete) ──
 drop policy if exists audit_insert on audit;
