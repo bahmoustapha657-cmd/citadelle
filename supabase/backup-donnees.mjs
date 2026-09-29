@@ -16,9 +16,21 @@
 //    utilisateurs referont leur mot de passe (bouton « Réinitialiser » /
 //    « Mot de passe oublié »). Les DONNÉES métier, elles, sont intégrales.
 import { createClient } from "@supabase/supabase-js";
-import { mkdirSync, writeFileSync, readdirSync, renameSync, rmSync } from "node:fs";
+import { mkdirSync, writeFileSync, readFileSync, readdirSync, renameSync, rmSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { SUPABASE_URL, SUPABASE_SERVICE_ROLE } from "./_config.mjs";
+
+// ── Règle d'or : un dossier « backup-… » n'existe QUE s'il est complet ──────
+// Historique : la tâche planifiée s'exécutait fenêtre visible ; fermer cette
+// console tuait Node par Ctrl+C (0xC000013A). Le process meurt alors SANS
+// passer par le catch, donc l'export à moitié écrit restait sur place, avec un
+// nom de sauvegarde valide et rien pour le distinguer d'une vraie. Sur 30
+// dossiers, 15 étaient ainsi vides ou tronqués — un filet de sécurité qui
+// mentait. On écrit désormais dans un dossier « .en-cours-… » renommé en
+// « backup-… » seulement une fois l'export vérifié : quelle que soit la façon
+// dont le script meurt (Ctrl+C, kill, coupure de courant), il ne peut plus
+// laisser derrière lui une sauvegarde d'apparence saine.
+const PREFIXE_TEMP = ".en-cours-";
 
 const RETENTION = Number(process.env.EDUGEST_BACKUP_RETENTION || 60); // nb de sauvegardes conservées
 
@@ -60,18 +72,95 @@ async function exporterTable(table) {
   return { rows };
 }
 
-// Dossier de la sauvegarde en cours — retenu pour pouvoir le supprimer s'il
-// reste vide après un échec (une coupure réseau laissait sinon des dossiers
-// « backup-… » vides qui comptaient dans la rétention).
-let dossierEnCours = null;
+// Dossier temporaire de l'export en cours (renommé en « backup-… » à la fin).
+let dossierTemp = null;
+
+// ── Alerte visible ─────────────────────────────────────────────────────────
+// Un échec n'était signalé que dans _journal.log, que personne n'ouvre : les
+// sauvegardes ont pu échouer des semaines sans que rien ne le dise. Un fichier
+// sur le Bureau, lui, se remarque. Il est effacé dès qu'une sauvegarde réussit.
+const fichierAlerte = () => join(
+  process.env.USERPROFILE || "C:/Users/ADMIN", "Desktop", "⚠ SAUVEGARDE-EDUGEST-EN-ECHEC.txt",
+);
+
+function poserAlerte(raison) {
+  try {
+    writeFileSync(fichierAlerte(), [
+      "SAUVEGARDE EDUGEST EN ECHEC",
+      "",
+      raison,
+      "",
+      "Les donnees de l'ecole ne sont PLUS sauvegardees.",
+      "Relancer a la main :  node supabase/backup-donnees.mjs",
+      "Etat des sauvegardes :  node supabase/verifier-sauvegardes.mjs",
+      "",
+      "Ce fichier disparait tout seul des qu'une sauvegarde reussit.",
+    ].join("\r\n"), "utf8");
+  } catch { /* le Bureau peut être redirigé : l'alerte est un plus, pas un dû */ }
+}
+
+const leverAlerte = () => { try { rmSync(fichierAlerte(), { force: true }); } catch { /* rien à lever */ } };
+
+function nettoyerTemp() {
+  if (!dossierTemp) return;
+  try { rmSync(dossierTemp, { recursive: true, force: true }); } catch { /* best-effort */ }
+  dossierTemp = null;
+}
+
+// Le chemin qui manquait : tué par Ctrl+C ou par la fermeture de session, Node
+// ne passe PAS par le catch de main(). Sans ces handlers, l'export à moitié
+// écrit survivait au processus.
+for (const signal of ["SIGINT", "SIGTERM", "SIGHUP", "SIGBREAK"]) {
+  process.on(signal, () => {
+    console.error(`\n⛔ Interrompu (${signal}) — export inachevé supprimé, AUCUNE sauvegarde.`);
+    nettoyerTemp();
+    poserAlerte(`Sauvegarde interrompue (${signal}) le ${new Date().toLocaleString("fr-FR")}.`);
+    process.exit(130);
+  });
+}
+
+// Relit ce qui vient d'être écrit : un fichier illisible ou tronqué doit être
+// découvert MAINTENANT, pas le jour de la restauration.
+function verifierExport(dir, manifest) {
+  const anomalies = [];
+  for (const [table, info] of Object.entries(manifest.tables)) {
+    if (info.note) continue; // table absente de la base : rien à vérifier
+    const fichier = join(dir, `${table}.json`);
+    try {
+      const lignes = JSON.parse(readFileSync(fichier, "utf8"));
+      if (!Array.isArray(lignes)) anomalies.push(`${table} : contenu inattendu`);
+      else if (lignes.length !== info.lignes) {
+        anomalies.push(`${table} : ${lignes.length} lignes relues pour ${info.lignes} exportées`);
+      }
+    } catch (e) {
+      anomalies.push(`${table} : illisible (${e.message})`);
+    }
+  }
+  const attendues = TABLES.length;
+  const traitees = Object.keys(manifest.tables).length;
+  if (traitees !== attendues) anomalies.push(`${traitees} tables traitées sur ${attendues}`);
+  return anomalies;
+}
 
 async function main() {
   const ts = new Date().toISOString().slice(0, 16).replace("T", "-").replace(":", "h");
   const base = process.env.EDUGEST_BACKUP_DIR || "C:/Users/ADMIN/edugest-backups";
-  const dir = join(base, `backup-${ts}`);
+  const dirFinal = join(base, `backup-${ts}`);
+  const dir = join(base, `${PREFIXE_TEMP}${ts}`);
   mkdirSync(dir, { recursive: true });
-  dossierEnCours = dir;
-  console.log(`🗄️  Sauvegarde EduGest → ${dir}\n`);
+  dossierTemp = dir;
+
+  // Restes d'exécutions tuées avant l'ajout des garde-fous (> 6 h).
+  try {
+    for (const nom of readdirSync(base).filter((n) => n.startsWith(PREFIXE_TEMP))) {
+      const chemin = join(base, nom);
+      if (chemin !== dir && Date.now() - statSync(chemin).mtimeMs > 6 * 3600 * 1000) {
+        rmSync(chemin, { recursive: true, force: true });
+      }
+    }
+  } catch { /* pas bloquant */ }
+
+  console.log(`🗄️  Sauvegarde EduGest → ${dirFinal}\n`);
 
   const manifest = { date: new Date().toISOString(), source: new URL(SUPABASE_URL).host, tables: {} };
   let total = 0;
@@ -96,7 +185,19 @@ async function main() {
   manifest.authUsers = authUsers.length;
   console.log(`  ✅ ${"_auth_users".padEnd(24)} ${String(authUsers.length).padStart(6)} comptes (sans mdp)`);
 
+  manifest.lignesTotales = total;
+  manifest.complet = true; // n'est écrit que si toutes les tables sont passées
   writeFileSync(join(dir, "_manifest.json"), JSON.stringify(manifest, null, 2), "utf8");
+
+  // Contrôle d'intégrité AVANT de donner à l'export son nom de sauvegarde.
+  const anomalies = verifierExport(dir, manifest);
+  if (anomalies.length) {
+    throw new Error(`export incohérent :\n     - ${anomalies.join("\n     - ")}`);
+  }
+
+  // Bascule atomique : c'est ici, et seulement ici, que la sauvegarde existe.
+  renameSync(dir, dirFinal);
+  dossierTemp = null;
 
   // Rétention : ne garder que les RETENTION sauvegardes les plus récentes.
   try {
@@ -106,24 +207,19 @@ async function main() {
     if (aSupprimer.length) console.log(`   (rétention : ${aSupprimer.length} ancienne(s) sauvegarde(s) supprimée(s), ${RETENTION} conservées)`);
   } catch { /* pas bloquant */ }
 
-  console.log(`\n🎉 Sauvegarde terminée : ${total} lignes de données + ${authUsers.length} comptes auth.`);
-  console.log(`   Dossier : ${dir}`);
+  leverAlerte();
+  console.log(`\n🎉 Sauvegarde terminée et vérifiée : ${total} lignes de données + ${authUsers.length} comptes auth.`);
+  console.log(`   Dossier : ${dirFinal}`);
   console.log(`   ⤷ Copiez-le hors de ce PC (Google Drive, disque externe…) pour une vraie protection.`);
 }
 
 main().catch((e) => {
-  console.error("❌", e);
-  // Une coupure réseau laissait derrière elle un dossier « backup-… » vide ou
-  // à moitié rempli, impossible à distinguer d'une vraie sauvegarde : le vide
-  // est supprimé, le partiel est marqué INCOMPLET (un export tronqué qui a
-  // l'air complet est plus dangereux que pas de sauvegarde du tout).
-  try {
-    if (!dossierEnCours) { /* rien à nettoyer */ }
-    else if (readdirSync(dossierEnCours).length === 0) rmSync(dossierEnCours, { recursive: true, force: true });
-    else {
-      renameSync(dossierEnCours, `${dossierEnCours}-INCOMPLET`);
-      console.error(`   ⚠️  Export partiel conservé sous ${dossierEnCours}-INCOMPLET`);
-    }
-  } catch { /* nettoyage best-effort */ }
+  console.error("❌", e.message || e);
+  // L'export inachevé est supprimé, jamais promu : mieux vaut un trou visible
+  // qu'une sauvegarde d'apparence saine sur laquelle on comptera le jour où
+  // tout aura brûlé. L'alerte, elle, reste sur le Bureau jusqu'au prochain
+  // succès — c'est ce qui manquait pour que les échecs se voient.
+  nettoyerTemp();
+  poserAlerte(`Echec de la sauvegarde du ${new Date().toLocaleString("fr-FR")} :\n${e.message || e}`);
   process.exit(1);
 });
