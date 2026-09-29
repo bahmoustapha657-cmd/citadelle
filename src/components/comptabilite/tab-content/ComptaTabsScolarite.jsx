@@ -61,6 +61,8 @@ export function ComptaTabsScolarite({ c, readOnly, annee, userRole }) {
         modV={c.modV}
         supV={c.supV}
         enreg={c.enreg}
+        schoolInfo={c.schoolInfo}
+        annee={c.anneeConsultee}
       />}
 
       {c.tab === "enrolment" && <EnrolmentTab

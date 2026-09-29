@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { isSupabase } from "../../backend";
 import { signOutSession } from "../../backend/session";
 import { getPrimaryModuleForRole, getRoleLabelForSchool } from "../../constants";
 import { getPrimaryModuleForCompte } from "../../../shared/postes-config.js";
@@ -47,9 +48,13 @@ export function useAppShell({
   // archive — les élèves réapparaissaient alors avec leur classe D'AUJOURD'HUI
   // au lieu de celle de l'année consultée, et les écrans redevenaient
   // modifiables sur une année censée être close.
+  //
+  // Le cache de l'appareil (LC_annee) ne garde que l'année OFFICIELLE : une
+  // consultation l'y écrivait aussi, et au rechargement suivant l'application
+  // repartait sur l'année archivée — y compris pour getAnnee(), qui date les
+  // notes saisies depuis le portail enseignant.
   const setAnnee = (val, { persister = true } = {}) => {
     setAnneeState(val);
-    localStorage.setItem("LC_annee", val);
     if (!persister) return;
     persisterAnnee(schoolId, val).catch(() => {
       toast("Année non enregistrée pour l'école : seule la Direction peut la modifier.", "warning");
@@ -60,16 +65,28 @@ export function useAppShell({
   // (Ancien design : doc global config/annee commun à TOUTES les écoles,
   // inaccessible en écriture hors superadmin → échec silencieux.)
   const anneePartagee = schoolInfoState?.anneeScolaire;
+  const anneeEcoleRecue = useRef(false);
   useEffect(() => {
     if (!anneePartagee) return;
+    anneeEcoleRecue.current = true;
     setAnneeState(anneePartagee);
     localStorage.setItem("LC_annee", anneePartagee);
   }, [anneePartagee]);
   useEffect(() => {
     // Legacy : ancien doc global, uniquement si l'école n'a pas encore
     // son propre champ (écoles existantes avant la migration).
-    if (anneePartagee) return;
-    chargerAnnee().then((val) => { if (val) setAnneeState(val); });
+    //
+    // Jamais côté Supabase : au démarrage, la fiche de l'école n'est pas
+    // encore chargée, et ce doc Firebase — resté à « 2025-2026 », lisible par
+    // tous — était donc lu à CHAQUE rechargement. Quand sa réponse arrivait
+    // après celle de l'école, elle écrasait l'année officielle : l'année
+    // archivée « s'activait » une fois sur deux.
+    if (isSupabase || anneePartagee) return undefined;
+    let actif = true;
+    chargerAnnee().then((val) => {
+      if (actif && val && !anneeEcoleRecue.current) setAnneeState(val);
+    });
+    return () => { actif = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

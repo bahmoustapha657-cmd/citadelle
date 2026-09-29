@@ -116,7 +116,9 @@
     "dateOfBirth": "تاريخ الميلاد",
     "placeOfBirth": "مكان الميلاد",
     "previousSchool": "المؤسسة الأصلية (إن وُجدت)",
-    "previousSchoolPlaceholder": "اسم المدرسة السابقة"
+    "previousSchoolPlaceholder": "اسم المدرسة السابقة",
+    "lastClass": "آخر صف دراسي (قبل الالتحاق)",
+    "lastClassPlaceholder": "مثال: السنة الثامنة — إذا جاء الطالب من مدرسة أخرى"
   },
   "register": {
     "title": "أنشئ مساحة مدرستك",
@@ -482,7 +484,10 @@
       "arrival": "تاريخ الالتحاق",
       "departure": "تاريخ المغادرة",
       "annualAverage": "المعدل السنوي",
-      "issued": "سُلمت لتفيد عند اللزوم"
+      "issued": "سُلمت لتفيد عند اللزوم",
+      "titleCertificate": "شهادة المستوى",
+      "numberCertificate": "الشهادة رقم",
+      "lastClass": "آخر صف دراسي"
     },
     "card": {
       "title": "بطاقة الطالب المدرسية",
@@ -693,7 +698,8 @@
       "discipline": "الانضباط",
       "schedule": "الجدول الزمني",
       "teachings": "التدريس",
-      "certificates": "الشهادات"
+      "certificates": "الشهادات",
+      "certificatesPrimary": "الشهادات"
     },
     "enrollmentNotice": "تسجيل الطلاب وحذفهم يتمان فقط من قسم المحاسبة ← الطلاب.",
     "overview": {
@@ -751,6 +757,7 @@
     },
     "certificates": {
       "title": "الشهادات",
+      "titlePrimary": "شهادات المستوى",
       "generate": "توليد",
       "print": "طباعة"
     },

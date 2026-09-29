@@ -31,7 +31,8 @@ function Ecole({ titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, sectio
     { id: "livrets", label: "📋 Livrets" },
     { id: "matieres", label: t("school.tabs.subjects") },
     ...(avecEns ? [{ id: "emploidutemps", label: t("school.tabs.schedule") }] : []),
-    { id: "attestations", label: t("school.tabs.certificates") },
+    // Au primaire, les attestations de niveau sont des certificats de niveau.
+    { id: "attestations", label: t(section === "primaire" ? "school.tabs.certificatesPrimary" : "school.tabs.certificates") },
     // Surveillance générale : périmètre discipline uniquement — élèves
     // (lecture + impression des listes), absences et emploi du temps.
     // Les notes/bulletins lui sont aussi refusés côté règles serveur.

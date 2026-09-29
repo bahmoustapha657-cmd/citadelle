@@ -5,6 +5,7 @@ import { hasWrite } from "../../../shared/postes-config.js";
 import { getDefaultPeriodeForSection, getPeriodesForSection } from "../../period-utils";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { useFirestore } from "../../hooks/useFirestore";
+import { useAnneeConsultee } from "../../hooks/use-annee-consultee";
 import { getActiveNoteForms } from "../../evaluation-forms";
 import {
   sortAlphaEcole as sortAlphaEcoleFn,
@@ -32,7 +33,9 @@ export function useEcole({
   const isPrimarySection = section === "primaire";
   const { schoolId, schoolInfo, moisAnnee, toast, logAction, envoyerPush } = useContext(SchoolContext);
   const anneeCourante = annee || getAnnee();
-  const [anneeConsultee, setAnneeConsultee] = useState(anneeCourante);
+  // Suit l'année courante tant qu'on n'en choisit pas une autre : au
+  // rechargement, elle arrive APRÈS le premier affichage (cf. le hook).
+  const [anneeConsultee, setAnneeConsultee] = useAnneeConsultee(anneeCourante);
   // Vue archive : filtre les notes (les autres collections restent persistantes).
   //
   // La référence est l'année OFFICIELLE de l'école (schoolInfo.anneeScolaire),

@@ -1,12 +1,13 @@
 // ══════════════════════════════════════════════════════════════
-//  Attestation de niveau
+//  Attestation de niveau — Certificat de niveau au primaire
 // ══════════════════════════════════════════════════════════════
 // Document remis à l'élève et présenté À L'EXTÉRIEUR de l'école (autre
 // établissement, administration, concours). D'où : un numéro de pièce, un QR
 // de vérification comme les bulletins et reçus, et une formule administrative
-// en une seule phrase continue.
+// en une seule phrase continue. Au primaire, la même pièce s'intitule
+// « Certificat de niveau » (titre, numéro CN-…, type du QR).
 
-import { anneeScolaireDeDate, estSorti, getAnnee, today } from "../constants.js";
+import { estSorti, getAnnee, today } from "../constants.js";
 import {
   getOfficialLegalFooterHTML,
   legalProfileVide,
@@ -26,25 +27,20 @@ import {
 import { identiteHTML, signatairesDocument } from "./signatures.js";
 import { qrPayload, qrSecuriseImgHtml } from "./qr.js";
 import { formatMoyenneAnnuelle, getMoyenneAttestation } from "./attestation/attestation-moyenne.js";
+import { anneeAttesteePour, derniereClassePourAttestation } from "./attestation/derniere-classe.js";
 
-// `niveau` = identifiant de section ("prescolaire" | "primaire" | "college" |
-// "lycee"). Le collège et le lycée partagent le libellé « Secondaire », comme
-// avant ; seule la maternelle, qui tombait dans le repli « Primaire », a
-// désormais le sien.
-const CLE_LABEL_NIVEAU = {
-  prescolaire: "dashboard.preschool",
-  primaire: "dashboard.primary",
-  college: "dashboard.secondary",
-  lycee: "dashboard.secondary",
-};
+// Au primaire, l'attestation de niveau s'appelle « Certificat de niveau ».
+// La maternelle garde l'attestation.
+export const estCertificatDeNiveau = (niveau) => niveau === "primaire";
 
 // Numéro de pièce, même forme que le bulletin (BUL-…) : déterministe, donc
 // deux impressions de la même attestation portent le même numéro.
-const numeroAttestation = (eleve, schoolInfo, annee) => {
+// `prefixe` : ATT (attestation) ou CN (certificat de niveau).
+export const numeroAttestation = (eleve, schoolInfo, annee, prefixe = "ATT") => {
   const code = String(schoolInfo.nom || "ECO").replace(/[^a-zA-Z]/g, "").slice(0, 3).toUpperCase() || "ECO";
   const an = String(annee || getAnnee()).split("-")[0].slice(-2);
   const ref = eleve.matricule || String(eleve._id || "").slice(-6).toUpperCase();
-  return `ATT-${code}-${an}-${ref}`;
+  return `${prefixe}-${code}-${an}-${ref}`;
 };
 
 // Les dates de l'application viennent d'un <input type="date"> : elles sont
@@ -85,7 +81,8 @@ export const imprimerAttestation = async (eleve, niveau, annee, schoolInfo = {},
   // mentions des bulletins, il dit un résultat et ne suit pas la charte.
   const c1 = schoolInfo.couleur1 || "#0A1628";
   const c2 = schoolInfo.couleur2 || "#00C48C";
-  const niveauLabel = tr(CLE_LABEL_NIVEAU[niveau] || "dashboard.primary");
+  const certificat = estCertificatDeNiveau(niveau);
+  const titre = tr(certificat ? "reports.attestation.titleCertificate" : "reports.attestation.title");
   const anneeScolaire = annee || getAnnee();
   const arrivee = dateFr(eleve.dateArrivee);
   const depart = dateFr(eleve.dateDepart);
@@ -96,8 +93,11 @@ export const imprimerAttestation = async (eleve, niveau, annee, schoolInfo = {},
   // numéro de pièce et dans le QR, sans quoi la pièce se référence sous une
   // année où l'élève n'était plus là. Sans date de départ exploitable, on n'a
   // rien de mieux que l'année de l'écran.
-  const anneeAttestee = (estSorti(eleve) && anneeScolaireDeDate(eleve.dateDepart)) || anneeScolaire;
-  const numero = numeroAttestation(eleve, schoolInfo, anneeAttestee);
+  const anneeAttestee = anneeAttesteePour(eleve, anneeScolaire);
+  const numero = numeroAttestation(eleve, schoolInfo, anneeAttestee, certificat ? "CN" : "ATT");
+  // La classe imprimée est la DERNIÈRE CLASSE SUIVIE (8ème pour un élève de
+  // 9ème en 2026-2027), et non plus la classe de l'année en cours.
+  const derniereClasse = derniereClassePourAttestation(eleve, anneeScolaire);
 
   // Moyenne de l'année en cours, ou à défaut de l'année écoulée : `anneeMoyenne`
   // dit toujours à quelle année le chiffre imprimé se rapporte.
@@ -152,19 +152,19 @@ export const imprimerAttestation = async (eleve, niveau, annee, schoolInfo = {},
   // la période de scolarité quand elle est renseignée (qrPayload ignore les
   // champs vides, le QR ne s'alourdit donc pas pour rien).
   const qr = await qrSecuriseImgHtml(qrPayload({
-    EduGest: "Attestation",
+    EduGest: certificat ? "Certificat de niveau" : "Attestation",
     Num: numero,
     Ecole: schoolInfo.nom,
     Eleve: `${eleve.nom || ""} ${eleve.prenom || ""}`,
     IEN: eleve.ien,
-    Classe: eleve.classe,
+    DerniereClasse: derniereClasse,
     Annee: anneeAttestee,
     Moy: moyenneTexte,
     Du: arrivee,
     Au: depart,
   }), schoolInfo, { size: 84, alt: "QR attestation" });
 
-  w.document.write(`<!DOCTYPE html><html lang="${printLang()}" dir="${printDir()}"><head><title>${tr("reports.attestation.title")} — ${eleve.nom || ""}</title>
+  w.document.write(`<!DOCTYPE html><html lang="${printLang()}" dir="${printDir()}"><head><title>${titre} — ${eleve.nom || ""}</title>
   <meta charset="utf-8"/>
   <style>${PRINT_RESET}
   /* Le cadre double (filet fin extérieur + filet épais intérieur) est ce qui
@@ -233,9 +233,9 @@ export const imprimerAttestation = async (eleve, niveau, annee, schoolInfo = {},
   ${watermarkHtml(schoolInfo)}
   <div class="feuille"><div class="feuille-int"><div class="contenu">
   ${enteteDoc(schoolInfo, schoolInfo.logo)}
-  <div class="titre"><h2>${tr("reports.attestation.title")}</h2></div>
+  <div class="titre"><h2>${titre}</h2></div>
   <div class="losange">◆ ◆ ◆</div>
-  <div class="numero">${tr("reports.attestation.number")} ${numero}</div>
+  <div class="numero">${tr(certificat ? "reports.attestation.numberCertificate" : "reports.attestation.number")} ${numero}</div>
   <p class="formule">${formuleCertifie} :</p>
   <div class="infos">
     ${ligneInfo(tr("reports.studentName"), `${eleve.nom || ""} ${eleve.prenom || ""}`, true)}
@@ -244,7 +244,7 @@ export const imprimerAttestation = async (eleve, niveau, annee, schoolInfo = {},
     ${ligneInfo(tr("reports.dateOfBirth"), dateFr(eleve.dateNaissance))}
     ${ligneInfo(tr("reports.placeOfBirth"), eleve.lieuNaissance)}
     ${ligneInfo(tr("reports.filiation"), eleve.filiation)}
-    ${ligneInfo(tr("reports.class"), [eleve.classe, niveauLabel].filter(Boolean).join(" — "), true)}
+    ${ligneInfo(tr("reports.attestation.lastClass"), derniereClasse, true)}
     ${ligneInfo(tr("reports.attestation.arrival"), arrivee)}
     ${ligneInfo(tr("reports.attestation.departure"), depart)}
   </div>
