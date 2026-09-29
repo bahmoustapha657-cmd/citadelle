@@ -107,13 +107,33 @@ export function subscribeCollection(schoolCode, nomCollection, options, onChange
   const map = resolveCollection(nomCollection);
   if (!map) return () => {}; // collection sans table Supabase
 
-  // PowerSync pousse déjà ses tables dans le miroir local : pas de double canal.
-  if (powerSyncConfigured && estCouvertHorsLigne(map.table)) return () => {};
+  // Table en miroir local (PowerSync) : pas de canal Realtime en double — on
+  // écoute le miroir lui-même. Sans cette écoute, un écran ouvert juste après
+  // la connexion lisait un miroir encore vide et le restait jusqu'au
+  // changement de module (flagrant sur réseau faible, où la première synchro
+  // dure) ; les saisies des autres postes n'apparaissaient pas non plus.
+  if (powerSyncConfigured && estCouvertHorsLigne(map.table)) {
+    return ecouterMiroir([map.table], () => onChange({ type: "reload" }));
+  }
 
   return attacher(schoolCode, map.table, (payload) => {
     const patch = construirePatch(payload, map.table, map.section, annee);
     if (patch) onChange(patch);
   });
+}
+
+// S'abonne aux changements du miroir local PowerSync sur ces tables (données
+// livrées par la synchro ou écriture locale) ; `rappel` est appelé sans
+// argument. Le moteur n'est chargé qu'en `import()`, et seulement si PowerSync
+// est configuré. Renvoie la fonction de désabonnement, appelable aussitôt.
+export function ecouterMiroir(tables, rappel) {
+  if (!powerSyncConfigured || typeof rappel !== "function") return () => {};
+  let arreter = null;
+  let annule = false;
+  import("./powersync/client").then(({ ecouterTables }) => {
+    if (!annule) arreter = ecouterTables(tables, rappel);
+  }).catch(() => {});
+  return () => { annule = true; arreter?.(); };
 }
 
 // S'abonne aux changements BRUTS d'une table, hors mapping des collections :

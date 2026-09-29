@@ -8,6 +8,7 @@ import { AppSchema } from "./schema";
 import { SupabaseConnector } from "./connector";
 import { attendreFileVide } from "./file-envoi";
 import { powerSyncConfigured } from "./tables";
+import { ecrireProprietaire, miroirAutreCompte, oublierProprietaire } from "./proprietaire";
 
 export { powerSyncConfigured };
 
@@ -22,18 +23,39 @@ export function getPowerSync() {
   return db;
 }
 
-let connexion = null;
-export function connectPowerSync() {
+// Purge, ouverture et fermeture s'exécutent dans l'ordre d'appel : une
+// déconnexion suivie d'une connexion rapprochées (changement de compte) ne
+// doivent jamais se croiser — la purge du miroir de l'ancien compte doit
+// être finie avant que le suivant ne s'y connecte.
+let enchainement = Promise.resolve();
+function enFile(tache) {
+  const etape = enchainement.then(tache, tache);
+  enchainement = etape.catch(() => {});
+  return etape;
+}
+
+let connecte = null; // uid du compte dont la synchro est ouverte
+
+// Ouvre la synchro pour le compte `uid`. Le miroir est gardé d'une session à
+// l'autre (cf. proprietaire.js) : on ne le vide que s'il appartient à un
+// autre compte. La connexion réseau elle-même n'est pas attendue — PowerSync
+// réessaie seul tant que le réseau manque, sans bloquer la file.
+export function connectPowerSync(uid) {
   if (!powerSyncConfigured) return Promise.resolve();
-  if (!connexion) {
-    connexion = getPowerSync()
-      .connect(new SupabaseConnector())
-      .catch((err) => {
-        connexion = null;
-        console.warn("[powersync] connexion échouée :", err?.message || err);
-      });
-  }
-  return connexion;
+  return enFile(async () => {
+    if (connecte && connecte === uid) return;
+    const ps = getPowerSync();
+    if (miroirAutreCompte(uid)) await ps.disconnectAndClear();
+    ecrireProprietaire(uid);
+    connecte = uid;
+    ps.connect(new SupabaseConnector()).catch((err) => {
+      if (connecte === uid) connecte = null;
+      console.warn("[powersync] connexion échouée :", err?.message || err);
+    });
+  }).catch((err) => {
+    connecte = null;
+    console.warn("[powersync] ouverture du miroir :", err?.message || err);
+  });
 }
 
 // Attend que les écritures locales soient remontées à Supabase (file d'envoi
@@ -46,15 +68,34 @@ export function connectPowerSync() {
 export const attendreRemontee = (delaiMs = 15000) =>
   attendreFileVide(() => getPowerSync().getUploadQueueStats(), delaiMs);
 
-// Appelé à la déconnexion : coupe la sync ET vide le miroir local (le
-// poste peut être partagé entre plusieurs comptes/écoles — éviter qu'un
-// compte suivant retrouve les données hors ligne du précédent).
-export async function disconnectPowerSync() {
-  connexion = null;
-  if (!db) return;
-  try {
-    await db.disconnectAndClear();
-  } catch (err) {
+// Appelé à la déconnexion : coupe la synchro mais GARDE le miroir et la file
+// d'envoi. Au retour du même compte, seuls les changements voyagent, et les
+// saisies hors ligne pas encore envoyées partent à la reconnexion au lieu
+// d'être perdues (elles étaient effacées avec le miroir jusqu'ici). Un autre
+// compte qui se connecte ensuite déclenche la purge (effacerMiroir).
+export function disconnectPowerSync() {
+  if (!db) return Promise.resolve();
+  return enFile(async () => {
+    connecte = null;
+    await db.disconnect();
+  }).catch((err) => {
     console.warn("[powersync] déconnexion :", err?.message || err);
-  }
+  });
+}
+
+// Vide le miroir (données + file d'envoi) : un autre compte va ouvrir l'app
+// sur cet appareil et ne doit pas y trouver les données du précédent.
+export function effacerMiroir() {
+  return enFile(async () => {
+    connecte = null;
+    await getPowerSync().disconnectAndClear();
+    oublierProprietaire();
+  });
+}
+
+// Changements du miroir local sur ces tables : données livrées par la
+// synchro (première synchro après connexion, saisies d'un autre poste) ou
+// écriture locale. Renvoie la fonction d'arrêt.
+export function ecouterTables(tables, rappel) {
+  return getPowerSync().onChange({ onChange: () => rappel() }, { tables, throttleMs: 500 });
 }
