@@ -3,7 +3,9 @@ import { useTranslation } from "react-i18next";
 import { C, getSectionLabel } from "../../constants";
 import { Badge, Btn, Card, Chargement, TD, THead, TR, Vide } from "../ui";
 import { imprimerAttestation } from "../../reports";
+import { estCertificatDeNiveau } from "../../reports/attestation";
 import { anneePrecedente } from "../../reports/attestation/attestation-moyenne";
+import { derniereClassePourAttestation } from "../../reports/attestation/derniere-classe";
 import { useFirestore } from "../../hooks/useFirestore";
 
 export function AttestationsTab({
@@ -39,6 +41,9 @@ export function AttestationsTab({
   // toutes les attestations sortaient donc marquées « Collège ».
   const sectionLabel = getSectionLabel(section);
   const badgeCouleur = section === "college" || section === "lycee" ? "purple" : "amber";
+  // Au primaire, la pièce s'appelle « Certificat de niveau ».
+  const certificat = estCertificatDeNiveau(section);
+  const nomPiece = certificat ? "Certificat" : "Attestation";
   const elevesAtt = elevesFiltres.filter(e=>!rechercheMatricule
     ||(e.matricule||"").toLowerCase().includes(rechercheMatricule.toLowerCase())
     ||(e.nom+" "+e.prenom).toLowerCase().includes(rechercheMatricule.toLowerCase()));
@@ -46,7 +51,7 @@ export function AttestationsTab({
   return (
     <div>
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16,flexWrap:"wrap"}}>
-        <strong style={{fontSize:14,color:C.blueDark,flex:1}}>{t("school.certificates.title")}</strong>
+        <strong style={{fontSize:14,color:C.blueDark,flex:1}}>{t(certificat ? "school.certificates.titlePrimary" : "school.certificates.title")}</strong>
         <input placeholder={t("school.bulletins.searchByMatricule")}
           value={rechercheMatricule||""} onChange={e=>setRechercheMatricule(e.target.value)}
           style={{border:"1px solid #b0c4d8",borderRadius:7,padding:"6px 10px",fontSize:12,width:200}}/>
@@ -58,22 +63,28 @@ export function AttestationsTab({
         <Btn sm v="amber" onClick={()=>{
           if(!elevesAtt.length){alert("Aucun élève à imprimer.");return;}
           const w=window.open("","_blank");
-          const rows=elevesAtt.map(e=>`<tr><td>${e.matricule||"—"}</td><td>${e.nom} ${e.prenom}</td><td>${e.classe}</td><td>${e.dateNaissance||"—"}</td><td>${e.lieuNaissance||"—"}</td></tr>`).join("");
-          w.document.write(`<!DOCTYPE html><html><head><title>Attestations — ${filtreClasse==="all"?"Toutes classes":filtreClasse}</title><style>@page{size:A4 portrait;margin:0}@media print{html,body{margin:0}button{display:none}}body{font-family:Arial,sans-serif;padding:14mm 12mm;margin:0}h2{color:#0A1628;text-align:center}table{width:100%;border-collapse:collapse;margin-top:16px}th{background:#0A1628;color:#fff;padding:8px}td{padding:7px 8px;border-bottom:1px solid #e5e7eb}</style></head><body><h2>${schoolInfo.nom||"École"} — Registre des attestations</h2><p style="text-align:center">${filtreClasse==="all"?"Toutes classes":filtreClasse} · Année ${annee}</p><table><tr><th>Matricule</th><th>Nom & Prénom</th><th>Classe</th><th>Date naissance</th><th>Lieu naissance</th></tr>${rows}</table><br/><button onclick="window.print()">🖨️ Imprimer la liste</button></body></html>`);
+          const rows=elevesAtt.map(e=>`<tr><td>${e.matricule||"—"}</td><td>${e.nom} ${e.prenom}</td><td>${e.classe}</td><td>${derniereClassePourAttestation(e,annee)||"—"}</td><td>${e.dateNaissance||"—"}</td><td>${e.lieuNaissance||"—"}</td></tr>`).join("");
+          w.document.write(`<!DOCTYPE html><html><head><title>${nomPiece}s — ${filtreClasse==="all"?"Toutes classes":filtreClasse}</title><style>@page{size:A4 portrait;margin:0}@media print{html,body{margin:0}button{display:none}}body{font-family:Arial,sans-serif;padding:14mm 12mm;margin:0}h2{color:#0A1628;text-align:center}table{width:100%;border-collapse:collapse;margin-top:16px}th{background:#0A1628;color:#fff;padding:8px}td{padding:7px 8px;border-bottom:1px solid #e5e7eb}</style></head><body><h2>${schoolInfo.nom||"École"} — Registre des ${nomPiece.toLowerCase()}s</h2><p style="text-align:center">${filtreClasse==="all"?"Toutes classes":filtreClasse} · Année ${annee}</p><table><tr><th>Matricule</th><th>Nom & Prénom</th><th>Classe</th><th>Dernière classe suivie</th><th>Date naissance</th><th>Lieu naissance</th></tr>${rows}</table><br/><button onclick="window.print()">🖨️ Imprimer la liste</button></body></html>`);
           w.document.close();
         }}>📋 Liste en lot</Btn>
       </div>
       <div style={{background:"#eaf4e0",border:"1px solid #86efac",borderRadius:8,padding:"9px 14px",fontSize:12,color:"#166534",marginBottom:14,display:"flex",alignItems:"center",gap:8}}>
         <span style={{fontSize:16}}>📜</span>
-        <span>Cliquez sur <strong>Imprimer</strong> pour générer l'attestation officielle de niveau pour chaque élève.</span>
+        <span>Cliquez sur <strong>Imprimer</strong> pour générer {certificat ? "le certificat" : "l'attestation officielle"} de niveau de chaque élève.
+          La pièce indique sa <strong>dernière classe suivie</strong> : celle de l'année précédente, ou, pour un élève venu
+          d'une autre école, celle saisie sur sa fiche d'inscription.</span>
       </div>
       {cE?<Chargement/>:elevesAtt.length===0?<Vide icone="📜" msg="Aucun élève pour cette sélection"/>
         :<Card><div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="2">
-          <THead cols={["Matricule","Nom & Prénom","Classe","Niveau","Statut","Attestation"]}/>
+          <THead cols={["Matricule","Nom & Prénom","Classe","Dernière classe suivie","Niveau","Statut",nomPiece]}/>
           <tbody>{elevesAtt.map(e=><TR key={e._id}>
             <TD><span style={{fontSize:11,fontFamily:"monospace",background:"#e0ebf8",padding:"2px 5px",borderRadius:4,color:C.blue,fontWeight:700}}>{e.matricule||"—"}</span></TD>
             <TD bold>{e.nom} {e.prenom}</TD>
             <TD><Badge color="blue">{e.classe}</Badge></TD>
+            <TD>{derniereClassePourAttestation(e, annee) || (
+              <span title="Inconnue : pas d'année clôturée pour cet élève, ni de classe saisie à son inscription. La ligne ne sera pas imprimée."
+                style={{color:"#94a3b8"}}>—</span>
+            )}</TD>
             <TD><Badge color={badgeCouleur}>{sectionLabel}</Badge></TD>
             <TD><Badge color={e.statut==="Actif"?"vert":"gray"}>{e.statut||"Actif"}</Badge></TD>
             <TD><Btn sm v="amber" onClick={()=>imprimerAttestation(e,section,annee,schoolInfo,{

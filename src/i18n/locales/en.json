@@ -116,7 +116,9 @@
     "dateOfBirth": "Date of birth",
     "placeOfBirth": "Place of birth",
     "previousSchool": "Previous school (if transferred)",
-    "previousSchoolPlaceholder": "Name of the former school"
+    "previousSchoolPlaceholder": "Name of the former school",
+    "lastClass": "Last class attended (before joining)",
+    "lastClassPlaceholder": "e.g. Grade 8 — if the student comes from another school"
   },
   "register": {
     "title": "Create your school workspace",
@@ -482,7 +484,10 @@
       "arrival": "Date joined",
       "departure": "Date left",
       "annualAverage": "Annual average",
-      "issued": "Issued to serve and assert as appropriate"
+      "issued": "Issued to serve and assert as appropriate",
+      "titleCertificate": "Level certificate",
+      "numberCertificate": "Certificate No.",
+      "lastClass": "Last class attended"
     },
     "card": {
       "title": "Student ID card",
@@ -693,7 +698,8 @@
       "discipline": "Discipline",
       "schedule": "Timetable",
       "teachings": "Teachings",
-      "certificates": "Certificates"
+      "certificates": "Certificates",
+      "certificatesPrimary": "Certificates"
     },
     "enrollmentNotice": "Student enrollment and removal are managed only from Accounting → Students.",
     "overview": {
@@ -751,6 +757,7 @@
     },
     "certificates": {
       "title": "Certificates",
+      "titlePrimary": "Level certificates",
       "generate": "Generate",
       "print": "Print"
     },

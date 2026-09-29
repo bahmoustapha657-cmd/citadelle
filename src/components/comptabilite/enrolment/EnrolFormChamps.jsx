@@ -88,6 +88,10 @@ export function EnrolFormChamps({ form, chg, niveauEnrol }) {
       {form.typeInscription==="Réinscription"&&
         <Input label={t("enrolment.previousSchool")} value={form.etablissementOrigine||""} onChange={chg("etablissementOrigine")} placeholder={t("enrolment.previousSchoolPlaceholder")}/>
       }
+      {/* Dernière classe suivie AVANT l'arrivée : imprimée sur l'attestation
+          (certificat au primaire) tant que l'école n'a pas d'année clôturée
+          pour cet élève — ensuite, c'est la classe archivée qui fait foi. */}
+      <Input label={t("enrolment.lastClass")} value={form.derniereClasse||""} onChange={chg("derniereClasse")} placeholder={t("enrolment.lastClassPlaceholder")}/>
     </div>
   );
 }

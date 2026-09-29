@@ -3,6 +3,7 @@ import { fmt, getAnnee, peutCreerComptesParent, peutModifierEleves, peutModifier
 import { hasWrite } from "../../../shared/postes-config.js";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { useFirestore } from "../../hooks/useFirestore";
+import { useAnneeConsultee } from "../../hooks/use-annee-consultee";
 import { majReglagesCompta, sauverParametresEcole } from "../../backend/data-supabase";
 import {
   encaisserVersement as encaisserVersementAction,
@@ -28,12 +29,21 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   // readOnly=true → admin/direction : zéro action
   // canEdit → modifier/supprimer des enregistrements existants (verrou admin requis sauf admin lui-même — mais admin est readOnly)
   // canCreate → ajouter de nouveaux enregistrements (toujours permis si !readOnly)
+  const { schoolId, schoolInfo, moisAnnee, moisSalaire, toast, logAction, envoyerPush } = useContext(SchoolContext);
   const anneeCourante = annee || getAnnee();
-  const [anneeConsultee, setAnneeConsultee] = useState(anneeCourante);
+  // Suit l'année courante tant qu'on n'en choisit pas une autre : au
+  // rechargement, elle arrive APRÈS le premier affichage (cf. le hook).
+  const [anneeConsultee, setAnneeConsultee] = useAnneeConsultee(anneeCourante);
+  // Année OFFICIELLE de l'école, comme dans le module École : l'année affichée
+  // peut être une année passée consultée depuis l'Administration, ou l'année
+  // gardée en cache par l'appareil tant que la fiche de l'école n'est pas
+  // chargée. Comparée à elle, la comptabilité restait ouverte à l'écriture sur
+  // une année close, et les encaissements y partaient.
+  const anneeOfficielle = schoolInfo?.anneeScolaire || anneeCourante;
   // Vue archive : désactive la création (les écritures iraient sur l'année
   // courante). La LECTURE, elle, est filtrée sur `anneeConsultee` en toutes
   // circonstances — voir les chargements ci-dessous.
-  const enModeArchive = anneeConsultee !== anneeCourante;
+  const enModeArchive = anneeConsultee !== anneeOfficielle;
   const canCreate = !readOnly && !enModeArchive;
   const canEdit = !readOnly && !enModeArchive && (peutModifier(userRole) || verrouOuvert);
   // Postes flexibles : tout poste qui écrit la compta gère aussi la fiche
@@ -44,7 +54,6 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   // fiche élève (use-ecole.js).
   const canCreateParent = !readOnly && !enModeArchive
     && (peutCreerComptesParent(userRole) || hasWrite(permissions, "compta"));
-  const { schoolId, schoolInfo, moisAnnee, moisSalaire, toast, logAction, envoyerPush } = useContext(SchoolContext);
   // Grands livres filtrés sur l'année consultée en PERMANENCE. Auparavant le
   // filtre ne s'appliquait qu'en mode archive : en mode normal, recettes,
   // dépenses et versements de TOUTES les années étaient chargés, et le Bilan
@@ -80,7 +89,7 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   // On lit donc l'instantané de l'année consultée — repli sur la fiche
   // courante si cette année-là n'a jamais été clôturée.
   const projeterAnnee = (liste) => (enModeArchive
-    ? liste.map((e) => scolaritePourAnnee(e, anneeConsultee, anneeCourante))
+    ? liste.map((e) => scolaritePourAnnee(e, anneeConsultee, anneeOfficielle))
     : liste);
   const elevesC = projeterAnnee(elevesCBrut);
   const elevesP = projeterAnnee(elevesPBrut);
@@ -160,7 +169,7 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   // envoyerPush) à chaque appel. Le helper extrait porte la logique métier.
   // Année portée par les écritures du journal : celle de l'exercice en cours
   // (on n'écrit jamais en mode archive, canCreate/canEdit y sont faux).
-  const anneeEcriture = annee || anneeConsultee;
+  const anneeEcriture = anneeOfficielle;
   // Signature des écritures : le NOM de la personne connectée. Repli sur son
   // poste si le profil n'a pas de nom — mieux vaut « comptable » que rien.
   const signature = auteur || userRole || "";
@@ -247,7 +256,7 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   const enreg = (aj, mod, extra = {}) => {
     if (readOnly) return;
     const r = { ...form, ...extra };
-    if (modal.startsWith("add")) aj({ ...r, annee: annee || anneeConsultee }); else mod(r);
+    if (modal.startsWith("add")) aj({ ...r, annee: anneeEcriture }); else mod(r);
     setModal(null);
   };
 
@@ -256,7 +265,7 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
     const r = { ...form, ...extra };
     const ok = await saveSalaireAction(r, {
       isEdit: modal === "edit_s", salaires, toast, modS, ajS,
-      anneeRecord: annee || anneeConsultee,
+      anneeRecord: anneeEcriture,
     });
     if (ok) setModal(null);
   };
@@ -276,7 +285,7 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
     salaires, bons, moisSel, moisSalaire,
     ensCollege, ensLycee, ensPrimaire, personnel,
     emploisCollege, emploisLycee, engCollege, engLycee,
-    primeDefaut, annee, anneeConsultee, schoolInfo,
+    primeDefaut, annee: anneeEcriture, anneeConsultee, schoolInfo,
     modS, ajS, supS, readOnly, toast, logAction,
   });
   const {
@@ -291,7 +300,7 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
     ? ((impaye / mensualiteOverview.totalDu) * 100).toFixed(1)
     : 0;
 
-  const anneeBase = Number(String(anneeCourante).split("-")[0]) || new Date().getFullYear();
+  const anneeBase = Number(String(anneeOfficielle).split("-")[0]) || new Date().getFullYear();
   const anneesDispo = Array.from({ length: 7 }, (_, i) => `${anneeBase - i}-${anneeBase - i + 1}`);
 
   const toggleBlocage = async () => {
@@ -314,7 +323,8 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
 
   return {
     schoolInfo, moisAnnee, moisSalaire, toast, logAction,
-    anneeCourante, anneeConsultee, setAnneeConsultee, enModeArchive,
+    // `anneeCourante` : celle marquée « (courante) » dans le sélecteur — l'officielle.
+    anneeCourante: anneeOfficielle, anneeConsultee, setAnneeConsultee, enModeArchive,
     canCreate, canEdit, canEditEleves, canCreateParent, anneesDispo, toggleBlocage,
     recettes, cR, ajR, modR, supR,
     depenses, cD, ajD, modD, supD,

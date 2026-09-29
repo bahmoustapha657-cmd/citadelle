@@ -133,7 +133,7 @@ export function EcoleTabsAdmin({ e, section, avecEns, userRole, annee, maxNote, 
         classesUniq={e.classesUniq}
         elevesFiltres={e.elevesFiltres}
         schoolInfo={e.schoolInfo}
-        annee={annee}
+        annee={e.anneeConsultee}
         section={section}
         cE={e.cE}
         notes={e.notes}

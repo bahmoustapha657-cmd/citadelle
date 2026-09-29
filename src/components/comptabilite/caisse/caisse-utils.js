@@ -111,8 +111,11 @@ export const SOURCES = {
   inscription: { label: "Inscriptions", sens: "entree", couleur: "#0ea5e9" },
   frais: { label: "Frais annexes", sens: "entree", couleur: "#8b5cf6" },
   recette: { label: "Recettes diverses", sens: "entree", couleur: "#22c55e" },
-  don: { label: "Dons & versements", sens: "entree", couleur: "#14b8a6" },
   depense: { label: "Dépenses", sens: "sortie", couleur: "#ef4444" },
+  // Versements du comptable : l'argent de la caisse remis à la banque ou à la
+  // Fondation. Il SORT de la caisse — il était compté en entrée (« Dons &
+  // versements ») et gonflait l'encaissé du jour du montant déposé.
+  versement: { label: "Versements (banque / Fondation)", sens: "sortie", couleur: "#14b8a6" },
   annulation: { label: "Annulations", sens: "sortie", couleur: "#f97316" },
 };
 
@@ -139,8 +142,9 @@ function mouvementsDocuments({ recettes = [], depenses = [], versements = [] }) 
     const date = parseDateSouple(v.date);
     if (!date) continue;
     lignes.push({
-      id: `versement-${v._id}`, date, sens: "entree", source: "don",
-      libelle: v.libelle || "Versement", detail: v.description || "", montant: Number(v.montant) || 0,
+      id: `versement-${v._id}`, date, sens: "sortie", source: "versement",
+      libelle: v.libelle || "Versement", detail: [v.beneficiaire, v.description].filter(Boolean).join(" — "),
+      montant: Number(v.montant) || 0,
     });
   }
   return lignes;
