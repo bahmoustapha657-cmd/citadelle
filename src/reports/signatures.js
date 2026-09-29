@@ -50,7 +50,7 @@ export const DOCUMENTS_SIGNES = [
   { id: "livret", label: "Livret scolaire", groupe: "Pédagogie", section: true,
     defaut: { principal: "direction", visa: null },
     titres: { principal: () => tr("reports.livret.directorSignature") } },
-  { id: "attestation", label: "Attestation de niveau", groupe: "Scolarité", section: true,
+  { id: "attestation", label: "Attestation / Certificat de niveau", groupe: "Scolarité", section: true,
     defaut: { principal: SECTION, visa: null },
     titres: { principal: () => tr("reports.director") } },
   { id: "ordreMutation", label: "Ordre de mutation", groupe: "Scolarité", section: true,

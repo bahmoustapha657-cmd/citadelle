@@ -116,7 +116,9 @@
     "dateOfBirth": "Date de naissance",
     "placeOfBirth": "Lieu de naissance",
     "previousSchool": "Établissement d'origine (si transféré)",
-    "previousSchoolPlaceholder": "Nom de l'ancienne école"
+    "previousSchoolPlaceholder": "Nom de l'ancienne école",
+    "lastClass": "Dernière classe suivie (avant l'arrivée)",
+    "lastClassPlaceholder": "ex. 8ème Année — si l'élève vient d'une autre école"
   },
   "register": {
     "title": "Créer votre espace école",
@@ -482,7 +484,10 @@
       "arrival": "Date d'arrivée",
       "departure": "Date de départ",
       "annualAverage": "Moyenne annuelle",
-      "issued": "Délivré pour servir et valoir ce que de droit"
+      "issued": "Délivré pour servir et valoir ce que de droit",
+      "titleCertificate": "Certificat de niveau",
+      "numberCertificate": "Certificat N°",
+      "lastClass": "Dernière classe suivie"
     },
     "card": {
       "title": "Carte d'identité scolaire",
@@ -693,7 +698,8 @@
       "discipline": "Discipline",
       "schedule": "Emploi du temps",
       "teachings": "Enseignements",
-      "certificates": "Attestations"
+      "certificates": "Attestations",
+      "certificatesPrimary": "Certificats"
     },
     "enrollmentNotice": "L'enrôlement et la suppression des élèves se font uniquement dans le module Comptabilité → Élèves.",
     "overview": {
@@ -751,6 +757,7 @@
     },
     "certificates": {
       "title": "Attestations de niveau",
+      "titlePrimary": "Certificats de niveau",
       "generate": "Générer",
       "print": "Imprimer"
     },
