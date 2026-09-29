@@ -36,6 +36,11 @@ export const DOCUMENTS_SIGNES = [
   { id: "etatSalaires", label: "États de salaires", groupe: "Comptabilité", section: false,
     defaut: { principal: "comptable", visa: "direction" },
     titres: { principal: () => "Le Comptable", visa: () => "Le Directeur" } },
+  // Argent de la caisse remis à la banque ou à la Fondation : le comptable
+  // qui verse, la Direction qui vise — comme les états de salaires.
+  { id: "versements", label: "Situation des versements", groupe: "Comptabilité", section: false,
+    defaut: { principal: "comptable", visa: "direction" },
+    titres: { principal: () => "Le Comptable", visa: () => "Le Directeur" } },
   { id: "bulletin", label: "Bulletin", groupe: "Pédagogie", section: true,
     defaut: { principal: SECTION, visa: null },
     titres: { principal: () => tr("reports.director") } },
