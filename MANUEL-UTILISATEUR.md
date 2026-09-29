@@ -1038,6 +1038,7 @@ Accès : un parent se connecte avec son identifiant — son numéro de télépho
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
+- **👪 Ma famille** (compte qui suit plusieurs enfants, toutes sections confondues) : en tête de l'Aperçu, une ligne par enfant — classe, absences, messages non lus, **reste à payer** — et le **total à payer pour la famille**. Le reste à payer d'un enfant est celui de son onglet Paiements (mensualités, inscription et frais de l'année, dispenses déduites). Un clic sur un enfant l'affiche ; **Paiements →** ouvre directement son détail. Un enfant dont les notes sont bloquées pour impayés est signalé 🔒.
 - **Mes enfants** : carte par enfant avec photo, classe, moyenne courante + tendance (📈 / 📉)
 - **Alertes** : mensualités impayées, messages non lus, bulletins publiés
 - **Bandeau blocage paiement** (si applicable) : si l'école active le blocage paiement, le parent voit un bandeau orange l'invitant à régulariser avant d'accéder aux notes/bulletins
@@ -1053,7 +1054,7 @@ Accès : un parent se connecte avec son identifiant — son numéro de télépho
 
 ### 15.3 Absences
 
-- Liste des absences et incidents par enfant
+- Liste des absences et incidents par enfant ; compteurs Absences / Retards d'après le type saisi par l'école ou l'enseignant
 - Détail : date, type, justifié, motif, signalé par
 - Bouton **Justifier** : envoie un message à l'école
 
@@ -1066,6 +1067,7 @@ Accès : un parent se connecte avec son identifiant — son numéro de télépho
 ### 15.5 Paiements
 
 - Mes mensualités : statut par mois (payé / dû / à venir)
+- Parent de plusieurs enfants : un bandeau rappelle le **total à payer pour la famille**, avec un lien vers le détail par enfant (Aperçu)
 - Historique des reçus avec téléchargement PDF
 - **Bouton « Payer »** *(selon configuration de l'école)* : ouvre les contacts Mobile Money / instructions de virement
 
@@ -1134,9 +1136,10 @@ R.
 3. Rechargez avec **Ctrl + Shift + R**
 
 **Q. J'ai perdu mon mot de passe.**
-R. Sur l'écran de connexion, cliquez **🔑 Mot de passe oublié ?** et indiquez votre code école et votre identifiant (ou votre e-mail ; un parent dont l'identifiant est son numéro peut l'écrire à sa façon).
+R. Sur l'écran de connexion, cliquez **🔑 Mot de passe oublié ?** et indiquez votre code école et votre identifiant (ou votre e-mail). Un parent peut aussi saisir **son numéro de téléphone**, écrit à sa façon (`622 12 34 56`, `+224 622…`) — utile s'il a oublié son identifiant.
 - Si votre compte porte une adresse e-mail, vous recevez un lien : ouvrez-le, choisissez le nouveau mot de passe, puis **Se connecter** (le code école est pré-rempli et votre identifiant vous est rappelé). Le lien ne sert qu'une fois et expire au bout d'un court délai : s'il est refusé, refaites une demande.
-- Sinon, la Direction est prévenue dans sa messagerie interne et réinitialise le mot de passe depuis `Panneau Admin → Comptes`.
+- **Parent sans e-mail** (école au plan Premium) : un **code à 6 chiffres** arrive par SMS sur le numéro de votre compte. Dans la même fenêtre, saisissez-le avec votre nouveau mot de passe (deux fois), puis **Enregistrer le mot de passe** et **Se connecter** : votre identifiant est rappelé et pré-rempli. Le code vaut 15 minutes et 5 essais ; pas reçu ? **Renvoyer le code** après une minute (3 codes par heure au plus — chaque nouveau code annule le précédent). Le code ne part que vers le numéro enregistré par l'école : si ce numéro a changé, demandez à l'école de le corriger (fiche élève → **Compte parent**).
+- Sinon (ni e-mail ni numéro, école hors Premium, envoi SMS non configuré), la Direction est prévenue dans sa messagerie interne et réinitialise le mot de passe depuis `Panneau Admin → Comptes`.
 
 **Q. Un parent voit « Ce compte n'est plus actif : il a été regroupé… ».**
 R. L'école a fusionné ses comptes en double (`Comptes & Postes → Doublons parents`) : tous ses enfants sont sur le compte conservé. Donnez-lui cet identifiant — le journal de la fusion l'indique — et, s'il n'en connaît pas le mot de passe, réinitialisez-le.

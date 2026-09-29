@@ -80,7 +80,19 @@ export function ConnexionForm({
         </p>
       )}
 
-      {oubliOuvert && <MotDePasseOublieModal codeEcoleInitial={codeEcole} onClose={() => setOubliOuvert(false)} />}
+      {oubliOuvert && (
+        <MotDePasseOublieModal
+          codeEcoleInitial={codeEcole}
+          onClose={() => setOubliOuvert(false)}
+          // Mot de passe choisi par code SMS : identifiant rappelé et pré-rempli.
+          onConnecter={(compte) => {
+            if (compte.schoolId) setCodeEcole(compte.schoolId);
+            if (compte.login) setLogin(compte.login);
+            setMdp("");
+            setOubliOuvert(false);
+          }}
+        />
+      )}
 
       <p style={{ textAlign: "center", margin: "4px 0 0", color: "#9ca3af", fontSize: 12 }}>
         {t("auth.noAccount")}{" "}

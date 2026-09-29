@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
         if (!poste || poste.ecole_id !== ecoleId) return json({ error: "Poste introuvable pour cette école." }, 404);
       }
 
-      const eleveIds: string[] = [...new Set(
+      const eleveIds: string[] = [...new Set<string>(
         (Array.isArray(body.eleveIds) ? body.eleveIds : (body.eleveId ? [body.eleveId] : [])).map(String).filter(Boolean),
       )];
 

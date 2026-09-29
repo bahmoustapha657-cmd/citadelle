@@ -65,7 +65,7 @@ test("connexion : l'identifiant exact passe d'abord, le numéro normalisé ensui
   const numero = auth.indexOf("connexionParEmail(emailFor(numero, schoolId)");
   assert.ok(exact > 0 && numero > exact, "essai exact puis numéro");
   const reset = lire("../supabase/functions/password-reset/index.ts");
-  assert.match(reset, /import \{ identifiantConnexion \} from "\.\.\/_shared\/telephone\.ts";/);
+  assert.match(reset, /import \{[^}]*\bidentifiantConnexion\b[^}]*\} from "\.\.\/_shared\/telephone\.ts";/);
   assert.ok(reset.indexOf("await chercher(login)") < reset.indexOf("await chercher(numero)"));
 });
 
@@ -544,7 +544,9 @@ test("Edge Function : fusion réservée, comptes absorbés bloqués à la connex
   assert.match(auth, /error\?\.code === "user_banned"/);
   assert.match(auth, /c\.extra\?\.fusionneDans\) return \{ desactive: true, regroupe: true \}/);
   const reset = lire("../supabase/functions/password-reset/index.ts");
-  assert.match(reset, /\?\.fusionneDans\) return json\(generique\)/);
+  // Compte absorbé : trouverCompte ne le désigne pas → réponse générique.
+  assert.match(reset, /\?\.fusionneDans\) return null;/);
+  assert.match(reset, /if \(!trouve\) return json\(generique\);/);
 });
 
 // Données de l'écran Doublons parents (comptes + liens avec fiche d'élève).

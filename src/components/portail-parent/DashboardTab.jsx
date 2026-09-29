@@ -3,11 +3,18 @@ import { PolarAngleAxis, PolarGrid, Radar, RadarChart, ResponsiveContainer, Tool
 import { C } from "../../constants";
 import { getSubjectAverage } from "../../note-utils";
 import { Badge, Card, TD, THead, TR, Vide } from "../ui";
-import { normalizeText } from "./helpers";
+import { estAbsence } from "./helpers";
+import { FamilleCard } from "./FamilleCard";
 
-export function DashboardTab({ annonces, mesNotes, mesAbsences, matieres, eleve, c1, onVoirNotes }) {
+// Aperçu : vue « famille » en tête quand le compte suit plusieurs enfants,
+// puis annonces de l'école et résumé de l'enfant affiché.
+export function DashboardTab({ annonces, mesNotes, mesAbsences, matieres, eleve, c1, onVoirNotes, famille, eleveId, onVoirEnfant }) {
   return (
     <>
+      {famille?.enfants.length > 1 && (
+        <FamilleCard famille={famille} eleveId={eleveId} onVoirEnfant={onVoirEnfant} c1={c1} />
+      )}
+
       {annonces.length > 0 && (
         <div style={{ marginBottom: 20 }}>
           {[...annonces].sort((left, right) => Number(right.date || 0) - Number(left.date || 0)).slice(0, 3).map((annonce, index) => (
@@ -46,7 +53,7 @@ export function DashboardTab({ annonces, mesNotes, mesAbsences, matieres, eleve,
         </Card>
       )}
 
-      {mesAbsences.filter((item) => normalizeText(item.statut) === "absent").length > 0 && (
+      {mesAbsences.filter(estAbsence).length > 0 && (
         <Card style={{ marginBottom: 16 }}>
           <div style={{ padding: "14px 18px", borderBottom: "1px solid #f1f5f9" }}>
             <strong style={{ fontSize: 13, color: "#b91c1c" }}>Absences recentes</strong>
@@ -55,7 +62,7 @@ export function DashboardTab({ annonces, mesNotes, mesAbsences, matieres, eleve,
             <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
               <THead cols={["Date", "Matiere", "Statut", "Motif"]} />
               <tbody>
-                {mesAbsences.filter((item) => normalizeText(item.statut) === "absent").slice(-5).map((item, index) => (
+                {mesAbsences.filter(estAbsence).slice(-5).map((item, index) => (
                   <TR key={index}>
                     <TD>{item.date || "-"}</TD>
                     <TD>{item.matiere || "-"}</TD>

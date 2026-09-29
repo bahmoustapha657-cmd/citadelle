@@ -51,7 +51,7 @@ export function estErreurReseau(erreur) {
   return erreur?.name === "AuthRetryableFetchError" || erreur?.status === 0;
 }
 
-const MSG_RESEAU = "Connexion au serveur impossible. Vérifiez votre connexion internet puis réessayez.";
+export const MSG_RESEAU = "Connexion au serveur impossible. Vérifiez votre connexion internet puis réessayez.";
 
 // Message affiché pour un refus de Supabase Auth. `etape` : "lien" (échange
 // du jeton contre une session) ou "mdp" (enregistrement du mot de passe).

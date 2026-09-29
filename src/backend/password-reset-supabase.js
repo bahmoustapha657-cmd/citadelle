@@ -1,7 +1,8 @@
 // ── Mot de passe oublié (Supabase) ──────────────────────────────────────────
 // Demande publique (écran de connexion) → Edge Function `password-reset` qui
-// décide : e-mail de réinitialisation (si e-mail réel + envoi configuré) ou
-// notification à la Direction. Puis finalisation via le lien de récupération.
+// décide : e-mail de réinitialisation (si e-mail réel + envoi configuré), code
+// par SMS / WhatsApp (parent, école Premium) ou notification à la Direction.
+// Puis finalisation via le lien de récupération, ou via le code reçu.
 import { creerClientEphemere, getSupabase } from "../supabaseClient";
 import { analyserRetourRecovery, estErreurReseau, identiteCompte, messageErreurRecovery } from "./recovery-url";
 
@@ -16,6 +17,19 @@ export async function demanderReinitialisation({ schoolId, identifiant }) {
     return { ok: true, method: "generic" };
   }
   return data || { ok: true, method: "generic" };
+}
+
+// Code reçu par SMS / WhatsApp + nouveau mot de passe : le serveur vérifie le
+// code et enregistre le mot de passe, sans ouvrir de session. Réponse :
+// { ok: true, login, schoolId } ou { ok: false, erreur } (cf.
+// code-reinitialisation.js pour les messages).
+export async function validerCodeReinitialisation({ schoolId, identifiant, code, nouveauMdp }) {
+  const sb = getSupabase();
+  const { data, error } = await sb.functions.invoke("password-reset", {
+    body: { action: "verifier_code", schoolId, identifiant, code, nouveauMdp },
+  });
+  if (error) return { ok: false, erreur: error.name === "FunctionsFetchError" ? "reseau" : "indisponible" };
+  return data || { ok: false, erreur: "indisponible" };
 }
 
 // Détecte un retour de lien de récupération (voir recovery-url.js).

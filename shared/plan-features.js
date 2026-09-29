@@ -5,9 +5,11 @@
 // et `notify`, qui rejouent cette même règle) — l'UI ne fait qu'éviter à
 // l'utilisateur une action vouée à l'échec.
 //
-// ⚠️ Toute évolution ici doit être répercutée dans les deux Edge Functions
-// (supabase/functions/ia/index.ts et supabase/functions/notify/index.ts), qui
-// dupliquent volontairement `estPremiumActif` (Deno ne partage pas ce module).
+// ⚠️ Toute évolution ici doit être répercutée côté Edge Functions, qui ne
+// partagent pas ce module (Deno) : supabase/functions/_shared/premium.ts
+// (notify, et password-reset pour le code de réinitialisation par SMS — un
+// test vérifie qu'il rend le même verdict) et la copie de
+// supabase/functions/ia/index.ts.
 
 export const FONCTIONS_PREMIUM = {
   notifications: {
