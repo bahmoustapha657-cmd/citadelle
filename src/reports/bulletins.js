@@ -31,14 +31,13 @@ async function bulletinQrHtml({ eleve, notes, matieres, periode, niveau, maxNote
   const moy = getGeneralAverage(notesE, matieres, eleve.classe, niveau);
   return qrSecuriseImgHtml(qrPayload({
     EduGest: "Bulletin",
-    Ecole: schoolInfo.nom,
     Eleve: `${eleve.nom || ""} ${eleve.prenom || ""}`,
     IEN: eleve.ien,
     Classe: eleve.classe,
     Periode: periode === PERIODE_ANNEE ? "Annee" : periode,
     Moy: moy != null ? `${moy.toFixed(2)}/${maxNote}` : "",
     Annee: getAnnee(),
-  }), schoolInfo, { size: getModeleBulletin(schoolInfo) === "compact" ? 68 : 84, alt: "QR bulletin" });
+  }), schoolInfo, { size: getModeleBulletin(schoolInfo) === "compact" ? 68 : 92, alt: "QR bulletin" });
 }
 
 export const imprimerBulletin = async (eleve, notes, matieres, periode, niveau, maxNote = 20, schoolInfo = {}, options = {}) => {

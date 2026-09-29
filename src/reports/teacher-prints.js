@@ -57,12 +57,13 @@ export async function imprimerPaiesEnseignant({ salaires, nomEns, matiere, schoo
   const totalNet = groupes.reduce((s, g) => s + Number(g.totalNet || 0), 0);
   const qr = await qrSecuriseImgHtml(qrPayload({
     EduGest: "Fiche de paie",
-    Ecole: schoolInfo.nom,
     Enseignant: nomEns,
     Annee: annee,
-    NetTotal: `${totalNet.toLocaleString("fr-FR")} GNF`,
+    // Chiffres bruts : le séparateur de milliers fr-FR est une espace fine
+    // (3 octets en UTF-8), qui alourdirait le QR pour rien.
+    NetTotal: `${totalNet} GNF`,
     Mois: groupes.length,
-  }), schoolInfo, { size: 70, alt: "QR fiche de paie" });
+  }), schoolInfo, { size: 88, alt: "QR fiche de paie" });
   const enTete = `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px"><div><h2 style="margin:0">${schoolInfo.nom || "Ecole"} - Fiches de paie</h2><p style="margin:4px 0 0">${nomEns} - ${matiere || "Enseignant"} - Annee ${annee}</p></div>${qr ? `<div style="flex-shrink:0;text-align:center"><div style="line-height:0">${qr}</div><div style="font-size:8px;color:#94a3b8;margin-top:2px">Vérification</div></div>` : ""}</div>`;
   w.document.write(`<!DOCTYPE html><html><head><title>Paies - ${nomEns}</title><style>@page{size:A4 portrait;margin:0}@media print{html,body{margin:0}button{display:none}}body{font-family:Arial,sans-serif;padding:14mm 12mm;font-size:13px;margin:0}h2{color:#0A1628}table{width:100%;border-collapse:collapse;margin-top:16px}th{background:#0A1628;color:#fff;padding:8px 10px}td{padding:8px 10px;border-bottom:1px solid #e5e7eb;vertical-align:top}</style></head><body>${enTete}<table><tr><th>Mois</th><th>Fonction(s)</th><th>Detail</th><th>Bon</th><th>Revision</th><th>Net a payer</th></tr>${lignes}</table>${edugestBrandHTML(schoolInfo)}<br/><button onclick="window.print()">Imprimer</button></body></html>`);
   w.document.close();
