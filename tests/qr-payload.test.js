@@ -14,6 +14,12 @@ test("qrPayload : champs clé:valeur séparés par |, clés connues abrégées",
   assert.equal(qrPayload({ EduGest: "Inconnu" }), "T:Inconnu"); // type non abrégé : tel quel
 });
 
+test("qrPayload : certificat de niveau et dernière classe abrégés, relus en clair", () => {
+  const texte = qrPayload({ EduGest: "Certificat de niveau", DerniereClasse: "6ème Année A" });
+  assert.equal(texte, "T:C|L:6ème Année A");
+  assert.deepEqual(lireChampsQr(texte), { type: "Certificat de niveau", champs: [["Dernière classe", "6ème Année A"]] });
+});
+
 test("qrPayload → lireChampsQr : aller-retour lisible", () => {
   const { type, champs } = lireChampsQr(qrPayload({ EduGest: "Recu", Eleve: "Bah M", Total: "500000 GNF", Mois: "Oct,Nov" }));
   assert.equal(type, "Reçu");
@@ -27,7 +33,8 @@ test("les QR des documents réalistes restent peu denses (version ≤ 9, soit �
   const documents = {
     bulletin: { EduGest: "Bulletin", Eleve: "DIALLO Mamadou Aliou", IEN: "GN2024123456789", Classe: "10ème Année A", Periode: "1er Trimestre", Moy: "12.45/20", Annee: "2025-2026" },
     recu: { EduGest: "Recu", Eleve: "DIALLO Mamadou Aliou", Classe: "10ème Année A", IEN: "GN2024123456789", Total: "4500000 GNF", Mois: "Oct,Nov,Déc,Jan,Fév,Mar,Avr,Mai,Jun" },
-    attestation: { EduGest: "Attestation", Num: "ATT-2026-0042", Eleve: "DIALLO Mamadou Aliou", IEN: "GN2024123456789", Classe: "10ème Année A", Annee: "2025-2026", Moy: "12.45/20", Du: "2023-10-02", Au: "2026-06-30" },
+    attestation: { EduGest: "Attestation", Num: "ATT-2026-0042", Eleve: "DIALLO Mamadou Aliou", IEN: "GN2024123456789", DerniereClasse: "10ème Année A", Annee: "2025-2026", Moy: "12.45/20", Du: "2023-10-02", Au: "2026-06-30" },
+    certificat: { EduGest: "Certificat de niveau", Num: "CN-2026-0042", Eleve: "DIALLO Mamadou Aliou", IEN: "GN2024123456789", DerniereClasse: "6ème Année A", Annee: "2025-2026", Moy: "14.20/20", Du: "2020-10-01", Au: "2026-06-30" },
     paie: { EduGest: "Fiche de paie", Enseignant: "SOUMAH Ibrahima Sory", Annee: "2025-2026", NetTotal: "12500000 GNF", Mois: 9 },
   };
   for (const [nom, champs] of Object.entries(documents)) {

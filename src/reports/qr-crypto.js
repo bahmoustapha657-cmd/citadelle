@@ -183,19 +183,24 @@ export function parseQrPayload(text = "") {
 export const CLES_QR = {
   EduGest: "T", Eleve: "E", IEN: "I", Classe: "C", Periode: "P", Moy: "M",
   Annee: "A", Num: "N", Du: "D", Au: "F", Total: "S", Mois: "O",
-  Enseignant: "G", NetTotal: "X",
+  Enseignant: "G", NetTotal: "X", DerniereClasse: "L",
 };
 // Type de document (valeur du champ EduGest), abrégé de la même façon.
-export const TYPES_QR = { Bulletin: "B", Recu: "R", Attestation: "A", "Fiche de paie": "P" };
+export const TYPES_QR = {
+  Bulletin: "B", Recu: "R", Attestation: "A", "Fiche de paie": "P", "Certificat de niveau": "C",
+};
 
-const LIBELLE_TYPE = { B: "Bulletin", R: "Reçu", A: "Attestation", P: "Fiche de paie", Recu: "Reçu" };
+const LIBELLE_TYPE = {
+  B: "Bulletin", R: "Reçu", A: "Attestation", P: "Fiche de paie", C: "Certificat de niveau", Recu: "Reçu",
+};
 // Libellés affichés, pour les clés courtes (EQR2) ET les anciennes clés
 // longues (EQR1, documents déjà imprimés).
 const LIBELLE_CHAMP = {
   E: "Élève", I: "IEN", C: "Classe", P: "Période", M: "Moyenne", A: "Année",
   N: "N°", D: "Du", F: "Au", S: "Total payé", O: "Mois", G: "Enseignant", X: "Net total",
+  L: "Dernière classe",
   Ecole: "École", Eleve: "Élève", Periode: "Période", Moy: "Moyenne", Annee: "Année",
-  Num: "N°", Total: "Total payé", NetTotal: "Net total",
+  Num: "N°", Total: "Total payé", NetTotal: "Net total", DerniereClasse: "Dernière classe",
 };
 
 // Charge utile déchiffrée → { type, champs: [[libellé, valeur], …] } pour
