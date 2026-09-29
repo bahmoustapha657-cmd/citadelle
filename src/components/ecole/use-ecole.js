@@ -121,7 +121,6 @@ export function useEcole({
   const [ensCompte, setEnsCompte] = useState(null);
   const [formC, setFormC] = useState({});
   const [parentEleve, setParentEleve] = useState(null);
-  const [formP, setFormP] = useState({});
   const [importPreview, setImportPreview] = useState(null);
   const [importEnCours, setImportEnCours] = useState(false);
   const [notesVue, setNotesVue] = useState("liste"); // "liste" | "grille"
@@ -194,7 +193,7 @@ export function useEcole({
     filtreClasse, setFiltreClasse, matieresForClasse,
     rechercheMatricule, setRechercheMatricule,
     ensCompte, setEnsCompte, formC, setFormC,
-    parentEleve, setParentEleve, formP, setFormP,
+    parentEleve, setParentEleve,
     importPreview, setImportPreview, importEnCours, setImportEnCours,
     notesVue, setNotesVue, grilleClasse, setGrilleClasse,
     grilleChanges, setGrilleChanges, grilleSaving, setGrilleSaving,

@@ -71,8 +71,6 @@ export function EcoleTabsPedago({ e, titre, section, avecEns, annee, classesPred
         canCreateParent={e.canCreateParent}
         parentEleve={e.parentEleve}
         setParentEleve={e.setParentEleve}
-        formP={e.formP}
-        setFormP={e.setFormP}
       />}
 
       {/* ── ENSEIGNANTS ── */}

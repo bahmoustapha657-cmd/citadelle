@@ -26,6 +26,7 @@
 // Priorité : SMTP si configuré, sinon Resend, sinon repli notification Direction.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
+import { identifiantConnexion } from "../_shared/telephone.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -166,9 +167,15 @@ Deno.serve(async (req) => {
       if (!loginEmail) return json(generique);
       login = String(loginEmail);
     }
-    const { data: compte } = await admin.from("comptes")
+    const chercher = (l: string) => admin.from("comptes")
       .select("id, ecole_id, login, nom, label, email, role")
-      .eq("ecole_id", ec.id).eq("login", login).maybeSingle();
+      .eq("ecole_id", ec.id).eq("login", l).maybeSingle();
+    let { data: compte } = await chercher(login);
+    // Parent dont l'identifiant est son numéro, écrit à sa façon
+    // (« 622 12 34 56 ») : second essai avec le numéro à 9 chiffres, comme
+    // à la connexion (auth-supabase.js). L'identifiant exact passe d'abord.
+    const numero = identifiantConnexion(saisie);
+    if (!compte && !saisie.includes("@") && numero !== saisie) ({ data: compte } = await chercher(numero));
     // Portails parent/enseignant : réinitialisation par l'école aussi (pas ici).
     if (!compte) return json(generique);
 

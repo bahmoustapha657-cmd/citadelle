@@ -135,7 +135,11 @@ Chaque étape est cliquable et vous amène directement à l'écran concerné.
 
 Le DG et l'Admin créent les autres comptes depuis `Panneau Admin`. Le Comptable peut, depuis sa propre interface, **créer les comptes parents** (utile pour onboarder rapidement les familles).
 
-**Un foyer = un compte parent.** Un parent a un seul compte pour tous ses enfants, dans toutes les sections. À la création d'un compte parent (fiche élève ou saisie rapide), EduGest cherche d'abord le compte du même tuteur : même nom **et** même téléphone — ou, faute de téléphone, même filiation. S'il existe, l'élève y est ajouté et le mot de passe ne change pas. Un numéro seul ne suffit pas (il peut être partagé, par exemple celui de l'école pour des internes) : si le nom du tuteur est écrit différemment d'une fiche à l'autre, harmonisez-le avant de créer le compte.
+**Un foyer = un compte parent.** Un parent a un seul compte pour tous ses enfants, dans toutes les sections. À la création d'un compte parent (fiche élève ou saisie rapide), EduGest cherche d'abord le compte de ce parent : même nom **et** même téléphone — ou, faute de téléphone, même filiation. S'il existe, l'élève y est ajouté et le mot de passe ne change pas. Un numéro seul ne suffit pas (il peut être partagé, par exemple celui de l'école pour des internes) : si le nom du tuteur est écrit différemment d'une fiche à l'autre, harmonisez-le avant de créer le compte.
+
+- **Identifiant = numéro de téléphone** : pour un nouveau compte, EduGest propose le numéro du parent (ex. `622123456`), facile à retenir. Le parent peut le taper à sa façon à la connexion (`622 12 34 56`, `+224 622…`). Les identifiants existants ne changent pas.
+- **Père et mère** peuvent avoir chacun leur compte pour les mêmes enfants.
+- **Fiche élève → 👨‍👩‍👧 Compte** : liste des comptes parents de l'élève (avec le lien : père, mère, tuteur), **Rattacher à un compte existant** (recherche par numéro, nom ou identifiant — utile pour un frère ou une sœur d'une autre section), **Détacher**, et **Créer un compte** (ou un autre, pour le second parent).
 
 ---
 
@@ -995,7 +999,7 @@ Deux sections :
 
 ## 15. Portail Parent
 
-Accès : un parent se connecte avec son login. 6 onglets. Un seul compte suffit pour tous ses enfants, quelle que soit leur section (maternelle, primaire, collège, lycée) : le sélecteur d'enfant passe de l'un à l'autre, et périodes, notes et bulletins suivent la section de l'enfant affiché.
+Accès : un parent se connecte avec son identifiant — son numéro de téléphone pour les comptes récents. 6 onglets. Un seul compte suffit pour tous ses enfants, quelle que soit leur section (maternelle, primaire, collège, lycée) : le sélecteur d'enfant passe de l'un à l'autre, et périodes, notes et bulletins suivent la section de l'enfant affiché.
 
 ### 15.1 Dashboard
 
@@ -1123,7 +1127,7 @@ R.
 3. Rechargez avec **Ctrl + Shift + R**
 
 **Q. J'ai perdu mon mot de passe.**
-R. Sur l'écran de connexion, cliquez **🔑 Mot de passe oublié ?** et indiquez votre code école et votre identifiant (ou votre e-mail).
+R. Sur l'écran de connexion, cliquez **🔑 Mot de passe oublié ?** et indiquez votre code école et votre identifiant (ou votre e-mail ; un parent dont l'identifiant est son numéro peut l'écrire à sa façon).
 - Si votre compte porte une adresse e-mail, vous recevez un lien : ouvrez-le, choisissez le nouveau mot de passe, puis **Se connecter** (le code école est pré-rempli et votre identifiant vous est rappelé). Le lien ne sert qu'une fois et expire au bout d'un court délai : s'il est refusé, refaites une demande.
 - Sinon, la Direction est prévenue dans sa messagerie interne et réinitialise le mot de passe depuis `Panneau Admin → Comptes`.
 

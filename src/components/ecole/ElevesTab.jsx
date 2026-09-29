@@ -9,7 +9,7 @@ import { ParentCompteModale } from "./eleves-tab/ParentCompteModale";
 export function ElevesTab({
   eleves, elevesFiltres, cE, filtreClasse, setFiltreClasse, classesUniq,
   section = "college", annee, schoolInfo, schoolId, toast, logAction, canEdit, canCreateParent,
-  parentEleve, setParentEleve, formP, setFormP, userRole = "",
+  parentEleve, setParentEleve, userRole = "",
 }) {
   const { t } = useTranslation();
   // Élèves partis : hors de la liste, des cartes et de l'export par défaut —
@@ -17,9 +17,7 @@ export function ElevesTab({
   const [avecPartis, setAvecPartis] = useState(false);
   const nbPartis = eleves.filter(estSorti).length;
   const visibles = (liste) => (avecPartis ? liste : liste.filter((e) => !estSorti(e)));
-  const { peutCreerParent, chgP, ouvrirCompte, creerCompteParent } = useElevesTab({
-    section, schoolId, toast, logAction, canEdit, canCreateParent, parentEleve, setParentEleve, setFormP,
-  });
+  const { peutCreerParent, ouvrirCompte } = useElevesTab({ canEdit, canCreateParent, setParentEleve });
 
   return (
     <div>
@@ -35,8 +33,8 @@ export function ElevesTab({
         schoolInfo={schoolInfo} annee={annee} userRole={userRole}
       />
       <ParentCompteModale
-        parentEleve={parentEleve} setParentEleve={setParentEleve} formP={formP}
-        setFormP={setFormP} chgP={chgP} creerCompteParent={creerCompteParent}
+        parentEleve={parentEleve} fermer={()=>setParentEleve(null)}
+        section={section} schoolId={schoolId} toast={toast} logAction={logAction}
       />
     </div>
   );

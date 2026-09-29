@@ -18,7 +18,8 @@ export function useCompteParentFratrie({ eleves, schoolId, toast }) {
   const [resultat, setResultat] = useState(null); // { login, mdp|null, rattache, dejaRattache }
 
   const enAttente = eleves.filter((e) => e._id).map((e) => ({ ...e, section: e.niveau }));
-  const loginSaisi = login ?? loginParentSuggere(enAttente[0]?.nom);
+  // Identifiant proposé : le numéro du tuteur, sinon parent.<nom>.
+  const loginSaisi = login ?? loginParentSuggere(enAttente[0]?.nom, enAttente[0]?.contactTuteur);
 
   const valider = async () => {
     if (enCours || resultat || !enAttente.length) return;

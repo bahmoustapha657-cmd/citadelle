@@ -1,19 +1,20 @@
 // ════════════════════════════════════════════════════════════════════════
-//  account-manage — un foyer, un compte parent (tous ses enfants, toutes sections)
+//  account-manage — comptes parents : un foyer, un compte
 // ════════════════════════════════════════════════════════════════════════
 // Module SANS dépendance (comme droits.ts) : index.ts l'importe avec son
 // client service_role, et les tests Node (tests/comptes-parents.test.js) le
 // chargent tel quel avec un faux client.
 //
-// Avant de créer un compte parent, on cherche celui du MÊME FOYER parmi les
-// comptes parents de l'école : les élèves y sont alors seulement rattachés
-// (parent_eleves) et le mot de passe ne change pas. L'API Firebase le
-// faisait (api/_lib/account-links.js, hasSameParentHousehold) ; l'Edge
-// Function l'avait perdu, et une fratrie finissait avec un compte par enfant
-// — alors que la modale annonçait toujours le rattachement.
+// Un parent a UN compte pour tous ses enfants, quelle que soit leur section.
+// Avant d'en créer un, on cherche le sien parmi les comptes parents de
+// l'école : les élèves y sont alors seulement rattachés (parent_eleves), mot
+// de passe inchangé. L'API Firebase le faisait (api/_lib/account-links.js,
+// hasSameParentHousehold) ; l'Edge Function l'avait perdu. Un enfant peut
+// aussi être suivi par plusieurs comptes — le père et la mère chacun le sien.
 //
 // parent_eleves fait foi : extra.eleveIds n'est qu'un reliquat (identifiants
 // Firebase pour les comptes migrés), jamais lu ici.
+import { normaliserTel } from "../_shared/telephone.ts";
 
 export type Foyer = { tuteur?: unknown; contactTuteur?: unknown; filiation?: unknown };
 
@@ -23,22 +24,16 @@ export type CompteParent = {
   statut?: string | null;
   premiere_co?: boolean | null;
   created_at?: string | null;
+  telephone?: string | null;
   extra?: Record<string, unknown> | null;
-  foyers: Foyer[]; // profil du compte + fiches de ses enfants
+  profil: Foyer; // le parent titulaire du compte (extra + telephone)
+  foyersEnfants: Foyer[]; // fiches des enfants rattachés
   eleveIds: string[]; // enfants rattachés (parent_eleves)
 };
 
-// Normalisation E.164 Guinée (miroir de shared/phone.js, que Deno ne partage pas).
-export function normaliserTel(brut: unknown): string | null {
-  if (!brut) return null;
-  const premier = String(brut).split(/[/,;]| ou /i)[0];
-  let d = premier.replace(/[^\d+]/g, "");
-  if (d.startsWith("+")) d = d.slice(1);
-  if (d.startsWith("00")) d = d.slice(2);
-  if (d.startsWith("224")) d = d.slice(3);
-  if (d.length === 9 && d.startsWith("6")) return "+224" + d;
-  return null;
-}
+// Lien de parenté d'un rattachement (contrainte parent_eleves_lien_check).
+const LIENS = new Set(["pere", "mere", "tuteur", "autre"]);
+export const lienValide = (lien: unknown): string | null => (LIENS.has(String(lien)) ? String(lien) : null);
 
 // Nom comparable : sans casse, accents ni ponctuation, mots dans l'ordre
 // alphabétique — « DIALLO Mamadou » et « Mamadou Diallo » se rejoignent.
@@ -47,7 +42,7 @@ export function nomComparable(brut: unknown): string {
     .replace(/[^a-z0-9]+/g, " ").trim().split(" ").filter(Boolean).sort().join(" ");
 }
 
-// Même foyer ? Le tuteur doit être nommé, et de la même façon, des deux
+// Même parent ? Le tuteur doit être nommé, et de la même façon, des deux
 // côtés. Ensuite :
 //   • deux numéros lisibles : ils doivent être identiques ;
 //   • sinon, la filiation doit être renseignée et identique.
@@ -66,23 +61,34 @@ export function memeFoyer(a: Foyer, b: Foyer): boolean {
 }
 
 const actif = (c: CompteParent) => !c.statut || c.statut === "Actif";
+const profilConnu = (c: CompteParent) => Boolean(nomComparable(c.profil.tuteur));
 
-// Compte du foyer parmi les comptes parents de l'école, ou null. S'il y en a
-// plusieurs (doublons déjà créés), on garde : celui qui suit déjà un des
-// élèves, puis un compte actif, puis un compte en service (premiere_co levé :
-// le parent a choisi son mot de passe), puis le plus ancien.
-export function trouverCompteFoyer(comptes: CompteParent[], candidats: Foyer[], eleveIds: string[]): CompteParent | null {
+// Compte du parent `candidat` parmi les comptes parents de l'école, ou null.
+//   • Parent nommé : SON compte, reconnu à son profil — ou, pour un compte
+//     anonyme (compte migré sans profil), à la fiche d'un enfant qu'il suit.
+//     Un compte au profil d'un AUTRE parent ne lui est jamais attribué, même
+//     s'il suit les mêmes enfants : c'est le compte de la mère, pas du père.
+//   • Parent inconnu (fiche sans nom de tuteur) : le compte qui suit déjà un
+//     de ces élèves, plutôt qu'un doublon.
+// Plusieurs candidats (doublons déjà créés) : profil reconnu d'abord, puis
+// celui qui suit déjà un des élèves, un compte actif, en service
+// (premiere_co levé : le parent a choisi son mot de passe), le plus ancien.
+export function trouverCompteFoyer(comptes: CompteParent[], candidat: Foyer, eleveIds: string[]): CompteParent | null {
   const vises = new Set(eleveIds);
   const suitUnEleve = (c: CompteParent) => c.eleveIds.some((id) => vises.has(id));
-  const duFoyer = comptes.filter((c) => suitUnEleve(c)
-    || c.foyers.some((f) => candidats.some((candidat) => memeFoyer(candidat, f))));
-  const rang = (c: CompteParent) => [suitUnEleve(c) ? 0 : 1, actif(c) ? 0 : 1, c.premiere_co === false ? 0 : 1];
-  duFoyer.sort((a, b) => {
+  const parProfil = (c: CompteParent) => memeFoyer(candidat, c.profil);
+  const nomme = Boolean(nomComparable(candidat.tuteur));
+  const trouves = comptes.filter((c) => (nomme
+    ? parProfil(c) || (!profilConnu(c) && c.foyersEnfants.some((f) => memeFoyer(candidat, f)))
+    : suitUnEleve(c)));
+  const rang = (c: CompteParent) =>
+    [parProfil(c) ? 0 : 1, suitUnEleve(c) ? 0 : 1, actif(c) ? 0 : 1, c.premiere_co === false ? 0 : 1];
+  trouves.sort((a, b) => {
     const ra = rang(a), rb = rang(b);
     for (let i = 0; i < ra.length; i++) if (ra[i] !== rb[i]) return ra[i] - rb[i];
     return String(a.created_at || "").localeCompare(String(b.created_at || ""));
   });
-  return duFoyer[0] || null;
+  return trouves[0] || null;
 }
 
 // ── Accès base (client service_role injecté) ───────────────────────────────
@@ -106,11 +112,11 @@ async function lireTout(construire: () => any): Promise<Record<string, unknown>[
 const foyerEleve = (e: Record<string, unknown> | null | undefined): Foyer =>
   ({ tuteur: e?.tuteur, contactTuteur: e?.contact_tuteur, filiation: e?.filiation });
 
-// Comptes parents de l'école, chacun avec ses enfants et les profils de foyer
-// connus : le sien (extra) et celui de la fiche de chaque enfant rattaché.
+// Comptes parents de l'école, chacun avec ses enfants, son profil et celui de
+// la fiche de chaque enfant rattaché.
 export async function chargerComptesParents(admin: Client, ecoleId: string): Promise<CompteParent[]> {
   const comptes = await lireTout(() => admin.from("comptes")
-    .select("id, login, statut, premiere_co, created_at, extra")
+    .select("id, login, statut, premiere_co, created_at, telephone, extra")
     .eq("ecole_id", ecoleId).eq("role", "parent").order("id"));
   const liens = await lireTout(() => admin.from("parent_eleves")
     .select("compte_id, eleve_id, eleves!inner(ecole_id, tuteur, contact_tuteur, filiation)")
@@ -121,8 +127,10 @@ export async function chargerComptesParents(admin: Client, ecoleId: string): Pro
     const extra = (c.extra || {}) as Record<string, unknown>;
     parCompte.set(String(c.id), {
       id: String(c.id), login: String(c.login), statut: c.statut as string | null,
-      premiere_co: c.premiere_co as boolean | null, created_at: c.created_at as string | null, extra,
-      foyers: [{ tuteur: extra.tuteur, contactTuteur: extra.contactTuteur, filiation: extra.filiation }],
+      premiere_co: c.premiere_co as boolean | null, created_at: c.created_at as string | null,
+      telephone: c.telephone as string | null, extra,
+      profil: { tuteur: extra.tuteur, contactTuteur: c.telephone || extra.contactTuteur, filiation: extra.filiation },
+      foyersEnfants: [],
       eleveIds: [],
     });
   }
@@ -130,23 +138,25 @@ export async function chargerComptesParents(admin: Client, ecoleId: string): Pro
     const compte = parCompte.get(String(l.compte_id));
     if (!compte) continue;
     compte.eleveIds.push(String(l.eleve_id));
-    compte.foyers.push(foyerEleve(l.eleves as Record<string, unknown>));
+    compte.foyersEnfants.push(foyerEleve(l.eleves as Record<string, unknown>));
   }
   return [...parCompte.values()];
 }
 
-// Rattache les élèves au compte de leur foyer s'il existe. Renvoie :
+// Rattache les élèves au compte de leur parent s'il existe. Renvoie :
 //   • { status, error } : élève absent de l'école (ou pas encore synchronisé) ;
 //   • { compte, rattaches } : élèves rattachés au compte existant (rattaches =
 //     nombre de NOUVEAUX liens, 0 si tous l'étaient déjà) ;
-//   • null : aucun compte pour ce foyer — à l'appelant de le créer.
+//   • null : pas de compte pour ce parent — à l'appelant de le créer.
+// `lien` : lien de parenté des nouveaux rattachements (père, mère…).
 export async function rattacherAuFoyer(
   admin: Client,
-  { ecoleId, eleveIds: demandes, foyer }: { ecoleId: string; eleveIds: string[]; foyer: Foyer },
+  { ecoleId, eleveIds: demandes, foyer, lien = null }:
+    { ecoleId: string; eleveIds: string[]; foyer: Foyer; lien?: unknown },
 ): Promise<{ status: number; error: string } | { compte: CompteParent; rattaches: number } | null> {
   const eleveIds = [...new Set(demandes.map(String).filter(Boolean))];
   const { data: eleves, error } = await admin.from("eleves")
-    .select("id, tuteur, contact_tuteur, filiation").eq("ecole_id", ecoleId).in("id", eleveIds);
+    .select("id").eq("ecole_id", ecoleId).in("id", eleveIds);
   if (error) throw new Error(error.message);
   if ((eleves || []).length !== eleveIds.length) {
     return {
@@ -155,29 +165,63 @@ export async function rattacherAuFoyer(
     };
   }
 
-  const candidats = [foyer, ...(eleves as Record<string, unknown>[]).map(foyerEleve)];
-  const compte = trouverCompteFoyer(await chargerComptesParents(admin, ecoleId), candidats, eleveIds);
+  const compte = trouverCompteFoyer(await chargerComptesParents(admin, ecoleId), foyer, eleveIds);
   if (!compte) return null;
 
   const nouveaux = eleveIds.filter((id) => !compte.eleveIds.includes(id));
   if (nouveaux.length) {
     const { error: lienErr } = await admin.from("parent_eleves").upsert(
-      nouveaux.map((eid) => ({ compte_id: compte.id, eleve_id: eid })),
+      nouveaux.map((eid) => ({ compte_id: compte.id, eleve_id: eid, lien: lienValide(lien) })),
       { onConflict: "compte_id,eleve_id" },
     );
     if (lienErr) throw new Error(lienErr.message);
   }
 
-  // Profil du foyer incomplet sur le compte (compte migré, fiche partielle) :
-  // on le complète sans rien écraser, pour les rapprochements suivants.
-  const extra = compte.extra || {};
-  const complements: Record<string, unknown> = {};
-  for (const cle of ["tuteur", "contactTuteur", "filiation"] as const) {
-    if (!String(extra[cle] ?? "").trim() && String(foyer[cle] ?? "").trim()) complements[cle] = foyer[cle];
-  }
-  if (Object.keys(complements).length) {
-    await admin.from("comptes").update({ extra: { ...extra, ...complements } }).eq("id", compte.id);
+  // Compte reconnu à son profil (c'est bien ce parent) : on complète ce qui
+  // lui manque, sans rien écraser. Reconnu seulement par la fiche d'un
+  // enfant : on n'y inscrit pas une identité déduite.
+  if (memeFoyer(foyer, compte.profil)) {
+    const extra = compte.extra || {};
+    const maj: Record<string, unknown> = {};
+    const complements: Record<string, unknown> = {};
+    for (const cle of ["tuteur", "contactTuteur", "filiation"] as const) {
+      if (!String(extra[cle] ?? "").trim() && String(foyer[cle] ?? "").trim()) complements[cle] = foyer[cle];
+    }
+    if (Object.keys(complements).length) maj.extra = { ...extra, ...complements };
+    const tel = normaliserTel(foyer.contactTuteur);
+    if (!compte.telephone && tel) maj.telephone = tel;
+    if (Object.keys(maj).length) await admin.from("comptes").update(maj).eq("id", compte.id);
   }
 
   return { compte, rattaches: nouveaux.length };
+}
+
+// Rattache (ou détache) UN élève à UN compte parent existant, après avoir
+// vérifié que tous deux sont de l'école de l'appelant. Renvoie { login } ou
+// { status, error }.
+export async function modifierLienParent(
+  admin: Client,
+  { ecoleId, compteId, eleveId, lien = null, rattacher }:
+    { ecoleId: string; compteId: string; eleveId: string; lien?: unknown; rattacher: boolean },
+): Promise<{ login: string } | { status: number; error: string }> {
+  const { data: compte, error } = await admin.from("comptes")
+    .select("id, login, role, ecole_id").eq("id", compteId).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!compte || compte.ecole_id !== ecoleId || compte.role !== "parent") {
+    return { status: 404, error: "Compte parent introuvable dans cette école." };
+  }
+  const { data: eleve, error: eleveErr } = await admin.from("eleves")
+    .select("id").eq("id", eleveId).eq("ecole_id", ecoleId).maybeSingle();
+  if (eleveErr) throw new Error(eleveErr.message);
+  if (!eleve) return { status: 404, error: "Élève introuvable dans cette école." };
+
+  const { error: ecritErr } = rattacher
+    // Sans lien précisé, un rattachement existant garde le sien.
+    ? await admin.from("parent_eleves").upsert(
+      { compte_id: compteId, eleve_id: eleveId, lien: lienValide(lien) },
+      { onConflict: "compte_id,eleve_id", ignoreDuplicates: !lienValide(lien) },
+    )
+    : await admin.from("parent_eleves").delete().eq("compte_id", compteId).eq("eleve_id", eleveId);
+  if (ecritErr) throw new Error(ecritErr.message);
+  return { login: String(compte.login) };
 }

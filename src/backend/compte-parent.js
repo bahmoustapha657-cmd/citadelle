@@ -1,13 +1,16 @@
-// ── Compte parent : création, ou rattachement au compte du foyer ───────────
+// ── Compte parent : création, rattachement, lecture ────────────────────────
 // Aiguillage selon le backend (comme session.js). C'est le serveur qui
-// décide : si le foyer des élèves a déjà un compte parent, il les y rattache
-// (mot de passe inchangé), sinon il crée le compte —
-// supabase/functions/account-manage/foyer.ts, et api/_lib/account-links.js
-// pour l'API Firebase.
+// décide : si le parent a déjà son compte, les élèves y sont rattachés (mot
+// de passe inchangé), sinon il le crée — supabase/functions/account-manage/
+// foyer.ts, et api/_lib/account-links.js pour l'API Firebase.
+// Lire, rattacher et détacher : Supabase seulement (le backend Firebase est
+// retiré) ; les écritures passent par l'Edge Function, la RLS n'en permet
+// aucune depuis le navigateur (supabase/comptes-parents.sql).
 import { apiFetch, getAuthHeaders } from "../apiClient";
 import { isSupabase } from "../backend";
 import { payloadCompteParent } from "../comptes-parents";
-import { creerCompte as creerCompteSb } from "./account-manage-supabase";
+import { getSupabase } from "../supabaseClient";
+import { creerCompte as creerCompteSb, invoke } from "./account-manage-supabase";
 import { powerSyncConfigured } from "./powersync/tables";
 
 // Renvoie { login, rattache, dejaRattache }. `apresInscription` : élèves
@@ -36,3 +39,39 @@ export async function creerOuRattacherCompteParent({ apresInscription = false, .
     dejaRattache: Boolean(data.dejaRattache),
   };
 }
+
+const compteLu = (c) => ({
+  id: c.id, login: c.login, nom: c.nom || "", telephone: c.telephone || "",
+  statut: c.statut || "Actif", extra: c.extra || {},
+});
+
+// Comptes parents qui suivent un élève, avec leur lien de parenté.
+export async function comptesParentsDeLEleve(eleveId) {
+  const { data, error } = await getSupabase().from("parent_eleves")
+    .select("lien, comptes(id, login, nom, telephone, statut, extra)")
+    .eq("eleve_id", eleveId);
+  if (error) throw new Error(error.message || "Lecture des comptes parents impossible.");
+  return (data || []).filter((l) => l.comptes).map((l) => ({ ...compteLu(l.comptes), lien: l.lien || null }))
+    .sort((a, b) => a.login.localeCompare(b.login));
+}
+
+// Tous les comptes parents de l'école (la RLS limite à l'école), avec leur
+// nombre d'enfants — pour « Rattacher à un compte existant ». Par pages :
+// PostgREST plafonne chaque réponse à 1000 lignes.
+export async function comptesParentsEcole() {
+  const comptes = [];
+  for (let de = 0; ; de += 1000) {
+    const { data, error } = await getSupabase().from("comptes")
+      .select("id, login, nom, telephone, statut, extra, parent_eleves(count)")
+      .eq("role", "parent").order("id").range(de, de + 999);
+    if (error) throw new Error(error.message || "Lecture des comptes parents impossible.");
+    comptes.push(...(data || []).map((c) => ({ ...compteLu(c), nbEnfants: c.parent_eleves?.[0]?.count ?? 0 })));
+    if (!data || data.length < 1000) return comptes;
+  }
+}
+
+export const rattacherCompteParent = ({ schoolId, compteId, eleveId, lien }) =>
+  invoke({ action: "rattacher_parent", schoolId, compteId, eleveId, lien: lien || null }, "Rattachement impossible.");
+
+export const detacherCompteParent = ({ schoolId, compteId, eleveId }) =>
+  invoke({ action: "detacher_parent", schoolId, compteId, eleveId }, "Détachement impossible.");

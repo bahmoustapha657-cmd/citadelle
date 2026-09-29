@@ -24,7 +24,7 @@ export function CompteParentFratrie({ fratrie }) {
             Un seul compte pour tous ces enfants, quelle que soit leur section. Si ce tuteur a déjà un compte parent (même nom, et même téléphone ou même filiation), ils y sont ajoutés et son mot de passe ne change pas.
           </p>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-            <Input label="Identifiant" value={login} onChange={(e)=>setLogin(e.target.value)} placeholder="parent.bah"/>
+            <Input label="Identifiant" value={login} onChange={(e)=>setLogin(e.target.value)} placeholder="622123456"/>
             <Champ label="Mot de passe initial">
               <div style={{display:"flex",gap:6}}>
                 <input value={mdp} onChange={(e)=>setMdp(e.target.value)}

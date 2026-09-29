@@ -14,7 +14,8 @@
 // le serveur).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { peutGererRole } from "./droits.ts";
-import { rattacherAuFoyer } from "./foyer.ts";
+import { lienValide, modifierLienParent, rattacherAuFoyer } from "./foyer.ts";
+import { normaliserTel } from "../_shared/telephone.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -90,14 +91,17 @@ Deno.serve(async (req) => {
         (Array.isArray(body.eleveIds) ? body.eleveIds : (body.eleveId ? [body.eleveId] : [])).map(String).filter(Boolean),
       )];
 
-      // Parent : UN compte par foyer, toutes sections confondues. Si le foyer
-      // de ces élèves a déjà son compte, on les y rattache seulement — mot de
-      // passe inchangé, identifiant demandé ignoré (foyer.ts).
+      // Parent : UN compte par parent, toutes sections confondues. S'il a
+      // déjà le sien, les élèves y sont seulement rattachés — mot de passe
+      // inchangé, identifiant demandé ignoré (foyer.ts). `telephone` : celui
+      // saisi pour ce parent (à défaut, le contact du tuteur).
+      const telephoneSaisi = body.telephone ?? body.contactTuteur;
       if (role === "parent" && eleveIds.length) {
         const r = await rattacherAuFoyer(admin, {
           ecoleId: ecoleId as string,
           eleveIds,
-          foyer: { tuteur: body.tuteur, contactTuteur: body.contactTuteur, filiation: body.filiation },
+          foyer: { tuteur: body.tuteur, contactTuteur: telephoneSaisi, filiation: body.filiation },
+          lien: body.lien,
         });
         if (r && "error" in r) return json({ error: r.error }, r.status);
         if (r) {
@@ -148,6 +152,7 @@ Deno.serve(async (req) => {
         nom: body.nom || login, label: body.label || role,
         section: sansSection ? null : (body.section || null),
         sections: sansSection || !Array.isArray(body.sections) ? null : body.sections,
+        telephone: role === "parent" ? normaliserTel(telephoneSaisi) : null,
         enseignant_id: body.enseignantId || null,
         enseignant_nom: body.enseignantNom || null,
         matiere: body.matiere || null,
@@ -163,11 +168,26 @@ Deno.serve(async (req) => {
       // Parent : liens parent_eleves (RLS my_eleve_ids).
       if (role === "parent" && eleveIds.length) {
         await admin.from("parent_eleves").upsert(
-          eleveIds.map((eid) => ({ compte_id: compte.id, eleve_id: eid })),
+          eleveIds.map((eid) => ({ compte_id: compte.id, eleve_id: eid, lien: lienValide(body.lien) })),
           { onConflict: "compte_id,eleve_id" },
         );
       }
       return json({ ok: true, id: compte.id, login });
+    }
+
+    // Fiche élève : rattacher l'élève à un compte parent existant, ou l'en
+    // détacher. Mêmes droits que la création d'un compte parent ; compte et
+    // élève doivent être de l'école de l'appelant (foyer.ts).
+    if (action === "rattacher_parent" || action === "detacher_parent") {
+      if (!peutGererRole(caller.role, "parent", undefined, callerAdminPanel)) return json({ error: "Droits insuffisants." }, 403);
+      const compteId = String(body.compteId || "");
+      const eleveId = String(body.eleveId || "");
+      if (!compteId || !eleveId) return json({ error: "Champs requis : compteId, eleveId." }, 400);
+      const r = await modifierLienParent(admin, {
+        ecoleId: ecoleId as string, compteId, eleveId, lien: body.lien, rattacher: action === "rattacher_parent",
+      });
+      if ("error" in r) return json({ error: r.error }, r.status);
+      return json({ ok: true, login: r.login });
     }
 
     if (action === "reset_password") {

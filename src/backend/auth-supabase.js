@@ -8,6 +8,7 @@
 // Pas de customToken : signInWithPassword établit directement la session.
 import { getSupabase } from "../supabaseClient";
 import { emailFor, superadminEmailFor } from "../backend";
+import { identifiantConnexion } from "../comptes-parents";
 
 // État public d'une école (avant connexion) via la RPC publique `etat_ecole`.
 export async function fetchEtatEcole(sid) {
@@ -105,9 +106,16 @@ export async function ecoleLogin({ login, mdp, schoolId }) {
       // Même message générique qu'un mauvais mot de passe (pas d'énumération).
       return { ok: false, data: { error: "Identifiant ou mot de passe incorrect." } };
     }
-    identifiant = data;
+    return connexionParEmail(emailFor(data, schoolId), mdp, schoolId);
   }
-  return connexionParEmail(emailFor(identifiant, schoolId), mdp, schoolId);
+  const r = await connexionParEmail(emailFor(identifiant, schoolId), mdp, schoolId);
+  // Parent dont l'identifiant est son numéro, écrit à sa façon
+  // (« 622 12 34 56 », « +224 622… ») : second essai avec le numéro à 9
+  // chiffres. L'identifiant exact passe toujours en premier, pour qu'aucun
+  // compte existant ne change de comportement.
+  const numero = identifiantConnexion(identifiant);
+  if (r.ok || numero === identifiant) return r;
+  return connexionParEmail(emailFor(numero, schoolId), mdp, schoolId);
 }
 
 // Connexion superadmin (transversal, sans école).
