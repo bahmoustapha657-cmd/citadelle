@@ -2,7 +2,52 @@ import { useEffect, useRef, useState } from "react";
 import jsQR from "jsqr";
 import { Modale, Btn } from "../ui";
 import { getCameraErrorMessage } from "../camera-capture/camera-errors";
-import { decryptQrPayload, parseQrPayload, schoolSecretCandidates } from "../../reports/qr-crypto";
+import { decryptQrPayload, lireChampsQr, schoolSecretCandidates } from "../../reports/qr-crypto";
+
+// Détecteur NATIF du navigateur (BarcodeDetector), ou null. Il s'appuie sur le
+// moteur du système (accéléré, tolérant au flou et aux angles) et rattrape des
+// QR que jsQR laisse passer. Il n'est pas fiable partout (absent de
+// Safari/iOS, dépendant de Google Play Services sur Android), d'où son usage
+// en PREMIÈRE tentative seulement, jsQR restant le filet.
+async function creerDetecteurNatif() {
+  try {
+    if (typeof window.BarcodeDetector !== "function") return null;
+    const formats = await window.BarcodeDetector.getSupportedFormats?.();
+    if (formats && !formats.includes("qr_code")) return null;
+    return new window.BarcodeDetector({ formats: ["qr_code"] });
+  } catch {
+    return null;
+  }
+}
+
+// Lit un QR sur une image FIGÉE (photo importée) → texte brut, ou null.
+// Une photo de téléphone dépasse souvent 12 Mpx : jsQR y est lent et son
+// seuillage par blocs rate un QR photographié de près. Réduite, l'image donne
+// des modules plus francs ; la pleine définition (bornée) n'est tentée qu'en
+// DERNIER, pour les QR très denses des documents imprimés avant 2026-09.
+async function lireQrImage(source, largeur, hauteur, detecteur) {
+  if (detecteur) {
+    try {
+      const trouves = await detecteur.detect(source);
+      if (trouves?.length && trouves[0].rawValue) return trouves[0].rawValue;
+    } catch { /* on continue avec jsQR */ }
+  }
+  const grand = Math.max(largeur, hauteur);
+  const cibles = [1600, 1000, 700].filter((c) => c < grand);
+  cibles.push(Math.min(grand, 4000));
+  const cv = document.createElement("canvas");
+  const cx = cv.getContext("2d", { willReadFrequently: true });
+  for (const cible of cibles) {
+    const ech = cible / grand;
+    cv.width = Math.round(largeur * ech);
+    cv.height = Math.round(hauteur * ech);
+    cx.drawImage(source, 0, 0, cv.width, cv.height);
+    const img = cx.getImageData(0, 0, cv.width, cv.height);
+    const code = jsQR(img.data, img.width, img.height, { inversionAttempts: "attemptBoth" });
+    if (code) return code.data;
+  }
+  return null;
+}
 
 // Scanner de vérification des QR codes EduGest (réservé à la direction). Les QR
 // des documents (bulletins, reçus, fiches de paie) sont chiffrés avec le secret
@@ -24,6 +69,7 @@ export function QrScannerModal({ schoolInfo = {}, fermer }) {
   const [resultat, setResultat] = useState(null); // { ok, champs }
   const [message, setMessage] = useState("");
   const [resolution, setResolution] = useState(null); // { w, h } réellement obtenus
+  const [analyse, setAnalyse] = useState(false); // photo importée en cours de lecture
   // Plusieurs secrets candidats plutôt qu'un seul : les documents déjà imprimés
   // l'ont été avec le secret en vigueur à l'époque (longtemps le NOM de
   // l'école). On reste ainsi lisible après un renommage. Cf. qr-crypto.js.
@@ -45,8 +91,13 @@ export function QrScannerModal({ schoolInfo = {}, fermer }) {
     if (!clair) {
       setResultat({ ok: false });
     } else {
-      const champs = parseQrPayload(clair);
-      setResultat({ ok: true, type: champs.EduGest || "Document", champs });
+      const { type, champs } = lireChampsQr(clair);
+      // Les QR récents ne portent plus le nom de l'école (octets économisés) :
+      // le déchiffrement par SON secret suffit à l'établir.
+      const avecEcole = champs.some(([libelle]) => libelle === "École") || !schoolInfo.nom
+        ? champs
+        : [["École", schoolInfo.nom], ...champs];
+      setResultat({ ok: true, type, champs: avecEcole });
     }
     setEtat("resultat");
   };
@@ -122,21 +173,7 @@ export function QrScannerModal({ schoolInfo = {}, fermer }) {
       const plein = document.createElement("canvas");
       const pctx = plein.getContext("2d", { willReadFrequently: true });
 
-      // Détecteur NATIF du navigateur, s'il existe : il s'appuie sur le moteur
-      // du système (accéléré, tolérant au flou et aux angles) et rattrape des
-      // QR que jsQR laisse passer. Il n'est pas fiable partout (absent de
-      // Safari/iOS, dépendant de Google Play Services sur Android), d'où son
-      // usage en PREMIÈRE tentative seulement, jsQR restant le filet.
-      let detecteurNatif = null;
-      try {
-        if (typeof window.BarcodeDetector === "function") {
-          const formats = await window.BarcodeDetector.getSupportedFormats?.();
-          if (!formats || formats.includes("qr_code")) {
-            detecteurNatif = new window.BarcodeDetector({ formats: ["qr_code"] });
-          }
-        }
-      } catch { /* pas de détecteur natif : jsQR fera le travail */ }
-      detecteurRef.current = detecteurNatif;
+      detecteurRef.current = await creerDetecteurNatif();
 
       // ⚠️ La boucle est ASYNCHRONE (le détecteur natif renvoie une promesse).
       // Toute exception non capturée y rejetterait la promesse en silence et
@@ -243,22 +280,27 @@ export function QrScannerModal({ schoolInfo = {}, fermer }) {
 
   const onFichier = (e) => {
     const file = e.target.files?.[0];
+    e.target.value = ""; // permet de réimporter la même photo après un échec
     if (!file) return;
+    setMessage("");
+    setAnalyse(true);
     const url = URL.createObjectURL(file);
     const img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const canvas = document.createElement("canvas");
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(img, 0, 0);
-      const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const code = jsQR(image.data, image.width, image.height);
-      if (code) traiter(code.data);
-      else { setResultat({ ok: false }); setEtat("resultat"); }
+    img.onload = async () => {
+      try {
+        await new Promise((r) => setTimeout(r, 30)); // laisse s'afficher « Analyse… »
+        const detecteur = detecteurRef.current || await creerDetecteurNatif();
+        const brut = await lireQrImage(img, img.naturalWidth, img.naturalHeight, detecteur);
+        // AUCUN QR trouvé ≠ QR non reconnu : annoncer « falsifié » pour une
+        // photo simplement floue envoyait sur une fausse piste.
+        if (brut) traiter(brut);
+        else setMessage("Aucun QR code trouvé sur cette photo. Reprenez-la bien nette et éclairée, le QR bien visible au centre.");
+      } finally {
+        URL.revokeObjectURL(url);
+        setAnalyse(false);
+      }
     };
-    img.onerror = () => { URL.revokeObjectURL(url); setMessage("Lecture de l'image impossible."); };
+    img.onerror = () => { URL.revokeObjectURL(url); setAnalyse(false); setMessage("Lecture de l'image impossible."); };
     img.src = url;
   };
 
@@ -276,7 +318,7 @@ export function QrScannerModal({ schoolInfo = {}, fermer }) {
           </div>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <tbody>
-              {Object.entries(resultat.champs).filter(([k]) => k !== "EduGest").map(([k, v]) => (
+              {resultat.champs.map(([k, v]) => (
                 <tr key={k}>
                   <td style={{ padding: "5px 8px", color: "#64748b", fontWeight: 600, whiteSpace: "nowrap", verticalAlign: "top" }}>{k}</td>
                   <td style={{ padding: "5px 8px", fontWeight: 700, color: "#0f172a" }}>{v}</td>
@@ -348,6 +390,7 @@ export function QrScannerModal({ schoolInfo = {}, fermer }) {
       {(etat === "init" || etat === "erreur") && (
         <div style={{ textAlign: "center", padding: "8px 0" }}>
           {message && <p style={{ color: "#b91c1c", fontSize: 13, marginBottom: 10 }}>{message}</p>}
+          {analyse && <p style={{ color: "#64748b", fontSize: 13, marginBottom: 10 }}>⏳ Analyse de la photo…</p>}
           <div style={{ marginBottom: 12 }}><Btn v="vert" onClick={demarrer}>📷 Démarrer le scan</Btn></div>
           <div style={{ marginTop: 8 }}>
             <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 700, color: "#334155", border: "1px solid #b0c4d8", borderRadius: 8, padding: "8px 14px", cursor: "pointer" }}>

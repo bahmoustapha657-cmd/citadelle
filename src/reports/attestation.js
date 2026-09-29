@@ -154,7 +154,6 @@ export const imprimerAttestation = async (eleve, niveau, annee, schoolInfo = {},
   const qr = await qrSecuriseImgHtml(qrPayload({
     EduGest: certificat ? "Certificat de niveau" : "Attestation",
     Num: numero,
-    Ecole: schoolInfo.nom,
     Eleve: `${eleve.nom || ""} ${eleve.prenom || ""}`,
     IEN: eleve.ien,
     DerniereClasse: derniereClasse,
@@ -162,7 +161,7 @@ export const imprimerAttestation = async (eleve, niveau, annee, schoolInfo = {},
     Moy: moyenneTexte,
     Du: arrivee,
     Au: depart,
-  }), schoolInfo, { size: 84, alt: "QR attestation" });
+  }), schoolInfo, { size: 100, alt: "QR attestation" });
 
   w.document.write(`<!DOCTYPE html><html lang="${printLang()}" dir="${printDir()}"><head><title>${titre} — ${eleve.nom || ""}</title>
   <meta charset="utf-8"/>

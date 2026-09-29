@@ -49,11 +49,11 @@ export const getRecuTotals = (eleve, montantUnit, moisAnnee=MOIS_ANNEE, fraisAnn
   return { moisPayes, moisAcomptes, fraisIns, insPartielle, fraisDiversPayes, totalMensualites, totalGeneral };
 };
 
-// QR de vérification : école, élève, total payé, période. Partagé par les deux
+// QR de vérification : élève, total payé, mois. L'école n'y figure pas : seul
+// son secret déchiffre le QR, le scanner l'affiche. Partagé par les deux
 // formats — un ticket thermique se vérifie avec le même scanner qu'un A4.
-const payloadRecu = (eleve, schoolInfo, totalGeneral, moisPayes) => qrPayload({
+const payloadRecu = (eleve, totalGeneral, moisPayes) => qrPayload({
   EduGest: "Recu",
-  Ecole: schoolInfo.nom,
   Eleve: `${eleve.nom||""} ${eleve.prenom||""}`,
   Classe: eleve.classe,
   IEN: eleve.ien,
@@ -73,7 +73,7 @@ export const imprimerRecu = async (eleve, montantUnit, schoolInfo={}, moisAnnee=
   // window.open AVANT l'await (geste utilisateur) pour éviter le blocage popup.
   const w = window.open("","_blank");
 
-  const qr = await qrSecuriseImgHtml(payloadRecu(eleve, schoolInfo, totalGeneral, moisPayes), schoolInfo, { size: 84, alt: "QR recu" });
+  const qr = await qrSecuriseImgHtml(payloadRecu(eleve, totalGeneral, moisPayes), schoolInfo, { size: 84, alt: "QR recu" });
   const ctx = {
     schoolInfo, lf, eleve, moisAnnee, mens, mensDates, ...totaux, qr,
     versement: options?.versement || null, resteAPayer: options?.resteAPayer,
@@ -107,7 +107,7 @@ export const imprimerRecuTicket = async (eleve, montantUnit, schoolInfo={}, mois
 
   // QR plus grand que sur A4 : sur un rouleau 58 mm la tête imprime en 203 dpi,
   // un QR chiffré (donc dense) sous ~25 mm devient illisible à la caméra.
-  const qr = await qrSecuriseImgHtml(payloadRecu(eleve, schoolInfo, totalGeneral, moisPayes), schoolInfo, { size: 104, alt: "QR recu" });
+  const qr = await qrSecuriseImgHtml(payloadRecu(eleve, totalGeneral, moisPayes), schoolInfo, { size: 104, alt: "QR recu" });
 
   w.document.write(documentTicket({
     schoolInfo, eleve, moisAnnee, mensDates, montantUnit, ...totaux,
