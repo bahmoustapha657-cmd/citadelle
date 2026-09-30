@@ -20,6 +20,7 @@
 import { isSupabase } from "./backend";
 import { getSupabase } from "./supabaseClient";
 import { dataUrlToBlob } from "./data-url.js";
+import { envoyerSansAttendreLeReseau, envoyerPhotosEnAttente } from "./photos-hors-ligne.js";
 
 const BUCKET = "photos";
 
@@ -80,7 +81,7 @@ export async function supprimerFichier(url) {
 // on peut donc l'appeler à chaque enregistrement sans re-téléverser.
 // Les écrans continuent de manipuler du base64 pour l'aperçu immédiat et
 // l'extraction des couleurs ; la conversion n'a lieu qu'à la sauvegarde.
-export async function uploadImage(base64OuUrl, schoolId, categorie = "photos") {
+export async function uploadImage(base64OuUrl, schoolId, categorie = "photos", { horsLigne = false } = {}) {
   if (!base64OuUrl) return "";
   if (base64OuUrl.startsWith("http")) return base64OuUrl;
   if (!base64OuUrl.startsWith("data:")) return base64OuUrl; // valeur inattendue : on n'y touche pas
@@ -88,9 +89,22 @@ export async function uploadImage(base64OuUrl, schoolId, categorie = "photos") {
   // (connect-src), ce qui faisait échouer tout envoi de photo ou de logo.
   const blob = dataUrlToBlob(base64OuUrl);
   const ext = blob.type === "image/png" ? "png" : blob.type === "image/webp" ? "webp" : "jpg";
-  return uploadFichier(blob, cheminFichier(schoolId, categorie, nomAleatoire(ext)));
+  const chemin = cheminFichier(schoolId, categorie, nomAleatoire(ext));
+  if (!horsLigne || !isSupabase) return uploadFichier(blob, chemin);
+  // L'URL publique se calcule sans réseau : la fiche est enregistrée tout de
+  // suite avec son URL définitive, la photo part dès que le réseau le permet.
+  const url = getSupabase().storage.from(BUCKET).getPublicUrl(chemin).data.publicUrl;
+  return envoyerSansAttendreLeReseau({ blob, chemin, url, envoyer: () => uploadFichier(blob, chemin) });
 }
 
-// Photo d'élève (appareil photo, import).
+// Photo d'élève (appareil photo, import) : enregistrable hors ligne et sur
+// réseau faible (cf. photos-hors-ligne.js). Les logos, signatures et
+// bannières restent envoyés en direct : les Paramètres de l'école ne
+// s'enregistrent qu'en ligne.
 export const uploadPhotoEleve = (photoBase64OuUrl, schoolId) =>
-  uploadImage(photoBase64OuUrl, schoolId, "photos");
+  uploadImage(photoBase64OuUrl, schoolId, "photos", { horsLigne: true });
+
+// Envoie les photos prises sans réseau (ou sur réseau trop lent) qui
+// attendent sur l'appareil. Appelé à la connexion et au retour du réseau.
+export const envoyerPhotosEleves = (schoolId) =>
+  envoyerPhotosEnAttente((blob, chemin) => uploadFichier(blob, chemin), schoolId);
