@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { getSectionForClasse } from "../../constants";
 import { getPeriodesForSection } from "../../period-utils";
 import { SchoolContext } from "../../contexts/SchoolContext";
+import { MSG_LECTURE_SEULE_PORTAIL } from "../app/app-shell-plan";
 import { tranchesValides } from "../../paiements-scolarite";
 import { fetchParentPortal, envoyerMessageParent } from "./portail-parent-api";
 import {
@@ -19,7 +20,7 @@ import {
 // vue « famille » (tous les enfants), envoi de message et onglets.
 export function usePortailParent({ utilisateur, schoolInfo }) {
   const { t } = useTranslation();
-  const { toast, moisAnnee } = useContext(SchoolContext);
+  const { toast, moisAnnee, planInfo } = useContext(SchoolContext);
 
   const [tab, setTab] = useState("dashboard");
   const [sujet, setSujet] = useState("");
@@ -100,6 +101,12 @@ export function usePortailParent({ utilisateur, schoolInfo }) {
   }, []);
 
   const envoyer = async () => {
+    // Abonnement de l'école expiré : les parents gardent la consultation,
+    // pas l'écriture (refusée aussi par la base, ecole-hors-service.sql).
+    if (planInfo?.planEstExpire) {
+      toast(MSG_LECTURE_SEULE_PORTAIL, "error");
+      return;
+    }
     if (!sujet.trim() || !corps.trim()) {
       toast("Sujet et message requis.", "warning");
       return;

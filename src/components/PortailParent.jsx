@@ -5,6 +5,7 @@ import { PortailHeader } from "./portail-parent/PortailHeader";
 import { EleveBar } from "./portail-parent/EleveBar";
 import { TabNav } from "./portail-parent/TabNav";
 import { PortailTabContent } from "./portail-parent/PortailTabContent";
+import { BandeauLectureSeule } from "./app/BandeauLectureSeule";
 
 // Portail parent : logique dans usePortailParent, en-tête / barre élève /
 // onglets et contenus dans portail-parent/.
@@ -17,6 +18,7 @@ function PortailParent({ utilisateur, deconnecter, annee, schoolInfo }) {
     <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "'Inter','Segoe UI',sans-serif" }}>
       <GlobalStyles />
       <PortailHeader schoolInfo={schoolInfo} annee={annee} utilisateur={utilisateur} deconnecter={deconnecter} c1={c1} c2={c2} />
+      <BandeauLectureSeule />
       <EleveBar
         eleve={p.eleve}
         eleveNom={p.eleveNom}

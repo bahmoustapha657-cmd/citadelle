@@ -143,6 +143,11 @@ async function chargerCompte(sb, userId, schoolCode) {
 // Compte parent absorbé par une fusion de doublons (Comptes & Postes →
 // Doublons parents) : sa connexion est bloquée côté Supabase Auth. Le parent
 // doit apprendre pourquoi, plutôt que de croire son mot de passe faux.
+export const MSG_ECOLE_HORS_SERVICE = {
+  inactive: "Cet établissement est désactivé : la connexion est impossible. Contactez EduGest.",
+  supprimee: "Cet établissement n'est plus disponible.",
+};
+
 export const MSG_COMPTE_REGROUPE = "Ce compte n'est plus actif : il a été regroupé avec un autre compte parent de l'école. Demandez votre identifiant à l'école.";
 
 async function connexionParEmail(email, mdp, schoolCode) {
@@ -174,6 +179,11 @@ async function connexionParEmail(email, mdp, schoolCode) {
 // interne OU l'e-mail réel du compte (résolu via la RPC publique
 // login_pour_email — l'authentification reste l'e-mail synthétique).
 export async function ecoleLogin({ login, mdp, schoolId }) {
+  // École désactivée ou supprimée : la base refuse déjà tout accès à ses
+  // comptes (ecole-hors-service.sql) — on le dit clairement plutôt que de
+  // laisser croire à un mauvais mot de passe ou à un compte introuvable.
+  const { statut } = await fetchEtatEcole(schoolId);
+  if (statut) return { ok: false, data: { error: MSG_ECOLE_HORS_SERVICE[statut] } };
   let identifiant = String(login || "").trim();
   if (identifiant.includes("@")) {
     const { data, error } = await getSupabase()
