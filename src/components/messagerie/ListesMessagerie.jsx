@@ -22,7 +22,8 @@ export function ListeConversations({ m, conversations, activeId, onOuvrir }) {
     const nonLus = c.non_lus || 0;
     return (
       <button key={c.id} type="button" style={ligne(c.id === activeId)} onClick={() => onOuvrir(c.id)}>
-        <Avatar id={autre?.id || c.id} nom={titre} groupe={c.type === "groupe"} taille={42} />
+        <Avatar id={autre?.id || c.id} nom={titre} groupe={c.type === "groupe"} taille={42}
+          presence={autre ? m.presences?.get(autre.id) : null} />
         <span style={{ flex: 1, minWidth: 0 }}>
           <span style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
             <span style={{ ...ellipse, flex: 1, fontSize: 13.5, fontWeight: nonLus ? 800 : 700 }}>

@@ -258,3 +258,7 @@ export async function actionReunion(action, corps) {
   }
   return data;
 }
+
+// ── Présence (supabase/presence.sql) ──
+export const signalerPresence = (etat) => rpc("msg_presence", { p_etat: etat });
+export const chargerPresences = async () => (await rpc("msg_presences")) || [];

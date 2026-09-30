@@ -36,13 +36,13 @@ const TABLES = [
   "membres", "evenements", "historique", "push_subs",
   "messages_internes", "messages_internes_lus",
   "msg_conversations", "msg_membres", "msg_messages", "msg_appels",
-  "msg_annonces", "msg_annonces_lus", "msg_reunions", "msg_reunion_participants",
+  "msg_annonces", "msg_annonces_lus", "msg_reunions", "msg_reunion_participants", "msg_presences",
 ];
 // Clé de tri fiable pour la pagination (défaut : id). Certaines tables de
 // liaison n'ont pas d'`id` unique → tri par une colonne présente.
 const TRI = {
   parent_eleves: "eleve_id", enseignant_classes: "compte_id", messages_internes_lus: "message_id",
-  msg_membres: "conversation_id", msg_annonces_lus: "annonce_id", msg_reunion_participants: "reunion_id",
+  msg_membres: "conversation_id", msg_annonces_lus: "annonce_id", msg_reunion_participants: "reunion_id", msg_presences: "compte_id",
 };
 const PAGE = 1000;
 

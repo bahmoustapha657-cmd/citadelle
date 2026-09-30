@@ -305,6 +305,7 @@ export const ARTICLES = [
       "📎 joint un document : PDF, photo, Word, Excel, PowerPoint (10 Mo max). Le texte saisi sert de légende ; les photos lourdes sont allégées automatiquement.",
       "✓ = envoyé, ✓✓ = lu ; en groupe, « ✓✓ 3/5 » indique combien l'ont lu — touchez votre message pour voir qui.",
       "Menu ⋮ : épingler, mettre en sourdine, archiver ; pour un groupe, gérer les membres et les administrateurs.",
+      "Point vert = en ligne (application ouverte à l'écran), point orange = absent (application ouverte en arrière-plan, joignable par appel) ; sinon « Vu il y a … ». Aussi visible dans Comptes & Postes, colonne « Connexion ».",
     ],
   },
   {

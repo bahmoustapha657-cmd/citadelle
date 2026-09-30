@@ -1,15 +1,17 @@
 import { useMemo, useState } from "react";
 import { Avatar } from "./Avatar";
-import { normaliser } from "./messagerie-logic";
+import { estJoignable, libellePresence, normaliser } from "./messagerie-logic";
+import { useMessagerie } from "./messagerie-contexte";
 import { champ, puce } from "./styles-messagerie";
 
-const FILTRES = [["tous", "Tous"], ["personnel", "Personnel"], ["enseignants", "Enseignants"]];
+const FILTRES = [["tous", "Tous"], ["personnel", "Personnel"], ["enseignants", "Enseignants"], ["en_ligne", "🟢 En ligne"]];
 
 // Liste de comptes filtrable (recherche + personnel / enseignants).
 // Choix unique (`onChoisir`) ou multiple (`selection` + `onBasculer`).
 export function SelecteurComptes({ comptes, onChoisir, selection, onBasculer, exclus = [], hauteur = 300 }) {
   const [recherche, setRecherche] = useState("");
   const [filtre, setFiltre] = useState("tous");
+  const presences = useMessagerie()?.presences;
   const multiple = !!onBasculer;
   const choisis = useMemo(() => new Set(selection || []), [selection]);
   const sansExclus = useMemo(() => new Set(exclus), [exclus]);
@@ -17,9 +19,10 @@ export function SelecteurComptes({ comptes, onChoisir, selection, onBasculer, ex
   const visibles = useMemo(() => {
     const terme = normaliser(recherche);
     return comptes.filter((c) => !sansExclus.has(c.id)
-      && (filtre === "tous" || (filtre === "enseignants") === (c.role === "enseignant"))
+      && (filtre === "tous"
+        || (filtre === "en_ligne" ? estJoignable(presences?.get(c.id)) : (filtre === "enseignants") === (c.role === "enseignant")))
       && (!terme || normaliser(`${c.nom} ${c.poste} ${c.login}`).includes(terme)));
-  }, [comptes, recherche, filtre, sansExclus]);
+  }, [comptes, recherche, filtre, sansExclus, presences]);
 
   return (
     <div>
@@ -55,10 +58,12 @@ export function SelecteurComptes({ comptes, onChoisir, selection, onBasculer, ex
                   display: "flex", alignItems: "center", justifyContent: "center",
                 }}>{coche ? "✓" : ""}</span>
               )}
-              <Avatar id={c.id} nom={c.nom} taille={32} />
+              <Avatar id={c.id} nom={c.nom} taille={32} presence={presences?.get(c.id)} />
               <span style={{ minWidth: 0, flex: 1 }}>
                 <span style={{ display: "block", fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.nom}</span>
-                <span style={{ display: "block", fontSize: 11, color: "var(--lc-text-muted)" }}>{c.poste}</span>
+                <span style={{ display: "block", fontSize: 11, color: "var(--lc-text-muted)" }}>
+                  {[c.poste, libellePresence(presences?.get(c.id))].filter(Boolean).join(" · ")}
+                </span>
               </span>
             </button>
           );

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { isSupabase } from "../../backend";
 import { messagerieOuverteA, titreConversation } from "./messagerie-logic";
 import { useReunion } from "./audio/use-reunion";
+import { usePresence } from "./use-presence";
 import { ReunionOverlay } from "./ReunionOverlay";
 import { notifier } from "../../backend/messagerie-supabase";
 import { useMessagerieEtat } from "./use-messagerie-etat";
@@ -80,7 +81,8 @@ export function MessagerieProvider({ utilisateur, schoolCode, onOuvrir, children
     return () => navigator.serviceWorker?.removeEventListener("message", surMessageSw);
   }, [actif]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const valeur = actif ? { ...etat, appels, reunions, ouvrirMessagerie } : null;
+  const presences = usePresence({ actif });
+  const valeur = actif ? { ...etat, appels, reunions, presences, ouvrirMessagerie } : null;
   const convReunion = reunions.reunion ? etat.boiteParId.get(reunions.reunion.conversationId) : null;
 
   return (
