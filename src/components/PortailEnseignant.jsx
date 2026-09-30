@@ -5,10 +5,11 @@ import { PortailHeader } from "./portail-enseignant/PortailHeader";
 import { PortailTabContent } from "./portail-enseignant/PortailTabContent";
 import { IncidentModal } from "./portail-enseignant/IncidentModal";
 import { usePortailEnseignant } from "./portail-enseignant/use-portail-enseignant";
+import { BandeauPremiereSynchro } from "./app/BandeauPremiereSynchro";
 
 // Orchestrateur du portail enseignant : la logique vit dans
 // usePortailEnseignant, chaque onglet dans portail-enseignant/*Tab.jsx.
-function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
+function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo, premiereSynchro, estHorsLigne }) {
   const { t } = useTranslation();
   const p = usePortailEnseignant({ utilisateur, annee, schoolInfo });
 
@@ -20,6 +21,7 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo }) {
         nomEns={p.nomEns} matiere={p.matiere} c1={p.c1} c2={p.c2}
         deconnecter={deconnecter} t={t} tab={p.tab} setTab={p.setTab}
       />
+      <BandeauPremiereSynchro premiereSynchro={premiereSynchro} estHorsLigne={estHorsLigne} t={t} />
 
       <div style={{ padding: "24px", maxWidth: 1100, margin: "0 auto" }}>
         <PortailTabContent p={p} schoolInfo={schoolInfo} utilisateur={utilisateur} t={t} />

@@ -7,6 +7,7 @@ import { PageErrorBoundary } from "./PageErrorBoundary";
 import { InstallBanner } from "./InstallBanner";
 import { Sidebar } from "./Sidebar";
 import { AppHeader } from "./AppHeader";
+import { BandeauPremiereSynchro } from "./BandeauPremiereSynchro";
 import { PageRouter } from "./PageRouter";
 import { ModuleHorsLignePlaceholder } from "./ModuleHorsLignePlaceholder";
 import { AppShellOverlays } from "./app-shell/AppShellOverlays";
@@ -65,6 +66,7 @@ export function AppShell(p) {
             profilOuvert={p.profilOuvert} setProfilOuvert={p.setProfilOuvert}
             setPage={p.setPage} setAideOuverte={p.setAideOuverte} setCentreAideOuvert={p.setCentreAideOuvert} deconnecter={p.deconnecter}
           />
+          <BandeauPremiereSynchro premiereSynchro={p.premiereSynchro} estHorsLigne={p.estHorsLigne} t={p.t} />
           {/* École migrée vers la nouvelle version (Supabase) : cette adresse
               est en lecture seule — bannière permanente vers la nouvelle URL. */}
           {p.basculeSupabase && (

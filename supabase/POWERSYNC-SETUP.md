@@ -53,6 +53,36 @@ ou d'un événement passe → rétablir → badge de sync puis remontée.
 
 ---
 
+## Priorités de synchro (réseau faible) — 2026-09-29
+
+Les règles donnent une `priority:` à chaque bucket : PowerSync rend visible
+chaque niveau dès qu'il est complet, au lieu d'attendre la fin de tout.
+
+| Priorité | Buckets | Contenu | Poids (La Citadelle) |
+|---|---|---|---|
+| 1 | `school_data`, `compta_data` | élèves, classes, matières, enseignants, EDT, appréciations, école, postes, comptabilité | ≈ 1,1 Mo |
+| 2 | `staff_notes`, `teacher_notes` | notes, absences | ≈ 3,5 Mo |
+| 3 | les autres | calendrier, examens/livrets, messages, fondation, journal, comptes | ≈ 0,2 Mo |
+
+Mise en service : **Sync Rules** → remplacer tout par
+`supabase/powersync-sync-rules.min.yaml` → **Validate** → **Deploy**.
+Aucun changement SQL (mêmes tables, même publication), aucun bucket ne
+change de contenu : seules les lignes `priority:` sont nouvelles. (Déplacer
+une table d'un bucket à l'autre la ferait disparaître un moment du miroir au
+redéploiement — `tests/powersync-sync-rules.test.js` fige ce contenu.)
+
+⚠️ **Tout redéploiement des règles recrée les buckets** : au retour suivant,
+chaque appareil re-télécharge UNE fois ses données (≈ 5 Mo pour la direction
+de La Citadelle). Les anciennes données restent affichées pendant ce temps.
+Déployer à une heure creuse (soir, week-end) plutôt qu'en pleine saisie.
+
+**Vérification** : dans un vrai Chrome, se connecter avec un compte qui n'a
+jamais ouvert l'app sur ce navigateur (ou profil vierge) → le bandeau passe
+de « Première synchronisation… » à « Élèves et classes disponibles — notes
+… en cours », les listes d'élèves se remplissent avant les notes.
+
+---
+
 ## Annexe — mise en service initiale (déjà faite)
 
 1. **Supabase SQL Editor** : `rls.sql` → `teacher-security.sql` →
@@ -80,3 +110,8 @@ ou d'un événement passe → rétablir → badge de sync puis remontée.
 - **Auth** : sans le bon JWT Secret, les clients sont rejetés (401).
 - **Webview/preview** : le SharedWorker PowerSync n'y tourne pas
   (`connected:false` trompeur) — tester dans un vrai Chrome.
+- **Priorité 0** : jamais. Elle s'applique même avec des écritures locales
+  pas encore envoyées (affichage incohérent possible) ; rester entre 1 et 3
+  (`tests/powersync-sync-rules.test.js` le vérifie).
+- **Navigateur qui traduit le tableau de bord** : la traduction automatique
+  déforme le YAML affiché (« W HERE ») — la désactiver avant de coller.

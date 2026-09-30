@@ -72,7 +72,10 @@
     "errServerUnreachable": "تعذّر الوصول إلى الخادم. تحقق من رمز المدرسة.",
     "offlineShort": "غير متصل",
     "syncPendingTitle": "{{count}} تعديل بانتظار المزامنة",
-    "syncPendingShort": "{{count}} بالانتظار"
+    "syncPendingShort": "{{count}} بالانتظار",
+    "firstSync": "المزامنة الأولى لبياناتك على هذا الجهاز… {{percent}}٪ — ستمتلئ القوائم تلقائيًا.",
+    "firstSyncRest": "التلاميذ والأقسام جاهزة — العلامات وباقي البيانات قيد التنزيل… {{percent}}٪",
+    "firstSyncOffline": "لم يتم تنزيل بياناتك على هذا الجهاز بعد: ستصل فور عودة الشبكة."
   },
   "subscription": {
     "label": "الاشتراك",

@@ -27,8 +27,8 @@ function choisirPageInitiale(u) {
 // @powersync/web/wa-sqlite tant que VITE_POWERSYNC_URL n'est pas renseigné
 // (feature désactivée par défaut) — zéro coût réseau en plus du zéro coût de
 // bundle côté Firebase (isSupabase=false, jamais appelé du tout).
-const connectPowerSync = () => (powerSyncConfigured
-  ? import("../backend/powersync/client").then((m) => m.connectPowerSync())
+const connectPowerSync = (uid) => (powerSyncConfigured
+  ? import("../backend/powersync/client").then((m) => m.connectPowerSync(uid))
   : Promise.resolve());
 const disconnectPowerSync = () => (powerSyncConfigured
   ? import("../backend/powersync/client").then((m) => m.disconnectPowerSync())
@@ -57,6 +57,8 @@ export function useAuthSession({ setSchoolId, setPage }) {
         if (!u) {
           setUtilisateur(null);
           setPage(null);
+          // Coupe la synchro sans vider le miroir : le même compte retrouvera
+          // ses données au retour (cf. powersync/proprietaire.js).
           disconnectPowerSync().catch(() => {});
           return;
         }
@@ -64,13 +66,16 @@ export function useAuthSession({ setSchoolId, setPage }) {
           setSchoolId(u.schoolId);
           localStorage.setItem("LC_schoolId", u.schoolId);
         }
-        setUtilisateur(u);
+        // Même compte que celui déjà affiché (ex. posé par le formulaire de
+        // connexion, puis confirmé par l'événement d'auth) : on garde l'objet
+        // pour ne pas relancer les chargements qui dépendent de l'utilisateur.
+        setUtilisateur((prec) => (prec && JSON.stringify(prec) === JSON.stringify(u) ? prec : u));
         setPage((p) => p || choisirPageInitiale(u));
         // Mode hors ligne (vague 1 = académique) : personnel + enseignants
         // seulement. Les PARENTS ne se connectent PAS à PowerSync — leur
         // périmètre (leurs enfants) n'est pas couvert par les Sync Rules, qui
         // synchroniseraient sinon toute l'école. (Portail parent = vague 2.)
-        if (u.role !== "parent") connectPowerSync().catch(() => {});
+        if (u.role !== "parent") connectPowerSync(u.uid).catch(() => {});
       }).then((cleanup) => {
         if (actif) unsub = cleanup; else cleanup();
       }).catch(() => {});

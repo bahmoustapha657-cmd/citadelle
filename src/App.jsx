@@ -40,7 +40,7 @@ export default function App() {
 
   // Nb de changements locaux (notes/absences saisies hors ligne) en attente
   // de synchronisation — no-op hors mode Supabase/PowerSync.
-  const { syncPendantes } = usePowerSyncStatus();
+  const { syncPendantes, premiereSynchro } = usePowerSyncStatus();
 
   // Auth Firebase + profil /users/{uid} → utilisateur courant.
   // Appelé avant useSchoolData qui dépend d'utilisateur (visibilité des
@@ -125,7 +125,7 @@ export default function App() {
   // changement de mot de passe, portails enseignant/parent.
   const ecranAuth = AuthGate({
     utilisateur, page, schoolInfo, schoolId, schoolContextValue,
-    annee, connecter, deconnecter, setPage, setUtilisateur,
+    annee, connecter, deconnecter, setPage, setUtilisateur, premiereSynchro, estHorsLigne,
   });
   if (ecranAuth) return ecranAuth;
 
@@ -143,7 +143,7 @@ export default function App() {
         schoolInfo={schoolInfo} couleur2={couleur2} annee={annee} setAnnee={setAnnee}
         page={page} setPage={setPage} isMobile={isMobile}
         msgsNonLus={msgsNonLus} utilisateur={utilisateur} utilisateurLabel={utilisateurLabel}
-        deconnecter={deconnecter} estHorsLigne={estHorsLigne} syncPendantes={syncPendantes} t={t}
+        deconnecter={deconnecter} estHorsLigne={estHorsLigne} syncPendantes={syncPendantes} premiereSynchro={premiereSynchro} t={t}
         readOnly={readOnly} permissions={permissions} roleEffectif={roleEffectif} abonnementExpire={abonnementExpire} basculeSupabase={basculeSupabase} planInfo={planInfo} modeSombre={modeSombre} setModeSombre={setModeSombre}
         notifOuvert={notifOuvert} setNotifOuvert={setNotifOuvert}
         notifNonLues={notifNonLues} setNotifNonLues={setNotifNonLues} notifListe={notifListe} nowTs={nowTs}
