@@ -249,6 +249,23 @@ async function main() {
       const { data: fin } = await svc.from("msg_reunions").select("statut").eq("id", reunion).single();
       attendu("appel clos (plus personne)", fin?.statut === "termine");
     }
+
+    // ── Présence (presence.sql) ──
+    console.log("\n— Présence —");
+    {
+      const { error: sErr } = await en.rpc("msg_presence", { p_etat: "actif" });
+      attendu("l'enseignant signale sa présence", !sErr, sErr?.message);
+      await co.rpc("msg_presence", { p_etat: "absent" });
+      const { data: pres, error: lErr } = await di.rpc("msg_presences");
+      const parId = new Map((pres || []).map((p) => [p.compte_id, p]));
+      attendu("la direction voit l'enseignant « actif »", !lErr && parId.get(comptes.enseignant.id)?.etat === "actif", lErr?.message);
+      attendu("… et la comptable « absent »", parId.get(comptes.comptable.id)?.etat === "absent");
+      const { data: brut } = await en.from("msg_presences").select("compte_id");
+      attendu("lecture directe de la table refusée (RLS)", (brut || []).length === 0);
+      const anon = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false } });
+      const { error: anonErr } = await anon.rpc("msg_presences");
+      attendu("anon : EXECUTE refusé sur msg_presences", /permission denied/i.test(anonErr?.message || ""), anonErr?.message || "aucune erreur");
+    }
   } finally {
     // ── Nettoyage complet ──
     if (fichiers.length) await svc.storage.from("messagerie").remove(fichiers);

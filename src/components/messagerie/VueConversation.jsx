@@ -2,7 +2,9 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Avatar } from "./Avatar";
 import { BulleMessage } from "./BulleMessage";
 import { Composeur } from "./Composeur";
-import { autresMembres, construireFil, sousTitreConversation, titreConversation } from "./messagerie-logic";
+import {
+  autresMembres, construireFil, libellePresence, membresConnectes, sousTitreConversation, titreConversation,
+} from "./messagerie-logic";
 import { boutonIcone } from "./styles-messagerie";
 
 const itemMenu = {
@@ -88,14 +90,20 @@ export function VueConversation({ m, conv, etroit, onRetour, onGererGroupe }) {
       {/* En-tête */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", background: "var(--lc-surface)", borderBottom: "1px solid var(--lc-border)" }}>
         {etroit && <button type="button" onClick={onRetour} style={boutonIcone} aria-label="Retour à la liste">←</button>}
-        <Avatar id={correspondant?.id || conv.id} nom={titre} groupe={conv.type === "groupe"} taille={38} />
+        <Avatar id={correspondant?.id || conv.id} nom={titre} groupe={conv.type === "groupe"} taille={38}
+          presence={correspondant ? m.presences?.get(correspondant.id) : null} />
         <div style={{ flex: 1, minWidth: 0, cursor: conv.type === "groupe" ? "pointer" : "default" }}
           onClick={conv.type === "groupe" ? onGererGroupe : undefined}>
           <div style={{ fontWeight: 800, fontSize: 14, color: "var(--lc-text-brand)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {conv.epingle && "📌 "}{titre}{conv.sourdine && " 🔕"}
           </div>
           <div style={{ fontSize: 11.5, color: "var(--lc-text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {sousTitreConversation(conv, annuaire, moi)}
+            {[
+              sousTitreConversation(conv, annuaire, moi),
+              correspondant
+                ? libellePresence(m.presences?.get(correspondant.id))
+                : (membresConnectes(conv, m.presences, moi) ? `${membresConnectes(conv, m.presences, moi)} en ligne` : ""),
+            ].filter(Boolean).join(" · ")}
           </div>
         </div>
         {correspondant && (

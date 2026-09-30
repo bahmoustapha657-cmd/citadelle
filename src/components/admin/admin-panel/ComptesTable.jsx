@@ -1,15 +1,19 @@
 import { C } from "../../../constants";
 import { Badge, Btn, Card, Chargement, TD, THead, TR } from "../../ui";
 import { compteColor } from "../admin-helpers";
+import { useMessagerie } from "../../messagerie/messagerie-contexte";
+import { COULEURS_PRESENCE, libellePresence } from "../../messagerie/messagerie-logic";
 
 // Tableau des comptes de l'école avec action de réinitialisation du mot
 // de passe (selon les droits de l'utilisateur courant).
 export function ComptesTable({ comptes, chargement, initEnCours, peutResetCompte, setForm, setModal }) {
+  // Présence (messagerie) : personnel et enseignants ; rien pour les parents.
+  const presences = useMessagerie()?.presences;
   if (chargement || initEnCours) return <Chargement/>;
   return (
     <Card>
       <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
-        <THead cols={["Utilisateur","Login","Rôle","Mot de passe","Action"]}/>
+        <THead cols={["Utilisateur","Login","Rôle","Connexion","Mot de passe","Action"]}/>
         <tbody>
           {comptes.map((c,i)=>{
             const reserve = !peutResetCompte(c.role);
@@ -18,6 +22,20 @@ export function ComptesTable({ comptes, chargement, initEnCours, peutResetCompte
               <TD bold>{c.nom}</TD>
               <TD><span style={{fontFamily:"monospace",background:"#e0ebf8",padding:"2px 8px",borderRadius:4,fontSize:12,color:C.blue}}>{c.login}</span></TD>
               <TD><div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}><Badge color={compteColor(c.role)}>{c.label}</Badge>{c.statut && c.statut!=="Actif" && <Badge color="gray">Inactif</Badge>}</div></TD>
+              <TD>
+                {(() => {
+                  const p = presences?.get(c._id);
+                  const libelle = libellePresence(p);
+                  if (!libelle) return <span style={{fontSize:11,color:"#9ca3af"}}>—</span>;
+                  const couleur = COULEURS_PRESENCE[p.etat];
+                  return (
+                    <span style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:12,fontWeight:couleur?700:500,color:couleur?"#065f46":"#6b7280",whiteSpace:"nowrap"}}>
+                      <span style={{width:9,height:9,borderRadius:"50%",background:couleur||"#d1d5db",flexShrink:0}}/>
+                      {libelle}
+                    </span>
+                  );
+                })()}
+              </TD>
               <TD>
                 <Badge color="vert">🔒 Sécurisé</Badge>
               </TD>

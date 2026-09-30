@@ -252,3 +252,26 @@ export function postesDeLAnnuaire(annuaireListe) {
   }
   return postes;
 }
+
+// ── Présence ──
+export const COULEURS_PRESENCE = { actif: "#22c55e", absent: "#f59e0b" };
+
+// { etat, depuis } → « En ligne », « Absent », « Vu il y a 12 min »… ;
+// "" si le compte n'a jamais ouvert l'application depuis la mise en place.
+export function libellePresence(presence) {
+  if (!presence) return "";
+  if (presence.etat === "actif") return "En ligne";
+  if (presence.etat === "absent") return "Absent";
+  const s = Math.max(0, presence.depuis || 0);
+  if (s < 90) return "Vu à l'instant";
+  if (s < 3600) return `Vu il y a ${Math.round(s / 60)} min`;
+  if (s < 86400) return `Vu il y a ${Math.floor(s / 3600)} h`;
+  const jours = Math.floor(s / 86400);
+  return jours === 1 ? "Vu hier" : `Vu il y a ${jours} jours`;
+}
+
+export const estJoignable = (presence) => presence?.etat === "actif" || presence?.etat === "absent";
+
+// Membres d'une discussion (hors soi) actuellement connectés.
+export const membresConnectes = (conv, presences, moi) =>
+  (conv?.membres || []).filter((m) => m.id !== moi && estJoignable(presences?.get(m.id))).length;

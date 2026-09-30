@@ -67,7 +67,7 @@ export function GroupeModal({ m, conv, fermer }) {
           <div style={{ border: "1px solid var(--lc-border)", borderRadius: 10, maxHeight: 320, overflowY: "auto" }}>
             {(conv.membres || []).map((membre) => (
               <div key={membre.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderBottom: "1px solid var(--lc-border-soft)" }}>
-                <Avatar id={membre.id} nom={nom(membre.id)} taille={32} />
+                <Avatar id={membre.id} nom={nom(membre.id)} taille={32} presence={m.presences?.get(membre.id)} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: "var(--lc-text)" }}>
                     {nom(membre.id)}{membre.id === m.moi && " (vous)"}
