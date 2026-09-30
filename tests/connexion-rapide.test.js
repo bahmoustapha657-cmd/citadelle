@@ -60,6 +60,8 @@ const requete = (table) => {
 };
 const faux = {
   from: requete,
+  // État public de l'école, lu par ecoleLogin avant la connexion : active.
+  rpc: async () => ({ data: [{ nom: "La Citadelle", code: "citadelle", actif: true, supprime: false }], error: null }),
   auth: {
     getSession: () => etat.getSession(),
     onAuthStateChange: (cb) => {

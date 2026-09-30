@@ -3,6 +3,7 @@
  * Stratégies de cache :
  *   App shell (JS/CSS/HTML)  → CacheFirst + mise à jour en arrière-plan
  *   Firebase Storage (photos) → CacheFirst longue durée
+ *   Supabase Storage (photos, logos) → CacheFirst sans expiration
  *   Firestore API             → NetworkFirst avec fallback cache
  *   Firebase Auth             → NetworkOnly (sécurité)
  *   API routes Vercel (/api/) → NetworkFirst avec fallback
@@ -10,7 +11,12 @@
 
 const CACHE_APP    = "edugest-app-v11";
 const CACHE_DATA   = "edugest-data-v11";
-const CACHE_PHOTOS = "edugest-photos-v11";
+// Photos : noms SANS version, partagés avec src/photos-hors-ligne.js (qui y
+// range les photos prises hors ligne). Un nom versionné serait effacé à la
+// prochaine activation — et avec lui les photos pas encore envoyées.
+// Les URL des photos sont immuables (nom aléatoire à chaque envoi).
+const CACHE_PHOTOS         = "edugest-photos";
+const CACHE_PHOTOS_ATTENTE = "edugest-photos-attente";
 
 // ?v=2 : cache-busting du nouveau logo (les navigateurs cachent les favicons
 // très longtemps ; les téléphones ne rafraîchissent l'icône PWA que si l'URL
@@ -47,7 +53,7 @@ self.addEventListener("message", (e) => {
 
 // ── Activation : nettoyage des vieux caches ───────────────────
 self.addEventListener("activate", (e) => {
-  const KEPT = [CACHE_APP, CACHE_DATA, CACHE_PHOTOS];
+  const KEPT = [CACHE_APP, CACHE_DATA, CACHE_PHOTOS, CACHE_PHOTOS_ATTENTE];
   e.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(keys.filter((k) => !KEPT.includes(k)).map((k) => caches.delete(k)))
@@ -75,6 +81,16 @@ self.addEventListener("fetch", (e) => {
   // 2. Firebase Storage (photos) → CacheFirst
   if (url.hostname === "firebasestorage.googleapis.com") {
     e.respondWith(cacheFirst(request, CACHE_PHOTOS, 30 * 24 * 60 * 60));
+    return;
+  }
+
+  // 2 bis. Supabase Storage public (photos d'élèves, logos) → CacheFirst sans
+  // expiration. Supabase ne laisse le navigateur garder ces images qu'une
+  // heure (max-age=3600) : hors ligne, elles disparaissaient. Les photos
+  // prises hors ligne sont déjà dans ce cache (photos-hors-ligne.js).
+  if (request.method === "GET" && /\.supabase\.co$/.test(url.hostname)
+      && url.pathname.startsWith("/storage/v1/object/public/")) {
+    e.respondWith(cacheFirst(request, CACHE_PHOTOS, Infinity));
     return;
   }
 
@@ -119,7 +135,9 @@ self.addEventListener("fetch", (e) => {
 /** CacheFirst : renvoie le cache si disponible, sinon réseau puis stocke */
 async function cacheFirst(request, cacheName, maxAgeSeconds) {
   const cache = await caches.open(cacheName);
-  const cached = await cache.match(request);
+  // ignoreVary : une entrée rangée par la page (clé = URL seule) doit servir
+  // aussi une requête <img crossOrigin> qui porte un en-tête Origin.
+  const cached = await cache.match(request, { ignoreVary: true });
   if (cached) {
     const date = cached.headers.get("date");
     if (!date || (Date.now() - new Date(date).getTime()) < maxAgeSeconds * 1000) {

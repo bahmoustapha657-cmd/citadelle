@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { isSupabase } from "../backend";
 import { powerSyncConfigured } from "../backend/powersync/tables";
+import { compterPhotosEnAttente } from "../photos-hors-ligne";
 
 // État du mode hors ligne (PowerSync). No-op côté Firebase et si PowerSync
 // n'est pas configuré (VITE_POWERSYNC_URL vide) : rien en attente, pas de
 // synchro en cours, sans coût — le module lourd (@powersync/web/wa-sqlite)
 // n'est chargé en `import()` que si les deux conditions ci-dessous sont réunies.
-//   • syncPendantes : changements locaux pas encore remontés à Supabase.
+//   • syncPendantes : changements locaux pas encore remontés à Supabase,
+//     photos d'élèves en attente d'envoi comprises.
 //   • premiereSynchro : null, ou { fraction (0 → 1), essentielPret } tant que
 //     le miroir de cet appareil n'a jamais été complet — première connexion
 //     d'un compte sur l'appareil. L'écran dit ce qui manque encore.
@@ -42,7 +44,9 @@ export function usePowerSyncStatus() {
         }
         try {
           const stats = await ps.getUploadQueueStats();
-          if (actif) setSyncPendantes(stats?.count || 0);
+          // + photos d'élèves prises hors ligne, pas encore envoyées.
+          const photos = await compterPhotosEnAttente();
+          if (actif) setSyncPendantes((stats?.count || 0) + photos);
         } catch { /* base locale pas encore prête */ }
       };
 

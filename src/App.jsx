@@ -9,6 +9,7 @@ import { usePowerSyncStatus } from "./hooks/use-powersync-status";
 import { useSchoolData } from "./hooks/use-school-data";
 import { useKeyboardShortcuts } from "./hooks/use-keyboard-shortcuts";
 import { useAuthSession } from "./hooks/use-auth-session";
+import { usePhotosHorsLigne } from "./hooks/use-photos-hors-ligne";
 import { useRecovery } from "./hooks/use-recovery";
 import { useAppUiState } from "./components/app/use-app-ui-state";
 import { useAppShell } from "./components/app/use-app-shell";
@@ -48,6 +49,10 @@ export default function App() {
   // Appelé avant useSchoolData qui dépend d'utilisateur (visibilité des
   // listeners back-office vs portails enseignant/parent).
   const { utilisateur, setUtilisateur } = useAuthSession({ setSchoolId, setPage });
+
+  // Photos d'élèves prises hors ligne : envoi au retour du réseau ; photos et
+  // logo gardés sur l'appareil pour l'affichage hors ligne.
+  usePhotosHorsLigne(utilisateur);
 
   // Listeners Firestore liés à l'école courante (schoolInfo, verrous,
   // legal profile, badges messages/élèves/notifs).
