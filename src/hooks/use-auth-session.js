@@ -7,6 +7,7 @@ import { watchAuthState as watchAuthStateSupabase } from "../backend/auth-supaba
 import { powerSyncConfigured, moduleDisponibleHorsLigne } from "../backend/powersync/tables";
 import { getPrimaryModuleForRole } from "../constants";
 import { getPrimaryModuleForCompte, getOfflineModuleForCompte } from "../../shared/postes-config.js";
+import { protegerDonneesLocales } from "../stockage-persistant";
 
 // Page d'atterrissage : module principal habituel, SAUF si l'app démarre sans
 // réseau et que ce module n'est pas utilisable hors ligne — dans ce cas on
@@ -75,7 +76,12 @@ export function useAuthSession({ setSchoolId, setPage }) {
         // seulement. Les PARENTS ne se connectent PAS à PowerSync — leur
         // périmètre (leurs enfants) n'est pas couvert par les Sync Rules, qui
         // synchroniseraient sinon toute l'école. (Portail parent = vague 2.)
-        if (u.role !== "parent") connectPowerSync(u.uid).catch(() => {});
+        if (u.role !== "parent") {
+          connectPowerSync(u.uid).catch(() => {});
+          // Miroir, saisies non envoyées et photos : à protéger contre
+          // l'effacement par le navigateur quand le disque se remplit.
+          protegerDonneesLocales();
+        }
       }).then((cleanup) => {
         if (actif) unsub = cleanup; else cleanup();
       }).catch(() => {});
