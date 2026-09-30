@@ -3,7 +3,8 @@ import { Avatar } from "./Avatar";
 import { BulleMessage } from "./BulleMessage";
 import { Composeur } from "./Composeur";
 import {
-  autresMembres, construireFil, libellePresence, membresConnectes, sousTitreConversation, titreConversation,
+  autresMembres, construireFil, libellePresence, membresConnectes, peutContacter, peutLancerAppelGroupe,
+  sousTitreConversation, titreConversation,
 } from "./messagerie-logic";
 import { boutonIcone } from "./styles-messagerie";
 
@@ -84,6 +85,10 @@ export function VueConversation({ m, conv, etroit, onRetour, onGererGroupe }) {
   const reunionIci = reunions?.actives.find((a) => a.conversation_id === conv.id);
   const dansReunionIci = reunions?.reunion?.conversationId === conv.id;
   const appelEnCours = !!appels.appel || (!!reunions?.enCours && !dansReunionIci);
+  // Hiérarchie : on n'appelle que qui l'on peut contacter ; on rejoint
+  // toujours un appel de groupe en cours.
+  const peutAppeler = !!correspondant && peutContacter(annuaire.get(correspondant.id));
+  const peutLancerGroupe = conv.type === "groupe" && peutLancerAppelGroupe(conv, annuaire, moi);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0, background: "var(--lc-surface-alt)" }}>
@@ -106,7 +111,7 @@ export function VueConversation({ m, conv, etroit, onRetour, onGererGroupe }) {
             ].filter(Boolean).join(" · ")}
           </div>
         </div>
-        {correspondant && (
+        {peutAppeler && (
           <button type="button" onClick={appeler} disabled={appelEnCours || dansReunionIci} title="Appel audio"
             style={{ ...boutonIcone, fontSize: 19, opacity: appelEnCours ? 0.4 : 1 }}>📞</button>
         )}
@@ -116,7 +121,7 @@ export function VueConversation({ m, conv, etroit, onRetour, onGererGroupe }) {
             style={{ background: "#059669", color: "#fff", border: "none", borderRadius: 16, padding: "6px 12px", fontSize: 12, fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap", opacity: appelEnCours ? 0.5 : 1 }}>
             🟢 Rejoindre ({(reunionIci.presents || []).length})
           </button>
-        ) : (
+        ) : (dansReunionIci || peutLancerGroupe) && (
           <button type="button" onClick={() => reunions.rejoindre(conv.id)} disabled={appelEnCours}
             title={dansReunionIci ? "Revenir à l'appel" : "Appel de groupe (audio, vidéo possible)"}
             style={{ ...boutonIcone, fontSize: 19, opacity: appelEnCours ? 0.4 : 1 }}>📞</button>
@@ -163,7 +168,7 @@ export function VueConversation({ m, conv, etroit, onRetour, onGererGroupe }) {
             onRepondre={() => { setReponse(item.message); setEdition(null); setSelectionId(null); }}
             onModifier={() => { setEdition(item.message); setReponse(null); setSelectionId(null); }}
             onSupprimer={() => supprimer(item.message)}
-            onRappeler={item.message.type === "appel" && correspondant && !appelEnCours ? appeler : undefined} />
+            onRappeler={item.message.type === "appel" && peutAppeler && !appelEnCours ? appeler : undefined} />
         )))}
       </div>
 

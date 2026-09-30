@@ -1,8 +1,8 @@
 // ═══════════════════════════════════════════════════════════════════════════
 //  EduGest — Sondes de la messagerie v2 (messagerie-v2.sql)
 // ═══════════════════════════════════════════════════════════════════════════
-// Crée trois comptes de test JETABLES sur l'École Démo (direction, comptable,
-// enseignant), vérifie PAR LA BASE la confidentialité des discussions, des
+// Crée quatre comptes de test JETABLES sur l'École Démo (direction, comptable,
+// Principale — poste college —, enseignant du collège), vérifie PAR LA BASE la confidentialité des discussions, des
 // appels, des annonces et des vocaux, ainsi que la diffusion temps réel —
 // puis supprime tout. Lancer : node supabase/test-rls-messagerie.mjs
 import { createClient } from "@supabase/supabase-js";
@@ -26,7 +26,7 @@ async function main() {
 
   const comptes = {};
   const sessions = {};
-  for (const role of ["direction", "comptable", "enseignant"]) {
+  for (const role of ["direction", "comptable", "college", "enseignant"]) {
     const login = `test-msg-${role}`;
     const email = `${login}.demo@edugest.app`;
     const pass = mdp();
@@ -40,7 +40,7 @@ async function main() {
     const { data: c, error: ce } = await svc.from("comptes").insert({
       user_id: u.user.id, ecole_id: demo.id, login, role, nom: `Test msg ${role}`, label: role,
       poste_id: role === "enseignant" ? null : posteId[role] || null, premiere_co: false,
-      ...(role === "enseignant" ? { enseignant_nom: "Test msg enseignant", matiere: "Maths" } : {}),
+      ...(role === "enseignant" ? { enseignant_nom: "Test msg enseignant", matiere: "Maths", section: "college" } : {}),
     }).select("id").single();
     if (ce) { console.error(`création ${role} impossible: ${ce.message}`); process.exit(1); }
     comptes[role] = { id: c.id, userId: u.user.id };
@@ -49,7 +49,7 @@ async function main() {
     if (se) { console.error(`connexion ${role} impossible: ${se.message}`); process.exit(1); }
     sessions[role] = cli;
   }
-  const { direction: di, comptable: co, enseignant: en } = sessions;
+  const { direction: di, comptable: co, college: pr, enseignant: en } = sessions;
   const conversations = [];
   const annonces = [];
   const fichiers = [];
@@ -62,20 +62,24 @@ async function main() {
       const ids = new Set((data || []).map((x) => x.id));
       attendu("l'enseignant voit la direction et la comptable", !error && ids.has(comptes.direction.id) && ids.has(comptes.comptable.id), error?.message);
       attendu("aucun parent dans l'annuaire", !(data || []).some((x) => x.role === "parent"));
+      const joignables = (data || []).filter((x) => x.contactable);
+      attendu("hiérarchie : l'enseignant du collège ne peut contacter que son chef de section (poste college)",
+        joignables.some((x) => x.id === comptes.college.id) && joignables.every((x) => x.poste_cle === "college"),
+        JSON.stringify(joignables.map((x) => x.poste_cle)));
       const anon = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false } });
       const { error: anonErr } = await anon.rpc("msg_boite");
       attendu("anon : EXECUTE refusé sur msg_boite", /permission denied/i.test(anonErr?.message || ""), anonErr?.message || "aucune erreur");
     }
 
     console.log("\n— Discussion directe + temps réel —");
-    const { data: directe, error: dErr } = await en.rpc("msg_ouvrir_directe", { p_compte: comptes.comptable.id });
-    attendu("l'enseignant ouvre une discussion avec la comptable", !dErr && !!directe, dErr?.message);
+    const { data: directe, error: dErr } = await en.rpc("msg_ouvrir_directe", { p_compte: comptes.college.id });
+    attendu("l'enseignant ouvre une discussion avec sa Principale", !dErr && !!directe, dErr?.message);
     conversations.push(directe);
 
-    // Temps réel : la comptable doit recevoir le message, la direction non.
-    const recus = { comptable: [], direction: [] };
+    // Temps réel : la Principale doit recevoir le message, la direction non.
+    const recus = { college: [], direction: [] };
     const canaux = [];
-    for (const [qui, cli] of [["comptable", co], ["direction", di]]) {
+    for (const [qui, cli] of [["college", pr], ["direction", di]]) {
       const ch = cli.channel(`sonde-${qui}-${Date.now()}`)
         .on("postgres_changes", { event: "INSERT", schema: "public", table: "msg_messages", filter: `ecole_id=eq.${demo.id}` },
           (p) => recus[qui].push(p.new));
@@ -98,17 +102,17 @@ async function main() {
     attendu("REFUS de forger un message système (RLS)", sysErr?.code === "42501", sysErr?.message || "accepté");
 
     await attente(4000);
-    attendu("temps réel : la comptable reçoit le message", recus.comptable.some((m) => m.corps === "SONDE-MSG"),
+    attendu("temps réel : la Principale reçoit le message", recus.college.some((m) => m.corps === "SONDE-MSG"),
       "rien reçu — vérifier la publication supabase_realtime (section 9 du SQL)");
     attendu("temps réel : la direction ne reçoit RIEN", recus.direction.length === 0);
     for (const [cli, ch] of canaux) await cli.removeChannel(ch);
 
-    const { data: vuCo } = await co.from("msg_messages").select("corps").eq("conversation_id", directe);
-    attendu("la comptable lit le message", (vuCo || []).some((m) => m.corps === "SONDE-MSG"));
+    const { data: vuCo } = await pr.from("msg_messages").select("corps").eq("conversation_id", directe);
+    attendu("la Principale lit le message", (vuCo || []).some((m) => m.corps === "SONDE-MSG"));
     const { data: vuDi } = await di.from("msg_messages").select("corps").eq("conversation_id", directe);
     attendu("la direction NE lit PAS une discussion privée", (vuDi || []).length === 0);
-    const { data: boite } = await co.rpc("msg_boite");
-    attendu("boîte de la comptable : 1 non lu", (boite || []).find((c) => c.id === directe)?.non_lus === 1);
+    const { data: boite } = await pr.rpc("msg_boite");
+    attendu("boîte de la Principale : 1 non lu", (boite || []).find((c) => c.id === directe)?.non_lus === 1);
 
     console.log("\n— Message vocal (bucket privé) —");
     {
@@ -117,8 +121,8 @@ async function main() {
         .upload(chemin, new Blob([new Uint8Array([26, 69, 223, 163])], { type: "audio/webm" }), { contentType: "audio/webm" });
       attendu("l'enseignant dépose un vocal dans sa discussion", !upErr, upErr?.message);
       if (!upErr) fichiers.push(chemin);
-      const { error: dlCo } = await co.storage.from("messagerie").download(chemin);
-      attendu("la comptable le télécharge", !dlCo, dlCo?.message);
+      const { error: dlCo } = await pr.storage.from("messagerie").download(chemin);
+      attendu("la Principale le télécharge", !dlCo, dlCo?.message);
       const { data: dlDi } = await di.storage.from("messagerie").download(chemin);
       attendu("la direction NE peut PAS le télécharger", !dlDi);
       const { error: horsErr } = await en.storage.from("messagerie")
@@ -138,14 +142,14 @@ async function main() {
 
     console.log("\n— Appel —");
     {
-      const { data: appel, error: aErr } = await co.rpc("msg_appel_lancer", { p_conv: directe, p_offre: { type: "offer", sdp: "sonde" } });
-      attendu("la comptable appelle l'enseignant", !aErr && !!appel, aErr?.message);
+      const { data: appel, error: aErr } = await pr.rpc("msg_appel_lancer", { p_conv: directe, p_offre: { type: "offer", sdp: "sonde" } });
+      attendu("la Principale appelle l'enseignant", !aErr && !!appel, aErr?.message);
       const { data: vuAppel } = await di.from("msg_appels").select("id").eq("id", appel);
       attendu("la direction ne voit pas l'appel", (vuAppel || []).length === 0);
       const { error: rErr } = await en.rpc("msg_appel_repondre", { p_id: appel, p_reponse: { type: "answer", sdp: "sonde" } });
       attendu("l'enseignant répond", !rErr, rErr?.message);
       await en.rpc("msg_appel_terminer", { p_id: appel, p_statut: "termine" });
-      const { data: trace } = await co.from("msg_messages").select("corps").eq("conversation_id", directe).eq("type", "appel");
+      const { data: trace } = await pr.from("msg_messages").select("corps").eq("conversation_id", directe).eq("type", "appel");
       attendu("trace « appel » dans la discussion", (trace || []).some((t) => /^termine:\d+$/.test(t.corps)));
     }
 
@@ -186,8 +190,8 @@ async function main() {
         fichier_path: chemin, fichier_nom: "sonde.pdf", fichier_type: "application/pdf", fichier_taille: 14,
       });
       attendu("… et le partage (message « fichier »)", !msgErr, msgErr?.message);
-      const { error: dlErr } = await co.storage.from("messagerie").download(chemin);
-      attendu("la comptable télécharge le PDF", !dlErr, dlErr?.message);
+      const { error: dlErr } = await pr.storage.from("messagerie").download(chemin);
+      attendu("la Principale télécharge le PDF", !dlErr, dlErr?.message);
       const { error: exeErr } = await en.storage.from("messagerie")
         .upload(`${demo.id}/${directe}/sonde.exe`, new Blob(["MZ"], { type: "application/x-msdownload" }), { contentType: "application/x-msdownload" });
       attendu("REFUS d'un exécutable (types du bucket)", !!exeErr);
@@ -218,8 +222,10 @@ async function main() {
 
     console.log("\n— v3 · Appel de groupe —");
     {
-      const { data: reunion, error: rErr } = await co.rpc("msg_reunion_demarrer", { p_conv: groupeId });
-      attendu("la comptable lance un appel de groupe", !rErr && !!reunion, rErr?.message);
+      const { error: coLance } = await co.rpc("msg_reunion_demarrer", { p_conv: groupeId });
+      attendu("hiérarchie : REFUS, la comptable (hors périmètre de l'enseignant) ne lance pas l'appel", !!coLance);
+      const { data: reunion, error: rErr } = await di.rpc("msg_reunion_demarrer", { p_conv: groupeId });
+      attendu("la direction (admin du groupe) lance l'appel de groupe", !rErr && !!reunion, rErr?.message);
       const { data: vueEn } = await en.from("msg_reunions").select("id").eq("id", reunion);
       attendu("l'enseignant (membre) voit l'appel", (vueEn || []).length === 1);
       const { error: forgeErr } = await en.from("msg_reunion_participants").insert({
@@ -227,7 +233,7 @@ async function main() {
       });
       attendu("REFUS : s'inscrire avec une session forgée (RLS)", forgeErr?.code === "42501", forgeErr?.message || "accepté");
       // Serveur d'appels : activé (session Cloudflare) ou explicitement non configuré.
-      const { data: rej, error: rejErr } = await co.functions.invoke("reunion", { body: { action: "rejoindre", reunionId: reunion } });
+      const { data: rej, error: rejErr } = await di.functions.invoke("reunion", { body: { action: "rejoindre", reunionId: reunion } });
       const statut = rejErr?.context?.status;
       let corpsErr = null;
       try { corpsErr = await rejErr?.context?.json?.(); } catch { /* pas de JSON */ }
@@ -235,7 +241,7 @@ async function main() {
       if (rej?.sessionId) {
         attendu("Edge reunion : session Cloudflare créée (appels de groupe ACTIVÉS)", true);
         const { data: parts } = await en.from("msg_reunion_participants").select("compte_id, session_id").eq("reunion_id", reunion);
-        attendu("… participante visible des membres", (parts || []).some((p) => p.compte_id === comptes.comptable.id && p.session_id));
+        attendu("… participante visible des membres", (parts || []).some((p) => p.compte_id === comptes.direction.id && p.session_id));
         const { data: rejDi, error: rejDiErr } = await sessions.enseignant.functions.invoke("reunion", { body: { action: "recevoir", reunionId: reunion, pistes: [] } });
         attendu("… « recevoir » refusé tant qu'on n'a pas rejoint", !!rejDiErr && !rejDi?.ok);
       } else {
@@ -244,10 +250,46 @@ async function main() {
         console.log(`  ℹ️  Edge reunion : ${inactif ? "déployée mais NON configurée (secrets CF_REALTIME_*)" : absente ? "non déployée" : `réponse : ${detail}`}`);
         if (!inactif && !absente) attendu("Edge reunion : réponse attendue", false, detail);
       }
-      const { error: qErr } = await co.rpc("msg_reunion_quitter", { p_reunion: reunion });
-      attendu("la comptable quitte l'appel", !qErr, qErr?.message);
+      const { error: qErr } = await di.rpc("msg_reunion_quitter", { p_reunion: reunion });
+      attendu("la direction quitte l'appel", !qErr, qErr?.message);
       const { data: fin } = await svc.from("msg_reunions").select("statut").eq("id", reunion).single();
       attendu("appel clos (plus personne)", fin?.statut === "termine");
+    }
+
+    // ── Hiérarchie (messagerie-hierarchie.sql) ──
+    console.log("\n— Hiérarchie —");
+    {
+      const refusHierarchie = (e) => e?.code === "42501" || /hiérarchie|périmètre/i.test(e?.message || "");
+      const { error: e1 } = await en.rpc("msg_ouvrir_directe", { p_compte: comptes.comptable.id });
+      attendu("REFUS : l'enseignant n'ouvre pas de discussion avec la comptable", refusHierarchie(e1), e1?.message || "accepté");
+      const { error: e2 } = await en.rpc("msg_ouvrir_directe", { p_compte: comptes.direction.id });
+      attendu("REFUS : l'enseignant n'ouvre pas de discussion avec le Fondateur", refusHierarchie(e2), e2?.message || "accepté");
+      const { error: e3 } = await co.rpc("msg_ouvrir_directe", { p_compte: comptes.enseignant.id });
+      attendu("REFUS : la comptable n'ouvre pas de discussion avec l'enseignant", refusHierarchie(e3), e3?.message || "accepté");
+      const { data: coPr, error: e4 } = await co.rpc("msg_ouvrir_directe", { p_compte: comptes.college.id });
+      attendu("la comptable écrit à la Principale (responsables entre eux)", !e4 && !!coPr, e4?.message);
+      if (coPr) conversations.push(coPr);
+      const { data: diEn, error: e5 } = await di.rpc("msg_ouvrir_directe", { p_compte: comptes.enseignant.id });
+      attendu("le Fondateur écrit à l'enseignant", !e5 && !!diEn, e5?.message);
+      if (diEn) conversations.push(diEn);
+      const { data: enDi, error: e6 } = await en.rpc("msg_ouvrir_directe", { p_compte: comptes.direction.id });
+      attendu("… l'enseignant peut alors rouvrir la discussion pour répondre", !e6 && enDi === diEn, e6?.message);
+      const { error: e7 } = await en.rpc("msg_appel_lancer", { p_conv: diEn, p_offre: {} });
+      attendu("… mais pas rappeler le Fondateur", refusHierarchie(e7), e7?.message || "accepté");
+      const { data: a, error: e8 } = await pr.from("msg_annonces").insert({
+        ecole_id: demo.id, de_compte_id: comptes.college.id, titre: "SONDE-HIERARCHIE", corps: "SONDE-HIERARCHIE", a_tous: true,
+      }).select("id").single();
+      attendu("la Principale publie « à tous »", !e8 && !!a, e8?.message);
+      if (a) annonces.push(a.id);
+      const { data: vuEnA } = await en.from("msg_annonces").select("id").eq("id", a?.id);
+      const { data: vuCoA } = await co.from("msg_annonces").select("id").eq("id", a?.id);
+      attendu("… reçue par l'enseignant du collège et la comptable", (vuEnA || []).length === 1 && (vuCoA || []).length === 1);
+      const { data: dest } = await svc.rpc("msg_annonce_destinataires", { p_annonce: a?.id }).then((r) => r, () => ({ data: null }));
+      if (Array.isArray(dest)) {
+        const { data: prim } = await svc.from("comptes").select("id").eq("ecole_id", demo.id).eq("role", "enseignant").in("section", ["primaire", "prescolaire"]);
+        const ids = new Set(dest.map((d) => (typeof d === "string" ? d : d.msg_annonce_destinataires)));
+        attendu("… et PAS par les enseignants du primaire", !(prim || []).some((p) => ids.has(p.id)));
+      }
     }
 
     // ── Présence (presence.sql) ──

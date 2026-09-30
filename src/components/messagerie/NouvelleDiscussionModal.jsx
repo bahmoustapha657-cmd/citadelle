@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Btn, Modale } from "../ui";
 import { SelecteurComptes } from "./SelecteurComptes";
+import { contactables } from "./messagerie-logic";
 import { champ, puce } from "./styles-messagerie";
 
 // Nouvelle discussion : message direct (un clic sur un nom) ou groupe nommé.
@@ -10,7 +11,9 @@ export function NouvelleDiscussionModal({ m, fermer }) {
   const [membres, setMembres] = useState([]);
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState("");
-  const comptes = m.annuaireListe.filter((c) => c.id !== m.moi);
+  // Hiérarchie : seules les personnes que l'on peut contacter sont proposées.
+  const comptes = contactables(m.annuaireListe, m.moi);
+  const restreint = comptes.length < m.annuaireListe.filter((c) => c.id !== m.moi).length;
 
   const executer = async (fn) => {
     setEnCours(true);
@@ -28,6 +31,13 @@ export function NouvelleDiscussionModal({ m, fermer }) {
       </div>
       {erreur && <div style={{ background: "#fee2e2", color: "#991b1b", padding: "8px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, marginBottom: 10 }}>{erreur}</div>}
 
+      {restreint && (
+        <div style={{ fontSize: 12, color: "var(--lc-text-muted)", background: "var(--lc-surface-alt)", border: "1px solid var(--lc-border)", borderRadius: 8, padding: "7px 10px", marginBottom: 10 }}>
+          {comptes.length
+            ? "🏛️ La messagerie suit la hiérarchie de l'établissement : seules les personnes que vous pouvez contacter directement sont listées. Les autres peuvent vous écrire."
+            : "🏛️ Aucun responsable direct n'est défini pour vous. Vos supérieurs peuvent vous écrire ; vous pourrez alors leur répondre."}
+        </div>
+      )}
       {mode === "direct" ? (
         <SelecteurComptes comptes={comptes} onChoisir={(c) => !enCours && executer(() => m.ouvrirDirecteAvec(c.id))} />
       ) : (

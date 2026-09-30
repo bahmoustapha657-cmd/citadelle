@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { Btn, Modale } from "../ui";
 import { SelecteurComptes } from "./SelecteurComptes";
-import { destinatairesAnnonce, postesDeLAnnuaire, PRIORITES } from "./messagerie-logic";
+import { contactables, destinatairesAnnonce, postesDeLAnnuaire, PRIORITES } from "./messagerie-logic";
 import { champ, puce } from "./styles-messagerie";
 import { ACCEPT_DOCUMENTS, formatTaille, iconeFichier, MAX_PIECES_ANNONCE, verifierFichier } from "./documents";
 
@@ -22,8 +22,12 @@ export function NouvelleAnnonceModal({ m, fermer }) {
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState("");
 
-  const postes = useMemo(() => postesDeLAnnuaire(m.annuaireListe), [m.annuaireListe]);
-  const nbDestinataires = destinatairesAnnonce(cible, m.annuaireListe, m.moi).length;
+  // Hiérarchie : l'annonce n'atteint que les personnes de son périmètre
+  // (la base coupe les cibles de la même façon).
+  const perimetre = useMemo(() => contactables(m.annuaireListe, m.moi), [m.annuaireListe, m.moi]);
+  const restreint = perimetre.length < m.annuaireListe.filter((c) => c.id !== m.moi).length;
+  const postes = useMemo(() => postesDeLAnnuaire(perimetre), [perimetre]);
+  const nbDestinataires = destinatairesAnnonce(cible, perimetre, m.moi).length;
 
   const basculerGroupe = (cle) => setCible((c) => ({ ...c, tous: cle === "tous" ? !c.tous : false, [cle]: cle === "tous" ? !c.tous : !c[cle] }));
   const basculerListe = (champListe, valeur) => setCible((c) => ({
@@ -68,12 +72,13 @@ export function NouvelleAnnonceModal({ m, fermer }) {
       )}
       {choixComptes && (
         <div style={{ marginTop: 10 }}>
-          <SelecteurComptes comptes={m.annuaireListe.filter((c) => c.id !== m.moi)}
+          <SelecteurComptes comptes={perimetre}
             selection={cible.comptes} onBasculer={(id) => basculerListe("comptes", id)} hauteur={200} />
         </div>
       )}
       <div style={{ fontSize: 12, fontWeight: 700, color: nbDestinataires ? "var(--sc1)" : "#b91c1c", marginTop: 8 }}>
         → {nbDestinataires} destinataire{nbDestinataires > 1 ? "s" : ""}
+        {restreint && <span style={{ fontWeight: 500, color: "var(--lc-text-muted)" }}> (dans votre périmètre hiérarchique)</span>}
       </div>
 
       <span style={libelle}>Annonce</span>
