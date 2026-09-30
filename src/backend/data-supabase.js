@@ -68,7 +68,10 @@ const horsLigne = (table) => powerSyncConfigured && estCouvertHorsLigne(table);
 // Ces filtres, comme `annee`, s'appliquent en ligne ET hors ligne
 // (filtres-lecture.js) : les deux temps du chargement doivent se compléter sans
 // se recouvrir, sinon chaque ligne arrive en double.
-export async function chargerCollection(schoolCode, nomCollection, { annee, periode, saufPeriode, saufPeriodes } = {}) {
+// `reseau` : lire le SERVEUR même si la table a un miroir local — pour les
+// lignes que la RLS accorde à un compte sans qu'aucun bucket PowerSync ne les
+// lui livre (fiches de paie du portail enseignant) : son miroir est vide.
+export async function chargerCollection(schoolCode, nomCollection, { annee, periode, saufPeriode, saufPeriodes, reseau = false } = {}) {
   const map = resolveCollection(nomCollection);
   if (!map) return { items: [], unsupported: true };
 
@@ -76,7 +79,7 @@ export async function chargerCollection(schoolCode, nomCollection, { annee, peri
   const ecoleId = await ecoleIdFromCode(sb, schoolCode);
   if (!ecoleId) return { items: [], erreur: "École introuvable." };
 
-  if (horsLigne(map.table)) {
+  if (!reseau && horsLigne(map.table)) {
     try {
       const { lireLocal } = await localData();
       const rows = await lireLocal(map.table, { ecoleId, section: map.section, annee, periode, saufPeriode, saufPeriodes });

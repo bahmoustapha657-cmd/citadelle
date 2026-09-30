@@ -15,7 +15,9 @@ Périmètre « hors ligne total » :
   Fondation (membres, documents), Historique, Comptes (lecture, AdminPanel).
 - **Restent en ligne** : portail parent (vague ultérieure), messagerie
   interne, création de comptes / reset mdp (Edge Functions), sauvegarde des
-  Paramètres de l'école, superadmin.
+  Paramètres de l'école, superadmin, et les fiches de paie du portail
+  enseignant (aucun bucket ne les lui livre ; la RLS lui accorde les
+  siennes : `supabase/salaires-enseignant.sql`).
 
 ---
 

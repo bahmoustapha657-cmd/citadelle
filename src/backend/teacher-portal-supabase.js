@@ -10,11 +10,41 @@
 // qu'à l'AFFICHAGE ; une écriture hors périmètre est rejetée par Postgres.
 import { chargerCollection, ajouterDoc, ajouterDocs, upsertDocs, modifierDoc, supprimerDoc } from "./data-supabase";
 import {
-  teacherAliases, matchesTeacherAlias, noteBelongsToTeacherScope, normalizeText, normalizeSection,
-  teacherCollectionSlug, isTitulaireSection,
+  teacherAliases, teacherSalaryAliases, matchesTeacherAlias, noteBelongsToTeacherScope, normalizeText,
+  normalizeSection, teacherCollectionSlug, isTitulaireSection,
 } from "./teacher-scope";
 
 let ctx = null; // contexte enseignant courant (rempli au fetch, utilisé aux écritures)
+
+// ── Fiches de paie : lues sur le SERVEUR ────────────────────────────────────
+// Le miroir PowerSync d'un enseignant n'a pas de `salaires` (seul le bucket
+// compta_data les livre) ; la RLS, elle, lui accorde SES fiches
+// (supabase/salaires-enseignant.sql). Gardées pour la session une fois lues :
+// chargerPortail() se relance après chaque note enregistrée, et une fiche de
+// paie ne change qu'une fois par mois. Un échec (hors ligne) n'est pas gardé :
+// le chargement suivant retente. Attente bornée : sur un réseau qui ne répond
+// plus, le portail — lu localement — ne reste pas suspendu aux salaires.
+export const DELAI_SALAIRES_MS = 8000;
+let salairesSession = null; // { cle, items }
+
+async function lireSalaires(code, cle) {
+  if (salairesSession?.cle === cle) return salairesSession;
+  const lecture = chargerCollection(code, "salaires", { reseau: true })
+    .catch((e) => ({ items: [], erreur: e?.message || String(e) }))
+    .then((r) => {
+      if (!r.erreur) salairesSession = { cle, items: r.items };
+      return r;
+    });
+  let minuterie;
+  const delai = new Promise((resoudre) => {
+    minuterie = setTimeout(() => resoudre({ items: [], erreur: "Délai dépassé." }), DELAI_SALAIRES_MS);
+  });
+  try {
+    return await Promise.race([lecture, delai]);
+  } finally {
+    clearTimeout(minuterie);
+  }
+}
 
 export async function fetchTeacherPortal(utilisateur) {
   const code = utilisateur.schoolId;
@@ -29,10 +59,13 @@ export async function fetchTeacherPortal(utilisateur) {
     enseignantNom: utilisateur.enseignantNom || utilisateur.nom || "",
   };
 
+  // Lancée d'abord (réseau), attendue en dernier : les lectures locales
+  // avancent pendant ce temps.
+  const salairesLus = lireSalaires(code, `${code}|${utilisateur.uid || utilisateur.login || ""}`);
   const lire = async (nom) => (await chargerCollection(code, nom)).items;
-  const [emploisAll, ensAll, classesAll, matieresAll, salairesAll, rosterAll] = await Promise.all([
+  const [emploisAll, ensAll, classesAll, matieresAll, rosterAll] = await Promise.all([
     lire(`classes${C}_emplois`), lire(`ens${C}_enseignements`),
-    lire(`classes${C}`), lire(`classes${C}_matieres`), lire("salaires"), lire(`ens${C}`),
+    lire(`classes${C}`), lire(`classes${C}_matieres`), lire(`ens${C}`),
   ]);
 
   const emplois = emploisAll.filter((i) => matchesTeacherAlias(i.enseignant, aliases));
@@ -79,9 +112,15 @@ export async function fetchTeacherPortal(utilisateur) {
     !Array.isArray(m.classes) || m.classes.length === 0
       ? true
       : m.classes.some((c) => classeDansPerimetre(c)));
-  const salaires = salairesAll.filter((s) => matchesTeacherAlias(s.nom, aliases));
+  // La RLS ne renvoie déjà que les fiches de l'enseignant ; le filtre reste
+  // pour ne jamais afficher celles d'un autre si le compte en lisait plus.
+  const aliasesPaie = teacherSalaryAliases(utilisateur, rosterAll);
+  const lecturePaie = await salairesLus;
+  const salaires = lecturePaie.items.filter((s) => matchesTeacherAlias(s.nom, aliasesPaie));
+  // Échec de lecture (hors ligne, délai) ≠ aucune fiche : l'onglet le dit.
+  const salairesIndisponibles = Boolean(lecturePaie.erreur);
 
-  return { section, matieres, emplois, eleves, notes, enseignements, salaires, incidents };
+  return { section, matieres, emplois, eleves, notes, enseignements, salaires, salairesIndisponibles, incidents };
 }
 
 // ── Écriture des notes (réutilise les écritures de l'adaptateur) ───────────

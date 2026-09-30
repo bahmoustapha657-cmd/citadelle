@@ -7,7 +7,9 @@ import { Btn, Card, LectureSeule, Vide } from "../ui";
 // Affiche les fiches de paie consolidées par mois (1 carte = 1 mois).
 // Si l'enseignant cumule plusieurs fonctions (ex: prof secondaire + agent
 // admin), les sous-fiches sont détaillées par section.
-export function SalaireTab({ c1, c2, salaires, imprimerPaies }) {
+// `indisponible` : les fiches se lisent en ligne et la lecture a échoué — ne
+// pas afficher « aucune fiche » à qui en a peut-être.
+export function SalaireTab({ c1, c2, salaires, indisponible, imprimerPaies }) {
   return (
     <>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
@@ -16,7 +18,9 @@ export function SalaireTab({ c1, c2, salaires, imprimerPaies }) {
       </div>
       <LectureSeule />
       {salaires.length === 0 ? (
-        <Vide icone="Paie" msg="Aucune fiche de paie disponible" />
+        <Vide icone="Paie" msg={indisponible
+          ? "Fiches de paie consultables en ligne uniquement — rouvrez le portail une fois connecté."
+          : "Aucune fiche de paie disponible"} />
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))", gap: 12 }}>
           {groupSalariesByPersonMonth(salaires).map((g) => {

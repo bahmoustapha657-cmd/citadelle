@@ -16,7 +16,8 @@ export const TABLES_HORS_LIGNE = new Set([
   // Académique (vague 1)
   "eleves", "classes", "matieres", "enseignants",
   "emplois", "enseignements", "notes", "absences", "appreciations",
-  // Comptabilité
+  // Comptabilité. `salaires` n'arrive qu'aux comptes du module compta : le
+  // portail enseignant lit SES fiches sur le serveur (lecture `reseau`).
   "recettes", "depenses", "versements", "bons", "personnel", "salaires", "tarifs",
   // Modules « document » (calendrier, examens, messages, fondation, journal)
   "evenements", "examens", "livrets", "honneurs",
