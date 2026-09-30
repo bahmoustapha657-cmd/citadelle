@@ -12,7 +12,9 @@ export function BandeauPremiereSynchro({ premiereSynchro, estHorsLigne, t }) {
     <div role="status" style={{ background: "#eff6ff", borderBottom: "1px solid #bfdbfe", color: "#1e3a8a", padding: "8px 16px", fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 10 }}>
       <span style={{ fontSize: 15 }}>{estHorsLigne ? "📡" : "⏳"}</span>
       <span style={{ flex: 1, minWidth: 0 }}>
-        {estHorsLigne ? t("auth.firstSyncOffline") : t("auth.firstSync", { percent: pourcent })}
+        {estHorsLigne ? t("auth.firstSyncOffline")
+          : premiereSynchro.essentielPret ? t("auth.firstSyncRest", { percent: pourcent })
+            : t("auth.firstSync", { percent: pourcent })}
       </span>
       {!estHorsLigne && (
         <span aria-hidden="true" style={{ width: 90, height: 6, background: "#dbeafe", borderRadius: 3, overflow: "hidden", flexShrink: 0 }}>

@@ -7,9 +7,9 @@ import { powerSyncConfigured } from "../backend/powersync/tables";
 // synchro en cours, sans coût — le module lourd (@powersync/web/wa-sqlite)
 // n'est chargé en `import()` que si les deux conditions ci-dessous sont réunies.
 //   • syncPendantes : changements locaux pas encore remontés à Supabase.
-//   • premiereSynchro : null, ou { fraction } (0 → 1) tant que le miroir de
-//     cet appareil n'a jamais été complet — première connexion d'un compte
-//     sur l'appareil. Les listes restent vides jusque-là ; l'écran le dit.
+//   • premiereSynchro : null, ou { fraction (0 → 1), essentielPret } tant que
+//     le miroir de cet appareil n'a jamais été complet — première connexion
+//     d'un compte sur l'appareil. L'écran dit ce qui manque encore.
 export function usePowerSyncStatus() {
   const [syncPendantes, setSyncPendantes] = useState(0);
   const [premiereSynchro, setPremiereSynchro] = useState(null);
@@ -31,7 +31,12 @@ export function usePowerSyncStatus() {
         // n'affiche rien plutôt qu'une fausse alerte.
         if (statut?.hasSynced === false) {
           const fraction = statut.downloadProgress?.downloadedFraction || 0;
-          setPremiereSynchro((prec) => (prec?.fraction === fraction ? prec : { fraction }));
+          // Priorité 1 des règles de synchro (élèves, classes, école,
+          // comptabilité) déjà livrée : les écrans sont utilisables, seuls
+          // les notes et les modules secondaires arrivent encore.
+          const essentielPret = !!statut.statusForPriority?.(1)?.hasSynced;
+          setPremiereSynchro((prec) => (prec?.fraction === fraction && prec?.essentielPret === essentielPret
+            ? prec : { fraction, essentielPret }));
         } else {
           setPremiereSynchro(null);
         }

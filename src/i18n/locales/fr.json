@@ -74,6 +74,7 @@
     "syncPendingTitle": "{{count}} modification(s) en attente de synchronisation",
     "syncPendingShort": "{{count}} en attente",
     "firstSync": "Première synchronisation de vos données sur cet appareil… {{percent}} % — les listes se remplissent d'elles-mêmes.",
+    "firstSyncRest": "Élèves et classes disponibles — notes et autres données en cours de téléchargement… {{percent}} %",
     "firstSyncOffline": "Vos données ne sont pas encore téléchargées sur cet appareil : elles arriveront dès le retour du réseau."
   },
   "subscription": {
