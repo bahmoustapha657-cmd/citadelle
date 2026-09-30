@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { LecteurVocal } from "./LecteurVocal";
+import { PieceJointe } from "./PieceJointe";
 import { accuseLecture, apercuMessage, formatHeure, lecteursMessage, libelleAppel } from "./messagerie-logic";
 
 const MODIFIABLE_MS = 24 * 3600 * 1000;
@@ -30,7 +31,7 @@ export function BulleMessage({
   }
 
   if (message.type === "appel") {
-    const manque = !deMoi && !String(message.corps || "").startsWith("termine");
+    const manque = !deMoi && !/^(termine|reunion)/.test(String(message.corps || ""));
     return (
       <div style={{ ...pilule, color: manque ? "#dc2626" : pilule.color }}>
         📞 {libelleAppel(message.corps, deMoi)} · {formatHeure(message.created_at)}
@@ -86,6 +87,12 @@ export function BulleMessage({
           <span style={{ fontStyle: "italic", fontSize: 12.5, color: "var(--lc-text-faint)" }}>🚫 Message supprimé</span>
         ) : message.type === "audio" ? (
           <LecteurVocal chemin={message.audio_path} duree={message.audio_duree} clair={deMoi} />
+        ) : message.type === "fichier" ? (
+          <div>
+            <PieceJointe chemin={message.fichier_path} nom={message.fichier_nom} type={message.fichier_type}
+              taille={message.fichier_taille} clair={deMoi} />
+            {message.corps && <div style={{ whiteSpace: "pre-wrap", fontSize: 13.5, lineHeight: 1.45, marginTop: 6 }}>{message.corps}</div>}
+          </div>
         ) : (
           <div style={{ whiteSpace: "pre-wrap", fontSize: 13.5, lineHeight: 1.45 }}>{message.corps}</div>
         )}

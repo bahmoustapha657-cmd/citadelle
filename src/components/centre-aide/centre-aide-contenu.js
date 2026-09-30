@@ -302,6 +302,7 @@ export const ARTICLES = [
       "Cliquez l'icône 💬 de l'en-tête ou « Messagerie » dans le menu (enseignants : onglet « 💬 Messages » du portail).",
       "« ✍️ Nouveau » : message direct à une personne, ou groupe nommé (ex. Conseil pédagogique). Le personnel ET les enseignants sont joignables.",
       "Touchez un message pour y répondre, le corriger (24 h) ou le supprimer. Touchez 🎤 pour enregistrer un message vocal (2 min max), puis ➤ pour l'envoyer.",
+      "📎 joint un document : PDF, photo, Word, Excel, PowerPoint (10 Mo max). Le texte saisi sert de légende ; les photos lourdes sont allégées automatiquement.",
       "✓ = envoyé, ✓✓ = lu ; en groupe, « ✓✓ 3/5 » indique combien l'ont lu — touchez votre message pour voir qui.",
       "Menu ⋮ : épingler, mettre en sourdine, archiver ; pour un groupe, gérer les membres et les administrateurs.",
     ],
@@ -309,11 +310,12 @@ export const ARTICLES = [
   {
     id: "messagerie-appels",
     cat: "communication",
-    titre: "Appeler un collègue (appel audio)",
+    titre: "Appeler un collègue ou tout un groupe",
     etapes: [
       "Ouvrez la discussion directe avec la personne, puis touchez 📞 en haut à droite.",
       "Autorisez le micro quand le navigateur le demande. Le correspondant voit l'appel sur n'importe quelle page de l'application, et reçoit une notification si l'application est fermée.",
       "Pendant l'appel : 🎤 coupe votre micro, le bouton rouge raccroche. Un appel manqué apparaît dans la discussion avec « Rappeler ».",
+      "Appel de groupe : dans un groupe, touchez 📞 ; les membres sont prévenus et voient « 🟢 Rejoindre ». Jusqu'à 30 participants ; 📷 allume votre caméra (facultatif), 🔄 passe à la caméra arrière, « Réduire » permet de continuer à naviguer.",
       "Sur les réseaux mobiles, si l'appel ne se connecte pas, l'école doit activer le relais d'appels (TURN) — voir avec l'administrateur EduGest.",
     ],
   },
@@ -324,6 +326,7 @@ export const ARTICLES = [
     etapes: [
       "Messagerie → onglet « 📣 Annonces » → « 📣 Nouveau » (réservé au personnel administratif).",
       "Destinataires cumulables : tout le monde, le personnel, les enseignants, des postes précis ou des personnes.",
+      "📎 Joignez jusqu'à 5 documents (note de service en PDF, planning…), visibles des seuls destinataires.",
       "Importance « Urgente » : un bandeau rouge s'affiche chez les destinataires jusqu'à la lecture. « Accusé de lecture obligatoire » : chacun doit confirmer « J'ai lu et compris ».",
       "Ouvrez votre annonce pour voir « Lu par 12/30 », le détail de qui n'a pas lu, et « 🔔 Relancer » les retardataires.",
     ],

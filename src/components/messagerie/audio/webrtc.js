@@ -62,3 +62,26 @@ export function creerConnexion({ iceServers, flux, onEtat }) {
   pc.onconnectionstatechange = () => onEtat?.(pc.connectionState);
   return { pc, audio };
 }
+
+export function messageErreurCamera(e) {
+  const nom = e?.name || "";
+  if (nom === "NotAllowedError" || nom === "SecurityError") {
+    return "Accès à la caméra refusé : autorisez la caméra pour ce site dans le navigateur.";
+  }
+  if (nom === "NotFoundError" || nom === "OverconstrainedError") return "Aucune caméra détectée sur cet appareil.";
+  if (nom === "NotReadableError") return "La caméra est déjà utilisée par une autre application.";
+  return e?.message || "Caméra indisponible.";
+}
+
+// Vidéo d'appel de groupe : 360p, 15 images/s — lisible et sobre en data.
+export const CONTRAINTES_VIDEO = { width: { ideal: 640 }, height: { ideal: 360 }, frameRate: { ideal: 15, max: 20 } };
+
+// Plafonne le débit vidéo envoyé (données mobiles).
+export async function limiterDebit(emetteur, debitMax = 350000) {
+  try {
+    const params = emetteur.getParameters();
+    params.encodings = params.encodings?.length ? params.encodings : [{}];
+    params.encodings[0].maxBitrate = debitMax;
+    await emetteur.setParameters(params);
+  } catch { /* navigateur sans setParameters : débit par défaut */ }
+}

@@ -36,6 +36,9 @@ export function ListeConversations({ m, conversations, activeId, onOuvrir }) {
             <span style={{ ...ellipse, flex: 1, fontSize: 12, color: nonLus ? "var(--lc-text)" : "var(--lc-text-muted)", fontWeight: nonLus ? 600 : 400 }}>
               {c.dernier_apercu || (c.type === "groupe" ? "Groupe créé" : "Nouvelle discussion")}
             </span>
+            {m.reunions?.actives.some((a) => a.conversation_id === c.id) && (
+              <span title="Appel de groupe en cours" style={{ fontSize: 10, fontWeight: 800, color: "#fff", background: "#059669", borderRadius: 8, padding: "1px 6px" }}>📞 en cours</span>
+            )}
             {c.sourdine && <span style={{ fontSize: 11 }}>🔕</span>}
             {nonLus > 0 && <span style={{ ...badge, background: c.sourdine ? "var(--lc-text-faint)" : badge.background }}>{nonLus > 99 ? "99+" : nonLus}</span>}
           </span>
@@ -61,7 +64,7 @@ export function ListeAnnonces({ m, annonces, activeId, onOuvrir }) {
         <span style={{ flex: 1, minWidth: 0 }}>
           <span style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
             <span style={{ ...ellipse, flex: 1, fontSize: 13.5, fontWeight: nonLue ? 800 : 700 }}>
-              {a.epinglee && "📌 "}{a.titre || "Annonce"}
+              {a.epinglee && "📌 "}{a.titre || "Annonce"}{(a.pieces_jointes || []).length > 0 && " 📎"}
             </span>
             <span style={texteDiscret}>{formatDateBoite(a.created_at)}</span>
           </span>

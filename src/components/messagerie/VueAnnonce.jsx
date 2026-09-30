@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import * as api from "../../backend/messagerie-supabase";
 import { Btn } from "../ui";
 import { Avatar } from "./Avatar";
+import { PieceJointe } from "./PieceJointe";
 import { formatHeure, libelleCibleAnnonce, libelleJour, peutGererAnnonce, postesDeLAnnuaire, PRIORITES } from "./messagerie-logic";
 import { boutonIcone } from "./styles-messagerie";
 
@@ -71,6 +72,14 @@ export function VueAnnonce({ m, annonce, utilisateur, etroit, onRetour }) {
         <div style={{ whiteSpace: "pre-wrap", fontSize: 14, lineHeight: 1.6, color: "var(--lc-text)", background: "var(--lc-surface)", border: "1px solid var(--lc-border)", borderRadius: 12, padding: "14px 16px" }}>
           {annonce.corps}
         </div>
+
+        {(annonce.pieces_jointes || []).length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 12 }}>
+            {annonce.pieces_jointes.map((p) => (
+              <PieceJointe key={p.path} chemin={p.path} nom={p.nom} type={p.type} taille={p.taille} />
+            ))}
+          </div>
+        )}
 
         {!deMoi && annonce.accuse_requis && (
           <div style={{ marginTop: 14 }}>

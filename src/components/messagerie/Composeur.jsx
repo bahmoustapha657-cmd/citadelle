@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { enregistrementDisponible, useEnregistreur } from "./audio/use-enregistreur";
 import { apercuMessage, formatChrono } from "./messagerie-logic";
+import { ACCEPT_DOCUMENTS, formatTaille, iconeFichier, typeFichier } from "./documents";
 import { boutonIcone } from "./styles-messagerie";
 
 const ecranTactile = () => typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches;
@@ -11,9 +12,12 @@ const rond = (fond) => ({
 });
 
 // Zone de saisie : texte (Entrée pour envoyer sur ordinateur), réponse à un
-// message, correction d'un message, et message vocal (🎤).
-export function Composeur({ annuaire, reponse, onAnnulerReponse, edition, onAnnulerEdition, onEnvoyerTexte, onEnvoyerVocal, onValiderEdition }) {
+// message, correction d'un message, message vocal (🎤) et documents (📎 ;
+// le texte saisi sert alors de légende).
+export function Composeur({ annuaire, reponse, onAnnulerReponse, edition, onAnnulerEdition, onEnvoyerTexte, onEnvoyerVocal, onEnvoyerFichiers, onValiderEdition }) {
   const [texte, setTexte] = useState("");
+  const [fichiers, setFichiers] = useState([]);
+  const choixRef = useRef(null);
   const [envoi, setEnvoi] = useState(false);
   const [erreur, setErreur] = useState("");
   const zoneRef = useRef(null);
@@ -44,9 +48,22 @@ export function Composeur({ annuaire, reponse, onAnnulerReponse, edition, onAnnu
 
   const envoyer = async () => {
     const contenu = texte.trim();
-    if (!contenu || envoi) return;
+    if (envoi) return;
+    if (fichiers.length && !edition) {
+      const ok = await executer(() => onEnvoyerFichiers(fichiers, contenu));
+      // En cas d'échec partiel, les fichiers partis sont dans le fil : on vide.
+      setFichiers([]);
+      if (ok) setTexte("");
+      return;
+    }
+    if (!contenu) return;
     const ok = await executer(() => (edition ? onValiderEdition(contenu) : onEnvoyerTexte(contenu)));
     if (ok) setTexte("");
+  };
+
+  const ajouterFichiers = (liste) => {
+    setErreur("");
+    setFichiers((actuels) => [...actuels, ...Array.from(liste || [])].slice(0, 10));
   };
 
   const surTouche = (e) => {
@@ -91,16 +108,38 @@ export function Composeur({ annuaire, reponse, onAnnulerReponse, edition, onAnnu
           <button type="button" onClick={envoyerVocal} disabled={envoi} style={rond("var(--sc1)")} aria-label="Envoyer le message vocal">➤</button>
         </div>
       ) : (
+        <>
+        {fichiers.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 7 }}>
+            {fichiers.map((f, i) => (
+              <span key={`${f.name}-${i}`} style={{ display: "inline-flex", alignItems: "center", gap: 6, maxWidth: 240, background: "var(--lc-surface-alt)", border: `1px solid ${typeFichier(f) ? "var(--lc-border)" : "#f87171"}`, borderRadius: 14, padding: "3px 6px 3px 10px", fontSize: 11.5, color: "var(--lc-text)" }}>
+                {iconeFichier(typeFichier(f))}
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
+                <span style={{ color: "var(--lc-text-faint)" }}>{formatTaille(f.size)}</span>
+                <button type="button" onClick={() => setFichiers((l) => l.filter((_, j) => j !== i))} aria-label={`Retirer ${f.name}`}
+                  style={{ ...boutonIcone, fontSize: 12, padding: 2 }}>✕</button>
+              </span>
+            ))}
+          </div>
+        )}
         <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
+          {!edition && (
+            <>
+              <button type="button" onClick={() => choixRef.current?.click()} disabled={envoi}
+                style={{ ...boutonIcone, fontSize: 20, padding: "9px 4px" }} aria-label="Joindre un document" title="Joindre un document ou une photo (10 Mo max)">📎</button>
+              <input ref={choixRef} type="file" multiple accept={ACCEPT_DOCUMENTS} style={{ display: "none" }}
+                onChange={(e) => { ajouterFichiers(e.target.files); e.target.value = ""; }} />
+            </>
+          )}
           <textarea ref={zoneRef} value={texte} rows={1} onChange={(e) => setTexte(e.target.value)} onKeyDown={surTouche}
-            placeholder={edition ? "Corrigez votre message…" : "Écrire un message…"} maxLength={4000}
+            placeholder={edition ? "Corrigez votre message…" : fichiers.length ? "Ajouter une légende (facultatif)…" : "Écrire un message…"} maxLength={4000}
             style={{
               flex: 1, resize: "none", border: "1.5px solid var(--lc-border)", borderRadius: 20, padding: "10px 14px",
               fontSize: 13.5, lineHeight: 1.4, background: "var(--lc-input-bg)", color: "var(--lc-text)", outline: "none",
               fontFamily: "inherit", maxHeight: 140,
             }} />
-          {texte.trim() || edition || !enregistrementDisponible() ? (
-            <button type="button" onClick={envoyer} disabled={envoi || !texte.trim()} style={{ ...rond("var(--sc1)"), opacity: texte.trim() ? 1 : 0.5 }}
+          {texte.trim() || fichiers.length || edition || !enregistrementDisponible() ? (
+            <button type="button" onClick={envoyer} disabled={envoi || (!texte.trim() && !fichiers.length)} style={{ ...rond("var(--sc1)"), opacity: texte.trim() || fichiers.length ? 1 : 0.5 }}
               aria-label={edition ? "Enregistrer la correction" : "Envoyer"}>
               {envoi ? "…" : edition ? "✓" : "➤"}
             </button>
@@ -111,6 +150,7 @@ export function Composeur({ annuaire, reponse, onAnnulerReponse, edition, onAnnu
             </button>
           )}
         </div>
+        </>
       )}
     </div>
   );

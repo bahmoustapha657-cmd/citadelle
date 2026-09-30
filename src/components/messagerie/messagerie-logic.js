@@ -149,7 +149,11 @@ export function formatDuree(secondes) {
 
 // Trace d'appel (corps 'termine:192' | 'manque' | 'refuse' | 'occupe' | 'echec').
 export function libelleAppel(corps, sortant) {
-  const [statut, duree] = String(corps || "").split(":");
+  const [statut, duree, participants] = String(corps || "").split(":");
+  if (statut === "reunion") {
+    const n = Number(participants) || 0;
+    return `Appel de groupe · ${formatDuree(Number(duree))} · ${n} participant${n > 1 ? "s" : ""}`;
+  }
   if (statut === "termine") return `${sortant ? "Appel sortant" : "Appel entrant"} · ${formatDuree(Number(duree))}`;
   if (statut === "refuse") return "Appel refusé";
   if (statut === "occupe") return sortant ? "Correspondant occupé" : "Appel reçu pendant un autre appel";
@@ -231,6 +235,7 @@ export function apercuMessage(message) {
   if (!message) return "";
   if (message.supprime) return "Message supprimé";
   if (message.type === "audio") return `🎤 Message vocal (${formatChrono(message.audio_duree)})`;
+  if (message.type === "fichier") return `📎 ${message.fichier_nom || "Document"}`;
   const t = String(message.corps || "");
   return t.length > 90 ? `${t.slice(0, 90)}…` : t;
 }

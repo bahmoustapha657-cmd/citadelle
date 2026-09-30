@@ -6,6 +6,8 @@ import {
   annonceNonLue, annoncesEnAlerte, apercuMessage, destinatairesAnnonce,
   PRIORITES, titreConversation, totalNonLus,
 } from "./messagerie-logic";
+import { MAX_PIECES_ANNONCE, verifierFichier } from "./documents";
+import { preparerFichier } from "./compresser-image";
 
 // Délai avant le premier chargement : la connexion (surtout sur réseau
 // faible) sert d'abord les écrans métier ; la messagerie suit.
@@ -221,6 +223,37 @@ export function useMessagerieEtat({ utilisateur, schoolCode, actif }) {
     return message;
   }, [ajouterAuFil, ecoleIdSure, moi, planifierBoite, pousserNotification]);
 
+  // Documents : chacun devient un message « fichier » ; la légende va au
+  // premier. Les fichiers refusés (type, taille) sont signalés sans bloquer
+  // les autres.
+  const envoyerFichiers = useCallback(async (convId, fichiers, legende = "", reponseA = null) => {
+    const ecole = await ecoleIdSure();
+    const erreurs = [];
+    const envoyes = [];
+    for (const brut of fichiers) {
+      const verif = verifierFichier(brut);
+      if (!verif.ok) { erreurs.push(verif.erreur); continue; }
+      try {
+        const { fichier, type, nom } = await preparerFichier(brut, verif.type);
+        const message = await api.envoyerFichier({
+          conversationId: convId, ecoleId: ecole, moi, fichier, type, nom,
+          legende: envoyes.length ? "" : legende, reponseA: envoyes.length ? null : reponseA,
+        });
+        envoyes.push(message);
+        ajouterAuFil(convId, [message]);
+      } catch (e) {
+        erreurs.push(e.message);
+      }
+    }
+    if (envoyes.length) {
+      planifierBoite();
+      pousserNotification(etat.current.boiteParId.get(convId),
+        envoyes.length > 1 ? `📎 ${envoyes.length} documents` : `📎 ${envoyes[0].fichier_nom}`);
+    }
+    if (erreurs.length) throw new Error(erreurs.join(" "));
+    return envoyes;
+  }, [ajouterAuFil, ecoleIdSure, moi, planifierBoite, pousserNotification]);
+
   const modifierMessage = useCallback(async (message, corps) => {
     await api.modifierMessage(message.id, corps);
     remplacerDansFil({ ...message, corps: corps.trim(), modifie_at: new Date().toISOString() });
@@ -259,8 +292,27 @@ export function useMessagerieEtat({ utilisateur, schoolCode, actif }) {
   }, [chargerBoite]);
 
   // ── Annonces ──
-  const publierAnnonce = useCallback(async (donnees) => {
-    const annonce = await api.publierAnnonce({ ...donnees, ecoleId: await ecoleIdSure(), moi });
+  // Publication, puis pièces jointes (leur chemin porte l'id de l'annonce).
+  // Une pièce en échec n'annule pas l'annonce : elle est signalée.
+  const publierAnnonce = useCallback(async ({ fichiers = [], ...donnees }) => {
+    const ecole = await ecoleIdSure();
+    const annonce = await api.publierAnnonce({ ...donnees, ecoleId: ecole, moi });
+    const pieces = [];
+    const erreurs = [];
+    for (const brut of fichiers.slice(0, MAX_PIECES_ANNONCE)) {
+      const verif = verifierFichier(brut);
+      if (!verif.ok) { erreurs.push(verif.erreur); continue; }
+      try {
+        const { fichier, type, nom } = await preparerFichier(brut, verif.type);
+        pieces.push(await api.televerserPieceAnnonce({ ecoleId: ecole, annonceId: annonce.id, fichier, type, nom }));
+      } catch (e) {
+        erreurs.push(e.message);
+      }
+    }
+    if (pieces.length) {
+      try { await api.joindreAnnonce(annonce.id, pieces); } catch (e) { erreurs.push(e.message); }
+    }
+    if (erreurs.length) setErreur(`Annonce publiée, mais : ${erreurs.join(" ")}`);
     await chargerAnnonces();
     const destinataires = destinatairesAnnonce(donnees.cible, annuaireListe, moi);
     const p = PRIORITES[annonce.priorite] || PRIORITES.normale;
@@ -300,7 +352,7 @@ export function useMessagerieEtat({ utilisateur, schoolCode, actif }) {
   }, []);
 
   const supprimerAnnonce = useCallback(async (annonce) => {
-    await api.supprimerAnnonce(annonce.id);
+    await api.supprimerAnnonce(annonce);
     setAnnonces((liste) => liste.filter((a) => a.id !== annonce.id));
   }, []);
 
@@ -368,7 +420,7 @@ export function useMessagerieEtat({ utilisateur, schoolCode, actif }) {
     annuaire, annuaireListe, boite, boiteParId, fils,
     convActiveId, ouvrirConversation, chargerPlusAnciens,
     vueOuverte, setVueOuverte: definirVueOuverte, onglet, setOnglet, annonceActiveId, setAnnonceActiveId, appliquerDemande,
-    envoyerTexte, envoyerVocal, modifierMessage, supprimerMessage,
+    envoyerTexte, envoyerVocal, envoyerFichiers, modifierMessage, supprimerMessage, ecoleIdSure,
     ouvrirDirecteAvec, creerGroupe, actionGroupe, definirPreferences,
     annonces, lusAnnonces, statsAnnonces, alertes, annoncesNonLues,
     publierAnnonce, lireAnnonce, relancerAnnonce, epinglerAnnonce, supprimerAnnonce,

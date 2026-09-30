@@ -77,7 +77,11 @@ export function VueConversation({ m, conv, etroit, onRetour, onGererGroupe }) {
     setSelectionId(null);
   };
 
-  const appelEnCours = !!appels.appel;
+  // Un seul appel à la fois : direct (P2P) ou de groupe (serveur d'appels).
+  const reunions = m.reunions;
+  const reunionIci = reunions?.actives.find((a) => a.conversation_id === conv.id);
+  const dansReunionIci = reunions?.reunion?.conversationId === conv.id;
+  const appelEnCours = !!appels.appel || (!!reunions?.enCours && !dansReunionIci);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0, background: "var(--lc-surface-alt)" }}>
@@ -95,9 +99,20 @@ export function VueConversation({ m, conv, etroit, onRetour, onGererGroupe }) {
           </div>
         </div>
         {correspondant && (
-          <button type="button" onClick={appeler} disabled={appelEnCours} title="Appel audio"
+          <button type="button" onClick={appeler} disabled={appelEnCours || dansReunionIci} title="Appel audio"
             style={{ ...boutonIcone, fontSize: 19, opacity: appelEnCours ? 0.4 : 1 }}>📞</button>
         )}
+        {conv.type === "groupe" && reunions && (reunionIci && !dansReunionIci ? (
+          <button type="button" onClick={() => reunions.rejoindre(conv.id)} disabled={appelEnCours}
+            title="Un appel de groupe est en cours"
+            style={{ background: "#059669", color: "#fff", border: "none", borderRadius: 16, padding: "6px 12px", fontSize: 12, fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap", opacity: appelEnCours ? 0.5 : 1 }}>
+            🟢 Rejoindre ({(reunionIci.presents || []).length})
+          </button>
+        ) : (
+          <button type="button" onClick={() => reunions.rejoindre(conv.id)} disabled={appelEnCours}
+            title={dansReunionIci ? "Revenir à l'appel" : "Appel de groupe (audio, vidéo possible)"}
+            style={{ ...boutonIcone, fontSize: 19, opacity: appelEnCours ? 0.4 : 1 }}>📞</button>
+        ))}
         <div style={{ position: "relative" }}>
           <button type="button" onClick={() => setMenu((v) => !v)} style={{ ...boutonIcone, fontSize: 20 }} aria-label="Options">⋮</button>
           {menu && (
@@ -148,6 +163,10 @@ export function VueConversation({ m, conv, etroit, onRetour, onGererGroupe }) {
         reponse={reponse} onAnnulerReponse={() => setReponse(null)}
         edition={edition} onAnnulerEdition={() => setEdition(null)}
         onEnvoyerTexte={async (texte) => { await m.envoyerTexte(conv.id, texte, reponse?.id || null); setReponse(null); enBasRef.current = true; }}
+        onEnvoyerFichiers={async (fichiers, legende) => {
+          enBasRef.current = true;
+          try { await m.envoyerFichiers(conv.id, fichiers, legende, reponse?.id || null); } finally { setReponse(null); }
+        }}
         onEnvoyerVocal={async (vocal) => { await m.envoyerVocal(conv.id, vocal, reponse?.id || null); setReponse(null); enBasRef.current = true; }}
         onValiderEdition={async (texte) => { await m.modifierMessage(edition, texte); setEdition(null); }} />
     </div>

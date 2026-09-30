@@ -15,6 +15,7 @@ import { isSupabase } from "../../backend";
 import { powerSyncConfigured, moduleDisponibleHorsLigne } from "../../backend/powersync/tables";
 import { useMessagerie } from "../messagerie/messagerie-contexte";
 import { BandeauAnnonces } from "../messagerie/BandeauAnnonces";
+import { BandeauReunions } from "../messagerie/BandeauReunions";
 import { MODULE_MESSAGERIE } from "../messagerie/messagerie-logic";
 
 // Coquille de l'application après authentification : toasts, recherche globale,
@@ -76,6 +77,7 @@ export function AppShell(p) {
           />
           <BandeauPremiereSynchro premiereSynchro={p.premiereSynchro} estHorsLigne={p.estHorsLigne} t={p.t} />
           {!pageMessagerie && <BandeauAnnonces />}
+          <BandeauReunions />
           {/* École migrée vers la nouvelle version (Supabase) : cette adresse
               est en lecture seule — bannière permanente vers la nouvelle URL. */}
           {p.basculeSupabase && (

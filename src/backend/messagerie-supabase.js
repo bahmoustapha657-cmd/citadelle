@@ -4,6 +4,7 @@
 // supabase/messagerie-v2.sql font autorité : ce module ne fait qu'appeler.
 import { getSupabase } from "../supabaseClient";
 import { envoyerPushUtilisateurs } from "./push-supabase";
+import { extensionPourType } from "../components/messagerie/documents";
 
 const BUCKET = "messagerie";
 
@@ -98,18 +99,41 @@ export async function supprimerMessage(id) {
   if (chemin) getSupabase().storage.from(BUCKET).remove([chemin]).catch(() => {});
 }
 
-// Vocaux : téléchargés une fois (requête authentifiée, bucket privé) puis
-// servis en blob: — pas d'URL signée à régénérer, et compatible COEP.
-const cacheVocaux = new Map();
-export async function urlVocal(chemin) {
-  if (cacheVocaux.has(chemin)) return cacheVocaux.get(chemin);
+// Vocaux et documents : téléchargés une fois (requête authentifiée, bucket
+// privé) puis servis en blob: — pas d'URL signée à régénérer, et compatible
+// COEP.
+const cacheFichiers = new Map();
+export async function urlStockage(chemin) {
+  if (cacheFichiers.has(chemin)) return cacheFichiers.get(chemin);
   const promesse = getSupabase().storage.from(BUCKET).download(chemin).then(({ data, error }) => {
-    if (error || !data) throw new Error(error?.message || "Vocal indisponible.");
+    if (error || !data) throw new Error(error?.message || "Fichier indisponible.");
     return URL.createObjectURL(data);
   });
-  cacheVocaux.set(chemin, promesse);
-  promesse.catch(() => cacheVocaux.delete(chemin));
+  cacheFichiers.set(chemin, promesse);
+  promesse.catch(() => cacheFichiers.delete(chemin));
   return promesse;
+}
+export const urlVocal = urlStockage;
+
+// Document joint à une discussion : dépôt dans le dossier de la discussion,
+// puis message « fichier » (la légende éventuelle en corps). Si l'insertion
+// échoue, le fichier orphelin est effacé.
+export async function envoyerFichier({ conversationId, ecoleId, moi, fichier, type, nom, legende = "", reponseA = null }) {
+  const sb = getSupabase();
+  const chemin = `${ecoleId}/${conversationId}/${crypto.randomUUID()}.${extensionPourType(type, nom)}`;
+  const { error: errUpload } = await sb.storage.from(BUCKET).upload(chemin, fichier, { contentType: type, upsert: false });
+  if (errUpload) throw new Error(errUpload.message || `Envoi de « ${nom} » impossible.`);
+  const { data, error } = await sb.from("msg_messages").insert({
+    conversation_id: conversationId, ecole_id: ecoleId, de_compte_id: moi,
+    type: "fichier", corps: String(legende || "").trim().slice(0, 4000) || null,
+    fichier_path: chemin, fichier_nom: String(nom).slice(0, 200), fichier_type: type, fichier_taille: fichier.size,
+    reponse_a: reponseA,
+  }).select("*").single();
+  if (error) {
+    sb.storage.from(BUCKET).remove([chemin]).catch(() => {});
+    throw new Error(error.message || `Envoi de « ${nom} » impossible.`);
+  }
+  return data;
 }
 
 // ── Annonces ──
@@ -157,8 +181,23 @@ export const lireAnnonce = (id, confirmer = false) => rpc("msg_annonce_lire", { 
 export const suiviAnnonce = async (id) => (await rpc("msg_annonce_suivi", { p_id: id })) || [];
 export const epinglerAnnonce = (id, epinglee) => rpc("msg_annonce_epingler", { p_id: id, p_epinglee: epinglee });
 
-export async function supprimerAnnonce(id) {
-  const { error } = await getSupabase().from("msg_annonces").delete().eq("id", id);
+// Pièce jointe d'annonce : déposée APRÈS la publication (son chemin porte
+// l'id de l'annonce, que la policy de stockage vérifie).
+export async function televerserPieceAnnonce({ ecoleId, annonceId, fichier, type, nom }) {
+  const chemin = `${ecoleId}/annonces/${annonceId}/${crypto.randomUUID()}.${extensionPourType(type, nom)}`;
+  const { error } = await getSupabase().storage.from(BUCKET).upload(chemin, fichier, { contentType: type, upsert: false });
+  if (error) throw new Error(error.message || `Envoi de « ${nom} » impossible.`);
+  return { path: chemin, nom: String(nom).slice(0, 200), type, taille: fichier.size };
+}
+
+export const joindreAnnonce = (id, pieces) => rpc("msg_annonce_joindre", { p_id: id, p_pieces: pieces });
+
+// Retire l'annonce ET ses pièces jointes (les fichiers d'abord : la policy
+// de stockage vérifie les droits sur l'annonce, qui doit encore exister).
+export async function supprimerAnnonce(annonce) {
+  const chemins = (annonce.pieces_jointes || []).map((p) => p.path).filter(Boolean);
+  if (chemins.length) await getSupabase().storage.from(BUCKET).remove(chemins).catch(() => {});
+  const { error } = await getSupabase().from("msg_annonces").delete().eq("id", annonce.id);
   if (error) throw new Error(error.message || "Suppression impossible.");
 }
 
@@ -192,4 +231,30 @@ export function notifier(userIds, titre, corps, url = "/") {
   const ids = [...new Set((userIds || []).filter(Boolean))];
   if (!ids.length) return;
   envoyerPushUtilisateurs(ids, titre, corps, url).catch(() => {});
+}
+
+// ── Appels de groupe (réunions, SFU Cloudflare via l'Edge Function reunion) ──
+export const demarrerReunion = (conv) => rpc("msg_reunion_demarrer", { p_conv: conv });
+export const etatReunion = (id, { micro = null, camera = null } = {}) =>
+  rpc("msg_reunion_etat", { p_reunion: id, p_micro: micro, p_camera: camera });
+export const quitterReunion = (id) => rpc("msg_reunion_quitter", { p_reunion: id });
+export const reunionsActives = async () => (await rpc("msg_reunions_actives")) || [];
+
+export async function participantsReunion(id) {
+  const { data, error } = await getSupabase().from("msg_reunion_participants")
+    .select("compte_id, session_id, pistes, micro, camera, rejoint_at, quitte_at").eq("reunion_id", id);
+  if (error) throw new Error(error.message || "Participants indisponibles.");
+  return data || [];
+}
+
+// Action auprès du serveur d'appels (rejoindre, publier, recevoir,
+// renegocier, fermer). Les refus arrivent avec un message explicite.
+export async function actionReunion(action, corps) {
+  const { data, error } = await getSupabase().functions.invoke("reunion", { body: { action, ...corps } });
+  if (error) {
+    let message = "Serveur d'appels injoignable.";
+    try { message = (await error.context?.json())?.error || message; } catch { /* message par défaut */ }
+    throw new Error(message);
+  }
+  return data;
 }
