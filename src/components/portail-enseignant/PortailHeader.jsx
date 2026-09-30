@@ -1,6 +1,8 @@
 import { Badge } from "../ui";
+import { useMessagerie } from "../messagerie/messagerie-contexte";
 
 export function PortailHeader({ schoolInfo, annee, nomEns, matiere, c1, c2, deconnecter, t, tab, setTab }) {
+  const messagerie = useMessagerie();
   const tabs = [
     { id: "dashboard", label: t("teacher.tabs.overview") },
     { id: "edt", label: t("teacher.tabs.schedule") },
@@ -8,6 +10,7 @@ export function PortailHeader({ schoolInfo, annee, nomEns, matiere, c1, c2, deco
     { id: "eleves", label: t("teacher.tabs.students") },
     { id: "absences", label: t("dashboard.absences") },
     { id: "salaire", label: t("accounting.tabs.salaries") },
+    ...(messagerie ? [{ id: "messages", label: "💬 Messages", badge: messagerie.nonLus }] : []),
   ];
 
   return (
@@ -45,6 +48,11 @@ export function PortailHeader({ schoolInfo, annee, nomEns, matiere, c1, c2, deco
             }}
           >
             {item.label}
+            {item.badge > 0 && (
+              <span style={{ marginInlineStart: 6, background: "#dc2626", color: "#fff", borderRadius: 10, fontSize: 10, fontWeight: 800, padding: "1px 6px" }}>
+                {item.badge > 99 ? "99+" : item.badge}
+              </span>
+            )}
           </button>
         ))}
       </div>

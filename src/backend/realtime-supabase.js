@@ -145,3 +145,11 @@ export function subscribeTable(schoolCode, table, onChange) {
   if (!supabaseConfigured || !schoolCode || !table || typeof onChange !== "function") return () => {};
   return attacher(schoolCode, table, () => onChange());
 }
+
+// Comme subscribeTable, mais `onPayload` reçoit l'événement postgres_changes
+// BRUT ({ eventType, new, old }) : la messagerie ajoute le message reçu au
+// fil ouvert sans recharger toute la discussion.
+export function subscribeTablePayload(schoolCode, table, onPayload) {
+  if (!supabaseConfigured || !schoolCode || !table || typeof onPayload !== "function") return () => {};
+  return attacher(schoolCode, table, onPayload);
+}

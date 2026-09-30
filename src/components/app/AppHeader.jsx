@@ -2,14 +2,10 @@
 //  En-tête du shell : titre module, recherche, thème, cloche, profil
 // ══════════════════════════════════════════════════════════════
 import { C } from "../../constants";
-import { isSupabase } from "../../backend";
 import { moduleLabel } from "./module-i18n";
 import { NotificationsMenu } from "./header/NotificationsMenu";
 import { ProfilMenu } from "./header/ProfilMenu";
-import { MessagerieInterne } from "../messagerie/MessagerieInterne";
-
-// Rôles hors messagerie interne (portails dédiés + superadmin transversal).
-const SANS_MESSAGERIE = new Set(["parent", "enseignant", "superadmin"]);
+import { MessagerieBouton } from "../messagerie/MessagerieBouton";
 
 export function AppHeader({
   isMobile, setSidebarOuvert, modulesVisibles, page, readOnly, abonnementExpire, t,
@@ -76,10 +72,8 @@ export function AppHeader({
           ❓
         </button>
 
-        {/* Messagerie interne du personnel (mode Supabase uniquement). */}
-        {isSupabase && utilisateur && !SANS_MESSAGERIE.has(utilisateur.role) && (
-          <MessagerieInterne utilisateur={utilisateur} />
-        )}
+        {/* Messagerie interne (badge des non-lus ; rien hors périmètre). */}
+        <MessagerieBouton />
 
         <NotificationsMenu
           notifOuvert={notifOuvert} setNotifOuvert={setNotifOuvert} setProfilOuvert={setProfilOuvert}

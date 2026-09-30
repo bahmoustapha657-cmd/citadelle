@@ -13,6 +13,9 @@ import { ModuleHorsLignePlaceholder } from "./ModuleHorsLignePlaceholder";
 import { AppShellOverlays } from "./app-shell/AppShellOverlays";
 import { isSupabase } from "../../backend";
 import { powerSyncConfigured, moduleDisponibleHorsLigne } from "../../backend/powersync/tables";
+import { useMessagerie } from "../messagerie/messagerie-contexte";
+import { BandeauAnnonces } from "../messagerie/BandeauAnnonces";
+import { MODULE_MESSAGERIE } from "../messagerie/messagerie-logic";
 
 // Coquille de l'application après authentification : toasts, recherche globale,
 // bannière d'installation, sidebar, en-tête, routeur de pages et modales/dropdowns.
@@ -23,6 +26,11 @@ export function AppShell(p) {
   // en ligne, en mode Firebase (cache Firestore) ou si PowerSync est désactivé.
   const bloqueHorsLigne = isSupabase && powerSyncConfigured
     && p.estHorsLigne && !moduleDisponibleHorsLigne(p.page);
+  // Messagerie interne : entrée de menu ajoutée aux modules du poste pour
+  // tout compte de son périmètre (null sinon).
+  const messagerie = useMessagerie();
+  const modulesMenu = messagerie ? [...p.modulesVisibles, MODULE_MESSAGERIE] : p.modulesVisibles;
+  const pageMessagerie = p.page === MODULE_MESSAGERIE.id;
 
   return (
     <>
@@ -33,7 +41,7 @@ export function AppShell(p) {
       {p.rechercheOuverte && (
         <Suspense fallback={<OverlayFallback />}>
           <RechercheGlobale
-            modules={p.modulesVisibles}
+            modules={modulesMenu}
             onNaviguer={id => { p.setPage(id); p.setRechercheOuverte(false); }}
             onFermer={() => p.setRechercheOuverte(false)}
           />
@@ -48,7 +56,7 @@ export function AppShell(p) {
 
         <Sidebar
           schoolInfo={p.schoolInfo} couleur2={p.couleur2} annee={p.annee}
-          modulesVisibles={p.modulesVisibles} page={p.page} setPage={p.setPage}
+          modulesVisibles={modulesMenu} page={p.page} setPage={p.setPage}
           isMobile={p.isMobile} sidebarOuvert={p.sidebarOuvert} setSidebarOuvert={p.setSidebarOuvert}
           msgsNonLus={p.msgsNonLus} utilisateur={p.utilisateur} utilisateurLabel={p.utilisateurLabel}
           deconnecter={p.deconnecter} estHorsLigne={p.estHorsLigne} t={p.t}
@@ -57,7 +65,7 @@ export function AppShell(p) {
         <main style={{ flex: 1, marginInlineStart: p.isMobile ? 0 : 228, minWidth: 0, display: "flex", flexDirection: "column", height: "100dvh", overflow: "hidden" }}>
           <AppHeader
             isMobile={p.isMobile} setSidebarOuvert={p.setSidebarOuvert}
-            modulesVisibles={p.modulesVisibles} page={p.page} readOnly={p.readOnly} abonnementExpire={p.abonnementExpire} t={p.t}
+            modulesVisibles={modulesMenu} page={p.page} readOnly={p.readOnly} abonnementExpire={p.abonnementExpire} t={p.t}
             estHorsLigne={p.estHorsLigne} syncPendantes={p.syncPendantes} planInfo={p.planInfo}
             utilisateur={p.utilisateur} utilisateurLabel={p.utilisateurLabel} schoolInfo={p.schoolInfo}
             setRechercheOuverte={p.setRechercheOuverte} modeSombre={p.modeSombre} setModeSombre={p.setModeSombre}
@@ -67,6 +75,7 @@ export function AppShell(p) {
             setPage={p.setPage} setAideOuverte={p.setAideOuverte} setCentreAideOuvert={p.setCentreAideOuvert} deconnecter={p.deconnecter}
           />
           <BandeauPremiereSynchro premiereSynchro={p.premiereSynchro} estHorsLigne={p.estHorsLigne} t={p.t} />
+          {!pageMessagerie && <BandeauAnnonces />}
           {/* École migrée vers la nouvelle version (Supabase) : cette adresse
               est en lecture seule — bannière permanente vers la nouvelle URL. */}
           {p.basculeSupabase && (
@@ -79,11 +88,13 @@ export function AppShell(p) {
               </a>
             </div>
           )}
-          <div style={{ flex: 1, overflowY: "auto" }}>
+          {/* La messagerie gère son propre défilement (liste / fil) : la zone
+              de contenu ne défile pas pour elle. */}
+          <div style={{ flex: 1, minHeight: 0, overflowY: pageMessagerie ? "hidden" : "auto" }}>
             <PageErrorBoundary key={p.page}>
               {bloqueHorsLigne ? (
                 <ModuleHorsLignePlaceholder
-                  page={p.page} modulesVisibles={p.modulesVisibles} setPage={p.setPage}
+                  page={p.page} modulesVisibles={modulesMenu} setPage={p.setPage}
                 />
               ) : (
                 <Suspense fallback={<PageFallback />}>

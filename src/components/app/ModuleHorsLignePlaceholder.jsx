@@ -10,7 +10,7 @@ import { MODULES } from "../../constants";
 import { MODULES_HORS_LIGNE } from "../../backend/powersync/tables";
 
 export function ModuleHorsLignePlaceholder({ page, modulesVisibles = [], setPage }) {
-  const module = MODULES.find((m) => m.id === page);
+  const module = MODULES.find((m) => m.id === page) || modulesVisibles.find((m) => m.id === page);
   const academique = modulesVisibles.find((m) => MODULES_HORS_LIGNE.has(m.id));
 
   return (

@@ -35,10 +35,15 @@ const TABLES = [
   "messages", "annonces", "documents", "examens", "livrets", "honneurs",
   "membres", "evenements", "historique", "push_subs",
   "messages_internes", "messages_internes_lus",
+  "msg_conversations", "msg_membres", "msg_messages", "msg_appels",
+  "msg_annonces", "msg_annonces_lus",
 ];
 // Clé de tri fiable pour la pagination (défaut : id). Certaines tables de
 // liaison n'ont pas d'`id` unique → tri par une colonne présente.
-const TRI = { parent_eleves: "eleve_id", enseignant_classes: "compte_id", messages_internes_lus: "message_id" };
+const TRI = {
+  parent_eleves: "eleve_id", enseignant_classes: "compte_id", messages_internes_lus: "message_id",
+  msg_membres: "conversation_id", msg_annonces_lus: "annonce_id",
+};
 const PAGE = 1000;
 
 async function exporterTable(table) {

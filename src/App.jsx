@@ -17,6 +17,8 @@ import { AuthGate } from "./components/app/AuthGate";
 import { AppShell } from "./components/app/AppShell";
 import { ResetPasswordScreen } from "./components/connexion/ResetPasswordScreen";
 import { definirSignataireSession } from "./reports/signataire-session";
+import { MessagerieProvider } from "./components/messagerie/MessagerieContext";
+import { MODULE_MESSAGERIE, messagerieOuverteA } from "./components/messagerie/messagerie-logic";
 
 export default function App() {
   const { t } = useTranslation();
@@ -95,6 +97,9 @@ export default function App() {
   // comme dans la sidebar.
   useEffect(() => {
     if (!utilisateur) return;
+    // La messagerie n'est pas un module de poste : ouverte à tout compte du
+    // périmètre (personnel), hors carte de permissions.
+    if (page === MODULE_MESSAGERIE.id && isSupabase && messagerieOuverteA(utilisateur)) return;
     const modulesCourants = (isSupabase && !ROLES_HORS_POSTES.includes(utilisateur.role)
       ? readableModules(getSessionPermissions(utilisateur, schoolInfo))
       : getModulesForRole(utilisateur.role, schoolInfo))
@@ -134,6 +139,7 @@ export default function App() {
 
   return (
     <SchoolContext.Provider value={schoolContextValue}>
+      <MessagerieProvider utilisateur={utilisateur} schoolCode={schoolId} onOuvrir={() => setPage(MODULE_MESSAGERIE.id)}>
       <AppShell
         toasts={toasts}
         rechercheOuverte={rechercheOuverte} setRechercheOuverte={setRechercheOuverte}
@@ -154,6 +160,7 @@ export default function App() {
         paramInitialTab={paramInitialTab} setParamInitialTab={setParamInitialTab}
         estAdmin={estAdmin} onboardingOuvert={onboardingOuvert} setOnboardingOuvert={setOnboardingOuvert}
       />
+      </MessagerieProvider>
     </SchoolContext.Provider>
   );
 }

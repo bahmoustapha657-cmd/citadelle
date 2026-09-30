@@ -19,6 +19,8 @@ const TABLES = [
   "messages", "annonces", "documents", "examens", "livrets", "honneurs",
   "membres", "evenements", "historique", "push_subs",
   "messages_internes", "messages_internes_lus",
+  "msg_conversations", "msg_membres", "msg_messages", "msg_appels",
+  "msg_annonces", "msg_annonces_lus",
 ];
 // Exposition publique volontaire (écran de connexion avant auth).
 const PUBLIC_ATTENDU = new Set(["ecoles_public"]);
@@ -59,7 +61,7 @@ async function main() {
 
   // Sonde d'écriture anonyme non destructive : insert vide → doit être refusé.
   console.log("\n🖊️  Sonde d'écriture anonyme (doit être REFUSÉE) :");
-  for (const table of ["comptes", "eleves", "recettes", "messages_internes"]) {
+  for (const table of ["comptes", "eleves", "recettes", "messages_internes", "msg_messages", "msg_annonces"]) {
     const { error } = await anon.from(table).insert({}).select("id");
     const bloque = !!error;
     console.log(`  ${bloque ? "✅" : "❌"} insert anon sur ${table.padEnd(20)} ${bloque ? "refusé" : "ACCEPTÉ (FUITE)"}`);
