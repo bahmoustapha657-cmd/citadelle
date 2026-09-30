@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Btn, Modale } from "../ui";
 import { SelecteurComptes } from "./SelecteurComptes";
 import { destinatairesAnnonce, postesDeLAnnuaire, PRIORITES } from "./messagerie-logic";
 import { champ, puce } from "./styles-messagerie";
+import { ACCEPT_DOCUMENTS, formatTaille, iconeFichier, MAX_PIECES_ANNONCE, verifierFichier } from "./documents";
 
 const libelle = { display: "block", fontSize: 11, fontWeight: 800, color: "var(--lc-text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", margin: "12px 0 6px" };
 
@@ -14,6 +15,8 @@ export function NouvelleAnnonceModal({ m, fermer }) {
   const [priorite, setPriorite] = useState("normale");
   const [accuseRequis, setAccuseRequis] = useState(false);
   const [epinglee, setEpinglee] = useState(false);
+  const [fichiers, setFichiers] = useState([]);
+  const choixRef = useRef(null);
   const [cible, setCible] = useState({ tous: true, personnel: false, enseignants: false, postes: [], comptes: [] });
   const [choixComptes, setChoixComptes] = useState(false);
   const [enCours, setEnCours] = useState(false);
@@ -34,7 +37,7 @@ export function NouvelleAnnonceModal({ m, fermer }) {
     if (!nbDestinataires) { setErreur("Choisissez au moins un destinataire."); return; }
     setEnCours(true);
     try {
-      await m.publierAnnonce({ titre, corps, priorite, accuseRequis, epinglee, cible });
+      await m.publierAnnonce({ titre, corps, priorite, accuseRequis, epinglee, cible, fichiers });
       fermer();
     } catch (e) {
       setErreur(e.message || "Publication impossible.");
@@ -96,9 +99,31 @@ export function NouvelleAnnonceModal({ m, fermer }) {
         📌 Épingler en tête des annonces
       </label>
 
+      <span style={libelle}>Pièces jointes <span style={{ textTransform: "none", fontWeight: 500 }}>({MAX_PIECES_ANNONCE} max, 10 Mo chacune)</span></span>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+        {fichiers.map((f, i) => {
+          const verif = verifierFichier(f);
+          return (
+            <span key={`${f.name}-${i}`} title={verif.ok ? "" : verif.erreur}
+              style={{ display: "inline-flex", alignItems: "center", gap: 6, maxWidth: 260, background: "var(--lc-surface-alt)", border: `1px solid ${verif.ok ? "var(--lc-border)" : "#f87171"}`, borderRadius: 14, padding: "3px 6px 3px 10px", fontSize: 12, color: "var(--lc-text)" }}>
+              {iconeFichier(verif.type)}
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
+              <span style={{ color: verif.ok ? "var(--lc-text-faint)" : "#b91c1c" }}>{verif.ok ? formatTaille(f.size) : "refusé"}</span>
+              <button type="button" onClick={() => setFichiers((l) => l.filter((_, j) => j !== i))} aria-label={`Retirer ${f.name}`}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--lc-text-muted)" }}>✕</button>
+            </span>
+          );
+        })}
+        {fichiers.length < MAX_PIECES_ANNONCE && (
+          <button type="button" style={puce(false)} onClick={() => choixRef.current?.click()}>📎 Joindre un document</button>
+        )}
+        <input ref={choixRef} type="file" multiple accept={ACCEPT_DOCUMENTS} style={{ display: "none" }}
+          onChange={(e) => { const choisis = Array.from(e.target.files || []); setFichiers((l) => [...l, ...choisis].slice(0, MAX_PIECES_ANNONCE)); e.target.value = ""; }} />
+      </div>
+
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 18 }}>
         <Btn v="ghost" onClick={fermer}>Annuler</Btn>
-        <Btn disabled={enCours} onClick={publier}>{enCours ? "Publication…" : "📣 Publier"}</Btn>
+        <Btn disabled={enCours} onClick={publier}>{enCours ? (fichiers.length ? "Envoi des pièces jointes…" : "Publication…") : "📣 Publier"}</Btn>
       </div>
     </Modale>
   );

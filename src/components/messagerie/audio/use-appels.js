@@ -33,11 +33,14 @@ const etatVide = () => ({
 // `appel` (état d'écran) : { id, sens, phase, correspondantId, conversationId,
 //   debut, muet, message } avec phase ∈ preparation | appel | sonnerie |
 //   connexion | en_cours | fin.
-export function useAppels({ actif, moi, schoolCode, annuaire, nomMoi }) {
+export function useAppels({ actif, moi, schoolCode, annuaire, nomMoi, occupe }) {
   const [appel, setAppel] = useState(null);
   const ref = useRef(etatVide());
   const annuaireRef = useRef(annuaire);
   useLayoutEffect(() => { annuaireRef.current = annuaire; }, [annuaire]);
+  // Autre appel en cours sur cet appareil (appel de groupe).
+  const occupeRef = useRef(occupe);
+  useLayoutEffect(() => { occupeRef.current = occupe; });
 
   const majAppel = (patch) => setAppel((a) => (a ? { ...a, ...patch } : a));
 
@@ -95,6 +98,11 @@ export function useAppels({ actif, moi, schoolCode, annuaire, nomMoi }) {
   // ── Appel sortant ──
   const appeler = useCallback(async ({ conversationId, correspondantId }) => {
     if (ref.current.jeton) return;
+    if (occupeRef.current?.()) {
+      setAppel({ sens: "sortant", phase: "fin", correspondantId, conversationId, message: "Quittez d'abord l'appel de groupe." });
+      setTimeout(() => setAppel(null), 3000);
+      return;
+    }
     if (!webrtcDisponible()) {
       setAppel({ sens: "sortant", phase: "fin", correspondantId, conversationId, message: "Appels non pris en charge par ce navigateur." });
       setTimeout(() => setAppel(null), 3000);
@@ -132,8 +140,8 @@ export function useAppels({ actif, moi, schoolCode, annuaire, nomMoi }) {
 
   // ── Appel entrant ──
   const recevoir = useCallback((ligne) => {
-    if (ref.current.jeton) {
-      // Déjà en ligne sur cet appareil.
+    if (ref.current.jeton || occupeRef.current?.()) {
+      // Déjà en ligne sur cet appareil (appel direct ou de groupe).
       if (ref.current.id !== ligne.id) terminerAppel(ligne.id, "occupe").catch(() => {});
       return;
     }

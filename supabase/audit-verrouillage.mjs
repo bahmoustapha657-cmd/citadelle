@@ -20,7 +20,7 @@ const TABLES = [
   "membres", "evenements", "historique", "push_subs",
   "messages_internes", "messages_internes_lus",
   "msg_conversations", "msg_membres", "msg_messages", "msg_appels",
-  "msg_annonces", "msg_annonces_lus",
+  "msg_annonces", "msg_annonces_lus", "msg_reunions", "msg_reunion_participants",
 ];
 // Exposition publique volontaire (écran de connexion avant auth).
 const PUBLIC_ATTENDU = new Set(["ecoles_public"]);

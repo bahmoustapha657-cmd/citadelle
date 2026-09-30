@@ -53,6 +53,7 @@ async function main() {
   const conversations = [];
   const annonces = [];
   const fichiers = [];
+  let groupeId = null;
 
   try {
     console.log("\n— Annuaire —");
@@ -130,6 +131,7 @@ async function main() {
       const { data: groupe, error: gErr } = await di.rpc("msg_creer_groupe", { p_titre: "SONDE-GROUPE", p_membres: [comptes.comptable.id, comptes.enseignant.id] });
       attendu("la direction crée un groupe", !gErr && !!groupe, gErr?.message);
       if (groupe) conversations.push(groupe);
+      groupeId = groupe;
       const { error: renErr } = await en.rpc("msg_renommer_groupe", { p_conv: groupe, p_titre: "PIRATE" });
       attendu("REFUS : un membre non admin ne renomme pas", !!renErr);
     }
@@ -170,12 +172,89 @@ async function main() {
       const { error: sCoErr } = await co.rpc("msg_annonce_suivi", { p_id: a?.id });
       attendu("REFUS : suivi par la comptable (ni auteur ni direction)", !!sCoErr);
     }
+
+    // ── Messagerie v3 (messagerie-v3.sql) ──
+    console.log("\n— v3 · Documents dans une discussion —");
+    {
+      const chemin = `${demo.id}/${directe}/sonde.pdf`;
+      const { error: upErr } = await en.storage.from("messagerie")
+        .upload(chemin, new Blob(["%PDF-1.4 sonde"], { type: "application/pdf" }), { contentType: "application/pdf" });
+      attendu("l'enseignant dépose un PDF dans sa discussion", !upErr, upErr?.message);
+      if (!upErr) fichiers.push(chemin);
+      const { error: msgErr } = await en.from("msg_messages").insert({
+        conversation_id: directe, ecole_id: demo.id, de_compte_id: comptes.enseignant.id, type: "fichier",
+        fichier_path: chemin, fichier_nom: "sonde.pdf", fichier_type: "application/pdf", fichier_taille: 14,
+      });
+      attendu("… et le partage (message « fichier »)", !msgErr, msgErr?.message);
+      const { error: dlErr } = await co.storage.from("messagerie").download(chemin);
+      attendu("la comptable télécharge le PDF", !dlErr, dlErr?.message);
+      const { error: exeErr } = await en.storage.from("messagerie")
+        .upload(`${demo.id}/${directe}/sonde.exe`, new Blob(["MZ"], { type: "application/x-msdownload" }), { contentType: "application/x-msdownload" });
+      attendu("REFUS d'un exécutable (types du bucket)", !!exeErr);
+    }
+
+    console.log("\n— v3 · Pièces jointes d'annonce —");
+    {
+      const { data: a, error: pErr } = await di.from("msg_annonces").insert({
+        ecole_id: demo.id, de_compte_id: comptes.direction.id, titre: "SONDE-PJ", corps: "SONDE-PJ", a_enseignants: true,
+      }).select("id").single();
+      attendu("la direction publie une annonce", !pErr && !!a, pErr?.message);
+      if (a) annonces.push(a.id);
+      const chemin = `${demo.id}/annonces/${a?.id}/note.pdf`;
+      const { error: upErr } = await di.storage.from("messagerie")
+        .upload(chemin, new Blob(["%PDF-1.4 note"], { type: "application/pdf" }), { contentType: "application/pdf" });
+      attendu("l'auteur dépose la pièce jointe", !upErr, upErr?.message);
+      if (!upErr) fichiers.push(chemin);
+      const { error: upCoErr } = await co.storage.from("messagerie")
+        .upload(`${demo.id}/annonces/${a?.id}/pirate.pdf`, new Blob(["x"], { type: "application/pdf" }), { contentType: "application/pdf" });
+      attendu("REFUS : dépôt par une autre que l'auteur", !!upCoErr);
+      const { error: jErr } = await di.rpc("msg_annonce_joindre", { p_id: a?.id, p_pieces: [{ path: chemin, nom: "note.pdf", type: "application/pdf", taille: 13 }] });
+      attendu("l'auteur enregistre la pièce jointe", !jErr, jErr?.message);
+      const { error: dlEn } = await en.storage.from("messagerie").download(chemin);
+      attendu("l'enseignant (destinataire) la télécharge", !dlEn, dlEn?.message);
+      const { data: dlCo } = await co.storage.from("messagerie").download(chemin);
+      attendu("la comptable (non visée) NE la télécharge PAS", !dlCo);
+    }
+
+    console.log("\n— v3 · Appel de groupe —");
+    {
+      const { data: reunion, error: rErr } = await co.rpc("msg_reunion_demarrer", { p_conv: groupeId });
+      attendu("la comptable lance un appel de groupe", !rErr && !!reunion, rErr?.message);
+      const { data: vueEn } = await en.from("msg_reunions").select("id").eq("id", reunion);
+      attendu("l'enseignant (membre) voit l'appel", (vueEn || []).length === 1);
+      const { error: forgeErr } = await en.from("msg_reunion_participants").insert({
+        reunion_id: reunion, compte_id: comptes.enseignant.id, ecole_id: demo.id, session_id: "forgee",
+      });
+      attendu("REFUS : s'inscrire avec une session forgée (RLS)", forgeErr?.code === "42501", forgeErr?.message || "accepté");
+      // Serveur d'appels : activé (session Cloudflare) ou explicitement non configuré.
+      const { data: rej, error: rejErr } = await co.functions.invoke("reunion", { body: { action: "rejoindre", reunionId: reunion } });
+      const statut = rejErr?.context?.status;
+      let corpsErr = null;
+      try { corpsErr = await rejErr?.context?.json?.(); } catch { /* pas de JSON */ }
+      const detail = corpsErr?.error || corpsErr?.message || rejErr?.message || "";
+      if (rej?.sessionId) {
+        attendu("Edge reunion : session Cloudflare créée (appels de groupe ACTIVÉS)", true);
+        const { data: parts } = await en.from("msg_reunion_participants").select("compte_id, session_id").eq("reunion_id", reunion);
+        attendu("… participante visible des membres", (parts || []).some((p) => p.compte_id === comptes.comptable.id && p.session_id));
+        const { data: rejDi, error: rejDiErr } = await sessions.enseignant.functions.invoke("reunion", { body: { action: "recevoir", reunionId: reunion, pistes: [] } });
+        attendu("… « recevoir » refusé tant qu'on n'a pas rejoint", !!rejDiErr && !rejDi?.ok);
+      } else {
+        const inactif = statut === 503 || /pas encore activés|non configuré/i.test(detail);
+        const absente = statut === 404 || /not found/i.test(detail);
+        console.log(`  ℹ️  Edge reunion : ${inactif ? "déployée mais NON configurée (secrets CF_REALTIME_*)" : absente ? "non déployée" : `réponse : ${detail}`}`);
+        if (!inactif && !absente) attendu("Edge reunion : réponse attendue", false, detail);
+      }
+      const { error: qErr } = await co.rpc("msg_reunion_quitter", { p_reunion: reunion });
+      attendu("la comptable quitte l'appel", !qErr, qErr?.message);
+      const { data: fin } = await svc.from("msg_reunions").select("statut").eq("id", reunion).single();
+      attendu("appel clos (plus personne)", fin?.statut === "termine");
+    }
   } finally {
     // ── Nettoyage complet ──
     if (fichiers.length) await svc.storage.from("messagerie").remove(fichiers);
     if (conversations.length) await svc.from("msg_conversations").delete().in("id", conversations.filter(Boolean));
     if (annonces.length) await svc.from("msg_annonces").delete().in("id", annonces);
-    await svc.from("msg_annonces").delete().eq("ecole_id", demo.id).like("corps", "SONDE-%");
+    await svc.from("msg_annonces").delete().eq("ecole_id", demo.id).like("corps", "SONDE%");
     for (const t of Object.values(comptes)) {
       await svc.from("comptes").delete().eq("id", t.id);
       await svc.auth.admin.deleteUser(t.userId);

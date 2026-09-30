@@ -1,6 +1,9 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { isSupabase } from "../../backend";
-import { messagerieOuverteA } from "./messagerie-logic";
+import { messagerieOuverteA, titreConversation } from "./messagerie-logic";
+import { useReunion } from "./audio/use-reunion";
+import { ReunionOverlay } from "./ReunionOverlay";
+import { notifier } from "../../backend/messagerie-supabase";
 import { useMessagerieEtat } from "./use-messagerie-etat";
 import { useAppels } from "./audio/use-appels";
 import { AppelOverlay } from "./AppelOverlay";
@@ -26,8 +29,28 @@ function demandeDepuisUrl(url) {
 export function MessagerieProvider({ utilisateur, schoolCode, onOuvrir, children }) {
   const actif = isSupabase && messagerieOuverteA(utilisateur) && !!schoolCode;
   const etat = useMessagerieEtat({ utilisateur, schoolCode, actif });
+  // Un seul appel à la fois par appareil : direct OU de groupe.
+  const occupation = useRef({ appel: false, reunion: false });
   const appels = useAppels({
     actif, moi: etat.moi, schoolCode, annuaire: etat.annuaire, nomMoi: etat.nomMoi,
+    occupe: () => occupation.current.reunion,
+  });
+  // Appel de groupe lancé : les membres (hors sourdine) sont prévenus.
+  const prevenirMembres = (conversationId) => {
+    const conv = etat.boiteParId.get(conversationId);
+    if (!conv) return;
+    notifier((conv.membres || []).filter((x) => x.id !== etat.moi && !x.sourdine).map((x) => etat.annuaire.get(x.id)?.user_id),
+      `📞 Appel de groupe — ${titreConversation(conv, etat.annuaire, etat.moi)}`,
+      `${etat.nomMoi} vous invite à rejoindre l'appel.`,
+      `/?messagerie=${conversationId}`);
+  };
+  const reunions = useReunion({
+    actif, moi: etat.moi, schoolCode,
+    occupe: () => occupation.current.appel,
+    surNouvelleReunion: prevenirMembres,
+  });
+  useLayoutEffect(() => {
+    occupation.current = { appel: !!appels.appel && appels.appel.phase !== "fin", reunion: reunions.enCours };
   });
   const { appliquerDemande } = etat;
 
@@ -57,13 +80,18 @@ export function MessagerieProvider({ utilisateur, schoolCode, onOuvrir, children
     return () => navigator.serviceWorker?.removeEventListener("message", surMessageSw);
   }, [actif]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const valeur = actif ? { ...etat, appels, ouvrirMessagerie } : null;
+  const valeur = actif ? { ...etat, appels, reunions, ouvrirMessagerie } : null;
+  const convReunion = reunions.reunion ? etat.boiteParId.get(reunions.reunion.conversationId) : null;
 
   return (
     <MessagerieContext.Provider value={valeur}>
       {children}
       {actif && appels.appel && (
         <AppelOverlay appels={appels} annuaire={etat.annuaire} />
+      )}
+      {actif && reunions.reunion && (
+        <ReunionOverlay r={reunions} annuaire={etat.annuaire} moi={etat.moi}
+          titre={convReunion ? titreConversation(convReunion, etat.annuaire, etat.moi) : "Appel de groupe"} />
       )}
     </MessagerieContext.Provider>
   );

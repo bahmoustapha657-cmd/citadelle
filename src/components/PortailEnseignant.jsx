@@ -8,6 +8,7 @@ import { usePortailEnseignant } from "./portail-enseignant/use-portail-enseignan
 import { BandeauPremiereSynchro } from "./app/BandeauPremiereSynchro";
 import { MessagerieProvider } from "./messagerie/MessagerieContext";
 import { BandeauAnnonces } from "./messagerie/BandeauAnnonces";
+import { BandeauReunions } from "./messagerie/BandeauReunions";
 
 // Orchestrateur du portail enseignant : la logique vit dans
 // usePortailEnseignant, chaque onglet dans portail-enseignant/*Tab.jsx.
@@ -29,6 +30,7 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo, premie
       />
       <BandeauPremiereSynchro premiereSynchro={premiereSynchro} estHorsLigne={estHorsLigne} t={t} />
       {p.tab !== "messages" && <BandeauAnnonces />}
+      <BandeauReunions />
 
       <div style={{ padding: "24px", maxWidth: 1100, margin: "0 auto" }}>
         <PortailTabContent p={p} schoolInfo={schoolInfo} utilisateur={utilisateur} t={t} />
