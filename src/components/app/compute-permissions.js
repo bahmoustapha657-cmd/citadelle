@@ -54,7 +54,8 @@ export function computeAppPermissions({ utilisateur, schoolInfo, page, planInfo 
   // est ignoré côté Supabase (il peut avoir été copié dans les données lors
   // de la migration) et pour le superadmin.
   const basculeSupabase = !isSupabase && role !== "superadmin" && schoolInfo?.basculeSupabase === true;
-  const pageSansEcriture = surPostes
+  // Messagerie interne : hors carte des postes, chacun y écrit en son nom.
+  const pageSansEcriture = page === "messagerie" ? false : surPostes
     ? (!isDirection && !hasWrite(permissions, page))
     : (isAdmin && !adminCanWriteCurrentPage);
   const readOnly = basculeSupabase

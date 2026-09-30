@@ -193,6 +193,9 @@ async function main() {
     attendu("le comptable voit le privé qui lui est adressé + le message à tous", corpsCo.includes("PRIVE-COMPTABLE") && corpsCo.includes("POUR-TOUS"));
     await svc.from("messages_internes").delete().eq("ecole_id", demo.id).like("corps", "P%");
     await svc.from("messages_internes").delete().eq("ecole_id", demo.id).eq("corps", "POUR-TOUS");
+    // Recopies en annonces (trigger de messagerie-v2.sql), si installé.
+    await svc.from("msg_annonces").delete().eq("ecole_id", demo.id).like("corps", "P%");
+    await svc.from("msg_annonces").delete().eq("ecole_id", demo.id).eq("corps", "POUR-TOUS");
   }
 
   console.log("\n— Auto-promotion (comptes_guard) —");

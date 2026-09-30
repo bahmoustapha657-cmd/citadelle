@@ -29,5 +29,6 @@ export const Calendrier = lazyNamedExport(() => import("../Calendrier"), "Calend
 export const GestionExamens = lazyNamedExport(() => import("../GestionExamens"), "GestionExamens");
 export const MessagesParents = lazyNamedExport(() => import("../MessagesParents"), "MessagesParents");
 export const MessagesEcole = lazy(() => import("../MessagesEcole"));
+export const MessageriePage = lazyNamedExport(() => import("../messagerie/MessageriePage"), "MessageriePage");
 export const LandingEduGest = lazyNamedExport(() => import("../LandingEduGest"), "LandingEduGest");
 export const DemoEduGest = lazyNamedExport(() => import("../DemoEduGest"), "DemoEduGest");

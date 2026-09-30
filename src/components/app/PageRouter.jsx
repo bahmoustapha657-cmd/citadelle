@@ -4,7 +4,7 @@
 import { C, getRoleLabelForSchool } from "../../constants";
 import {
   AdminPanel, Calendrier, Comptabilite, Fondation, GestionExamens,
-  HistoriqueActions, MessagesParents, ParametresEcole, Primaire, Secondaire,
+  HistoriqueActions, MessageriePage, MessagesParents, ParametresEcole, Primaire, Secondaire,
   Statistiques, SuperAdminPanel, TableauDeBord,
 } from "./lazy-pages";
 
@@ -35,6 +35,8 @@ export function PageRouter({
       {page==="calendrier"  && <Calendrier annee={annee}/>}
       {page==="examens"     && <GestionExamens/>}
       {page==="messages"    && <MessagesParents readOnly={readOnly}/>}
+      {/* Messagerie interne : occupe toute la hauteur de la zone de contenu. */}
+      {page==="messagerie"  && <MessageriePage utilisateur={utilisateur}/>}
     </>
   );
 }

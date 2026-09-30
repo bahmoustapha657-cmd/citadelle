@@ -5,6 +5,7 @@ import { SalaireTab } from "./SalaireTab";
 import { DashboardTab } from "./DashboardTab";
 import { EdtTab } from "./EdtTab";
 import { ElevesTab } from "./ElevesTab";
+import { MessageriePage } from "../messagerie/MessageriePage";
 
 // Aiguillage du contenu des onglets du portail enseignant.
 export function PortailTabContent({ p, schoolInfo, utilisateur, t }) {
@@ -61,6 +62,12 @@ export function PortailTabContent({ p, schoolInfo, utilisateur, t }) {
           ouvrirEditionIncident={p.ouvrirEditionIncident}
           supprimerIncident={p.supprimerIncident}
         />
+      )}
+
+      {p.tab === "messages" && (
+        <div style={{ border: "1px solid var(--lc-border)", borderRadius: 14, overflow: "hidden", boxShadow: "var(--lc-shadow)" }}>
+          <MessageriePage utilisateur={utilisateur} hauteur="calc(100dvh - 190px)" />
+        </div>
       )}
 
       {p.tab === "salaire" && (

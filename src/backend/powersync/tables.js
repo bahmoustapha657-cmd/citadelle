@@ -1,7 +1,7 @@
 // ── Périmètre hors ligne (TOTAL, sauf portail parent) ───────────────────────
 // Tables Supabase mises en miroir localement via PowerSync. Restent en ligne :
 // portail parent (vague ultérieure), paiements en ligne, messagerie interne
-// (messages_internes), superadmin, transferts, opérations Edge (création de
+// (messages_internes, msg_*), superadmin, transferts, opérations Edge (création de
 // comptes, reset mdp) — voir supabase/POWERSYNC-SETUP.md.
 //
 // Ce fichier ne doit importer AUCUN module lourd (@powersync/web/wa-sqlite) :

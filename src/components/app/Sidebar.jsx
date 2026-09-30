@@ -3,6 +3,7 @@
 // ══════════════════════════════════════════════════════════════
 import Logo from "../../Logo";
 import { C, getAnnee } from "../../constants";
+import { useMessagerie } from "../messagerie/messagerie-contexte";
 import { moduleLabel, moduleDesc } from "./module-i18n";
 
 export function Sidebar({
@@ -10,6 +11,7 @@ export function Sidebar({
   isMobile, sidebarOuvert, setSidebarOuvert, msgsNonLus,
   utilisateur, utilisateurLabel, deconnecter, estHorsLigne, t,
 }) {
+  const messagerie = useMessagerie();
   return (
     <aside style={{position:"fixed",top:0,bottom:0,insetInlineStart:0,width:228,zIndex:50,background:schoolInfo.couleur1||C.sidebar,display:"flex",flexDirection:"column",
       transform:isMobile&&!sidebarOuvert?"translateX(-100%)":"translateX(0)",transition:"transform 0.25s ease"}}>
@@ -26,6 +28,7 @@ export function Sidebar({
       <nav style={{flex:1,padding:"10px 8px",display:"flex",flexDirection:"column",gap:3,overflowY:"auto",minHeight:0}}>
         {modulesVisibles.map(m=>{
           const actif=page===m.id;
+          const badge=m.id==="messages"?msgsNonLus:m.id==="messagerie"?(messagerie?.nonLus||0):0;
           return <button key={m.id} onClick={()=>{setPage(m.id);if(isMobile)setSidebarOuvert(false);}} style={{
             display:"flex",alignItems:"center",gap:9,padding:"9px 11px",borderRadius:8,border:"none",cursor:"pointer",textAlign:"start",width:"100%",
             background:actif?`${C.green}22`:"transparent",transition:"background .15s"}}>
@@ -34,12 +37,12 @@ export function Sidebar({
               <p style={{margin:0,fontSize:12,fontWeight:800,color:actif?C.green:"rgba(255,255,255,0.82)"}}>{moduleLabel(m,t)}</p>
               <p style={{margin:0,fontSize:9,color:"rgba(255,255,255,0.35)"}}>{moduleDesc(m,t)}</p>
             </div>
-            {m.id==="messages"&&msgsNonLus>0&&(
+            {badge>0&&(
               <span style={{background:"#ef4444",color:"#fff",borderRadius:"50%",minWidth:18,height:18,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:900,padding:"0 4px",flexShrink:0}}>
-                {msgsNonLus}
+                {badge>99?"99+":badge}
               </span>
             )}
-            {actif&&msgsNonLus===0&&<div style={{marginInlineStart:"auto",width:5,height:5,borderRadius:"50%",background:C.green,flexShrink:0}}/>}
+            {actif&&badge===0&&<div style={{marginInlineStart:"auto",width:5,height:5,borderRadius:"50%",background:C.green,flexShrink:0}}/>}
           </button>;
         })}
       </nav>

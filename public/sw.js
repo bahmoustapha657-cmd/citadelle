@@ -178,10 +178,14 @@ async function appShellFirst(request) {
 self.addEventListener("push", (e) => {
   let data = { titre: "EduGest", corps: "", url: "/", icon: "/icons/pwa-192.png" };
   try { data = { ...data, ...JSON.parse(e.data?.text() || "{}") }; } catch { /* ignore malformed push payload */ }
+  // L'Edge Function `push` envoie { title, body, url } : sans ce repli, toute
+  // notification s'affichait « EduGest » sans texte.
+  const titre = data.title || data.titre;
+  const corps = data.body ?? data.corps;
 
   e.waitUntil(
-    self.registration.showNotification(data.titre, {
-      body:  data.corps,
+    self.registration.showNotification(titre, {
+      body:  corps,
       icon:  data.icon,
       badge: "/icons/pwa-192.png",
       data:  { url: data.url },
@@ -197,7 +201,12 @@ self.addEventListener("notificationclick", (e) => {
   e.waitUntil(
     clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
       const existing = list.find(c => c.url.includes(self.location.origin));
-      if (existing) return existing.focus();
+      if (existing) {
+        // App déjà ouverte : elle ouvre elle-même la discussion / l'annonce
+        // visée (messagerie interne) sans recharger la page.
+        existing.postMessage({ type: "notification-click", url });
+        return existing.focus();
+      }
       return clients.openWindow(url);
     })
   );
