@@ -275,3 +275,16 @@ export const estJoignable = (presence) => presence?.etat === "actif" || presence
 // Membres d'une discussion (hors soi) actuellement connectés.
 export const membresConnectes = (conv, presences, moi) =>
   (conv?.membres || []).filter((m) => m.id !== moi && estJoignable(presences?.get(m.id))).length;
+
+// ── Hiérarchie (supabase/messagerie-hierarchie.sql) ──
+// L'annuaire marque les comptes que l'on peut CONTACTER (ouvrir une
+// discussion, appeler, inviter dans un groupe, adresser une annonce). Tant
+// que le SQL n'est pas appliqué, le champ est absent : tout le monde l'est.
+export const peutContacter = (compte) => !!compte && compte.contactable !== false;
+
+export const contactables = (annuaireListe, moi) => annuaireListe.filter((c) => c.id !== moi && peutContacter(c));
+
+// Lancer un appel de groupe : administrateur du groupe, ou responsable de
+// tous ses membres (la base applique la même règle).
+export const peutLancerAppelGroupe = (conv, annuaire, moi) =>
+  !!conv?.admin || (conv?.membres || []).every((x) => x.id === moi || peutContacter(annuaire.get(x.id)));

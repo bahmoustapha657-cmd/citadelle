@@ -3,6 +3,7 @@ import * as api from "../../backend/messagerie-supabase";
 import { Btn, Modale } from "../ui";
 import { Avatar } from "./Avatar";
 import { SelecteurComptes } from "./SelecteurComptes";
+import { contactables } from "./messagerie-logic";
 import { champ } from "./styles-messagerie";
 
 const petitBouton = {
@@ -48,7 +49,7 @@ export function GroupeModal({ m, conv, fermer }) {
 
       {ajout ? (
         <>
-          <SelecteurComptes comptes={m.annuaireListe} exclus={(conv.membres || []).map((x) => x.id)}
+          <SelecteurComptes comptes={contactables(m.annuaireListe, m.moi)} exclus={(conv.membres || []).map((x) => x.id)}
             selection={ajout} onBasculer={(id) => setAjout((l) => (l.includes(id) ? l.filter((x) => x !== id) : [...l, id]))} hauteur={260} />
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
             <Btn sm v="ghost" onClick={() => setAjout(null)}>Annuler</Btn>

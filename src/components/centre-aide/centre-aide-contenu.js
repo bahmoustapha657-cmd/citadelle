@@ -300,7 +300,8 @@ export const ARTICLES = [
     titre: "Discuter avec ses collègues (messagerie interne)",
     etapes: [
       "Cliquez l'icône 💬 de l'en-tête ou « Messagerie » dans le menu (enseignants : onglet « 💬 Messages » du portail).",
-      "« ✍️ Nouveau » : message direct à une personne, ou groupe nommé (ex. Conseil pédagogique). Le personnel ET les enseignants sont joignables.",
+      "« ✍️ Nouveau » : message direct à une personne, ou groupe nommé (ex. Conseil pédagogique).",
+      "La messagerie suit la hiérarchie : le Fondateur et l'Administrateur contactent tout le monde ; les responsables (Principal·e, Directeur du primaire, Comptable, Surveillance…) se contactent entre eux et contactent le sommet ; chaque chef de section contacte ses enseignants ; un enseignant ne contacte que son chef de section (Principal·e pour le collège et le lycée, Directeur pour le primaire et la maternelle). Quand un supérieur vous écrit, vous pouvez toujours lui répondre.",
       "Touchez un message pour y répondre, le corriger (24 h) ou le supprimer. Touchez 🎤 pour enregistrer un message vocal (2 min max), puis ➤ pour l'envoyer.",
       "📎 joint un document : PDF, photo, Word, Excel, PowerPoint (10 Mo max). Le texte saisi sert de légende ; les photos lourdes sont allégées automatiquement.",
       "✓ = envoyé, ✓✓ = lu ; en groupe, « ✓✓ 3/5 » indique combien l'ont lu — touchez votre message pour voir qui.",
