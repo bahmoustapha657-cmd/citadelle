@@ -53,6 +53,17 @@ export function teacherAliases(profile = {}) {
     .filter(Boolean).map((s) => String(s).trim()).filter(Boolean))];
 }
 
+// Noms sous lesquels l'enseignant touche une paie : ceux de son compte, plus
+// prénom + nom de SA fiche enseignant (celle d'enseignantId) — le nom inscrit
+// sur la fiche de paie (buildTeacherFullName), même si la fiche a été renommée
+// après la création du compte. Même règle que mes_noms_paie() côté RLS
+// (supabase/salaires-enseignant.sql).
+export function teacherSalaryAliases(profile = {}, roster = []) {
+  const fiche = profile.enseignantId ? roster.find((f) => f._id === profile.enseignantId) : null;
+  const nomFiche = fiche ? `${fiche.prenom || ""} ${fiche.nom || ""}`.trim() : "";
+  return [...new Set([...teacherAliases(profile), nomFiche].filter(Boolean))];
+}
+
 export function matchesTeacherAlias(value = "", aliases = []) {
   const nv = normalizeText(stripLegacyTeacherSuffix(value));
   if (!nv) return false;

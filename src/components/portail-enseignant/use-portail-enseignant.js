@@ -85,6 +85,7 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
   const notes = portalData.notes || [];
   const enseignements = portalData.enseignements || [];
   const salaires = portalData.salaires || [];
+  const salairesIndisponibles = Boolean(portalData.salairesIndisponibles);
   const incidents = portalData.incidents || [];
   const enseignantId = utilisateur.enseignantId || null;
 
@@ -322,7 +323,7 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
     c1, c2, nomEns, matiere, noteForms, defaultNoteType, periodes,
     isPrimaire, matieresDispo,
     tab, setTab, periodeN, setPeriodeN, chargement, portalData,
-    emplois, eleves, salaires, incidents, enseignantId,
+    emplois, eleves, salaires, salairesIndisponibles, incidents, enseignantId,
     mesClasses, mesNotes, mesEvenements, notesPeriode,
     modalNote, setModalNote, formNote, setFormNote,
     gridForm, setGridForm, gridProgress,

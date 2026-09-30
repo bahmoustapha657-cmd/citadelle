@@ -64,7 +64,7 @@ export function PortailTabContent({ p, schoolInfo, utilisateur, t }) {
       )}
 
       {p.tab === "salaire" && (
-        <SalaireTab c1={p.c1} c2={p.c2} salaires={p.salaires} imprimerPaies={p.imprimerPaies}/>
+        <SalaireTab c1={p.c1} c2={p.c2} salaires={p.salaires} indisponible={p.salairesIndisponibles} imprimerPaies={p.imprimerPaies}/>
       )}
     </>
   );
