@@ -6,6 +6,7 @@ import { PortailTabContent } from "./portail-enseignant/PortailTabContent";
 import { IncidentModal } from "./portail-enseignant/IncidentModal";
 import { usePortailEnseignant } from "./portail-enseignant/use-portail-enseignant";
 import { BandeauPremiereSynchro } from "./app/BandeauPremiereSynchro";
+import { BandeauLectureSeule } from "./app/BandeauLectureSeule";
 import { MessagerieProvider } from "./messagerie/MessagerieContext";
 import { BandeauAnnonces } from "./messagerie/BandeauAnnonces";
 import { BandeauReunions } from "./messagerie/BandeauReunions";
@@ -29,6 +30,7 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo, premie
         deconnecter={deconnecter} t={t} tab={p.tab} setTab={p.setTab}
       />
       <BandeauPremiereSynchro premiereSynchro={premiereSynchro} estHorsLigne={estHorsLigne} t={t} />
+      <BandeauLectureSeule />
       {p.tab !== "messages" && <BandeauAnnonces />}
       <BandeauReunions />
 

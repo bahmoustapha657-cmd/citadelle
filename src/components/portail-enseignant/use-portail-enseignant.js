@@ -6,6 +6,7 @@ import { getActiveNoteForms } from "../../evaluation-forms";
 import { imprimerEdtEnseignant, imprimerPaiesEnseignant } from "../../reports";
 import { isTitulaireSection } from "../../backend/teacher-scope";
 import { presents } from "../../depart-utils";
+import { MSG_LECTURE_SEULE_PORTAIL } from "../app/app-shell-plan";
 import {
   construireGrille as construireGrilleHelper,
   enregistrerGrille as enregistrerGrilleAction,
@@ -40,7 +41,15 @@ const TABLES_PORTAIL = [
 // /teacher-portal, état des modales notes/incidents, et les wrappers
 // qui injectent le contexte aux actions notes/incidents.
 export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
-  const { moisAnnee, toast, envoyerPush } = useContext(SchoolContext);
+  const { moisAnnee, toast, envoyerPush, planInfo } = useContext(SchoolContext);
+  // Abonnement expiré (après la grâce) : le portail passe en lecture seule,
+  // comme le reste de l'établissement. La base refuse de toute façon ces
+  // écritures (ecole-hors-service.sql) : on évite une saisie perdue.
+  const lectureSeule = !!planInfo?.planEstExpire;
+  const siModifiable = (action) => (...args) => {
+    if (lectureSeule) { toast(MSG_LECTURE_SEULE_PORTAIL, "error"); return undefined; }
+    return action(...args);
+  };
   const c1 = schoolInfo.couleur1 || C.blue;
   const c2 = schoolInfo.couleur2 || C.green;
   const noteForms = getActiveNoteForms(schoolInfo, utilisateur.section || "secondaire");
@@ -266,7 +275,7 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
     });
   };
 
-  const enregistrerGrille = () => enregistrerGrilleAction({
+  const enregistrerGrille = siModifiable(() => enregistrerGrilleAction({
     gridForm, mesNotes, schoolInfo, utilisateur,
     setEnregistrement, setGridProgress, setModalNote, chargerPortail, toast,
     // Enregistrement complet réussi → le brouillon local n'a plus de raison d'être.
@@ -279,20 +288,20 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
     },
     // Mise à jour locale (pas de rechargement) avec les notes renvoyées.
     onSavedNotes: fusionnerNotes,
-  });
+  }));
 
   const ouvrirEditionNote = (note) => {
     setFormNote(buildFormNoteEdition(note, { defaultNoteType, periodeN }));
     setModalNote("edit");
   };
 
-  const enregistrerNote = () => enregistrerNoteAction({
+  const enregistrerNote = siModifiable(() => enregistrerNoteAction({
     formNote, defaultNoteType, schoolInfo, utilisateur,
     setEnregistrement, setModalNote, chargerPortail, toast,
-  });
-  const supprimerNote = (noteId) => supprimerNoteAction(noteId, {
+  }));
+  const supprimerNote = siModifiable((noteId) => supprimerNoteAction(noteId, {
     setEnregistrement, chargerPortail, toast,
-  });
+  }));
 
   const ouvrirSignalementEleve = (eleve) => {
     setFormIncident(buildFormIncidentCreation(eleve));
@@ -304,12 +313,12 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
     setModalIncident("edit");
   };
 
-  const enregistrerIncident = () => enregistrerIncidentAction({
+  const enregistrerIncident = siModifiable(() => enregistrerIncidentAction({
     formIncident, envoyerPush, setEnregistrement, setModalIncident, chargerPortail, toast,
-  });
-  const supprimerIncident = (incidentId) => supprimerIncidentAction(incidentId, {
+  }));
+  const supprimerIncident = siModifiable((incidentId) => supprimerIncidentAction(incidentId, {
     setEnregistrement, chargerPortail, toast,
-  });
+  }));
 
   const notesPeriode = useMemo(
     () => mesNotes.filter((item) => item.periode === periodeN),
@@ -335,5 +344,6 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
     ouvrirEditionNote, enregistrerNote, supprimerNote,
     ouvrirSignalementEleve, ouvrirEditionIncident, enregistrerIncident, supprimerIncident,
     imprimerEdt, imprimerPaies,
+    lectureSeule,
   };
 }
