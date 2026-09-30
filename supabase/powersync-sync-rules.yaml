@@ -43,11 +43,30 @@
 #        honneurs, messages, membres, documents, historique;
 #   3. Coller powersync-sync-rules.min.yaml dans le dashboard → Validate →
 #      Deploy.
+#
+# ── Priorités de synchro (`priority:`, 1 = d'abord, 3 = défaut) ──────────
+# Sur réseau faible, la première synchro d'un compte (≈ 5 Mo à La Citadelle,
+# dont 3,6 Mo de notes) n'était visible qu'une fois TOUT reçu. PowerSync rend
+# désormais visible chaque niveau dès qu'il est complet :
+#   1 → school_data + compta_data (≈ 1,1 Mo) : élèves, classes, matières,
+#       enseignants, EDT, appréciations, école, postes, comptabilité — les
+#       écrans s'ouvrent ;
+#   2 → notes et absences (≈ 3,5 Mo) : le gros du volume ;
+#   3 → modules secondaires (calendrier, examens/livrets, messages, fondation,
+#       journal, comptes ; ≈ 0,2 Mo).
+# Un bucket ne change que de priorité, jamais de contenu : une table qui
+# changerait de bucket disparaîtrait un moment du miroir au redéploiement.
+# Jamais de priorité 0 : elle s'applique même avec des écritures locales pas
+# encore envoyées (affichage incohérent possible).
+# ⚠️ Tout redéploiement de ces règles recrée les buckets côté PowerSync : au
+# retour suivant, CHAQUE appareil re-télécharge une fois ses données (les
+# anciennes restent affichées pendant ce temps). Déployer à une heure creuse.
 
 bucket_definitions:
   # Tout le personnel + les enseignants : données académiques + méta de
   # l'école (branding/plan/verrous), annonces et postes (labels/permissions).
   school_data:
+    priority: 1
     parameters: SELECT ecole_id FROM comptes WHERE user_id = request.user_id() AND role != 'parent'
     data:
       - SELECT * FROM eleves WHERE ecole_id = bucket.ecole_id
@@ -56,6 +75,10 @@ bucket_definitions:
       - SELECT * FROM enseignants WHERE ecole_id = bucket.ecole_id
       - SELECT * FROM emplois WHERE ecole_id = bucket.ecole_id
       - SELECT * FROM enseignements WHERE ecole_id = bucket.ecole_id
+      # Appréciations laissées ici (≈ 0,24 Mo) : les déplacer dans un autre
+      # bucket les ferait disparaître du miroir, le temps du re-téléchargement
+      # qui suit le déploiement, entre les niveaux 1 et 2 — et une saisie à ce
+      # moment-là créerait un doublon.
       - SELECT * FROM appreciations WHERE ecole_id = bucket.ecole_id
       - SELECT * FROM ecoles WHERE id = bucket.ecole_id
       - SELECT * FROM annonces WHERE ecole_id = bucket.ecole_id
@@ -64,6 +87,7 @@ bucket_definitions:
   # Notes/absences d'un enseignant : uniquement ses sections (mêmes bornes
   # que teacher-security.sql ; user_id dénormalisé par powersync-scope.sql).
   teacher_notes:
+    priority: 2
     parameters: SELECT section, ecole_id FROM enseignant_classes WHERE user_id = request.user_id()
     data:
       - SELECT * FROM notes WHERE ecole_id = bucket.ecole_id AND section = bucket.section
@@ -71,13 +95,17 @@ bucket_definitions:
 
   # Staff (non parent, non enseignant) : notes/absences de toute l'école.
   staff_notes:
+    priority: 2
     parameters: SELECT ecole_id FROM comptes WHERE user_id = request.user_id() AND role != 'parent' AND role != 'enseignant'
     data:
       - SELECT * FROM notes WHERE ecole_id = bucket.ecole_id
       - SELECT * FROM absences WHERE ecole_id = bucket.ecole_id
 
   # ── Buckets par module (perm_* = lecture du module, cf. powersync-perms.sql)
+  # Comptabilité au premier niveau : c'est l'écran principal du comptable, et
+  # elle pèse peu (≈ 150 Ko à La Citadelle).
   compta_data:
+    priority: 1
     parameters: SELECT ecole_id FROM comptes WHERE user_id = request.user_id() AND perm_compta = true
     data:
       - SELECT * FROM recettes WHERE ecole_id = bucket.ecole_id
@@ -89,11 +117,13 @@ bucket_definitions:
       - SELECT * FROM tarifs WHERE ecole_id = bucket.ecole_id
 
   calendrier_data:
+    priority: 3
     parameters: SELECT ecole_id FROM comptes WHERE user_id = request.user_id() AND perm_calendrier = true
     data:
       - SELECT * FROM evenements WHERE ecole_id = bucket.ecole_id
 
   examens_data:
+    priority: 3
     parameters: SELECT ecole_id FROM comptes WHERE user_id = request.user_id() AND perm_examens = true
     data:
       - SELECT * FROM examens WHERE ecole_id = bucket.ecole_id
@@ -101,17 +131,20 @@ bucket_definitions:
       - SELECT * FROM honneurs WHERE ecole_id = bucket.ecole_id
 
   messages_data:
+    priority: 3
     parameters: SELECT ecole_id FROM comptes WHERE user_id = request.user_id() AND perm_messages = true
     data:
       - SELECT * FROM messages WHERE ecole_id = bucket.ecole_id
 
   fondation_data:
+    priority: 3
     parameters: SELECT ecole_id FROM comptes WHERE user_id = request.user_id() AND perm_fondation = true
     data:
       - SELECT * FROM membres WHERE ecole_id = bucket.ecole_id
       - SELECT * FROM documents WHERE ecole_id = bucket.ecole_id
 
   historique_data:
+    priority: 3
     parameters: SELECT ecole_id FROM comptes WHERE user_id = request.user_id() AND perm_historique = true
     data:
       - SELECT * FROM historique WHERE ecole_id = bucket.ecole_id
@@ -120,6 +153,7 @@ bucket_definitions:
   # Plus restrictif que la RLS (comptes_select = tout staff) : seuls les
   # porteurs d'admin_panel en ont besoin localement.
   admin_data:
+    priority: 3
     parameters: SELECT ecole_id FROM comptes WHERE user_id = request.user_id() AND perm_admin_panel = true
     data:
       - SELECT * FROM comptes WHERE ecole_id = bucket.ecole_id
