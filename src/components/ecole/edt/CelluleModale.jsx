@@ -5,14 +5,23 @@ import { CelluleRevisionPrime } from "./CelluleRevisionPrime";
 import { CelluleEnseignantSelect } from "./CelluleEnseignantSelect";
 import { matieresEnseignees } from "../../../matiere-nature";
 import { matieresForClasse } from "../ecole-logic";
+import { enseignantParDefaut } from "./edt-titulaire";
 
 export function CelluleModale({
   edtCellule, setEdtCellule, canCreate, canEdit,
   form, setForm, chg,
   classeEdtActuelle, matieres, ens, emplois, isPrimarySection,
+  parTitulaire = false, titulaire = "", emploisClasse = [],
   ajEmp, modEmp, supEmp, toast,
 }) {
   if (!edtCellule || !(canCreate || canEdit)) return null;
+
+  // Primaire et maternelle : l'enseignant suit la matière choisie — celui qui
+  // l'assure déjà dans la classe, sinon le titulaire. Au secondaire, il est
+  // à choisir à chaque matière.
+  const enseignantPour = (matiere) => parTitulaire
+    ? enseignantParDefaut({ emploisClasse, matiere, titulaire, exclureId: edtCellule.existing?._id })
+    : "";
 
   // Ce qu'on ENSEIGNE dans cette classe : matières et rubriques (Vocabulaire,
   // Orthographe…), sans les épreuves « évaluées seulement » (Dictée et
@@ -31,7 +40,12 @@ export function CelluleModale({
     const estRecreation = (form.type || "cours") === "recreation";
     if(!estRecreation){
       if(!form.matiere){toast("Choisissez une matière.","warning");return;}
-      if(!form.enseignant){toast("Choisissez un enseignant.","warning");return;}
+      if(!form.enseignant){
+        toast(parTitulaire && !titulaire
+          ? "Choisissez un enseignant — ou désignez le titulaire de la classe (fiche enseignant → « Classe titulaire ») pour qu'il soit attribué d'office."
+          : "Choisissez un enseignant.","warning");
+        return;
+      }
     }
     const data=buildCreneauData(form, classeEdtActuelle, edtCellule);
     if(edtCellule.existing)modEmp({...data,_id:edtCellule.existing._id});
@@ -59,7 +73,9 @@ export function CelluleModale({
               // Une récréation (ou une pause) n'a ni matière ni enseignant :
               // on nettoie ces champs pour ne pas laisser de résidu d'un
               // cours saisi avant la bascule.
-              ...(t.v==="recreation" ? { matiere:"", enseignant:"", salle:"" } : {}),
+              ...(t.v==="recreation" ? { matiere:"", enseignant:"", salle:"" }
+                // Retour d'une récréation vers un cours : le titulaire revient.
+                : !p.enseignant ? { enseignant: enseignantPour(p.matiere) } : {}),
             }))}
               style={{flex:1,padding:"9px 0",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:12.5,
                 background:actif?t.bg:"#f9fafb",
@@ -82,13 +98,14 @@ export function CelluleModale({
           </>
         ) : (
           <>
-            <Selec label="Matière" value={form.matiere||""} onChange={e=>{setForm(p=>({...p,matiere:e.target.value,enseignant:""}));}}>
+            <Selec label="Matière" value={form.matiere||""} onChange={e=>{const matiere=e.target.value;setForm(p=>({...p,matiere,enseignant:enseignantPour(matiere)}));}}>
               <option value="">— Sélectionner —</option>
               {matieresCreneau.map(m=><option key={m._id||m.nom}>{m.nom}</option>)}
             </Selec>
             <CelluleEnseignantSelect
               form={form} chg={chg} edtCellule={edtCellule} classeEdtActuelle={classeEdtActuelle}
               ens={ens} emplois={emplois} isPrimarySection={isPrimarySection}
+              parTitulaire={parTitulaire} titulaire={titulaire}
             />
             <Input label="Salle (optionnel)" value={form.salle||""} onChange={chg("salle")}/>
           </>

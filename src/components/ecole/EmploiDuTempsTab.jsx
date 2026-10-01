@@ -5,11 +5,13 @@ import { EdtGrille } from "./edt/EdtGrille";
 import { EdtListe } from "./edt/EdtListe";
 import { CelluleModale } from "./edt/CelluleModale";
 import { EdtGeneralModale } from "./edt/EdtGeneralModale";
+import { EdtTitulaireBandeau } from "./edt/EdtTitulaireBandeau";
 
 // Onglet emploi du temps : consomme useEdtTab puis aiguille vers la barre
 // d'outils, la vue grille ou liste, et les modales (cellule + EDT général).
 export function EmploiDuTempsTab({
   maxNote,
+  section,
   canCreate,
   canEdit,
   isPrimarySection,
@@ -27,10 +29,12 @@ export function EmploiDuTempsTab({
   modEmp,
   supEmp,
 }) {
-  const h = useEdtTab({ maxNote, classes, matieres, ens, emplois, filtreClasse, ajEmp, supEmp });
+  const h = useEdtTab({ maxNote, section, classes, matieres, ens, emplois, filtreClasse, ajEmp, supEmp });
 
   return <div>
     <EdtToolbar h={h} maxNote={maxNote} canCreate={canCreate} setFiltreClasse={setFiltreClasse} setEdtDuree={h.setEdtDuree} edtDuree={h.edtDuree} />
+
+    {classes.length > 0 && !cEmp && h.parTitulaire && <EdtTitulaireBandeau h={h} canEdit={canEdit} modEmp={modEmp} />}
 
     {classes.length === 0
       ? <Vide icone="📅" msg="Créez d'abord des classes" />
@@ -43,6 +47,7 @@ export function EmploiDuTempsTab({
       edtCellule={h.edtCellule} setEdtCellule={h.setEdtCellule} canCreate={canCreate} canEdit={canEdit}
       form={form} setForm={setForm} chg={chg}
       classeEdtActuelle={h.classeEdtActuelle} matieres={matieres} ens={ens} emplois={emplois} isPrimarySection={isPrimarySection}
+      parTitulaire={h.parTitulaire} titulaire={h.titulaire} emploisClasse={h.emploisClasse}
       ajEmp={ajEmp} modEmp={modEmp} supEmp={supEmp} toast={h.toast}
     />
 

@@ -106,6 +106,7 @@ export function EcoleTabsAdmin({ e, section, avecEns, userRole, annee, maxNote, 
 
       {e.tab === "emploidutemps" && avecEns && <EmploiDuTempsTab
         maxNote={maxNote}
+        section={section}
         canCreate={e.canCreate}
         canEdit={e.canEdit}
         isPrimarySection={e.isPrimarySection}
