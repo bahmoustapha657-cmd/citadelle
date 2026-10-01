@@ -57,13 +57,18 @@ grant execute on function my_teacher_eleve_ids() to authenticated;
 --   • la section de la NOTE égale celle de l'ÉLÈVE (sinon un prof du
 --     secondaire poserait section='primaire' pour esquiver le filtre matière) ;
 --   • au secondaire (college/lycee), la matière de la note = la matière du
---     profil — profil sans matière ⇒ REFUS (échec sécurisé, comme le 403 du
---     handler). En maternelle et au primaire, le titulaire est multi-matières :
---     pas de filtre. Comparaison en ::text : 'prescolaire' n'entre dans l'enum
---     qu'avec prescolaire-1-enum.sql, APRÈS ce fichier dans l'ordre
---     d'application — un littéral d'enum échouerait sur une base neuve.
--- ⚠️ Définition reprise telle quelle dans prescolaire-3-enseignants.sql
---    (tests/portail-prescolaire.test.js vérifie qu'elles restent identiques).
+--     profil, OU une matière de l'école rattachée à elle (extra.rattachement :
+--     Dictée et Questions → Français, cf. src/matiere-nature.js) — profil sans
+--     matière ⇒ REFUS (échec sécurisé, comme le 403 du handler). Seul le
+--     personnel qui écrit la section modifie les matières (matieres_write) :
+--     un enseignant ne peut pas se rattacher une matière. En maternelle et au
+--     primaire, le titulaire est multi-matières : pas de filtre. Comparaison
+--     en ::text : 'prescolaire' n'entre dans l'enum qu'avec
+--     prescolaire-1-enum.sql, APRÈS ce fichier dans l'ordre d'application —
+--     un littéral d'enum échouerait sur une base neuve.
+-- ⚠️ Définition reprise telle quelle dans prescolaire-3-enseignants.sql et
+--    matieres-rattachement.sql (tests/portail-prescolaire.test.js vérifie
+--    qu'elles restent identiques).
 create or replace function teacher_can_write_note(
     p_eleve uuid, p_matiere text, p_section section_scolaire) returns boolean
   language sql stable security definer set search_path = public as $$
@@ -78,7 +83,14 @@ create or replace function teacher_can_write_note(
       and e.section = p_section
       and (ec.section::text in ('primaire', 'prescolaire')
            or (coalesce(btrim(c.matiere), '') <> ''
-               and lower(btrim(p_matiere)) = lower(btrim(c.matiere))))
+               and (lower(btrim(p_matiere)) = lower(btrim(c.matiere))
+                    or exists (
+                      select 1 from matieres m
+                      where m.ecole_id = e.ecole_id
+                        and m.section = e.section
+                        and lower(btrim(m.nom)) = lower(btrim(p_matiere))
+                        and lower(btrim(coalesce(m.extra->>'rattachement', '')))
+                            = lower(btrim(c.matiere))))))
   );
 $$;
 grant execute on function teacher_can_write_note(uuid, text, section_scolaire) to authenticated;

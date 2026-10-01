@@ -20,7 +20,7 @@ export function EcoleTabsAdmin({ e, section, avecEns, userRole, annee, maxNote, 
         supEng={e.supEng}
         classes={e.classes}
         ens={e.ens}
-        matieres={e.matieres}
+        matieres={e.matieresToutes}
         form={e.form}
         setForm={e.setForm}
         modal={e.modal}
@@ -89,7 +89,7 @@ export function EcoleTabsAdmin({ e, section, avecEns, userRole, annee, maxNote, 
 
       {/* ── MATIÈRES ── */}
       {e.tab === "matieres" && <MatieresTab
-        matieres={e.matieres}
+        matieres={e.matieresToutes}
         cMat={e.cMat}
         ajMat={e.ajMat}
         modMat={e.modMat}
@@ -115,7 +115,7 @@ export function EcoleTabsAdmin({ e, section, avecEns, userRole, annee, maxNote, 
         filtreClasse={e.filtreClasse}
         setFiltreClasse={e.setFiltreClasse}
         classes={e.classes}
-        matieres={e.matieres}
+        matieres={e.matieresToutes}
         ens={e.ens}
         emplois={e.emplois}
         cEmp={e.cEmp}

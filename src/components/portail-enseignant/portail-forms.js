@@ -11,16 +11,19 @@ export const formatEmploiHeure = (emploi) => {
   return "-";
 };
 
-export function buildFormNoteCreation({ defaultNoteType, periodeN }) {
-  return { eleveId: "", type: defaultNoteType, periode: periodeN, note: "" };
+export function buildFormNoteCreation({ defaultNoteType, periodeN, matiere = "" }) {
+  return { eleveId: "", type: defaultNoteType, periode: periodeN, matiere, note: "" };
 }
 
+// La matière de la note est reprise : sans elle, l'enregistrement d'une
+// note modifiée lui en donnait une autre (celle du profil, ou aucune).
 export function buildFormNoteEdition(note, { defaultNoteType, periodeN }) {
   return {
     noteId: note._id,
     eleveId: note.eleveId || "",
     type: note.type || defaultNoteType,
     periode: note.periode || periodeN,
+    matiere: note.matiere || "",
     note: note.note ?? "",
   };
 }

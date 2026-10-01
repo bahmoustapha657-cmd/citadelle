@@ -7,6 +7,7 @@ import { SchoolContext } from "../../contexts/SchoolContext";
 import { useFirestore } from "../../hooks/useFirestore";
 import { useAnneeConsultee } from "../../hooks/use-annee-consultee";
 import { getActiveNoteForms } from "../../evaluation-forms";
+import { matieresEvaluees } from "../../matiere-nature";
 import {
   sortAlphaEcole as sortAlphaEcoleFn,
   matieresForClasse as matieresForClasseFn,
@@ -95,7 +96,12 @@ export function useEcole({
   );
   const { items: absences, chargement: cAbs, ajouter: ajAbs, supprimer: supAbs } = useFirestore(cleEleves + "_absences");
   const { items: enseignements, chargement: cEng, ajouter: ajEng, modifier: modEng, supprimer: supEng } = useFirestore(cleEns + "_enseignements");
-  const { items: matieres, chargement: cMat, ajouter: ajMat, modifier: modMat, supprimer: supMat } = useFirestore(cleClasses + "_matieres");
+  const { items: matieresToutes, chargement: cMat, ajouter: ajMat, modifier: modMat, supprimer: supMat } = useFirestore(cleClasses + "_matieres");
+  // Notes, moyennes, bulletins, livrets : seules les matières ÉVALUÉES. Les
+  // rubriques « enseignées seulement » (Vocabulaire, Orthographe…) ne vivent
+  // que dans l'onglet Matières, l'emploi du temps et le cahier de textes,
+  // qui reçoivent `matieresToutes`.
+  const matieres = useMemo(() => matieresEvaluees(matieresToutes), [matieresToutes]);
   const { items: emplois, chargement: cEmp, ajouter: ajEmp, modifier: modEmp, supprimer: supEmp } = useFirestore(cleClasses + "_emplois");
   const cleAppreciations = cleNotes.replace("notes", "appreciations");
   const { items: appreciations, ajouter: ajApp, modifier: modApp } = useFirestore(cleAppreciations, { annee: anneeConsultee });
@@ -189,7 +195,7 @@ export function useEcole({
     eleves, cE, modE,
     absences, cAbs, ajAbs, supAbs,
     enseignements, cEng, ajEng, modEng, supEng,
-    matieres, cMat, ajMat, modMat, supMat,
+    matieres, matieresToutes, cMat, ajMat, modMat, supMat,
     emplois, cEmp, ajEmp, modEmp, supEmp,
     getAppreciation, saveAppreciation, appreciationsParEleveB,
     tab, setTab, modal, setModal, form, setForm, chg,

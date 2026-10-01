@@ -1,4 +1,5 @@
 import { getSectionForClasse } from "./constants.js";
+import { estEvaluee } from "./matiere-nature.js";
 
 export type SectionName = "primaire" | "college" | "lycee" | string;
 
@@ -11,6 +12,7 @@ export type Note = {
 export type Matiere = {
   nom: string;
   coefficient?: number | string;
+  nature?: string;
 };
 
 const ORAL_TYPES = new Set([
@@ -143,6 +145,10 @@ export const getGeneralAverage = (
   let totalCoef = 0;
 
   matieres.forEach((matiere) => {
+    // Rubrique enseignée seulement (cf. matiere-nature.js) : jamais comptée,
+    // même quand l'appelant passe la liste complète des matières — sinon
+    // elle ferait baisser la moyenne d'un 0 à son coefficient.
+    if (!estEvaluee(matiere)) return;
     const coef = Number(matiere.coefficient || 1);
     totalCoef += coef;
     const moyenne = getSubjectAverage(

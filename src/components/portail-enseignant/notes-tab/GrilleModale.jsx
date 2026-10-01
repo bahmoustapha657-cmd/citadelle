@@ -21,6 +21,9 @@ export function GrilleModale({
   const multiMat = !!gridForm.multiMatiere;
   const maxNote = isPrimaire ? 10 : 20;
   const matCols = matieresDispo.map((m) => m.nom).filter(Boolean);
+  // Sélecteur de matière : titulaire (toutes ses matières) ou professeur du
+  // secondaire à qui des matières sont rattachées (Français → Dictée…).
+  const choixMatiere = isPrimaire || matCols.length > 1;
 
   const elevesClasse = (portalData.eleves || []).filter((e) => e.classe === gridForm.classe && !estSorti(e));
   const elevesAff = rech.trim()
@@ -43,7 +46,7 @@ export function GrilleModale({
 
   const titreMatiere = combine ? "Toutes périodes × matières"
     : multiMat ? "Toutes les matières"
-      : isPrimaire ? (gridForm.matiere || "Matière") : (matiere || "Matière");
+      : choixMatiere ? (gridForm.matiere || "Matière") : (matiere || "Matière");
 
   // Rendu d'une cellule de saisie (partagé par tous les modes). `key` est la
   // clé de la note dans gridForm.notes (eleveId, ou eleveId|… selon le mode).
@@ -74,7 +77,7 @@ export function GrilleModale({
         <Selec label="Classe" value={gridForm.classe} onChange={(e) => majGrid({ classe: e.target.value })}>
           {mesClasses.map((cl) => <option key={cl} value={cl}>{cl}</option>)}
         </Selec>
-        {isPrimaire && !multiMat && (
+        {choixMatiere && !multiMat && (
           <Selec label="Matière" value={gridForm.matiere || ""} onChange={(e) => majGrid({ matiere: e.target.value })}>
             <option value="">— Matière —</option>
             {matieresDispo.map((m) => <option key={m._id || m.nom} value={m.nom}>{m.nom}</option>)}
@@ -100,7 +103,7 @@ export function GrilleModale({
           <input type="checkbox" checked={multi} onChange={(e) => majGrid({ multiPeriode: e.target.checked })} />
           🗓️ Toutes les périodes
         </label>
-        {isPrimaire && matCols.length > 0 && (
+        {choixMatiere && matCols.length > 0 && (
           <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: "#334155", cursor: "pointer", border: "1px solid #b0c4d8", borderRadius: 7, padding: "6px 10px", background: multiMat ? "#dcfce7" : "#fff" }}>
             <input type="checkbox" checked={multiMat} onChange={(e) => majGrid({ multiMatiere: e.target.checked })} />
             📚 Toutes les matières

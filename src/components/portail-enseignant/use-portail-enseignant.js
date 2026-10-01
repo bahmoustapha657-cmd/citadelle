@@ -83,10 +83,13 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
   const matiere = utilisateur.matiere || "";
   // En maternelle et au primaire, le titulaire saisit TOUTES les matières de
   // sa classe : la grille propose un sélecteur de matière (matières renvoyées
-  // par le portail) et note sur 10.
+  // par le portail) et note sur 10. Au secondaire, le portail renvoie SA
+  // matière et celles qui lui sont rattachées (Français → Dictée et
+  // Questions, Rédaction) ; s'il y en a plusieurs, le même sélecteur
+  // apparaît (cf. choixMatiere dans les modales).
   const isPrimaire = isTitulaireSection(portalData.section || utilisateur.section);
   const matieresDispo = portalData.matieres || [];
-  const matiereParDefaut = isPrimaire ? (matieresDispo[0]?.nom || "") : matiere;
+  const matiereParDefaut = matieresDispo[0]?.nom || (isPrimaire ? "" : matiere);
   const emplois = portalData.emplois || [];
   // Élèves encore inscrits : un élève parti ne figure plus dans « Mes élèves »
   // ni dans les grilles de saisie de notes.
@@ -154,7 +157,7 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
   }, []);
 
   const ouvrirCreationNote = () => {
-    setFormNote(buildFormNoteCreation({ defaultNoteType, periodeN }));
+    setFormNote(buildFormNoteCreation({ defaultNoteType, periodeN, matiere: matiereParDefaut }));
     setModalNote("add");
   };
 
