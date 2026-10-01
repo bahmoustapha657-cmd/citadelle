@@ -1,5 +1,7 @@
 // Sentry scaffolding — activé uniquement si VITE_SENTRY_DSN est défini.
 // Charge @sentry/react dynamiquement pour ne rien ajouter au bundle quand désactivé.
+import { VERSION_APP } from "./version-app.js";
+
 let sentryModule = null;
 let initPromise = null;
 
@@ -16,7 +18,7 @@ export function initSentry() {
       Sentry.init({
         dsn,
         environment: import.meta.env.MODE,
-        release: import.meta.env.VITE_SENTRY_RELEASE || undefined,
+        release: import.meta.env.VITE_SENTRY_RELEASE || VERSION_APP.commit,
         tracesSampleRate: Number(import.meta.env.VITE_SENTRY_TRACES || 0),
         replaysSessionSampleRate: 0,
         replaysOnErrorSampleRate: 0,

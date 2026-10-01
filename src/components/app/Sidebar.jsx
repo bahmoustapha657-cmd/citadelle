@@ -5,6 +5,7 @@ import Logo from "../../Logo";
 import { C, getAnnee } from "../../constants";
 import { useMessagerie } from "../messagerie/messagerie-contexte";
 import { moduleLabel, moduleDesc } from "./module-i18n";
+import { VERSION_APP } from "../../version-app";
 
 export function Sidebar({
   schoolInfo, couleur2, annee, modulesVisibles, page, setPage,
@@ -68,6 +69,12 @@ export function Sidebar({
             </div>
           </div>
         )}
+        {/* Commit en ligne : permet au support de savoir quelle version
+            l'utilisateur a réellement (PWA en cache, mise à jour pas reçue…). */}
+        <p title={VERSION_APP.date ? `Version du ${new Date(VERSION_APP.date).toLocaleString()}` : undefined}
+          style={{margin:"8px 0 0",fontSize:9,color:"rgba(255,255,255,0.25)",textAlign:"center",fontFamily:"monospace"}}>
+          v {VERSION_APP.court}
+        </p>
       </div>
     </aside>
   );

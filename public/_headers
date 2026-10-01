@@ -34,3 +34,7 @@
 # c'est lui qui propage les mises à jour de l'app aux PWA installées.
 /sw.js
   Cache-Control: no-cache
+
+# Commit actuellement en ligne (généré au build, cf. scripts/version-build.mjs).
+/version.json
+  Cache-Control: no-cache

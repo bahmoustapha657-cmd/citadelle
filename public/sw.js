@@ -68,8 +68,9 @@ self.addEventListener("fetch", (e) => {
   const { request } = e;
   const url = new URL(request.url);
 
-  // 1. Fichiers SEO / validation → toujours réseau
-  if (/sitemap\.xml|robots\.txt|google.*\.html|BingSiteAuth\.xml/.test(url.pathname)) {
+  // 1. Fichiers SEO / validation + /version.json (commit en ligne, lu par la
+  //    CI après déploiement) → toujours réseau
+  if (/sitemap\.xml|robots\.txt|google.*\.html|BingSiteAuth\.xml|^\/version\.json$/.test(url.pathname)) {
     return;
   }
 

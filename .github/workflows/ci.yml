@@ -3,6 +3,14 @@ name: CI
 on:
   push:
   pull_request:
+  # Mise en production : onglet Actions → « CI » → Run workflow (branche
+  # master). Volontairement PAS automatique à chaque fusion tant que les
+  # changements SQL se jouent à la main : certaines PR exigent un script SQL
+  # exécuté AVANT le déploiement (cf. docs/deploiement.md).
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   lint-and-build:
@@ -35,9 +43,79 @@ jobs:
       - name: Build
         run: npm run build
 
-      # Le bundle réellement mis en production : « npm run deploy:pages »
-      # déploie la sortie de build:supabase sur Cloudflare Pages (edugest-gn).
-      # Le build par défaut ci-dessus est la variante Firebase — le CI validait
-      # donc un artefact que plus personne ne sert.
+      # Le bundle réellement mis en production (Cloudflare Pages, edugest-gn).
+      # Le build par défaut ci-dessus est la variante Firebase. Construit en
+      # dernier : c'est ce dist/ qui est transmis au job de déploiement.
       - name: Build (Supabase — bundle deploye)
         run: npm run build:supabase
+
+      - name: Conserver le bundle à déployer
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-supabase
+          path: dist
+          retention-days: 30
+          if-no-files-found: error
+
+  # Déploie EXACTEMENT le bundle qui vient de passer lint + tests + build,
+  # construit depuis un checkout propre de master : plus de déploiement depuis
+  # un poste (branche de travail, fichiers non commités, .env local).
+  # Retour arrière : relancer (« Re-run all jobs ») un run de déploiement
+  # précédent — il redéploie son propre commit.
+  deploy-production:
+    needs: lint-and-build
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://edugest-gn.pages.dev
+    # Jamais deux déploiements en même temps ; un second attend le premier.
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+
+    steps:
+      - name: Récupérer le bundle testé
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-supabase
+          path: dist
+
+      - name: Vérifier que le bundle correspond au commit
+        run: |
+          test -f dist/index.html
+          jq -e --arg sha "$GITHUB_SHA" '.commit == $sha and .propre == true' dist/version.json
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Déployer sur Cloudflare Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::Secrets CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID absents (Settings → Environments → production)."
+            exit 1
+          fi
+          npx --yes wrangler@4 pages deploy dist \
+            --project-name=edugest-gn --branch=master --commit-hash="$GITHUB_SHA"
+
+      # La production sert-elle vraiment ce commit ? (version.json n'est
+      # jamais mis en cache : _headers no-cache + exclu du service worker.)
+      - name: Contrôler la version en ligne
+        run: |
+          for i in $(seq 1 20); do
+            en_ligne=$(curl -fsS "https://edugest-gn.pages.dev/version.json?t=$(date +%s)" | jq -r .commit 2>/dev/null || true)
+            if [ "$en_ligne" = "$GITHUB_SHA" ]; then
+              echo "### ✅ EduGest en ligne : \`${GITHUB_SHA:0:7}\`" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            echo "En ligne : ${en_ligne:-?} — attendu : $GITHUB_SHA (essai $i/20)"
+            sleep 6
+          done
+          echo "::error::La production ne sert pas le commit déployé."
+          exit 1

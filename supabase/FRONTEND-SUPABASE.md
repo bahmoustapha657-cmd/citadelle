@@ -59,19 +59,20 @@ Le build Supabase est hébergé sur **Cloudflare Pages** (projet `edugest`,
 gratuit, usage commercial autorisé) : **https://edugest-gn.pages.dev**. Aucun
 serveur applicatif : le backend est Supabase (RLS + Edge Functions).
 
-```bash
-npm run deploy:pages       # = vite build --mode supabase (lit .env.supabase)
-                           #   + wrangler pages deploy dist
-```
+**Mise en production : depuis GitHub Actions** (onglet Actions → « CI » → Run
+workflow sur master). Procédure complète, retour arrière et secours :
+[docs/deploiement.md](../docs/deploiement.md). `npm run deploy:pages` n'est plus
+qu'une voie de secours, qui refuse tout autre état que master propre = origin/master.
 
-- Pré-requis une seule fois : `npx wrangler login` (compte Cloudflare).
 - `.env.supabase` (commité — la clé anon est publique) fournit `VITE_BACKEND`,
-  `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` au mode `supabase` de Vite.
+  `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_POWERSYNC_URL` et
+  `VITE_VAPID_PUBLIC_KEY` au mode `supabase` de Vite. Tout ce dont le build de
+  production a besoin doit y être : le build CI ne voit pas les `.env` locaux.
 - `public/_headers` porte les en-têtes de sécurité (équivalent Cloudflare des
   headers de `vercel.json`) avec une CSP qui autorise `*.supabase.co` —
   la CSP Vercel, elle, ne l'autorise PAS (Firebase only).
-- Le déploiement est MANUEL (pas de build à chaque push) : relancer la
-  commande après chaque évolution à publier.
+- Le déploiement reste DÉCLENCHÉ À LA MAIN (pas à chaque fusion) : lancer le
+  workflow après chaque évolution à publier.
 
 ## Architecture de la couche d'accès (`src/backend/`)
 
