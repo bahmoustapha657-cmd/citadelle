@@ -24,7 +24,7 @@ export function verifierEtatDepot({ branche, modifies, head, origine }) {
   if (!origine) {
     erreurs.push("origin/master introuvable (le git fetch a-t-il échoué ?).");
   } else if (head !== origine) {
-    erreurs.push(`master local (${(head || "?").slice(0, 7)}) ≠ origin/master (${origine.slice(0, 7)}) : git pull (ou git push) d'abord.`);
+    erreurs.push(`commit courant (${(head || "?").slice(0, 7)}) ≠ origin/master (${origine.slice(0, 7)}) : git pull (ou git push) d'abord.`);
   }
   return erreurs;
 }
