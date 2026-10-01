@@ -87,8 +87,12 @@ test("RLS : teacher_can_write_note dispense la maternelle du filtre matière, à
   const definition = (texte) => texte.match(/create or replace function teacher_can_write_note\([\s\S]*?\n\$\$;/)?.[0];
   const canonique = definition(sql("teacher-security.sql"));
   const correctif = definition(sql("prescolaire-3-enseignants.sql"));
-  assert.ok(canonique && correctif, "définition présente dans les deux fichiers");
+  const rattachement = definition(sql("matieres-rattachement.sql"));
+  assert.ok(canonique && correctif && rattachement, "définition présente dans les trois fichiers");
   assert.equal(correctif, canonique, "prescolaire-3-enseignants.sql reprend teacher-security.sql tel quel");
+  assert.equal(rattachement, canonique, "matieres-rattachement.sql reprend teacher-security.sql tel quel");
+  // Secondaire : la matière du profil, ou une matière qui lui est rattachée.
+  assert.match(canonique, /m\.extra->>'rattachement'/);
   // Comparaison en ::text : sur une base neuve, 'prescolaire' n'est pas encore
   // dans l'enum quand teacher-security.sql s'applique.
   assert.match(canonique, /ec\.section::text in \('primaire', 'prescolaire'\)/);

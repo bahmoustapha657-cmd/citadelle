@@ -4,8 +4,12 @@ import { Btn, Input, Modale, Selec } from "../../ui";
 export function NoteModale({
   modalNote, setModalNote, formNote, setFormNote,
   eleves, noteForms, defaultNoteType, periodeN, periodes,
+  isPrimaire = false, matieresDispo = [],
   enregistrement, enregistrerNote,
 }) {
+  // Même règle que la grille : choix de la matière pour le titulaire, ou
+  // pour le professeur du secondaire à qui des matières sont rattachées.
+  const choixMatiere = isPrimaire || matieresDispo.length > 1;
   return (
     <Modale titre={modalNote === "add" ? "Nouvelle note" : "Modifier la note"} fermer={() => setModalNote(null)}>
       <Selec
@@ -21,6 +25,20 @@ export function NoteModale({
         ))}
       </Selec>
       <div style={{ height: 10 }} />
+      {choixMatiere && (
+        <>
+          <Selec
+            label="Matière"
+            value={formNote.matiere || ""}
+            onChange={(event) => setFormNote((current) => ({ ...current, matiere: event.target.value }))}
+          >
+            {matieresDispo.map((m) => <option key={m._id || m.nom} value={m.nom}>{m.nom}</option>)}
+            {formNote.matiere && !matieresDispo.some((m) => m.nom === formNote.matiere)
+              && <option value={formNote.matiere}>{formNote.matiere}</option>}
+          </Selec>
+          <div style={{ height: 10 }} />
+        </>
+      )}
       <Selec
         label="Type"
         value={formNote.type || defaultNoteType}

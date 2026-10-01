@@ -13,6 +13,7 @@ import {
   teacherAliases, teacherSalaryAliases, matchesTeacherAlias, noteBelongsToTeacherScope, normalizeText,
   normalizeSection, teacherCollectionSlug, isTitulaireSection,
 } from "./teacher-scope";
+import { matieresEvaluees, matieresNotablesPar } from "../matiere-nature";
 
 let ctx = null; // contexte enseignant courant (rempli au fetch, utilisé aux écritures)
 
@@ -53,6 +54,10 @@ export async function fetchTeacherPortal(utilisateur) {
   const aliases = teacherAliases(utilisateur);
   ctx = {
     code, section, C, matiere: utilisateur.matiere || "",
+    // Recalculées plus bas, mais gardées d'ici là : une saisie enregistrée
+    // pendant une relecture (synchro) ne retombe pas sur la seule matière
+    // du profil.
+    matieresNotables: ctx?.code === code ? (ctx.matieresNotables || []) : [],
     // Auteur des notes (le handler serveur les posait ; indispensable pour
     // tracer qui a saisi quoi côté École).
     enseignantId: utilisateur.enseignantId || null,
@@ -104,14 +109,27 @@ export async function fetchTeacherPortal(utilisateur) {
   const studentNames = new Set(eleves.map((e) => normalizeText(`${e.prenom || ""} ${e.nom || ""}`)));
   const teacherClasses = new Set(eleves.map((e) => String(e.classe || "").trim()).filter(Boolean));
 
-  const [notesAll, absAll] = await Promise.all([lire(`notes${C}`), lire(`eleves${C}_absences`)]);
-  const notes = notesAll.filter((n) =>
-    noteBelongsToTeacherScope(n, studentIds, utilisateur.matiere || "", studentNames, section, teacherClasses));
-  const incidents = absAll.filter((i) => studentIds.has(String(i.eleveId || "").trim()));
-  const matieres = matieresAll.filter((m) =>
+  const matieresClasses = matieresAll.filter((m) =>
     !Array.isArray(m.classes) || m.classes.length === 0
       ? true
       : m.classes.some((c) => classeDansPerimetre(c)));
+  // Matières que l'enseignant NOTE (jamais les rubriques « enseignées
+  // seulement ») : en maternelle et au primaire, toutes celles de ses
+  // classes ; au secondaire, SA matière et celles qui lui sont rattachées
+  // (Français → Dictée et Questions, Rédaction) — mêmes règles que
+  // teacher_can_write_note (supabase/matieres-rattachement.sql).
+  const matieres = isTitulaireSection(section)
+    ? matieresEvaluees(matieresClasses)
+    : matieresNotablesPar(matieresClasses, utilisateur.matiere);
+  ctx.matieresNotables = matieres.map((m) => m.nom);
+
+  const [notesAll, absAll] = await Promise.all([lire(`notes${C}`), lire(`eleves${C}_absences`)]);
+  // Sa matière reste dans le périmètre même devenue rubrique : ses notes
+  // déjà saisies restent visibles.
+  const matieresPerimetre = [utilisateur.matiere || "", ...ctx.matieresNotables];
+  const notes = notesAll.filter((n) =>
+    noteBelongsToTeacherScope(n, studentIds, matieresPerimetre, studentNames, section, teacherClasses));
+  const incidents = absAll.filter((i) => studentIds.has(String(i.eleveId || "").trim()));
   // La RLS ne renvoie déjà que les fiches de l'enseignant ; le filtre reste
   // pour ne jamais afficher celles d'un autre si le compte en lisait plus.
   const aliasesPaie = teacherSalaryAliases(utilisateur, rosterAll);
@@ -128,10 +146,13 @@ function notesColl() {
   if (!ctx) throw new Error("Contexte enseignant absent — rechargez le portail.");
   return `notes${ctx.C}`;
 }
-// Secondaire : la matière du prof prime ; maternelle et primaire : matière
-// saisie (titulaire multi-matières).
+// Maternelle et primaire : matière saisie (titulaire multi-matières).
+// Secondaire : la matière choisie si l'enseignant peut la noter (la sienne ou
+// une matière rattachée), sinon celle de son profil.
 function matiereEffective(matiere) {
-  return isTitulaireSection(ctx?.section) ? (matiere || "") : (ctx?.matiere || matiere || "");
+  if (isTitulaireSection(ctx?.section)) return matiere || "";
+  if (matiere && (ctx?.matieresNotables || []).includes(matiere)) return matiere;
+  return ctx?.matiere || matiere || "";
 }
 
 // Payload complet d'une note (auteur inclus, comme le handler serveur).

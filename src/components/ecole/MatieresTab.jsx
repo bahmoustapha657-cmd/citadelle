@@ -26,12 +26,16 @@ export function MatieresTab({
       {/* Légende */}
       <div style={{background:"#f0f7ff",border:"1px solid #bfdbfe",borderRadius:8,padding:"9px 14px",marginBottom:12,fontSize:12,color:"#1e40af"}}>
         💡 Si une matière n'est assignée à <strong>aucune classe</strong>, elle apparaît dans <strong>toutes les classes</strong>. Sinon, elle n'apparaît que dans les classes sélectionnées.
+        <div style={{marginTop:6}}>
+          🗓️ <strong>Enseignée seulement</strong> : à l'emploi du temps, jamais notée (ex. Vocabulaire, Orthographe, Conjugaison, Français au collège).
+          {" "}📝 <strong>Évaluée seulement</strong> : sur les fiches de notes et les bulletins, sans créneau à l'emploi du temps (ex. Dictée et Questions, Rédaction).
+        </div>
       </div>
 
       <MatieresTable matieres={matieres} cMat={cMat} supMat={supMat} canEdit={canEdit}
         setForm={setForm} setModal={setModal} noSubjectMsg={t("school.subjects.noSubject")}/>
 
-      {modal==="add_mat"&&canCreate&&<MatiereAddModale form={form} setForm={setForm} chg={chg} classes={classes} ajMat={ajMat} setModal={setModal}/>}
+      {modal==="add_mat"&&canCreate&&<MatiereAddModale form={form} setForm={setForm} chg={chg} classes={classes} matieres={matieres} ajMat={ajMat} setModal={setModal}/>}
 
       {modal&&modal.startsWith("edit_mat_")&&canEdit&&<MatiereEditModale modal={modal} matieres={matieres} form={form} setForm={setForm} chg={chg} classes={classes} modMat={modMat} setModal={setModal}/>}
     </div>

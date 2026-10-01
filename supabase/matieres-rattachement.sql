@@ -1,27 +1,28 @@
 -- ════════════════════════════════════════════════════════════════════════
---  Préscolaire — ÉTAPE 3 : enseignants de maternelle (portail enseignant)
+--  EduGest — Matières rattachées : le professeur d'une discipline note les
+--  épreuves qui en relèvent (Français → Dictée et Questions, Rédaction)
 -- ════════════════════════════════════════════════════════════════════════
--- À exécuter dans Supabase → SQL Editor, après teacher-security.sql (table
--- enseignant_classes). Idempotent ; ordre indifférent vis-à-vis de
--- prescolaire-1/2 (aucun littéral d'enum, cf. ::text).
+-- À exécuter dans Supabase → SQL Editor. Idempotent ; ordre indifférent
+-- (ne redéfinit QUE teacher_can_write_note, aucune policy).
 --
--- Un enseignant de maternelle est, comme au primaire, TITULAIRE de sa classe :
--- il y saisit toutes les matières (les domaines d'apprentissage). La RLS ne
--- dispensait du filtre matière que la section 'primaire' : un compte de
--- section 'prescolaire' — souvent sans matière de profil — voyait donc TOUTES
--- ses notes refusées.
+-- Une matière porte désormais une NATURE (extra.nature) : enseignée et
+-- évaluée, enseignée seulement (Vocabulaire, Français au collège : emploi du
+-- temps, jamais notée) ou évaluée seulement (Dictée et Questions, Rédaction :
+-- fiches de notes et bulletins). Et un RATTACHEMENT facultatif
+-- (extra.rattachement) : la discipline enseignée dont elle relève.
 --
--- Ce fichier ne redéfinit QUE teacher_can_write_note(), à l'identique de
--- teacher-security.sql (qui en porte la même version) : pas besoin de rejouer
--- teacher-security.sql, ce qui obligerait à rejouer ensuite postes.sql,
--- discipline-module.sql et prescolaire-2-permissions.sql.
+-- Au secondaire, la RLS n'acceptait une note que dans LA matière du profil
+-- enseignant : le professeur de Français ne pouvait pas noter « Dictée et
+-- Questions ». Il le peut maintenant pour toute matière de sa section
+-- rattachée à la sienne. Seul le personnel qui écrit la section modifie les
+-- matières (policy matieres_write) : un enseignant ne peut pas se rattacher
+-- une matière lui-même. Maternelle et primaire inchangés (titulaire, pas de
+-- filtre matière).
 --
--- Le reste du périmètre suit déjà la section 'prescolaire' sans changement :
--- enseignant_classes.section, my_teacher_eleve_ids() (absences), et le bucket
--- PowerSync teacher_notes (paramétré par enseignant_classes.section).
---
--- Ensuite : déployer l'Edge Function account-manage et le front, PUIS
--- reprendre les comptes existants (node supabase/reprendre-comptes-prescolaire.mjs).
+-- Définition identique à teacher-security.sql et prescolaire-3-enseignants.sql
+-- (tests/portail-prescolaire.test.js) : rejouer l'un ou l'autre ne la fait
+-- donc pas régresser. Inclut la dispense de la maternelle : appliquer ce
+-- fichier vaut aussi pour la fonction de prescolaire-3-enseignants.sql.
 
 create or replace function teacher_can_write_note(
     p_eleve uuid, p_matiere text, p_section section_scolaire) returns boolean
@@ -50,6 +51,8 @@ $$;
 grant execute on function teacher_can_write_note(uuid, text, section_scolaire) to authenticated;
 
 -- ── Contrôle ────────────────────────────────────────────────────────────────
--- Attendu : true (la maternelle est dispensée du filtre matière).
+-- Attendu : true, true (rattachement pris en compte, maternelle dispensée).
 select pg_get_functiondef('teacher_can_write_note(uuid, text, section_scolaire)'::regprocedure)
-       like '%''prescolaire''%' as maternelle_dispensee;
+         like '%rattachement%' as rattachement_actif,
+       pg_get_functiondef('teacher_can_write_note(uuid, text, section_scolaire)'::regprocedure)
+         like '%''prescolaire''%' as maternelle_dispensee;

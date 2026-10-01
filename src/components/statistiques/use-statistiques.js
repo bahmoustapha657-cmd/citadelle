@@ -4,6 +4,7 @@ import { useFirestore } from "../../hooks/useFirestore";
 import { getAnnee, isSectionActive, sectionOuverte } from "../../constants";
 import { getPeriodesForSection } from "../../period-utils";
 import { matieresForClasse as matieresForClasseFn } from "../ecole/ecole-logic";
+import { matieresEvaluees } from "../../matiere-nature";
 import { statsAssiduite, statsEffectifs, statsEnseignants, statsFinances } from "./stats-logic";
 
 // Le module croise TOUTES les sections : c'est ce qui le distingue de
@@ -59,10 +60,12 @@ export function useStatistiques({ annee }) {
   // Matières d'une classe : on appelle LA fonction de l'école, pas une
   // variante. Toute divergence ici ferait afficher au module des moyennes
   // différentes de celles de l'Aperçu et des bulletins, pour les mêmes élèves.
-  const matieresForClasse = useMemo(
-    () => (classe) => matieresForClasseFn(matieres, classe),
-    [matieres],
-  );
+  // Comme l'école, seules les matières évaluées comptent (pas les rubriques
+  // « enseignées seulement »).
+  const matieresForClasse = useMemo(() => {
+    const evaluees = matieresEvaluees(matieres);
+    return (classe) => matieresForClasseFn(evaluees, classe);
+  }, [matieres]);
 
   const classes = useMemo(
     () => [...new Set(elevesSection.map((e) => e.classe).filter(Boolean))]

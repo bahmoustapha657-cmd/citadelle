@@ -3,6 +3,8 @@ import { C } from "../../../constants";
 import { buildCreneauData } from "./cellule-data";
 import { CelluleRevisionPrime } from "./CelluleRevisionPrime";
 import { CelluleEnseignantSelect } from "./CelluleEnseignantSelect";
+import { matieresEnseignees } from "../../../matiere-nature";
+import { matieresForClasse } from "../ecole-logic";
 
 export function CelluleModale({
   edtCellule, setEdtCellule, canCreate, canEdit,
@@ -11,6 +13,15 @@ export function CelluleModale({
   ajEmp, modEmp, supEmp, toast,
 }) {
   if (!edtCellule || !(canCreate || canEdit)) return null;
+
+  // Ce qu'on ENSEIGNE dans cette classe : matières et rubriques (Vocabulaire,
+  // Orthographe…), sans les épreuves « évaluées seulement » (Dictée et
+  // Questions…) qui n'ont pas de créneau. La matière déjà posée sur le
+  // créneau reste proposée, même devenue épreuve, pour ne pas vider la case.
+  const matieresCreneau = matieresForClasse(matieresEnseignees(matieres), form.classe || classeEdtActuelle);
+  if (form.matiere && !matieresCreneau.some(m => m.nom === form.matiere)) {
+    matieresCreneau.push({ nom: form.matiere });
+  }
 
   const enregistrer = () => {
     // Une récréation / pause n'a ni matière au programme ni enseignant
@@ -73,7 +84,7 @@ export function CelluleModale({
           <>
             <Selec label="Matière" value={form.matiere||""} onChange={e=>{setForm(p=>({...p,matiere:e.target.value,enseignant:""}));}}>
               <option value="">— Sélectionner —</option>
-              {matieres.map(m=><option key={m._id}>{m.nom}</option>)}
+              {matieresCreneau.map(m=><option key={m._id||m.nom}>{m.nom}</option>)}
             </Selec>
             <CelluleEnseignantSelect
               form={form} chg={chg} edtCellule={edtCellule} classeEdtActuelle={classeEdtActuelle}

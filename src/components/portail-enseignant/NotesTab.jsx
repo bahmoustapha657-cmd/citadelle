@@ -59,6 +59,7 @@ export function NotesTab({
           modalNote={modalNote} setModalNote={setModalNote} formNote={formNote} setFormNote={setFormNote}
           eleves={eleves} noteForms={noteForms} defaultNoteType={defaultNoteType}
           periodeN={periodeN} periodes={periodes}
+          isPrimaire={isPrimaire} matieresDispo={matieresDispo}
           enregistrement={enregistrement} enregistrerNote={enregistrerNote}
         />
       )}

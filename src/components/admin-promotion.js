@@ -27,6 +27,7 @@ import { getPeriodesForSection } from "../period-utils";
 import { buildBulletinNotesAnnuelles } from "../reports/bulletins/annual-notes";
 import { classeSuivante, decisionPassage, estClasseExamen, sectionApresPromotion } from "../promotion-utils";
 import { matieresForClasse } from "./ecole/ecole-logic";
+import { matieresEvaluees } from "../matiere-nature";
 import { classeAnneeCloturee, etatPromotion } from "./admin/cloture-annee-utils";
 import { majFicheEcole } from "./admin/cloture-annee";
 
@@ -151,10 +152,10 @@ function analyserSection(schoolInfo, sec, data, sansNotesBehavior, acc, annee) {
       continue;
     }
     const notesEleve = notesDeLEleve(data.notes, e._id);
-    // Mêmes matières/coefficients que les bulletins (matieresForClasse).
-    // Fallback : matières déduites des notes de l'élève (coef 1) si l'école
-    // n'a pas configuré ses matières pour cette section.
-    const matieresClasse = matieresForClasse(data.matieres, classe);
+    // Mêmes matières/coefficients que les bulletins (matières évaluées de la
+    // classe). Fallback : matières déduites des notes de l'élève (coef 1) si
+    // l'école n'a pas configuré ses matières pour cette section.
+    const matieresClasse = matieresForClasse(matieresEvaluees(data.matieres), classe);
     const matieresEleve = matieresClasse.length > 0
       ? matieresClasse
       : [...new Set(notesEleve.map((note) => note.matiere).filter(Boolean))].map((nom) => ({ nom }));

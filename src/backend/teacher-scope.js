@@ -75,7 +75,9 @@ export function matchesTeacherAlias(value = "", aliases = []) {
 
 // Une note est-elle dans le périmètre (classe + matière) de l'enseignant ?
 // Maternelle et primaire : titulaire multi-matières → pas de filtre matière.
-// Secondaire : la matière du profil est obligatoire.
+// Secondaire : la matière du profil est obligatoire. `matiere` peut aussi être
+// une LISTE : la matière du profil et celles qui lui sont rattachées
+// (Français → Dictée et Questions, Rédaction, cf. matiere-nature.js).
 export function noteBelongsToTeacherScope(note = {}, studentIds = new Set(), matiere = "", studentNames = new Set(), section = "college", teacherClasses = null) {
   const sid = String(note.eleveId || "").trim();
   if (sid) {
@@ -89,8 +91,9 @@ export function noteBelongsToTeacherScope(note = {}, studentIds = new Set(), mat
     }
   }
   if (!isTitulaireSection(section)) {
-    if (!matiere) return false;
-    if (normalizeText(note.matiere) !== normalizeText(matiere)) return false;
+    const autorisees = (Array.isArray(matiere) ? matiere : [matiere]).map(normalizeText).filter(Boolean);
+    if (!autorisees.length) return false;
+    if (!autorisees.includes(normalizeText(note.matiere))) return false;
   }
   return true;
 }
