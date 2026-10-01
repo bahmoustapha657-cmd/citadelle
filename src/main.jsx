@@ -8,7 +8,9 @@ import { registerServiceWorker } from './sw-register.js'
 import { initSentry } from './sentry.js'
 import { isTransientFirestoreError } from './firestore-safe.js'
 import './i18n'
+import { VERSION_APP } from './version-app.js'
 
+console.info(`[EduGest] version ${VERSION_APP.court}`, VERSION_APP.date || '')
 initSentry()
 
 // Filtre les FirebaseError permission-denied/unavailable transitoires qui

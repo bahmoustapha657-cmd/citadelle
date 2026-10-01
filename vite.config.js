@@ -1,9 +1,28 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { lireVersionBuild } from "./scripts/version-build.mjs";
+
+// Identité du build (commit, branche, arbre propre) : embarquée dans l'app
+// (__EDUGEST_VERSION__, cf. src/version-app.js) et publiée en /version.json
+// pour savoir d'un coup d'œil ce qui tourne en production.
+const VERSION = lireVersionBuild();
+
+function versionJson() {
+  return {
+    name: "edugest-version-json",
+    apply: "build",
+    generateBundle() {
+      this.emitFile({ type: "asset", fileName: "version.json", source: JSON.stringify(VERSION, null, 2) + "\n" });
+    },
+  };
+}
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), versionJson()],
+  define: {
+    __EDUGEST_VERSION__: JSON.stringify(VERSION),
+  },
   // PowerSync (mode hors ligne, branche Supabase) : wa-sqlite tourne dans un
   // worker + charge un binaire WASM. Le pré-bundling Vite (esbuild) casse ces
   // deux paquets → on les en exclut explicitement (recette officielle PowerSync).
