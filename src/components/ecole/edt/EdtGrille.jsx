@@ -1,5 +1,6 @@
 import { C } from "../../../constants";
 import { affNom, planifierJour } from "./edt-utils";
+import { memeEnseignant } from "./edt-titulaire";
 
 // Vue grille de l'emploi du temps : tableau horaires × jours, cellules cliquables
 // pour créer/modifier un créneau, avec détection de conflit enseignant.
@@ -7,7 +8,7 @@ import { affNom, planifierJour } from "./edt-utils";
 // (15/30/45/60 min…) : chaque créneau occupe autant de lignes que sa durée
 // réelle (rowSpan), et les lignes qu'il recouvre ne rendent pas de cellule.
 export function EdtGrille({ h, emplois, canCreate, canEdit, setForm }) {
-  const { TRANCHES, matCouleur, findEns, classeEdtActuelle, setEdtCellule, emploisClasse, jours: JOURS } = h;
+  const { TRANCHES, matCouleur, findEns, classeEdtActuelle, setEdtCellule, emploisClasse, jours: JOURS, titulaire } = h;
   // Plan de chaque colonne (un jour) : où commence chaque créneau et sur
   // combien de lignes il s'étend.
   const plans = {};
@@ -43,7 +44,8 @@ export function EdtGrille({ h, emplois, canCreate, canEdit, setForm }) {
                   onClick={() => {
                     if (!canCreate && !canEdit) return;
                     if (cr) { setForm({ ...cr }); setEdtCellule({ jour, heureDebut: cr.heureDebut, heureFin: cr.heureFin, existing: cr }); }
-                    else { setForm({ classe: classeEdtActuelle, jour, heureDebut: hd, heureFin: hf, matiere: "", enseignant: "", salle: "" }); setEdtCellule({ jour, heureDebut: hd, heureFin: hf, existing: null }); }
+                    // Primaire et maternelle : le titulaire est pré-attribué.
+                    else { setForm({ classe: classeEdtActuelle, jour, heureDebut: hd, heureFin: hf, matiere: "", enseignant: titulaire || "", salle: "" }); setEdtCellule({ jour, heureDebut: hd, heureFin: hf, existing: null }); }
                   }}
                   style={{
                     padding: "4px 5px",
@@ -76,7 +78,9 @@ export function EdtGrille({ h, emplois, canCreate, canEdit, setForm }) {
                         {String(cr.heureDebut).slice(0, 5)}–{String(cr.heureFin).slice(0, 5)}
                       </div>
                     )}
-                    {cr.enseignant && (() => {
+                    {/* Le titulaire, nommé au-dessus de la grille, n'est pas
+                        répété dans chaque case : seuls les intervenants le sont. */}
+                    {cr.enseignant && !(titulaire && memeEnseignant(cr.enseignant, titulaire)) && (() => {
                       const e = findEns(cr.enseignant);
                       return <div style={{ fontSize: 10, color: "#475569", marginTop: 1 }}>
                         <div>{affNom(cr.enseignant)}</div>

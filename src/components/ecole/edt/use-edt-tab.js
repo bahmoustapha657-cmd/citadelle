@@ -1,11 +1,12 @@
 import { useContext, useState } from "react";
 import { SchoolContext } from "../../../contexts/SchoolContext";
 import { COULEURS, niveauRank, tranchesEdt, makeFindEns, getJoursOuvrablesPourClasse, getJoursOuvrablesUnion } from "./edt-utils";
+import { creneauxCopies, sectionATitulaire, titulaireDeClasse } from "./edt-titulaire";
 
 // État et dérivations de l'onglet emploi du temps : vue grille/liste, plage
 // horaire et durée des tranches, classe active, couleurs matières, et la copie
 // de l'EDT d'une classe vers une autre.
-export function useEdtTab({ maxNote, classes, matieres, ens, emplois, filtreClasse, ajEmp, supEmp }) {
+export function useEdtTab({ maxNote, section, classes, matieres, ens, emplois, filtreClasse, ajEmp, supEmp }) {
   const { schoolInfo, toast } = useContext(SchoolContext);
 
   const [edtVueGrille, setEdtVueGrille] = useState(true);
@@ -37,6 +38,9 @@ export function useEdtTab({ maxNote, classes, matieres, ens, emplois, filtreClas
   const jours = getJoursOuvrablesPourClasse(schoolInfo, classeEdtActuelle);
   const joursGeneral = getJoursOuvrablesUnion(schoolInfo);
   const getCreneau = (jour, hd) => emploisClasse.find((e) => e.jour === jour && e.heureDebut === hd);
+  // Primaire et maternelle : le titulaire tient la classe (cf. edt-titulaire).
+  const parTitulaire = sectionATitulaire(section);
+  const titulaire = parTitulaire ? titulaireDeClasse(classeEdtActuelle, ens, classes) : "";
 
   const copierEDT = () => {
     const cibles = classes.filter((c) => c.nom !== classeEdtActuelle);
@@ -44,8 +48,13 @@ export function useEdtTab({ maxNote, classes, matieres, ens, emplois, filtreClas
     const dest = window.prompt("Copier l'EDT de \"" + classeEdtActuelle + "\" vers quelle classe ?\n" + cibles.map((c) => c.nom).join(", "));
     if (!dest || !classes.find((c) => c.nom === dest)) { toast("Classe introuvable.", "error"); return; }
     const aSupp = emplois.filter((e) => e.classe === dest);
+    // Primaire : le titulaire de la classe source cède ses créneaux à celui
+    // de la classe cible.
+    const copies = parTitulaire
+      ? creneauxCopies(emploisClasse, { dest, titulaireSource: titulaire, titulaireDest: titulaireDeClasse(dest, ens, classes) })
+      : emploisClasse.map((e) => ({ ...e, classe: dest, _id: undefined }));
     Promise.all(aSupp.map((e) => supEmp(e._id))).then(() => {
-      emploisClasse.forEach((e) => ajEmp({ ...e, classe: dest, _id: undefined }));
+      copies.forEach((e) => ajEmp(e));
       toast("EDT copié vers " + dest, "success");
     });
   };
@@ -62,6 +71,7 @@ export function useEdtTab({ maxNote, classes, matieres, ens, emplois, filtreClas
     classesTriees, classeEdtActuelle,
     matCouleur, findEns,
     emploisClasse, getCreneau,
+    parTitulaire, titulaire,
     copierEDT,
   };
 }

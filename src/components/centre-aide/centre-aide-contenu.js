@@ -102,6 +102,19 @@ export const ARTICLES = [
     ],
   },
   {
+    id: "emploi-du-temps-titulaire",
+    cat: "notes",
+    roles: ["admin", "direction", "superadmin"],
+    titre: "Emploi du temps du primaire et de la maternelle : le titulaire",
+    etapes: [
+      "Au primaire et en maternelle, un titulaire tient la classe : désignez-le sur sa fiche (onglet Enseignants → « Classe titulaire »).",
+      "Dans l'emploi du temps, il est alors attribué d'office à chaque nouveau créneau : choisissez seulement la matière.",
+      "Pour une matière confiée à un intervenant (anglais, EPS…), choisissez-le une fois : il sera reproposé pour cette matière dans la classe.",
+      "Changement de titulaire : le bandeau au-dessus de la grille propose de lui confier les créneaux restés à l'ancien. « Copier vers… » passe les créneaux au titulaire de la classe cible.",
+      "Au secondaire, rien ne change : chaque matière a son professeur, à choisir à chaque créneau.",
+    ],
+  },
+  {
     id: "configurer-tarifs",
     cat: "compta",
     roles: ["admin", "direction", "comptable", "superadmin"],

@@ -3,6 +3,7 @@
 
 import { enteteDoc } from "../../../reports";
 import { JOURS_SEMAINE, COULEURS, affNom, planifierJour } from "./edt-utils";
+import { memeEnseignant } from "./edt-titulaire";
 
 export { voirEdtGeneral } from "./edt-print-general";
 
@@ -10,7 +11,9 @@ export { voirEdtGeneral } from "./edt-print-general";
 // variables (15/30/45/60 min…), chacune occupe autant de lignes que sa durée
 // réelle. Sans cela la feuille imprimée perdait les créneaux dont l'heure de
 // début ne tombait pas pile sur une tranche.
-export function imprimerEDT({ emploisClasse, TRANCHES, classeEdtActuelle, schoolInfo, findEns, jours }) {
+// Primaire et maternelle (`titulaire` renseigné) : le titulaire est nommé une
+// fois sous le titre, et seuls les intervenants le sont dans les cases.
+export function imprimerEDT({ emploisClasse, TRANCHES, classeEdtActuelle, schoolInfo, findEns, jours, titulaire = "" }) {
   // Jours ouvrés de l ecole (repli : semaine complete).
   const JOURS = Array.isArray(jours) && jours.length ? jours : JOURS_SEMAINE;
   const allMat = [...new Set(emploisClasse.map((e) => e.matiere).filter(Boolean))];
@@ -41,13 +44,14 @@ export function imprimerEDT({ emploisClasse, TRANCHES, classeEdtActuelle, school
       }
       const bg = isRev ? "#fff7ed" : (mc[cr.matiere] || "#e0ebf8");
       const borderColor = isRev ? "#fdba74" : "#e2e8f0";
-      const ensObj = findEns(cr.enseignant);
+      const parLeTitulaire = titulaire && memeEnseignant(cr.enseignant, titulaire);
+      const ensObj = parLeTitulaire ? null : findEns(cr.enseignant);
       return "<td" + attrSpan + " style='background:" + bg + ";border:1px solid " + borderColor + ";padding:6px;vertical-align:top'>"
         + (isRev ? "<span style='background:#f97316;color:#fff;font-size:8px;font-weight:900;padding:1px 4px;border-radius:3px;display:inline-block;margin-bottom:2px'>RÉV</span><br>" : "")
         + "<b style='font-size:11px;color:" + (isRev ? "#9a3412" : "#1e3a5f") + ";display:block'>" + cr.matiere + "</b>"
         + (cr.heureFin && (cr.heureDebut !== hd || cr.heureFin !== TRANCHES[i + span])
           ? "<span style='font-size:9px;color:#64748b;font-weight:700;display:block'>" + String(cr.heureDebut).slice(0, 5) + "–" + String(cr.heureFin).slice(0, 5) + "</span>" : "")
-        + (cr.enseignant ? "<span style='font-size:10px;color:#475569'>" + affNom(cr.enseignant) + "</span>" : "")
+        + (cr.enseignant && !parLeTitulaire ? "<span style='font-size:10px;color:#475569'>" + affNom(cr.enseignant) + "</span>" : "")
         + (ensObj?.telephone ? "<br><span style='font-size:9px;color:#00876a;font-weight:600'>" + ensObj.telephone + "</span>" : "")
         + (cr.salle ? "<br><span style='font-size:9px;color:#94a3b8'>📍" + cr.salle + "</span>" : "")
         + "</td>";
@@ -60,6 +64,8 @@ export function imprimerEDT({ emploisClasse, TRANCHES, classeEdtActuelle, school
     + "table{width:100%;border-collapse:collapse}</style></head><body>"
     + enteteDoc(schoolInfo, schoolInfo.logo)
     + "<h2>Emploi du temps — " + classeEdtActuelle + "</h2>"
+    + (titulaire ? "<p style='text-align:center;margin:-6px 0 12px;font-size:12px;color:#334155'>Titulaire : <b>" + titulaire + "</b>"
+      + (findEns(titulaire)?.telephone ? " · " + findEns(titulaire).telephone : "") + "</p>" : "")
     + "<table><thead><tr><th style='background:#0A1628;color:#fff;padding:8px 10px;font-size:11px;width:80px'>Horaire</th>" + ths + "</tr></thead>"
     + "<tbody>" + rows + "</tbody></table>"
     + "<scri" + "pt>window.onload=()=>window.print();</scri" + "pt></body></html>");
