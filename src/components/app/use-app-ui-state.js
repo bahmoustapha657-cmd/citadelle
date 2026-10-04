@@ -4,7 +4,11 @@ import { useState } from "react";
 // ouverts (recherche/notifs/profil/aide/sidebar/onboarding), onglet initial
 // des paramètres, et l'école courante (initialisée depuis l'URL/localStorage).
 export function useAppUiState() {
-  const [page, setPage] = useState(null);
+  // Lien direct vers la landing produit (?decouvrir) pour le marketing ; sans
+  // lui, l'app ouvre sur la connexion. Un utilisateur connecté est rabattu
+  // sur son module par le garde-fou de App.
+  const [page, setPage] = useState(() =>
+    new URLSearchParams(window.location.search).has("decouvrir") ? "decouvrir" : null);
   // Onglet initial à afficher quand on entre dans ParametresEcole — permet
   // au TableauDeBord (alerte conformité) de pointer directement sur "officiel".
   const [paramInitialTab, setParamInitialTab] = useState(null);

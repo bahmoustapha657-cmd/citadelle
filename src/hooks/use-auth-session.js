@@ -43,6 +43,11 @@ const disconnectPowerSync = () => (powerSyncConfigured
 //   utilisés.
 //
 // Extrait de App.jsx au refactor découpage 2026-05-20.
+// Landing ouverte par le lien ?decouvrir : ce n'est pas un module, une
+// session restaurée part sur sa page initiale, et l'absence de session à
+// l'ouverture ne la referme pas.
+const PAGE_DECOUVRIR = "decouvrir";
+
 export function useAuthSession({ setSchoolId, setPage }) {
   const [utilisateur, setUtilisateur] = useState(null);
 
@@ -57,7 +62,7 @@ export function useAuthSession({ setSchoolId, setPage }) {
         if (!actif) return;
         if (!u) {
           setUtilisateur(null);
-          setPage(null);
+          setPage((p) => (p === PAGE_DECOUVRIR ? p : null));
           // Coupe la synchro sans vider le miroir : le même compte retrouvera
           // ses données au retour (cf. powersync/proprietaire.js).
           disconnectPowerSync().catch(() => {});
@@ -71,7 +76,7 @@ export function useAuthSession({ setSchoolId, setPage }) {
         // connexion, puis confirmé par l'événement d'auth) : on garde l'objet
         // pour ne pas relancer les chargements qui dépendent de l'utilisateur.
         setUtilisateur((prec) => (prec && JSON.stringify(prec) === JSON.stringify(u) ? prec : u));
-        setPage((p) => p || choisirPageInitiale(u));
+        setPage((p) => (p && p !== PAGE_DECOUVRIR ? p : choisirPageInitiale(u)));
         // Mode hors ligne (vague 1 = académique) : personnel + enseignants
         // seulement. Les PARENTS ne se connectent PAS à PowerSync — leur
         // périmètre (leurs enfants) n'est pas couvert par les Sync Rules, qui
@@ -94,7 +99,7 @@ export function useAuthSession({ setSchoolId, setPage }) {
       if (!firebaseUser) {
         // Session Firebase expirée ou déconnexion → vider l'état
         setUtilisateur(null);
-        setPage(null);
+        setPage((p) => (p === PAGE_DECOUVRIR ? p : null));
         return;
       }
       try {
@@ -133,7 +138,7 @@ export function useAuthSession({ setSchoolId, setPage }) {
             contactTuteur: d.contactTuteur || "",
             filiation: d.filiation || "",
           });
-          setPage((p) => p || getPrimaryModuleForRole(d.role));
+          setPage((p) => (p && p !== PAGE_DECOUVRIR ? p : getPrimaryModuleForRole(d.role)));
           // Prefetch des pages les plus utilisées pendant que le dashboard se rend
           import("../components/Comptabilite").catch(() => {});
           import("../components/Ecole").catch(() => {});
