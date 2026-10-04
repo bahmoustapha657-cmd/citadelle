@@ -1,36 +1,36 @@
+import { useTranslation } from "react-i18next";
+import Logo from "../Logo";
 import { useConnexion } from "./connexion/use-connexion";
-import { ConnexionHeader } from "./connexion/ConnexionHeader";
 import { ConnexionForm } from "./connexion/ConnexionForm";
+import { IconeCoche } from "./connexion/connexion-icones";
+import "./connexion/connexion.css";
 
-// Écran de connexion : logique dans useConnexion, en-tête et formulaire
-// dans connexion/.
+// Écran de connexion : panneau de marque (masqué sur mobile) + carte du
+// formulaire. Logique dans useConnexion, styles dans connexion/connexion.css.
 function Connexion({ onLogin, onInscription, onDecouvrir }) {
+  const { t } = useTranslation();
   const c = useConnexion({ onLogin });
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "#0A1628",
-        fontFamily: "'Segoe UI', system-ui, sans-serif",
-        padding: "24px 16px",
-      }}
-    >
-      <div
-        style={{
-          background: "#fff",
-          borderRadius: 20,
-          width: "100%",
-          maxWidth: 480,
-          boxShadow: "0 32px 80px rgba(0,0,0,0.55)",
-          overflow: "hidden",
-        }}
-      >
-        <ConnexionHeader infoEcole={c.infoEcole} />
+    <div className="cx-page">
+      <div className="cx-shell">
+        <aside className="cx-brand">
+          <div dir="ltr" className="cx-brand-logo"><Logo width={180} height={58} variant="light" /></div>
+          <div>
+            <p className="cx-eyebrow">{t("auth.brandEyebrow")}</p>
+            <h1>{t("auth.brandTitle")} <span>{t("auth.brandTitleAccent")}</span></h1>
+            <p className="cx-brand-sub">{t("auth.brandSub")}</p>
+            <ul className="cx-points">
+              {["brandPoint1", "brandPoint2", "brandPoint3"].map((cle) => (
+                <li key={cle}><IconeCoche />{t(`auth.${cle}`)}</li>
+              ))}
+            </ul>
+          </div>
+          <p className="cx-brand-foot">© {new Date().getFullYear()} EduGest · {t("auth.brandFoot")}</p>
+        </aside>
+
         <ConnexionForm
+          infoEcole={c.infoEcole}
           codeEcole={c.codeEcole}
           setCodeEcole={c.setCodeEcole}
           login={c.login}
