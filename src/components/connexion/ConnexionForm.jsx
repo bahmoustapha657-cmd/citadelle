@@ -1,13 +1,17 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { C } from "../../constants";
 import { isSupabase } from "../../backend";
 import { LanguageSwitcher } from "../LanguageSwitcher";
+import Logo from "../../Logo";
 import { ConnexionChamps } from "./ConnexionChamps";
+import { ConnexionEcole } from "./ConnexionEcole";
 import { MotDePasseOublieModal } from "./MotDePasseOublieModal";
+import { IconeAlerte, IconeInfo, IconePlus } from "./connexion-icones";
 
-// Corps du formulaire de connexion (champs + bouton + lien inscription).
+// Carte du formulaire de connexion : titre, vignette de l'école, champs,
+// bouton, puis inscription / découverte d'EduGest et mention légale.
 export function ConnexionForm({
+  infoEcole,
   codeEcole, setCodeEcole,
   login, setLogin,
   mdp, setMdp,
@@ -22,64 +26,44 @@ export function ConnexionForm({
   const { t } = useTranslation();
   const [oubliOuvert, setOubliOuvert] = useState(false);
 
+  const lienOubli = isSupabase && codeEcole.trim().toLowerCase() !== "superadmin" ? (
+    <button type="button" className="cx-lien" onClick={() => setOubliOuvert(true)}>
+      {t("auth.forgotPassword")}
+    </button>
+  ) : null;
+
   return (
-    <div style={{ padding: "30px 36px 32px", display: "flex", flexDirection: "column", gap: 16 }}>
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: -8 }}>
-        <LanguageSwitcher compact />
+    <section className="cx-card">
+      <div className="cx-card-top">
+        <div className="cx-card-logo" dir="ltr"><Logo width={150} height={48} variant="dark" /></div>
+        <div style={{ marginInlineStart: "auto" }}><LanguageSwitcher compact /></div>
       </div>
 
-      <ConnexionChamps
-        t={t} codeEcole={codeEcole} setCodeEcole={setCodeEcole}
-        login={login} setLogin={setLogin} mdp={mdp} setMdp={setMdp}
-        voir={voir} setVoir={setVoir} statutEcole={statutEcole} connecter={connecter}
-      />
+      <h2 className="cx-title">{t("auth.loginTitle")}</h2>
+      <p className="cx-subtitle">{t("auth.loginSubtitle")}</p>
 
-      {erreur && (
-        <div
-          style={{
-            background: "#fce8e8",
-            border: "1px solid #f5c1c1",
-            borderRadius: 9,
-            padding: "10px 14px",
-            fontSize: 13,
-            color: "#9b2020",
-            textAlign: "center",
-            fontWeight: 600,
-          }}
-        >
-          {erreur}
-        </div>
-      )}
+      <ConnexionEcole infoEcole={infoEcole} />
 
-      <button
-        onClick={connecter}
-        disabled={chargement}
-        style={{
-          width: "100%",
-          background: `linear-gradient(90deg, ${C.blue}, ${C.green})`,
-          color: "#fff",
-          border: "none",
-          padding: "13px",
-          borderRadius: 10,
-          fontSize: 15,
-          fontWeight: 800,
-          cursor: chargement ? "not-allowed" : "pointer",
-          marginTop: 4,
-          opacity: chargement ? 0.7 : 1,
-          letterSpacing: "0.02em",
-        }}
-      >
-        {chargement ? t("auth.loggingIn") : t("auth.loginButton")}
-      </button>
+      <form className="cx-form" onSubmit={(event) => { event.preventDefault(); connecter(); }} noValidate>
+        <ConnexionChamps
+          t={t} codeEcole={codeEcole} setCodeEcole={setCodeEcole}
+          login={login} setLogin={setLogin} mdp={mdp} setMdp={setMdp}
+          voir={voir} setVoir={setVoir} statutEcole={statutEcole}
+          lienOubli={lienOubli}
+        />
 
-      {isSupabase && codeEcole.trim().toLowerCase() !== "superadmin" && (
-        <p style={{ textAlign: "center", margin: "0", fontSize: 12 }}>
-          <button type="button" onClick={() => setOubliOuvert(true)}
-            style={{ background: "none", border: "none", padding: 0, color: C.blue, cursor: "pointer", fontWeight: 700, fontSize: "inherit", fontFamily: "inherit" }}>
-            🔑 Mot de passe oublié ?
-          </button>
-        </p>
-      )}
+        {erreur && (
+          <div className="cx-erreur" role="alert">
+            <IconeAlerte />
+            <span>{erreur}</span>
+          </div>
+        )}
+
+        <button type="submit" className="cx-submit" disabled={chargement}>
+          {chargement && <span className="cx-spinner" aria-hidden />}
+          {chargement ? t("auth.loggingIn") : t("auth.loginButton")}
+        </button>
+      </form>
 
       {oubliOuvert && (
         <MotDePasseOublieModal
@@ -95,33 +79,27 @@ export function ConnexionForm({
         />
       )}
 
-      <p style={{ textAlign: "center", margin: "4px 0 0", color: "#9ca3af", fontSize: 12 }}>
-        {t("auth.noAccount")}{" "}
-        <button
-          type="button"
-          onClick={() => onInscription && onInscription()}
-          style={{ background: "none", border: "none", padding: 0, color: C.blue, cursor: "pointer", fontWeight: 700, fontSize: "inherit", fontFamily: "inherit" }}
-        >
+      <div className="cx-separateur">{t("auth.noAccount")}</div>
+
+      <div className="cx-actions">
+        <button type="button" className="cx-secondaire" onClick={() => onInscription && onInscription()}>
+          <IconePlus />
           {t("auth.registerLink")}
         </button>
-      </p>
+        {onDecouvrir && (
+          <button type="button" className="cx-secondaire" onClick={onDecouvrir}>
+            <IconeInfo />
+            {t("auth.learnMore")}
+          </button>
+        )}
+      </div>
 
-      {onDecouvrir && (
-        <button
-          type="button"
-          onClick={onDecouvrir}
-          style={{ alignSelf: "center", background: "#f0f6ff", border: `1px solid ${C.blue}33`, borderRadius: 999, padding: "8px 18px", color: C.blue, cursor: "pointer", fontWeight: 700, fontSize: 12, fontFamily: "inherit" }}
-        >
-          {t("auth.learnMore")} →
-        </button>
-      )}
-
-      <p style={{ textAlign: "center", margin: "2px 0 0", color: "#9ca3af", fontSize: 11, lineHeight: 1.5 }}>
+      <p className="cx-legal">
         {t("auth.privacyConsent")}{" "}
-        <a href="/politique-confidentialite.html" target="_blank" rel="noreferrer" style={{ color: C.blue, fontWeight: 700 }}>
+        <a href="/politique-confidentialite.html" target="_blank" rel="noreferrer">
           {t("auth.privacyPolicy")}
         </a>.
       </p>
-    </div>
+    </section>
   );
 }
