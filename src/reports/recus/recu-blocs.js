@@ -21,6 +21,13 @@ export const enteteCompact = (schoolInfo, lf) => `
     </div>
   </div>`;
 
+// Les mois en deux colonnes côte à côte : 10 à 12 lignes sur une seule
+// colonne, plus les frais et le versement, débordaient du demi-A4.
+const moitiesMois = (moisAnnee) => {
+  const milieu = Math.ceil(moisAnnee.length / 2);
+  return [moisAnnee.slice(0, milieu), moisAnnee.slice(milieu)].filter((m) => m.length);
+};
+
 // Bloc reçu compact — deux par page A4. ctx regroupe les données calculées.
 export const blocRecu = (titre, ctx) => {
   const {
@@ -28,10 +35,16 @@ export const blocRecu = (titre, ctx) => {
     moisAcomptes = [], totalMensualites, moisPayes, totalGeneral, qr, versement = null, resteAPayer,
   } = ctx;
   const acompteDe = Object.fromEntries(moisAcomptes.map((a) => [a.mois, a.montant]));
+  // Inscription et frais annexes réglés sur une seule bande, à la suite
+  // (une bande par frais prenait trop de hauteur).
+  const frais = [
+    ...(fraisIns > 0 ? [{ label: tr("reports.receipt.registration"), montant: fraisIns, partiel: insPartielle }] : []),
+    ...fraisDiversPayes,
+  ];
   return `
   <div class="recu">
     ${schoolInfo.logo?`<div class="watermark"><img crossOrigin="anonymous" src="${schoolInfo.logo}" alt=""/></div>`:""}
-    <div style="position:relative;z-index:1;display:flex;flex-direction:column;height:100%">
+    <div class="recu-corps">
     ${enteteCompact(schoolInfo, lf)}
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
       <div>
@@ -48,8 +61,9 @@ export const blocRecu = (titre, ctx) => {
       <div class="row"><span class="lbl">${tr("school.students.parent")} : </span>${eleve.tuteur||"—"}</div>
       <div class="row"><span class="lbl">${tr("school.students.contact")} : </span>${eleve.contactTuteur||"—"}</div>
     </div>
+    <div class="mois-cols">${moitiesMois(moisAnnee).map((moitie)=>`
     <table class="mois-table"><thead><tr><th>${tr("accounting.month")}</th><th>${tr("common.status")}</th><th>${tr("common.date")}</th></tr></thead><tbody>
-      ${moisAnnee.map(m=>{
+      ${moitie.map(m=>{
         const paye=mens[m]==="Payé";
         const acompte=!paye?acompteDe[m]:0;
         const datePaie=mensDates[m]||"—";
@@ -59,17 +73,12 @@ export const blocRecu = (titre, ctx) => {
           <td style="text-align:center">${paye?datePaie:"—"}</td>
         </tr>`;
       }).join("")}
-    </tbody></table>
-    ${fraisIns>0?`
-    <div class="total" style="font-size:9px;padding:4px 8px;background:#f0f9ff;border-color:#7dd3fc">
-      ${tr("reports.receipt.registration")} : <strong>${fmt(fraisIns)}</strong>
-      <span style="font-weight:400;margin-inline-start:4px">${insPartielle?`◐ ${tr("reports.receipt.deposit")}`:`✓ ${tr("accounting.paid")}`}</span>
+    </tbody></table>`).join("")}
+    </div>
+    ${frais.length?`
+    <div class="frais">${frais.map((f)=>`
+      <span>${f.label} : <strong>${fmt(f.montant)}</strong> ${f.partiel?`◐ ${tr("reports.receipt.deposit")}`:`✓ ${tr("accounting.paid")}`}</span>`).join("")}
     </div>`:""}
-    ${fraisDiversPayes.map((f)=>`
-    <div class="total" style="font-size:9px;padding:4px 8px;background:#ecfeff;border-color:#67e8f9">
-      ${f.label} : <strong>${fmt(f.montant)}</strong>
-      <span style="font-weight:400;margin-inline-start:4px">${f.partiel?`◐ ${tr("reports.receipt.deposit")}`:`✓ ${tr("accounting.paid")}`}</span>
-    </div>`).join("")}
     <div class="total">${tr("reports.receipt.monthlyFee")} : ${fmt(totalMensualites)} <span style="font-weight:400;font-size:9px">(${moisPayes.length}/${moisAnnee.length})</span></div>
     ${versement?`
     <div class="total" style="background:#dcfce7;border-color:#4ade80">
