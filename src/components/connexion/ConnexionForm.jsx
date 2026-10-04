@@ -17,6 +17,7 @@ export function ConnexionForm({
   statutEcole,
   connecter,
   onInscription,
+  onDecouvrir,
 }) {
   const { t } = useTranslation();
   const [oubliOuvert, setOubliOuvert] = useState(false);
@@ -104,6 +105,16 @@ export function ConnexionForm({
           {t("auth.registerLink")}
         </button>
       </p>
+
+      {onDecouvrir && (
+        <button
+          type="button"
+          onClick={onDecouvrir}
+          style={{ alignSelf: "center", background: "#f0f6ff", border: `1px solid ${C.blue}33`, borderRadius: 999, padding: "8px 18px", color: C.blue, cursor: "pointer", fontWeight: 700, fontSize: 12, fontFamily: "inherit" }}
+        >
+          {t("auth.learnMore")} →
+        </button>
+      )}
 
       <p style={{ textAlign: "center", margin: "2px 0 0", color: "#9ca3af", fontSize: 11, lineHeight: 1.5 }}>
         {t("auth.privacyConsent")}{" "}
