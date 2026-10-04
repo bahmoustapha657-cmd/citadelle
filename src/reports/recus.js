@@ -14,7 +14,7 @@ import {
 import { resolveLegalFields } from "../legal-utils.js";
 import { PRINT_RESET, PRINT_TRIGGER, edugestBrandHTML, printDir, printLang, tr } from "./print-helpers.js";
 import { blocRecu } from "./recus/recu-blocs.js";
-import { RECU_STYLES } from "./recus/recus-styles.js";
+import { RECU_AJUSTEMENT, RECU_STYLES } from "./recus/recus-styles.js";
 import { documentTicket, normaliserLargeur } from "./recus/recu-ticket.js";
 import { qrSecuriseImgHtml, qrPayload } from "./qr.js";
 
@@ -87,7 +87,7 @@ export const imprimerRecu = async (eleve, montantUnit, schoolInfo={}, moisAnnee=
   ${blocRecu("Exemplaire — Comptable", ctx)}
   ${blocRecu("Exemplaire — Payant", ctx)}
   ${edugestBrandHTML(schoolInfo)}
-  <script>${PRINT_TRIGGER}</script>
+  <script>${RECU_AJUSTEMENT}${PRINT_TRIGGER}</script>
   </body></html>`);
   w.document.close();
 };
