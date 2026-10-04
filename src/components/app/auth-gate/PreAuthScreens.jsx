@@ -7,8 +7,10 @@ import {
 } from "../lazy-pages";
 import { FullScreenFallback } from "../fallbacks";
 
-// Écrans affichés tant qu'aucun utilisateur n'est connecté : inscription,
-// landing produit, démo, portail public puis formulaire de connexion.
+// Écrans affichés tant qu'aucun utilisateur n'est connecté. Par défaut
+// (aucune page sélectionnée) : portail public de l'école s'il est actif,
+// sinon formulaire de connexion. La landing produit n'est ouverte que par
+// le bouton « En savoir plus sur EduGest » de l'écran de connexion.
 // Renvoie l'écran à afficher, ou null si un utilisateur est connecté.
 export function PreAuthScreens({ utilisateur, page, schoolInfo, schoolContextValue, connecter, setPage, setUtilisateur }) {
   if (utilisateur) return null;
@@ -19,12 +21,12 @@ export function PreAuthScreens({ utilisateur, page, schoolInfo, schoolContextVal
     </Suspense>
   );
 
-  // 1. Landing EduGest (page produit, visible si aucune page sélectionnée)
-  if (!page) return (
+  // Landing EduGest (page produit, sur demande depuis la connexion)
+  if (page === "decouvrir") return (
     <Suspense fallback={<FullScreenFallback />}>
       <LandingEduGest
         onDemo={() => setPage("demo")}
-        onConnexion={() => setPage("login")}
+        onConnexion={() => setPage("connexion")}
         onInscription={() => setPage("inscription")}
       />
     </Suspense>
@@ -33,15 +35,15 @@ export function PreAuthScreens({ utilisateur, page, schoolInfo, schoolContextVal
   if (page === "demo") return (
     <Suspense fallback={<FullScreenFallback />}>
       <DemoEduGest
-        onRetour={() => setPage(null)}
-        onConnexion={() => setPage("login")}
+        onRetour={() => setPage("decouvrir")}
+        onConnexion={() => setPage("connexion")}
         onInscription={() => setPage("inscription")}
       />
     </Suspense>
   );
 
-  // 2. Portail public de l'école (si actif, avant le formulaire de connexion)
-  if (page === "login" && schoolInfo.accueil?.active) return (
+  // Portail public de l'école (si actif, avant le formulaire de connexion)
+  if (!page && schoolInfo.accueil?.active) return (
     <SchoolContext.Provider value={schoolContextValue}>
       <Suspense fallback={<FullScreenFallback />}>
         <PortailPublic onConnexion={() => setPage("connexion")} />
@@ -49,12 +51,16 @@ export function PreAuthScreens({ utilisateur, page, schoolInfo, schoolContextVal
     </SchoolContext.Provider>
   );
 
-  // 3. Formulaire de connexion
+  // Formulaire de connexion (écran par défaut)
   return (
     <SchoolContext.Provider value={schoolContextValue}>
       <GlobalStyles />
       <Suspense fallback={<FullScreenFallback />}>
-        <Connexion onLogin={connecter} onInscription={() => { signOutSession().catch(() => {}); setUtilisateur(null); setPage("inscription"); }} />
+        <Connexion
+          onLogin={connecter}
+          onInscription={() => { signOutSession().catch(() => {}); setUtilisateur(null); setPage("inscription"); }}
+          onDecouvrir={() => { window.scrollTo(0, 0); setPage("decouvrir"); }}
+        />
       </Suspense>
     </SchoolContext.Provider>
   );

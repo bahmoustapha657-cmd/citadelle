@@ -4,7 +4,7 @@ import { ConnexionForm } from "./connexion/ConnexionForm";
 
 // Écran de connexion : logique dans useConnexion, en-tête et formulaire
 // dans connexion/.
-function Connexion({ onLogin, onInscription }) {
+function Connexion({ onLogin, onInscription, onDecouvrir }) {
   const c = useConnexion({ onLogin });
 
   return (
@@ -44,6 +44,7 @@ function Connexion({ onLogin, onInscription }) {
           statutEcole={c.statutEcole}
           connecter={c.connecter}
           onInscription={onInscription}
+          onDecouvrir={onDecouvrir}
         />
       </div>
     </div>
