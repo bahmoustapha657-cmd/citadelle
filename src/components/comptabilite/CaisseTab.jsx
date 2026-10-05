@@ -87,9 +87,15 @@ export function CaisseTab({
                 return (
                   <div key={id} style={{ border: "1px solid var(--lc-border)", borderRadius: 10, padding: "10px 12px", borderInlineStartWidth: 4, borderInlineStartColor: src.couleur, borderInlineStartStyle: "solid" }}>
                     <p style={{ margin: "0 0 3px", fontSize: 11, fontWeight: 700, color: "var(--lc-text-muted)" }}>{src.label}</p>
-                    <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: src.sens === "sortie" ? "#b91c1c" : C.greenDk }}>
-                      {src.sens === "sortie" ? "− " : "+ "}{fmt(ligne.montant)}
-                    </p>
+                    {src.sens === "neutre" ? (
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: "#64748b" }}>
+                        {ligne.montant < 0 ? `− ${fmt(-ligne.montant)}` : "Non comptées"}
+                      </p>
+                    ) : (
+                      <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: src.sens === "sortie" ? "#b91c1c" : C.greenDk }}>
+                        {src.sens === "sortie" ? "− " : "+ "}{fmt(ligne.montant)}
+                      </p>
+                    )}
                     <p style={{ margin: 0, fontSize: 11, color: "var(--lc-text-faint)" }}>{ligne.nb} opération(s)</p>
                   </div>
                 );
@@ -125,10 +131,12 @@ export function CaisseTab({
             <tbody>{duJour.map((m) => (
               <TR key={m.id}>
                 <TD>{formatJour(m.date)}</TD>
-                <TD><Badge color={m.sens === "sortie" ? "red" : "vert"}>{SOURCES[m.source]?.label || m.source}</Badge></TD>
+                <TD><Badge color={m.source === "correction" ? "gray" : m.sens === "sortie" ? "red" : "vert"}>{SOURCES[m.source]?.label || m.source}</Badge></TD>
                 <TD bold>{m.libelle}</TD>
                 <TD>{m.detail}</TD>
-                <TD>{m.sens === "entree" ? <span style={{ color: C.greenDk, fontWeight: 700 }}>{fmt(m.montant)}</span> : ""}</TD>
+                <TD>{m.sens === "neutre"
+                  ? <span title="Erreur de saisie corrigée : non comptée" style={{ color: "#94a3b8", textDecoration: "line-through" }}>{fmt(m.montant)}</span>
+                  : m.sens === "entree" ? <span style={{ color: m.montant < 0 ? "#b45309" : C.greenDk, fontWeight: 700 }}>{fmt(m.montant)}</span> : ""}</TD>
                 <TD>{m.sens === "sortie" ? <span style={{ color: "#b91c1c", fontWeight: 700 }}>{fmt(m.montant)}</span> : ""}</TD>
               </TR>
             ))}</tbody>
@@ -140,7 +148,9 @@ export function CaisseTab({
         Les encaissements de scolarité proviennent du journal des paiements, qui enregistre chaque mouvement
         et ses annulations. Les paiements antérieurs à sa mise en service sont reconstitués depuis les fiches
         élèves — sans doublon, mais sans annulations ni auteur. Les salaires n'apparaissent pas ici : une fiche
-        de paie porte un mois, pas une date de décaissement.
+        de paie porte un mois, pas une date de décaissement. Une case cochée par erreur puis décochée avec le
+        motif « erreur de saisie » reste listée (barrée, avec son explication) mais ne compte ni en entrée ni en
+        sortie ; un remboursement, lui, est une sortie.
       </p>
     </div>
   );

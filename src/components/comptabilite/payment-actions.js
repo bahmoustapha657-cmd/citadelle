@@ -10,7 +10,13 @@ import { sumBonsForSalary } from "../../salary-utils";
 import { notifierParents } from "../../backend/notify-supabase";
 import { champsRetraitAcompte } from "../../paiements-scolarite";
 import { champsBasculeFrais } from "./frais-bascule";
-import { ecritureAnnulation, ecritureEncaissement } from "./paiements-journal";
+import { MOTIFS_ANNULATION, ecritureAnnulation, ecritureEncaissement } from "./paiements-journal";
+import { demanderMotifAnnulation } from "./motif-annulation";
+
+// Libellé de l'historique des actions pour un retrait motivé.
+const actionRetrait = ({ motif }) => (motif === "remboursement" ? "Paiement remboursé" : "Erreur de saisie corrigée");
+const detailRetrait = (texte, { motif, explication }) =>
+  `${texte} — ${MOTIFS_ANNULATION[motif] || motif} : « ${explication} »`;
 
 // Année archivée affichée (canCreate faux sans lecture seule) : rien ne
 // s'encaisse. L'écriture partirait sur la fiche de l'année EN COURS, avec
@@ -71,13 +77,22 @@ export async function toggleFraisAnnexe(_id, opts, {
       : montantJournal>0
         ? `Marquer ${label.toLowerCase()}${montantLabel} comme payé pour ${nomEleve} ?`
         : `Valider ${label.toLowerCase()} de ${nomEleve} sans encaissement (dispense) ?`;
-  if(confirmer && !confirm(message)) return;
+  // Retrait d'un frais réellement encaissé : motif + explication, au lieu
+  // d'une simple confirmation (cf. motif-annulation).
+  const retraitMotive = valeurActuelle && montantJournal>0;
+  let retrait = null;
+  if(retraitMotive){
+    retrait = await demanderMotifAnnulation({
+      titre: `Retirer ${label.toLowerCase()}`,
+      message: `${nomEleve} · ${label} · ${fmt(montantJournal)}`,
+    });
+    if(!retrait) return;
+  } else if(confirmer && !confirm(message)) return;
   await modEleves(_id, champs);
   // Journal d'audit : chaque encaissement/retrait de frais laisse une trace.
-  logAction?.(
-    valeurActuelle ? "Frais annexe retiré" : "Frais annexe encaissé",
-    `${nomEleve} · ${label}${montantJournal>0?` · ${fmt(montantJournal)}`:""}`,
-  );
+  const detailFrais = `${nomEleve} · ${label}${montantJournal>0?` · ${fmt(montantJournal)}`:""}`;
+  if(retrait) logAction?.(actionRetrait(retrait), detailRetrait(detailFrais, retrait));
+  else logAction?.(valeurActuelle ? "Frais annexe retiré" : "Frais annexe encaissé", detailFrais);
   // Grand livre : l'inscription et les frais annexes sont des encaissements
   // au même titre que les mensualités. `mois` porte l'id du frais. Rien
   // d'encaissé (dispense) : aucune ligne.
@@ -91,7 +106,7 @@ export async function toggleFraisAnnexe(_id, opts, {
     montant: montantJournal,
     auteur,
   };
-  await journaliser(ajPaiement, valeurActuelle ? ecritureAnnulation(params) : ecritureEncaissement(params), toast);
+  await journaliser(ajPaiement, valeurActuelle ? ecritureAnnulation({ ...params, ...retrait }) : ecritureEncaissement(params), toast);
 }
 
 // Toggle de mensualité d'un élève (Payé/Impayé) avec push parent.
@@ -116,12 +131,22 @@ export async function toggleMens(_id, mois, mensActuels, mensDatesActuels, nomEl
   const du = Number.isFinite(Number(montantMois)) ? Number(montantMois) : null;
   const acompte = Math.max(0, Number(mensAcomptesActuels?.[mois]) || 0);
   const reste = du===null ? null : Math.max(0, du - acompte);
-  const msg = estPaye
-    ? `Décocher ${mois} et marquer comme impayé pour ${nomEleve||""} ?`
-    : acompte>0 && reste!==null
+  // Décocher : motif (erreur de saisie / remboursement) + explication,
+  // conservés au journal. Cocher : simple confirmation.
+  const montantRetire = estPaye ? (mensMontantsActuels?.[mois] ?? du ?? 0) : 0;
+  let retrait = null;
+  if(estPaye){
+    retrait = await demanderMotifAnnulation({
+      titre: `Décocher ${mois}`,
+      message: `${nomEleve||"Élève"} · ${mois}${montantRetire>0?` · ${fmt(montantRetire)}`:""}`,
+    });
+    if(!retrait) return;
+  } else {
+    const msg = acompte>0 && reste!==null
       ? `Solder ${mois} pour ${nomEleve||""} : reste ${fmt(reste)} (acompte de ${fmt(acompte)} déjà versé) ?`
       : `Marquer ${mois} comme payé pour ${nomEleve||""} ?`;
-  if(!confirm(msg)) return;
+    if(!confirm(msg)) return;
+  }
   mens[mois]=estPaye?"Impayé":"Payé";
   const mensDates={...(mensDatesActuels||{})};
   const mensMontants={...(mensMontantsActuels||{})};
@@ -140,10 +165,8 @@ export async function toggleMens(_id, mois, mensActuels, mensDatesActuels, nomEl
   // trace (élève, mois, montant) — cœur de la promesse de traçabilité.
   const montantEncaisse = reste ?? 0;
   const montantJournal = !estPaye && montantEncaisse > 0 ? ` · ${fmt(montantEncaisse)}` : "";
-  logAction?.(
-    estPaye ? "Mensualité décochée (impayé)" : "Mensualité encaissée",
-    `${nomEleve||"Élève"} · ${mois}${montantJournal}`,
-  );
+  if(retrait) logAction?.(actionRetrait(retrait), detailRetrait(`${nomEleve||"Élève"} · ${mois} · ${fmt(montantRetire)}`, retrait));
+  else logAction?.("Mensualité encaissée", `${nomEleve||"Élève"} · ${mois}${montantJournal}`);
   // Grand livre : le décochage n'efface pas la ligne d'encaissement, il ajoute
   // une contre-passation. C'est ce qui permet à la caisse de rester juste et à
   // l'historique de survivre à la clôture d'année. Solder un mois entamé
@@ -154,12 +177,16 @@ export async function toggleMens(_id, mois, mensActuels, mensDatesActuels, nomEl
     type: "mensualite",
     mois,
     libelle: !estPaye && acompte>0 ? `${mois} (solde)` : mois,
-    montant: estPaye ? (mensMontantsActuels?.[mois] ?? du ?? 0) : montantEncaisse,
+    montant: estPaye ? montantRetire : montantEncaisse,
     auteur,
   };
-  await journaliser(ajPaiement, estPaye ? ecritureAnnulation(params) : ecritureEncaissement(params), toast);
+  await journaliser(ajPaiement, estPaye ? ecritureAnnulation({ ...params, ...retrait }) : ecritureEncaissement(params), toast);
   if(!estPaye){
     envoyerPush(["parent"],"✅ Paiement enregistré",`Mensualité ${mois} de ${nomEleve||"votre enfant"} confirmée.`,"/paiements");
+  } else if(retrait.motif === "erreur_saisie"){
+    // Le parent a pu recevoir « Paiement enregistré » : on rectifie, sans
+    // l'alarmer d'un « rappel de paiement ».
+    envoyerPush(["parent"],"ℹ️ Rectification",`Le paiement de la mensualité ${mois} de ${nomEleve||"votre enfant"} avait été enregistré par erreur ; il a été corrigé.`,"/paiements");
   } else {
     envoyerPush(["parent"],"⚠️ Rappel de paiement",`La mensualité ${mois} de ${nomEleve||"votre enfant"} est marquée impayée.`,"/paiements");
   }
@@ -212,14 +239,19 @@ export async function retirerAcompte(_id, { type, cle, label, nomEleve = "", ele
   }
   const { champs, montant } = champsRetraitAcompte(eleve || {}, { type, cle });
   if(!(montant>0)) return false;
-  if(!confirm(`Annuler l'acompte de ${fmt(montant)} (${label}) pour ${nomEleve} ?`)) return false;
+  const retrait = await demanderMotifAnnulation({
+    titre: "Annuler un acompte",
+    message: `${nomEleve} · ${label} · acompte de ${fmt(montant)}`,
+  });
+  if(!retrait) return false;
   await modEleves(_id, champs);
-  logAction?.("Acompte annulé", `${nomEleve} · ${label} · ${fmt(montant)}`);
+  logAction?.(actionRetrait(retrait), detailRetrait(`${nomEleve} · ${label} (acompte) · ${fmt(montant)}`, retrait));
   await journaliser(ajPaiement, ecritureAnnulation({
     annee, eleve: eleve || { _id, nom: nomEleve },
     type: type === "mois" ? "mensualite" : type === "inscription" ? "inscription" : "frais",
     mois: type === "inscription" ? "inscription" : cle,
     libelle: `${label} (acompte)`, montant, auteur,
+    ...retrait,
   }), toast);
   return true;
 }
