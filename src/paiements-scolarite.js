@@ -204,8 +204,10 @@ export function champsRetraitAcompte(eleve = {}, { type, cle } = {}) {
 
 // ── Versement complet ───────────────────────────────────────────────────────
 // `cible` :
-//   { type: "mois", mois: [...] }                  — mensualités (toute l'année
-//                                                    ou les mois d'une tranche)
+//   { type: "mois", mois: [...], inscription? }    — mensualités (toute l'année
+//                                                    ou les mois d'une tranche) ;
+//                                                    `inscription` { label, duNet }
+//                                                    = inscription à solder d'abord
 //   { type: "poste", poste, label, duNet }         — inscription ou frais
 // Renvoie { ok: true, champs, lignes, total, moisSoldes } — `lignes` pour le
 // journal (une par mois ou poste touché) — ou { ok: false, raison, reste }.
@@ -215,38 +217,53 @@ export function planVersement({ eleve = {}, cible, montant, date = "", mensualit
   if (!cible) return { ok: false, raison: "cible", reste: 0 };
   if (cible.type === "mois") {
     const etats = etatsMois(eleve, cible.mois || [], mensualite, annee);
-    const reste = etats.reduce((s, e) => s + e.reste, 0);
+    // Inscription pas encore soldée (cible.inscription) : le versement la
+    // règle d'abord, le reliquat seul part sur les mois.
+    const ins = cible.inscription;
+    const resteIns = ins ? Math.max(0, entier(ins.duNet) - acompteInscription(eleve)) : 0;
+    const reste = etats.reduce((s, e) => s + e.reste, 0) + resteIns;
     if (somme <= 0) return { ok: false, raison: "montant", reste };
     if (somme > reste) return { ok: false, raison: "depasse", reste };
-    const { affectations } = repartirSurMois(etats, somme);
+    const partIns = Math.min(somme, resteIns);
+    const versementIns = partIns > 0 ? champsVersementPoste(eleve, "inscription", partIns, ins.duNet, date) : null;
+    const { affectations } = repartirSurMois(etats, somme - partIns);
     return {
       ok: true,
       total: somme,
       affectations,
       moisSoldes: affectations.filter((a) => a.solde).map((a) => a.mois),
-      champs: champsVersementMois(eleve, affectations, date),
-      lignes: affectations.map((a) => ({
-        type: "mensualite", mois: a.mois, libelle: libelleAffectation(a), montant: a.montant, solde: a.solde,
-      })),
+      champs: { ...champsVersementMois(eleve, affectations, date), ...(versementIns?.champs || {}) },
+      lignes: [
+        ...(versementIns ? [lignePoste(eleve, "inscription", ins.label || "Inscription", versementIns)] : []),
+        ...affectations.map((a) => ({
+          type: "mensualite", mois: a.mois, libelle: libelleAffectation(a), montant: a.montant, solde: a.solde,
+        })),
+      ],
     };
   }
   const { poste, label = poste, duNet = 0 } = cible;
   const reste = Math.max(0, entier(duNet) - acomptePoste(eleve, poste));
   if (somme <= 0) return { ok: false, raison: "montant", reste };
   if (somme > reste) return { ok: false, raison: "depasse", reste };
-  const { champs, part, solde } = champsVersementPoste(eleve, poste, somme, duNet, date);
-  const deja = acomptePoste(eleve, poste);
+  const versement = champsVersementPoste(eleve, poste, somme, duNet, date);
   return {
     ok: true,
-    total: part,
+    total: versement.part,
     moisSoldes: [],
-    champs,
-    lignes: [{
-      type: poste === "inscription" ? "inscription" : "frais",
-      mois: poste,
-      libelle: !solde ? `${label} (acompte)` : deja > 0 ? `${label} (solde)` : label,
-      montant: part,
-      solde,
-    }],
+    champs: versement.champs,
+    lignes: [lignePoste(eleve, poste, label, versement)],
   };
 }
+
+// Ligne de journal et de reçu pour un versement sur un poste ponctuel.
+function lignePoste(eleve, poste, label, { part, solde }) {
+  const deja = acomptePoste(eleve, poste);
+  return {
+    type: poste === "inscription" ? "inscription" : "frais",
+    mois: poste,
+    libelle: !solde ? `${label} (acompte)` : deja > 0 ? `${label} (solde)` : label,
+    montant: part,
+    solde,
+  };
+}
+

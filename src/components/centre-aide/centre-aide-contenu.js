@@ -148,7 +148,7 @@ export const ARTICLES = [
     etapes: [
       "Comptabilité → Mensualités : bouton 💰 sur la ligne de l'élève (colonne « Reçu »).",
       "Choisissez ce qu'il paie : les mensualités, une tranche, l'inscription ou un frais (cantine, révision…). Chaque choix affiche son reste à payer.",
-      "Saisissez le montant versé. Pour les mensualités, il paie d'abord le dernier mois de l'année, puis les mois du 1er au suivant ; ce qui ne suffit pas à solder un mois devient un acompte (case ◐).",
+      "Saisissez le montant versé. Pour les mensualités, il règle d'abord l'inscription (ou la réinscription) si elle n'est pas soldée, puis le dernier mois de l'année, puis les mois du 1er au suivant ; ce qui ne suffit pas à solder un mois devient un acompte (case ◐).",
       "Vérifiez l'aperçu, cliquez « Encaisser », puis imprimez le reçu : il détaille le versement du jour et le reste à payer.",
       "Un clic sur une case ◐ (ou sur un frais entamé) encaisse le reste. Un acompte saisi par erreur s'annule depuis la même fenêtre (verrou administrateur).",
     ],

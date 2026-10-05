@@ -221,3 +221,30 @@ test("un montant libre solde le dernier mois puis repart du 1er", () => {
     ["Novembre (solde)", 80000], ["Décembre", 110000],
   ]);
 });
+
+// ── Inscription due : réglée avant les mois ───────────────────────────────
+test("un montant libre règle d'abord l'inscription, puis les mois", () => {
+  const cible = { type: "mois", mois: ordreEncaissement(MOIS), inscription: { label: "Réinscription", duNet: 45000 } };
+  const plan = planVersement({ eleve: eleve(), cible, montant: 200000, date: "05/10/2026", mensualite: 110000 });
+  assert.equal(plan.ok, true);
+  assert.deepEqual(plan.lignes.map((l) => [l.type, l.libelle, l.montant]), [
+    ["inscription", "Réinscription", 45000], ["mensualite", "Juin", 110000], ["mensualite", "Octobre (acompte)", 45000],
+  ]);
+  assert.equal(plan.champs.inscriptionPayee, true);
+  assert.equal(plan.champs.inscriptionMontant, 45000);
+  assert.deepEqual(plan.champs.mens, { Juin: "Payé" });
+  assert.deepEqual(plan.champs.mensAcomptes, { Octobre: 45000 });
+  // Le plafond inclut l'inscription.
+  assert.equal(planVersement({ eleve: eleve(), cible, montant: 9 * 110000 + 45001, mensualite: 110000 }).raison, "depasse");
+});
+
+test("montant inférieur à l'inscription : acompte d'inscription, aucun mois touché", () => {
+  const cible = { type: "mois", mois: ordreEncaissement(MOIS), inscription: { label: "Inscription", duNet: 45000 } };
+  const plan = planVersement({ eleve: eleve({ inscriptionAcompte: 5000 }), cible, montant: 30000, mensualite: 110000 });
+  assert.deepEqual(plan.lignes.map((l) => [l.libelle, l.montant]), [["Inscription (acompte)", 30000]]);
+  assert.equal(plan.champs.inscriptionAcompte, 35000);
+  assert.deepEqual(plan.moisSoldes, []);
+  // Le reste de l'inscription (10 000) est soldé avant de passer aux mois.
+  const suite = planVersement({ eleve: eleve({ inscriptionAcompte: 35000 }), cible, montant: 120000, mensualite: 110000 });
+  assert.deepEqual(suite.lignes.map((l) => [l.libelle, l.montant]), [["Inscription (solde)", 10000], ["Juin", 110000]]);
+});
