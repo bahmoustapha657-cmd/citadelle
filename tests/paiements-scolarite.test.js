@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   champsRetraitAcompte,
   etatsMois,
+  ordreEncaissement,
   periodeTranche,
   planVersement,
   proposerTranches,
@@ -199,4 +200,24 @@ test("élève parti : seuls les mois entamés avant le départ se paient ; un ac
   const snap = getEleveMensualiteSnapshot(avecAcompte, MOIS, TARIFS, "2026-2027");
   assert.equal(snap.montantMensualitesPercu, 30000);
   assert.equal(snap.soldeMensualites, 2 * 110000);
+});
+
+// ── Ordre d'encaissement : dernier mois d'abord, puis du 1er au suivant ────
+test("ordreEncaissement place le dernier mois en tête", () => {
+  assert.deepEqual(ordreEncaissement(MOIS), ["Juin", "Octobre", "Novembre", "Décembre", "Janvier", "Février", "Mars", "Avril", "Mai"]);
+  assert.deepEqual(ordreEncaissement(["Octobre"]), ["Octobre"]);
+  assert.deepEqual(ordreEncaissement([]), []);
+});
+
+test("un montant libre solde le dernier mois puis repart du 1er", () => {
+  const cible = { type: "mois", mois: ordreEncaissement(MOIS) };
+  const plan = planVersement({ eleve: eleve(), cible, montant: 250000, mensualite: 110000 });
+  assert.deepEqual(plan.lignes.map((l) => [l.libelle, l.montant]), [
+    ["Juin", 110000], ["Octobre", 110000], ["Novembre (acompte)", 30000],
+  ]);
+  // Dernier mois déjà payé : on reprend au 1er mois impayé.
+  const suite = planVersement({ eleve: appliquer(eleve(), plan), cible, montant: 190000, mensualite: 110000 });
+  assert.deepEqual(suite.lignes.map((l) => [l.libelle, l.montant]), [
+    ["Novembre (solde)", 80000], ["Décembre", 110000],
+  ]);
 });
