@@ -9,6 +9,9 @@ import { ImportEnrolModale } from "./enrolment/ImportEnrolModale";
 import { EnrolPlanAlerte } from "./enrolment/EnrolPlanAlerte";
 import { EnrolToolbar } from "./enrolment/EnrolToolbar";
 import { EnrolTable } from "./enrolment/EnrolTable";
+import { TriElevesSelect } from "../TriElevesSelect";
+import { useTriEleves } from "../use-tri-eleves";
+import { trierEleves } from "../../tri-eleves";
 
 export function EnrolmentTab({
   form, setForm, modal, setModal, canCreate, canEdit, canCreateParent = false,
@@ -25,6 +28,7 @@ export function EnrolmentTab({
   const [afficherDeparts, setAfficherDeparts] = useState(false);
   // Filtre de rentrée : « qui n'a pas encore réglé son inscription ? ».
   const [filtreReinscription, setFiltreReinscription] = useState("all");
+  const [tri, setTri] = useTriEleves("enrolement");
 
   // Cycle affiché : le choix s'il est ouvert dans l'école, sinon la première
   // section ouverte — une école sans collège ne s'ouvre pas sur une liste vide.
@@ -47,9 +51,9 @@ export function EnrolmentTab({
     .sort((a, b) => String(a).localeCompare(String(b), "fr", { numeric: true }));
   const dansClasse = (e) => classeEnrol === "all" || e.classe === classeEnrol;
   const elevesClasse = elevesPresents.filter(dansClasse);
-  const elevesAffiches = filtreReinscription === "all" ? elevesClasse
+  const elevesAffiches = trierEleves(filtreReinscription === "all" ? elevesClasse
     : filtreReinscription === "a_reinscrire" ? elevesClasse.filter(aReinscrire)
-      : elevesClasse.filter(estReinscrit);
+      : elevesClasse.filter(estReinscrit), tri, { moisAnnee, tarifsClasses, annee: schoolInfo?.anneeScolaire || getAnnee() });
   // Compteurs de la sélection courante (cycle + classe), affichés dans la
   // barre d'outils : c'est l'indicateur de rentrée de la direction.
   const nbAReinscrire = elevesClasse.filter(aReinscrire).length;
@@ -68,6 +72,7 @@ export function EnrolmentTab({
         elevesC={presents(elevesC)} elevesL={presents(elevesL)} elevesP={presents(elevesP)} elevesPre={presents(elevesPre)} canCreate={canCreate}
         elevesEnrol={elevesEnrol} elevesPresents={elevesPresents} schoolInfo={schoolInfo} setForm={setForm} setModal={setModal}
         filtreReinscription={filtreReinscription} setFiltreReinscription={setFiltreReinscription}
+        tri={tri} setTri={setTri}
         nbAReinscrire={nbAReinscrire} nbSelection={elevesClasse.length}
         totalAReinscrire={elevesClasse.filter(aReinscrire)
           .reduce((s, e) => s + (getTarifInscriptionEleve ? getTarifInscriptionEleve(e) : 0), 0)}

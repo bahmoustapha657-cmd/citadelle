@@ -1,8 +1,11 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { C, getAnnee, getSectionLabel, isSectionActive } from "../../constants";
 import { Btn } from "../ui";
 import { TarifsClasses } from "../TarifsClasses";
+import { TriElevesSelect } from "../TriElevesSelect";
+import { useTriEleves } from "../use-tri-eleves";
+import { trierEleves } from "../../tri-eleves";
 import { AlertesCritiques } from "./mensualites-tab/AlertesCritiques";
 import { EncaisserModale } from "./mensualites-tab/EncaisserModale";
 import { ExonerationsModale } from "./mensualites-tab/ExonerationsModale";
@@ -58,6 +61,13 @@ export function MensualitesTab({
   // l'état à jour.
   const [encaisseId, setEncaisseId] = useState(null);
   const eleveEncaisse = encaisseId ? eleves.find((e) => e._id === encaisseId) : null;
+  // Tri choisi (alphabétique, reste à payer, dernier paiement…), posé sur
+  // l'ordre alphabétique de l'école.
+  const [tri, setTri] = useTriEleves("mensualites");
+  const elevesTries = useMemo(
+    () => trierEleves(elevesFiltres, tri, { moisAnnee, tarifsClasses, annee: anneeScolarite }),
+    [elevesFiltres, tri, moisAnnee, tarifsClasses, anneeScolarite],
+  );
   return (
     <div>
       <TarifsClasses
@@ -100,6 +110,7 @@ export function MensualitesTab({
         </select>}
         {/* Élèves dispensés de payer : la Direction les accorde, la
             comptabilité les consulte (cf. exoneration-actions). */}
+        <TriElevesSelect liste="mensualites" value={tri} onChange={setTri} />
         <Btn sm v="ghost" onClick={() => setExonerations(true)}>🎓 Dispenses</Btn>
       </div>
 
@@ -121,7 +132,7 @@ export function MensualitesTab({
 
       <MensualitesTable
         eleves={eleves}
-        elevesFiltres={elevesFiltres}
+        elevesFiltres={elevesTries}
         moisAnnee={moisAnnee}
         annee={anneeScolarite}
         tarifsClasses={tarifsClasses}

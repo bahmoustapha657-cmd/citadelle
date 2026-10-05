@@ -1,6 +1,7 @@
 import { C, fmt, genererMatricule, isSectionActive } from "../../../constants";
 import { Btn } from "../../ui";
 import { imprimerListeClasse } from "../../../reports";
+import { TriElevesSelect } from "../../TriElevesSelect";
 
 // Barre d'outils de l'enrôlement : titre + compteur de plan, sélecteur de
 // niveau, filtre classe + impression de la liste de classe, bascule Départs
@@ -12,6 +13,7 @@ export function EnrolToolbar({
   canCreate, elevesEnrol, elevesPresents = elevesEnrol, schoolInfo, setForm, setModal,
   filtreReinscription = "all", setFiltreReinscription = () => {},
   nbAReinscrire = 0, nbSelection = 0, totalAReinscrire = 0, onEncaisserInscriptions,
+  tri = "alpha", setTri = () => {},
 }) {
   return (
     <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,flexWrap:"wrap"}}>
@@ -53,6 +55,7 @@ export function EnrolToolbar({
           <option value="reinscrits">Réinscrits ({Math.max(0, nbSelection - nbAReinscrire)})</option>
         </select>
       )}
+      {!afficherDeparts&&<TriElevesSelect liste="enrolement" value={tri} onChange={setTri}/>}
       {/* Encaissement groupé. Le libellé annonce le MONTANT : c'est de
           l'argent déclaré reçu, pas une simple case à cocher. */}
       {!afficherDeparts&&canCreate&&nbAReinscrire>0&&onEncaisserInscriptions&&(
