@@ -6,14 +6,15 @@ import {
   getTarifInscriptionForEleve, getTarifMensuelForClasse, montantDuInscription,
 } from "../../../mensualite-utils";
 import { partiAvantAnnee } from "../../../depart-utils";
-import { etatsMois, periodeTranche, planVersement } from "../../../paiements-scolarite";
+import { etatsMois, ordreEncaissement, periodeTranche, planVersement } from "../../../paiements-scolarite";
 import { getRecuFormat, labelRecuFormat } from "./recu-format";
 import { imprimerRecuEleve } from "./recu-eleve";
 
 const aujourdhui = () => new Date().toLocaleDateString("fr-FR");
 
 // Ce qu'un versement peut payer, avec le reste dû de chaque cible :
-// les mensualités (du plus ancien mois), chaque tranche, l'inscription et
+// les mensualités (dernier mois d'abord, puis du 1er au suivant — cf.
+// ordreEncaissement), chaque tranche, l'inscription et
 // chaque frais annexe pas encore soldé. Élève parti : seuls les mois entamés
 // avant son départ, et rien d'une année qu'il n'a pas fréquentée.
 function ciblesVersement({ eleve, moisAnnee, annee, tarifsClasses, tranches }) {
@@ -22,8 +23,8 @@ function ciblesVersement({ eleve, moisAnnee, annee, tarifsClasses, tranches }) {
   const rienDu = partiAvantAnnee(eleve, moisAnnee, annee);
   const resteDe = (mois) => etats.filter((e) => mois.includes(e.mois)).reduce((s, e) => s + e.reste, 0);
   const cibles = [{
-    cle: "mois", type: "mois", label: "Mensualités", detail: "à partir du plus ancien mois impayé",
-    mois: moisAnnee, reste: resteDe(moisAnnee),
+    cle: "mois", type: "mois", label: "Mensualités", detail: `${moisAnnee[moisAnnee.length - 1] || ""} d'abord, puis à partir du 1er mois impayé`,
+    mois: ordreEncaissement(moisAnnee), reste: resteDe(moisAnnee),
   }];
   tranches.forEach((t, i) => cibles.push({
     cle: `tranche-${i}`, type: "mois", label: t.nom, detail: periodeTranche(t), mois: t.mois, reste: resteDe(t.mois),
@@ -47,7 +48,10 @@ function ciblesVersement({ eleve, moisAnnee, annee, tarifsClasses, tranches }) {
 // cas le plus courant), tout le reste pour une tranche ou un frais.
 function montantPropose(cible, etats) {
   if (!cible) return "";
-  if (cible.cle === "mois") return String(etats.find((e) => e.reste > 0)?.reste || "");
+  if (cible.cle === "mois") {
+    const prochain = cible.mois.map((m) => etats.find((e) => e.mois === m)).find((e) => e?.reste > 0);
+    return String(prochain?.reste || "");
+  }
   return cible.reste > 0 ? String(cible.reste) : "";
 }
 

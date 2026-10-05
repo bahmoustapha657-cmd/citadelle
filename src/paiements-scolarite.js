@@ -8,8 +8,8 @@
 // payment-actions applique, les tests vérifient.
 //
 // Règles :
-//  • un montant libre paie les mois dans l'ordre de l'année, du plus ancien
-//    au plus récent ; ce qui ne suffit pas à solder un mois devient un
+//  • un montant libre paie les mois dans l'ordre d'encaissement : le dernier
+//    mois de l'année d'abord, puis du 1er au suivant ; ce qui ne suffit pas à solder un mois devient un
 //    ACOMPTE sur ce mois (mensAcomptes) — même chose pour un frais
 //    (fraisAcomptes) ou l'inscription (inscriptionAcompte) ;
 //  • le dû s'entend après dispense : c'est ce que le parent paie réellement ;
@@ -98,6 +98,13 @@ export function etatsMois(eleve = {}, moisAnnee = [], mensualite = 0, annee) {
     return { mois, statut, du, verse: acompte, reste };
   });
 }
+
+// Ordre d'encaissement des mensualités : l'usage des écoles est de faire
+// payer le DERNIER mois de l'année en premier (garantie de fin d'année),
+// puis le 1er, le 2e… jusqu'à l'avant-dernier.
+export const ordreEncaissement = (moisAnnee = []) => (
+  moisAnnee.length > 1 ? [moisAnnee[moisAnnee.length - 1], ...moisAnnee.slice(0, -1)] : [...moisAnnee]
+);
 
 // Répartit `montant` sur les mois dans l'ordre donné : chaque mois est soldé
 // tant que le montant suffit, le reliquat devient un acompte sur le suivant.
