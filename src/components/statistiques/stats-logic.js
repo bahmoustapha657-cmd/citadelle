@@ -9,6 +9,7 @@
 import { CATALOGUE_FRAIS_ANNEXES, getFraisAnnexeLabel, aReinscrire, estReinscrit, estSorti, isFraisAnnexePaye } from "../../constants";
 import { concerneParAnnee, getEleveSolde, getMensualiteOverview, getTarifMensuelForClasse } from "../../mensualite-utils";
 import { notesDeLEleve } from "../../note-index";
+import { lignesNeutralisees } from "../comptabilite/paiements-journal";
 
 const parCle = (liste, cle) => liste.reduce((acc, item) => {
   const k = cle(item) || "—";
@@ -100,8 +101,10 @@ export function statsFinances(eleves = [], moisAnnee = [], tarifsClasses = [], p
   // Encaissements par mois : le journal fait foi quand il existe, sinon on
   // retombe sur les dates portées par les fiches (paiements antérieurs).
   const parMois = {};
+  // Case cochée par erreur puis corrigée : cet encaissement n'a jamais eu lieu.
+  const neutres = lignesNeutralisees(paiements);
   for (const p of paiements) {
-    if (p.statut === "annule") continue;
+    if (p.statut === "annule" || neutres.has(p._id)) continue;
     const m = String(p.date || "").slice(0, 7); // AAAA-MM
     if (!m) continue;
     parMois[m] = (parMois[m] || 0) + (Number(p.montant) || 0);

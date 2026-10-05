@@ -52,11 +52,63 @@ export function ecritureEncaissement({
   };
 }
 
+// Motif d'une annulation, choisi au décochage :
+//   • erreur_saisie : la case a été cochée par erreur, AUCUN argent n'est
+//     entré — la caisse neutralise l'encaissement et sa correction (ni
+//     entrée ni sortie), la trace reste au journal ;
+//   • remboursement : l'argent a réellement été rendu — c'est une sortie.
+// Une annulation sans motif (antérieure à ce choix) reste une sortie.
+export const MOTIFS_ANNULATION = {
+  erreur_saisie: "Erreur de saisie",
+  remboursement: "Remboursement",
+};
+
 // Contre-passation : même désignation, statut « annule ». Le montant reste
 // positif ; c'est le statut qui porte le sens (un montant négatif se prête
-// mal aux sommes de contrôle).
-export function ecritureAnnulation(params) {
-  return { ...ecritureEncaissement(params), statut: "annule" };
+// mal aux sommes de contrôle). `motif` et `explication` partent dans la
+// colonne extra du journal.
+export function ecritureAnnulation({ motif = "", explication = "", ...params }) {
+  return {
+    ...ecritureEncaissement(params),
+    statut: "annule",
+    ...(motif ? { motif } : {}),
+    ...(explication ? { explication: String(explication).trim() } : {}),
+  };
+}
+
+// Paires « encaissement + correction d'erreur de saisie » : chaque annulation
+// motivée « erreur_saisie » neutralise les encaissements les plus récents de
+// la même clé (même élève, même mois ou frais), antérieurs à elle et pas déjà
+// neutralisés, dont la somme égale son montant — un mois payé en une fois,
+// ou un acompte puis son solde. Renvoie l'ensemble des _id neutralisés
+// (encaissements et corrections). Une correction sans contrepartie exacte
+// (paiement d'avant le journal, montants divergents) n'est pas appariée.
+export function lignesNeutralisees(lignes = []) {
+  const neutres = new Set();
+  const ordre = (l) => l.createdAt || 0;
+  const corrections = lignes
+    .filter((l) => l.statut === "annule" && l.motif === "erreur_saisie")
+    .sort((a, b) => ordre(a) - ordre(b));
+  for (const corr of corrections) {
+    const cle = clePaiement(corr);
+    const candidats = lignes
+      .filter((l) => l.statut !== "annule" && !neutres.has(l._id) && clePaiement(l) === cle
+        && (!corr.createdAt || !l.createdAt || l.createdAt <= corr.createdAt))
+      .sort((a, b) => ordre(b) - ordre(a));
+    const cible = Number(corr.montant) || 0;
+    const pris = [];
+    let somme = 0;
+    for (const l of candidats) {
+      if (somme >= cible) break;
+      pris.push(l);
+      somme += Number(l.montant) || 0;
+    }
+    if (cible > 0 && somme === cible) {
+      neutres.add(corr._id);
+      pris.forEach((l) => neutres.add(l._id));
+    }
+  }
+  return neutres;
 }
 
 // Solde d'un mouvement au journal : +1 encaissement, −1 annulation.
@@ -78,25 +130,35 @@ export function etatNetParCle(lignes = []) {
 }
 
 // Lignes du journal → mouvements de caisse (même forme que ceux reconstitués
-// depuis les fiches élèves). Une annulation devient une SORTIE : la caisse
-// doit voir l'argent ressortir, sinon le solde du jour est faux.
+// depuis les fiches élèves). Une annulation (remboursement, ou ancienne
+// annulation sans motif) devient une SORTIE : la caisse doit voir l'argent
+// ressortir. Une erreur de saisie corrigée n'est NI une entrée NI une
+// sortie : l'encaissement et sa correction restent visibles, en sens
+// « neutre », hors des totaux. Sans contrepartie au journal, la correction
+// retire son montant des entrées (l'argent n'est jamais entré).
 export function mouvementsDepuisJournal(lignes = []) {
+  const neutres = lignesNeutralisees(lignes);
   return lignes.map((ligne) => {
     const annule = ligne.statut === "annule";
+    const erreur = annule && ligne.motif === "erreur_saisie";
+    const neutre = neutres.has(ligne._id);
+    const montant = Number(ligne.montant) || 0;
     const source = ligne.type === "inscription" ? "inscription"
       : ligne.type === "frais" ? "frais" : "scolarite";
+    const explication = ligne.explication ? `« ${ligne.explication} »` : "";
+    const libelleDetail = !annule
+      ? (neutre ? `${ligne.libelle} — annulé (erreur de saisie)` : ligne.libelle)
+      : erreur ? `Correction — ${ligne.libelle}`
+        : `${ligne.motif === "remboursement" ? "Remboursement" : "Annulation"} — ${ligne.libelle}`;
     return {
       id: `journal-${ligne._id}`,
       cle: clePaiement(ligne),
       dateBrute: ligne.date,
-      sens: annule ? "sortie" : "entree",
-      source: annule ? "annulation" : source,
+      sens: neutre ? "neutre" : erreur ? "entree" : annule ? "sortie" : "entree",
+      source: neutre || erreur ? "correction" : annule ? "annulation" : source,
       libelle: ligne.eleveNom || "Élève",
-      detail: [
-        annule ? `Annulation — ${ligne.libelle}` : ligne.libelle,
-        ligne.classe,
-      ].filter(Boolean).join(" · "),
-      montant: Number(ligne.montant) || 0,
+      detail: [libelleDetail, annule ? explication : "", ligne.classe].filter(Boolean).join(" · "),
+      montant: erreur && !neutre ? -montant : montant,
       auteur: ligne.auteur || "",
     };
   });

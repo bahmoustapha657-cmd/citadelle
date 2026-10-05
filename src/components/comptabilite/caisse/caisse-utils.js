@@ -103,7 +103,7 @@ export function libellePeriode(date, periode) {
 }
 
 // ── Collecte des mouvements ─────────────────────────────────────────────────
-// Un mouvement : { id, date, sens: "entree"|"sortie", source, libelle,
+// Un mouvement : { id, date, sens: "entree"|"sortie"|"neutre", source, libelle,
 //                  detail, montant }.
 // `source` sert au regroupement par nature (voir SOURCES).
 export const SOURCES = {
@@ -116,7 +116,10 @@ export const SOURCES = {
   // Fondation. Il SORT de la caisse — il était compté en entrée (« Dons &
   // versements ») et gonflait l'encaissé du jour du montant déposé.
   versement: { label: "Versements (banque / Fondation)", sens: "sortie", couleur: "#14b8a6" },
-  annulation: { label: "Annulations", sens: "sortie", couleur: "#f97316" },
+  annulation: { label: "Annulations / remboursements", sens: "sortie", couleur: "#f97316" },
+  // Case cochée par erreur puis décochée : la trace reste, l'argent n'a
+  // jamais bougé (cf. lignesNeutralisees dans paiements-journal).
+  correction: { label: "Erreurs de saisie corrigées", sens: "neutre", couleur: "#94a3b8" },
 };
 
 // Mouvements portés par les documents comptables (date déjà au format ISO).
@@ -236,9 +239,10 @@ export function totauxMouvements(mouvements = []) {
   let sorties = 0;
   for (const m of mouvements) {
     const montant = Number(m.montant) || 0;
-    if (m.sens === "sortie") sorties += montant; else entrees += montant;
+    // Neutre (erreur de saisie corrigée) : listé, hors des totaux.
+    if (m.sens === "sortie") sorties += montant; else if (m.sens === "entree") entrees += montant;
     const acc = parSource[m.source] || (parSource[m.source] = { montant: 0, nb: 0 });
-    acc.montant += montant;
+    if (m.sens !== "neutre") acc.montant += montant;
     acc.nb += 1;
   }
   return { entrees, sorties, solde: entrees - sorties, nb: mouvements.length, parSource };
@@ -258,7 +262,7 @@ export function serieParJour(mouvements, date, periode) {
     const jour = index.get(cleJour(m.date));
     if (!jour) continue;
     const montant = Number(m.montant) || 0;
-    if (m.sens === "sortie") jour.sorties += montant; else jour.entrees += montant;
+    if (m.sens === "sortie") jour.sorties += montant; else if (m.sens === "entree") jour.entrees += montant;
   }
   return jours;
 }
