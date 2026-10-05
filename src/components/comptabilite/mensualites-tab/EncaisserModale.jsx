@@ -13,29 +13,37 @@ import { imprimerRecuEleve } from "./recu-eleve";
 const aujourdhui = () => new Date().toLocaleDateString("fr-FR");
 
 // Ce qu'un versement peut payer, avec le reste dû de chaque cible :
-// les mensualités (dernier mois d'abord, puis du 1er au suivant — cf.
-// ordreEncaissement), chaque tranche, l'inscription et
-// chaque frais annexe pas encore soldé. Élève parti : seuls les mois entamés
-// avant son départ, et rien d'une année qu'il n'a pas fréquentée.
+// les mensualités (inscription d'abord si elle n'est pas soldée, puis le
+// dernier mois, puis du 1er au suivant — cf. ordreEncaissement), chaque
+// tranche, l'inscription et chaque frais annexe pas encore soldé. Élève
+// parti : seuls les mois entamés avant son départ, et rien d'une année qu'il
+// n'a pas fréquentée.
 function ciblesVersement({ eleve, moisAnnee, annee, tarifsClasses, tranches }) {
   const mensualite = getTarifMensuelForClasse(tarifsClasses, eleve.classe);
   const etats = etatsMois(eleve, moisAnnee, mensualite, annee);
   const rienDu = partiAvantAnnee(eleve, moisAnnee, annee);
   const resteDe = (mois) => etats.filter((e) => mois.includes(e.mois)).reduce((s, e) => s + e.reste, 0);
+  let inscription = null;
+  if (!eleve.inscriptionPayee && !rienDu) {
+    const duNet = montantDuInscription(eleve, getTarifInscriptionForEleve(eleve, tarifsClasses));
+    const reste = Math.max(0, duNet - acompteInscription(eleve));
+    const label = eleve.typeInscription === "Réinscription" ? "Réinscription" : "Inscription";
+    if (reste > 0) inscription = { label, duNet, reste };
+  }
+  const dernier = moisAnnee[moisAnnee.length - 1] || "";
   const cibles = [{
-    cle: "mois", type: "mois", label: "Mensualités", detail: `${moisAnnee[moisAnnee.length - 1] || ""} d'abord, puis à partir du 1er mois impayé`,
-    mois: ordreEncaissement(moisAnnee), reste: resteDe(moisAnnee),
+    cle: "mois", type: "mois", label: "Mensualités",
+    detail: inscription
+      ? `${inscription.label} d'abord, puis ${dernier}, puis à partir du 1er mois impayé`
+      : `${dernier} d'abord, puis à partir du 1er mois impayé`,
+    mois: ordreEncaissement(moisAnnee), inscription,
+    reste: resteDe(moisAnnee) + (inscription?.reste || 0),
   }];
   tranches.forEach((t, i) => cibles.push({
     cle: `tranche-${i}`, type: "mois", label: t.nom, detail: periodeTranche(t), mois: t.mois, reste: resteDe(t.mois),
   }));
-  if (!eleve.inscriptionPayee && !rienDu) {
-    const duNet = montantDuInscription(eleve, getTarifInscriptionForEleve(eleve, tarifsClasses));
-    cibles.push({
-      cle: "inscription", type: "poste", poste: "inscription",
-      label: eleve.typeInscription === "Réinscription" ? "Réinscription" : "Inscription",
-      duNet, reste: Math.max(0, duNet - acompteInscription(eleve)),
-    });
+  if (inscription) {
+    cibles.push({ cle: "inscription", type: "poste", poste: "inscription", label: inscription.label, duNet: inscription.duNet, reste: inscription.reste });
   }
   for (const frais of getFraisAnnexesEleve(eleve, getTarifConfigForClasse(tarifsClasses, eleve.classe))) {
     if (frais.paye || rienDu) continue;
@@ -44,13 +52,15 @@ function ciblesVersement({ eleve, moisAnnee, annee, tarifsClasses, tranches }) {
   return { cibles, etats, mensualite };
 }
 
-// Montant proposé en choisissant une cible : un mois pour les mensualités (le
-// cas le plus courant), tout le reste pour une tranche ou un frais.
+// Montant proposé en choisissant une cible : pour les mensualités, le reste
+// de l'inscription (si due) plus un mois — le cas le plus courant ; tout le
+// reste pour une tranche ou un frais.
 function montantPropose(cible, etats) {
   if (!cible) return "";
   if (cible.cle === "mois") {
     const prochain = cible.mois.map((m) => etats.find((e) => e.mois === m)).find((e) => e?.reste > 0);
-    return String(prochain?.reste || "");
+    const total = (cible.inscription?.reste || 0) + (prochain?.reste || 0);
+    return total > 0 ? String(total) : "";
   }
   return cible.reste > 0 ? String(cible.reste) : "";
 }
@@ -189,7 +199,8 @@ export function EncaisserModale({
             <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: "10px 12px", marginBottom: 12, background: "#f8fafc" }}>
               {plan.lignes.map((l) => {
                 const etat = l.type === "mensualite" ? etats.find((e) => e.mois === l.mois) : null;
-                const resteApres = etat ? etat.reste - l.montant : cible.reste - l.montant;
+                const resteAvant = etat ? etat.reste : l.type === "inscription" && cible.inscription ? cible.inscription.reste : cible.reste;
+                const resteApres = resteAvant - l.montant;
                 return (
                   <div key={`${l.type}-${l.mois}`} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 12.5, padding: "3px 0" }}>
                     <span style={{ fontWeight: 600 }}>{l.libelle}</span>
