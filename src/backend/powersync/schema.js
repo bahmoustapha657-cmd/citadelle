@@ -125,6 +125,22 @@ const tarifs = new Table(
   { indexes: { ecole: ["ecole_id"] } },
 );
 
+// Journal des encaissements : en AJOUT SEUL (cf. connector.js). Hors ligne,
+// l'encaissement s'écrivait sur la fiche élève (miroir local) mais sa ligne
+// de journal partait au réseau et se perdait — 345 mois encaissés sans trace
+// en deux jours dans une école. `created_at` est posé à la saisie (local-data)
+// : il ordonne encaissements et corrections (lignesNeutralisees), et doit
+// dater le geste, pas le retour du réseau.
+const paiements = new Table(
+  {
+    ecole_id: column.text, annee: column.text, type: column.text, statut: column.text,
+    eleve_id: column.text, eleve_nom: column.text, classe: column.text, mois: column.text,
+    libelle: column.text, montant: column.real, date_paiement: column.text,
+    auteur: column.text, extra: column.text, created_at: column.text,
+  },
+  { indexes: { scope: ["ecole_id", "annee"], eleve: ["eleve_id"] } },
+);
+
 // ── Modules « document » (contenu dans extra, cf. modules.sql) ──────────────
 const docCols = { ecole_id: column.text, extra: column.text };
 const docOpts = { indexes: { ecole: ["ecole_id"] } };
@@ -175,7 +191,7 @@ const ecoles = new Table({
 
 export const AppSchema = new Schema({
   eleves, notes, absences, classes, enseignants, matieres, emplois, enseignements, appreciations,
-  recettes, depenses, versements, bons, personnel, salaires, tarifs,
+  recettes, depenses, versements, bons, personnel, salaires, tarifs, paiements,
   evenements, examens, livrets, honneurs, annonces, membres, documents, historique, messages,
   comptes, postes, ecoles,
 });

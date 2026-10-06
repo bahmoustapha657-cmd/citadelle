@@ -16,10 +16,16 @@ export async function lireLocal(table, filtres) {
   return rows.map((r) => parseJsonCols(table, r));
 }
 
+// Tables dont l'ordre des lignes compte (journal des encaissements) : la date
+// de création est celle de la saisie, pas celle de l'envoi au serveur — un
+// encaissement fait hors ligne remonte parfois le lendemain.
+const HORODATEES = new Set(["paiements"]);
+
 export async function insererLocal(table, row) {
   const ps = getPowerSync();
   const id = crypto.randomUUID();
-  const complet = stringifyJsonCols(table, { ...row, id });
+  const horodatage = HORODATEES.has(table) && !row.created_at ? { created_at: new Date().toISOString() } : {};
+  const complet = stringifyJsonCols(table, { ...row, ...horodatage, id });
   const cols = Object.keys(complet);
   const sql = `INSERT INTO ${table} (${cols.join(", ")}) VALUES (${cols.map(() => "?").join(", ")})`;
   await ps.execute(sql, cols.map((c) => complet[c]));

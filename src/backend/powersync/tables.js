@@ -19,6 +19,9 @@ export const TABLES_HORS_LIGNE = new Set([
   // Comptabilité. `salaires` n'arrive qu'aux comptes du module compta : le
   // portail enseignant lit SES fiches sur le serveur (lecture `reseau`).
   "recettes", "depenses", "versements", "bons", "personnel", "salaires", "tarifs",
+  // Journal des encaissements (ajout seul) : un encaissement hors ligne doit
+  // garder sa ligne de caisse, comme la fiche élève garde son mois payé.
+  "paiements",
   // Modules « document » (calendrier, examens, messages, fondation, journal)
   "evenements", "examens", "livrets", "honneurs",
   "messages", "annonces", "membres", "documents", "historique",
@@ -54,7 +57,7 @@ const JSON_COLS = {
   eleves: ["extra"], classes: ["extra"], enseignants: ["extra"],
   matieres: ["extra"], emplois: ["extra"], enseignements: ["extra"],
   recettes: ["extra"], depenses: ["extra"], versements: ["extra"],
-  bons: ["extra"], personnel: ["extra"], tarifs: ["extra"],
+  bons: ["extra"], personnel: ["extra"], tarifs: ["extra"], paiements: ["extra"],
   salaires: ["details"],
   evenements: ["extra"], examens: ["extra"], livrets: ["extra"],
   honneurs: ["extra"], messages: ["extra"], annonces: ["extra"],
