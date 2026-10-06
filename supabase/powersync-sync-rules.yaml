@@ -20,14 +20,15 @@
 #     par powersync-perms.sql — les Parameter Queries ne lisent qu'UNE table,
 #     ni JOIN ni jsonb) :
 #       compta_data      → recettes, depenses, versements, bons, personnel,
-#                          salaires, tarifs        (perm_compta)
+#                          salaires, tarifs, paiements (perm_compta)
 #       calendrier_data  → evenements               (perm_calendrier)
 #       examens_data     → examens, livrets, honneurs (perm_examens)
 #       messages_data    → messages                 (perm_messages)
 #       fondation_data   → membres, documents       (perm_fondation)
 #       historique_data  → historique               (perm_historique)
 #       admin_data       → comptes                  (perm_admin_panel)
-#   • EXCLU : portail parent (vague ultérieure), paiements en ligne,
+#   • EXCLU : portail parent (vague ultérieure), paiements EN LIGNE (Kkiapay ;
+#     le JOURNAL des encaissements, lui, est dans compta_data),
 #     messagerie interne (messages_internes), push_subs, audit.
 #
 # Prérequis Supabase (une fois, SQL Editor) — ORDRE :
@@ -40,7 +41,9 @@
 #        notes, absences, appreciations, comptes, enseignant_classes,
 #        ecoles, annonces, postes, recettes, depenses, versements, bons,
 #        personnel, salaires, tarifs, evenements, examens, livrets,
-#        honneurs, messages, membres, documents, historique;
+#        honneurs, messages, membres, documents, historique, paiements;
+#      (base déjà en place : powersync-paiements.sql ajoute seulement
+#      `paiements` à la publication existante)
 #   3. Coller powersync-sync-rules.min.yaml dans le dashboard → Validate →
 #      Deploy.
 #
@@ -115,6 +118,7 @@ bucket_definitions:
       - SELECT * FROM personnel WHERE ecole_id = bucket.ecole_id
       - SELECT * FROM salaires WHERE ecole_id = bucket.ecole_id
       - SELECT * FROM tarifs WHERE ecole_id = bucket.ecole_id
+      - SELECT * FROM paiements WHERE ecole_id = bucket.ecole_id
 
   calendrier_data:
     priority: 3

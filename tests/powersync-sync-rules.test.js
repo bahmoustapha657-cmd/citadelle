@@ -65,7 +65,9 @@ test("contenu des buckets figé (un déplacement de table doit être délibéré
     school_data: ["eleves", "classes", "matieres", "enseignants", "emplois", "enseignements", "appreciations", "ecoles", "annonces", "postes"],
     teacher_notes: ["notes", "absences"],
     staff_notes: ["notes", "absences"],
-    compta_data: ["recettes", "depenses", "versements", "bons", "personnel", "salaires", "tarifs"],
+    // paiements (journal des encaissements) ajouté le 2026-10-06 : nouvelle
+    // table du miroir, aucune autre ne change de bucket.
+    compta_data: ["recettes", "depenses", "versements", "bons", "personnel", "salaires", "tarifs", "paiements"],
     calendrier_data: ["evenements"],
     examens_data: ["examens", "livrets", "honneurs"],
     messages_data: ["messages"],
