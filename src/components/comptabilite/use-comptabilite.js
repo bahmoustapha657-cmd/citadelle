@@ -4,7 +4,8 @@ import { hasWrite } from "../../../shared/postes-config.js";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { useFirestore } from "../../hooks/useFirestore";
 import { useAnneeConsultee } from "../../hooks/use-annee-consultee";
-import { majReglagesCompta, sauverParametresEcole } from "../../backend/data-supabase";
+import { lireVersionsDoc, majReglagesCompta, sauverParametresEcole } from "../../backend/data-supabase";
+import { isSupabase } from "../../backend";
 import {
   encaisserVersement as encaisserVersementAction,
   retirerAcompte as retirerAcompteAction,
@@ -146,6 +147,12 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
 
   const eleves = elevesParNiveau[niveau] || elevesC;
   const modEleves = modChampParNiveau[niveau] || modEC;
+  // Relecture de la fiche juste avant un encaissement (cf. fiche-a-jour) :
+  // même collection que modEleves.
+  const collectionParNiveau = { college: "elevesCollege", lycee: "elevesLycee", primaire: "elevesPrimaire", prescolaire: "elevesPrescolaire" };
+  const lireFiche = isSupabase
+    ? (id) => lireVersionsDoc(schoolId, collectionParNiveau[niveau] || "elevesCollege", id)
+    : null;
   // Grille des mensualités : les élèves qui relèvent de l'année consultée. Un
   // élève parti avant sa rentrée, sans rien d'encaissé, n'y a plus sa place —
   // il y traînait avec neuf mois « impayés » qu'il ne devait pas.
@@ -175,7 +182,7 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   const signature = auteur || userRole || "";
   const toggleFraisAnnexe = (_id, opts) => toggleFraisAnnexeAction(_id, opts, {
     readOnly, canCreate, canEdit, toast, modEleves, logAction,
-    ajPaiement, annee: anneeEcriture, auteur: signature,
+    ajPaiement, annee: anneeEcriture, auteur: signature, lireFiche,
     eleve: tousElevesScolarite.find((e) => e._id === _id) || null,
   });
   // Encaissement GROUPÉ des inscriptions (rentrée : réinscrire une classe).
@@ -222,7 +229,7 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
       montantMois: montantDuMois(eleve || {}, getTarifMensuelForClasse(tarifsClasses, eleve?.classe || "")),
       mensMontantsActuels: eleve?.mensMontants || null,
       mensAcomptesActuels: eleve?.mensAcomptes || null,
-      ajPaiement, annee: anneeEcriture, auteur: signature, eleve: eleve || null,
+      ajPaiement, annee: anneeEcriture, auteur: signature, eleve: eleve || null, lireFiche,
     });
   };
 
@@ -232,13 +239,13 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
     ...opts, eleve: opts.eleve || tousElevesScolarite.find((e) => e._id === _id) || null,
   }, {
     readOnly, canCreate, toast, modEleves, envoyerPush, logAction,
-    ajPaiement, annee: anneeEcriture, auteur: signature,
+    ajPaiement, annee: anneeEcriture, auteur: signature, lireFiche,
   });
   const retirerAcompte = (_id, opts) => retirerAcompteAction(_id, {
     ...opts, eleve: opts.eleve || tousElevesScolarite.find((e) => e._id === _id) || null,
   }, {
     readOnly, canEdit, toast, modEleves, logAction,
-    ajPaiement, annee: anneeEcriture, auteur: signature,
+    ajPaiement, annee: anneeEcriture, auteur: signature, lireFiche,
   });
 
   // Tranches de paiement : réglage d'école (ecoles.extra), donc modifiable par

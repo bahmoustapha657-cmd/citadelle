@@ -12,6 +12,7 @@ import { champsRetraitAcompte } from "../../paiements-scolarite";
 import { champsBasculeFrais } from "./frais-bascule";
 import { MOTIFS_ANNULATION, ecritureAnnulation, ecritureEncaissement } from "./paiements-journal";
 import { demanderMotifAnnulation } from "./motif-annulation";
+import { clePosteFrais, clePosteMois, conflitFiche, messageConflit } from "./fiche-a-jour";
 
 // Libellé de l'historique des actions pour un retrait motivé.
 const actionRetrait = ({ motif }) => (motif === "remboursement" ? "Paiement remboursé" : "Erreur de saisie corrigée");
@@ -37,6 +38,34 @@ async function journaliser(ajPaiement, ecriture, toast) {
   }
 }
 
+// Un seul encaissement à la fois par élève : deux clics rapprochés partaient
+// chacun de la même fiche, et le second effaçait le premier.
+const elevesEnCours = new Set();
+
+// Encadre l'écriture d'un paiement : verrou par élève, puis relecture de la
+// fiche (cf. fiche-a-jour). `ecrire` ne s'exécute que si la fiche affichée est
+// toujours à jour ; renvoie false sinon. `lireFiche(_id)` → versions relues
+// (absent : pas de relecture, ex. build Firebase).
+async function surFicheAJour(_id, { affichee, nomEleve, lireFiche, toast, retrait = null }, ecrire) {
+  if(elevesEnCours.has(_id)){
+    toast?.(`Un encaissement est déjà en cours pour ${nomEleve||"cet élève"} : patientez un instant.`,"warning");
+    return false;
+  }
+  elevesEnCours.add(_id);
+  try {
+    if(typeof lireFiche === "function" && affichee){
+      let versions = [];
+      try { versions = await lireFiche(_id); } catch (e) { console.warn("relecture de la fiche:", e); }
+      const ignores = conflitFiche(affichee, versions, { retrait });
+      if(ignores){ toast?.(messageConflit(nomEleve, ignores),"error"); return false; }
+    }
+    await ecrire();
+    return true;
+  } finally {
+    elevesEnCours.delete(_id);
+  }
+}
+
 // Marque un frais ponctuel comme payé/impayé sur un élève. `opts.poste` vaut
 // "inscription" ou l'id d'un frais du catalogue (autre, revision, uniforme…) ;
 // `opts.eleve` est la fiche affichée, dont on repart pour les cartes de frais
@@ -46,7 +75,7 @@ async function journaliser(ajPaiement, ecriture, toast) {
 // encaissement sans validation.
 export async function toggleFraisAnnexe(_id, opts, {
   readOnly, canCreate = false, canEdit, toast, modEleves, logAction,
-  ajPaiement = null, annee = "", auteur = "", eleve = null,
+  ajPaiement = null, annee = "", auteur = "", eleve = null, lireFiche = null,
 }) {
   // `confirmer:false` : la question a déjà été posée UNE fois pour tout un
   // lot (encaissement groupé des inscriptions). Sans cela, réinscrire une
@@ -88,7 +117,10 @@ export async function toggleFraisAnnexe(_id, opts, {
     });
     if(!retrait) return;
   } else if(confirmer && !confirm(message)) return;
-  await modEleves(_id, champs);
+  const ecrit = await surFicheAJour(_id, {
+    affichee: fiche, nomEleve, lireFiche, toast, retrait: valeurActuelle ? clePosteFrais(poste) : null,
+  }, () => modEleves(_id, champs));
+  if(!ecrit) return;
   // Journal d'audit : chaque encaissement/retrait de frais laisse une trace.
   const detailFrais = `${nomEleve} · ${label}${montantJournal>0?` · ${fmt(montantJournal)}`:""}`;
   if(retrait) logAction?.(actionRetrait(retrait), detailRetrait(detailFrais, retrait));
@@ -118,7 +150,7 @@ export async function toggleFraisAnnexe(_id, opts, {
 // acompte (mensAcomptes) se solde : seul le reste s'encaisse.
 export async function toggleMens(_id, mois, mensActuels, mensDatesActuels, nomEleve, {
   readOnly, canCreate = false, canEdit, toast, modEleves, envoyerPush, logAction, montantMois = null, mensMontantsActuels = null,
-  mensAcomptesActuels = null, ajPaiement = null, annee = "", auteur = "", eleve = null,
+  mensAcomptesActuels = null, ajPaiement = null, annee = "", auteur = "", eleve = null, lireFiche = null,
 }) {
   if(readOnly) return;
   if(!canCreate){ toast(MSG_ARCHIVE,"warning"); return; }
@@ -160,7 +192,13 @@ export async function toggleMens(_id, mois, mensActuels, mensDatesActuels, nomEl
     delete mensMontants[mois];
   }
   delete mensAcomptes[mois];
-  await modEleves(_id,{mens,mensDates,mensMontants,mensAcomptes});
+  // Fiche telle qu'affichée au moment du clic : c'est sur elle que l'on a
+  // calculé ce qui s'écrit.
+  const affichee = { ...(eleve || {}), mens: mensActuels || initMens(), mensAcomptes: mensAcomptesActuels || {} };
+  const ecrit = await surFicheAJour(_id, {
+    affichee, nomEleve, lireFiche, toast, retrait: estPaye ? clePosteMois(mois) : null,
+  }, () => modEleves(_id,{mens,mensDates,mensMontants,mensAcomptes}));
+  if(!ecrit) return;
   // Journal d'audit : chaque encaissement ET chaque décochage laisse une
   // trace (élève, mois, montant) — cœur de la promesse de traçabilité.
   const montantEncaisse = reste ?? 0;
@@ -203,12 +241,14 @@ export async function toggleMens(_id, mois, mensActuels, mensDatesActuels, nomEl
 // est prévenu quand des mois sont soldés. Renvoie true si c'est enregistré.
 export async function encaisserVersement(_id, { plan, nomEleve = "", eleve = null }, {
   readOnly, canCreate = false, toast, modEleves, envoyerPush, logAction,
-  ajPaiement = null, annee = "", auteur = "",
+  ajPaiement = null, annee = "", auteur = "", lireFiche = null,
 }) {
   if(readOnly) return false;
   if(!canCreate){ toast(MSG_ARCHIVE,"warning"); return false; }
   if(!plan?.ok || !plan.lignes?.length) return false;
-  await modEleves(_id, plan.champs);
+  // `eleve` : la fiche sur laquelle la fenêtre a calculé le plan.
+  const ecrit = await surFicheAJour(_id, { affichee: eleve, nomEleve, lireFiche, toast }, () => modEleves(_id, plan.champs));
+  if(!ecrit) return false;
   const detail = plan.lignes.map((l) => `${l.libelle} ${fmt(l.montant)}`).join(", ");
   logAction?.("Versement encaissé", `${nomEleve} · ${fmt(plan.total)} — ${detail}`);
   for (const ligne of plan.lignes) {
@@ -230,7 +270,7 @@ export async function encaisserVersement(_id, { plan, nomEleve = "", eleve = nul
 // contre-passation du montant.
 export async function retirerAcompte(_id, { type, cle, label, nomEleve = "", eleve = null }, {
   readOnly, canEdit, toast, modEleves, logAction,
-  ajPaiement = null, annee = "", auteur = "",
+  ajPaiement = null, annee = "", auteur = "", lireFiche = null,
 }) {
   if(readOnly) return false;
   if(!canEdit){
@@ -244,7 +284,8 @@ export async function retirerAcompte(_id, { type, cle, label, nomEleve = "", ele
     message: `${nomEleve} · ${label} · acompte de ${fmt(montant)}`,
   });
   if(!retrait) return false;
-  await modEleves(_id, champs);
+  const ecrit = await surFicheAJour(_id, { affichee: eleve, nomEleve, lireFiche, toast }, () => modEleves(_id, champs));
+  if(!ecrit) return false;
   logAction?.(actionRetrait(retrait), detailRetrait(`${nomEleve} · ${label} (acompte) · ${fmt(montant)}`, retrait));
   await journaliser(ajPaiement, ecritureAnnulation({
     annee, eleve: eleve || { _id, nom: nomEleve },
