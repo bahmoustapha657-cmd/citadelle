@@ -277,6 +277,39 @@ async function contexteEcriture(schoolCode, nomCollection) {
   return { sb, map, ecoleId };
 }
 
+// Versions À JOUR d'une ligne, juste avant une écriture qui en dépend (un
+// encaissement) : celle du miroir local — qui porte nos propres écritures
+// pas encore remontées — et celle du serveur, qui porte celles des AUTRES
+// postes pas encore descendues dans le miroir. Le serveur est best-effort :
+// hors ligne ou trop lent (`delaiReseau`), on s'en passe. Renvoie 0 à 2
+// items camelCase.
+export async function lireVersionsDoc(schoolCode, nomCollection, id, { delaiReseau = 4000 } = {}) {
+  const map = resolveCollection(nomCollection);
+  if (!map || !id) return [];
+  const versions = [];
+  if (horsLigne(map.table)) {
+    try {
+      const { lireUneLocal } = await localData();
+      const row = await lireUneLocal(map.table, id);
+      if (row) versions.push(transformRow(map.table, row));
+    } catch (err) {
+      console.warn(`[powersync] relecture ${nomCollection}:`, err?.message || err);
+    }
+  }
+  if (typeof navigator === "undefined" || navigator.onLine !== false) {
+    let minuterie;
+    try {
+      const requete = getSupabase().from(map.table).select("*").eq("id", id).maybeSingle();
+      const delai = new Promise((resolve) => { minuterie = setTimeout(() => resolve({ data: null }), delaiReseau); });
+      const { data } = await Promise.race([requete, delai]);
+      if (data) versions.push(transformRow(map.table, data));
+    } catch { /* hors ligne : le miroir suffit */ } finally {
+      clearTimeout(minuterie);
+    }
+  }
+  return versions;
+}
+
 export async function ajouterDoc(schoolCode, nomCollection, item) {
   const { sb, map, ecoleId } = await contexteEcriture(schoolCode, nomCollection);
   const { row } = toRow(map.table, item);
