@@ -152,10 +152,11 @@ async function monterPortail() {
   // pilote le cas réseau (succès, échec, pas de réponse).
   const serveur = {
     salaires: [
-      { id: "s1", ecole_id: ECOLE.id, nom: "Awa Camara", section: "Secondaire", mois: "Octobre", montant_net: 500000, details: {} },
+      { id: "s1", ecole_id: ECOLE.id, nom: "Awa Camara", section: "Secondaire", mois: "Octobre", montant_net: 500000, details: {}, annee: "2026-2027" },
     ],
     reponse: "ok",
     requetes: 0,
+    annees: [],
   };
   mock.module(url("../src/supabaseClient.js"), {
     namedExports: {
@@ -165,15 +166,19 @@ async function monterPortail() {
             return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { id: ECOLE.id } }) }) }) };
           }
           assert.equal(table, "salaires", "seuls les salaires passent par le réseau");
+          let annee = null;
           const q = {
-            select: () => q, eq: () => q, order: () => q, range: () => q,
+            select: () => q, order: () => q, range: () => q,
+            eq: (col, val) => { if (col === "annee") annee = val; return q; },
             then: (resoudre, rejeter) => {
               serveur.requetes += 1;
               if (serveur.reponse === "silence") return new Promise(() => {}).then(resoudre, rejeter);
               if (serveur.reponse === "echec") {
                 return Promise.resolve({ data: null, error: { message: "TypeError: Failed to fetch" } }).then(resoudre, rejeter);
               }
-              return Promise.resolve({ data: serveur.salaires, count: serveur.salaires.length, error: null }).then(resoudre, rejeter);
+              serveur.annees.push(annee);
+              const lignes = serveur.salaires.filter((l) => !annee || l.annee === annee);
+              return Promise.resolve({ data: lignes, count: lignes.length, error: null }).then(resoudre, rejeter);
             },
           };
           return q;
@@ -246,5 +251,19 @@ test("portail enseignant : les fiches de paie viennent du serveur, pas du miroir
     ];
     const portail = await fetchTeacherPortal(enseignant("u4"));
     assert.deepEqual(portail.salaires.map((s) => s._id), ["s1"]);
+  });
+
+  await t.test("seules les fiches de l'année de l'école, relues si l'année change", async () => {
+    serveur.salaires = [
+      ...serveur.salaires,
+      { id: "s0", ecole_id: ECOLE.id, nom: "Awa Camara", section: "Secondaire", mois: "Juin", montant_net: 450000, details: {}, annee: "2025-2026" },
+    ];
+    const u = enseignant("u5");
+    const enCours = await fetchTeacherPortal(u, { annee: "2026-2027" });
+    assert.deepEqual(enCours.salaires.map((s) => s._id), ["s1"]);
+    assert.equal(serveur.annees.at(-1), "2026-2027");
+    // Autre année : pas de réponse gardée en session pour l'année précédente.
+    const avant = await fetchTeacherPortal(u, { annee: "2025-2026" });
+    assert.deepEqual(avant.salaires.map((s) => s._id), ["s0"]);
   });
 });
