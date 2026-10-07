@@ -1,27 +1,18 @@
 // ── Absences / événements de discipline ↔ fiches élèves ────────────────────
 // La table Supabase `absences` ne porte que eleve_id (NOT NULL) : ni nom ni
-// classe, que le mapping (collection-map.js) ne lit ni n'écrit. Le nom et la
-// classe affichés viennent donc de la fiche élève, retrouvée par eleveId dans
-// la liste déjà chargée. Les absences Firestore d'avant la migration portaient
-// eleveNom/classe, parfois sans eleveId : ces champs restent un repli.
+// classe. Le nom et la classe affichés viennent de la fiche élève (jointure
+// commune avec les notes : fiche-eleve.js). Les absences Firestore d'avant la
+// migration portaient eleveNom/classe, parfois sans eleveId : ces champs
+// restent un repli.
+import { completerDepuisFiches, nomEleve } from "./fiche-eleve.js";
 
-export const nomEleve = (eleve) => `${eleve?.nom || ""} ${eleve?.prenom || ""}`.trim();
+export { nomEleve };
 
-// Complète nom et classe depuis la fiche. La fiche fait foi (nom corrigé,
-// changement de classe) ; les valeurs portées par l'absence ne servent qu'à
-// défaut de fiche. `eleves` doit inclure les élèves partis, pour que leurs
-// absences passées gardent un nom et leur dernière classe.
-export function enrichirAbsences(absences = [], eleves = []) {
-  const parId = new Map(eleves.map((e) => [e._id, e]));
-  return absences.map((a) => {
-    const eleve = a.eleveId ? parId.get(a.eleveId) : null;
-    return {
-      ...a,
-      eleveNom: eleve ? nomEleve(eleve) : a.eleveNom || "",
-      classe: eleve ? eleve.classe || "" : a.classe || "",
-    };
-  });
-}
+// Complète nom et classe depuis la fiche, qui fait foi (nom corrigé,
+// changement de classe). `eleves` doit inclure les élèves partis, pour que
+// leurs absences passées gardent un nom et leur dernière classe.
+export const enrichirAbsences = (absences = [], eleves = []) =>
+  completerDepuisFiches(absences, eleves, ["eleveNom", "classe"]);
 
 // Élèves ayant au moins `seuil` absences non justifiées, du plus au moins
 // absent. Le compte se fait par identifiant (deux homonymes ne se confondent

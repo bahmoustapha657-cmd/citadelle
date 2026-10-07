@@ -45,7 +45,7 @@ export function DashboardTab({
               <tbody>
                 {mesNotes.slice(0, 10).map((note) => (
                   <TR key={note._id}>
-                    <TD bold>{note.eleveNom}</TD>
+                    <TD bold>{note.eleveNom || "-"}</TD>
                     <TD>{note.matiere}</TD>
                     <TD><Badge color="blue">{getEvaluationLabel(note.type, schoolInfo, { section: utilisateur.section || "secondaire" })}</Badge></TD>
                     <TD>{note.periode}</TD>

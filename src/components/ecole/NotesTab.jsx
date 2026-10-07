@@ -1,4 +1,6 @@
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { enrichirNotes } from "../../notes-eleves";
 import { NotesToolbar } from "./notes-tab/NotesToolbar";
 import { NotesGrille } from "./notes-tab/NotesGrille";
 import { NotesListe } from "./notes-tab/NotesListe";
@@ -56,6 +58,9 @@ export function NotesTab({
   toast,
 }) {
   const { t } = useTranslation();
+  // Nom de l'élève lu sur sa fiche : la table notes n'a que eleve_id. La
+  // liste `eleves` du module garde les élèves partis, leurs notes aussi.
+  const notesNommees = useMemo(() => enrichirNotes(notes, eleves), [notes, eleves]);
 
   return (
     <div>
@@ -67,7 +72,7 @@ export function NotesTab({
       )}
 
       <NotesToolbar
-        t={t} notes={notes} notesVue={notesVue} setNotesVue={setNotesVue}
+        t={t} notes={notesNommees} notesVue={notesVue} setNotesVue={setNotesVue}
         section={section} maxNote={maxNote} schoolInfo={schoolInfo}
         eleves={eleves} matieres={matieres} noteForms={noteForms} periodes={periodes}
         canCreate={canCreate} setForm={setForm} setModal={setModal} defaultNoteType={defaultNoteType}
@@ -99,7 +104,7 @@ export function NotesTab({
       {notesVue === "liste" && (
         <NotesListe
           cN={cN}
-          notes={notes}
+          notes={notesNommees}
           maxNote={maxNote}
           readOnly={readOnly}
           schoolInfo={schoolInfo}
