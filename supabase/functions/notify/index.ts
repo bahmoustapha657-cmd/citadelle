@@ -10,6 +10,9 @@
 // (eleves.contact_tuteur), composition du message par gabarit, anti-doublon
 // (notifications_envois.dedup_key), envoi WhatsApp puis repli SMS, journal.
 //
+// Seul le personnel de l'école visée (ou le superadmin) déclenche un envoi :
+// droits.ts, testé par tests/notify-droits.test.js.
+//
 // INACTIF tant qu'aucun secret fournisseur n'est posé → répond
 // { ok:true, method:"inactif" } sans rien envoyer (aucun risque en prod).
 //
@@ -31,6 +34,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { envoyerSms, envoyerWhatsApp, lireConfigMessagerie, smsActif, whatsappActif } from "../_shared/messagerie.ts";
 import { estPremiumActif } from "../_shared/premium.ts";
+import { refusEnvoi } from "./droits.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -130,7 +134,8 @@ Deno.serve(async (req) => {
 
   const admin = creerAdmin();
   try {
-    // Authentifie l'appelant (un membre du personnel déclenche l'événement).
+    // Authentifie l'appelant : un membre du personnel de l'école visée, ou le
+    // superadmin (droits.ts).
     const jwt = (req.headers.get("Authorization") || "").replace("Bearer ", "").trim();
     const { data: { user } } = await admin.auth.getUser(jwt);
     if (!user) return json({ error: "Non authentifié." }, 401);
@@ -138,12 +143,19 @@ Deno.serve(async (req) => {
     const { schoolId, type, eleveId, data = {} } = await req.json().catch(() => ({}));
     if (!schoolId || !type) return json({ error: "Paramètres manquants." }, 400);
 
-    // Aucun fournisseur configuré → no-op (feature désactivée, zéro envoi).
-    if (!WA_ACTIF && !SMS_ACTIF) return json({ ok: true, method: "inactif" });
-
     const { data: ec } = await admin.from("ecoles")
       .select("id, nom, extra, plan, plan_expiry").eq("code", String(schoolId).toLowerCase()).maybeSingle();
     if (!ec) return json({ error: "École introuvable." }, 404);
+
+    // Contrôlé AVANT le no-op « inactif » : le refus se vérifie dès maintenant,
+    // sans attendre qu'un fournisseur soit configuré.
+    const { data: appelant } = await admin.from("comptes")
+      .select("role, ecole_id, statut").eq("user_id", user.id).maybeSingle();
+    const refus = refusEnvoi(appelant, ec.id);
+    if (refus) return json({ error: refus.error }, refus.statut);
+
+    // Aucun fournisseur configuré → no-op (feature désactivée, zéro envoi).
+    if (!WA_ACTIF && !SMS_ACTIF) return json({ ok: true, method: "inactif" });
 
     // Premium : chaque SMS/WhatsApp est facturé → plan Premium exigé.
     if (!estPremiumActif((ec.plan as string) ?? null, (ec.plan_expiry as number) ?? null)) {
