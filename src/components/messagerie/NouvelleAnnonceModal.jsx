@@ -1,7 +1,9 @@
 import { useMemo, useRef, useState } from "react";
 import { Btn, Modale } from "../ui";
 import { SelecteurComptes } from "./SelecteurComptes";
-import { contactables, destinatairesAnnonce, postesDeLAnnuaire, PRIORITES } from "./messagerie-logic";
+import {
+  classesDesParents, contactables, destinatairesAnnonce, LIBELLES_SECTIONS, postesDeLAnnuaire, PRIORITES,
+} from "./messagerie-logic";
 import { champ, puce } from "./styles-messagerie";
 import { ACCEPT_DOCUMENTS, formatTaille, iconeFichier, MAX_PIECES_ANNONCE, verifierFichier } from "./documents";
 
@@ -17,8 +19,12 @@ export function NouvelleAnnonceModal({ m, fermer }) {
   const [epinglee, setEpinglee] = useState(false);
   const [fichiers, setFichiers] = useState([]);
   const choixRef = useRef(null);
-  const [cible, setCible] = useState({ tous: true, personnel: false, enseignants: false, postes: [], comptes: [] });
+  const [cible, setCible] = useState({
+    tous: true, personnel: false, enseignants: false, postes: [], comptes: [],
+    parents: false, parentsSections: [], parentsClasses: [],
+  });
   const [choixComptes, setChoixComptes] = useState(false);
+  const [choixClasses, setChoixClasses] = useState(false);
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState("");
 
@@ -28,8 +34,17 @@ export function NouvelleAnnonceModal({ m, fermer }) {
   const restreint = perimetre.length < m.annuaireListe.filter((c) => c.id !== m.moi).length;
   const postes = useMemo(() => postesDeLAnnuaire(perimetre), [perimetre]);
   const nbDestinataires = destinatairesAnnonce(cible, perimetre, m.moi).length;
+  // Parents du périmètre (messagerie-parents.sql) : par section, par classe.
+  const classesParents = useMemo(() => classesDesParents(perimetre), [perimetre]);
+  const sectionsParents = [...new Set(classesParents.map((c) => c.section))];
+  const aDesParents = perimetre.some((c) => c.role === "parent");
 
   const basculerGroupe = (cle) => setCible((c) => ({ ...c, tous: cle === "tous" ? !c.tous : false, [cle]: cle === "tous" ? !c.tous : !c[cle] }));
+  // « Toute l'équipe » ne comprend pas les parents : leurs cibles s'y ajoutent.
+  const basculerParents = () => setCible((c) => ({ ...c, parents: !c.parents }));
+  const basculerListeParents = (champListe, valeur) => setCible((c) => ({
+    ...c, [champListe]: c[champListe].includes(valeur) ? c[champListe].filter((x) => x !== valeur) : [...c[champListe], valeur],
+  }));
   const basculerListe = (champListe, valeur) => setCible((c) => ({
     ...c, tous: false,
     [champListe]: c[champListe].includes(valeur) ? c[champListe].filter((x) => x !== valeur) : [...c[champListe], valeur],
@@ -56,7 +71,8 @@ export function NouvelleAnnonceModal({ m, fermer }) {
 
       <span style={{ ...libelle, marginTop: 0 }}>Destinataires</span>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-        <button type="button" style={puce(cible.tous)} onClick={() => basculerGroupe("tous")}>🌍 Tout le monde</button>
+        <button type="button" style={puce(cible.tous)} onClick={() => basculerGroupe("tous")}
+          title="Personnel et enseignants (pas les parents)">🌍 Toute l'équipe</button>
         <button type="button" style={puce(cible.personnel)} onClick={() => basculerGroupe("personnel")}>🗂️ Personnel administratif</button>
         <button type="button" style={puce(cible.enseignants)} onClick={() => basculerGroupe("enseignants")}>👨‍🏫 Enseignants</button>
         <button type="button" style={puce(choixComptes || cible.comptes.length > 0)} onClick={() => setChoixComptes((v) => !v)}>
@@ -67,6 +83,34 @@ export function NouvelleAnnonceModal({ m, fermer }) {
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
           {[...postes].map(([cle, label]) => (
             <button key={cle} type="button" style={puce(cible.postes.includes(cle))} onClick={() => basculerListe("postes", cle)}>{label}</button>
+          ))}
+        </div>
+      )}
+      {aDesParents && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8, alignItems: "center" }}>
+          <span style={{ fontSize: 11.5, fontWeight: 800, color: "var(--lc-text-muted)" }}>Parents :</span>
+          <button type="button" style={puce(cible.parents)} onClick={basculerParents}>👪 Tous les parents</button>
+          {!cible.parents && sectionsParents.length > 1 && sectionsParents.map((s) => (
+            <button key={s} type="button" style={puce(cible.parentsSections.includes(s))}
+              onClick={() => basculerListeParents("parentsSections", s)}>
+              {LIBELLES_SECTIONS[s] || s}
+            </button>
+          ))}
+          {!cible.parents && classesParents.length > 0 && (
+            <button type="button" style={puce(choixClasses || cible.parentsClasses.length > 0)} onClick={() => setChoixClasses((v) => !v)}>
+              🏫 Par classe{cible.parentsClasses.length ? ` (${cible.parentsClasses.length})` : "…"}
+            </button>
+          )}
+        </div>
+      )}
+      {aDesParents && !cible.parents && choixClasses && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8, maxHeight: 150, overflowY: "auto", padding: 8, border: "1px solid var(--lc-border)", borderRadius: 10 }}>
+          {classesParents.map((c) => (
+            <button key={c.cle} type="button" style={puce(cible.parentsClasses.includes(c.cle))}
+              title={`${LIBELLES_SECTIONS[c.section] || c.section} — ${c.parents} parent${c.parents > 1 ? "s" : ""}`}
+              onClick={() => basculerListeParents("parentsClasses", c.cle)}>
+              {c.classe} <span style={{ opacity: 0.6 }}>({c.parents})</span>
+            </button>
           ))}
         </div>
       )}

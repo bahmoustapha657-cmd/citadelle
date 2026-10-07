@@ -12,10 +12,10 @@ const annuaire = new Map([
   ["b", { id: "b", nom: "Mamadou Bah", poste: "Enseignant · Maths" }],
 ]);
 
-test("accès : enseignants dedans, parents et superadmin dehors", () => {
+test("accès : enseignants et parents dedans, superadmin dehors", () => {
   assert.equal(messagerieOuverteA({ compteDocId: "x", role: "enseignant" }), true);
   assert.equal(messagerieOuverteA({ compteDocId: "x", role: "comptable" }), true);
-  assert.equal(messagerieOuverteA({ compteDocId: "x", role: "parent" }), false);
+  assert.equal(messagerieOuverteA({ compteDocId: "x", role: "parent" }), true);
   assert.equal(messagerieOuverteA({ compteDocId: "x", role: "superadmin" }), false);
   assert.equal(messagerieOuverteA({ role: "direction" }), false); // sans compte Supabase
   assert.equal(peutPublierAnnonce({ compteDocId: "x", role: "enseignant" }), false);

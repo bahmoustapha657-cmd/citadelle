@@ -4,10 +4,10 @@ import { NotesTab } from "./NotesTab";
 import { AbsencesTab } from "./AbsencesTab";
 import { BulletinsTab } from "./BulletinsTab";
 import { PaiementsTab } from "./PaiementsTab";
-import { MessagesTab } from "./MessagesTab";
+import { MessagerieParentTab } from "./MessagerieParentTab";
 
 // Aiguillage du contenu de l'onglet actif du portail parent.
-export function PortailTabContent({ p, schoolInfo, c1, c2 }) {
+export function PortailTabContent({ p, schoolInfo, utilisateur, c1, c2 }) {
   if (p.chargement) return <Chargement rows={5} />;
 
   return (
@@ -80,18 +80,7 @@ export function PortailTabContent({ p, schoolInfo, c1, c2 }) {
         />
       )}
 
-      {p.tab === "messages" && (
-        <MessagesTab
-          mesMessages={p.mesMessages}
-          sujet={p.sujet}
-          setSujet={p.setSujet}
-          corps={p.corps}
-          setCorps={p.setCorps}
-          envoi={p.envoi}
-          envoyer={p.envoyer}
-          c1={c1}
-        />
-      )}
+      {p.tab === "messages" && <MessagerieParentTab p={p} utilisateur={utilisateur} c1={c1} />}
     </>
   );
 }

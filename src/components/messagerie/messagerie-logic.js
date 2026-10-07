@@ -5,16 +5,22 @@
 // d'appels, tri/filtre de la boîte et ciblage des annonces. Testé dans
 // tests/messagerie-logic.test.js.
 
-// Comptes hors messagerie (portails dédiés / transversal).
-export const ROLES_SANS_MESSAGERIE = new Set(["parent", "superadmin"]);
+// Compte hors messagerie (transversal). Les parents y entrent depuis leur
+// portail (supabase/messagerie-parents.sql).
+export const ROLES_SANS_MESSAGERIE = new Set(["superadmin"]);
 
 export const messagerieOuverteA = (utilisateur) =>
   !!utilisateur?.compteDocId && !ROLES_SANS_MESSAGERIE.has(utilisateur.role);
 
-// Les enseignants discutent et appellent, mais ne publient pas d'annonces
-// (la base l'interdit aussi : policy msg_annonces_insert).
+export const estParent = (utilisateur) => utilisateur?.role === "parent";
+
+// Enseignants et parents discutent et appellent, mais ne publient pas
+// d'annonces (la base l'interdit aussi : policy msg_annonces_insert).
 export const peutPublierAnnonce = (utilisateur) =>
-  messagerieOuverteA(utilisateur) && utilisateur.role !== "enseignant";
+  messagerieOuverteA(utilisateur) && !["enseignant", "parent"].includes(utilisateur.role);
+
+// Les parents échangent en discussion directe seulement, jamais en groupe.
+export const peutCreerGroupe = (utilisateur) => messagerieOuverteA(utilisateur) && !estParent(utilisateur);
 
 // Suivi détaillé d'une annonce : son auteur, la direction, l'administration.
 export const peutGererAnnonce = (annonce, utilisateur) =>
@@ -168,31 +174,72 @@ export const PRIORITES = {
   urgente: { libelle: "Urgente", couleur: "#b91c1c", fond: "#fee2e2", icone: "🔴" },
 };
 
+// Enfants d'un parent de l'annuaire, et clé de classe 'section|classe'
+// (même format que msg_annonces.a_parents_classes).
+const enfantsDe = (compte) => (Array.isArray(compte?.enfants) ? compte.enfants : []);
+export const cleClasse = (section, classe) => `${section}|${classe || ""}`;
+
+// Le parent est-il visé par les cibles « parents » ? (msg_parent_vise)
+export function parentVise(compte, cible) {
+  const sections = new Set(cible?.parentsSections || []);
+  const classes = new Set(cible?.parentsClasses || []);
+  return enfantsDe(compte).some((e) => cible?.parents || sections.has(e.section) || classes.has(cleClasse(e.section, e.classe)));
+}
+
 // Comptes de l'annuaire visés par une cible d'annonce (aperçu du nombre de
 // destinataires, notifications push). Même règle que la base
-// (msg_annonce_destinataires).
+// (msg_annonce_destinataires) : « Toute l'équipe », le personnel et les
+// postes ne visent jamais les parents.
 export function destinatairesAnnonce(cible, annuaireListe, moi) {
   const postes = new Set(cible?.postes || []);
   const comptes = new Set(cible?.comptes || []);
-  return annuaireListe.filter((c) => c.id !== moi && (
-    cible?.tous
-    || (cible?.personnel && c.role !== "enseignant")
-    || (cible?.enseignants && c.role === "enseignant")
-    || postes.has(c.poste_cle)
-    || comptes.has(c.id)));
+  return annuaireListe.filter((c) => c.id !== moi && (c.role === "parent"
+    ? comptes.has(c.id) || parentVise(c, cible)
+    : cible?.tous
+      || (cible?.personnel && c.role !== "enseignant")
+      || (cible?.enseignants && c.role === "enseignant")
+      || postes.has(c.poste_cle)
+      || comptes.has(c.id)));
 }
 
 export const cibleDepuisAnnonce = (a) => ({
   tous: a.a_tous, personnel: a.a_personnel, enseignants: a.a_enseignants,
   postes: a.a_postes || [], comptes: a.a_comptes || [],
+  parents: !!a.a_parents, parentsSections: a.a_parents_sections || [], parentsClasses: a.a_parents_classes || [],
 });
+
+// Sections (clé → libellé) des annonces aux parents.
+export const LIBELLES_SECTIONS = { prescolaire: "Maternelle", primaire: "Primaire", college: "Collège", lycee: "Lycée" };
+const ORDRE_SECTIONS = Object.keys(LIBELLES_SECTIONS);
+
+// Classes des enfants des parents de l'annuaire (dans le périmètre) :
+// [{ cle, section, classe, parents }], par section puis par classe.
+export function classesDesParents(annuaireListe) {
+  const classes = new Map();
+  for (const c of annuaireListe) {
+    if (c.role !== "parent") continue;
+    for (const e of enfantsDe(c)) {
+      const cle = cleClasse(e.section, e.classe);
+      const ligne = classes.get(cle) || { cle, section: e.section, classe: e.classe || "Sans classe", parents: new Set() };
+      ligne.parents.add(c.id);
+      classes.set(cle, ligne);
+    }
+  }
+  return [...classes.values()]
+    .map((l) => ({ ...l, parents: l.parents.size }))
+    .sort((a, b) => (ORDRE_SECTIONS.indexOf(a.section) - ORDRE_SECTIONS.indexOf(b.section))
+      || a.classe.localeCompare(b.classe, "fr", { numeric: true }));
+}
 
 export function libelleCibleAnnonce(annonce, annuaire, postesLabels = new Map()) {
   const parts = [];
-  if (annonce.a_tous) parts.push("Tout le monde");
+  if (annonce.a_tous) parts.push("Toute l'équipe");
   if (annonce.a_personnel) parts.push("Personnel administratif");
   if (annonce.a_enseignants) parts.push("Enseignants");
   for (const cle of annonce.a_postes || []) parts.push(postesLabels.get(cle) || cle);
+  if (annonce.a_parents) parts.push("Tous les parents");
+  for (const s of annonce.a_parents_sections || []) parts.push(`Parents — ${LIBELLES_SECTIONS[s] || s}`);
+  for (const cle of annonce.a_parents_classes || []) parts.push(`Parents — ${cle.split("|").slice(1).join("|")}`);
   for (const id of annonce.a_comptes || []) parts.push(annuaire.get(id)?.nom || "Un compte");
   return parts.join(", ");
 }
@@ -244,11 +291,11 @@ export function apercuMessage(message) {
 // compte du périmètre y a accès).
 export const MODULE_MESSAGERIE = { id: "messagerie", label: "Messagerie", icon: "💬", desc: "Discussions & annonces" };
 
-// Postes présents dans l'annuaire (hors enseignants) : clé → libellé.
+// Postes présents dans l'annuaire (hors enseignants et parents) : clé → libellé.
 export function postesDeLAnnuaire(annuaireListe) {
   const postes = new Map();
   for (const c of annuaireListe) {
-    if (c.role !== "enseignant" && c.poste_cle && !postes.has(c.poste_cle)) postes.set(c.poste_cle, c.poste);
+    if (c.role !== "enseignant" && c.role !== "parent" && c.poste_cle && !postes.has(c.poste_cle)) postes.set(c.poste_cle, c.poste);
   }
   return postes;
 }
