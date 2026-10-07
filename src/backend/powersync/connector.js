@@ -21,7 +21,11 @@ function estErreurReseau(err) {
 // Tables en AJOUT SEUL : la RLS n'y accorde que l'insertion (paiements.sql),
 // un upsert y serait refusé. Une ligne déjà présente (renvoi après une coupure
 // survenue avant l'accusé de réception) est un succès, pas un doublon.
-const AJOUT_SEUL = new Set(["paiements"]);
+// `historique` aussi : tout le personnel y INSÈRE, mais seuls les porteurs du
+// module Historique peuvent le LIRE (postes.sql). Un upsert (ON CONFLICT)
+// exige la lecture : la trace d'un comptable était refusée puis jetée, et ses
+// suppressions n'apparaissaient jamais dans le journal.
+const AJOUT_SEUL = new Set(["paiements", "historique"]);
 const DEJA_PRESENTE = "23505"; // unique_violation (clé primaire)
 
 export class SupabaseConnector {
