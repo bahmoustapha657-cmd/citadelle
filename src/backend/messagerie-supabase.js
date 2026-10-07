@@ -172,6 +172,11 @@ export async function publierAnnonce({ ecoleId, moi, titre, corps, priorite, acc
     a_enseignants: !!cible.enseignants,
     a_postes: cible.postes?.length ? cible.postes : null,
     a_comptes: cible.comptes?.length ? cible.comptes : null,
+    // Cibles « parents » (messagerie-parents.sql) : envoyées seulement si
+    // utilisées, pour qu'une annonce interne passe même avant ce SQL.
+    ...(cible.parents ? { a_parents: true } : {}),
+    ...(cible.parentsSections?.length ? { a_parents_sections: cible.parentsSections } : {}),
+    ...(cible.parentsClasses?.length ? { a_parents_classes: cible.parentsClasses } : {}),
   }).select("*").single();
   if (error) throw new Error(error.message || "Publication impossible.");
   return data;

@@ -137,7 +137,7 @@ export function usePortailParent({ utilisateur, schoolInfo }) {
     { id: "absences", label: t("parent.tabs.absences") },
     { id: "bulletins", label: t("parent.tabs.bulletin"), bloque: accesBloqueParPaiement },
     { id: "paiements", label: t("parent.tabs.fees") },
-    { id: "messages", label: `${t("parent.tabs.messages")}${nonLus > 0 ? ` (${nonLus})` : ""}` },
+    { id: "messages", label: `${t("parent.tabs.messages")}${nonLus > 0 ? ` (${nonLus})` : ""}`, labelBase: t("parent.tabs.messages") },
   ];
 
   return {

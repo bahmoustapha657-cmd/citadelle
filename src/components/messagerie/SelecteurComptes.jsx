@@ -4,9 +4,11 @@ import { estJoignable, libellePresence, normaliser } from "./messagerie-logic";
 import { useMessagerie } from "./messagerie-contexte";
 import { champ, puce } from "./styles-messagerie";
 
-const FILTRES = [["tous", "Tous"], ["personnel", "Personnel"], ["enseignants", "Enseignants"], ["en_ligne", "🟢 En ligne"]];
+const FILTRES = [["tous", "Tous"], ["personnel", "Personnel"], ["enseignants", "Enseignants"], ["parents", "Parents"], ["en_ligne", "🟢 En ligne"]];
+const familleDe = (c) => (c.role === "enseignant" ? "enseignants" : c.role === "parent" ? "parents" : "personnel");
 
-// Liste de comptes filtrable (recherche + personnel / enseignants).
+// Liste de comptes filtrable (recherche + personnel / enseignants / parents).
+// Un filtre n'apparaît que si la liste contient des comptes de sa famille.
 // Choix unique (`onChoisir`) ou multiple (`selection` + `onBasculer`).
 export function SelecteurComptes({ comptes, onChoisir, selection, onBasculer, exclus = [], hauteur = 300 }) {
   const [recherche, setRecherche] = useState("");
@@ -16,19 +18,24 @@ export function SelecteurComptes({ comptes, onChoisir, selection, onBasculer, ex
   const choisis = useMemo(() => new Set(selection || []), [selection]);
   const sansExclus = useMemo(() => new Set(exclus), [exclus]);
 
+  const familles = useMemo(() => new Set(comptes.map(familleDe)), [comptes]);
+  const filtres = FILTRES.filter(([cle]) => cle === "tous" || cle === "en_ligne" || (familles.size > 1 && familles.has(cle)));
+
   const visibles = useMemo(() => {
     const terme = normaliser(recherche);
     return comptes.filter((c) => !sansExclus.has(c.id)
       && (filtre === "tous"
-        || (filtre === "en_ligne" ? estJoignable(presences?.get(c.id)) : (filtre === "enseignants") === (c.role === "enseignant")))
+        || (filtre === "en_ligne" ? estJoignable(presences?.get(c.id)) : familleDe(c) === filtre))
       && (!terme || normaliser(`${c.nom} ${c.poste} ${c.login}`).includes(terme)));
   }, [comptes, recherche, filtre, sansExclus, presences]);
 
   return (
     <div>
-      <input value={recherche} onChange={(e) => setRecherche(e.target.value)} placeholder="🔍 Rechercher un nom, un poste…" style={{ ...champ, marginBottom: 8 }} />
+      <input value={recherche} onChange={(e) => setRecherche(e.target.value)}
+        placeholder={familles.has("parents") ? "🔍 Rechercher un nom, un poste, un élève…" : "🔍 Rechercher un nom, un poste…"}
+        style={{ ...champ, marginBottom: 8 }} />
       <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
-        {FILTRES.map(([cle, libelle]) => (
+        {filtres.map(([cle, libelle]) => (
           <button key={cle} type="button" onClick={() => setFiltre(cle)} style={puce(filtre === cle)}>{libelle}</button>
         ))}
         {multiple && choisis.size > 0 && (
