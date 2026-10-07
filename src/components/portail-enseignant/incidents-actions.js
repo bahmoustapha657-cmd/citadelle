@@ -54,7 +54,7 @@ export async function enregistrerIncident({
         throw new Error(data.error || "Enregistrement impossible.");
       }
     }
-    // Push aux parents — uniquement à la création (pas en édition).
+    // Push aux parents de l'élève — uniquement à la création (pas en édition).
     if (!formIncident.incidentId && envoyerPush) {
       const type = formIncident.type || "Absence";
       const eleveNom = formIncident.eleveNom || "Votre enfant";
@@ -65,6 +65,7 @@ export async function enregistrerIncident({
         `⚠️ ${type} signalée par l'enseignant`,
         `${eleveNom} — ${type} du ${date}${motif}`,
         "/absences",
+        { eleveId: formIncident.eleveId },
       );
     }
     setModalIncident(null);

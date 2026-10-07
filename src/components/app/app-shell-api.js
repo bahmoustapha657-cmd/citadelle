@@ -68,9 +68,10 @@ export async function syncEcolePublic(schoolId) {
   });
 }
 
-// Envoie une notification push (best-effort).
-export async function envoyerPushApi(cibles, titre, corps, url = "/") {
-  if (isSupabase) return envoyerPushSupabase(cibles, titre, corps, url);
+// Envoie une notification push (best-effort). `options.eleveId` : l'élève
+// concerné quand on prévient ses parents (cf. push-supabase.js).
+export async function envoyerPushApi(cibles, titre, corps, url = "/", options = {}) {
+  if (isSupabase) return envoyerPushSupabase(cibles, titre, corps, url, options);
   const sid = localStorage.getItem("LC_schoolId");
   if (!sid) return; // jamais de fallback vers une école par défaut
   const headers = await getAuthHeaders({ "Content-Type": "application/json" });

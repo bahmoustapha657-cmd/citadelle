@@ -23,6 +23,9 @@ export async function sAbonnerAuxPush(utilisateurCo, sid) {
       userVisibleOnly: true,
       applicationServerKey: import.meta.env.VITE_VAPID_PUBLIC_KEY,
     });
+    // role / poste_cle : la base les recalcule depuis le compte et refuse une
+    // autre école que celle du compte (push-subs-verrou.sql) ; l'Edge push
+    // relit `comptes` avant d'envoyer.
     await sb.from("push_subs").upsert({
       ecole_id: ecoleId, user_id: user.id, subscription: sub.toJSON(),
       role: utilisateurCo.role, nom: utilisateurCo.nom,
@@ -36,12 +39,14 @@ export async function sAbonnerAuxPush(utilisateurCo, sid) {
   }
 }
 
-export async function envoyerPush(cibles, titre, corps, url = "/") {
+// `eleveId` : obligatoire quand `cibles` contient "parent" — seuls les parents
+// rattachés à cet élève sont notifiés (l'Edge refuse la cible "parent" seule).
+export async function envoyerPush(cibles, titre, corps, url = "/", { eleveId = null } = {}) {
   const sid = localStorage.getItem("LC_schoolId");
   if (!sid) return;
   try {
     await getSupabase().functions.invoke("push", {
-      body: { schoolId: sid, cibles, titre, corps, url },
+      body: { schoolId: sid, cibles, titre, corps, url, ...(eleveId ? { eleveId } : {}) },
     });
   } catch {
     // Best-effort.

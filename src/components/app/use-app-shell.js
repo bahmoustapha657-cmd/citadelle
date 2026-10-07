@@ -108,7 +108,7 @@ export function useAppShell({
     return () => { annule = true; };
   }, [schoolId, utilisateur]);
 
-  const envoyerPush = (cibles, titre, corps, url = "/") => envoyerPushApi(cibles, titre, corps, url);
+  const envoyerPush = (cibles, titre, corps, url = "/", options = {}) => envoyerPushApi(cibles, titre, corps, url, options);
 
   const connecter = (c, sid) => {
     if (sid) { setSchoolId(sid); localStorage.setItem("LC_schoolId", sid); }

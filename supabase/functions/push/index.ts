@@ -1,8 +1,9 @@
 // ════════════════════════════════════════════════════════════════════════
 //  EduGest — Edge Function : envoi de notifications push (Web Push / VAPID)
 // ════════════════════════════════════════════════════════════════════════
-// Lit les abonnements (table push_subs) des rôles ciblés d'une école et envoie
-// la notification via le protocole Web Push. La clé VAPID privée reste ici.
+// Lit les abonnements (table push_subs) d'une école, ne garde que ceux dont le
+// COMPTE est visé (destinataires.ts) et envoie la notification via le
+// protocole Web Push. La clé VAPID privée reste ici.
 //
 // Déploiement + secrets :
 //   supabase functions deploy push
@@ -11,12 +12,18 @@
 // Appelé par le client : supabase.functions.invoke("push", { body }).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
+import { nettoyerCibles, nettoyerEleveId, nettoyerUserIds, refusEnvoi, refusParents } from "./droits.ts";
+import { candidats, type CompteAbonne, destinataires, parLots } from "./destinataires.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const VAPID_PUBLIC = Deno.env.get("VAPID_PUBLIC_KEY")!;
 const VAPID_PRIVATE = Deno.env.get("VAPID_PRIVATE_KEY")!;
 const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT") ?? "mailto:contact@edugest.app";
+
+// Plafond PostgREST (1000 lignes par réponse) et taille des filtres in.(…).
+const PAGE = 1000;
+const LOT = 100;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -25,53 +32,116 @@ const cors = {
 };
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { ...cors, "Content-Type": "application/json" } });
 
+type Admin = ReturnType<typeof createClient>;
+// deno-lint-ignore no-explicit-any
+type Abonnement = { user_id: string; ecole_id: string; subscription: any };
+
+// Abonnements de l'école : ceux des personnes visées (messagerie, parents
+// d'un élève), ou tous — par pages, sinon PostgREST tronque en silence
+// au-delà de 1000.
+async function lireAbonnements(admin: Admin, ecoleId: string, userIds: string[] | null): Promise<Abonnement[]> {
+  const champs = "user_id, ecole_id, subscription";
+  const lus: Abonnement[] = [];
+  if (userIds) {
+    for (const lot of parLots(userIds, LOT)) {
+      const { data, error } = await admin.from("push_subs").select(champs).eq("ecole_id", ecoleId).in("user_id", lot);
+      if (error) throw error;
+      lus.push(...(data || []));
+    }
+    return lus;
+  }
+  for (let de = 0; ; de += PAGE) {
+    const { data, error } = await admin.from("push_subs").select(champs).eq("ecole_id", ecoleId)
+      .order("user_id").range(de, de + PAGE - 1);
+    if (error) throw error;
+    lus.push(...(data || []));
+    if ((data || []).length < PAGE) return lus;
+  }
+}
+
+// Comptes des abonnés : ce sont eux, et non push_subs, qui disent l'école,
+// le rôle et le poste. Une erreur de lecture arrête l'envoi (jamais d'envoi
+// sans vérification).
+async function lireComptes(admin: Admin, userIds: string[]): Promise<CompteAbonne[]> {
+  const lus: CompteAbonne[] = [];
+  for (const lot of parLots(userIds, LOT)) {
+    const { data, error } = await admin.from("comptes")
+      .select("user_id, role, ecole_id, statut, fusion:extra->fusionneDans, poste:postes(cle, actif)")
+      .in("user_id", lot);
+    if (error) throw error;
+    lus.push(...((data || []) as unknown as CompteAbonne[]));
+  }
+  return lus;
+}
+
+// Parents de l'élève : user_id des comptes qui lui sont rattachés
+// (parent_eleves). null si l'élève n'est pas de l'école visée.
+async function lireParentsEleve(admin: Admin, ecoleId: string, eleveId: string): Promise<string[] | null> {
+  const { data: eleve, error } = await admin.from("eleves").select("id")
+    .eq("id", eleveId).eq("ecole_id", ecoleId).maybeSingle();
+  if (error) throw error;
+  if (!eleve) return null;
+  const { data: liens, error: errLiens } = await admin.from("parent_eleves")
+    .select("compte:comptes(user_id)").eq("eleve_id", eleveId);
+  if (errLiens) throw errLiens;
+  return ((liens || []) as unknown as { compte: { user_id: string | null } | null }[])
+    .map((l) => l.compte?.user_id || "").filter(Boolean);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "Méthode non autorisée." }, 405);
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
   try {
-    // Authentifie l'appelant (un membre du personnel envoie ; ou superadmin).
+    // Authentifie l'appelant : un membre de l'école visée, ou le superadmin ;
+    // le ciblage par rôle est réservé au personnel (droits.ts).
     const jwt = (req.headers.get("Authorization") || "").replace("Bearer ", "").trim();
     const { data: { user } } = await admin.auth.getUser(jwt);
     if (!user) return json({ error: "Non authentifié." }, 401);
 
-    const { schoolId, cibles, userIds, tousStaff, titre, corps, url } = await req.json().catch(() => ({}));
-    const aCibles = Array.isArray(cibles) && cibles.length > 0;
-    const aUserIds = Array.isArray(userIds) && userIds.length > 0;
-    if (!schoolId || (!aCibles && !aUserIds && !tousStaff)) return json({ error: "Paramètres manquants." }, 400);
+    const body = (await req.json().catch(() => null)) || {};
+    const { schoolId, titre, corps, url } = body;
+    const cibles = nettoyerCibles(body.cibles);
+    const userIds = nettoyerUserIds(body.userIds);
+    const tousStaff = body.tousStaff === true;
+    if (!schoolId || (!cibles.length && !userIds.length && !tousStaff)) return json({ error: "Paramètres manquants." }, 400);
+    // Les parents se visent par élève, jamais en bloc (droits.ts).
+    const demande = { cibles, userIds, tousStaff, eleveId: nettoyerEleveId(body.eleveId) };
+    const invalide = refusParents(demande);
+    if (invalide) return json({ error: invalide.error }, invalide.statut);
 
     const { data: ec } = await admin.from("ecoles").select("id").eq("code", String(schoolId).toLowerCase()).maybeSingle();
     if (!ec) return json({ error: "École introuvable." }, 404);
 
-    // Ciblage : rôle legacy OU clé de poste (les cibles historiques 'admin',
-    // 'direction'… matchent les postes système), OU utilisateurs précis
-    // (messagerie individuelle), OU tout le personnel (hors parents/enseignants).
-    let query = admin.from("push_subs").select("user_id, subscription").eq("ecole_id", ec.id);
-    if (tousStaff) {
-      query = query.not("role", "in", '("parent","enseignant")');
-    } else {
-      const filtres: string[] = [];
-      if (aCibles) {
-        const liste = cibles.map((c: unknown) => String(c).replace(/[^a-z0-9._-]/gi, "")).filter(Boolean).join(",");
-        if (liste) filtres.push(`role.in.(${liste})`, `poste_cle.in.(${liste})`);
-      }
-      if (aUserIds) {
-        const uids = userIds.map((u: unknown) => String(u).replace(/[^a-f0-9-]/gi, "")).filter(Boolean).join(",");
-        if (uids) filtres.push(`user_id.in.(${uids})`);
-      }
-      if (!filtres.length) return json({ ok: true, envoyes: 0 });
-      query = query.or(filtres.join(","));
+    const { data: appelant } = await admin.from("comptes")
+      .select("role, ecole_id, statut").eq("user_id", user.id).maybeSingle();
+    const refus = refusEnvoi(appelant, ec.id, demande);
+    if (refus) return json({ error: refus.error }, refus.statut);
+
+    // Parents visés : ceux de l'élève concerné, qui doit être de l'école.
+    let parentsEleve: string[] = [];
+    if (cibles.includes("parent")) {
+      const lus = await lireParentsEleve(admin, ec.id, demande.eleveId);
+      if (!lus) return json({ error: "Élève introuvable dans cette école." }, 404);
+      parentsEleve = lus;
     }
-    const { data: subs } = await query;
-    if (!subs?.length) return json({ ok: true, envoyes: 0 });
+
+    // Candidats : les lignes push_subs de l'école (celles des seules personnes
+    // visées si l'envoi est nominatif) ; le tri se fait ensuite sur `comptes`,
+    // jamais sur les colonnes role/poste_cle écrites par le navigateur.
+    const abonnements = await lireAbonnements(admin, ec.id, candidats(demande, parentsEleve));
+    if (!abonnements.length) return json({ ok: true, envoyes: 0 });
+    const comptes = await lireComptes(admin, [...new Set(abonnements.map((a) => a.user_id))]);
+    const subs = destinataires(abonnements, comptes, ec.id, demande, parentsEleve);
+    if (!subs.length) return json({ ok: true, envoyes: 0 });
 
     webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);
     const payload = JSON.stringify({ title: titre || "EduGest", body: corps || "", url: url || "/" });
 
     let envoyes = 0;
     const aSupprimer: string[] = [];
-    await Promise.all((subs || []).map(async (s) => {
+    await Promise.all(subs.map(async (s) => {
       try {
         await webpush.sendNotification(s.subscription, payload);
         envoyes++;
@@ -81,7 +151,9 @@ Deno.serve(async (req) => {
         if (code === 404 || code === 410) aSupprimer.push(s.user_id);
       }
     }));
-    if (aSupprimer.length) await admin.from("push_subs").delete().eq("ecole_id", ec.id).in("user_id", aSupprimer);
+    for (const lot of parLots(aSupprimer, LOT)) {
+      await admin.from("push_subs").delete().eq("ecole_id", ec.id).in("user_id", lot);
+    }
 
     return json({ ok: true, envoyes });
   } catch (e) {
