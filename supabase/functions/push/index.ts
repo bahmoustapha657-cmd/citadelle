@@ -11,6 +11,7 @@
 // Appelé par le client : supabase.functions.invoke("push", { body }).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
+import { nettoyerCibles, nettoyerUserIds, refusEnvoi } from "./droits.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -31,18 +32,26 @@ Deno.serve(async (req) => {
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
   try {
-    // Authentifie l'appelant (un membre du personnel envoie ; ou superadmin).
+    // Authentifie l'appelant : un membre de l'école visée, ou le superadmin ;
+    // le ciblage par rôle est réservé au personnel (droits.ts).
     const jwt = (req.headers.get("Authorization") || "").replace("Bearer ", "").trim();
     const { data: { user } } = await admin.auth.getUser(jwt);
     if (!user) return json({ error: "Non authentifié." }, 401);
 
-    const { schoolId, cibles, userIds, tousStaff, titre, corps, url } = await req.json().catch(() => ({}));
-    const aCibles = Array.isArray(cibles) && cibles.length > 0;
-    const aUserIds = Array.isArray(userIds) && userIds.length > 0;
-    if (!schoolId || (!aCibles && !aUserIds && !tousStaff)) return json({ error: "Paramètres manquants." }, 400);
+    const body = (await req.json().catch(() => null)) || {};
+    const { schoolId, titre, corps, url } = body;
+    const cibles = nettoyerCibles(body.cibles);
+    const userIds = nettoyerUserIds(body.userIds);
+    const tousStaff = body.tousStaff === true;
+    if (!schoolId || (!cibles.length && !userIds.length && !tousStaff)) return json({ error: "Paramètres manquants." }, 400);
 
     const { data: ec } = await admin.from("ecoles").select("id").eq("code", String(schoolId).toLowerCase()).maybeSingle();
     if (!ec) return json({ error: "École introuvable." }, 404);
+
+    const { data: appelant } = await admin.from("comptes")
+      .select("role, ecole_id, statut").eq("user_id", user.id).maybeSingle();
+    const refus = refusEnvoi(appelant, ec.id, { cibles, userIds, tousStaff });
+    if (refus) return json({ error: refus.error }, refus.statut);
 
     // Ciblage : rôle legacy OU clé de poste (les cibles historiques 'admin',
     // 'direction'… matchent les postes système), OU utilisateurs précis
@@ -52,15 +61,11 @@ Deno.serve(async (req) => {
       query = query.not("role", "in", '("parent","enseignant")');
     } else {
       const filtres: string[] = [];
-      if (aCibles) {
-        const liste = cibles.map((c: unknown) => String(c).replace(/[^a-z0-9._-]/gi, "")).filter(Boolean).join(",");
-        if (liste) filtres.push(`role.in.(${liste})`, `poste_cle.in.(${liste})`);
+      if (cibles.length) {
+        const liste = cibles.join(",");
+        filtres.push(`role.in.(${liste})`, `poste_cle.in.(${liste})`);
       }
-      if (aUserIds) {
-        const uids = userIds.map((u: unknown) => String(u).replace(/[^a-f0-9-]/gi, "")).filter(Boolean).join(",");
-        if (uids) filtres.push(`user_id.in.(${uids})`);
-      }
-      if (!filtres.length) return json({ ok: true, envoyes: 0 });
+      if (userIds.length) filtres.push(`user_id.in.(${userIds.join(",")})`);
       query = query.or(filtres.join(","));
     }
     const { data: subs } = await query;
