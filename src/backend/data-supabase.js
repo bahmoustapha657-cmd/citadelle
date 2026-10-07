@@ -322,6 +322,16 @@ export async function ajouterDoc(schoolCode, nomCollection, item) {
     return transformRow(map.table, cree);
   }
 
+  // Journal : tout le personnel y insère, mais peu le lisent (postes.sql). Un
+  // insert suivi d'un select (RETURNING) exige la lecture → refusé pour un
+  // comptable. On insère sans relire, avec un id fixé ici.
+  if (map.table === "historique") {
+    const ligne = { ...row, id: row.id || crypto.randomUUID() };
+    const { error } = await sb.from(map.table).insert(ligne);
+    if (error) throw new Error(error.message);
+    return transformRow(map.table, ligne);
+  }
+
   const { data, error } = await sb.from(map.table).insert(row).select("*").single();
   if (error) throw new Error(error.message);
   return transformRow(map.table, data);
