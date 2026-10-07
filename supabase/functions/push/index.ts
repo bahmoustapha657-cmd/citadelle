@@ -12,8 +12,8 @@
 // Appelé par le client : supabase.functions.invoke("push", { body }).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
-import { nettoyerCibles, nettoyerUserIds, refusEnvoi } from "./droits.ts";
-import { type CompteAbonne, destinataires, parLots } from "./destinataires.ts";
+import { nettoyerCibles, nettoyerEleveId, nettoyerUserIds, refusEnvoi, refusParents } from "./droits.ts";
+import { candidats, type CompteAbonne, destinataires, parLots } from "./destinataires.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -36,8 +36,9 @@ type Admin = ReturnType<typeof createClient>;
 // deno-lint-ignore no-explicit-any
 type Abonnement = { user_id: string; ecole_id: string; subscription: any };
 
-// Abonnements de l'école : ceux des personnes visées (messagerie), ou tous —
-// par pages, sinon PostgREST tronque en silence au-delà de 1000.
+// Abonnements de l'école : ceux des personnes visées (messagerie, parents
+// d'un élève), ou tous — par pages, sinon PostgREST tronque en silence
+// au-delà de 1000.
 async function lireAbonnements(admin: Admin, ecoleId: string, userIds: string[] | null): Promise<Abonnement[]> {
   const champs = "user_id, ecole_id, subscription";
   const lus: Abonnement[] = [];
@@ -73,6 +74,20 @@ async function lireComptes(admin: Admin, userIds: string[]): Promise<CompteAbonn
   return lus;
 }
 
+// Parents de l'élève : user_id des comptes qui lui sont rattachés
+// (parent_eleves). null si l'élève n'est pas de l'école visée.
+async function lireParentsEleve(admin: Admin, ecoleId: string, eleveId: string): Promise<string[] | null> {
+  const { data: eleve, error } = await admin.from("eleves").select("id")
+    .eq("id", eleveId).eq("ecole_id", ecoleId).maybeSingle();
+  if (error) throw error;
+  if (!eleve) return null;
+  const { data: liens, error: errLiens } = await admin.from("parent_eleves")
+    .select("compte:comptes(user_id)").eq("eleve_id", eleveId);
+  if (errLiens) throw errLiens;
+  return ((liens || []) as unknown as { compte: { user_id: string | null } | null }[])
+    .map((l) => l.compte?.user_id || "").filter(Boolean);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "Méthode non autorisée." }, 405);
@@ -91,24 +106,34 @@ Deno.serve(async (req) => {
     const userIds = nettoyerUserIds(body.userIds);
     const tousStaff = body.tousStaff === true;
     if (!schoolId || (!cibles.length && !userIds.length && !tousStaff)) return json({ error: "Paramètres manquants." }, 400);
+    // Les parents se visent par élève, jamais en bloc (droits.ts).
+    const demande = { cibles, userIds, tousStaff, eleveId: nettoyerEleveId(body.eleveId) };
+    const invalide = refusParents(demande);
+    if (invalide) return json({ error: invalide.error }, invalide.statut);
 
     const { data: ec } = await admin.from("ecoles").select("id").eq("code", String(schoolId).toLowerCase()).maybeSingle();
     if (!ec) return json({ error: "École introuvable." }, 404);
 
     const { data: appelant } = await admin.from("comptes")
       .select("role, ecole_id, statut").eq("user_id", user.id).maybeSingle();
-    const demande = { cibles, userIds, tousStaff };
     const refus = refusEnvoi(appelant, ec.id, demande);
     if (refus) return json({ error: refus.error }, refus.statut);
+
+    // Parents visés : ceux de l'élève concerné, qui doit être de l'école.
+    let parentsEleve: string[] = [];
+    if (cibles.includes("parent")) {
+      const lus = await lireParentsEleve(admin, ec.id, demande.eleveId);
+      if (!lus) return json({ error: "Élève introuvable dans cette école." }, 404);
+      parentsEleve = lus;
+    }
 
     // Candidats : les lignes push_subs de l'école (celles des seules personnes
     // visées si l'envoi est nominatif) ; le tri se fait ensuite sur `comptes`,
     // jamais sur les colonnes role/poste_cle écrites par le navigateur.
-    const nominatif = !tousStaff && !cibles.length;
-    const abonnements = await lireAbonnements(admin, ec.id, nominatif ? userIds : null);
+    const abonnements = await lireAbonnements(admin, ec.id, candidats(demande, parentsEleve));
     if (!abonnements.length) return json({ ok: true, envoyes: 0 });
     const comptes = await lireComptes(admin, [...new Set(abonnements.map((a) => a.user_id))]);
-    const subs = destinataires(abonnements, comptes, ec.id, demande);
+    const subs = destinataires(abonnements, comptes, ec.id, demande, parentsEleve);
     if (!subs.length) return json({ ok: true, envoyes: 0 });
 
     webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);

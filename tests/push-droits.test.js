@@ -2,12 +2,15 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import { nettoyerCibles, nettoyerUserIds, refusEnvoi } from "../supabase/functions/push/droits.ts";
+import {
+  nettoyerCibles, nettoyerEleveId, nettoyerUserIds, refusEnvoi, refusParents,
+} from "../supabase/functions/push/droits.ts";
 
 const ECOLE_A = "ecole-a";
 const ECOLE_B = "ecole-b";
 const compte = (role, ecole_id = ECOLE_A, statut = "Actif") => ({ role, ecole_id, statut });
-const demande = ({ cibles = [], userIds = [], tousStaff = false } = {}) => ({ cibles, userIds, tousStaff });
+const demande = ({ cibles = [], userIds = [], tousStaff = false, eleveId = "" } = {}) => ({ cibles, userIds, tousStaff, eleveId });
+const ELEVE = "3f2a9c1e-7b4d-4e8a-9c0f-1a2b3c4d5e6f";
 const autorise = (appelant, ecoleId, d) => refusEnvoi(appelant, ecoleId, d) === null;
 
 test("école : un compte d'une autre école est refusé, quel que soit le ciblage", () => {
@@ -59,8 +62,8 @@ test("parent : userIds seulement (messagerie interne)", () => {
 test("enseignant : userIds, et les parents seulement pour un signalement", () => {
   const e = compte("enseignant");
   assert.ok(autorise(e, ECOLE_A, demande({ userIds: ["u1"] })));
-  // portail enseignant, incidents-actions.js : envoyerPush(["parent"], …)
-  assert.ok(autorise(e, ECOLE_A, demande({ cibles: ["parent"] })));
+  // portail enseignant, incidents-actions.js : envoyerPush(["parent"], …, { eleveId })
+  assert.ok(autorise(e, ECOLE_A, demande({ cibles: ["parent"], eleveId: ELEVE })));
   for (const d of [
     demande({ cibles: ["direction"] }),
     demande({ cibles: ["parent", "comptable"] }),
@@ -79,6 +82,29 @@ test("nettoyage : caractères hors liste blanche retirés (filtre PostgREST)", (
   assert.deepEqual(nettoyerUserIds(null), []);
 });
 
+test("nettoyerEleveId : un uuid, sinon rien", () => {
+  assert.equal(nettoyerEleveId(ELEVE), ELEVE);
+  assert.equal(nettoyerEleveId(` ${ELEVE.toUpperCase()} `), ELEVE);
+  for (const v of [undefined, null, "", 42, [ELEVE], { id: ELEVE }, "pas-un-uuid", `${ELEVE}x`,
+    `${ELEVE.slice(0, -1)}),eleve_id.neq.(x`]) {
+    assert.equal(nettoyerEleveId(v), "", JSON.stringify(v));
+  }
+});
+
+test("fuite entre familles : la cible « parent » exige l'élève concerné", () => {
+  // Ancien client (avant eleveId) : refusé, quel que soit l'appelant.
+  const sansEleve = { statut: 400, error: "eleveId requis pour notifier des parents." };
+  assert.deepEqual(refusParents(demande({ cibles: ["parent"] })), sansEleve);
+  assert.deepEqual(refusParents(demande({ cibles: ["direction", "parent"] })), sansEleve);
+  assert.deepEqual(refusParents(demande({ cibles: ["parent"], userIds: ["u1"] })), sansEleve);
+  // Avec l'élève : accepté (le tri des parents se fait dans destinataires.ts).
+  assert.equal(refusParents(demande({ cibles: ["parent"], eleveId: ELEVE })), null);
+  // Sans cible « parent » : rien à vérifier.
+  for (const d of [demande({ cibles: ["direction"] }), demande({ userIds: ["u1"] }), demande({ tousStaff: true })]) {
+    assert.equal(refusParents(d), null, JSON.stringify(d));
+  }
+});
+
 test("index.ts vérifie l'appelant avant de lire les abonnements", () => {
   const src = readFileSync(new URL("../supabase/functions/push/index.ts", import.meta.url), "utf8");
   const refus = src.indexOf("refusEnvoi(appelant, ec.id");
@@ -86,4 +112,19 @@ test("index.ts vérifie l'appelant avant de lire les abonnements", () => {
   const lectureAppelant = src.indexOf('.eq("user_id", user.id)');
   assert.ok(lectureAppelant > 0 && lectureAppelant < refus, "compte de l'appelant lu avant");
   assert.ok(refus < src.indexOf("await lireAbonnements("), "contrôle avant la lecture de push_subs");
+  assert.ok(refus < src.indexOf("await lireParentsEleve("), "contrôle avant la lecture des parents");
+});
+
+test("index.ts : eleveId nettoyé et demande sans élève refusée avant toute lecture", () => {
+  const src = readFileSync(new URL("../supabase/functions/push/index.ts", import.meta.url), "utf8");
+  const serve = src.indexOf("Deno.serve(");
+  assert.match(src, /eleveId: nettoyerEleveId\(body\.eleveId\)/);
+  const parents = src.indexOf("refusParents(demande)", serve);
+  assert.ok(parents > 0, "refusParents appelé");
+  assert.ok(parents < src.indexOf('from("ecoles")', serve), "avant la lecture de l'école");
+  // L'élève doit être de l'école visée avant qu'on lise ses parents.
+  const fn = src.slice(src.indexOf("async function lireParentsEleve("), serve);
+  assert.match(fn, /from\("eleves"\)[^;]*\.eq\("ecole_id", ecoleId\)/);
+  assert.ok(fn.indexOf('from("eleves")') < fn.indexOf('from("parent_eleves")'));
+  assert.match(src, /lireAbonnements\(admin, ec\.id, candidats\(demande, parentsEleve\)\)/);
 });

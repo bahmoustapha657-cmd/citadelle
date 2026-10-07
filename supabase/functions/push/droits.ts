@@ -10,7 +10,8 @@
 export const ROLES_HORS_PERSONNEL = ["parent", "enseignant"];
 
 export type Appelant = { role: string | null; ecole_id: string | null; statut: string | null };
-export type Demande = { cibles: string[]; userIds: string[]; tousStaff: boolean };
+// `eleveId` : l'élève concerné quand `cibles` vise les parents (refusParents).
+export type Demande = { cibles: string[]; userIds: string[]; tousStaff: boolean; eleveId?: string };
 export type Refus = { statut: number; error: string };
 
 // Cibles nettoyées (rôles ou clés de poste) : elles sont interpolées dans le
@@ -25,14 +26,34 @@ export function nettoyerUserIds(userIds: unknown): string[] {
   return userIds.map((u) => String(u).replace(/[^a-f0-9-]/gi, "")).filter(Boolean);
 }
 
+// Identifiant d'élève (eleves.id, un uuid) ; "" s'il est absent ou mal formé
+// — un uuid invalide ferait échouer la requête PostgREST (22P02).
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+export function nettoyerEleveId(eleveId: unknown): string {
+  const id = typeof eleveId === "string" ? eleveId.trim().toLowerCase() : "";
+  return UUID.test(id) ? id : "";
+}
+
+// Les parents ne se ciblent plus en bloc : les notifications qui les visent
+// concernent toutes UN élève (mensualité, absence, message, signalement) et
+// ne partent qu'aux comptes rattachés à cet élève (parent_eleves, cf.
+// destinataires.ts). La cible « parent » seule servait TOUTES les familles
+// de l'école : chacune recevait les paiements et absences des enfants des
+// autres. Sans `eleveId` (ancien client), la demande est donc refusée : une
+// notification perdue plutôt qu'une fuite.
+export function refusParents(demande: Demande): Refus | null {
+  if (!demande.cibles.includes("parent") || demande.eleveId) return null;
+  return { statut: 400, error: "eleveId requis pour notifier des parents." };
+}
+
 // null = envoi autorisé. Sinon le refus à renvoyer tel quel.
 // - Compte inconnu ou inactif : refus.
 // - Superadmin : toute école, toute cible.
 // - Sinon l'appelant doit appartenir à l'école visée (`ecoleId`, résolue
 //   depuis le `schoolId` du corps).
 // - Cibles par rôle / `tousStaff` : personnel seulement — à une exception
-//   près, l'enseignant qui prévient les parents d'un signalement (portail
-//   enseignant, incidents-actions.js : cibles ["parent"]).
+//   près, l'enseignant qui prévient les parents d'un élève d'un signalement
+//   (portail enseignant, incidents-actions.js : cibles ["parent"] + eleveId).
 // - `userIds` : tout membre de l'école (messagerie interne, parents et
 //   enseignants compris) ; index.ts ne lit que les abonnements de CETTE école.
 export function refusEnvoi(appelant: Appelant | null, ecoleId: string, demande: Demande): Refus | null {

@@ -39,10 +39,11 @@ export function useMessagesParents() {
 
   const envoyerReponse = async () => {
     if (!reponse.trim() || !threadSelec) return;
+    const eleveId = threadSelec.messages[0]?.eleveId;
     await repMsg({
       expediteur: "ecole",
       expediteurNom: "École",
-      eleveId: threadSelec.messages[0]?.eleveId,
+      eleveId,
       eleveNom: threadSelec.eleveNom,
       destinataireLogin: threadSelec.expediteurLogin,
       sujet: "Réponse : " + (threadSelec.messages[0]?.sujet || ""),
@@ -50,13 +51,16 @@ export function useMessagesParents() {
       lu: false,
       date: Date.now(),
     });
-    // Notifier le parent par push
-    envoyerPush(
-      ["parent"],
-      `📩 Message de ${schoolInfo.nom || "l'école"}`,
-      `Concernant ${threadSelec.eleveNom} : ${reponse.trim().slice(0, 80)}${reponse.length > 80 ? "…" : ""}`,
-      "/messages",
-    );
+    // Notifier par push les seuls parents de l'élève concerné.
+    if (eleveId) {
+      envoyerPush(
+        ["parent"],
+        `📩 Message de ${schoolInfo.nom || "l'école"}`,
+        `Concernant ${threadSelec.eleveNom} : ${reponse.trim().slice(0, 80)}${reponse.length > 80 ? "…" : ""}`,
+        "/messages",
+        { eleveId },
+      );
+    }
     setRep("");
   };
 

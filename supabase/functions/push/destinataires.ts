@@ -52,21 +52,37 @@ export function compteJoignable(compte: CompteAbonne | undefined, ecoleId: strin
 // - `tousStaff` : tout le personnel (ni parent, ni enseignant) ;
 // - sinon : rôle OU clé de poste dans `cibles` (les cibles historiques
 //   'admin', 'direction'… matchent les postes système), OU user_id dans
-//   `userIds` (messagerie).
+//   `userIds` (messagerie) ;
+// - la cible « parent » ne sert QUE les parents de l'élève concerné :
+//   `parentsEleve`, les user_id des comptes rattachés à l'élève
+//   (parent_eleves), lus par index.ts. Jamais tout le rôle : sans
+//   `parentsEleve`, aucun parent.
 export function destinataires<T extends Abonnement>(
-  abonnements: T[], comptes: CompteAbonne[], ecoleId: string, demande: Demande,
+  abonnements: T[], comptes: CompteAbonne[], ecoleId: string, demande: Demande, parentsEleve: string[] = [],
 ): T[] {
   const parUser = new Map(comptes.map((c) => [c.user_id, c]));
   const cibles = new Set(demande.cibles);
   const userIds = new Set(demande.userIds);
+  const parents = new Set(parentsEleve);
   return abonnements.filter((a) => {
     if (a.ecole_id !== ecoleId) return false;
     const compte = parUser.get(a.user_id);
     if (!compte || !compteJoignable(compte, ecoleId)) return false;
     const role = compte.role || "";
     if (demande.tousStaff) return !ROLES_HORS_PERSONNEL.includes(role);
-    return cibles.has(role) || cibles.has(cleCiblage(compte)) || userIds.has(a.user_id);
+    if (userIds.has(a.user_id)) return true;
+    if (role === "parent") return cibles.has("parent") && parents.has(a.user_id);
+    return cibles.has(role) || cibles.has(cleCiblage(compte));
   });
+}
+
+// user_id dont lire les abonnements : si la demande ne vise que des
+// personnes précises (messagerie, parents d'un élève), elles seules ; sinon
+// (rôle ou poste du personnel, tousStaff) null = toute l'école.
+export function candidats(demande: Demande, parentsEleve: string[] = []): string[] | null {
+  if (demande.tousStaff || demande.cibles.some((c) => c !== "parent")) return null;
+  const parents = demande.cibles.includes("parent") ? parentsEleve : [];
+  return [...new Set([...demande.userIds, ...parents])];
 }
 
 // Découpe une liste en lots (filtres `in.(…)` : l'URL reste courte).

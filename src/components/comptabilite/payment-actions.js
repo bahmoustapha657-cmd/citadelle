@@ -219,14 +219,15 @@ export async function toggleMens(_id, mois, mensActuels, mensDatesActuels, nomEl
     auteur,
   };
   await journaliser(ajPaiement, estPaye ? ecritureAnnulation({ ...params, ...retrait }) : ecritureEncaissement(params), toast);
+  // Push aux seuls parents de CET élève (eleveId), pas à toutes les familles.
   if(!estPaye){
-    envoyerPush(["parent"],"✅ Paiement enregistré",`Mensualité ${mois} de ${nomEleve||"votre enfant"} confirmée.`,"/paiements");
+    envoyerPush(["parent"],"✅ Paiement enregistré",`Mensualité ${mois} de ${nomEleve||"votre enfant"} confirmée.`,"/paiements",{ eleveId: _id });
   } else if(retrait.motif === "erreur_saisie"){
     // Le parent a pu recevoir « Paiement enregistré » : on rectifie, sans
     // l'alarmer d'un « rappel de paiement ».
-    envoyerPush(["parent"],"ℹ️ Rectification",`Le paiement de la mensualité ${mois} de ${nomEleve||"votre enfant"} avait été enregistré par erreur ; il a été corrigé.`,"/paiements");
+    envoyerPush(["parent"],"ℹ️ Rectification",`Le paiement de la mensualité ${mois} de ${nomEleve||"votre enfant"} avait été enregistré par erreur ; il a été corrigé.`,"/paiements",{ eleveId: _id });
   } else {
-    envoyerPush(["parent"],"⚠️ Rappel de paiement",`La mensualité ${mois} de ${nomEleve||"votre enfant"} est marquée impayée.`,"/paiements");
+    envoyerPush(["parent"],"⚠️ Rappel de paiement",`La mensualité ${mois} de ${nomEleve||"votre enfant"} est marquée impayée.`,"/paiements",{ eleveId: _id });
   }
   // Notification SMS/WhatsApp au tuteur (best-effort, inactive si non configurée).
   // Seul l'encaissement notifie ; le décochage (impayé) reste un push interne.
@@ -259,7 +260,7 @@ export async function encaisserVersement(_id, { plan, nomEleve = "", eleve = nul
   }
   if(plan.moisSoldes?.length){
     const liste = plan.moisSoldes.join(", ");
-    envoyerPush?.(["parent"],"✅ Paiement enregistré",`Mensualité(s) ${liste} de ${nomEleve||"votre enfant"} confirmée(s).`,"/paiements");
+    envoyerPush?.(["parent"],"✅ Paiement enregistré",`Mensualité(s) ${liste} de ${nomEleve||"votre enfant"} confirmée(s).`,"/paiements",{ eleveId: _id });
     notifierParents("paiement", { eleveId: _id, data: { nomEleve, mois: liste, paye: true } });
   }
   return true;

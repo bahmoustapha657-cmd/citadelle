@@ -8,12 +8,14 @@ export function DisciplineModale({ form, setForm, chg, eleves, ajAbs, setModal, 
     <Modale titre="Enregistrer un événement disciplinaire" fermer={()=>setModal(null)}>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
         <div style={{gridColumn:"1/-1"}}>
-          <Selec label="Élève" value={form.eleveNom||""} onChange={e=>{
-            const el=eleves.find(ev=>`${ev.nom} ${ev.prenom}`===e.target.value);
-            setForm(p=>({...p,eleveNom:e.target.value,classe:el?.classe||""}));
+          {/* Choix par identifiant : l'absence porte eleveId (colonne
+              obligatoire), et le push ne part qu'aux parents de cet élève. */}
+          <Selec label="Élève" value={form.eleveId||""} onChange={e=>{
+            const el=eleves.find(ev=>ev._id===e.target.value);
+            setForm(p=>({...p,eleveId:el?._id||"",eleveNom:el?`${el.nom} ${el.prenom}`:"",classe:el?.classe||""}));
           }}>
             <option value="">— Sélectionner —</option>
-            {eleves.map(e=><option key={e._id}>{e.nom} {e.prenom}</option>)}
+            {eleves.map(e=><option key={e._id} value={e._id}>{e.nom} {e.prenom}</option>)}
           </Selec>
         </div>
         <Selec label="Type" value={form.type||"Absence"} onChange={chg("type")}>
@@ -31,17 +33,18 @@ export function DisciplineModale({ form, setForm, chg, eleves, ajAbs, setModal, 
           const abs={...form,date:form.date||today()};
           await ajAbs(abs);
           setModal(null);
+          if(!abs.eleveId) return;
           envoyerPush(
             ["parent"],
             `⚠️ ${abs.type||"Absence"} signalée`,
             `${abs.eleveNom||"Votre enfant"} — ${abs.type||"Absence"} du ${abs.date}${abs.motif?` : ${abs.motif}`:""}`,
-            "/absences"
+            "/absences",
+            { eleveId: abs.eleveId }
           );
           // Notification SMS/WhatsApp au tuteur (best-effort, inactive si non
           // configurée). Uniquement pour Absence/Retard (pas les sanctions).
           if(abs.type==="Absence"||abs.type==="Retard"){
-            const el=eleves.find(ev=>`${ev.nom} ${ev.prenom}`===abs.eleveNom);
-            if(el?._id) notifierParents("absence",{ eleveId:el._id, data:{ nomEleve:abs.eleveNom, date:abs.date } });
+            notifierParents("absence",{ eleveId:abs.eleveId, data:{ nomEleve:abs.eleveNom, date:abs.date } });
           }
         }}>Enregistrer</Btn>
       </div>

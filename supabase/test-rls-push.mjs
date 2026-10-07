@@ -1,13 +1,15 @@
 // ═══════════════════════════════════════════════════════════════════════════
 //  EduGest — Sondes des abonnements push (push-subs-verrou.sql + Edge push)
 // ═══════════════════════════════════════════════════════════════════════════
-// Crée trois comptes JETABLES sur l'École Démo (parent, comptable, staff à
-// poste flexible) et deux postes de test, puis vérifie :
+// Crée quatre comptes JETABLES sur l'École Démo (deux parents, comptable,
+// staff à poste flexible) et deux postes de test, puis vérifie :
 //   • BASE : on ne s'abonne que pour soi, dans son école ; rôle et poste
 //     sont recalculés depuis le compte (ce que le navigateur déclare est
 //     ignoré), service_role compris ;
 //   • EDGE (après `supabase functions deploy push`) : refus de l'appelant
-//     (droits.ts) et tri des abonnés sur `comptes` (destinataires.ts).
+//     (droits.ts), tri des abonnés sur `comptes` (destinataires.ts) et
+//     parents visés PAR ÉLÈVE — deux élèves jetables, un parent chacun :
+//     la notification de l'un ne part pas à l'autre famille.
 // Les abonnements de test pointent vers une adresse INEXISTANTE du projet
 // Supabase : l'envoi y échoue en 404, et l'Edge purge alors la ligne — une
 // ligne purgée prouve qu'elle a été choisie comme destinataire. Seuls des
@@ -15,7 +17,7 @@
 // notification ne part vers un vrai utilisateur.
 // Puis supprime tout. Lancer : node supabase/test-rls-push.mjs
 import { createClient } from "@supabase/supabase-js";
-import { createECDH, randomBytes } from "node:crypto";
+import { createECDH, randomBytes, randomUUID } from "node:crypto";
 import { SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE } from "./_config.mjs";
 
 const svc = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE, { auth: { persistSession: false } });
@@ -59,6 +61,7 @@ async function main() {
 
   const comptes = {};
   const sessions = {};
+  const eleves = {}; // élèves jetables (sondes « parents par élève »)
   const creer = async (cle, role, poste) => {
     const login = `test-push-${cle}`;
     const email = `${login}.demo@edugest.app`;
@@ -101,8 +104,43 @@ async function main() {
     return { status: r.status, data: await r.json().catch(() => null) };
   };
 
+  // Deux familles : « parent » suit l'élève A, « parent2 » l'élève B. Seuls
+  // ces comptes de test sont rattachés aux élèves jetables : aucun vrai
+  // parent ne peut être servi.
+  const sonderParentsParEleve = async () => {
+    for (const cle of ["a", "b"]) {
+      const { data, error } = await svc.from("eleves").insert({
+        ecole_id: demo.id, section: "college", nom: "SONDE PUSH", prenom: `Élève ${cle.toUpperCase()} (test)`,
+      }).select("id").single();
+      if (error) { info(`élève de test impossible (${error.message}) : sondes « parents par élève » sautées.`); return; }
+      eleves[cle] = data.id;
+    }
+    const { error: lienErr } = await svc.from("parent_eleves").insert([
+      { compte_id: comptes.parent.compteId, eleve_id: eleves.a },
+      { compte_id: comptes.parent2.compteId, eleve_id: eleves.b },
+    ]);
+    if (lienErr) { info(`rattachements de test impossibles (${lienErr.message}) : sondes sautées.`); return; }
+
+    await sAbonner("parent");
+    await sAbonner("parent2");
+    const r = await appelerPush("comptable", { schoolId: demo.code, cibles: ["parent"], eleveId: eleves.a });
+    attendu("élève A : son parent est servi", r.status === 200 && !(await ligne("parent")),
+      `HTTP ${r.status} ${JSON.stringify(r.data)}`);
+    attendu("élève A : le parent de l'élève B ne reçoit RIEN", !!(await ligne("parent2")));
+
+    await sAbonner("parent");
+    const { data: ailleurs } = await svc.from("eleves").select("id").eq("ecole_id", autre.id).limit(1).maybeSingle();
+    const horsEcole = await appelerPush("comptable", {
+      schoolId: demo.code, cibles: ["parent"], eleveId: ailleurs?.id || randomUUID(),
+    });
+    attendu(`élève d'une autre école (${autre.code}) : refusé (404)`, horsEcole.status === 404,
+      `HTTP ${horsEcole.status} ${JSON.stringify(horsEcole.data)}`);
+    attendu("… et rien n'est parti", !!(await ligne("parent")) && !!(await ligne("parent2")));
+  };
+
   try {
     await creer("parent", "parent", null);
+    await creer("parent2", "parent", null);
     await creer("comptable", "comptable", "comptable");
     await creer("staff", "staff", POSTE_CENSEUR);
 
@@ -173,6 +211,7 @@ async function main() {
     console.log("\n— EDGE push : refus de l'appelant (droits.ts) —");
     const detection = await appelerPush("parent", { schoolId: autre.code, userIds: [comptes.parent.userId] });
     const edgeAJour = detection.status === 403;
+    let parentsAJour = false;
     attendu("le parent ne peut pas notifier une autre école (403)", edgeAJour,
       `HTTP ${detection.status} ${JSON.stringify(detection.data)} — normal si « supabase functions deploy push » n'a pas encore été lancé`);
     if (!edgeAJour) {
@@ -180,6 +219,22 @@ async function main() {
     } else {
       const tous = await appelerPush("parent", { schoolId: demo.code, tousStaff: true });
       attendu("le parent ne peut pas notifier tout le personnel (403)", tous.status === 403, `HTTP ${tous.status}`);
+
+      console.log("\n— EDGE push : parents visés par élève (fuite entre familles) —");
+      // Détection par le PARENT : une version antérieure répond 403 (ciblage
+      // par rôle interdit aux parents) sans rien envoyer ; la nouvelle refuse
+      // d'abord la cible « parent » sans élève (400).
+      const sansEleve = await appelerPush("parent", { schoolId: demo.code, cibles: ["parent"] });
+      parentsAJour = sansEleve.status === 400;
+      attendu("cible « parent » sans eleveId : refusée (400)", parentsAJour,
+        `HTTP ${sansEleve.status} ${JSON.stringify(sansEleve.data)} — normal si la version « parents par élève » n'est pas encore déployée`);
+      if (parentsAJour) {
+        const r = await appelerPush("comptable", { schoolId: demo.code, cibles: ["parent"] });
+        attendu("… même venant du personnel : aucune diffusion à toutes les familles (400)", r.status === 400,
+          `HTTP ${r.status} ${JSON.stringify(r.data)}`);
+      } else {
+        info("Edge sans « parents par élève » : sondes d'envoi aux parents sautées.");
+      }
 
       console.log("\n— EDGE push : destinataires choisis sur `comptes` —");
       // Témoin : le staff (poste censeur) visé par sa clé de poste doit être
@@ -210,10 +265,13 @@ async function main() {
         await svc.from("comptes").update({ statut: "Actif" }).eq("id", comptes.comptable.compteId);
         await appelerPush("parent", { schoolId: demo.code, userIds: [comptes.comptable.userId] });
         attendu("compte réactivé : servi à nouveau (messagerie, userIds)", !(await ligne("comptable")));
+
+        if (parentsAJour) await sonderParentsParEleve();
       }
     }
   } finally {
-    // ── Nettoyage complet ──
+    // ── Nettoyage complet (rattachements supprimés en cascade) ──
+    if (Object.keys(eleves).length) await svc.from("eleves").delete().in("id", Object.values(eleves));
     for (const t of Object.values(comptes)) {
       await svc.from("push_subs").delete().eq("user_id", t.userId);
       await svc.from("comptes").delete().eq("id", t.compteId);
