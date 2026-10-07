@@ -14,6 +14,7 @@ import {
   normalizeSection, teacherCollectionSlug, isTitulaireSection,
 } from "./teacher-scope";
 import { matieresEvaluees, matieresNotablesPar } from "../matiere-nature";
+import { enrichirAbsences } from "../absences-eleves";
 
 let ctx = null; // contexte enseignant courant (rempli au fetch, utilisé aux écritures)
 
@@ -138,7 +139,9 @@ export async function fetchTeacherPortal(utilisateur, { annee = "" } = {}) {
   const matieresPerimetre = [utilisateur.matiere || "", ...ctx.matieresNotables];
   const notes = notesAll.filter((n) =>
     noteBelongsToTeacherScope(n, studentIds, matieresPerimetre, studentNames, section, teacherClasses));
-  const incidents = absAll.filter((i) => studentIds.has(String(i.eleveId || "").trim()));
+  // Nom et classe affichés lus sur la fiche : la table n'a que eleve_id.
+  const incidents = enrichirAbsences(
+    absAll.filter((i) => studentIds.has(String(i.eleveId || "").trim())), eleves);
   // La RLS ne renvoie déjà que les fiches de l'enseignant ; le filtre reste
   // pour ne jamais afficher celles d'un autre si le compte en lisait plus.
   const aliasesPaie = teacherSalaryAliases(utilisateur, rosterAll);

@@ -1,19 +1,22 @@
-import { today } from "../../../constants";
 import { Btn, Input, Modale, Selec, Textarea } from "../../ui";
 import { notifierParents } from "../../../backend/notify-supabase";
+import { absencePrete, dateAbsence } from "../../../absences-eleves";
 
 // Modale d'enregistrement d'un événement disciplinaire (+ push parents).
 export function DisciplineModale({ form, setForm, chg, eleves, ajAbs, setModal, envoyerPush }) {
+  const pret = absencePrete(form);
   return (
     <Modale titre="Enregistrer un événement disciplinaire" fermer={()=>setModal(null)}>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
         <div style={{gridColumn:"1/-1"}}>
-          <Selec label="Élève" value={form.eleveNom||""} onChange={e=>{
-            const el=eleves.find(ev=>`${ev.nom} ${ev.prenom}`===e.target.value);
-            setForm(p=>({...p,eleveNom:e.target.value,classe:el?.classe||""}));
+          {/* Choix par identifiant : l'absence porte eleveId (colonne
+              obligatoire) ; le nom et la classe ne sont pas enregistrés. */}
+          <Selec label="Élève" value={form.eleveId||""} onChange={e=>{
+            const el=eleves.find(ev=>ev._id===e.target.value);
+            setForm(p=>({...p,eleveId:el?._id||"",eleveNom:el?`${el.nom} ${el.prenom}`:"",classe:el?.classe||""}));
           }}>
             <option value="">— Sélectionner —</option>
-            {eleves.map(e=><option key={e._id}>{e.nom} {e.prenom}</option>)}
+            {eleves.map(e=><option key={e._id} value={e._id}>{e.nom} {e.prenom}</option>)}
           </Selec>
         </div>
         <Selec label="Type" value={form.type||"Absence"} onChange={chg("type")}>
@@ -25,10 +28,12 @@ export function DisciplineModale({ form, setForm, chg, eleves, ajAbs, setModal, 
         </Selec>
         <div style={{gridColumn:"1/-1"}}><Textarea label="Motif / Description" value={form.motif||""} onChange={chg("motif")}/></div>
       </div>
-      <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
+      <div style={{display:"flex",justifyContent:"flex-end",alignItems:"center",gap:8,marginTop:16}}>
+        {!pret&&<span style={{fontSize:12,color:"#6b7280",marginInlineEnd:"auto"}}>Choisissez un élève pour enregistrer.</span>}
         <Btn v="ghost" onClick={()=>setModal(null)}>Annuler</Btn>
-        <Btn v="orange" onClick={async()=>{
-          const abs={...form,date:form.date||today()};
+        <Btn v="orange" disabled={!pret} onClick={async()=>{
+          if(!pret) return;
+          const abs={...form,date:dateAbsence(form)};
           await ajAbs(abs);
           setModal(null);
           envoyerPush(
