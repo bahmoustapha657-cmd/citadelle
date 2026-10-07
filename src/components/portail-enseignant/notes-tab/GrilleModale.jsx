@@ -11,7 +11,7 @@ import { celluleASauver } from "../notes-grid";
 //                    seule fois. Recherche d'élève par nom dans tous les modes.
 export function GrilleModale({
   matiere, mesClasses, noteForms, periodes,
-  isPrimaire = false, matieresDispo = [],
+  isPrimaire = false, matieresDispo = [], maxNote = 20,
   gridForm, setGridForm, majGrid, portalData,
   gridProgress, enregistrement, setModalNote, enregistrerGrille,
 }) {
@@ -19,7 +19,6 @@ export function GrilleModale({
   const norm = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
   const multi = !!gridForm.multiPeriode;
   const multiMat = !!gridForm.multiMatiere;
-  const maxNote = isPrimaire ? 10 : 20;
   const matCols = matieresDispo.map((m) => m.nom).filter(Boolean);
   // Sélecteur de matière : titulaire (toutes ses matières) ou professeur du
   // secondaire à qui des matières sont rattachées (Français → Dictée…).

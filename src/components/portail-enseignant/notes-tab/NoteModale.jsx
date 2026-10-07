@@ -3,7 +3,7 @@ import { Btn, Input, Modale, Selec } from "../../ui";
 // Modale de création / édition d'une note unitaire.
 export function NoteModale({
   modalNote, setModalNote, formNote, setFormNote,
-  eleves, noteForms, defaultNoteType, periodeN, periodes,
+  eleves, noteForms, defaultNoteType, periodeN, periodes, maxNote = 20,
   isPrimaire = false, matieresDispo = [],
   enregistrement, enregistrerNote,
 }) {
@@ -56,11 +56,14 @@ export function NoteModale({
       </Selec>
       <div style={{ height: 10 }} />
       <Input
-        label="Note /20"
+        label={`Note /${maxNote}`}
         type="number"
+        min="0"
+        max={maxNote}
+        step="0.25"
         value={formNote.note ?? ""}
         onChange={(event) => setFormNote((current) => ({ ...current, note: event.target.value }))}
-        placeholder="Ex : 14"
+        placeholder={`Ex : ${maxNote * 0.7}`}
       />
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
         <Btn v="ghost" onClick={() => setModalNote(null)}>Annuler</Btn>

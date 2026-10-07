@@ -21,7 +21,10 @@ async function lireTout(construireRequete) {
   return { data: rows, error: null };
 }
 
-export async function fetchParentPortal() {
+// `annee` : année scolaire officielle de l'école. Les notes se lisent dans
+// cette année seulement : sans ce filtre, bulletins et moyennes du parent
+// mélangeaient l'année close et l'année en cours.
+export async function fetchParentPortal({ annee = "" } = {}) {
   const sb = getSupabase();
 
   // Enfants du parent (toutes sections confondues — table unifiée + RLS).
@@ -32,7 +35,10 @@ export async function fetchParentPortal() {
 
   const vide = { data: [] };
   const [notes, absences, tarifs, annonces, messages] = await Promise.all([
-    ids.length ? lireTout(() => sb.from("notes").select("*").in("eleve_id", ids)) : vide,
+    ids.length ? lireTout(() => {
+      const q = sb.from("notes").select("*").in("eleve_id", ids);
+      return annee ? q.eq("annee", annee) : q;
+    }) : vide,
     ids.length ? lireTout(() => sb.from("absences").select("*").in("eleve_id", ids)) : vide,
     lireTout(() => sb.from("tarifs").select("*")),
     sb.from("annonces").select("*").order("created_at", { ascending: false }).limit(10),

@@ -6,7 +6,7 @@ import { Badge, Btn, Card, TD, THead, TR, Vide } from "../../ui";
 export function NotesListe({
   c1, matiere, schoolInfo, utilisateur,
   periodeN, setPeriodeN, periodes, mesClasses,
-  notesPeriode, enregistrement,
+  notesPeriode, maxNote = 20, enregistrement,
   pendingSync = 0, syncing = false, synchroniser,
   ouvrirGrille, ouvrirCreationNote, ouvrirEditionNote, supprimerNote,
 }) {
@@ -35,13 +35,13 @@ export function NotesListe({
       ) : (
         <Card>
           <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
-            <THead cols={["Eleve", "Type", "Note /20", "Actions"]} />
+            <THead cols={["Eleve", "Type", `Note /${maxNote}`, "Actions"]} />
             <tbody>
               {notesPeriode.map((note) => (
                 <TR key={note._id}>
                   <TD bold>{note.eleveNom}</TD>
                   <TD><Badge color="blue">{getEvaluationLabel(note.type, schoolInfo, { section: utilisateur.section || "secondaire" })}</Badge></TD>
-                  <TD center><strong style={{ fontSize: 14, color: Number(note.note) >= 10 ? C.greenDk : "#b91c1c" }}>{note.note}</strong></TD>
+                  <TD center><strong style={{ fontSize: 14, color: Number(note.note) >= maxNote / 2 ? C.greenDk : "#b91c1c" }}>{note.note}</strong></TD>
                   <TD center>
                     <div style={{ display: "flex", justifyContent: "center", gap: 6 }}>
                       <Btn sm v="ghost" onClick={() => ouvrirEditionNote(note)}>Modifier</Btn>

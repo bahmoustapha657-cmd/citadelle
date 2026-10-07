@@ -17,6 +17,7 @@ export function NotesTab({
   defaultNoteType,
   isPrimaire,
   matieresDispo,
+  maxNote,
   eleves,
   portalData,
   modalNote, setModalNote,
@@ -38,7 +39,7 @@ export function NotesTab({
       <NotesListe
         c1={c1} matiere={matiere} schoolInfo={schoolInfo} utilisateur={utilisateur}
         periodeN={periodeN} setPeriodeN={setPeriodeN} periodes={periodes} mesClasses={mesClasses}
-        notesPeriode={notesPeriode} enregistrement={enregistrement}
+        notesPeriode={notesPeriode} maxNote={maxNote} enregistrement={enregistrement}
         pendingSync={pendingSync} syncing={syncing} synchroniser={synchroniser}
         ouvrirGrille={ouvrirGrille} ouvrirCreationNote={ouvrirCreationNote}
         ouvrirEditionNote={ouvrirEditionNote} supprimerNote={supprimerNote}
@@ -47,7 +48,7 @@ export function NotesTab({
       {modalNote === "grid" && (
         <GrilleModale
           matiere={matiere} mesClasses={mesClasses} noteForms={noteForms} periodes={periodes}
-          isPrimaire={isPrimaire} matieresDispo={matieresDispo}
+          isPrimaire={isPrimaire} matieresDispo={matieresDispo} maxNote={maxNote}
           gridForm={gridForm} setGridForm={setGridForm} majGrid={majGrid} portalData={portalData}
           gridProgress={gridProgress} enregistrement={enregistrement}
           setModalNote={setModalNote} enregistrerGrille={enregistrerGrille}
@@ -58,7 +59,7 @@ export function NotesTab({
         <NoteModale
           modalNote={modalNote} setModalNote={setModalNote} formNote={formNote} setFormNote={setFormNote}
           eleves={eleves} noteForms={noteForms} defaultNoteType={defaultNoteType}
-          periodeN={periodeN} periodes={periodes}
+          periodeN={periodeN} periodes={periodes} maxNote={maxNote}
           isPrimaire={isPrimaire} matieresDispo={matieresDispo}
           enregistrement={enregistrement} enregistrerNote={enregistrerNote}
         />

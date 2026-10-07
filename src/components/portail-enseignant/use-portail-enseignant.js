@@ -1,6 +1,6 @@
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { SchoolContext } from "../../contexts/SchoolContext";
-import { C } from "../../constants";
+import { C, getBaremeForSection } from "../../constants";
 import { getPeriodesForSection } from "../../period-utils";
 import { getActiveNoteForms } from "../../evaluation-forms";
 import { imprimerEdtEnseignant, imprimerPaiesEnseignant } from "../../reports";
@@ -50,6 +50,9 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
     if (lectureSeule) { toast(MSG_LECTURE_SEULE_PORTAIL, "error"); return undefined; }
     return action(...args);
   };
+  // Année des notes lues et saisies : l'année officielle de l'école (celle de
+  // l'en-tête), jamais une valeur restée en cache sur l'appareil.
+  const anneeNotes = schoolInfo?.anneeScolaire || annee || "";
   const c1 = schoolInfo.couleur1 || C.blue;
   const c2 = schoolInfo.couleur2 || C.green;
   const noteForms = getActiveNoteForms(schoolInfo, utilisateur.section || "secondaire");
@@ -88,6 +91,9 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
   // Questions, Rédaction) ; s'il y en a plusieurs, le même sélecteur
   // apparaît (cf. choixMatiere dans les modales).
   const isPrimaire = isTitulaireSection(portalData.section || utilisateur.section);
+  // Barème de saisie, de validation et d'affichage, tiré de la même section
+  // (maternelle et primaire sur 10, secondaire sur 20).
+  const maxNote = getBaremeForSection(portalData.section || utilisateur.section);
   const matieresDispo = portalData.matieres || [];
   const matiereParDefaut = matieresDispo[0]?.nom || (isPrimaire ? "" : matiere);
   const emplois = portalData.emplois || [];
@@ -121,7 +127,7 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
     const lecture = ++derniereLecture.current;
     if (!silencieux) setChargement(true);
     try {
-      const donnees = await fetchTeacherPortal(utilisateur);
+      const donnees = await fetchTeacherPortal(utilisateur, { annee: anneeNotes });
       if (lecture === derniereLecture.current) setPortalData(donnees);
       // Mode Supabase : le contexte d'écriture des notes n'existe qu'après ce
       // fetch — la synchro de la file hors-ligne tentée au montage a pu échouer,
@@ -134,10 +140,11 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
     }
   };
 
+  // Relu quand l'année officielle arrive ou change (clôture d'année).
   useEffect(() => {
     chargerPortail();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [anneeNotes]);
 
   // Mode hors ligne (PowerSync) : le portail lit le miroir local, encore vide
   // juste après la connexion. On le relit dès que la synchro livre les
@@ -279,7 +286,7 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
   };
 
   const enregistrerGrille = siModifiable(() => enregistrerGrilleAction({
-    gridForm, mesNotes, schoolInfo, utilisateur,
+    gridForm, mesNotes, schoolInfo, utilisateur, maxNote, annee: anneeNotes,
     setEnregistrement, setGridProgress, setModalNote, chargerPortail, toast,
     // Enregistrement complet réussi → le brouillon local n'a plus de raison d'être.
     onSuccess: () => clearDraft(cleBrouillon(gridForm)),
@@ -299,7 +306,7 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
   };
 
   const enregistrerNote = siModifiable(() => enregistrerNoteAction({
-    formNote, defaultNoteType, schoolInfo, utilisateur,
+    formNote, defaultNoteType, schoolInfo, utilisateur, maxNote, annee: anneeNotes,
     setEnregistrement, setModalNote, chargerPortail, toast,
   }));
   const supprimerNote = siModifiable((noteId) => supprimerNoteAction(noteId, {
@@ -333,7 +340,7 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
 
   return {
     c1, c2, nomEns, matiere, noteForms, defaultNoteType, periodes,
-    isPrimaire, matieresDispo,
+    isPrimaire, matieresDispo, maxNote,
     tab, setTab, periodeN, setPeriodeN, chargement, portalData,
     emplois, eleves, salaires, salairesIndisponibles, incidents, enseignantId,
     mesClasses, mesNotes, mesEvenements, notesPeriode,

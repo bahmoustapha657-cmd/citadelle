@@ -5,8 +5,9 @@ import { isSupabase } from "../../backend";
 import * as sbParent from "../../backend/parent-portal-supabase";
 
 // Charge les données du portail et renvoie un portalData normalisé (tableaux).
-export async function fetchParentPortal() {
-  if (isSupabase) return sbParent.fetchParentPortal();
+// `opts.annee` : année des notes (mode Supabase ; l'API Firebase l'ignore).
+export async function fetchParentPortal(opts = {}) {
+  if (isSupabase) return sbParent.fetchParentPortal(opts);
   const headers = await getAuthHeaders();
   const res = await apiFetch("/parent-portal", { headers });
   const data = await res.json().catch(() => ({}));

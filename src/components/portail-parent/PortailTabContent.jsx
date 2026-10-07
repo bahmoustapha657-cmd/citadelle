@@ -19,6 +19,7 @@ export function PortailTabContent({ p, schoolInfo, c1, c2 }) {
           mesAbsences={p.mesAbsences}
           matieres={p.matieres}
           eleve={p.eleve}
+          section={p.section}
           c1={c1}
           onVoirNotes={() => p.setTab("notes")}
           famille={p.famille}
@@ -37,6 +38,7 @@ export function PortailTabContent({ p, schoolInfo, c1, c2 }) {
           matieres={p.matieres}
           eleve={p.eleve}
           eleveNom={p.eleveNom}
+          section={p.section}
           c1={c1}
         />
       )}

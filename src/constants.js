@@ -254,6 +254,12 @@ export const getSectionLabel = (section = "college") => (
 
 export const getSectionLabelForClasse = (classe = "") => getSectionLabel(getSectionForClasse(classe));
 
+// Barème de notation d'une section : la maternelle et le primaire sont notés
+// sur 10 (modules Préscolaire et Primaire, maxNote={10}), le collège et le
+// lycée sur 20. Une section inconnue suit le secondaire, comme getSectionLabel.
+export const getBaremeForSection = (section = "college") =>
+  (section === "prescolaire" || section === "primaire" ? 10 : 20);
+
 // Nom de section SANS accent, pour les noms de fichiers exportés
 // (« Eleves_Primaire.xlsx »). C'est le même segment que dans les clés de
 // collection (elevesPrimaire, notesCollege…), donc aucun caractère à risque.

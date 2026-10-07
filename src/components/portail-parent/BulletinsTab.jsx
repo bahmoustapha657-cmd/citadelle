@@ -1,10 +1,13 @@
 import React from "react";
 import { C } from "../../constants";
-import { getGeneralAverage } from "../../note-utils";
 import { imprimerBulletin } from "../../reports";
 import { BlocagePaiement } from "../BlocagePaiement";
 import { Badge, Card, TD, THead, TR, Vide } from "../ui";
+import { computeBulletinPeriode } from "./portail-parent-derive";
 
+// `section` = clé de section de l'enfant (cf. sectionDeLEleve) : elle part
+// telle quelle à l'impression et fixe le barème affiché (maternelle et
+// primaire sur 10).
 export function BulletinsTab({ accesBloqueParPaiement, moisImpayes, schoolInfo, onPaiements, periodes, mesNotes, eleve, eleveNom, section, c1, c2 }) {
   return (
     <>
@@ -14,22 +17,21 @@ export function BulletinsTab({ accesBloqueParPaiement, moisImpayes, schoolInfo, 
         {periodes.map((periode) => {
           const notesPeriode = mesNotes.filter((item) => item.periode === periode);
           if (notesPeriode.length === 0) return null;
-          const matieresPeriode = [...new Set(notesPeriode.map((item) => item.matiere))].map((nom) => ({ nom }));
-          const moyenne = (getGeneralAverage(notesPeriode, matieresPeriode, eleve.classe) || 0).toFixed(1);
+          const { matieres, moyenne, maxNote } = computeBulletinPeriode(notesPeriode, eleve, section);
           return (
             <Card key={periode} style={{ marginBottom: 12 }}>
               <div style={{ padding: "12px 18px", background: `linear-gradient(135deg,${c1},${c1}cc)`, borderRadius: "14px 14px 0 0", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
                 <strong style={{ color: "#fff", fontSize: 14 }}>Bulletin - {periode}</strong>
                 <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                  <span style={{ background: c2, color: "#fff", fontWeight: 900, fontSize: 13, padding: "4px 14px", borderRadius: 20 }}>Moy. {moyenne}/20</span>
+                  <span style={{ background: c2, color: "#fff", fontWeight: 900, fontSize: 13, padding: "4px 14px", borderRadius: 20 }}>Moy. {(moyenne || 0).toFixed(1)}/{maxNote}</span>
                   <button
                     onClick={() => imprimerBulletin(
                       { ...eleve, nom: eleve.nom || eleveNom.split(" ").slice(-1)[0] || eleveNom, prenom: eleve.prenom || eleveNom.split(" ").slice(0, -1).join(" ") },
                       notesPeriode,
-                      [...new Set(notesPeriode.map((item) => item.matiere))].map((nom) => ({ nom })),
+                      matieres,
                       periode,
-                      section === "primaire" ? "Primaire" : "Secondaire",
-                      section === "primaire" ? 10 : 20,
+                      section,
+                      maxNote,
                       schoolInfo,
                     )}
                     style={{ background: "rgba(255,255,255,0.2)", border: "1px solid rgba(255,255,255,0.4)", color: "#fff", padding: "4px 10px", borderRadius: 8, fontSize: 11, cursor: "pointer", fontWeight: 700 }}
@@ -39,13 +41,13 @@ export function BulletinsTab({ accesBloqueParPaiement, moisImpayes, schoolInfo, 
                 </div>
               </div>
               <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
-                <THead cols={["Matiere", "Type", "Note /20"]} />
+                <THead cols={["Matiere", "Type", `Note /${maxNote}`]} />
                 <tbody>
                   {notesPeriode.map((item, index) => (
                     <TR key={index}>
                       <TD bold>{item.matiere}</TD>
                       <TD><Badge color="blue">{item.type}</Badge></TD>
-                      <TD center><strong style={{ color: Number(item.note) >= 10 ? C.greenDk : "#b91c1c" }}>{item.note}/20</strong></TD>
+                      <TD center><strong style={{ color: Number(item.note) >= maxNote / 2 ? C.greenDk : "#b91c1c" }}>{item.note}/{maxNote}</strong></TD>
                     </TR>
                   ))}
                 </tbody>

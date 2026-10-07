@@ -47,7 +47,11 @@ async function lireSalaires(code, cle) {
   }
 }
 
-export async function fetchTeacherPortal(utilisateur) {
+// `annee` : année scolaire OFFICIELLE de l'école. Les notes se lisent dans
+// cette année seulement, comme dans le module École : sans ce filtre, le
+// portail montrait les notes de l'année close comme celles de l'année en
+// cours, et la grille pré-remplie avec elles les aurait réécrites.
+export async function fetchTeacherPortal(utilisateur, { annee = "" } = {}) {
   const code = utilisateur.schoolId;
   const section = normalizeSection(utilisateur.section || utilisateur.sections?.[0] || "college");
   const C = teacherCollectionSlug(section);
@@ -123,7 +127,10 @@ export async function fetchTeacherPortal(utilisateur) {
     : matieresNotablesPar(matieresClasses, utilisateur.matiere);
   ctx.matieresNotables = matieres.map((m) => m.nom);
 
-  const [notesAll, absAll] = await Promise.all([lire(`notes${C}`), lire(`eleves${C}_absences`)]);
+  const [notesAll, absAll] = await Promise.all([
+    chargerCollection(code, `notes${C}`, annee ? { annee } : {}).then((r) => r.items),
+    lire(`eleves${C}_absences`),
+  ]);
   // Sa matière reste dans le périmètre même devenue rubrique : ses notes
   // déjà saisies restent visibles.
   const matieresPerimetre = [utilisateur.matiere || "", ...ctx.matieresNotables];

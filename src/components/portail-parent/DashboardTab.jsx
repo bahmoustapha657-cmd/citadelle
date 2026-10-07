@@ -1,14 +1,17 @@
 import React from "react";
 import { PolarAngleAxis, PolarGrid, Radar, RadarChart, ResponsiveContainer, Tooltip } from "recharts";
-import { C } from "../../constants";
+import { C, getBaremeForSection } from "../../constants";
 import { getSubjectAverage } from "../../note-utils";
 import { Badge, Card, TD, THead, TR, Vide } from "../ui";
 import { estAbsence } from "./helpers";
 import { FamilleCard } from "./FamilleCard";
 
 // Aperçu : vue « famille » en tête quand le compte suit plusieurs enfants,
-// puis annonces de l'école et résumé de l'enfant affiché.
-export function DashboardTab({ annonces, mesNotes, mesAbsences, matieres, eleve, c1, onVoirNotes, famille, eleveId, onVoirEnfant }) {
+// puis annonces de l'école et résumé de l'enfant affiché. `section` = clé de
+// section de l'enfant : barème des notes et échelle du radar (maternelle et
+// primaire sur 10), formule des moyennes par matière.
+export function DashboardTab({ annonces, mesNotes, mesAbsences, matieres, eleve, section, c1, onVoirNotes, famille, eleveId, onVoirEnfant }) {
+  const maxNote = getBaremeForSection(section);
   return (
     <>
       {famille?.enfants.length > 1 && (
@@ -44,7 +47,7 @@ export function DashboardTab({ annonces, mesNotes, mesAbsences, matieres, eleve,
                     <TD bold>{item.matiere}</TD>
                     <TD><Badge color="blue">{item.type}</Badge></TD>
                     <TD>{item.periode}</TD>
-                    <TD center><strong style={{ color: Number(item.note) >= 10 ? C.greenDk : "#b91c1c", fontSize: 14 }}>{item.note}/20</strong></TD>
+                    <TD center><strong style={{ color: Number(item.note) >= maxNote / 2 ? C.greenDk : "#b91c1c", fontSize: 14 }}>{item.note}/{maxNote}</strong></TD>
                   </TR>
                 ))}
               </tbody>
@@ -83,14 +86,14 @@ export function DashboardTab({ annonces, mesNotes, mesAbsences, matieres, eleve,
             <ResponsiveContainer width="100%" height={220}>
               <RadarChart data={matieres.map((matiere) => {
                 const notesMatiere = mesNotes.filter((item) => item.matiere === matiere);
-                const moyenne = getSubjectAverage(notesMatiere, eleve.classe) || 0;
-                return { matiere: matiere.length > 10 ? `${matiere.slice(0, 10)}...` : matiere, valeur: Math.round(moyenne * 10) / 10, plein: 20 };
+                const moyenne = getSubjectAverage(notesMatiere, eleve.classe, section) || 0;
+                return { matiere: matiere.length > 10 ? `${matiere.slice(0, 10)}...` : matiere, valeur: Math.round(moyenne * 10) / 10, plein: maxNote };
               })}>
                 <PolarGrid stroke="#e2e8f0" />
                 <PolarAngleAxis dataKey="matiere" tick={{ fontSize: 10 }} />
                 <Radar name="Note" dataKey="valeur" stroke={c1} fill={c1} fillOpacity={0.25} />
                 <Radar name="Max" dataKey="plein" stroke="transparent" fill="transparent" />
-                <Tooltip formatter={(value) => `${value}/20`} />
+                <Tooltip formatter={(value) => `${value}/${maxNote}`} />
               </RadarChart>
             </ResponsiveContainer>
           </div>

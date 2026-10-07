@@ -1,8 +1,10 @@
 // Dérivations pures du portail parent : filtrage par enfant courant, calcul
-// des tarifs et du blocage pour impayés, vue « famille ». Aucun état React.
-import { estSorti, getTarifMensuelTotal } from "../../constants";
+// des tarifs et du blocage pour impayés, vue « famille », bulletins. Aucun
+// état React.
+import { estSorti, getBaremeForSection, getSectionForClasse, getTarifMensuelTotal } from "../../constants";
 import { estExonereTotal } from "../../exoneration-utils";
 import { getEleveSolde } from "../../mensualite-utils";
+import { getGeneralAverage } from "../../note-utils";
 import { estAbsence, normalizeText } from "./helpers";
 import { moisExigibles } from "../../depart-utils";
 
@@ -72,5 +74,26 @@ export function resumeFamille({ eleves, absences, messages, tarifs, moisAnnee, a
     enfants,
     totalAPayer: enfants.reduce((total, e) => total + e.resteAPayer, 0),
     aJour: enfants.filter((e) => e.resteAPayer === 0).length,
+  };
+}
+
+// Section de l'enfant, en CLÉ (« prescolaire », « primaire », « college »,
+// « lycee ») : la colonne `section` de sa fiche — le module où l'école saisit
+// ses notes — prime ; à défaut, on la déduit de sa classe. La section du
+// COMPTE parent ne vaut pas pour chaque enfant d'une fratrie.
+export const sectionDeLEleve = (eleve = {}) => eleve.section || getSectionForClasse(eleve.classe);
+
+// Bulletin d'une période : matières notées, moyenne générale et barème.
+// `section` est aussi le niveau transmis à imprimerBulletin — une clé, pas un
+// libellé : elle choisit la formule de moyenne, le code statistique et le chef
+// de section signataire. L'ancien libellé « Secondaire » imprimait une moyenne
+// simple au collège et classait la maternelle au secondaire, sur 20. Même
+// section ici : la moyenne affichée est celle du bulletin imprimé.
+export function computeBulletinPeriode(notesPeriode, eleve, section) {
+  const matieres = [...new Set(notesPeriode.map((item) => item.matiere))].map((nom) => ({ nom }));
+  return {
+    matieres,
+    moyenne: getGeneralAverage(notesPeriode, matieres, eleve.classe, section),
+    maxNote: getBaremeForSection(section),
   };
 }

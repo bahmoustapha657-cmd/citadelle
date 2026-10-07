@@ -16,7 +16,7 @@ export function PortailTabContent({ p, schoolInfo, utilisateur, t }) {
         <DashboardTab
           c1={p.c1} nomEns={p.nomEns} matiere={p.matiere}
           schoolInfo={schoolInfo} utilisateur={utilisateur} t={t}
-          mesClasses={p.mesClasses} eleves={p.eleves} mesNotes={p.mesNotes}
+          mesClasses={p.mesClasses} eleves={p.eleves} mesNotes={p.mesNotes} maxNote={p.maxNote}
           emplois={p.emplois} mesEvenements={p.mesEvenements}
           formatEmploiHeure={p.formatEmploiHeure}
         />
@@ -32,7 +32,7 @@ export function PortailTabContent({ p, schoolInfo, utilisateur, t }) {
           periodeN={p.periodeN} setPeriodeN={p.setPeriodeN} periodes={p.periodes}
           mesClasses={p.mesClasses} notesPeriode={p.notesPeriode}
           noteForms={p.noteForms} defaultNoteType={p.defaultNoteType}
-          isPrimaire={p.isPrimaire} matieresDispo={p.matieresDispo}
+          isPrimaire={p.isPrimaire} matieresDispo={p.matieresDispo} maxNote={p.maxNote}
           eleves={p.eleves} portalData={p.portalData}
           modalNote={p.modalNote} setModalNote={p.setModalNote}
           formNote={p.formNote} setFormNote={p.setFormNote}

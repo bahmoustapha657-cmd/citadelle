@@ -4,8 +4,9 @@ import { fetchTeacherPortal as fetchTeacherPortalSupabase } from "../../backend/
 
 // Charge et normalise les données du portail enseignant via /teacher-portal.
 // Renvoie un portalData complet (tableaux garantis) ou lève une erreur.
-export async function fetchTeacherPortal(utilisateur) {
-  if (isSupabase) return fetchTeacherPortalSupabase(utilisateur);
+// `opts.annee` : année des notes (mode Supabase ; l'API Firebase l'ignore).
+export async function fetchTeacherPortal(utilisateur, opts = {}) {
+  if (isSupabase) return fetchTeacherPortalSupabase(utilisateur, opts);
   // Identifiant de compte STABLE (≠ jeton qui tourne) : permet au service
   // worker d'isoler la réponse en cache par enseignant, pour qu'un appareil
   // partagé ne serve pas les données d'un collègue hors-ligne.
