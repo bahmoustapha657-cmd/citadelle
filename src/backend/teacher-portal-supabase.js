@@ -25,12 +25,14 @@ let ctx = null; // contexte enseignant courant (rempli au fetch, utilisé aux é
 // paie ne change qu'une fois par mois. Un échec (hors ligne) n'est pas gardé :
 // le chargement suivant retente. Attente bornée : sur un réseau qui ne répond
 // plus, le portail — lu localement — ne reste pas suspendu aux salaires.
+// Année : comme les notes, seules les fiches de l'année officielle de l'école
+// (l'enseignant voyait encore toutes ses fiches de l'année close).
 export const DELAI_SALAIRES_MS = 8000;
 let salairesSession = null; // { cle, items }
 
-async function lireSalaires(code, cle) {
+async function lireSalaires(code, cle, annee = "") {
   if (salairesSession?.cle === cle) return salairesSession;
-  const lecture = chargerCollection(code, "salaires", { reseau: true })
+  const lecture = chargerCollection(code, "salaires", annee ? { reseau: true, annee } : { reseau: true })
     .catch((e) => ({ items: [], erreur: e?.message || String(e) }))
     .then((r) => {
       if (!r.erreur) salairesSession = { cle, items: r.items };
@@ -70,7 +72,7 @@ export async function fetchTeacherPortal(utilisateur, { annee = "" } = {}) {
 
   // Lancée d'abord (réseau), attendue en dernier : les lectures locales
   // avancent pendant ce temps.
-  const salairesLus = lireSalaires(code, `${code}|${utilisateur.uid || utilisateur.login || ""}`);
+  const salairesLus = lireSalaires(code, `${code}|${utilisateur.uid || utilisateur.login || ""}|${annee}`, annee);
   const lire = async (nom) => (await chargerCollection(code, nom)).items;
   const [emploisAll, ensAll, classesAll, matieresAll, rosterAll] = await Promise.all([
     lire(`classes${C}_emplois`), lire(`ens${C}_enseignements`),
