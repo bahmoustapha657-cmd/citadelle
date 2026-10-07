@@ -1,12 +1,10 @@
 import { Badge, Btn } from "../../ui";
 import { exportExcel } from "../../../reports";
+import { elevesEnAlerte } from "../../../absences-eleves";
 
 // Bandeau d'alerte : élèves avec ≥ 3 absences non justifiées (masqué si aucun).
 export function DisciplineAlertes({ eleves, absences, t }) {
-  const elevesAlerte = eleves.map(e=>({
-    ...e,
-    nbAbs:absences.filter(a=>a.eleveNom===`${e.nom} ${e.prenom}`&&a.type==="Absence"&&a.justifie==="Non").length,
-  })).filter(e=>e.nbAbs>=3).sort((a,b)=>b.nbAbs-a.nbAbs);
+  const elevesAlerte = elevesEnAlerte(eleves, absences);
 
   if (elevesAlerte.length === 0) return null;
 

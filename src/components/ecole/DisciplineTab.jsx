@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { C, estSorti, getSectionSlug } from "../../constants";
+import { enrichirAbsences } from "../../absences-eleves";
 import { Btn } from "../ui";
 import { exportExcel } from "../../reports";
 import { DisciplineAlertes } from "./discipline-tab/DisciplineAlertes";
@@ -8,7 +9,7 @@ import { DisciplineTable } from "./discipline-tab/DisciplineTable";
 import { DisciplineModale } from "./discipline-tab/DisciplineModale";
 
 export function DisciplineTab({
-  absences, cAbs, ajAbs, supAbs, eleves: tousEleves, section = "college",
+  absences: absencesBrutes, cAbs, ajAbs, supAbs, eleves: tousEleves, section = "college",
   form, setForm, modal, setModal, canCreate, canEdit, envoyerPush,
 }) {
   const { t } = useTranslation();
@@ -17,16 +18,19 @@ export function DisciplineTab({
   // lire toute l'école pour retrouver les absences d'une seule.
   const [classeFiltre, setClasseFiltre] = useState("all");
   // Un élève parti ne reçoit plus d'absence et ne déclenche plus d'alerte.
-  // Ses absences passées restent listées (elles portent leur classe).
+  // Ses absences passées restent listées, sous sa dernière classe.
   const eleves = tousEleves.filter((e) => !estSorti(e));
+  // Nom et classe lus sur la fiche (la table n'a que eleve_id) : partis
+  // compris, sans quoi leurs absences passées perdraient leur nom.
+  const absences = useMemo(() => enrichirAbsences(absencesBrutes, tousEleves), [absencesBrutes, tousEleves]);
 
   // Classes tirées des ÉLÈVES, pas des absences : une classe sans incident
   // doit rester sélectionnable (c'est même l'information utile).
   const classes = [...new Set(eleves.map((e) => e.classe).filter(Boolean))]
     .sort((a, b) => String(a).localeCompare(String(b), "fr", { numeric: true }));
   const elevesFiltres = classeFiltre === "all" ? eleves : eleves.filter((e) => e.classe === classeFiltre);
-  // L'absence porte sa classe, mais celle de l'élève fait foi : un élève
-  // changé de classe en cours d'année ne doit pas disparaître du filtre.
+  // Par élève actuel de la classe ; la classe de l'absence (dernière classe
+  // d'un élève parti, ou portée par une absence d'avant la migration) en repli.
   const idsClasse = new Set(elevesFiltres.map((e) => e._id));
   const absencesFiltrees = classeFiltre === "all"
     ? absences

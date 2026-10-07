@@ -5,6 +5,7 @@ import { getAnnee, isSectionActive, sectionOuverte } from "../../constants";
 import { getPeriodesForSection } from "../../period-utils";
 import { matieresForClasse as matieresForClasseFn } from "../ecole/ecole-logic";
 import { matieresEvaluees } from "../../matiere-nature";
+import { enrichirAbsences } from "../../absences-eleves";
 import { statsAssiduite, statsEffectifs, statsEnseignants, statsFinances } from "./stats-logic";
 
 // Le module croise TOUTES les sections : c'est ce qui le distingue de
@@ -83,7 +84,12 @@ export function useStatistiques({ annee }) {
     schoolInfo, anneeCourante, moisAnnee,
     notes, cN, matieres, matieresForClasse, classes,
     eleves: actifs, tousEleves,
-    assiduite: useMemo(() => statsAssiduite(absences, actifs), [absences, actifs]),
+    // Nom et classe lus sur la fiche (la table n'a que eleve_id), sans quoi
+    // la répartition par classe et la liste des plus absents restent vides.
+    assiduite: useMemo(
+      () => statsAssiduite(enrichirAbsences(absences, elevesSection), actifs),
+      [absences, elevesSection, actifs],
+    ),
     // Les fiches décrivent l'année officielle : c'est elle qui situe les mois
     // par rapport aux dates de départ.
     finances: useMemo(
