@@ -4,7 +4,7 @@ import { Badge, Card, Stat, TD, THead, TR } from "../ui";
 
 export function DashboardTab({
   c1, nomEns, matiere, schoolInfo, utilisateur, t,
-  mesClasses, eleves, mesNotes, emplois, mesEvenements, formatEmploiHeure,
+  mesClasses, eleves, mesNotes, maxNote = 20, emplois, mesEvenements, formatEmploiHeure,
 }) {
   return (
     <>
@@ -49,7 +49,7 @@ export function DashboardTab({
                     <TD>{note.matiere}</TD>
                     <TD><Badge color="blue">{getEvaluationLabel(note.type, schoolInfo, { section: utilisateur.section || "secondaire" })}</Badge></TD>
                     <TD>{note.periode}</TD>
-                    <TD center><strong style={{ color: Number(note.note) >= 10 ? C.greenDk : "#b91c1c" }}>{note.note}/20</strong></TD>
+                    <TD center><strong style={{ color: Number(note.note) >= maxNote / 2 ? C.greenDk : "#b91c1c" }}>{note.note}/{maxNote}</strong></TD>
                   </TR>
                 ))}
               </tbody>

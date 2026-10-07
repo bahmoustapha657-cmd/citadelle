@@ -10,7 +10,6 @@ import { construireGrille, collectGridNotes, validateGridNotes } from "./notes-g
 import { saveNoteApi, saveNotesApi, deleteNoteApi } from "./notes-api";
 import { resolveCanonicalNoteType } from "../../evaluation-forms";
 import { getAnnee } from "../../constants";
-import { isTitulaireSection } from "../../backend/teacher-scope";
 
 // Ré-export pour préserver le point d'import unique du parent.
 export { construireGrille };
@@ -22,6 +21,8 @@ export async function enregistrerGrille({
   mesNotes,
   schoolInfo,
   utilisateur,
+  maxNote = 20,
+  annee: anneeEcole = "",
   setEnregistrement,
   setGridProgress,
   setModalNote,
@@ -32,14 +33,14 @@ export async function enregistrerGrille({
   onSavedNotes,
 }) {
   const { canonical, aSauver } = collectGridNotes({ gridForm, mesNotes, schoolInfo, utilisateur });
-  // Même barème que la grille (GrilleModale) : maternelle et primaire sur 10.
-  const maxNote = isTitulaireSection(utilisateur.section) ? 10 : 20;
   const invalide = validateGridNotes(aSauver, maxNote);
   if (invalide) {
     toast(invalide, "warning");
     return;
   }
-  const annee = getAnnee();
+  // L'année de l'école, celle des notes affichées ; le cache de l'appareil
+  // ne sert qu'en dernier recours.
+  const annee = anneeEcole || getAnnee();
   const notesPayload = aSauver.map((item) => ({
     noteId: item.noteId,
     eleveId: item.eleveId,
@@ -107,11 +108,18 @@ export async function enregistrerGrille({
 
 // Enregistre une note individuelle (création ou édition selon noteId).
 export async function enregistrerNote({
-  formNote, defaultNoteType, schoolInfo, utilisateur,
+  formNote, defaultNoteType, schoolInfo, utilisateur, maxNote = 20, annee = "",
   setEnregistrement, setModalNote, chargerPortail, toast,
 }) {
   if (!formNote.eleveId || formNote.note === "" || !formNote.periode) {
     toast("Eleve, periode et note requis.", "warning");
+    return;
+  }
+  // Même borne que la grille : sans elle, la saisie unitaire acceptait
+  // n'importe quelle valeur (15 au primaire, 25 au secondaire).
+  const invalide = validateGridNotes([{ note: Number(formNote.note) }], maxNote);
+  if (invalide) {
+    toast(invalide, "warning");
     return;
   }
   setEnregistrement(true);
@@ -123,7 +131,7 @@ export async function enregistrerNote({
       periode: formNote.periode,
       note: Number(formNote.note),
       matiere: formNote.matiere || "",
-      annee: getAnnee(),
+      annee: annee || getAnnee(),
     });
     if (!ok) throw new Error(data.error || "Enregistrement impossible.");
     setModalNote(null);

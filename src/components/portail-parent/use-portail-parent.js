@@ -13,6 +13,7 @@ import {
   computeTarifInfos,
   computeBlocage,
   resumeFamille,
+  sectionDeLEleve,
 } from "./portail-parent-derive";
 
 // Logique du portail parent : chargement des données via /parent-portal,
@@ -51,7 +52,7 @@ export function usePortailParent({ utilisateur, schoolInfo }) {
   // Détection par motif : fonctionne aussi pour les classes hors listes (3ème Année E…).
   const sectionPeriode = getSectionForClasse(eleve.classe);
   const periodes = getPeriodesForSection(schoolInfo, sectionPeriode, moisAnnee);
-  const section = eleve.section || utilisateur.section || "college";
+  const section = sectionDeLEleve(eleve);
 
   const mesNotes = useMemo(() => filtrerNotes(notes, eleveId), [notes, eleveId]);
   const mesAbsences = useMemo(() => filtrerAbsences(absences, eleveId), [absences, eleveId]);
@@ -85,7 +86,7 @@ export function usePortailParent({ utilisateur, schoolInfo }) {
   const chargerPortail = async () => {
     setChargement(true);
     try {
-      const data = await fetchParentPortal();
+      const data = await fetchParentPortal({ annee: schoolInfo?.anneeScolaire || "" });
       setPortalData(data);
       setEleveActifId((current) => current || utilisateur.eleveId || data.eleves?.[0]?._id || "");
     } catch (error) {
@@ -95,10 +96,11 @@ export function usePortailParent({ utilisateur, schoolInfo }) {
     }
   };
 
+  // Relu quand l'année officielle de l'école arrive ou change (clôture).
   useEffect(() => {
     chargerPortail();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [schoolInfo?.anneeScolaire]);
 
   const envoyer = async () => {
     // Abonnement de l'école expiré : les parents gardent la consultation,
