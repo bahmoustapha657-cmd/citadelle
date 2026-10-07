@@ -6,7 +6,9 @@ import { VueAnnonce } from "./VueAnnonce";
 import { NouvelleDiscussionModal } from "./NouvelleDiscussionModal";
 import { NouvelleAnnonceModal } from "./NouvelleAnnonceModal";
 import { GroupeModal } from "./GroupeModal";
-import { filtrerConversations, normaliser, peutPublierAnnonce, titreConversation, trierAnnonces } from "./messagerie-logic";
+import {
+  estParent, filtrerConversations, normaliser, peutCreerGroupe, peutPublierAnnonce, titreConversation, trierAnnonces,
+} from "./messagerie-logic";
 import { badge, champ } from "./styles-messagerie";
 
 const LARGEUR_ETROITE = 720;
@@ -131,7 +133,9 @@ export function MessageriePage({ utilisateur, hauteur = "100%" }) {
       {vue === "discussions"
         ? (convActive
           ? <VueConversation key={convActive.id} m={m} conv={convActive} etroit={etroit} onRetour={() => m.ouvrirConversation(null)} onGererGroupe={() => setModale("groupe")} />
-          : vide("💬", "Choisissez une discussion, ou écrivez à un collègue avec ✍️."))
+          : vide("💬", estParent(utilisateur)
+            ? "Choisissez une discussion, ou écrivez à l'école avec ✍️."
+            : "Choisissez une discussion, ou écrivez à un collègue avec ✍️."))
         : (annonceActive
           ? <VueAnnonce m={m} annonce={annonceActive} utilisateur={utilisateur} etroit={etroit} onRetour={() => setAnnonceId(null)} />
           : vide("📣", publier ? "Les annonces de l'école s'affichent ici. Publiez-en une avec 📣." : "Les annonces de l'école s'affichent ici."))}
@@ -143,7 +147,10 @@ export function MessageriePage({ utilisateur, hauteur = "100%" }) {
       {(!etroit || !detailOuvert) && colonneListe}
       {(!etroit || detailOuvert) && colonneDetail}
 
-      {modale === "discussion" && <NouvelleDiscussionModal m={m} fermer={() => setModale(null)} />}
+      {modale === "discussion" && (
+        <NouvelleDiscussionModal m={m} fermer={() => setModale(null)}
+          groupes={peutCreerGroupe(utilisateur)} parent={estParent(utilisateur)} />
+      )}
       {modale === "annonce" && <NouvelleAnnonceModal m={m} fermer={() => setModale(null)} />}
       {modale === "groupe" && convActive?.type === "groupe" && <GroupeModal m={m} conv={convActive} fermer={() => setModale(null)} />}
     </div>

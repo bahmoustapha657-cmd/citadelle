@@ -1,10 +1,14 @@
 import React from "react";
 import { Btn, Card, Champ, Input, Vide } from "../ui";
 
-export function MessagesTab({ mesMessages, sujet, setSujet, corps, setCorps, envoi, envoyer, c1 }) {
+// Ancien fil « Messages avec l'école » (table messages). `lectureSeule` :
+// simple historique sous la messagerie, sans formulaire d'envoi.
+export function MessagesTab({ mesMessages, sujet, setSujet, corps, setCorps, envoi, envoyer, c1, lectureSeule = false }) {
   return (
     <>
-      <h2 style={{ margin: "0 0 20px", fontSize: 16, fontWeight: 900, color: c1 }}>Messages avec l'ecole</h2>
+      <h2 style={{ margin: "0 0 20px", fontSize: 16, fontWeight: 900, color: c1 }}>
+        {lectureSeule ? "Anciens messages avec l'ecole" : "Messages avec l'ecole"}
+      </h2>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 }}>
         {mesMessages.length === 0 && <Vide icone="Messages" msg="Aucun message pour le moment" />}
@@ -25,7 +29,7 @@ export function MessagesTab({ mesMessages, sujet, setSujet, corps, setCorps, env
         })}
       </div>
 
-      <Card>
+      {!lectureSeule && <Card>
         <div style={{ padding: "14px 18px", borderBottom: "1px solid #f1f5f9" }}>
           <strong style={{ fontSize: 13, color: c1 }}>Envoyer un message a l'ecole</strong>
         </div>
@@ -38,7 +42,7 @@ export function MessagesTab({ mesMessages, sujet, setSujet, corps, setCorps, env
             <Btn onClick={envoyer} disabled={envoi}>{envoi ? "Envoi..." : "Envoyer"}</Btn>
           </div>
         </div>
-      </Card>
+      </Card>}
     </>
   );
 }

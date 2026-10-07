@@ -1,8 +1,9 @@
 // ═══════════════════════════════════════════════════════════════════════════
 //  EduGest — Sondes de la messagerie v2 (messagerie-v2.sql)
 // ═══════════════════════════════════════════════════════════════════════════
-// Crée quatre comptes de test JETABLES sur l'École Démo (direction, comptable,
-// Principale — poste college —, enseignant du collège), vérifie PAR LA BASE la confidentialité des discussions, des
+// Crée six comptes de test JETABLES sur l'École Démo (direction, comptable,
+// Principale — poste college —, enseignants du collège et du lycée, parent
+// d'un élève jetable du collège), vérifie PAR LA BASE la confidentialité des discussions, des
 // appels, des annonces et des vocaux, ainsi que la diffusion temps réel —
 // puis supprime tout. Lancer : node supabase/test-rls-messagerie.mjs
 import { createClient } from "@supabase/supabase-js";
@@ -26,7 +27,13 @@ async function main() {
 
   const comptes = {};
   const sessions = {};
-  for (const role of ["direction", "comptable", "college", "enseignant"]) {
+  // Rôle du compte d'après sa clé de test.
+  const ROLE = { enseignant2: "enseignant" };
+  const PROFIL = {
+    enseignant: { enseignant_nom: "Test msg enseignant", matiere: "Maths", section: "college" },
+    enseignant2: { enseignant_nom: "Test msg enseignant lycée", matiere: "Physique", section: "lycee" },
+  };
+  for (const role of ["direction", "comptable", "college", "enseignant", "enseignant2", "parent"]) {
     const login = `test-msg-${role}`;
     const email = `${login}.demo@edugest.app`;
     const pass = mdp();
@@ -38,9 +45,9 @@ async function main() {
     }
     await svc.from("comptes").delete().eq("user_id", u.user.id);
     const { data: c, error: ce } = await svc.from("comptes").insert({
-      user_id: u.user.id, ecole_id: demo.id, login, role, nom: `Test msg ${role}`, label: role,
-      poste_id: role === "enseignant" ? null : posteId[role] || null, premiere_co: false,
-      ...(role === "enseignant" ? { enseignant_nom: "Test msg enseignant", matiere: "Maths", section: "college" } : {}),
+      user_id: u.user.id, ecole_id: demo.id, login, role: ROLE[role] || role, nom: `Test msg ${role}`, label: role,
+      poste_id: ["enseignant", "enseignant2", "parent"].includes(role) ? null : posteId[role] || null, premiere_co: false,
+      ...(PROFIL[role] || {}),
     }).select("id").single();
     if (ce) { console.error(`création ${role} impossible: ${ce.message}`); process.exit(1); }
     comptes[role] = { id: c.id, userId: u.user.id };
@@ -49,7 +56,13 @@ async function main() {
     if (se) { console.error(`connexion ${role} impossible: ${se.message}`); process.exit(1); }
     sessions[role] = cli;
   }
-  const { direction: di, comptable: co, college: pr, enseignant: en } = sessions;
+  const { direction: di, comptable: co, college: pr, enseignant: en, enseignant2: en2, parent: pa } = sessions;
+  // Élève JETABLE du collège, enfant du compte parent de test.
+  const { data: eleve, error: elErr } = await svc.from("eleves").insert({
+    ecole_id: demo.id, section: "college", nom: "SONDE", prenom: "Élève", classe: "SONDE-6A", statut: "Actif",
+  }).select("id").single();
+  if (elErr) { console.error(`élève de test impossible: ${elErr.message}`); process.exit(1); }
+  await svc.from("parent_eleves").insert({ compte_id: comptes.parent.id, eleve_id: eleve.id });
   const conversations = [];
   const annonces = [];
   const fichiers = [];
@@ -63,9 +76,12 @@ async function main() {
       attendu("l'enseignant voit la direction et la comptable", !error && ids.has(comptes.direction.id) && ids.has(comptes.comptable.id), error?.message);
       attendu("aucun parent dans l'annuaire", !(data || []).some((x) => x.role === "parent"));
       const joignables = (data || []).filter((x) => x.contactable);
-      attendu("hiérarchie : l'enseignant du collège ne peut contacter que son chef de section (poste college)",
-        joignables.some((x) => x.id === comptes.college.id) && joignables.every((x) => x.poste_cle === "college"),
+      attendu("hiérarchie : l'enseignant du collège contacte son chef de section (poste college) et les enseignants du secondaire",
+        joignables.some((x) => x.id === comptes.college.id) && joignables.some((x) => x.id === comptes.enseignant2.id)
+          && joignables.every((x) => x.poste_cle === "college" || x.role === "enseignant"),
         JSON.stringify(joignables.map((x) => x.poste_cle)));
+      const { data: prim } = await svc.from("comptes").select("id").eq("ecole_id", demo.id).eq("role", "enseignant").in("section", ["primaire", "prescolaire"]);
+      attendu("… mais aucun enseignant du primaire ou de la maternelle", !(prim || []).some((p) => joignables.some((x) => x.id === p.id)));
       const anon = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false } });
       const { error: anonErr } = await anon.rpc("msg_boite");
       attendu("anon : EXECUTE refusé sur msg_boite", /permission denied/i.test(anonErr?.message || ""), anonErr?.message || "aucune erreur");
@@ -292,6 +308,77 @@ async function main() {
       }
     }
 
+    // ── Parents & enseignants d'une même branche (messagerie-parents.sql) ──
+    console.log("\n— Parents & enseignants d'une même branche —");
+    {
+      const refus = (e) => e?.code === "42501" || /hiérarchie|périmètre|groupe/i.test(e?.message || "");
+      const { data: enEn2, error: b1 } = await en.rpc("msg_ouvrir_directe", { p_compte: comptes.enseignant2.id });
+      attendu("prof du collège → prof du lycée (même branche) : discussion directe", !b1 && !!enEn2, b1?.message);
+      if (enEn2) conversations.push(enEn2);
+      const { data: en2Lu } = await en2.rpc("msg_boite");
+      attendu("… que le prof du lycée retrouve dans sa boîte", (en2Lu || []).some((x) => x.id === enEn2));
+
+      const { data: annPa, error: p0 } = await pa.rpc("msg_annuaire");
+      const autres = (annPa || []).filter((x) => x.id !== comptes.parent.id);
+      attendu("le parent ne voit que des personnes qu'il peut contacter", !p0 && autres.length > 0 && autres.every((x) => x.contactable),
+        p0?.message || JSON.stringify(autres.filter((x) => !x.contactable).map((x) => x.poste_cle)));
+      attendu("… dont la direction, la Principale et la comptable",
+        [comptes.direction.id, comptes.college.id, comptes.comptable.id].every((id) => autres.some((x) => x.id === id)));
+      attendu("… et AUCUN enseignant ni autre parent", !autres.some((x) => x.role === "enseignant" || x.role === "parent"));
+      const { data: annPr } = await pr.rpc("msg_annuaire");
+      const ligneParent = (annPr || []).find((x) => x.id === comptes.parent.id);
+      attendu("la Principale voit le parent, avec l'enfant et sa classe", ligneParent?.poste === "Parent · Élève SONDE (SONDE-6A)", ligneParent?.poste);
+      const { data: annEn } = await en.rpc("msg_annuaire");
+      attendu("l'enseignant ne voit aucun parent", !(annEn || []).some((x) => x.role === "parent"));
+
+      const { data: paPr, error: p1 } = await pa.rpc("msg_ouvrir_directe", { p_compte: comptes.college.id });
+      attendu("le parent écrit en premier à la Principale", !p1 && !!paPr, p1?.message);
+      if (paPr) conversations.push(paPr);
+      const { error: p2 } = await pa.from("msg_messages").insert({
+        conversation_id: paPr, ecole_id: demo.id, de_compte_id: comptes.parent.id, type: "texte", corps: "SONDE-PARENT",
+      });
+      attendu("… et lui envoie un message", !p2, p2?.message);
+      const { data: luPr } = await pr.from("msg_messages").select("corps").eq("conversation_id", paPr);
+      attendu("… que la Principale lit", (luPr || []).some((x) => x.corps === "SONDE-PARENT"));
+      const { error: p3 } = await pa.rpc("msg_ouvrir_directe", { p_compte: comptes.enseignant.id });
+      attendu("REFUS : le parent n'écrit pas à un enseignant", refus(p3), p3?.message || "accepté");
+      const { error: p4 } = await en.rpc("msg_ouvrir_directe", { p_compte: comptes.parent.id });
+      attendu("REFUS : un enseignant n'écrit pas à un parent", refus(p4), p4?.message || "accepté");
+      const { data: coPa, error: p5 } = await co.rpc("msg_ouvrir_directe", { p_compte: comptes.parent.id });
+      attendu("la comptable écrit au parent", !p5 && !!coPa, p5?.message);
+      if (coPa) conversations.push(coPa);
+      const { error: p6 } = await pa.rpc("msg_creer_groupe", { p_titre: "SONDE", p_membres: [comptes.college.id] });
+      attendu("REFUS : un parent ne crée pas de groupe", refus(p6), p6?.message || "accepté");
+
+      const { data: aPa, error: p7 } = await pr.from("msg_annonces").insert({
+        ecole_id: demo.id, de_compte_id: comptes.college.id, titre: "SONDE-PARENTS", corps: "SONDE-PARENTS",
+        a_parents_classes: ["college|SONDE-6A"],
+      }).select("id").single();
+      attendu("la Principale publie une annonce aux parents de la classe", !p7 && !!aPa, p7?.message);
+      if (aPa) annonces.push(aPa.id);
+      const { data: vuPa } = await pa.from("msg_annonces").select("id").eq("id", aPa?.id);
+      attendu("… que le parent lit", (vuPa || []).length === 1);
+      const { data: vuEn } = await en.from("msg_annonces").select("id").eq("id", aPa?.id);
+      attendu("… et pas l'enseignant", (vuEn || []).length === 0);
+      const { data: aTous } = await di.from("msg_annonces").insert({
+        ecole_id: demo.id, de_compte_id: comptes.direction.id, titre: "SONDE-EQUIPE", corps: "SONDE-EQUIPE", a_tous: true,
+      }).select("id").single();
+      if (aTous) annonces.push(aTous.id);
+      const { data: vuTous } = await pa.from("msg_annonces").select("id").eq("id", aTous?.id);
+      attendu("« Toute l'équipe » ne va pas aux parents", !!aTous && (vuTous || []).length === 0);
+      const { error: p8 } = await pa.from("msg_annonces").insert({
+        ecole_id: demo.id, de_compte_id: comptes.parent.id, corps: "SONDE-PIRATE", a_parents: true,
+      });
+      attendu("REFUS : un parent ne publie pas d'annonce", !!p8, "acceptée");
+
+      await pa.rpc("msg_presence", { p_etat: "actif" });
+      await en.rpc("msg_presence", { p_etat: "actif" });
+      const { data: presPr } = await pr.rpc("msg_presences");
+      attendu("la Principale voit le parent en ligne", (presPr || []).some((x) => x.compte_id === comptes.parent.id && x.etat === "actif"));
+      const { data: presPa } = await pa.rpc("msg_presences");
+      attendu("le parent ne voit pas la présence d'un enseignant", !(presPa || []).some((x) => x.compte_id === comptes.enseignant.id));
+    }
+
     // ── Présence (presence.sql) ──
     console.log("\n— Présence —");
     {
@@ -314,6 +401,7 @@ async function main() {
     if (conversations.length) await svc.from("msg_conversations").delete().in("id", conversations.filter(Boolean));
     if (annonces.length) await svc.from("msg_annonces").delete().in("id", annonces);
     await svc.from("msg_annonces").delete().eq("ecole_id", demo.id).like("corps", "SONDE%");
+    await svc.from("eleves").delete().eq("ecole_id", demo.id).eq("classe", "SONDE-6A");
     for (const t of Object.values(comptes)) {
       await svc.from("comptes").delete().eq("id", t.id);
       await svc.auth.admin.deleteUser(t.userId);

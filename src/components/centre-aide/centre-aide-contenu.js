@@ -315,7 +315,7 @@ export const ARTICLES = [
     etapes: [
       "Cliquez l'icône 💬 de l'en-tête ou « Messagerie » dans le menu (enseignants : onglet « 💬 Messages » du portail).",
       "« ✍️ Nouveau » : message direct à une personne, ou groupe nommé (ex. Conseil pédagogique).",
-      "La messagerie suit la hiérarchie : le Fondateur et l'Administrateur contactent tout le monde ; les responsables (Principal·e, Directeur du primaire, Comptable, Surveillance…) se contactent entre eux et contactent le sommet ; chaque chef de section contacte ses enseignants ; un enseignant ne contacte que son chef de section (Principal·e pour le collège et le lycée, Directeur pour le primaire et la maternelle). Quand un supérieur vous écrit, vous pouvez toujours lui répondre.",
+      "La messagerie suit la hiérarchie : le Fondateur et l'Administrateur contactent tout le monde ; les responsables (Principal·e, Directeur du primaire, Comptable, Surveillance…) se contactent entre eux et contactent le sommet ; chaque chef de section contacte ses enseignants ; un enseignant contacte son chef de section (Principal·e pour le collège et le lycée, Directeur pour le primaire et la maternelle) et les enseignants de sa branche (collège + lycée, ou primaire + maternelle). Quand un supérieur vous écrit, vous pouvez toujours lui répondre.",
       "Touchez un message pour y répondre, le corriger (24 h) ou le supprimer. Touchez 🎤 pour enregistrer un message vocal (2 min max), puis ➤ pour l'envoyer.",
       "📎 joint un document : PDF, photo, Word, Excel, PowerPoint (10 Mo max). Le texte saisi sert de légende ; les photos lourdes sont allégées automatiquement.",
       "✓ = envoyé, ✓✓ = lu ; en groupe, « ✓✓ 3/5 » indique combien l'ont lu — touchez votre message pour voir qui.",
@@ -341,10 +341,22 @@ export const ARTICLES = [
     titre: "Publier une annonce au personnel et aux enseignants",
     etapes: [
       "Messagerie → onglet « 📣 Annonces » → « 📣 Nouveau » (réservé au personnel administratif).",
-      "Destinataires cumulables : tout le monde, le personnel, les enseignants, des postes précis ou des personnes.",
+      "Destinataires cumulables : toute l'équipe (personnel + enseignants), le personnel, les enseignants, des postes précis ou des personnes — et les parents (voir « Échanger avec les parents »).",
       "📎 Joignez jusqu'à 5 documents (note de service en PDF, planning…), visibles des seuls destinataires.",
       "Importance « Urgente » : un bandeau rouge s'affiche chez les destinataires jusqu'à la lecture. « Accusé de lecture obligatoire » : chacun doit confirmer « J'ai lu et compris ».",
       "Ouvrez votre annonce pour voir « Lu par 12/30 », le détail de qui n'a pas lu, et « 🔔 Relancer » les retardataires.",
+    ],
+  },
+  {
+    id: "messagerie-parents",
+    cat: "communication",
+    titre: "Échanger avec les parents",
+    etapes: [
+      "Les parents ont la messagerie dans l'onglet « Messages » de leur portail. Ils échangent, dans les deux sens, avec le Fondateur et l'Administrateur, le chef de section de leur enfant (Principal·e pour le collège et le lycée, Directeur pour le primaire et la maternelle) et le Comptable — jamais avec un enseignant, ni avec un autre parent, ni en groupe.",
+      "Pour écrire à un parent : « ✍️ Nouveau » puis le filtre « Parents » ; cherchez par le nom du parent ou de l'élève (la classe est affichée sous le nom).",
+      "Messages, vocaux, documents et appels audio fonctionnent comme avec un collègue ; le parent est prévenu par notification s'il a autorisé les notifications.",
+      "Annonces aux parents : « 📣 Nouveau » → « 👪 Tous les parents », une section, ou « 🏫 Par classe ». Chaque responsable n'atteint que les parents de son périmètre (le Directeur du primaire : ceux du primaire et de la maternelle). « Toute l'équipe » ne va jamais aux parents.",
+      "Un parent ne voit pas l'annuaire de l'école : seulement les personnes qu'il peut contacter. Ses anciens messages « Liaison École–Famille » restent consultables dans son portail.",
     ],
   },
   {
