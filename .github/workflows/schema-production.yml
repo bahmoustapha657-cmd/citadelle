@@ -16,7 +16,7 @@ on:
       action:
         description: "photographier = dump en lecture seule ; marquer-baseline = inscrire UNE fois la baseline comme déjà appliquée (n'écrit que dans supabase_migrations)"
         type: choice
-        options: [photographier, marquer-baseline]
+        options: [photographier, marquer-baseline, diagnostic-synchro]
         default: photographier
 
 permissions:
@@ -74,8 +74,55 @@ jobs:
           psql "$SUPABASE_DB_URL" -Atc "select version from supabase_migrations.schema_migrations order by 1" | grep -qx "$baseline"
           echo "### ✅ Baseline \`$baseline\` marquée comme appliquée en production" >> "$GITHUB_STEP_SUMMARY"
 
+  # LECTURE SEULE : état de la réplication logique (PowerSync lit la base par
+  # un slot de réplication). Une synchro bloquée à 99 % = PowerSync qui
+  # n'avance plus dans le journal de la base.
+  diagnostic-synchro:
+    if: inputs.action == 'diagnostic-synchro'
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Client psql
+        run: command -v psql || (sudo apt-get update -q && sudo apt-get install -yq postgresql-client)
+
+      - name: État de la réplication
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -P pager=off <<'SQL'
+          \echo '== Slots de réplication (PowerSync en est un)'
+          select slot_name, plugin, active, active_pid is not null as connecte, wal_status,
+                 pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), confirmed_flush_lsn)) as retard,
+                 pg_size_pretty(safe_wal_size) as marge_avant_invalidation, inactive_since
+            from pg_replication_slots;
+          \echo '== Connexions de réplication actives'
+          select application_name, usename, state, backend_start, write_lag, flush_lag, replay_lag
+            from pg_stat_replication;
+          \echo '== Paramètres'
+          select name, setting, unit from pg_settings
+           where name in ('wal_level', 'max_slot_wal_keep_size', 'max_replication_slots', 'max_wal_senders', 'wal_sender_timeout');
+          \echo '== Publications'
+          select pubname, puballtables, (select count(*) from pg_publication_tables t where t.pubname = p.pubname) as tables
+            from pg_publication p;
+          \echo '== Rôle PowerSync'
+          select rolname, rolcanlogin, rolreplication, rolbypassrls, rolvaliduntil from pg_roles where rolname ilike '%powersync%';
+          \echo '== Tables publiées sans identité de réplication utilisable'
+          select t.schemaname || '.' || t.tablename as table_publiee, c.relreplident
+            from pg_publication_tables t
+            join pg_class c on c.oid = (t.schemaname || '.' || t.tablename)::regclass
+           where t.pubname = 'powersync'
+             and (c.relreplident = 'n' or (c.relreplident = 'd' and not exists (
+                  select 1 from pg_index i where i.indrelid = c.oid and i.indisprimary)));
+          \echo '== Activité récente sur les tables synchronisées (dernières écritures)'
+          select relname, n_tup_ins, n_tup_upd, n_tup_del, n_live_tup
+            from pg_stat_user_tables
+           where relname in (select tablename from pg_publication_tables where pubname = 'powersync')
+           order by n_live_tup desc limit 12;
+          SQL
+
   dump:
-    if: inputs.action != 'marquer-baseline'
+    if: inputs.action != 'marquer-baseline' && inputs.action != 'diagnostic-synchro'
     runs-on: ubuntu-latest
     environment: production
 
