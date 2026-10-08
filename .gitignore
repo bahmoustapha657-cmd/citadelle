@@ -46,3 +46,7 @@ serviceAccount.json.json
 
 # PDF généré localement (artefact dérivable de MANUEL-UTILISATEUR.md via md-to-pdf)
 MANUEL-UTILISATEUR.pdf
+
+# Tests de bout en bout (Playwright) : sorties locales
+e2e/resultats/
+e2e/rapport/
