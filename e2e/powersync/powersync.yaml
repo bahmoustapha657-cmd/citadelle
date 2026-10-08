@@ -1,0 +1,26 @@
+# Service PowerSync LOCAL des tests e2e (CI, mode « hors ligne ») : même
+# version que la production (1.26.1), mêmes règles de synchro
+# (supabase/powersync-sync-rules.min.yaml, celles collées dans le dashboard),
+# même compte de réplication (powersync_role), branché sur le Supabase local
+# du runner. Aucune donnée réelle, aucun accès à la production.
+replication:
+  connections:
+    - type: postgresql
+      uri: !env PS_DATA_SOURCE_URI
+      sslmode: disable
+
+# Stockage des buckets : un Postgres jetable à part (conteneur ps-stockage).
+storage:
+  type: postgresql
+  uri: !env PS_STORAGE_URI
+  sslmode: disable
+
+port: 8080
+
+sync_rules:
+  path: /regles/powersync-sync-rules.min.yaml
+
+# Jetons Supabase de la pile locale (HS256, JWT_SECRET de `supabase status`).
+client_auth:
+  supabase: true
+  supabase_jwt_secret: !env PS_SUPABASE_JWT_SECRET

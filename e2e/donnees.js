@@ -23,6 +23,10 @@ export const ELEVES = [
   { nom: "DIALLO", prenom: "Aminata", sexe: "F", matricule: "E2E-001" },
   { nom: "BAH", prenom: "Ibrahima", sexe: "M", matricule: "E2E-002" },
 ];
+// Élève d'une autre classe, réservée au scénario hors ligne : ses notes ne
+// se mêlent pas à celles que vérifie notes.spec.js.
+export const CLASSE_HORS_LIGNE = "7ème B";
+export const ELEVE_HORS_LIGNE = { nom: "CAMARA", prenom: "Fatou", sexe: "F", matricule: "E2E-003" };
 export const MATIERES = [
   { nom: "Mathématiques", coefficient: 4 },
   { nom: "Français", coefficient: 3 },
@@ -107,12 +111,13 @@ export async function preparerEcole() {
     const { error } = await direction.from(table).insert(lignes);
     if (error) throw new Error(`${table} : ${error.message}`);
   };
-  await ecrire("classes", [ligne("classes", { nom: CLASSE })]);
+  await ecrire("classes", [ligne("classes", { nom: CLASSE }), ligne("classes", { nom: CLASSE_HORS_LIGNE })]);
   await ecrire("matieres", MATIERES.map((m) => ligne("matieres", m)));
   await ecrire("tarifs", [ligne("tarifs", { classe: CLASSE, montant: MENSUALITE })]);
-  await ecrire("eleves", ELEVES.map((e) => ligne("eleves", {
-    ...e, classe: CLASSE, statut: "Actif", inscriptionPayee: true,
-  })));
+  await ecrire("eleves", [
+    ...ELEVES.map((e) => ligne("eleves", { ...e, classe: CLASSE, statut: "Actif", inscriptionPayee: true })),
+    ligne("eleves", { ...ELEVE_HORS_LIGNE, classe: CLASSE_HORS_LIGNE, statut: "Actif", inscriptionPayee: true }),
+  ]);
   return id;
 }
 

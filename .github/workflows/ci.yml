@@ -59,10 +59,17 @@ jobs:
   # Parcours critiques de bout en bout (e2e/) : le vrai front, construit
   # contre un Supabase LOCAL complet (migrations, auth, API, Edge Functions)
   # démarré dans le runner, piloté dans Chromium. Aucun accès à la production.
-  # BLOQUANT pour le déploiement (cf. migrations-production).
+  # Deux variantes : « en-ligne » (écritures directes vers Supabase) et
+  # « hors-ligne » (miroir PowerSync, comme en production : service PowerSync
+  # local, mêmes règles de synchro). BLOQUANT pour le déploiement.
   e2e:
+    name: e2e (${{ matrix.mode }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [en-ligne, hors-ligne]
 
     steps:
       - name: Checkout
@@ -91,20 +98,51 @@ jobs:
           supabase status -o env > "$RUNNER_TEMP/supabase.env"
           set -a; . "$RUNNER_TEMP/supabase.env"; set +a
           echo "::add-mask::$SERVICE_ROLE_KEY"
+          echo "::add-mask::$JWT_SECRET"
           {
             echo "E2E_SUPABASE_URL=$API_URL"
             echo "E2E_ANON_KEY=$ANON_KEY"
             echo "E2E_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+            echo "E2E_JWT_SECRET=$JWT_SECRET"
+            echo "E2E_MODE=${{ matrix.mode }}"
           } >> "$GITHUB_ENV"
 
+      # Mode hors ligne : service PowerSync local (même version que la prod),
+      # réplication par powersync_role comme en production, stockage des
+      # buckets dans un Postgres jetable.
+      - name: Service PowerSync local
+        if: matrix.mode == 'hors-ligne'
+        run: |
+          docker exec -e PGPASSWORD=postgres supabase_db_edugest psql -h 127.0.0.1 -U supabase_admin -d postgres -v ON_ERROR_STOP=1 \
+            -c "alter role powersync_role with login replication bypassrls password 'powersync-ci'"
+          reseau=$(docker inspect -f '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{end}}' supabase_db_edugest)
+          docker run -d --name ps-stockage --network "$reseau" \
+            -e POSTGRES_PASSWORD=stockage -e POSTGRES_DB=powersync_storage postgres:16
+          for i in $(seq 1 30); do docker exec ps-stockage pg_isready -U postgres -q && break; sleep 1; done
+          docker run -d --name powersync --network "$reseau" -p 8080:8080 \
+            -v "$PWD/e2e/powersync:/config:ro" -v "$PWD/supabase:/regles:ro" \
+            -e POWERSYNC_CONFIG_PATH=/config/powersync.yaml \
+            -e PS_DATA_SOURCE_URI="postgresql://powersync_role:powersync-ci@supabase_db_edugest:5432/postgres" \
+            -e PS_STORAGE_URI="postgresql://postgres:stockage@ps-stockage:5432/powersync_storage" \
+            -e PS_SUPABASE_JWT_SECRET="$E2E_JWT_SECRET" \
+            journeyapps/powersync-service:1.26.1 start -r unified
+          for i in $(seq 1 60); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/probes/liveness || true)
+            [ "$code" = "200" ] && break
+            sleep 2
+          done
+          docker logs --tail 30 powersync
+          [ "$code" = "200" ] || { echo "::error::Service PowerSync local injoignable"; exit 1; }
+          echo "E2E_POWERSYNC_URL=http://127.0.0.1:8080" >> "$GITHUB_ENV"
+
       # Le build de production, mais pointé sur la base locale (les variables
-      # d'environnement priment sur .env.supabase). Hors ligne (PowerSync)
-      # désactivé : chemin « en ligne ».
+      # d'environnement priment sur .env.supabase) et, en mode hors ligne, sur
+      # le PowerSync local ; vide = chemin « en ligne ».
       - name: Build du front contre la base locale
         env:
           VITE_SUPABASE_URL: ${{ env.E2E_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ env.E2E_ANON_KEY }}
-          VITE_POWERSYNC_URL: ""
+          VITE_POWERSYNC_URL: ${{ env.E2E_POWERSYNC_URL }}
         run: npm run build:supabase
 
       - name: Navigateur Chromium
@@ -119,12 +157,16 @@ jobs:
         if: failure()
         run: docker logs --tail 200 "$(docker ps --format '{{.Names}}' | grep edge_runtime | head -1)" || true
 
+      - name: Journaux PowerSync (en cas d'échec)
+        if: failure() && matrix.mode == 'hors-ligne'
+        run: docker logs --tail 300 powersync || true
+
       # Rapport HTML + traces Playwright (données de TEST uniquement).
       - name: Rapport des tests
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: rapport-e2e
+          name: rapport-e2e-${{ matrix.mode }}
           path: |
             e2e/rapport
             e2e/resultats
