@@ -1,6 +1,8 @@
 import { getAnnee } from "../../../constants";
 import { Btn, Input, Modale, Selec } from "../../ui";
 import { resolveCanonicalNoteType } from "../../../evaluation-forms";
+import { nomEleve } from "../../../fiche-eleve";
+import { notePrete, optionsEleves } from "../../../notes-eleves";
 
 // Modale de saisie d'une note unique.
 export function AjoutNoteModal({
@@ -9,15 +11,21 @@ export function AjoutNoteModal({
   schoolInfo, section, periodes, annee, ajN, toast,
 }) {
   const chg = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
+  const avertir = (msg) => { if (toast) toast(msg, "warning"); else alert(msg); };
+  // Élève choisi par son identifiant : deux homonymes restent distincts.
+  const eleveSelec = form.eleveId ? eleves.find((e) => e._id === form.eleveId) : null;
 
   // Les attributs min/max de l'input ne bloquent pas la saisie clavier :
   // le barème est validé à l'enregistrement (0 → maxNote) pour qu'aucune
   // note aberrante (ex. 99/20) ne corrompe moyennes et bulletins.
   const enregistrer = () => {
+    if (!notePrete(form)) {
+      avertir("Choisissez l'élève et la matière.");
+      return;
+    }
     const valeur = Number(form.note);
     if (!Number.isFinite(valeur) || valeur < 0 || valeur > maxNote) {
-      const msg = `Note invalide : saisissez une valeur entre 0 et ${maxNote}.`;
-      if (toast) toast(msg, "warning"); else alert(msg);
+      avertir(`Note invalide : saisissez une valeur entre 0 et ${maxNote}.`);
       return;
     }
     ajN({
@@ -33,20 +41,17 @@ export function AjoutNoteModal({
     <Modale titre="Saisir une note" fermer={() => setModal(null)}>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <div style={{ gridColumn: "1/-1" }}>
-          <Selec label="Élève" value={form.eleveNom || ""} onChange={e => {
-            const el = eleves.find(ev => `${ev.nom} ${ev.prenom}` === e.target.value);
-            setForm(p => ({ ...p, eleveNom: e.target.value, eleveId: el?._id }));
+          <Selec label="Élève" value={form.eleveId || ""} onChange={e => {
+            const el = eleves.find(ev => ev._id === e.target.value);
+            setForm(p => ({ ...p, eleveId: el?._id || "", eleveNom: el ? nomEleve(el) : "" }));
           }}>
             <option value="">— Sélectionner —</option>
-            {eleves.map(e => <option key={e._id}>{e.nom} {e.prenom}</option>)}
+            {optionsEleves(eleves).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </Selec>
         </div>
         <Selec label="Matière" value={form.matiere || ""} onChange={chg("matiere")}>
           <option value="">—</option>
-          {(() => {
-            const eleveSelec = eleves.find(e => `${e.nom} ${e.prenom}` === form.eleveNom);
-            return matieresForClasse(eleveSelec?.classe).map(m => <option key={m._id}>{m.nom}</option>);
-          })()}
+          {matieresForClasse(eleveSelec?.classe).map(m => <option key={m._id}>{m.nom}</option>)}
         </Selec>
         <Selec label="Type" value={form.type || defaultNoteType} onChange={chg("type")}>
           {noteForms.map(item => <option key={item.id} value={item.value}>{item.label}</option>)}

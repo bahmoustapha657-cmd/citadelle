@@ -39,7 +39,7 @@ export function NotesListe({
             <tbody>
               {notesPeriode.map((note) => (
                 <TR key={note._id}>
-                  <TD bold>{note.eleveNom}</TD>
+                  <TD bold>{note.eleveNom || "-"}</TD>
                   <TD><Badge color="blue">{getEvaluationLabel(note.type, schoolInfo, { section: utilisateur.section || "secondaire" })}</Badge></TD>
                   <TD center><strong style={{ fontSize: 14, color: Number(note.note) >= maxNote / 2 ? C.greenDk : "#b91c1c" }}>{note.note}</strong></TD>
                   <TD center>

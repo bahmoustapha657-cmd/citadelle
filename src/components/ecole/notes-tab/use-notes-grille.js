@@ -1,4 +1,5 @@
 import { getAnnee } from "../../../constants";
+import { nomEleve } from "../../../fiche-eleve";
 
 // Logique de la grille de saisie. Trois modes (un axe figé car élève ×
 // matière × période ne tient pas en 2D) :
@@ -28,7 +29,6 @@ export function useNotesGrille({
   ).map(m => m.nom);
 
   // Lignes et colonnes selon le mode.
-  const nomEleve = (e) => `${e.nom} ${e.prenom}`.trim();
   let lignes = [];
   let colonnes = [];
   if (grilleMode === "eleve") {

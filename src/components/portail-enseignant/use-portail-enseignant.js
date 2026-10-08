@@ -6,6 +6,7 @@ import { getActiveNoteForms } from "../../evaluation-forms";
 import { imprimerEdtEnseignant, imprimerPaiesEnseignant } from "../../reports";
 import { isTitulaireSection } from "../../backend/teacher-scope";
 import { presents } from "../../depart-utils";
+import { enrichirNotes } from "../../notes-eleves";
 import { MSG_LECTURE_SEULE_PORTAIL } from "../app/app-shell-plan";
 import {
   construireGrille as construireGrilleHelper,
@@ -100,7 +101,13 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
   // Élèves encore inscrits : un élève parti ne figure plus dans « Mes élèves »
   // ni dans les grilles de saisie de notes.
   const eleves = presents(portalData.eleves || []);
-  const notes = portalData.notes || [];
+  // Nom de l'élève lu sur sa fiche (la table notes n'a que eleve_id), y
+  // compris pour les notes fusionnées après un enregistrement. Toutes les
+  // fiches du périmètre, partis compris : leurs notes gardent un nom.
+  const notes = useMemo(
+    () => enrichirNotes(portalData.notes || [], portalData.eleves || []),
+    [portalData.notes, portalData.eleves],
+  );
   const enseignements = portalData.enseignements || [];
   const salaires = portalData.salaires || [];
   const salairesIndisponibles = Boolean(portalData.salairesIndisponibles);
