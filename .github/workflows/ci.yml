@@ -116,6 +116,8 @@ jobs:
           docker exec -e PGPASSWORD=postgres supabase_db_edugest psql -h 127.0.0.1 -U supabase_admin -d postgres -v ON_ERROR_STOP=1 \
             -c "alter role powersync_role with login replication bypassrls password 'powersync-ci'"
           reseau=$(docker inspect -f '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{end}}' supabase_db_edugest)
+          # Clés publiques de signature des jetons (lues par PowerSync via Kong).
+          curl -fsS "$E2E_SUPABASE_URL/auth/v1/.well-known/jwks.json" | head -c 300; echo
           docker run -d --name ps-stockage --network "$reseau" \
             -e POSTGRES_PASSWORD=stockage -e POSTGRES_DB=powersync_storage postgres:16
           for i in $(seq 1 30); do docker exec ps-stockage pg_isready -U postgres -q && break; sleep 1; done
@@ -125,6 +127,7 @@ jobs:
             -e PS_DATA_SOURCE_URI="postgresql://powersync_role:powersync-ci@supabase_db_edugest:5432/postgres" \
             -e PS_STORAGE_URI="postgresql://postgres:stockage@ps-stockage:5432/powersync_storage" \
             -e PS_SUPABASE_JWT_SECRET="$E2E_JWT_SECRET" \
+            -e PS_JWKS_URI="http://supabase_kong_edugest:8000/auth/v1/.well-known/jwks.json" \
             journeyapps/powersync-service:1.26.1 start -r unified
           for i in $(seq 1 60); do
             code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/probes/liveness || true)
