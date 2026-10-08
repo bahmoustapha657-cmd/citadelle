@@ -1,19 +1,22 @@
 // ═══════════════════════════════════════════════════════════════════════════
 //  EduGest — Sondes des abonnements push (push-subs-verrou.sql + Edge push)
 // ═══════════════════════════════════════════════════════════════════════════
-// Crée quatre comptes JETABLES sur l'École Démo (deux parents, comptable,
-// staff à poste flexible) et deux postes de test, puis vérifie :
+// Crée cinq comptes JETABLES sur l'École Démo (deux parents, comptable,
+// staff à poste flexible, enseignant) et deux postes de test, puis vérifie :
 //   • BASE : on ne s'abonne que pour soi, dans son école ; rôle et poste
 //     sont recalculés depuis le compte (ce que le navigateur déclare est
-//     ignoré), service_role compris ;
+//     ignoré), service_role compris ; un navigateur n'a qu'un abonné
+//     (push-subs-navigateur.sql : appareil partagé) ;
 //   • EDGE (après `supabase functions deploy push`) : refus de l'appelant
 //     (droits.ts), tri des abonnés sur `comptes` (destinataires.ts) et
 //     parents visés PAR ÉLÈVE — deux élèves jetables, un parent chacun :
-//     la notification de l'un ne part pas à l'autre famille.
-// Les abonnements de test pointent vers une adresse INEXISTANTE du projet
-// Supabase : l'envoi y échoue en 404, et l'Edge purge alors la ligne — une
-// ligne purgée prouve qu'elle a été choisie comme destinataire. Seuls des
-// comptes de test sont visés (clés de poste et user_id de test) : aucune
+//     la notification de l'un ne part pas à l'autre famille ; l'enseignant
+//     ne prévient que les parents d'un élève de SES classes.
+// Les abonnements de test pointent vers des adresses INEXISTANTES du projet
+// Supabase (une par abonnement : la base n'en garde qu'un par adresse) :
+// l'envoi y échoue en 404, et l'Edge purge alors la ligne — une ligne
+// purgée prouve qu'elle a été choisie comme destinataire. Seuls des comptes
+// de test sont visés (clés de poste et user_id de test) : aucune
 // notification ne part vers un vrai utilisateur.
 // Puis supprime tout. Lancer : node supabase/test-rls-push.mjs
 import { createClient } from "@supabase/supabase-js";
@@ -33,19 +36,22 @@ const info = (texte) => console.log(`  ⚪ ${texte}`);
 const refusBase = (erreur) => erreur?.code === "42501";
 const decrire = (erreur) => (erreur ? `${erreur.code || "?"} ${erreur.message}` : "aucune erreur : ligne écrite");
 
-// Abonnement Web Push valide (clé P-256 réelle) vers une adresse qui répond 404.
+// Abonnement Web Push valide (clé P-256 réelle) vers une adresse qui répond
+// 404 — propre à chaque abonnement, comme un vrai navigateur.
 const ENDPOINT_404 = `${SUPABASE_URL}/sonde-push-inexistante`;
 function abonnementTest() {
   const ecdh = createECDH("prime256v1");
   ecdh.generateKeys();
   return {
-    endpoint: ENDPOINT_404, expirationTime: null,
+    endpoint: `${ENDPOINT_404}/${randomUUID()}`, expirationTime: null,
     keys: { p256dh: ecdh.getPublicKey().toString("base64url"), auth: randomBytes(16).toString("base64url") },
   };
 }
 
 const POSTE_CENSEUR = "test-push-censeur";
 const POSTE_ECONOME = "test-push-econome";
+// Classes des élèves jetables (aucune vraie classe ne porte ces noms).
+const CLASSES = { a: "SONDE-PUSH-A", b: "SONDE-PUSH-B" };
 
 async function main() {
   const { data: demo } = await svc.from("ecoles").select("id, code").eq("code", "demo").single();
@@ -88,8 +94,8 @@ async function main() {
 
   // S'abonner « comme le navigateur » (upsert de push-supabase.js), avec des
   // valeurs déclarées éventuellement forgées.
-  const sAbonner = (cle, ecoleId = demo.id, declare = {}) => sessions[cle].from("push_subs").upsert({
-    ecole_id: ecoleId, user_id: comptes[cle].userId, subscription: abonnementTest(), nom: "Sonde push",
+  const sAbonner = (cle, ecoleId = demo.id, declare = {}, abonnement = abonnementTest()) => sessions[cle].from("push_subs").upsert({
+    ecole_id: ecoleId, user_id: comptes[cle].userId, subscription: abonnement, nom: "Sonde push",
     ...declare, updated_at: new Date().toISOString(),
   });
   const ligne = async (cle, ecoleId = demo.id) => (await svc.from("push_subs").select("role, poste_cle")
@@ -106,11 +112,11 @@ async function main() {
 
   // Deux familles : « parent » suit l'élève A, « parent2 » l'élève B. Seuls
   // ces comptes de test sont rattachés aux élèves jetables : aucun vrai
-  // parent ne peut être servi.
+  // parent ne peut être servi. L'enseignant de test n'a que la classe de A.
   const sonderParentsParEleve = async () => {
     for (const cle of ["a", "b"]) {
       const { data, error } = await svc.from("eleves").insert({
-        ecole_id: demo.id, section: "college", nom: "SONDE PUSH", prenom: `Élève ${cle.toUpperCase()} (test)`,
+        ecole_id: demo.id, section: "college", classe: CLASSES[cle], nom: "SONDE PUSH", prenom: `Élève ${cle.toUpperCase()} (test)`,
       }).select("id").single();
       if (error) { info(`élève de test impossible (${error.message}) : sondes « parents par élève » sautées.`); return; }
       eleves[cle] = data.id;
@@ -136,6 +142,19 @@ async function main() {
     attendu(`élève d'une autre école (${autre.code}) : refusé (404)`, horsEcole.status === 404,
       `HTTP ${horsEcole.status} ${JSON.stringify(horsEcole.data)}`);
     attendu("… et rien n'est parti", !!(await ligne("parent")) && !!(await ligne("parent2")));
+
+    // Enseignant : les parents d'un élève de SES classes seulement.
+    const { error: classeErr } = await svc.from("enseignant_classes").insert({
+      compte_id: comptes.prof.compteId, ecole_id: demo.id, section: "college", classe: CLASSES.a, user_id: comptes.prof.userId,
+    });
+    if (classeErr) { info(`classe de l'enseignant de test impossible (${classeErr.message}) : sondes enseignant sautées.`); return; }
+    const horsClasse = await appelerPush("prof", { schoolId: demo.code, cibles: ["parent"], eleveId: eleves.b });
+    attendu("enseignant : élève hors de ses classes refusé (403)", horsClasse.status === 403,
+      `HTTP ${horsClasse.status} ${JSON.stringify(horsClasse.data)} — normal si push n'est pas encore redéployée`);
+    attendu("… et le parent de cet élève ne reçoit rien", !!(await ligne("parent2")));
+    const saClasse = await appelerPush("prof", { schoolId: demo.code, cibles: ["parent"], eleveId: eleves.a });
+    attendu("enseignant : élève de sa classe → son parent est servi", saClasse.status === 200 && !(await ligne("parent")),
+      `HTTP ${saClasse.status} ${JSON.stringify(saClasse.data)}`);
   };
 
   try {
@@ -143,6 +162,7 @@ async function main() {
     await creer("parent2", "parent", null);
     await creer("comptable", "comptable", "comptable");
     await creer("staff", "staff", POSTE_CENSEUR);
+    await creer("prof", "enseignant", null);
 
     console.log("\n— BASE : s'abonner pour soi, dans son école —");
     {
@@ -206,6 +226,31 @@ async function main() {
       attendu("REFUS d'écrire un abonnement", !!error, decrire(error));
       const { data: lus } = await anon.from("push_subs").select("user_id").limit(1);
       attendu("ne lit AUCUN abonnement", !(lus || []).length);
+    }
+
+    console.log("\n— BASE : un navigateur = un seul abonné (appareil partagé) —");
+    {
+      const partage = abonnementTest();
+      await sAbonner("parent", demo.id, {}, partage);
+      await sAbonner("parent", demo.id, {}, partage);
+      attendu("le compte qui se réabonne sur son navigateur garde sa ligne", !!(await ligne("parent")));
+      const { error } = await sAbonner("parent2", demo.id, {}, partage);
+      attendu("un autre compte s'abonne sur le même navigateur", !error, decrire(error));
+      attendu("… la ligne du compte précédent sur ce navigateur est retirée",
+        !(await ligne("parent")) && !!(await ligne("parent2")),
+        "normal si push-subs-navigateur.sql n'a pas encore été exécuté");
+    }
+    {
+      // Déconnexion (push-navigateur.js) : le compte retire SA ligne portant
+      // l'adresse de son navigateur ; celle d'un autre compte reste hors d'atteinte.
+      const adresse = abonnementTest();
+      await sAbonner("parent", demo.id, {}, adresse);
+      const { data: autrui } = await sessions.parent2.from("push_subs").delete()
+        .eq("user_id", comptes.parent.userId).eq("subscription->>endpoint", adresse.endpoint).select("user_id");
+      attendu("REFUS de retirer la ligne d'un autre compte", !(autrui || []).length && !!(await ligne("parent")));
+      const { error } = await sessions.parent.from("push_subs").delete()
+        .eq("user_id", comptes.parent.userId).eq("subscription->>endpoint", adresse.endpoint);
+      attendu("déconnexion : le compte retire la ligne de son navigateur", !error && !(await ligne("parent")), decrire(error));
     }
 
     console.log("\n— EDGE push : refus de l'appelant (droits.ts) —");

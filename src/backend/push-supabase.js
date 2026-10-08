@@ -2,6 +2,7 @@
 // Abonnement : enregistre la souscription du navigateur dans `push_subs`.
 // Envoi : délègue à l'Edge Function `push` (clé VAPID privée côté serveur).
 import { getSupabase } from "../supabaseClient";
+import { retirerAbonnementNavigateur } from "./push-navigateur";
 
 async function ecoleIdParCode(sb, code) {
   const { data } = await sb.from("ecoles").select("id").eq("code", code).maybeSingle();
@@ -36,6 +37,17 @@ export async function sAbonnerAuxPush(utilisateurCo, sid) {
     });
   } catch {
     // L'abonnement push est optionnel.
+  }
+}
+
+// Déconnexion : retire l'abonnement de CE navigateur (push-navigateur.js),
+// pour qu'un appareil partagé ne reçoive plus les notifications du compte
+// qui s'en va. Appelée AVANT la révocation de la session (signOut).
+export async function seDesabonnerDesPush() {
+  try {
+    await retirerAbonnementNavigateur({ sb: getSupabase(), navigateur: globalThis.navigator });
+  } catch {
+    // Best-effort : la déconnexion ne doit jamais en dépendre.
   }
 }
 

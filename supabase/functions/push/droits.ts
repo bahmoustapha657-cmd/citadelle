@@ -46,6 +46,21 @@ export function refusParents(demande: Demande): Refus | null {
   return { statut: 400, error: "eleveId requis pour notifier des parents." };
 }
 
+// Classe d'un élève, ou d'une ligne enseignant_classes (section, classe).
+export type Classe = { section: string | null; classe: string | null };
+
+// L'enseignant ne prévient que les parents d'un élève de SES classes
+// (enseignant_classes) : le même périmètre que my_teacher_eleve_ids()
+// (teacher-security.sql), qui borne déjà ses signalements (absences_write).
+// Sans ce contrôle, il pouvait écrire aux parents de n'importe quel élève de
+// l'école. Le personnel n'est pas concerné.
+export function refusEnseignantEleve(appelant: Appelant | null, eleve: Classe, classes: Classe[]): Refus | null {
+  if (appelant?.role !== "enseignant") return null;
+  const sienne = !!eleve.classe
+    && classes.some((c) => c.section === eleve.section && c.classe === eleve.classe);
+  return sienne ? null : { statut: 403, error: "Élève hors de vos classes." };
+}
+
 // null = envoi autorisé. Sinon le refus à renvoyer tel quel.
 // - Compte inconnu ou inactif : refus.
 // - Superadmin : toute école, toute cible.
@@ -53,7 +68,8 @@ export function refusParents(demande: Demande): Refus | null {
 //   depuis le `schoolId` du corps).
 // - Cibles par rôle / `tousStaff` : personnel seulement — à une exception
 //   près, l'enseignant qui prévient les parents d'un élève d'un signalement
-//   (portail enseignant, incidents-actions.js : cibles ["parent"] + eleveId).
+//   (portail enseignant, incidents-actions.js : cibles ["parent"] + eleveId ;
+//   l'élève doit être de ses classes, cf. refusEnseignantEleve).
 // - `userIds` : tout membre de l'école (messagerie interne, parents et
 //   enseignants compris) ; index.ts ne lit que les abonnements de CETTE école.
 export function refusEnvoi(appelant: Appelant | null, ecoleId: string, demande: Demande): Refus | null {

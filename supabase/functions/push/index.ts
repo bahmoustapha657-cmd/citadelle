@@ -12,7 +12,9 @@
 // Appelé par le client : supabase.functions.invoke("push", { body }).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
-import { nettoyerCibles, nettoyerEleveId, nettoyerUserIds, refusEnvoi, refusParents } from "./droits.ts";
+import {
+  type Classe, nettoyerCibles, nettoyerEleveId, nettoyerUserIds, refusEnseignantEleve, refusEnvoi, refusParents,
+} from "./droits.ts";
 import { candidats, type CompteAbonne, destinataires, parLots } from "./destinataires.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -75,17 +77,27 @@ async function lireComptes(admin: Admin, userIds: string[]): Promise<CompteAbonn
 }
 
 // Parents de l'élève : user_id des comptes qui lui sont rattachés
-// (parent_eleves). null si l'élève n'est pas de l'école visée.
-async function lireParentsEleve(admin: Admin, ecoleId: string, eleveId: string): Promise<string[] | null> {
-  const { data: eleve, error } = await admin.from("eleves").select("id")
+// (parent_eleves), avec la classe de l'élève (contrôle de l'enseignant).
+// null si l'élève n'est pas de l'école visée.
+async function lireParentsEleve(admin: Admin, ecoleId: string, eleveId: string): Promise<{ eleve: Classe; parents: string[] } | null> {
+  const { data: eleve, error } = await admin.from("eleves").select("id, section, classe")
     .eq("id", eleveId).eq("ecole_id", ecoleId).maybeSingle();
   if (error) throw error;
   if (!eleve) return null;
   const { data: liens, error: errLiens } = await admin.from("parent_eleves")
     .select("compte:comptes(user_id)").eq("eleve_id", eleveId);
   if (errLiens) throw errLiens;
-  return ((liens || []) as unknown as { compte: { user_id: string | null } | null }[])
+  const parents = ((liens || []) as unknown as { compte: { user_id: string | null } | null }[])
     .map((l) => l.compte?.user_id || "").filter(Boolean);
+  return { eleve: eleve as unknown as Classe, parents };
+}
+
+// Classes de l'enseignant appelant dans l'école (enseignant_classes).
+async function lireClassesEnseignant(admin: Admin, compteId: string, ecoleId: string): Promise<Classe[]> {
+  const { data, error } = await admin.from("enseignant_classes").select("section, classe")
+    .eq("compte_id", compteId).eq("ecole_id", ecoleId);
+  if (error) throw error;
+  return (data || []) as unknown as Classe[];
 }
 
 Deno.serve(async (req) => {
@@ -115,16 +127,20 @@ Deno.serve(async (req) => {
     if (!ec) return json({ error: "École introuvable." }, 404);
 
     const { data: appelant } = await admin.from("comptes")
-      .select("role, ecole_id, statut").eq("user_id", user.id).maybeSingle();
+      .select("id, role, ecole_id, statut").eq("user_id", user.id).maybeSingle();
     const refus = refusEnvoi(appelant, ec.id, demande);
     if (refus) return json({ error: refus.error }, refus.statut);
 
-    // Parents visés : ceux de l'élève concerné, qui doit être de l'école.
+    // Parents visés : ceux de l'élève concerné, qui doit être de l'école —
+    // et, pour un enseignant, de l'une de ses classes.
     let parentsEleve: string[] = [];
     if (cibles.includes("parent")) {
       const lus = await lireParentsEleve(admin, ec.id, demande.eleveId);
       if (!lus) return json({ error: "Élève introuvable dans cette école." }, 404);
-      parentsEleve = lus;
+      const classes = appelant?.role === "enseignant" ? await lireClassesEnseignant(admin, appelant.id, ec.id) : [];
+      const horsClasses = refusEnseignantEleve(appelant, lus.eleve, classes);
+      if (horsClasses) return json({ error: horsClasses.error }, horsClasses.statut);
+      parentsEleve = lus.parents;
     }
 
     // Candidats : les lignes push_subs de l'école (celles des seules personnes
