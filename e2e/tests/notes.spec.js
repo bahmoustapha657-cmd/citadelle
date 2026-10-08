@@ -13,6 +13,9 @@ const SAISIES = [
   { eleve: ELEVES[1], matiere: MATIERES[1].nom, note: 16 },
 ];
 
+// Le bulletin lit les notes saisies par le premier test.
+test.describe.configure({ mode: "serial" });
+
 test("la direction saisit des notes dans la grille : chacune en base, pour le bon élève et la bonne matière", async ({ page }) => {
   await seConnecter(page, DIRECTION);
   await ouvrirModule(page, "Secondaire");
@@ -48,5 +51,36 @@ test("la direction saisit des notes dans la grille : chacune en base, pour le bo
       expect(n.periode).toBeTruthy();
       expect(n.annee).toMatch(/^\d{4}-\d{4}$/);
     }
+  }
+});
+
+// Moyenne générale = Σ(moyenne de matière × coefficient) / Σ coefficients.
+// Une note par matière ici : la moyenne de matière est cette note.
+const moyenneAttendue = (eleve) => {
+  let total = 0;
+  let coefs = 0;
+  for (const m of MATIERES) {
+    const s = SAISIES.find((x) => x.eleve === eleve && x.matiere === m.nom);
+    total += s.note * m.coefficient;
+    coefs += m.coefficient;
+  }
+  return (total / coefs).toFixed(2);
+};
+
+test("le bulletin affiche la moyenne générale pondérée par les coefficients", async ({ page }) => {
+  // Garde-fou sur l'attendu lui-même : calculé à la main.
+  expect([moyenneAttendue(ELEVES[0]), moyenneAttendue(ELEVES[1])]).toEqual(["13.43", "12.43"]);
+  const { id } = await lireEleve(ELEVES[0].matricule);
+  const [{ periode }] = await lireNotes(id);
+
+  await seConnecter(page, DIRECTION);
+  await ouvrirModule(page, "Secondaire");
+  await page.getByRole("button", { name: "Bulletins", exact: true }).click();
+  // Même période que la saisie (le sélecteur propose aussi la fin d'année 🏁).
+  await page.locator("select").filter({ has: page.locator("option", { hasText: "🏁" }) }).selectOption(periode);
+
+  for (const eleve of ELEVES) {
+    const ligne = page.getByRole("row").filter({ hasText: `${eleve.nom} ${eleve.prenom}` });
+    await expect(ligne).toContainText(`${moyenneAttendue(eleve)}/20`);
   }
 });
