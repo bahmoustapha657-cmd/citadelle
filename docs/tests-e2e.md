@@ -14,10 +14,26 @@ production : `e2e/donnees.js` refuse toute autre base que `127.0.0.1` /
 | **Encaissement** d'une mensualité (comptable) | montant proposé, confirmation (montant + élève), reçu, mois « payé » | 1 mois « Payé » sur la fiche, 1 ligne au journal `paiements` du bon montant, l'autre élève intact |
 | **Saisie de notes** (grille du collège) | « n note(s) enregistrée(s) » | chaque note pour le bon élève et la bonne matière, section, période, année |
 | **Bulletin** | moyenne générale pondérée par les coefficients (13,43 et 12,43) | — |
+| **Fin d'année** : clôture, simulation de promotion, annulation | bilan « n fiche(s) archivée(s) sur n » (jamais 0 sur 0), année active | année officielle et repère de clôture conservés ; mois payés archivés puis remis à zéro ; simulation sans écriture ; annulation qui rend l'argent ; journal de caisse intact |
+| **Fiche supprimée** pendant un encaissement (autre poste) | avertissement « n'a pas été enregistrée », pas de « ✅ Versement » | aucune ligne de caisse |
+| **Hors ligne** (variante PowerSync seulement) : réseau coupé pendant une saisie | note gardée à l'écran | rien en base pendant la coupure ; la note arrive au retour du réseau, une seule fois |
 
 Pourquoi vérifier la base : plusieurs écritures de l'app annoncent le succès
 avant la réponse du serveur (mode hors ligne), et une écriture refusée par la
-RLS ne lève pas toujours d'erreur. Seule la base dit si c'est passé.
+RLS ne lève pas d'erreur (0 ligne). Seule la base dit si c'est passé. La fin
+d'année l'a montré : sans ces contrôles, deux pertes de données passaient
+inaperçues (fiche école écrasée, clôture sur un miroir local incomplet —
+cf. docs/ecritures-sans-effet.md).
+
+## Deux variantes : en ligne et hors ligne
+
+Chaque parcours tourne deux fois (matrice du job `e2e`) :
+
+- **en-ligne** : `VITE_POWERSYNC_URL` vide, écritures directes vers Supabase ;
+- **hors-ligne** : comme en production, via le miroir PowerSync — service
+  PowerSync **1.26.1** local, mêmes règles (`powersync-sync-rules.min.yaml`),
+  réplication par `powersync_role`, jetons vérifiés par le JWKS du Supabase
+  local (`e2e/powersync/powersync.yaml`).
 
 ## Le jeu de données
 
@@ -46,11 +62,10 @@ les captures d'écran et les traces Playwright (données de test uniquement).
 
 ## Pas encore couvert
 
-- **Chemin hors ligne (PowerSync)** : la CI tourne en mode « en ligne »
-  (`VITE_POWERSYNC_URL` vide). La production écrit via le miroir local
-  PowerSync — prochaine étape : service PowerSync dans la CI.
-- **Fin d'année** (clôture, promotion, passage des admis) : la clôture
-  dépend de la date du jour, à piloter avec l'horloge de Playwright.
+- **Promotion appliquée** et **passage des admis** (seule la simulation est
+  testée : appliquer déplacerait les élèves dont dépendent les autres
+  scénarios).
+- Portail enseignant, portail parent.
 
 Lancement local (nécessite Docker + Supabase CLI) :
 
