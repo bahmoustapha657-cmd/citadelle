@@ -25,7 +25,14 @@ test("le comptable encaisse une mensualité : mois payé et ligne de caisse en b
   await expect(page.getByText(`💰 Encaisser — `, { exact: false })).toBeVisible();
   const bouton = page.getByRole("button", { name: /^Encaisser / });
   await expect(bouton).toHaveText(montant(MENSUALITE));
+
+  // L'app demande confirmation (boîte native) : le caissier lit le montant
+  // et le nom de l'élève, puis valide.
+  let confirmation = "";
+  page.once("dialog", (dialogue) => { confirmation = dialogue.message(); dialogue.accept(); });
   await bouton.click();
+  await expect.poll(() => confirmation).toMatch(montant(MENSUALITE));
+  expect(confirmation).toContain(`${eleve.nom} ${eleve.prenom}`);
   await expect(page.getByText(/✅ Versement de .* enregistré le/)).toBeVisible();
   await page.getByRole("button", { name: "Fermer", exact: true }).click();
 
