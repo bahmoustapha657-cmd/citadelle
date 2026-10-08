@@ -64,3 +64,13 @@ Le build de production ne lit que `.env.supabase` (commité ; tout y est
 public par nature). Les `.env` / `.env.local` d'un poste ne sont PAS vus par
 la CI : toute nouvelle variable `VITE_*` nécessaire en production va dans
 `.env.supabase`.
+
+## Version de la CLI Supabase
+
+Les workflows installent une version **épinglée** de la CLI Supabase
+(`version: 2.120.0` dans `ci.yml` et `schema-production.yml`). Avec
+`latest`, chaque job interrogeait l'API GitHub pour trouver la dernière
+version, et un « rate limit exceeded » faisait échouer la CI — y compris un
+déploiement (2026-10-08). Pour monter de version : remplacer le numéro aux
+5 endroits (`grep -rn "version: 2\." .github/workflows`) dans une PR ; le job
+`migrations` et les tests e2e valident la nouvelle version.

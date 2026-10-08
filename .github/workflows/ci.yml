@@ -79,7 +79,7 @@ jobs:
 
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.120.0  # épinglée : « latest » interroge l API GitHub (rate limit), cf. docs/deploiement.md
 
       # Base vierge + toutes les migrations + Edge Functions servies en local.
       - name: Démarrer Supabase local
@@ -142,7 +142,7 @@ jobs:
 
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.120.0  # épinglée : « latest » interroge l API GitHub (rate limit), cf. docs/deploiement.md
 
       - name: Client psql
         run: command -v psql || (sudo apt-get update -q && sudo apt-get install -yq postgresql-client)
@@ -201,7 +201,7 @@ jobs:
 
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.120.0  # épinglée : « latest » interroge l API GitHub (rate limit), cf. docs/deploiement.md
 
       - name: Client psql
         run: command -v psql || (sudo apt-get update -q && sudo apt-get install -yq postgresql-client)
