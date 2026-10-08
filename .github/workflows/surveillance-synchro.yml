@@ -1,0 +1,80 @@
+name: Surveillance synchro
+
+# PowerSync (mode hors ligne) lit la base par un slot de réplication. S'il
+# décroche (mot de passe changé, panne), la base garde le journal pour lui
+# jusqu'à 512 Mo (max_slot_wal_keep_size) puis ABANDONNE le slot : plus
+# aucune synchro, premières connexions bloquées à 99 %. Le 2026-10-08, il
+# s'est écoulé à peine plus d'une heure entre la déconnexion et la perte du
+# slot — d'où une vérification toutes les 15 minutes plutôt que par jour.
+#
+# LECTURE SEULE. Un run en échec = GitHub envoie un e-mail (réglages de
+# notification Actions du compte). Procédure : docs/surveillance-synchro.md.
+
+on:
+  schedule:
+    - cron: "7,22,37,52 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: surveillance-synchro
+  cancel-in-progress: true
+
+jobs:
+  verifier:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 5
+
+    steps:
+      - name: Client psql
+        run: command -v psql || (sudo apt-get update -q && sudo apt-get install -yq postgresql-client)
+
+      - name: PowerSync lit-il la base ?
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          # Alerte bien avant la limite de 512 Mo.
+          SEUIL_MO: "100"
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::error::Secret SUPABASE_DB_URL absent : surveillance impossible."
+            exit 1
+          fi
+          if ! etat=$(psql "$SUPABASE_DB_URL" -At -F '|' -v ON_ERROR_STOP=1 -c "
+              select slot_name, active, coalesce(wal_status, ''),
+                     coalesce(pg_wal_lsn_diff(pg_current_wal_lsn(), confirmed_flush_lsn), 0)::bigint / 1048576
+                from pg_replication_slots
+               where slot_name like 'powersync%'
+               order by active desc, slot_name desc" 2>&1); then
+            echo "::error::Connexion à la base impossible (mot de passe du secret SUPABASE_DB_URL changé ?) : $(echo "$etat" | grep -o 'FATAL.*' | head -1)"
+            exit 1
+          fi
+
+          echo "$etat"
+          probleme=""
+          if [ -z "$etat" ]; then
+            probleme="Aucun slot PowerSync dans la base : la synchro hors ligne ne reçoit plus rien."
+          else
+            # Slot de la version en service (le premier : actif d'abord).
+            IFS='|' read -r slot actif statut retard <<< "$(echo "$etat" | head -1)"
+            if [ "$actif" != "t" ]; then
+              probleme="PowerSync est DÉCONNECTÉ de la base (slot $slot inactif, retard ${retard} Mo)."
+            elif [ "$statut" = "lost" ] || [ "$statut" = "unreserved" ]; then
+              probleme="Slot $slot en état « $statut » : la base est en train de l'abandonner."
+            elif [ "$retard" -gt "$SEUIL_MO" ]; then
+              probleme="PowerSync prend du retard : ${retard} Mo (alerte à ${SEUIL_MO} Mo, perte du slot à 512 Mo)."
+            fi
+            # Un ancien slot perdu qui traîne occupe l'une des 5 places.
+            if echo "$etat" | tail -n +2 | grep -q '|lost|'; then
+              echo "::warning::Un ancien slot PowerSync « lost » subsiste (à supprimer)."
+            fi
+          fi
+
+          if [ -n "$probleme" ]; then
+            echo "::error::$probleme Voir docs/surveillance-synchro.md."
+            echo "### ❌ $probleme" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          echo "### ✅ PowerSync connecté — slot \`$slot\`, retard ${retard} Mo" >> "$GITHUB_STEP_SUMMARY"
