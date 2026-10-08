@@ -59,6 +59,7 @@ jobs:
   # Parcours critiques de bout en bout (e2e/) : le vrai front, construit
   # contre un Supabase LOCAL complet (migrations, auth, API, Edge Functions)
   # démarré dans le runner, piloté dans Chromium. Aucun accès à la production.
+  # BLOQUANT pour le déploiement (cf. migrations-production).
   e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -184,7 +185,9 @@ jobs:
   # Règle : une migration reste compatible avec le front encore en ligne
   # (ajouter avant de retirer — cf. docs/migrations-sql.md).
   migrations-production:
-    needs: [lint-and-build, migrations]
+    # Parcours critiques (e2e) verts exigés : rien ne part en production —
+    # ni la base ni le front — si l'encaissement ou les notes cassent.
+    needs: [lint-and-build, migrations, e2e]
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     environment: production
