@@ -5,7 +5,7 @@
 // foyer.ts, et api/_lib/account-links.js pour l'API Firebase.
 // Lire, rattacher et détacher : Supabase seulement (le backend Firebase est
 // retiré) ; les écritures passent par l'Edge Function, la RLS n'en permet
-// aucune depuis le navigateur (supabase/comptes-parents.sql).
+// aucune depuis le navigateur (supabase/historique/comptes-parents.sql).
 import { apiFetch, getAuthHeaders } from "../apiClient";
 import { isSupabase } from "../backend";
 import { payloadCompteParent } from "../comptes-parents";
@@ -78,7 +78,7 @@ export async function comptesParentsEcole() {
 
 // Comptes parents de l'école et leurs liens, fiche des enfants comprise —
 // pour la détection des doublons (doublons-parents.js). La RLS limite les
-// deux lectures à l'école (supabase/comptes-parents.sql pour les liens).
+// deux lectures à l'école (supabase/historique/comptes-parents.sql pour les liens).
 export async function donneesDoublonsParents() {
   const sb = getSupabase();
   const [comptes, liens] = await Promise.all([

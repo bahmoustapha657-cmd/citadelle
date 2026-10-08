@@ -6,7 +6,7 @@
 // (email login@superadmin.edugest.app, mot de passe aléatoire → reset à la 1re
 // connexion) + une ligne `comptes` role='superadmin', ecole_id=NULL.
 //
-// PRÉREQUIS : avoir exécuté supabase/superadmin.sql (ecole_id nullable + RLS).
+// PRÉREQUIS : avoir exécuté supabase/historique/superadmin.sql (ecole_id nullable + RLS).
 // Lancer : node supabase/migrate-superadmin.mjs
 // ════════════════════════════════════════════════════════════════════════
 import { readdirSync, readFileSync } from "node:fs";

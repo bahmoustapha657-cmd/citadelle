@@ -83,7 +83,7 @@ test("account-manage : index.ts applique droits.ts, sans copie locale des règle
 });
 
 test("RLS : teacher_can_write_note dispense la maternelle du filtre matière, à l'identique dans les deux fichiers", () => {
-  const sql = (fichier) => readFileSync(new URL(`../supabase/${fichier}`, import.meta.url), "utf8").replace(/\r\n/g, "\n");
+  const sql = (fichier) => readFileSync(new URL(`../supabase/historique/${fichier}`, import.meta.url), "utf8").replace(/\r\n/g, "\n");
   const definition = (texte) => texte.match(/create or replace function teacher_can_write_note\([\s\S]*?\n\$\$;/)?.[0];
   const canonique = definition(sql("teacher-security.sql"));
   const correctif = definition(sql("prescolaire-3-enseignants.sql"));

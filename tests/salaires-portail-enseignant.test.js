@@ -4,7 +4,7 @@
 // 2026-07-17 : un enseignant lisait zéro ligne) et, depuis le hors ligne
 // total, la lecture du miroir PowerSync, où seul le bucket compta_data livre
 // `salaires`. Remède : une policy de lecture pour l'enseignant, limitée à SES
-// fiches (supabase/salaires-enseignant.sql), et une lecture RÉSEAU des fiches
+// fiches (supabase/historique/salaires-enseignant.sql), et une lecture RÉSEAU des fiches
 // dans le portail (teacher-portal-supabase.js).
 //
 // Les tests de bout en bout du portail (fin du fichier) demandent les mocks
@@ -18,7 +18,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { matchesTeacherAlias, teacherSalaryAliases } from "../src/backend/teacher-scope.js";
 import { normalizeSalaryName } from "../src/salary-utils.ts";
 
-const sql = (fichier) => readFileSync(new URL(`../supabase/${fichier}`, import.meta.url), "utf8").replace(/\r\n/g, "\n");
+const sql = (fichier) => readFileSync(new URL(`../supabase/historique/${fichier}`, import.meta.url), "utf8").replace(/\r\n/g, "\n");
 const DELTA = sql("salaires-enseignant.sql");
 
 // ── Noms de paie de l'enseignant (même règle que mes_noms_paie()) ───────────
@@ -97,7 +97,7 @@ test("SQL : l'enseignant LIT ses seules fiches, n'écrit rien, et anon n'appelle
 });
 
 test("SQL : rejouer un autre fichier ne retire pas la policy de l'enseignant", () => {
-  const dossier = new URL("../supabase/", import.meta.url);
+  const dossier = new URL("../supabase/historique/", import.meta.url);
   for (const fichier of readdirSync(dossier).filter((f) => f.endsWith(".sql") && f !== "salaires-enseignant.sql")) {
     assert.doesNotMatch(sql(fichier), /salaires_select_enseignant/, fichier);
   }

@@ -22,7 +22,7 @@ export function dossierTransfert(eleve = {}, { schoolNom = "", solde = 0 } = {})
   return { ...dossier, schoolNom, solde };
 }
 
-// Validité d'un token, appliquée par le serveur (supabase/transferts.sql).
+// Validité d'un token, appliquée par le serveur (supabase/historique/transferts.sql).
 export const VALIDITE_TOKEN_JOURS = 30;
 const JOUR_MS = 86400000;
 

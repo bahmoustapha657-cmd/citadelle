@@ -5,7 +5,7 @@
 // ecoles.role_settings, droits d'écriture legacy), puis rattache chaque compte
 // de personnel existant (role enum) au poste de même clé.
 //
-// PRÉREQUIS : avoir exécuté supabase/postes.sql.
+// PRÉREQUIS : avoir exécuté supabase/historique/postes.sql.
 // Lancer : node supabase/migrate-postes.mjs            (DRY-RUN, aucune écriture)
 //          node supabase/migrate-postes.mjs --apply    (exécution réelle)
 // ═══════════════════════════════════════════════════════════════════════════

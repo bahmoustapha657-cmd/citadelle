@@ -3,7 +3,7 @@
 // (chargerCollection / ajouter / modifier / supprimer) puis applique le même
 // filtrage de PÉRIMÈTRE que le handler (classes du prof → élèves → notes).
 //
-// Sécurité : le périmètre fin est IMPOSÉ par la RLS (supabase/teacher-security.sql) :
+// Sécurité : le périmètre fin est IMPOSÉ par la RLS (supabase/historique/teacher-security.sql) :
 // un enseignant n'écrit notes/absences que pour les élèves de SES classes (table
 // enseignant_classes, peuplée par populate-teacher-classes.mjs) et, au secondaire,
 // dans SA matière (teacher_can_write_note). Le filtrage ci-dessous ne sert donc
@@ -21,7 +21,7 @@ let ctx = null; // contexte enseignant courant (rempli au fetch, utilisé aux é
 // ── Fiches de paie : lues sur le SERVEUR ────────────────────────────────────
 // Le miroir PowerSync d'un enseignant n'a pas de `salaires` (seul le bucket
 // compta_data les livre) ; la RLS, elle, lui accorde SES fiches
-// (supabase/salaires-enseignant.sql). Gardées pour la session une fois lues :
+// (supabase/historique/salaires-enseignant.sql). Gardées pour la session une fois lues :
 // chargerPortail() se relance après chaque note enregistrée, et une fiche de
 // paie ne change qu'une fois par mois. Un échec (hors ligne) n'est pas gardé :
 // le chargement suivant retente. Attente bornée : sur un réseau qui ne répond
@@ -124,7 +124,7 @@ export async function fetchTeacherPortal(utilisateur, { annee = "" } = {}) {
   // seulement ») : en maternelle et au primaire, toutes celles de ses
   // classes ; au secondaire, SA matière et celles qui lui sont rattachées
   // (Français → Dictée et Questions, Rédaction) — mêmes règles que
-  // teacher_can_write_note (supabase/matieres-rattachement.sql).
+  // teacher_can_write_note (supabase/historique/matieres-rattachement.sql).
   const matieres = isTitulaireSection(section)
     ? matieresEvaluees(matieresClasses)
     : matieresNotablesPar(matieresClasses, utilisateur.matiere);

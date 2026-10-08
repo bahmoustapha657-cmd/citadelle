@@ -6,7 +6,7 @@ const DELAI_DEMARRAGE_MS = 2500;
 
 const etatCourant = () => (document.visibilityState === "visible" ? "actif" : "absent");
 
-// Présence des comptes de l'école (supabase/presence.sql) : l'application
+// Présence des comptes de l'école (supabase/historique/presence.sql) : l'application
 // signale la sienne chaque minute — « actif » à l'écran, « absent » en
 // arrière-plan, « hors_ligne » à la fermeture — et relit celle des autres.
 // Renvoie Map compteId → { etat, depuis } (depuis : secondes, heure serveur).

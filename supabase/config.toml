@@ -1,0 +1,8 @@
+# CLI Supabase — base LOCALE de vérification uniquement (CI : toutes les
+# migrations de supabase/migrations rejouées sur une base vierge à chaque PR).
+# Aucun réglage ici n'est poussé vers la production (pas de `config push`).
+project_id = "edugest"
+
+[db]
+# Aligné sur la production (Postgres 17.6, relevé le 2026-10-08).
+major_version = 17

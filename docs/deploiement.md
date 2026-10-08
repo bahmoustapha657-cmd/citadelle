@@ -6,16 +6,18 @@ Actions**, jamais depuis un poste.
 
 ## Déployer
 
-1. **Avant** : si une PR fusionnée depuis le dernier déploiement demande un
-   script SQL « à exécuter AVANT le déploiement », l'exécuter et le sonder.
-2. GitHub → onglet **Actions** → workflow **CI** → **Run workflow** → branche
+1. GitHub → onglet **Actions** → workflow **CI** → **Run workflow** → branche
    **master** → Run.
-3. Le workflow refait lint + tests + builds sur un checkout propre de master,
-   puis le job `deploy-production` publie ce bundle exact et vérifie que
+2. Le workflow refait lint + tests + builds sur un checkout propre de master
+   et rejoue les migrations sur une base vierge ;
+3. puis `migrations-production` applique à la production les migrations SQL
+   en attente (cf. [migrations-sql.md](migrations-sql.md)) ;
+4. puis `deploy-production` publie ce bundle exact et vérifie que
    `version.json` en ligne affiche bien le commit déployé.
 
-Le run échoue (et rien n'est publié) si un test casse. Un run lancé sur une
-autre branche que master ne déploie rien.
+Le run échoue (et rien n'est publié) si un test ou une migration casse. Un
+run lancé sur une autre branche que master ne déploie rien. Plus aucun
+script SQL à coller à la main avant de déployer.
 
 ## Savoir ce qui est en ligne
 

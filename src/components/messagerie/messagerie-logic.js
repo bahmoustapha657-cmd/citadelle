@@ -6,7 +6,7 @@
 // tests/messagerie-logic.test.js.
 
 // Compte hors messagerie (transversal). Les parents y entrent depuis leur
-// portail (supabase/messagerie-parents.sql).
+// portail (supabase/historique/messagerie-parents.sql).
 export const ROLES_SANS_MESSAGERIE = new Set(["superadmin"]);
 
 export const messagerieOuverteA = (utilisateur) =>
@@ -323,7 +323,7 @@ export const estJoignable = (presence) => presence?.etat === "actif" || presence
 export const membresConnectes = (conv, presences, moi) =>
   (conv?.membres || []).filter((m) => m.id !== moi && estJoignable(presences?.get(m.id))).length;
 
-// ── Hiérarchie (supabase/messagerie-hierarchie.sql) ──
+// ── Hiérarchie (supabase/historique/messagerie-hierarchie.sql) ──
 // L'annuaire marque les comptes que l'on peut CONTACTER (ouvrir une
 // discussion, appeler, inviter dans un groupe, adresser une annonce). Tant
 // que le SQL n'est pas appliqué, le champ est absent : tout le monde l'est.

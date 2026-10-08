@@ -12,7 +12,7 @@
 //   • Le filtre serveur ne porte que sur `ecole_id` (Realtime n'accepte qu'une
 //     colonne) ; la section et l'année sont filtrées ici, côté client.
 //
-// Prérequis base : les tables doivent être publiées — voir supabase/realtime.sql.
+// Prérequis base : les tables doivent être publiées — voir supabase/historique/realtime.sql.
 // Si elles ne le sont pas, rien ne casse : on ne reçoit simplement aucun
 // événement, et le rafraîchissement au retour d'onglet (useFirestore) reste le
 // filet de sécurité.
@@ -53,7 +53,7 @@ function canalPour(sb, table, ecoleId) {
         erreurSignalee = true;
         console.warn(
           `[realtime] canal indisponible (${statut}) — l'app reste fonctionnelle, `
-          + "mais sans mise à jour instantanée. Vérifier supabase/realtime.sql.",
+          + "mais sans mise à jour instantanée. Vérifier supabase/historique/realtime.sql.",
         );
       }
     });

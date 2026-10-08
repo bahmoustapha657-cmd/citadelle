@@ -10,7 +10,7 @@
 //                   notée et au bulletin, absente de l'emploi du temps.
 // `rattachement` (facultatif) nomme la discipline enseignée dont relève la
 // matière (Dictée → Français) : au secondaire, le professeur de cette
-// discipline peut la noter (cf. supabase/matieres-rattachement.sql).
+// discipline peut la noter (cf. supabase/historique/matieres-rattachement.sql).
 // Les deux champs vivent dans le jsonb `extra` : aucune colonne à ajouter.
 
 export const NATURES_MATIERE = [

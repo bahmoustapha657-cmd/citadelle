@@ -57,7 +57,7 @@ export function teacherAliases(profile = {}) {
 // prénom + nom de SA fiche enseignant (celle d'enseignantId) — le nom inscrit
 // sur la fiche de paie (buildTeacherFullName), même si la fiche a été renommée
 // après la création du compte. Même règle que mes_noms_paie() côté RLS
-// (supabase/salaires-enseignant.sql).
+// (supabase/historique/salaires-enseignant.sql).
 export function teacherSalaryAliases(profile = {}, roster = []) {
   const fiche = profile.enseignantId ? roster.find((f) => f._id === profile.enseignantId) : null;
   const nomFiche = fiche ? `${fiche.prenom || ""} ${fiche.nom || ""}`.trim() : "";

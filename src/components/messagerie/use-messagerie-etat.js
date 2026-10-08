@@ -75,7 +75,7 @@ export function useMessagerieEtat({ utilisateur, schoolCode, actif }) {
       if (active && lectureAutorisee() && liste.find((c) => c.id === active)?.non_lus) marquerConvLue(active);
     } catch (e) {
       setErreur(/msg_boite|function|relation/i.test(e.message)
-        ? "Messagerie pas encore installée sur le serveur (supabase/messagerie-v2.sql)."
+        ? "Messagerie pas encore installée sur le serveur (migrations SQL non appliquées)."
         : (e.message || "Messagerie indisponible."));
     }
   }, [marquerConvLue]);

@@ -1,5 +1,12 @@
 # EduGest sur Supabase — reconstruction parallèle
 
+> ⚠️ **Depuis le 2026-10-08, le schéma vit dans `supabase/migrations/`**
+> (baseline = schéma réel de la production, puis une migration par
+> évolution — cf. [docs/migrations-sql.md](../docs/migrations-sql.md)). Les
+> anciens scripts cités plus bas sont archivés dans `supabase/historique/` et
+> ne doivent **jamais** être rejoués. Ce document est l'historique de la
+> migration Firebase → Supabase.
+
 Piste **parallèle** : Firebase reste la production. On reconstruit ici la même app **EduGest** sur Supabase (Postgres), jusqu'à ce que la version soit complète et testée. Rien dans ce dossier n'affecte l'app Firebase.
 
 > Marque centralisée dans `_brand.mjs` (`APP_NAME`, domaine e-mail interne `@edugest.app` — identique à la prod Firebase). Le domaine est un identifiant de connexion interne, jamais une vraie adresse.

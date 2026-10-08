@@ -1,44 +1,79 @@
-# Migrations SQL (chantier en cours)
+# Migrations SQL
 
-## Pourquoi
+## Le principe
 
-Jusqu'ici, chaque évolution de la base était un fichier `supabase/*.sql`
-collé à la main dans l'éditeur SQL de Supabase, dans un ordre à connaître par
-cœur (`rls.sql` → `teacher-security.sql` → … → `postes.sql` en dernier,
-`ecole-hors-service.sql` après `rls.sql`…). Rejouer un ancien fichier a déjà
-rouvert une faille en production (garde `comptes_guard`, 2026-09-25).
+Toute évolution de la base est un fichier **numéroté** de
+`supabase/migrations/`, appliqué **une seule fois, dans l'ordre**. Plus de
+script collé à la main dans l'éditeur SQL de Supabase.
 
-Cible : des migrations **numérotées** dans `supabase/migrations/`, appliquées
-**une seule fois chacune, dans l'ordre**, par GitHub Actions — et vérifiées
-sur une base vierge à chaque PR.
+- `20261008175200_baseline.sql` : schéma RÉEL de la production au
+  2026-10-08 (dump du workflow « Schéma production »), + rôle PowerSync et
+  Storage. Elle n'est jamais rejouée en production.
+- Les anciens scripts sont archivés dans `supabase/historique/` : **ne jamais
+  les rejouer** (`rls.sql` rejoué seul a rouvert une faille le 2026-09-25).
 
-## Étape 1 — photographier la production (en cours)
+## Écrire une migration
 
-Le point de départ (« baseline ») est le schéma RÉEL de la production, pas la
-somme des anciens fichiers (qui a dérivé : réparations, re-runs, retouches
-dans le tableau de bord).
+```bash
+npm run migration:nouvelle -- nom-court-de-la-modif
+```
 
-1. Supabase → projet EduGest → bouton **Connect** → onglet **Session pooler**
-   → copier l'URI (`postgresql://postgres.<ref>:[YOUR-PASSWORD]@aws-…pooler.supabase.com:5432/postgres`)
-   et y mettre le mot de passe de la base. ⚠️ Pas la connexion directe
-   (`db.<ref>.supabase.co`, IPv6 seulement : injoignable depuis GitHub) ni le
-   port 6543 (mode transaction, incompatible avec `pg_dump`).
-2. GitHub → Settings → Environments → **production** → Add secret :
-   `SUPABASE_DB_URL` = cette URI.
-3. GitHub → Actions → **Schéma production** → Run workflow.
+crée `supabase/migrations/<horodatage>_nom_court_de_la_modif.sql` avec un
+modèle. Règles :
 
-Le workflow ne fait que LIRE (structure, aucune donnée). Il refuse de publier
-son résultat s'il y repère quelque chose qui ressemble à un secret, et le
-résultat est effacé au bout d'un jour.
+1. **Ne jamais modifier une migration déjà fusionnée** : en écrire une autre.
+2. **Compatible avec le front encore en ligne** : le front change APRÈS la
+   base. Ajouter une colonne / une policy avant de s'en servir ; ne retirer
+   l'ancienne qu'une fois le nouveau front en ligne (migration suivante).
+3. Préférer l'idempotent (`create or replace`, `if not exists`,
+   `drop policy if exists` + `create policy`).
+4. Données : toute migration qui modifie ou supprime des lignes en masse est
+   d'abord vérifiée sur une école, puis validée explicitement.
 
-## Étapes suivantes
+## Ce que vérifie la CI
 
-2. Baseline = ce dump, relu, + Storage / Realtime ; marquée « déjà appliquée »
-   en production (rien n'est rejoué).
-3. `matieres-rattachement.sql` (en attente) devient la première vraie
-   migration.
-4. CI : à chaque PR, toutes les migrations sont appliquées sur un Postgres
-   Supabase vierge ; au déploiement, les migrations en attente sont appliquées
-   à la production AVANT la mise en ligne du front.
-5. Les anciens `supabase/*.sql` sont archivés (lecture seule, ne jamais les
-   rejouer).
+À chaque push et PR, le job **`migrations`** démarre une base Supabase vierge
+(Postgres 17) dans le runner, y rejoue TOUTES les migrations dans l'ordre et
+contrôle le résultat : nombre de migrations appliquées, **RLS active sur
+toutes les tables publiques**, garde `comptes_guard` présente. Une migration
+qui échoue ici ne peut pas être fusionnée sans que ça se voie.
+
+## Appliquer en production
+
+Au déploiement (Actions → **CI** → Run workflow sur master), le job
+**`migrations-production`** applique les migrations en attente à la
+production (`supabase db push`), **puis** le front est publié. Garde-fous :
+
+- refus net si la baseline n'est pas marquée « déjà appliquée » en
+  production (sinon elle serait rejouée) ;
+- retour arrière (« Re-run » d'un ancien déploiement) : aucune migration
+  annulée, front seul ;
+- un seul passage à la fois ; si une migration échoue, rien n'est déployé.
+
+**Plus rien à coller dans l'éditeur SQL** : fusionner la PR, puis déployer.
+
+### Opération unique : marquer la baseline
+
+À faire UNE fois, après la fusion de la baseline et avant le premier
+déploiement par la CI : Actions → **Schéma production** → Run workflow →
+action **marquer-baseline** (branche master). Le job vérifie que la
+production contient bien le schéma (50 tables, garde `comptes_guard`) et
+que l'historique est vide, puis inscrit la baseline
+(`supabase migration repair --status applied`). Il n'écrit que dans
+`supabase_migrations.schema_migrations`, aucune table d'EduGest. Relancé, il
+ne fait rien.
+
+## Photographier la production
+
+Actions → **Schéma production** → Run workflow : dump du schéma (structure
+seule, lecture seule), relevé Storage/Realtime, version de Postgres. Sert à
+recréer une baseline ou à comparer la production aux migrations.
+
+Prérequis : secret `SUPABASE_DB_URL` dans l'environnement GitHub
+**Production** = URI **Session pooler** (port 5432,
+`postgres.<ref>@aws-0-eu-west-1.pooler.supabase.com`), mot de passe
+encodé (`@`→`%40`, `#`→`%23`…). En cas d'échec de connexion, l'étape
+« Diagnostic de l'adresse » dit ce qui cloche sans rien révéler.
+
+⚠️ Ce mot de passe est aussi celui de PowerSync : le changer impose de le
+changer dans PowerSync (Connections → Test connection → Deploy) aussitôt.

@@ -18,7 +18,8 @@
     "pwa-icons": "node generate-pwa-icons.mjs",
     "deploy:functions": "firebase deploy --only functions:backend",
     "build:supabase": "vite build --mode supabase",
-    "deploy:pages": "node scripts/deployer-pages.mjs"
+    "deploy:pages": "node scripts/deployer-pages.mjs",
+    "migration:nouvelle": "node scripts/nouvelle-migration.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.82.0",
