@@ -4,9 +4,7 @@ on:
   push:
   pull_request:
   # Mise en production : onglet Actions → « CI » → Run workflow (branche
-  # master). Volontairement PAS automatique à chaque fusion tant que les
-  # changements SQL se jouent à la main : certaines PR exigent un script SQL
-  # exécuté AVANT le déploiement (cf. docs/deploiement.md).
+  # master) : migrations SQL en attente PUIS front (cf. docs/deploiement.md).
   workflow_dispatch:
 
 permissions:
@@ -57,6 +55,56 @@ jobs:
           path: dist
           retention-days: 30
           if-no-files-found: error
+
+  # Toutes les migrations (supabase/migrations) rejouées dans l'ordre sur une
+  # base Supabase VIERGE et jetable (Postgres 17, schémas auth/storage), dans
+  # le runner. Aucun accès à la production.
+  migrations:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Client psql
+        run: command -v psql || (sudo apt-get update -q && sudo apt-get install -yq postgresql-client)
+
+      # `db start` crée la base locale et y applique les migrations.
+      - name: Rejouer toutes les migrations sur une base vierge
+        run: supabase db start
+
+      - name: Contrôler la base obtenue
+        env:
+          LOCALE: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        run: |
+          attendues=$(ls supabase/migrations/*.sql | wc -l)
+          appliquees=$(psql "$LOCALE" -Atc "select count(*) from supabase_migrations.schema_migrations")
+          echo "Migrations : $appliquees appliquée(s) sur $attendues"
+          test "$appliquees" -eq "$attendues"
+          psql "$LOCALE" -v ON_ERROR_STOP=1 -At <<'SQL'
+          select 'tables public    : ' || count(*) from pg_tables where schemaname = 'public';
+          select 'policies public  : ' || count(*) from pg_policies where schemaname = 'public';
+          select 'policies storage : ' || count(*) from pg_policies where schemaname = 'storage';
+          select 'buckets          : ' || count(*) from storage.buckets;
+          -- Garde-fous : RLS active sur TOUTES les tables publiques, et la
+          -- garde anti auto-promotion présente (faille du 2026-09-25).
+          do $$
+          declare sans_rls text;
+          begin
+            select string_agg(tablename, ', ') into sans_rls
+              from pg_tables where schemaname = 'public' and not rowsecurity;
+            if sans_rls is not null then
+              raise exception 'Tables publiques SANS RLS : %', sans_rls;
+            end if;
+            if not exists (select 1 from pg_trigger where tgname ilike '%comptes%guard%') then
+              raise exception 'Garde comptes_guard absente';
+            end if;
+          end $$;
+          SQL
 
   # Déploie EXACTEMENT le bundle qui vient de passer lint + tests + build,
   # construit depuis un checkout propre de master : plus de déploiement depuis

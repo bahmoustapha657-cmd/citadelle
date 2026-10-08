@@ -17,7 +17,7 @@
 //
 // PRÉREQUIS, dans cet ordre — sinon un compte repris lirait les collections du
 // COLLÈGE (ancien front) ou verrait ses notes refusées (ancienne RLS) :
-//   1. supabase/prescolaire-3-enseignants.sql appliqué ;
+//   1. supabase/historique/prescolaire-3-enseignants.sql appliqué ;
 //   2. Edge Function déployée : supabase functions deploy account-manage ;
 //   3. front déployé : npm run deploy:pages.
 //

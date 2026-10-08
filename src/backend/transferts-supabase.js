@@ -1,6 +1,6 @@
 // ── Transferts d'élèves entre écoles via Supabase ───────────────────────────
 // Génération : insert dans `transferts` (RLS école source). Vérif/accept : RPC
-// SECURITY DEFINER (token = capability cross-école), cf. supabase/transferts.sql.
+// SECURITY DEFINER (token = capability cross-école), cf. supabase/historique/transferts.sql.
 // Mêmes formes de retour que transferts-api.js.
 import { getSupabase } from "../supabaseClient";
 

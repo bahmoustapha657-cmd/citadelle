@@ -17,7 +17,7 @@
 // l'appelant, uniquement vers ceux enregistrés sur le compte.
 //
 // Déploiement : supabase functions deploy password-reset
-// (voie code : appliquer d'abord supabase/reinitialisation-code.sql)
+// (voie code : appliquer d'abord supabase/historique/reinitialisation-code.sql)
 // APP_URL = adresse de l'app où atterrit le lien (défaut ci-dessous) : le
 // lien pointe directement dessus, sans dépendre de la « Site URL » ni des
 // « Redirect URLs » de Supabase Auth (voir lienReinitialisation).

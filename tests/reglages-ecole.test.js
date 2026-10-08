@@ -5,7 +5,7 @@
 // refusé ne lève aucune erreur, il modifie zéro ligne — le bouton « Bloquer
 // l'accès parents » et la monnaie affichaient donc un succès sans rien écrire.
 // Ses deux réglages passent désormais par la RPC maj_reglages_compta
-// (supabase/reglages-compta.sql, sondes dans test-rls-postes.mjs), et les
+// (supabase/historique/reglages-compta.sql, sondes dans test-rls-postes.mjs), et les
 // mises à jour directes échouent bruyamment. Ici : le VRAI data-supabase.js
 // face à un faux client Supabase.
 //

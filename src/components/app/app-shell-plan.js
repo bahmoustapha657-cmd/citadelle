@@ -5,7 +5,7 @@ import { estPremiumActif } from "../../../shared/plan-features.js";
 const GRACE_MS = 3 * 86400000; // 3 jours de grâce après expiration
 
 // Portails enseignant et parent (même règle que le refus de la base,
-// supabase/ecole-hors-service.sql) : ils ne renouvellent pas, ils consultent.
+// supabase/historique/ecole-hors-service.sql) : ils ne renouvellent pas, ils consultent.
 export const MSG_LECTURE_SEULE_PORTAIL = "L'abonnement de l'établissement a expiré : consultation seule, aucune modification possible.";
 
 export function computePlanInfo({ schoolInfoState, nowTs, totalElevesActifs, t }) {

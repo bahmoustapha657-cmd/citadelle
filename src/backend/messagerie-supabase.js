@@ -1,7 +1,7 @@
 // ── Messagerie interne v2 (Supabase) ────────────────────────────────────────
 // Discussions (directes / groupes), messages vocaux, appels audio et annonces
 // entre personnel et enseignants. La RLS et les fonctions de
-// supabase/messagerie-v2.sql font autorité : ce module ne fait qu'appeler.
+// supabase/historique/messagerie-v2.sql font autorité : ce module ne fait qu'appeler.
 import { getSupabase } from "../supabaseClient";
 import { envoyerPushUtilisateurs } from "./push-supabase";
 import { extensionPourType } from "../components/messagerie/documents";
@@ -264,6 +264,6 @@ export async function actionReunion(action, corps) {
   return data;
 }
 
-// ── Présence (supabase/presence.sql) ──
+// ── Présence (supabase/historique/presence.sql) ──
 export const signalerPresence = (etat) => rpc("msg_presence", { p_etat: etat });
 export const chargerPresences = async () => (await rpc("msg_presences")) || [];

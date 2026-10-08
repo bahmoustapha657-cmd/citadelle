@@ -137,7 +137,7 @@ toujours seule autorité d'écriture) au retour réseau.
   Edge Functions (`account-manage`/`inscription`/`push`/`ia`).
 - **⚠️ Étapes d'infra restant à faire manuellement (dashboard, hors de portée
   d'un agent de code) avant que le hors-ligne fonctionne réellement** :
-  1. Exécuter `supabase/powersync-scope.sql` (après `teacher-security.sql`) :
+  1. Exécuter `supabase/historique/powersync-scope.sql` (après `teacher-security.sql`) :
      duplique `user_id` sur `enseignant_classes` — nécessaire car les
      Parameter Queries PowerSync ne supportent qu'UNE table (pas de JOIN).
   2. Créer un rôle Postgres dédié (`powersync_role`, `REPLICATION BYPASSRLS`,

@@ -11,7 +11,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const sql = (fichier) => readFileSync(new URL(`../supabase/${fichier}`, import.meta.url), "utf8").replace(/\r\n/g, "\n");
+const sql = (fichier) => readFileSync(new URL(`../supabase/historique/${fichier}`, import.meta.url), "utf8").replace(/\r\n/g, "\n");
 const GARDE = /create or replace function comptes_guard\(\)[\s\S]*?\nend; \$\$;/;
 const NOTES = /create policy notes_write on notes[^;]*;/;
 const ABSENCES = /create policy absences_write on absences[^;]*;/;

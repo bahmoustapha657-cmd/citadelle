@@ -224,7 +224,7 @@ export async function sauverParametresEcole(schoolCode, champs) {
 
 // Réglages ouverts à la COMPTABILITÉ : blocage du portail parents pour
 // impayés, monnaie. La policy ecoles_update lui est fermée ; la RPC
-// maj_reglages_compta (supabase/reglages-compta.sql) n'accepte que ces clés,
+// maj_reglages_compta (supabase/historique/reglages-compta.sql) n'accepte que ces clés,
 // pour qui écrit la compta, sur sa propre école — et LÈVE une erreur en cas
 // de refus. Renvoie les valeurs enregistrées (normalisées par le serveur).
 export async function majReglagesCompta(champs) {

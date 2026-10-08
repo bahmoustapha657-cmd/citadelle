@@ -12,7 +12,7 @@
 // Étape 2 (2026-09-29) : numéro du parent (comptes.telephone) proposé comme
 // identifiant, père et mère chacun leur compte, rattacher / détacher depuis
 // la fiche élève — et la RLS de parent_eleves, ouverte à toutes les écoles,
-// refermée (supabase/comptes-parents.sql).
+// refermée (supabase/historique/comptes-parents.sql).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -339,7 +339,7 @@ test("Edge Functions : index.ts délègue à foyer.ts et au module téléphone p
 });
 
 test("RLS parent_eleves : lecture limitée à l'école, plus aucune écriture depuis le navigateur", () => {
-  for (const fichier of ["../supabase/rls.sql", "../supabase/comptes-parents.sql"]) {
+  for (const fichier of ["../supabase/historique/rls.sql", "../supabase/historique/comptes-parents.sql"]) {
     const sql = lire(fichier);
     const politique = sql.match(/create policy parent_eleves_select[\s\S]*?;\n/)?.[0] || "";
     assert.match(politique, /e\.ecole_id = auth_ecole_id\(\)/, fichier);

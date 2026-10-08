@@ -9,7 +9,7 @@ import { MessagesTab } from "./MessagesTab";
 // L'ancien fil « Messages avec l'école » reste consultable en dessous.
 //
 // Repli : messagerie indisponible (hors Supabase, ou avant
-// supabase/messagerie-parents.sql : l'annuaire d'un parent revient vide)
+// supabase/historique/messagerie-parents.sql : l'annuaire d'un parent revient vide)
 // → l'ancien formulaire, inchangé.
 export function MessagerieParentTab({ p, utilisateur, c1 }) {
   const m = useMessagerie();

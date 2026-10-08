@@ -17,7 +17,7 @@ Périmètre « hors ligne total » :
   interne, création de comptes / reset mdp (Edge Functions), sauvegarde des
   Paramètres de l'école, superadmin, et les fiches de paie du portail
   enseignant (aucun bucket ne les lui livre ; la RLS lui accorde les
-  siennes : `supabase/salaires-enseignant.sql`).
+  siennes : `supabase/historique/salaires-enseignant.sql`).
 
 ---
 
@@ -27,7 +27,7 @@ Périmètre « hors ligne total » :
 sinon les modules non-académiques liraient un miroir local vide.
 
 **1. Supabase → SQL Editor** — colonnes de permissions dénormalisées :
-coller et exécuter `supabase/powersync-perms.sql` (idempotent ; le SELECT
+coller et exécuter `supabase/historique/powersync-perms.sql` (idempotent ; le SELECT
 final montre la répartition perm_* par rôle — vérifier que direction a tout).
 
 **2. Supabase → SQL Editor** — étendre la publication :

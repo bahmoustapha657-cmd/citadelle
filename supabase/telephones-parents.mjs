@@ -14,7 +14,7 @@
 // l'école pour des internes). À lancer AVANT la recherche de doublons : un
 // compte qui porte son numéro est rapproché plus sûrement.
 //
-// PRÉREQUIS : supabase/comptes-parents.sql appliqué (colonne telephone).
+// PRÉREQUIS : supabase/historique/comptes-parents.sql appliqué (colonne telephone).
 //
 // Usage :
 //   node supabase/telephones-parents.mjs                               → DRY-RUN (rien écrit)
@@ -102,7 +102,7 @@ try {
   for (const ecole of ecoles) await traiterEcole(ecole);
 } catch (e) {
   const colonneAbsente = /telephone/.test(e.message) && /column|colonne/i.test(e.message);
-  console.error(`❌ ${e.message}${colonneAbsente ? "\n   → Appliquez d'abord supabase/comptes-parents.sql." : ""}`);
+  console.error(`❌ ${e.message}${colonneAbsente ? "\n   → Appliquez d'abord supabase/historique/comptes-parents.sql." : ""}`);
   process.exit(1);
 }
 process.exit(0);

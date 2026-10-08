@@ -6,7 +6,7 @@
 // Chaque compte du personnel pointe un poste (comptes.poste_id) ; plusieurs
 // comptes peuvent partager le même poste. Les comptes SANS poste (legacy)
 // retombent sur les capacités historiques de leur rôle enum — ce repli DOIT
-// rester aligné sur my_permissions() dans supabase/postes.sql.
+// rester aligné sur my_permissions() dans supabase/historique/postes.sql.
 import {
   ROLE_SETTINGS_DEFAULT,
   getRoleModules,
@@ -50,7 +50,7 @@ export const readableModules = (permissions = {}) =>
 // ── Repli legacy (comptes sans poste_id) ────────────────────────────────────
 // Reproduit les capacités effectives de l'interface historique : modules
 // visibles = lecture ; écriture selon les prédicats codés en dur d'origine.
-// ⚠️ Aligné sur le CASE de my_permissions() (supabase/postes.sql) — le SQL
+// ⚠️ Aligné sur le CASE de my_permissions() (supabase/historique/postes.sql) — le SQL
 // donne à l'admin l'écriture DB large (l'UI restait l'arbitre writeModules) ;
 // ici on reflète le comportement UI exact pour ne rien changer à l'écran.
 export function legacyPermissionsForRole(role, schoolInfo = {}) {
