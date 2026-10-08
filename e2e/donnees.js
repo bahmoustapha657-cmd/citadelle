@@ -23,6 +23,10 @@ export const ELEVES = [
   { nom: "DIALLO", prenom: "Aminata", sexe: "F", matricule: "E2E-001" },
   { nom: "BAH", prenom: "Ibrahima", sexe: "M", matricule: "E2E-002" },
 ];
+export const MATIERES = [
+  { nom: "Mathématiques", coefficient: 4 },
+  { nom: "Français", coefficient: 3 },
+];
 
 function verifierEnv() {
   if (!ANON_KEY || !SERVICE_ROLE_KEY) {
@@ -104,6 +108,7 @@ export async function preparerEcole() {
     if (error) throw new Error(`${table} : ${error.message}`);
   };
   await ecrire("classes", [ligne("classes", { nom: CLASSE })]);
+  await ecrire("matieres", MATIERES.map((m) => ligne("matieres", m)));
   await ecrire("tarifs", [ligne("tarifs", { classe: CLASSE, montant: MENSUALITE })]);
   await ecrire("eleves", ELEVES.map((e) => ligne("eleves", {
     ...e, classe: CLASSE, statut: "Actif", inscriptionPayee: true,
@@ -116,6 +121,13 @@ export async function lireEleve(matricule) {
   const admin = clientAdmin();
   const { data, error } = await admin.from("eleves")
     .select("id, nom, prenom, extra").eq("ecole_id", await ecoleId(admin)).eq("matricule", matricule).single();
+  if (error) throw error;
+  return data;
+}
+
+export async function lireNotes(eleveId) {
+  const admin = clientAdmin();
+  const { data, error } = await admin.from("notes").select("*").eq("eleve_id", eleveId);
   if (error) throw error;
   return data;
 }
