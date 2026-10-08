@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
-  nettoyerCibles, nettoyerEleveId, nettoyerUserIds, refusEnvoi, refusParents,
+  nettoyerCibles, nettoyerEleveId, nettoyerUserIds, refusEnseignantEleve, refusEnvoi, refusParents,
 } from "../supabase/functions/push/droits.ts";
 
 const ECOLE_A = "ecole-a";
@@ -103,6 +103,37 @@ test("fuite entre familles : la cible « parent » exige l'élève concerné", (
   for (const d of [demande({ cibles: ["direction"] }), demande({ userIds: ["u1"] }), demande({ tousStaff: true })]) {
     assert.equal(refusParents(d), null, JSON.stringify(d));
   }
+});
+
+test("enseignant : les parents d'un élève de SES classes seulement", () => {
+  const e = compte("enseignant");
+  const classes = [{ section: "college", classe: "6ème A" }, { section: "primaire", classe: "CM1" }];
+  assert.equal(refusEnseignantEleve(e, { section: "college", classe: "6ème A" }, classes), null);
+  assert.equal(refusEnseignantEleve(e, { section: "primaire", classe: "CM1" }, classes), null);
+  const hors = { statut: 403, error: "Élève hors de vos classes." };
+  // autre classe, même nom de classe dans une autre section, élève sans classe
+  assert.deepEqual(refusEnseignantEleve(e, { section: "college", classe: "6ème B" }, classes), hors);
+  assert.deepEqual(refusEnseignantEleve(e, { section: "lycee", classe: "6ème A" }, classes), hors);
+  assert.deepEqual(refusEnseignantEleve(e, { section: "college", classe: null }, classes), hors);
+  assert.deepEqual(refusEnseignantEleve(e, { section: "college", classe: "6ème A" }, []), hors);
+  // même règle que my_teacher_eleve_ids() : égalité stricte du nom de classe
+  assert.deepEqual(refusEnseignantEleve(e, { section: "college", classe: "6ème a" }, classes), hors);
+  // le personnel n'est pas borné aux classes
+  for (const role of ["direction", "comptable", "surveillant", "staff", "superadmin"]) {
+    assert.equal(refusEnseignantEleve(compte(role), { section: "college", classe: "6ème B" }, []), null, role);
+  }
+});
+
+test("index.ts borne l'enseignant à ses classes avant de lire les abonnements", () => {
+  const src = readFileSync(new URL("../supabase/functions/push/index.ts", import.meta.url), "utf8");
+  const serve = src.indexOf("Deno.serve(");
+  const controle = src.indexOf("refusEnseignantEleve(appelant, lus.eleve, classes)", serve);
+  assert.ok(controle > 0, "refusEnseignantEleve appelé avec la classe de l'élève");
+  assert.ok(src.indexOf("await lireClassesEnseignant(admin, appelant.id, ec.id)", serve) < controle);
+  assert.ok(controle < src.indexOf("await lireAbonnements(", serve), "avant la lecture de push_subs");
+  assert.match(src, /select\("id, role, ecole_id, statut"\)\.eq\("user_id", user\.id\)/);
+  const fn = src.slice(src.indexOf("async function lireClassesEnseignant("), serve);
+  assert.match(fn, /from\("enseignant_classes"\)[^;]*\.eq\("compte_id", compteId\)\.eq\("ecole_id", ecoleId\)/);
 });
 
 test("index.ts vérifie l'appelant avant de lire les abonnements", () => {

@@ -12,6 +12,10 @@ import { emailFor, superadminEmailFor } from "../backend";
 import { identifiantConnexion } from "../comptes-parents";
 import { powerSyncConfigured } from "./powersync/tables";
 import { miroirAutreCompte } from "./powersync/proprietaire";
+import { seDesabonnerDesPush } from "./push-supabase";
+
+// Délai maximal du désabonnement push à la déconnexion (cf. signOut).
+const DELAI_DESABONNEMENT = 3000;
 
 // ── Compte mémorisé : démarrage sans attendre le réseau ─────────────────────
 // Le compte construit à la dernière ouverture est gardé sur l'appareil. Au
@@ -294,6 +298,9 @@ export async function signOut() {
   // Oublié même si la révocation échoue (hors ligne) : au prochain lancement,
   // l'app ne s'ouvrira plus d'office sur ce compte.
   oublierCompte();
+  // Avant la révocation (il faut encore la session) et borné : un réseau
+  // lent ne retient pas la déconnexion plus de quelques secondes.
+  await Promise.race([seDesabonnerDesPush(), new Promise((fin) => setTimeout(fin, DELAI_DESABONNEMENT))]);
   const sb = getSupabase();
   await sb.auth.signOut();
 }
