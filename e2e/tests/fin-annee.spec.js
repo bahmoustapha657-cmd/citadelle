@@ -30,6 +30,12 @@ test("clôture : l'argent encaissé est archivé puis rendu à l'annulation ; la
   await page.getByRole("button", { name: `▶ Clôturer ${ANNEE}` }).click();
   await expect(page.getByText(`✅ Année ${ANNEE} clôturée — année active : ${ANNEE_SUIVANTE}`)).toBeVisible({ timeout: 30_000 });
   expect(confirmations.at(-1)).toContain(`Clôturer l'année ${ANNEE} et passer en ${ANNEE_SUIVANTE}`);
+  // Toutes les fiches archivées — jamais « 0 sur 0 » (lecture d'un miroir
+  // local pas encore synchronisé, bug corrigé le 2026-10-08).
+  const bilan = await page.getByText(/fiche\(s\) archivée\(s\) sur/).first().innerText();
+  const [, archivees, total] = bilan.match(/(\d+) fiche\(s\) archivée\(s\) sur (\d+)/);
+  expect(Number(total)).toBeGreaterThan(0);
+  expect(archivees).toBe(total);
 
   await expect.poll(async () => (await lireEcole()).extra?.anneeScolaire, { timeout: 30_000 }).toBe(ANNEE_SUIVANTE);
   await expect.poll(async () => moisPayes((await lireEleve(eleve.matricule)).extra?.mens), { timeout: 30_000 }).toEqual([]);

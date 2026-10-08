@@ -35,7 +35,13 @@ async function chargerEleves(schoolId) {
   const parCollection = [];
   for (const nom of COLLECTIONS_ELEVES) {
     if (isSupabase) {
-      const { items } = await chargerCollection(schoolId, nom);
+      // Lecture du SERVEUR, jamais du miroir local : sur un appareil dont la
+      // synchro n'est pas finie (nouvel appareil, réseau faible), le miroir
+      // est incomplet — la clôture a ainsi archivé « 0 fiche sur 0 » tout en
+      // faisant passer l'école à l'année suivante (tests e2e, 2026-10-08).
+      // Une lecture ratée doit ARRÊTER la clôture, pas la faire sur rien.
+      const { items, erreur } = await chargerCollection(schoolId, nom, { reseau: true });
+      if (erreur) throw new Error(`lecture des élèves impossible (${nom}) : ${erreur}`);
       parCollection.push({ collection: nom, eleves: items || [] });
     } else {
       const snap = await getDocs(collection(db, "ecoles", schoolId, nom));
@@ -49,7 +55,8 @@ async function appliquerUpdates(schoolId, updates) {
   if (isSupabase) {
     for (let i = 0; i < updates.length; i += SB_PARALLELE) {
       await Promise.all(updates.slice(i, i + SB_PARALLELE).map(
-        (u) => modifierChampDoc(schoolId, u.collection, u.id, u.champs),
+        // Écrit sur le serveur (lu sur le serveur) ; le miroir suivra.
+        (u) => modifierChampDoc(schoolId, u.collection, u.id, u.champs, { reseau: true }),
       ));
     }
     return;

@@ -6,6 +6,7 @@
 import { getSupabase } from "../supabaseClient";
 import { powerSyncConfigured } from "./powersync/tables";
 import { ajusterCompteMemorise } from "./auth-supabase";
+import { fusionnerExtraEcole } from "./data-supabase";
 
 // Exporté pour les actions propres aux comptes parents (backend/compte-parent.js).
 export async function invoke(body, messageEchec) {
@@ -172,8 +173,10 @@ async function syncPosteDansEcole(sb, schoolCode, cle, poste) {
   const label = (poste?.label || "").trim();
   if (nom) responsables[cle] = nom; else delete responsables[cle];
   if (label) libellesPostes[cle] = label; else delete libellesPostes[cle];
-  const extra = { ...extraActuel, responsables, libellesPostes };
-  await sb.from("ecoles").update({ extra }).eq("id", data.id);
+  // Fusion en base des deux seules clés concernées : réécrire tout `extra`
+  // effaçait les écritures faites entre-temps (ex. l'année officielle posée
+  // par une clôture, pendant la création des postes par défaut).
+  await fusionnerExtraEcole(sb, schoolCode, { responsables, libellesPostes });
 }
 
 // Crée ou met à jour un poste (RLS : direction/superadmin uniquement).

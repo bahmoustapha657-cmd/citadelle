@@ -31,6 +31,9 @@ export const ELEVES = [
 // se mêlent pas à celles que vérifie notes.spec.js.
 export const CLASSE_HORS_LIGNE = "7ème B";
 export const ELEVE_HORS_LIGNE = { nom: "CAMARA", prenom: "Fatou", sexe: "F", matricule: "E2E-003" };
+// Élève supprimé depuis « un autre poste » pendant qu'on l'encaisse
+// (fiche-supprimee.spec.js) : même classe que DIALLO, donc même tarif.
+export const ELEVE_SUPPRIME = { nom: "SOW", prenom: "Mamadou", sexe: "M", matricule: "E2E-004" };
 export const MATIERES = [
   { nom: "Mathématiques", coefficient: 4 },
   { nom: "Français", coefficient: 3 },
@@ -121,7 +124,7 @@ export async function preparerEcole() {
   await ecrire("matieres", MATIERES.map((m) => ligne("matieres", m)));
   await ecrire("tarifs", [ligne("tarifs", { classe: CLASSE, montant: MENSUALITE })]);
   await ecrire("eleves", [
-    ...ELEVES.map((e) => ligne("eleves", { ...e, classe: CLASSE, statut: "Actif", inscriptionPayee: true })),
+    ...[...ELEVES, ELEVE_SUPPRIME].map((e) => ligne("eleves", { ...e, classe: CLASSE, statut: "Actif", inscriptionPayee: true })),
     ligne("eleves", { ...ELEVE_HORS_LIGNE, classe: CLASSE_HORS_LIGNE, statut: "Actif", inscriptionPayee: true }),
   ]);
   return id;
@@ -141,6 +144,13 @@ export async function lireEcole() {
   const { data, error } = await admin.from("ecoles").select("id, extra").eq("code", ECOLE.code).single();
   if (error) throw error;
   return data;
+}
+
+// Supprime une fiche élève « depuis un autre poste » (service_role).
+export async function supprimerEleve(matricule) {
+  const admin = clientAdmin();
+  const { error } = await admin.from("eleves").delete().eq("ecole_id", await ecoleId(admin)).eq("matricule", matricule);
+  if (error) throw error;
 }
 
 export async function lireNotes(eleveId) {

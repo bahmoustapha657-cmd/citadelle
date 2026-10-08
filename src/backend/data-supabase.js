@@ -18,6 +18,7 @@ import { estCouvertHorsLigne, powerSyncConfigured } from "./powersync/tables";
 // Tables filtrables par année / par période : listes PARTAGÉES avec la lecture
 // hors ligne (local-data.js), pour que les deux chemins ne divergent plus.
 import { ANNEE_TABLES, PERIODE_TABLES } from "./filtres-lecture";
+import { exigerEffet } from "./ecritures-refusees";
 
 let localDataPromise = null;
 function localData() {
@@ -205,8 +206,6 @@ const REFUS_ECOLE = "Enregistrement refusé : votre compte ne peut pas modifier 
 // réglages du comptable passent par majReglagesCompta.
 export async function sauverParametresEcole(schoolCode, champs) {
   const sb = getSupabase();
-  const { data, error } = await sb.from("ecoles").select("id, extra").eq("code", schoolCode).maybeSingle();
-  if (error || !data) throw new Error(error?.message || "École introuvable.");
   const COLONNES = { nom: "nom", logo: "logo", couleur1: "couleur1", couleur2: "couleur2", pays: "pays", devise: "devise", modeleBulletin: "modele_bulletin" };
   const patch = {};
   const extraPatch = {};
@@ -215,11 +214,25 @@ export async function sauverParametresEcole(schoolCode, champs) {
     if (COLONNES[cle]) patch[COLONNES[cle]] = valeur;
     else extraPatch[cle] = valeur;
   }
-  patch.extra = { ...(data.extra || {}), ...extraPatch };
-  const { data: majs, error: e2 } = await sb.from("ecoles").update(patch).eq("id", data.id).select("id");
-  if (e2) throw new Error(e2.message);
-  if (!majs?.length) throw new Error(REFUS_ECOLE);
+  if (Object.keys(patch).length) {
+    const { data: majs, error } = await sb.from("ecoles").update(patch).eq("code", schoolCode).select("id");
+    if (error) throw new Error(error.message);
+    if (!majs?.length) throw new Error(REFUS_ECOLE);
+  }
+  if (Object.keys(extraPatch).length) await fusionnerExtraEcole(sb, schoolCode, extraPatch);
   return { ok: true };
+}
+
+// Fusion ATOMIQUE de clés dans ecoles.extra, en base (RPC, migration
+// 20261008234227_fusion_extra_ecole). Ne plus jamais relire puis réécrire le
+// jsonb entier depuis le navigateur : deux écritures proches s'écrasaient —
+// une clôture d'année a ainsi perdu `anneeScolaire` et `clotures` sous les
+// réécritures de la création des postes par défaut (tests e2e, 2026-10-08).
+export async function fusionnerExtraEcole(sb, schoolCode, champs) {
+  const { data, error } = await sb.rpc("fusionner_extra_ecole", { p_code: schoolCode, p_champs: champs });
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error(REFUS_ECOLE);
+  return data;
 }
 
 // Réglages ouverts à la COMPTABILITÉ : blocage du portail parents pour
@@ -255,12 +268,11 @@ export async function sauverProfilLegal(schoolCode, profil) {
 // vivent dans ecoles.extra.verrous — lecture/fusion/écriture du jsonb.
 export async function majVerrou(schoolCode, cle, valeur) {
   const sb = getSupabase();
-  const { data, error } = await sb.from("ecoles").select("id, extra").eq("code", schoolCode).maybeSingle();
+  const { data, error } = await sb.from("ecoles").select("extra").eq("code", schoolCode).maybeSingle();
   if (error || !data) throw new Error(error?.message || "École introuvable.");
-  const extra = { ...(data.extra || {}), verrous: { ...((data.extra || {}).verrous || {}), [cle]: valeur } };
-  const { data: majs, error: e2 } = await sb.from("ecoles").update({ extra }).eq("id", data.id).select("id");
-  if (e2) throw new Error(e2.message);
-  if (!majs?.length) throw new Error(REFUS_ECOLE);
+  // Seule la clé `verrous` est réécrite (fusion en base) : les autres clés de
+  // extra ne peuvent plus être écrasées par une lecture périmée.
+  await fusionnerExtraEcole(sb, schoolCode, { verrous: { ...((data.extra || {}).verrous || {}), [cle]: valeur } });
 }
 
 // ── Écritures (Tranche 3) ───────────────────────────────────────────────────
@@ -396,19 +408,26 @@ export async function modifierDoc(schoolCode, nomCollection, item) {
     return;
   }
 
-  const { error } = await sb.from(map.table).update(row).eq("id", item._id);
-  if (error) throw new Error(error.message);
+  // Nombre de lignes touchées : un refus RLS (ou une fiche supprimée
+  // entre-temps) ne lève pas d'erreur, il touche 0 ligne (ecritures-refusees.js).
+  exigerEffet(
+    await sb.from(map.table).update(row, { count: "exact" }).eq("id", item._id),
+    { table: map.table, operation: "modification", id: item._id },
+  );
 }
 
 // Update partiel : ne touche que les champs fournis. Si certains partent dans le
 // jsonb (extra/details), on fusionne avec l'existant (read-modify-write) pour ne
 // pas écraser les autres clés. Fonctionne identiquement en local (hors ligne) :
 // seule la source de la lecture préalable change.
-export async function modifierChampDoc(schoolCode, nomCollection, id, champs) {
+// `reseau` : écrire sur le SERVEUR même si la table a un miroir local — pour
+// les opérations de masse (fin d'année) qui ont lu le serveur : une fiche
+// absente d'un miroir incomplet y serait modifiée… nulle part, en silence.
+export async function modifierChampDoc(schoolCode, nomCollection, id, champs, { reseau = false } = {}) {
   const { sb, map } = await contexteEcriture(schoolCode, nomCollection);
   const { row, extraKeys, extraCol } = toRow(map.table, champs);
 
-  if (horsLigne(map.table)) {
+  if (!reseau && horsLigne(map.table)) {
     const { majLocal, lireUneLocal } = await localData();
     if (extraCol && extraKeys.length) {
       const actuel = await lireUneLocal(map.table, id);
@@ -422,8 +441,10 @@ export async function modifierChampDoc(schoolCode, nomCollection, id, champs) {
     const { data: actuel } = await sb.from(map.table).select(extraCol).eq("id", id).maybeSingle();
     row[extraCol] = { ...(actuel?.[extraCol] || {}), ...row[extraCol] };
   }
-  const { error } = await sb.from(map.table).update(row).eq("id", id);
-  if (error) throw new Error(error.message);
+  exigerEffet(
+    await sb.from(map.table).update(row, { count: "exact" }).eq("id", id),
+    { table: map.table, operation: "modification", id },
+  );
 }
 
 // Déplace une ligne vers une autre SECTION de sa table, en écrivant `champs`
@@ -435,7 +456,7 @@ export async function modifierChampDoc(schoolCode, nomCollection, id, champs) {
 // collège. toRow écarte `section` des champs d'un item (un écran ordinaire ne
 // doit pas déplacer une fiche en passant) : le déplacement a donc son chemin
 // explicite.
-export async function changerSectionDoc(schoolCode, nomCollection, id, section, champs = {}) {
+export async function changerSectionDoc(schoolCode, nomCollection, id, section, champs = {}, { reseau = false } = {}) {
   const { sb, map } = await contexteEcriture(schoolCode, nomCollection);
   if (!map.section || !SECTIONS_SCOLAIRES.includes(section)) {
     throw new Error(`Déplacement impossible : section « ${section} » invalide pour ${nomCollection}.`);
@@ -443,7 +464,7 @@ export async function changerSectionDoc(schoolCode, nomCollection, id, section, 
   const { row, extraKeys, extraCol } = toRow(map.table, champs);
   row.section = section;
 
-  if (horsLigne(map.table)) {
+  if (!reseau && horsLigne(map.table)) {
     const { majLocal, lireUneLocal } = await localData();
     if (extraCol && extraKeys.length) {
       const actuel = await lireUneLocal(map.table, id);
@@ -474,8 +495,10 @@ export async function supprimerDoc(schoolCode, nomCollection, id) {
     return;
   }
 
-  const { error } = await sb.from(map.table).delete().eq("id", id);
-  if (error) throw new Error(error.message);
+  exigerEffet(
+    await sb.from(map.table).delete({ count: "exact" }).eq("id", id),
+    { table: map.table, operation: "suppression", id },
+  );
 }
 
 // ── Écritures EN LOT par filtre ─────────────────────────────────────────────

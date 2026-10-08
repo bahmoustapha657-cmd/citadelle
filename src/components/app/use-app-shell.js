@@ -4,6 +4,7 @@ import { signOutSession } from "../../backend/session";
 import { getPrimaryModuleForRole, getRoleLabelForSchool } from "../../constants";
 import { getPrimaryModuleForCompte } from "../../../shared/postes-config.js";
 import { computePlanInfo } from "./app-shell-plan";
+import { EVENEMENT_ECRITURE_REFUSEE, messageRefus } from "../../backend/ecritures-refusees";
 import {
   chargerAnnee,
   envoyerPushApi,
@@ -24,8 +25,34 @@ export function useAppShell({
   const toast = (msg, type = "success") => {
     const id = Date.now() + Math.random();
     setToasts((prev) => [...prev, { id, msg, type }]);
-    setTimeout(() => setToasts((prev) => prev.filter((x) => x.id !== id)), 4000);
+    // Une erreur doit pouvoir être lue jusqu'au bout.
+    setTimeout(() => setToasts((prev) => prev.filter((x) => x.id !== id)), type === "error" ? 10000 : 4000);
   };
+
+  // Écritures refusées par le serveur ou sans effet (0 ligne), en ligne comme
+  // au retour du réseau : un avertissement, jamais le silence. Les refus
+  // arrivés ensemble (une file hors ligne qui se vide) n'en font qu'un.
+  useEffect(() => {
+    let nombre = 0;
+    let horsLigne = false;
+    let minuteur = null;
+    const surRefus = (evenement) => {
+      nombre += 1;
+      horsLigne = horsLigne || !!evenement.detail?.horsLigne;
+      clearTimeout(minuteur);
+      minuteur = setTimeout(() => {
+        toast(messageRefus(nombre, horsLigne), "error");
+        nombre = 0;
+        horsLigne = false;
+      }, 800);
+    };
+    window.addEventListener(EVENEMENT_ECRITURE_REFUSEE, surRefus);
+    return () => {
+      window.removeEventListener(EVENEMENT_ECRITURE_REFUSEE, surRefus);
+      clearTimeout(minuteur);
+    };
+    // toast ne dépend que de setToasts (stable) : un seul abonnement.
+  }, []);
 
   // L'auteur ne remontait JAMAIS : logActionDoc accepte un 3e argument que
   // personne ne passait. On le lie ICI, une fois, plutôt que dans chacun des
