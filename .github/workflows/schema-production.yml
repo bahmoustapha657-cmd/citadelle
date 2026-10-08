@@ -37,6 +37,39 @@ jobs:
       - name: Client psql
         run: command -v psql || (sudo apt-get update -q && sudo apt-get install -yq postgresql-client)
 
+      # Forme de l'adresse, en oui/non UNIQUEMENT : GitHub masque le secret
+      # entier, pas ses morceaux (mot de passe seul) — rien n'en est affiché.
+      - name: Diagnostic de l'adresse (sans la révéler)
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          python3 - <<'PY'
+          # Découpage à la main (pas urlsplit, qui lève une erreur sur des
+          # crochets laissés dans le mot de passe).
+          import os, re, urllib.parse as u
+          brut = os.environ["SUPABASE_DB_URL"]
+          s = brut.strip()
+          oui = lambda b: "OUI" if b else "non"
+          print("Espace ou retour à la ligne autour    :", oui(brut != s))
+          print("Entourée de guillemets                :", oui(s[:1] in ("\"", "'")))
+          s = s.strip("\"'")
+          schema, _, reste = s.partition("://")
+          identifiants, arobase, hote = reste.rpartition("@")
+          utilisateur, _, mdp = identifiants.partition(":")
+          hote_port = re.split(r"[/?]", hote, maxsplit=1)[0]
+          print("Commence par postgresql://            :", oui(schema in ("postgresql", "postgres")))
+          print("Plus d'un @ (caractère non encodé ?)  :", oui(reste.count("@") > 1))
+          print("Utilisateur = postgres.<ref du projet>:", oui(utilisateur == "postgres.pfzanslrcowkjjipuzpa"))
+          print("Hôte = pooler Supabase, port 5432     :", oui(bool(re.fullmatch(r"aws-\d+-[a-z0-9-]+\.pooler\.supabase\.com:5432", hote_port))))
+          print("Base = /postgres                      :", oui(hote[len(hote_port):].split("?")[0] == "/postgres"))
+          print("Mot de passe présent                  :", oui(bool(mdp)))
+          print("Crochets [ ] autour du mot de passe   :", oui("[" in mdp or "]" in mdp))
+          print("Contient YOUR-PASSWORD                :", oui("YOUR-PASSWORD" in mdp.upper()))
+          print("Caractère à encoder laissé tel quel   :", oui(bool(re.search(r"[#?/ @]", mdp))))
+          print("Contient des %xx (déjà encodé)        :", oui(bool(re.search(r"%[0-9A-Fa-f]{2}", mdp))))
+          print("Caractères spéciaux (une fois décodé) :", oui(bool(re.search(r"[^A-Za-z0-9]", u.unquote(mdp)))))
+          PY
+
       - name: Version du serveur
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
