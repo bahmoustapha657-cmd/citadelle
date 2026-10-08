@@ -106,13 +106,69 @@ jobs:
           end $$;
           SQL
 
+  # Applique à la PRODUCTION les migrations pas encore passées, AVANT le
+  # front : le nouveau front trouve toujours la base dont il a besoin.
+  # Règle : une migration reste compatible avec le front encore en ligne
+  # (ajouter avant de retirer — cf. docs/migrations-sql.md).
+  migrations-production:
+    needs: [lint-and-build, migrations]
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency:
+      group: migrations-production
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Client psql
+        run: command -v psql || (sudo apt-get update -q && sudo apt-get install -yq postgresql-client)
+
+      - name: Appliquer les migrations en attente
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::error::Secret SUPABASE_DB_URL absent (Settings → Environments → production)."
+            exit 1
+          fi
+          locales=$(ls supabase/migrations/*.sql | xargs -n1 basename | cut -d_ -f1 | sort)
+          baseline=$(echo "$locales" | head -1)
+          distantes=$(psql "$SUPABASE_DB_URL" -Atc \
+            "select version from supabase_migrations.schema_migrations order by 1" 2>/dev/null || true)
+          # Sans baseline marquée « appliquée », db push la REJOUERAIT sur la
+          # production : refus net.
+          if ! echo "$distantes" | grep -qx "$baseline"; then
+            echo "::error::Baseline $baseline non marquée en production. Lancer d'abord « Schéma production » avec l'action marquer-baseline (docs/migrations-sql.md)."
+            exit 1
+          fi
+          # Retour arrière (re-run d'un ancien déploiement) : la production a
+          # déjà des migrations plus récentes. On n'en annule jamais : front seul.
+          inconnues=$(comm -13 <(echo "$locales") <(echo "$distantes"))
+          if [ -n "$inconnues" ]; then
+            echo "::notice::Retour arrière : migrations plus récentes déjà en production ($(echo $inconnues)) — aucune migration appliquée."
+            exit 0
+          fi
+          supabase db push --db-url "$SUPABASE_DB_URL" --dry-run
+          supabase db push --db-url "$SUPABASE_DB_URL" --yes
+          {
+            echo "### Migrations en production (5 dernières)"
+            psql "$SUPABASE_DB_URL" -Atc "select version || ' ' || coalesce(name, '') from supabase_migrations.schema_migrations order by 1 desc limit 5"
+          } >> "$GITHUB_STEP_SUMMARY"
+
   # Déploie EXACTEMENT le bundle qui vient de passer lint + tests + build,
   # construit depuis un checkout propre de master : plus de déploiement depuis
   # un poste (branche de travail, fichiers non commités, .env local).
   # Retour arrière : relancer (« Re-run all jobs ») un run de déploiement
-  # précédent — il redéploie son propre commit.
+  # précédent — il redéploie son propre commit (front seul, cf. ci-dessus).
   deploy-production:
-    needs: lint-and-build
+    needs: [lint-and-build, migrations-production]
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     environment:

@@ -1,9 +1,10 @@
 name: Schéma production
 
-# Photographie du schéma Postgres de PRODUCTION (structure seule, aucune
-# donnée), en LECTURE seule. Sert à créer la migration de base (baseline)
-# de supabase/migrations, puis à détecter les écarts entre la production et
-# les migrations (modification faite à la main dans le tableau de bord).
+# Action « photographier » (par défaut) : schéma Postgres de PRODUCTION
+# (structure seule, aucune donnée), en LECTURE seule. Sert à créer la
+# baseline de supabase/migrations, puis à détecter les écarts entre la
+# production et les migrations (retouche faite dans le tableau de bord).
+# Action « marquer-baseline » : opération unique, voir le job plus bas.
 #
 # Lancement : Actions → « Schéma production » → Run workflow.
 # Prérequis : secret SUPABASE_DB_URL dans l'environnement « production »
@@ -11,12 +12,70 @@ name: Schéma production
 
 on:
   workflow_dispatch:
+    inputs:
+      action:
+        description: "photographier = dump en lecture seule ; marquer-baseline = inscrire UNE fois la baseline comme déjà appliquée (n'écrit que dans supabase_migrations)"
+        type: choice
+        options: [photographier, marquer-baseline]
+        default: photographier
 
 permissions:
   contents: read
 
 jobs:
+  # Opération UNIQUE, à lancer depuis master une fois la baseline fusionnée :
+  # inscrit la baseline dans l'historique des migrations de la production,
+  # pour que la CI ne la rejoue JAMAIS. N'écrit que dans
+  # supabase_migrations.schema_migrations (aucune table d'EduGest touchée).
+  marquer-baseline:
+    if: inputs.action == 'marquer-baseline' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Client psql
+        run: command -v psql || (sudo apt-get update -q && sudo apt-get install -yq postgresql-client)
+
+      - name: Marquer la baseline comme déjà appliquée
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          baseline=$(ls supabase/migrations/*.sql | xargs -n1 basename | sort | head -1 | cut -d_ -f1)
+          echo "Baseline : $baseline"
+          distantes=$(psql "$SUPABASE_DB_URL" -Atc \
+            "select version from supabase_migrations.schema_migrations order by 1" 2>/dev/null || true)
+          if echo "$distantes" | grep -qx "$baseline"; then
+            echo "::notice::Baseline $baseline déjà marquée : rien à faire."
+            exit 0
+          fi
+          if [ -n "$distantes" ]; then
+            echo "::error::Historique de migrations inattendu en production ($(echo $distantes)) : arrêt, à examiner."
+            exit 1
+          fi
+          # La production doit bien contenir le schéma décrit par la baseline
+          # (sinon marquer reviendrait à prétendre l'avoir appliquée).
+          present=$(psql "$SUPABASE_DB_URL" -Atc \
+            "select count(*) from pg_trigger where tgname = 'trg_comptes_guard'")
+          tables=$(psql "$SUPABASE_DB_URL" -Atc \
+            "select count(*) from pg_tables where schemaname = 'public'")
+          echo "Tables publiques en production : $tables ; garde comptes_guard : $present"
+          if [ "$present" != "1" ] || [ "$tables" -lt 50 ]; then
+            echo "::error::La production ne ressemble pas à la baseline : marquage refusé."
+            exit 1
+          fi
+          supabase migration repair "$baseline" --status applied --db-url "$SUPABASE_DB_URL" --yes
+          psql "$SUPABASE_DB_URL" -Atc "select version from supabase_migrations.schema_migrations order by 1" | grep -qx "$baseline"
+          echo "### ✅ Baseline \`$baseline\` marquée comme appliquée en production" >> "$GITHUB_STEP_SUMMARY"
+
   dump:
+    if: inputs.action != 'marquer-baseline'
     runs-on: ubuntu-latest
     environment: production
 

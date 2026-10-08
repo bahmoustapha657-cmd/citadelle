@@ -38,24 +38,30 @@ contrôle le résultat : nombre de migrations appliquées, **RLS active sur
 toutes les tables publiques**, garde `comptes_guard` présente. Une migration
 qui échoue ici ne peut pas être fusionnée sans que ça se voie.
 
-## Appliquer en production (en attente de validation)
+## Appliquer en production
 
-Prévu : au déploiement (Actions → CI → Run workflow), un job applique les
-migrations en attente à la production **avant** le front, avec deux
-garde-fous :
+Au déploiement (Actions → **CI** → Run workflow sur master), le job
+**`migrations-production`** applique les migrations en attente à la
+production (`supabase db push`), **puis** le front est publié. Garde-fous :
 
 - refus net si la baseline n'est pas marquée « déjà appliquée » en
   production (sinon elle serait rejouée) ;
-- retour arrière d'un ancien déploiement : aucune migration annulée, front
-  seul.
+- retour arrière (« Re-run » d'un ancien déploiement) : aucune migration
+  annulée, front seul ;
+- un seul passage à la fois ; si une migration échoue, rien n'est déployé.
 
-Une fois en place, une étape unique : marquer la baseline comme appliquée
-(`supabase migration repair 20261008175200 --status applied`), via le
-workflow « Schéma production ».
+**Plus rien à coller dans l'éditeur SQL** : fusionner la PR, puis déployer.
 
-**En attendant**, une nouvelle migration fusionnée s'applique encore à la
-main : coller son contenu dans l'éditeur SQL de Supabase, AVANT de déployer
-le front.
+### Opération unique : marquer la baseline
+
+À faire UNE fois, après la fusion de la baseline et avant le premier
+déploiement par la CI : Actions → **Schéma production** → Run workflow →
+action **marquer-baseline** (branche master). Le job vérifie que la
+production contient bien le schéma (50 tables, garde `comptes_guard`) et
+que l'historique est vide, puis inscrit la baseline
+(`supabase migration repair --status applied`). Il n'écrit que dans
+`supabase_migrations.schema_migrations`, aucune table d'EduGest. Relancé, il
+ne fait rien.
 
 ## Photographier la production
 
