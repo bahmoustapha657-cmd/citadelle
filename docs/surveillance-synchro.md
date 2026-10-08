@@ -26,20 +26,26 @@ PowerSync Dashboard → instance → **Source Database Connection** (crayon) :
 | Host | `db.pfzanslrcowkjjipuzpa.supabase.co` (connexion **directe** — jamais le *pooler* `aws-…pooler.supabase.com` : la réplication ne passe pas par lui) |
 | Port | `5432` |
 | Database | `postgres` |
-| Username | `postgres` |
-| Password | le mot de passe de la base, **en clair**, collé |
+| Username | `powersync_role` |
+| Password | le mot de passe **de powersync_role** (gestionnaire de mots de passe : « PowerSync – powersync_role »), **en clair**, collé |
 | SSL | `verify-full` |
 
 **Test Connection** → **Save Connection**. Si le slot a été perdu : éditeur
 **Sync Rules** → **Validate** → **Deploy** (règles inchangées) : nouveau slot
 et recopie des données en quelques minutes.
 
-## Le mot de passe de la base sert à DEUX endroits
+## Deux comptes, deux mots de passe
 
-1. PowerSync (en clair, connexion directe) ;
-2. le secret GitHub `SUPABASE_DB_URL` (adresse *pooler*, mot de passe encodé
-   s'il contient des caractères spéciaux).
+Depuis le 2026-10-08 (après l'incident du même jour), PowerSync a **son
+propre compte** :
 
-Le changer à un endroit sans l'autre casse la synchro (incident du
-2026-10-08). Diagnostic détaillé : Actions → **Schéma production** →
-action `diagnostic-synchro`.
+| Compte | Utilisé par | Changer son mot de passe |
+|---|---|---|
+| `powersync_role` (`LOGIN`, `REPLICATION`, `BYPASSRLS`, lecture seule des tables synchronisées) | PowerSync uniquement | SQL Editor : `alter role powersync_role with password '…';` puis le reporter dans PowerSync (ci-dessus). Supprimer la requête de l'historique de l'éditeur. |
+| `postgres` (propriétaire du schéma) | secret GitHub `SUPABASE_DB_URL` (migrations, dump, diagnostics, cette surveillance) | Supabase → Settings → Database → Reset ; puis mettre à jour le secret (adresse *pooler*, mot de passe encodé s'il contient des caractères spéciaux). **Sans effet sur PowerSync.** |
+
+Avant le 2026-10-08, PowerSync se connectait en `postgres` : réinitialiser ce
+mot de passe l'a déconnecté sans prévenir, et le slot a été perdu un peu plus d'une
+heure plus tard. Diagnostic détaillé : Actions → **Schéma production** →
+action `diagnostic-synchro` (la colonne `usename` des connexions de
+réplication doit afficher `powersync_role`).
