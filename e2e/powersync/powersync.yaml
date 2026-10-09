@@ -1,0 +1,32 @@
+# Service PowerSync LOCAL des tests e2e (CI, mode « hors ligne ») : même
+# version que la production (1.26.1), mêmes règles de synchro
+# (supabase/powersync-sync-rules.min.yaml, celles collées dans le dashboard),
+# même compte de réplication (powersync_role), branché sur le Supabase local
+# du runner. Aucune donnée réelle, aucun accès à la production.
+replication:
+  connections:
+    - type: postgresql
+      uri: !env PS_DATA_SOURCE_URI
+      sslmode: disable
+
+# Stockage des buckets : un Postgres jetable à part (conteneur ps-stockage).
+storage:
+  type: postgresql
+  uri: !env PS_STORAGE_URI
+  sslmode: disable
+
+port: 8080
+
+sync_rules:
+  path: /regles/powersync-sync-rules.min.yaml
+
+# Jetons Supabase de la pile locale. La CLI récente signe les sessions avec
+# des clés asymétriques (en-tête `kid`) publiées en JWKS par Auth : le seul
+# secret HS256 ne suffit pas (PSYNC_S2101 « no key matched the token KID »).
+# block_local_jwks: false — le JWKS est servi par un conteneur du runner.
+client_auth:
+  jwks_uri: !env PS_JWKS_URI
+  block_local_jwks: false
+  audience: ["authenticated"]
+  supabase: true
+  supabase_jwt_secret: !env PS_SUPABASE_JWT_SECRET
