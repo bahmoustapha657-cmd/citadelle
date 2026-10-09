@@ -30,9 +30,14 @@ export function buildNouveauLivret(eleve, { section, numeroLivret, annee }) {
   };
 }
 
-// Pré-remplit une entrée annuelle depuis les notes actuelles de l'élève.
+// Pré-remplit une entrée annuelle depuis les notes de l'élève pour CETTE année.
+// Un élève resté dans la même section d'une année sur l'autre (7ème → 8ème) a
+// un T1 chaque année : sans filtre par année, le pré-remplissage les moyennait
+// ensemble. Même règle que le module École (filtre `annee = ?` au chargement) :
+// une note sans année n'est pas reprise.
 export function buildAnneePreRemplie(eleve, { notes, matieres, periodes, section, maxNote, eleves, annee }) {
-  const notesEleve = notesDeLEleve(notes, eleve._id);
+  const anneeScolaire = annee || getAnnee();
+  const notesEleve = notesDeLEleve(notes, eleve._id).filter((n) => n.annee === anneeScolaire);
   const matieresList = matieres.map((mat) => {
     const notesParPeriode = periodes.reduce((acc, p) => {
       const ns = notesEleve.filter((n) => n.matiere === mat.nom && n.periode === p);
@@ -45,7 +50,7 @@ export function buildAnneePreRemplie(eleve, { notes, matieres, periodes, section
     return { matiere: mat.nom, coef: mat.coefficient || 1, maxNote, ...notesParPeriode, annuelle: ann };
   });
   return {
-    anneeScolaire: annee || getAnnee(),
+    anneeScolaire,
     classe: eleve.classe || "",
     enseignantPrincipal: "",
     notes: matieresList,
