@@ -45,10 +45,14 @@ revoke all on table public.paiement_config from anon, authenticated;
 --                le comptable décide (affecter ailleurs ou rembourser).
 -- `montant` : la part imputée sur la scolarité ; `frais` : les frais de
 -- l'opérateur, payés en plus par le parent.
+-- Fiche élève supprimée : le paiement RESTE (de l'argent a été reçu, il
+-- faut pouvoir le rapprocher du relevé de l'opérateur) — `eleve_id` passe
+-- à null, `eleve_nom` garde qui c'était.
 create table public.paiements_en_ligne (
   id uuid primary key default gen_random_uuid(),
   ecole_id uuid not null references public.ecoles(id) on delete cascade,
-  eleve_id uuid not null references public.eleves(id) on delete cascade,
+  eleve_id uuid references public.eleves(id) on delete set null,
+  eleve_nom text,
   reference text not null unique,
   fournisseur text not null,
   annee text not null,

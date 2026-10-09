@@ -17,6 +17,7 @@ const MOTIFS = {
   cible: "ce que vous payiez n'est plus dû",
   montant: "le montant reçu ne correspond pas",
   conflit_repete: "la fiche était en cours de modification",
+  eleve: "la fiche de l'élève a été supprimée",
 };
 
 // ══════════════════════════════════════════════════════════════

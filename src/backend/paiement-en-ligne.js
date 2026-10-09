@@ -47,7 +47,7 @@ export const fraisPaiement = (montant, pourcent) =>
 // filtre. Les plus récents d'abord.
 export async function listerPaiementsEnLigne({ limite = 200 } = {}) {
   const { data, error } = await getSupabase().from("paiements_en_ligne")
-    .select("id, reference, statut, fournisseur, montant, frais, devise, cible, annee, detail, created_at, impute_le, eleve_id, eleves(nom, prenom, classe)")
+    .select("id, reference, statut, fournisseur, montant, frais, devise, cible, annee, detail, created_at, impute_le, eleve_id, eleve_nom, eleves(nom, prenom, classe)")
     .order("created_at", { ascending: false })
     .limit(limite);
   if (error) throw new Error(error.message);

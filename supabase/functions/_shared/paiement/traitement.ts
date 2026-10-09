@@ -46,6 +46,11 @@ async function terminer(admin: Admin, p: PaiementLigne, statut: "echoue" | "a_ve
 // entre le calcul et l'écriture (encaissement en caisse au même moment) :
 // on recalcule, trois fois au plus, puis on laisse la main au comptable.
 async function imputer(admin: Admin, p: PaiementLigne, operateur?: string): Promise<string> {
+  // Fiche supprimée entre-temps : l'argent est reçu, le comptable décide.
+  if (!p.eleve_id) {
+    await terminer(admin, p, "a_verifier", { motif: "eleve", operateur });
+    return "a_verifier";
+  }
   for (let essai = 0; essai < 3; essai++) {
     const { ctx } = await chargerContexte(admin, p.ecole_id, p.eleve_id);
     const plan = planImputation(ctx, p, { date: dateFr(), operateur });
