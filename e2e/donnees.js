@@ -5,6 +5,7 @@
 // `supabase status` (cf. job e2e de .github/workflows/ci.yml).
 import { createClient } from "@supabase/supabase-js";
 import { toRow } from "../src/backend/collection-map.js";
+import { payloadCompteParent } from "../src/comptes-parents.js";
 import { emailFor } from "../supabase/_brand.mjs";
 
 export const SUPABASE_URL = process.env.E2E_SUPABASE_URL || "http://127.0.0.1:54321";
@@ -38,6 +39,10 @@ export const MATIERES = [
   { nom: "Mathématiques", coefficient: 4 },
   { nom: "Français", coefficient: 3 },
 ];
+// Paiement en ligne (paiement-en-ligne.spec.js) : le parent de BAH paie par
+// le fournisseur « simulation », frais de 3 % à sa charge.
+export const PARENT = { login: "parent.bah", mdp: "E2e-Parent-2026" };
+export const FRAIS_POURCENT = 3;
 
 function verifierEnv() {
   if (!ANON_KEY || !SERVICE_ROLE_KEY) {
@@ -163,6 +168,40 @@ export async function lireNotes(eleveId) {
 export async function lirePaiements(eleveId) {
   const admin = clientAdmin();
   const { data, error } = await admin.from("paiements").select("*").eq("eleve_id", eleveId);
+  if (error) throw error;
+  return data;
+}
+
+// Paiement en ligne ouvert à l'école de test (fournisseur « simulation »,
+// autorisé par PAIEMENT_SIMULATION sur la pile locale seulement) et compte
+// parent de BAH, créé par la direction comme depuis la fiche élève.
+// Idempotent.
+export async function preparerPaiementEnLigne() {
+  const admin = clientAdmin();
+  const id = await ecoleId(admin);
+  const { error: errConfig } = await admin.from("paiement_config").upsert({
+    ecole_id: id, fournisseur: "simulation", mode: "test", actif: true, frais_pourcent: FRAIS_POURCENT,
+  });
+  if (errConfig) throw new Error(`paiement_config : ${errConfig.message}`);
+
+  const { data: existe } = await admin.from("comptes").select("id").eq("ecole_id", id).eq("login", PARENT.login).maybeSingle();
+  if (!existe) {
+    const eleve = await lireEleve(ELEVES[1].matricule);
+    const direction = await clientConnecte(DIRECTION);
+    const { data: { session } } = await direction.auth.getSession();
+    const compte = payloadCompteParent({
+      schoolId: ECOLE.code, login: PARENT.login, mdp: PARENT.mdp,
+      eleves: [{ _id: eleve.id, nom: eleve.nom, prenom: eleve.prenom, classe: CLASSE, section: SECTION }],
+      parent: { nom: "Parent Bah", telephone: "620000002" },
+    });
+    await appelerFonction("account-manage", { action: "create", ...compte }, session.access_token);
+  }
+  await admin.from("comptes").update({ premiere_co: false }).eq("ecole_id", id).eq("login", PARENT.login);
+}
+
+export async function lirePaiementsEnLigne(eleveId) {
+  const admin = clientAdmin();
+  const { data, error } = await admin.from("paiements_en_ligne").select("*").eq("eleve_id", eleveId).order("created_at");
   if (error) throw error;
   return data;
 }

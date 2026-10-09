@@ -3,6 +3,7 @@ import { DepensesTab } from "../DepensesTab";
 import { BilanTab } from "../BilanTab";
 import { CaisseTab } from "../CaisseTab";
 import { SalairesTab } from "../SalairesTab";
+import { PaiementsEnLigneTab } from "../../paiement-en-ligne/PaiementsEnLigneTab";
 
 // Onglets financiers : bilan, caisse (journal daté), recettes, dépenses,
 // états de salaires.
@@ -43,6 +44,8 @@ export function ComptaTabsFinancier({ c, readOnly, annee }) {
         enModeArchive={c.enModeArchive}
         anneeConsultee={c.anneeConsultee}
       />}
+
+      {c.tab === "en-ligne" && <PaiementsEnLigneTab />}
 
       {c.tab === "recettes" && <RecettesTab
         form={c.form}
