@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
     if (!p || p.fournisseur !== nom) return ok();
     const config = await lireConfig(admin, p.ecole_id);
     if (!config) return ok();
-    if (f.signatureValide && !(await f.signatureValide(corps, req.headers, config))) {
+    if (f.signatureValide && !(await f.signatureValide(corps, req.headers, config, p))) {
       console.warn("paiement-notification: signature invalide", nom);
       return ok();
     }

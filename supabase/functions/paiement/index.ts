@@ -8,6 +8,12 @@
 //   statut   { reference }          → où en est ce paiement (vérifie auprès
 //                                      de l'opérateur s'il est en attente)
 //   simuler  { reference, resultat } → fournisseur « simulation » seulement
+//   config                          → réglages de l'école, identifiants
+//                                      MASQUÉS (direction)
+//   configurer { fournisseur, mode, actif, fraisPourcent, identifiants }
+//                                    → enregistre, après avoir essayé les
+//                                      identifiants auprès de l'opérateur
+//                                      (direction)
 //
 // Qui peut payer : le parent de l'élève, ou le personnel qui écrit la
 // comptabilité. Le MONTANT est recalculé ici avec les règles de la caisse :
@@ -16,7 +22,10 @@
 //
 // Déploiement : supabase functions deploy paiement
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { fournisseur, simulationAutorisee } from "../_shared/paiement/fournisseurs.ts";
+import { FOURNISSEURS, fournisseur, simulationAutorisee } from "../_shared/paiement/fournisseurs.ts";
+import {
+  clientPayeur, horsBornes, plafondScolarite, validerConfiguration, vueConfiguration,
+} from "../_shared/paiement/configuration.ts";
 import {
   appliquerVerification, chargerContexte, lireConfig, lireParReference, verifierEtAppliquer,
 } from "../_shared/paiement/traitement.ts";
@@ -61,7 +70,7 @@ Deno.serve(async (req) => {
     const { data: { user } } = await admin.auth.getUser(jwt);
     if (!user) return refus("Session invalide.", 401);
     const { data: compte } = await admin.from("comptes")
-      .select("id, role, ecole_id, statut").eq("user_id", user.id).maybeSingle();
+      .select("id, role, ecole_id, statut, nom, email").eq("user_id", user.id).maybeSingle();
     if (!compte || (compte.statut && compte.statut !== "Actif")) return refus("Compte introuvable ou désactivé.");
 
     // Client À SON NOM : la RLS dit ce que l'appelant voit et peut faire.
@@ -83,7 +92,33 @@ Deno.serve(async (req) => {
     const corps = await req.json().catch(() => ({}));
     const action = String(corps.action || "");
     const config = await lireConfig(admin, compte.ecole_id);
-    const ouvert = !!config?.actif && (config.fournisseur !== "simulation" || simulationAutorisee());
+    const ouvert = !!config?.actif && !!FOURNISSEURS[config.fournisseur]
+      && (config.fournisseur !== "simulation" || simulationAutorisee());
+    // Plus grosse scolarité payable en une fois (plafond de l'opérateur).
+    const plafond = ouvert
+      ? plafondScolarite(fournisseur(config!.fournisseur).montantMax, Number(config!.frais_pourcent))
+      : Infinity;
+
+    // Opérateurs proposés à la direction (la simulation : hors production).
+    const choix = Object.values(FOURNISSEURS).filter((f) => f.nom !== "simulation" || simulationAutorisee());
+
+    if (action === "config" || action === "configurer") {
+      if (compte.role !== "direction") return refus("Réservé à la direction.");
+      if (action === "config") return json({ ok: true, config: vueConfiguration(config, choix) });
+      const v = validerConfiguration(corps, config, Object.fromEntries(choix.map((f) => [f.nom, f])));
+      if (!v.ok) return refus(v.erreur, 400);
+      // Activer = identifiants essayés auprès de l'opérateur d'abord : une
+      // erreur de saisie se voit ici, pas au premier paiement d'un parent.
+      const f = fournisseur(v.config.fournisseur);
+      if (v.config.actif && f.tester) {
+        try { await f.tester(v.config); } catch (e) { return refus((e as Error).message, 400); }
+      }
+      const { data: enregistre, error } = await admin.from("paiement_config").upsert({
+        ecole_id: compte.ecole_id, ...v.config, modifie_par: compte.id,
+      }).select("fournisseur, mode, actif, frais_pourcent, identifiants").single();
+      if (error) throw error;
+      return json({ ok: true, config: vueConfiguration(enregistre, choix) });
+    }
 
     if (action === "etat") {
       return json({
@@ -92,6 +127,7 @@ Deno.serve(async (req) => {
         libelle: ouvert ? fournisseur(config!.fournisseur).libelle : null,
         fraisPourcent: ouvert ? Number(config!.frais_pourcent) : 0,
         mode: ouvert ? config!.mode : null,
+        plafond: Number.isFinite(plafond) ? plafond : null,
       });
     }
 
@@ -99,7 +135,11 @@ Deno.serve(async (req) => {
       const eleveId = String(corps.eleveId || "");
       if (!(await peutPayer(eleveId))) return refus("Paiement non autorisé pour cet élève.");
       const { ctx } = await chargerContexte(admin, compte.ecole_id, eleveId);
-      return json({ ok: true, annee: ctx.annee, cibles: ciblesPayables(ctx), fraisPourcent: Number(config?.frais_pourcent || 0) });
+      const cibles = ciblesPayables(ctx).map((c) => ({ ...c, propose: Math.min(c.propose, plafond) }));
+      return json({
+        ok: true, annee: ctx.annee, cibles, fraisPourcent: Number(config?.frais_pourcent || 0),
+        plafond: Number.isFinite(plafond) ? plafond : null,
+      });
     }
 
     if (action === "initier") {
@@ -119,6 +159,8 @@ Deno.serve(async (req) => {
           : "Montant invalide.", 400);
       }
       const frais = calculerFrais(montant, Number(config!.frais_pourcent));
+      const borne = horsBornes(montant + frais, fournisseur(config!.fournisseur));
+      if (borne) return refus(borne, 400);
       const reference = nouvelleReference();
       const { data: cree, error } = await admin.from("paiements_en_ligne").insert({
         ecole_id: compte.ecole_id, eleve_id: eleveId, reference, fournisseur: config!.fournisseur,
@@ -133,6 +175,7 @@ Deno.serve(async (req) => {
           reference, montantTotal: montant + frais, devise: "GNF",
           description: `${cible.label} — ${nom}`.slice(0, 120), origine,
           urlNotification: `${FONCTIONS_URL}/paiement-notification?fournisseur=${encodeURIComponent(config!.fournisseur)}`,
+          client: clientPayeur(compte, ctx.eleve),
           config: config!,
         });
         await admin.from("paiements_en_ligne").update({ lien, detail: { ...(cree.detail || {}), ...(detail || {}) } }).eq("id", cree.id);
@@ -157,7 +200,9 @@ Deno.serve(async (req) => {
           await appliquerVerification(admin, { ...p, detail }, verif);
         }
       } else {
-        await verifierEtAppliquer(admin, p);
+        // Opérateur injoignable : le paiement reste « en attente », l'écran
+        // du parent continue d'interroger (la notification prendra le relais).
+        try { await verifierEtAppliquer(admin, p); } catch (e) { console.warn("paiement: vérification reportée", (e as Error).message); }
       }
       const apres = await lireParReference(admin, p.reference);
       return json({ ok: true, paiement: vue(apres as PaiementLigne & Record<string, unknown>) });
