@@ -197,6 +197,26 @@ export async function preparerPaiementEnLigne() {
     await appelerFonction("account-manage", { action: "create", ...compte }, session.access_token);
   }
   await admin.from("comptes").update({ premiere_co: false }).eq("ecole_id", id).eq("login", PARENT.login);
+
+  // Sans PAIEMENT_SIMULATION côté Edge Functions, le bouton « Payer en
+  // ligne » n'apparaîtrait pas : le dire tout de suite.
+  const { data: etat } = await appelerPaiement(PARENT, { action: "etat" });
+  if (!etat?.actif) {
+    throw new Error("Paiement en ligne fermé pour l'école de test : PAIEMENT_SIMULATION=autorisee absent de supabase/functions/.env ?");
+  }
+}
+
+// Appel direct de l'Edge Function `paiement` au nom d'un compte, SANS lever
+// d'erreur : les scénarios vérifient aussi ce que le serveur refuse.
+export async function appelerPaiement(compte, corps) {
+  const sb = await clientConnecte(compte);
+  const { data: { session } } = await sb.auth.getSession();
+  const r = await fetch(`${SUPABASE_URL}/functions/v1/paiement`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: ANON_KEY, Authorization: `Bearer ${session.access_token}` },
+    body: JSON.stringify(corps),
+  });
+  return { status: r.status, data: await r.json().catch(() => ({})) };
 }
 
 export async function lirePaiementsEnLigne(eleveId) {
