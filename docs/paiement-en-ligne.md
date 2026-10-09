@@ -40,6 +40,41 @@ Le comptable l'affecte alors à la main (Mensualités → Encaisser) ou rembours
 
 Réglage réservé au compte **direction**. Le serveur refuse tous les autres comptes.
 
+### Ou : Orange Money Guinée en direct
+
+L'argent arrive **directement sur le compte marchand Orange Money de l'école**, sans intermédiaire qui le détienne. En contrepartie, c'est Orange Money seulement, pas MTN.
+
+1. **Compte marchand Orange Money** au nom de l'école, à ouvrir en agence Orange (vérification « KYA » : immatriculation, pièce du responsable…).
+2. **Abonnement « Orange Money Web Payment ».** Il se demande sur [developer.orange.com](https://developer.orange.com/apis/om-webpay) ou auprès d'Orange Guinée. Il donne :
+   - le **Client ID** et le **Client Secret** de l'application ;
+   - la **clé marchand** (merchant key) du compte.
+3. **Saisir dans EduGest.** Paramètres → **Paiement en ligne** :
+   - opérateur **Orange Money (direct)** ;
+   - mode **Test** d'abord : bac à sable Orange, chemin `dev`, monnaie `OUV` ;
+   - les trois identifiants ;
+   - **Activer**.
+   Le Client ID et le Client Secret sont essayés auprès d'Orange avant l'enregistrement.
+4. **Passer en production.** Mode **Production** : chemin `gn`, monnaie GNF.
+
+## Orange Money Guinée (direct)
+
+L'API utilisée est « Orange Money Web Payment », sur `https://api.orange.com`. Le contrat a été recoupé à partir des SDK et intégrations publiques, puis d'un retour de paiement réel. Le chemin de production `gn` est **à confirmer avec Orange Guinée** lors de l'ouverture.
+
+- **Connexion :** `POST /oauth/v3/token`, en-tête `Authorization: Basic base64(client_id:client_secret)`, corps `grant_type=client_credentials`. Le jeton est gardé en mémoire pendant `expires_in`.
+- **Création :** `POST /orange-money-webpay/{dev|gn}/v1/webpayment` avec :
+  - `merchant_key`, `currency` (`OUV` en test, `GNF` en production), `order_id` (la référence EduGest) et `amount` ;
+  - `return_url` et `cancel_url`, qui passent toutes deux par le retour serveur ;
+  - `notif_url` avec `&ref=<référence>` ;
+  - `lang` et `reference` (30 caractères au plus).
+
+  La réponse donne `pay_token`, `payment_url` et `notif_token`. Ce dernier est **généré par Orange** et gardé dans le paiement.
+- **Vérification :** `POST …/transactionstatus` avec `{order_id, amount, pay_token}`, où `amount` est le montant envoyé à la création :
+  - `SUCCESS` → imputé ;
+  - `FAILED` ou `EXPIRED` → non abouti ;
+  - `INITIATED` ou `PENDING` → on attend.
+- **Notification :** le corps vaut `{status, notif_token, txnid}`, **sans référence ni montant**. La référence est donc lue dans l'adresse (`&ref=`). Le `notif_token` doit être celui rendu à la création, puis le paiement est **revérifié** auprès d'Orange.
+- **Parcours du parent :** sur la page Orange, il compose le code USSD Orange Money pour obtenir un code à usage unique, puis le saisit.
+
 ## CinetPay
 
 L'intégration repose sur l'API CinetPay v1, celle des SDK officiels `cinetpay-python` et `cinetpay-js`.

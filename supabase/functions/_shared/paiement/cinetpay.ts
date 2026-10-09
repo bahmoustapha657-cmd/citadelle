@@ -12,6 +12,7 @@
 // Module PUR : aucun accès à Deno ni à la base ; `fetch` est injecté, pour
 // les tests (tests/paiement-cinetpay.test.js).
 import type { Verification } from "./regles.ts";
+import { lireJson } from "./outils.ts";
 
 export const HOTES = {
   test: "https://api.cinetpay.net",
@@ -50,9 +51,6 @@ export function problemeIdentifiants(ids: IdentifiantsCinetpay | undefined, mode
 const hote = (ids: IdentifiantsCinetpay) => HOTES[modeDeCle(ids.api_key) || "test"];
 
 // Réponse d'erreur CinetPay → message lisible, SANS les identifiants.
-async function lireJson(r: Response): Promise<Record<string, unknown>> {
-  return await r.json().catch(() => ({})) as Record<string, unknown>;
-}
 const erreurApi = (etape: string, r: Response, j: Record<string, unknown>) =>
   new Error(`CinetPay ${etape} : ${String(j.description || j.message || j.status || `HTTP ${r.status}`)}`);
 
@@ -187,12 +185,4 @@ export async function verifierPaiement(ids: IdentifiantsCinetpay, reference: str
 
 // ── Notification ─────────────────────────────────────────────────────────
 // Le jeton de notification reçu doit être celui remis à la création.
-// Comparaison à temps constant.
-export function jetonNotificationValide(recu: string | undefined, attendu: unknown): boolean {
-  const a = String(recu || "");
-  const b = typeof attendu === "string" ? attendu : "";
-  if (!a || !b || a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
-}
+export { jetonNotificationValide } from "./outils.ts";

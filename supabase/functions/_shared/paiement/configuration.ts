@@ -68,16 +68,24 @@ export function masquer(valeur: unknown): string | null {
   return `${v.slice(0, 8)}…${v.slice(-4)}`;
 }
 
-// Ce que voit la direction : jamais un identifiant en clair.
+// Identifiants PUBLICS (des noms de compte, pas des secrets) : montrés
+// masqués pour être reconnus. Tous les autres : seulement « enregistré ».
+const IDENTIFIANTS_PUBLICS = new Set(["api_key", "client_id"]);
+
+// Ce que voit la direction : jamais un secret, jamais un identifiant en clair.
 export function vueConfiguration(config: Config | null, fournisseurs: Choix[]) {
   const ids = (config?.identifiants || {}) as Record<string, unknown>;
+  const identifiants: Record<string, string> = {};
+  for (const [cle, valeur] of Object.entries(ids)) {
+    if (!texte(valeur)) continue;
+    identifiants[cle] = IDENTIFIANTS_PUBLICS.has(cle) ? (masquer(valeur) as string) : "enregistré";
+  }
   return {
     fournisseur: config?.fournisseur ?? null,
     mode: config?.mode ?? "test",
     actif: !!config?.actif,
     fraisPourcent: Number(config?.frais_pourcent ?? 0),
-    cle: masquer(ids.api_key),
-    motDePassePose: !!texte(ids.api_password),
+    identifiants,
     fournisseurs: fournisseurs.map((f) => ({ nom: f.nom, libelle: f.libelle })),
   };
 }

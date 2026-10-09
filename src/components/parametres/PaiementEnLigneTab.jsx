@@ -8,6 +8,17 @@ const CHAMPS = {
     { cle: "api_key", label: "Clé API", aide: "sk_test_… pour essayer, sk_live_… pour encaisser réellement", secret: false },
     { cle: "api_password", label: "Mot de passe API", aide: "Celui de l'API, pas celui de votre connexion CinetPay", secret: true },
   ],
+  orange_money: [
+    { cle: "client_id", label: "Client ID", aide: "Application « Orange Money Web Payment » sur developer.orange.com", secret: false },
+    { cle: "client_secret", label: "Client Secret", aide: "Même application Orange Developer", secret: true },
+    { cle: "merchant_key", label: "Clé marchand (merchant key)", aide: "Remise par Orange pour le compte marchand Orange Money de l'école", secret: true },
+  ],
+};
+
+// Mode d'emploi court, par opérateur.
+const AIDES = {
+  cinetpay: "Ouvrez un compte marchand sur cinetpay.com (pays : Guinée), puis copiez ci-dessous la clé API et le mot de passe API de votre espace marchand. Plafond CinetPay : 2 500 000 par paiement.",
+  orange_money: "L'argent arrive directement sur le compte marchand Orange Money de l'école, sans intermédiaire (Orange Money seulement, pas MTN). Il faut : un compte marchand Orange Money (agence Orange) et l'abonnement « Orange Money Web Payment » (developer.orange.com), qui donne le Client ID, le Client Secret et la clé marchand.",
 };
 
 const champ = { width: "100%", boxSizing: "border-box", border: "1px solid var(--lc-border)", borderRadius: 8, padding: "9px 12px", fontSize: 13 };
@@ -81,10 +92,9 @@ export function PaiementEnLigneTab({ sec, lbl, toast }) {
       <select id="pel-operateur" value={form.fournisseur} onChange={(e) => { maj("fournisseur", e.target.value); setIds({}); }} style={champ}>
         {config.fournisseurs.map((f) => <option key={f.nom} value={f.nom}>{f.libelle}</option>)}
       </select>
-      {form.fournisseur === "cinetpay" && (
+      {AIDES[form.fournisseur] && (
         <p style={{ fontSize: 11.5, color: "var(--lc-text-muted)", margin: "6px 0 0", lineHeight: 1.5 }}>
-          Ouvrez un compte marchand sur cinetpay.com (pays : Guinée), puis copiez ci-dessous la clé API et le mot de
-          passe API de votre espace marchand. Plafond CinetPay : 2 500 000 par paiement.
+          {AIDES[form.fournisseur]}
         </p>
       )}
 
@@ -106,13 +116,13 @@ export function PaiementEnLigneTab({ sec, lbl, toast }) {
       </p>
 
       {champs.map((c) => {
-        const deja = memeOperateur && (c.secret ? config.motDePassePose : config.cle);
+        const deja = memeOperateur ? config.identifiants?.[c.cle] : null;
         return (
           <div key={c.cle}>
             <label style={lbl} htmlFor={`pel-${c.cle}`}>{c.label}</label>
             <input id={`pel-${c.cle}`} type={c.secret ? "password" : "text"} value={ids[c.cle] || ""}
               autoComplete={c.secret ? "new-password" : "off"} spellCheck={false}
-              placeholder={deja ? (c.secret ? "•••••••• (enregistré — laisser vide pour le garder)" : `${config.cle} (laisser vide pour la garder)`) : ""}
+              placeholder={deja ? (c.secret ? "•••••••• (enregistré — laisser vide pour le garder)" : `${deja} (laisser vide pour le garder)`) : ""}
               onChange={(e) => setIds((v) => ({ ...v, [c.cle]: e.target.value }))} style={champ} />
             <span style={{ display: "block", fontSize: 11, color: "var(--lc-text-muted)", marginTop: 3 }}>{c.aide}</span>
           </div>

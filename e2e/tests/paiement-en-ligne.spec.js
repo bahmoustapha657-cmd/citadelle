@@ -72,6 +72,15 @@ test("la direction active le paiement en ligne dans Paramètres (identifiants in
   await expect(page.getByText(/utilisez la clé sk_live_/)).toBeVisible();
   expect(await lirePaiementConfig()).toBeNull();
 
+  // Orange Money en direct : ses trois identifiants sont demandés ; il en
+  // manque, refusé sans appeler Orange.
+  await operateur.selectOption("orange_money");
+  await expect(page.getByLabel("Clé marchand (merchant key)")).toBeVisible();
+  await page.getByLabel("Client ID").fill("client-e2e-factice");
+  await enregistrer.click();
+  await expect(page.getByText("Client Secret Orange Developer manquant.")).toBeVisible();
+  expect(await lirePaiementConfig()).toBeNull();
+
   // Fournisseur « simulation » (proposé seulement si PAIEMENT_SIMULATION
   // est posée sur la pile), frais à la charge du parent : activé.
   await operateur.selectOption("simulation");

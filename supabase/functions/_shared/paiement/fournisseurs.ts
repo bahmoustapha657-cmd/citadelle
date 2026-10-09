@@ -7,6 +7,8 @@
 // signature. Ajouter un opérateur = ajouter une entrée ici, rien d'autre.
 import type { PaiementLigne, Verification } from "./regles.ts";
 import * as cinetpay from "./cinetpay.ts";
+import * as orange from "./orange.ts";
+import { jetonNotificationValide } from "./outils.ts";
 
 export type Config = {
   fournisseur: string;
@@ -101,11 +103,41 @@ const cinetpayFournisseur: Fournisseur = {
   verifier: (p, config) => cinetpay.verifierPaiement(ids(config), p.reference),
   referenceNotification: (corps) => corps.merchant_transaction_id || null,
   async signatureValide(corps, _entetes, _config, p) {
-    return cinetpay.jetonNotificationValide(corps.notify_token, (p.detail || {}).notify_token);
+    return jetonNotificationValide(corps.notify_token, (p.detail || {}).notify_token);
   },
 };
 
-export const FOURNISSEURS: Record<string, Fournisseur> = { simulation, cinetpay: cinetpayFournisseur };
+// ── Orange Money Guinée, en direct ─────────────────────────────────────────
+// Sur le compte marchand Orange Money de l'école, sans intermédiaire (MTN
+// n'y passe pas). Détails de l'API dans orange.ts.
+const idsOrange = (config: Pick<Config, "identifiants">) => (config.identifiants || {}) as orange.IdentifiantsOrange;
+
+const orangeFournisseur: Fournisseur = {
+  nom: "orange_money",
+  libelle: "Orange Money (direct)",
+  probleme: (config) => orange.problemeIdentifiants(idsOrange(config)),
+  async tester(config) {
+    orange.oublierJeton(idsOrange(config));
+    await orange.jetonAcces(idsOrange(config));
+  },
+  async creer(c) {
+    const i = idsOrange(c.config);
+    const probleme = orange.problemeIdentifiants(i);
+    if (probleme) throw new Error(probleme);
+    return orange.creerPaiement(i, c.config.mode, orange.corpsPaiement({ ...c, merchantKey: i.merchant_key!, mode: c.config.mode }));
+  },
+  verifier: (p, config) => orange.verifierPaiement(idsOrange(config), config.mode, p),
+  // La notification d'Orange ne porte pas la référence : elle est dans
+  // l'adresse de notification (&ref=…).
+  referenceNotification: (corps) => corps.ref || null,
+  async signatureValide(corps, _entetes, _config, p) {
+    return jetonNotificationValide(corps.notif_token, (p.detail || {}).notif_token);
+  },
+};
+
+export const FOURNISSEURS: Record<string, Fournisseur> = {
+  simulation, cinetpay: cinetpayFournisseur, orange_money: orangeFournisseur,
+};
 
 export function fournisseur(nom: string): Fournisseur {
   const f = FOURNISSEURS[nom];

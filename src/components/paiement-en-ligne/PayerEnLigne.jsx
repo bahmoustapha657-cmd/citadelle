@@ -13,6 +13,9 @@ import {
 // et voit les frais de l'opérateur, à sa charge. Il part ensuite sur la page
 // de paiement de l'opérateur (Orange Money, MTN MoMo…) ; au retour,
 // RetourPaiement affiche le résultat.
+// Moyens de paiement annoncés au parent, selon l'opérateur de l'école.
+const MOYENS = { cinetpay: "Orange Money, MTN MoMo", orange_money: "Orange Money" };
+
 export function PayerEnLigne({ eleve, c1 }) {
   const [etat, setEtat] = useState(null);
   const [ouvert, setOuvert] = useState(false);
@@ -27,7 +30,7 @@ export function PayerEnLigne({ eleve, c1 }) {
       {etat?.actif && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", padding: "12px 16px", marginBottom: 16, borderRadius: 12, background: "#ecfdf5", border: "1px solid #a7f3d0" }}>
           <div style={{ fontSize: 13, color: "#065f46" }}>
-            <strong>💳 Payer en ligne</strong> — Orange Money, MTN MoMo… depuis votre téléphone.
+            <strong>💳 Payer en ligne</strong> — {MOYENS[etat.fournisseur] || "Mobile Money"} depuis votre téléphone.
             {etat.mode === "test" && <span style={{ marginInlineStart: 8, fontSize: 11, color: "#b45309" }}>(mode test : aucun argent réel)</span>}
           </div>
           <Btn v="success" onClick={() => setOuvert(true)}>Payer en ligne</Btn>
