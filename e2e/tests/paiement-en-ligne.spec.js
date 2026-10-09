@@ -88,6 +88,7 @@ test("le parent paie une mensualité en ligne : imputée sur la fiche et au jour
 
   // Fermer rend le portail, adresse nettoyée (un rechargement ne rouvre pas la page de paiement).
   await page.getByRole("button", { name: "Fermer", exact: true }).click();
+  await expect(page.getByText("✅ Paiement reçu et enregistré.")).toBeHidden();
   await expect(page).not.toHaveURL(/paiement-simule/);
 });
 
