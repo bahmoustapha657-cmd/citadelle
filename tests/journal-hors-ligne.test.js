@@ -4,7 +4,7 @@
 //
 // Il faut les mocks de modules du test runner :
 //   node --import tsx --experimental-test-module-mocks --test tests/journal-hors-ligne.test.js
-// Sans ce drapeau (npm test), seuls les tests sans mock s'exécutent.
+// `npm test` le passe. Sans ce drapeau, seuls les tests sans mock s'exécutent.
 import test, { mock } from "node:test";
 import assert from "node:assert/strict";
 import { AppSchema } from "../src/backend/powersync/schema.js";

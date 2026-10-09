@@ -11,7 +11,7 @@
 //
 // Il faut les mocks de modules du test runner :
 //   node --import tsx --experimental-test-module-mocks --test tests/reglages-ecole.test.js
-// Sans ce drapeau (npm test), le test est ignoré.
+// `npm test` le passe. Sans ce drapeau, le test est ignoré.
 import test, { mock } from "node:test";
 import assert from "node:assert/strict";
 
@@ -52,6 +52,13 @@ const fauxClient = {
   rpc: async (nom, args) => {
     etat.rpcs.push({ nom, args });
     if (etat.rpcErreur) return { data: null, error: { message: etat.rpcErreur } };
+    // fusionner_extra_ecole (SECURITY INVOKER) : `extra || p_champs` en base,
+    // renvoie le extra fusionné — ou NULL quand la RLS écarte la ligne.
+    if (nom === "fusionner_extra_ecole") {
+      if (etat.rlsRefuse || args.p_code !== etat.ecole.code) return { data: null, error: null };
+      etat.ecole.extra = { ...etat.ecole.extra, ...args.p_champs };
+      return { data: etat.ecole.extra, error: null };
+    }
     return { data: args.p_champs, error: null };
   },
 };
@@ -70,9 +77,13 @@ async function monter() {
 test("fiche école : écritures autorisées, refusées, et réglages de la compta", { skip: ignore }, async (t) => {
   const { sauverParametresEcole, majVerrou, majReglagesCompta } = await monter();
 
-  await t.test("Paramètres autorisés : extra FUSIONNÉ, succès", async () => {
+  await t.test("Paramètres autorisés : extra FUSIONNÉ en base (RPC), succès", async () => {
     assert.deepEqual(await sauverParametresEcole("citadelle", { triEleves: "nom" }), { ok: true });
     assert.deepEqual(etat.ecole.extra, { monnaie: "GNF", triEleves: "nom" });
+    // Seules les clés modifiées partent : jamais le jsonb entier relu puis réécrit.
+    assert.deepEqual(etat.rpcs.at(-1), {
+      nom: "fusionner_extra_ecole", args: { p_code: "citadelle", p_champs: { triEleves: "nom" } },
+    });
   });
 
   await t.test("refus de la RLS (zéro ligne) : erreur explicite, pas de faux succès", async () => {

@@ -10,7 +10,7 @@
     "dev": "vite",
     "build": "vite build --mode supabase",
     "lint": "eslint .",
-    "test": "tsx --test tests/**/*.test.{js,ts}",
+    "test": "tsx --experimental-test-module-mocks --test tests/**/*.test.{js,ts}",
     "test:e2e": "playwright test -c e2e/playwright.config.js",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview",

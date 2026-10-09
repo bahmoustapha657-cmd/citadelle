@@ -6,7 +6,7 @@
 //
 // Il faut les mocks de modules du test runner :
 //   node --import tsx --experimental-test-module-mocks --test tests/chargement-hors-ligne.test.js
-// Sans ce drapeau (npm test), le test est ignoré ; filtres-lecture.test.js
+// `npm test` le passe. Sans ce drapeau, le test est ignoré ; filtres-lecture.test.js
 // couvre la même logique sans mocks.
 import test, { mock } from "node:test";
 import assert from "node:assert/strict";

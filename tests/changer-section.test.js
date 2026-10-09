@@ -10,7 +10,7 @@
 //
 // Il faut les mocks de modules du test runner :
 //   node --import tsx --experimental-test-module-mocks --test tests/changer-section.test.js
-// Sans ce drapeau (npm test), le test est ignoré ; promotion-utils.test.js
+// `npm test` le passe. Sans ce drapeau, le test est ignoré ; promotion-utils.test.js
 // couvre la décision (sectionApresPromotion) sans mocks.
 import test, { mock } from "node:test";
 import assert from "node:assert/strict";

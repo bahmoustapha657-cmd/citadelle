@@ -10,7 +10,7 @@
 // Les tests de bout en bout du portail (fin du fichier) demandent les mocks
 // de modules du test runner :
 //   node --import tsx --experimental-test-module-mocks --test tests/salaires-portail-enseignant.test.js
-// Sans ce drapeau (npm test), ils sont ignorés ; le reste tourne toujours.
+// `npm test` le passe. Sans ce drapeau, ils sont ignorés ; le reste tourne toujours.
 import test, { mock } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";

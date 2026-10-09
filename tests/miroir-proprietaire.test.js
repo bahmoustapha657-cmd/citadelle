@@ -5,7 +5,7 @@
 //
 // Il faut les mocks de modules du test runner :
 //   node --import tsx --experimental-test-module-mocks --test tests/miroir-proprietaire.test.js
-// Sans ce drapeau (npm test), le test est ignoré.
+// `npm test` le passe. Sans ce drapeau, le test est ignoré.
 import test, { mock } from "node:test";
 import assert from "node:assert/strict";
 
