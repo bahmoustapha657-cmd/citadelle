@@ -137,6 +137,13 @@ test("un paiement refusé par l'opérateur ne touche ni la fiche ni le journal",
   expect(enLigne.statut).toBe("echoue");
   expect(await lirePaiements(eleve.id)).toHaveLength(journal);
   expect((await lireEleve(ELEVES[1].matricule)).extra?.mens).toEqual(mensAvant);
+
+  // Historique du parent : le paiement réussi et le refusé, avec leurs références.
+  await page.getByRole("button", { name: "Fermer", exact: true }).click();
+  await page.getByText(/Mes paiements en ligne \(2\)/).click();
+  const historique = page.getByRole("listitem").filter({ hasText: reference });
+  await expect(historique).toContainText("Non abouti (rien prélevé)");
+  await expect(page.getByRole("listitem").filter({ hasText: "Enregistré" })).toHaveCount(1);
 });
 
 test("le serveur refuse un montant au-delà du reste dû et l'élève d'une autre famille", async () => {
