@@ -31,11 +31,16 @@ const dateCourte = (iso) => (iso ? new Date(iso).toLocaleString("fr-FR", { dateS
 export function PaiementsEnLigneTab() {
   const [paiements, setPaiements] = useState(null);
   const [erreur, setErreur] = useState("");
-  const charger = useCallback(() => {
-    setErreur("");
-    listerPaiementsEnLigne().then(setPaiements).catch((e) => setErreur(e.message));
-  }, []);
-  useEffect(() => { charger(); }, [charger]);
+  // « ↻ Actualiser » incrémente ce compteur, qui relance le chargement.
+  const [tour, setTour] = useState(0);
+  const charger = useCallback(() => setTour((n) => n + 1), []);
+  useEffect(() => {
+    let actif = true;
+    listerPaiementsEnLigne()
+      .then((liste) => { if (actif) { setPaiements(liste); setErreur(""); } })
+      .catch((e) => { if (actif) setErreur(e.message); });
+    return () => { actif = false; };
+  }, [tour]);
 
   const aVerifier = (paiements || []).filter((p) => p.statut === "a_verifier");
   const encaisses = (paiements || []).filter((p) => p.statut === "impute");
