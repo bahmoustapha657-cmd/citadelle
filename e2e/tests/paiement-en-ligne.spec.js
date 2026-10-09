@@ -6,7 +6,7 @@
 // On vérifie l'écran ET la base, comme encaissement.spec.js.
 import { test, expect } from "@playwright/test";
 import {
-  COMPTABLE, DIRECTION, ECOLE, ELEVES, FRAIS_POURCENT, MENSUALITE, PARENT,
+  COMPTABLE, DIRECTION, ECOLE, ELEVES, FRAIS_POURCENT, MENSUALITE, PARENT, SUPABASE_URL,
   appelerPaiement, confirmerChezOperateurSansNotification, encaisserToutEnCaisse,
   lireEleve, lirePaiementConfig, lirePaiements, lirePaiementsEnLigne, preparerPaiementEnLigne,
 } from "../donnees.js";
@@ -158,6 +158,20 @@ test("le serveur refuse un montant au-delà du reste dû et l'élève d'une autr
   const intrus = await appelerPaiement(PARENT, { action: "initier", eleveId: autre.id, cle: "mois", montant: MENSUALITE });
   expect(intrus.status).toBe(403);
   expect(await lirePaiementsEnLigne(autre.id)).toHaveLength(0);
+});
+
+test("retour du parent depuis la page de l'opérateur : GET ou POST, sans session, redirigé vers l'app", async () => {
+  const adresse = `${SUPABASE_URL}/functions/v1/paiement-notification?retour=EDUMG1TEST01`;
+  for (const method of ["GET", "POST"]) {
+    const r = await fetch(adresse, { method, redirect: "manual", body: method === "POST" ? "transaction_id=CP1" : undefined,
+      headers: method === "POST" ? { "Content-Type": "application/x-www-form-urlencoded" } : {} });
+    expect(r.status, method).toBe(303);
+    expect(r.headers.get("location")).toMatch(/\/\?paiement=EDUMG1TEST01$/);
+  }
+  // Référence douteuse : retour à l'accueil de l'app, sans paramètre.
+  const douteux = await fetch(`${SUPABASE_URL}/functions/v1/paiement-notification?retour=%3Cscript%3E`, { redirect: "manual" });
+  expect(douteux.status).toBe(303);
+  expect(douteux.headers.get("location")).toMatch(/\/$/);
 });
 
 async function ouvrirEnLigne(page) {

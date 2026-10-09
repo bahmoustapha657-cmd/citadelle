@@ -52,6 +52,7 @@ L'intégration repose sur l'API CinetPay v1, celle des SDK officiels `cinetpay-p
 - **Connexion :** `POST /v1/oauth/login` avec `{api_key, api_password}` renvoie un jeton (gardé en mémoire de la fonction).
 - **Création :** `POST /v1/payment` avec la devise GNF, le montant total et `channel: PUSH`. Le parent choisit Orange Money (OM_GN) ou MTN MoMo (MTN_GN) sur la page CinetPay.
 - **Vérification :** `GET /v1/payment/{référence}`. `SUCCESS` → imputé ; `FAILED`, `EXPIRED`… → non abouti ; sinon on attend.
+- **Retour du parent :** `…/functions/v1/paiement-notification?retour=<référence>` accepte GET et POST, puis redirige (303) vers `APP_URL/?paiement=<référence>`. Une redirection en POST vers le site statique serait refusée.
 - **Notification :** envoyée à `…/functions/v1/paiement-notification?fournisseur=cinetpay`. Le `notify_token` reçu doit être celui remis à la création, puis le paiement est revérifié.
 - **Bornes :** 100 à **2 500 000 par paiement**, frais compris. Au-delà, le parent paie en plusieurs fois (le portail le lui dit et plafonne le montant proposé).
 
