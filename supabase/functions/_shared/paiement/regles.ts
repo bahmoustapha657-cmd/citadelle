@@ -27,7 +27,7 @@ type Ligne = Record<string, any>;
 export type PaiementLigne = {
   id: string;
   ecole_id: string;
-  eleve_id: string;
+  eleve_id: string | null; // null : fiche supprimée depuis (le paiement reste)
   reference: string;
   fournisseur: string;
   annee: string;

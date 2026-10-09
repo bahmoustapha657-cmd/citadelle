@@ -121,7 +121,9 @@ Deno.serve(async (req) => {
       const frais = calculerFrais(montant, Number(config!.frais_pourcent));
       const reference = nouvelleReference();
       const { data: cree, error } = await admin.from("paiements_en_ligne").insert({
-        ecole_id: compte.ecole_id, eleve_id: eleveId, reference, fournisseur: config!.fournisseur,
+        ecole_id: compte.ecole_id, eleve_id: eleveId,
+        eleve_nom: `${ctx.eleve.nom || ""} ${ctx.eleve.prenom || ""}`.trim() || null,
+        reference, fournisseur: config!.fournisseur,
         annee: ctx.annee, cible: { cle: cible.cle, label: cible.label }, montant, frais,
         devise: "GNF", initie_par: compte.id,
       }).select("*").single();
@@ -146,7 +148,9 @@ Deno.serve(async (req) => {
 
     if (action === "statut" || action === "simuler") {
       const p = await lireParReference(admin, String(corps.reference || ""));
-      if (!p || p.ecole_id !== compte.ecole_id || !(await voitEleve(p.eleve_id))) return refus("Paiement introuvable.", 404);
+      if (!p || p.ecole_id !== compte.ecole_id || !p.eleve_id || !(await voitEleve(p.eleve_id))) {
+        return refus("Paiement introuvable.", 404);
+      }
       if (action === "simuler") {
         if (p.fournisseur !== "simulation" || !simulationAutorisee()) return refus("Simulation impossible.");
         if (p.statut === "en_attente") {

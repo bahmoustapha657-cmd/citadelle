@@ -17,6 +17,7 @@ const MOTIFS = {
   montant: "montant reçu différent du montant demandé",
   conflit_repete: "fiche en cours de modification",
   colonnes: "écriture non prise en charge",
+  eleve: "fiche de l'élève supprimée",
 };
 
 const dateCourte = (iso) => (iso ? new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" }) : "—");
@@ -81,7 +82,7 @@ export function PaiementsEnLigneTab() {
                   return (
                     <TR key={p.id} bg={p.statut === "a_verifier" ? "#fffbeb" : undefined}>
                       <TD>{dateCourte(p.created_at)}</TD>
-                      <TD bold>{`${p.eleves?.nom || ""} ${p.eleves?.prenom || ""}`.trim() || "—"}<br />
+                      <TD bold>{`${p.eleves?.nom || ""} ${p.eleves?.prenom || ""}`.trim() || p.eleve_nom || "—"}<br />
                         <span style={{ fontSize: 11, fontWeight: 400, color: "#94a3b8" }}>{p.eleves?.classe || ""}</span>
                       </TD>
                       <TD>{p.cible?.label || "—"}
