@@ -22,6 +22,14 @@ test("clôture : l'argent encaissé est archivé puis rendu à l'annulation ; la
   const confirmations = [];
   page.on("dialog", (d) => { confirmations.push(d.message()); d.accept(); });
 
+  // 1re ouverture de « Comptes & Postes » dans une école neuve : l'app crée
+  // les comptes par défaut et affiche leurs mots de passe temporaires dans
+  // une fenêtre. La direction la ferme après les avoir notés ; le test aussi,
+  // dès qu'elle recouvre la page (elle arrive pendant la clôture).
+  await page.addLocatorHandler(page.getByText("🔐 Comptes créés — Notez les mots de passe"), async () => {
+    await page.getByRole("button", { name: "✅ J'ai noté tous les mots de passe" }).click();
+  });
+
   await seConnecter(page, DIRECTION);
   await ouvrirModule(page, "Comptes & Postes");
   await expect(page.getByText(`Année active : ${ANNEE}`)).toBeVisible();
