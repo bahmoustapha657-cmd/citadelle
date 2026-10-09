@@ -34,6 +34,15 @@ export const ELEVE_HORS_LIGNE = { nom: "CAMARA", prenom: "Fatou", sexe: "F", mat
 // Élève supprimé depuis « un autre poste » pendant qu'on l'encaisse
 // (fiche-supprimee.spec.js) : même classe que DIALLO, donc même tarif.
 export const ELEVE_SUPPRIME = { nom: "SOW", prenom: "Mamadou", sexe: "M", matricule: "E2E-004" };
+// Suppression d'une fiche (suppression-eleve.spec.js), dans une classe à
+// part : ces élèves ne se mêlent à aucun autre parcours.
+export const CLASSE_SUPPRESSION = "7ème C";
+// Inscription encaissée, inscrite au journal de caisse : sa fiche ne se
+// supprime pas (on déclare son départ).
+export const ELEVE_ENCAISSE = { nom: "KABA", prenom: "Mariama", sexe: "F", matricule: "E2E-005" };
+export const INSCRIPTION = 50000;
+// Rien d'encaissé (fiche créée par erreur) : la suppression reste possible.
+export const ELEVE_SANS_ENCAISSEMENT = { nom: "TOURE", prenom: "Sekou", sexe: "M", matricule: "E2E-006" };
 export const MATIERES = [
   { nom: "Mathématiques", coefficient: 4 },
   { nom: "Français", coefficient: 3 },
@@ -120,13 +129,34 @@ export async function preparerEcole() {
     const { error } = await direction.from(table).insert(lignes);
     if (error) throw new Error(`${table} : ${error.message}`);
   };
-  await ecrire("classes", [ligne("classes", { nom: CLASSE }), ligne("classes", { nom: CLASSE_HORS_LIGNE })]);
+  await ecrire("classes", [
+    ligne("classes", { nom: CLASSE }), ligne("classes", { nom: CLASSE_HORS_LIGNE }), ligne("classes", { nom: CLASSE_SUPPRESSION }),
+  ]);
   await ecrire("matieres", MATIERES.map((m) => ligne("matieres", m)));
   await ecrire("tarifs", [ligne("tarifs", { classe: CLASSE, montant: MENSUALITE })]);
   await ecrire("eleves", [
     ...[...ELEVES, ELEVE_SUPPRIME].map((e) => ligne("eleves", { ...e, classe: CLASSE, statut: "Actif", inscriptionPayee: true })),
     ligne("eleves", { ...ELEVE_HORS_LIGNE, classe: CLASSE_HORS_LIGNE, statut: "Actif", inscriptionPayee: true }),
+    ligne("eleves", {
+      ...ELEVE_ENCAISSE, classe: CLASSE_SUPPRESSION, statut: "Actif",
+      inscriptionPayee: true, inscriptionDate: "01/10/2025", inscriptionMontant: INSCRIPTION,
+    }),
+    ligne("eleves", { ...ELEVE_SANS_ENCAISSEMENT, classe: CLASSE_SUPPRESSION, statut: "Actif" }),
   ]);
+  // Sa ligne au journal de caisse, telle que l'écrit l'encaissement
+  // (paiements n'a pas de colonne section).
+  const { data: encaisse, error: e1 } = await admin.from("eleves").select("id")
+    .eq("ecole_id", id).eq("matricule", ELEVE_ENCAISSE.matricule).single();
+  if (e1) throw e1;
+  const { error: e2 } = await direction.from("paiements").insert({
+    ...toRow("paiements", {
+      annee: ANNEE, type: "inscription", statut: "encaisse", eleveId: encaisse.id,
+      eleveNom: `${ELEVE_ENCAISSE.nom} ${ELEVE_ENCAISSE.prenom}`, classe: CLASSE_SUPPRESSION,
+      mois: "inscription", libelle: "Inscription", montant: INSCRIPTION, date: "2025-10-01", auteur: COMPTABLE.nom,
+    }).row,
+    ecole_id: id,
+  });
+  if (e2) throw new Error(`paiements : ${e2.message}`);
   return id;
 }
 

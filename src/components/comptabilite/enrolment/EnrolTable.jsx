@@ -2,10 +2,11 @@ import { C, aReinscrire, genererMatricule } from "../../../constants";
 import { Badge, Btn, THead, TR, TD, Vide, Chargement } from "../../ui";
 
 // Tableau des élèves enrôlés pour le niveau courant, avec actions :
-// modifier, dupliquer (fratrie), déclarer un départ, supprimer.
+// modifier, dupliquer (fratrie), déclarer un départ, supprimer (refusé à une
+// fiche qui porte de l'argent : cf. EnrolmentTab / suppression-eleve.js).
 export function EnrolTable({
   cEC, cEL, cEP, elevesEnrol, canEdit, canCreate, planInfo,
-  niveauEnrol, schoolInfo, setForm, setModal, supEnrol,
+  niveauEnrol, schoolInfo, setForm, setModal, declarerDepart, supprimerEleve,
 }) {
   if (cEC || cEL || cEP) return <Chargement/>;
   if (elevesEnrol.length === 0) return <Vide icone="🎓" msg="Aucun élève enregistré"/>;
@@ -39,11 +40,8 @@ export function EnrolTable({
                 classe:e.classe,filiation:e.filiation,tuteur:e.tuteur,contactTuteur:e.contactTuteur,domicile:e.domicile});
               setModal("add_enrol");
             }}>👥</Btn>}
-            {e.statut==="Actif"&&<Btn sm v="amber" onClick={()=>{
-              setForm({...e,niveau:niveauEnrol,statut:"Transféré",dateDepart:new Date().toISOString().slice(0,10)});
-              setModal("edit_enrol");
-            }} title="Déclarer un départ">📤</Btn>}
-            <Btn sm v="danger" onClick={()=>{if(confirm("Supprimer définitivement cet élève ?"))supEnrol(e._id);}}>Suppr.</Btn>
+            {e.statut==="Actif"&&<Btn sm v="amber" onClick={()=>declarerDepart(e)} title="Déclarer un départ">📤</Btn>}
+            <Btn sm v="danger" onClick={()=>supprimerEleve(e)}>Suppr.</Btn>
           </div></TD>}
         </TR>)}</tbody>
       </table>

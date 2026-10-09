@@ -35,8 +35,11 @@ modèle. Règles :
 À chaque push et PR, le job **`migrations`** démarre une base Supabase vierge
 (Postgres 17) dans le runner, y rejoue TOUTES les migrations dans l'ordre et
 contrôle le résultat : nombre de migrations appliquées, **RLS active sur
-toutes les tables publiques**, garde `comptes_guard` présente. Une migration
-qui échoue ici ne peut pas être fusionnée sans que ça se voie.
+toutes les tables publiques**, garde `comptes_guard` présente, et **garde des
+encaissements** (une fiche élève qui a de l'argent au journal, sur sa fiche
+ou dans une année archivée ne se supprime pas ; une école entière, si — essai
+sur des données jetables, annulé à la fin). Une migration qui échoue ici ne
+peut pas être fusionnée sans que ça se voie.
 
 ## Appliquer en production
 

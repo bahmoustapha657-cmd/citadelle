@@ -16,6 +16,11 @@ const stockageMemoire = () => {
 test("0 ligne touchée = EcritureSansEffet ; une erreur reste une erreur ; ≥ 1 ligne passe", () => {
   assert.throws(() => verifierEffet({ error: null, count: 0 }, "eleves", "modification"), EcritureSansEffet);
   assert.throws(() => verifierEffet({ error: { message: "boom" }, count: null }, "eleves", "modification"), /boom/);
+  // Code et indice Postgres conservés : l'écran reconnaît un refus métier.
+  assert.throws(
+    () => verifierEffet({ error: { message: "refus", code: "P0001", hint: "eleve_avec_encaissements" } }, "eleves", "suppression"),
+    (e) => e.code === "P0001" && e.hint === "eleve_avec_encaissements",
+  );
   assert.doesNotThrow(() => verifierEffet({ error: null, count: 1 }, "eleves", "modification"));
 });
 

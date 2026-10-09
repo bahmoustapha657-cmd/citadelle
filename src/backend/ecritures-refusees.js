@@ -63,8 +63,10 @@ export function signalerEcritureRefusee(
 // Résultat d'un update / delete supabase-js demandé avec { count: "exact" } :
 // erreur → exception ; 0 ligne touchée → EcritureSansEffet. N'alerte pas
 // (le connecteur PowerSync alerte lui-même, une fois, en précisant « hors ligne »).
+// L'exception garde le code et l'indice (hint) Postgres : l'écran reconnaît
+// ainsi un refus métier (ex. eleve_avec_encaissements) d'une panne.
 export function verifierEffet({ error, count } = {}, table, operation) {
-  if (error) throw new Error(error.message);
+  if (error) throw Object.assign(new Error(error.message), { code: error.code, hint: error.hint });
   if (count === 0) throw new EcritureSansEffet(table, operation);
 }
 
