@@ -153,6 +153,30 @@ export async function chargerCollection(schoolCode, nomCollection, { annee, peri
   return { items: rows.map((r) => transformRow(map.table, r)) };
 }
 
+// Élèves ACTIFS de l'école, toutes sections (préscolaire compris) : l'effectif
+// que plafonne le plan (computePlanInfo). Un comptage, aucune ligne ne voyage :
+// en ligne, `head: true` ne renvoie que le total (en-tête Content-Range, donc
+// hors du plafond de 1 000 lignes de PostgREST) ; hors ligne, count(*) sur le
+// miroir, que PowerSync tient complet pour tout le personnel. Lève en cas
+// d'échec : ne rien savoir n'est pas « zéro élève ».
+export async function compterElevesActifs(schoolCode) {
+  const sb = getSupabase();
+  const ecoleId = await ecoleIdFromCode(sb, schoolCode);
+  if (!ecoleId) throw new Error("École introuvable.");
+
+  if (horsLigne("eleves")) {
+    const { compterLocal } = await localData();
+    return compterLocal("eleves", { ecole_id: ecoleId, statut: "Actif" });
+  }
+
+  const { count, error } = await sb.from("eleves")
+    .select("id", { count: "exact", head: true })
+    .eq("ecole_id", ecoleId)
+    .eq("statut", "Actif");
+  if (error) throw new Error(error.message);
+  return count ?? 0;
+}
+
 // Info école (branding + plan) → objet camelCase prêt pour mergeSchoolInfo.
 function ecoleVersInfo(data) {
   const x = data.extra || {};

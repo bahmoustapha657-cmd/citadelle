@@ -1,22 +1,26 @@
 import { useEffect, useState } from "react";
-import { chargerEcole } from "../backend/data-supabase";
-import { subscribeTable } from "../backend/realtime-supabase";
+import { chargerEcole, compterElevesActifs } from "../backend/data-supabase";
+import { subscribeTable, surveillerTable } from "../backend/realtime-supabase";
 import { SCHOOL_INFO_DEFAUT } from "../contexts/SchoolContext";
 import { setMonnaie } from "../constants";
 import { DEFAULT_VERROUS, mergeSchoolInfo, applyBrandingColors } from "./school-data-helpers";
+import { suivreCompteur } from "./suivre-compteur";
 
 // Hook des données liées à l'école courante :
 // - schoolInfo (table `ecoles`, profil légal compris) + verrous + variables
 //   CSS de branding
-// - msgsNonLus, totalElevesActifs, notifListe/notifNonLues : compteurs de
-//   l'ancienne version Firebase, pas encore portés (valeurs neutres)
+// - totalElevesActifs (toutes sections, tenu à jour, pour vérification plan)
+// - msgsNonLus, notifListe/notifNonLues : compteurs de l'ancienne version
+//   Firebase, pas encore portés (valeurs neutres)
 //
 // Extrait de App.jsx au refactor découpage 2026-05-20.
 export function useSchoolData({ schoolId, utilisateur }) {
   const [schoolInfoState, setSchoolInfo] = useState(SCHOOL_INFO_DEFAUT);
   const [verrous, setVerrous] = useState(DEFAULT_VERROUS);
   const [msgsNonLus] = useState(0);
-  const [totalElevesActifs] = useState(0);
+  // null = pas (encore) compté : computePlanInfo ne bloque rien sur un
+  // effectif inconnu, et l'écran affiche « … » plutôt qu'un faux 0.
+  const [totalElevesActifs, setTotalElevesActifs] = useState(null);
   const [notifListe] = useState([]);
   const [notifNonLues, setNotifNonLues] = useState(0);
 
@@ -65,6 +69,20 @@ export function useSchoolData({ schoolId, utilisateur }) {
     // « revenait » jusqu'au rechargement de la page).
     const desabonner = subscribeTable(schoolId, "ecoles", () => recharger(true));
     return () => { actif = false; desabonner(); };
+  }, [schoolId, utilisateur]);
+
+  // ── Élèves actifs (vérification du plan) ─────────────────────
+  // Compté au montage puis RECOMPTÉ à chaque changement de la table eleves
+  // (ajout, départ, réintégration…) : la limite du plan se ferme dès qu'elle
+  // est atteinte et se rouvre après un départ, sans recharger.
+  useEffect(() => {
+    if (!utilisateur || !schoolId || schoolId === "superadmin") return undefined;
+    if (["enseignant", "parent"].includes(utilisateur.role)) return undefined;
+    return suivreCompteur({
+      compter: () => compterElevesActifs(schoolId),
+      surveiller: (signaler) => surveillerTable(schoolId, "eleves", signaler),
+      onValeur: setTotalElevesActifs,
+    });
   }, [schoolId, utilisateur]);
 
   return {

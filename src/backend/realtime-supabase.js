@@ -153,3 +153,38 @@ export function subscribeTablePayload(schoolCode, table, onPayload) {
   if (!supabaseConfigured || !schoolCode || !table || typeof onPayload !== "function") return () => {};
   return attacher(schoolCode, table, onPayload);
 }
+
+// Signale tout changement d'une table de l'école, d'où qu'il vienne : écriture
+// de ce poste ou d'un autre, promotion, transfert. `onChange` est appelée sans
+// argument, à l'appelant de relire (cf. suivreCompteur, qui coalesce).
+//   • Table du miroir PowerSync : on surveille le MIROIR, c'est lui que lisent
+//     les comptages. Les écritures de ce poste y passent d'abord, la sync y
+//     dépose celles des autres. Un événement Realtime peut au contraire
+//     précéder l'arrivée de la ligne dans le miroir : le recomptage relirait
+//     l'ancienne valeur.
+//   • Sinon : canal Realtime, plus un filet au retour réseau ou d'onglet — un
+//     événement manqué pendant une coupure n'est jamais rejoué, et la table
+//     peut ne pas être publiée (supabase/realtime.sql).
+export function surveillerTable(schoolCode, table, onChange) {
+  if (!supabaseConfigured || !schoolCode || !table || typeof onChange !== "function") return () => {};
+
+  if (powerSyncConfigured && estCouvertHorsLigne(table)) {
+    let annule = false;
+    let detacher = null;
+    import("./powersync/client").then(({ getPowerSync }) => {
+      if (annule) return;
+      detacher = getPowerSync().onChangeWithCallback({ onChange: () => onChange() }, { tables: [table] });
+    }).catch(() => { /* miroir indisponible : pas de mise à jour instantanée */ });
+    return () => { annule = true; detacher?.(); };
+  }
+
+  const auRetour = () => { if (document.visibilityState !== "hidden") onChange(); };
+  document.addEventListener("visibilitychange", auRetour);
+  window.addEventListener("online", auRetour);
+  const desabonner = subscribeTable(schoolCode, table, onChange);
+  return () => {
+    document.removeEventListener("visibilitychange", auRetour);
+    window.removeEventListener("online", auRetour);
+    desabonner();
+  };
+}

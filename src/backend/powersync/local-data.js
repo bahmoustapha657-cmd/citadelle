@@ -94,6 +94,14 @@ export async function supprimerLocalParFiltre(table, filtre) {
   });
 }
 
+// Nombre de lignes vérifiant des égalités (cf. compterElevesActifs) : seul le
+// total traverse le worker SQLite, jamais les lignes.
+export async function compterLocal(table, filtre) {
+  const { where, params } = clauseEgalites(filtre);
+  const { n } = await getPowerSync().get(`SELECT count(*) AS n FROM ${table} WHERE ${where}`, params);
+  return n;
+}
+
 // Lecture d'une seule ligne — utilisée pour le read-modify-write des colonnes
 // jsonb (modifierChampDoc), identique en ligne/hors ligne.
 export async function lireUneLocal(table, id) {
