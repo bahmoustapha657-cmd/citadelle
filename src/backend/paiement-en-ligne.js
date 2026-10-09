@@ -35,6 +35,14 @@ export const initierPaiement = ({ eleveId, cle, montant }) => appeler("initier",
 // { paiement: { reference, statut, montant, frais, lignes, motif… } }
 export const statutPaiement = (reference) => appeler("statut", { reference }).then((d) => d.paiement);
 
+// Comptabilité : redemande à l'opérateur les paiements restés en attente.
+// { verifies, bilan: { impute: n, echoue: n… } }
+export const rapprocherPaiements = () => appeler("rapprocher");
+
+// Comptabilité : « à vérifier » réglé à la main, avec une note.
+export const regulariserPaiement = (reference, note) =>
+  appeler("regulariser", { reference, note }).then((d) => d.paiement);
+
 export const simulerPaiement = (reference, resultat) =>
   appeler("simuler", { reference, resultat }).then((d) => d.paiement);
 

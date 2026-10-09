@@ -7,7 +7,8 @@
 import { test, expect } from "@playwright/test";
 import {
   COMPTABLE, DIRECTION, ECOLE, ELEVES, FRAIS_POURCENT, MENSUALITE, PARENT,
-  appelerPaiement, lireEleve, lirePaiementConfig, lirePaiements, lirePaiementsEnLigne, preparerPaiementEnLigne,
+  appelerPaiement, confirmerChezOperateurSansNotification, encaisserToutEnCaisse,
+  lireEleve, lirePaiementConfig, lirePaiements, lirePaiementsEnLigne, preparerPaiementEnLigne,
 } from "../donnees.js";
 import { ouvrirModule, seConnecter } from "../parcours.js";
 
@@ -152,13 +153,46 @@ test("le serveur refuse un montant au-delà du reste dû et l'élève d'une autr
   expect(await lirePaiementsEnLigne(autre.id)).toHaveLength(0);
 });
 
-test("le comptable retrouve le paiement encaissé dans l'onglet « En ligne »", async ({ page }) => {
-  const [encaisse] = (await lirePaiementsEnLigne(eleve.id)).filter((p) => p.statut === "impute");
-
+async function ouvrirEnLigne(page) {
   await seConnecter(page, COMPTABLE);
   await ouvrirModule(page, "Comptabilité");
   await page.getByRole("button", { name: "💳 En ligne", exact: true }).click();
+}
 
+test("confirmé chez l'opérateur mais notification perdue : rapproché à l'ouverture de l'onglet comptable", async ({ page }) => {
+  const { data } = await appelerPaiement(PARENT, { action: "initier", eleveId: eleve.id, cle: "mois", montant: MENSUALITE });
+  const { reference } = data;
+  await confirmerChezOperateurSansNotification(reference);
+  const payesAvant = moisPayes((await lireEleve(ELEVES[1].matricule)).extra?.mens).length;
+
+  await ouvrirEnLigne(page);
+  const ligne = page.getByRole("row").filter({ hasText: reference });
+  await expect(ligne).toContainText("Encaissé");
+  const [p] = (await lirePaiementsEnLigne(eleve.id)).filter((x) => x.reference === reference);
+  expect(p.statut).toBe("impute");
+  expect(moisPayes((await lireEleve(ELEVES[1].matricule)).extra?.mens)).toHaveLength(payesAvant + 1);
+});
+
+test("la caisse encaisse pendant que le parent paie : « à vérifier », rien d'imputé deux fois", async ({ page }) => {
+  await connecterParent(page);
+  const reference = await lancerPaiement(page);
+  // Pendant ce temps, au guichet : tous les mois sont encaissés en espèces.
+  await encaisserToutEnCaisse(ELEVES[1].matricule);
+  const journal = (await lirePaiements(eleve.id)).length;
+
+  await page.getByRole("button", { name: "Confirmer le paiement", exact: true }).click();
+  await expect(page.getByText(/Paiement reçu, mais il n'a pas pu être enregistré automatiquement/)).toBeVisible({ timeout: 30_000 });
+  const [p] = (await lirePaiementsEnLigne(eleve.id)).filter((x) => x.reference === reference);
+  expect(p.statut).toBe("a_verifier");
+  expect(await lirePaiements(eleve.id)).toHaveLength(journal);
+});
+
+test("le comptable retrouve les paiements et régularise celui « à vérifier »", async ({ page }) => {
+  const enLigne = await lirePaiementsEnLigne(eleve.id);
+  const [encaisse] = enLigne.filter((p) => p.statut === "impute");
+  const [aVerifier] = enLigne.filter((p) => p.statut === "a_verifier");
+
+  await ouvrirEnLigne(page);
   const ligne = page.getByRole("row").filter({ hasText: encaisse.reference });
   await expect(ligne).toHaveCount(1);
   await expect(ligne).toContainText(ELEVES[1].nom);
@@ -166,4 +200,19 @@ test("le comptable retrouve le paiement encaissé dans l'onglet « En ligne »",
   await expect(ligne).toContainText(montant(MENSUALITE));
   // Le paiement refusé figure aussi, sans rien encaisser.
   await expect(page.getByRole("row").filter({ hasText: "Non abouti" })).toHaveCount(1);
+
+  // « À vérifier » : signalé, puis régularisé avec une note.
+  await expect(page.getByText("1 paiement(s) à vérifier")).toBeVisible();
+  const ligneAVerifier = page.getByRole("row").filter({ hasText: aVerifier.reference });
+  await expect(ligneAVerifier).toContainText("déjà encaissé en caisse entre-temps");
+  await ligneAVerifier.getByRole("button", { name: "Régulariser", exact: true }).click();
+  await page.getByLabel("Qu'avez-vous fait de ce paiement ?").fill("Remboursé au parent en espèces");
+  await page.getByRole("button", { name: "Marquer régularisé", exact: true }).click();
+  await expect(ligneAVerifier).toContainText("Régularisé");
+  await expect(ligneAVerifier).toContainText("Remboursé au parent en espèces");
+  await expect(page.getByText(/paiement\(s\) à vérifier/)).toHaveCount(0);
+
+  const [regularise] = (await lirePaiementsEnLigne(eleve.id)).filter((p) => p.reference === aVerifier.reference);
+  expect(regularise.statut).toBe("regularise");
+  expect(regularise.detail.regularisation.note).toBe("Remboursé au parent en espèces");
 });

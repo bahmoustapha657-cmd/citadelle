@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { fmt } from "../../constants";
-import { Badge, Btn, Card, TD, THead, TR } from "../ui";
-import { listerPaiementsEnLigne } from "../../backend/paiement-en-ligne";
+import { Badge, Btn, Card, Modale, TD, THead, TR } from "../ui";
+import { listerPaiementsEnLigne, rapprocherPaiements, regulariserPaiement } from "../../backend/paiement-en-ligne";
 
 const STATUTS = {
   impute: { label: "Encaissé", color: "green" },
   en_attente: { label: "En attente", color: "blue" },
   echoue: { label: "Non abouti", color: "gray" },
   a_verifier: { label: "À vérifier", color: "amber" },
+  regularise: { label: "Régularisé", color: "gray" },
 };
 
 const MOTIFS = {
@@ -28,20 +29,27 @@ const dateCourte = (iso) => (iso ? new Date(iso).toLocaleString("fr-FR", { dateS
 // Les paiements « Encaissé » sont DÉJÀ sur la fiche de l'élève et au journal
 // de caisse (imputation automatique). « À vérifier » : l'argent est reçu
 // sur le compte de l'école mais n'a pas pu s'appliquer tel quel — au
-// comptable de l'affecter (Mensualités → Encaisser) ou de le rembourser.
-export function PaiementsEnLigneTab() {
+// comptable de l'affecter (Mensualités → Encaisser) ou de le rembourser,
+// puis de le marquer « Régularisé » avec une note.
+// À chaque ouverture (et « ↻ Actualiser »), les paiements restés « en
+// attente » sont redemandés à l'opérateur : une notification perdue ne
+// laisse pas un paiement reçu sans écriture.
+export function PaiementsEnLigneTab({ peutEcrire = false }) {
   const [paiements, setPaiements] = useState(null);
   const [erreur, setErreur] = useState("");
+  const [aRegulariser, setARegulariser] = useState(null);
   // « ↻ Actualiser » incrémente ce compteur, qui relance le chargement.
   const [tour, setTour] = useState(0);
   const charger = useCallback(() => setTour((n) => n + 1), []);
   useEffect(() => {
     let actif = true;
-    listerPaiementsEnLigne()
+    // Rapprochement d'abord (sans bloquer la liste s'il échoue).
+    const rapprocher = peutEcrire ? rapprocherPaiements().catch(() => null) : Promise.resolve();
+    rapprocher.then(() => listerPaiementsEnLigne())
       .then((liste) => { if (actif) { setPaiements(liste); setErreur(""); } })
       .catch((e) => { if (actif) setErreur(e.message); });
     return () => { actif = false; };
-  }, [tour]);
+  }, [tour, peutEcrire]);
 
   const aVerifier = (paiements || []).filter((p) => p.statut === "a_verifier");
   const encaisses = (paiements || []).filter((p) => p.statut === "impute");
@@ -60,7 +68,7 @@ export function PaiementsEnLigneTab() {
       {aVerifier.length > 0 && (
         <div style={{ padding: "10px 14px", marginBottom: 14, borderRadius: 10, background: "#fef3c7", color: "#92400e", fontSize: 13 }}>
           ⚠️ <strong>{aVerifier.length} paiement(s) à vérifier</strong> : l'argent est reçu mais n'a pas pu être enregistré automatiquement.
-          Affectez-le depuis Mensualités → Encaisser, ou remboursez le parent.
+          Affectez-le depuis Mensualités → Encaisser, ou remboursez le parent, puis cliquez « Régulariser ».
         </div>
       )}
 
@@ -98,6 +106,17 @@ export function PaiementsEnLigneTab() {
                         <Badge color={s.color}>{s.label}</Badge>
                         {p.detail?.operateur && <span style={{ display: "block", fontSize: 11, color: "#64748b", marginTop: 3 }}>{p.detail.operateur}</span>}
                         {p.statut === "a_verifier" && motif && <span style={{ display: "block", fontSize: 11, color: "#92400e", marginTop: 3 }}>{MOTIFS[motif] || motif}</span>}
+                        {p.statut === "a_verifier" && peutEcrire && (
+                          <span style={{ display: "block", marginTop: 6 }}>
+                            <Btn sm v="ghost" onClick={() => setARegulariser(p)}>Régulariser</Btn>
+                          </span>
+                        )}
+                        {p.statut === "regularise" && p.detail?.regularisation && (
+                          <span style={{ display: "block", fontSize: 11, color: "#64748b", marginTop: 3 }}>
+                            {p.detail.regularisation.note}
+                            {p.detail.regularisation.nom ? ` — ${p.detail.regularisation.nom}` : ""}, {dateCourte(p.detail.regularisation.le)}
+                          </span>
+                        )}
                       </TD>
                       <TD><span style={{ fontFamily: "monospace", fontSize: 11 }}>{p.reference}</span></TD>
                     </TR>
@@ -108,6 +127,47 @@ export function PaiementsEnLigneTab() {
           </div>
         </Card>
       )}
+      {aRegulariser && (
+        <RegulariserModale paiement={aRegulariser} fermer={() => setARegulariser(null)}
+          termine={() => { setARegulariser(null); charger(); }} />
+      )}
     </div>
+  );
+}
+
+// Note obligatoire : ce que le comptable a fait de l'argent (gardée avec le
+// paiement, visible de tous les comptables).
+function RegulariserModale({ paiement, fermer, termine }) {
+  const [note, setNote] = useState("");
+  const [erreur, setErreur] = useState("");
+  const [enCours, setEnCours] = useState(false);
+  const valider = async () => {
+    setEnCours(true); setErreur("");
+    try {
+      await regulariserPaiement(paiement.reference, note);
+      termine();
+    } catch (e) {
+      setErreur(e.message);
+      setEnCours(false);
+    }
+  };
+  const nom = `${paiement.eleves?.nom || ""} ${paiement.eleves?.prenom || ""}`.trim() || paiement.eleve_nom || "";
+  return (
+    <Modale titre="Régulariser un paiement en ligne" fermer={fermer}>
+      <p style={{ margin: "0 0 10px", fontSize: 13 }}>
+        {nom} · <strong>{fmt(Number(paiement.montant))}</strong> · réf. <span style={{ fontFamily: "monospace" }}>{paiement.reference}</span>
+      </p>
+      <label htmlFor="note-regularisation" style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 4 }}>
+        Qu'avez-vous fait de ce paiement ?
+      </label>
+      <textarea id="note-regularisation" rows={3} value={note} onChange={(e) => setNote(e.target.value)}
+        placeholder="Ex. : affecté au mois d'octobre en caisse ; remboursé au parent le 12/10"
+        style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 8, border: "1.5px solid #cbd5e1", fontSize: 13 }} />
+      {erreur && <p style={{ margin: "8px 0 0", fontSize: 13, color: "#b91c1c" }}>{erreur}</p>}
+      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 14 }}>
+        <Btn v="ghost" onClick={fermer}>Annuler</Btn>
+        <Btn onClick={valider} disabled={enCours || note.trim().length < 3}>{enCours ? "Enregistrement…" : "Marquer régularisé"}</Btn>
+      </div>
+    </Modale>
   );
 }

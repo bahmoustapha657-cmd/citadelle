@@ -8,6 +8,10 @@
 //   statut   { reference }          → où en est ce paiement (vérifie auprès
 //                                      de l'opérateur s'il est en attente)
 //   simuler  { reference, resultat } → fournisseur « simulation » seulement
+//   rapprocher                      → redemande à l'opérateur les paiements
+//                                      restés en attente (comptabilité)
+//   regulariser { reference, note } → « à vérifier » réglé à la main
+//                                      (comptabilité)
 //   config                          → réglages de l'école, identifiants
 //                                      MASQUÉS (direction)
 //   configurer { fournisseur, mode, actif, fraisPourcent, identifiants }
@@ -46,6 +50,11 @@ const cors = {
   "Access-Control-Allow-Headers": "authorization, content-type, apikey, x-client-info, x-supabase-api-version",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
+// Rapprochement : les paiements en attente des derniers jours, les plus
+// récents d'abord (au-delà, l'opérateur les a expirés).
+const RAPPROCHEMENT_JOURS = 7;
+const RAPPROCHEMENT_MAX = 20;
+
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { ...cors, "Content-Type": "application/json" } });
 const refus = (message: string, s = 403) => json({ ok: false, error: message }, s);
 
@@ -58,6 +67,7 @@ function vue(p: PaiementLigne & Record<string, unknown>) {
     montant: Number(p.montant), frais: Number(p.frais), devise: p.devise,
     cible: p.cible, eleveId: p.eleve_id, lien: p.lien ?? null,
     lignes: d.lignes ?? [], operateur: d.operateur ?? null, motif: d.motif ?? null,
+    regularisation: d.regularisation ?? null,
     creeLe: p.created_at, imputeLe: p.impute_le ?? null,
   };
 }
@@ -210,6 +220,44 @@ Deno.serve(async (req) => {
       }
       const apres = await lireParReference(admin, p.reference);
       return json({ ok: true, paiement: vue(apres as PaiementLigne & Record<string, unknown>) });
+    }
+
+    // ── Suivi comptable ──
+    if (action === "rapprocher" || action === "regulariser") {
+      const { data: ecritCompta } = await client.rpc("has_module_write", { p_module: "compta" });
+      if (compte.role === "parent" || ecritCompta !== true) return refus("Réservé à la comptabilité.");
+
+      if (action === "rapprocher") {
+        // Paiements restés « en attente » (notification de l'opérateur
+        // perdue, parent parti avant la fin) : redemandés à l'opérateur.
+        const { data: enAttente, error } = await admin.from("paiements_en_ligne").select("*")
+          .eq("ecole_id", compte.ecole_id).eq("statut", "en_attente")
+          .gte("created_at", new Date(Date.now() - RAPPROCHEMENT_JOURS * 86_400_000).toISOString())
+          .order("created_at", { ascending: false }).limit(RAPPROCHEMENT_MAX);
+        if (error) throw error;
+        const bilan: Record<string, number> = {};
+        for (const p of (enAttente || []) as PaiementLigne[]) {
+          let statut = "en_attente";
+          try { statut = await verifierEtAppliquer(admin, p); } catch (e) { console.warn("paiement: rapprochement reporté", (e as Error).message); }
+          bilan[statut] = (bilan[statut] || 0) + 1;
+        }
+        return json({ ok: true, verifies: (enAttente || []).length, bilan });
+      }
+
+      // Régulariser : un paiement « à vérifier » réglé à la main (affecté en
+      // caisse ou remboursé) — avec une note, gardée dans le détail.
+      const note = String(corps.note || "").trim().slice(0, 500);
+      if (note.length < 3) return refus("Expliquez la régularisation (affecté à…, remboursé le…).", 400);
+      const p = await lireParReference(admin, String(corps.reference || ""));
+      if (!p || p.ecole_id !== compte.ecole_id) return refus("Paiement introuvable.", 404);
+      if (p.statut !== "a_verifier") return refus("Seul un paiement « à vérifier » se régularise.", 400);
+      const regularisation = { note, par: compte.id, nom: compte.nom || null, le: new Date().toISOString() };
+      const { data: maj, error } = await admin.from("paiements_en_ligne")
+        .update({ statut: "regularise", detail: { ...(p.detail || {}), regularisation } })
+        .eq("id", p.id).eq("statut", "a_verifier").select("*").maybeSingle();
+      if (error) throw error;
+      if (!maj) return refus("Ce paiement vient d'être modifié : actualisez.", 409);
+      return json({ ok: true, paiement: vue(maj as PaiementLigne & Record<string, unknown>) });
     }
 
     return refus("Action inconnue.", 400);

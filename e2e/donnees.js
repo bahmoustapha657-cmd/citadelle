@@ -5,6 +5,7 @@
 // `supabase status` (cf. job e2e de .github/workflows/ci.yml).
 import { createClient } from "@supabase/supabase-js";
 import { toRow } from "../src/backend/collection-map.js";
+import { calcMoisAnnee } from "../src/constants.js";
 import { payloadCompteParent } from "../src/comptes-parents.js";
 import { emailFor } from "../supabase/_brand.mjs";
 
@@ -213,6 +214,28 @@ export async function appelerPaiement(compte, corps) {
     body: JSON.stringify(corps),
   });
   return { status: r.status, data: await r.json().catch(() => ({})) };
+}
+
+// « Un autre poste » encaisse en caisse TOUS les mois de l'élève pendant
+// que le parent est sur la page de paiement.
+export async function encaisserToutEnCaisse(matricule) {
+  const admin = clientAdmin();
+  const { extra: ecole } = await lireEcole();
+  const eleve = await lireEleve(matricule);
+  const mens = Object.fromEntries(calcMoisAnnee(ecole?.moisDebut || "Octobre").map((m) => [m, "Payé"]));
+  const { error } = await admin.from("eleves").update({ extra: { ...(eleve.extra || {}), mens } }).eq("id", eleve.id);
+  if (error) throw error;
+}
+
+// L'opérateur (simulé) confirme le paiement, mais sa notification se perd
+// et le parent ne revient pas : seul le rapprochement peut le voir.
+export async function confirmerChezOperateurSansNotification(reference) {
+  const admin = clientAdmin();
+  const { data: p, error } = await admin.from("paiements_en_ligne").select("detail").eq("reference", reference).single();
+  if (error) throw error;
+  const { error: errMaj } = await admin.from("paiements_en_ligne")
+    .update({ detail: { ...(p.detail || {}), simulation: "reussi" } }).eq("reference", reference);
+  if (errMaj) throw errMaj;
 }
 
 export async function lirePaiementsEnLigne(eleveId) {
