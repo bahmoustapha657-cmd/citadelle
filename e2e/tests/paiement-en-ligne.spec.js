@@ -60,7 +60,7 @@ test("la direction active le paiement en ligne dans Paramètres (identifiants in
 
   // CinetPay en production avec une clé de TEST : refusé avant tout appel
   // à l'opérateur, rien n'est enregistré.
-  const operateur = page.getByLabel("Opérateur");
+  const operateur = page.getByLabel("Opérateur", { exact: true });
   await operateur.selectOption("cinetpay");
   await page.getByLabel("Production (encaissements réels)").check();
   await page.getByLabel("Clé API").fill("sk_test_e2e_factice_0000");
