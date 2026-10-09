@@ -2,7 +2,8 @@
 //  EduGest — Edge Function PUBLIQUE : notifications des opérateurs
 // ════════════════════════════════════════════════════════════════════════
 // L'agrégateur appelle cette adresse quand un paiement change d'état
-// (?fournisseur=<nom>). Aucune session : c'est la signature, contrôlée avec
+// (?fournisseur=<nom>). Elle sert aussi d'adresse de RETOUR du parent
+// (?retour=<référence>), redirigé vers l'app. Aucune session : c'est la signature, contrôlée avec
 // les identifiants de l'école, qui authentifie l'appel — et même signée, la
 // notification n'est jamais crue sur parole : le paiement est VÉRIFIÉ auprès
 // de l'API de l'opérateur avant d'être imputé.
@@ -15,6 +16,7 @@ import { lireConfig, lireParReference, verifierEtAppliquer } from "../_shared/pa
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const APP_URL = (Deno.env.get("APP_URL") ?? "https://edugest-gn.pages.dev").replace(/\/+$/, "");
 
 // Corps de la notification, quel que soit son format (formulaire, JSON,
 // paramètres d'adresse).
@@ -34,6 +36,19 @@ async function lireCorps(req: Request): Promise<Record<string, string>> {
 }
 
 Deno.serve(async (req) => {
+  // Retour du PARENT depuis la page de l'opérateur (?retour=<référence>),
+  // en GET ou en POST selon l'opérateur — un POST vers le site statique de
+  // l'app serait refusé. Renvoyé vers l'app, qui vérifie elle-même le
+  // paiement (rien n'est cru ici).
+  const retour = new URL(req.url).searchParams.get("retour");
+  if (retour !== null) {
+    const reference = /^EDU[0-9A-Z]{4,27}$/.test(retour) ? retour : "";
+    return new Response(null, {
+      status: 303,
+      headers: { Location: `${APP_URL}/${reference ? `?paiement=${reference}` : ""}` },
+    });
+  }
+
   // Réponse toujours brève et identique : rien n'est révélé à un appelant.
   const ok = () => new Response("OK", { status: 200 });
   try {
@@ -48,7 +63,7 @@ Deno.serve(async (req) => {
     if (!p || p.fournisseur !== nom) return ok();
     const config = await lireConfig(admin, p.ecole_id);
     if (!config) return ok();
-    if (f.signatureValide && !(await f.signatureValide(corps, req.headers, config))) {
+    if (f.signatureValide && !(await f.signatureValide(corps, req.headers, config, p))) {
       console.warn("paiement-notification: signature invalide", nom);
       return ok();
     }

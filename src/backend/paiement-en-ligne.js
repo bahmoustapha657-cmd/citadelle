@@ -14,11 +14,20 @@ async function appeler(action, corps = {}) {
   return data;
 }
 
-// { actif, fournisseur, libelle, fraisPourcent, mode }
+// { actif, fournisseur, libelle, fraisPourcent, mode, plafond }
+// plafond : plus grosse scolarité payable en une fois (null = sans limite).
 export const etatPaiementEnLigne = () => appeler("etat");
 
-// { annee, cibles: [{ cle, label, detail, reste, propose }], fraisPourcent }
+// { annee, cibles: [{ cle, label, detail, reste, propose }], fraisPourcent, plafond }
 export const ciblesPaiement = (eleveId) => appeler("cibles", { eleveId });
+
+// Direction : réglages de l'école, identifiants MASQUÉS
+// { fournisseur, mode, actif, fraisPourcent, cle, motDePassePose, fournisseurs }
+export const lireConfigPaiement = () => appeler("config").then((d) => d.config);
+
+// Direction : enregistre (identifiants essayés auprès de l'opérateur si
+// actif). Un identifiant laissé vide garde la valeur enregistrée.
+export const configurerPaiement = (saisie) => appeler("configurer", saisie).then((d) => d.config);
 
 // { reference, lien, montant, frais, total }
 export const initierPaiement = ({ eleveId, cle, montant }) => appeler("initier", { eleveId, cle, montant });

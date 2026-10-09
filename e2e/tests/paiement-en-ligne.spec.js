@@ -1,12 +1,13 @@
-// Paiement en ligne (Mobile Money) par le fournisseur « simulation » : le
-// parent de BAH paie une mensualité depuis son portail, le paiement est
+// Paiement en ligne (Mobile Money) par le fournisseur « simulation » : la
+// direction l'active dans Paramètres, le parent de BAH paie une mensualité
+// depuis son portail, le paiement est
 // imputé AUTOMATIQUEMENT avec les règles de la caisse (fiche + journal), une
 // seule fois, et le comptable le retrouve dans l'onglet « 💳 En ligne ».
 // On vérifie l'écran ET la base, comme encaissement.spec.js.
 import { test, expect } from "@playwright/test";
 import {
-  COMPTABLE, ECOLE, ELEVES, FRAIS_POURCENT, MENSUALITE, PARENT,
-  appelerPaiement, lireEleve, lirePaiements, lirePaiementsEnLigne, preparerPaiementEnLigne,
+  COMPTABLE, DIRECTION, ECOLE, ELEVES, FRAIS_POURCENT, MENSUALITE, PARENT, SUPABASE_URL,
+  appelerPaiement, lireEleve, lirePaiementConfig, lirePaiements, lirePaiementsEnLigne, preparerPaiementEnLigne,
 } from "../donnees.js";
 import { ouvrirModule, seConnecter } from "../parcours.js";
 
@@ -49,6 +50,37 @@ test.beforeAll(async () => {
   eleve = await lireEleve(ELEVES[1].matricule);
   expect(moisPayes(eleve.extra?.mens)).toEqual([]);
   journalAvant = (await lirePaiements(eleve.id)).length;
+});
+
+test("la direction active le paiement en ligne dans Paramètres (identifiants incohérents refusés)", async ({ page }) => {
+  expect(await lirePaiementConfig()).toBeNull();
+  await seConnecter(page, DIRECTION);
+  await ouvrirModule(page, "Paramètres");
+  await page.getByRole("button", { name: /Paiement en ligne/ }).click();
+
+  // CinetPay en production avec une clé de TEST : refusé avant tout appel
+  // à l'opérateur, rien n'est enregistré.
+  const operateur = page.getByLabel("Opérateur", { exact: true });
+  await operateur.selectOption("cinetpay");
+  await page.getByLabel("Production (encaissements réels)").check();
+  await page.getByLabel("Clé API").fill("sk_test_e2e_factice_0000");
+  await page.getByLabel("Mot de passe API").fill("factice");
+  await page.getByLabel("Activer le paiement en ligne pour les parents").check();
+  const enregistrer = page.getByRole("button", { name: "💾 Enregistrer le paiement en ligne" });
+  await enregistrer.click();
+  await expect(page.getByText(/utilisez la clé sk_live_/)).toBeVisible();
+  expect(await lirePaiementConfig()).toBeNull();
+
+  // Fournisseur « simulation » (proposé seulement si PAIEMENT_SIMULATION
+  // est posée sur la pile), frais à la charge du parent : activé.
+  await operateur.selectOption("simulation");
+  await page.getByLabel("Test (aucun argent réel)").check();
+  await page.getByLabel(/Frais de l'opérateur/).fill(String(FRAIS_POURCENT));
+  await enregistrer.click();
+  await expect(page.getByText(/Paiement en ligne activé/)).toBeVisible();
+  const config = await lirePaiementConfig();
+  expect(config).toMatchObject({ fournisseur: "simulation", mode: "test", actif: true, identifiants: {} });
+  expect(Number(config.frais_pourcent)).toBe(FRAIS_POURCENT);
 });
 
 test("le parent paie une mensualité en ligne : imputée sur la fiche et au journal, une seule fois", async ({ page }) => {
@@ -119,6 +151,20 @@ test("le serveur refuse un montant au-delà du reste dû et l'élève d'une autr
   const intrus = await appelerPaiement(PARENT, { action: "initier", eleveId: autre.id, cle: "mois", montant: MENSUALITE });
   expect(intrus.status).toBe(403);
   expect(await lirePaiementsEnLigne(autre.id)).toHaveLength(0);
+});
+
+test("retour du parent depuis la page de l'opérateur : GET ou POST, sans session, redirigé vers l'app", async () => {
+  const adresse = `${SUPABASE_URL}/functions/v1/paiement-notification?retour=EDUMG1TEST01`;
+  for (const method of ["GET", "POST"]) {
+    const r = await fetch(adresse, { method, redirect: "manual", body: method === "POST" ? "transaction_id=CP1" : undefined,
+      headers: method === "POST" ? { "Content-Type": "application/x-www-form-urlencoded" } : {} });
+    expect(r.status, method).toBe(303);
+    expect(r.headers.get("location")).toMatch(/\/\?paiement=EDUMG1TEST01$/);
+  }
+  // Référence douteuse : retour à l'accueil de l'app, sans paramètre.
+  const douteux = await fetch(`${SUPABASE_URL}/functions/v1/paiement-notification?retour=%3Cscript%3E`, { redirect: "manual" });
+  expect(douteux.status).toBe(303);
+  expect(douteux.headers.get("location")).toMatch(/\/$/);
 });
 
 test("le comptable retrouve le paiement encaissé dans l'onglet « En ligne »", async ({ page }) => {

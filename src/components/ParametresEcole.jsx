@@ -8,6 +8,7 @@ import { EvaluationsTab } from "./parametres/EvaluationsTab";
 import { AccueilTab } from "./parametres/AccueilTab";
 import { OfficielTab } from "./parametres/OfficielTab";
 import { NotificationsTab } from "./parametres/NotificationsTab";
+import { PaiementEnLigneTab } from "./parametres/PaiementEnLigneTab";
 import { DangerTab } from "./parametres/DangerTab";
 import { MonnaieComptableView } from "./parametres/MonnaieComptableView";
 import { useParametresEcole } from "./parametres/use-parametres-ecole";
@@ -103,6 +104,7 @@ function ParametresEcole({ utilisateurRole = "", onSchoolClosed = null, initialT
 
       {tabParam==="matricules"&&<MatriculeSettings sec={sec} lbl={lbl} inp={inp} setMsgSucces={setMsgSucces} setErreur={setErreur}/>}
       {tabParam==="notifications"&&<NotificationsTab schoolId={schoolId} schoolInfo={schoolInfo} toast={toast} sec={sec} lbl={lbl}/>}
+      {tabParam==="paiement" && canManageLifecycle && <PaiementEnLigneTab sec={sec} lbl={lbl} toast={toast}/>}
       {tabParam==="affichage"&&<AffichageSettings sec={sec} lbl={lbl} inp={inp} setMsgSucces={setMsgSucces} setErreur={setErreur}/>}
 
       {tabParam==="danger" && canManageLifecycle && (

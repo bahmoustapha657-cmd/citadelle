@@ -6,6 +6,7 @@
 // envoie des notifications, en extraire la référence et en contrôler la
 // signature. Ajouter un opérateur = ajouter une entrée ici, rien d'autre.
 import type { PaiementLigne, Verification } from "./regles.ts";
+import * as cinetpay from "./cinetpay.ts";
 
 export type Config = {
   fournisseur: string;
@@ -22,6 +23,11 @@ export type Creation = {
   description: string;
   origine: string; // adresse de l'app (retour du parent)
   urlNotification: string;
+  // Adresse de retour du parent via le serveur (accepte GET et POST, puis
+  // redirige vers l'app) ; à défaut, l'app directement.
+  urlRetour?: string;
+  // Payeur (le compte qui paie), quand l'opérateur l'exige.
+  client?: { prenom?: string; nom?: string; email?: string };
   config: Config;
 };
 
@@ -29,12 +35,22 @@ export interface Fournisseur {
   nom: string;
   // Libellé montré au parent.
   libelle: string;
+  // Bornes d'UN paiement (frais compris), si l'opérateur en impose.
+  montantMin?: number;
+  montantMax?: number;
+  // Identifiants de l'école incomplets ou incohérents avec le mode : la
+  // raison en clair, sinon null. `tester` les essaie auprès de l'opérateur
+  // avant qu'ils soient enregistrés.
+  probleme?(config: Pick<Config, "mode" | "identifiants">): string | null;
+  tester?(config: Pick<Config, "mode" | "identifiants">): Promise<void>;
   creer(c: Creation): Promise<{ lien: string; detail?: Record<string, unknown> }>;
   verifier(p: PaiementLigne, config: Config): Promise<Verification>;
   // Notification entrante : référence du paiement concerné (null si illisible).
   referenceNotification?(corps: Record<string, string>): string | null;
   // Signature de la notification, contrôlée avec les identifiants de l'école.
-  signatureValide?(corps: Record<string, string>, entetes: Headers, config: Config): Promise<boolean>;
+  // `p` : le paiement visé, pour comparer à ce que l'opérateur a remis à
+  // la création.
+  signatureValide?(corps: Record<string, string>, entetes: Headers, config: Config, p: PaiementLigne): Promise<boolean>;
 }
 
 // ── Simulation ─────────────────────────────────────────────────────────────
@@ -62,7 +78,34 @@ const simulation: Fournisseur = {
   },
 };
 
-export const FOURNISSEURS: Record<string, Fournisseur> = { simulation };
+// ── CinetPay ───────────────────────────────────────────────────────────────
+// Orange Money et MTN MoMo (Guinée : OM_GN, MTN_GN, en GNF), sur le compte
+// marchand de l'école. Détails de l'API dans cinetpay.ts.
+const ids = (config: Pick<Config, "identifiants">) => (config.identifiants || {}) as cinetpay.IdentifiantsCinetpay;
+
+const cinetpayFournisseur: Fournisseur = {
+  nom: "cinetpay",
+  libelle: "Orange Money / MTN MoMo (CinetPay)",
+  montantMin: cinetpay.MONTANT_MIN,
+  montantMax: cinetpay.MONTANT_MAX,
+  probleme: (config) => cinetpay.problemeIdentifiants(ids(config), config.mode),
+  async tester(config) {
+    cinetpay.oublierJeton(ids(config));
+    await cinetpay.jetonAcces(ids(config));
+  },
+  async creer(c) {
+    const probleme = cinetpay.problemeIdentifiants(ids(c.config), c.config.mode);
+    if (probleme) throw new Error(probleme);
+    return cinetpay.creerPaiement(ids(c.config), cinetpay.corpsPaiement(c));
+  },
+  verifier: (p, config) => cinetpay.verifierPaiement(ids(config), p.reference),
+  referenceNotification: (corps) => corps.merchant_transaction_id || null,
+  async signatureValide(corps, _entetes, _config, p) {
+    return cinetpay.jetonNotificationValide(corps.notify_token, (p.detail || {}).notify_token);
+  },
+};
+
+export const FOURNISSEURS: Record<string, Fournisseur> = { simulation, cinetpay: cinetpayFournisseur };
 
 export function fournisseur(nom: string): Fournisseur {
   const f = FOURNISSEURS[nom];

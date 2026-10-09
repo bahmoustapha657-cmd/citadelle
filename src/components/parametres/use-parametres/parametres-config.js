@@ -108,6 +108,10 @@ export function buildTabItems(canManageLifecycle) {
       desc: "Format et numérotation des matricules élèves." },
     { id: "notifications", label: "Notifications", icon: "🔔", groupe: "École",
       desc: "Alertes SMS / WhatsApp aux tuteurs : paiements, absences et annonces." },
+    // Identifiants du compte marchand : direction seulement (le serveur
+    // refuse les autres comptes).
+    ...(canManageLifecycle ? [{ id: "paiement", label: "Paiement en ligne", icon: "💳", groupe: "École",
+      desc: "Orange Money / MTN MoMo : les parents paient la scolarité depuis leur téléphone, sur le compte de l'école." }] : []),
     { id: "accueil", label: "Page publique", icon: "🌍", groupe: "Présentation",
       desc: "Site vitrine de l'école : bannière, photos, annonces, tableau d'honneur et contact." },
     { id: "affichage", label: "Affichage", icon: "🎨", groupe: "Présentation",

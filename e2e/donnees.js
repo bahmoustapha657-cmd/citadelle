@@ -172,18 +172,12 @@ export async function lirePaiements(eleveId) {
   return data;
 }
 
-// Paiement en ligne ouvert à l'école de test (fournisseur « simulation »,
-// autorisé par PAIEMENT_SIMULATION sur la pile locale seulement) et compte
-// parent de BAH, créé par la direction comme depuis la fiche élève.
-// Idempotent.
+// Compte parent de BAH, créé par la direction comme depuis la fiche élève
+// (le paiement en ligne, lui, est activé par la direction À L'ÉCRAN dans
+// paiement-en-ligne.spec.js). Idempotent.
 export async function preparerPaiementEnLigne() {
   const admin = clientAdmin();
   const id = await ecoleId(admin);
-  const { error: errConfig } = await admin.from("paiement_config").upsert({
-    ecole_id: id, fournisseur: "simulation", mode: "test", actif: true, frais_pourcent: FRAIS_POURCENT,
-  });
-  if (errConfig) throw new Error(`paiement_config : ${errConfig.message}`);
-
   const { data: existe } = await admin.from("comptes").select("id").eq("ecole_id", id).eq("login", PARENT.login).maybeSingle();
   if (!existe) {
     const eleve = await lireEleve(ELEVES[1].matricule);
@@ -197,13 +191,15 @@ export async function preparerPaiementEnLigne() {
     await appelerFonction("account-manage", { action: "create", ...compte }, session.access_token);
   }
   await admin.from("comptes").update({ premiere_co: false }).eq("ecole_id", id).eq("login", PARENT.login);
+}
 
-  // Sans PAIEMENT_SIMULATION côté Edge Functions, le bouton « Payer en
-  // ligne » n'apparaîtrait pas : le dire tout de suite.
-  const { data: etat } = await appelerPaiement(PARENT, { action: "etat" });
-  if (!etat?.actif) {
-    throw new Error("Paiement en ligne fermé pour l'école de test : PAIEMENT_SIMULATION=autorisee absent de supabase/functions/.env ?");
-  }
+// Réglages de paiement de l'école de test (service_role : la table est
+// fermée au navigateur).
+export async function lirePaiementConfig() {
+  const admin = clientAdmin();
+  const { data, error } = await admin.from("paiement_config").select("*").eq("ecole_id", await ecoleId(admin)).maybeSingle();
+  if (error) throw error;
+  return data;
 }
 
 // Appel direct de l'Edge Function `paiement` au nom d'un compte, SANS lever

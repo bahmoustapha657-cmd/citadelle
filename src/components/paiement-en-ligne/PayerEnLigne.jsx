@@ -56,7 +56,11 @@ function PayerModale({ eleve, etat, c1, fermer }) {
   const cible = (cibles || []).find((c) => c.cle === cle);
   const somme = Math.round(Number(montant) || 0);
   const frais = fraisPaiement(somme, etat.fraisPourcent);
-  const valide = cible && somme > 0 && somme <= cible.reste;
+  // Plafond de l'opérateur par paiement (frais compris) : au-delà, en
+  // plusieurs fois.
+  const plafond = etat.plafond ?? null;
+  const tropPourUneFois = plafond !== null && somme > plafond;
+  const valide = cible && somme > 0 && somme <= cible.reste && !tropPourUneFois;
 
   const payer = async () => {
     if (!valide || enCours) return;
@@ -98,6 +102,11 @@ function PayerModale({ eleve, etat, c1, fermer }) {
             onChange={(e) => setMontant(e.target.value.replace(/[^\d]/g, ""))}
             style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 8, border: "1.5px solid #cbd5e1", fontSize: 16, fontWeight: 700 }} />
           {cible && somme > cible.reste && <p style={{ margin: "6px 0 0", fontSize: 12, color: "#b91c1c" }}>Au plus {fmt(cible.reste)} sur ce choix.</p>}
+          {cible && somme <= cible.reste && tropPourUneFois && (
+            <p style={{ margin: "6px 0 0", fontSize: 12, color: "#b91c1c" }}>
+              Au plus {fmt(plafond)} par paiement en ligne : payez en plusieurs fois.
+            </p>
+          )}
           <div style={{ marginTop: 14, padding: "10px 12px", borderRadius: 10, background: "#f8fafc", fontSize: 13, lineHeight: 1.7 }}>
             <div style={{ display: "flex", justifyContent: "space-between" }}><span>Scolarité</span><strong>{fmt(somme)}</strong></div>
             <div style={{ display: "flex", justifyContent: "space-between", color: "#64748b" }}>
