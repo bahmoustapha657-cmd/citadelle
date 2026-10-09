@@ -1,18 +1,18 @@
 # EduGest sur Supabase — état du branchement frontend
 
-Reconstruction **parallèle** : le frontend React peut tourner sur **Firebase** (défaut, prod) ou **Supabase**, via un simple interrupteur. Rien n'est imposé en prod.
+Le frontend React tourne **uniquement** sur Supabase : l'ancienne version
+Firebase et son interrupteur `VITE_BACKEND` ont été retirés en octobre 2026
+(cf. [docs/retrait-firebase.md](../docs/retrait-firebase.md)).
 
-## Activer le mode Supabase (local)
+## Lancer en local
 
-Dans `.env.local`, puis redémarrer `npm run dev` :
+Dans `.env.local`, puis redémarrer `npm run dev` (ou `npx vite --mode
+supabase`, qui lit `.env.supabase`) :
 
 ```
-VITE_BACKEND=supabase
 VITE_SUPABASE_URL=https://pfzanslrcowkjjipuzpa.supabase.co
 VITE_SUPABASE_ANON_KEY=<clé anon publique>
 ```
-
-Défaut sans ces variables = `firebase` (prod intacte). Interrupteur : `src/backend.js`.
 
 ## Pré-requis base de données (SQL Editor, dans l'ordre)
 
@@ -64,13 +64,12 @@ workflow sur master). Procédure complète, retour arrière et secours :
 [docs/deploiement.md](../docs/deploiement.md). `npm run deploy:pages` n'est plus
 qu'une voie de secours, qui refuse tout autre état que master propre = origin/master.
 
-- `.env.supabase` (commité — la clé anon est publique) fournit `VITE_BACKEND`,
+- `.env.supabase` (commité — la clé anon est publique) fournit
   `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_POWERSYNC_URL` et
   `VITE_VAPID_PUBLIC_KEY` au mode `supabase` de Vite. Tout ce dont le build de
   production a besoin doit y être : le build CI ne voit pas les `.env` locaux.
-- `public/_headers` porte les en-têtes de sécurité (équivalent Cloudflare des
-  headers de `vercel.json`) avec une CSP qui autorise `*.supabase.co` —
-  la CSP Vercel, elle, ne l'autorise PAS (Firebase only).
+- `public/_headers` porte les en-têtes de sécurité, avec une CSP qui
+  autorise `*.supabase.co`, PowerSync et Sentry.
 - Le déploiement reste DÉCLENCHÉ À LA MAIN (pas à chaque fusion) : lancer le
   workflow après chaque évolution à publier.
 
@@ -78,14 +77,14 @@ qu'une voie de secours, qui refuse tout autre état que master propre = origin/m
 
 | Fichier | Rôle |
 |---|---|
-| `backend.js` | Interrupteur `VITE_BACKEND` + `emailFor` (domaine interne `@edugest.app`) |
+| `backend.js` | `emailFor` (domaine interne `@edugest.app`) |
 | `supabaseClient.js` | Client Supabase (clé anon) |
 | `auth-supabase.js` | Connexion (école/superadmin), session, déconnexion |
 | `collection-map.js` | Firestore (collections par section) → tables Supabase unifiées ; transformateurs snake_case↔camelCase (2 sens) |
 | `data-supabase.js` | Lecture/écriture générique des collections (CRUD) |
 | `parent-portal-supabase.js` | Portail parent (RLS = ses enfants) |
 | `teacher-portal-supabase.js` + `teacher-scope.js` | Portail enseignant (périmètre = ses classes) |
-| `account-manage-supabase.js` | Création/reset (Edge Function) + mdp perso + role_settings |
+| `account-manage-supabase.js` | Création/reset (Edge Function) + mdp perso + postes |
 
 ## Couverture — ce qui tourne sur Supabase
 
@@ -103,7 +102,7 @@ Vérifié en live contre l'école **citadelle** :
 - **Transferts** : transfert d'élève entre écoles par token (table `transferts` + RPC). ✅ (→ `transferts.sql`)
 - **Push** : abonnement (table `push_subs`) + envoi (Edge Function `push` / VAPID). ⚠️ envoi réel non vérifié ici (nécessite un navigateur abonné).
 - **Diffusion superadmin** : messages superadmin → écoles ciblées + accusés de lecture (tables `superadmin_messages` / `superadmin_message_lectures`). ✅ (→ `superadmin-messages.sql`)
-- **Assistant IA** : génération d'appréciation de bulletin (primaire/secondaire) + assistant superadmin, via Edge Function `ia` (Anthropic `claude-opus-4-8`). Marche aussi en prod Firebase via `/api/ia`. ⚠️ génération réelle non vérifiée ici (clé Anthropic requise).
+- **Assistant IA** : génération d'appréciation de bulletin (primaire/secondaire) + assistant superadmin, via Edge Function `ia` (Anthropic `claude-opus-4-8`). ⚠️ génération réelle non vérifiée ici (clé Anthropic requise).
 - **Photos / logos** : base64 en champ — aucun stockage externe à migrer. ✅
 
 ## Identifiants de test (citadelle)
@@ -119,8 +118,7 @@ Vérifié en live contre l'école **citadelle** :
 
 ## Mode hors ligne (PowerSync) — vague 1, périmètre académique
 
-Contrepartie du cache local Firestore (`persistentLocalCache`) pour la branche
-Supabase : `eleves`, `classes`, `matieres`, `enseignants`, `emplois`,
+`eleves`, `classes`, `matieres`, `enseignants`, `emplois`,
 `enseignements`, `notes`, `absences`, `appreciations` sont mises en miroir
 localement (SQLite via [PowerSync](https://www.powersync.com)) — lecture/
 écriture instantanées hors ligne, remontée automatique vers Supabase (RLS
@@ -162,7 +160,7 @@ toujours seule autorité d'écriture) au retour réseau.
 ## Limites assumées / reste à faire
 
 - **Sécurité périmètre enseignant** : ✅ durci. `teacher-security.sql` impose en RLS que l'enseignant n'écrive notes/absences que pour les élèves de **ses classes** (table `enseignant_classes`, écrite par le staff uniquement, peuplée par `populate-teacher-classes.mjs`). Un trigger empêche aussi l'auto-élévation de privilège (modif de role/école/login sur sa propre ligne `comptes`). À relancer le peuplement quand les affectations changent.
-- **Encore côté serveur** (Firebase/Vercel) sous Supabase : assistant IA superadmin (clé Anthropic), alertes Sentry (API externe). (Portés : school-lifecycle, superadmin-login, inscription, transferts, push, superadmin-messages ; `ecole-public-sync` inutile.)
+- **Non porté** : le panneau « Alertes Sentry » du super-admin (retiré avec l'API Vercel ; le tableau de bord Sentry reste accessible directement).
 - **Création de comptes** : pas de fusion de foyer parent, ni de génération auto de comptes à l'activation d'un rôle (création manuelle).
 - **Hors-ligne** : vague 1 (périmètre académique) codée — voir section dédiée ci-dessus ; infra PowerSync à finaliser côté dashboard avant activation réelle.
 

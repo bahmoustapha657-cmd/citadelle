@@ -1,5 +1,10 @@
 # Security Architecture
 
+> ⚠️ **Document historique** (version Firebase, retirée en octobre 2026 —
+> cf. [retrait-firebase.md](./retrait-firebase.md)). Les principes restent
+> valables ; leur mise en œuvre actuelle est la RLS Postgres de Supabase
+> (`supabase/migrations/`) et les Edge Functions (`supabase/functions/`).
+
 ## Objective
 
 The goal is not to promise a "perfect" system. The goal is to make `citadelle`

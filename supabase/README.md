@@ -5,7 +5,10 @@
 > évolution — cf. [docs/migrations-sql.md](../docs/migrations-sql.md)). Les
 > anciens scripts cités plus bas sont archivés dans `supabase/historique/` et
 > ne doivent **jamais** être rejoués. Ce document est l'historique de la
-> migration Firebase → Supabase.
+> migration Firebase → Supabase, achevée : Firebase a été retiré du code en
+> octobre 2026 (cf. [docs/retrait-firebase.md](../docs/retrait-firebase.md)) ;
+> les scripts `migrate*.mjs` cités plus bas ne sont plus que dans
+> l'historique git.
 
 Piste **parallèle** : Firebase reste la production. On reconstruit ici la même app **EduGest** sur Supabase (Postgres), jusqu'à ce que la version soit complète et testée. Rien dans ce dossier n'affecte l'app Firebase.
 

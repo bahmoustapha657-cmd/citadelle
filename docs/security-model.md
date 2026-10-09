@@ -1,5 +1,12 @@
 # Modèle de sécurité EduGest
 
+> ⚠️ **Document historique** : il décrit la version Firebase (règles
+> Firestore, API Vercel), retirée en octobre 2026 — cf.
+> [retrait-firebase.md](./retrait-firebase.md). La sécurité repose désormais
+> sur la RLS Postgres de Supabase (`supabase/migrations/`) et les Edge
+> Functions (`supabase/functions/`). Les fichiers cités ci-dessous
+> n'existent plus que dans l'historique git.
+>
 > Date d'audit : 2026-04-30
 > Périmètre : `firestore.rules`, `api/_lib/handlers/*.js`, `api/_lib/security.js`
 > Référence complémentaire : [security-architecture.md](./security-architecture.md)

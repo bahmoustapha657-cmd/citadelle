@@ -89,7 +89,7 @@ Les rÃ´les sont stricts :
 - Le **directeur** voit tout, y compris ce que le comptable a saisi (et pas saisi).
 - Le **superadmin EduGest** voit l'historique complet, mÃªme si quelqu'un essaie de Â« nettoyer Â» les comptes.
 
-Les rÃ¨gles de sÃ©curitÃ© Firestore empÃªchent â€” au niveau du serveur, pas seulement de l'interface â€” toute action non autorisÃ©e. Un comptable ne peut pas modifier ses propres Ã©critures rÃ©troactivement. **L'architecture rend la fraude techniquement impossible.**
+Les rÃ¨gles de sÃ©curitÃ© de la base (RLS Postgres) empÃªchent â€” au niveau du serveur, pas seulement de l'interface â€” toute action non autorisÃ©e. Un comptable ne peut pas modifier ses propres Ã©critures rÃ©troactivement. **L'architecture rend la fraude techniquement impossible.**
 
 ### 7. Les rapports sont automatiques, certifiÃ©s et exportables
 
@@ -159,8 +159,8 @@ Si l'administration fiscale, un commissaire aux comptes, ou un membre du conseil
 
 La transparence interne **ne signifie pas** que vos donnÃ©es sont accessibles Ã  n'importe qui. EduGest applique les standards les plus stricts :
 
-- **Cloisonnement par Ã©cole** : aucune Ã©cole ne peut voir les donnÃ©es d'une autre, garanti par les rÃ¨gles de sÃ©curitÃ© Firestore
-- **Authentification forte** : Firebase Auth avec tokens JWT signÃ©s
+- **Cloisonnement par Ã©cole** : aucune Ã©cole ne peut voir les donnÃ©es d'une autre, garanti par les rÃ¨gles de sÃ©curitÃ© de la base (RLS Postgres)
+- **Authentification forte** : Supabase Auth avec tokens JWT signÃ©s
 - **Mots de passe** : hachÃ©s (bcrypt 10 rounds), jamais stockÃ©s en clair
 - **Rate limiting** : protection contre les tentatives d'intrusion
 - **HTTPS obligatoire** : tout le trafic est chiffrÃ© en transit
