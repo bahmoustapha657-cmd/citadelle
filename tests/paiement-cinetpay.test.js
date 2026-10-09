@@ -57,6 +57,12 @@ test("corps de paiement : GNF, référence, retour vers l'app, payeur et e-mail 
   assert.equal(c.client_first_name, "Mamadou");
   assert.equal(c.client_email, "paiement@edugest.app");
   assert.equal(corpsPaiement(creation({ client: { email: "parent@exemple.gn" } })).client_email, "parent@exemple.gn");
+  // Retour par le serveur (accepte GET et POST) quand il est fourni.
+  const parServeur = "https://abcdefghijklmnopqrst.supabase.co/functions/v1/paiement-notification?retour=EDUMG1ABCDEF12";
+  const viaServeur = corpsPaiement(creation({ urlRetour: parServeur }));
+  assert.equal(viaServeur.success_url, parServeur);
+  assert.equal(viaServeur.failed_url, parServeur);
+  assert.ok(parServeur.length <= 120);
   // Noms trop courts : remplacés (CinetPay exige 2 caractères).
   const court = corpsPaiement(creation({ client: { prenom: "A", nom: "" } }));
   assert.equal(court.client_first_name, "Parent");

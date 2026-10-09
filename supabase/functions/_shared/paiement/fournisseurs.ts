@@ -23,6 +23,9 @@ export type Creation = {
   description: string;
   origine: string; // adresse de l'app (retour du parent)
   urlNotification: string;
+  // Adresse de retour du parent via le serveur (accepte GET et POST, puis
+  // redirige vers l'app) ; à défaut, l'app directement.
+  urlRetour?: string;
   // Payeur (le compte qui paie), quand l'opérateur l'exige.
   client?: { prenom?: string; nom?: string; email?: string };
   config: Config;

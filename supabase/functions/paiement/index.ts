@@ -177,6 +177,7 @@ Deno.serve(async (req) => {
           reference, montantTotal: montant + frais, devise: "GNF",
           description: `${cible.label} — ${nom}`.slice(0, 120), origine,
           urlNotification: `${FONCTIONS_URL}/paiement-notification?fournisseur=${encodeURIComponent(config!.fournisseur)}`,
+          urlRetour: `${FONCTIONS_URL}/paiement-notification?retour=${encodeURIComponent(reference)}`,
           client: clientPayeur(compte, ctx.eleve),
           config: config!,
         });

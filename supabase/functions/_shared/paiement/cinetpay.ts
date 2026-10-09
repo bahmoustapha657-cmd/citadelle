@@ -112,13 +112,14 @@ const nomValide = (s: string | undefined, defaut: string) => {
 
 export function corpsPaiement(c: {
   reference: string; montantTotal: number; devise: string; description: string;
-  origine: string; urlNotification: string; client?: Client;
+  origine: string; urlNotification: string; urlRetour?: string; client?: Client;
 }) {
   const montant = Math.round(c.montantTotal);
   if (montant < MONTANT_MIN || montant > MONTANT_MAX) {
     throw new Error(`Montant hors des limites CinetPay (${MONTANT_MIN} à ${MONTANT_MAX} par paiement).`);
   }
-  const retour = `${c.origine}/?paiement=${encodeURIComponent(c.reference)}`;
+  // Retour par le serveur (GET comme POST acceptés), sinon l'app directement.
+  const retour = c.urlRetour || `${c.origine}/?paiement=${encodeURIComponent(c.reference)}`;
   for (const u of [retour, c.urlNotification]) {
     if (u.length > URL_MAX) throw new Error(`Adresse trop longue pour CinetPay (${URL_MAX} caractères au plus).`);
   }
