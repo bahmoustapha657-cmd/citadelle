@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { fmt } from "../../constants";
 import { Btn, Modale } from "../ui";
 import {
-  ciblesPaiement, etatPaiementEnLigne, fraisPaiement, initierPaiement,
+  ciblesPaiement, etatPaiementEnLigne, fraisPaiement, initierPaiement, listerPaiementsEnLigne,
 } from "../../backend/paiement-en-ligne";
 
 // ══════════════════════════════════════════════════════════════
@@ -21,18 +21,63 @@ export function PayerEnLigne({ eleve, c1 }) {
     etatPaiementEnLigne().then((e) => { if (actif) setEtat(e); }).catch(() => {});
     return () => { actif = false; };
   }, []);
-  if (!etat?.actif || !eleve?._id) return null;
+  if (!eleve?._id) return null;
   return (
     <>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", padding: "12px 16px", marginBottom: 16, borderRadius: 12, background: "#ecfdf5", border: "1px solid #a7f3d0" }}>
-        <div style={{ fontSize: 13, color: "#065f46" }}>
-          <strong>💳 Payer en ligne</strong> — Orange Money, MTN MoMo… depuis votre téléphone.
-          {etat.mode === "test" && <span style={{ marginInlineStart: 8, fontSize: 11, color: "#b45309" }}>(mode test : aucun argent réel)</span>}
+      {etat?.actif && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", padding: "12px 16px", marginBottom: 16, borderRadius: 12, background: "#ecfdf5", border: "1px solid #a7f3d0" }}>
+          <div style={{ fontSize: 13, color: "#065f46" }}>
+            <strong>💳 Payer en ligne</strong> — Orange Money, MTN MoMo… depuis votre téléphone.
+            {etat.mode === "test" && <span style={{ marginInlineStart: 8, fontSize: 11, color: "#b45309" }}>(mode test : aucun argent réel)</span>}
+          </div>
+          <Btn v="success" onClick={() => setOuvert(true)}>Payer en ligne</Btn>
         </div>
-        <Btn v="success" onClick={() => setOuvert(true)}>Payer en ligne</Btn>
-      </div>
+      )}
       {ouvert && <PayerModale eleve={eleve} etat={etat} c1={c1} fermer={() => setOuvert(false)} />}
+      <HistoriqueEnLigne eleveId={eleve._id} />
     </>
+  );
+}
+
+// Ce que voit le parent de chaque paiement (vocabulaire de parent, pas de
+// comptable).
+const STATUTS_PARENT = {
+  impute: { label: "Enregistré", couleur: "#166534" },
+  en_attente: { label: "En attente de l'opérateur", couleur: "#1d4ed8" },
+  echoue: { label: "Non abouti (rien prélevé)", couleur: "#64748b" },
+  a_verifier: { label: "Reçu — en cours de régularisation par l'école", couleur: "#92400e" },
+  regularise: { label: "Régularisé par l'école", couleur: "#334155" },
+};
+
+// Paiements en ligne déjà faits pour cet enfant : de quoi retrouver une
+// référence en cas de question à l'école. Rien si aucun.
+function HistoriqueEnLigne({ eleveId }) {
+  const [paiements, setPaiements] = useState([]);
+  useEffect(() => {
+    let actif = true;
+    listerPaiementsEnLigne({ eleveId, limite: 10 }).then((l) => { if (actif) setPaiements(l); }).catch(() => {});
+    return () => { actif = false; };
+  }, [eleveId]);
+  if (!paiements.length) return null;
+  return (
+    <details style={{ marginBottom: 16, fontSize: 12.5 }}>
+      <summary style={{ cursor: "pointer", fontWeight: 700, color: "#475569" }}>Mes paiements en ligne ({paiements.length})</summary>
+      <ul style={{ listStyle: "none", margin: "8px 0 0", padding: 0 }}>
+        {paiements.map((p) => {
+          const s = STATUTS_PARENT[p.statut] || STATUTS_PARENT.en_attente;
+          return (
+            <li key={p.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", padding: "6px 0", borderBottom: "1px solid #f1f5f9" }}>
+              <span>
+                {new Date(p.created_at).toLocaleDateString("fr-FR")} · {p.cible?.label || "Scolarité"} ·{" "}
+                <strong>{fmt(Number(p.montant) + Number(p.frais))}</strong>
+                <span style={{ display: "block", fontSize: 11, color: "#94a3b8", fontFamily: "monospace" }}>{p.reference}</span>
+              </span>
+              <span style={{ fontWeight: 700, color: s.couleur }}>{s.label}</span>
+            </li>
+          );
+        })}
+      </ul>
+    </details>
   );
 }
 

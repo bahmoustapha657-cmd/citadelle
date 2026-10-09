@@ -128,6 +128,12 @@ export function RetourPaiement({ onTermine }) {
         </div>
       )}
 
+      {paiement?.statut === "regularise" && (
+        <p style={{ padding: "10px 12px", borderRadius: 10, background: "#f1f5f9", color: "#334155", fontSize: 13 }}>
+          ✅ Paiement reçu et régularisé par l'école.
+        </p>
+      )}
+
       {!enSimulation && (
         <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
           <Btn onClick={fermer}>Fermer</Btn>

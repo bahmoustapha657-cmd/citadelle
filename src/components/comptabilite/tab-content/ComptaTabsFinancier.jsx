@@ -45,7 +45,9 @@ export function ComptaTabsFinancier({ c, readOnly, annee }) {
         anneeConsultee={c.anneeConsultee}
       />}
 
-      {c.tab === "en-ligne" && <PaiementsEnLigneTab />}
+      {/* Rapprocher / régulariser : même droit qu'encaisser (le serveur
+          vérifie l'écriture compta). */}
+      {c.tab === "en-ligne" && <PaiementsEnLigneTab peutEcrire={!readOnly} />}
 
       {c.tab === "recettes" && <RecettesTab
         form={c.form}

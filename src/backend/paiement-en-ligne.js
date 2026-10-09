@@ -35,6 +35,14 @@ export const initierPaiement = ({ eleveId, cle, montant }) => appeler("initier",
 // { paiement: { reference, statut, montant, frais, lignes, motif… } }
 export const statutPaiement = (reference) => appeler("statut", { reference }).then((d) => d.paiement);
 
+// Comptabilité : redemande à l'opérateur les paiements restés en attente.
+// { verifies, bilan: { impute: n, echoue: n… } }
+export const rapprocherPaiements = () => appeler("rapprocher");
+
+// Comptabilité : « à vérifier » réglé à la main, avec une note.
+export const regulariserPaiement = (reference, note) =>
+  appeler("regulariser", { reference, note }).then((d) => d.paiement);
+
 export const simulerPaiement = (reference, resultat) =>
   appeler("simuler", { reference, resultat }).then((d) => d.paiement);
 
@@ -45,9 +53,11 @@ export const fraisPaiement = (montant, pourcent) =>
 
 // Paiements en ligne de l'école (compta) ou des enfants (parent) — la RLS
 // filtre. Les plus récents d'abord.
-export async function listerPaiementsEnLigne({ limite = 200 } = {}) {
-  const { data, error } = await getSupabase().from("paiements_en_ligne")
-    .select("id, reference, statut, fournisseur, montant, frais, devise, cible, annee, detail, created_at, impute_le, eleve_id, eleve_nom, eleves(nom, prenom, classe)")
+export async function listerPaiementsEnLigne({ limite = 200, eleveId = null } = {}) {
+  let requete = getSupabase().from("paiements_en_ligne")
+    .select("id, reference, statut, fournisseur, montant, frais, devise, cible, annee, detail, created_at, impute_le, eleve_id, eleve_nom, eleves(nom, prenom, classe)");
+  if (eleveId) requete = requete.eq("eleve_id", eleveId);
+  const { data, error } = await requete
     .order("created_at", { ascending: false })
     .limit(limite);
   if (error) throw new Error(error.message);
