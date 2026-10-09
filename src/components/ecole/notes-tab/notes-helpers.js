@@ -1,5 +1,3 @@
-export const loadXLSX = () => import("xlsx");
-
 // Code couleur d'une note selon le barème (/maxNote) : vert ≥70 %, ambre ≥50 %, rouge sinon.
 export function couleurNote(v, maxNote) {
   const n = Number(v);

@@ -1,7 +1,7 @@
 import { getAnnee } from "../../../constants";
 import { Btn, Modale } from "../../ui";
 import { getEvaluationLabel, resolveCanonicalNoteType } from "../../../evaluation-forms";
-import { loadXLSX } from "./notes-helpers";
+import { lireTableur } from "../../../lecture-tableur";
 
 // Modale d'import de notes depuis un fichier Excel/CSV avec prévisualisation
 // ligne par ligne et validation avant écriture.
@@ -21,11 +21,7 @@ export function ImportNotesModal({
       <input type="file" accept=".xlsx,.xls,.csv" onChange={async e => {
         const file = e.target.files[0];
         if (!file) return;
-        const ab = await file.arrayBuffer();
-        const XLSX = await loadXLSX();
-        const wb = XLSX.read(ab);
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" }).slice(1);
+        const rows = (await lireTableur(await file.arrayBuffer())).slice(1);
         const lignes = rows.filter(r => r[0] || r[1]).map((r, i) => {
           const eleveNom = String(r[0] || "").trim();
           const matiere = String(r[1] || "").trim();
