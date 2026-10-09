@@ -30,12 +30,12 @@ export function AbonnementBloc({
             </p>
             <p style={{ margin: "3px 0 0", fontSize: 12, color: "#6b7280" }}>
               {planInfo.planCourant === "gratuit"
-                ? `${planInfo.totalElevesActifs}/50 élèves actifs — gratuit jusqu'à 50`
+                ? `${planInfo.totalElevesActifs ?? "…"}/50 élèves actifs — gratuit jusqu'à 50`
                 : planInfo.planEstExpire
                   ? "Expiré — limité à 50 élèves"
                   : planInfo.enPeriodeGrace
                     ? `Période de grâce — ${planInfo.joursGrace} jour(s) restant(s)`
-                    : `${planInfo.totalElevesActifs} élèves actifs · expire le ${new Date(planInfo.planExpiry).toLocaleDateString("fr-FR")}`}
+                    : `${planInfo.totalElevesActifs ?? "…"} élèves actifs · expire le ${new Date(planInfo.planExpiry).toLocaleDateString("fr-FR")}`}
             </p>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>

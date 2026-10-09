@@ -12,7 +12,7 @@
 //
 // La partie « client Supabase » demande les mocks de modules du test runner :
 //   node --import tsx --experimental-test-module-mocks --test tests/password-reset.test.js
-// Sans ce drapeau (npm test), seule cette partie est ignorée.
+// `npm test` le passe. Sans ce drapeau, seule cette partie est ignorée.
 import test, { mock } from "node:test";
 import assert from "node:assert/strict";
 import {

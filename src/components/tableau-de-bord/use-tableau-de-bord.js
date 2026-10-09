@@ -1,7 +1,7 @@
 import { useContext, useState } from "react";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { useFirestore } from "../../hooks/useFirestore";
-import { C } from "../../constants";
+import { C, getAnnee } from "../../constants";
 import { creerDemandePlan } from "./tableau-de-bord-api";
 import {
   calcTauxPaiement,
@@ -14,8 +14,9 @@ import {
 // Charge toutes les collections du dashboard, calcule les indicateurs
 // consolidés (effectifs, taux de paiement, finances, masse salariale,
 // absences, événements) et gère la demande d'abonnement.
-export function useTableauDeBord() {
+export function useTableauDeBord({ annee } = {}) {
   const { schoolId, schoolInfo, moisAnnee, moisSalaire, planInfo } = useContext(SchoolContext);
+  const anneeCourante = annee || getAnnee();
   const { items: elevesC, chargement: cEC } = useFirestore("elevesCollege");
   const { items: elevesP, chargement: cEP } = useFirestore("elevesPrimaire");
   const { items: elevesL, chargement: cEL } = useFirestore("elevesLycee");
@@ -33,13 +34,21 @@ export function useTableauDeBord() {
   const { items: absences } = useFirestore("absencesCollege");
   const { items: absP } = useFirestore("absencesPrimaire");
   const { items: absL } = useFirestore("elevesLycee_absences");
+  // Maternelle : ses absences manquaient à la tuile, aux tendances et aux
+  // rapports mensuel et annuel.
+  const { items: absPre } = useFirestore("elevesPrescolaire_absences");
   // Notes : utilisées uniquement par le rapport annuel pour la section
   // pédagogie. useFirestore = listener temps réel → coût acceptable car
   // le dashboard est l'écran d'atterrissage et ces collections sont
-  // déjà cachées une fois la session ouverte.
-  const { items: notesC } = useFirestore("notesCollege");
-  const { items: notesP } = useFirestore("notesPrimaire");
-  const { items: notesL } = useFirestore("notesLycee");
+  // déjà cachées une fois la session ouverte. Celles de l'année affichée
+  // seulement : sans filtre, la pédagogie du rapport mélangeait les notes
+  // de toutes les années d'un élève (et la lecture grossissait chaque année).
+  const { items: notesC } = useFirestore("notesCollege", { annee: anneeCourante });
+  const { items: notesP } = useFirestore("notesPrimaire", { annee: anneeCourante });
+  const { items: notesL } = useFirestore("notesLycee", { annee: anneeCourante });
+  // Sans elles, les classes de maternelle restaient « non notées » dans le
+  // rapport alors même que leurs effectifs y figurent.
+  const { items: notesPre } = useFirestore("notesPrescolaire", { annee: anneeCourante });
 
   const [moisRapport, setMoisRapport] = useState(moisSalaire[moisSalaire.length - 1] || "");
   const [demandeOuverte, setDemandeOuverte] = useState(false);
@@ -94,16 +103,16 @@ export function useTableauDeBord() {
   const evAVenir = computeEvenementsAVenir(evenements);
 
   // Absences ce mois
-  const totalAbs = absences.length + absP.length + absL.length;
+  const totalAbs = absences.length + absP.length + absL.length + absPre.length;
 
   // Tendances mensuelles (taux paiement + absences mois par mois)
-  const dataTendance = computeTendance(moisAnnee, [...elevesC, ...elevesL, ...elevesP, ...elevesPre], [...absences, ...absP, ...absL]);
+  const dataTendance = computeTendance(moisAnnee, [...elevesC, ...elevesL, ...elevesP, ...elevesPre], [...absences, ...absP, ...absL, ...absPre]);
 
   return {
     schoolInfo, moisAnnee, planInfo, c1, c2, enChargement,
     elevesC, elevesP, elevesL, elevesPre, ensC, ensL, ensP, ensPre, tauxPayPre,
-    recettes, depenses, salaires, notesC, notesP, notesL,
-    absences, absP, absL,
+    recettes, depenses, salaires, notesC, notesP, notesL, notesPre,
+    absences, absP, absL, absPre,
     moisRapport, setMoisRapport,
     demandeOuverte, setDemandeOuverte, demandePlan, setDemandePlan,
     demandeForm, setDemandeForm, demandeEnvoi, demandeSucces, envoyerDemande,

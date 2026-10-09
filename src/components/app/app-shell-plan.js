@@ -23,6 +23,9 @@ export function computePlanInfo({ schoolInfoState, nowTs, totalElevesActifs, t }
   const eleveLimit = planEstExpire
     ? PLANS.gratuit.eleveLimit
     : (PLANS[planCourant]?.eleveLimit ?? PLANS.gratuit.eleveLimit);
+  // Effectif pas encore compté (chargement, lecture en échec) : on ne bloque
+  // pas. `null < 50` le ferait déjà par coercition — autant l'écrire.
+  const effectifConnu = Number.isFinite(totalElevesActifs);
   return {
     planCourant,
     planExpiry,
@@ -31,8 +34,8 @@ export function computePlanInfo({ schoolInfoState, nowTs, totalElevesActifs, t }
     joursGrace,
     joursRestants,
     eleveLimit,
-    totalElevesActifs,
-    peutAjouterEleve: totalElevesActifs < eleveLimit,
+    totalElevesActifs: effectifConnu ? totalElevesActifs : null,
+    peutAjouterEleve: !effectifConnu || totalElevesActifs < eleveLimit,
     // Fonctions facturées à l'usage (notifications SMS/WhatsApp, génération
     // d'appréciations). Sert uniquement à griser l'UI : l'autorité reste le
     // contrôle serveur des Edge Functions `notify` et `ia`.

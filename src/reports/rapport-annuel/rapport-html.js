@@ -35,17 +35,20 @@ const buildHeader = (m, c1, c2, nomEcole, logo) => `
     </div>
   </div>`;
 
-// « 92C · 286P » : seules les sections ouvertes dans l'école (Paramètres →
-// Identité) — pas de « 0L » dans le rapport d'une école sans lycée.
-const detailSections = (schoolInfo, parSection) => [["college", "C"], ["lycee", "L"], ["primaire", "P"]]
-  .filter(([section]) => isSectionActive(schoolInfo, section))
+// « 97M · 92C · 286P » : seules les sections ouvertes dans l'école (Paramètres →
+// Identité) — pas de « 0L » dans le rapport d'une école sans lycée. Comme sur
+// la tuile du tableau de bord (KpiGrid), la maternelle n'y figure en plus que
+// si elle a des effectifs : une école sans maternelle garde la même ligne.
+const detailSections = (schoolInfo, parSection) => [["prescolaire", "M"], ["college", "C"], ["lycee", "L"], ["primaire", "P"]]
+  .filter(([section]) => isSectionActive(schoolInfo, section)
+    && (section !== "prescolaire" || parSection[section] > 0))
   .map(([section, lettre]) => `${parSection[section]}${lettre}`)
   .join(" · ");
 
 const buildKpis = (m, schoolInfo) => `
   <div class="kpi-row">
-    <div class="kpi"><div class="kpi-val">${m.totEleves}</div><div class="kpi-label">Élèves actifs</div><div class="kpi-sub">${detailSections(schoolInfo, { college: m.totC, lycee: m.totL, primaire: m.totP })}</div></div>
-    <div class="kpi"><div class="kpi-val">${m.totEnseignants}</div><div class="kpi-label">Enseignants</div><div class="kpi-sub">${detailSections(schoolInfo, { college: m.ensCCount, lycee: m.ensLCount, primaire: m.ensPCount })}</div></div>
+    <div class="kpi"><div class="kpi-val">${m.totEleves}</div><div class="kpi-label">Élèves actifs</div><div class="kpi-sub">${detailSections(schoolInfo, { prescolaire: m.totPre, college: m.totC, lycee: m.totL, primaire: m.totP })}</div></div>
+    <div class="kpi"><div class="kpi-val">${m.totEnseignants}</div><div class="kpi-label">Enseignants</div><div class="kpi-sub">${detailSections(schoolInfo, { prescolaire: m.ensPreCount, college: m.ensCCount, lycee: m.ensLCount, primaire: m.ensPCount })}</div></div>
     <div class="kpi vert"><div class="kpi-val">${fmtMoney(m.totRecAnnuel)}</div><div class="kpi-label">Recettes</div></div>
     <div class="kpi rouge"><div class="kpi-val">${fmtMoney(m.totDepAnnuel + m.totSalAnnuel)}</div><div class="kpi-label">Dépenses+Salaires</div><div class="kpi-sub">${fmtMoney(m.totDepAnnuel)} + ${fmtMoney(m.totSalAnnuel)}</div></div>
     <div class="kpi ${m.soldeAnnuel >= 0 ? "vert" : "rouge"}"><div class="kpi-val">${fmtMoney(m.soldeAnnuel)}</div><div class="kpi-label">Solde annuel</div></div>

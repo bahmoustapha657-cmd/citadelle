@@ -23,7 +23,7 @@ export function AbonnementBanniere({ planInfo }) {
               ? `Période de grâce — encore ${planInfo.joursGrace} jour(s) d'accès complet`
               : planInfo.joursRestants !== null && planInfo.joursRestants <= 30
                 ? `Abonnement ${planInfo.planLabel} expire dans ${planInfo.joursRestants} jour(s)`
-                : `Plan Gratuit : ${planInfo.totalElevesActifs}/50 élèves — bientôt à la limite`}
+                : `Plan Gratuit : ${planInfo.totalElevesActifs}/50 élèves — ${planInfo.peutAjouterEleve ? "bientôt à la limite" : "limite atteinte"}`}
         </p>
         <p style={{ margin: "2px 0 0", fontSize: 11, color: "#6b7280" }}>
           {planInfo.enPeriodeGrace

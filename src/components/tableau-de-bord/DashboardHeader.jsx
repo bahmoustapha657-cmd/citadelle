@@ -4,8 +4,8 @@ import { Btn } from "../ui";
 
 export function DashboardHeader({
   t, c1, schoolInfo, annee, moisAnnee, moisRapport, setMoisRapport,
-  elevesC, elevesL, elevesP, elevesPre = [], absences, absL, absP,
-  notesC, notesL, notesP, recettes, depenses, salaires, ensC, ensL, ensP,
+  elevesC, elevesL, elevesP, elevesPre = [], absences, absL, absP, absPre = [],
+  notesC, notesL, notesP, notesPre = [], recettes, depenses, salaires, ensC, ensL, ensP, ensPre = [],
 }) {
   return (
     <div style={{ marginBottom: 24, display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
@@ -23,7 +23,7 @@ export function DashboardHeader({
         <Btn v="primary" sm onClick={() => genererRapportMensuel(
           moisRapport,
           [...elevesC, ...elevesL, ...elevesP, ...elevesPre],
-          [...absences, ...absL, ...absP],
+          [...absences, ...absL, ...absP, ...absPre],
           annee || getAnnee(),
           schoolInfo,
           moisAnnee,
@@ -32,10 +32,10 @@ export function DashboardHeader({
           annee: annee || getAnnee(),
           moisAnnee,
           eleves: [...elevesC, ...elevesL, ...elevesP, ...elevesPre],
-          absences: [...absences, ...absL, ...absP],
-          notes: [...notesC, ...notesL, ...notesP],
+          absences: [...absences, ...absL, ...absP, ...absPre],
+          notes: [...notesC, ...notesL, ...notesP, ...notesPre],
           recettes, depenses, salaires,
-          ensC, ensL, ensP,
+          ensC, ensL, ensP, ensPre,
         }, schoolInfo)}>📊 {t("dashboard.annualReport")}</Btn>
       </div>
     </div>

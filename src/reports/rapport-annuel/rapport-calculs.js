@@ -8,14 +8,18 @@ import {
   TOUS_MOIS_COURTS,
   TOUS_MOIS_LONGS,
   getSectionForClasse,
+  getSectionLabel,
 } from "../../constants.js";
 
 // Section d'un élève d'après sa classe (détection par motif : couvre les
-// classes hors listes prédéfinies, ex. « 3ème Année E »).
-export const sectionPourEleve = (e) => {
-  const section = getSectionForClasse(e.classe);
-  return section === "primaire" ? "Primaire" : section === "lycee" ? "Lycée" : "Collège";
-};
+// classes hors listes prédéfinies, ex. « 3ème Année E »). Libellé commun à
+// l'application : une classe de maternelle est « Préscolaire », pas « Collège ».
+export const sectionPourEleve = (e) => getSectionLabel(getSectionForClasse(e.classe));
+
+// Barème d'une classe : la maternelle et le primaire sont notés sur 10 (cf.
+// Primaire.jsx), le collège et le lycée sur 20.
+const noteMaxPourClasse = (classe) =>
+  (["prescolaire", "primaire"].includes(getSectionForClasse(classe)) ? 10 : 20);
 
 // Net d'une fiche de paie (forfait pour Primaire/Personnel, VH sinon).
 const netSalaire = (s) => {
@@ -28,7 +32,7 @@ const netSalaire = (s) => {
 const triSectionClasse = (a, b) => (a.section + a.classe).localeCompare(b.section + b.classe, "fr");
 
 // ── Effectifs par section/classe ──
-export function computeEffectifs(elevesActifs, { ensC, ensL, ensP }) {
+export function computeEffectifs(elevesActifs, { ensC, ensL, ensP, ensPre = [] }) {
   const effectifsClasse = {};
   for (const e of elevesActifs) {
     const cls = e.classe || "—";
@@ -40,10 +44,13 @@ export function computeEffectifs(elevesActifs, { ensC, ensL, ensP }) {
   const totC = elevesActifs.filter((e) => getSectionForClasse(e.classe) === "college").length;
   const totL = elevesActifs.filter((e) => getSectionForClasse(e.classe) === "lycee").length;
   const totP = elevesActifs.filter((e) => getSectionForClasse(e.classe) === "primaire").length;
-  const totEnseignants = ensC.length + ensL.length + ensP.length;
+  // La maternelle compte dans totEleves : sans son propre total, ses élèves
+  // (et ses enseignants) manquaient au détail par section.
+  const totPre = elevesActifs.filter((e) => getSectionForClasse(e.classe) === "prescolaire").length;
+  const totEnseignants = ensC.length + ensL.length + ensP.length + ensPre.length;
   return {
-    lignesEffectif, totEleves, totC, totL, totP, totEnseignants,
-    ensCCount: ensC.length, ensLCount: ensL.length, ensPCount: ensP.length,
+    lignesEffectif, totEleves, totC, totL, totP, totPre, totEnseignants,
+    ensCCount: ensC.length, ensLCount: ensL.length, ensPCount: ensP.length, ensPreCount: ensPre.length,
   };
 }
 
@@ -165,8 +172,8 @@ export function computePedagogie(elevesActifs, notes) {
   const lignesPedagogie = Object.values(moyennesParClasse)
     .map((g) => {
       const moys = g.moyennes;
-      const seuil = g.section === "Primaire" ? 5 : 10; // /10 pour primaire, /20 sinon
-      const max = g.section === "Primaire" ? 10 : 20;
+      const max = noteMaxPourClasse(g.classe);
+      const seuil = max / 2; // 5/10 (maternelle, primaire), 10/20 sinon
       const moyClasse = moys.length > 0 ? moys.reduce((s, v) => s + v, 0) / moys.length : null;
       const reussite = moys.filter((m) => m >= seuil).length;
       const tauxReussite = moys.length > 0 ? Math.round((reussite / moys.length) * 100) : null;
