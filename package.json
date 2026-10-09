@@ -19,7 +19,8 @@
     "sauvegarde:verifier": "node supabase/verifier-sauvegardes.mjs --profond",
     "build:supabase": "vite build --mode supabase",
     "deploy:pages": "node scripts/deployer-pages.mjs",
-    "migration:nouvelle": "node scripts/nouvelle-migration.mjs"
+    "migration:nouvelle": "node scripts/nouvelle-migration.mjs",
+    "partager:edge": "node scripts/partager-edge.mjs"
   },
   "dependencies": {
     "@journeyapps/wa-sqlite": "^1.7.0",

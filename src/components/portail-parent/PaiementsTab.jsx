@@ -7,6 +7,7 @@ import {
 import { etatsMois, periodeTranche, trancheDuMois } from "../../paiements-scolarite";
 import { partiAvantAnnee } from "../../depart-utils";
 import { Badge, Vide } from "../ui";
+import { PayerEnLigne } from "../paiement-en-ligne/PayerEnLigne";
 
 // Apparence d'un frais ou d'un mois selon son état.
 const ETATS = {
@@ -98,6 +99,7 @@ export function PaiementsTab({
   return (
     <>
       <h2 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 900, color: c1 }}>Suivi des paiements</h2>
+      <PayerEnLigne eleve={eleve} c1={c1} />
       {famille?.enfants.length > 1 && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", padding: "10px 14px", marginBottom: 14, borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0", fontSize: 12.5, color: "#475569" }}>
           <span>

@@ -6,3 +6,8 @@ project_id = "edugest"
 [db]
 # Aligné sur la production (Postgres 17.6, relevé le 2026-10-08).
 major_version = 17
+
+# Notifications des opérateurs de paiement : appel sans session, authentifié
+# par signature (cf. la fonction). Lu aussi par `supabase functions deploy`.
+[functions.paiement-notification]
+verify_jwt = false

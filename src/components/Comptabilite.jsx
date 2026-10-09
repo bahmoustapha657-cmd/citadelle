@@ -15,6 +15,8 @@ function Comptabilite({ readOnly, annee, userRole, permissions = null, verrouOuv
     // Journal de caisse : le bilan raisonne par période scolaire (T1/T2…),
     // la caisse répond à « combien est entré aujourd'hui / cette semaine ».
     { id: "caisse", label: "📆 Caisse" },
+    // Paiements des parents en Mobile Money (imputés automatiquement).
+    { id: "en-ligne", label: "💳 En ligne" },
     { id: "recettes", label: `${t("accounting.tabs.revenues")} (${c.recettes.length})` },
     { id: "depenses", label: `${t("accounting.tabs.expenses")} (${c.depenses.length})` },
     { id: "salaires", label: t("accounting.tabs.salaries") },

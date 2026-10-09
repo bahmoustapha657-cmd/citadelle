@@ -1,0 +1,509 @@
+// GÉNÉRÉ par scripts/partager-edge.mjs depuis src/constants.js — ne pas modifier ici.
+import {
+  ADMIN_WRITABLE_MODULES,
+  MODULE_COLLECTIONS,
+  ROLE_ORDER,
+  ROLE_MODULE_CAPABILITIES,
+  ROLE_SETTINGS_DEFAULT,
+  getActiveRoleAccounts,
+  getAdminWriteModules,
+  getPrimaryModuleForRole as getPrimaryModuleForRoleConfig,
+  getRoleConfig as getRoleConfigFromSettings,
+  getRoleLabel as getRoleLabelFromSettings,
+  getRoleModules as getRoleModulesFromSettings,
+  getRoleSettingsMap,
+  normalizeRoleLogin,
+} from "../shared/role-config.js";
+
+export { ADMIN_WRITABLE_MODULES, MODULE_COLLECTIONS, getAdminWriteModules };
+
+// Couleurs marque/UI. `blue`/`blueDark` restent la couleur marque
+// littérale (utilisée à la fois comme texte et comme background dans
+// des avatars/boutons/badges) — ne pas la dérouter vers une variable
+// thème car ça casserait les fonds bleus en mode sombre.
+// Le mode sombre utilise plutôt les règles CSS catch-all dans index.css
+// pour remapper les couleurs textes vers --lc-text quand elles
+// apparaissent sur un fond clair surchargé.
+export const C = {
+  blue: "#0A1628",
+  blueDark: "#0A1628",
+  green: "#00C48C",
+  greenDk: "#00A876",
+  gold: "#FFB547",
+  white: "#ffffff",
+  bg: "var(--lc-bg, #EEF2F7)",
+  sidebar: "#0A1628",
+};
+
+export const TOUS_MOIS_COURTS = ["Sep", "Oct", "Nov", "Déc", "Jan", "Fév", "Mar", "Avr", "Mai", "Jun", "Jul", "Aoû"];
+export const TOUS_MOIS_LONGS = ["Septembre", "Octobre", "Novembre", "Décembre", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août"];
+export const MOIS_ANNEE = TOUS_MOIS_COURTS.slice(1, 10);
+export const MOIS_SALAIRE = TOUS_MOIS_LONGS.slice(1, 10);
+export const calcMoisAnnee = (debut = "Octobre") => {
+  const index = TOUS_MOIS_LONGS.indexOf(debut);
+  return Array.from({ length: 9 }, (_, offset) => TOUS_MOIS_COURTS[(index + offset) % 12]);
+};
+export const calcMoisSalaire = (debut = "Octobre") => {
+  const index = TOUS_MOIS_LONGS.indexOf(debut);
+  return Array.from({ length: 9 }, (_, offset) => TOUS_MOIS_LONGS[(index + offset) % 12]);
+};
+export const getAnnee = () => localStorage.getItem("LC_annee") || "2025-2026";
+
+// « 2026-2027 » → « 2025-2026 ». Renvoie "" si le format n'est pas reconnu.
+export const anneePrecedente = (annee) => {
+  const m = /^(\d{4})-(\d{4})$/.exec(String(annee || "").trim());
+  return m ? `${Number(m[1]) - 1}-${m[1]}` : "";
+};
+
+// « 2025-2026 » → « 2026-2027 ». Renvoie "" si le format n'est pas reconnu.
+export const anneeSuivante = (annee) => {
+  const m = /^(\d{4})-(\d{4})$/.exec(String(annee || "").trim());
+  return m ? `${m[2]}-${Number(m[2]) + 1}` : "";
+};
+
+// Fin PRÉVUE de l'année scolaire : le premier jour qui suit ses neuf mois de
+// classe (calcMoisAnnee), d'après le mois de début réglé par l'école. Début
+// en octobre → dernier mois juin → « 2025-2026 » s'achève le 1er juillet 2026
+// à 0 h. Comme pour anneeScolaireDeDate, septembre ouvre l'année : un début de
+// septembre à décembre tombe en AAAA, de janvier à août en AAAA+1.
+// null si l'année n'est pas au format « AAAA-AAAA ».
+export const finAnneeScolaire = (annee, moisDebut = "Octobre") => {
+  const m = /^(\d{4})-(\d{4})$/.exec(String(annee || "").trim());
+  if (!m) return null;
+  const rangDebut = TOUS_MOIS_LONGS.indexOf(moisDebut);
+  // Rang, compté depuis septembre AAAA, du mois qui suit les neuf mois.
+  const rangFin = (rangDebut >= 0 ? rangDebut : 1) + 9;
+  return new Date(Number(m[1]), 8 + rangFin, 1);
+};
+
+// Année scolaire à laquelle appartient une DATE : « 14/02/2026 » → 2025-2026.
+// Septembre ouvre l'année (TOUS_MOIS_COURTS commence à « Sep ») : de septembre
+// à décembre on est dans AAAA-AAAA+1, de janvier à août dans AAAA-1-AAAA.
+// Accepte l'ISO des <input type="date"> et le JJ/MM/AAAA des imports Excel ;
+// renvoie "" sur tout le reste, à charge de l'appelant de se replier.
+export const anneeScolaireDeDate = (valeur) => {
+  const v = String(valeur ?? "").trim();
+  const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
+  const local = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(v);
+  if (!iso && !local) return "";
+  const an = Number(iso ? iso[1] : local[3]);
+  const mois = Number(iso ? iso[2] : local[2]);
+  if (!an || mois < 1 || mois > 12) return "";
+  return mois >= 9 ? `${an}-${an + 1}` : `${an - 1}-${an}`;
+};
+
+// ── Systèmes de classes (adaptabilité par école) ────────────────
+// Le système choisi dans Paramètres → Identité détermine les listes de
+// classes PROPOSÉES (pastilles, sélecteurs, import). La détection de
+// section (getSectionForClasse) et la promotion (classeSuivante)
+// reconnaissent les DEUX nomenclatures par motif, indépendamment du
+// réglage — une école qui mélange les noms reste cohérente.
+// 4 divisions (A→D) par niveau ; la saisie libre couvre au-delà.
+const DIVISIONS_NIVEAU = ["A", "B", "C", "D"];
+const genClasses = (niveaux) =>
+  niveaux.flatMap((niveau) => DIVISIONS_NIVEAU.map((division) => `${niveau} ${division}`));
+
+// Le PRÉSCOLAIRE (maternelle) est une section à part entière depuis 2026-07 :
+// mêmes niveaux dans les deux systèmes (Petite / Moyenne / Grande Section).
+// Auparavant ces classes étaient rattachées au primaire (« Maternelle » côté
+// guinéen, « … Section » côté francophone) — elles en ont été retirées ici.
+const NIVEAUX_PRESCOLAIRE = ["Petite Section", "Moyenne Section", "Grande Section"];
+
+const NIVEAUX_PAR_SYSTEME = {
+  guineen: {
+    prescolaire: NIVEAUX_PRESCOLAIRE,
+    primaire: ["1ère Année", "2ème Année", "3ème Année", "4ème Année", "5ème Année", "6ème Année"],
+    college: ["7ème Année", "8ème Année", "9ème Année", "10ème Année"],
+    lycee: ["11ème Année", "12ème Année", "Terminale"],
+  },
+  francophone: {
+    prescolaire: NIVEAUX_PRESCOLAIRE,
+    primaire: ["CP", "CE1", "CE2", "CM1", "CM2"],
+    college: ["6ème", "5ème", "4ème", "3ème"],
+    lycee: ["Seconde", "Première", "Terminale"],
+  },
+};
+
+export const SYSTEMES_SCOLAIRES = [
+  { id: "guineen", label: "Système guinéen — 1ère à 12ème Année, Terminale" },
+  { id: "francophone", label: "Système francophone — CP à CM2, 6ème à 3ème, Seconde à Terminale" },
+];
+
+export const getSystemeScolaire = (schoolInfo = {}) =>
+  (NIVEAUX_PAR_SYSTEME[schoolInfo.systemeScolaire] ? schoolInfo.systemeScolaire : "guineen");
+
+// ── Sections réellement ouvertes dans l'école ───────────────────────────────
+// Une école sans lycée (ou primaire seul) le déclare dans Paramètres →
+// Identité ; l'UI (menu, onglets, filtres et sélecteurs de section, tableau
+// de bord, paie…) suit. Défaut : tout.
+export const SECTIONS_ECOLE = ["prescolaire", "primaire", "college", "lycee"];
+export const getSectionsActives = (schoolInfo = {}) => {
+  const brut = Array.isArray(schoolInfo?.sectionsActives)
+    ? schoolInfo.sectionsActives.filter((s) => SECTIONS_ECOLE.includes(s)) : [];
+  return brut.length ? brut : [...SECTIONS_ECOLE];
+};
+export const isSectionActive = (schoolInfo, section) => getSectionsActives(schoolInfo).includes(section);
+
+// Groupes de sections tels que les découpent le menu (modules « Dir.
+// Primaire » et « Secondaire »), la paie, les verrous et les réglages de jours
+// et de périodicité : un groupe est ouvert dès qu'une de ses sections l'est.
+const SECTIONS_PAR_GROUPE = {
+  primaire: ["prescolaire", "primaire"],
+  secondaire: ["college", "lycee"],
+};
+export const isGroupeActif = (schoolInfo, groupe) =>
+  (SECTIONS_PAR_GROUPE[groupe] || []).some((section) => isSectionActive(schoolInfo, section));
+
+// Modules du menu adossés à un groupe : une école sans collège ni lycée n'a
+// pas de module Secondaire, une école sans maternelle ni primaire pas de
+// module Dir. Primaire. Les autres modules ne dépendent d'aucune section.
+export const isModuleOuvertPourEcole = (moduleId, schoolInfo) =>
+  (moduleId === "primaire" || moduleId === "secondaire" ? isGroupeActif(schoolInfo, moduleId) : true);
+
+// Section retenue par un sélecteur de section : le choix courant s'il est
+// ouvert, sinon la première section ouverte — primaire et collège (les gros
+// effectifs) avant le lycée et la maternelle. Évite qu'un choix par défaut
+// (« college ») ou mémorisé pointe une section que l'école a fermée.
+const ORDRE_REPLI_SECTIONS = ["primaire", "college", "lycee", "prescolaire"];
+export const sectionOuverte = (schoolInfo, choix) => {
+  const actives = getSectionsActives(schoolInfo);
+  return actives.includes(choix) ? choix : ORDRE_REPLI_SECTIONS.find((section) => actives.includes(section));
+};
+
+// ── Jours de classe ─────────────────────────────────────────────────────────
+// Semaine complète possible. Les jours RÉELLEMENT ouvrés se règlent par section
+// dans Paramètres → Identité (lundi-vendredi, lundi-samedi, parfois sans
+// mercredi) et pilotent les colonnes de l'emploi du temps. Les helpers de
+// lecture vivent dans components/ecole/edt/edt-utils.js.
+export const JOURS_SEMAINE = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
+
+// Exports historiques (système guinéen) — conservés pour compat.
+export const CLASSES_PRESCOLAIRE = genClasses(NIVEAUX_PRESCOLAIRE);
+export const CLASSES_PRIMAIRE = genClasses(NIVEAUX_PAR_SYSTEME.guineen.primaire);
+export const CLASSES_COLLEGE = genClasses(NIVEAUX_PAR_SYSTEME.guineen.college);
+export const CLASSES_LYCEE = genClasses(NIVEAUX_PAR_SYSTEME.guineen.lycee);
+
+// Toutes les classes connues, tous systèmes confondus (import Excel…).
+export const getToutesClassesConnues = () =>
+  Object.values(NIVEAUX_PAR_SYSTEME).flatMap((systeme) =>
+    SECTIONS_ECOLE.flatMap((section) => genClasses(systeme[section])));
+
+export const MATIERES_PRIMAIRE = [
+  "Calcul", "Écriture", "Lecture", "Histoire", "Géographie",
+  "Éducation Civique et Morale", "Récitation et Chant", "Langage",
+  "Sciences d'Observation", "Éducation Physique",
+].map((nom) => ({ nom, coefficient: 1 }));
+
+// Domaines d'apprentissage du préscolaire (programme de maternelle) plutôt
+// que les matières du primaire : l'évaluation reste chiffrée, mais les
+// intitulés doivent parler aux éducatrices.
+export const MATIERES_PRESCOLAIRE = [
+  "Langage et Communication", "Graphisme et Écriture", "Pré-mathématiques",
+  "Découverte du Monde", "Activités Artistiques", "Chant et Comptines",
+  "Motricité et Jeux", "Vie Collective et Autonomie",
+].map((nom) => ({ nom, coefficient: 1 }));
+
+export const TOUTES_ANNEES = Array.from({ length: 30 }, (_, index) => `${2025 + index}-${2026 + index}`);
+// Aucun montant inventé : tous les frais restent à 0 tant que l'école n'a pas
+// configuré ses tarifs (Compta → Mensualités → Tarifs par classe).
+export const MENSUALITE = { prescolaire: 0, college: 0, lycee: 0, primaire: 0 };
+export const initMens = () => MOIS_ANNEE.reduce((accumulator, mois) => ({ ...accumulator, [mois]: "Impayé" }), {});
+
+// Détection de section par MOTIF (et non par correspondance exacte avec
+// les listes prédéfinies) : une classe saisie librement (« 3ème Année E »,
+// « CM2 Rouge ») est rattachée à la bonne section quel que soit son
+// suffixe. Les DEUX nomenclatures sont reconnues :
+//  - guinéenne : « Nème Année » (1-6 primaire, 7-10 collège, 11-12 lycée)
+//  - francophone : Petite/Moyenne/Grande Section, CP, CE1-2, CM1-2
+//    (primaire) ; 6ème-3ème SANS « Année » (collège) ; Seconde, Première
+//    (lycée). « 1ère Année » (guinéen, primaire) ≠ « 1ère » seule
+//    (Première, lycée) — le mot « Année » discrimine.
+// Repli sur les listes pour les noms hors motif.
+const RE_CLASSE_ANNEE = /^\s*(\d+)\s*(?:ère|ere|ème|eme|e)?\s*ann[ée]e\b/i;
+// Préscolaire : « Maternelle … » (ancienne nomenclature guinéenne, conservée
+// pour que les classes déjà saisies restent reconnues) et « Petite/Moyenne/
+// Grande Section ». Ces classes renvoyaient « primaire » avant que le
+// préscolaire ne devienne une section à part entière.
+const RE_CLASSE_PRESCOLAIRE = /^\s*(maternelle|(petite|moyenne|grande)\s+section|[pmg]\s*s\b)/i;
+export const getSectionForClasse = (classe = "") => {
+  const c = String(classe || "");
+  if (RE_CLASSE_PRESCOLAIRE.test(c)) return "prescolaire";
+  if (/^\s*terminale\b/i.test(c)) return "lycee";
+  const m = c.match(RE_CLASSE_ANNEE);
+  if (m) {
+    const n = Number(m[1]);
+    if (n >= 1 && n <= 6) return "primaire";
+    if (n >= 11) return "lycee";
+    return "college";
+  }
+  // Système francophone (le motif « Année » a déjà été traité ci-dessus ;
+  // les niveaux de maternelle le sont en tête, cf. RE_CLASSE_PRESCOLAIRE)
+  if (/^\s*(cp|ce\s*[12]|cm\s*[12])\b/i.test(c)) return "primaire";
+  if (/^\s*(seconde|2nde|premi[èe]re|1\s*[èe]re)\b/i.test(c)) return "lycee";
+  if (/^\s*[3-6]\s*(?:ème|eme|e)\b/i.test(c)) return "college";
+  if (CLASSES_PRESCOLAIRE.includes(c)) return "prescolaire";
+  if (CLASSES_PRIMAIRE.includes(c)) return "primaire";
+  if (CLASSES_LYCEE.includes(c)) return "lycee";
+  return "college";
+};
+
+export const getSectionLabel = (section = "college") => (
+  section === "prescolaire" ? "Préscolaire"
+    : section === "primaire" ? "Primaire"
+      : section === "lycee" ? "Lycée" : "Collège"
+);
+
+export const getSectionLabelForClasse = (classe = "") => getSectionLabel(getSectionForClasse(classe));
+
+// Barème de notation d'une section : la maternelle et le primaire sont notés
+// sur 10 (modules Préscolaire et Primaire, maxNote={10}), le collège et le
+// lycée sur 20. Une section inconnue suit le secondaire, comme getSectionLabel.
+export const getBaremeForSection = (section = "college") =>
+  (section === "prescolaire" || section === "primaire" ? 10 : 20);
+
+// Nom de section SANS accent, pour les noms de fichiers exportés
+// (« Eleves_Primaire.xlsx »). C'est le même segment que dans les clés de
+// collection (elevesPrimaire, notesCollege…), donc aucun caractère à risque.
+export const getSectionSlug = (section = "college") => (
+  section === "prescolaire" ? "Prescolaire"
+    : section === "primaire" ? "Primaire"
+      : section === "lycee" ? "Lycee" : "College"
+);
+
+// Listes proposées pour une section, selon le système de l'école
+// (2e argument : id du système, ex. getSystemeScolaire(schoolInfo)).
+export const getClassesForSection = (section = "college", systeme = "guineen") => {
+  const niveaux = NIVEAUX_PAR_SYSTEME[systeme] || NIVEAUX_PAR_SYSTEME.guineen;
+  return genClasses(niveaux[section] || niveaux.college);
+};
+
+// Niveaux BRUTS d'une section (sans les divisions A/B/C/D).
+export const getNiveauxForSection = (section = "college", systeme = "guineen") => {
+  const niveaux = NIVEAUX_PAR_SYSTEME[systeme] || NIVEAUX_PAR_SYSTEME.guineen;
+  return niveaux[section] || niveaux.college;
+};
+
+// Derniers niveaux de chaque cycle : ce sont les CLASSES D'EXAMEN, celles dont
+// le passage se joue devant un jury national et non sur nos évaluations —
+// 6ème Année (CEE), 10ème Année (BEPC) et Terminale (BAC) en système guinéen,
+// CM2, 3ème et Terminale en francophone. Déduites des listes de niveaux plutôt
+// qu'écrites en dur : un nouveau système hérite de la règle sans rien ajouter.
+export const getNiveauxExamen = (systeme = "guineen") => ["primaire", "college", "lycee"]
+  .map((section) => getNiveauxForSection(section, systeme).slice(-1)[0])
+  .filter(Boolean);
+
+export const getDefaultMensualiteForClasse = (classe = "") => {
+  const section = getSectionForClasse(classe);
+  return MENSUALITE[section] ?? MENSUALITE.college;
+};
+
+export const getTarifRevisionValue = (tarif = {}) => Number(tarif?.revision || 0);
+
+export const getTarifAutreValue = (tarif = {}) => Number(tarif?.autre || 0);
+
+// ── Frais scolaires annexes (catalogue configurable) ────────────────────────
+// Chaque école active les frais qui la concernent en saisissant un montant
+// par classe (Tarifs par classe). Le montant vit :
+//   • dans une colonne dédiée du tarif pour les frais marqués `colonne` —
+//     « Autre frais » (tarif.autre) et la révision (tarif.revision) ;
+//   • dans tarifs.extra.fraisDivers = { id: montant } pour tous les autres.
+// Le suivi par élève est le même pour tous : eleves.extra.fraisPayes =
+// { id: "date de paiement" } et fraisMontants = { id: montant figé au
+// paiement }. « Autre frais » a d'abord vécu dans des drapeaux à part
+// (autrePayee / autreDate) : ils sont encore LUS, plus jamais écrits.
+//
+// La révision est un frais ANNUEL, dû une seule fois : elle était ajoutée à
+// chaque mensualité, ce qui la faisait payer autant de fois qu'il y a de mois.
+export const CATALOGUE_FRAIS_ANNEXES = [
+  { id: "autre", label: "Autre frais", colonne: "autre" },
+  { id: "revision", label: "Frais de révision", colonne: "revision" },
+  { id: "uniforme", label: "Tenue / Uniforme" },
+  { id: "fournitures", label: "Fournitures & livres" },
+  { id: "cantine", label: "Cantine" },
+  { id: "transport", label: "Transport" },
+  { id: "examens", label: "Frais d'examen" },
+  { id: "assurance", label: "Assurance scolaire" },
+  { id: "carte", label: "Carte scolaire / badge" },
+  { id: "activites", label: "Activités & sorties" },
+  { id: "internat", label: "Internat" },
+  { id: "apeae", label: "Cotisation APEAE" },
+];
+
+export const getFraisAnnexeLabel = (id) =>
+  CATALOGUE_FRAIS_ANNEXES.find((f) => f.id === id)?.label || id;
+
+// Frais divers configurés d'un tarif (hors frais à colonne dédiée) : ne
+// renvoie que les montants > 0, filtrés sur le catalogue.
+export const getTarifFraisDivers = (tarif = {}) => {
+  const source = tarif?.fraisDivers || {};
+  return CATALOGUE_FRAIS_ANNEXES.reduce((acc, f) => {
+    if (f.colonne) return acc;
+    const montant = Number(source[f.id] || 0);
+    if (montant > 0) acc[f.id] = montant;
+    return acc;
+  }, {});
+};
+
+// Tous les frais annexes actifs d'un tarif, autre et révision compris :
+// { id: montant }, dans l'ordre du catalogue.
+export const getTarifFraisAnnexes = (tarif = {}) => {
+  const divers = getTarifFraisDivers(tarif);
+  return CATALOGUE_FRAIS_ANNEXES.reduce((acc, f) => {
+    const montant = f.colonne ? Number(tarif?.[f.colonne] || 0) : (divers[f.id] || 0);
+    if (montant > 0) acc[f.id] = montant;
+    return acc;
+  }, {});
+};
+
+// ── Réinscription ───────────────────────────────────────────────────────────
+// Un élève est « réinscrit » pour l'année en cours dès que son inscription est
+// encaissée. Rien de nouveau n'est stocké : la clôture d'année remet déjà
+// inscriptionPayee à false (après l'avoir archivée), donc chaque rentrée
+// repart avec tout le monde à réinscrire, sans aucune opération à lancer.
+// L'élève reste compté dans l'effectif de sa classe — seule la pastille et le
+// filtre changent.
+export const estReinscrit = (eleve = {}) => !!eleve.inscriptionPayee;
+export const aReinscrire = (eleve = {}) => eleve.statut === "Actif" && !estReinscrit(eleve);
+
+// ── Sortie de l'établissement ───────────────────────────────────────────────
+// Statuts qui signent un DÉPART définitif : ils ouvrent la saisie de la date
+// de départ dans la fiche d'enrôlement, et l'attestation les rédige au passé.
+// « Inactif » n'en est pas : l'élève est toujours inscrit, simplement en
+// sommeil (l'écran Départs le compte à part, pour ses statistiques).
+// « Diplômé » : admis à l'examen de fin de cycle sans classe suivante dans
+// l'établissement (BAC, ou BEPC dans une école sans lycée) — posé par le
+// passage des admis.
+// Le statut fait foi dès qu'il est renseigné : un élève « Actif » dont la
+// fiche garde une date de départ (repassé Actif, la date masquée restait
+// enregistrée) est un élève présent. La date seule ne compte que pour les
+// fiches sans statut. Ce que doit un élève parti : cf. depart-utils.js.
+export const STATUTS_SORTIE = ["Transféré", "Exclu", "Abandonné", "Décédé", "Diplômé"];
+export const estSorti = (eleve = {}) => STATUTS_SORTIE.includes(eleve.statut)
+  || (!eleve.statut && !!eleve.dateDepart);
+
+// Un frais annexe est-il payé pour cet élève ? Pour « autre », les anciens
+// drapeaux autrePayee / autreDate comptent encore.
+export const isFraisAnnexePaye = (eleve = {}, id) => !!(eleve.fraisPayes || {})[id]
+  || (id === "autre" && !!eleve.autrePayee);
+
+export const getFraisAnnexeDate = (eleve = {}, id) => (eleve.fraisPayes || {})[id]
+  || (id === "autre" && eleve.autrePayee ? (eleve.autreDate || "") : "");
+
+// Montant encaissé pour ce frais, figé au paiement (fraisMontants). null si le
+// frais a été payé avant qu'on le fige : l'appelant retombe sur le tarif.
+export const getFraisAnnexeMontantFige = (eleve = {}, id) => {
+  const fige = Number((eleve.fraisMontants || {})[id]);
+  return Number.isFinite(fige) && fige > 0 ? fige : null;
+};
+
+// Mensualité facturée chaque mois. La révision n'en fait plus partie : c'est
+// un frais annuel (cf. CATALOGUE_FRAIS_ANNEXES), dû une seule fois.
+export const getTarifMensuelTotal = (tarif = null, classe = "") => (
+  tarif ? Number(tarif?.montant || 0) : getDefaultMensualiteForClasse(classe)
+);
+
+export const genererMatricule = (eleves, type, config = {}) => {
+  const anneeShort = getAnnee().split("-")[0].slice(-2);
+  const anneeFull = getAnnee().split("-")[0];
+  const prefixe = type === "prescolaire"
+    ? (config.matriculePrefixPresco || "M") // M comme Maternelle (P est pris par le primaire)
+    : type === "primaire"
+      ? (config.matriculePrefixPrim || "P")
+      : type === "lycee"
+        ? (config.matriculePrefixLyc || "L")
+        : (config.matriculePrefixColl || "C");
+  const separateur = config.matriculeSep != null ? config.matriculeSep : "-";
+  const avecAnnee = config.matriculeAnnee !== false;
+  const annee = avecAnnee ? (config.matriculeAnnee4 ? anneeFull : anneeShort) : "";
+  const nombreChiffres = Number(config.matriculeChiffres || 3);
+  const prefixeComplet = avecAnnee ? `${prefixe}${annee}${separateur}` : `${prefixe}${separateur}`;
+  const numeros = eleves
+    .map((eleve) => eleve.matricule || "")
+    .filter((matricule) => matricule.startsWith(prefixeComplet))
+    .map((matricule) => parseInt(matricule.replace(prefixeComplet, ""), 10) || 0);
+  const suivant = numeros.length > 0 ? Math.max(...numeros) + 1 : 1;
+  return `${prefixeComplet}${String(suivant).padStart(nombreChiffres, "0")}`;
+};
+
+export const today = () => new Date().toLocaleDateString("fr-FR");
+
+// Monnaie courante (mise à jour depuis App.jsx via setMonnaie) — défaut "GNF".
+// Variable module-level pour que fmt() reste appelable sans args partout (~23 sites).
+export const MONNAIES = ["GNF","XOF","XAF","USD","EUR","MAD"];
+let _monnaieCourante = "GNF";
+export const setMonnaie = (m) => { _monnaieCourante = (typeof m === "string" && m.trim()) || "GNF"; };
+export const getMonnaie = () => _monnaieCourante;
+export const fmt = (nombre, monnaie) => `${Number(nombre || 0).toLocaleString("fr-FR")} ${monnaie || _monnaieCourante}`;
+export const fmtN = (nombre) => Number(nombre || 0).toLocaleString("fr-FR");
+
+export const ROLE_IDS_PERSONNALISABLES = ROLE_ORDER;
+export const ROLE_SETTINGS_DEFAUTS = ROLE_SETTINGS_DEFAULT;
+export const ACCES = ROLE_MODULE_CAPABILITIES;
+export const COMPTES_DEFAUT = getActiveRoleAccounts({});
+export const getRoleSettingsForSchool = (schoolInfo = {}) => getRoleSettingsMap(schoolInfo);
+export const getRoleConfigForSchool = (role, schoolInfo = {}) => getRoleConfigFromSettings(role, schoolInfo);
+export const getRoleLabelForSchool = (role, schoolInfo = {}) => getRoleLabelFromSettings(role, schoolInfo);
+export const getModulesForRole = (role, schoolInfo = {}) => getRoleModulesFromSettings(role, schoolInfo);
+export const getPrimaryModuleForRole = (role, schoolInfo = {}) => getPrimaryModuleForRoleConfig(role, schoolInfo);
+export const getComptesDefautForSchool = (schoolInfo = {}) => getActiveRoleAccounts(schoolInfo);
+export { normalizeRoleLogin };
+
+export const genererMdp = () => {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#!";
+  if (globalThis.crypto?.getRandomValues) {
+    const bytes = new Uint32Array(12);
+    globalThis.crypto.getRandomValues(bytes);
+    return Array.from(bytes, (value) => chars[value % chars.length]).join("");
+  }
+  return Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+};
+
+export const PLANS = {
+  gratuit: { label: "Gratuit", eleveLimit: 50, couleur: "#64748b", bg: "#f1f5f9" },
+  starter: { label: "Starter", eleveLimit: 200, couleur: "#0ea5e9", bg: "#e0f2fe" },
+  standard: { label: "Standard", eleveLimit: 500, couleur: "#8b5cf6", bg: "#ede9fe" },
+  premium: { label: "Premium", eleveLimit: Infinity, couleur: "#f59e0b", bg: "#fef3c7" },
+};
+export const PLAN_DUREES = [
+  { label: "1 mois", jours: 30 },
+  { label: "3 mois", jours: 90 },
+  { label: "6 mois", jours: 180 },
+  { label: "1 an", jours: 365 },
+];
+
+export const peutModifierEleves = (role) => role === "comptable" || role === "admin" || role === "direction";
+export const peutModifier = (role) => role === "admin" || role === "direction";
+// Création de comptes parents : direction + admin (gestion globale) +
+// comptable (en première ligne sur l'inscription/paiement, c'est lui
+// qui ouvre l'accès parent en pratique).
+export const peutCreerComptesParent = (role) => role === "direction" || role === "admin" || role === "comptable";
+
+export const MODULES = [
+  { id: "superadmin_panel", label: "Super Admin", icon: "⚙️", desc: "Gestion des écoles" },
+  { id: "accueil", label: "Tableau de bord", icon: "📈", desc: "Vue d'ensemble" },
+  { id: "historique", label: "Historique", icon: "📋", desc: "Journal des actions" },
+  { id: "admin_panel", label: "Comptes & Postes", icon: "🧩", desc: "Comptes, droits et signataires" },
+  { id: "parametres", label: "Paramètres", icon: "🏫", desc: "Identité de l'école" },
+  { id: "fondation", label: "Fondation", icon: "🏛️", desc: "Gouvernance" },
+  { id: "compta", label: "Comptabilité", icon: "📊", desc: "Finances" },
+  // Le préscolaire (maternelle) est un SOUS-ONGLET de ce module, comme le
+  // lycée l'est du secondaire — il n'a donc pas d'entrée propre au menu.
+  { id: "primaire", label: "Dir. Primaire", icon: "🎒", desc: "Préscolaire & Primaire" },
+  { id: "secondaire", label: "Secondaire", icon: "🏫", desc: "Bureau Collège" },
+  // `sousModule` : permission FINE, pas une page de menu. La Discipline est un
+  // onglet de Primaire/Secondaire ; sans permission propre, autoriser un
+  // surveillant à saisir une absence revenait à lui ouvrir aussi les notes,
+  // les élèves et les classes — tout le module.
+  { id: "discipline", label: "Discipline", icon: "⚠️", desc: "Absences & sanctions", sousModule: true },
+  { id: "statistiques", label: "Statistiques", icon: "📈", desc: "Analyses avancées (Premium)" },
+  { id: "calendrier", label: "Calendrier", icon: "📅", desc: "Événements scolaires" },
+  { id: "examens", label: "Examens", icon: "📝", desc: "Planning & convocations" },
+  { id: "portail_enseignant", label: "Mon Espace", icon: "👨‍🏫", desc: "Portail enseignant" },
+  { id: "portail_parent", label: "Espace Parent", icon: "👨‍👩‍👧", desc: "Suivi de mon enfant" },
+  { id: "messages", label: "Messages Parents", icon: "💬", desc: "Liaison école-famille" },
+];
+
+export const getModuleOptionsForRole = (role) => {
+  const allowedModules = ACCES[role] || [];
+  return MODULES.filter((module) => allowedModules.includes(module.id));
+};

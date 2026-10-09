@@ -9,6 +9,7 @@ import { BandeauLectureSeule } from "./app/BandeauLectureSeule";
 import { MessagerieProvider } from "./messagerie/MessagerieContext";
 import { BandeauAnnonces } from "./messagerie/BandeauAnnonces";
 import { useMessagerie } from "./messagerie/messagerie-contexte";
+import { RetourPaiement } from "./paiement-en-ligne/RetourPaiement";
 
 // Onglet « Messages » : non-lus de la messagerie (discussions + annonces)
 // dès qu'elle est active ; sinon, ceux de l'ancien fil avec l'école.
@@ -58,6 +59,8 @@ function PortailParent({ utilisateur, deconnecter, annee, schoolInfo }) {
       <div style={{ padding: "24px", maxWidth: 1000, margin: "0 auto" }}>
         <PortailTabContent p={p} schoolInfo={schoolInfo} utilisateur={utilisateur} c1={c1} c2={c2} />
       </div>
+      {/* Retour de la page de paiement de l'opérateur (?paiement=…). */}
+      <RetourPaiement onTermine={() => { p.setTab("paiements"); p.chargerPortail(); }} />
     </div>
     </MessagerieProvider>
   );

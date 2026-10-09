@@ -85,8 +85,12 @@ jobs:
           version: 2.120.0  # épinglée : « latest » interroge l API GitHub (rate limit), cf. docs/deploiement.md
 
       # Base vierge + toutes les migrations + Edge Functions servies en local.
+      # PAIEMENT_SIMULATION : fournisseur de paiement « simulation » autorisé
+      # sur cette pile jetable seulement (jamais posé en production).
       - name: Démarrer Supabase local
-        run: supabase start -x studio,imgproxy,logflare,vector,supavisor,realtime,postgres-meta
+        run: |
+          echo "PAIEMENT_SIMULATION=autorisee" > supabase/functions/.env
+          supabase start -x studio,imgproxy,logflare,vector,supavisor,realtime,postgres-meta
 
       # Clés de la pile LOCALE (valeurs de démonstration publiques de la CLI).
       - name: Variables de la base locale

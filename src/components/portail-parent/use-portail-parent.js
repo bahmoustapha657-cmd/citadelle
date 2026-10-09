@@ -170,6 +170,7 @@ export function usePortailParent({ utilisateur, schoolInfo }) {
     famille,
     voirEnfant,
     envoyer,
+    chargerPortail,
     tabs,
   };
 }
