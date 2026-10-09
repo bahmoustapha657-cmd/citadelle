@@ -38,13 +38,9 @@ jobs:
       - name: Test
         run: npm run test
 
-      - name: Build
-        run: npm run build
-
-      # Le bundle réellement mis en production (Cloudflare Pages, edugest-gn).
-      # Le build par défaut ci-dessus est la variante Firebase. Construit en
-      # dernier : c'est ce dist/ qui est transmis au job de déploiement.
-      - name: Build (Supabase — bundle deploye)
+      # Le bundle réellement mis en production (Cloudflare Pages, edugest-gn) :
+      # c'est ce dist/ qui est transmis au job de déploiement.
+      - name: Build (bundle deploye)
         run: npm run build:supabase
 
       - name: Conserver le bundle à déployer
