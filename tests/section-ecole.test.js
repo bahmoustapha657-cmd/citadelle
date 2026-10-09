@@ -102,14 +102,16 @@ test("livrets de maternelle : périodes du préscolaire, plus celles du secondai
 test("livret de maternelle : moyenne simple comme au bulletin, plus la formule du secondaire", () => {
   const eleve = { _id: "e1", nom: "Camara", prenom: "Awa", classe: "Grande Section A" };
   const matieres = [{ nom: "Langage", coefficient: 1 }, { nom: "Graphisme", coefficient: 1 }];
+  // Notes de l'année du livret : le pré-remplissage ne reprend que celles-là.
+  const annee = "2026-2027";
   const notes = [
-    { eleveId: "e1", matiere: "Langage", periode: "T1", type: "Devoir", note: 8 },
-    { eleveId: "e1", matiere: "Langage", periode: "T1", type: "Composition", note: 5 },
+    { eleveId: "e1", matiere: "Langage", periode: "T1", type: "Devoir", note: 8, annee },
+    { eleveId: "e1", matiere: "Langage", periode: "T1", type: "Composition", note: 5, annee },
     // Rubriques du collège : proposées à tort à la maternelle depuis juillet.
-    { eleveId: "e1", matiere: "Graphisme", periode: "T1", type: "Dictée/Questions", note: 9 },
-    { eleveId: "e1", matiere: "Graphisme", periode: "T1", type: "Rédaction", note: 3 },
+    { eleveId: "e1", matiere: "Graphisme", periode: "T1", type: "Dictée/Questions", note: 9, annee },
+    { eleveId: "e1", matiere: "Graphisme", periode: "T1", type: "Rédaction", note: 3, annee },
   ];
-  const opts = { notes, matieres, periodes: ["T1", "T2", "T3"], maxNote: 10, eleves: [eleve], annee: "2026-2027" };
+  const opts = { notes, matieres, periodes: ["T1", "T2", "T3"], maxNote: 10, eleves: [eleve], annee };
   const moyenneT1 = (section, matiere) =>
     buildAnneePreRemplie(eleve, { ...opts, section }).notes.find((n) => n.matiere === matiere).T1;
 
