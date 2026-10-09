@@ -27,7 +27,8 @@ const MOTIFS = {
 // de l'opérateur) ou ?paiement-simule=<référence> (fournisseur de
 // simulation : tests et démonstrations, aucun argent).
 export function RetourPaiement({ onTermine }) {
-  const [retour] = useState(() => lireRetourPaiement());
+  // null une fois la fenêtre fermée (le suivi s'arrête avec elle).
+  const [retour, setRetour] = useState(() => lireRetourPaiement());
   const [paiement, setPaiement] = useState(null);
   const [erreur, setErreur] = useState("");
   const [attente, setAttente] = useState(!retour?.simulation);
@@ -59,7 +60,7 @@ export function RetourPaiement({ onTermine }) {
 
   if (!retour) return null;
 
-  const fermer = () => { nettoyerRetourPaiement(); onTermine?.(); };
+  const fermer = () => { nettoyerRetourPaiement(); setRetour(null); onTermine?.(); };
   const simuler = async (resultat) => {
     setAttente(true);
     try { setPaiement(await simulerPaiement(retour.reference, resultat)); } catch (e) { setErreur(e.message); }
