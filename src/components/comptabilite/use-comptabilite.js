@@ -5,7 +5,6 @@ import { SchoolContext } from "../../contexts/SchoolContext";
 import { useFirestore } from "../../hooks/useFirestore";
 import { useAnneeConsultee } from "../../hooks/use-annee-consultee";
 import { lireVersionsDoc, majReglagesCompta, sauverParametresEcole } from "../../backend/data-supabase";
-import { isSupabase } from "../../backend";
 import {
   encaisserVersement as encaisserVersementAction,
   retirerAcompte as retirerAcompteAction,
@@ -150,9 +149,7 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   // Relecture de la fiche juste avant un encaissement (cf. fiche-a-jour) :
   // même collection que modEleves.
   const collectionParNiveau = { college: "elevesCollege", lycee: "elevesLycee", primaire: "elevesPrimaire", prescolaire: "elevesPrescolaire" };
-  const lireFiche = isSupabase
-    ? (id) => lireVersionsDoc(schoolId, collectionParNiveau[niveau] || "elevesCollege", id)
-    : null;
+  const lireFiche = (id) => lireVersionsDoc(schoolId, collectionParNiveau[niveau] || "elevesCollege", id);
   // Grille des mensualités : les élèves qui relèvent de l'année consultée. Un
   // élève parti avant sa rentrée, sans rien d'encaissé, n'y a plus sa place —
   // il y traînait avec neuf mois « impayés » qu'il ne devait pas.

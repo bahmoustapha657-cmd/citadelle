@@ -2,12 +2,8 @@
 // Les images étaient conservées en base64 DANS les colonnes (eleves.photo).
 // À 3 000 élèves et ~100 ko par photo, la table pèserait 300 Mo et chaque
 // lecture de la collection les retéléchargerait toutes. Elles vivent
-// désormais dans le stockage objet ; la colonne ne garde qu'une URL.
-//
-// Le chemin d'envoi visait encore FIREBASE Storage, resté en place après la
-// migration : une photo prise aujourd'hui partait vers un projet qui n'est
-// plus la production. Firebase n'est conservé ici qu'en repli, chargé à la
-// demande pour ne rien peser dans le bundle Supabase.
+// désormais dans le stockage objet (Supabase Storage, bucket `photos`) ; la
+// colonne ne garde qu'une URL.
 // ⚠️ TOUTE BALISE <img> QUI AFFICHE UNE DE CES URL DOIT PORTER
 //    crossOrigin="anonymous" — sans exception, y compris dans le HTML des
 //    documents imprimés.
@@ -17,7 +13,6 @@
 //    Supabase Storage n'envoie PAS — OU si elle est demandée en mode CORS,
 //    ce que fait précisément l'attribut crossOrigin. Vérifié sur la
 //    production : sans l'attribut l'image est BLOQUÉE, avec elle charge.
-import { isSupabase } from "./backend";
 import { getSupabase } from "./supabaseClient";
 import { dataUrlToBlob } from "./data-url.js";
 import { envoyerSansAttendreLeReseau, envoyerPhotosEnAttente } from "./photos-hors-ligne.js";
@@ -36,43 +31,25 @@ function nomAleatoire(extension) {
   return `${alea}.${extension}`;
 }
 
-async function firebase() {
-  const [{ getStorage, ref, uploadBytes, getDownloadURL, deleteObject }] = await Promise.all([
-    import("firebase/storage"),
-  ]);
-  return { getStorage, ref, uploadBytes, getDownloadURL, deleteObject };
-}
-
 export async function uploadFichier(fichier, chemin) {
-  if (isSupabase) {
-    const sb = getSupabase();
-    const { error } = await sb.storage.from(BUCKET).upload(chemin, fichier, {
-      upsert: true,
-      contentType: fichier?.type || undefined,
-    });
-    if (error) throw new Error(error.message);
-    return sb.storage.from(BUCKET).getPublicUrl(chemin).data.publicUrl;
-  }
-  const { getStorage, ref, uploadBytes, getDownloadURL } = await firebase();
-  const storageRef = ref(getStorage(), chemin);
-  await uploadBytes(storageRef, fichier);
-  return getDownloadURL(storageRef);
+  const sb = getSupabase();
+  const { error } = await sb.storage.from(BUCKET).upload(chemin, fichier, {
+    upsert: true,
+    contentType: fichier?.type || undefined,
+  });
+  if (error) throw new Error(error.message);
+  return sb.storage.from(BUCKET).getPublicUrl(chemin).data.publicUrl;
 }
 
 // Supprime un fichier à partir de son URL publique. Best-effort : un fichier
 // déjà absent n'est pas une erreur pour l'appelant.
 export async function supprimerFichier(url) {
   try {
-    if (isSupabase) {
-      const marqueur = `/object/public/${BUCKET}/`;
-      const i = String(url || "").indexOf(marqueur);
-      if (i === -1) return; // URL étrangère (ancienne Firebase) : rien à faire ici
-      const chemin = decodeURIComponent(String(url).slice(i + marqueur.length));
-      await getSupabase().storage.from(BUCKET).remove([chemin]);
-      return;
-    }
-    const { getStorage, ref, deleteObject } = await firebase();
-    await deleteObject(ref(getStorage(), url));
+    const marqueur = `/object/public/${BUCKET}/`;
+    const i = String(url || "").indexOf(marqueur);
+    if (i === -1) return; // URL étrangère (ancienne Firebase) : rien à faire ici
+    const chemin = decodeURIComponent(String(url).slice(i + marqueur.length));
+    await getSupabase().storage.from(BUCKET).remove([chemin]);
   } catch { /* déjà supprimé, ou URL non gérée */ }
 }
 
@@ -90,7 +67,7 @@ export async function uploadImage(base64OuUrl, schoolId, categorie = "photos", {
   const blob = dataUrlToBlob(base64OuUrl);
   const ext = blob.type === "image/png" ? "png" : blob.type === "image/webp" ? "webp" : "jpg";
   const chemin = cheminFichier(schoolId, categorie, nomAleatoire(ext));
-  if (!horsLigne || !isSupabase) return uploadFichier(blob, chemin);
+  if (!horsLigne) return uploadFichier(blob, chemin);
   // L'URL publique se calcule sans réseau : la fiche est enregistrée tout de
   // suite avec son URL définitive, la photo part dès que le réseau le permet.
   const url = getSupabase().storage.from(BUCKET).getPublicUrl(chemin).data.publicUrl;

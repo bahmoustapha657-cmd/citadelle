@@ -19,7 +19,6 @@ import {
   supprimerIncident as supprimerIncidentAction,
 } from "./incidents-actions";
 import { fetchTeacherPortal } from "./portail-api";
-import { isSupabase } from "../../backend";
 import { ecouterMiroir } from "../../backend/realtime-supabase";
 import { saveNotesApi } from "./notes-api";
 import { draftKey, loadDraft, saveDraft, clearDraft } from "./notes-draft";
@@ -161,7 +160,6 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
   const rechargerDepuisMiroir = useRef(null);
   rechargerDepuisMiroir.current = () => chargerPortail({ silencieux: true });
   useEffect(() => {
-    if (!isSupabase) return undefined;
     let minuteur = null;
     const arreter = ecouterMiroir(TABLES_PORTAIL, () => {
       clearTimeout(minuteur);

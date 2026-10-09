@@ -3,11 +3,9 @@
 // ══════════════════════════════════════════════════════════════
 // Stocké dans la colonne `ecoles.legal` (Supabase), exposé en
 // `schoolInfo.legal` et enregistré par sauverProfilLegal (backend/
-// data-supabase). Le doc Firestore /ecoles/{schoolId}/config/legal n'est
-// plus lu que par l'ancienne version Firebase.
+// data-supabase).
 // Fallback quand le profil est absent : `legalProfileVide` (profil neutre
-// à compléter dans Paramètres → Officiel). `legalProfileMock` contient
-// les données réelles de La Citadelle et n'est servi qu'à elle.
+// à compléter dans Paramètres → Officiel).
 
 export type CycleLegal = "maternelle" | "primaire" | "secondaire";
 
@@ -83,45 +81,6 @@ export function legalProfileComplet(profile?: Partial<LegalProfile> | null): Leg
     etablissement: { ...legalProfileVide.etablissement, ...p.etablissement },
   };
 }
-
-// Données réelles La Citadelle (seed historique) — servies UNIQUEMENT
-// comme fallback de l'école « citadelle », jamais aux autres.
-export const legalProfileMock: LegalProfile = {
-  promoteur: {
-    nom: "Souleymane DIALLO",
-    anneeNaissance: 1975,
-    lieuNaissance: "Kindia",
-  },
-  autorisationCreation: {
-    numero: "0197/MEN-A/CAB/20",
-    dateSignature: "2020-04-29",
-    ministre: "Mory SANGARE",
-    ministere: "MEN-A",
-  },
-  arreteOuverture: {
-    numero: "A/2022/1065/MEPU-A/SGG",
-    dateSignature: "2022-05-17",
-    ministre: "Guillaume HAWING",
-    ministere: "MEPU-A",
-    dureeValiditeAnnees: 5,
-  },
-  codesStatistiques: {
-    maternelle: "541 10 16",
-    primaire: "541 10 13",
-    secondaire: "954 17 12",
-  },
-  etablissement: {
-    denomination: "Groupe Scolaire Privé La Citadelle",
-    quartier: "Dar-Es-Salam",
-    commune: "Commune urbaine de Kindia",
-    region: "Région de Kindia",
-    email: "lacitadelle16@gmail.com",
-    ministereTutelle: "Ministère de l'Enseignement Pré-Universitaire et de l'Éducation Civique",
-    ire: "IRE de Kindia",
-    dpe: "DPE de Kindia",
-    // coordonnees laissées vides — note manuscrite illisible
-  },
-};
 
 // ── Helpers ──────────────────────────────────────────────────────
 
@@ -235,44 +194,4 @@ export function getOfficialLegalFooterHTML(profile: LegalProfile, cycle: CycleLe
   return `<div class="legal-footer" style="margin-top:14px;padding-top:8px;border-top:1px solid #e5e7eb;text-align:center;font-size:8.5px;color:#6b7280;line-height:1.5;font-family:Arial,sans-serif">
     Établissement agréé — Arrêté ${num} du ${date}${code ? ` — Code statistique : ${code}` : ""}
   </div>`;
-}
-
-// ── Firestore (ancienne version, lecture seule) ───────────────
-// Doc unique : /ecoles/{schoolId}/config/legal. L'écriture passe désormais
-// par sauverProfilLegal (colonne ecoles.legal, Supabase).
-
-import { doc, getDoc } from "firebase/firestore";
-import { safeOnSnapshot } from "./firestore-safe";
-import { db } from "./firebaseDb";
-
-const LEGAL_DOC_ID = "legal";
-
-function legalDocRef(schoolId: string) {
-  return doc(db, "ecoles", schoolId, "config", LEGAL_DOC_ID);
-}
-
-// Fallback quand le doc /config/legal n'existe pas encore : le mock ne
-// contient QUE les données de La Citadelle (seed historique), donc on ne
-// le sert qu'à elle — toute autre école part d'un profil vide qu'elle
-// renseigne dans Paramètres → Officiel.
-function fallbackLegalProfile(schoolId: string): LegalProfile {
-  return schoolId === "citadelle" ? legalProfileMock : legalProfileVide;
-}
-
-// Lit le profil légal une fois (fallback par école si le doc n'existe pas).
-export async function getLegalProfile(schoolId: string): Promise<LegalProfile> {
-  const snap = await getDoc(legalDocRef(schoolId));
-  if (!snap.exists()) return fallbackLegalProfile(schoolId);
-  return snap.data() as LegalProfile;
-}
-
-// Listener temps réel (fallback par école tant que le doc n'existe pas).
-// Retourne la fonction unsubscribe.
-export function subscribeLegalProfile(
-  schoolId: string,
-  cb: (profile: LegalProfile) => void,
-): () => void {
-  return safeOnSnapshot(legalDocRef(schoolId), (snap) => {
-    cb(snap.exists() ? (snap.data() as LegalProfile) : fallbackLegalProfile(schoolId));
-  });
 }

@@ -24,8 +24,7 @@
   "include": [
     "src/**/*.ts",
     "src/**/*.tsx",
-    "tests/**/*.ts",
-    "api/**/*.ts"
+    "tests/**/*.ts"
   ],
   "exclude": ["node_modules", "dist"]
 }

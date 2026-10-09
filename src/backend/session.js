@@ -1,9 +1,6 @@
-// Aiguillage des opérations de session selon le backend actif (VITE_BACKEND).
-// Garde la prod Firebase strictement inchangée par défaut.
-import { isSupabase } from "../backend";
-import { signOutCurrentUser } from "../firebaseAuth";
-import { signOut as signOutSupabase } from "./auth-supabase";
+// Fin de session (déconnexion), point d'entrée unique de l'app.
+import { signOut } from "./auth-supabase";
 
 export function signOutSession() {
-  return isSupabase ? signOutSupabase() : signOutCurrentUser();
+  return signOut();
 }

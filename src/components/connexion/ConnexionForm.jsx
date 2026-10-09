@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { isSupabase } from "../../backend";
 import { LanguageSwitcher } from "../LanguageSwitcher";
 import Logo from "../../Logo";
 import { ConnexionChamps } from "./ConnexionChamps";
@@ -26,7 +25,7 @@ export function ConnexionForm({
   const { t } = useTranslation();
   const [oubliOuvert, setOubliOuvert] = useState(false);
 
-  const lienOubli = isSupabase && codeEcole.trim().toLowerCase() !== "superadmin" ? (
+  const lienOubli = codeEcole.trim().toLowerCase() !== "superadmin" ? (
     <button type="button" className="cx-lien" onClick={() => setOubliOuvert(true)}>
       {t("auth.forgotPassword")}
     </button>

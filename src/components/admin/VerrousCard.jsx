@@ -1,17 +1,14 @@
 import React, { useContext, useState } from "react";
-import { doc, updateDoc } from "firebase/firestore";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { C, isModuleOuvertPourEcole } from "../../constants";
-import { db } from "../../firebaseDb";
-import { isSupabase } from "../../backend";
 import { majVerrou } from "../../backend/data-supabase";
 import { Card } from "../ui";
 
 export function VerrousCard({ verrous = {}, schoolId }) {
   const { schoolInfo } = useContext(SchoolContext);
   const [savingVerrou, setSavingVerrou] = useState(null);
-  // État local optimiste : sur Supabase (pas d'écoute temps réel du doc
-  // école) l'interrupteur resterait figé jusqu'au rechargement sinon.
+  // État local optimiste : l'interrupteur bascule sans attendre la relecture
+  // de la fiche école.
   const [locaux, setLocaux] = useState({});
   const etatVerrou = (cle) => (cle in locaux ? locaux[cle] : !!verrous[cle]);
 
@@ -19,10 +16,8 @@ export function VerrousCard({ verrous = {}, schoolId }) {
     setSavingVerrou(cle);
     try {
       const nvVal = !etatVerrou(cle);
-      // Supabase : les verrous vivent dans ecoles.extra.verrous — l'appel
-      // Firestore direct levait « Missing or insufficient permissions ».
-      if (isSupabase) await majVerrou(schoolId, cle, nvVal);
-      else await updateDoc(doc(db,"ecoles",schoolId), { [`verrous.${cle}`]: nvVal });
+      // Les verrous vivent dans ecoles.extra.verrous.
+      await majVerrou(schoolId, cle, nvVal);
       setLocaux((p) => ({ ...p, [cle]: nvVal }));
     } finally { setSavingVerrou(null); }
   };

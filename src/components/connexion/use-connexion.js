@@ -1,20 +1,9 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { signInWithCustomTokenClient } from "../../firebaseAuth";
-import { isSupabase } from "../../backend";
 import { ecoleLogin, fetchEtatEcole, superadminLogin } from "./connexion-api";
 
-// Course contre la montre : empeche une promesse (sign-in Firebase) de bloquer
-// la connexion indefiniment.
-function avecDelai(promesse, ms) {
-  return Promise.race([
-    promesse,
-    new Promise((_, rejeter) => setTimeout(() => rejeter(new Error("timeout")), ms)),
-  ]);
-}
-
 // Logique de connexion : état du formulaire, résolution de l'école saisie
-// (lookup Firestore débounce) et appel d'authentification.
+// (lookup débounce) et appel d'authentification.
 export function useConnexion({ onLogin }) {
   const { t } = useTranslation();
   const [codeEcole, setCodeEcole] = useState(() => localStorage.getItem("LC_schoolId") || "");
@@ -73,11 +62,8 @@ export function useConnexion({ onLogin }) {
           return;
         }
 
+        // Session déjà établie par signInWithPassword.
         onLogin(data.compte, "superadmin");
-        // Supabase : session déjà établie par signInWithPassword (pas de token).
-        if (!isSupabase && data.customToken) {
-          signInWithCustomTokenClient(data.customToken).catch(() => {});
-        }
         return;
       }
 
@@ -87,19 +73,8 @@ export function useConnexion({ onLogin }) {
         return;
       }
 
-      if (isSupabase) {
-        // Session Supabase déjà ouverte → useAuthSession prend le relais.
-        onLogin(data.compte, sid);
-        return;
-      }
-
-      try {
-        // 15 s max : si Firebase Auth pend, on bascule sur le repli onLogin
-        // plutot que de bloquer l'ecran de connexion.
-        await avecDelai(signInWithCustomTokenClient(data.customToken), 15000);
-      } catch {
-        onLogin(data.compte, sid);
-      }
+      // Session Supabase déjà ouverte → useAuthSession prend le relais.
+      onLogin(data.compte, sid);
     } catch {
       setErreur(t("auth.errServerUnreachable"));
     } finally {

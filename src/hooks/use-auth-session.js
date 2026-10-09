@@ -1,9 +1,5 @@
 import { useEffect, useState } from "react";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "../firebaseDb";
-import { signOutCurrentUser, watchAuthState } from "../firebaseAuth";
-import { isSupabase } from "../backend";
-import { watchAuthState as watchAuthStateSupabase } from "../backend/auth-supabase";
+import { watchAuthState } from "../backend/auth-supabase";
 import { powerSyncConfigured, moduleDisponibleHorsLigne } from "../backend/powersync/tables";
 import { getPrimaryModuleForRole } from "../constants";
 import { getPrimaryModuleForCompte, getOfflineModuleForCompte } from "../../shared/postes-config.js";
@@ -27,7 +23,7 @@ function choisirPageInitiale(u) {
 // `import()` dynamique + garde `powerSyncConfigured` : évite de charger
 // @powersync/web/wa-sqlite tant que VITE_POWERSYNC_URL n'est pas renseigné
 // (feature désactivée par défaut) — zéro coût réseau en plus du zéro coût de
-// bundle côté Firebase (isSupabase=false, jamais appelé du tout).
+// bundle.
 const connectPowerSync = (uid) => (powerSyncConfigured
   ? import("../backend/powersync/client").then((m) => m.connectPowerSync(uid))
   : Promise.resolve());
@@ -35,12 +31,11 @@ const disconnectPowerSync = () => (powerSyncConfigured
   ? import("../backend/powersync/client").then((m) => m.disconnectPowerSync())
   : Promise.resolve());
 
-// Hook qui synchronise l'état utilisateur + page courante avec l'auth
-// Firebase. Au démarrage et à chaque changement d'état Firebase :
-// - si pas connecté : reset utilisateur/page
-// - sinon : charge le profil depuis /users/{uid}, vérifie le statut,
-//   injecte schoolId + page initiale, et prefetch les modules les plus
-//   utilisés.
+// Hook qui synchronise l'état utilisateur + page courante avec la session
+// Supabase. La session fournit l'utilisateur complet (construit depuis la
+// table `comptes`) :
+// - si pas connecté : reset utilisateur/page, synchro hors ligne coupée
+// - sinon : injecte schoolId + page initiale, connecte la synchro hors ligne.
 //
 // Extrait de App.jsx au refactor découpage 2026-05-20.
 // Landing ouverte par le lien ?decouvrir : ce n'est pas un module, une
@@ -55,106 +50,40 @@ export function useAuthSession({ setSchoolId, setPage }) {
     let actif = true;
     let unsub = () => {};
 
-    // ── Backend Supabase : la session fournit déjà l'utilisateur complet
-    // (construit depuis la table `comptes`). Pas de lecture /users/{uid}.
-    if (isSupabase) {
-      watchAuthStateSupabase((u) => {
-        if (!actif) return;
-        if (!u) {
-          setUtilisateur(null);
-          setPage((p) => (p === PAGE_DECOUVRIR ? p : null));
-          // Coupe la synchro sans vider le miroir : le même compte retrouvera
-          // ses données au retour (cf. powersync/proprietaire.js).
-          disconnectPowerSync().catch(() => {});
-          return;
-        }
-        if (u.schoolId) {
-          setSchoolId(u.schoolId);
-          localStorage.setItem("LC_schoolId", u.schoolId);
-        }
-        // Même compte que celui déjà affiché (ex. posé par le formulaire de
-        // connexion, puis confirmé par l'événement d'auth) : on garde l'objet
-        // pour ne pas relancer les chargements qui dépendent de l'utilisateur.
-        setUtilisateur((prec) => (prec && JSON.stringify(prec) === JSON.stringify(u) ? prec : u));
-        setPage((p) => (p && p !== PAGE_DECOUVRIR ? p : choisirPageInitiale(u)));
-        // Mode hors ligne (vague 1 = académique) : personnel + enseignants
-        // seulement. Les PARENTS ne se connectent PAS à PowerSync — leur
-        // périmètre (leurs enfants) n'est pas couvert par les Sync Rules, qui
-        // synchroniseraient sinon toute l'école. (Portail parent = vague 2.)
-        if (u.role !== "parent") {
-          connectPowerSync(u.uid).catch(() => {});
-          // Miroir, saisies non envoyées et photos : à protéger contre
-          // l'effacement par le navigateur quand le disque se remplit.
-          protegerDonneesLocales();
-        }
-      }).then((cleanup) => {
-        if (actif) unsub = cleanup; else cleanup();
-      }).catch(() => {});
-
-      return () => { actif = false; unsub(); };
-    }
-
-    watchAuthState(async (firebaseUser) => {
+    watchAuthState((u) => {
       if (!actif) return;
-      if (!firebaseUser) {
-        // Session Firebase expirée ou déconnexion → vider l'état
+      if (!u) {
         setUtilisateur(null);
         setPage((p) => (p === PAGE_DECOUVRIR ? p : null));
+        // Coupe la synchro sans vider le miroir : le même compte retrouvera
+        // ses données au retour (cf. powersync/proprietaire.js).
+        disconnectPowerSync().catch(() => {});
         return;
       }
-      try {
-        const profil = await getDoc(doc(db, "users", firebaseUser.uid));
-        if (profil.exists() && actif) {
-          const d = profil.data();
-          if (d.statut && d.statut !== "Actif") {
-            signOutCurrentUser().catch(() => {});
-            setUtilisateur(null);
-            setPage(null);
-            return;
-          }
-          const sid = d.schoolId;
-          setSchoolId(sid);
-          localStorage.setItem("LC_schoolId", sid);
-          setUtilisateur({
-            uid: firebaseUser.uid,
-            login: d.login,
-            nom: d.nom,
-            role: d.role,
-            label: d.label || d.role,
-            premiereCo: !!d.premiereCo,
-            compteDocId: d.compteDocId || null,
-            schoolId: sid,
-            section: d.section || null,
-            sections: Array.isArray(d.sections) ? d.sections : [],
-            eleveId: d.eleveId || null,
-            eleveIds: Array.isArray(d.eleveIds) ? d.eleveIds : [],
-            eleveNom: d.eleveNom || "",
-            eleveClasse: d.eleveClasse || "",
-            elevesAssocies: Array.isArray(d.elevesAssocies) ? d.elevesAssocies : [],
-            enseignantId: d.enseignantId || null,
-            enseignantNom: d.enseignantNom || "",
-            matiere: d.matiere || "",
-            tuteur: d.tuteur || "",
-            contactTuteur: d.contactTuteur || "",
-            filiation: d.filiation || "",
-          });
-          setPage((p) => (p && p !== PAGE_DECOUVRIR ? p : getPrimaryModuleForRole(d.role)));
-          // Prefetch des pages les plus utilisées pendant que le dashboard se rend
-          import("../components/Comptabilite").catch(() => {});
-          import("../components/Ecole").catch(() => {});
-        }
-      } catch (e) {
-        console.error("Erreur chargement profil:", e);
+      if (u.schoolId) {
+        setSchoolId(u.schoolId);
+        localStorage.setItem("LC_schoolId", u.schoolId);
+      }
+      // Même compte que celui déjà affiché (ex. posé par le formulaire de
+      // connexion, puis confirmé par l'événement d'auth) : on garde l'objet
+      // pour ne pas relancer les chargements qui dépendent de l'utilisateur.
+      setUtilisateur((prec) => (prec && JSON.stringify(prec) === JSON.stringify(u) ? prec : u));
+      setPage((p) => (p && p !== PAGE_DECOUVRIR ? p : choisirPageInitiale(u)));
+      // Mode hors ligne (vague 1 = académique) : personnel + enseignants
+      // seulement. Les PARENTS ne se connectent PAS à PowerSync — leur
+      // périmètre (leurs enfants) n'est pas couvert par les Sync Rules, qui
+      // synchroniseraient sinon toute l'école. (Portail parent = vague 2.)
+      if (u.role !== "parent") {
+        connectPowerSync(u.uid).catch(() => {});
+        // Miroir, saisies non envoyées et photos : à protéger contre
+        // l'effacement par le navigateur quand le disque se remplit.
+        protegerDonneesLocales();
       }
     }).then((cleanup) => {
-      if (actif) unsub = cleanup;
-      else cleanup();
+      if (actif) unsub = cleanup; else cleanup();
     }).catch(() => {});
 
-    return () => {
-      actif = false;
-      unsub();
-    };
+    return () => { actif = false; unsub(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

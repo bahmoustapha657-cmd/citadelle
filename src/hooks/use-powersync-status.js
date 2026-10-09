@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
-import { isSupabase } from "../backend";
 import { powerSyncConfigured } from "../backend/powersync/tables";
 import { compterPhotosEnAttente } from "../photos-hors-ligne";
 
-// État du mode hors ligne (PowerSync). No-op côté Firebase et si PowerSync
-// n'est pas configuré (VITE_POWERSYNC_URL vide) : rien en attente, pas de
-// synchro en cours, sans coût — le module lourd (@powersync/web/wa-sqlite)
-// n'est chargé en `import()` que si les deux conditions ci-dessous sont réunies.
+// État du mode hors ligne (PowerSync). No-op si PowerSync n'est pas configuré
+// (VITE_POWERSYNC_URL vide) : rien en attente, pas de synchro en cours, sans
+// coût — le module lourd (@powersync/web/wa-sqlite) n'est chargé en
+// `import()` que s'il l'est.
 //   • syncPendantes : changements locaux pas encore remontés à Supabase,
 //     photos d'élèves en attente d'envoi comprises.
 //   • premiereSynchro : null, ou { fraction (0 → 1), essentielPret } tant que
@@ -17,7 +16,7 @@ export function usePowerSyncStatus() {
   const [premiereSynchro, setPremiereSynchro] = useState(null);
 
   useEffect(() => {
-    if (!isSupabase || !powerSyncConfigured) return;
+    if (!powerSyncConfigured) return;
     let actif = true;
     let unsub = null;
     let timer = null;

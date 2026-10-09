@@ -10,7 +10,6 @@ export function SuperAdminTabs({ ongletSA, setOngletSA, demandes, setPlanModal, 
     { id: "plans", label: "Plans" },
     { id: "outils", label: "Comms & Assistant" },
     { id: "demandes", label: `Demandes${enAttente > 0 ? " (" + enAttente + ")" : ""}` },
-    { id: "alertes", label: "Alertes Sentry" },
   ];
   return (
     <div style={{display:"flex",gap:8,marginBottom:20,flexWrap:"wrap"}}>

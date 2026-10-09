@@ -103,16 +103,6 @@ export async function changerMotDePassePerso(nouveauMdp) {
   return { ok: true, autresDeconnectes };
 }
 
-// Réglages de rôles de l'école (update direct, RLS staff).
-// Conservé pour compat (mode Firebase / anciennes écoles) — le modèle
-// Supabase vit désormais dans la table `postes` ci-dessous.
-export async function syncRoleSettings(schoolCode, roleSettings) {
-  const sb = getSupabase();
-  const { error } = await sb.from("ecoles").update({ role_settings: roleSettings }).eq("code", schoolCode);
-  if (error) throw new Error(error.message || "Enregistrement des rôles impossible.");
-  return { ok: true };
-}
-
 // ── Postes flexibles (table `postes`, RLS : lecture staff, écriture direction) ─
 async function ecoleIdDepuisCode(sb, schoolCode) {
   const { data, error } = await sb.from("ecoles").select("id").eq("code", schoolCode).maybeSingle();
