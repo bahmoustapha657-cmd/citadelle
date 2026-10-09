@@ -11,7 +11,7 @@ import { computeRapportAnnuel } from "./rapport-annuel/rapport-data.js";
 import { buildRapportAnnuelHTML } from "./rapport-annuel/rapport-html.js";
 
 // data = { annee, moisAnnee, eleves[], absences[], notes[], recettes[],
-//          depenses[], salaires[], ensC[], ensL[], ensP[] }
+//          depenses[], salaires[], ensC[], ensL[], ensP[], ensPre[] }
 export const genererRapportAnnuel = (data = {}, schoolInfo = {}) => {
   const { eleves = [], recettes = [], salaires = [] } = data;
   if (!eleves.length && !recettes.length && !salaires.length) {

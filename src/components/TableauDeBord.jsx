@@ -13,7 +13,7 @@ import { AbonnementBloc } from "./tableau-de-bord/AbonnementBloc";
 // useTableauDeBord, chaque bloc visuel dans tableau-de-bord/*.jsx.
 function TableauDeBord({ annee, userRole, onOpenLegalSettings }) {
   const { t } = useTranslation();
-  const d = useTableauDeBord();
+  const d = useTableauDeBord({ annee });
 
   if (d.enChargement) return <Chargement type="kpi" cols={6} />;
 
@@ -23,10 +23,10 @@ function TableauDeBord({ annee, userRole, onOpenLegalSettings }) {
         t={t} c1={d.c1} schoolInfo={d.schoolInfo} annee={annee} moisAnnee={d.moisAnnee}
         moisRapport={d.moisRapport} setMoisRapport={d.setMoisRapport}
         elevesC={d.elevesC} elevesL={d.elevesL} elevesP={d.elevesP} elevesPre={d.elevesPre}
-        absences={d.absences} absL={d.absL} absP={d.absP}
-        notesC={d.notesC} notesL={d.notesL} notesP={d.notesP}
+        absences={d.absences} absL={d.absL} absP={d.absP} absPre={d.absPre}
+        notesC={d.notesC} notesL={d.notesL} notesP={d.notesP} notesPre={d.notesPre}
         recettes={d.recettes} depenses={d.depenses} salaires={d.salaires}
-        ensC={d.ensC} ensL={d.ensL} ensP={d.ensP}
+        ensC={d.ensC} ensL={d.ensL} ensP={d.ensP} ensPre={d.ensPre}
       />
 
       <KpiGrid
