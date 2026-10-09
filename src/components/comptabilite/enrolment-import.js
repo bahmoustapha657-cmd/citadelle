@@ -5,16 +5,14 @@
 
 import { detectColumns } from "./enrolment-import/column-detect";
 import { parseEnrolmentRows } from "./enrolment-import/row-parse";
+import { lireTableur } from "../../lecture-tableur";
 
 const loadXLSX = () => import("xlsx");
 
 // Lit un fichier Excel/CSV et renvoie soit { error } soit { preview }.
 // preview = { lignes, valides, mapping, nbAvert }.
 export async function parseEnrolmentFile(arrayBuffer, { classeDefautImport, ordreNomImport, tousElevesScolarite }) {
-  const XLSX = await loadXLSX();
-  const wb = XLSX.read(arrayBuffer, { cellDates: true });
-  const ws = wb.Sheets[wb.SheetNames[0]];
-  const allRows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "", raw: false });
+  const allRows = await lireTableur(arrayBuffer, { texte: true });
   if (allRows.length < 2) return { error: "Fichier vide ou sans données" };
 
   const { headers, headerRowIdx, cols, champLabels } = detectColumns(allRows);
