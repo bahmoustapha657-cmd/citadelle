@@ -79,8 +79,10 @@ function calcMoyenneAnnuelle(schoolInfo, notes, classe, matieres) {
 // Lecture Supabase qui ÉCHOUE franchement : chargerCollection renvoie une
 // liste vide en cas d'erreur, et conclure « personne à promouvoir » d'une
 // lecture ratée serait faux.
+// Toujours le SERVEUR : un miroir local incomplet (synchro pas finie) ferait
+// juger — et promouvoir — une partie seulement des élèves (cf. clôture).
 async function lire(schoolId, nom, filtres) {
-  const { items, erreur } = await chargerCollection(schoolId, nom, filtres);
+  const { items, erreur } = await chargerCollection(schoolId, nom, { ...filtres, reseau: true });
   if (erreur) throw new Error(`lecture impossible (${nom}) : ${erreur}`);
   return items || [];
 }
@@ -186,9 +188,10 @@ async function appliquerUpdates(schoolId, updates) {
   if (isSupabase) {
     for (let i = 0; i < updates.length; i += SB_PARALLELE) {
       await Promise.all(updates.slice(i, i + SB_PARALLELE).map(
+        // Sur le serveur, comme la lecture (cf. lire) ; le miroir suivra.
         (u) => (u.section
-          ? changerSectionDoc(schoolId, u.collection, u.id, u.section, u.champs)
-          : modifierChampDoc(schoolId, u.collection, u.id, u.champs)),
+          ? changerSectionDoc(schoolId, u.collection, u.id, u.section, u.champs, { reseau: true })
+          : modifierChampDoc(schoolId, u.collection, u.id, u.champs, { reseau: true })),
       ));
     }
     return;

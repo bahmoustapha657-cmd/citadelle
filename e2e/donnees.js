@@ -12,6 +12,10 @@ const ANON_KEY = process.env.E2E_ANON_KEY;
 const SERVICE_ROLE_KEY = process.env.E2E_SERVICE_ROLE_KEY;
 
 export const ECOLE = { nom: "Ecole E2E", code: "ecole-e2e" };
+// Année officielle de l'école : déjà terminée (fin prévue 1er juillet 2026),
+// donc clôturable quel que soit le jour du test.
+export const ANNEE = "2025-2026";
+export const ANNEE_SUIVANTE = "2026-2027";
 export const DIRECTION = { login: "direction", mdp: "E2e-Direction-2026", nom: "Direction" };
 export const COMPTABLE = { login: "compta", mdp: "E2e-Comptable-2026", nom: "Caissier Test" };
 
@@ -27,6 +31,9 @@ export const ELEVES = [
 // se mêlent pas à celles que vérifie notes.spec.js.
 export const CLASSE_HORS_LIGNE = "7ème B";
 export const ELEVE_HORS_LIGNE = { nom: "CAMARA", prenom: "Fatou", sexe: "F", matricule: "E2E-003" };
+// Élève supprimé depuis « un autre poste » pendant qu'on l'encaisse
+// (fiche-supprimee.spec.js) : même classe que DIALLO, donc même tarif.
+export const ELEVE_SUPPRIME = { nom: "SOW", prenom: "Mamadou", sexe: "M", matricule: "E2E-004" };
 export const MATIERES = [
   { nom: "Mathématiques", coefficient: 4 },
   { nom: "Français", coefficient: 3 },
@@ -89,6 +96,8 @@ export async function preparerEcole() {
     adminLogin: DIRECTION.login, adminMdp: DIRECTION.mdp,
   });
   const id = await ecoleId(admin);
+  const { data: ec } = await admin.from("ecoles").select("extra").eq("id", id).single();
+  await admin.from("ecoles").update({ extra: { ...(ec?.extra || {}), anneeScolaire: ANNEE } }).eq("id", id);
 
   // 2. La direction a déjà fait sa première connexion (mot de passe choisi) :
   //    les parcours métier ne repassent pas par l'écran de changement.
@@ -115,7 +124,7 @@ export async function preparerEcole() {
   await ecrire("matieres", MATIERES.map((m) => ligne("matieres", m)));
   await ecrire("tarifs", [ligne("tarifs", { classe: CLASSE, montant: MENSUALITE })]);
   await ecrire("eleves", [
-    ...ELEVES.map((e) => ligne("eleves", { ...e, classe: CLASSE, statut: "Actif", inscriptionPayee: true })),
+    ...[...ELEVES, ELEVE_SUPPRIME].map((e) => ligne("eleves", { ...e, classe: CLASSE, statut: "Actif", inscriptionPayee: true })),
     ligne("eleves", { ...ELEVE_HORS_LIGNE, classe: CLASSE_HORS_LIGNE, statut: "Actif", inscriptionPayee: true }),
   ]);
   return id;
@@ -128,6 +137,20 @@ export async function lireEleve(matricule) {
     .select("id, nom, prenom, extra").eq("ecole_id", await ecoleId(admin)).eq("matricule", matricule).single();
   if (error) throw error;
   return data;
+}
+
+export async function lireEcole() {
+  const admin = clientAdmin();
+  const { data, error } = await admin.from("ecoles").select("id, extra").eq("code", ECOLE.code).single();
+  if (error) throw error;
+  return data;
+}
+
+// Supprime une fiche élève « depuis un autre poste » (service_role).
+export async function supprimerEleve(matricule) {
+  const admin = clientAdmin();
+  const { error } = await admin.from("eleves").delete().eq("ecole_id", await ecoleId(admin)).eq("matricule", matricule);
+  if (error) throw error;
 }
 
 export async function lireNotes(eleveId) {
