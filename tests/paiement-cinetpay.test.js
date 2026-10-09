@@ -181,8 +181,10 @@ test("configuration : changer d'opérateur ne reprend pas les anciens identifian
 
 test("vue de la direction : identifiants masqués, jamais en clair", () => {
   const vue = vueConfiguration(existante, Object.values(FOURNISSEURS));
-  assert.equal(vue.cle, "sk_test_…1234");
-  assert.equal(vue.motDePassePose, true);
+  assert.deepEqual(vue.identifiants, { api_key: "sk_test_…1234", api_password: "enregistré" });
+  // Orange : le Client ID se reconnaît, le secret et la clé marchand non.
+  const orange = vueConfiguration({ ...existante, fournisseur: "orange_money", identifiants: { client_id: "abcdefgh-1234-5678", client_secret: "tres-secret-123456", merchant_key: "cle-marchand-98765" } }, []);
+  assert.deepEqual(orange.identifiants, { client_id: "abcdefgh…5678", client_secret: "enregistré", merchant_key: "enregistré" });
   assert.ok(!JSON.stringify(vue).includes(TEST.api_password));
   assert.ok(!JSON.stringify(vue).includes(TEST.api_key));
   assert.equal(masquer("court"), "…");

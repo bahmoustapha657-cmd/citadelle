@@ -22,7 +22,8 @@ export const etatPaiementEnLigne = () => appeler("etat");
 export const ciblesPaiement = (eleveId) => appeler("cibles", { eleveId });
 
 // Direction : réglages de l'école, identifiants MASQUÉS
-// { fournisseur, mode, actif, fraisPourcent, cle, motDePassePose, fournisseurs }
+// { fournisseur, mode, actif, fraisPourcent, fournisseurs,
+//   identifiants: { client_id: "abcdefgh…5678", client_secret: "enregistré"… } }
 export const lireConfigPaiement = () => appeler("config").then((d) => d.config);
 
 // Direction : enregistre (identifiants essayés auprès de l'opérateur si
