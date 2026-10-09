@@ -1,13 +1,8 @@
-// Appels réseau / Firestore de l'écran « Paramètres de l'école » :
-// sauvegarde de la monnaie (comptable), sauvegarde complète des paramètres
-// + sync de la page publique, et cycle de vie (désactiver / supprimer).
-import { doc, updateDoc } from "firebase/firestore";
+// Appels réseau de l'écran « Paramètres de l'école » : sauvegarde de la
+// monnaie (comptable), sauvegarde complète des paramètres, et cycle de vie
+// (désactiver / supprimer).
 import { JOURS_SEMAINE, getSectionsActives } from "../../../constants";
 import { uploadImage } from "../../../storageUtils";
-import { db } from "../../../firebaseDb";
-import { apiFetch, getAuthHeaders } from "../../../apiClient";
-import { isSupabase } from "../../../backend";
-import { syncEcolePublic } from "../../app/app-shell-api";
 import { majReglagesCompta, sauverParametresEcole } from "../../../backend/data-supabase";
 
 const normaliserMonnaie = (m) => (m || "GNF").trim().toUpperCase();
@@ -18,17 +13,16 @@ const joursValides = (brut) => {
   return retenus.length ? retenus : [...JOURS_SEMAINE];
 };
 
-// Sauvegarde restreinte au seul champ `monnaie` (rôle comptable). Côté
-// Supabase, RPC dédiée : la policy ecoles_update est fermée au comptable, un
-// update direct y était refusé en silence (monnaie jamais enregistrée).
-export async function sauvegarderMonnaie({ schoolId, monnaie }) {
+// Sauvegarde restreinte au seul champ `monnaie` (rôle comptable). RPC
+// dédiée : la policy ecoles_update est fermée au comptable, un update direct
+// y était refusé en silence (monnaie jamais enregistrée).
+export async function sauvegarderMonnaie({ monnaie }) {
   const valeur = normaliserMonnaie(monnaie);
-  if (isSupabase) await majReglagesCompta({ monnaie: valeur });
-  else await updateDoc(doc(db, "ecoles", schoolId), { monnaie: valeur });
+  await majReglagesCompta({ monnaie: valeur });
   return valeur;
 }
 
-// Sauvegarde complète des paramètres puis sync de la page publique.
+// Sauvegarde complète des paramètres.
 // Renvoie l'objet `data` écrit (pour mettre à jour schoolInfo côté hook).
 export async function sauvegarderParametres({ schoolId, form, accueil, evaluationForms }) {
   // Logo et signature arrivent en base64 (l'écran en a besoin pour l'aperçu
@@ -62,9 +56,9 @@ export async function sauvegarderParametres({ schoolId, form, accueil, evaluatio
     monnaie: normaliserMonnaie(form.monnaie),
     // ministere / ire / dpe / agrement : MIGRÉS vers le profil légal (colonne
     // ecoles.legal, édité via le widget Conformité). Plus écrits par ce formulaire.
-    // Les valeurs Firestore existantes restent en place (updateDoc merge),
-    // utilisées par resolveLegalFields() comme fallback tant que le profil
-    // légal structuré n'est pas complet.
+    // Les valeurs existantes restent en place (fusion), utilisées par
+    // resolveLegalFields() comme fallback tant que le profil légal structuré
+    // n'est pas complet.
     moisDebut: form.moisDebut,
     systemeScolaire: form.systemeScolaire || "guineen",
     // Sections réellement ouvertes (école sans lycée…) — pilote l'UI.
@@ -96,41 +90,19 @@ export async function sauvegarderParametres({ schoolId, form, accueil, evaluatio
       adresse: accueil.adresse.trim(),
     },
   };
-  if (isSupabase) await sauverParametresEcole(schoolId, data);
-  else await updateDoc(doc(db, "ecoles", schoolId), data);
-  // Miroir public : Firebase UNIQUEMENT. Sur Supabase la page vitrine passe
-  // par la RPC etat_ecole, il n'y a rien à synchroniser — et l'API Vercel
-  // n'existe plus depuis que Cloudflare est seul hébergeur : chaque
-  // enregistrement des paramètres tirait un 405 dans la console.
-  // syncEcolePublic porte déjà la garde ; on l'appelle au lieu de refaire
-  // l'appel à la main, pour qu'il n'y ait qu'un seul endroit à corriger.
-  try {
-    await syncEcolePublic(schoolId);
-  } catch { /* non-bloquant : la source privée est à jour */ }
+  // La page vitrine lit la fiche via la RPC etat_ecole : rien à synchroniser.
+  await sauverParametresEcole(schoolId, data);
   return data;
 }
 
-// Action de cycle de vie (désactivation / suppression logique).
-// Renvoie { ok, data } ; le décodage JSON est tolérant aux réponses vides.
-// Même piège que la synchro publique : `/school-lifecycle` est une fonction
-// VERCEL, et Cloudflare répond 405 depuis qu'il est seul hébergeur. Côté
-// Supabase, l'opération passe par l'adaptateur superadmin (RLS is_superadmin).
+// Action de cycle de vie (désactivation / suppression logique), par
+// l'adaptateur superadmin (RLS is_superadmin). Renvoie { ok, data }.
 export async function executerCycleVie({ schoolId, action, confirmation }) {
-  if (isSupabase) {
-    const { executerCycleVieApi } = await import("../../../backend/superadmin-supabase");
-    try {
-      // Renvoie déjà { ok, data } : on ne réemballe pas.
-      return await executerCycleVieApi({ schoolId, action, confirmation });
-    } catch (e) {
-      return { ok: false, data: { error: e.message } };
-    }
+  const { executerCycleVieApi } = await import("../../../backend/superadmin-supabase");
+  try {
+    // Renvoie déjà { ok, data } : on ne réemballe pas.
+    return await executerCycleVieApi({ schoolId, action, confirmation });
+  } catch (e) {
+    return { ok: false, data: { error: e.message } };
   }
-  const headers = await getAuthHeaders({ "Content-Type": "application/json" });
-  const response = await apiFetch("/school-lifecycle", {
-    method: "POST",
-    headers,
-    body: JSON.stringify({ schoolId, action, confirmation }),
-  });
-  const data = await response.json().catch(() => ({}));
-  return { ok: response.ok && data.ok, data };
 }

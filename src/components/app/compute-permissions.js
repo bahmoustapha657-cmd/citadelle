@@ -1,5 +1,4 @@
 import { C, MODULES, getModulesForRole, getRoleLabelForSchool, isModuleOuvertPourEcole } from "../../constants";
-import { isSupabase } from "../../backend";
 import {
   ROLES_HORS_POSTES,
   getSessionPermissions,
@@ -9,18 +8,15 @@ import {
 
 // Dérive les modules visibles et les droits d'écriture du compte courant.
 //
-// Mode Supabase (postes flexibles) : la carte de permissions du poste
+// Postes flexibles : la carte de permissions du poste
 // { module: "lecture"|"ecriture" } pilote tout — modules visibles = lecture,
 // readOnly = pas d'écriture sur la page courante. Les comptes legacy (sans
 // poste) retombent sur les capacités historiques de leur rôle via
 // getSessionPermissions. Exceptions conservées :
 //  - direction → toujours tous droits SAUF compta (le DG supervise, ne saisit
 //    pas la trésorerie ; il contrôle l'ouverture du verrou via AdminPanel)
-//  - superadmin / enseignant / parent → hors postes (portails dédiés)
-//
-// Mode Firebase (legacy, gelé) : comportement historique inchangé —
-// direction writable sauf compta, admin readOnly sauf writeModules, autres
-// rôles arbitrés par les rules Firestore.
+//  - superadmin / enseignant / parent → hors postes (portails dédiés),
+//    modules de leur rôle
 //
 // Abonnement expiré (planEstExpire, après la période de grâce) → tout
 // l'établissement bascule en lecture seule, quel que soit le rôle (sauf
@@ -32,7 +28,7 @@ export function computeAppPermissions({ utilisateur, schoolInfo, page, planInfo 
   const isDirection = role === "direction";
   // estAdmin garde son sens initial pour l'onboarding (admin + direction voient le guide)
   const estAdmin = isAdmin || isDirection;
-  const surPostes = isSupabase && !ROLES_HORS_POSTES.includes(role);
+  const surPostes = !ROLES_HORS_POSTES.includes(role);
 
   const permissions = surPostes ? getSessionPermissions(utilisateur, schoolInfo) : null;
   const modulesActifsIds = surPostes ? null : getModulesForRole(role, schoolInfo);
@@ -49,17 +45,11 @@ export function computeAppPermissions({ utilisateur, schoolInfo, page, planInfo 
     && (schoolInfo?.roleSettings?.admin?.writeModules || []).includes(page);
   const directionReadOnlyCurrentPage = isDirection && page === "compta";
   const abonnementExpire = role !== "superadmin" && !!planInfo?.planEstExpire;
-  // École migrée vers la version Supabase : l'ANCIENNE version (backend
-  // Firebase) passe en lecture seule avec bannière de redirection. Le drapeau
-  // est ignoré côté Supabase (il peut avoir été copié dans les données lors
-  // de la migration) et pour le superadmin.
-  const basculeSupabase = !isSupabase && role !== "superadmin" && schoolInfo?.basculeSupabase === true;
   // Messagerie interne : hors carte des postes, chacun y écrit en son nom.
   const pageSansEcriture = page === "messagerie" ? false : surPostes
     ? (!isDirection && !hasWrite(permissions, page))
     : (isAdmin && !adminCanWriteCurrentPage);
-  const readOnly = basculeSupabase
-    || abonnementExpire
+  const readOnly = abonnementExpire
     || pageSansEcriture
     || directionReadOnlyCurrentPage;
   const couleur2 = schoolInfo.couleur2 || C.green;
@@ -73,6 +63,6 @@ export function computeAppPermissions({ utilisateur, schoolInfo, page, planInfo 
 
   return {
     modulesVisibles, permissions, role, roleEffectif, estAdmin, readOnly,
-    abonnementExpire, basculeSupabase, couleur2, utilisateurLabel,
+    abonnementExpire, couleur2, utilisateurLabel,
   };
 }

@@ -1,12 +1,10 @@
 import { genererMdp } from "../../../constants";
-import { apiFetch, getAuthHeaders } from "../../../apiClient";
-import { isSupabase } from "../../../backend";
 import { creerCompte as creerCompteSb } from "../../../backend/account-manage-supabase";
 import { teacherAccountSection } from "../../../backend/teacher-scope";
 
 // Logique de l'onglet Enseignants : édition des formulaires, section du
 // compte (depuis la prop `section` d'Ecole), ouverture et création de compte
-// enseignant via /account-manage.
+// enseignant (Edge Function account-manage).
 export function useEnsTab({
   section, schoolId, toast, logAction,
   ensCompte, setEnsCompte, formC, setFormC, setForm,
@@ -48,17 +46,7 @@ export function useEnsTab({
         matiere: ensCompte.matiere || "",
         statut: "Actif",
       };
-      if (isSupabase) {
-        await creerCompteSb(payload);
-      } else {
-        const headers = await getAuthHeaders({ "Content-Type": "application/json" });
-        const res = await apiFetch("/account-manage", {
-          method: "POST", headers,
-          body: JSON.stringify({ action: "create", ...payload }),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || !data.ok) throw new Error(data.error || "Création du compte impossible.");
-      }
+      await creerCompteSb(payload);
       toast(`Compte enseignant créé — ID : ${formC.login} · L'enseignant changera son mot de passe à la 1ère connexion.`, "success");
       logAction("Compte enseignant créé", `Login: ${formC.login} · ${nomComplet}`);
       setEnsCompte(null);

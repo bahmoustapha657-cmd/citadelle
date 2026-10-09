@@ -1,8 +1,8 @@
 // Promotion de fin d'année et passage des admis aux examens : classe suivante
 // dérivée dynamiquement (src/promotion-utils.js) + exécution en batch avec
 // mode simulation. Extrait de AdminPanel.jsx au refactor découpage 2026-05-29.
-// Deux backends : Firebase (writeBatch) et Supabase (chargerCollection +
-// modifierChampDoc) — même logique de décision, sélectionnée par isSupabase.
+// Lecture par chargerCollection, écritures par modifierChampDoc /
+// changerSectionDoc, toujours sur le serveur.
 //
 // Les deux opérations jugent l'année qui vient d'être CLÔTURÉE, et seulement
 // les élèves qui y étaient inscrits et n'ont pas changé de classe depuis
@@ -14,9 +14,6 @@
 //     Terminale…), sur le résultat saisi, autant de fois que les résultats
 //     arrivent.
 
-import { collection, doc, getDocs, query, where, writeBatch } from "firebase/firestore";
-import { db } from "../firebaseDb";
-import { isSupabase } from "../backend";
 import { changerSectionDoc, chargerCollection, modifierChampDoc } from "../backend/data-supabase";
 import {
   anneePrecedente, finAnneeScolaire, getAnnee, getSectionForClasse, getSectionLabel, getSystemeScolaire,
@@ -31,9 +28,7 @@ import { matieresEvaluees } from "../matiere-nature";
 import { classeAnneeCloturee, etatPromotion } from "./admin/cloture-annee-utils";
 import { majFicheEcole } from "./admin/cloture-annee";
 
-// Limite Firestore : 500 opérations par batch (marge de sécurité à 450).
-const BATCH_MAX = 450;
-// Supabase : nb d'updates lancés en parallèle (modifierChampDoc = 1 par appel).
+// Nb d'updates lancés en parallèle (modifierChampDoc = 1 par appel).
 const SB_PARALLELE = 40;
 
 // Le préscolaire est une section à part entière depuis 2026-07 : sans lui,
@@ -87,34 +82,21 @@ async function lire(schoolId, nom, filtres) {
   return items || [];
 }
 
-// Charge (eleves, notes, matieres) d'une section — Supabase ou Firebase.
-// Renvoie des items uniformes portant `_id` (comme les snapshots Firestore).
+// Charge (eleves, notes, matieres) d'une section ; items portant `_id`.
 // `annee` : les notes sont filtrées sur l'année jugée. Sans ce filtre, la
 // moyenne annuelle mélangeait les notes de TOUTES les années dès qu'une
 // seconde rentrée existait — et la décision de passage avec.
 async function chargerSection(schoolId, sec, annee) {
-  if (isSupabase) {
-    const [eleves, notes, matieres] = await Promise.all([
-      lire(schoolId, sec.eleves),
-      lire(schoolId, sec.notes, { annee }),
-      lire(schoolId, sec.matieres),
-    ]);
-    return { eleves, notes, matieres };
-  }
-  const refNotes = collection(db, "ecoles", schoolId, sec.notes);
-  const [snapE, snapN, snapM] = await Promise.all([
-    getDocs(collection(db, "ecoles", schoolId, sec.eleves)),
-    getDocs(annee ? query(refNotes, where("annee", "==", annee)) : refNotes),
-    getDocs(collection(db, "ecoles", schoolId, sec.matieres)),
+  const [eleves, notes, matieres] = await Promise.all([
+    lire(schoolId, sec.eleves),
+    lire(schoolId, sec.notes, { annee }),
+    lire(schoolId, sec.matieres),
   ]);
-  const m = (snap) => snap.docs.map((d) => ({ ...d.data(), _id: d.id }));
-  return { eleves: m(snapE), notes: m(snapN), matieres: m(snapM) };
+  return { eleves, notes, matieres };
 }
 
 async function chargerEleves(schoolId, sec) {
-  if (isSupabase) return lire(schoolId, sec.eleves);
-  const snap = await getDocs(collection(db, "ecoles", schoolId, sec.eleves));
-  return snap.docs.map((d) => ({ ...d.data(), _id: d.id }));
+  return lire(schoolId, sec.eleves);
 }
 
 // Une écriture : `champs` sur la fiche, et la section d'arrivée quand ce
@@ -183,27 +165,15 @@ function analyserSection(schoolInfo, sec, data, sansNotesBehavior, acc, annee) {
   }
 }
 
-// Applique les écritures — Supabase ou Firebase.
+// Applique les écritures.
 async function appliquerUpdates(schoolId, updates) {
-  if (isSupabase) {
-    for (let i = 0; i < updates.length; i += SB_PARALLELE) {
-      await Promise.all(updates.slice(i, i + SB_PARALLELE).map(
-        // Sur le serveur, comme la lecture (cf. lire) ; le miroir suivra.
-        (u) => (u.section
-          ? changerSectionDoc(schoolId, u.collection, u.id, u.section, u.champs, { reseau: true })
-          : modifierChampDoc(schoolId, u.collection, u.id, u.champs, { reseau: true })),
-      ));
-    }
-    return;
-  }
-  // Firebase (legacy, plus exercé) : le changement de section n'y est pas
-  // porté — il faudrait recopier la fiche dans la collection d'arrivée.
-  for (let i = 0; i < updates.length; i += BATCH_MAX) {
-    const batch = writeBatch(db);
-    for (const u of updates.slice(i, i + BATCH_MAX)) {
-      batch.update(doc(db, "ecoles", schoolId, u.collection, u.id), u.champs);
-    }
-    await batch.commit();
+  for (let i = 0; i < updates.length; i += SB_PARALLELE) {
+    await Promise.all(updates.slice(i, i + SB_PARALLELE).map(
+      // Sur le serveur, comme la lecture (cf. lire) ; le miroir suivra.
+      (u) => (u.section
+        ? changerSectionDoc(schoolId, u.collection, u.id, u.section, u.champs, { reseau: true })
+        : modifierChampDoc(schoolId, u.collection, u.id, u.champs, { reseau: true })),
+    ));
   }
 }
 

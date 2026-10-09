@@ -36,9 +36,9 @@ function SelecLien(props) {
 
 function Contenu({ eleve, fermer, section, schoolId, toast, logAction }) {
   const p = useParentCompte({ eleve, section, schoolId, toast, logAction });
-  const chargement = p.gestion && p.lies === null;
+  const chargement = p.lies === null;
   const aDesComptes = (p.lies || []).length > 0;
-  const montrerCreation = !p.gestion || p.creationOuverte || !aDesComptes;
+  const montrerCreation = p.creationOuverte || !aDesComptes;
 
   return (
     <Modale titre={`Compte parent — ${eleve.prenom} ${eleve.nom}`} fermer={fermer}>
@@ -47,46 +47,42 @@ function Contenu({ eleve, fermer, section, schoolId, toast, logAction }) {
         {eleve.contactTuteur ? ` · ${telephoneLisible(eleve.contactTuteur)}` : ""}
       </div>
 
-      {p.gestion && (
-        <Bloc titre="Comptes parents de l'élève">
-          {p.lies === null ? <p style={aide}>Chargement…</p>
-            : !aDesComptes ? <p style={aide}>Aucun compte parent pour le moment.</p>
-              : p.lies.map((c) => (
+      <Bloc titre="Comptes parents de l'élève">
+        {p.lies === null ? <p style={aide}>Chargement…</p>
+          : !aDesComptes ? <p style={aide}>Aucun compte parent pour le moment.</p>
+            : p.lies.map((c) => (
+              <div key={c.id} style={ligne}>
+                <div style={{flex:1,minWidth:0}}>
+                  <strong style={{fontSize:13}}>{c.login}</strong> {c.lien && <Badge color="purple">{libelleLien(c.lien)}</Badge>}
+                  <div style={sousLigne}>{[c.nom, c.telephone && telephoneLisible(c.telephone)].filter(Boolean).join(" · ")}</div>
+                </div>
+                <Btn sm v="ghost" onClick={()=>p.detacher(c)} disabled={p.enCours}>Détacher</Btn>
+              </div>
+            ))}
+      </Bloc>
+
+      <Bloc titre="Rattacher à un compte existant">
+        <p style={aide}>Un frère ou une sœur a déjà un compte parent, dans n'importe quelle section ? Cherchez-le par numéro, nom ou identifiant.</p>
+        <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:10}}>
+          <Input label="Recherche" value={p.recherche} onChange={(e)=>p.chercher(e.target.value)} placeholder="622 12 34 56, Bah, parent.bah…"/>
+          <SelecLien label="Lien avec l'élève" value={p.lienRattachement} onChange={(e)=>p.setLienRattachement(e.target.value)}/>
+        </div>
+        {p.recherche.trim().length>=2&&(
+          p.chargementComptes||!p.comptesCharges ? <p style={{...aide,marginTop:10}}>Recherche…</p>
+            : !p.resultats.length ? <p style={{...aide,marginTop:10}}>Aucun compte parent trouvé.</p>
+              : <div style={{marginTop:6}}>{p.resultats.map((c) => (
                 <div key={c.id} style={ligne}>
                   <div style={{flex:1,minWidth:0}}>
-                    <strong style={{fontSize:13}}>{c.login}</strong> {c.lien && <Badge color="purple">{libelleLien(c.lien)}</Badge>}
-                    <div style={sousLigne}>{[c.nom, c.telephone && telephoneLisible(c.telephone)].filter(Boolean).join(" · ")}</div>
-                  </div>
-                  <Btn sm v="ghost" onClick={()=>p.detacher(c)} disabled={p.enCours}>Détacher</Btn>
-                </div>
-              ))}
-        </Bloc>
-      )}
-
-      {p.gestion && (
-        <Bloc titre="Rattacher à un compte existant">
-          <p style={aide}>Un frère ou une sœur a déjà un compte parent, dans n'importe quelle section ? Cherchez-le par numéro, nom ou identifiant.</p>
-          <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:10}}>
-            <Input label="Recherche" value={p.recherche} onChange={(e)=>p.chercher(e.target.value)} placeholder="622 12 34 56, Bah, parent.bah…"/>
-            <SelecLien label="Lien avec l'élève" value={p.lienRattachement} onChange={(e)=>p.setLienRattachement(e.target.value)}/>
-          </div>
-          {p.recherche.trim().length>=2&&(
-            p.chargementComptes||!p.comptesCharges ? <p style={{...aide,marginTop:10}}>Recherche…</p>
-              : !p.resultats.length ? <p style={{...aide,marginTop:10}}>Aucun compte parent trouvé.</p>
-                : <div style={{marginTop:6}}>{p.resultats.map((c) => (
-                  <div key={c.id} style={ligne}>
-                    <div style={{flex:1,minWidth:0}}>
-                      <strong style={{fontSize:13}}>{c.login}</strong>
-                      <div style={sousLigne}>
-                        {[c.nom, c.telephone && telephoneLisible(c.telephone), `${c.nbEnfants} enfant${c.nbEnfants>1?"s":""}`].filter(Boolean).join(" · ")}
-                      </div>
+                    <strong style={{fontSize:13}}>{c.login}</strong>
+                    <div style={sousLigne}>
+                      {[c.nom, c.telephone && telephoneLisible(c.telephone), `${c.nbEnfants} enfant${c.nbEnfants>1?"s":""}`].filter(Boolean).join(" · ")}
                     </div>
-                    <Btn sm v="purple" onClick={()=>p.rattacher(c)} disabled={p.enCours}>Rattacher</Btn>
                   </div>
-                ))}</div>
-          )}
-        </Bloc>
-      )}
+                  <Btn sm v="purple" onClick={()=>p.rattacher(c)} disabled={p.enCours}>Rattacher</Btn>
+                </div>
+              ))}</div>
+        )}
+      </Bloc>
 
       {p.cree&&(
         <div style={{marginTop:14,fontSize:12.5,color:"#166534",background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:10,padding:"10px 12px",lineHeight:1.6}}>

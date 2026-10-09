@@ -53,7 +53,7 @@ export function useMessagesEcole({ utilisateur, schoolId }) {
     const nouveauxLus = { ...lus, [msg._id]: Date.now() };
     setLus(nouveauxLus);
     ecrireLusLocal(uid, nouveauxLus);
-    await enregistrerLecture(msg._id, { schoolId, role, login: utilisateur?.login }, uid);
+    await enregistrerLecture(msg._id, { schoolId, role, login: utilisateur?.login });
   };
 
   const marquerToutLu = () => {

@@ -1,17 +1,14 @@
-import { useEffect, useRef, useState } from "react";
-import { isSupabase } from "../../backend";
+import { useEffect, useState } from "react";
 import { signOutSession } from "../../backend/session";
 import { getPrimaryModuleForRole, getRoleLabelForSchool } from "../../constants";
 import { getPrimaryModuleForCompte } from "../../../shared/postes-config.js";
 import { computePlanInfo } from "./app-shell-plan";
 import { EVENEMENT_ECRITURE_REFUSEE, messageRefus } from "../../backend/ecritures-refusees";
 import {
-  chargerAnnee,
   envoyerPushApi,
   logActionDoc,
   persisterAnnee,
   sAbonnerAuxPush,
-  syncEcolePublic,
 } from "./app-shell-api";
 
 // Logique transverse du shell applicatif : toasts, journal d'actions,
@@ -87,53 +84,16 @@ export function useAppShell({
       toast("Année non enregistrée pour l'école : seule la Direction peut la modifier.", "warning");
     });
   };
-  // Année scolaire PAR ÉCOLE : ecoles/{id}.anneeScolaire est la source de
+  // Année scolaire PAR ÉCOLE : ecoles.extra.anneeScolaire est la source de
   // vérité partagée entre tous les appareils/utilisateurs de l'école.
-  // (Ancien design : doc global config/annee commun à TOUTES les écoles,
-  // inaccessible en écriture hors superadmin → échec silencieux.)
   const anneePartagee = schoolInfoState?.anneeScolaire;
-  const anneeEcoleRecue = useRef(false);
   useEffect(() => {
     if (!anneePartagee) return;
-    anneeEcoleRecue.current = true;
     setAnneeState(anneePartagee);
     localStorage.setItem("LC_annee", anneePartagee);
   }, [anneePartagee]);
-  useEffect(() => {
-    // Legacy : ancien doc global, uniquement si l'école n'a pas encore
-    // son propre champ (écoles existantes avant la migration).
-    //
-    // Jamais côté Supabase : au démarrage, la fiche de l'école n'est pas
-    // encore chargée, et ce doc Firebase — resté à « 2025-2026 », lisible par
-    // tous — était donc lu à CHAQUE rechargement. Quand sa réponse arrivait
-    // après celle de l'école, elle écrasait l'année officielle : l'année
-    // archivée « s'activait » une fois sur deux.
-    if (isSupabase || anneePartagee) return undefined;
-    let actif = true;
-    chargerAnnee().then((val) => {
-      if (actif && val && !anneeEcoleRecue.current) setAnneeState(val);
-    });
-    return () => { actif = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const planInfo = computePlanInfo({ schoolInfoState, nowTs, totalElevesActifs, t });
-
-  // Synchronise le profil public de l'école (direction/admin uniquement).
-  useEffect(() => {
-    if (!utilisateur || !schoolId || schoolId === "superadmin") return undefined;
-    if (!["direction", "admin"].includes(utilisateur.posteCle || utilisateur.role)) return undefined;
-    let annule = false;
-    (async () => {
-      try {
-        if (annule) return;
-        await syncEcolePublic(schoolId);
-      } catch {
-        // Best effort only: keep the public school profile aligned.
-      }
-    })();
-    return () => { annule = true; };
-  }, [schoolId, utilisateur]);
 
   const envoyerPush = (cibles, titre, corps, url = "/", options = {}) => envoyerPushApi(cibles, titre, corps, url, options);
 

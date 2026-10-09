@@ -9,8 +9,7 @@
 //
 // La clôture fige l'état de l'année dans la fiche elle-même
 // (eleves.extra.historique[annee]) puis remet les compteurs à zéro. Aucune
-// nouvelle table : le même code marche sur Firebase et sur Supabase, où
-// modifierChampDoc fusionne dans le jsonb `extra`.
+// nouvelle table : modifierChampDoc fusionne dans le jsonb `extra`.
 //
 // RÉVERSIBLE : l'instantané contient tout ce qu'il faut pour restaurer
 // l'état d'avant la clôture (annulerCloture).
@@ -18,55 +17,35 @@
 // La logique pure (instantané, état vierge, projection d'une année) vit dans
 // cloture-annee-utils.js — ce fichier ne porte que les accès aux données.
 
-import { collection, doc, getDocs, setDoc, writeBatch } from "firebase/firestore";
-import { db } from "../../firebaseDb";
-import { isSupabase } from "../../backend";
 import { chargerCollection, modifierChampDoc, sauverParametresEcole } from "../../backend/data-supabase";
 import {
   COLLECTIONS_ELEVES, aDesPaiements, champsCloture, champsRestauration, horsAnneeCloturee,
 } from "./cloture-annee-utils";
 
-// Limite Firestore : 500 opérations par batch (marge de sécurité à 450).
-const BATCH_MAX = 450;
-// Supabase : nb d'updates lancés en parallèle (modifierChampDoc = 1 par appel).
+// Nb d'updates lancés en parallèle (modifierChampDoc = 1 par appel).
 const SB_PARALLELE = 40;
 
 async function chargerEleves(schoolId) {
   const parCollection = [];
   for (const nom of COLLECTIONS_ELEVES) {
-    if (isSupabase) {
-      // Lecture du SERVEUR, jamais du miroir local : sur un appareil dont la
-      // synchro n'est pas finie (nouvel appareil, réseau faible), le miroir
-      // est incomplet — la clôture a ainsi archivé « 0 fiche sur 0 » tout en
-      // faisant passer l'école à l'année suivante (tests e2e, 2026-10-08).
-      // Une lecture ratée doit ARRÊTER la clôture, pas la faire sur rien.
-      const { items, erreur } = await chargerCollection(schoolId, nom, { reseau: true });
-      if (erreur) throw new Error(`lecture des élèves impossible (${nom}) : ${erreur}`);
-      parCollection.push({ collection: nom, eleves: items || [] });
-    } else {
-      const snap = await getDocs(collection(db, "ecoles", schoolId, nom));
-      parCollection.push({ collection: nom, eleves: snap.docs.map((d) => ({ ...d.data(), _id: d.id })) });
-    }
+    // Lecture du SERVEUR, jamais du miroir local : sur un appareil dont la
+    // synchro n'est pas finie (nouvel appareil, réseau faible), le miroir
+    // est incomplet — la clôture a ainsi archivé « 0 fiche sur 0 » tout en
+    // faisant passer l'école à l'année suivante (tests e2e, 2026-10-08).
+    // Une lecture ratée doit ARRÊTER la clôture, pas la faire sur rien.
+    const { items, erreur } = await chargerCollection(schoolId, nom, { reseau: true });
+    if (erreur) throw new Error(`lecture des élèves impossible (${nom}) : ${erreur}`);
+    parCollection.push({ collection: nom, eleves: items || [] });
   }
   return parCollection;
 }
 
 async function appliquerUpdates(schoolId, updates) {
-  if (isSupabase) {
-    for (let i = 0; i < updates.length; i += SB_PARALLELE) {
-      await Promise.all(updates.slice(i, i + SB_PARALLELE).map(
-        // Écrit sur le serveur (lu sur le serveur) ; le miroir suivra.
-        (u) => modifierChampDoc(schoolId, u.collection, u.id, u.champs, { reseau: true }),
-      ));
-    }
-    return;
-  }
-  for (let i = 0; i < updates.length; i += BATCH_MAX) {
-    const batch = writeBatch(db);
-    for (const u of updates.slice(i, i + BATCH_MAX)) {
-      batch.update(doc(db, "ecoles", schoolId, u.collection, u.id), u.champs);
-    }
-    await batch.commit();
+  for (let i = 0; i < updates.length; i += SB_PARALLELE) {
+    await Promise.all(updates.slice(i, i + SB_PARALLELE).map(
+      // Écrit sur le serveur (lu sur le serveur) ; le miroir suivra.
+      (u) => modifierChampDoc(schoolId, u.collection, u.id, u.champs, { reseau: true }),
+    ));
   }
 }
 
@@ -74,8 +53,7 @@ async function appliquerUpdates(schoolId, updates) {
 // `promotions`, `passagesAdmis`) — fusionnés au premier niveau, comme les
 // Paramètres : passer l'objet complet d'un repère, pas sa seule nouvelle clé.
 export async function majFicheEcole(schoolId, champs) {
-  if (isSupabase) return sauverParametresEcole(schoolId, champs);
-  return setDoc(doc(db, "ecoles", schoolId), champs, { merge: true });
+  return sauverParametresEcole(schoolId, champs);
 }
 
 // Archive l'année `annee` sur chaque fiche puis remet la scolarité à zéro.

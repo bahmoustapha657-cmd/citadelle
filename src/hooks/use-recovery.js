@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { isSupabase } from "../backend";
 import { lireRetourRecovery, nettoyerUrlRecovery } from "../backend/password-reset-supabase";
 
 // Détecte un retour de lien « mot de passe oublié » et signale à App
@@ -15,7 +14,7 @@ import { lireRetourRecovery, nettoyerUrlRecovery } from "../backend/password-res
 // enregistré, lien refusé (password-reset-supabase.js) ou sortie de l'écran.
 export function useRecovery() {
   // Lu synchroniquement au 1er rendu : le fragment est présent dès le chargement.
-  const [retour, setRetour] = useState(() => (isSupabase ? lireRetourRecovery() : null));
+  const [retour, setRetour] = useState(() => lireRetourRecovery());
 
   const terminerRecovery = () => {
     nettoyerUrlRecovery();

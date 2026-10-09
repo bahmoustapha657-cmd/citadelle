@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { genererMdp } from "../../../constants";
-import { isSupabase } from "../../../backend";
 import {
   comptesParentsDeLEleve, comptesParentsEcole, creerOuRattacherCompteParent,
   detacherCompteParent, rattacherCompteParent,
@@ -11,10 +10,9 @@ import { chercherComptesParents, libelleLien, loginParentSuggere, messageCompteP
 // détacher), le rattachement à un compte existant (recherche par numéro, nom
 // ou identifiant) et la création — le numéro du parent proposé comme
 // identifiant. Un enfant peut être suivi par plusieurs comptes : le père et
-// la mère chacun le sien. Supabase : tout ; Firebase (retiré) : création.
+// la mère chacun le sien.
 // `section` : celle de l'élève, portée par le lien (pas par le compte).
 export function useParentCompte({ eleve, section, schoolId, toast, logAction }) {
-  const gestion = isSupabase;
   const [lies, setLies] = useState(null); // null : chargement
   const [comptesEcole, setComptesEcole] = useState(null); // chargés à la 1re recherche
   const [chargementComptes, setChargementComptes] = useState(false);
@@ -33,7 +31,6 @@ export function useParentCompte({ eleve, section, schoolId, toast, logAction }) 
   const accorde = (participe) => `${participe}${eleve.sexe === "F" ? "e" : ""}`;
 
   const recharger = async () => {
-    if (!gestion) return;
     try {
       setLies(await comptesParentsDeLEleve(eleve._id));
     } catch (e) {
@@ -47,7 +44,7 @@ export function useParentCompte({ eleve, section, schoolId, toast, logAction }) 
 
   const chercher = async (saisie) => {
     setRecherche(saisie);
-    if (!gestion || comptesEcole || chargementComptes || saisie.trim().length < 2) return;
+    if (comptesEcole || chargementComptes || saisie.trim().length < 2) return;
     setChargementComptes(true);
     try {
       setComptesEcole(await comptesParentsEcole());
@@ -118,7 +115,7 @@ export function useParentCompte({ eleve, section, schoolId, toast, logAction }) 
   };
 
   return {
-    gestion, lies, enCours, cree,
+    lies, enCours, cree,
     recherche, chercher, resultats, chargementComptes, comptesCharges: Boolean(comptesEcole),
     lienRattachement, setLienRattachement, rattacher, detacher,
     formulaire, champ, setFormulaire, loginSaisi, creer, creationOuverte, setCreationOuverte,

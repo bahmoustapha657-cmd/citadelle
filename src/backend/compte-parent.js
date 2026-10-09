@@ -1,13 +1,9 @@
 // ── Compte parent : création, rattachement, lecture ────────────────────────
-// Aiguillage selon le backend (comme session.js). C'est le serveur qui
-// décide : si le parent a déjà son compte, les élèves y sont rattachés (mot
-// de passe inchangé), sinon il le crée — supabase/functions/account-manage/
-// foyer.ts, et api/_lib/account-links.js pour l'API Firebase.
-// Lire, rattacher et détacher : Supabase seulement (le backend Firebase est
-// retiré) ; les écritures passent par l'Edge Function, la RLS n'en permet
-// aucune depuis le navigateur (supabase/historique/comptes-parents.sql).
-import { apiFetch, getAuthHeaders } from "../apiClient";
-import { isSupabase } from "../backend";
+// C'est le serveur qui décide : si le parent a déjà son compte, les élèves y
+// sont rattachés (mot de passe inchangé), sinon il le crée —
+// supabase/functions/account-manage/foyer.ts.
+// Les écritures passent par l'Edge Function, la RLS n'en permet aucune
+// depuis le navigateur (supabase/historique/comptes-parents.sql).
 import { payloadCompteParent } from "../comptes-parents";
 import { getSupabase } from "../supabaseClient";
 import { creerCompte as creerCompteSb, invoke } from "./account-manage-supabase";
@@ -19,20 +15,10 @@ import { powerSyncConfigured } from "./powersync/tables";
 // attend qu'ils soient remontés.
 export async function creerOuRattacherCompteParent({ apresInscription = false, ...params }) {
   const payload = payloadCompteParent(params);
-  let data;
-  if (isSupabase) {
-    if (apresInscription && powerSyncConfigured) {
-      await import("./powersync/client").then((m) => m.attendreRemontee()).catch(() => {});
-    }
-    data = await creerCompteSb(payload);
-  } else {
-    const headers = await getAuthHeaders({ "Content-Type": "application/json" });
-    const res = await apiFetch("/account-manage", {
-      method: "POST", headers, body: JSON.stringify({ action: "create", ...payload }),
-    });
-    data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.ok) throw new Error(data.error || "Création du compte parent impossible.");
+  if (apresInscription && powerSyncConfigured) {
+    await import("./powersync/client").then((m) => m.attendreRemontee()).catch(() => {});
   }
+  const data = await creerCompteSb(payload);
   return {
     login: data.login || data.compte?.login || payload.login,
     rattache: Boolean(data.merged || data.mergedIntoExisting),

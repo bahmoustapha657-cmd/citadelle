@@ -1,39 +1,25 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { SuperAdminTabs } from "./superadmin/SuperAdminTabs";
 import { EcolesTab } from "./superadmin/EcolesTab";
 import { PlansTab } from "./superadmin/PlansTab";
 import { DemandesTab } from "./superadmin/DemandesTab";
-import { AlertesSentryTab } from "./superadmin/AlertesSentryTab";
 import { OutilsTab } from "./superadmin/OutilsTab";
 import { LIFECYCLE_LABELS, S_STYLES } from "./superadmin/constants";
 import { useEcolesAdmin } from "./superadmin/useEcolesAdmin";
-import { useSentryMonitoring } from "./superadmin/useSentryMonitoring";
-import { useSchoolMaintenance } from "./superadmin/useSchoolMaintenance";
 
 // =============================================================
 //  PANEL SUPER-ADMIN — orchestrateur
 // =============================================================
-// La logique métier est répartie dans trois hooks (useEcolesAdmin pour
-// écoles/plans/demandes, useSentryMonitoring pour les alertes, et
-// useSchoolMaintenance pour migration/backfill). Ce composant ne garde que
-// le feedback transverse (msgSucces) et la navigation entre onglets. Chaque
-// onglet vit dans src/components/superadmin/.
+// La logique métier (écoles/plans/demandes) vit dans useEcolesAdmin. Ce
+// composant ne garde que le feedback transverse (msgSucces) et la navigation
+// entre onglets. Chaque onglet vit dans src/components/superadmin/.
 function SuperAdminPanel() {
   const [msgSucces, setMsgSucces] = useState("");
   const [ongletSA, setOngletSA] = useState("ecoles");
   const [outilsTab, setOutilsTab] = useState("communications");
 
   const ea = useEcolesAdmin(setMsgSucces);
-  const sentry = useSentryMonitoring(setMsgSucces);
-  const maint = useSchoolMaintenance(setMsgSucces);
-
-  useEffect(() => {
-    if (ongletSA === "alertes" && sentry.sentryConfig === null) {
-      sentry.chargerSentry();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ongletSA]);
 
   const S = S_STYLES;
 
@@ -55,19 +41,6 @@ function SuperAdminPanel() {
 
       {ongletSA==="outils" && (
         <OutilsTab outilsTab={outilsTab} setOutilsTab={setOutilsTab} ecoles={ea.ecoles}/>
-      )}
-
-      {ongletSA==="alertes" && (
-        <AlertesSentryTab
-          sentryIssues={sentry.sentryIssues}
-          sentryConfig={sentry.sentryConfig}
-          sentryLoading={sentry.sentryLoading}
-          sentryTesting={sentry.sentryTesting}
-          sentryError={sentry.sentryError}
-          chargerSentry={sentry.chargerSentry}
-          testerSentry={sentry.testerSentry}
-          S={S}
-        />
       )}
 
       {ongletSA==="demandes" && (
@@ -121,8 +94,6 @@ function SuperAdminPanel() {
           sauvegarderPlan={ea.sauvegarderPlan}
           planPanelRef={ea.planPanelRef}
           chargerEcoles={ea.chargerEcoles}
-          lancerBackfillPublic={maint.lancerBackfillPublic} backfillEnCours={maint.backfillEnCours}
-          lancerMigrationAnnee={maint.lancerMigrationAnnee} migrationAnneeEnCours={maint.migrationAnneeEnCours}
           S={S}
         />
       )}

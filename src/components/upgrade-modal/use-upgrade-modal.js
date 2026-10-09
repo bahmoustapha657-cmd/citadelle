@@ -1,14 +1,10 @@
-import { useState, useEffect, useContext } from "react";
-import { doc, addDoc, collection } from "firebase/firestore";
-import { db } from "../../firebaseDb";
-import { safeOnSnapshot } from "../../firestore-safe";
+import { useState, useContext } from "react";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { PLANS } from "../../contexts/PlanContext";
-import { isSupabase } from "../../backend";
 import { demanderPlan } from "../../backend/superadmin-supabase";
 
 export function useUpgradeModal() {
-  const { schoolId, schoolInfo, setSchoolInfo } = useContext(SchoolContext);
+  const { schoolId, schoolInfo } = useContext(SchoolContext);
   const [etape, setEtape] = useState("choix"); // choix | instructions | soumission | attente | succes
   const [form, setForm] = useState({
     telephone: "", operateur: "Orange Money", reference: "", montant: "",
@@ -18,19 +14,9 @@ export function useUpgradeModal() {
 
   const chg = k => e => setForm(p => ({ ...p, [k]: e.target.value }));
 
-  // Écoute temps réel : plan activé par le SuperAdmin
-  useEffect(() => {
-    if (etape !== "attente") return;
-    const unsub = safeOnSnapshot(doc(db, "ecoles", schoolId), snap => {
-      if (snap.exists() && snap.data().plan === "pro") {
-        setSchoolInfo(prev => ({
-          ...prev, plan: "pro", planExpiry: snap.data().planExpiry,
-        }));
-        setEtape("succes");
-      }
-    });
-    return () => unsub();
-  }, [etape, schoolId, setSchoolInfo]);
+  // Plan activé par le SuperAdmin : la fiche école est suivie en temps réel
+  // (useSchoolData), son nouveau plan arrive dans schoolInfo.
+  const etapeAffichee = etape === "attente" && schoolInfo?.plan === "pro" ? "succes" : etape;
 
   const soumettreDemande = async () => {
     if (!form.telephone.trim()) { setErreur("Entrez votre numéro de téléphone."); return; }
@@ -45,13 +31,7 @@ export function useUpgradeModal() {
         ecoleNom: schoolInfo?.nom || schoolId,
         createdAt: Date.now(),
       };
-      if (isSupabase) {
-        await demanderPlan(schoolId, "pro", champs);
-      } else {
-        await addDoc(collection(db, "ecoles", schoolId, "demandes_plan"), {
-          ...champs, statut: "en_attente", schoolId,
-        });
-      }
+      await demanderPlan(schoolId, "pro", champs);
       setEtape("attente");
     } catch {
       setErreur("Erreur lors de la soumission. Réessayez.");
@@ -60,5 +40,5 @@ export function useUpgradeModal() {
     }
   };
 
-  return { schoolInfo, etape, setEtape, form, setForm, chargement, erreur, chg, soumettreDemande };
+  return { schoolInfo, etape: etapeAffichee, setEtape, form, setForm, chargement, erreur, chg, soumettreDemande };
 }

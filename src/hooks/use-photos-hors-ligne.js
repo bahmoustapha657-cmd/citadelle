@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import { isSupabase } from "../backend";
 import { powerSyncConfigured } from "../backend/powersync/tables";
 import { envoyerPhotosEleves } from "../storageUtils";
 import { prechargerPhotos } from "../photos-hors-ligne";
@@ -9,7 +8,7 @@ import { prechargerPhotos } from "../photos-hors-ligne";
 //   2. mise en cache des photos et du logo pas encore présents sur l'appareil,
 //      pour qu'ils s'affichent hors ligne même jamais vus ici.
 // Personnel et enseignants seulement (les parents ne passent pas par le
-// miroir local ni par la prise de photo). Aucun effet côté Firebase.
+// miroir local ni par la prise de photo).
 const PERIODE_MS = 2 * 60 * 1000;
 const PREMIER_PASSAGE_MS = 5000;
 
@@ -29,7 +28,7 @@ async function photosDuMiroir() {
 
 export function usePhotosHorsLigne(utilisateur) {
   const schoolId = utilisateur?.schoolId || null;
-  const concerne = isSupabase && !!schoolId && !["parent", "superadmin"].includes(utilisateur?.role);
+  const concerne = !!schoolId &&!["parent", "superadmin"].includes(utilisateur?.role);
 
   useEffect(() => {
     if (!concerne) return undefined;

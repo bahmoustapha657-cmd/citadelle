@@ -1,45 +1,28 @@
 import { useEffect, useState } from "react";
-import { doc, getDocFromServer } from "firebase/firestore";
-import { db } from "../firebaseDb";
-import { isSupabase } from "../backend";
 import { chargerEcole } from "../backend/data-supabase";
 import { subscribeTable } from "../backend/realtime-supabase";
 import { SCHOOL_INFO_DEFAUT } from "../contexts/SchoolContext";
 import { setMonnaie } from "../constants";
-import { subscribeLegalProfile } from "../legal-utils";
-import { safeOnSnapshot } from "../firestore-safe";
 import { DEFAULT_VERROUS, mergeSchoolInfo, applyBrandingColors } from "./school-data-helpers";
-import {
-  countMessagesNonLus,
-  countElevesActifs,
-  subscribeNotifications,
-} from "./school-data-subscriptions";
 
-// Hook regroupant les listeners Firestore liés à l'école courante :
-// - schoolInfo (doc /ecoles/{id} en privé, /ecoles_public/{id} en non auth)
-//   + verrous + variables CSS de branding
-// - legal profile (/ecoles/{id}/config/legal)
-// - msgsNonLus (badge sidebar)
-// - totalElevesActifs (toutes sections, pour vérification plan)
-// - notifListe + notifNonLues (10 dernières actions de l'historique)
+// Hook des données liées à l'école courante :
+// - schoolInfo (table `ecoles`, profil légal compris) + verrous + variables
+//   CSS de branding
+// - msgsNonLus, totalElevesActifs, notifListe/notifNonLues : compteurs de
+//   l'ancienne version Firebase, pas encore portés (valeurs neutres)
 //
 // Extrait de App.jsx au refactor découpage 2026-05-20.
 export function useSchoolData({ schoolId, utilisateur }) {
   const [schoolInfoState, setSchoolInfo] = useState(SCHOOL_INFO_DEFAUT);
   const [verrous, setVerrous] = useState(DEFAULT_VERROUS);
-  const [msgsNonLus, setMsgsNonLus] = useState(0);
-  const [totalElevesActifs, setTotalElevesActifs] = useState(0);
-  const [notifListe, setNotifListe] = useState([]);
+  const [msgsNonLus] = useState(0);
+  const [totalElevesActifs] = useState(0);
+  const [notifListe] = useState([]);
   const [notifNonLues, setNotifNonLues] = useState(0);
 
   // ── schoolInfo + verrous + branding ──────────────────────────
   useEffect(() => {
     let actif = true;
-    let accepterCache = false;
-    const estSessionPrivee = !!utilisateur && schoolId !== "superadmin";
-    const schoolRef = schoolId
-      ? doc(db, estSessionPrivee ? "ecoles" : "ecoles_public", schoolId)
-      : null;
     const reinitialiserBranding = () => {
       setSchoolInfo(SCHOOL_INFO_DEFAUT);
       setMonnaie(SCHOOL_INFO_DEFAUT.monnaie);
@@ -48,8 +31,7 @@ export function useSchoolData({ schoolId, utilisateur }) {
     };
     const appliquerDonneesEcole = (d) => {
       // `code` : identifiant immuable de l'école, garanti présent dans
-      // schoolInfo (Supabase le renvoie ; côté Firestore le document ne le
-      // porte pas, mais schoolId EST ce code). Il sert de secret stable au
+      // schoolInfo (schoolId EST ce code). Il sert de secret stable au
       // chiffrement des QR des documents imprimés — cf. src/reports/qr-crypto.js.
       setSchoolInfo(mergeSchoolInfo({ ...d, code: d.code || schoolId }));
       setMonnaie(d.monnaie || SCHOOL_INFO_DEFAUT.monnaie);
@@ -60,96 +42,29 @@ export function useSchoolData({ schoolId, utilisateur }) {
     reinitialiserBranding();
     if (!schoolId || schoolId === "superadmin") return;
 
-    // ── Backend Supabase : lecture initiale + abonnement temps réel. ──
+    // Lecture initiale + abonnement temps réel.
     // Les paramètres d'école changent rarement mais concernent TOUT LE MONDE :
     // année scolaire, périodicité, jours ouvrables, verrous, branding. Sans
     // abonnement, un poste gardait l'ancien réglage jusqu'au rechargement de
     // la page — le cas le plus visible étant la bascule d'année, invisible des
     // autres écrans. La table `ecoles` est publiée sans son logo (72 ko) : on
     // ignore le contenu de l'événement et on recharge la fiche.
-    if (isSupabase) {
-      const recharger = (reseau = false) => chargerEcole(schoolId, { reseau }).then((d) => {
-        if (actif && d) appliquerDonneesEcole(d);
-      }).catch(() => {});
-      // Miroir local d'abord (affichage immédiat, hors ligne compris), PUIS
-      // le serveur. Le miroir d'un appareil éteint pendant la clôture porte
-      // encore l'ancienne année au lancement suivant ; aucun événement temps
-      // réel ne la corrigeait ensuite, et toute la session — notes du
-      // portail enseignant comprises — tournait sur l'année archivée. Les
-      // deux lectures s'enchaînent : la réponse serveur passe toujours après.
-      recharger().then(() => recharger(true));
-      // Sur événement, relecture SERVEUR : le miroir PowerSync peut ne pas
-      // avoir encore reçu la modification, et le relire à cet instant
-      // ré-affichait l'ancienne valeur (un agrément tout juste enregistré
-      // « revenait » jusqu'au rechargement de la page).
-      const desabonner = subscribeTable(schoolId, "ecoles", () => recharger(true));
-      return () => { actif = false; desabonner(); };
-    }
-
-    if (!schoolRef) return;
-    getDocFromServer(schoolRef).then((snap) => {
-      if (!actif) return;
-      accepterCache = true;
-      if (snap.exists()) appliquerDonneesEcole(snap.data());
-      else reinitialiserBranding();
-    }).catch(() => {
-      if (!actif) return;
-      accepterCache = true;
-    });
-
-    const unsub = safeOnSnapshot(schoolRef, (snap) => {
-      if (!actif) return;
-      if (!accepterCache && snap.metadata?.fromCache) return;
-      if (snap.exists()) appliquerDonneesEcole(snap.data());
-      else reinitialiserBranding();
-    });
-
-    return () => {
-      actif = false;
-      unsub();
-    };
-  }, [schoolId, utilisateur]);
-
-  // ── Profil légal officiel ────────────────────────────────────
-  useEffect(() => {
-    if (isSupabase) return; // non porté (Firestore) — Tranche ultérieure
-    if (!schoolId || schoolId === "superadmin") return;
-    const unsub = subscribeLegalProfile(schoolId, (legal) => {
-      setSchoolInfo((prev) => ({ ...prev, legal }));
-    });
-    return () => unsub();
-  }, [schoolId]);
-
-  // ── Badge messages non lus (lecture ciblée à la demande) ─────
-  useEffect(() => {
-    if (isSupabase) return; // non porté (Firestore) — Tranche ultérieure
-    if (!utilisateur || !schoolId || schoolId === "superadmin") return;
-    if (["enseignant", "parent"].includes(utilisateur.role)) return;
-    let actif = true;
-    countMessagesNonLus(schoolId).then((n) => { if (actif) setMsgsNonLus(n); });
-    return () => { actif = false; };
-  }, [schoolId, utilisateur]);
-
-  // ── Comptage élèves actifs (agrégation, vérification plan) ───
-  useEffect(() => {
-    if (isSupabase) return; // non porté (Firestore) — Tranche ultérieure
-    if (!utilisateur || !schoolId || schoolId === "superadmin") return;
-    if (["enseignant", "parent"].includes(utilisateur.role)) return;
-    let actif = true;
-    countElevesActifs(schoolId).then((n) => { if (actif) setTotalElevesActifs(n); });
-    return () => { actif = false; };
-  }, [schoolId, utilisateur]);
-
-  // ── Centre de notifications (10 dernières actions) ──────────
-  useEffect(() => {
-    if (isSupabase) return; // non porté (Firestore) — Tranche ultérieure
-    if (!utilisateur || !schoolId || schoolId === "superadmin") return;
-    if (["enseignant", "parent"].includes(utilisateur.role)) return;
-    const unsub = subscribeNotifications(schoolId, ({ liste, nonLues }) => {
-      setNotifListe(liste);
-      setNotifNonLues(nonLues);
-    });
-    return () => unsub();
+    const recharger = (reseau = false) => chargerEcole(schoolId, { reseau }).then((d) => {
+      if (actif && d) appliquerDonneesEcole(d);
+    }).catch(() => {});
+    // Miroir local d'abord (affichage immédiat, hors ligne compris), PUIS
+    // le serveur. Le miroir d'un appareil éteint pendant la clôture porte
+    // encore l'ancienne année au lancement suivant ; aucun événement temps
+    // réel ne la corrigeait ensuite, et toute la session — notes du
+    // portail enseignant comprises — tournait sur l'année archivée. Les
+    // deux lectures s'enchaînent : la réponse serveur passe toujours après.
+    recharger().then(() => recharger(true));
+    // Sur événement, relecture SERVEUR : le miroir PowerSync peut ne pas
+    // avoir encore reçu la modification, et le relire à cet instant
+    // ré-affichait l'ancienne valeur (un agrément tout juste enregistré
+    // « revenait » jusqu'au rechargement de la page).
+    const desabonner = subscribeTable(schoolId, "ecoles", () => recharger(true));
+    return () => { actif = false; desabonner(); };
   }, [schoolId, utilisateur]);
 
   return {

@@ -11,7 +11,6 @@ import { BandeauPremiereSynchro } from "./BandeauPremiereSynchro";
 import { PageRouter } from "./PageRouter";
 import { ModuleHorsLignePlaceholder } from "./ModuleHorsLignePlaceholder";
 import { AppShellOverlays } from "./app-shell/AppShellOverlays";
-import { isSupabase } from "../../backend";
 import { powerSyncConfigured, moduleDisponibleHorsLigne } from "../../backend/powersync/tables";
 import { useMessagerie } from "../messagerie/messagerie-contexte";
 import { BandeauAnnonces } from "../messagerie/BandeauAnnonces";
@@ -24,8 +23,8 @@ export function AppShell(p) {
   // Mode hors ligne (vague 1) : sans réseau, un module non couvert par le
   // miroir local enchaînerait des requêtes Supabase en échec → on affiche un
   // état « indisponible hors ligne » au lieu de monter le module. Sans effet
-  // en ligne, en mode Firebase (cache Firestore) ou si PowerSync est désactivé.
-  const bloqueHorsLigne = isSupabase && powerSyncConfigured
+  // en ligne ou si PowerSync est désactivé.
+  const bloqueHorsLigne = powerSyncConfigured
     && p.estHorsLigne && !moduleDisponibleHorsLigne(p.page);
   // Messagerie interne : entrée de menu ajoutée aux modules du poste pour
   // tout compte de son périmètre (null sinon).
@@ -78,18 +77,6 @@ export function AppShell(p) {
           <BandeauPremiereSynchro premiereSynchro={p.premiereSynchro} estHorsLigne={p.estHorsLigne} t={p.t} />
           {!pageMessagerie && <BandeauAnnonces />}
           <BandeauReunions />
-          {/* École migrée vers la nouvelle version (Supabase) : cette adresse
-              est en lecture seule — bannière permanente vers la nouvelle URL. */}
-          {p.basculeSupabase && (
-            <div style={{ background: "#7c2d12", color: "#fff", padding: "10px 16px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", fontSize: 13, fontWeight: 600 }}>
-              <span style={{ fontSize: 18 }}>🚚</span>
-              <span style={{ flex: 1, minWidth: 220 }}>{p.t("migration.banner")}</span>
-              <a href={p.schoolInfo?.basculeUrl || "https://edugest-gn.pages.dev"}
-                style={{ background: "#fff", color: "#7c2d12", padding: "6px 14px", borderRadius: 8, fontWeight: 800, textDecoration: "none", whiteSpace: "nowrap" }}>
-                {p.t("migration.open")} →
-              </a>
-            </div>
-          )}
           {/* La messagerie gère son propre défilement (liste / fil) : la zone
               de contenu ne défile pas pour elle. */}
           <div style={{ flex: 1, minHeight: 0, overflowY: pageMessagerie ? "hidden" : "auto" }}>

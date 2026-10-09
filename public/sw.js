@@ -2,15 +2,12 @@
  * EduGest — Service Worker (PWA)
  * Stratégies de cache :
  *   App shell (JS/CSS/HTML)  → CacheFirst + mise à jour en arrière-plan
- *   Firebase Storage (photos) → CacheFirst longue durée
  *   Supabase Storage (photos, logos) → CacheFirst sans expiration
- *   Firestore API             → NetworkFirst avec fallback cache
- *   Firebase Auth             → NetworkOnly (sécurité)
- *   API routes Vercel (/api/) → NetworkFirst avec fallback
+ * Les données (Supabase, PowerSync) ne passent pas par ce cache : le mode
+ * hors ligne a son propre miroir local.
  */
 
 const CACHE_APP    = "edugest-app-v11";
-const CACHE_DATA   = "edugest-data-v11";
 // Photos : noms SANS version, partagés avec src/photos-hors-ligne.js (qui y
 // range les photos prises hors ligne). Un nom versionné serait effacé à la
 // prochaine activation — et avec lui les photos pas encore envoyées.
@@ -53,7 +50,9 @@ self.addEventListener("message", (e) => {
 
 // ── Activation : nettoyage des vieux caches ───────────────────
 self.addEventListener("activate", (e) => {
-  const KEPT = [CACHE_APP, CACHE_DATA, CACHE_PHOTOS, CACHE_PHOTOS_ATTENTE];
+  // L'ancien cache « edugest-data-* » (réponses de l'API Vercel, retirée)
+  // n'est plus gardé : il est vidé ici.
+  const KEPT = [CACHE_APP, CACHE_PHOTOS, CACHE_PHOTOS_ATTENTE];
   e.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(keys.filter((k) => !KEPT.includes(k)).map((k) => caches.delete(k)))
@@ -74,18 +73,7 @@ self.addEventListener("fetch", (e) => {
     return;
   }
 
-  // 2. Firebase Auth → toujours réseau (jamais de cache)
-  if (/identitytoolkit|securetoken/.test(url.hostname)) {
-    return;
-  }
-
-  // 2. Firebase Storage (photos) → CacheFirst
-  if (url.hostname === "firebasestorage.googleapis.com") {
-    e.respondWith(cacheFirst(request, CACHE_PHOTOS, 30 * 24 * 60 * 60));
-    return;
-  }
-
-  // 2 bis. Supabase Storage public (photos d'élèves, logos) → CacheFirst sans
+  // 2. Supabase Storage public (photos d'élèves, logos) → CacheFirst sans
   // expiration. Supabase ne laisse le navigateur garder ces images qu'une
   // heure (max-age=3600) : hors ligne, elles disparaissaient. Les photos
   // prises hors ligne sont déjà dans ce cache (photos-hors-ligne.js).
@@ -95,36 +83,13 @@ self.addEventListener("fetch", (e) => {
     return;
   }
 
-  // 3. Firestore → toujours réseau pour éviter les données d'école obsolètes
-  if (url.hostname === "firestore.googleapis.com") {
-    return;
-  }
-
-  // 4. API routes Vercel → NetworkFirst (fallback cache court).
-  // Isolation par compte : si la requête porte X-Account-Scope (cf. portail
-  // enseignant), on cache sous une clé incluant cet identifiant pour qu'un
-  // appareil PARTAGÉ ne serve pas hors-ligne les données d'un autre compte.
-  if (url.pathname.startsWith("/api/")) {
-    // Les requetes NON-GET (login, ecritures) ne passent JAMAIS par le SW :
-    // rien a mettre en cache, et le timeout/abort transformait une requete
-    // simplement lente (ex. demarrage a froid de la fonction) en echec 503.
-    // On laisse le navigateur les traiter nativement.
-    if (request.method !== "GET") return;
-    const scope = request.headers.get("x-account-scope");
-    const cacheKey = scope
-      ? new Request(`${url.href}${url.search ? "&" : "?"}__acct=${encodeURIComponent(scope)}`)
-      : request;
-    e.respondWith(networkFirst(request, CACHE_DATA, 8000, cacheKey));
-    return;
-  }
-
-  // 5. Navigation HTML → NetworkFirst (toujours la dernière version)
+  // 3. Navigation HTML → NetworkFirst (toujours la dernière version)
   if (request.mode === "navigate") {
     e.respondWith(networkFirst(request, CACHE_APP, 5000));
     return;
   }
 
-  // 6. Assets statiques hachés (JS/CSS/images) → CacheFirst (safe car hash change à chaque build)
+  // 4. Assets statiques hachés (JS/CSS/images) → CacheFirst (safe car hash change à chaque build)
   if (url.origin === self.location.origin) {
     e.respondWith(appShellFirst(request));
     return;
@@ -154,19 +119,18 @@ async function cacheFirst(request, cacheName, maxAgeSeconds) {
   }
 }
 
-/** NetworkFirst : réseau d'abord, fallback cache si timeout/erreur.
- *  `cacheKey` (défaut = request) permet d'isoler l'entrée de cache (par compte). */
-async function networkFirst(request, cacheName, timeoutMs, cacheKey = request) {
+/** NetworkFirst : réseau d'abord, fallback cache si timeout/erreur. */
+async function networkFirst(request, cacheName, timeoutMs) {
   const cache = await caches.open(cacheName);
   try {
     const controller = new AbortController();
     const tid = setTimeout(() => controller.abort(), timeoutMs);
     const response = await fetch(request, { signal: controller.signal });
     clearTimeout(tid);
-    if (response.ok && request.method === "GET") cache.put(cacheKey, response.clone());
+    if (response.ok && request.method === "GET") cache.put(request, response.clone());
     return response;
   } catch {
-    const cached = await cache.match(cacheKey);
+    const cached = await cache.match(request);
     return cached || new Response(
       JSON.stringify({ error: "Hors ligne", offline: true }),
       { status: 503, headers: { "Content-Type": "application/json" } }

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
-import { isSupabase } from "../../backend";
 import { messagerieOuverteA, titreConversation } from "./messagerie-logic";
 import { useReunion } from "./audio/use-reunion";
 import { usePresence } from "./use-presence";
@@ -28,7 +27,7 @@ function demandeDepuisUrl(url) {
 // par-dessus n'importe quelle page. `onOuvrir` : navigation vers la page
 // Messagerie (module du shell ou onglet du portail).
 export function MessagerieProvider({ utilisateur, schoolCode, onOuvrir, children }) {
-  const actif = isSupabase && messagerieOuverteA(utilisateur) && !!schoolCode;
+  const actif = messagerieOuverteA(utilisateur) && !!schoolCode;
   const etat = useMessagerieEtat({ utilisateur, schoolCode, actif });
   // Un seul appel à la fois par appareil : direct OU de groupe.
   const occupation = useRef({ appel: false, reunion: false });
