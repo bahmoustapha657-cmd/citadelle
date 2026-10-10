@@ -81,6 +81,7 @@ export function ComptaTabsFinancier({ c, readOnly, annee }) {
         enreg={c.enreg}
         periodes={c.periodes}
         defaultPeriode={c.defaultPeriode}
+        anneeConsultee={c.anneeConsultee}
       />}
 
       {/* ── ÉTATS DE SALAIRES MODÈLE EXCEL ── */}
@@ -93,6 +94,7 @@ export function ComptaTabsFinancier({ c, readOnly, annee }) {
         moisLabel={sd.moisLabel}
         moisModale={sd.moisModale}
         annee={annee}
+        anneeConsultee={c.anneeConsultee}
         primeDefaut={c.primeDefaut}
         setPrimeDefaut={c.setPrimeDefaut}
         form={c.form}

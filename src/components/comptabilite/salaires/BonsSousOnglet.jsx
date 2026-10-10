@@ -1,24 +1,28 @@
 import React from "react";
 import { fmtN } from "../../../constants";
 import { Badge, Btn, Card, TD, THead, TR, Vide } from "../../ui";
+import { imprimerFicheBon } from "../../../reports/pieces-depenses";
 
-export function BonsSousOnglet({ bonsMois, moisLabel, canEdit, supBon, setForm, setModal }) {
+export function BonsSousOnglet({ bonsMois, moisLabel, canEdit, supBon, setForm, setModal, schoolInfo, annee }) {
   return (
     <>
       {bonsMois.length===0
         ?<Vide icone="📋" msg={`Aucun bon enregistré pour ${moisLabel}`}/>
         :<Card><div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
-          <THead cols={["Enseignant","Section","Mois","Montant (GNF)","Motif",canEdit?"Actions":""]}/>
+          <THead cols={["Enseignant","Section","Mois","Montant (GNF)","Motif","Actions"]}/>
           <tbody>{bonsMois.map(b=><TR key={b._id}>
             <TD bold>{b.nom}</TD>
             <TD><Badge color={b.section==="Primaire"?"vert":"blue"}>{b.section}</Badge></TD>
             <TD>{b.mois}</TD>
             <TD center style={{color:"#b91c1c",fontWeight:700}}>{fmtN(b.montant||0)}</TD>
             <TD>{b.motif||"—"}</TD>
-            {canEdit&&<TD center>
-              <Btn sm v="ghost" onClick={()=>{setForm({...b});setModal("edit_b");}}>✏️</Btn>
-              <Btn sm v="red" onClick={()=>confirm("Supprimer ce bon ?")&&supBon(b._id)}>🗑</Btn>
-            </TD>}
+            <TD center>
+              <Btn sm v="ghost" title="Imprimer la fiche à faire signer par le bénéficiaire" onClick={()=>imprimerFicheBon({bon:b,schoolInfo,annee})}>🖨️</Btn>
+              {canEdit&&<>
+                <Btn sm v="ghost" onClick={()=>{setForm({...b});setModal("edit_b");}}>✏️</Btn>
+                <Btn sm v="red" onClick={()=>confirm("Supprimer ce bon ?")&&supBon(b._id)}>🗑</Btn>
+              </>}
+            </TD>
           </TR>)}
           <tr style={{background:"#fce8e8",fontWeight:800}}>
             <td colSpan={3} style={{padding:"8px 12px",textAlign:"right",color:"#9b2020"}}>TOTAL BONS — {moisLabel}</td>

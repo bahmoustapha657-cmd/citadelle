@@ -22,6 +22,7 @@ export function SalairesTab({
   moisLabel,
   moisModale,
   annee,
+  anneeConsultee,
   // prime défaut
   primeDefaut,
   setPrimeDefaut,
@@ -97,7 +98,7 @@ export function SalairesTab({
 
       {/* ── SOUS-ONGLET BONS ── */}
       {sousTabSal==="bons"&&
-        <BonsSousOnglet bonsMois={bonsMois} moisLabel={moisLabel} canEdit={canEdit} supBon={supBon} setForm={setForm} setModal={setModal}/>
+        <BonsSousOnglet bonsMois={bonsMois} moisLabel={moisLabel} canEdit={canEdit} supBon={supBon} setForm={setForm} setModal={setModal} schoolInfo={schoolInfo} annee={anneeConsultee || annee}/>
       }
 
       {/* ── SOUS-ONGLET ÉTATS ── */}
