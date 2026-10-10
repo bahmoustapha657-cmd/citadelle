@@ -45,6 +45,7 @@ export {
   getSalaryMontantBrut,
   getSalaryNet,
   getForfaitNet,
+  getRetenueAbsences,
   buildSecondarySalaryObservation,
   buildSecondarySalaryRecord,
   buildPrimarySalaryRecord,

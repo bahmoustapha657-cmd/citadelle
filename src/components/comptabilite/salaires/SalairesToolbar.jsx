@@ -8,7 +8,7 @@ import { getFifthWeekDays } from "../../../salary-utils";
 export function SalairesToolbar({
   sousTabSal, setSousTabSal, moisSel, setMoisSel, moisSalaire, bonsMois,
   canCreate, primeDefaut, setPrimeDefaut,
-  autoGenererSalaires, appliquerBons, imprimerSalaires, setForm, setModal, moisModale,
+  autoGenererSalaires, appliquerBons, appliquerAbsences, imprimerSalaires, setForm, setModal, moisModale,
   groupesPaie = { secondaire: true, primaire: true },
 }) {
   const { t } = useTranslation();
@@ -40,6 +40,7 @@ export function SalairesToolbar({
         {canCreate&&<Btn v="amber" onClick={()=>autoGenererSalaires()}>⚡ {t("accounting.generateSalaries")}</Btn>}
         {canCreate&&<Btn v="amber" onClick={()=>autoGenererSalaires({resync:true})} title="Recalcule V/H et prime horaire des lignes existantes à partir de la fiche enseignant et de l'EDT actuels (bons et révisions préservés)">🔄 {t("common.refresh")}</Btn>}
         {canCreate&&bonsMois.length>0&&<Btn v="amber" onClick={appliquerBons}>✔ {t("accounting.applyBonus")}</Btn>}
+        {canCreate&&appliquerAbsences&&<Btn v="amber" onClick={appliquerAbsences} title="Retenue sur les salaires au forfait (primaire, personnel) pour les absences et retards déclarés injustifiés dans l'onglet Présences">✔ Appliquer les absences</Btn>}
         {canCreate&&<Btn onClick={()=>{setForm({section:sectionDefaut,mois:moisModale,nonExecute:0,cinqSem:0,bon:0,revision:0});setModal("add_s");}}>+ {t("common.add")}</Btn>}
         <Btn v="vert" onClick={imprimerSalaires}>🖨️ {t("accounting.printSalaries")}</Btn>
       </>}

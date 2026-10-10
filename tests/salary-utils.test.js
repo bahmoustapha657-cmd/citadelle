@@ -190,6 +190,7 @@ test("salary summary helpers compute gross, bon and net totals", () => {
   assert.deepEqual(totals, {
     montant: 1080000,
     bon: 150000,
+    retenue: 0,
     revision: 60000,
     net: 990000,
   });

@@ -5,6 +5,7 @@
 import { imprimerEtatsSalaires } from "../../reports";
 import { autoGenererSalairesAction, genererSalairesPourMois } from "./salary-actions";
 import { appliquerBons as appliquerBonsAction } from "./payment-actions";
+import { appliquerAbsences as appliquerAbsencesAction } from "./presences/appliquer-absences";
 import {
   getForfaitNet,
   getSalaryExecutionHours,
@@ -16,6 +17,7 @@ import {
 export function useComptaSalaires({
   salaires,
   bons,
+  presences = [],
   moisSel,
   moisSalaire,
   ensCollege,
@@ -47,6 +49,11 @@ export function useComptaSalaires({
 
   const appliquerBons = () => appliquerBonsAction({
     moisSel, bonsMois, salairesMois, readOnly, toast, modS,
+  });
+
+  // Retenues pour absences/retards injustifiés (registre des présences).
+  const appliquerAbsences = () => appliquerAbsencesAction({
+    moisSel, salairesMois, presences, anneeScolaire: anneeConsultee || annee, schoolInfo, readOnly, toast, modS,
   });
 
   const calcExecute = (salary) => getSalaryExecutionHours(salary);
@@ -121,6 +128,7 @@ export function useComptaSalaires({
     salairesPers,
     bonsMois,
     appliquerBons,
+    appliquerAbsences,
     calcExecute,
     calcMontant,
     calcNet,

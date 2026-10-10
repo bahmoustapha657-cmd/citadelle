@@ -81,6 +81,8 @@ export type SalaryRecord = {
   paramSnapshot?: ParamSnapshot;
   bon?: number | string;
   revision?: number | string;
+  retenueAbsences?: number | string;
+  detailAbsences?: string;
   createdAt?: number;
   updatedAt?: number;
 };
@@ -88,6 +90,7 @@ export type SalaryRecord = {
 export type SalaryTotals = {
   montant: number;
   bon: number;
+  retenue: number;
   revision: number;
   net: number;
 };

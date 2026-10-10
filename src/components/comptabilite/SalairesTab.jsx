@@ -72,6 +72,7 @@ export function SalairesTab({
   // actions
   autoGenererSalaires,
   appliquerBons,
+  appliquerAbsences,
   imprimerSalaires,
   enreg,
   saveSalaire,
@@ -91,7 +92,7 @@ export function SalairesTab({
         sousTabSal={sousTabSal} setSousTabSal={setSousTabSal}
         moisSel={moisSel} setMoisSel={setMoisSel} moisSalaire={moisSalaire} bonsMois={bonsMois}
         canCreate={canCreate} primeDefaut={primeDefaut} setPrimeDefaut={setPrimeDefaut}
-        autoGenererSalaires={autoGenererSalaires} appliquerBons={appliquerBons}
+        autoGenererSalaires={autoGenererSalaires} appliquerBons={appliquerBons} appliquerAbsences={appliquerAbsences}
         imprimerSalaires={imprimerSalaires} setForm={setForm} setModal={setModal} moisModale={moisModale}
         groupesPaie={groupesPaie}
       />
