@@ -12,7 +12,7 @@
 // global), signatures de la matrice.
 
 import { fmtN, getMonnaie, today } from "../constants.js";
-import { PRINT_TRIGGER, edugestBrandHTML, enteteDoc } from "./print-helpers.js";
+import { PRINT_TRIGGER, WATERMARK_CSS, edugestBrandHTML, enteteDoc, watermarkHtml } from "./print-helpers.js";
 import { blocsSignatures } from "./signatures.js";
 import { etatsCss } from "./etats-salaires/etats-styles.js";
 import { montantEnLettres } from "./montant-lettres.js";
@@ -31,12 +31,9 @@ const dateFr = (valeur) => {
   return m ? `${m[3]}/${m[2]}/${m[1]}` : String(valeur || "");
 };
 
-// Date de remise du bon : celle saisie, sinon celle de son enregistrement.
-const dateDuBon = (bon) => {
-  if (bon.date) return dateFr(bon.date);
-  if (bon.createdAt) return new Date(bon.createdAt).toLocaleDateString("fr-FR");
-  return "";
-};
+// Date de remise du bon : celle saisie. Un bon enregistré avant le champ
+// « Date de remise » n'en a pas : la fiche se remet le jour où on l'imprime.
+const dateDuBon = (bon) => (bon.date ? dateFr(bon.date) : today());
 
 // N° lisible tiré de l'identifiant : le même bon réimprimé garde son numéro.
 export const numeroBon = (bon) => String(bon?._id || "").replace(/[^a-z0-9]/gi, "").slice(-6).toUpperCase();
@@ -47,7 +44,13 @@ const exemplaireBon = ({ bon, schoolInfo, annee, monnaie, mention }) => {
   const mois = echapper(bon.mois) || "………………";
   const numero = numeroBon(bon);
   const date = dateDuBon(bon);
+  // Filigrane propre à chaque exemplaire : le filigrane fixe de page n'en
+  // marquerait qu'un, posé sur la ligne de coupe.
+  const filigrane = schoolInfo.logo
+    ? `<div class="bon-filigrane" aria-hidden="true"><img crossOrigin="anonymous" src="${schoolInfo.logo}" alt=""/></div>`
+    : "";
   return `<section class="bon">
+    ${filigrane}
     <div class="bon-tete">
       ${schoolInfo.logo ? `<img crossOrigin="anonymous" src="${schoolInfo.logo}" alt=""/>` : ""}
       <div class="bon-ecole">
@@ -59,14 +62,14 @@ const exemplaireBon = ({ bon, schoolInfo, annee, monnaie, mention }) => {
     <div class="bon-titre">BON${numero ? ` N° ${numero}` : ""}</div>
     <table class="bon-infos">
       <tr><th>Bénéficiaire</th><td><strong>${nom}</strong></td><th>Section</th><td>${echapper(bon.section) || "—"}</td></tr>
-      <tr><th>Salaire du mois</th><td>${mois}</td><th>Date</th><td>${date || "……/……/…………"}</td></tr>
+      <tr><th>Salaire du mois</th><td>${mois}</td><th>Date</th><td>${date}</td></tr>
       <tr><th>Motif</th><td colspan="3">${echapper(bon.motif) || "—"}</td></tr>
       <tr class="bon-montant"><th>Montant</th><td colspan="3">${fmtN(montant)} ${echapper(monnaie)}</td></tr>
     </table>
     <p class="bon-texte">Je soussigné(e) <strong>${nom}</strong> reconnais avoir reçu la somme de
       <strong>${montantEnLettres(montant, monnaie)}</strong> (${fmtN(montant)} ${echapper(monnaie)})
       à titre de bon sur mon salaire du mois de <strong>${mois}</strong>, montant qui sera retenu sur ce salaire.</p>
-    <p class="bon-lieu">Fait à ${echapper(schoolInfo.ville || "……………………")}, le ${date || "……/……/…………"}</p>
+    <p class="bon-lieu">Fait à ${echapper(schoolInfo.ville || "……………………")}, le ${date}</p>
     <div class="signatures">
       <div class="sig">Le Bénéficiaire<br/><span style="font-weight:400">« Lu et approuvé »</span><br/><br/><br/></div>
       ${blocsSignatures(schoolInfo, "bon", (identite) => `<div class="sig">${identite}<br/><br/><br/></div>`)}
@@ -83,7 +86,9 @@ export function ficheBonHTML({ bon = {}, schoolInfo = {}, annee = "" }) {
   <title>Bon ${echapper(numeroBon(bon))} — ${echapper(bon.nom || "")}</title>
   <style>${etatsCss(c1)}
     body{padding:8mm 12mm}
-    .bon{height:132mm;display:flex;flex-direction:column;overflow:hidden}
+    .bon{height:132mm;display:flex;flex-direction:column;overflow:hidden;position:relative}
+    .bon-filigrane{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:5}
+    .bon-filigrane img{height:70%;max-width:60%;object-fit:contain;opacity:.07;transform:rotate(-20deg)}
     .bon-tete{display:flex;align-items:center;gap:10px;border-bottom:2px solid ${c1};padding-bottom:6px}
     .bon-tete img{width:44px;height:44px;object-fit:contain}
     .bon-ecole{flex:1;display:flex;flex-direction:column;line-height:1.4}
@@ -161,7 +166,9 @@ export function etatDepensesHTML({ depenses = [], schoolInfo = {}, annee = "", m
             font-family:Georgia,"Times New Roman",serif;font-size:12.5px;line-height:1.7;background:${c1}0a}
     .arrete strong{color:${c1}}
     .lieu-date{text-align:end;margin:12px 0 0;font-size:11.5px}
+    ${WATERMARK_CSS}
   </style></head><body>
+    ${watermarkHtml(schoolInfo)}
     ${enteteDoc(schoolInfo, schoolInfo.logo)}
     <div class="titre-wrap">
       <div class="titre">ÉTAT DES DÉPENSES</div>

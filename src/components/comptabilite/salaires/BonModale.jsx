@@ -1,12 +1,16 @@
 import React from "react";
 import { Btn, Input, Modale, Selec } from "../../ui";
 import { agentsPourBon, sectionDuBon, sectionsPaieProposees } from "./bon-agents";
+import { dateDuJour } from "../paiements-journal";
 
 export function BonModale({ modal, canCreate, canEdit, form, setForm, setModal, moisModale, moisSalaire, ensCollege = [], ensLycee = [], ensPrimaire = [], personnel = [], ajBon, modBon, enreg, groupesPaie }) {
   if (!((modal==="add_b"&&canCreate)||(modal==="edit_b"&&canEdit))) return null;
   const chg = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
   const listes = { ensCollege, ensLycee, ensPrimaire, personnel };
   const moisBon = form.mois||moisModale;
+  // Date de remise, imprimée sur la fiche du bon : le jour même à la
+  // création ; un ancien bon sans date reste vide tant qu'on ne la saisit pas.
+  const dateBon = form.date ?? (modal==="add_b" ? dateDuJour() : "");
   // Un bon repris de l'ancienne base n'a pas de section : on retrouve celle de
   // l'agent dans les fiches actuelles, et l'enregistrement la fixe.
   const secBon = form.section||sectionDuBon(form.nom, listes)||sectionsPaieProposees(groupesPaie)[0];
@@ -36,6 +40,8 @@ export function BonModale({ modal, canCreate, canEdit, form, setForm, setModal, 
           : `Aucun enseignant en fiche pour la section ${secBon} : ajoutez-le d'abord dans l'onglet Enseignants.`}
       </div>}
       <div style={{height:10}}/>
+      <Input label="Date de remise" type="date" value={dateBon} onChange={chg("date")}/>
+      <div style={{height:10}}/>
       <Input label="Montant du bon (GNF)" type="number" value={form.montant||""} onChange={chg("montant")} placeholder="Ex : 50000"/>
       <div style={{height:10}}/>
       <Input label="Motif" value={form.motif||""} onChange={chg("motif")} placeholder="Ex : Retard, Absence injustifiée…"/>
@@ -44,7 +50,7 @@ export function BonModale({ modal, canCreate, canEdit, form, setForm, setModal, 
       </div>
       <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
         <Btn v="ghost" onClick={()=>setModal(null)}>Annuler</Btn>
-        <Btn onClick={()=>enreg(ajBon,modBon,{montant:Number(form.montant||0),section:secBon,mois:moisBon})}>Enregistrer</Btn>
+        <Btn onClick={()=>enreg(ajBon,modBon,{montant:Number(form.montant||0),section:secBon,mois:moisBon,date:dateBon})}>Enregistrer</Btn>
       </div>
     </Modale>
   );

@@ -9,11 +9,12 @@ export function BonsSousOnglet({ bonsMois, moisLabel, canEdit, supBon, setForm, 
       {bonsMois.length===0
         ?<Vide icone="📋" msg={`Aucun bon enregistré pour ${moisLabel}`}/>
         :<Card><div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
-          <THead cols={["Enseignant","Section","Mois","Montant (GNF)","Motif","Actions"]}/>
+          <THead cols={["Enseignant","Section","Mois","Date","Montant (GNF)","Motif","Actions"]}/>
           <tbody>{bonsMois.map(b=><TR key={b._id}>
             <TD bold>{b.nom}</TD>
             <TD><Badge color={b.section==="Primaire"?"vert":"blue"}>{b.section}</Badge></TD>
             <TD>{b.mois}</TD>
+            <TD>{b.date?b.date.split("-").reverse().join("/"):"—"}</TD>
             <TD center style={{color:"#b91c1c",fontWeight:700}}>{fmtN(b.montant||0)}</TD>
             <TD>{b.motif||"—"}</TD>
             <TD center>
@@ -25,7 +26,7 @@ export function BonsSousOnglet({ bonsMois, moisLabel, canEdit, supBon, setForm, 
             </TD>
           </TR>)}
           <tr style={{background:"#fce8e8",fontWeight:800}}>
-            <td colSpan={3} style={{padding:"8px 12px",textAlign:"right",color:"#9b2020"}}>TOTAL BONS — {moisLabel}</td>
+            <td colSpan={4} style={{padding:"8px 12px",textAlign:"right",color:"#9b2020"}}>TOTAL BONS — {moisLabel}</td>
             <td style={{padding:"8px 12px",textAlign:"center",color:"#9b2020",fontSize:14}}>{fmtN(bonsMois.reduce((s,b)=>s+Number(b.montant||0),0))}</td>
             <td colSpan={2}></td>
           </tr>

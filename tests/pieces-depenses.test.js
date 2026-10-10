@@ -55,7 +55,7 @@ test("l'état global récapitule par mois et échappe les saisies", () => {
 });
 
 test("la fiche de bon sort en deux exemplaires à signer par le bénéficiaire", () => {
-  const bon = { _id: "8f2c-41ab-9d7e", nom: "Mamadou Diallo", section: "Secondaire", mois: "Octobre", montant: 250000, motif: "Avance", createdAt: Date.UTC(2026, 9, 12) };
+  const bon = { _id: "8f2c-41ab-9d7e", nom: "Mamadou Diallo", section: "Secondaire", mois: "Octobre", montant: 250000, motif: "Avance", date: "2026-10-12" };
   const html = ficheBonHTML({ bon, schoolInfo: ecole, annee: "2026-2027" });
   assert.equal(numeroBon(bon), "AB9D7E");
   assert.equal((html.match(/<section class="bon">/g) || []).length, 2);
@@ -66,6 +66,18 @@ test("la fiche de bon sort en deux exemplaires à signer par le bénéficiaire",
   assert.match(html, /Lu et approuvé/);
   assert.match(html, /Le Comptable/);
   assert.match(html, /12\/10\/2026/);
+});
+
+test("un ancien bon sans date prend la date du jour, et chaque exemplaire porte le filigrane", () => {
+  const html = ficheBonHTML({ bon: { _id: "x1", nom: "A", montant: 1000 }, schoolInfo: { ...ecole, logo: "https://ex.test/logo.png" } });
+  assert.match(html, new RegExp(`le ${new Date().toLocaleDateString("fr-FR").replace(/\//g, "\\/")}`));
+  assert.doesNotMatch(html, /……\/……/);
+  assert.equal((html.match(/class="bon-filigrane"/g) || []).length, 2);
+});
+
+test("l'état des dépenses porte le logo en filigrane", () => {
+  const html = etatDepensesHTML({ depenses, schoolInfo: { ...ecole, logo: "https://ex.test/logo.png" } });
+  assert.match(html, /class="lc-watermark"/);
 });
 
 test("fiche de bon et état des dépenses sont réglables dans « Qui signe quoi »", () => {
