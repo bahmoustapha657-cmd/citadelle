@@ -15,6 +15,7 @@ import {
   mergeSalaryWithManualFields,
   pickBestSalaryFromGroup,
 } from "../../../salary-utils";
+import { enseignementsPourPaie } from "../presences/presences-secondaire";
 
 // Crée (ou recalcule en resync) une fiche calculée. Met à jour l'accumulateur
 // local via noterCree. Renvoie des compteurs 0/1 { cree, resync }.
@@ -53,6 +54,8 @@ export async function genererSalairesPourMois(mois, {
   primeDefaut,
   // Annee à stocker sur les nouveaux records
   annee,
+  // Registre des présences : un jour d'absence justifiée n'est pas retiré.
+  presences = [],
   // Mutators Firestore
   modS, ajS, supS,
   // Options
@@ -111,7 +114,9 @@ export async function genererSalairesPourMois(mois, {
     await appliquer(buildSecondarySalaryRecord(ens, {
       mois,
       emplois: ens._emplois,
-      enseignements: ens._eng,
+      // Seulement les heures du mois (toutes les absences de l'année étaient
+      // retirées de CHAQUE mois), hors jours d'absence justifiée.
+      enseignements: enseignementsPourPaie(ens._eng, { mois, anneeScolaire: annee, presences }),
       jours5eme,
       primeDefaut,
     }));

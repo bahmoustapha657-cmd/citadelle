@@ -7,8 +7,8 @@
 //  - salaire au forfait (Primaire, Personnel) : retenue = forfait ÷ jours
 //    ouvrables du mois × jours d'absence (demi-journée = ½) ;
 //  - retards : N retards injustifiés = une demi-journée (N réglable) ;
-//  - le secondaire, payé à l'heure, perd déjà ses heures « Absent » saisies
-//    dans Enseignements : le registre n'y ajoute pas de retenue (étape 2).
+//  - secondaire, payé à l'heure : voir presences-secondaire.js (heures
+//    « Absent » d'Enseignements, jours justifiés payés, retenue du reste).
 import { TOUS_MOIS_LONGS } from "../../../constants.js";
 import { normalizeSalaryName } from "../../../salary-utils";
 
@@ -158,9 +158,10 @@ export function faitExistant(presences = [], { nom, section, date, type }) {
 }
 
 // Récapitulatif d'un mois : une ligne par agent ayant au moins un fait.
-// `retenue` : retenue calculée (null au secondaire), `appliquee` : celle
-// portée par sa fiche de paie (null si la paie du mois n'est pas générée).
-export function recapMois({ presences = [], salairesMois = [], mois, anneeScolaire, reglages = REGLAGES_DEFAUT }) {
+// `retenue` : retenue calculée, `appliquee` : celle portée par sa fiche de
+// paie (null si la paie du mois n'est pas générée). `retenueSecondaire` :
+// (fiche) => { montant } | null, pour les fiches à l'heure.
+export function recapMois({ presences = [], salairesMois = [], mois, anneeScolaire, reglages = REGLAGES_DEFAUT, retenueSecondaire = null }) {
   const agents = new Map();
   for (const p of presences) {
     if (moisDeDate(p.date) !== mois) continue;
@@ -171,8 +172,9 @@ export function recapMois({ presences = [], salairesMois = [], mois, anneeScolai
   return [...agents.values()].map(({ nom, section, faits }) => {
     const fiche = salairesMois.find((s) => s.section === section
       && normalizeSalaryName(s.nom || "") === normalizeSalaryName(nom || "")) || null;
-    const calcul = SECTIONS_FORFAIT.has(section) && fiche
-      ? calculerRetenue(fiche, presences, { anneeScolaire, reglages }) : null;
+    const calcul = !fiche ? null
+      : SECTIONS_FORFAIT.has(section) ? calculerRetenue(fiche, presences, { anneeScolaire, reglages })
+        : retenueSecondaire ? retenueSecondaire(fiche) : null;
     return {
       nom, section, nbFaits: faits.length,
       ...decompteAgent(faits, reglages),

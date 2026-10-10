@@ -10,7 +10,8 @@ Périmètre « hors ligne total » :
   matières, enseignants, emplois, enseignements, appréciations, notes,
   absences (+ fiche école, annonces, postes).
 - **Par module, selon les permissions du poste** : Comptabilité (recettes,
-  dépenses, versements, bons, personnel, salaires, tarifs), Calendrier
+  dépenses, versements, bons, personnel, salaires, tarifs, paiements,
+  présences du personnel), Calendrier
   (événements), Examens (examens, livrets, honneurs), Messages Parents,
   Fondation (membres, documents), Historique, Comptes (lecture, AdminPanel).
 - **Restent en ligne** : portail parent (vague ultérieure), messagerie

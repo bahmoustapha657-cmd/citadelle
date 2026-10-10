@@ -22,6 +22,8 @@ export const TABLES_HORS_LIGNE = new Set([
   // Journal des encaissements (ajout seul) : un encaissement hors ligne doit
   // garder sa ligne de caisse, comme la fiche élève garde son mois payé.
   "paiements",
+  // Registre des absences/retards du personnel (feuille du jour hors ligne).
+  "presences",
   // Modules « document » (calendrier, examens, messages, fondation, journal)
   "evenements", "examens", "livrets", "honneurs",
   "messages", "annonces", "membres", "documents", "historique",
@@ -57,7 +59,7 @@ const JSON_COLS = {
   eleves: ["extra"], classes: ["extra"], enseignants: ["extra"],
   matieres: ["extra"], emplois: ["extra"], enseignements: ["extra"],
   recettes: ["extra"], depenses: ["extra"], versements: ["extra"],
-  bons: ["extra"], personnel: ["extra"], tarifs: ["extra"], paiements: ["extra"],
+  bons: ["extra"], personnel: ["extra"], tarifs: ["extra"], paiements: ["extra"], presences: ["extra"],
   salaires: ["details"],
   evenements: ["extra"], examens: ["extra"], livrets: ["extra"],
   honneurs: ["extra"], messages: ["extra"], annonces: ["extra"],

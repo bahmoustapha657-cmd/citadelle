@@ -100,6 +100,11 @@ const recettes = new Table({ ...livreCols }, livreOpts);
 const depenses = new Table({ ...livreCols }, livreOpts);
 const versements = new Table({ ...livreCols }, livreOpts);
 const bons = new Table({ ...livreCols }, livreOpts);
+// Registre des présences du personnel : même forme, sans montant.
+const presences = new Table(
+  { ecole_id: column.text, annee: column.text, date: column.text, extra: column.text },
+  livreOpts,
+);
 
 const personnel = new Table(
   { ecole_id: column.text, nom: column.text, prenom: column.text, extra: column.text },
@@ -191,7 +196,7 @@ const ecoles = new Table({
 
 export const AppSchema = new Schema({
   eleves, notes, absences, classes, enseignants, matieres, emplois, enseignements, appreciations,
-  recettes, depenses, versements, bons, personnel, salaires, tarifs, paiements,
+  recettes, depenses, versements, bons, personnel, salaires, tarifs, paiements, presences,
   evenements, examens, livrets, honneurs, annonces, membres, documents, historique, messages,
   comptes, postes, ecoles,
 });
