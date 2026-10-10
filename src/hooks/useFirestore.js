@@ -11,6 +11,7 @@ import {
   supprimerDoc,
 } from "../backend/data-supabase";
 import { subscribeCollection } from "../backend/realtime-supabase";
+import { creerRelectureGroupee } from "./relecture-groupee";
 
 const initialState = {
   items: [],
@@ -135,6 +136,19 @@ export function useFirestore(nomCollection, options = {}) {
     dispatch({ type: "success", items });
   }, [schoolId, nomCollection, anneeFiltre]);
 
+  // Relecture après écriture, partagée entre écritures simultanées
+  // (cf. relecture-groupee.js) : la grille de notes en lance des dizaines.
+  // Recréée quand `charger` change (autre école, collection ou année).
+  const relecture = useRef({ pour: null, relire: null });
+  const relireApresEcriture = () => {
+    const r = relecture.current;
+    if (r.pour !== charger) {
+      r.pour = charger;
+      r.relire = creerRelectureGroupee(() => charger(true));
+    }
+    return r.relire();
+  };
+
   useEffect(() => {
     dispatch({ type: "loading" });
     charger(false);
@@ -188,7 +202,7 @@ export function useFirestore(nomCollection, options = {}) {
 
   const ajouter = async (item) => {
     const cree = await ajouterDoc(schoolId, nomCollection, item);
-    await charger(true);
+    await relireApresEcriture();
     return { id: cree._id, ...cree };
   };
 
@@ -214,7 +228,7 @@ export function useFirestore(nomCollection, options = {}) {
     };
 
     await supprimerDoc(schoolId, nomCollection, id);
-    await charger(true);
+    await relireApresEcriture();
     const trace = tracer();
     // Best-effort : une trace qui échoue ne doit jamais faire croire que la
     // suppression a échoué, elle est déjà faite.
@@ -223,12 +237,12 @@ export function useFirestore(nomCollection, options = {}) {
 
   const modifier = async (item) => {
     await modifierDoc(schoolId, nomCollection, item);
-    await charger(true);
+    await relireApresEcriture();
   };
 
   const modifierChamp = async (_id, champs) => {
     await modifierChampDoc(schoolId, nomCollection, _id, champs);
-    await charger(true);
+    await relireApresEcriture();
   };
 
   return {
