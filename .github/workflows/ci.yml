@@ -225,6 +225,99 @@ jobs:
           end $$;
           SQL
 
+      # Une fiche élève qui porte de l'argent ne se supprime pas : la cascade
+      # vidait le journal de caisse (migration 20261009151044). La suppression
+      # d'une école entière, elle, emporte toujours tout. Données jetables,
+      # annulées à la fin (rollback).
+      - name: Contrôler la garde des encaissements
+        env:
+          LOCALE: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        run: |
+          psql "$LOCALE" -v ON_ERROR_STOP=1 -At <<'SQL'
+          begin;
+          do $$
+          declare
+            ecole uuid := gen_random_uuid();
+            journal uuid := gen_random_uuid();  -- une ligne au journal de caisse
+            fiche uuid := gen_random_uuid();    -- un mois payé sur la fiche seulement
+            archive uuid := gen_random_uuid();  -- inscription payée dans une année close
+            libre uuid := gen_random_uuid();    -- rien d'encaissé
+            cible uuid;
+            indice text;
+            etat text;
+          begin
+            insert into ecoles (id, code, nom) values (ecole, 'ci-garde-encaissements', 'CI');
+            insert into eleves (id, ecole_id, section, nom, extra) values
+              (journal, ecole, 'college', 'JOURNAL', '{}'),
+              (fiche, ecole, 'college', 'FICHE', '{"mens": {"Oct": "Payé", "Nov": "Impayé"}}'),
+              (archive, ecole, 'college', 'ARCHIVE', '{"historique": {"2025-2026": {"inscriptionPayee": true}}}'),
+              (libre, ecole, 'college', 'LIBRE', '{"mens": {"Oct": "Impayé"}, "fraisPayes": {"tenue": false}, "inscriptionAcompte": 0}');
+            insert into paiements (ecole_id, eleve_id, montant, statut, type, annee, mois)
+              values (ecole, journal, 75000, 'encaisse', 'mensualite', '2026-2027', 'Oct');
+
+            -- 1. service_role / SQL Editor : le journal protège sa fiche.
+            indice := null;
+            begin
+              delete from eleves where id = journal;
+              indice := 'supprimée';
+            exception when others then
+              get stacked diagnostics indice = pg_exception_hint;
+            end;
+            if indice is distinct from 'eleve_avec_encaissements' then
+              raise exception 'Garde (service_role, journal) : %', indice;
+            end if;
+
+            -- 2. Sans la garde, la clé étrangère refuse encore (dernier filet).
+            alter table eleves disable trigger trg_eleves_garde_suppression;
+            etat := null;
+            begin
+              delete from eleves where id = journal;
+              etat := 'supprimée';
+            exception when foreign_key_violation then
+              etat := 'refusée';
+            end;
+            alter table eleves enable trigger trg_eleves_garde_suppression;
+            if etat is distinct from 'refusée' then
+              raise exception 'paiements_eleve_id_fkey : fiche avec journal %', etat;
+            end if;
+
+            -- 3. Compte de l'appli : journal, fiche et archive protègent.
+            perform set_config('request.jwt.claims', '{"role": "authenticated"}', true);
+            foreach cible in array array[journal, fiche, archive] loop
+              indice := null;
+              begin
+                delete from eleves where id = cible;
+                indice := 'supprimée';
+              exception when others then
+                get stacked diagnostics indice = pg_exception_hint;
+              end;
+              if indice is distinct from 'eleve_avec_encaissements' then
+                raise exception 'Garde (compte de l''appli) % : %', cible, indice;
+              end if;
+            end loop;
+
+            -- 4. Rien d'encaissé : la fiche se supprime.
+            delete from eleves where id = libre;
+            if exists (select 1 from eleves where id = libre) then
+              raise exception 'Garde : fiche sans encaissement non supprimée';
+            end if;
+
+            -- 5. L'école entière (super-admin) : tout part, journal compris.
+            delete from ecoles where id = ecole;
+            if exists (select 1 from eleves where ecole_id = ecole)
+               or exists (select 1 from paiements where ecole_id = ecole) then
+              raise exception 'Garde : la suppression de l''école n''a pas tout emporté';
+            end if;
+
+            select confdeltype into etat from pg_constraint where conname = 'paiements_eleve_id_fkey';
+            if etat is distinct from 'a' then
+              raise exception 'paiements_eleve_id_fkey : ON DELETE % (attendu NO ACTION)', etat;
+            end if;
+            raise notice 'Garde des encaissements : OK';
+          end $$;
+          rollback;
+          SQL
+
   # Applique à la PRODUCTION les migrations pas encore passées, AVANT le
   # front : le nouveau front trouve toujours la base dont il a besoin.
   # Règle : une migration reste compatible avec le front encore en ligne

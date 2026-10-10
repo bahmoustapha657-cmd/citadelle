@@ -90,6 +90,7 @@ export function ComptaTabsScolarite({ c, readOnly, annee, userRole }) {
         encaisserInscriptions={c.encaisserInscriptions}
         getTarifInscriptionEleve={c.getTarifInscriptionEleve}
         tarifsClasses={c.tarifsClasses}
+        paiements={c.paiements}
       />}
 
       {c.tab === "mens" && <MensualitesTab

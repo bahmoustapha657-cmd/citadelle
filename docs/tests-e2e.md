@@ -16,6 +16,7 @@ production : `e2e/donnees.js` refuse toute autre base que `127.0.0.1` /
 | **Bulletin** | moyenne générale pondérée par les coefficients (13,43 et 12,43) | — |
 | **Fin d'année** : clôture, simulation de promotion, annulation | bilan « n fiche(s) archivée(s) sur n » (jamais 0 sur 0), année active | année officielle et repère de clôture conservés ; mois payés archivés puis remis à zéro ; simulation sans écriture ; annulation qui rend l'argent ; journal de caisse intact |
 | **Fiche supprimée** pendant un encaissement (autre poste) | avertissement « n'a pas été enregistrée », pas de « ✅ Versement » | aucune ligne de caisse |
+| **Suppression d'une fiche** (comptable) | élève avec encaissement : refus, départ proposé (fiche ouverte en « Transféré ») ; fiche sans argent : confirmation qui annonce les notes effacées, puis disparition | refus de la base (comptable ET service_role, hint `eleve_avec_encaissements`), journal de caisse intact ; fiche sans argent bien supprimée |
 | **Hors ligne** (variante PowerSync seulement) : réseau coupé pendant une saisie | note gardée à l'écran | rien en base pendant la coupure ; la note arrive au retour du réseau, une seule fois |
 
 Pourquoi vérifier la base : plusieurs écritures de l'app annoncent le succès
