@@ -37,6 +37,7 @@ bucket_definitions:
       - SELECT * FROM salaires WHERE ecole_id = bucket.ecole_id
       - SELECT * FROM tarifs WHERE ecole_id = bucket.ecole_id
       - SELECT * FROM paiements WHERE ecole_id = bucket.ecole_id
+      - SELECT * FROM presences WHERE ecole_id = bucket.ecole_id
   calendrier_data:
     priority: 3
     parameters: SELECT ecole_id FROM comptes WHERE user_id = request.user_id() AND perm_calendrier = true
