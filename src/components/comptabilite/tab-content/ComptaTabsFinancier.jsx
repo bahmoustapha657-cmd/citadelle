@@ -4,6 +4,7 @@ import { BilanTab } from "../BilanTab";
 import { CaisseTab } from "../CaisseTab";
 import { SalairesTab } from "../SalairesTab";
 import { PaiementsEnLigneTab } from "../../paiement-en-ligne/PaiementsEnLigneTab";
+import { PresencesTab } from "../presences/PresencesTab";
 
 // Onglets financiers : bilan, caisse (journal daté), recettes, dépenses,
 // états de salaires.
@@ -84,6 +85,8 @@ export function ComptaTabsFinancier({ c, readOnly, annee }) {
         anneeConsultee={c.anneeConsultee}
       />}
 
+      {c.tab === "presences" && <PresencesTab c={c} readOnly={readOnly} />}
+
       {/* ── ÉTATS DE SALAIRES MODÈLE EXCEL ── */}
       {c.tab === "salaires" && <SalairesTab
         sousTabSal={c.sousTabSal}
@@ -134,6 +137,7 @@ export function ComptaTabsFinancier({ c, readOnly, annee }) {
         calcNetF={sd.calcNetF}
         autoGenererSalaires={sd.autoGenererSalaires}
         appliquerBons={sd.appliquerBons}
+        appliquerAbsences={sd.appliquerAbsences}
         imprimerSalaires={sd.imprimerSalaires}
         enreg={c.enreg}
         saveSalaire={c.saveSalaire}

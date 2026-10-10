@@ -2,7 +2,7 @@
 
 import type { Teacher, Person, SalaryRecord, SalaryTotals } from "./types";
 import { normalizeText, stripLegacyTeacherSuffix, normalizeSalaryName } from "./names";
-import { getSalaryMontantBrut, getSalaryNet, getForfaitNet } from "./records";
+import { getSalaryMontantBrut, getSalaryNet, getForfaitNet, getRetenueAbsences } from "./records";
 
 export type MissingSalaryProfilesOptions = {
   ensCollege?: Teacher[];
@@ -43,6 +43,8 @@ export function mergeSalaryWithManualFields(existingSalary: SalaryRecord = {}, c
     ...computedSalary,
     bon: Number(existingSalary.bon || 0),
     revision: Number(existingSalary.revision || 0),
+    retenueAbsences: Number(existingSalary.retenueAbsences || 0),
+    detailAbsences: existingSalary.detailAbsences || "",
   };
 }
 
@@ -136,7 +138,7 @@ export function pickBestSalaryFromGroup(group: SalaryRecord[] = []): SalaryRecor
   if (group.length === 0) return null;
   if (group.length === 1) return group[0];
   const withManual = group.filter(
-    (s) => Number(s.bon || 0) > 0 || Number(s.revision || 0) > 0,
+    (s) => Number(s.bon || 0) > 0 || Number(s.revision || 0) > 0 || Number(s.retenueAbsences || 0) > 0,
   );
   const pool = withManual.length > 0 ? withManual : group;
   return [...pool].sort((a, b) => {
@@ -210,8 +212,9 @@ export function summarizeSalaryTotals(salaries: SalaryRecord[] = []): SalaryTota
     return {
       montant: summary.montant + montant,
       bon: summary.bon + bon,
+      retenue: summary.retenue + getRetenueAbsences(salary),
       revision: summary.revision + revision,
       net: summary.net + net,
     };
-  }, { montant: 0, bon: 0, revision: 0, net: 0 });
+  }, { montant: 0, bon: 0, retenue: 0, revision: 0, net: 0 });
 }

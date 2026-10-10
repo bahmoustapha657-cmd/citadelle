@@ -25,12 +25,18 @@ export function getSalaryMontantBrut(salary: SalaryRecord = {}): number {
   return getSalaryExecutionHours(salary) * (Number(salary.primeHoraire) || 0);
 }
 
+// Retenue pour absences/retards injustifiés (registre des présences, appliquée
+// par « ✔ Appliquer les absences ») : distincte des bons, qui sont des avances.
+export function getRetenueAbsences(salary: SalaryRecord = {}): number {
+  return Number(salary.retenueAbsences) || 0;
+}
+
 export function getSalaryNet(salary: SalaryRecord = {}): number {
-  return getSalaryMontantBrut(salary) - (Number(salary.bon) || 0) + (Number(salary.revision) || 0);
+  return getSalaryMontantBrut(salary) - (Number(salary.bon) || 0) - getRetenueAbsences(salary) + (Number(salary.revision) || 0);
 }
 
 export function getForfaitNet(salary: SalaryRecord = {}): number {
-  return Number(salary.montantForfait || 0) - Number(salary.bon || 0) + Number(salary.revision || 0);
+  return Number(salary.montantForfait || 0) - Number(salary.bon || 0) - getRetenueAbsences(salary) + Number(salary.revision || 0);
 }
 
 export function buildSecondarySalaryObservation(teacher: Teacher = {}, slots: ScheduleSlot[] = []): string {

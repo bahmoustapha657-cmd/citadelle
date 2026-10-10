@@ -14,7 +14,7 @@
 
 // Tables filtrables par année (colonne `annee`).
 export const ANNEE_TABLES = new Set([
-  "notes", "recettes", "depenses", "versements", "bons", "paiements", "salaires", "appreciations",
+  "notes", "recettes", "depenses", "versements", "bons", "paiements", "salaires", "appreciations", "presences",
 ]);
 
 // Tables portant une colonne `periode` (T1/S1/M1…), filtrable au chargement.

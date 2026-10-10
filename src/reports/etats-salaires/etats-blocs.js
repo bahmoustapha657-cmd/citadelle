@@ -1,6 +1,11 @@
 // Fragments HTML du document « États de salaires » : entêtes de section,
 // lignes de total et tableaux par section (Secondaire / Primaire / Personnel).
 import { fmtN } from "../../constants.js";
+import { getForfaitNet, getRetenueAbsences } from "../../salary-utils.js";
+
+// Total des retenues pour absences d'une liste de fiches.
+const totalRetenues = (liste) => liste.reduce((s, x) => s + getRetenueAbsences(x), 0);
+const celluleRetenue = (s) => `<td class="right bon-val"${s.detailAbsences ? ` title="${String(s.detailAbsences).replace(/"/g, "&quot;")}"` : ""}>${getRetenueAbsences(s) ? "-" + fmtN(getRetenueAbsences(s)) : "—"}</td>`;
 
 // Couleurs par section (palette cohérente, lisible aussi à l'impression couleur)
 export const SEC_COLORS = {
@@ -20,12 +25,14 @@ const sectionHeader = (label, color, count) => `
 const tableHead = (cols, color) => `
   <thead><tr>${cols.map((c, i) => `<th style="background:linear-gradient(180deg, ${color.primary} 0%, ${color.primary}dd 100%);color:#fff;padding:7px 6px;font-size:9.5px;text-align:${i===1?"left":"center"};border:1px solid ${color.primary};font-weight:800;letter-spacing:0.02em">${c}</th>`).join("")}</tr></thead>`;
 
-// Ligne de total d'une section (montant / bon / révision / net).
-const totalRow = (label, color, montant, bon, rev, net, colspan) => `
+// Ligne de total d'une section (montant / bon / [retenue absences] / révision / net).
+// `retenue` : uniquement pour les sections au forfait (colonne « Abs. »).
+const totalRow = (label, color, montant, bon, rev, net, colspan, retenue) => `
   <tr class="total-row">
     <td colspan="${colspan}" style="background:${color.soft};color:${color.primary};font-weight:900;text-align:right;padding:8px 10px;font-size:11px;letter-spacing:0.04em">${label}</td>
     <td style="background:#DBEAFE;color:#1D4ED8;font-weight:900;text-align:center;padding:8px;font-size:11px">${fmtN(montant)}</td>
     <td style="background:#FEE2E2;color:#B91C1C;font-weight:800;text-align:center;padding:8px;font-size:11px">${bon ? "-"+fmtN(bon) : "0"}</td>
+    ${retenue === undefined ? "" : `<td style="background:#FEE2E2;color:#B91C1C;font-weight:800;text-align:center;padding:8px;font-size:11px">${retenue ? "-"+fmtN(retenue) : "0"}</td>`}
     <td style="background:#FEF3C7;color:#B45309;font-weight:800;text-align:center;padding:8px;font-size:11px">${rev ? "+"+fmtN(rev) : "0"}</td>
     <td style="background:#DCFCE7;color:#166534;font-weight:900;text-align:center;padding:8px;font-size:12px">${fmtN(net)}</td>
   </tr>`;
@@ -66,20 +73,21 @@ export function blocPrimaire(salairesPrim, { totMontantPrim, totBonPrim, totRevP
   return `
     ${sectionHeader("Section Primaire", SEC_COLORS.primaire, salairesPrim.length)}
     <table>
-      ${tableHead(["N°","Prénoms et Nom","Classe","Montant","Bon","Révision","Net à Payer"], SEC_COLORS.primaire)}
+      ${tableHead(["N°","Prénoms et Nom","Classe","Montant","Bon","Abs.","Révision","Net à Payer"], SEC_COLORS.primaire)}
       <tbody>
       ${salairesPrim.length === 0
-        ? `<tr><td colspan="7" class="center" style="color:#9ca3af;font-style:italic;padding:18px">Aucun enseignant primaire pour ce mois</td></tr>`
+        ? `<tr><td colspan="8" class="center" style="color:#9ca3af;font-style:italic;padding:18px">Aucun enseignant primaire pour ce mois</td></tr>`
         : salairesPrim.map((s,i)=>`<tr>
           <td class="center" style="color:#94a3b8;font-weight:700">${i+1}</td>
           <td class="left">${s.nom||""}</td>
           <td class="center">${s.niveau||"—"}</td>
           <td class="right">${fmtN(s.montantForfait||0)}</td>
           <td class="right bon-val">${s.bon?"-"+fmtN(s.bon):"—"}</td>
+          ${celluleRetenue(s)}
           <td class="right rev-val">${s.revision?"+"+fmtN(s.revision):"—"}</td>
-          <td class="right net">${fmtN(Number(s.montantForfait||0)-Number(s.bon||0)+Number(s.revision||0))}</td>
+          <td class="right net">${fmtN(getForfaitNet(s))}</td>
         </tr>`).join("")}
-      ${salairesPrim.length > 0 ? totalRow("TOTAL PRIMAIRE", SEC_COLORS.primaire, totMontantPrim, totBonPrim, totRevPrim, totNetPrim, 3) : ""}
+      ${salairesPrim.length > 0 ? totalRow("TOTAL PRIMAIRE", SEC_COLORS.primaire, totMontantPrim, totBonPrim, totRevPrim, totNetPrim, 3, totalRetenues(salairesPrim)) : ""}
       </tbody>
     </table>`;
 }
@@ -89,10 +97,10 @@ export function blocPersonnel(salairesPers, { totMontantPers, totBonPers, totRev
   return `
     ${sectionHeader("Administration & Personnel", SEC_COLORS.personnel, salairesPers.length)}
     <table>
-      ${tableHead(["N°","Prénoms et Nom","Poste","Catégorie","Montant","Bon","Révision","Net à Payer"], SEC_COLORS.personnel)}
+      ${tableHead(["N°","Prénoms et Nom","Poste","Catégorie","Montant","Bon","Abs.","Révision","Net à Payer"], SEC_COLORS.personnel)}
       <tbody>
       ${salairesPers.length === 0
-        ? `<tr><td colspan="8" class="center" style="color:#9ca3af;font-style:italic;padding:18px">Aucun membre du personnel pour ce mois</td></tr>`
+        ? `<tr><td colspan="9" class="center" style="color:#9ca3af;font-style:italic;padding:18px">Aucun membre du personnel pour ce mois</td></tr>`
         : salairesPers.map((s,i)=>`<tr>
           <td class="center" style="color:#94a3b8;font-weight:700">${i+1}</td>
           <td class="left">${s.nom||""}</td>
@@ -100,10 +108,11 @@ export function blocPersonnel(salairesPers, { totMontantPers, totBonPers, totRev
           <td class="center">${s.categorie||"—"}</td>
           <td class="right">${fmtN(s.montantForfait||0)}</td>
           <td class="right bon-val">${s.bon?"-"+fmtN(s.bon):"—"}</td>
+          ${celluleRetenue(s)}
           <td class="right rev-val">${s.revision?"+"+fmtN(s.revision):"—"}</td>
-          <td class="right net">${fmtN(Number(s.montantForfait||0)-Number(s.bon||0)+Number(s.revision||0))}</td>
+          <td class="right net">${fmtN(getForfaitNet(s))}</td>
         </tr>`).join("")}
-      ${salairesPers.length > 0 ? totalRow("TOTAL ADMINISTRATION", SEC_COLORS.personnel, totMontantPers, totBonPers, totRevPers, totNetPers, 4) : ""}
+      ${salairesPers.length > 0 ? totalRow("TOTAL ADMINISTRATION", SEC_COLORS.personnel, totMontantPers, totBonPers, totRevPers, totNetPers, 4, totalRetenues(salairesPers)) : ""}
       </tbody>
     </table>`;
 }

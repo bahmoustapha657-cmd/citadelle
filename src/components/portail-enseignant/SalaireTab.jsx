@@ -68,6 +68,15 @@ export function SalaireTab({ c1, c2, salaires, indisponible, imprimerPaies }) {
                             <strong>-{Number(salaire.bon).toLocaleString("fr-FR")} GNF</strong>
                           </div>
                         )}
+                        {Number(salaire.retenueAbsences || 0) > 0 && (
+                          <div style={{ marginBottom: 4, color: "#b91c1c" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
+                              <span>Retenue absences / retards</span>
+                              <strong>-{Number(salaire.retenueAbsences).toLocaleString("fr-FR")} GNF</strong>
+                            </div>
+                            {salaire.detailAbsences && <div style={{ fontSize: 10.5, color: "#94a3b8" }}>{salaire.detailAbsences}</div>}
+                          </div>
+                        )}
                         {Number(salaire.revision || 0) > 0 && (
                           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4, color: C.greenDk }}>
                             <span>Revision</span>

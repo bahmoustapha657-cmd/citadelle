@@ -69,6 +69,9 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   // fiches de paie, donc un bon de « Nov » de l'an dernier se serait cumulé au
   // « Nov » de la nouvelle année pour la même personne.
   const { items: bons, ajouter: ajBon, modifier: modBon, supprimer: supBon } = useFirestore("bons", { annee: anneeConsultee });
+  // Registre des absences/retards du personnel : rattaché aux fiches de paie
+  // par MOIS, donc filtré par année comme les bons.
+  const { items: presences, chargement: cPres, ajouter: ajPres, modifier: modPres, supprimer: supPres } = useFirestore("presences", { annee: anneeConsultee });
   const { items: personnel, chargement: cPers, ajouter: ajPers, modifier: modPers, supprimer: supPers } = useFirestore("personnel");
   const { items: versements, chargement: cV, ajouter: ajV, modifier: modV, supprimer: supV } = useFirestore("versements", { annee: anneeConsultee });
   // Journal des encaissements de scolarité (grand livre, ajout seul) : la
@@ -286,7 +289,7 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   // Domaine paie : état dérivé (filtrage mois/section, totaux) + actions
   // (génération auto, application des bons, impression). Voir useComptaSalaires.
   const salairesDomaine = useComptaSalaires({
-    salaires, bons, moisSel, moisSalaire,
+    salaires, bons, presences, moisSel, moisSalaire,
     ensCollege, ensLycee, ensPrimaire, personnel,
     emploisCollege, emploisLycee, engCollege, engLycee,
     primeDefaut, annee: anneeEcriture, anneeConsultee, schoolInfo,
@@ -330,10 +333,13 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
     // `anneeCourante` : celle marquée « (courante) » dans le sélecteur — l'officielle.
     anneeCourante: anneeOfficielle, anneeConsultee, setAnneeConsultee, enModeArchive,
     canCreate, canEdit, canEditEleves, canCreateParent, anneesDispo, toggleBlocage,
+    // Qui saisit / décide (registre des présences).
+    auteur: signature,
     recettes, cR, ajR, modR, supR,
     depenses, cD, ajD, modD, supD,
     salaires, cS, ajS, modS, supS,
     bons, ajBon, modBon, supBon,
+    presences, cPres, ajPres, modPres, supPres,
     personnel, cPers, supPers,
     versements, cV, ajV, modV, supV,
     paiements, cPaie, ajPaiement,

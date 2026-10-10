@@ -2,6 +2,7 @@ import React from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { C, fmtN, getAnnee } from "../../../constants";
 import { Card } from "../../ui";
+import { getForfaitNet } from "../../../salary-utils";
 
 // `groupesPaie` : groupes affichés (cf. SalairesTab) — une école sans
 // secondaire n'a ni carte, ni part, ni barre « Secondaire ».
@@ -11,8 +12,8 @@ export function SalairesBilan({ totNetSec, totNetPrim, totNetPers, salairesMois,
   const dataEvol=moisSalaire.map(m=>{
     const ms=salaires.filter(s=>s.mois===m);
     const sec=ms.filter(s=>s.section==="Secondaire").reduce((sum,s)=>sum+calcNet(s),0);
-    const prim=ms.filter(s=>s.section==="Primaire").reduce((sum,s)=>sum+Number(s.montantForfait||0)-Number(s.bon||0)+Number(s.revision||0),0);
-    const pers=ms.filter(s=>s.section==="Personnel").reduce((sum,s)=>sum+Number(s.montantForfait||0)-Number(s.bon||0)+Number(s.revision||0),0);
+    const prim=ms.filter(s=>s.section==="Primaire").reduce((sum,s)=>sum+getForfaitNet(s),0);
+    const pers=ms.filter(s=>s.section==="Personnel").reduce((sum,s)=>sum+getForfaitNet(s),0);
     return {mois:m.slice(0,4),Secondaire:sec,Primaire:prim,Personnel:pers,Total:sec+prim+pers};
   });
   return <>
