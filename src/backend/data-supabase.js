@@ -346,14 +346,28 @@ export async function lireVersionsDoc(schoolCode, nomCollection, id, { delaiRese
   return versions;
 }
 
+// Journal de caisse : l'id et la date de création viennent de l'appelant
+// quand il les fixe. Une ligne gardée sur l'appareil après un échec est
+// renvoyée plus tard (journal-en-attente) : si la base l'avait en fait reçue,
+// le renvoi retombe sur la même ligne au lieu d'en créer une seconde.
+const ID_FIXE_PAR_APPELANT = new Set(["paiements"]);
+const DEJA_PRESENTE = "23505"; // unique_violation (clé primaire)
+
 export async function ajouterDoc(schoolCode, nomCollection, item) {
   const { sb, map, ecoleId } = await contexteEcriture(schoolCode, nomCollection);
   const { row } = toRow(map.table, item);
   row.ecole_id = ecoleId;
   if (map.section) row.section = map.section;
+  const idFixe = ID_FIXE_PAR_APPELANT.has(map.table) && item._id ? item._id : null;
+  if (idFixe) {
+    row.id = idFixe;
+    if (item.createdAt) row.created_at = new Date(item.createdAt).toISOString();
+  }
 
   if (horsLigne(map.table)) {
-    const { insererLocal } = await localData();
+    const { insererLocal, lireUneLocal } = await localData();
+    const existante = idFixe ? await lireUneLocal(map.table, idFixe) : null;
+    if (existante) return transformRow(map.table, existante);
     const cree = await insererLocal(map.table, row);
     return transformRow(map.table, cree);
   }
@@ -369,6 +383,7 @@ export async function ajouterDoc(schoolCode, nomCollection, item) {
   }
 
   const { data, error } = await sb.from(map.table).insert(row).select("*").single();
+  if (idFixe && error?.code === DEJA_PRESENTE) return transformRow(map.table, row);
   if (error) throw new Error(error.message);
   return transformRow(map.table, data);
 }

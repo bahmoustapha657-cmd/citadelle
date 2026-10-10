@@ -6,7 +6,7 @@ import {
   EVENEMENT_ECRITURE_REFUSEE, EcritureSansEffet, exigerEffet, lireJournalRefus,
   messageRefus, signalerEcritureRefusee, verifierEffet,
 } from "../src/backend/ecritures-refusees.js";
-import { envoyerOperation } from "../src/backend/powersync/envoi-operation.js";
+import { envoyerOperation, estErreurPassagere } from "../src/backend/powersync/envoi-operation.js";
 
 const stockageMemoire = () => {
   const m = new Map();
@@ -95,4 +95,36 @@ test("PowerSync : journal de caisse en ajout seul, renvoi d'une ligne déjà re�
     envoyerOperation(refus, { op: "PUT", table: "paiements", id: "p2" }, { record: { id: "p2" } }),
     (e) => /row-level security/.test(e.message),
   );
+});
+
+test("PowerSync : un incident passager garde l'écriture en file, un refus l'abandonne", async () => {
+  // supabase-js : requête jamais arrivée → statut 0, quel que soit le
+  // navigateur (« Failed to fetch » sous Chrome, « Load failed » sous Safari).
+  const coupure = fauxClient({ insert: { error: { message: "TypeError: Load failed", code: "" }, status: 0 } });
+  const e = await envoyerOperation(coupure, { op: "PUT", table: "paiements", id: "p3" }, { record: { id: "p3" } }).catch((x) => x);
+  assert.equal(e.status, 0);
+  assert.equal(estErreurPassagere(e), true);
+  // Passerelle, surcharge, délai : on réessaie plus tard.
+  for (const status of [408, 429, 502, 503, 504, 522]) {
+    assert.equal(estErreurPassagere({ message: "Service Unavailable", status }), true, String(status));
+  }
+  // Sans réseau, tout échec attend le retour du réseau.
+  assert.equal(estErreurPassagere({ message: "permission denied", status: 403 }, { enLigne: false }), true);
+
+  // Refus définitifs : abandonnés (et signalés par le connecteur).
+  const refus = fauxClient({ upsert: { error: { message: "new row violates row-level security policy", code: "42501" }, status: 403 } });
+  const r = await envoyerOperation(refus, { op: "PUT", table: "eleves", id: "e2" }, { record: { id: "e2" } }).catch((x) => x);
+  assert.equal(r.code, "42501");
+  assert.equal(estErreurPassagere(r), false);
+  assert.equal(estErreurPassagere({ message: "violates foreign key constraint", status: 409, code: "23503" }), false);
+  // 500 : une erreur interne peut se reproduire à l'identique et bloquerait la file.
+  assert.equal(estErreurPassagere({ message: "internal error", status: 500 }), false);
+  // Les messages réseau sans statut restent reconnus.
+  assert.equal(estErreurPassagere({ message: "Failed to fetch" }), true);
+
+  // Modification en échec : le statut de la réponse est gardé, lui aussi.
+  const patch = fauxClient({ update: { error: { message: "upstream request timeout" }, status: 504, count: null } });
+  const p = await envoyerOperation(patch, { op: "PATCH", table: "eleves", id: "e1" }, { patch: {} }).catch((x) => x);
+  assert.equal(p.status, 504);
+  assert.equal(estErreurPassagere(p), true);
 });
