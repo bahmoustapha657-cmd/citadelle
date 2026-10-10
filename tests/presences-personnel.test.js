@@ -127,3 +127,64 @@ test("table presences : date et année en colonnes, le reste dans extra", () => 
   assert.equal(relu.agentNom, "Aïssatou Barry");
   assert.equal(relu.date, "2026-10-05");
 });
+
+// ── Secondaire (payé à l'heure) ──────────────────────────────────────────
+import {
+  calculerRetenueSecondaire, enseignementsPourPaie, recalculerFicheSecondaire,
+} from "../src/components/comptabilite/presences/presences-secondaire.js";
+
+const prof = { _id: "e1", prenom: "Mamadou", nom: "Bah", primeHoraire: 10000 };
+const emplois = [
+  { jour: "Lundi", heureDebut: "08:00", heureFin: "10:00", classe: "7A", enseignant: "Mamadou Bah" },
+  { jour: "Mardi", heureDebut: "10:00", heureFin: "12:00", classe: "7A", enseignant: "Mamadou Bah" },
+  { jour: "Jeudi", heureDebut: "08:00", heureFin: "11:00", classe: "8B", enseignant: "Mamadou Bah" },
+];
+const cours = (date, heure, classe) => ({ date, heure, classe, enseignantNom: "Mamadou Bah", statut: "Absent" });
+const enseignements = [
+  cours("2026-10-05", "08:00", "7A"), // lundi, injustifié
+  cours("2026-10-06", "10:00", "7A"), // mardi, justifié au registre
+  cours("2026-11-02", "08:00", "7A"), // autre mois
+  cours("2025-10-06", "08:00", "7A"), // octobre de l'an dernier
+];
+const sec = (date, type, statut, extra = {}) => fait(date, type, statut, { agentNom: "Mamadou Bah", section: "Secondaire", ...extra });
+const presencesSec = [
+  sec("2026-10-06", "absence", "justifiee"),
+  sec("2026-10-05", "absence", "injustifiee"), // déjà saisi en heures : pas de double retenue
+  sec("2026-10-08", "absence", "injustifiee"), // jeudi, aucune heure saisie → 3 h
+  ...["12", "13", "14"].map((j) => sec(`2026-10-${j}`, "retard", "injustifiee")),
+];
+
+test("secondaire : seules les heures « Absent » du mois comptent, hors jours justifiés", () => {
+  const gardes = enseignementsPourPaie(enseignements, { mois: "Octobre", anneeScolaire: ANNEE, presences: presencesSec });
+  assert.deepEqual(gardes.map((e) => e.date), ["2026-10-05"]);
+});
+
+test("secondaire : retenue des absences sans heures saisies et des retards", () => {
+  const r = calculerRetenueSecondaire({
+    salaire: { nom: "Mamadou Bah", section: "Secondaire", mois: "Octobre" },
+    teacher: prof, creneaux: emplois,
+    enseignementsMois: enseignements.filter((e) => e.date.startsWith("2026-10")),
+    presences: presencesSec,
+  });
+  // Jeudi 08/10 : 3 h × 10 000 ; 3 retards = ½ journée moyenne (70 000 / 3 jours de cours ÷ 2).
+  assert.equal(r.montant, 30000 + Math.round(70000 / 3 / 2));
+  assert.match(r.detail, /abs\. 08\/10 \(3 h\) \+ 3 retards = 0,5 j/);
+});
+
+test("secondaire : la fiche est recalculée, bons et révision conservés", () => {
+  const fiche = { _id: "s9", nom: "Mamadou Bah", section: "Secondaire", mois: "Octobre", bon: 50000, revision: 5000, nonExecute: 8, montantBrut: 1 };
+  const r = recalculerFicheSecondaire(fiche, {
+    ensCollege: [prof], emploisCollege: emplois, engCollege: enseignements,
+    presences: presencesSec, anneeScolaire: ANNEE,
+  });
+  assert.equal(r.fiche.nonExecute, 2); // seul le lundi 05/10 (2 h)
+  assert.equal(r.fiche.bon, 50000);
+  assert.equal(r.fiche.revision, 5000);
+  assert.equal(r.fiche.retenueAbsences, 41667);
+  const { majs } = retenuesDuMois({
+    salairesMois: [fiche], presences: presencesSec, anneeScolaire: ANNEE, schoolInfo: {},
+    secondaire: { ensCollege: [prof], emploisCollege: emplois, engCollege: enseignements },
+  });
+  assert.equal(majs.length, 1);
+  assert.equal(recalculerFicheSecondaire({ ...fiche, nom: "Inconnu" }, { ensCollege: [prof] }), null);
+});

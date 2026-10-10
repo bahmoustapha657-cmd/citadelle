@@ -25,8 +25,7 @@ const sectionHeader = (label, color, count) => `
 const tableHead = (cols, color) => `
   <thead><tr>${cols.map((c, i) => `<th style="background:linear-gradient(180deg, ${color.primary} 0%, ${color.primary}dd 100%);color:#fff;padding:7px 6px;font-size:9.5px;text-align:${i===1?"left":"center"};border:1px solid ${color.primary};font-weight:800;letter-spacing:0.02em">${c}</th>`).join("")}</tr></thead>`;
 
-// Ligne de total d'une section (montant / bon / [retenue absences] / révision / net).
-// `retenue` : uniquement pour les sections au forfait (colonne « Abs. »).
+// Ligne de total d'une section (montant / bon / retenue absences / révision / net).
 const totalRow = (label, color, montant, bon, rev, net, colspan, retenue) => `
   <tr class="total-row">
     <td colspan="${colspan}" style="background:${color.soft};color:${color.primary};font-weight:900;text-align:right;padding:8px 10px;font-size:11px;letter-spacing:0.04em">${label}</td>
@@ -43,10 +42,10 @@ export function blocSecondaire(salairesSec, { totMontantSec, totBonSec, totRevSe
   return `
     ${sectionHeader("Section Secondaire", SEC_COLORS.secondaire, salairesSec.length)}
     <table>
-      ${tableHead(["N°","Prénoms et Nom","Matière","Niveau","V.H. Hebdo","V.H. Prévu","5è Sem","Non Exé.","Exécuté","Prime/h","Montant","Bon","Révision","Net à Payer"], SEC_COLORS.secondaire)}
+      ${tableHead(["N°","Prénoms et Nom","Matière","Niveau","V.H. Hebdo","V.H. Prévu","5è Sem","Non Exé.","Exécuté","Prime/h","Montant","Bon","Abs.","Révision","Net à Payer"], SEC_COLORS.secondaire)}
       <tbody>
       ${salairesSec.length === 0
-        ? `<tr><td colspan="14" class="center" style="color:#9ca3af;font-style:italic;padding:18px">Aucun enseignant secondaire pour ce mois</td></tr>`
+        ? `<tr><td colspan="15" class="center" style="color:#9ca3af;font-style:italic;padding:18px">Aucun enseignant secondaire pour ce mois</td></tr>`
         : salairesSec.map((s,i)=>`<tr>
           <td class="center" style="color:#94a3b8;font-weight:700">${i+1}</td>
           <td class="left">${s.nom||""}</td>
@@ -60,10 +59,11 @@ export function blocSecondaire(salairesSec, { totMontantSec, totBonSec, totRevSe
           <td class="right">${s.primesVariables?'<span style="color:#9a3412;font-weight:700;font-size:9.5px">Variable</span>':fmtN(s.primeHoraire)}</td>
           <td class="right">${fmtN(calcMontant(s))}</td>
           <td class="right bon-val">${s.bon?"-"+fmtN(s.bon):"—"}</td>
+          ${celluleRetenue(s)}
           <td class="right rev-val">${s.revision?"+"+fmtN(s.revision):"—"}</td>
           <td class="right net">${fmtN(calcNet(s))}</td>
         </tr>`).join("")}
-      ${salairesSec.length > 0 ? totalRow("TOTAL SECONDAIRE", SEC_COLORS.secondaire, totMontantSec, totBonSec, totRevSec, totNetSec, 10) : ""}
+      ${salairesSec.length > 0 ? totalRow("TOTAL SECONDAIRE", SEC_COLORS.secondaire, totMontantSec, totBonSec, totRevSec, totNetSec, 10, totalRetenues(salairesSec)) : ""}
       </tbody>
     </table>`;
 }

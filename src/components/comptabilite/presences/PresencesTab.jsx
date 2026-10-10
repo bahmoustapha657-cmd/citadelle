@@ -46,7 +46,10 @@ export function PresencesTab({ c, readOnly }) {
     .filter((p) => filtre === "tous" || (filtre === "en_attente" ? TYPES_A_JUSTIFIER.has(p.type) && (p.statut || "en_attente") === "en_attente" : p.type === filtre))
     .sort((a, b) => String(b.date).localeCompare(String(a.date)) || String(a.agentNom).localeCompare(String(b.agentNom), "fr"));
   const nbAttente = duMois.filter((p) => TYPES_A_JUSTIFIER.has(p.type) && (p.statut || "en_attente") === "en_attente").length;
-  const recap = recapMois({ presences, salairesMois: salaires.filter((s) => s.mois === mois), mois, anneeScolaire, reglages });
+  const recap = recapMois({
+    presences, salairesMois: salaires.filter((s) => s.mois === mois), mois, anneeScolaire, reglages,
+    retenueSecondaire: c.salairesDomaine?.retenueSecondaire,
+  });
   const ouvrables = joursOuvrables(mois, anneeScolaire, reglages.joursTravail);
 
   const peutSaisir = canCreate && !readOnly;
@@ -123,7 +126,8 @@ export function PresencesTab({ c, readOnly }) {
       <div style={{ padding: "10px 14px", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 10, fontSize: 12.5, color: "#1e3a8a", marginBottom: 12 }}>
         <strong>Règle :</strong> seuls les absences et retards <strong>injustifiés</strong> sont retenus.
         Salaire au forfait (primaire, personnel) : salaire ÷ {ouvrables || "?"} jours travaillés en {mois} × jours d'absence ;
-        {" "}{reglages.retardsParDemiJournee} retards = ½ journée. Le secondaire (payé à l'heure) perd déjà les heures « Absent » saisies dans Enseignements.
+        {" "}{reglages.retardsParDemiJournee} retards = ½ journée.
+        Secondaire (payé à l'heure) : les heures « Absent » d'Enseignements sont retirées, <strong>sauf</strong> les jours d'absence déclarés justifiés ici ; une absence injustifiée sans heures saisies retire les cours prévus ce jour-là à l'emploi du temps.
         {" "}Pour reporter sur la paie : <em>Salaires → ✔ Appliquer les absences</em>.
       </div>
 
@@ -140,11 +144,11 @@ export function PresencesTab({ c, readOnly }) {
                 <TD center>{r.retards ? `${r.retards}${r.joursRetards ? ` (= ${fmtJ(r.joursRetards)} j)` : ""}` : "—"}</TD>
                 <TD center>{r.enAttente ? <Badge color="amber">{r.enAttente}</Badge> : "—"}</TD>
                 <TD center style={{ color: "#b91c1c", fontWeight: 700 }}>
-                  {r.section === "Secondaire" ? <span style={{ fontWeight: 400, color: "#64748b", fontSize: 12 }}>à l'heure</span>
-                    : !r.fiche ? <span style={{ fontWeight: 400, color: "#64748b", fontSize: 12 }}>paie non générée</span>
+                  {!r.fiche ? <span style={{ fontWeight: 400, color: "#64748b", fontSize: 12 }}>paie non générée</span>
+                    : r.retenue === null ? <span style={{ fontWeight: 400, color: "#64748b", fontSize: 12 }}>enseignant introuvable</span>
                       : r.retenue ? `-${fmtN(r.retenue)}` : "0"}
                 </TD>
-                <TD center>{r.appliquee === null || r.section === "Secondaire" ? "—"
+                <TD center>{r.appliquee === null ? "—"
                   : aAppliquer ? <Badge color="orange">à appliquer</Badge>
                     : r.appliquee ? <Badge color="green">✔ {fmtN(r.appliquee)}</Badge> : "—"}</TD>
               </TR>

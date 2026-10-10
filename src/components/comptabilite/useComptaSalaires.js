@@ -6,6 +6,8 @@ import { imprimerEtatsSalaires } from "../../reports";
 import { autoGenererSalairesAction, genererSalairesPourMois } from "./salary-actions";
 import { appliquerBons as appliquerBonsAction } from "./payment-actions";
 import { appliquerAbsences as appliquerAbsencesAction } from "./presences/appliquer-absences";
+import { recalculerFicheSecondaire } from "./presences/presences-secondaire";
+import { reglagesPresences } from "./presences/presences-utils";
 import {
   getForfaitNet,
   getSalaryExecutionHours,
@@ -52,9 +54,16 @@ export function useComptaSalaires({
   });
 
   // Retenues pour absences/retards injustifiés (registre des présences).
+  // Le secondaire a besoin de l'emploi du temps pour chiffrer ses heures.
+  const anneeScolaire = anneeConsultee || annee;
+  const secondaire = { ensCollege, ensLycee, emploisCollege, emploisLycee, engCollege, engLycee, primeDefaut };
   const appliquerAbsences = () => appliquerAbsencesAction({
-    moisSel, salairesMois, presences, anneeScolaire: anneeConsultee || annee, schoolInfo, readOnly, toast, modS,
+    moisSel, salairesMois, presences, anneeScolaire, schoolInfo, secondaire, readOnly, toast, modS,
   });
+  // Retenue « Abs. » qu'aurait une fiche du secondaire (onglet Présences).
+  const retenueSecondaire = (fiche) => recalculerFicheSecondaire(fiche, {
+    ...secondaire, presences, anneeScolaire, reglages: reglagesPresences(schoolInfo),
+  })?.retenue || null;
 
   const calcExecute = (salary) => getSalaryExecutionHours(salary);
   const calcMontant = (salary) => getSalaryMontantBrut(salary);
@@ -85,6 +94,8 @@ export function useComptaSalaires({
     emploisCollege, emploisLycee, engCollege, engLycee,
     primeDefaut,
     annee: annee || anneeConsultee,
+    // Heures « Absent » : du mois seulement, hors jours d'absence justifiée.
+    presences,
     modS, ajS, supS,
     resync,
   });
@@ -129,6 +140,7 @@ export function useComptaSalaires({
     bonsMois,
     appliquerBons,
     appliquerAbsences,
+    retenueSecondaire,
     calcExecute,
     calcMontant,
     calcNet,
