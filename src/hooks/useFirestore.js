@@ -16,6 +16,7 @@ import { creerRelectureGroupee } from "./relecture-groupee";
 const initialState = {
   items: [],
   chargement: true,
+  erreur: null,
 };
 
 // Horodatage de la dernière lecture complète, par collection : borne le
@@ -33,6 +34,21 @@ const cleFraicheur = (schoolId, collection, annee) => `${schoolId}|${collection}
 //     va-et-vient.
 const RT_DEBOUNCE_MS = 600;
 const FOCUS_MIN_MS = 15 * 1000;
+
+// ── Lecture en échec ───────────────────────────────────────────
+// chargerCollection ne lève pas : il renvoie `{ items: [], erreur }`. Pris
+// pour un succès, ce tableau vide remplaçait la liste affichée — un retour
+// d'onglet hors réseau suffisait à faire « disparaître » élèves et notes.
+// Une lecture en échec garde donc les items déjà là et remonte l'erreur.
+export function actionLecture(resultat) {
+  if (resultat?.erreur) return { type: "erreur", erreur: resultat.erreur };
+  return { type: "success", items: resultat?.items || [] };
+}
+
+// Toutes les collections montées échouent ensemble quand le réseau tombe :
+// un seul message pour la rafale, pas un par collection.
+const TOAST_ERREUR_MIN_MS = 30 * 1000;
+let dernierToastErreur = 0;
 
 // ── Trace d'audit des suppressions ─────────────────────────────
 const LIBELLES_COLLECTIONS = {
@@ -57,12 +73,14 @@ function resumeSuppression(item = {}) {
     .join(" · ");
 }
 
-function firestoreReducer(state, action) {
+export function firestoreReducer(state, action) {
   switch (action.type) {
     case "loading":
       return { ...state, chargement: true };
     case "success":
-      return { items: action.items, chargement: false };
+      return { items: action.items, chargement: false, erreur: null };
+    case "erreur":
+      return { ...state, chargement: false, erreur: action.erreur };
     // ── Patches temps réel (Supabase) ──
     // Insertion/modification distante : on remplace l'item en place, sinon on
     // l'ajoute. Les écrans trient eux-mêmes, l'ordre d'arrivée est sans effet.
@@ -84,8 +102,12 @@ function firestoreReducer(state, action) {
 }
 
 export function useFirestore(nomCollection, options = {}) {
-  const { schoolId, auteur } = useContext(SchoolContext);
-  const [{ items, chargement }, dispatch] = useReducer(firestoreReducer, initialState);
+  const { schoolId, auteur, toast } = useContext(SchoolContext);
+  const [{ items, chargement, erreur }, dispatch] = useReducer(firestoreReducer, initialState);
+  // `toast` change à chaque rendu de l'app : via une ref, pour ne pas
+  // relancer le chargement à chaque fois.
+  const toastRef = useRef(toast);
+  useEffect(() => { toastRef.current = toast; }, [toast]);
 
   const anneeFiltre = options.annee || null;
   // Période à charger EN PREMIER. Volontairement figée au montage (ref) : si
@@ -106,6 +128,23 @@ export function useFirestore(nomCollection, options = {}) {
     const marquerFrais = () =>
       // C'est ce qui borne le rafraîchissement au focus.
       dernierServeur.set(cleFraicheur(schoolId, nomCollection, anneeFiltre), Date.now());
+    // Applique un résultat de lecture. Pas de marquerFrais sur un échec : le
+    // prochain retour d'onglet doit retenter.
+    const appliquer = (resultat) => {
+      const action = actionLecture(resultat);
+      dispatch(action);
+      if (action.type !== "erreur") return true;
+      if (Date.now() - dernierToastErreur >= TOAST_ERREUR_MIN_MS) {
+        dernierToastErreur = Date.now();
+        toastRef.current?.("Lecture impossible, les données affichées peuvent ne pas être à jour.", "warning");
+      }
+      return false;
+    };
+    const lire = (opts) =>
+      // Filet : une exception (réseau, client) est traitée comme une erreur
+      // renvoyée, sans vider la liste.
+      chargerCollection(schoolId, nomCollection, opts)
+        .catch((err) => ({ items: [], erreur: err?.message || String(err) }));
 
     // Chargement en DEUX TEMPS quand une période est affichée à l'ouverture
     // (les notes d'une année entière pèsent 6 700 lignes, l'écran n'en montre
@@ -119,21 +158,22 @@ export function useFirestore(nomCollection, options = {}) {
     const prioritaire = forceServer ? null : periodePrioritaireRef.current;
     if (prioritaire) {
       const base = { annee: anneeFiltre };
-      const pDabord = chargerCollection(schoolId, nomCollection, { ...base, periode: prioritaire });
-      const pReste = chargerCollection(schoolId, nomCollection, { ...base, saufPeriode: prioritaire });
+      const pDabord = lire({ ...base, periode: prioritaire });
+      const pReste = lire({ ...base, saufPeriode: prioritaire });
       const dabord = await pDabord;
-      if (aJour()) dispatch({ type: "success", items: dabord.items });
+      if (aJour()) appliquer(dabord);
       const reste = await pReste;
       if (!aJour()) return;
+      // Les deux moitiés doivent avoir abouti pour remplacer la liste.
+      if (dabord.erreur) return;
+      if (!appliquer(reste.erreur ? reste : { items: [...dabord.items, ...reste.items] })) return;
       marquerFrais();
-      dispatch({ type: "success", items: [...dabord.items, ...reste.items] });
       return;
     }
 
-    const { items } = await chargerCollection(schoolId, nomCollection, { annee: anneeFiltre });
+    const resultat = await lire({ annee: anneeFiltre });
     if (!aJour()) return;
-    marquerFrais();
-    dispatch({ type: "success", items });
+    if (appliquer(resultat)) marquerFrais();
   }, [schoolId, nomCollection, anneeFiltre]);
 
   // Relecture après écriture, partagée entre écritures simultanées
@@ -248,6 +288,9 @@ export function useFirestore(nomCollection, options = {}) {
   return {
     items,
     chargement,
+    // Message de la dernière lecture en échec (null après une lecture réussie).
+    // Les items restent ceux de la dernière lecture réussie.
+    erreur,
     ajouter,
     modifier,
     supprimer,
