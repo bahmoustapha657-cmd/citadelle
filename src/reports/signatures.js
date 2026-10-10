@@ -41,6 +41,14 @@ export const DOCUMENTS_SIGNES = [
   { id: "versements", label: "Situation des versements", groupe: "Comptabilité", section: false,
     defaut: { principal: "comptable", visa: "direction" },
     titres: { principal: () => "Le Comptable", visa: () => "Le Directeur" } },
+  // Bon (avance sur salaire) remis à un agent : le comptable qui paie, la
+  // Direction qui vise ; le bénéficiaire signe en plus sur la fiche.
+  { id: "bon", label: "Fiche de bon", groupe: "Comptabilité", section: false,
+    defaut: { principal: "comptable", visa: "direction" },
+    titres: { principal: () => "Le Comptable", visa: () => "Le Directeur" } },
+  { id: "depenses", label: "État des dépenses", groupe: "Comptabilité", section: false,
+    defaut: { principal: "comptable", visa: "direction" },
+    titres: { principal: () => "Le Comptable", visa: () => "Le Directeur" } },
   { id: "bulletin", label: "Bulletin", groupe: "Pédagogie", section: true,
     defaut: { principal: SECTION, visa: null },
     titres: { principal: () => tr("reports.director") } },
