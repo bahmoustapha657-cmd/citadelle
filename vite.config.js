@@ -40,6 +40,11 @@ export default defineConfig({
     },
   },
   build: {
+    // Le tableau final « gzip: … » de vite build compresse chaque fichier
+    // émis, dont ~30 Mo de WebAssembly (MediaPipe, wa-sqlite) : ~20 % du
+    // temps de build pour une information purement indicative. Les fichiers
+    // produits sont identiques ; seule la colonne gzip disparaît du terminal.
+    reportCompressedSize: false,
     rollupOptions: {
       output: {
         manualChunks(id) {
