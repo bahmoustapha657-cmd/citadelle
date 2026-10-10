@@ -36,6 +36,9 @@ export const ELEVE_HORS_LIGNE = { nom: "CAMARA", prenom: "Fatou", sexe: "F", mat
 // Élève supprimé depuis « un autre poste » pendant qu'on l'encaisse
 // (fiche-supprimee.spec.js) : même classe que DIALLO, donc même tarif.
 export const ELEVE_SUPPRIME = { nom: "SOW", prenom: "Mamadou", sexe: "M", matricule: "E2E-004" };
+// Élève dont la ligne de journal de caisse échoue à l'encaissement
+// (encaissement-journal-attente.spec.js) : même classe, même tarif.
+export const ELEVE_JOURNAL = { nom: "KEITA", prenom: "Mariama", sexe: "F", matricule: "E2E-005" };
 export const MATIERES = [
   { nom: "Mathématiques", coefficient: 4 },
   { nom: "Français", coefficient: 3 },
@@ -130,7 +133,7 @@ export async function preparerEcole() {
   await ecrire("matieres", MATIERES.map((m) => ligne("matieres", m)));
   await ecrire("tarifs", [ligne("tarifs", { classe: CLASSE, montant: MENSUALITE })]);
   await ecrire("eleves", [
-    ...[...ELEVES, ELEVE_SUPPRIME].map((e) => ligne("eleves", { ...e, classe: CLASSE, statut: "Actif", inscriptionPayee: true })),
+    ...[...ELEVES, ELEVE_SUPPRIME, ELEVE_JOURNAL].map((e) => ligne("eleves", { ...e, classe: CLASSE, statut: "Actif", inscriptionPayee: true })),
     ligne("eleves", { ...ELEVE_HORS_LIGNE, classe: CLASSE_HORS_LIGNE, statut: "Actif", inscriptionPayee: true }),
   ]);
   return id;

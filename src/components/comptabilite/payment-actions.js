@@ -24,14 +24,19 @@ const detailRetrait = (texte, { motif, explication }) =>
 // l'état d'une autre année.
 const MSG_ARCHIVE = "Année archivée : consultation seule, aucun encaissement possible.";
 
-// Écrit une ligne au journal des encaissements. BEST-EFFORT : si le journal
-// refuse l'écriture (droits, réseau), l'encaissement lui-même reste acquis —
-// perdre le paiement parce que sa trace a échoué serait pire que l'inverse.
-// L'utilisateur est averti pour pouvoir régulariser.
+// Écrit une ligne au journal des encaissements. Si le journal refuse
+// l'écriture (droits, réseau), l'encaissement lui-même reste acquis — perdre
+// le paiement parce que sa trace a échoué serait pire que l'inverse. La ligne
+// n'est pas perdue pour autant : `ajPaiement` (use-journal-en-attente) la
+// garde sur l'appareil et la renverra — `{ enAttente: true }`.
 async function journaliser(ajPaiement, ecriture, toast) {
   if (typeof ajPaiement !== "function") return;
   try {
-    await ajPaiement(ecriture);
+    const resultat = await ajPaiement(ecriture);
+    if (resultat?.enAttente) {
+      console.error("journal des paiements:", resultat.erreur);
+      toast?.("Paiement enregistré. Sa ligne de journal de caisse n'a pas pu s'écrire : elle est gardée sur cet appareil et sera inscrite automatiquement.", "warning");
+    }
   } catch (e) {
     console.error("journal des paiements:", e);
     toast?.("Paiement enregistré, mais non inscrit au journal de caisse.", "warning");
