@@ -5,12 +5,26 @@
 // sans cascade). Une fiche sans argent, créée par erreur, se supprime encore.
 import { test, expect } from "@playwright/test";
 import {
-  COMPTABLE, ELEVE_ENCAISSE, ELEVE_SANS_ENCAISSEMENT, INSCRIPTION,
+  COMPTABLE, DIRECTION, ECOLE, ELEVE_ENCAISSE, ELEVE_SANS_ENCAISSEMENT, INSCRIPTION,
   clientAdmin, clientConnecte, ecoleId, lireEleve, lirePaiements,
 } from "../donnees.js";
 import { ouvrirModule, seConnecter } from "../parcours.js";
 
 const nomComplet = (e) => `${e.nom} ${e.prenom}`;
+
+// « Modifier / Suppr. » n'apparaissent au comptable que verrou de correction
+// ouvert (Administration → Verrous), comme en production. La direction
+// l'ouvre par le même chemin que l'écran, puis le referme : les autres
+// scénarios gardent un comptable sans droit de correction.
+async function verrouComptable(ouvert) {
+  const direction = await clientConnecte(DIRECTION);
+  const { data, error } = await direction.rpc("fusionner_extra_ecole", {
+    p_code: ECOLE.code, p_champs: { verrous: { comptable: ouvert } },
+  });
+  if (error || !data) throw new Error(`Verrou comptable : ${error?.message || "rien modifié"}`);
+}
+test.beforeAll(() => verrouComptable(true));
+test.afterAll(() => verrouComptable(false));
 
 async function ficheExiste(matricule) {
   const admin = clientAdmin();
