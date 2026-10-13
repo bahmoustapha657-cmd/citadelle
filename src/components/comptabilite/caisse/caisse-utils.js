@@ -1,6 +1,7 @@
 // Journal de caisse : collecte de TOUS les mouvements datés du module
-// Comptabilité, puis filtrage sur une journée, une semaine, un mois ou
-// l'année scolaire entière.
+// Comptabilité, puis filtrage sur une journée, une semaine ou un mois. La
+// période « Année » (aperçu général) ne filtre pas : elle reprend tout ce qui
+// est enregistré dans l'année consultée (voir serieParMois).
 // Logique pure — aucune dépendance React.
 //
 // Pourquoi un module dédié : les mouvements ne vivent pas au même endroit.
@@ -18,7 +19,6 @@ import {
   montantMoisPaye,
 } from "../../../mensualite-utils";
 import { clePaiement, mouvementsDepuisJournal } from "../paiements-journal";
-import { TOUS_MOIS_LONGS } from "../../../constants";
 
 export const PERIODES_CAISSE = [
   { id: "jour", label: "Journée" },
@@ -72,43 +72,9 @@ export function debutSemaine(d) {
   return base;
 }
 
-// Année scolaire contenant `date` : douze mois à partir du 1er du mois de
-// rentrée (vacances comprises — un encaissement d'août appartient à l'année
-// qui se termine). Renvoie l'année civile d'ouverture et les bornes.
-export function anneeScolaireDe(date, moisDebut = "Octobre") {
-  const rang = TOUS_MOIS_LONGS.indexOf(moisDebut);
-  const moisCivil = ((rang >= 0 ? rang : 1) + 8) % 12; // Septembre → 8
-  const base = dateSeule(date);
-  const ouverture = base.getMonth() >= moisCivil ? base.getFullYear() : base.getFullYear() - 1;
-  return {
-    ouverture,
-    debut: new Date(ouverture, moisCivil, 1),
-    fin: new Date(ouverture + 1, moisCivil, 0),
-  };
-}
-
-// Date de référence de la période « Année » pour l'année scolaire consultée
-// (« 2025-2026 ») : aujourd'hui s'il en fait partie, sinon son dernier jour.
-// Sans elle, le bouton « Année » visait l'année du calendrier — en octobre,
-// une année ouverte depuis quelques jours, identique au mois en cours.
-// Renvoie null si `annee` n'est pas au format AAAA-AAAA.
-export function referenceAnnee(annee, moisDebut = "Octobre", aujourdhui = new Date()) {
-  const m = /^(\d{4})-\d{4}$/.exec(String(annee || "").trim());
-  if (!m) return null;
-  const rang = TOUS_MOIS_LONGS.indexOf(moisDebut);
-  const moisCivil = ((rang >= 0 ? rang : 1) + 8) % 12;
-  const { debut, fin } = anneeScolaireDe(new Date(Number(m[1]), moisCivil, 1), moisDebut);
-  const jour = dateSeule(aujourdhui);
-  return jour >= debut && jour <= fin ? jour : fin;
-}
-
 // Bornes [debut, fin] incluses de la période demandée autour de `date`.
-export function bornesPeriode(date, periode, moisDebut) {
+export function bornesPeriode(date, periode) {
   const base = dateSeule(date);
-  if (periode === "annee") {
-    const { debut, fin } = anneeScolaireDe(base, moisDebut);
-    return { debut, fin };
-  }
   if (periode === "semaine") {
     const debut = debutSemaine(base);
     const fin = new Date(debut);
@@ -129,16 +95,11 @@ export function decalerPeriode(date, periode, sens) {
   const base = dateSeule(date);
   if (periode === "semaine") base.setDate(base.getDate() + 7 * sens);
   else if (periode === "mois") base.setMonth(base.getMonth() + sens);
-  else if (periode === "annee") { base.setDate(1); base.setFullYear(base.getFullYear() + sens); }
   else base.setDate(base.getDate() + sens);
   return base;
 }
 
-export function libellePeriode(date, periode, moisDebut) {
-  if (periode === "annee") {
-    const { ouverture } = anneeScolaireDe(date, moisDebut);
-    return `Année scolaire ${ouverture}-${ouverture + 1}`;
-  }
+export function libellePeriode(date, periode) {
   const { debut, fin } = bornesPeriode(date, periode);
   if (periode === "jour") {
     return debut.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
@@ -277,8 +238,8 @@ export function collecterMouvements(sources) {
     .sort((a, b) => b.date - a.date || a.libelle.localeCompare(b.libelle));
 }
 
-export function filtrerPeriode(mouvements, date, periode, moisDebut) {
-  const { debut, fin } = bornesPeriode(date, periode, moisDebut);
+export function filtrerPeriode(mouvements, date, periode) {
+  const { debut, fin } = bornesPeriode(date, periode);
   return mouvements.filter((m) => m.date >= debut && m.date <= fin);
 }
 
@@ -318,20 +279,29 @@ export function serieParJour(mouvements, date, periode) {
   return jours;
 }
 
-// Série mensuelle de l'année scolaire — graphique de l'aperçu général. Douze
-// mois, vides compris, de la rentrée aux vacances.
-export function serieParMois(mouvements, date, moisDebut) {
-  const { debut } = anneeScolaireDe(date, moisDebut);
-  const mois = Array.from({ length: 12 }, (_, i) => {
-    const d = new Date(debut.getFullYear(), debut.getMonth() + i, 1);
-    return { cle: `${d.getFullYear()}-${d.getMonth()}`, date: d, entrees: 0, sorties: 0 };
-  });
-  const index = new Map(mois.map((m) => [m.cle, m]));
+// Série mensuelle de l'aperçu général (période « Année »). Cette période ne
+// filtre PAS par date : les mouvements sont déjà ceux de l'année consultée
+// (recettes, dépenses, versements et journal des paiements sont lus par année),
+// comme dans le Bilan. Une fenêtre de dates en perdait : une école passée à
+// 2026-2027 en septembre y enregistre ses réinscriptions de septembre, que la
+// fenêtre « octobre → septembre » rejetait — comptées dans aucune année.
+// Base : septembre AAAA → août AAAA+1 (septembre ouvre l'année, comme pour
+// anneeScolaireDeDate), plus chaque mois hors base qui porte un mouvement
+// (pré-inscriptions de l'été, date mal saisie) : la somme des barres égale
+// toujours les totaux.
+export function serieParMois(mouvements, annee) {
+  const mois = new Map();
+  const ligneDuMois = (d) => {
+    const cle = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    if (!mois.has(cle)) mois.set(cle, { cle, date: new Date(d.getFullYear(), d.getMonth(), 1), entrees: 0, sorties: 0 });
+    return mois.get(cle);
+  };
+  const ouverture = Number(/^(\d{4})-\d{4}$/.exec(String(annee || "").trim())?.[1]);
+  if (ouverture) for (let i = 0; i < 12; i += 1) ligneDuMois(new Date(ouverture, 8 + i, 1));
   for (const m of mouvements) {
-    const ligne = index.get(`${m.date.getFullYear()}-${m.date.getMonth()}`);
-    if (!ligne) continue;
+    const ligne = ligneDuMois(m.date);
     const montant = Number(m.montant) || 0;
     if (m.sens === "sortie") ligne.sorties += montant; else if (m.sens === "entree") ligne.entrees += montant;
   }
-  return mois;
+  return [...mois.values()].sort((a, b) => a.date - b.date);
 }
