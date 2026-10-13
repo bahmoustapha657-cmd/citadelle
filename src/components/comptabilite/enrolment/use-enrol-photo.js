@@ -1,7 +1,7 @@
 import { useContext, useState } from "react";
 import { SchoolContext } from "../../../contexts/SchoolContext";
 import { getSectionLabel, initMens } from "../../../constants";
-import { normaliserDepart } from "../../../depart-utils";
+import { champsRetour, normaliserDepart } from "../../../depart-utils";
 import { uploadPhotoEleve } from "../../../storageUtils";
 import { findEnrollmentDuplicate, getEnrollmentDuplicateMessage } from "../../../enrollment-utils";
 import { deplacerEleve, erreurClasseSection } from "./enrol-section";
@@ -13,7 +13,7 @@ import { deplacerEleve, erreurClasseSection } from "./enrol-section";
 // la fiche est rangée (la liste affichée). À la modification, si elles
 // diffèrent, l'élève change de section avant d'être enregistré.
 export function useEnrolPhoto({
-  modal, setModal, form, section, sectionOrigine, classeOrigine,
+  modal, setModal, form, section, sectionOrigine, classeOrigine, retour = null,
   schoolId, toast, tousElevesScolarite, ajoutParNiveau = {}, modifParNiveau = {}, rechargerParNiveau = {}, ensureClasse,
 }) {
   const { logAction } = useContext(SchoolContext);
@@ -23,8 +23,20 @@ export function useEnrolPhoto({
     // Départ : date obligatoire pour une sortie (c'est elle qui arrête les
     // mensualités), champs de départ vidés au retour à « Actif » ou
     // « Inactif » — masqués dans le formulaire, ils restaient enregistrés.
-    const { fiche, erreur } = normaliserDepart(form);
-    if (erreur) { toast(erreur, "warning"); return; }
+    const normalisee = normaliserDepart(form);
+    if (normalisee.erreur) { toast(normalisee.erreur, "warning"); return; }
+    let fiche = normalisee.fiche;
+    // Retour d'un élève parti (statut repassé à « Actif ») : les mois
+    // d'absence sont dus ou non, au choix de la direction (champsRetour).
+    if (retour) {
+      if (retour.absenceDue === null) { toast("Indiquez si les mois d'absence sont dus.", "warning"); return; }
+      const { champs, erreur } = champsRetour(
+        { dateDepart: retour.dateDepart, interruptions: form.interruptions },
+        { dateRetour: retour.dateRetour, absenceDue: retour.absenceDue },
+      );
+      if (erreur) { toast(erreur, "warning"); return; }
+      fiche = { ...fiche, ...champs, statut: fiche.statut };
+    }
     const deplacement = modal === "edit_enrol" && section !== sectionOrigine;
     // Contrôlé au changement de section seulement : une fiche ancienne à la
     // classe saisie librement doit rester modifiable telle quelle.
@@ -64,6 +76,11 @@ export function useEnrolPhoto({
           await ensureClasse(r.classe, section);
         }
         await modifParNiveau[section](r);
+        if (retour) {
+          logAction?.("Réintégration d'un élève",
+            `${r.nom} ${r.prenom} (${r.classe}) — parti le ${retour.dateDepart || "?"}, revenu le ${retour.dateRetour || "?"} ; `
+            + (retour.absenceDue ? "mois d'absence dus" : "mois d'absence non dus"));
+        }
         if (deplacement) {
           await rechargerParNiveau[sectionOrigine]?.();
           toast(`${r.nom} ${r.prenom} est passé(e) au ${getSectionLabel(section)} en ${r.classe}`, "success");

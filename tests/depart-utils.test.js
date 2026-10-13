@@ -3,7 +3,8 @@ import test from "node:test";
 
 import { MOIS_ANNEE, estSorti } from "../src/constants.js";
 import {
-  derniereAnneeFrequentee, elevesPourPeriode, lireDate, moisExigibles, normaliserDepart, partiAvantAnnee,
+  aDesPaiements, champsRetour, derniereAnneeFrequentee, elevesPourPeriode, lireDate, moisExigibles, normaliserDepart,
+  partiAvantAnnee,
 } from "../src/depart-utils.js";
 import {
   concerneParAnnee, countUnpaidMonths, estBloquePourImpaye, getConsecutiveUnpaidMonths,
@@ -14,6 +15,9 @@ import {
 const MOIS = MOIS_ANNEE;
 const ANNEE = "2026-2027";
 const impayes = () => Object.fromEntries(MOIS.map((m) => [m, "Impayé"]));
+// Élève venu : il a payé quelque chose de l'année (sinon, parti sans rien
+// payer, il est « non réinscrit » et ne doit rien — test dédié plus bas).
+const VENU = { inscriptionPayee: true };
 const tarifs = [{ classe: "5ème Année A", montant: 100000, inscription: 50000, reinscription: 30000, autre: 10000 }];
 
 test("estSorti : le statut fait foi dès qu'il est renseigné", () => {
@@ -42,10 +46,10 @@ test("moisExigibles : présent → tous les mois", () => {
 });
 
 test("moisExigibles : parti en cours d'année → les mois entamés, celui du départ compris", () => {
-  const parti = { statut: "Abandonné", dateDepart: "2027-02-14" };
+  const parti = { ...VENU, statut: "Abandonné", dateDepart: "2027-02-14" };
   assert.deepEqual(moisExigibles(parti, MOIS, ANNEE), ["Oct", "Nov", "Déc", "Jan", "Fév"]);
   // Parti le 1er : le mois a commencé ce jour-là, il est dû.
-  assert.deepEqual(moisExigibles({ statut: "Exclu", dateDepart: "2026-12-01" }, MOIS, ANNEE), ["Oct", "Nov", "Déc"]);
+  assert.deepEqual(moisExigibles({ ...VENU, statut: "Exclu", dateDepart: "2026-12-01" }, MOIS, ANNEE), ["Oct", "Nov", "Déc"]);
   // Noms longs acceptés aussi.
   assert.deepEqual(moisExigibles(parti, ["Octobre", "Mars"], ANNEE), ["Octobre"]);
 });
@@ -65,7 +69,7 @@ test("moisExigibles : sans date lisible ni année connue, on ne retire rien", ()
 test("partiAvantAnnee et derniereAnneeFrequentee", () => {
   const vacances = { statut: "Transféré", dateDepart: "2026-09-15" };
   assert.equal(partiAvantAnnee(vacances, MOIS, ANNEE), true);
-  assert.equal(partiAvantAnnee({ statut: "Transféré", dateDepart: "2026-10-05" }, MOIS, ANNEE), false);
+  assert.equal(partiAvantAnnee({ ...VENU, statut: "Transféré", dateDepart: "2026-10-05" }, MOIS, ANNEE), false);
   assert.equal(partiAvantAnnee({ statut: "Transféré" }, MOIS, ANNEE), false);
   assert.equal(partiAvantAnnee({ statut: "Actif" }, MOIS, ANNEE), false);
 
@@ -156,4 +160,64 @@ test("la synthèse additionne le dû réel : un parti ne gonfle plus les impayé
   const overview = getMensualiteOverview([present, parti], MOIS, tarifs, ANNEE);
   assert.equal(overview.totalImpayes, 9);
   assert.equal(overview.totalDu, 9 * 100000);
+});
+
+// ── Non réinscrit déclaré parti (choix de la direction, 2026-10) ──────────
+// L'élève de l'an dernier qui ne revient pas : on le déclare parti en
+// octobre, il n'a rien payé de l'année — il ne doit RIEN de cette année.
+test("non réinscrit déclaré parti sans rien avoir payé : aucun arriéré de l'année", () => {
+  const nonReinscrit = {
+    classe: "5ème Année A", statut: "Abandonné", dateDepart: "2026-11-20",
+    typeInscription: "Réinscription", inscriptionPayee: false, mens: impayes(),
+  };
+  assert.deepEqual(moisExigibles(nonReinscrit, MOIS, ANNEE), []);
+  assert.equal(partiAvantAnnee(nonReinscrit, MOIS, ANNEE), true);
+  assert.equal(countUnpaidMonths(nonReinscrit, MOIS, ANNEE), 0);
+  assert.equal(getEleveSolde(nonReinscrit, MOIS, tarifs, ANNEE), 0);
+  assert.equal(concerneParAnnee(nonReinscrit, MOIS, ANNEE), false);
+  // L'année d'avant, qu'il a suivie, reste due.
+  assert.equal(getEleveSolde(nonReinscrit, MOIS, tarifs, "2025-2026"), 9 * 100000 + 30000 + 10000);
+  // Il a fréquenté 2026-2027 au calendrier (le certificat garde cette année).
+  assert.equal(derniereAnneeFrequentee(nonReinscrit, MOIS), "2026-2027");
+});
+
+test("parti après avoir payé quelque chose (même un acompte) : les mois entamés restent dus", () => {
+  const base = { classe: "5ème Année A", statut: "Abandonné", dateDepart: "2026-11-20", mens: impayes() };
+  const attendus = ["Oct", "Nov"];
+  assert.deepEqual(moisExigibles({ ...base, mens: { ...impayes(), Oct: "Payé" } }, MOIS, ANNEE), attendus);
+  assert.deepEqual(moisExigibles({ ...base, inscriptionAcompte: 5000 }, MOIS, ANNEE), attendus);
+  assert.deepEqual(moisExigibles({ ...base, mensAcomptes: { Oct: 20000 } }, MOIS, ANNEE), attendus);
+  // Le diplômé a fini son année : la règle du non-réinscrit ne le vise pas.
+  assert.deepEqual(moisExigibles({ ...base, statut: "Diplômé", dateDepart: "2027-06-30" }, MOIS, ANNEE), MOIS);
+  assert.equal(aDesPaiements({ fraisPayes: { cantine: true } }), true);
+  assert.equal(aDesPaiements({ mens: impayes() }), false);
+});
+
+// ── Retour d'un élève parti : absence due ou non, au choix ─────────────────
+test("champsRetour : absence due → seuls les champs de départ sont effacés", () => {
+  const parti = { statut: "Abandonné", dateDepart: "2026-11-20", motifDepart: "Voyage" };
+  const { champs, erreur } = champsRetour(parti, { dateRetour: "2027-02-03", absenceDue: true });
+  assert.equal(erreur, null);
+  assert.deepEqual(champs, { statut: "Actif", dateDepart: null, motifDepart: null, destinationDepart: null });
+});
+
+test("champsRetour : absence non due → les mois passés hors de l'école ne sont plus dus", () => {
+  const parti = { statut: "Abandonné", dateDepart: "2026-11-20", mens: { ...impayes(), Oct: "Payé" } };
+  const { champs, erreur } = champsRetour(parti, { dateRetour: "2027-02-03", absenceDue: false });
+  assert.equal(erreur, null);
+  assert.deepEqual(champs.interruptions, [{ depart: "2026-11-20", retour: "2027-02-03" }]);
+  const revenu = { ...parti, ...champs };
+  // Novembre (départ) et Février (retour) restent dus ; Décembre et Janvier non.
+  assert.deepEqual(moisExigibles(revenu, MOIS, ANNEE), ["Oct", "Nov", "Fév", "Mar", "Avr", "Mai", "Jun"]);
+  // Un second départ-retour s'ajoute au premier.
+  const second = champsRetour({ ...revenu, statut: "Exclu", dateDepart: "2027-03-02" }, { dateRetour: "2027-05-01", absenceDue: false });
+  assert.equal(second.champs.interruptions.length, 2);
+  assert.deepEqual(moisExigibles({ ...revenu, ...second.champs }, MOIS, ANNEE), ["Oct", "Nov", "Fév", "Mar", "Mai", "Jun"]);
+});
+
+test("champsRetour : date de retour obligatoire et postérieure au départ quand l'absence n'est pas due", () => {
+  const parti = { statut: "Abandonné", dateDepart: "2026-11-20" };
+  assert.match(champsRetour(parti, { absenceDue: false }).erreur, /date de retour/);
+  assert.match(champsRetour(parti, { dateRetour: "2026-11-01", absenceDue: false }).erreur, /suivre/);
+  assert.match(champsRetour({ statut: "Abandonné" }, { dateRetour: "2027-01-01", absenceDue: false }).erreur, /inconnue/);
 });

@@ -85,6 +85,7 @@ export function ComptaTabsScolarite({ c, readOnly, annee, userRole }) {
         ajoutParNiveau={c.ajoutParNiveau}
         suppressionParNiveau={c.suppressionParNiveau}
         modifParNiveau={c.modifParNiveau}
+        modChampParNiveau={c.modChampParNiveau}
         rechargerParNiveau={c.rechargerParNiveau}
         ensureClasse={c.ensureClasse}
         sortAlpha={c.sortAlpha}

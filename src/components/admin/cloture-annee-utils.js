@@ -5,7 +5,7 @@
 // Extension explicite : ce module est couvert par des tests Node, dont la
 // résolution ESM n'infère pas les extensions comme le fait Vite.
 import { MOIS_ANNEE, anneePrecedente, anneeSuivante, finAnneeScolaire, initMens } from "../../constants.js";
-import { concerneParAnnee } from "../../mensualite-utils.js";
+import { aDesPaiements, partiAvantPremierMois } from "../../depart-utils.js";
 
 // Toutes les sections, préscolaire compris.
 export const COLLECTIONS_ELEVES = [
@@ -70,19 +70,17 @@ export function etatVierge(moisAnnee = null) {
 // de l'année doivent rejoindre l'historique.
 export function horsAnneeCloturee(eleve = {}, annee = "", moisAnnee = null) {
   const mois = Array.isArray(moisAnnee) && moisAnnee.length ? moisAnnee : MOIS_ANNEE;
-  return !concerneParAnnee(eleve, mois, annee);
+  // Calendrier, pas argent : un élève non réinscrit parti en novembre a
+  // commencé l'année, sa classe de l'année doit rejoindre l'archive.
+  return partiAvantPremierMois(eleve, mois, annee) && !aDesPaiements(eleve);
 }
 
 // L'élève a-t-il quoi que ce soit d'encaissé sur son année courante ?
 // Sert aux avertissements : clôturer une année vide n'apporte rien, et
-// annuler une clôture ÉCRASE ce qui a déjà été encaissé depuis.
-export function aDesPaiements(eleve = {}) {
-  const mens = eleve.mens || {};
-  if (Object.values(mens).some((v) => v === "Payé")) return true;
-  if (eleve.inscriptionPayee || eleve.autrePayee || Number(eleve.inscriptionAcompte) > 0) return true;
-  const nonVide = (carte) => Object.values(carte || {}).some(Boolean);
-  return nonVide(eleve.fraisPayes) || nonVide(eleve.mensAcomptes) || nonVide(eleve.fraisAcomptes);
-}
+// annuler une clôture ÉCRASE ce qui a déjà été encaissé depuis. La même
+// règle dit qu'un élève parti sans rien avoir payé ne doit rien
+// (depart-utils) : une seule définition.
+export { aDesPaiements };
 
 // Champs à écrire pour clôturer un élève : l'archive complétée + l'état
 // vierge. Renvoie null si l'année est DÉJÀ archivée — une seconde clôture

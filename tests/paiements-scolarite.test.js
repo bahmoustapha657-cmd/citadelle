@@ -185,7 +185,8 @@ test("clôture : les acomptes comptent comme paiements et repartent à zéro", (
 
 // ── Élève parti (règle des départs, cf. depart-utils) ─────────────────────
 test("élève parti : seuls les mois entamés avant le départ se paient ; un acompte reste perçu", () => {
-  const parti = eleve({ statut: "Transféré", dateDepart: "15/11/2026" });
+  // Venu : il a réglé son inscription (parti sans rien payer, il ne devrait rien).
+  const parti = eleve({ statut: "Transféré", dateDepart: "15/11/2026", inscriptionPayee: true });
   const etats = etatsMois(parti, MOIS, 110000, "2026-2027");
   assert.deepEqual(etats.slice(0, 3).map((e) => [e.mois, e.statut, e.reste]), [
     ["Octobre", "impaye", 110000], ["Novembre", "impaye", 110000], ["Décembre", "nonDu", 0],
