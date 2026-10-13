@@ -10,7 +10,7 @@ import { changerSectionFormulaire, matriculeSaisieRapide, sectionsSaisieRapide }
 
 export function EnrolModale({
   modal, setModal, form, setForm, chg, niveauEnrol, schoolInfo, elevesParNiveau = {},
-  schoolId, toast, tousElevesScolarite, ajoutParNiveau, modifParNiveau, rechargerParNiveau, ensureClasse,
+  schoolId, toast, tousElevesScolarite, ajoutParNiveau, modChampParNiveau, rechargerParNiveau, ensureClasse,
 }) {
   // Section de la fiche, choisie comme dans la saisie rapide. Celle d'origine
   // est la liste d'où la fiche a été ouverte — pas `form.niveau`, une copie
@@ -45,7 +45,7 @@ export function EnrolModale({
 
   const { uploadEnCours, enregistrer } = useEnrolPhoto({
     modal, setModal, form, section, sectionOrigine, classeOrigine, retour,
-    schoolId, toast, tousElevesScolarite, ajoutParNiveau, modifParNiveau, rechargerParNiveau, ensureClasse,
+    schoolId, toast, tousElevesScolarite, ajoutParNiveau, modChampParNiveau, rechargerParNiveau, ensureClasse,
   });
 
   return (<Modale large titre={modal==="add_enrol"?"Nouvel élève":"Modifier l'élève"} fermer={()=>setModal(null)}>

@@ -17,7 +17,7 @@ export function EnrolmentTab({
   form, setForm, modal, setModal, canCreate, canEdit, canCreateParent = false,
   elevesC, elevesL, elevesP, elevesPre = [], cEC, cEL, cEP,
   tousElevesScolarite, ajoutParNiveau, suppressionParNiveau,
-  modifParNiveau, modChampParNiveau = {}, rechargerParNiveau = {}, ensureClasse, sortAlpha,
+  modChampParNiveau = {}, rechargerParNiveau = {}, ensureClasse, sortAlpha,
   encaisserInscriptions, getTarifInscriptionEleve, tarifsClasses = [],
 }) {
   const { t } = useTranslation();
@@ -99,7 +99,7 @@ export function EnrolmentTab({
       {((modal==="add_enrol"&&canCreate)||(modal==="edit_enrol"&&canEdit))&&<EnrolModale
         modal={modal} setModal={setModal} form={form} setForm={setForm} chg={chg} niveauEnrol={niveauEnrol}
         schoolId={schoolId} schoolInfo={schoolInfo} toast={toast} tousElevesScolarite={tousElevesScolarite}
-        elevesParNiveau={elevesParNiveau} ajoutParNiveau={ajoutParNiveau} modifParNiveau={modifParNiveau}
+        elevesParNiveau={elevesParNiveau} ajoutParNiveau={ajoutParNiveau} modChampParNiveau={modChampParNiveau}
         rechargerParNiveau={rechargerParNiveau} ensureClasse={ensureClasse}/>}
 
       {/* Saisie rapide : chaque élève choisit sa section dans la modale, d'où

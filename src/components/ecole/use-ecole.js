@@ -86,7 +86,7 @@ export function useEcole({
   // Seule la classe est reprise de l'instantané. La scolarité complète
   // (mensualités, frais) reste l'affaire de la Comptabilité, qui a sa propre
   // projection et d'autres règles.
-  const { items: elevesBruts, chargement: cE, modifier: modE } = useFirestore(cleEleves);
+  const { items: elevesBruts, chargement: cE, modifierChamp: modChampE } = useFirestore(cleEleves);
   const eleves = useMemo(
     () => elevesBruts.map((e) => {
       const classe = classePourAnnee(e, anneeConsultee);
@@ -176,7 +176,7 @@ export function useEcole({
   const effectifReel = (nomClasse) => effectifReelFn(eleves, nomClasse);
 
   const saveClasse = () => {
-    saveClasseAction({ form, modal, classes, eleves, ajC, modC, modE });
+    saveClasseAction({ form, modal, classes, eleves, ajC, modC, modChampE });
     setModal(null);
   };
 
@@ -192,7 +192,7 @@ export function useEcole({
     classes, cC, ajC, modC, supC,
     ens, cEns, ajEns, modEns, supEns,
     notes, cN, ajN, supN,
-    eleves, cE, modE,
+    eleves, cE,
     absences, cAbs, ajAbs, supAbs,
     enseignements, cEng, ajEng, modEng, supEng,
     matieres, matieresToutes, cMat, ajMat, modMat, supMat,
