@@ -35,6 +35,7 @@ function TableauDeBord({ annee, userRole, onOpenLegalSettings }) {
         totalEns={d.totalEns} ensC={d.ensC} ensL={d.ensL} ensP={d.ensP} ensPre={d.ensPre}
         tauxPay={d.tauxPay} solde={d.solde} totalRec={d.totalRec} totalDep={d.totalDep}
         masseSal={d.masseSal} salMois={d.salMois} moisActuel={d.moisActuel} totalAbs={d.totalAbs}
+        financesClaires={d.financesClaires} anneeCourante={d.anneeCourante}
       />
 
       {/* Alerte Conformité légale (compact) — réservé directeur/admin.

@@ -1,3 +1,7 @@
+import { useContext } from "react";
+import { SchoolContext } from "../../../contexts/SchoolContext";
+import { affichageFinancesClassique } from "../finances-claires";
+import { BilanClair } from "../bilan-tab/BilanClair";
 import { RecettesTab } from "../RecettesTab";
 import { DepensesTab } from "../DepensesTab";
 import { BilanTab } from "../BilanTab";
@@ -10,9 +14,33 @@ import { PresencesTab } from "../presences/PresencesTab";
 // états de salaires.
 export function ComptaTabsFinancier({ c, readOnly, annee }) {
   const sd = c.salairesDomaine;
+  const { schoolId } = useContext(SchoolContext);
+  const classique = affichageFinancesClassique(schoolId);
   return (
     <>
-      {c.tab === "bilan" && <BilanTab
+      {c.tab === "bilan" && !classique && <BilanClair
+        schoolInfo={c.schoolInfo}
+        canCreate={c.canCreate}
+        toggleBlocage={c.toggleBlocage}
+        cR={c.cR}
+        cD={c.cD}
+        recettes={c.recettes}
+        depenses={c.depenses}
+        versements={c.versements}
+        mensualiteOverview={c.mensualiteOverview}
+        salairesMois={c.salairesMois}
+        moisLabel={c.moisLabel}
+        totNetSec={c.totNetSec}
+        totNetPrim={c.totNetPrim}
+        totNetPers={c.totNetPers}
+        eleves={c.tousElevesScolarite}
+        moisAnnee={c.moisAnnee}
+        tarifsClasses={c.tarifsClasses}
+        paiements={c.paiements}
+        anneeConsultee={c.anneeConsultee}
+      />}
+
+      {c.tab === "bilan" && classique && <BilanTab
         schoolInfo={c.schoolInfo}
         periodes={c.periodes}
         canCreate={c.canCreate}

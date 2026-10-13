@@ -8,6 +8,8 @@ import {
   collecterMouvements, decalerPeriode, filtrerPeriode, formatJour,
   libellePeriode, periodesCaisse, serieParJour, serieParMois, totauxMouvements,
 } from "./caisse/caisse-utils";
+import { affichageFinancesClassique, montantAxe } from "./finances-claires";
+import { StatClair } from "./StatClair";
 
 // Journal de caisse : ce qui est réellement entré et sorti sur une journée,
 // une semaine ou un mois. Complète le Bilan, qui raisonne par période
@@ -23,6 +25,8 @@ export function CaisseTab({
 }) {
   const { schoolId } = useContext(SchoolContext);
   const periodes = periodesCaisse(schoolId);
+  // La Citadelle garde l'affichage d'origine (voir finances-claires.js).
+  const classique = affichageFinancesClassique(schoolId);
   const [periode, setPeriode] = useState("jour");
   const [reference, setReference] = useState(() => new Date());
 
@@ -95,12 +99,26 @@ export function CaisseTab({
       )}
 
       {/* ── Totaux de la période ── */}
+      {classique ? (
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 10, margin: "12px 0 16px" }}>
         <Stat label="Encaissé" value={fmt(totaux.entrees)} sub={`${duJour.filter((m) => m.sens === "entree").length} opération(s)`} bg="#eaf4e0" />
         <Stat label="Sorti" value={fmt(totaux.sorties)} sub={`${duJour.filter((m) => m.sens === "sortie").length} opération(s)`} bg="#fce8e8" />
         <Stat label="Solde de la période" value={fmt(totaux.solde)} sub={totaux.solde >= 0 ? "Excédent" : "Déficit"} bg={totaux.solde >= 0 ? "#eaf4e0" : "#fce8e8"} />
         <Stat label="Mouvements" value={totaux.nb} sub={periodes.find((p) => p.id === periode)?.label} bg="#e0ebf8" />
       </div>
+      ) : (
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,190px),1fr))", gap: 10, margin: "12px 0 16px" }}>
+        <StatClair label="Argent encaissé" value={fmt(totaux.entrees)} couleur="#15803d" valeurCouleur="#15803d"
+          sub={`${duJour.filter((m) => m.sens === "entree").length} encaissement(s) sur la période`} />
+        <StatClair label="Argent sorti" value={fmt(totaux.sorties)} couleur="#b91c1c" valeurCouleur="#b91c1c"
+          sub={`${duJour.filter((m) => m.sens === "sortie").length} sortie(s) : dépenses, versements, remboursements`} />
+        <StatClair label="Solde de la période" value={`${totaux.solde < 0 ? "− " : ""}${fmt(Math.abs(totaux.solde))}`}
+          couleur={totaux.solde >= 0 ? "#15803d" : "#b91c1c"} valeurCouleur={totaux.solde >= 0 ? "#15803d" : "#b91c1c"}
+          sub={totaux.solde >= 0 ? "Excédent : plus d'argent entré que sorti" : "Déficit : plus d'argent sorti qu'entré"} />
+        <StatClair label="Nombre d'opérations" value={totaux.nb} couleur="#0ea5e9"
+          sub={`Toutes natures confondues · ${periodes.find((p) => p.id === periode)?.label}`} />
+      </div>
+      )}
 
       {duJour.length === 0 ? (
         <Vide icone="🧾" msg="Aucun mouvement sur cette période" />
@@ -115,7 +133,7 @@ export function CaisseTab({
                 if (!ligne) return null;
                 return (
                   <div key={id} style={{ border: "1px solid var(--lc-border)", borderRadius: 10, padding: "10px 12px", borderInlineStartWidth: 4, borderInlineStartColor: src.couleur, borderInlineStartStyle: "solid" }}>
-                    <p style={{ margin: "0 0 3px", fontSize: 11, fontWeight: 700, color: "var(--lc-text-muted)" }}>{src.label}</p>
+                    <p style={{ margin: "0 0 3px", fontSize: classique ? 11 : 13, fontWeight: 700, color: classique ? "var(--lc-text-muted)" : "var(--lc-text)" }}>{src.label}</p>
                     {src.sens === "neutre" ? (
                       <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: "#64748b" }}>
                         {ligne.montant < 0 ? `− ${fmt(-ligne.montant)}` : "Non comptées"}
@@ -125,7 +143,7 @@ export function CaisseTab({
                         {src.sens === "sortie" ? "− " : "+ "}{fmt(ligne.montant)}
                       </p>
                     )}
-                    <p style={{ margin: 0, fontSize: 11, color: "var(--lc-text-faint)" }}>{ligne.nb} opération(s)</p>
+                    <p style={{ margin: 0, fontSize: classique ? 11 : 12, color: classique ? "var(--lc-text-faint)" : "var(--lc-text-muted)" }}>{ligne.nb} opération(s)</p>
                   </div>
                 );
               })}
@@ -145,7 +163,9 @@ export function CaisseTab({
                 }))}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e0ebf8" />
                   <XAxis dataKey="jour" tick={{ fontSize: 10 }} />
-                  <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1e6).toFixed(1)}M`} />
+                  {classique
+                    ? <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1e6).toFixed(1)}M`} />
+                    : <YAxis tick={{ fontSize: 12 }} tickFormatter={montantAxe} width={56} />}
                   <Tooltip formatter={(v) => fmt(v)} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   <Bar dataKey="Encaissé" fill={C.green} radius={[4, 4, 0, 0]} />
@@ -174,7 +194,9 @@ export function CaisseTab({
         </>
       )}
 
-      <p style={{ margin: "12px 0 0", fontSize: 11, color: "var(--lc-text-faint)" }}>
+      <p style={classique
+        ? { margin: "12px 0 0", fontSize: 11, color: "var(--lc-text-faint)" }
+        : { margin: "12px 0 0", fontSize: 13, lineHeight: 1.5, color: "var(--lc-text-muted)" }}>
         Les encaissements de scolarité proviennent du journal des paiements, qui enregistre chaque mouvement
         et ses annulations. Les paiements antérieurs à sa mise en service sont reconstitués depuis les fiches
         élèves — sans doublon, mais sans annulations ni auteur. Les salaires n'apparaissent pas ici : une fiche

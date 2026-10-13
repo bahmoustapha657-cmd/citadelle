@@ -1,8 +1,10 @@
-import { useContext, useState } from "react";
+import { useContext, useMemo, useState } from "react";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { useFirestore } from "../../hooks/useFirestore";
 import { C, getAnnee } from "../../constants";
 import { creerDemandePlan } from "./tableau-de-bord-api";
+import { getMensualiteOverview } from "../../mensualite-utils";
+import { affichageFinancesClassique, syntheseFinances } from "../comptabilite/finances-claires";
 import {
   calcTauxPaiement,
   computeEvenementsAVenir,
@@ -27,8 +29,15 @@ export function useTableauDeBord({ annee } = {}) {
   const { items: ensL } = useFirestore("ensLycee");
   const { items: ensP } = useFirestore("ensPrimaire");
   const { items: ensPre } = useFirestore("ensPrescolaire");
-  const { items: recettes } = useFirestore("recettes");
-  const { items: depenses } = useFirestore("depenses");
+  // Affichage financier lisible (toutes les écoles sauf celles qui gardent
+  // l'ancien, cf. finances-claires.js) : recettes, dépenses et versements de
+  // l'année affichée — sans filtre, la tuile additionnait toutes les années.
+  const classique = affichageFinancesClassique(schoolId);
+  const filtreAnnee = classique ? undefined : { annee: anneeCourante };
+  const { items: recettes } = useFirestore("recettes", filtreAnnee);
+  const { items: depenses } = useFirestore("depenses", filtreAnnee);
+  const { items: versements } = useFirestore("versements", { annee: anneeCourante });
+  const { items: tarifsClasses } = useFirestore("tarifs");
   const { items: salaires } = useFirestore("salaires");
   const { items: evenements } = useFirestore("evenements");
   const { items: absences } = useFirestore("absencesCollege");
@@ -94,6 +103,12 @@ export function useTableauDeBord({ annee } = {}) {
 
   // Finances
   const { totalRec, totalDep, solde } = computeFinances(recettes, depenses);
+  // Solde réel (scolarité encaissée comprise), le même que le Bilan.
+  // Mémoïsé : parcourt toutes les fiches élèves, et l'écran se redessine souvent.
+  const financesClaires = useMemo(() => (classique ? null : syntheseFinances({
+    overview: getMensualiteOverview([...elevesC, ...elevesL, ...elevesP, ...elevesPre], moisAnnee, tarifsClasses, anneeCourante),
+    recettes, depenses, versements,
+  })), [classique, elevesC, elevesL, elevesP, elevesPre, moisAnnee, tarifsClasses, anneeCourante, recettes, depenses, versements]);
 
   // Masse salariale mois courant
   const salMois = salaires.filter((s) => s.mois === moisActuel);
@@ -118,7 +133,7 @@ export function useTableauDeBord({ annee } = {}) {
     demandeForm, setDemandeForm, demandeEnvoi, demandeSucces, envoyerDemande,
     totalEleves, totalEns, moisActuel,
     tauxPayC, tauxPayL, tauxPayP, tauxPay,
-    totalRec, totalDep, solde, salMois, masseSal,
+    totalRec, totalDep, solde, salMois, masseSal, financesClaires, anneeCourante,
     evAVenir, totalAbs, dataTendance,
   };
 }
