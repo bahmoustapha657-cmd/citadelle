@@ -82,11 +82,11 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   // aucune raison de charger les exercices passés pour afficher l'exercice en
   // cours.
   const { items: paiements, chargement: cPaie, ajouter: ajPaiement } = useFirestore("paiements", { annee: anneeConsultee });
-  const { items: elevesCBrut, chargement: cEC, ajouter: ajEC, modifier: modEC_full, supprimer: supEC, modifierChamp: modEC } = useFirestore("elevesCollege");
-  const { items: elevesPBrut, chargement: cEP, ajouter: ajEP, modifier: modEP_full, supprimer: supEP, modifierChamp: modEP } = useFirestore("elevesPrimaire");
-  const { items: elevesLBrut, chargement: cEL, ajouter: ajEL, modifier: modEL_full, supprimer: supEL, modifierChamp: modEL } = useFirestore("elevesLycee");
+  const { items: elevesCBrut, chargement: cEC, ajouter: ajEC, modifier: modEC_full, supprimer: supEC, modifierChamp: modEC, refresh: refEC } = useFirestore("elevesCollege");
+  const { items: elevesPBrut, chargement: cEP, ajouter: ajEP, modifier: modEP_full, supprimer: supEP, modifierChamp: modEP, refresh: refEP } = useFirestore("elevesPrimaire");
+  const { items: elevesLBrut, chargement: cEL, ajouter: ajEL, modifier: modEL_full, supprimer: supEL, modifierChamp: modEL, refresh: refEL } = useFirestore("elevesLycee");
   // Préscolaire : section à part entière, donc scolarité/inscriptions à part.
-  const { items: elevesPreBrut, chargement: cEPre, ajouter: ajEPre, modifier: modEPre_full, supprimer: supEPre, modifierChamp: modEPre } = useFirestore("elevesPrescolaire");
+  const { items: elevesPreBrut, chargement: cEPre, ajouter: ajEPre, modifier: modEPre_full, supprimer: supEPre, modifierChamp: modEPre, refresh: refEPre } = useFirestore("elevesPrescolaire");
   // Vue archive : les élèves ne sont pas dupliqués par année, c'est la clôture
   // d'année qui fige leur scolarité dans la fiche (extra.historique[annee]).
   // On lit donc l'instantané de l'année consultée — repli sur la fiche
@@ -133,6 +133,9 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   const ajoutParNiveau = { college: ajEC, lycee: ajEL, primaire: ajEP, prescolaire: ajEPre };
   const suppressionParNiveau = { college: supEC, lycee: supEL, primaire: supEP, prescolaire: supEPre };
   const modifParNiveau = { college: modEC_full, lycee: modEL_full, primaire: modEP_full, prescolaire: modEPre_full };
+  // Relecture de la liste de départ quand une fiche change de section
+  // (formulaire élève : Grande Section → 1ère Année).
+  const rechargerParNiveau = { college: refEC, lycee: refEL, primaire: refEP, prescolaire: refEPre };
   // Wrappers : injectent les listes de classes + ajouts Firestore au helper.
   const sortAlpha = (arr) => sortAlphaEleves(arr, schoolInfo.triEleves);
   const ensureClasse = (nom, niv, dejaCreees) => {
@@ -350,7 +353,7 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
     tab, setTab, sousTabSal, setSousTabSal, modal, setModal, form, setForm,
     niveau, setNiveau, filtClasse, setFiltClasse, moisSel, setMoisSel,
     primeDefaut, setPrimeDefaut, filtrePrimNom, setFiltrePrimNom, filtrePrimClasse, setFiltrePrimClasse,
-    ajoutParNiveau, suppressionParNiveau, modifParNiveau, ensureClasse, sortAlpha,
+    ajoutParNiveau, suppressionParNiveau, modifParNiveau, rechargerParNiveau, ensureClasse, sortAlpha,
     totR, totD, totVers, eleves, classesU, tousElevesScolarite, elevesFiltres,
     getTarif, getTarifBase, getTarifRevision, getTarifAutre, getTarifIns, getTarifReinsc,
     getTarifInscriptionEleve, getTarifFraisDivers, saveTarif,
