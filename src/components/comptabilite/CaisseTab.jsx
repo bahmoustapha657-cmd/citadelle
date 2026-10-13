@@ -6,26 +6,25 @@ import { Badge, Btn, Card, Stat, TD, THead, TR, Vide } from "../ui";
 import {
   SOURCES,
   collecterMouvements, decalerPeriode, filtrerPeriode, formatJour,
-  libellePeriode, periodesCaisse, referenceAnnee, serieParJour, serieParMois, totauxMouvements,
+  libellePeriode, periodesCaisse, serieParJour, serieParMois, totauxMouvements,
 } from "./caisse/caisse-utils";
 
 // Journal de caisse : ce qui est réellement entré et sorti sur une journée,
 // une semaine ou un mois. Complète le Bilan, qui raisonne par période
 // scolaire (T1/T2…) et ne répond pas à « combien a-t-on encaissé aujourd'hui ».
 // La période « Année » donne l'aperçu général de l'année scolaire, mois par
-// mois (masquée pour certaines écoles, voir periodesCaisse). Elle suit l'année
-// consultée dans l'en-tête de la Comptabilité : les recettes, dépenses et
-// versements d'une autre année ne sont chargés que par ce sélecteur.
+// mois (masquée pour certaines écoles, voir periodesCaisse). Elle reprend TOUT
+// ce qui est enregistré dans l'année consultée dans l'en-tête de la
+// Comptabilité, sans filtre de date (voir serieParMois) ; ← → changent cette
+// année consultée, seul chemin qui charge les données d'une autre année.
 export function CaisseTab({
   recettes, depenses, versements, eleves, moisAnnee, tarifsClasses, paiements = [],
   enModeArchive, anneeConsultee, setAnneeConsultee, anneesDispo = [],
 }) {
-  const { schoolId, schoolInfo } = useContext(SchoolContext);
-  const moisDebut = schoolInfo?.moisDebut || "Octobre";
+  const { schoolId } = useContext(SchoolContext);
   const periodes = periodesCaisse(schoolId);
   const [periode, setPeriode] = useState("jour");
-  const [referenceChoisie, setReference] = useState(() => new Date());
-  const reference = (periode === "annee" && referenceAnnee(anneeConsultee, moisDebut)) || referenceChoisie;
+  const [reference, setReference] = useState(() => new Date());
 
   const mouvements = useMemo(
     () => collecterMouvements({
@@ -34,11 +33,14 @@ export function CaisseTab({
     }),
     [recettes, depenses, versements, eleves, moisAnnee, tarifsClasses, paiements, anneeConsultee],
   );
-  const duJour = useMemo(() => filtrerPeriode(mouvements, reference, periode, moisDebut), [mouvements, reference, periode, moisDebut]);
+  const duJour = useMemo(
+    () => (periode === "annee" ? mouvements : filtrerPeriode(mouvements, reference, periode)),
+    [mouvements, reference, periode],
+  );
   const totaux = useMemo(() => totauxMouvements(duJour), [duJour]);
   const serie = useMemo(
-    () => (periode === "annee" ? serieParMois(duJour, reference, moisDebut) : serieParJour(duJour, reference, periode)),
-    [duJour, reference, periode, moisDebut],
+    () => (periode === "annee" ? serieParMois(duJour, anneeConsultee) : serieParJour(duJour, reference, periode)),
+    [duJour, reference, periode, anneeConsultee],
   );
 
   // Année : ← → changent l'année consultée (liste du plus récent au plus
@@ -81,7 +83,7 @@ export function CaisseTab({
           <Btn sm v="ghost" onClick={() => setReference(new Date())}>Aujourd'hui</Btn>
         </div>
         )}
-        <strong style={{ fontSize: 13, color: C.blueDark, marginInlineStart: "auto" }}>{libellePeriode(reference, periode, moisDebut)}</strong>
+        <strong style={{ fontSize: 13, color: C.blueDark, marginInlineStart: "auto" }}>{periode === "annee" ? `Année scolaire ${anneeConsultee}` : libellePeriode(reference, periode)}</strong>
       </div></Card>
 
       {enModeArchive && (
@@ -137,7 +139,7 @@ export function CaisseTab({
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={serie.map((j) => ({
                   jour: j.date.toLocaleDateString("fr-FR",
-                    periode === "annee" ? { month: "short" } : periode === "mois" ? { day: "numeric" } : { weekday: "short" }),
+                    periode === "annee" ? { month: "short", year: "2-digit" } : periode === "mois" ? { day: "numeric" } : { weekday: "short" }),
                   Encaissé: j.entrees,
                   Sorti: j.sorties,
                 }))}>
@@ -178,7 +180,8 @@ export function CaisseTab({
         élèves — sans doublon, mais sans annulations ni auteur. Les salaires n'apparaissent pas ici : une fiche
         de paie porte un mois, pas une date de décaissement. Une case cochée par erreur puis décochée avec le
         motif « erreur de saisie » reste listée (barrée, avec son explication) mais ne compte ni en entrée ni en
-        sortie ; un remboursement, lui, est une sortie.
+        sortie ; un remboursement, lui, est une sortie. La vue « Année » compte tout ce qui est enregistré dans
+        l'année consultée, quelle que soit sa date (réinscriptions de septembre comprises), comme le Bilan.
       </p>
     </div>
   );
