@@ -2,8 +2,12 @@ import {
   Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
+import { useContext } from "react";
 import { C, fmt } from "../../constants";
+import { SchoolContext } from "../../contexts/SchoolContext";
 import { Card, Stat, TD, THead, TR, Vide } from "../ui";
+import { affichageFinancesClassique, montantAxe } from "../comptabilite/finances-claires";
+import { StatClair } from "../comptabilite/StatClair";
 import { statsGenre, statsGroupe, statsParClasse, moyenneParMatiere, evolutionMoyenne } from "../ecole/apercu-tab/analytics";
 
 const PALETTE = ["#0A1628", "#00C48C", "#f59e0b", "#8b5cf6", "#ef4444", "#06b6d4"];
@@ -144,14 +148,27 @@ export function VueAssiduite({ s }) {
 // ── FINANCES ────────────────────────────────────────────────────────────────
 export function VueFinances({ s }) {
   const f = s.finances;
+  const { schoolId } = useContext(SchoolContext);
+  const classique = affichageFinancesClassique(schoolId);
   return (
     <div>
-      <div style={grille}>
+      {!classique && (
+        <div style={{ ...grille, gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,190px),1fr))" }}>
+          <StatClair label="Mensualités attendues sur l'année" value={fmt(f.du)} couleur="#0ea5e9"
+            sub="Toutes sections, dispenses déduites (hors inscriptions et frais annexes)" />
+          <StatClair label="Mensualités encaissées" value={fmt(f.percu)} couleur="#15803d" valeurCouleur="#15803d"
+            sub={`${f.taux.toFixed(1).replace(".", ",")} % de ce qui est attendu`} />
+          <StatClair label="Mensualités restant dues" value={fmt(f.impaye)} couleur="#b91c1c" valeurCouleur="#b91c1c"
+            sub="À relancer auprès des familles" />
+          <StatClair label="Mensualité moyenne" value={fmt(f.tarifMoyen)} sub="Tarif mensuel moyen par élève" />
+        </div>
+      )}
+      {classique && <div style={grille}>
         <Stat label="Attendu sur l'année" value={fmt(f.du)} sub="toutes sections" bg="#e0ebf8" />
         <Stat label="Encaissé" value={fmt(f.percu)} sub={`${f.taux.toFixed(1)}% du dû`} bg={f.taux >= 70 ? "#eaf4e0" : "#fef3e0"} />
         <Stat label="Reste à recouvrer" value={fmt(f.impaye)} sub="impayés" bg="#fce8e8" />
         <Stat label="Tarif mensuel moyen" value={fmt(f.tarifMoyen)} sub="par élève" bg="#f3f4f6" />
-      </div>
+      </div>}
 
       <Bloc titre="Recouvrement par classe" aide="Les classes les plus en retard en premier — c'est là que la relance est la plus rentable.">
         <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
@@ -172,8 +189,10 @@ export function VueFinances({ s }) {
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={f.parMois}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e0ebf8" />
-              <XAxis dataKey="mois" tick={{ fontSize: 10 }} />
-              <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1e6).toFixed(1)}M`} />
+              <XAxis dataKey="mois" tick={{ fontSize: classique ? 10 : 12 }} />
+              {classique
+                ? <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1e6).toFixed(1)}M`} />
+                : <YAxis tick={{ fontSize: 12 }} tickFormatter={montantAxe} width={56} />}
               <Tooltip formatter={(v) => fmt(v)} />
               <Bar dataKey="montant" name="Encaissé" fill={C.green} radius={[4, 4, 0, 0]} />
             </BarChart>

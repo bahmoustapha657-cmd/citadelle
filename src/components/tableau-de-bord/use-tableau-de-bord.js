@@ -1,14 +1,18 @@
-import { useContext, useState } from "react";
+import { useContext, useMemo, useState } from "react";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { useFirestore } from "../../hooks/useFirestore";
 import { C, getAnnee } from "../../constants";
 import { creerDemandePlan } from "./tableau-de-bord-api";
+import { getMensualiteOverview } from "../../mensualite-utils";
+import { affichageFinancesClassique, syntheseFinances } from "../comptabilite/finances-claires";
 import {
   calcTauxPaiement,
   computeEvenementsAVenir,
   computeFinances,
   computeMasseSalariale,
   computeTendance,
+  moisPaieRecent,
+  nbMoisEntames,
 } from "./tableau-de-bord-derive";
 
 // Charge toutes les collections du dashboard, calcule les indicateurs
@@ -27,9 +31,17 @@ export function useTableauDeBord({ annee } = {}) {
   const { items: ensL } = useFirestore("ensLycee");
   const { items: ensP } = useFirestore("ensPrimaire");
   const { items: ensPre } = useFirestore("ensPrescolaire");
-  const { items: recettes } = useFirestore("recettes");
-  const { items: depenses } = useFirestore("depenses");
-  const { items: salaires } = useFirestore("salaires");
+  // Affichage financier lisible (toutes les écoles sauf celles qui gardent
+  // l'ancien, cf. finances-claires.js) : recettes, dépenses et versements de
+  // l'année affichée — sans filtre, la tuile additionnait toutes les années.
+  const classique = affichageFinancesClassique(schoolId);
+  const filtreAnnee = classique ? undefined : { annee: anneeCourante };
+  const { items: recettes } = useFirestore("recettes", filtreAnnee);
+  const { items: depenses } = useFirestore("depenses", filtreAnnee);
+  const { items: versements } = useFirestore("versements", { annee: anneeCourante });
+  const { items: tarifsClasses } = useFirestore("tarifs");
+  // Salaires : de l'année affichée aussi (la Comptabilité les lit ainsi).
+  const { items: salaires } = useFirestore("salaires", filtreAnnee);
   const { items: evenements } = useFirestore("evenements");
   const { items: absences } = useFirestore("absencesCollege");
   const { items: absP } = useFirestore("absencesPrimaire");
@@ -83,7 +95,11 @@ export function useTableauDeBord({ annee } = {}) {
   const actifs = (liste) => liste.filter((e) => e.statut === "Actif").length;
   const totalEleves = actifs(elevesC) + actifs(elevesL) + actifs(elevesP) + actifs(elevesPre);
   const totalEns = ensC.length + ensL.length + ensP.length + ensPre.length;
-  const moisActuel = moisSalaire[moisSalaire.length - 1] || "";
+  // Mois de la tuile salaires. Affichage d'origine : le dernier mois de la
+  // liste (juin). Lisible : le mois de paie le plus récent déjà commencé.
+  const moisActuel = classique
+    ? moisSalaire[moisSalaire.length - 1] || ""
+    : moisPaieRecent(salaires, moisSalaire, anneeCourante);
 
   // Taux de paiement mensualités
   const tauxPayC = calcTauxPaiement(elevesC);
@@ -94,6 +110,18 @@ export function useTableauDeBord({ annee } = {}) {
 
   // Finances
   const { totalRec, totalDep, solde } = computeFinances(recettes, depenses);
+  // Solde réel (scolarité encaissée comprise), le même que le Bilan.
+  // Mémoïsé : parcourt toutes les fiches élèves, et l'écran se redessine souvent.
+  const financesClaires = useMemo(() => (classique ? null : syntheseFinances({
+    overview: getMensualiteOverview([...elevesC, ...elevesL, ...elevesP, ...elevesPre], moisAnnee, tarifsClasses, anneeCourante),
+    recettes, depenses, versements,
+  })), [classique, elevesC, elevesL, elevesP, elevesPre, moisAnnee, tarifsClasses, anneeCourante, recettes, depenses, versements]);
+  // Alerte « masse salariale élevée » : la paie du mois comparée à ce qui est
+  // encaissé en moyenne par mois — l'ancienne la comparait aux seules recettes
+  // saisies à la main, et se déclenchait presque toujours.
+  const moyenneEncaisseeMois = financesClaires
+    ? financesClaires.totalEntrees / nbMoisEntames(moisSalaire, anneeCourante)
+    : null;
 
   // Masse salariale mois courant
   const salMois = salaires.filter((s) => s.mois === moisActuel);
@@ -118,7 +146,7 @@ export function useTableauDeBord({ annee } = {}) {
     demandeForm, setDemandeForm, demandeEnvoi, demandeSucces, envoyerDemande,
     totalEleves, totalEns, moisActuel,
     tauxPayC, tauxPayL, tauxPayP, tauxPay,
-    totalRec, totalDep, solde, salMois, masseSal,
+    totalRec, totalDep, solde, salMois, masseSal, financesClaires, anneeCourante, moyenneEncaisseeMois,
     evAVenir, totalAbs, dataTendance,
   };
 }
