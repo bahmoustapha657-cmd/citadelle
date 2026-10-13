@@ -90,12 +90,6 @@ export function EnrolToolbar({
             </div>
           : <Btn disabled title="Limite du plan atteinte — Contactez le Super-Admin">🔒 Limite atteinte</Btn>
       )}
-      {/* Déplacer des élèves existants : n'en ajoute aucun, donc pas soumis
-          à la limite du plan. */}
-      {!afficherDeparts&&canCreate&&(
-        <Btn v="ghost" title="Faire passer des élèves d'une section à l'autre (ex. préscolaire → primaire)"
-          onClick={()=>setModal("passerelle")}>🌉 Passerelle</Btn>
-      )}
     </div>
   );
 }

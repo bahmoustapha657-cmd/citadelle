@@ -133,11 +133,9 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   const ajoutParNiveau = { college: ajEC, lycee: ajEL, primaire: ajEP, prescolaire: ajEPre };
   const suppressionParNiveau = { college: supEC, lycee: supEL, primaire: supEP, prescolaire: supEPre };
   const modifParNiveau = { college: modEC_full, lycee: modEL_full, primaire: modEP_full, prescolaire: modEPre_full };
-  // Relecture d'une liste d'élèves après un déplacement de section (passerelle).
+  // Relecture de la liste de départ quand une fiche change de section
+  // (formulaire élève : Grande Section → 1ère Année).
   const rechargerParNiveau = { college: refEC, lycee: refEL, primaire: refEP, prescolaire: refEPre };
-  const classesParNiveau = {
-    college: classesCollegeList, lycee: classesLyceeList, primaire: classesPrimaireList, prescolaire: classesPrescolaireList,
-  };
   // Wrappers : injectent les listes de classes + ajouts Firestore au helper.
   const sortAlpha = (arr) => sortAlphaEleves(arr, schoolInfo.triEleves);
   const ensureClasse = (nom, niv, dejaCreees) => {
@@ -355,7 +353,7 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
     tab, setTab, sousTabSal, setSousTabSal, modal, setModal, form, setForm,
     niveau, setNiveau, filtClasse, setFiltClasse, moisSel, setMoisSel,
     primeDefaut, setPrimeDefaut, filtrePrimNom, setFiltrePrimNom, filtrePrimClasse, setFiltrePrimClasse,
-    ajoutParNiveau, suppressionParNiveau, modifParNiveau, rechargerParNiveau, classesParNiveau, ensureClasse, sortAlpha,
+    ajoutParNiveau, suppressionParNiveau, modifParNiveau, rechargerParNiveau, ensureClasse, sortAlpha,
     totR, totD, totVers, eleves, classesU, tousElevesScolarite, elevesFiltres,
     getTarif, getTarifBase, getTarifRevision, getTarifAutre, getTarifIns, getTarifReinsc,
     getTarifInscriptionEleve, getTarifFraisDivers, saveTarif,

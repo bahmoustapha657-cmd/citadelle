@@ -6,7 +6,6 @@ import { DepartsView } from "./enrolment/DepartsView";
 import { EnrolModale } from "./enrolment/EnrolModale";
 import { RapideEnrolModale } from "./enrolment/RapideEnrolModale";
 import { ImportEnrolModale } from "./enrolment/ImportEnrolModale";
-import { PasserelleModale } from "./enrolment/PasserelleModale";
 import { EnrolPlanAlerte } from "./enrolment/EnrolPlanAlerte";
 import { EnrolToolbar } from "./enrolment/EnrolToolbar";
 import { EnrolTable } from "./enrolment/EnrolTable";
@@ -18,7 +17,7 @@ export function EnrolmentTab({
   form, setForm, modal, setModal, canCreate, canEdit, canCreateParent = false,
   elevesC, elevesL, elevesP, elevesPre = [], cEC, cEL, cEP,
   tousElevesScolarite, ajoutParNiveau, suppressionParNiveau,
-  modifParNiveau, rechargerParNiveau = {}, classesParNiveau = {}, ensureClasse, sortAlpha,
+  modifParNiveau, rechargerParNiveau = {}, ensureClasse, sortAlpha,
   encaisserInscriptions, getTarifInscriptionEleve, tarifsClasses = [],
 }) {
   const { t } = useTranslation();
@@ -58,7 +57,6 @@ export function EnrolmentTab({
   // Compteurs de la sélection courante (cycle + classe), affichés dans la
   // barre d'outils : c'est l'indicateur de rentrée de la direction.
   const nbAReinscrire = elevesClasse.filter(aReinscrire).length;
-  const ajEnrol = ajoutParNiveau[niveauEnrol] || ajoutParNiveau.college;
   const supEnrol = suppressionParNiveau[niveauEnrol] || suppressionParNiveau.college;
   const modEnrol = modifParNiveau[niveauEnrol] || modifParNiveau.college;
 
@@ -96,10 +94,14 @@ export function EnrolmentTab({
         anneeOfficielle={schoolInfo?.anneeScolaire || getAnnee()}
       />}
 
+      {/* Section au choix (comme la saisie rapide) : à la modification, en
+          changer fait passer l'élève dans l'autre section (Grande Section →
+          1ère Année), d'où les ajouts, modifications et listes de TOUTES. */}
       {((modal==="add_enrol"&&canCreate)||(modal==="edit_enrol"&&canEdit))&&<EnrolModale
         modal={modal} setModal={setModal} form={form} setForm={setForm} chg={chg} niveauEnrol={niveauEnrol}
-        schoolId={schoolId} toast={toast} tousElevesScolarite={tousElevesScolarite}
-        ajEnrol={ajEnrol} modEnrol={modEnrol} ensureClasse={ensureClasse}/>}
+        schoolId={schoolId} schoolInfo={schoolInfo} toast={toast} tousElevesScolarite={tousElevesScolarite}
+        elevesParNiveau={elevesParNiveau} ajoutParNiveau={ajoutParNiveau} modifParNiveau={modifParNiveau}
+        rechargerParNiveau={rechargerParNiveau} ensureClasse={ensureClasse}/>}
 
       {/* Saisie rapide : chaque élève choisit sa section dans la modale, d'où
           les ajouts et listes de TOUTES les sections — puis, en terminant,
@@ -109,10 +111,6 @@ export function EnrolmentTab({
         peutCreerParent={canCreateParent}
         schoolId={schoolId} schoolInfo={schoolInfo} toast={toast} tousElevesScolarite={tousElevesScolarite}
         ajoutParNiveau={ajoutParNiveau} ensureClasse={ensureClasse} elevesParNiveau={elevesParNiveau}/>}
-
-      {modal==="passerelle"&&canCreate&&<PasserelleModale
-        setModal={setModal} schoolId={schoolId} schoolInfo={schoolInfo} toast={toast}
-        elevesParNiveau={elevesParNiveau} classesParNiveau={classesParNiveau} rechargerParNiveau={rechargerParNiveau}/>}
 
       {modal==="import_enrol"&&canCreate&&<ImportEnrolModale
         setModal={setModal} niveauEnrol={niveauEnrol} schoolInfo={schoolInfo} toast={toast}
