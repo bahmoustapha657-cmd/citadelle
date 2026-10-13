@@ -257,7 +257,18 @@
     "alertAllGoodDesc": "Trésorerie positive et taux de paiement satisfaisant.",
     "annualTrends": "Tendances annuelles",
     "paymentRatePct": "Taux de paiement (%)",
-    "absencesLabel": "Absences"
+    "absencesLabel": "Absences",
+    "realBalance": "Solde réel {{annee}}",
+    "realBalanceSub": "Entré {{entre}} · Sorti {{sorti}} (scolarité comprise)",
+    "toCollect": "Reste à encaisser",
+    "toCollectSub": "{{taux}} % de la scolarité attendue déjà encaissée",
+    "monthsPaid": "Mensualités payées",
+    "monthsPaidSub": "Mois payés sur mois dus, toutes sections",
+    "salariesOf": "Salaires de {{mois}}",
+    "salariesSub": "{{n}} fiche(s) de paie · non déduits du solde",
+    "alertNegBalDescReal": "Solde réel : {{amount}}",
+    "alertHighPayrollDescAvg": "{{pct}} % de ce qui est encaissé en moyenne par mois.",
+    "alertHighPayrollNoIncome": "Aucun encaissement enregistré pour couvrir les salaires."
   },
   "landing": {
     "heroTitle": "EduGest — La gestion scolaire moderne",

@@ -4,8 +4,21 @@ import { Badge, Card, Vide } from "../ui";
 
 const TYPE_COLORS = { exam: "#ef4444", conge: "#10b981", reunion: "#f59e0b", autre: "#6366f1" };
 
-export function EventsAlerts({ c1, c2, evAVenir, tauxPay, solde, masseSal, totalRec }) {
+// `moyenneMensuelle` (affichage lisible, cf. finances-claires.js) : ce qui est
+// encaissé en moyenne par mois, scolarité comprise ; `solde` est alors le solde
+// réel. Sans elle (null), les règles d'origine : paie comparée aux recettes
+// saisies à la main.
+export function EventsAlerts({ c1, c2, evAVenir, tauxPay, solde, masseSal, totalRec, moyenneMensuelle = null }) {
   const { t } = useTranslation();
+  const clair = moyenneMensuelle !== null;
+  const paieElevee = clair
+    ? masseSal > 0 && masseSal > moyenneMensuelle * 0.7
+    : masseSal > totalRec * 0.7 && masseSal > 0;
+  const descPaie = !clair
+    ? t("dashboard.alertHighPayrollDesc", { pct: Math.round(masseSal / totalRec * 100) })
+    : moyenneMensuelle > 0
+      ? t("dashboard.alertHighPayrollDescAvg", { pct: Math.round(masseSal / moyenneMensuelle * 100) })
+      : t("dashboard.alertHighPayrollNoIncome");
   return (
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
       <Card><div style={{ padding: "16px 18px" }}>
@@ -36,13 +49,13 @@ export function EventsAlerts({ c1, c2, evAVenir, tauxPay, solde, masseSal, total
           {solde < 0 && (
             <div style={{ padding: "10px 12px", background: "#fef2f2", borderRadius: 8, borderLeft: "3px solid #ef4444", fontSize: 12 }}>
               <span style={{ fontWeight: 800, color: "#991b1b" }}>{t("dashboard.alertNegBalTitle")}</span>
-              <div style={{ color: "#991b1b", marginTop: 2 }}>{t("dashboard.alertNegBalDesc", { amount: fmt(solde) })}</div>
+              <div style={{ color: "#991b1b", marginTop: 2 }}>{t(clair ? "dashboard.alertNegBalDescReal" : "dashboard.alertNegBalDesc", { amount: fmt(solde) })}</div>
             </div>
           )}
-          {masseSal > totalRec * 0.7 && masseSal > 0 && (
+          {paieElevee && (
             <div style={{ padding: "10px 12px", background: "#fef3e0", borderRadius: 8, borderLeft: "3px solid #f59e0b", fontSize: 12 }}>
               <span style={{ fontWeight: 800, color: "#92400e" }}>{t("dashboard.alertHighPayrollTitle")}</span>
-              <div style={{ color: "#92400e", marginTop: 2 }}>{t("dashboard.alertHighPayrollDesc", { pct: Math.round(masseSal / totalRec * 100) })}</div>
+              <div style={{ color: "#92400e", marginTop: 2 }}>{descPaie}</div>
             </div>
           )}
           {tauxPay >= 60 && solde >= 0 && (

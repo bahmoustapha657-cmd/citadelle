@@ -257,7 +257,18 @@
     "alertAllGoodDesc": "رصيد إيجابي ونسبة دفع مُرضية.",
     "annualTrends": "الاتجاهات السنوية",
     "paymentRatePct": "نسبة الدفع (%)",
-    "absencesLabel": "الغيابات"
+    "absencesLabel": "الغيابات",
+    "realBalance": "الرصيد الفعلي {{annee}}",
+    "realBalanceSub": "الداخل {{entre}} · الخارج {{sorti}} (بما فيها الرسوم الدراسية)",
+    "toCollect": "المتبقي للتحصيل",
+    "toCollectSub": "تم تحصيل {{taux}}% من الرسوم الدراسية المتوقعة",
+    "monthsPaid": "الأقساط الشهرية المدفوعة",
+    "monthsPaidSub": "الأشهر المدفوعة من الأشهر المستحقة، كل الأقسام",
+    "salariesOf": "رواتب {{mois}}",
+    "salariesSub": "{{n}} قسيمة راتب · غير مخصومة من الرصيد",
+    "alertNegBalDescReal": "الرصيد الفعلي: {{amount}}",
+    "alertHighPayrollDescAvg": "{{pct}}% من متوسط المداخيل الشهرية.",
+    "alertHighPayrollNoIncome": "لا توجد مداخيل مسجلة لتغطية الرواتب."
   },
   "landing": {
     "heroTitle": "EduGest — الإدارة المدرسية الحديثة",

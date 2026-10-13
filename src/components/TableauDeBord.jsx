@@ -54,7 +54,8 @@ function TableauDeBord({ annee, userRole, onOpenLegalSettings }) {
 
       <EventsAlerts
         c1={d.c1} c2={d.c2} evAVenir={d.evAVenir}
-        tauxPay={d.tauxPay} solde={d.solde} masseSal={d.masseSal} totalRec={d.totalRec}
+        tauxPay={d.tauxPay} solde={d.financesClaires ? d.financesClaires.solde : d.solde}
+        masseSal={d.masseSal} totalRec={d.totalRec} moyenneMensuelle={d.moyenneEncaisseeMois}
       />
 
       <AbonnementBloc

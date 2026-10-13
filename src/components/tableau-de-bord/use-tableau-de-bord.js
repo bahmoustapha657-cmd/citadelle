@@ -11,6 +11,8 @@ import {
   computeFinances,
   computeMasseSalariale,
   computeTendance,
+  moisPaieRecent,
+  nbMoisEntames,
 } from "./tableau-de-bord-derive";
 
 // Charge toutes les collections du dashboard, calcule les indicateurs
@@ -38,7 +40,8 @@ export function useTableauDeBord({ annee } = {}) {
   const { items: depenses } = useFirestore("depenses", filtreAnnee);
   const { items: versements } = useFirestore("versements", { annee: anneeCourante });
   const { items: tarifsClasses } = useFirestore("tarifs");
-  const { items: salaires } = useFirestore("salaires");
+  // Salaires : de l'année affichée aussi (la Comptabilité les lit ainsi).
+  const { items: salaires } = useFirestore("salaires", filtreAnnee);
   const { items: evenements } = useFirestore("evenements");
   const { items: absences } = useFirestore("absencesCollege");
   const { items: absP } = useFirestore("absencesPrimaire");
@@ -92,7 +95,11 @@ export function useTableauDeBord({ annee } = {}) {
   const actifs = (liste) => liste.filter((e) => e.statut === "Actif").length;
   const totalEleves = actifs(elevesC) + actifs(elevesL) + actifs(elevesP) + actifs(elevesPre);
   const totalEns = ensC.length + ensL.length + ensP.length + ensPre.length;
-  const moisActuel = moisSalaire[moisSalaire.length - 1] || "";
+  // Mois de la tuile salaires. Affichage d'origine : le dernier mois de la
+  // liste (juin). Lisible : le mois de paie le plus récent déjà commencé.
+  const moisActuel = classique
+    ? moisSalaire[moisSalaire.length - 1] || ""
+    : moisPaieRecent(salaires, moisSalaire, anneeCourante);
 
   // Taux de paiement mensualités
   const tauxPayC = calcTauxPaiement(elevesC);
@@ -109,6 +116,12 @@ export function useTableauDeBord({ annee } = {}) {
     overview: getMensualiteOverview([...elevesC, ...elevesL, ...elevesP, ...elevesPre], moisAnnee, tarifsClasses, anneeCourante),
     recettes, depenses, versements,
   })), [classique, elevesC, elevesL, elevesP, elevesPre, moisAnnee, tarifsClasses, anneeCourante, recettes, depenses, versements]);
+  // Alerte « masse salariale élevée » : la paie du mois comparée à ce qui est
+  // encaissé en moyenne par mois — l'ancienne la comparait aux seules recettes
+  // saisies à la main, et se déclenchait presque toujours.
+  const moyenneEncaisseeMois = financesClaires
+    ? financesClaires.totalEntrees / nbMoisEntames(moisSalaire, anneeCourante)
+    : null;
 
   // Masse salariale mois courant
   const salMois = salaires.filter((s) => s.mois === moisActuel);
@@ -133,7 +146,7 @@ export function useTableauDeBord({ annee } = {}) {
     demandeForm, setDemandeForm, demandeEnvoi, demandeSucces, envoyerDemande,
     totalEleves, totalEns, moisActuel,
     tauxPayC, tauxPayL, tauxPayP, tauxPay,
-    totalRec, totalDep, solde, salMois, masseSal, financesClaires, anneeCourante,
+    totalRec, totalDep, solde, salMois, masseSal, financesClaires, anneeCourante, moyenneEncaisseeMois,
     evAVenir, totalAbs, dataTendance,
   };
 }

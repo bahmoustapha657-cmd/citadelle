@@ -52,15 +52,15 @@ export function KpiGrid({
       <div style={{ ...grille, gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,190px),1fr))" }}>
         <KPI {...k} label={t("dashboard.activeStudents")} value={totalEleves} icon="🎓" sub={detailEleves} />
         <KPI {...k} label={t("dashboard.totalTeachers")} value={totalEns} icon="👨‍🏫" sub={detailEns} />
-        <KPI {...k} label={`Solde réel ${anneeCourante}`} icon="💰"
+        <KPI {...k} label={t("dashboard.realBalance", { annee: anneeCourante })} icon="💰"
           value={`${f.solde < 0 ? "− " : ""}${fmt(Math.abs(f.solde))}`} color={f.solde >= 0 ? "green" : "red"}
-          sub={`Entré ${fmt(f.totalEntrees)} · Sorti ${fmt(f.totalSorties)} (scolarité comprise)`} />
-        <KPI {...k} label="Reste à encaisser" value={fmt(r.reste)} icon="⏳" color={r.reste > 0 ? "red" : "green"}
-          sub={`${r.taux.toFixed(0)} % de la scolarité attendue déjà encaissée`} />
-        <KPI {...k} label="Mensualités payées" value={`${tauxPay}%`} icon="💳" color="green"
-          sub="Mois payés sur mois dus, toutes sections" />
-        <KPI {...k} label={`Salaires de ${moisActuel}`} value={fmt(masseSal)} icon="📋"
-          sub={`${salMois.length} fiche(s) de paie · non déduits du solde`} />
+          sub={t("dashboard.realBalanceSub", { entre: fmt(f.totalEntrees), sorti: fmt(f.totalSorties) })} />
+        <KPI {...k} label={t("dashboard.toCollect")} value={fmt(r.reste)} icon="⏳" color={r.reste > 0 ? "red" : "green"}
+          sub={t("dashboard.toCollectSub", { taux: r.taux.toFixed(0) })} />
+        <KPI {...k} label={t("dashboard.monthsPaid")} value={`${tauxPay}%`} icon="💳" color="green"
+          sub={t("dashboard.monthsPaidSub")} />
+        <KPI {...k} label={t("dashboard.salariesOf", { mois: moisActuel })} value={fmt(masseSal)} icon="📋"
+          sub={t("dashboard.salariesSub", { n: salMois.length })} />
         <KPI {...k} label={t("dashboard.absencesEntered")} value={totalAbs} icon="📝" sub={t("dashboard.allSections")} />
       </div>
     );

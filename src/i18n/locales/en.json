@@ -257,7 +257,18 @@
     "alertAllGoodDesc": "Positive cash balance and satisfactory payment rate.",
     "annualTrends": "Annual trends",
     "paymentRatePct": "Payment rate (%)",
-    "absencesLabel": "Absences"
+    "absencesLabel": "Absences",
+    "realBalance": "Actual balance {{annee}}",
+    "realBalanceSub": "In {{entre}} · Out {{sorti}} (tuition included)",
+    "toCollect": "Still to collect",
+    "toCollectSub": "{{taux}}% of expected tuition already collected",
+    "monthsPaid": "Monthly fees paid",
+    "monthsPaidSub": "Months paid out of months due, all sections",
+    "salariesOf": "Salaries for {{mois}}",
+    "salariesSub": "{{n}} payslip(s) · not deducted from the balance",
+    "alertNegBalDescReal": "Actual balance: {{amount}}",
+    "alertHighPayrollDescAvg": "{{pct}}% of the average monthly income.",
+    "alertHighPayrollNoIncome": "No income recorded to cover salaries."
   },
   "landing": {
     "heroTitle": "EduGest — Modern school management",
