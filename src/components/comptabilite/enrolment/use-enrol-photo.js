@@ -5,6 +5,7 @@ import { champsRetour, normaliserDepart } from "../../../depart-utils";
 import { uploadPhotoEleve } from "../../../storageUtils";
 import { findEnrollmentDuplicate, getEnrollmentDuplicateMessage } from "../../../enrollment-utils";
 import { deplacerEleve, erreurClasseSection } from "./enrol-section";
+import { champsFicheModifiee } from "./fiche-modifiable";
 
 // Enregistrement d'un élève en inscription, photo comprise (téléversée au
 // moment de l'enregistrement). La prise de vue et l'import vivent dans
@@ -14,7 +15,7 @@ import { deplacerEleve, erreurClasseSection } from "./enrol-section";
 // diffèrent, l'élève change de section avant d'être enregistré.
 export function useEnrolPhoto({
   modal, setModal, form, section, sectionOrigine, classeOrigine, retour = null,
-  schoolId, toast, tousElevesScolarite, ajoutParNiveau = {}, modifParNiveau = {}, rechargerParNiveau = {}, ensureClasse,
+  schoolId, toast, tousElevesScolarite, ajoutParNiveau = {}, modChampParNiveau = {}, rechargerParNiveau = {}, ensureClasse,
 }) {
   const { logAction } = useContext(SchoolContext);
   const [uploadEnCours, setUploadEnCours] = useState(false);
@@ -75,7 +76,8 @@ export function useEnrolPhoto({
           );
           await ensureClasse(r.classe, section);
         }
-        await modifParNiveau[section](r);
+        // Fusion champ par champ, sans les paiements (cf. fiche-modifiable).
+        await modChampParNiveau[section](r._id, champsFicheModifiee(r));
         if (retour) {
           logAction?.("Réintégration d'un élève",
             `${r.nom} ${r.prenom} (${r.classe}) — parti le ${retour.dateDepart || "?"}, revenu le ${retour.dateRetour || "?"} ; `

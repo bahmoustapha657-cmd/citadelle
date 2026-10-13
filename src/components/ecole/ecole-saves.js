@@ -3,13 +3,16 @@
 import { findStaffDuplicate, getStaffDuplicateMessage } from "../../staff-utils";
 
 // Crée/modifie une classe ; propage le renommage aux élèves concernés.
-export function saveClasseAction({ form, modal, classes, eleves, ajC, modC, modE }) {
+// Seule la classe de l'élève est écrite : renvoyer toute la fiche depuis la
+// mémoire de l'écran effaçait un encaissement fait entre-temps sur un autre
+// poste (le jsonb `extra` était réécrit en entier).
+export function saveClasseAction({ form, modal, classes, eleves, ajC, modC, modChampE }) {
   const row = { ...form, effectif: Number(form.effectif || 0) };
   if (modal === "add_c") { ajC(row); return; }
   const ancienNom = classes.find((c) => c._id === form._id)?.nom;
   modC(row);
   if (ancienNom && ancienNom !== form.nom)
-    eleves.filter((e) => e.classe === ancienNom).forEach((e) => modE({ ...e, classe: form.nom }));
+    eleves.filter((e) => e.classe === ancienNom).forEach((e) => modChampE(e._id, { classe: form.nom }));
 }
 
 // Crée/modifie un enseignant (garde anti-doublon) ; tient à jour la classe
