@@ -1,20 +1,26 @@
-import { useMemo, useState } from "react";
+import { useContext, useMemo, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { C, fmt } from "../../constants";
+import { SchoolContext } from "../../contexts/SchoolContext";
 import { Badge, Btn, Card, Stat, TD, THead, TR, Vide } from "../ui";
 import {
-  PERIODES_CAISSE, SOURCES,
+  SOURCES,
   collecterMouvements, decalerPeriode, filtrerPeriode, formatJour,
-  libellePeriode, serieParJour, totauxMouvements,
+  libellePeriode, periodesCaisse, serieParJour, serieParMois, totauxMouvements,
 } from "./caisse/caisse-utils";
 
 // Journal de caisse : ce qui est réellement entré et sorti sur une journée,
 // une semaine ou un mois. Complète le Bilan, qui raisonne par période
 // scolaire (T1/T2…) et ne répond pas à « combien a-t-on encaissé aujourd'hui ».
+// La période « Année » donne l'aperçu général de l'année scolaire, mois par
+// mois (masquée pour certaines écoles, voir periodesCaisse).
 export function CaisseTab({
   recettes, depenses, versements, eleves, moisAnnee, tarifsClasses, paiements = [],
   enModeArchive, anneeConsultee,
 }) {
+  const { schoolId, schoolInfo } = useContext(SchoolContext);
+  const moisDebut = schoolInfo?.moisDebut || "Octobre";
+  const periodes = periodesCaisse(schoolId);
   const [periode, setPeriode] = useState("jour");
   const [reference, setReference] = useState(() => new Date());
 
@@ -25,9 +31,12 @@ export function CaisseTab({
     }),
     [recettes, depenses, versements, eleves, moisAnnee, tarifsClasses, paiements, anneeConsultee],
   );
-  const duJour = useMemo(() => filtrerPeriode(mouvements, reference, periode), [mouvements, reference, periode]);
+  const duJour = useMemo(() => filtrerPeriode(mouvements, reference, periode, moisDebut), [mouvements, reference, periode, moisDebut]);
   const totaux = useMemo(() => totauxMouvements(duJour), [duJour]);
-  const serie = useMemo(() => serieParJour(duJour, reference, periode), [duJour, reference, periode]);
+  const serie = useMemo(
+    () => (periode === "annee" ? serieParMois(duJour, reference, moisDebut) : serieParJour(duJour, reference, periode)),
+    [duJour, reference, periode, moisDebut],
+  );
 
   const naviguer = (sens) => setReference((d) => decalerPeriode(d, periode, sens));
   const inputValue = `${reference.getFullYear()}-${String(reference.getMonth() + 1).padStart(2, "0")}-${String(reference.getDate()).padStart(2, "0")}`;
@@ -37,7 +46,7 @@ export function CaisseTab({
       {/* ── Sélecteur de période ── */}
       <Card><div style={{ padding: "14px 16px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <div style={{ display: "flex", gap: 3, background: "var(--lc-surface-hov)", padding: 4, borderRadius: 10 }}>
-          {PERIODES_CAISSE.map((p) => (
+          {periodes.map((p) => (
             <button key={p.id} type="button" onClick={() => setPeriode(p.id)}
               style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer",
                 background: periode === p.id ? `linear-gradient(135deg,${C.greenDk},${C.green})` : "transparent",
@@ -54,7 +63,7 @@ export function CaisseTab({
           <Btn sm v="ghost" onClick={() => naviguer(1)}>→</Btn>
           <Btn sm v="ghost" onClick={() => setReference(new Date())}>Aujourd'hui</Btn>
         </div>
-        <strong style={{ fontSize: 13, color: C.blueDark, marginInlineStart: "auto" }}>{libellePeriode(reference, periode)}</strong>
+        <strong style={{ fontSize: 13, color: C.blueDark, marginInlineStart: "auto" }}>{libellePeriode(reference, periode, moisDebut)}</strong>
       </div></Card>
 
       {enModeArchive && (
@@ -70,7 +79,7 @@ export function CaisseTab({
         <Stat label="Encaissé" value={fmt(totaux.entrees)} sub={`${duJour.filter((m) => m.sens === "entree").length} opération(s)`} bg="#eaf4e0" />
         <Stat label="Sorti" value={fmt(totaux.sorties)} sub={`${duJour.filter((m) => m.sens === "sortie").length} opération(s)`} bg="#fce8e8" />
         <Stat label="Solde de la période" value={fmt(totaux.solde)} sub={totaux.solde >= 0 ? "Excédent" : "Déficit"} bg={totaux.solde >= 0 ? "#eaf4e0" : "#fce8e8"} />
-        <Stat label="Mouvements" value={totaux.nb} sub={PERIODES_CAISSE.find((p) => p.id === periode)?.label} bg="#e0ebf8" />
+        <Stat label="Mouvements" value={totaux.nb} sub={periodes.find((p) => p.id === periode)?.label} bg="#e0ebf8" />
       </div>
 
       {duJour.length === 0 ? (
@@ -103,13 +112,14 @@ export function CaisseTab({
             </div>
           </div></Card>
 
-          {/* ── Courbe jour par jour (semaine / mois) ── */}
+          {/* ── Courbe jour par jour (semaine / mois) ou mois par mois (année) ── */}
           {periode !== "jour" && (
             <Card style={{ marginTop: 14 }}><div style={{ padding: "14px 16px" }}>
-              <p style={{ margin: "0 0 12px", fontWeight: 800, fontSize: 13, color: C.blueDark }}>Jour par jour</p>
+              <p style={{ margin: "0 0 12px", fontWeight: 800, fontSize: 13, color: C.blueDark }}>{periode === "annee" ? "Mois par mois" : "Jour par jour"}</p>
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={serie.map((j) => ({
-                  jour: j.date.toLocaleDateString("fr-FR", periode === "mois" ? { day: "numeric" } : { weekday: "short" }),
+                  jour: j.date.toLocaleDateString("fr-FR",
+                    periode === "annee" ? { month: "short" } : periode === "mois" ? { day: "numeric" } : { weekday: "short" }),
                   Encaissé: j.entrees,
                   Sorti: j.sorties,
                 }))}>
