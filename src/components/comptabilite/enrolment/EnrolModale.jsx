@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { getSectionLabel, sectionOuverte } from "../../../constants";
+import { STATUTS_SORTIE, getSectionLabel, sectionOuverte } from "../../../constants";
 import { Btn, Modale, Selec } from "../../ui";
 import { EnrolFormChamps } from "./EnrolFormChamps";
 import { PhotoEleveChamp } from "./PhotoEleveChamp";
 import { useEnrolPhoto } from "./use-enrol-photo";
+import { RetourChoix } from "./RetourChoix";
+import { aujourdhuiIso } from "../../../depart-utils";
 import { changerSectionFormulaire, matriculeSaisieRapide, sectionsSaisieRapide } from "./rapide-enrol";
 
 export function EnrolModale({
@@ -22,6 +24,15 @@ export function EnrolModale({
   const section = sections.includes(sectionChoisie) ? sectionChoisie : sectionOrigine;
   const deplacement = modal === "edit_enrol" && section !== sectionOrigine;
 
+  // Retour d'un élève parti par sa fiche (statut repassé à « Actif ») : même
+  // question qu'avec ↩ Réintégrer — les mois d'absence sont-ils dus ?
+  const [statutOrigine] = useState(form.statut || "");
+  const [departOrigine] = useState(form.dateDepart || "");
+  const [dateRetour, setDateRetour] = useState(aujourdhuiIso);
+  const [absenceDue, setAbsenceDue] = useState(null);
+  const enRetour = modal === "edit_enrol" && STATUTS_SORTIE.includes(statutOrigine) && !STATUTS_SORTIE.includes(form.statut);
+  const retour = enRetour ? { dateDepart: departOrigine, dateRetour, absenceDue } : null;
+
   // Changer de section vide la classe (propre à chaque cycle). Un nouvel
   // élève reçoit le matricule de sa section ; un élève existant garde le sien.
   const changerSection = (e) => {
@@ -33,7 +44,7 @@ export function EnrolModale({
   };
 
   const { uploadEnCours, enregistrer } = useEnrolPhoto({
-    modal, setModal, form, section, sectionOrigine, classeOrigine,
+    modal, setModal, form, section, sectionOrigine, classeOrigine, retour,
     schoolId, toast, tousElevesScolarite, ajoutParNiveau, modifParNiveau, rechargerParNiveau, ensureClasse,
   });
 
@@ -49,6 +60,11 @@ export function EnrolModale({
       et ses paiements le suivent ; ses notes restent dans l'ancienne section.
     </div>}
     <EnrolFormChamps form={form} chg={chg} niveauEnrol={section}/>
+    {enRetour&&<div style={{marginTop:14,background:"#f0fdf4",border:"1px solid #86efac",borderRadius:8,padding:"12px 14px"}}>
+      <p style={{margin:"0 0 10px",fontSize:13,fontWeight:800,color:"#166534"}}>↩ Retour de l'élève</p>
+      <RetourChoix dateDepart={departOrigine} dateRetour={dateRetour} setDateRetour={setDateRetour}
+        absenceDue={absenceDue} setAbsenceDue={setAbsenceDue}/>
+    </div>}
     <div style={{marginTop:14,borderTop:"1px solid #e5e7eb",paddingTop:14}}>
       <PhotoEleveChamp photo={form.photo} onChange={photo=>setForm(p=>({...p,photo}))} toast={toast}/>
     </div>

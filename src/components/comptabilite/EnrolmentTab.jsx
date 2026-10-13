@@ -17,7 +17,7 @@ export function EnrolmentTab({
   form, setForm, modal, setModal, canCreate, canEdit, canCreateParent = false,
   elevesC, elevesL, elevesP, elevesPre = [], cEC, cEL, cEP,
   tousElevesScolarite, ajoutParNiveau, suppressionParNiveau,
-  modifParNiveau, rechargerParNiveau = {}, ensureClasse, sortAlpha,
+  modifParNiveau, modChampParNiveau = {}, rechargerParNiveau = {}, ensureClasse, sortAlpha,
   encaisserInscriptions, getTarifInscriptionEleve, tarifsClasses = [],
 }) {
   const { t } = useTranslation();
@@ -58,7 +58,6 @@ export function EnrolmentTab({
   // barre d'outils : c'est l'indicateur de rentrée de la direction.
   const nbAReinscrire = elevesClasse.filter(aReinscrire).length;
   const supEnrol = suppressionParNiveau[niveauEnrol] || suppressionParNiveau.college;
-  const modEnrol = modifParNiveau[niveauEnrol] || modifParNiveau.college;
 
   return (
     <div>
@@ -88,7 +87,7 @@ export function EnrolmentTab({
         schoolInfo={schoolInfo} setForm={setForm} setModal={setModal} supEnrol={supEnrol}
       />}
       {afficherDeparts&&<DepartsView
-        elevesEnrol={elevesEnrol.filter(dansClasse)} canEdit={canEdit} modEnrol={modEnrol} toast={toast}
+        elevesEnrol={elevesEnrol.filter(dansClasse)} canEdit={canEdit} modChamp={modChampParNiveau[niveauEnrol]} toast={toast}
         setForm={setForm} setModal={setModal} niveauEnrol={niveauEnrol}
         schoolInfo={schoolInfo} moisAnnee={moisAnnee} tarifsClasses={tarifsClasses}
         anneeOfficielle={schoolInfo?.anneeScolaire || getAnnee()}

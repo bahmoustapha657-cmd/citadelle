@@ -1,9 +1,11 @@
-import React from "react";
+import React, { useContext, useState } from "react";
 import { C, STATUTS_SORTIE, anneeScolaireDeDate, estSorti } from "../../../constants";
-import { lireDate } from "../../../depart-utils";
+import { SchoolContext } from "../../../contexts/SchoolContext";
+import { aujourdhuiIso, champsRetour, lireDate } from "../../../depart-utils";
 import { imprimerCertificatRadiation, imprimerOrdreMutation } from "../../../reports";
 import { situationAuDepart } from "../../transferts/situation-depart";
-import { Badge, Btn, Card, Stat, THead, TR, TD, Vide } from "../../ui";
+import { Badge, Btn, Card, Modale, Stat, THead, TR, TD, Vide } from "../../ui";
+import { RetourChoix } from "./RetourChoix";
 
 // Écran « Départs » de l'enrôlement. Seuls les statuts de sortie sont des
 // départs ; « Inactif » (élève en sommeil, toujours inscrit) est compté à part
@@ -14,7 +16,7 @@ const couleurStatut = (statut) => (statut === "Exclu" ? "red" : statut === "Déc
 const fondStatut = { Transféré: "#dbeafe", Exclu: "#fef9c3", Abandonné: "#ffe4e6", Décédé: "#f3f4f6", Diplômé: "#ede9fe" };
 
 export function DepartsView({
-  elevesEnrol, canEdit, modEnrol, toast, setForm, setModal, niveauEnrol,
+  elevesEnrol, canEdit, modChamp, toast, setForm, setModal, niveauEnrol,
   schoolInfo, moisAnnee = [], tarifsClasses = [], anneeOfficielle = "",
 }) {
   const partis = elevesEnrol.filter(estSorti)
@@ -31,6 +33,33 @@ export function DepartsView({
     classe: cl, count: partis.filter((e) => e.classe === cl).length,
   })).sort((a, b) => b.count - a.count);
   const situation = (e) => situationAuDepart(e, { moisAnnee, tarifsClasses, anneeOfficielle });
+
+  // Retour d'un élève parti : date de retour + mois d'absence dus ou non.
+  const { logAction } = useContext(SchoolContext);
+  const [retour, setRetour] = useState(null);
+  const [dateRetour, setDateRetour] = useState("");
+  const [absenceDue, setAbsenceDue] = useState(null);
+  const [enCours, setEnCours] = useState(false);
+  const reintegrer = async () => {
+    const { champs, erreur } = champsRetour(retour, { dateRetour, absenceDue });
+    if (erreur) { toast(erreur, "warning"); return; }
+    setEnCours(true);
+    try {
+      // Mise à jour PARTIELLE : statut, départ et interruptions seulement.
+      // `modifier` (fiche complète) réécrivait tout le jsonb `extra` à partir
+      // de ces quatre champs — mensualités, inscription et historique perdus.
+      await modChamp(retour._id, champs);
+      logAction?.("Réintégration d'un élève",
+        `${retour.nom} ${retour.prenom} (${retour.classe}) — parti le ${retour.dateDepart || "?"}, revenu le ${dateRetour || "?"} ; `
+        + (absenceDue ? "mois d'absence dus" : "mois d'absence non dus"));
+      toast("Élève réintégré", "success");
+      setRetour(null);
+    } catch (err) {
+      toast("Réintégration impossible : " + err.message, "error");
+    } finally {
+      setEnCours(false);
+    }
+  };
 
   return (<>
     {/* ── Stats cards ── */}
@@ -90,11 +119,8 @@ export function DepartsView({
                     setForm({ ...e, niveau: niveauEnrol });
                     setModal("edit_enrol");
                   }}>Modifier</Btn>
-                  <Btn sm v="vert" onClick={async () => {
-                    if (confirm(`Réintégrer ${e.nom} ${e.prenom} comme élève Actif ?`)) {
-                      await modEnrol({ _id: e._id, statut: "Actif", dateDepart: null, motifDepart: null, destinationDepart: null });
-                      toast("Élève réintégré", "success");
-                    }
+                  <Btn sm v="vert" onClick={() => {
+                    setRetour(e); setDateRetour(aujourdhuiIso()); setAbsenceDue(null);
                   }}>↩ Réintégrer</Btn>
                 </div>
               </TD>}
@@ -103,5 +129,16 @@ export function DepartsView({
         })}</tbody>
       </table>
     </div>}
+
+    {retour && <Modale titre={`↩ Réintégrer ${retour.nom} ${retour.prenom}`} fermer={() => !enCours && setRetour(null)}>
+      <RetourChoix dateDepart={retour.dateDepart} dateRetour={dateRetour} setDateRetour={setDateRetour}
+        absenceDue={absenceDue} setAbsenceDue={setAbsenceDue}/>
+      <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
+        <Btn v="ghost" onClick={() => setRetour(null)} disabled={enCours}>Annuler</Btn>
+        <Btn v="vert" onClick={reintegrer} disabled={enCours || absenceDue === null}>
+          {enCours ? "⏳ Enregistrement…" : "↩ Réintégrer comme élève Actif"}
+        </Btn>
+      </div>
+    </Modale>}
   </>);
 }
