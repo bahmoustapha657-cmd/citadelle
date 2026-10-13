@@ -187,8 +187,11 @@ test("parti après avoir payé quelque chose (même un acompte) : les mois entam
   assert.deepEqual(moisExigibles({ ...base, mens: { ...impayes(), Oct: "Payé" } }, MOIS, ANNEE), attendus);
   assert.deepEqual(moisExigibles({ ...base, inscriptionAcompte: 5000 }, MOIS, ANNEE), attendus);
   assert.deepEqual(moisExigibles({ ...base, mensAcomptes: { Oct: 20000 } }, MOIS, ANNEE), attendus);
-  // Le diplômé a fini son année : la règle du non-réinscrit ne le vise pas.
-  assert.deepEqual(moisExigibles({ ...base, statut: "Diplômé", dateDepart: "2027-06-30" }, MOIS, ANNEE), MOIS);
+  // Cas réel (La Citadelle) : admis au BEPC, déclaré « Diplômé » le 11/10 de
+  // l'année suivante sans rien y avoir payé — il ne doit pas Octobre.
+  assert.deepEqual(moisExigibles({ ...base, statut: "Diplômé", dateDepart: "2026-10-11" }, MOIS, ANNEE), []);
+  // Le même, s'il avait payé son inscription : Octobre (entamé) reste dû.
+  assert.deepEqual(moisExigibles({ ...base, statut: "Diplômé", dateDepart: "2026-10-11", inscriptionPayee: true }, MOIS, ANNEE), ["Oct"]);
   assert.equal(aDesPaiements({ fraisPayes: { cantine: true } }), true);
   assert.equal(aDesPaiements({ mens: impayes() }), false);
 });

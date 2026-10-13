@@ -146,8 +146,10 @@ export function moisExigibles(eleve = {}, moisAnnee = [], annee = anneeEcran()) 
   if (!depart) return mois;
   // Parti PENDANT cette année sans rien avoir payé : non réinscrit, il ne
   // doit rien de l'année. Les années d'avant, qu'il a suivies, restent dues.
-  // Le diplômé, lui, a fini son année : il est forcément revenu.
-  if (eleve.statut !== "Diplômé" && departDansAnnee(depart, moisAnnee, annee) && !aDesPaiements(eleve)) return [];
+  // Le diplômé aussi : admis au BEPC dans une école sans lycée, il est
+  // déclaré « Diplômé » à la rentrée suivante (La Citadelle, 11/10/2026) —
+  // c'est un non-réinscrit, il ne doit pas Octobre.
+  if (departDansAnnee(depart, moisAnnee, annee) && !aDesPaiements(eleve)) return [];
   return mois.filter((m) => {
     const debut = debutDuMois(annee, m);
     // Année ou mois illisible : dans le doute, le mois reste dû.
