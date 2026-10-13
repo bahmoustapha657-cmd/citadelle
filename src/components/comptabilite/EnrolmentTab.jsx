@@ -6,6 +6,7 @@ import { DepartsView } from "./enrolment/DepartsView";
 import { EnrolModale } from "./enrolment/EnrolModale";
 import { RapideEnrolModale } from "./enrolment/RapideEnrolModale";
 import { ImportEnrolModale } from "./enrolment/ImportEnrolModale";
+import { PasserelleModale } from "./enrolment/PasserelleModale";
 import { EnrolPlanAlerte } from "./enrolment/EnrolPlanAlerte";
 import { EnrolToolbar } from "./enrolment/EnrolToolbar";
 import { EnrolTable } from "./enrolment/EnrolTable";
@@ -17,7 +18,7 @@ export function EnrolmentTab({
   form, setForm, modal, setModal, canCreate, canEdit, canCreateParent = false,
   elevesC, elevesL, elevesP, elevesPre = [], cEC, cEL, cEP,
   tousElevesScolarite, ajoutParNiveau, suppressionParNiveau,
-  modifParNiveau, ensureClasse, sortAlpha,
+  modifParNiveau, rechargerParNiveau = {}, classesParNiveau = {}, ensureClasse, sortAlpha,
   encaisserInscriptions, getTarifInscriptionEleve, tarifsClasses = [],
 }) {
   const { t } = useTranslation();
@@ -108,6 +109,10 @@ export function EnrolmentTab({
         peutCreerParent={canCreateParent}
         schoolId={schoolId} schoolInfo={schoolInfo} toast={toast} tousElevesScolarite={tousElevesScolarite}
         ajoutParNiveau={ajoutParNiveau} ensureClasse={ensureClasse} elevesParNiveau={elevesParNiveau}/>}
+
+      {modal==="passerelle"&&canCreate&&<PasserelleModale
+        setModal={setModal} schoolId={schoolId} schoolInfo={schoolInfo} toast={toast}
+        elevesParNiveau={elevesParNiveau} classesParNiveau={classesParNiveau} rechargerParNiveau={rechargerParNiveau}/>}
 
       {modal==="import_enrol"&&canCreate&&<ImportEnrolModale
         setModal={setModal} niveauEnrol={niveauEnrol} schoolInfo={schoolInfo} toast={toast}
