@@ -6,23 +6,26 @@ import { Badge, Btn, Card, Stat, TD, THead, TR, Vide } from "../ui";
 import {
   SOURCES,
   collecterMouvements, decalerPeriode, filtrerPeriode, formatJour,
-  libellePeriode, periodesCaisse, serieParJour, serieParMois, totauxMouvements,
+  libellePeriode, periodesCaisse, referenceAnnee, serieParJour, serieParMois, totauxMouvements,
 } from "./caisse/caisse-utils";
 
 // Journal de caisse : ce qui est réellement entré et sorti sur une journée,
 // une semaine ou un mois. Complète le Bilan, qui raisonne par période
 // scolaire (T1/T2…) et ne répond pas à « combien a-t-on encaissé aujourd'hui ».
 // La période « Année » donne l'aperçu général de l'année scolaire, mois par
-// mois (masquée pour certaines écoles, voir periodesCaisse).
+// mois (masquée pour certaines écoles, voir periodesCaisse). Elle suit l'année
+// consultée dans l'en-tête de la Comptabilité : les recettes, dépenses et
+// versements d'une autre année ne sont chargés que par ce sélecteur.
 export function CaisseTab({
   recettes, depenses, versements, eleves, moisAnnee, tarifsClasses, paiements = [],
-  enModeArchive, anneeConsultee,
+  enModeArchive, anneeConsultee, setAnneeConsultee, anneesDispo = [],
 }) {
   const { schoolId, schoolInfo } = useContext(SchoolContext);
   const moisDebut = schoolInfo?.moisDebut || "Octobre";
   const periodes = periodesCaisse(schoolId);
   const [periode, setPeriode] = useState("jour");
-  const [reference, setReference] = useState(() => new Date());
+  const [referenceChoisie, setReference] = useState(() => new Date());
+  const reference = (periode === "annee" && referenceAnnee(anneeConsultee, moisDebut)) || referenceChoisie;
 
   const mouvements = useMemo(
     () => collecterMouvements({
@@ -38,7 +41,15 @@ export function CaisseTab({
     [duJour, reference, periode, moisDebut],
   );
 
-  const naviguer = (sens) => setReference((d) => decalerPeriode(d, periode, sens));
+  // Année : ← → changent l'année consultée (liste du plus récent au plus
+  // ancien ou l'inverse — on ne présuppose pas l'ordre).
+  const anneesTriees = [...anneesDispo].sort();
+  const rangAnnee = anneesTriees.indexOf(anneeConsultee);
+  const anneeVoisine = (sens) => (rangAnnee >= 0 ? anneesTriees[rangAnnee + sens] : undefined);
+  const naviguer = (sens) => {
+    if (periode === "annee") { const a = anneeVoisine(sens); if (a && setAnneeConsultee) setAnneeConsultee(a); return; }
+    setReference((d) => decalerPeriode(d, periode, sens));
+  };
   const inputValue = `${reference.getFullYear()}-${String(reference.getMonth() + 1).padStart(2, "0")}-${String(reference.getDate()).padStart(2, "0")}`;
 
   return (
@@ -55,6 +66,12 @@ export function CaisseTab({
             </button>
           ))}
         </div>
+        {periode === "annee" ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <Btn sm v="ghost" disabled={!anneeVoisine(-1)} onClick={() => naviguer(-1)}>←</Btn>
+          <Btn sm v="ghost" disabled={!anneeVoisine(1)} onClick={() => naviguer(1)}>→</Btn>
+        </div>
+        ) : (
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <Btn sm v="ghost" onClick={() => naviguer(-1)}>←</Btn>
           <input type="date" value={inputValue}
@@ -63,6 +80,7 @@ export function CaisseTab({
           <Btn sm v="ghost" onClick={() => naviguer(1)}>→</Btn>
           <Btn sm v="ghost" onClick={() => setReference(new Date())}>Aujourd'hui</Btn>
         </div>
+        )}
         <strong style={{ fontSize: 13, color: C.blueDark, marginInlineStart: "auto" }}>{libellePeriode(reference, periode, moisDebut)}</strong>
       </div></Card>
 

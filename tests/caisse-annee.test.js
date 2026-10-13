@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   anneeScolaireDe, bornesPeriode, decalerPeriode, filtrerPeriode, libellePeriode,
-  periodesCaisse, serieParMois,
+  periodesCaisse, referenceAnnee, serieParMois,
 } from "../src/components/comptabilite/caisse/caisse-utils.js";
 
 const jour = (a, m, j) => new Date(a, m - 1, j);
@@ -40,4 +40,14 @@ test("l'aperçu annuel est masqué pour La Citadelle seulement", () => {
   assert.ok(!periodesCaisse("citadelle").some((p) => p.id === "annee"));
   assert.ok(periodesCaisse("autre-ecole").some((p) => p.id === "annee"));
   assert.equal(periodesCaisse("citadelle").length, 3);
+});
+
+test("la période Année suit l'année scolaire consultée, pas le calendrier", () => {
+  // 13 octobre 2026, année consultée 2025-2026 : on voit 2025-2026 en entier.
+  const aujourdhui = jour(2026, 10, 13);
+  assert.deepEqual(referenceAnnee("2025-2026", "Octobre", aujourdhui), jour(2026, 9, 30));
+  assert.equal(libellePeriode(referenceAnnee("2025-2026", "Octobre", aujourdhui), "annee", "Octobre"), "Année scolaire 2025-2026");
+  // Année en cours : aujourd'hui.
+  assert.deepEqual(referenceAnnee("2026-2027", "Octobre", aujourdhui), aujourdhui);
+  assert.equal(referenceAnnee("", "Octobre", aujourdhui), null);
 });
