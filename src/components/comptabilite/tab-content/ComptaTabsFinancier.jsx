@@ -44,6 +44,8 @@ export function ComptaTabsFinancier({ c, readOnly, annee }) {
         paiements={c.paiements}
         enModeArchive={c.enModeArchive}
         anneeConsultee={c.anneeConsultee}
+        setAnneeConsultee={c.setAnneeConsultee}
+        anneesDispo={c.anneesDispo}
       />}
 
       {/* Rapprocher / régulariser : même droit qu'encaisser (le serveur

@@ -87,6 +87,21 @@ export function anneeScolaireDe(date, moisDebut = "Octobre") {
   };
 }
 
+// Date de référence de la période « Année » pour l'année scolaire consultée
+// (« 2025-2026 ») : aujourd'hui s'il en fait partie, sinon son dernier jour.
+// Sans elle, le bouton « Année » visait l'année du calendrier — en octobre,
+// une année ouverte depuis quelques jours, identique au mois en cours.
+// Renvoie null si `annee` n'est pas au format AAAA-AAAA.
+export function referenceAnnee(annee, moisDebut = "Octobre", aujourdhui = new Date()) {
+  const m = /^(\d{4})-\d{4}$/.exec(String(annee || "").trim());
+  if (!m) return null;
+  const rang = TOUS_MOIS_LONGS.indexOf(moisDebut);
+  const moisCivil = ((rang >= 0 ? rang : 1) + 8) % 12;
+  const { debut, fin } = anneeScolaireDe(new Date(Number(m[1]), moisCivil, 1), moisDebut);
+  const jour = dateSeule(aujourdhui);
+  return jour >= debut && jour <= fin ? jour : fin;
+}
+
 // Bornes [debut, fin] incluses de la période demandée autour de `date`.
 export function bornesPeriode(date, periode, moisDebut) {
   const base = dateSeule(date);
