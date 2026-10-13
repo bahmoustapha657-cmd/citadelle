@@ -1,5 +1,6 @@
 // Journal de caisse : collecte de TOUS les mouvements datés du module
-// Comptabilité, puis filtrage sur une journée, une semaine ou un mois.
+// Comptabilité, puis filtrage sur une journée, une semaine, un mois ou
+// l'année scolaire entière.
 // Logique pure — aucune dépendance React.
 //
 // Pourquoi un module dédié : les mouvements ne vivent pas au même endroit.
@@ -17,12 +18,23 @@ import {
   montantMoisPaye,
 } from "../../../mensualite-utils";
 import { clePaiement, mouvementsDepuisJournal } from "../paiements-journal";
+import { TOUS_MOIS_LONGS } from "../../../constants";
 
 export const PERIODES_CAISSE = [
   { id: "jour", label: "Journée" },
   { id: "semaine", label: "Semaine" },
   { id: "mois", label: "Mois" },
+  { id: "annee", label: "Année" },
 ];
+
+// Aperçu général (période « Année ») : masqué pour les écoles listées ici, à
+// leur demande. Clé = schoolId (code école).
+const ECOLES_SANS_APERCU_ANNUEL = new Set(["citadelle"]);
+
+export const periodesCaisse = (schoolId) =>
+  ECOLES_SANS_APERCU_ANNUEL.has(schoolId)
+    ? PERIODES_CAISSE.filter((p) => p.id !== "annee")
+    : PERIODES_CAISSE;
 
 // ── Dates ───────────────────────────────────────────────────────────────────
 // Deux formats coexistent en base : "AAAA-MM-JJ" pour les champs saisis dans
@@ -60,9 +72,28 @@ export function debutSemaine(d) {
   return base;
 }
 
-// Bornes [debut, fin] incluses de la période demandée autour de `date`.
-export function bornesPeriode(date, periode) {
+// Année scolaire contenant `date` : douze mois à partir du 1er du mois de
+// rentrée (vacances comprises — un encaissement d'août appartient à l'année
+// qui se termine). Renvoie l'année civile d'ouverture et les bornes.
+export function anneeScolaireDe(date, moisDebut = "Octobre") {
+  const rang = TOUS_MOIS_LONGS.indexOf(moisDebut);
+  const moisCivil = ((rang >= 0 ? rang : 1) + 8) % 12; // Septembre → 8
   const base = dateSeule(date);
+  const ouverture = base.getMonth() >= moisCivil ? base.getFullYear() : base.getFullYear() - 1;
+  return {
+    ouverture,
+    debut: new Date(ouverture, moisCivil, 1),
+    fin: new Date(ouverture + 1, moisCivil, 0),
+  };
+}
+
+// Bornes [debut, fin] incluses de la période demandée autour de `date`.
+export function bornesPeriode(date, periode, moisDebut) {
+  const base = dateSeule(date);
+  if (periode === "annee") {
+    const { debut, fin } = anneeScolaireDe(base, moisDebut);
+    return { debut, fin };
+  }
   if (periode === "semaine") {
     const debut = debutSemaine(base);
     const fin = new Date(debut);
@@ -83,11 +114,16 @@ export function decalerPeriode(date, periode, sens) {
   const base = dateSeule(date);
   if (periode === "semaine") base.setDate(base.getDate() + 7 * sens);
   else if (periode === "mois") base.setMonth(base.getMonth() + sens);
+  else if (periode === "annee") { base.setDate(1); base.setFullYear(base.getFullYear() + sens); }
   else base.setDate(base.getDate() + sens);
   return base;
 }
 
-export function libellePeriode(date, periode) {
+export function libellePeriode(date, periode, moisDebut) {
+  if (periode === "annee") {
+    const { ouverture } = anneeScolaireDe(date, moisDebut);
+    return `Année scolaire ${ouverture}-${ouverture + 1}`;
+  }
   const { debut, fin } = bornesPeriode(date, periode);
   if (periode === "jour") {
     return debut.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
@@ -226,8 +262,8 @@ export function collecterMouvements(sources) {
     .sort((a, b) => b.date - a.date || a.libelle.localeCompare(b.libelle));
 }
 
-export function filtrerPeriode(mouvements, date, periode) {
-  const { debut, fin } = bornesPeriode(date, periode);
+export function filtrerPeriode(mouvements, date, periode, moisDebut) {
+  const { debut, fin } = bornesPeriode(date, periode, moisDebut);
   return mouvements.filter((m) => m.date >= debut && m.date <= fin);
 }
 
@@ -265,4 +301,22 @@ export function serieParJour(mouvements, date, periode) {
     if (m.sens === "sortie") jour.sorties += montant; else if (m.sens === "entree") jour.entrees += montant;
   }
   return jours;
+}
+
+// Série mensuelle de l'année scolaire — graphique de l'aperçu général. Douze
+// mois, vides compris, de la rentrée aux vacances.
+export function serieParMois(mouvements, date, moisDebut) {
+  const { debut } = anneeScolaireDe(date, moisDebut);
+  const mois = Array.from({ length: 12 }, (_, i) => {
+    const d = new Date(debut.getFullYear(), debut.getMonth() + i, 1);
+    return { cle: `${d.getFullYear()}-${d.getMonth()}`, date: d, entrees: 0, sorties: 0 };
+  });
+  const index = new Map(mois.map((m) => [m.cle, m]));
+  for (const m of mouvements) {
+    const ligne = index.get(`${m.date.getFullYear()}-${m.date.getMonth()}`);
+    if (!ligne) continue;
+    const montant = Number(m.montant) || 0;
+    if (m.sens === "sortie") ligne.sorties += montant; else if (m.sens === "entree") ligne.entrees += montant;
+  }
+  return mois;
 }
