@@ -30,6 +30,8 @@ test("connecteur : le journal remonte en INSERT, une ligne déjà reçue n'est p
   mocks.push(mock.module(url("../src/supabaseClient.js"), {
     namedExports: {
       getSupabase: () => ({
+        // Session valide : sans elle, la file attend la reconnexion.
+        auth: { getSession: async () => ({ data: { session: { access_token: "jeton" } }, error: null }) },
         from: (table) => ({
           insert: async (r) => { appels.push(["insert", table, r]); return reponseInsert; },
           upsert: async (r) => { appels.push(["upsert", table, r]); return { error: null }; },
