@@ -3,6 +3,7 @@ import jsQR from "jsqr";
 import { Modale, Btn } from "../ui";
 import { getCameraErrorMessage } from "../camera-capture/camera-errors";
 import { decryptQrPayload, lireChampsQr, schoolSecretCandidates } from "../../reports/qr-crypto";
+import { aLampe, etapesMiseAuPoint, plageZoom, zoomInitial } from "./reglages-camera-qr";
 
 // Détecteur NATIF du navigateur (BarcodeDetector), ou null. Il s'appuie sur le
 // moteur du système (accéléré, tolérant au flou et aux angles) et rattrape des
@@ -70,6 +71,12 @@ export function QrScannerModal({ schoolInfo = {}, fermer }) {
   const [message, setMessage] = useState("");
   const [resolution, setResolution] = useState(null); // { w, h } réellement obtenus
   const [analyse, setAnalyse] = useState(false); // photo importée en cours de lecture
+  // Réglages de l'appareil (cf. reglages-camera-qr.js) : zoom, lampe, mise au
+  // point au toucher — proposés seulement là où la caméra les accepte.
+  const capsRef = useRef({});
+  const [zoom, setZoom] = useState(null); // { min, max, step, valeur } | null
+  const [lampe, setLampe] = useState(null); // null : pas de lampe ; sinon allumée ?
+  const [miseAuPoint, setMiseAuPoint] = useState(false); // relance en cours
   // Plusieurs secrets candidats plutôt qu'un seul : les documents déjà imprimés
   // l'ont été avec le secret en vigueur à l'époque (longtemps le NOM de
   // l'école). On reste ainsi lisible après un renommage. Cf. qr-crypto.js.
@@ -159,12 +166,25 @@ export function QrScannerModal({ schoolInfo = {}, fermer }) {
       // la définition du capteur. Beaucoup de navigateurs démarrent en mise au
       // point fixe ; on la demande explicitement (ignorée silencieusement là où
       // elle n'est pas supportée — d'où le try/catch sans message).
+      let possibles = {};
       try {
-        const possibles = piste?.getCapabilities?.() || {};
+        possibles = piste?.getCapabilities?.() || {};
         if (possibles.focusMode?.includes("continuous")) {
           await piste.applyConstraints({ advanced: [{ focusMode: "continuous" }] });
         }
       } catch { /* réglage non supporté : on scanne quand même */ }
+      capsRef.current = possibles;
+      // Zoom ×2 d'emblée : le QR paraît assez grand à 20–25 cm, distance où
+      // l'autofocus est net (de près, il décroche et l'image devient floue).
+      const plage = plageZoom(possibles);
+      const depart = zoomInitial(possibles);
+      if (plage && depart !== null) {
+        try {
+          await piste.applyConstraints({ advanced: [{ zoom: depart }] });
+          setZoom({ ...plage, valeur: depart });
+        } catch { setZoom(null); }
+      } else setZoom(null);
+      setLampe(aLampe(possibles) ? false : null);
       const reglages = piste?.getSettings?.() || {};
       setResolution({ w: reglages.width || 0, h: reglages.height || 0 });
 
@@ -304,6 +324,46 @@ export function QrScannerModal({ schoolInfo = {}, fermer }) {
     img.src = url;
   };
 
+  const piste = () => streamRef.current?.getVideoTracks?.()[0] || null;
+
+  const changerZoom = async (valeur) => {
+    const p = piste();
+    if (!p || !zoom) return;
+    try {
+      await p.applyConstraints({ advanced: [{ zoom: valeur }] });
+      setZoom((z) => (z ? { ...z, valeur } : z));
+    } catch { /* zoom refusé : on garde le précédent */ }
+  };
+
+  const basculerLampe = async () => {
+    const p = piste();
+    if (!p || lampe === null) return;
+    try {
+      await p.applyConstraints({ advanced: [{ torch: !lampe }] });
+      setLampe(!lampe);
+    } catch { setLampe(null); /* lampe indisponible finalement */ }
+  };
+
+  // Toucher l'image : relance la mise au point, sur le point touché si
+  // l'appareil le permet (coordonnées normalisées 0–1).
+  const toucherVideo = async (ev) => {
+    const p = piste();
+    if (!p || miseAuPoint) return;
+    const r = ev.currentTarget.getBoundingClientRect();
+    const point = { x: (ev.clientX - r.left) / r.width, y: (ev.clientY - r.top) / r.height };
+    const etapes = etapesMiseAuPoint(capsRef.current, point);
+    if (!etapes.length) return;
+    setMiseAuPoint(true);
+    try {
+      await p.applyConstraints({ advanced: [etapes[0]] });
+      if (etapes[1]) {
+        await new Promise((ok) => setTimeout(ok, 1200));
+        await p.applyConstraints({ advanced: [etapes[1]] });
+      }
+    } catch { /* non supporté : sans effet */ }
+    finally { setMiseAuPoint(false); }
+  };
+
   const fermerTout = () => { stop(); fermer(); };
 
   const rejouer = () => { setResultat(null); setMessage(""); setEtat("init"); };
@@ -354,17 +414,40 @@ export function QrScannerModal({ schoolInfo = {}, fermer }) {
       <div style={{ display: etat === "scan" ? "block" : "none" }}>
         {/* Cadre de visée : matérialise la zone réellement analysée. */}
         <div style={{ position: "relative" }}>
-          <video ref={videoRef} playsInline muted style={{ width: "100%", borderRadius: 10, background: "#000", aspectRatio: "1/1", objectFit: "cover", display: "block" }} />
+          <video ref={videoRef} playsInline muted onClick={toucherVideo}
+            style={{ width: "100%", borderRadius: 10, background: "#000", aspectRatio: "1/1", objectFit: "cover", display: "block", cursor: "crosshair" }} />
           <div aria-hidden="true" style={{
             position: "absolute", inset: "12%", border: "3px solid rgba(255,255,255,0.85)",
             borderRadius: 12, boxShadow: "0 0 0 9999px rgba(0,0,0,0.25)", pointerEvents: "none",
           }} />
+          {miseAuPoint && (
+            <div aria-live="polite" style={{ position: "absolute", top: 8, insetInlineStart: 0, insetInlineEnd: 0, textAlign: "center", pointerEvents: "none" }}>
+              <span style={{ background: "rgba(0,0,0,0.6)", color: "#fff", fontSize: 11, padding: "3px 8px", borderRadius: 6 }}>Mise au point…</span>
+            </div>
+          )}
+          {lampe !== null && (
+            <button onClick={basculerLampe} title={lampe ? "Éteindre la lampe" : "Allumer la lampe"}
+              style={{ position: "absolute", bottom: 8, insetInlineEnd: 8, width: 38, height: 38, borderRadius: "50%", border: "none",
+                cursor: "pointer", fontSize: 18, background: lampe ? "#fde047" : "rgba(0,0,0,0.55)", color: lampe ? "#000" : "#fff" }}>
+              🔦
+            </button>
+          )}
         </div>
+        {zoom && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, fontSize: 12, color: "#334155" }}>
+            <span>🔍 Zoom</span>
+            <input type="range" min={zoom.min} max={zoom.max} step={zoom.step} value={zoom.valeur}
+              onChange={(e) => changerZoom(Number(e.target.value))} style={{ flex: 1 }} aria-label="Zoom de la caméra" />
+            <strong style={{ minWidth: 36, textAlign: "end" }}>×{Number(zoom.valeur).toFixed(1)}</strong>
+          </div>
+        )}
         <p style={{ fontSize: 12, color: "#64748b", textAlign: "center", marginTop: 8, lineHeight: 1.5 }}>
-          Placez le QR dans le cadre, à <strong>15–20 cm</strong> environ.<br />
+          Placez le QR dans le cadre, à <strong>{zoom ? "20–25 cm" : "15–20 cm"}</strong> environ.<br />
           <span style={{ fontSize: 11 }}>
-            Trop près, l'appareil ne fait plus la mise au point et l'image devient floue :
-            reculez un peu jusqu'à ce que le QR soit net.
+            {zoom
+              ? "Ne vous approchez pas : servez-vous du zoom pour agrandir le QR. "
+              : "Trop près, l'appareil ne fait plus la mise au point et l'image devient floue : reculez un peu. "}
+            Image floue ? Touchez le QR à l'écran pour refaire la mise au point{lampe !== null ? ", ou allumez la lampe 🔦 si la pièce est sombre" : ""}.
           </span>
         </p>
         {resolution?.w > 0 && (() => {

@@ -140,7 +140,10 @@ export const imprimerRecuFamille = async (enfants = [], schoolInfo={}, moisAnnee
     Tuteur: lignes[0]?.eleve?.tuteur,
     Eleve: lignes.map(({ eleve }) => `${eleve.nom||""} ${eleve.prenom||""} (${eleve.classe||""})`).join(", "),
     Total: `${totalGeneral} GNF`,
-  }), schoolInfo, { size: ticket ? 104 : 84, alt: "QR recu" });
+  // 100 px en A4 (84 sur le reçu individuel) : chaque enfant allonge le
+  // contenu, donc le nombre de modules ; plus grand, le QR garde ≥ 0,4 mm par
+  // module jusqu'à 5 enfants, seuil de lecture des téléphones courants.
+  }), schoolInfo, { size: ticket ? 104 : 100, alt: "QR recu" });
 
   if (ticket) {
     w.document.write(documentTicketFamille({
