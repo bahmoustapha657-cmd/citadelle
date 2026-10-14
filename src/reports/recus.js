@@ -4,6 +4,7 @@
 // Deux formats, mêmes données et même QR de vérification :
 //   • A4 : 2 exemplaires (comptable + payant) sur une page — imprimerRecu.
 //   • ticket 58/80 mm pour imprimante thermique — imprimerRecuTicket.
+// Reçu famille (plusieurs enfants d'un même tuteur) : imprimerRecuFamille.
 // Les fragments HTML vivent dans recus/recu-blocs.js (A4) et
 // recus/recu-ticket.js (thermique), le style A4 dans recus/recus-styles.js.
 
@@ -16,6 +17,7 @@ import { PRINT_RESET, PRINT_TRIGGER, edugestBrandHTML, printDir, printLang, tr }
 import { blocRecu } from "./recus/recu-blocs.js";
 import { RECU_AJUSTEMENT, RECU_STYLES } from "./recus/recus-styles.js";
 import { documentTicket, normaliserLargeur } from "./recus/recu-ticket.js";
+import { blocRecuFamille, documentTicketFamille, totauxFamille } from "./recus/recu-famille.js";
 import { qrSecuriseImgHtml, qrPayload } from "./qr.js";
 
 // `fraisAnnexes` : tarifs de la classe — { inscription, autre, revision,
@@ -114,5 +116,48 @@ export const imprimerRecuTicket = async (eleve, montantUnit, schoolInfo={}, mois
     versement: options?.versement || null, resteAPayer: options?.resteAPayer,
     qr, largeurMm: normaliserLargeur(largeurMm),
   }, PRINT_TRIGGER, printLang(), printDir()));
+  w.document.close();
+};
+
+// Reçu FAMILLE : plusieurs enfants d'un même tuteur sur un seul reçu.
+// `enfants` : [{ eleve, montantUnit, fraisAnnexes, resteAPayer }] — chacun
+// avec SES tarifs (les enfants sont souvent dans des classes différentes).
+// `format` : "a4" (2 exemplaires) ou 58/80 (ticket thermique).
+export const imprimerRecuFamille = async (enfants = [], schoolInfo={}, moisAnnee=MOIS_ANNEE, format="a4") => {
+  const lignes = enfants.map(({ eleve, montantUnit, fraisAnnexes, resteAPayer }) => ({
+    eleve, resteAPayer, totaux: getRecuTotals(eleve, montantUnit, moisAnnee, fraisAnnexes),
+  }));
+  const { totalGeneral } = totauxFamille(lignes);
+
+  // window.open AVANT l'await (geste utilisateur) pour éviter le blocage popup.
+  const w = window.open("","_blank");
+  if (!w) return;
+
+  const ticket = format !== "a4";
+  // QR : les enfants (nom + classe) et le total versé par le foyer.
+  const qr = await qrSecuriseImgHtml(qrPayload({
+    EduGest: "Recu",
+    Tuteur: lignes[0]?.eleve?.tuteur,
+    Eleve: lignes.map(({ eleve }) => `${eleve.nom||""} ${eleve.prenom||""} (${eleve.classe||""})`).join(", "),
+    Total: `${totalGeneral} GNF`,
+  }), schoolInfo, { size: ticket ? 104 : 84, alt: "QR recu" });
+
+  if (ticket) {
+    w.document.write(documentTicketFamille({
+      schoolInfo, enfants: lignes, moisAnnee, qr, largeurMm: normaliserLargeur(format),
+    }, PRINT_TRIGGER, printLang(), printDir()));
+  } else {
+    const ctx = { schoolInfo, lf: resolveLegalFields(schoolInfo), enfants: lignes, moisAnnee, qr };
+    w.document.write(`<!DOCTYPE html><html lang="${printLang()}" dir="${printDir()}"><head><title>${tr("reports.receipt.title")}</title>
+  <meta charset="utf-8"/>
+  <style>
+    ${PRINT_RESET}${RECU_STYLES}
+  </style></head><body>
+  ${blocRecuFamille("Exemplaire — Comptable", ctx)}
+  ${blocRecuFamille("Exemplaire — Payant", ctx)}
+  ${edugestBrandHTML(schoolInfo)}
+  <script>${RECU_AJUSTEMENT}${PRINT_TRIGGER}</script>
+  </body></html>`);
+  }
   w.document.close();
 };

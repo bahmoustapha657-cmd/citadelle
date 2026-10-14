@@ -526,7 +526,11 @@
       "remaining": "Remaining",
       "deposit": "Deposit",
       "paymentOf": "Payment of",
-      "balanceDue": "Balance due"
+      "balanceDue": "Balance due",
+      "family": "Family",
+      "children": "Children",
+      "paidMonths": "Months paid",
+      "familyTotal": "Family total"
     },
     "annualReport": {
       "title": "Annual report",

@@ -526,7 +526,11 @@
       "remaining": "المتبقّي",
       "deposit": "دفعة مقدّمة",
       "paymentOf": "دفعة بتاريخ",
-      "balanceDue": "المبلغ المتبقّي للدفع"
+      "balanceDue": "المبلغ المتبقّي للدفع",
+      "family": "الأسرة",
+      "children": "الأبناء",
+      "paidMonths": "الأشهر المدفوعة",
+      "familyTotal": "مجموع الأسرة"
     },
     "annualReport": {
       "title": "التقرير السنوي",

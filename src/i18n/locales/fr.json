@@ -526,7 +526,11 @@
       "remaining": "Reste à régler",
       "deposit": "Acompte",
       "paymentOf": "Versement du",
-      "balanceDue": "Reste à payer"
+      "balanceDue": "Reste à payer",
+      "family": "Famille",
+      "children": "Enfants",
+      "paidMonths": "Mois réglés",
+      "familyTotal": "Total famille"
     },
     "monthlyReport": {
       "title": "Rapport mensuel",

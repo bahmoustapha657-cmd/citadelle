@@ -19,7 +19,10 @@ const PARTIEL = { background: "#fde68a", color: "#92400e" };
 export function MensualitesRow({
   e, rowIdx, moisAnnee, annee, tarifsClasses, readOnly, canCreate, canEdit, schoolInfo,
   toggleMens, toggleFraisAnnexe, getTarifInscriptionEleve, ouvrirEncaissement,
+  fratrie = [], ouvrirRecuFamille,
 }) {
+  // Frères et sœurs (même tuteur, toutes sections) : un reçu famille possible.
+  const nbFratrie = ouvrirRecuFamille ? fratrie.length : 0;
   const mens = e.mens || initMens();
   const snapshot = getEleveMensualiteSnapshot(e, moisAnnee, tarifsClasses, annee);
   // Élève parti : les mois qui suivent son départ ne sont pas des impayés —
@@ -91,7 +94,18 @@ export function MensualitesRow({
         </span>}
       </TD>
       <TD><Badge color="blue">{e.classe}</Badge></TD>
-      <TD>{e.tuteur}</TD><TD>{e.contactTuteur}</TD>
+      <TD>
+        {e.tuteur}
+        {nbFratrie > 1 && (
+          <button onClick={() => ouvrirRecuFamille(e)}
+            title={`${nbFratrie} enfants de ce tuteur : ${fratrie.map((x) => `${x.prenom} (${x.classe})`).join(", ")} — imprimer un reçu famille`}
+            style={{ marginInlineStart: 6, fontSize: 10, background: "#ede9fe", color: "#5b21b6", border: "none", borderRadius: 4,
+              padding: "1px 5px", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
+            👨‍👩‍👧 {nbFratrie}
+          </button>
+        )}
+      </TD>
+      <TD>{e.contactTuteur}</TD>
       {moisAnnee.map(m => {
         const paye = mens[m] === "Payé";
         const datePaie = (e.mensDates || {})[m] || "";
@@ -238,6 +252,14 @@ export function MensualitesRow({
                 <span style={{ display: "block", fontSize: 10, color: "#64748b" }}>{f.aide}</span>
               </button>
             ))}
+            {nbFratrie > 1 && (
+              <button onClick={() => { setMenuImpr(false); ouvrirRecuFamille(e); }}
+                style={{ display: "block", width: "100%", marginTop: 4, padding: "6px 8px", borderRadius: 6, cursor: "pointer",
+                  border: "1px dashed #c4b5fd", background: "none", textAlign: "start", color: "#5b21b6" }}>
+                <span style={{ fontSize: 12, fontWeight: 700 }}>👨‍👩‍👧 Reçu famille ({nbFratrie} enfants)</span>
+                <span style={{ display: "block", fontSize: 10, color: "#64748b" }}>Un seul reçu pour les enfants de ce tuteur</span>
+              </button>
+            )}
           </div>
         )}
       </td>
