@@ -128,7 +128,9 @@ export function MensualitesTab({
       />}
 
       {/* Alertes impayés : repliées derrière un bouton, filtrées cycle + classe. */}
-      <AlertesCritiques eleves={elevesFiltres} moisAnnee={moisAnnee} annee={anneeScolarite} />
+      <AlertesCritiques eleves={elevesFiltres} moisAnnee={moisAnnee} annee={anneeScolarite}
+        tarifsClasses={tarifsClasses} schoolInfo={schoolInfo} canEdit={canEdit} toast={toast}
+        perimetre={filtClasse !== "all" ? `Classe ${filtClasse}` : getSectionLabel(niveau)} />
 
       <MensualitesTable
         eleves={eleves}
