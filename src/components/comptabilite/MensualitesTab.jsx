@@ -10,6 +10,8 @@ import { AlertesCritiques } from "./mensualites-tab/AlertesCritiques";
 import { EncaisserModale } from "./mensualites-tab/EncaisserModale";
 import { ExonerationsModale } from "./mensualites-tab/ExonerationsModale";
 import { MensualitesTable } from "./mensualites-tab/MensualitesTable";
+import { RecuFamilleModale } from "./mensualites-tab/RecuFamilleModale";
+import { indexFratries } from "../../fratrie";
 import { TranchesPaiement } from "./mensualites-tab/TranchesPaiement";
 
 // Onglet mensualités : tarifs par classe, alertes impayés, filtres niveau/classe
@@ -27,6 +29,8 @@ export function MensualitesTab({
   // mensualités
   eleves,
   elevesFiltres,
+  // Élèves de l'année, toutes sections : on y cherche les fratries.
+  elevesFamille = [],
   classesU,
   niveau,
   setNiveau,
@@ -61,6 +65,10 @@ export function MensualitesTab({
   // l'état à jour.
   const [encaisseId, setEncaisseId] = useState(null);
   const eleveEncaisse = encaisseId ? eleves.find((e) => e._id === encaisseId) : null;
+  // Reçu famille : élève cliqué (id) ; sa fratrie est relue dans la liste.
+  const [recuFamilleId, setRecuFamilleId] = useState(null);
+  const fratrieDe = useMemo(() => indexFratries(elevesFamille), [elevesFamille]);
+  const eleveFamille = recuFamilleId ? elevesFamille.find((e) => e._id === recuFamilleId) : null;
   // Tri choisi (alphabétique, reste à payer, dernier paiement…), posé sur
   // l'ordre alphabétique de l'école.
   const [tri, setTri] = useTriEleves("mensualites");
@@ -127,6 +135,12 @@ export function MensualitesTab({
         fermer={() => setEncaisseId(null)}
       />}
 
+      {eleveFamille && <RecuFamilleModale
+        fratrie={fratrieDe(eleveFamille)} moisAnnee={moisAnnee} annee={anneeScolarite}
+        tarifsClasses={tarifsClasses} schoolInfo={schoolInfo}
+        fermer={() => setRecuFamilleId(null)}
+      />}
+
       {/* Alertes impayés : repliées derrière un bouton, filtrées cycle + classe. */}
       <AlertesCritiques eleves={elevesFiltres} moisAnnee={moisAnnee} annee={anneeScolarite}
         tarifsClasses={tarifsClasses} schoolInfo={schoolInfo} canEdit={canEdit} toast={toast}
@@ -147,6 +161,8 @@ export function MensualitesTab({
         getTarifInscriptionEleve={getTarifInscriptionEleve}
         ouvrirEncaissement={encaisserVersement ? (e) => setEncaisseId(e._id) : null}
         tranches={tranchesPaiement}
+        fratrieDe={fratrieDe}
+        ouvrirRecuFamille={(e) => setRecuFamilleId(e._id)}
       />
     </div>
   );

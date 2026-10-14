@@ -161,6 +161,9 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   const elevesScolarite = eleves.filter((e) => concerneParAnnee(e, moisAnnee, anneeConsultee));
   const classesU = [...new Set(elevesScolarite.map((e) => e.classe))].filter(Boolean);
   const tousElevesScolarite = [...elevesC, ...elevesL, ...elevesP, ...elevesPre];
+  // Reçu famille : les frères et sœurs se cherchent dans TOUTES les sections
+  // (un aîné au collège, un cadet au primaire), parmi les élèves de l'année.
+  const elevesFamille = tousElevesScolarite.filter((e) => concerneParAnnee(e, moisAnnee, anneeConsultee));
 
   const {
     getTarifConfig, getTarif, getTarifBase, getTarifRevision, getTarifAutre,
@@ -356,7 +359,7 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
     niveau, setNiveau, filtClasse, setFiltClasse, moisSel, setMoisSel,
     primeDefaut, setPrimeDefaut, filtrePrimNom, setFiltrePrimNom, filtrePrimClasse, setFiltrePrimClasse,
     ajoutParNiveau, suppressionParNiveau, modChampParNiveau, rechargerParNiveau, ensureClasse, sortAlpha,
-    totR, totD, totVers, eleves, classesU, tousElevesScolarite, elevesFiltres,
+    totR, totD, totVers, eleves, classesU, tousElevesScolarite, elevesFamille, elevesFiltres,
     getTarif, getTarifBase, getTarifRevision, getTarifAutre, getTarifIns, getTarifReinsc,
     getTarifInscriptionEleve, getTarifFraisDivers, saveTarif,
     toggleFraisAnnexe, toggleMens, encaisserInscriptions, exonerationDeps, enreg, saveSalaire, savePersonnel,
