@@ -6,6 +6,7 @@ import { Btn, Input, Modale } from "../../ui";
 import { exportExcel, imprimerAlerteMensualites } from "../../../reports";
 import { MOIS_GARANTIE_MAX, moisDeGarantie, moisGarantieEcole } from "../../../paiements-scolarite";
 import { JOUR_ECHEANCE_MAX, SEUIL_MOIS_MAX, elevesEnRetard, reglagesAlerte } from "./alerte-mensualites";
+import { PreavisModale } from "./PreavisModale";
 
 // Alertes des élèves en retard sur des mois DÉJÀ ÉCHUS (jour d'échéance,
 // seuil et mois de garantie réglés par la comptabilité ; les mois de
@@ -17,6 +18,8 @@ export function AlertesCritiques({ eleves, moisAnnee, annee, tarifsClasses, scho
   const { t } = useTranslation();
   const [ouvert, setOuvert] = useState(false);
   const [reglant, setReglant] = useState(false);
+  // Élèves à qui remettre un préavis de renvoi : toute la liste, ou un seul.
+  const [preavis, setPreavis] = useState(null);
   const { jourEcheance, seuilMois } = reglagesAlerte(schoolInfo);
   const moisGarantie = moisGarantieEcole(schoolInfo);
   const reglages = useMemo(() => ({ jourEcheance, seuilMois, moisGarantie }), [jourEcheance, seuilMois, moisGarantie]);
@@ -82,6 +85,7 @@ export function AlertesCritiques({ eleves, moisAnnee, annee, tarifsClasses, scho
             <Btn sm v="ghost" onClick={() => imprimerAlerteMensualites(retards, { schoolInfo, annee, perimetre, regle })}>
               🖨️ Imprimer
             </Btn>
+            <Btn sm v="ghost" onClick={() => setPreavis(retards)}>📨 Préavis de renvoi</Btn>
             <Btn sm v="ghost" onClick={() => exportExcel(
               t("reports.excel.files.paymentAlerts"),
               [t("reports.excel.headers.matricule"), t("reports.excel.headers.lastName"), t("reports.excel.headers.firstName"), t("reports.excel.headers.class"), t("reports.excel.headers.level"), t("reports.excel.headers.unpaidMonths"), "Mois en retard", `Reste dû (${monnaie})`, t("reports.excel.headers.guardian"), t("reports.excel.headers.contact")],
@@ -92,11 +96,19 @@ export function AlertesCritiques({ eleves, moisAnnee, annee, tarifsClasses, scho
             )}>📥 {t("common.export")}</Btn>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 6 }}>
-            {retards.map(({ eleve: e, mois, montant }) => (
+            {retards.map((retard) => {
+              const { eleve: e, mois, montant } = retard;
+              return (
               <div key={e._id} style={{ border: "1px solid #f5c1c1", borderRadius: 7, padding: "7px 10px", fontSize: 12, lineHeight: 1.5 }}>
-                <div>
-                  <span style={{ fontWeight: 800, color: "#9b2020" }}>{e.nom} {e.prenom}</span>
-                  <span style={{ color: "#6b7280" }}> · {e.classe}</span>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                  <span style={{ flex: 1 }}>
+                    <span style={{ fontWeight: 800, color: "#9b2020" }}>{e.nom} {e.prenom}</span>
+                    <span style={{ color: "#6b7280" }}> · {e.classe}</span>
+                  </span>
+                  <button type="button" title="Préavis de renvoi pour cet élève" onClick={() => setPreavis([retard])}
+                    style={{ border: "1px solid #f5c1c1", background: "#fff", borderRadius: 6, padding: "1px 7px", fontSize: 11.5, cursor: "pointer", color: "#9b2020", whiteSpace: "nowrap" }}>
+                    📨 Préavis
+                  </button>
                 </div>
                 <div>
                   <strong>{mois.length} mois</strong> : {mois.join(", ")}
@@ -109,11 +121,13 @@ export function AlertesCritiques({ eleves, moisAnnee, annee, tarifsClasses, scho
                     : " · 📞 —"}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
       {modale}
+      {preavis && <PreavisModale retards={preavis} schoolInfo={schoolInfo} annee={annee} monnaie={monnaie} fermer={() => setPreavis(null)} />}
     </div>
   );
 }

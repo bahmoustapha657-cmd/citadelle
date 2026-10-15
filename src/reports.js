@@ -39,5 +39,6 @@ export {
 export { imprimerLivret } from "./reports/livret.js";
 export { imprimerTableauHonneur } from "./reports/tableau-honneur.js";
 export { imprimerAlerteMensualites } from "./reports/alerte-mensualites.js";
+export { imprimerPreavisRenvoi } from "./reports/preavis-renvoi.js";
 export { imprimerEtatsSalaires } from "./reports/etats-salaires.js";
 export { imprimerEdtEnseignant, imprimerPaiesEnseignant } from "./reports/teacher-prints.js";

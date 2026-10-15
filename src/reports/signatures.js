@@ -46,6 +46,11 @@ export const DOCUMENTS_SIGNES = [
   { id: "bon", label: "Fiche de bon", groupe: "Comptabilité", section: false,
     defaut: { principal: "comptable", visa: "direction" },
     titres: { principal: () => "Le Comptable", visa: () => "Le Directeur" } },
+  // Préavis de renvoi pour impayés remis à la famille : le comptable qui
+  // constate la dette, la Direction qui décide du renvoi.
+  { id: "preavis", label: "Préavis de renvoi", groupe: "Comptabilité", section: true,
+    defaut: { principal: "comptable", visa: "direction" },
+    titres: { principal: () => "Le Comptable", visa: () => "Le Directeur" } },
   { id: "depenses", label: "État des dépenses", groupe: "Comptabilité", section: false,
     defaut: { principal: "comptable", visa: "direction" },
     titres: { principal: () => "Le Comptable", visa: () => "Le Directeur" } },
