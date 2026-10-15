@@ -12,7 +12,7 @@
 
 import { fmtN, getMonnaie, getSectionForClasse, today } from "../constants.js";
 import { resolveLegalFields } from "../legal-utils.js";
-import { PRINT_RESET, PRINT_TRIGGER, edugestBrandHTML, printResetFor } from "./print-helpers.js";
+import { PRINT_TRIGGER, edugestBrandHTML, printResetFor } from "./print-helpers.js";
 import { blocsSignatures } from "./signatures.js";
 import { enteteCompact } from "./recus/recu-blocs.js";
 import { RECU_AJUSTEMENT } from "./recus/recus-styles.js";
@@ -68,13 +68,26 @@ export const PREAVIS_PAR_PAGE = [2, 3, 4];
 export const PREAVIS_PAR_PAGE_DEFAUT = 3;
 const normaliserParPage = (n) => (PREAVIS_PAR_PAGE.includes(Number(n)) ? Number(n) : PREAVIS_PAR_PAGE_DEFAUT);
 
+// Feuille A4 : marges de 6 mm posées par @page, soit 198 × 285 mm utiles.
+const PAGE_A4 = "size:A4 portrait;margin:6mm";
+
 const STYLES_A4 = (c1, parPage) => `
     *{box-sizing:border-box}
-    body{font-family:Arial,sans-serif;margin:0;padding:6mm;background:#fff;color:#111}
-    .page{height:282mm;display:grid;gap:3mm;break-after:page;page-break-after:always;
+    html,body{margin:0;padding:0}
+    /* Largeur utile FIXE, à l'écran comme sur papier : RECU_AJUSTEMENT mesure
+       chaque préavis à sa taille imprimée. Mesuré à la largeur de la fenêtre,
+       un préavis tenait à l'écran et débordait une fois imprimé 4 par page. */
+    body{width:198mm;font-family:Arial,sans-serif;background:#fff;color:#111}
+    /* Une page = la grille des préavis + la ligne EduGest, le tout dans les
+       285 mm utiles. La ligne EduGest, posée APRÈS les pages, poussait sur
+       une feuille de plus. Saut AVANT chaque page suivante : jamais de
+       feuille blanche à la fin. */
+    .page{height:284mm;display:flex;flex-direction:column}
+    .page + .page{break-before:page;page-break-before:always}
+    .grille{flex:1 1 0;min-height:0;display:grid;gap:3mm;
           grid-template-columns:${parPage === 4 ? "1fr 1fr" : "1fr"};
           grid-template-rows:repeat(${parPage === 4 ? 2 : parPage},minmax(0,1fr))}
-    .page:last-of-type{break-after:auto;page-break-after:auto}
+    .page > div:last-child{flex:none}
     .recu{min-height:0;overflow:hidden;padding:8px 12px;border:1px dashed #94a3b8;border-radius:3px;display:flex;flex-direction:column;position:relative}
     .recu.vide{border:none}
     .recu-corps{position:relative;z-index:1;display:flex;flex-direction:column;height:100%}
@@ -136,13 +149,12 @@ const documentA4 = (retards, options) => {
     // Dernière page incomplète : des emplacements vides gardent chaque
     // préavis à sa taille (même découpe que les autres pages).
     while (lot.length < parPage) lot.push(`<div class="recu vide"></div>`);
-    pages.push(`<div class="page">${lot.join("")}</div>`);
+    pages.push(`<div class="page"><div class="grille">${lot.join("")}</div>${edugestBrandHTML(schoolInfo)}</div>`);
   }
   return `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"/>
   <title>Préavis de renvoi — ${echapper(schoolInfo.nom || "")}</title>
-  <style>${PRINT_RESET}${STYLES_A4(schoolInfo.couleur1 || "#0A1628", parPage)}</style></head><body>
+  <style>${printResetFor(PAGE_A4)}${STYLES_A4(schoolInfo.couleur1 || "#0A1628", parPage)}</style></head><body>
     ${pages.join("")}
-    ${edugestBrandHTML(schoolInfo)}
     <script>${RECU_AJUSTEMENT}${PRINT_TRIGGER}</script>
   </body></html>`;
 };

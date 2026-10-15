@@ -47,6 +47,14 @@ test("préavis A4 : 3 par page par défaut, 2 ou 4 au choix, dernière page comp
   assert.equal(compter(quatre, /<div class="recu vide">/g), 3);
   const deux = preavisRenvoiHTML(cinq, { ...options, parPage: 2 });
   assert.equal(compter(deux, /<div class="page">/g), 3);
+  // Largeur A4 utile fixe (mesure = papier), ligne EduGest DANS chaque page,
+  // saut avant les pages suivantes seulement : rien ne déborde sur une
+  // feuille de plus (constaté à l'impression 4 par page).
+  assert.match(quatre, /size:A4 portrait;margin:6mm/);
+  assert.match(quatre, /body\{width:198mm/);
+  assert.equal(compter(quatre, /Édité avec/g), 2);
+  assert.match(quatre, /\.page \+ \.page\{break-before:page/);
+  assert.doesNotMatch(quatre, /break-after:page/);
   // Valeur inconnue : retour au défaut.
   assert.equal(compter(preavisRenvoiHTML(cinq, { ...options, parPage: 7 }), /<div class="page">/g), 2);
 });
