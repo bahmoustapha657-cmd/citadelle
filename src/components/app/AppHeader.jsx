@@ -11,7 +11,7 @@ export function AppHeader({
   isMobile, setSidebarOuvert, modulesVisibles, page, readOnly, abonnementExpire, t,
   estHorsLigne, syncPendantes, planInfo, utilisateur, utilisateurLabel, schoolInfo,
   setRechercheOuverte, modeSombre, setModeSombre,
-  notifOuvert, setNotifOuvert, notifNonLues, setNotifNonLues, notifListe, nowTs,
+  notifOuvert, setNotifOuvert, notifNonLues, marquerNotifLues, notifListe, nowTs,
   profilOuvert, setProfilOuvert, setPage, setAideOuverte, setCentreAideOuvert, deconnecter,
 }) {
   return (
@@ -77,7 +77,7 @@ export function AppHeader({
 
         <NotificationsMenu
           notifOuvert={notifOuvert} setNotifOuvert={setNotifOuvert} setProfilOuvert={setProfilOuvert}
-          notifNonLues={notifNonLues} setNotifNonLues={setNotifNonLues}
+          notifNonLues={notifNonLues} marquerNotifLues={marquerNotifLues}
           notifListe={notifListe} nowTs={nowTs} setPage={setPage}
         />
 

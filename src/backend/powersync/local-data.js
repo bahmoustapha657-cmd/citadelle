@@ -119,6 +119,18 @@ export async function lireEcoleLocale(code) {
   return row ? parseJsonCols("ecoles", row) : null;
 }
 
+// Dernières actions du journal (cloche de l'en-tête) — miroir de
+// lireDernieresActions. La date de saisie vit dans extra (Date.now()).
+export async function lireDernieresActionsLocal(ecoleId, n) {
+  const ps = getPowerSync();
+  const rows = await ps.getAll(
+    `SELECT * FROM historique WHERE ecole_id = ?
+       ORDER BY CAST(json_extract(extra, '$.date') AS REAL) DESC LIMIT ?`,
+    [ecoleId, n],
+  );
+  return rows.map((r) => parseJsonCols("historique", r));
+}
+
 // Postes de l'école + nb de comptes rattachés — miroir de chargerPostes.
 // (comptes n'est synchronisé que pour les porteurs d'admin_panel — les seuls
 // à ouvrir ce panneau ; pour les autres le count vaut 0 sans conséquence.)

@@ -10,7 +10,9 @@
 //     plus ancien que celui déjà publié est ignoré.
 //   • Un comptage en échec ne publie rien : la dernière valeur connue reste.
 // Renvoie la fonction d'arrêt.
-export function suivreCompteur({ compter, surveiller, onValeur, delaiMs = 600 }) {
+// `estValide` : ce qu'une lecture doit renvoyer pour être publiée (un nombre
+// par défaut ; la cloche de l'en-tête y suit une liste).
+export function suivreCompteur({ compter, surveiller, onValeur, delaiMs = 600, estValide = Number.isFinite }) {
   let actif = true;
   let timer = null;
   let demandes = 0;
@@ -20,7 +22,7 @@ export function suivreCompteur({ compter, surveiller, onValeur, delaiMs = 600 })
     const n = ++demandes;
     try {
       const valeur = await compter();
-      if (actif && n > publie && Number.isFinite(valeur)) {
+      if (actif && n > publie && estValide(valeur)) {
         publie = n;
         onValeur(valeur);
       }

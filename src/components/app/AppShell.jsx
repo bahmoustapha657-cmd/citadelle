@@ -70,7 +70,7 @@ export function AppShell(p) {
             utilisateur={p.utilisateur} utilisateurLabel={p.utilisateurLabel} schoolInfo={p.schoolInfo}
             setRechercheOuverte={p.setRechercheOuverte} modeSombre={p.modeSombre} setModeSombre={p.setModeSombre}
             notifOuvert={p.notifOuvert} setNotifOuvert={p.setNotifOuvert}
-            notifNonLues={p.notifNonLues} setNotifNonLues={p.setNotifNonLues} notifListe={p.notifListe} nowTs={p.nowTs}
+            notifNonLues={p.notifNonLues} marquerNotifLues={p.marquerNotifLues} notifListe={p.notifListe} nowTs={p.nowTs}
             profilOuvert={p.profilOuvert} setProfilOuvert={p.setProfilOuvert}
             setPage={p.setPage} setAideOuverte={p.setAideOuverte} setCentreAideOuvert={p.setCentreAideOuvert} deconnecter={p.deconnecter}
           />
