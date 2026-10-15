@@ -15,14 +15,17 @@ import {
   getTarifInscriptionForEleve, getTarifMensuelForClasse, montantDuInscription,
 } from "./mensualite-utils.ts";
 import { partiAvantAnnee } from "./depart-utils.js";
-import { etatsMois, ordreEncaissement, periodeTranche } from "./paiements-scolarite.js";
+import {
+  MOIS_GARANTIE_DEFAUT, etatsMois, moisDeGarantie, ordreEncaissement, periodeTranche,
+} from "./paiements-scolarite.js";
 
-// Les mensualités (inscription d'abord si elle n'est pas soldée, puis le
-// dernier mois, puis du 1er au suivant — cf. ordreEncaissement), chaque
-// tranche, l'inscription et chaque frais annexe pas encore soldé, avec le
-// reste dû de chacun. Élève parti : seuls les mois entamés avant son départ,
-// et rien d'une année qu'il n'a pas fréquentée.
-export function ciblesVersement({ eleve, moisAnnee, annee, tarifsClasses, tranches = [] }) {
+// Les mensualités (inscription d'abord si elle n'est pas soldée, puis le ou
+// les mois de garantie, puis du 1er au suivant — cf. ordreEncaissement),
+// chaque tranche, l'inscription et chaque frais annexe pas encore soldé, avec
+// le reste dû de chacun. Élève parti : seuls les mois entamés avant son
+// départ, et rien d'une année qu'il n'a pas fréquentée.
+// `moisGarantie` : derniers mois payés d'avance (moisGarantieEcole).
+export function ciblesVersement({ eleve, moisAnnee, annee, tarifsClasses, tranches = [], moisGarantie = MOIS_GARANTIE_DEFAUT }) {
   const mensualite = getTarifMensuelForClasse(tarifsClasses, eleve.classe);
   const etats = etatsMois(eleve, moisAnnee, mensualite, annee);
   const rienDu = partiAvantAnnee(eleve, moisAnnee, annee);
@@ -34,13 +37,14 @@ export function ciblesVersement({ eleve, moisAnnee, annee, tarifsClasses, tranch
     const label = eleve.typeInscription === "Réinscription" ? "Réinscription" : "Inscription";
     if (reste > 0) inscription = { label, duNet, reste };
   }
-  const dernier = moisAnnee[moisAnnee.length - 1] || "";
+  const garantie = moisDeGarantie(moisAnnee, moisGarantie).join(" et ");
+  const ordre = [inscription?.label, garantie].filter(Boolean);
   const cibles = [{
     cle: "mois", type: "mois", label: "Mensualités",
-    detail: inscription
-      ? `${inscription.label} d'abord, puis ${dernier}, puis à partir du 1er mois impayé`
-      : `${dernier} d'abord, puis à partir du 1er mois impayé`,
-    mois: ordreEncaissement(moisAnnee), inscription,
+    detail: ordre.length
+      ? `${ordre.join(" d'abord, puis ")}${ordre.length === 1 ? " d'abord" : ""}, puis à partir du 1er mois impayé`
+      : "À partir du 1er mois impayé",
+    mois: ordreEncaissement(moisAnnee, moisGarantie), inscription,
     reste: resteDe(moisAnnee) + (inscription?.reste || 0),
   }];
   tranches.forEach((t, i) => cibles.push({

@@ -19,15 +19,13 @@ const echapper = (valeur) => String(valeur ?? "")
 /**
  * @param {{ eleve: Record<string, any>, mois: string[], montant: number }[]} retards
  * @param {{ schoolInfo?: Record<string, any>, annee?: string, perimetre?: string,
- *   reglages: { jourEcheance: number, seuilMois: number } }} options
+ *   regle?: string }} options — `regle` : la règle appliquée, en clair
  */
-export function imprimerAlerteMensualites(retards, { schoolInfo = {}, annee = "", perimetre = "", reglages }) {
+export function imprimerAlerteMensualites(retards, { schoolInfo = {}, annee = "", perimetre = "", regle = "" }) {
   if (!retards.length) { alert("Aucun élève en retard à imprimer."); return; }
   const c1 = schoolInfo.couleur1 || "#0A1628";
   const monnaie = echapper(schoolInfo.monnaie || getMonnaie());
   const total = retards.reduce((s, r) => s + r.montant, 0);
-  const regle = `Mois compté en retard à partir du ${reglages.jourEcheance === 1 ? "1er" : reglages.jourEcheance} du mois · `
-    + `alerte à partir de ${reglages.seuilMois} mois`;
   const lignes = retards.map((r, i) => `<tr>
       <td class="c">${i + 1}</td>
       <td><strong>${echapper(r.eleve.nom)} ${echapper(r.eleve.prenom)}</strong>${r.eleve.matricule ? `<br/><span class="mat">${echapper(r.eleve.matricule)}</span>` : ""}</td>
@@ -63,7 +61,7 @@ export function imprimerAlerteMensualites(retards, { schoolInfo = {}, annee = ""
   ${enteteDoc(schoolInfo, schoolInfo.logo)}
   <h2>🚨 ALERTE MENSUALITÉS</h2>
   <div class="sous">${[annee ? `Année scolaire ${echapper(annee)}` : "", echapper(perimetre), `Situation au ${today()}`].filter(Boolean).join(" · ")}</div>
-  <div class="regle">${regle}</div>
+  ${regle ? `<div class="regle">Règle : ${echapper(regle)}</div>` : ""}
   <table>
     <thead><tr><th>N°</th><th>Élève</th><th>Classe</th><th>Mois en retard</th><th>Reste dû (${monnaie})</th><th>Tuteur</th><th>Téléphone</th><th>Observation</th></tr></thead>
     <tbody>${lignes}</tbody>

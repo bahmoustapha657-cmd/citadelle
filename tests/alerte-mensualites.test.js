@@ -18,18 +18,30 @@ test("reglagesAlerte : défauts, puis valeurs bornées comme le serveur", () => 
   assert.deepEqual(reglagesAlerte({ alerteMensualites: { jourEcheance: 2.5, seuilMois: "x" } }), ALERTE_DEFAUT);
 });
 
-test("moisEchus : seuls les mois dont l'échéance est passée", () => {
-  assert.deepEqual(moisEchus(MOIS, ANNEE, 1, le("2026-10-14")), ["Octobre"]);
-  assert.deepEqual(moisEchus(MOIS, ANNEE, 15, le("2026-10-14")), []);
-  assert.deepEqual(moisEchus(MOIS, ANNEE, 10, le("2027-01-10")), ["Octobre", "Novembre", "Décembre", "Janvier"]);
+test("moisEchus : seuls les mois dont l'échéance est passée (sans garantie)", () => {
+  assert.deepEqual(moisEchus(MOIS, ANNEE, 1, le("2026-10-14"), 0), ["Octobre"]);
+  assert.deepEqual(moisEchus(MOIS, ANNEE, 15, le("2026-10-14"), 0), []);
+  assert.deepEqual(moisEchus(MOIS, ANNEE, 10, le("2027-01-10"), 0), ["Octobre", "Novembre", "Décembre", "Janvier"]);
   // Mois courts acceptés ; année illisible : rien d'échu (pas de fausse alerte).
-  assert.deepEqual(moisEchus(["Oct", "Nov"], ANNEE, 1, le("2026-11-02")), ["Oct", "Nov"]);
+  assert.deepEqual(moisEchus(["Oct", "Nov"], ANNEE, 1, le("2026-11-02"), 0), ["Oct", "Nov"]);
   assert.deepEqual(moisEchus(MOIS, "", 1, le("2027-06-30")), []);
 });
 
-test("retardEleve : les mois à venir ne comptent pas (14 octobre = 1 mois, pas 9)", () => {
+test("moisEchus : les mois de garantie sont dus dès l'échéance du 1er mois", () => {
+  // Par défaut : le dernier mois.
+  assert.deepEqual(moisEchus(MOIS, ANNEE, 1, le("2026-10-14")), ["Octobre", "Juin"]);
+  assert.deepEqual(moisEchus(MOIS, ANNEE, 1, le("2026-10-14"), 2), ["Octobre", "Mai", "Juin"]);
+  // Avant l'échéance du premier mois, rien n'est dû, garantie comprise.
+  assert.deepEqual(moisEchus(MOIS, ANNEE, 15, le("2026-10-14"), 2), []);
+});
+
+test("retardEleve : les mois à venir ne comptent pas, sauf la garantie", () => {
   const e = { classe: "6e A", mens: {} };
-  assert.deepEqual(retardEleve(e, opts(le("2026-10-14"))), { mois: ["Octobre"], montant: 100000 });
+  assert.deepEqual(retardEleve(e, opts(le("2026-10-14"))), { mois: ["Octobre", "Juin"], montant: 200000 });
+  assert.deepEqual(retardEleve(e, opts(le("2026-10-14"), { moisGarantie: 0 })), { mois: ["Octobre"], montant: 100000 });
+  // Garantie de 2 mois : Juin payé, Mai manque encore.
+  const juinPaye = { classe: "6e A", mens: { Juin: "Payé", Octobre: "Payé" } };
+  assert.deepEqual(retardEleve(juinPaye, opts(le("2026-10-14"), { moisGarantie: 2 })).mois, ["Mai"]);
 });
 
 test("retardEleve : un premier versement (dernier mois coché) ne masque plus le retard", () => {
@@ -42,7 +54,7 @@ test("retardEleve : un premier versement (dernier mois coché) ne masque plus le
 
 test("retardEleve : acompte déduit, dispense totale = aucun retard", () => {
   const avecAcompte = { classe: "6e A", mens: {}, mensAcomptes: { Octobre: 40000 } };
-  assert.deepEqual(retardEleve(avecAcompte, opts(le("2026-10-14"))), { mois: ["Octobre"], montant: 60000 });
+  assert.deepEqual(retardEleve(avecAcompte, opts(le("2026-10-14"), { moisGarantie: 0 })), { mois: ["Octobre"], montant: 60000 });
   const dispense = { classe: "6e A", mens: {}, exoneration: { annee: ANNEE, mensualites: 100, inscription: 0, fraisAnnexes: 0, motif: "orphelin" } };
   assert.deepEqual(retardEleve(dispense, opts(le("2027-03-01"))), { mois: [], montant: 0 });
 });
@@ -57,10 +69,13 @@ test("elevesEnRetard : seuil appliqué, plus gros retards d'abord", () => {
   const a = { _id: "a", classe: "6e A", mens: { Octobre: "Payé" } };
   const b = { _id: "b", classe: "6e A", mens: {} };
   const c = { _id: "c", classe: "6e A", mens: { Octobre: "Payé", Novembre: "Payé", Décembre: "Payé" } };
-  const liste = elevesEnRetard([a, b, c], { ...opts(le("2026-12-05")), reglages: { jourEcheance: 1, seuilMois: 2 } });
+  const liste = elevesEnRetard([a, b, c], { ...opts(le("2026-12-05"), { moisGarantie: 0 }), reglages: { jourEcheance: 1, seuilMois: 2 } });
   assert.deepEqual(liste.map((r) => r.eleve._id), ["b", "a"]);
   assert.equal(liste[0].mois.length, 3);
   // Échéance au 10 : Décembre pas encore en retard le 5 décembre.
-  const auDix = elevesEnRetard([a, b, c], { ...opts(le("2026-12-05")), reglages: { jourEcheance: 10, seuilMois: 2 } });
+  const auDix = elevesEnRetard([a, b, c], { ...opts(le("2026-12-05"), { moisGarantie: 0 }), reglages: { jourEcheance: 10, seuilMois: 2 } });
   assert.deepEqual(auDix.map((r) => r.eleve._id), ["b"]);
+  // Garantie par défaut : Juin s'ajoute à chacun ; c (Oct-Déc payés) n'en doit qu'un.
+  const garantie = elevesEnRetard([a, b, c], { ...opts(le("2026-12-05")), reglages: { jourEcheance: 1, seuilMois: 2 } });
+  assert.deepEqual(garantie.map((r) => [r.eleve._id, r.mois.length]), [["b", 4], ["a", 3]]);
 });

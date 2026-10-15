@@ -4,10 +4,12 @@ import { fmtN, getMonnaie, getSectionLabelForClasse } from "../../../constants";
 import { majReglagesCompta } from "../../../backend/data-supabase";
 import { Btn, Input, Modale } from "../../ui";
 import { exportExcel, imprimerAlerteMensualites } from "../../../reports";
+import { MOIS_GARANTIE_MAX, moisDeGarantie, moisGarantieEcole } from "../../../paiements-scolarite";
 import { JOUR_ECHEANCE_MAX, SEUIL_MOIS_MAX, elevesEnRetard, reglagesAlerte } from "./alerte-mensualites";
 
-// Alertes des élèves en retard sur des mois DÉJÀ ÉCHUS (jour d'échéance et
-// seuil réglés par la comptabilité). Repliées derrière un bouton cliquable ;
+// Alertes des élèves en retard sur des mois DÉJÀ ÉCHUS (jour d'échéance,
+// seuil et mois de garantie réglés par la comptabilité ; les mois de
+// garantie — derniers de l'année — sont dus dès la rentrée). Repliées derrière un bouton cliquable ;
 // suivent le filtre cycle + classe (via `eleves`, déjà filtré).
 // `annee` : année scolaire affichée — les mois d'après un départ ne comptent pas.
 // `perimetre` : section / classe affichées, reprises sur la fiche imprimée.
@@ -16,17 +18,19 @@ export function AlertesCritiques({ eleves, moisAnnee, annee, tarifsClasses, scho
   const [ouvert, setOuvert] = useState(false);
   const [reglant, setReglant] = useState(false);
   const { jourEcheance, seuilMois } = reglagesAlerte(schoolInfo);
-  const reglages = useMemo(() => ({ jourEcheance, seuilMois }), [jourEcheance, seuilMois]);
+  const moisGarantie = moisGarantieEcole(schoolInfo);
+  const reglages = useMemo(() => ({ jourEcheance, seuilMois, moisGarantie }), [jourEcheance, seuilMois, moisGarantie]);
+  const garantie = moisDeGarantie(moisAnnee, moisGarantie);
   const retards = useMemo(
-    () => elevesEnRetard(eleves, { moisAnnee, annee, tarifsClasses, reglages }),
+    () => elevesEnRetard(eleves, { moisAnnee, annee, tarifsClasses, reglages, moisGarantie: reglages.moisGarantie }),
     [eleves, moisAnnee, annee, tarifsClasses, reglages],
   );
   const monnaie = schoolInfo?.monnaie || getMonnaie();
   const total = retards.reduce((s, r) => s + r.montant, 0);
 
-  const enregistrer = async (r) => {
+  const enregistrer = async ({ moisGarantie: garantieChoisie, ...alerte }) => {
     try {
-      await majReglagesCompta({ alerteMensualites: r });
+      await majReglagesCompta({ alerteMensualites: alerte, moisGarantie: garantieChoisie });
       toast?.("Réglages de l'alerte enregistrés.", "success");
       setReglant(false);
     } catch (e) {
@@ -36,7 +40,11 @@ export function AlertesCritiques({ eleves, moisAnnee, annee, tarifsClasses, scho
 
   const modale = reglant && <ReglagesAlerteModale reglages={reglages} fermer={() => setReglant(false)} enregistrer={enregistrer} />;
   const boutonReglages = canEdit && <Btn sm v="ghost" onClick={() => setReglant(true)}>⚙️ Réglages</Btn>;
-  const regle = `retard compté à partir du ${reglages.jourEcheance === 1 ? "1er" : reglages.jourEcheance} du mois · alerte dès ${reglages.seuilMois} mois`;
+  const regle = [
+    garantie.length ? `${garantie.join(" et ")} dû(s) dès la rentrée` : "",
+    `retard compté à partir du ${reglages.jourEcheance === 1 ? "1er" : reglages.jourEcheance} du mois`,
+    `alerte dès ${reglages.seuilMois} mois`,
+  ].filter(Boolean).join(" · ");
 
   if (retards.length === 0) {
     return (
@@ -71,7 +79,7 @@ export function AlertesCritiques({ eleves, moisAnnee, annee, tarifsClasses, scho
           <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
             <span style={{ fontSize: 11.5, color: "#6b7280", flex: 1, minWidth: 180 }}>Règle : {regle}.</span>
             {boutonReglages}
-            <Btn sm v="ghost" onClick={() => imprimerAlerteMensualites(retards, { schoolInfo, annee, perimetre, reglages })}>
+            <Btn sm v="ghost" onClick={() => imprimerAlerteMensualites(retards, { schoolInfo, annee, perimetre, regle })}>
               🖨️ Imprimer
             </Btn>
             <Btn sm v="ghost" onClick={() => exportExcel(
@@ -110,12 +118,14 @@ export function AlertesCritiques({ eleves, moisAnnee, annee, tarifsClasses, scho
   );
 }
 
-// Jour à partir duquel un mois non payé compte comme en retard, et nombre
-// de mois de retard déclenchant l'alerte. Enregistrés dans l'école (RPC
+// Jour à partir duquel un mois non payé compte comme en retard, nombre de
+// mois de retard déclenchant l'alerte, et mois de garantie (derniers mois
+// payés d'avance — ils passent aussi en tête de l'ordre d'encaissement). Enregistrés dans l'école (RPC
 // maj_reglages_compta), mêmes bornes que le serveur.
 function ReglagesAlerteModale({ reglages, fermer, enregistrer }) {
   const [jour, setJour] = useState(reglages.jourEcheance);
   const [seuil, setSeuil] = useState(reglages.seuilMois);
+  const [garantie, setGarantie] = useState(reglages.moisGarantie);
   const [enCours, setEnCours] = useState(false);
   const j = Number(jour);
   const s = Number(seuil);
@@ -123,7 +133,7 @@ function ReglagesAlerteModale({ reglages, fermer, enregistrer }) {
     && Number.isInteger(s) && s >= 1 && s <= SEUIL_MOIS_MAX;
   const valider = async () => {
     setEnCours(true);
-    try { await enregistrer({ jourEcheance: j, seuilMois: s }); } finally { setEnCours(false); }
+    try { await enregistrer({ jourEcheance: j, seuilMois: s, moisGarantie: Number(garantie) }); } finally { setEnCours(false); }
   };
   return (
     <Modale titre="⚙️ Réglages de l'alerte mensualités" fermer={fermer}>
@@ -134,6 +144,18 @@ function ReglagesAlerteModale({ reglages, fermer, enregistrer }) {
       </div>
       <Input label={`Nombre de mois de retard pour déclencher l'alerte (1 à ${SEUIL_MOIS_MAX})`} type="number" min="1" max={SEUIL_MOIS_MAX}
         value={seuil} onChange={(e) => setSeuil(e.target.value)} />
+      <label style={{ display: "block", fontSize: 13, fontWeight: 700, margin: "14px 0 6px" }}>
+        Mois de garantie payés d'avance (derniers mois de l'année)
+      </label>
+      <select value={garantie} onChange={(e) => setGarantie(Number(e.target.value))}
+        style={{ border: "1px solid #b0c4d8", borderRadius: 7, padding: "7px 10px", fontSize: 13, width: "100%" }}>
+        {Array.from({ length: MOIS_GARANTIE_MAX + 1 }, (_, n) => (
+          <option key={n} value={n}>{n === 0 ? "Aucun" : n === 1 ? "Le dernier mois" : `Les ${n} derniers mois`}</option>
+        ))}
+      </select>
+      <div style={{ fontSize: 11.5, color: "#64748b", marginTop: 4 }}>
+        Dus dès la rentrée, ils sont aussi encaissés en premier (avant le 1er mois).
+      </div>
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
         <Btn v="ghost" onClick={fermer}>Annuler</Btn>
         <Btn disabled={!valide || enCours} onClick={valider}>Enregistrer</Btn>

@@ -10,6 +10,7 @@ import {
   acompteMois, getTarifMensuelForClasse, montantDuMois,
 } from "../../../mensualite-utils.js";
 import { estExonereTotal } from "../../../exoneration-utils.js";
+import { MOIS_GARANTIE_DEFAUT, moisDeGarantie } from "../../../paiements-scolarite.js";
 
 // Réglages par défaut : un mois compte dès son 1er jour, alerte à 2 mois.
 export const ALERTE_DEFAUT = Object.freeze({ jourEcheance: 1, seuilMois: 2 });
@@ -42,22 +43,29 @@ export function echeanceDuMois(mois, annee, jourEcheance = 1) {
 }
 
 // Mois de `moisAnnee` dont l'échéance est passée à la date `aujourdhui`.
+// Les mois de garantie (derniers de l'année, payés d'avance) sont dus dès
+// l'échéance du PREMIER mois : Juin non payé est en retard dès octobre.
 // Année illisible : on ne sait pas dater, aucun mois n'est échu (pas de
 // fausse alerte).
-export function moisEchus(moisAnnee = [], annee, jourEcheance = 1, aujourdhui = new Date()) {
-  return moisAnnee.filter((mois) => {
+export function moisEchus(moisAnnee = [], annee, jourEcheance = 1, aujourdhui = new Date(), moisGarantie = MOIS_GARANTIE_DEFAUT) {
+  const garantie = moisDeGarantie(moisAnnee, moisGarantie);
+  const echu = (mois) => {
     const echeance = echeanceDuMois(mois, annee, jourEcheance);
     return !!echeance && echeance <= aujourdhui;
-  });
+  };
+  const rentreeEchue = moisAnnee.length > 0 && echu(moisAnnee[0]);
+  return moisAnnee.filter((mois) => echu(mois) || (rentreeEchue && garantie.includes(mois)));
 }
 
 // Retard d'un élève : mois échus qu'il devait (départ, absence non due et
 // dispense déduits) et pas encore soldés, avec le reste à payer, acomptes
 // déduits.
-export function retardEleve(eleve = {}, { moisAnnee = [], annee, tarifsClasses = [], jourEcheance = 1, aujourdhui = new Date() } = {}) {
+export function retardEleve(eleve = {}, {
+  moisAnnee = [], annee, tarifsClasses = [], jourEcheance = 1, aujourdhui = new Date(), moisGarantie = MOIS_GARANTIE_DEFAUT,
+} = {}) {
   if (estExonereTotal(eleve, "mensualites")) return { mois: [], montant: 0 };
   const mens = eleve.mens || {};
-  const echus = new Set(moisEchus(moisAnnee, annee, jourEcheance, aujourdhui));
+  const echus = new Set(moisEchus(moisAnnee, annee, jourEcheance, aujourdhui, moisGarantie));
   const du = montantDuMois(eleve, getTarifMensuelForClasse(tarifsClasses, eleve.classe));
   const mois = [];
   let montant = 0;
