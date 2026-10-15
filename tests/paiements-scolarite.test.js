@@ -3,6 +3,8 @@ import test from "node:test";
 import {
   champsRetraitAcompte,
   etatsMois,
+  moisDeGarantie,
+  moisGarantieEcole,
   ordreEncaissement,
   periodeTranche,
   planVersement,
@@ -208,6 +210,18 @@ test("ordreEncaissement place le dernier mois en tête", () => {
   assert.deepEqual(ordreEncaissement(MOIS), ["Juin", "Octobre", "Novembre", "Décembre", "Janvier", "Février", "Mars", "Avril", "Mai"]);
   assert.deepEqual(ordreEncaissement(["Octobre"]), ["Octobre"]);
   assert.deepEqual(ordreEncaissement([]), []);
+});
+
+test("mois de garantie : les 2 derniers d'abord, aucun, ou réglage illisible = 1", () => {
+  assert.deepEqual(ordreEncaissement(MOIS, 2), ["Mai", "Juin", "Octobre", "Novembre", "Décembre", "Janvier", "Février", "Mars", "Avril"]);
+  assert.deepEqual(ordreEncaissement(MOIS, 0), MOIS);
+  // Jamais toute l'année : il reste au moins un mois courant.
+  assert.deepEqual(ordreEncaissement(["Octobre", "Novembre"], 3), ["Novembre", "Octobre"]);
+  assert.equal(moisGarantieEcole({}), 1);
+  assert.equal(moisGarantieEcole({ moisGarantie: 2 }), 2);
+  assert.equal(moisGarantieEcole({ moisGarantie: 0 }), 0);
+  assert.equal(moisGarantieEcole({ moisGarantie: 7 }), 1);
+  assert.deepEqual(moisDeGarantie(MOIS, 2), ["Mai", "Juin"]);
 });
 
 test("un montant libre solde le dernier mois puis repart du 1er", () => {
