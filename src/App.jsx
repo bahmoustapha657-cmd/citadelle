@@ -57,7 +57,7 @@ export default function App() {
   // legal profile, badges messages/élèves/notifs).
   const {
     schoolInfoState, setSchoolInfo, verrous,
-    msgsNonLus, totalElevesActifs, notifListe, notifNonLues, setNotifNonLues,
+    msgsNonLus, totalElevesActifs, notifListe, notifNonLues, marquerNotifLues,
   } = useSchoolData({ schoolId, utilisateur });
 
   const schoolInfo = (!schoolId || schoolId === "superadmin") ? SCHOOL_INFO_DEFAUT : schoolInfoState;
@@ -156,7 +156,7 @@ export default function App() {
         deconnecter={deconnecter} estHorsLigne={estHorsLigne} syncPendantes={syncPendantes} premiereSynchro={premiereSynchro} t={t}
         readOnly={readOnly} permissions={permissions} roleEffectif={roleEffectif} abonnementExpire={abonnementExpire} planInfo={planInfo} modeSombre={modeSombre} setModeSombre={setModeSombre}
         notifOuvert={notifOuvert} setNotifOuvert={setNotifOuvert}
-        notifNonLues={notifNonLues} setNotifNonLues={setNotifNonLues} notifListe={notifListe} nowTs={nowTs}
+        notifNonLues={notifNonLues} marquerNotifLues={marquerNotifLues} notifListe={notifListe} nowTs={nowTs}
         profilOuvert={profilOuvert} setProfilOuvert={setProfilOuvert}
         setAideOuverte={setAideOuverte} aideOuverte={aideOuverte}
         centreAideOuvert={centreAideOuvert} setCentreAideOuvert={setCentreAideOuvert}

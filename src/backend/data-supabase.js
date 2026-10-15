@@ -153,6 +153,27 @@ export async function chargerCollection(schoolCode, nomCollection, { annee, peri
   return { items: rows.map((r) => transformRow(map.table, r)) };
 }
 
+// Dernières actions du journal, pour la cloche de l'en-tête : seules `n`
+// lignes voyagent (la page Historique, elle, lit tout). Miroir local trié sur
+// la date de saisie ; serveur trié sur created_at — une action saisie hors
+// ligne n'y arrive qu'à l'envoi, l'appelant retrie donc sur `date`
+// (preparerNotifs). La RLS du module historique décide : sans ce droit,
+// 0 ligne, sans erreur.
+export async function lireDernieresActions(schoolCode, n) {
+  const sb = getSupabase();
+  const ecoleId = await ecoleIdFromCode(sb, schoolCode);
+  if (!ecoleId) return [];
+  if (horsLigne("historique")) {
+    const { lireDernieresActionsLocal } = await localData();
+    const rows = await lireDernieresActionsLocal(ecoleId, n);
+    return rows.map((r) => transformRow("historique", r));
+  }
+  const { data, error } = await sb.from("historique").select("*")
+    .eq("ecole_id", ecoleId).order("created_at", { ascending: false }).limit(n);
+  if (error) throw new Error(error.message);
+  return (data || []).map((r) => transformRow("historique", r));
+}
+
 // Élèves ACTIFS de l'école, toutes sections (préscolaire compris) : l'effectif
 // que plafonne le plan (computePlanInfo). Un comptage, aucune ligne ne voyage :
 // en ligne, `head: true` ne renvoie que le total (en-tête Content-Range, donc

@@ -1,17 +1,20 @@
-import { useEffect, useState } from "react";
-import { chargerEcole, compterElevesActifs } from "../backend/data-supabase";
+import { useCallback, useEffect, useState } from "react";
+import { chargerEcole, compterElevesActifs, lireDernieresActions } from "../backend/data-supabase";
 import { subscribeTable, surveillerTable } from "../backend/realtime-supabase";
 import { SCHOOL_INFO_DEFAUT } from "../contexts/SchoolContext";
 import { setMonnaie } from "../constants";
 import { DEFAULT_VERROUS, mergeSchoolInfo, applyBrandingColors } from "./school-data-helpers";
 import { suivreCompteur } from "./suivre-compteur";
+import { NB_NOTIFS, preparerNotifs, lireVu, ecrireVu } from "../notifications-cloche";
 
 // Hook des données liées à l'école courante :
 // - schoolInfo (table `ecoles`, profil légal compris) + verrous + variables
 //   CSS de branding
 // - totalElevesActifs (toutes sections, tenu à jour, pour vérification plan)
-// - msgsNonLus, notifListe/notifNonLues : compteurs de l'ancienne version
-//   Firebase, pas encore portés (valeurs neutres)
+// - notifListe/notifNonLues : cloche de l'en-tête, 10 dernières actions du
+//   journal (cf. src/notifications-cloche.js)
+// - msgsNonLus : compteur de l'ancienne version Firebase, pas encore porté
+//   (valeur neutre ; la messagerie a son propre badge)
 //
 // Extrait de App.jsx au refactor découpage 2026-05-20.
 export function useSchoolData({ schoolId, utilisateur }) {
@@ -21,7 +24,7 @@ export function useSchoolData({ schoolId, utilisateur }) {
   // null = pas (encore) compté : computePlanInfo ne bloque rien sur un
   // effectif inconnu, et l'écran affiche « … » plutôt qu'un faux 0.
   const [totalElevesActifs, setTotalElevesActifs] = useState(null);
-  const [notifListe] = useState([]);
+  const [notifListe, setNotifListe] = useState([]);
   const [notifNonLues, setNotifNonLues] = useState(0);
 
   // ── schoolInfo + verrous + branding ──────────────────────────
@@ -85,12 +88,41 @@ export function useSchoolData({ schoolId, utilisateur }) {
     });
   }, [schoolId, utilisateur]);
 
+  // ── Cloche : dernières actions du journal ────────────────────
+  // Relue à chaque ajout au journal, sur ce poste comme sur un autre.
+  // Changement d'école ou de compte : la cloche se vide au nettoyage.
+  useEffect(() => {
+    if (!utilisateur || !schoolId || schoolId === "superadmin") return undefined;
+    if (["enseignant", "parent"].includes(utilisateur.role)) return undefined;
+    const arreter = suivreCompteur({
+      compter: () => lireDernieresActions(schoolId, NB_NOTIFS),
+      estValide: Array.isArray,
+      surveiller: (signaler) => surveillerTable(schoolId, "historique", signaler),
+      onValeur: (items) => {
+        const { liste, nonLues } = preparerNotifs(items, lireVu(schoolId));
+        setNotifListe(liste);
+        setNotifNonLues(nonLues);
+      },
+    });
+    return () => {
+      arreter();
+      setNotifListe([]);
+      setNotifNonLues(0);
+    };
+  }, [schoolId, utilisateur]);
+
+  // Ouverture de la cloche : tout ce qui est affiché devient lu.
+  const marquerNotifLues = useCallback(() => {
+    if (schoolId) ecrireVu(schoolId);
+    setNotifNonLues(0);
+  }, [schoolId]);
+
   return {
     schoolInfoState, setSchoolInfo,
     verrous, setVerrous,
     msgsNonLus,
     totalElevesActifs,
     notifListe,
-    notifNonLues, setNotifNonLues,
+    notifNonLues, marquerNotifLues,
   };
 }

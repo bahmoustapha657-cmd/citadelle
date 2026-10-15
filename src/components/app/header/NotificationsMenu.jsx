@@ -3,11 +3,11 @@ import { C } from "../../../constants";
 // Cloche de notifications + panneau déroulant listant l'activité récente.
 export function NotificationsMenu({
   notifOuvert, setNotifOuvert, setProfilOuvert,
-  notifNonLues, setNotifNonLues, notifListe, nowTs, setPage,
+  notifNonLues, marquerNotifLues, notifListe, nowTs, setPage,
 }) {
   return (
     <div style={{position:"relative",flexShrink:0}}>
-      <button onClick={()=>{setNotifOuvert(v=>!v);setProfilOuvert(false);setNotifNonLues(0);}}
+      <button onClick={()=>{setNotifOuvert(v=>!v);setProfilOuvert(false);marquerNotifLues();}}
         title="Notifications récentes"
         style={{position:"relative",background:"#f0f4f0",border:"1px solid #e0ebf8",borderRadius:8,padding:"5px 10px",cursor:"pointer",fontSize:16,lineHeight:1}}>
         🔔
