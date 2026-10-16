@@ -5,6 +5,7 @@ import { getPeriodesForSection } from "../../period-utils";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { MSG_LECTURE_SEULE_PORTAIL } from "../app/app-shell-plan";
 import { tranchesValides } from "../../paiements-scolarite";
+import { getJoursOuvrablesPourClasse } from "../ecole/edt/edt-utils";
 import { fetchParentPortal, envoyerMessageParent } from "./portail-parent-api";
 import {
   filtrerNotes,
@@ -14,6 +15,7 @@ import {
   computeBlocage,
   resumeFamille,
   sectionDeLEleve,
+  emploisDeLEleve,
 } from "./portail-parent-derive";
 
 // Logique du portail parent : chargement des données via /parent-portal,
@@ -35,6 +37,7 @@ export function usePortailParent({ utilisateur, schoolInfo }) {
     messages: [],
     tarifs: [],
     annonces: [],
+    emplois: [],
   });
   const [eleveActifId, setEleveActifId] = useState(utilisateur.eleveId || "");
 
@@ -57,6 +60,12 @@ export function usePortailParent({ utilisateur, schoolInfo }) {
   const mesNotes = useMemo(() => filtrerNotes(notes, eleveId), [notes, eleveId]);
   const mesAbsences = useMemo(() => filtrerAbsences(absences, eleveId), [absences, eleveId]);
   const mesMessages = useMemo(() => trierMessages(messages, eleveId), [messages, eleveId]);
+  const mesEmplois = useMemo(
+    () => emploisDeLEleve(portalData.emplois, { classe: eleve.classe, section: eleve.section }),
+    [portalData.emplois, eleve.classe, eleve.section],
+  );
+  // Jours ouvrés de la section de l’enfant (primaire souvent sans samedi).
+  const joursOuvrables = getJoursOuvrablesPourClasse(schoolInfo, eleve.classe);
   const nonLus = mesMessages.filter((item) => item.expediteur === "ecole" && !item.lu).length;
 
   const { montantMensuel, estReinscription, montantInscription } = computeTarifInfos(tarifs, eleve);
@@ -134,6 +143,7 @@ export function usePortailParent({ utilisateur, schoolInfo }) {
   const tabs = [
     { id: "dashboard", label: t("parent.tabs.overview") },
     { id: "notes", label: t("parent.tabs.grades"), bloque: accesBloqueParPaiement },
+    { id: "edt", label: t("parent.tabs.schedule") },
     { id: "absences", label: t("parent.tabs.absences") },
     { id: "bulletins", label: t("parent.tabs.bulletin"), bloque: accesBloqueParPaiement },
     { id: "paiements", label: t("parent.tabs.fees") },
@@ -157,6 +167,8 @@ export function usePortailParent({ utilisateur, schoolInfo }) {
     mesNotes,
     mesAbsences,
     mesMessages,
+    mesEmplois,
+    joursOuvrables,
     nonLus,
     montantMensuel,
     tarifs,

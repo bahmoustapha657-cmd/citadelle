@@ -2,6 +2,7 @@ import { Chargement } from "../ui";
 import { DashboardTab } from "./DashboardTab";
 import { NotesTab } from "./NotesTab";
 import { AbsencesTab } from "./AbsencesTab";
+import { EdtTab } from "./EdtTab";
 import { BulletinsTab } from "./BulletinsTab";
 import { PaiementsTab } from "./PaiementsTab";
 import { MessagerieParentTab } from "./MessagerieParentTab";
@@ -41,6 +42,10 @@ export function PortailTabContent({ p, schoolInfo, utilisateur, c1, c2 }) {
           section={p.section}
           c1={c1}
         />
+      )}
+
+      {p.tab === "edt" && (
+        <EdtTab emplois={p.mesEmplois} joursOuvrables={p.joursOuvrables} eleve={p.eleve} eleveNom={p.eleveNom} schoolInfo={schoolInfo} c1={c1} />
       )}
 
       {p.tab === "absences" && (

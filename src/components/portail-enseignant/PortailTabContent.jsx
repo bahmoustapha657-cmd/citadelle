@@ -18,12 +18,12 @@ export function PortailTabContent({ p, schoolInfo, utilisateur, t }) {
           schoolInfo={schoolInfo} utilisateur={utilisateur} t={t}
           mesClasses={p.mesClasses} eleves={p.eleves} mesNotes={p.mesNotes} maxNote={p.maxNote}
           emplois={p.emplois} mesEvenements={p.mesEvenements}
-          formatEmploiHeure={p.formatEmploiHeure}
+          onVoirEdt={() => p.setTab("edt")}
         />
       )}
 
       {p.tab === "edt" && (
-        <EdtTab c1={p.c1} matiere={p.matiere} emplois={p.emplois} formatEmploiHeure={p.formatEmploiHeure} imprimerEdt={p.imprimerEdt} />
+        <EdtTab c1={p.c1} matiere={p.matiere} emplois={p.emplois} joursOuvrables={p.joursOuvrables} imprimerEdt={p.imprimerEdt} />
       )}
 
       {p.tab === "notes" && (

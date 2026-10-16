@@ -1,10 +1,11 @@
-import { C } from "../../constants";
+import { C, JOURS_SEMAINE } from "../../constants";
+import { normaliserCreneau, jourCourant, creneauxDuJour, horaire } from "../../edt-portail";
 import { getEvaluationLabel } from "../../evaluation-forms";
 import { Badge, Card, Stat, TD, THead, TR } from "../ui";
 
 export function DashboardTab({
   c1, nomEns, matiere, schoolInfo, utilisateur, t,
-  mesClasses, eleves, mesNotes, maxNote = 20, emplois, mesEvenements, formatEmploiHeure,
+  mesClasses, eleves, mesNotes, maxNote = 20, emplois, mesEvenements, onVoirEdt,
 }) {
   return (
     <>
@@ -18,20 +19,7 @@ export function DashboardTab({
       </div>
 
       {emplois.length > 0 && (
-        <Card style={{ marginBottom: 20 }}>
-          <div style={{ padding: "14px 18px", borderBottom: "1px solid #f1f5f9" }}>
-            <strong style={{ fontSize: 13, color: c1 }}>Mon emploi du temps</strong>
-          </div>
-          <div style={{ padding: "12px 18px", display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {emplois.map((emploi, index) => (
-              <div key={index} style={{ background: `${c1}11`, borderLeft: `3px solid ${c1}`, borderRadius: "0 8px 8px 0", padding: "8px 12px", minWidth: 130 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: c1 }}>{emploi.jour} - {formatEmploiHeure(emploi)}</div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#374151", marginTop: 2 }}>{emploi.classe}</div>
-                <div style={{ fontSize: 11, color: "#94a3b8" }}>{emploi.matiere || matiere}</div>
-              </div>
-            ))}
-          </div>
-        </Card>
+        <CoursDuJour emplois={emplois} matiere={matiere} c1={c1} onVoirEdt={onVoirEdt} />
       )}
 
       {mesNotes.length > 0 && (
@@ -58,5 +46,38 @@ export function DashboardTab({
         </Card>
       )}
     </>
+  );
+}
+
+// Cours du jour (aujourd'hui, ou le prochain jour où l'enseignant a cours),
+// dans l'ordre de la journée ; la semaine complète est dans l'onglet EDT.
+function CoursDuJour({ emplois, matiere, c1, onVoirEdt }) {
+  const liste = emplois.map(normaliserCreneau).filter((c) => c.type !== "recreation");
+  const aujourdhui = jourCourant();
+  const debut = Math.max(0, JOURS_SEMAINE.indexOf(aujourdhui));
+  const ordre = [...JOURS_SEMAINE.slice(debut), ...JOURS_SEMAINE.slice(0, debut)];
+  const jour = ordre.find((j) => liste.some((c) => c.jour === j));
+  if (!jour) return null;
+  const cours = creneauxDuJour(liste, jour);
+  return (
+    <Card style={{ marginBottom: 20 }}>
+      <div style={{ padding: "14px 18px", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: 8 }}>
+        <strong style={{ fontSize: 13, color: c1, flex: 1 }}>
+          {jour === aujourdhui ? "Mes cours aujourd'hui" : `Prochains cours — ${jour}`}
+        </strong>
+        <button type="button" onClick={onVoirEdt} style={{ border: "none", background: "none", color: c1, fontSize: 12, fontWeight: 800, cursor: "pointer" }}>
+          Toute la semaine →
+        </button>
+      </div>
+      <div style={{ padding: "12px 18px", display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(170px,1fr))", gap: 10 }}>
+        {cours.map((c, k) => (
+          <div key={c._id || k} style={{ background: `${c1}0d`, borderLeft: `4px solid ${c1}`, borderRadius: "0 10px 10px 0", padding: "9px 12px" }}>
+            <div style={{ fontSize: 12, fontWeight: 900, color: c1 }}>{horaire(c)}</div>
+            <div style={{ fontSize: 14, fontWeight: 900, color: "#0f172a", marginTop: 2 }}>{c.classe || "—"}</div>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{c.matiere || matiere}{c.salle ? ` · Salle ${c.salle}` : ""}</div>
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }
