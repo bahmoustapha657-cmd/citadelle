@@ -32,6 +32,7 @@ export function ComptaTabsScolarite({ c, readOnly, annee, userRole }) {
         supEnsPrim={c.supEnsPrim}
         supEnsCol={c.supEnsCol}
         supEnsLyc={c.supEnsLyc}
+        classesTitulaire={c.classesTitulaire}
       />}
 
       {/* ══ ONGLET PERSONNEL ══ */}

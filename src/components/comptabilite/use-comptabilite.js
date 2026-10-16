@@ -338,6 +338,9 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
 
   return {
     schoolInfo, moisAnnee, moisSalaire, toast, logAction,
+    // Classes où l’on peut désigner un titulaire (paie forfaitaire « Primaire »,
+    // maternelle comprise) : liste du formulaire enseignant.
+    classesTitulaire: [...classesPrimaireList, ...classesPrescolaireList].map((c) => c.nom).filter(Boolean),
     // `anneeCourante` : celle marquée « (courante) » dans le sélecteur — l'officielle.
     anneeCourante: anneeOfficielle, anneeConsultee, setAnneeConsultee, enModeArchive,
     canCreate, canEdit, canEditEleves, canCreateParent, anneesDispo, toggleBlocage,

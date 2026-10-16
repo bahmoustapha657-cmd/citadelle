@@ -3,7 +3,7 @@ import { EnseignantsListe } from "./enseignants-tab/EnseignantsListe";
 import { EnseignantModale } from "./enseignants-tab/EnseignantModale";
 
 export function EnseignantsTab(props) {
-  const { form, setForm, modal, setModal, canCreate, canEdit, ensPrimaire, ensCollege, ensLycee } = props;
+  const { form, setForm, modal, setModal, canCreate, canEdit, ensPrimaire, ensCollege, ensLycee, classesTitulaire = [] } = props;
   const { chg, ensTous, supEnsForSection, saveEns } = useEnseignantsTab(props);
   return (
     <div>
@@ -14,6 +14,7 @@ export function EnseignantsTab(props) {
       <EnseignantModale
         form={form} setForm={setForm} modal={modal} setModal={setModal}
         canCreate={canCreate} canEdit={canEdit} chg={chg} saveEns={saveEns}
+        classesTitulaire={classesTitulaire} ensTous={ensTous}
       />
     </div>
   );

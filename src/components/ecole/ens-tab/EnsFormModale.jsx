@@ -1,8 +1,9 @@
 import { Btn, Input, Modale, Selec, UploadFichiers } from "../../ui";
+import { ClasseTitulaireSelect } from "./ClasseTitulaireSelect";
 
 // Modale d'ajout/édition d'un enseignant : identité, matière, grade, statut,
 // classe de titulaire et pièces jointes. La paie est gérée en Comptabilité.
-export function EnsFormModale({ modal, setModal, canCreate, canEdit, form, setForm, chg, cleEns, saveEnseignant }) {
+export function EnsFormModale({ modal, setModal, canCreate, canEdit, form, setForm, chg, cleEns, saveEnseignant, classes = [], ens = [] }) {
   if (!((modal === "add_ens" && canCreate) || (modal === "edit_ens" && canEdit))) return null;
   return (
     <Modale titre={modal==="add_ens"?"Nouvel enseignant":"Modifier"} fermer={()=>setModal(null)}>
@@ -16,7 +17,8 @@ export function EnsFormModale({ modal, setModal, canCreate, canEdit, form, setFo
           <option>Titulaire</option><option>Contractuel</option><option>Vacataire</option>
         </Selec>
         <div style={{gridColumn:"1/-1"}}>
-          <Input label="Classe (titulaire)" value={form.classeTitle||""} onChange={chg("classeTitle")} placeholder="Ex : 3ème Année A — laissez vide si non titulaire"/>
+          <ClasseTitulaireSelect value={form.classeTitle||""} onChange={chg("classeTitle")}
+            classes={classes.map(c=>c.nom)} ens={ens} ensId={form._id}/>
         </div>
       </div>
       <div style={{marginTop:14,padding:"10px 14px",background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:8,fontSize:12,color:"#1e40af"}}>

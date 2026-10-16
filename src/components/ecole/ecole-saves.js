@@ -16,9 +16,17 @@ export function saveClasseAction({ form, modal, classes, eleves, ajC, modC, modC
 }
 
 // Crée/modifie un enseignant (garde anti-doublon) ; tient à jour la classe
-// titulaire associée. Renvoie false si bloqué par un doublon.
-export async function saveEnseignantAction({ form, modal, ens, classes, toast, ajEns, modEns, ajC, modC }) {
+// titulaire associée. Renvoie false si bloqué par un doublon ou si la classe
+// titulaire n'existe pas : elle se choisit dans la liste des classes, et
+// l'enregistrement n'en crée plus (une faute de frappe créait une classe
+// fantôme).
+export async function saveEnseignantAction({ form, modal, ens, classes, toast, ajEns, modEns, modC }) {
   const row = { ...form };
+  const existante = row.classeTitle ? classes.find((c) => c.nom === row.classeTitle) : null;
+  if (row.classeTitle && !existante) {
+    toast(`La classe « ${row.classeTitle} » n'existe pas. Choisissez une classe de la liste.`, "warning");
+    return false;
+  }
   const doublon = findStaffDuplicate(row, ens, {
     excludeId: modal === "edit_ens" ? row._id : null,
   });
@@ -30,12 +38,9 @@ export async function saveEnseignantAction({ form, modal, ens, classes, toast, a
   if (modal === "add_ens") await ajEns(row);
   else await modEns(row);
 
-  if (row.classeTitle) {
+  if (existante) {
     const nomEns = `${row.prenom || ""} ${row.nom || ""}`.trim();
-    const existante = classes.find((c) => c.nom === row.classeTitle);
-    if (!existante) {
-      await ajC({ nom: row.classeTitle, effectif: 0, enseignant: nomEns });
-    } else if (nomEns && existante.enseignant !== nomEns) {
+    if (nomEns && existante.enseignant !== nomEns) {
       await modC({ ...existante, enseignant: nomEns });
     }
   }
