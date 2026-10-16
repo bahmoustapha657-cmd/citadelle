@@ -12,6 +12,7 @@ export function NotesTab({
   utilisateur,
   periodeN, setPeriodeN, periodes,
   mesClasses,
+  classeNotes, setClasseNotes,
   notesPeriode,
   noteForms,
   defaultNoteType,
@@ -39,6 +40,7 @@ export function NotesTab({
       <NotesListe
         c1={c1} matiere={matiere} schoolInfo={schoolInfo} utilisateur={utilisateur}
         periodeN={periodeN} setPeriodeN={setPeriodeN} periodes={periodes} mesClasses={mesClasses}
+        classeNotes={classeNotes} setClasseNotes={setClasseNotes}
         notesPeriode={notesPeriode} maxNote={maxNote} enregistrement={enregistrement}
         pendingSync={pendingSync} syncing={syncing} synchroniser={synchroniser}
         ouvrirGrille={ouvrirGrille} ouvrirCreationNote={ouvrirCreationNote}

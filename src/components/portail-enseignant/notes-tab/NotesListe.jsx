@@ -5,15 +5,33 @@ import { Badge, Btn, Card, TD, THead, TR, Vide } from "../../ui";
 // En-tête (sélection période + actions) et tableau des notes de la période.
 export function NotesListe({
   c1, matiere, schoolInfo, utilisateur,
-  periodeN, setPeriodeN, periodes, mesClasses,
+  periodeN, setPeriodeN, periodes, mesClasses, classeNotes = "", setClasseNotes,
   notesPeriode, maxNote = 20, enregistrement,
   pendingSync = 0, syncing = false, synchroniser,
   ouvrirGrille, ouvrirCreationNote, ouvrirEditionNote, supprimerNote,
 }) {
   return (
     <>
+      {/* Enseignant de plusieurs classes (titulaire + autres classes) : on
+          choisit d'abord la classe, la liste et les saisies s'y limitent. */}
+      {mesClasses.length > 1 && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: "10px 12px", marginBottom: 14 }}>
+          <span style={{ fontSize: 12, fontWeight: 800, color: "#475569" }}>Classe :</span>
+          {mesClasses.map((classe) => {
+            const actif = classe === classeNotes;
+            return (
+              <button key={classe} type="button" onClick={() => setClasseNotes(classe)} style={{
+                border: `2px solid ${actif ? c1 : "#e2e8f0"}`, background: actif ? c1 : "#fff", color: actif ? "#fff" : "#334155",
+                borderRadius: 999, padding: "6px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer",
+              }}>
+                {classe}
+              </button>
+            );
+          })}
+        </div>
+      )}
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
-        <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900, color: c1, flex: 1 }}>Saisie des notes - {matiere || "Matiere"}</h2>
+        <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900, color: c1, flex: 1 }}>Saisie des notes - {matiere || "Matiere"}{classeNotes && <span style={{ color: "#64748b", fontWeight: 700 }}> · {classeNotes}</span>}</h2>
         {pendingSync > 0 && (
           <button
             type="button" onClick={syncing ? undefined : synchroniser} disabled={syncing}
@@ -31,7 +49,7 @@ export function NotesListe({
       </div>
 
       {notesPeriode.length === 0 ? (
-        <Vide icone="Notes" msg={`Aucune note pour ${periodeN}`} />
+        <Vide icone="Notes" msg={`Aucune note pour ${periodeN}${classeNotes ? ` en ${classeNotes}` : ""}`} />
       ) : (
         <Card>
           <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
