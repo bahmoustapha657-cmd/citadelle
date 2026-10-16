@@ -64,6 +64,9 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
 
   const [tab, setTab] = useState("dashboard");
   const [periodeN, setPeriodeN] = useState(periodes[0] || "");
+  // Classe de travail de l’onglet Notes (enseignant de plusieurs classes,
+  // titulaire compris) : liste, nouvelle note et grille s’y limitent.
+  const [classeChoisie, setClasseNotes] = useState("");
   const [chargement, setChargement] = useState(true);
   const [portalData, setPortalData] = useState({
     section: utilisateur.section || "college",
@@ -122,6 +125,15 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
     ...emplois.map((item) => item.classe),
     ...eleves.map((item) => item.classe),
   ].filter(Boolean))];
+  // Toujours UNE classe active (la première par défaut) : la saisie ne
+  // propose jamais les élèves de deux classes à la fois.
+  const classeNotes = mesClasses.includes(classeChoisie) ? classeChoisie : (mesClasses[0] || "");
+  const elevesClasseNotes = eleves.filter((item) => item.classe === classeNotes);
+  // Classe d'une note = celle de la fiche de l'élève (partis compris).
+  const classeParEleve = useMemo(
+    () => new Map((portalData.eleves || []).map((item) => [item._id, item.classe])),
+    [portalData.eleves],
+  );
   const mesNotes = [...notes].sort((left, right) => Number(right.updatedAt || right.createdAt || 0) - Number(left.updatedAt || left.createdAt || 0));
   const mesEvenements = [...enseignements].sort((left, right) => Number(right.date || 0) - Number(left.date || 0));
 
@@ -203,7 +215,7 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
 
   const ouvrirGrille = () => {
     const ctx = {
-      classe: mesClasses[0] || "",
+      classe: classeNotes,
       type: defaultNoteType,
       periode: periodeN,
       matiere: matiereParDefaut,
@@ -337,8 +349,9 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
   }));
 
   const notesPeriode = useMemo(
-    () => mesNotes.filter((item) => item.periode === periodeN),
-    [mesNotes, periodeN],
+    () => mesNotes.filter((item) => item.periode === periodeN
+      && (!classeNotes || (classeParEleve.get(item.eleveId) || item.classe) === classeNotes)),
+    [mesNotes, periodeN, classeNotes, classeParEleve],
   );
 
   // Jours ouvrés de la section de l’enseignant (Paramètres → Identité) ; un
@@ -353,6 +366,7 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
     tab, setTab, periodeN, setPeriodeN, chargement, portalData,
     emplois, joursOuvrables, eleves, salaires, salairesIndisponibles, incidents, enseignantId,
     mesClasses, mesNotes, mesEvenements, notesPeriode,
+    classeNotes, setClasseNotes, elevesClasseNotes,
     modalNote, setModalNote, formNote, setFormNote,
     gridForm, setGridForm, gridProgress,
     modalIncident, setModalIncident, formIncident, setFormIncident,
