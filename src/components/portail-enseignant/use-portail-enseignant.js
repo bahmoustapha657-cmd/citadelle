@@ -6,6 +6,7 @@ import { getActiveNoteForms } from "../../evaluation-forms";
 import { imprimerEdtEnseignant, imprimerPaiesEnseignant } from "../../reports";
 import { isTitulaireSection } from "../../backend/teacher-scope";
 import { presents } from "../../depart-utils";
+import { getJoursOuvrables } from "../ecole/edt/edt-utils";
 import { enrichirNotes } from "../../notes-eleves";
 import { MSG_LECTURE_SEULE_PORTAIL } from "../app/app-shell-plan";
 import {
@@ -340,14 +341,17 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
     [mesNotes, periodeN],
   );
 
-  const imprimerEdt = () => imprimerEdtEnseignant({ emplois, nomEns, matiere, schoolInfo, annee });
+  // Jours ouvrés de la section de l’enseignant (Paramètres → Identité) ; un
+  // jour où il a cours s’ajoute de toute façon à la grille.
+  const joursOuvrables = getJoursOuvrables(schoolInfo, portalData.section || utilisateur.section || "secondaire");
+  const imprimerEdt = () => imprimerEdtEnseignant({ emplois, nomEns, matiere, schoolInfo, annee, joursOuvrables });
   const imprimerPaies = () => imprimerPaiesEnseignant({ salaires, nomEns, matiere, schoolInfo, annee });
 
   return {
     c1, c2, nomEns, matiere, noteForms, defaultNoteType, periodes,
     isPrimaire, matieresDispo, maxNote,
     tab, setTab, periodeN, setPeriodeN, chargement, portalData,
-    emplois, eleves, salaires, salairesIndisponibles, incidents, enseignantId,
+    emplois, joursOuvrables, eleves, salaires, salairesIndisponibles, incidents, enseignantId,
     mesClasses, mesNotes, mesEvenements, notesPeriode,
     modalNote, setModalNote, formNote, setFormNote,
     gridForm, setGridForm, gridProgress,
