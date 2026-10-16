@@ -28,7 +28,8 @@ export function EnseignantModale({ form, setForm, modal, setModal, canCreate, ca
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
         <Input label="Nom" value={form.nom||""} onChange={chg("nom")} disabled={isEdit}/>
         <Input label="Prénom" value={form.prenom||""} onChange={chg("prenom")} disabled={isEdit}/>
-        <Input label="Téléphone" value={form.telephone||""} onChange={chg("telephone")}/>
+        <Input label="Téléphone" value={form.telephone||""} onChange={chg("telephone")} placeholder="Ex : 622 12 34 56"/>
+        <Input label="E-mail" type="email" value={form.email||""} onChange={chg("email")} placeholder="Ex : prenom.nom@gmail.com"/>
         <Input label="Grade" value={form.grade||""} onChange={chg("grade")}/>
         <Selec label="Statut" value={form.statut||"Titulaire"} onChange={chg("statut")}>
           <option>Titulaire</option><option>Contractuel</option><option>Vacataire</option>

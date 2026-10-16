@@ -22,7 +22,7 @@ async function connecterParent(page) {
   await page.goto("/");
   await page.getByPlaceholder("Ex. : citadelle").fill(ECOLE.code);
   await expect(page.getByText(ECOLE.nom).first()).toBeVisible();
-  await page.getByPlaceholder("Votre identifiant ou e-mail").fill(PARENT.login);
+  await page.getByPlaceholder("Identifiant, téléphone ou e-mail").fill(PARENT.login);
   await page.getByPlaceholder("Votre mot de passe").fill(PARENT.mdp);
   await page.getByRole("button", { name: "Se connecter", exact: true }).click();
   await expect(page.getByRole("button", { name: "Deconnexion", exact: true })).toBeVisible({ timeout: 30_000 });

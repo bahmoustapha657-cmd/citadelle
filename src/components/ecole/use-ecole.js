@@ -16,6 +16,7 @@ import {
   computeAnneesDispo,
 } from "./ecole-logic";
 import { saveClasseAction, saveEnseignantAction, saveAppreciationAction } from "./ecole-saves";
+import { synchroniserEmailEnseignant } from "../../backend/account-manage-supabase";
 
 // Toute la logique du module École (générique préscolaire/primaire/collège/
 // lycée) : chargement Firestore des collections dérivées des clés passées en
@@ -181,7 +182,7 @@ export function useEcole({
   };
 
   const saveEnseignant = async () => {
-    const ok = await saveEnseignantAction({ form, modal, ens, classes, toast, ajEns, modEns, modC });
+    const ok = await saveEnseignantAction({ form, modal, ens, classes, toast, ajEns, modEns, modC, syncEmail: synchroniserEmailEnseignant });
     if (ok) setModal(null);
   };
 

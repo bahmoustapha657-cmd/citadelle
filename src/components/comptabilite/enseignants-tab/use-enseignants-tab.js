@@ -1,4 +1,5 @@
 import { isSectionActive } from "../../../constants";
+import { erreurEmail, normaliserEmail } from "../../../comptes-enseignants";
 
 // Logique de l'onglet "Personnel enseignant" côté comptabilité : agrégation
 // des trois sections, aiguillage des actions par section et enregistrement
@@ -32,11 +33,14 @@ export function useEnseignantsTab({
   const supEnsForSection = (sec) => sec === "Primaire" ? supEnsPrim : sec === "Collège" ? supEnsCol : supEnsLyc;
 
   const saveEns = async () => {
+    const problemeEmail = erreurEmail(form.email);
+    if (problemeEmail) { toast(problemeEmail, "warning"); return; }
     const sec = form._section || "Primaire";
     const isPrim = sec === "Primaire";
     const payload = {
       nom: form.nom || "", prenom: form.prenom || "",
       telephone: form.telephone || "",
+      email: normaliserEmail(form.email) || "",
       grade: form.grade || "",
       statut: form.statut || "Titulaire",
     };
@@ -57,6 +61,14 @@ export function useEnseignantsTab({
     if (modal === "edit_ens_compta") {
       await modEnsForSection(sec)({ ...payload, _id: form._id });
       toast("Enseignant mis à jour.", "success");
+      // E-mail reporté sur son compte (connexion par e-mail, mot de passe oublié).
+      if (payload.email) {
+        // Import différé : ce module (sectionsEnsOuvertes) est aussi chargé
+        // hors navigateur, sans client Supabase.
+        const { synchroniserEmailEnseignant } = await import("../../../backend/account-manage-supabase");
+        await synchroniserEmailEnseignant(form._id, payload.email)
+          .catch((e) => toast(`L'e-mail n'a pas pu être ajouté au compte : ${e.message}`, "warning"));
+      }
       logAction("Enseignant modifié (Compta)", `${payload.prenom} ${payload.nom} · ${sec}`);
     } else {
       await ajEnsForSection(sec)(payload);

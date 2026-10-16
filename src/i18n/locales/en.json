@@ -48,7 +48,7 @@
     "schoolCode": "School code",
     "schoolCodePlaceholder": "E.g. citadelle",
     "username": "Username or email",
-    "usernamePlaceholder": "Your username or email",
+    "usernamePlaceholder": "Username, phone or e-mail",
     "password": "Password",
     "passwordPlaceholder": "Your password",
     "loginButton": "Sign in",
