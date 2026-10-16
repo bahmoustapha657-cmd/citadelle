@@ -5,15 +5,22 @@ export type EnrollmentStudent = {
   dateNaissance?: string;
   ien?: string;
   matricule?: string;
+  classe?: string;
 };
 
 export type EnrollmentDuplicate = {
-  type: "ien" | "matricule" | "identity";
+  type: "ien" | "matricule" | "identity" | "homonyme";
   student: EnrollmentStudent;
 };
 
 type FindEnrollmentDuplicateOptions = {
   excludeId?: string | null;
+  // Création d'une fiche : un homonyme (même nom et prénom) bloque aussi
+  // tant que l'une des deux fiches n'a pas de date de naissance — sans elle,
+  // rien ne distingue un autre enfant du même élève inscrit deux fois.
+  // Pas à la modification : des homonymes déjà en base, sans date, doivent
+  // rester modifiables. Même règle côté base (eleves_inscription_unique).
+  homonymes?: boolean;
 };
 
 type GetEnrollmentDuplicateMessageOptions = {
@@ -31,7 +38,13 @@ const normalizeIdentifier = (value: string = ""): string => normalizeToken(value
 
 const normalizeDate = (value: string = ""): string => String(value || "").trim();
 
-const buildIdentityKey = (student: EnrollmentStudent = {}): string => {
+const buildNameKey = (student: EnrollmentStudent = {}): string => {
+  const nom = normalizeToken(student.nom);
+  const prenom = normalizeToken(student.prenom);
+  return nom && prenom ? `${nom}|${prenom}` : "";
+};
+
+const buildIdentityKey =(student: EnrollmentStudent = {}): string => {
   const nom = normalizeToken(student.nom);
   const prenom = normalizeToken(student.prenom);
   const dateNaissance = normalizeDate(student.dateNaissance);
@@ -67,6 +80,14 @@ export const findEnrollmentDuplicate = (
     if (existing) return { type: "identity", student: existing };
   }
 
+  const nameKey = options.homonymes ? buildNameKey(candidate) : "";
+  if (nameKey) {
+    const sansDate = !normalizeDate(candidate.dateNaissance);
+    const existing = pool.find((student) => buildNameKey(student) === nameKey
+      && (sansDate || !normalizeDate(student.dateNaissance)));
+    if (existing) return { type: "homonyme", student: existing };
+  }
+
   return null;
 };
 
@@ -82,6 +103,12 @@ export const getEnrollmentDuplicateMessage = (
   }
   if (duplicate.type === "matricule") {
     return `Doublon detecte: le matricule ${candidate.matricule || duplicate.student?.matricule || ""} existe deja${suffix}.`;
+  }
+  if (duplicate.type === "homonyme") {
+    const e = duplicate.student || {};
+    const details = [e.classe, e.matricule && `matricule ${e.matricule}`].filter(Boolean).join(", ");
+    return `Doublon detecte: ${e.nom || ""} ${e.prenom || ""} est deja inscrit(e)${details ? ` (${details})` : ""}${suffix}. `
+      + "S'il s'agit d'un autre enfant, renseignez la date de naissance sur les deux fiches.";
   }
   return `Doublon detecte: meme nom, prenom et date de naissance${suffix}.`;
 };

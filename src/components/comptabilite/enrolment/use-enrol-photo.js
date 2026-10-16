@@ -1,4 +1,4 @@
-import { useContext, useState } from "react";
+import { useContext, useRef, useState } from "react";
 import { SchoolContext } from "../../../contexts/SchoolContext";
 import { getSectionLabel, initMens } from "../../../constants";
 import { champsRetour, normaliserDepart } from "../../../depart-utils";
@@ -19,8 +19,12 @@ export function useEnrolPhoto({
 }) {
   const { logAction } = useContext(SchoolContext);
   const [uploadEnCours, setUploadEnCours] = useState(false);
+  // Double clic sur « Enregistrer » : le second appel partait avant que le
+  // bouton ne soit désactivé, et l’élève était inscrit deux fois.
+  const verrou = useRef(false);
 
   const enregistrer = async () => {
+    if (verrou.current) return;
     // Départ : date obligatoire pour une sortie (c'est elle qui arrête les
     // mensualités), champs de départ vidés au retour à « Actif » ou
     // « Inactif » — masqués dans le formulaire, ils restaient enregistrés.
@@ -48,6 +52,7 @@ export function useEnrolPhoto({
       + `${getSectionLabel(section)}, en « ${fiche.classe} » ?\n\n`
       + "Sa fiche, son matricule et ses paiements le suivent ; ses notes restent dans l'ancienne section.",
     )) return;
+    verrou.current = true;
     setUploadEnCours(true);
     try {
       let photoUrl = fiche.photo || "";
@@ -57,6 +62,7 @@ export function useEnrolPhoto({
       const r = { ...fiche, niveau: section, photo: photoUrl, mens: fiche.mens || initMens() };
       const doublon = findEnrollmentDuplicate(r, tousElevesScolarite, {
         excludeId: modal === "edit_enrol" ? r._id : null,
+        homonymes: modal === "add_enrol",
       });
       if (doublon) {
         toast(getEnrollmentDuplicateMessage(doublon, r), "warning");
@@ -93,6 +99,7 @@ export function useEnrolPhoto({
       toast("Erreur à l'enregistrement : " + e.message, "error");
     } finally {
       setUploadEnCours(false);
+      verrou.current = false;
     }
   };
 
