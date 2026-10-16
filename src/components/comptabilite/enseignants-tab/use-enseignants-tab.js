@@ -17,7 +17,7 @@ export const sectionsEnsOuvertes = (schoolInfo) => {
 
 export function useEnseignantsTab({
   form, setForm, modal, setModal, toast, logAction,
-  ensPrimaire, ensCollege, ensLycee,
+  ensPrimaire, ensCollege, ensLycee, classesTitulaire = [],
   ajEnsPrim, ajEnsCol, ajEnsLyc, modEnsPrim, modEnsCol, modEnsLyc, supEnsPrim, supEnsCol, supEnsLyc,
 }) {
   const chg = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
@@ -41,8 +41,15 @@ export function useEnseignantsTab({
       statut: form.statut || "Titulaire",
     };
     if (isPrim) {
+      // Classe titulaire choisie dans la liste : une valeur hors liste (ancienne
+      // saisie libre) est refusée plutôt que d'enregistrer une classe fantôme.
+      if (form.classeTitle && classesTitulaire.length && !classesTitulaire.includes(form.classeTitle)) {
+        toast(`La classe « ${form.classeTitle} » n'existe pas. Choisissez une classe de la liste.`, "warning");
+        return;
+      }
       payload.montantForfait = Number(form.montantForfait || 0);
-      if (form.classeTitle) payload.classeTitle = form.classeTitle;
+      // Vide = n'est plus titulaire (l'ancien « if » ne permettait pas de retirer).
+      payload.classeTitle = form.classeTitle || "";
     } else {
       payload.primeHoraire = Number(form.primeHoraire || 0);
       payload.primeParClasse = (form.primeParClasse || []).filter((p) => p.classe && Number(p.prime) > 0).map((p) => ({ classe: p.classe, prime: Number(p.prime) }));

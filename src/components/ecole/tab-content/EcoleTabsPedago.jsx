@@ -14,6 +14,7 @@ export function EcoleTabsPedago({ e, titre, section, avecEns, annee, classesPred
         classes={e.classes}
         eleves={e.eleves}
         ens={e.ens}
+        classes={e.classes}
         notes={e.notes}
         absences={e.absences}
         avecEns={avecEns}
@@ -35,6 +36,7 @@ export function EcoleTabsPedago({ e, titre, section, avecEns, annee, classesPred
         classes={e.classes}
         eleves={e.eleves}
         ens={e.ens}
+        classes={e.classes}
         cC={e.cC}
         ajC={e.ajC}
         modC={e.modC}
@@ -76,6 +78,7 @@ export function EcoleTabsPedago({ e, titre, section, avecEns, annee, classesPred
       {/* ── ENSEIGNANTS ── */}
       {e.tab === "ens" && avecEns && <EnsTab
         ens={e.ens}
+        classes={e.classes}
         cEns={e.cEns}
         supEns={e.supEns}
         cleEns={cleEns}

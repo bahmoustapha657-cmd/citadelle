@@ -181,7 +181,7 @@ export function useEcole({
   };
 
   const saveEnseignant = async () => {
-    const ok = await saveEnseignantAction({ form, modal, ens, classes, toast, ajEns, modEns, ajC, modC });
+    const ok = await saveEnseignantAction({ form, modal, ens, classes, toast, ajEns, modEns, modC });
     if (ok) setModal(null);
   };
 

@@ -3,10 +3,11 @@ import { SchoolContext } from "../../../contexts/SchoolContext";
 import { C, getClassesForSection, getSystemeScolaire } from "../../../constants";
 import { Btn, Input, Modale, Selec } from "../../ui";
 import { sectionsEnsOuvertes } from "./use-enseignants-tab";
+import { ClasseTitulaireSelect } from "../../ecole/ens-tab/ClasseTitulaireSelect";
 
 // Modale de création / édition de la paie d'un enseignant (forfait primaire
 // ou prime horaire + primes par classe pour le secondaire).
-export function EnseignantModale({ form, setForm, modal, setModal, canCreate, canEdit, chg, saveEns }) {
+export function EnseignantModale({ form, setForm, modal, setModal, canCreate, canEdit, chg, saveEns, classesTitulaire = [], ensTous = [] }) {
   const { schoolInfo } = useContext(SchoolContext);
   if (!((modal === "add_ens_compta" && canCreate) || (modal === "edit_ens_compta" && canEdit))) return null;
   const isEdit = modal === "edit_ens_compta";
@@ -35,7 +36,8 @@ export function EnseignantModale({ form, setForm, modal, setModal, canCreate, ca
         {isPrim?<>
           <Input label="Forfait mensuel (GNF)" type="number" value={form.montantForfait||""} onChange={chg("montantForfait")} placeholder="Ex : 1500000"/>
           <div style={{gridColumn:"1/-1"}}>
-            <Input label="Classe titulaire (optionnel)" value={form.classeTitle||""} onChange={chg("classeTitle")} placeholder="Ex : 3ème Année A"/>
+            <ClasseTitulaireSelect label="Classe titulaire (optionnel)" value={form.classeTitle||""} onChange={chg("classeTitle")}
+              classes={classesTitulaire} ens={ensTous.filter(e=>e._section==="Primaire")} ensId={form._id}/>
           </div>
         </>:<>
           <Input label="Prime horaire (GNF)" type="number" value={form.primeHoraire||""} onChange={chg("primeHoraire")} placeholder="Ex : 15000"/>
