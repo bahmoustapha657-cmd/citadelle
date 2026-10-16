@@ -48,7 +48,7 @@
     "schoolCode": "رمز المدرسة",
     "schoolCodePlaceholder": "مثال: citadelle",
     "username": "اسم المستخدم أو البريد الإلكتروني",
-    "usernamePlaceholder": "اسم المستخدم أو البريد الإلكتروني",
+    "usernamePlaceholder": "اسم المستخدم أو الهاتف أو البريد الإلكتروني",
     "password": "كلمة المرور",
     "passwordPlaceholder": "كلمة المرور الخاصة بك",
     "loginButton": "تسجيل الدخول",

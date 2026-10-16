@@ -12,7 +12,8 @@ export function EnsFormModale({ modal, setModal, canCreate, canEdit, form, setFo
         <Input label="Prénom" value={form.prenom||""} onChange={chg("prenom")}/>
         <Input label="Matière" value={form.matiere||""} onChange={chg("matiere")}/>
         <Input label="Grade" value={form.grade||""} onChange={chg("grade")}/>
-        <Input label="Téléphone" value={form.telephone||""} onChange={chg("telephone")}/>
+        <Input label="Téléphone" value={form.telephone||""} onChange={chg("telephone")} placeholder="Ex : 622 12 34 56"/>
+        <Input label="E-mail" type="email" value={form.email||""} onChange={chg("email")} placeholder="Ex : prenom.nom@gmail.com"/>
         <Selec label="Statut" value={form.statut||"Titulaire"} onChange={chg("statut")}>
           <option>Titulaire</option><option>Contractuel</option><option>Vacataire</option>
         </Selec>
