@@ -75,11 +75,11 @@ export function parseEnrolmentRows({ allRows, headerRowIdx, cols, classeDefautIm
       avertissements.push(`Classe "${classe}" non reconnue`);
     }
     if (!erreurs.length) {
-      const doublonExistant = findEnrollmentDuplicate(ligneCandidate, tousElevesScolarite);
+      const doublonExistant = findEnrollmentDuplicate(ligneCandidate, tousElevesScolarite, { homonymes: true });
       if (doublonExistant) {
         erreurs.push(getEnrollmentDuplicateMessage(doublonExistant, ligneCandidate, { scope: "deja dans l'ecole" }));
       } else {
-        const doublonImport = findEnrollmentDuplicate(ligneCandidate, candidatsImport);
+        const doublonImport = findEnrollmentDuplicate(ligneCandidate, candidatsImport, { homonymes: true });
         if (doublonImport) {
           erreurs.push(getEnrollmentDuplicateMessage(doublonImport, ligneCandidate, { scope: "deja dans ce fichier" }));
         } else {

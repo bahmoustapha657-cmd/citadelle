@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { C, initMens, getClassesForSection, getSectionLabel, getSystemeScolaire, sectionOuverte } from "../../../constants";
 import { Btn, Champ, Input, Modale, Selec } from "../../ui";
 import { findEnrollmentDuplicate, getEnrollmentDuplicateMessage } from "../../../enrollment-utils";
@@ -18,6 +18,10 @@ export function RapideEnrolModale({
   // doublons et récapitulatif, avant même que les listes soient rechargées.
   const [ajoutes, setAjoutes] = useState([]);
   const [enCours, setEnCours] = useState(false);
+  // Lus par un clic qui suit avant le rendu : ni `enCours` ni `ajoutes` ne
+  // sont encore à jour dans sa fermeture.
+  const verrou = useRef(false);
+  const ajoutesRef = useRef([]);
   // « saisie » des élèves, puis « parent » : le compte parent de la fratrie,
   // proposé en terminant (facultatif).
   const [etape, setEtape] = useState("saisie");
@@ -35,15 +39,19 @@ export function RapideEnrolModale({
 
   // Enregistre l'élève en cours ; renvoie la liste des ajoutés, ou null.
   const sauvegarderRapide = async () => {
+    // Double clic : le second appel partirait avant que `enCours` ne désactive
+    // le bouton, et inscrirait l'élève deux fois.
+    if(verrou.current) return null;
     if(!form.nom||!form.prenom){toast("Nom et prénom obligatoires","warning");return null;}
     if(!form.classe){toast("Classe obligatoire","warning");return null;}
     const ajouter = ajoutParNiveau[section];
     const r={...form,niveau:section,statut:"Actif",mens:initMens()};
-    const doublon = findEnrollmentDuplicate(r, [...tousElevesScolarite, ...ajoutes]);
+    const doublon = findEnrollmentDuplicate(r, [...tousElevesScolarite, ...ajoutesRef.current], { homonymes: true });
     if(doublon){
       toast(getEnrollmentDuplicateMessage(doublon, r),"warning");
       return null;
     }
+    verrou.current = true;
     setEnCours(true);
     try {
       if(String(r.photo||"").startsWith("data:")) r.photo = await uploadPhotoEleve(r.photo, schoolId);
@@ -58,9 +66,11 @@ export function RapideEnrolModale({
       return null;
     } finally {
       setEnCours(false);
+      verrou.current = false;
     }
     toast(`${r.prenom} ${r.nom} ajouté(e) — ${r.classe} (${getSectionLabel(section)})`,"success");
-    const nouveaux = [...ajoutes, r];
+    const nouveaux = [...ajoutesRef.current, r];
+    ajoutesRef.current = nouveaux;
     setAjoutes(nouveaux);
     return nouveaux;
   };

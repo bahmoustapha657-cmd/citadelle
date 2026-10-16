@@ -67,3 +67,39 @@ test("duplicate message stays readable for import and manual entry", () => {
     "Doublon detecte: meme nom, prenom et date de naissance (deja dans l'ecole).",
   );
 });
+
+test("creation: a same-name student without birth date is a duplicate", () => {
+  const existing = [{ _id: "1", nom: "DIALLO", prenom: "Adama", classe: "3ème Année B", matricule: "P26/465" }];
+  const duplicate = findEnrollmentDuplicate({ nom: "Diallo", prenom: " adama " }, existing, { homonymes: true });
+
+  assert.equal(duplicate?.type, "homonyme");
+  assert.match(getEnrollmentDuplicateMessage(duplicate, {}), /3ème Année B, matricule P26\/465/);
+});
+
+test("creation: a birth date on one side only does not separate homonyms", () => {
+  const existing = [{ _id: "1", nom: "Bah", prenom: "Moussa" }];
+  const duplicate = findEnrollmentDuplicate(
+    { nom: "Bah", prenom: "Moussa", dateNaissance: "2014-01-02" }, existing, { homonymes: true },
+  );
+
+  assert.equal(duplicate?.type, "homonyme");
+});
+
+test("creation: homonyms with different birth dates are two children", () => {
+  const existing = [{ _id: "1", nom: "Diallo", prenom: "Ibrahima", dateNaissance: "2013-05-01" }];
+  const duplicate = findEnrollmentDuplicate(
+    { nom: "Diallo", prenom: "Ibrahima", dateNaissance: "2016-09-20" }, existing, { homonymes: true },
+  );
+
+  assert.equal(duplicate, null);
+});
+
+test("edit: existing homonyms without birth date stay editable", () => {
+  const existing = [
+    { _id: "1", nom: "Diallo", prenom: "Ibrahima" },
+    { _id: "2", nom: "Diallo", prenom: "Ibrahima" },
+  ];
+  const duplicate = findEnrollmentDuplicate({ ...existing[0], classe: "4ème" }, existing, { excludeId: "1" });
+
+  assert.equal(duplicate, null);
+});

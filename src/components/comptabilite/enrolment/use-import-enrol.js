@@ -41,7 +41,7 @@ export function useImportEnrol({
     const ajFn = ajoutParNiveau[niveauEnrol] || ajoutParNiveau.college;
     const lotImporte = [];
     for (const l of importEnrolPreview.valides) {
-      const doublon = findEnrollmentDuplicate(l, [...existants, ...lotImporte]);
+      const doublon = findEnrollmentDuplicate(l, [...existants, ...lotImporte], { homonymes: true });
       if (doublon) continue;
       const mat = genererMatricule([...elevesEnrol, ...matsGeneres], niveauEnrol, schoolInfo);
       const eleveAImporter = {
