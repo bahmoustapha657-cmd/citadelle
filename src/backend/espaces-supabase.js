@@ -22,7 +22,9 @@ export async function mesEspaces() {
 async function fileEnvoiVide() {
   if (!powerSyncConfigured) return true;
   try {
-    const { attendreRemontee } = await import("./powersync/client");
+    const { attendreRemontee, synchroOuverte } = await import("./powersync/client");
+    // Pas de synchro ouverte (portail parent) : aucune saisie locale à attendre.
+    if (!synchroOuverte()) return true;
     return await attendreRemontee(15000);
   } catch {
     return true;
