@@ -16,6 +16,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { peutFusionnerParents, peutGererRole } from "./droits.ts";
 import { fusionnerComptesParents, lienValide, modifierLienParent, rattacherAuFoyer } from "./foyer.ts";
 import { normaliserTel } from "../_shared/telephone.ts";
+import { idsADetacher, peutRelierComptes, planLiaison, refusChangement } from "./espaces.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -220,6 +221,78 @@ Deno.serve(async (req) => {
       return json({
         ok: true, login: r.cible.login, absorbes: r.absorbes.map((a) => a.login), liensDeplaces: r.liensDeplaces, nonBloques,
       });
+    }
+
+    // ── Une personne, plusieurs espaces (espaces.ts) ─────────────────────
+    // Relier des comptes d'une même personne : Direction seulement.
+    if (action === "relier_comptes") {
+      if (!peutRelierComptes(caller.role)) return json({ error: "Relier des comptes est réservé à la Direction." }, 403);
+      const ids = Array.isArray(body.compteIds) ? body.compteIds.map(String) : [];
+      const { data: comptes, error: lErr } = await admin.from("comptes")
+        .select("id, ecole_id, user_id, role, personne_id, extra, login").in("id", ids.length ? ids : ["00000000-0000-0000-0000-000000000000"]);
+      if (lErr) return json({ error: lErr.message }, 500);
+      const plan = planLiaison(comptes || [], ids, ecoleId as string, crypto.randomUUID());
+      if ("error" in plan) return json({ error: plan.error }, plan.status);
+      const { error: uErr2 } = await admin.from("comptes").update({ personne_id: plan.personneId }).in("id", ids);
+      if (uErr2) return json({ error: uErr2.message }, 500);
+      await admin.from("audit").insert({
+        ecole_id: ecoleId, action: "relier_comptes",
+        auteur: { compteId: caller.id, login: caller.login, role: caller.role },
+        cible: { personneId: plan.personneId },
+        details: { comptes: (comptes || []).map((c) => ({ compteId: c.id, login: c.login, role: c.role })) },
+      });
+      return json({ ok: true, personneId: plan.personneId });
+    }
+
+    // Détacher un compte de sa personne : Direction seulement.
+    if (action === "detacher_compte") {
+      if (!peutRelierComptes(caller.role)) return json({ error: "Détacher un compte est réservé à la Direction." }, 403);
+      const { data: compte } = await admin.from("comptes")
+        .select("id, ecole_id, user_id, role, personne_id, login").eq("id", String(body.compteId || "")).maybeSingle();
+      if (!compte || compte.ecole_id !== ecoleId) return json({ error: "Compte introuvable." }, 404);
+      if (!compte.personne_id) return json({ ok: true, detaches: [] });
+      const { data: groupe } = await admin.from("comptes")
+        .select("id, ecole_id, role, personne_id").eq("ecole_id", ecoleId).eq("personne_id", compte.personne_id);
+      const aDetacher = idsADetacher(compte, groupe || []);
+      const { error: dErr } = await admin.from("comptes").update({ personne_id: null }).in("id", aDetacher);
+      if (dErr) return json({ error: dErr.message }, 500);
+      await admin.from("audit").insert({
+        ecole_id: ecoleId, action: "detacher_compte",
+        auteur: { compteId: caller.id, login: caller.login, role: caller.role },
+        cible: { compteId: compte.id, login: compte.login },
+        details: { personneId: compte.personne_id, detaches: aDetacher },
+      });
+      return json({ ok: true, detaches: aDetacher });
+    }
+
+    // Passer à un autre espace de la même personne, sans mot de passe : on
+    // rend un jeton à usage unique que le navigateur échange contre la
+    // session du compte visé (verifyOtp), comme pour « Mot de passe oublié ».
+    if (action === "changer_espace") {
+      const { data: cible } = await admin.from("comptes")
+        .select("id, ecole_id, user_id, role, personne_id, extra, login, poste_id").eq("id", String(body.compteId || "")).maybeSingle();
+      const refus = refusChangement(caller, cible);
+      if (refus) return json({ error: refus.error }, refus.status);
+      if (cible.poste_id) {
+        const { data: poste } = await admin.from("postes").select("actif").eq("id", cible.poste_id).maybeSingle();
+        if (poste && poste.actif === false) return json({ error: "Ce poste est désactivé par la direction." }, 409);
+      }
+      const { data: authCible, error: aErr } = await admin.auth.admin.getUserById(cible.user_id);
+      const emailAuth = authCible?.user?.email;
+      if (aErr || !emailAuth) return json({ error: "Accès de connexion introuvable pour cet espace." }, 409);
+      const { data: lien, error: gErr } = await admin.auth.admin.generateLink({ type: "magiclink", email: emailAuth });
+      const tokenHash = lien?.properties?.hashed_token;
+      if (gErr || !tokenHash) return json({ error: "Changement d'espace impossible pour le moment." }, 500);
+      // La personne s'est authentifiée avec son identifiant principal : le
+      // mot de passe initial de l'espace visé ne lui sera pas redemandé.
+      await admin.from("comptes").update({ premiere_co: false }).eq("id", cible.id);
+      await admin.from("audit").insert({
+        ecole_id: caller.ecole_id, action: "changer_espace",
+        auteur: { compteId: caller.id, login: caller.login, role: caller.role },
+        cible: { compteId: cible.id, login: cible.login, role: cible.role },
+        details: {},
+      });
+      return json({ ok: true, tokenHash });
     }
 
     if (action === "reset_password") {

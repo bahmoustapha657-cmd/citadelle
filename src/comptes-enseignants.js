@@ -55,3 +55,9 @@ export function identifiantAffiche(mode, ens) {
   const { telephone, email } = coordonneesEnseignant(ens);
   return mode === "telephone" ? telephone || "" : mode === "email" ? email || "" : "";
 }
+
+// Identifiant interne d'un espace enseignant RELIÉ à un compte qui utilise
+// déjà ce numéro (même personne, déjà parent ou personnel) : la personne se
+// connecte avec son numéro sur l'autre compte, puis bouton « Espace ».
+export const loginInterneEnseignant = (login) =>
+  (String(login).startsWith("ens.") ? `${login}.ens` : `ens.${login}`);

@@ -36,6 +36,11 @@ function enFile(tache) {
 
 let connecte = null; // uid du compte dont la synchro est ouverte
 
+// Une synchro est-elle ouverte dans cette session ? Les portails parents n'en
+// ouvrent jamais : leur base locale n'est pas initialisée, et lire sa file
+// d'envoi attendrait en vain (changement d'espace, espaces-supabase.js).
+export const synchroOuverte = () => connecte !== null;
+
 // Ouvre la synchro pour le compte `uid`. Le miroir est gardé d'une session à
 // l'autre (cf. proprietaire.js) : on ne le vide que s'il appartient à un
 // autre compte. La connexion réseau elle-même n'est pas attendue — PowerSync

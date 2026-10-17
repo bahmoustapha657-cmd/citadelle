@@ -179,6 +179,29 @@ async function connexionParEmail(email, mdp, schoolCode) {
   return { ok: true, data: { compte } };
 }
 
+// Changement d'espace (une personne, plusieurs comptes reliés) : le jeton à
+// usage unique rendu par account-manage (changer_espace) est échangé contre
+// la session du compte visé, puis ce compte est lu et mémorisé comme après
+// une connexion par mot de passe. Renvoie { ok, data: { compte | error } }.
+export async function ouvrirSessionParJeton(tokenHash, schoolCode) {
+  const sb = getSupabase();
+  const { data: auth, error } = await sb.auth.verifyOtp({ type: "magiclink", token_hash: tokenHash });
+  if (error || !auth?.user) return { ok: false, data: { error: "Changement d'espace impossible : réessayez." } };
+  let compte;
+  try {
+    compte = await chargerCompte(sb, auth.user.id, schoolCode);
+  } catch {
+    return { ok: false, data: { error: "Connexion interrompue : vérifiez votre connexion internet puis réessayez." } };
+  }
+  if (!compte || compte.desactive) {
+    await sb.auth.signOut().catch(() => {});
+    return { ok: false, data: { error: compte?.desactive ? "Cet espace est désactivé par la direction." : "Espace introuvable." } };
+  }
+  await libererMiroirPour(compte.uid);
+  memoriserCompte(compte);
+  return { ok: true, data: { compte } };
+}
+
 // Connexion d'un utilisateur d'école. La saisie peut être l'identifiant
 // interne OU l'e-mail réel du compte (résolu via la RPC publique
 // login_pour_email — l'authentification reste l'e-mail synthétique).
