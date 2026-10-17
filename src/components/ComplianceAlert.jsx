@@ -55,7 +55,6 @@ export default function ComplianceAlert({ onOpenSettings }) {
         gap: 12,
         width: "100%",
         padding: "10px 14px",
-        marginBottom: 16,
         background: palette.bg,
         border: `1px solid ${palette.border}`,
         borderLeft: `4px solid ${palette.border}`,

@@ -1,19 +1,29 @@
 import { fmt, getSectionLabel, isSectionActive } from "../../constants";
+import { ESPACE } from "./tdb-styles";
 
+const TEINTES = { green: "#10b981", red: "#ef4444" };
+
+// Tuile claire : pastille d'icône, intitulé discret, chiffre en avant.
 // `clair` : affichage lisible (intitulés et explications bien contrastés) ;
 // sans lui, l'apparence d'origine (écoles qui la gardent, cf. finances-claires.js).
-function KPI({ c1, c2, label, value, sub, icon, color = "white", trend, clair = false }) {
+function KPI({ label, value, sub, icon, color = "white", trend, clair = false }) {
   return (
-    <div style={{ background: c1, borderRadius: 14, padding: "18px 20px", position: "relative", overflow: "hidden" }}>
-      <div style={{ position: "absolute", top: -12, right: -12, fontSize: 48, opacity: 0.06 }}>{icon}</div>
-      <div style={clair
-        ? { fontSize: 13, fontWeight: 800, color: "rgba(255,255,255,0.92)", marginBottom: 6 }
-        : { fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>{label}</div>
-      <div style={{ fontSize: "clamp(22px,3vw,30px)", fontWeight: 900, color: color === "green" ? c2 : color === "red" ? "#fca5a5" : "#fff", lineHeight: 1, fontVariantNumeric: clair ? "tabular-nums" : undefined }}>{value}</div>
-      {sub && <div style={clair
-        ? { fontSize: 12, color: "rgba(255,255,255,0.82)", marginTop: 6, lineHeight: 1.4 }
-        : { fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 4 }}>{sub}</div>}
-      {trend !== undefined && <div style={{ fontSize: 11, fontWeight: 700, marginTop: 6, color: trend >= 0 ? "#4ade80" : "#f87171" }}>
+    <div style={{
+      background: "var(--lc-surface)", border: "1px solid var(--lc-border)", borderRadius: 14,
+      padding: "16px 18px", boxShadow: "var(--lc-shadow)", display: "flex", flexDirection: "column", gap: 10, minWidth: 0,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span aria-hidden="true" style={{
+          width: 32, height: 32, borderRadius: 9, background: "var(--lc-surface-alt)", border: "1px solid var(--lc-border-soft)",
+          display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0,
+        }}>{icon}</span>
+        <span style={clair
+          ? { fontSize: 13, fontWeight: 700, color: "var(--lc-text)", lineHeight: 1.3 }
+          : { fontSize: 11, fontWeight: 700, color: "var(--lc-text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", lineHeight: 1.3 }}>{label}</span>
+      </div>
+      <div style={{ fontSize: "clamp(22px,2.6vw,28px)", fontWeight: 800, color: TEINTES[color] || "var(--lc-text-brand)", lineHeight: 1.1, letterSpacing: "-0.01em", fontVariantNumeric: "tabular-nums" }}>{value}</div>
+      {sub && <div style={{ fontSize: 12, color: clair ? "var(--lc-text-muted)" : "var(--lc-text-faint)", lineHeight: 1.4 }}>{sub}</div>}
+      {trend !== undefined && <div style={{ fontSize: 11, fontWeight: 700, color: trend >= 0 ? TEINTES.green : TEINTES.red }}>
         {trend >= 0 ? "▲" : "▼"} {Math.abs(trend)}%
       </div>}
     </div>
@@ -21,7 +31,7 @@ function KPI({ c1, c2, label, value, sub, icon, color = "white", trend, clair = 
 }
 
 export function KpiGrid({
-  t, c1, c2, schoolInfo = {}, totalEleves, elevesC, elevesL, elevesP, elevesPre = [],
+  t, schoolInfo = {}, totalEleves, elevesC, elevesL, elevesP, elevesPre = [],
   totalEns, ensC, ensL, ensP, ensPre = [], tauxPay, solde, totalRec, totalDep,
   masseSal, salMois, moisActuel, totalAbs, financesClaires = null, anneeCourante = "",
 }) {
@@ -42,14 +52,16 @@ export function KpiGrid({
     [ensL.length, "L", "lycee"], [ensP.length, "P", "primaire"],
   ].filter(aAfficher).map(([n, s]) => `${n}${s}`).join(" · ");
 
-  const grille = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12, marginBottom: 24 };
+  // Au plus `n` colonnes (lignes complètes), jamais moins de 150 px : 2 colonnes sur téléphone.
+  const colonnes = (n) => `repeat(auto-fill,minmax(max(min(100%,150px),calc((100% - ${n - 1} * ${ESPACE - 4}px) / ${n})),1fr))`;
+  const grille = { display: "grid", gridTemplateColumns: colonnes(3), gap: ESPACE - 4 };
 
   if (financesClaires) {
     const f = financesClaires;
     const r = f.recouvrement;
-    const k = { c1, c2, clair: true };
+    const k = { clair: true };
     return (
-      <div style={{ ...grille, gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,190px),1fr))" }}>
+      <div style={{ ...grille, gridTemplateColumns: colonnes(4) }}>
         <KPI {...k} label={t("dashboard.activeStudents")} value={totalEleves} icon="🎓" sub={detailEleves} />
         <KPI {...k} label={t("dashboard.totalTeachers")} value={totalEns} icon="👨‍🏫" sub={detailEns} />
         <KPI {...k} label={t("dashboard.realBalance", { annee: anneeCourante })} icon="💰"
@@ -68,12 +80,12 @@ export function KpiGrid({
 
   return (
     <div style={grille}>
-      <KPI c1={c1} c2={c2} label={t("dashboard.activeStudents")} value={totalEleves} icon="🎓" sub={detailEleves} />
-      <KPI c1={c1} c2={c2} label={t("dashboard.totalTeachers")} value={totalEns} icon="👨‍🏫" sub={detailEns} />
-      <KPI c1={c1} c2={c2} label={t("dashboard.paymentRate")} value={`${tauxPay}%`} icon="💳" color="green" sub={t("dashboard.allSections")} />
-      <KPI c1={c1} c2={c2} label={t("dashboard.treasury")} value={fmt(solde)} icon="💰" color={solde >= 0 ? "green" : "white"} sub={`${fmt(totalRec)} / ${fmt(totalDep)}`} />
-      <KPI c1={c1} c2={c2} label={t("dashboard.salaryTotal")} value={fmt(masseSal)} icon="📋" sub={`${salMois.length} · ${moisActuel}`} />
-      <KPI c1={c1} c2={c2} label={t("dashboard.absencesEntered")} value={totalAbs} icon="📝" sub={t("dashboard.allSections")} />
+      <KPI label={t("dashboard.activeStudents")} value={totalEleves} icon="🎓" sub={detailEleves} />
+      <KPI label={t("dashboard.totalTeachers")} value={totalEns} icon="👨‍🏫" sub={detailEns} />
+      <KPI label={t("dashboard.paymentRate")} value={`${tauxPay}%`} icon="💳" color="green" sub={t("dashboard.allSections")} />
+      <KPI label={t("dashboard.treasury")} value={fmt(solde)} icon="💰" color={solde >= 0 ? "green" : "white"} sub={`${fmt(totalRec)} / ${fmt(totalDep)}`} />
+      <KPI label={t("dashboard.salaryTotal")} value={fmt(masseSal)} icon="📋" sub={`${salMois.length} · ${moisActuel}`} />
+      <KPI label={t("dashboard.absencesEntered")} value={totalAbs} icon="📝" sub={t("dashboard.allSections")} />
     </div>
   );
 }

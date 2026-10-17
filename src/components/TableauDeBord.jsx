@@ -8,6 +8,7 @@ import { ChartsRow } from "./tableau-de-bord/ChartsRow";
 import { TrendsCard } from "./tableau-de-bord/TrendsCard";
 import { EventsAlerts } from "./tableau-de-bord/EventsAlerts";
 import { AbonnementBloc } from "./tableau-de-bord/AbonnementBloc";
+import { ESPACE } from "./tableau-de-bord/tdb-styles";
 
 // Orchestrateur du tableau de bord : les données et calculs vivent dans
 // useTableauDeBord, chaque bloc visuel dans tableau-de-bord/*.jsx.
@@ -18,7 +19,7 @@ function TableauDeBord({ annee, userRole, onOpenLegalSettings }) {
   if (d.enChargement) return <Chargement type="kpi" cols={6} />;
 
   return (
-    <div style={{ padding: "22px 26px", maxWidth: 1200 }}>
+    <div style={{ padding: "clamp(16px,3vw,28px)", maxWidth: 1200, display: "flex", flexDirection: "column", gap: ESPACE, textAlign: "start" }}>
       <DashboardHeader
         t={t} c1={d.c1} schoolInfo={d.schoolInfo} annee={annee} moisAnnee={d.moisAnnee}
         moisRapport={d.moisRapport} setMoisRapport={d.setMoisRapport}
