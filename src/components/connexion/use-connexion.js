@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ecoleLogin, fetchEtatEcole, superadminLogin } from "./connexion-api";
+import { demanderChoixEspace } from "../app/espaces-choix";
 
 // Logique de connexion : état du formulaire, résolution de l'école saisie
 // (lookup débounce) et appel d'authentification.
@@ -73,6 +74,9 @@ export function useConnexion({ onLogin }) {
         return;
       }
 
+      // Compte relié à d'autres (enseignant + parent…) : choix de l'espace
+      // proposé une fois, juste après cette connexion.
+      demanderChoixEspace();
       // Session Supabase déjà ouverte → useAuthSession prend le relais.
       onLogin(data.compte, sid);
     } catch {

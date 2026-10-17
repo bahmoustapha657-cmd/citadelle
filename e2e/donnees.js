@@ -244,3 +244,59 @@ export async function lirePaiementsEnLigne(eleveId) {
   if (error) throw error;
   return data;
 }
+
+// ── Une personne, plusieurs espaces (espaces-multiples.spec.js) ───────────
+// Kadiatou SYLLA est parent d'élève ET enseignante : deux comptes, que la
+// Direction relie. Elle se connecte comme parent puis passe à son espace
+// enseignant sans mot de passe.
+export const PERSONNE_PARENT = { login: "622555001", mdp: "E2e-Kadiatou-2026", nom: "Kadiatou SYLLA" };
+export const PERSONNE_ENSEIGNANT = { login: "ens.622555001", mdp: "E2e-Kadiatou-Ens-2026", nom: "Kadiatou SYLLA" };
+
+// Appel d'account-manage au nom d'un compte, SANS lever d'erreur : les
+// scénarios de sécurité vérifient justement les refus (statut HTTP).
+export async function appelerAccountManage(compte, corps) {
+  const sb = await clientConnecte(compte);
+  const { data: { session } } = await sb.auth.getSession();
+  const r = await fetch(`${SUPABASE_URL}/functions/v1/account-manage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: ANON_KEY, Authorization: `Bearer ${session.access_token}` },
+    body: JSON.stringify(corps),
+  });
+  return { status: r.status, data: await r.json().catch(() => ({})) };
+}
+
+// Crée (une fois) les deux comptes de la personne, non reliés. Renvoie leurs id.
+export async function preparerPersonneDeuxEspaces() {
+  const admin = clientAdmin();
+  const id = await ecoleId(admin);
+  const ids = {};
+  for (const [cle, compte, role, extra] of [
+    ["parent", PERSONNE_PARENT, "parent", { label: "Parent" }],
+    ["enseignant", PERSONNE_ENSEIGNANT, "enseignant", { label: "Enseignant", section: SECTION, sections: [SECTION] }],
+  ]) {
+    let { data: c } = await admin.from("comptes").select("id").eq("ecole_id", id).eq("login", compte.login).maybeSingle();
+    if (!c) {
+      const r = await appelerAccountManage(DIRECTION, {
+        action: "create", login: compte.login, mdp: compte.mdp, role, nom: compte.nom, statut: "Actif", ...extra,
+      });
+      if (r.status !== 200) throw new Error(`Création ${compte.login} : HTTP ${r.status} ${r.data.error || ""}`);
+      c = { id: r.data.id };
+    }
+    await admin.from("comptes").update({ premiere_co: false }).eq("id", c.id);
+    ids[cle] = c.id;
+  }
+  return ids;
+}
+
+export async function lireCompte(compteId) {
+  const { data, error } = await clientAdmin().from("comptes").select("id, personne_id, premiere_co").eq("id", compteId).single();
+  if (error) throw error;
+  return data;
+}
+
+export async function lireAudit(action) {
+  const admin = clientAdmin();
+  const { data, error } = await admin.from("audit").select("action, auteur, cible").eq("ecole_id", await ecoleId(admin)).eq("action", action);
+  if (error) throw error;
+  return data || [];
+}

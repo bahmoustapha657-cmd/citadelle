@@ -5,6 +5,7 @@ import { PassageAdmisCard } from "./admin/PassageAdmisCard";
 import { PostesCard } from "./admin/postes/PostesCard";
 import { SignaturesCard } from "./admin/signatures/SignaturesCard";
 import { DoublonsParentsCard } from "./admin/doublons/DoublonsParentsCard";
+import { EspacesMultiplesCard } from "./admin/espaces/EspacesMultiplesCard";
 import { VerrousCard } from "./admin/VerrousCard";
 import { useAdminPanel } from "./admin/admin-panel/use-admin-panel";
 import { ComptesTable } from "./admin/admin-panel/ComptesTable";
@@ -47,6 +48,8 @@ function AdminPanel({ annee, setAnnee, verrous = {}, schoolId, userRole }) {
       <SignaturesCard schoolId={schoolId} peutGererRoles={a.peutGererRoles} toast={a.toast} comptes={a.comptes} />
       {/* Un parent, plusieurs comptes : fusion validée par la Direction. */}
       {a.peutGererRoles && <DoublonsParentsCard schoolId={schoolId} toast={a.toast} />}
+      {/* Une personne, plusieurs espaces : liaison par la Direction. */}
+      {(userRole === "direction" || userRole === "superadmin") && <EspacesMultiplesCard toast={a.toast} />}
 
       {/* Modale mots de passe initiaux — affichée une seule fois */}
       {a.mdpsInitiaux && <MdpsInitiauxModale mdpsInitiaux={a.mdpsInitiaux} setMdpsInitiaux={a.setMdpsInitiaux} />}
