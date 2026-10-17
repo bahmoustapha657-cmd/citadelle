@@ -4,7 +4,7 @@ import { montantEnLettres, nombreEnLettres } from "../src/reports/montant-lettre
 import {
   filtrerVersements, libellePeriodeVersements, resumeVersements,
 } from "../src/components/comptabilite/fondation/versements-utils.js";
-import { MAX_LIGNES_COUPON, situationVersementsHTML } from "../src/reports/situation-versements.js";
+import { LIGNES_UNE_COLONNE, situationVersementsHTML } from "../src/reports/situation-versements.js";
 import { collecterMouvements, totauxMouvements } from "../src/components/comptabilite/caisse/caisse-utils.js";
 import { signatairesDocument } from "../src/reports/signatures.js";
 
@@ -100,14 +100,29 @@ test("comme un reçu, la situation sort en deux coupons sur un A4", () => {
   assert.equal(html.match(/Trois millions francs guinéens/g)?.length, 2);
 });
 
-test("une longue période garde sa page entière", () => {
-  const longue = Array.from({ length: MAX_LIGNES_COUPON + 1 }, (_, i) => ({
-    _id: `l${i}`, libelle: `Dépôt ${i}`, montant: 1000, date: "2026-10-01",
-  }));
-  const html = situationVersementsHTML({ versements: longue, schoolInfo: ecole });
-  assert.ok(!html.includes(`<div class="recu">`));
-  assert.match(html, /SITUATION DES VERSEMENTS/);
-  assert.match(html, /Pour réception/);
+const periode = (n) => Array.from({ length: n }, (_, i) => ({
+  _id: `l${i}`, libelle: `Dépôt ${i + 1}`, montant: 1000, date: "2026-10-01", beneficiaire: i % 2 ? "Banque" : "Fondation",
+}));
+
+test("une courte période tient sur un seul tableau par coupon", () => {
+  const html = situationVersementsHTML({ versements: periode(LIGNES_UNE_COLONNE), schoolInfo: ecole });
+  assert.equal(html.match(/<table class="vers-table">/g)?.length, 2);
+  assert.ok(!html.includes(`vers-cols deux`));
+});
+
+test("une longue période reste en deux coupons, ses lignes sur deux colonnes", () => {
+  const n = LIGNES_UNE_COLONNE * 4 + 1;
+  const html = situationVersementsHTML({ versements: periode(n), schoolInfo: ecole });
+  assert.equal(html.match(/<div class="recu">/g)?.length, 2);
+  // Deux tableaux côte à côte par coupon, numérotation continue de l'un à l'autre.
+  assert.equal(html.match(/<table class="vers-table">/g)?.length, 4);
+  assert.equal(html.match(/vers-cols deux/g)?.length, 2);
+  const [, seconde] = html.split("</table>");
+  assert.match(seconde, new RegExp(`<td>${Math.ceil(n / 2) + 1}</td>`));
+  // Total et détail par bénéficiaire, puisque la pièce en mélange deux.
+  assert.match(html, new RegExp(`TOTAL VERSÉ \\(${n}\\)`));
+  assert.match(html, /Fondation \(17\) : 17\s000/);
+  assert.match(html, /Banque \(16\) : 16\s000/);
 });
 
 test("les saisies libres sont échappées dans le document", () => {
