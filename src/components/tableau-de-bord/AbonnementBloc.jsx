@@ -2,6 +2,12 @@ import { C, PLANS } from "../../constants";
 import { AbonnementBanniere } from "./abonnement/AbonnementBanniere";
 import { AbonnementDemandeForm } from "./abonnement/AbonnementDemandeForm";
 
+const lienContact = {
+  display: "flex", alignItems: "center", gap: 6, background: "var(--lc-surface)", color: "var(--lc-text)",
+  border: "1px solid var(--lc-border)", borderRadius: 8, padding: "7px 12px", fontSize: 12, fontWeight: 600,
+  textDecoration: "none", cursor: "pointer",
+};
+
 export function AbonnementBloc({
   planInfo, schoolInfo,
   demandeOuverte, setDemandeOuverte, demandePlan, setDemandePlan,
@@ -12,7 +18,7 @@ export function AbonnementBloc({
   }
 
   return (
-    <div style={{ marginTop: 24 }}>
+    <div>
       <AbonnementBanniere planInfo={planInfo} />
 
       {/* Succès demande envoyée */}
@@ -22,13 +28,13 @@ export function AbonnementBloc({
         </div>
       )}
 
-      <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 16px rgba(0,32,80,0.07)", overflow: "hidden" }}>
-        <div style={{ padding: "16px 20px", borderBottom: "1px solid #f0f0f0", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+      <div style={{ background: "var(--lc-surface)", border: "1px solid var(--lc-border)", borderRadius: 14, boxShadow: "var(--lc-shadow)", overflow: "hidden" }}>
+        <div style={{ padding: "16px 20px", borderBottom: demandeOuverte ? "1px solid var(--lc-border-soft)" : "none", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
           <div>
-            <p style={{ margin: 0, fontWeight: 800, fontSize: 14, color: C.blueDark }}>
+            <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: "var(--lc-text-brand)" }}>
               Abonnement — Plan <span style={{ color: PLANS[planInfo.planCourant]?.couleur || C.blue }}>{planInfo.planLabel}</span>
             </p>
-            <p style={{ margin: "3px 0 0", fontSize: 12, color: "#6b7280" }}>
+            <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--lc-text-muted)" }}>
               {planInfo.planCourant === "gratuit"
                 ? `${planInfo.totalElevesActifs ?? "…"}/50 élèves actifs — gratuit jusqu'à 50`
                 : planInfo.planEstExpire
@@ -42,18 +48,18 @@ export function AbonnementBloc({
             {/* Contact WhatsApp */}
             <a href={`https://wa.me/+224627738579?text=Bonjour%2C%20je%20souhaite%20souscrire%20un%20abonnement%20EduGest%20pour%20l%27%C3%A9cole%20%22${encodeURIComponent(schoolInfo.nom || "")}%22`}
               target="_blank" rel="noopener noreferrer"
-              style={{ display: "flex", alignItems: "center", gap: 6, background: "#dcfce7", color: "#15803d", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 12, fontWeight: 700, textDecoration: "none", cursor: "pointer" }}>
+              style={lienContact}>
               <span>💬</span> WhatsApp
             </a>
             {/* Contact Email */}
             <a href={`https://mail.google.com/mail/?view=cm&to=edugest26@gmail.com&su=${encodeURIComponent("Demande abonnement — " + (schoolInfo.nom || ""))}&body=${encodeURIComponent("Bonjour,\nJe souhaite souscrire un abonnement EduGest pour mon école.\n\nÉcole : " + (schoolInfo.nom || "") + "\n")}`}
               target="_blank" rel="noopener noreferrer"
-              style={{ display: "flex", alignItems: "center", gap: 6, background: "#ede9fe", color: "#6d28d9", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 12, fontWeight: 700, textDecoration: "none", cursor: "pointer" }}>
+              style={lienContact}>
               <span>✉️</span> Email
             </a>
             {/* Bouton demande formelle */}
             <button onClick={() => setDemandeOuverte((v) => !v)}
-              style={{ display: "flex", alignItems: "center", gap: 6, background: `linear-gradient(90deg,${C.blue},${C.green})`, color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+              style={{ ...lienContact, background: "var(--sc1)", color: "#fff", border: "1px solid var(--sc1)" }}>
               {demandeOuverte ? "▲ Fermer" : "📋 Demande formelle"}
             </button>
           </div>

@@ -1,39 +1,44 @@
 import { useTranslation } from "react-i18next";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { getAnnee } from "../../constants";
 import { Card } from "../ui";
+import { axe, corpsCarte, grille, grilleSouple, infobulle, sousTitre, titreCarte, TONS } from "./tdb-styles";
 
-export function TrendsCard({ c1, c2, annee, dataTendance }) {
-  const { t } = useTranslation();
+function Courbe({ data, cle, couleur, nom, domaine, format }) {
+  const id = `tdb-degrade-${cle}`;
   return (
-    <Card style={{ marginBottom: 16 }}><div style={{ padding: "16px 18px" }}>
-      <p style={{ margin: "0 0 14px", fontWeight: 800, fontSize: 13, color: c1 }}>{t("dashboard.annualTrends")} — {annee || getAnnee()}</p>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-        {/* Courbe taux paiement */}
+    <ResponsiveContainer width="100%" height={170}>
+      <AreaChart data={data} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+        <defs>
+          <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={couleur} stopOpacity={0.22} />
+            <stop offset="100%" stopColor={couleur} stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid vertical={false} stroke={grille} />
+        <XAxis dataKey="mois" tick={{ ...axe, fontSize: 10 }} axisLine={false} tickLine={false} />
+        <YAxis domain={domaine} tick={{ ...axe, fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={format} allowDecimals={false} />
+        <Tooltip {...infobulle} cursor={{ stroke: "rgba(148,163,184,0.4)" }} formatter={format} />
+        <Area type="monotone" dataKey={cle} stroke={couleur} strokeWidth={2} fill={`url(#${id})`} dot={false} activeDot={{ r: 4 }} name={nom} />
+      </AreaChart>
+    </ResponsiveContainer>
+  );
+}
+
+export function TrendsCard({ c1, annee, dataTendance }) {
+  const { t } = useTranslation();
+  const pct = (v) => `${v}%`;
+  return (
+    <Card><div style={corpsCarte}>
+      <p style={titreCarte}>{t("dashboard.annualTrends")} — {annee || getAnnee()}</p>
+      <div style={{ ...grilleSouple(280), gap: 24 }}>
         <div>
-          <p style={{ fontSize: 11, fontWeight: 700, color: "#64748b", margin: "0 0 8px", textTransform: "uppercase", letterSpacing: "0.06em" }}>{t("dashboard.paymentRatePct")}</p>
-          <ResponsiveContainer width="100%" height={160}>
-            <LineChart data={dataTendance} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e0ebf8" />
-              <XAxis dataKey="mois" tick={{ fontSize: 10 }} />
-              <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} tickFormatter={(v) => `${v}%`} />
-              <Tooltip formatter={(v) => `${v}%`} />
-              <Line type="monotone" dataKey="taux" stroke={c2} strokeWidth={2.5} dot={{ r: 3, fill: c2 }} name={t("dashboard.paymentRate")} />
-            </LineChart>
-          </ResponsiveContainer>
+          <p style={sousTitre}>{t("dashboard.paymentRatePct")}</p>
+          <Courbe data={dataTendance} cle="taux" couleur={c1} nom={t("dashboard.paymentRate")} domaine={[0, 100]} format={pct} />
         </div>
-        {/* Courbe absences */}
         <div>
-          <p style={{ fontSize: 11, fontWeight: 700, color: "#64748b", margin: "0 0 8px", textTransform: "uppercase", letterSpacing: "0.06em" }}>{t("dashboard.absencesEntered")}</p>
-          <ResponsiveContainer width="100%" height={160}>
-            <LineChart data={dataTendance} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e0ebf8" />
-              <XAxis dataKey="mois" tick={{ fontSize: 10 }} />
-              <YAxis tick={{ fontSize: 10 }} />
-              <Tooltip />
-              <Line type="monotone" dataKey="absences" stroke="#ef4444" strokeWidth={2.5} dot={{ r: 3, fill: "#ef4444" }} name={t("dashboard.absencesLabel")} />
-            </LineChart>
-          </ResponsiveContainer>
+          <p style={sousTitre}>{t("dashboard.absencesEntered")}</p>
+          <Courbe data={dataTendance} cle="absences" couleur={TONS.danger} nom={t("dashboard.absencesLabel")} />
         </div>
       </div>
     </div></Card>
