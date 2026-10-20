@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  ALERTE_DEFAUT, elevesEnRetard, moisEchus, reglagesAlerte, retardEleve,
+  ALERTE_DEFAUT, elevesAyantPaye, elevesEnRetard, elevesNonReinscrits, moisEchus, reglagesAlerte, retardEleve,
 } from "../src/components/comptabilite/mensualites-tab/alerte-mensualites.js";
 
 const MOIS = ["Octobre", "Novembre", "Décembre", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin"];
@@ -78,4 +78,29 @@ test("elevesEnRetard : seuil appliqué, plus gros retards d'abord", () => {
   // Garantie par défaut : Juin s'ajoute à chacun ; c (Oct-Déc payés) n'en doit qu'un.
   const garantie = elevesEnRetard([a, b, c], { ...opts(le("2026-12-05")), reglages: { jourEcheance: 1, seuilMois: 2 } });
   assert.deepEqual(garantie.map((r) => [r.eleve._id, r.mois.length]), [["b", 4], ["a", 3]]);
+});
+
+test("elevesAyantPaye : au moins un mois payé, acomptes et montant perçu (tarif figé)", () => {
+  const a = { _id: "a", classe: "6e A", mens: { Juin: "Payé", Octobre: "Payé" }, mensMontants: { Juin: 90000 }, mensAcomptes: { Novembre: 30000 } };
+  const b = { _id: "b", classe: "6e A", mens: {}, mensAcomptes: { Octobre: 50000 } };
+  const liste = elevesAyantPaye([a, b], { moisAnnee: MOIS, tarifsClasses: TARIFS });
+  assert.equal(liste.length, 1);
+  // Mois dans l'ordre de l'année, quel que soit l'ordre d'encaissement.
+  assert.deepEqual(liste[0].mois, ["Octobre", "Juin"]);
+  assert.deepEqual(liste[0].acomptes, [{ mois: "Novembre", montant: 30000 }]);
+  assert.equal(liste[0].montant, 100000 + 90000 + 30000);
+});
+
+test("elevesNonReinscrits : actifs sans inscription encaissée, dispense totale exclue", () => {
+  const TARIFS_INS = [{ classe: "6e A", montant: 100000, inscription: 50000, reinscription: 30000 }];
+  const ancien = { _id: "r", classe: "6e A", statut: "Actif", typeInscription: "Réinscription", inscriptionPayee: false, inscriptionAcompte: 10000, mens: { Octobre: "Payé" } };
+  const nouveau = { _id: "n", classe: "6e A", statut: "Actif", typeInscription: "Première inscription", inscriptionPayee: false, mens: {} };
+  const inscrit = { _id: "i", classe: "6e A", statut: "Actif", inscriptionPayee: true, mens: {} };
+  const parti = { _id: "p", classe: "6e A", statut: "Transféré", inscriptionPayee: false, mens: {} };
+  const dispense = { _id: "d", classe: "6e A", statut: "Actif", inscriptionPayee: false, mens: {},
+    exoneration: { annee: ANNEE, mensualites: 0, inscription: 100, fraisAnnexes: 0, motif: "personnel" } };
+  const liste = elevesNonReinscrits([ancien, nouveau, inscrit, parti, dispense], { moisAnnee: MOIS, tarifsClasses: TARIFS_INS });
+  assert.deepEqual(liste.map((l) => l.eleve._id), ["r", "n"]);
+  assert.deepEqual([liste[0].type, liste[0].reste, liste[0].acompte, liste[0].moisPayes], ["Réinscription", 20000, 10000, 1]);
+  assert.deepEqual([liste[1].type, liste[1].reste, liste[1].moisPayes], ["Inscription", 50000, 0]);
 });

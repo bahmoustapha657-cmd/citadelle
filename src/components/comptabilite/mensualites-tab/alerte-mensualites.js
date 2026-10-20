@@ -4,10 +4,11 @@
 // dernier mois (ordre d'encaissement) : un seul paiement faisait sortir
 // l'élève de l'alerte pour toute l'année.
 // Aucune dépendance React : entièrement testable en isolation.
-import { TOUS_MOIS_COURTS, TOUS_MOIS_LONGS } from "../../../constants.js";
+import { TOUS_MOIS_COURTS, TOUS_MOIS_LONGS, aReinscrire } from "../../../constants.js";
 import { moisExigibles } from "../../../depart-utils.js";
 import {
-  acompteMois, getTarifMensuelForClasse, montantDuMois,
+  acompteInscription, acompteMois, getTarifInscriptionForEleve, getTarifMensuelForClasse,
+  montantDuInscription, montantDuMois, montantMoisPaye,
 } from "../../../mensualite-utils.js";
 import { estExonereTotal } from "../../../exoneration-utils.js";
 import { MOIS_GARANTIE_DEFAUT, moisDeGarantie } from "../../../paiements-scolarite.js";
@@ -87,4 +88,46 @@ export function elevesEnRetard(eleves = [], { reglages = ALERTE_DEFAUT, ...optio
     .map((eleve) => ({ eleve, ...retardEleve(eleve, { ...options, jourEcheance: reglages.jourEcheance }) }))
     .filter((r) => r.mois.length >= reglages.seuilMois)
     .sort((a, b) => b.mois.length - a.mois.length || b.montant - a.montant);
+}
+
+// ── Listes imprimables de l'alerte ──────────────────────────────
+
+// Élèves ayant payé au moins un mois : les mois soldés (ordre de l'année),
+// les acomptes en cours sur les autres, et ce qui a été perçu sur les
+// mensualités (tarif figé au paiement, acomptes compris).
+export function elevesAyantPaye(eleves = [], { moisAnnee = [], tarifsClasses = [] } = {}) {
+  const lignes = [];
+  for (const eleve of eleves) {
+    const mens = eleve.mens || {};
+    const tarif = getTarifMensuelForClasse(tarifsClasses, eleve.classe);
+    const mois = moisAnnee.filter((m) => mens[m] === "Payé");
+    if (!mois.length) continue;
+    const acomptes = moisAnnee
+      .filter((m) => mens[m] !== "Payé" && acompteMois(eleve, m) > 0)
+      .map((m) => ({ mois: m, montant: acompteMois(eleve, m) }));
+    const montant = mois.reduce((s, m) => s + montantMoisPaye(eleve, m, tarif), 0)
+      + acomptes.reduce((s, a) => s + a.montant, 0);
+    lignes.push({ eleve, mois, acomptes, montant });
+  }
+  return lignes;
+}
+
+// Élèves présents (statut « Actif ») dont l'inscription ou la réinscription
+// de l'année n'est pas encaissée — même règle que le filtre « À réinscrire »
+// de l'enrôlement. Dispensé de toute l'inscription : rien à réclamer, il
+// n'y figure pas. `moisPayes` : preuve qu'il fréquente déjà l'école.
+export function elevesNonReinscrits(eleves = [], { moisAnnee = [], tarifsClasses = [] } = {}) {
+  return eleves
+    .filter((eleve) => aReinscrire(eleve) && !estExonereTotal(eleve, "inscription"))
+    .map((eleve) => {
+      const du = montantDuInscription(eleve, getTarifInscriptionForEleve(eleve, tarifsClasses));
+      const acompte = acompteInscription(eleve);
+      return {
+        eleve,
+        type: eleve.typeInscription === "Réinscription" ? "Réinscription" : "Inscription",
+        reste: Math.max(0, du - acompte),
+        acompte,
+        moisPayes: moisAnnee.filter((m) => (eleve.mens || {})[m] === "Payé").length,
+      };
+    });
 }
