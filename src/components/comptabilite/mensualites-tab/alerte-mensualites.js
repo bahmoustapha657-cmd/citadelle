@@ -112,6 +112,39 @@ export function elevesAyantPaye(eleves = [], { moisAnnee = [], tarifsClasses = [
   return lignes;
 }
 
+// Tri de la liste « Ont payé », choisi à l'impression : critère puis sens.
+// À égalité, les autres critères départagent (mois, montant, nom) — l'ordre
+// reste le même d'une impression à l'autre.
+export const TRIS_AYANT_PAYE = [
+  { id: "mois", label: "Nombre de mois payés" },
+  { id: "montant", label: "Montant perçu" },
+  { id: "nom", label: "Nom de l'élève" },
+];
+export const TRI_AYANT_PAYE_DEFAUT = Object.freeze({ critere: "mois", sens: "desc" });
+
+const nomComplet = (eleve = {}) => `${eleve.nom || ""} ${eleve.prenom || ""}`.trim();
+const COMPARER_AYANT_PAYE = {
+  mois: (a, b) => a.mois.length - b.mois.length,
+  montant: (a, b) => a.montant - b.montant,
+  nom: (a, b) => nomComplet(a.eleve).localeCompare(nomComplet(b.eleve), "fr", { sensitivity: "base", numeric: true }),
+};
+
+export function trierAyantPaye(lignes = [], { critere = TRI_AYANT_PAYE_DEFAUT.critere, sens = TRI_AYANT_PAYE_DEFAUT.sens } = {}) {
+  const principal = COMPARER_AYANT_PAYE[critere] || COMPARER_AYANT_PAYE[TRI_AYANT_PAYE_DEFAUT.critere];
+  const signe = sens === "asc" ? 1 : -1;
+  const departage = ["mois", "montant", "nom"].filter((c) => COMPARER_AYANT_PAYE[c] !== principal);
+  return [...lignes].sort((a, b) => signe * principal(a, b)
+    // Départage : nombres dans le même sens, noms toujours de A à Z.
+    || departage.reduce((r, c) => r || (c === "nom" ? 1 : signe) * COMPARER_AYANT_PAYE[c](a, b), 0));
+}
+
+// Libellé du tri, imprimé sous le titre de la liste.
+export const libelleTriAyantPaye = ({ critere, sens } = TRI_AYANT_PAYE_DEFAUT) => {
+  const tri = TRIS_AYANT_PAYE.find((t) => t.id === critere) || TRIS_AYANT_PAYE[0];
+  const ordre = tri.id === "nom" ? (sens === "asc" ? "de A à Z" : "de Z à A") : (sens === "asc" ? "croissant" : "décroissant");
+  return `${tri.label}, ${ordre}`;
+};
+
 // Élèves présents (statut « Actif ») dont l'inscription ou la réinscription
 // de l'année n'est pas encaissée — même règle que le filtre « À réinscrire »
 // de l'enrôlement. Dispensé de toute l'inscription : rien à réclamer, il

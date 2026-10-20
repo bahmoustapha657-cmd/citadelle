@@ -39,3 +39,10 @@ test("liste des non réinscrits : type, acompte, mois déjà payés, reste dû, 
   assert.match(html, /TOTAL — 2 élève\(s\)/);
   assert.match(html, /70\D?000/);
 });
+
+test("liste des élèves ayant payé : le classement choisi est imprimé", () => {
+  const lignes = [{ eleve: { nom: "DIALLO", prenom: "Awa", classe: "6e A" }, mois: ["Octobre"], acomptes: [], montant: 100000 }];
+  const html = listePayesHTML(lignes, { schoolInfo: ecole, moisAnnee: MOIS, tri: "Nombre de mois payés, décroissant" });
+  assert.match(html, /Classement : Nombre de mois payés, décroissant/);
+  assert.doesNotMatch(listePayesHTML(lignes, { schoolInfo: ecole, moisAnnee: MOIS }), /Classement/);
+});

@@ -68,9 +68,10 @@ const pageListe = ({ schoolInfo = {}, annee = "", perimetre = "", titre, titreFe
 /**
  * Élèves ayant payé au moins un mois, avec la grille de leurs mois.
  * @param {{ eleve: Record<string, any>, mois: string[], acomptes: { mois: string, montant: number }[], montant: number }[]} lignes
- * @param {{ schoolInfo?: Record<string, any>, annee?: string, perimetre?: string, moisAnnee?: string[] }} options
+ * @param {{ schoolInfo?: Record<string, any>, annee?: string, perimetre?: string, moisAnnee?: string[],
+ *   tri?: string }} options — `lignes` dans l'ordre voulu ; `tri` : cet ordre, en clair
  */
-export function listePayesHTML(lignes = [], { moisAnnee = [], ...options } = {}) {
+export function listePayesHTML(lignes = [], { moisAnnee = [], tri = "", ...options } = {}) {
   const monnaie = echapper(options.schoolInfo?.monnaie || getMonnaie());
   const total = lignes.reduce((s, l) => s + l.montant, 0);
   const corps = lignes.map((l, i) => {
@@ -98,7 +99,7 @@ export function listePayesHTML(lignes = [], { moisAnnee = [], ...options } = {})
   return pageListe({
     ...options, couleur: "#166534", tableau,
     titre: "✅ ÉLÈVES AYANT PAYÉ — MOIS PAYÉS", titreFenetre: "Élèves ayant payé",
-    note: "✓ mois payé · ◐ acompte versé sur le mois (montant) · Perçu = mensualités encaissées, acomptes compris",
+    note: `${tri ? `<strong>Classement : ${echapper(tri)}</strong><br/>` : ""}✓ mois payé · ◐ acompte versé sur le mois (montant) · Perçu = mensualités encaissées, acomptes compris`,
   });
 }
 
