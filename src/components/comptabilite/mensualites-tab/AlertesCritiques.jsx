@@ -4,12 +4,13 @@ import { fmtN, getMonnaie, getSectionLabelForClasse } from "../../../constants";
 import { majReglagesCompta } from "../../../backend/data-supabase";
 import { Btn, Input, Modale } from "../../ui";
 import {
-  exportExcel, imprimerAlerteMensualites, imprimerListeNonReinscrits, imprimerListePayes,
+  exportExcel, imprimerAlerteMensualites, imprimerListeNonReinscrits,
 } from "../../../reports";
 import { MOIS_GARANTIE_MAX, moisDeGarantie, moisGarantieEcole } from "../../../paiements-scolarite";
 import {
   JOUR_ECHEANCE_MAX, SEUIL_MOIS_MAX, elevesAyantPaye, elevesEnRetard, elevesNonReinscrits, reglagesAlerte,
 } from "./alerte-mensualites";
+import { ListePayesModale } from "./ListePayesModale";
 import { PreavisModale } from "./PreavisModale";
 
 // Alertes des élèves en retard sur des mois DÉJÀ ÉCHUS (jour d'échéance,
@@ -24,6 +25,8 @@ export function AlertesCritiques({ eleves, moisAnnee, annee, tarifsClasses, scho
   const [reglant, setReglant] = useState(false);
   // Élèves à qui remettre un préavis de renvoi : toute la liste, ou un seul.
   const [preavis, setPreavis] = useState(null);
+  // Fenêtre de classement de la liste « Ont payé », avant impression.
+  const [classerPayes, setClasserPayes] = useState(false);
   const { jourEcheance, seuilMois } = reglagesAlerte(schoolInfo);
   const moisGarantie = moisGarantieEcole(schoolInfo);
   const reglages = useMemo(() => ({ jourEcheance, seuilMois, moisGarantie }), [jourEcheance, seuilMois, moisGarantie]);
@@ -41,10 +44,13 @@ export function AlertesCritiques({ eleves, moisAnnee, annee, tarifsClasses, scho
     nonReinscrits: elevesNonReinscrits(eleves, { moisAnnee, tarifsClasses }),
   }), [eleves, moisAnnee, tarifsClasses]);
   const optionsListe = { schoolInfo, annee, perimetre, moisAnnee };
+  const modaleListePayes = classerPayes && (
+    <ListePayesModale lignes={listes.payes} options={optionsListe} monnaie={monnaie} fermer={() => setClasserPayes(false)} />
+  );
   const boutonsListes = (
     <>
       <Btn sm v="ghost" disabled={!listes.payes.length} title="Imprimer les élèves ayant payé et leurs mois payés"
-        onClick={() => imprimerListePayes(listes.payes, optionsListe)}>✅ Ont payé ({listes.payes.length})</Btn>
+        onClick={() => setClasserPayes(true)}>✅ Ont payé ({listes.payes.length})</Btn>
       <Btn sm v="ghost" disabled={!listes.nonReinscrits.length} title="Imprimer les élèves présents dont l'inscription ou la réinscription n'est pas encaissée"
         onClick={() => imprimerListeNonReinscrits(listes.nonReinscrits, optionsListe)}>📝 Non réinscrits ({listes.nonReinscrits.length})</Btn>
     </>
@@ -77,6 +83,7 @@ export function AlertesCritiques({ eleves, moisAnnee, annee, tarifsClasses, scho
         <span style={{ fontSize: 11.5, color: "#047857" }}>({regle})</span>
         <span style={{ marginInlineStart: "auto", display: "flex", gap: 6, flexWrap: "wrap" }}>{boutonsListes}{boutonReglages}</span>
         {modale}
+        {modaleListePayes}
       </div>
     );
   }
@@ -147,6 +154,7 @@ export function AlertesCritiques({ eleves, moisAnnee, annee, tarifsClasses, scho
         </div>
       )}
       {modale}
+      {modaleListePayes}
       {preavis && <PreavisModale retards={preavis} schoolInfo={schoolInfo} annee={annee} monnaie={monnaie} fermer={() => setPreavis(null)} />}
     </div>
   );

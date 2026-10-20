@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  ALERTE_DEFAUT, elevesAyantPaye, elevesEnRetard, elevesNonReinscrits, moisEchus, reglagesAlerte, retardEleve,
+  ALERTE_DEFAUT, elevesAyantPaye, elevesEnRetard, elevesNonReinscrits, libelleTriAyantPaye, moisEchus, reglagesAlerte,
+  retardEleve, trierAyantPaye,
 } from "../src/components/comptabilite/mensualites-tab/alerte-mensualites.js";
 
 const MOIS = ["Octobre", "Novembre", "Décembre", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin"];
@@ -103,4 +104,20 @@ test("elevesNonReinscrits : actifs sans inscription encaissée, dispense totale 
   assert.deepEqual(liste.map((l) => l.eleve._id), ["r", "n"]);
   assert.deepEqual([liste[0].type, liste[0].reste, liste[0].acompte, liste[0].moisPayes], ["Réinscription", 20000, 10000, 1]);
   assert.deepEqual([liste[1].type, liste[1].reste, liste[1].moisPayes], ["Inscription", 50000, 0]);
+});
+
+test("trierAyantPaye : critère et sens choisis, égalités départagées", () => {
+  const l = (nom, nbMois, montant) => ({ eleve: { _id: nom, nom, prenom: "" }, mois: MOIS.slice(0, nbMois), acomptes: [], montant });
+  const lignes = [l("CAMARA", 2, 200000), l("BAH", 4, 400000), l("DIALLO", 2, 250000), l("ALPHA", 2, 200000)];
+  const ids = (tri) => trierAyantPaye(lignes, tri).map((x) => x.eleve._id);
+  // Mois décroissant (défaut) : à 2 mois, le montant le plus fort d'abord, puis le nom de A à Z.
+  assert.deepEqual(ids(), ["BAH", "DIALLO", "ALPHA", "CAMARA"]);
+  assert.deepEqual(ids({ critere: "mois", sens: "asc" }), ["ALPHA", "CAMARA", "DIALLO", "BAH"]);
+  assert.deepEqual(ids({ critere: "montant", sens: "desc" }), ["BAH", "DIALLO", "ALPHA", "CAMARA"]);
+  assert.deepEqual(ids({ critere: "nom", sens: "asc" }), ["ALPHA", "BAH", "CAMARA", "DIALLO"]);
+  assert.deepEqual(ids({ critere: "nom", sens: "desc" }), ["DIALLO", "CAMARA", "BAH", "ALPHA"]);
+  // La liste d'origine n'est pas modifiée.
+  assert.equal(lignes[0].eleve._id, "CAMARA");
+  assert.equal(libelleTriAyantPaye({ critere: "montant", sens: "asc" }), "Montant perçu, croissant");
+  assert.equal(libelleTriAyantPaye({ critere: "nom", sens: "desc" }), "Nom de l'élève, de Z à A");
 });
