@@ -3,9 +3,13 @@ import { useTranslation } from "react-i18next";
 import { fmtN, getMonnaie, getSectionLabelForClasse } from "../../../constants";
 import { majReglagesCompta } from "../../../backend/data-supabase";
 import { Btn, Input, Modale } from "../../ui";
-import { exportExcel, imprimerAlerteMensualites } from "../../../reports";
+import {
+  exportExcel, imprimerAlerteMensualites, imprimerListeNonReinscrits, imprimerListePayes,
+} from "../../../reports";
 import { MOIS_GARANTIE_MAX, moisDeGarantie, moisGarantieEcole } from "../../../paiements-scolarite";
-import { JOUR_ECHEANCE_MAX, SEUIL_MOIS_MAX, elevesEnRetard, reglagesAlerte } from "./alerte-mensualites";
+import {
+  JOUR_ECHEANCE_MAX, SEUIL_MOIS_MAX, elevesAyantPaye, elevesEnRetard, elevesNonReinscrits, reglagesAlerte,
+} from "./alerte-mensualites";
 import { PreavisModale } from "./PreavisModale";
 
 // Alertes des élèves en retard sur des mois DÉJÀ ÉCHUS (jour d'échéance,
@@ -30,6 +34,21 @@ export function AlertesCritiques({ eleves, moisAnnee, annee, tarifsClasses, scho
   );
   const monnaie = schoolInfo?.monnaie || getMonnaie();
   const total = retards.reduce((s, r) => s + r.montant, 0);
+  // Listes imprimables, même périmètre que l'alerte : élèves ayant payé
+  // (et leurs mois), élèves présents sans inscription encaissée.
+  const listes = useMemo(() => ({
+    payes: elevesAyantPaye(eleves, { moisAnnee, tarifsClasses }),
+    nonReinscrits: elevesNonReinscrits(eleves, { moisAnnee, tarifsClasses }),
+  }), [eleves, moisAnnee, tarifsClasses]);
+  const optionsListe = { schoolInfo, annee, perimetre, moisAnnee };
+  const boutonsListes = (
+    <>
+      <Btn sm v="ghost" disabled={!listes.payes.length} title="Imprimer les élèves ayant payé et leurs mois payés"
+        onClick={() => imprimerListePayes(listes.payes, optionsListe)}>✅ Ont payé ({listes.payes.length})</Btn>
+      <Btn sm v="ghost" disabled={!listes.nonReinscrits.length} title="Imprimer les élèves présents dont l'inscription ou la réinscription n'est pas encaissée"
+        onClick={() => imprimerListeNonReinscrits(listes.nonReinscrits, optionsListe)}>📝 Non réinscrits ({listes.nonReinscrits.length})</Btn>
+    </>
+  );
 
   const enregistrer = async ({ moisGarantie: garantieChoisie, ...alerte }) => {
     try {
@@ -56,7 +75,7 @@ export function AlertesCritiques({ eleves, moisAnnee, annee, tarifsClasses, scho
         <span style={{ fontSize: 16 }}>✅</span>
         <strong style={{ fontSize: 13, color: "#065f46" }}>Alertes mensualités — aucun élève en retard</strong>
         <span style={{ fontSize: 11.5, color: "#047857" }}>({regle})</span>
-        <span style={{ marginInlineStart: "auto" }}>{boutonReglages}</span>
+        <span style={{ marginInlineStart: "auto", display: "flex", gap: 6, flexWrap: "wrap" }}>{boutonsListes}{boutonReglages}</span>
         {modale}
       </div>
     );
@@ -86,6 +105,7 @@ export function AlertesCritiques({ eleves, moisAnnee, annee, tarifsClasses, scho
               🖨️ Imprimer
             </Btn>
             <Btn sm v="ghost" onClick={() => setPreavis(retards)}>📨 Préavis de renvoi</Btn>
+            {boutonsListes}
             <Btn sm v="ghost" onClick={() => exportExcel(
               t("reports.excel.files.paymentAlerts"),
               [t("reports.excel.headers.matricule"), t("reports.excel.headers.lastName"), t("reports.excel.headers.firstName"), t("reports.excel.headers.class"), t("reports.excel.headers.level"), t("reports.excel.headers.unpaidMonths"), "Mois en retard", `Reste dû (${monnaie})`, t("reports.excel.headers.guardian"), t("reports.excel.headers.contact")],
