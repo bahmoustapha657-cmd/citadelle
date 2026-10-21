@@ -3,7 +3,9 @@ import { SchoolContext } from "../../../contexts/SchoolContext";
 import { getSectionLabel, initMens } from "../../../constants";
 import { champsRetour, normaliserDepart } from "../../../depart-utils";
 import { uploadPhotoEleve } from "../../../storageUtils";
-import { findEnrollmentDuplicate, getEnrollmentDuplicateMessage } from "../../../enrollment-utils";
+import {
+  MESSAGE_FILIATION_OBLIGATOIRE, filiationManquante, findEnrollmentDuplicate, getEnrollmentDuplicateMessage,
+} from "../../../enrollment-utils";
 import { deplacerEleve, erreurClasseSection } from "./enrol-section";
 import { champsFicheModifiee } from "./fiche-modifiable";
 
@@ -30,6 +32,9 @@ export function useEnrolPhoto({
     // « Inactif » — masqués dans le formulaire, ils restaient enregistrés.
     const normalisee = normaliserDepart(form);
     if (normalisee.erreur) { toast(normalisee.erreur, "warning"); return; }
+    // Filiation exigée à l'inscription seulement : des fiches anciennes sans
+    // filiation restent modifiables.
+    if (modal === "add_enrol" && filiationManquante(form)) { toast(MESSAGE_FILIATION_OBLIGATOIRE, "warning"); return; }
     let fiche = normalisee.fiche;
     // Retour d'un élève parti (statut repassé à « Actif ») : les mois
     // d'absence sont dus ou non, au choix de la direction (champsRetour).
@@ -62,7 +67,6 @@ export function useEnrolPhoto({
       const r = { ...fiche, niveau: section, photo: photoUrl, mens: fiche.mens || initMens() };
       const doublon = findEnrollmentDuplicate(r, tousElevesScolarite, {
         excludeId: modal === "edit_enrol" ? r._id : null,
-        homonymes: modal === "add_enrol",
       });
       if (doublon) {
         toast(getEnrollmentDuplicateMessage(doublon, r), "warning");
