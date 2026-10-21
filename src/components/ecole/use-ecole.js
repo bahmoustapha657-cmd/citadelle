@@ -1,6 +1,7 @@
 import { useContext, useMemo, useState } from "react";
 import { getAnnee, peutCreerComptesParent, peutModifier } from "../../constants";
 import { classePourAnnee } from "../admin/cloture-annee-utils";
+import { sansNonReinscritsEcartes } from "../../ecartes-non-reinscrits";
 import { hasWrite } from "../../../shared/postes-config.js";
 import { getDefaultPeriodeForSection, getPeriodesForSection } from "../../period-utils";
 import { SchoolContext } from "../../contexts/SchoolContext";
@@ -88,12 +89,19 @@ export function useEcole({
   // (mensualités, frais) reste l'affaire de la Comptabilité, qui a sa propre
   // projection et d'autres règles.
   const { items: elevesBruts, chargement: cE, modifierChamp: modChampE } = useFirestore(cleEleves);
-  const eleves = useMemo(
+  const elevesTous = useMemo(
     () => elevesBruts.map((e) => {
       const classe = classePourAnnee(e, anneeConsultee);
       return classe === e.classe ? e : { ...e, classe };
     }),
     [elevesBruts, anneeConsultee],
+  );
+  // Ce que les écrans montrent : sans les non réinscrits sans paiement des
+  // classes écartées par la comptabilité (réglage de l'école). Les actions
+  // sur toute une classe (renommage) gardent la liste complète.
+  const eleves = useMemo(
+    () => sansNonReinscritsEcartes(elevesTous, schoolInfo, anneeConsultee),
+    [elevesTous, schoolInfo, anneeConsultee],
   );
   const { items: absences, chargement: cAbs, ajouter: ajAbs, supprimer: supAbs } = useFirestore(cleEleves + "_absences");
   const { items: enseignements, chargement: cEng, ajouter: ajEng, modifier: modEng, supprimer: supEng } = useFirestore(cleEns + "_enseignements");
@@ -177,7 +185,7 @@ export function useEcole({
   const effectifReel = (nomClasse) => effectifReelFn(eleves, nomClasse);
 
   const saveClasse = () => {
-    saveClasseAction({ form, modal, classes, eleves, ajC, modC, modChampE });
+    saveClasseAction({ form, modal, classes, eleves: elevesTous, ajC, modC, modChampE });
     setModal(null);
   };
 

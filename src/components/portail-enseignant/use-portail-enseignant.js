@@ -6,6 +6,7 @@ import { getActiveNoteForms } from "../../evaluation-forms";
 import { imprimerEdtEnseignant, imprimerPaiesEnseignant } from "../../reports";
 import { isTitulaireSection } from "../../backend/teacher-scope";
 import { presents } from "../../depart-utils";
+import { sansNonReinscritsEcartes } from "../../ecartes-non-reinscrits";
 import { getJoursOuvrables } from "../ecole/edt/edt-utils";
 import { enrichirNotes } from "../../notes-eleves";
 import { MSG_LECTURE_SEULE_PORTAIL } from "../app/app-shell-plan";
@@ -102,8 +103,12 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
   const matiereParDefaut = matieresDispo[0]?.nom || (isPrimaire ? "" : matiere);
   const emplois = portalData.emplois || [];
   // Élèves encore inscrits : un élève parti ne figure plus dans « Mes élèves »
-  // ni dans les grilles de saisie de notes.
-  const eleves = presents(portalData.eleves || []);
+  // ni dans les grilles de saisie de notes — pas plus qu'un non réinscrit sans
+  // paiement d'une classe écartée par la comptabilité (réglage de l'école).
+  const eleves = useMemo(
+    () => sansNonReinscritsEcartes(presents(portalData.eleves || []), schoolInfo, anneeNotes),
+    [portalData.eleves, schoolInfo, anneeNotes],
+  );
   // Nom de l'élève lu sur sa fiche (la table notes n'a que eleve_id), y
   // compris pour les notes fusionnées après un enregistrement. Toutes les
   // fiches du périmètre, partis compris : leurs notes gardent un nom.

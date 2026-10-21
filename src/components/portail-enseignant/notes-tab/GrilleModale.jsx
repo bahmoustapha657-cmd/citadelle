@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { C, estSorti } from "../../../constants";
+import { sansNonReinscritsEcartes } from "../../../ecartes-non-reinscrits";
 import { Btn, Modale, Selec, Vide } from "../../ui";
 import { celluleASauver } from "../notes-grid";
 
@@ -12,7 +13,7 @@ import { celluleASauver } from "../notes-grid";
 export function GrilleModale({
   matiere, mesClasses, noteForms, periodes,
   isPrimaire = false, matieresDispo = [], maxNote = 20,
-  gridForm, setGridForm, majGrid, portalData,
+  gridForm, setGridForm, majGrid, portalData, schoolInfo = {},
   gridProgress, enregistrement, setModalNote, enregistrerGrille,
 }) {
   const [rech, setRech] = useState("");
@@ -24,7 +25,9 @@ export function GrilleModale({
   // secondaire à qui des matières sont rattachées (Français → Dictée…).
   const choixMatiere = isPrimaire || matCols.length > 1;
 
-  const elevesClasse = (portalData.eleves || []).filter((e) => e.classe === gridForm.classe && !estSorti(e));
+  // Ni les partis, ni les non réinscrits sans paiement d'une classe écartée.
+  const elevesClasse = sansNonReinscritsEcartes(
+    (portalData.eleves || []).filter((e) => e.classe === gridForm.classe && !estSorti(e)), schoolInfo);
   const elevesAff = rech.trim()
     ? elevesClasse.filter((e) => norm(`${e.nom} ${e.prenom}`).includes(norm(rech)) || norm(`${e.prenom} ${e.nom}`).includes(norm(rech)))
     : elevesClasse;

@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useContext, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { fmtN, getMonnaie, getSectionLabelForClasse } from "../../../constants";
 import { majReglagesCompta } from "../../../backend/data-supabase";
+import { SchoolContext } from "../../../contexts/SchoolContext";
 import { Btn, Input, Modale } from "../../ui";
 import {
   exportExcel, imprimerAlerteMensualites, imprimerListeNonReinscrits,
@@ -10,6 +11,10 @@ import { MOIS_GARANTIE_MAX, moisDeGarantie, moisGarantieEcole } from "../../../p
 import {
   JOUR_ECHEANCE_MAX, SEUIL_MOIS_MAX, elevesAyantPaye, elevesEnRetard, elevesNonReinscrits, reglagesAlerte,
 } from "./alerte-mensualites";
+import {
+  classesEcarteesEcole, ecarterNonReinscrits, estNonReinscritSansPaiement, reglageEcartes,
+} from "../../../ecartes-non-reinscrits";
+import { EcarterModale } from "./EcarterModale";
 import { ListePayesModale } from "./ListePayesModale";
 import { PreavisModale } from "./PreavisModale";
 
@@ -19,7 +24,12 @@ import { PreavisModale } from "./PreavisModale";
 // suivent le filtre cycle + classe (via `eleves`, déjà filtré).
 // `annee` : année scolaire affichée — les mois d'après un départ ne comptent pas.
 // `perimetre` : section / classe affichées, reprises sur la fiche imprimée.
-export function AlertesCritiques({ eleves, moisAnnee, annee, tarifsClasses, schoolInfo, canEdit, toast, perimetre }) {
+// `classe` : classe filtrée (vide = toutes), proposée d'office pour écarter.
+// Les non réinscrits sans paiement des classes « écartées » sont retirés de
+// l'alerte, des préavis et des listes — et, réglage de l'école oblige, du
+// module École et du portail enseignant (ecartes-non-reinscrits.js). Leur
+// fiche n'est pas modifiée.
+export function AlertesCritiques({ eleves: tousEleves, moisAnnee, annee, tarifsClasses, schoolInfo, canEdit, toast, perimetre, classe = "" }) {
   const { t } = useTranslation();
   const [ouvert, setOuvert] = useState(false);
   const [reglant, setReglant] = useState(false);
@@ -27,6 +37,24 @@ export function AlertesCritiques({ eleves, moisAnnee, annee, tarifsClasses, scho
   const [preavis, setPreavis] = useState(null);
   // Fenêtre de classement de la liste « Ont payé », avant impression.
   const [classerPayes, setClasserPayes] = useState(false);
+  // Classes écartées de l'année : réglage de l'ÉCOLE, partagé par tous les
+  // postes (chefs de section, enseignants), écrit par maj_reglages_compta.
+  const { setSchoolInfo } = useContext(SchoolContext);
+  const classesEcartees = useMemo(() => classesEcarteesEcole(schoolInfo, annee), [schoolInfo, annee]);
+  const changerClassesEcartees = async (classes) => {
+    try {
+      const enregistre = await majReglagesCompta({ ecartesNonReinscrits: reglageEcartes(schoolInfo, annee, classes) });
+      // Effet immédiat ici ; les autres postes le reçoivent au chargement de l'école.
+      setSchoolInfo?.((prec) => ({ ...prec, ...enregistre }));
+      toast?.(classes.length > classesEcartees.length
+        ? "Non réinscrits écartés pour toute l'école." : "Non réinscrits réaffichés pour toute l'école.", "success");
+    } catch (e) {
+      toast?.(`Réglage non enregistré : ${e.message}`, "error");
+    }
+  };
+  const [ecartant, setEcartant] = useState(false);
+  const { gardes: eleves, ecartes } = useMemo(() => ecarterNonReinscrits(tousEleves, classesEcartees), [tousEleves, classesEcartees]);
+  const nbAEcarter = tousEleves.filter(estNonReinscritSansPaiement).length;
   const { jourEcheance, seuilMois } = reglagesAlerte(schoolInfo);
   const moisGarantie = moisGarantieEcole(schoolInfo);
   const reglages = useMemo(() => ({ jourEcheance, seuilMois, moisGarantie }), [jourEcheance, seuilMois, moisGarantie]);
@@ -53,7 +81,15 @@ export function AlertesCritiques({ eleves, moisAnnee, annee, tarifsClasses, scho
         onClick={() => setClasserPayes(true)}>✅ Ont payé ({listes.payes.length})</Btn>
       <Btn sm v="ghost" disabled={!listes.nonReinscrits.length} title="Imprimer les élèves présents dont l'inscription ou la réinscription n'est pas encaissée"
         onClick={() => imprimerListeNonReinscrits(listes.nonReinscrits, optionsListe)}>📝 Non réinscrits ({listes.nonReinscrits.length})</Btn>
+      {(canEdit || ecartes.length > 0) && (
+        <Btn sm v="ghost" disabled={!nbAEcarter} title="Masquer, classe par classe, les non réinscrits qui n'ont rien payé — pour toute l'école (fiches non modifiées)"
+          onClick={() => setEcartant(true)}>🚫 {ecartes.length ? `Écartés (${ecartes.length})` : "Écarter non réinscrits"}</Btn>
+      )}
     </>
+  );
+  const modaleEcarter = ecartant && (
+    <EcarterModale eleves={tousEleves} classesEcartees={classesEcartees} changerClassesEcartees={changerClassesEcartees}
+      classeCourante={classe} peutModifier={canEdit} fermer={() => setEcartant(false)} />
   );
 
   const enregistrer = async ({ moisGarantie: garantieChoisie, ...alerte }) => {
@@ -84,6 +120,7 @@ export function AlertesCritiques({ eleves, moisAnnee, annee, tarifsClasses, scho
         <span style={{ marginInlineStart: "auto", display: "flex", gap: 6, flexWrap: "wrap" }}>{boutonsListes}{boutonReglages}</span>
         {modale}
         {modaleListePayes}
+        {modaleEcarter}
       </div>
     );
   }
@@ -155,6 +192,7 @@ export function AlertesCritiques({ eleves, moisAnnee, annee, tarifsClasses, scho
       )}
       {modale}
       {modaleListePayes}
+      {modaleEcarter}
       {preavis && <PreavisModale retards={preavis} schoolInfo={schoolInfo} annee={annee} monnaie={monnaie} fermer={() => setPreavis(null)} />}
     </div>
   );
