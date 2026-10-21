@@ -1,7 +1,7 @@
 // Conversion des lignes brutes d'un fichier d'import en candidats élèves,
 // avec validation (erreurs / avertissements) et détection des doublons.
 import { getToutesClassesConnues } from "../../../constants";
-import { findEnrollmentDuplicate, getEnrollmentDuplicateMessage } from "../../../enrollment-utils";
+import { filiationManquante, findEnrollmentDuplicate, getEnrollmentDuplicateMessage } from "../../../enrollment-utils";
 
 // Normalise une date vers le format ISO yyyy-mm-dd quand c'est possible.
 const parseDate = (val) => {
@@ -70,16 +70,17 @@ export function parseEnrolmentRows({ allRows, headerRowIdx, cols, classeDefautIm
     const avertissements = [];
     if (!nom) erreurs.push("Nom manquant");
     if (!prenom) erreurs.push("Prenom manquant");
+    if (filiationManquante(ligneCandidate)) erreurs.push("Filiation manquante (pere et mere)");
     if (!classe) avertissements.push("Classe non definie - selectionner une classe par defaut");
     else if (!classesEcole.includes(classe.toLowerCase()) && !classesConnues.includes(classe.toLowerCase())) {
       avertissements.push(`Classe "${classe}" non reconnue`);
     }
     if (!erreurs.length) {
-      const doublonExistant = findEnrollmentDuplicate(ligneCandidate, tousElevesScolarite, { homonymes: true });
+      const doublonExistant = findEnrollmentDuplicate(ligneCandidate, tousElevesScolarite);
       if (doublonExistant) {
         erreurs.push(getEnrollmentDuplicateMessage(doublonExistant, ligneCandidate, { scope: "deja dans l'ecole" }));
       } else {
-        const doublonImport = findEnrollmentDuplicate(ligneCandidate, candidatsImport, { homonymes: true });
+        const doublonImport = findEnrollmentDuplicate(ligneCandidate, candidatsImport);
         if (doublonImport) {
           erreurs.push(getEnrollmentDuplicateMessage(doublonImport, ligneCandidate, { scope: "deja dans ce fichier" }));
         } else {

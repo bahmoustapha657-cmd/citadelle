@@ -1,7 +1,9 @@
 import { useRef, useState } from "react";
 import { C, initMens, getClassesForSection, getSectionLabel, getSystemeScolaire, sectionOuverte } from "../../../constants";
 import { Btn, Champ, Input, Modale, Selec } from "../../ui";
-import { findEnrollmentDuplicate, getEnrollmentDuplicateMessage } from "../../../enrollment-utils";
+import {
+  MESSAGE_FILIATION_OBLIGATOIRE, filiationManquante, findEnrollmentDuplicate, getEnrollmentDuplicateMessage,
+} from "../../../enrollment-utils";
 import { uploadPhotoEleve } from "../../../storageUtils";
 import { PhotoEleveChamp } from "./PhotoEleveChamp";
 import { CompteParentFratrie } from "./CompteParentFratrie";
@@ -44,9 +46,10 @@ export function RapideEnrolModale({
     if(verrou.current) return null;
     if(!form.nom||!form.prenom){toast("Nom et prénom obligatoires","warning");return null;}
     if(!form.classe){toast("Classe obligatoire","warning");return null;}
+    if(filiationManquante(form)){toast(MESSAGE_FILIATION_OBLIGATOIRE,"warning");return null;}
     const ajouter = ajoutParNiveau[section];
     const r={...form,niveau:section,statut:"Actif",mens:initMens()};
-    const doublon = findEnrollmentDuplicate(r, [...tousElevesScolarite, ...ajoutesRef.current], { homonymes: true });
+    const doublon = findEnrollmentDuplicate(r, [...tousElevesScolarite, ...ajoutesRef.current]);
     if(doublon){
       toast(getEnrollmentDuplicateMessage(doublon, r),"warning");
       return null;
@@ -107,7 +110,7 @@ export function RapideEnrolModale({
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
         <Input label="Nom du Tuteur" value={form.tuteur||""} onChange={chg("tuteur")} placeholder="Bah Mamadou"/>
         <Input label="Contact Tuteur" value={form.contactTuteur||""} onChange={chg("contactTuteur")} placeholder="622 000 000"/>
-        <div style={{gridColumn:"1/-1"}}><Input label="Filiation (Père / Mère)" value={form.filiation||""} onChange={chg("filiation")} placeholder="Père: … / Mère: …"/></div>
+        <div style={{gridColumn:"1/-1"}}><Input label="Filiation (Père / Mère) *" value={form.filiation||""} onChange={chg("filiation")} placeholder="Père: … / Mère: …"/></div>
         <div style={{gridColumn:"1/-1"}}><Input label="Domicile" value={form.domicile||""} onChange={chg("domicile")} placeholder="Quartier, commune…"/></div>
         {/* Une fratrie arrive le même jour : la date est conservée d'un élève
             au suivant, comme le tuteur et le domicile. */}

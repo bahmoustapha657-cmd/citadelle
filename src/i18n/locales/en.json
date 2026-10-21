@@ -121,7 +121,7 @@
     "departureReasonPlaceholder": "E.g. transfer to Lycée Donka, end of year...",
     "destinationSchool": "Destination school",
     "destinationSchoolPlaceholder": "Name of the receiving school",
-    "parentage": "Parentage (Father / Mother)",
+    "parentage": "Parentage (Father / Mother) *",
     "guardianName": "Guardian name",
     "guardianContact": "Guardian contact",
     "guardianAddress": "Guardian address",

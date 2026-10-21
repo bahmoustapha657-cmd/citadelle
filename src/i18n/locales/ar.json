@@ -121,7 +121,7 @@
     "departureReasonPlaceholder": "مثال: تحويل إلى ثانوية دونكا، نهاية السنة...",
     "destinationSchool": "مدرسة الوجهة",
     "destinationSchoolPlaceholder": "اسم المدرسة المستقبِلة",
-    "parentage": "النسب (الأب / الأم)",
+    "parentage": "النسب (الأب / الأم) *",
     "guardianName": "اسم الوليّ",
     "guardianContact": "هاتف الوليّ",
     "guardianAddress": "عنوان الوليّ",
