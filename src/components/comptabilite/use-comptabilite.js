@@ -109,6 +109,10 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   const { items: ensPrimaire, ajouter: ajEnsPrim, modifier: modEnsPrim, supprimer: supEnsPrim } = useFirestore("ensPrimaire");
   // Enseignants de maternelle : ils doivent figurer sur la paie comme les autres.
   const { items: ensPrescolaire, ajouter: ajEnsPresco, modifier: modEnsPresco, supprimer: supEnsPresco } = useFirestore("ensPrescolaire");
+  // Groupe de paie « Primaire » (forfait mensuel) : maternelle comprise. Sans
+  // elle, la génération des salaires, les bons et les présences ignoraient
+  // ses enseignants.
+  const ensPaiePrimaire = [...ensPrimaire, ...ensPrescolaire];
   const { items: emploisCollege } = useFirestore("classesCollege_emplois");
   const { items: emploisLycee } = useFirestore("classesLycee_emplois");
   const { items: engCollege } = useFirestore("ensCollege_enseignements");
@@ -298,7 +302,7 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   // (génération auto, application des bons, impression). Voir useComptaSalaires.
   const salairesDomaine = useComptaSalaires({
     salaires, bons, presences, moisSel, moisSalaire,
-    ensCollege, ensLycee, ensPrimaire, personnel,
+    ensCollege, ensLycee, ensPrimaire: ensPaiePrimaire, personnel,
     emploisCollege, emploisLycee, engCollege, engLycee,
     primeDefaut, annee: anneeEcriture, anneeConsultee, schoolInfo,
     modS, ajS, supS, readOnly, toast, logAction,
@@ -356,7 +360,7 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
     paiements, cPaie, ajPaiement,
     elevesC, elevesP, elevesL, elevesPre, cEC, cEP, cEL, cEPre,
     tarifsClasses,
-    ensCollege, ensLycee, ensPrimaire, ensPrescolaire,
+    ensCollege, ensLycee, ensPrimaire, ensPrescolaire, ensPaiePrimaire,
     ajEnsCol, ajEnsLyc, ajEnsPrim, ajEnsPresco, modEnsCol, modEnsLyc, modEnsPrim, modEnsPresco, supEnsCol, supEnsLyc, supEnsPrim, supEnsPresco,
     tab, setTab, sousTabSal, setSousTabSal, modal, setModal, form, setForm,
     niveau, setNiveau, filtClasse, setFiltClasse, moisSel, setMoisSel,

@@ -153,7 +153,7 @@ export function ComptaTabsFinancier({ c, readOnly, annee }) {
         ajBon={c.ajBon}
         modBon={c.modBon}
         supBon={c.supBon}
-        ensPrimaire={c.ensPrimaire}
+        ensPrimaire={c.ensPaiePrimaire}
         ensCollege={c.ensCollege}
         ensLycee={c.ensLycee}
         personnel={c.personnel}
