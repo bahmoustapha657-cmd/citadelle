@@ -3,11 +3,14 @@ import { useTranslation } from "react-i18next";
 import { SchoolContext } from "../../../contexts/SchoolContext";
 import { C, fmtN } from "../../../constants";
 import { Badge, Btn, Card, TD, THead, TR, Vide } from "../../ui";
-import { sectionsEnsOuvertes } from "./use-enseignants-tab";
+import { estSectionForfait, sectionEnsParDefaut, sectionsEnsOuvertes } from "./use-enseignants-tab";
+
+// Couleur du badge de section (clés connues de <Badge>).
+const COULEUR_SECTION = { "Préscolaire": "amber", Primaire: "blue", "Collège": "purple", "Lycée": "teal" };
 
 // En-tête + bandeau d'aide + statistiques par section + tableau des
 // enseignants (identité et paie).
-export function EnseignantsListe({ ensTous, ensPrimaire, ensCollege, ensLycee, canCreate, canEdit, setForm, setModal, supEnsForSection }) {
+export function EnseignantsListe({ ensTous, ensPrimaire, ensCollege, ensLycee, ensPrescolaire = [], canCreate, canEdit, setForm, setModal, supEnsForSection }) {
   const { t } = useTranslation();
   const { schoolInfo } = useContext(SchoolContext);
   // Une carte par section ouverte dans l'école : pas de « Lycée : 0 » dans
@@ -17,7 +20,7 @@ export function EnseignantsListe({ ensTous, ensPrimaire, ensCollege, ensLycee, c
     <>
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16,flexWrap:"wrap"}}>
         <strong style={{fontSize:14,color:C.blueDark,flex:1}}>{t("accounting.tabs.teachers")} ({ensTous.length})</strong>
-        {canCreate&&<Btn onClick={()=>{setForm({_section:sectionsOuvertes[0],statut:"Titulaire"});setModal("add_ens_compta");}}>+ {t("common.add")}</Btn>}
+        {canCreate&&<Btn onClick={()=>{setForm({_section:sectionEnsParDefaut(schoolInfo),statut:"Titulaire"});setModal("add_ens_compta");}}>+ {t("common.add")}</Btn>}
       </div>
 
       <div style={{padding:"10px 14px",background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:8,fontSize:12,color:"#1e40af",marginBottom:14}}>
@@ -27,6 +30,7 @@ export function EnseignantsListe({ ensTous, ensPrimaire, ensCollege, ensLycee, c
       {/* Stats par section */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:10,marginBottom:16}}>
         {[
+          {sec:"Préscolaire",n:ensPrescolaire.length,col:"#d97706",bg:"#fef3c7"},
           {sec:"Primaire",n:ensPrimaire.length,col:"#0ea5e9",bg:"#e0f2fe"},
           {sec:"Collège",n:ensCollege.length,col:"#7c3aed",bg:"#f3e8ff"},
           {sec:"Lycée",n:ensLycee.length,col:"#db2777",bg:"#fce7f3"},
@@ -42,9 +46,9 @@ export function EnseignantsListe({ ensTous, ensPrimaire, ensCollege, ensLycee, c
         :<Card><div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
           <THead cols={["Prénoms et Nom","Section","Matière","Classe titulaire","Statut","Paie",canEdit?"Actions":""]}/>
           <tbody>{ensTous.map(e=>{
-            const isPrim=e._section==="Primaire";
+            const isPrim=estSectionForfait(e._section);
             const paie=isPrim?"—":fmtN(e.primeHoraire||0)+" /h";
-            const couleurSec=e._section==="Primaire"?"bleu":e._section==="Collège"?"violet":"rose";
+            const couleurSec=COULEUR_SECTION[e._section]||"gray";
             return <TR key={`${e._section}-${e._id}`}>
               <TD bold>{e.prenom||""} {e.nom||""}</TD>
               <TD><Badge color={couleurSec}>{e._section}</Badge></TD>

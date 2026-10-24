@@ -23,15 +23,19 @@ export function ComptaTabsScolarite({ c, readOnly, annee, userRole }) {
         ensPrimaire={c.ensPrimaire}
         ensCollege={c.ensCollege}
         ensLycee={c.ensLycee}
+        ensPrescolaire={c.ensPrescolaire}
         ajEnsPrim={c.ajEnsPrim}
         ajEnsCol={c.ajEnsCol}
         ajEnsLyc={c.ajEnsLyc}
+        ajEnsPresco={c.ajEnsPresco}
         modEnsPrim={c.modEnsPrim}
         modEnsCol={c.modEnsCol}
         modEnsLyc={c.modEnsLyc}
+        modEnsPresco={c.modEnsPresco}
         supEnsPrim={c.supEnsPrim}
         supEnsCol={c.supEnsCol}
         supEnsLyc={c.supEnsLyc}
+        supEnsPresco={c.supEnsPresco}
         classesTitulaire={c.classesTitulaire}
       />}
 

@@ -37,7 +37,7 @@ export function PresencesTab({ c, readOnly }) {
     primaire: isGroupeActif(schoolInfo, "primaire") || presences.some((p) => p.section === "Primaire"),
   };
   const sections = sectionsPaieProposees(groupesPaie, form.section);
-  const listes = { ensCollege: c.ensCollege, ensLycee: c.ensLycee, ensPrimaire: c.ensPrimaire, personnel: c.personnel };
+  const listes = { ensCollege: c.ensCollege, ensLycee: c.ensLycee, ensPrimaire: c.ensPaiePrimaire, personnel: c.personnel };
   const agentsFeuille = sectionsPaieProposees(groupesPaie)
     .flatMap((section) => agentsPourBon(section, listes).map((nom) => ({ nom, section })));
 
