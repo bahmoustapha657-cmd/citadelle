@@ -79,6 +79,66 @@ export function ordonnerParClassement(eleves, notes, getMatieresClasse, periode,
   return { ordonnes, rangParEleve };
 }
 
+// Rang de chaque élève dans chaque matière : Map matière → Map eleveId → rang.
+// Mêmes règles que le rang général (ex aequo au même rang, élèves sans
+// moyenne dans la matière non classés).
+export function getRangsParMatiere(elevesClasse, notes, matieres, periode, classe, niveau) {
+  const rangs = new Map();
+  for (const mat of matieres) {
+    const avecMoy = elevesClasse
+      .map((e) => ({
+        id: e._id,
+        moy: getSubjectAverage(notesDeLEleve(notes, e._id, periode).filter((n) => n.matiere === mat.nom), classe, niveau),
+      }))
+      .filter((x) => x.moy != null)
+      .sort((a, b) => b.moy - a.moy);
+    const parEleve = new Map();
+    avecMoy.forEach((x, i) => {
+      parEleve.set(x.id, i > 0 && x.moy === avecMoy[i - 1].moy ? parEleve.get(avecMoy[i - 1].id) : i + 1);
+    });
+    rangs.set(mat.nom, parEleve);
+  }
+  return rangs;
+}
+
+// Professeur de chaque matière d'une classe : l'emploi du temps fait foi ;
+// à défaut, celui qui a saisi le plus de notes de la matière pour ces élèves
+// pendant la période. Map matière → nom (absente si inconnu).
+export function getProfesseursParMatiere({ classe, matieres, eleveIds, notes, periode, emplois = [] }) {
+  const plusFrequent = (noms) => {
+    const compte = new Map();
+    for (const nom of noms) {
+      const n = String(nom || "").trim();
+      if (n) compte.set(n, (compte.get(n) || 0) + 1);
+    }
+    let meilleur = "", max = 0;
+    for (const [nom, c] of compte) if (c > max) { meilleur = nom; max = c; }
+    return meilleur;
+  };
+  const ids = new Set(eleveIds);
+  const notesClasse = notes.filter((n) => ids.has(n.eleveId) && (periode == null || n.periode === periode));
+  const profs = new Map();
+  for (const mat of matieres) {
+    const nom = plusFrequent(emplois.filter((c) => c.classe === classe && c.matiere === mat.nom).map((c) => c.enseignant))
+      || plusFrequent(notesClasse.filter((n) => n.matiere === mat.nom).map((n) => n.enseignantNom));
+    if (nom) profs.set(mat.nom, nom);
+  }
+  return profs;
+}
+
+// Moyenne générale de l'élève à chaque période de la section, dans l'ordre :
+// [{ periode, moy }] (moy null si rien de noté). Sert à la courbe de
+// progression et au récapitulatif du bulletin annuel — d'où les notes
+// RÉELLES, jamais les notes annuelles synthétiques.
+export function getMoyennesPeriodes(eleve, notes, matieres, classe, niveau, periodes = []) {
+  // getGeneralAverage vaut 0 (pas null) sans aucune note : une période pas
+  // encore commencée doit rester vide, pas tomber à zéro sur la courbe.
+  return periodes.map((periode) => {
+    const notesP = notesDeLEleve(notes, eleve._id, periode);
+    return { periode, moy: notesP.length ? getGeneralAverage(notesP, matieres, classe, niveau) : null };
+  });
+}
+
 export function getEvolutionPeriode(eleve, allNotes, matieres, classe, niveau, periodeActuelle, schoolInfo = {}) {
   const sectionPeriode = niveau;
   const periodes = getPeriodesForSection(schoolInfo, sectionPeriode);

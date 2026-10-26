@@ -66,7 +66,9 @@ export const isSecondarySection = (section: SectionName = ""): boolean =>
 export const isSecondaryClasse = (classe: string = ""): boolean =>
   isSecondarySection(getSectionForClasse(classe));
 
-export const getSecondarySubjectAverage = (notes: Note[] = []): number | null => {
+// Les deux notes dont le secondaire tire la moyenne d'une matière : la note de
+// classe (moyenne de l'oral et de l'écrit) et la note de composition.
+const getSecondaryParts = (notes: Note[] = []): { cours: number | null; composition: number | null } => {
   const oral = averageNumbers(
     notes.filter((note) => ORAL_TYPES.has(normalizeType(note.type))).map((note) => note.note ?? null),
   );
@@ -81,8 +83,11 @@ export const getSecondarySubjectAverage = (notes: Note[] = []): number | null =>
       })
       .map((note) => note.note ?? null),
   );
+  return { cours: averageNumbers([oral, written]), composition };
+};
 
-  const noteCours = averageNumbers([oral, written]);
+export const getSecondarySubjectAverage = (notes: Note[] = []): number | null => {
+  const { cours: noteCours, composition } = getSecondaryParts(notes);
   if (noteCours != null && composition != null) {
     return (noteCours + (2 * composition)) / 3;
   }
@@ -132,6 +137,24 @@ export const getSubjectAverage = (
     return getSecondarySubjectAverage(notes);
   }
   return averageNumbers(notes.map((note) => note.note ?? null));
+};
+
+// Détail imprimé au bulletin : note de classe et note de composition, telles
+// que getSubjectAverage les combine au secondaire. Null quand la moyenne ne se
+// décompose pas ainsi — moyenne saisie directement, rubriques du Français au
+// collège, primaire et maternelle (moyenne simple de toutes les notes).
+export const getSubjectParts = (
+  notes: Note[] = [],
+  classe: string = "",
+  section: SectionName = "",
+): { cours: number | null; composition: number | null } | null => {
+  if (getDirectSubjectAverage(notes) != null) return null;
+  const effectiveSection = section || getSectionForClasse(classe);
+  if (!isSecondarySection(effectiveSection)) return null;
+  if (effectiveSection === "college" && notes.some((note) => (
+    RUBRIQUE_WEIGHTS.has(normalizeType(note.type)) && averageNumbers([note.note ?? null]) != null
+  ))) return null;
+  return getSecondaryParts(notes);
 };
 
 export const getGeneralAverage = (

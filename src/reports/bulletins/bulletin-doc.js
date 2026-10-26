@@ -5,7 +5,8 @@ import { getBulletinStyles, getModeleBulletin } from "./bulletin-page.js";
 // (en-tête HTML, styles du modèle choisi par l'école, filigrane, corps
 // et déclencheur d'impression). Factorisé entre l'impression
 // individuelle et groupée.
-export function ouvrirFenetreBulletin({ title, body, schoolInfo = {}, win = null }) {
+// `imprimer: false` : simple aperçu, sans ouvrir la boîte d'impression.
+export function ouvrirFenetreBulletin({ title, body, schoolInfo = {}, win = null, imprimer = true }) {
   // `win` : fenêtre déjà ouverte (sur le geste utilisateur) avant un await QR,
   // pour ne pas se faire bloquer par le navigateur.
   const w = win || window.open("", "_blank");
@@ -13,6 +14,6 @@ export function ouvrirFenetreBulletin({ title, body, schoolInfo = {}, win = null
   <meta charset="utf-8"/>
   <title>${title}</title>
   <style>${getBulletinStyles(getModeleBulletin(schoolInfo))}${WATERMARK_CSS}</style>
-  </head><body>${watermarkHtml(schoolInfo)}${body}<script>${PRINT_TRIGGER}</script></body></html>`);
+  </head><body>${watermarkHtml(schoolInfo)}${body}${imprimer ? `<script>${PRINT_TRIGGER}</script>` : ""}</body></html>`);
   w.document.close();
 }

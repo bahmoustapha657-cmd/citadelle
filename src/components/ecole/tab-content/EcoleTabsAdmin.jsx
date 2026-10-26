@@ -77,6 +77,8 @@ export function EcoleTabsAdmin({ e, section, avecEns, userRole, annee, maxNote, 
         saveAppreciation={e.saveAppreciation}
         appreciationsParEleveB={e.appreciationsParEleveB}
         toast={e.toast}
+        absences={e.absences}
+        emplois={e.emplois}
       />}
 
       {/* ── LIVRETS ── */}

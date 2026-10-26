@@ -14,6 +14,8 @@ export function BulletinsTab({
   matieres, matieresForClasse, schoolInfo, moisAnnee, maxNote, section = "college",
   form, setForm, modal, setModal, canCreate, canEdit,
   getAppreciation, saveAppreciation, appreciationsParEleveB, toast,
+  // Assiduité et professeurs imprimés par les modèles complets de bulletin.
+  absences = [], emplois = [],
 }) {
   const { t } = useTranslation();
   const chg = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
@@ -56,6 +58,7 @@ export function BulletinsTab({
         notes={notes} matieres={matieres} maxNote={maxNote} section={section}
         matieresForClasse={matieresForClasse} appreciationsParEleveB={appreciationsParEleveB}
         batchAppr={batchAppr} canGenererLot={canCreate || canEdit}
+        absences={absences} emplois={emplois}
       />
 
       <BulletinsTable
@@ -63,6 +66,7 @@ export function BulletinsTab({
         periodeB={periodeB} periodes={periodes} schoolInfo={schoolInfo} moisAnnee={moisAnnee} maxNote={maxNote}
         section={section} eleves={eleves} canCreate={canCreate} canEdit={canEdit}
         getAppreciation={getAppreciation} setForm={setForm} setModal={setModal}
+        absences={absences} emplois={emplois}
       />
 
       {modal==="apprec"&&(canCreate||canEdit)&&<AppreciationModale

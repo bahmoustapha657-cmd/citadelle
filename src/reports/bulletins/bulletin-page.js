@@ -19,19 +19,64 @@ import { getInitiales, ordinalFr } from "./bulletin-format.js";
 import { computeBulletinModel } from "./bulletin-page-data.js";
 import { buildLignesRows } from "./bulletin-page-rows.js";
 import { PERIODE_ANNEE } from "./annual-notes.js";
+import { computeBulletinProModel } from "./bulletin-pro-data.js";
+import { PIED_CSS, identiteEcole } from "./bulletin-pro-commun.js";
+import { STYLES_OFFICIEL, buildBulletinOfficielHTML } from "./bulletin-officiel.js";
+import { STYLES_PRESTIGE, buildBulletinPrestigeHTML } from "./bulletin-prestige.js";
+import { STYLES_CONTEMPORAIN, buildBulletinContemporainHTML } from "./bulletin-contemporain.js";
 
 // Modèle de bulletin choisi par l'école (Paramètres → Évaluations) :
 //  - classique : gabarit historique (défaut)
 //  - compact   : 2 bulletins par feuille A4 (économie papier)
 //  - moderne   : bandeau aux deux couleurs de l'école, blocs arrondis
+//  - officiel, prestige, contemporain : bulletins complets (note de classe
+//    et composition, rang et professeur par matière, total des points,
+//    assiduité, décision du conseil) — voir bulletin-pro-*.js
 export const MODELES_BULLETIN = [
+  { id: "officiel", label: "Officiel", desc: "Le bulletin administratif : tableau quadrillé, encadrés, cases du conseil de classe. Net en noir et blanc, économe en encre." },
+  { id: "prestige", label: "Prestige", desc: "L'esprit d'un diplôme : double cadre, filets dorés, sceau de distinction. Pour une image haut de gamme." },
+  { id: "contemporain", label: "Contemporain", desc: "Lecture rapide pour les parents : chiffres clés en tête, position face à la classe, courbe de progression." },
   { id: "classique", label: "Classique", desc: "Le gabarit historique — un bulletin par page." },
   { id: "compact", label: "Compact (2 par page)", desc: "Deux bulletins par feuille A4 — économie de papier." },
   { id: "moderne", label: "Moderne", desc: "Bandeau aux couleurs de l'école, blocs arrondis." },
 ];
 
+const GABARITS_PRO = {
+  officiel: { build: buildBulletinOfficielHTML, styles: STYLES_OFFICIEL },
+  prestige: { build: buildBulletinPrestigeHTML, styles: STYLES_PRESTIGE },
+  contemporain: { build: buildBulletinContemporainHTML, styles: STYLES_CONTEMPORAIN },
+};
+
 export const getModeleBulletin = (schoolInfo = {}) =>
   (MODELES_BULLETIN.some((m) => m.id === schoolInfo.modeleBulletin) ? schoolInfo.modeleBulletin : "classique");
+
+// Modèle complet (Officiel, Prestige, Contemporain) : l'impression lui
+// calcule en plus rangs par matière, professeurs, assiduité et moyennes des
+// périodes, inutiles aux autres modèles.
+export const estModeleComplet = (schoolInfo = {}) => !!GABARITS_PRO[getModeleBulletin(schoolInfo)];
+
+// Resserre le tableau quand la classe a beaucoup de matières, pour que le
+// bulletin tienne sur sa page A4.
+const densite = (nbMatieres) => (nbMatieres >= 13 ? "d2" : nbMatieres >= 10 ? "d1" : "");
+
+function buildBulletinProHTML(modele, {
+  eleve, notes, matieres, periode, niveau, maxNote, schoolInfo, rang, evolution, classStats,
+  matiereClasseAvg, appreciation, qr, rangsParMatiere, professeurs, moyennesPeriodes, assiduite,
+}) {
+  const annee = getAnnee();
+  const m = computeBulletinProModel({
+    eleve, notes, matieres, periode, niveau, maxNote, schoolInfo, annee,
+    matiereClasseAvg, rangsParMatiere, professeurs,
+  });
+  return GABARITS_PRO[modele].build({
+    eleve, m, si: schoolInfo, ecole: identiteEcole(schoolInfo), niveau, maxNote, periode, annee,
+    rang, classStats, evolution, moyennesPeriodes, assiduite, appreciation, qr,
+    estAnnuel: periode === PERIODE_ANNEE,
+    densite: densite(m.lignes.length),
+    c1: schoolInfo.couleur1 || "#0A1628",
+    c2: schoolInfo.couleur2 || "#00C48C",
+  });
+}
 
 export function buildBulletinPageHTML({
   eleve,
@@ -47,7 +92,19 @@ export function buildBulletinPageHTML({
   matiereClasseAvg = {},
   appreciation = "",
   qr = "",
+  // Modèles complets seulement (voir estModeleComplet) :
+  rangsParMatiere = null,
+  professeurs = null,
+  moyennesPeriodes = null,
+  assiduite = null,
 }) {
+  const modeleEcole = getModeleBulletin(schoolInfo);
+  if (GABARITS_PRO[modeleEcole]) {
+    return buildBulletinProHTML(modeleEcole, {
+      eleve, notes, matieres, periode, niveau, maxNote, schoolInfo, rang, evolution, classStats,
+      matiereClasseAvg, appreciation, qr, rangsParMatiere, professeurs, moyennesPeriodes, assiduite,
+    });
+  }
   const c1 = schoolInfo.couleur1 || "#0A1628";
   const c2 = schoolInfo.couleur2 || "#00C48C";
   const annee = getAnnee();
@@ -173,6 +230,21 @@ export function buildBulletinPageHTML({
 }
 
 export function getBulletinStyles(modele = "classique") {
+  if (GABARITS_PRO[modele]) {
+    // Une page A4 par bulletin ; le pied descend en bas de la feuille. La
+    // hauteur est un minimum : un bulletin trop long passe sur une seconde
+    // feuille plutôt que d'être coupé.
+    return `
+    ${PRINT_RESET}
+    body{margin:0;padding:0;background:#fff}
+    .page.pro{width:210mm;min-height:296mm;box-sizing:border-box;display:flex;flex-direction:column;page-break-after:always;break-after:page;position:relative;background:#fff}
+    .page.pro:last-child{page-break-after:auto;break-after:auto}
+    .page.pro sup{font-size:.68em;line-height:0}
+    @media screen{body{background:#e5e7eb}.page.pro{margin:0 auto 10px;box-shadow:0 1px 4px rgba(0,0,0,.15)}}
+    ${GABARITS_PRO[modele].styles}
+    ${PIED_CSS}
+    `;
+  }
   const base = `
     ${PRINT_RESET}
     body{font-family:Arial,sans-serif;padding:0;margin:0;font-size:11px;color:#1f2937}
