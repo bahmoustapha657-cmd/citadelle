@@ -56,19 +56,26 @@ export const opacite = (confiance, bas = 0.25, haut = 0.55) => {
 // Masque ramené à la taille de l'image (bilinéaire), s'il ne l'a pas déjà.
 export function redimensionnerMasque(masque, ml, mh, largeur, hauteur) {
   if (ml === largeur && mh === hauteur) return masque;
+  return recadrerMasque(masque, ml, mh, { x: 0, y: 0, w: ml, h: mh }, largeur, hauteur);
+}
+
+// Partie `zone` ({ x, y, w, h }, en pixels du masque) d'un masque ml × mh,
+// ramenée à largeur × hauteur (bilinéaire) : le masque d'une photo suit son
+// recadrage (retouche) sans refaire le détourage.
+export function recadrerMasque(masque, ml, mh, zone, largeur, hauteur) {
   const sortie = new Float32Array(largeur * hauteur);
   // Colonnes sources et poids, calculés une fois pour toutes les lignes.
   const gauche = new Int32Array(largeur);
   const droite = new Int32Array(largeur);
   const poids = new Float32Array(largeur);
   for (let x = 0; x < largeur; x++) {
-    const sx = Math.min(ml - 1, Math.max(0, ((x + 0.5) * ml) / largeur - 0.5));
+    const sx = Math.min(ml - 1, Math.max(0, zone.x + ((x + 0.5) * zone.w) / largeur - 0.5));
     gauche[x] = Math.floor(sx);
     droite[x] = Math.min(ml - 1, gauche[x] + 1);
     poids[x] = sx - gauche[x];
   }
   for (let y = 0; y < hauteur; y++) {
-    const sy = Math.min(mh - 1, Math.max(0, ((y + 0.5) * mh) / hauteur - 0.5));
+    const sy = Math.min(mh - 1, Math.max(0, zone.y + ((y + 0.5) * zone.h) / hauteur - 0.5));
     const y0 = Math.floor(sy);
     const l0 = y0 * ml;
     const l1 = Math.min(mh - 1, y0 + 1) * ml;

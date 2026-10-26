@@ -101,10 +101,15 @@ export const fileSeancePhoto = (eleves = [], { classe = null, seulementSansPhoto
 
 // Champs à enregistrer pour un enfant : seulement ce qui change (la photo
 // est déjà une URL téléversée ou en file d'attente hors ligne).
-export const champsSeancePhoto = (eleve = {}, { surnom = eleve.surnom, photo = "" } = {}) => {
+// `photoRetouche` : mémoire de la retouche qui accompagne une nouvelle photo
+// (null pour une photo prise ou importée : l'ancienne mémoire ne vaut plus).
+export const champsSeancePhoto = (eleve = {}, { surnom = eleve.surnom, photo = "", photoRetouche } = {}) => {
   const champs = {};
   const nouveau = nettoyerSurnom(surnom);
   if (nouveau !== nettoyerSurnom(eleve.surnom)) champs.surnom = nouveau;
-  if (photo && photo !== eleve.photo) champs.photo = photo;
+  if (photo && photo !== eleve.photo) {
+    champs.photo = photo;
+    if (photoRetouche !== undefined) champs.photoRetouche = photoRetouche;
+  }
   return champs;
 };

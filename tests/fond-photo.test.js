@@ -3,7 +3,7 @@ import test from "node:test";
 import {
   CLE_FOND, CONTOUR_MAX, CONTOUR_MIN, FOND_ORIGINAL, FONDS_PRETS, affinerMasque, bornerMasque, composerFond,
   enregistrerFond, fenetreContour, filtreExtremum, hexVersRgb, lireFond, masqueDetoure, moyenneFenetre,
-  normaliserCouleur, opacite, redimensionnerMasque, reduire,
+  normaliserCouleur, opacite, recadrerMasque, redimensionnerMasque, reduire,
 } from "../src/components/camera-capture/fond-photo.js";
 
 const stockageMemoire = (initial = {}) => {
@@ -145,4 +145,15 @@ test("masque redimensionné à la taille de la photo", () => {
   const grand = redimensionnerMasque(m, 2, 2, 4, 4);
   assert.equal(grand.length, 16);
   assert.deepEqual([...grand.slice(0, 4)].map((v) => +v.toFixed(2)), [0, 0.25, 0.75, 1]);
+});
+
+test("masque recadré : il suit le cadre de la photo retouchée", () => {
+  // Masque 4×2 : moitié gauche décor (0), moitié droite enfant (1).
+  const m = new Float32Array([0, 0, 1, 1, 0, 0, 1, 1]);
+  // Cadre sur la moitié droite, rendu en 2×2 : tout enfant.
+  assert.deepEqual([...recadrerMasque(m, 4, 2, { x: 2, y: 0, w: 2, h: 2 }, 2, 2)], [1, 1, 1, 1]);
+  // Cadre sur la moitié gauche : tout décor.
+  assert.deepEqual([...recadrerMasque(m, 4, 2, { x: 0, y: 0, w: 2, h: 2 }, 2, 2)], [0, 0, 0, 0]);
+  // Cadre entier : même résultat que le simple redimensionnement.
+  assert.deepEqual([...recadrerMasque(m, 4, 2, { x: 0, y: 0, w: 4, h: 2 }, 8, 4)], [...redimensionnerMasque(m, 4, 2, 8, 4)]);
 });

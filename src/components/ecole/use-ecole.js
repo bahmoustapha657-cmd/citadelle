@@ -165,6 +165,11 @@ export function useEcole({
   const [grilleType, setGrilleType] = useState(defaultNoteType);
   const canCreate = !readOnly && !enModeArchive;
   const canEdit = !readOnly && !enModeArchive && (peutModifier(userRole) || verrouOuvert);
+  // Photos et surnoms des élèves : quiconque écrit la section les prend et
+  // les retouche — le chef de section comme la direction (RLS eleves_write :
+  // has_module_write(section_module(section))). Le reste de la fiche reste
+  // à la Comptabilité.
+  const canPhoto = canCreate;
   // La Discipline a sa propre permission : un surveillant l'écrit sans avoir
   // l'écriture sur tout le module (notes, élèves, classes). L'ancien droit
   // reste valable — un poste qui écrit la section écrit toujours la
@@ -219,7 +224,7 @@ export function useEcole({
     schoolId, schoolInfo, moisAnnee, toast, logAction, envoyerPush,
     periodes, defaultPeriode, periodeB, setPeriodeB, grillePeriode, setGrillePeriode,
     noteForms, defaultNoteType, grilleType, setGrilleType,
-    canCreate, canEdit, canCreateDiscipline, canEditDiscipline, canCreateParent, moy, classesUniq,
+    canCreate, canEdit, canPhoto, canCreateDiscipline, canEditDiscipline, canCreateParent, moy, classesUniq,
     elevesFiltres, effectifReel, saveClasse, saveEnseignant, anneesDispo,
   };
 }

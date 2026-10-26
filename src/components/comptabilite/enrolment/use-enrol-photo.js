@@ -3,6 +3,7 @@ import { SchoolContext } from "../../../contexts/SchoolContext";
 import { getSectionLabel, initMens } from "../../../constants";
 import { champsRetour, normaliserDepart } from "../../../depart-utils";
 import { uploadPhotoEleve } from "../../../storageUtils";
+import { finaliserRetouche } from "../../camera-capture/retouche";
 import {
   MESSAGE_FILIATION_OBLIGATOIRE, filiationManquante, findEnrollmentDuplicate, getEnrollmentDuplicateMessage,
 } from "../../../enrollment-utils";
@@ -60,11 +61,15 @@ export function useEnrolPhoto({
     verrou.current = true;
     setUploadEnCours(true);
     try {
-      let photoUrl = fiche.photo || "";
+      const photoAvant = fiche.photo || "";
+      let photoUrl = photoAvant;
       if (photoUrl.startsWith("data:")) {
         photoUrl = await uploadPhotoEleve(photoUrl, schoolId);
       }
       const r = { ...fiche, niveau: section, photo: photoUrl, mens: fiche.mens || initMens() };
+      // Mémoire de la retouche (« Modifier la photo ») : gardée seulement si
+      // elle se rapporte à la photo enregistrée, jamais en data URL.
+      if (fiche.photoRetouche !== undefined) r.photoRetouche = finaliserRetouche(fiche.photoRetouche, photoAvant, photoUrl);
       const doublon = findEnrollmentDuplicate(r, tousElevesScolarite, {
         excludeId: modal === "edit_enrol" ? r._id : null,
       });

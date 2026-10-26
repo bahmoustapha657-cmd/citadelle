@@ -3,20 +3,31 @@ import {
   aUnePhoto, comparerClasses, correspondEnfant, couleurClasse, grouperParClasse, nomAppel, nomOfficiel,
 } from "../../identite-enfant";
 import { imprimerBadges, imprimerTrombinoscope } from "../../reports";
+import { uploadPhotoEleve } from "../../storageUtils";
+import { RetouchePhoto } from "../RetouchePhoto";
+import { finaliserRetouche } from "../camera-capture/retouche";
 import { Btn, Vide } from "../ui";
 import { EnfantAgrandi } from "./EnfantAgrandi";
+import { FondClasseModale } from "./FondClasseModale";
 import { PhotoEleve } from "./PhotoEleve";
 
 // Trombinoscope à l'écran : les enfants en grandes photos, classe par classe,
 // le nom auquel ils répondent en gros. Recherche par prénom, surnom, nom,
 // tuteur ou filiation ; un toucher agrandit l'enfant. Impressions :
 // trombinoscope A4 et, en maternelle, badges.
-// `onSeancePhoto(classe, eleveId)` : présent seulement pour qui peut modifier
-// les fiches (pas le portail enseignant).
-export function Trombinoscope({ eleves = [], schoolInfo = {}, annee = "", section = "", onSeancePhoto = null }) {
+// `onSeancePhoto(classe, eleveId)` et `enregistrer(id, champs)` (retouche
+// d'une photo, fond de toute une classe) : présents seulement pour qui peut
+// modifier les photos — direction, chef de section (pas le portail
+// enseignant).
+export function Trombinoscope({
+  eleves = [], schoolInfo = {}, annee = "", section = "", onSeancePhoto = null,
+  enregistrer = null, schoolId = "", toast = null, logAction = null,
+}) {
   const [recherche, setRecherche] = useState("");
   const [classe, setClasse] = useState("all");
   const [agrandi, setAgrandi] = useState(null);
+  const [retouche, setRetouche] = useState(null);
+  const [fondClasse, setFondClasse] = useState(false);
 
   const classes = useMemo(
     () => [...new Set(eleves.map((e) => e.classe).filter(Boolean))].sort(comparerClasses),
@@ -30,6 +41,14 @@ export function Trombinoscope({ eleves = [], schoolInfo = {}, annee = "", sectio
   const options = { schoolInfo, annee };
   // Fiche à jour (après une séance photo) plutôt que la copie prise au clic.
   const enfantAgrandi = agrandi ? eleves.find((e) => e._id === agrandi._id) || agrandi : null;
+
+  const enregistrerRetouche = async (eleve, photo, memoire) => {
+    const url = await uploadPhotoEleve(photo, schoolId);
+    if (url === eleve.photo) return;
+    await enregistrer(eleve._id, { photo: url, photoRetouche: finaliserRetouche(memoire, photo, url) });
+    logAction?.("Photo retouchée", `${nomOfficiel(eleve)} (${eleve.classe || "?"})`);
+    toast?.("Photo modifiée.", "success");
+  };
 
   if (!eleves.length) return <Vide icone="🖼️" msg="Aucun enfant dans cette liste."/>;
 
@@ -52,6 +71,8 @@ export function Trombinoscope({ eleves = [], schoolInfo = {}, annee = "", sectio
           onClick={() => imprimerBadges(dansClasse, options)}>🏷️ Badges</Btn>}
         {onSeancePhoto && <Btn sm v="blue" title="Prendre les photos et les surnoms des enfants, l'un après l'autre"
           onClick={() => onSeancePhoto(classeActive === "all" ? null : classeActive)}>📸 Séance photo</Btn>}
+        {enregistrer && <Btn sm v="ghost" title="La même couleur de fond derrière tous les enfants d'une classe"
+          onClick={() => setFondClasse(true)}>🎨 Fond de la classe</Btn>}
       </div>
 
       {nbSansPhoto > 0 && (
@@ -88,10 +109,19 @@ export function Trombinoscope({ eleves = [], schoolInfo = {}, annee = "", sectio
 
       <EnfantAgrandi eleve={enfantAgrandi} fermer={() => setAgrandi(null)} actions={enfantAgrandi && <>
         {badges && <Btn sm v="ghost" onClick={() => imprimerBadges([enfantAgrandi], options)}>🏷️ Imprimer son badge</Btn>}
+        {enregistrer && aUnePhoto(enfantAgrandi) && <Btn sm v="ghost" title="Fond, cadrage, lumière — sans reprendre la photo"
+          onClick={() => setRetouche(enfantAgrandi)}>✏️ Modifier la photo</Btn>}
         {onSeancePhoto && <Btn sm v="blue" onClick={() => { setAgrandi(null); onSeancePhoto(enfantAgrandi.classe || null, enfantAgrandi._id); }}>
           📸 {aUnePhoto(enfantAgrandi) ? "Changer sa photo / son surnom" : "Prendre sa photo"}
         </Btn>}
       </>}/>
+      {retouche && <RetouchePhoto photo={retouche.photo} retouche={retouche.photoRetouche}
+        onValider={(photo, memoire) => enregistrerRetouche(retouche, photo, memoire)}
+        onClose={() => setRetouche(null)}/>}
+      {fondClasse && <FondClasseModale
+        eleves={eleves} classeInitiale={classeActive === "all" ? null : classeActive}
+        schoolId={schoolId} enregistrer={enregistrer} toast={toast} logAction={logAction}
+        fermer={() => setFondClasse(false)}/>}
     </div>
   );
 }
