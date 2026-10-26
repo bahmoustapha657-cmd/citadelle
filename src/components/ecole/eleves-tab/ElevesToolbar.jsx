@@ -5,12 +5,13 @@ import { imprimerCartesEleves, imprimerListeClasse, exportExcel } from "../../..
 import { peutImprimerCartesEleves } from "../../../../shared/postes-config.js";
 
 // Barre d'outils de l'onglet Élèves : titre, filtre par classe, impression
-// liste/cartes et export Excel.
+// liste/cartes/badges et export Excel. `onBadges` : ouvre les réglages des
+// badges pour les élèves affichés.
 export function ElevesToolbar({
   eleves, elevesFiltres, filtreClasse, setFiltreClasse, classesUniq,
   section = "college", annee, schoolInfo, userRole = "",
   nbPartis = 0, avecPartis = false, setAvecPartis = () => {},
-  tri = null, vue = null,
+  tri = null, vue = null, onBadges = null,
 }) {
   const { t } = useTranslation();
   return (
@@ -34,6 +35,8 @@ export function ElevesToolbar({
           ci-dessus, qui est ce dont l'appel a besoin. */}
       {peutImprimerCartesEleves(userRole)
         && <Btn sm v="blue" onClick={()=>imprimerCartesEleves(elevesFiltres,schoolInfo,annee)}>🪪 {t("reports.card.title")}</Btn>}
+      {onBadges&&<Btn sm v="ghost" title="Écussons de poche pour la tenue, ou badges à plastifier"
+        onClick={onBadges}>🏷️ Badges</Btn>}
       <Btn sm v="ghost" onClick={()=>exportExcel(
         `${t("reports.excel.files.students")}_${getSectionSlug(section)}`,
         [t("reports.excel.headers.matricule"),t("reports.excel.headers.ien"),t("reports.excel.headers.lastName"),t("reports.excel.headers.firstName"),t("reports.excel.headers.class"),t("reports.excel.headers.sex"),t("reports.excel.headers.dateOfBirth"),t("reports.excel.headers.birthPlace"),t("reports.excel.headers.filiation"),t("reports.excel.headers.guardian"),t("reports.excel.headers.contact"),t("reports.excel.headers.domicile"),t("reports.excel.headers.status")],
