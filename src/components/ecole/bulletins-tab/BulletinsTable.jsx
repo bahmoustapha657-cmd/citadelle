@@ -19,6 +19,7 @@ import { getMention } from "../../../reports/bulletins/bulletin-format";
 export function BulletinsTable({
   t, elevesB, notes, notesStats, matieresForClasse, periodeB, periodes, schoolInfo, moisAnnee,
   maxNote, section = "college", eleves, canCreate, canEdit, getAppreciation, setForm, setModal,
+  absences = [], emplois = [],
 }) {
   // notesStats = notes réelles en mode période ; notes annuelles synthétiques
   // en mode « fin d'année » (pour l'affichage des moyennes et le contexte IA).
@@ -85,7 +86,7 @@ export function BulletinsTable({
           </TD>
           <TD>{eleveImpayeBloq
             ? <span title="Frais impayés — impression bloquée" style={{fontSize:18}}>🔒</span>
-            : <Btn sm v="amber" onClick={()=>imprimerBulletin(e,notes,matieresForClasse(e.classe),periodeB,section,maxNote,schoolInfo,{allEleves:eleves,allNotes:notes,appreciation:apprecTexte,periodes})}>{t("school.bulletins.printBulletin")}</Btn>
+            : <Btn sm v="amber" onClick={()=>imprimerBulletin(e,notes,matieresForClasse(e.classe),periodeB,section,maxNote,schoolInfo,{allEleves:eleves,allNotes:notes,appreciation:apprecTexte,periodes,absences,emplois})}>{t("school.bulletins.printBulletin")}</Btn>
           }</TD>
         </TR>;
       })}</tbody>

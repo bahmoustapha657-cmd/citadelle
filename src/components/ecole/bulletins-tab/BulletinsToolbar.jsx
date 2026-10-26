@@ -11,7 +11,7 @@ export function BulletinsToolbar({
   t, rechercheMatricule, setRechercheMatricule, periodeB, setPeriodeB, periodes,
   filtreClasse, setFiltreClasse, classesUniq, elevesFiltres, schoolInfo, moisAnnee,
   notes, matieres, maxNote, section = "college", matieresForClasse, appreciationsParEleveB,
-  batchAppr, canGenererLot,
+  batchAppr, canGenererLot, absences = [], emplois = [],
 }) {
   // Format de la fiche de résultats : "simple" (moyenne générale seule) ou
   // "matieres" (une colonne de moyenne par matière, imprimée en paysage).
@@ -54,7 +54,7 @@ export function BulletinsToolbar({
         const elevesBtn=elevesFiltres
           .filter(e=>!rechercheMatricule||(e.matricule||"").toLowerCase().includes(rechercheMatricule.toLowerCase())||(e.nom+" "+e.prenom).toLowerCase().includes(rechercheMatricule.toLowerCase()))
           .filter(e=>!estBloquePourImpaye(schoolInfo, e, moisAnnee, schoolInfo?.anneeScolaire));
-        imprimerBulletinsGroupes(elevesBtn,notes,matieres,periodeB,section,maxNote,schoolInfo,filtreClasse==="all"?"Toutes classes":filtreClasse,matieresForClasse,appreciationsParEleveB(periodeB),periodes);
+        imprimerBulletinsGroupes(elevesBtn,notes,matieres,periodeB,section,maxNote,schoolInfo,filtreClasse==="all"?"Toutes classes":filtreClasse,matieresForClasse,appreciationsParEleveB(periodeB),periodes,{absences,emplois});
       }}>
         {t("school.bulletins.allBulletins")} {filtreClasse!=="all"?`— ${filtreClasse}`:""}
       </Btn>
