@@ -3,13 +3,16 @@ import { C } from "../constants";
 import { Btn } from "./ui";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { ChoixFond } from "./camera-capture/ChoixFond";
+import { VueRecadrage } from "./camera-capture/VueRecadrage";
 import { dessinerApercu } from "./camera-capture/rendu-retouche";
 import { TON_MAX, ZOOM_MAX } from "./camera-capture/retouche";
 import { useRetouchePhoto } from "./camera-capture/use-retouche-photo";
 
 // Modale de retouche d'une photo d'élève DÉJÀ prise, sans reprendre l'enfant
 // en photo : quart de tour, zoom et déplacement (au doigt, à la souris ou aux
-// curseurs), recentrage automatique sur le visage, luminosité et contraste,
+// curseurs), vue « Recadrer » (la photo entière et son cadre 3:4 à déplacer
+// ou à tirer par les coins, VueRecadrage), recentrage automatique sur le
+// visage, luminosité et contraste,
 // fond uni à la place du décor. Si la photo a déjà été retouchée, on repart
 // de son ORIGINE avec les réglages d'alors (use-retouche-photo).
 //
@@ -48,15 +51,17 @@ export function RetouchePhoto({ photo, retouche = null, onValider, onClose }) {
   const pointeurs = useRef(new Map());
   const pincement = useRef(null);
   const [envoi, setEnvoi] = useState({ enCours: false, erreur: "" });
+  const [recadrer, setRecadrer] = useState(false);
   const { reglages, image, masque, zoomer } = r;
 
-  // Aperçu redessiné à chaque réglage, une fois par image affichée.
+  // Aperçu redessiné à chaque réglage, une fois par image affichée (et au
+  // retour de la vue « Recadrer », qui remonte son canvas).
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !image) return undefined;
+    if (!canvas || !image || recadrer) return undefined;
     const id = requestAnimationFrame(() => dessinerApercu(canvas, image, masque, reglages));
     return () => cancelAnimationFrame(id);
-  }, [image, masque, reglages]);
+  }, [image, masque, reglages, recadrer]);
 
   // Molette : zoom autour du pointeur. Écouteur non passif (React les rend
   // passifs) pour que la page ne défile pas en même temps.
@@ -77,7 +82,7 @@ export function RetouchePhoto({ photo, retouche = null, onValider, onClose }) {
     return { x: e.clientX - b.left, y: e.clientY - b.top, largeur: b.width, hauteur: b.height };
   };
   const surAppui = (e) => {
-    e.currentTarget.setPointerCapture?.(e.pointerId);
+    try { e.currentTarget.setPointerCapture?.(e.pointerId); } catch { /* pointeur déjà relâché */ }
     pointeurs.current.set(e.pointerId, position(e));
     pincement.current = null;
   };
@@ -122,6 +127,8 @@ export function RetouchePhoto({ photo, retouche = null, onValider, onClose }) {
 
         {r.erreur ? (
           <p style={{ color: "#b91c1c", fontSize: 13, background: "#fee2e2", padding: "10px 14px", borderRadius: 8 }}>{r.erreur}</p>
+        ) : recadrer && image ? (
+          <VueRecadrage image={image} masque={masque} reglages={reglages} onCadrage={r.changer}/>
         ) : (
           <div ref={zoneRef}
             onPointerDown={surAppui} onPointerMove={surGlisse} onPointerUp={surLacher} onPointerCancel={surLacher}
@@ -139,12 +146,20 @@ export function RetouchePhoto({ photo, retouche = null, onValider, onClose }) {
         {image && !r.erreur && (
           <>
             <p style={{ margin: "8px 0 0", fontSize: 11, color: "#64748b", textAlign: "center" }}>
-              Glissez la photo pour la déplacer ; pincez (ou la molette) pour zoomer.
+              {recadrer
+                ? "Glissez le cadre pour le déplacer ; tirez un coin pour l'agrandir ou le rétrécir (format de la carte, 3:4)."
+                : "Glissez la photo pour la déplacer ; pincez (ou la molette) pour zoomer."}
               {r.taille && ` Photo finale : ${r.taille.largeur}×${r.taille.hauteur} px.`}
             </p>
 
             <p style={styleTitre}>✂️ Cadrage</p>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              <Btn sm v={recadrer ? "vert" : "ghost"} onClick={() => setRecadrer(!recadrer)} aria-pressed={recadrer}
+                title="Voir la photo entière et choisir la partie gardée">
+                {recadrer ? "✓ Terminer le recadrage" : "✂️ Recadrer"}
+              </Btn>
+              {recadrer && <Btn sm v="ghost" onClick={() => r.changer({ zoom: 1, cx: 0.5, cy: 0.5 })}
+                title="Le plus grand cadre possible">⤢ Toute la photo</Btn>}
               <Btn sm v="ghost" onClick={() => r.tourner(-1)} title="Tourner d'un quart de tour à gauche" aria-label="Tourner à gauche">⟲ Tourner</Btn>
               <Btn sm v="ghost" onClick={() => r.tourner(1)} title="Tourner d'un quart de tour à droite" aria-label="Tourner à droite">⟳ Tourner</Btn>
               <Btn sm v="ghost" onClick={r.centrerVisage} disabled={r.visage.enCours}

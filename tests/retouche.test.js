@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { FOND_ORIGINAL } from "../src/components/camera-capture/fond-photo.js";
 import {
-  REGLAGES_NEUTRES, TON_MAX, ZOOM_MAX, appliquerTons, bornerCentre, cadrageSurVisage, deplacerCadre,
-  dimensionsTournees, estNeutre, finaliserRetouche, memoireRetouche, normaliserReglages, retoucheFond,
+  COINS, REGLAGES_NEUTRES, TON_MAX, ZOOM_MAX, appliquerTons, bornerCentre, cadrageDepuisZone, cadrageSurVisage,
+  deplacerCadre, deplacerZone, dimensionsTournees, redimensionnerZone, estNeutre, finaliserRetouche, memoireRetouche, normaliserReglages, retoucheFond,
   sourceRetouche, tableTons, tonsAuto, tourner, zoneCadrage, zonesRecherche, zoomerCadre,
 } from "../src/components/camera-capture/retouche.js";
 
@@ -66,6 +66,48 @@ test("zoom : le point sous les doigts reste sous les doigts", () => {
   // Borné à ZOOM_MAX et à 1.
   assert.equal(zoomerCadre(768, 1024, decale, 99).zoom, ZOOM_MAX);
   assert.equal(zoomerCadre(768, 1024, decale, 0.2).zoom, 1);
+});
+
+test("recadrer : le cadre voulu devient zoom et centre, borné à la photo", () => {
+  // Cadre de 384×512 dans le coin haut-gauche d'une photo 768×1024.
+  const r = cadrageDepuisZone(768, 1024, { x: 0, y: 0, w: 384, h: 512 });
+  assert.deepEqual(r, { zoom: 2, cx: 0.25, cy: 0.25 });
+  assert.deepEqual(zoneCadrage(768, 1024, r), { x: 0, y: 0, w: 384, h: 512 });
+  // Trop grand : la photo entière ; trop petit : ZOOM_MAX.
+  assert.equal(cadrageDepuisZone(768, 1024, { x: 0, y: 0, w: 2000, h: 2666 }).zoom, 1);
+  assert.equal(cadrageDepuisZone(768, 1024, { x: 0, y: 0, w: 10, h: 13 }).zoom, ZOOM_MAX);
+});
+
+test("recadrer : le cadre glissé suit le doigt et reste dans la photo", () => {
+  const depart = { zoom: 2, cx: 0.5, cy: 0.5 };
+  const apres = deplacerZone(768, 1024, depart, 96, -128);
+  proche(apres.cx, 0.5 + 96 / 768);
+  proche(apres.cy, 0.5 - 128 / 1024);
+  // Poussé loin à droite : collé au bord.
+  assert.deepEqual(zoneCadrage(768, 1024, { ...depart, ...deplacerZone(768, 1024, depart, 5000, 0) }).x, 384);
+});
+
+test("recadrer : un coin tiré agrandit ou rétrécit, le coin opposé ne bouge pas, 3:4 gardé", () => {
+  const depart = { zoom: 2, cx: 0.5, cy: 0.5 }; // cadre 384×512 en (192, 256)
+  // Coin bas-droit tiré vers l'extérieur de 96 px (et 128 vers le bas) : +96 de large.
+  const plus = zoneCadrage(768, 1024, redimensionnerZone(768, 1024, depart, "bd", 96, 128));
+  assert.equal(Math.round(plus.x), 192);
+  assert.equal(Math.round(plus.y), 256);
+  assert.equal(Math.round(plus.w), 480);
+  proche(plus.w / plus.h, 3 / 4, 1e-6);
+  // Coin haut-gauche tiré vers l'intérieur : plus petit, coin bas-droit fixe.
+  const moins = zoneCadrage(768, 1024, redimensionnerZone(768, 1024, depart, "hg", 96, 128));
+  assert.equal(Math.round(moins.x + moins.w), 576);
+  assert.equal(Math.round(moins.y + moins.h), 768);
+  assert.equal(Math.round(moins.w), 288);
+  // Tiré au-delà du bord : arrêté par la photo (coin fixe en 192, 256 → 576 px de place).
+  const bord = zoneCadrage(768, 1024, redimensionnerZone(768, 1024, depart, "bd", 5000, 5000));
+  assert.equal(Math.round(bord.x), 192);
+  assert.ok(bord.x + bord.w <= 768 + 1e-6 && bord.y + bord.h <= 1024 + 1e-6);
+  // Jamais plus petit que ZOOM_MAX.
+  const mini = redimensionnerZone(768, 1024, depart, "hd", -5000, 5000);
+  assert.equal(mini.zoom, ZOOM_MAX);
+  assert.deepEqual(COINS, ["hg", "hd", "bg", "bd"]);
 });
 
 test("quart de tour : sens horaire et inverse, le cadrage repart de la photo entière", () => {

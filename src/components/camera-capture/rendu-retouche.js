@@ -87,6 +87,17 @@ export function dessinerApercu(cible, image, masque, reglages) {
   retoucherPixels(cible, image, masque, zone, reglages);
 }
 
+// Vue « Recadrer » : la photo de travail ENTIÈRE dans `cible` (à son
+// format), lumière et fond compris ; le cadre se dessine par-dessus (HTML).
+export function dessinerImageEntiere(cible, image, masque, reglages) {
+  if (!image.width || !image.height) return;
+  const zone = { x: 0, y: 0, w: image.width, h: image.height };
+  const ctx = cible.getContext("2d", { willReadFrequently: true });
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(image, 0, 0, image.width, image.height, 0, 0, cible.width, cible.height);
+  retoucherPixels(cible, image, masque, zone, reglages);
+}
+
 // Pixels du cadre courant, en petit : de quoi régler la lumière automatique.
 export function pixelsDuCadre(image, reglages, cote = 160) {
   const zone = zoneCadrage(image.width, image.height, reglages);
