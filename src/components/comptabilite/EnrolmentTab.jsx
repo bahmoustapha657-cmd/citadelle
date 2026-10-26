@@ -12,6 +12,7 @@ import { EnrolTable } from "./enrolment/EnrolTable";
 import { TriElevesSelect } from "../TriElevesSelect";
 import { useTriEleves } from "../use-tri-eleves";
 import { trierEleves } from "../../tri-eleves";
+import { SeancePhotoModale } from "../identite-enfant/SeancePhotoModale";
 
 export function EnrolmentTab({
   form, setForm, modal, setModal, canCreate, canEdit, canCreateParent = false,
@@ -21,7 +22,7 @@ export function EnrolmentTab({
   encaisserInscriptions, getTarifInscriptionEleve, tarifsClasses = [],
 }) {
   const { t } = useTranslation();
-  const { schoolId, schoolInfo, toast, planInfo, moisAnnee } = useContext(SchoolContext);
+  const { schoolId, schoolInfo, toast, planInfo, moisAnnee, logAction } = useContext(SchoolContext);
 
   const [niveauChoisi, setNiveauChoisi] = useState("college");
   const [classeEnrol, setClasseEnrol] = useState("all");
@@ -29,6 +30,8 @@ export function EnrolmentTab({
   // Filtre de rentrée : « qui n'a pas encore réglé son inscription ? ».
   const [filtreReinscription, setFiltreReinscription] = useState("all");
   const [tri, setTri] = useTriEleves("enrolement");
+  // Séance photo ouverte sur une classe (null : toutes) ; undefined = fermée.
+  const [seanceClasse, setSeanceClasse] = useState(undefined);
 
   // Cycle affiché : le choix s'il est ouvert dans l'école, sinon la première
   // section ouverte — une école sans collège ne s'ouvre pas sur une liste vide.
@@ -75,6 +78,8 @@ export function EnrolmentTab({
         totalAReinscrire={elevesClasse.filter(aReinscrire)
           .reduce((s, e) => s + (getTarifInscriptionEleve ? getTarifInscriptionEleve(e) : 0), 0)}
         onEncaisserInscriptions={() => encaisserInscriptions?.(elevesClasse.filter(aReinscrire))}
+        onSeancePhoto={canEdit && modChampParNiveau[niveauEnrol]
+          ? () => setSeanceClasse(classeEnrol === "all" ? null : classeEnrol) : null}
       />
 
       <div style={{background:"#e0ebf8",borderRadius:8,padding:"9px 14px",marginBottom:14,fontSize:12,color:C.blueDark}}>
@@ -110,6 +115,11 @@ export function EnrolmentTab({
         peutCreerParent={canCreateParent}
         schoolId={schoolId} schoolInfo={schoolInfo} toast={toast} tousElevesScolarite={tousElevesScolarite}
         ajoutParNiveau={ajoutParNiveau} ensureClasse={ensureClasse} elevesParNiveau={elevesParNiveau}/>}
+
+      {seanceClasse!==undefined&&<SeancePhotoModale
+        eleves={elevesPresents} classeInitiale={seanceClasse}
+        schoolId={schoolId} enregistrer={modChampParNiveau[niveauEnrol]} toast={toast} logAction={logAction}
+        fermer={()=>setSeanceClasse(undefined)}/>}
 
       {modal==="import_enrol"&&canCreate&&<ImportEnrolModale
         setModal={setModal} niveauEnrol={niveauEnrol} schoolInfo={schoolInfo} toast={toast}

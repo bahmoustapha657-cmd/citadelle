@@ -3,13 +3,17 @@ import { C, estSorti } from "../../../constants";
 import { sansNonReinscritsEcartes } from "../../../ecartes-non-reinscrits";
 import { Btn, Modale, Selec, Vide } from "../../ui";
 import { celluleASauver } from "../notes-grid";
+import { correspondEnfant, nettoyerSurnom } from "../../../identite-enfant";
+import { EnfantAgrandi } from "../../identite-enfant/EnfantAgrandi";
+import { PhotoEleve } from "../../identite-enfant/PhotoEleve";
 
 // Modale de saisie en grille (portail enseignant). Trois modes :
 //  - normal        : une période + une matière figées, une colonne « Note ».
 //  - multipériode  : colonnes = périodes (saisir les 2-3 compositions d'un coup).
 //  - multi-matières: colonnes = matières de la classe (titulaire du primaire) →
 //                    saisir toutes les matières d'un élève puis enregistrer une
-//                    seule fois. Recherche d'élève par nom dans tous les modes.
+//                    seule fois. Recherche d'élève par nom ou surnom dans tous
+//                    les modes ; photo devant chaque nom (un toucher l'agrandit).
 export function GrilleModale({
   matiere, mesClasses, noteForms, periodes,
   isPrimaire = false, matieresDispo = [], maxNote = 20,
@@ -17,7 +21,7 @@ export function GrilleModale({
   gridProgress, enregistrement, setModalNote, enregistrerGrille,
 }) {
   const [rech, setRech] = useState("");
-  const norm = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  const [agrandi, setAgrandi] = useState(null);
   const multi = !!gridForm.multiPeriode;
   const multiMat = !!gridForm.multiMatiere;
   const matCols = matieresDispo.map((m) => m.nom).filter(Boolean);
@@ -28,9 +32,17 @@ export function GrilleModale({
   // Ni les partis, ni les non réinscrits sans paiement d'une classe écartée.
   const elevesClasse = sansNonReinscritsEcartes(
     (portalData.eleves || []).filter((e) => e.classe === gridForm.classe && !estSorti(e)), schoolInfo);
-  const elevesAff = rech.trim()
-    ? elevesClasse.filter((e) => norm(`${e.nom} ${e.prenom}`).includes(norm(rech)) || norm(`${e.prenom} ${e.nom}`).includes(norm(rech)))
-    : elevesClasse;
+  const elevesAff = elevesClasse.filter((e) => correspondEnfant(e, rech));
+  const nomEleve = (e) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <PhotoEleve eleve={e} largeur={28} onClick={setAgrandi} />
+      <div>
+        <strong>{e.nom} {e.prenom}</strong>
+        {e.matricule && <span style={{ marginInlineStart: 6, fontSize: 10, color: "#94a3b8", fontFamily: "monospace" }}>{e.matricule}</span>}
+        {nettoyerSurnom(e.surnom) && <div style={{ fontSize: 11, fontWeight: 700, color: "#b45309" }}>« {nettoyerSurnom(e.surnom)} »</div>}
+      </div>
+    </div>
+  );
   const combine = multi && multiMat;
   // Descripteurs de colonnes : { sub, label, group }. sub = suffixe de clé
   // (null = colonne unique). group = en-tête de regroupement (mode combiné).
@@ -149,8 +161,7 @@ export function GrilleModale({
                       {pIdx === 0 && <td rowSpan={periodes.length} style={{ padding: "6px 10px", fontSize: 11, color: "#94a3b8", verticalAlign: "top" }}>{i + 1}</td>}
                       {pIdx === 0 && (
                         <td rowSpan={periodes.length} style={{ padding: "6px 10px", fontSize: 13, verticalAlign: "top" }}>
-                          <strong>{e.nom} {e.prenom}</strong>
-                          {e.matricule && <span style={{ marginInlineStart: 6, fontSize: 10, color: "#94a3b8", fontFamily: "monospace" }}>{e.matricule}</span>}
+                          {nomEleve(e)}
                         </td>
                       )}
                       <td style={{ padding: "6px 10px", fontSize: 12, fontWeight: 700, color: "#475569", textAlign: "center" }}>{per}</td>
@@ -161,8 +172,7 @@ export function GrilleModale({
                     <tr key={e._id} style={{ background: i % 2 === 0 ? "#fff" : "#f8fafc" }}>
                       <td style={{ padding: "6px 10px", fontSize: 11, color: "#94a3b8" }}>{i + 1}</td>
                       <td style={{ padding: "6px 10px", fontSize: 13 }}>
-                        <strong>{e.nom} {e.prenom}</strong>
-                        {e.matricule && <span style={{ marginInlineStart: 6, fontSize: 10, color: "#94a3b8", fontFamily: "monospace" }}>{e.matricule}</span>}
+                        {nomEleve(e)}
                       </td>
                       {colDefs.map((d) => renderCell(cle(e._id, d.sub)))}
                     </tr>
@@ -184,6 +194,7 @@ export function GrilleModale({
           </Btn>
         </div>
       </div>
+      <EnfantAgrandi eleve={agrandi} fermer={() => setAgrandi(null)} />
     </Modale>
   );
 }

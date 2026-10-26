@@ -41,6 +41,7 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo, premie
           <IncidentModal
             c1={p.c1} mode={p.modalIncident}
             formIncident={p.formIncident} setFormIncident={p.setFormIncident}
+            eleve={(p.eleves || []).find((e) => e._id === p.formIncident.eleveId)}
             enregistrement={p.enregistrement} enregistrerIncident={p.enregistrerIncident}
             fermer={() => p.setModalIncident(null)}
           />

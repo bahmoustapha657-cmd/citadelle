@@ -383,5 +383,7 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
     ouvrirSignalementEleve, ouvrirEditionIncident, enregistrerIncident, supprimerIncident,
     imprimerEdt, imprimerPaies,
     lectureSeule,
+    // Trombinoscope de « Mes élèves » (badges en maternelle).
+    section: portalData.section || utilisateur.section || "", anneeNotes,
   };
 }
