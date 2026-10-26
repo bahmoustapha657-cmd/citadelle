@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { C } from "../constants";
 import { Btn } from "./ui";
 import { useCameraCapture } from "./camera-capture/use-camera-capture";
@@ -6,11 +6,15 @@ import { useFaceGuidance } from "./camera-capture/use-face-guidance";
 import { GuideVisage } from "./camera-capture/GuideVisage";
 import { libelleCamera } from "./camera-capture/camera-constraints";
 import { lireImageNormalisee } from "./camera-capture/photo-capture";
+import { useFondPhoto } from "./camera-capture/use-fond-photo";
+import { ChoixFond } from "./camera-capture/ChoixFond";
+import { SchoolContext } from "../contexts/SchoolContext";
 
 // Modale de prise de photo d'élève : caméra en haute définition (la meilleure
 // que propose l'appareil), guidage du visage en direct, photo automatique
 // quand le cadrage est bon, recadrage portrait 3:4 centré sur le visage, puis
-// vérification avant de garder la photo. Import d'un fichier toujours
+// vérification avant de garder la photo — avec, au choix, un fond uni à la
+// place du décor (use-fond-photo / detourage.js). Import d'un fichier toujours
 // possible, et seul recours si la caméra est indisponible.
 //
 // Flux caméra : camera-capture/use-camera-capture.js ; guidage :
@@ -55,6 +59,8 @@ function CameraCapture({ onCapture, onClose }) {
   const enDirect = !erreur && !revue;
   const surPhoto = (photo) => setRevue({ ...photo, source: "camera" });
   const { statut, guidage, capturer } = useFaceGuidance({ videoRef, actif: enDirect && pret, auto, onPhoto: surPhoto });
+  const { schoolInfo } = useContext(SchoolContext);
+  const { fond: fondPhoto, choisirFond, photo, enCours: fondEnCours, erreur: erreurFond } = useFondPhoto(revue);
 
   const changerAuto = (e) => {
     const actif = e.target.checked;
@@ -75,7 +81,7 @@ function CameraCapture({ onCapture, onClose }) {
   };
 
   const fermer = () => { arreterCamera(); onClose(); };
-  const utiliser = () => { arreterCamera(); onCapture(revue.dataUrl); onClose(); };
+  const utiliser = () => { arreterCamera(); onCapture(photo); onClose(); };
 
   const { texte, fond } = consigne(statut, guidage, auto);
   const conseil = enDirect && statut === "pret" ? guidage?.conseil : "";
@@ -129,8 +135,13 @@ function CameraCapture({ onCapture, onClose }) {
                   🔄
                 </button>
               )}
-              {revue && <img src={revue.dataUrl} alt="Photo de l'élève"
+              {revue && <img src={photo} alt="Photo de l'élève"
                 style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"contain",background:"#0f172a"}}/>}
+              {revue && fondEnCours && (
+                <p style={{position:"absolute",left:"50%",bottom:12,transform:"translateX(-50%)",margin:0,background:"rgba(15,23,42,0.78)",color:"#fff",fontSize:13,fontWeight:700,padding:"6px 12px",borderRadius:999,whiteSpace:"nowrap"}}>
+                  Changement du fond…
+                </p>
+              )}
             </div>
           )}
 
@@ -156,6 +167,8 @@ function CameraCapture({ onCapture, onClose }) {
             💡 Photo peu détaillée : l'élève était loin de la caméra. Rapprochez-le, puis reprenez la photo.
           </p>
         )}
+        {revue && <ChoixFond fond={fondPhoto} choisirFond={choisirFond} couleurEcole={schoolInfo?.couleur1}
+          enCours={fondEnCours} erreur={erreurFond}/>}
         {erreurImport && <p style={{margin:"10px 0 0",fontSize:12,color:"#b91c1c"}}>{erreurImport}</p>}
 
         <div style={{display:"flex",gap:8,marginTop:14,justifyContent:"flex-end",flexWrap:"wrap"}}>
@@ -163,7 +176,7 @@ function CameraCapture({ onCapture, onClose }) {
           {revue ? (
             <>
               <Btn v="ghost" onClick={() => setRevue(null)}>↺ Reprendre</Btn>
-              <Btn v="vert" onClick={utiliser}>✓ Utiliser cette photo</Btn>
+              <Btn v="vert" onClick={utiliser} disabled={fondEnCours}>✓ Utiliser cette photo</Btn>
             </>
           ) : (
             <>
