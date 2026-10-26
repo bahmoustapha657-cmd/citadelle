@@ -60,7 +60,9 @@ function CameraCapture({ onCapture, onClose }) {
   const surPhoto = (photo) => setRevue({ ...photo, source: "camera" });
   const { statut, guidage, capturer } = useFaceGuidance({ videoRef, actif: enDirect && pret, auto, onPhoto: surPhoto });
   const { schoolInfo } = useContext(SchoolContext);
-  const { fond: fondPhoto, choisirFond, photo, enCours: fondEnCours, erreur: erreurFond } = useFondPhoto(revue);
+  const {
+    fond: fondPhoto, choisirFond, reglage, choisirContour, photo, enCours: fondEnCours, premierCalcul, erreur: erreurFond,
+  } = useFondPhoto(revue);
 
   const changerAuto = (e) => {
     const actif = e.target.checked;
@@ -137,7 +139,7 @@ function CameraCapture({ onCapture, onClose }) {
               )}
               {revue && <img src={photo} alt="Photo de l'élève"
                 style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"contain",background:"#0f172a"}}/>}
-              {revue && fondEnCours && (
+              {revue && premierCalcul && (
                 <p style={{position:"absolute",left:"50%",bottom:12,transform:"translateX(-50%)",margin:0,background:"rgba(15,23,42,0.78)",color:"#fff",fontSize:13,fontWeight:700,padding:"6px 12px",borderRadius:999,whiteSpace:"nowrap"}}>
                   Changement du fond…
                 </p>
@@ -168,7 +170,7 @@ function CameraCapture({ onCapture, onClose }) {
           </p>
         )}
         {revue && <ChoixFond fond={fondPhoto} choisirFond={choisirFond} couleurEcole={schoolInfo?.couleur1}
-          enCours={fondEnCours} erreur={erreurFond}/>}
+          enCours={fondEnCours} erreur={erreurFond} reglage={reglage} choisirContour={choisirContour}/>}
         {erreurImport && <p style={{margin:"10px 0 0",fontSize:12,color:"#b91c1c"}}>{erreurImport}</p>}
 
         <div style={{display:"flex",gap:8,marginTop:14,justifyContent:"flex-end",flexWrap:"wrap"}}>

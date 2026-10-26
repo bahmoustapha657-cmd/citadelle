@@ -12,7 +12,7 @@ import binaire from "@mediapipe/tasks-vision/vision_wasm_internal.wasm?url";
 // Source : storage.googleapis.com/mediapipe-models/image_segmenter/
 // selfie_segmenter/float16/latest/selfie_segmenter.tflite (244 Ko)
 import modele from "../../assets/models/selfie_segmenter.tflite?url";
-import { adoucirMasque, composerFond, hexVersRgb, redimensionnerMasque } from "./fond-photo";
+import { composerFond, fenetreContour, hexVersRgb, masqueDetoure, redimensionnerMasque } from "./fond-photo";
 import { libererCanvas } from "./photo-capture";
 import { QUALITE_JPEG } from "./photo-framing";
 
@@ -53,14 +53,16 @@ function chargerImage(url) {
 }
 
 // Photo (data URL) → { canvas, masque } : masque de confiance « personne »
-// (0 → 1) à la taille de la photo, contour adouci. Calculé une fois par
-// photo ; changer de couleur ne refait que la fusion.
+// (0 → 1) à la taille de la photo, recalé sur ses vrais contours
+// (masqueDetoure). Calculé une fois par photo ; changer de couleur ou de
+// réglage de contour ne refait que la fusion.
 export async function detourerPhoto(dataUrl) {
   const [detoureur, img] = await Promise.all([chargerDetoureur(), chargerImage(dataUrl)]);
   const canvas = document.createElement("canvas");
   canvas.width = img.naturalWidth;
   canvas.height = img.naturalHeight;
-  canvas.getContext("2d").drawImage(img, 0, 0);
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(img, 0, 0);
   const resultat = detoureur.segment(canvas);
   try {
     // Le modèle n'a qu'une sortie (sigmoïde) : selon la version, MediaPipe
@@ -69,23 +71,24 @@ export async function detourerPhoto(dataUrl) {
     const masques = resultat.confidenceMasks || [];
     const personne = masques[masques.length - 1];
     if (!personne) throw new Error("Détourage sans résultat");
-    const brut = redimensionnerMasque(personne.getAsFloat32Array(), personne.width, personne.height, canvas.width, canvas.height);
-    const rayon = Math.max(1, Math.round(canvas.width / 400));
-    return { canvas, masque: adoucirMasque(brut, canvas.width, canvas.height, rayon) };
+    const { width: largeur, height: hauteur } = canvas;
+    const brut = redimensionnerMasque(personne.getAsFloat32Array(), personne.width, personne.height, largeur, hauteur);
+    const pixels = ctx.getImageData(0, 0, largeur, hauteur).data;
+    return { canvas, masque: masqueDetoure(brut, pixels, largeur, hauteur) };
   } finally {
     resultat.close?.();
   }
 }
 
-// Photo détourée + couleur → nouvelle photo JPEG (data URL).
-export function appliquerFond({ canvas, masque }, couleur) {
+// Photo détourée + couleur + réglage « Contour » → nouvelle photo JPEG.
+export function appliquerFond({ canvas, masque }, couleur, reglage = 0) {
   const sortie = document.createElement("canvas");
   sortie.width = canvas.width;
   sortie.height = canvas.height;
   const ctx = sortie.getContext("2d");
   ctx.drawImage(canvas, 0, 0);
   const image = ctx.getImageData(0, 0, sortie.width, sortie.height);
-  composerFond(image.data, masque, hexVersRgb(couleur));
+  composerFond(image.data, masque, hexVersRgb(couleur), fenetreContour(reglage));
   ctx.putImageData(image, 0, 0);
   const dataUrl = sortie.toDataURL("image/jpeg", QUALITE_JPEG);
   libererCanvas(sortie);

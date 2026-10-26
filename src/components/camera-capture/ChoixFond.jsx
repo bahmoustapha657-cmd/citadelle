@@ -1,5 +1,5 @@
 import { C } from "../../constants";
-import { FONDS_PRETS, FOND_ORIGINAL, normaliserCouleur } from "./fond-photo";
+import { CONTOUR_MAX, CONTOUR_MIN, FONDS_PRETS, FOND_ORIGINAL, normaliserCouleur } from "./fond-photo";
 
 const pastille = (actif) => ({
   position: "relative", width: 34, height: 34, borderRadius: "50%", padding: 0, cursor: "pointer", flexShrink: 0,
@@ -8,8 +8,12 @@ const pastille = (actif) => ({
 });
 
 // Rangée de fonds sous la photo à vérifier : Original, couleurs prêtes
-// (blanc, bleu clair, gris clair, couleur de l'école) et choix libre.
-export function ChoixFond({ fond, choisirFond, couleurEcole = "", enCours = false, erreur = "" }) {
+// (blanc, bleu clair, gris clair, couleur de l'école) et choix libre ; puis,
+// fond choisi, le réglage « Contour » pour rattraper une oreille ou des
+// cheveux coupés (ou un reste de décor).
+export function ChoixFond({
+  fond, choisirFond, couleurEcole = "", enCours = false, erreur = "", reglage = 0, choisirContour = null,
+}) {
   const ecole = normaliserCouleur(couleurEcole);
   const prets = ecole && !FONDS_PRETS.some((f) => f.valeur === ecole)
     ? [...FONDS_PRETS, { valeur: ecole, nom: "Couleur de l'école" }]
@@ -44,9 +48,22 @@ export function ChoixFond({ fond, choisirFond, couleurEcole = "", enCours = fals
       {erreur
         ? <p style={{ margin: "8px 0 0", fontSize: 12, color: "#92400e", background: "#fef3c7", padding: "8px 10px", borderRadius: 8 }}>{erreur}</p>
         : fond !== FOND_ORIGINAL && (
-          <p style={{ margin: "6px 0 0", fontSize: 11, color: "#64748b" }}>
-            Vérifiez les contours (cheveux, épaules). Le fond choisi reste proposé pour les photos suivantes.
-          </p>
+          <>
+            {choisirContour && (
+              <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, fontSize: 12, color: "#334155" }}>
+                <strong style={{ whiteSpace: "nowrap" }}>✂️ Contour</strong>
+                <span style={{ fontSize: 11, color: "#64748b" }}>serré</span>
+                <input type="range" min={CONTOUR_MIN} max={CONTOUR_MAX} step={1} value={reglage}
+                  onChange={(e) => choisirContour(e.target.value)}
+                  aria-label="Contour de l'enfant : plus serré ou plus large" style={{ flex: 1, minWidth: 0 }}/>
+                <span style={{ fontSize: 11, color: "#64748b" }}>large</span>
+              </label>
+            )}
+            <p style={{ margin: "6px 0 0", fontSize: 11, color: "#64748b" }}>
+              Oreille ou cheveux coupés : poussez vers « large ». Un reste de décor : vers « serré ».
+              Le fond choisi reste proposé pour les photos suivantes.
+            </p>
+          </>
         )}
     </div>
   );
