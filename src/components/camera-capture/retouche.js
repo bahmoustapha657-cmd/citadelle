@@ -91,6 +91,54 @@ export function zoomerCadre(largeur, hauteur, reglages, zoom, fx = 0.5, fy = 0.5
   return { zoom: z, ...centre };
 }
 
+// ── Vue « Recadrer » : la photo entière et son cadre ────────────────────────
+// Le cadre se manipule directement : déplacé en le glissant, agrandi ou
+// rétréci par ses coins. Toujours au format 3:4 et dans la photo ; il se
+// traduit en zoom et centre, comme le reste de la retouche.
+
+// Réglages (zoom, centre) qui donnent le cadre `zone` voulu ; sa taille est
+// ramenée entre la photo entière (zoom 1) et ZOOM_MAX.
+export function cadrageDepuisZone(largeur, hauteur, zone) {
+  const base = Math.min(largeur, hauteur * FORMAT_PHOTO);
+  const zoom = arrondi(borner(base / Math.max(1, zone.w), 1, ZOOM_MAX));
+  const centre = bornerCentre(largeur, hauteur, {
+    zoom, cx: (zone.x + zone.w / 2) / largeur, cy: (zone.y + zone.h / 2) / hauteur,
+  });
+  return { zoom, ...centre };
+}
+
+// Cadre glissé de (dx, dy) pixels de la photo : il suit le doigt.
+export function deplacerZone(largeur, hauteur, reglages, dx, dy) {
+  return bornerCentre(largeur, hauteur, {
+    ...reglages, cx: reglages.cx + dx / largeur, cy: reglages.cy + dy / hauteur,
+  });
+}
+
+// Coins du cadre : h(aut)/b(as) + g(auche)/d(roite).
+export const COINS = ["hg", "hd", "bg", "bd"];
+
+// Coin `coin` tiré de (dx, dy) pixels de la photo : le coin opposé reste
+// fixe, le cadre garde le format 3:4 (la largeur suit la moyenne des deux
+// déplacements) et ne sort pas de la photo.
+export function redimensionnerZone(largeur, hauteur, reglages, coin, dx, dy, format = FORMAT_PHOTO) {
+  const z = zoneCadrage(largeur, hauteur, reglages, format);
+  const sx = coin.endsWith("d") ? 1 : -1;
+  const sy = coin.startsWith("b") ? 1 : -1;
+  // Coin opposé, fixe.
+  const ax = sx > 0 ? z.x : z.x + z.w;
+  const ay = sy > 0 ? z.y : z.y + z.h;
+  const base = Math.min(largeur, hauteur * format);
+  // Place disponible depuis le coin fixe, dans la direction du coin tiré.
+  const placeX = sx > 0 ? largeur - ax : ax;
+  const placeY = (sy > 0 ? hauteur - ay : ay) * format;
+  const voulue = z.w + (sx * dx + sy * dy * format) / 2;
+  const w = borner(voulue, base / ZOOM_MAX, Math.min(base, placeX, placeY));
+  const h = w / format;
+  return cadrageDepuisZone(largeur, hauteur, {
+    x: sx > 0 ? ax : ax - w, y: sy > 0 ? ay : ay - h, w, h,
+  });
+}
+
 // Quart de tour (sens +1 : horaire) : le cadrage repart de la photo entière.
 export const tourner = (reglages, sens = 1) => ({
   ...reglages,
