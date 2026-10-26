@@ -11,6 +11,7 @@ import { trierEleves } from "../../tri-eleves";
 import { Btn, Chargement } from "../ui";
 import { Trombinoscope } from "../identite-enfant/Trombinoscope";
 import { SeancePhotoModale } from "../identite-enfant/SeancePhotoModale";
+import { BadgesModale } from "../identite-enfant/BadgesModale";
 
 export function ElevesTab({
   eleves, elevesFiltres, cE, filtreClasse, setFiltreClasse, classesUniq,
@@ -33,6 +34,8 @@ export function ElevesTab({
   // surnoms : direction et chef de section, qui écrit la section (canPhoto,
   // RLS eleves_write) ; le reste de la fiche reste à la Comptabilité.
   const [seance, setSeance] = useState(null);
+  // Badges de la liste affichée (vue Liste ; le trombinoscope a son bouton).
+  const [badges, setBadges] = useState(null);
   const peutPhotographier = (canEdit || canPhoto) && !!modChampE;
 
   return (
@@ -43,6 +46,7 @@ export function ElevesTab({
         annee={annee} schoolInfo={schoolInfo} userRole={userRole}
         nbPartis={nbPartis} avecPartis={avecPartis} setAvecPartis={setAvecPartis}
         tri={<TriElevesSelect liste="eleves" value={tri} onChange={setTri} />}
+        onBadges={vue === "liste" ? () => setBadges(listeAffichee) : null}
         vue={<span style={{ display: "inline-flex", gap: 4 }}>
           <Btn sm v={vue === "liste" ? "blue" : "ghost"} onClick={() => setVue("liste")}>📋 Liste</Btn>
           <Btn sm v={vue === "trombi" ? "blue" : "ghost"} onClick={() => setVue("trombi")}>🖼️ Trombinoscope</Btn>
@@ -61,6 +65,8 @@ export function ElevesTab({
           enregistrer={peutPhotographier ? modChampE : null} schoolId={schoolId} toast={toast} logAction={logAction}
         />
       )}
+      {badges && <BadgesModale eleves={badges} schoolInfo={schoolInfo} annee={annee} section={section}
+        fermer={() => setBadges(null)}/>}
       {seance && <SeancePhotoModale
         eleves={visibles(eleves)} classeInitiale={seance.classe} eleveInitial={seance.eleveId}
         schoolId={schoolId} enregistrer={modChampE} toast={toast} logAction={logAction}
