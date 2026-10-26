@@ -15,7 +15,7 @@ import { SeancePhotoModale } from "../identite-enfant/SeancePhotoModale";
 export function ElevesTab({
   eleves, elevesFiltres, cE, filtreClasse, setFiltreClasse, classesUniq,
   section = "college", annee, schoolInfo, schoolId, toast, logAction, canEdit, canCreateParent,
-  parentEleve, setParentEleve, userRole = "", modChampE = null,
+  parentEleve, setParentEleve, userRole = "", modChampE = null, canPhoto = false,
 }) {
   const { t } = useTranslation();
   // Élèves partis : hors de la liste, des cartes et de l'export par défaut —
@@ -29,10 +29,11 @@ export function ElevesTab({
   // En maternelle, les enfants se reconnaissent à leur visage avant leur
   // nom : le trombinoscope s'ouvre d'office. Ailleurs, la liste.
   const [vue, setVue] = useState(section === "prescolaire" ? "trombi" : "liste");
-  // Séance photo : { classe, eleveId } ouverte, null fermée. Réservée à qui
-  // peut modifier les fiches de la section (canEdit, RLS eleves_write).
+  // Séance photo : { classe, eleveId } ouverte, null fermée. Photos et
+  // surnoms : direction et chef de section, qui écrit la section (canPhoto,
+  // RLS eleves_write) ; le reste de la fiche reste à la Comptabilité.
   const [seance, setSeance] = useState(null);
-  const peutPhotographier = canEdit && !!modChampE;
+  const peutPhotographier = (canEdit || canPhoto) && !!modChampE;
 
   return (
     <div>
@@ -57,6 +58,7 @@ export function ElevesTab({
         <Trombinoscope
           eleves={listeAffichee} schoolInfo={schoolInfo} annee={annee} section={section}
           onSeancePhoto={peutPhotographier ? (classe, eleveId = null) => setSeance({ classe, eleveId }) : null}
+          enregistrer={peutPhotographier ? modChampE : null} schoolId={schoolId} toast={toast} logAction={logAction}
         />
       )}
       {seance && <SeancePhotoModale

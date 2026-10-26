@@ -75,4 +75,12 @@ test("séance photo : seuls les champs qui changent partent", () => {
   assert.deepEqual(champsSeancePhoto(FATOU, { photo: "https://x/photo2.jpg" }), {});
   assert.deepEqual(champsSeancePhoto(FATOU, { photo: "https://x/nouvelle.jpg", surnom: "Fatou" }),
     { photo: "https://x/nouvelle.jpg", surnom: "Fatou" });
+  // Retouche : sa mémoire accompagne la nouvelle photo ; une photo reprise
+  // efface l'ancienne (null). Sans nouvelle photo, rien.
+  const memoire = { origine: "https://x/photo2.jpg", resultat: "https://x/nouvelle.jpg", fond: "#ffffff" };
+  assert.deepEqual(champsSeancePhoto(FATOU, { photo: "https://x/nouvelle.jpg", photoRetouche: memoire }),
+    { photo: "https://x/nouvelle.jpg", photoRetouche: memoire });
+  assert.deepEqual(champsSeancePhoto(FATOU, { photo: "https://x/autre.jpg", photoRetouche: null }),
+    { photo: "https://x/autre.jpg", photoRetouche: null });
+  assert.deepEqual(champsSeancePhoto(FATOU, { photo: "https://x/photo2.jpg", photoRetouche: memoire }), {});
 });

@@ -60,7 +60,7 @@ export function ChoixFond({
               </label>
             )}
             <p style={{ margin: "6px 0 0", fontSize: 11, color: "#64748b" }}>
-              Oreille ou cheveux coupés : poussez vers « large ». Un reste de décor : vers « serré ».
+              {choisirContour && "Oreille ou cheveux coupés : poussez vers « large ». Un reste de décor : vers « serré ». "}
               Le fond choisi reste proposé pour les photos suivantes.
             </p>
           </>

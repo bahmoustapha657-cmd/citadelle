@@ -4,8 +4,11 @@ import {
 } from "../../identite-enfant";
 import { uploadPhotoEleve } from "../../storageUtils";
 import { CameraCapture } from "../CameraCapture";
+import { RetouchePhoto } from "../RetouchePhoto";
 import { lireImageNormalisee } from "../camera-capture/photo-capture";
+import { finaliserRetouche } from "../camera-capture/retouche";
 import { Btn, Modale } from "../ui";
+import { FondClasseModale } from "./FondClasseModale";
 import { PhotoEleve } from "./PhotoEleve";
 
 // Séance photo de classe : les enfants défilent l'un après l'autre — photo
@@ -13,6 +16,8 @@ import { PhotoEleve } from "./PhotoEleve";
 // chaque fiche. Par défaut, seulement ceux qui n'ont pas encore de photo.
 // La photo part comme à l'inscription (uploadPhotoEleve) : sans réseau, la
 // fiche est enregistrée tout de suite et la photo suit au retour du réseau.
+// Une photo déjà prise se retouche (« ✏️ Modifier », RetouchePhoto) ; le fond
+// de toute la classe se change d'un coup (FondClasseModale).
 // `enregistrer(id, champs)` = modifierChamp de la collection des élèves.
 export function SeancePhotoModale({
   eleves = [], classeInitiale = null, eleveInitial = null,
@@ -29,8 +34,10 @@ export function SeancePhotoModale({
     classe: classeInitiale || classes[0] || null, seulementSansPhoto: true, inclure: eleveInitial,
   }));
   const [index, setIndex] = useState(() => Math.max(0, file.indexOf(eleveInitial)));
-  const [brouillon, setBrouillon] = useState({ id: null, surnom: "", photo: "" });
+  const [brouillon, setBrouillon] = useState({ id: null, surnom: "", photo: "", photoRetouche: null });
   const [camera, setCamera] = useState(false);
+  const [retouche, setRetouche] = useState(false);
+  const [fondClasse, setFondClasse] = useState(false);
   const [enCours, setEnCours] = useState(false);
   const [bilan, setBilan] = useState({ photos: 0, surnoms: 0 });
   // Double toucher sur « Enregistrer » : le second partirait avant que le
@@ -40,7 +47,7 @@ export function SeancePhotoModale({
   const courant = index < file.length ? parId.get(file[index]) : null;
   // Brouillon de l'enfant affiché ; un autre enfant repart de sa fiche.
   const valeurs = courant && brouillon.id === courant._id
-    ? brouillon : { id: courant?._id || null, surnom: courant?.surnom || "", photo: "" };
+    ? brouillon : { id: courant?._id || null, surnom: courant?.surnom || "", photo: "", photoRetouche: null };
   const changer = (champs) => setBrouillon({ ...valeurs, ...champs });
   const modifie = !!courant && (!!valeurs.photo || nettoyerSurnom(valeurs.surnom) !== nettoyerSurnom(courant.surnom));
   const couleur = couleurClasse(courant?.classe || classe, "#0A1628");
@@ -64,7 +71,7 @@ export function SeancePhotoModale({
     e.target.value = "";
     if (!fichier) return;
     try {
-      changer({ photo: await lireImageNormalisee(fichier) });
+      changer({ photo: await lireImageNormalisee(fichier), photoRetouche: null });
     } catch {
       toast?.("Image illisible : choisissez une photo JPEG ou PNG.", "warning");
     }
@@ -77,12 +84,15 @@ export function SeancePhotoModale({
     setEnCours(true);
     try {
       const photo = valeurs.photo ? await uploadPhotoEleve(valeurs.photo, schoolId) : "";
-      const champs = champsSeancePhoto(courant, { surnom: valeurs.surnom, photo });
+      const champs = champsSeancePhoto(courant, {
+        surnom: valeurs.surnom, photo,
+        photoRetouche: valeurs.photo ? finaliserRetouche(valeurs.photoRetouche, valeurs.photo, photo) : undefined,
+      });
       if (Object.keys(champs).length) {
         await enregistrer(courant._id, champs);
         setBilan((b) => ({ photos: b.photos + (champs.photo ? 1 : 0), surnoms: b.surnoms + ("surnom" in champs ? 1 : 0) }));
       }
-      setBrouillon({ id: null, surnom: "", photo: "" });
+      setBrouillon({ id: null, surnom: "", photo: "", photoRetouche: null });
       setIndex(index + 1);
     } catch (err) {
       toast?.("Erreur à l'enregistrement : " + err.message, "error");
@@ -119,6 +129,8 @@ export function SeancePhotoModale({
             onChange={(e) => refaireFile({ seulementSansPhoto: e.target.checked })}/>
           Seulement les enfants sans photo
         </label>
+        <Btn sm v="ghost" onClick={() => { if (abandonnerBrouillon()) setFondClasse(true); }} disabled={enCours}
+          title="La même couleur de fond derrière tous les enfants de la classe">🎨 Fond de la classe</Btn>
         <span style={{ marginInlineStart: "auto", fontSize: 12, fontWeight: 800, color: "var(--lc-text-muted)" }}>
           {file.length ? `${Math.min(index + 1, file.length)} / ${file.length}` : "0 / 0"}
         </span>
@@ -147,7 +159,7 @@ export function SeancePhotoModale({
           <div style={{ display: "flex", gap: 18, alignItems: "flex-start", flexWrap: "wrap", justifyContent: "center" }}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
               {valeurs.photo
-                ? <img src={valeurs.photo} alt="Nouvelle photo"
+                ? <img crossOrigin="anonymous" src={valeurs.photo} alt="Nouvelle photo"
                     style={{ width: 150, height: 188, objectFit: "cover", borderRadius: 14, border: `3px solid ${couleur}` }}/>
                 : <PhotoEleve eleve={courant} largeur={150}/>}
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
@@ -156,6 +168,10 @@ export function SeancePhotoModale({
                   📁 Galerie
                   <input type="file" accept="image/*" style={{ display: "none" }} onChange={importer} disabled={enCours}/>
                 </label>
+                {(valeurs.photo || courant.photo) && (
+                  <Btn sm v="ghost" onClick={() => setRetouche(true)} disabled={enCours}
+                    title="Fond, cadrage, lumière — sans reprendre la photo">✏️ Modifier</Btn>
+                )}
               </div>
             </div>
             <div style={{ flex: "1 1 240px", minWidth: 0, display: "flex", flexDirection: "column", gap: 6 }}>
@@ -189,7 +205,17 @@ export function SeancePhotoModale({
         </>
       )}
 
-      {camera && <CameraCapture onCapture={(photo) => changer({ photo })} onClose={() => setCamera(false)}/>}
+      {camera && <CameraCapture onCapture={(photo) => changer({ photo, photoRetouche: null })} onClose={() => setCamera(false)}/>}
+      {/* Retouche sans effet : la photo de la fiche reste, pas de brouillon. */}
+      {retouche && courant && <RetouchePhoto
+        photo={valeurs.photo || courant.photo}
+        retouche={valeurs.photo ? valeurs.photoRetouche : courant.photoRetouche}
+        onValider={(photo, memoire) => changer(photo === courant.photo
+          ? { photo: "", photoRetouche: null } : { photo, photoRetouche: memoire })}
+        onClose={() => setRetouche(false)}/>}
+      {fondClasse && <FondClasseModale
+        eleves={eleves} classeInitiale={classe} schoolId={schoolId} enregistrer={enregistrer}
+        toast={toast} logAction={logAction} fermer={() => setFondClasse(false)}/>}
     </Modale>
   );
 }

@@ -52,17 +52,15 @@ function chargerImage(url) {
   });
 }
 
-// Photo (data URL) → { canvas, masque } : masque de confiance « personne »
-// (0 → 1) à la taille de la photo, recalé sur ses vrais contours
-// (masqueDetoure). Calculé une fois par photo ; changer de couleur ou de
-// réglage de contour ne refait que la fusion.
-export async function detourerPhoto(dataUrl) {
-  const [detoureur, img] = await Promise.all([chargerDetoureur(), chargerImage(dataUrl)]);
-  const canvas = document.createElement("canvas");
-  canvas.width = img.naturalWidth;
-  canvas.height = img.naturalHeight;
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(img, 0, 0);
+// Masque « personne » (confiance 0 → 1) d'une image déjà dessinée dans un
+// canvas, à sa taille, recalé sur ses vrais contours (masqueDetoure). Sert
+// aussi à la retouche d'une photo enregistrée (rendu-retouche.js).
+export async function masquePersonne(canvas) {
+  const detoureur = await chargerDetoureur();
+  const { width: largeur, height: hauteur } = canvas;
+  // Canvas rendu à la mémoire pendant le chargement du modèle (retouche
+  // fermée, photo tournée) : rien à détourer.
+  if (!largeur || !hauteur) throw new Error("Image vide");
   const resultat = detoureur.segment(canvas);
   try {
     // Le modèle n'a qu'une sortie (sigmoïde) : selon la version, MediaPipe
@@ -71,13 +69,23 @@ export async function detourerPhoto(dataUrl) {
     const masques = resultat.confidenceMasks || [];
     const personne = masques[masques.length - 1];
     if (!personne) throw new Error("Détourage sans résultat");
-    const { width: largeur, height: hauteur } = canvas;
     const brut = redimensionnerMasque(personne.getAsFloat32Array(), personne.width, personne.height, largeur, hauteur);
-    const pixels = ctx.getImageData(0, 0, largeur, hauteur).data;
-    return { canvas, masque: masqueDetoure(brut, pixels, largeur, hauteur) };
+    const pixels = canvas.getContext("2d").getImageData(0, 0, largeur, hauteur).data;
+    return masqueDetoure(brut, pixels, largeur, hauteur);
   } finally {
     resultat.close?.();
   }
+}
+
+// Photo (data URL) → { canvas, masque }. Calculé une fois par photo ;
+// changer de couleur ou de réglage de contour ne refait que la fusion.
+export async function detourerPhoto(dataUrl) {
+  const [, img] = await Promise.all([chargerDetoureur(), chargerImage(dataUrl)]);
+  const canvas = document.createElement("canvas");
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  canvas.getContext("2d").drawImage(img, 0, 0);
+  return { canvas, masque: await masquePersonne(canvas) };
 }
 
 // Photo détourée + couleur + réglage « Contour » → nouvelle photo JPEG.

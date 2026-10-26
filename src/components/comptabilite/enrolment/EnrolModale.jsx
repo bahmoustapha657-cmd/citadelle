@@ -66,7 +66,8 @@ export function EnrolModale({
         absenceDue={absenceDue} setAbsenceDue={setAbsenceDue}/>
     </div>}
     <div style={{marginTop:14,borderTop:"1px solid #e5e7eb",paddingTop:14}}>
-      <PhotoEleveChamp photo={form.photo} onChange={photo=>setForm(p=>({...p,photo}))} toast={toast}/>
+      <PhotoEleveChamp photo={form.photo} retouche={form.photoRetouche} toast={toast}
+        onChange={(photo,photoRetouche)=>setForm(p=>({...p,photo,photoRetouche}))}/>
     </div>
     <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
       <Btn v="ghost" onClick={()=>setModal(null)} disabled={uploadEnCours}>Annuler</Btn>
