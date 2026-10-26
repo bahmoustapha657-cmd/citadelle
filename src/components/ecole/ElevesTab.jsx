@@ -8,11 +8,14 @@ import { ParentCompteModale } from "./eleves-tab/ParentCompteModale";
 import { TriElevesSelect } from "../TriElevesSelect";
 import { useTriEleves } from "../use-tri-eleves";
 import { trierEleves } from "../../tri-eleves";
+import { Btn, Chargement } from "../ui";
+import { Trombinoscope } from "../identite-enfant/Trombinoscope";
+import { SeancePhotoModale } from "../identite-enfant/SeancePhotoModale";
 
 export function ElevesTab({
   eleves, elevesFiltres, cE, filtreClasse, setFiltreClasse, classesUniq,
   section = "college", annee, schoolInfo, schoolId, toast, logAction, canEdit, canCreateParent,
-  parentEleve, setParentEleve, userRole = "",
+  parentEleve, setParentEleve, userRole = "", modChampE = null,
 }) {
   const { t } = useTranslation();
   // Élèves partis : hors de la liste, des cartes et de l'export par défaut —
@@ -23,6 +26,13 @@ export function ElevesTab({
   const [tri, setTri] = useTriEleves("eleves");
   const listeAffichee = trierEleves(visibles(elevesFiltres), tri);
   const { peutCreerParent, ouvrirCompte } = useElevesTab({ canEdit, canCreateParent, setParentEleve });
+  // En maternelle, les enfants se reconnaissent à leur visage avant leur
+  // nom : le trombinoscope s'ouvre d'office. Ailleurs, la liste.
+  const [vue, setVue] = useState(section === "prescolaire" ? "trombi" : "liste");
+  // Séance photo : { classe, eleveId } ouverte, null fermée. Réservée à qui
+  // peut modifier les fiches de la section (canEdit, RLS eleves_write).
+  const [seance, setSeance] = useState(null);
+  const peutPhotographier = canEdit && !!modChampE;
 
   return (
     <div>
@@ -32,12 +42,28 @@ export function ElevesTab({
         annee={annee} schoolInfo={schoolInfo} userRole={userRole}
         nbPartis={nbPartis} avecPartis={avecPartis} setAvecPartis={setAvecPartis}
         tri={<TriElevesSelect liste="eleves" value={tri} onChange={setTri} />}
+        vue={<span style={{ display: "inline-flex", gap: 4 }}>
+          <Btn sm v={vue === "liste" ? "blue" : "ghost"} onClick={() => setVue("liste")}>📋 Liste</Btn>
+          <Btn sm v={vue === "trombi" ? "blue" : "ghost"} onClick={() => setVue("trombi")}>🖼️ Trombinoscope</Btn>
+        </span>}
       />
-      <ElevesTable
-        cE={cE} elevesFiltres={listeAffichee} peutCreerParent={peutCreerParent}
-        ouvrirCompte={ouvrirCompte} t={t}
-        schoolInfo={schoolInfo} annee={annee} userRole={userRole}
-      />
+      {vue === "liste" ? (
+        <ElevesTable
+          cE={cE} elevesFiltres={listeAffichee} peutCreerParent={peutCreerParent}
+          ouvrirCompte={ouvrirCompte} t={t}
+          schoolInfo={schoolInfo} annee={annee} userRole={userRole}
+        />
+      ) : cE ? <Chargement/> : (
+        <Trombinoscope
+          eleves={listeAffichee} schoolInfo={schoolInfo} annee={annee} section={section}
+          onSeancePhoto={peutPhotographier ? (classe, eleveId = null) => setSeance({ classe, eleveId }) : null}
+        />
+      )}
+      {seance && <SeancePhotoModale
+        eleves={visibles(eleves)} classeInitiale={seance.classe} eleveInitial={seance.eleveId}
+        schoolId={schoolId} enregistrer={modChampE} toast={toast} logAction={logAction}
+        fermer={() => setSeance(null)}
+      />}
       <ParentCompteModale
         parentEleve={parentEleve} fermer={()=>setParentEleve(null)}
         section={section} schoolId={schoolId} toast={toast} logAction={logAction}

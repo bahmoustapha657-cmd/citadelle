@@ -1,7 +1,11 @@
+import { useState } from "react";
 import { C } from "../../../constants";
+import { nettoyerSurnom } from "../../../identite-enfant";
 import { Badge, Btn, Chargement, TD, THead, TR, Vide } from "../../ui";
 import { imprimerCartesEleves } from "../../../reports";
 import { peutImprimerCartesEleves } from "../../../../shared/postes-config.js";
+import { PhotoEleve } from "../../identite-enfant/PhotoEleve";
+import { EnfantAgrandi } from "../../identite-enfant/EnfantAgrandi";
 
 // Tableau des élèves filtrés ; dernière colonne = actions sur l'élève
 // (carte scolaire, création de compte parent).
@@ -12,6 +16,8 @@ export function ElevesTable({
   // Même règle que la planche complète de la barre d'outils : la carte est une
   // pièce d'identité, fermée au surveillant général.
   const peutCarte = peutImprimerCartesEleves(userRole);
+  // Enfant agrandi (toucher sur sa vignette) : photo en grand, surnom, famille.
+  const [agrandi, setAgrandi] = useState(null);
   if (cE) return <Chargement/>;
   if (elevesFiltres.length===0) return <Vide icone="🎓" msg={t("school.students.noStudent")}/>;
   return (
@@ -21,7 +27,15 @@ export function ElevesTable({
         <tbody>{elevesFiltres.map(e=><TR key={e._id}>
           <TD><span style={{fontSize:11,fontFamily:"monospace",background:"#e0ebf8",padding:"2px 5px",borderRadius:4,color:C.blue,fontWeight:700}}>{e.matricule}</span></TD>
           <TD><span style={{fontSize:11,fontFamily:"monospace",background:"#eef2ff",padding:"2px 5px",borderRadius:4,color:"#3730a3",fontWeight:700}}>{e.ien||"—"}</span></TD>
-          <TD bold>{e.nom} {e.prenom}</TD><TD>{e.classe}</TD>
+          <TD bold>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <PhotoEleve eleve={e} largeur={30} onClick={setAgrandi}/>
+              <div>
+                {e.nom} {e.prenom}
+                {nettoyerSurnom(e.surnom)&&<div style={{fontSize:11,fontWeight:700,color:"#b45309"}}>« {nettoyerSurnom(e.surnom)} »</div>}
+              </div>
+            </div>
+          </TD><TD>{e.classe}</TD>
           <TD><Badge color={e.sexe==="F"?"vert":"blue"}>{e.sexe}</Badge></TD>
           <TD>{e.dateNaissance||"—"}</TD>
           <TD>{e.lieuNaissance||"—"}</TD>
@@ -49,6 +63,7 @@ export function ElevesTable({
           </TD>
         </TR>)}</tbody>
       </table>
+      <EnfantAgrandi eleve={agrandi} fermer={()=>setAgrandi(null)}/>
     </div>
   );
 }

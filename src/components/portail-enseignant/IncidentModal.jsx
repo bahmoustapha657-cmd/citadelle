@@ -1,8 +1,21 @@
 import { Btn, Input, Modale, Selec } from "../ui";
+import { nomAppel, nomOfficiel } from "../../identite-enfant";
+import { PhotoEleve } from "../identite-enfant/PhotoEleve";
 
-export function IncidentModal({ c1, mode, formIncident, setFormIncident, enregistrement, enregistrerIncident, fermer }) {
+// `eleve` : la fiche de l'enfant signalé, pour vérifier d'un coup d'œil
+// (photo, surnom) qu'on signale le bon — absente pour un élève parti.
+export function IncidentModal({ c1, mode, formIncident, setFormIncident, enregistrement, enregistrerIncident, fermer, eleve = null }) {
   return (
     <Modale titre={mode === "edit" ? "Modifier le signalement" : `Signaler — ${formIncident.eleveNom || ""}`} fermer={fermer}>
+      {eleve && (
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+          <PhotoEleve eleve={eleve} largeur={56}/>
+          <div>
+            <div style={{ fontSize: 17, fontWeight: 900, color: c1 }}>{nomAppel(eleve)}</div>
+            <div style={{ fontSize: 12, color: "#475569" }}>{nomOfficiel(eleve)} · {eleve.classe}</div>
+          </div>
+        </div>
+      )}
       <div style={{ marginBottom: 12, padding: "10px 14px", background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: 8, fontSize: 12, color: "#92400e" }}>
         Ce signalement sera visible par <strong>la direction</strong> et <strong>les parents</strong> de l'élève.
       </div>

@@ -13,7 +13,7 @@ export function EnrolToolbar({
   canCreate, elevesEnrol, elevesPresents = elevesEnrol, schoolInfo, setForm, setModal,
   filtreReinscription = "all", setFiltreReinscription = () => {},
   nbAReinscrire = 0, nbSelection = 0, totalAReinscrire = 0, onEncaisserInscriptions,
-  tri = "alpha", setTri = () => {},
+  tri = "alpha", setTri = () => {}, onSeancePhoto = null,
 }) {
   return (
     <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,flexWrap:"wrap"}}>
@@ -69,6 +69,11 @@ export function EnrolToolbar({
           onClick={()=>imprimerListeClasse(classeEnrol, elevesPresents, schoolInfo)}>
           🖨️ Liste de la classe
         </Btn>
+      )}
+      {/* Photos et surnoms à la chaîne, sans rouvrir chaque fiche. */}
+      {!afficherDeparts&&onSeancePhoto&&(
+        <Btn sm v="ghost" title="Prendre les photos et les surnoms des élèves d'une classe, l'un après l'autre"
+          onClick={onSeancePhoto}>📸 Séance photo</Btn>
       )}
       <Btn sm v={afficherDeparts?"blue":"ghost"} onClick={()=>setAfficherDeparts(d=>!d)}>
         {afficherDeparts?"👥 Élèves actifs":"📤 Départs"}

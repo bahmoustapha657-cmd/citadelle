@@ -10,7 +10,7 @@ export function ElevesToolbar({
   eleves, elevesFiltres, filtreClasse, setFiltreClasse, classesUniq,
   section = "college", annee, schoolInfo, userRole = "",
   nbPartis = 0, avecPartis = false, setAvecPartis = () => {},
-  tri = null,
+  tri = null, vue = null,
 }) {
   const { t } = useTranslation();
   return (
@@ -22,6 +22,7 @@ export function ElevesToolbar({
         {classesUniq.map(c=><option key={c}>{c}</option>)}
       </select>
       {tri}
+      {vue}
       {nbPartis>0&&<label title="Élèves transférés, exclus, sortis… : hors des listes, cartes et exports par défaut"
         style={{display:"flex",alignItems:"center",gap:5,fontSize:12,color:"#475569",cursor:"pointer"}}>
         <input type="checkbox" checked={avecPartis} onChange={e=>setAvecPartis(e.target.checked)}/>

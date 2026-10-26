@@ -52,7 +52,8 @@ export function PortailTabContent({ p, schoolInfo, utilisateur, t }) {
       )}
 
       {p.tab === "eleves" && (
-        <ElevesTab c1={p.c1} mesClasses={p.mesClasses} eleves={p.eleves} ouvrirSignalementEleve={p.ouvrirSignalementEleve} />
+        <ElevesTab c1={p.c1} mesClasses={p.mesClasses} eleves={p.eleves} ouvrirSignalementEleve={p.ouvrirSignalementEleve}
+          schoolInfo={schoolInfo} annee={p.anneeNotes} section={p.section} />
       )}
 
       {p.tab === "absences" && (

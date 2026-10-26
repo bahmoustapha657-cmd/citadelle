@@ -5,6 +5,7 @@ import {
   MESSAGE_FILIATION_OBLIGATOIRE, filiationManquante, findEnrollmentDuplicate, getEnrollmentDuplicateMessage,
 } from "../../../enrollment-utils";
 import { uploadPhotoEleve } from "../../../storageUtils";
+import { SURNOM_MAX } from "../../../identite-enfant";
 import { PhotoEleveChamp } from "./PhotoEleveChamp";
 import { CompteParentFratrie } from "./CompteParentFratrie";
 import { useCompteParentFratrie } from "./use-compte-parent-fratrie";
@@ -124,6 +125,9 @@ export function RapideEnrolModale({
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
         <Input label="Nom *" value={form.nom||""} onChange={chg("nom")} placeholder="Bah"/>
         <Input label="Prénom *" value={form.prenom||""} onChange={chg("prenom")} placeholder="Aminata"/>
+        {/* Maternelle : le surnom de la maison, celui auquel l'enfant répond. */}
+        {section==="prescolaire"&&<Input label="Surnom (à la maison)" value={form.surnom||""}
+          onChange={chg("surnom")} maxLength={SURNOM_MAX} placeholder="Ex. : Néné, Bobo…"/>}
         {/* Une fratrie s'étale souvent sur plusieurs cycles : chaque élève
             est inscrit dans SA section (classes, matricule, liste). */}
         {sections.length>1&&<Selec label="Section *" value={section} onChange={changerSection}>

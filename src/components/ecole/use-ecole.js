@@ -201,7 +201,7 @@ export function useEcole({
     classes, cC, ajC, modC, supC,
     ens, cEns, ajEns, modEns, supEns,
     notes, cN, ajN, supN,
-    eleves, cE,
+    eleves, cE, modChampE,
     absences, cAbs, ajAbs, supAbs,
     enseignements, cEng, ajEng, modEng, supEng,
     matieres, matieresToutes, cMat, ajMat, modMat, supMat,

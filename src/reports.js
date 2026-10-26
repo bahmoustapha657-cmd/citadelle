@@ -22,6 +22,7 @@ export {
 export { getRecuTotals, imprimerRecu, imprimerRecuFamille, imprimerRecuTicket } from "./reports/recus.js";
 export { TICKET_LARGEURS } from "./reports/recus/recu-ticket.js";
 export { imprimerCartesEleves, imprimerListeClasse } from "./reports/cartes-listes.js";
+export { imprimerBadges, imprimerTrombinoscope } from "./reports/trombinoscope.js";
 export { genererRapportMensuel } from "./reports/rapport-mensuel.js";
 export { genererRapportAnnuel } from "./reports/rapport-annuel.js";
 export { exportExcel, telechargerExcel } from "./reports/excel.js";
