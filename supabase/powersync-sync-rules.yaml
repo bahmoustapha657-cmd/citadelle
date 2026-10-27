@@ -1,15 +1,22 @@
 # ════════════════════════════════════════════════════════════════════════
-#  PowerSync — Sync Rules (mode hors ligne TOTAL, sauf portail parent)
+#  PowerSync — Sync Streams (mode hors ligne TOTAL, sauf portail parent)
 # ════════════════════════════════════════════════════════════════════════
 # Ce fichier n'est PAS exécuté par l'app ni par une CLI locale : il se colle
-# dans le dashboard PowerSync Cloud (Sync Rules → éditeur). Il MIROITE le
+# dans le dashboard PowerSync Cloud (Sync Streams → éditeur). Il MIROITE le
 # modèle RLS en vigueur (rls.sql + teacher-security.sql + postes.sql) — il ne
 # le remplace pas : la RLS reste seule autorité d'écriture (connector.js,
 # uploadData() rejoue chaque écriture via le client supabase-js normal).
 #
 # ⚠️ POUR COLLER DANS LE DASHBOARD : utiliser powersync-sync-rules.min.yaml
 # (même contenu sans commentaires — le collage de commentaires multi-lignes
-# a déjà cassé l'indentation par le passé).
+# a déjà cassé l'indentation par le passé). Ne PAS utiliser le bouton
+# « Migrate to Sync Streams » du dashboard : la migration, c'est ce fichier.
+#
+# Sync Streams (2026-10-27) : remplacent les Sync Rules (`bucket_definitions`,
+# dépréciées par PowerSync) à périmètre STRICTEMENT identique. Un flux par
+# ancien bucket, même nom, même priorité, `auto_subscribe: true` (l'app ne
+# s'abonne à rien : tout arrive à la connexion, comme avant). Le filtre de
+# l'ancienne Parameter Query devient un CTE (`with:`) lu par les requêtes.
 #
 # Périmètre « hors ligne total » (cf. src/backend/powersync/tables.js) :
 #   • Académique (tout staff + enseignants) : eleves, classes, matieres,
@@ -17,8 +24,8 @@
 #     postes — lecture école entière dans la RLS).
 #   • notes/absences : staff = école entière ; enseignants = leurs sections.
 #   • Par module, gated par les colonnes perm_* de `comptes` (dénormalisées
-#     par powersync-perms.sql — les Parameter Queries ne lisent qu'UNE table,
-#     ni JOIN ni jsonb) :
+#     par powersync-perms.sql — héritage des Parameter Queries, qui ne
+#     lisaient qu'UNE table, ni JOIN ni jsonb) :
 #       compta_data      → recettes, depenses, versements, bons, personnel,
 #                          salaires, tarifs, paiements, presences,
 #                          paie_enseignants (perm_compta)
@@ -58,120 +65,161 @@
 #   2 → notes et absences (≈ 3,5 Mo) : le gros du volume ;
 #   3 → modules secondaires (calendrier, examens/livrets, messages, fondation,
 #       journal, comptes ; ≈ 0,2 Mo).
-# Un bucket ne change que de priorité, jamais de contenu : une table qui
-# changerait de bucket disparaîtrait un moment du miroir au redéploiement.
+# Un flux ne change que de priorité, jamais de contenu : une table qui
+# changerait de flux disparaîtrait un moment du miroir au redéploiement.
 # Jamais de priorité 0 : elle s'applique même avec des écritures locales pas
 # encore envoyées (affichage incohérent possible).
 # ⚠️ Tout redéploiement de ces règles recrée les buckets côté PowerSync : au
 # retour suivant, CHAQUE appareil re-télécharge une fois ses données (les
 # anciennes restent affichées pendant ce temps). Déployer à une heure creuse.
 
-bucket_definitions:
+# Édition 3 = le compilateur des Sync Streams. Elle allume aussi les
+# correctifs de l'édition 2 qui changent la FORME des valeurs livrées (dates
+# en ISO 8601 « 2026-10-27T08:00:00.000000 » au lieu de « 2026-10-27
+# 08:00:00 », types Postgres personnalisés en JSON, `->>`) : coupés ici pour
+# que le miroir garde exactement les valeurs d'avant. Reste allumé
+# versioned_bucket_ids, qui ne touche que le nom interne des buckets (un
+# futur redéploiement ne télécharge plus deux fois les mêmes données).
+config:
+  edition: 3
+  timestamps_iso8601: false
+  fixed_json_extract: false
+  custom_postgres_types: false
+
+streams:
   # Tout le personnel + les enseignants : données académiques + méta de
   # l'école (branding/plan/verrous), annonces et postes (labels/permissions).
+  # NB : face à un NULL, le compilateur des Sync Streams tient
+  # `role != 'parent'` pour vrai (l'ancien moteur, pour faux). Sans effet :
+  # comptes.role est NOT NULL (enum role_compte), les perm_* aussi.
   school_data:
+    auto_subscribe: true
     priority: 1
-    parameters: SELECT ecole_id FROM comptes WHERE user_id = request.user_id() AND role != 'parent'
-    data:
-      - SELECT * FROM eleves WHERE ecole_id = bucket.ecole_id
-      - SELECT * FROM classes WHERE ecole_id = bucket.ecole_id
-      - SELECT * FROM matieres WHERE ecole_id = bucket.ecole_id
-      - SELECT * FROM enseignants WHERE ecole_id = bucket.ecole_id
-      - SELECT * FROM emplois WHERE ecole_id = bucket.ecole_id
-      - SELECT * FROM enseignements WHERE ecole_id = bucket.ecole_id
+    with:
+      ecole_du_compte: SELECT ecole_id FROM comptes WHERE user_id = auth.user_id() AND role != 'parent'
+    queries:
+      - SELECT * FROM eleves WHERE ecole_id IN ecole_du_compte
+      - SELECT * FROM classes WHERE ecole_id IN ecole_du_compte
+      - SELECT * FROM matieres WHERE ecole_id IN ecole_du_compte
+      - SELECT * FROM enseignants WHERE ecole_id IN ecole_du_compte
+      - SELECT * FROM emplois WHERE ecole_id IN ecole_du_compte
+      - SELECT * FROM enseignements WHERE ecole_id IN ecole_du_compte
       # Appréciations laissées ici (≈ 0,24 Mo) : les déplacer dans un autre
-      # bucket les ferait disparaître du miroir, le temps du re-téléchargement
+      # flux les ferait disparaître du miroir, le temps du re-téléchargement
       # qui suit le déploiement, entre les niveaux 1 et 2 — et une saisie à ce
       # moment-là créerait un doublon.
-      - SELECT * FROM appreciations WHERE ecole_id = bucket.ecole_id
-      - SELECT * FROM ecoles WHERE id = bucket.ecole_id
-      - SELECT * FROM annonces WHERE ecole_id = bucket.ecole_id
-      - SELECT * FROM postes WHERE ecole_id = bucket.ecole_id
+      - SELECT * FROM appreciations WHERE ecole_id IN ecole_du_compte
+      - SELECT * FROM ecoles WHERE id IN ecole_du_compte
+      - SELECT * FROM annonces WHERE ecole_id IN ecole_du_compte
+      - SELECT * FROM postes WHERE ecole_id IN ecole_du_compte
 
   # Notes/absences d'un enseignant : uniquement ses sections (mêmes bornes
   # que teacher-security.sql ; user_id dénormalisé par powersync-scope.sql).
+  # Jointure sur le COUPLE (école, section) de chaque ligne
+  # d'enseignant_classes, comme l'ancienne Parameter Query — deux `IN`
+  # séparés croiseraient écoles et sections.
   teacher_notes:
+    auto_subscribe: true
     priority: 2
-    parameters: SELECT section, ecole_id FROM enseignant_classes WHERE user_id = request.user_id()
-    data:
-      - SELECT * FROM notes WHERE ecole_id = bucket.ecole_id AND section = bucket.section
-      - SELECT * FROM absences WHERE ecole_id = bucket.ecole_id AND section = bucket.section
+    with:
+      sections_enseignant: SELECT section, ecole_id FROM enseignant_classes WHERE user_id = auth.user_id()
+    queries:
+      - SELECT notes.* FROM notes, sections_enseignant AS ec WHERE notes.ecole_id = ec.ecole_id AND notes.section = ec.section
+      - SELECT absences.* FROM absences, sections_enseignant AS ec WHERE absences.ecole_id = ec.ecole_id AND absences.section = ec.section
 
   # Staff (non parent, non enseignant) : notes/absences de toute l'école.
   staff_notes:
+    auto_subscribe: true
     priority: 2
-    parameters: SELECT ecole_id FROM comptes WHERE user_id = request.user_id() AND role != 'parent' AND role != 'enseignant'
-    data:
-      - SELECT * FROM notes WHERE ecole_id = bucket.ecole_id
-      - SELECT * FROM absences WHERE ecole_id = bucket.ecole_id
+    with:
+      ecole_du_compte: SELECT ecole_id FROM comptes WHERE user_id = auth.user_id() AND role != 'parent' AND role != 'enseignant'
+    queries:
+      - SELECT * FROM notes WHERE ecole_id IN ecole_du_compte
+      - SELECT * FROM absences WHERE ecole_id IN ecole_du_compte
 
-  # ── Buckets par module (perm_* = lecture du module, cf. powersync-perms.sql)
+  # ── Flux par module (perm_* = lecture du module, cf. powersync-perms.sql)
   # Comptabilité au premier niveau : c'est l'écran principal du comptable, et
   # elle pèse peu (≈ 150 Ko à La Citadelle).
   compta_data:
+    auto_subscribe: true
     priority: 1
-    parameters: SELECT ecole_id FROM comptes WHERE user_id = request.user_id() AND perm_compta = true
-    data:
-      - SELECT * FROM recettes WHERE ecole_id = bucket.ecole_id
-      - SELECT * FROM depenses WHERE ecole_id = bucket.ecole_id
-      - SELECT * FROM versements WHERE ecole_id = bucket.ecole_id
-      - SELECT * FROM bons WHERE ecole_id = bucket.ecole_id
-      - SELECT * FROM personnel WHERE ecole_id = bucket.ecole_id
-      - SELECT * FROM salaires WHERE ecole_id = bucket.ecole_id
-      - SELECT * FROM tarifs WHERE ecole_id = bucket.ecole_id
-      - SELECT * FROM paiements WHERE ecole_id = bucket.ecole_id
-      - SELECT * FROM presences WHERE ecole_id = bucket.ecole_id
+    with:
+      ecole_du_compte: SELECT ecole_id FROM comptes WHERE user_id = auth.user_id() AND perm_compta = true
+    queries:
+      - SELECT * FROM recettes WHERE ecole_id IN ecole_du_compte
+      - SELECT * FROM depenses WHERE ecole_id IN ecole_du_compte
+      - SELECT * FROM versements WHERE ecole_id IN ecole_du_compte
+      - SELECT * FROM bons WHERE ecole_id IN ecole_du_compte
+      - SELECT * FROM personnel WHERE ecole_id IN ecole_du_compte
+      - SELECT * FROM salaires WHERE ecole_id IN ecole_du_compte
+      - SELECT * FROM tarifs WHERE ecole_id IN ecole_du_compte
+      - SELECT * FROM paiements WHERE ecole_id IN ecole_du_compte
+      - SELECT * FROM presences WHERE ecole_id IN ecole_du_compte
       # Paie des enseignants (forfait, primes) : sortie de `enseignants`
       # (école entière) pour n'arriver qu'à la Comptabilité.
-      - SELECT * FROM paie_enseignants WHERE ecole_id = bucket.ecole_id
+      - SELECT * FROM paie_enseignants WHERE ecole_id IN ecole_du_compte
 
   calendrier_data:
+    auto_subscribe: true
     priority: 3
-    parameters: SELECT ecole_id FROM comptes WHERE user_id = request.user_id() AND perm_calendrier = true
-    data:
-      - SELECT * FROM evenements WHERE ecole_id = bucket.ecole_id
+    with:
+      ecole_du_compte: SELECT ecole_id FROM comptes WHERE user_id = auth.user_id() AND perm_calendrier = true
+    queries:
+      - SELECT * FROM evenements WHERE ecole_id IN ecole_du_compte
 
   examens_data:
+    auto_subscribe: true
     priority: 3
-    parameters: SELECT ecole_id FROM comptes WHERE user_id = request.user_id() AND perm_examens = true
-    data:
-      - SELECT * FROM examens WHERE ecole_id = bucket.ecole_id
-      - SELECT * FROM livrets WHERE ecole_id = bucket.ecole_id
-      - SELECT * FROM honneurs WHERE ecole_id = bucket.ecole_id
+    with:
+      ecole_du_compte: SELECT ecole_id FROM comptes WHERE user_id = auth.user_id() AND perm_examens = true
+    queries:
+      - SELECT * FROM examens WHERE ecole_id IN ecole_du_compte
+      - SELECT * FROM livrets WHERE ecole_id IN ecole_du_compte
+      - SELECT * FROM honneurs WHERE ecole_id IN ecole_du_compte
 
   messages_data:
+    auto_subscribe: true
     priority: 3
-    parameters: SELECT ecole_id FROM comptes WHERE user_id = request.user_id() AND perm_messages = true
-    data:
-      - SELECT * FROM messages WHERE ecole_id = bucket.ecole_id
+    with:
+      ecole_du_compte: SELECT ecole_id FROM comptes WHERE user_id = auth.user_id() AND perm_messages = true
+    queries:
+      - SELECT * FROM messages WHERE ecole_id IN ecole_du_compte
 
   fondation_data:
+    auto_subscribe: true
     priority: 3
-    parameters: SELECT ecole_id FROM comptes WHERE user_id = request.user_id() AND perm_fondation = true
-    data:
-      - SELECT * FROM membres WHERE ecole_id = bucket.ecole_id
-      - SELECT * FROM documents WHERE ecole_id = bucket.ecole_id
+    with:
+      ecole_du_compte: SELECT ecole_id FROM comptes WHERE user_id = auth.user_id() AND perm_fondation = true
+    queries:
+      - SELECT * FROM membres WHERE ecole_id IN ecole_du_compte
+      - SELECT * FROM documents WHERE ecole_id IN ecole_du_compte
 
   historique_data:
+    auto_subscribe: true
     priority: 3
-    parameters: SELECT ecole_id FROM comptes WHERE user_id = request.user_id() AND perm_historique = true
-    data:
-      - SELECT * FROM historique WHERE ecole_id = bucket.ecole_id
+    with:
+      ecole_du_compte: SELECT ecole_id FROM comptes WHERE user_id = auth.user_id() AND perm_historique = true
+    queries:
+      - SELECT * FROM historique WHERE ecole_id IN ecole_du_compte
 
   # Liste des comptes (AdminPanel « Comptes & Postes » en lecture hors ligne).
   # Plus restrictif que la RLS (comptes_select = tout staff) : seuls les
   # porteurs d'admin_panel en ont besoin localement.
   admin_data:
+    auto_subscribe: true
     priority: 3
-    parameters: SELECT ecole_id FROM comptes WHERE user_id = request.user_id() AND perm_admin_panel = true
-    data:
-      - SELECT * FROM comptes WHERE ecole_id = bucket.ecole_id
+    with:
+      ecole_du_compte: SELECT ecole_id FROM comptes WHERE user_id = auth.user_id() AND perm_admin_panel = true
+    queries:
+      - SELECT * FROM comptes WHERE ecole_id IN ecole_du_compte
 
 # ── Vague ultérieure (portail parent, PAS actif) ─────────────────────────
-# Même piège que teacher_notes : parent_eleves n'a pas de user_id direct →
-# dupliquer user_id sur parent_eleves avant d'écrire cette Parameter Query :
+# Les Sync Streams acceptent sous-requêtes et jointures : plus besoin de
+# dupliquer user_id sur parent_eleves. Esquisse (sans auto_subscribe, le
+# portail s'abonnerait à la demande) :
 #   parent_scope:
-#     parameters: SELECT eleve_id FROM parent_eleves WHERE user_id = request.user_id()
-#     data:
-#       - SELECT * FROM notes WHERE eleve_id = bucket.eleve_id
-#       - SELECT * FROM absences WHERE eleve_id = bucket.eleve_id
+#     with:
+#       enfants: SELECT eleve_id FROM parent_eleves WHERE compte_id IN (SELECT id FROM comptes WHERE user_id = auth.user_id())
+#     queries:
+#       - SELECT * FROM notes WHERE eleve_id IN enfants
+#       - SELECT * FROM absences WHERE eleve_id IN enfants
