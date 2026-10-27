@@ -85,6 +85,25 @@ test("clés de paie : la liste du front est celle du SQL (fonction et reprise)",
   for (const liste of listes) assert.deepEqual(liste, [...CLES_PAIE_ENSEIGNANT]);
 });
 
+// Phase 2 : la paie est effacée des fiches, et retirée de toute écriture.
+const PHASE2 = readFileSync(join(RACINE, "supabase/migrations/20261027173102_paie_enseignants_hors_fiche.sql"), "utf8");
+
+test("phase 2 : effacement et déplacement portent sur les mêmes clés que le front", () => {
+  const listes = [...PHASE2.matchAll(/array\[([^\]]+)\]/g)]
+    .map((m) => m[1].split(",").map((s) => s.trim().replace(/^'|'$/g, "")));
+  assert.equal(listes.length, 4);
+  for (const liste of listes) assert.deepEqual(liste, [...CLES_PAIE_ENSEIGNANT]);
+  // Ordre : filet de recopie, retrait de l'ancien déclencheur, effacement, nouveau déclencheur.
+  const pos = (motif) => PHASE2.search(motif);
+  assert.ok(pos(/insert into public\.paie_enseignants/) < pos(/drop trigger if exists trg_paie_enseignant_recopier/));
+  assert.ok(pos(/drop trigger if exists trg_paie_enseignant_recopier/) < pos(/update public\.enseignants/));
+  assert.ok(pos(/update public\.enseignants/) < pos(/create trigger trg_paie_enseignant_deplacer before insert or update of extra/));
+  // Le filet n'écrase jamais une ligne existante : la table fait foi.
+  assert.match(PHASE2, /on conflict \(id\) do nothing;\s+-- ── 2\./);
+  // Seule la Comptabilité (ou le serveur) range la paie ; tout le monde la perd sur la fiche.
+  assert.match(PHASE2, /new\.extra := new\.extra - array\[[^\]]+\];\s+if coalesce\(auth\.role\(\), 'service_role'\) = 'authenticated' and not has_module_write\('compta'\) then\s+return new;/);
+});
+
 test("la table de paie n'est lue et écrite que par la Comptabilité", () => {
   assert.match(MIGRATION, /create policy paie_enseignants_select on public\.paie_enseignants for select to authenticated\s+using \(ecole_id = public\.auth_ecole_id\(\) and public\.has_module_read\('compta'\)\);/);
   assert.match(MIGRATION, /create policy paie_enseignants_write on public\.paie_enseignants to authenticated\s+using \(ecole_id = public\.auth_ecole_id\(\) and public\.has_module_write\('compta'\)\)\s+with check \(ecole_id = public\.auth_ecole_id\(\) and public\.has_module_write\('compta'\)\);/);

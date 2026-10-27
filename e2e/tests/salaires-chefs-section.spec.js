@@ -30,29 +30,40 @@ async function ouvrirEnseignantsPrimaire(page) {
   await expect(page.getByText(`${ENSEIGNANT_PRIMAIRE.prenom} ${ENSEIGNANT_PRIMAIRE.nom}`)).toBeVisible();
 }
 
-test("la paie saisie sur la fiche par la Comptabilité est rangée dans la table réservée", async () => {
+const CLES_PAIE = ["montantForfait", "salaireBase", "forfait", "primeHoraire", "primeParClasse"];
+const paieSurFiche = (extra = {}) => CLES_PAIE.filter((k) => k in (extra || {}));
+
+test("la paie saisie sur la fiche par la Comptabilité part dans la table réservée, la fiche n'en garde rien", async () => {
   const paie = await lirePaie(ids.ens1);
   expect(paie?.extra).toEqual({ montantForfait: ENSEIGNANT_PRIMAIRE.montantForfait });
   expect(paie.ecole_id).toBe(ids.ecoleId);
+  const fiche = await lireFicheEnseignant(ENSEIGNANT_PRIMAIRE.nom);
+  expect(paieSurFiche(fiche.extra)).toEqual([]);
+  expect(fiche.extra.classeTitle).toBe(ENSEIGNANT_PRIMAIRE.classeTitle);
 
   // Nouvelle saisie du comptable, comme l'écran Comptabilité → Enseignants.
   const comptable = await clientConnecte(COMPTABLE);
-  const fiche = await lireFicheEnseignant(ENSEIGNANT_PRIMAIRE.nom);
-  const { error } = await comptable.from("enseignants")
-    .update({ extra: { ...fiche.extra, montantForfait: 1600000 } }).eq("id", ids.ens1);
+  const { error, count } = await comptable.from("enseignants")
+    .update({ extra: { ...fiche.extra, montantForfait: 1600000 } }, { count: "exact" }).eq("id", ids.ens1);
   expect(error).toBeNull();
+  expect(count).toBe(1);
   expect((await lirePaie(ids.ens1)).extra.montantForfait).toBe(1600000);
+  expect(paieSurFiche((await lireFicheEnseignant(ENSEIGNANT_PRIMAIRE.nom)).extra)).toEqual([]);
 
-  // Retour à la valeur de départ (le serveur range aussi ses propres écritures).
-  await clientAdmin().from("enseignants").update({ extra: fiche.extra }).eq("id", ids.ens1);
-  expect((await lirePaie(ids.ens1)).extra.montantForfait).toBe(ENSEIGNANT_PRIMAIRE.montantForfait);
+  // Retour à la valeur de départ.
+  await clientAdmin().from("paie_enseignants")
+    .update({ extra: { montantForfait: ENSEIGNANT_PRIMAIRE.montantForfait } }).eq("id", ids.ens1);
 });
 
-test("API : le chef de section ne lit aucune paie, la Comptabilité si", async () => {
+test("API : le chef de section ne lit aucune paie, ni dans la table ni sur les fiches ; la Comptabilité si", async () => {
   const chef = await clientConnecte(CHEF_PRIMAIRE);
   const lu = await chef.from("paie_enseignants").select("*");
   expect(lu.error).toBeNull();
   expect(lu.data).toEqual([]);
+  const fiches = await chef.from("enseignants").select("id, extra");
+  expect(fiches.error).toBeNull();
+  expect(fiches.data.length).toBeGreaterThan(0);
+  expect(fiches.data.flatMap((f) => paieSurFiche(f.extra))).toEqual([]);
 
   const comptable = await clientConnecte(COMPTABLE);
   const { data } = await comptable.from("paie_enseignants").select("id, extra").in("id", [ids.ens1, ids.ens2]);
@@ -70,14 +81,13 @@ test("API : le chef de section ne peut pas fixer une paie, ni par la table ni pa
   expect(modif.data ?? []).toEqual([]);
 
   // Il peut réenregistrer la fiche (c'est son module) : la paie qu'il y
-  // glisserait n'atteint pas la table.
+  // glisserait est retirée, et n'atteint pas la table.
   const fiche = await lireFicheEnseignant(ENSEIGNANT_PRIMAIRE_2.nom);
   const { error } = await chef.from("enseignants")
     .update({ extra: { ...fiche.extra, montantForfait: 1 } }).eq("id", ids.ens2);
   expect(error).toBeNull();
   expect((await lirePaie(ids.ens2)).extra).toEqual({ montantForfait: FORFAIT_2 });
-  await clientAdmin().from("enseignants").update({ extra: fiche.extra }).eq("id", ids.ens2);
-  expect((await lirePaie(ids.ens2)).extra).toEqual({ montantForfait: FORFAIT_2 });
+  expect(paieSurFiche((await lireFicheEnseignant(ENSEIGNANT_PRIMAIRE_2.nom)).extra)).toEqual([]);
 });
 
 test("le chef de section primaire voit la classe du titulaire, jamais son forfait", async ({ page }) => {
