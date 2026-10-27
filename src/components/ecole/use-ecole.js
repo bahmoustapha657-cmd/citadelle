@@ -2,7 +2,7 @@ import { useContext, useMemo, useState } from "react";
 import { getAnnee, peutCreerComptesParent, peutModifier } from "../../constants";
 import { classePourAnnee } from "../admin/cloture-annee-utils";
 import { sansNonReinscritsEcartes } from "../../ecartes-non-reinscrits";
-import { hasWrite } from "../../../shared/postes-config.js";
+import { hasRead, hasWrite } from "../../../shared/postes-config.js";
 import { getDefaultPeriodeForSection, getPeriodesForSection } from "../../period-utils";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { useFirestore } from "../../hooks/useFirestore";
@@ -183,6 +183,9 @@ export function useEcole({
   // c'est une action de service au tuteur, pas une édition de données scolaires.
   const canCreateParent = !readOnly && !enModeArchive
     && (peutCreerComptesParent(userRole) || hasWrite(permissions, "compta"));
+  // Salaires des enseignants (forfait sur la carte) : réservés à qui lit la
+  // Comptabilité — direction, admin, comptable. Jamais au chef de section.
+  const voitSalaires = hasRead(permissions, "compta");
   const moy = computeMoyenne(notes);
   const classesUniq = [...new Set(eleves.map((e) => e.classe))].filter(Boolean);
   const sortAlphaEcole = (arr) => sortAlphaEcoleFn(arr, schoolInfo.triEleves || "prenom_nom");
@@ -224,7 +227,7 @@ export function useEcole({
     schoolId, schoolInfo, moisAnnee, toast, logAction, envoyerPush,
     periodes, defaultPeriode, periodeB, setPeriodeB, grillePeriode, setGrillePeriode,
     noteForms, defaultNoteType, grilleType, setGrilleType,
-    canCreate, canEdit, canPhoto, canCreateDiscipline, canEditDiscipline, canCreateParent, moy, classesUniq,
+    canCreate, canEdit, canPhoto, canCreateDiscipline, canEditDiscipline, canCreateParent, voitSalaires, moy, classesUniq,
     elevesFiltres, effectifReel, saveClasse, saveEnseignant, anneesDispo,
   };
 }

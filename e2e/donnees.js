@@ -300,3 +300,37 @@ export async function lireAudit(action) {
   if (error) throw error;
   return data || [];
 }
+
+// ── Salaires cachés aux chefs de section (salaires-chefs-section.spec.js) ──
+// Un chef de section (Direction primaire) ouvre l'onglet Enseignants : il ne
+// doit pas voir le forfait mensuel d'un titulaire ; la Direction générale,
+// qui lit la Comptabilité, si.
+export const CHEF_PRIMAIRE = { login: "chef.primaire", mdp: "E2e-ChefPrimaire-2026", nom: "Chef Primaire" };
+export const ENSEIGNANT_PRIMAIRE = { nom: "BALDE", prenom: "Ousmane", classeTitle: "CP A", montantForfait: 1500000 };
+
+// Crée (une fois) le compte du chef de section et la fiche de l'enseignant.
+export async function preparerChefPrimaire() {
+  const admin = clientAdmin();
+  const id = await ecoleId(admin);
+  let { data: c } = await admin.from("comptes").select("id").eq("ecole_id", id).eq("login", CHEF_PRIMAIRE.login).maybeSingle();
+  if (!c) {
+    const r = await appelerAccountManage(DIRECTION, {
+      action: "create", login: CHEF_PRIMAIRE.login, mdp: CHEF_PRIMAIRE.mdp, role: "primaire",
+      nom: CHEF_PRIMAIRE.nom, label: "Direction Primaire", statut: "Actif",
+    });
+    if (r.status !== 200) throw new Error(`Création ${CHEF_PRIMAIRE.login} : HTTP ${r.status} ${r.data.error || ""}`);
+    c = { id: r.data.id };
+  }
+  await admin.from("comptes").update({ premiere_co: false }).eq("id", c.id);
+
+  const { data: fiche } = await admin.from("enseignants").select("id")
+    .eq("ecole_id", id).eq("section", "primaire").eq("nom", ENSEIGNANT_PRIMAIRE.nom).maybeSingle();
+  if (!fiche) {
+    // Écrite par la direction (RLS) sous la forme exacte que l'app produit.
+    const direction = await clientConnecte(DIRECTION);
+    const { error } = await direction.from("enseignants").insert({
+      ...toRow("enseignants", { ...ENSEIGNANT_PRIMAIRE, statut: "Titulaire" }).row, ecole_id: id, section: "primaire",
+    });
+    if (error) throw new Error(`enseignants : ${error.message}`);
+  }
+}
