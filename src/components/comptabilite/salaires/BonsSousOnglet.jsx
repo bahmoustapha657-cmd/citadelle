@@ -12,7 +12,7 @@ export function BonsSousOnglet({ bonsMois, moisLabel, canEdit, supBon, setForm, 
           <THead cols={["Enseignant","Section","Mois","Date","Montant (GNF)","Motif","Actions"]}/>
           <tbody>{bonsMois.map(b=><TR key={b._id}>
             <TD bold>{b.nom}</TD>
-            <TD><Badge color={b.section==="Primaire"?"vert":"blue"}>{b.section}</Badge></TD>
+            <TD><Badge color={b.section==="Primaire"?"vert":b.section==="Préscolaire"?"amber":"blue"}>{b.section}</Badge></TD>
             <TD>{b.mois}</TD>
             <TD>{b.date?b.date.split("-").reverse().join("/"):"—"}</TD>
             <TD center style={{color:"#b91c1c",fontWeight:700}}>{fmtN(b.montant||0)}</TD>
