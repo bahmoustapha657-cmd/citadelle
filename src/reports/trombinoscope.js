@@ -13,7 +13,7 @@
 import {
   aUnePhoto, couleurClasse, grouperParClasse, initiales, nomAppel, nomOfficiel,
 } from "../identite-enfant.js";
-import { PRINT_NOTICE, PRINT_TRIGGER, edugestEmbleme, printResetFor } from "./print-helpers.js";
+import { EDUGEST_SITE, PRINT_NOTICE, PRINT_TRIGGER, edugestEmbleme, printResetFor } from "./print-helpers.js";
 
 // Noms et surnoms sont saisis à la main : un « < » ou un « & » ne doit ni
 // casser la page ni y injecter de balise.
@@ -103,10 +103,12 @@ export function trombinoscopeHTML(eleves = [], { schoolInfo = {}, annee = "", pa
 //    de chemise, 8 par page A4 ;
 //  • « portrait » : 62 × 90 mm, le badge d'origine de la maternelle, à
 //    plastifier et porter en collier, 9 par page.
-// Photo au choix. En haut, le logo et le nom de l'école ; dans un coin, une
-// marque EduGest minuscule et grise. « Miroir » : pour le papier transfert
-// textile (tissu clair), chaque badge s'imprime inversé et se retrouve à
-// l'endroit une fois repassé.
+// Photo au choix ; sans photo, le logo de l'école s'affiche en grand à sa
+// place (et plus dans l'en-tête). En haut, le nom de l'école ; en pied, une ligne
+// « Édité avec EduGest · site » : petite, mais lisible et parlante (sans
+// téléphone ni e-mail, comme partout sur le badge). « Miroir » : pour le
+// papier transfert textile (tissu clair), chaque badge s'imprime inversé et
+// se retrouve à l'endroit une fois repassé.
 
 export const FORMATS_BADGE = {
   poche: { largeur: 80, hauteur: 60, colonnes: 2, parPage: 8, marge: 8, nom: "Écusson de poche 8 × 6 cm" },
@@ -130,25 +132,27 @@ const BADGES_CSS = `
 .appel{font-weight:900;line-height:1.05;overflow-wrap:anywhere}
 .officiel{font-size:7.5pt;color:#475569;line-height:1.2;overflow-wrap:anywhere}
 .ecole{font-weight:800;text-transform:uppercase;letter-spacing:.03em;line-height:1.15;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
-.marque{position:absolute;right:1.8mm;bottom:1.1mm;display:flex;align-items:center;gap:.6mm;font-size:4.5pt;color:#b8c0cc;letter-spacing:.02em}
-.marque svg{width:2.2mm;height:2.2mm;opacity:.6}
+.marque{position:absolute;left:0;right:0;bottom:.9mm;display:flex;align-items:center;justify-content:center;gap:.8mm;font-size:5.5pt;color:#64748b;letter-spacing:.01em;white-space:nowrap}
+.marque svg{width:3mm;height:3mm}
+.marque strong{color:#00916B;font-weight:900}
 .portrait{flex-direction:column;align-items:center}
 .portrait .bandeau{width:100%;color:#fff;display:flex;align-items:center;gap:1.6mm;padding:1.4mm 2mm}
 .portrait .bandeau .logo{width:8mm;height:8mm}
 .portrait .bandeau .titre{flex:1;min-width:0;text-align:center}
 .portrait .bandeau .ecole{font-size:6.2pt}
 .portrait .bandeau .classe{font-size:10pt;font-weight:900}
-.portrait .photo{width:42mm;height:50mm;margin-top:3mm;border:.8mm solid}
-.portrait .grand-logo{width:30mm;height:30mm;margin-top:6mm}
+.portrait .photo{width:42mm;height:46mm;margin-top:2.5mm;border:.8mm solid}
+.portrait .grand-logo{width:38mm;height:38mm;margin-top:4mm}
 .portrait .appel{margin-top:2mm;padding:0 2mm;text-align:center}
 .portrait .officiel{margin-top:.8mm;padding:0 2mm;text-align:center}
-.portrait .annee{margin-top:auto;font-size:6pt;color:#94a3b8;padding-bottom:1.5mm}
+.portrait .annee{margin-top:auto;font-size:6pt;color:#94a3b8;padding-bottom:4.6mm}
 .poche{flex-direction:column}
 .poche .tete{display:flex;align-items:center;gap:2mm;padding:1.6mm 2.4mm;color:#fff}
 .poche .tete .logo{width:10mm;height:10mm}
 .poche .tete .ecole{font-size:7pt;flex:1;min-width:0}
-.poche .corps{flex:1;min-height:0;display:flex;align-items:center;gap:3mm;padding:2mm 3mm 3.5mm}
+.poche .corps{flex:1;min-height:0;display:flex;align-items:center;gap:3mm;padding:1.6mm 3mm 4.6mm}
 .poche .photo{width:26mm;height:32mm;border:.6mm solid}
+.poche .grand-logo{width:30mm;height:30mm}
 .poche .texte{flex:1;min-width:0;display:flex;flex-direction:column;gap:1.2mm}
 .poche .infos{display:flex;align-items:center;flex-wrap:wrap;gap:1.5mm;font-size:7pt;color:#64748b}
 .poche .classe{color:#fff;font-weight:900;font-size:8.5pt;border-radius:1.5mm;padding:.5mm 2mm}
@@ -167,21 +171,23 @@ const logoEcole = (schoolInfo, classe = "logo") => (schoolInfo.logo
   ? `<div class="${classe}"><img crossOrigin="anonymous" src="${echapper(schoolInfo.logo)}" alt=""/></div>`
   : "");
 
-const marqueEdugest = () => `<div class="marque">${edugestEmbleme(9)}EduGest</div>`;
+const marqueEdugest = () => `<div class="marque">${edugestEmbleme(12)}<span>Édité avec <strong>EduGest</strong> · ${EDUGEST_SITE}</span></div>`;
+
+// La photo de l'élève ou, sans photo, le logo de l'école en grand (s'il
+// existe) : dans l'en-tête, le logo ne reste qu'à côté d'une photo.
+const visuel = (eleve, schoolInfo, photo, couleur) => (photo
+  ? `<div class="photo" style="border-color:${couleur}">${photoOuInitiales(eleve, couleur)}</div>`
+  : logoEcole(schoolInfo, "logo grand-logo"));
 
 const badgePortrait = (eleve, { schoolInfo, annee, photo }) => {
   const couleur = couleurClasse(eleve.classe, schoolInfo.couleur1 || "#0A1628");
   const appel = nomAppel(eleve);
-  // Sans photo : le logo de l'école en grand à sa place, s'il existe.
-  const visuel = photo
-    ? `<div class="photo" style="border-color:${couleur}">${photoOuInitiales(eleve, couleur)}</div>`
-    : logoEcole(schoolInfo, "logo grand-logo");
   return `<div class="badge portrait">
   <div class="bandeau" style="background:${couleur}">
-    ${logoEcole(schoolInfo)}
+    ${photo ? logoEcole(schoolInfo) : ""}
     <div class="titre"><div class="ecole">${echapper(schoolInfo.nom || "École")}</div><div class="classe">${echapper(eleve.classe || "")}</div></div>
   </div>
-  ${visuel}
+  ${visuel(eleve, schoolInfo, photo, couleur)}
   <div class="appel" style="font-size:${taillePoliceAppel(appel) + (photo ? 0 : 4)}pt;color:${couleur}">${echapper(appel)}</div>
   <div class="officiel">${echapper(nomOfficiel(eleve))}</div>
   ${annee ? `<div class="annee">${echapper(annee)}</div>` : ""}
@@ -194,13 +200,13 @@ const badgePoche = (eleve, { schoolInfo, annee, photo }) => {
   const appel = nomAppel(eleve);
   return `<div class="badge poche">
   <div class="tete" style="background:${couleur}">
-    ${logoEcole(schoolInfo)}
+    ${photo ? logoEcole(schoolInfo) : ""}
     <div class="ecole">${echapper(schoolInfo.nom || "École")}</div>
   </div>
   <div class="corps">
-    ${photo ? `<div class="photo" style="border-color:${couleur}">${photoOuInitiales(eleve, couleur)}</div>` : ""}
+    ${visuel(eleve, schoolInfo, photo, couleur)}
     <div class="texte">
-      <div class="appel" style="font-size:${taillePoliceAppel(appel, photo ? 45 : 70)}pt;color:${couleur}">${echapper(appel)}</div>
+      <div class="appel" style="font-size:${taillePoliceAppel(appel, photo ? 45 : schoolInfo.logo ? 41 : 70)}pt;color:${couleur}">${echapper(appel)}</div>
       <div class="officiel">${echapper(nomOfficiel(eleve))}</div>
       <div class="infos">${eleve.classe ? `<span class="classe" style="background:${couleur}">${echapper(eleve.classe)}</span>` : ""}${annee ? `<span>${echapper(annee)}</span>` : ""}</div>
     </div>

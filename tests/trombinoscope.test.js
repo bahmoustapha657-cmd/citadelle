@@ -52,16 +52,22 @@ test("badges de tenue : écusson de poche 8 par page, logo, marque EduGest discr
   assert.equal(compter(html, /<div class="page" /g), 2);
   assert.match(html, /grid-template-columns:repeat\(2,80mm\);grid-auto-rows:60mm/);
   assert.match(html, /size:A4 portrait;margin:8mm/);
-  // Logo de l'école sur chaque badge ; sans photo, aucune photo d'élève.
+  // Sans photo : le logo de l'école en grand à sa place, une seule fois par
+  // badge (plus dans l'en-tête), et aucune photo d'élève.
   assert.equal(compter(html, /src="https:\/\/x\/logo\.png"/g), 9);
+  assert.equal(compter(html, /class="logo grand-logo"/g), 9);
   assert.doesNotMatch(html, /src="https:\/\/x\/e\.jpg"/);
   // Classe hors maternelle : couleur de l'école.
   assert.match(html, /class="classe" style="background:#0A1628">6ème A/);
-  // Marque EduGest sur chaque badge, sans coordonnées ni téléphone.
+  // Marque EduGest lisible sur chaque badge, avec le site, sans coordonnées ni téléphone.
   assert.equal(compter(html, /<div class="marque">/g), 9);
+  assert.equal(compter(html, /Édité avec <strong>EduGest<\/strong> · edugest-gn\.pages\.dev/g), 9);
   assert.doesNotMatch(html, /622 00 00 00|627 73 85 79|edugest26@/);
-  // Avec photo.
-  assert.match(badgesHTML(eleves, { schoolInfo: ecoleLogo, format: "poche", photo: true }), /src="https:\/\/x\/e\.jpg"/);
+  // Avec photo : la photo, et le logo en petit dans l'en-tête.
+  const avecPhoto = badgesHTML(eleves, { schoolInfo: ecoleLogo, format: "poche", photo: true });
+  assert.match(avecPhoto, /src="https:\/\/x\/e\.jpg"/);
+  assert.equal(compter(avecPhoto, /src="https:\/\/x\/logo\.png"/g), 9);
+  assert.doesNotMatch(avecPhoto, /class="logo grand-logo"/);
 });
 
 test("badges : impression en miroir pour le papier transfert, à l'endroit sinon", () => {
