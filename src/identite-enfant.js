@@ -99,6 +99,16 @@ export const fileSeancePhoto = (eleves = [], { classe = null, seulementSansPhoto
     .sort((a, b) => nomOfficiel(a).localeCompare(nomOfficiel(b), "fr", { sensitivity: "base" }))
     .map((e) => e._id);
 
+// Identifiant imprimé sur un badge : l'IEN (identifiant national) quand
+// l'élève en a un, sinon le matricule de l'école ; null s'il n'a ni l'un ni
+// l'autre.
+export const identifiantBadge = (eleve = {}) => {
+  const ien = String(eleve.ien ?? "").trim();
+  if (ien) return { libelle: "IEN", valeur: ien };
+  const matricule = String(eleve.matricule ?? "").trim();
+  return matricule ? { libelle: "Matricule", valeur: matricule } : null;
+};
+
 // Champs à enregistrer pour un enfant : seulement ce qui change (la photo
 // est déjà une URL téléversée ou en file d'attente hors ligne).
 // `photoRetouche` : mémoire de la retouche qui accompagne une nouvelle photo

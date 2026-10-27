@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  champsSeancePhoto, correspondEnfant, couleurClasse, fileSeancePhoto, grouperParClasse,
+  champsSeancePhoto, correspondEnfant, identifiantBadge, couleurClasse, fileSeancePhoto, grouperParClasse,
   initiales, nettoyerSurnom, nomAppel, nomOfficiel, SURNOM_MAX, trierParNomAppel,
 } from "../src/identite-enfant.js";
 
@@ -66,6 +66,14 @@ test("séance photo : file figée par classe, sans photo d'abord demandée, ordr
   assert.deepEqual(fileSeancePhoto(tous, { classe: "Petite Section A", inclure: "2" }), ["2", "1"]);
   assert.deepEqual(fileSeancePhoto(tous, { classe: "Petite Section A", seulementSansPhoto: false }), ["2", "1"]);
   assert.deepEqual(fileSeancePhoto(tous, {}), ["1", "4", "3"]);
+});
+
+test("identifiant du badge : l'IEN s'il existe, sinon le matricule", () => {
+  assert.deepEqual(identifiantBadge({ ien: " 2026123456 ", matricule: "PRE-003" }), { libelle: "IEN", valeur: "2026123456" });
+  assert.deepEqual(identifiantBadge({ ien: "", matricule: "PRE-003" }), { libelle: "Matricule", valeur: "PRE-003" });
+  assert.deepEqual(identifiantBadge({ ien: "   ", matricule: " C-12 " }), { libelle: "Matricule", valeur: "C-12" });
+  assert.equal(identifiantBadge({ nom: "Bah" }), null);
+  assert.equal(identifiantBadge(), null);
 });
 
 test("séance photo : seuls les champs qui changent partent", () => {

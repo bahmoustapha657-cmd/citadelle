@@ -84,7 +84,7 @@ export function BadgesModale({ eleves = [], schoolInfo = {}, annee = "", section
       </label>
 
       <div style={{ background: "#f8fafc", border: "1px solid var(--lc-border)", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "var(--lc-text)", marginTop: 14 }}>
-        Logo et nom de l'école, nom de l'élève, classe et année. Aucun numéro de téléphone : un badge porté se lit dans la rue.
+        Logo et nom de l'école, nom de l'élève, son IEN (ou, à défaut, son matricule), classe et année. Aucun numéro de téléphone : un badge porté se lit dans la rue.
         {!schoolInfo.logo && <span style={{ color: "#92400e" }}> L'école n'a pas encore de logo (Paramètres → Identité) : seul son nom apparaîtra.</span>}
       </div>
 
