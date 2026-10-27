@@ -3,6 +3,8 @@
 # (supabase/powersync-sync-rules.min.yaml, celles collées dans le dashboard),
 # même compte de réplication (powersync_role), branché sur le Supabase local
 # du runner. Aucune donnée réelle, aucun accès à la production.
+# Règles au format Sync Streams (`config: edition: 3`) : acceptées par le
+# service depuis la 1.20.0, comme la clé `sync_config` (ex-`sync_rules`).
 replication:
   connections:
     - type: postgresql
@@ -17,7 +19,7 @@ storage:
 
 port: 8080
 
-sync_rules:
+sync_config:
   path: /regles/powersync-sync-rules.min.yaml
 
 # Jetons Supabase de la pile locale. La CLI récente signe les sessions avec
