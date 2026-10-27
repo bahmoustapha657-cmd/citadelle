@@ -7,7 +7,7 @@ import { EnsCompteModale } from "./ens-tab/EnsCompteModale";
 import { EnsFormModale } from "./ens-tab/EnsFormModale";
 
 export function EnsTab({
-  ens, cEns, supEns, cleEns, section, isPrimarySection, voitSalaires = false, couleur, schoolId, toast, logAction, classes = [],
+  ens, cEns, supEns, cleEns, section, isPrimarySection, voitSalaires = false, paieDe, couleur, schoolId, toast, logAction, classes = [],
   form, setForm, modal, setModal, canCreate, canEdit,
   ensCompte, setEnsCompte, formC, setFormC, saveEnseignant,
 }) {
@@ -23,7 +23,7 @@ export function EnsTab({
     </div>
 
     <EnsListe
-      ens={ens} cEns={cEns} couleur={couleur} isPrimarySection={isPrimarySection} voitSalaires={voitSalaires}
+      ens={ens} cEns={cEns} couleur={couleur} isPrimarySection={isPrimarySection} voitSalaires={voitSalaires} paieDe={paieDe}
       canEdit={canEdit} supEns={supEns} setForm={setForm} setModal={setModal}
       ouvrirCompteEns={ouvrirCompteEns} t={t}
     />

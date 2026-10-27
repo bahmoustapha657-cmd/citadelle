@@ -1,4 +1,4 @@
-import { useContext, useState } from "react";
+import { useContext, useMemo, useState } from "react";
 import { fmt, getAnnee, peutCreerComptesParent, peutModifierEleves, peutModifier, sectionOuverte } from "../../constants";
 import { hasWrite } from "../../../shared/postes-config.js";
 import { SchoolContext } from "../../contexts/SchoolContext";
@@ -21,6 +21,7 @@ import { periodeTranche, tranchesValides } from "../../paiements-scolarite";
 import { buildTarifGetters, buildTarifData } from "./compta-tarifs";
 import { scolaritePourAnnee } from "../admin/cloture-annee-utils";
 import { saveSalaireAction, savePersonnelAction } from "./compta-saves";
+import { avecPaie, indexerPaie } from "../../paie-enseignants";
 
 // Toute la logique du module Comptabilité : chargement Firestore de
 // toutes les collections (filtrées par année consultée), permissions,
@@ -104,11 +105,20 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   const { items: classesLyceeList, ajouter: ajClasseLycee } = useFirestore("classesLycee");
   const { items: classesPrescolaireList, ajouter: ajClassePrescolaire } = useFirestore("classesPrescolaire");
   // Enseignants — création/édition de la paie depuis Compta (vue hybride)
-  const { items: ensCollege, ajouter: ajEnsCol, modifier: modEnsCol, supprimer: supEnsCol } = useFirestore("ensCollege");
-  const { items: ensLycee, ajouter: ajEnsLyc, modifier: modEnsLyc, supprimer: supEnsLyc } = useFirestore("ensLycee");
-  const { items: ensPrimaire, ajouter: ajEnsPrim, modifier: modEnsPrim, supprimer: supEnsPrim } = useFirestore("ensPrimaire");
+  const { items: ensCollegeBrut, ajouter: ajEnsCol, modifier: modEnsCol, supprimer: supEnsCol } = useFirestore("ensCollege");
+  const { items: ensLyceeBrut, ajouter: ajEnsLyc, modifier: modEnsLyc, supprimer: supEnsLyc } = useFirestore("ensLycee");
+  const { items: ensPrimaireBrut, ajouter: ajEnsPrim, modifier: modEnsPrim, supprimer: supEnsPrim } = useFirestore("ensPrimaire");
   // Enseignants de maternelle : ils doivent figurer sur la paie comme les autres.
-  const { items: ensPrescolaire, ajouter: ajEnsPresco, modifier: modEnsPresco, supprimer: supEnsPresco } = useFirestore("ensPrescolaire");
+  const { items: ensPrescolaireBrut, ajouter: ajEnsPresco, modifier: modEnsPresco, supprimer: supEnsPresco } = useFirestore("ensPrescolaire");
+  // Paie des enseignants : table réservée à la Comptabilité (src/paie-enseignants.js),
+  // remise ici sur chaque fiche. Toute la compta (liste, génération des
+  // salaires, présences) lit donc la paie sur la fiche, comme avant.
+  const { items: paieEns } = useFirestore("paieEnseignants");
+  const paieParId = useMemo(() => indexerPaie(paieEns), [paieEns]);
+  const ensCollege = useMemo(() => avecPaie(ensCollegeBrut, paieParId), [ensCollegeBrut, paieParId]);
+  const ensLycee = useMemo(() => avecPaie(ensLyceeBrut, paieParId), [ensLyceeBrut, paieParId]);
+  const ensPrimaire = useMemo(() => avecPaie(ensPrimaireBrut, paieParId), [ensPrimaireBrut, paieParId]);
+  const ensPrescolaire = useMemo(() => avecPaie(ensPrescolaireBrut, paieParId), [ensPrescolaireBrut, paieParId]);
   // Groupe de paie « Primaire » (forfait mensuel) : maternelle comprise. Sans
   // elle, la génération des salaires, les bons et les présences ignoraient
   // ses enseignants.

@@ -20,7 +20,8 @@
 #     par powersync-perms.sql — les Parameter Queries ne lisent qu'UNE table,
 #     ni JOIN ni jsonb) :
 #       compta_data      → recettes, depenses, versements, bons, personnel,
-#                          salaires, tarifs, paiements, presences (perm_compta)
+#                          salaires, tarifs, paiements, presences,
+#                          paie_enseignants (perm_compta)
 #       calendrier_data  → evenements               (perm_calendrier)
 #       examens_data     → examens, livrets, honneurs (perm_examens)
 #       messages_data    → messages                 (perm_messages)
@@ -120,6 +121,9 @@ bucket_definitions:
       - SELECT * FROM tarifs WHERE ecole_id = bucket.ecole_id
       - SELECT * FROM paiements WHERE ecole_id = bucket.ecole_id
       - SELECT * FROM presences WHERE ecole_id = bucket.ecole_id
+      # Paie des enseignants (forfait, primes) : sortie de `enseignants`
+      # (école entière) pour n'arriver qu'à la Comptabilité.
+      - SELECT * FROM paie_enseignants WHERE ecole_id = bucket.ecole_id
 
   calendrier_data:
     priority: 3

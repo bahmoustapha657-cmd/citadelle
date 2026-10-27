@@ -111,6 +111,12 @@ const personnel = new Table(
   { indexes: { ecole: ["ecole_id"] } },
 );
 
+// Paie des enseignants (id = celui de la fiche) : réservée à la compta.
+const paie_enseignants = new Table(
+  { ecole_id: column.text, extra: column.text },
+  { indexes: { ecole: ["ecole_id"] } },
+);
+
 // `annee` : même défaut que les appréciations (écrite par toRow depuis le
 // 2026-08-12, absente de la vue locale).
 const salaires = new Table(
@@ -196,7 +202,7 @@ const ecoles = new Table({
 
 export const AppSchema = new Schema({
   eleves, notes, absences, classes, enseignants, matieres, emplois, enseignements, appreciations,
-  recettes, depenses, versements, bons, personnel, salaires, tarifs, paiements, presences,
+  recettes, depenses, versements, bons, personnel, salaires, tarifs, paiements, presences, paie_enseignants,
   evenements, examens, livrets, honneurs, annonces, membres, documents, historique, messages,
   comptes, postes, ecoles,
 });

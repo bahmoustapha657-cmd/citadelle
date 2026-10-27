@@ -24,6 +24,8 @@ export const TABLES_HORS_LIGNE = new Set([
   "paiements",
   // Registre des absences/retards du personnel (feuille du jour hors ligne).
   "presences",
+  // Paie des enseignants : n'arrive qu'aux comptes du module compta.
+  "paie_enseignants",
   // Modules « document » (calendrier, examens, messages, fondation, journal)
   "evenements", "examens", "livrets", "honneurs",
   "messages", "annonces", "membres", "documents", "historique",
@@ -60,6 +62,7 @@ const JSON_COLS = {
   matieres: ["extra"], emplois: ["extra"], enseignements: ["extra"],
   recettes: ["extra"], depenses: ["extra"], versements: ["extra"],
   bons: ["extra"], personnel: ["extra"], tarifs: ["extra"], paiements: ["extra"], presences: ["extra"],
+  paie_enseignants: ["extra"],
   salaires: ["details"],
   evenements: ["extra"], examens: ["extra"], livrets: ["extra"],
   honneurs: ["extra"], messages: ["extra"], annonces: ["extra"],
