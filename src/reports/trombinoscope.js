@@ -11,7 +11,7 @@
 // Aucun téléphone sur un badge : porté par un enfant, il se lit dans la rue.
 
 import {
-  aUnePhoto, couleurClasse, grouperParClasse, initiales, nomAppel, nomOfficiel,
+  aUnePhoto, couleurClasse, grouperParClasse, identifiantBadge, initiales, nomAppel, nomOfficiel,
 } from "../identite-enfant.js";
 import { EDUGEST_SITE, PRINT_NOTICE, PRINT_TRIGGER, edugestEmbleme, printResetFor } from "./print-helpers.js";
 
@@ -103,6 +103,7 @@ export function trombinoscopeHTML(eleves = [], { schoolInfo = {}, annee = "", pa
 //    de chemise, 8 par page A4 ;
 //  • « portrait » : 62 × 90 mm, le badge d'origine de la maternelle, à
 //    plastifier et porter en collier, 9 par page.
+// Sous le nom : l'IEN de l'élève, ou à défaut son matricule (identifiantBadge).
 // Photo au choix ; sans photo, le logo de l'école s'affiche en grand à sa
 // place (et plus dans l'en-tête). En haut, le nom de l'école ; en pied, une ligne
 // « Édité avec EduGest · site » : petite, mais lisible et parlante (sans
@@ -131,6 +132,8 @@ const BADGES_CSS = `
 .sans-photo span{font-size:7pt;font-weight:700}
 .appel{font-weight:900;line-height:1.05;overflow-wrap:anywhere}
 .officiel{font-size:7.5pt;color:#475569;line-height:1.2;overflow-wrap:anywhere}
+.ident{font-size:7pt;color:#334155;letter-spacing:.02em;overflow-wrap:anywhere}
+.ident strong{font-weight:900;font-family:"Courier New",monospace;font-size:7.5pt}
 .ecole{font-weight:800;text-transform:uppercase;letter-spacing:.03em;line-height:1.15;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
 .marque{position:absolute;left:0;right:0;bottom:.9mm;display:flex;align-items:center;justify-content:center;gap:.8mm;font-size:5.5pt;color:#64748b;letter-spacing:.01em;white-space:nowrap}
 .marque svg{width:3mm;height:3mm}
@@ -141,10 +144,11 @@ const BADGES_CSS = `
 .portrait .bandeau .titre{flex:1;min-width:0;text-align:center}
 .portrait .bandeau .ecole{font-size:6.2pt}
 .portrait .bandeau .classe{font-size:10pt;font-weight:900}
-.portrait .photo{width:42mm;height:46mm;margin-top:2.5mm;border:.8mm solid}
+.portrait .photo{width:42mm;height:44mm;margin-top:2mm;border:.8mm solid}
 .portrait .grand-logo{width:38mm;height:38mm;margin-top:4mm}
 .portrait .appel{margin-top:2mm;padding:0 2mm;text-align:center}
 .portrait .officiel{margin-top:.8mm;padding:0 2mm;text-align:center}
+.portrait .ident{margin-top:.5mm;padding:0 2mm;text-align:center}
 .portrait .annee{margin-top:auto;font-size:6pt;color:#94a3b8;padding-bottom:4.6mm}
 .poche{flex-direction:column}
 .poche .tete{display:flex;align-items:center;gap:2mm;padding:1.6mm 2.4mm;color:#fff}
@@ -165,6 +169,11 @@ export const taillePoliceAppel = (nom = "", largeurMm = 58) => {
   const n = String(nom).length;
   const base = n <= 8 ? 22 : n <= 12 ? 18 : n <= 18 ? 14 : 11;
   return Math.max(9, Math.round(base * Math.min(1, largeurMm / 58)));
+};
+
+const ligneIdentifiant = (eleve) => {
+  const id = identifiantBadge(eleve);
+  return id ? `<div class="ident">${id.libelle} <strong>${echapper(id.valeur)}</strong></div>` : "";
 };
 
 const logoEcole = (schoolInfo, classe = "logo") => (schoolInfo.logo
@@ -190,6 +199,7 @@ const badgePortrait = (eleve, { schoolInfo, annee, photo }) => {
   ${visuel(eleve, schoolInfo, photo, couleur)}
   <div class="appel" style="font-size:${taillePoliceAppel(appel) + (photo ? 0 : 4)}pt;color:${couleur}">${echapper(appel)}</div>
   <div class="officiel">${echapper(nomOfficiel(eleve))}</div>
+  ${ligneIdentifiant(eleve)}
   ${annee ? `<div class="annee">${echapper(annee)}</div>` : ""}
   ${marqueEdugest()}
 </div>`;
@@ -208,6 +218,7 @@ const badgePoche = (eleve, { schoolInfo, annee, photo }) => {
     <div class="texte">
       <div class="appel" style="font-size:${taillePoliceAppel(appel, photo ? 45 : schoolInfo.logo ? 41 : 70)}pt;color:${couleur}">${echapper(appel)}</div>
       <div class="officiel">${echapper(nomOfficiel(eleve))}</div>
+      ${ligneIdentifiant(eleve)}
       <div class="infos">${eleve.classe ? `<span class="classe" style="background:${couleur}">${echapper(eleve.classe)}</span>` : ""}${annee ? `<span>${echapper(annee)}</span>` : ""}</div>
     </div>
   </div>

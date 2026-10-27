@@ -86,6 +86,22 @@ test("badges : impression en miroir pour le papier transfert, à l'endroit sinon
   assert.match(badgesHTML([enfant(1)], { schoolInfo: ecole, format: "?" }), /<div class="badge portrait">/);
 });
 
+test("badges : IEN sous le nom, sinon le matricule, rien sans l'un ni l'autre", () => {
+  for (const format of ["poche", "portrait"]) {
+    const html = badgesHTML([
+      enfant(1, { ien: "2026123456", matricule: "PRE-001" }),
+      enfant(2, { matricule: "PRE-002" }),
+      enfant(3),
+    ], { schoolInfo: ecole, format });
+    assert.match(html, /<div class="ident">IEN <strong>2026123456<\/strong><\/div>/);
+    assert.doesNotMatch(html, /PRE-001/);
+    assert.match(html, /<div class="ident">Matricule <strong>PRE-002<\/strong><\/div>/);
+    assert.equal(compter(html, /<div class="ident">/g), 2);
+  }
+  // Saisi à la main : échappé.
+  assert.match(badgesHTML([enfant(4, { matricule: "<b>X</b>" })], { schoolInfo: ecole }), /Matricule <strong>&lt;b&gt;X&lt;\/b&gt;<\/strong>/);
+});
+
 test("noms échappés : un surnom saisi à la main n'injecte pas de balise", () => {
   const piege = enfant(1, { surnom: "<b>Néné</b> & co", photo: "https://x/a.jpg\" onerror=\"alert(1)" });
   for (const html of [
