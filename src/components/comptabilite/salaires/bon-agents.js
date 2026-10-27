@@ -11,21 +11,40 @@
 // scolaire à la rentrée.
 import { buildTeacherFullName, normalizeSalaryName } from "../../../salary-utils";
 
-export const SECTIONS_BON = ["Secondaire", "Primaire", "Personnel"];
+// Sections des fiches de paie (fenêtre « salaire », présences).
+export const SECTIONS_PAIE = ["Secondaire", "Primaire", "Personnel"];
+// Sections d'un bon : celles de la paie, plus la maternelle. Ses enseignants
+// sont payés avec le primaire (fiche « Primaire », au forfait), mais la
+// comptable doit pouvoir les retrouver à part au lieu de les chercher parmi
+// ceux du primaire ; « Appliquer les bons » reporte un bon « Préscolaire » sur
+// la fiche « Primaire » (cf. findBonsForSalary).
+export const SECTIONS_BON = ["Secondaire", "Primaire", "Préscolaire", "Personnel"];
 
 // Sections proposées dans les fenêtres « salaire » et « bon » : les groupes de
 // paie affichés par SalairesTab (une école sans collège ni lycée n'a pas de
 // Secondaire), Personnel toujours. La section de la fiche ouverte reste
 // proposée même si son groupe est fermé — sinon le sélecteur mentirait.
+const groupeOuvert = (groupesPaie, section) => groupesPaie[
+  section === "Secondaire" ? "secondaire" : section === "Préscolaire" ? "prescolaire" : "primaire"
+] !== false;
+
 export function sectionsPaieProposees(groupesPaie = {}, sectionCourante = "") {
-  return SECTIONS_BON.filter((section) => section === "Personnel"
+  return SECTIONS_PAIE.filter((section) => section === "Personnel"
     || section === sectionCourante
-    || groupesPaie[section === "Secondaire" ? "secondaire" : "primaire"] !== false);
+    || groupeOuvert(groupesPaie, section));
 }
 
-function agentsDeLaSection(section, { ensCollege = [], ensLycee = [], ensPrimaire = [], personnel = [] } = {}) {
+// Idem pour un bon, avec Préscolaire quand l'école a une maternelle.
+export function sectionsBonProposees(groupesPaie = {}, sectionCourante = "") {
+  return SECTIONS_BON.filter((section) => section === "Personnel"
+    || section === sectionCourante
+    || groupeOuvert(groupesPaie, section));
+}
+
+function agentsDeLaSection(section, { ensCollege = [], ensLycee = [], ensPrimaire = [], ensPrescolaire = [], personnel = [] } = {}) {
   if (section === "Secondaire") return [...ensCollege, ...ensLycee];
   if (section === "Primaire") return ensPrimaire;
+  if (section === "Préscolaire") return ensPrescolaire;
   if (section === "Personnel") return personnel.filter((p) => (p.statut || "Actif") === "Actif");
   return [];
 }

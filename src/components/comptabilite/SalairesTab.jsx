@@ -1,6 +1,6 @@
 import { useContext } from "react";
 import { SchoolContext } from "../../contexts/SchoolContext";
-import { isGroupeActif } from "../../constants";
+import { isGroupeActif, isSectionActive } from "../../constants";
 import { Chargement } from "../ui";
 import { SalairesToolbar } from "./salaires/SalairesToolbar";
 import { BonsSousOnglet } from "./salaires/BonsSousOnglet";
@@ -56,6 +56,7 @@ export function SalairesTab({
   // sur les profs encore présents — évite que des noms renommés ou
   // supprimés restent visibles via les anciens salaires)
   ensPrimaire = [],
+  ensPrescolaire = [],
   ensCollege = [],
   ensLycee = [],
   personnel = [],
@@ -85,6 +86,9 @@ export function SalairesTab({
   const groupesPaie = {
     secondaire: isGroupeActif(schoolInfo, "secondaire") || salaires.some((s) => s.section === "Secondaire"),
     primaire: isGroupeActif(schoolInfo, "primaire") || salaires.some((s) => s.section === "Primaire"),
+    // Bons seulement : la maternelle n'a pas de fiche de paie à elle (payée
+    // avec le primaire), mais ses bons se saisissent à part.
+    prescolaire: isSectionActive(schoolInfo, "prescolaire"),
   };
   return (
     <div>
@@ -159,7 +163,7 @@ export function SalairesTab({
         modal={modal} canCreate={canCreate} canEdit={canEdit}
         form={form} setForm={setForm} setModal={setModal}
         moisModale={moisModale} moisSalaire={moisSalaire}
-        ensCollege={ensCollege} ensLycee={ensLycee} ensPrimaire={ensPrimaire} personnel={personnel}
+        ensCollege={ensCollege} ensLycee={ensLycee} ensPrimaire={ensPrimaire} ensPrescolaire={ensPrescolaire} personnel={personnel}
         ajBon={ajBon} modBon={modBon} enreg={enreg} groupesPaie={groupesPaie}
       />
     </div>

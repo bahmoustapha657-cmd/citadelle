@@ -85,6 +85,10 @@ export type BonRecord = {
 // section, un bon enregistré pour la section Secondaire serait appliqué
 // aussi à la fiche Personnel du même agent (cas légitime prof+admin) et
 // le montant net se retrouvait doublé.
+// Un bon « Préscolaire » va sur la fiche « Primaire » : la maternelle est payée
+// avec le primaire (forfait), seul le bon distingue la section.
+const sectionPaieDuBon = (section: string): string => (section === "Préscolaire" ? "Primaire" : section);
+
 export function findBonsForSalary(salary: SalaryRecord = {}, bons: BonRecord[] = []): BonRecord[] {
   const targetName = normalizeSalaryName(salary.nom || "");
   const targetSection = String(salary.section || "").trim();
@@ -92,7 +96,7 @@ export function findBonsForSalary(salary: SalaryRecord = {}, bons: BonRecord[] =
   if (!targetName || !targetSection || !targetMois) return [];
   return bons.filter((b) => {
     if (normalizeSalaryName(b.nom || "") !== targetName) return false;
-    if (String(b.section || "").trim() !== targetSection) return false;
+    if (sectionPaieDuBon(String(b.section || "").trim()) !== targetSection) return false;
     if (String(b.mois || "").trim() !== targetMois) return false;
     return true;
   });
