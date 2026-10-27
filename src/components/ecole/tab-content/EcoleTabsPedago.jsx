@@ -87,6 +87,8 @@ export function EcoleTabsPedago({ e, titre, section, avecEns, annee, classesPred
         cleEns={cleEns}
         section={section}
         isPrimarySection={e.isPrimarySection}
+        voitSalaires={e.voitSalaires}
+        paieDe={e.paieDe}
         couleur={couleur}
         schoolId={e.schoolId}
         toast={e.toast}

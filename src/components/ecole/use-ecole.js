@@ -2,7 +2,7 @@ import { useContext, useMemo, useState } from "react";
 import { getAnnee, peutCreerComptesParent, peutModifier } from "../../constants";
 import { classePourAnnee } from "../admin/cloture-annee-utils";
 import { sansNonReinscritsEcartes } from "../../ecartes-non-reinscrits";
-import { hasWrite } from "../../../shared/postes-config.js";
+import { hasRead, hasWrite } from "../../../shared/postes-config.js";
 import { getDefaultPeriodeForSection, getPeriodesForSection } from "../../period-utils";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { useFirestore } from "../../hooks/useFirestore";
@@ -18,6 +18,7 @@ import {
 } from "./ecole-logic";
 import { saveClasseAction, saveEnseignantAction, saveAppreciationAction } from "./ecole-saves";
 import { synchroniserEmailEnseignant } from "../../backend/account-manage-supabase";
+import { fusionnerPaie, indexerPaie } from "../../paie-enseignants";
 
 // Toute la logique du module École (générique préscolaire/primaire/collège/
 // lycée) : chargement Firestore des collections dérivées des clés passées en
@@ -66,6 +67,10 @@ export function useEcole({
 
   const { items: classes, chargement: cC, ajouter: ajC, modifier: modC, supprimer: supC } = useFirestore(cleClasses);
   const { items: ens, chargement: cEns, ajouter: ajEns, modifier: modEns, supprimer: supEns } = useFirestore(cleEns);
+  // Paie des enseignants (table réservée à la Comptabilité) : lue pour le
+  // forfait de la carte, jamais mêlée à la fiche que l'on modifie ici.
+  const { items: paieEns } = useFirestore("paieEnseignants");
+  const paieParId = useMemo(() => indexerPaie(paieEns), [paieEns]);
   // Les notes d'une année entière pèsent des milliers de lignes alors que
   // l'écran n'en affiche qu'une période : on charge celle-ci d'abord, le reste
   // suit dans la foulée (les deux requêtes partent ensemble).
@@ -183,6 +188,11 @@ export function useEcole({
   // c'est une action de service au tuteur, pas une édition de données scolaires.
   const canCreateParent = !readOnly && !enModeArchive
     && (peutCreerComptesParent(userRole) || hasWrite(permissions, "compta"));
+  // Salaires des enseignants (forfait sur la carte) : réservés à qui lit la
+  // Comptabilité — direction, admin, comptable. Jamais au chef de section,
+  // à qui la base ne renvoie d'ailleurs aucune ligne de paie.
+  const voitSalaires = hasRead(permissions, "compta");
+  const paieDe = (enseignant) => (voitSalaires ? fusionnerPaie(enseignant, paieParId) : enseignant);
   const moy = computeMoyenne(notes);
   const classesUniq = [...new Set(eleves.map((e) => e.classe))].filter(Boolean);
   const sortAlphaEcole = (arr) => sortAlphaEcoleFn(arr, schoolInfo.triEleves || "prenom_nom");
@@ -224,7 +234,7 @@ export function useEcole({
     schoolId, schoolInfo, moisAnnee, toast, logAction, envoyerPush,
     periodes, defaultPeriode, periodeB, setPeriodeB, grillePeriode, setGrillePeriode,
     noteForms, defaultNoteType, grilleType, setGrilleType,
-    canCreate, canEdit, canPhoto, canCreateDiscipline, canEditDiscipline, canCreateParent, moy, classesUniq,
+    canCreate, canEdit, canPhoto, canCreateDiscipline, canEditDiscipline, canCreateParent, voitSalaires, paieDe, moy, classesUniq,
     elevesFiltres, effectifReel, saveClasse, saveEnseignant, anneesDispo,
   };
 }

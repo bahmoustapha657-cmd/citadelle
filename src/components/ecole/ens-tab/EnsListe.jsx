@@ -1,11 +1,13 @@
 import { C } from "../../../constants";
 import { Badge, Btn, Card, Chargement, Vide } from "../../ui";
-import { getTeacherMonthlyForfait } from "../../../teacher-utils";
+import { ligneCarteEnseignant } from "../ecole-logic";
 
 // Grille de cartes enseignant : identité, forfait/matière, fichiers et
-// actions (modifier, créer compte, supprimer).
+// actions (modifier, créer compte, supprimer). Le forfait n'est montré qu'aux
+// comptes qui lisent la Comptabilité (`voitSalaires`) ; `paieDe` va le
+// chercher dans la table de paie, la fiche n'étant pas faite pour le porter.
 export function EnsListe({
-  ens, cEns, couleur, isPrimarySection, canEdit, supEns,
+  ens, cEns, couleur, isPrimarySection, voitSalaires = false, paieDe = (e) => e, canEdit, supEns,
   setForm, setModal, ouvrirCompteEns, t,
 }) {
   if (cEns) return <Chargement/>;
@@ -21,9 +23,7 @@ export function EnsListe({
         </div>
         <p style={{margin:"0 0 1px",fontWeight:800,fontSize:13,color:C.blueDark}}>{e.prenom} {e.nom}</p>
         <p style={{margin:"0 0 4px",fontSize:12,color:couleur,fontWeight:700}}>
-          {isPrimarySection
-            ? `Forfait ${Number(getTeacherMonthlyForfait(e) || 0).toLocaleString("fr-FR")} GNF`
-            : e.matiere}
+          {ligneCarteEnseignant(paieDe(e), { isPrimarySection, voitSalaires })}
         </p>
         <p style={{margin:0,fontSize:11,color:"#9ca3af"}}>{e.grade} · {e.telephone}</p>
         {(e.fichiers||[]).length>0&&<div style={{marginTop:6,display:"flex",gap:4,flexWrap:"wrap"}}>

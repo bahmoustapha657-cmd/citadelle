@@ -1,6 +1,17 @@
 // Helpers purs du module École : tri des élèves selon la préférence de l'école,
 // filtrage des matières par classe, effectif réel, moyenne et années dispo.
 import { estSorti } from "../../constants.js";
+import { getTeacherMonthlyForfait } from "../../teacher-utils";
+
+// Ligne sous le nom, sur la carte d'un enseignant (onglet Enseignants).
+// Le forfait est une donnée de PAIE : seuls les comptes qui lisent la
+// Comptabilité le voient. Un chef de section (Direction primaire, Bureau
+// collège…) voit à la place la classe dont l'enseignant est titulaire.
+export function ligneCarteEnseignant(e = {}, { isPrimarySection = false, voitSalaires = false } = {}) {
+  if (!isPrimarySection) return e.matiere || "";
+  if (voitSalaires) return `Forfait ${Number(getTeacherMonthlyForfait(e) || 0).toLocaleString("fr-FR")} GNF`;
+  return e.classeTitle ? `Titulaire · ${e.classeTitle}` : (e.matiere || "");
+}
 
 // Tri alphabétique des élèves selon la préférence `triEleves` de l'école.
 export function sortAlphaEcole(arr, tri = "prenom_nom") {
