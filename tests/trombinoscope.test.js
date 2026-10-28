@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  BADGES_PAR_PAGE, TROMBI_PAR_PAGE, badgesHTML, grilleBadges, taillePoliceAppel, trombinoscopeHTML,
+  BADGES_PAR_PAGE, TROMBI_PAR_PAGE, badgesHTML, echelonner, grilleBadges, taillePoliceAppel, trombinoscopeHTML,
 } from "../src/reports/trombinoscope.js";
 
 const ecole = { nom: "La Citadelle", ville: "Conakry", couleur1: "#0A1628" };
@@ -32,10 +32,10 @@ test("trombinoscope : une page par tranche de 20, en-tête de classe sur chaque 
   assert.match(html, /2026-2027/);
 });
 
-test("badges : 9 par page, dans l'ordre des classes, sans téléphone", () => {
+test("badges : 6 portraits normaux par page, dans l'ordre des classes, sans téléphone", () => {
   const enfants = Array.from({ length: 10 }, (_, i) => enfant(i, { classe: i < 5 ? "Moyenne Section A" : "Grande Section B" }));
   const html = badgesHTML(enfants, { schoolInfo: ecole, annee: "2026-2027" });
-  assert.equal(BADGES_PAR_PAGE, 9);
+  assert.equal(BADGES_PAR_PAGE, 6);
   assert.equal(compter(html, /<div class="page" /g), 2);
   assert.equal(compter(html, /<div class="badge portrait">/g), 10);
   assert.ok(html.indexOf("Grande Section B") < html.indexOf("Moyenne Section A"));
@@ -51,7 +51,7 @@ test("badges de tenue : écusson de poche 8 par page, logo, marque EduGest discr
   assert.equal(compter(html, /<div class="badge poche">/g), 9);
   assert.equal(compter(html, /<div class="page" /g), 2);
   assert.match(html, /grid-template-columns:repeat\(2,80mm\);grid-auto-rows:60mm/);
-  assert.match(html, /size:A4 portrait;margin:8mm/);
+  assert.match(html, /size:A4 portrait;margin:6mm/);
   // Sans photo : le logo de l'école en grand à sa place, une seule fois par
   // badge (plus dans l'en-tête), et aucune photo d'élève.
   assert.equal(compter(html, /src="https:\/\/x\/logo\.png"/g), 9);
@@ -73,7 +73,7 @@ test("badges de tenue : écusson de poche 8 par page, logo, marque EduGest discr
 test("badges : impression en miroir pour le papier transfert, à l'endroit sinon", () => {
   const html = badgesHTML([enfant(1)], { schoolInfo: ecole, format: "poche", miroir: true });
   assert.match(html, /<div class="miroir">/);
-  assert.match(html, /\.miroir \.badge\{transform:translate\(-50%,-50%\) scale\(calc\(-1 \* var\(--k,1\)\),var\(--k,1\)\)\}/);
+  assert.match(html, /\.miroir \.badge\{transform:scaleX\(-1\)\}/);
   assert.match(html, /class="avis no-print"/);
   const endroit = badgesHTML([enfant(1)], { schoolInfo: ecole, format: "poche" });
   assert.match(endroit, /<div class="endroit">/);
@@ -102,31 +102,37 @@ test("badges : IEN sous le nom, sinon le matricule, rien sans l'un ni l'autre", 
   assert.match(badgesHTML([enfant(4, { matricule: "<b>X</b>" })], { schoolInfo: ecole }), /Matricule <strong>&lt;b&gt;X&lt;\/b&gt;<\/strong>/);
 });
 
-test("taille des badges : tout à l'échelle, plus de badges par page", () => {
-  // Taille normale : la grille d'origine (8 écussons, 9 portraits).
+test("taille des badges : tout à l'échelle, sur A4 comme sur papier Lettre", () => {
   assert.deepEqual(grilleBadges("poche", "normale"), { echelle: 1, largeur: 80, hauteur: 60, colonnes: 2, rangees: 4, parPage: 8 });
-  assert.deepEqual(grilleBadges("portrait", "normale"), { echelle: 1, largeur: 62, hauteur: 90, colonnes: 3, rangees: 3, parPage: 9 });
-  // Réduite (−15 %) et petite (−25 %).
-  assert.deepEqual(grilleBadges("poche", "reduite"), { echelle: 0.85, largeur: 68, hauteur: 51, colonnes: 2, rangees: 5, parPage: 10 });
+  assert.deepEqual(grilleBadges("poche", "reduite"), { echelle: 0.82, largeur: 65.6, hauteur: 49.2, colonnes: 2, rangees: 5, parPage: 10 });
   assert.deepEqual(grilleBadges("poche", "petite"), { echelle: 0.75, largeur: 60, hauteur: 45, colonnes: 3, rangees: 5, parPage: 15 });
-  assert.equal(grilleBadges("portrait", "reduite").parPage, 9);
-  assert.equal(grilleBadges("portrait", "petite").parPage, 16);
-  // Toujours dans la page A4, marges comprises.
+  assert.deepEqual(grilleBadges("portrait", "normale"), { echelle: 1, largeur: 62, hauteur: 90, colonnes: 3, rangees: 2, parPage: 6 });
+  assert.deepEqual(grilleBadges("portrait", "reduite"), { echelle: 0.82, largeur: 50.8, hauteur: 73.8, colonnes: 3, rangees: 3, parPage: 9 });
+  assert.deepEqual(grilleBadges("portrait", "petite"), { echelle: 0.75, largeur: 46.5, hauteur: 67.5, colonnes: 4, rangees: 3, parPage: 12 });
+  // Toujours dans la surface commune A4 / Lettre (210 × 279,4), marges de 6 mm comprises.
   for (const format of ["poche", "portrait"]) {
     for (const taille of ["normale", "reduite", "petite"]) {
       const g = grilleBadges(format, taille);
-      const marge = format === "poche" ? 8 : 6;
-      assert.ok(g.colonnes * g.largeur + (g.colonnes - 1) * 4 <= 210 - 2 * marge + 1e-9, `${format} ${taille} largeur`);
-      assert.ok(g.rangees * g.hauteur + (g.rangees - 1) * 4 <= 297 - 2 * marge + 1e-9, `${format} ${taille} hauteur`);
+      assert.ok(g.colonnes * g.largeur + (g.colonnes - 1) * 4 <= 210 - 12 + 1e-9, `${format} ${taille} largeur`);
+      assert.ok(g.rangees * g.hauteur + (g.rangees - 1) * 4 <= 279.4 - 12 + 1e-9, `${format} ${taille} hauteur`);
     }
   }
-  // Taille inconnue : normale.
   assert.equal(grilleBadges("poche", "?").parPage, 8);
-  // Dans la page : cases à la taille réduite, badge dessiné en taille normale puis réduit.
+});
+
+test("badge réduit : dessiné à sa taille réelle, sans réduction après coup", () => {
+  assert.equal(echelonner(".x{width:80mm;font-size:7.5pt;gap:.8mm;line-height:1.05}", 0.82),
+    ".x{width:65.6mm;font-size:6.15pt;gap:0.66mm;line-height:1.05}");
+  assert.equal(echelonner(".x{width:80mm}", 1), ".x{width:80mm}");
   const html = badgesHTML(Array.from({ length: 11 }, (_, i) => enfant(i)), { schoolInfo: ecole, format: "poche", taille: "reduite" });
-  assert.match(html, /grid-template-columns:repeat\(2,68mm\);grid-auto-rows:51mm;--w:80mm;--h:60mm;--k:0\.85/);
+  assert.match(html, /grid-template-columns:repeat\(2,65\.6mm\);grid-auto-rows:49\.2mm/);
   assert.equal(compter(html, /<div class="page" /g), 2);
-  assert.equal(compter(html, /<div class="case"><div class="badge poche">/g), 11);
+  assert.equal(compter(html, /<div class="badge poche">/g), 11);
+  // Cotes intérieures réduites (photo 26 × 32 → 21,32 × 26,24), pas de transform ni de case.
+  assert.match(html, /\.poche \.photo\{width:21\.32mm;height:26\.24mm/);
+  assert.doesNotMatch(html, /scale\(|class="case"/);
+  // Nom d'appel : taille de police réduite aussi.
+  assert.match(html, /class="appel" style="font-size:13\.94pt/);
 });
 
 test("noms échappés : un surnom saisi à la main n'injecte pas de balise", () => {
