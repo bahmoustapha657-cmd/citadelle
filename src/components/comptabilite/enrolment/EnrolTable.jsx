@@ -1,5 +1,6 @@
 import { C, aReinscrire, genererMatricule } from "../../../constants";
 import { Badge, Btn, THead, TR, TD, Vide, Chargement } from "../../ui";
+import { nomAffiche } from "../../../ordre-eleves";
 
 // Tableau des élèves enrôlés pour le niveau courant, avec actions :
 // modifier, dupliquer (fratrie), déclarer un départ, supprimer.
@@ -16,7 +17,7 @@ export function EnrolTable({
         <tbody>{elevesEnrol.map(e=><TR key={e._id}>
           <TD><span style={{fontSize:11,fontFamily:"monospace",background:"#e0ebf8",padding:"2px 5px",borderRadius:4,color:C.blue,fontWeight:700}}>{e.matricule}</span></TD>
           <TD><span style={{fontSize:11,fontFamily:"monospace",background:"#eef2ff",padding:"2px 5px",borderRadius:4,color:"#3730a3",fontWeight:700}}>{e.ien||"—"}</span></TD>
-          <TD bold>{e.nom} {e.prenom}</TD><TD>{e.classe}</TD>
+          <TD bold>{nomAffiche(e, schoolInfo?.triEleves)}</TD><TD>{e.classe}</TD>
           <TD><Badge color={e.sexe==="F"?"vert":"blue"}>{e.sexe}</Badge></TD>
           <TD><span style={{fontSize:11,color:"#6b7280"}}>{e.filiation}</span></TD>
           <TD>{e.tuteur}</TD><TD>{e.contactTuteur}</TD>

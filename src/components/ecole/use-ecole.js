@@ -195,7 +195,7 @@ export function useEcole({
   const paieDe = (enseignant) => (voitSalaires ? fusionnerPaie(enseignant, paieParId) : enseignant);
   const moy = computeMoyenne(notes);
   const classesUniq = [...new Set(eleves.map((e) => e.classe))].filter(Boolean);
-  const sortAlphaEcole = (arr) => sortAlphaEcoleFn(arr, schoolInfo.triEleves || "prenom_nom");
+  const sortAlphaEcole = (arr) => sortAlphaEcoleFn(arr, schoolInfo.triEleves);
   const elevesFiltres = sortAlphaEcole(filtreClasse === "all" ? eleves : eleves.filter((e) => e.classe === filtreClasse));
   const effectifReel = (nomClasse) => effectifReelFn(eleves, nomClasse);
 
