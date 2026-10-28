@@ -8,7 +8,7 @@ const ecranTactile = () => typeof window !== "undefined" && window.matchMedia?.(
 
 const rond = (fond) => ({
   width: 42, height: 42, borderRadius: "50%", border: "none", cursor: "pointer", flexShrink: 0,
-  background: fond, color: "#fff", fontSize: 17, display: "flex", alignItems: "center", justifyContent: "center",
+  background: fond, color: "var(--msg-encre, #fff)", fontSize: 17, display: "flex", alignItems: "center", justifyContent: "center",
 });
 
 // Zone de saisie : texte (Entrée pour envoyer sur ordinateur), réponse à un
@@ -89,7 +89,7 @@ export function Composeur({ annuaire, reponse, onAnnulerReponse, edition, onAnnu
       {bandeau && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--lc-surface-alt)", borderInlineStart: "3px solid var(--sc1)", borderRadius: 8, padding: "6px 10px", marginBottom: 7 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "var(--sc1)" }}>{bandeau.titre}</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "var(--msg-accent, var(--sc1))" }}>{bandeau.titre}</div>
             <div style={{ fontSize: 12, color: "var(--lc-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{bandeau.texte}</div>
           </div>
           <button type="button" onClick={bandeau.annuler} style={boutonIcone} aria-label="Annuler">✕</button>

@@ -277,6 +277,40 @@ export function couleurAvatar(id) {
   return `hsl(${TEINTES[h % TEINTES.length]} 55% 45%)`;
 }
 
+// ── Couleur de l'école ──
+// Elle sert de fond aux bulles « moi » et aux boutons ronds, écriture
+// blanche par-dessus : illisible sur une couleur claire (vert citron
+// #a8fc54 → contraste 1,3). La couleur reste ; seule l'écriture change :
+// bleu nuit sur fond clair. De même, une couleur trop claire pour servir
+// de texte sur fond blanc cède la place à la couleur des titres du thème.
+const ENCRE_SOMBRE = "#0A1628";
+
+function luminance(couleur) {
+  const hex = String(couleur || "").trim().replace(/^#/, "");
+  const plein = hex.length === 3 ? [...hex].map((c) => c + c).join("") : hex;
+  if (!/^[0-9a-f]{6}$/i.test(plein)) return null;
+  const [r, g, b] = [0, 2, 4].map((i) => {
+    const c = parseInt(plein.slice(i, i + 2), 16) / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+const contraste = (l1, l2) => (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+
+// encre : écriture sur la couleur ; lu : coche « lu par tous » sur la
+// couleur ; accent : la couleur employée comme texte sur fond clair.
+export function couleursEcoleMessagerie(couleur) {
+  const l = luminance(couleur);
+  if (l === null) return { encre: "#fff", lu: "#7dd3fc", accent: "var(--sc1)" };
+  const blanc = contraste(l, 1) >= contraste(l, luminance(ENCRE_SOMBRE));
+  return {
+    encre: blanc ? "#fff" : ENCRE_SOMBRE,
+    lu: blanc ? "#7dd3fc" : "#0369a1",
+    accent: contraste(l, 1) >= 3 ? "var(--sc1)" : "var(--lc-text-brand)",
+  };
+}
+
 // Extrait de citation (réponse à un message).
 export function apercuMessage(message) {
   if (!message) return "";

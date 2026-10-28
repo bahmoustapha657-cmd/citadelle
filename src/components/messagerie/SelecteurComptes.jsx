@@ -39,7 +39,7 @@ export function SelecteurComptes({ comptes, onChoisir, selection, onBasculer, ex
           <button key={cle} type="button" onClick={() => setFiltre(cle)} style={puce(filtre === cle)}>{libelle}</button>
         ))}
         {multiple && choisis.size > 0 && (
-          <span style={{ marginInlineStart: "auto", fontSize: 12, fontWeight: 700, color: "var(--sc1)", alignSelf: "center" }}>
+          <span style={{ marginInlineStart: "auto", fontSize: 12, fontWeight: 700, color: "var(--msg-accent, var(--sc1))", alignSelf: "center" }}>
             {choisis.size} sélectionné{choisis.size > 1 ? "s" : ""}
           </span>
         )}
@@ -56,11 +56,11 @@ export function SelecteurComptes({ comptes, onChoisir, selection, onBasculer, ex
               style={{
                 display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "start", cursor: "pointer",
                 padding: "8px 10px", border: "none", borderBottom: "1px solid var(--lc-border-soft)",
-                background: coche ? "var(--sc1-lt)" : "var(--lc-surface)", color: "var(--lc-text)",
+                background: coche ? "var(--msg-surbrillance, var(--sc1-lt))" : "var(--lc-surface)", color: "var(--lc-text)",
               }}>
               {multiple && (
                 <span style={{
-                  width: 18, height: 18, borderRadius: 5, flexShrink: 0, fontSize: 12, color: "#fff",
+                  width: 18, height: 18, borderRadius: 5, flexShrink: 0, fontSize: 12, color: "var(--msg-encre, #fff)",
                   border: coche ? "none" : "1.5px solid var(--lc-border)", background: coche ? "var(--sc1)" : "transparent",
                   display: "flex", alignItems: "center", justifyContent: "center",
                 }}>{coche ? "✓" : ""}</span>

@@ -120,7 +120,7 @@ export function NouvelleAnnonceModal({ m, fermer }) {
             selection={cible.comptes} onBasculer={(id) => basculerListe("comptes", id)} hauteur={200} />
         </div>
       )}
-      <div style={{ fontSize: 12, fontWeight: 700, color: nbDestinataires ? "var(--sc1)" : "#b91c1c", marginTop: 8 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: nbDestinataires ? "var(--msg-accent, var(--sc1))" : "#b91c1c", marginTop: 8 }}>
         → {nbDestinataires} destinataire{nbDestinataires > 1 ? "s" : ""}
         {restreint && <span style={{ fontWeight: 500, color: "var(--lc-text-muted)" }}> (dans votre périmètre hiérarchique)</span>}
       </div>

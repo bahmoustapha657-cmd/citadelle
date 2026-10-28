@@ -8,8 +8,8 @@ export const champ = {
 export const puce = (actif) => ({
   padding: "5px 11px", borderRadius: 14, fontSize: 12, fontWeight: 700, cursor: "pointer",
   border: actif ? "1.5px solid var(--sc1)" : "1px solid var(--lc-border)",
-  background: actif ? "var(--sc1-lt)" : "var(--lc-surface)",
-  color: actif ? "var(--sc1)" : "var(--lc-text-muted)",
+  background: actif ? "var(--msg-surbrillance, var(--sc1-lt))" : "var(--lc-surface)",
+  color: actif ? "var(--msg-accent, var(--sc1))" : "var(--lc-text-muted)",
   whiteSpace: "nowrap",
 });
 
