@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { imprimerBadges } from "../../reports";
-import { FORMATS_BADGE } from "../../reports/trombinoscope";
+import { FORMATS_BADGE, TAILLES_BADGE, grilleBadges } from "../../reports/trombinoscope";
 import { Btn, Modale } from "../ui";
 
 const CLE_FORMAT = "edugest_badges_format";
 const CLE_MIROIR = "edugest_badges_miroir";
+const CLE_TAILLE = "edugest_badges_taille";
+// « 6,8 » pour 68 mm.
+const cm = (mm) => (Math.round(mm) / 10).toLocaleString("fr-FR");
 const lire = (cle, parDefaut) => {
   try { return localStorage.getItem(cle) ?? parDefaut; } catch { return parDefaut; }
 };
@@ -20,9 +23,10 @@ const Silhouette = ({ largeur, hauteur }) => (
 const styleCase = { display: "flex", alignItems: "flex-start", gap: 8, fontSize: 13, color: "var(--lc-text)", cursor: "pointer", marginTop: 10 };
 
 // Réglages avant d'imprimer des badges, pour toutes les classes : format
-// (écusson de poche pour la tenue, ou badge portrait à plastifier), photo,
-// impression en miroir pour le papier transfert textile. Format et miroir
-// sont gardés sur l'appareil d'une impression à l'autre ; la photo est
+// (écusson de poche pour la tenue, ou badge portrait à plastifier), taille
+// (normale, réduite, petite), photo, impression en miroir pour le papier
+// transfert textile. Format, taille et miroir sont gardés sur l'appareil
+// d'une impression à l'autre (taille réduite par défaut) ; la photo est
 // cochée d'office en maternelle seulement.
 export function BadgesModale({ eleves = [], schoolInfo = {}, annee = "", section = "", fermer }) {
   const [format, setFormat] = useState(() => {
@@ -31,13 +35,18 @@ export function BadgesModale({ eleves = [], schoolInfo = {}, annee = "", section
   });
   const [photo, setPhoto] = useState(section === "prescolaire");
   const [miroir, setMiroir] = useState(() => lire(CLE_MIROIR, "0") === "1");
-  const f = FORMATS_BADGE[format];
-  const pages = Math.ceil(eleves.length / f.parPage);
+  const [taille, setTaille] = useState(() => {
+    const memorisee = lire(CLE_TAILLE, "");
+    return TAILLES_BADGE[memorisee] ? memorisee : "reduite";
+  });
+  const g = grilleBadges(format, taille);
+  const pages = Math.ceil(eleves.length / g.parPage);
 
   const choisirFormat = (valeur) => { setFormat(valeur); ecrire(CLE_FORMAT, valeur); };
+  const choisirTaille = (valeur) => { setTaille(valeur); ecrire(CLE_TAILLE, valeur); };
   const changerMiroir = (valeur) => { setMiroir(valeur); ecrire(CLE_MIROIR, valeur ? "1" : "0"); };
   const imprimer = () => {
-    imprimerBadges(eleves, { schoolInfo, annee, format, photo, miroir });
+    imprimerBadges(eleves, { schoolInfo, annee, format, taille, photo, miroir });
     fermer();
   };
 
@@ -48,20 +57,44 @@ export function BadgesModale({ eleves = [], schoolInfo = {}, annee = "", section
       <div role="radiogroup" aria-label="Format du badge" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10 }}>
         {Object.entries(FORMATS_BADGE).map(([cle, valeur]) => {
           const actif = cle === format;
+          const grille = grilleBadges(cle, taille);
           return (
             <button key={cle} type="button" role="radio" aria-checked={actif} onClick={() => choisirFormat(cle)}
               style={{ display: "flex", alignItems: "center", gap: 12, textAlign: "start", padding: "12px 14px", borderRadius: 12, cursor: "pointer",
                 border: `2px solid ${actif ? "var(--sc1)" : "var(--lc-border)"}`, background: actif ? "var(--lc-surface-alt, #eff6ff)" : "var(--lc-surface)", color: actif ? "var(--sc1)" : "var(--lc-text-muted)" }}>
               <Silhouette largeur={valeur.largeur} hauteur={valeur.hauteur}/>
               <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                <strong style={{ fontSize: 13, color: "var(--lc-text)" }}>{valeur.nom}</strong>
+                <strong style={{ fontSize: 13, color: "var(--lc-text)" }}>{valeur.nom} {cm(grille.largeur)} × {cm(grille.hauteur)} cm</strong>
                 <span style={{ fontSize: 11 }}>
-                  {cle === "poche" ? "Pour la tenue : poche ou poitrine" : "À plastifier, en collier ou sur le sac"} · {valeur.parPage} par page A4
+                  {cle === "poche" ? "Pour la tenue : poche ou poitrine" : "À plastifier, en collier ou sur le sac"} · {grille.parPage} par page A4
                 </span>
               </span>
             </button>
           );
         })}
+      </div>
+
+      <div style={{ marginTop: 12, fontSize: 13, color: "var(--lc-text)" }}>
+        <strong>Taille</strong>
+        <div role="radiogroup" aria-label="Taille du badge" style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+          {Object.entries(TAILLES_BADGE).map(([cle, valeur]) => {
+            const actif = cle === taille;
+            const grille = grilleBadges(format, cle);
+            return (
+              <button key={cle} type="button" role="radio" aria-checked={actif} onClick={() => choisirTaille(cle)}
+                style={{ padding: "6px 10px", borderRadius: 8, cursor: "pointer", fontSize: 12, textAlign: "start",
+                  border: `2px solid ${actif ? "var(--sc1)" : "var(--lc-border)"}`, background: actif ? "var(--lc-surface-alt, #eff6ff)" : "var(--lc-surface)", color: "var(--lc-text)" }}>
+                <strong>{valeur.nom}</strong>
+                <span style={{ display: "block", fontSize: 11, color: "var(--lc-text-muted)" }}>{cm(grille.largeur)} × {cm(grille.hauteur)} cm · {grille.parPage} par page</span>
+              </button>
+            );
+          })}
+        </div>
+        {taille === "petite" && (
+          <span style={{ display: "block", fontSize: 11, color: "#92400e", marginTop: 4 }}>
+            Les petits textes (IEN, ligne du bas) deviennent très fins : faites d'abord un essai.
+          </span>
+        )}
       </div>
 
       <label style={styleCase}>
