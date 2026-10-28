@@ -111,18 +111,44 @@ export function trombinoscopeHTML(eleves = [], { schoolInfo = {}, annee = "", pa
 // papier transfert textile (tissu clair), chaque badge s'imprime inversé et
 // se retrouve à l'endroit une fois repassé.
 
+// Dimensions en taille normale (mm) ; marge de la page A4.
 export const FORMATS_BADGE = {
-  poche: { largeur: 80, hauteur: 60, colonnes: 2, parPage: 8, marge: 8, nom: "Écusson de poche 8 × 6 cm" },
-  portrait: { largeur: 62, hauteur: 90, colonnes: 3, parPage: 9, marge: 6, nom: "Badge portrait 6 × 9 cm" },
+  poche: { largeur: 80, hauteur: 60, marge: 8, nom: "Écusson de poche" },
+  portrait: { largeur: 62, hauteur: 90, marge: 6, nom: "Badge portrait" },
 };
-export const BADGES_PAR_PAGE = FORMATS_BADGE.portrait.parPage;
+
+// Taille d'impression : le badge entier (photo, logo, textes) à l'échelle,
+// pour une poche plus petite ; plus de badges tiennent alors sur la page.
+export const TAILLES_BADGE = {
+  normale: { echelle: 1, nom: "Normale" },
+  reduite: { echelle: 0.85, nom: "Réduite (−15 %)" },
+  petite: { echelle: 0.75, nom: "Petite (−25 %)" },
+};
+const ECART_BADGES = 4;
+
+// Grille d'une page A4 pour un format et une taille : dimensions du badge
+// imprimé (mm, au dixième), colonnes, rangées, badges par page.
+export function grilleBadges(format = "portrait", taille = "normale") {
+  const f = FORMATS_BADGE[format] || FORMATS_BADGE.portrait;
+  const { echelle } = TAILLES_BADGE[taille] || TAILLES_BADGE.normale;
+  const largeur = Math.round(f.largeur * echelle * 10) / 10;
+  const hauteur = Math.round(f.hauteur * echelle * 10) / 10;
+  const place = (page, cote) => Math.max(1, Math.floor((page - 2 * f.marge + ECART_BADGES) / (cote + ECART_BADGES)));
+  const colonnes = place(210, largeur);
+  const rangees = place(297, hauteur);
+  return { echelle, largeur, hauteur, colonnes, rangees, parPage: colonnes * rangees };
+}
+export const BADGES_PAR_PAGE = grilleBadges("portrait").parPage;
 
 const BADGES_CSS = `
 .page{display:grid;gap:4mm;justify-content:center;align-content:start;break-after:page;page-break-after:always}
 .page:last-child{break-after:auto;page-break-after:auto}
 @media screen{.page{width:210mm;min-height:297mm;padding:6mm;margin:0 auto 8mm;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.15)}}
-.badge{position:relative;border:.3mm dashed #94a3b8;border-radius:3mm;overflow:hidden;display:flex;background:#fff;break-inside:avoid}
-.miroir .badge{transform:scaleX(-1)}
+/* Chaque case de la grille reçoit le badge dessiné en taille normale
+   (--w × --h), réduit d'un bloc (--k) : tout garde ses proportions. */
+.case{position:relative;break-inside:avoid}
+.badge{position:absolute;left:50%;top:50%;width:var(--w);height:var(--h);transform:translate(-50%,-50%) scale(var(--k,1));border:.3mm dashed #94a3b8;border-radius:3mm;overflow:hidden;display:flex;background:#fff}
+.miroir .badge{transform:translate(-50%,-50%) scale(calc(-1 * var(--k,1)),var(--k,1))}
 .logo{background:#fff;border-radius:1.5mm;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center}
 .logo img{width:100%;height:100%;object-fit:contain;display:block}
 .photo{border-radius:2.5mm;overflow:hidden;background:#f8fafc;flex-shrink:0}
@@ -226,17 +252,20 @@ const badgePoche = (eleve, { schoolInfo, annee, photo }) => {
 </div>`;
 };
 
-// `format` : "poche" ou "portrait" ; `photo` : avec la photo de l'élève ;
-// `miroir` : impression inversée pour le papier transfert.
+// `format` : "poche" ou "portrait" ; `taille` : "normale", "reduite" ou
+// "petite" (TAILLES_BADGE) ; `photo` : avec la photo de l'élève ; `miroir` :
+// impression inversée pour le papier transfert.
 export function badgesHTML(eleves = [], {
-  schoolInfo = {}, annee = "", format = "portrait", photo = true, miroir = false,
+  schoolInfo = {}, annee = "", format = "portrait", taille = "normale", photo = true, miroir = false,
 } = {}) {
   const f = FORMATS_BADGE[format] || FORMATS_BADGE.portrait;
+  const g = grilleBadges(format, taille);
   const dessiner = f === FORMATS_BADGE.poche ? badgePoche : badgePortrait;
   const ordre = grouperParClasse(eleves).flatMap(([, enfants]) => enfants);
-  const grille = `grid-template-columns:repeat(${f.colonnes},${f.largeur}mm);grid-auto-rows:${f.hauteur}mm`;
-  const pages = decouper(ordre, f.parPage)
-    .map((paquet) => `<div class="page" style="${grille}">${paquet.map((eleve) => dessiner(eleve, { schoolInfo, annee, photo })).join("")}</div>`);
+  const grille = `grid-template-columns:repeat(${g.colonnes},${g.largeur}mm);grid-auto-rows:${g.hauteur}mm;`
+    + `--w:${f.largeur}mm;--h:${f.hauteur}mm;--k:${g.echelle}`;
+  const pages = decouper(ordre, g.parPage)
+    .map((paquet) => `<div class="page" style="${grille}">${paquet.map((eleve) => `<div class="case">${dessiner(eleve, { schoolInfo, annee, photo })}</div>`).join("")}</div>`);
   const avis = miroir
     ? `<div class="avis no-print">🔁 Impression en <strong>miroir</strong> pour papier transfert sur tissu clair : le texte apparaît à l'envers ici, il sera à l'endroit une fois repassé. Faites d'abord un essai sur une feuille ordinaire.</div>`
     : "";

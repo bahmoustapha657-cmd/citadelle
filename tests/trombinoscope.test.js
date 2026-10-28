@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  BADGES_PAR_PAGE, FORMATS_BADGE, TROMBI_PAR_PAGE, badgesHTML, taillePoliceAppel, trombinoscopeHTML,
+  BADGES_PAR_PAGE, TROMBI_PAR_PAGE, badgesHTML, grilleBadges, taillePoliceAppel, trombinoscopeHTML,
 } from "../src/reports/trombinoscope.js";
 
 const ecole = { nom: "La Citadelle", ville: "Conakry", couleur1: "#0A1628" };
@@ -47,7 +47,7 @@ test("badges de tenue : écusson de poche 8 par page, logo, marque EduGest discr
   const ecoleLogo = { ...ecole, logo: "https://x/logo.png" };
   const eleves = Array.from({ length: 9 }, (_, i) => enfant(i, { classe: "6ème A", photo: "https://x/e.jpg" }));
   const html = badgesHTML(eleves, { schoolInfo: ecoleLogo, annee: "2026-2027", format: "poche", photo: false });
-  assert.equal(FORMATS_BADGE.poche.parPage, 8);
+  assert.equal(grilleBadges("poche").parPage, 8);
   assert.equal(compter(html, /<div class="badge poche">/g), 9);
   assert.equal(compter(html, /<div class="page" /g), 2);
   assert.match(html, /grid-template-columns:repeat\(2,80mm\);grid-auto-rows:60mm/);
@@ -73,7 +73,7 @@ test("badges de tenue : écusson de poche 8 par page, logo, marque EduGest discr
 test("badges : impression en miroir pour le papier transfert, à l'endroit sinon", () => {
   const html = badgesHTML([enfant(1)], { schoolInfo: ecole, format: "poche", miroir: true });
   assert.match(html, /<div class="miroir">/);
-  assert.match(html, /\.miroir \.badge\{transform:scaleX\(-1\)\}/);
+  assert.match(html, /\.miroir \.badge\{transform:translate\(-50%,-50%\) scale\(calc\(-1 \* var\(--k,1\)\),var\(--k,1\)\)\}/);
   assert.match(html, /class="avis no-print"/);
   const endroit = badgesHTML([enfant(1)], { schoolInfo: ecole, format: "poche" });
   assert.match(endroit, /<div class="endroit">/);
@@ -100,6 +100,33 @@ test("badges : IEN sous le nom, sinon le matricule, rien sans l'un ni l'autre", 
   }
   // Saisi à la main : échappé.
   assert.match(badgesHTML([enfant(4, { matricule: "<b>X</b>" })], { schoolInfo: ecole }), /Matricule <strong>&lt;b&gt;X&lt;\/b&gt;<\/strong>/);
+});
+
+test("taille des badges : tout à l'échelle, plus de badges par page", () => {
+  // Taille normale : la grille d'origine (8 écussons, 9 portraits).
+  assert.deepEqual(grilleBadges("poche", "normale"), { echelle: 1, largeur: 80, hauteur: 60, colonnes: 2, rangees: 4, parPage: 8 });
+  assert.deepEqual(grilleBadges("portrait", "normale"), { echelle: 1, largeur: 62, hauteur: 90, colonnes: 3, rangees: 3, parPage: 9 });
+  // Réduite (−15 %) et petite (−25 %).
+  assert.deepEqual(grilleBadges("poche", "reduite"), { echelle: 0.85, largeur: 68, hauteur: 51, colonnes: 2, rangees: 5, parPage: 10 });
+  assert.deepEqual(grilleBadges("poche", "petite"), { echelle: 0.75, largeur: 60, hauteur: 45, colonnes: 3, rangees: 5, parPage: 15 });
+  assert.equal(grilleBadges("portrait", "reduite").parPage, 9);
+  assert.equal(grilleBadges("portrait", "petite").parPage, 16);
+  // Toujours dans la page A4, marges comprises.
+  for (const format of ["poche", "portrait"]) {
+    for (const taille of ["normale", "reduite", "petite"]) {
+      const g = grilleBadges(format, taille);
+      const marge = format === "poche" ? 8 : 6;
+      assert.ok(g.colonnes * g.largeur + (g.colonnes - 1) * 4 <= 210 - 2 * marge + 1e-9, `${format} ${taille} largeur`);
+      assert.ok(g.rangees * g.hauteur + (g.rangees - 1) * 4 <= 297 - 2 * marge + 1e-9, `${format} ${taille} hauteur`);
+    }
+  }
+  // Taille inconnue : normale.
+  assert.equal(grilleBadges("poche", "?").parPage, 8);
+  // Dans la page : cases à la taille réduite, badge dessiné en taille normale puis réduit.
+  const html = badgesHTML(Array.from({ length: 11 }, (_, i) => enfant(i)), { schoolInfo: ecole, format: "poche", taille: "reduite" });
+  assert.match(html, /grid-template-columns:repeat\(2,68mm\);grid-auto-rows:51mm;--w:80mm;--h:60mm;--k:0\.85/);
+  assert.equal(compter(html, /<div class="page" /g), 2);
+  assert.equal(compter(html, /<div class="case"><div class="badge poche">/g), 11);
 });
 
 test("noms échappés : un surnom saisi à la main n'injecte pas de balise", () => {
