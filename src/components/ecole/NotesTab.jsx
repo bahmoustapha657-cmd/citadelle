@@ -98,6 +98,7 @@ export function NotesTab({
           grilleMode={grilleMode} setGrilleMode={setGrilleMode}
           grilleMatiere={grilleMatiere} setGrilleMatiere={setGrilleMatiere}
           grilleEleve={grilleEleve} setGrilleEleve={setGrilleEleve}
+          triEleves={schoolInfo?.triEleves}
         />
       )}
 

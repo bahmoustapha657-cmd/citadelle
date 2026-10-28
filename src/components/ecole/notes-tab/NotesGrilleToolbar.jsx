@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Btn } from "../../ui";
+import { nomAffiche } from "../../../ordre-eleves";
 
 // Barre de filtres de la grille, selon le mode de saisie :
 //   "periode" : classe + période + type      (colonnes = matières)
@@ -15,7 +16,7 @@ export function NotesGrilleToolbar({
   classesUniqN, periodes, noteForms, matieresClasse, elevesGrille,
   grilleClasse, setGrilleClasse, grillePeriode, setGrillePeriode, grilleType, setGrilleType,
   grilleMode, setGrilleMode, grilleMatiere, setGrilleMatiere, grilleEleve, setGrilleEleve,
-  grilleChanges, setGrilleChanges, grilleSaving, sauvegarderGrille,
+  grilleChanges, setGrilleChanges, grilleSaving, sauvegarderGrille, triEleves,
 }) {
   const nbModif = Object.keys(grilleChanges).length;
   const selStyle = { border: "1px solid #b0c4d8", borderRadius: 7, padding: "6px 10px", fontSize: 12 };
@@ -68,7 +69,7 @@ export function NotesGrilleToolbar({
           />
           <select value={grilleEleve} onChange={e => setGrilleEleve(e.target.value)} style={{ ...selStyle, minWidth: 180 }}>
             <option value="">{elevesFiltres.length ? "— Élève —" : "Aucun élève trouvé"}</option>
-            {elevesFiltres.map(e => <option key={e._id} value={e._id}>{e.nom} {e.prenom}</option>)}
+            {elevesFiltres.map(e => <option key={e._id} value={e._id}>{nomAffiche(e, triEleves)}</option>)}
           </select>
         </>
       )}

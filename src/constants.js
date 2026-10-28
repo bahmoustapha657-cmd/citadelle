@@ -128,6 +128,32 @@ export const SYSTEMES_SCOLAIRES = [
   { id: "francophone", label: "Système francophone — CP à CM2, 6ème à 3ème, Seconde à Terminale" },
 ];
 
+// ── Classes dans l'ordre des niveaux ────────────────────────────────────────
+// Un tri de texte place « 10ème Année A » avant « 6ème Année A », et
+// « Grande Section » avant « Petite Section ». Rang de chaque niveau, les deux
+// systèmes fondus en une seule échelle : une école n'en utilise qu'un, et les
+// niveaux communs (maternelle, Terminale) n'y figurent qu'une fois, à une
+// place juste pour les deux.
+const sansAccents = (texte) => String(texte || "").normalize("NFD").replace(/[̀-ͯ]/g, "")
+  .toLowerCase().replace(/\s+/g, " ").trim();
+const { guineen: G, francophone: F } = NIVEAUX_PAR_SYSTEME;
+const ORDRE_NIVEAUX = [
+  ...NIVEAUX_PRESCOLAIRE, ...G.primaire, ...F.primaire, ...G.college, ...F.college,
+  ...G.lycee.filter((niveau) => !F.lycee.includes(niveau)), ...F.lycee,
+];
+// Plus long d'abord : « 6ème Année A » est un niveau du primaire guinéen,
+// pas la « 6ème » du collège francophone.
+const RANGS_NIVEAUX = ORDRE_NIVEAUX.map((niveau, rang) => ({ cle: sansAccents(niveau), rang }))
+  .sort((a, b) => b.cle.length - a.cle.length);
+const rangNiveau = (classe) => {
+  const c = sansAccents(classe);
+  const trouve = RANGS_NIVEAUX.find(({ cle }) => c === cle || c.startsWith(`${cle} `));
+  return trouve ? trouve.rang : ORDRE_NIVEAUX.length; // classe libre : après les niveaux connus
+};
+export const comparerClassesParNiveau = (a, b) =>
+  rangNiveau(a) - rangNiveau(b)
+  || String(a || "").localeCompare(String(b || ""), "fr", { numeric: true, sensitivity: "base" });
+
 export const getSystemeScolaire = (schoolInfo = {}) =>
   (NIVEAUX_PAR_SYSTEME[schoolInfo.systemeScolaire] ? schoolInfo.systemeScolaire : "guineen");
 

@@ -6,6 +6,7 @@
 // par-dessus : Array.prototype.sort est stable, donc à égalité (même classe,
 // même nombre de mois payés…) l'ordre alphabétique de l'école est conservé.
 
+import { comparerClassesParNiveau } from "./constants.js";
 import { getEleveMensualiteSnapshot } from "./mensualite-utils.js";
 
 // « jj/mm/aaaa » (dates saisies dans l'app) ou ISO « aaaa-mm-jj » → nombre
@@ -36,7 +37,7 @@ const nomComplet = (e) => `${e.nom || ""} ${e.prenom || ""}`;
 const CRITERES_BASE = [
   { id: "alpha", label: "Alphabétique (réglage de l'école)" },
   { id: "nom_desc", label: "Nom de Z à A", comparer: (a, b) => comparerTexte(nomComplet(b), nomComplet(a)) },
-  { id: "classe", label: "Classe", comparer: (a, b) => comparerTexte(a.classe, b.classe) },
+  { id: "classe", label: "Classe", comparer: (a, b) => comparerClassesParNiveau(a.classe, b.classe) },
   { id: "matricule", label: "Matricule", comparer: (a, b) => comparerTexte(a.matricule, b.matricule) },
 ];
 

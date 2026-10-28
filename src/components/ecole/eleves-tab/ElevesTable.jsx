@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { C } from "../../../constants";
 import { nettoyerSurnom } from "../../../identite-enfant";
+import { nomAffiche } from "../../../ordre-eleves";
 import { Badge, Btn, Chargement, TD, THead, TR, Vide } from "../../ui";
 import { imprimerCartesEleves } from "../../../reports";
 import { peutImprimerCartesEleves } from "../../../../shared/postes-config.js";
@@ -31,7 +32,7 @@ export function ElevesTable({
             <div style={{display:"flex",alignItems:"center",gap:8}}>
               <PhotoEleve eleve={e} largeur={30} onClick={setAgrandi}/>
               <div>
-                {e.nom} {e.prenom}
+                {nomAffiche(e, schoolInfo.triEleves)}
                 {nettoyerSurnom(e.surnom)&&<div style={{fontSize:11,fontWeight:700,color:"#b45309"}}>« {nettoyerSurnom(e.surnom)} »</div>}
               </div>
             </div>

@@ -9,6 +9,7 @@ import { lireDate, moisExigibles } from "../../../depart-utils";
 import { aUneExoneration, estExonereTotal, resumeExoneration } from "../../../exoneration-utils";
 import { FORMATS_RECU, getRecuFormat, labelRecuFormat, setRecuFormat } from "./recu-format";
 import { imprimerRecuEleve } from "./recu-eleve";
+import { nomAffiche } from "../../../ordre-eleves";
 
 // Couleurs d'une case « entamée » : un acompte versé, pas encore soldé.
 const PARTIEL = { background: "#fde68a", color: "#92400e" };
@@ -85,7 +86,7 @@ export function MensualitesRow({
     <TR>
       <TD style={tdSticky(0)}><span style={{ fontSize: 11, fontFamily: "monospace", background: "#e0ebf8", padding: "2px 6px", borderRadius: 4, color: C.blue, fontWeight: 700 }}>{e.matricule}</span></TD>
       <TD bold style={tdSticky(95)}>
-        {e.nom} {e.prenom}
+        {nomAffiche(e, schoolInfo?.triEleves)}
         {exonere && <span title={`Dispense de paiement — ${resume}`}
           style={{ marginInlineStart: 6, fontSize: 11, background: "#fef3c7", color: "#92400e", borderRadius: 4, padding: "1px 5px", fontWeight: 700 }}>🎓</span>}
         {sorti && <span title={`${e.statut}${depart ? ` le ${depart}` : " (date de départ inconnue)"} — seuls les mois entamés avant le départ sont dus`}

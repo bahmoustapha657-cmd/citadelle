@@ -6,6 +6,7 @@ import { getGeneralAverage, getSubjectAverage } from "../../../note-utils";
 import { estBloquePourImpaye } from "../../../mensualite-utils";
 import { indexerNotesParEleve, notesDeLEleve } from "../../../note-index";
 import { getMention } from "../../../reports/bulletins/bulletin-format";
+import { nomAffiche } from "../../../ordre-eleves";
 
 // Table des bulletins : moyenne générale, mention, accès à l'appréciation et
 // impression individuelle (bloquée si frais impayés).
@@ -65,7 +66,7 @@ export function BulletinsTable({
         const stickyBg = rowIdx%2===0 ? "var(--lc-surface)" : "var(--lc-surface-alt, #f8fafc)";
         return <TR key={e._id}>
           <TD style={{position:"sticky",left:0,zIndex:1,background:stickyBg}}><span style={{fontSize:11,fontFamily:"monospace",background:"#e0ebf8",padding:"2px 5px",borderRadius:4,color:C.blue,fontWeight:700}}>{e.matricule||"—"}</span></TD>
-          <TD bold style={{position:"sticky",left:95,zIndex:1,background:stickyBg,boxShadow:"inset -1px 0 0 var(--lc-border-soft)"}}>{e.nom} {e.prenom}</TD>
+          <TD bold style={{position:"sticky",left:95,zIndex:1,background:stickyBg,boxShadow:"inset -1px 0 0 var(--lc-border-soft)"}}>{nomAffiche(e, schoolInfo?.triEleves)}</TD>
           <TD><Badge color="blue">{e.classe}</Badge></TD>
           <TD><span style={{fontWeight:800,fontSize:14,color:moyGene!=="—"&&Number(moyGene)>=maxNote/2?C.greenDk:"#b91c1c"}}>{moyGene}/{maxNote}</span></TD>
           <TD><Badge color={mention==="Très Bien"||mention==="Bien"?"vert":mention==="Assez Bien"||mention==="Passable"?"blue":"red"}>{mention}</Badge></TD>

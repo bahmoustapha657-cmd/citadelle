@@ -2,6 +2,7 @@
 // filtrage des matières par classe, effectif réel, moyenne et années dispo.
 import { estSorti } from "../../constants.js";
 import { getTeacherMonthlyForfait } from "../../teacher-utils";
+import { trierElevesAlpha } from "../../ordre-eleves.js";
 
 // Ligne sous le nom, sur la carte d'un enseignant (onglet Enseignants).
 // Le forfait est une donnée de PAIE : seuls les comptes qui lisent la
@@ -14,12 +15,8 @@ export function ligneCarteEnseignant(e = {}, { isPrimarySection = false, voitSal
 }
 
 // Tri alphabétique des élèves selon la préférence `triEleves` de l'école.
-export function sortAlphaEcole(arr, tri = "prenom_nom") {
-  const withClasse = tri === "classe_prenom" || tri === "classe_nom";
-  const cle = (x) => withClasse
-    ? (tri === "classe_nom" ? `${x.classe || ""} ${x.nom} ${x.prenom}` : `${x.classe || ""} ${x.prenom} ${x.nom}`)
-    : (tri === "nom_prenom" ? `${x.nom} ${x.prenom}` : `${x.prenom} ${x.nom}`);
-  return [...arr].sort((a, b) => cle(a).localeCompare(cle(b), "fr", { sensitivity: "base" }));
+export function sortAlphaEcole(arr, tri) {
+  return trierElevesAlpha(arr, tri);
 }
 
 // Matières applicables à une classe : si la matière a des classes assignées on
