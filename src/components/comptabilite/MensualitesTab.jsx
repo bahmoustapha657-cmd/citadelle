@@ -6,6 +6,9 @@ import { TarifsClasses } from "../TarifsClasses";
 import { TriElevesSelect } from "../TriElevesSelect";
 import { useTriEleves } from "../use-tri-eleves";
 import { trierEleves } from "../../tri-eleves";
+import { rechercherEleves } from "../../recherche-eleves";
+import { RechercheEleves } from "../RechercheEleves";
+import { useRechercheEleves } from "../use-recherche-eleves";
 import { AlertesCritiques } from "./mensualites-tab/AlertesCritiques";
 import { EncaisserModale } from "./mensualites-tab/EncaisserModale";
 import { ExonerationsModale } from "./mensualites-tab/ExonerationsModale";
@@ -31,6 +34,8 @@ export function MensualitesTab({
   elevesFiltres,
   // Élèves de l'année, toutes sections : on y cherche les fratries.
   elevesFamille = [],
+  // Les mêmes, rangés par section : la recherche signale les autres sections.
+  elevesAnneeParNiveau = {},
   classesU,
   niveau,
   setNiveau,
@@ -72,9 +77,18 @@ export function MensualitesTab({
   // Tri choisi (alphabétique, reste à payer, dernier paiement…), posé sur
   // l'ordre alphabétique de l'école.
   const [tri, setTri] = useTriEleves("mensualites");
+  // Recherche (matricule, filiation, tuteur…) : elle restreint la grille et
+  // sa synthèse — une famille et ce qu'elle doit. Les alertes impayés gardent
+  // le périmètre cycle + classe qu'elles impriment.
+  const recherche = useRechercheEleves("mensualites");
+  const { saisie, critere } = recherche;
+  const elevesCherches = useMemo(
+    () => rechercherEleves(elevesFiltres, saisie, critere),
+    [elevesFiltres, saisie, critere],
+  );
   const elevesTries = useMemo(
-    () => trierEleves(elevesFiltres, tri, { moisAnnee, tarifsClasses, annee: anneeScolarite }),
-    [elevesFiltres, tri, moisAnnee, tarifsClasses, anneeScolarite],
+    () => trierEleves(elevesCherches, tri, { moisAnnee, tarifsClasses, annee: anneeScolarite }),
+    [elevesCherches, tri, moisAnnee, tarifsClasses, anneeScolarite],
   );
   return (
     <div>
@@ -146,6 +160,17 @@ export function MensualitesTab({
         tarifsClasses={tarifsClasses} schoolInfo={schoolInfo} canEdit={canEdit} toast={toast}
         perimetre={filtClasse !== "all" ? `Classe ${filtClasse}` : getSectionLabel(niveau)}
         classe={filtClasse !== "all" ? filtClasse : ""} />
+
+      <RechercheEleves
+        recherche={recherche} nbTrouves={elevesCherches.length}
+        sansResultat={recherche.sansResultat(elevesFiltres)}
+        pistes={recherche.pistes({
+          nbDansClasse: elevesCherches.length, classe: filtClasse, elevesSection: elevesAnneeParNiveau[niveau],
+          section: niveau, elevesParSection: elevesAnneeParNiveau, schoolInfo,
+          toutesClasses: () => setFiltClasse("all"),
+          changerSection: (s) => { setNiveau(s); setFiltClasse("all"); },
+        })}
+      />
 
       <MensualitesTable
         eleves={eleves}

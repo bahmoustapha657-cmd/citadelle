@@ -177,7 +177,10 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   const tousElevesScolarite = [...elevesC, ...elevesL, ...elevesP, ...elevesPre];
   // Reçu famille : les frères et sœurs se cherchent dans TOUTES les sections
   // (un aîné au collège, un cadet au primaire), parmi les élèves de l'année.
-  const elevesFamille = tousElevesScolarite.filter((e) => concerneParAnnee(e, moisAnnee, anneeConsultee));
+  // Rangés par section pour la recherche, qui signale les autres sections.
+  const elevesAnneeParNiveau = Object.fromEntries(Object.entries(elevesParNiveau)
+    .map(([n, liste]) => [n, liste.filter((e) => concerneParAnnee(e, moisAnnee, anneeConsultee))]));
+  const elevesFamille = Object.values(elevesAnneeParNiveau).flat();
 
   const {
     getTarifConfig, getTarif, getTarifBase, getTarifRevision, getTarifAutre,
@@ -376,7 +379,7 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
     niveau, setNiveau, filtClasse, setFiltClasse, moisSel, setMoisSel,
     primeDefaut, setPrimeDefaut, filtrePrimNom, setFiltrePrimNom, filtrePrimClasse, setFiltrePrimClasse,
     ajoutParNiveau, suppressionParNiveau, modChampParNiveau, rechargerParNiveau, ensureClasse, sortAlpha,
-    totR, totD, totVers, eleves, classesU, tousElevesScolarite, elevesFamille, elevesFiltres,
+    totR, totD, totVers, eleves, classesU, tousElevesScolarite, elevesFamille, elevesAnneeParNiveau, elevesFiltres,
     getTarif, getTarifBase, getTarifRevision, getTarifAutre, getTarifIns, getTarifReinsc,
     getTarifInscriptionEleve, getTarifFraisDivers, saveTarif,
     toggleFraisAnnexe, toggleMens, encaisserInscriptions, exonerationDeps, enreg, saveSalaire, savePersonnel,

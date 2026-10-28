@@ -110,6 +110,7 @@ export function ComptaTabsScolarite({ c, readOnly, annee, userRole }) {
         eleves={c.eleves}
         elevesFiltres={c.elevesFiltres}
         elevesFamille={c.elevesFamille}
+        elevesAnneeParNiveau={c.elevesAnneeParNiveau}
         classesU={c.classesU}
         niveau={c.niveau}
         setNiveau={c.setNiveau}
