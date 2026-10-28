@@ -10,6 +10,8 @@ import { EnrolPlanAlerte } from "./enrolment/EnrolPlanAlerte";
 import { EnrolToolbar } from "./enrolment/EnrolToolbar";
 import { EnrolTable } from "./enrolment/EnrolTable";
 import { TriElevesSelect } from "../TriElevesSelect";
+import { RechercheEleves } from "../RechercheEleves";
+import { useRechercheEleves } from "../use-recherche-eleves";
 import { useTriEleves } from "../use-tri-eleves";
 import { trierEleves } from "../../tri-eleves";
 import { SeancePhotoModale } from "../identite-enfant/SeancePhotoModale";
@@ -30,6 +32,7 @@ export function EnrolmentTab({
   // Filtre de rentrée : « qui n'a pas encore réglé son inscription ? ».
   const [filtreReinscription, setFiltreReinscription] = useState("all");
   const [tri, setTri] = useTriEleves("enrolement");
+  const recherche = useRechercheEleves("enrolement");
   // Séance photo ouverte sur une classe (null : toutes) ; undefined = fermée.
   const [seanceClasse, setSeanceClasse] = useState(undefined);
 
@@ -53,7 +56,11 @@ export function EnrolmentTab({
   const classesEnrol = [...new Set((afficherDeparts ? elevesEnrol : elevesPresents).map((e) => e.classe).filter(Boolean))]
     .sort((a, b) => String(a).localeCompare(String(b), "fr", { numeric: true }));
   const dansClasse = (e) => classeEnrol === "all" || e.classe === classeEnrol;
-  const elevesClasse = elevesPresents.filter(dansClasse);
+  // Sélection = cycle + classe + recherche : compteurs de rentrée et
+  // réinscription groupée suivent ce qui est affiché (une fratrie cherchée
+  // par le numéro du tuteur se réinscrit d'un clic).
+  const elevesDeLaClasse = elevesPresents.filter(dansClasse);
+  const elevesClasse = recherche.filtrer(elevesDeLaClasse);
   const elevesAffiches = trierEleves(filtreReinscription === "all" ? elevesClasse
     : filtreReinscription === "a_reinscrire" ? elevesClasse.filter(aReinscrire)
       : elevesClasse.filter(estReinscrit), tri, { moisAnnee, tarifsClasses, annee: schoolInfo?.anneeScolaire || getAnnee() });
@@ -85,6 +92,16 @@ export function EnrolmentTab({
       <div style={{background:"#e0ebf8",borderRadius:8,padding:"9px 14px",marginBottom:14,fontSize:12,color:C.blueDark}}>
         🔒 Seul le <strong>Comptable</strong> peut enrôler ou supprimer des élèves.
       </div>
+
+      {!afficherDeparts&&<RechercheEleves
+        recherche={recherche} nbTrouves={elevesAffiches.length}
+        sansResultat={recherche.sansResultat(elevesDeLaClasse)}
+        pistes={recherche.pistes({
+          nbDansClasse: elevesClasse.length, classe: classeEnrol, elevesSection: elevesPresents,
+          section: niveauEnrol, schoolInfo, toutesClasses: () => setClasseEnrol("all"), changerSection: setNiveauEnrol,
+          elevesParSection: { college: presents(elevesC), lycee: presents(elevesL), primaire: presents(elevesP), prescolaire: presents(elevesPre) },
+        })}
+      />}
 
       {!afficherDeparts&&<EnrolTable
         cEC={cEC} cEL={cEL} cEP={cEP} elevesEnrol={elevesAffiches} canEdit={canEdit}
