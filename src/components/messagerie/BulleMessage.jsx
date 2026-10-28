@@ -37,7 +37,7 @@ export function BulleMessage({
         📞 {libelleAppel(message.corps, deMoi)} · {formatHeure(message.created_at)}
         {onRappeler && (
           <button type="button" onClick={onRappeler}
-            style={{ marginInlineStart: 8, background: "none", border: "none", color: "var(--sc1)", fontWeight: 800, cursor: "pointer", fontSize: 11.5 }}>
+            style={{ marginInlineStart: 8, background: "none", border: "none", color: "var(--msg-accent, var(--sc1))", fontWeight: 800, cursor: "pointer", fontSize: 11.5 }}>
             Rappeler
           </button>
         )}
@@ -52,7 +52,9 @@ export function BulleMessage({
     && instantAffichage - Date.parse(message.created_at) < MODIFIABLE_MS;
 
   const fond = message.supprime ? "transparent" : deMoi ? "var(--sc1)" : "var(--lc-surface)";
-  const texte = deMoi && !message.supprime ? "#fff" : "var(--lc-text)";
+  // Écriture de la bulle « moi » : blanche ou bleu nuit selon la couleur de
+  // l'école (variables posées par MessageriePage).
+  const texte = deMoi && !message.supprime ? "var(--msg-encre, #fff)" : "var(--lc-text)";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: deMoi ? "flex-end" : "flex-start", marginTop: suite ? 2 : 10 }}>
@@ -72,8 +74,8 @@ export function BulleMessage({
         }}>
         {citation !== undefined && !message.supprime && (
           <div style={{
-            borderInlineStart: `3px solid ${deMoi ? "rgba(255,255,255,0.7)" : "var(--sc1)"}`,
-            background: deMoi ? "rgba(255,255,255,0.14)" : "var(--lc-surface-alt)",
+            borderInlineStart: `3px solid ${deMoi ? "color-mix(in srgb, var(--msg-encre, #fff) 70%, transparent)" : "var(--sc1)"}`,
+            background: deMoi ? "color-mix(in srgb, var(--msg-encre, #fff) 14%, transparent)" : "var(--lc-surface-alt)",
             borderRadius: 6, padding: "4px 8px", marginBottom: 6, fontSize: 11.5, opacity: 0.95,
           }}>
             <div style={{ fontWeight: 800 }}>{citation ? (annuaire.get(citation.de_compte_id)?.nom || "Message") : "Message"}</div>
@@ -101,7 +103,7 @@ export function BulleMessage({
           {message.modifie_at && !message.supprime && <span>modifié</span>}
           <span>{formatHeure(message.created_at)}</span>
           {deMoi && !message.supprime && (
-            <span title={`Lu par ${lus} sur ${total}`} style={{ fontWeight: 800, color: toutLu ? "#7dd3fc" : undefined }}>
+            <span title={`Lu par ${lus} sur ${total}`} style={{ fontWeight: 800, color: toutLu ? "var(--msg-lu, #7dd3fc)" : undefined }}>
               {groupe && lus > 0 && !toutLu ? `✓✓ ${lus}/${total}` : lus > 0 ? "✓✓" : "✓"}
             </span>
           )}

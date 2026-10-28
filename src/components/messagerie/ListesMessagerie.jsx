@@ -7,7 +7,7 @@ import { badge, texteDiscret } from "./styles-messagerie";
 const ligne = (active) => ({
   display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "start", cursor: "pointer",
   padding: "10px 12px", border: "none", borderBottom: "1px solid var(--lc-border-soft)",
-  background: active ? "var(--sc1-lt)" : "var(--lc-surface)", color: "var(--lc-text)",
+  background: active ? "var(--msg-surbrillance, var(--sc1-lt))" : "var(--lc-surface)", color: "var(--lc-text)",
 });
 
 const ellipse = { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
@@ -29,7 +29,7 @@ export function ListeConversations({ m, conversations, activeId, onOuvrir }) {
             <span style={{ ...ellipse, flex: 1, fontSize: 13.5, fontWeight: nonLus ? 800 : 700 }}>
               {c.epingle && "📌 "}{titre}
             </span>
-            <span style={{ ...texteDiscret, color: nonLus ? "var(--sc1)" : texteDiscret.color, fontWeight: nonLus ? 800 : 400 }}>
+            <span style={{ ...texteDiscret, color: nonLus ? "var(--msg-accent, var(--sc1))" : texteDiscret.color, fontWeight: nonLus ? 800 : 400 }}>
               {c.dernier_apercu ? formatDateBoite(c.dernier_message_at) : ""}
             </span>
           </span>
@@ -73,7 +73,7 @@ export function ListeAnnonces({ m, annonces, activeId, onOuvrir }) {
             {a.de_compte_id === m.moi ? "Vous" : a.de_nom} · {a.corps}
           </span>
           <span style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
-            {nonLue && <span style={{ ...badge, background: "var(--sc1)" }}>Nouveau</span>}
+            {nonLue && <span style={{ ...badge, background: "var(--sc1)", color: "var(--msg-encre, #fff)" }}>Nouveau</span>}
             {aConfirmer && <span style={{ ...badge, background: "#b45309" }}>À confirmer</span>}
             {stats && <span style={{ ...texteDiscret, fontWeight: 700 }}>👁 {stats.lus}/{stats.total}{a.accuse_requis ? ` · ✅ ${stats.confirmes}/${stats.total}` : ""}</span>}
           </span>

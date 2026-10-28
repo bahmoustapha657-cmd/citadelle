@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { SchoolContext } from "../../contexts/SchoolContext";
 import { useMessagerie } from "./messagerie-contexte";
 import { ListeAnnonces, ListeConversations } from "./ListesMessagerie";
 import { VueConversation } from "./VueConversation";
@@ -7,7 +8,8 @@ import { NouvelleDiscussionModal } from "./NouvelleDiscussionModal";
 import { NouvelleAnnonceModal } from "./NouvelleAnnonceModal";
 import { GroupeModal } from "./GroupeModal";
 import {
-  estParent, filtrerConversations, normaliser, peutCreerGroupe, peutPublierAnnonce, titreConversation, trierAnnonces,
+  couleursEcoleMessagerie, estParent, filtrerConversations, normaliser, peutCreerGroupe, peutPublierAnnonce,
+  titreConversation, trierAnnonces,
 } from "./messagerie-logic";
 import { badge, champ } from "./styles-messagerie";
 
@@ -16,7 +18,7 @@ const LARGEUR_ETROITE = 720;
 const onglet = (actif) => ({
   flex: 1, padding: "11px 6px", border: "none", cursor: "pointer", background: "none",
   fontSize: 13, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-  color: actif ? "var(--sc1)" : "var(--lc-text-muted)",
+  color: actif ? "var(--msg-accent, var(--sc1))" : "var(--lc-text-muted)",
   borderBottom: actif ? "3px solid var(--sc1)" : "3px solid transparent",
 });
 
@@ -39,6 +41,8 @@ function useLargeur(ref) {
 // ══════════════════════════════════════════════════════════════
 export function MessageriePage({ utilisateur, hauteur = "100%" }) {
   const m = useMessagerie();
+  const { schoolInfo } = useContext(SchoolContext);
+  const couleurs = couleursEcoleMessagerie(schoolInfo?.couleur1);
   const conteneurRef = useRef(null);
   const etroit = useLargeur(conteneurRef) < LARGEUR_ETROITE;
   const [recherche, setRecherche] = useState("");
@@ -92,7 +96,7 @@ export function MessageriePage({ utilisateur, hauteur = "100%" }) {
         {(vue === "discussions" || publier) && (
           <button type="button" onClick={() => setModale(vue === "discussions" ? "discussion" : "annonce")}
             title={vue === "discussions" ? "Nouvelle discussion" : "Nouvelle annonce"}
-            style={{ flexShrink: 0, border: "none", borderRadius: 9, padding: "0 12px", cursor: "pointer", background: "linear-gradient(135deg,var(--sc1),var(--sc1-dk))", color: "#fff", fontWeight: 800, fontSize: 13 }}>
+            style={{ flexShrink: 0, border: "none", borderRadius: 9, padding: "0 12px", cursor: "pointer", background: "linear-gradient(135deg,var(--sc1),var(--sc1-dk))", color: "var(--msg-encre, #fff)", fontWeight: 800, fontSize: 13 }}>
             {vue === "discussions" ? "✍️" : "📣"}{etroit ? "" : " Nouveau"}
           </button>
         )}
@@ -142,8 +146,17 @@ export function MessageriePage({ utilisateur, hauteur = "100%" }) {
     </div>
   );
 
+  // Écriture lisible sur la couleur de l'école, transmise à toute la page
+  // (fil, saisie, modales) par variables CSS. Surbrillance (ligne ouverte,
+  // case cochée) : --sc1-lt est mêlée de blanc, ce qui rendait le texte clair
+  // du mode sombre illisible ; mêlée à la surface du thème, elle reste
+  // identique en mode clair.
   return (
-    <div ref={conteneurRef} style={{ height: hauteur, minHeight: 0, display: "flex", textAlign: "start", background: "var(--lc-surface)", overflow: "hidden" }}>
+    <div ref={conteneurRef} style={{
+      height: hauteur, minHeight: 0, display: "flex", textAlign: "start", background: "var(--lc-surface)", overflow: "hidden",
+      "--msg-encre": couleurs.encre, "--msg-lu": couleurs.lu, "--msg-accent": couleurs.accent,
+      "--msg-surbrillance": "color-mix(in srgb, var(--sc1) 12%, var(--lc-surface))",
+    }}>
       {(!etroit || !detailOuvert) && colonneListe}
       {(!etroit || detailOuvert) && colonneDetail}
 
