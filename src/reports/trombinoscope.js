@@ -100,9 +100,10 @@ export function trombinoscopeHTML(eleves = [], { schoolInfo = {}, annee = "", pa
 // ── Badges ───────────────────────────────────────────────────
 // Deux formats, pour toutes les classes :
 //  • « poche » : écusson horizontal de 80 × 60 mm, à la taille d'une poche
-//    de chemise, 8 par page A4 ;
+//    de chemise ;
 //  • « portrait » : 62 × 90 mm, le badge d'origine de la maternelle, à
-//    plastifier et porter en collier, 9 par page.
+//    plastifier et porter en collier.
+// Trois tailles d'impression (TAILLES_BADGE) ; le nombre par page en découle.
 // Sous le nom : l'IEN de l'élève, ou à défaut son matricule (identifiantBadge).
 // Photo au choix ; sans photo, le logo de l'école s'affiche en grand à sa
 // place (et plus dans l'en-tête). En haut, le nom de l'école ; en pied, une ligne
@@ -111,44 +112,56 @@ export function trombinoscopeHTML(eleves = [], { schoolInfo = {}, annee = "", pa
 // papier transfert textile (tissu clair), chaque badge s'imprime inversé et
 // se retrouve à l'endroit une fois repassé.
 
-// Dimensions en taille normale (mm) ; marge de la page A4.
+// Dimensions en taille normale (mm).
 export const FORMATS_BADGE = {
-  poche: { largeur: 80, hauteur: 60, marge: 8, nom: "Écusson de poche" },
-  portrait: { largeur: 62, hauteur: 90, marge: 6, nom: "Badge portrait" },
+  poche: { largeur: 80, hauteur: 60, nom: "Écusson de poche" },
+  portrait: { largeur: 62, hauteur: 90, nom: "Badge portrait" },
 };
 
 // Taille d'impression : le badge entier (photo, logo, textes) à l'échelle,
 // pour une poche plus petite ; plus de badges tiennent alors sur la page.
 export const TAILLES_BADGE = {
   normale: { echelle: 1, nom: "Normale" },
-  reduite: { echelle: 0.85, nom: "Réduite (−15 %)" },
+  reduite: { echelle: 0.82, nom: "Réduite (−18 %)" },
   petite: { echelle: 0.75, nom: "Petite (−25 %)" },
 };
 const ECART_BADGES = 4;
+const MARGE_PAGE = 6;
+// Surface commune au papier A4 (210 × 297) et au format Lettre américain
+// (215,9 × 279,4), réglage d'usine de bien des imprimantes : une page de
+// badges calculée pour A4 seul débordait sur une Lettre, et la dernière
+// rangée se coupait entre deux feuilles.
+const PAPIER = { largeur: 210, hauteur: 279.4 };
 
-// Grille d'une page A4 pour un format et une taille : dimensions du badge
-// imprimé (mm, au dixième), colonnes, rangées, badges par page.
+// Grille d'une page pour un format et une taille : dimensions du badge
+// imprimé (mm, au dixième), colonnes, rangées, badges par page — sur A4
+// comme sur Lettre.
 export function grilleBadges(format = "portrait", taille = "normale") {
   const f = FORMATS_BADGE[format] || FORMATS_BADGE.portrait;
   const { echelle } = TAILLES_BADGE[taille] || TAILLES_BADGE.normale;
   const largeur = Math.round(f.largeur * echelle * 10) / 10;
   const hauteur = Math.round(f.hauteur * echelle * 10) / 10;
-  const place = (page, cote) => Math.max(1, Math.floor((page - 2 * f.marge + ECART_BADGES) / (cote + ECART_BADGES)));
-  const colonnes = place(210, largeur);
-  const rangees = place(297, hauteur);
+  const place = (page, cote) => Math.max(1, Math.floor((page - 2 * MARGE_PAGE + ECART_BADGES) / (cote + ECART_BADGES)));
+  const colonnes = place(PAPIER.largeur, largeur);
+  const rangees = place(PAPIER.hauteur, hauteur);
   return { echelle, largeur, hauteur, colonnes, rangees, parPage: colonnes * rangees };
 }
 export const BADGES_PAR_PAGE = grilleBadges("portrait").parPage;
 
-const BADGES_CSS = `
-.page{display:grid;gap:4mm;justify-content:center;align-content:start;break-after:page;page-break-after:always}
+const PAGE_CSS = `
+.page{display:grid;gap:${ECART_BADGES}mm;justify-content:center;align-content:start;break-after:page;page-break-after:always}
 .page:last-child{break-after:auto;page-break-after:auto}
 @media screen{.page{width:210mm;min-height:297mm;padding:6mm;margin:0 auto 8mm;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.15)}}
-/* Chaque case de la grille reçoit le badge dessiné en taille normale
-   (--w × --h), réduit d'un bloc (--k) : tout garde ses proportions. */
-.case{position:relative;break-inside:avoid}
-.badge{position:absolute;left:50%;top:50%;width:var(--w);height:var(--h);transform:translate(-50%,-50%) scale(var(--k,1));border:.3mm dashed #94a3b8;border-radius:3mm;overflow:hidden;display:flex;background:#fff}
-.miroir .badge{transform:translate(-50%,-50%) scale(calc(-1 * var(--k,1)),var(--k,1))}
+.badge{position:relative;border:.3mm dashed #94a3b8;border-radius:3mm;overflow:hidden;display:flex;background:#fff;break-inside:avoid}
+.miroir .badge{transform:scaleX(-1)}
+.avis{max-width:194mm;margin:0 auto 6mm;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:8px 12px;font-size:11px;color:#1e3a8a}
+`;
+
+// Intérieur du badge, cotes en taille normale ; mis à l'échelle par
+// echelonner() : le badge réduit est DESSINÉ à sa taille réelle. (Le
+// réduire après coup, par transform, lui laissait sa place d'origine pour
+// l'imprimante : la dernière rangée débordait de la page et s'y coupait.)
+const BADGE_CSS = `
 .logo{background:#fff;border-radius:1.5mm;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center}
 .logo img{width:100%;height:100%;object-fit:contain;display:block}
 .photo{border-radius:2.5mm;overflow:hidden;background:#f8fafc;flex-shrink:0}
@@ -186,8 +199,12 @@ const BADGES_CSS = `
 .poche .texte{flex:1;min-width:0;display:flex;flex-direction:column;gap:1.2mm}
 .poche .infos{display:flex;align-items:center;flex-wrap:wrap;gap:1.5mm;font-size:7pt;color:#64748b}
 .poche .classe{color:#fff;font-weight:900;font-size:8.5pt;border-radius:1.5mm;padding:.5mm 2mm}
-.avis{max-width:194mm;margin:0 auto 6mm;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:8px 12px;font-size:11px;color:#1e3a8a}
 `;
+
+// Toutes les cotes en mm et en pt multipliées par `k` (au centième).
+export const echelonner = (css, k = 1) => (k === 1 ? css : css.replace(
+  /(\d*\.?\d+)(mm|pt)\b/g, (_, n, unite) => `${Math.round(Number(n) * k * 100) / 100}${unite}`,
+));
 
 // Le nom d'appel doit rester sur une ou deux lignes de la largeur donnée
 // (58 mm : badge portrait).
@@ -214,7 +231,7 @@ const visuel = (eleve, schoolInfo, photo, couleur) => (photo
   ? `<div class="photo" style="border-color:${couleur}">${photoOuInitiales(eleve, couleur)}</div>`
   : logoEcole(schoolInfo, "logo grand-logo"));
 
-const badgePortrait = (eleve, { schoolInfo, annee, photo }) => {
+const badgePortrait = (eleve, { schoolInfo, annee, photo, k = 1 }) => {
   const couleur = couleurClasse(eleve.classe, schoolInfo.couleur1 || "#0A1628");
   const appel = nomAppel(eleve);
   return `<div class="badge portrait">
@@ -223,7 +240,7 @@ const badgePortrait = (eleve, { schoolInfo, annee, photo }) => {
     <div class="titre"><div class="ecole">${echapper(schoolInfo.nom || "École")}</div><div class="classe">${echapper(eleve.classe || "")}</div></div>
   </div>
   ${visuel(eleve, schoolInfo, photo, couleur)}
-  <div class="appel" style="font-size:${taillePoliceAppel(appel) + (photo ? 0 : 4)}pt;color:${couleur}">${echapper(appel)}</div>
+  <div class="appel" style="font-size:${echelonner(`${taillePoliceAppel(appel) + (photo ? 0 : 4)}pt`, k)};color:${couleur}">${echapper(appel)}</div>
   <div class="officiel">${echapper(nomOfficiel(eleve))}</div>
   ${ligneIdentifiant(eleve)}
   ${annee ? `<div class="annee">${echapper(annee)}</div>` : ""}
@@ -231,7 +248,7 @@ const badgePortrait = (eleve, { schoolInfo, annee, photo }) => {
 </div>`;
 };
 
-const badgePoche = (eleve, { schoolInfo, annee, photo }) => {
+const badgePoche = (eleve, { schoolInfo, annee, photo, k = 1 }) => {
   const couleur = couleurClasse(eleve.classe, schoolInfo.couleur1 || "#0A1628");
   const appel = nomAppel(eleve);
   return `<div class="badge poche">
@@ -242,7 +259,7 @@ const badgePoche = (eleve, { schoolInfo, annee, photo }) => {
   <div class="corps">
     ${visuel(eleve, schoolInfo, photo, couleur)}
     <div class="texte">
-      <div class="appel" style="font-size:${taillePoliceAppel(appel, photo ? 45 : schoolInfo.logo ? 41 : 70)}pt;color:${couleur}">${echapper(appel)}</div>
+      <div class="appel" style="font-size:${echelonner(`${taillePoliceAppel(appel, photo ? 45 : schoolInfo.logo ? 41 : 70)}pt`, k)};color:${couleur}">${echapper(appel)}</div>
       <div class="officiel">${echapper(nomOfficiel(eleve))}</div>
       ${ligneIdentifiant(eleve)}
       <div class="infos">${eleve.classe ? `<span class="classe" style="background:${couleur}">${echapper(eleve.classe)}</span>` : ""}${annee ? `<span>${echapper(annee)}</span>` : ""}</div>
@@ -262,14 +279,14 @@ export function badgesHTML(eleves = [], {
   const g = grilleBadges(format, taille);
   const dessiner = f === FORMATS_BADGE.poche ? badgePoche : badgePortrait;
   const ordre = grouperParClasse(eleves).flatMap(([, enfants]) => enfants);
-  const grille = `grid-template-columns:repeat(${g.colonnes},${g.largeur}mm);grid-auto-rows:${g.hauteur}mm;`
-    + `--w:${f.largeur}mm;--h:${f.hauteur}mm;--k:${g.echelle}`;
+  const grille = `grid-template-columns:repeat(${g.colonnes},${g.largeur}mm);grid-auto-rows:${g.hauteur}mm`;
   const pages = decouper(ordre, g.parPage)
-    .map((paquet) => `<div class="page" style="${grille}">${paquet.map((eleve) => `<div class="case">${dessiner(eleve, { schoolInfo, annee, photo })}</div>`).join("")}</div>`);
+    .map((paquet) => `<div class="page" style="${grille}">${paquet.map((eleve) => dessiner(eleve, { schoolInfo, annee, photo, k: g.echelle })).join("")}</div>`);
   const avis = miroir
     ? `<div class="avis no-print">🔁 Impression en <strong>miroir</strong> pour papier transfert sur tissu clair : le texte apparaît à l'envers ici, il sera à l'endroit une fois repassé. Faites d'abord un essai sur une feuille ordinaire.</div>`
     : "";
-  return pageHtml(`Badges — ${schoolInfo.nom || "École"}`, `size:A4 portrait;margin:${f.marge}mm`, BADGES_CSS,
+  return pageHtml(`Badges — ${schoolInfo.nom || "École"}`, `size:A4 portrait;margin:${MARGE_PAGE}mm`,
+    PAGE_CSS + echelonner(BADGE_CSS, g.echelle),
     `${avis}<div class="${miroir ? "miroir" : "endroit"}">${pages.join("")}</div>`);
 }
 
