@@ -38,7 +38,7 @@ export {
   imprimerOrdreMutation,
 } from "./reports/mutation-radiation.js";
 export { imprimerLivret } from "./reports/livret.js";
-export { imprimerTableauHonneur } from "./reports/tableau-honneur.js";
+export { imprimerTableauHonneur, imprimerTableauxHonneur } from "./reports/tableau-honneur.js";
 export { imprimerAlerteMensualites } from "./reports/alerte-mensualites.js";
 export { imprimerPreavisRenvoi } from "./reports/preavis-renvoi.js";
 export { imprimerListeNonReinscrits, imprimerListePayes } from "./reports/listes-mensualites.js";

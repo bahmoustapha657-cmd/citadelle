@@ -28,6 +28,7 @@ function Ecole({ titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, sectio
     { id: "enseignements", label: t("school.tabs.teachings") },
     { id: "discipline", label: t("school.tabs.discipline") },
     { id: "bulletins", label: t("school.tabs.bulletins") },
+    { id: "honneur", label: t("school.tabs.honorRoll") },
     { id: "livrets", label: "📋 Livrets" },
     { id: "matieres", label: t("school.tabs.subjects") },
     ...(avecEns ? [{ id: "emploidutemps", label: t("school.tabs.schedule") }] : []),
