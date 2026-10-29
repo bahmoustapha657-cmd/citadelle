@@ -4,11 +4,13 @@ import { Btn } from "../../ui";
 import { getFifthWeekDays } from "../../../salary-utils";
 
 // Barre de navigation interne des états de salaires : sous-onglets, sélecteur
-// de mois, prime par défaut, actions de génération/impression et bandeau 5ᵉ semaine.
+// de mois, prime par défaut, actions de génération/impression et bandeau 5ᵉ
+// semaine, avec le choix de la payer ou non (avec5eme / basculerCinquiemeSemaine).
 export function SalairesToolbar({
   sousTabSal, setSousTabSal, moisSel, setMoisSel, moisSalaire, bonsMois,
   canCreate, primeDefaut, setPrimeDefaut,
   autoGenererSalaires, appliquerBons, appliquerAbsences, imprimerSalaires, setForm, setModal, moisModale,
+  avec5eme = false, basculerCinquiemeSemaine, nbFichesSec = 0,
   groupesPaie = { secondaire: true, primaire: true },
 }) {
   const { t } = useTranslation();
@@ -44,12 +46,24 @@ export function SalairesToolbar({
         {canCreate&&<Btn onClick={()=>{setForm({section:sectionDefaut,mois:moisModale,nonExecute:0,cinqSem:0,bon:0,revision:0});setModal("add_s");}}>+ {t("common.add")}</Btn>}
         <Btn v="vert" onClick={imprimerSalaires}>🖨️ {t("accounting.printSalaries")}</Btn>
       </>}
-      {(()=>{const j5=getFifthWeekDays(moisSel);return j5.length>0&&(
+      {/* Payé à l'heure : la 5ᵉ semaine ne concerne que le secondaire. */}
+      {groupesPaie.secondaire&&(()=>{const j5=getFifthWeekDays(moisSel);return j5.length>0&&(
         <div style={{width:"100%",marginTop:6,background:"linear-gradient(135deg,#fef3c7,#fde68a)",border:"1px solid #f59e0b",borderRadius:8,padding:"7px 14px",fontSize:12,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
           <span style={{fontSize:15}}>📅</span>
           <strong style={{color:"#92400e"}}>{moisSel} — 5ème semaine :</strong>
           {j5.map(j=><span key={j} style={{background:"#f59e0b",color:"#fff",fontWeight:700,padding:"2px 9px",borderRadius:10,fontSize:11}}>{j}</span>)}
-          <span style={{color:"#92400e",fontSize:11}}>→ Les enseignants qui ont cours ces jours ont des heures supplémentaires. Cliquez sur ⚡ Auto-générer pour les calculer automatiquement.</span>
+          <span style={{color:"#92400e",fontSize:11}}>
+            {avec5eme
+              ? "→ Appliquée : les heures de cours de ces jours sont payées une fois de plus (colonne « 5è Sem »)."
+              : nbFichesSec>0
+                ? "→ Non appliquée : les heures de ces jours ne sont pas payées en plus."
+                : "→ Non appliquée. Générez d'abord les salaires (⚡), puis choisissez ici de l'appliquer."}
+          </span>
+          {sousTabSal==="etats"&&canCreate&&basculerCinquiemeSemaine&&nbFichesSec>0&&<span style={{marginLeft:"auto"}}>
+            {avec5eme
+              ? <Btn sm v="ghost" onClick={basculerCinquiemeSemaine} title="Recalcule les salaires du secondaire de ce mois sans les heures de la 5ème semaine">↩ Retirer la 5ème semaine</Btn>
+              : <Btn sm v="amber" onClick={basculerCinquiemeSemaine} title="Recalcule les salaires du secondaire de ce mois en payant une fois de plus les cours de ces jours">📅 Appliquer la 5ème semaine</Btn>}
+          </span>}
         </div>
       );})()}
       {sousTabSal==="bons"&&canCreate&&<Btn onClick={()=>{setForm({mois:moisModale,section:sectionDefaut});setModal("add_b");}}>+ Nouveau bon</Btn>}

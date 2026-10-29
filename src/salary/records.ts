@@ -35,6 +35,14 @@ export function getSalaryNet(salary: SalaryRecord = {}): number {
   return getSalaryMontantBrut(salary) - (Number(salary.bon) || 0) - getRetenueAbsences(salary) + (Number(salary.revision) || 0);
 }
 
+// 5ᵉ semaine payée sur cette fiche ? C'est un CHOIX du comptable (« 📅
+// Appliquer la 5ᵉ semaine »), plus un ajout d'office : la fiche garde les
+// jours avec lesquels elle a été calculée. Les fiches générées avant ce choix
+// l'ont donc, comme avant ; une fiche saisie à la main ne l'a pas.
+export function hasFifthWeekApplied(salary: SalaryRecord = {}): boolean {
+  return (salary.paramSnapshot?.jours5eme?.length || 0) > 0;
+}
+
 export function getForfaitNet(salary: SalaryRecord = {}): number {
   return Number(salary.montantForfait || 0) - Number(salary.bon || 0) - getRetenueAbsences(salary) + Number(salary.revision || 0);
 }
