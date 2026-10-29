@@ -27,6 +27,7 @@ import {
   watermarkHtml,
 } from "./print-helpers.js";
 import { getMention } from "./bulletins/bulletin-format.js";
+import { nomAffiche } from "../ordre-eleves.js";
 
 const MEDAILLES = ["🥇", "🥈", "🥉"];
 // Ordre du podium à l'italienne : 2e à gauche, 1er au centre surélevé, 3e à
@@ -121,12 +122,12 @@ ${WATERMARK_CSS}`;
 const rangDe = (e, position) => (Number.isFinite(e.rang) ? e.rang : position + 1);
 const ordinal = (rang) => (rang === 1 ? "1<sup>er</sup>" : `${rang}<sup>e</sup>`);
 
-const carte = (e, position, maxNote, avecClasse) => {
+const carte = (e, position, maxNote, avecClasse, tri) => {
   const rang = rangDe(e, position);
   return `
   <div class="place${rang === 1 ? " premier" : ""}">
     <div class="medaille">${MEDAILLES[Math.min(rang, 3) - 1]}</div>
-    <div class="nom">${echapper(e.nom)} ${echapper(e.prenom)}</div>
+    <div class="nom">${echapper(nomAffiche(e, tri))}</div>
     ${avecClasse ? `<div class="classe">${echapper(e.classe)}</div>` : ""}
     <div class="moy">${e.moyenne.toFixed(2)}<span class="bareme">/${maxNote}</span></div>
     <div class="mention">${getMention(e.moyenne, maxNote)}</div>
@@ -136,6 +137,10 @@ const carte = (e, position, maxNote, avecClasse) => {
 // Une affiche. `classe` présente = affiche de cette classe (sans colonne
 // Classe) ; absente = palmarès de toute la section.
 //
+// Les noms s'écrivent dans l'ordre réglé par l'école (schoolInfo.triEleves,
+// « Prénom NOM » ou « NOM Prénom ») : l'affiche reprend mot pour mot ce que
+// l'onglet montre.
+//
 // Le barème voyage dans l'EN-TÊTE de la colonne Moyenne (« Moyenne /10 »),
 // pas dans les cellules : le primaire et le préscolaire sont notés sur 10, et
 // une colonne de « 9.40 » sans repère se lit sur 20 — un parent debout devant
@@ -143,6 +148,7 @@ const carte = (e, position, maxNote, avecClasse) => {
 // déjà le barème chacune.
 const affiche = ({ classe = "", classement, evalues }, schoolInfo, { periodeLabel, portee, annee, maxNote }) => {
   const avecClasse = !classe;
+  const tri = schoolInfo.triEleves;
   const podium = classement.slice(0, 3);
   const suite = classement.slice(3);
   const sous = [
@@ -158,13 +164,13 @@ const affiche = ({ classe = "", classement, evalues }, schoolInfo, { periodeLabe
       <div class="sous">${sous}</div>
     </div>
     <div class="podium">
-      ${ORDRE_PODIUM.filter((p) => podium[p]).map((p) => carte(podium[p], p, maxNote, avecClasse)).join("")}
+      ${ORDRE_PODIUM.filter((p) => podium[p]).map((p) => carte(podium[p], p, maxNote, avecClasse, tri)).join("")}
     </div>
     ${suite.length ? `<table>
       <thead><tr><th style="text-align:center">Rang</th><th>Élève</th>${avecClasse ? "<th>Classe</th>" : ""}<th style="text-align:center">Moyenne /${maxNote}</th><th>Mention</th></tr></thead>
       <tbody>${suite.map((e, i) => `<tr>
         <td class="rang">${ordinal(rangDe(e, i + 3))}</td>
-        <td class="nom">${echapper(e.nom)} ${echapper(e.prenom)}</td>
+        <td class="nom">${echapper(nomAffiche(e, tri))}</td>
         ${avecClasse ? `<td>${echapper(e.classe)}</td>` : ""}
         <td class="moy">${e.moyenne.toFixed(2)}</td>
         <td class="mention">${getMention(e.moyenne, maxNote)}</td>

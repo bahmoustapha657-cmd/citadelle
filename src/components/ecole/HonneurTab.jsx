@@ -6,6 +6,7 @@ import { PERIODE_ANNEE, imprimerTableauxHonneur } from "../../reports";
 import { getMention } from "../../reports/bulletins/bulletin-format";
 import { getPeriodeLongLabel } from "../../period-utils";
 import { matieresForClasse as matieresForClasseFn } from "./ecole-logic";
+import { nomAffiche } from "../../ordre-eleves";
 import {
   NOMBRES_HONNEUR, NOMBRE_HONNEUR_DEFAUT, SEUILS_HONNEUR, SEUIL_HONNEUR_DEFAUT,
   periodeHonneurParDefaut, tableauHonneurSection, tableauxHonneurParClasse,
@@ -32,6 +33,9 @@ export function HonneurTab({
   const periodesSection = useMemo(() => (clePeriodes ? clePeriodes.split("|") : []), [clePeriodes]);
   const matsFor = useCallback((cl) => matieresForClasseFn(matieres, cl), [matieres]);
   const nomsClasses = useMemo(() => classes.map((c) => c.nom).filter(Boolean), [classes]);
+  // Ordre des noms réglé par l'école (Paramètres → Affichage) : l'écran et
+  // l'affiche écrivent le nom de la même façon.
+  const tri = schoolInfo?.triEleves;
 
   // Tant qu'on n'a rien choisi, la période suit les notes qui arrivent (les
   // autres périodes se chargent juste après celle des bulletins).
@@ -44,11 +48,11 @@ export function HonneurTab({
 
   const parClasse = useMemo(() => tableauxHonneurParClasse({
     eleves, notes, matieresForClasse: matsFor, periode, periodes: periodesSection,
-    section, maxNote, nombre, seuil, classes: nomsClasses,
-  }), [eleves, notes, matsFor, periode, periodesSection, section, maxNote, nombre, seuil, nomsClasses]);
+    section, maxNote, nombre, seuil, classes: nomsClasses, tri,
+  }), [eleves, notes, matsFor, periode, periodesSection, section, maxNote, nombre, seuil, nomsClasses, tri]);
   const palmares = useMemo(() => (filtre === SECTION ? tableauHonneurSection({
-    eleves, notes, matieresForClasse: matsFor, periode, periodes: periodesSection, section, maxNote, nombre, seuil,
-  }) : null), [filtre, eleves, notes, matsFor, periode, periodesSection, section, maxNote, nombre, seuil]);
+    eleves, notes, matieresForClasse: matsFor, periode, periodes: periodesSection, section, maxNote, nombre, seuil, tri,
+  }) : null), [filtre, eleves, notes, matsFor, periode, periodesSection, section, maxNote, nombre, seuil, tri]);
 
   const periodeLabel = periode === PERIODE_ANNEE ? "Résultats annuels" : getPeriodeLongLabel(periode);
   const optionsImpression = { periodeLabel, portee: titre, annee: anneeConsultee, maxNote };
@@ -104,7 +108,7 @@ export function HonneurTab({
 
       {chargement ? <Chargement />
         : filtre === SECTION
-          ? <Card><CarteLaureats laureats={palmares?.laureats || []} avecClasse maxNote={maxNote}
+          ? <Card><CarteLaureats laureats={palmares?.laureats || []} avecClasse maxNote={maxNote} tri={tri}
               vide={palmares?.evalues ? `Aucun élève n'atteint ${+minimum.toFixed(2)}/${maxNote}` : "Aucune note saisie pour cette période"} /></Card>
           : affichees.length === 0
             ? <Vide icone="🏆" msg="Aucune classe dans cette section" />
@@ -121,7 +125,7 @@ export function HonneurTab({
                       <Btn sm v="ghost" disabled={!tb.laureats.length} title={`Imprimer l'affiche de ${tb.classe}`}
                         onClick={() => imprimer([tb])}>🖨️</Btn>
                     </div>
-                    <CarteLaureats laureats={tb.laureats} maxNote={maxNote}
+                    <CarteLaureats laureats={tb.laureats} maxNote={maxNote} tri={tri}
                       vide={tb.evalues ? `Aucun élève n'atteint ${+minimum.toFixed(2)}/${maxNote}` : "Aucune note saisie pour cette période"} />
                   </Card>
                 ))}
@@ -131,7 +135,7 @@ export function HonneurTab({
 }
 
 // Liste des lauréats d'une classe (ou de la section, avec la colonne Classe).
-function CarteLaureats({ laureats, maxNote, avecClasse = false, vide }) {
+function CarteLaureats({ laureats, maxNote, avecClasse = false, vide, tri }) {
   if (!laureats.length) return <p style={{ margin: 0, padding: "18px 14px", fontSize: 12, color: "#94a3b8", textAlign: "center" }}>{vide}</p>;
   return (
     <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -146,7 +150,7 @@ function CarteLaureats({ laureats, maxNote, avecClasse = false, vide }) {
               {e.rang <= 3 ? MEDAILLES[e.rang - 1] : `${e.rang}e`}
             </td>
             <td style={{ padding: "8px 6px", fontWeight: 800, color: C.blueDark, fontSize: 13 }}>
-              {e.nom} {e.prenom}
+              {nomAffiche(e, tri)}
               {avecClasse && <div style={{ marginTop: 3 }}><Badge color="blue">{e.classe}</Badge></div>}
             </td>
             <td style={{ padding: "8px 6px", textAlign: "end", whiteSpace: "nowrap", fontWeight: 800, fontSize: 14, color: C.greenDk }}>
