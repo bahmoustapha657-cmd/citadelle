@@ -121,3 +121,40 @@ test("période par défaut : la dernière qui a des notes", () => {
   assert.equal(periodeHonneurParDefaut([], ["T1", "T2", "T3"]), "T1");
   assert.equal(periodeHonneurParDefaut([], []), PERIODE_ANNEE);
 });
+
+test("classes dans l'ordre des niveaux, même aux noms francophones (CP avant CE1, CM2)", () => {
+  const tb = tableauxHonneurParClasse({
+    ...base, section: "primaire", maxNote: 10, periode: "T1", nombre: 5, seuil: "aucun",
+    eleves: [eleve("x1", "CM2"), eleve("x2", "CE1"), eleve("x3", "CP"), eleve("x4", "CE2 B")],
+    notes: [], classes: ["CM1", "CE2 A"],
+  });
+  assert.deepEqual(tb.map((t) => t.classe), ["CP", "CE1", "CE2 A", "CE2 B", "CM1", "CM2"]);
+});
+
+test("entre ex aequo, l'ordre alphabétique réglé par l'école (triEleves)", () => {
+  const exAequo = {
+    ...base, periode: "T1", nombre: 5, seuil: "aucun",
+    eleves: [
+      { _id: "z1", nom: "Bah", prenom: "Mariama", classe: "CM2", statut: "Actif" },
+      { _id: "z2", nom: "Diallo", prenom: "Abdoulaye", classe: "CM2", statut: "Actif" },
+    ],
+    notes: [...notesDe("z1", "T1", 14, 14), ...notesDe("z2", "T1", 14, 14)],
+  };
+  const parNom = tableauxHonneurParClasse({ ...exAequo, tri: "nom_prenom" })[0].laureats;
+  const parPrenom = tableauxHonneurParClasse({ ...exAequo, tri: "prenom_nom" })[0].laureats;
+  assert.deepEqual(ids(parNom), ["z1", "z2"]);    // Bah avant Diallo
+  assert.deepEqual(ids(parPrenom), ["z2", "z1"]); // Abdoulaye avant Mariama
+  assert.deepEqual(parPrenom.map((e) => e.rang), [1, 1]);
+});
+
+test("l'affiche écrit les noms dans l'ordre réglé par l'école", async () => {
+  const { htmlTableauxHonneur } = await import("../src/reports/tableau-honneur.js");
+  const laureat = { _id: "d1", nom: "Diallo", prenom: "Mamadou Aliou", classe: "CM2", moyenne: 9, rang: 1 };
+  const suite = [2, 3, 4].map((rang) => ({ _id: `s${rang}`, nom: `Nom${rang}`, prenom: `Prenom${rang}`, classe: "CM2", moyenne: 9 - rang / 10, rang }));
+  const affiche = (triEleves) => htmlTableauxHonneur(
+    [{ classe: "CM2", classement: [laureat, ...suite], evalues: 4 }], { nom: "École", triEleves }, { maxNote: 10 },
+  );
+  assert.match(affiche("prenom_nom"), /Mamadou Aliou Diallo/);
+  assert.match(affiche("prenom_nom"), /Prenom4 Nom4/); // ligne du tableau aussi
+  assert.match(affiche(undefined), /Diallo Mamadou Aliou/); // défaut : NOM Prénom
+});

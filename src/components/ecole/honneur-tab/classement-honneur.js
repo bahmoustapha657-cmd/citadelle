@@ -18,9 +18,11 @@
 //     ont des notes sur la période — ils étaient en classe.
 // Un élève sans aucune note sur la période n'est pas classé : getGeneralAverage
 // lui donnerait 0, et il n'a rien à faire sur une affiche.
+import { comparerClassesParNiveau } from "../../../constants.js";
 import { elevesPourPeriode } from "../../../depart-utils.js";
 import { getGeneralAverage } from "../../../note-utils.js";
 import { indexerNotesParEleve, notesDeLEleve } from "../../../note-index.js";
+import { nomAffiche } from "../../../ordre-eleves.js";
 import { PERIODE_ANNEE, buildBulletinNotesAnnuelles } from "../../../reports/bulletins/annual-notes.js";
 
 // Nombre de lauréats par classe proposé à la Direction.
@@ -56,7 +58,9 @@ function notesAClasser({ eleves, notes, matieresForClasse, periode, periodes, se
 
 // Classe un groupe d'élèves par moyenne générale décroissante, rang avec ex
 // aequo. Renvoie [{ ...eleve, moyenne, rang }], élèves sans note écartés.
-function classer(groupe, index, matieresForClasse, section) {
+// Entre ex aequo, l'ordre alphabétique de l'école (réglage triEleves) : le
+// nom tel qu'il s'écrit à l'écran et sur l'affiche.
+function classer(groupe, index, matieresForClasse, section, tri) {
   const classement = groupe
     .map((e) => {
       const notesE = notesDeLEleve(index, e._id);
@@ -66,16 +70,12 @@ function classer(groupe, index, matieresForClasse, section) {
     })
     .filter(Boolean)
     .sort((a, b) => b.moyenne - a.moyenne
-      || `${a.nom || ""} ${a.prenom || ""}`.localeCompare(`${b.nom || ""} ${b.prenom || ""}`, "fr"));
+      || nomAffiche(a, tri).localeCompare(nomAffiche(b, tri), "fr", { numeric: true, sensitivity: "base" }));
   classement.forEach((e, i) => {
     e.rang = i > 0 && e.moyenne === classement[i - 1].moyenne ? classement[i - 1].rang : i + 1;
   });
   return classement;
 }
-
-// Classes dans l'ordre des niveaux pour les écoles qui les numérotent
-// (« 7ème » avant « 10ème ») — même tri que les autres listes de classes.
-const comparerClasses = (a, b) => String(a).localeCompare(String(b), "fr", { numeric: true });
 
 // Lauréats d'un classement : les `nombre` premiers RANGS (un ex aequo au
 // dernier rang retenu entre aussi — on ne coupe pas deux élèves à égalité),
@@ -85,12 +85,13 @@ const laureatsDe = (classes, nombre, minimum) => classes.filter((e) => e.rang <=
 /**
  * Tableau d'honneur de chaque classe.
  * @returns {Array<{ classe: string, effectif: number, evalues: number, laureats: Array<object> }>}
- *   une entrée par classe, dans l'ordre des niveaux ; `evalues` = élèves
- *   classés (ayant des notes), `effectif` = élèves retenus pour la période.
+ *   une entrée par classe, dans l'ordre des NIVEAUX (CP avant CE1, 7ème avant
+ *   10ème) ; `evalues` = élèves classés (ayant des notes), `effectif` =
+ *   élèves retenus pour la période. `tri` = schoolInfo.triEleves.
  */
 export function tableauxHonneurParClasse({
   eleves = [], notes = [], matieresForClasse = () => [], periode, periodes = [],
-  section = "", maxNote = 20, nombre = NOMBRE_HONNEUR_DEFAUT, seuil = SEUIL_HONNEUR_DEFAUT, classes = [],
+  section = "", maxNote = 20, nombre = NOMBRE_HONNEUR_DEFAUT, seuil = SEUIL_HONNEUR_DEFAUT, classes = [], tri,
 }) {
   const periodeNotes = periode === PERIODE_ANNEE ? null : periode;
   const retenus = elevesPourPeriode(eleves, notes, periodeNotes);
@@ -100,10 +101,10 @@ export function tableauxHonneurParClasse({
   // Toutes les classes connues, même vides (« aucune note » se lit aussi),
   // plus celles qui n'existent que sur des fiches d'élèves.
   const noms = [...new Set([...classes, ...retenus.map((e) => e.classe)].filter(Boolean))]
-    .sort(comparerClasses);
+    .sort(comparerClassesParNiveau);
   return noms.map((classe) => {
     const groupe = retenus.filter((e) => e.classe === classe);
-    const classement = classer(groupe, index, matieresForClasse, section);
+    const classement = classer(groupe, index, matieresForClasse, section, tri);
     return { classe, effectif: groupe.length, evalues: classement.length, laureats: laureatsDe(classement, nombre, minimum) };
   });
 }
@@ -114,12 +115,12 @@ export function tableauxHonneurParClasse({
  */
 export function tableauHonneurSection({
   eleves = [], notes = [], matieresForClasse = () => [], periode, periodes = [],
-  section = "", maxNote = 20, nombre = NOMBRE_HONNEUR_DEFAUT, seuil = SEUIL_HONNEUR_DEFAUT,
+  section = "", maxNote = 20, nombre = NOMBRE_HONNEUR_DEFAUT, seuil = SEUIL_HONNEUR_DEFAUT, tri,
 }) {
   const periodeNotes = periode === PERIODE_ANNEE ? null : periode;
   const retenus = elevesPourPeriode(eleves, notes, periodeNotes);
   const source = notesAClasser({ eleves: retenus, notes, matieresForClasse, periode, periodes, section });
   const index = indexerNotesParEleve(source, periode);
-  const classement = classer(retenus, index, matieresForClasse, section);
+  const classement = classer(retenus, index, matieresForClasse, section, tri);
   return { effectif: retenus.length, evalues: classement.length, laureats: laureatsDe(classement, nombre, partDuSeuil(seuil) * maxNote) };
 }
