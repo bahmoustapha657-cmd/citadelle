@@ -74,6 +74,8 @@ export function SalairesTab({
   autoGenererSalaires,
   appliquerBons,
   appliquerAbsences,
+  avec5eme,
+  basculerCinquiemeSemaine,
   imprimerSalaires,
   enreg,
   saveSalaire,
@@ -97,6 +99,7 @@ export function SalairesTab({
         moisSel={moisSel} setMoisSel={setMoisSel} moisSalaire={moisSalaire} bonsMois={bonsMois}
         canCreate={canCreate} primeDefaut={primeDefaut} setPrimeDefaut={setPrimeDefaut}
         autoGenererSalaires={autoGenererSalaires} appliquerBons={appliquerBons} appliquerAbsences={appliquerAbsences}
+        avec5eme={avec5eme} basculerCinquiemeSemaine={basculerCinquiemeSemaine} nbFichesSec={salairesSec.length}
         imprimerSalaires={imprimerSalaires} setForm={setForm} setModal={setModal} moisModale={moisModale}
         groupesPaie={groupesPaie}
       />

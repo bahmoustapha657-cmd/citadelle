@@ -11,7 +11,7 @@
 // Module pur (testable sous Node).
 import {
   buildSecondarySalaryRecord, buildTeacherFullName, getFifthWeekDays, getScheduleSlotHours, getSlotPrimeForTeacher,
-  getTeacherScheduleSlots, getTeacherWeeklyAmount, mergeSalaryWithManualFields, normalizeSalaryName,
+  getTeacherScheduleSlots, getTeacherWeeklyAmount, hasFifthWeekApplied, mergeSalaryWithManualFields, normalizeSalaryName,
 } from "../../../salary-utils";
 import {
   REGLAGES_DEFAUT, anneeCivileDuMois, decompteAgent, moisDeDate, presencesDeLAgent,
@@ -85,7 +85,8 @@ export function calculerRetenueSecondaire({
 // « Absent » du mois, hors jours justifiés), bons et révisions conservés,
 // avec sa retenue « Abs. ». null si l'enseignant n'est plus en fiche.
 // `ctx` : { ensCollege, ensLycee, emploisCollege, emploisLycee, engCollege,
-// engLycee, primeDefaut, presences, anneeScolaire, reglages }.
+// engLycee, primeDefaut, presences, anneeScolaire, reglages, avec5eme }.
+// La 5ᵉ semaine reste celle de la fiche, sauf `avec5eme` (bouton 📅).
 export function recalculerFicheSecondaire(salaire, ctx = {}) {
   const { presences = [], anneeScolaire, reglages = REGLAGES_DEFAUT } = ctx;
   const tous = [
@@ -101,7 +102,7 @@ export function recalculerFicheSecondaire(salaire, ctx = {}) {
     mois: salaire.mois,
     emplois: t.emplois,
     enseignements: enseignementsPourPaie(t.eng, { mois: salaire.mois, anneeScolaire, presences }),
-    jours5eme: getFifthWeekDays(salaire.mois),
+    jours5eme: (ctx.avec5eme ?? hasFifthWeekApplied(salaire)) ? getFifthWeekDays(salaire.mois) : [],
     primeDefaut,
   });
   const retenue = calculerRetenueSecondaire({

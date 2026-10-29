@@ -169,6 +169,8 @@ export function ComptaTabsFinancier({ c, readOnly, annee }) {
         autoGenererSalaires={sd.autoGenererSalaires}
         appliquerBons={sd.appliquerBons}
         appliquerAbsences={sd.appliquerAbsences}
+        avec5eme={sd.avec5eme}
+        basculerCinquiemeSemaine={sd.basculerCinquiemeSemaine}
         imprimerSalaires={sd.imprimerSalaires}
         enreg={c.enreg}
         saveSalaire={c.saveSalaire}

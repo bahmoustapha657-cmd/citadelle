@@ -13,6 +13,7 @@ import {
   findSalaryDuplicate,
   getFifthWeekDays,
   mergeSalaryWithManualFields,
+  monthHasFifthWeek,
   pickBestSalaryFromGroup,
 } from "../../../salary-utils";
 import { enseignementsPourPaie } from "../presences/presences-secondaire";
@@ -61,7 +62,9 @@ export async function genererSalairesPourMois(mois, {
   // Options
   resync = false,
 }) {
-  const jours5eme = getFifthWeekDays(mois);
+  // 5ᵉ semaine : seulement si le comptable l'a appliquée à ce mois
+  // (« 📅 Appliquer la 5ᵉ semaine »), plus d'office.
+  const jours5eme = monthHasFifthWeek(salaires, mois) ? getFifthWeekDays(mois) : [];
   // Accumulateur local mis à jour à chaque ajS pour que les itérations
   // suivantes voient les fiches tout juste créées. Sinon la liste
   // `salaires` (réactive) n'est rafraîchie qu'après le retour du

@@ -4,7 +4,7 @@
 // Version pure des side effects UI (toast / confirm / logAction) reçus en
 // injection : construit les messages, itère sur les mois cibles et résume.
 
-import { getFifthWeekDays, getMissingSalaryProfiles } from "../../../salary-utils";
+import { getFifthWeekDays, getMissingSalaryProfiles, monthHasFifthWeek } from "../../../salary-utils";
 
 // Détecte les fiches enseignant/personnel sans paie configurée — leur
 // retour permet au caller d'afficher un message pédagogique avant la
@@ -28,12 +28,14 @@ export function formatNomsListe(liste) {
 //  - moisSel : mois ciblé ("__TOUS__" → annuel)
 //  - moisSalaire : liste des mois de l'année (utile en mode annuel)
 //  - genererPourMois : (mois, {resync}) => Promise<{nbCree, nbResync, nbSupprime}>
+//  - salaires : fiches existantes (la 5ᵉ semaine suit le choix du mois)
 //  - ensCollege/ensLycee/ensPrimaire/personnel/primeDefaut : pour verifierFichesPaie
 //  - UI : { toast, confirm, logAction }
 export async function autoGenererSalairesAction({
   resync = false,
   moisSel,
   moisSalaire,
+  salaires = [],
   genererPourMois,
   ensCollege, ensLycee, ensPrimaire, personnel, primeDefaut,
   toast, confirm, logAction,
@@ -67,7 +69,10 @@ export async function autoGenererSalairesAction({
     return;
   }
   const jours5eme = getFifthWeekDays(moisSel);
-  const info5eme = jours5eme.length ? `\n📅 5ème semaine détectée : ${jours5eme.join(", ")} → heures supplémentaires calculées automatiquement.` : "";
+  const info5eme = !jours5eme.length ? ""
+    : monthHasFifthWeek(salaires, moisSel)
+      ? `\n📅 5ème semaine (${jours5eme.join(", ")}) appliquée à ce mois : ses heures restent comptées.`
+      : `\n📅 5ème semaine (${jours5eme.join(", ")}) NON comptée. Pour la payer : « 📅 Appliquer la 5ème semaine » après la génération.`;
   if(!confirm(`${verbeAction} automatiquement les salaires pour ${moisSel} ?${info5eme}\n\n${detailMode}${warningMissing}`)) return;
   const {nbCree, nbResync, nbSupprime} = await genererPourMois(moisSel,{resync});
   const parts = [];

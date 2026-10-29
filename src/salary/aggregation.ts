@@ -2,7 +2,7 @@
 
 import type { Teacher, Person, SalaryRecord, SalaryTotals } from "./types";
 import { normalizeText, stripLegacyTeacherSuffix, normalizeSalaryName } from "./names";
-import { getSalaryMontantBrut, getSalaryNet, getForfaitNet, getRetenueAbsences } from "./records";
+import { getSalaryMontantBrut, getSalaryNet, getForfaitNet, getRetenueAbsences, hasFifthWeekApplied } from "./records";
 
 export type MissingSalaryProfilesOptions = {
   ensCollege?: Teacher[];
@@ -46,6 +46,13 @@ export function mergeSalaryWithManualFields(existingSalary: SalaryRecord = {}, c
     retenueAbsences: Number(existingSalary.retenueAbsences || 0),
     detailAbsences: existingSalary.detailAbsences || "",
   };
+}
+
+// Le mois a-t-il la 5ᵉ semaine ? Oui dès qu'une fiche du secondaire de ce
+// mois l'a : les fiches générées ensuite (nouvel enseignant, 🔄 Actualiser)
+// suivent ce choix. Un mois jamais généré ne l'a pas.
+export function monthHasFifthWeek(salaries: SalaryRecord[] = [], mois: string = ""): boolean {
+  return salaries.some((s) => s.mois === mois && s.section === "Secondaire" && hasFifthWeekApplied(s));
 }
 
 // Cherche un doublon nom+mois+section dans la liste des salaires.
