@@ -63,10 +63,11 @@ test("badges de tenue : écusson de poche 8 par page, logo, marque EduGest discr
   assert.equal(compter(html, /<div class="marque">/g), 9);
   assert.equal(compter(html, /Édité avec <strong>EduGest<\/strong> · edugest-gn\.pages\.dev/g), 9);
   assert.doesNotMatch(html, /622 00 00 00|627 73 85 79|edugest26@/);
-  // Avec photo : la photo, et le logo en petit dans l'en-tête.
+  // Avec photo : la photo, le logo en petit dans l'en-tête et en filigrane.
   const avecPhoto = badgesHTML(eleves, { schoolInfo: ecoleLogo, format: "poche", photo: true });
   assert.match(avecPhoto, /src="https:\/\/x\/e\.jpg"/);
-  assert.equal(compter(avecPhoto, /src="https:\/\/x\/logo\.png"/g), 9);
+  assert.equal(compter(avecPhoto, /<div class="logo"><img crossOrigin="anonymous" src="https:\/\/x\/logo\.png"/g), 9);
+  assert.equal(compter(avecPhoto, /<img class="filigrane"/g), 9);
   assert.doesNotMatch(avecPhoto, /class="logo grand-logo"/);
 });
 
@@ -133,6 +134,22 @@ test("badge réduit : dessiné à sa taille réelle, sans réduction après coup
   assert.doesNotMatch(html, /scale\(|class="case"/);
   // Nom d'appel : taille de police réduite aussi.
   assert.match(html, /class="appel" style="font-size:13\.94pt/);
+});
+
+test("logo de l'école en filigrane derrière le nom, à côté de la photo", () => {
+  const ecoleLogo = { ...ecole, logo: "https://x/logo.png" };
+  const eleves = Array.from({ length: 3 }, (_, i) => enfant(i, { photo: "https://x/e.jpg" }));
+  for (const format of ["poche", "portrait"]) {
+    const html = badgesHTML(eleves, { schoolInfo: ecoleLogo, format, photo: true });
+    assert.equal(compter(html, /<img class="filigrane" crossOrigin="anonymous" src="https:\/\/x\/logo\.png"/g), 3);
+    // Sans logo : pas de filigrane ; sans photo : le logo est déjà en grand.
+    assert.equal(compter(badgesHTML(eleves, { schoolInfo: ecole, format, photo: true }), /<img class="filigrane"/g), 0);
+    assert.equal(compter(badgesHTML(eleves, { schoolInfo: ecoleLogo, format, photo: false }), /<img class="filigrane"/g), 0);
+  }
+  // Sous le texte, cotes réduites avec le badge.
+  const reduit = badgesHTML(eleves, { schoolInfo: ecoleLogo, format: "portrait", taille: "reduite" });
+  assert.match(reduit, /\.filigrane\{position:absolute;z-index:-1;object-fit:contain;opacity:\.1/);
+  assert.match(reduit, /\.portrait \.filigrane\{left:4\.1mm;top:47\.56mm;width:42\.64mm;height:22\.14mm\}/);
 });
 
 test("noms échappés : un surnom saisi à la main n'injecte pas de balise", () => {

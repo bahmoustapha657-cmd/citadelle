@@ -106,7 +106,8 @@ export function trombinoscopeHTML(eleves = [], { schoolInfo = {}, annee = "", pa
 // Trois tailles d'impression (TAILLES_BADGE) ; le nombre par page en découle.
 // Sous le nom : l'IEN de l'élève, ou à défaut son matricule (identifiantBadge).
 // Photo au choix ; sans photo, le logo de l'école s'affiche en grand à sa
-// place (et plus dans l'en-tête). En haut, le nom de l'école ; en pied, une ligne
+// place (et plus dans l'en-tête). Avec photo, le logo est aussi en filigrane,
+// très pâle, derrière le nom. En haut, le nom de l'école ; en pied, une ligne
 // « Édité avec EduGest · site » : petite, mais lisible et parlante (sans
 // téléphone ni e-mail, comme partout sur le badge). « Miroir » : pour le
 // papier transfert textile (tissu clair), chaque badge s'imprime inversé et
@@ -152,7 +153,7 @@ const PAGE_CSS = `
 .page{display:grid;gap:${ECART_BADGES}mm;justify-content:center;align-content:start;break-after:page;page-break-after:always}
 .page:last-child{break-after:auto;page-break-after:auto}
 @media screen{.page{width:210mm;min-height:297mm;padding:6mm;margin:0 auto 8mm;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.15)}}
-.badge{position:relative;border:.3mm dashed #94a3b8;border-radius:3mm;overflow:hidden;display:flex;background:#fff;break-inside:avoid}
+.badge{position:relative;z-index:0;border:.3mm dashed #94a3b8;border-radius:3mm;overflow:hidden;display:flex;background:#fff;break-inside:avoid}
 .miroir .badge{transform:scaleX(-1)}
 .avis{max-width:194mm;margin:0 auto 6mm;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:8px 12px;font-size:11px;color:#1e3a8a}
 `;
@@ -163,6 +164,10 @@ const PAGE_CSS = `
 // l'imprimante : la dernière rangée débordait de la page et s'y coupait.)
 const BADGE_CSS = `
 .logo{background:#fff;border-radius:1.5mm;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+/* Filigrane : sous le texte (z-index négatif dans le badge, qui forme son
+   propre contexte d'empilement), cotes fixes DANS le badge — rien ne
+   dépasse pour l'imprimante. */
+.filigrane{position:absolute;z-index:-1;object-fit:contain;opacity:.1;pointer-events:none}
 .logo img{width:100%;height:100%;object-fit:contain;display:block}
 .photo{border-radius:2.5mm;overflow:hidden;background:#f8fafc;flex-shrink:0}
 .photo img{width:100%;height:100%;object-fit:cover;object-position:center 30%;display:block}
@@ -189,11 +194,13 @@ const BADGE_CSS = `
 .portrait .officiel{margin-top:.8mm;padding:0 2mm;text-align:center}
 .portrait .ident{margin-top:.5mm;padding:0 2mm;text-align:center}
 .portrait .annee{margin-top:auto;font-size:6pt;color:#94a3b8;padding-bottom:4.6mm}
+.portrait .filigrane{left:5mm;top:58mm;width:52mm;height:27mm}
 .poche{flex-direction:column}
 .poche .tete{display:flex;align-items:center;gap:2mm;padding:1.6mm 2.4mm;color:#fff}
 .poche .tete .logo{width:10mm;height:10mm}
 .poche .tete .ecole{font-size:7pt;flex:1;min-width:0}
-.poche .corps{flex:1;min-height:0;display:flex;align-items:center;gap:3mm;padding:1.6mm 3mm 4.6mm}
+.poche .corps{position:relative;flex:1;min-height:0;display:flex;align-items:center;gap:3mm;padding:1.6mm 3mm 4.6mm}
+.poche .filigrane{left:31mm;top:1mm;width:46mm;height:calc(100% - 5mm)}
 .poche .photo{width:26mm;height:32mm;border:.6mm solid}
 .poche .grand-logo{width:30mm;height:30mm}
 .poche .texte{flex:1;min-width:0;display:flex;flex-direction:column;gap:1.2mm}
@@ -223,6 +230,12 @@ const logoEcole = (schoolInfo, classe = "logo") => (schoolInfo.logo
   ? `<div class="${classe}"><img crossOrigin="anonymous" src="${echapper(schoolInfo.logo)}" alt=""/></div>`
   : "");
 
+// Logo de l'école en filigrane, derrière le nom : seulement à côté d'une
+// photo (sans photo, il est déjà en grand à sa place).
+const filigrane = (schoolInfo, photo) => (photo && schoolInfo.logo
+  ? `<img class="filigrane" crossOrigin="anonymous" src="${echapper(schoolInfo.logo)}" alt=""/>`
+  : "");
+
 const marqueEdugest = () => `<div class="marque">${edugestEmbleme(12)}<span>Édité avec <strong>EduGest</strong> · ${EDUGEST_SITE}</span></div>`;
 
 // La photo de l'élève ou, sans photo, le logo de l'école en grand (s'il
@@ -235,6 +248,7 @@ const badgePortrait = (eleve, { schoolInfo, annee, photo, k = 1 }) => {
   const couleur = couleurClasse(eleve.classe, schoolInfo.couleur1 || "#0A1628");
   const appel = nomAppel(eleve);
   return `<div class="badge portrait">
+  ${filigrane(schoolInfo, photo)}
   <div class="bandeau" style="background:${couleur}">
     ${photo ? logoEcole(schoolInfo) : ""}
     <div class="titre"><div class="ecole">${echapper(schoolInfo.nom || "École")}</div><div class="classe">${echapper(eleve.classe || "")}</div></div>
@@ -257,6 +271,7 @@ const badgePoche = (eleve, { schoolInfo, annee, photo, k = 1 }) => {
     <div class="ecole">${echapper(schoolInfo.nom || "École")}</div>
   </div>
   <div class="corps">
+    ${filigrane(schoolInfo, photo)}
     ${visuel(eleve, schoolInfo, photo, couleur)}
     <div class="texte">
       <div class="appel" style="font-size:${echelonner(`${taillePoliceAppel(appel, photo ? 45 : schoolInfo.logo ? 41 : 70)}pt`, k)};color:${couleur}">${echapper(appel)}</div>
