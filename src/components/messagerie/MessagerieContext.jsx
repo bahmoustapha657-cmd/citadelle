@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { messagerieOuverteA, titreConversation } from "./messagerie-logic";
 import { useReunion } from "./audio/use-reunion";
 import { usePresence } from "./use-presence";
 import { ReunionOverlay } from "./ReunionOverlay";
 import { notifier } from "../../backend/messagerie-supabase";
+import { etatNotifications } from "../../backend/push-navigateur";
+import { rafraichirAbonnementPush, sAbonnerAuxPush } from "../../backend/push-supabase";
 import { useMessagerieEtat } from "./use-messagerie-etat";
 import { useAppels } from "./audio/use-appels";
 import { AppelOverlay } from "./AppelOverlay";
@@ -80,8 +82,20 @@ export function MessagerieProvider({ utilisateur, schoolCode, onOuvrir, children
     return () => navigator.serviceWorker?.removeEventListener("message", surMessageSw);
   }, [actif]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Notifications de cet appareil : elles seules préviennent d'un appel quand
+  // l'application est fermée.
+  const [etatPush, setEtatPush] = useState(() => etatNotifications());
+  const compte = utilisateur?.compteDocId;
+  useEffect(() => {
+    if (actif) rafraichirAbonnementPush(utilisateur, schoolCode);
+  }, [actif, compte, schoolCode]); // eslint-disable-line react-hooks/exhaustive-deps
+  const notifications = {
+    etat: etatPush,
+    activer: async () => setEtatPush(await sAbonnerAuxPush(utilisateur, schoolCode)),
+  };
+
   const presences = usePresence({ actif });
-  const valeur = actif ? { ...etat, appels, reunions, presences, ouvrirMessagerie } : null;
+  const valeur = actif ? { ...etat, appels, reunions, presences, notifications, ouvrirMessagerie } : null;
   const convReunion = reunions.reunion ? etat.boiteParId.get(reunions.reunion.conversationId) : null;
 
   return (

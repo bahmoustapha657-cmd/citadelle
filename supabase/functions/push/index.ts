@@ -15,7 +15,7 @@ import webpush from "npm:web-push@3.6.7";
 import {
   type Classe, nettoyerCibles, nettoyerEleveId, nettoyerUserIds, refusEnseignantEleve, refusEnvoi, refusParents,
 } from "./droits.ts";
-import { candidats, type CompteAbonne, destinataires, parLots } from "./destinataires.ts";
+import { candidats, type CompteAbonne, destinataires, OPTIONS_APPEL, parLots } from "./destinataires.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -26,6 +26,8 @@ const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT") ?? "mailto:contact@edugest.a
 // Plafond PostgREST (1000 lignes par réponse) et taille des filtres in.(…).
 const PAGE = 1000;
 const LOT = 100;
+// Les adresses d'abonnement sont longues : lots plus courts pour la purge.
+const LOT_ADRESSES = 20;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -153,22 +155,23 @@ Deno.serve(async (req) => {
     if (!subs.length) return json({ ok: true, envoyes: 0 });
 
     webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);
-    const payload = JSON.stringify({ title: titre || "EduGest", body: corps || "", url: url || "/" });
+    const appel = body.appel === true;
+    const payload = JSON.stringify({ title: titre || "EduGest", body: corps || "", url: url || "/", ...(appel ? { appel } : {}) });
 
     let envoyes = 0;
     const aSupprimer: string[] = [];
     await Promise.all(subs.map(async (s) => {
       try {
-        await webpush.sendNotification(s.subscription, payload);
+        await webpush.sendNotification(s.subscription, payload, appel ? OPTIONS_APPEL : {});
         envoyes++;
       } catch (err) {
-        // 404/410 = abonnement expiré → on le purge.
+        // 404/410 = abonnement expiré → on purge CET appareil, pas les autres.
         const code = (err as { statusCode?: number })?.statusCode;
-        if (code === 404 || code === 410) aSupprimer.push(s.user_id);
+        if (code === 404 || code === 410) aSupprimer.push(s.subscription.endpoint);
       }
     }));
-    for (const lot of parLots(aSupprimer, LOT)) {
-      await admin.from("push_subs").delete().eq("ecole_id", ec.id).in("user_id", lot);
+    for (const lot of parLots(aSupprimer, LOT_ADRESSES)) {
+      await admin.from("push_subs").delete().eq("ecole_id", ec.id).in("endpoint", lot);
     }
 
     return json({ ok: true, envoyes });

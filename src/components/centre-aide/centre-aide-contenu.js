@@ -329,7 +329,7 @@ export const ARTICLES = [
     titre: "Appeler un collègue ou tout un groupe",
     etapes: [
       "Ouvrez la discussion directe avec la personne, puis touchez 📞 en haut à droite.",
-      "Autorisez le micro quand le navigateur le demande. Le correspondant voit l'appel sur n'importe quelle page de l'application, et reçoit une notification si l'application est fermée.",
+      "Autorisez le micro quand le navigateur le demande. Le correspondant voit l'appel sur n'importe quelle page de l'application. Application fermée, il reçoit une notification à condition de les avoir activées sur son appareil : bandeau en haut de la Messagerie.",
       "Pendant l'appel : 🎤 coupe votre micro, le bouton rouge raccroche. Un appel manqué apparaît dans la discussion avec « Rappeler ».",
       "Appel de groupe : dans un groupe, touchez 📞 ; les membres sont prévenus et voient « 🟢 Rejoindre ». Jusqu'à 30 participants ; 📷 allume votre caméra (facultatif), 🔄 passe à la caméra arrière, « Réduire » permet de continuer à naviguer.",
       "Si la connexion directe ne passe pas, l'appel bascule tout seul sur le relais de secours, indiqué à l'écran : le son est de qualité téléphone, avec un léger retard.",

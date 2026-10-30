@@ -10,8 +10,9 @@ import { cleCommune, creerEchangeCles } from "./relais-chiffrement";
 import { demarrerRelaisSecours } from "./relais-secours";
 import { creerSonnerie } from "./sonnerie";
 
-// Sonnerie côté appelant avant « Pas de réponse ».
-const DELAI_SONNERIE_MS = 45000;
+// Sonnerie côté appelant avant « Pas de réponse » : le temps de voir la
+// notification et d'ouvrir l'application sur un téléphone lent.
+const DELAI_SONNERIE_MS = 60000;
 // Coupure réseau tolérée en cours d'appel avant de passer au relais de secours.
 const DELAI_COUPURE_MS = 12000;
 // Après la réponse : au-delà, la voix passe par le relais de secours sans
@@ -195,8 +196,8 @@ export function useAppels({ actif, moi, schoolCode, annuaire, nomMoi, occupe }) 
       }, DELAI_SONNERIE_MS));
       // Réveille l'appelé si l'application est fermée sur son téléphone.
       notifier([annuaireRef.current.get(correspondantId)?.user_id],
-        `📞 ${nomMoi || "Un collègue"} vous appelle`, "Ouvrez EduGest pour répondre.",
-        `/?messagerie=${conversationId}`);
+        `📞 ${nomMoi || "Un collègue"} vous appelle`, "Touchez pour répondre.",
+        `/?messagerie=${conversationId}`, { appel: true });
     } catch (e) {
       if (ref.current.jeton === jeton) echouer(e.message || "Appel impossible.");
     }
@@ -303,13 +304,21 @@ export function useAppels({ actif, moi, schoolCode, annuaire, nomMoi, occupe }) 
       }
     };
     const detacher = subscribeTablePayload(schoolCode, "msg_appels", surEvenement);
-    // Ouverture depuis la notification « X vous appelle » : ça sonne encore ?
-    appelsEntrantsEnAttente(moi).then((liste) => { if (liste[0]) recevoirRef.current(liste[0]); }).catch(() => {});
+    // Ouverture depuis la notification « X vous appelle », ou retour dans
+    // l'application : ça sonne encore ? En arrière-plan, le temps réel a pu
+    // manquer l'événement, et il n'est jamais rejoué.
+    const verifierAppels = () => {
+      appelsEntrantsEnAttente(moi).then((liste) => { if (liste[0]) recevoirRef.current(liste[0]); }).catch(() => {});
+    };
+    verifierAppels();
+    const surRetour = () => { if (document.visibilityState === "visible" && !ref.current.jeton) verifierAppels(); };
+    document.addEventListener("visibilitychange", surRetour);
     // Fermeture de l'onglet en plein appel : on prévient l'autre côté.
     const surFermeture = () => { if (ref.current.id) terminerAppel(ref.current.id, "termine").catch(() => {}); };
     window.addEventListener("pagehide", surFermeture);
     return () => {
       detacher();
+      document.removeEventListener("visibilitychange", surRetour);
       window.removeEventListener("pagehide", surFermeture);
     };
   }, [actif, moi, schoolCode]);

@@ -7,6 +7,7 @@ import { VueAnnonce } from "./VueAnnonce";
 import { NouvelleDiscussionModal } from "./NouvelleDiscussionModal";
 import { NouvelleAnnonceModal } from "./NouvelleAnnonceModal";
 import { GroupeModal } from "./GroupeModal";
+import { BandeauNotifications } from "./BandeauNotifications";
 import {
   couleursEcoleMessagerie, estParent, filtrerConversations, normaliser, peutCreerGroupe, peutPublierAnnonce,
   titreConversation, trierAnnonces,
@@ -83,6 +84,7 @@ export function MessageriePage({ utilisateur, hauteur = "100%" }) {
 
   const colonneListe = (
     <div style={{ width: etroit ? "100%" : 340, flexShrink: 0, display: "flex", flexDirection: "column", minHeight: 0, borderInlineEnd: etroit ? "none" : "1px solid var(--lc-border)", background: "var(--lc-surface)" }}>
+      <BandeauNotifications notifications={m.notifications} />
       <div style={{ display: "flex", borderBottom: "1px solid var(--lc-border)" }}>
         <button type="button" style={onglet(vue === "discussions")} onClick={() => setVue("discussions")}>
           💬 Discussions {m.nonLusDiscussions > 0 && <span style={badge}>{m.nonLusDiscussions}</span>}
