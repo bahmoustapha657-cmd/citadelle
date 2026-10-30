@@ -7,6 +7,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 
@@ -23,8 +24,10 @@ import com.google.firebase.messaging.FirebaseMessaging;
 public class LanceurActivity extends LauncherActivity {
     private static final int DEMANDE_NOTIFICATIONS = 1;
     private static final long DELAI_JETON_MS = 4000;
+    private static final String CLE_EN_ATTENTE = "reponse-en-attente";
 
     private boolean lancee;
+    private boolean enAttente;
 
     @Override
     protected boolean shouldLaunchImmediately() {
@@ -36,9 +39,15 @@ public class LanceurActivity extends LauncherActivity {
         super.onCreate(etat);
         if (isFinishing()) return;
         Appels.creerCanaux(this);
+        Log.i("EduGest", "onCreate etat=" + (etat != null));
+        // Recréée pendant la demande (rotation, thème) : la réponse arrivera ici,
+        // Chrome ne doit pas passer devant la fenêtre d'autorisation.
+        enAttente = etat != null && etat.getBoolean(CLE_EN_ATTENTE);
+        if (enAttente) return;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
                 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
                 && Appels.premiereDemandeNotifications(this)) {
+            enAttente = true;
             requestPermissions(new String[] {Manifest.permission.POST_NOTIFICATIONS}, DEMANDE_NOTIFICATIONS);
         } else {
             preparerJeton();
@@ -46,9 +55,18 @@ public class LanceurActivity extends LauncherActivity {
     }
 
     @Override
+    protected void onSaveInstanceState(@NonNull Bundle etat) {
+        super.onSaveInstanceState(etat);
+        etat.putBoolean(CLE_EN_ATTENTE, enAttente);
+    }
+
+    @Override
     public void onRequestPermissionsResult(int demande, @NonNull String[] permissions, @NonNull int[] resultats) {
         super.onRequestPermissionsResult(demande, permissions, resultats);
-        if (demande == DEMANDE_NOTIFICATIONS) preparerJeton();
+        Log.i("EduGest", "reponse demande=" + demande + " nb=" + resultats.length);
+        if (demande != DEMANDE_NOTIFICATIONS) return;
+        enAttente = false;
+        preparerJeton();
     }
 
     private void preparerJeton() {
