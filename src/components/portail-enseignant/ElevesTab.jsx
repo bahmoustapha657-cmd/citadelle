@@ -22,7 +22,7 @@ export function ElevesTab({ c1, mesClasses, eleves, ouvrirSignalementEleve, scho
       {mesClasses.length === 0 ? (
         <Vide icone="Eleves" msg="Aucune classe assignee dans l'emploi du temps" />
       ) : vue === "trombi" ? (
-        <Trombinoscope eleves={eleves} schoolInfo={schoolInfo} annee={annee} section={section} />
+        <Trombinoscope eleves={eleves} schoolInfo={schoolInfo} annee={annee} />
       ) : (
         <>
           <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>

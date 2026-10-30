@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync, readdirSync } from "node:fs";
 import test from "node:test";
 import {
   BADGES_PAR_PAGE, TROMBI_PAR_PAGE, badgesHTML, echelonner, grilleBadges, taillePoliceAppel, trombinoscopeHTML,
@@ -150,6 +151,21 @@ test("logo de l'école en filigrane derrière le nom, à côté de la photo", ()
   const reduit = badgesHTML(eleves, { schoolInfo: ecoleLogo, format: "portrait", taille: "reduite" });
   assert.match(reduit, /\.filigrane\{position:absolute;z-index:-1;object-fit:contain;opacity:\.1/);
   assert.match(reduit, /\.portrait \.filigrane\{left:4\.1mm;top:47\.56mm;width:42\.64mm;height:22\.14mm\}/);
+});
+
+test("badges : imprimés par l'école, jamais depuis le portail enseignant", () => {
+  const composants = new URL("../src/components/", import.meta.url);
+  const lire = (chemin) => readFileSync(new URL(chemin, composants), "utf8");
+  // Fermés par défaut : un écran doit les demander, et les deux boutons en dépendent.
+  const trombi = lire("identite-enfant/Trombinoscope.jsx");
+  assert.match(trombi, /avecBadges = false/);
+  assert.match(trombi, /\{avecBadges && <Btn[^\n]*\n\s*onClick=\{\(\) => setBadges\(dansClasse\)\}/);
+  assert.match(trombi, /\{avecBadges && <Btn[^\n]*setBadges\(\[enfantAgrandi\]\)/);
+  assert.match(lire("ecole/ElevesTab.jsx"), /<Trombinoscope\s[^>]*\bavecBadges\b/);
+  for (const fichier of readdirSync(new URL("portail-enseignant/", composants))) {
+    if (!/\.jsx?$/.test(fichier)) continue;
+    assert.doesNotMatch(lire(`portail-enseignant/${fichier}`), /avecBadges|BadgesModale|imprimerBadges/, fichier);
+  }
 });
 
 test("noms échappés : un surnom saisi à la main n'injecte pas de balise", () => {
