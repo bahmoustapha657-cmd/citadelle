@@ -6,6 +6,7 @@
 
 import { changerSectionDoc } from "../../../backend/data-supabase";
 import { getSectionForClasse, getSectionLabel } from "../../../constants";
+import { MESSAGE_CLASSE_OBLIGATOIRE, classeManquante } from "../../../enrollment-utils";
 
 export const COLLECTION_ELEVES = {
   prescolaire: "elevesPrescolaire", primaire: "elevesPrimaire", college: "elevesCollege", lycee: "elevesLycee",
@@ -15,7 +16,7 @@ export const COLLECTION_ELEVES = {
 // choisie, sinon l'élève serait rangé dans une section qui ne l'affiche pas.
 // Renvoie un message d'erreur, ou null.
 export function erreurClasseSection(classe, section) {
-  if (!String(classe || "").trim()) return "Classe obligatoire";
+  if (classeManquante({ classe })) return MESSAGE_CLASSE_OBLIGATOIRE;
   if (getSectionForClasse(classe) !== section) {
     return `« ${classe} » n'est pas une classe du ${getSectionLabel(section)}.`;
   }

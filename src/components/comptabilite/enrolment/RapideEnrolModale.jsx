@@ -2,7 +2,8 @@ import { useRef, useState } from "react";
 import { C, initMens, getClassesForSection, getSectionLabel, getSystemeScolaire, sectionOuverte } from "../../../constants";
 import { Btn, Champ, Input, Modale, Selec } from "../../ui";
 import {
-  MESSAGE_FILIATION_OBLIGATOIRE, filiationManquante, findEnrollmentDuplicate, getEnrollmentDuplicateMessage,
+  MESSAGE_CLASSE_OBLIGATOIRE, MESSAGE_FILIATION_OBLIGATOIRE, classeManquante, filiationManquante,
+  findEnrollmentDuplicate, getEnrollmentDuplicateMessage,
 } from "../../../enrollment-utils";
 import { uploadPhotoEleve } from "../../../storageUtils";
 import { SURNOM_MAX } from "../../../identite-enfant";
@@ -46,7 +47,7 @@ export function RapideEnrolModale({
     // le bouton, et inscrirait l'élève deux fois.
     if(verrou.current) return null;
     if(!form.nom||!form.prenom){toast("Nom et prénom obligatoires","warning");return null;}
-    if(!form.classe){toast("Classe obligatoire","warning");return null;}
+    if(classeManquante(form)){toast(MESSAGE_CLASSE_OBLIGATOIRE,"warning");return null;}
     if(filiationManquante(form)){toast(MESSAGE_FILIATION_OBLIGATOIRE,"warning");return null;}
     const ajouter = ajoutParNiveau[section];
     const r={...form,niveau:section,statut:"Actif",mens:initMens()};

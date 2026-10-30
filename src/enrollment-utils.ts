@@ -62,6 +62,11 @@ export const normalizeEnrollmentText = normalizeToken;
 export const MESSAGE_FILIATION_OBLIGATOIRE = "Filiation obligatoire (père et mère) : elle permet de vérifier que l'élève n'est pas déjà inscrit.";
 export const filiationManquante = (student: EnrollmentStudent = {}): boolean => !normalizeFiliation(student.filiation);
 
+// Classe exigée pour inscrire un élève : sans elle, il n'apparaît dans aucune
+// liste de classe. Même règle côté base (eleves_classe_obligatoire).
+export const MESSAGE_CLASSE_OBLIGATOIRE = "Classe obligatoire";
+export const classeManquante = (student: EnrollmentStudent = {}): boolean => !String(student.classe || "").trim();
+
 export const findEnrollmentDuplicate = (
   candidate: EnrollmentStudent = {},
   students: EnrollmentStudent[] = [],

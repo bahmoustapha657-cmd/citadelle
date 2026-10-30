@@ -99,7 +99,7 @@
     "matriculeEditable": "Modifiable si besoin",
     "ien": "Identifiant National (IEN)",
     "ienPlaceholder": "Ex : GN-2024-000123",
-    "class": "Classe",
+    "class": "Classe *",
     "select": "— Sélectionner —",
     "sex": "Sexe",
     "male": "Masculin",
