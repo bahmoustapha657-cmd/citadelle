@@ -1,0 +1,241 @@
+name: Sauvegarde hors site
+
+# Chaque nuit : base de production (rôles, schéma, données — comptes compris)
+# + fichiers de Storage (photos, logos, documents et vocaux de la messagerie),
+# chiffrés (AES-256) et déposés dans Cloudflare R2, LOIN du poste qui fait les
+# sauvegardes locales. Puis la sauvegarde est RESTAURÉE dans une base jetable
+# et comparée ligne à ligne : une sauvegarde jamais restaurée ne prouve rien.
+#
+# Un échec envoie un e-mail (notifications GitHub Actions). Mise en place et
+# restauration : docs/sauvegarde-hors-site.md.
+#
+# ⚠️ Dépôt PUBLIC : le journal de ce workflow est lisible par tous. Il ne doit
+# afficher que des totaux — jamais une ligne de données, un nom ou une valeur.
+
+on:
+  schedule:
+    - cron: "17 2 * * *" # chaque nuit à 02:17 UTC (= heure de Conakry)
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sauvegarde-hors-site
+  cancel-in-progress: false
+
+env:
+  R2_BUCKET: edugest-sauvegardes
+  AWS_DEFAULT_REGION: auto
+  # R2 n'accepte pas les sommes de contrôle ajoutées d'office par les
+  # versions récentes de l'AWS CLI.
+  AWS_REQUEST_CHECKSUM_CALCULATION: WHEN_REQUIRED
+  AWS_RESPONSE_CHECKSUM_VALIDATION: WHEN_REQUIRED
+
+jobs:
+  sauvegarde:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 30
+    outputs:
+      cle: ${{ steps.envoi.outputs.cle }}
+
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SAUVEGARDE_PHRASE: ${{ secrets.SAUVEGARDE_PHRASE }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+
+    steps:
+      # Un secret manquant fait ÉCHOUER le run (donc un e-mail) : une
+      # sauvegarde « ignorée » en silence passerait pour une sauvegarde faite.
+      - name: Vérifier la configuration
+        run: |
+          manquants=""
+          for v in SUPABASE_DB_URL SUPABASE_SERVICE_ROLE_KEY SAUVEGARDE_PHRASE CLOUDFLARE_ACCOUNT_ID AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY; do
+            [ -n "${!v}" ] || manquants="$manquants $v"
+          done
+          if [ -n "$manquants" ]; then
+            echo "::error::Secrets absents de l'environnement production :$manquants (cf. docs/sauvegarde-hors-site.md)"
+            exit 1
+          fi
+          if [ "${#SAUVEGARDE_PHRASE}" -lt 20 ]; then
+            echo "::error::SAUVEGARDE_PHRASE trop courte (20 caractères minimum)."
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.120.0  # épinglée : « latest » interroge l API GitHub (rate limit), cf. docs/deploiement.md
+
+      - name: Dossier de travail
+        run: |
+          nom="edugest-$(date -u +%F)"
+          echo "NOM=$nom" >> "$GITHUB_ENV"
+          echo "DOSSIER=$RUNNER_TEMP/$nom" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/$nom"
+
+      # Les trois fichiers de la procédure officielle de Supabase. Les données
+      # comprennent les schémas auth et storage (comptes, références des
+      # fichiers). LECTURE SEULE.
+      - name: Dump de la base
+        run: |
+          set -euo pipefail
+          umask 077
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f "$DOSSIER/roles.sql" --role-only
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f "$DOSSIER/schema.sql"
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f "$DOSSIER/data.sql" --use-copy --data-only
+
+      # Lignes par table, relevées dans le dump même : c'est la référence du
+      # test de restauration. Les tables vitales doivent être là et non vides.
+      - name: Contrôle du dump
+        run: |
+          set -euo pipefail
+          awk '/^COPY /{t=$2; n=0; dedans=1; next}
+               dedans && /^\\\.$/{print t "\t" n; dedans=0; next}
+               dedans{n++}' "$DOSSIER/data.sql" > "$DOSSIER/lignes.tsv"
+          for t in '"public"."ecoles"' '"public"."comptes"' '"public"."eleves"' '"public"."notes"' '"auth"."users"'; do
+            n=$(awk -F'\t' -v t="$t" '$1 == t {print $2}' "$DOSSIER/lignes.tsv")
+            if [ -z "$n" ] || [ "$n" -eq 0 ]; then
+              echo "::error::Table vitale $t absente ou vide dans le dump : sauvegarde refusée."
+              exit 1
+            fi
+          done
+          tables=$(wc -l < "$DOSSIER/lignes.tsv")
+          lignes=$(awk -F'\t' '{s += $2} END {print s}' "$DOSSIER/lignes.tsv")
+          echo "TABLES=$tables" >> "$GITHUB_ENV"
+          echo "LIGNES=$lignes" >> "$GITHUB_ENV"
+          echo "Dump : $tables tables, $lignes lignes"
+
+      - name: Fichiers de Storage
+        run: |
+          set -euo pipefail
+          url=$(grep '^VITE_SUPABASE_URL=' .env.supabase | cut -d= -f2-)
+          SUPABASE_URL="$url" node scripts/exporter-stockage.mjs "$DOSSIER/stockage"
+          echo "FICHIERS=$(($(wc -l < "$DOSSIER/stockage/manifeste.tsv") - 1))" >> "$GITHUB_ENV"
+
+      # AES-256, phrase de passe connue de GitHub ET gardée hors ligne par la
+      # direction : sans elle, la sauvegarde est illisible — pour un voleur
+      # comme pour nous. Le fichier chiffré est aussitôt relu (déchiffrement +
+      # lecture de l'archive) : on ne dépose pas une archive qu'on ne sait
+      # pas rouvrir.
+      - name: Archive chiffrée
+        run: |
+          set -euo pipefail
+          umask 077
+          cd "$RUNNER_TEMP"
+          printf '%s' "$SAUVEGARDE_PHRASE" > phrase
+          tar -czf "$NOM.tar.gz" "$NOM"
+          gpg --batch --yes --pinentry-mode loopback --passphrase-file phrase \
+              --symmetric --cipher-algo AES256 --compress-algo none \
+              -o "$NOM.tar.gz.gpg" "$NOM.tar.gz"
+          gpg --batch --quiet --pinentry-mode loopback --passphrase-file phrase \
+              -d "$NOM.tar.gz.gpg" | tar -tzf - > contenu.txt
+          grep -q "$NOM/data.sql" contenu.txt
+          rm -rf phrase "$NOM.tar.gz" "$NOM" contenu.txt
+          echo "ARCHIVE=$RUNNER_TEMP/$NOM.tar.gz.gpg" >> "$GITHUB_ENV"
+          echo "TAILLE=$(stat -c %s "$NOM.tar.gz.gpg")" >> "$GITHUB_ENV"
+
+      # quotidien/ : une archive par nuit ; mensuel/ : celle du 1er du mois.
+      # La durée de conservation de chacun est une règle du bucket R2.
+      - name: Dépôt dans R2
+        id: envoi
+        run: |
+          set -euo pipefail
+          r2="https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com"
+          cle="quotidien/$NOM.tar.gz.gpg"
+          aws s3 cp "$ARCHIVE" "s3://$R2_BUCKET/$cle" --endpoint-url "$r2" --only-show-errors
+          recue=$(aws s3api head-object --bucket "$R2_BUCKET" --key "$cle" --endpoint-url "$r2" --query ContentLength --output text)
+          if [ "$recue" != "$TAILLE" ]; then
+            echo "::error::Taille dans R2 ($recue) ≠ archive envoyée ($TAILLE)."
+            exit 1
+          fi
+          if [ "$(date -u +%d)" = "01" ]; then
+            aws s3 cp "$ARCHIVE" "s3://$R2_BUCKET/mensuel/edugest-$(date -u +%Y-%m).tar.gz.gpg" --endpoint-url "$r2" --only-show-errors
+          fi
+          echo "cle=$cle" >> "$GITHUB_OUTPUT"
+          {
+            echo "### 💾 Sauvegarde déposée dans R2"
+            echo "- \`$cle\` — $(numfmt --to=iec "$TAILLE")"
+            echo "- base : $TABLES tables, $LIGNES lignes"
+            echo "- fichiers : $FICHIERS"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # La sauvegarde de cette nuit, restaurée dans un Supabase local tout neuf
+  # (schéma = nos migrations), puis comparée table par table au dump. Prouve
+  # à la fois : la phrase de passe, l'archive, et que les données rentrent
+  # dans le schéma des migrations (une retouche faite à la main en
+  # production, absente des migrations, ferait échouer ce test).
+  restauration:
+    needs: sauvegarde
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 30
+
+    env:
+      SAUVEGARDE_PHRASE: ${{ secrets.SAUVEGARDE_PHRASE }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      CLE: ${{ needs.sauvegarde.outputs.cle }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.120.0  # épinglée : « latest » interroge l API GitHub (rate limit), cf. docs/deploiement.md
+
+      - name: Client psql
+        run: command -v psql || (sudo apt-get update -q && sudo apt-get install -yq postgresql-client)
+
+      - name: Récupérer et déchiffrer la sauvegarde depuis R2
+        run: |
+          set -euo pipefail
+          umask 077
+          cd "$RUNNER_TEMP"
+          aws s3 cp "s3://$R2_BUCKET/$CLE" archive.gpg \
+              --endpoint-url "https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com" --only-show-errors
+          printf '%s' "$SAUVEGARDE_PHRASE" > phrase
+          gpg --batch --quiet --pinentry-mode loopback --passphrase-file phrase -d archive.gpg | tar -xzf -
+          rm -f phrase archive.gpg
+          echo "RESTAU=$(ls -d "$RUNNER_TEMP"/edugest-*)" >> "$GITHUB_ENV"
+
+      - name: Supabase local (schéma des migrations)
+        run: supabase start -x studio,imgproxy,logflare,vector,supavisor,realtime,postgres-meta,edge-runtime
+
+      # LA procédure de restauration de la doc (scripts/restaurer-base.sh),
+      # rejouée telle quelle. Erreurs SQL comptées, jamais affichées (elles
+      # peuvent citer des valeurs) ; seules les tables en écart sont nommées.
+      - name: Restaurer et comparer
+        run: |
+          set -euo pipefail
+          sortie=$(bash scripts/restaurer-base.sh "$RESTAU" \
+            "postgresql://supabase_admin:postgres@127.0.0.1:54322/postgres") && ok=1 || ok=0
+          echo "$sortie"
+          tables=0; ecarts=0; ecarts_publics=0; erreurs=0
+          eval "$(echo "$sortie" | sed -n 's/^RESULTAT //p')"
+          fichiers=$(($(wc -l < "$RESTAU/stockage/manifeste.tsv") - 1))
+          presents=$(find "$RESTAU/stockage" -type f ! -name manifeste.tsv | wc -l)
+          {
+            echo "### 🔁 Test de restauration"
+            echo "- $tables tables rechargées, $ecarts écart(s) dont $ecarts_publics dans public, $erreurs erreur(s) SQL"
+            echo "- fichiers dans l'archive : $presents / $fichiers"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$ok" -ne 1 ] || [ "$presents" -ne "$fichiers" ]; then
+            echo "::error::Restauration incomplète : la sauvegarde ne se recharge pas entièrement (détail ci-dessus)."
+            exit 1
+          fi
+          if [ "$ecarts" -gt 0 ]; then
+            echo "::warning::$ecarts table(s) hors public (auth, storage…) ne se rechargent pas à l'identique dans le Supabase local : écart de version possible, données métier intactes."
+          fi
