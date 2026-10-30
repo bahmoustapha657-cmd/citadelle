@@ -48,7 +48,7 @@ export function AppelOverlay({ appels, annuaire }) {
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ fontWeight: 800, fontSize: 15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nom}</div>
           <div style={{ fontSize: 12, opacity: 0.8 }}>
-            {appel.phase === "en_cours" && appel.debut ? <>📞 En ligne · <Chrono debut={appel.debut} /></>
+            {appel.phase === "en_cours" && appel.debut ? <>📞 En ligne{appel.secours ? " (relais de secours)" : ""} · <Chrono debut={appel.debut} /></>
               : appel.phase === "fin" ? appel.message
                 : `📞 ${LIBELLES_PHASE[appel.phase] || ""}`}
           </div>

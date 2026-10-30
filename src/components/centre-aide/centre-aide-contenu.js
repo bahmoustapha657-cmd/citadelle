@@ -332,7 +332,7 @@ export const ARTICLES = [
       "Autorisez le micro quand le navigateur le demande. Le correspondant voit l'appel sur n'importe quelle page de l'application, et reçoit une notification si l'application est fermée.",
       "Pendant l'appel : 🎤 coupe votre micro, le bouton rouge raccroche. Un appel manqué apparaît dans la discussion avec « Rappeler ».",
       "Appel de groupe : dans un groupe, touchez 📞 ; les membres sont prévenus et voient « 🟢 Rejoindre ». Jusqu'à 30 participants ; 📷 allume votre caméra (facultatif), 🔄 passe à la caméra arrière, « Réduire » permet de continuer à naviguer.",
-      "Sur les réseaux mobiles, si l'appel ne se connecte pas, l'école doit activer le relais d'appels (TURN) — voir avec l'administrateur EduGest.",
+      "Si la connexion directe ne passe pas, l'appel bascule tout seul sur le relais de secours, indiqué à l'écran : le son est de qualité téléphone, avec un léger retard.",
     ],
   },
   {

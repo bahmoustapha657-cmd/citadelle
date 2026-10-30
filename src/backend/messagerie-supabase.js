@@ -221,6 +221,31 @@ export async function appelsEntrantsEnAttente(moi, depuisMs = 45000) {
   return data || [];
 }
 
+// Canal privé d'un appel (relais de secours) : la RLS de realtime.messages le
+// réserve aux deux participants d'un appel en cours. `pret` se résout une fois
+// le canal rejoint. Coupé du réseau, un paquet de voix est perdu : le repli
+// automatique de `send` vers REST arriverait de toute façon trop tard.
+export function ouvrirCanalAppel(id, surMessage) {
+  const sb = getSupabase();
+  const canal = sb.channel(`appel:${id}`, { config: { private: true, broadcast: { self: false } } });
+  let rejoint = false;
+  canal.on("broadcast", { event: "*" }, ({ event, payload }) => surMessage(event, payload));
+  const pret = new Promise((resolve, reject) => {
+    canal.subscribe((statut, erreur) => {
+      rejoint = statut === "SUBSCRIBED";
+      if (rejoint) resolve();
+      else if (statut === "CHANNEL_ERROR" || statut === "TIMED_OUT") reject(erreur || new Error("Canal d'appel indisponible."));
+    });
+  });
+  return {
+    pret,
+    envoyer(evenement, charge = {}) {
+      if (rejoint) canal.send({ type: "broadcast", event: evenement, payload: charge }).catch(() => {});
+    },
+    fermer() { sb.removeChannel(canal); },
+  };
+}
+
 // Serveurs ICE : TURN éphémère si l'Edge Function est configurée, sinon STUN.
 // Délai borné : sur réseau faible, décrocher ne doit pas rester suspendu à
 // cette réponse pendant que l'appelant finit de sonner dans le vide.
