@@ -99,7 +99,8 @@ async function main() {
     ...declare, updated_at: new Date().toISOString(),
   });
   const ligne = async (cle, ecoleId = demo.id) => (await svc.from("push_subs").select("role, poste_cle")
-    .eq("user_id", comptes[cle].userId).eq("ecole_id", ecoleId).maybeSingle()).data;
+    .eq("user_id", comptes[cle].userId).eq("ecole_id", ecoleId)
+    .order("updated_at", { ascending: false }).limit(1).maybeSingle()).data;
   const appelerPush = async (cle, corps) => {
     const { data: { session } } = await sessions[cle].auth.getSession();
     const r = await fetch(`${SUPABASE_URL}/functions/v1/push`, {

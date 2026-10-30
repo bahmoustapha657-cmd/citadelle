@@ -158,6 +158,27 @@ async function appShellFirst(request) {
 }
 
 // ── Push notifications ────────────────────────────────────────
+// Appel entrant : la notification vibre longuement et reste à l'écran. Si
+// l'application est visible, son écran d'appel sonne déjà. Passé le délai de
+// sonnerie, ce n'est plus qu'un appel manqué.
+const TAG_APPEL = "appel-entrant";
+const DUREE_APPEL_MS = 60000;
+
+async function afficherAppel(titre, options) {
+  const fenetres = await clients.matchAll({ type: "window", includeUncontrolled: true });
+  if (fenetres.some((c) => c.visibilityState === "visible")) return;
+  await self.registration.showNotification(titre, {
+    ...options, tag: TAG_APPEL, renotify: true, requireInteraction: true,
+    vibrate: [500, 250, 500, 250, 500, 250, 500, 250, 500],
+  });
+  await new Promise((fin) => { setTimeout(fin, DUREE_APPEL_MS); });
+  const encore = await self.registration.getNotifications({ tag: TAG_APPEL });
+  if (!encore.length) return; // touchée entre-temps
+  await self.registration.showNotification(titre.replace(/ vous appelle$/, ""), {
+    ...options, body: "Appel manqué", tag: TAG_APPEL, renotify: false, requireInteraction: false,
+  });
+}
+
 self.addEventListener("push", (e) => {
   let data = { titre: "EduGest", corps: "", url: "/", icon: "/icons/pwa-192.png" };
   try { data = { ...data, ...JSON.parse(e.data?.text() || "{}") }; } catch { /* ignore malformed push payload */ }
@@ -166,15 +187,14 @@ self.addEventListener("push", (e) => {
   const titre = data.title || data.titre;
   const corps = data.body ?? data.corps;
 
-  e.waitUntil(
-    self.registration.showNotification(titre, {
-      body:  corps,
-      icon:  data.icon,
-      badge: "/icons/pwa-192.png",
-      data:  { url: data.url },
-      vibrate: [200, 100, 200],
-    })
-  );
+  const options = {
+    body:  corps,
+    icon:  data.icon,
+    badge: "/icons/pwa-192.png",
+    data:  { url: data.url },
+    vibrate: [200, 100, 200],
+  };
+  e.waitUntil(data.appel ? afficherAppel(titre, options) : self.registration.showNotification(titre, options));
 });
 
 // Clic sur la notification → ouvre l'app sur l'URL concernée

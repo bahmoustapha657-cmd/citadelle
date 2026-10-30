@@ -213,7 +213,7 @@ export const terminerAppel = (id, statut) => rpc("msg_appel_terminer", { p_id: i
 
 // Appels entrants qui sonnent encore (ouverture de l'app depuis une
 // notification « X vous appelle »).
-export async function appelsEntrantsEnAttente(moi, depuisMs = 45000) {
+export async function appelsEntrantsEnAttente(moi, depuisMs = 60000) {
   const depuis = new Date(Date.now() - depuisMs).toISOString();
   const { data } = await getSupabase().from("msg_appels").select("*")
     .eq("appele_id", moi).eq("statut", "sonne").gt("created_at", depuis)
@@ -260,10 +260,10 @@ export async function serveursIce() {
 }
 
 // ── Notifications push (best-effort, jamais bloquant) ──
-export function notifier(userIds, titre, corps, url = "/") {
+export function notifier(userIds, titre, corps, url = "/", options = {}) {
   const ids = [...new Set((userIds || []).filter(Boolean))];
   if (!ids.length) return;
-  envoyerPushUtilisateurs(ids, titre, corps, url).catch(() => {});
+  envoyerPushUtilisateurs(ids, titre, corps, url, options).catch(() => {});
 }
 
 // ── Appels de groupe (réunions, SFU Cloudflare via l'Edge Function reunion) ──

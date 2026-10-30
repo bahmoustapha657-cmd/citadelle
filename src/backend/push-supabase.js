@@ -2,39 +2,57 @@
 // Abonnement : enregistre la souscription du navigateur dans `push_subs`.
 // Envoi : délègue à l'Edge Function `push` (clé VAPID privée côté serveur).
 import { getSupabase } from "../supabaseClient";
-import { retirerAbonnementNavigateur } from "./push-navigateur";
+import { etatNotifications, retirerAbonnementNavigateur } from "./push-navigateur";
 
 async function ecoleIdParCode(sb, code) {
   const { data } = await sb.from("ecoles").select("id").eq("code", code).maybeSingle();
   return data?.id || null;
 }
 
+// Enregistre l'adresse de CE navigateur : une ligne par appareil.
+async function enregistrerAbonnement(utilisateurCo, sid) {
+  const sb = getSupabase();
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return;
+  const ecoleId = await ecoleIdParCode(sb, sid);
+  if (!ecoleId) return;
+  const reg = await navigator.serviceWorker.ready;
+  const sub = await reg.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: import.meta.env.VITE_VAPID_PUBLIC_KEY,
+  });
+  // role / poste_cle : la base les recalcule depuis le compte et refuse une
+  // autre école que celle du compte (push-subs-verrou.sql) ; l'Edge push
+  // relit `comptes` avant d'envoyer.
+  await sb.from("push_subs").upsert({
+    ecole_id: ecoleId, user_id: user.id, subscription: sub.toJSON(),
+    role: utilisateurCo.role, nom: utilisateurCo.nom,
+    // Postes flexibles : la clé du poste sert de dimension de ciblage
+    // (postes système = mêmes clés que les rôles historiques).
+    poste_cle: utilisateurCo.posteCle || utilisateurCo.role,
+    updated_at: new Date().toISOString(),
+  });
+}
+
+// Demande l'autorisation puis abonne ce navigateur ; renvoie l'état obtenu.
 export async function sAbonnerAuxPush(utilisateurCo, sid) {
   try {
-    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+    if (etatNotifications() === "indisponible") return "indisponible";
     const perm = await Notification.requestPermission();
-    if (perm !== "granted") return;
-    const sb = getSupabase();
-    const { data: { user } } = await sb.auth.getUser();
-    if (!user) return;
-    const ecoleId = await ecoleIdParCode(sb, sid);
-    if (!ecoleId) return;
-    const reg = await navigator.serviceWorker.ready;
-    const sub = await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: import.meta.env.VITE_VAPID_PUBLIC_KEY,
-    });
-    // role / poste_cle : la base les recalcule depuis le compte et refuse une
-    // autre école que celle du compte (push-subs-verrou.sql) ; l'Edge push
-    // relit `comptes` avant d'envoyer.
-    await sb.from("push_subs").upsert({
-      ecole_id: ecoleId, user_id: user.id, subscription: sub.toJSON(),
-      role: utilisateurCo.role, nom: utilisateurCo.nom,
-      // Postes flexibles : la clé du poste sert de dimension de ciblage
-      // (postes système = mêmes clés que les rôles historiques).
-      poste_cle: utilisateurCo.posteCle || utilisateurCo.role,
-      updated_at: new Date().toISOString(),
-    });
+    if (perm === "granted") await enregistrerAbonnement(utilisateurCo, sid);
+    return perm;
+  } catch {
+    // L'abonnement push est optionnel.
+    return etatNotifications();
+  }
+}
+
+// Au démarrage : une session restaurée ne repasse pas par la connexion, et
+// l'appareil restait sans abonnement. Déjà autorisé, il se réabonne sans rien
+// demander.
+export async function rafraichirAbonnementPush(utilisateurCo, sid) {
+  try {
+    if (etatNotifications() === "granted") await enregistrerAbonnement(utilisateurCo, sid);
   } catch {
     // L'abonnement push est optionnel.
   }
@@ -66,12 +84,13 @@ export async function envoyerPush(cibles, titre, corps, url = "/", { eleveId = n
 }
 
 // Push ciblé sur des utilisateurs précis (messagerie interne individuelle).
-export async function envoyerPushUtilisateurs(userIds, titre, corps, url = "/") {
+// `appel` : appel entrant, livré en priorité haute et affiché avec insistance.
+export async function envoyerPushUtilisateurs(userIds, titre, corps, url = "/", { appel = false } = {}) {
   const sid = localStorage.getItem("LC_schoolId");
   if (!sid || !userIds?.length) return;
   try {
     await getSupabase().functions.invoke("push", {
-      body: { schoolId: sid, userIds, titre, corps, url },
+      body: { schoolId: sid, userIds, titre, corps, url, ...(appel ? { appel } : {}) },
     });
   } catch { /* best-effort */ }
 }
