@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  classeManquante,
   filiationManquante,
   findEnrollmentDuplicate,
   getEnrollmentDuplicateMessage,
@@ -61,6 +62,14 @@ test("parentage is required: empty or only linking words counts as missing", () 
   assert.equal(filiationManquante({ filiation: " Père : / Mère : " }), true);
   assert.equal(filiationManquante({ filiation: "Alpha Bah et Hawa Sow" }), false);
   assert.equal(normalizeFiliation("Fils de Alpha BAH et de Hawa Sow"), "alpha bah hawa sow");
+});
+
+test("class is required: empty or only spaces counts as missing", () => {
+  assert.equal(classeManquante({}), true);
+  assert.equal(classeManquante({ classe: "" }), true);
+  assert.equal(classeManquante({ classe: "   " }), true);
+  assert.equal(classeManquante({ classe: null }), true);
+  assert.equal(classeManquante({ classe: "7ème A" }), false);
 });
 
 test("duplicate detection ignores the current record while editing", () => {

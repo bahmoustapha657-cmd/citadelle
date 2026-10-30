@@ -5,7 +5,8 @@ import { champsRetour, normaliserDepart } from "../../../depart-utils";
 import { uploadPhotoEleve } from "../../../storageUtils";
 import { finaliserRetouche } from "../../camera-capture/retouche";
 import {
-  MESSAGE_FILIATION_OBLIGATOIRE, filiationManquante, findEnrollmentDuplicate, getEnrollmentDuplicateMessage,
+  MESSAGE_CLASSE_OBLIGATOIRE, MESSAGE_FILIATION_OBLIGATOIRE, classeManquante, filiationManquante,
+  findEnrollmentDuplicate, getEnrollmentDuplicateMessage,
 } from "../../../enrollment-utils";
 import { deplacerEleve, erreurClasseSection } from "./enrol-section";
 import { champsFicheModifiee } from "./fiche-modifiable";
@@ -33,6 +34,9 @@ export function useEnrolPhoto({
     // « Inactif » — masqués dans le formulaire, ils restaient enregistrés.
     const normalisee = normaliserDepart(form);
     if (normalisee.erreur) { toast(normalisee.erreur, "warning"); return; }
+    // Classe exigée à l'inscription, et une fiche ne peut plus perdre la
+    // sienne. Une fiche ancienne déjà sans classe reste modifiable.
+    if ((modal === "add_enrol" || classeOrigine) && classeManquante(form)) { toast(MESSAGE_CLASSE_OBLIGATOIRE, "warning"); return; }
     // Filiation exigée à l'inscription seulement : des fiches anciennes sans
     // filiation restent modifiables.
     if (modal === "add_enrol" && filiationManquante(form)) { toast(MESSAGE_FILIATION_OBLIGATOIRE, "warning"); return; }

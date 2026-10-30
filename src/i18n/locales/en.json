@@ -99,7 +99,7 @@
     "matriculeEditable": "Editable if needed",
     "ien": "National ID (NIN)",
     "ienPlaceholder": "E.g. GN-2024-000123",
-    "class": "Class",
+    "class": "Class *",
     "select": "— Select —",
     "sex": "Sex",
     "male": "Male",

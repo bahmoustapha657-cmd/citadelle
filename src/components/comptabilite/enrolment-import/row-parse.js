@@ -1,7 +1,7 @@
 // Conversion des lignes brutes d'un fichier d'import en candidats élèves,
 // avec validation (erreurs / avertissements) et détection des doublons.
 import { getToutesClassesConnues } from "../../../constants";
-import { filiationManquante, findEnrollmentDuplicate, getEnrollmentDuplicateMessage } from "../../../enrollment-utils";
+import { classeManquante, filiationManquante, findEnrollmentDuplicate, getEnrollmentDuplicateMessage } from "../../../enrollment-utils";
 
 // Normalise une date vers le format ISO yyyy-mm-dd quand c'est possible.
 const parseDate = (val) => {
@@ -71,7 +71,7 @@ export function parseEnrolmentRows({ allRows, headerRowIdx, cols, classeDefautIm
     if (!nom) erreurs.push("Nom manquant");
     if (!prenom) erreurs.push("Prenom manquant");
     if (filiationManquante(ligneCandidate)) erreurs.push("Filiation manquante (pere et mere)");
-    if (!classe) avertissements.push("Classe non definie - selectionner une classe par defaut");
+    if (classeManquante(ligneCandidate)) erreurs.push("Classe manquante (colonne Classe ou « Classe à affecter »)");
     else if (!classesEcole.includes(classe.toLowerCase()) && !classesConnues.includes(classe.toLowerCase())) {
       avertissements.push(`Classe "${classe}" non reconnue`);
     }
