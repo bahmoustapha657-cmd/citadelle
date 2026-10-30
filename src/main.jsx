@@ -8,9 +8,11 @@ import { registerServiceWorker } from './sw-register.js'
 import { initSentry } from './sentry.js'
 import './i18n'
 import { VERSION_APP } from './version-app.js'
+import { recevoirJetonAndroid } from './backend/application-android.js'
 
 console.info(`[EduGest] version ${VERSION_APP.court}`, VERSION_APP.date || '')
 initSentry()
+recevoirJetonAndroid()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

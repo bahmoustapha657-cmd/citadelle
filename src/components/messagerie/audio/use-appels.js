@@ -7,6 +7,7 @@ import {
   arreterFlux, attendreCollecteIce, capterMicro, creerConnexion, descriptionJson, webrtcDisponible,
 } from "./webrtc";
 import { cleCommune, creerEchangeCles } from "./relais-chiffrement";
+import { appelADecrocher } from "../../../backend/application-android";
 import { demarrerRelaisSecours } from "./relais-secours";
 import { creerSonnerie } from "./sonnerie";
 
@@ -31,7 +32,7 @@ const FIN_POUR_APPELE = {
 const etatVide = () => ({
   jeton: null, id: null, sens: null, offre: null, pc: null, audio: null, flux: null,
   sonnerie: null, minuteurs: [], coupure: null, reponduIci: false, distantOk: false,
-  canal: null, secours: null, attenteConnexion: null, echange: null, cle: null,
+  canal: null, secours: null, attenteConnexion: null, echange: null, cle: null, appeleUserId: null,
 });
 
 // Description envoyée à l'autre côté, avec la clé publique du relais de secours.
@@ -77,6 +78,13 @@ export function useAppels({ actif, moi, schoolCode, annuaire, nomMoi, occupe }) 
     setAppel((a) => (a ? { ...a, phase: "fin", message } : a));
     setTimeout(() => setAppel((a) => (a?.phase === "fin" ? null : a)), 2500);
   }, [nettoyer]);
+
+  // L'application Android de l'appelé sonne toute seule : si l'appelant renonce,
+  // il faut lui dire d'arrêter.
+  const finirSonnerieDistante = useCallback(() => {
+    const r = ref.current;
+    if (r.sens === "sortant" && r.id && !r.distantOk) notifier([r.appeleUserId], "", "", "/", { appelFin: r.id });
+  }, []);
 
   const echouer = useCallback((message) => {
     const id = ref.current.id;
@@ -184,24 +192,25 @@ export function useAppels({ actif, moi, schoolCode, annuaire, nomMoi, occupe }) 
       ref.current.echange = echange;
       const id = await lancerAppel(conversationId, descriptionAvecCle(pc, echange));
       if (ref.current.jeton !== jeton) { terminerAppel(id, "termine").catch(() => {}); return; }
-      ref.current.id = id;
+      const appeleUserId = annuaireRef.current.get(correspondantId)?.user_id;
+      Object.assign(ref.current, { id, appeleUserId });
       majAppel({ id, phase: "appel" });
       ref.current.sonnerie = creerSonnerie("sortant");
       ref.current.sonnerie.demarrer();
       ref.current.minuteurs.push(setTimeout(() => {
         if (ref.current.jeton === jeton && !ref.current.distantOk) {
+          finirSonnerieDistante();
           terminerAppel(id, "manque").catch(() => {});
           finir("Pas de réponse");
         }
       }, DELAI_SONNERIE_MS));
       // Réveille l'appelé si l'application est fermée sur son téléphone.
-      notifier([annuaireRef.current.get(correspondantId)?.user_id],
-        `📞 ${nomMoi || "Un collègue"} vous appelle`, "Touchez pour répondre.",
-        `/?messagerie=${conversationId}`, { appel: true });
+      notifier([appeleUserId], `📞 ${nomMoi || "Un collègue"} vous appelle`, "Touchez pour répondre.",
+        `/?messagerie=${conversationId}`, { appel: { id, nom: nomMoi || "Un collègue" } });
     } catch (e) {
       if (ref.current.jeton === jeton) echouer(e.message || "Appel impossible.");
     }
-  }, [echouer, finir, nomMoi]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [echouer, finir, finirSonnerieDistante, nomMoi]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Appel entrant ──
   const recevoir = useCallback((ligne) => {
@@ -252,9 +261,10 @@ export function useAppels({ actif, moi, schoolCode, annuaire, nomMoi, occupe }) 
   // phase (sonne → refusé ou annulé ; en cours → terminé).
   const raccrocher = useCallback(() => {
     const id = ref.current.id;
+    finirSonnerieDistante();
     if (id) terminerAppel(id, "termine").catch(() => {});
     finir(null);
-  }, [finir]);
+  }, [finir, finirSonnerieDistante]);
 
   const basculerMuet = useCallback(() => {
     const flux = ref.current.flux;
@@ -269,12 +279,14 @@ export function useAppels({ actif, moi, schoolCode, annuaire, nomMoi, occupe }) 
   const finirRef = useRef(finir);
   const echouerRef = useRef(echouer);
   const preparerSecoursRef = useRef(preparerSecours);
+  const repondreRef = useRef(repondre);
   useLayoutEffect(() => {
+    repondreRef.current = repondre;
     recevoirRef.current = recevoir;
     finirRef.current = finir;
     echouerRef.current = echouer;
     preparerSecoursRef.current = preparerSecours;
-  }, [recevoir, finir, echouer, preparerSecours]);
+  }, [recevoir, repondre, finir, echouer, preparerSecours]);
 
   useEffect(() => {
     if (!actif || !moi || !schoolCode) return undefined;
@@ -307,8 +319,15 @@ export function useAppels({ actif, moi, schoolCode, annuaire, nomMoi, occupe }) 
     // Ouverture depuis la notification « X vous appelle », ou retour dans
     // l'application : ça sonne encore ? En arrière-plan, le temps réel a pu
     // manquer l'événement, et il n'est jamais rejoué.
+    // « Répondre » sur l'écran d'appel natif : on décroche sans redemander.
+    let aDecrocher = appelADecrocher();
     const verifierAppels = () => {
-      appelsEntrantsEnAttente(moi).then((liste) => { if (liste[0]) recevoirRef.current(liste[0]); }).catch(() => {});
+      appelsEntrantsEnAttente(moi).then((liste) => {
+        if (!liste[0]) return;
+        recevoirRef.current(liste[0]);
+        if (liste[0].id === aDecrocher) repondreRef.current();
+        aDecrocher = null;
+      }).catch(() => {});
     };
     verifierAppels();
     const surRetour = () => { if (document.visibilityState === "visible" && !ref.current.jeton) verifierAppels(); };

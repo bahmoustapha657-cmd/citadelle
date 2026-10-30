@@ -1,0 +1,7 @@
+.gradle/
+build/
+app/build/
+local.properties
+# Injectés par la CI depuis les secrets GitHub (docs/application-android.md).
+app/google-services.json
+app/edugest.keystore

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.EduGest" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@color/bleu_nuit</item>
+        <item name="android:navigationBarColor">@color/bleu_nuit</item>
+        <item name="android:windowBackground">@color/bleu_nuit</item>
+    </style>
+
+    <style name="Theme.EduGest.Appel" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">@color/bleu_nuit</item>
+        <item name="android:navigationBarColor">@color/bleu_nuit</item>
+        <item name="android:windowBackground">@color/bleu_nuit</item>
+    </style>
+</resources>

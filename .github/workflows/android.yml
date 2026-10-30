@@ -1,0 +1,73 @@
+# Compile l'application Android. Sur une PR : contrôle, sans clé ni Firebase si
+# les secrets manquent. Lancé à la main sur master : APK signé, publié dans les
+# Releases du dépôt. Procédure : docs/application-android.md.
+name: Application Android
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "android/**"
+      - ".github/workflows/android.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Installer Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Installer Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.8.2"
+
+      - name: Poser les fichiers secrets
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json; fi
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/edugest.keystore; fi
+
+      - name: Compiler
+        env:
+          VERSION_CODE: ${{ github.run_number }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: gradle -p android assembleRelease --no-daemon --stacktrace
+
+      - name: Afficher l'empreinte de la clé (publique, pour assetlinks.json)
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -f android/app/edugest.keystore ]; then
+            keytool -list -v -keystore android/app/edugest.keystore -storepass "$ANDROID_KEYSTORE_PASSWORD" | grep "SHA256:"
+          fi
+
+      - name: Garder l'APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: edugest-android
+          path: android/app/build/outputs/apk/release/*.apk
+          retention-days: 14
+
+      - name: Publier
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master' && hashFiles('android/app/edugest.keystore') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp android/app/build/outputs/apk/release/*.apk edugest.apk
+          gh release create "android-${{ github.run_number }}" edugest.apk --latest \
+            --title "EduGest Android ${{ github.run_number }}" --notes "Application Android d'EduGest."
