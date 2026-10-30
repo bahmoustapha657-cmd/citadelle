@@ -12,7 +12,7 @@ val keystore = file("edugest.keystore")
 
 android {
     namespace = "com.edugest.app"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.edugest.app"
