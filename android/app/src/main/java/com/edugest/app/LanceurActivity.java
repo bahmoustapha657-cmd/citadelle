@@ -7,7 +7,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 
@@ -39,7 +38,6 @@ public class LanceurActivity extends LauncherActivity {
         super.onCreate(etat);
         if (isFinishing()) return;
         Appels.creerCanaux(this);
-        Log.i("EduGest", "onCreate etat=" + (etat != null));
         // Recréée pendant la demande (rotation, thème) : la réponse arrivera ici,
         // Chrome ne doit pas passer devant la fenêtre d'autorisation.
         enAttente = etat != null && etat.getBoolean(CLE_EN_ATTENTE);
@@ -63,7 +61,6 @@ public class LanceurActivity extends LauncherActivity {
     @Override
     public void onRequestPermissionsResult(int demande, @NonNull String[] permissions, @NonNull int[] resultats) {
         super.onRequestPermissionsResult(demande, permissions, resultats);
-        Log.i("EduGest", "reponse demande=" + demande + " nb=" + resultats.length);
         if (demande != DEMANDE_NOTIFICATIONS) return;
         enAttente = false;
         preparerJeton();
