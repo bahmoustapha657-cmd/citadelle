@@ -49,7 +49,9 @@ Le projet Firebase est `citadelle-school`.
 gh workflow run android.yml --ref master
 ```
 
-L'APK signé rejoint les Releases :
+Le workflow ouvre l'application sur deux émulateurs (`scripts/essai-android.sh`) ; ils
+n'ont pas de compte Google, donc Firebase n'y fonctionne pas. Si elle s'ouvre, l'APK
+signé rejoint les Releases :
 `https://github.com/bahmoustapha657-cmd/citadelle/releases/latest/download/edugest.apk`
 
 ## Limites

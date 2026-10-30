@@ -90,6 +90,17 @@ test("manifeste : le paquet Android est celui qu'attend le site", () => {
   assert.match(module, /android-app:\/\/com\.edugest\.app/);
 });
 
+test("manifeste : l'écran que la bibliothèque active à chaque lancement est déclaré", () => {
+  const manifeste = readFileSync("android/app/src/main/AndroidManifest.xml", "utf8");
+  assert.match(manifeste, /<activity android:name="com\.google\.androidbrowserhelper\.trusted\.ManageDataLauncherActivity">/);
+});
+
+test("publication : seulement une version qui s'ouvre sur émulateur", () => {
+  const flux = readFileSync(".github/workflows/android.yml", "utf8");
+  assert.match(flux, /publier:\s+needs: demarrage/);
+  assert.equal(flux.match(/gh release create/g).length, 1);
+});
+
 test("lien site ↔ application : le site reconnaît ce paquet et une seule clé", () => {
   const [lien] = JSON.parse(readFileSync("public/.well-known/assetlinks.json", "utf8"));
   assert.deepEqual(lien.relation, ["delegate_permission/common.handle_all_urls"]);
