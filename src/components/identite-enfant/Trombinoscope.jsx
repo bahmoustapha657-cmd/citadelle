@@ -15,13 +15,14 @@ import { PhotoEleve } from "./PhotoEleve";
 // Trombinoscope à l'écran : les enfants en grandes photos, classe par classe,
 // le nom auquel ils répondent en gros. Recherche par prénom, surnom, nom,
 // tuteur ou filiation ; un toucher agrandit l'enfant. Impressions :
-// trombinoscope A4 et badges (toutes les classes, BadgesModale).
+// trombinoscope A4 et, avec `avecBadges`, badges (toutes les classes,
+// BadgesModale) — fermés par défaut : les enseignants ne les impriment pas.
 // `onSeancePhoto(classe, eleveId)` et `enregistrer(id, champs)` (retouche
 // d'une photo, fond de toute une classe) : présents seulement pour qui peut
 // modifier les photos — direction, chef de section (pas le portail
 // enseignant).
 export function Trombinoscope({
-  eleves = [], schoolInfo = {}, annee = "", section = "", onSeancePhoto = null,
+  eleves = [], schoolInfo = {}, annee = "", section = "", avecBadges = false, onSeancePhoto = null,
   enregistrer = null, schoolId = "", toast = null, logAction = null,
 }) {
   const [recherche, setRecherche] = useState("");
@@ -69,8 +70,8 @@ export function Trombinoscope({
         )}
         <Btn sm v="ghost" title="Une feuille A4 par classe, à afficher dans la classe"
           onClick={() => imprimerTrombinoscope(dansClasse, options)}>🖨️ Imprimer le trombinoscope</Btn>
-        <Btn sm v="ghost" title="Écussons de poche pour la tenue, ou badges à plastifier"
-          onClick={() => setBadges(dansClasse)}>🏷️ Badges</Btn>
+        {avecBadges && <Btn sm v="ghost" title="Écussons de poche pour la tenue, ou badges à plastifier"
+          onClick={() => setBadges(dansClasse)}>🏷️ Badges</Btn>}
         {onSeancePhoto && <Btn sm v="blue" title="Prendre les photos et les surnoms des enfants, l'un après l'autre"
           onClick={() => onSeancePhoto(classeActive === "all" ? null : classeActive)}>📸 Séance photo</Btn>}
         {enregistrer && <Btn sm v="ghost" title="La même couleur de fond derrière tous les enfants d'une classe"
@@ -109,8 +110,8 @@ export function Trombinoscope({
         );
       })}
 
-      <EnfantAgrandi eleve={enfantAgrandi} fermer={() => setAgrandi(null)} actions={enfantAgrandi && <>
-        <Btn sm v="ghost" onClick={() => setBadges([enfantAgrandi])}>🏷️ Imprimer son badge</Btn>
+      <EnfantAgrandi eleve={enfantAgrandi} fermer={() => setAgrandi(null)} actions={enfantAgrandi && (avecBadges || enregistrer || onSeancePhoto) && <>
+        {avecBadges && <Btn sm v="ghost" onClick={() => setBadges([enfantAgrandi])}>🏷️ Imprimer son badge</Btn>}
         {enregistrer && aUnePhoto(enfantAgrandi) && <Btn sm v="ghost" title="Fond, cadrage, lumière — sans reprendre la photo"
           onClick={() => setRetouche(enfantAgrandi)}>✏️ Modifier la photo</Btn>}
         {onSeancePhoto && <Btn sm v="blue" onClick={() => { setAgrandi(null); onSeancePhoto(enfantAgrandi.classe || null, enfantAgrandi._id); }}>

@@ -60,7 +60,7 @@ export function ElevesTab({
         />
       ) : cE ? <Chargement/> : (
         <Trombinoscope
-          eleves={listeAffichee} schoolInfo={schoolInfo} annee={annee} section={section}
+          eleves={listeAffichee} schoolInfo={schoolInfo} annee={annee} section={section} avecBadges
           onSeancePhoto={peutPhotographier ? (classe, eleveId = null) => setSeance({ classe, eleveId }) : null}
           enregistrer={peutPhotographier ? modChampE : null} schoolId={schoolId} toast={toast} logAction={logAction}
         />
