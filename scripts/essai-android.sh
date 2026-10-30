@@ -40,3 +40,9 @@ if grep -q "Process: $PAQUET" essai/plantages.txt; then
   grep -A 40 "Process: $PAQUET" essai/plantages.txt | head -60
   exit 1
 fi
+
+# Sans plantage, l'écran doit encore être celui de Chrome, pas l'accueil du téléphone.
+if [ ! -s essai/activite.txt ] || grep -qv "com.android.chrome" essai/activite.txt; then
+  echo "::error::L'application ne s'ouvre pas dans Chrome."
+  exit 1
+fi
