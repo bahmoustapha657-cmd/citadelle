@@ -28,16 +28,17 @@ Le projet Firebase est `citadelle-school`.
 
 1. **Application Android** : console Firebase → Paramètres du projet → Ajouter une
    application → Android → nom de paquet `com.edugest.app`. Télécharger
-   `google-services.json`, puis :
-   `gh secret set GOOGLE_SERVICES_JSON < google-services.json`
+   `google-services.json`.
 2. **Compte de service** : Paramètres du projet → Comptes de service → Générer une
-   nouvelle clé privée, puis, depuis le dépôt principal :
-   `npx supabase@2.120.0 secrets set FCM_SERVICE_ACCOUNT="$(cat cle.json)"`
-3. **Clé de signature** : à garder précieusement. Une clé perdue empêche toute mise
-   à jour : il faudrait désinstaller l'application sur chaque téléphone.
-   `keytool -genkeypair -v -keystore edugest.keystore -alias edugest -keyalg RSA -keysize 2048 -validity 10000`
-   puis les secrets `ANDROID_KEYSTORE_BASE64` (fichier en base64),
-   `ANDROID_KEYSTORE_PASSWORD` et `ANDROID_KEY_ALIAS` (`edugest`).
+   nouvelle clé privée.
+3. **Tout le reste, d'une commande**, depuis le dépôt, les deux fichiers étant dans
+   Téléchargements :
+   `node scripts/preparer-android.mjs`
+   Le script vérifie les fichiers, crée la clé de signature dans `~/edugest-android`,
+   et pose les secrets GitHub (`GOOGLE_SERVICES_JSON`, `ANDROID_KEYSTORE_BASE64`,
+   `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`) et Supabase
+   (`FCM_SERVICE_ACCOUNT`). **Sauvegarder ce dossier** : une clé perdue empêche toute
+   mise à jour, il faudrait désinstaller l'application sur chaque téléphone.
 4. **Lien site ↔ application** : le workflow affiche l'empreinte SHA-256 de la clé.
    La reporter dans `public/.well-known/assetlinks.json` : sans ce fichier, Chrome
    affiche une barre d'adresse en haut de l'application.
