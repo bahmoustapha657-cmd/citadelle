@@ -97,3 +97,9 @@ test("lien site ↔ application : le site reconnaît ce paquet et une seule clé
   assert.equal(lien.target.sha256_cert_fingerprints.length, 1);
   assert.match(lien.target.sha256_cert_fingerprints[0], /^([0-9A-F]{2}:){31}[0-9A-F]{2}$/);
 });
+
+test("lien site ↔ application : le dossier caché suit le bundle jusqu'à la production", () => {
+  const ci = readFileSync(".github/workflows/ci.yml", "utf8");
+  assert.match(ci, /name: dist-supabase\s+path: dist\s+#[^\n]*\s+include-hidden-files: true/);
+  assert.match(ci, /test -f dist\/\.well-known\/assetlinks\.json/);
+});

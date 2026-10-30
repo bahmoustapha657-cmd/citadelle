@@ -49,6 +49,8 @@ jobs:
         with:
           name: dist-supabase
           path: dist
+          # .well-known : écarté par défaut, c'est le lien avec l'application Android.
+          include-hidden-files: true
           retention-days: 30
           if-no-files-found: error
 
@@ -310,6 +312,7 @@ jobs:
       - name: Vérifier que le bundle correspond au commit
         run: |
           test -f dist/index.html
+          test -f dist/.well-known/assetlinks.json
           jq -e --arg sha "$GITHUB_SHA" '.commit == $sha and .propre == true' dist/version.json
 
       - name: Setup Node.js
@@ -344,3 +347,8 @@ jobs:
           done
           echo "::error::La production ne sert pas le commit déployé."
           exit 1
+
+      # Sans ce fichier, le site renvoie sa page d'accueil à cette adresse, et
+      # Chrome affiche une barre d'adresse dans l'application Android.
+      - name: Contrôler le lien avec l'application Android
+        run: curl -fsS https://edugest-gn.pages.dev/.well-known/assetlinks.json | jq -e '.[0].target.package_name == "com.edugest.app"'
