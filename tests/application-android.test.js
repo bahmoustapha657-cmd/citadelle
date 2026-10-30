@@ -89,3 +89,11 @@ test("manifeste : le paquet Android est celui qu'attend le site", () => {
   const module = readFileSync("src/backend/application-android.js", "utf8");
   assert.match(module, /android-app:\/\/com\.edugest\.app/);
 });
+
+test("lien site ↔ application : le site reconnaît ce paquet et une seule clé", () => {
+  const [lien] = JSON.parse(readFileSync("public/.well-known/assetlinks.json", "utf8"));
+  assert.deepEqual(lien.relation, ["delegate_permission/common.handle_all_urls"]);
+  assert.equal(lien.target.package_name, "com.edugest.app");
+  assert.equal(lien.target.sha256_cert_fingerprints.length, 1);
+  assert.match(lien.target.sha256_cert_fingerprints[0], /^([0-9A-F]{2}:){31}[0-9A-F]{2}$/);
+});

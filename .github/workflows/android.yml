@@ -5,9 +5,6 @@ name: Application Android
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - claude/application-android
   pull_request:
     paths:
       - "android/**"

@@ -39,9 +39,9 @@ Le projet Firebase est `citadelle-school`.
    `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`) et Supabase
    (`FCM_SERVICE_ACCOUNT`). **Sauvegarder ce dossier** : une clé perdue empêche toute
    mise à jour, il faudrait désinstaller l'application sur chaque téléphone.
-4. **Lien site ↔ application** : le workflow affiche l'empreinte SHA-256 de la clé.
-   La reporter dans `public/.well-known/assetlinks.json` : sans ce fichier, Chrome
-   affiche une barre d'adresse en haut de l'application.
+4. **Lien site ↔ application** : le workflow affiche l'empreinte SHA-256 de la clé,
+   reportée dans `public/.well-known/assetlinks.json`. Sans ce fichier, ou avec une
+   autre clé, Chrome affiche une barre d'adresse en haut de l'application.
 
 ## Publier une version
 
