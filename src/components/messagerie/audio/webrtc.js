@@ -31,19 +31,32 @@ export function arreterFlux(flux) {
 
 export const webrtcDisponible = () => typeof window !== "undefined" && "RTCPeerConnection" in window;
 
+// Un relais TURN figure-t-il parmi les serveurs ICE ?
+export const relaisPrevu = (iceServers) => (iceServers || [])
+  .some((s) => [].concat(s.urls || []).some((u) => /^turns?:/i.test(u)));
+
+// Sans relais, seule la collecte des candidats directs compte ; avec relais,
+// sa réponse peut tarder sur réseau faible et c'est elle qui fait passer
+// l'appel entre deux réseaux mobiles.
+export const delaiCollecteIce = (iceServers) => (relaisPrevu(iceServers) ? 8000 : 4000);
+
 // Attend la fin de la collecte ICE (ou `delaiMs`, au-delà duquel on part avec
-// les candidats déjà trouvés : un relais TURN lent ne doit pas bloquer).
-export function attendreCollecteIce(pc, delaiMs = 4000) {
+// les candidats déjà trouvés). Sans trickle, un candidat arrivé après coup est
+// perdu : on patiente pour le relais, et on part dès qu'il a répondu.
+export function attendreCollecteIce(pc, delaiMs = delaiCollecteIce(pc.getConfiguration?.().iceServers)) {
   if (pc.iceGatheringState === "complete") return Promise.resolve();
   return new Promise((resolve) => {
     const fin = () => {
       clearTimeout(minuteur);
       pc.removeEventListener("icegatheringstatechange", verifier);
+      pc.removeEventListener("icecandidate", surCandidat);
       resolve();
     };
     const verifier = () => { if (pc.iceGatheringState === "complete") fin(); };
+    const surCandidat = (e) => { if (/ typ relay /.test(e.candidate?.candidate || "")) fin(); };
     const minuteur = setTimeout(fin, delaiMs);
     pc.addEventListener("icegatheringstatechange", verifier);
+    pc.addEventListener("icecandidate", surCandidat);
   });
 }
 
