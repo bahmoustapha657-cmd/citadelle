@@ -15,7 +15,13 @@
 // Déploiement :  supabase functions deploy turn-credentials
 // Secrets (Cloudflare → Realtime → TURN Server → créer une clé) :
 //   supabase secrets set CF_TURN_KEY_ID="..." CF_TURN_API_TOKEN="..."
+//
+// Sans Cloudflare (carte bancaire refusée…) : tout autre relais à identifiants
+// fixes, remis aux seuls comptes connectés, ou repli si Cloudflare échoue :
+//   supabase secrets set TURN_URLS="turn:hote:3478?transport=udp,turn:hote:3478?transport=tcp" \
+//     TURN_USERNAME="..." TURN_CREDENTIAL="..."
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { type IceServer, serveursRepli } from "../_shared/relais-turn.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -25,9 +31,7 @@ const CF_TURN_API_TOKEN = Deno.env.get("CF_TURN_API_TOKEN") ?? "";
 // Durée de vie des identifiants : plus longue que l'appel le plus long.
 const TTL_SECONDES = 4 * 3600;
 
-const STUN_PUBLICS = [
-  { urls: ["stun:stun.cloudflare.com:3478", "stun:stun.l.google.com:19302"] },
-];
+const REPLI = serveursRepli(Deno.env.get("TURN_URLS"), Deno.env.get("TURN_USERNAME"), Deno.env.get("TURN_CREDENTIAL"));
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -36,8 +40,6 @@ const cors = {
 };
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), { status: s, headers: { ...cors, "Content-Type": "application/json" } });
-
-type IceServer = { urls: string | string[]; username?: string; credential?: string };
 
 // Le port 53 est bloqué par les navigateurs : l'URL correspondante ne ferait
 // qu'allonger la collecte ICE (recommandation Cloudflare).
@@ -58,9 +60,7 @@ Deno.serve(async (req) => {
   const { data: { user } } = await admin.auth.getUser(jwt);
   if (!user) return json({ error: "Non authentifié." }, 401);
 
-  if (!CF_TURN_KEY_ID || !CF_TURN_API_TOKEN) {
-    return json({ iceServers: STUN_PUBLICS, turn: false });
-  }
+  if (!CF_TURN_KEY_ID || !CF_TURN_API_TOKEN) return json(REPLI);
 
   try {
     const rep = await fetch(
@@ -76,8 +76,8 @@ Deno.serve(async (req) => {
     const liste = Array.isArray(iceServers) ? iceServers : [iceServers];
     return json({ iceServers: sansPort53(liste), turn: true });
   } catch (e) {
-    // Relais indisponible : on dépanne en STUN plutôt que de bloquer l'appel.
+    // Relais indisponible : on dépanne plutôt que de bloquer l'appel.
     console.error("turn-credentials:", (e as Error)?.message || e);
-    return json({ iceServers: STUN_PUBLICS, turn: false });
+    return json(REPLI);
   }
 });

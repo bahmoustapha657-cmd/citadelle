@@ -222,10 +222,13 @@ export async function appelsEntrantsEnAttente(moi, depuisMs = 45000) {
 }
 
 // Serveurs ICE : TURN éphémère si l'Edge Function est configurée, sinon STUN.
+// Délai borné : sur réseau faible, décrocher ne doit pas rester suspendu à
+// cette réponse pendant que l'appelant finit de sonner dans le vide.
 const STUN_DEFAUT = [{ urls: ["stun:stun.cloudflare.com:3478", "stun:stun.l.google.com:19302"] }];
+const DELAI_SERVEURS_ICE_MS = 8000;
 export async function serveursIce() {
   try {
-    const { data, error } = await getSupabase().functions.invoke("turn-credentials", { body: {} });
+    const { data, error } = await getSupabase().functions.invoke("turn-credentials", { body: {}, timeout: DELAI_SERVEURS_ICE_MS });
     if (!error && Array.isArray(data?.iceServers) && data.iceServers.length) return data.iceServers;
   } catch { /* fonction non déployée : STUN */ }
   return STUN_DEFAUT;
