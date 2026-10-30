@@ -8,6 +8,7 @@
 // Déploiement + secrets :
 //   supabase functions deploy push
 //   supabase secrets set VAPID_PUBLIC_KEY="..." VAPID_PRIVATE_KEY="..." VAPID_SUBJECT="mailto:contact@edugest.app"
+//   supabase secrets set --env-file ... FCM_SERVICE_ACCOUNT (application Android, cf. docs/application-android.md)
 //
 // Appelé par le client : supabase.functions.invoke("push", { body }).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -16,12 +17,14 @@ import {
   type Classe, nettoyerCibles, nettoyerEleveId, nettoyerUserIds, refusEnseignantEleve, refusEnvoi, refusParents,
 } from "./droits.ts";
 import { candidats, type CompteAbonne, destinataires, OPTIONS_APPEL, parLots } from "./destinataires.ts";
+import { donneesFcm, envoyerFcm, estAppareilAndroid, jetonAcces, lireCompteFcm, messageFcm } from "./fcm.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const VAPID_PUBLIC = Deno.env.get("VAPID_PUBLIC_KEY")!;
 const VAPID_PRIVATE = Deno.env.get("VAPID_PRIVATE_KEY")!;
 const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT") ?? "mailto:contact@edugest.app";
+const COMPTE_FCM = lireCompteFcm(Deno.env.get("FCM_SERVICE_ACCOUNT"));
 
 // Plafond PostgREST (1000 lignes par réponse) et taille des filtres in.(…).
 const PAGE = 1000;
@@ -155,12 +158,17 @@ Deno.serve(async (req) => {
     if (!subs.length) return json({ ok: true, envoyes: 0 });
 
     webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);
-    const appel = body.appel === true;
-    const payload = JSON.stringify({ title: titre || "EduGest", body: corps || "", url: url || "/", ...(appel ? { appel } : {}) });
+    // `appel` : appel entrant ; `appelFin` : l'appelant a renoncé, l'application
+    // Android cesse de sonner (les navigateurs n'ont rien à arrêter).
+    const appel = body.appel ? { id: nettoyerEleveId(body.appel?.id), nom: String(body.appel?.nom || "") } : null;
+    const appelFin = nettoyerEleveId(body.appelFin);
+    const payload = JSON.stringify({ title: titre || "EduGest", body: corps || "", url: url || "/", ...(appel ? { appel: true } : {}) });
+    const android = subs.filter((s) => estAppareilAndroid(s.subscription));
+    const navigateurs = appelFin ? [] : subs.filter((s) => !estAppareilAndroid(s.subscription));
 
     let envoyes = 0;
     const aSupprimer: string[] = [];
-    await Promise.all(subs.map(async (s) => {
+    await Promise.all(navigateurs.map(async (s) => {
       try {
         await webpush.sendNotification(s.subscription, payload, appel ? OPTIONS_APPEL : {});
         envoyes++;
@@ -170,6 +178,20 @@ Deno.serve(async (req) => {
         if (code === 404 || code === 410) aSupprimer.push(s.subscription.endpoint);
       }
     }));
+    if (android.length && COMPTE_FCM) {
+      try {
+        const acces = await jetonAcces(COMPTE_FCM);
+        const donnees = donneesFcm({ titre, corps, url, appel, appelFin });
+        await Promise.all(android.map(async (s) => {
+          const resultat = await envoyerFcm(COMPTE_FCM, acces, messageFcm(s.subscription.fcm, donnees));
+          if (resultat === "ok") envoyes++;
+          if (resultat === "expire") aSupprimer.push(s.subscription.endpoint);
+        }));
+      } catch (e) {
+        // Firebase indisponible : les navigateurs ont déjà été servis.
+        console.error("push fcm:", (e as Error)?.message || e);
+      }
+    }
     for (const lot of parLots(aSupprimer, LOT_ADRESSES)) {
       await admin.from("push_subs").delete().eq("ecole_id", ec.id).in("endpoint", lot);
     }

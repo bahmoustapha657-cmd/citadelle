@@ -4,6 +4,7 @@ import { useReunion } from "./audio/use-reunion";
 import { usePresence } from "./use-presence";
 import { ReunionOverlay } from "./ReunionOverlay";
 import { notifier } from "../../backend/messagerie-supabase";
+import { jetonAndroid } from "../../backend/application-android";
 import { etatNotifications } from "../../backend/push-navigateur";
 import { rafraichirAbonnementPush, sAbonnerAuxPush } from "../../backend/push-supabase";
 import { useMessagerieEtat } from "./use-messagerie-etat";
@@ -84,7 +85,7 @@ export function MessagerieProvider({ utilisateur, schoolCode, onOuvrir, children
 
   // Notifications de cet appareil : elles seules préviennent d'un appel quand
   // l'application est fermée.
-  const [etatPush, setEtatPush] = useState(() => etatNotifications());
+  const [etatPush, setEtatPush] = useState(() => (jetonAndroid() ? "granted" : etatNotifications()));
   const compte = utilisateur?.compteDocId;
   useEffect(() => {
     if (actif) rafraichirAbonnementPush(utilisateur, schoolCode);

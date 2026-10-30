@@ -2,6 +2,7 @@
 // Abonnement : enregistre la souscription du navigateur dans `push_subs`.
 // Envoi : délègue à l'Edge Function `push` (clé VAPID privée côté serveur).
 import { getSupabase } from "../supabaseClient";
+import { abonnementAndroid, jetonAndroid } from "./application-android";
 import { etatNotifications, retirerAbonnementNavigateur } from "./push-navigateur";
 
 async function ecoleIdParCode(sb, code) {
@@ -9,23 +10,30 @@ async function ecoleIdParCode(sb, code) {
   return data?.id || null;
 }
 
-// Enregistre l'adresse de CE navigateur : une ligne par appareil.
+async function abonnementNavigateur() {
+  const reg = await navigator.serviceWorker.ready;
+  const sub = await reg.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: import.meta.env.VITE_VAPID_PUBLIC_KEY,
+  });
+  return sub.toJSON();
+}
+
+// Enregistre l'adresse de CET appareil : une ligne par appareil. L'application
+// Android reçoit par Firebase : elle ne s'abonne pas en plus à Web Push.
 async function enregistrerAbonnement(utilisateurCo, sid) {
   const sb = getSupabase();
   const { data: { user } } = await sb.auth.getUser();
   if (!user) return;
   const ecoleId = await ecoleIdParCode(sb, sid);
   if (!ecoleId) return;
-  const reg = await navigator.serviceWorker.ready;
-  const sub = await reg.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: import.meta.env.VITE_VAPID_PUBLIC_KEY,
-  });
+  const jeton = jetonAndroid();
+  const subscription = jeton ? abonnementAndroid(jeton) : await abonnementNavigateur();
   // role / poste_cle : la base les recalcule depuis le compte et refuse une
   // autre école que celle du compte (push-subs-verrou.sql) ; l'Edge push
   // relit `comptes` avant d'envoyer.
   await sb.from("push_subs").upsert({
-    ecole_id: ecoleId, user_id: user.id, subscription: sub.toJSON(),
+    ecole_id: ecoleId, user_id: user.id, subscription,
     role: utilisateurCo.role, nom: utilisateurCo.nom,
     // Postes flexibles : la clé du poste sert de dimension de ciblage
     // (postes système = mêmes clés que les rôles historiques).
@@ -37,6 +45,10 @@ async function enregistrerAbonnement(utilisateurCo, sid) {
 // Demande l'autorisation puis abonne ce navigateur ; renvoie l'état obtenu.
 export async function sAbonnerAuxPush(utilisateurCo, sid) {
   try {
+    if (jetonAndroid()) {
+      await enregistrerAbonnement(utilisateurCo, sid);
+      return "granted";
+    }
     if (etatNotifications() === "indisponible") return "indisponible";
     const perm = await Notification.requestPermission();
     if (perm === "granted") await enregistrerAbonnement(utilisateurCo, sid);
@@ -52,7 +64,7 @@ export async function sAbonnerAuxPush(utilisateurCo, sid) {
 // demander.
 export async function rafraichirAbonnementPush(utilisateurCo, sid) {
   try {
-    if (etatNotifications() === "granted") await enregistrerAbonnement(utilisateurCo, sid);
+    if (jetonAndroid() || etatNotifications() === "granted") await enregistrerAbonnement(utilisateurCo, sid);
   } catch {
     // L'abonnement push est optionnel.
   }
@@ -63,6 +75,8 @@ export async function rafraichirAbonnementPush(utilisateurCo, sid) {
 // qui s'en va. Appelée AVANT la révocation de la session (signOut).
 export async function seDesabonnerDesPush() {
   try {
+    const jeton = jetonAndroid();
+    if (jeton) await getSupabase().from("push_subs").delete().eq("endpoint", abonnementAndroid(jeton).endpoint);
     await retirerAbonnementNavigateur({ sb: getSupabase(), navigateur: globalThis.navigator });
   } catch {
     // Best-effort : la déconnexion ne doit jamais en dépendre.
@@ -84,13 +98,14 @@ export async function envoyerPush(cibles, titre, corps, url = "/", { eleveId = n
 }
 
 // Push ciblé sur des utilisateurs précis (messagerie interne individuelle).
-// `appel` : appel entrant, livré en priorité haute et affiché avec insistance.
-export async function envoyerPushUtilisateurs(userIds, titre, corps, url = "/", { appel = false } = {}) {
+// `appel` ({ id, nom }) : appel entrant, livré en priorité haute et affiché avec
+// insistance. `appelFin` (id) : l'appelant a renoncé.
+export async function envoyerPushUtilisateurs(userIds, titre, corps, url = "/", { appel = null, appelFin = null } = {}) {
   const sid = localStorage.getItem("LC_schoolId");
   if (!sid || !userIds?.length) return;
   try {
     await getSupabase().functions.invoke("push", {
-      body: { schoolId: sid, userIds, titre, corps, url, ...(appel ? { appel } : {}) },
+      body: { schoolId: sid, userIds, titre, corps, url, ...(appel ? { appel } : {}), ...(appelFin ? { appelFin } : {}) },
     });
   } catch { /* best-effort */ }
 }
