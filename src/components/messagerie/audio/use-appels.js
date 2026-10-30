@@ -1,17 +1,22 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { subscribeTablePayload } from "../../../backend/realtime-supabase";
 import {
-  appelsEntrantsEnAttente, lancerAppel, notifier, repondreAppel, serveursIce, terminerAppel,
+  appelsEntrantsEnAttente, lancerAppel, notifier, ouvrirCanalAppel, repondreAppel, serveursIce, terminerAppel,
 } from "../../../backend/messagerie-supabase";
 import {
   arreterFlux, attendreCollecteIce, capterMicro, creerConnexion, descriptionJson, webrtcDisponible,
 } from "./webrtc";
+import { cleCommune, creerEchangeCles } from "./relais-chiffrement";
+import { demarrerRelaisSecours } from "./relais-secours";
 import { creerSonnerie } from "./sonnerie";
 
 // Sonnerie côté appelant avant « Pas de réponse ».
 const DELAI_SONNERIE_MS = 45000;
-// Coupure réseau tolérée en cours d'appel avant de raccrocher.
+// Coupure réseau tolérée en cours d'appel avant de passer au relais de secours.
 const DELAI_COUPURE_MS = 12000;
+// Après la réponse : au-delà, la voix passe par le relais de secours sans
+// attendre que le navigateur déclare la connexion perdue.
+const DELAI_CONNEXION_MS = 10000;
 
 // Fin annoncée à l'écran, selon le statut final lu dans msg_appels.
 const FIN_POUR_APPELANT = {
@@ -25,13 +30,19 @@ const FIN_POUR_APPELE = {
 const etatVide = () => ({
   jeton: null, id: null, sens: null, offre: null, pc: null, audio: null, flux: null,
   sonnerie: null, minuteurs: [], coupure: null, reponduIci: false, distantOk: false,
+  canal: null, secours: null, attenteConnexion: null, echange: null, cle: null,
 });
+
+// Description envoyée à l'autre côté, avec la clé publique du relais de secours.
+const descriptionAvecCle = (pc, echange) => ({ ...descriptionJson(pc.localDescription), cle: echange?.publique });
 
 // Appels audio 1-à-1. Signalisation : table msg_appels (insert = ça sonne,
 // update = réponse / fin), reçue en temps réel. Un seul appel à la fois par
 // appareil ; un appel reçu pendant un autre est refusé « occupé ».
+// Voix : WebRTC (direct, ou relais TURN) ; si la connexion n'aboutit pas ou se
+// perd, relais de secours chiffré par le canal privé Supabase de l'appel.
 // `appel` (état d'écran) : { id, sens, phase, correspondantId, conversationId,
-//   debut, muet, message } avec phase ∈ preparation | appel | sonnerie |
+//   debut, muet, secours, message } avec phase ∈ preparation | appel | sonnerie |
 //   connexion | en_cours | fin.
 export function useAppels({ actif, moi, schoolCode, annuaire, nomMoi, occupe }) {
   const [appel, setAppel] = useState(null);
@@ -49,6 +60,9 @@ export function useAppels({ actif, moi, schoolCode, annuaire, nomMoi, occupe }) 
     r.sonnerie?.arreter();
     r.minuteurs.forEach(clearTimeout);
     clearTimeout(r.coupure);
+    clearTimeout(r.attenteConnexion);
+    r.secours?.arreter();
+    r.canal?.fermer();
     try { r.pc?.close(); } catch { /* déjà fermée */ }
     arreterFlux(r.flux);
     if (r.audio) r.audio.srcObject = null;
@@ -69,21 +83,69 @@ export function useAppels({ actif, moi, schoolCode, annuaire, nomMoi, occupe }) 
     finir(message);
   }, [finir]);
 
+  // Ni connexion directe ni relais TURN : la voix passe par le canal privé de
+  // l'appel. Chaque côté bascule de lui-même (échec, délai) ou dès le premier
+  // message de l'autre, qui ne parle sur ce canal qu'une fois basculé. Sans clé
+  // commune, pas de relais : jamais de voix en clair.
+  const basculer = useCallback((jeton) => {
+    const r = ref.current;
+    if (r.jeton !== jeton || r.secours) return;
+    const impossible = () => { if (ref.current.jeton === jeton) echouer("Connexion impossible (réseau)"); };
+    if (!r.canal || !r.cle) { impossible(); return; }
+    clearTimeout(r.coupure);
+    clearTimeout(r.attenteConnexion);
+    try { r.pc?.close(); } catch { /* déjà fermée */ }
+    r.pc = null;
+    if (r.audio) r.audio.srcObject = null;
+    const { canal, flux, cle } = r;
+    try {
+      r.secours = demarrerRelaisSecours({
+        flux, canal, cle, surPerte: () => { if (ref.current.jeton === jeton) echouer("Connexion perdue"); },
+      });
+    } catch { impossible(); return; }
+    Promise.all([canal.pret, r.secours.pret]).then(() => {
+      if (ref.current.jeton !== jeton) return;
+      canal.envoyer("bascule");
+      setAppel((a) => (a ? { ...a, phase: "en_cours", debut: a.debut || Date.now(), secours: true } : a));
+    }).catch(impossible);
+  }, [echouer]);
+
+  // Réponse échangée : le canal de secours s'ouvre, la clé commune se calcule,
+  // et la connexion a un délai pour aboutir.
+  const preparerSecours = useCallback((jeton, publiqueDistante) => {
+    const r = ref.current;
+    if (r.jeton !== jeton || r.canal) return;
+    cleCommune(r.echange, publiqueDistante, r.id).then((cle) => {
+      if (ref.current.jeton === jeton) ref.current.cle = cle;
+    });
+    r.canal = ouvrirCanalAppel(r.id, (evenement, charge) => {
+      if (ref.current.jeton !== jeton) return;
+      basculer(jeton);
+      ref.current.secours?.recevoir(evenement, charge);
+    });
+    r.canal.pret.catch(() => { /* WebRTC reste seul en piste */ });
+    r.attenteConnexion = setTimeout(() => {
+      const e = ref.current;
+      if (e.jeton === jeton && e.cle && e.pc?.connectionState !== "connected") basculer(jeton);
+    }, DELAI_CONNEXION_MS);
+  }, [basculer]);
+
   const surEtatConnexion = useCallback((jeton) => (etat) => {
     const r = ref.current;
     if (r.jeton !== jeton) return;
     if (etat === "connected") {
       clearTimeout(r.coupure);
+      clearTimeout(r.attenteConnexion);
       setAppel((a) => (a && a.phase !== "en_cours" ? { ...a, phase: "en_cours", debut: a.debut || Date.now() } : a));
     } else if (etat === "failed") {
-      echouer("Connexion impossible (réseau)");
+      basculer(jeton);
     } else if (etat === "disconnected") {
       clearTimeout(r.coupure);
       r.coupure = setTimeout(() => {
-        if (ref.current.jeton === jeton && ref.current.pc?.connectionState !== "connected") echouer("Connexion perdue");
+        if (ref.current.jeton === jeton && ref.current.pc?.connectionState !== "connected") basculer(jeton);
       }, DELAI_COUPURE_MS);
     }
-  }, [echouer]);
+  }, [basculer]);
 
   const brancher = async (jeton) => {
     const [flux, iceServers] = await Promise.all([capterMicro(), serveursIce()]);
@@ -116,8 +178,10 @@ export function useAppels({ actif, moi, schoolCode, annuaire, nomMoi, occupe }) 
       if (!pc) return;
       await pc.setLocalDescription(await pc.createOffer());
       await attendreCollecteIce(pc);
+      const echange = await creerEchangeCles().catch(() => null);
       if (ref.current.jeton !== jeton) return;
-      const id = await lancerAppel(conversationId, descriptionJson(pc.localDescription));
+      ref.current.echange = echange;
+      const id = await lancerAppel(conversationId, descriptionAvecCle(pc, echange));
       if (ref.current.jeton !== jeton) { terminerAppel(id, "termine").catch(() => {}); return; }
       ref.current.id = id;
       majAppel({ id, phase: "appel" });
@@ -172,9 +236,12 @@ export function useAppels({ actif, moi, schoolCode, annuaire, nomMoi, occupe }) 
       await pc.setRemoteDescription(offre);
       await pc.setLocalDescription(await pc.createAnswer());
       await attendreCollecteIce(pc);
+      const echange = await creerEchangeCles().catch(() => null);
       if (ref.current.jeton !== jeton) return;
+      ref.current.echange = echange;
       ref.current.reponduIci = true;
-      await repondreAppel(id, descriptionJson(pc.localDescription));
+      await repondreAppel(id, descriptionAvecCle(pc, echange));
+      preparerSecours(jeton, offre?.cle);
     } catch (e) {
       if (ref.current.jeton === jeton) echouer(e.message || "Impossible de répondre.");
     }
@@ -200,11 +267,13 @@ export function useAppels({ actif, moi, schoolCode, annuaire, nomMoi, occupe }) 
   const recevoirRef = useRef(recevoir);
   const finirRef = useRef(finir);
   const echouerRef = useRef(echouer);
+  const preparerSecoursRef = useRef(preparerSecours);
   useLayoutEffect(() => {
     recevoirRef.current = recevoir;
     finirRef.current = finir;
     echouerRef.current = echouer;
-  }, [recevoir, finir, echouer]);
+    preparerSecoursRef.current = preparerSecours;
+  }, [recevoir, finir, echouer, preparerSecours]);
 
   useEffect(() => {
     if (!actif || !moi || !schoolCode) return undefined;
@@ -224,6 +293,7 @@ export function useAppels({ actif, moi, schoolCode, annuaire, nomMoi, occupe }) 
           setAppel((a) => (a ? { ...a, phase: "connexion" } : a));
           r.pc?.setRemoteDescription(ligne.reponse)
             .catch(() => echouerRef.current("Connexion impossible."));
+          preparerSecoursRef.current(r.jeton, ligne.reponse.cle);
         } else if (r.sens === "entrant" && !r.reponduIci) {
           finirRef.current("Répondu sur un autre appareil");
         }
