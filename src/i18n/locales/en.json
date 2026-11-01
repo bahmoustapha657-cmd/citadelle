@@ -379,7 +379,8 @@
       "grades": "Enter grades",
       "students": "My students",
       "schedule": "Timetable",
-      "messages": "Messages"
+      "messages": "Messages",
+      "lessonPlans": "My lesson plans"
     },
     "selectClass": "Select a class",
     "selectSubject": "Select a subject",
