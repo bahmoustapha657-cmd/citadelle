@@ -2,7 +2,8 @@
 // portail enseignant selon le réseau.
 import test, { after, before, beforeEach, describe, mock } from "node:test";
 import assert from "node:assert/strict";
-import { creerTicket, DUREE_TICKET_S, refusTicket } from "../supabase/functions/pedagogue-ticket/ticket.ts";
+import { creerTicket, DUREE_TICKET_S, refusTicket, rolePedagogue } from "../supabase/functions/pedagogue-ticket/ticket.ts";
+import { classesDeLEnseignant, sectionDuCompte } from "../supabase/functions/pedagogue-ticket/perimetre.ts";
 
 const SECRET = "secret-commun-de-test";
 const COMPTE = "7f3c1a52-4b1e-4c8a-9d21-3e6f0a9b1c44";
@@ -42,15 +43,129 @@ test("ticket : un autre secret donne une autre signature", async () => {
   assert.notEqual(await creerTicket(entree, SECRET), await creerTicket(entree, "autre-secret"));
 });
 
-test("refus : enseignant en poste seulement", () => {
+test("ticket : l'école, le rôle et les classes voyagent signés", async () => {
+  const contexte = {
+    ecole: { id: "3b2f7a10-6f0e-4d6b-9a55-1c9e2d7f8a01", nom: "La Citadelle", couleur1: "#0A1628", couleur2: "#00C48C" },
+    role: "enseignant",
+    annee: "2026-2027",
+    classes: [{ nom: "7ème A", section: "college", matieres: ["Maths"], creneaux: [] }],
+  };
+  const donnees = lireDonnees(await creerTicket({ compteId: COMPTE, nom: "A. Camara", jti: JTI, iat: IAT, ...contexte }, SECRET));
+  assert.deepEqual({ ecole: donnees.ecole, role: donnees.role, annee: donnees.annee, classes: donnees.classes }, contexte);
+});
+
+test("ticket : trop de classes pour l'adresse → connexion quand même, sans les classes", async () => {
+  const creneaux = Array.from({ length: 80 }, () => ({ jour: 1, debut: "08:00", fin: "10:00", matiere: "Mathématiques" }));
+  const classes = Array.from({ length: 40 }, (_, i) => ({ nom: `Classe ${i}`, section: "college", matieres: [], creneaux }));
+  const ticket = await creerTicket({ compteId: COMPTE, nom: "A. Camara", jti: JTI, iat: IAT, role: "enseignant", classes }, SECRET);
+  assert.ok(ticket.length <= 32_768);
+  const donnees = lireDonnees(ticket);
+  assert.equal(donnees.classes, undefined);
+  assert.equal(donnees.role, "enseignant");
+});
+
+test("refus : enseignant ou encadrement en poste seulement", () => {
   assert.equal(refusTicket(compte(), ecole), null);
   assert.equal(refusTicket(compte({ statut: null }), ecole), null);
   assert.equal(refusTicket(null, ecole).status, 403);
-  for (const role of ["parent", "direction", "comptable", "surveillant", "superadmin", "staff"]) {
+  for (const role of ["direction", "admin", "primaire", "college"]) {
+    assert.equal(refusTicket(compte({ role }), ecole), null, role);
+  }
+  for (const role of ["parent", "comptable", "surveillant", "superadmin", "staff"]) {
     assert.equal(refusTicket(compte({ role }), ecole).status, 403, role);
   }
   assert.equal(refusTicket(compte({ statut: "Inactif" }), ecole).status, 403);
+  assert.equal(refusTicket(compte({ role: "direction", statut: "Inactif" }), ecole).status, 403);
   assert.equal(refusTicket(compte({ extra: { fusionneDans: "autre" } }), ecole).status, 403);
+});
+
+test("rôle dans Pédagogue : seule la Direction y dirige", () => {
+  assert.equal(rolePedagogue("enseignant"), "enseignant");
+  assert.equal(rolePedagogue("direction"), "directeur");
+  for (const role of ["admin", "primaire", "college"]) assert.equal(rolePedagogue(role), "responsable_pedagogique", role);
+  for (const role of ["parent", "comptable", "constructor"]) assert.equal(rolePedagogue(role), undefined, role);
+});
+
+const enseignant = (partiel = {}) => ({ nom: "Camara Aïssatou", section: "college", matiere: "Mathématiques", extra: {}, ...partiel });
+const perimetre = (partiel = {}) => classesDeLEnseignant({
+  compte: enseignant(), emplois: [], enseignements: [], fiches: [], classes: [], matieres: [], ...partiel,
+});
+
+test("périmètre : ses séances, pas celles des collègues", () => {
+  const emplois = [
+    { classe: "7ème A", jour: "Lundi", heure_debut: "08:00", heure_fin: "10:00", matiere: "Mathématiques", enseignant: "camara  aissatou" },
+    { classe: "7ème A", jour: "Mardi", heure_debut: "08:00:00", heure_fin: "09:00", matiere: "Algèbre", enseignant: "Camara Aïssatou (titulaire)" },
+    { classe: "8ème B", jour: "Lundi", heure_debut: "10:00", heure_fin: "12:00", matiere: "Français", enseignant: "Diallo Mamadou" },
+  ];
+  assert.deepEqual(perimetre({ emplois }), [{
+    nom: "7ème A",
+    section: "college",
+    matieres: ["Mathématiques", "Algèbre"],
+    creneaux: [
+      { jour: 1, debut: "08:00", fin: "10:00", matiere: "Mathématiques" },
+      { jour: 2, debut: "08:00", fin: "09:00", matiere: "Algèbre" },
+    ],
+  }]);
+});
+
+test("périmètre : heures et jours écrits à la main", () => {
+  const ligne = (partiel) => ({ classe: "7ème A", jour: "Lundi", matiere: "Maths", enseignant: "Camara Aïssatou", ...partiel });
+  const emplois = [
+    ligne({ heure_debut: "8h", heure_fin: "10h30" }),
+    ligne({ jour: "MERCREDI", extra: { heure: "08:00 - 10:00" } }),
+    ligne({ jour: "Dimanche", heure_debut: "08:00" }),
+    ligne({ jour: "Mardi", heure_debut: "plus tard" }),
+    ligne({ jour: "Jeudi", heure_debut: "08:00", matiere: "" }),
+  ];
+  assert.deepEqual(perimetre({ emplois })[0].creneaux, [
+    { jour: 1, debut: "08:00", fin: "10:30", matiere: "Maths" },
+    { jour: 3, debut: "08:00", fin: "10:00", matiere: "Maths" },
+  ]);
+});
+
+test("périmètre : la classe d'un titulaire sans emploi du temps", () => {
+  const compte = enseignant({ section: "primaire", enseignant_id: "f1", nom: "A. Camara" });
+  const matieres = [
+    { nom: "Lecture", classes: [] },
+    { nom: "Calcul", classes: ["4ème Année"] },
+    { nom: "Dictée", classes: [], extra: { nature: "epreuve" } },
+    { nom: "Sciences", classes: ["6ème Année"] },
+  ];
+  assert.deepEqual(perimetre({ compte, fiches: [{ id: "f1", extra: { classeTitle: "4ème Année A" } }], matieres }), [
+    { nom: "4ème Année A", section: "primaire", matieres: ["Lecture", "Calcul"], creneaux: [] },
+  ]);
+});
+
+test("périmètre : toutes les sources de classes, sans doublon", () => {
+  const compte = enseignant({ enseignant_id: "f1", extra: { classeTitre: "9ème C", classesTitulaire: ["10ème D", "7ème A"] } });
+  const noms = perimetre({
+    compte,
+    emplois: [{ classe: "7ème A", enseignant: "Camara Aïssatou" }],
+    enseignements: [{ classe: "8ème B", enseignant_nom: "Camara Aïssatou" }, { classe: "8ème Z", enseignant_nom: "Autre" }],
+    fiches: [{ id: "autre", nom: "Autre", classe_title: "11ème" }],
+    classes: [{ nom: "7ÈME A", enseignant_id: "f1" }, { nom: "9ème X", enseignant_id: "autre" }],
+  }).map((c) => c.nom);
+  assert.deepEqual(noms.sort(), ["10ème D", "8ème B", "9ème C", "7ème A"].sort());
+});
+
+test("périmètre : un enseignant sans classe n'envoie rien", () => {
+  assert.deepEqual(perimetre({ emplois: [{ classe: "7ème A", enseignant: "Autre" }] }), []);
+});
+
+test("périmètre : aucune donnée d'élève ni de salaire ne sort", () => {
+  const classes = perimetre({
+    compte: enseignant({ extra: { classeTitre: "7ème A", salaire: 500000 } }),
+    emplois: [{ classe: "7ème A", jour: "Lundi", heure_debut: "08:00", matiere: "Maths", enseignant: "Camara Aïssatou", salle: "B2", extra: { eleves: ["Bah"] } }],
+  });
+  assert.deepEqual(Object.keys(classes[0]), ["nom", "section", "matieres", "creneaux"]);
+  assert.deepEqual(Object.keys(classes[0].creneaux[0]), ["jour", "debut", "fin", "matiere"]);
+});
+
+test("section : comme le portail enseignant", () => {
+  assert.equal(sectionDuCompte({ section: "prescolaire" }), "prescolaire");
+  assert.equal(sectionDuCompte({ sections: ["lycee"] }), "lycee");
+  assert.equal(sectionDuCompte({ section: "secondaire" }), "college");
+  assert.equal(sectionDuCompte({}), "college");
 });
 
 test("refus : école hors service", () => {
