@@ -379,7 +379,8 @@
       "grades": "Saisir des notes",
       "students": "Mes élèves",
       "schedule": "Emploi du temps",
-      "messages": "Messages"
+      "messages": "Messages",
+      "lessonPlans": "Mes fiches"
     },
     "selectClass": "Sélectionnez une classe",
     "selectSubject": "Sélectionnez une matière",

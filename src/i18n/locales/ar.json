@@ -379,7 +379,8 @@
       "grades": "إدخال الدرجات",
       "students": "طلابي",
       "schedule": "الجدول الزمني",
-      "messages": "الرسائل"
+      "messages": "الرسائل",
+      "lessonPlans": "بطاقات دروسي"
     },
     "selectClass": "اختر فصلاً",
     "selectSubject": "اختر مادة",

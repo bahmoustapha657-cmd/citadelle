@@ -1,10 +1,30 @@
+import { useState } from "react";
 import { Badge } from "../ui";
 import { useMessagerie } from "../messagerie/messagerie-contexte";
+import { lienMesFiches } from "../../backend/pedagogue-supabase";
 
-export function PortailHeader({ schoolInfo, annee, nomEns, matiere, c1, c2, deconnecter, t, tab, setTab }) {
+export function PortailHeader({ schoolInfo, annee, nomEns, matiere, c1, c2, deconnecter, t, tab, setTab, uid }) {
   const messagerie = useMessagerie();
+  const [ouverture, setOuverture] = useState(false);
+  const [erreurFiches, setErreurFiches] = useState("");
+
+  // Même onglet : une fenêtre ouverte depuis ici serait coupée par notre COOP.
+  const ouvrirMesFiches = async () => {
+    setOuverture(true);
+    setErreurFiches("");
+    try {
+      window.location.assign(await lienMesFiches(uid));
+    } catch (e) {
+      setErreurFiches(e.message);
+    } finally {
+      setOuverture(false);
+    }
+  };
+
   const tabs = [
     { id: "dashboard", label: t("teacher.tabs.overview") },
+    // Tôt dans la rangée : sur téléphone, la fin reste hors de l'écran.
+    { id: "fiches", label: <>{t("teacher.tabs.lessonPlans")} <span aria-hidden="true">↗</span></>, externe: true },
     { id: "edt", label: t("teacher.tabs.schedule") },
     { id: "notes", label: t("teacher.tabs.grades") },
     { id: "eleves", label: t("teacher.tabs.students") },
@@ -34,7 +54,8 @@ export function PortailHeader({ schoolInfo, annee, nomEns, matiere, c1, c2, deco
         {tabs.map((item) => (
           <button
             key={item.id}
-            onClick={() => setTab(item.id)}
+            onClick={() => (item.externe ? ouvrirMesFiches() : setTab(item.id))}
+            disabled={item.externe && ouverture}
             style={{
               padding: "13px 18px",
               border: "none",
@@ -45,6 +66,7 @@ export function PortailHeader({ schoolInfo, annee, nomEns, matiere, c1, c2, deco
               whiteSpace: "nowrap",
               color: tab === item.id ? c1 : "#64748b",
               borderBottom: tab === item.id ? `3px solid ${c1}` : "3px solid transparent",
+              opacity: item.externe && ouverture ? 0.6 : 1,
             }}
           >
             {item.label}
@@ -56,6 +78,11 @@ export function PortailHeader({ schoolInfo, annee, nomEns, matiere, c1, c2, deco
           </button>
         ))}
       </div>
+      {erreurFiches && (
+        <div role="alert" style={{ background: "#fef2f2", color: "#991b1b", padding: "10px 24px", fontSize: 13, fontWeight: 600 }}>
+          {erreurFiches}
+        </div>
+      )}
     </>
   );
 }
