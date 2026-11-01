@@ -9,9 +9,9 @@ import { useMessagerie } from "../messagerie/messagerie-contexte";
 import { moduleLabel, moduleDesc } from "./module-i18n";
 import { VERSION_APP } from "../../version-app";
 
-// Comptes qui lisent dans Pédagogue les fiches partagées par leurs enseignants
-// (rôles de pedagogue-ticket). Un enseignant passe par son portail.
-const ROLES_FICHES_ECOLE = ["direction", "admin", "primaire", "college"];
+// Comptes qui configurent Pédagogue et y lisent les fiches partagées par leurs
+// enseignants (rôles de pedagogue-ticket). Un enseignant passe par son portail.
+const ROLES_FICHES_ECOLE = ["admin", "primaire", "college"];
 
 function LienFichesEcole({ uid, t }) {
   const [ouverture, setOuverture] = useState(false);

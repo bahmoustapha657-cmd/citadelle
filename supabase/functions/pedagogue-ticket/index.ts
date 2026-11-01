@@ -3,8 +3,9 @@
 // ════════════════════════════════════════════════════════════════════════
 // Signe, pour l'enseignant ou l'encadrement connecté, une autorisation de 2
 // minutes que Pédagogue échange contre une session (fonction pont-edugest de ce
-// projet-là). Elle porte aussi l'école (nom, couleurs) et, pour un enseignant,
-// ses classes et son emploi du temps : ils n'existent pas ailleurs chez Pédagogue.
+// projet-là). Elle porte aussi l'école (nom, couleurs, en-tête officiel) et, pour
+// un enseignant, ses classes et son emploi du temps : ils n'existent pas ailleurs
+// chez Pédagogue.
 // Les deux produits gardent chacun leur base : seul le secret est commun.
 //
 // Déploiement, avec le même secret que PONT_EDUGEST_SECRET côté Pédagogue :
@@ -12,7 +13,7 @@
 //   supabase functions deploy pedagogue-ticket
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { classesDeLEnseignant, sectionDuCompte, type CompteEnseignant } from "./perimetre.ts";
-import { creerTicket, refusTicket, rolePedagogue } from "./ticket.ts";
+import { creerTicket, enTeteDeLEcole, refusTicket, rolePedagogue } from "./ticket.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -74,7 +75,7 @@ Deno.serve(async (req) => {
       .select("id, role, statut, nom, extra, ecole_id, enseignant_id, enseignant_nom, section, sections, matiere")
       .eq("user_id", user.id).maybeSingle();
     const { data: ecole } = compte?.ecole_id
-      ? await admin.from("ecoles").select("actif, supprime, nom, couleur1, couleur2, extra").eq("id", compte.ecole_id).maybeSingle()
+      ? await admin.from("ecoles").select("actif, supprime, nom, couleur1, couleur2, pays, logo, legal, extra").eq("id", compte.ecole_id).maybeSingle()
       : { data: null };
     const refus = refusTicket(compte, ecole);
     if (refus) return json({ error: refus.error }, refus.status);
@@ -84,7 +85,7 @@ Deno.serve(async (req) => {
       nom: compte!.nom || "Enseignant",
       jti: crypto.randomUUID(),
       iat: Math.floor(Date.now() / 1000),
-      ecole: { id: compte!.ecole_id, nom: ecole!.nom, couleur1: ecole!.couleur1, couleur2: ecole!.couleur2 },
+      ecole: { id: compte!.ecole_id, nom: ecole!.nom, couleur1: ecole!.couleur1, couleur2: ecole!.couleur2, enTete: enTeteDeLEcole(ecole!) },
       role: rolePedagogue(compte!.role),
       annee: ecole!.extra?.anneeScolaire,
       classes: compte!.role === "enseignant" ? await classesPourPedagogue(admin, compte!, compte!.ecole_id) : undefined,
