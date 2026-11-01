@@ -6,8 +6,10 @@
 // pour préserver les imports historiques (`import { PRINT_RESET } from "../reports"`).
 
 import { getNationalDeviseHTML } from "../national-symbols.js";
-import { resolveLegalFields } from "../legal-utils.js";
+import { enteteOfficiel, MINISTERE_DEFAUT } from "../legal-utils.js";
 import i18n from "../i18n";
+
+export { MINISTERE_DEFAUT };
 
 // Helper i18n hors React : raccourci vers i18n.t().
 // Fallback sur la clé si i18n n'est pas encore initialisé (cas improbable
@@ -78,15 +80,11 @@ export const watermarkHtml = (schoolInfo = {}) => {
   return `<div class="lc-watermark" aria-hidden="true"><img crossOrigin="anonymous" src="${schoolInfo.logo}" alt=""/></div>`;
 };
 
-export const MINISTERE_DEFAUT = "Ministère de l'Éducation Nationale, de l'Alphabétisation, de l'Enseignement Technique et de la Formation Professionnelle";
-
 // Helpers défensifs : tolèrent null/undefined/"" et chaînes blanches
 export const orDefault = (v, def) => (typeof v === "string" && v.trim() ? v : def);
 
 export const enteteDoc = (si = {}, logoUrl) => {
-  const pays = orDefault(si.pays, "République de Guinée");
-  const lf = resolveLegalFields(si);
-  const ministere = orDefault(lf.ministere, MINISTERE_DEFAUT);
+  const { pays, ministere, ...lf } = enteteOfficiel(si);
   return `
 <div style="display:flex;align-items:flex-start;gap:14px;border-bottom:3px solid #0A1628;padding-bottom:12px;margin-bottom:16px">
   <div style="flex:1;font-size:10px;color:#444;line-height:1.8;min-width:0">

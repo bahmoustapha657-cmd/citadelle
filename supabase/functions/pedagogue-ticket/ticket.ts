@@ -3,6 +3,8 @@
 // pedagogue-ticket. L'autorisation est lue par la fonction pont-edugest de
 // Pédagogue : tout changement de format se fait des deux côtés, et les deux
 // suites de tests partagent le même exemple signé.
+import { enteteOfficiel } from "../_shared/app/src/legal-utils.ts";
+import { getNationalDeviseTexte } from "../_shared/app/src/national-symbols.js";
 import type { ClassePedagogue } from "./perimetre.ts";
 
 export const DUREE_TICKET_S = 120;
@@ -11,16 +13,16 @@ const NOM_MAX = 200;
 const TAILLE_MAX = 32_000;
 
 // Place de chaque compte EduGest dans Pédagogue ; les autres n'y ont pas accès.
-// La Direction y lit les fiches que ses enseignants choisissent de partager.
+// La pédagogie relève des chefs de section et de l'Administrateur : ils y
+// configurent l'école. La Direction générale (Fondateur) n'y entre pas.
 const ROLES_PEDAGOGUE = new Map<string, RolePedagogue>([
   ["enseignant", "enseignant"],
-  ["direction", "directeur"],
   ["admin", "responsable_pedagogique"],
   ["primaire", "responsable_pedagogique"],
   ["college", "responsable_pedagogique"],
 ]);
 
-export type RolePedagogue = "directeur" | "responsable_pedagogique" | "enseignant";
+export type RolePedagogue = "responsable_pedagogique" | "enseignant";
 export const rolePedagogue = (role: string) => ROLES_PEDAGOGUE.get(role);
 
 export type CompteTicket = {
@@ -39,7 +41,7 @@ type Refus = { error: string; status: number };
 // n'ouvre plus rien.
 export function refusTicket(compte: CompteTicket | null, ecole: EcoleTicket | null): Refus | null {
   if (!compte) return { error: "Compte introuvable.", status: 403 };
-  if (!rolePedagogue(compte.role)) return { error: "Les fiches de cours sont réservées aux enseignants et à la Direction.", status: 403 };
+  if (!rolePedagogue(compte.role)) return { error: "Les fiches de cours sont réservées aux enseignants, aux chefs de section et à l'Administrateur.", status: 403 };
   if (compte.extra?.fusionneDans || (compte.statut && compte.statut !== "Actif")) {
     return { error: "Ce compte n'est plus actif.", status: 403 };
   }
@@ -53,8 +55,24 @@ const octets = (texte: string) => new TextEncoder().encode(texte);
 const base64url = (valeur: Uint8Array) =>
   btoa(String.fromCharCode(...valeur)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
+export type EnTeteEcole = ReturnType<typeof enteteOfficiel> & { devise: string; logo: string | null };
+
+type EcoleOfficielle = {
+  pays?: string | null;
+  logo?: string | null;
+  legal?: Parameters<typeof enteteOfficiel>[0]["legal"] | null;
+  extra?: Record<string, unknown> | null;
+};
+
+// L'en-tête des fiches de cours est celui de tous les documents de l'école. Le
+// logo n'y est qu'une adresse : une image ne tiendrait pas dans l'autorisation.
+export function enTeteDeLEcole({ pays, logo, legal, extra }: EcoleOfficielle): EnTeteEcole {
+  const officiel = enteteOfficiel({ ...extra, pays: pays ?? undefined, legal: legal ?? undefined });
+  return { ...officiel, devise: getNationalDeviseTexte(officiel.pays), logo: logo?.startsWith("https://") ? logo : null };
+}
+
 export type ContexteTicket = {
-  ecole?: { id: string; nom: string; couleur1: string | null; couleur2: string | null };
+  ecole?: { id: string; nom: string; couleur1: string | null; couleur2: string | null; enTete?: EnTeteEcole };
   role?: RolePedagogue;
   annee?: string;
   classes?: ClassePedagogue[];

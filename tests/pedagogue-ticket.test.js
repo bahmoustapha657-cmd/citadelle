@@ -2,7 +2,7 @@
 // portail enseignant selon le réseau.
 import test, { after, before, beforeEach, describe, mock } from "node:test";
 import assert from "node:assert/strict";
-import { creerTicket, DUREE_TICKET_S, refusTicket, rolePedagogue } from "../supabase/functions/pedagogue-ticket/ticket.ts";
+import { creerTicket, DUREE_TICKET_S, enTeteDeLEcole, refusTicket, rolePedagogue } from "../supabase/functions/pedagogue-ticket/ticket.ts";
 import { classesDeLEnseignant, sectionDuCompte } from "../supabase/functions/pedagogue-ticket/perimetre.ts";
 
 const SECRET = "secret-commun-de-test";
@@ -54,6 +54,38 @@ test("ticket : l'école, le rôle et les classes voyagent signés", async () => 
   assert.deepEqual({ ecole: donnees.ecole, role: donnees.role, annee: donnees.annee, classes: donnees.classes }, contexte);
 });
 
+test("en-tête : le même que les documents de l'école, profil légal compris", () => {
+  const enTete = enTeteDeLEcole({
+    pays: "République de Guinée",
+    logo: "https://exemple.supabase.co/storage/v1/object/public/photos/logo.png",
+    legal: { etablissement: { ministereTutelle: "Ministère de test", ire: "IRE de Kindia", dpe: "DPE de Kindia" }, arreteOuverture: { numero: "A-12" } },
+  });
+  assert.deepEqual(enTete, {
+    pays: "République de Guinée",
+    devise: "Travail - Justice - Solidarité",
+    ministere: "Ministère de test",
+    ire: "IRE de Kindia",
+    dpe: "DPE de Kindia",
+    agrement: "A-12",
+    logo: "https://exemple.supabase.co/storage/v1/object/public/photos/logo.png",
+  });
+});
+
+test("en-tête : école sans profil → mêmes défauts que les bulletins, anciens champs lus dans extra", () => {
+  const vide = enTeteDeLEcole({ pays: null, logo: null, legal: null, extra: null });
+  assert.equal(vide.pays, "République de Guinée");
+  assert.equal(vide.devise, "Travail - Justice - Solidarité");
+  assert.match(vide.ministere, /^Ministère de l'Éducation Nationale/);
+  assert.equal(vide.logo, null);
+  assert.equal(enTeteDeLEcole({ pays: "Sénégal", legal: {}, extra: { ire: "IA de Dakar" } }).devise, "Un Peuple - Un But - Une Foi");
+  assert.equal(enTeteDeLEcole({ legal: {}, extra: { ire: "IA de Dakar" } }).ire, "IA de Dakar");
+});
+
+test("en-tête : un logo qui n'est pas une adresse ne voyage pas", () => {
+  assert.equal(enTeteDeLEcole({ logo: "data:image/png;base64,AAAA" }).logo, null);
+  assert.equal(enTeteDeLEcole({ logo: "http://exemple.com/logo.png" }).logo, null);
+});
+
 test("ticket : trop de classes pour l'adresse → connexion quand même, sans les classes", async () => {
   const creneaux = Array.from({ length: 80 }, () => ({ jour: 1, debut: "08:00", fin: "10:00", matiere: "Mathématiques" }));
   const classes = Array.from({ length: 40 }, (_, i) => ({ nom: `Classe ${i}`, section: "college", matieres: [], creneaux }));
@@ -68,22 +100,21 @@ test("refus : enseignant ou encadrement en poste seulement", () => {
   assert.equal(refusTicket(compte(), ecole), null);
   assert.equal(refusTicket(compte({ statut: null }), ecole), null);
   assert.equal(refusTicket(null, ecole).status, 403);
-  for (const role of ["direction", "admin", "primaire", "college"]) {
+  for (const role of ["admin", "primaire", "college"]) {
     assert.equal(refusTicket(compte({ role }), ecole), null, role);
   }
-  for (const role of ["parent", "comptable", "surveillant", "superadmin", "staff"]) {
+  for (const role of ["direction", "parent", "comptable", "surveillant", "superadmin", "staff"]) {
     assert.equal(refusTicket(compte({ role }), ecole).status, 403, role);
   }
   assert.equal(refusTicket(compte({ statut: "Inactif" }), ecole).status, 403);
-  assert.equal(refusTicket(compte({ role: "direction", statut: "Inactif" }), ecole).status, 403);
+  assert.equal(refusTicket(compte({ role: "college", statut: "Inactif" }), ecole).status, 403);
   assert.equal(refusTicket(compte({ extra: { fusionneDans: "autre" } }), ecole).status, 403);
 });
 
-test("rôle dans Pédagogue : seule la Direction y dirige", () => {
+test("rôle dans Pédagogue : chefs de section et Administrateur, jamais la Direction générale", () => {
   assert.equal(rolePedagogue("enseignant"), "enseignant");
-  assert.equal(rolePedagogue("direction"), "directeur");
   for (const role of ["admin", "primaire", "college"]) assert.equal(rolePedagogue(role), "responsable_pedagogique", role);
-  for (const role of ["parent", "comptable", "constructor"]) assert.equal(rolePedagogue(role), undefined, role);
+  for (const role of ["direction", "parent", "comptable", "constructor"]) assert.equal(rolePedagogue(role), undefined, role);
 });
 
 const enseignant = (partiel = {}) => ({ nom: "Camara Aïssatou", section: "college", matiere: "Mathématiques", extra: {}, ...partiel });

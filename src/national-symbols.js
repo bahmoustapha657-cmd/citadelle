@@ -107,6 +107,10 @@ export function getNationalSymbols(paysLibre) {
 // Fallback : si le pays n'est pas reconnu, retourne juste la devise de
 // la Guinée (comportement historique) — l'utilisateur peut ajouter
 // son pays au mapping si nécessaire.
+export function getNationalDeviseTexte(paysLibre) {
+  return (getNationalSymbols(paysLibre) || PAYS.guinee).devise.join(" - ");
+}
+
 export function getNationalDeviseHTML(paysLibre) {
   const sym = getNationalSymbols(paysLibre) || PAYS.guinee;
   const [m1, m2, m3] = sym.devise;
