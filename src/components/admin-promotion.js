@@ -19,13 +19,14 @@ import {
   anneePrecedente, finAnneeScolaire, getAnnee, getSectionForClasse, getSectionLabel, getSystemeScolaire,
 } from "../constants";
 import { notesDeLEleve } from "../note-index";
-import { getGeneralAverage } from "../note-utils";
+import { getGeneralAverage, matieresNotees } from "../note-utils";
 import { getPeriodesForSection } from "../period-utils";
 import { buildBulletinNotesAnnuelles } from "../reports/bulletins/annual-notes";
 import { classeSuivante, decisionPassage, estClasseExamen, sectionApresPromotion } from "../promotion-utils";
 import { matieresForClasse } from "./ecole/ecole-logic";
 import { matieresEvaluees } from "../matiere-nature";
-import { classeAnneeCloturee, etatPromotion } from "./admin/cloture-annee-utils";
+import { classeAnneeCloturee, classePourAnnee, etatPromotion } from "./admin/cloture-annee-utils";
+import { matieresPourAnnee, schoolInfoPourAnnee } from "../reglages-annee";
 import { majFicheEcole } from "./admin/cloture-annee";
 
 // Nb d'updates lancés en parallèle (modifierChampDoc = 1 par appel).
@@ -112,8 +113,22 @@ const changement = (sec, section) => (section && section !== sec.section
   : {});
 
 // Décisions de promotion d'une section (logique pure) → accumule dans `acc`.
-function analyserSection(schoolInfo, sec, data, sansNotesBehavior, acc, annee) {
+function analyserSection(schoolInfoDuJour, sec, data, sansNotesBehavior, acc, annee) {
+  // L'année jugée se calcule avec SES réglages (matières, coefficients,
+  // périodicité figés à sa clôture), comme son bulletin annuel.
+  const schoolInfo = schoolInfoPourAnnee(schoolInfoDuJour, annee);
+  const matieresAnnee = matieresEvaluees(matieresPourAnnee(data.matieres, schoolInfoDuJour, annee, sec.section));
   const systeme = getSystemeScolaire(schoolInfo);
+  // Notes de chaque classe de l'année jugée : une matière que personne n'a
+  // notée dans la classe ne compte pas (matieresNotees), comme au bulletin.
+  const notesParClasse = new Map();
+  const classeDe = new Map(data.eleves.map((e) => [e._id, classePourAnnee(e, annee)]));
+  for (const n of data.notes) {
+    const cl = classeDe.get(n.eleveId);
+    if (!cl) continue;
+    if (!notesParClasse.has(cl)) notesParClasse.set(cl, []);
+    notesParClasse.get(cl).push(n);
+  }
   for (const e of data.eleves) {
     if (e.statut !== "Actif") continue;
     acc.total++;
@@ -139,9 +154,9 @@ function analyserSection(schoolInfo, sec, data, sansNotesBehavior, acc, annee) {
     // Mêmes matières/coefficients que les bulletins (matières évaluées de la
     // classe). Fallback : matières déduites des notes de l'élève (coef 1) si
     // l'école n'a pas configuré ses matières pour cette section.
-    const matieresClasse = matieresForClasse(matieresEvaluees(data.matieres), classe);
+    const matieresClasse = matieresForClasse(matieresAnnee, classe);
     const matieresEleve = matieresClasse.length > 0
-      ? matieresClasse
+      ? matieresNotees(matieresClasse, notesParClasse.get(classe) || [])
       : [...new Set(notesEleve.map((note) => note.matiere).filter(Boolean))].map((nom) => ({ nom }));
     const moy = calcMoyenneAnnuelle(schoolInfo, notesEleve, classe, matieresEleve);
     let decision;

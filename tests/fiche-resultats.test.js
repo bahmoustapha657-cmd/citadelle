@@ -32,12 +32,25 @@ test("BUG corrigé : seules les matières de la classe comptent au dénominateur
   assert.ok(Math.abs(resultats[0].moyGene - 34 / 3) < 1e-9, `obtenu ${resultats[0].moyGene}`);
 });
 
-test("ancien comportement (sans matieresForClasse) : Anglais non pris en charge dilue à tort", () => {
+// Règle du 2026-11-02 : une matière que PERSONNE n'a notée dans la classe
+// sur la période ne compte pas — même sans matieresForClasse, Anglais (jamais
+// noté) ne dilue plus la moyenne.
+test("matière que personne n'a notée dans la classe : hors calcul", () => {
   const { resultats } = computeFicheResultats({
     classe, periode: "T1", notes, matieres: matieresSection, eleves, maxNote: 20,
   });
-  // (12×2 + 10×1 + 0×1) / 4 = 8.5 — c'est précisément le bug signalé.
-  assert.ok(Math.abs(resultats[0].moyGene - 8.5) < 1e-9, `obtenu ${resultats[0].moyGene}`);
+  assert.ok(Math.abs(resultats[0].moyGene - 34 / 3) < 1e-9, `obtenu ${resultats[0].moyGene}`);
+});
+
+test("matière notée pour un camarade : compte 0 pour l'élève qui n'a rien", () => {
+  const camarade = { _id: "e2", nom: "Bah", prenom: "B", classe };
+  const { resultats } = computeFicheResultats({
+    classe, periode: "T1", matieres: matieresSection, eleves: [...eleves, camarade], maxNote: 20,
+    notes: [...notes, { eleveId: "e2", matiere: "Anglais", periode: "T1", type: "Composition", note: 14 }],
+  });
+  const e1 = resultats.find((r) => r.eleve._id === "e1");
+  // (12×2 + 10×1 + 0×1) / 4 = 8.5 : Anglais a été évalué dans la classe.
+  assert.ok(Math.abs(e1.moyGene - 8.5) < 1e-9, `obtenu ${e1.moyGene}`);
 });
 
 test("repli matières : classe sans matière dédiée → élève conservé (liste globale)", () => {

@@ -4,6 +4,7 @@ import { C } from "../../../constants";
 import { Card } from "../../ui";
 import { getGeneralAverage } from "../../../note-utils";
 import { indexerNotesParEleve, notesDeLEleve } from "../../../note-index";
+import { creerMatieresComptees } from "../../../reports/bulletins/bulletin-helpers";
 
 // Deux histogrammes côte à côte : effectifs par classe et moyenne générale
 // par classe.
@@ -11,6 +12,11 @@ export function ApercuGraphiques({ classes, eleves, notes, effectifReel, matiere
   // Index construit une fois : la moyenne par classe parcourt tous les élèves
   // (cf. src/note-index.js).
   const notesParEleve = useMemo(() => indexerNotesParEleve(notes), [notes]);
+  // Matières comptées comme au bulletin : notées dans la classe.
+  const matieresComptees = useMemo(
+    () => creerMatieresComptees({ eleves, notes, matieresForClasse }),
+    [eleves, notes, matieresForClasse],
+  );
   if (classes.length === 0) return null;
   return (
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:16}}>
@@ -35,7 +41,7 @@ export function ApercuGraphiques({ classes, eleves, notes, effectifReel, matiere
             if(!elevesClasse.length) return {classe:c.nom,Moyenne:0};
             const moyClasse=elevesClasse.map(e=>{
               const notesE=notesDeLEleve(notesParEleve,e._id);
-              return getGeneralAverage(notesE, matieresForClasse(e.classe), e.classe);
+              return getGeneralAverage(notesE, matieresComptees(e.classe), e.classe);
             }).filter(m=>m!==null);
             const moyV=moyClasse.length?(moyClasse.reduce((s,m)=>s+m,0)/moyClasse.length).toFixed(2):0;
             return {classe:c.nom,Moyenne:Number(moyV)};

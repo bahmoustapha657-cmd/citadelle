@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { MOIS_ANNEE } from "../src/constants.js";
 import {
   classePourAnnee,
+  elevesDeLAnnee,
   champsCloture,
   horsAnneeCloturee,
   scolaritePourAnnee,
@@ -100,4 +102,52 @@ test("cloture : laisse tel quel l'élève parti avant l'année, archive celui pa
   // Présent, ou parti sans date connue : archivé.
   assert.equal(horsAnneeCloturee(eleveType(), ANNEE), false);
   assert.equal(horsAnneeCloturee({ ...avantLaRentree, dateDepart: "" }, ANNEE), false);
+});
+
+// Archive d'une année : chaque élève dans la section et la classe qu'il avait
+// CETTE année-là, avec le statut qu'il avait alors.
+test("elevesDeLAnnee : section, classe et statut de l'année consultée", () => {
+  const snap = (classe) => ({ historique: { [ANNEE]: { classe, clotureLe: "x" } } });
+  const eleves = [
+    // Grande Section en 2025-2026, au primaire aujourd'hui.
+    { _id: "gs", section: "primaire", classe: "1ère Année A", statut: "Actif", ...snap("Grande Section A") },
+    // 6ème Année (primaire) en 2025-2026, au collège aujourd'hui.
+    { _id: "six", section: "college", classe: "7ème Année A", statut: "Actif", ...snap("6ème Année A") },
+    // Parti en novembre 2026 : élève normal en 2025-2026.
+    { _id: "parti-apres", section: "primaire", classe: "3ème Année A", statut: "Transféré", dateDepart: "2026-11-15", motifDepart: "Déménagement", ...snap("2ème Année A") },
+    // Parti en mars 2026 : parti PENDANT l'année consultée.
+    { _id: "parti-pendant", section: "primaire", classe: "2ème Année A", statut: "Abandonné", dateDepart: "2026-03-10", ...snap("2ème Année A") },
+    // Inscrit en 2026-2027 : absent de l'archive 2025-2026.
+    { _id: "nouveau", section: "primaire", classe: "2ème Année A", statut: "Actif" },
+  ];
+  const primaire = elevesDeLAnnee(eleves, ANNEE, "primaire", { moisAnnee: MOIS_ANNEE });
+  assert.deepEqual(primaire.map((e) => e._id), ["six", "parti-apres", "parti-pendant"]);
+  const six = primaire.find((e) => e._id === "six");
+  assert.equal(six.classe, "6ème Année A");
+  assert.equal(six.section, "primaire");
+  const apres = primaire.find((e) => e._id === "parti-apres");
+  assert.equal(apres.statut, "Actif", "parti l'année suivante : élève comme les autres");
+  assert.equal(apres.dateDepart, null);
+  assert.equal(apres.motifDepart, null);
+  assert.equal(primaire.find((e) => e._id === "parti-pendant").statut, "Abandonné");
+  const prescolaire = elevesDeLAnnee(eleves, ANNEE, "prescolaire", { moisAnnee: MOIS_ANNEE });
+  assert.deepEqual(prescolaire.map((e) => [e._id, e.classe]), [["gs", "Grande Section A"]]);
+  // La fiche n'est jamais modifiée.
+  assert.equal(eleves[0].classe, "1ère Année A");
+  assert.equal(eleves[2].statut, "Transféré");
+});
+
+test("elevesDeLAnnee : les classes de la section priment sur le nom", () => {
+  const e = { _id: "x", section: "college", classe: "7ème Année A", historique: { [ANNEE]: { classe: "Classe Soleil" } } };
+  assert.deepEqual(elevesDeLAnnee([e], ANNEE, "primaire", { classesSection: ["Classe Soleil"] }).map((x) => x._id), ["x"]);
+  assert.deepEqual(elevesDeLAnnee([e], ANNEE, "college", { classesSection: [] }).map((x) => x._id), ["x"],
+    "nom inconnu : le motif le range au collège, faute de mieux");
+});
+
+test("elevesDeLAnnee : année jamais archivée = sections et classes du jour", () => {
+  const eleves = [
+    { _id: "a", section: "primaire", classe: "2ème Année A" },
+    { _id: "b", section: "college", classe: "7ème Année A" },
+  ];
+  assert.deepEqual(elevesDeLAnnee(eleves, "2024-2025", "primaire").map((e) => [e._id, e.classe]), [["a", "2ème Année A"]]);
 });

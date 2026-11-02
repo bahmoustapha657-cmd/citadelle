@@ -15,6 +15,7 @@ export function AttestationsTab({
   setFiltreClasse,
   classesUniq,
   elevesFiltres,
+  eleves = null,
   schoolInfo,
   annee,
   section = "college",
@@ -95,6 +96,7 @@ export function AttestationsTab({
               matieres: matieresForClasse ? matieresForClasse(e.classe) : [],
               periodes,
               maxNote,
+              eleves,
             })}>🖨️ Imprimer</Btn></TD>
           </TR>)}</tbody>
         </table></div></Card>}
