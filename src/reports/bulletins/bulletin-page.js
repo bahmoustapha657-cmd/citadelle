@@ -57,7 +57,7 @@ export const estModeleComplet = (schoolInfo = {}) => !!GABARITS_PRO[getModeleBul
 
 // Resserre le tableau quand la classe a beaucoup de matières, pour que le
 // bulletin tienne sur sa page A4.
-const densite = (nbMatieres) => (nbMatieres >= 13 ? "d2" : nbMatieres >= 10 ? "d1" : "");
+const densite = (nbMatieres) => (nbMatieres >= 17 ? "d2 d3" : nbMatieres >= 13 ? "d2" : nbMatieres >= 10 ? "d1" : "");
 
 function buildBulletinProHTML(modele, {
   eleve, notes, matieres, periode, niveau, maxNote, schoolInfo, rang, evolution, classStats,
