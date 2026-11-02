@@ -1,4 +1,5 @@
 import { Btn, Input, Modale, Selec } from "../../ui";
+import { AvisFormeNote } from "../../AvisFormeNote";
 
 // Modale de création / édition d'une note unitaire.
 export function NoteModale({
@@ -46,6 +47,7 @@ export function NoteModale({
       >
         {noteForms.map((item) => <option key={item.id} value={item.value}>{item.label}</option>)}
       </Selec>
+      <AvisFormeNote type={formNote.type || defaultNoteType} style={{ marginTop: 8 }} />
       <div style={{ height: 10 }} />
       <Selec
         label="Periode"

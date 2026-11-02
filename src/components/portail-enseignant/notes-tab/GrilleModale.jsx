@@ -6,6 +6,7 @@ import { celluleASauver } from "../notes-grid";
 import { correspondEnfant, nettoyerSurnom } from "../../../identite-enfant";
 import { EnfantAgrandi } from "../../identite-enfant/EnfantAgrandi";
 import { PhotoEleve } from "../../identite-enfant/PhotoEleve";
+import { AvisFormeNote } from "../../AvisFormeNote";
 
 // Modale de saisie en grille (portail enseignant). Trois modes :
 //  - normal        : une période + une matière figées, une colonne « Note ».
@@ -106,6 +107,7 @@ export function GrilleModale({
           </Selec>
         )}
       </div>
+      <AvisFormeNote type={gridForm.type} style={{ marginBottom: 12 }} />
 
       <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
         <input

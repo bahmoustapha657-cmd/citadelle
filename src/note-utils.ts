@@ -40,6 +40,10 @@ const MOYENNE_TYPES = new Set([
 // (coef 1), chacune notée /20. Dès qu'une rubrique est présente, la moyenne de
 // la matière est leur moyenne pondérée (résultat /20). Détection par type de
 // note (seul le Français utilise ces rubriques en pratique).
+// Ces types ne sont plus proposés à la saisie (2026-11-02) : Dictée et
+// Questions / Rédaction sont désormais des MATIÈRES « évaluées seulement »
+// (matiere-nature.js). Le calcul reste pour les notes déjà saisies sous ces
+// types : les anciens bulletins gardent leurs moyennes.
 const RUBRIQUE_WEIGHTS = new Map<string, number>([
   ["dictee/questions", 2],
   ["redaction", 1],
@@ -58,6 +62,22 @@ const averageNumbers = (values: Array<number | string | null | undefined> = []):
     .filter((value) => !Number.isNaN(value));
   if (!nums.length) return null;
   return nums.reduce((sum, value) => sum + value, 0) / nums.length;
+};
+
+// Place d'un type de note dans getSubjectAverage, affichée dans Paramètres →
+// Évaluations et à la saisie : renommer une forme ne change que son libellé,
+// jamais sa place dans le calcul. « ecrit » = tout le reste (Devoir,
+// Évaluation écrite, Examen…). Au primaire et en maternelle, seule
+// « moyenne » se distingue : toutes les autres notes ont le même poids.
+export type NoteTypeRole = "moyenne" | "rubrique" | "oral" | "composition" | "ecrit";
+
+export const getNoteTypeRole = (type: string = ""): NoteTypeRole => {
+  const t = normalizeType(type);
+  if (MOYENNE_TYPES.has(t)) return "moyenne";
+  if (RUBRIQUE_WEIGHTS.has(t)) return "rubrique";
+  if (ORAL_TYPES.has(t)) return "oral";
+  if (COMPOSITION_TYPES.has(t)) return "composition";
+  return "ecrit";
 };
 
 export const isSecondarySection = (section: SectionName = ""): boolean =>
