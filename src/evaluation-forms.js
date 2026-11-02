@@ -1,3 +1,5 @@
+import { getNoteTypeRole } from "./note-utils.js";
+
 const DEFAULT_EVALUATION_FORMS = {
   primaire: [
     { id: "devoir", value: "Devoir", label: "Devoir", active: true },
@@ -17,12 +19,11 @@ const DEFAULT_EVALUATION_FORMS = {
     { id: "evaluation_ecrite", value: "Évaluation écrite", label: "Évaluation écrite", active: true },
     { id: "examen", value: "Examen", label: "Examen", active: true },
     { id: "composition", value: "Composition", label: "Composition", active: true },
-    // Rubriques du Français au COLLÈGE uniquement (flag `college`) :
-    // Dictée/Questions (coef 2) + Rédaction (coef 1). Dès qu'elles sont
-    // présentes, la moyenne de la matière est leur moyenne pondérée 2:1
-    // (voir getSubjectAverage / RUBRIQUE_WEIGHTS). Masquées hors collège.
-    { id: "dictee_questions", value: "Dictée/Questions", label: "Dictée/Questions (Français)", active: true, college: true },
-    { id: "redaction", value: "Rédaction", label: "Rédaction (Français)", active: true, college: true },
+    // Plus de formes « Dictée/Questions » ni « Rédaction » : ce sont des
+    // MATIÈRES « évaluées seulement » rattachées au Français, avec leur
+    // coefficient (cf. matiere-nature.js). Les notes déjà saisies sous ces
+    // types gardent leur calcul (RUBRIQUE_WEIGHTS) ; les entrées encore
+    // enregistrées par les écoles sont ignorées par normalizeStoredForms.
     // Saisie directe de la moyenne d'une matière (fournie par l'enseignant) :
     // prime sur tout le reste dans le calcul (voir getSubjectAverage).
     { id: "moyenne", value: "Moyenne", label: "Moyenne de la matière", active: true },
@@ -75,11 +76,7 @@ export const getActiveNoteForms = (schoolInfo = {}, section = "secondaire") => {
   const config = getEvaluationFormsConfig(schoolInfo);
   const key = getNoteFormsGroup(section);
   const active = config[key].filter((item) => item.active);
-  let forms = active.length ? active : DEFAULT_EVALUATION_FORMS[key].filter((item) => item.active);
-  // Rubriques marquées `college` (Dictée/Questions, Rédaction) : disponibles
-  // uniquement quand la section précise est le collège (pas au lycée).
-  if (section !== "college") forms = forms.filter((item) => !item.college);
-  return forms;
+  return active.length ? active : DEFAULT_EVALUATION_FORMS[key].filter((item) => item.active);
 };
 
 export const getActiveExamForms = (schoolInfo = {}) => {
@@ -100,6 +97,30 @@ export const resolveCanonicalNoteType = (value = "", schoolInfo = {}, section = 
   const forms = getEvaluationFormsConfig(schoolInfo)[getNoteFormsGroup(section)];
   const match = forms.find((item) => normalizeText(item.value) === normalizedValue || normalizeText(item.label) === normalizedValue);
   return match?.value || String(value || "").trim() || "Devoir";
+};
+
+// Effet d'une forme dans la moyenne de la matière, affiché sous son nom dans
+// Paramètres → Évaluations. Tiré de getNoteTypeRole (la valeur interne, pas
+// le libellé) : le texte suit le calcul réel, quel que soit le nom choisi
+// par l'école. `fort` : la forme écarte les autres notes au lieu de s'y
+// ajouter. Null pour les épreuves du module Examens (sans effet sur les notes).
+export const getEffetForme = (groupId = "secondaire", value = "") => {
+  if (groupId === "examens") return null;
+  const role = getNoteTypeRole(value);
+  if (role === "moyenne") return { texte: "Remplace toutes les autres notes de la matière", fort: true };
+  if (groupId === "primaire") return { texte: "Moyenne simple : même poids que les autres notes", fort: false };
+  if (role === "composition") return { texte: "Composition · compte double face à la note de classe", fort: false };
+  if (role === "oral") return { texte: "Note de classe · partie orale", fort: false };
+  return { texte: "Note de classe · partie écrite", fort: false };
+};
+
+// Avertissement sous le choix du type de note, à la saisie, quand la forme
+// choisie écarte les autres notes de la matière au lieu de s'y ajouter.
+export const getAvertissementSaisie = (value = "") => {
+  if (getNoteTypeRole(value) === "moyenne") {
+    return "Cette note remplace toutes les autres notes de la matière pour la période : devoirs, interrogations et composition ne comptent plus dans la moyenne.";
+  }
+  return null;
 };
 
 export const resolveCanonicalExamType = (value = "", schoolInfo = {}) => {

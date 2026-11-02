@@ -163,8 +163,8 @@ export function useEcole({
   // chargement des notes en a besoin avant de partir.
   const [periodeB, setPeriodeB] = useState(defaultPeriode);
   const [grillePeriode, setGrillePeriode] = useState(defaultPeriode);
-  // Section précise : rubriques Dictée/Rédaction au collège uniquement, et
-  // groupe « Primaire » de Paramètres → Évaluations pour la maternelle.
+  // Section précise : groupe « Primaire » de Paramètres → Évaluations pour
+  // la maternelle.
   const noteForms = getActiveNoteForms(schoolInfo, section);
   const defaultNoteType = noteForms[0]?.value || "Devoir";
   const [grilleType, setGrilleType] = useState(defaultNoteType);

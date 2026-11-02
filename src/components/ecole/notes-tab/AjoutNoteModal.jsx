@@ -1,6 +1,7 @@
 import { getAnnee } from "../../../constants";
 import { Btn, Input, Modale, Selec } from "../../ui";
 import { resolveCanonicalNoteType } from "../../../evaluation-forms";
+import { AvisFormeNote } from "../../AvisFormeNote";
 import { nomEleve } from "../../../fiche-eleve";
 import { notePrete, optionsEleves } from "../../../notes-eleves";
 
@@ -56,6 +57,7 @@ export function AjoutNoteModal({
         <Selec label="Type" value={form.type || defaultNoteType} onChange={chg("type")}>
           {noteForms.map(item => <option key={item.id} value={item.value}>{item.label}</option>)}
         </Selec>
+        <AvisFormeNote type={form.type || defaultNoteType} style={{ gridColumn: "1/-1" }} />
         <Input label={`Note (/${maxNote})`} type="number" min="0" max={maxNote} step="0.25" value={form.note || ""} onChange={chg("note")} />
         <Selec label="Période" value={form.periode || periodes[0] || "T1"} onChange={chg("periode")}>
           {periodes.map(p => <option key={p} value={p}>{p}</option>)}

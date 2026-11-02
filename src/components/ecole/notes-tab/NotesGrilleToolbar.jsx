@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Btn } from "../../ui";
 import { nomAffiche } from "../../../ordre-eleves";
+import { AvisFormeNote } from "../../AvisFormeNote";
 
 // Barre de filtres de la grille, selon le mode de saisie :
 //   "periode" : classe + période + type      (colonnes = matières)
@@ -86,6 +87,7 @@ export function NotesGrilleToolbar({
       {nbModif > 0 && (
         <Btn v="ghost" sm onClick={() => setGrilleChanges({})}>✕ Annuler</Btn>
       )}
+      <AvisFormeNote type={grilleType} style={{ flexBasis: "100%" }} />
     </div>
   );
 }

@@ -34,13 +34,13 @@ test("la maternelle utilise le groupe Primaire de Paramètres → Évaluations",
   assert.equal(getNoteFormsGroup(), "secondaire");
 });
 
-test("formes proposées en maternelle : celles du primaire, sans les rubriques du collège", () => {
+test("formes proposées en maternelle : celles du primaire, pas celles du secondaire", () => {
   const maternelle = getActiveNoteForms({}, "prescolaire");
   assert.deepEqual(valeurs(maternelle), valeurs(getActiveNoteForms({}, "primaire")));
   assert.deepEqual(valeurs(maternelle), ["Devoir", "Interrogation", "Évaluation orale", "Évaluation écrite", "Moyenne"]);
   // Ce que la maternelle recevait quand sa section valait « college ».
   const avant = valeurs(getActiveNoteForms({}, "college"));
-  for (const v of ["Dictée/Questions", "Rédaction", "Examen", "Composition"]) {
+  for (const v of ["Examen", "Composition"]) {
     assert.ok(avant.includes(v), `« college » proposait ${v}`);
     assert.ok(!valeurs(maternelle).includes(v), `la maternelle ne propose plus ${v}`);
   }
@@ -82,12 +82,11 @@ test("maternelle : libellés affichés et types enregistrés suivent le même gr
   assert.equal(getEvaluationLabel("Devoir", schoolInfo, { section: "prescolaire" }), "Contrôle continu");
 });
 
-test("non-régression : Dictée/Questions et Rédaction restent réservées au collège", () => {
-  const rubriques = ["Dictée/Questions", "Rédaction"];
-  for (const r of rubriques) {
-    assert.ok(valeurs(getActiveNoteForms({}, "college")).includes(r), `collège : ${r}`);
-    assert.ok(!valeurs(getActiveNoteForms({}, "lycee")).includes(r), `lycée : ${r}`);
-    assert.ok(!valeurs(getActiveNoteForms({}, "primaire")).includes(r), `primaire : ${r}`);
+test("Dictée/Questions et Rédaction : plus proposées, même au collège (matières « évaluées seulement »)", () => {
+  for (const section of ["college", "lycee", "primaire", "prescolaire"]) {
+    for (const r of ["Dictée/Questions", "Rédaction"]) {
+      assert.ok(!valeurs(getActiveNoteForms({}, section)).includes(r), `${section} : ${r}`);
+    }
   }
 });
 
