@@ -1,6 +1,6 @@
 import { useContext, useMemo, useState } from "react";
 import { getAnnee, peutCreerComptesParent, peutModifier } from "../../constants";
-import { classePourAnnee } from "../admin/cloture-annee-utils";
+import { classePourAnnee, elevesDeLAnnee } from "../admin/cloture-annee-utils";
 import { sansNonReinscritsEcartes } from "../../ecartes-non-reinscrits";
 import { hasRead, hasWrite } from "../../../shared/postes-config.js";
 import { getDefaultPeriodeForSection, getPeriodesForSection } from "../../period-utils";
@@ -9,6 +9,8 @@ import { useFirestore } from "../../hooks/useFirestore";
 import { useAnneeConsultee } from "../../hooks/use-annee-consultee";
 import { getActiveNoteForms } from "../../evaluation-forms";
 import { matieresEvaluees } from "../../matiere-nature";
+import { matieresPourAnnee, schoolInfoPourAnnee } from "../../reglages-annee";
+import { PERIODE_ANNEE } from "../../reports/bulletins/annual-notes";
 import {
   sortAlphaEcole as sortAlphaEcoleFn,
   matieresForClasse as matieresForClasseFn,
@@ -19,6 +21,10 @@ import {
 import { saveClasseAction, saveEnseignantAction, saveAppreciationAction } from "./ecole-saves";
 import { synchroniserEmailEnseignant } from "../../backend/account-manage-supabase";
 import { fusionnerPaie, indexerPaie } from "../../paie-enseignants";
+
+const CLES_ELEVES = {
+  prescolaire: "elevesPrescolaire", primaire: "elevesPrimaire", college: "elevesCollege", lycee: "elevesLycee",
+};
 
 // Toute la logique du module École (générique préscolaire/primaire/collège/
 // lycée) : chargement Firestore des collections dérivées des clés passées en
@@ -35,11 +41,15 @@ export function useEcole({
   // titulaire, libellé « Primaire » du taux de saisie) : la maternelle en
   // reste exclue, comme avant.
   const isPrimarySection = section === "primaire";
-  const { schoolId, schoolInfo, moisAnnee, toast, logAction, envoyerPush } = useContext(SchoolContext);
+  const { schoolId, schoolInfo: infoDuJour, moisAnnee, toast, logAction, envoyerPush } = useContext(SchoolContext);
   const anneeCourante = annee || getAnnee();
   // Suit l'année courante tant qu'on n'en choisit pas une autre : au
   // rechargement, elle arrive APRÈS le premier affichage (cf. le hook).
   const [anneeConsultee, setAnneeConsultee] = useAnneeConsultee(anneeCourante);
+  // Fiche école VUE DEPUIS l'année consultée : une année close garde la
+  // périodicité, les formes de notes et le modèle de bulletin figés à sa
+  // clôture (reglages-annee.js) ; tout le module la lit, bulletins compris.
+  const schoolInfo = useMemo(() => schoolInfoPourAnnee(infoDuJour, anneeConsultee), [infoDuJour, anneeConsultee]);
   // Vue archive : filtre les notes (les autres collections restent persistantes).
   //
   // La référence est l'année OFFICIELLE de l'école (schoolInfo.anneeScolaire),
@@ -90,16 +100,32 @@ export function useEcole({
   // l'année courante, or les deux se confondent dès qu'on revient sur une
   // année close : le mode s'éteignait au moment précis où il servait.
   //
-  // Seule la classe est reprise de l'instantané. La scolarité complète
-  // (mensualités, frais) reste l'affaire de la Comptabilité, qui a sa propre
-  // projection et d'autres règles.
-  const { items: elevesBruts, chargement: cE, modifierChamp: modChampE } = useFirestore(cleEleves);
+  // De l'instantané, seule la classe est reprise — et avec elle, sur une
+  // année passée, la section et le statut de cette année-là (elevesDeLAnnee).
+  // La scolarité complète (mensualités, frais) reste l'affaire de la
+  // Comptabilité, qui a sa propre projection et d'autres règles.
+  const { items: elevesBruts, chargement: cE0, modifierChamp: modChampE } = useFirestore(cleEleves);
+  // Année passée : les élèves des AUTRES sections aussi, car on a pu changer
+  // de section depuis (maternelle → primaire, 6ème Année → collège). Hors
+  // archive, ces lectures restent vides (collection nulle = rien chargé).
+  const autreSection = (s) => (enModeArchive && s !== section ? CLES_ELEVES[s] : null);
+  const elevesPre = useFirestore(autreSection("prescolaire"));
+  const elevesPri = useFirestore(autreSection("primaire"));
+  const elevesCol = useFirestore(autreSection("college"));
+  const elevesLyc = useFirestore(autreSection("lycee"));
+  const cE = cE0 || (enModeArchive && [elevesPre, elevesPri, elevesCol, elevesLyc].some((l) => l.chargement));
   const elevesTous = useMemo(
-    () => elevesBruts.map((e) => {
-      const classe = classePourAnnee(e, anneeConsultee);
-      return classe === e.classe ? e : { ...e, classe };
-    }),
-    [elevesBruts, anneeConsultee],
+    () => (enModeArchive
+      ? elevesDeLAnnee(
+        [...elevesBruts, ...elevesPre.items, ...elevesPri.items, ...elevesCol.items, ...elevesLyc.items],
+        anneeConsultee, section,
+        { classesSection: classes.map((c) => c.nom), moisAnnee },
+      )
+      : elevesBruts.map((e) => {
+        const classe = classePourAnnee(e, anneeConsultee);
+        return classe === e.classe ? e : { ...e, classe };
+      })),
+    [enModeArchive, elevesBruts, elevesPre.items, elevesPri.items, elevesCol.items, elevesLyc.items, anneeConsultee, section, classes, moisAnnee],
   );
   // Ce que les écrans montrent : sans les non réinscrits sans paiement des
   // classes écartées par la comptabilité (réglage de l'école). Les actions
@@ -110,7 +136,13 @@ export function useEcole({
   );
   const { items: absences, chargement: cAbs, ajouter: ajAbs, supprimer: supAbs } = useFirestore(cleEleves + "_absences");
   const { items: enseignements, chargement: cEng, ajouter: ajEng, modifier: modEng, supprimer: supEng } = useFirestore(cleEns + "_enseignements");
-  const { items: matieresToutes, chargement: cMat, ajouter: ajMat, modifier: modMat, supprimer: supMat } = useFirestore(cleClasses + "_matieres");
+  const { items: matieresDuJour, chargement: cMat, ajouter: ajMat, modifier: modMat, supprimer: supMat } = useFirestore(cleClasses + "_matieres");
+  // Une année close se calcule avec SES matières (coefficients, natures,
+  // classes), figées à sa clôture — pas avec celles d'aujourd'hui.
+  const matieresToutes = useMemo(
+    () => matieresPourAnnee(matieresDuJour, infoDuJour, anneeConsultee, section),
+    [matieresDuJour, infoDuJour, anneeConsultee, section],
+  );
   // Notes, moyennes, bulletins, livrets : seules les matières ÉVALUÉES. Les
   // rubriques « enseignées seulement » (Vocabulaire, Orthographe…) ne vivent
   // que dans l'onglet Matières, l'emploi du temps et le cahier de textes,
@@ -161,8 +193,13 @@ export function useEcole({
   const chg = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
   // schoolInfo, périodes et période par défaut sont déclarés plus haut : le
   // chargement des notes en a besoin avant de partir.
-  const [periodeB, setPeriodeB] = useState(defaultPeriode);
-  const [grillePeriode, setGrillePeriode] = useState(defaultPeriode);
+  // L'année consultée peut avoir une autre périodicité (collège en semestres
+  // en 2025-2026, en trimestres ensuite) : une période absente de l'année
+  // revient à sa première période, au lieu d'afficher une période vide.
+  const [periodeBChoisie, setPeriodeB] = useState(defaultPeriode);
+  const periodeB = periodeBChoisie === PERIODE_ANNEE || periodes.includes(periodeBChoisie) ? periodeBChoisie : defaultPeriode;
+  const [grillePeriodeChoisie, setGrillePeriode] = useState(defaultPeriode);
+  const grillePeriode = periodes.includes(grillePeriodeChoisie) ? grillePeriodeChoisie : defaultPeriode;
   // Section précise : groupe « Primaire » de Paramètres → Évaluations pour
   // la maternelle.
   const noteForms = getActiveNoteForms(schoolInfo, section);

@@ -3,6 +3,7 @@ import { genererAppreciation } from "../../../backend/ia";
 import { getGeneralAverage, getSubjectAverage } from "../../../note-utils";
 import { notesDeLEleve } from "../../../note-index";
 import { getMention } from "../../../reports/bulletins/bulletin-format";
+import { creerMatieresComptees } from "../../../reports/bulletins/bulletin-helpers";
 
 // Mention à partir de la moyenne générale, EN POURCENTAGE du barème : le
 // primaire et le préscolaire sont notés sur 10. Avec des seuils figés sur 20,
@@ -15,7 +16,7 @@ const mentionFor = (moy, maxNote = 20) => (moy === "—" ? "—" : getMention(mo
 // séquentiels pour ménager l'API. Marche sur Firebase ET Supabase, car
 // genererAppreciation aiguille tout seul (voir src/backend/ia.js).
 export function useBatchAppreciation({
-  elevesB, notes, matieresForClasse, periodeB, maxNote = 20,
+  elevesB, eleves = elevesB, notes, matieresForClasse, periodeB, maxNote = 20,
   getAppreciation, saveAppreciation, toast,
 }) {
   const [running, setRunning] = useState(false);
@@ -37,6 +38,8 @@ export function useBatchAppreciation({
     setRunning(true);
     setProgress({ done: 0, total: cibles.length });
     let ok = 0, echecs = 0, vides = 0;
+    // Moyenne transmise = moyenne du bulletin (matières notées dans la classe).
+    const matieresComptees = creerMatieresComptees({ eleves, notes, periode: periodeB, matieresForClasse });
 
     for (let i = 0; i < cibles.length; i++) {
       const e = cibles[i];
@@ -53,7 +56,7 @@ export function useBatchAppreciation({
         continue;
       }
 
-      const moyG = getGeneralAverage(notesE, mats, e.classe);
+      const moyG = getGeneralAverage(notesE, matieresComptees(e.classe), e.classe);
       const moyGene = moyG != null ? moyG.toFixed(2) : "—";
       try {
         const { ok: r, result } = await genererAppreciation({

@@ -3,15 +3,45 @@
 // ══════════════════════════════════════════════════════════════
 // Les helpers de présentation (mention, couleurs, n°…) vivent dans
 // bulletin-format.js.
-import { getGeneralAverage, getSubjectAverage } from "../../note-utils.js";
+import { getGeneralAverage, getSubjectAverage, matieresNotees } from "../../note-utils.js";
 import { notesDeLEleve } from "../../note-index.js";
 import { getPeriodesForSection } from "../../period-utils.js";
 
+// Matières qui comptent pour la classe sur la période (null = toute l'année) :
+// celles qu'au moins un de ses élèves a notées (règle de matieresNotees).
+export function matieresCompteesClasse(matieres, notes, elevesClasse, periode) {
+  const ids = new Set(elevesClasse.map((e) => e._id));
+  return matieresNotees(matieres, notes.filter((n) => ids.has(n.eleveId) && (periode == null || n.periode === periode)));
+}
+
+// Même règle, pour les écrans qui calculent la moyenne de centaines
+// d'élèves : `notes` n'est parcouru qu'UNE fois, le résultat est gardé par
+// classe. Renvoie classe → matières comptées. `periode` null = toutes les
+// notes fournies. `eleves` : TOUS les élèves (la règle se juge sur la classe
+// entière, pas sur les seuls élèves affichés).
+export function creerMatieresComptees({ eleves = [], notes = [], periode = null, matieresForClasse }) {
+  const classeDe = new Map(eleves.map((e) => [e._id, e.classe]));
+  const notesParClasse = new Map();
+  for (const n of notes) {
+    if (periode != null && n.periode !== periode) continue;
+    const classe = classeDe.get(n.eleveId);
+    if (classe === undefined) continue;
+    if (!notesParClasse.has(classe)) notesParClasse.set(classe, []);
+    notesParClasse.get(classe).push(n);
+  }
+  const cache = new Map();
+  return (classe) => {
+    if (!cache.has(classe)) cache.set(classe, matieresNotees(matieresForClasse(classe), notesParClasse.get(classe) || []));
+    return cache.get(classe);
+  };
+}
+
 export function getStatsClasse(elevesClasse, notes, matieres, periode, classe, niveau) {
+  const mats = matieresCompteesClasse(matieres, notes, elevesClasse, periode);
   const moyennes = elevesClasse
     .map((e) => {
       const notesE = notesDeLEleve(notes, e._id, periode);
-      return getGeneralAverage(notesE, matieres, classe, niveau);
+      return getGeneralAverage(notesE, mats, classe, niveau);
     })
     .filter((v) => v != null);
   if (moyennes.length === 0) return null;
@@ -36,10 +66,11 @@ export function getMoyenneClasseParMatiere(elevesClasse, notes, matiereNom, peri
 }
 
 export function getRangEleve(eleve, elevesClasse, notes, matieres, periode, classe, niveau) {
+  const mats = matieresCompteesClasse(matieres, notes, elevesClasse, periode);
   const avecMoy = elevesClasse
     .map((e) => {
       const notesE = notesDeLEleve(notes, e._id, periode);
-      return { id: e._id, moy: getGeneralAverage(notesE, matieres, classe, niveau) };
+      return { id: e._id, moy: getGeneralAverage(notesE, mats, classe, niveau) };
     })
     .filter((x) => x.moy != null);
   if (avecMoy.length === 0) return null;
@@ -130,16 +161,19 @@ export function getProfesseursParMatiere({ classe, matieres, eleveIds, notes, pe
 // [{ periode, moy }] (moy null si rien de noté). Sert à la courbe de
 // progression et au récapitulatif du bulletin annuel — d'où les notes
 // RÉELLES, jamais les notes annuelles synthétiques.
-export function getMoyennesPeriodes(eleve, notes, matieres, classe, niveau, periodes = []) {
+// `elevesClasse` : chaque période compte SES matières notées, comme son
+// propre bulletin (sans la classe, toutes les matières, comme avant).
+export function getMoyennesPeriodes(eleve, notes, matieres, classe, niveau, periodes = [], elevesClasse = null) {
   // getGeneralAverage vaut 0 (pas null) sans aucune note : une période pas
   // encore commencée doit rester vide, pas tomber à zéro sur la courbe.
   return periodes.map((periode) => {
     const notesP = notesDeLEleve(notes, eleve._id, periode);
-    return { periode, moy: notesP.length ? getGeneralAverage(notesP, matieres, classe, niveau) : null };
+    const mats = elevesClasse ? matieresCompteesClasse(matieres, notes, elevesClasse, periode) : matieres;
+    return { periode, moy: notesP.length ? getGeneralAverage(notesP, mats, classe, niveau) : null };
   });
 }
 
-export function getEvolutionPeriode(eleve, allNotes, matieres, classe, niveau, periodeActuelle, schoolInfo = {}) {
+export function getEvolutionPeriode(eleve, allNotes, matieres, classe, niveau, periodeActuelle, schoolInfo = {}, elevesClasse = null) {
   const sectionPeriode = niveau;
   const periodes = getPeriodesForSection(schoolInfo, sectionPeriode);
   const idx = periodes.indexOf(periodeActuelle);
@@ -147,8 +181,9 @@ export function getEvolutionPeriode(eleve, allNotes, matieres, classe, niveau, p
   const periodePrec = periodes[idx - 1];
   const notesActu = notesDeLEleve(allNotes, eleve._id, periodeActuelle);
   const notesPrec = notesDeLEleve(allNotes, eleve._id, periodePrec);
-  const moyActu = getGeneralAverage(notesActu, matieres, classe, niveau);
-  const moyPrec = getGeneralAverage(notesPrec, matieres, classe, niveau);
+  const matsDe = (p) => (elevesClasse ? matieresCompteesClasse(matieres, allNotes, elevesClasse, p) : matieres);
+  const moyActu = getGeneralAverage(notesActu, matsDe(periodeActuelle), classe, niveau);
+  const moyPrec = getGeneralAverage(notesPrec, matsDe(periodePrec), classe, niveau);
   if (moyActu == null || moyPrec == null) return null;
   return { periodePrec, moyPrec, moyActu, ecart: moyActu - moyPrec };
 }
