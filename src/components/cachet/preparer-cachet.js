@@ -4,10 +4,40 @@
 // grisé autour du tampon. On efface donc le papier (transparent), on garde
 // l'encre, on recadre au plus près et on réduit l'image : 600 px suffisent
 // largement pour 2 cm imprimés, et l'envoi reste léger sur réseau faible.
+// Réglages (MonCachetModale → ReglagesCachet) : lumière, contraste, force de
+// l'effacement, encre d'une couleur unie, redressement. Chacun repart de la
+// photo décodée une seule fois (chargerCachet), jamais du résultat précédent.
+import { TON_MAX, appliquerTons, tableTons } from "../camera-capture/retouche";
+import { libererCanvas } from "../camera-capture/photo-capture";
+
 const COTE_MAX = 600;
 const MARGE = 6; // px laissés autour de l'encre au recadrage
 const CELLULE = 24; // côté des zones où le niveau du papier est mesuré
 const BLOC = 14; // côté d'un carré plein qui, au bord, n'est pas un trait d'encre
+const ECART_PAPIER = 14; // assez clair à ce point près du papier : effacé
+const AUCUN_TRACE = "Aucun tracé trouvé sur l'image : photographiez le cachet de plus près, bien éclairé, ou adoucissez l'effacement du papier.";
+
+export const INCLINAISON_MAX = 15; // degrés, pour redresser une photo prise de biais
+// Encre unie : tampon et signature d'une même couleur franche, comme imprimés.
+export const COULEURS_ENCRE = [
+  { id: "originale", libelle: "D'origine" },
+  { id: "bleu", libelle: "Bleu", rgb: [27, 48, 138] },
+  { id: "violet", libelle: "Violet", rgb: [86, 38, 152] },
+  { id: "noir", libelle: "Noir", rgb: [20, 24, 36] },
+];
+export const REGLAGES_CACHET = Object.freeze({
+  nettoyer: true, // effacer le papier (PNG transparent) ; sinon photo entière (JPEG)
+  fond: 0, // force de l'effacement, de -TON_MAX (doux) à +TON_MAX (fort)
+  luminosite: 0,
+  contraste: 0,
+  encre: "originale",
+  quart: 0, // quarts de tour
+  inclinaison: 0, // degrés, ±INCLINAISON_MAX
+});
+
+// Écart au papier en dessous duquel un pixel est effacé : 14 au neutre, de
+// 3,5 (doux : garde les traits pâles) à 56 (fort : efface ombres et grisés).
+const ecartPapier = (fond) => ECART_PAPIER * 2 ** (Math.max(-TON_MAX, Math.min(TON_MAX, fond)) / 25);
 
 const luminance = (px, i) => 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
 
@@ -143,11 +173,9 @@ function retirerBords(px, largeur, hauteur) {
 // clair que l'encre — à une marge près du papier de sa zone : transparent ;
 // nettement plus sombre : encre opaque ; entre les deux, un fondu qui garde
 // les bords du tracé nets. Ce qui part du bord sans être de l'encre est
-// retiré ensuite (retirerBords).
-// Renvoie le cadre de l'encre { x, y, l, h }, ou null si rien ne reste. Une
-// ligne ou une colonne n'y compte qu'à partir de deux points d'encre : un
-// grain isolé du papier n'élargit pas le recadrage.
-export function effacerFondPapier(px, largeur, hauteur) {
+// retiré ensuite (retirerBords). `ecart` : voir ecartPapier.
+// Renvoie le cadre de l'encre (cadreEncre), ou null si rien ne reste.
+export function effacerFondPapier(px, largeur, hauteur, { ecart = ECART_PAPIER } = {}) {
   const total = largeur * hauteur;
   const lum = new Uint8Array(total);
   const visible = new Uint8Array(total);
@@ -162,7 +190,7 @@ export function effacerFondPapier(px, largeur, hauteur) {
     for (let x = 0; x < largeur; x += 1) {
       const p = y * largeur + x;
       const papier = papierEn(x, y);
-      const haut = papier - 14; // ≥ : papier → transparent
+      const haut = papier - ecart; // ≥ : papier → transparent
       const bas = papier * 0.6; // ≤ : encre → opaque
       const l = lum[p];
       const opacite = l >= haut ? 0 : l <= bas ? 1 : (haut - l) / (haut - bas);
@@ -170,7 +198,15 @@ export function effacerFondPapier(px, largeur, hauteur) {
     }
   }
   retirerBords(px, largeur, hauteur);
+  return cadreEncre(px, largeur, hauteur);
+}
 
+// Cadre de l'encre { x, y, l, h } dans des pixels RGBA déjà détourés, marge
+// comprise, ou null s'il n'en reste pas. Une ligne ou une colonne n'y compte
+// qu'à partir de deux points d'encre : un grain isolé du papier n'élargit pas
+// le recadrage.
+export function cadreEncre(px, largeur, hauteur) {
+  const total = largeur * hauteur;
   const parLigne = new Uint32Array(hauteur);
   const parColonne = new Uint32Array(largeur);
   for (let p = 0; p < total; p += 1) {
@@ -204,10 +240,31 @@ async function chargerImage(fichier) {
   }
 }
 
-// Fichier choisi → data URL. `nettoyer` : effacer le papier (PNG transparent) ;
-// sinon l'image est seulement réduite (JPEG). Lève une erreur lisible si
-// l'image est illisible ou vide une fois le papier effacé.
-export async function preparerCachet(fichier, { nettoyer = true } = {}) {
+// Lumière, papier et encre appliqués EN PLACE à des pixels RGBA. Renvoie
+// false si, le papier effacé, il ne reste aucun tracé.
+export function traiterPixels(px, largeur, hauteur, reglages = REGLAGES_CACHET) {
+  const r = { ...REGLAGES_CACHET, ...reglages };
+  if (r.luminosite || r.contraste) appliquerTons(px, tableTons(r.luminosite, r.contraste));
+  if (!r.nettoyer) return true;
+  if (!effacerFondPapier(px, largeur, hauteur, { ecart: ecartPapier(r.fond) })) return false;
+  // Encre unie : seule la couleur change, l'opacité garde le dessin du trait.
+  const couleur = COULEURS_ENCRE.find((c) => c.id === r.encre)?.rgb;
+  if (couleur) {
+    for (let i = 0; i < px.length; i += 4) if (px[i + 3]) px.set(couleur, i);
+  }
+  return true;
+}
+
+const creerCanvas = (largeur, hauteur) => {
+  const canvas = document.createElement("canvas");
+  canvas.width = largeur;
+  canvas.height = hauteur;
+  return canvas;
+};
+
+// Fichier choisi ou photo prise → pixels de travail (≤ COTE_MAX), décodés une
+// seule fois. Lève une erreur lisible si l'image est illisible.
+export async function chargerCachet(fichier) {
   if (!fichier || !/^image\//.test(fichier.type || "")) throw new Error("Choisissez une image (photo ou scan).");
   let image;
   try {
@@ -218,25 +275,58 @@ export async function preparerCachet(fichier, { nettoyer = true } = {}) {
   const echelle = Math.min(1, COTE_MAX / Math.max(image.width, image.height));
   const largeur = Math.max(1, Math.round(image.width * echelle));
   const hauteur = Math.max(1, Math.round(image.height * echelle));
-  const canvas = document.createElement("canvas");
-  canvas.width = largeur;
-  canvas.height = hauteur;
-  const ctx = canvas.getContext("2d", { willReadFrequently: nettoyer });
-  if (!nettoyer) {
-    ctx.fillStyle = "#fff"; // PNG transparent → fond blanc plutôt que noir
-    ctx.fillRect(0, 0, largeur, hauteur);
-  }
+  const canvas = creerCanvas(largeur, hauteur);
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
   ctx.drawImage(image, 0, 0, largeur, hauteur);
   image.close?.();
-  if (!nettoyer) return canvas.toDataURL("image/jpeg", 0.9);
+  const pixels = ctx.getImageData(0, 0, largeur, hauteur).data;
+  libererCanvas(canvas);
+  return { largeur, hauteur, pixels };
+}
 
-  const donnees = ctx.getImageData(0, 0, largeur, hauteur);
-  const cadre = effacerFondPapier(donnees.data, largeur, hauteur);
-  if (!cadre) throw new Error("Aucun tracé trouvé sur l'image : photographiez le cachet de plus près, bien éclairé.");
-  ctx.putImageData(donnees, 0, 0);
-  const recadre = document.createElement("canvas");
-  recadre.width = cadre.l;
-  recadre.height = cadre.h;
-  recadre.getContext("2d").drawImage(canvas, cadre.x, cadre.y, cadre.l, cadre.h, 0, 0, cadre.l, cadre.h);
-  return recadre.toDataURL("image/png");
+// Canvas tourné de `degres`, agrandi pour ne rien couper ; coins blancs si
+// `blanc` (photo gardée entière), transparents sinon.
+function tournerCanvas(canvas, degres, blanc) {
+  const rad = (degres * Math.PI) / 180;
+  const cos = Math.abs(Math.cos(rad)); const sin = Math.abs(Math.sin(rad));
+  const sortie = creerCanvas(
+    Math.round(canvas.width * cos + canvas.height * sin),
+    Math.round(canvas.width * sin + canvas.height * cos),
+  );
+  const ctx = sortie.getContext("2d", { willReadFrequently: true });
+  if (blanc) { ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, sortie.width, sortie.height); }
+  ctx.translate(sortie.width / 2, sortie.height / 2);
+  ctx.rotate(rad);
+  ctx.drawImage(canvas, -canvas.width / 2, -canvas.height / 2);
+  return sortie;
+}
+
+// Pixels de travail + réglages → { url, largeur, hauteur } : PNG transparent
+// recadré sur l'encre, ou JPEG de la photo entière si le papier est gardé.
+// Lève une erreur lisible s'il ne reste aucun tracé.
+export function rendreCachet(source, reglages = REGLAGES_CACHET) {
+  const r = { ...REGLAGES_CACHET, ...reglages };
+  const px = new Uint8ClampedArray(source.pixels);
+  if (!traiterPixels(px, source.largeur, source.hauteur, r)) throw new Error(AUCUN_TRACE);
+  const plan = creerCanvas(source.largeur, source.hauteur);
+  plan.getContext("2d").putImageData(new ImageData(px, source.largeur, source.hauteur), 0, 0);
+  const tourne = tournerCanvas(plan, (((r.quart % 4) + 4) % 4) * 90 + r.inclinaison, !r.nettoyer);
+  libererCanvas(plan);
+
+  let zone = { x: 0, y: 0, l: tourne.width, h: tourne.height };
+  if (r.nettoyer) {
+    // Recadrage APRÈS le redressement : au plus près de l'encre remise droite.
+    zone = cadreEncre(tourne.getContext("2d").getImageData(0, 0, tourne.width, tourne.height).data, tourne.width, tourne.height);
+    if (!zone) { libererCanvas(tourne); throw new Error(AUCUN_TRACE); }
+  }
+  const echelle = Math.min(1, COTE_MAX / Math.max(zone.l, zone.h));
+  const sortie = creerCanvas(Math.max(1, Math.round(zone.l * echelle)), Math.max(1, Math.round(zone.h * echelle)));
+  const ctx = sortie.getContext("2d");
+  if (!r.nettoyer) { ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, sortie.width, sortie.height); }
+  ctx.drawImage(tourne, zone.x, zone.y, zone.l, zone.h, 0, 0, sortie.width, sortie.height);
+  libererCanvas(tourne);
+  const url = r.nettoyer ? sortie.toDataURL("image/png") : sortie.toDataURL("image/jpeg", 0.9);
+  const resultat = { url, largeur: sortie.width, hauteur: sortie.height };
+  libererCanvas(sortie);
+  return resultat;
 }
