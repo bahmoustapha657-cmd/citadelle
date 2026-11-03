@@ -6,7 +6,7 @@ import { blocRecu } from "../src/reports/recus/recu-blocs.js";
 import { signaturesBulletin } from "../src/reports/bulletins/bulletin-pro-commun.js";
 import { definirSignataireSession, peutDeposerCachet, signataireSession } from "../src/reports/signataire-session.js";
 import { documentsSignesPar, identiteApercu } from "../src/components/cachet/cachet-documents.js";
-import { effacerFondPapier } from "../src/components/cachet/preparer-cachet.js";
+import { COULEURS_ENCRE, effacerFondPapier, traiterPixels } from "../src/components/cachet/preparer-cachet.js";
 
 const ecole = {
   nom: "La Citadelle",
@@ -188,6 +188,62 @@ test("photo à la caméra : bureau et doigts au bord retirés, l'encre qui touch
   assert.equal(px[(5 * L + 61) * 4 + 3], 255, "trait de signature au bord gardé");
   assert.equal(px[(55 * L + 130) * 4 + 3], 255, "cachet gardé");
   assert.deepEqual(cadre, { x: 54, y: 0, l: 84, h: 93 }, "recadré sur l'encre seule");
+});
+
+// Feuille de 80 × 60 : papier gris clair, un cachet bleu, une signature noire
+// et une petite zone grisée (ombre, bavure pâle).
+const feuille = () => {
+  const L = 80; const H = 60;
+  const px = new Uint8ClampedArray(L * H * 4);
+  for (let y = 0; y < H; y += 1) {
+    for (let x = 0; x < L; x += 1) {
+      const cachet = x >= 20 && x < 30 && y >= 20 && y < 30;
+      const signature = x >= 40 && x < 55 && y >= 25 && y < 28;
+      const grise = x >= 60 && x < 66 && y >= 40 && y < 46;
+      const c = cachet ? [30, 60, 160] : signature ? [25, 25, 30] : grise ? [170, 170, 170] : [200, 200, 200];
+      px.set([...c, 255], (y * L + x) * 4);
+    }
+  }
+  return { px, L, H, alpha: (x, y) => px[(y * L + x) * 4 + 3], rgb: (x, y) => [...px.slice((y * L + x) * 4, (y * L + x) * 4 + 3)] };
+};
+
+test("réglages : encre d'une couleur unie, tampon et signature compris", () => {
+  const f = feuille();
+  assert.equal(traiterPixels(f.px, f.L, f.H, { encre: "noir" }), true);
+  const noir = COULEURS_ENCRE.find((c) => c.id === "noir").rgb;
+  assert.deepEqual(f.rgb(25, 25), noir, "cachet bleu passé en noir");
+  assert.deepEqual(f.rgb(45, 26), noir, "signature en noir");
+  assert.equal(f.alpha(25, 25), 255, "opacité gardée");
+  assert.equal(f.alpha(5, 5), 0, "papier toujours transparent");
+
+  const origine = feuille();
+  traiterPixels(origine.px, origine.L, origine.H, { encre: "originale" });
+  assert.deepEqual(origine.rgb(25, 25), [30, 60, 160], "« D'origine » ne touche pas aux couleurs");
+});
+
+test("réglages : effacement du papier plus doux ou plus fort", () => {
+  const opaciteGrise = (fond) => {
+    const f = feuille();
+    traiterPixels(f.px, f.L, f.H, { fond });
+    return f.alpha(62, 42);
+  };
+  const doux = opaciteGrise(-50); const normal = opaciteGrise(0); const fort = opaciteGrise(50);
+  assert.equal(fort, 0, "fort : le grisé disparaît");
+  assert.ok(normal > 0 && doux > normal, `doux garde plus de grisé (${doux} > ${normal})`);
+  const f = feuille();
+  traiterPixels(f.px, f.L, f.H, { fond: 50 });
+  assert.equal(f.alpha(25, 25), 255, "fort : l'encre franche reste");
+});
+
+test("réglages : lumière sur la photo gardée entière, rien à garder = refus", () => {
+  const f = feuille();
+  assert.equal(traiterPixels(f.px, f.L, f.H, { nettoyer: false, luminosite: 30, encre: "noir" }), true);
+  assert.ok(f.rgb(45, 26)[0] > 25, "signature éclaircie");
+  assert.equal(f.alpha(5, 5), 255, "papier gardé");
+  assert.deepEqual(f.rgb(25, 25).map((v) => v > 0), [true, true, true], "pas d'encre unie sans effacement");
+
+  const vide = new Uint8ClampedArray(40 * 30 * 4).fill(200);
+  assert.equal(traiterPixels(vide, 40, 30), false, "papier seul : aucun tracé");
 });
 
 // ── Base : seul le titulaire écrit son cachet ─────────────────────────────
