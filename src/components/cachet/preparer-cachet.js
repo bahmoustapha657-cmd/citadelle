@@ -7,6 +7,7 @@
 const COTE_MAX = 600;
 const MARGE = 6; // px laissés autour de l'encre au recadrage
 const CELLULE = 24; // côté des zones où le niveau du papier est mesuré
+const BLOC = 14; // côté d'un carré plein qui, au bord, n'est pas un trait d'encre
 
 const luminance = (px, i) => 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
 
@@ -74,10 +75,75 @@ function grillePapier(lum, visible, largeur, hauteur) {
   };
 }
 
+// Retire (transparent) ce qui part du bord de la photo sans être de l'encre :
+// bureau, bord de la feuille, doigts qui la tiennent devant la webcam. Plus
+// sombres que le papier, ils passeraient pour de l'encre et élargiraient le
+// recadrage. Une zone opaque est retirée si elle touche le bord en bande (au
+// moins un quart du côté) ou en bloc plein (carré de BLOC px) ; un trait de
+// cachet ou de signature qui effleure le bord n'est ni l'un ni l'autre.
+function retirerBords(px, largeur, hauteur) {
+  const total = largeur * hauteur;
+  const graines = [];
+  const cotes = [
+    { n: largeur, p: (i) => i, carre: (i) => [i, 0] },
+    { n: largeur, p: (i) => (hauteur - 1) * largeur + i, carre: (i) => [i, hauteur - BLOC] },
+    { n: hauteur, p: (i) => i * largeur, carre: (i) => [0, i] },
+    { n: hauteur, p: (i) => i * largeur + largeur - 1, carre: (i) => [largeur - BLOC, i] },
+  ];
+  const opaque = (p) => px[p * 4 + 3] > 128;
+
+  // Bandes : suites de pixels opaques le long d'un côté.
+  for (const cote of cotes) {
+    let debut = -1;
+    for (let i = 0; i <= cote.n; i += 1) {
+      if (i < cote.n && opaque(cote.p(i))) { if (debut < 0) debut = i; continue; }
+      if (debut >= 0 && i - debut >= cote.n / 4) graines.push(cote.p(debut));
+      debut = -1;
+    }
+  }
+
+  // Blocs pleins : image intégrale des pixels opaques, un carré se teste en
+  // quatre lectures.
+  if (largeur >= BLOC && hauteur >= BLOC) {
+    const l1 = largeur + 1;
+    const somme = new Uint32Array(l1 * (hauteur + 1));
+    for (let y = 0; y < hauteur; y += 1) {
+      let ligne = 0;
+      for (let x = 0; x < largeur; x += 1) {
+        ligne += opaque(y * largeur + x) ? 1 : 0;
+        somme[(y + 1) * l1 + x + 1] = somme[y * l1 + x + 1] + ligne;
+      }
+    }
+    const plein = (x, y) => somme[(y + BLOC) * l1 + x + BLOC] - somme[y * l1 + x + BLOC]
+      - somme[(y + BLOC) * l1 + x] + somme[y * l1 + x] === BLOC * BLOC;
+    for (const cote of cotes) {
+      for (let i = 0; i + BLOC <= cote.n; i += 1) {
+        if (plein(...cote.carre(i))) graines.push(cote.p(i));
+      }
+    }
+  }
+
+  // Toute la zone reliée à ces départs, fondu des bords compris.
+  const pile = new Int32Array(total);
+  let n = 0;
+  const pousser = (p) => { if (px[p * 4 + 3] > 32) { px[p * 4 + 3] = 0; pile[n] = p; n += 1; } };
+  graines.forEach(pousser);
+  while (n) {
+    n -= 1;
+    const p = pile[n];
+    const x = p % largeur;
+    if (x > 0) pousser(p - 1);
+    if (x < largeur - 1) pousser(p + 1);
+    if (p >= largeur) pousser(p - largeur);
+    if (p < total - largeur) pousser(p + largeur);
+  }
+}
+
 // Efface le fond papier de pixels RGBA (modifiés en place). Nettement plus
 // clair que l'encre — à une marge près du papier de sa zone : transparent ;
 // nettement plus sombre : encre opaque ; entre les deux, un fondu qui garde
-// les bords du tracé nets.
+// les bords du tracé nets. Ce qui part du bord sans être de l'encre est
+// retiré ensuite (retirerBords).
 // Renvoie le cadre de l'encre { x, y, l, h }, ou null si rien ne reste. Une
 // ligne ou une colonne n'y compte qu'à partir de deux points d'encre : un
 // grain isolé du papier n'élargit pas le recadrage.
@@ -92,8 +158,6 @@ export function effacerFondPapier(px, largeur, hauteur) {
   const papierEn = grillePapier(lum, visible, largeur, hauteur);
   if (!papierEn) return null;
 
-  const parLigne = new Uint32Array(hauteur);
-  const parColonne = new Uint32Array(largeur);
   for (let y = 0; y < hauteur; y += 1) {
     for (let x = 0; x < largeur; x += 1) {
       const p = y * largeur + x;
@@ -102,10 +166,15 @@ export function effacerFondPapier(px, largeur, hauteur) {
       const bas = papier * 0.6; // ≤ : encre → opaque
       const l = lum[p];
       const opacite = l >= haut ? 0 : l <= bas ? 1 : (haut - l) / (haut - bas);
-      const a = Math.min(px[p * 4 + 3], Math.round(opacite * 255));
-      px[p * 4 + 3] = a;
-      if (a > 128) { parLigne[y] += 1; parColonne[x] += 1; }
+      px[p * 4 + 3] = Math.min(px[p * 4 + 3], Math.round(opacite * 255));
     }
+  }
+  retirerBords(px, largeur, hauteur);
+
+  const parLigne = new Uint32Array(hauteur);
+  const parColonne = new Uint32Array(largeur);
+  for (let p = 0; p < total; p += 1) {
+    if (px[p * 4 + 3] > 128) { parLigne[Math.floor(p / largeur)] += 1; parColonne[p % largeur] += 1; }
   }
   const bornes = (comptes) => {
     let debut = -1; let fin = -1;

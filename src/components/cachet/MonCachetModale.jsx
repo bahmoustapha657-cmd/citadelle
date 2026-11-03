@@ -5,13 +5,19 @@
 // signé. Elle ne s'imprime que sur les documents qu'IL imprime et qu'il
 // signe d'après « Qui signe quoi » ; personne d'autre ne peut la poser, la
 // changer ni l'imprimer (voir src/backend/cachet-supabase.js).
-import { useContext, useMemo, useState } from "react";
+import { useContext, useMemo, useRef, useState } from "react";
 import { Btn, Modale } from "../ui";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { enregistrerMonCachet } from "../../backend/cachet-supabase";
 import { ajusterCompteMemorise } from "../../backend/auth-supabase";
 import { preparerCachet } from "./preparer-cachet";
 import { documentsSignesPar, identiteApercu } from "./cachet-documents";
+import CameraCachet from "./CameraCachet";
+
+const styleBouton = {
+  display: "inline-block", padding: "8px 16px", borderRadius: 8, fontSize: 12, fontWeight: 700,
+  background: "#e0ebf8", color: "#1e3a5f", border: "none", cursor: "pointer",
+};
 
 const PAPIER = "#fbfaf7";
 
@@ -39,6 +45,8 @@ export default function MonCachetModale({ utilisateur, setUtilisateur, fermer })
   const [image, setImage] = useState("");
   const [erreur, setErreur] = useState("");
   const [occupe, setOccupe] = useState(false);
+  const [camera, setCamera] = useState(false);
+  const champFichier = useRef(null);
 
   const documents = useMemo(() => documentsSignesPar(schoolInfo, cle), [schoolInfo, cle]);
   const identite = useMemo(() => identiteApercu(schoolInfo, cle, utilisateur.nomSignature), [schoolInfo, cle, utilisateur.nomSignature]);
@@ -53,12 +61,20 @@ export default function MonCachetModale({ utilisateur, setUtilisateur, fermer })
     }
   };
 
+  const utiliser = (f) => {
+    setFichier(f);
+    preparer(f, nettoyer);
+  };
+
   const choisir = (e) => {
     const f = e.target.files?.[0];
     e.target.value = "";
-    if (!f) return;
-    setFichier(f);
-    preparer(f, nettoyer);
+    if (f) utiliser(f);
+  };
+
+  const photoPrise = (f) => {
+    setCamera(false);
+    utiliser(f);
   };
 
   const basculerNettoyage = (valeur) => {
@@ -86,6 +102,15 @@ export default function MonCachetModale({ utilisateur, setUtilisateur, fermer })
     }
   };
 
+  if (camera) {
+    return (
+      <Modale titre="📷 Photographier mon cachet" fermer={fermer}>
+        <CameraCachet onPhoto={photoPrise} onAnnuler={() => setCamera(false)}
+          onChoisirFichier={() => setTimeout(() => champFichier.current?.click(), 0)} />
+      </Modale>
+    );
+  }
+
   return (
     <Modale titre="🖋️ Mon cachet et ma signature" fermer={fermer}>
       <p style={{ margin: "0 0 10px", fontSize: 13, color: "#334155", lineHeight: 1.5 }}>
@@ -99,12 +124,13 @@ export default function MonCachetModale({ utilisateur, setUtilisateur, fermer })
       <Apercu identite={identite} image={image || actuel} />
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", margin: "14px 0 6px" }}>
-        <label style={{ cursor: occupe ? "not-allowed" : "pointer" }}>
-          <input type="file" accept="image/*" onChange={choisir} disabled={occupe} style={{ display: "none" }} />
-          <span style={{ display: "inline-block", padding: "8px 16px", borderRadius: 8, fontSize: 12, fontWeight: 700, background: "#e0ebf8", color: "#1e3a5f" }}>
-            📷 {actuel || image ? "Choisir une autre photo" : "Prendre ou choisir une photo"}
-          </span>
-        </label>
+        <button type="button" onClick={() => { setErreur(""); setCamera(true); }} disabled={occupe} style={styleBouton}>
+          📷 {actuel || image ? "Reprendre une photo" : "Prendre une photo"}
+        </button>
+        <button type="button" onClick={() => champFichier.current?.click()} disabled={occupe} style={styleBouton}>
+          🖼️ Choisir une image
+        </button>
+        <input ref={champFichier} type="file" accept="image/*" onChange={choisir} style={{ display: "none" }} />
         <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#334155", cursor: "pointer" }}>
           <input type="checkbox" checked={nettoyer} onChange={(e) => basculerNettoyage(e.target.checked)} disabled={occupe} />
           Effacer le papier autour du cachet
