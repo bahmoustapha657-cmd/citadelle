@@ -105,7 +105,9 @@ export const compteur = (assiduite, cle) => (assiduite ? String(assiduite[cle]) 
 // signataires de la matrice « Qui signe quoi » (chef de section par défaut).
 // Le cachet personnel du chef de section, quand c'est lui qui imprime ; à
 // défaut, la signature scannée de l'école revient au signataire principal.
-// `bloc({ titre, note, image })` fabrique un bloc dans le gabarit.
+// `bloc({ titre, note, image, cachet })` fabrique un bloc dans le gabarit ;
+// `cachet` marque le signataire principal, qui appose le cachet de l'école
+// (Prestige lui réserve une place quand aucune image ne s'imprime).
 export function signaturesBulletin(schoolInfo, niveau, bloc) {
   return [
     bloc({ titre: "Le Parent / Tuteur", note: "Lu et approuvé" }),
@@ -114,6 +116,7 @@ export function signaturesBulletin(schoolInfo, niveau, bloc) {
       titre: identite,
       note: s.role === "principal" ? "Cachet et signature" : "Visa",
       image: s.cachet || (s.role === "principal" && schoolInfo.signatureUrl ? schoolInfo.signatureUrl : ""),
+      cachet: s.role === "principal",
     }), { section: niveau }),
   ].join("");
 }

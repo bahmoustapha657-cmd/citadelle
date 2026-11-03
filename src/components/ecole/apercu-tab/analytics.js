@@ -4,6 +4,7 @@
 // getGeneralAverage / getSubjectAverage et SEULES les matières de la classe).
 import { getGeneralAverage, getSubjectAverage } from "../../../note-utils";
 import { notesDeLEleve } from "../../../note-index";
+import { creerMatieresComptees } from "../../../reports/bulletins/bulletin-helpers";
 
 // Moyenne générale d'un élève pour une période donnée (toutes périodes si vide).
 // Un élève SANS aucune note sur la période n'est pas « évalué » (renvoie null) :
@@ -17,9 +18,12 @@ function moyenneEleve(eleve, notes, matieresForClasse, periode) {
 
 // Statistiques agrégées d'un groupe d'élèves : effectif, nombre évalué,
 // moyenne du groupe, admis (moyenne ≥ seuil) et taux de réussite (%).
+// Matières comptées comme au bulletin (notées dans la classe), jugées sur le
+// groupe : une classe entière pour les statistiques par classe.
 export function statsGroupe(eleves, notes, matieresForClasse, periode, seuil) {
+  const comptees = creerMatieresComptees({ eleves, notes, periode: periode || null, matieresForClasse });
   const moys = eleves
-    .map((e) => moyenneEleve(e, notes, matieresForClasse, periode))
+    .map((e) => moyenneEleve(e, notes, comptees, periode))
     .filter((m) => m !== null);
   const evalues = moys.length;
   const moyenne = evalues ? moys.reduce((s, m) => s + m, 0) / evalues : null;

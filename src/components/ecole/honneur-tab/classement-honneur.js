@@ -11,7 +11,8 @@
 //     palmarès mêlait toutes les notes de l'année et ne correspondait à
 //     aucun bulletin ;
 //   • moyenne générale = getGeneralAverage avec la SECTION du module
-//     (même appel que le bulletin imprimé) ;
+//     (même appel que le bulletin imprimé), sur les seules matières notées
+//     dans la classe pendant la période (creerMatieresComptees) ;
 //   • rang avec ex aequo : deux élèves à la même moyenne partagent le rang,
 //     le suivant saute d'autant (règle de getRangEleve) ;
 //   • élèves retenus = elevesPourPeriode : les présents, plus les partis qui
@@ -24,6 +25,7 @@ import { getGeneralAverage } from "../../../note-utils.js";
 import { indexerNotesParEleve, notesDeLEleve } from "../../../note-index.js";
 import { nomAffiche } from "../../../ordre-eleves.js";
 import { PERIODE_ANNEE, buildBulletinNotesAnnuelles } from "../../../reports/bulletins/annual-notes.js";
+import { creerMatieresComptees } from "../../../reports/bulletins/bulletin-helpers.js";
 
 // Nombre de lauréats par classe proposé à la Direction.
 export const NOMBRES_HONNEUR = [3, 5, 10];
@@ -97,6 +99,7 @@ export function tableauxHonneurParClasse({
   const retenus = elevesPourPeriode(eleves, notes, periodeNotes);
   const source = notesAClasser({ eleves: retenus, notes, matieresForClasse, periode, periodes, section });
   const index = indexerNotesParEleve(source, periode);
+  const comptees = creerMatieresComptees({ eleves: retenus, notes: source, periode, matieresForClasse });
   const minimum = partDuSeuil(seuil) * maxNote;
   // Toutes les classes connues, même vides (« aucune note » se lit aussi),
   // plus celles qui n'existent que sur des fiches d'élèves.
@@ -104,7 +107,7 @@ export function tableauxHonneurParClasse({
     .sort(comparerClassesParNiveau);
   return noms.map((classe) => {
     const groupe = retenus.filter((e) => e.classe === classe);
-    const classement = classer(groupe, index, matieresForClasse, section, tri);
+    const classement = classer(groupe, index, comptees, section, tri);
     return { classe, effectif: groupe.length, evalues: classement.length, laureats: laureatsDe(classement, nombre, minimum) };
   });
 }
@@ -121,6 +124,7 @@ export function tableauHonneurSection({
   const retenus = elevesPourPeriode(eleves, notes, periodeNotes);
   const source = notesAClasser({ eleves: retenus, notes, matieresForClasse, periode, periodes, section });
   const index = indexerNotesParEleve(source, periode);
-  const classement = classer(retenus, index, matieresForClasse, section, tri);
+  const comptees = creerMatieresComptees({ eleves: retenus, notes: source, periode, matieresForClasse });
+  const classement = classer(retenus, index, comptees, section, tri);
   return { effectif: retenus.length, evalues: classement.length, laureats: laureatsDe(classement, nombre, partDuSeuil(seuil) * maxNote) };
 }

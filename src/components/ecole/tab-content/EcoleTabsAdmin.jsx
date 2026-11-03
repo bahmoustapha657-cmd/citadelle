@@ -153,6 +153,7 @@ export function EcoleTabsAdmin({ e, titre, section, avecEns, userRole, annee, ma
         setFiltreClasse={e.setFiltreClasse}
         classesUniq={e.classesUniq}
         elevesFiltres={e.elevesFiltres}
+        eleves={e.eleves}
         schoolInfo={e.schoolInfo}
         annee={e.anneeConsultee}
         section={section}

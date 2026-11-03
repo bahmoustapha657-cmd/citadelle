@@ -70,11 +70,11 @@ const ligneInfo = (label, valeur, fort = false) => {
     + `<span class="val">${val}</span></div>`;
 };
 
-// `options` : { notes, notesPrecedentes, matieres, periodes, maxNote } —
+// `options` : { notes, notesPrecedentes, matieres, periodes, maxNote, eleves } —
 // fournis par l'onglet Attestations. Absents (appel historique), la moyenne
 // annuelle est simplement omise du document.
 export const imprimerAttestation = async (eleve, niveau, annee, schoolInfo = {}, options = {}) => {
-  const { notes = [], notesPrecedentes = [], matieres = [], periodes = [], maxNote = 20 } = options;
+  const { notes = [], notesPrecedentes = [], matieres = [], periodes = [], maxNote = 20, eleves = null } = options;
   // Couleurs de l'école (Paramètres → Identité), même repli que les bulletins,
   // le livret et les cartes : le document appartient à l'ÉCOLE, pas à EduGest.
   // Le vert du bloc « moyenne annuelle » reste, lui, sémantique — comme les
@@ -102,7 +102,7 @@ export const imprimerAttestation = async (eleve, niveau, annee, schoolInfo = {},
   // Moyenne de l'année en cours, ou à défaut de l'année écoulée : `anneeMoyenne`
   // dit toujours à quelle année le chiffre imprimé se rapporte.
   const { moyenne, annee: anneeMoyenne } = getMoyenneAttestation({
-    eleve, matieres, periodes, niveau, annee: anneeScolaire, notes, notesPrecedentes,
+    eleve, matieres, periodes, niveau, annee: anneeScolaire, notes, notesPrecedentes, eleves,
   });
   const moyenneTexte = formatMoyenneAnnuelle(moyenne, maxNote);
   // Ce que le document CERTIFIE exactement.

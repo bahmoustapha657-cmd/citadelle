@@ -6,6 +6,7 @@ import { getGeneralAverage, getSubjectAverage } from "../../../note-utils";
 import { estBloquePourImpaye } from "../../../mensualite-utils";
 import { indexerNotesParEleve, notesDeLEleve } from "../../../note-index";
 import { getMention } from "../../../reports/bulletins/bulletin-format";
+import { creerMatieresComptees } from "../../../reports/bulletins/bulletin-helpers";
 import { nomAffiche } from "../../../ordre-eleves";
 
 // Table des bulletins : moyenne générale, mention, accès à l'appréciation et
@@ -32,6 +33,12 @@ export function BulletinsTable({
     () => indexerNotesParEleve(notesAff, periodeB),
     [notesAff, periodeB],
   );
+  // Moyenne affichée = moyenne du bulletin : seules les matières notées dans
+  // la classe sur la période comptent.
+  const matieresComptees = useMemo(
+    () => creerMatieresComptees({ eleves, notes: notesAff, periode: periodeB, matieresForClasse }),
+    [eleves, notesAff, periodeB, matieresForClasse],
+  );
   if (elevesB.length===0) return <Vide icone="📊" msg={t("school.bulletins.noStudent")}/>;
   return (
     <Card><div style={{maxHeight:"calc(100vh - 320px)",minHeight:280,overflow:"auto"}}>
@@ -51,7 +58,7 @@ export function BulletinsTable({
         })()}
       <tbody>{elevesB.map((e,rowIdx)=>{
         const notesE=notesDeLEleve(notesParEleve,e._id);
-        const moyenneGenerale = getGeneralAverage(notesE, matieresForClasse(e.classe), e.classe);
+        const moyenneGenerale = getGeneralAverage(notesE, matieresComptees(e.classe), e.classe);
         const moyGene=moyenneGenerale!=null?moyenneGenerale.toFixed(2):"—";
         // Mention EN POURCENTAGE du barème : le primaire et le préscolaire
         // sont notés sur 10, pas sur 20. Les seuils figés à 16/14/12/10

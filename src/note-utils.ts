@@ -177,6 +177,28 @@ export const getSubjectParts = (
   return getSecondaryParts(notes);
 };
 
+// Matières qui COMPTENT dans la moyenne générale d'une classe : celles qu'au
+// moins un élève de la classe a notées dans `notesClasse` (une période, ou
+// les notes annuelles synthétiques pour la fin d'année).
+//
+// Règle accordée par la direction de La Citadelle (2026-11-02) : une matière
+// que personne n'a notée dans la classe pour la période ne compte pas — elle
+// n'entre pas au dénominateur. Avant, chacune comptait 0 à son coefficient :
+// une matière créée en cours d'année, ou que son professeur n'avait pas pu
+// noter, faisait baisser la moyenne de toute la classe. Une matière notée
+// pour CERTAINS élèves compte toujours 0 pour ceux qui n'ont rien : c'est la
+// note manquée d'un élève, pas une matière restée sans évaluation.
+//
+// Ne sert qu'au CALCUL : la saisie propose toujours toutes les matières.
+export const matieresNotees = <M extends Matiere>(matieres: M[] = [], notesClasse: Note[] = []): M[] => {
+  const notees = new Set(
+    notesClasse
+      .filter((note) => averageNumbers([note.note ?? null]) != null)
+      .map((note) => note.matiere),
+  );
+  return matieres.filter((matiere) => notees.has(matiere.nom));
+};
+
 export const getGeneralAverage = (
   notes: Note[] = [],
   matieres: Matiere[] = [],

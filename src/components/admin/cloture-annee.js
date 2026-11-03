@@ -21,6 +21,7 @@ import { chargerCollection, modifierChampDoc, sauverParametresEcole } from "../.
 import {
   COLLECTIONS_ELEVES, aDesPaiements, champsCloture, champsRestauration, horsAnneeCloturee,
 } from "./cloture-annee-utils";
+import { SECTIONS_MATIERES, figerReglages } from "../../reglages-annee";
 
 // Nb d'updates lancés en parallèle (modifierChampDoc = 1 par appel).
 const SB_PARALLELE = 40;
@@ -54,6 +55,21 @@ async function appliquerUpdates(schoolId, updates) {
 // Paramètres : passer l'objet complet d'un repère, pas sa seule nouvelle clé.
 export async function majFicheEcole(schoolId, champs) {
   return sauverParametresEcole(schoolId, champs);
+}
+
+// Réglages d'évaluation de l'année qui se clôt (matières de chaque section,
+// périodicité, formes, modèle de bulletin), à figer sur la fiche école :
+// les retouches de l'année suivante ne réécriront plus ses bulletins.
+// Lecture du SERVEUR, et un échec ARRÊTE la clôture, comme pour les élèves.
+export async function instantaneReglages(schoolId, schoolInfo) {
+  const matieresParSection = {};
+  for (const section of SECTIONS_MATIERES) {
+    const nom = `classes${section[0].toUpperCase()}${section.slice(1)}_matieres`;
+    const { items, erreur } = await chargerCollection(schoolId, nom, { reseau: true });
+    if (erreur) throw new Error(`lecture des matières impossible (${section}) : ${erreur}`);
+    matieresParSection[section] = items || [];
+  }
+  return figerReglages(schoolInfo, matieresParSection);
 }
 
 // Archive l'année `annee` sur chaque fiche puis remet la scolarité à zéro.
