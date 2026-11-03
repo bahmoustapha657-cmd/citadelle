@@ -168,6 +168,28 @@ test("photo mal éclairée : l'ombre et les grains du papier ne comptent pas com
   assert.equal(px[(yTrait * L + 100) * 4 + 3] > 200, true, "encre opaque");
 });
 
+test("photo à la caméra : bureau et doigts au bord retirés, l'encre qui touche le bord reste", () => {
+  const L = 200; const H = 120;
+  const px = new Uint8ClampedArray(L * H * 4);
+  for (let y = 0; y < H; y += 1) {
+    for (let x = 0; x < L; x += 1) {
+      const i = (y * L + x) * 4;
+      const bureau = x < 8; // bord du bureau, sur toute la hauteur
+      const doigt = x >= 150 && x < 180 && y >= 80; // doigt qui tient la feuille
+      const anneau = Math.abs(Math.hypot(x - 100, y - 55) - 30) <= 1.5; // cachet rond
+      const trait = x >= 60 && x < 63 && y < 20; // signature qui sort par le haut
+      const couleur = bureau ? [60, 42, 30] : doigt ? [120, 80, 60] : anneau || trait ? [30, 60, 160] : [200, 198, 194];
+      px.set([...couleur, 255], i);
+    }
+  }
+  const cadre = effacerFondPapier(px, L, H);
+  assert.equal(px[(60 * L + 3) * 4 + 3], 0, "bureau retiré");
+  assert.equal(px[(100 * L + 165) * 4 + 3], 0, "doigt retiré");
+  assert.equal(px[(5 * L + 61) * 4 + 3], 255, "trait de signature au bord gardé");
+  assert.equal(px[(55 * L + 130) * 4 + 3], 255, "cachet gardé");
+  assert.deepEqual(cadre, { x: 54, y: 0, l: 84, h: 93 }, "recadré sur l'encre seule");
+});
+
 // ── Base : seul le titulaire écrit son cachet ─────────────────────────────
 test("migration : cachet_url réservé au titulaire du compte", () => {
   const dossier = new URL("../supabase/migrations/", import.meta.url);
