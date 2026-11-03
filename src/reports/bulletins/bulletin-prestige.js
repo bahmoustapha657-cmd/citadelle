@@ -59,8 +59,8 @@ export function buildBulletinPrestigeHTML(ctx) {
   ].filter(Boolean).join(" &nbsp;|&nbsp; ");
 
   const distinction = libelleDistinction(m.distinction);
-  const sigs = signaturesBulletin(si, niveau, ({ titre, note, image, cachet }) =>
-    `<div class="sig${cachet && !image ? " cachet" : ""}"><b>${titre}</b><small>${note}</small>${imageSignature(image)}</div>`);
+  const sigs = signaturesBulletin(si, niveau, ({ titre, note, image, taille, cachet }) =>
+    `<div class="sig${cachet && !image ? " cachet" : ""}"><b>${titre}</b><small>${note}</small>${imageSignature(image, taille)}</div>`);
   const microTexte = echapper(`${si.nom || ""} · ${titreBulletin(periode)} · ${annee}`.toUpperCase());
 
   return `

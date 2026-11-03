@@ -8,6 +8,7 @@ import { getNationalDeviseHTML } from "../../national-symbols.js";
 import { getOfficialLegalFooterHTML, legalProfileVide, mapNiveauToCycle, resolveLegalFields } from "../../legal-utils.js";
 import { MINISTERE_DEFAUT, edugestBrandHTML, orDefault } from "../print-helpers.js";
 import { blocsSignatures } from "../signatures.js";
+import { normaliserTailleCachet } from "../signataire-session.js";
 import { PERIODE_ANNEE } from "./annual-notes.js";
 
 export const echapper = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => (
@@ -113,9 +114,11 @@ export const sectionPrimaire = (niveau) => SECTIONS_PRIMAIRE.has(String(niveau |
 // l'école, signé par ceux qui l'établissent.
 // Le cachet personnel du chef de section, quand c'est lui qui imprime ; à
 // défaut, la signature scannée de l'école revient au signataire principal.
-// `bloc({ titre, note, image, cachet })` fabrique un bloc dans le gabarit ;
-// `cachet` marque le signataire principal, qui appose le cachet de l'école
-// (Prestige lui réserve une place quand aucune image ne s'imprime).
+// `bloc({ titre, note, image, taille, cachet })` fabrique un bloc dans le
+// gabarit ; `taille` : celle du cachet personnel réglée par son titulaire (1
+// pour la signature de l'école) ; `cachet` marque le signataire principal,
+// qui appose le cachet de l'école (Prestige lui réserve une place quand aucune
+// image ne s'imprime).
 export function signaturesBulletin(schoolInfo, niveau, bloc) {
   return [
     bloc({ titre: sectionPrimaire(niveau) ? "Le Maître titulaire" : "Le Professeur principal", note: "Nom et signature" }),
@@ -123,14 +126,22 @@ export function signaturesBulletin(schoolInfo, niveau, bloc) {
       titre: identite,
       note: s.role === "principal" ? "Cachet et signature" : "Visa",
       image: s.cachet || (s.role === "principal" && schoolInfo.signatureUrl ? schoolInfo.signatureUrl : ""),
+      taille: s.cachet ? s.cachetTaille : 1,
       cachet: s.role === "principal",
     }), { section: niveau }),
   ].join("");
 }
 
-export const imageSignature = (url) => (url
-  ? `<img crossOrigin="anonymous" src="${echapper(url)}" alt="" style="display:block;height:12mm;max-width:90%;object-fit:contain;margin:1mm auto 0;mix-blend-mode:multiply"/>`
-  : "");
+// Image de signature (12 mm). `taille` ≠ 1 : plus grande ou plus petite, mais
+// la place qu'elle occupe reste celle de 12 mm — le surplus déborde à moitié
+// au-dessus, à moitié en dessous, et le bulletin garde sa page unique.
+export const imageSignature = (url, taille = 1) => {
+  if (!url) return "";
+  const t = normaliserTailleCachet(taille);
+  const debord = (t - 1) * 6; // mm de chaque côté (négatif si plus petite)
+  const marges = t === 1 ? "1mm auto 0" : `${(1 - debord).toFixed(1)}mm auto ${(-debord).toFixed(1)}mm`;
+  return `<img crossOrigin="anonymous" src="${echapper(url)}" alt="" style="display:block;height:${Math.round(120 * t) / 10}mm;max-width:90%;object-fit:contain;margin:${marges};mix-blend-mode:multiply"/>`;
+};
 
 // Mentions de bas de page : n° du bulletin, exemplaire unique, arrêté
 // d'ouverture (seulement s'il est renseigné), marque EduGest.
