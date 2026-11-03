@@ -1,19 +1,30 @@
 import { PRINT_TRIGGER, WATERMARK_CSS, printDir, printLang, watermarkHtml } from "../print-helpers.js";
 import { getBulletinStyles, getModeleBulletin } from "./bulletin-page.js";
+import { ajusterPagesScript } from "../ornements.js";
 
-// Ouvre une fenêtre d'impression contenant le document bulletin complet
-// (en-tête HTML, styles du modèle choisi par l'école, filigrane, corps
-// et déclencheur d'impression). Factorisé entre l'impression
-// individuelle et groupée.
+// Bulletin Prestige : réduit au besoin pour tenir sur sa feuille A4 (voir
+// ajusterPagesScript). Sans effet sur les autres modèles, sans `.ajustable`.
+export const AJUSTER_PAGES = ajusterPagesScript(".page.pro", 297);
+
+// Document bulletin complet (en-tête HTML, styles du modèle choisi par
+// l'école, filigrane, corps, ajustement à la page et, si `imprimer`, le
+// déclencheur d'impression). Séparé de l'ouverture de la fenêtre pour
+// pouvoir être rendu et mesuré hors de l'application.
+export function documentBulletinHTML({ title, body, schoolInfo = {}, imprimer = true }) {
+  return `<!DOCTYPE html><html lang="${printLang()}" dir="${printDir()}"><head>
+  <meta charset="utf-8"/>
+  <title>${title}</title>
+  <style>${getBulletinStyles(getModeleBulletin(schoolInfo))}${WATERMARK_CSS}</style>
+  </head><body>${watermarkHtml(schoolInfo)}${body}<script>${AJUSTER_PAGES}</script>${imprimer ? `<script>${PRINT_TRIGGER}</script>` : ""}</body></html>`;
+}
+
+// Ouvre une fenêtre d'impression contenant le document bulletin complet.
+// Factorisé entre l'impression individuelle et groupée.
 // `imprimer: false` : simple aperçu, sans ouvrir la boîte d'impression.
 export function ouvrirFenetreBulletin({ title, body, schoolInfo = {}, win = null, imprimer = true }) {
   // `win` : fenêtre déjà ouverte (sur le geste utilisateur) avant un await QR,
   // pour ne pas se faire bloquer par le navigateur.
   const w = win || window.open("", "_blank");
-  w.document.write(`<!DOCTYPE html><html lang="${printLang()}" dir="${printDir()}"><head>
-  <meta charset="utf-8"/>
-  <title>${title}</title>
-  <style>${getBulletinStyles(getModeleBulletin(schoolInfo))}${WATERMARK_CSS}</style>
-  </head><body>${watermarkHtml(schoolInfo)}${body}${imprimer ? `<script>${PRINT_TRIGGER}</script>` : ""}</body></html>`);
+  w.document.write(documentBulletinHTML({ title, body, schoolInfo, imprimer }));
   w.document.close();
 }
