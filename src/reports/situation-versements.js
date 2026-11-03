@@ -15,7 +15,7 @@
 import { fmtN, getMonnaie, today } from "../constants.js";
 import { resolveLegalFields } from "../legal-utils.js";
 import { PRINT_RESET, PRINT_TRIGGER, edugestBrandHTML, enteteDoc } from "./print-helpers.js";
-import { blocsSignatures } from "./signatures.js";
+import { blocsSignatures, cachetOuEspace } from "./signatures.js";
 import { etatsCss } from "./etats-salaires/etats-styles.js";
 import { montantEnLettres } from "./montant-lettres.js";
 import { enteteCompact } from "./recus/recu-blocs.js";
@@ -50,7 +50,7 @@ const donneesSituation = ({ versements, schoolInfo, annee, du, au, beneficiaire 
 };
 
 const signaturesHTML = (schoolInfo) => `
-  ${blocsSignatures(schoolInfo, "versements", (identite) => `<div class="sig">${identite}<br/><br/><br/>Signature</div>`)}
+  ${blocsSignatures(schoolInfo, "versements", (identite, s) => `<div class="sig">${identite}${cachetOuEspace(s)}Signature</div>`)}
   <div class="sig">Pour réception<br/><span style="font-weight:400">(nom, cachet et signature)</span><br/><br/><br/></div>`;
 
 const arreteHTML = (schoolInfo, d) => `

@@ -13,7 +13,7 @@
 import { fmtN, getMonnaie, getSectionForClasse, today } from "../constants.js";
 import { resolveLegalFields } from "../legal-utils.js";
 import { PRINT_TRIGGER, edugestBrandHTML, printResetFor } from "./print-helpers.js";
-import { blocsSignatures } from "./signatures.js";
+import { blocsSignatures, cachetOuEspace } from "./signatures.js";
 import { enteteCompact } from "./recus/recu-blocs.js";
 import { RECU_AJUSTEMENT } from "./recus/recus-styles.js";
 import { TICKET_STYLES, normaliserLargeur } from "./recus/recu-ticket.js";
@@ -128,7 +128,7 @@ const preavisA4 = (r, options) => {
         <strong>Mois impayés (${d.nbMois})</strong> : ${d.mois}${d.reste ? `<br/><strong>Reste dû</strong> : <strong>${d.reste}</strong>` : ""}</div>
       <div class="alerte">${phraseRenvoi(d)}</div>
       <div class="sigs">${blocsSignatures(schoolInfo, "preavis",
-        (identite, s) => `<div class="sig">${identite}<br/><br/><br/>Signature${s.role === "principal" ? " &amp; cachet" : ""}</div>`,
+        (identite, s) => `<div class="sig">${identite}${cachetOuEspace(s)}Signature${s.role === "principal" ? " &amp; cachet" : ""}</div>`,
         { section: d.section })}</div>
       <div class="coupe">✂ à découper — talon à rapporter signé</div>
       <div class="talon">

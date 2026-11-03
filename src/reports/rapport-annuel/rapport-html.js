@@ -7,7 +7,7 @@
 
 import { fmt, isSectionActive, today } from "../../constants.js";
 import { PRINT_TRIGGER, printDir, printLang, tr, watermarkHtml } from "../print-helpers.js";
-import { blocsSignatures } from "../signatures.js";
+import { blocsSignatures, cachetOuEspace } from "../signatures.js";
 import { getRapportAnnuelStyles } from "./rapport-styles.js";
 import {
   buildAbsences,
@@ -76,7 +76,7 @@ export const buildRapportAnnuelHTML = (model, schoolInfo = {}) => {
   ${buildAbsences(model)}
 
   <div class="sigs">
-    ${blocsSignatures(schoolInfo, "rapportAnnuel", (identite, s) => `<div class="sig">${identite}<br/><br/><br/>${s.role === "principal" ? "Signature & Cachet" : "Signature"}</div>`)}
+    ${blocsSignatures(schoolInfo, "rapportAnnuel", (identite, s) => `<div class="sig">${identite}${cachetOuEspace(s)}${s.role === "principal" ? "Signature & Cachet" : "Signature"}</div>`)}
     <div class="sig">Fondateur / Conseil d'administration<br/><br/><br/>Signature</div>
   </div>
 

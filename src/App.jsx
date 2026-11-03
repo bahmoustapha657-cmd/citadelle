@@ -81,10 +81,17 @@ export default function App() {
   // Signataire des documents imprimés pendant la session : poste du compte
   // connecté et nom qu'il imprime. Sur un poste à plusieurs comptes (deux
   // comptables), chacun signe ainsi à son nom — voir reports/signataire-session.
+  // Le cachet personnel est chargé une fois dès la connexion : le service
+  // worker le garde alors pour imprimer hors ligne.
   useEffect(() => {
     definirSignataireSession(utilisateur
-      ? { cle: utilisateur.posteCle || utilisateur.role, nom: utilisateur.nomSignature }
+      ? { cle: utilisateur.posteCle || utilisateur.role, nom: utilisateur.nomSignature, cachet: utilisateur.cachetUrl }
       : null);
+    if (utilisateur?.cachetUrl) {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = utilisateur.cachetUrl;
+    }
   }, [utilisateur]);
 
   // Ctrl+K / ? / Escape — voir use-keyboard-shortcuts pour le détail.
@@ -155,7 +162,7 @@ export default function App() {
         sidebarOuvert={sidebarOuvert} setSidebarOuvert={setSidebarOuvert}
         schoolInfo={schoolInfo} couleur2={couleur2} annee={annee} setAnnee={setAnnee}
         page={page} setPage={setPage} isMobile={isMobile}
-        msgsNonLus={msgsNonLus} utilisateur={utilisateur} utilisateurLabel={utilisateurLabel}
+        msgsNonLus={msgsNonLus} utilisateur={utilisateur} setUtilisateur={setUtilisateur} utilisateurLabel={utilisateurLabel}
         deconnecter={deconnecter} estHorsLigne={estHorsLigne} syncPendantes={syncPendantes} premiereSynchro={premiereSynchro} t={t}
         readOnly={readOnly} permissions={permissions} roleEffectif={roleEffectif} abonnementExpire={abonnementExpire} planInfo={planInfo} modeSombre={modeSombre} setModeSombre={setModeSombre}
         notifOuvert={notifOuvert} setNotifOuvert={setNotifOuvert}

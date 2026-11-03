@@ -9,7 +9,7 @@
 //   • ticket 58/80 mm : un bloc par enfant, puis les totaux.
 import { fmt, fmtN, getSectionForClasse, today } from "../../constants.js";
 import { EDUGEST_SITE, printResetFor, tr } from "../print-helpers.js";
-import { blocsSignatures } from "../signatures.js";
+import { blocsSignatures, cachetOuEspace } from "../signatures.js";
 import { enteteCompact } from "./recu-blocs.js";
 import { TICKET_STYLES, normaliserLargeur } from "./recu-ticket.js";
 
@@ -90,7 +90,7 @@ export const blocRecuFamille = (titre, ctx) => {
       <span style="margin-inline-start:8px;color:${t.resteAPayer>0?"#b91c1c":"#166534"}">· ${tr("reports.receipt.balanceDue")} : <strong>${fmt(t.resteAPayer)}</strong></span></div>
     <div class="sigs">
       <div class="sig">${tr("school.students.parent")}<br/><br/><br/>${tr("reports.signature")}</div>
-      ${blocsSignatures(schoolInfo, "recu", (identite, s) => `<div class="sig">${identite}<br/><br/><br/>${tr("reports.signature")}${s.role === "principal" ? ` &amp; ${tr("reports.stamp")}` : ""}</div>`,
+      ${blocsSignatures(schoolInfo, "recu", (identite, s) => `<div class="sig">${identite}${cachetOuEspace(s, "<br/><br/><br/>", "16mm")}${tr("reports.signature")}${s.role === "principal" ? ` &amp; ${tr("reports.stamp")}` : ""}</div>`,
         { section: getSectionForClasse(enfants[0]?.eleve?.classe) })}
     </div>
     </div>

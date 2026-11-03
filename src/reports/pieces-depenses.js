@@ -13,7 +13,7 @@
 
 import { fmtN, getMonnaie, today } from "../constants.js";
 import { PRINT_TRIGGER, WATERMARK_CSS, edugestBrandHTML, enteteDoc, watermarkHtml } from "./print-helpers.js";
-import { blocsSignatures } from "./signatures.js";
+import { blocsSignatures, cachetOuEspace } from "./signatures.js";
 import { etatsCss } from "./etats-salaires/etats-styles.js";
 import { montantEnLettres } from "./montant-lettres.js";
 import {
@@ -72,7 +72,7 @@ const exemplaireBon = ({ bon, schoolInfo, annee, monnaie, mention }) => {
     <p class="bon-lieu">Fait à ${echapper(schoolInfo.ville || "……………………")}, le ${date}</p>
     <div class="signatures">
       <div class="sig">Le Bénéficiaire<br/><span style="font-weight:400">« Lu et approuvé »</span><br/><br/><br/></div>
-      ${blocsSignatures(schoolInfo, "bon", (identite) => `<div class="sig">${identite}<br/><br/><br/></div>`)}
+      ${blocsSignatures(schoolInfo, "bon", (identite, s) => `<div class="sig">${identite}${cachetOuEspace(s)}</div>`)}
     </div>
   </section>`;
 };
@@ -193,7 +193,7 @@ export function etatDepensesHTML({ depenses = [], schoolInfo = {}, annee = "", m
     <p class="lieu-date">Fait à ${echapper(schoolInfo.ville || "—")}, le ${today()}</p>
 
     <div class="signatures">
-      ${blocsSignatures(schoolInfo, "depenses", (identite) => `<div class="sig">${identite}<br/><br/><br/>Signature</div>`)}
+      ${blocsSignatures(schoolInfo, "depenses", (identite, s) => `<div class="sig">${identite}${cachetOuEspace(s)}Signature</div>`)}
     </div>
 
     <div class="footer-note">État émis le ${today()} — ${echapper(schoolInfo.nom || "École")} — montants en ${echapper(monnaie)}</div>

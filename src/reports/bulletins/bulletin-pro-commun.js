@@ -103,9 +103,11 @@ export const compteur = (assiduite, cle) => (assiduite ? String(assiduite[cle]) 
 
 // Blocs de signature : parent, professeur principal, puis le ou les
 // signataires de la matrice « Qui signe quoi » (chef de section par défaut).
-// La signature scannée de l'école revient au signataire principal.
+// Le cachet personnel du chef de section, quand c'est lui qui imprime ; à
+// défaut, la signature scannée de l'école revient au signataire principal.
 // `bloc({ titre, note, image, cachet })` fabrique un bloc dans le gabarit ;
-// `cachet` marque le signataire principal, qui appose le cachet de l'école.
+// `cachet` marque le signataire principal, qui appose le cachet de l'école
+// (Prestige lui réserve une place quand aucune image ne s'imprime).
 export function signaturesBulletin(schoolInfo, niveau, bloc) {
   return [
     bloc({ titre: "Le Parent / Tuteur", note: "Lu et approuvé" }),
@@ -113,14 +115,14 @@ export function signaturesBulletin(schoolInfo, niveau, bloc) {
     blocsSignatures(schoolInfo, "bulletin", (identite, s) => bloc({
       titre: identite,
       note: s.role === "principal" ? "Cachet et signature" : "Visa",
-      image: s.role === "principal" && schoolInfo.signatureUrl ? schoolInfo.signatureUrl : "",
+      image: s.cachet || (s.role === "principal" && schoolInfo.signatureUrl ? schoolInfo.signatureUrl : ""),
       cachet: s.role === "principal",
     }), { section: niveau }),
   ].join("");
 }
 
 export const imageSignature = (url) => (url
-  ? `<img crossOrigin="anonymous" src="${echapper(url)}" alt="" style="display:block;height:12mm;max-width:90%;object-fit:contain;margin:1mm auto 0"/>`
+  ? `<img crossOrigin="anonymous" src="${echapper(url)}" alt="" style="display:block;height:12mm;max-width:90%;object-fit:contain;margin:1mm auto 0;mix-blend-mode:multiply"/>`
   : "");
 
 // Mentions de bas de page : n° du bulletin, exemplaire unique, arrêté
