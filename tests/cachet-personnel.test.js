@@ -95,7 +95,7 @@ test("bulletin : le cachet du chef de section passe avant la signature de l'éco
   const rendu = () => {
     const vues = [];
     signaturesBulletin(info, "primaire", ({ image }) => { vues.push(image || ""); return ""; });
-    return vues.slice(2); // parent et professeur principal d'abord
+    return vues.slice(1); // l'enseignant (maître titulaire) d'abord ; le parent ne signe pas
   };
   try {
     assert.deepEqual(rendu(), ["https://x/ecole.png"]);

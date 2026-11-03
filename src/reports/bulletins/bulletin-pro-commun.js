@@ -101,8 +101,16 @@ export const libelleDistinction = (id) => DISTINCTIONS.find((d) => d.id === id)?
 // Assiduité : un compteur connu, ou une ligne à remplir à la main.
 export const compteur = (assiduite, cle) => (assiduite ? String(assiduite[cle]) : "……");
 
-// Blocs de signature : parent, professeur principal, puis le ou les
+// Le primaire (préscolaire compris, rattaché à la Direction du primaire) a un
+// maître titulaire par classe ; le collège et le lycée, un professeur principal.
+const SECTIONS_PRIMAIRE = new Set(["prescolaire", "maternelle", "primaire"]);
+export const sectionPrimaire = (niveau) => SECTIONS_PRIMAIRE.has(String(niveau || "").toLowerCase());
+
+// Blocs de signature : l'enseignant titulaire de la classe (maître titulaire
+// au primaire, professeur principal au secondaire), puis le ou les
 // signataires de la matrice « Qui signe quoi » (chef de section par défaut).
+// Le parent ou tuteur ne signe pas le bulletin : c'est un document de
+// l'école, signé par ceux qui l'établissent.
 // Le cachet personnel du chef de section, quand c'est lui qui imprime ; à
 // défaut, la signature scannée de l'école revient au signataire principal.
 // `bloc({ titre, note, image, cachet })` fabrique un bloc dans le gabarit ;
@@ -110,8 +118,7 @@ export const compteur = (assiduite, cle) => (assiduite ? String(assiduite[cle]) 
 // (Prestige lui réserve une place quand aucune image ne s'imprime).
 export function signaturesBulletin(schoolInfo, niveau, bloc) {
   return [
-    bloc({ titre: "Le Parent / Tuteur", note: "Lu et approuvé" }),
-    bloc({ titre: "Le Professeur principal", note: "Nom et signature" }),
+    bloc({ titre: sectionPrimaire(niveau) ? "Le Maître titulaire" : "Le Professeur principal", note: "Nom et signature" }),
     blocsSignatures(schoolInfo, "bulletin", (identite, s) => bloc({
       titre: identite,
       note: s.role === "principal" ? "Cachet et signature" : "Visa",

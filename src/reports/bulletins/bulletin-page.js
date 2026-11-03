@@ -20,7 +20,7 @@ import { computeBulletinModel } from "./bulletin-page-data.js";
 import { buildLignesRows } from "./bulletin-page-rows.js";
 import { PERIODE_ANNEE } from "./annual-notes.js";
 import { computeBulletinProModel } from "./bulletin-pro-data.js";
-import { PIED_CSS, identiteEcole } from "./bulletin-pro-commun.js";
+import { PIED_CSS, identiteEcole, sectionPrimaire } from "./bulletin-pro-commun.js";
 import { STYLES_OFFICIEL, buildBulletinOfficielHTML } from "./bulletin-officiel.js";
 import { STYLES_PRESTIGE, buildBulletinPrestigeHTML } from "./bulletin-prestige.js";
 import { STYLES_CONTEMPORAIN, buildBulletinContemporainHTML } from "./bulletin-contemporain.js";
@@ -213,8 +213,7 @@ export function buildBulletinPageHTML({
     </div>
 
     <div class="sigs">
-      <div class="sig">${tr("school.students.parent")}<br/><br/><br/>${tr("reports.signature")}</div>
-      <div class="sig">${tr("reports.headTeacher")}<br/><br/><br/>${tr("reports.signature")}</div>
+      <div class="sig">${tr(sectionPrimaire(niveau) ? "reports.classTeacher" : "reports.headTeacher")}<br/><br/><br/>${tr("reports.signature")}</div>
       ${blocsSignatures(schoolInfo, "bulletin", (identite, s) => `<div class="sig">${identite}${
         // Cachet personnel du chef de section quand c'est lui qui imprime ;
         // sinon la signature scannée de l'école, réservée au signataire
