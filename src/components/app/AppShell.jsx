@@ -67,7 +67,7 @@ export function AppShell(p) {
             isMobile={p.isMobile} setSidebarOuvert={p.setSidebarOuvert}
             modulesVisibles={modulesMenu} page={p.page} readOnly={p.readOnly} abonnementExpire={p.abonnementExpire} t={p.t}
             estHorsLigne={p.estHorsLigne} syncPendantes={p.syncPendantes} planInfo={p.planInfo}
-            utilisateur={p.utilisateur} utilisateurLabel={p.utilisateurLabel} schoolInfo={p.schoolInfo}
+            utilisateur={p.utilisateur} setUtilisateur={p.setUtilisateur} utilisateurLabel={p.utilisateurLabel} schoolInfo={p.schoolInfo}
             setRechercheOuverte={p.setRechercheOuverte} modeSombre={p.modeSombre} setModeSombre={p.setModeSombre}
             notifOuvert={p.notifOuvert} setNotifOuvert={p.setNotifOuvert}
             notifNonLues={p.notifNonLues} marquerNotifLues={p.marquerNotifLues} notifListe={p.notifListe} nowTs={p.nowTs}

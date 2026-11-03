@@ -1,15 +1,23 @@
+import { Suspense, lazy, useState } from "react";
+import { createPortal } from "react-dom";
 import { C } from "../../../constants";
 import { Badge } from "../../ui";
 import { LanguageSwitcher } from "../../LanguageSwitcher";
+import { peutDeposerCachet } from "../../../reports/signataire-session";
 
-// Avatar + menu profil : paramètres école, raccourcis, langue, déconnexion.
+// Chargée à l'ouverture seulement : elle tire la matrice des signatures.
+const MonCachetModale = lazy(() => import("../../cachet/MonCachetModale"));
+
+// Avatar + menu profil : paramètres école, cachet personnel, raccourcis,
+// langue, déconnexion.
 export function ProfilMenu({
   profilOuvert, setProfilOuvert, setNotifOuvert, isMobile,
-  utilisateur, utilisateurLabel, schoolInfo, t, setPage, setAideOuverte, setCentreAideOuvert, deconnecter,
+  utilisateur, setUtilisateur, utilisateurLabel, schoolInfo, t, setPage, setAideOuverte, setCentreAideOuvert, deconnecter,
 }) {
   // Postes flexibles : la clé du poste prime sur le rôle enum (postes
   // système = mêmes clés que les rôles historiques).
   const cleRole = utilisateur.posteCle || utilisateur.role;
+  const [cachetOuvert, setCachetOuvert] = useState(false);
   return (
     <div style={{position:"relative",flexShrink:0}}>
       <button onClick={()=>{setProfilOuvert(v=>!v);setNotifOuvert(false);}}
@@ -34,6 +42,13 @@ export function ProfilMenu({
               🏫 <span>Paramètres école</span>
             </button>
           )}
+          {/* Comptables et chefs de section : leur cachet, déposé par eux seuls. */}
+          {setUtilisateur && peutDeposerCachet(cleRole)&&(
+            <button onClick={()=>{setProfilOuvert(false);setCachetOuvert(true);}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 16px",background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#374151",textAlign:"start",fontWeight:600}}>
+              🖋️ <span>Mon cachet et ma signature</span>
+              {utilisateur.cachetUrl&&<span style={{marginInlineStart:"auto",fontSize:10,color:"#16a34a",fontWeight:700}}>✓</span>}
+            </button>
+          )}
           <button onClick={()=>{setProfilOuvert(false);setCentreAideOuvert&&setCentreAideOuvert(true);}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 16px",background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#374151",textAlign:"start",fontWeight:600}}>
             ❓ <span>Centre d'aide</span>
           </button>
@@ -49,6 +64,13 @@ export function ProfilMenu({
             ⬅ <span>{t("auth.logout")}</span>
           </button>
         </div>
+      )}
+      {/* Hors de l'en-tête (sticky, z-index 30) : la modale passe au-dessus de tout. */}
+      {cachetOuvert&&createPortal(
+        <Suspense fallback={null}>
+          <MonCachetModale utilisateur={utilisateur} setUtilisateur={setUtilisateur} fermer={()=>setCachetOuvert(false)} />
+        </Suspense>,
+        document.body,
       )}
     </div>
   );

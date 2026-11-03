@@ -8,7 +8,7 @@
 
 import { fmtN, isGroupeActif, today } from "../constants.js";
 import { edugestBrandHTML, enteteDoc } from "./print-helpers.js";
-import { blocsSignatures } from "./signatures.js";
+import { blocsSignatures, cachetOuEspace } from "./signatures.js";
 import { etatsCss } from "./etats-salaires/etats-styles.js";
 import { blocSecondaire, blocPrimaire, blocPersonnel } from "./etats-salaires/etats-blocs.js";
 
@@ -80,7 +80,7 @@ export function imprimerEtatsSalaires({
     </div>
 
     <div class="signatures">
-      ${blocsSignatures(schoolInfo, "etatSalaires", (identite) => `<div class="sig">${identite}<br/><br/><br/>Signature</div>`)}
+      ${blocsSignatures(schoolInfo, "etatSalaires", (identite, s) => `<div class="sig">${identite}${cachetOuEspace(s)}Signature</div>`)}
       <div class="sig">Le Fondateur<br/><br/><br/>Signature</div>
     </div>
 

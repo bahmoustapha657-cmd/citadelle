@@ -9,7 +9,7 @@ import { MessagerieBouton } from "../messagerie/MessagerieBouton";
 
 export function AppHeader({
   isMobile, setSidebarOuvert, modulesVisibles, page, readOnly, abonnementExpire, t,
-  estHorsLigne, syncPendantes, planInfo, utilisateur, utilisateurLabel, schoolInfo,
+  estHorsLigne, syncPendantes, planInfo, utilisateur, setUtilisateur, utilisateurLabel, schoolInfo,
   setRechercheOuverte, modeSombre, setModeSombre,
   notifOuvert, setNotifOuvert, notifNonLues, marquerNotifLues, notifListe, nowTs,
   profilOuvert, setProfilOuvert, setPage, setAideOuverte, setCentreAideOuvert, deconnecter,
@@ -83,7 +83,7 @@ export function AppHeader({
 
         <ProfilMenu
           profilOuvert={profilOuvert} setProfilOuvert={setProfilOuvert} setNotifOuvert={setNotifOuvert}
-          isMobile={isMobile} utilisateur={utilisateur} utilisateurLabel={utilisateurLabel}
+          isMobile={isMobile} utilisateur={utilisateur} setUtilisateur={setUtilisateur} utilisateurLabel={utilisateurLabel}
           schoolInfo={schoolInfo} t={t} setPage={setPage} setAideOuverte={setAideOuverte} setCentreAideOuvert={setCentreAideOuvert} deconnecter={deconnecter}
         />
       </div>
