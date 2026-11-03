@@ -14,8 +14,14 @@ export function AppHeader({
   notifOuvert, setNotifOuvert, notifNonLues, marquerNotifLues, notifListe, nowTs,
   profilOuvert, setProfilOuvert, setPage, setAideOuverte, setCentreAideOuvert, deconnecter,
 }) {
+  // Menu profil ou cloche ouverts : l'en-tête passe AU-DESSUS du calque qui
+  // les referme au clic extérieur (AppShellOverlays, z-index 150). Resté à
+  // 30, il était recouvert par ce calque : un clic sur une entrée du menu
+  // (Paramètres, Centre d'aide, Mon cachet, Déconnexion…) ne faisait que le
+  // refermer.
+  const menuOuvert = profilOuvert || notifOuvert;
   return (
-    <header style={{background:"#fff",borderBottom:`3px solid ${C.green}`,padding:"0 12px",height:52,display:"flex",alignItems:"center",gap:8,position:"sticky",top:0,zIndex:30,minWidth:0}}>
+    <header style={{background:"#fff",borderBottom:`3px solid ${C.green}`,padding:"0 12px",height:52,display:"flex",alignItems:"center",gap:8,position:"sticky",top:0,zIndex:menuOuvert?160:30,minWidth:0}}>
       {/* Bouton hamburger mobile */}
       <button onClick={()=>setSidebarOuvert(v=>!v)} style={{display:isMobile?"flex":"none",flexShrink:0,alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:"pointer",padding:6,borderRadius:6,color:C.blueDark,fontSize:22}}>
         ☰
