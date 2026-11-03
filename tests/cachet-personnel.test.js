@@ -3,8 +3,10 @@ import test from "node:test";
 import { readFileSync, readdirSync } from "node:fs";
 import { cachetOuEspace, signatairesDocument } from "../src/reports/signatures.js";
 import { blocRecu } from "../src/reports/recus/recu-blocs.js";
-import { signaturesBulletin } from "../src/reports/bulletins/bulletin-pro-commun.js";
-import { definirSignataireSession, peutDeposerCachet, signataireSession } from "../src/reports/signataire-session.js";
+import { imageSignature, signaturesBulletin } from "../src/reports/bulletins/bulletin-pro-commun.js";
+import {
+  TAILLE_CACHET, definirSignataireSession, normaliserTailleCachet, partDessusCachet, peutDeposerCachet, signataireSession,
+} from "../src/reports/signataire-session.js";
 import { documentsSignesPar, identiteApercu } from "../src/components/cachet/cachet-documents.js";
 import { COULEURS_ENCRE, effacerFondPapier, traiterPixels } from "../src/components/cachet/preparer-cachet.js";
 
@@ -47,7 +49,7 @@ test("la matrice décide : un reçu confié à la Direction ne porte plus le cac
 test("session : un cachet sans nom propre suffit à désigner le compte qui imprime", () => {
   try {
     definirSignataireSession({ cle: "comptable", nom: "", cachet: CACHET });
-    assert.deepEqual(signataireSession(), { cle: "comptable", nom: "", cachet: CACHET });
+    assert.deepEqual(signataireSession(), { cle: "comptable", nom: "", cachet: CACHET, taille: 1 });
     const [s] = signatairesDocument(ecole, "recu");
     assert.equal(s.nom, "Aïssatou Bah", "sans nom propre, le responsable du poste");
     assert.equal(s.cachet, CACHET);
@@ -258,4 +260,72 @@ test("migration : cachet_url réservé au titulaire du compte", () => {
   assert.match(sql, /before insert or update on public\.comptes/);
   // comptes_guard n'est jamais réécrit (cf. faille d'amorçage du 2026-09-25).
   assert.doesNotMatch(sql, /function public\.comptes_guard\(/);
+});
+
+// ── Taille du cachet à l'impression ───────────────────────────────────────
+test("taille : bornée de 80 % à 200 %, 100 % par défaut", () => {
+  assert.equal(normaliserTailleCachet(undefined), 1);
+  assert.equal(normaliserTailleCachet(""), 1);
+  assert.equal(normaliserTailleCachet("1.5"), 1.5);
+  assert.equal(normaliserTailleCachet(5), TAILLE_CACHET.max);
+  assert.equal(normaliserTailleCachet(0.1), TAILLE_CACHET.min);
+  assert.equal(normaliserTailleCachet(1.2000000000000002), 1.2, "pas de curseur arrondi");
+  definirSignataireSession({ cle: "comptable", cachet: CACHET, taille: "1.6" });
+  assert.equal(signataireSession().taille, 1.6);
+  definirSignataireSession(null);
+});
+
+test("taille : celle du titulaire, sur ses seuls documents", () => {
+  const comptable = { cle: "comptable", cachet: CACHET, taille: 1.6 };
+  const [principal] = signatairesDocument(ecole, "recu", { signataire: comptable });
+  assert.equal(principal.cachetTaille, 1.6);
+  const [autre] = signatairesDocument(ecole, "recu", { signataire: { cle: "direction", cachet: CACHET, taille: 1.6 } });
+  assert.equal(autre.cachetTaille, 1, "un autre compte n'imprime ni le cachet ni sa taille");
+});
+
+test("taille : le cachet grandit sans allonger la page, et se recentre", () => {
+  const signataire = { cachet: CACHET, cachetTaille: 1 };
+  const origine = cachetOuEspace(signataire, "<br/><br/><br/>", "16mm");
+  assert.match(origine, /height:16mm;/, "100 % : rendu d'origine inchangé");
+  assert.match(origine, /margin:calc\(\(2\.4em - 16mm\) \* 0\.3\) auto calc\(\(2\.4em - 16mm\) \* 0\.7\)/);
+  const grand = cachetOuEspace({ ...signataire, cachetTaille: 1.5 }, "<br/><br/><br/>", "16mm");
+  assert.match(grand, /height:calc\(16mm \* 1\.5\);/);
+  // Débordement réparti 40 % au-dessus / 60 % en dessous : la place occupée
+  // reste celle des deux lignes, quelle que soit la taille.
+  assert.match(grand, /margin:calc\(\(2\.4em - calc\(16mm \* 1\.5\)\) \* 0\.4\) auto calc\(\(2\.4em - calc\(16mm \* 1\.5\)\) \* 0\.6\)/);
+  assert.equal(partDessusCachet(2), 0.5);
+  assert.equal(partDessusCachet(0.8), 0.3);
+});
+
+test("taille : bulletins Officiel, Prestige, Contemporain — même place à toute taille", () => {
+  assert.match(imageSignature(CACHET), /height:12mm;[^"]*margin:1mm auto 0;/, "100 % : inchangé");
+  for (const t of [0.8, 1.5, 2]) {
+    const html = imageSignature(CACHET, t);
+    const [, h] = html.match(/height:([\d.]+)mm/);
+    const [, haut, bas] = html.match(/margin:(-?[\d.]+)mm auto (-?[\d.]+)mm/);
+    assert.equal(Math.round((Number(haut) + Number(h) + Number(bas)) * 10) / 10, 13, `×${t} : 13 mm occupés`);
+  }
+  // Le cachet du titulaire porte sa taille ; la signature de l'école reste à 100 %.
+  definirSignataireSession({ cle: "primaire", cachet: CACHET, taille: 1.5 });
+  const tailles = [];
+  signaturesBulletin(ecole, "primaire", ({ taille }) => { tailles.push(taille); return ""; });
+  assert.deepEqual(tailles, [undefined, 1.5]);
+  definirSignataireSession(null);
+  const ecoleSignee = { ...ecole, signatureUrl: "https://x.supabase.co/sig.png" };
+  const sansCachet = [];
+  signaturesBulletin(ecoleSignee, "primaire", ({ taille }) => { sansCachet.push(taille); return ""; });
+  assert.deepEqual(sansCachet, [undefined, 1]);
+});
+
+test("migration : taille du cachet réservée au titulaire, garde étendue", () => {
+  const dossier = new URL("../supabase/migrations/", import.meta.url);
+  const fichier = readdirSync(dossier).find((f) => f.endsWith("_cachet_taille.sql"));
+  const sql = readFileSync(new URL(fichier, dossier), "utf8");
+  assert.match(sql, /add column if not exists cachet_taille numeric\(3, 2\) not null default 1/);
+  assert.match(sql, /check \(cachet_taille between 0\.8 and 2\)/);
+  assert.match(sql, /new\.cachet_taille is distinct from old\.cachet_taille\)\s+and old\.user_id is distinct from auth\.uid\(\)/);
+  assert.match(sql, /revoke all on function public\.comptes_cachet_guard\(\) from public, anon, authenticated/);
+  assert.doesNotMatch(sql, /function public\.comptes_guard\(/);
+  assert.equal(TAILLE_CACHET.min, 0.8);
+  assert.equal(TAILLE_CACHET.max, 2);
 });

@@ -295,6 +295,7 @@ export const ARTICLES = [
       "Tamponnez et signez sur une feuille blanche.",
       "Cliquez sur votre nom en haut à droite → « 🖋️ Mon cachet et ma signature » → « 📷 Prendre une photo » (caméra du téléphone ou webcam du PC : placez le cachet dans le cadre, feuille à plat et bien éclairée) ou « 🖼️ Choisir une image » déjà prise.",
       "Réglez l'image si besoin, l'aperçu suit en direct : effacement du papier (plus doux ou plus fort), luminosité et contraste, couleur de l'encre (d'origine, bleu, violet ou noir, pour un rendu franc), redressement d'une photo prise de biais. Puis « Enregistrer ».",
+      "« 📏 Taille à l'impression » (de 80 % à 200 %) agrandit ou réduit votre cachet sur tous les documents que vous signez, sans reprendre de photo : réglez, vérifiez l'aperçu, « Enregistrer ». Plus grand, il chevauche votre nom comme un vrai tampon ; la page ne s'allonge pas.",
       "Le cachet s'imprime à votre place de signataire (reçus, préavis, états… pour le comptable ; bulletins, fiches de compositions, attestations… pour le chef de section — selon « Qui signe quoi »).",
       "Il ne s'imprime QUE sur les documents que vous imprimez vous-même : un collègue, même sur le même poste, ou la Direction imprime le bloc vide, à signer à la main.",
       "Vous seul pouvez le déposer, le remplacer ou le retirer — la Direction ne le peut pas à votre place.",

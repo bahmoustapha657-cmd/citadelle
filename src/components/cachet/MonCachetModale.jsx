@@ -10,8 +10,9 @@
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Btn, Modale } from "../ui";
 import { SchoolContext } from "../../contexts/SchoolContext";
-import { enregistrerMonCachet } from "../../backend/cachet-supabase";
+import { enregistrerMonCachet, enregistrerTailleCachet } from "../../backend/cachet-supabase";
 import { ajusterCompteMemorise } from "../../backend/auth-supabase";
+import { TAILLE_CACHET, normaliserTailleCachet, partDessusCachet } from "../../reports/signataire-session";
 import { REGLAGES_CACHET, chargerCachet, rendreCachet } from "./preparer-cachet";
 import { documentsSignesPar, identiteApercu } from "./cachet-documents";
 import CameraCachet from "./CameraCachet";
@@ -29,17 +30,48 @@ const DAMIER = "repeating-conic-gradient(#e2e8f0 0 25%, #fff 0 50%) 0 0 / 16px 1
 // imprimé sur 2 cm environ.
 const COTE_CONSEILLE = 160;
 
-function Apercu({ identite, image }) {
+// Le bloc de signature tel qu'il s'imprime, mise en page comprise : le cachet
+// n'occupe que deux lignes et déborde sur le nom et la mention du dessous,
+// d'autant plus qu'il est grand (même calcul que cachetHTML, à l'échelle de
+// l'écran). Le cadre s'agrandit pour garder le débordement visible.
+const HAUTEUR_APERCU = 72; // px à la taille d'origine
+const ESPACE_APERCU = 2 * 1.2 * 12; // deux lignes de 12 px
+
+function Apercu({ identite, image, taille = 1 }) {
+  const h = HAUTEUR_APERCU * normaliserTailleCachet(taille);
+  const surplus = ESPACE_APERCU - h; // négatif
+  const dessus = surplus * partDessusCachet(taille);
+  const dessous = surplus - dessus;
+  const marges = image
+    ? { paddingTop: 14 + Math.max(0, -dessus - 34), paddingBottom: 14 + Math.max(0, -dessous - 14) }
+    : { paddingTop: 14, paddingBottom: 14 };
   return (
-    <div style={{ background: PAPIER, border: "1px solid #e2e8f0", borderRadius: 10, padding: "14px 16px", display: "flex", justifyContent: "flex-end" }}>
+    <div style={{ background: PAPIER, border: "1px solid #e2e8f0", borderRadius: 10, ...marges, paddingLeft: 16, paddingRight: 16, display: "flex", justifyContent: "flex-end" }}>
       <div style={{ width: 200, textAlign: "center", fontSize: 12, color: "#0f172a", fontFamily: "Georgia, serif" }}>
         {identite?.titre || "Signataire"}
         {identite?.nom && <div style={{ fontWeight: 800, fontSize: 13 }}>{identite.nom}</div>}
         {image
-          ? <img src={image} crossOrigin="anonymous" alt="Cachet" style={{ display: "block", height: 72, maxWidth: "100%", objectFit: "contain", margin: "6px auto", mixBlendMode: "multiply" }} />
+          ? <img src={image} crossOrigin="anonymous" alt="Cachet" style={{ display: "block", height: h, maxWidth: "100%", objectFit: "contain", margin: `${dessus}px auto ${dessous}px`, mixBlendMode: "multiply" }} />
           : <div style={{ height: 72, margin: "6px 0", border: "1.5px dashed #cbd5e1", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8", fontSize: 11 }}>signature à la main</div>}
         <div style={{ fontSize: 10, color: "#64748b" }}>Signature &amp; Cachet</div>
       </div>
+    </div>
+  );
+}
+
+function TailleCachet({ taille, changer, desactive }) {
+  return (
+    <div style={{ marginTop: 10 }}>
+      <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#334155" }}>
+        <strong style={{ whiteSpace: "nowrap" }}>📏 Taille à l'impression</strong>
+        <input type="range" min={TAILLE_CACHET.min} max={TAILLE_CACHET.max} step={TAILLE_CACHET.pas} value={taille}
+          disabled={desactive} onChange={(e) => changer(normaliserTailleCachet(e.target.value))}
+          aria-label="Taille du cachet à l'impression" style={{ flex: 1, minWidth: 0 }} />
+        <span style={{ fontSize: 11, color: "#64748b", minWidth: 42, textAlign: "end" }}>{Math.round(taille * 100)} %</span>
+      </label>
+      <p style={{ margin: "4px 0 0", fontSize: 11, color: "#64748b" }}>
+        Vaut pour tous les documents que vous signez. Plus grand, le cachet chevauche votre nom comme un vrai tampon ; la page ne s'allonge pas.
+      </p>
     </div>
   );
 }
@@ -66,8 +98,12 @@ export default function MonCachetModale({ utilisateur, setUtilisateur, fermer })
   const [erreur, setErreur] = useState("");
   const [occupe, setOccupe] = useState(false);
   const [camera, setCamera] = useState(false);
+  const tailleActuelle = normaliserTailleCachet(utilisateur.cachetTaille);
+  const [taille, setTaille] = useState(tailleActuelle);
   const champFichier = useRef(null);
   const image = rendu?.url || "";
+  // Cachet déjà déposé, seule sa taille change : pas besoin de nouvelle photo.
+  const tailleSeule = !source && !!actuel && taille !== tailleActuelle;
 
   const documents = useMemo(() => documentsSignesPar(schoolInfo, cle), [schoolInfo, cle]);
   const identite = useMemo(() => identiteApercu(schoolInfo, cle, utilisateur.nomSignature), [schoolInfo, cle, utilisateur.nomSignature]);
@@ -117,18 +153,18 @@ export default function MonCachetModale({ utilisateur, setUtilisateur, fermer })
 
   const changer = (champs) => setReglages((r) => ({ ...r, ...champs }));
 
-  const enregistrer = async (nouvelle) => {
+  // Session et compte mémorisé : le cachet sert dès maintenant, hors ligne
+  // compris au prochain lancement.
+  const memoriser = (champs) => {
+    setUtilisateur((u) => ({ ...u, ...champs }));
+    ajusterCompteMemorise(utilisateur.uid, champs);
+  };
+
+  const executer = async (action) => {
     if (!navigator.onLine) { setErreur("Connexion internet requise pour enregistrer votre cachet."); return; }
     setOccupe(true); setErreur("");
     try {
-      const url = await enregistrerMonCachet({
-        compteId: utilisateur.compteDocId, schoolId: utilisateur.schoolId, image: nouvelle, ancienne: actuel,
-      });
-      // Session et compte mémorisé : le cachet sert dès maintenant, hors ligne
-      // compris au prochain lancement.
-      setUtilisateur((u) => ({ ...u, cachetUrl: url }));
-      ajusterCompteMemorise(utilisateur.uid, { cachetUrl: url });
-      toast?.(url ? "Cachet enregistré : il s'imprimera sur les documents que vous signez." : "Cachet retiré.");
+      await action();
       fermer();
     } catch (e) {
       setErreur(e.message);
@@ -136,6 +172,20 @@ export default function MonCachetModale({ utilisateur, setUtilisateur, fermer })
       setOccupe(false);
     }
   };
+
+  const enregistrer = (nouvelle) => executer(async () => {
+    const url = await enregistrerMonCachet({
+      compteId: utilisateur.compteDocId, schoolId: utilisateur.schoolId, image: nouvelle, ancienne: actuel, taille,
+    });
+    memoriser({ cachetUrl: url, cachetTaille: url ? taille : 1 });
+    toast?.(url ? "Cachet enregistré : il s'imprimera sur les documents que vous signez." : "Cachet retiré.");
+  });
+
+  const enregistrerTaille = () => executer(async () => {
+    const t = await enregistrerTailleCachet({ compteId: utilisateur.compteDocId, taille });
+    memoriser({ cachetTaille: t });
+    toast?.(`Taille du cachet enregistrée (${Math.round(t * 100)} %) : elle vaut pour tous les documents que vous signez.`);
+  });
 
   if (camera) {
     return (
@@ -162,7 +212,8 @@ export default function MonCachetModale({ utilisateur, setUtilisateur, fermer })
         <div style={{ display: "flex", flexWrap: "wrap", gap: 18, alignItems: "flex-start" }}>
           <div style={{ flex: "1 1 280px", minWidth: 0 }}>
             <p style={styleLegende}>Sur le document</p>
-            <Apercu identite={identite} image={image} />
+            <Apercu identite={identite} image={image} taille={taille} />
+            <TailleCachet taille={taille} changer={setTaille} desactive={occupe} />
             <p style={{ ...styleLegende, marginTop: 12 }}>{reglages.nettoyer ? "Image détourée" : "Image"}</p>
             <ImageSeule image={image} transparente={reglages.nettoyer} />
             {rendu && <p style={{ margin: "6px 0 0", fontSize: 11, color: "#64748b" }}>Image : {rendu.largeur} × {rendu.hauteur} px</p>}
@@ -177,7 +228,10 @@ export default function MonCachetModale({ utilisateur, setUtilisateur, fermer })
           </div>
         </div>
       ) : (
-        <Apercu identite={identite} image={actuel} />
+        <>
+          <Apercu identite={identite} image={actuel} taille={taille} />
+          {actuel && <TailleCachet taille={taille} changer={setTaille} desactive={occupe} />}
+        </>
       )}
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", margin: "14px 0 6px" }}>
@@ -201,7 +255,9 @@ export default function MonCachetModale({ utilisateur, setUtilisateur, fermer })
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "flex-end" }}>
         {actuel && !source && <Btn v="ghost" disabled={occupe} onClick={() => enregistrer("")}>Retirer mon cachet</Btn>}
         <Btn v="ghost" disabled={occupe} onClick={fermer}>Annuler</Btn>
-        <Btn disabled={occupe || !image} onClick={() => enregistrer(image)}>{occupe ? "Enregistrement…" : "Enregistrer"}</Btn>
+        <Btn disabled={occupe || !(image || tailleSeule)} onClick={() => (image ? enregistrer(image) : enregistrerTaille())}>
+          {occupe ? "Enregistrement…" : "Enregistrer"}
+        </Btn>
       </div>
     </Modale>
   );

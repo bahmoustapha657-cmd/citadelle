@@ -218,7 +218,7 @@ export function buildBulletinPageHTML({
         // Cachet personnel du chef de section quand c'est lui qui imprime ;
         // sinon la signature scannée de l'école, réservée au signataire
         // principal comme avant la matrice.
-        s.cachet ? cachetHTML(s.cachet, { hauteur: "16mm", lignes: 2 })
+        s.cachet ? cachetHTML(s.cachet, { hauteur: "16mm", lignes: 2, taille: s.cachetTaille })
         : s.role === "principal" && schoolInfo.signatureUrl ? `<img crossOrigin="anonymous" src="${schoolInfo.signatureUrl}" alt="" style="display:block;height:34px;object-fit:contain;margin:4px auto 2px"/>` : "<br/><br/><br/>"}${tr("reports.signature")}</div>`,
         { section: niveau })}
     </div>
