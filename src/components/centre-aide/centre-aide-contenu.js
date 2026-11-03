@@ -287,6 +287,19 @@ export const ARTICLES = [
     ],
   },
   {
+    id: "mon-cachet",
+    cat: "comptes",
+    roles: ["comptable", "primaire", "college", "admin", "direction", "superadmin"],
+    titre: "Déposer mon cachet et ma signature (comptable, chef de section)",
+    etapes: [
+      "Tamponnez et signez sur une feuille blanche, puis photographiez-la à plat, bien éclairée.",
+      "Cliquez sur votre nom en haut à droite → « 🖋️ Mon cachet et ma signature » → choisissez la photo, vérifiez l'aperçu, puis « Enregistrer ».",
+      "Le cachet s'imprime à votre place de signataire (reçus, préavis, états… pour le comptable ; bulletins, fiches de compositions, attestations… pour le chef de section — selon « Qui signe quoi »).",
+      "Il ne s'imprime QUE sur les documents que vous imprimez vous-même : un collègue, même sur le même poste, ou la Direction imprime le bloc vide, à signer à la main.",
+      "Vous seul pouvez le déposer, le remplacer ou le retirer — la Direction ne le peut pas à votre place.",
+    ],
+  },
+  {
     id: "creer-compte-parent",
     cat: "comptes",
     roles: ["admin", "direction", "comptable", "superadmin"],

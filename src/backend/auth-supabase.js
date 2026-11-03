@@ -116,6 +116,9 @@ async function chargerCompte(sb, userId, schoolCode) {
     // Nom imprimé sous les signatures des documents que ce compte signe pour
     // son poste (Comptes & Postes) ; vide : le responsable du poste.
     nomSignature: String(x.nomSignature || "").trim(),
+    // Cachet et signature personnels (image), déposés par le titulaire depuis
+    // son menu profil ; apposés sur les seuls documents que CE compte imprime.
+    cachetUrl: c.cachet_url || "",
     role: c.role,
     label: c.poste?.label || c.label || c.role,
     // Poste flexible : permissions par module (null = compte legacy, repli

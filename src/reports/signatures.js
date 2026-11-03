@@ -99,6 +99,12 @@ export const responsableNom = (schoolInfo = {}, cle) =>
 const nomPourPoste = (schoolInfo, cle, signataire) =>
   (signataire?.cle === cle && signataire.nom) || responsableNom(schoolInfo, cle);
 
+// Cachet personnel apposé pour un poste : seulement celui du compte qui
+// imprime, s'il occupe ce poste. Un autre compte — même la Direction, même un
+// second comptable — imprime le bloc sans image, à signer à la main.
+const cachetPourPoste = (cle, signataire) =>
+  (signataire?.cle === cle && signataire.cachet) || "";
+
 // Nom que l'école a DONNÉ au poste (ecoles.extra.libellesPostes, recopié par
 // sauverPoste et par la matrice). Les libellés d'origine des postes système
 // nomment des BUREAUX (« Comptabilite », « Bureau College »), pas des
@@ -185,6 +191,7 @@ function resoudre(schoolInfo, doc, emplacement, valeur, section, signataire) {
           || (nom ? getRoleLabelForSchool(cleSection, schoolInfo) : libelleRolePersonnalise(schoolInfo, cleSection))
           || titreHabituel || titrePosteSysteme(cleSection),
         nom,
+        cachet: cachetPourPoste(cleSection, signataire),
       };
     }
     // Section inconnue (document sans élève rattaché) : la direction.
@@ -195,6 +202,7 @@ function resoudre(schoolInfo, doc, emplacement, valeur, section, signataire) {
         || (nomDirection && getRoleLabelForSchool("direction", schoolInfo))
         || titreHabituel || titrePosteSysteme("direction"),
       nom: nomDirection,
+      cachet: cachetPourPoste("direction", signataire),
     };
   }
 
@@ -206,14 +214,18 @@ function resoudre(schoolInfo, doc, emplacement, valeur, section, signataire) {
       || titrePosteSysteme(valeur)
       || String(schoolInfo?.libellesPostes?.[valeur] || valeur),
     nom: nomPourPoste(schoolInfo, valeur, signataire),
+    cachet: cachetPourPoste(valeur, signataire),
   };
 }
 
 // Signataires d'un document, dans l'ordre : principal, puis visa éventuel.
-// Chaque entrée : { role: "principal" | "visa", cle, titre, nom }.
+// Chaque entrée : { role: "principal" | "visa", cle, titre, nom, cachet }.
+// `cachet` : URL du cachet personnel du compte qui imprime, s'il occupe ce
+// poste ; vide sinon.
 // `section` : section de l'élève ou de la classe (documents « section »).
-// `signataire` : compte qui imprime, { cle, nom } — par défaut celui de la
-// session ; null pour ignorer les noms propres aux comptes (aperçu générique).
+// `signataire` : compte qui imprime, { cle, nom, cachet } — par défaut celui de
+// la session ; null pour ignorer ce qui est propre aux comptes (aperçu
+// générique).
 export function signatairesDocument(schoolInfo = {}, typeDocument, { section = "", signataire = signataireSession() } = {}) {
   const doc = DOCUMENT[typeDocument];
   if (!doc) throw new Error(`Document inconnu de la matrice des signatures : ${typeDocument}`);
@@ -237,9 +249,34 @@ export const identiteHTML = ({ titre, nom } = {}) => (nom
   ? `${titre}<br/><span style="font-size:1.05em;font-weight:800">${nom}</span>`
   : titre);
 
+// Cachet personnel du signataire, à la place de l'espace laissé pour signer à
+// la main. Il n'occupe dans la mise en page que la hauteur de cet espace
+// (`lignes` lignes de texte) et déborde au-dessus et en dessous, sur le nom et
+// la mention « Signature », comme un vrai tampon : les pages déjà pleines
+// (reçus en double exemplaire, bulletins) ne s'allongent pas. Il déborde
+// surtout vers le bas, pour laisser le nom lisible. Le blanc de la photo se
+// fond dans le papier (multiply), qui laisse lire le texte dessous.
+const echapperAttr = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => (
+  { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+export const cachetHTML = (url, { hauteur = "18mm", lignes = 2 } = {}) => {
+  if (!url) return "";
+  const surplus = `(${(lignes * 1.2).toFixed(1)}em - ${hauteur})`; // négatif
+  return `<img crossOrigin="anonymous" src="${echapperAttr(url)}" alt="" style="display:block;height:${hauteur};max-width:100%;object-fit:contain;margin:calc(${surplus} * 0.3) auto calc(${surplus} * 0.7);mix-blend-mode:multiply"/>`;
+};
+
+// `vide` : l'espace blanc du gabarit (« <br/><br/><br/> » : fin de la ligne du
+// nom, puis deux lignes vides), gardé tel quel sans cachet.
+export const cachetOuEspace = (signataire, vide = "<br/><br/><br/>", hauteur = "18mm") => {
+  if (!signataire?.cachet) return vide;
+  const lignes = Math.max(1, (vide.match(/<br/g) || []).length - 1);
+  return cachetHTML(signataire.cachet, { hauteur, lignes });
+};
+
 // Blocs de signature d'un document. `bloc(identite, signataire)` fabrique UN
 // bloc dans le gabarit du document ; il reçoit le rôle pour réserver par
-// exemple le cachet au signataire principal.
+// exemple le cachet au signataire principal, et `signataire.cachet` (cachet
+// personnel du compte qui imprime, voir cachetOuEspace).
 export const blocsSignatures = (schoolInfo, typeDocument, bloc, options = {}) =>
   signatairesDocument(schoolInfo, typeDocument, options)
     .map((signataire) => bloc(identiteHTML(signataire), signataire))

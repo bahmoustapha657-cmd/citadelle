@@ -25,7 +25,7 @@ import {
   watermarkHtml,
   edugestBrandHTML,
 } from "./print-helpers.js";
-import { blocsSignatures } from "./signatures.js";
+import { blocsSignatures, cachetOuEspace } from "./signatures.js";
 
 export const imprimerOrdreMutation = (eleve, schoolInfo={}, ecoleDestination="", annee="", situation=null) => {
   const lf = resolveLegalFields(schoolInfo);
@@ -79,7 +79,7 @@ export const imprimerOrdreMutation = (eleve, schoolInfo={}, ecoleDestination="",
     ${tr("reports.ordreMutation.paragraph")}
   </p>
   <div class="sigs">
-    ${blocsSignatures(schoolInfo, "ordreMutation", (identite, s) => `<div class="sig">${identite}<br/><br/><br/><br/>${s.role === "principal" ? tr("reports.ordreMutation.signStamp") : tr("reports.signature")}</div>`,
+    ${blocsSignatures(schoolInfo, "ordreMutation", (identite, s) => `<div class="sig">${identite}${cachetOuEspace(s, "<br/><br/><br/><br/>")}${s.role === "principal" ? tr("reports.ordreMutation.signStamp") : tr("reports.signature")}</div>`,
       { section: getSectionForClasse(eleve.classe || "") })}
     <div class="sig">${tr("reports.ordreMutation.parentApproval")}<br/><br/><br/><br/>${tr("reports.signature")}</div>
   </div>
@@ -142,7 +142,7 @@ export const imprimerCertificatRadiation = (eleve, schoolInfo={}, annee="", sold
     ${tr("reports.radiation.deliveryNote")}
   </p>
   <div class="fin">${tr("reports.radiation.issuedAtCity")} ${schoolInfo.ville||"—"}, ${tr("reports.ordreMutation.on")} ${today()}</div>
-  <div class="sigs-rad">${blocsSignatures(schoolInfo, "radiation", (identite, s) => `<div class="sig"><br/>${identite}<br/><br/><br/><br/>${s.role === "principal" ? tr("reports.radiation.officialStamp") : tr("reports.signature")}</div>`,
+  <div class="sigs-rad">${blocsSignatures(schoolInfo, "radiation", (identite, s) => `<div class="sig"><br/>${identite}${cachetOuEspace(s, "<br/><br/><br/><br/>")}${s.role === "principal" ? tr("reports.radiation.officialStamp") : tr("reports.signature")}</div>`,
     { section: getSectionForClasse(eleve.classe || "") })}</div>
   ${getOfficialLegalFooterHTML(schoolInfo.legal || legalProfileVide, mapNiveauToCycle(getSectionForClasse(eleve.classe || "")))}
   ${edugestBrandHTML(schoolInfo)}
