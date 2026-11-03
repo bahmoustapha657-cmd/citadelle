@@ -468,6 +468,7 @@
       "college": "Bureau du Collège"
     },
     "headTeacher": "Professeur principal",
+    "classTeacher": "Maître titulaire",
     "bulletinTitle": "Bulletin de notes",
     "bulletinNumber": "Bulletin N°",
     "studentName": "Élève",

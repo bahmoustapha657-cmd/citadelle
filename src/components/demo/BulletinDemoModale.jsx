@@ -66,7 +66,7 @@ export function BulletinDemoModale({ onInscription, onClose }) {
         </table>
 
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 24, fontSize: 11, color: "#475569" }}>
-          <div><strong>Signature du parent</strong><br /><br />___________________</div>
+          <div><strong>Professeur principal</strong><br /><br />___________________</div>
           <div><strong>Directeur des études</strong><br /><br />___________________</div>
           <div><strong>Cachet de l'école</strong><br /><br />___________________</div>
         </div>

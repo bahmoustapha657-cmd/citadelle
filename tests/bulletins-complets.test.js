@@ -170,6 +170,23 @@ for (const modele of ["officiel", "prestige", "contemporain"]) {
   });
 }
 
+test("signatures : ni parent ni tuteur ; maître titulaire au primaire, professeur principal au secondaire", () => {
+  for (const modele of ["officiel", "prestige", "contemporain", "classique", "compact", "moderne"]) {
+    const college = rendu(modele);
+    const primaire = rendu(modele, { niveau: "primaire" });
+    const prescolaire = rendu(modele, { niveau: "prescolaire" });
+    for (const html of [college, primaire, prescolaire]) {
+      assert.ok(!/Parent|Tuteur|Lu et approuvé/.test(html), `${modele} : le parent ne signe pas le bulletin`);
+    }
+    assert.match(college, /Professeur principal/, modele);
+    assert.ok(!college.includes("Maître titulaire"), modele);
+    for (const html of [primaire, prescolaire]) {
+      assert.match(html, /Maître titulaire/, modele);
+      assert.ok(!html.includes("Professeur principal"), modele);
+    }
+  }
+});
+
 test("rendu officiel : colonnes de rang et de professeur seulement quand elles sont connues", () => {
   const sans = rendu("officiel");
   assert.ok(!sans.includes(">Rang</th>"));
