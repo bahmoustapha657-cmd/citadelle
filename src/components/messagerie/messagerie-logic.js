@@ -5,6 +5,8 @@
 // d'appels, tri/filtre de la boîte et ciblage des annonces. Testé dans
 // tests/messagerie-logic.test.js.
 
+import i18n, { localeCourante } from "../../i18n";
+
 // Compte hors messagerie (transversal). Les parents y entrent depuis leur
 // portail (supabase/historique/messagerie-parents.sql).
 export const ROLES_SANS_MESSAGERIE = new Set(["superadmin"]);
@@ -32,14 +34,14 @@ export const autresMembres = (conv, moi) => (conv?.membres || []).filter((m) => 
 
 export function titreConversation(conv, annuaire, moi) {
   if (!conv) return "";
-  if (conv.type === "groupe") return conv.titre || "Groupe";
+  if (conv.type === "groupe") return conv.titre || i18n.t("msg.group.group");
   const autre = autresMembres(conv, moi)[0];
-  return (autre && annuaire.get(autre.id)?.nom) || "Compte retiré";
+  return (autre && annuaire.get(autre.id)?.nom) || i18n.t("msg.removedAccount");
 }
 
 export function sousTitreConversation(conv, annuaire, moi) {
   if (!conv) return "";
-  if (conv.type === "groupe") return `${(conv.membres || []).length} membres`;
+  if (conv.type === "groupe") return i18n.t("msg.group.members", { count: (conv.membres || []).length });
   const autre = autresMembres(conv, moi)[0];
   return (autre && annuaire.get(autre.id)?.poste) || "";
 }
@@ -87,14 +89,18 @@ export const totalNonLus = (convs) =>
 // ── Dates & durées ──
 const jourCle = (d) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 
+function estHier(d, maintenant) {
+  const hier = new Date(maintenant);
+  hier.setDate(hier.getDate() - 1);
+  return jourCle(d) === jourCle(hier);
+}
+
 export function libelleJour(iso, maintenant = new Date()) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  if (jourCle(d) === jourCle(maintenant)) return "Aujourd'hui";
-  const hier = new Date(maintenant);
-  hier.setDate(hier.getDate() - 1);
-  if (jourCle(d) === jourCle(hier)) return "Hier";
-  return d.toLocaleDateString("fr-FR", {
+  if (jourCle(d) === jourCle(maintenant)) return i18n.t("msg.day.today");
+  if (estHier(d, maintenant)) return i18n.t("msg.day.yesterday");
+  return d.toLocaleDateString(localeCourante(), {
     weekday: "long", day: "numeric", month: "long",
     ...(d.getFullYear() !== maintenant.getFullYear() ? { year: "numeric" } : {}),
   });
@@ -127,7 +133,7 @@ export function construireFil(messages, maintenant = new Date()) {
 export function formatHeure(iso) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleTimeString(localeCourante(), { hour: "2-digit", minute: "2-digit" });
 }
 
 // Date courte de la boîte : heure aujourd'hui, « Hier », sinon jj/mm.
@@ -135,9 +141,8 @@ export function formatDateBoite(iso, maintenant = new Date()) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
   if (jourCle(d) === jourCle(maintenant)) return formatHeure(iso);
-  const libelle = libelleJour(iso, maintenant);
-  if (libelle === "Hier") return libelle;
-  return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
+  if (estHier(d, maintenant)) return i18n.t("msg.day.yesterday");
+  return d.toLocaleDateString(localeCourante(), { day: "2-digit", month: "2-digit" });
 }
 
 // 75 → « 1:15 » (chronomètres).
@@ -150,7 +155,9 @@ export function formatChrono(secondes) {
 export function formatDuree(secondes) {
   const s = Math.max(0, Math.floor(secondes || 0));
   const min = Math.floor(s / 60);
-  return min ? `${min} min ${String(s % 60).padStart(2, "0")} s` : `${s} s`;
+  return min
+    ? i18n.t("msg.duration.minSec", { min, sec: String(s % 60).padStart(2, "0") })
+    : i18n.t("msg.duration.sec", { sec: s });
 }
 
 // Trace d'appel (corps 'termine:192' | 'manque' | 'refuse' | 'occupe' | 'echec').
@@ -158,20 +165,22 @@ export function libelleAppel(corps, sortant) {
   const [statut, duree, participants] = String(corps || "").split(":");
   if (statut === "reunion") {
     const n = Number(participants) || 0;
-    return `Appel de groupe · ${formatDuree(Number(duree))} · ${n} participant${n > 1 ? "s" : ""}`;
+    return `${i18n.t("msg.meet.groupCall")} · ${formatDuree(Number(duree))} · ${i18n.t(n > 1 ? "msg.meet.participants" : "msg.meet.participant", { count: n })}`;
   }
-  if (statut === "termine") return `${sortant ? "Appel sortant" : "Appel entrant"} · ${formatDuree(Number(duree))}`;
-  if (statut === "refuse") return "Appel refusé";
-  if (statut === "occupe") return sortant ? "Correspondant occupé" : "Appel reçu pendant un autre appel";
-  if (statut === "echec") return duree ? `Appel interrompu · ${formatDuree(Number(duree))}` : "Appel interrompu";
-  return sortant ? "Appel sans réponse" : "Appel manqué";
+  const t = (cle) => i18n.t(`msg.callLog.${cle}`);
+  if (statut === "termine") return `${t(sortant ? "outgoing" : "incoming")} · ${formatDuree(Number(duree))}`;
+  if (statut === "refuse") return t("declined");
+  if (statut === "occupe") return t(sortant ? "busy" : "busyIncoming");
+  if (statut === "echec") return duree ? `${t("interrupted")} · ${formatDuree(Number(duree))}` : t("interrupted");
+  return t(sortant ? "noAnswer" : "missed");
 }
 
 // ── Annonces ──
+// Libellés en accesseurs : ils suivent la langue choisie.
 export const PRIORITES = {
-  normale: { libelle: "Normale", couleur: "#64748b", fond: "#f1f5f9", icone: "📣" },
-  importante: { libelle: "Importante", couleur: "#b45309", fond: "#fef3c7", icone: "⚠️" },
-  urgente: { libelle: "Urgente", couleur: "#b91c1c", fond: "#fee2e2", icone: "🔴" },
+  normale: { get libelle() { return i18n.t("msg.priority.normal"); }, couleur: "#64748b", fond: "#f1f5f9", icone: "📣" },
+  importante: { get libelle() { return i18n.t("msg.priority.important"); }, couleur: "#b45309", fond: "#fef3c7", icone: "⚠️" },
+  urgente: { get libelle() { return i18n.t("msg.priority.urgent"); }, couleur: "#b91c1c", fond: "#fee2e2", icone: "🔴" },
 };
 
 // Enfants d'un parent de l'annuaire, et clé de classe 'section|classe'
@@ -208,9 +217,10 @@ export const cibleDepuisAnnonce = (a) => ({
   parents: !!a.a_parents, parentsSections: a.a_parents_sections || [], parentsClasses: a.a_parents_classes || [],
 });
 
-// Sections (clé → libellé) des annonces aux parents.
-export const LIBELLES_SECTIONS = { prescolaire: "Maternelle", primaire: "Primaire", college: "Collège", lycee: "Lycée" };
-const ORDRE_SECTIONS = Object.keys(LIBELLES_SECTIONS);
+// Sections (clé → libellé) des annonces aux parents, dans l'ordre d'affichage.
+const ORDRE_SECTIONS = ["prescolaire", "primaire", "college", "lycee"];
+export const LIBELLES_SECTIONS = Object.defineProperties({}, Object.fromEntries(ORDRE_SECTIONS.map((s) =>
+  [s, { enumerable: true, get: () => i18n.t(`msg.section.${s}`) }])));
 
 // Classes des enfants des parents de l'annuaire (dans le périmètre) :
 // [{ cle, section, classe, parents }], par section puis par classe.
@@ -220,7 +230,7 @@ export function classesDesParents(annuaireListe) {
     if (c.role !== "parent") continue;
     for (const e of enfantsDe(c)) {
       const cle = cleClasse(e.section, e.classe);
-      const ligne = classes.get(cle) || { cle, section: e.section, classe: e.classe || "Sans classe", parents: new Set() };
+      const ligne = classes.get(cle) || { cle, section: e.section, classe: e.classe || i18n.t("msg.target.noClass"), parents: new Set() };
       ligne.parents.add(c.id);
       classes.set(cle, ligne);
     }
@@ -233,14 +243,14 @@ export function classesDesParents(annuaireListe) {
 
 export function libelleCibleAnnonce(annonce, annuaire, postesLabels = new Map()) {
   const parts = [];
-  if (annonce.a_tous) parts.push("Toute l'équipe");
-  if (annonce.a_personnel) parts.push("Personnel administratif");
-  if (annonce.a_enseignants) parts.push("Enseignants");
+  if (annonce.a_tous) parts.push(i18n.t("msg.target.allStaff"));
+  if (annonce.a_personnel) parts.push(i18n.t("msg.target.adminStaff"));
+  if (annonce.a_enseignants) parts.push(i18n.t("msg.target.teachers"));
   for (const cle of annonce.a_postes || []) parts.push(postesLabels.get(cle) || cle);
-  if (annonce.a_parents) parts.push("Tous les parents");
-  for (const s of annonce.a_parents_sections || []) parts.push(`Parents — ${LIBELLES_SECTIONS[s] || s}`);
-  for (const cle of annonce.a_parents_classes || []) parts.push(`Parents — ${cle.split("|").slice(1).join("|")}`);
-  for (const id of annonce.a_comptes || []) parts.push(annuaire.get(id)?.nom || "Un compte");
+  if (annonce.a_parents) parts.push(i18n.t("msg.target.allParents"));
+  for (const s of annonce.a_parents_sections || []) parts.push(i18n.t("msg.target.parentsOf", { name: LIBELLES_SECTIONS[s] || s }));
+  for (const cle of annonce.a_parents_classes || []) parts.push(i18n.t("msg.target.parentsOf", { name: cle.split("|").slice(1).join("|") }));
+  for (const id of annonce.a_comptes || []) parts.push(annuaire.get(id)?.nom || i18n.t("msg.target.anAccount"));
   return parts.join(", ");
 }
 
@@ -314,15 +324,17 @@ export function couleursEcoleMessagerie(couleur) {
 // Extrait de citation (réponse à un message).
 export function apercuMessage(message) {
   if (!message) return "";
-  if (message.supprime) return "Message supprimé";
-  if (message.type === "audio") return `🎤 Message vocal (${formatChrono(message.audio_duree)})`;
-  if (message.type === "fichier") return `📎 ${message.fichier_nom || "Document"}`;
+  if (message.supprime) return i18n.t("msg.bubble.deleted");
+  if (message.type === "audio") return `🎤 ${i18n.t("msg.preview.voice", { duration: formatChrono(message.audio_duree) })}`;
+  if (message.type === "fichier") return `📎 ${message.fichier_nom || i18n.t("msg.preview.document")}`;
   const t = String(message.corps || "");
   return t.length > 90 ? `${t.slice(0, 90)}…` : t;
 }
 
 // Entrée de menu du shell (hors carte de permissions des postes : tout
-// compte du périmètre y a accès).
+// compte du périmètre y a accès). Libellés de repli : l'écran affiche
+// modules.messagerie (components/app/module-i18n.js).
+// i18n-ignore
 export const MODULE_MESSAGERIE = { id: "messagerie", label: "Messagerie", icon: "💬", desc: "Discussions & annonces" };
 
 // Postes présents dans l'annuaire (hors enseignants et parents) : clé → libellé.
@@ -341,14 +353,15 @@ export const COULEURS_PRESENCE = { actif: "#22c55e", absent: "#f59e0b" };
 // "" si le compte n'a jamais ouvert l'application depuis la mise en place.
 export function libellePresence(presence) {
   if (!presence) return "";
-  if (presence.etat === "actif") return "En ligne";
-  if (presence.etat === "absent") return "Absent";
+  const t = (cle, count) => i18n.t(`msg.presence.${cle}`, { count });
+  if (presence.etat === "actif") return t("online");
+  if (presence.etat === "absent") return t("away");
   const s = Math.max(0, presence.depuis || 0);
-  if (s < 90) return "Vu à l'instant";
-  if (s < 3600) return `Vu il y a ${Math.round(s / 60)} min`;
-  if (s < 86400) return `Vu il y a ${Math.floor(s / 3600)} h`;
+  if (s < 90) return t("justNow");
+  if (s < 3600) return t("minutesAgo", Math.round(s / 60));
+  if (s < 86400) return t("hoursAgo", Math.floor(s / 3600));
   const jours = Math.floor(s / 86400);
-  return jours === 1 ? "Vu hier" : `Vu il y a ${jours} jours`;
+  return jours === 1 ? t("yesterday") : t("daysAgo", jours);
 }
 
 export const estJoignable = (presence) => presence?.etat === "actif" || presence?.etat === "absent";

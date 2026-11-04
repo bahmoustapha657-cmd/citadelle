@@ -1,9 +1,12 @@
+import { useTranslation } from "react-i18next";
 import { C } from "../../constants";
 import { NIVEAUX } from "./messages-niveaux";
+import { localeCourante } from "../../i18n";
 
 // Carte d'un message dans la boîte de réception : badge niveau, badge
 // "NOUVEAU" si non lu, titre, date et corps. Cliquer marque comme lu.
 export function MessageItem({ m, lus, marquerLu }) {
+  const { t } = useTranslation();
   const niv = NIVEAUX[m.niveau] || NIVEAUX.info;
   const dejaLu = !!lus[m._id];
   return (
@@ -44,12 +47,12 @@ export function MessageItem({ m, lus, marquerLu }) {
               fontWeight: 800,
             }}
           >
-            NOUVEAU
+            {t("sysMsg.new").toUpperCase()}
           </span>
         )}
         <strong style={{ fontSize: 13, color: C.blueDark, flex: 1 }}>{m.titre}</strong>
         <span style={{ fontSize: 10, color: "#9ca3af", whiteSpace: "nowrap" }}>
-          {new Date(m.createdAt).toLocaleString("fr-FR", {
+          {new Date(m.createdAt).toLocaleString(localeCourante(), {
             dateStyle: "short",
             timeStyle: "short",
           })}

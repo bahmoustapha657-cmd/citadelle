@@ -57,7 +57,7 @@ test("connectée comme parent, elle choisit son espace enseignant puis revient",
   await page.getByPlaceholder("Identifiant, téléphone ou e-mail").fill("622 55 50 01");
   await page.getByPlaceholder("Votre mot de passe").fill(PERSONNE_PARENT.mdp);
   await page.getByRole("button", { name: "Se connecter", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Deconnexion", exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("button", { name: "Déconnexion", exact: true })).toBeVisible({ timeout: 30_000 });
 
   // Choix proposé d'office après la connexion.
   const choix = page.getByRole("dialog", { name: "Choisir mon espace" });
@@ -68,15 +68,15 @@ test("connectée comme parent, elle choisit son espace enseignant puis revient",
   const bouton = page.getByTitle("Changer d'espace");
   await expect(bouton).toContainText("Enseignant", { timeout: 30_000 });
   // Portail enseignant : son bouton de sortie est « Se déconnecter », celui
-  // du portail parent « Deconnexion ».
+  // du portail parent « Déconnexion ».
   await expect(page.getByRole("button", { name: "Se déconnecter", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Deconnexion", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Déconnexion", exact: true })).toHaveCount(0);
   await expect(page.getByText("Changer mon mot de passe")).toHaveCount(0);
   expect((await lireAudit("changer_espace")).some((a) => a.cible?.compteId === ids.enseignant)).toBe(true);
 
   // Retour à l'espace parent par le bouton « Espace ».
   await bouton.click();
   await page.getByRole("dialog", { name: "Choisir mon espace" }).getByRole("button", { name: /Parent d'élève/ }).click();
-  await expect(page.getByRole("button", { name: "Deconnexion", exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("button", { name: "Déconnexion", exact: true })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTitle("Changer d'espace")).toContainText("Parent d'élève");
 });

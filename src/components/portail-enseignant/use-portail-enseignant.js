@@ -9,7 +9,8 @@ import { presents } from "../../depart-utils";
 import { sansNonReinscritsEcartes } from "../../ecartes-non-reinscrits";
 import { getJoursOuvrables } from "../ecole/edt/edt-utils";
 import { enrichirNotes } from "../../notes-eleves";
-import { MSG_LECTURE_SEULE_PORTAIL } from "../app/app-shell-plan";
+import { msgLectureSeulePortail } from "../app/app-shell-plan";
+import i18n from "../../i18n";
 import {
   construireGrille as construireGrilleHelper,
   enregistrerGrille as enregistrerGrilleAction,
@@ -49,7 +50,7 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
   // écritures (ecole-hors-service.sql) : on évite une saisie perdue.
   const lectureSeule = !!planInfo?.planEstExpire;
   const siModifiable = (action) => (...args) => {
-    if (lectureSeule) { toast(MSG_LECTURE_SEULE_PORTAIL, "error"); return undefined; }
+    if (lectureSeule) { toast(msgLectureSeulePortail(), "error"); return undefined; }
     return action(...args);
   };
   // Année des notes lues et saisies : l'année officielle de l'école (celle de
@@ -158,7 +159,7 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
       // on la retente maintenant. (Sans effet si la file est vide.)
       synchroniserRef.current?.();
     } catch (error) {
-      if (!silencieux) toast(error.message || "Erreur de chargement du portail enseignant.", "error");
+      if (!silencieux) toast(error.message || i18n.t("teacher.notes.loadError"), "error");
     } finally {
       if (!silencieux) setChargement(false);
     }
@@ -270,10 +271,10 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
       setPendingSync(queueCount(ownerId));
       if (r.saved > 0) {
         await chargerPortail();
-        toast(`${r.saved} note(s) synchronisée(s).`, "success");
+        toast(i18n.t("teacher.notes.synced", { count: r.saved }), "success");
       }
       if (r.failed > 0) {
-        toast(`${r.failed} note(s) non synchronisées (rejetées par le serveur).`, "warning");
+        toast(i18n.t("teacher.notes.rejected", { count: r.failed }), "warning");
       }
     } finally {
       setSyncing(false);

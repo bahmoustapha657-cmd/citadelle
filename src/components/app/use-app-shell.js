@@ -81,7 +81,7 @@ export function useAppShell({
     setAnneeState(val);
     if (!persister) return;
     persisterAnnee(schoolId, val).catch(() => {
-      toast("Année non enregistrée pour l'école : seule la Direction peut la modifier.", "warning");
+      toast(t("shell.yearNotSaved"), "warning");
     });
   };
   // Année scolaire PAR ÉCOLE : ecoles.extra.anneeScolaire est la source de

@@ -1,6 +1,6 @@
 // ── Retour d'un lien « mot de passe oublié » : lecture de l'URL ─────────────
 // Module PUR (aucun import Supabase ni import.meta.env) : testé tel quel par
-// tests/password-reset.test.js.
+// tests/password-reset.test.js. Les messages suivent la langue de l'interface.
 //
 // Trois formes possibles à l'arrivée sur l'app :
 //   • #type=recovery&token_hash=…  — lien actuel, construit par l'Edge
@@ -11,6 +11,8 @@
 //   • ?recovery=1#error=access_denied&error_code=otp_expired&… — Supabase
 //     Auth a refusé l'ancien lien (expiré, déjà utilisé) : on l'annonce au
 //     lieu d'afficher l'accueil sans explication.
+import i18n from "../i18n";
+
 export function analyserRetourRecovery({ hash = "", search = "" } = {}) {
   const fragment = new URLSearchParams(String(hash).replace(/^#/, ""));
   const requete = new URLSearchParams(String(search).replace(/^\?/, ""));
@@ -51,17 +53,18 @@ export function estErreurReseau(erreur) {
   return erreur?.name === "AuthRetryableFetchError" || erreur?.status === 0;
 }
 
-export const MSG_RESEAU = "Connexion au serveur impossible. Vérifiez votre connexion internet puis réessayez.";
+// Fonction et non constante : le texte suit la langue choisie au moment de l'erreur.
+export const msgReseau = () => i18n.t("auth.errNetwork");
 
 // Message affiché pour un refus de Supabase Auth. `etape` : "lien" (échange
 // du jeton contre une session) ou "mdp" (enregistrement du mot de passe).
 export function messageErreurRecovery(erreur, etape) {
-  if (estErreurReseau(erreur)) return MSG_RESEAU;
-  if (etape === "lien") {
-    return "Ce lien de réinitialisation a expiré ou a déjà été utilisé. Refaites une demande depuis l'écran de connexion (« Mot de passe oublié ? »).";
-  }
+  if (estErreurReseau(erreur)) return msgReseau();
+  if (etape === "lien") return i18n.t("auth.reset.linkExpired");
   const code = String(erreur?.code || "");
-  if (code === "same_password") return "Choisissez un mot de passe différent de l'ancien.";
-  if (code === "weak_password") return "Mot de passe trop faible : allongez-le et mélangez lettres et chiffres.";
-  return `Impossible d'enregistrer le mot de passe${erreur?.message ? ` : ${erreur.message}` : "."}`;
+  if (code === "same_password") return i18n.t("auth.reset.samePassword");
+  if (code === "weak_password") return i18n.t("auth.reset.weakPassword");
+  return erreur?.message
+    ? i18n.t("auth.reset.saveFailedDetail", { detail: erreur.message })
+    : i18n.t("auth.reset.saveFailedShort");
 }

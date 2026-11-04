@@ -22,7 +22,7 @@ import {
 import { estPremiumActif as premiumServeur } from "../supabase/functions/_shared/premium.ts";
 import { estPremiumActif } from "../shared/plan-features.js";
 import { annonceEnvoi, codeARedemander, dureeLisible, messageErreurCode } from "../src/backend/code-reinitialisation.js";
-import { MSG_RESEAU } from "../src/backend/recovery-url.js";
+import { msgReseau } from "../src/backend/recovery-url.js";
 
 const lire = (chemin) => readFileSync(new URL(chemin, import.meta.url), "utf8");
 
@@ -244,7 +244,8 @@ test("messages d'erreur du code", () => {
   assert.match(messageErreurCode({ erreur: "mdp_court" }), /8 caractères/);
   assert.match(messageErreurCode({ erreur: "mdp_long" }), /72 caractères/);
   assert.match(messageErreurCode({ erreur: "mdp_refuse", code: "weak_password" }), /trop faible/);
-  assert.equal(messageErreurCode({ erreur: "reseau" }), MSG_RESEAU);
+  assert.equal(messageErreurCode({ erreur: "reseau" }), msgReseau());
+  assert.match(msgReseau(), /Connexion au serveur impossible/);
   assert.match(messageErreurCode({ erreur: "indisponible" }), /indisponible/);
   assert.match(messageErreurCode(null), /indisponible/);
   assert.equal(codeARedemander("code_epuise"), true);

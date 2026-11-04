@@ -10,6 +10,7 @@ import { cleCommune, creerEchangeCles } from "./relais-chiffrement";
 import { appelADecrocher } from "../../../backend/application-android";
 import { demarrerRelaisSecours } from "./relais-secours";
 import { creerSonnerie } from "./sonnerie";
+import i18n from "../../../i18n";
 
 // Sonnerie côté appelant avant « Pas de réponse » : le temps de voir la
 // notification et d'ouvrir l'application sur un téléphone lent.
@@ -20,14 +21,15 @@ const DELAI_COUPURE_MS = 12000;
 // attendre que le navigateur déclare la connexion perdue.
 const DELAI_CONNEXION_MS = 10000;
 
-// Fin annoncée à l'écran, selon le statut final lu dans msg_appels.
+// Fin annoncée à l'écran, selon le statut final lu dans msg_appels
+// (clés msg.callEnd.*).
 const FIN_POUR_APPELANT = {
-  refuse: "Appel refusé", occupe: "Correspondant occupé", manque: "Pas de réponse",
-  termine: "Appel terminé", echec: "Connexion perdue",
+  refuse: "declined", occupe: "busy", manque: "noAnswer", termine: "ended", echec: "lost",
 };
 const FIN_POUR_APPELE = {
-  annule: "Appel manqué", manque: "Appel manqué", termine: "Appel terminé", echec: "Connexion perdue",
+  annule: "missed", manque: "missed", termine: "ended", echec: "lost",
 };
+const fin = (cle) => i18n.t(`msg.callEnd.${cle}`);
 
 const etatVide = () => ({
   jeton: null, id: null, sens: null, offre: null, pc: null, audio: null, flux: null,
@@ -99,7 +101,7 @@ export function useAppels({ actif, moi, schoolCode, annuaire, nomMoi, occupe }) 
   const basculer = useCallback((jeton) => {
     const r = ref.current;
     if (r.jeton !== jeton || r.secours) return;
-    const impossible = () => { if (ref.current.jeton === jeton) echouer("Connexion impossible (réseau)"); };
+    const impossible = () => { if (ref.current.jeton === jeton) echouer(fin("networkFailed")); };
     if (!r.canal || !r.cle) { impossible(); return; }
     clearTimeout(r.coupure);
     clearTimeout(r.attenteConnexion);
@@ -109,7 +111,7 @@ export function useAppels({ actif, moi, schoolCode, annuaire, nomMoi, occupe }) 
     const { canal, flux, cle } = r;
     try {
       r.secours = demarrerRelaisSecours({
-        flux, canal, cle, surPerte: () => { if (ref.current.jeton === jeton) echouer("Connexion perdue"); },
+        flux, canal, cle, surPerte: () => { if (ref.current.jeton === jeton) echouer(fin("lost")); },
       });
     } catch { impossible(); return; }
     Promise.all([canal.pret, r.secours.pret]).then(() => {
@@ -170,12 +172,12 @@ export function useAppels({ actif, moi, schoolCode, annuaire, nomMoi, occupe }) 
   const appeler = useCallback(async ({ conversationId, correspondantId }) => {
     if (ref.current.jeton) return;
     if (occupeRef.current?.()) {
-      setAppel({ sens: "sortant", phase: "fin", correspondantId, conversationId, message: "Quittez d'abord l'appel de groupe." });
+      setAppel({ sens: "sortant", phase: "fin", correspondantId, conversationId, message: fin("leaveGroupFirst") });
       setTimeout(() => setAppel(null), 3000);
       return;
     }
     if (!webrtcDisponible()) {
-      setAppel({ sens: "sortant", phase: "fin", correspondantId, conversationId, message: "Appels non pris en charge par ce navigateur." });
+      setAppel({ sens: "sortant", phase: "fin", correspondantId, conversationId, message: fin("unsupported") });
       setTimeout(() => setAppel(null), 3000);
       return;
     }
@@ -201,14 +203,15 @@ export function useAppels({ actif, moi, schoolCode, annuaire, nomMoi, occupe }) 
         if (ref.current.jeton === jeton && !ref.current.distantOk) {
           finirSonnerieDistante();
           terminerAppel(id, "manque").catch(() => {});
-          finir("Pas de réponse");
+          finir(fin("noAnswer"));
         }
       }, DELAI_SONNERIE_MS));
       // Réveille l'appelé si l'application est fermée sur son téléphone.
-      notifier([appeleUserId], `📞 ${nomMoi || "Un collègue"} vous appelle`, "Touchez pour répondre.",
-        `/?messagerie=${conversationId}`, { appel: { id, nom: nomMoi || "Un collègue" } });
+      const nom = nomMoi || fin("aColleague");
+      notifier([appeleUserId], `📞 ${i18n.t("msg.callEnd.pushTitle", { name: nom })}`, fin("pushBody"),
+        `/?messagerie=${conversationId}`, { appel: { id, nom } });
     } catch (e) {
-      if (ref.current.jeton === jeton) echouer(e.message || "Appel impossible.");
+      if (ref.current.jeton === jeton) echouer(e.message || fin("callFailed"));
     }
   }, [echouer, finir, finirSonnerieDistante, nomMoi]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -225,7 +228,7 @@ export function useAppels({ actif, moi, schoolCode, annuaire, nomMoi, occupe }) 
     ref.current.sonnerie.demarrer();
     // Filet : si l'appelant disparaît sans raccrocher, on cesse de sonner.
     ref.current.minuteurs.push(setTimeout(() => {
-      if (ref.current.jeton === jeton && !ref.current.reponduIci) finir("Appel manqué");
+      if (ref.current.jeton === jeton && !ref.current.reponduIci) finir(fin("missed"));
     }, DELAI_SONNERIE_MS + 5000));
     setAppel({
       id: ligne.id, sens: "entrant", phase: "sonnerie",
@@ -240,7 +243,7 @@ export function useAppels({ actif, moi, schoolCode, annuaire, nomMoi, occupe }) 
     r.sonnerie?.arreter();
     majAppel({ phase: "connexion" });
     try {
-      if (!webrtcDisponible()) throw new Error("Appels non pris en charge par ce navigateur.");
+      if (!webrtcDisponible()) throw new Error(fin("unsupported"));
       const pc = await brancher(jeton);
       if (!pc) return;
       await pc.setRemoteDescription(offre);
@@ -253,7 +256,7 @@ export function useAppels({ actif, moi, schoolCode, annuaire, nomMoi, occupe }) 
       await repondreAppel(id, descriptionAvecCle(pc, echange));
       preparerSecours(jeton, offre?.cle);
     } catch (e) {
-      if (ref.current.jeton === jeton) echouer(e.message || "Impossible de répondre.");
+      if (ref.current.jeton === jeton) echouer(e.message || fin("answerFailed"));
     }
   }, [echouer]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -305,14 +308,14 @@ export function useAppels({ actif, moi, schoolCode, annuaire, nomMoi, occupe }) 
           r.sonnerie?.arreter();
           setAppel((a) => (a ? { ...a, phase: "connexion" } : a));
           r.pc?.setRemoteDescription(ligne.reponse)
-            .catch(() => echouerRef.current("Connexion impossible."));
+            .catch(() => echouerRef.current(fin("connectFailed")));
           preparerSecoursRef.current(r.jeton, ligne.reponse.cle);
         } else if (r.sens === "entrant" && !r.reponduIci) {
-          finirRef.current("Répondu sur un autre appareil");
+          finirRef.current(fin("answeredElsewhere"));
         }
       } else if (ligne.statut !== "sonne") {
         const table = r.sens === "sortant" ? FIN_POUR_APPELANT : FIN_POUR_APPELE;
-        finirRef.current(table[ligne.statut] || "Appel terminé");
+        finirRef.current(fin(table[ligne.statut] || "ended"));
       }
     };
     const detacher = subscribeTablePayload(schoolCode, "msg_appels", surEvenement);

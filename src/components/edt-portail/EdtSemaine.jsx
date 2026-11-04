@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, Vide } from "../ui";
 import {
   normaliserCreneau, joursAffiches, jourCourant, creneauxDuJour, tranchesPortail,
@@ -15,6 +16,7 @@ import {
 const ecranEtroit = () => typeof window !== "undefined" && window.innerWidth < 720;
 
 export function EdtSemaine({ emplois: brut, joursOuvrables, mode = "parent", matiereParDefaut = "", c1 = "#0A1628" }) {
+  const { t } = useTranslation();
   const emplois = useMemo(() => brut.map(normaliserCreneau), [brut]);
   const jours = useMemo(() => joursAffiches(emplois, joursOuvrables), [emplois, joursOuvrables]);
   const couleur = useMemo(() => palettePour(emplois, mode === "enseignant" ? "classe" : "matiere"), [emplois, mode]);
@@ -27,7 +29,7 @@ export function EdtSemaine({ emplois: brut, joursOuvrables, mode = "parent", mat
   });
 
   if (!emplois.length) {
-    return <Vide icone="🗓️" msg={mode === "enseignant" ? "Aucun créneau dans votre emploi du temps pour l'instant" : "L'emploi du temps de la classe n'est pas encore publié"} />;
+    return <Vide icone="🗓️" msg={mode === "enseignant" ? t("edtView.noSlotTeacher") : t("edtView.notPublished")} />;
   }
 
   const bouton = (actif) => ({
@@ -39,8 +41,8 @@ export function EdtSemaine({ emplois: brut, joursOuvrables, mode = "parent", mat
   return (
     <div>
       <div style={{ display: "inline-flex", gap: 2, background: "#eef2f7", padding: 3, borderRadius: 10, marginBottom: 14 }}>
-        <button type="button" style={bouton(vue === "semaine")} onClick={() => setVue("semaine")}>Semaine</button>
-        <button type="button" style={bouton(vue === "jour")} onClick={() => setVue("jour")}>Par jour</button>
+        <button type="button" style={bouton(vue === "semaine")} onClick={() => setVue("semaine")}>{t("edtView.week")}</button>
+        <button type="button" style={bouton(vue === "jour")} onClick={() => setVue("jour")}>{t("edtView.byDay")}</button>
       </div>
       {vue === "semaine"
         ? <GrilleSemaine emplois={emplois} jours={jours} couleur={couleur} mode={mode} matiereParDefaut={matiereParDefaut} aujourdhui={aujourdhui} c1={c1} />
@@ -50,6 +52,7 @@ export function EdtSemaine({ emplois: brut, joursOuvrables, mode = "parent", mat
 }
 
 function GrilleSemaine({ emplois, jours, couleur, mode, matiereParDefaut, aujourdhui, c1 }) {
+  const { t } = useTranslation();
   const tranches = tranchesPortail(emplois);
   const plans = Object.fromEntries(jours.map((j) => [j, planifierJour(creneauxDuJour(emplois, j), tranches)]));
   const entete = { background: c1, color: "#fff", padding: "10px 8px", fontSize: 12, fontWeight: 800, textAlign: "center" };
@@ -60,10 +63,10 @@ function GrilleSemaine({ emplois, jours, couleur, mode, matiereParDefaut, aujour
           <colgroup><col style={{ width: 78 }} />{jours.map((j) => <col key={j} />)}</colgroup>
           <thead>
             <tr>
-              <th style={{ ...entete, borderTopLeftRadius: 10 }}>Heure</th>
+              <th style={{ ...entete, borderStartStartRadius: 10 }}>{t("edtView.hour")}</th>
               {jours.map((j, k) => (
-                <th key={j} style={{ ...entete, borderTopRightRadius: k === jours.length - 1 ? 10 : 0, boxShadow: j === aujourdhui ? "inset 0 -3px 0 #fbbf24" : "none" }}>
-                  {j}{j === aujourdhui && <div style={{ fontSize: 9, fontWeight: 700, opacity: 0.85 }}>aujourd'hui</div>}
+                <th key={j} style={{ ...entete, borderStartEndRadius: k === jours.length - 1 ? 10 : 0, boxShadow: j === aujourdhui ? "inset 0 -3px 0 #fbbf24" : "none" }}>
+                  {t(`weekdays.${j}`, j)}{j === aujourdhui && <div style={{ fontSize: 9, fontWeight: 700, opacity: 0.85 }}>{t("edtView.today")}</div>}
                 </th>
               ))}
             </tr>
@@ -97,6 +100,7 @@ function GrilleSemaine({ emplois, jours, couleur, mode, matiereParDefaut, aujour
 }
 
 function CaseCreneau({ c, couleur, mode, matiereParDefaut }) {
+  const { t } = useTranslation();
   const { titre, detail } = libellesCreneau(c, mode, matiereParDefaut);
   const recre = c.type === "recreation";
   return (
@@ -105,7 +109,7 @@ function CaseCreneau({ c, couleur, mode, matiereParDefaut }) {
       borderRadius: 8, padding: "6px 8px", display: "flex", flexDirection: "column", gap: 2,
       justifyContent: recre ? "center" : "flex-start", textAlign: recre ? "center" : "start",
     }}>
-      {c.type === "revision" && <span style={{ alignSelf: "flex-start", background: couleur.trait, color: "#fff", fontSize: 9, fontWeight: 900, padding: "1px 5px", borderRadius: 4 }}>RÉVISION</span>}
+      {c.type === "revision" && <span style={{ alignSelf: "flex-start", background: couleur.trait, color: "#fff", fontSize: 9, fontWeight: 900, padding: "1px 5px", borderRadius: 4 }}>{t("edtView.revision")}</span>}
       <div style={{ fontSize: 12, fontWeight: 900, color: couleur.texte, lineHeight: 1.25, overflowWrap: "anywhere" }}>{recre ? `🍎 ${titre}` : titre}</div>
       {detail && <div style={{ fontSize: 11, color: "#334155", lineHeight: 1.25, overflowWrap: "anywhere" }}>{detail}</div>}
       <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700 }}>{horaire(c)}</div>
@@ -115,6 +119,7 @@ function CaseCreneau({ c, couleur, mode, matiereParDefaut }) {
 }
 
 function VueJour({ emplois, jours, jour, setJour, couleur, mode, matiereParDefaut, aujourdhui, c1 }) {
+  const { t } = useTranslation();
   const duJour = creneauxDuJour(emplois, jour);
   return (
     <>
@@ -127,15 +132,15 @@ function VueJour({ emplois, jours, jour, setJour, couleur, mode, matiereParDefau
               flex: "0 0 auto", minWidth: 62, border: `2px solid ${actif ? c1 : "#e2e8f0"}`, borderRadius: 12, cursor: "pointer",
               background: actif ? c1 : "#fff", color: actif ? "#fff" : "#334155", padding: "6px 10px", textAlign: "center",
             }}>
-              <div style={{ fontSize: 12, fontWeight: 900 }}>{j.slice(0, 3)}</div>
-              <div style={{ fontSize: 10, fontWeight: 700, opacity: 0.8 }}>{j === aujourdhui ? "auj." : `${nb} cours`}</div>
+              <div style={{ fontSize: 12, fontWeight: 900 }}>{t(`weekdaysShort.${j}`, j.slice(0, 3))}</div>
+              <div style={{ fontSize: 10, fontWeight: 700, opacity: 0.8 }}>{j === aujourdhui ? t("edtView.todayShort") : t("edtView.lessons", { count: nb })}</div>
             </button>
           );
         })}
       </div>
-      <h3 style={{ margin: "4px 0 10px", fontSize: 14, fontWeight: 900, color: c1 }}>{jour}{jour === aujourdhui ? " — aujourd'hui" : ""}</h3>
+      <h3 style={{ margin: "4px 0 10px", fontSize: 14, fontWeight: 900, color: c1 }}>{t(`weekdays.${jour}`, jour)}{jour === aujourdhui ? ` — ${t("edtView.today")}` : ""}</h3>
       {duJour.length === 0 ? (
-        <Card><div style={{ padding: 22, textAlign: "center", color: "#94a3b8", fontSize: 13 }}>Pas de cours ce jour-là</div></Card>
+        <Card><div style={{ padding: 22, textAlign: "center", color: "#94a3b8", fontSize: 13 }}>{t("edtView.noLesson")}</div></Card>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {duJour.map((c, k) => {
@@ -157,10 +162,10 @@ function VueJour({ emplois, jours, jour, setJour, couleur, mode, matiereParDefau
                 <div style={{ padding: "10px 14px", minWidth: 0, flex: 1 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                     <span style={{ fontSize: 14, fontWeight: 900, color: "#0f172a" }}>{titre}</span>
-                    {c.type === "revision" && <span style={{ background: col.trait, color: "#fff", fontSize: 9, fontWeight: 900, padding: "1px 5px", borderRadius: 4 }}>RÉVISION</span>}
+                    {c.type === "revision" && <span style={{ background: col.trait, color: "#fff", fontSize: 9, fontWeight: 900, padding: "1px 5px", borderRadius: 4 }}>{t("edtView.revision")}</span>}
                   </div>
                   {detail && <div style={{ fontSize: 12, color: "#475569", marginTop: 2 }}>{detail}</div>}
-                  {c.salle && <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>📍 Salle {c.salle}</div>}
+                  {c.salle && <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>📍 {t("edtView.room", { room: c.salle })}</div>}
                 </div>
               </div>
             );

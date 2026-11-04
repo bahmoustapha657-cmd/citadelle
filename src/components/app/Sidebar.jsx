@@ -58,6 +58,7 @@ export function Sidebar({
             ? <img crossOrigin="anonymous" src={schoolInfo.logo} alt="" style={{width:32,height:32,objectFit:"contain",borderRadius:6,marginBottom:4,display:"block",margin:"0 auto 4px"}}/>
             : null}
           <p style={{margin:0,fontSize:12,fontWeight:800,color:couleur2}}>{schoolInfo.nom}</p>
+          {/* i18n-ignore : ville par défaut (nom propre) */}
           <p style={{margin:"2px 0 0",fontSize:9,color:"rgba(255,255,255,0.3)"}}>{schoolInfo.ville||"Kindia"} · {annee||getAnnee()}</p>
         </div>
       </div>
@@ -107,7 +108,7 @@ export function Sidebar({
         )}
         {/* Commit en ligne : permet au support de savoir quelle version
             l'utilisateur a réellement (PWA en cache, mise à jour pas reçue…). */}
-        <p title={VERSION_APP.date ? `Version du ${new Date(VERSION_APP.date).toLocaleString()}` : undefined}
+        <p title={VERSION_APP.date ? t("shell.versionOf", { date: new Date(VERSION_APP.date).toLocaleString() }) : undefined}
           style={{margin:"8px 0 0",fontSize:9,color:"rgba(255,255,255,0.25)",textAlign:"center",fontFamily:"monospace"}}>
           v {VERSION_APP.court}
         </p>

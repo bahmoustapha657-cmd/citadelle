@@ -1,16 +1,17 @@
+import { useTranslation } from "react-i18next";
 import { activateWaitingWorker } from "./use-update-banner";
 
 // Bannière avec bouton "Recharger" : nouvelle version en attente d'un moment
 // sûr (saisie, fenêtre ou appel en cours). Elle s'installe sinon d'elle-même
 // dès que l'utilisateur a fini (arrière-plan, retour sur l'appli, inactivité).
 export function UpdateAvailableBanner({ plusTard }) {
+  const { t } = useTranslation();
   return (
     <div
       role="status"
       style={{
         position: "fixed",
-        left: 16,
-        right: 16,
+        insetInline: 16,
         bottom: 16,
         zIndex: 9999,
         background: "#0A1628",
@@ -28,8 +29,7 @@ export function UpdateAvailableBanner({ plusTard }) {
       }}
     >
       <span style={{ fontSize: 14, flex: "1 1 220px" }}>
-        Une nouvelle version d'EduGest est disponible. Elle s'installera
-        d'elle-même quand vous aurez terminé.
+        {t("update.available")}
       </span>
       <span style={{ display: "flex", gap: 8 }}>
         <button
@@ -44,7 +44,7 @@ export function UpdateAvailableBanner({ plusTard }) {
             cursor: "pointer",
           }}
         >
-          Plus tard
+          {t("update.later")}
         </button>
         <button
           type="button"
@@ -59,7 +59,7 @@ export function UpdateAvailableBanner({ plusTard }) {
             cursor: "pointer",
           }}
         >
-          Recharger
+          {t("update.reload")}
         </button>
       </span>
     </div>

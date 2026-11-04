@@ -3,6 +3,7 @@ import { SchoolContext } from "../../contexts/SchoolContext";
 import { useFirestore } from "../../hooks/useFirestore";
 import { C, getAnnee } from "../../constants";
 import { creerDemandePlan } from "./tableau-de-bord-api";
+import i18n from "../../i18n";
 import { getMensualiteOverview } from "../../mensualite-utils";
 import { affichageFinancesClassique, syntheseFinances } from "../comptabilite/finances-claires";
 import {
@@ -84,7 +85,7 @@ export function useTableauDeBord({ annee } = {}) {
       setTimeout(() => { setDemandeSucces(false); setDemandeOuverte(false); setDemandeForm({ operateur: "Orange Money", telephone: "", reference: "" }); }, 5000);
     } catch (e) {
       console.error(e);
-      alert("Erreur lors de l'envoi. Vérifiez votre connexion et réessayez.");
+      alert(i18n.t("dashboard.sub.sendError"));
     } finally { setDemandeEnvoi(false); }
   };
 

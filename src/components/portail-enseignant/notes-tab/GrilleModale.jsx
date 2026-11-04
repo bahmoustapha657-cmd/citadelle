@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { C, estSorti } from "../../../constants";
 import { sansNonReinscritsEcartes } from "../../../ecartes-non-reinscrits";
 import { Btn, Modale, Selec, Vide } from "../../ui";
@@ -23,6 +24,7 @@ export function GrilleModale({
 }) {
   const [rech, setRech] = useState("");
   const [agrandi, setAgrandi] = useState(null);
+  const { t } = useTranslation();
   const multi = !!gridForm.multiPeriode;
   const multiMat = !!gridForm.multiMatiere;
   const matCols = matieresDispo.map((m) => m.nom).filter(Boolean);
@@ -51,7 +53,7 @@ export function GrilleModale({
     ? periodes.flatMap((p) => matCols.map((m) => ({ sub: `${p}|${m}`, label: m, group: p })))
     : multi ? periodes.map((p) => ({ sub: p, label: p, group: null }))
       : multiMat ? matCols.map((m) => ({ sub: m, label: m, group: null }))
-        : [{ sub: null, label: "Note", group: null }];
+        : [{ sub: null, label: t("teacher.cols.grade"), group: null }];
   const enColonnes = multi || multiMat;
   const cle = (eleveId, sub) => (sub == null ? eleveId : `${eleveId}|${sub}`);
   // Cellules qui partiront à l'enregistrement : nouvelles ou modifiées par
@@ -59,9 +61,9 @@ export function GrilleModale({
   const aEnregistrer = Object.entries(gridForm.notes)
     .filter(([k, v]) => celluleASauver(v, (gridForm.initiales || {})[k])).length;
 
-  const titreMatiere = combine ? "Toutes périodes × matières"
-    : multiMat ? "Toutes les matières"
-      : choixMatiere ? (gridForm.matiere || "Matière") : (matiere || "Matière");
+  const titreMatiere = combine ? t("teacher.grid.allPeriodsSubjects")
+    : multiMat ? t("teacher.grid.allSubjects")
+      : choixMatiere ? (gridForm.matiere || t("teacher.grid.subject")) : (matiere || t("teacher.grid.subject"));
 
   // Rendu d'une cellule de saisie (partagé par tous les modes). `key` est la
   // clé de la note dans gridForm.notes (eleveId, ou eleveId|… selon le mode).
@@ -87,22 +89,22 @@ export function GrilleModale({
   };
 
   return (
-    <Modale xlarge titre={`Saisie en grille — ${titreMatiere}`} fermer={() => setModalNote(null)}>
+    <Modale xlarge titre={t("teacher.grid.title", { subject: titreMatiere })} fermer={() => setModalNote(null)}>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 12 }}>
-        <Selec label="Classe" value={gridForm.classe} onChange={(e) => majGrid({ classe: e.target.value })}>
+        <Selec label={t("teacher.grid.class")} value={gridForm.classe} onChange={(e) => majGrid({ classe: e.target.value })}>
           {mesClasses.map((cl) => <option key={cl} value={cl}>{cl}</option>)}
         </Selec>
         {choixMatiere && !multiMat && (
-          <Selec label="Matière" value={gridForm.matiere || ""} onChange={(e) => majGrid({ matiere: e.target.value })}>
-            <option value="">— Matière —</option>
+          <Selec label={t("teacher.grid.subject")} value={gridForm.matiere || ""} onChange={(e) => majGrid({ matiere: e.target.value })}>
+            <option value="">{t("teacher.grid.subjectOption")}</option>
             {matieresDispo.map((m) => <option key={m._id || m.nom} value={m.nom}>{m.nom}</option>)}
           </Selec>
         )}
-        <Selec label="Type d'évaluation" value={gridForm.type} onChange={(e) => majGrid({ type: e.target.value })}>
+        <Selec label={t("teacher.grid.evalType")} value={gridForm.type} onChange={(e) => majGrid({ type: e.target.value })}>
           {noteForms.map((item) => <option key={item.id} value={item.value}>{item.label}</option>)}
         </Selec>
         {!multi && (
-          <Selec label="Période" value={gridForm.periode} onChange={(e) => majGrid({ periode: e.target.value })}>
+          <Selec label={t("teacher.grid.period")} value={gridForm.periode} onChange={(e) => majGrid({ periode: e.target.value })}>
             {periodes.map((p) => <option key={p} value={p}>{p}</option>)}
           </Selec>
         )}
@@ -112,25 +114,25 @@ export function GrilleModale({
       <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
         <input
           value={rech} onChange={(e) => setRech(e.target.value)}
-          placeholder="🔍 Rechercher un élève…"
+          placeholder={`🔍 ${t("teacher.grid.search")}`}
           style={{ flex: 1, minWidth: 180, border: "1px solid #b0c4d8", borderRadius: 7, padding: "7px 10px", fontSize: 13 }}
         />
         <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: "#334155", cursor: "pointer", border: "1px solid #b0c4d8", borderRadius: 7, padding: "6px 10px", background: multi ? "#e0ebf8" : "#fff" }}>
           <input type="checkbox" checked={multi} onChange={(e) => majGrid({ multiPeriode: e.target.checked })} />
-          🗓️ Toutes les périodes
+          🗓️ {t("teacher.grid.allPeriods")}
         </label>
         {choixMatiere && matCols.length > 0 && (
           <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: "#334155", cursor: "pointer", border: "1px solid #b0c4d8", borderRadius: 7, padding: "6px 10px", background: multiMat ? "#dcfce7" : "#fff" }}>
             <input type="checkbox" checked={multiMat} onChange={(e) => majGrid({ multiMatiere: e.target.checked })} />
-            📚 Toutes les matières
+            📚 {t("teacher.grid.allSubjects")}
           </label>
         )}
       </div>
 
-      {elevesClasse.length === 0 ? <Vide icone="👥" msg="Aucun élève dans cette classe." /> : (
+      {elevesClasse.length === 0 ? <Vide icone="👥" msg={t("teacher.grid.noStudent")} /> : (
         <>
           <div style={{ padding: "8px 12px", background: "#f0f7ff", border: "1px solid #bfdbfe", borderRadius: 8, fontSize: 12, color: "#1e40af", marginBottom: 10 }}>
-            <strong>{aEnregistrer}</strong> note(s) à enregistrer. Les notes existantes sont préremplies — seules les cases <strong>nouvelles ou modifiées</strong> sont envoyées, le reste est laissé en l'état. <span style={{ color: "#15803d" }}>💾 Sauvegarde locale automatique (la saisie est conservée même en cas de coupure).</span>
+            <Trans i18nKey="teacher.grid.hint" values={{ count: aEnregistrer }} components={{ b: <strong />, g: <span style={{ color: "#15803d" }} /> }} />
           </div>
           <div style={{ maxHeight: "52vh", overflowY: "auto", overflowX: "auto", border: "1px solid #e2e8f0", borderRadius: 8 }}>
             <table className="lc-sticky-table" data-fix-left="1">
@@ -138,8 +140,8 @@ export function GrilleModale({
                 {combine ? (
                   <tr>
                     <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#0A1628", padding: "8px 10px", fontSize: 11, textAlign: "start", width: 50 }}>#</th>
-                    <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#0A1628", padding: "8px 10px", fontSize: 11, textAlign: "start" }}>Élève</th>
-                    <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#0A1628", padding: "8px 10px", fontSize: 11, textAlign: "center", width: 80 }}>Période</th>
+                    <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#0A1628", padding: "8px 10px", fontSize: 11, textAlign: "start" }}>{t("teacher.grid.student")}</th>
+                    <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#0A1628", padding: "8px 10px", fontSize: 11, textAlign: "center", width: 80 }}>{t("teacher.grid.period")}</th>
                     {matCols.map((m) => (
                       <th key={m} style={{ position: "sticky", top: 0, zIndex: 2, background: "#0A1628", padding: "8px 8px", fontSize: 11, textAlign: "center", width: 90 }}>{m}<br/><small style={{ fontWeight: "normal" }}>/{maxNote}</small></th>
                     ))}
@@ -147,7 +149,7 @@ export function GrilleModale({
                 ) : (
                   <tr>
                     <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#0A1628", padding: "8px 10px", fontSize: 11, textAlign: "start", width: 50 }}>#</th>
-                    <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#0A1628", padding: "8px 10px", fontSize: 11, textAlign: "start" }}>Élève</th>
+                    <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#0A1628", padding: "8px 10px", fontSize: 11, textAlign: "start" }}>{t("teacher.grid.student")}</th>
                     {colDefs.map((d) => (
                       <th key={d.sub || "note"} style={{ position: "sticky", top: 0, zIndex: 2, background: "#0A1628", padding: "8px 10px", fontSize: 11, textAlign: "center", width: enColonnes ? 100 : 110 }}>
                         {d.label} /{maxNote}
@@ -187,12 +189,12 @@ export function GrilleModale({
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginTop: 16 }}>
         <div style={{ fontSize: 12, color: "#64748b" }}>
-          {gridProgress.total > 0 && enregistrement && `Enregistrement ${gridProgress.done}/${gridProgress.total}…`}
+          {gridProgress.total > 0 && enregistrement && t("teacher.grid.progress", { done: gridProgress.done, total: gridProgress.total })}
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <Btn v="ghost" onClick={() => setModalNote(null)} disabled={enregistrement}>Fermer</Btn>
+          <Btn v="ghost" onClick={() => setModalNote(null)} disabled={enregistrement}>{t("common.close")}</Btn>
           <Btn v="vert" onClick={enregistrerGrille} disabled={enregistrement}>
-            {enregistrement ? "Enregistrement…" : "💾 Enregistrer la grille"}
+            {enregistrement ? t("teacher.grid.saving") : `💾 ${t("teacher.grid.save")}`}
           </Btn>
         </div>
       </div>

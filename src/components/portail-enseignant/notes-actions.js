@@ -10,6 +10,7 @@ import { construireGrille, collectGridNotes, validateGridNotes } from "./notes-g
 import { saveNoteApi, saveNotesApi, deleteNoteApi } from "./notes-api";
 import { resolveCanonicalNoteType } from "../../evaluation-forms";
 import { getAnnee } from "../../constants";
+import i18n from "../../i18n";
 
 // Ré-export pour préserver le point d'import unique du parent.
 export { construireGrille };
@@ -54,7 +55,7 @@ export async function enregistrerGrille({
   // Hors-ligne connu d'avance → on met en file sans tenter l'appel.
   if (onQueued && typeof navigator !== "undefined" && navigator.onLine === false) {
     onQueued(notesPayload);
-    toast("Hors-ligne : saisie mise en file, synchronisation auto au retour du réseau.", "warning");
+    toast(i18n.t("teacher.notes.offlineQueued"), "warning");
     setModalNote(null);
     return;
   }
@@ -66,7 +67,7 @@ export async function enregistrerGrille({
     // (Firestore batch). Bien plus rapide que N requêtes séquentielles.
     const { ok, data } = await saveNotesApi(notesPayload);
     if (!ok) {
-      const err = new Error(data.error || "Enregistrement impossible.");
+      const err = new Error(data.error || i18n.t("teacher.notes.saveFailed"));
       err.serverRejected = true; // réponse reçue → ce n'est PAS un souci réseau
       throw err;
     }
@@ -78,28 +79,28 @@ export async function enregistrerGrille({
       // leurs IDs) → PAS de rechargement complet du portail = lectures
       // Firestore économisées à chaque enregistrement.
       onSavedNotes(data.notes);
-      toast(`${nbOk} note(s) enregistrée(s).`, "success");
+      toast(i18n.t("teacher.notes.savedCount", { count: nbOk }), "success");
       onSuccess?.();
       setModalNote(null);
     } else {
       // Échec partiel (ou pas de retour serveur) : rechargement de sécurité.
       await chargerPortail();
       if (nbKo === 0) {
-        toast(`${nbOk} note(s) enregistrée(s).`, "success");
+        toast(i18n.t("teacher.notes.savedCount", { count: nbOk }), "success");
         onSuccess?.();
         setModalNote(null);
       } else {
-        toast(`${nbOk} OK / ${nbKo} échec(s). Vérifie les lignes en rouge.`, "warning");
+        toast(i18n.t("teacher.notes.partial", { ok: nbOk, ko: nbKo }), "warning");
       }
     }
   } catch (error) {
     // Échec réseau (fetch lève, pas de réponse serveur) → mise en file + retry auto.
     if (onQueued && !error.serverRejected) {
       onQueued(notesPayload);
-      toast("Réseau indisponible : saisie mise en file, synchronisation auto au retour.", "warning");
+      toast(i18n.t("teacher.notes.networkQueued"), "warning");
       setModalNote(null);
     } else {
-      toast(error.message || "Erreur d'enregistrement.", "error");
+      toast(error.message || i18n.t("teacher.notes.saveError"), "error");
     }
   } finally {
     setEnregistrement(false);
@@ -112,7 +113,7 @@ export async function enregistrerNote({
   setEnregistrement, setModalNote, chargerPortail, toast,
 }) {
   if (!formNote.eleveId || formNote.note === "" || !formNote.periode) {
-    toast("Eleve, periode et note requis.", "warning");
+    toast(i18n.t("teacher.notes.required"), "warning");
     return;
   }
   // Même borne que la grille : sans elle, la saisie unitaire acceptait
@@ -133,12 +134,12 @@ export async function enregistrerNote({
       matiere: formNote.matiere || "",
       annee: annee || getAnnee(),
     });
-    if (!ok) throw new Error(data.error || "Enregistrement impossible.");
+    if (!ok) throw new Error(data.error || i18n.t("teacher.notes.saveFailed"));
     setModalNote(null);
     await chargerPortail();
-    toast("Note enregistree.", "success");
+    toast(i18n.t("teacher.notes.saved"), "success");
   } catch (error) {
-    toast(error.message || "Erreur d'enregistrement.", "error");
+    toast(error.message || i18n.t("teacher.notes.saveError"), "error");
   } finally {
     setEnregistrement(false);
   }
@@ -146,15 +147,15 @@ export async function enregistrerNote({
 
 // Supprime une note avec confirmation.
 export async function supprimerNote(noteId, { setEnregistrement, chargerPortail, toast }) {
-  if (!noteId || !window.confirm("Supprimer cette note ?")) return;
+  if (!noteId || !window.confirm(i18n.t("teacher.notes.deleteConfirm"))) return;
   setEnregistrement(true);
   try {
     const { ok, data } = await deleteNoteApi(noteId);
-    if (!ok) throw new Error(data.error || "Suppression impossible.");
+    if (!ok) throw new Error(data.error || i18n.t("teacher.notes.deleteFailed"));
     await chargerPortail();
-    toast("Note supprimee.", "success");
+    toast(i18n.t("teacher.notes.deleted"), "success");
   } catch (error) {
-    toast(error.message || "Erreur de suppression.", "error");
+    toast(error.message || i18n.t("teacher.notes.deleteError"), "error");
   } finally {
     setEnregistrement(false);
   }

@@ -1,5 +1,6 @@
 import React from "react";
-import { C } from "../../constants";
+import { useTranslation } from "react-i18next";
+import { C, fmt } from "../../constants";
 import { groupSalariesByPersonMonth } from "../../salary-utils";
 import { Btn, Card, LectureSeule, Vide } from "../ui";
 
@@ -10,17 +11,18 @@ import { Btn, Card, LectureSeule, Vide } from "../ui";
 // `indisponible` : les fiches se lisent en ligne et la lecture a échoué — ne
 // pas afficher « aucune fiche » à qui en a peut-être.
 export function SalaireTab({ c1, c2, salaires, indisponible, imprimerPaies }) {
+  const { t } = useTranslation();
   return (
     <>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
-        <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900, color: c1 }}>Ma fiche de paie</h2>
-        {salaires.length > 0 && <Btn sm v="ghost" onClick={imprimerPaies}>Imprimer fiches</Btn>}
+        <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900, color: c1 }}>{t("teacher.pay.title")}</h2>
+        {salaires.length > 0 && <Btn sm v="ghost" onClick={imprimerPaies}>{t("teacher.pay.print")}</Btn>}
       </div>
       <LectureSeule />
       {salaires.length === 0 ? (
-        <Vide icone="Paie" msg={indisponible
-          ? "Fiches de paie consultables en ligne uniquement — rouvrez le portail une fois connecté."
-          : "Aucune fiche de paie disponible"} />
+        <Vide icone="💰" msg={indisponible
+          ? t("teacher.pay.onlineOnly")
+          : t("teacher.pay.none")} />
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))", gap: 12 }}>
           {groupSalariesByPersonMonth(salaires).map((g) => {
@@ -28,9 +30,9 @@ export function SalaireTab({ c1, c2, salaires, indisponible, imprimerPaies }) {
             return (
               <Card key={`${g.mois}-${g.nom}`} style={{ padding: 0 }}>
                 <div style={{ background: `linear-gradient(135deg,${c1},${c1}cc)`, padding: "12px 16px", borderRadius: "14px 14px 0 0" }}>
-                  <div style={{ color: c2, fontWeight: 900, fontSize: 13 }}>{g.mois}</div>
+                  <div style={{ color: c2, fontWeight: 900, fontSize: 13 }}>{t(`months.${g.mois}`, g.mois)}</div>
                   <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 11 }}>
-                    {cumul ? `${g.parts.length} fonctions : ${g.sections.join(" + ")}` : `Section ${g.sections[0] || "—"}`}
+                    {cumul ? t("teacher.pay.functions", { count: g.parts.length, sections: g.sections.join(" + ") }) : t("teacher.pay.section", { name: g.sections[0] || "—" })}
                   </div>
                 </div>
                 <div style={{ padding: "14px 16px" }}>
@@ -42,45 +44,45 @@ export function SalaireTab({ c1, c2, salaires, indisponible, imprimerPaies }) {
                         {salaire.section === "Secondaire" ? (
                           <>
                             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
-                              <span style={{ color: "#64748b" }}>V.H. execute</span>
+                              <span style={{ color: "#64748b" }}>{t("teacher.pay.hoursWorked")}</span>
                               <strong>{heuresExec} h</strong>
                             </div>
                             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
-                              <span style={{ color: "#64748b" }}>Prime horaire</span>
-                              <strong>{salaire.primesVariables ? "Variable" : `${Number(salaire.primeHoraire || 0).toLocaleString("fr-FR")} GNF`}</strong>
+                              <span style={{ color: "#64748b" }}>{t("teacher.pay.hourlyRate")}</span>
+                              <strong>{salaire.primesVariables ? t("teacher.pay.variable") : fmt(salaire.primeHoraire)}</strong>
                             </div>
                             {salaire.primesVariables && (
                               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
-                                <span style={{ color: "#64748b" }}>Montant brut</span>
-                                <strong>{Number(salaire.montantBrut || 0).toLocaleString("fr-FR")} GNF</strong>
+                                <span style={{ color: "#64748b" }}>{t("teacher.pay.gross")}</span>
+                                <strong>{fmt(salaire.montantBrut)}</strong>
                               </div>
                             )}
                           </>
                         ) : (
                           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
-                            <span style={{ color: "#64748b" }}>Forfait</span>
-                            <strong>{Number(salaire.montantForfait || 0).toLocaleString("fr-FR")} GNF</strong>
+                            <span style={{ color: "#64748b" }}>{t("teacher.pay.flatRate")}</span>
+                            <strong>{fmt(salaire.montantForfait)}</strong>
                           </div>
                         )}
                         {Number(salaire.bon || 0) > 0 && (
                           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4, color: "#b91c1c" }}>
-                            <span>Bon deduit</span>
-                            <strong>-{Number(salaire.bon).toLocaleString("fr-FR")} GNF</strong>
+                            <span>{t("teacher.pay.voucher")}</span>
+                            <strong>-{fmt(salaire.bon)}</strong>
                           </div>
                         )}
                         {Number(salaire.retenueAbsences || 0) > 0 && (
                           <div style={{ marginBottom: 4, color: "#b91c1c" }}>
                             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
-                              <span>Retenue absences / retards</span>
-                              <strong>-{Number(salaire.retenueAbsences).toLocaleString("fr-FR")} GNF</strong>
+                              <span>{t("teacher.pay.absenceDeduction")}</span>
+                              <strong>-{fmt(salaire.retenueAbsences)}</strong>
                             </div>
                             {salaire.detailAbsences && <div style={{ fontSize: 10.5, color: "#94a3b8" }}>{salaire.detailAbsences}</div>}
                           </div>
                         )}
                         {Number(salaire.revision || 0) > 0 && (
                           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4, color: C.greenDk }}>
-                            <span>Revision</span>
-                            <strong>+{Number(salaire.revision).toLocaleString("fr-FR")} GNF</strong>
+                            <span>{t("teacher.pay.revision")}</span>
+                            <strong>+{fmt(salaire.revision)}</strong>
                           </div>
                         )}
                         {salaire.observation && <p style={{ fontSize: 11, color: "#94a3b8", marginTop: 4, marginBottom: 0 }}>{salaire.observation}</p>}
@@ -88,8 +90,8 @@ export function SalaireTab({ c1, c2, salaires, indisponible, imprimerPaies }) {
                     );
                   })}
                   <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 12px", background: `${c1}0d`, borderRadius: 8, marginTop: 8 }}>
-                    <span style={{ fontWeight: 700, fontSize: 13, color: c1 }}>{cumul ? "TOTAL NET A PAYER" : "NET A PAYER"}</span>
-                    <strong style={{ fontSize: 15, color: c1 }}>{g.totalNet.toLocaleString("fr-FR")} GNF</strong>
+                    <span style={{ fontWeight: 700, fontSize: 13, color: c1 }}>{cumul ? t("teacher.pay.totalNet") : t("teacher.pay.net")}</span>
+                    <strong style={{ fontSize: 15, color: c1 }}>{fmt(g.totalNet)}</strong>
                   </div>
                 </div>
               </Card>

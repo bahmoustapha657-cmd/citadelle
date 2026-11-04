@@ -1,16 +1,19 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Avatar } from "./Avatar";
 import { estJoignable, libellePresence, normaliser } from "./messagerie-logic";
 import { useMessagerie } from "./messagerie-contexte";
 import { champ, puce } from "./styles-messagerie";
 
-const FILTRES = [["tous", "Tous"], ["personnel", "Personnel"], ["enseignants", "Enseignants"], ["parents", "Parents"], ["en_ligne", "🟢 En ligne"]];
+// Libellés : msg.picker.filter.<clé>.
+const FILTRES = ["tous", "personnel", "enseignants", "parents", "en_ligne"];
 const familleDe = (c) => (c.role === "enseignant" ? "enseignants" : c.role === "parent" ? "parents" : "personnel");
 
 // Liste de comptes filtrable (recherche + personnel / enseignants / parents).
 // Un filtre n'apparaît que si la liste contient des comptes de sa famille.
 // Choix unique (`onChoisir`) ou multiple (`selection` + `onBasculer`).
 export function SelecteurComptes({ comptes, onChoisir, selection, onBasculer, exclus = [], hauteur = 300 }) {
+  const { t } = useTranslation();
   const [recherche, setRecherche] = useState("");
   const [filtre, setFiltre] = useState("tous");
   const presences = useMessagerie()?.presences;
@@ -19,7 +22,7 @@ export function SelecteurComptes({ comptes, onChoisir, selection, onBasculer, ex
   const sansExclus = useMemo(() => new Set(exclus), [exclus]);
 
   const familles = useMemo(() => new Set(comptes.map(familleDe)), [comptes]);
-  const filtres = FILTRES.filter(([cle]) => cle === "tous" || cle === "en_ligne" || (familles.size > 1 && familles.has(cle)));
+  const filtres = FILTRES.filter((cle) => cle === "tous" || cle === "en_ligne" || (familles.size > 1 && familles.has(cle)));
 
   const visibles = useMemo(() => {
     const terme = normaliser(recherche);
@@ -32,21 +35,23 @@ export function SelecteurComptes({ comptes, onChoisir, selection, onBasculer, ex
   return (
     <div>
       <input value={recherche} onChange={(e) => setRecherche(e.target.value)}
-        placeholder={familles.has("parents") ? "🔍 Rechercher un nom, un poste, un élève…" : "🔍 Rechercher un nom, un poste…"}
+        placeholder={`🔍 ${t(familles.has("parents") ? "msg.picker.searchFamilies" : "msg.picker.search")}`}
         style={{ ...champ, marginBottom: 8 }} />
       <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
-        {filtres.map(([cle, libelle]) => (
-          <button key={cle} type="button" onClick={() => setFiltre(cle)} style={puce(filtre === cle)}>{libelle}</button>
+        {filtres.map((cle) => (
+          <button key={cle} type="button" onClick={() => setFiltre(cle)} style={puce(filtre === cle)}>
+            {cle === "en_ligne" && "🟢 "}{t(`msg.picker.filter.${cle}`)}
+          </button>
         ))}
         {multiple && choisis.size > 0 && (
           <span style={{ marginInlineStart: "auto", fontSize: 12, fontWeight: 700, color: "var(--msg-accent, var(--sc1))", alignSelf: "center" }}>
-            {choisis.size} sélectionné{choisis.size > 1 ? "s" : ""}
+            {t(choisis.size > 1 ? "msg.picker.selectedMany" : "msg.picker.selectedOne", { count: choisis.size })}
           </span>
         )}
       </div>
       <div style={{ maxHeight: hauteur, overflowY: "auto", border: "1px solid var(--lc-border)", borderRadius: 10 }}>
         {visibles.length === 0 && (
-          <p style={{ padding: 14, margin: 0, fontSize: 12, color: "var(--lc-text-faint)", textAlign: "center" }}>Aucun compte trouvé.</p>
+          <p style={{ padding: 14, margin: 0, fontSize: 12, color: "var(--lc-text-faint)", textAlign: "center" }}>{t("msg.picker.none")}</p>
         )}
         {visibles.map((c) => {
           const coche = choisis.has(c.id);

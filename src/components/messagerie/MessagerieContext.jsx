@@ -11,6 +11,7 @@ import { useMessagerieEtat } from "./use-messagerie-etat";
 import { useAppels } from "./audio/use-appels";
 import { AppelOverlay } from "./AppelOverlay";
 import { MessagerieContext } from "./messagerie-contexte";
+import i18n from "../../i18n";
 
 // Lien d'une notification push : /?messagerie=<discussion> ou /?annonce=<id>.
 function demandeDepuisUrl(url) {
@@ -43,8 +44,8 @@ export function MessagerieProvider({ utilisateur, schoolCode, onOuvrir, children
     const conv = etat.boiteParId.get(conversationId);
     if (!conv) return;
     notifier((conv.membres || []).filter((x) => x.id !== etat.moi && !x.sourdine).map((x) => etat.annuaire.get(x.id)?.user_id),
-      `📞 Appel de groupe — ${titreConversation(conv, etat.annuaire, etat.moi)}`,
-      `${etat.nomMoi} vous invite à rejoindre l'appel.`,
+      `📞 ${i18n.t("msg.meet.pushTitle", { name: titreConversation(conv, etat.annuaire, etat.moi) })}`,
+      i18n.t("msg.meet.pushBody", { name: etat.nomMoi }),
       `/?messagerie=${conversationId}`);
   };
   const reunions = useReunion({
@@ -107,7 +108,7 @@ export function MessagerieProvider({ utilisateur, schoolCode, onOuvrir, children
       )}
       {actif && reunions.reunion && (
         <ReunionOverlay r={reunions} annuaire={etat.annuaire} moi={etat.moi}
-          titre={convReunion ? titreConversation(convReunion, etat.annuaire, etat.moi) : "Appel de groupe"} />
+          titre={convReunion ? titreConversation(convReunion, etat.annuaire, etat.moi) : i18n.t("msg.meet.groupCall")} />
       )}
     </MessagerieContext.Provider>
   );

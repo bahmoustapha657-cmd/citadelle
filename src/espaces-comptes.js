@@ -3,6 +3,7 @@
 // reliés (même personne_id) et suggestions de comptes qui semblent être ceux
 // d'une même personne (même nom, ou même e-mail). La Direction confirme
 // toujours : un homonyme n'est pas la même personne.
+import i18n from "./i18n";
 
 const normaliser = (s) => String(s || "").toLowerCase()
   .normalize("NFD").replace(/[̀-ͯ]/g, "")
@@ -54,14 +55,15 @@ export function suggestionsEspaces(comptes = []) {
     const signature = liste.map((c) => c.id).sort().join(",");
     if (vus.has(signature)) continue;
     vus.add(signature);
-    resultat.push({ cle, motif: cle.startsWith("email:") ? "Même e-mail" : "Même nom", comptes: liste });
+    resultat.push({ cle, motif: i18n.t(cle.startsWith("email:") ? "shell.spaces.sameEmail" : "shell.spaces.sameName"), comptes: liste });
   }
   return resultat;
 }
 
-// Libellé d'un espace (choix d'espace, carte de la Direction).
+// Libellé d'un espace (choix d'espace, carte de la Direction), dans la langue
+// de l'interface ; le libellé d'un poste du personnel reste celui de l'école.
 export function libelleEspace(e = {}) {
-  if (e.role === "enseignant") return { icone: "👨‍🏫", titre: "Enseignant" };
-  if (e.role === "parent") return { icone: "👪", titre: "Parent d'élève" };
-  return { icone: "🗂️", titre: e.label || "Personnel" };
+  if (e.role === "enseignant") return { icone: "👨‍🏫", titre: i18n.t("shell.spaces.teacher") };
+  if (e.role === "parent") return { icone: "👪", titre: i18n.t("shell.spaces.parent") };
+  return { icone: "🗂️", titre: e.label || i18n.t("shell.spaces.staff") };
 }

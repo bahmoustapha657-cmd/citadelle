@@ -26,7 +26,7 @@ export function ConnexionChamps({
         </div>
         {statutEcole && (
           <p className="cx-alerte">
-            {statutEcole === "inactive" ? "Cette école est inactive." : "Cette école n'est plus disponible."}
+            {statutEcole === "inactive" ? t("auth.schoolInactive") : t("auth.schoolUnavailable")}
           </p>
         )}
       </div>
@@ -68,8 +68,8 @@ export function ConnexionChamps({
             type="button"
             className="cx-oeil"
             onClick={() => setVoir((value) => !value)}
-            aria-label={voir ? "Masquer le mot de passe" : "Afficher le mot de passe"}
-            title={voir ? "Masquer" : "Afficher"}
+            aria-label={voir ? t("auth.hidePassword") : t("auth.showPassword")}
+            title={voir ? t("auth.hide") : t("auth.show")}
           >
             {voir ? <IconeOeilBarre /> : <IconeOeil />}
           </button>
