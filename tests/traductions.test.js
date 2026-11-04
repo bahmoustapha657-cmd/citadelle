@@ -12,6 +12,40 @@ const aplatir = (o, p = "") =>
 const dictionnaires = Object.fromEntries(LANGUES.map((l) => [l, Object.fromEntries(aplatir(lireLangue(l)))]));
 const variables = (texte) => [...String(texte).matchAll(/\{\{\s*(\w+)\s*\}\}/g)].map((m) => m[1]).sort();
 
+// JSON.parse garde silencieusement la dernière de deux clés identiques : un
+// 2e bloc "modules" a ainsi effacé les noms traduits du menu (corrigé le
+// 2026-11-04).
+function clesEnDouble(texte) {
+  const pile = [];
+  const doublons = [];
+  for (let i = 0; i < texte.length; i++) {
+    const c = texte[i];
+    if (c === "{") pile.push(new Set());
+    else if (c === "}") pile.pop();
+    else if (c === '"') {
+      let j = i + 1;
+      while (texte[j] !== '"') j += texte[j] === "\\" ? 2 : 1;
+      const chaine = texte.slice(i + 1, j);
+      let k = j + 1;
+      while (/\s/.test(texte[k])) k++;
+      if (texte[k] === ":") {
+        const cles = pile[pile.length - 1];
+        if (cles.has(chaine)) doublons.push(chaine);
+        cles.add(chaine);
+      }
+      i = j;
+    }
+  }
+  return doublons;
+}
+
+test("aucune clé en double dans les fichiers de langue", () => {
+  for (const l of LANGUES) {
+    assert.deepEqual(clesEnDouble(readFileSync(`src/i18n/locales/${l}.json`, "utf8")), [], `${l}.json`);
+  }
+  assert.deepEqual(clesEnDouble('{"a": {"b": 1, "b": 2}, "c": ["a", "a"]}'), ["b"]);
+});
+
 test("les trois langues ont exactement les mêmes clés", () => {
   const fr = Object.keys(dictionnaires.fr);
   for (const l of ["en", "ar"]) {

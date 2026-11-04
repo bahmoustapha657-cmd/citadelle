@@ -399,30 +399,6 @@
     "noAnnouncement": "No announcement yet",
     "noHonor": "No student on the honor roll"
   },
-  "plans": {
-    "gratuit": "Free",
-    "starter": "Starter",
-    "standard": "Standard",
-    "premium": "Premium"
-  },
-  "modules": {
-    "desc": {
-      "superadmin_panel": "School management",
-      "accueil": "Overview",
-      "historique": "Action log",
-      "admin_panel": "Passwords",
-      "parametres": "School identity",
-      "fondation": "Governance",
-      "compta": "Finance",
-      "primaire": "Primary",
-      "secondaire": "Secondary office",
-      "calendrier": "School events",
-      "examens": "Schedule & notices",
-      "portail_enseignant": "Teacher portal",
-      "portail_parent": "Track my child",
-      "messages": "School-family link"
-    }
-  },
   "months": {
     "Janvier": "January",
     "Février": "February",

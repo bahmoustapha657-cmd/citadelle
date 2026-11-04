@@ -399,30 +399,6 @@
     "noAnnouncement": "Aucune annonce pour le moment",
     "noHonor": "Aucun élève au tableau d'honneur"
   },
-  "plans": {
-    "gratuit": "Gratuit",
-    "starter": "Starter",
-    "standard": "Standard",
-    "premium": "Premium"
-  },
-  "modules": {
-    "desc": {
-      "superadmin_panel": "Gestion des écoles",
-      "accueil": "Vue d'ensemble",
-      "historique": "Journal des actions",
-      "admin_panel": "Comptes, droits et signataires",
-      "parametres": "Identité de l'école",
-      "fondation": "Gouvernance",
-      "compta": "Finances",
-      "primaire": "Primaire",
-      "secondaire": "Bureau Collège",
-      "calendrier": "Événements scolaires",
-      "examens": "Planning & convocations",
-      "portail_enseignant": "Portail enseignant",
-      "portail_parent": "Suivi de mon enfant",
-      "messages": "Liaison école-famille"
-    }
-  },
   "months": {
     "Janvier": "Janvier",
     "Février": "Février",

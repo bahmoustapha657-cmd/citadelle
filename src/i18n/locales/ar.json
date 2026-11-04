@@ -399,30 +399,6 @@
     "noAnnouncement": "لا توجد إعلانات حتى الآن",
     "noHonor": "لا يوجد طالب على لوحة الشرف"
   },
-  "plans": {
-    "gratuit": "مجاني",
-    "starter": "أساسي",
-    "standard": "قياسي",
-    "premium": "متميز"
-  },
-  "modules": {
-    "desc": {
-      "superadmin_panel": "إدارة المدارس",
-      "accueil": "نظرة عامة",
-      "historique": "سجل الإجراءات",
-      "admin_panel": "كلمات المرور",
-      "parametres": "هوية المدرسة",
-      "fondation": "الحوكمة",
-      "compta": "المالية",
-      "primaire": "الابتدائي",
-      "secondaire": "مكتب الإعدادي",
-      "calendrier": "الأحداث المدرسية",
-      "examens": "الجدول والاستدعاءات",
-      "portail_enseignant": "بوابة المعلم",
-      "portail_parent": "متابعة طفلي",
-      "messages": "التواصل مدرسة-عائلة"
-    }
-  },
   "months": {
     "Janvier": "يناير",
     "Février": "فبراير",
