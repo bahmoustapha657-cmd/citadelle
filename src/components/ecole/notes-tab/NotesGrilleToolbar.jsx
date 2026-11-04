@@ -79,6 +79,8 @@ export function NotesGrilleToolbar({
         {noteForms.map(item => <option key={item.id} value={item.value}>{item.label}</option>)}
       </select>
 
+      {/* Notes modifiées non enregistrées : pas de mise à jour automatique. */}
+      {nbModif > 0 && <span data-maj-retenir="notes" hidden />}
       {nbModif > 0 && (
         <Btn v="vert" sm disabled={grilleSaving} onClick={sauvegarderGrille}>
           {grilleSaving ? "Enregistrement…" : `💾 Enregistrer (${nbModif} modif.)`}

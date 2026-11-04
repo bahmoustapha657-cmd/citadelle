@@ -1,30 +1,32 @@
+import { demarrerMiseAJourAuto } from "./mise-a-jour/mise-a-jour-auto.js";
+
 // Intervalle de vérification d'une mise à jour du SW (1 min).
 // On déclenche aussi un check au load et au retour de visibilité.
 const UPDATE_CHECK_INTERVAL_MS = 60 * 1000;
 
 export function registerServiceWorker() {
-  if (!("serviceWorker" in navigator)) return;
-
   window.addEventListener("load", async () => {
+    // Nouvelle version détectée par /version.json (la plupart des
+    // déploiements ne touchent pas sw.js) : cf. mise-a-jour/.
+    const maj = demarrerMiseAJourAuto();
+    if (!("serviceWorker" in navigator)) return;
+
     try {
       const registration = await navigator.serviceWorker.register("/sw.js");
+      maj.lierServiceWorker(registration);
 
       const notifyIfUpdated = (worker) => {
         if (!worker) return;
         worker.addEventListener("statechange", () => {
           if (worker.state === "installed" && navigator.serviceWorker.controller) {
-            window.dispatchEvent(new CustomEvent("sw-update-available", {
-              detail: { registration },
-            }));
+            maj.signalerServiceWorker(registration);
           }
         });
       };
 
       // SW déjà en attente au moment du chargement
       if (registration.waiting && navigator.serviceWorker.controller) {
-        window.dispatchEvent(new CustomEvent("sw-update-available", {
-          detail: { registration },
-        }));
+        maj.signalerServiceWorker(registration);
       }
 
       notifyIfUpdated(registration.waiting);
@@ -33,25 +35,22 @@ export function registerServiceWorker() {
         notifyIfUpdated(registration.installing);
       });
 
-      // Reload du tab dès que le nouveau SW prend le contrôle.
-      // Garde-fou contre les boucles : on ne reload qu'une seule fois
-      // par session de page.
+      // Nouveau SW aux commandes (skipWaiting + clients.claim de sw.js) :
+      // le rechargement n'est plus immédiat — il attend un moment sûr
+      // (aucune saisie, fenêtre ou appel en cours), comme toute mise à jour.
       // Uniquement si un SW contrôlait DÉJÀ la page (mise à jour) : à la
       // 1re visite, clients.claim() (sw.js) déclenche aussi controllerchange
       // alors que la page vient du réseau et est déjà à jour — recharger ne
       // ferait que perdre la saisie en cours (connexion, nouveau mot de passe,
       // inscription…).
       let controle = !!navigator.serviceWorker.controller;
-      let reloading = false;
       navigator.serviceWorker.addEventListener("controllerchange", () => {
         // Première prise de contrôle (1re visite) : la page est déjà à jour.
         if (!controle) {
           controle = true;
           return;
         }
-        if (reloading) return;
-        reloading = true;
-        window.location.reload();
+        maj.signalerServiceWorker(registration);
       });
 
       // Check périodique
