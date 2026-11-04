@@ -81,8 +81,12 @@ export function Composeur({ annuaire, reponse, onAnnulerReponse, edition, onAnnu
     : reponse ? { titre: `↩️ Réponse à ${annuaire.get(reponse.de_compte_id)?.nom || "un message"}`, texte: apercuMessage(reponse), annuler: onAnnulerReponse }
       : null;
 
+  // data-maj-retenir : pas de mise à jour automatique (rechargement) pendant
+  // un vocal, avec des pièces jointes choisies ou un envoi en cours.
+  const occupe = enregistreur.enCours || fichiers.length > 0 || envoi;
+
   return (
-    <div style={{ borderTop: "1px solid var(--lc-border)", background: "var(--lc-surface)", padding: "8px 10px" }}>
+    <div data-maj-retenir={occupe ? "message" : undefined} style={{ borderTop: "1px solid var(--lc-border)", background: "var(--lc-surface)", padding: "8px 10px" }}>
       {(erreur || enregistreur.erreur) && (
         <div style={{ fontSize: 12, color: "#b91c1c", fontWeight: 600, marginBottom: 6 }}>{erreur || enregistreur.erreur}</div>
       )}

@@ -9,6 +9,7 @@ import { SupabaseConnector } from "./connector";
 import { attendreFileVide } from "./file-envoi";
 import { powerSyncConfigured } from "./tables";
 import { ecrireProprietaire, miroirAutreCompte, oublierProprietaire } from "./proprietaire";
+import { ajouterGarde } from "../../mise-a-jour/travail-en-cours";
 
 export { powerSyncConfigured };
 
@@ -19,6 +20,10 @@ export function getPowerSync() {
       schema: AppSchema,
       database: { dbFilename: "edugest.sqlite" },
     });
+    // Pas de mise à jour automatique (rechargement) pendant un envoi : la
+    // file d'envoi survit au rechargement, mais un lot coupé en plein vol
+    // serait renvoyé pour rien.
+    ajouterGarde(() => (db?.currentStatus?.dataFlowStatus?.uploading ? "envoi-hors-ligne" : null));
   }
   return db;
 }
