@@ -81,17 +81,19 @@ export default function App() {
   // Signataire des documents imprimés pendant la session : poste du compte
   // connecté et nom qu'il imprime. Sur un poste à plusieurs comptes (deux
   // comptables), chacun signe ainsi à son nom — voir reports/signataire-session.
-  // Le cachet personnel est chargé une fois dès la connexion : le service
-  // worker le garde alors pour imprimer hors ligne.
+  // Le cachet et la signature personnels sont chargés une fois dès la
+  // connexion : le service worker les garde alors pour imprimer hors ligne.
   useEffect(() => {
     definirSignataireSession(utilisateur
       ? { cle: utilisateur.posteCle || utilisateur.role, nom: utilisateur.nomSignature, cachet: utilisateur.cachetUrl,
-          taille: utilisateur.cachetTaille, decalage: utilisateur.cachetDecalage }
+          taille: utilisateur.cachetTaille, decalage: utilisateur.cachetDecalage, signature: utilisateur.signatureUrl,
+          signatureTaille: utilisateur.signatureTaille, signatureDecalage: utilisateur.signatureDecalage }
       : null);
-    if (utilisateur?.cachetUrl) {
+    for (const url of [utilisateur?.cachetUrl, utilisateur?.signatureUrl]) {
+      if (!url) continue;
       const img = new Image();
       img.crossOrigin = "anonymous";
-      img.src = utilisateur.cachetUrl;
+      img.src = url;
     }
   }, [utilisateur]);
 

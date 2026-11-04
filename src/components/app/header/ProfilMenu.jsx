@@ -46,7 +46,7 @@ export function ProfilMenu({
           {setUtilisateur && peutDeposerCachet(cleRole)&&(
             <button onClick={()=>{setProfilOuvert(false);setCachetOuvert(true);}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 16px",background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#374151",textAlign:"start",fontWeight:600}}>
               🖋️ <span>Mon cachet et ma signature</span>
-              {utilisateur.cachetUrl&&<span style={{marginInlineStart:"auto",fontSize:10,color:"#16a34a",fontWeight:700}}>✓</span>}
+              {(utilisateur.cachetUrl||utilisateur.signatureUrl)&&<span style={{marginInlineStart:"auto",fontSize:10,color:"#16a34a",fontWeight:700}}>✓</span>}
             </button>
           )}
           <button onClick={()=>{setProfilOuvert(false);setCentreAideOuvert&&setCentreAideOuvert(true);}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 16px",background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#374151",textAlign:"start",fontWeight:600}}>

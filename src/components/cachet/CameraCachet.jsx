@@ -23,7 +23,12 @@ const zoneCadre = (largeur, hauteur) => ({
   h: Math.round(hauteur * CADRE.h),
 });
 
-export default function CameraCachet({ onPhoto, onAnnuler, onChoisirFichier }) {
+// `consigne` : ce qu'il faut placer dans le cadre (cachet ou signature) ;
+// `nomFichier` : nom de la photo prise, sans extension.
+export default function CameraCachet({
+  onPhoto, onAnnuler, onChoisirFichier, nomFichier = "cachet",
+  consigne = "Posez la feuille à plat, bien éclairée, et placez le cachet signé dans le cadre.",
+}) {
   const {
     videoRef, attacherVideo, surDimensions, erreur, pret, cameras,
     demarrerCamera, basculerCamera, arreterCamera,
@@ -45,7 +50,7 @@ export default function CameraCachet({ onPhoto, onAnnuler, onChoisirFichier }) {
     libererCanvas(cadre);
     arreterCamera();
     setEnCours(false);
-    if (blob) onPhoto(new File([blob], "cachet.jpg", { type: "image/jpeg" }));
+    if (blob) onPhoto(new File([blob], `${nomFichier}.jpg`, { type: "image/jpeg" }));
   };
 
   const annuler = () => { arreterCamera(); onAnnuler(); };
@@ -62,9 +67,7 @@ export default function CameraCachet({ onPhoto, onAnnuler, onChoisirFichier }) {
         </div>
       ) : (
         <>
-          <p style={{ margin: "0 0 8px", fontSize: 12, color: "#475569" }}>
-            Posez la feuille à plat, bien éclairée, et placez le cachet signé dans le cadre.
-          </p>
+          <p style={{ margin: "0 0 8px", fontSize: 12, color: "#475569" }}>{consigne}</p>
           <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
             <div style={{ position: "relative", display: "inline-block", background: "#000", borderRadius: 10, overflow: "hidden", lineHeight: 0 }}>
               <video ref={attacherVideo} autoPlay playsInline muted

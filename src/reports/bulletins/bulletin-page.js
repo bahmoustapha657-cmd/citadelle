@@ -14,7 +14,7 @@ import {
   enteteDoc,
   tr,
 } from "../print-helpers.js";
-import { blocsSignatures, cachetHTML } from "../signatures.js";
+import { blocsSignatures, imagesHTML, imagesSignataire } from "../signatures.js";
 import { getInitiales, ordinalFr } from "./bulletin-format.js";
 import { computeBulletinModel } from "./bulletin-page-data.js";
 import { buildLignesRows } from "./bulletin-page-rows.js";
@@ -215,10 +215,10 @@ export function buildBulletinPageHTML({
     <div class="sigs">
       <div class="sig">${tr(sectionPrimaire(niveau) ? "reports.classTeacher" : "reports.headTeacher")}<br/><br/><br/>${tr("reports.signature")}</div>
       ${blocsSignatures(schoolInfo, "bulletin", (identite, s) => `<div class="sig">${identite}${
-        // Cachet personnel du chef de section quand c'est lui qui imprime ;
-        // sinon la signature scannée de l'école, réservée au signataire
-        // principal comme avant la matrice.
-        s.cachet ? cachetHTML(s.cachet, { hauteur: "16mm", lignes: 2, taille: s.cachetTaille, decalage: s.cachetDecalage })
+        // Cachet et/ou signature personnels du chef de section quand c'est lui
+        // qui imprime ; sinon la signature scannée de l'école, réservée au
+        // signataire principal comme avant la matrice.
+        imagesSignataire(s).length ? imagesHTML(imagesSignataire(s), { hauteur: "16mm", lignes: 2 })
         : s.role === "principal" && schoolInfo.signatureUrl ? `<img crossOrigin="anonymous" src="${schoolInfo.signatureUrl}" alt="" style="display:block;height:34px;object-fit:contain;margin:4px auto 2px"/>` : "<br/><br/><br/>"}${tr("reports.signature")}</div>`,
         { section: niveau })}
     </div>

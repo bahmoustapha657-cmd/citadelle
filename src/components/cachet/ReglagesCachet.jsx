@@ -49,7 +49,7 @@ export default function ReglagesCachet({ reglages: r, changer, desactive }) {
       <p style={{ ...styleTitre, marginTop: 0 }}>🧽 Papier</p>
       <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#334155", cursor: "pointer" }}>
         <input type="checkbox" checked={r.nettoyer} disabled={desactive} onChange={(e) => changer({ nettoyer: e.target.checked })} />
-        Effacer le papier autour du cachet
+        Effacer le papier autour de l'encre
       </label>
       <Curseur libelle="Effacement" aide="Effacement du papier, plus doux ou plus fort" min={-TON_MAX} max={TON_MAX} step={5}
         value={r.fond} disabled={sansPapier} onChange={(fond) => changer({ fond })} />

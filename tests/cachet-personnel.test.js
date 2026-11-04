@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync, readdirSync } from "node:fs";
-import { cachetOuEspace, signatairesDocument } from "../src/reports/signatures.js";
+import { cachetOuEspace, imagesHTML, imagesSignataire, signatairesDocument } from "../src/reports/signatures.js";
 import { blocRecu } from "../src/reports/recus/recu-blocs.js";
-import { imageSignature, signaturesBulletin } from "../src/reports/bulletins/bulletin-pro-commun.js";
+import { imageSignature, imagesSignature, signaturesBulletin } from "../src/reports/bulletins/bulletin-pro-commun.js";
 import {
   DECALAGE_CACHET, TAILLE_CACHET, definirSignataireSession, normaliserDecalageCachet, normaliserTailleCachet, partDessusCachet,
   peutDeposerCachet, signataireSession,
@@ -50,7 +50,10 @@ test("la matrice décide : un reçu confié à la Direction ne porte plus le cac
 test("session : un cachet sans nom propre suffit à désigner le compte qui imprime", () => {
   try {
     definirSignataireSession({ cle: "comptable", nom: "", cachet: CACHET });
-    assert.deepEqual(signataireSession(), { cle: "comptable", nom: "", cachet: CACHET, taille: 1, decalage: { x: 0, y: 0 } });
+    assert.deepEqual(signataireSession(), {
+      cle: "comptable", nom: "", cachet: CACHET, taille: 1, decalage: { x: 0, y: 0 },
+      signature: "", signatureTaille: 1, signatureDecalage: { x: 0, y: 0 },
+    });
     const [s] = signatairesDocument(ecole, "recu");
     assert.equal(s.nom, "Aïssatou Bah", "sans nom propre, le responsable du poste");
     assert.equal(s.cachet, CACHET);
@@ -309,13 +312,13 @@ test("taille : bulletins Officiel, Prestige, Contemporain — même place à tou
   // Le cachet du titulaire porte sa taille ; la signature de l'école reste à 100 %.
   definirSignataireSession({ cle: "primaire", cachet: CACHET, taille: 1.5 });
   const tailles = [];
-  signaturesBulletin(ecole, "primaire", ({ taille }) => { tailles.push(taille); return ""; });
-  assert.deepEqual(tailles, [undefined, 1.5]);
+  signaturesBulletin(ecole, "primaire", ({ images }) => { tailles.push(images.map((i) => i.taille)); return ""; });
+  assert.deepEqual(tailles, [[], [1.5]]);
   definirSignataireSession(null);
   const ecoleSignee = { ...ecole, signatureUrl: "https://x.supabase.co/sig.png" };
   const sansCachet = [];
-  signaturesBulletin(ecoleSignee, "primaire", ({ taille }) => { sansCachet.push(taille); return ""; });
-  assert.deepEqual(sansCachet, [undefined, 1]);
+  signaturesBulletin(ecoleSignee, "primaire", ({ images }) => { sansCachet.push(images.map((i) => i.taille)); return ""; });
+  assert.deepEqual(sansCachet, [[], [1]]);
 });
 
 test("migration : taille du cachet réservée au titulaire, garde étendue", () => {
@@ -372,13 +375,13 @@ test("position : bulletins Officiel, Prestige, Contemporain", () => {
   // Le cachet du titulaire porte sa position ; la signature de l'école reste centrée.
   definirSignataireSession({ cle: "primaire", cachet: CACHET, decalage: { x: -0.3, y: 0 } });
   const decalages = [];
-  signaturesBulletin(ecole, "primaire", ({ decalage }) => { decalages.push(decalage); return ""; });
-  assert.deepEqual(decalages, [undefined, { x: -0.3, y: 0 }]);
+  signaturesBulletin(ecole, "primaire", ({ images }) => { decalages.push(images.map((i) => i.decalage)); return ""; });
+  assert.deepEqual(decalages, [[], [{ x: -0.3, y: 0 }]]);
   definirSignataireSession(null);
   const ecoleSignee = { ...ecole, signatureUrl: "https://x.supabase.co/sig.png" };
   const sansCachet = [];
-  signaturesBulletin(ecoleSignee, "primaire", ({ decalage }) => { sansCachet.push(decalage); return ""; });
-  assert.deepEqual(sansCachet, [undefined, null]);
+  signaturesBulletin(ecoleSignee, "primaire", ({ images }) => { sansCachet.push(images.map((i) => i.decalage)); return ""; });
+  assert.deepEqual(sansCachet, [[], [null]]);
 });
 
 test("migration : position du cachet réservée au titulaire, garde étendue", () => {
@@ -397,4 +400,87 @@ test("migration : position du cachet réservée au titulaire, garde étendue", (
   assert.match(sql, /revoke all on function public\.comptes_cachet_guard\(\) from public, anon, authenticated/);
   assert.doesNotMatch(sql, /function public\.comptes_guard\(/);
   assert.deepEqual(DECALAGE_CACHET, { x: 1, y: 0.5 });
+});
+
+// ── Signature déposée à part du cachet ────────────────────────────────────
+const SIGNATURE = "https://x.supabase.co/storage/v1/object/public/photos/LC/cachets/s.png";
+
+test("signature à part : celle du compte qui imprime, avec sa taille et sa position", () => {
+  const comptable = {
+    cle: "comptable", cachet: CACHET, taille: 1.2, decalage: { x: -0.6, y: 0 },
+    signature: SIGNATURE, signatureTaille: 0.9, signatureDecalage: { x: 0.6, y: 0.1 },
+  };
+  const [s] = signatairesDocument(ecole, "recu", { signataire: comptable });
+  assert.equal(s.signature, SIGNATURE);
+  assert.equal(s.signatureTaille, 0.9);
+  assert.deepEqual(s.signatureDecalage, { x: 0.6, y: 0.1 });
+  assert.deepEqual(imagesSignataire(s).map((i) => i.url), [CACHET, SIGNATURE], "le cachet, puis la signature");
+  // Un autre compte n'imprime ni le cachet ni la signature du comptable.
+  const [autre] = signatairesDocument(ecole, "recu", { signataire: { ...comptable, cle: "direction" } });
+  assert.equal(autre.signature, "");
+  assert.deepEqual(imagesSignataire(autre), []);
+  // Une signature sans cachet suffit à désigner le compte qui imprime.
+  definirSignataireSession({ cle: "comptable", signature: SIGNATURE });
+  assert.equal(signataireSession().signature, SIGNATURE);
+  assert.deepEqual(imagesSignataire(signatairesDocument(ecole, "recu")[0]).map((i) => i.url), [SIGNATURE]);
+  definirSignataireSession(null);
+});
+
+test("signature à part : une seule image = rendu du cachet, deux = chacune à sa place", () => {
+  const seule = cachetOuEspace({ signature: SIGNATURE, signatureTaille: 1 }, "<br/><br/><br/>", "16mm");
+  assert.equal(seule, cachetOuEspace({ cachet: SIGNATURE, cachetTaille: 1 }, "<br/><br/><br/>", "16mm"), "même rendu qu'un cachet seul");
+  const deux = cachetOuEspace({
+    cachet: CACHET, cachetTaille: 1, cachetDecalage: { x: -0.6, y: 0 },
+    signature: SIGNATURE, signatureTaille: 1.5, signatureDecalage: { x: 0.6, y: 0 },
+  }, "<br/><br/><br/>", "16mm");
+  // Un conteneur de la hauteur de l'espace à signer : la page ne s'allonge pas.
+  assert.match(deux, /^<div style="position:relative;height:2\.4em">/);
+  assert.equal(deux.split("<img").length - 1, 2);
+  assert.match(deux, new RegExp(`src="${CACHET}"[^>]*position:absolute;left:0;right:0;top:calc\\(\\(2\\.4em - 16mm\\) \\* 0\\.3\\);height:16mm;[^>]*transform:translate\\(calc\\(16mm \\* -0\\.6\\)`));
+  assert.match(deux, new RegExp(`src="${SIGNATURE}"[^>]*top:calc\\(\\(2\\.4em - calc\\(16mm \\* 1\\.5\\)\\) \\* 0\\.4\\);height:calc\\(16mm \\* 1\\.5\\)`));
+  assert.equal(imagesHTML([], { hauteur: "16mm" }), "");
+});
+
+test("signature à part : reçu et bulletins pro", () => {
+  const recu = () => blocRecu("Exemplaire — Payant", {
+    schoolInfo: ecole, lf: {}, eleve: { nom: "DIALLO", prenom: "Aïssatou", classe: "6ème A" },
+    moisAnnee: ["Octobre"], mens: { Octobre: "Payé" }, mensDates: {},
+    fraisIns: 0, fraisAutre: 0, fraisDiversPayes: [], totalMensualites: 150000,
+    moisPayes: ["Octobre"], totalGeneral: 150000, qr: "",
+  });
+  try {
+    definirSignataireSession({ cle: "comptable", nom: "Binta Camara", cachet: CACHET, signature: SIGNATURE });
+    const html = recu();
+    assert.equal(html.split(CACHET).length - 1, 1);
+    assert.equal(html.split(SIGNATURE).length - 1, 1);
+    definirSignataireSession({ cle: "primaire", cachet: CACHET, signature: SIGNATURE, signatureDecalage: { x: 0.5, y: 0 } });
+    const blocs = [];
+    signaturesBulletin(ecole, "primaire", ({ image, images }) => { blocs.push({ image, urls: images.map((i) => i.url) }); return ""; });
+    assert.deepEqual(blocs, [{ image: undefined, urls: [] }, { image: CACHET, urls: [CACHET, SIGNATURE] }]);
+  } finally {
+    definirSignataireSession(null);
+  }
+  // Une image : rendu inchangé ; deux : les mêmes 13 mm, chacune à sa place.
+  assert.equal(imagesSignature([{ url: CACHET, taille: 1.5 }]), imageSignature(CACHET, 1.5));
+  assert.equal(imagesSignature(), "");
+  const deux = imagesSignature([{ url: CACHET, taille: 1 }, { url: SIGNATURE, taille: 1.5, decalage: { x: 0.5, y: 0 } }]);
+  assert.match(deux, /^<div style="position:relative;height:13mm">/);
+  assert.match(deux, /top:1mm;height:12mm;/, "cachet à 100 % : même place qu'une image seule");
+  assert.match(deux, /top:-2\.0mm;height:18mm;[^"]*transform:translate\(9mm, 0mm\)/, "signature à 150 %, décalée");
+});
+
+test("migration : signature à part réservée au titulaire, garde étendue", () => {
+  const dossier = new URL("../supabase/migrations/", import.meta.url);
+  const fichier = readdirSync(dossier).find((f) => f.endsWith("_signature_personnelle.sql"));
+  const sql = readFileSync(new URL(fichier, dossier), "utf8");
+  assert.match(sql, /add column if not exists signature_url text;/);
+  assert.match(sql, /add column if not exists signature_taille numeric\(3, 2\) not null default 1/);
+  assert.match(sql, /check \(signature_taille between 0\.8 and 2\s+and signature_dx between -1 and 1 and signature_dy between -0\.5 and 0\.5\)/);
+  for (const col of ["cachet_url", "cachet_taille", "cachet_dx", "cachet_dy", "signature_url", "signature_taille", "signature_dx", "signature_dy"]) {
+    assert.match(sql, new RegExp(`new\\.${col} is distinct from old\\.${col}`), col);
+  }
+  assert.match(sql, /new\.signature_url is not null or new\.signature_taille is distinct from 1/, "insertion : rien de déposé");
+  assert.match(sql, /\)\s+and old\.user_id is distinct from auth\.uid\(\) then/);
+  assert.match(sql, /revoke all on function public\.comptes_cachet_guard\(\) from public, anon, authenticated/);
+  assert.doesNotMatch(sql, /function public\.comptes_guard\(/);
 });

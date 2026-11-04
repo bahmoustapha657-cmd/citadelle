@@ -9,7 +9,7 @@
 // ornements sont des SVG en ligne (../ornements.js) : rien n'est
 // chargé depuis Internet, tout reste lisible en noir et blanc.
 import {
-  dateDuJour, dateFr, echapper, imageSignature, libelleDistinction, libellePeriode,
+  dateDuJour, dateFr, echapper, imagesSignature, libelleDistinction, libellePeriode,
   mentionFr, mentionsPied, nb, ordinal, periodeCourte, photoHTML, signaturesBulletin, titreBulletin,
 } from "./bulletin-pro-commun.js";
 import { OR, OR_FONCE, SERIF, cadreGuilloche, laurier, medaillon, monogramme, rosace } from "../ornements.js";
@@ -59,8 +59,8 @@ export function buildBulletinPrestigeHTML(ctx) {
   ].filter(Boolean).join(" &nbsp;|&nbsp; ");
 
   const distinction = libelleDistinction(m.distinction);
-  const sigs = signaturesBulletin(si, niveau, ({ titre, note, image, taille, decalage, cachet }) =>
-    `<div class="sig${cachet && !image ? " cachet" : ""}"><b>${titre}</b><small>${note}</small>${imageSignature(image, taille, decalage)}</div>`);
+  const sigs = signaturesBulletin(si, niveau, ({ titre, note, image, images, cachet }) =>
+    `<div class="sig${cachet && !image ? " cachet" : ""}"><b>${titre}</b><small>${note}</small>${imagesSignature(images)}</div>`);
   const microTexte = echapper(`${si.nom || ""} · ${titreBulletin(periode)} · ${annee}`.toUpperCase());
 
   return `

@@ -5,7 +5,7 @@
 // rapport à la classe dans chaque matière, courbe de progression. Moderne
 // mais sobre : filets et contours, aucun aplat de couleur lourd.
 import {
-  compteur, dateDuJour, dateFr, echapper, imageSignature, libelleDistinction, libellePeriode, logoHTML,
+  compteur, dateDuJour, dateFr, echapper, imagesSignature, libelleDistinction, libellePeriode, logoHTML,
   mentionFr, mentionsPied, nb, ordinal, periodeCourte, photoHTML, signaturesBulletin, titreBulletin,
 } from "./bulletin-pro-commun.js";
 
@@ -66,8 +66,8 @@ export function buildBulletinContemporainHTML(ctx) {
     : `<div class="vide">${evolution ? `${periodeCourte(evolution.periodePrec)} : ${nb(evolution.moyPrec)} → ${nb(evolution.moyActu)}` : "—"}</div>`;
 
   const distinction = libelleDistinction(m.distinction);
-  const sigs = signaturesBulletin(si, niveau, ({ titre, note, image, taille, decalage }) =>
-    `<div class="sig">${titre}<small>${note}</small>${imageSignature(image, taille, decalage)}</div>`);
+  const sigs = signaturesBulletin(si, niveau, ({ titre, note, images }) =>
+    `<div class="sig">${titre}<small>${note}</small>${imagesSignature(images)}</div>`);
 
   return `
   <div class="page pro bc ${densite}" style="--c1:${ctx.c1};--c2:${ctx.c2}">

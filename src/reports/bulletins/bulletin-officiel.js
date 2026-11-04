@@ -5,7 +5,7 @@
 // conseil de classe, zones de signature avec cachet. Aucun aplat lourd :
 // il s'imprime net en noir et blanc et consomme peu d'encre.
 import {
-  DECISIONS_FIN_ANNEE, DISTINCTIONS, SANCTIONS, compteur, dateDuJour, dateFr, echapper, imageSignature,
+  DECISIONS_FIN_ANNEE, DISTINCTIONS, SANCTIONS, compteur, dateDuJour, dateFr, echapper, imagesSignature,
   libellePeriode, logoHTML, mentionFr, mentionsPied, nb, ordinal, periodeCourte, photoHTML,
   signaturesBulletin, titreBulletin,
 } from "./bulletin-pro-commun.js";
@@ -58,8 +58,8 @@ export function buildBulletinOfficielHTML(ctx) {
     ...(estAnnuel ? DECISIONS_FIN_ANNEE : SANCTIONS).map((s) => caseCochee(s, false)),
   ].join("");
 
-  const sigs = signaturesBulletin(si, niveau, ({ titre, note, image, taille, decalage }) =>
-    `<div class="sig">${titre}<small>${note}</small>${imageSignature(image, taille, decalage)}</div>`);
+  const sigs = signaturesBulletin(si, niveau, ({ titre, note, images }) =>
+    `<div class="sig">${titre}<small>${note}</small>${imagesSignature(images)}</div>`);
 
   return `
   <div class="page pro bo ${densite}" style="--c1:${ctx.c1};--c2:${ctx.c2}">
