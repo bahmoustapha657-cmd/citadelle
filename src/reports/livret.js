@@ -14,7 +14,7 @@ import {
   tr,
   watermarkHtml,
 } from "./print-helpers.js";
-import { blocsSignatures, cachetOuEspace } from "./signatures.js";
+import { blocsSignatures, cachetOuEspace, imagesSignataire } from "./signatures.js";
 
 export const imprimerLivret = (livret, schoolInfo={}) => {
   const lf = resolveLegalFields(schoolInfo);
@@ -83,7 +83,7 @@ export const imprimerLivret = (livret, schoolInfo={}) => {
       <div class="sigs-livret">
         ${blocsSignatures(schoolInfo, "livret", (identite, s) => s.role === "principal"
           // La mention « signé le … » est celle du signataire principal.
-          ? `<div class="sig-livret">${identite}${cachetOuEspace(s, "<br/><br/>", "16mm")}${an.signe?`<em style="font-size:9px;color:#14532d">✅ ${tr("reports.livret.signedOn")} ${an.dateSigne||""}</em>`:(s.cachet?"":"<br/>")+tr("reports.livret.signStamp")}</div>`
+          ? `<div class="sig-livret">${identite}${cachetOuEspace(s, "<br/><br/>", "16mm")}${an.signe?`<em style="font-size:9px;color:#14532d">✅ ${tr("reports.livret.signedOn")} ${an.dateSigne||""}</em>`:(imagesSignataire(s).length?"":"<br/>")+tr("reports.livret.signStamp")}</div>`
           : `<div class="sig-livret">${identite}${cachetOuEspace(s, "<br/><br/><br/>", "16mm")}${tr("reports.signature")}</div>`,
           { section: livret.section })}
         <div class="sig-livret">${tr("reports.livret.parentTutor")}<br/><br/><br/>${tr("reports.signature")}</div>

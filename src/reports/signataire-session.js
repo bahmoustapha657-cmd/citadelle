@@ -5,10 +5,11 @@
 // connecté et le nom qu'il imprime (comptes.extra.nomSignature, réglé dans
 // Comptes & Postes). Sans nom : le responsable du poste, comme avant.
 //
-// Il retient aussi son cachet personnel (comptes.cachet_url, déposé par le
-// titulaire lui-même depuis son menu profil) : l'image n'est apposée que sur
-// les documents que CE compte imprime pour son poste — jamais sur ceux qu'un
-// autre imprime, même pour le même poste.
+// Il retient aussi son cachet personnel (comptes.cachet_url) et sa signature
+// déposée à part (comptes.signature_url), posés par le titulaire lui-même
+// depuis son menu profil : ces images ne sont apposées que sur les documents
+// que CE compte imprime pour son poste — jamais sur ceux qu'un autre imprime,
+// même pour le même poste.
 //
 // Tenu hors de schoolInfo à dessein : certains écrans enregistrent un objet de
 // réglages entier dans ecoles.extra, et le signataire courant y finirait écrit
@@ -56,16 +57,23 @@ export const normaliserDecalageCachet = (decalage) => ({
   y: normaliserAxe(decalage?.y, DECALAGE_CACHET.y),
 });
 
-// `compte` : { cle, nom, cachet, taille, decalage } — clé du poste du compte,
-// nom qu'il imprime, URL de son cachet, sa taille et sa position. Poste
-// manquant, ou ni nom ni cachet : aucun signataire de session.
+// `compte` : { cle, nom, cachet, taille, decalage, signature, signatureTaille,
+// signatureDecalage } — clé du poste du compte, nom qu'il imprime, URL de son
+// cachet (tampon), sa taille et sa position, puis les mêmes pour sa signature
+// déposée à part (comptes.signature_url). Poste manquant, ou ni nom ni image :
+// aucun signataire de session.
 export function definirSignataireSession(compte) {
   const cle = String(compte?.cle || "").trim();
   const nom = String(compte?.nom || "").trim();
   const cachet = String(compte?.cachet || "").trim();
   const taille = normaliserTailleCachet(compte?.taille);
   const decalage = normaliserDecalageCachet(compte?.decalage);
-  courant = cle && (nom || cachet) ? { cle, nom, cachet, taille, decalage } : null;
+  const signature = String(compte?.signature || "").trim();
+  const signatureTaille = normaliserTailleCachet(compte?.signatureTaille);
+  const signatureDecalage = normaliserDecalageCachet(compte?.signatureDecalage);
+  courant = cle && (nom || cachet || signature)
+    ? { cle, nom, cachet, taille, decalage, signature, signatureTaille, signatureDecalage }
+    : null;
 }
 
 export const signataireSession = () => courant;

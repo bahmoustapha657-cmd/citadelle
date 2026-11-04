@@ -24,7 +24,7 @@ import {
   watermarkHtml,
   edugestBrandHTML,
 } from "./print-helpers.js";
-import { cachetHTML, cachetOuEspace, identiteHTML, signatairesDocument } from "./signatures.js";
+import { cachetOuEspace, identiteHTML, imagesHTML, imagesSignataire, signatairesDocument } from "./signatures.js";
 import { qrPayload, qrSecuriseImgHtml } from "./qr.js";
 import { formatMoyenneAnnuelle, getMoyenneAttestation } from "./attestation/attestation-moyenne.js";
 import { anneeAttesteePour, derniereClassePourAttestation } from "./attestation/derniere-classe.js";
@@ -257,9 +257,9 @@ export const imprimerAttestation = async (eleve, niveau, annee, schoolInfo = {},
   <div class="pied">
     <div class="qr">${qr}<div class="legende">${tr("reports.qrVerify")}</div></div>
     ${visa ? `<div class="sig visa">${identiteHTML(visa)}${cachetOuEspace(visa)}${tr("reports.signature")}</div>` : ""}
-    <div class="sig">${identiteHTML(signataire)}${signataire.cachet
-      // Cachet personnel déposé par le signataire : il remplace le tampon dessiné.
-      ? cachetHTML(signataire.cachet, { hauteur: "22mm", lignes: 3, taille: signataire.cachetTaille, decalage: signataire.cachetDecalage })
+    <div class="sig">${identiteHTML(signataire)}${imagesSignataire(signataire).length
+      // Cachet et/ou signature déposés par le signataire : ils remplacent le tampon dessiné.
+      ? imagesHTML(imagesSignataire(signataire), { hauteur: "22mm", lignes: 3 })
       : `<br/><div class="stamp">${schoolInfo.nom || ""}</div>`}</div>
   </div>
   <div class="devise">${schoolInfo.devise || "Travail – Rigueur – Réussite"}</div>

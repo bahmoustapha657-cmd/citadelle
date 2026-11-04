@@ -99,17 +99,24 @@ export const responsableNom = (schoolInfo = {}, cle) =>
 const nomPourPoste = (schoolInfo, cle, signataire) =>
   (signataire?.cle === cle && signataire.nom) || responsableNom(schoolInfo, cle);
 
-// Cachet personnel apposé pour un poste : seulement celui du compte qui
-// imprime, s'il occupe ce poste. Un autre compte — même la Direction, même un
-// second comptable — imprime le bloc sans image, à signer à la main.
-const cachetPourPoste = (cle, signataire) =>
-  (signataire?.cle === cle && signataire.cachet) || "";
-// Sa taille, réglée par le titulaire (1 sans cachet).
-const tailleCachetPourPoste = (cle, signataire) =>
-  (cachetPourPoste(cle, signataire) ? normaliserTailleCachet(signataire.taille) : 1);
-// Sa position, réglée par le titulaire (centré sans cachet).
-const decalageCachetPourPoste = (cle, signataire) =>
-  normaliserDecalageCachet(cachetPourPoste(cle, signataire) ? signataire.decalage : null);
+// Images personnelles apposées pour un poste — le cachet (tampon) et la
+// signature déposée à part, chacun avec la taille et la position réglées par
+// son titulaire : seulement celles du compte qui imprime, s'il occupe ce
+// poste. Un autre compte — même la Direction, même un second comptable —
+// imprime le bloc sans image, à signer à la main (taille 1, centré).
+function imagesPourPoste(cle, signataire) {
+  const moi = signataire?.cle === cle;
+  const cachet = (moi && signataire.cachet) || "";
+  const signature = (moi && signataire.signature) || "";
+  return {
+    cachet,
+    cachetTaille: cachet ? normaliserTailleCachet(signataire.taille) : 1,
+    cachetDecalage: normaliserDecalageCachet(cachet ? signataire.decalage : null),
+    signature,
+    signatureTaille: signature ? normaliserTailleCachet(signataire.signatureTaille) : 1,
+    signatureDecalage: normaliserDecalageCachet(signature ? signataire.signatureDecalage : null),
+  };
+}
 
 // Nom que l'école a DONNÉ au poste (ecoles.extra.libellesPostes, recopié par
 // sauverPoste et par la matrice). Les libellés d'origine des postes système
@@ -197,9 +204,7 @@ function resoudre(schoolInfo, doc, emplacement, valeur, section, signataire) {
           || (nom ? getRoleLabelForSchool(cleSection, schoolInfo) : libelleRolePersonnalise(schoolInfo, cleSection))
           || titreHabituel || titrePosteSysteme(cleSection),
         nom,
-        cachet: cachetPourPoste(cleSection, signataire),
-        cachetTaille: tailleCachetPourPoste(cleSection, signataire),
-        cachetDecalage: decalageCachetPourPoste(cleSection, signataire),
+        ...imagesPourPoste(cleSection, signataire),
       };
     }
     // Section inconnue (document sans élève rattaché) : la direction.
@@ -210,9 +215,7 @@ function resoudre(schoolInfo, doc, emplacement, valeur, section, signataire) {
         || (nomDirection && getRoleLabelForSchool("direction", schoolInfo))
         || titreHabituel || titrePosteSysteme("direction"),
       nom: nomDirection,
-      cachet: cachetPourPoste("direction", signataire),
-      cachetTaille: tailleCachetPourPoste("direction", signataire),
-      cachetDecalage: decalageCachetPourPoste("direction", signataire),
+      ...imagesPourPoste("direction", signataire),
     };
   }
 
@@ -224,20 +227,20 @@ function resoudre(schoolInfo, doc, emplacement, valeur, section, signataire) {
       || titrePosteSysteme(valeur)
       || String(schoolInfo?.libellesPostes?.[valeur] || valeur),
     nom: nomPourPoste(schoolInfo, valeur, signataire),
-    cachet: cachetPourPoste(valeur, signataire),
-    cachetTaille: tailleCachetPourPoste(valeur, signataire),
-    cachetDecalage: decalageCachetPourPoste(valeur, signataire),
+    ...imagesPourPoste(valeur, signataire),
   };
 }
 
 // Signataires d'un document, dans l'ordre : principal, puis visa éventuel.
 // Chaque entrée : { role: "principal" | "visa", cle, titre, nom, cachet,
-// cachetTaille, cachetDecalage }.
+// cachetTaille, cachetDecalage, signature, signatureTaille, signatureDecalage }.
 // `cachet` : URL du cachet personnel du compte qui imprime, s'il occupe ce
 // poste ; vide sinon. `cachetTaille` : sa taille réglée (1 sans cachet) ;
-// `cachetDecalage` : sa position { x, y } (centré sans cachet).
+// `cachetDecalage` : sa position { x, y } (centré sans cachet). Les mêmes
+// pour `signature`, sa signature déposée à part (voir imagesSignataire).
 // `section` : section de l'élève ou de la classe (documents « section »).
-// `signataire` : compte qui imprime, { cle, nom, cachet, taille, decalage } — par défaut celui de
+// `signataire` : compte qui imprime, { cle, nom, cachet, taille, decalage,
+// signature, signatureTaille, signatureDecalage } — par défaut celui de
 // la session ; null pour ignorer ce qui est propre aux comptes (aperçu
 // générique).
 export function signatairesDocument(schoolInfo = {}, typeDocument, { section = "", signataire = signataireSession() } = {}) {
@@ -280,29 +283,62 @@ export const identiteHTML = ({ titre, nom } = {}) => (nom
 const echapperAttr = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => (
   { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-export const cachetHTML = (url, { hauteur = "18mm", lignes = 2, taille = 1, decalage = null } = {}) => {
-  if (!url) return "";
+// Géométrie d'une image dans l'espace à signer : hauteur, débordement
+// au-dessus (marge négative) et en dessous, déplacement réglé.
+function geometrie(hauteur, lignes, taille, decalage) {
   const t = normaliserTailleCachet(taille);
   const h = t === 1 ? hauteur : `calc(${hauteur} * ${t})`;
   const surplus = `(${(lignes * 1.2).toFixed(1)}em - ${h})`; // négatif
   const dessus = partDessusCachet(t);
   const { x, y } = normaliserDecalageCachet(decalage);
-  const deplacement = x || y ? `;transform:translate(calc(${h} * ${x}), calc(${h} * ${y}))` : "";
-  return `<img crossOrigin="anonymous" src="${echapperAttr(url)}" alt="" style="display:block;height:${h};max-width:100%;object-fit:contain;margin:calc(${surplus} * ${dessus}) auto calc(${surplus} * ${Math.round((1 - dessus) * 100) / 100});mix-blend-mode:multiply${deplacement}"/>`;
+  return {
+    h,
+    haut: `calc(${surplus} * ${dessus})`,
+    bas: `calc(${surplus} * ${Math.round((1 - dessus) * 100) / 100})`,
+    deplacement: x || y ? `;transform:translate(calc(${h} * ${x}), calc(${h} * ${y}))` : "",
+  };
+}
+
+export const cachetHTML = (url, { hauteur = "18mm", lignes = 2, taille = 1, decalage = null } = {}) => {
+  if (!url) return "";
+  const g = geometrie(hauteur, lignes, taille, decalage);
+  return `<img crossOrigin="anonymous" src="${echapperAttr(url)}" alt="" style="display:block;height:${g.h};max-width:100%;object-fit:contain;margin:${g.haut} auto ${g.bas};mix-blend-mode:multiply${g.deplacement}"/>`;
+};
+
+// Images personnelles d'un signataire (entrée de signatairesDocument) :
+// le cachet, puis la signature déposée à part — [{ url, taille, decalage }].
+export const imagesSignataire = (s) => [
+  { url: s?.cachet, taille: s?.cachetTaille, decalage: s?.cachetDecalage },
+  { url: s?.signature, taille: s?.signatureTaille, decalage: s?.signatureDecalage },
+].filter((image) => image.url);
+
+// Une image : rendu de cachetHTML. Le cachet ET la signature : chacun à sa
+// taille et à sa position, posés dans la même hauteur de `lignes` lignes
+// (même débordement, même calcul) — la page ne s'allonge pas davantage. Les
+// encres se mêlent (multiply) : peu importe laquelle est dessus.
+export const imagesHTML = (images = [], { hauteur = "18mm", lignes = 2 } = {}) => {
+  if (images.length < 2) return images[0] ? cachetHTML(images[0].url, { hauteur, lignes, taille: images[0].taille, decalage: images[0].decalage }) : "";
+  const calques = images.map(({ url, taille, decalage }) => {
+    const g = geometrie(hauteur, lignes, taille, decalage);
+    return `<img crossOrigin="anonymous" src="${echapperAttr(url)}" alt="" style="position:absolute;left:0;right:0;top:${g.haut};height:${g.h};max-width:100%;object-fit:contain;margin:0 auto;mix-blend-mode:multiply${g.deplacement}"/>`;
+  });
+  return `<div style="position:relative;height:${(lignes * 1.2).toFixed(1)}em">${calques.join("")}</div>`;
 };
 
 // `vide` : l'espace blanc du gabarit (« <br/><br/><br/> » : fin de la ligne du
-// nom, puis deux lignes vides), gardé tel quel sans cachet.
+// nom, puis deux lignes vides), gardé tel quel sans cachet ni signature.
 export const cachetOuEspace = (signataire, vide = "<br/><br/><br/>", hauteur = "18mm") => {
-  if (!signataire?.cachet) return vide;
+  const images = imagesSignataire(signataire);
+  if (!images.length) return vide;
   const lignes = Math.max(1, (vide.match(/<br/g) || []).length - 1);
-  return cachetHTML(signataire.cachet, { hauteur, lignes, taille: signataire.cachetTaille, decalage: signataire.cachetDecalage });
+  return imagesHTML(images, { hauteur, lignes });
 };
 
 // Blocs de signature d'un document. `bloc(identite, signataire)` fabrique UN
 // bloc dans le gabarit du document ; il reçoit le rôle pour réserver par
-// exemple le cachet au signataire principal, et `signataire.cachet` (cachet
-// personnel du compte qui imprime, voir cachetOuEspace).
+// exemple le cachet au signataire principal, et les images personnelles du
+// compte qui imprime (`signataire.cachet`, `signataire.signature`, voir
+// cachetOuEspace).
 export const blocsSignatures = (schoolInfo, typeDocument, bloc, options = {}) =>
   signatairesDocument(schoolInfo, typeDocument, options)
     .map((signataire) => bloc(identiteHTML(signataire), signataire))
