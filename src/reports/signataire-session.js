@@ -38,15 +38,34 @@ export function normaliserTailleCachet(valeur) {
 export const partDessusCachet = (taille) =>
   Math.round((0.3 + 0.2 * Math.min(1, Math.max(0, normaliserTailleCachet(taille) - 1))) * 100) / 100;
 
-// `compte` : { cle, nom, cachet, taille } — clé du poste du compte, nom qu'il
-// imprime, URL de son cachet et sa taille. Poste manquant, ou ni nom ni
-// cachet : aucun signataire de session.
+// Position du cachet, réglée par son titulaire (comptes.cachet_dx / cachet_dy) :
+// décalage depuis sa place centrée, en fraction de la HAUTEUR du cachet
+// imprimé — vers la droite (x) et vers le bas (y). Le même réglage place donc
+// le cachet au même endroit relatif sur tous les documents, à toute taille.
+// Écart maximal de part et d'autre du centre : une hauteur en largeur, une
+// demi-hauteur en hauteur (plus bas, il mordrait sur le second coupon d'un
+// reçu). Bornes identiques à la contrainte SQL.
+export const DECALAGE_CACHET = Object.freeze({ x: 1, y: 0.5 });
+const normaliserAxe = (valeur, borne) => {
+  const n = Number(valeur);
+  if (valeur === null || valeur === "" || !Number.isFinite(n)) return 0;
+  return Math.round(Math.min(borne, Math.max(-borne, n)) * 100) / 100 || 0;
+};
+export const normaliserDecalageCachet = (decalage) => ({
+  x: normaliserAxe(decalage?.x, DECALAGE_CACHET.x),
+  y: normaliserAxe(decalage?.y, DECALAGE_CACHET.y),
+});
+
+// `compte` : { cle, nom, cachet, taille, decalage } — clé du poste du compte,
+// nom qu'il imprime, URL de son cachet, sa taille et sa position. Poste
+// manquant, ou ni nom ni cachet : aucun signataire de session.
 export function definirSignataireSession(compte) {
   const cle = String(compte?.cle || "").trim();
   const nom = String(compte?.nom || "").trim();
   const cachet = String(compte?.cachet || "").trim();
   const taille = normaliserTailleCachet(compte?.taille);
-  courant = cle && (nom || cachet) ? { cle, nom, cachet, taille } : null;
+  const decalage = normaliserDecalageCachet(compte?.decalage);
+  courant = cle && (nom || cachet) ? { cle, nom, cachet, taille, decalage } : null;
 }
 
 export const signataireSession = () => courant;

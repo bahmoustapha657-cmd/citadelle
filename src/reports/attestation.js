@@ -259,7 +259,7 @@ export const imprimerAttestation = async (eleve, niveau, annee, schoolInfo = {},
     ${visa ? `<div class="sig visa">${identiteHTML(visa)}${cachetOuEspace(visa)}${tr("reports.signature")}</div>` : ""}
     <div class="sig">${identiteHTML(signataire)}${signataire.cachet
       // Cachet personnel déposé par le signataire : il remplace le tampon dessiné.
-      ? cachetHTML(signataire.cachet, { hauteur: "22mm", lignes: 3, taille: signataire.cachetTaille })
+      ? cachetHTML(signataire.cachet, { hauteur: "22mm", lignes: 3, taille: signataire.cachetTaille, decalage: signataire.cachetDecalage })
       : `<br/><div class="stamp">${schoolInfo.nom || ""}</div>`}</div>
   </div>
   <div class="devise">${schoolInfo.devise || "Travail – Rigueur – Réussite"}</div>

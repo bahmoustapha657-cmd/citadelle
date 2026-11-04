@@ -8,7 +8,7 @@ import { getNationalDeviseHTML } from "../../national-symbols.js";
 import { getOfficialLegalFooterHTML, legalProfileVide, mapNiveauToCycle, resolveLegalFields } from "../../legal-utils.js";
 import { MINISTERE_DEFAUT, edugestBrandHTML, orDefault } from "../print-helpers.js";
 import { blocsSignatures } from "../signatures.js";
-import { normaliserTailleCachet } from "../signataire-session.js";
+import { normaliserDecalageCachet, normaliserTailleCachet } from "../signataire-session.js";
 import { PERIODE_ANNEE } from "./annual-notes.js";
 
 export const echapper = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => (
@@ -114,9 +114,10 @@ export const sectionPrimaire = (niveau) => SECTIONS_PRIMAIRE.has(String(niveau |
 // l'école, signé par ceux qui l'établissent.
 // Le cachet personnel du chef de section, quand c'est lui qui imprime ; à
 // défaut, la signature scannée de l'école revient au signataire principal.
-// `bloc({ titre, note, image, taille, cachet })` fabrique un bloc dans le
-// gabarit ; `taille` : celle du cachet personnel réglée par son titulaire (1
-// pour la signature de l'école) ; `cachet` marque le signataire principal,
+// `bloc({ titre, note, image, taille, decalage, cachet })` fabrique un bloc
+// dans le gabarit ; `taille` et `decalage` : taille et position du cachet
+// personnel réglées par son titulaire (1 et centrée pour la signature de
+// l'école) ; `cachet` marque le signataire principal,
 // qui appose le cachet de l'école (Prestige lui réserve une place quand aucune
 // image ne s'imprime).
 export function signaturesBulletin(schoolInfo, niveau, bloc) {
@@ -127,6 +128,7 @@ export function signaturesBulletin(schoolInfo, niveau, bloc) {
       note: s.role === "principal" ? "Cachet et signature" : "Visa",
       image: s.cachet || (s.role === "principal" && schoolInfo.signatureUrl ? schoolInfo.signatureUrl : ""),
       taille: s.cachet ? s.cachetTaille : 1,
+      decalage: s.cachet ? s.cachetDecalage : null,
       cachet: s.role === "principal",
     }), { section: niveau }),
   ].join("");
@@ -135,12 +137,18 @@ export function signaturesBulletin(schoolInfo, niveau, bloc) {
 // Image de signature (12 mm). `taille` ≠ 1 : plus grande ou plus petite, mais
 // la place qu'elle occupe reste celle de 12 mm — le surplus déborde à moitié
 // au-dessus, à moitié en dessous, et le bulletin garde sa page unique.
-export const imageSignature = (url, taille = 1) => {
+// `decalage` { x, y } : position réglée par le titulaire, en fraction de la
+// hauteur de l'image — simple déplacement, la place occupée ne change pas.
+export const imageSignature = (url, taille = 1, decalage = null) => {
   if (!url) return "";
   const t = normaliserTailleCachet(taille);
   const debord = (t - 1) * 6; // mm de chaque côté (négatif si plus petite)
   const marges = t === 1 ? "1mm auto 0" : `${(1 - debord).toFixed(1)}mm auto ${(-debord).toFixed(1)}mm`;
-  return `<img crossOrigin="anonymous" src="${echapper(url)}" alt="" style="display:block;height:${Math.round(120 * t) / 10}mm;max-width:90%;object-fit:contain;margin:${marges};mix-blend-mode:multiply"/>`;
+  const hauteur = Math.round(120 * t) / 10;
+  const { x, y } = normaliserDecalageCachet(decalage);
+  const mm = (f) => `${Math.round(hauteur * f * 10) / 10}mm`;
+  const deplacement = x || y ? `;transform:translate(${mm(x)}, ${mm(y)})` : "";
+  return `<img crossOrigin="anonymous" src="${echapper(url)}" alt="" style="display:block;height:${hauteur}mm;max-width:90%;object-fit:contain;margin:${marges};mix-blend-mode:multiply${deplacement}"/>`;
 };
 
 // Mentions de bas de page : n° du bulletin, exemplaire unique, arrêté

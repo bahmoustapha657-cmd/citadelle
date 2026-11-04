@@ -85,7 +85,8 @@ export default function App() {
   // worker le garde alors pour imprimer hors ligne.
   useEffect(() => {
     definirSignataireSession(utilisateur
-      ? { cle: utilisateur.posteCle || utilisateur.role, nom: utilisateur.nomSignature, cachet: utilisateur.cachetUrl, taille: utilisateur.cachetTaille }
+      ? { cle: utilisateur.posteCle || utilisateur.role, nom: utilisateur.nomSignature, cachet: utilisateur.cachetUrl,
+          taille: utilisateur.cachetTaille, decalage: utilisateur.cachetDecalage }
       : null);
     if (utilisateur?.cachetUrl) {
       const img = new Image();

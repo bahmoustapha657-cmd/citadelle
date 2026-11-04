@@ -18,7 +18,7 @@
 import { getRoleLabelForSchool } from "../constants.js";
 import { getDefaultPoste } from "../../shared/postes-config.js";
 import { tr } from "./print-helpers.js";
-import { normaliserTailleCachet, partDessusCachet, signataireSession } from "./signataire-session.js";
+import { normaliserDecalageCachet, normaliserTailleCachet, partDessusCachet, signataireSession } from "./signataire-session.js";
 
 export const SECTION = "section";
 
@@ -107,6 +107,9 @@ const cachetPourPoste = (cle, signataire) =>
 // Sa taille, réglée par le titulaire (1 sans cachet).
 const tailleCachetPourPoste = (cle, signataire) =>
   (cachetPourPoste(cle, signataire) ? normaliserTailleCachet(signataire.taille) : 1);
+// Sa position, réglée par le titulaire (centré sans cachet).
+const decalageCachetPourPoste = (cle, signataire) =>
+  normaliserDecalageCachet(cachetPourPoste(cle, signataire) ? signataire.decalage : null);
 
 // Nom que l'école a DONNÉ au poste (ecoles.extra.libellesPostes, recopié par
 // sauverPoste et par la matrice). Les libellés d'origine des postes système
@@ -196,6 +199,7 @@ function resoudre(schoolInfo, doc, emplacement, valeur, section, signataire) {
         nom,
         cachet: cachetPourPoste(cleSection, signataire),
         cachetTaille: tailleCachetPourPoste(cleSection, signataire),
+        cachetDecalage: decalageCachetPourPoste(cleSection, signataire),
       };
     }
     // Section inconnue (document sans élève rattaché) : la direction.
@@ -208,6 +212,7 @@ function resoudre(schoolInfo, doc, emplacement, valeur, section, signataire) {
       nom: nomDirection,
       cachet: cachetPourPoste("direction", signataire),
       cachetTaille: tailleCachetPourPoste("direction", signataire),
+      cachetDecalage: decalageCachetPourPoste("direction", signataire),
     };
   }
 
@@ -221,16 +226,18 @@ function resoudre(schoolInfo, doc, emplacement, valeur, section, signataire) {
     nom: nomPourPoste(schoolInfo, valeur, signataire),
     cachet: cachetPourPoste(valeur, signataire),
     cachetTaille: tailleCachetPourPoste(valeur, signataire),
+    cachetDecalage: decalageCachetPourPoste(valeur, signataire),
   };
 }
 
 // Signataires d'un document, dans l'ordre : principal, puis visa éventuel.
 // Chaque entrée : { role: "principal" | "visa", cle, titre, nom, cachet,
-// cachetTaille }.
+// cachetTaille, cachetDecalage }.
 // `cachet` : URL du cachet personnel du compte qui imprime, s'il occupe ce
-// poste ; vide sinon. `cachetTaille` : sa taille réglée (1 sans cachet).
+// poste ; vide sinon. `cachetTaille` : sa taille réglée (1 sans cachet) ;
+// `cachetDecalage` : sa position { x, y } (centré sans cachet).
 // `section` : section de l'élève ou de la classe (documents « section »).
-// `signataire` : compte qui imprime, { cle, nom, cachet, taille } — par défaut celui de
+// `signataire` : compte qui imprime, { cle, nom, cachet, taille, decalage } — par défaut celui de
 // la session ; null pour ignorer ce qui est propre aux comptes (aperçu
 // générique).
 export function signatairesDocument(schoolInfo = {}, typeDocument, { section = "", signataire = signataireSession() } = {}) {
@@ -267,16 +274,21 @@ export const identiteHTML = ({ titre, nom } = {}) => (nom
 // `hauteur` prévue par le document. Plus grand, le cachet déborde davantage
 // SANS allonger la page, et se recentre peu à peu sur l'espace à signer
 // (partDessusCachet).
+// `decalage` : position choisie par le titulaire, { x, y } en fraction de la
+// hauteur du cachet (vers la droite, vers le bas). Un simple déplacement à
+// l'écran (transform) : la place réservée dans la page, elle, ne bouge pas.
 const echapperAttr = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => (
   { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-export const cachetHTML = (url, { hauteur = "18mm", lignes = 2, taille = 1 } = {}) => {
+export const cachetHTML = (url, { hauteur = "18mm", lignes = 2, taille = 1, decalage = null } = {}) => {
   if (!url) return "";
   const t = normaliserTailleCachet(taille);
   const h = t === 1 ? hauteur : `calc(${hauteur} * ${t})`;
   const surplus = `(${(lignes * 1.2).toFixed(1)}em - ${h})`; // négatif
   const dessus = partDessusCachet(t);
-  return `<img crossOrigin="anonymous" src="${echapperAttr(url)}" alt="" style="display:block;height:${h};max-width:100%;object-fit:contain;margin:calc(${surplus} * ${dessus}) auto calc(${surplus} * ${Math.round((1 - dessus) * 100) / 100});mix-blend-mode:multiply"/>`;
+  const { x, y } = normaliserDecalageCachet(decalage);
+  const deplacement = x || y ? `;transform:translate(calc(${h} * ${x}), calc(${h} * ${y}))` : "";
+  return `<img crossOrigin="anonymous" src="${echapperAttr(url)}" alt="" style="display:block;height:${h};max-width:100%;object-fit:contain;margin:calc(${surplus} * ${dessus}) auto calc(${surplus} * ${Math.round((1 - dessus) * 100) / 100});mix-blend-mode:multiply${deplacement}"/>`;
 };
 
 // `vide` : l'espace blanc du gabarit (« <br/><br/><br/> » : fin de la ligne du
@@ -284,7 +296,7 @@ export const cachetHTML = (url, { hauteur = "18mm", lignes = 2, taille = 1 } = {
 export const cachetOuEspace = (signataire, vide = "<br/><br/><br/>", hauteur = "18mm") => {
   if (!signataire?.cachet) return vide;
   const lignes = Math.max(1, (vide.match(/<br/g) || []).length - 1);
-  return cachetHTML(signataire.cachet, { hauteur, lignes, taille: signataire.cachetTaille });
+  return cachetHTML(signataire.cachet, { hauteur, lignes, taille: signataire.cachetTaille, decalage: signataire.cachetDecalage });
 };
 
 // Blocs de signature d'un document. `bloc(identite, signataire)` fabrique UN
