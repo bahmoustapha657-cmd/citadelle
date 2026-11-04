@@ -348,8 +348,6 @@
   "src/components/transferts/TransfertsSortants.jsx": 23,
   "src/components/transferts/use-transferts.js": 12,
   "src/components/ui.jsx": 9,
-  "src/components/update-banner/AutoReloadToast.jsx": 1,
-  "src/components/update-banner/UpdateAvailableBanner.jsx": 2,
   "src/components/upgrade-modal/EtapeAttente.jsx": 8,
   "src/components/upgrade-modal/EtapeChoix.jsx": 8,
   "src/components/upgrade-modal/EtapeInstructions.jsx": 13,

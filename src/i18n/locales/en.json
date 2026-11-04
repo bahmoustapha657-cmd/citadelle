@@ -1776,5 +1776,11 @@
   },
   "ui": {
     "readOnlyBanner": "<b>Read-only mode</b> — you can view but not change anything."
+  },
+  "update": {
+    "available": "A new version of EduGest is available. It will install itself once you have finished.",
+    "later": "Later",
+    "reload": "Reload",
+    "reloading": "Update available — reloading…"
   }
 }
