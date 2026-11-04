@@ -121,6 +121,8 @@ async function chargerCompte(sb, userId, schoolCode) {
     cachetUrl: c.cachet_url || "",
     // Sa taille à l'impression (facteur, 1 = taille prévue par le document).
     cachetTaille: Number(c.cachet_taille) || 1,
+    // Sa position dans le bloc de signature (fraction de sa hauteur ; 0 = centré).
+    cachetDecalage: { x: Number(c.cachet_dx) || 0, y: Number(c.cachet_dy) || 0 },
     role: c.role,
     label: c.poste?.label || c.label || c.role,
     // Poste flexible : permissions par module (null = compte legacy, repli

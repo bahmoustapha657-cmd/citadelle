@@ -4,14 +4,15 @@
 // <code_ecole>/cachets/…) et son URL dans comptes.cachet_url, que seul le
 // titulaire du compte peut écrire (trigger comptes_cachet_guard) — la
 // Direction ne peut ni la poser ni la changer à sa place. Même règle pour sa
-// taille à l'impression (comptes.cachet_taille).
+// taille et sa position à l'impression (comptes.cachet_taille, cachet_dx,
+// cachet_dy).
 import { getSupabase } from "../supabaseClient";
 import { supprimerFichier, uploadImage } from "../storageUtils";
-import { normaliserTailleCachet } from "../reports/signataire-session";
+import { normaliserDecalageCachet, normaliserTailleCachet } from "../reports/signataire-session";
 
 const messageErreur = (error) => {
   const brut = String(error?.message || "");
-  if (/cachet_(url|taille)/.test(brut) && /column|colonne|schema cache/i.test(brut)) {
+  if (/cachet_\w+/.test(brut) && /column|colonne|schema cache/i.test(brut)) {
     return "Le dépôt du cachet n'est pas encore disponible sur le serveur. Réessayez après la prochaine mise à jour.";
   }
   if (error?.code === "42501" || /titulaire/i.test(brut)) {
@@ -30,16 +31,23 @@ async function ecrire(compteId, champs) {
   }
 }
 
+// Colonnes de la taille et de la position, normalisées comme à l'impression.
+const colonnesPlacement = (taille, decalage) => {
+  const { x, y } = normaliserDecalageCachet(decalage);
+  return { cachet_taille: normaliserTailleCachet(taille), cachet_dx: x, cachet_dy: y };
+};
+
 // `image` : data URL (nouveau cachet) ou "" (retirer). `ancienne` : URL du
 // cachet remplacé, effacé du stockage une fois l'enregistrement confirmé.
-// `taille` : facteur à l'impression (remis à 1 si le cachet est retiré).
+// `taille`, `decalage` : taille et position à l'impression (remises à 1 et au
+// centre si le cachet est retiré).
 // Renvoie l'URL enregistrée ("" si retiré). Réseau requis : l'image doit être
 // en ligne pour que les autres appareils du titulaire l'impriment aussi.
-export async function enregistrerMonCachet({ compteId, schoolId, image, ancienne = "", taille = 1 }) {
+export async function enregistrerMonCachet({ compteId, schoolId, image, ancienne = "", taille = 1, decalage = null }) {
   if (!compteId || !schoolId) throw new Error("Compte inconnu : reconnectez-vous.");
   const url = image ? await uploadImage(image, schoolId, "cachets") : "";
   try {
-    await ecrire(compteId, { cachet_url: url || null, cachet_taille: url ? normaliserTailleCachet(taille) : 1 });
+    await ecrire(compteId, { cachet_url: url || null, ...colonnesPlacement(url ? taille : 1, url ? decalage : null) });
   } catch (e) {
     if (url && url !== ancienne) supprimerFichier(url);
     throw e;
@@ -48,11 +56,11 @@ export async function enregistrerMonCachet({ compteId, schoolId, image, ancienne
   return url;
 }
 
-// Seule la taille du cachet déjà déposé change : pas de nouvelle photo.
-// Renvoie la taille enregistrée.
-export async function enregistrerTailleCachet({ compteId, taille }) {
+// Seules la taille et la position du cachet déjà déposé changent : pas de
+// nouvelle photo. Renvoie { taille, decalage } enregistrés.
+export async function enregistrerPlacementCachet({ compteId, taille, decalage }) {
   if (!compteId) throw new Error("Compte inconnu : reconnectez-vous.");
-  const t = normaliserTailleCachet(taille);
-  await ecrire(compteId, { cachet_taille: t });
-  return t;
+  const colonnes = colonnesPlacement(taille, decalage);
+  await ecrire(compteId, colonnes);
+  return { taille: colonnes.cachet_taille, decalage: { x: colonnes.cachet_dx, y: colonnes.cachet_dy } };
 }

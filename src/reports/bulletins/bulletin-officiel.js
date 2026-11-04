@@ -58,8 +58,8 @@ export function buildBulletinOfficielHTML(ctx) {
     ...(estAnnuel ? DECISIONS_FIN_ANNEE : SANCTIONS).map((s) => caseCochee(s, false)),
   ].join("");
 
-  const sigs = signaturesBulletin(si, niveau, ({ titre, note, image, taille }) =>
-    `<div class="sig">${titre}<small>${note}</small>${imageSignature(image, taille)}</div>`);
+  const sigs = signaturesBulletin(si, niveau, ({ titre, note, image, taille, decalage }) =>
+    `<div class="sig">${titre}<small>${note}</small>${imageSignature(image, taille, decalage)}</div>`);
 
   return `
   <div class="page pro bo ${densite}" style="--c1:${ctx.c1};--c2:${ctx.c2}">
