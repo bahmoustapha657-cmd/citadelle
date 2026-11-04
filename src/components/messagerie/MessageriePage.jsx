@@ -1,4 +1,5 @@
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { useMessagerie } from "./messagerie-contexte";
 import { ListeAnnonces, ListeConversations } from "./ListesMessagerie";
@@ -41,6 +42,7 @@ function useLargeur(ref) {
 //  Page Messagerie : discussions (directes, groupes) et annonces
 // ══════════════════════════════════════════════════════════════
 export function MessageriePage({ utilisateur, hauteur = "100%" }) {
+  const { t } = useTranslation();
   const m = useMessagerie();
   const { schoolInfo } = useContext(SchoolContext);
   const couleurs = couleursEcoleMessagerie(schoolInfo?.couleur1);
@@ -74,7 +76,7 @@ export function MessageriePage({ utilisateur, hauteur = "100%" }) {
   }, [m, recherche]);
 
   if (!m) {
-    return <p style={{ padding: 24, color: "var(--lc-text-muted)" }}>Messagerie indisponible pour ce compte.</p>;
+    return <p style={{ padding: 24, color: "var(--lc-text-muted)" }}>{t("msg.page.unavailable")}</p>;
   }
 
   const convActive = m.convActiveId ? m.boiteParId.get(m.convActiveId) : null;
@@ -87,19 +89,19 @@ export function MessageriePage({ utilisateur, hauteur = "100%" }) {
       <BandeauNotifications notifications={m.notifications} />
       <div style={{ display: "flex", borderBottom: "1px solid var(--lc-border)" }}>
         <button type="button" style={onglet(vue === "discussions")} onClick={() => setVue("discussions")}>
-          💬 Discussions {m.nonLusDiscussions > 0 && <span style={badge}>{m.nonLusDiscussions}</span>}
+          💬 {t("msg.page.conversations")} {m.nonLusDiscussions > 0 && <span style={badge}>{m.nonLusDiscussions}</span>}
         </button>
         <button type="button" style={onglet(vue === "annonces")} onClick={() => setVue("annonces")}>
-          📣 Annonces {m.annoncesNonLues > 0 && <span style={badge}>{m.annoncesNonLues}</span>}
+          📣 {t("msg.page.announcements")} {m.annoncesNonLues > 0 && <span style={badge}>{m.annoncesNonLues}</span>}
         </button>
       </div>
       <div style={{ display: "flex", gap: 8, padding: "10px 10px 8px" }}>
-        <input value={recherche} onChange={(e) => setRecherche(e.target.value)} placeholder="🔍 Rechercher…" style={champ} />
+        <input value={recherche} onChange={(e) => setRecherche(e.target.value)} placeholder={`🔍 ${t("msg.page.searchPlaceholder")}`} style={champ} />
         {(vue === "discussions" || publier) && (
           <button type="button" onClick={() => setModale(vue === "discussions" ? "discussion" : "annonce")}
-            title={vue === "discussions" ? "Nouvelle discussion" : "Nouvelle annonce"}
+            title={vue === "discussions" ? t("msg.list.newConversation") : t("msg.page.newAnnouncement")}
             style={{ flexShrink: 0, border: "none", borderRadius: 9, padding: "0 12px", cursor: "pointer", background: "linear-gradient(135deg,var(--sc1),var(--sc1-dk))", color: "var(--msg-encre, #fff)", fontWeight: 800, fontSize: 13 }}>
-            {vue === "discussions" ? "✍️" : "📣"}{etroit ? "" : " Nouveau"}
+            {vue === "discussions" ? "✍️" : "📣"}{etroit ? "" : ` ${t("msg.list.new")}`}
           </button>
         )}
       </div>
@@ -111,7 +113,7 @@ export function MessageriePage({ utilisateur, hauteur = "100%" }) {
       )}
       <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
         {!m.pret ? (
-          <p style={{ padding: 20, textAlign: "center", fontSize: 12.5, color: "var(--lc-text-faint)" }}>Chargement…</p>
+          <p style={{ padding: 20, textAlign: "center", fontSize: 12.5, color: "var(--lc-text-faint)" }}>{t("msg.page.loading")}</p>
         ) : vue === "discussions" ? (
           <ListeConversations m={m} conversations={conversations} activeId={m.convActiveId} onOuvrir={m.ouvrirConversation} />
         ) : (
@@ -121,7 +123,7 @@ export function MessageriePage({ utilisateur, hauteur = "100%" }) {
       {vue === "discussions" && (nbArchivees > 0 || archivees) && (
         <button type="button" onClick={() => setArchivees((v) => !v)}
           style={{ border: "none", borderTop: "1px solid var(--lc-border)", background: "var(--lc-surface-alt)", padding: "9px", cursor: "pointer", fontSize: 12, fontWeight: 700, color: "var(--lc-text-muted)" }}>
-          {archivees ? "← Discussions" : `🗄️ Archivées (${nbArchivees})`}
+          {archivees ? `← ${t("msg.page.conversations")}` : `🗄️ ${t("msg.page.archived", { count: nbArchivees })}`}
         </button>
       )}
     </div>
@@ -140,11 +142,11 @@ export function MessageriePage({ utilisateur, hauteur = "100%" }) {
         ? (convActive
           ? <VueConversation key={convActive.id} m={m} conv={convActive} etroit={etroit} onRetour={() => m.ouvrirConversation(null)} onGererGroupe={() => setModale("groupe")} />
           : vide("💬", estParent(utilisateur)
-            ? "Choisissez une discussion, ou écrivez à l'école avec ✍️."
-            : "Choisissez une discussion, ou écrivez à un collègue avec ✍️."))
+            ? t("msg.page.emptyParent")
+            : t("msg.page.emptyStaff")))
         : (annonceActive
           ? <VueAnnonce m={m} annonce={annonceActive} utilisateur={utilisateur} etroit={etroit} onRetour={() => setAnnonceId(null)} />
-          : vide("📣", publier ? "Les annonces de l'école s'affichent ici. Publiez-en une avec 📣." : "Les annonces de l'école s'affichent ici."))}
+          : vide("📣", publier ? `${t("msg.page.announcementsHere")} ${t("msg.page.publishHint")}` : t("msg.page.announcementsHere")))}
     </div>
   );
 

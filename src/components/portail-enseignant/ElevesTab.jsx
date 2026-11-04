@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { nettoyerSurnom } from "../../identite-enfant";
 import { Badge, Btn, Card, TD, THead, TR, Vide } from "../ui";
 import { EnfantAgrandi } from "../identite-enfant/EnfantAgrandi";
@@ -10,29 +11,30 @@ export function ElevesTab({ c1, mesClasses, eleves, ouvrirSignalementEleve, scho
   // nom : le trombinoscope s'ouvre d'office. Ailleurs, la liste.
   const [vue, setVue] = useState(section === "prescolaire" ? "trombi" : "liste");
   const [agrandi, setAgrandi] = useState(null);
+  const { t } = useTranslation();
   return (
     <>
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", margin: "0 0 16px" }}>
-        <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900, color: c1, flex: 1 }}>Mes eleves ({eleves.length})</h2>
+        <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900, color: c1, flex: 1 }}>{t("teacher.students.title", { count: eleves.length })}</h2>
         {mesClasses.length > 0 && <span style={{ display: "inline-flex", gap: 4 }}>
-          <Btn sm v={vue === "liste" ? "blue" : "ghost"} onClick={() => setVue("liste")}>📋 Liste</Btn>
-          <Btn sm v={vue === "trombi" ? "blue" : "ghost"} onClick={() => setVue("trombi")}>🖼️ Trombinoscope</Btn>
+          <Btn sm v={vue === "liste" ? "blue" : "ghost"} onClick={() => setVue("liste")}>📋 {t("teacher.students.list")}</Btn>
+          <Btn sm v={vue === "trombi" ? "blue" : "ghost"} onClick={() => setVue("trombi")}>🖼️ {t("teacher.students.photoBoard")}</Btn>
         </span>}
       </div>
       {mesClasses.length === 0 ? (
-        <Vide icone="Eleves" msg="Aucune classe assignee dans l'emploi du temps" />
+        <Vide icone="👥" msg={t("teacher.students.noClass")} />
       ) : vue === "trombi" ? (
         <Trombinoscope eleves={eleves} schoolInfo={schoolInfo} annee={annee} />
       ) : (
         <>
           <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
             {mesClasses.map((classe) => (
-              <Badge key={classe} color="blue">{classe} - {eleves.filter((eleveItem) => eleveItem.classe === classe).length} eleve(s)</Badge>
+              <Badge key={classe} color="blue">{t("teacher.students.countInClass", { classe, count: eleves.filter((eleveItem) => eleveItem.classe === classe).length })}</Badge>
             ))}
           </div>
           <Card>
             <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
-              <THead cols={["Matricule", "Nom et prenom", "Classe", "Sexe", "Statut", "Action"]} />
+              <THead cols={[t("teacher.cols.matricule"), t("teacher.cols.fullName"), t("teacher.cols.class"), t("teacher.cols.sex"), t("teacher.cols.status"), t("teacher.cols.action")]} />
               <tbody>
                 {eleves.map((eleveItem) => (
                   <TR key={eleveItem._id}>
@@ -48,9 +50,9 @@ export function ElevesTab({ c1, mesClasses, eleves, ouvrirSignalementEleve, scho
                     </TD>
                     <TD><Badge color="blue">{eleveItem.classe}</Badge></TD>
                     <TD><Badge color={eleveItem.sexe === "F" ? "vert" : "blue"}>{eleveItem.sexe}</Badge></TD>
-                    <TD><Badge color={eleveItem.statut === "Actif" ? "vert" : "gray"}>{eleveItem.statut || "Actif"}</Badge></TD>
+                    <TD><Badge color={eleveItem.statut === "Actif" ? "vert" : "gray"}>{eleveItem.statut && eleveItem.statut !== "Actif" ? eleveItem.statut : t("teacher.students.active")}</Badge></TD>
                     <TD>
-                      <Btn sm v="amber" onClick={() => ouvrirSignalementEleve(eleveItem)}>⚠️ Signaler</Btn>
+                      <Btn sm v="amber" onClick={() => ouvrirSignalementEleve(eleveItem)}>⚠️ {t("teacher.students.report")}</Btn>
                     </TD>
                   </TR>
                 ))}
@@ -58,7 +60,7 @@ export function ElevesTab({ c1, mesClasses, eleves, ouvrirSignalementEleve, scho
             </table></div>
           </Card>
           <EnfantAgrandi eleve={agrandi} fermer={() => setAgrandi(null)}
-            actions={agrandi && <Btn sm v="amber" onClick={() => { const e = agrandi; setAgrandi(null); ouvrirSignalementEleve(e); }}>⚠️ Signaler</Btn>} />
+            actions={agrandi && <Btn sm v="amber" onClick={() => { const e = agrandi; setAgrandi(null); ouvrirSignalementEleve(e); }}>⚠️ {t("teacher.students.report")}</Btn>} />
         </>
       )}
     </>

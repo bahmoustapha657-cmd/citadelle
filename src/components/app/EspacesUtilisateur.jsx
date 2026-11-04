@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { changerEspace, mesEspaces } from "../../backend/espaces-supabase";
 import { libelleEspace } from "../../espaces-comptes";
 import { choixDemande, oublierChoix } from "./espaces-choix";
@@ -12,6 +13,7 @@ import { choixDemande, oublierChoix } from "./espaces-choix";
 // enseignant et parent), qui n'ont rien à savoir de ces espaces.
 
 export function EspacesUtilisateur({ utilisateur }) {
+  const { t } = useTranslation();
   const uid = utilisateur?.uid || null;
   const bloque = !uid || utilisateur?.premiereCo;
   // Espaces lus pour un uid donné : un autre compte n'hérite pas de la liste.
@@ -47,14 +49,14 @@ export function EspacesUtilisateur({ utilisateur }) {
       // synchro hors ligne, données), comme après une connexion.
       window.location.reload();
     } catch (err) {
-      setErreur(err.message || "Changement d'espace impossible.");
+      setErreur(err.message || t("shell.spaces.error"));
       setEnCours(null);
     }
   };
 
   return (
     <>
-      <button type="button" onClick={() => setOuvert(true)} title="Changer d'espace" style={{
+      <button type="button" onClick={() => setOuvert(true)} title={t("shell.spaces.switch")} style={{
         position: "fixed", left: 12, bottom: 12, zIndex: 900, display: "flex", alignItems: "center", gap: 6,
         border: "1px solid #c7d2fe", background: "#eef2ff", color: "#3730a3", borderRadius: 999,
         padding: "7px 12px", fontSize: 12, fontWeight: 800, cursor: "pointer", boxShadow: "0 2px 8px rgba(15,23,42,.15)",
@@ -62,12 +64,12 @@ export function EspacesUtilisateur({ utilisateur }) {
         <span>{a.icone}</span><span>{a.titre}</span><span style={{ opacity: 0.7 }}>⇄</span>
       </button>
       {ouvert && (
-        <div role="dialog" aria-modal="true" aria-label="Choisir mon espace" onClick={() => !enCours && setOuvert(false)} style={{
+        <div role="dialog" aria-modal="true" aria-label={t("shell.spaces.chooseMine")} onClick={() => !enCours && setOuvert(false)} style={{
           position: "fixed", inset: 0, zIndex: 1000, background: "rgba(15,23,42,.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
         }}>
           <div onClick={(ev) => ev.stopPropagation()} style={{ background: "#fff", borderRadius: 16, width: "100%", maxWidth: 380, padding: 20, boxShadow: "0 20px 50px rgba(15,23,42,.3)" }}>
-            <div style={{ fontSize: 17, fontWeight: 900, color: "#0f172a" }}>Choisissez votre espace</div>
-            <div style={{ fontSize: 12, color: "#64748b", margin: "4px 0 14px" }}>{actuel.nom} — vous pourrez en changer à tout moment avec le bouton en bas à gauche.</div>
+            <div style={{ fontSize: 17, fontWeight: 900, color: "#0f172a" }}>{t("shell.spaces.choose")}</div>
+            <div style={{ fontSize: 12, color: "#64748b", margin: "4px 0 14px" }}>{t("shell.spaces.hint", { name: actuel.nom })}</div>
             <div style={{ display: "grid", gap: 8 }}>
               {espaces.map((e) => {
                 const l = libelleEspace(e);
@@ -80,7 +82,7 @@ export function EspacesUtilisateur({ utilisateur }) {
                     <span style={{ flex: 1 }}>
                       <span style={{ display: "block", fontSize: 14, fontWeight: 800, color: "#0f172a" }}>{l.titre}</span>
                       <span style={{ display: "block", fontSize: 11, color: "#64748b" }}>
-                        {enCours === e.id ? "Ouverture…" : e.actuel ? "Espace actuel" : "Ouvrir cet espace"}
+                        {enCours === e.id ? t("shell.spaces.opening") : e.actuel ? t("shell.spaces.current") : t("shell.spaces.open")}
                       </span>
                     </span>
                   </button>

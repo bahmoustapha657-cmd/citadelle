@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { C } from "../../constants";
 import { imprimerBulletin } from "../../reports";
 import { BlocagePaiement } from "../BlocagePaiement";
@@ -9,9 +10,10 @@ import { computeBulletinPeriode } from "./portail-parent-derive";
 // telle quelle à l'impression et fixe le barème affiché (maternelle et
 // primaire sur 10).
 export function BulletinsTab({ accesBloqueParPaiement, moisImpayes, schoolInfo, onPaiements, periodes, mesNotes, eleve, eleveNom, section, c1, c2 }) {
+  const { t } = useTranslation();
   return (
     <>
-      <h2 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 900, color: c1 }}>Bulletins</h2>
+      <h2 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 900, color: c1 }}>{t("parent.bullTab.title")}</h2>
       {accesBloqueParPaiement && <BlocagePaiement moisImpayes={moisImpayes} schoolInfo={schoolInfo} onPaiements={onPaiements} />}
       {!accesBloqueParPaiement && <>
         {periodes.map((periode) => {
@@ -21,9 +23,9 @@ export function BulletinsTab({ accesBloqueParPaiement, moisImpayes, schoolInfo, 
           return (
             <Card key={periode} style={{ marginBottom: 12 }}>
               <div style={{ padding: "12px 18px", background: `linear-gradient(135deg,${c1},${c1}cc)`, borderRadius: "14px 14px 0 0", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-                <strong style={{ color: "#fff", fontSize: 14 }}>Bulletin - {periode}</strong>
+                <strong style={{ color: "#fff", fontSize: 14 }}>{t("parent.bullTab.period", { period: periode })}</strong>
                 <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                  <span style={{ background: c2, color: "#fff", fontWeight: 900, fontSize: 13, padding: "4px 14px", borderRadius: 20 }}>Moy. {(moyenne || 0).toFixed(1)}/{maxNote}</span>
+                  <span style={{ background: c2, color: "#fff", fontWeight: 900, fontSize: 13, padding: "4px 14px", borderRadius: 20 }}>{t("parent.average", { value: (moyenne || 0).toFixed(1), max: maxNote })}</span>
                   <button
                     onClick={() => imprimerBulletin(
                       { ...eleve, nom: eleve.nom || eleveNom.split(" ").slice(-1)[0] || eleveNom, prenom: eleve.prenom || eleveNom.split(" ").slice(0, -1).join(" ") },
@@ -36,12 +38,12 @@ export function BulletinsTab({ accesBloqueParPaiement, moisImpayes, schoolInfo, 
                     )}
                     style={{ background: "rgba(255,255,255,0.2)", border: "1px solid rgba(255,255,255,0.4)", color: "#fff", padding: "4px 10px", borderRadius: 8, fontSize: 11, cursor: "pointer", fontWeight: 700 }}
                   >
-                    Imprimer
+                    {t("common.print")}
                   </button>
                 </div>
               </div>
               <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
-                <THead cols={["Matiere", "Type", `Note /${maxNote}`]} />
+                <THead cols={[t("parent.cols.subject"), t("parent.cols.type"), t("parent.cols.gradeOutOf", { max: maxNote })]} />
                 <tbody>
                   {notesPeriode.map((item, index) => (
                     <TR key={index}>
@@ -55,7 +57,7 @@ export function BulletinsTab({ accesBloqueParPaiement, moisImpayes, schoolInfo, 
             </Card>
           );
         })}
-        {mesNotes.length === 0 && <Vide icone="Bulletins" msg="Aucun bulletin disponible pour le moment" />}
+        {mesNotes.length === 0 && <Vide icone="📄" msg={t("parent.bullTab.none")} />}
       </>}
     </>
   );

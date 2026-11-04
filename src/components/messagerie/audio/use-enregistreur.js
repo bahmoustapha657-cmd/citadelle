@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { arreterFlux, capterMicro } from "./webrtc";
+import i18n from "../../../i18n";
 
 // Formats essayés dans l'ordre : Opus (Chrome, Android, Firefox), puis AAC
 // (Safari / iPhone). Le bucket accepte les deux.
@@ -39,7 +40,7 @@ export function useEnregistreur({ dureeMax = 120 } = {}) {
 
   const demarrer = useCallback(async () => {
     setErreur("");
-    if (!enregistrementDisponible()) { setErreur("Enregistrement audio non pris en charge par ce navigateur."); return false; }
+    if (!enregistrementDisponible()) { setErreur(i18n.t("msg.rec.unsupported")); return false; }
     try {
       const flux = await capterMicro();
       const format = choisirFormat();
@@ -65,7 +66,7 @@ export function useEnregistreur({ dureeMax = 120 } = {}) {
       }, 250);
       return true;
     } catch (e) {
-      setErreur(e.message || "Micro indisponible.");
+      setErreur(e.message || i18n.t("msg.rec.micUnavailable"));
       nettoyer();
       return false;
     }

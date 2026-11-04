@@ -1,8 +1,10 @@
+import { useTranslation } from "react-i18next";
 import { C } from "../../constants";
 import { MessageItem } from "./MessageItem";
 
 // Boîte de réception modale des messages SuperAdmin.
 export function MessagesBoite({ messagesPourMoi, lus, nonLus, marquerLu, marquerToutLu, setBoiteOuverte }) {
+  const { t } = useTranslation();
   return (
     <div
       onClick={() => setBoiteOuverte(false)}
@@ -46,7 +48,7 @@ export function MessagesBoite({ messagesPourMoi, lus, nonLus, marquerLu, marquer
         >
           <span style={{ fontSize: 20 }}>📢</span>
           <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: C.blueDark, flex: 1 }}>
-            Messages SuperAdmin
+            {t("sysMsg.title")}
           </h3>
           {nonLus.length > 0 && (
             <button
@@ -62,7 +64,7 @@ export function MessagesBoite({ messagesPourMoi, lus, nonLus, marquerLu, marquer
                 cursor: "pointer",
               }}
             >
-              Tout marquer lu
+              {t("sysMsg.markAllRead")}
             </button>
           )}
           <button
@@ -83,7 +85,7 @@ export function MessagesBoite({ messagesPourMoi, lus, nonLus, marquerLu, marquer
         <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
           {messagesPourMoi.length === 0 ? (
             <div style={{ padding: "30px 16px", textAlign: "center", color: "#9ca3af", fontSize: 13 }}>
-              Aucun message à afficher.
+              {t("sysMsg.none")}
             </div>
           ) : (
             messagesPourMoi.map((m) => (

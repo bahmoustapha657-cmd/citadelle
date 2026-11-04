@@ -1,7 +1,9 @@
+import { useTranslation } from "react-i18next";
 import { NIVEAUX } from "./messages-niveaux";
 
 // Bandeaux d'alerte (messages important/critique non lus) affichés en haut.
 export function MessagesBandeaux({ bandeauxAffiches, setBoiteOuverte, setBandeauFerme }) {
+  const { t } = useTranslation();
   return bandeauxAffiches.map((m) => {
     const niv = NIVEAUX[m.niveau] || NIVEAUX.info;
     return (
@@ -39,11 +41,11 @@ export function MessagesBandeaux({ bandeauxAffiches, setBoiteOuverte, setBandeau
             whiteSpace: "nowrap",
           }}
         >
-          Lire
+          {t("sysMsg.read")}
         </button>
         <button
           onClick={() => setBandeauFerme((p) => ({ ...p, [m._id]: true }))}
-          title="Masquer"
+          title={t("sysMsg.hide")}
           style={{
             background: "none",
             border: "none",

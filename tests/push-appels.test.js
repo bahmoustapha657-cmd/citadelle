@@ -30,7 +30,8 @@ test("appel : envoi en priorité haute, inutile après la sonnerie", () => {
 
 test("appel : la notification part avec le drapeau d'appel, le délai suit la sonnerie", () => {
   const appels = readFileSync("src/components/messagerie/audio/use-appels.js", "utf8");
-  assert.match(appels, /\{ appel: \{ id, nom: nomMoi \|\| "Un collègue" \} \}\);/);
+  assert.match(appels, /const nom = nomMoi \|\| fin\("aColleague"\);/);
+  assert.match(appels, /\{ appel: \{ id, nom \} \}\);/);
   const delai = Number(appels.match(/DELAI_SONNERIE_MS = (\d+);/)[1]);
   const backend = readFileSync("src/backend/messagerie-supabase.js", "utf8");
   assert.equal(Number(backend.match(/appelsEntrantsEnAttente\(moi, depuisMs = (\d+)\)/)[1]), delai);

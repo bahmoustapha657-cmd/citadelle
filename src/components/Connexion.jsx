@@ -26,6 +26,7 @@ function Connexion({ onLogin, onInscription, onDecouvrir }) {
               ))}
             </ul>
           </div>
+          {/* i18n-ignore : nom de la marque */}
           <p className="cx-brand-foot">© {new Date().getFullYear()} EduGest · {t("auth.brandFoot")}</p>
         </aside>
 

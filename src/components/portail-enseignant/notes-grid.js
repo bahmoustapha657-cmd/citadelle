@@ -1,6 +1,7 @@
 // Helpers purs de la grille de saisie des notes (portail enseignant) :
 // pré-remplissage, collecte des cellules saisies et validation.
 import { resolveCanonicalNoteType } from "../../evaluation-forms";
+import i18n from "../../i18n";
 
 // Pré-remplit la grille à partir des notes existantes.
 //  - mode normal      : clé = eleveId (une période figée).
@@ -107,8 +108,8 @@ export function collectGridNotes({ gridForm, mesNotes, schoolInfo, utilisateur }
 // Valide une liste de notes. Renvoie un message d'erreur ou null si valide.
 // maxNote : 20 au secondaire, 10 au primaire.
 export function validateGridNotes(aSauver, maxNote = 20) {
-  if (aSauver.length === 0) return "Aucune note nouvelle ou modifiée à enregistrer.";
+  if (aSauver.length === 0) return i18n.t("teacher.notes.nothingNew");
   const invalide = aSauver.find((n) => !Number.isFinite(n.note) || n.note < 0 || n.note > maxNote);
-  if (invalide) return `Note invalide détectée (doit être un nombre entre 0 et ${maxNote}).`;
+  if (invalide) return i18n.t("teacher.notes.invalid", { max: maxNote });
   return null;
 }

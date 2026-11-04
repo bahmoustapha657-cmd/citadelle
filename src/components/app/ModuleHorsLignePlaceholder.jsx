@@ -6,10 +6,13 @@
 // Comptabilité, Paramètres, Calendrier, Examens, Messages…). Évite d'ouvrir un
 // écran qui enchaînerait des requêtes réseau vouées à l'échec, et propose de
 // rejoindre un module académique utilisable hors ligne (Élèves / Notes).
+import { Trans, useTranslation } from "react-i18next";
 import { MODULES } from "../../constants";
 import { MODULES_HORS_LIGNE } from "../../backend/powersync/tables";
+import { moduleLabel } from "./module-i18n";
 
 export function ModuleHorsLignePlaceholder({ page, modulesVisibles = [], setPage }) {
+  const { t } = useTranslation();
   const module = MODULES.find((m) => m.id === page) || modulesVisibles.find((m) => m.id === page);
   const academique = modulesVisibles.find((m) => MODULES_HORS_LIGNE.has(m.id));
 
@@ -28,12 +31,10 @@ export function ModuleHorsLignePlaceholder({ page, modulesVisibles = [], setPage
       >
         <div style={{ fontSize: 46, lineHeight: 1, marginBottom: 14 }}>📴</div>
         <h2 style={{ margin: "0 0 8px", fontSize: 19, fontWeight: 800, color: "var(--lc-text, #0f172a)" }}>
-          {module?.label || "Ce module"} — indisponible hors ligne
+          {t("shell.offline.title", { module: module ? moduleLabel(module, t) : t("shell.offline.thisModule") })}
         </h2>
         <p style={{ margin: "0 0 22px", fontSize: 14, lineHeight: 1.55, color: "var(--lc-text-soft, #475569)" }}>
-          Vous êtes actuellement <strong>sans connexion Internet</strong>. Ce module nécessite
-          le réseau. Le mode hors ligne couvre les <strong>données scolaires</strong> (élèves,
-          notes, absences) — reconnectez-vous pour accéder au reste.
+          <Trans i18nKey="shell.offline.body" components={{ b: <strong /> }} />
         </p>
         {academique && (
           <button
@@ -50,7 +51,7 @@ export function ModuleHorsLignePlaceholder({ page, modulesVisibles = [], setPage
               cursor: "pointer",
             }}
           >
-            {academique.icon} Aller à « {academique.label} »
+            {academique.icon} {t("shell.offline.goTo", { module: moduleLabel(academique, t) })}
           </button>
         )}
       </div>

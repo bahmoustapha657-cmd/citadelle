@@ -21,7 +21,7 @@ export function ProfilMenu({
   return (
     <div style={{position:"relative",flexShrink:0}}>
       <button onClick={()=>{setProfilOuvert(v=>!v);setNotifOuvert(false);}}
-        title="Mon profil"
+        title={t("shell.myProfile")}
         style={{display:"flex",alignItems:"center",gap:6,background:"none",border:"none",cursor:"pointer",padding:"3px 6px",borderRadius:8}}>
         <div style={{width:30,height:30,borderRadius:"50%",background:C.blue,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,flexShrink:0}}>
           {utilisateur.nom[0]}
@@ -39,18 +39,18 @@ export function ProfilMenu({
           </div>
           {["admin","direction","comptable","superadmin"].includes(cleRole)&&(
             <button onClick={()=>{setProfilOuvert(false);setPage("parametres");}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 16px",background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#374151",textAlign:"start",fontWeight:600}}>
-              🏫 <span>Paramètres école</span>
+              🏫 <span>{t("shell.schoolSettings")}</span>
             </button>
           )}
           {/* Comptables et chefs de section : leur cachet, déposé par eux seuls. */}
           {setUtilisateur && peutDeposerCachet(cleRole)&&(
             <button onClick={()=>{setProfilOuvert(false);setCachetOuvert(true);}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 16px",background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#374151",textAlign:"start",fontWeight:600}}>
-              🖋️ <span>Mon cachet et ma signature</span>
+              🖋️ <span>{t("shell.myStamp")}</span>
               {(utilisateur.cachetUrl||utilisateur.signatureUrl)&&<span style={{marginInlineStart:"auto",fontSize:10,color:"#16a34a",fontWeight:700}}>✓</span>}
             </button>
           )}
           <button onClick={()=>{setProfilOuvert(false);setCentreAideOuvert&&setCentreAideOuvert(true);}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 16px",background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#374151",textAlign:"start",fontWeight:600}}>
-            ❓ <span>Centre d'aide</span>
+            ❓ <span>{t("shell.helpCenter")}</span>
           </button>
           <button onClick={()=>{setProfilOuvert(false);setAideOuverte(true);}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 16px",background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#374151",textAlign:"start",fontWeight:600,borderBottom:"1px solid #f1f5f9"}}>
             ⌨️ <span>{t("nav.shortcuts")}</span><kbd style={{marginInlineStart:"auto",background:"#f1f5f9",border:"1px solid #e2e8f0",borderRadius:4,padding:"1px 5px",fontSize:10,color:"#94a3b8"}}>?</kbd>

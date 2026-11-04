@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { getSectionForClasse } from "../../constants";
 import { getPeriodesForSection } from "../../period-utils";
 import { SchoolContext } from "../../contexts/SchoolContext";
-import { MSG_LECTURE_SEULE_PORTAIL } from "../app/app-shell-plan";
+import { msgLectureSeulePortail } from "../app/app-shell-plan";
 import { tranchesValides } from "../../paiements-scolarite";
 import { getJoursOuvrablesPourClasse } from "../ecole/edt/edt-utils";
 import { fetchParentPortal, envoyerMessageParent } from "./portail-parent-api";
@@ -99,7 +99,7 @@ export function usePortailParent({ utilisateur, schoolInfo }) {
       setPortalData(data);
       setEleveActifId((current) => current || utilisateur.eleveId || data.eleves?.[0]?._id || "");
     } catch (error) {
-      toast(error.message || "Erreur de chargement du portail parent.", "error");
+      toast(error.message || t("parent.err.load"), "error");
     } finally {
       setChargement(false);
     }
@@ -115,15 +115,15 @@ export function usePortailParent({ utilisateur, schoolInfo }) {
     // Abonnement de l'école expiré : les parents gardent la consultation,
     // pas l'écriture (refusée aussi par la base, ecole-hors-service.sql).
     if (planInfo?.planEstExpire) {
-      toast(MSG_LECTURE_SEULE_PORTAIL, "error");
+      toast(msgLectureSeulePortail(), "error");
       return;
     }
     if (!sujet.trim() || !corps.trim()) {
-      toast("Sujet et message requis.", "warning");
+      toast(t("parent.err.subjectBody"), "warning");
       return;
     }
     if (!eleveId) {
-      toast("Eleve introuvable pour ce compte parent.", "warning");
+      toast(t("parent.err.noStudent"), "warning");
       return;
     }
 
@@ -134,7 +134,7 @@ export function usePortailParent({ utilisateur, schoolInfo }) {
       setCorps("");
       await chargerPortail();
     } catch (error) {
-      toast(error.message || "Erreur d'envoi.", "error");
+      toast(error.message || t("parent.err.send"), "error");
     } finally {
       setEnvoi(false);
     }

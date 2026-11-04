@@ -1,26 +1,29 @@
+import { useTranslation } from "react-i18next";
 import { C, estSorti } from "../../constants";
+import { localeCourante } from "../../i18n";
 import { lireDate } from "../../depart-utils";
 import { estAbsence } from "./helpers";
 
 // Barre d'identité de l'enfant courant : avatar, classe/matricule, sélecteur
 // multi-enfants et compteurs (notes / absences / non lus).
 export function EleveBar({ eleve, eleveNom, eleves, eleveId, setEleveActifId, mesNotes, mesAbsences, nonLus, c1, c2 }) {
+  const { t } = useTranslation();
   return (
     <div style={{ background: "#fff", borderBottom: "1px solid #f1f5f9", padding: "14px 24px", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
       <div style={{ width: 48, height: 48, borderRadius: 12, background: `linear-gradient(135deg,${c1},${c2})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, color: "#fff", fontWeight: 900, flexShrink: 0 }}>
         {(eleveNom || "E")[0]}
       </div>
       <div style={{ flex: 1, minWidth: 220 }}>
-        <div style={{ fontWeight: 900, fontSize: 15, color: "#0A1628" }}>{eleveNom || "Aucun eleve"}</div>
+        <div style={{ fontWeight: 900, fontSize: 15, color: "#0A1628" }}>{eleveNom || t("parent.bar.noStudent")}</div>
         <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
-          {eleve.classe && <span style={{ background: "#e0ebf8", color: c1, fontWeight: 700, padding: "2px 8px", borderRadius: 6, marginRight: 8 }}>{eleve.classe}</span>}
+          {eleve.classe && <span style={{ background: "#e0ebf8", color: c1, fontWeight: 700, padding: "2px 8px", borderRadius: 6, marginInlineEnd: 8 }}>{eleve.classe}</span>}
           {eleve.matricule && <span style={{ fontFamily: "monospace", fontSize: 11, color: "#64748b" }}>#{eleve.matricule}</span>}
         </div>
         {/* Élève parti : la famille garde l'accès à ses notes et bulletins, mais
             doit voir qu'il n'est plus inscrit. */}
         {estSorti(eleve) && (
           <div style={{ marginTop: 6, fontSize: 11, fontWeight: 700, color: "#92400e" }}>
-            📤 {eleve.statut}{lireDate(eleve.dateDepart) ? ` le ${lireDate(eleve.dateDepart).toLocaleDateString("fr-FR")}` : ""} — a quitté l'établissement
+            📤 {eleve.statut}{lireDate(eleve.dateDepart) ? ` ${t("parent.bar.onDate", { date: lireDate(eleve.dateDepart).toLocaleDateString(localeCourante()) })}` : ""} — {t("parent.bar.left")}
           </div>
         )}
         {eleves.length > 1 && (
@@ -38,16 +41,16 @@ export function EleveBar({ eleve, eleveNom, eleves, eleveId, setEleveActifId, me
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
         <div style={{ textAlign: "center", padding: "8px 16px", background: "#f0fdf4", borderRadius: 10 }}>
           <div style={{ fontWeight: 900, fontSize: 18, color: C.greenDk }}>{mesNotes.length}</div>
-          <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2 }}>Notes</div>
+          <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2 }}>{t("parent.bar.grades")}</div>
         </div>
         <div style={{ textAlign: "center", padding: "8px 16px", background: "#fff1f2", borderRadius: 10 }}>
           <div style={{ fontWeight: 900, fontSize: 18, color: "#b91c1c" }}>{mesAbsences.filter(estAbsence).length}</div>
-          <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2 }}>Absences</div>
+          <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2 }}>{t("parent.bar.absences")}</div>
         </div>
         {nonLus > 0 && (
           <div style={{ textAlign: "center", padding: "8px 16px", background: "#fef3c7", borderRadius: 10 }}>
             <div style={{ fontWeight: 900, fontSize: 18, color: "#d97706" }}>{nonLus}</div>
-            <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2 }}>Non lus</div>
+            <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2 }}>{t("parent.bar.unread")}</div>
           </div>
         )}
       </div>

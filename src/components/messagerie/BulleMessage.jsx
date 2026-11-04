@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { LecteurVocal } from "./LecteurVocal";
 import { PieceJointe } from "./PieceJointe";
 import { accuseLecture, apercuMessage, formatHeure, lecteursMessage, libelleAppel } from "./messagerie-logic";
@@ -21,6 +22,7 @@ export function BulleMessage({
   message, conv, moi, annuaire, suite, citation, selectionne, onSelection,
   onRepondre, onModifier, onSupprimer, onRappeler,
 }) {
+  const { t } = useTranslation();
   const deMoi = message.de_compte_id === moi;
   const groupe = conv?.type === "groupe";
   // Délai de correction évalué à l'affichage (la base revérifie de toute façon).
@@ -38,7 +40,7 @@ export function BulleMessage({
         {onRappeler && (
           <button type="button" onClick={onRappeler}
             style={{ marginInlineStart: 8, background: "none", border: "none", color: "var(--msg-accent, var(--sc1))", fontWeight: 800, cursor: "pointer", fontSize: 11.5 }}>
-            Rappeler
+            {t("msg.bubble.callBack")}
           </button>
         )}
       </div>
@@ -60,7 +62,7 @@ export function BulleMessage({
     <div style={{ display: "flex", flexDirection: "column", alignItems: deMoi ? "flex-end" : "flex-start", marginTop: suite ? 2 : 10 }}>
       {groupe && !deMoi && !suite && (
         <div style={{ fontSize: 11, fontWeight: 800, color: "var(--lc-text-muted)", margin: "0 10px 3px" }}>
-          {auteur?.nom || "Compte retiré"}
+          {auteur?.nom || t("msg.removedAccount")}
         </div>
       )}
       <div onClick={onSelection} role="button" tabIndex={0}
@@ -78,15 +80,15 @@ export function BulleMessage({
             background: deMoi ? "color-mix(in srgb, var(--msg-encre, #fff) 14%, transparent)" : "var(--lc-surface-alt)",
             borderRadius: 6, padding: "4px 8px", marginBottom: 6, fontSize: 11.5, opacity: 0.95,
           }}>
-            <div style={{ fontWeight: 800 }}>{citation ? (annuaire.get(citation.de_compte_id)?.nom || "Message") : "Message"}</div>
+            <div style={{ fontWeight: 800 }}>{(citation && annuaire.get(citation.de_compte_id)?.nom) || t("msg.bubble.message")}</div>
             <div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {citation ? apercuMessage(citation) : "Message plus ancien"}
+              {citation ? apercuMessage(citation) : t("msg.bubble.older")}
             </div>
           </div>
         )}
 
         {message.supprime ? (
-          <span style={{ fontStyle: "italic", fontSize: 12.5, color: "var(--lc-text-faint)" }}>🚫 Message supprimé</span>
+          <span style={{ fontStyle: "italic", fontSize: 12.5, color: "var(--lc-text-faint)" }}>🚫 {t("msg.bubble.deleted")}</span>
         ) : message.type === "audio" ? (
           <LecteurVocal chemin={message.audio_path} duree={message.audio_duree} clair={deMoi} />
         ) : message.type === "fichier" ? (
@@ -100,10 +102,10 @@ export function BulleMessage({
         )}
 
         <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 6, marginTop: 3, fontSize: 10, opacity: 0.75 }}>
-          {message.modifie_at && !message.supprime && <span>modifié</span>}
+          {message.modifie_at && !message.supprime && <span>{t("msg.bubble.edited")}</span>}
           <span>{formatHeure(message.created_at)}</span>
           {deMoi && !message.supprime && (
-            <span title={`Lu par ${lus} sur ${total}`} style={{ fontWeight: 800, color: toutLu ? "var(--msg-lu, #7dd3fc)" : undefined }}>
+            <span title={t("msg.bubble.readBy", { read: lus, total })} style={{ fontWeight: 800, color: toutLu ? "var(--msg-lu, #7dd3fc)" : undefined }}>
               {groupe && lus > 0 && !toutLu ? `✓✓ ${lus}/${total}` : lus > 0 ? "✓✓" : "✓"}
             </span>
           )}
@@ -112,9 +114,9 @@ export function BulleMessage({
 
       {selectionne && !message.supprime && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 5, justifyContent: deMoi ? "flex-end" : "flex-start" }}>
-          <button type="button" style={action} onClick={onRepondre}>↩️ Répondre</button>
-          {modifiable && <button type="button" style={action} onClick={onModifier}>✏️ Modifier</button>}
-          {deMoi && <button type="button" style={{ ...action, color: "#dc2626" }} onClick={onSupprimer}>🗑️ Supprimer</button>}
+          <button type="button" style={action} onClick={onRepondre}>↩️ {t("msg.bubble.reply")}</button>
+          {modifiable && <button type="button" style={action} onClick={onModifier}>✏️ {t("common.edit")}</button>}
+          {deMoi && <button type="button" style={{ ...action, color: "#dc2626" }} onClick={onSupprimer}>🗑️ {t("common.delete")}</button>}
         </div>
       )}
       {selectionne && deMoi && !message.supprime && total > 0 && (
@@ -125,15 +127,16 @@ export function BulleMessage({
 }
 
 function AccuseDetail({ message, conv, annuaire }) {
+  const { t } = useTranslation();
   const lecteurs = new Set(lecteursMessage(message, conv));
   const autres = (conv.membres || []).filter((m) => m.id !== message.de_compte_id);
-  const nom = (id) => annuaire.get(id)?.nom || "Compte retiré";
+  const nom = (id) => annuaire.get(id)?.nom || t("msg.removedAccount");
   const lus = autres.filter((m) => lecteurs.has(m.id)).map((m) => nom(m.id));
   const nonLus = autres.filter((m) => !lecteurs.has(m.id)).map((m) => nom(m.id));
   return (
     <div style={{ fontSize: 11, color: "var(--lc-text-muted)", marginTop: 4, maxWidth: "min(78%, 520px)", textAlign: "end" }}>
-      {lus.length > 0 && <div>✓✓ Lu par : {lus.join(", ")}</div>}
-      {nonLus.length > 0 && <div>✓ Pas encore lu : {nonLus.join(", ")}</div>}
+      {lus.length > 0 && <div>✓✓ {t("msg.bubble.readByList", { names: lus.join(", ") })}</div>}
+      {nonLus.length > 0 && <div>✓ {t("msg.bubble.notReadList", { names: nonLus.join(", ") })}</div>}
     </div>
   );
 }

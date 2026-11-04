@@ -27,7 +27,16 @@ const MOTS_FRANCAIS = new Set([
   "pour", "par", "sur", "dans", "avec", "est", "sont", "pas", "ne", "ce",
   "cette", "ces", "son", "sa", "ses", "votre", "vos", "nous", "vous", "il", "elle",
   "qui", "que", "plus", "tout", "tous", "aucun", "aucune", "veuillez",
+  "impossible", "trop", "erreur", "merci", "encore", "puis", "mais", "rien", "chaque", "notre",
 ]);
+
+// Fonctions dont l'argument texte s'affiche à l'utilisateur (message d'erreur,
+// notification, boîte de dialogue).
+const APPELS_VISIBLES = /^(set(Erreur|Error|Message|Msg|Info|Statut|Succes|Avertissement)\w*|toast|alert|confirm|prompt)$/;
+const estAppelVisible = (n) =>
+  n.type === "CallExpression" &&
+  ((n.callee.type === "Identifier" && APPELS_VISIBLES.test(n.callee.name)) ||
+    (n.callee.type === "MemberExpression" && !n.callee.computed && /^(alert|confirm|prompt|toast)$/.test(n.callee.property.name)));
 
 // Attributs JSX que l'utilisateur lit, et attributs purement techniques.
 const ATTRIBUTS_VISIBLES = /^(placeholder|title|alt|label|aria-label|aria-description|tooltip|titre|sousTitre|libelle|texte|message|description|aide|confirmation)$/i;
@@ -62,9 +71,11 @@ function ressembleAuFrancais(texte) {
   return texte.toLowerCase().split(/[^\p{L}']+/u).some((mot) => MOTS_FRANCAIS.has(mot));
 }
 
-// Le texte est-il technique (clé de traduction, import, console, comparaison…) ?
+// Le texte est-il technique (clé de traduction, import, console, comparaison,
+// touche de clavier ou code affiché…) ?
 function estIgnore(chaine) {
   for (let enfant = chaine, n = chaine.parent; n; enfant = n, n = n.parent) {
+    if (n.type === "JSXElement" && /^(kbd|code|pre|style)$/.test(n.openingElement.name.name)) return true;
     if (estAppelTraduction(n)) return true;
     if (estAppelMethode(n, (c) => c.object.type === "Identifier" && c.object.name === "console")) return true;
     if (estAppelMethode(n, (c) => METHODES_DONNEES.has(c.property.name)) && n.arguments.includes(enfant)) return true;
@@ -78,9 +89,11 @@ function estIgnore(chaine) {
 }
 
 // Où atterrit le texte : « jsx » (affiché tel quel), « attribut » (attribut
-// visible), sinon « ailleurs » (constante, message… jugé sur sa forme).
+// visible), « appel » (message passé à toast, setErreur…), sinon « ailleurs »
+// (constante, message… jugé sur sa forme).
 function destination(chaine) {
   for (let enfant = chaine, n = chaine.parent; n; enfant = n, n = n.parent) {
+    if (estAppelVisible(n) && n.arguments[0] === enfant) return "appel";
     switch (n.type) {
       case "JSXExpressionContainer":
         if (n.parent?.type !== "JSXAttribute") return "jsx";
@@ -149,7 +162,7 @@ export function analyserSource(code) {
     } else return;
     texte = texte.replace(/\s+/g, " ").trim();
     if (!LETTRES.test(texte) || ignorees.has(n.loc.start.line)) return;
-    if (n.type !== "JSXText" && estIgnore(porteur)) return;
+    if (estIgnore(porteur)) return;
 
     const ou = n.type === "JSXText" ? "jsx" : destination(porteur);
     if (ou !== "ailleurs" || ressembleAuFrancais(texte)) {

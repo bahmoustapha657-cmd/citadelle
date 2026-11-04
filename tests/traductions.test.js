@@ -120,14 +120,20 @@ test("analyserSource : textes affichés comptés, textes techniques ignorés", (
           {t("commun.enregistrer", "Enregistrer")}
           <input placeholder={t("commun.recherche")} />
           {\`Total : \${ok}\`}
+          <kbd>Ctrl K</kbd>
         </div>
       );
     }
     const message = "Aucun élève trouvé";
+    setErreur("Envoi impossible.");
+    toast(ok ? "Enregistré" : "Echec", "error");
     const cle = "eleves";
     // i18n-ignore — mois stockés en français dans la base
     const mois = ["Février", "Août"];
   `;
   const textes = analyserSource(code).map((t) => t.texte);
-  assert.deepEqual(textes, ["Fiche de l'élève", "Bonjour", "Valider", "Annuler", "Total :", "Aucun élève trouvé"]);
+  assert.deepEqual(textes, [
+    "Fiche de l'élève", "Bonjour", "Valider", "Annuler", "Total :", "Aucun élève trouvé",
+    "Envoi impossible.", "Enregistré", "Echec",
+  ]);
 });

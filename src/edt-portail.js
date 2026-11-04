@@ -3,6 +3,7 @@
 // La saisie, elle, vit dans components/ecole/edt.
 
 import { JOURS_SEMAINE } from "./constants";
+import i18n from "./i18n";
 import { genTranchesAdaptatives, planifierJour, affNom } from "./components/ecole/edt/edt-utils";
 
 export { planifierJour, affNom };
@@ -72,7 +73,7 @@ export function palettePour(emplois, cle) {
 //  - enseignant : la CLASSE d'abord (c'est ce qu'il cherche), puis la matière ;
 //  - parent     : la MATIÈRE d'abord, puis l'enseignant.
 export function libellesCreneau(c, mode, matiereParDefaut = "") {
-  if (c.type === "recreation") return { titre: c.matiere || "Récréation", detail: "" };
+  if (c.type === "recreation") return { titre: c.matiere || i18n.t("edtView.break"), detail: "" };
   if (mode === "enseignant") return { titre: c.classe || "—", detail: c.matiere || matiereParDefaut || "" };
   return { titre: c.matiere || "—", detail: affNom(c.enseignant) };
 }

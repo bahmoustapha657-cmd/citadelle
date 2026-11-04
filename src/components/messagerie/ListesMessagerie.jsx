@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Avatar } from "./Avatar";
 import {
   annonceAConfirmer, annonceNonLue, autresMembres, formatDateBoite, PRIORITES, titreConversation,
@@ -13,8 +14,9 @@ const ligne = (active) => ({
 const ellipse = { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
 
 export function ListeConversations({ m, conversations, activeId, onOuvrir }) {
+  const { t } = useTranslation();
   if (!conversations.length) {
-    return <p style={{ padding: "26px 16px", margin: 0, textAlign: "center", fontSize: 12.5, color: "var(--lc-text-faint)" }}>Aucune discussion.</p>;
+    return <p style={{ padding: "26px 16px", margin: 0, textAlign: "center", fontSize: 12.5, color: "var(--lc-text-faint)" }}>{t("msg.list.noConversation")}</p>;
   }
   return conversations.map((c) => {
     const titre = titreConversation(c, m.annuaire, m.moi);
@@ -35,10 +37,10 @@ export function ListeConversations({ m, conversations, activeId, onOuvrir }) {
           </span>
           <span style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
             <span style={{ ...ellipse, flex: 1, fontSize: 12, color: nonLus ? "var(--lc-text)" : "var(--lc-text-muted)", fontWeight: nonLus ? 600 : 400 }}>
-              {c.dernier_apercu || (c.type === "groupe" ? "Groupe créé" : "Nouvelle discussion")}
+              {c.dernier_apercu || (c.type === "groupe" ? t("msg.list.groupCreated") : t("msg.list.newConversation"))}
             </span>
             {m.reunions?.actives.some((a) => a.conversation_id === c.id) && (
-              <span title="Appel de groupe en cours" style={{ fontSize: 10, fontWeight: 800, color: "#fff", background: "#059669", borderRadius: 8, padding: "1px 6px" }}>📞 en cours</span>
+              <span title={t("msg.list.groupCallInProgress")} style={{ fontSize: 10, fontWeight: 800, color: "#fff", background: "#059669", borderRadius: 8, padding: "1px 6px" }}>📞 {t("msg.list.inProgress")}</span>
             )}
             {c.sourdine && <span style={{ fontSize: 11 }}>🔕</span>}
             {nonLus > 0 && <span style={{ ...badge, background: c.sourdine ? "var(--lc-text-faint)" : badge.background }}>{nonLus > 99 ? "99+" : nonLus}</span>}
@@ -50,8 +52,9 @@ export function ListeConversations({ m, conversations, activeId, onOuvrir }) {
 }
 
 export function ListeAnnonces({ m, annonces, activeId, onOuvrir }) {
+  const { t } = useTranslation();
   if (!annonces.length) {
-    return <p style={{ padding: "26px 16px", margin: 0, textAlign: "center", fontSize: 12.5, color: "var(--lc-text-faint)" }}>Aucune annonce.</p>;
+    return <p style={{ padding: "26px 16px", margin: 0, textAlign: "center", fontSize: 12.5, color: "var(--lc-text-faint)" }}>{t("msg.list.noAnnouncement")}</p>;
   }
   return annonces.map((a) => {
     const p = PRIORITES[a.priorite] || PRIORITES.normale;
@@ -65,16 +68,16 @@ export function ListeAnnonces({ m, annonces, activeId, onOuvrir }) {
         <span style={{ flex: 1, minWidth: 0 }}>
           <span style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
             <span style={{ ...ellipse, flex: 1, fontSize: 13.5, fontWeight: nonLue ? 800 : 700 }}>
-              {a.epinglee && "📌 "}{a.titre || "Annonce"}{(a.pieces_jointes || []).length > 0 && " 📎"}
+              {a.epinglee && "📌 "}{a.titre || t("msg.ann.announcement")}{(a.pieces_jointes || []).length > 0 && " 📎"}
             </span>
             <span style={texteDiscret}>{formatDateBoite(a.created_at)}</span>
           </span>
           <span style={{ ...ellipse, display: "block", fontSize: 12, color: "var(--lc-text-muted)", marginTop: 2 }}>
-            {a.de_compte_id === m.moi ? "Vous" : a.de_nom} · {a.corps}
+            {a.de_compte_id === m.moi ? t("msg.you") : a.de_nom} · {a.corps}
           </span>
           <span style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
-            {nonLue && <span style={{ ...badge, background: "var(--sc1)", color: "var(--msg-encre, #fff)" }}>Nouveau</span>}
-            {aConfirmer && <span style={{ ...badge, background: "#b45309" }}>À confirmer</span>}
+            {nonLue && <span style={{ ...badge, background: "var(--sc1)", color: "var(--msg-encre, #fff)" }}>{t("msg.list.new")}</span>}
+            {aConfirmer && <span style={{ ...badge, background: "#b45309" }}>{t("msg.list.toConfirm")}</span>}
             {stats && <span style={{ ...texteDiscret, fontWeight: 700 }}>👁 {stats.lus}/{stats.total}{a.accuse_requis ? ` · ✅ ${stats.confirmes}/${stats.total}` : ""}</span>}
           </span>
         </span>

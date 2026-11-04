@@ -16,7 +16,7 @@ export function DashboardHeader({
     <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 12, paddingBottom: 4 }}>
       <div style={{ minWidth: 0 }}>
         <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "var(--lc-text-muted)" }}>
-          {schoolInfo.nom || "EduGest"} · {t("dashboard.yearLabel")} {annee || getAnnee()}
+          {schoolInfo.nom || "EduGest" /* i18n-ignore : nom de marque */} · {t("dashboard.yearLabel")} {annee || getAnnee()}
         </p>
         <h1 style={{ margin: "2px 0 0", fontSize: "clamp(20px,2.4vw,24px)", fontWeight: 800, color: "var(--lc-text-brand)", letterSpacing: "-0.01em" }}>
           {t("dashboard.title")}
