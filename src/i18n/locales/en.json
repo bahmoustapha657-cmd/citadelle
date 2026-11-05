@@ -1782,5 +1782,11 @@
     "later": "Later",
     "reload": "Reload",
     "reloading": "Update available — reloading…"
+  },
+  "trombinoscope": {
+    "filiation": "Parents",
+    "guardian": "Guardian",
+    "contact": "Contact",
+    "printLegend": "In large print: the name the child answers to (their nickname if set). Below: their official name, parents, guardian and the guardian's contact."
   }
 }

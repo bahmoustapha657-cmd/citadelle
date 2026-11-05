@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  champsSeancePhoto, correspondEnfant, identifiantBadge, couleurClasse, fileSeancePhoto, grouperParClasse,
-  initiales, nettoyerSurnom, nomAppel, nomOfficiel, SURNOM_MAX, trierParNomAppel,
+  champsSeancePhoto, correspondEnfant, identifiantBadge, couleurClasse, familleEnfant, fileSeancePhoto,
+  grouperParClasse, initiales, nettoyerSurnom, nomAppel, nomOfficiel, SURNOM_MAX, trierParNomAppel,
+  trierPhotosDabord,
 } from "../src/identite-enfant.js";
 
 // Une classe de maternelle comme à La Citadelle : prénoms et noms qui se
@@ -49,6 +50,31 @@ test("tri et regroupement : classes dans l'ordre, enfants par nom d'appel", () =
   assert.deepEqual(groupes.map(([classe]) => classe),
     ["Grande Section A", "Petite Section A", "Petite Section B", "Sans classe"]);
   assert.deepEqual(groupes[1][1].map((e) => e._id), ["2", "1"]);
+});
+
+test("trombinoscope et badges : les enfants qui ont leur photo d'abord, chaque groupe par nom d'appel", () => {
+  const photo = (eleve) => ({ ...eleve, photo: `https://x/${eleve._id}.jpg` });
+  const AWA = { _id: "5", prenom: "Awa", classe: "Petite Section A" };
+  const ZEINAB = { _id: "6", prenom: "Zeinab", classe: "Petite Section A" };
+  // Sans photo : Awa, Néné ; avec photo : Fatoumata, Zeinab.
+  const classe = [NENE, photo(ZEINAB), AWA, FATOU];
+  assert.deepEqual(trierPhotosDabord(classe).map((e) => e._id), ["2", "6", "5", "1"]);
+  assert.deepEqual(grouperParClasse(classe)[0][1].map((e) => e._id), ["2", "6", "5", "1"]);
+  // Une photo vide ou faite d'espaces ne compte pas.
+  assert.deepEqual(trierPhotosDabord([{ ...ZEINAB, photo: "  " }, AWA]).map((e) => e._id), ["5", "6"]);
+  // Sans photo du tout : l'ordre alphabétique d'avant.
+  assert.deepEqual(trierPhotosDabord([NENE, AWA]).map((e) => e._id), ["5", "1"]);
+});
+
+test("famille d'un enfant : filiation, tuteur et contact renseignés seulement, libellés traduits", () => {
+  const t = (cle) => `[${cle}]`;
+  assert.deepEqual(familleEnfant({ ...NENE, contactTuteur: " 622 00 00 00 " }, t), [
+    ["[trombinoscope.filiation]", "Fille de Mamadou et de Aïssatou"],
+    ["[trombinoscope.guardian]", "Mamadou Bah"],
+    ["[trombinoscope.contact]", "622 00 00 00"],
+  ]);
+  assert.deepEqual(familleEnfant({ tuteur: "   ", contactTuteur: "628 11 22 33" }, t), [["[trombinoscope.contact]", "628 11 22 33"]]);
+  assert.deepEqual(familleEnfant(FATOU, t), []);
 });
 
 test("couleur par niveau de maternelle, couleur de l'école ailleurs", () => {

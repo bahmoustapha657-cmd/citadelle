@@ -1,16 +1,18 @@
-import { couleurClasse, nettoyerSurnom, nomAppel, nomOfficiel } from "../../identite-enfant";
+import { useTranslation } from "react-i18next";
+import { couleurClasse, familleEnfant, nettoyerSurnom, nomAppel, nomOfficiel } from "../../identite-enfant";
 import { Modale } from "../ui";
 import { PhotoEleve } from "./PhotoEleve";
 
 // Un enfant en grand : sa photo, le nom auquel il répond, son nom officiel,
-// sa classe et sa famille (filiation, tuteur) — de quoi le reconnaître ou le
-// confier à la bonne personne. Pas de téléphone : la fiche reste à l'école.
+// sa classe et sa famille (filiation, tuteur et son contact) — de quoi le
+// reconnaître ou le confier à la bonne personne.
 // `actions` : boutons propres à l'écran appelant (badge, photo…).
 export function EnfantAgrandi({ eleve, fermer, actions = null }) {
+  const { t } = useTranslation();
   if (!eleve) return null;
   const couleur = couleurClasse(eleve.classe, "#0A1628");
   const ligne = (libelle, valeur) => valeur ? (
-    <div style={{ fontSize: 13, color: "var(--lc-text)" }}>
+    <div key={libelle} style={{ fontSize: 13, color: "var(--lc-text)" }}>
       <span style={{ color: "var(--lc-text-muted)", fontWeight: 700 }}>{libelle} : </span>{valeur}
     </div>
   ) : null;
@@ -23,8 +25,7 @@ export function EnfantAgrandi({ eleve, fermer, actions = null }) {
         {eleve.classe && <span style={{ background: couleur, color: "#fff", borderRadius: 20, padding: "3px 12px", fontSize: 12, fontWeight: 800 }}>{eleve.classe}</span>}
         <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 4 }}>
           {ligne("Surnom", nettoyerSurnom(eleve.surnom))}
-          {ligne("Filiation", eleve.filiation)}
-          {ligne("Tuteur", eleve.tuteur)}
+          {familleEnfant(eleve, t).map(([libelle, valeur]) => ligne(libelle, valeur))}
           {ligne("Matricule", eleve.matricule)}
         </div>
         {actions && <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center", marginTop: 6 }}>{actions}</div>}

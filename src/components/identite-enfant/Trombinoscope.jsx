@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
-  aUnePhoto, comparerClasses, correspondEnfant, couleurClasse, grouperParClasse, nomAppel, nomOfficiel,
+  aUnePhoto, comparerClasses, correspondEnfant, couleurClasse, familleEnfant, grouperParClasse, nomAppel, nomOfficiel,
 } from "../../identite-enfant";
 import { imprimerTrombinoscope } from "../../reports";
 import { uploadPhotoEleve } from "../../storageUtils";
@@ -12,9 +13,10 @@ import { EnfantAgrandi } from "./EnfantAgrandi";
 import { FondClasseModale } from "./FondClasseModale";
 import { PhotoEleve } from "./PhotoEleve";
 
-// Trombinoscope à l'écran : les enfants en grandes photos, classe par classe,
-// le nom auquel ils répondent en gros. Recherche par prénom, surnom, nom,
-// tuteur ou filiation ; un toucher agrandit l'enfant. Impressions :
+// Trombinoscope à l'écran : les enfants en grandes photos, classe par classe
+// (ceux qui ont leur photo d'abord), le nom auquel ils répondent en gros,
+// puis leur filiation, leur tuteur et son contact. Recherche par prénom,
+// surnom, nom, tuteur ou filiation ; un toucher agrandit l'enfant. Impressions :
 // trombinoscope A4 et, avec `avecBadges`, badges (toutes les classes,
 // BadgesModale) — fermés par défaut : les enseignants ne les impriment pas.
 // `onSeancePhoto(classe, eleveId)` et `enregistrer(id, champs)` (retouche
@@ -25,6 +27,7 @@ export function Trombinoscope({
   eleves = [], schoolInfo = {}, annee = "", section = "", avecBadges = false, onSeancePhoto = null,
   enregistrer = null, schoolId = "", toast = null, logAction = null,
 }) {
+  const { t } = useTranslation();
   const [recherche, setRecherche] = useState("");
   const [classe, setClasse] = useState("all");
   const [agrandi, setAgrandi] = useState(null);
@@ -103,6 +106,11 @@ export function Trombinoscope({
                   <PhotoEleve eleve={e} largeur={96}/>
                   <span style={{ fontSize: 15, fontWeight: 900, color: couleur, lineHeight: 1.15, overflowWrap: "anywhere" }}>{nomAppel(e)}</span>
                   <span style={{ fontSize: 10.5, color: "var(--lc-text-muted)", lineHeight: 1.2, overflowWrap: "anywhere" }}>{nomOfficiel(e)}</span>
+                  {familleEnfant(e, t).map(([libelle, valeur]) => (
+                    <span key={libelle} style={{ fontSize: 10, color: "var(--lc-text-muted)", lineHeight: 1.25, overflowWrap: "anywhere" }}>
+                      <strong>{libelle} :</strong> {valeur}
+                    </span>
+                  ))}
                 </button>
               ))}
             </div>

@@ -1782,5 +1782,11 @@
     "later": "Plus tard",
     "reload": "Recharger",
     "reloading": "Mise à jour disponible — rechargement en cours…"
+  },
+  "trombinoscope": {
+    "filiation": "Filiation",
+    "guardian": "Tuteur",
+    "contact": "Contact",
+    "printLegend": "En gros : le nom auquel l'enfant répond (son surnom s'il est renseigné). Dessous : son nom officiel, sa filiation, son tuteur et le contact du tuteur."
   }
 }

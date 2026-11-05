@@ -3,17 +3,19 @@
 // ══════════════════════════════════════════════════════════════
 // Pour reconnaître les enfants qui ne connaissent pas leur nom (voir
 // identite-enfant.js) :
-//  • trombinoscope : une feuille A4 par classe (20 enfants par page), à
+//  • trombinoscope : une feuille A4 par classe (15 enfants par page), à
 //    afficher dans la classe ou à confier à une remplaçante ;
 //  • badges, pour toutes les classes : écusson de poche pour la tenue, ou
 //    badge portrait à plastifier (voir plus bas).
-// En gros : le nom d'appel (surnom, sinon prénom) ; dessous : le nom officiel.
+// Dans chaque classe, les enfants qui ont leur photo d'abord.
+// En gros : le nom d'appel (surnom, sinon prénom) ; dessous : le nom officiel,
+// puis, au trombinoscope seulement, la filiation, le tuteur et son contact.
 // Aucun téléphone sur un badge : porté par un enfant, il se lit dans la rue.
 
 import {
-  aUnePhoto, couleurClasse, grouperParClasse, identifiantBadge, initiales, nomAppel, nomOfficiel,
+  aUnePhoto, couleurClasse, familleEnfant, grouperParClasse, identifiantBadge, initiales, nomAppel, nomOfficiel,
 } from "../identite-enfant.js";
-import { EDUGEST_SITE, PRINT_NOTICE, PRINT_TRIGGER, edugestEmbleme, printResetFor } from "./print-helpers.js";
+import { EDUGEST_SITE, PRINT_NOTICE, PRINT_TRIGGER, edugestEmbleme, printResetFor, tr } from "./print-helpers.js";
 
 // Noms et surnoms sont saisis à la main : un « < » ou un « & » ne doit ni
 // casser la page ni y injecter de balise.
@@ -44,7 +46,7 @@ ${corps}
 
 // ── Trombinoscope ────────────────────────────────────────────
 
-export const TROMBI_PAR_PAGE = 20;
+export const TROMBI_PAR_PAGE = 15;
 
 const TROMBI_CSS = `
 .page{width:190mm;margin:0 auto;break-after:page;page-break-after:always}
@@ -64,18 +66,30 @@ const TROMBI_CSS = `
 .sans-photo{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.5mm}
 .sans-photo strong{font-size:20pt}
 .sans-photo span{font-size:7pt;font-weight:700}
-/* Deux lignes au plus : 4 rangées de 5 tiennent sur la page même avec des
-   noms longs (« Mamadou Saliou »). */
-.appel,.officiel{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere}
+/* Deux lignes au plus par nom, une seule pour le tuteur et le contact :
+   3 rangées de 5 tiennent sur une page A4 comme Lettre, même avec des noms
+   longs (« Mamadou Saliou ») et une famille complète. */
+.appel,.officiel,.famille div{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere}
 .appel{font-size:11.5pt;font-weight:900;margin-top:1.2mm;line-height:1.15}
 .officiel{font-size:7.5pt;color:#475569;line-height:1.2}
+.famille{margin-top:.8mm;font-size:6.5pt;color:#334155;line-height:1.2}
+.famille div+div{-webkit-line-clamp:1}
+.famille b{color:#64748b}
 .legende{margin-top:3mm;font-size:7.5pt;color:#64748b;text-align:center}
 `;
+
+const familleTrombi = (eleve) => {
+  const lignes = familleEnfant(eleve, tr);
+  return lignes.length
+    ? `<div class="famille">${lignes.map(([libelle, valeur]) => `<div><b>${echapper(libelle)} :</b> ${echapper(valeur)}</div>`).join("")}</div>`
+    : "";
+};
 
 const ficheTrombi = (eleve, couleur) => `<div class="enfant">
   <div class="photo" style="border-color:${couleur}">${photoOuInitiales(eleve, couleur)}</div>
   <div class="appel">${echapper(nomAppel(eleve))}</div>
   <div class="officiel">${echapper(nomOfficiel(eleve))}</div>
+  ${familleTrombi(eleve)}
 </div>`;
 
 export function trombinoscopeHTML(eleves = [], { schoolInfo = {}, annee = "", parPage = TROMBI_PAR_PAGE } = {}) {
@@ -91,7 +105,7 @@ export function trombinoscopeHTML(eleves = [], { schoolInfo = {}, annee = "", pa
     <div class="effectif">${enfants.length} enfant${enfants.length > 1 ? "s" : ""}${paquets.length > 1 ? `<br/>page ${i + 1}/${paquets.length}` : ""}</div>
   </div>
   <div class="grille">${paquet.map((eleve) => ficheTrombi(eleve, couleur)).join("")}</div>
-  <div class="legende">En gros : le nom auquel l'enfant répond (son surnom s'il est renseigné). Dessous : son nom officiel.</div>
+  <div class="legende">${echapper(tr("trombinoscope.printLegend"))}</div>
 </div>`);
   });
   return pageHtml(`Trombinoscope — ${nomEcole}`, "size:A4 portrait;margin:10mm", TROMBI_CSS, pages.join(""));
