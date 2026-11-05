@@ -135,14 +135,18 @@ export const FORMATS_BADGE = {
 
 // Taille d'impression : le badge entier (photo, logo, textes) à l'échelle,
 // pour une poche plus petite ; plus de badges tiennent alors sur la page.
-// « Mini » : la plus grande échelle qui loge 5 badges portrait par rangée
-// (20 par page) ; à −30 %, la page n'en prend que 16.
+// « Mini » : 20 badges portrait (5 × 4) et 18 écussons par page. À −38 %,
+// cinq portraits ne tiennent côte à côte qu'en rapprochant les badges
+// (`ecartMin` : 1,2 mm au lieu de 4) ; à −35 %, la page n'en prend que 16,
+// même badges collés. −42 % (essai précédent) était trop petit.
 export const TAILLES_BADGE = {
   normale: { echelle: 1, nom: "Normale" },
   reduite: { echelle: 0.82, nom: "Réduite (−18 %)" },
   petite: { echelle: 0.7, nom: "Petite (−30 %)" },
-  mini: { echelle: 0.58, nom: "Mini (−42 %)" },
+  mini: { echelle: 0.62, ecartMin: 1.2, nom: "Mini (−38 %)" },
 };
+// Espace entre deux badges (mm), pour les découper ; rapproché jusqu'à
+// `ecartMin` seulement quand cela fait tenir plus de badges sur la page.
 const ECART_BADGES = 4;
 const MARGE_PAGE = 6;
 // Surface commune au papier A4 (210 × 297) et au format Lettre américain
@@ -152,22 +156,27 @@ const MARGE_PAGE = 6;
 const PAPIER = { largeur: 210, hauteur: 279.4 };
 
 // Grille d'une page pour un format et une taille : dimensions du badge
-// imprimé (mm, au dixième), colonnes, rangées, badges par page — sur A4
-// comme sur Lettre.
+// imprimé (mm, au dixième), espace entre badges, colonnes, rangées, badges
+// par page — sur A4 comme sur Lettre.
 export function grilleBadges(format = "portrait", taille = "normale") {
   const f = FORMATS_BADGE[format] || FORMATS_BADGE.portrait;
-  const { echelle } = TAILLES_BADGE[taille] || TAILLES_BADGE.normale;
+  const { echelle, ecartMin = ECART_BADGES } = TAILLES_BADGE[taille] || TAILLES_BADGE.normale;
   const largeur = Math.round(f.largeur * echelle * 10) / 10;
   const hauteur = Math.round(f.hauteur * echelle * 10) / 10;
-  const place = (page, cote) => Math.max(1, Math.floor((page - 2 * MARGE_PAGE + ECART_BADGES) / (cote + ECART_BADGES)));
-  const colonnes = place(PAPIER.largeur, largeur);
-  const rangees = place(PAPIER.hauteur, hauteur);
-  return { echelle, largeur, hauteur, colonnes, rangees, parPage: colonnes * rangees };
+  const place = (page, cote, ecart) => Math.max(1, Math.floor((page - 2 * MARGE_PAGE + ecart) / (cote + ecart)));
+  const disposer = (ecart) => {
+    const colonnes = place(PAPIER.largeur, largeur, ecart);
+    const rangees = place(PAPIER.hauteur, hauteur, ecart);
+    return { ecart, colonnes, rangees, parPage: colonnes * rangees };
+  };
+  const normal = disposer(ECART_BADGES);
+  const serre = disposer(ecartMin);
+  return { echelle, largeur, hauteur, ...(serre.parPage > normal.parPage ? serre : normal) };
 }
 export const BADGES_PAR_PAGE = grilleBadges("portrait").parPage;
 
 const PAGE_CSS = `
-.page{display:grid;gap:${ECART_BADGES}mm;justify-content:center;align-content:start;break-after:page;page-break-after:always}
+.page{display:grid;justify-content:center;align-content:start;break-after:page;page-break-after:always}
 .page:last-child{break-after:auto;page-break-after:auto}
 @media screen{.page{width:210mm;min-height:297mm;padding:6mm;margin:0 auto 8mm;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.15)}}
 .badge{position:relative;z-index:0;border:.3mm dashed #94a3b8;border-radius:3mm;overflow:hidden;display:flex;background:#fff;break-inside:avoid}
@@ -311,7 +320,7 @@ export function badgesHTML(eleves = [], {
   const g = grilleBadges(format, taille);
   const dessiner = f === FORMATS_BADGE.poche ? badgePoche : badgePortrait;
   const ordre = grouperParClasse(eleves).flatMap(([, enfants]) => enfants);
-  const grille = `grid-template-columns:repeat(${g.colonnes},${g.largeur}mm);grid-auto-rows:${g.hauteur}mm`;
+  const grille = `grid-template-columns:repeat(${g.colonnes},${g.largeur}mm);grid-auto-rows:${g.hauteur}mm;gap:${g.ecart}mm`;
   const pages = decouper(ordre, g.parPage)
     .map((paquet) => `<div class="page" style="${grille}">${paquet.map((eleve) => dessiner(eleve, { schoolInfo, annee, photo, k: g.echelle })).join("")}</div>`);
   const avis = miroir
