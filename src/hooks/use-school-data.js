@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
-import { chargerEcole, compterElevesActifs, lireDernieresActions } from "../backend/data-supabase";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { chargerEcole, compterElevesActifs, lireDernieresActions, lireElevesActifsPaiements } from "../backend/data-supabase";
 import { subscribeTable, surveillerTable } from "../backend/realtime-supabase";
 import { SCHOOL_INFO_DEFAUT } from "../contexts/SchoolContext";
-import { setMonnaie } from "../constants";
+import { getAnnee, setMonnaie } from "../constants";
+import { getSessionPermissions, hasWrite } from "../../shared/postes-config.js";
+import { marquerRappelVu, rappelNonReinscrits, rappelVuAujourdhui } from "../rappel-reinscriptions";
 import { DEFAULT_VERROUS, mergeSchoolInfo, applyBrandingColors } from "./school-data-helpers";
 import { suivreCompteur } from "./suivre-compteur";
 import { NB_NOTIFS, preparerNotifs, lireVu, ecrireVu } from "../notifications-cloche";
@@ -15,6 +17,8 @@ import { NB_NOTIFS, preparerNotifs, lireVu, ecrireVu } from "../notifications-cl
 //   journal (cf. src/notifications-cloche.js)
 // - msgsNonLus : compteur de l'ancienne version Firebase, pas encore porté
 //   (valeur neutre ; la messagerie a son propre badge)
+// - rappel des non réinscrits, en tête de la cloche, pour les comptes qui
+//   écrivent la comptabilité (cf. src/rappel-reinscriptions.js)
 //
 // Extrait de App.jsx au refactor découpage 2026-05-20.
 export function useSchoolData({ schoolId, utilisateur }) {
@@ -26,6 +30,10 @@ export function useSchoolData({ schoolId, utilisateur }) {
   const [totalElevesActifs, setTotalElevesActifs] = useState(null);
   const [notifListe, setNotifListe] = useState([]);
   const [notifNonLues, setNotifNonLues] = useState(0);
+  // Élèves actifs (champs de paiement seulement) : rappel des non réinscrits.
+  const [elevesRappel, setElevesRappel] = useState(null);
+  // Incrémenté à l'ouverture de la cloche : relit « rappel vu aujourd'hui ».
+  const [rappelOuvert, setRappelOuvert] = useState(0);
 
   // ── schoolInfo + verrous + branding ──────────────────────────
   useEffect(() => {
@@ -111,10 +119,36 @@ export function useSchoolData({ schoolId, utilisateur }) {
     };
   }, [schoolId, utilisateur]);
 
-  // Ouverture de la cloche : tout ce qui est affiché devient lu.
+  // ── Cloche : rappel des non réinscrits ───────────────────────
+  // Seulement pour qui écrit la comptabilité. Relu à l'ouverture puis après
+  // chaque rafale de changements des élèves (30 s : un encaissement retire
+  // l'élève du rappel sans relire toute l'école à chaque clic).
+  const peutCompta = !!utilisateur && !["enseignant", "parent"].includes(utilisateur.role)
+    && hasWrite(getSessionPermissions(utilisateur, schoolInfoState), "compta");
+  useEffect(() => {
+    if (!peutCompta || !schoolId || schoolId === "superadmin") return undefined;
+    const arreter = suivreCompteur({
+      compter: () => lireElevesActifsPaiements(schoolId),
+      estValide: Array.isArray,
+      surveiller: (signaler) => surveillerTable(schoolId, "eleves", signaler),
+      onValeur: setElevesRappel,
+      delaiMs: 30000,
+    });
+    return () => { arreter(); setElevesRappel(null); };
+  }, [schoolId, utilisateur, peutCompta]);
+  const rappel = useMemo(
+    () => (elevesRappel ? rappelNonReinscrits(elevesRappel, schoolInfoState, { annee: schoolInfoState.anneeScolaire || getAnnee() }) : null),
+    [elevesRappel, schoolInfoState],
+  );
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- rappelOuvert : relecture après marquage
+  const rappelVu = useMemo(() => !!schoolId && rappelVuAujourdhui(schoolId), [schoolId, rappelOuvert, rappel]);
+
+  // Ouverture de la cloche : tout ce qui est affiché devient lu (le rappel,
+  // jusqu'à demain).
   const marquerNotifLues = useCallback(() => {
-    if (schoolId) ecrireVu(schoolId);
+    if (schoolId) { ecrireVu(schoolId); marquerRappelVu(schoolId); }
     setNotifNonLues(0);
+    setRappelOuvert((n) => n + 1);
   }, [schoolId]);
 
   return {
@@ -122,7 +156,8 @@ export function useSchoolData({ schoolId, utilisateur }) {
     verrous, setVerrous,
     msgsNonLus,
     totalElevesActifs,
-    notifListe,
-    notifNonLues, marquerNotifLues,
+    notifListe: rappel ? [rappel, ...notifListe] : notifListe,
+    notifNonLues: notifNonLues + (rappel && !rappelVu ? 1 : 0),
+    marquerNotifLues,
   };
 }

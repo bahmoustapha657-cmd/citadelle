@@ -119,6 +119,7 @@ export function ComptaTabsScolarite({ c, readOnly, annee, userRole }) {
         moisAnnee={c.moisAnnee}
         annee={annee}
         anneeScolarite={c.anneeConsultee}
+        estArchive={c.enModeArchive}
         readOnly={readOnly}
         canCreate={c.canCreate}
         canEdit={c.canEdit}

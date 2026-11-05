@@ -11,3 +11,9 @@ major_version = 17
 # par signature (cf. la fonction). Lu aussi par `supabase functions deploy`.
 [functions.paiement-notification]
 verify_jwt = false
+
+# Rappel quotidien des non réinscrits : appelé par la tâche planifiée
+# (.github/workflows/rappel-reinscriptions.yml), authentifié par un secret
+# partagé (cf. la fonction).
+[functions.rappel-reinscriptions]
+verify_jwt = false

@@ -12,7 +12,7 @@
 
 import { TOUS_MOIS_COURTS, TOUS_MOIS_LONGS, fmtN, getMonnaie, today } from "../constants.js";
 import {
-  PRINT_RESET, PRINT_TRIGGER, WATERMARK_CSS, enteteDoc, printDir, printLang, watermarkHtml,
+  PRINT_RESET, PRINT_TRIGGER, WATERMARK_CSS, enteteDoc, printDir, printLang, tr, watermarkHtml,
 } from "./print-helpers.js";
 
 // Noms, tuteurs, contacts sont saisis à la main : un « < » ou un « & » ne
@@ -127,11 +127,16 @@ export function listeNonReinscritsHTML(lignes = [], options = {}) {
     <tbody>${corps}</tbody>
     <tfoot><tr><td colspan="5" style="text-align:end">TOTAL — ${lignes.length} élève(s)</td><td class="m">${fmtN(total)}</td><td colspan="3"></td></tr></tfoot>
   </table>`;
-  return pageListe({
-    ...options, couleur: "#b45309", tableau,
-    titre: "📝 ÉLÈVES PRÉSENTS NON RÉINSCRITS", titreFenetre: "Élèves non réinscrits",
-    note: "Élèves actifs dont l'inscription ou la réinscription de l'année n'est pas encaissée",
-  });
+  // `retires` : non réinscrits au sens strict (aucun paiement de l'année),
+  // retirés des classes — la liste des familles à appeler.
+  const entete = options.retires ? {
+    titre: tr("reports.nonReinscrits.retiresTitre"), titreFenetre: tr("reports.nonReinscrits.retiresFenetre"),
+    note: tr("reports.nonReinscrits.retiresNote", { date: options.dateRetrait || "" }),
+  } : {
+    titre: tr("reports.nonReinscrits.inscriptionTitre"), titreFenetre: tr("reports.nonReinscrits.inscriptionFenetre"),
+    note: tr("reports.nonReinscrits.inscriptionNote"),
+  };
+  return pageListe({ ...options, couleur: "#b45309", tableau, ...entete });
 }
 
 const ouvrir = (html) => {
@@ -147,6 +152,9 @@ export function imprimerListePayes(lignes, options) {
 }
 
 export function imprimerListeNonReinscrits(lignes, options) {
-  if (!lignes.length) { alert("Aucun élève présent sans inscription encaissée."); return; }
+  if (!lignes.length) {
+    alert(tr(options?.retires ? "reports.nonReinscrits.aucun" : "reports.nonReinscrits.aucuneInscription"));
+    return;
+  }
   ouvrir(listeNonReinscritsHTML(lignes, options));
 }

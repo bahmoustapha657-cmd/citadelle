@@ -489,7 +489,25 @@
     "salaryGross": "Gross",
     "salaryNet": "Net",
     "salaryBonus": "Bonus",
-    "salaryRevision": "Revision"
+    "salaryRevision": "Revision",
+    "nonReinscrits": {
+      "avantNombre": "{{n}} student(s) have not paid anything yet",
+      "avantSuite": "this year ({{perimetre}}). Without a payment by {{date}}, they will be removed from their class.",
+      "listeAppeler": "🖨️ List to call",
+      "retiresTitre": "Students removed from classes ({{n}})",
+      "retiresAide": "— collect their re-enrolment (or any other payment): they get their class back immediately.",
+      "nombre": "{{n}} student(s) not re-enrolled",
+      "explication": "({{perimetre}}): no payment since the start of the year — no re-enrolment, no monthly fee, no other fee. They have been removed from classes since {{date}}.",
+      "appel": "Get them re-enrolled.",
+      "revenir": "← Back to classes",
+      "afficher": "👁 Show to collect payment",
+      "inscriptionNonEncaissee": "📝 Enrolment fee not collected ({{n}})",
+      "reglageLibelle": "Remove students not re-enrolled from classes (no payment this year)",
+      "reglageJamais": "Never (only manually, class by class)",
+      "reglageMois": "{{n}} month(s) after the start of the year",
+      "reglageMoisDate": "{{n}} month(s) after the start of the year — {{date}}",
+      "reglageAide": "No re-enrolment, no monthly fee, no other fee: they disappear from classes (School module, teacher portal, grid) without their record changing, and accountants get a reminder every morning. Their first payment puts them back in their class."
+    }
   },
   "parent": {
     "title": "Parent space",
@@ -1142,6 +1160,16 @@
         "phone": "Phone",
         "filename": "students_import_template.xlsx"
       }
+    },
+    "nonReinscrits": {
+      "retiresTitre": "📝 STUDENTS NOT RE-ENROLLED — TO RE-ENROL",
+      "retiresFenetre": "Students not re-enrolled",
+      "retiresNote": "No payment this year (no re-enrolment, no monthly fee, no other fee): removed from classes since {{date}}; they get their class back with their first payment",
+      "aucun": "No student without re-enrolment.",
+      "inscriptionTitre": "📝 ENROLMENT FEE NOT COLLECTED",
+      "inscriptionFenetre": "Enrolment fee not collected",
+      "inscriptionNote": "Active students whose enrolment or re-enrolment fee for the year has not been collected",
+      "aucuneInscription": "No present student without a collected enrolment fee."
     }
   },
   "school": {
@@ -1263,7 +1291,9 @@
       "minutes": "{{n}} min",
       "hours": "{{n}} h",
       "days": "{{n}} d",
-      "seeAll": "See full history →"
+      "seeAll": "See full history →",
+      "reinscTitre": "📝 {{n}} student(s) not re-enrolled",
+      "reinscCorps": "No payment since the start of the year: removed from classes since {{date}}. Get them re-enrolled."
     },
     "spaces": {
       "switch": "Switch space",

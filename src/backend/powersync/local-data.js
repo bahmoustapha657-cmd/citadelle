@@ -131,6 +131,15 @@ export async function lireDernieresActionsLocal(ecoleId, n) {
   return rows.map((r) => parseJsonCols("historique", r));
 }
 
+// Élèves actifs de l'école, toutes sections — miroir de
+// lireElevesActifsPaiements (rappel des non réinscrits).
+export async function lireElevesActifsLocal(ecoleId) {
+  const rows = await getPowerSync().getAll(
+    "SELECT * FROM eleves WHERE ecole_id = ? AND statut = 'Actif'", [ecoleId],
+  );
+  return rows.map((r) => parseJsonCols("eleves", r));
+}
+
 // Postes de l'école + nb de comptes rattachés — miroir de chargerPostes.
 // (comptes n'est synchronisé que pour les porteurs d'admin_panel — les seuls
 // à ouvrir ce panneau ; pour les autres le count vaut 0 sans conséquence.)

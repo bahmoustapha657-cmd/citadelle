@@ -1,4 +1,6 @@
 import { C } from "../../../constants";
+import i18n from "../../../i18n";
+import { formaterDateRetrait } from "../../../ecartes-non-reinscrits";
 
 // Ancienneté d'une notification : « À l'instant », « 12 min », « 3 h », « 2 j ».
 const anciennete = (age, t) =>
@@ -30,6 +32,16 @@ export function NotificationsMenu({
             {notifListe.length===0
               ? <div style={{padding:"24px 16px",textAlign:"center",color:"#94a3b8",fontSize:12}}>{t("shell.notif.none")}</div>
               : notifListe.map((n,i)=>{
+                  // Rappel des non réinscrits (comptabilité) : en tête, cliquable.
+                  if(n.rappel) return <button key={n.id} type="button" onClick={()=>{setNotifOuvert(false);setPage("compta");}}
+                    style={{width:"100%",textAlign:"start",padding:"10px 16px",border:"none",borderBottom:"1px solid #fed7aa",background:"#fff7ed",display:"flex",gap:10,alignItems:"flex-start",cursor:"pointer"}}>
+                    <span style={{flex:1,minWidth:0}}>
+                      <span style={{display:"block",fontSize:12,fontWeight:800,color:"#9a3412"}}>{t("shell.notif.reinscTitre",{n:n.nombre})}</span>
+                      <span style={{display:"block",fontSize:11,color:"#9a3412",marginTop:2,lineHeight:1.4}}>
+                        {t("shell.notif.reinscCorps",{date:formaterDateRetrait(n.dateRetrait,i18n.language)})}
+                      </span>
+                    </span>
+                  </button>;
                   const age=nowTs-n.date;
                   const isNew=age<5*60*1000;
                   return <div key={n.id||i} style={{padding:"10px 16px",borderBottom:"1px solid #f8fafc",background:isNew?"#f0fdf4":"#fff",display:"flex",gap:10,alignItems:"flex-start"}}>
