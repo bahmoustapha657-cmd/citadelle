@@ -26,18 +26,25 @@ test("liste des élèves ayant payé : grille des mois, acomptes, totaux par moi
   assert.doesNotMatch(html, /<b>X<\/b>/);
 });
 
-test("liste des non réinscrits : type, acompte, mois déjà payés, reste dû, contacts", () => {
+test("liste « inscription non encaissée » : type, acompte, mois déjà payés, reste dû, contacts", () => {
   const lignes = [
     { eleve: { nom: "SOW", prenom: "Ali", classe: "5e B", tuteur: "M. Sow", contactTuteur: "622 00 00 00" }, type: "Réinscription", reste: 20000, acompte: 10000, moisPayes: 2 },
     { eleve: { nom: "BAH", prenom: "Ina", classe: "5e B" }, type: "Inscription", reste: 50000, acompte: 0, moisPayes: 0 },
   ];
   const html = listeNonReinscritsHTML(lignes, { schoolInfo: ecole, annee: "2026-2027", perimetre: "Collège" });
-  assert.match(html, /ÉLÈVES PRÉSENTS NON RÉINSCRITS/);
+  assert.match(html, /INSCRIPTION NON ENCAISSÉE/);
   assert.match(html, /Réinscription<br\/><span class="mat">acompte 10\D?000<\/span>/);
   assert.match(html, /M\. Sow/);
   assert.match(html, /622 00 00 00/);
   assert.match(html, /TOTAL — 2 élève\(s\)/);
   assert.match(html, /70\D?000/);
+});
+
+test("liste des non réinscrits retirés des classes : titre et date du retrait", () => {
+  const lignes = [{ eleve: { nom: "BAH", prenom: "Ina", classe: "5e B" }, type: "Réinscription", reste: 50000, acompte: 0, moisPayes: 0 }];
+  const html = listeNonReinscritsHTML(lignes, { schoolInfo: ecole, annee: "2026-2027", retires: true, dateRetrait: "1er novembre 2026" });
+  assert.match(html, /ÉLÈVES NON RÉINSCRITS — À FAIRE RÉINSCRIRE/);
+  assert.match(html, /ni réinscription, ni mensualité, ni frais\) : retirés des classes depuis le 1er novembre 2026/);
 });
 
 test("liste des élèves ayant payé : le classement choisi est imprimé", () => {

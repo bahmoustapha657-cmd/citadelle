@@ -489,7 +489,25 @@
     "salaryGross": "Brut",
     "salaryNet": "Net",
     "salaryBonus": "Bon",
-    "salaryRevision": "Révision"
+    "salaryRevision": "Révision",
+    "nonReinscrits": {
+      "avantNombre": "{{n}} élève(s) n'ont encore rien payé",
+      "avantSuite": "cette année ({{perimetre}}). Sans paiement d'ici le {{date}}, ils seront retirés de leur classe.",
+      "listeAppeler": "🖨️ Liste à appeler",
+      "retiresTitre": "Élèves retirés des classes ({{n}})",
+      "retiresAide": "— encaissez leur réinscription (ou tout autre paiement) : ils retrouvent aussitôt leur classe.",
+      "nombre": "{{n}} élève(s) non réinscrit(s)",
+      "explication": "({{perimetre}}) : aucun paiement depuis la rentrée, ni réinscription, ni mensualité, ni frais. Ils sont retirés des classes depuis le {{date}}.",
+      "appel": "Faites-les réinscrire.",
+      "revenir": "← Revenir aux classes",
+      "afficher": "👁 Afficher pour encaisser",
+      "inscriptionNonEncaissee": "📝 Inscription non encaissée ({{n}})",
+      "reglageLibelle": "Retirer des classes les non réinscrits (aucun paiement de l'année)",
+      "reglageJamais": "Jamais (seulement à la main, classe par classe)",
+      "reglageMois": "{{n}} mois après la rentrée",
+      "reglageMoisDate": "{{n}} mois après la rentrée — le {{date}}",
+      "reglageAide": "Ni réinscription, ni mensualité, ni frais : ils disparaissent des classes (module École, portail enseignant, grille) sans que leur fiche change, et les comptables reçoivent un rappel chaque matin. Le premier paiement les remet dans leur classe."
+    }
   },
   "parent": {
     "title": "Espace Parent",
@@ -1142,6 +1160,16 @@
         "phone": "Téléphone",
         "filename": "modele_import_eleves.xlsx"
       }
+    },
+    "nonReinscrits": {
+      "retiresTitre": "📝 ÉLÈVES NON RÉINSCRITS — À FAIRE RÉINSCRIRE",
+      "retiresFenetre": "Élèves non réinscrits",
+      "retiresNote": "Aucun paiement de l'année (ni réinscription, ni mensualité, ni frais) : retirés des classes depuis le {{date}} ; ils retrouvent leur classe dès leur premier paiement",
+      "aucun": "Aucun élève non réinscrit.",
+      "inscriptionTitre": "📝 INSCRIPTION NON ENCAISSÉE",
+      "inscriptionFenetre": "Inscription non encaissée",
+      "inscriptionNote": "Élèves actifs dont l'inscription ou la réinscription de l'année n'est pas encaissée",
+      "aucuneInscription": "Aucun élève présent sans inscription encaissée."
     }
   },
   "school": {
@@ -1263,7 +1291,9 @@
       "minutes": "{{n}} min",
       "hours": "{{n}} h",
       "days": "{{n}} j",
-      "seeAll": "Voir tout l'historique →"
+      "seeAll": "Voir tout l'historique →",
+      "reinscTitre": "📝 {{n}} élève(s) non réinscrit(s)",
+      "reinscCorps": "Aucun paiement depuis la rentrée : retirés des classes depuis le {{date}}. Faites-les réinscrire."
     },
     "spaces": {
       "switch": "Changer d'espace",

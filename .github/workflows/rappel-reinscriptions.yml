@@ -1,0 +1,64 @@
+name: Rappel des non réinscrits
+
+# Chaque matin à 8 h UTC (8 h à Conakry), la fonction Edge
+# rappel-reinscriptions envoie aux comptables de chaque école une
+# notification « 📝 N élèves non réinscrits… Faites-les réinscrire », tant
+# qu'il reste des élèves actifs sans AUCUN paiement de l'année une fois le
+# délai de retrait passé (src/ecartes-non-reinscrits.js). Rien n'est modifié
+# en base : la fonction lit, compte et notifie.
+#
+# Secret (Settings → Environments → production) : RAPPEL_REINSCRIPTIONS_SECRET,
+# le même que celui posé sur la fonction (supabase secrets set).
+# Lancement à la main : Actions → « Rappel des non réinscrits » → Run
+# workflow (« essai » = compter sans rien envoyer).
+
+on:
+  schedule:
+    - cron: "0 8 * * *"
+  workflow_dispatch:
+    inputs:
+      essai:
+        description: "Essai : compter et cibler sans rien envoyer"
+        type: boolean
+        default: true
+      ecole:
+        description: "Code d'une seule école (vide = toutes)"
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rappel-reinscriptions
+  cancel-in-progress: false
+
+jobs:
+  rappeler:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 5
+
+    steps:
+      - name: Prévenir les comptables
+        env:
+          SECRET: ${{ secrets.RAPPEL_REINSCRIPTIONS_SECRET }}
+          # Adresse publique du projet (déjà dans le bundle de l'application).
+          URL: https://pfzanslrcowkjjipuzpa.supabase.co/functions/v1/rappel-reinscriptions
+          ESSAI: ${{ github.event_name == 'workflow_dispatch' && inputs.essai || false }}
+          ECOLE: ${{ github.event_name == 'workflow_dispatch' && inputs.ecole || '' }}
+        run: |
+          if [ -z "$SECRET" ]; then
+            echo "::error::Secret RAPPEL_REINSCRIPTIONS_SECRET absent (Settings → Environments → production)."
+            exit 1
+          fi
+          corps=$(jq -nc --argjson essai "$ESSAI" --arg ecole "$ECOLE" \
+            '{essai: $essai} + (if $ecole == "" then {} else {ecole: $ecole} end)')
+          reponse=$(curl -sS -w '\n%{http_code}' -X POST "$URL" \
+            -H "Content-Type: application/json" -H "x-rappel-secret: $SECRET" -d "$corps")
+          code=$(echo "$reponse" | tail -n1)
+          echo "$reponse" | sed '$d' | jq . || echo "$reponse"
+          if [ "$code" != "200" ]; then
+            echo "::error::La fonction rappel-reinscriptions a répondu $code."
+            exit 1
+          fi

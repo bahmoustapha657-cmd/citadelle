@@ -12,7 +12,8 @@ import {
   JOUR_ECHEANCE_MAX, SEUIL_MOIS_MAX, elevesAyantPaye, elevesEnRetard, elevesNonReinscrits, reglagesAlerte,
 } from "./alerte-mensualites";
 import {
-  classesEcarteesEcole, ecarterNonReinscrits, estNonReinscritSansPaiement, reglageEcartes,
+  DELAI_RETRAIT_MAX, dateRetraitNonReinscrits, delaiRetraitEcole, ecarterNonReinscrits, estNonReinscritSansPaiement,
+  formaterDateRetrait, reglageEcartes, regleEcartement,
 } from "../../../ecartes-non-reinscrits";
 import { EcarterModale } from "./EcarterModale";
 import { ListePayesModale } from "./ListePayesModale";
@@ -25,10 +26,11 @@ import { PreavisModale } from "./PreavisModale";
 // `annee` : année scolaire affichée — les mois d'après un départ ne comptent pas.
 // `perimetre` : section / classe affichées, reprises sur la fiche imprimée.
 // `classe` : classe filtrée (vide = toutes), proposée d'office pour écarter.
-// Les non réinscrits sans paiement des classes « écartées » sont retirés de
-// l'alerte, des préavis et des listes — et, réglage de l'école oblige, du
-// module École et du portail enseignant (ecartes-non-reinscrits.js). Leur
-// fiche n'est pas modifiée.
+// Les non réinscrits (aucun paiement de l'année) retirés des classes — par
+// le retrait automatique, ou classe par classe avant lui — sortent de
+// l'alerte, des préavis et des listes, comme du module École et du portail
+// enseignant (ecartes-non-reinscrits.js). Leur fiche n'est pas modifiée ;
+// RappelNonReinscrits les rappelle au comptable.
 export function AlertesCritiques({ eleves: tousEleves, moisAnnee, annee, tarifsClasses, schoolInfo, canEdit, toast, perimetre, classe = "" }) {
   const { t } = useTranslation();
   const [ouvert, setOuvert] = useState(false);
@@ -40,7 +42,8 @@ export function AlertesCritiques({ eleves: tousEleves, moisAnnee, annee, tarifsC
   // Classes écartées de l'année : réglage de l'ÉCOLE, partagé par tous les
   // postes (chefs de section, enseignants), écrit par maj_reglages_compta.
   const { setSchoolInfo } = useContext(SchoolContext);
-  const classesEcartees = useMemo(() => classesEcarteesEcole(schoolInfo, annee), [schoolInfo, annee]);
+  const regleRetrait = useMemo(() => regleEcartement(schoolInfo, annee), [schoolInfo, annee]);
+  const classesEcartees = regleRetrait.classes;
   const changerClassesEcartees = async (classes) => {
     try {
       const enregistre = await majReglagesCompta({ ecartesNonReinscrits: reglageEcartes(schoolInfo, annee, classes) });
@@ -53,11 +56,12 @@ export function AlertesCritiques({ eleves: tousEleves, moisAnnee, annee, tarifsC
     }
   };
   const [ecartant, setEcartant] = useState(false);
-  const { gardes: eleves, ecartes } = useMemo(() => ecarterNonReinscrits(tousEleves, classesEcartees), [tousEleves, classesEcartees]);
+  const { gardes: eleves, ecartes } = useMemo(() => ecarterNonReinscrits(tousEleves, regleRetrait), [tousEleves, regleRetrait]);
   const nbAEcarter = tousEleves.filter(estNonReinscritSansPaiement).length;
   const { jourEcheance, seuilMois } = reglagesAlerte(schoolInfo);
   const moisGarantie = moisGarantieEcole(schoolInfo);
-  const reglages = useMemo(() => ({ jourEcheance, seuilMois, moisGarantie }), [jourEcheance, seuilMois, moisGarantie]);
+  const delaiRetrait = delaiRetraitEcole(schoolInfo);
+  const reglages = useMemo(() => ({ jourEcheance, seuilMois, moisGarantie, delaiRetrait }), [jourEcheance, seuilMois, moisGarantie, delaiRetrait]);
   const garantie = moisDeGarantie(moisAnnee, moisGarantie);
   const retards = useMemo(
     () => elevesEnRetard(eleves, { moisAnnee, annee, tarifsClasses, reglages, moisGarantie: reglages.moisGarantie }),
@@ -66,7 +70,8 @@ export function AlertesCritiques({ eleves: tousEleves, moisAnnee, annee, tarifsC
   const monnaie = schoolInfo?.monnaie || getMonnaie();
   const total = retards.reduce((s, r) => s + r.montant, 0);
   // Listes imprimables, même périmètre que l'alerte : élèves ayant payé
-  // (et leurs mois), élèves présents sans inscription encaissée.
+  // (et leurs mois), élèves présents sans inscription encaissée (les non
+  // réinscrits retirés ont leur propre liste, dans RappelNonReinscrits).
   const listes = useMemo(() => ({
     payes: elevesAyantPaye(eleves, { moisAnnee, tarifsClasses }),
     nonReinscrits: elevesNonReinscrits(eleves, { moisAnnee, tarifsClasses }),
@@ -80,8 +85,9 @@ export function AlertesCritiques({ eleves: tousEleves, moisAnnee, annee, tarifsC
       <Btn sm v="ghost" disabled={!listes.payes.length} title="Imprimer les élèves ayant payé et leurs mois payés"
         onClick={() => setClasserPayes(true)}>✅ Ont payé ({listes.payes.length})</Btn>
       <Btn sm v="ghost" disabled={!listes.nonReinscrits.length} title="Imprimer les élèves présents dont l'inscription ou la réinscription n'est pas encaissée"
-        onClick={() => imprimerListeNonReinscrits(listes.nonReinscrits, optionsListe)}>📝 Non réinscrits ({listes.nonReinscrits.length})</Btn>
-      {(canEdit || ecartes.length > 0) && (
+        onClick={() => imprimerListeNonReinscrits(listes.nonReinscrits, optionsListe)}>{t("accounting.nonReinscrits.inscriptionNonEncaissee", { n: listes.nonReinscrits.length })}</Btn>
+      {/* Écartement manuel, classe par classe : utile AVANT le retrait automatique. */}
+      {!regleRetrait.toutes && (canEdit || ecartes.length > 0) && (
         <Btn sm v="ghost" disabled={!nbAEcarter} title="Masquer, classe par classe, les non réinscrits qui n'ont rien payé — pour toute l'école (fiches non modifiées)"
           onClick={() => setEcartant(true)}>🚫 {ecartes.length ? `Écartés (${ecartes.length})` : "Écarter non réinscrits"}</Btn>
       )}
@@ -92,9 +98,14 @@ export function AlertesCritiques({ eleves: tousEleves, moisAnnee, annee, tarifsC
       classeCourante={classe} peutModifier={canEdit} fermer={() => setEcartant(false)} />
   );
 
-  const enregistrer = async ({ moisGarantie: garantieChoisie, ...alerte }) => {
+  const enregistrer = async ({ moisGarantie: garantieChoisie, delaiRetrait: delaiChoisi, ...alerte }) => {
     try {
-      await majReglagesCompta({ alerteMensualites: alerte, moisGarantie: garantieChoisie });
+      const enregistre = await majReglagesCompta({
+        alerteMensualites: alerte, moisGarantie: garantieChoisie, retraitNonReinscrits: delaiChoisi,
+      });
+      // Effet immédiat ici (retrait des non réinscrits compris) ; les autres
+      // postes le reçoivent par l'abonnement à la fiche de l'école.
+      if (enregistre && typeof enregistre === "object") setSchoolInfo?.((prec) => ({ ...prec, ...enregistre }));
       toast?.("Réglages de l'alerte enregistrés.", "success");
       setReglant(false);
     } catch (e) {
@@ -102,7 +113,8 @@ export function AlertesCritiques({ eleves: tousEleves, moisAnnee, annee, tarifsC
     }
   };
 
-  const modale = reglant && <ReglagesAlerteModale reglages={reglages} fermer={() => setReglant(false)} enregistrer={enregistrer} />;
+  const modale = reglant && <ReglagesAlerteModale reglages={reglages} schoolInfo={schoolInfo} annee={annee}
+    fermer={() => setReglant(false)} enregistrer={enregistrer} />;
   const boutonReglages = canEdit && <Btn sm v="ghost" onClick={() => setReglant(true)}>⚙️ Réglages</Btn>;
   const regle = [
     garantie.length ? `${garantie.join(" et ")} dû(s) dès la rentrée` : "",
@@ -202,10 +214,14 @@ export function AlertesCritiques({ eleves: tousEleves, moisAnnee, annee, tarifsC
 // mois de retard déclenchant l'alerte, et mois de garantie (derniers mois
 // payés d'avance — ils passent aussi en tête de l'ordre d'encaissement). Enregistrés dans l'école (RPC
 // maj_reglages_compta), mêmes bornes que le serveur.
-function ReglagesAlerteModale({ reglages, fermer, enregistrer }) {
+function ReglagesAlerteModale({ reglages, schoolInfo, annee, fermer, enregistrer }) {
+  const { t, i18n } = useTranslation();
   const [jour, setJour] = useState(reglages.jourEcheance);
   const [seuil, setSeuil] = useState(reglages.seuilMois);
   const [garantie, setGarantie] = useState(reglages.moisGarantie);
+  const [delai, setDelai] = useState(reglages.delaiRetrait);
+  const anneeRetrait = schoolInfo?.anneeScolaire || annee;
+  const dateRetrait = (n) => formaterDateRetrait(dateRetraitNonReinscrits(anneeRetrait, schoolInfo?.moisDebut || "Octobre", n), i18n.language);
   const [enCours, setEnCours] = useState(false);
   const j = Number(jour);
   const s = Number(seuil);
@@ -213,7 +229,9 @@ function ReglagesAlerteModale({ reglages, fermer, enregistrer }) {
     && Number.isInteger(s) && s >= 1 && s <= SEUIL_MOIS_MAX;
   const valider = async () => {
     setEnCours(true);
-    try { await enregistrer({ jourEcheance: j, seuilMois: s, moisGarantie: Number(garantie) }); } finally { setEnCours(false); }
+    try {
+      await enregistrer({ jourEcheance: j, seuilMois: s, moisGarantie: Number(garantie), delaiRetrait: Number(delai) });
+    } finally { setEnCours(false); }
   };
   return (
     <Modale titre="⚙️ Réglages de l'alerte mensualités" fermer={fermer}>
@@ -235,6 +253,22 @@ function ReglagesAlerteModale({ reglages, fermer, enregistrer }) {
       </select>
       <div style={{ fontSize: 11.5, color: "#64748b", marginTop: 4 }}>
         Dus dès la rentrée, ils sont aussi encaissés en premier (avant le 1er mois).
+      </div>
+      <label style={{ display: "block", fontSize: 13, fontWeight: 700, margin: "14px 0 6px" }}>
+        {t("accounting.nonReinscrits.reglageLibelle")}
+      </label>
+      <select value={delai} onChange={(e) => setDelai(Number(e.target.value))}
+        style={{ border: "1px solid #b0c4d8", borderRadius: 7, padding: "7px 10px", fontSize: 13, width: "100%" }}>
+        {Array.from({ length: DELAI_RETRAIT_MAX + 1 }, (_, n) => (
+          <option key={n} value={n}>
+            {n === 0 ? t("accounting.nonReinscrits.reglageJamais")
+              : dateRetrait(n) ? t("accounting.nonReinscrits.reglageMoisDate", { n, date: dateRetrait(n) })
+                : t("accounting.nonReinscrits.reglageMois", { n })}
+          </option>
+        ))}
+      </select>
+      <div style={{ fontSize: 11.5, color: "#64748b", marginTop: 4 }}>
+        {t("accounting.nonReinscrits.reglageAide")}
       </div>
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
         <Btn v="ghost" onClick={fermer}>Annuler</Btn>

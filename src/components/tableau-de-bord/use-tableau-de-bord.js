@@ -2,6 +2,7 @@ import { useContext, useMemo, useState } from "react";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { useFirestore } from "../../hooks/useFirestore";
 import { C, getAnnee } from "../../constants";
+import { sansNonReinscritsEcartes } from "../../ecartes-non-reinscrits";
 import { creerDemandePlan } from "./tableau-de-bord-api";
 import i18n from "../../i18n";
 import { getMensualiteOverview } from "../../mensualite-utils";
@@ -22,12 +23,18 @@ import {
 export function useTableauDeBord({ annee } = {}) {
   const { schoolId, schoolInfo, moisAnnee, moisSalaire, planInfo } = useContext(SchoolContext);
   const anneeCourante = annee || getAnnee();
-  const { items: elevesC, chargement: cEC } = useFirestore("elevesCollege");
-  const { items: elevesP, chargement: cEP } = useFirestore("elevesPrimaire");
-  const { items: elevesL, chargement: cEL } = useFirestore("elevesLycee");
+  const { items: elevesCBruts, chargement: cEC } = useFirestore("elevesCollege");
+  const { items: elevesPBruts, chargement: cEP } = useFirestore("elevesPrimaire");
+  const { items: elevesLBruts, chargement: cEL } = useFirestore("elevesLycee");
   // Préscolaire : sans lui, les effectifs du tableau de bord excluaient
   // silencieusement toute la maternelle (97 élèves à la citadelle).
-  const { items: elevesPre, chargement: cEPre } = useFirestore("elevesPrescolaire");
+  const { items: elevesPreBruts, chargement: cEPre } = useFirestore("elevesPrescolaire");
+  // Les non réinscrits (aucun paiement) retirés des classes ne comptent ni
+  // dans les effectifs, ni dans les taux de paiement (ecartes-non-reinscrits.js).
+  const elevesC = useMemo(() => sansNonReinscritsEcartes(elevesCBruts, schoolInfo, anneeCourante), [elevesCBruts, schoolInfo, anneeCourante]);
+  const elevesP = useMemo(() => sansNonReinscritsEcartes(elevesPBruts, schoolInfo, anneeCourante), [elevesPBruts, schoolInfo, anneeCourante]);
+  const elevesL = useMemo(() => sansNonReinscritsEcartes(elevesLBruts, schoolInfo, anneeCourante), [elevesLBruts, schoolInfo, anneeCourante]);
+  const elevesPre = useMemo(() => sansNonReinscritsEcartes(elevesPreBruts, schoolInfo, anneeCourante), [elevesPreBruts, schoolInfo, anneeCourante]);
   const { items: ensC } = useFirestore("ensCollege");
   const { items: ensL } = useFirestore("ensLycee");
   const { items: ensP } = useFirestore("ensPrimaire");

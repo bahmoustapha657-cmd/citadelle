@@ -1,6 +1,7 @@
 import { C, fmt, genererMatricule, isSectionActive } from "../../../constants";
 import { Btn } from "../../ui";
 import { imprimerListeClasse } from "../../../reports";
+import { sansNonReinscritsEcartes } from "../../../ecartes-non-reinscrits";
 import { TriElevesSelect } from "../../TriElevesSelect";
 
 // Barre d'outils de l'enrôlement : titre + compteur de plan, sélecteur de
@@ -65,8 +66,8 @@ export function EnrolToolbar({
         </Btn>
       )}
       {!afficherDeparts&&classeEnrol!=="all"&&(
-        <Btn sm v="ghost" title="Imprimer la liste des élèves de la classe sélectionnée"
-          onClick={()=>imprimerListeClasse(classeEnrol, elevesPresents, schoolInfo)}>
+        <Btn sm v="ghost" title="Imprimer la liste des élèves de la classe sélectionnée (sans les non réinscrits retirés des classes)"
+          onClick={()=>imprimerListeClasse(classeEnrol, sansNonReinscritsEcartes(elevesPresents, schoolInfo), schoolInfo)}>
           🖨️ Liste de la classe
         </Btn>
       )}

@@ -19,6 +19,7 @@ import { estCouvertHorsLigne, powerSyncConfigured } from "./powersync/tables";
 // hors ligne (local-data.js), pour que les deux chemins ne divergent plus.
 import { ANNEE_TABLES, PERIODE_TABLES } from "./filtres-lecture";
 import { exigerEffet } from "./ecritures-refusees";
+import { SELECT_PAIEMENTS_ELEVE, elevePaiementsDepuisLigne } from "../ecartes-non-reinscrits.js";
 
 let localDataPromise = null;
 function localData() {
@@ -172,6 +173,31 @@ export async function lireDernieresActions(schoolCode, n) {
     .eq("ecole_id", ecoleId).order("created_at", { ascending: false }).limit(n);
   if (error) throw new Error(error.message);
   return (data || []).map((r) => transformRow("historique", r));
+}
+
+// Élèves ACTIFS de l'école, toutes sections, avec ce qui dit s'ils ont payé
+// quelque chose dans l'année : le rappel des non réinscrits (cloche de
+// l'en-tête). Miroir local quand la table est couverte hors ligne, sinon le
+// serveur, par pages (plafond de 1 000 lignes) et sans le reste de `extra`
+// (archives des années passées, trop lourdes pour un simple rappel).
+// Lève en cas d'échec : ne rien savoir n'est pas « aucun non réinscrit ».
+export async function lireElevesActifsPaiements(schoolCode) {
+  const sb = getSupabase();
+  const ecoleId = await ecoleIdFromCode(sb, schoolCode);
+  // Erreur interne, jamais affichée : la cloche garde sa dernière valeur.
+  if (!ecoleId) throw new Error("École introuvable."); // i18n-ignore
+  if (horsLigne("eleves")) {
+    const { lireElevesActifsLocal } = await localData();
+    return (await lireElevesActifsLocal(ecoleId)).map((r) => transformRow("eleves", r));
+  }
+  const lus = [];
+  for (let de = 0; ; de += 1000) {
+    const { data, error } = await sb.from("eleves").select(SELECT_PAIEMENTS_ELEVE)
+      .eq("ecole_id", ecoleId).eq("statut", "Actif").order("id").range(de, de + 999);
+    if (error) throw new Error(error.message);
+    lus.push(...(data || []).map(elevePaiementsDepuisLigne));
+    if ((data || []).length < 1000) return lus;
+  }
 }
 
 // Élèves ACTIFS de l'école, toutes sections (préscolaire compris) : l'effectif
