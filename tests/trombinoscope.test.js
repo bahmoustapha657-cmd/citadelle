@@ -106,22 +106,24 @@ test("badges : IEN sous le nom, sinon le matricule, rien sans l'un ni l'autre", 
 });
 
 test("taille des badges : tout à l'échelle, sur A4 comme sur papier Lettre", () => {
-  assert.deepEqual(grilleBadges("poche", "normale"), { echelle: 1, largeur: 80, hauteur: 60, colonnes: 2, rangees: 4, parPage: 8 });
-  assert.deepEqual(grilleBadges("poche", "reduite"), { echelle: 0.82, largeur: 65.6, hauteur: 49.2, colonnes: 2, rangees: 5, parPage: 10 });
-  assert.deepEqual(grilleBadges("poche", "petite"), { echelle: 0.7, largeur: 56, hauteur: 42, colonnes: 3, rangees: 5, parPage: 15 });
-  assert.deepEqual(grilleBadges("portrait", "normale"), { echelle: 1, largeur: 62, hauteur: 90, colonnes: 3, rangees: 2, parPage: 6 });
-  assert.deepEqual(grilleBadges("portrait", "reduite"), { echelle: 0.82, largeur: 50.8, hauteur: 73.8, colonnes: 3, rangees: 3, parPage: 9 });
-  assert.deepEqual(grilleBadges("portrait", "petite"), { echelle: 0.7, largeur: 43.4, hauteur: 63, colonnes: 4, rangees: 4, parPage: 16 });
-  // Mini : au moins 18 badges portrait par page (5 × 4).
-  assert.deepEqual(grilleBadges("portrait", "mini"), { echelle: 0.58, largeur: 36, hauteur: 52.2, colonnes: 5, rangees: 4, parPage: 20 });
-  assert.deepEqual(grilleBadges("poche", "mini"), { echelle: 0.58, largeur: 46.4, hauteur: 34.8, colonnes: 4, rangees: 6, parPage: 24 });
+  assert.deepEqual(grilleBadges("poche", "normale"), { echelle: 1, ecart: 4, largeur: 80, hauteur: 60, colonnes: 2, rangees: 4, parPage: 8 });
+  assert.deepEqual(grilleBadges("poche", "reduite"), { echelle: 0.82, ecart: 4, largeur: 65.6, hauteur: 49.2, colonnes: 2, rangees: 5, parPage: 10 });
+  assert.deepEqual(grilleBadges("poche", "petite"), { echelle: 0.7, ecart: 4, largeur: 56, hauteur: 42, colonnes: 3, rangees: 5, parPage: 15 });
+  assert.deepEqual(grilleBadges("portrait", "normale"), { echelle: 1, ecart: 4, largeur: 62, hauteur: 90, colonnes: 3, rangees: 2, parPage: 6 });
+  assert.deepEqual(grilleBadges("portrait", "reduite"), { echelle: 0.82, ecart: 4, largeur: 50.8, hauteur: 73.8, colonnes: 3, rangees: 3, parPage: 9 });
+  assert.deepEqual(grilleBadges("portrait", "petite"), { echelle: 0.7, ecart: 4, largeur: 43.4, hauteur: 63, colonnes: 4, rangees: 4, parPage: 16 });
+  // Mini (−38 %) : 20 badges portrait (5 × 4), rapprochés à 1,2 mm ; 18
+  // écussons, qui tiennent sans les rapprocher.
+  assert.deepEqual(grilleBadges("portrait", "mini"), { echelle: 0.62, ecart: 1.2, largeur: 38.4, hauteur: 55.8, colonnes: 5, rangees: 4, parPage: 20 });
+  assert.deepEqual(grilleBadges("poche", "mini"), { echelle: 0.62, ecart: 4, largeur: 49.6, hauteur: 37.2, colonnes: 3, rangees: 6, parPage: 18 });
+  assert.match(badgesHTML([enfant(1)], { schoolInfo: ecole, taille: "mini" }), /grid-template-columns:repeat\(5,38\.4mm\);grid-auto-rows:55\.8mm;gap:1\.2mm/);
   // Toujours dans la surface commune A4 / Lettre (210 × 279,4), marges de 6 mm comprises.
   assert.deepEqual(Object.keys(TAILLES_BADGE), ["normale", "reduite", "petite", "mini"]);
   for (const format of ["poche", "portrait"]) {
     for (const taille of Object.keys(TAILLES_BADGE)) {
       const g = grilleBadges(format, taille);
-      assert.ok(g.colonnes * g.largeur + (g.colonnes - 1) * 4 <= 210 - 12 + 1e-9, `${format} ${taille} largeur`);
-      assert.ok(g.rangees * g.hauteur + (g.rangees - 1) * 4 <= 279.4 - 12 + 1e-9, `${format} ${taille} hauteur`);
+      assert.ok(g.colonnes * g.largeur + (g.colonnes - 1) * g.ecart <= 210 - 12 + 1e-9, `${format} ${taille} largeur`);
+      assert.ok(g.rangees * g.hauteur + (g.rangees - 1) * g.ecart <= 279.4 - 12 + 1e-9, `${format} ${taille} hauteur`);
     }
   }
   assert.equal(grilleBadges("poche", "?").parPage, 8);
