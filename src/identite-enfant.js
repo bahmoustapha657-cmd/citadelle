@@ -49,18 +49,24 @@ export const correspondEnfant = (eleve = {}, recherche = "") => {
   return mots.every((mot) => botte.includes(mot));
 };
 
-// Ordre du trombinoscope et des badges : celui du nom écrit en gros, puis du
-// nom officiel (deux « Mamadou » restent dans un ordre stable).
+// Ordre du nom écrit en gros, puis du nom officiel (deux « Mamadou » restent
+// dans un ordre stable).
 export const trierParNomAppel = (eleves = []) =>
   [...eleves].sort((a, b) =>
     nomAppel(a).localeCompare(nomAppel(b), "fr", { sensitivity: "base" })
     || nomOfficiel(a).localeCompare(nomOfficiel(b), "fr", { sensitivity: "base" }));
 
+// Ordre du trombinoscope et des badges : d'abord les enfants qui ont leur
+// photo, puis ceux qui l'attendent encore ; chaque groupe par nom d'appel.
+export const trierPhotosDabord = (eleves = []) =>
+  trierParNomAppel(eleves).sort((a, b) => Number(aUnePhoto(b)) - Number(aUnePhoto(a)));
+
 // Classes dans l'ordre naturel (« Petite Section A » avant « Petite Section B »).
 export const comparerClasses = (a, b) =>
   String(a || "").localeCompare(String(b || ""), "fr", { numeric: true, sensitivity: "base" });
 
-// [[classe, enfants triés par nom d'appel], …] dans l'ordre des classes.
+// [[classe, enfants (photo d'abord, puis par nom d'appel)], …] dans l'ordre
+// des classes.
 export const grouperParClasse = (eleves = []) => {
   const groupes = new Map();
   for (const eleve of eleves) {
@@ -70,10 +76,20 @@ export const grouperParClasse = (eleves = []) => {
   }
   return [...groupes.entries()]
     .sort(([a], [b]) => comparerClasses(a, b))
-    .map(([classe, liste]) => [classe, trierParNomAppel(liste)]);
+    .map(([classe, liste]) => [classe, trierPhotosDabord(liste)]);
 };
 
 export const aUnePhoto = (eleve = {}) => !!texte(eleve.photo);
+
+// La famille d'un enfant, pour le confier à la bonne personne (trombinoscope,
+// enfant agrandi) : [[libellé, valeur], …] des champs renseignés. `t` traduit
+// les libellés (t de react-i18next à l'écran, tr à l'impression). Jamais sur
+// un badge : porté par l'enfant, il se lit dans la rue.
+export const familleEnfant = (eleve = {}, t = (cle) => cle) => [
+  [t("trombinoscope.filiation"), texte(eleve.filiation)],
+  [t("trombinoscope.guardian"), texte(eleve.tuteur)],
+  [t("trombinoscope.contact"), texte(eleve.contactTuteur)],
+].filter(([, valeur]) => valeur);
 
 // Une couleur par niveau de maternelle, la même sur le badge, le
 // trombinoscope et les vignettes : les petits reconnaissent une couleur bien

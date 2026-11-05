@@ -12,11 +12,11 @@ const enfant = (i, extra = {}) => ({
 });
 const compter = (html, motif) => (html.match(motif) || []).length;
 
-test("trombinoscope : une page par tranche de 20, en-tête de classe sur chaque page", () => {
+test("trombinoscope : une page par tranche de 15, en-tête de classe sur chaque page", () => {
   const petite = Array.from({ length: 23 }, (_, i) => enfant(i));
   const grande = [enfant(99, { classe: "Grande Section A", surnom: "Bobo", photo: "https://x/p.jpg" })];
   const html = trombinoscopeHTML([...petite, ...grande], { schoolInfo: ecole, annee: "2026-2027" });
-  assert.equal(TROMBI_PAR_PAGE, 20);
+  assert.equal(TROMBI_PAR_PAGE, 15);
   // 23 en Petite Section → 2 pages ; 1 en Grande Section → 1 page.
   assert.equal(compter(html, /<div class="page">/g), 3);
   assert.equal(compter(html, /<div class="enfant">/g), 24);
@@ -151,6 +151,30 @@ test("logo de l'école en filigrane derrière le nom, à côté de la photo", ()
   const reduit = badgesHTML(eleves, { schoolInfo: ecoleLogo, format: "portrait", taille: "reduite" });
   assert.match(reduit, /\.filigrane\{position:absolute;z-index:-1;object-fit:contain;opacity:\.1/);
   assert.match(reduit, /\.portrait \.filigrane\{left:4\.1mm;top:47\.56mm;width:42\.64mm;height:22\.14mm\}/);
+});
+
+test("trombinoscope imprimé : filiation, tuteur et contact sous le nom ; jamais sur un badge", () => {
+  const famille = { filiation: "Fils de Alpha & de <Kadiatou>", tuteur: "Alpha Bah", contactTuteur: "622 00 00 00" };
+  const html = trombinoscopeHTML([enfant(1, famille), enfant(2, { contactTuteur: "" })], { schoolInfo: ecole });
+  assert.match(html, /<div class="famille"><div><b>Filiation :<\/b> Fils de Alpha &amp; de &lt;Kadiatou&gt;<\/div><div><b>Tuteur :<\/b> Alpha Bah<\/div><div><b>Contact :<\/b> 622 00 00 00<\/div><\/div>/);
+  // Rien de renseigné : pas de bloc vide.
+  assert.equal(compter(html, /<div class="famille">/g), 1);
+  assert.match(html, /Dessous : son nom officiel, sa filiation, son tuteur et le contact du tuteur\./);
+  for (const format of ["poche", "portrait"]) {
+    const badges = badgesHTML([enfant(1, famille)], { schoolInfo: ecole, format });
+    assert.doesNotMatch(badges, /622 00 00 00|Alpha Bah|Kadiatou/, format);
+  }
+});
+
+test("trombinoscope et badges imprimés : les enfants qui ont leur photo d'abord", () => {
+  const eleves = [
+    enfant(1), enfant(2, { photo: "https://x/2.jpg" }), enfant(3), enfant(4, { photo: "https://x/4.jpg" }),
+  ];
+  const ordre = (html, motif) => [...html.matchAll(motif)].map((m) => m[1]);
+  assert.deepEqual(ordre(trombinoscopeHTML(eleves, { schoolInfo: ecole }), /<div class="officiel">BAH (Enfant\d+)<\/div>/g),
+    ["Enfant02", "Enfant04", "Enfant01", "Enfant03"]);
+  assert.deepEqual(ordre(badgesHTML(eleves, { schoolInfo: ecole, format: "portrait" }), /<div class="officiel">BAH (Enfant\d+)<\/div>/g),
+    ["Enfant02", "Enfant04", "Enfant01", "Enfant03"]);
 });
 
 test("badges : imprimés par l'école, jamais depuis le portail enseignant", () => {
