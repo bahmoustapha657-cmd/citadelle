@@ -90,7 +90,7 @@ export function BadgesModale({ eleves = [], schoolInfo = {}, annee = "", section
             );
           })}
         </div>
-        {taille === "petite" && (
+        {(taille === "petite" || taille === "mini") && (
           <span style={{ display: "block", fontSize: 11, color: "#92400e", marginTop: 4 }}>
             Les petits textes (IEN, ligne du bas) deviennent très fins : faites d'abord un essai.
           </span>

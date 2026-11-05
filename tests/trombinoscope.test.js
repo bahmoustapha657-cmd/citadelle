@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import test from "node:test";
 import {
-  BADGES_PAR_PAGE, TROMBI_PAR_PAGE, badgesHTML, echelonner, grilleBadges, taillePoliceAppel, trombinoscopeHTML,
+  BADGES_PAR_PAGE, TAILLES_BADGE, TROMBI_PAR_PAGE, badgesHTML, echelonner, grilleBadges, taillePoliceAppel,
+  trombinoscopeHTML,
 } from "../src/reports/trombinoscope.js";
 
 const ecole = { nom: "La Citadelle", ville: "Conakry", couleur1: "#0A1628" };
@@ -111,9 +112,13 @@ test("taille des badges : tout à l'échelle, sur A4 comme sur papier Lettre", (
   assert.deepEqual(grilleBadges("portrait", "normale"), { echelle: 1, largeur: 62, hauteur: 90, colonnes: 3, rangees: 2, parPage: 6 });
   assert.deepEqual(grilleBadges("portrait", "reduite"), { echelle: 0.82, largeur: 50.8, hauteur: 73.8, colonnes: 3, rangees: 3, parPage: 9 });
   assert.deepEqual(grilleBadges("portrait", "petite"), { echelle: 0.7, largeur: 43.4, hauteur: 63, colonnes: 4, rangees: 4, parPage: 16 });
+  // Mini : au moins 18 badges portrait par page (5 × 4).
+  assert.deepEqual(grilleBadges("portrait", "mini"), { echelle: 0.58, largeur: 36, hauteur: 52.2, colonnes: 5, rangees: 4, parPage: 20 });
+  assert.deepEqual(grilleBadges("poche", "mini"), { echelle: 0.58, largeur: 46.4, hauteur: 34.8, colonnes: 4, rangees: 6, parPage: 24 });
   // Toujours dans la surface commune A4 / Lettre (210 × 279,4), marges de 6 mm comprises.
+  assert.deepEqual(Object.keys(TAILLES_BADGE), ["normale", "reduite", "petite", "mini"]);
   for (const format of ["poche", "portrait"]) {
-    for (const taille of ["normale", "reduite", "petite"]) {
+    for (const taille of Object.keys(TAILLES_BADGE)) {
       const g = grilleBadges(format, taille);
       assert.ok(g.colonnes * g.largeur + (g.colonnes - 1) * 4 <= 210 - 12 + 1e-9, `${format} ${taille} largeur`);
       assert.ok(g.rangees * g.hauteur + (g.rangees - 1) * 4 <= 279.4 - 12 + 1e-9, `${format} ${taille} hauteur`);
