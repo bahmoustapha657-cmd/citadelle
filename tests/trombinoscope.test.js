@@ -107,10 +107,10 @@ test("badges : IEN sous le nom, sinon le matricule, rien sans l'un ni l'autre", 
 test("taille des badges : tout à l'échelle, sur A4 comme sur papier Lettre", () => {
   assert.deepEqual(grilleBadges("poche", "normale"), { echelle: 1, largeur: 80, hauteur: 60, colonnes: 2, rangees: 4, parPage: 8 });
   assert.deepEqual(grilleBadges("poche", "reduite"), { echelle: 0.82, largeur: 65.6, hauteur: 49.2, colonnes: 2, rangees: 5, parPage: 10 });
-  assert.deepEqual(grilleBadges("poche", "petite"), { echelle: 0.75, largeur: 60, hauteur: 45, colonnes: 3, rangees: 5, parPage: 15 });
+  assert.deepEqual(grilleBadges("poche", "petite"), { echelle: 0.7, largeur: 56, hauteur: 42, colonnes: 3, rangees: 5, parPage: 15 });
   assert.deepEqual(grilleBadges("portrait", "normale"), { echelle: 1, largeur: 62, hauteur: 90, colonnes: 3, rangees: 2, parPage: 6 });
   assert.deepEqual(grilleBadges("portrait", "reduite"), { echelle: 0.82, largeur: 50.8, hauteur: 73.8, colonnes: 3, rangees: 3, parPage: 9 });
-  assert.deepEqual(grilleBadges("portrait", "petite"), { echelle: 0.75, largeur: 46.5, hauteur: 67.5, colonnes: 4, rangees: 3, parPage: 12 });
+  assert.deepEqual(grilleBadges("portrait", "petite"), { echelle: 0.7, largeur: 43.4, hauteur: 63, colonnes: 4, rangees: 4, parPage: 16 });
   // Toujours dans la surface commune A4 / Lettre (210 × 279,4), marges de 6 mm comprises.
   for (const format of ["poche", "portrait"]) {
     for (const taille of ["normale", "reduite", "petite"]) {

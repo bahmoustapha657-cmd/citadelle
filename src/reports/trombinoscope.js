@@ -138,7 +138,7 @@ export const FORMATS_BADGE = {
 export const TAILLES_BADGE = {
   normale: { echelle: 1, nom: "Normale" },
   reduite: { echelle: 0.82, nom: "Réduite (−18 %)" },
-  petite: { echelle: 0.75, nom: "Petite (−25 %)" },
+  petite: { echelle: 0.7, nom: "Petite (−30 %)" },
 };
 const ECART_BADGES = 4;
 const MARGE_PAGE = 6;
