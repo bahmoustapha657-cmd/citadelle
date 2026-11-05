@@ -117,7 +117,7 @@ export function trombinoscopeHTML(eleves = [], { schoolInfo = {}, annee = "", pa
 //    de chemise ;
 //  • « portrait » : 62 × 90 mm, le badge d'origine de la maternelle, à
 //    plastifier et porter en collier.
-// Trois tailles d'impression (TAILLES_BADGE) ; le nombre par page en découle.
+// Quatre tailles d'impression (TAILLES_BADGE) ; le nombre par page en découle.
 // Sous le nom : l'IEN de l'élève, ou à défaut son matricule (identifiantBadge).
 // Photo au choix ; sans photo, le logo de l'école s'affiche en grand à sa
 // place (et plus dans l'en-tête). Avec photo, le logo est aussi en filigrane,
@@ -135,10 +135,13 @@ export const FORMATS_BADGE = {
 
 // Taille d'impression : le badge entier (photo, logo, textes) à l'échelle,
 // pour une poche plus petite ; plus de badges tiennent alors sur la page.
+// « Mini » : la plus grande échelle qui loge 5 badges portrait par rangée
+// (20 par page) ; à −30 %, la page n'en prend que 16.
 export const TAILLES_BADGE = {
   normale: { echelle: 1, nom: "Normale" },
   reduite: { echelle: 0.82, nom: "Réduite (−18 %)" },
-  petite: { echelle: 0.75, nom: "Petite (−25 %)" },
+  petite: { echelle: 0.7, nom: "Petite (−30 %)" },
+  mini: { echelle: 0.58, nom: "Mini (−42 %)" },
 };
 const ECART_BADGES = 4;
 const MARGE_PAGE = 6;
@@ -298,8 +301,8 @@ const badgePoche = (eleve, { schoolInfo, annee, photo, k = 1 }) => {
 </div>`;
 };
 
-// `format` : "poche" ou "portrait" ; `taille` : "normale", "reduite" ou
-// "petite" (TAILLES_BADGE) ; `photo` : avec la photo de l'élève ; `miroir` :
+// `format` : "poche" ou "portrait" ; `taille` : "normale", "reduite",
+// "petite" ou "mini" (TAILLES_BADGE) ; `photo` : avec la photo de l'élève ; `miroir` :
 // impression inversée pour le papier transfert.
 export function badgesHTML(eleves = [], {
   schoolInfo = {}, annee = "", format = "portrait", taille = "normale", photo = true, miroir = false,
