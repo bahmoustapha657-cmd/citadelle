@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { demanderReinitialisation, validerCodeReinitialisation } from "../../backend/password-reset-supabase";
 import { codeARedemander, messageErreurCode } from "../../backend/code-reinitialisation";
+import i18n from "../../i18n";
 
 // Logique de la modale « Mot de passe oublié » : demande (code école +
 // identifiant, e-mail ou numéro), puis — si le serveur a envoyé un code par
@@ -50,7 +51,7 @@ export function useMotDePasseOublie({ codeEcoleInitial = "" }) {
     setErreur(null);
     if (!/^\d{6}$/.test(code.replace(/[\s.-]/g, ""))) { setErreur({ message: messageErreurCode({ erreur: "code_invalide" }) }); return; }
     if (mdp.length < 8) { setErreur({ message: messageErreurCode({ erreur: "mdp_court" }) }); return; }
-    if (mdp !== confirmation) { setErreur({ message: "Les deux mots de passe ne correspondent pas." }); return; }
+    if (mdp !== confirmation) { setErreur({ message: i18n.t("auth.reset.mismatch") }); return; }
     setChargement(true);
     try {
       const r = await validerCodeReinitialisation({ ...demande, code, nouveauMdp: mdp });

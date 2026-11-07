@@ -1,7 +1,8 @@
-import { useState, useContext } from "react";
+import { useContext, useMemo, useState } from "react";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { useFirestore } from "../../hooks/useFirestore";
 import { getAnnee, today } from "../../constants";
+import { sansNonReinscritsEcartes } from "../../ecartes-non-reinscrits";
 import {
   genNumeroLivret, buildNouveauLivret, buildAnneePreRemplie, anneesApresSaisie, anneesApresSignature,
 } from "./livrets-logic";
@@ -19,11 +20,13 @@ export function useLivretsTab({ section, periodes, cleEleves, cleNotes, matieres
   // modifierChamp(id, champs) : mise à jour partielle, fusionnée dans le jsonb `extra`.
   // (`modifier` attend un item complet portant `_id` : appelé en (id, champs), il n'écrit rien.)
   const { items: livrets, ajouter: ajLivret, modifierChamp: modLivret } = useFirestore("livrets");
-  const { items: eleves } = useFirestore(cleEleves);
+  const { items: elevesBruts } = useFirestore(cleEleves);
   // Seules les notes de l'année préparée (« + Nouvelle année ») sont chargées,
   // comme dans le module École : sinon les T1 de deux années scolaires d'un
   // élève resté dans la section se moyennaient dans le livret.
   const anneeScolaire = annee || getAnnee();
+  // Sans les non réinscrits (aucun paiement) retirés des classes.
+  const eleves = useMemo(() => sansNonReinscritsEcartes(elevesBruts, schoolInfo, anneeScolaire), [elevesBruts, schoolInfo, anneeScolaire]);
   const { items: notes } = useFirestore(cleNotes, { annee: anneeScolaire });
   const canEdit = ["direction", "admin", "comptable"].includes(userRole);
 

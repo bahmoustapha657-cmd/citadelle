@@ -10,7 +10,7 @@ export function ImportEnrolModale({
 }) {
   const { t } = useTranslation();
   const {
-    importEnrolPreview, importEnrolEnCours, classeDefautImport, setClasseDefautImport,
+    importEnrolPreview, importEnrolEnCours, classeDefautImport, choisirClasseDefaut,
     ordreNomImport, setOrdreNomImport, fermer, handleFile, telechargerTemplate, lancerImport,
   } = useImportEnrol({
     setModal, niveauEnrol, schoolInfo, toast, tousElevesScolarite,
@@ -20,7 +20,7 @@ export function ImportEnrolModale({
   return (<Modale titre="📋 Importer des élèves depuis Excel" fermer={fermer} large>
     <div style={{marginBottom:12,padding:"10px 14px",background:"#f0f9ff",border:"1px solid #bae6fd",borderRadius:10,fontSize:12,color:"#0369a1"}}>
       <strong>📌 Détection automatique des colonnes</strong> — Peu importe l'ordre ou le nom exact des colonnes dans votre fichier, le système les reconnaît automatiquement.<br/>
-      Seuls <strong>Nom</strong>, <strong>Prénom</strong> et <strong>Classe</strong> sont obligatoires. Tous les autres champs sont optionnels.
+      Seuls <strong>Nom</strong>, <strong>Prénom</strong>, <strong>Filiation</strong> et <strong>Classe</strong> sont obligatoires. Tous les autres champs sont optionnels.
     </div>
     <div style={{display:"flex",gap:10,marginBottom:12,alignItems:"center",flexWrap:"wrap"}}>
       <label style={{display:"inline-flex",alignItems:"center",gap:6,padding:"7px 14px",borderRadius:8,border:`1.5px dashed ${C.blue}`,background:"#f0f6ff",color:C.blue,fontSize:12,fontWeight:700,cursor:"pointer"}}>
@@ -33,7 +33,7 @@ export function ImportEnrolModale({
     <div style={{marginBottom:8,padding:"10px 14px",background:"#fefce8",border:"1px solid #fde047",borderRadius:10,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
       <span style={{fontSize:13,fontWeight:700,color:"#854d0e"}}>📚 Classe à affecter</span>
       <span style={{fontSize:12,color:"#713f12",flex:1}}>Si votre fichier n'a pas de colonne Classe, sélectionnez-en une ici.</span>
-      <select value={classeDefautImport} onChange={e=>setClasseDefautImport(e.target.value)}
+      <select value={classeDefautImport} onChange={e=>choisirClasseDefaut(e.target.value)}
         style={{border:"1.5px solid #fbbf24",borderRadius:7,padding:"6px 10px",fontSize:12,background:"#fff",fontWeight:700,color:"#0A1628"}}>
         <option value="">— Classe du fichier —</option>
         {getClassesForSection(niveauEnrol, getSystemeScolaire(schoolInfo)).map(c=><option key={c} value={c}>{c}</option>)}

@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { useTranslation } from "react-i18next";
 import { MessagesEcole } from "../lazy-pages";
 import { OnboardingModal } from "../OnboardingModal";
 import { RaccourcisModal } from "../RaccourcisModal";
@@ -8,12 +9,13 @@ import { CentreAideModal } from "../../centre-aide/CentreAideModal";
 // capteur de clic pour fermer les dropdowns, modale de raccourcis et
 // messages SuperAdmin de l'école.
 export function AppShellOverlays({ p }) {
+  const { t } = useTranslation();
   return (
     <>
       {/* ── Bouton flottant guide de demarrage ── */}
       {p.estAdmin && (
         <button onClick={() => p.setOnboardingOuvert(true)}
-          title="Guide de démarrage"
+          title={t("shell.onboarding.title")}
           style={{ position: "fixed", bottom: 24, insetInlineStart: p.isMobile ? 16 : 244, zIndex: 200, width: 44, height: 44, borderRadius: "50%", background: p.couleur2, border: "none", cursor: "pointer", boxShadow: "0 4px 16px rgba(0,0,0,0.2)", fontSize: 20, display: "flex", alignItems: "center", justifyContent: "center" }}>
           🚀
         </button>

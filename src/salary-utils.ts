@@ -45,6 +45,8 @@ export {
   getSalaryMontantBrut,
   getSalaryNet,
   getForfaitNet,
+  getRetenueAbsences,
+  hasFifthWeekApplied,
   buildSecondarySalaryObservation,
   buildSecondarySalaryRecord,
   buildPrimarySalaryRecord,
@@ -58,6 +60,7 @@ export type {
 export {
   getMissingSalaryProfiles,
   mergeSalaryWithManualFields,
+  monthHasFifthWeek,
   findSalaryDuplicate,
   findBonsForSalary,
   sumBonsForSalary,

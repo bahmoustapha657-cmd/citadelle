@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { initMens, genererMatricule } from "../../../constants";
 import { telechargerExcel } from "../../../reports";
 import { findEnrollmentDuplicate } from "../../../enrollment-utils";
@@ -15,16 +15,29 @@ export function useImportEnrol({
   const [importEnrolEnCours, setImportEnrolEnCours] = useState(false);
   const [classeDefautImport, setClasseDefautImport] = useState("");
   const [ordreNomImport, setOrdreNomImport] = useState("auto");
+  // Fichier choisi, gardé pour refaire l'aperçu : la classe à affecter se
+  // choisit souvent après lui (le modèle Excel n'a pas de colonne Classe).
+  const fichier = useRef(null);
 
   const fermer = () => { setModal(null); setImportEnrolPreview(null); };
+
+  const analyser = async (ab, classe) => {
+    const { error, preview } = await parseEnrolmentFile(ab, { classeDefautImport: classe, ordreNomImport, tousElevesScolarite });
+    fichier.current = error ? null : ab;
+    setImportEnrolPreview(preview || null);
+    if (error) toast(error, "warning");
+  };
 
   const handleFile = async (e) => {
     const file = e.target.files[0]; if (!file) return;
     const ab = await file.arrayBuffer();
-    const { error, preview } = await parseEnrolmentFile(ab, { classeDefautImport, ordreNomImport, tousElevesScolarite });
-    if (error) { toast(error, "warning"); e.target.value = ""; return; }
-    setImportEnrolPreview(preview);
     e.target.value = "";
+    await analyser(ab, classeDefautImport);
+  };
+
+  const choisirClasseDefaut = (classe) => {
+    setClasseDefautImport(classe);
+    if (fichier.current) analyser(fichier.current, classe);
   };
 
   const telechargerTemplate = async () => {
@@ -65,7 +78,7 @@ export function useImportEnrol({
   };
 
   return {
-    importEnrolPreview, importEnrolEnCours, classeDefautImport, setClasseDefautImport,
+    importEnrolPreview, importEnrolEnCours, classeDefautImport, choisirClasseDefaut,
     ordreNomImport, setOrdreNomImport, fermer, handleFile, telechargerTemplate, lancerImport,
   };
 }

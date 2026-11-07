@@ -1,8 +1,9 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { C, estSorti, isSectionActive } from "../../constants";
+import { estSorti, isSectionActive } from "../../constants";
 import { Card } from "../ui";
+import { axe, corpsCarte, ESPACE, grille, infobulle, titreCarte, TONS } from "./tdb-styles";
 
-export function ChartsRow({ t, c1, c2, schoolInfo = {}, elevesC, elevesL, elevesP, tauxPayC, tauxPayL, tauxPayP, tauxPay }) {
+export function ChartsRow({ t, c1, schoolInfo = {}, elevesC, elevesL, elevesP, tauxPayC, tauxPayL, tauxPayP, tauxPay }) {
   // Une barre et une jauge par section OUVERTE dans l'école (Paramètres →
   // Identité) : une école sans lycée n'affiche pas un « Lycée » vide.
   const sections = [
@@ -10,44 +11,45 @@ export function ChartsRow({ t, c1, c2, schoolInfo = {}, elevesC, elevesL, eleves
     { section: "lycee", label: t("dashboard.lycee"), eleves: elevesL, taux: tauxPayL },
     { section: "primaire", label: t("dashboard.primary"), eleves: elevesP, taux: tauxPayP },
   ].filter((s) => isSectionActive(schoolInfo, s.section));
+  const tonTaux = (taux) => (taux >= 60 ? TONS.ok : TONS.danger);
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16, marginBottom: 20 }}>
-      {/* Répartition élèves par classe */}
-      <Card><div style={{ padding: "16px 18px" }}>
-        <p style={{ margin: "0 0 14px", fontWeight: 800, fontSize: 13, color: c1 }}>{t("dashboard.studentDistribution")}</p>
-        <ResponsiveContainer width="100%" height={200}>
-          <BarChart data={sections.map(({ label, eleves }) => (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: ESPACE }}>
+      {/* Répartition élèves par section */}
+      <Card style={{ flex: "2 1 380px", minWidth: 0 }}><div style={corpsCarte}>
+        <p style={titreCarte}>{t("dashboard.studentDistribution")}</p>
+        <ResponsiveContainer width="100%" height={210}>
+          <BarChart barGap={4} margin={{ top: 4, right: 4, left: -18, bottom: 0 }} data={sections.map(({ label, eleves }) => (
             { section: label, Actifs: eleves.filter((e) => e.statut === "Actif").length, Inactifs: eleves.filter((e) => e.statut !== "Actif" && !estSorti(e)).length }
           ))}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e0ebf8" />
-            <XAxis dataKey="section" tick={{ fontSize: 11 }} />
-            <YAxis tick={{ fontSize: 11 }} />
-            <Tooltip />
-            <Bar dataKey="Actifs" fill={c2} radius={[4, 4, 0, 0]} name={t("dashboard.chartActive")} />
-            <Bar dataKey="Inactifs" fill="#e2e8f0" radius={[4, 4, 0, 0]} name={t("dashboard.chartInactive")} />
+            <CartesianGrid vertical={false} stroke={grille} />
+            <XAxis dataKey="section" tick={axe} axisLine={false} tickLine={false} />
+            <YAxis tick={axe} axisLine={false} tickLine={false} allowDecimals={false} />
+            <Tooltip {...infobulle} />
+            <Bar dataKey="Actifs" fill={c1} radius={[6, 6, 0, 0]} maxBarSize={44} name={t("dashboard.chartActive")} />
+            <Bar dataKey="Inactifs" fill="rgba(148,163,184,0.35)" radius={[6, 6, 0, 0]} maxBarSize={44} name={t("dashboard.chartInactive")} />
           </BarChart>
         </ResponsiveContainer>
       </div></Card>
 
       {/* Taux de paiement */}
-      <Card><div style={{ padding: "16px 18px" }}>
-        <p style={{ margin: "0 0 14px", fontWeight: 800, fontSize: 13, color: c1 }}>{t("dashboard.paymentRate")}</p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 16, marginTop: 8 }}>
+      <Card style={{ flex: "1 1 260px", minWidth: 0 }}><div style={{ ...corpsCarte, display: "flex", flexDirection: "column", height: "100%", boxSizing: "border-box" }}>
+        <p style={titreCarte}>{t("dashboard.paymentRate")}</p>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 18 }}>
+          <span style={{ fontSize: 32, fontWeight: 800, color: "var(--lc-text-brand)", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{tauxPay}%</span>
+          <span style={{ fontSize: 12, color: "var(--lc-text-muted)" }}>{t("dashboard.globalRate")}</span>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {sections.map(({ label, taux }) => (
             <div key={label}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: c1 }}>{label}</span>
-                <span style={{ fontSize: 12, fontWeight: 800, color: taux >= 60 ? C.greenDk : "#ef4444" }}>{taux}%</span>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 12 }}>
+                <span style={{ fontWeight: 600, color: "var(--lc-text)" }}>{label}</span>
+                <span style={{ fontWeight: 700, color: tonTaux(taux), fontVariantNumeric: "tabular-nums" }}>{taux}%</span>
               </div>
-              <div style={{ background: "#e0ebf8", borderRadius: 6, height: 10 }}>
-                <div style={{ background: taux >= 60 ? c2 : "#ef4444", borderRadius: 6, height: 10, width: `${taux}%`, transition: "width 0.5s" }} />
+              <div style={{ background: "var(--lc-border-soft)", borderRadius: 99, height: 6, overflow: "hidden" }}>
+                <div style={{ background: tonTaux(taux), borderRadius: 99, height: 6, width: `${Math.min(100, Math.max(0, taux))}%`, transition: "width 0.5s" }} />
               </div>
             </div>
           ))}
-          <div style={{ marginTop: 8, padding: "10px 12px", background: "#f0fdf8", borderRadius: 8, borderLeft: `3px solid ${c2}` }}>
-            <div style={{ fontSize: 11, color: "#374151" }}>{t("dashboard.globalRate")}</div>
-            <div style={{ fontSize: 22, fontWeight: 900, color: c2 }}>{tauxPay}%</div>
-          </div>
         </div>
       </div></Card>
     </div>

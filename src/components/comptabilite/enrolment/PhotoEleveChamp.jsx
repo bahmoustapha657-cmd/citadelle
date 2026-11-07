@@ -2,22 +2,27 @@ import { useState } from "react";
 import { C } from "../../../constants";
 import { Btn } from "../../ui";
 import { CameraCapture } from "../../CameraCapture";
+import { RetouchePhoto } from "../../RetouchePhoto";
 import { lireImageNormalisee } from "../../camera-capture/photo-capture";
 
 // Bloc « Photo de l'élève » des modales d'inscription (complète et rapide) :
-// aperçu, prise de vue guidée, import depuis la galerie, suppression. La
-// photo reste une data URL jusqu'à l'enregistrement, qui la téléverse
-// (uploadPhotoEleve). Une photo de galerie trop lourde est réduite au lieu
-// d'être refusée : les photos de téléphone dépassent couramment 3 Mo.
-export function PhotoEleveChamp({ photo, onChange, toast }) {
+// aperçu, prise de vue guidée, import depuis la galerie, retouche,
+// suppression. La photo reste une data URL jusqu'à l'enregistrement, qui la
+// téléverse (uploadPhotoEleve). Une photo de galerie trop lourde est réduite
+// au lieu d'être refusée : les photos de téléphone dépassent couramment 3 Mo.
+// `onChange(photo, retouche)` : `retouche` = mémoire de la retouche (origine
+// et réglages, cf. retouche.js), null pour une photo prise ou importée.
+// `retouche` (prop) : celle de la fiche, pour repartir de l'origine.
+export function PhotoEleveChamp({ photo, onChange, toast, retouche = null }) {
   const [cameraOuverte, setCameraOuverte] = useState(false);
+  const [retoucheOuverte, setRetoucheOuverte] = useState(false);
 
   const importer = async (e) => {
     const fichier = e.target.files?.[0];
     e.target.value = "";
     if (!fichier) return;
     try {
-      onChange(await lireImageNormalisee(fichier));
+      onChange(await lireImageNormalisee(fichier), null);
     } catch {
       toast?.("Image illisible : choisissez une photo JPEG ou PNG.", "warning");
     }
@@ -35,14 +40,17 @@ export function PhotoEleveChamp({ photo, onChange, toast }) {
         </div>
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
           <Btn v="blue" onClick={()=>setCameraOuverte(true)}>📸 {photo ? "Reprendre la photo" : "Prendre une photo"}</Btn>
+          {photo&&<Btn v="ghost" onClick={()=>setRetoucheOuverte(true)} title="Fond, cadrage, lumière — sans reprendre la photo">✏️ Modifier la photo</Btn>}
           <label style={{display:"inline-flex",alignItems:"center",gap:6,padding:"6px 14px",borderRadius:8,border:`1px solid ${C.blue}`,background:"#fff",color:C.blue,fontSize:12,fontWeight:700,cursor:"pointer"}}>
             📁 Importer depuis la galerie
             <input type="file" accept="image/*" style={{display:"none"}} onChange={importer}/>
           </label>
-          {photo&&<Btn sm v="danger" onClick={()=>onChange("")}>✕ Supprimer</Btn>}
+          {photo&&<Btn sm v="danger" onClick={()=>onChange("", null)}>✕ Supprimer</Btn>}
         </div>
       </div>
-      {cameraOuverte&&<CameraCapture onCapture={onChange} onClose={()=>setCameraOuverte(false)}/>}
+      {cameraOuverte&&<CameraCapture onCapture={(nouvelle)=>onChange(nouvelle, null)} onClose={()=>setCameraOuverte(false)}/>}
+      {retoucheOuverte&&<RetouchePhoto photo={photo} retouche={retouche}
+        onValider={onChange} onClose={()=>setRetoucheOuverte(false)}/>}
     </div>
   );
 }

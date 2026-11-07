@@ -13,7 +13,7 @@ import {
   tr,
   watermarkHtml,
 } from "../print-helpers.js";
-import { blocsSignatures } from "../signatures.js";
+import { blocsSignatures, cachetOuEspace } from "../signatures.js";
 import { apprecComposition, computeFicheResultats } from "./fiche-compositions-data.js";
 import { PERIODE_ANNEE, buildBulletinNotesAnnuelles } from "./annual-notes.js";
 
@@ -242,7 +242,7 @@ export const imprimerFicheCompositions = (classe, periode, notes, matieres, elev
   </div>
 
   <div class="sigs">
-    ${blocsSignatures(schoolInfo, "ficheCompositions", (identite, s) => `<div class="sig">${identite}<br/><br/><br/>${tr("reports.signature")}${s.role === "principal" ? ` & ${tr("reports.stamp")}` : ""}</div>`,
+    ${blocsSignatures(schoolInfo, "ficheCompositions", (identite, s) => `<div class="sig">${identite}${cachetOuEspace(s)}${tr("reports.signature")}${s.role === "principal" ? ` & ${tr("reports.stamp")}` : ""}</div>`,
       { section: getSectionForClasse(classe) })}
     <div class="sig">${tr("reports.headTeacher")}<br/><br/><br/>${tr("reports.signature")}</div>
   </div>

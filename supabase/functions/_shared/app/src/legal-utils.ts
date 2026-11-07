@@ -1,0 +1,213 @@
+// GÉNÉRÉ par scripts/partager-edge.mjs depuis src/legal-utils.ts — ne pas modifier ici.
+// ══════════════════════════════════════════════════════════════
+//  Module Conformité / Légal — Profil officiel de l'établissement
+// ══════════════════════════════════════════════════════════════
+// Stocké dans la colonne `ecoles.legal` (Supabase), exposé en
+// `schoolInfo.legal` et enregistré par sauverProfilLegal (backend/
+// data-supabase).
+// Fallback quand le profil est absent : `legalProfileVide` (profil neutre
+// à compléter dans Paramètres → Officiel).
+
+export type CycleLegal = "maternelle" | "primaire" | "secondaire";
+
+export interface LegalProfile {
+  promoteur: {
+    nom: string;
+    anneeNaissance: number;
+    lieuNaissance: string;
+  };
+  autorisationCreation: {
+    numero: string;
+    dateSignature: string; // ISO YYYY-MM-DD
+    ministre: string;
+    ministere: string;
+  };
+  arreteOuverture: {
+    numero: string;
+    dateSignature: string; // ISO YYYY-MM-DD
+    ministre: string;
+    ministere: string;
+    dureeValiditeAnnees: number;
+  };
+  codesStatistiques: {
+    maternelle: string;
+    primaire: string;
+    secondaire: string;
+  };
+  etablissement: {
+    denomination: string;
+    quartier: string;
+    commune: string;
+    region: string;
+    email: string;
+    // Tutelle administrative (ex-champs legacy `schoolInfo.ministere`,
+    // `schoolInfo.ire`, `schoolInfo.dpe` — migrés ici). Optionnels car
+    // toutes les écoles ne les renseignent pas.
+    ministereTutelle?: string; // libellé complet du ministère
+    ire?: string;              // Inspection Régionale (abrégé)
+    dpe?: string;              // Direction Préfectorale (abrégé)
+    coordonnees?: { latitude: number; longitude: number };
+  };
+}
+
+// Profil légal VIDE — fallback pour toute école n'ayant pas encore
+// renseigné son dossier officiel (Paramètres → Officiel). On ne retombe
+// JAMAIS sur les données d'une autre école : avant ce garde-fou, les
+// nouvelles écoles voyaient (et imprimaient !) l'agrément de La Citadelle.
+export const legalProfileVide: LegalProfile = {
+  promoteur: { nom: "", anneeNaissance: 0, lieuNaissance: "" },
+  autorisationCreation: { numero: "", dateSignature: "", ministre: "", ministere: "" },
+  arreteOuverture: { numero: "", dateSignature: "", ministre: "", ministere: "", dureeValiditeAnnees: 0 },
+  codesStatistiques: { maternelle: "", primaire: "", secondaire: "" },
+  etablissement: { denomination: "", quartier: "", commune: "", region: "", email: "" },
+};
+
+// Vrai si l'école n'a encore rien renseigné (ni numéro ni date d'arrêté).
+export function isLegalProfileEmpty(profile?: LegalProfile | null): boolean {
+  return !profile?.arreteOuverture?.numero && !profile?.arreteOuverture?.dateSignature;
+}
+
+// Complète un profil PARTIEL avec les valeurs vides par défaut, section par
+// section. Un `legal: {}` migré (Supabase) est truthy — donc jamais remplacé
+// par `legalProfileVide` — mais peut manquer arreteOuverture/etablissement/…
+// Les lectures directes (ComplianceAgrement/ComplianceDetails accèdent à
+// `profile.arreteOuverture.numero` sans garde) plantaient sur ce cas.
+export function legalProfileComplet(profile?: Partial<LegalProfile> | null): LegalProfile {
+  const p = profile || {};
+  return {
+    promoteur: { ...legalProfileVide.promoteur, ...p.promoteur },
+    autorisationCreation: { ...legalProfileVide.autorisationCreation, ...p.autorisationCreation },
+    arreteOuverture: { ...legalProfileVide.arreteOuverture, ...p.arreteOuverture },
+    codesStatistiques: { ...legalProfileVide.codesStatistiques, ...p.codesStatistiques },
+    etablissement: { ...legalProfileVide.etablissement, ...p.etablissement },
+  };
+}
+
+// ── Helpers ──────────────────────────────────────────────────────
+
+// Date d'expiration dérivée — JAMAIS saisie en dur.
+// Garde : un profil partiel (ex. `legal: {}` migré côté Supabase, truthy donc
+// non remplacé par legalProfileVide) ne doit pas faire planter le dashboard.
+export function computeDateExpiration(profile: LegalProfile): string {
+  const { dateSignature, dureeValiditeAnnees } = profile?.arreteOuverture || ({} as LegalProfile["arreteOuverture"]);
+  if (!dateSignature || !Number.isFinite(dureeValiditeAnnees)) return "";
+  const d = new Date(dateSignature);
+  if (Number.isNaN(d.getTime())) return "";
+  d.setFullYear(d.getFullYear() + dureeValiditeAnnees);
+  return d.toISOString().slice(0, 10);
+}
+
+export function formatDateFR(iso: string): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  return `${dd}/${mm}/${d.getFullYear()}`;
+}
+
+// Jours restants avant expiration. Négatif si déjà expiré.
+export function daysUntilExpiration(profile: LegalProfile, ref: Date = new Date()): number {
+  const exp = computeDateExpiration(profile);
+  if (!exp) return Number.NaN;
+  const expDate = new Date(exp);
+  const ms = expDate.getTime() - ref.getTime();
+  return Math.round(ms / (1000 * 60 * 60 * 24));
+}
+
+export type ComplianceStatus = "ok" | "warning" | "critical" | "expired";
+
+export function getComplianceStatus(profile: LegalProfile, ref: Date = new Date()): ComplianceStatus {
+  const days = daysUntilExpiration(profile, ref);
+  if (!Number.isFinite(days)) return "critical";
+  if (days <= 0) return "expired";
+  if (days <= 30 * 6) return "critical"; // ≤ 6 mois
+  if (days <= 365) return "warning"; // ≤ 12 mois
+  return "ok";
+}
+
+// Compte à rebours lisible : "1 an 3 mois", "8 mois", "12 jours", "Expiré".
+export function formatCountdown(profile: LegalProfile, ref: Date = new Date()): string {
+  const days = daysUntilExpiration(profile, ref);
+  if (!Number.isFinite(days)) return "—";
+  if (days <= 0) return `Expiré depuis ${Math.abs(days)} jour${Math.abs(days) > 1 ? "s" : ""}`;
+  if (days < 60) return `${days} jour${days > 1 ? "s" : ""}`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months} mois`;
+  const years = Math.floor(months / 12);
+  const remMonths = months % 12;
+  return remMonths === 0 ? `${years} an${years > 1 ? "s" : ""}` : `${years} an${years > 1 ? "s" : ""} ${remMonths} mois`;
+}
+
+export function getCodeStatistique(profile: LegalProfile, cycle: CycleLegal): string {
+  return profile.codesStatistiques[cycle] || "";
+}
+
+// Mappe le niveau interne ("college" | "lycee" | "primaire" | "prescolaire"
+// | "maternelle" | "secondaire") vers les 3 cycles officiels du code
+// statistique.
+//
+// « prescolaire » est l'identifiant de section employé PARTOUT ailleurs dans
+// l'application (getSectionForClasse, clés de collection, périodicité) ;
+// « maternelle » est le nom du cycle côté profil légal. Sans cet alias, un
+// bulletin de maternelle retombait sur le repli « secondaire » et imprimait
+// le code statistique du collège.
+export function mapNiveauToCycle(niveau: string | undefined | null): CycleLegal {
+  const n = (niveau || "").toLowerCase();
+  if (n === "maternelle" || n === "prescolaire") return "maternelle";
+  if (n === "primaire") return "primaire";
+  return "secondaire"; // college, lycee, secondaire → secondaire
+}
+
+// Résout les 4 champs (agrement, ministere, ire, dpe) en piochant
+// d'abord dans le profil légal structuré (schoolInfo.legal), avec
+// fallback sur les champs legacy de schoolInfo. Utilisé par reports.js
+// pour les en-têtes de bulletins / attestations / livrets.
+//
+// Pourquoi un helper plutôt que d'inliner : reports.js a 12+ usages
+// répartis dans 4 fonctions ; centraliser évite d'oublier un endroit
+// et garde la sémantique "legal d'abord" en un seul point.
+export function resolveLegalFields(schoolInfo: {
+  legal?: LegalProfile;
+  ministere?: string;
+  agrement?: string;
+  ire?: string;
+  dpe?: string;
+}): { ministere: string; agrement: string; ire: string; dpe: string } {
+  const legal = schoolInfo.legal;
+  return {
+    ministere: legal?.etablissement?.ministereTutelle || schoolInfo.ministere || "",
+    agrement: legal?.arreteOuverture?.numero || schoolInfo.agrement || "",
+    ire: legal?.etablissement?.ire || schoolInfo.ire || "",
+    dpe: legal?.etablissement?.dpe || schoolInfo.dpe || "",
+  };
+}
+
+export const MINISTERE_DEFAUT = "Ministère de l'Éducation Nationale, de l'Alphabétisation, de l'Enseignement Technique et de la Formation Professionnelle";
+
+// Ce que porte l'en-tête de tout document de l'école, défauts compris. Les
+// fiches de Pédagogue le reçoivent aussi (fonction pedagogue-ticket).
+export function enteteOfficiel(schoolInfo: Parameters<typeof resolveLegalFields>[0] & { pays?: string }) {
+  const { ministere, agrement, ire, dpe } = resolveLegalFields(schoolInfo);
+  return {
+    pays: schoolInfo.pays?.trim() ? schoolInfo.pays : "République de Guinée",
+    ministere: ministere.trim() ? ministere : MINISTERE_DEFAUT,
+    ire,
+    dpe,
+    agrement,
+  };
+}
+
+// ── HTML helper pour les documents imprimés (bulletins, attestations) ──
+// Style discret, centré, petite police grise. Compatible avec @page A4.
+// Renvoie une chaîne vide si l'école n'a pas renseigné son arrêté :
+// on n'imprime jamais une mention « agréé » fabriquée.
+export function getOfficialLegalFooterHTML(profile: LegalProfile, cycle: CycleLegal): string {
+  if (!profile?.arreteOuverture?.numero) return "";
+  const code = getCodeStatistique(profile, cycle);
+  const num = profile.arreteOuverture.numero;
+  const date = formatDateFR(profile.arreteOuverture.dateSignature);
+  return `<div class="legal-footer" style="margin-top:14px;padding-top:8px;border-top:1px solid #e5e7eb;text-align:center;font-size:8.5px;color:#6b7280;line-height:1.5;font-family:Arial,sans-serif">
+    Établissement agréé — Arrêté ${num} du ${date}${code ? ` — Code statistique : ${code}` : ""}
+  </div>`;
+}

@@ -3,19 +3,24 @@
 // (génération auto, application des bons, impression) du domaine paie.
 
 import { imprimerEtatsSalaires } from "../../reports";
-import { autoGenererSalairesAction, genererSalairesPourMois } from "./salary-actions";
+import { appliquerCinquiemeSemaine, autoGenererSalairesAction, genererSalairesPourMois } from "./salary-actions";
 import { appliquerBons as appliquerBonsAction } from "./payment-actions";
+import { appliquerAbsences as appliquerAbsencesAction } from "./presences/appliquer-absences";
+import { recalculerFicheSecondaire } from "./presences/presences-secondaire";
+import { reglagesPresences } from "./presences/presences-utils";
 import {
   getForfaitNet,
   getSalaryExecutionHours,
   getSalaryMontantBrut,
   getSalaryNet,
+  monthHasFifthWeek,
   summarizeSalaryTotals,
 } from "../../salary-utils";
 
 export function useComptaSalaires({
   salaires,
   bons,
+  presences = [],
   moisSel,
   moisSalaire,
   ensCollege,
@@ -49,6 +54,23 @@ export function useComptaSalaires({
     moisSel, bonsMois, salairesMois, readOnly, toast, modS,
   });
 
+  // Retenues pour absences/retards injustifiés (registre des présences).
+  // Le secondaire a besoin de l'emploi du temps pour chiffrer ses heures.
+  const anneeScolaire = anneeConsultee || annee;
+  const secondaire = { ensCollege, ensLycee, emploisCollege, emploisLycee, engCollege, engLycee, primeDefaut };
+  const appliquerAbsences = () => appliquerAbsencesAction({
+    moisSel, salairesMois, presences, anneeScolaire, schoolInfo, secondaire, readOnly, toast, modS,
+  });
+  // 5ème semaine : choix du comptable, mois par mois (bouton du bandeau 📅).
+  const avec5eme = monthHasFifthWeek(salairesMois, moisSel);
+  const basculerCinquiemeSemaine = () => appliquerCinquiemeSemaine({
+    appliquer: !avec5eme, moisSel, salairesSec, secondaire, presences, anneeScolaire, readOnly, toast, modS, logAction,
+  });
+  // Retenue « Abs. » qu'aurait une fiche du secondaire (onglet Présences).
+  const retenueSecondaire = (fiche) => recalculerFicheSecondaire(fiche, {
+    ...secondaire, presences, anneeScolaire, reglages: reglagesPresences(schoolInfo),
+  })?.retenue || null;
+
   const calcExecute = (salary) => getSalaryExecutionHours(salary);
   const calcMontant = (salary) => getSalaryMontantBrut(salary);
   const calcNet = (salary) => getSalaryNet(salary);
@@ -78,6 +100,8 @@ export function useComptaSalaires({
     emploisCollege, emploisLycee, engCollege, engLycee,
     primeDefaut,
     annee: annee || anneeConsultee,
+    // Heures « Absent » : du mois seulement, hors jours d'absence justifiée.
+    presences,
     modS, ajS, supS,
     resync,
   });
@@ -88,7 +112,7 @@ export function useComptaSalaires({
     if (readOnly) return;
     return autoGenererSalairesAction({
       ...opts,
-      moisSel, moisSalaire, genererPourMois,
+      moisSel, moisSalaire, salaires, genererPourMois,
       ensCollege, ensLycee, ensPrimaire, personnel, primeDefaut,
       toast, confirm, logAction,
     });
@@ -121,6 +145,10 @@ export function useComptaSalaires({
     salairesPers,
     bonsMois,
     appliquerBons,
+    appliquerAbsences,
+    avec5eme,
+    basculerCinquiemeSemaine,
+    retenueSecondaire,
     calcExecute,
     calcMontant,
     calcNet,

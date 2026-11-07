@@ -5,15 +5,15 @@ import { EnsTab } from "../EnsTab";
 import { NotesTab } from "../NotesTab";
 
 // Onglets pédagogiques : aperçu, classes, élèves, enseignants, notes.
-export function EcoleTabsPedago({ e, titre, section, avecEns, annee, classesPredefinies, maxNote, readOnly, cleEns, couleur, userRole }) {
+export function EcoleTabsPedago({ e, section, avecEns, annee, classesPredefinies, maxNote, readOnly, cleEns, couleur, userRole }) {
   return (
     <>
       {/* ── APERÇU ── */}
       {e.tab === "apercu" && <ApercuTab
-        titre={titre}
         classes={e.classes}
         eleves={e.eleves}
         ens={e.ens}
+        classes={e.classes}
         notes={e.notes}
         absences={e.absences}
         avecEns={avecEns}
@@ -27,7 +27,6 @@ export function EcoleTabsPedago({ e, titre, section, avecEns, annee, classesPred
         couleur={couleur}
         schoolInfo={e.schoolInfo}
         periodes={e.periodes}
-        anneeConsultee={e.anneeConsultee}
       />}
 
       {/* ── CLASSES ── */}
@@ -35,6 +34,7 @@ export function EcoleTabsPedago({ e, titre, section, avecEns, annee, classesPred
         classes={e.classes}
         eleves={e.eleves}
         ens={e.ens}
+        classes={e.classes}
         cC={e.cC}
         ajC={e.ajC}
         modC={e.modC}
@@ -52,7 +52,8 @@ export function EcoleTabsPedago({ e, titre, section, avecEns, annee, classesPred
         toast={e.toast}
       />}
 
-      {/* ── ÉLÈVES (lecture seule — enrôlement dans Comptabilité) ── */}
+      {/* ── ÉLÈVES (lecture seule — enrôlement dans Comptabilité ; seules la
+          photo et le surnom se reprennent ici, par la séance photo) ── */}
       {e.tab === "eleves" && <ElevesTab
         userRole={userRole}
         eleves={e.eleves}
@@ -68,6 +69,8 @@ export function EcoleTabsPedago({ e, titre, section, avecEns, annee, classesPred
         toast={e.toast}
         logAction={e.logAction}
         canEdit={e.canEdit}
+        canPhoto={e.canPhoto}
+        modChampE={e.modChampE}
         canCreateParent={e.canCreateParent}
         parentEleve={e.parentEleve}
         setParentEleve={e.setParentEleve}
@@ -76,11 +79,14 @@ export function EcoleTabsPedago({ e, titre, section, avecEns, annee, classesPred
       {/* ── ENSEIGNANTS ── */}
       {e.tab === "ens" && avecEns && <EnsTab
         ens={e.ens}
+        classes={e.classes}
         cEns={e.cEns}
         supEns={e.supEns}
         cleEns={cleEns}
         section={section}
         isPrimarySection={e.isPrimarySection}
+        voitSalaires={e.voitSalaires}
+        paieDe={e.paieDe}
         couleur={couleur}
         schoolId={e.schoolId}
         toast={e.toast}

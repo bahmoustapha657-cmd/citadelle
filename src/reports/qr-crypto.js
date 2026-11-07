@@ -183,7 +183,7 @@ export function parseQrPayload(text = "") {
 export const CLES_QR = {
   EduGest: "T", Eleve: "E", IEN: "I", Classe: "C", Periode: "P", Moy: "M",
   Annee: "A", Num: "N", Du: "D", Au: "F", Total: "S", Mois: "O",
-  Enseignant: "G", NetTotal: "X", DerniereClasse: "L",
+  Enseignant: "G", NetTotal: "X", DerniereClasse: "L", Tuteur: "U",
 };
 // Type de document (valeur du champ EduGest), abrégé de la même façon.
 export const TYPES_QR = {
@@ -198,7 +198,7 @@ const LIBELLE_TYPE = {
 const LIBELLE_CHAMP = {
   E: "Élève", I: "IEN", C: "Classe", P: "Période", M: "Moyenne", A: "Année",
   N: "N°", D: "Du", F: "Au", S: "Total payé", O: "Mois", G: "Enseignant", X: "Net total",
-  L: "Dernière classe",
+  L: "Dernière classe", U: "Tuteur",
   Ecole: "École", Eleve: "Élève", Periode: "Période", Moy: "Moyenne", Annee: "Année",
   Num: "N°", Total: "Total payé", NetTotal: "Net total", DerniereClasse: "Dernière classe",
 };

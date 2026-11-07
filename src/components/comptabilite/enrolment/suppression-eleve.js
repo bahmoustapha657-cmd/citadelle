@@ -11,7 +11,8 @@
 // d'erreur traduit plus bas.
 
 // Extension explicite : module couvert par des tests Node.
-import { aDesPaiements } from "../../admin/cloture-annee-utils.js";
+import { aDesPaiements } from "../../../depart-utils.js";
+import i18n from "../../../i18n/index.js";
 
 export const INDICE_REFUS_ENCAISSEMENTS = "eleve_avec_encaissements";
 const VIOLATION_CLE_ETRANGERE = "23503"; // filet SQL (paiements_eleve_id_fkey)
@@ -25,19 +26,16 @@ export function porteDesEncaissements(eleve = {}, paiements = []) {
   return Object.values(eleve.historique || {}).some((archive) => !!archive && aDesPaiements(archive));
 }
 
-const nomComplet = (eleve = {}) => `${eleve.nom || ""} ${eleve.prenom || ""}`.trim() || "cet élève";
+const nomComplet = (eleve = {}) => `${eleve.nom || ""} ${eleve.prenom || ""}`.trim()
+  || i18n.t("enrolment.deletionUnnamed");
 
 // Refus : la question propose directement le bon geste.
 export function messageSuppressionRefusee(eleve) {
-  return `${nomComplet(eleve)} a des encaissements (journal de caisse, fiche ou année archivée) : `
-    + "sa fiche ne peut pas être supprimée, cet argent disparaîtrait de la caisse et des bilans.\n\n"
-    + "Pour un élève qui quitte l'école, déclarez son départ.\n\nDéclarer son départ maintenant ?";
+  return i18n.t("enrolment.deletionRefused", { name: nomComplet(eleve) });
 }
 
 export function messageConfirmationSuppression(eleve) {
-  return `Supprimer définitivement la fiche de ${nomComplet(eleve)} ?\n\n`
-    + "Ses notes, absences et appréciations seront effacées avec elle. "
-    + "Pour un élève qui quitte l'école, déclarez plutôt son départ (📤).";
+  return i18n.t("enrolment.deletionConfirm", { name: nomComplet(eleve) });
 }
 
 export function estRefusEncaissements(erreur) {
@@ -48,8 +46,7 @@ export function estRefusEncaissements(erreur) {
 // telle quelle (jamais de « supprimé » sur un échec).
 export function messageErreurSuppression(erreur, eleve) {
   if (estRefusEncaissements(erreur)) {
-    return `Suppression refusée : ${nomComplet(eleve)} a des encaissements au journal de caisse. `
-      + "Sa fiche est conservée : déclarez plutôt son départ (📤).";
+    return i18n.t("enrolment.deletionRefusedServer", { name: nomComplet(eleve) });
   }
-  return `Suppression impossible : ${erreur?.message || erreur}`;
+  return i18n.t("enrolment.deletionFailed", { message: erreur?.message || erreur });
 }

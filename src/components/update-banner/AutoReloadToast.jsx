@@ -1,12 +1,14 @@
+import { useTranslation } from "react-i18next";
+
 // Toast discret affiché pendant l'auto-rechargement de la nouvelle version.
 export function AutoReloadToast() {
+  const { t } = useTranslation();
   return (
     <div
       role="status"
       style={{
         position: "fixed",
-        left: 16,
-        right: 16,
+        insetInline: 16,
         bottom: 16,
         zIndex: 9999,
         background: "#0A1628",
@@ -23,7 +25,7 @@ export function AutoReloadToast() {
       }}
     >
       <span style={{ fontSize: 16 }}>🔄</span>
-      <span>Mise à jour disponible — rechargement en cours…</span>
+      <span>{t("update.reloading")}</span>
     </div>
   );
 }

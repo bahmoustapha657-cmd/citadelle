@@ -1,16 +1,46 @@
+import { useContext } from "react";
+import { SchoolContext } from "../../../contexts/SchoolContext";
+import { affichageFinancesClassique } from "../finances-claires";
+import { BilanClair } from "../bilan-tab/BilanClair";
 import { RecettesTab } from "../RecettesTab";
 import { DepensesTab } from "../DepensesTab";
 import { BilanTab } from "../BilanTab";
 import { CaisseTab } from "../CaisseTab";
 import { SalairesTab } from "../SalairesTab";
+import { PaiementsEnLigneTab } from "../../paiement-en-ligne/PaiementsEnLigneTab";
+import { PresencesTab } from "../presences/PresencesTab";
 
 // Onglets financiers : bilan, caisse (journal daté), recettes, dépenses,
 // états de salaires.
 export function ComptaTabsFinancier({ c, readOnly, annee }) {
   const sd = c.salairesDomaine;
+  const { schoolId } = useContext(SchoolContext);
+  const classique = affichageFinancesClassique(schoolId);
   return (
     <>
-      {c.tab === "bilan" && <BilanTab
+      {c.tab === "bilan" && !classique && <BilanClair
+        schoolInfo={c.schoolInfo}
+        canCreate={c.canCreate}
+        toggleBlocage={c.toggleBlocage}
+        cR={c.cR}
+        cD={c.cD}
+        recettes={c.recettes}
+        depenses={c.depenses}
+        versements={c.versements}
+        mensualiteOverview={c.mensualiteOverview}
+        salairesMois={c.salairesMois}
+        moisLabel={c.moisLabel}
+        totNetSec={c.totNetSec}
+        totNetPrim={c.totNetPrim}
+        totNetPers={c.totNetPers}
+        eleves={c.tousElevesScolarite}
+        moisAnnee={c.moisAnnee}
+        tarifsClasses={c.tarifsClasses}
+        paiements={c.paiements}
+        anneeConsultee={c.anneeConsultee}
+      />}
+
+      {c.tab === "bilan" && classique && <BilanTab
         schoolInfo={c.schoolInfo}
         periodes={c.periodes}
         canCreate={c.canCreate}
@@ -42,7 +72,13 @@ export function ComptaTabsFinancier({ c, readOnly, annee }) {
         paiements={c.paiements}
         enModeArchive={c.enModeArchive}
         anneeConsultee={c.anneeConsultee}
+        setAnneeConsultee={c.setAnneeConsultee}
+        anneesDispo={c.anneesDispo}
       />}
+
+      {/* Rapprocher / régulariser : même droit qu'encaisser (le serveur
+          vérifie l'écriture compta). */}
+      {c.tab === "en-ligne" && <PaiementsEnLigneTab peutEcrire={!readOnly} />}
 
       {c.tab === "recettes" && <RecettesTab
         form={c.form}
@@ -76,7 +112,10 @@ export function ComptaTabsFinancier({ c, readOnly, annee }) {
         enreg={c.enreg}
         periodes={c.periodes}
         defaultPeriode={c.defaultPeriode}
+        anneeConsultee={c.anneeConsultee}
       />}
+
+      {c.tab === "presences" && <PresencesTab c={c} readOnly={readOnly} />}
 
       {/* ── ÉTATS DE SALAIRES MODÈLE EXCEL ── */}
       {c.tab === "salaires" && <SalairesTab
@@ -88,6 +127,7 @@ export function ComptaTabsFinancier({ c, readOnly, annee }) {
         moisLabel={sd.moisLabel}
         moisModale={sd.moisModale}
         annee={annee}
+        anneeConsultee={c.anneeConsultee}
         primeDefaut={c.primeDefaut}
         setPrimeDefaut={c.setPrimeDefaut}
         form={c.form}
@@ -114,6 +154,7 @@ export function ComptaTabsFinancier({ c, readOnly, annee }) {
         modBon={c.modBon}
         supBon={c.supBon}
         ensPrimaire={c.ensPrimaire}
+        ensPrescolaire={c.ensPrescolaire}
         ensCollege={c.ensCollege}
         ensLycee={c.ensLycee}
         personnel={c.personnel}
@@ -127,6 +168,9 @@ export function ComptaTabsFinancier({ c, readOnly, annee }) {
         calcNetF={sd.calcNetF}
         autoGenererSalaires={sd.autoGenererSalaires}
         appliquerBons={sd.appliquerBons}
+        appliquerAbsences={sd.appliquerAbsences}
+        avec5eme={sd.avec5eme}
+        basculerCinquiemeSemaine={sd.basculerCinquiemeSemaine}
         imprimerSalaires={sd.imprimerSalaires}
         enreg={c.enreg}
         saveSalaire={c.saveSalaire}

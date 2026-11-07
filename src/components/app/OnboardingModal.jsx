@@ -1,21 +1,26 @@
 // ══════════════════════════════════════════════════════════════
 //  Modal « Guide de démarrage » (onboarding admin/direction)
 // ══════════════════════════════════════════════════════════════
+import { useTranslation } from "react-i18next";
 import { C, isModuleOuvertPourEcole } from "../../constants";
 import { Btn } from "../ui";
 
 export function OnboardingModal({ schoolInfo, setPage, onClose }) {
+  const { t } = useTranslation();
   const go = (id) => { setPage(id); onClose(); };
   // Une école sans maternelle ni primaire n'a pas de module Dir. Primaire :
   // classes, enseignants et emplois du temps se gèrent dans Secondaire.
   const moduleSections = isModuleOuvertPourEcole("primaire", schoolInfo) ? "primaire" : "secondaire";
+  const etape = (done, cle, page) => ({
+    done, label: t(`shell.onboarding.${cle}`), desc: t(`shell.onboarding.${cle}Desc`), action: () => go(page),
+  });
   const steps = [
-    {done:schoolInfo.nom!=="EduGest"&&!!schoolInfo.nom, label:"Configurer l'identité de l'école", desc:"Nom, logo, couleurs, coordonnées", action:()=>go("parametres")},
-    {done:true, label:"Creer les classes", desc:"Primaire et/ou Secondaire selon votre etablissement", action:()=>go(moduleSections)},
-    {done:true, label:"Ajouter les enseignants", desc:"Profil, matière, prime horaire", action:()=>go(moduleSections)},
-    {done:true, label:"Enrôler les élèves", desc:"Via le module Comptabilité → Élèves", action:()=>go("compta")},
-    {done:true, label:"Configurer les emplois du temps", desc:"Par classe, dans chaque section", action:()=>go(moduleSections)},
-    {done:true, label:"Générer les états de salaires", desc:"Via Comptabilité → Salaires → Auto-générer", action:()=>go("compta")},
+    etape(schoolInfo.nom !== "EduGest" && !!schoolInfo.nom, "identity", "parametres"),
+    etape(true, "classes", moduleSections),
+    etape(true, "teachers", moduleSections),
+    etape(true, "students", "compta"),
+    etape(true, "timetables", moduleSections),
+    etape(true, "salaries", "compta"),
   ];
 
   return (
@@ -24,8 +29,8 @@ export function OnboardingModal({ schoolInfo, setPage, onClose }) {
         <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
           <div style={{fontSize:28}}>🚀</div>
           <div>
-            <h2 style={{margin:0,fontSize:17,fontWeight:900,color:C.blue}}>Guide de démarrage</h2>
-            <p style={{margin:"3px 0 0",fontSize:12,color:"#6b7280"}}>Suivez ces étapes pour configurer votre école</p>
+            <h2 style={{margin:0,fontSize:17,fontWeight:900,color:C.blue}}>{t("shell.onboarding.title")}</h2>
+            <p style={{margin:"3px 0 0",fontSize:12,color:"#6b7280"}}>{t("shell.onboarding.subtitle")}</p>
           </div>
         </div>
         {steps.map((step,i)=>(
@@ -43,7 +48,7 @@ export function OnboardingModal({ schoolInfo, setPage, onClose }) {
           </div>
         ))}
         <div style={{display:"flex",justifyContent:"flex-end",marginTop:16}}>
-          <Btn onClick={onClose}>Fermer</Btn>
+          <Btn onClick={onClose}>{t("common.close")}</Btn>
         </div>
       </div>
     </div>

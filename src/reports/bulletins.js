@@ -11,14 +11,19 @@ import { getGeneralAverage } from "../note-utils";
 import { notesDeLEleve } from "../note-index.js";
 import { tr } from "./print-helpers.js";
 import { qrSecuriseImgHtml, qrPayload } from "./qr.js";
+import { assiduiteEleve } from "../absences-eleves.js";
 import {
   getEvolutionPeriode,
   getMoyenneClasseParMatiere,
+  matieresCompteesClasse,
+  getMoyennesPeriodes,
+  getProfesseursParMatiere,
   getRangEleve,
+  getRangsParMatiere,
   getStatsClasse,
   ordonnerParClassement,
 } from "./bulletins/bulletin-helpers.js";
-import { buildBulletinPageHTML, getModeleBulletin } from "./bulletins/bulletin-page.js";
+import { buildBulletinPageHTML, estModeleComplet, getModeleBulletin } from "./bulletins/bulletin-page.js";
 import { ouvrirFenetreBulletin } from "./bulletins/bulletin-doc.js";
 import { PERIODE_ANNEE, buildBulletinNotesAnnuelles } from "./bulletins/annual-notes.js";
 
@@ -40,11 +45,39 @@ async function bulletinQrHtml({ eleve, notes, matieres, periode, niveau, maxNote
   }), schoolInfo, { size: getModeleBulletin(schoolInfo) === "compact" ? 68 : 92, alt: "QR bulletin" });
 }
 
+// Ce que seuls les modèles complets (Officiel, Prestige, Contemporain)
+// impriment en plus. `notesReelles` = notes saisies, jamais les notes
+// annuelles synthétiques (les professeurs et les périodes n'y figurent pas).
+//
+// Par classe : rang et professeur de chaque matière.
+function extrasClasse({ classe, eleves, notes, notesReelles, matieres, periode, niveau, emplois }) {
+  return {
+    rangsParMatiere: eleves.length > 1 ? getRangsParMatiere(eleves, notes, matieres, periode, classe, niveau) : null,
+    professeurs: getProfesseursParMatiere({
+      classe, matieres, eleveIds: eleves.map((e) => e._id),
+      notes: notesReelles, periode: periode === PERIODE_ANNEE ? null : periode, emplois: emplois || [],
+    }),
+  };
+}
+
+// Par élève : moyenne de chaque période, assiduité. Sans la liste des
+// absences (portail parent), les cases d'assiduité restent à remplir.
+// `matieres` : TOUTES celles de la classe — chaque période retient les
+// siennes, notées dans `elevesClasse`.
+const extrasEleve = ({ eleve, notesReelles, matieres, niveau, periodes, absences, elevesClasse = null }) => ({
+  moyennesPeriodes: getMoyennesPeriodes(eleve, notesReelles, matieres, eleve.classe, niveau, periodes, elevesClasse),
+  assiduite: Array.isArray(absences) ? assiduiteEleve(absences, eleve._id, getAnnee()) : null,
+});
+
 export const imprimerBulletin = async (eleve, notes, matieres, periode, niveau, maxNote = 20, schoolInfo = {}, options = {}) => {
   // Fenêtre ouverte AVANT l'await QR (geste utilisateur) pour éviter le blocage.
   const win = window.open("", "_blank");
   const allEleves = Array.isArray(options.allEleves) ? options.allEleves : null;
   let allNotes = Array.isArray(options.allNotes) ? options.allNotes : notes;
+  const notesReelles = allNotes;
+  const periodesSection = (Array.isArray(options.periodes) && options.periodes.length)
+    ? options.periodes
+    : getPeriodesForSection(schoolInfo, niveau);
 
   // Mode « Fin d'année » : on remplace les notes réelles par des notes
   // annuelles synthétiques (comme l'impression groupée), sinon le bulletin
@@ -55,15 +88,16 @@ export const imprimerBulletin = async (eleve, notes, matieres, periode, niveau, 
   // primaire et secondaire, alors que le test « === "primaire" » d'avant
   // rangeait la maternelle avec le collège.
   if (periode === PERIODE_ANNEE) {
-    const periodesReelles = (Array.isArray(options.periodes) && options.periodes.length)
-      ? options.periodes
-      : getPeriodesForSection(schoolInfo, niveau);
     const baseEleves = (allEleves || [eleve]).filter((e) => e.classe === eleve.classe);
-    allNotes = buildBulletinNotesAnnuelles({ eleves: baseEleves, notes: allNotes, matsFor: () => matieres, periodes: periodesReelles, niveau });
+    allNotes = buildBulletinNotesAnnuelles({ eleves: baseEleves, notes: allNotes, matsFor: () => matieres, periodes: periodesSection, niveau });
     notes = allNotes;
   }
 
   const elevesClasse = allEleves ? allEleves.filter((e) => e.classe === eleve.classe) : null;
+  // Seules les matières notées dans la classe sur la période comptent
+  // (matieresNotees) : lignes, total des coefficients, moyenne, QR. Sans la
+  // classe (portail parent), toutes, comme avant.
+  const matieresP = elevesClasse ? matieresCompteesClasse(matieres, allNotes, elevesClasse, periode) : matieres;
 
   const rang = elevesClasse
     ? getRangEleve(eleve, elevesClasse, allNotes, matieres, periode, eleve.classe, niveau)
@@ -72,21 +106,31 @@ export const imprimerBulletin = async (eleve, notes, matieres, periode, niveau, 
     ? getStatsClasse(elevesClasse, allNotes, matieres, periode, eleve.classe, niveau)
     : null;
   const matiereClasseAvg = elevesClasse
-    ? Object.fromEntries(matieres.map((mat) => [
+    ? Object.fromEntries(matieresP.map((mat) => [
         mat.nom,
         getMoyenneClasseParMatiere(elevesClasse, allNotes, mat.nom, periode, eleve.classe, niveau),
       ]))
     : {};
   const evolution = allNotes.length > notes.length || allEleves
-    ? getEvolutionPeriode(eleve, allNotes, matieres, eleve.classe, niveau, periode, schoolInfo)
+    ? getEvolutionPeriode(eleve, allNotes, matieres, eleve.classe, niveau, periode, schoolInfo, elevesClasse)
     : null;
 
-  const qr = await bulletinQrHtml({ eleve, notes: allNotes, matieres, periode, niveau, maxNote, schoolInfo });
+  const qr = await bulletinQrHtml({ eleve, notes: allNotes, matieres: matieresP, periode, niveau, maxNote, schoolInfo });
+
+  const extras = estModeleComplet(schoolInfo)
+    ? {
+        ...extrasClasse({
+          classe: eleve.classe, eleves: elevesClasse || [eleve], notes: allNotes, notesReelles,
+          matieres: matieresP, periode, niveau, emplois: options.emplois,
+        }),
+        ...extrasEleve({ eleve, notesReelles, matieres, niveau, periodes: periodesSection, absences: options.absences, elevesClasse }),
+      }
+    : {};
 
   const html = buildBulletinPageHTML({
-    eleve, notes: allNotes, matieres, periode, niveau, maxNote, schoolInfo,
+    eleve, notes: allNotes, matieres: matieresP, periode, niveau, maxNote, schoolInfo,
     rang, classStats, matiereClasseAvg, evolution,
-    appreciation: options.appreciation || "", qr,
+    appreciation: options.appreciation || "", qr, ...extras,
   });
 
   ouvrirFenetreBulletin({
@@ -98,37 +142,47 @@ export const imprimerBulletin = async (eleve, notes, matieres, periode, niveau, 
 };
 
 // ── IMPRESSION GROUPÉE : tous les bulletins d'une classe en un seul PDF ──
-export const imprimerBulletinsGroupes = async (eleves, notes, matieres, periode, niveau, maxNote = 20, schoolInfo = {}, classe = "", matieresParClasseFn = null, appreciationsParEleve = {}, periodesSection = null) => {
+// `extras` : { absences, emplois } du module École, pour l'assiduité et les
+// professeurs des modèles complets.
+export const imprimerBulletinsGroupes = async (eleves, notes, matieres, periode, niveau, maxNote = 20, schoolInfo = {}, classe = "", matieresParClasseFn = null, appreciationsParEleve = {}, periodesSection = null, extras = {}) => {
   if (!eleves.length) { alert("Aucun élève pour cette sélection."); return; }
   // Fenêtre ouverte AVANT tout await QR (geste utilisateur).
   const win = window.open("", "_blank");
   const getMatCl = (cl) => (matieresParClasseFn ? matieresParClasseFn(cl) : matieres);
   const getMat = (eleve) => getMatCl(eleve.classe);
+  const complet = estModeleComplet(schoolInfo);
+  const notesReelles = notes;
+  const periodesReelles = (Array.isArray(periodesSection) && periodesSection.length)
+    ? periodesSection
+    : getPeriodesForSection(schoolInfo, niveau);
 
   // Mode « Fin d'année » : on remplace les notes par des notes annuelles
   // synthétiques (moyenne des périodes), puis le pipeline normal calcule
   // moyennes, rang et mention sur la période sentinelle PERIODE_ANNEE.
   // `periodesSection` = périodes réelles de la section (voir imprimerBulletin).
   if (periode === PERIODE_ANNEE) {
-    const periodesReelles = (Array.isArray(periodesSection) && periodesSection.length)
-      ? periodesSection
-      : getPeriodesForSection(schoolInfo, niveau);
     notes = buildBulletinNotesAnnuelles({ eleves, notes, matsFor: getMat, periodes: periodesReelles, niveau });
   }
 
-  // Cache par classe : stats + moyennes par matière
+  // Cache par classe : stats + moyennes par matière (+ rangs et professeurs
+  // par matière pour les modèles complets)
   const classCache = new Map();
   const getCacheClasse = (cl) => {
     if (!classCache.has(cl)) {
-      const matsCl = matieresParClasseFn ? matieresParClasseFn(cl) : matieres;
       const elevesClasse = eleves.filter((e) => e.classe === cl);
+      // Matières notées dans la classe sur la période (matieresNotees).
+      const matsCl = matieresCompteesClasse(getMatCl(cl), notes, elevesClasse, periode);
       classCache.set(cl, {
+        matieres: matsCl,
         stats: getStatsClasse(elevesClasse, notes, matsCl, periode, cl, niveau),
         matieresAvg: Object.fromEntries(matsCl.map((mat) => [
           mat.nom,
           getMoyenneClasseParMatiere(elevesClasse, notes, mat.nom, periode, cl, niveau),
         ])),
         elevesClasse,
+        extras: complet
+          ? extrasClasse({ classe: cl, eleves: elevesClasse, notes, notesReelles, matieres: matsCl, periode, niveau, emplois: extras?.emplois })
+          : null,
       });
     }
     return classCache.get(cl);
@@ -139,15 +193,22 @@ export const imprimerBulletinsGroupes = async (eleves, notes, matieres, periode,
   const { ordonnes: elevesOrdonnes, rangParEleve } = ordonnerParClassement(eleves, notes, getMatCl, periode, niveau);
 
   const pagesListe = await Promise.all(elevesOrdonnes.map(async (eleve) => {
-    const matsEleve = getMat(eleve);
     const cache = getCacheClasse(eleve.classe);
+    const matsEleve = cache.matieres;
     const rang = rangParEleve.get(eleve._id);
-    const evolution = getEvolutionPeriode(eleve, notes, matsEleve, eleve.classe, niveau, periode, schoolInfo);
+    const evolution = getEvolutionPeriode(eleve, notes, getMat(eleve), eleve.classe, niveau, periode, schoolInfo, cache.elevesClasse);
     const qr = await bulletinQrHtml({ eleve, notes, matieres: matsEleve, periode, niveau, maxNote, schoolInfo });
+    const supplements = complet
+      ? {
+          ...cache.extras,
+          ...extrasEleve({ eleve, notesReelles, matieres: getMat(eleve), niveau, periodes: periodesReelles, absences: extras?.absences, elevesClasse: cache.elevesClasse }),
+        }
+      : {};
     return buildBulletinPageHTML({
       eleve, notes, matieres: matsEleve, periode, niveau, maxNote, schoolInfo,
       rang, classStats: cache.stats, matiereClasseAvg: cache.matieresAvg, evolution,
       appreciation: (appreciationsParEleve && appreciationsParEleve[eleve._id]) || "", qr,
+      ...supplements,
     });
   }));
 

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMessagerie } from "./messagerie-contexte";
 import { annonceAConfirmer, PRIORITES } from "./messagerie-logic";
 
@@ -6,6 +7,7 @@ import { annonceAConfirmer, PRIORITES } from "./messagerie-logic";
 // la lecture doit être confirmée. Masquable pour la session ; revient tant
 // que la confirmation manque (au rechargement).
 export function BandeauAnnonces() {
+  const { t } = useTranslation();
   const m = useMessagerie();
   const [masquees, setMasquees] = useState(() => new Set());
   if (!m) return null;
@@ -19,15 +21,15 @@ export function BandeauAnnonces() {
     <div role="alert" style={{ textAlign: "start", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: "8px 14px", background: p.fond, borderBottom: `2px solid ${p.couleur}`, color: p.couleur, fontSize: 13 }}>
       <span style={{ fontSize: 16 }}>{p.icone}</span>
       <span style={{ flex: 1, minWidth: 200, fontWeight: 700 }}>
-        {confirmer ? "Lecture à confirmer" : "Annonce urgente"} — {a.titre || "Annonce"}
+        {confirmer ? t("msg.ann.toConfirm") : t("msg.ann.urgent")} — {a.titre || t("msg.ann.announcement")}
         <span style={{ fontWeight: 500 }}> · {a.de_nom}</span>
         {alertes.length > 1 && <span style={{ fontWeight: 500 }}> (+{alertes.length - 1})</span>}
       </span>
       <button type="button" onClick={() => m.ouvrirMessagerie({ onglet: "annonces", id: a.id })}
         style={{ background: p.couleur, color: "#fff", border: "none", borderRadius: 8, padding: "5px 12px", fontWeight: 800, cursor: "pointer", fontSize: 12 }}>
-        Lire
+        {t("msg.ann.read")}
       </button>
-      <button type="button" onClick={() => setMasquees((s) => new Set(s).add(a.id))} aria-label="Masquer"
+      <button type="button" onClick={() => setMasquees((s) => new Set(s).add(a.id))} aria-label={t("auth.hide")}
         style={{ background: "none", border: "none", color: p.couleur, cursor: "pointer", fontSize: 16 }}>✕</button>
     </div>
   );

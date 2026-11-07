@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bleu_nuit">#0A1628</color>
+    <color name="vert_repondre">#16A34A</color>
+    <color name="rouge_refuser">#DC2626</color>
+    <color name="blanc">#FFFFFF</color>
+</resources>

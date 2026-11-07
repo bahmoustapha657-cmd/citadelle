@@ -27,7 +27,7 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo, premie
       <PortailHeader
         schoolInfo={schoolInfo} annee={annee}
         nomEns={p.nomEns} matiere={p.matiere} c1={p.c1} c2={p.c2}
-        deconnecter={deconnecter} t={t} tab={p.tab} setTab={p.setTab}
+        deconnecter={deconnecter} t={t} tab={p.tab} setTab={p.setTab} uid={utilisateur?.uid}
       />
       <BandeauPremiereSynchro premiereSynchro={premiereSynchro} estHorsLigne={estHorsLigne} t={t} />
       <BandeauLectureSeule />
@@ -41,6 +41,7 @@ function PortailEnseignant({ utilisateur, deconnecter, annee, schoolInfo, premie
           <IncidentModal
             c1={p.c1} mode={p.modalIncident}
             formIncident={p.formIncident} setFormIncident={p.setFormIncident}
+            eleve={(p.eleves || []).find((e) => e._id === p.formIncident.eleveId)}
             enregistrement={p.enregistrement} enregistrerIncident={p.enregistrerIncident}
             fermer={() => p.setModalIncident(null)}
           />

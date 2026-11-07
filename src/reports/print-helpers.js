@@ -6,8 +6,10 @@
 // pour préserver les imports historiques (`import { PRINT_RESET } from "../reports"`).
 
 import { getNationalDeviseHTML } from "../national-symbols.js";
-import { resolveLegalFields } from "../legal-utils.js";
+import { enteteOfficiel, MINISTERE_DEFAUT } from "../legal-utils.js";
 import i18n from "../i18n";
+
+export { MINISTERE_DEFAUT };
 
 // Helper i18n hors React : raccourci vers i18n.t().
 // Fallback sur la clé si i18n n'est pas encore initialisé (cas improbable
@@ -78,15 +80,11 @@ export const watermarkHtml = (schoolInfo = {}) => {
   return `<div class="lc-watermark" aria-hidden="true"><img crossOrigin="anonymous" src="${schoolInfo.logo}" alt=""/></div>`;
 };
 
-export const MINISTERE_DEFAUT = "Ministère de l'Éducation Nationale, de l'Alphabétisation, de l'Enseignement Technique et de la Formation Professionnelle";
-
 // Helpers défensifs : tolèrent null/undefined/"" et chaînes blanches
 export const orDefault = (v, def) => (typeof v === "string" && v.trim() ? v : def);
 
 export const enteteDoc = (si = {}, logoUrl) => {
-  const pays = orDefault(si.pays, "République de Guinée");
-  const lf = resolveLegalFields(si);
-  const ministere = orDefault(lf.ministere, MINISTERE_DEFAUT);
+  const { pays, ministere, ...lf } = enteteOfficiel(si);
   return `
 <div style="display:flex;align-items:flex-start;gap:14px;border-bottom:3px solid #0A1628;padding-bottom:12px;margin-bottom:16px">
   <div style="flex:1;font-size:10px;color:#444;line-height:1.8;min-width:0">
@@ -124,7 +122,8 @@ export const EDUGEST_SITE = "edugest-gn.pages.dev";
 // Petit emblème EduGest inline (badge vert + livre + toque), ~13 px, pour
 // l'impression : un SVG inline reste net à toute résolution, sans
 // dépendre d'un fichier externe que l'aperçu d'impression ne chargerait pas.
-const EDUGEST_LOGO_SVG = `<svg width="13" height="13" viewBox="14 14 132 132" xmlns="http://www.w3.org/2000/svg" style="vertical-align:-2px;flex-shrink:0"><defs><linearGradient id="egb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#00DC9C"/><stop offset="1" stop-color="#00916B"/></linearGradient></defs><rect x="20" y="20" width="120" height="120" rx="30" fill="url(#egb)"/><path d="M80 79 C72 71 60 68 47 71 L47 107 C60 104 72 107 80 115 Z" fill="#fff"/><path d="M80 79 C88 71 100 68 113 71 L113 107 C100 104 88 107 80 115 Z" fill="#fff"/><path d="M80 79 L80 115" stroke="#04321F" stroke-opacity="0.3" stroke-width="2.5" stroke-linecap="round"/><path d="M80 35 L118 50 L80 65 L42 50 Z" fill="#0F2440"/><circle cx="80" cy="50" r="3" fill="#FFB547"/></svg>`;
+export const edugestEmbleme = (taille = 13) => `<svg width="${taille}" height="${taille}" viewBox="14 14 132 132" xmlns="http://www.w3.org/2000/svg" style="vertical-align:-2px;flex-shrink:0"><defs><linearGradient id="egb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#00DC9C"/><stop offset="1" stop-color="#00916B"/></linearGradient></defs><rect x="20" y="20" width="120" height="120" rx="30" fill="url(#egb)"/><path d="M80 79 C72 71 60 68 47 71 L47 107 C60 104 72 107 80 115 Z" fill="#fff"/><path d="M80 79 C88 71 100 68 113 71 L113 107 C100 104 88 107 80 115 Z" fill="#fff"/><path d="M80 79 L80 115" stroke="#04321F" stroke-opacity="0.3" stroke-width="2.5" stroke-linecap="round"/><path d="M80 35 L118 50 L80 65 L42 50 Z" fill="#0F2440"/><circle cx="80" cy="50" r="3" fill="#FFB547"/></svg>`;
+const EDUGEST_LOGO_SVG = edugestEmbleme(13);
 
 export const edugestBrandHTML = () => (
   `<div style="text-align:center;font-size:7.5px;color:#9ca3af;margin-top:6px;font-family:Arial,sans-serif;letter-spacing:0.02em;line-height:1.4">${EDUGEST_LOGO_SVG} Édité avec <strong>EduGest</strong> — la gestion scolaire moderne · <strong>${EDUGEST_SITE}</strong> · edugest26@gmail.com · +224 627 73 85 79</div>`

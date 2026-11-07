@@ -1,11 +1,46 @@
 // ══════════════════════════════════════════════════════════════
 //  Barre latérale de navigation (shell principal)
 // ══════════════════════════════════════════════════════════════
+import { useState } from "react";
 import Logo from "../../Logo";
 import { C, getAnnee } from "../../constants";
+import { lienMesFiches } from "../../backend/pedagogue-supabase";
 import { useMessagerie } from "../messagerie/messagerie-contexte";
 import { moduleLabel, moduleDesc } from "./module-i18n";
 import { VERSION_APP } from "../../version-app";
+
+// Comptes qui configurent Pédagogue et y lisent les fiches partagées par leurs
+// enseignants (rôles de pedagogue-ticket). Un enseignant passe par son portail.
+const ROLES_FICHES_ECOLE = ["admin", "primaire", "college"];
+
+function LienFichesEcole({ uid, t }) {
+  const [ouverture, setOuverture] = useState(false);
+  const [erreur, setErreur] = useState("");
+
+  // Même onglet : une fenêtre ouverte depuis ici serait coupée par notre COOP.
+  const ouvrir = async () => {
+    setOuverture(true);
+    setErreur("");
+    try {
+      window.location.assign(await lienMesFiches(uid));
+    } catch (e) {
+      setErreur(e.message);
+    } finally {
+      setOuverture(false);
+    }
+  };
+
+  return (
+    <div style={{padding:"0 8px 8px"}}>
+      <button onClick={ouvrir} disabled={ouverture} style={{display:"flex",alignItems:"center",gap:9,padding:"9px 11px",borderRadius:8,border:"1px solid rgba(255,255,255,0.12)",cursor:"pointer",textAlign:"start",width:"100%",background:"transparent",opacity:ouverture?0.6:1}}>
+        <span style={{fontSize:15}}>📚</span>
+        <span style={{flex:1,minWidth:0,fontSize:12,fontWeight:800,color:"rgba(255,255,255,0.82)"}}>{t("auth.schoolLessonPlans")}</span>
+        <span aria-hidden="true" style={{color:"rgba(255,255,255,0.5)"}}>↗</span>
+      </button>
+      {erreur&&<p role="alert" style={{margin:"6px 0 0",fontSize:10,fontWeight:600,color:"#fecaca"}}>{erreur}</p>}
+    </div>
+  );
+}
 
 export function Sidebar({
   schoolInfo, couleur2, annee, modulesVisibles, page, setPage,
@@ -23,6 +58,7 @@ export function Sidebar({
             ? <img crossOrigin="anonymous" src={schoolInfo.logo} alt="" style={{width:32,height:32,objectFit:"contain",borderRadius:6,marginBottom:4,display:"block",margin:"0 auto 4px"}}/>
             : null}
           <p style={{margin:0,fontSize:12,fontWeight:800,color:couleur2}}>{schoolInfo.nom}</p>
+          {/* i18n-ignore : ville par défaut (nom propre) */}
           <p style={{margin:"2px 0 0",fontSize:9,color:"rgba(255,255,255,0.3)"}}>{schoolInfo.ville||"Kindia"} · {annee||getAnnee()}</p>
         </div>
       </div>
@@ -47,6 +83,7 @@ export function Sidebar({
           </button>;
         })}
       </nav>
+      {ROLES_FICHES_ECOLE.includes(utilisateur.role) && <LienFichesEcole uid={utilisateur.uid} t={t}/>}
       <div style={{padding:"12px 14px",borderTop:"1px solid rgba(255,255,255,0.08)"}}>
         <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
           <div style={{width:30,height:30,borderRadius:"50%",background:C.green,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,color:"#fff",flexShrink:0}}>
@@ -71,7 +108,7 @@ export function Sidebar({
         )}
         {/* Commit en ligne : permet au support de savoir quelle version
             l'utilisateur a réellement (PWA en cache, mise à jour pas reçue…). */}
-        <p title={VERSION_APP.date ? `Version du ${new Date(VERSION_APP.date).toLocaleString()}` : undefined}
+        <p title={VERSION_APP.date ? t("shell.versionOf", { date: new Date(VERSION_APP.date).toLocaleString() }) : undefined}
           style={{margin:"8px 0 0",fontSize:9,color:"rgba(255,255,255,0.25)",textAlign:"center",fontFamily:"monospace"}}>
           v {VERSION_APP.court}
         </p>

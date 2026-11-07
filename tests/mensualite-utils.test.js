@@ -124,6 +124,10 @@ test("snapshot and overview aggregate scolarite and one-time fees", () => {
     // Aucun élève dispensé de paiement ici (cf. exoneration.test.js).
     totalElevesExoneres: 0,
     totalExonere: 0,
+    // Restes hors mensualités : la réinscription (30 000) du 2e élève ; la
+    // révision du 1er (20 000), autre + révision du 2e (35 000).
+    totalResteInscriptions: 30000,
+    totalResteAutres: 55000,
   });
 });
 

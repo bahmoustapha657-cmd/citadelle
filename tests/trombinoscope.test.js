@@ -1,0 +1,223 @@
+import assert from "node:assert/strict";
+import { readFileSync, readdirSync } from "node:fs";
+import test from "node:test";
+import {
+  BADGES_PAR_PAGE, TAILLES_BADGE, TROMBI_PAR_PAGE, badgesHTML, echelonner, grilleBadges, taillePoliceAppel,
+  trombinoscopeHTML,
+} from "../src/reports/trombinoscope.js";
+
+const ecole = { nom: "La Citadelle", ville: "Conakry", couleur1: "#0A1628" };
+const enfant = (i, extra = {}) => ({
+  _id: String(i), nom: "Bah", prenom: `Enfant${String(i).padStart(2, "0")}`, classe: "Petite Section A",
+  contactTuteur: "622 00 00 00", ...extra,
+});
+const compter = (html, motif) => (html.match(motif) || []).length;
+
+test("trombinoscope : une page par tranche de 15, en-tête de classe sur chaque page", () => {
+  const petite = Array.from({ length: 23 }, (_, i) => enfant(i));
+  const grande = [enfant(99, { classe: "Grande Section A", surnom: "Bobo", photo: "https://x/p.jpg" })];
+  const html = trombinoscopeHTML([...petite, ...grande], { schoolInfo: ecole, annee: "2026-2027" });
+  assert.equal(TROMBI_PAR_PAGE, 15);
+  // 23 en Petite Section → 2 pages ; 1 en Grande Section → 1 page.
+  assert.equal(compter(html, /<div class="page">/g), 3);
+  assert.equal(compter(html, /<div class="enfant">/g), 24);
+  assert.match(html, /page 1\/2/);
+  assert.match(html, /page 2\/2/);
+  // Grande Section avant Petite Section (ordre des classes), couleur du niveau.
+  assert.ok(html.indexOf("Grande Section A") < html.indexOf("Petite Section A"));
+  assert.match(html, /background:#2563eb">Grande Section A/);
+  assert.match(html, /<div class="appel">Bobo<\/div>/);
+  assert.match(html, /<div class="officiel">BAH Enfant99<\/div>/);
+  assert.match(html, /crossOrigin="anonymous" src="https:\/\/x\/p\.jpg"/);
+  assert.match(html, /Photo à prendre/);
+  assert.match(html, /La Citadelle/);
+  assert.match(html, /2026-2027/);
+});
+
+test("badges : 6 portraits normaux par page, dans l'ordre des classes, sans téléphone", () => {
+  const enfants = Array.from({ length: 10 }, (_, i) => enfant(i, { classe: i < 5 ? "Moyenne Section A" : "Grande Section B" }));
+  const html = badgesHTML(enfants, { schoolInfo: ecole, annee: "2026-2027" });
+  assert.equal(BADGES_PAR_PAGE, 6);
+  assert.equal(compter(html, /<div class="page" /g), 2);
+  assert.equal(compter(html, /<div class="badge portrait">/g), 10);
+  assert.ok(html.indexOf("Grande Section B") < html.indexOf("Moyenne Section A"));
+  assert.match(html, /background:#16a34a/);
+  assert.doesNotMatch(html, /622 00 00 00/);
+});
+
+test("badges de tenue : écusson de poche 8 par page, logo, marque EduGest discrète", () => {
+  const ecoleLogo = { ...ecole, logo: "https://x/logo.png" };
+  const eleves = Array.from({ length: 9 }, (_, i) => enfant(i, { classe: "6ème A", photo: "https://x/e.jpg" }));
+  const html = badgesHTML(eleves, { schoolInfo: ecoleLogo, annee: "2026-2027", format: "poche", photo: false });
+  assert.equal(grilleBadges("poche").parPage, 8);
+  assert.equal(compter(html, /<div class="badge poche">/g), 9);
+  assert.equal(compter(html, /<div class="page" /g), 2);
+  assert.match(html, /grid-template-columns:repeat\(2,80mm\);grid-auto-rows:60mm/);
+  assert.match(html, /size:A4 portrait;margin:6mm/);
+  // Sans photo : le logo de l'école en grand à sa place, une seule fois par
+  // badge (plus dans l'en-tête), et aucune photo d'élève.
+  assert.equal(compter(html, /src="https:\/\/x\/logo\.png"/g), 9);
+  assert.equal(compter(html, /class="logo grand-logo"/g), 9);
+  assert.doesNotMatch(html, /src="https:\/\/x\/e\.jpg"/);
+  // Classe hors maternelle : couleur de l'école.
+  assert.match(html, /class="classe" style="background:#0A1628">6ème A/);
+  // Marque EduGest lisible sur chaque badge, avec le site, sans coordonnées ni téléphone.
+  assert.equal(compter(html, /<div class="marque">/g), 9);
+  assert.equal(compter(html, /Édité avec <strong>EduGest<\/strong> · edugest-gn\.pages\.dev/g), 9);
+  assert.doesNotMatch(html, /622 00 00 00|627 73 85 79|edugest26@/);
+  // Avec photo : la photo, le logo en petit dans l'en-tête et en filigrane.
+  const avecPhoto = badgesHTML(eleves, { schoolInfo: ecoleLogo, format: "poche", photo: true });
+  assert.match(avecPhoto, /src="https:\/\/x\/e\.jpg"/);
+  assert.equal(compter(avecPhoto, /<div class="logo"><img crossOrigin="anonymous" src="https:\/\/x\/logo\.png"/g), 9);
+  assert.equal(compter(avecPhoto, /<img class="filigrane"/g), 9);
+  assert.doesNotMatch(avecPhoto, /class="logo grand-logo"/);
+});
+
+test("badges : impression en miroir pour le papier transfert, à l'endroit sinon", () => {
+  const html = badgesHTML([enfant(1)], { schoolInfo: ecole, format: "poche", miroir: true });
+  assert.match(html, /<div class="miroir">/);
+  assert.match(html, /\.miroir \.badge\{transform:scaleX\(-1\)\}/);
+  assert.match(html, /class="avis no-print"/);
+  const endroit = badgesHTML([enfant(1)], { schoolInfo: ecole, format: "poche" });
+  assert.match(endroit, /<div class="endroit">/);
+  assert.doesNotMatch(endroit, /class="avis no-print"/);
+  // Portrait sans photo : le logo prend la place de la photo.
+  const sansPhoto = badgesHTML([enfant(1)], { schoolInfo: { ...ecole, logo: "https://x/logo.png" }, photo: false });
+  assert.match(sansPhoto, /class="logo grand-logo"/);
+  assert.doesNotMatch(sansPhoto, /Photo à prendre/);
+  // Format inconnu : portrait.
+  assert.match(badgesHTML([enfant(1)], { schoolInfo: ecole, format: "?" }), /<div class="badge portrait">/);
+});
+
+test("badges : IEN sous le nom, sinon le matricule, rien sans l'un ni l'autre", () => {
+  for (const format of ["poche", "portrait"]) {
+    const html = badgesHTML([
+      enfant(1, { ien: "2026123456", matricule: "PRE-001" }),
+      enfant(2, { matricule: "PRE-002" }),
+      enfant(3),
+    ], { schoolInfo: ecole, format });
+    assert.match(html, /<div class="ident">IEN <strong>2026123456<\/strong><\/div>/);
+    assert.doesNotMatch(html, /PRE-001/);
+    assert.match(html, /<div class="ident">Matricule <strong>PRE-002<\/strong><\/div>/);
+    assert.equal(compter(html, /<div class="ident">/g), 2);
+  }
+  // Saisi à la main : échappé.
+  assert.match(badgesHTML([enfant(4, { matricule: "<b>X</b>" })], { schoolInfo: ecole }), /Matricule <strong>&lt;b&gt;X&lt;\/b&gt;<\/strong>/);
+});
+
+test("taille des badges : tout à l'échelle, sur A4 comme sur papier Lettre", () => {
+  assert.deepEqual(grilleBadges("poche", "normale"), { echelle: 1, ecart: 4, largeur: 80, hauteur: 60, colonnes: 2, rangees: 4, parPage: 8 });
+  assert.deepEqual(grilleBadges("poche", "reduite"), { echelle: 0.82, ecart: 4, largeur: 65.6, hauteur: 49.2, colonnes: 2, rangees: 5, parPage: 10 });
+  assert.deepEqual(grilleBadges("poche", "petite"), { echelle: 0.7, ecart: 4, largeur: 56, hauteur: 42, colonnes: 3, rangees: 5, parPage: 15 });
+  assert.deepEqual(grilleBadges("portrait", "normale"), { echelle: 1, ecart: 4, largeur: 62, hauteur: 90, colonnes: 3, rangees: 2, parPage: 6 });
+  assert.deepEqual(grilleBadges("portrait", "reduite"), { echelle: 0.82, ecart: 4, largeur: 50.8, hauteur: 73.8, colonnes: 3, rangees: 3, parPage: 9 });
+  assert.deepEqual(grilleBadges("portrait", "petite"), { echelle: 0.7, ecart: 4, largeur: 43.4, hauteur: 63, colonnes: 4, rangees: 4, parPage: 16 });
+  // Mini (−38 %) : 20 badges portrait (5 × 4), rapprochés à 1,2 mm ; 18
+  // écussons, qui tiennent sans les rapprocher.
+  assert.deepEqual(grilleBadges("portrait", "mini"), { echelle: 0.62, ecart: 1.2, largeur: 38.4, hauteur: 55.8, colonnes: 5, rangees: 4, parPage: 20 });
+  assert.deepEqual(grilleBadges("poche", "mini"), { echelle: 0.62, ecart: 4, largeur: 49.6, hauteur: 37.2, colonnes: 3, rangees: 6, parPage: 18 });
+  assert.match(badgesHTML([enfant(1)], { schoolInfo: ecole, taille: "mini" }), /grid-template-columns:repeat\(5,38\.4mm\);grid-auto-rows:55\.8mm;gap:1\.2mm/);
+  // Toujours dans la surface commune A4 / Lettre (210 × 279,4), marges de 6 mm comprises.
+  assert.deepEqual(Object.keys(TAILLES_BADGE), ["normale", "reduite", "petite", "mini"]);
+  for (const format of ["poche", "portrait"]) {
+    for (const taille of Object.keys(TAILLES_BADGE)) {
+      const g = grilleBadges(format, taille);
+      assert.ok(g.colonnes * g.largeur + (g.colonnes - 1) * g.ecart <= 210 - 12 + 1e-9, `${format} ${taille} largeur`);
+      assert.ok(g.rangees * g.hauteur + (g.rangees - 1) * g.ecart <= 279.4 - 12 + 1e-9, `${format} ${taille} hauteur`);
+    }
+  }
+  assert.equal(grilleBadges("poche", "?").parPage, 8);
+});
+
+test("badge réduit : dessiné à sa taille réelle, sans réduction après coup", () => {
+  assert.equal(echelonner(".x{width:80mm;font-size:7.5pt;gap:.8mm;line-height:1.05}", 0.82),
+    ".x{width:65.6mm;font-size:6.15pt;gap:0.66mm;line-height:1.05}");
+  assert.equal(echelonner(".x{width:80mm}", 1), ".x{width:80mm}");
+  const html = badgesHTML(Array.from({ length: 11 }, (_, i) => enfant(i)), { schoolInfo: ecole, format: "poche", taille: "reduite" });
+  assert.match(html, /grid-template-columns:repeat\(2,65\.6mm\);grid-auto-rows:49\.2mm/);
+  assert.equal(compter(html, /<div class="page" /g), 2);
+  assert.equal(compter(html, /<div class="badge poche">/g), 11);
+  // Cotes intérieures réduites (photo 26 × 32 → 21,32 × 26,24), pas de transform ni de case.
+  assert.match(html, /\.poche \.photo\{width:21\.32mm;height:26\.24mm/);
+  assert.doesNotMatch(html, /scale\(|class="case"/);
+  // Nom d'appel : taille de police réduite aussi.
+  assert.match(html, /class="appel" style="font-size:13\.94pt/);
+});
+
+test("logo de l'école en filigrane derrière le nom, à côté de la photo", () => {
+  const ecoleLogo = { ...ecole, logo: "https://x/logo.png" };
+  const eleves = Array.from({ length: 3 }, (_, i) => enfant(i, { photo: "https://x/e.jpg" }));
+  for (const format of ["poche", "portrait"]) {
+    const html = badgesHTML(eleves, { schoolInfo: ecoleLogo, format, photo: true });
+    assert.equal(compter(html, /<img class="filigrane" crossOrigin="anonymous" src="https:\/\/x\/logo\.png"/g), 3);
+    // Sans logo : pas de filigrane ; sans photo : le logo est déjà en grand.
+    assert.equal(compter(badgesHTML(eleves, { schoolInfo: ecole, format, photo: true }), /<img class="filigrane"/g), 0);
+    assert.equal(compter(badgesHTML(eleves, { schoolInfo: ecoleLogo, format, photo: false }), /<img class="filigrane"/g), 0);
+  }
+  // Sous le texte, cotes réduites avec le badge.
+  const reduit = badgesHTML(eleves, { schoolInfo: ecoleLogo, format: "portrait", taille: "reduite" });
+  assert.match(reduit, /\.filigrane\{position:absolute;z-index:-1;object-fit:contain;opacity:\.1/);
+  assert.match(reduit, /\.portrait \.filigrane\{left:4\.1mm;top:47\.56mm;width:42\.64mm;height:22\.14mm\}/);
+});
+
+test("trombinoscope imprimé : filiation, tuteur et contact sous le nom ; jamais sur un badge", () => {
+  const famille = { filiation: "Fils de Alpha & de <Kadiatou>", tuteur: "Alpha Bah", contactTuteur: "622 00 00 00" };
+  const html = trombinoscopeHTML([enfant(1, famille), enfant(2, { contactTuteur: "" })], { schoolInfo: ecole });
+  assert.match(html, /<div class="famille"><div><b>Filiation :<\/b> Fils de Alpha &amp; de &lt;Kadiatou&gt;<\/div><div><b>Tuteur :<\/b> Alpha Bah<\/div><div><b>Contact :<\/b> 622 00 00 00<\/div><\/div>/);
+  // Rien de renseigné : pas de bloc vide.
+  assert.equal(compter(html, /<div class="famille">/g), 1);
+  assert.match(html, /Dessous : son nom officiel, sa filiation, son tuteur et le contact du tuteur\./);
+  for (const format of ["poche", "portrait"]) {
+    const badges = badgesHTML([enfant(1, famille)], { schoolInfo: ecole, format });
+    assert.doesNotMatch(badges, /622 00 00 00|Alpha Bah|Kadiatou/, format);
+  }
+});
+
+test("trombinoscope et badges imprimés : les enfants qui ont leur photo d'abord", () => {
+  const eleves = [
+    enfant(1), enfant(2, { photo: "https://x/2.jpg" }), enfant(3), enfant(4, { photo: "https://x/4.jpg" }),
+  ];
+  const ordre = (html, motif) => [...html.matchAll(motif)].map((m) => m[1]);
+  assert.deepEqual(ordre(trombinoscopeHTML(eleves, { schoolInfo: ecole }), /<div class="officiel">BAH (Enfant\d+)<\/div>/g),
+    ["Enfant02", "Enfant04", "Enfant01", "Enfant03"]);
+  assert.deepEqual(ordre(badgesHTML(eleves, { schoolInfo: ecole, format: "portrait" }), /<div class="officiel">BAH (Enfant\d+)<\/div>/g),
+    ["Enfant02", "Enfant04", "Enfant01", "Enfant03"]);
+});
+
+test("badges : imprimés par l'école, jamais depuis le portail enseignant", () => {
+  const composants = new URL("../src/components/", import.meta.url);
+  const lire = (chemin) => readFileSync(new URL(chemin, composants), "utf8");
+  // Fermés par défaut : un écran doit les demander, et les deux boutons en dépendent.
+  const trombi = lire("identite-enfant/Trombinoscope.jsx");
+  assert.match(trombi, /avecBadges = false/);
+  assert.match(trombi, /\{avecBadges && <Btn[^\n]*\n\s*onClick=\{\(\) => setBadges\(dansClasse\)\}/);
+  assert.match(trombi, /\{avecBadges && <Btn[^\n]*setBadges\(\[enfantAgrandi\]\)/);
+  assert.match(lire("ecole/ElevesTab.jsx"), /<Trombinoscope\s[^>]*\bavecBadges\b/);
+  for (const fichier of readdirSync(new URL("portail-enseignant/", composants))) {
+    if (!/\.jsx?$/.test(fichier)) continue;
+    assert.doesNotMatch(lire(`portail-enseignant/${fichier}`), /avecBadges|BadgesModale|imprimerBadges/, fichier);
+  }
+});
+
+test("noms échappés : un surnom saisi à la main n'injecte pas de balise", () => {
+  const piege = enfant(1, { surnom: "<b>Néné</b> & co", photo: "https://x/a.jpg\" onerror=\"alert(1)" });
+  for (const html of [
+    trombinoscopeHTML([piege], { schoolInfo: ecole }), badgesHTML([piege], { schoolInfo: ecole }),
+    badgesHTML([piege], { schoolInfo: { ...ecole, logo: "https://x/l.png\" onerror=\"alert(1)" }, format: "poche" }),
+  ]) {
+    assert.match(html, /&lt;b&gt;Néné&lt;\/b&gt; &amp; co/);
+    assert.doesNotMatch(html, /<b>Néné<\/b>/);
+    assert.doesNotMatch(html, /" onerror="/);
+  }
+});
+
+test("taille du nom d'appel sur le badge selon sa longueur", () => {
+  assert.equal(taillePoliceAppel("Néné"), 22);
+  assert.equal(taillePoliceAppel("Fatoumata"), 18);
+  assert.equal(taillePoliceAppel("Fatoumata Binta"), 14);
+  assert.equal(taillePoliceAppel("Mamadou Saliou Diallo"), 11);
+  // Plus étroit (écusson de poche avec photo) : plus petit, jamais sous 9 pt.
+  assert.equal(taillePoliceAppel("Néné", 45), 17);
+  assert.equal(taillePoliceAppel("Mamadou Saliou Diallo", 45), 9);
+  assert.equal(taillePoliceAppel("Néné", 70), 22);
+});

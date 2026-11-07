@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Btn, Modale } from "../ui";
 import { SelecteurComptes } from "./SelecteurComptes";
 import {
@@ -12,6 +13,7 @@ const libelle = { display: "block", fontSize: 11, fontWeight: 800, color: "var(-
 // Rédaction d'une annonce : cibles cumulables, priorité, épinglage et
 // accusé de lecture obligatoire. Nombre de destinataires affiché en direct.
 export function NouvelleAnnonceModal({ m, fermer }) {
+  const { t } = useTranslation();
   const [titre, setTitre] = useState("");
   const [corps, setCorps] = useState("");
   const [priorite, setPriorite] = useState("normale");
@@ -52,31 +54,31 @@ export function NouvelleAnnonceModal({ m, fermer }) {
 
   const publier = async () => {
     setErreur("");
-    if (!corps.trim()) { setErreur("Écrivez le texte de l'annonce."); return; }
-    if (!nbDestinataires) { setErreur("Choisissez au moins un destinataire."); return; }
+    if (!corps.trim()) { setErreur(t("msg.newAnn.writeText")); return; }
+    if (!nbDestinataires) { setErreur(t("msg.newAnn.chooseRecipient")); return; }
     setEnCours(true);
     try {
       await m.publierAnnonce({ titre, corps, priorite, accuseRequis, epinglee, cible, fichiers });
       fermer();
     } catch (e) {
-      setErreur(e.message || "Publication impossible.");
+      setErreur(e.message || t("msg.newAnn.publishFailed"));
     } finally {
       setEnCours(false);
     }
   };
 
   return (
-    <Modale titre="📣 Nouvelle annonce" fermer={fermer} large>
+    <Modale titre={`📣 ${t("msg.page.newAnnouncement")}`} fermer={fermer} large>
       {erreur && <div style={{ background: "#fee2e2", color: "#991b1b", padding: "8px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, marginBottom: 10 }}>{erreur}</div>}
 
-      <span style={{ ...libelle, marginTop: 0 }}>Destinataires</span>
+      <span style={{ ...libelle, marginTop: 0 }}>{t("msg.newAnn.recipients")}</span>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
         <button type="button" style={puce(cible.tous)} onClick={() => basculerGroupe("tous")}
-          title="Personnel et enseignants (pas les parents)">🌍 Toute l'équipe</button>
-        <button type="button" style={puce(cible.personnel)} onClick={() => basculerGroupe("personnel")}>🗂️ Personnel administratif</button>
-        <button type="button" style={puce(cible.enseignants)} onClick={() => basculerGroupe("enseignants")}>👨‍🏫 Enseignants</button>
+          title={t("msg.newAnn.allStaffHint")}>🌍 {t("msg.target.allStaff")}</button>
+        <button type="button" style={puce(cible.personnel)} onClick={() => basculerGroupe("personnel")}>🗂️ {t("msg.target.adminStaff")}</button>
+        <button type="button" style={puce(cible.enseignants)} onClick={() => basculerGroupe("enseignants")}>👨‍🏫 {t("msg.target.teachers")}</button>
         <button type="button" style={puce(choixComptes || cible.comptes.length > 0)} onClick={() => setChoixComptes((v) => !v)}>
-          👤 Des personnes{cible.comptes.length ? ` (${cible.comptes.length})` : ""}
+          👤 {t("msg.newAnn.somePeople")}{cible.comptes.length ? ` (${cible.comptes.length})` : ""}
         </button>
       </div>
       {postes.size > 0 && (
@@ -88,8 +90,8 @@ export function NouvelleAnnonceModal({ m, fermer }) {
       )}
       {aDesParents && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8, alignItems: "center" }}>
-          <span style={{ fontSize: 11.5, fontWeight: 800, color: "var(--lc-text-muted)" }}>Parents :</span>
-          <button type="button" style={puce(cible.parents)} onClick={basculerParents}>👪 Tous les parents</button>
+          <span style={{ fontSize: 11.5, fontWeight: 800, color: "var(--lc-text-muted)" }}>{t("msg.newAnn.parents")}</span>
+          <button type="button" style={puce(cible.parents)} onClick={basculerParents}>👪 {t("msg.target.allParents")}</button>
           {!cible.parents && sectionsParents.length > 1 && sectionsParents.map((s) => (
             <button key={s} type="button" style={puce(cible.parentsSections.includes(s))}
               onClick={() => basculerListeParents("parentsSections", s)}>
@@ -98,7 +100,7 @@ export function NouvelleAnnonceModal({ m, fermer }) {
           ))}
           {!cible.parents && classesParents.length > 0 && (
             <button type="button" style={puce(choixClasses || cible.parentsClasses.length > 0)} onClick={() => setChoixClasses((v) => !v)}>
-              🏫 Par classe{cible.parentsClasses.length ? ` (${cible.parentsClasses.length})` : "…"}
+              🏫 {t("msg.newAnn.byClass")}{cible.parentsClasses.length ? ` (${cible.parentsClasses.length})` : "…"}
             </button>
           )}
         </div>
@@ -107,7 +109,7 @@ export function NouvelleAnnonceModal({ m, fermer }) {
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8, maxHeight: 150, overflowY: "auto", padding: 8, border: "1px solid var(--lc-border)", borderRadius: 10 }}>
           {classesParents.map((c) => (
             <button key={c.cle} type="button" style={puce(cible.parentsClasses.includes(c.cle))}
-              title={`${LIBELLES_SECTIONS[c.section] || c.section} — ${c.parents} parent${c.parents > 1 ? "s" : ""}`}
+              title={t(c.parents > 1 ? "msg.newAnn.parentMany" : "msg.newAnn.parentOne", { section: LIBELLES_SECTIONS[c.section] || c.section, count: c.parents })}
               onClick={() => basculerListeParents("parentsClasses", c.cle)}>
               {c.classe} <span style={{ opacity: 0.6 }}>({c.parents})</span>
             </button>
@@ -120,17 +122,17 @@ export function NouvelleAnnonceModal({ m, fermer }) {
             selection={cible.comptes} onBasculer={(id) => basculerListe("comptes", id)} hauteur={200} />
         </div>
       )}
-      <div style={{ fontSize: 12, fontWeight: 700, color: nbDestinataires ? "var(--sc1)" : "#b91c1c", marginTop: 8 }}>
-        → {nbDestinataires} destinataire{nbDestinataires > 1 ? "s" : ""}
-        {restreint && <span style={{ fontWeight: 500, color: "var(--lc-text-muted)" }}> (dans votre périmètre hiérarchique)</span>}
+      <div style={{ fontSize: 12, fontWeight: 700, color: nbDestinataires ? "var(--msg-accent, var(--sc1))" : "#b91c1c", marginTop: 8 }}>
+        → {t(nbDestinataires > 1 ? "msg.newAnn.recipientMany" : "msg.newAnn.recipientOne", { count: nbDestinataires })}
+        {restreint && <span style={{ fontWeight: 500, color: "var(--lc-text-muted)" }}> {t("msg.newAnn.inScope")}</span>}
       </div>
 
-      <span style={libelle}>Annonce</span>
-      <input value={titre} onChange={(e) => setTitre(e.target.value)} maxLength={160} placeholder="Titre (ex. Réunion du personnel vendredi 15 h)" style={{ ...champ, marginBottom: 8 }} />
-      <textarea value={corps} onChange={(e) => setCorps(e.target.value)} maxLength={8000} rows={6} placeholder="Texte de l'annonce…"
+      <span style={libelle}>{t("msg.ann.announcement")}</span>
+      <input value={titre} onChange={(e) => setTitre(e.target.value)} maxLength={160} placeholder={t("msg.newAnn.titlePlaceholder")} style={{ ...champ, marginBottom: 8 }} />
+      <textarea value={corps} onChange={(e) => setCorps(e.target.value)} maxLength={8000} rows={6} placeholder={t("msg.newAnn.textPlaceholder")}
         style={{ ...champ, resize: "vertical", fontFamily: "inherit", lineHeight: 1.45 }} />
 
-      <span style={libelle}>Importance</span>
+      <span style={libelle}>{t("msg.newAnn.importance")}</span>
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
         {Object.entries(PRIORITES).map(([cle, p]) => (
           <button key={cle} type="button" onClick={() => setPriorite(cle)}
@@ -141,14 +143,14 @@ export function NouvelleAnnonceModal({ m, fermer }) {
       </div>
       <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 12, fontSize: 13, color: "var(--lc-text)", cursor: "pointer" }}>
         <input type="checkbox" checked={accuseRequis} onChange={(e) => setAccuseRequis(e.target.checked)} />
-        ✅ Accusé de lecture obligatoire <span style={{ fontSize: 11.5, color: "var(--lc-text-muted)" }}>(chacun doit confirmer « J'ai lu et compris »)</span>
+        ✅ {t("msg.newAnn.requireReceipt")} <span style={{ fontSize: 11.5, color: "var(--lc-text-muted)" }}>{t("msg.newAnn.requireReceiptHint")}</span>
       </label>
       <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, fontSize: 13, color: "var(--lc-text)", cursor: "pointer" }}>
         <input type="checkbox" checked={epinglee} onChange={(e) => setEpinglee(e.target.checked)} />
-        📌 Épingler en tête des annonces
+        📌 {t("msg.newAnn.pin")}
       </label>
 
-      <span style={libelle}>Pièces jointes <span style={{ textTransform: "none", fontWeight: 500 }}>({MAX_PIECES_ANNONCE} max, 10 Mo chacune)</span></span>
+      <span style={libelle}>{t("msg.newAnn.attachments")} <span style={{ textTransform: "none", fontWeight: 500 }}>{t("msg.newAnn.attachmentsLimit", { max: MAX_PIECES_ANNONCE })}</span></span>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
         {fichiers.map((f, i) => {
           const verif = verifierFichier(f);
@@ -157,22 +159,22 @@ export function NouvelleAnnonceModal({ m, fermer }) {
               style={{ display: "inline-flex", alignItems: "center", gap: 6, maxWidth: 260, background: "var(--lc-surface-alt)", border: `1px solid ${verif.ok ? "var(--lc-border)" : "#f87171"}`, borderRadius: 14, padding: "3px 6px 3px 10px", fontSize: 12, color: "var(--lc-text)" }}>
               {iconeFichier(verif.type)}
               <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
-              <span style={{ color: verif.ok ? "var(--lc-text-faint)" : "#b91c1c" }}>{verif.ok ? formatTaille(f.size) : "refusé"}</span>
-              <button type="button" onClick={() => setFichiers((l) => l.filter((_, j) => j !== i))} aria-label={`Retirer ${f.name}`}
+              <span style={{ color: verif.ok ? "var(--lc-text-faint)" : "#b91c1c" }}>{verif.ok ? formatTaille(f.size) : t("msg.newAnn.rejected")}</span>
+              <button type="button" onClick={() => setFichiers((l) => l.filter((_, j) => j !== i))} aria-label={t("msg.compose.removeFile", { name: f.name })}
                 style={{ background: "none", border: "none", cursor: "pointer", color: "var(--lc-text-muted)" }}>✕</button>
             </span>
           );
         })}
         {fichiers.length < MAX_PIECES_ANNONCE && (
-          <button type="button" style={puce(false)} onClick={() => choixRef.current?.click()}>📎 Joindre un document</button>
+          <button type="button" style={puce(false)} onClick={() => choixRef.current?.click()}>📎 {t("msg.compose.attach")}</button>
         )}
         <input ref={choixRef} type="file" multiple accept={ACCEPT_DOCUMENTS} style={{ display: "none" }}
           onChange={(e) => { const choisis = Array.from(e.target.files || []); setFichiers((l) => [...l, ...choisis].slice(0, MAX_PIECES_ANNONCE)); e.target.value = ""; }} />
       </div>
 
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 18 }}>
-        <Btn v="ghost" onClick={fermer}>Annuler</Btn>
-        <Btn disabled={enCours} onClick={publier}>{enCours ? (fichiers.length ? "Envoi des pièces jointes…" : "Publication…") : "📣 Publier"}</Btn>
+        <Btn v="ghost" onClick={fermer}>{t("common.cancel")}</Btn>
+        <Btn disabled={enCours} onClick={publier}>{enCours ? (fichiers.length ? t("msg.newAnn.uploading") : t("msg.newAnn.publishing")) : `📣 ${t("msg.newAnn.publish")}`}</Btn>
       </div>
     </Modale>
   );

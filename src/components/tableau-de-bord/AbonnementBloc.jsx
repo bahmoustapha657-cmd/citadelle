@@ -1,60 +1,71 @@
+import { Trans, useTranslation } from "react-i18next";
 import { C, PLANS } from "../../constants";
+import { localeCourante } from "../../i18n";
 import { AbonnementBanniere } from "./abonnement/AbonnementBanniere";
 import { AbonnementDemandeForm } from "./abonnement/AbonnementDemandeForm";
+
+const lienContact = {
+  display: "flex", alignItems: "center", gap: 6, background: "var(--lc-surface)", color: "var(--lc-text)",
+  border: "1px solid var(--lc-border)", borderRadius: 8, padding: "7px 12px", fontSize: 12, fontWeight: 600,
+  textDecoration: "none", cursor: "pointer",
+};
 
 export function AbonnementBloc({
   planInfo, schoolInfo,
   demandeOuverte, setDemandeOuverte, demandePlan, setDemandePlan,
   demandeForm, setDemandeForm, demandeEnvoi, demandeSucces, envoyerDemande,
 }) {
+  const { t } = useTranslation();
   if (!planInfo) {
     return null;
   }
+  const actifs = planInfo.totalElevesActifs ?? "…";
 
   return (
-    <div style={{ marginTop: 24 }}>
+    <div>
       <AbonnementBanniere planInfo={planInfo} />
 
       {/* Succès demande envoyée */}
       {demandeSucces && (
         <div style={{ background: "#d1fae5", border: "1px solid #6ee7b7", borderRadius: 10, padding: "12px 18px", marginBottom: 16, fontSize: 13, color: "#065f46", fontWeight: 700 }}>
-          ✅ Demande envoyée ! L'équipe EduGest va traiter votre demande et activer votre abonnement.
+          {t("dashboard.sub.requestSent")}
         </div>
       )}
 
-      <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 16px rgba(0,32,80,0.07)", overflow: "hidden" }}>
-        <div style={{ padding: "16px 20px", borderBottom: "1px solid #f0f0f0", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+      <div style={{ background: "var(--lc-surface)", border: "1px solid var(--lc-border)", borderRadius: 14, boxShadow: "var(--lc-shadow)", overflow: "hidden" }}>
+        <div style={{ padding: "16px 20px", borderBottom: demandeOuverte ? "1px solid var(--lc-border-soft)" : "none", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
           <div>
-            <p style={{ margin: 0, fontWeight: 800, fontSize: 14, color: C.blueDark }}>
-              Abonnement — Plan <span style={{ color: PLANS[planInfo.planCourant]?.couleur || C.blue }}>{planInfo.planLabel}</span>
+            <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: "var(--lc-text-brand)" }}>
+              <Trans i18nKey="dashboard.sub.planTitle" values={{ plan: planInfo.planLabel }}
+                components={{ b: <span style={{ color: PLANS[planInfo.planCourant]?.couleur || C.blue }} /> }} />
             </p>
-            <p style={{ margin: "3px 0 0", fontSize: 12, color: "#6b7280" }}>
+            <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--lc-text-muted)" }}>
               {planInfo.planCourant === "gratuit"
-                ? `${planInfo.totalElevesActifs ?? "…"}/50 élèves actifs — gratuit jusqu'à 50`
+                ? t("dashboard.sub.freeCount", { count: actifs })
                 : planInfo.planEstExpire
-                  ? "Expiré — limité à 50 élèves"
+                  ? t("dashboard.sub.expiredLimited")
                   : planInfo.enPeriodeGrace
-                    ? `Période de grâce — ${planInfo.joursGrace} jour(s) restant(s)`
-                    : `${planInfo.totalElevesActifs ?? "…"} élèves actifs · expire le ${new Date(planInfo.planExpiry).toLocaleDateString("fr-FR")}`}
+                    ? t("dashboard.sub.graceDaysLeft", { days: planInfo.joursGrace })
+                    : t("dashboard.sub.activeUntil", { count: actifs, date: new Date(planInfo.planExpiry).toLocaleDateString(localeCourante()) })}
             </p>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {/* Contact WhatsApp */}
             <a href={`https://wa.me/+224627738579?text=Bonjour%2C%20je%20souhaite%20souscrire%20un%20abonnement%20EduGest%20pour%20l%27%C3%A9cole%20%22${encodeURIComponent(schoolInfo.nom || "")}%22`}
               target="_blank" rel="noopener noreferrer"
-              style={{ display: "flex", alignItems: "center", gap: 6, background: "#dcfce7", color: "#15803d", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 12, fontWeight: 700, textDecoration: "none", cursor: "pointer" }}>
-              <span>💬</span> WhatsApp
+              style={lienContact}>
+              <span>💬</span> {"WhatsApp" /* i18n-ignore : nom de marque */}
             </a>
             {/* Contact Email */}
             <a href={`https://mail.google.com/mail/?view=cm&to=edugest26@gmail.com&su=${encodeURIComponent("Demande abonnement — " + (schoolInfo.nom || ""))}&body=${encodeURIComponent("Bonjour,\nJe souhaite souscrire un abonnement EduGest pour mon école.\n\nÉcole : " + (schoolInfo.nom || "") + "\n")}`}
               target="_blank" rel="noopener noreferrer"
-              style={{ display: "flex", alignItems: "center", gap: 6, background: "#ede9fe", color: "#6d28d9", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 12, fontWeight: 700, textDecoration: "none", cursor: "pointer" }}>
-              <span>✉️</span> Email
+              style={lienContact}>
+              <span>✉️</span> {t("dashboard.sub.email")}
             </a>
             {/* Bouton demande formelle */}
             <button onClick={() => setDemandeOuverte((v) => !v)}
-              style={{ display: "flex", alignItems: "center", gap: 6, background: `linear-gradient(90deg,${C.blue},${C.green})`, color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-              {demandeOuverte ? "▲ Fermer" : "📋 Demande formelle"}
+              style={{ ...lienContact, background: "var(--sc1)", color: "#fff", border: "1px solid var(--sc1)" }}>
+              {demandeOuverte ? t("dashboard.sub.close") : t("dashboard.sub.formalRequest")}
             </button>
           </div>
         </div>

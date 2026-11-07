@@ -85,6 +85,10 @@ export function candidats(demande: Demande, parentsEleve: string[] = []): string
   return [...new Set([...demande.userIds, ...parents])];
 }
 
+// Appel entrant : priorité haute, sinon un téléphone en veille diffère la
+// notification ; durée de vie courte, car passé la sonnerie l'appel est fini.
+export const OPTIONS_APPEL = { TTL: 60, urgency: "high" } as const;
+
 // Découpe une liste en lots (filtres `in.(…)` : l'URL reste courte).
 export function parLots<T>(liste: T[], taille: number): T[][] {
   const lots: T[][] = [];

@@ -34,7 +34,10 @@ export async function fetchParentPortal({ annee = "" } = {}) {
   const ids = eleves.map((e) => e._id);
 
   const vide = { data: [] };
-  const [notes, absences, tarifs, annonces, messages] = await Promise.all([
+  // Emploi du temps des classes des enfants (lisible par toute l’école,
+  // comme les tarifs : emplois_select = ecole_id du compte).
+  const classes = [...new Set(eleves.map((e) => e.classe).filter(Boolean))];
+  const [notes, absences, tarifs, annonces, messages, emplois] = await Promise.all([
     ids.length ? lireTout(() => {
       const q = sb.from("notes").select("*").in("eleve_id", ids);
       return annee ? q.eq("annee", annee) : q;
@@ -43,6 +46,7 @@ export async function fetchParentPortal({ annee = "" } = {}) {
     lireTout(() => sb.from("tarifs").select("*")),
     sb.from("annonces").select("*").order("created_at", { ascending: false }).limit(10),
     ids.length ? lireTout(() => sb.from("messages").select("*").in("eleve_id", ids).order("created_at", { ascending: false })) : vide,
+    classes.length ? lireTout(() => sb.from("emplois").select("*").in("classe", classes)) : vide,
   ]);
 
   const map = (res, table) => (res.data || []).map((r) => transformRow(table, r));
@@ -53,6 +57,7 @@ export async function fetchParentPortal({ annee = "" } = {}) {
     tarifs: map(tarifs, "tarifs"),
     annonces: map(annonces, "annonces"),
     messages: map(messages, "messages"),
+    emplois: map(emplois, "emplois"),
   };
 }
 

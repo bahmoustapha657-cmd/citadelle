@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Btn } from "../../ui";
+import { nomAffiche } from "../../../ordre-eleves";
+import { AvisFormeNote } from "../../AvisFormeNote";
 
 // Barre de filtres de la grille, selon le mode de saisie :
 //   "periode" : classe + période + type      (colonnes = matières)
@@ -15,7 +17,7 @@ export function NotesGrilleToolbar({
   classesUniqN, periodes, noteForms, matieresClasse, elevesGrille,
   grilleClasse, setGrilleClasse, grillePeriode, setGrillePeriode, grilleType, setGrilleType,
   grilleMode, setGrilleMode, grilleMatiere, setGrilleMatiere, grilleEleve, setGrilleEleve,
-  grilleChanges, setGrilleChanges, grilleSaving, sauvegarderGrille,
+  grilleChanges, setGrilleChanges, grilleSaving, sauvegarderGrille, triEleves,
 }) {
   const nbModif = Object.keys(grilleChanges).length;
   const selStyle = { border: "1px solid #b0c4d8", borderRadius: 7, padding: "6px 10px", fontSize: 12 };
@@ -68,7 +70,7 @@ export function NotesGrilleToolbar({
           />
           <select value={grilleEleve} onChange={e => setGrilleEleve(e.target.value)} style={{ ...selStyle, minWidth: 180 }}>
             <option value="">{elevesFiltres.length ? "— Élève —" : "Aucun élève trouvé"}</option>
-            {elevesFiltres.map(e => <option key={e._id} value={e._id}>{e.nom} {e.prenom}</option>)}
+            {elevesFiltres.map(e => <option key={e._id} value={e._id}>{nomAffiche(e, triEleves)}</option>)}
           </select>
         </>
       )}
@@ -77,6 +79,8 @@ export function NotesGrilleToolbar({
         {noteForms.map(item => <option key={item.id} value={item.value}>{item.label}</option>)}
       </select>
 
+      {/* Notes modifiées non enregistrées : pas de mise à jour automatique. */}
+      {nbModif > 0 && <span data-maj-retenir="notes" hidden />}
       {nbModif > 0 && (
         <Btn v="vert" sm disabled={grilleSaving} onClick={sauvegarderGrille}>
           {grilleSaving ? "Enregistrement…" : `💾 Enregistrer (${nbModif} modif.)`}
@@ -85,6 +89,7 @@ export function NotesGrilleToolbar({
       {nbModif > 0 && (
         <Btn v="ghost" sm onClick={() => setGrilleChanges({})}>✕ Annuler</Btn>
       )}
+      <AvisFormeNote type={grilleType} style={{ flexBasis: "100%" }} />
     </div>
   );
 }

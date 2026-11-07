@@ -1,0 +1,120 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import {
+  champsSeancePhoto, correspondEnfant, identifiantBadge, couleurClasse, familleEnfant, fileSeancePhoto,
+  grouperParClasse, initiales, nettoyerSurnom, nomAppel, nomOfficiel, SURNOM_MAX, trierParNomAppel,
+  trierPhotosDabord,
+} from "../src/identite-enfant.js";
+
+// Une classe de maternelle comme à La Citadelle : prénoms et noms qui se
+// répètent, des surnoms pour certains seulement.
+const NENE = { _id: "1", nom: "Bah", prenom: "Fatoumata", surnom: "Néné", classe: "Petite Section A", tuteur: "Mamadou Bah", filiation: "Fille de Mamadou et de Aïssatou" };
+const FATOU = { _id: "2", nom: "Bah", prenom: "Fatoumata", classe: "Petite Section A", photo: "https://x/photo2.jpg" };
+const BOBO = { _id: "3", nom: "Diallo", prenom: "Mamadou", surnom: "  Bobo  ", classe: "Grande Section A", matricule: "PRE-003" };
+const IBRAHIMA = { _id: "4", nom: "Camara", prenom: "Ibrahima", classe: "Petite Section B" };
+
+test("nom d'appel : surnom s'il est renseigné, sinon prénom ; nom officiel NOM Prénom", () => {
+  assert.equal(nomAppel(NENE), "Néné");
+  assert.equal(nomAppel(FATOU), "Fatoumata");
+  assert.equal(nomAppel(BOBO), "Bobo");
+  assert.equal(nomAppel({ nom: "Sow" }), "Sow");
+  assert.equal(nomAppel({}), "?");
+  assert.equal(nomAppel({ prenom: "Awa", surnom: "   " }), "Awa");
+  assert.equal(nomOfficiel(NENE), "BAH Fatoumata");
+  assert.equal(nomOfficiel({ prenom: "Awa" }), "Awa");
+  assert.equal(initiales(NENE), "FB");
+  assert.equal(initiales({ surnom: "Baby" }), "B");
+});
+
+test("surnom nettoyé : espaces resserrés, longueur bornée", () => {
+  assert.equal(nettoyerSurnom("  Néné   la  petite "), "Néné la petite");
+  assert.equal(nettoyerSurnom(null), "");
+  assert.equal(nettoyerSurnom("x".repeat(50)).length, SURNOM_MAX);
+});
+
+test("recherche : sans accents, mots dans le désordre, surnom, parent, matricule", () => {
+  assert.ok(correspondEnfant(NENE, "nene"));
+  assert.ok(correspondEnfant(NENE, "fatou bah"));
+  assert.ok(correspondEnfant(NENE, "BAH fatoumata"));
+  assert.ok(correspondEnfant(NENE, "aissatou"), "filiation");
+  assert.ok(correspondEnfant(NENE, "mamadou"), "tuteur");
+  assert.ok(correspondEnfant(BOBO, "pre-003"));
+  assert.ok(correspondEnfant(BOBO, ""));
+  assert.ok(!correspondEnfant(FATOU, "nene"));
+  assert.ok(!correspondEnfant(IBRAHIMA, "bah"));
+});
+
+test("tri et regroupement : classes dans l'ordre, enfants par nom d'appel", () => {
+  assert.deepEqual(trierParNomAppel([NENE, FATOU, BOBO]).map((e) => e._id), ["3", "2", "1"]);
+  const groupes = grouperParClasse([BOBO, IBRAHIMA, NENE, FATOU, { _id: "5", prenom: "Awa" }]);
+  assert.deepEqual(groupes.map(([classe]) => classe),
+    ["Grande Section A", "Petite Section A", "Petite Section B", "Sans classe"]);
+  assert.deepEqual(groupes[1][1].map((e) => e._id), ["2", "1"]);
+});
+
+test("trombinoscope et badges : les enfants qui ont leur photo d'abord, chaque groupe par nom d'appel", () => {
+  const photo = (eleve) => ({ ...eleve, photo: `https://x/${eleve._id}.jpg` });
+  const AWA = { _id: "5", prenom: "Awa", classe: "Petite Section A" };
+  const ZEINAB = { _id: "6", prenom: "Zeinab", classe: "Petite Section A" };
+  // Sans photo : Awa, Néné ; avec photo : Fatoumata, Zeinab.
+  const classe = [NENE, photo(ZEINAB), AWA, FATOU];
+  assert.deepEqual(trierPhotosDabord(classe).map((e) => e._id), ["2", "6", "5", "1"]);
+  assert.deepEqual(grouperParClasse(classe)[0][1].map((e) => e._id), ["2", "6", "5", "1"]);
+  // Une photo vide ou faite d'espaces ne compte pas.
+  assert.deepEqual(trierPhotosDabord([{ ...ZEINAB, photo: "  " }, AWA]).map((e) => e._id), ["5", "6"]);
+  // Sans photo du tout : l'ordre alphabétique d'avant.
+  assert.deepEqual(trierPhotosDabord([NENE, AWA]).map((e) => e._id), ["5", "1"]);
+});
+
+test("famille d'un enfant : filiation, tuteur et contact renseignés seulement, libellés traduits", () => {
+  const t = (cle) => `[${cle}]`;
+  assert.deepEqual(familleEnfant({ ...NENE, contactTuteur: " 622 00 00 00 " }, t), [
+    ["[trombinoscope.filiation]", "Fille de Mamadou et de Aïssatou"],
+    ["[trombinoscope.guardian]", "Mamadou Bah"],
+    ["[trombinoscope.contact]", "622 00 00 00"],
+  ]);
+  assert.deepEqual(familleEnfant({ tuteur: "   ", contactTuteur: "628 11 22 33" }, t), [["[trombinoscope.contact]", "628 11 22 33"]]);
+  assert.deepEqual(familleEnfant(FATOU, t), []);
+});
+
+test("couleur par niveau de maternelle, couleur de l'école ailleurs", () => {
+  assert.equal(couleurClasse("Petite Section A"), "#ea580c");
+  assert.equal(couleurClasse("moyenne section B"), "#16a34a");
+  assert.equal(couleurClasse("Grande Section A"), "#2563eb");
+  assert.equal(couleurClasse("1ère Année A", "#123456"), "#123456");
+  assert.equal(couleurClasse(undefined), "#0A1628");
+});
+
+test("séance photo : file figée par classe, sans photo d'abord demandée, ordre officiel", () => {
+  const tous = [FATOU, NENE, IBRAHIMA, BOBO];
+  // FATOU a déjà sa photo : écartée par défaut, sauf si on l'a choisie.
+  assert.deepEqual(fileSeancePhoto(tous, { classe: "Petite Section A" }), ["1"]);
+  assert.deepEqual(fileSeancePhoto(tous, { classe: "Petite Section A", inclure: "2" }), ["2", "1"]);
+  assert.deepEqual(fileSeancePhoto(tous, { classe: "Petite Section A", seulementSansPhoto: false }), ["2", "1"]);
+  assert.deepEqual(fileSeancePhoto(tous, {}), ["1", "4", "3"]);
+});
+
+test("identifiant du badge : l'IEN s'il existe, sinon le matricule", () => {
+  assert.deepEqual(identifiantBadge({ ien: " 2026123456 ", matricule: "PRE-003" }), { libelle: "IEN", valeur: "2026123456" });
+  assert.deepEqual(identifiantBadge({ ien: "", matricule: "PRE-003" }), { libelle: "Matricule", valeur: "PRE-003" });
+  assert.deepEqual(identifiantBadge({ ien: "   ", matricule: " C-12 " }), { libelle: "Matricule", valeur: "C-12" });
+  assert.equal(identifiantBadge({ nom: "Bah" }), null);
+  assert.equal(identifiantBadge(), null);
+});
+
+test("séance photo : seuls les champs qui changent partent", () => {
+  assert.deepEqual(champsSeancePhoto(NENE, { surnom: " Néné " }), {});
+  assert.deepEqual(champsSeancePhoto(NENE, { surnom: "Nénette" }), { surnom: "Nénette" });
+  assert.deepEqual(champsSeancePhoto(NENE, { surnom: "" }), { surnom: "" });
+  assert.deepEqual(champsSeancePhoto(FATOU, { photo: "https://x/photo2.jpg" }), {});
+  assert.deepEqual(champsSeancePhoto(FATOU, { photo: "https://x/nouvelle.jpg", surnom: "Fatou" }),
+    { photo: "https://x/nouvelle.jpg", surnom: "Fatou" });
+  // Retouche : sa mémoire accompagne la nouvelle photo ; une photo reprise
+  // efface l'ancienne (null). Sans nouvelle photo, rien.
+  const memoire = { origine: "https://x/photo2.jpg", resultat: "https://x/nouvelle.jpg", fond: "#ffffff" };
+  assert.deepEqual(champsSeancePhoto(FATOU, { photo: "https://x/nouvelle.jpg", photoRetouche: memoire }),
+    { photo: "https://x/nouvelle.jpg", photoRetouche: memoire });
+  assert.deepEqual(champsSeancePhoto(FATOU, { photo: "https://x/autre.jpg", photoRetouche: null }),
+    { photo: "https://x/autre.jpg", photoRetouche: null });
+  assert.deepEqual(champsSeancePhoto(FATOU, { photo: "https://x/photo2.jpg", photoRetouche: memoire }), {});
+});

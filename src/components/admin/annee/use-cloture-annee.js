@@ -1,8 +1,9 @@
 import { useContext, useState } from "react";
 import { SchoolContext } from "../../../contexts/SchoolContext";
 import { anneePrecedente } from "../../../constants";
-import { annulerCloture, cloturerAnnee, majFicheEcole } from "../cloture-annee";
+import { annulerCloture, cloturerAnnee, instantaneReglages, majFicheEcole } from "../cloture-annee";
 import { dateLongue, etatCloture, peutRouvrir } from "../cloture-annee-utils";
+import { reglagesAnneesApresCloture } from "../../../reglages-annee";
 
 // Changement d'année scolaire par la Direction : l'année qui se termine est
 // archivée AUTOMATIQUEMENT (instantané de la scolarité sur chaque fiche, puis
@@ -53,15 +54,19 @@ export function useClotureAnnee({ schoolId, annee, setAnnee, toast }) {
       + "La promotion et le passage des admis de l'année deviendront possibles.")) return;
     setEnCours(true);
     try {
+      // Réglages lus AVANT toute écriture : s'ils sont illisibles, rien n'est
+      // clôturé.
+      const instantane = await instantaneReglages(schoolId, schoolInfo);
       const bilan = await cloturerAnnee({ schoolId, annee: anneeOfficielle, moisAnnee });
-      // Nouvelle année et repère de clôture partent ENSEMBLE : c'est le repère
-      // qui ouvre la promotion de l'année close.
+      // Nouvelle année, repère de clôture et réglages figés partent ENSEMBLE :
+      // c'est le repère qui ouvre la promotion de l'année close.
       const clotures = {
         ...(schoolInfo?.clotures || {}),
         [anneeOfficielle]: { le: new Date().toISOString(), par: auteur || "" },
       };
-      await majFicheEcole(schoolId, { anneeScolaire: nouvelle, clotures });
-      setSchoolInfo((prec) => ({ ...prec, anneeScolaire: nouvelle, clotures }));
+      const reglagesAnnees = reglagesAnneesApresCloture(schoolInfo, anneeOfficielle, instantane);
+      await majFicheEcole(schoolId, { anneeScolaire: nouvelle, clotures, reglagesAnnees });
+      setSchoolInfo((prec) => ({ ...prec, anneeScolaire: nouvelle, clotures, reglagesAnnees }));
       setAnnee(nouvelle, { persister: false });
       setResultat({ ...bilan, nouvelle });
       logAction(`Cloture de l'annee ${anneeOfficielle}`, `${bilan.archives} fiche(s) archivee(s) sur ${bilan.total} — nouvelle annee : ${nouvelle}`);

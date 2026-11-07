@@ -40,18 +40,24 @@ export default defineConfig({
     },
   },
   build: {
+    // Le tableau final « gzip: … » de vite build compresse chaque fichier
+    // émis, dont ~30 Mo de WebAssembly (MediaPipe, wa-sqlite) : ~20 % du
+    // temps de build pour une information purement indicative. Les fichiers
+    // produits sont identiques ; seule la colonne gzip disparaît du terminal.
+    reportCompressedSize: false,
     rollupOptions: {
       output: {
-        manualChunks(id) {
-          if (id.includes("node_modules/recharts/") || id.includes("node_modules/d3-")) {
-            return "charts-vendor";
-          }
-          if (id.includes("node_modules/xlsx/")) {
-            return "xlsx-vendor";
-          }
-          if (id.includes("node_modules/qrcode/")) {
-            return "qrcode-vendor";
-          }
+        // Découpage natif de Rolldown (Vite 8). Chaque groupe aspire aussi ses
+        // dépendances : sans groupe React prioritaire, React finissait dans
+        // charts-vendor, que la première page devait alors précharger
+        // (~118 kB gzip de recharts + d3 inutiles au démarrage).
+        codeSplitting: {
+          groups: [
+            { name: "react-vendor", test: /node_modules[\\/](react|react-dom|scheduler|use-sync-external-store)[\\/]/, priority: 30 },
+            { name: "charts-vendor", test: /node_modules[\\/](recharts|d3-[^\\/]+)[\\/]/, priority: 20 },
+            { name: "xlsx-vendor", test: /node_modules[\\/]xlsx[\\/]/, priority: 10 },
+            { name: "qrcode-vendor", test: /node_modules[\\/]qrcode[\\/]/, priority: 10 },
+          ],
         },
       },
     },

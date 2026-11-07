@@ -6,6 +6,7 @@ import {
 } from "./webrtc";
 import { creerSonnerie } from "./sonnerie";
 import { pistesATirer } from "./reunion-logic";
+import i18n from "../../../i18n";
 
 const SIGNE_DE_VIE_MS = 20000;
 const DELAI_DEMARRAGE_MS = 3500;
@@ -121,7 +122,7 @@ export function useReunion({ actif, moi, schoolCode, occupe, surNouvelleReunion 
       if (ref.current.jeton !== jeton) return;
       setActives(liste);
       const courante = liste.find((x) => x.id === id);
-      if (!courante) { quitter("L'appel est terminé."); return; }
+      if (!courante) { quitter(i18n.t("msg.meet.ended")); return; }
       const presents = participants.filter((p) => !p.quitte_at && (courante.presents || []).includes(p.compte_id));
       maj({ participants: presents });
       for (const [compteId, lecteur] of r.audios) {
@@ -156,7 +157,7 @@ export function useReunion({ actif, moi, schoolCode, occupe, surNouvelleReunion 
       return;
     }
     if (!webrtcDisponible()) {
-      setReunion({ conversationId, phase: "fin", message: "Appels non pris en charge par ce navigateur.", participants: [], videos: {} });
+      setReunion({ conversationId, phase: "fin", message: i18n.t("msg.callEnd.unsupported"), participants: [], videos: {} });
       setTimeout(() => setReunion((x) => (x?.phase === "fin" ? null : x)), 3000);
       return;
     }
@@ -178,7 +179,7 @@ export function useReunion({ actif, moi, schoolCode, occupe, surNouvelleReunion 
       ref.current.pc = pc;
       pc.ontrack = surPiste;
       pc.onconnectionstatechange = () => {
-        if (pc.connectionState === "failed" && ref.current.jeton === jeton) quitter("Connexion au serveur d'appels perdue.");
+        if (pc.connectionState === "failed" && ref.current.jeton === jeton) quitter(i18n.t("msg.meet.serverLost"));
       };
       await api.actionReunion("rejoindre", { reunionId: id });
       await enFile(async () => {
@@ -195,7 +196,7 @@ export function useReunion({ actif, moi, schoolCode, occupe, surNouvelleReunion 
       }, SIGNE_DE_VIE_MS);
       synchroniser();
     } catch (e) {
-      if (ref.current.jeton === jeton) quitter(e.message || "Impossible de rejoindre l'appel.");
+      if (ref.current.jeton === jeton) quitter(e.message || i18n.t("msg.meet.joinFailed"));
     }
   }, [actives, quitter, synchroniser]); // eslint-disable-line react-hooks/exhaustive-deps
 

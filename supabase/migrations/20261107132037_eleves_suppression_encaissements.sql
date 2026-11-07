@@ -1,4 +1,4 @@
--- 20261009151044_eleves_suppression_encaissements.sql
+-- 20261107132037_eleves_suppression_encaissements.sql
 -- Pourquoi : supprimer une fiche élève (Comptabilité → Élèves → « Suppr. »)
 -- effaçait aussi, par la cascade paiements_eleve_id_fkey (ON DELETE
 -- CASCADE), TOUTES ses lignes du journal de caisse. L'argent réellement
@@ -54,7 +54,7 @@ as $$
 $$;
 
 -- La fiche (ou l'archive d'une année) porte-t-elle un encaissement ?
--- MÊME RÈGLE que aDesPaiements (src/components/admin/cloture-annee-utils.js) :
+-- MÊME RÈGLE que aDesPaiements (src/depart-utils.js) :
 -- toute évolution de l'une se reporte sur l'autre.
 create or replace function public.fiche_porte_un_encaissement(f jsonb)
 returns boolean

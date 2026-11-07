@@ -11,6 +11,7 @@
     "build": "vite build --mode supabase",
     "lint": "eslint .",
     "test": "tsx --experimental-test-module-mocks --test tests/**/*.test.{js,ts}",
+    "textes:maj": "node scripts/textes-en-dur.mjs --maj",
     "test:e2e": "playwright test -c e2e/playwright.config.js",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview",
@@ -19,7 +20,8 @@
     "sauvegarde:verifier": "node supabase/verifier-sauvegardes.mjs --profond",
     "build:supabase": "vite build --mode supabase",
     "deploy:pages": "node scripts/deployer-pages.mjs",
-    "migration:nouvelle": "node scripts/nouvelle-migration.mjs"
+    "migration:nouvelle": "node scripts/nouvelle-migration.mjs",
+    "partager:edge": "node scripts/partager-edge.mjs"
   },
   "dependencies": {
     "@journeyapps/wa-sqlite": "^1.7.0",

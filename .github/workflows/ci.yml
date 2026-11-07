@@ -49,6 +49,8 @@ jobs:
         with:
           name: dist-supabase
           path: dist
+          # .well-known : écarté par défaut, c'est le lien avec l'application Android.
+          include-hidden-files: true
           retention-days: 30
           if-no-files-found: error
 
@@ -85,8 +87,12 @@ jobs:
           version: 2.120.0  # épinglée : « latest » interroge l API GitHub (rate limit), cf. docs/deploiement.md
 
       # Base vierge + toutes les migrations + Edge Functions servies en local.
+      # PAIEMENT_SIMULATION : fournisseur de paiement « simulation » autorisé
+      # sur cette pile jetable seulement (jamais posé en production).
       - name: Démarrer Supabase local
-        run: supabase start -x studio,imgproxy,logflare,vector,supavisor,realtime,postgres-meta
+        run: |
+          echo "PAIEMENT_SIMULATION=autorisee" > supabase/functions/.env
+          supabase start -x studio,imgproxy,logflare,vector,supavisor,realtime,postgres-meta
 
       # Clés de la pile LOCALE (valeurs de démonstration publiques de la CLI).
       - name: Variables de la base locale
@@ -222,7 +228,7 @@ jobs:
           SQL
 
       # Une fiche élève qui porte de l'argent ne se supprime pas : la cascade
-      # vidait le journal de caisse (migration 20261009151044). La suppression
+      # vidait le journal de caisse (migration 20261107132037). La suppression
       # d'une école entière, elle, emporte toujours tout. Données jetables,
       # annulées à la fin (rollback).
       - name: Contrôler la garde des encaissements
@@ -399,6 +405,7 @@ jobs:
       - name: Vérifier que le bundle correspond au commit
         run: |
           test -f dist/index.html
+          test -f dist/.well-known/assetlinks.json
           jq -e --arg sha "$GITHUB_SHA" '.commit == $sha and .propre == true' dist/version.json
 
       - name: Setup Node.js
@@ -433,3 +440,8 @@ jobs:
           done
           echo "::error::La production ne sert pas le commit déployé."
           exit 1
+
+      # Sans ce fichier, le site renvoie sa page d'accueil à cette adresse, et
+      # Chrome affiche une barre d'adresse dans l'application Android.
+      - name: Contrôler le lien avec l'application Android
+        run: curl -fsS https://edugest-gn.pages.dev/.well-known/assetlinks.json | jq -e '.[0].target.package_name == "com.edugest.app"'

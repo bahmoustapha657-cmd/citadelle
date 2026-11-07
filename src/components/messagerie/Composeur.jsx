@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { enregistrementDisponible, useEnregistreur } from "./audio/use-enregistreur";
 import { apercuMessage, formatChrono } from "./messagerie-logic";
 import { ACCEPT_DOCUMENTS, formatTaille, iconeFichier, typeFichier } from "./documents";
@@ -8,13 +9,14 @@ const ecranTactile = () => typeof window !== "undefined" && window.matchMedia?.(
 
 const rond = (fond) => ({
   width: 42, height: 42, borderRadius: "50%", border: "none", cursor: "pointer", flexShrink: 0,
-  background: fond, color: "#fff", fontSize: 17, display: "flex", alignItems: "center", justifyContent: "center",
+  background: fond, color: "var(--msg-encre, #fff)", fontSize: 17, display: "flex", alignItems: "center", justifyContent: "center",
 });
 
 // Zone de saisie : texte (Entrée pour envoyer sur ordinateur), réponse à un
 // message, correction d'un message, message vocal (🎤) et documents (📎 ;
 // le texte saisi sert alors de légende).
 export function Composeur({ annuaire, reponse, onAnnulerReponse, edition, onAnnulerEdition, onEnvoyerTexte, onEnvoyerVocal, onEnvoyerFichiers, onValiderEdition }) {
+  const { t } = useTranslation();
   const [texte, setTexte] = useState("");
   const [fichiers, setFichiers] = useState([]);
   const choixRef = useRef(null);
@@ -43,7 +45,7 @@ export function Composeur({ annuaire, reponse, onAnnulerReponse, edition, onAnnu
   const executer = async (fn) => {
     setEnvoi(true);
     setErreur("");
-    try { await fn(); return true; } catch (e) { setErreur(e.message || "Envoi impossible."); return false; } finally { setEnvoi(false); }
+    try { await fn(); return true; } catch (e) { setErreur(e.message || t("msg.compose.sendFailed")); return false; } finally { setEnvoi(false); }
   };
 
   const envoyer = async () => {
@@ -73,39 +75,43 @@ export function Composeur({ annuaire, reponse, onAnnulerReponse, edition, onAnnu
 
   const envoyerVocal = async () => {
     const resultat = await enregistreur.arreter();
-    if (!resultat || resultat.duree < 1) { setErreur("Message vocal trop court."); return; }
+    if (!resultat || resultat.duree < 1) { setErreur(t("msg.compose.voiceTooShort")); return; }
     await executer(() => onEnvoyerVocal(resultat));
   };
 
-  const bandeau = edition ? { titre: "✏️ Modifier le message", texte: apercuMessage(edition), annuler: () => { onAnnulerEdition(); setTexte(""); } }
-    : reponse ? { titre: `↩️ Réponse à ${annuaire.get(reponse.de_compte_id)?.nom || "un message"}`, texte: apercuMessage(reponse), annuler: onAnnulerReponse }
+  const bandeau = edition ? { titre: `✏️ ${t("msg.compose.editMessage")}`, texte: apercuMessage(edition), annuler: () => { onAnnulerEdition(); setTexte(""); } }
+    : reponse ? { titre: `↩️ ${t("msg.compose.replyTo", { name: annuaire.get(reponse.de_compte_id)?.nom || t("msg.compose.aMessage") })}`, texte: apercuMessage(reponse), annuler: onAnnulerReponse }
       : null;
 
+  // data-maj-retenir : pas de mise à jour automatique (rechargement) pendant
+  // un vocal, avec des pièces jointes choisies ou un envoi en cours.
+  const occupe = enregistreur.enCours || fichiers.length > 0 || envoi;
+
   return (
-    <div style={{ borderTop: "1px solid var(--lc-border)", background: "var(--lc-surface)", padding: "8px 10px" }}>
+    <div data-maj-retenir={occupe ? "message" : undefined} style={{ borderTop: "1px solid var(--lc-border)", background: "var(--lc-surface)", padding: "8px 10px" }}>
       {(erreur || enregistreur.erreur) && (
         <div style={{ fontSize: 12, color: "#b91c1c", fontWeight: 600, marginBottom: 6 }}>{erreur || enregistreur.erreur}</div>
       )}
       {bandeau && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--lc-surface-alt)", borderInlineStart: "3px solid var(--sc1)", borderRadius: 8, padding: "6px 10px", marginBottom: 7 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "var(--sc1)" }}>{bandeau.titre}</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "var(--msg-accent, var(--sc1))" }}>{bandeau.titre}</div>
             <div style={{ fontSize: 12, color: "var(--lc-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{bandeau.texte}</div>
           </div>
-          <button type="button" onClick={bandeau.annuler} style={boutonIcone} aria-label="Annuler">✕</button>
+          <button type="button" onClick={bandeau.annuler} style={boutonIcone} aria-label={t("common.cancel")}>✕</button>
         </div>
       )}
 
       {enregistreur.enCours ? (
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <button type="button" onClick={enregistreur.annuler} style={{ ...boutonIcone, color: "#dc2626" }} aria-label="Annuler l'enregistrement">🗑️</button>
+          <button type="button" onClick={enregistreur.annuler} style={{ ...boutonIcone, color: "#dc2626" }} aria-label={t("msg.compose.cancelRecording")}>🗑️</button>
           <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, fontWeight: 700, fontSize: 13, color: "var(--lc-text)" }}>
             <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#dc2626", animation: "lc-rec 1s ease-in-out infinite" }} />
             <style>{"@keyframes lc-rec{50%{opacity:.25}}"}</style>
-            Enregistrement… {formatChrono(enregistreur.secondes)}
+            {t("msg.compose.recording")} {formatChrono(enregistreur.secondes)}
             <span style={{ fontSize: 11, fontWeight: 500, color: "var(--lc-text-faint)" }}>/ {formatChrono(enregistreur.dureeMax)}</span>
           </div>
-          <button type="button" onClick={envoyerVocal} disabled={envoi} style={rond("var(--sc1)")} aria-label="Envoyer le message vocal">➤</button>
+          <button type="button" onClick={envoyerVocal} disabled={envoi} style={rond("var(--sc1)")} aria-label={t("msg.compose.sendVoice")}>➤</button>
         </div>
       ) : (
         <>
@@ -116,7 +122,7 @@ export function Composeur({ annuaire, reponse, onAnnulerReponse, edition, onAnnu
                 {iconeFichier(typeFichier(f))}
                 <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
                 <span style={{ color: "var(--lc-text-faint)" }}>{formatTaille(f.size)}</span>
-                <button type="button" onClick={() => setFichiers((l) => l.filter((_, j) => j !== i))} aria-label={`Retirer ${f.name}`}
+                <button type="button" onClick={() => setFichiers((l) => l.filter((_, j) => j !== i))} aria-label={t("msg.compose.removeFile", { name: f.name })}
                   style={{ ...boutonIcone, fontSize: 12, padding: 2 }}>✕</button>
               </span>
             ))}
@@ -126,13 +132,13 @@ export function Composeur({ annuaire, reponse, onAnnulerReponse, edition, onAnnu
           {!edition && (
             <>
               <button type="button" onClick={() => choixRef.current?.click()} disabled={envoi}
-                style={{ ...boutonIcone, fontSize: 20, padding: "9px 4px" }} aria-label="Joindre un document" title="Joindre un document ou une photo (10 Mo max)">📎</button>
+                style={{ ...boutonIcone, fontSize: 20, padding: "9px 4px" }} aria-label={t("msg.compose.attach")} title={t("msg.compose.attachHint")}>📎</button>
               <input ref={choixRef} type="file" multiple accept={ACCEPT_DOCUMENTS} style={{ display: "none" }}
                 onChange={(e) => { ajouterFichiers(e.target.files); e.target.value = ""; }} />
             </>
           )}
           <textarea ref={zoneRef} value={texte} rows={1} onChange={(e) => setTexte(e.target.value)} onKeyDown={surTouche}
-            placeholder={edition ? "Corrigez votre message…" : fichiers.length ? "Ajouter une légende (facultatif)…" : "Écrire un message…"} maxLength={4000}
+            placeholder={edition ? t("msg.compose.fixPlaceholder") : fichiers.length ? t("msg.compose.captionPlaceholder") : t("msg.compose.placeholder")} maxLength={4000}
             style={{
               flex: 1, resize: "none", border: "1.5px solid var(--lc-border)", borderRadius: 20, padding: "10px 14px",
               fontSize: 13.5, lineHeight: 1.4, background: "var(--lc-input-bg)", color: "var(--lc-text)", outline: "none",
@@ -140,12 +146,12 @@ export function Composeur({ annuaire, reponse, onAnnulerReponse, edition, onAnnu
             }} />
           {texte.trim() || fichiers.length || edition || !enregistrementDisponible() ? (
             <button type="button" onClick={envoyer} disabled={envoi || (!texte.trim() && !fichiers.length)} style={{ ...rond("var(--sc1)"), opacity: texte.trim() || fichiers.length ? 1 : 0.5 }}
-              aria-label={edition ? "Enregistrer la correction" : "Envoyer"}>
+              aria-label={edition ? t("msg.compose.saveFix") : t("msg.compose.send")}>
               {envoi ? "…" : edition ? "✓" : "➤"}
             </button>
           ) : (
             <button type="button" onClick={enregistreur.demarrer} disabled={envoi} style={rond("var(--sc1)")}
-              aria-label="Enregistrer un message vocal" title="Message vocal (2 min max)">
+              aria-label={t("msg.compose.recordVoice")} title={t("msg.compose.voiceHint")}>
               {envoi ? "…" : "🎤"}
             </button>
           )}

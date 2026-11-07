@@ -1,4 +1,6 @@
+import { useTranslation } from "react-i18next";
 import { Btn, Input, Modale, Selec } from "../../ui";
+import { AvisFormeNote } from "../../AvisFormeNote";
 
 // Modale de création / édition d'une note unitaire.
 export function NoteModale({
@@ -10,14 +12,15 @@ export function NoteModale({
   // Même règle que la grille : choix de la matière pour le titulaire, ou
   // pour le professeur du secondaire à qui des matières sont rattachées.
   const choixMatiere = isPrimaire || matieresDispo.length > 1;
+  const { t } = useTranslation();
   return (
-    <Modale titre={modalNote === "add" ? "Nouvelle note" : "Modifier la note"} fermer={() => setModalNote(null)}>
+    <Modale titre={modalNote === "add" ? t("teacher.noteModal.new") : t("teacher.noteModal.edit")} fermer={() => setModalNote(null)}>
       <Selec
-        label="Eleve"
+        label={t("teacher.noteModal.student")}
         value={formNote.eleveId || ""}
         onChange={(event) => setFormNote((current) => ({ ...current, eleveId: event.target.value }))}
       >
-        <option value="">- Choisir un eleve -</option>
+        <option value="">{t("teacher.noteModal.choose")}</option>
         {eleves.map((eleveItem) => (
           <option key={eleveItem._id} value={eleveItem._id}>
             {eleveItem.nom} {eleveItem.prenom} ({eleveItem.classe})
@@ -28,7 +31,7 @@ export function NoteModale({
       {choixMatiere && (
         <>
           <Selec
-            label="Matière"
+            label={t("teacher.noteModal.subject")}
             value={formNote.matiere || ""}
             onChange={(event) => setFormNote((current) => ({ ...current, matiere: event.target.value }))}
           >
@@ -40,15 +43,16 @@ export function NoteModale({
         </>
       )}
       <Selec
-        label="Type"
+        label={t("teacher.noteModal.type")}
         value={formNote.type || defaultNoteType}
         onChange={(event) => setFormNote((current) => ({ ...current, type: event.target.value }))}
       >
         {noteForms.map((item) => <option key={item.id} value={item.value}>{item.label}</option>)}
       </Selec>
+      <AvisFormeNote type={formNote.type || defaultNoteType} style={{ marginTop: 8 }} />
       <div style={{ height: 10 }} />
       <Selec
-        label="Periode"
+        label={t("teacher.noteModal.period")}
         value={formNote.periode || periodeN}
         onChange={(event) => setFormNote((current) => ({ ...current, periode: event.target.value }))}
       >
@@ -56,18 +60,18 @@ export function NoteModale({
       </Selec>
       <div style={{ height: 10 }} />
       <Input
-        label={`Note /${maxNote}`}
+        label={t("teacher.cols.gradeOutOf", { max: maxNote })}
         type="number"
         min="0"
         max={maxNote}
         step="0.25"
         value={formNote.note ?? ""}
         onChange={(event) => setFormNote((current) => ({ ...current, note: event.target.value }))}
-        placeholder={`Ex : ${maxNote * 0.7}`}
+        placeholder={t("teacher.noteModal.example", { value: maxNote * 0.7 })}
       />
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
-        <Btn v="ghost" onClick={() => setModalNote(null)}>Annuler</Btn>
-        <Btn onClick={enregistrerNote} disabled={enregistrement}>{enregistrement ? "Enregistrement..." : "Enregistrer"}</Btn>
+        <Btn v="ghost" onClick={() => setModalNote(null)}>{t("common.cancel")}</Btn>
+        <Btn onClick={enregistrerNote} disabled={enregistrement}>{enregistrement ? t("teacher.noteModal.saving") : t("teacher.noteModal.save")}</Btn>
       </div>
     </Modale>
   );

@@ -4,18 +4,20 @@
 // côté, dans msg_appels) — plus simple et plus robuste sur réseau faible
 // qu'un échange de candidats un par un.
 
+import i18n from "../../../i18n";
+
 export function messageErreurMicro(e) {
   const nom = e?.name || "";
   if (nom === "NotAllowedError" || nom === "SecurityError") {
-    return "Accès au micro refusé : autorisez le micro pour ce site dans le navigateur.";
+    return i18n.t("msg.device.micDenied");
   }
-  if (nom === "NotFoundError" || nom === "OverconstrainedError") return "Aucun micro détecté sur cet appareil.";
-  if (nom === "NotReadableError") return "Le micro est déjà utilisé par une autre application.";
-  return "Micro indisponible sur cet appareil.";
+  if (nom === "NotFoundError" || nom === "OverconstrainedError") return i18n.t("msg.device.micNotFound");
+  if (nom === "NotReadableError") return i18n.t("msg.device.micBusy");
+  return i18n.t("msg.device.micUnavailable");
 }
 
 export async function capterMicro() {
-  if (!navigator.mediaDevices?.getUserMedia) throw new Error("Micro indisponible sur cet appareil (connexion non sécurisée ?).");
+  if (!navigator.mediaDevices?.getUserMedia) throw new Error(i18n.t("msg.device.micInsecure"));
   try {
     return await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
@@ -31,19 +33,32 @@ export function arreterFlux(flux) {
 
 export const webrtcDisponible = () => typeof window !== "undefined" && "RTCPeerConnection" in window;
 
+// Un relais TURN figure-t-il parmi les serveurs ICE ?
+export const relaisPrevu = (iceServers) => (iceServers || [])
+  .some((s) => [].concat(s.urls || []).some((u) => /^turns?:/i.test(u)));
+
+// Sans relais, seule la collecte des candidats directs compte ; avec relais,
+// sa réponse peut tarder sur réseau faible et c'est elle qui fait passer
+// l'appel entre deux réseaux mobiles.
+export const delaiCollecteIce = (iceServers) => (relaisPrevu(iceServers) ? 8000 : 4000);
+
 // Attend la fin de la collecte ICE (ou `delaiMs`, au-delà duquel on part avec
-// les candidats déjà trouvés : un relais TURN lent ne doit pas bloquer).
-export function attendreCollecteIce(pc, delaiMs = 4000) {
+// les candidats déjà trouvés). Sans trickle, un candidat arrivé après coup est
+// perdu : on patiente pour le relais, et on part dès qu'il a répondu.
+export function attendreCollecteIce(pc, delaiMs = delaiCollecteIce(pc.getConfiguration?.().iceServers)) {
   if (pc.iceGatheringState === "complete") return Promise.resolve();
   return new Promise((resolve) => {
     const fin = () => {
       clearTimeout(minuteur);
       pc.removeEventListener("icegatheringstatechange", verifier);
+      pc.removeEventListener("icecandidate", surCandidat);
       resolve();
     };
     const verifier = () => { if (pc.iceGatheringState === "complete") fin(); };
+    const surCandidat = (e) => { if (/ typ relay /.test(e.candidate?.candidate || "")) fin(); };
     const minuteur = setTimeout(fin, delaiMs);
     pc.addEventListener("icegatheringstatechange", verifier);
+    pc.addEventListener("icecandidate", surCandidat);
   });
 }
 
@@ -66,11 +81,11 @@ export function creerConnexion({ iceServers, flux, onEtat }) {
 export function messageErreurCamera(e) {
   const nom = e?.name || "";
   if (nom === "NotAllowedError" || nom === "SecurityError") {
-    return "Accès à la caméra refusé : autorisez la caméra pour ce site dans le navigateur.";
+    return i18n.t("msg.device.cameraDenied");
   }
-  if (nom === "NotFoundError" || nom === "OverconstrainedError") return "Aucune caméra détectée sur cet appareil.";
-  if (nom === "NotReadableError") return "La caméra est déjà utilisée par une autre application.";
-  return e?.message || "Caméra indisponible.";
+  if (nom === "NotFoundError" || nom === "OverconstrainedError") return i18n.t("msg.device.cameraNotFound");
+  if (nom === "NotReadableError") return i18n.t("msg.device.cameraBusy");
+  return e?.message || i18n.t("msg.device.cameraUnavailable");
 }
 
 // Vidéo d'appel de groupe : 360p, 15 images/s — lisible et sobre en data.

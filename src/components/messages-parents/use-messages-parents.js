@@ -3,6 +3,7 @@ import { SchoolContext } from "../../contexts/SchoolContext";
 import { useFirestore } from "../../hooks/useFirestore";
 import { C } from "../../constants";
 import { notifierParents } from "../../backend/notify-supabase";
+import i18n from "../../i18n";
 
 // Logique de la liaison École–Famille : regroupement des messages en
 // conversations, lecture/réponse et publication d'annonces.
@@ -42,11 +43,11 @@ export function useMessagesParents() {
     const eleveId = threadSelec.messages[0]?.eleveId;
     await repMsg({
       expediteur: "ecole",
-      expediteurNom: "École",
+      expediteurNom: i18n.t("liaison.school"),
       eleveId,
       eleveNom: threadSelec.eleveNom,
       destinataireLogin: threadSelec.expediteurLogin,
-      sujet: "Réponse : " + (threadSelec.messages[0]?.sujet || ""),
+      sujet: i18n.t("liaison.replySubject", { subject: threadSelec.messages[0]?.sujet || "" }),
       corps: reponse.trim(),
       lu: false,
       date: Date.now(),
@@ -55,8 +56,8 @@ export function useMessagesParents() {
     if (eleveId) {
       envoyerPush(
         ["parent"],
-        `📩 Message de ${schoolInfo.nom || "l'école"}`,
-        `Concernant ${threadSelec.eleveNom} : ${reponse.trim().slice(0, 80)}${reponse.length > 80 ? "…" : ""}`,
+        `📩 ${i18n.t("liaison.pushTitle", { name: schoolInfo.nom || i18n.t("liaison.theSchool") })}`,
+        i18n.t("liaison.pushBody", { student: threadSelec.eleveNom, text: `${reponse.trim().slice(0, 80)}${reponse.length > 80 ? "…" : ""}` }),
         "/messages",
         { eleveId },
       );
@@ -65,9 +66,9 @@ export function useMessagesParents() {
   };
 
   const publierAnnonce = () => {
-    if (!formAnn.titre.trim() || !formAnn.corps.trim()) { toast("Titre et contenu requis.", "warning"); return; }
+    if (!formAnn.titre.trim() || !formAnn.corps.trim()) { toast(i18n.t("liaison.titleBodyRequired"), "warning"); return; }
     const date = Date.now();
-    ajAnn({ ...formAnn, auteur: schoolInfo.nom || "École", date });
+    ajAnn({ ...formAnn, auteur: schoolInfo.nom || i18n.t("liaison.school"), date });
     // Diffusion SMS/WhatsApp aux tuteurs (best-effort ; le serveur ne diffuse
     // que si l'école a activé les notifications d'annonces). annonceId stable
     // (titre+date) pour l'anti-doublon en cas de double-clic.

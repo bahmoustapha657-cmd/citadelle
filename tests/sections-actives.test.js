@@ -64,11 +64,12 @@ test("paie : pas de section Secondaire proposée sans secondaire — sauf la fic
 });
 
 test("enseignants (compta) : cartes et choix limités aux sections ouvertes", () => {
-  assert.deepEqual(sectionsEnsOuvertes(CITADELLE), ["Primaire", "Collège"]);
+  // La maternelle a sa carte et son choix : ses enseignants étaient comptés
+  // dans le libellé de l'onglet mais absents de la liste.
+  assert.deepEqual(sectionsEnsOuvertes(CITADELLE), ["Préscolaire", "Primaire", "Collège"]);
   assert.deepEqual(sectionsEnsOuvertes(SECONDAIRE_SEUL), ["Collège", "Lycée"]);
-  assert.deepEqual(sectionsEnsOuvertes({}), ["Primaire", "Collège", "Lycée"]);
-  // Maternelle seule : « Primaire » reste — tout autre libellé partirait au lycée.
-  assert.deepEqual(sectionsEnsOuvertes({ sectionsActives: ["prescolaire"] }), ["Primaire"]);
+  assert.deepEqual(sectionsEnsOuvertes({}), ["Préscolaire", "Primaire", "Collège", "Lycée"]);
+  assert.deepEqual(sectionsEnsOuvertes({ sectionsActives: ["prescolaire"] }), ["Préscolaire"]);
 });
 
 test("Paramètres : une école sans réglage voit toutes les sections cochées, maternelle comprise", () => {

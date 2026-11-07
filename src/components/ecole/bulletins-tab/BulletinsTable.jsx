@@ -6,6 +6,8 @@ import { getGeneralAverage, getSubjectAverage } from "../../../note-utils";
 import { estBloquePourImpaye } from "../../../mensualite-utils";
 import { indexerNotesParEleve, notesDeLEleve } from "../../../note-index";
 import { getMention } from "../../../reports/bulletins/bulletin-format";
+import { creerMatieresComptees } from "../../../reports/bulletins/bulletin-helpers";
+import { nomAffiche } from "../../../ordre-eleves";
 
 // Table des bulletins : moyenne générale, mention, accès à l'appréciation et
 // impression individuelle (bloquée si frais impayés).
@@ -19,6 +21,7 @@ import { getMention } from "../../../reports/bulletins/bulletin-format";
 export function BulletinsTable({
   t, elevesB, notes, notesStats, matieresForClasse, periodeB, periodes, schoolInfo, moisAnnee,
   maxNote, section = "college", eleves, canCreate, canEdit, getAppreciation, setForm, setModal,
+  absences = [], emplois = [],
 }) {
   // notesStats = notes réelles en mode période ; notes annuelles synthétiques
   // en mode « fin d'année » (pour l'affichage des moyennes et le contexte IA).
@@ -29,6 +32,12 @@ export function BulletinsTable({
   const notesParEleve = useMemo(
     () => indexerNotesParEleve(notesAff, periodeB),
     [notesAff, periodeB],
+  );
+  // Moyenne affichée = moyenne du bulletin : seules les matières notées dans
+  // la classe sur la période comptent.
+  const matieresComptees = useMemo(
+    () => creerMatieresComptees({ eleves, notes: notesAff, periode: periodeB, matieresForClasse }),
+    [eleves, notesAff, periodeB, matieresForClasse],
   );
   if (elevesB.length===0) return <Vide icone="📊" msg={t("school.bulletins.noStudent")}/>;
   return (
@@ -49,7 +58,7 @@ export function BulletinsTable({
         })()}
       <tbody>{elevesB.map((e,rowIdx)=>{
         const notesE=notesDeLEleve(notesParEleve,e._id);
-        const moyenneGenerale = getGeneralAverage(notesE, matieresForClasse(e.classe), e.classe);
+        const moyenneGenerale = getGeneralAverage(notesE, matieresComptees(e.classe), e.classe);
         const moyGene=moyenneGenerale!=null?moyenneGenerale.toFixed(2):"—";
         // Mention EN POURCENTAGE du barème : le primaire et le préscolaire
         // sont notés sur 10, pas sur 20. Les seuils figés à 16/14/12/10
@@ -64,7 +73,7 @@ export function BulletinsTable({
         const stickyBg = rowIdx%2===0 ? "var(--lc-surface)" : "var(--lc-surface-alt, #f8fafc)";
         return <TR key={e._id}>
           <TD style={{position:"sticky",left:0,zIndex:1,background:stickyBg}}><span style={{fontSize:11,fontFamily:"monospace",background:"#e0ebf8",padding:"2px 5px",borderRadius:4,color:C.blue,fontWeight:700}}>{e.matricule||"—"}</span></TD>
-          <TD bold style={{position:"sticky",left:95,zIndex:1,background:stickyBg,boxShadow:"inset -1px 0 0 var(--lc-border-soft)"}}>{e.nom} {e.prenom}</TD>
+          <TD bold style={{position:"sticky",left:95,zIndex:1,background:stickyBg,boxShadow:"inset -1px 0 0 var(--lc-border-soft)"}}>{nomAffiche(e, schoolInfo?.triEleves)}</TD>
           <TD><Badge color="blue">{e.classe}</Badge></TD>
           <TD><span style={{fontWeight:800,fontSize:14,color:moyGene!=="—"&&Number(moyGene)>=maxNote/2?C.greenDk:"#b91c1c"}}>{moyGene}/{maxNote}</span></TD>
           <TD><Badge color={mention==="Très Bien"||mention==="Bien"?"vert":mention==="Assez Bien"||mention==="Passable"?"blue":"red"}>{mention}</Badge></TD>
@@ -85,7 +94,7 @@ export function BulletinsTable({
           </TD>
           <TD>{eleveImpayeBloq
             ? <span title="Frais impayés — impression bloquée" style={{fontSize:18}}>🔒</span>
-            : <Btn sm v="amber" onClick={()=>imprimerBulletin(e,notes,matieresForClasse(e.classe),periodeB,section,maxNote,schoolInfo,{allEleves:eleves,allNotes:notes,appreciation:apprecTexte,periodes})}>{t("school.bulletins.printBulletin")}</Btn>
+            : <Btn sm v="amber" onClick={()=>imprimerBulletin(e,notes,matieresForClasse(e.classe),periodeB,section,maxNote,schoolInfo,{allEleves:eleves,allNotes:notes,appreciation:apprecTexte,periodes,absences,emplois})}>{t("school.bulletins.printBulletin")}</Btn>
           }</TD>
         </TR>;
       })}</tbody>

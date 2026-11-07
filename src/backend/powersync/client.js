@@ -9,6 +9,7 @@ import { SupabaseConnector } from "./connector";
 import { attendreFileVide } from "./file-envoi";
 import { powerSyncConfigured } from "./tables";
 import { ecrireProprietaire, miroirAutreCompte, oublierProprietaire } from "./proprietaire";
+import { ajouterGarde } from "../../mise-a-jour/travail-en-cours";
 
 export { powerSyncConfigured };
 
@@ -19,6 +20,10 @@ export function getPowerSync() {
       schema: AppSchema,
       database: { dbFilename: "edugest.sqlite" },
     });
+    // Pas de mise à jour automatique (rechargement) pendant un envoi : la
+    // file d'envoi survit au rechargement, mais un lot coupé en plein vol
+    // serait renvoyé pour rien.
+    ajouterGarde(() => (db?.currentStatus?.dataFlowStatus?.uploading ? "envoi-hors-ligne" : null));
   }
   return db;
 }
@@ -35,6 +40,11 @@ function enFile(tache) {
 }
 
 let connecte = null; // uid du compte dont la synchro est ouverte
+
+// Une synchro est-elle ouverte dans cette session ? Les portails parents n'en
+// ouvrent jamais : leur base locale n'est pas initialisée, et lire sa file
+// d'envoi attendrait en vain (changement d'espace, espaces-supabase.js).
+export const synchroOuverte = () => connecte !== null;
 
 // Ouvre la synchro pour le compte `uid`. Le miroir est gardé d'une session à
 // l'autre (cf. proprietaire.js) : on ne le vide que s'il appartient à un

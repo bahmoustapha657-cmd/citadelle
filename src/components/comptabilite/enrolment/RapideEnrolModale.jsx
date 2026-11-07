@@ -1,8 +1,12 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { C, initMens, getClassesForSection, getSectionLabel, getSystemeScolaire, sectionOuverte } from "../../../constants";
 import { Btn, Champ, Input, Modale, Selec } from "../../ui";
-import { findEnrollmentDuplicate, getEnrollmentDuplicateMessage } from "../../../enrollment-utils";
+import {
+  MESSAGE_CLASSE_OBLIGATOIRE, MESSAGE_FILIATION_OBLIGATOIRE, classeManquante, filiationManquante,
+  findEnrollmentDuplicate, getEnrollmentDuplicateMessage,
+} from "../../../enrollment-utils";
 import { uploadPhotoEleve } from "../../../storageUtils";
+import { SURNOM_MAX } from "../../../identite-enfant";
 import { PhotoEleveChamp } from "./PhotoEleveChamp";
 import { CompteParentFratrie } from "./CompteParentFratrie";
 import { useCompteParentFratrie } from "./use-compte-parent-fratrie";
@@ -18,6 +22,10 @@ export function RapideEnrolModale({
   // doublons et récapitulatif, avant même que les listes soient rechargées.
   const [ajoutes, setAjoutes] = useState([]);
   const [enCours, setEnCours] = useState(false);
+  // Lus par un clic qui suit avant le rendu : ni `enCours` ni `ajoutes` ne
+  // sont encore à jour dans sa fermeture.
+  const verrou = useRef(false);
+  const ajoutesRef = useRef([]);
   // « saisie » des élèves, puis « parent » : le compte parent de la fratrie,
   // proposé en terminant (facultatif).
   const [etape, setEtape] = useState("saisie");
@@ -35,15 +43,20 @@ export function RapideEnrolModale({
 
   // Enregistre l'élève en cours ; renvoie la liste des ajoutés, ou null.
   const sauvegarderRapide = async () => {
+    // Double clic : le second appel partirait avant que `enCours` ne désactive
+    // le bouton, et inscrirait l'élève deux fois.
+    if(verrou.current) return null;
     if(!form.nom||!form.prenom){toast("Nom et prénom obligatoires","warning");return null;}
-    if(!form.classe){toast("Classe obligatoire","warning");return null;}
+    if(classeManquante(form)){toast(MESSAGE_CLASSE_OBLIGATOIRE,"warning");return null;}
+    if(filiationManquante(form)){toast(MESSAGE_FILIATION_OBLIGATOIRE,"warning");return null;}
     const ajouter = ajoutParNiveau[section];
     const r={...form,niveau:section,statut:"Actif",mens:initMens()};
-    const doublon = findEnrollmentDuplicate(r, [...tousElevesScolarite, ...ajoutes]);
+    const doublon = findEnrollmentDuplicate(r, [...tousElevesScolarite, ...ajoutesRef.current]);
     if(doublon){
       toast(getEnrollmentDuplicateMessage(doublon, r),"warning");
       return null;
     }
+    verrou.current = true;
     setEnCours(true);
     try {
       if(String(r.photo||"").startsWith("data:")) r.photo = await uploadPhotoEleve(r.photo, schoolId);
@@ -58,9 +71,11 @@ export function RapideEnrolModale({
       return null;
     } finally {
       setEnCours(false);
+      verrou.current = false;
     }
     toast(`${r.prenom} ${r.nom} ajouté(e) — ${r.classe} (${getSectionLabel(section)})`,"success");
-    const nouveaux = [...ajoutes, r];
+    const nouveaux = [...ajoutesRef.current, r];
+    ajoutesRef.current = nouveaux;
     setAjoutes(nouveaux);
     return nouveaux;
   };
@@ -97,7 +112,7 @@ export function RapideEnrolModale({
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
         <Input label="Nom du Tuteur" value={form.tuteur||""} onChange={chg("tuteur")} placeholder="Bah Mamadou"/>
         <Input label="Contact Tuteur" value={form.contactTuteur||""} onChange={chg("contactTuteur")} placeholder="622 000 000"/>
-        <div style={{gridColumn:"1/-1"}}><Input label="Filiation (Père / Mère)" value={form.filiation||""} onChange={chg("filiation")} placeholder="Père: … / Mère: …"/></div>
+        <div style={{gridColumn:"1/-1"}}><Input label="Filiation (Père / Mère) *" value={form.filiation||""} onChange={chg("filiation")} placeholder="Père: … / Mère: …"/></div>
         <div style={{gridColumn:"1/-1"}}><Input label="Domicile" value={form.domicile||""} onChange={chg("domicile")} placeholder="Quartier, commune…"/></div>
         {/* Une fratrie arrive le même jour : la date est conservée d'un élève
             au suivant, comme le tuteur et le domicile. */}
@@ -111,6 +126,9 @@ export function RapideEnrolModale({
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
         <Input label="Nom *" value={form.nom||""} onChange={chg("nom")} placeholder="Bah"/>
         <Input label="Prénom *" value={form.prenom||""} onChange={chg("prenom")} placeholder="Aminata"/>
+        {/* Maternelle : le surnom de la maison, celui auquel l'enfant répond. */}
+        {section==="prescolaire"&&<Input label="Surnom (à la maison)" value={form.surnom||""}
+          onChange={chg("surnom")} maxLength={SURNOM_MAX} placeholder="Ex. : Néné, Bobo…"/>}
         {/* Une fratrie s'étale souvent sur plusieurs cycles : chaque élève
             est inscrit dans SA section (classes, matricule, liste). */}
         {sections.length>1&&<Selec label="Section *" value={section} onChange={changerSection}>

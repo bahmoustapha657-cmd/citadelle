@@ -6,21 +6,15 @@
 // contourne jamais.
 import { getSupabase } from "../../supabaseClient";
 import { parseJsonCols } from "./tables";
-import { envoyerOperation } from "./envoi-operation";
+import { envoyerOperation, estErreurPassagere, exigerSession } from "./envoi-operation";
 import { signalerEcritureRefusee } from "../ecritures-refusees";
 
 const POWERSYNC_URL = String(import.meta.env?.VITE_POWERSYNC_URL || "").trim();
 
-// Erreur réseau (à réessayer plus tard) vs erreur serveur définitive (RLS,
-// validation…) qu'il faut abandonner pour ne pas bloquer la file à l'infini.
-function estErreurReseau(err) {
-  if (!navigator.onLine) return true;
-  const msg = String(err?.message || "").toLowerCase();
-  return msg.includes("failed to fetch") || msg.includes("network") || msg.includes("timeout");
-}
-
-// Envoi d'une opération (ajout seul, upsert, modification, suppression) :
-// envoi-operation.js.
+// Envoi d'une opération (ajout seul, upsert, modification, suppression) et
+// tri entre incident passager (à réessayer plus tard) et refus définitif
+// (RLS, validation…) qu'il faut abandonner pour ne pas bloquer la file à
+// l'infini : envoi-operation.js.
 
 export class SupabaseConnector {
   async fetchCredentials() {
@@ -37,6 +31,10 @@ export class SupabaseConnector {
     const sb = getSupabase();
     let enCours = null;
     try {
+      // Sans session valide, supabase-js enverrait la file avec la clé
+      // anonyme : la RLS la refuserait et chaque écriture serait jetée comme
+      // « refus définitif ». On attend plutôt la reconnexion (cf. exigerSession).
+      await exigerSession(sb);
       for (const op of transaction.crud) {
         enCours = op;
         // Les colonnes jsonb Postgres vivent en TEXT côté SQLite : re-parser
@@ -48,7 +46,8 @@ export class SupabaseConnector {
       }
       await transaction.complete();
     } catch (err) {
-      if (estErreurReseau(err)) throw err; // PowerSync retentera à la reconnexion
+      // PowerSync retentera à la reconnexion.
+      if (estErreurPassagere(err, { enLigne: navigator.onLine })) throw err;
       // Refus définitif (RLS, fiche supprimée entre-temps, validation) : on
       // abandonne la transaction plutôt que de bloquer la file à l'infini —
       // mais l'utilisateur est AVERTI (la saisie va disparaître de l'écran à

@@ -1,6 +1,7 @@
 import { C, fmt, genererMatricule, isSectionActive } from "../../../constants";
 import { Btn } from "../../ui";
 import { imprimerListeClasse } from "../../../reports";
+import { sansNonReinscritsEcartes } from "../../../ecartes-non-reinscrits";
 import { TriElevesSelect } from "../../TriElevesSelect";
 
 // Barre d'outils de l'enrôlement : titre + compteur de plan, sélecteur de
@@ -13,7 +14,7 @@ export function EnrolToolbar({
   canCreate, elevesEnrol, elevesPresents = elevesEnrol, schoolInfo, setForm, setModal,
   filtreReinscription = "all", setFiltreReinscription = () => {},
   nbAReinscrire = 0, nbSelection = 0, totalAReinscrire = 0, onEncaisserInscriptions,
-  tri = "alpha", setTri = () => {},
+  tri = "alpha", setTri = () => {}, onSeancePhoto = null,
 }) {
   return (
     <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,flexWrap:"wrap"}}>
@@ -65,10 +66,15 @@ export function EnrolToolbar({
         </Btn>
       )}
       {!afficherDeparts&&classeEnrol!=="all"&&(
-        <Btn sm v="ghost" title="Imprimer la liste des élèves de la classe sélectionnée"
-          onClick={()=>imprimerListeClasse(classeEnrol, elevesPresents, schoolInfo)}>
+        <Btn sm v="ghost" title="Imprimer la liste des élèves de la classe sélectionnée (sans les non réinscrits retirés des classes)"
+          onClick={()=>imprimerListeClasse(classeEnrol, sansNonReinscritsEcartes(elevesPresents, schoolInfo), schoolInfo)}>
           🖨️ Liste de la classe
         </Btn>
+      )}
+      {/* Photos et surnoms à la chaîne, sans rouvrir chaque fiche. */}
+      {!afficherDeparts&&onSeancePhoto&&(
+        <Btn sm v="ghost" title="Prendre les photos et les surnoms des élèves d'une classe, l'un après l'autre"
+          onClick={onSeancePhoto}>📸 Séance photo</Btn>
       )}
       <Btn sm v={afficherDeparts?"blue":"ghost"} onClick={()=>setAfficherDeparts(d=>!d)}>
         {afficherDeparts?"👥 Élèves actifs":"📤 Départs"}

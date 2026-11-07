@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { fmt } from "../../constants";
 import {
   acompteInscription, getEleveMensualiteSnapshot, getFraisAnnexesEleve, getTarifConfigForClasse,
@@ -7,23 +8,27 @@ import {
 import { etatsMois, periodeTranche, trancheDuMois } from "../../paiements-scolarite";
 import { partiAvantAnnee } from "../../depart-utils";
 import { Badge, Vide } from "../ui";
+import { PayerEnLigne } from "../paiement-en-ligne/PayerEnLigne";
+import i18n from "../../i18n";
 
-// Apparence d'un frais ou d'un mois selon son état.
+// Apparence d'un frais ou d'un mois selon son état (libellé :
+// parent.pay.state.<état>).
 const ETATS = {
-  paye: { fond: "#dcfce7", bord: "#86efac", texte: "#166534", badge: "green", libelle: "Paye" },
-  partiel: { fond: "#fef3c7", bord: "#fcd34d", texte: "#92400e", badge: "amber", libelle: "Acompte" },
-  impaye: { fond: "#fee2e2", bord: "#fca5a5", texte: "#b91c1c", badge: "red", libelle: "A payer" },
-  exonere: { fond: "#f1f5f9", bord: "#cbd5e1", texte: "#475569", badge: "gray", libelle: "Dispense" },
-  nonDu: { fond: "#f8fafc", bord: "#e2e8f0", texte: "#94a3b8", badge: "gray", libelle: "Non du" },
+  paye: { fond: "#dcfce7", bord: "#86efac", texte: "#166534", badge: "green" },
+  partiel: { fond: "#fef3c7", bord: "#fcd34d", texte: "#92400e", badge: "amber" },
+  impaye: { fond: "#fee2e2", bord: "#fca5a5", texte: "#b91c1c", badge: "red" },
+  exonere: { fond: "#f1f5f9", bord: "#cbd5e1", texte: "#475569", badge: "gray" },
+  nonDu: { fond: "#f8fafc", bord: "#e2e8f0", texte: "#94a3b8", badge: "gray" },
 };
 
 // Carte d'un frais ponctuel (inscription, révision, cantine…) : son état, le
 // montant et la ligne d'explication.
 function carteFrais({ id, label, etat, montant, verse = 0, reste = 0, date = "" }) {
-  const detail = etat === "paye" ? (date ? `Regle le ${date}` : "Regle")
-    : etat === "partiel" ? `${fmt(verse)} verses, reste ${fmt(reste)}`
-      : etat === "exonere" ? "Dispense accordee par l'ecole"
-        : "En attente de reglement";
+  const t = (cle, valeurs) => i18n.t(`parent.pay.${cle}`, valeurs);
+  const detail = etat === "paye" ? (date ? t("paidOn", { date }) : t("paid"))
+    : etat === "partiel" ? t("partial", { paid: fmt(verse), rest: fmt(reste) })
+      : etat === "exonere" ? t("exempted")
+        : t("pending");
   return { id, label, etat, montant, detail };
 }
 
@@ -37,6 +42,7 @@ export function PaiementsTab({
   eleve, moisAnnee, annee, estReinscription, montantInscription, montantMensuel,
   tarifs = [], tranches = [], famille = null, onVueFamille, c1, c2,
 }) {
+  const { t } = useTranslation();
   const mens = eleve.mens || {};
   const mensDates = eleve.mensDates || {};
   const moisList = moisAnnee.length ? moisAnnee : Object.keys(mens);
@@ -59,7 +65,7 @@ export function PaiementsTab({
   if (eleve.inscriptionPayee || acompteIns > 0 || (!rienDu && montantInscription > 0)) {
     fraisAnnexes.push(carteFrais({
       id: "inscription",
-      label: estReinscription ? "Reinscription" : "Inscription",
+      label: estReinscription ? t("parent.pay.reregistration") : t("parent.pay.registration"),
       etat: eleve.inscriptionPayee ? "paye" : acompteIns > 0 ? "partiel" : duIns === 0 ? "exonere" : "impaye",
       montant: eleve.inscriptionPayee ? montantInscriptionPaye(eleve, montantInscription) : duIns || montantInscription,
       verse: acompteIns,
@@ -84,7 +90,7 @@ export function PaiementsTab({
   const groupes = tranches.length
     ? [
       ...tranches.map((t) => ({ titre: `${t.nom} — ${periodeTranche(t)}`, mois: t.mois.filter((m) => moisList.includes(m)) })),
-      { titre: "Autres mois", mois: moisList.filter((m) => trancheDuMois(tranches, m) < 0) },
+      { titre: t("parent.pay.otherMonths"), mois: moisList.filter((m) => trancheDuMois(tranches, m) < 0) },
     ].filter((g) => g.mois.length)
     : [{ titre: "", mois: moisList }];
 
@@ -97,32 +103,33 @@ export function PaiementsTab({
 
   return (
     <>
-      <h2 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 900, color: c1 }}>Suivi des paiements</h2>
+      <h2 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 900, color: c1 }}>{t("parent.pay.title")}</h2>
+      <PayerEnLigne eleve={eleve} c1={c1} />
       {famille?.enfants.length > 1 && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", padding: "10px 14px", marginBottom: 14, borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0", fontSize: 12.5, color: "#475569" }}>
           <span>
-            👪 Pour vos {famille.enfants.length} enfants :{" "}
+            👪 {t("parent.pay.forChildren", { count: famille.enfants.length })}{" "}
             <strong style={{ color: famille.totalAPayer > 0 ? "#b91c1c" : "#166534" }}>
-              {famille.totalAPayer > 0 ? `${fmt(famille.totalAPayer)} à payer` : "tout est réglé"}
+              {famille.totalAPayer > 0 ? t("parent.pay.amountDue", { amount: fmt(famille.totalAPayer) }) : t("parent.pay.allSettled")}
             </strong>
           </span>
           {onVueFamille && (
             <button type="button" onClick={onVueFamille} style={{ background: "none", border: "none", padding: 0, color: c1, fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
-              Détail par enfant →
+              {t("parent.pay.perChild")}
             </button>
           )}
         </div>
       )}
       <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
-        {carteChiffre(fmt(resteAPayer), resteAPayer > 0 ? "Reste a payer" : "A jour", resteAPayer > 0 ? "#fee2e2" : "#dcfce7",
+        {carteChiffre(fmt(resteAPayer), resteAPayer > 0 ? t("parent.pay.remaining") : t("parent.pay.upToDate"), resteAPayer > 0 ? "#fee2e2" : "#dcfce7",
           resteAPayer > 0 ? "#b91c1c" : "#166534", 170)}
-        {carteChiffre(nbPayes, "Mois payes", "#dcfce7", "#166534")}
-        {carteChiffre(nbImpayes, "Mois impayes", "#fee2e2", "#b91c1c")}
-        {carteChiffre(`${nbPayes + nbImpayes ? Math.round((nbPayes / (nbPayes + nbImpayes)) * 100) : 100}%`, "Taux", "#f0fdf4", c2)}
+        {carteChiffre(nbPayes, t("parent.pay.monthsPaid"), "#dcfce7", "#166534")}
+        {carteChiffre(nbImpayes, t("parent.pay.monthsUnpaid"), "#fee2e2", "#b91c1c")}
+        {carteChiffre(`${nbPayes + nbImpayes ? Math.round((nbPayes / (nbPayes + nbImpayes)) * 100) : 100}%`, t("parent.pay.rate"), "#f0fdf4", c2)}
         <div style={{ padding: "14px 20px", background: "#eff6ff", borderRadius: 12, textAlign: "center", minWidth: 150 }}>
           <div style={{ fontWeight: 900, fontSize: 20, color: "#1d4ed8" }}>{fmt(duMois)}</div>
           <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>
-            Mensualite{duMois !== mensualite ? ` (au lieu de ${fmt(mensualite)}, dispense)` : ""}
+            {t("parent.pay.monthly")}{duMois !== mensualite ? ` ${t("parent.pay.insteadOf", { amount: fmt(mensualite) })}` : ""}
           </div>
         </div>
       </div>
@@ -135,7 +142,7 @@ export function PaiementsTab({
               <div key={frais.id} style={{ padding: "14px 16px", borderRadius: 14, background: s.fond, border: `1px solid ${s.bord}` }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
                   <strong style={{ fontSize: 13, color: s.texte }}>{frais.label}</strong>
-                  <Badge color={s.badge}>{s.libelle}</Badge>
+                  <Badge color={s.badge}>{t(`parent.pay.state.${frais.etat}`)}</Badge>
                 </div>
                 <div style={{ fontSize: 20, fontWeight: 900, color: s.texte, marginTop: 10 }}>{fmt(frais.montant)}</div>
                 <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>{frais.detail}</div>
@@ -155,21 +162,21 @@ export function PaiementsTab({
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, flexWrap: "wrap", margin: "0 0 8px" }}>
                 <strong style={{ fontSize: 13, color: c1 }}>{groupe.titre}</strong>
                 <span style={{ fontSize: 11, fontWeight: 700, color: resteGroupe > 0 ? "#b91c1c" : "#166534" }}>
-                  {payesGroupe}/{etatsGroupe.length} payes{resteGroupe > 0 ? ` · reste ${fmt(resteGroupe)}` : " · solde"}
+                  {t("parent.pay.groupPaid", { paid: payesGroupe, total: etatsGroupe.length })} · {resteGroupe > 0 ? t("parent.pay.groupRest", { amount: fmt(resteGroupe) }) : t("parent.pay.groupSettled")}
                 </span>
               </div>
             )}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(130px,1fr))", gap: 8 }}>
               {etatsGroupe.map((etat) => {
                 const s = ETATS[etat.statut] || ETATS.impaye;
-                const texte = etat.statut === "paye" ? "Paye"
-                  : etat.statut === "partiel" ? `Acompte ${fmt(etat.verse)}`
-                    : etat.statut === "exonere" ? "Dispense"
-                      : etat.statut === "nonDu" ? "Non du (apres le depart)"
-                        : `Impaye · ${fmt(etat.reste)}`;
+                const texte = etat.statut === "paye" ? t("parent.pay.state.paye")
+                  : etat.statut === "partiel" ? t("parent.pay.partialMonth", { amount: fmt(etat.verse) })
+                    : etat.statut === "exonere" ? t("parent.pay.state.exonere")
+                      : etat.statut === "nonDu" ? t("parent.pay.notDueAfterLeaving")
+                        : t("parent.pay.unpaidMonth", { amount: fmt(etat.reste) });
                 return (
                   <div key={etat.mois} style={{ padding: "12px 16px", borderRadius: 12, background: s.fond, border: `2px solid ${s.bord}` }}>
-                    <div style={{ fontWeight: 800, fontSize: 13, color: s.texte }}>{etat.mois}</div>
+                    <div style={{ fontWeight: 800, fontSize: 13, color: s.texte }}>{t(`months.${etat.mois}`, etat.mois)}</div>
                     <div style={{ fontSize: 11, marginTop: 4, color: s.texte, fontWeight: 700 }}>{texte}</div>
                     {etat.statut === "paye" && mensDates[etat.mois] && (
                       <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2 }}>{mensDates[etat.mois]}</div>
@@ -182,7 +189,7 @@ export function PaiementsTab({
         );
       })}
 
-      {moisList.length === 0 && fraisAnnexes.length === 0 && <Vide icone="Paiements" msg="Aucune information de paiement" />}
+      {moisList.length === 0 && fraisAnnexes.length === 0 && <Vide icone="💳" msg={t("parent.pay.none")} />}
     </>
   );
 }

@@ -2,11 +2,11 @@ import React, { useState, useContext } from "react";
 import { sauverParametresEcole } from "../backend/data-supabase";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { C } from "../constants";
-import { Stat } from "./ui";
+import { lireTriEleves } from "../ordre-eleves";
 
 function AffichageSettings({sec, setMsgSucces, setErreur}) {
   const {schoolId, schoolInfo, setSchoolInfo} = useContext(SchoolContext);
-  const [triEleves, setTriEleves] = useState(schoolInfo.triEleves || "prenom_nom");
+  const [triEleves, setTriEleves] = useState(lireTriEleves(schoolInfo.triEleves));
   const [saving, setSaving] = useState(false);
 
   const sauvegarder = async () => {
@@ -36,7 +36,7 @@ function AffichageSettings({sec, setMsgSucces, setErreur}) {
   return (
     <div style={sec}>
       <h3 style={{margin:"0 0 4px",fontSize:14,fontWeight:800,color:C.blueDark}}>📋 Ordre d'affichage des élèves</h3>
-      <p style={{margin:"0 0 16px",fontSize:12,color:"#6b7280"}}>Définit l'ordre dans lequel les élèves apparaissent dans toutes les listes (enrôlement, mensualités, bulletins…)</p>
+      <p style={{margin:"0 0 16px",fontSize:12,color:"#6b7280"}}>Définit comment le nom s'écrit et l'ordre des élèves dans les listes : élèves, enrôlement, mensualités, bulletins, grille des notes. Les documents imprimés gardent « NOM Prénom ».</p>
       <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:20}}>
         {options.map(o=>(
           <label key={o.v} onClick={()=>setTriEleves(o.v)}

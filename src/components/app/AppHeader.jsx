@@ -9,13 +9,19 @@ import { MessagerieBouton } from "../messagerie/MessagerieBouton";
 
 export function AppHeader({
   isMobile, setSidebarOuvert, modulesVisibles, page, readOnly, abonnementExpire, t,
-  estHorsLigne, syncPendantes, planInfo, utilisateur, utilisateurLabel, schoolInfo,
+  estHorsLigne, syncPendantes, planInfo, utilisateur, setUtilisateur, utilisateurLabel, schoolInfo,
   setRechercheOuverte, modeSombre, setModeSombre,
-  notifOuvert, setNotifOuvert, notifNonLues, setNotifNonLues, notifListe, nowTs,
+  notifOuvert, setNotifOuvert, notifNonLues, marquerNotifLues, notifListe, nowTs,
   profilOuvert, setProfilOuvert, setPage, setAideOuverte, setCentreAideOuvert, deconnecter,
 }) {
+  // Menu profil ou cloche ouverts : l'en-tête passe AU-DESSUS du calque qui
+  // les referme au clic extérieur (AppShellOverlays, z-index 150). Resté à
+  // 30, il était recouvert par ce calque : un clic sur une entrée du menu
+  // (Paramètres, Centre d'aide, Mon cachet, Déconnexion…) ne faisait que le
+  // refermer.
+  const menuOuvert = profilOuvert || notifOuvert;
   return (
-    <header style={{background:"#fff",borderBottom:`3px solid ${C.green}`,padding:"0 12px",height:52,display:"flex",alignItems:"center",gap:8,position:"sticky",top:0,zIndex:30,minWidth:0}}>
+    <header style={{background:"#fff",borderBottom:`3px solid ${C.green}`,padding:"0 12px",height:52,display:"flex",alignItems:"center",gap:8,position:"sticky",top:0,zIndex:menuOuvert?160:30,minWidth:0}}>
       {/* Bouton hamburger mobile */}
       <button onClick={()=>setSidebarOuvert(v=>!v)} style={{display:isMobile?"flex":"none",flexShrink:0,alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:"pointer",padding:6,borderRadius:6,color:C.blueDark,fontSize:22}}>
         ☰
@@ -55,19 +61,19 @@ export function AppHeader({
           </div>
         )}
         <button onClick={()=>setRechercheOuverte(true)}
-          title="Recherche globale (Ctrl+K)"
+          title={t("shell.searchTitle")}
           style={{display:"flex",alignItems:"center",gap:isMobile?0:6,background:"#f0f4f0",border:"1px solid #e0ebf8",borderRadius:8,padding:"5px 10px",cursor:"pointer",fontSize:isMobile?17:12,color:"#6b7280",fontWeight:600}}>
           🔍{!isMobile&&<><span>{t("common.search")}</span><kbd style={{background:"#e2e8f0",border:"1px solid #cbd5e1",borderRadius:4,padding:"1px 5px",fontSize:10,color:"#94a3b8",marginInlineStart:4}}>Ctrl K</kbd></>}
         </button>
         <button onClick={()=>setModeSombre(v=>!v)}
-          title={modeSombre?"Mode clair":"Mode sombre"}
+          title={modeSombre?t("shell.lightMode"):t("shell.darkMode")}
           style={{background:"#f0f4f0",border:"1px solid #e0ebf8",borderRadius:8,padding:"5px 10px",cursor:"pointer",fontSize:16,lineHeight:1}}>
           {modeSombre?"☀️":"🌙"}
         </button>
 
         {/* Centre d'aide : accès direct depuis l'en-tête (aussi dans le menu profil). */}
         <button onClick={()=>setCentreAideOuvert&&setCentreAideOuvert(true)}
-          title="Centre d'aide"
+          title={t("shell.helpCenter")}
           style={{background:"#f0f4f0",border:"1px solid #e0ebf8",borderRadius:8,padding:"5px 10px",cursor:"pointer",fontSize:16,lineHeight:1}}>
           ❓
         </button>
@@ -77,13 +83,13 @@ export function AppHeader({
 
         <NotificationsMenu
           notifOuvert={notifOuvert} setNotifOuvert={setNotifOuvert} setProfilOuvert={setProfilOuvert}
-          notifNonLues={notifNonLues} setNotifNonLues={setNotifNonLues}
-          notifListe={notifListe} nowTs={nowTs} setPage={setPage}
+          notifNonLues={notifNonLues} marquerNotifLues={marquerNotifLues}
+          notifListe={notifListe} nowTs={nowTs} setPage={setPage} t={t}
         />
 
         <ProfilMenu
           profilOuvert={profilOuvert} setProfilOuvert={setProfilOuvert} setNotifOuvert={setNotifOuvert}
-          isMobile={isMobile} utilisateur={utilisateur} utilisateurLabel={utilisateurLabel}
+          isMobile={isMobile} utilisateur={utilisateur} setUtilisateur={setUtilisateur} utilisateurLabel={utilisateurLabel}
           schoolInfo={schoolInfo} t={t} setPage={setPage} setAideOuverte={setAideOuverte} setCentreAideOuvert={setCentreAideOuvert} deconnecter={deconnecter}
         />
       </div>

@@ -10,13 +10,13 @@ export function NotesGrille({
   eleves, notes, matieresForClasse, noteForms, periodes, maxNote, annee, canCreate, ajN, toast,
   grilleClasse, setGrilleClasse, grillePeriode, setGrillePeriode, grilleType, setGrilleType,
   grilleMode, setGrilleMode, grilleMatiere, setGrilleMatiere, grilleEleve, setGrilleEleve,
-  grilleChanges, setGrilleChanges, grilleSaving, setGrilleSaving,
+  grilleChanges, setGrilleChanges, grilleSaving, setGrilleSaving, triEleves,
 }) {
   const { classesUniqN, elevesGrille, matieresClasse, lignes, colonnes, valeurCellule, cleCellule, sauvegarderGrille } = useNotesGrille({
     eleves, notes, matieresForClasse, annee, ajN, toast, maxNote,
     grilleClasse, grillePeriode, grilleType, periodes,
     grilleMode, grilleMatiere, grilleEleve,
-    grilleChanges, setGrilleChanges, setGrilleSaving,
+    grilleChanges, setGrilleChanges, setGrilleSaving, triEleves,
   });
 
   return (
@@ -32,6 +32,7 @@ export function NotesGrille({
         grilleEleve={grilleEleve} setGrilleEleve={setGrilleEleve}
         grilleChanges={grilleChanges} setGrilleChanges={setGrilleChanges}
         grilleSaving={grilleSaving} sauvegarderGrille={sauvegarderGrille}
+        triEleves={triEleves}
       />
       <NotesGrilleTable
         lignes={lignes} colonnes={colonnes} ligneHeader={grilleMode === "eleve" ? "Matière" : "Élève"}

@@ -1,47 +1,36 @@
-import { C } from "../../constants";
+import { useTranslation } from "react-i18next";
+import { C, JOURS_SEMAINE } from "../../constants";
+import { normaliserCreneau, jourCourant, creneauxDuJour, horaire } from "../../edt-portail";
 import { getEvaluationLabel } from "../../evaluation-forms";
 import { Badge, Card, Stat, TD, THead, TR } from "../ui";
 
 export function DashboardTab({
   c1, nomEns, matiere, schoolInfo, utilisateur, t,
-  mesClasses, eleves, mesNotes, maxNote = 20, emplois, mesEvenements, formatEmploiHeure,
+  mesClasses, eleves, mesNotes, maxNote = 20, emplois, mesEvenements, onVoirEdt,
 }) {
   return (
     <>
       <h2 style={{ margin: "0 0 20px", fontSize: 18, fontWeight: 900, color: c1 }}>{t("teacher.welcome")}, {nomEns.split(" ")[0] || nomEns}</h2>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12, marginBottom: 24 }}>
         <Stat label={t("teacher.myClasses")} value={mesClasses.length} sub={mesClasses.join(", ") || "-"} bg="#f0f7ff" />
-        <Stat label="Mes eleves" value={eleves.length} sub="classes attribuees" bg="#f0fdf4" />
-        <Stat label="Notes saisies" value={mesNotes.length} sub={matiere || "Toutes"} bg="#fefce8" />
-        <Stat label="Creneaux / semaine" value={emplois.length} sub="emploi du temps" bg="#fdf4ff" />
-        <Stat label="Evenements" value={mesEvenements.length} sub="historique enseignant" bg="#fff1f2" />
+        <Stat label={t("teacher.dash.myStudents")} value={eleves.length} sub={t("teacher.dash.assignedClasses")} bg="#f0fdf4" />
+        <Stat label={t("teacher.dash.gradesEntered")} value={mesNotes.length} sub={matiere || t("teacher.dash.all")} bg="#fefce8" />
+        <Stat label={t("teacher.dash.slotsPerWeek")} value={emplois.length} sub={t("teacher.dash.timetable")} bg="#fdf4ff" />
+        <Stat label={t("teacher.dash.events")} value={mesEvenements.length} sub={t("teacher.dash.teacherHistory")} bg="#fff1f2" />
       </div>
 
       {emplois.length > 0 && (
-        <Card style={{ marginBottom: 20 }}>
-          <div style={{ padding: "14px 18px", borderBottom: "1px solid #f1f5f9" }}>
-            <strong style={{ fontSize: 13, color: c1 }}>Mon emploi du temps</strong>
-          </div>
-          <div style={{ padding: "12px 18px", display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {emplois.map((emploi, index) => (
-              <div key={index} style={{ background: `${c1}11`, borderLeft: `3px solid ${c1}`, borderRadius: "0 8px 8px 0", padding: "8px 12px", minWidth: 130 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: c1 }}>{emploi.jour} - {formatEmploiHeure(emploi)}</div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#374151", marginTop: 2 }}>{emploi.classe}</div>
-                <div style={{ fontSize: 11, color: "#94a3b8" }}>{emploi.matiere || matiere}</div>
-              </div>
-            ))}
-          </div>
-        </Card>
+        <CoursDuJour emplois={emplois} matiere={matiere} c1={c1} onVoirEdt={onVoirEdt} />
       )}
 
       {mesNotes.length > 0 && (
         <Card>
           <div style={{ padding: "14px 18px", borderBottom: "1px solid #f1f5f9" }}>
-            <strong style={{ fontSize: 13, color: c1 }}>Dernieres notes saisies</strong>
+            <strong style={{ fontSize: 13, color: c1 }}>{t("teacher.dash.lastGrades")}</strong>
           </div>
           <div style={{ overflowX: "auto" }}>
             <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
-              <THead cols={["Eleve", "Matiere", "Type", "Periode", "Note"]} />
+              <THead cols={[t("teacher.cols.student"), t("teacher.cols.subject"), t("teacher.cols.type"), t("teacher.cols.period"), t("teacher.cols.grade")]} />
               <tbody>
                 {mesNotes.slice(0, 10).map((note) => (
                   <TR key={note._id}>
@@ -58,5 +47,39 @@ export function DashboardTab({
         </Card>
       )}
     </>
+  );
+}
+
+// Cours du jour (aujourd'hui, ou le prochain jour où l'enseignant a cours),
+// dans l'ordre de la journée ; la semaine complète est dans l'onglet EDT.
+function CoursDuJour({ emplois, matiere, c1, onVoirEdt }) {
+  const { t } = useTranslation();
+  const liste = emplois.map(normaliserCreneau).filter((c) => c.type !== "recreation");
+  const aujourdhui = jourCourant();
+  const debut = Math.max(0, JOURS_SEMAINE.indexOf(aujourdhui));
+  const ordre = [...JOURS_SEMAINE.slice(debut), ...JOURS_SEMAINE.slice(0, debut)];
+  const jour = ordre.find((j) => liste.some((c) => c.jour === j));
+  if (!jour) return null;
+  const cours = creneauxDuJour(liste, jour);
+  return (
+    <Card style={{ marginBottom: 20 }}>
+      <div style={{ padding: "14px 18px", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: 8 }}>
+        <strong style={{ fontSize: 13, color: c1, flex: 1 }}>
+          {jour === aujourdhui ? t("teacher.dash.todayLessons") : t("teacher.dash.nextLessons", { day: t(`weekdays.${jour}`, jour) })}
+        </strong>
+        <button type="button" onClick={onVoirEdt} style={{ border: "none", background: "none", color: c1, fontSize: 12, fontWeight: 800, cursor: "pointer" }}>
+          {t("teacher.dash.wholeWeek")}
+        </button>
+      </div>
+      <div style={{ padding: "12px 18px", display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(170px,1fr))", gap: 10 }}>
+        {cours.map((c, k) => (
+          <div key={c._id || k} style={{ background: `${c1}0d`, borderInlineStart: `4px solid ${c1}`, borderRadius: 10, borderStartStartRadius: 0, borderEndStartRadius: 0, padding: "9px 12px" }}>
+            <div style={{ fontSize: 12, fontWeight: 900, color: c1 }}>{horaire(c)}</div>
+            <div style={{ fontSize: 14, fontWeight: 900, color: "#0f172a", marginTop: 2 }}>{c.classe || "—"}</div>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{c.matiere || matiere}{c.salle ? ` · ${t("teacher.dash.room", { room: c.salle })}` : ""}</div>
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }

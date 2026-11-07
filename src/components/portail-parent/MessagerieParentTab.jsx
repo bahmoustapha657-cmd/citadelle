@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMessagerie } from "../messagerie/messagerie-contexte";
 import { MessageriePage } from "../messagerie/MessageriePage";
 import { MessagesTab } from "./MessagesTab";
@@ -12,6 +13,7 @@ import { MessagesTab } from "./MessagesTab";
 // supabase/historique/messagerie-parents.sql : l'annuaire d'un parent revient vide)
 // → l'ancien formulaire, inchangé.
 export function MessagerieParentTab({ p, utilisateur, c1 }) {
+  const { t } = useTranslation();
   const m = useMessagerie();
   const [historique, setHistorique] = useState(false);
   const ancien = {
@@ -30,7 +32,7 @@ export function MessagerieParentTab({ p, utilisateur, c1 }) {
         <div style={{ marginTop: 16 }}>
           <button type="button" onClick={() => setHistorique((v) => !v)}
             style={{ border: "1px solid var(--lc-border)", background: "var(--lc-surface)", borderRadius: 9, padding: "8px 12px", cursor: "pointer", fontSize: 12.5, fontWeight: 700, color: "var(--lc-text-muted)" }}>
-            🗂️ {historique ? "Masquer" : "Voir"} les anciens messages ({p.mesMessages.length})
+            🗂️ {t(historique ? "parent.oldMsg.hide" : "parent.oldMsg.show", { count: p.mesMessages.length })}
           </button>
           {historique && <div style={{ marginTop: 14 }}><MessagesTab {...ancien} lectureSeule /></div>}
         </div>

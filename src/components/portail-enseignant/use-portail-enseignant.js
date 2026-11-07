@@ -6,8 +6,11 @@ import { getActiveNoteForms } from "../../evaluation-forms";
 import { imprimerEdtEnseignant, imprimerPaiesEnseignant } from "../../reports";
 import { isTitulaireSection } from "../../backend/teacher-scope";
 import { presents } from "../../depart-utils";
+import { sansNonReinscritsEcartes } from "../../ecartes-non-reinscrits";
+import { getJoursOuvrables } from "../ecole/edt/edt-utils";
 import { enrichirNotes } from "../../notes-eleves";
-import { MSG_LECTURE_SEULE_PORTAIL } from "../app/app-shell-plan";
+import { msgLectureSeulePortail } from "../app/app-shell-plan";
+import i18n from "../../i18n";
 import {
   construireGrille as construireGrilleHelper,
   enregistrerGrille as enregistrerGrilleAction,
@@ -47,7 +50,7 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
   // écritures (ecole-hors-service.sql) : on évite une saisie perdue.
   const lectureSeule = !!planInfo?.planEstExpire;
   const siModifiable = (action) => (...args) => {
-    if (lectureSeule) { toast(MSG_LECTURE_SEULE_PORTAIL, "error"); return undefined; }
+    if (lectureSeule) { toast(msgLectureSeulePortail(), "error"); return undefined; }
     return action(...args);
   };
   // Année des notes lues et saisies : l'année officielle de l'école (celle de
@@ -63,6 +66,9 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
 
   const [tab, setTab] = useState("dashboard");
   const [periodeN, setPeriodeN] = useState(periodes[0] || "");
+  // Classe de travail de l’onglet Notes (enseignant de plusieurs classes,
+  // titulaire compris) : liste, nouvelle note et grille s’y limitent.
+  const [classeChoisie, setClasseNotes] = useState("");
   const [chargement, setChargement] = useState(true);
   const [portalData, setPortalData] = useState({
     section: utilisateur.section || "college",
@@ -98,8 +104,12 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
   const matiereParDefaut = matieresDispo[0]?.nom || (isPrimaire ? "" : matiere);
   const emplois = portalData.emplois || [];
   // Élèves encore inscrits : un élève parti ne figure plus dans « Mes élèves »
-  // ni dans les grilles de saisie de notes.
-  const eleves = presents(portalData.eleves || []);
+  // ni dans les grilles de saisie de notes — pas plus qu'un non réinscrit sans
+  // paiement d'une classe écartée par la comptabilité (réglage de l'école).
+  const eleves = useMemo(
+    () => sansNonReinscritsEcartes(presents(portalData.eleves || []), schoolInfo, anneeNotes),
+    [portalData.eleves, schoolInfo, anneeNotes],
+  );
   // Nom de l'élève lu sur sa fiche (la table notes n'a que eleve_id), y
   // compris pour les notes fusionnées après un enregistrement. Toutes les
   // fiches du périmètre, partis compris : leurs notes gardent un nom.
@@ -121,6 +131,15 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
     ...emplois.map((item) => item.classe),
     ...eleves.map((item) => item.classe),
   ].filter(Boolean))];
+  // Toujours UNE classe active (la première par défaut) : la saisie ne
+  // propose jamais les élèves de deux classes à la fois.
+  const classeNotes = mesClasses.includes(classeChoisie) ? classeChoisie : (mesClasses[0] || "");
+  const elevesClasseNotes = eleves.filter((item) => item.classe === classeNotes);
+  // Classe d'une note = celle de la fiche de l'élève (partis compris).
+  const classeParEleve = useMemo(
+    () => new Map((portalData.eleves || []).map((item) => [item._id, item.classe])),
+    [portalData.eleves],
+  );
   const mesNotes = [...notes].sort((left, right) => Number(right.updatedAt || right.createdAt || 0) - Number(left.updatedAt || left.createdAt || 0));
   const mesEvenements = [...enseignements].sort((left, right) => Number(right.date || 0) - Number(left.date || 0));
 
@@ -140,7 +159,7 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
       // on la retente maintenant. (Sans effet si la file est vide.)
       synchroniserRef.current?.();
     } catch (error) {
-      if (!silencieux) toast(error.message || "Erreur de chargement du portail enseignant.", "error");
+      if (!silencieux) toast(error.message || i18n.t("teacher.notes.loadError"), "error");
     } finally {
       if (!silencieux) setChargement(false);
     }
@@ -202,7 +221,7 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
 
   const ouvrirGrille = () => {
     const ctx = {
-      classe: mesClasses[0] || "",
+      classe: classeNotes,
       type: defaultNoteType,
       periode: periodeN,
       matiere: matiereParDefaut,
@@ -252,10 +271,10 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
       setPendingSync(queueCount(ownerId));
       if (r.saved > 0) {
         await chargerPortail();
-        toast(`${r.saved} note(s) synchronisée(s).`, "success");
+        toast(i18n.t("teacher.notes.synced", { count: r.saved }), "success");
       }
       if (r.failed > 0) {
-        toast(`${r.failed} note(s) non synchronisées (rejetées par le serveur).`, "warning");
+        toast(i18n.t("teacher.notes.rejected", { count: r.failed }), "warning");
       }
     } finally {
       setSyncing(false);
@@ -336,19 +355,24 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
   }));
 
   const notesPeriode = useMemo(
-    () => mesNotes.filter((item) => item.periode === periodeN),
-    [mesNotes, periodeN],
+    () => mesNotes.filter((item) => item.periode === periodeN
+      && (!classeNotes || (classeParEleve.get(item.eleveId) || item.classe) === classeNotes)),
+    [mesNotes, periodeN, classeNotes, classeParEleve],
   );
 
-  const imprimerEdt = () => imprimerEdtEnseignant({ emplois, nomEns, matiere, schoolInfo, annee });
+  // Jours ouvrés de la section de l’enseignant (Paramètres → Identité) ; un
+  // jour où il a cours s’ajoute de toute façon à la grille.
+  const joursOuvrables = getJoursOuvrables(schoolInfo, portalData.section || utilisateur.section || "secondaire");
+  const imprimerEdt = () => imprimerEdtEnseignant({ emplois, nomEns, matiere, schoolInfo, annee, joursOuvrables });
   const imprimerPaies = () => imprimerPaiesEnseignant({ salaires, nomEns, matiere, schoolInfo, annee });
 
   return {
     c1, c2, nomEns, matiere, noteForms, defaultNoteType, periodes,
     isPrimaire, matieresDispo, maxNote,
     tab, setTab, periodeN, setPeriodeN, chargement, portalData,
-    emplois, eleves, salaires, salairesIndisponibles, incidents, enseignantId,
+    emplois, joursOuvrables, eleves, salaires, salairesIndisponibles, incidents, enseignantId,
     mesClasses, mesNotes, mesEvenements, notesPeriode,
+    classeNotes, setClasseNotes, elevesClasseNotes,
     modalNote, setModalNote, formNote, setFormNote,
     gridForm, setGridForm, gridProgress,
     modalIncident, setModalIncident, formIncident, setFormIncident,
@@ -360,5 +384,7 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
     ouvrirSignalementEleve, ouvrirEditionIncident, enregistrerIncident, supprimerIncident,
     imprimerEdt, imprimerPaies,
     lectureSeule,
+    // Vue d'ouverture de « Mes élèves » (trombinoscope en maternelle).
+    section: portalData.section || utilisateur.section || "", anneeNotes,
   };
 }

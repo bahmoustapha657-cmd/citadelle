@@ -10,7 +10,7 @@ export async function seConnecter(page, { login, mdp }) {
   // La fiche de l'école est cherchée 600 ms après la frappe : on attend que
   // son nom s'affiche, comme l'utilisateur le voit.
   await expect(page.getByText(ECOLE.nom).first()).toBeVisible();
-  await page.getByPlaceholder("Votre identifiant ou e-mail").fill(login);
+  await page.getByPlaceholder("Identifiant, téléphone ou e-mail").fill(login);
   await page.getByPlaceholder("Votre mot de passe").fill(mdp);
   await page.getByRole("button", { name: "Se connecter", exact: true }).click();
   // Connecté = le bouton de déconnexion de la barre latérale est là.

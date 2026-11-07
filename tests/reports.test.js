@@ -236,3 +236,19 @@ test("rapport annuel : seule l'année du rapport compte (notes, finances, paie, 
   assert.equal(m.totAbsences, 2);
   assert.deepEqual(m.topAbsences.map((a) => a.classe).sort(), ["1ère Année A", "Petite Section A"]);
 });
+
+// Rapport annuel : même net que l'onglet Salaires — retenue pour absences
+// déduite, brut horaire du secondaire (heures non exécutées retirées).
+test("rapport annuel : la masse salariale déduit les retenues pour absences", async () => {
+  const { computeSalairesSection } = await import("../src/reports/rapport-annuel/rapport-calculs.js");
+  const { lignesSalSection } = computeSalairesSection([
+    { section: "Primaire", nom: "Instit", montantForfait: 1000, bon: 100, revision: 50, retenueAbsences: 200 },
+    { section: "Personnel", nom: "Gardien", montantForfait: 500, retenueAbsences: 25 },
+    { section: "Secondaire", nom: "Prof", vhPrevu: 10, cinqSem: 2, nonExecute: 4, primeHoraire: 100, bon: 50, retenueAbsences: 100 },
+  ]);
+  const masse = (sec) => lignesSalSection.find((l) => l.section === sec)?.masse;
+  assert.equal(masse("Primaire"), 750);
+  assert.equal(masse("Personnel"), 475);
+  // (10 + 2 − 4) h × 100 − 50 − 100
+  assert.equal(masse("Secondaire"), 650);
+});
