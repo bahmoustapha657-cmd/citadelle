@@ -19,6 +19,7 @@ import { ResetPasswordScreen } from "./components/connexion/ResetPasswordScreen"
 import { definirSignataireSession } from "./reports/signataire-session";
 import { MessagerieProvider } from "./components/messagerie/MessagerieContext";
 import { MODULE_MESSAGERIE, messagerieOuverteA } from "./components/messagerie/messagerie-logic";
+import { EspacesUtilisateur } from "./components/app/EspacesUtilisateur";
 
 export default function App() {
   const { t } = useTranslation();
@@ -57,7 +58,7 @@ export default function App() {
   // legal profile, badges messages/élèves/notifs).
   const {
     schoolInfoState, setSchoolInfo, verrous,
-    msgsNonLus, totalElevesActifs, notifListe, notifNonLues, setNotifNonLues,
+    msgsNonLus, totalElevesActifs, notifListe, notifNonLues, marquerNotifLues,
   } = useSchoolData({ schoolId, utilisateur });
 
   const schoolInfo = (!schoolId || schoolId === "superadmin") ? SCHOOL_INFO_DEFAUT : schoolInfoState;
@@ -80,10 +81,20 @@ export default function App() {
   // Signataire des documents imprimés pendant la session : poste du compte
   // connecté et nom qu'il imprime. Sur un poste à plusieurs comptes (deux
   // comptables), chacun signe ainsi à son nom — voir reports/signataire-session.
+  // Le cachet et la signature personnels sont chargés une fois dès la
+  // connexion : le service worker les garde alors pour imprimer hors ligne.
   useEffect(() => {
     definirSignataireSession(utilisateur
-      ? { cle: utilisateur.posteCle || utilisateur.role, nom: utilisateur.nomSignature }
+      ? { cle: utilisateur.posteCle || utilisateur.role, nom: utilisateur.nomSignature, cachet: utilisateur.cachetUrl,
+          taille: utilisateur.cachetTaille, decalage: utilisateur.cachetDecalage, signature: utilisateur.signatureUrl,
+          signatureTaille: utilisateur.signatureTaille, signatureDecalage: utilisateur.signatureDecalage }
       : null);
+    for (const url of [utilisateur?.cachetUrl, utilisateur?.signatureUrl]) {
+      if (!url) continue;
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = url;
+    }
   }, [utilisateur]);
 
   // Ctrl+K / ? / Escape — voir use-keyboard-shortcuts pour le détail.
@@ -136,7 +147,9 @@ export default function App() {
     utilisateur, page, schoolInfo, schoolId, schoolContextValue,
     annee, connecter, deconnecter, setPage, setUtilisateur, premiereSynchro, estHorsLigne,
   });
-  if (ecranAuth) return ecranAuth;
+  // Bouton « Espace » des comptes reliés (enseignant + parent + personnel).
+  const espaces = <EspacesUtilisateur utilisateur={utilisateur} />;
+  if (ecranAuth) return <>{ecranAuth}{espaces}</>;
 
   const { modulesVisibles, permissions, roleEffectif, estAdmin, readOnly, abonnementExpire, couleur2, utilisateurLabel } =
     computeAppPermissions({ utilisateur, schoolInfo, page, planInfo });
@@ -152,11 +165,11 @@ export default function App() {
         sidebarOuvert={sidebarOuvert} setSidebarOuvert={setSidebarOuvert}
         schoolInfo={schoolInfo} couleur2={couleur2} annee={annee} setAnnee={setAnnee}
         page={page} setPage={setPage} isMobile={isMobile}
-        msgsNonLus={msgsNonLus} utilisateur={utilisateur} utilisateurLabel={utilisateurLabel}
+        msgsNonLus={msgsNonLus} utilisateur={utilisateur} setUtilisateur={setUtilisateur} utilisateurLabel={utilisateurLabel}
         deconnecter={deconnecter} estHorsLigne={estHorsLigne} syncPendantes={syncPendantes} premiereSynchro={premiereSynchro} t={t}
         readOnly={readOnly} permissions={permissions} roleEffectif={roleEffectif} abonnementExpire={abonnementExpire} planInfo={planInfo} modeSombre={modeSombre} setModeSombre={setModeSombre}
         notifOuvert={notifOuvert} setNotifOuvert={setNotifOuvert}
-        notifNonLues={notifNonLues} setNotifNonLues={setNotifNonLues} notifListe={notifListe} nowTs={nowTs}
+        notifNonLues={notifNonLues} marquerNotifLues={marquerNotifLues} notifListe={notifListe} nowTs={nowTs}
         profilOuvert={profilOuvert} setProfilOuvert={setProfilOuvert}
         setAideOuverte={setAideOuverte} aideOuverte={aideOuverte}
         centreAideOuvert={centreAideOuvert} setCentreAideOuvert={setCentreAideOuvert}
@@ -165,6 +178,7 @@ export default function App() {
         estAdmin={estAdmin} onboardingOuvert={onboardingOuvert} setOnboardingOuvert={setOnboardingOuvert}
       />
       </MessagerieProvider>
+      {espaces}
     </SchoolContext.Provider>
   );
 }

@@ -1,4 +1,4 @@
-import { useContext, useState } from "react";
+import { useContext, useMemo, useState } from "react";
 import { fmt, getAnnee, peutCreerComptesParent, peutModifierEleves, peutModifier, sectionOuverte } from "../../constants";
 import { hasWrite } from "../../../shared/postes-config.js";
 import { SchoolContext } from "../../contexts/SchoolContext";
@@ -22,6 +22,7 @@ import { periodeTranche, tranchesValides } from "../../paiements-scolarite";
 import { buildTarifGetters, buildTarifData } from "./compta-tarifs";
 import { scolaritePourAnnee } from "../admin/cloture-annee-utils";
 import { saveSalaireAction, savePersonnelAction } from "./compta-saves";
+import { avecPaie, indexerPaie } from "../../paie-enseignants";
 
 // Toute la logique du module Comptabilité : chargement Firestore de
 // toutes les collections (filtrées par année consultée), permissions,
@@ -70,6 +71,9 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   // fiches de paie, donc un bon de « Nov » de l'an dernier se serait cumulé au
   // « Nov » de la nouvelle année pour la même personne.
   const { items: bons, ajouter: ajBon, modifier: modBon, supprimer: supBon } = useFirestore("bons", { annee: anneeConsultee });
+  // Registre des absences/retards du personnel : rattaché aux fiches de paie
+  // par MOIS, donc filtré par année comme les bons.
+  const { items: presences, chargement: cPres, ajouter: ajPres, modifier: modPres, supprimer: supPres } = useFirestore("presences", { annee: anneeConsultee });
   const { items: personnel, chargement: cPers, ajouter: ajPers, modifier: modPers, supprimer: supPers } = useFirestore("personnel");
   const { items: versements, chargement: cV, ajouter: ajV, modifier: modV, supprimer: supV } = useFirestore("versements", { annee: anneeConsultee });
   // Journal des encaissements de scolarité (grand livre, ajout seul) : la
@@ -83,11 +87,11 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   // Une ligne que le journal refuse est gardée sur l'appareil puis renvoyée,
   // au lieu d'être perdue (cf. journal-en-attente).
   const ajPaiement = useJournalEnAttente(schoolId, ajouterPaiement, toast);
-  const { items: elevesCBrut, chargement: cEC, ajouter: ajEC, modifier: modEC_full, supprimer: supEC, modifierChamp: modEC } = useFirestore("elevesCollege");
-  const { items: elevesPBrut, chargement: cEP, ajouter: ajEP, modifier: modEP_full, supprimer: supEP, modifierChamp: modEP } = useFirestore("elevesPrimaire");
-  const { items: elevesLBrut, chargement: cEL, ajouter: ajEL, modifier: modEL_full, supprimer: supEL, modifierChamp: modEL } = useFirestore("elevesLycee");
+  const { items: elevesCBrut, chargement: cEC, ajouter: ajEC, supprimer: supEC, modifierChamp: modEC, refresh: refEC } = useFirestore("elevesCollege");
+  const { items: elevesPBrut, chargement: cEP, ajouter: ajEP, supprimer: supEP, modifierChamp: modEP, refresh: refEP } = useFirestore("elevesPrimaire");
+  const { items: elevesLBrut, chargement: cEL, ajouter: ajEL, supprimer: supEL, modifierChamp: modEL, refresh: refEL } = useFirestore("elevesLycee");
   // Préscolaire : section à part entière, donc scolarité/inscriptions à part.
-  const { items: elevesPreBrut, chargement: cEPre, ajouter: ajEPre, modifier: modEPre_full, supprimer: supEPre, modifierChamp: modEPre } = useFirestore("elevesPrescolaire");
+  const { items: elevesPreBrut, chargement: cEPre, ajouter: ajEPre, supprimer: supEPre, modifierChamp: modEPre, refresh: refEPre } = useFirestore("elevesPrescolaire");
   // Vue archive : les élèves ne sont pas dupliqués par année, c'est la clôture
   // d'année qui fige leur scolarité dans la fiche (extra.historique[annee]).
   // On lit donc l'instantané de l'année consultée — repli sur la fiche
@@ -99,17 +103,30 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   const elevesP = projeterAnnee(elevesPBrut);
   const elevesL = projeterAnnee(elevesLBrut);
   const elevesPre = projeterAnnee(elevesPreBrut);
-  const { items: tarifsClasses, ajouter: ajTarif, modifier: modTarif } = useFirestore("tarifs");
+  const { items: tarifsClasses, ajouter: ajTarif, modifierChamp: modChampTarif } = useFirestore("tarifs");
   const { items: classesCollegeList, ajouter: ajClasseCollege } = useFirestore("classesCollege");
   const { items: classesPrimaireList, ajouter: ajClassePrimaire } = useFirestore("classesPrimaire");
   const { items: classesLyceeList, ajouter: ajClasseLycee } = useFirestore("classesLycee");
   const { items: classesPrescolaireList, ajouter: ajClassePrescolaire } = useFirestore("classesPrescolaire");
   // Enseignants — création/édition de la paie depuis Compta (vue hybride)
-  const { items: ensCollege, ajouter: ajEnsCol, modifier: modEnsCol, supprimer: supEnsCol } = useFirestore("ensCollege");
-  const { items: ensLycee, ajouter: ajEnsLyc, modifier: modEnsLyc, supprimer: supEnsLyc } = useFirestore("ensLycee");
-  const { items: ensPrimaire, ajouter: ajEnsPrim, modifier: modEnsPrim, supprimer: supEnsPrim } = useFirestore("ensPrimaire");
+  const { items: ensCollegeBrut, ajouter: ajEnsCol, modifier: modEnsCol, supprimer: supEnsCol } = useFirestore("ensCollege");
+  const { items: ensLyceeBrut, ajouter: ajEnsLyc, modifier: modEnsLyc, supprimer: supEnsLyc } = useFirestore("ensLycee");
+  const { items: ensPrimaireBrut, ajouter: ajEnsPrim, modifier: modEnsPrim, supprimer: supEnsPrim } = useFirestore("ensPrimaire");
   // Enseignants de maternelle : ils doivent figurer sur la paie comme les autres.
-  const { items: ensPrescolaire, ajouter: ajEnsPresco, modifier: modEnsPresco, supprimer: supEnsPresco } = useFirestore("ensPrescolaire");
+  const { items: ensPrescolaireBrut, ajouter: ajEnsPresco, modifier: modEnsPresco, supprimer: supEnsPresco } = useFirestore("ensPrescolaire");
+  // Paie des enseignants : table réservée à la Comptabilité (src/paie-enseignants.js),
+  // remise ici sur chaque fiche. Toute la compta (liste, génération des
+  // salaires, présences) lit donc la paie sur la fiche, comme avant.
+  const { items: paieEns } = useFirestore("paieEnseignants");
+  const paieParId = useMemo(() => indexerPaie(paieEns), [paieEns]);
+  const ensCollege = useMemo(() => avecPaie(ensCollegeBrut, paieParId), [ensCollegeBrut, paieParId]);
+  const ensLycee = useMemo(() => avecPaie(ensLyceeBrut, paieParId), [ensLyceeBrut, paieParId]);
+  const ensPrimaire = useMemo(() => avecPaie(ensPrimaireBrut, paieParId), [ensPrimaireBrut, paieParId]);
+  const ensPrescolaire = useMemo(() => avecPaie(ensPrescolaireBrut, paieParId), [ensPrescolaireBrut, paieParId]);
+  // Groupe de paie « Primaire » (forfait mensuel) : maternelle comprise. Sans
+  // elle, la génération des salaires, les bons et les présences ignoraient
+  // ses enseignants.
+  const ensPaiePrimaire = [...ensPrimaire, ...ensPrescolaire];
   const { items: emploisCollege } = useFirestore("classesCollege_emplois");
   const { items: emploisLycee } = useFirestore("classesLycee_emplois");
   const { items: engCollege } = useFirestore("ensCollege_enseignements");
@@ -133,7 +150,9 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   const modChampParNiveau = { college: modEC, lycee: modEL, primaire: modEP, prescolaire: modEPre };
   const ajoutParNiveau = { college: ajEC, lycee: ajEL, primaire: ajEP, prescolaire: ajEPre };
   const suppressionParNiveau = { college: supEC, lycee: supEL, primaire: supEP, prescolaire: supEPre };
-  const modifParNiveau = { college: modEC_full, lycee: modEL_full, primaire: modEP_full, prescolaire: modEPre_full };
+  // Relecture de la liste de départ quand une fiche change de section
+  // (formulaire élève : Grande Section → 1ère Année).
+  const rechargerParNiveau = { college: refEC, lycee: refEL, primaire: refEP, prescolaire: refEPre };
   // Wrappers : injectent les listes de classes + ajouts Firestore au helper.
   const sortAlpha = (arr) => sortAlphaEleves(arr, schoolInfo.triEleves);
   const ensureClasse = (nom, niv, dejaCreees) => {
@@ -160,6 +179,12 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   const elevesScolarite = eleves.filter((e) => concerneParAnnee(e, moisAnnee, anneeConsultee));
   const classesU = [...new Set(elevesScolarite.map((e) => e.classe))].filter(Boolean);
   const tousElevesScolarite = [...elevesC, ...elevesL, ...elevesP, ...elevesPre];
+  // Reçu famille : les frères et sœurs se cherchent dans TOUTES les sections
+  // (un aîné au collège, un cadet au primaire), parmi les élèves de l'année.
+  // Rangés par section pour la recherche, qui signale les autres sections.
+  const elevesAnneeParNiveau = Object.fromEntries(Object.entries(elevesParNiveau)
+    .map(([n, liste]) => [n, liste.filter((e) => concerneParAnnee(e, moisAnnee, anneeConsultee))]));
+  const elevesFamille = Object.values(elevesAnneeParNiveau).flat();
 
   const {
     getTarifConfig, getTarif, getTarifBase, getTarifRevision, getTarifAutre,
@@ -168,7 +193,10 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   const saveTarif = async (classe, montant, inscription = null, reinscription = null, revision = null, autre = null, fraisDivers = null) => {
     const existing = getTarifConfig(classe);
     const data = buildTarifData(montant, { inscription, reinscription, revision, autre, fraisDivers });
-    if (existing) await modTarif({ _id: existing._id, ...data });
+    // Fusion champ par champ : un champ omis (null) garde sa valeur. Le
+    // `modifier` complet réécrivait tout le jsonb `extra` — modifier la
+    // seule mensualité d'une classe effaçait ses frais divers.
+    if (existing) await modChampTarif(existing._id, data);
     else await ajTarif({ classe, ...data });
   };
   const elevesFiltres = sortAlpha(filtClasse === "all" ? elevesScolarite : elevesScolarite.filter((e) => e.classe === filtClasse));
@@ -290,8 +318,8 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   // Domaine paie : état dérivé (filtrage mois/section, totaux) + actions
   // (génération auto, application des bons, impression). Voir useComptaSalaires.
   const salairesDomaine = useComptaSalaires({
-    salaires, bons, moisSel, moisSalaire,
-    ensCollege, ensLycee, ensPrimaire, personnel,
+    salaires, bons, presences, moisSel, moisSalaire,
+    ensCollege, ensLycee, ensPrimaire: ensPaiePrimaire, personnel,
     emploisCollege, emploisLycee, engCollege, engLycee,
     primeDefaut, annee: anneeEcriture, anneeConsultee, schoolInfo,
     modS, ajS, supS, readOnly, toast, logAction,
@@ -331,25 +359,31 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
 
   return {
     schoolInfo, moisAnnee, moisSalaire, toast, logAction,
+    // Classes où l’on peut désigner un titulaire (paie forfaitaire « Primaire »,
+    // maternelle comprise) : liste du formulaire enseignant.
+    classesTitulaire: [...classesPrimaireList, ...classesPrescolaireList].map((c) => c.nom).filter(Boolean),
     // `anneeCourante` : celle marquée « (courante) » dans le sélecteur — l'officielle.
     anneeCourante: anneeOfficielle, anneeConsultee, setAnneeConsultee, enModeArchive,
     canCreate, canEdit, canEditEleves, canCreateParent, anneesDispo, toggleBlocage,
+    // Qui saisit / décide (registre des présences).
+    auteur: signature,
     recettes, cR, ajR, modR, supR,
     depenses, cD, ajD, modD, supD,
     salaires, cS, ajS, modS, supS,
     bons, ajBon, modBon, supBon,
+    presences, cPres, ajPres, modPres, supPres,
     personnel, cPers, supPers,
     versements, cV, ajV, modV, supV,
     paiements, cPaie, ajPaiement,
     elevesC, elevesP, elevesL, elevesPre, cEC, cEP, cEL, cEPre,
     tarifsClasses,
-    ensCollege, ensLycee, ensPrimaire, ensPrescolaire,
+    ensCollege, ensLycee, ensPrimaire, ensPrescolaire, ensPaiePrimaire,
     ajEnsCol, ajEnsLyc, ajEnsPrim, ajEnsPresco, modEnsCol, modEnsLyc, modEnsPrim, modEnsPresco, supEnsCol, supEnsLyc, supEnsPrim, supEnsPresco,
     tab, setTab, sousTabSal, setSousTabSal, modal, setModal, form, setForm,
     niveau, setNiveau, filtClasse, setFiltClasse, moisSel, setMoisSel,
     primeDefaut, setPrimeDefaut, filtrePrimNom, setFiltrePrimNom, filtrePrimClasse, setFiltrePrimClasse,
-    ajoutParNiveau, suppressionParNiveau, modifParNiveau, ensureClasse, sortAlpha,
-    totR, totD, totVers, eleves, classesU, tousElevesScolarite, elevesFiltres,
+    ajoutParNiveau, suppressionParNiveau, modChampParNiveau, rechargerParNiveau, ensureClasse, sortAlpha,
+    totR, totD, totVers, eleves, classesU, tousElevesScolarite, elevesFamille, elevesAnneeParNiveau, elevesFiltres,
     getTarif, getTarifBase, getTarifRevision, getTarifAutre, getTarifIns, getTarifReinsc,
     getTarifInscriptionEleve, getTarifFraisDivers, saveTarif,
     toggleFraisAnnexe, toggleMens, encaisserInscriptions, exonerationDeps, enreg, saveSalaire, savePersonnel,

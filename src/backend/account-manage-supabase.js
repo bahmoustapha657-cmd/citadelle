@@ -254,3 +254,20 @@ export async function rattacherComptesAuxPostes(postes) {
   }
   return { ok: true };
 }
+
+// E-mail de la fiche d'un enseignant reporté sur son (ses) compte(s) : il
+// peut alors se connecter avec, et « Mot de passe oublié » lui envoie le lien.
+// L'identifiant du compte ne change pas. Un e-mail vidé sur la fiche ne
+// retire rien du compte (seuls Comptes & Postes le font). Renvoie le nombre
+// de comptes mis à jour ; lève l'erreur de majEmailCompte (doublon…).
+export async function synchroniserEmailEnseignant(enseignantId, email) {
+  const valeur = (email || "").trim().toLowerCase();
+  if (!enseignantId || !valeur) return 0;
+  const sb = getSupabase();
+  const { data, error } = await sb.from("comptes").select("id, email")
+    .eq("enseignant_id", enseignantId).eq("role", "enseignant");
+  if (error) throw new Error(error.message || "Lecture du compte impossible.");
+  const aMettreAJour = (data || []).filter((c) => (c.email || "").toLowerCase() !== valeur);
+  for (const c of aMettreAJour) await majEmailCompte(c.id, valeur);
+  return aMettreAJour.length;
+}

@@ -31,7 +31,8 @@ Chaque parcours tourne deux fois (matrice du job `e2e`) :
 
 - **en-ligne** : `VITE_POWERSYNC_URL` vide, écritures directes vers Supabase ;
 - **hors-ligne** : comme en production, via le miroir PowerSync — service
-  PowerSync **1.26.1** local, mêmes règles (`powersync-sync-rules.min.yaml`),
+  PowerSync **1.26.1** local, mêmes règles (`powersync-sync-rules.min.yaml`,
+  au format Sync Streams),
   réplication par `powersync_role`, jetons vérifiés par le JWKS du Supabase
   local (`e2e/powersync/powersync.yaml`).
 

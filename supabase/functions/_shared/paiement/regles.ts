@@ -4,7 +4,7 @@
 // Partagées par les Edge Functions `paiement` et `paiement-notification`,
 // testées sous Node (tests/paiement-en-ligne.test.js).
 import { ciblesVersement, montantPropose } from "../app/src/versements.js";
-import { planVersement, tranchesValides } from "../app/src/paiements-scolarite.js";
+import { moisGarantieEcole, planVersement, tranchesValides } from "../app/src/paiements-scolarite.js";
 import { calcMoisAnnee } from "../app/src/constants.js";
 import { toRow, transformRow } from "../app/src/backend/collection-map.js";
 import { ecritureEncaissement } from "../app/src/components/comptabilite/paiements-journal.js";
@@ -91,7 +91,9 @@ export function contexteEleve({ ecole, eleveRow, tarifsRows }: { ecole: Ligne; e
   const moisAnnee: string[] = calcMoisAnnee(extra.moisDebut || "Octobre");
   const annee: string = extra.anneeScolaire || "";
   const tranches = tranchesValides(extra.tranchesPaiement, moisAnnee);
-  const { cibles, etats, mensualite } = ciblesVersement({ eleve, moisAnnee, annee, tarifsClasses, tranches });
+  const { cibles, etats, mensualite } = ciblesVersement({
+    eleve, moisAnnee, annee, tarifsClasses, tranches, moisGarantie: moisGarantieEcole(extra),
+  });
   return { eleve, eleveMaj: eleveRow.updated_at as string, cibles, etats, mensualite, moisAnnee, annee };
 }
 

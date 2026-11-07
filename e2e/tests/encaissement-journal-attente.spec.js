@@ -38,7 +38,9 @@ test("ligne de journal sans réponse : gardée sur l'appareil, puis inscrite une
   page.once("dialog", (dialogue) => dialogue.accept());
   await page.getByRole("button", { name: /^Encaisser / }).click();
   // Le paiement est acquis ; l'écran dit que sa ligne attend sur l'appareil.
-  await expect(page.getByText(/sa ligne de journal de caisse n'a pas pu s'écrire : elle est gardée sur cet appareil/)).toBeVisible();
+  // « Sa », avec la majuscule du message : une expression régulière
+  // respecte la casse (c'est ce qui faisait échouer ce test).
+  await expect(page.getByText(/Sa ligne de journal de caisse n'a pas pu s'écrire : elle est gardée sur cet appareil/)).toBeVisible();
   await expect(page.getByText(/✅ Versement de .* enregistré le/)).toBeVisible();
   await page.getByRole("button", { name: "Fermer", exact: true }).click();
 

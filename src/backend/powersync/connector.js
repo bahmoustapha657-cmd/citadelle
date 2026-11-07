@@ -6,7 +6,7 @@
 // contourne jamais.
 import { getSupabase } from "../../supabaseClient";
 import { parseJsonCols } from "./tables";
-import { envoyerOperation, estErreurPassagere } from "./envoi-operation";
+import { envoyerOperation, estErreurPassagere, exigerSession } from "./envoi-operation";
 import { signalerEcritureRefusee } from "../ecritures-refusees";
 
 const POWERSYNC_URL = String(import.meta.env?.VITE_POWERSYNC_URL || "").trim();
@@ -31,6 +31,10 @@ export class SupabaseConnector {
     const sb = getSupabase();
     let enCours = null;
     try {
+      // Sans session valide, supabase-js enverrait la file avec la clé
+      // anonyme : la RLS la refuserait et chaque écriture serait jetée comme
+      // « refus définitif ». On attend plutôt la reconnexion (cf. exigerSession).
+      await exigerSession(sb);
       for (const op of transaction.crud) {
         enCours = op;
         // Les colonnes jsonb Postgres vivent en TEXT côté SQLite : re-parser

@@ -8,6 +8,7 @@ import {
 } from "./messagerie-logic";
 import { MAX_PIECES_ANNONCE, verifierFichier } from "./documents";
 import { preparerFichier } from "./compresser-image";
+import i18n from "../../i18n";
 
 // Délai avant le premier chargement : la connexion (surtout sur réseau
 // faible) sert d'abord les écrans métier ; la messagerie suit.
@@ -75,8 +76,8 @@ export function useMessagerieEtat({ utilisateur, schoolCode, actif }) {
       if (active && lectureAutorisee() && liste.find((c) => c.id === active)?.non_lus) marquerConvLue(active);
     } catch (e) {
       setErreur(/msg_boite|function|relation/i.test(e.message)
-        ? "Messagerie pas encore installée sur le serveur (migrations SQL non appliquées)."
-        : (e.message || "Messagerie indisponible."));
+        ? i18n.t("msg.state.notInstalled")
+        : (e.message || i18n.t("msg.state.unavailable")));
     }
   }, [marquerConvLue]);
 
@@ -152,7 +153,7 @@ export function useMessagerieEtat({ utilisateur, schoolCode, actif }) {
       const deja = !!etat.current.fils[convId];
       ajouterAuFil(convId, messages, deja ? {} : { complet: messages.length < 40 });
     } catch (e) {
-      setErreur(e.message || "Chargement des messages impossible.");
+      setErreur(e.message || i18n.t("msg.state.loadMessagesFailed"));
     }
   }, [ajouterAuFil]);
 
@@ -164,7 +165,7 @@ export function useMessagerieEtat({ utilisateur, schoolCode, actif }) {
       const messages = await api.chargerMessages(convId, { avant: plusAncien });
       ajouterAuFil(convId, messages, { enTete: true, complet: messages.length < 40 });
     } catch (e) {
-      setErreur(e.message || "Chargement impossible.");
+      setErreur(e.message || i18n.t("msg.state.loadFailed"));
     }
   }, [ajouterAuFil]);
 
@@ -202,7 +203,7 @@ export function useMessagerieEtat({ utilisateur, schoolCode, actif }) {
   const ecoleIdSure = useCallback(async () => {
     if (ecoleId) return ecoleId;
     const id = await resoudreEcoleId(schoolCode);
-    if (!id) throw new Error("École introuvable.");
+    if (!id) throw new Error(i18n.t("msg.state.schoolNotFound"));
     setEcoleId(id);
     return id;
   }, [ecoleId, schoolCode]);
@@ -312,12 +313,12 @@ export function useMessagerieEtat({ utilisateur, schoolCode, actif }) {
     if (pieces.length) {
       try { await api.joindreAnnonce(annonce.id, pieces); } catch (e) { erreurs.push(e.message); }
     }
-    if (erreurs.length) setErreur(`Annonce publiée, mais : ${erreurs.join(" ")}`);
+    if (erreurs.length) setErreur(i18n.t("msg.state.publishedBut", { errors: erreurs.join(" ") }));
     await chargerAnnonces();
     const destinataires = destinatairesAnnonce(donnees.cible, annuaireListe, moi);
     const p = PRIORITES[annonce.priorite] || PRIORITES.normale;
     api.notifier(destinataires.map((c) => c.user_id),
-      `${p.icone} ${annonce.titre || "Nouvelle annonce"}`,
+      `${p.icone} ${annonce.titre || i18n.t("msg.page.newAnnouncement")}`,
       `${nomMoi} : ${apercuMessage(annonce)}`,
       `/?annonce=${annonce.id}`);
     return annonce;
@@ -340,8 +341,8 @@ export function useMessagerieEtat({ utilisateur, schoolCode, actif }) {
     const suivi = await api.suiviAnnonce(annonce.id);
     const retardataires = suivi.filter((s) => (annonce.accuse_requis ? !s.confirme_at : !s.lu_at));
     api.notifier(retardataires.map((s) => s.user_id),
-      `🔔 Rappel : ${annonce.titre || "annonce"}`,
-      annonce.accuse_requis ? "Merci de confirmer votre lecture." : "Annonce non encore lue.",
+      `🔔 ${i18n.t("msg.state.reminderTitle", { title: annonce.titre || i18n.t("msg.state.anAnnouncement") })}`,
+      i18n.t(annonce.accuse_requis ? "msg.state.pleaseConfirm" : "msg.state.notReadYet"),
       `/?annonce=${annonce.id}`);
     return retardataires.length;
   }, []);

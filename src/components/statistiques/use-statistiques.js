@@ -2,6 +2,7 @@ import { useContext, useMemo, useState } from "react";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { useFirestore } from "../../hooks/useFirestore";
 import { getAnnee, isSectionActive, sectionOuverte } from "../../constants";
+import { sansNonReinscritsEcartes } from "../../ecartes-non-reinscrits";
 import { getPeriodesForSection } from "../../period-utils";
 import { matieresForClasse as matieresForClasseFn } from "../ecole/ecole-logic";
 import { matieresEvaluees } from "../../matiere-nature";
@@ -36,10 +37,15 @@ export function useStatistiques({ annee }) {
   // Effectifs et finances portent sur TOUTE l'école : on charge les quatre
   // sections d'élèves. Les notes, en revanche, ne servent qu'à la section
   // examinée — les charger toutes coûterait cher pour rien.
-  const elevesPre = useFirestore("elevesPrescolaire").items;
-  const elevesPri = useFirestore("elevesPrimaire").items;
-  const elevesCol = useFirestore("elevesCollege").items;
-  const elevesLyc = useFirestore("elevesLycee").items;
+  // Sans les non réinscrits (aucun paiement) retirés des classes.
+  const elevesPreBruts = useFirestore("elevesPrescolaire").items;
+  const elevesPriBruts = useFirestore("elevesPrimaire").items;
+  const elevesColBruts = useFirestore("elevesCollege").items;
+  const elevesLycBruts = useFirestore("elevesLycee").items;
+  const elevesPre = useMemo(() => sansNonReinscritsEcartes(elevesPreBruts, schoolInfo, anneeCourante), [elevesPreBruts, schoolInfo, anneeCourante]);
+  const elevesPri = useMemo(() => sansNonReinscritsEcartes(elevesPriBruts, schoolInfo, anneeCourante), [elevesPriBruts, schoolInfo, anneeCourante]);
+  const elevesCol = useMemo(() => sansNonReinscritsEcartes(elevesColBruts, schoolInfo, anneeCourante), [elevesColBruts, schoolInfo, anneeCourante]);
+  const elevesLyc = useMemo(() => sansNonReinscritsEcartes(elevesLycBruts, schoolInfo, anneeCourante), [elevesLycBruts, schoolInfo, anneeCourante]);
 
   const { items: notes, chargement: cN } = useFirestore(section.notes, { annee: anneeCourante });
   const { items: matieres } = useFirestore(section.matieres);

@@ -142,8 +142,9 @@ toujours seule autorité d'écriture) au retour réseau.
      lecture sur tout le schéma) et une instance **PowerSync Cloud** connectée
      au projet Supabase (connexion **directe**, pas le pooler) — voir le
      guide officiel « PowerSync + Supabase ».
-  3. Coller les **Sync Rules** de `supabase/powersync-sync-rules.yaml` dans le
-     dashboard PowerSync (onglet Sync Streams), Validate puis Deploy.
+  3. Coller les règles (**Sync Streams**) de
+     `supabase/powersync-sync-rules.min.yaml` dans le dashboard PowerSync
+     (onglet Sync Streams), Validate puis Deploy.
   4. Renseigner `VITE_POWERSYNC_URL` dans `.env.supabase` (et `.env.local`
      pour tester en dev) avec l'URL de l'instance.
   5. `npm install` (ajoute `@powersync/web` + `@journeyapps/wa-sqlite`).

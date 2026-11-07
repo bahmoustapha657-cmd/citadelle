@@ -78,7 +78,7 @@ function ParametresEcole({ utilisateurRole = "", onSchoolClosed = null, initialT
           toggleEvaluationActive={toggleEvaluationActive}
           form={form} setForm={setForm} chg={chg}
           handleSignatureFile={handleSignatureFile}
-          inp={inp} sec={sec}
+          inp={inp} sec={sec} schoolInfo={schoolInfo}
         />
       )}
 

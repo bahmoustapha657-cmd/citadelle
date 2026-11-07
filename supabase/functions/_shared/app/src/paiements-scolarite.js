@@ -9,8 +9,9 @@
 // payment-actions applique, les tests vérifient.
 //
 // Règles :
-//  • un montant libre paie les mois dans l'ordre d'encaissement : le dernier
-//    mois de l'année d'abord, puis du 1er au suivant ; ce qui ne suffit pas à solder un mois devient un
+//  • un montant libre paie les mois dans l'ordre d'encaissement : le ou les
+//    mois de garantie (derniers de l'année) d'abord, puis du 1er au suivant ;
+//    ce qui ne suffit pas à solder un mois devient un
 //    ACOMPTE sur ce mois (mensAcomptes) — même chose pour un frais
 //    (fraisAcomptes) ou l'inscription (inscriptionAcompte) ;
 //  • le dû s'entend après dispense : c'est ce que le parent paie réellement ;
@@ -100,12 +101,30 @@ export function etatsMois(eleve = {}, moisAnnee = [], mensualite = 0, annee) {
   });
 }
 
-// Ordre d'encaissement des mensualités : l'usage des écoles est de faire
-// payer le DERNIER mois de l'année en premier (garantie de fin d'année),
-// puis le 1er, le 2e… jusqu'à l'avant-dernier.
-export const ordreEncaissement = (moisAnnee = []) => (
-  moisAnnee.length > 1 ? [moisAnnee[moisAnnee.length - 1], ...moisAnnee.slice(0, -1)] : [...moisAnnee]
-);
+// Mois de garantie : nombre de DERNIERS mois de l'année que l'école fait
+// payer d'avance, dès la rentrée (garantie de fin d'année). Usage courant :
+// le dernier mois ; certaines écoles exigent les deux derniers. Réglage de
+// l'école (ecoles.extra.moisGarantie, 0 à 3), 1 par défaut.
+export const MOIS_GARANTIE_DEFAUT = 1;
+export const MOIS_GARANTIE_MAX = 3;
+export function moisGarantieEcole(extra = {}) {
+  const n = Number(extra?.moisGarantie);
+  return Number.isInteger(n) && n >= 0 && n <= MOIS_GARANTIE_MAX ? n : MOIS_GARANTIE_DEFAUT;
+}
+
+// Les mois de garantie de l'année, dans l'ordre de l'année (jamais toute
+// l'année : il reste au moins un mois « courant »).
+export const moisDeGarantie = (moisAnnee = [], moisGarantie = MOIS_GARANTIE_DEFAUT) => {
+  const n = Math.max(0, Math.min(Number(moisGarantie) || 0, moisAnnee.length - 1));
+  return n ? moisAnnee.slice(-n) : [];
+};
+
+// Ordre d'encaissement des mensualités : d'abord les mois de garantie (les
+// derniers de l'année), puis le 1er, le 2e… jusqu'au dernier mois courant.
+export const ordreEncaissement = (moisAnnee = [], moisGarantie = MOIS_GARANTIE_DEFAUT) => {
+  const garantie = moisDeGarantie(moisAnnee, moisGarantie);
+  return [...garantie, ...moisAnnee.filter((m) => !garantie.includes(m))];
+};
 
 // Répartit `montant` sur les mois dans l'ordre donné : chaque mois est soldé
 // tant que le montant suffit, le reliquat devient un acompte sur le suivant.

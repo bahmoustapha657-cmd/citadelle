@@ -1,3 +1,4 @@
+import { Trans, useTranslation } from "react-i18next";
 import { C } from "../../constants";
 import { annonceEnvoi, dureeLisible } from "../../backend/code-reinitialisation";
 import { useMotDePasseOublie } from "./use-mot-de-passe-oublie";
@@ -20,51 +21,52 @@ const encadre = (fond, bord, texte) => ({
 });
 
 export function MotDePasseOublieModal({ codeEcoleInitial = "", onClose, onConnecter }) {
+  const { t } = useTranslation();
   const m = useMotDePasseOublie({ codeEcoleInitial });
 
   let contenu;
-  if (m.compte) contenu = <Succes compte={m.compte} onConnecter={() => (onConnecter ? onConnecter(m.compte) : onClose())} />;
-  else if (m.etapeCode) contenu = <EtapeCode m={m} onClose={onClose} />;
-  else if (m.resultat) contenu = <Resultat resultat={m.resultat} onClose={onClose} />;
-  else contenu = <Demande m={m} codeEcoleInitial={codeEcoleInitial} onClose={onClose} />;
+  if (m.compte) contenu = <Succes t={t} compte={m.compte} onConnecter={() => (onConnecter ? onConnecter(m.compte) : onClose())} />;
+  else if (m.etapeCode) contenu = <EtapeCode t={t} m={m} onClose={onClose} />;
+  else if (m.resultat) contenu = <Resultat t={t} resultat={m.resultat} onClose={onClose} />;
+  else contenu = <Demande t={t} m={m} codeEcoleInitial={codeEcoleInitial} onClose={onClose} />;
 
   return (
     // Pendant la saisie du code, un clic à côté ne ferme pas : le code reçu
     // et le mot de passe tapé seraient perdus.
     <div onClick={m.etapeCode ? undefined : onClose} style={{ position: "fixed", inset: 0, background: "rgba(6,15,31,0.55)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-      <div role="dialog" aria-label="Mot de passe oublié" onClick={(e) => e.stopPropagation()}
+      <div role="dialog" aria-label={t("auth.reset.title")} onClick={(e) => e.stopPropagation()}
         style={{ background: "#fff", borderRadius: 16, width: "100%", maxWidth: 420, padding: "24px 26px", boxShadow: "0 20px 60px rgba(0,0,0,0.3)", maxHeight: "calc(100dvh - 32px)", overflowY: "auto", boxSizing: "border-box" }}>
-        <h3 style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 800, color: C.blueDark }}>🔑 Mot de passe oublié</h3>
+        <h3 style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 800, color: C.blueDark }}>🔑 {t("auth.reset.title")}</h3>
         {contenu}
       </div>
     </div>
   );
 }
 
-function Demande({ m, codeEcoleInitial, onClose }) {
+function Demande({ t, m, codeEcoleInitial, onClose }) {
   const actif = !m.chargement && m.peutDemander;
   return (
     <>
       <p style={{ margin: "0 0 16px", fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>
-        Indiquez votre code école et votre identifiant — ou votre e-mail si vous en avez enregistré un. Parent : votre numéro de téléphone suffit.
+        {t("auth.reset.intro")}
       </p>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <input value={m.codeEcole} onChange={(e) => m.setCodeEcole(e.target.value)} placeholder="Code école (ex. citadelle)" style={inputStyle} autoFocus={!codeEcoleInitial} />
-        <input value={m.identifiant} onChange={(e) => m.setIdentifiant(e.target.value)} placeholder="Identifiant, e-mail ou n° de téléphone"
+        <input value={m.codeEcole} onChange={(e) => m.setCodeEcole(e.target.value)} placeholder={t("auth.reset.schoolCodePlaceholder")} style={inputStyle} autoFocus={!codeEcoleInitial} />
+        <input value={m.identifiant} onChange={(e) => m.setIdentifiant(e.target.value)} placeholder={t("auth.reset.identifierPlaceholder")}
           style={inputStyle} autoFocus={!!codeEcoleInitial} autoComplete="username"
           onKeyDown={(e) => e.key === "Enter" && m.demander()} />
       </div>
       <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
         <button onClick={m.demander} disabled={!actif} style={boutonPrincipal(actif)}>
-          {m.chargement ? "Envoi…" : "Réinitialiser"}
+          {m.chargement ? t("auth.reset.sending") : t("auth.reset.submit")}
         </button>
-        <button onClick={onClose} style={boutonSecondaire}>Annuler</button>
+        <button onClick={onClose} style={boutonSecondaire}>{t("common.cancel")}</button>
       </div>
     </>
   );
 }
 
-function EtapeCode({ m, onClose }) {
+function EtapeCode({ t, m, onClose }) {
   const type = m.voir ? "text" : "password";
   return (
     <>
@@ -72,16 +74,16 @@ function EtapeCode({ m, onClose }) {
         📱 {annonceEnvoi(m.resultat)}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <input value={m.code} onChange={(e) => m.setCode(e.target.value)} placeholder="Code à 6 chiffres" aria-label="Code reçu"
+        <input value={m.code} onChange={(e) => m.setCode(e.target.value)} placeholder={t("auth.reset.codePlaceholder")} aria-label={t("auth.reset.codeLabel")}
           inputMode="numeric" autoComplete="one-time-code" maxLength={9} autoFocus
           style={{ ...inputStyle, fontSize: 20, fontWeight: 800, letterSpacing: 6, textAlign: "center" }} />
-        <input type={type} value={m.mdp} onChange={(e) => m.setMdp(e.target.value)} placeholder="Nouveau mot de passe (8 caractères min.)"
-          aria-label="Nouveau mot de passe" autoComplete="new-password" style={inputStyle} />
-        <input type={type} value={m.confirmation} onChange={(e) => m.setConfirmation(e.target.value)} placeholder="Confirmer le mot de passe"
-          aria-label="Confirmer le mot de passe" autoComplete="new-password" style={inputStyle}
+        <input type={type} value={m.mdp} onChange={(e) => m.setMdp(e.target.value)} placeholder={t("auth.reset.newPasswordPlaceholder")}
+          aria-label={t("auth.reset.newPassword")} autoComplete="new-password" style={inputStyle} />
+        <input type={type} value={m.confirmation} onChange={(e) => m.setConfirmation(e.target.value)} placeholder={t("auth.reset.confirmPassword")}
+          aria-label={t("auth.reset.confirmPassword")} autoComplete="new-password" style={inputStyle}
           onKeyDown={(e) => e.key === "Enter" && m.enregistrer()} />
         <label style={{ fontSize: 12, color: "#64748b", display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
-          <input type="checkbox" checked={m.voir} onChange={(e) => m.setVoir(e.target.checked)} /> Afficher le mot de passe
+          <input type="checkbox" checked={m.voir} onChange={(e) => m.setVoir(e.target.checked)} /> {t("auth.showPassword")}
         </label>
       </div>
       {m.erreur && (
@@ -91,51 +93,45 @@ function EtapeCode({ m, onClose }) {
       )}
       <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
         <button onClick={m.enregistrer} disabled={m.chargement} style={boutonPrincipal(!m.chargement)}>
-          {m.chargement ? "Enregistrement…" : "Enregistrer le mot de passe"}
+          {m.chargement ? t("auth.reset.saving") : t("auth.reset.savePassword")}
         </button>
-        <button onClick={onClose} style={boutonSecondaire}>Annuler</button>
+        <button onClick={onClose} style={boutonSecondaire}>{t("common.cancel")}</button>
       </div>
       <p style={{ margin: "14px 0 0", fontSize: 12.5, color: "#64748b", textAlign: "center", lineHeight: 1.6 }}>
-        {m.erreur?.redemander ? "Il vous faut un nouveau code." : "Code pas reçu ?"}{" "}
+        {m.erreur?.redemander ? t("auth.reset.needNewCode") : t("auth.reset.codeNotReceived")}{" "}
         <button type="button" onClick={m.demander} disabled={m.chargement || m.attente > 0}
           style={{ background: "none", border: "none", padding: 0, fontSize: "inherit", fontFamily: "inherit", fontWeight: 700,
             color: m.attente > 0 ? "#94a3b8" : C.blue, cursor: m.chargement || m.attente > 0 ? "default" : "pointer" }}>
-          {m.attente > 0 ? `Renvoyer le code (dans ${dureeLisible(m.attente)})` : "Renvoyer le code"}
+          {m.attente > 0 ? t("auth.reset.resendIn", { delay: dureeLisible(m.attente) }) : t("auth.reset.resend")}
         </button>
       </p>
     </>
   );
 }
 
-function Resultat({ resultat, onClose }) {
+function Resultat({ t, resultat, onClose }) {
   return (
     <>
       <div style={{ ...encadre("#ecfdf5", "#6ee7b7", "#065f46"), margin: "12px 0 16px" }}>
-        {resultat.method === "email" && (
-          <>✉️ Un lien de réinitialisation a été envoyé à votre adresse e-mail{resultat.emailMasque ? ` (${resultat.emailMasque})` : ""}. Ouvrez-le pour choisir un nouveau mot de passe. Pensez à vérifier les indésirables.</>
-        )}
-        {resultat.method === "direction" && (
-          <>📩 Votre Direction a été notifiée dans sa messagerie interne. Elle réinitialisera votre mot de passe depuis « Comptes & Postes » et vous communiquera le nouveau.</>
-        )}
-        {resultat.method !== "email" && resultat.method !== "direction" && (
-          <>Si ce compte existe, la marche à suivre a été déclenchée : un e-mail de réinitialisation, un code par SMS, ou une notification à votre Direction. Rapprochez-vous de la Direction si vous ne recevez rien.</>
-        )}
+        {resultat.method === "email" && t("auth.reset.sentEmail", { email: resultat.emailMasque ? ` (${resultat.emailMasque})` : "" })}
+        {resultat.method === "direction" && t("auth.reset.sentDirection")}
+        {resultat.method !== "email" && resultat.method !== "direction" && t("auth.reset.sentGeneric")}
       </div>
-      <button onClick={onClose} style={{ ...boutonPrincipal(true), width: "100%", background: C.blue }}>Fermer</button>
+      <button onClick={onClose} style={{ ...boutonPrincipal(true), width: "100%", background: C.blue }}>{t("common.close")}</button>
     </>
   );
 }
 
-function Succes({ compte, onConnecter }) {
+function Succes({ t, compte, onConnecter }) {
   return (
     <>
       <div style={{ ...encadre("#ecfdf5", "#6ee7b7", "#065f46"), margin: "12px 0 16px" }}>
-        ✅ Mot de passe enregistré.
+        {t("auth.reset.saved")}
         {compte.login && (
-          <> Connectez-vous avec le code école <strong>{compte.schoolId}</strong> et l'identifiant <strong>{compte.login}</strong>.</>
+          <> <Trans i18nKey="auth.reset.loginWith" values={{ school: compte.schoolId, login: compte.login }} components={{ b: <strong /> }} /></>
         )}
       </div>
-      <button onClick={onConnecter} style={{ ...boutonPrincipal(true), width: "100%" }}>Se connecter</button>
+      <button onClick={onConnecter} style={{ ...boutonPrincipal(true), width: "100%" }}>{t("auth.loginButton")}</button>
     </>
   );
 }

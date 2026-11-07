@@ -23,15 +23,20 @@ export function ComptaTabsScolarite({ c, readOnly, annee, userRole }) {
         ensPrimaire={c.ensPrimaire}
         ensCollege={c.ensCollege}
         ensLycee={c.ensLycee}
+        ensPrescolaire={c.ensPrescolaire}
         ajEnsPrim={c.ajEnsPrim}
         ajEnsCol={c.ajEnsCol}
         ajEnsLyc={c.ajEnsLyc}
+        ajEnsPresco={c.ajEnsPresco}
         modEnsPrim={c.modEnsPrim}
         modEnsCol={c.modEnsCol}
         modEnsLyc={c.modEnsLyc}
+        modEnsPresco={c.modEnsPresco}
         supEnsPrim={c.supEnsPrim}
         supEnsCol={c.supEnsCol}
         supEnsLyc={c.supEnsLyc}
+        supEnsPresco={c.supEnsPresco}
+        classesTitulaire={c.classesTitulaire}
       />}
 
       {/* ══ ONGLET PERSONNEL ══ */}
@@ -84,7 +89,8 @@ export function ComptaTabsScolarite({ c, readOnly, annee, userRole }) {
         tousElevesScolarite={c.tousElevesScolarite}
         ajoutParNiveau={c.ajoutParNiveau}
         suppressionParNiveau={c.suppressionParNiveau}
-        modifParNiveau={c.modifParNiveau}
+        modChampParNiveau={c.modChampParNiveau}
+        rechargerParNiveau={c.rechargerParNiveau}
         ensureClasse={c.ensureClasse}
         sortAlpha={c.sortAlpha}
         encaisserInscriptions={c.encaisserInscriptions}
@@ -103,6 +109,8 @@ export function ComptaTabsScolarite({ c, readOnly, annee, userRole }) {
         canEditEleves={c.canEditEleves}
         eleves={c.eleves}
         elevesFiltres={c.elevesFiltres}
+        elevesFamille={c.elevesFamille}
+        elevesAnneeParNiveau={c.elevesAnneeParNiveau}
         classesU={c.classesU}
         niveau={c.niveau}
         setNiveau={c.setNiveau}
@@ -111,6 +119,7 @@ export function ComptaTabsScolarite({ c, readOnly, annee, userRole }) {
         moisAnnee={c.moisAnnee}
         annee={annee}
         anneeScolarite={c.anneeConsultee}
+        estArchive={c.enModeArchive}
         readOnly={readOnly}
         canCreate={c.canCreate}
         canEdit={c.canEdit}

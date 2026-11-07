@@ -10,6 +10,7 @@ import {
   getSectionForClasse,
   getSectionLabel,
 } from "../../constants.js";
+import { getForfaitNet, getSalaryNet } from "../../salary-utils";
 
 // Section d'un élève d'après sa classe (détection par motif : couvre les
 // classes hors listes prédéfinies, ex. « 3ème Année E »). Libellé commun à
@@ -21,12 +22,12 @@ export const sectionPourEleve = (e) => getSectionLabel(getSectionForClasse(e.cla
 const noteMaxPourClasse = (classe) =>
   (["prescolaire", "primaire"].includes(getSectionForClasse(classe)) ? 10 : 20);
 
-// Net d'une fiche de paie (forfait pour Primaire/Personnel, VH sinon).
+// Net d'une fiche de paie : le même calcul que l'onglet Salaires (forfait
+// pour Primaire/Personnel, brut horaire sinon), retenue pour absences
+// comprise. Le rapport le recalculait à part et oubliait la retenue.
 const netSalaire = (s) => {
   const isForfait = s.section === "Primaire" || s.section === "Personnel";
-  return isForfait
-    ? Number(s.montantForfait || 0) - Number(s.bon || 0) + Number(s.revision || 0)
-    : (Number(s.vhExecute || 0) + Number(s.cinqSem || 0)) * Number(s.primeHoraire || 0) - Number(s.bon || 0) + Number(s.revision || 0);
+  return isForfait ? getForfaitNet(s) : getSalaryNet(s);
 };
 
 const triSectionClasse = (a, b) => (a.section + a.classe).localeCompare(b.section + b.classe, "fr");

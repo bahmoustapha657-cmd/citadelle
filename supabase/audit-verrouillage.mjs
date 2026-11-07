@@ -15,7 +15,7 @@ const TABLES = [
   "ecoles", "ecoles_public", "comptes", "postes", "enseignants", "enseignant_classes",
   "classes", "matieres", "eleves", "notes", "absences", "emplois", "enseignements",
   "appreciations", "paiements", "tarifs", "salaires", "parent_eleves", "audit",
-  "recettes", "depenses", "versements", "bons", "personnel",
+  "recettes", "depenses", "versements", "bons", "personnel", "paie_enseignants",
   "messages", "annonces", "documents", "examens", "livrets", "honneurs",
   "membres", "evenements", "historique", "push_subs",
   "messages_internes", "messages_internes_lus",

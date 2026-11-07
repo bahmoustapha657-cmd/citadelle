@@ -124,6 +124,9 @@ export type MensualiteOverview = {
   // Dispenses accordées : combien d'élèves, et ce que l'école y renonce.
   totalElevesExoneres: number;
   totalExonere: number;
+  // Restes dus hors mensualités : le « reste à encaisser » complet du Bilan.
+  totalResteInscriptions: number;
+  totalResteAutres: number;
 };
 
 export function getTarifConfigForClasse(tarifsClasses: TarifClasse[] = [], classe: string = ""): TarifClasse | null {
@@ -404,6 +407,8 @@ export function getMensualiteOverview(eleves: MensualiteEleve[] = [], moisAnnee:
       totalAutresPercus: summary.totalAutresPercus + snapshot.montantAutrePercu,
       totalElevesExoneres: summary.totalElevesExoneres + (aUneExoneration(eleve) ? 1 : 0),
       totalExonere: summary.totalExonere + snapshot.montantExonere,
+      totalResteInscriptions: summary.totalResteInscriptions + snapshot.soldeInscription,
+      totalResteAutres: summary.totalResteAutres + snapshot.soldeAutre,
     };
   }, {
     totalDu: 0,
@@ -415,5 +420,7 @@ export function getMensualiteOverview(eleves: MensualiteEleve[] = [], moisAnnee:
     totalAutresPercus: 0,
     totalElevesExoneres: 0,
     totalExonere: 0,
+    totalResteInscriptions: 0,
+    totalResteAutres: 0,
   });
 }

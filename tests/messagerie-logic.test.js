@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  accuseLecture, annoncesEnAlerte, construireFil, destinatairesAnnonce, filtrerConversations,
+  accuseLecture, annoncesEnAlerte, construireFil, couleursEcoleMessagerie, destinatairesAnnonce, filtrerConversations,
   formatChrono, formatDuree, initiales, lecteursMessage, libelleAppel, libelleJour,
   messagerieOuverteA, peutPublierAnnonce, titreConversation, totalNonLus, trierAnnonces,
 } from "../src/components/messagerie/messagerie-logic.js";
@@ -113,4 +113,16 @@ test("appels et durées", () => {
   assert.equal(formatDuree(0), "0 s");
   assert.equal(initiales("Aïssatou  Diallo"), "AD");
   assert.equal(initiales(""), "?");
+});
+
+test("couleur d'école : écriture lisible sur la bulle, couleur gardée", () => {
+  // Bleu nuit (défaut) : écriture blanche, couleur utilisable en texte.
+  assert.deepEqual(couleursEcoleMessagerie("#0A1628"), { encre: "#fff", lu: "#7dd3fc", accent: "var(--sc1)" });
+  // Vert citron (La Citadelle), jaune : écriture bleu nuit, titres du thème en texte.
+  assert.deepEqual(couleursEcoleMessagerie("#a8fc54"), { encre: "#0A1628", lu: "#0369a1", accent: "var(--lc-text-brand)" });
+  assert.equal(couleursEcoleMessagerie("#ff0").encre, "#0A1628");
+  assert.equal(couleursEcoleMessagerie("#2563eb").encre, "#fff");
+  // Couleur absente ou illisible : rendu d'origine.
+  assert.equal(couleursEcoleMessagerie(undefined).encre, "#fff");
+  assert.equal(couleursEcoleMessagerie("rouge").accent, "var(--sc1)");
 });

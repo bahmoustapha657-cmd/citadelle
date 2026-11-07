@@ -213,7 +213,7 @@ export const terminerAppel = (id, statut) => rpc("msg_appel_terminer", { p_id: i
 
 // Appels entrants qui sonnent encore (ouverture de l'app depuis une
 // notification « X vous appelle »).
-export async function appelsEntrantsEnAttente(moi, depuisMs = 45000) {
+export async function appelsEntrantsEnAttente(moi, depuisMs = 60000) {
   const depuis = new Date(Date.now() - depuisMs).toISOString();
   const { data } = await getSupabase().from("msg_appels").select("*")
     .eq("appele_id", moi).eq("statut", "sonne").gt("created_at", depuis)
@@ -221,21 +221,49 @@ export async function appelsEntrantsEnAttente(moi, depuisMs = 45000) {
   return data || [];
 }
 
+// Canal privé d'un appel (relais de secours) : la RLS de realtime.messages le
+// réserve aux deux participants d'un appel en cours. `pret` se résout une fois
+// le canal rejoint. Coupé du réseau, un paquet de voix est perdu : le repli
+// automatique de `send` vers REST arriverait de toute façon trop tard.
+export function ouvrirCanalAppel(id, surMessage) {
+  const sb = getSupabase();
+  const canal = sb.channel(`appel:${id}`, { config: { private: true, broadcast: { self: false } } });
+  let rejoint = false;
+  canal.on("broadcast", { event: "*" }, ({ event, payload }) => surMessage(event, payload));
+  const pret = new Promise((resolve, reject) => {
+    canal.subscribe((statut, erreur) => {
+      rejoint = statut === "SUBSCRIBED";
+      if (rejoint) resolve();
+      else if (statut === "CHANNEL_ERROR" || statut === "TIMED_OUT") reject(erreur || new Error("Canal d'appel indisponible."));
+    });
+  });
+  return {
+    pret,
+    envoyer(evenement, charge = {}) {
+      if (rejoint) canal.send({ type: "broadcast", event: evenement, payload: charge }).catch(() => {});
+    },
+    fermer() { sb.removeChannel(canal); },
+  };
+}
+
 // Serveurs ICE : TURN éphémère si l'Edge Function est configurée, sinon STUN.
+// Délai borné : sur réseau faible, décrocher ne doit pas rester suspendu à
+// cette réponse pendant que l'appelant finit de sonner dans le vide.
 const STUN_DEFAUT = [{ urls: ["stun:stun.cloudflare.com:3478", "stun:stun.l.google.com:19302"] }];
+const DELAI_SERVEURS_ICE_MS = 8000;
 export async function serveursIce() {
   try {
-    const { data, error } = await getSupabase().functions.invoke("turn-credentials", { body: {} });
+    const { data, error } = await getSupabase().functions.invoke("turn-credentials", { body: {}, timeout: DELAI_SERVEURS_ICE_MS });
     if (!error && Array.isArray(data?.iceServers) && data.iceServers.length) return data.iceServers;
   } catch { /* fonction non déployée : STUN */ }
   return STUN_DEFAUT;
 }
 
 // ── Notifications push (best-effort, jamais bloquant) ──
-export function notifier(userIds, titre, corps, url = "/") {
+export function notifier(userIds, titre, corps, url = "/", options = {}) {
   const ids = [...new Set((userIds || []).filter(Boolean))];
   if (!ids.length) return;
-  envoyerPushUtilisateurs(ids, titre, corps, url).catch(() => {});
+  envoyerPushUtilisateurs(ids, titre, corps, url, options).catch(() => {});
 }
 
 // ── Appels de groupe (réunions, SFU Cloudflare via l'Edge Function reunion) ──

@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.edugest.app",
+      "sha256_cert_fingerprints": [
+        "B1:AA:6F:DF:82:61:CD:3E:8D:CD:AD:6F:47:98:5A:CD:DE:04:38:B7:F3:45:BA:FF:23:90:E3:10:D1:9D:6D:AF"
+      ]
+    }
+  }
+]

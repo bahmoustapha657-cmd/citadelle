@@ -247,3 +247,127 @@ export async function lirePaiementsEnLigne(eleveId) {
   if (error) throw error;
   return data;
 }
+
+// ── Une personne, plusieurs espaces (espaces-multiples.spec.js) ───────────
+// Kadiatou SYLLA est parent d'élève ET enseignante : deux comptes, que la
+// Direction relie. Elle se connecte comme parent puis passe à son espace
+// enseignant sans mot de passe.
+export const PERSONNE_PARENT = { login: "622555001", mdp: "E2e-Kadiatou-2026", nom: "Kadiatou SYLLA" };
+export const PERSONNE_ENSEIGNANT = { login: "ens.622555001", mdp: "E2e-Kadiatou-Ens-2026", nom: "Kadiatou SYLLA" };
+
+// Appel d'account-manage au nom d'un compte, SANS lever d'erreur : les
+// scénarios de sécurité vérifient justement les refus (statut HTTP).
+export async function appelerAccountManage(compte, corps) {
+  const sb = await clientConnecte(compte);
+  const { data: { session } } = await sb.auth.getSession();
+  const r = await fetch(`${SUPABASE_URL}/functions/v1/account-manage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: ANON_KEY, Authorization: `Bearer ${session.access_token}` },
+    body: JSON.stringify(corps),
+  });
+  return { status: r.status, data: await r.json().catch(() => ({})) };
+}
+
+// Crée (une fois) les deux comptes de la personne, non reliés. Renvoie leurs id.
+export async function preparerPersonneDeuxEspaces() {
+  const admin = clientAdmin();
+  const id = await ecoleId(admin);
+  const ids = {};
+  for (const [cle, compte, role, extra] of [
+    ["parent", PERSONNE_PARENT, "parent", { label: "Parent" }],
+    ["enseignant", PERSONNE_ENSEIGNANT, "enseignant", { label: "Enseignant", section: SECTION, sections: [SECTION] }],
+  ]) {
+    let { data: c } = await admin.from("comptes").select("id").eq("ecole_id", id).eq("login", compte.login).maybeSingle();
+    if (!c) {
+      const r = await appelerAccountManage(DIRECTION, {
+        action: "create", login: compte.login, mdp: compte.mdp, role, nom: compte.nom, statut: "Actif", ...extra,
+      });
+      if (r.status !== 200) throw new Error(`Création ${compte.login} : HTTP ${r.status} ${r.data.error || ""}`);
+      c = { id: r.data.id };
+    }
+    await admin.from("comptes").update({ premiere_co: false }).eq("id", c.id);
+    ids[cle] = c.id;
+  }
+  return ids;
+}
+
+export async function lireCompte(compteId) {
+  const { data, error } = await clientAdmin().from("comptes").select("id, personne_id, premiere_co").eq("id", compteId).single();
+  if (error) throw error;
+  return data;
+}
+
+export async function lireAudit(action) {
+  const admin = clientAdmin();
+  const { data, error } = await admin.from("audit").select("action, auteur, cible").eq("ecole_id", await ecoleId(admin)).eq("action", action);
+  if (error) throw error;
+  return data || [];
+}
+
+// ── Salaires cachés aux chefs de section (salaires-chefs-section.spec.js) ──
+// Un chef de section (Direction primaire) ouvre l'onglet Enseignants : il ne
+// doit pas voir le forfait mensuel d'un titulaire ; la Direction générale,
+// qui lit la Comptabilité, si.
+export const CHEF_PRIMAIRE = { login: "chef.primaire", mdp: "E2e-ChefPrimaire-2026", nom: "Chef Primaire" };
+export const ENSEIGNANT_PRIMAIRE = { nom: "BALDE", prenom: "Ousmane", classeTitle: "CP A", montantForfait: 1500000 };
+// Enseignant dont la paie n'existe QUE dans la table paie_enseignants (saisie
+// par la Comptabilité) : prouve que les écrans la lisent bien là.
+export const ENSEIGNANT_PRIMAIRE_2 = { nom: "KOUROUMA", prenom: "Mariama", classeTitle: "CP B" };
+export const FORFAIT_2 = 1250000;
+
+// Paie d'un enseignant telle qu'en base (service_role : hors RLS).
+export async function lirePaie(enseignantId) {
+  const { data, error } = await clientAdmin().from("paie_enseignants").select("id, ecole_id, extra").eq("id", enseignantId).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function lireFicheEnseignant(nom) {
+  const admin = clientAdmin();
+  const { data, error } = await admin.from("enseignants").select("id, extra")
+    .eq("ecole_id", await ecoleId(admin)).eq("section", "primaire").eq("nom", nom).single();
+  if (error) throw error;
+  return data;
+}
+
+// Crée (une fois) le compte du chef de section et les fiches des enseignants.
+// Renvoie les id des deux fiches.
+export async function preparerChefPrimaire() {
+  const admin = clientAdmin();
+  const id = await ecoleId(admin);
+  let { data: c } = await admin.from("comptes").select("id").eq("ecole_id", id).eq("login", CHEF_PRIMAIRE.login).maybeSingle();
+  if (!c) {
+    const r = await appelerAccountManage(DIRECTION, {
+      action: "create", login: CHEF_PRIMAIRE.login, mdp: CHEF_PRIMAIRE.mdp, role: "primaire",
+      nom: CHEF_PRIMAIRE.nom, label: "Direction Primaire", statut: "Actif",
+    });
+    if (r.status !== 200) throw new Error(`Création ${CHEF_PRIMAIRE.login} : HTTP ${r.status} ${r.data.error || ""}`);
+    c = { id: r.data.id };
+  }
+  await admin.from("comptes").update({ premiere_co: false }).eq("id", c.id);
+
+  // Fiches écrites par la direction (RLS) sous la forme exacte que l'app
+  // produit. La première porte son forfait, comme l'enregistre l'écran
+  // Comptabilité → Enseignants : le déclencheur le range dans la table.
+  const direction = await clientConnecte(DIRECTION);
+  const ids = [];
+  for (const ens of [ENSEIGNANT_PRIMAIRE, ENSEIGNANT_PRIMAIRE_2]) {
+    let { data: fiche } = await admin.from("enseignants").select("id")
+      .eq("ecole_id", id).eq("section", "primaire").eq("nom", ens.nom).maybeSingle();
+    if (!fiche) {
+      const { data, error } = await direction.from("enseignants").insert({
+        ...toRow("enseignants", { ...ens, statut: "Titulaire" }).row, ecole_id: id, section: "primaire",
+      }).select("id").single();
+      if (error) throw new Error(`enseignants : ${error.message}`);
+      fiche = data;
+    }
+    ids.push(fiche.id);
+  }
+
+  // La seconde : paie saisie par la Comptabilité directement dans la table.
+  const comptable = await clientConnecte(COMPTABLE);
+  const { error } = await comptable.from("paie_enseignants")
+    .upsert({ id: ids[1], ecole_id: id, extra: { montantForfait: FORFAIT_2 } }, { onConflict: "id" });
+  if (error) throw new Error(`paie_enseignants : ${error.message}`);
+  return { ecoleId: id, ens1: ids[0], ens2: ids[1] };
+}

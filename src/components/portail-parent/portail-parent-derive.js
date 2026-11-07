@@ -97,3 +97,13 @@ export function computeBulletinPeriode(notesPeriode, eleve, section) {
     maxNote: getBaremeForSection(section),
   };
 }
+
+// Emploi du temps de la classe de l'enfant. Deux sections peuvent porter un
+// même nom de classe : quand les créneaux disent leur section, on garde celle
+// de l'enfant.
+export function emploisDeLEleve(emplois = [], eleve = {}) {
+  const deLaClasse = emplois.filter((c) => c.classe && c.classe === eleve.classe);
+  if (!eleve.section) return deLaClasse;
+  const memeSection = deLaClasse.filter((c) => !c.section || c.section === eleve.section);
+  return memeSection.length ? memeSection : deLaClasse;
+}

@@ -1,14 +1,17 @@
+import { useTranslation } from "react-i18next";
 import { activateWaitingWorker } from "./use-update-banner";
 
-// Bannière avec bouton "Recharger" (fallback si l'utilisateur saisit).
-export function UpdateAvailableBanner({ registration }) {
+// Bannière avec bouton "Recharger" : nouvelle version en attente d'un moment
+// sûr (saisie, fenêtre ou appel en cours). Elle s'installe sinon d'elle-même
+// dès que l'utilisateur a fini (arrière-plan, retour sur l'appli, inactivité).
+export function UpdateAvailableBanner({ plusTard }) {
+  const { t } = useTranslation();
   return (
     <div
       role="status"
       style={{
         position: "fixed",
-        left: 16,
-        right: 16,
+        insetInline: 16,
         bottom: 16,
         zIndex: 9999,
         background: "#0A1628",
@@ -18,30 +21,47 @@ export function UpdateAvailableBanner({ registration }) {
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
+        flexWrap: "wrap",
         gap: 12,
         boxShadow: "0 10px 30px rgba(0,0,0,.25)",
         maxWidth: 520,
         margin: "0 auto",
       }}
     >
-      <span style={{ fontSize: 14 }}>
-        Une nouvelle version d'EduGest est disponible.
+      <span style={{ fontSize: 14, flex: "1 1 220px" }}>
+        {t("update.available")}
       </span>
-      <button
-        type="button"
-        onClick={() => activateWaitingWorker(registration)}
-        style={{
-          background: "#3b82f6",
-          color: "#fff",
-          border: 0,
-          borderRadius: 8,
-          padding: "8px 14px",
-          fontWeight: 600,
-          cursor: "pointer",
-        }}
-      >
-        Recharger
-      </button>
+      <span style={{ display: "flex", gap: 8 }}>
+        <button
+          type="button"
+          onClick={plusTard}
+          style={{
+            background: "transparent",
+            color: "#cbd5e1",
+            border: "1px solid rgba(255,255,255,.25)",
+            borderRadius: 8,
+            padding: "8px 12px",
+            cursor: "pointer",
+          }}
+        >
+          {t("update.later")}
+        </button>
+        <button
+          type="button"
+          onClick={() => activateWaitingWorker()}
+          style={{
+            background: "#3b82f6",
+            color: "#fff",
+            border: 0,
+            borderRadius: 8,
+            padding: "8px 14px",
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          {t("update.reload")}
+        </button>
+      </span>
     </div>
   );
 }

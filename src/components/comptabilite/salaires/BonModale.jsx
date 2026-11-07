@@ -1,17 +1,21 @@
 import React from "react";
 import { Btn, Input, Modale, Selec } from "../../ui";
-import { agentsPourBon, sectionDuBon, sectionsPaieProposees } from "./bon-agents";
+import { agentsPourBon, sectionDuBon, sectionsBonProposees } from "./bon-agents";
+import { dateDuJour } from "../paiements-journal";
 
-export function BonModale({ modal, canCreate, canEdit, form, setForm, setModal, moisModale, moisSalaire, ensCollege = [], ensLycee = [], ensPrimaire = [], personnel = [], ajBon, modBon, enreg, groupesPaie }) {
+export function BonModale({ modal, canCreate, canEdit, form, setForm, setModal, moisModale, moisSalaire, ensCollege = [], ensLycee = [], ensPrimaire = [], ensPrescolaire = [], personnel = [], ajBon, modBon, enreg, groupesPaie }) {
   if (!((modal==="add_b"&&canCreate)||(modal==="edit_b"&&canEdit))) return null;
   const chg = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
-  const listes = { ensCollege, ensLycee, ensPrimaire, personnel };
+  const listes = { ensCollege, ensLycee, ensPrimaire, ensPrescolaire, personnel };
   const moisBon = form.mois||moisModale;
+  // Date de remise, imprimée sur la fiche du bon : le jour même à la
+  // création ; un ancien bon sans date reste vide tant qu'on ne la saisit pas.
+  const dateBon = form.date ?? (modal==="add_b" ? dateDuJour() : "");
   // Un bon repris de l'ancienne base n'a pas de section : on retrouve celle de
   // l'agent dans les fiches actuelles, et l'enregistrement la fixe.
-  const secBon = form.section||sectionDuBon(form.nom, listes)||sectionsPaieProposees(groupesPaie)[0];
+  const secBon = form.section||sectionDuBon(form.nom, listes)||sectionsBonProposees(groupesPaie)[0];
   // Groupes ouverts dans l'école (+ la section du bon ouvert).
-  const sections = sectionsPaieProposees(groupesPaie, secBon);
+  const sections = sectionsBonProposees(groupesPaie, secBon);
   // Agents en fiche pour la section — sans attendre que la paie du mois soit
   // générée : un bon est une avance consentie en cours de mois.
   const agents = agentsPourBon(secBon, listes, form.nom);
@@ -36,15 +40,18 @@ export function BonModale({ modal, canCreate, canEdit, form, setForm, setModal, 
           : `Aucun enseignant en fiche pour la section ${secBon} : ajoutez-le d'abord dans l'onglet Enseignants.`}
       </div>}
       <div style={{height:10}}/>
+      <Input label="Date de remise" type="date" value={dateBon} onChange={chg("date")}/>
+      <div style={{height:10}}/>
       <Input label="Montant du bon (GNF)" type="number" value={form.montant||""} onChange={chg("montant")} placeholder="Ex : 50000"/>
       <div style={{height:10}}/>
       <Input label="Motif" value={form.motif||""} onChange={chg("motif")} placeholder="Ex : Retard, Absence injustifiée…"/>
       <div style={{marginTop:12,padding:"10px 14px",background:"#fce8e8",borderRadius:8,fontSize:12,color:"#9b2020"}}>
         Le bon sera déduit du salaire net lors de l'application (États de salaires → ✔ Appliquer les bons), une fois la paie du mois générée.
+        {secBon==="Préscolaire"&&" Les enseignants du préscolaire étant payés avec le primaire, il apparaîtra sur leur ligne du tableau Primaire."}
       </div>
       <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
         <Btn v="ghost" onClick={()=>setModal(null)}>Annuler</Btn>
-        <Btn onClick={()=>enreg(ajBon,modBon,{montant:Number(form.montant||0),section:secBon,mois:moisBon})}>Enregistrer</Btn>
+        <Btn onClick={()=>enreg(ajBon,modBon,{montant:Number(form.montant||0),section:secBon,mois:moisBon,date:dateBon})}>Enregistrer</Btn>
       </div>
     </Modale>
   );

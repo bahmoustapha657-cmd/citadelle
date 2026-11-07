@@ -2,6 +2,39 @@
 // paiement, masse salariale, finances, tendances mensuelles, événements).
 // Aucune dépendance React/Firestore — entièrement testable en isolation.
 import { moisExigibles } from "../../depart-utils.js";
+import { TOUS_MOIS_LONGS } from "../../constants.js";
+
+// 1er jour d'un mois scolaire nommé (« Octobre ») de l'année « AAAA-AAAA » :
+// septembre → décembre tombent dans la première année, janvier → août dans
+// la seconde. null si le mois ou l'année ne sont pas reconnus.
+export function dateMoisScolaire(mois, annee) {
+  const m = /^(\d{4})-(\d{4})$/.exec(String(annee || "").trim());
+  const rang = TOUS_MOIS_LONGS.indexOf(mois); // 0 = septembre
+  if (!m || rang < 0) return null;
+  return new Date(rang <= 3 ? Number(m[1]) : Number(m[2]), (rang + 8) % 12, 1);
+}
+
+const entames = (moisSalaire, annee, aujourdhui) => moisSalaire.filter((mois) => {
+  const debut = dateMoisScolaire(mois, annee);
+  return debut && debut <= aujourdhui;
+});
+
+// Mois scolaires déjà commencés (au moins 1, au plus toute l'année) : sert de
+// diviseur à la moyenne mensuelle des encaissements.
+export function nbMoisEntames(moisSalaire = [], annee, aujourdhui = new Date()) {
+  const n = entames(moisSalaire, annee, aujourdhui).length;
+  return Math.min(Math.max(n, 1), Math.max(moisSalaire.length, 1));
+}
+
+// Mois de paie à montrer : le plus récent mois déjà commencé qui a des fiches
+// de paie ; à défaut le mois en cours, ou le premier de l'année. L'ancienne
+// tuile prenait toujours le dernier mois de la liste (juin) : en octobre, elle
+// affichait les salaires de juin, donc 0.
+export function moisPaieRecent(salaires = [], moisSalaire = [], annee, aujourdhui = new Date()) {
+  const commences = entames(moisSalaire, annee, aujourdhui);
+  const avecFiches = commences.filter((mois) => salaires.some((s) => s.mois === mois));
+  return avecFiches[avecFiches.length - 1] || commences[commences.length - 1] || moisSalaire[0] || "";
+}
 
 // Taux de paiement des mensualités pour un groupe d'élèves : mois payés sur
 // mois dus. Un élève parti ne doit que les mois entamés avant son départ

@@ -6,6 +6,7 @@
 // leurs dépendances par injection pour rester découplées du parent.
 
 import { fmt, initMens } from "../../constants";
+import i18n from "../../i18n";
 import { sumBonsForSalary } from "../../salary-utils";
 import { notifierParents } from "../../backend/notify-supabase";
 import { champsRetraitAcompte } from "../../paiements-scolarite";
@@ -35,7 +36,7 @@ async function journaliser(ajPaiement, ecriture, toast) {
     const resultat = await ajPaiement(ecriture);
     if (resultat?.enAttente) {
       console.error("journal des paiements:", resultat.erreur);
-      toast?.("Paiement enregistré. Sa ligne de journal de caisse n'a pas pu s'écrire : elle est gardée sur cet appareil et sera inscrite automatiquement.", "warning");
+      toast?.(i18n.t("accounting.journalPendingKept"), "warning");
     }
   } catch (e) {
     console.error("journal des paiements:", e);

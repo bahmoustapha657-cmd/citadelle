@@ -11,7 +11,7 @@ const COULEURS_TRANCHES = ["#fbbf24", "#34d399", "#60a5fa", "#f472b6", "#a78bfa"
 export function MensualitesTable({
   eleves, elevesFiltres, moisAnnee, annee, tarifsClasses, readOnly, canCreate, canEdit,
   schoolInfo, toggleMens, toggleFraisAnnexe, getTarifInscriptionEleve, ouvrirEncaissement,
-  tranches = [],
+  tranches = [], fratrieDe, ouvrirRecuFamille,
 }) {
   if (eleves.length === 0) return <Vide icone="🎓" msg="Aucun élève" />;
 
@@ -73,6 +73,7 @@ export function MensualitesTable({
               readOnly={readOnly} canCreate={canCreate} canEdit={canEdit} schoolInfo={schoolInfo}
               toggleMens={toggleMens} toggleFraisAnnexe={toggleFraisAnnexe}
               getTarifInscriptionEleve={getTarifInscriptionEleve} ouvrirEncaissement={ouvrirEncaissement}
+              fratrie={fratrieDe ? fratrieDe(e) : [e]} ouvrirRecuFamille={ouvrirRecuFamille}
             />
           ))}</tbody>
         </table>

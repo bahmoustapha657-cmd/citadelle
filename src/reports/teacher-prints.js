@@ -7,25 +7,15 @@ import { edugestBrandHTML } from "./print-helpers.js";
 
 import { groupSalariesByPersonMonth } from "../salary-utils.js";
 import { qrSecuriseImgHtml, qrPayload } from "./qr.js";
+import { imprimerEdtPortail } from "./edt-portail-print.js";
 
-// Formatage heure d'un créneau d'EDT (gestion des deux formats stockés :
-// "heure" simple ou "heureDebut" + "heureFin").
-function formatEmploiHeure(emploi) {
-  if (emploi.heure) return emploi.heure;
-  if (emploi.heureDebut || emploi.heureFin) {
-    return [emploi.heureDebut || "", emploi.heureFin || ""].filter(Boolean).join(" - ");
-  }
-  return "-";
-}
-
-// Imprime l'emploi du temps complet de l'enseignant (table A4).
-export function imprimerEdtEnseignant({ emplois, nomEns, matiere, schoolInfo, annee }) {
-  const rows = emplois.map((emploi) => (
-    `<tr><td>${emploi.jour || "-"}</td><td>${formatEmploiHeure(emploi)}</td><td>${emploi.classe || "-"}</td><td>${emploi.matiere || matiere || "-"}</td></tr>`
-  )).join("");
-  const w = window.open("", "_blank");
-  w.document.write(`<!DOCTYPE html><html><head><title>EDT - ${nomEns}</title><style>@page{size:A4 portrait;margin:0}@media print{html,body{margin:0}button{display:none}}body{font-family:Arial,sans-serif;padding:14mm 12mm;margin:0}table{border-collapse:collapse;width:100%}th,td{border:1px solid #d0dce8;padding:8px 10px;font-size:12px}th{background:#0A1628;color:#fff}</style></head><body><h2 style="color:#0A1628">Emploi du temps - ${nomEns}</h2><p style="color:#555">${matiere} - ${schoolInfo.nom} - ${annee}</p><table><tr><th>Jour</th><th>Heure</th><th>Classe</th><th>Matiere</th></tr>${rows}</table>${edugestBrandHTML(schoolInfo)}<br/><button onclick="window.print()">Imprimer</button></body></html>`);
-  w.document.close();
+// Imprime l'emploi du temps de l'enseignant : grille A4 paysage (classe +
+// matière dans chaque case), cf. edt-portail-print.js.
+export function imprimerEdtEnseignant({ emplois, nomEns, matiere, schoolInfo, annee, joursOuvrables }) {
+  imprimerEdtPortail({
+    emplois, joursOuvrables, mode: "enseignant", matiereParDefaut: matiere,
+    titre: `Emploi du temps — ${nomEns}`, sousTitre: matiere || "", schoolInfo, annee,
+  });
 }
 
 // Imprime un récapitulatif des fiches de paie sur l'année. Un mois =

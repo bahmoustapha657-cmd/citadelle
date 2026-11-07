@@ -1,5 +1,8 @@
+import { useTranslation } from "react-i18next";
+
 // Barre d'onglets du portail parent (signale les onglets bloqués par impayé).
 export function TabNav({ tabs, tab, setTab, c1 }) {
+  const { t } = useTranslation();
   return (
     <div style={{ background: "#fff", borderBottom: "2px solid #e2e8f0", padding: "0 24px", display: "flex", gap: 0, overflowX: "auto" }}>
       {tabs.map((item) => (
@@ -19,7 +22,7 @@ export function TabNav({ tabs, tab, setTab, c1 }) {
             opacity: item.bloque && tab !== item.id ? 0.75 : 1,
           }}
         >
-          {item.bloque ? "Bloque - " : ""}
+          {item.bloque ? `🔒 ${t("parent.tabBlocked")} — ` : ""}
           {item.label}
         </button>
       ))}

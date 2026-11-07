@@ -28,12 +28,34 @@ const DEJA_PRESENTE = "23505"; // unique_violation (clé primaire)
 // erreur interne peut se reproduire à l'identique et bloquerait la file.
 const STATUTS_PASSAGERS = new Set([0, 408, 425, 429, 502, 503, 504, 520, 521, 522, 523, 524]);
 
+// Session expirée ou absente : jeton refusé (401, PGRST301 « JWT expired »,
+// PGRST303). Ce n'est pas un refus de la donnée : l'écriture attend en file que
+// l'utilisateur soit reconnecté, au lieu d'être jetée. Cas réel : un poste
+// resté hors ligne plusieurs jours revient avec un jeton périmé.
+const CODES_SESSION = new Set(["PGRST301", "PGRST302", "PGRST303"]);
+
+export function estErreurSession(err) {
+  if (err?.status === 401 || CODES_SESSION.has(err?.code)) return true;
+  const msg = String(err?.message || "").toLowerCase();
+  return msg.includes("jwt expired");
+}
+
 export function estErreurPassagere(err, { enLigne = true } = {}) {
   if (!enLigne) return true;
-  if (STATUTS_PASSAGERS.has(err?.status)) return true;
+  if (STATUTS_PASSAGERS.has(err?.status) || estErreurSession(err)) return true;
   const msg = String(err?.message || "").toLowerCase();
   return msg.includes("failed to fetch") || msg.includes("load failed")
     || msg.includes("network") || msg.includes("timeout");
+}
+
+// Lève une erreur de SESSION (donc passagère) s'il n'y a pas de session
+// utilisable : jeton expiré que le rafraîchissement n'a pas pu renouveler
+// (réseau instable, session révoquée, déconnexion).
+export async function exigerSession(sb) {
+  const { data, error } = await sb.auth.getSession();
+  if (error || !data?.session?.access_token) {
+    throw Object.assign(new Error("Session expirée : écritures gardées en file jusqu'à la reconnexion."), { status: 401 });
+  }
 }
 
 // Erreur supabase-js → exception qui garde le code et le statut HTTP de la

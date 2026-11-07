@@ -1,6 +1,9 @@
+import { useTranslation } from "react-i18next";
+
 // Bannière d'alerte abonnement : expiration, période de grâce ou approche de
 // la limite du plan gratuit. Ne s'affiche que si un de ces cas est vrai.
 export function AbonnementBanniere({ planInfo }) {
+  const { t } = useTranslation();
   const banniereVisible = planInfo.planEstExpire || planInfo.enPeriodeGrace
     || (planInfo.joursRestants !== null && planInfo.joursRestants <= 30)
     || (planInfo.planCourant === "gratuit" && planInfo.totalElevesActifs >= 40);
@@ -18,17 +21,15 @@ export function AbonnementBanniere({ planInfo }) {
       <div style={{ flex: 1 }}>
         <p style={{ margin: 0, fontWeight: 800, fontSize: 13, color: planInfo.planEstExpire ? "#991b1b" : planInfo.enPeriodeGrace ? "#c2410c" : "#92400e" }}>
           {planInfo.planEstExpire
-            ? "Abonnement expiré — accès limité à 50 élèves"
+            ? t("dashboard.sub.expiredBanner")
             : planInfo.enPeriodeGrace
-              ? `Période de grâce — encore ${planInfo.joursGrace} jour(s) d'accès complet`
+              ? t("dashboard.sub.graceBanner", { days: planInfo.joursGrace })
               : planInfo.joursRestants !== null && planInfo.joursRestants <= 30
-                ? `Abonnement ${planInfo.planLabel} expire dans ${planInfo.joursRestants} jour(s)`
-                : `Plan Gratuit : ${planInfo.totalElevesActifs}/50 élèves — ${planInfo.peutAjouterEleve ? "bientôt à la limite" : "limite atteinte"}`}
+                ? t("dashboard.sub.expiresIn", { plan: planInfo.planLabel, days: planInfo.joursRestants })
+                : t(planInfo.peutAjouterEleve ? "dashboard.sub.freeNearLimit" : "dashboard.sub.freeLimitReached", { count: planInfo.totalElevesActifs })}
         </p>
         <p style={{ margin: "2px 0 0", fontSize: 11, color: "#6b7280" }}>
-          {planInfo.enPeriodeGrace
-            ? "Renouvelez votre abonnement avant la fin de la période de grâce pour ne pas perdre l'accès."
-            : "Souscrivez un abonnement pour continuer à inscrire des élèves sans limite."}
+          {planInfo.enPeriodeGrace ? t("dashboard.sub.renewBeforeEnd") : t("dashboard.sub.subscribeToContinue")}
         </p>
       </div>
     </div>

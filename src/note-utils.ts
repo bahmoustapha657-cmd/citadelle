@@ -40,6 +40,10 @@ const MOYENNE_TYPES = new Set([
 // (coef 1), chacune notée /20. Dès qu'une rubrique est présente, la moyenne de
 // la matière est leur moyenne pondérée (résultat /20). Détection par type de
 // note (seul le Français utilise ces rubriques en pratique).
+// Ces types ne sont plus proposés à la saisie (2026-11-02) : Dictée et
+// Questions / Rédaction sont désormais des MATIÈRES « évaluées seulement »
+// (matiere-nature.js). Le calcul reste pour les notes déjà saisies sous ces
+// types : les anciens bulletins gardent leurs moyennes.
 const RUBRIQUE_WEIGHTS = new Map<string, number>([
   ["dictee/questions", 2],
   ["redaction", 1],
@@ -60,13 +64,31 @@ const averageNumbers = (values: Array<number | string | null | undefined> = []):
   return nums.reduce((sum, value) => sum + value, 0) / nums.length;
 };
 
+// Place d'un type de note dans getSubjectAverage, affichée dans Paramètres →
+// Évaluations et à la saisie : renommer une forme ne change que son libellé,
+// jamais sa place dans le calcul. « ecrit » = tout le reste (Devoir,
+// Évaluation écrite, Examen…). Au primaire et en maternelle, seule
+// « moyenne » se distingue : toutes les autres notes ont le même poids.
+export type NoteTypeRole = "moyenne" | "rubrique" | "oral" | "composition" | "ecrit";
+
+export const getNoteTypeRole = (type: string = ""): NoteTypeRole => {
+  const t = normalizeType(type);
+  if (MOYENNE_TYPES.has(t)) return "moyenne";
+  if (RUBRIQUE_WEIGHTS.has(t)) return "rubrique";
+  if (ORAL_TYPES.has(t)) return "oral";
+  if (COMPOSITION_TYPES.has(t)) return "composition";
+  return "ecrit";
+};
+
 export const isSecondarySection = (section: SectionName = ""): boolean =>
   section === "college" || section === "lycee";
 
 export const isSecondaryClasse = (classe: string = ""): boolean =>
   isSecondarySection(getSectionForClasse(classe));
 
-export const getSecondarySubjectAverage = (notes: Note[] = []): number | null => {
+// Les deux notes dont le secondaire tire la moyenne d'une matière : la note de
+// classe (moyenne de l'oral et de l'écrit) et la note de composition.
+const getSecondaryParts = (notes: Note[] = []): { cours: number | null; composition: number | null } => {
   const oral = averageNumbers(
     notes.filter((note) => ORAL_TYPES.has(normalizeType(note.type))).map((note) => note.note ?? null),
   );
@@ -81,8 +103,11 @@ export const getSecondarySubjectAverage = (notes: Note[] = []): number | null =>
       })
       .map((note) => note.note ?? null),
   );
+  return { cours: averageNumbers([oral, written]), composition };
+};
 
-  const noteCours = averageNumbers([oral, written]);
+export const getSecondarySubjectAverage = (notes: Note[] = []): number | null => {
+  const { cours: noteCours, composition } = getSecondaryParts(notes);
   if (noteCours != null && composition != null) {
     return (noteCours + (2 * composition)) / 3;
   }
@@ -132,6 +157,46 @@ export const getSubjectAverage = (
     return getSecondarySubjectAverage(notes);
   }
   return averageNumbers(notes.map((note) => note.note ?? null));
+};
+
+// Détail imprimé au bulletin : note de classe et note de composition, telles
+// que getSubjectAverage les combine au secondaire. Null quand la moyenne ne se
+// décompose pas ainsi — moyenne saisie directement, rubriques du Français au
+// collège, primaire et maternelle (moyenne simple de toutes les notes).
+export const getSubjectParts = (
+  notes: Note[] = [],
+  classe: string = "",
+  section: SectionName = "",
+): { cours: number | null; composition: number | null } | null => {
+  if (getDirectSubjectAverage(notes) != null) return null;
+  const effectiveSection = section || getSectionForClasse(classe);
+  if (!isSecondarySection(effectiveSection)) return null;
+  if (effectiveSection === "college" && notes.some((note) => (
+    RUBRIQUE_WEIGHTS.has(normalizeType(note.type)) && averageNumbers([note.note ?? null]) != null
+  ))) return null;
+  return getSecondaryParts(notes);
+};
+
+// Matières qui COMPTENT dans la moyenne générale d'une classe : celles qu'au
+// moins un élève de la classe a notées dans `notesClasse` (une période, ou
+// les notes annuelles synthétiques pour la fin d'année).
+//
+// Règle accordée par la direction de La Citadelle (2026-11-02) : une matière
+// que personne n'a notée dans la classe pour la période ne compte pas — elle
+// n'entre pas au dénominateur. Avant, chacune comptait 0 à son coefficient :
+// une matière créée en cours d'année, ou que son professeur n'avait pas pu
+// noter, faisait baisser la moyenne de toute la classe. Une matière notée
+// pour CERTAINS élèves compte toujours 0 pour ceux qui n'ont rien : c'est la
+// note manquée d'un élève, pas une matière restée sans évaluation.
+//
+// Ne sert qu'au CALCUL : la saisie propose toujours toutes les matières.
+export const matieresNotees = <M extends Matiere>(matieres: M[] = [], notesClasse: Note[] = []): M[] => {
+  const notees = new Set(
+    notesClasse
+      .filter((note) => averageNumbers([note.note ?? null]) != null)
+      .map((note) => note.matiere),
+  );
+  return matieres.filter((matiere) => notees.has(matiere.nom));
 };
 
 export const getGeneralAverage = (

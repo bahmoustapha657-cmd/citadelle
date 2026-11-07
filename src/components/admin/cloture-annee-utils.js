@@ -4,8 +4,8 @@
 
 // Extension explicite : ce module est couvert par des tests Node, dont la
 // résolution ESM n'infère pas les extensions comme le fait Vite.
-import { MOIS_ANNEE, anneePrecedente, anneeSuivante, finAnneeScolaire, initMens } from "../../constants.js";
-import { concerneParAnnee } from "../../mensualite-utils.js";
+import { MOIS_ANNEE, anneePrecedente, anneeSuivante, estSorti, finAnneeScolaire, getSectionForClasse, initMens } from "../../constants.js";
+import { CHAMPS_DEPART, aDesPaiements, derniereAnneeFrequentee, partiAvantPremierMois } from "../../depart-utils.js";
 
 // Toutes les sections, préscolaire compris.
 export const COLLECTIONS_ELEVES = [
@@ -70,19 +70,17 @@ export function etatVierge(moisAnnee = null) {
 // de l'année doivent rejoindre l'historique.
 export function horsAnneeCloturee(eleve = {}, annee = "", moisAnnee = null) {
   const mois = Array.isArray(moisAnnee) && moisAnnee.length ? moisAnnee : MOIS_ANNEE;
-  return !concerneParAnnee(eleve, mois, annee);
+  // Calendrier, pas argent : un élève non réinscrit parti en novembre a
+  // commencé l'année, sa classe de l'année doit rejoindre l'archive.
+  return partiAvantPremierMois(eleve, mois, annee) && !aDesPaiements(eleve);
 }
 
 // L'élève a-t-il quoi que ce soit d'encaissé sur son année courante ?
 // Sert aux avertissements : clôturer une année vide n'apporte rien, et
-// annuler une clôture ÉCRASE ce qui a déjà été encaissé depuis.
-export function aDesPaiements(eleve = {}) {
-  const mens = eleve.mens || {};
-  if (Object.values(mens).some((v) => v === "Payé")) return true;
-  if (eleve.inscriptionPayee || eleve.autrePayee || Number(eleve.inscriptionAcompte) > 0) return true;
-  const nonVide = (carte) => Object.values(carte || {}).some(Boolean);
-  return nonVide(eleve.fraisPayes) || nonVide(eleve.mensAcomptes) || nonVide(eleve.fraisAcomptes);
-}
+// annuler une clôture ÉCRASE ce qui a déjà été encaissé depuis. La même
+// règle dit qu'un élève parti sans rien avoir payé ne doit rien
+// (depart-utils) : une seule définition.
+export { aDesPaiements };
 
 // Champs à écrire pour clôturer un élève : l'archive complétée + l'état
 // vierge. Renvoie null si l'année est DÉJÀ archivée — une seconde clôture
@@ -132,6 +130,45 @@ export function champsCloture(eleve = {}, annee = "", { moisAnnee = null, mainte
 export function classePourAnnee(eleve = {}, annee = "") {
   const snap = (eleve.historique || {})[annee];
   return (snap && snap.classe) || eleve.classe || "";
+}
+
+// Élèves d'une section TELS QU'ILS ÉTAIENT pendant une année passée.
+//
+// La fiche vivante décrit la rentrée suivante : section, classe et statut ont
+// pu changer depuis. Un enfant de Grande Section en 2025-2026 est aujourd'hui
+// au primaire — chercher les élèves de l'archive parmi ceux de la section du
+// jour cachait ses notes de maternelle (343 à La Citadelle) et le rangeait au
+// primaire dans une classe de maternelle. Un élève parti en 2026-2027 a, lui,
+// fait toute l'année 2025-2026 : il y figure comme les autres.
+//
+// `eleves` : fiches de TOUTES les sections lisibles. `classesSection` : noms
+// des classes de la section, qui tranchent avant le motif du nom de classe.
+// Une année qu'aucune fiche n'archive (jamais clôturée par l'application)
+// garde l'ancien comportement : chacun dans sa section et sa classe du jour.
+export function elevesDeLAnnee(eleves = [], annee = "", section = "", { classesSection = [], moisAnnee = [] } = {}) {
+  const archivee = eleves.some((e) => (e.historique || {})[annee]);
+  const nomsClasses = new Set(classesSection);
+  const sectionDe = (eleve, classe) => {
+    if (classe === (eleve.classe || "")) return eleve.section;
+    if (nomsClasses.has(classe)) return section;
+    return getSectionForClasse(classe);
+  };
+  return eleves.flatMap((eleve) => {
+    const snap = (eleve.historique || {})[annee];
+    // Pas d'instantané dans une année archivée : il n'y était pas (inscrit
+    // depuis, ou parti avant le premier mois — cf. horsAnneeCloturee).
+    if (archivee && !snap) return [];
+    const classe = classePourAnnee(eleve, annee);
+    const sectionAnnee = snap ? sectionDe(eleve, classe) : eleve.section;
+    if (sectionAnnee !== section) return [];
+    const projete = { ...eleve, classe, section: sectionAnnee };
+    // Parti APRÈS cette année : il était un élève comme les autres.
+    if (estSorti(eleve) && derniereAnneeFrequentee(eleve, moisAnnee) > annee) {
+      projete.statut = "Actif";
+      for (const champ of CHAMPS_DEPART) projete[champ] = null;
+    }
+    return [projete];
+  });
 }
 
 // Champs à écrire pour restaurer l'année archivée sur la fiche. Renvoie null

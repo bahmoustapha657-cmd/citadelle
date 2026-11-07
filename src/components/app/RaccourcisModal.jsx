@@ -1,24 +1,26 @@
 // ══════════════════════════════════════════════════════════════
 //  Modal « Raccourcis clavier » (aide ?)
 // ══════════════════════════════════════════════════════════════
+import { useTranslation } from "react-i18next";
 import { C } from "../../constants";
 
 export function RaccourcisModal({ onClose }) {
+  const { t } = useTranslation();
   const groupes = [
-    {groupe:"Navigation",items:[
-      {keys:["Ctrl","K"],desc:"Ouvrir la recherche globale"},
-      {keys:["?"],desc:"Afficher cette aide"},
-      {keys:["Escape"],desc:"Fermer modal / panneau ouvert"},
+    {groupe:t("shell.shortcuts.navigation"),items:[
+      {keys:["Ctrl","K"],desc:t("shell.shortcuts.openSearch")},
+      {keys:["?"],desc:t("shell.shortcuts.showHelp")},
+      {keys:["Escape"],desc:t("shell.shortcuts.closePanel")},
     ]},
-    {groupe:"Partout",items:[
-      {keys:["Tab"],desc:"Passer au champ suivant"},
-      {keys:["Shift","Tab"],desc:"Champ précédent"},
-      {keys:["Enter"],desc:"Valider / confirmer"},
+    {groupe:t("shell.shortcuts.everywhere"),items:[
+      {keys:["Tab"],desc:t("shell.shortcuts.nextField")},
+      {keys:["Shift","Tab"],desc:t("shell.shortcuts.prevField")},
+      {keys:["Enter"],desc:t("shell.shortcuts.validate")},
     ]},
-    {groupe:"Recherche globale",items:[
-      {keys:["↑","↓"],desc:"Naviguer dans les résultats"},
-      {keys:["Enter"],desc:"Ouvrir le résultat sélectionné"},
-      {keys:["Escape"],desc:"Fermer la recherche"},
+    {groupe:t("shell.shortcuts.globalSearch"),items:[
+      {keys:["↑","↓"],desc:t("shell.shortcuts.browseResults")},
+      {keys:["Enter"],desc:t("shell.shortcuts.openResult")},
+      {keys:["Escape"],desc:t("shell.shortcuts.closeSearch")},
     ]},
   ];
 
@@ -29,8 +31,8 @@ export function RaccourcisModal({ onClose }) {
           <div style={{display:"flex",alignItems:"center",gap:10}}>
             <span style={{fontSize:24}}>⌨️</span>
             <div>
-              <h2 style={{margin:0,fontSize:16,fontWeight:900,color:C.blue}}>Raccourcis clavier</h2>
-              <p style={{margin:"2px 0 0",fontSize:11,color:"#6b7280"}}>Naviguez plus vite avec le clavier</p>
+              <h2 style={{margin:0,fontSize:16,fontWeight:900,color:C.blue}}>{t("nav.shortcuts")}</h2>
+              <p style={{margin:"2px 0 0",fontSize:11,color:"#6b7280"}}>{t("shell.shortcuts.subtitle")}</p>
             </div>
           </div>
           <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:18,color:"#94a3b8"}}>✕</button>
@@ -51,7 +53,7 @@ export function RaccourcisModal({ onClose }) {
           </div>
         ))}
         <div style={{marginTop:16,textAlign:"center"}}>
-          <button onClick={onClose} style={{background:C.blue,color:"#fff",border:"none",borderRadius:8,padding:"8px 24px",cursor:"pointer",fontWeight:700,fontSize:13}}>Fermer</button>
+          <button onClick={onClose} style={{background:C.blue,color:"#fff",border:"none",borderRadius:8,padding:"8px 24px",cursor:"pointer",fontWeight:700,fontSize:13}}>{t("common.close")}</button>
         </div>
       </div>
     </div>

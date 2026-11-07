@@ -25,3 +25,11 @@ export async function retirerAbonnementNavigateur({ sb, navigateur }) {
     await sub.unsubscribe();
   }
 }
+
+// État des notifications sur cet appareil : "granted", "default", "denied", ou
+// "indisponible" (navigateur sans Web Push ; sur iPhone, EduGest doit d'abord
+// être ajouté à l'écran d'accueil).
+export function etatNotifications(env = globalThis) {
+  const possible = env.navigator && "serviceWorker" in env.navigator && "PushManager" in env && "Notification" in env;
+  return possible ? env.Notification.permission : "indisponible";
+}

@@ -48,7 +48,7 @@
     "schoolCode": "Code école",
     "schoolCodePlaceholder": "Ex. : citadelle",
     "username": "Identifiant ou e-mail",
-    "usernamePlaceholder": "Votre identifiant ou e-mail",
+    "usernamePlaceholder": "Identifiant, téléphone ou e-mail",
     "password": "Mot de passe",
     "passwordPlaceholder": "Votre mot de passe",
     "loginButton": "Se connecter",
@@ -73,6 +73,7 @@
     "logoutAction": "Se déconnecter",
     "offlineMode": "Mode hors ligne",
     "offlineNav": "Navigation disponible",
+    "schoolLessonPlans": "Fiches de l'école",
     "headerOffline": "Mode hors ligne — données depuis le cache",
     "planExpired": "EXPIRÉ",
     "errEnterSchoolCode": "Veuillez entrer le code de votre école.",
@@ -84,13 +85,81 @@
     "syncPendingShort": "{{count}} en attente",
     "firstSync": "Première synchronisation de vos données sur cet appareil… {{percent}} % — les listes se remplissent d'elles-mêmes.",
     "firstSyncRest": "Élèves et classes disponibles — notes et autres données en cours de téléchargement… {{percent}} %",
-    "firstSyncOffline": "Vos données ne sont pas encore téléchargées sur cet appareil : elles arriveront dès le retour du réseau."
+    "firstSyncOffline": "Vos données ne sont pas encore téléchargées sur cet appareil : elles arriveront dès le retour du réseau.",
+    "schoolInactive": "Cette école est inactive.",
+    "schoolUnavailable": "Cette école n'est plus disponible.",
+    "hidePassword": "Masquer le mot de passe",
+    "showPassword": "Afficher le mot de passe",
+    "hide": "Masquer",
+    "show": "Afficher",
+    "errAccountRead": "Lecture du compte impossible.",
+    "errSchoolRead": "Lecture de l'école impossible.",
+    "errSchoolDisabled": "Cet établissement est désactivé : la connexion est impossible. Contactez EduGest.",
+    "errSchoolDeleted": "Cet établissement n'est plus disponible.",
+    "errAccountMerged": "Ce compte n'est plus actif : il a été regroupé avec un autre compte parent de l'école. Demandez votre identifiant à l'école.",
+    "errInterrupted": "Connexion interrompue : vérifiez votre connexion internet puis réessayez.",
+    "errAccountDisabled": "Compte désactivé par la direction.",
+    "errAccountNotFound": "Compte introuvable.",
+    "errSwitchSpace": "Changement d'espace impossible : réessayez.",
+    "errSpaceDisabled": "Cet espace est désactivé par la direction.",
+    "errSpaceNotFound": "Espace introuvable.",
+    "errNetwork": "Connexion au serveur impossible. Vérifiez votre connexion internet puis réessayez.",
+    "reset": {
+      "title": "Mot de passe oublié",
+      "intro": "Indiquez votre code école et votre identifiant — ou votre e-mail si vous en avez enregistré un. Parent : votre numéro de téléphone suffit.",
+      "schoolCodePlaceholder": "Code école (ex. citadelle)",
+      "identifierPlaceholder": "Identifiant, e-mail ou n° de téléphone",
+      "sending": "Envoi…",
+      "submit": "Réinitialiser",
+      "codePlaceholder": "Code à 6 chiffres",
+      "codeLabel": "Code reçu",
+      "newPasswordPlaceholder": "Nouveau mot de passe (8 caractères min.)",
+      "newPassword": "Nouveau mot de passe",
+      "confirmPassword": "Confirmer le mot de passe",
+      "saving": "Enregistrement…",
+      "savePassword": "Enregistrer le mot de passe",
+      "needNewCode": "Il vous faut un nouveau code.",
+      "codeNotReceived": "Code pas reçu ?",
+      "resendIn": "Renvoyer le code (dans {{delay}})",
+      "resend": "Renvoyer le code",
+      "sentEmail": "✉️ Un lien de réinitialisation a été envoyé à votre adresse e-mail{{email}}. Ouvrez-le pour choisir un nouveau mot de passe. Pensez à vérifier les indésirables.",
+      "sentDirection": "📩 Votre Direction a été notifiée dans sa messagerie interne. Elle réinitialisera votre mot de passe depuis « Comptes & Postes » et vous communiquera le nouveau.",
+      "sentGeneric": "Si ce compte existe, la marche à suivre a été déclenchée : un e-mail de réinitialisation, un code par SMS, ou une notification à votre Direction. Rapprochez-vous de la Direction si vous ne recevez rien.",
+      "saved": "✅ Mot de passe enregistré.",
+      "loginWith": "Connectez-vous avec le code école <b>{{school}}</b> et l'identifiant <b>{{login}}</b>.",
+      "tooShort": "Le mot de passe doit contenir au moins 8 caractères.",
+      "mismatch": "Les deux mots de passe ne correspondent pas.",
+      "saveFailed": "Impossible d'enregistrer le mot de passe. Le lien a peut-être expiré.",
+      "saveFailedDetail": "Impossible d'enregistrer le mot de passe : {{detail}}",
+      "saveFailedShort": "Impossible d'enregistrer le mot de passe.",
+      "linkExpired": "Ce lien de réinitialisation a expiré ou a déjà été utilisé. Refaites une demande depuis l'écran de connexion (« Mot de passe oublié ? »).",
+      "samePassword": "Choisissez un mot de passe différent de l'ancien.",
+      "weakPassword": "Mot de passe trop faible : allongez-le et mélangez lettres et chiffres.",
+      "backToLogin": "Retour à la connexion",
+      "chooseNew": "Choisissez un nouveau mot de passe pour votre compte EduGest.",
+      "linkTitle": "Lien de réinitialisation"
+    },
+    "code": {
+      "invalid": "Saisissez les 6 chiffres du code reçu.",
+      "wrong": "Code incorrect.",
+      "wrongOneLeft": "Code incorrect. Encore {{count}} essai.",
+      "wrongTriesLeft": "Code incorrect. Encore {{count}} essais.",
+      "exhausted": "Trop d'essais : ce code n'est plus valable. Demandez-en un nouveau.",
+      "expired": "Ce code a expiré ou n'est plus valable. Demandez-en un nouveau.",
+      "tooLong": "Mot de passe trop long : 72 caractères au plus.",
+      "unavailable": "Service momentanément indisponible. Réessayez dans un instant.",
+      "sentTo": "Un code à 6 chiffres vient de vous être envoyé par {{channel}} au {{phone}}. Il est valable {{minutes}} minutes.",
+      "sent": "Un code à 6 chiffres vient de vous être envoyé par {{channel}}. Il est valable {{minutes}} minutes.",
+      "alreadySentTo": "Un code vous a déjà été envoyé au {{phone}} il y a peu : saisissez le dernier reçu.",
+      "alreadySent": "Un code vous a déjà été envoyé il y a peu : saisissez le dernier reçu."
+    }
   },
   "subscription": {
     "label": "Abonnement",
     "expired": "EXPIRÉ",
     "daysShort": "{{days}}j",
-    "expiresTitle": "Abonnement {{plan}} — expire dans {{days}} jour(s)"
+    "expiresTitle": "Abonnement {{plan}} — expire dans {{days}} jour(s)",
+    "portalReadOnly": "L'abonnement de l'établissement a expiré : consultation seule, aucune modification possible."
   },
   "enrolment": {
     "lastName": "Nom",
@@ -99,7 +168,7 @@
     "matriculeEditable": "Modifiable si besoin",
     "ien": "Identifiant National (IEN)",
     "ienPlaceholder": "Ex : GN-2024-000123",
-    "class": "Classe",
+    "class": "Classe *",
     "select": "— Sélectionner —",
     "sex": "Sexe",
     "male": "Masculin",
@@ -121,7 +190,7 @@
     "departureReasonPlaceholder": "Ex: Transfert vers Lycée Donka, fin d'année...",
     "destinationSchool": "École de destination",
     "destinationSchoolPlaceholder": "Nom de l'école d'accueil",
-    "parentage": "Filiation (Père / Mère)",
+    "parentage": "Filiation (Père / Mère) *",
     "guardianName": "Nom du Tuteur",
     "guardianContact": "Contact Tuteur",
     "guardianAddress": "Domicile Tuteur",
@@ -188,20 +257,66 @@
     "shortcuts": "Raccourcis clavier"
   },
   "modules": {
-    "superadmin_panel": { "label": "Super Admin", "desc": "Gestion des écoles" },
-    "accueil": { "label": "Tableau de bord", "desc": "Vue d'ensemble" },
-    "historique": { "label": "Historique", "desc": "Journal des actions" },
-    "admin_panel": { "label": "Comptes & Postes", "desc": "Comptes, droits et signataires" },
-    "parametres": { "label": "Paramètres", "desc": "Identité de l'école" },
-    "fondation": { "label": "Fondation", "desc": "Gouvernance" },
-    "compta": { "label": "Comptabilité", "desc": "Finances" },
-    "primaire": { "label": "Dir. Primaire", "desc": "Primaire" },
-    "secondaire": { "label": "Secondaire", "desc": "Bureau Collège" },
-    "calendrier": { "label": "Calendrier", "desc": "Événements scolaires" },
-    "examens": { "label": "Examens", "desc": "Planning & convocations" },
-    "portail_enseignant": { "label": "Mon Espace", "desc": "Portail enseignant" },
-    "portail_parent": { "label": "Espace Parent", "desc": "Suivi de mon enfant" },
-    "messages": { "label": "Messages Parents", "desc": "Liaison école-famille" }
+    "superadmin_panel": {
+      "label": "Super Admin",
+      "desc": "Gestion des écoles"
+    },
+    "accueil": {
+      "label": "Tableau de bord",
+      "desc": "Vue d'ensemble"
+    },
+    "historique": {
+      "label": "Historique",
+      "desc": "Journal des actions"
+    },
+    "admin_panel": {
+      "label": "Comptes & Postes",
+      "desc": "Comptes, droits et signataires"
+    },
+    "parametres": {
+      "label": "Paramètres",
+      "desc": "Identité de l'école"
+    },
+    "fondation": {
+      "label": "Fondation",
+      "desc": "Gouvernance"
+    },
+    "compta": {
+      "label": "Comptabilité",
+      "desc": "Finances"
+    },
+    "primaire": {
+      "label": "Dir. Primaire",
+      "desc": "Primaire"
+    },
+    "secondaire": {
+      "label": "Secondaire",
+      "desc": "Bureau Collège"
+    },
+    "calendrier": {
+      "label": "Calendrier",
+      "desc": "Événements scolaires"
+    },
+    "examens": {
+      "label": "Examens",
+      "desc": "Planning & convocations"
+    },
+    "portail_enseignant": {
+      "label": "Mon Espace",
+      "desc": "Portail enseignant"
+    },
+    "portail_parent": {
+      "label": "Espace Parent",
+      "desc": "Suivi de mon enfant"
+    },
+    "messages": {
+      "label": "Messages Parents",
+      "desc": "Liaison école-famille"
+    },
+    "messagerie": {
+      "label": "Messagerie",
+      "desc": "Discussions & annonces"
+    }
   },
   "plans": {
     "gratuit": "Gratuit",
@@ -257,7 +372,51 @@
     "alertAllGoodDesc": "Trésorerie positive et taux de paiement satisfaisant.",
     "annualTrends": "Tendances annuelles",
     "paymentRatePct": "Taux de paiement (%)",
-    "absencesLabel": "Absences"
+    "absencesLabel": "Absences",
+    "realBalance": "Solde réel {{annee}}",
+    "realBalanceSub": "Entré {{entre}} · Sorti {{sorti}} (scolarité comprise)",
+    "toCollect": "Reste à encaisser",
+    "toCollectSub": "{{taux}} % de la scolarité attendue déjà encaissée",
+    "monthsPaid": "Mensualités payées",
+    "monthsPaidSub": "Mois payés sur mois dus, toutes sections",
+    "salariesOf": "Salaires de {{mois}}",
+    "salariesSub": "{{n}} fiche(s) de paie · non déduits du solde",
+    "alertNegBalDescReal": "Solde réel : {{amount}}",
+    "alertHighPayrollDescAvg": "{{pct}} % de ce qui est encaissé en moyenne par mois.",
+    "alertHighPayrollNoIncome": "Aucun encaissement enregistré pour couvrir les salaires.",
+    "sub": {
+      "requestSent": "✅ Demande envoyée ! L'équipe EduGest va traiter votre demande et activer votre abonnement.",
+      "planTitle": "Abonnement — Plan <b>{{plan}}</b>",
+      "freeCount": "{{count}}/50 élèves actifs — gratuit jusqu'à 50",
+      "expiredLimited": "Expiré — limité à 50 élèves",
+      "graceDaysLeft": "Période de grâce — {{days}} jour(s) restant(s)",
+      "activeUntil": "{{count}} élèves actifs · expire le {{date}}",
+      "email": "E-mail",
+      "close": "▲ Fermer",
+      "formalRequest": "📋 Demande formelle",
+      "expiredBanner": "Abonnement expiré — accès limité à 50 élèves",
+      "graceBanner": "Période de grâce — encore {{days}} jour(s) d'accès complet",
+      "expiresIn": "Abonnement {{plan}} expire dans {{days}} jour(s)",
+      "freeNearLimit": "Plan Gratuit : {{count}}/50 élèves — bientôt à la limite",
+      "freeLimitReached": "Plan Gratuit : {{count}}/50 élèves — limite atteinte",
+      "renewBeforeEnd": "Renouvelez votre abonnement avant la fin de la période de grâce pour ne pas perdre l'accès.",
+      "subscribeToContinue": "Souscrivez un abonnement pour continuer à inscrire des élèves sans limite.",
+      "formIntro": "Remplissez ce formulaire après avoir effectué votre paiement mobile. L'équipe EduGest validera et activera votre abonnement sous 24h.",
+      "desiredPlan": "Plan souhaité",
+      "unlimited": "Illimité",
+      "upToStudents": "≤ {{count}} élèves",
+      "operator": "Opérateur Mobile Money",
+      "other": "Autre",
+      "phone": "Numéro de téléphone",
+      "phonePlaceholder": "Ex. : 621 00 00 00",
+      "reference": "Référence du paiement",
+      "referencePlaceholder": "Ex. : TXN-20240418-001",
+      "sentTitle": "Demande envoyée avec succès !",
+      "sentBody": "L'équipe EduGest va vérifier votre paiement et activer votre abonnement <b>{{plan}}</b> sous 24h.",
+      "sending": "Envoi en cours…",
+      "send": "Envoyer la demande",
+      "sendError": "Erreur lors de l'envoi. Vérifiez votre connexion et réessayez."
+    }
   },
   "landing": {
     "heroTitle": "EduGest — La gestion scolaire moderne",
@@ -330,7 +489,28 @@
     "salaryGross": "Brut",
     "salaryNet": "Net",
     "salaryBonus": "Bon",
-    "salaryRevision": "Révision"
+    "salaryRevision": "Révision",
+    "nonReinscrits": {
+      "avantNombre": "{{n}} élève(s) n'ont encore rien payé",
+      "avantSuite": "cette année ({{perimetre}}). Sans paiement d'ici le {{date}}, ils seront retirés de leur classe.",
+      "listeAppeler": "🖨️ Liste à appeler",
+      "retiresTitre": "Élèves retirés des classes ({{n}})",
+      "retiresAide": "— encaissez leur réinscription (ou tout autre paiement) : ils retrouvent aussitôt leur classe.",
+      "nombre": "{{n}} élève(s) non réinscrit(s)",
+      "explication": "({{perimetre}}) : aucun paiement depuis la rentrée, ni réinscription, ni mensualité, ni frais. Ils sont retirés des classes depuis le {{date}}.",
+      "appel": "Faites-les réinscrire.",
+      "revenir": "← Revenir aux classes",
+      "afficher": "👁 Afficher pour encaisser",
+      "inscriptionNonEncaissee": "📝 Inscription non encaissée ({{n}})",
+      "reglageLibelle": "Retirer des classes les non réinscrits (aucun paiement de l'année)",
+      "reglageJamais": "Jamais (seulement à la main, classe par classe)",
+      "reglageMois": "{{n}} mois après la rentrée",
+      "reglageMoisDate": "{{n}} mois après la rentrée — le {{date}}",
+      "reglageAide": "Ni réinscription, ni mensualité, ni frais : ils disparaissent des classes (module École, portail enseignant, grille) sans que leur fiche change, et les comptables reçoivent un rappel chaque matin. Le premier paiement les remet dans leur classe."
+    },
+    "journalPendingKept": "Paiement enregistré. Sa ligne de journal de caisse n'a pas pu s'écrire : elle est gardée sur cet appareil et sera inscrite automatiquement.",
+    "journalPendingSent": "{{n}} encaissement(s) gardé(s) sur cet appareil inscrit(s) au journal de caisse.",
+    "journalPendingRemaining": "{{n}} ligne(s) du journal de caisse en attente sur cet appareil : elles seront inscrites dès que possible."
   },
   "parent": {
     "title": "Espace Parent",
@@ -356,7 +536,142 @@
     "messagePlaceholder": "Votre message...",
     "newMessage": "Nouveau message",
     "noMessages": "Aucun message",
-    "blockedByUnpaid": "Accès bloqué — mensualités impayées. Contactez la comptabilité."
+    "blockedByUnpaid": "Accès bloqué — mensualités impayées. Contactez la comptabilité.",
+    "cols": {
+      "date": "Date",
+      "subject": "Matière",
+      "status": "Statut",
+      "reason": "Motif",
+      "type": "Type",
+      "period": "Période",
+      "grade": "Note",
+      "gradeOutOf": "Note /{{max}}"
+    },
+    "average": "Moy. {{value}}/{{max}}",
+    "absTab": {
+      "title": "Absences et présences",
+      "absences": "Absences",
+      "lates": "Retards",
+      "presences": "Présences",
+      "none": "Aucune absence enregistrée"
+    },
+    "bullTab": {
+      "title": "Bulletins",
+      "period": "Bulletin — {{period}}",
+      "none": "Aucun bulletin disponible pour le moment"
+    },
+    "notesTab": {
+      "title": "Notes de {{name}}",
+      "none": "Aucune note disponible"
+    },
+    "edtTab": {
+      "printTitle": "Emploi du temps — {{classe}}",
+      "title": "Emploi du temps de {{name}}",
+      "classLine": "Classe {{classe}}",
+      "coursesLine": "{{count}} cours · {{hours}} par semaine",
+      "print": "Imprimer"
+    },
+    "tabBlocked": "Bloqué",
+    "header": {
+      "logoAlt": "Logo de l'école",
+      "school": "École",
+      "portal": "Portail parent — {{year}}",
+      "badge": "Parent",
+      "logout": "Déconnexion"
+    },
+    "dash": {
+      "lastGrades": "Dernières notes",
+      "seeAll": "Voir tout",
+      "recentAbsences": "Absences récentes",
+      "absent": "Absent",
+      "subjectProfile": "Profil par matière",
+      "noData": "Aucune donnée disponible pour le moment"
+    },
+    "bar": {
+      "noStudent": "Aucun élève",
+      "onDate": "le {{date}}",
+      "left": "a quitté l'établissement",
+      "grades": "Notes",
+      "absences": "Absences",
+      "unread": "Non lus"
+    },
+    "family": {
+      "title": "Ma famille",
+      "children": "{{count}} enfants",
+      "allUpToDate": "tous à jour",
+      "someUpToDate": "{{ok}} à jour sur {{total}}",
+      "totalToPay": "Total à payer pour la famille",
+      "upToDate": "À jour",
+      "showChild": "Afficher cet enfant",
+      "student": "Élève",
+      "shown": "Affiché",
+      "noClass": "Classe non renseignée",
+      "absenceOne": "{{count}} absence",
+      "absenceMany": "{{count}} absences",
+      "unreadOne": "{{count}} message non lu",
+      "unreadMany": "{{count}} messages non lus",
+      "gradesBlocked": "Notes bloquées",
+      "payments": "Paiements →",
+      "footnote": "Reste à payer sur l'année scolaire : mensualités, inscription et frais, dispenses déduites — le détail de chaque enfant est dans son onglet Paiements."
+    },
+    "oldMsg": {
+      "show": "Voir les anciens messages ({{count}})",
+      "hide": "Masquer les anciens messages ({{count}})",
+      "titleOld": "Anciens messages avec l'école",
+      "title": "Messages avec l'école",
+      "none": "Aucun message pour le moment",
+      "you": "Vous",
+      "school": "École",
+      "send": "Envoyer un message à l'école",
+      "subject": "Sujet",
+      "subjectPlaceholder": "Ex : Justification d'absence",
+      "message": "Message",
+      "messagePlaceholder": "Écrivez votre message ici...",
+      "sending": "Envoi...",
+      "sendBtn": "Envoyer"
+    },
+    "pay": {
+      "state": {
+        "paye": "Payé",
+        "partiel": "Acompte",
+        "impaye": "À payer",
+        "exonere": "Dispensé",
+        "nonDu": "Non dû"
+      },
+      "paidOn": "Réglé le {{date}}",
+      "paid": "Réglé",
+      "partial": "{{paid}} versés, reste {{rest}}",
+      "exempted": "Dispense accordée par l'école",
+      "pending": "En attente de règlement",
+      "reregistration": "Réinscription",
+      "registration": "Inscription",
+      "otherMonths": "Autres mois",
+      "title": "Suivi des paiements",
+      "forChildren": "Pour vos {{count}} enfants :",
+      "amountDue": "{{amount}} à payer",
+      "allSettled": "tout est réglé",
+      "perChild": "Détail par enfant →",
+      "remaining": "Reste à payer",
+      "upToDate": "À jour",
+      "monthsPaid": "Mois payés",
+      "monthsUnpaid": "Mois impayés",
+      "rate": "Taux",
+      "monthly": "Mensualité",
+      "insteadOf": "(au lieu de {{amount}}, dispense)",
+      "groupPaid": "{{paid}}/{{total}} payés",
+      "groupRest": "reste {{amount}}",
+      "groupSettled": "soldé",
+      "partialMonth": "Acompte {{amount}}",
+      "notDueAfterLeaving": "Non dû (après le départ)",
+      "unpaidMonth": "Impayé · {{amount}}",
+      "none": "Aucune information de paiement"
+    },
+    "err": {
+      "load": "Erreur de chargement du portail parent.",
+      "subjectBody": "Sujet et message requis.",
+      "noStudent": "Élève introuvable pour ce compte parent.",
+      "send": "Erreur d'envoi."
+    }
   },
   "teacher": {
     "title": "Mon Espace",
@@ -368,14 +683,191 @@
       "grades": "Saisir des notes",
       "students": "Mes élèves",
       "schedule": "Emploi du temps",
-      "messages": "Messages"
+      "messages": "Messages",
+      "lessonPlans": "Mes fiches"
     },
     "selectClass": "Sélectionnez une classe",
     "selectSubject": "Sélectionnez une matière",
     "noClass": "Aucune classe affectée",
     "saveGrades": "Enregistrer les notes",
     "saving": "Enregistrement...",
-    "saved": "Notes enregistrées"
+    "saved": "Notes enregistrées",
+    "cols": {
+      "date": "Date",
+      "student": "Élève",
+      "class": "Classe",
+      "type": "Type",
+      "justified": "Justifié",
+      "reason": "Motif",
+      "action": "Action",
+      "actions": "Actions",
+      "subject": "Matière",
+      "status": "Statut",
+      "period": "Période",
+      "grade": "Note",
+      "gradeOutOf": "Note /{{max}}",
+      "matricule": "Matricule",
+      "fullName": "Nom et prénom",
+      "sex": "Sexe"
+    },
+    "abs": {
+      "title": "Signalements et événements",
+      "myReports": "Mes signalements sur élèves ({{count}})",
+      "visibleTo": "Visibles par la direction et les parents concernés.",
+      "none": "Aucun signalement. Allez dans <b>Mes élèves</b> pour signaler une absence, un retard, une indiscipline.",
+      "reportedBy": "Signalé par {{name}}",
+      "theManagement": "la direction",
+      "by": "par {{name}}",
+      "management": "Direction",
+      "myEvents": "Mes événements d'enseignement ({{count}})",
+      "eventsHint": "Cours effectués, absents, non effectués (saisis par la comptabilité).",
+      "noEvent": "Aucun événement enregistré."
+    },
+    "dash": {
+      "myStudents": "Mes élèves",
+      "assignedClasses": "classes attribuées",
+      "gradesEntered": "Notes saisies",
+      "all": "Toutes",
+      "slotsPerWeek": "Créneaux / semaine",
+      "timetable": "emploi du temps",
+      "events": "Événements",
+      "teacherHistory": "historique enseignant",
+      "lastGrades": "Dernières notes saisies",
+      "todayLessons": "Mes cours aujourd'hui",
+      "nextLessons": "Prochains cours — {{day}}",
+      "wholeWeek": "Toute la semaine →",
+      "room": "Salle {{room}}"
+    },
+    "edt": {
+      "title": "Mon emploi du temps",
+      "summary": "{{count}} cours · {{hours}} par semaine",
+      "classOne": "{{count}} classe",
+      "classMany": "{{count}} classes",
+      "print": "Imprimer"
+    },
+    "students": {
+      "title": "Mes élèves ({{count}})",
+      "list": "Liste",
+      "photoBoard": "Trombinoscope",
+      "noClass": "Aucune classe assignée dans l'emploi du temps",
+      "countInClass": "{{classe}} — {{count}} élève(s)",
+      "active": "Actif",
+      "report": "Signaler"
+    },
+    "header": {
+      "logoAlt": "Logo de l'école",
+      "school": "École",
+      "portal": "Portail enseignant — {{year}}",
+      "teacher": "Enseignant"
+    },
+    "incident": {
+      "editTitle": "Modifier le signalement",
+      "newTitle": "Signaler — {{name}}",
+      "visibility": "Ce signalement sera visible par <b>la direction</b> et <b>les parents</b> de l'élève.",
+      "type": "Type",
+      "types": {
+        "absence": "Absence",
+        "retard": "Retard",
+        "avertissement": "Avertissement",
+        "sanction": "Sanction",
+        "renvoi": "Renvoi temporaire"
+      },
+      "date": "Date",
+      "justified": "Justifié ?",
+      "classLabel": "Classe :",
+      "reason": "Motif / Description",
+      "reasonPlaceholder": "Ex : Bavardage répété, n'a pas rendu son devoir, absent sans justification...",
+      "saving": "Enregistrement...",
+      "save": "Enregistrer le signalement",
+      "required": "Élève, type et date requis.",
+      "yourChild": "Votre enfant",
+      "pushTitle": "{{type}} signalée par l'enseignant",
+      "pushBody": "{{name}} — {{type}} du {{date}}{{reason}}",
+      "saved": "Signalement enregistré. Les parents ont été notifiés.",
+      "saveError": "Erreur d'enregistrement.",
+      "deleteConfirm": "Supprimer ce signalement ?",
+      "deleted": "Signalement supprimé.",
+      "deleteError": "Erreur de suppression."
+    },
+    "pay": {
+      "title": "Ma fiche de paie",
+      "print": "Imprimer fiches",
+      "onlineOnly": "Fiches de paie consultables en ligne uniquement — rouvrez le portail une fois connecté.",
+      "none": "Aucune fiche de paie disponible",
+      "functions": "{{count}} fonctions : {{sections}}",
+      "section": "Section {{name}}",
+      "hoursWorked": "V.H. exécuté",
+      "hourlyRate": "Prime horaire",
+      "variable": "Variable",
+      "gross": "Montant brut",
+      "flatRate": "Forfait",
+      "voucher": "Bon déduit",
+      "absenceDeduction": "Retenue absences / retards",
+      "revision": "Révision",
+      "totalNet": "TOTAL NET À PAYER",
+      "net": "NET À PAYER"
+    },
+    "notes": {
+      "offlineQueued": "Hors-ligne : saisie mise en file, synchronisation auto au retour du réseau.",
+      "saveFailed": "Enregistrement impossible.",
+      "savedCount": "{{count}} note(s) enregistrée(s).",
+      "partial": "{{ok}} OK / {{ko}} échec(s). Vérifie les lignes en rouge.",
+      "networkQueued": "Réseau indisponible : saisie mise en file, synchronisation auto au retour.",
+      "saveError": "Erreur d'enregistrement.",
+      "required": "Élève, période et note requis.",
+      "saved": "Note enregistrée.",
+      "deleteConfirm": "Supprimer cette note ?",
+      "deleteFailed": "Suppression impossible.",
+      "deleted": "Note supprimée.",
+      "deleteError": "Erreur de suppression.",
+      "nothingNew": "Aucune note nouvelle ou modifiée à enregistrer.",
+      "invalid": "Note invalide détectée (doit être un nombre entre 0 et {{max}}).",
+      "loadError": "Erreur de chargement du portail enseignant.",
+      "synced": "{{count}} note(s) synchronisée(s).",
+      "rejected": "{{count}} note(s) non synchronisées (rejetées par le serveur)."
+    },
+    "noteModal": {
+      "new": "Nouvelle note",
+      "edit": "Modifier la note",
+      "student": "Élève",
+      "choose": "- Choisir un élève -",
+      "subject": "Matière",
+      "type": "Type",
+      "period": "Période",
+      "example": "Ex : {{value}}",
+      "saving": "Enregistrement...",
+      "save": "Enregistrer"
+    },
+    "notesList": {
+      "classLabel": "Classe :",
+      "title": "Saisie des notes — {{subject}}",
+      "subject": "Matière",
+      "pendingHint": "Notes saisies hors-ligne en attente d'envoi. Cliquez pour synchroniser maintenant.",
+      "syncing": "Synchronisation…",
+      "pending": "{{count}} note(s) en attente — synchroniser",
+      "grid": "Saisie en grille",
+      "newGrade": "Nouvelle note",
+      "noneFor": "Aucune note pour {{period}}",
+      "noneForIn": "Aucune note pour {{period}} en {{classe}}"
+    },
+    "grid": {
+      "allPeriodsSubjects": "Toutes périodes × matières",
+      "allSubjects": "Toutes les matières",
+      "subject": "Matière",
+      "title": "Saisie en grille — {{subject}}",
+      "class": "Classe",
+      "subjectOption": "— Matière —",
+      "evalType": "Type d'évaluation",
+      "period": "Période",
+      "search": "Rechercher un élève…",
+      "allPeriods": "Toutes les périodes",
+      "noStudent": "Aucun élève dans cette classe.",
+      "hint": "<b>{{count}}</b> note(s) à enregistrer. Les notes existantes sont préremplies — seules les cases <b>nouvelles ou modifiées</b> sont envoyées, le reste est laissé en l'état. <g>💾 Sauvegarde locale automatique (la saisie est conservée même en cas de coupure).</g>",
+      "student": "Élève",
+      "progress": "Enregistrement {{done}}/{{total}}…",
+      "saving": "Enregistrement…",
+      "save": "Enregistrer la grille"
+    }
   },
   "publicPage": {
     "announcements": "Annonces",
@@ -385,30 +877,6 @@
     "phone": "Téléphone",
     "noAnnouncement": "Aucune annonce pour le moment",
     "noHonor": "Aucun élève au tableau d'honneur"
-  },
-  "plans": {
-    "gratuit": "Gratuit",
-    "starter": "Starter",
-    "standard": "Standard",
-    "premium": "Premium"
-  },
-  "modules": {
-    "desc": {
-      "superadmin_panel": "Gestion des écoles",
-      "accueil": "Vue d'ensemble",
-      "historique": "Journal des actions",
-      "admin_panel": "Comptes, droits et signataires",
-      "parametres": "Identité de l'école",
-      "fondation": "Gouvernance",
-      "compta": "Finances",
-      "primaire": "Primaire",
-      "secondaire": "Bureau Collège",
-      "calendrier": "Événements scolaires",
-      "examens": "Planning & convocations",
-      "portail_enseignant": "Portail enseignant",
-      "portail_parent": "Suivi de mon enfant",
-      "messages": "Liaison école-famille"
-    }
   },
   "months": {
     "Janvier": "Janvier",
@@ -455,6 +923,7 @@
       "college": "Bureau du Collège"
     },
     "headTeacher": "Professeur principal",
+    "classTeacher": "Maître titulaire",
     "bulletinTitle": "Bulletin de notes",
     "bulletinNumber": "Bulletin N°",
     "studentName": "Élève",
@@ -515,7 +984,11 @@
       "remaining": "Reste à régler",
       "deposit": "Acompte",
       "paymentOf": "Versement du",
-      "balanceDue": "Reste à payer"
+      "balanceDue": "Reste à payer",
+      "family": "Famille",
+      "children": "Enfants",
+      "paidMonths": "Mois réglés",
+      "familyTotal": "Total famille"
     },
     "monthlyReport": {
       "title": "Rapport mensuel",
@@ -690,6 +1163,16 @@
         "phone": "Téléphone",
         "filename": "modele_import_eleves.xlsx"
       }
+    },
+    "nonReinscrits": {
+      "retiresTitre": "📝 ÉLÈVES NON RÉINSCRITS — À FAIRE RÉINSCRIRE",
+      "retiresFenetre": "Élèves non réinscrits",
+      "retiresNote": "Aucun paiement de l'année (ni réinscription, ni mensualité, ni frais) : retirés des classes depuis le {{date}} ; ils retrouvent leur classe dès leur premier paiement",
+      "aucun": "Aucun élève non réinscrit.",
+      "inscriptionTitre": "📝 INSCRIPTION NON ENCAISSÉE",
+      "inscriptionFenetre": "Inscription non encaissée",
+      "inscriptionNote": "Élèves actifs dont l'inscription ou la réinscription de l'année n'est pas encaissée",
+      "aucuneInscription": "Aucun élève présent sans inscription encaissée."
     }
   },
   "school": {
@@ -703,6 +1186,7 @@
       "subjects": "Matières",
       "notes": "Notes",
       "bulletins": "Bulletins",
+      "honorRoll": "Tableau d'honneur",
       "discipline": "Discipline",
       "schedule": "Emploi du temps",
       "teachings": "Enseignements",
@@ -792,5 +1276,550 @@
       "clearAppreciation": "🗑 Effacer",
       "clearConfirm": "Effacer l'appréciation ?"
     }
+  },
+  "shell": {
+    "searchTitle": "Recherche globale (Ctrl+K)",
+    "lightMode": "Mode clair",
+    "darkMode": "Mode sombre",
+    "helpCenter": "Centre d'aide",
+    "myProfile": "Mon profil",
+    "schoolSettings": "Paramètres école",
+    "myStamp": "Mon cachet et ma signature",
+    "versionOf": "Version du {{date}}",
+    "notif": {
+      "title": "Notifications récentes",
+      "recent": "Activité récente",
+      "none": "Aucune activité récente",
+      "justNow": "À l'instant",
+      "minutes": "{{n}} min",
+      "hours": "{{n}} h",
+      "days": "{{n}} j",
+      "seeAll": "Voir tout l'historique →",
+      "reinscTitre": "📝 {{n}} élève(s) non réinscrit(s)",
+      "reinscCorps": "Aucun paiement depuis la rentrée : retirés des classes depuis le {{date}}. Faites-les réinscrire."
+    },
+    "spaces": {
+      "switch": "Changer d'espace",
+      "chooseMine": "Choisir mon espace",
+      "choose": "Choisissez votre espace",
+      "hint": "{{name}} — vous pourrez en changer à tout moment avec le bouton en bas à gauche.",
+      "opening": "Ouverture…",
+      "current": "Espace actuel",
+      "open": "Ouvrir cet espace",
+      "error": "Changement d'espace impossible.",
+      "teacher": "Enseignant",
+      "parent": "Parent d'élève",
+      "staff": "Personnel",
+      "sameEmail": "Même e-mail",
+      "sameName": "Même nom"
+    },
+    "install": {
+      "title": "Installer EduGest",
+      "desc": "Accès rapide, fonctionne hors ligne",
+      "button": "Installer"
+    },
+    "offline": {
+      "thisModule": "Ce module",
+      "title": "{{module}} — indisponible hors ligne",
+      "body": "Vous êtes actuellement <b>sans connexion Internet</b>. Ce module nécessite le réseau. Le mode hors ligne couvre les <b>données scolaires</b> (élèves, notes, absences) — reconnectez-vous pour accéder au reste.",
+      "goTo": "Aller à « {{module}} »"
+    },
+    "onboarding": {
+      "title": "Guide de démarrage",
+      "subtitle": "Suivez ces étapes pour configurer votre école",
+      "identity": "Configurer l'identité de l'école",
+      "identityDesc": "Nom, logo, couleurs, coordonnées",
+      "classes": "Créer les classes",
+      "classesDesc": "Primaire et/ou Secondaire selon votre établissement",
+      "teachers": "Ajouter les enseignants",
+      "teachersDesc": "Profil, matière, prime horaire",
+      "students": "Enrôler les élèves",
+      "studentsDesc": "Via le module Comptabilité → Élèves",
+      "timetables": "Configurer les emplois du temps",
+      "timetablesDesc": "Par classe, dans chaque section",
+      "salaries": "Générer les états de salaires",
+      "salariesDesc": "Via Comptabilité → Salaires → Auto-générer"
+    },
+    "shortcuts": {
+      "subtitle": "Naviguez plus vite avec le clavier",
+      "navigation": "Navigation",
+      "everywhere": "Partout",
+      "globalSearch": "Recherche globale",
+      "openSearch": "Ouvrir la recherche globale",
+      "showHelp": "Afficher cette aide",
+      "closePanel": "Fermer modal / panneau ouvert",
+      "nextField": "Passer au champ suivant",
+      "prevField": "Champ précédent",
+      "validate": "Valider / confirmer",
+      "browseResults": "Naviguer dans les résultats",
+      "openResult": "Ouvrir le résultat sélectionné",
+      "closeSearch": "Fermer la recherche"
+    },
+    "error": {
+      "title": "Une erreur est survenue",
+      "attention": "Attention",
+      "unexpected": "Erreur inattendue dans ce module.",
+      "retry": "Réessayer",
+      "reload": "Recharger la page"
+    },
+    "yearNotSaved": "Année non enregistrée pour l'école : seule la Direction peut la modifier."
+  },
+  "msg": {
+    "removedAccount": "Compte retiré",
+    "call": {
+      "preparing": "Préparation de l'appel…",
+      "ringing": "Ça sonne…",
+      "incoming": "vous appelle",
+      "connecting": "Connexion…",
+      "contact": "Correspondant",
+      "with": "Appel avec {{name}}",
+      "online": "En ligne",
+      "onlineRelay": "En ligne (relais de secours)",
+      "decline": "Refuser",
+      "answer": "Répondre",
+      "mute": "Couper le micro",
+      "unmute": "Réactiver le micro",
+      "hangUp": "Raccrocher"
+    },
+    "ann": {
+      "toConfirm": "Lecture à confirmer",
+      "urgent": "Annonce urgente",
+      "announcement": "Annonce",
+      "read": "Lire"
+    },
+    "notif": {
+      "enable": "Activez les notifications pour être prévenu d'un appel ou d'un message quand l'application est fermée.",
+      "blocked": "Notifications bloquées sur cet appareil : autorisez-les pour ce site dans les réglages du navigateur, sinon vous ne verrez pas vos appels quand l'application est fermée.",
+      "unavailable": "Cet appareil ne peut pas recevoir de notifications. Sur iPhone, ajoutez d'abord EduGest à l'écran d'accueil.",
+      "activate": "Activer"
+    },
+    "meet": {
+      "inProgressIn": "Appel de groupe en cours — {{name}}",
+      "aGroup": "un groupe",
+      "participant": "{{count}} participant",
+      "participants": "{{count}} participants",
+      "join": "Rejoindre",
+      "pushTitle": "Appel de groupe — {{name}}",
+      "pushBody": "{{name}} vous invite à rejoindre l'appel.",
+      "groupCall": "Appel de groupe",
+      "inProgress": "Appel de groupe en cours",
+      "micOff": "Micro coupé",
+      "expand": "Agrandir l'appel",
+      "leave": "Quitter l'appel",
+      "dialogTitle": "Appel de groupe : {{name}}",
+      "connecting": "Connexion à l'appel…",
+      "minimizeHint": "Réduire (continuer à naviguer)",
+      "minimize": "Réduire",
+      "participantFallback": "Participant",
+      "connectingServer": "Connexion au serveur d'appels…",
+      "alone": "Vous êtes seul pour l'instant : les membres du groupe ont été prévenus.",
+      "cameraOff": "Couper la caméra",
+      "cameraOn": "Allumer la caméra",
+      "flipCamera": "Caméra avant / arrière",
+      "ended": "L'appel est terminé.",
+      "serverLost": "Connexion au serveur d'appels perdue.",
+      "joinFailed": "Impossible de rejoindre l'appel."
+    },
+    "bubble": {
+      "callBack": "Rappeler",
+      "message": "Message",
+      "older": "Message plus ancien",
+      "deleted": "Message supprimé",
+      "edited": "modifié",
+      "readBy": "Lu par {{read}} sur {{total}}",
+      "reply": "Répondre",
+      "readByList": "Lu par : {{names}}",
+      "notReadList": "Pas encore lu : {{names}}"
+    },
+    "compose": {
+      "sendFailed": "Envoi impossible.",
+      "voiceTooShort": "Message vocal trop court.",
+      "editMessage": "Modifier le message",
+      "replyTo": "Réponse à {{name}}",
+      "aMessage": "un message",
+      "cancelRecording": "Annuler l'enregistrement",
+      "recording": "Enregistrement…",
+      "sendVoice": "Envoyer le message vocal",
+      "removeFile": "Retirer {{name}}",
+      "attach": "Joindre un document",
+      "attachHint": "Joindre un document ou une photo (10 Mo max)",
+      "fixPlaceholder": "Corrigez votre message…",
+      "captionPlaceholder": "Ajouter une légende (facultatif)…",
+      "placeholder": "Écrire un message…",
+      "saveFix": "Enregistrer la correction",
+      "send": "Envoyer",
+      "recordVoice": "Enregistrer un message vocal",
+      "voiceHint": "Message vocal (2 min max)"
+    },
+    "opFailed": "Opération impossible.",
+    "you": "Vous",
+    "internal": "Messagerie interne",
+    "group": {
+      "group": "Groupe",
+      "leaveConfirm": "Quitter le groupe « {{name}} » ?",
+      "rename": "Renommer",
+      "addCount": "Ajouter ({{count}})",
+      "members": "{{count}} membres",
+      "you": "vous",
+      "admin": "Administrateur",
+      "removeAdmin": "Retirer admin",
+      "makeAdmin": "Nommer admin",
+      "removeConfirm": "Retirer {{name}} du groupe ?",
+      "remove": "Retirer",
+      "leave": "Quitter le groupe"
+    },
+    "list": {
+      "noConversation": "Aucune discussion.",
+      "groupCreated": "Groupe créé",
+      "newConversation": "Nouvelle discussion",
+      "groupCallInProgress": "Appel de groupe en cours",
+      "inProgress": "en cours",
+      "noAnnouncement": "Aucune annonce.",
+      "new": "Nouveau",
+      "toConfirm": "À confirmer"
+    },
+    "voice": {
+      "pause": "Pause",
+      "listen": "Écouter le message vocal",
+      "unavailable": "Vocal indisponible"
+    },
+    "day": {
+      "today": "Aujourd'hui",
+      "yesterday": "Hier"
+    },
+    "duration": {
+      "minSec": "{{min}} min {{sec}} s",
+      "sec": "{{sec}} s"
+    },
+    "callLog": {
+      "outgoing": "Appel sortant",
+      "incoming": "Appel entrant",
+      "declined": "Appel refusé",
+      "busy": "Correspondant occupé",
+      "busyIncoming": "Appel reçu pendant un autre appel",
+      "interrupted": "Appel interrompu",
+      "noAnswer": "Appel sans réponse",
+      "missed": "Appel manqué"
+    },
+    "priority": {
+      "normal": "Normale",
+      "important": "Importante",
+      "urgent": "Urgente"
+    },
+    "section": {
+      "prescolaire": "Maternelle",
+      "primaire": "Primaire",
+      "college": "Collège",
+      "lycee": "Lycée"
+    },
+    "target": {
+      "noClass": "Sans classe",
+      "allStaff": "Toute l'équipe",
+      "adminStaff": "Personnel administratif",
+      "teachers": "Enseignants",
+      "allParents": "Tous les parents",
+      "parentsOf": "Parents — {{name}}",
+      "anAccount": "Un compte"
+    },
+    "preview": {
+      "voice": "Message vocal ({{duration}})",
+      "document": "Document"
+    },
+    "presence": {
+      "online": "En ligne",
+      "away": "Absent",
+      "justNow": "Vu à l'instant",
+      "minutesAgo": "Vu il y a {{count}} min",
+      "hoursAgo": "Vu il y a {{count}} h",
+      "yesterday": "Vu hier",
+      "daysAgo": "Vu il y a {{count}} jours"
+    },
+    "page": {
+      "unavailable": "Messagerie indisponible pour ce compte.",
+      "conversations": "Discussions",
+      "announcements": "Annonces",
+      "searchPlaceholder": "Rechercher…",
+      "newAnnouncement": "Nouvelle annonce",
+      "loading": "Chargement…",
+      "archived": "Archivées ({{count}})",
+      "emptyParent": "Choisissez une discussion, ou écrivez à l'école avec ✍️.",
+      "emptyStaff": "Choisissez une discussion, ou écrivez à un collègue avec ✍️.",
+      "announcementsHere": "Les annonces de l'école s'affichent ici.",
+      "publishHint": "Publiez-en une avec 📣."
+    },
+    "newAnn": {
+      "writeText": "Écrivez le texte de l'annonce.",
+      "chooseRecipient": "Choisissez au moins un destinataire.",
+      "publishFailed": "Publication impossible.",
+      "recipients": "Destinataires",
+      "allStaffHint": "Personnel et enseignants (pas les parents)",
+      "somePeople": "Des personnes",
+      "parents": "Parents :",
+      "byClass": "Par classe",
+      "parentOne": "{{section}} — {{count}} parent",
+      "parentMany": "{{section}} — {{count}} parents",
+      "recipientOne": "{{count}} destinataire",
+      "recipientMany": "{{count}} destinataires",
+      "inScope": "(dans votre périmètre hiérarchique)",
+      "titlePlaceholder": "Titre (ex. Réunion du personnel vendredi 15 h)",
+      "textPlaceholder": "Texte de l'annonce…",
+      "importance": "Importance",
+      "requireReceipt": "Accusé de lecture obligatoire",
+      "requireReceiptHint": "(chacun doit confirmer « J'ai lu et compris »)",
+      "pin": "Épingler en tête des annonces",
+      "attachments": "Pièces jointes",
+      "attachmentsLimit": "({{max}} max, 10 Mo chacune)",
+      "rejected": "refusé",
+      "uploading": "Envoi des pièces jointes…",
+      "publishing": "Publication…",
+      "publish": "Publier"
+    },
+    "newConv": {
+      "direct": "Message direct",
+      "newGroup": "Nouveau groupe",
+      "parentHint": "Écrivez à la direction, au responsable de la section de votre enfant ou au comptable.",
+      "hierarchyHint": "La messagerie suit la hiérarchie de l'établissement : seules les personnes que vous pouvez contacter directement sont listées. Les autres peuvent vous écrire.",
+      "noManagerHint": "Aucun responsable direct n'est défini pour vous. Vos supérieurs peuvent vous écrire ; vous pourrez alors leur répondre.",
+      "groupNamePlaceholder": "Nom du groupe (ex. Conseil pédagogique, Comptabilité…)",
+      "creating": "Création…",
+      "createGroup": "Créer le groupe ({{count}} membres)"
+    },
+    "file": {
+      "download": "Télécharger",
+      "unavailable": "Fichier indisponible",
+      "downloading": "Téléchargement…",
+      "show": "Afficher",
+      "open": "Ouvrir"
+    },
+    "picker": {
+      "searchFamilies": "Rechercher un nom, un poste, un élève…",
+      "search": "Rechercher un nom, un poste…",
+      "selectedOne": "{{count}} sélectionné",
+      "selectedMany": "{{count}} sélectionnés",
+      "none": "Aucun compte trouvé.",
+      "filter": {
+        "tous": "Tous",
+        "personnel": "Personnel",
+        "enseignants": "Enseignants",
+        "parents": "Parents",
+        "en_ligne": "En ligne"
+      }
+    },
+    "backToList": "Retour à la liste",
+    "dateAt": "{{date}} à {{time}}",
+    "annView": {
+      "reminderOne": "Rappel envoyé à {{count}} personne.",
+      "reminderMany": "Rappel envoyé à {{count}} personnes.",
+      "allRead": "Tout le monde a déjà lu.",
+      "deleteConfirm": "Supprimer cette annonce pour tous ses destinataires ?",
+      "unpin": "Désépingler",
+      "pin": "Épingler",
+      "confirmedOn": "Lecture confirmée le {{date}}",
+      "readUnderstood": "J'ai lu et compris",
+      "readBy": "Lu par {{read}}/{{total}}",
+      "confirmedBy": "Confirmé par {{confirmed}}/{{total}}",
+      "seeDetail": "Voir le détail",
+      "remind": "Relancer",
+      "notRead": "Pas encore lu ({{count}}) :",
+      "readNotConfirmed": "Lu, non confirmé ({{count}}) :",
+      "confirmedCount": "Confirmé ({{count}}) :",
+      "readCount": "Lu ({{count}}) :"
+    },
+    "conv": {
+      "deleteConfirm": "Supprimer ce message pour tout le monde ?",
+      "onlineCount": "{{count}} en ligne",
+      "audioCall": "Appel audio",
+      "joinCount": "Rejoindre ({{count}})",
+      "backToCall": "Revenir à l'appel",
+      "groupCallHint": "Appel de groupe (audio, vidéo possible)",
+      "options": "Options",
+      "unpin": "Désépingler",
+      "pinTop": "Épingler en haut",
+      "unmute": "Réactiver les notifications",
+      "mute": "Mettre en sourdine",
+      "unarchive": "Désarchiver",
+      "archive": "Archiver",
+      "groupSettings": "Membres et réglages du groupe",
+      "olderMessages": "Messages plus anciens",
+      "empty": "Aucun message pour l'instant. Écrivez le premier 👋"
+    },
+    "callEnd": {
+      "declined": "Appel refusé",
+      "busy": "Correspondant occupé",
+      "noAnswer": "Pas de réponse",
+      "ended": "Appel terminé",
+      "lost": "Connexion perdue",
+      "missed": "Appel manqué",
+      "networkFailed": "Connexion impossible (réseau)",
+      "connectFailed": "Connexion impossible.",
+      "answeredElsewhere": "Répondu sur un autre appareil",
+      "leaveGroupFirst": "Quittez d'abord l'appel de groupe.",
+      "unsupported": "Appels non pris en charge par ce navigateur.",
+      "callFailed": "Appel impossible.",
+      "answerFailed": "Impossible de répondre.",
+      "aColleague": "Un collègue",
+      "pushTitle": "{{name}} vous appelle",
+      "pushBody": "Touchez pour répondre."
+    },
+    "rec": {
+      "unsupported": "Enregistrement audio non pris en charge par ce navigateur.",
+      "micUnavailable": "Micro indisponible."
+    },
+    "device": {
+      "micDenied": "Accès au micro refusé : autorisez le micro pour ce site dans le navigateur.",
+      "micNotFound": "Aucun micro détecté sur cet appareil.",
+      "micBusy": "Le micro est déjà utilisé par une autre application.",
+      "micUnavailable": "Micro indisponible sur cet appareil.",
+      "micInsecure": "Micro indisponible sur cet appareil (connexion non sécurisée ?).",
+      "cameraDenied": "Accès à la caméra refusé : autorisez la caméra pour ce site dans le navigateur.",
+      "cameraNotFound": "Aucune caméra détectée sur cet appareil.",
+      "cameraBusy": "La caméra est déjà utilisée par une autre application.",
+      "cameraUnavailable": "Caméra indisponible."
+    },
+    "doc": {
+      "none": "Aucun fichier.",
+      "badType": "« {{name}} » : type de fichier non accepté (PDF, photo, Word, Excel, PowerPoint, texte).",
+      "tooBig": "« {{name}} » dépasse 10 Mo.",
+      "empty": "« {{name}} » est vide."
+    },
+    "state": {
+      "notInstalled": "Messagerie pas encore installée sur le serveur (migrations SQL non appliquées).",
+      "unavailable": "Messagerie indisponible.",
+      "loadMessagesFailed": "Chargement des messages impossible.",
+      "loadFailed": "Chargement impossible.",
+      "schoolNotFound": "École introuvable.",
+      "publishedBut": "Annonce publiée, mais : {{errors}}",
+      "reminderTitle": "Rappel : {{title}}",
+      "anAnnouncement": "annonce",
+      "pleaseConfirm": "Merci de confirmer votre lecture.",
+      "notReadYet": "Annonce non encore lue."
+    }
+  },
+  "sysMsg": {
+    "level": {
+      "info": "Info",
+      "important": "Important",
+      "critique": "Critique"
+    },
+    "new": "Nouveau",
+    "read": "Lire",
+    "hide": "Masquer",
+    "title": "Messages SuperAdmin",
+    "markAllRead": "Tout marquer lu",
+    "none": "Aucun message à afficher."
+  },
+  "liaison": {
+    "title": "Liaison École–Famille",
+    "movedHint": "Les parents écrivent désormais dans la <b>Messagerie</b> : discussions avec la direction, le responsable de section et le comptable, et annonces aux parents (toute l'école, une section, une classe). Cette page garde l'historique des anciens messages ; ses annonces restent affichées sur l'accueil du portail parent (et sur la page publique si vous le cochez).",
+    "openMessaging": "Ouvrir la Messagerie",
+    "tabMessages": "Messages",
+    "tabAnnouncements": "Annonces",
+    "conversations": "Conversations ({{count}})",
+    "noMessage": "Aucun message",
+    "messageCount": "{{count}} message(s)",
+    "selectConversation": "Sélectionner une conversation",
+    "school": "École",
+    "replyPlaceholder": "Répondre...",
+    "send": "Envoyer",
+    "replySubject": "Réponse : {{subject}}",
+    "theSchool": "l'école",
+    "pushTitle": "Message de {{name}}",
+    "pushBody": "Concernant {{student}} : {{text}}",
+    "titleBodyRequired": "Titre et contenu requis.",
+    "newAnnouncement": "Nouvelle annonce",
+    "noAnnouncement": "Aucune annonce publiée",
+    "important": "Important",
+    "publicSite": "Site public",
+    "parentsOnly": "Parents",
+    "fieldTitle": "Titre",
+    "titlePlaceholder": "Ex: Réunion parents - vendredi 18h",
+    "fieldContent": "Contenu",
+    "contentPlaceholder": "Détails de l'annonce...",
+    "markImportant": "Marquer comme importante 📌",
+    "showPublic": "Afficher aussi sur la page publique de l'école 🌍",
+    "showPublicHint": "Décoché : visible uniquement par les parents dans leur portail.",
+    "publish": "Publier"
+  },
+  "weekdays": {
+    "Lundi": "Lundi",
+    "Mardi": "Mardi",
+    "Mercredi": "Mercredi",
+    "Jeudi": "Jeudi",
+    "Vendredi": "Vendredi",
+    "Samedi": "Samedi",
+    "Dimanche": "Dimanche"
+  },
+  "weekdaysShort": {
+    "Lundi": "Lun",
+    "Mardi": "Mar",
+    "Mercredi": "Mer",
+    "Jeudi": "Jeu",
+    "Vendredi": "Ven",
+    "Samedi": "Sam",
+    "Dimanche": "Dim"
+  },
+  "blocked": {
+    "title": "Accès restreint",
+    "body": "La consultation et l'impression des notes et bulletins sont temporairement suspendues car <b>des mensualités sont en attente de règlement</b>.",
+    "unpaidMonths": "Mois impayés :",
+    "settle": "Régularisez votre situation auprès de {{school}} pour retrouver l'accès complet.",
+    "theSchool": "l'établissement",
+    "call": "Appeler l'école",
+    "seePayments": "Voir mes paiements"
+  },
+  "payOnline": {
+    "banner": "<b>💳 Payer en ligne</b> — {{means}} depuis votre téléphone.",
+    "testMode": "(mode test : aucun argent réel)",
+    "button": "Payer en ligne",
+    "status": {
+      "impute": "Enregistré",
+      "en_attente": "En attente de l'opérateur",
+      "echoue": "Non abouti (rien prélevé)",
+      "a_verifier": "Reçu — en cours de régularisation par l'école",
+      "regularise": "Régularisé par l'école"
+    },
+    "history": "Mes paiements en ligne ({{count}})",
+    "tuition": "Scolarité",
+    "modalTitle": "Payer en ligne — {{name}}",
+    "loading": "Chargement…",
+    "nothingToPay": "Rien à payer pour le moment : tout est réglé. 👍",
+    "what": "Que voulez-vous payer ?",
+    "remaining": "Reste à payer : {{amount}}",
+    "amount": "Montant",
+    "atMostChoice": "Au plus {{amount}} sur ce choix.",
+    "atMostPerPayment": "Au plus {{amount}} par paiement en ligne : payez en plusieurs fois.",
+    "operatorFees": "Frais de l'opérateur ({{percent}} %)",
+    "total": "Total à payer",
+    "opening": "Ouverture…",
+    "pay": "Payer {{amount}}"
+  },
+  "edtView": {
+    "noSlotTeacher": "Aucun créneau dans votre emploi du temps pour l'instant",
+    "notPublished": "L'emploi du temps de la classe n'est pas encore publié",
+    "week": "Semaine",
+    "byDay": "Par jour",
+    "hour": "Heure",
+    "today": "aujourd'hui",
+    "todayShort": "auj.",
+    "lessons": "{{count}} cours",
+    "revision": "RÉVISION",
+    "noLesson": "Pas de cours ce jour-là",
+    "room": "Salle {{room}}",
+    "break": "Récréation"
+  },
+  "ui": {
+    "readOnlyBanner": "<b>Mode lecture seule</b> — vous pouvez consulter mais pas modifier."
+  },
+  "update": {
+    "available": "Une nouvelle version d'EduGest est disponible. Elle s'installera d'elle-même quand vous aurez terminé.",
+    "later": "Plus tard",
+    "reload": "Recharger",
+    "reloading": "Mise à jour disponible — rechargement en cours…"
+  },
+  "trombinoscope": {
+    "filiation": "Filiation",
+    "guardian": "Tuteur",
+    "contact": "Contact",
+    "printLegend": "En gros : le nom auquel l'enfant répond (son surnom s'il est renseigné). Dessous : son nom officiel, sa filiation, son tuteur et le contact du tuteur."
   }
 }

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useContext } from "react";
+import { Trans } from "react-i18next";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { C, today } from "../constants";
 import { cheminFichier, uploadFichier } from "../storageUtils";
@@ -159,7 +160,7 @@ const Chargement=({type="table",rows,cols})=>{
 const LectureSeule=()=>(
   <div style={{background:"linear-gradient(135deg,#fffbeb,#fef3c7)",border:"1px solid #fcd34d",borderRadius:10,padding:"11px 16px",fontSize:13,color:"#92400e",marginBottom:16,display:"flex",alignItems:"center",gap:10,boxShadow:"0 1px 4px rgba(0,0,0,0.06)"}}>
     <span style={{fontSize:20}}>👁️</span>
-    <span><strong>Mode lecture seule</strong> — vous pouvez consulter mais pas modifier.</span>
+    <span><Trans i18nKey="ui.readOnlyBanner" components={{ b: <strong /> }} /></span>
   </div>
 );
 

@@ -4,11 +4,12 @@ import { AttestationsTab } from "../AttestationsTab";
 import { EnseignementsTab } from "../EnseignementsTab";
 import { DisciplineTab } from "../DisciplineTab";
 import { BulletinsTab } from "../BulletinsTab";
+import { HonneurTab } from "../HonneurTab";
 import { MatieresTab } from "../MatieresTab";
 
-// Onglets de gestion : enseignements, discipline, bulletins, livrets,
-// matières, emploi du temps, attestations.
-export function EcoleTabsAdmin({ e, section, avecEns, userRole, annee, maxNote, matieresPredefinies, cleNotes, cleEleves }) {
+// Onglets de gestion : enseignements, discipline, bulletins, tableau
+// d'honneur, livrets, matières, emploi du temps, attestations.
+export function EcoleTabsAdmin({ e, titre, section, avecEns, userRole, annee, maxNote, matieresPredefinies, cleNotes, cleEleves }) {
   return (
     <>
       {/* ── ENSEIGNEMENTS ── */}
@@ -77,6 +78,25 @@ export function EcoleTabsAdmin({ e, section, avecEns, userRole, annee, maxNote, 
         saveAppreciation={e.saveAppreciation}
         appreciationsParEleveB={e.appreciationsParEleveB}
         toast={e.toast}
+        absences={e.absences}
+        emplois={e.emplois}
+      />}
+
+      {/* ── TABLEAU D'HONNEUR (un par classe) ──
+          `titre` nomme la section sur le palmarès « toute la section » ;
+          `section` règle le calcul des moyennes, comme au bulletin. */}
+      {e.tab === "honneur" && <HonneurTab
+        titre={titre}
+        classes={e.classes}
+        eleves={e.eleves}
+        notes={e.notes}
+        matieres={e.matieres}
+        periodes={e.periodes}
+        section={section}
+        maxNote={maxNote}
+        schoolInfo={e.schoolInfo}
+        anneeConsultee={e.anneeConsultee}
+        chargement={e.cE || e.cN}
       />}
 
       {/* ── LIVRETS ── */}
@@ -133,6 +153,7 @@ export function EcoleTabsAdmin({ e, section, avecEns, userRole, annee, maxNote, 
         setFiltreClasse={e.setFiltreClasse}
         classesUniq={e.classesUniq}
         elevesFiltres={e.elevesFiltres}
+        eleves={e.eleves}
         schoolInfo={e.schoolInfo}
         annee={e.anneeConsultee}
         section={section}

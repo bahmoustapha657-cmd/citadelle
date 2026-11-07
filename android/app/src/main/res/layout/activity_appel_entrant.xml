@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bleu_nuit"
+    android:gravity="center_horizontal"
+    android:orientation="vertical"
+    android:padding="32dp">
+
+    <View
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/appel_entrant"
+        android:textColor="@color/blanc"
+        android:textSize="16sp" />
+
+    <TextView
+        android:id="@+id/nom_appelant"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:gravity="center"
+        android:textColor="@color/blanc"
+        android:textSize="30sp"
+        android:textStyle="bold" />
+
+    <View
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_weight="2" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:baselineAligned="false"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/bouton_refuser"
+            android:layout_width="0dp"
+            android:layout_height="72dp"
+            android:layout_marginEnd="16dp"
+            android:layout_weight="1"
+            android:backgroundTint="@color/rouge_refuser"
+            android:text="@string/refuser"
+            android:textColor="@color/blanc"
+            android:textSize="18sp" />
+
+        <Button
+            android:id="@+id/bouton_repondre"
+            android:layout_width="0dp"
+            android:layout_height="72dp"
+            android:layout_weight="1"
+            android:backgroundTint="@color/vert_repondre"
+            android:text="@string/repondre"
+            android:textColor="@color/blanc"
+            android:textSize="18sp" />
+    </LinearLayout>
+</LinearLayout>

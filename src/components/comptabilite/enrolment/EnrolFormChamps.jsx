@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { SchoolContext } from "../../../contexts/SchoolContext";
 import { C, STATUTS_SORTIE, getClassesForSection, getSystemeScolaire } from "../../../constants";
 import { estClasseExamen } from "../../../promotion-utils";
+import { SURNOM_MAX } from "../../../identite-enfant";
 import { Champ, Input, Selec } from "../../ui";
 
 // Grille de champs du formulaire d'inscription d'un élève.
@@ -16,6 +17,10 @@ export function EnrolFormChamps({ form, chg, niveauEnrol }) {
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
       <Input label={t("enrolment.lastName")} value={form.nom||""} onChange={chg("nom")}/>
       <Input label={t("enrolment.firstName")} value={form.prenom||""} onChange={chg("prenom")}/>
+      {/* Maternelle : les petits ne connaissent souvent que leur surnom de la
+          maison. Écrit en gros sur le trombinoscope et le badge. */}
+      {(niveauEnrol==="prescolaire"||form.surnom)&&<Input label="Surnom (à la maison)" value={form.surnom||""}
+        onChange={chg("surnom")} maxLength={SURNOM_MAX} placeholder="Ex. : Néné, Bobo…"/>}
       <Champ label={t("enrolment.matricule")}>
         <div style={{display:"flex",gap:6,alignItems:"center"}}>
           <input value={form.matricule||""} onChange={chg("matricule")}

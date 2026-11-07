@@ -287,6 +287,23 @@ export const ARTICLES = [
     ],
   },
   {
+    id: "mon-cachet",
+    cat: "comptes",
+    roles: ["comptable", "primaire", "college", "admin", "direction", "superadmin"],
+    titre: "Déposer mon cachet et ma signature (comptable, chef de section)",
+    etapes: [
+      "Tamponnez sur une feuille blanche ; si vous voulez placer votre signature à part, signez sur une autre feuille (ou ailleurs sur la même) au stylo foncé.",
+      "Cliquez sur votre nom en haut à droite → « 🖋️ Mon cachet et ma signature ». Choisissez en haut « ⭕ Cachet » ou « ✍️ Signature », puis « 📷 Photographier… » (caméra du téléphone ou webcam du PC : placez l'image dans le cadre, feuille à plat et bien éclairée) ou « 🖼️ Choisir une image » déjà prise. Une seule image (tampon signé) suffit aussi : déposez-la comme cachet.",
+      "Réglez l'image si besoin, l'aperçu suit en direct : effacement du papier (plus doux ou plus fort), luminosité et contraste, couleur de l'encre (d'origine, bleu, violet ou noir, pour un rendu franc), redressement d'une photo prise de biais. Puis « Enregistrer ».",
+      "« 📏 Taille à l'impression » (de 80 % à 200 %) agrandit ou réduit votre cachet sur tous les documents que vous signez, sans reprendre de photo : réglez, vérifiez l'aperçu, « Enregistrer ». Plus grand, il chevauche votre nom comme un vrai tampon ; la page ne s'allonge pas.",
+      "« 🎯 Position dans le bloc » place l'image choisie où vous voulez : faites-la glisser sur l'aperçu, ou réglez les curseurs ↔ (gauche, droite) et ↕ (haut, bas) ; « ⊕ Centrer » la remet au milieu. Taille et position se règlent séparément pour le cachet et pour la signature, et valent pour tous les documents que vous signez, puis « Enregistrer ».",
+      "Cachet ET signature déposés : « 🧩 Disposition » les range en un clic (superposés, cachet à gauche et signature à droite, ou l'inverse) ; faites ensuite glisser l'un ou l'autre sur l'aperçu pour les placer exactement.",
+      "Le cachet s'imprime à votre place de signataire (reçus, préavis, états… pour le comptable ; bulletins, fiches de compositions, attestations… pour le chef de section — selon « Qui signe quoi »).",
+      "Il ne s'imprime QUE sur les documents que vous imprimez vous-même : un collègue, même sur le même poste, ou la Direction imprime le bloc vide, à signer à la main.",
+      "Vous seul pouvez déposer, remplacer ou retirer votre cachet et votre signature — la Direction ne le peut pas à votre place.",
+    ],
+  },
+  {
     id: "creer-compte-parent",
     cat: "comptes",
     roles: ["admin", "direction", "comptable", "superadmin"],
@@ -329,10 +346,10 @@ export const ARTICLES = [
     titre: "Appeler un collègue ou tout un groupe",
     etapes: [
       "Ouvrez la discussion directe avec la personne, puis touchez 📞 en haut à droite.",
-      "Autorisez le micro quand le navigateur le demande. Le correspondant voit l'appel sur n'importe quelle page de l'application, et reçoit une notification si l'application est fermée.",
+      "Autorisez le micro quand le navigateur le demande. Le correspondant voit l'appel sur n'importe quelle page de l'application. Application fermée, il reçoit une notification à condition de les avoir activées sur son appareil : bandeau en haut de la Messagerie.",
       "Pendant l'appel : 🎤 coupe votre micro, le bouton rouge raccroche. Un appel manqué apparaît dans la discussion avec « Rappeler ».",
       "Appel de groupe : dans un groupe, touchez 📞 ; les membres sont prévenus et voient « 🟢 Rejoindre ». Jusqu'à 30 participants ; 📷 allume votre caméra (facultatif), 🔄 passe à la caméra arrière, « Réduire » permet de continuer à naviguer.",
-      "Sur les réseaux mobiles, si l'appel ne se connecte pas, l'école doit activer le relais d'appels (TURN) — voir avec l'administrateur EduGest.",
+      "Si la connexion directe ne passe pas, l'appel bascule tout seul sur le relais de secours, indiqué à l'écran : le son est de qualité téléphone, avec un léger retard.",
     ],
   },
   {

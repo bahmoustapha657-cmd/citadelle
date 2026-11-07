@@ -29,6 +29,32 @@ script SQL à coller à la main avant de déployer.
 `propre: false` / suffixe `+modifs` = build fait avec des fichiers non
 commités : ne doit jamais apparaître en production.
 
+## Mise à jour des appareils
+
+Personne n'a besoin de Ctrl+R : chaque appareil compare sa version à
+`/version.json` (commit + date du build) à l'ouverture, au retour sur
+l'application (onglet, PWA, application Android), au retour du réseau et
+toutes les 5 minutes (`src/mise-a-jour/`). Une nouvelle version est
+appliquée par **un seul rechargement**, au premier moment sûr :
+application en arrière-plan, ouverture / retour sans rien avoir touché,
+10 minutes d'inactivité, ou écran de l'ancienne version introuvable.
+
+Jamais pendant un travail en cours : saisie (champ tapé encore affiché),
+fenêtre ouverte (modale, appel, caméra…), grille de notes modifiée, message
+vocal, impression, envoi au serveur ou envoi hors ligne en cours. Le bandeau
+« Recharger » s'affiche alors, et la mise à jour se fait au moment sûr
+suivant. Hors ligne : rien. Une même version n'est retentée qu'après
+5 minutes, 3 fois au plus par onglet (pas de boucle si le réseau sert encore
+l'ancienne page). Après le rechargement, l'utilisateur retrouve le module où
+il était.
+
+Un composant qui fait un travail à protéger pose `data-maj-retenir` sur un
+élément affiché pendant ce travail ; un module non graphique déclare une
+garde (`ajouterGarde` de `src/mise-a-jour/travail-en-cours.js`).
+
+Modifier `public/sw.js` n'est plus nécessaire pour propager une version (et
+déclenche un cycle de mise à jour du service worker sur tous les appareils).
+
 ## Revenir en arrière
 
 Actions → ouvrir le run de déploiement précédent (le dernier bon) →

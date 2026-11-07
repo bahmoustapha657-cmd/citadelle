@@ -13,8 +13,10 @@ import {
   findSalaryDuplicate,
   getFifthWeekDays,
   mergeSalaryWithManualFields,
+  monthHasFifthWeek,
   pickBestSalaryFromGroup,
 } from "../../../salary-utils";
+import { enseignementsPourPaie } from "../presences/presences-secondaire";
 
 // Crée (ou recalcule en resync) une fiche calculée. Met à jour l'accumulateur
 // local via noterCree. Renvoie des compteurs 0/1 { cree, resync }.
@@ -53,12 +55,16 @@ export async function genererSalairesPourMois(mois, {
   primeDefaut,
   // Annee à stocker sur les nouveaux records
   annee,
+  // Registre des présences : un jour d'absence justifiée n'est pas retiré.
+  presences = [],
   // Mutators Firestore
   modS, ajS, supS,
   // Options
   resync = false,
 }) {
-  const jours5eme = getFifthWeekDays(mois);
+  // 5ᵉ semaine : seulement si le comptable l'a appliquée à ce mois
+  // (« 📅 Appliquer la 5ᵉ semaine »), plus d'office.
+  const jours5eme = monthHasFifthWeek(salaires, mois) ? getFifthWeekDays(mois) : [];
   // Accumulateur local mis à jour à chaque ajS pour que les itérations
   // suivantes voient les fiches tout juste créées. Sinon la liste
   // `salaires` (réactive) n'est rafraîchie qu'après le retour du
@@ -111,7 +117,9 @@ export async function genererSalairesPourMois(mois, {
     await appliquer(buildSecondarySalaryRecord(ens, {
       mois,
       emplois: ens._emplois,
-      enseignements: ens._eng,
+      // Seulement les heures du mois (toutes les absences de l'année étaient
+      // retirées de CHAQUE mois), hors jours d'absence justifiée.
+      enseignements: enseignementsPourPaie(ens._eng, { mois, anneeScolaire: annee, presences }),
       jours5eme,
       primeDefaut,
     }));

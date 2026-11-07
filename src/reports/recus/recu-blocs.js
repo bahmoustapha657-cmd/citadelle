@@ -2,7 +2,7 @@
 import { fmt, getSectionForClasse, today } from "../../constants.js";
 import { getNationalDeviseHTML } from "../../national-symbols.js";
 import { MINISTERE_DEFAUT, tr } from "../print-helpers.js";
-import { blocsSignatures } from "../signatures.js";
+import { blocsSignatures, cachetOuEspace } from "../signatures.js";
 
 // En-tête compacte (logo + infos en ligne) — sans doublon type/nom.
 export const enteteCompact = (schoolInfo, lf) => `
@@ -91,7 +91,7 @@ export const blocRecu = (titre, ctx) => {
         : ""}</div>
     <div class="sigs">
       <div class="sig">${tr("school.students.parent")}<br/><br/><br/>${tr("reports.signature")}</div>
-      ${blocsSignatures(schoolInfo, "recu", (identite, s) => `<div class="sig">${identite}<br/><br/><br/>${tr("reports.signature")}${s.role === "principal" ? ` &amp; ${tr("reports.stamp")}` : ""}</div>`,
+      ${blocsSignatures(schoolInfo, "recu", (identite, s) => `<div class="sig">${identite}${cachetOuEspace(s, "<br/><br/><br/>", "16mm")}${tr("reports.signature")}${s.role === "principal" ? ` &amp; ${tr("reports.stamp")}` : ""}</div>`,
         { section: getSectionForClasse(eleve.classe) })}
     </div>
     </div>

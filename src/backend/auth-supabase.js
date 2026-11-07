@@ -13,6 +13,7 @@ import { identifiantConnexion } from "../comptes-parents";
 import { powerSyncConfigured } from "./powersync/tables";
 import { miroirAutreCompte } from "./powersync/proprietaire";
 import { seDesabonnerDesPush } from "./push-supabase";
+import i18n from "../i18n";
 
 // Délai maximal du désabonnement push à la déconnexion (cf. signOut).
 const DELAI_DESABONNEMENT = 3000;
@@ -93,7 +94,7 @@ async function chargerCompte(sb, userId, schoolCode) {
     // Base pas encore migrée (table postes absente) : repli sans jointure.
     ({ data: c, error } = await sb.from("comptes").select("*").eq("user_id", userId).maybeSingle());
   }
-  if (error) throw new Error(error.message || "Lecture du compte impossible.");
+  if (error) throw new Error(error.message || i18n.t("auth.errAccountRead"));
   if (!c) return null;
   if (c.poste && c.poste.actif === false) return { desactive: true };
   // Compte parent absorbé par une fusion de doublons : refusé ici aussi, en
@@ -103,7 +104,7 @@ async function chargerCompte(sb, userId, schoolCode) {
   let code = schoolCode || null;
   if (!code && c.ecole_id) {
     const { data: ec, error: errEcole } = await sb.from("ecoles").select("code").eq("id", c.ecole_id).maybeSingle();
-    if (errEcole) throw new Error(errEcole.message || "Lecture de l'école impossible.");
+    if (errEcole) throw new Error(errEcole.message || i18n.t("auth.errSchoolRead"));
     code = ec?.code || null;
   }
 
@@ -116,6 +117,17 @@ async function chargerCompte(sb, userId, schoolCode) {
     // Nom imprimé sous les signatures des documents que ce compte signe pour
     // son poste (Comptes & Postes) ; vide : le responsable du poste.
     nomSignature: String(x.nomSignature || "").trim(),
+    // Cachet et signature personnels (image), déposés par le titulaire depuis
+    // son menu profil ; apposés sur les seuls documents que CE compte imprime.
+    cachetUrl: c.cachet_url || "",
+    // Sa taille à l'impression (facteur, 1 = taille prévue par le document).
+    cachetTaille: Number(c.cachet_taille) || 1,
+    // Sa position dans le bloc de signature (fraction de sa hauteur ; 0 = centré).
+    cachetDecalage: { x: Number(c.cachet_dx) || 0, y: Number(c.cachet_dy) || 0 },
+    // Sa signature déposée à part, avec sa propre taille et sa position.
+    signatureUrl: c.signature_url || "",
+    signatureTaille: Number(c.signature_taille) || 1,
+    signatureDecalage: { x: Number(c.signature_dx) || 0, y: Number(c.signature_dy) || 0 },
     role: c.role,
     label: c.poste?.label || c.label || c.role,
     // Poste flexible : permissions par module (null = compte legacy, repli
@@ -147,19 +159,18 @@ async function chargerCompte(sb, userId, schoolCode) {
 // Compte parent absorbé par une fusion de doublons (Comptes & Postes →
 // Doublons parents) : sa connexion est bloquée côté Supabase Auth. Le parent
 // doit apprendre pourquoi, plutôt que de croire son mot de passe faux.
-export const MSG_ECOLE_HORS_SERVICE = {
-  inactive: "Cet établissement est désactivé : la connexion est impossible. Contactez EduGest.",
-  supprimee: "Cet établissement n'est plus disponible.",
-};
+// Messages en fonctions : ils suivent la langue choisie au moment de l'erreur.
+export const msgEcoleHorsService = (statut) =>
+  i18n.t(statut === "inactive" ? "auth.errSchoolDisabled" : "auth.errSchoolDeleted");
 
-export const MSG_COMPTE_REGROUPE = "Ce compte n'est plus actif : il a été regroupé avec un autre compte parent de l'école. Demandez votre identifiant à l'école.";
+export const msgCompteRegroupe = () => i18n.t("auth.errAccountMerged");
 
 async function connexionParEmail(email, mdp, schoolCode) {
   const sb = getSupabase();
   const { data: auth, error } = await sb.auth.signInWithPassword({ email, password: mdp });
   if (error || !auth?.user) {
-    if (error?.code === "user_banned") return { ok: false, data: { error: MSG_COMPTE_REGROUPE } };
-    return { ok: false, data: { error: "Identifiant ou mot de passe incorrect." } };
+    if (error?.code === "user_banned") return { ok: false, data: { error: msgCompteRegroupe(), regroupe: true } };
+    return { ok: false, data: { error: i18n.t("auth.wrongCredentials") } };
   }
   let compte;
   try {
@@ -167,12 +178,35 @@ async function connexionParEmail(email, mdp, schoolCode) {
   } catch {
     // Mot de passe accepté mais compte illisible : réseau coupé entre les deux.
     await sb.auth.signOut().catch(() => {});
-    return { ok: false, data: { error: "Connexion interrompue : vérifiez votre connexion internet puis réessayez." } };
+    return { ok: false, data: { error: i18n.t("auth.errInterrupted") } };
   }
   if (!compte || compte.desactive) {
     await sb.auth.signOut().catch(() => {});
-    return { ok: false, data: { error: compte?.regroupe ? MSG_COMPTE_REGROUPE
-      : compte?.desactive ? "Compte désactivé par la direction." : "Compte introuvable." } };
+    if (compte?.regroupe) return { ok: false, data: { error: msgCompteRegroupe(), regroupe: true } };
+    return { ok: false, data: { error: i18n.t(compte?.desactive ? "auth.errAccountDisabled" : "auth.errAccountNotFound") } };
+  }
+  await libererMiroirPour(compte.uid);
+  memoriserCompte(compte);
+  return { ok: true, data: { compte } };
+}
+
+// Changement d'espace (une personne, plusieurs comptes reliés) : le jeton à
+// usage unique rendu par account-manage (changer_espace) est échangé contre
+// la session du compte visé, puis ce compte est lu et mémorisé comme après
+// une connexion par mot de passe. Renvoie { ok, data: { compte | error } }.
+export async function ouvrirSessionParJeton(tokenHash, schoolCode) {
+  const sb = getSupabase();
+  const { data: auth, error } = await sb.auth.verifyOtp({ type: "magiclink", token_hash: tokenHash });
+  if (error || !auth?.user) return { ok: false, data: { error: i18n.t("auth.errSwitchSpace") } };
+  let compte;
+  try {
+    compte = await chargerCompte(sb, auth.user.id, schoolCode);
+  } catch {
+    return { ok: false, data: { error: i18n.t("auth.errInterrupted") } };
+  }
+  if (!compte || compte.desactive) {
+    await sb.auth.signOut().catch(() => {});
+    return { ok: false, data: { error: i18n.t(compte?.desactive ? "auth.errSpaceDisabled" : "auth.errSpaceNotFound") } };
   }
   await libererMiroirPour(compte.uid);
   memoriserCompte(compte);
@@ -187,14 +221,14 @@ export async function ecoleLogin({ login, mdp, schoolId }) {
   // comptes (ecole-hors-service.sql) — on le dit clairement plutôt que de
   // laisser croire à un mauvais mot de passe ou à un compte introuvable.
   const { statut } = await fetchEtatEcole(schoolId);
-  if (statut) return { ok: false, data: { error: MSG_ECOLE_HORS_SERVICE[statut] } };
+  if (statut) return { ok: false, data: { error: msgEcoleHorsService(statut) } };
   let identifiant = String(login || "").trim();
   if (identifiant.includes("@")) {
     const { data, error } = await getSupabase()
       .rpc("login_pour_email", { p_code: schoolId, p_email: identifiant });
     if (error || !data) {
       // Même message générique qu'un mauvais mot de passe (pas d'énumération).
-      return { ok: false, data: { error: "Identifiant ou mot de passe incorrect." } };
+      return { ok: false, data: { error: i18n.t("auth.wrongCredentials") } };
     }
     return connexionParEmail(emailFor(data, schoolId), mdp, schoolId);
   }
@@ -204,7 +238,7 @@ export async function ecoleLogin({ login, mdp, schoolId }) {
   // chiffres. L'identifiant exact passe toujours en premier, pour qu'aucun
   // compte existant ne change de comportement.
   const numero = identifiantConnexion(identifiant);
-  if (r.ok || numero === identifiant || r.data?.error === MSG_COMPTE_REGROUPE) return r;
+  if (r.ok || numero === identifiant || r.data?.regroupe) return r;
   return connexionParEmail(emailFor(numero, schoolId), mdp, schoolId);
 }
 

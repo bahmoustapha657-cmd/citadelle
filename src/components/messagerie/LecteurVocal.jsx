@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { urlVocal } from "../../backend/messagerie-supabase";
 import { formatChrono } from "./messagerie-logic";
 
 // Lecteur de message vocal : téléchargé au premier appui (bucket privé),
 // puis lu depuis la mémoire.
 export function LecteurVocal({ chemin, duree, clair = false }) {
+  const { t } = useTranslation();
   const audioRef = useRef(null);
   const [etat, setEtat] = useState("repos"); // repos | chargement | lecture | pause | erreur
   const [position, setPosition] = useState(0);
@@ -32,24 +34,25 @@ export function LecteurVocal({ chemin, duree, clair = false }) {
   };
 
   const avance = total ? Math.min(100, (position / total) * 100) : 0;
-  const couleur = clair ? "#fff" : "var(--sc1)";
+  // clair : sur la bulle « moi », couleur de l'école → écriture assortie.
+  const couleur = clair ? "var(--msg-encre, #fff)" : "var(--msg-accent, var(--sc1))";
 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 190 }}>
       <button type="button" onClick={basculer} disabled={etat === "chargement"}
-        aria-label={etat === "lecture" ? "Pause" : "Écouter le message vocal"}
+        aria-label={etat === "lecture" ? t("msg.voice.pause") : t("msg.voice.listen")}
         style={{
           width: 34, height: 34, borderRadius: "50%", border: "none", cursor: "pointer", flexShrink: 0,
-          background: clair ? "rgba(255,255,255,0.22)" : "var(--sc1-lt)", color: couleur, fontSize: 14,
+          background: clair ? "color-mix(in srgb, var(--msg-encre, #fff) 22%, transparent)" : "var(--msg-surbrillance, var(--sc1-lt))", color: couleur, fontSize: 14,
         }}>
         {etat === "chargement" ? "…" : etat === "lecture" ? "❚❚" : etat === "erreur" ? "⚠" : "▶"}
       </button>
       <div style={{ flex: 1 }}>
-        <div style={{ height: 4, borderRadius: 2, background: clair ? "rgba(255,255,255,0.3)" : "var(--lc-border)", overflow: "hidden" }}>
+        <div style={{ height: 4, borderRadius: 2, background: clair ? "color-mix(in srgb, var(--msg-encre, #fff) 30%, transparent)" : "var(--lc-border)", overflow: "hidden" }}>
           <div style={{ width: `${avance}%`, height: "100%", background: couleur, transition: "width .2s linear" }} />
         </div>
         <div style={{ fontSize: 10, marginTop: 4, opacity: 0.8 }}>
-          {etat === "erreur" ? "Vocal indisponible" : `🎤 ${formatChrono(position || total)}`}
+          {etat === "erreur" ? t("msg.voice.unavailable") : `🎤 ${formatChrono(position || total)}`}
         </div>
       </div>
     </div>

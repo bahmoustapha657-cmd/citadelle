@@ -1,5 +1,7 @@
 import React from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { Badge, Btn, Card, TD, THead, TR } from "../ui";
+import { COULEUR_TYPE_INCIDENT, libelleTypeIncident } from "./incidents-actions";
 
 // Onglet "Absences et événements" du Portail Enseignant.
 // Affiche les signalements faits par cet enseignant (avec actions
@@ -11,33 +13,34 @@ export function AbsencesTab({
   enseignantId,
   ouvrirEditionIncident, supprimerIncident,
 }) {
+  const { t } = useTranslation();
   return (
     <>
-      <h2 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 900, color: c1 }}>Signalements et événements</h2>
+      <h2 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 900, color: c1 }}>{t("teacher.abs.title")}</h2>
 
       <Card style={{ marginBottom: 16 }}>
         <div style={{ padding: "12px 18px", borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-          <strong style={{ fontSize: 13, color: c1 }}>Mes signalements sur élèves ({incidents.length})</strong>
-          <span style={{ fontSize: 11, color: "#64748b" }}>Visibles par la direction et les parents concernés.</span>
+          <strong style={{ fontSize: 13, color: c1 }}>{t("teacher.abs.myReports", { count: incidents.length })}</strong>
+          <span style={{ fontSize: 11, color: "#64748b" }}>{t("teacher.abs.visibleTo")}</span>
         </div>
         {incidents.length === 0 ? (
           <div style={{ padding: "20px", textAlign: "center", color: "#9ca3af", fontSize: 12 }}>
-            Aucun signalement. Allez dans <strong>Mes élèves</strong> pour signaler une absence, un retard, une indiscipline.
+            <Trans i18nKey="teacher.abs.none" components={{ b: <strong /> }} />
           </div>
         ) : (
           <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
-            <THead cols={["Date", "Élève", "Classe", "Type", "Justifié", "Motif", "Action"]} />
+            <THead cols={[t("teacher.cols.date"), t("teacher.cols.student"), t("teacher.cols.class"), t("teacher.cols.type"), t("teacher.cols.justified"), t("teacher.cols.reason"), t("teacher.cols.action")]} />
             <tbody>
               {incidents.map((inc) => {
                 const mine = enseignantId && inc.signaledByEnseignantId === enseignantId;
-                const typeColor = inc.type === "Absence" ? "red" : inc.type === "Retard" ? "amber" : inc.type === "Avertissement" ? "amber" : inc.type === "Sanction" ? "red" : inc.type === "Renvoi temporaire" ? "red" : "blue";
+                const typeColor = COULEUR_TYPE_INCIDENT[inc.type] || "blue";
                 return (
                   <TR key={inc._id}>
                     <TD>{inc.date || "-"}</TD>
                     <TD bold>{inc.eleveNom || "-"}</TD>
                     <TD><Badge color="blue">{inc.classe || "-"}</Badge></TD>
-                    <TD><Badge color={typeColor}>{inc.type || "-"}</Badge></TD>
-                    <TD><Badge color={inc.justifie === "Oui" ? "vert" : "gray"}>{inc.justifie || "Non"}</Badge></TD>
+                    <TD><Badge color={typeColor}>{inc.type ? libelleTypeIncident(inc.type) : "-"}</Badge></TD>
+                    <TD><Badge color={inc.justifie === "Oui" ? "vert" : "gray"}>{inc.justifie === "Oui" ? t("common.yes") : t("common.no")}</Badge></TD>
                     <TD>{inc.motif || "-"}</TD>
                     <TD>
                       {mine ? (
@@ -46,8 +49,8 @@ export function AbsencesTab({
                           <Btn sm v="danger" onClick={() => supprimerIncident(inc._id)}>🗑</Btn>
                         </div>
                       ) : (
-                        <span title={`Signalé par ${inc.signaledByEnseignantNom || "la direction"}`} style={{ fontSize: 10, color: "#9ca3af", fontStyle: "italic" }}>
-                          {inc.signaledByEnseignantNom ? `par ${inc.signaledByEnseignantNom.split(" ").slice(-1)[0]}` : "Direction"}
+                        <span title={t("teacher.abs.reportedBy", { name: inc.signaledByEnseignantNom || t("teacher.abs.theManagement") })} style={{ fontSize: 10, color: "#9ca3af", fontStyle: "italic" }}>
+                          {inc.signaledByEnseignantNom ? t("teacher.abs.by", { name: inc.signaledByEnseignantNom.split(" ").slice(-1)[0] }) : t("teacher.abs.management")}
                         </span>
                       )}
                     </TD>
@@ -61,14 +64,14 @@ export function AbsencesTab({
 
       <Card>
         <div style={{ padding: "12px 18px", borderBottom: "1px solid #f1f5f9" }}>
-          <strong style={{ fontSize: 13, color: c1 }}>Mes événements d'enseignement ({mesEvenements.length})</strong>
-          <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>Cours effectués, absents, non effectués (saisis par la comptabilité).</div>
+          <strong style={{ fontSize: 13, color: c1 }}>{t("teacher.abs.myEvents", { count: mesEvenements.length })}</strong>
+          <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{t("teacher.abs.eventsHint")}</div>
         </div>
         {mesEvenements.length === 0 ? (
-          <div style={{ padding: "20px", textAlign: "center", color: "#9ca3af", fontSize: 12 }}>Aucun événement enregistré.</div>
+          <div style={{ padding: "20px", textAlign: "center", color: "#9ca3af", fontSize: 12 }}>{t("teacher.abs.noEvent")}</div>
         ) : (
           <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
-            <THead cols={["Date", "Classe", "Matière", "Statut", "Motif"]} />
+            <THead cols={[t("teacher.cols.date"), t("teacher.cols.class"), t("teacher.cols.subject"), t("teacher.cols.status"), t("teacher.cols.reason")]} />
             <tbody>
               {mesEvenements.map((item) => (
                 <TR key={item._id}>

@@ -4,7 +4,7 @@ import { montantEnLettres, nombreEnLettres } from "../src/reports/montant-lettre
 import {
   filtrerVersements, libellePeriodeVersements, resumeVersements,
 } from "../src/components/comptabilite/fondation/versements-utils.js";
-import { situationVersementsHTML } from "../src/reports/situation-versements.js";
+import { MAX_LIGNES_COUPON, situationVersementsHTML } from "../src/reports/situation-versements.js";
 import { collecterMouvements, totauxMouvements } from "../src/components/comptabilite/caisse/caisse-utils.js";
 import { signatairesDocument } from "../src/reports/signatures.js";
 
@@ -88,6 +88,26 @@ test("un seul versement s'imprime au singulier", () => {
   const html = situationVersementsHTML({ versements: [versements[0]], schoolInfo: ecole, annee: "2026-2027" });
   assert.match(html, /SITUATION DE VERSEMENT</);
   assert.match(html, /Trois millions francs guinéens/);
+});
+
+test("comme un reçu, la situation sort en deux coupons sur un A4", () => {
+  const html = situationVersementsHTML({ versements: [versements[0]], schoolInfo: ecole, annee: "2026-2027" });
+  assert.equal(html.match(/<div class="recu">/g)?.length, 2);
+  assert.match(html, /Exemplaire — Comptable/);
+  assert.match(html, /Exemplaire — Bénéficiaire/);
+  // Les signatures et le total en lettres figurent sur chaque coupon.
+  assert.equal(html.match(/Pour réception/g)?.length, 2);
+  assert.equal(html.match(/Trois millions francs guinéens/g)?.length, 2);
+});
+
+test("une longue période garde sa page entière", () => {
+  const longue = Array.from({ length: MAX_LIGNES_COUPON + 1 }, (_, i) => ({
+    _id: `l${i}`, libelle: `Dépôt ${i}`, montant: 1000, date: "2026-10-01",
+  }));
+  const html = situationVersementsHTML({ versements: longue, schoolInfo: ecole });
+  assert.ok(!html.includes(`<div class="recu">`));
+  assert.match(html, /SITUATION DES VERSEMENTS/);
+  assert.match(html, /Pour réception/);
 });
 
 test("les saisies libres sont échappées dans le document", () => {

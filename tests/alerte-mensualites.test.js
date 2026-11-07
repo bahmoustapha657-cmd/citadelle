@@ -1,0 +1,123 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import {
+  ALERTE_DEFAUT, elevesAyantPaye, elevesEnRetard, elevesNonReinscrits, libelleTriAyantPaye, moisEchus, reglagesAlerte,
+  retardEleve, trierAyantPaye,
+} from "../src/components/comptabilite/mensualites-tab/alerte-mensualites.js";
+
+const MOIS = ["Octobre", "Novembre", "Décembre", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin"];
+const ANNEE = "2026-2027";
+const TARIFS = [{ classe: "6e A", montant: 100000 }];
+const le = (iso) => new Date(`${iso}T12:00:00`);
+const opts = (aujourdhui, extra = {}) => ({ moisAnnee: MOIS, annee: ANNEE, tarifsClasses: TARIFS, aujourdhui, ...extra });
+
+test("reglagesAlerte : défauts, puis valeurs bornées comme le serveur", () => {
+  assert.deepEqual(reglagesAlerte({}), ALERTE_DEFAUT);
+  assert.deepEqual(reglagesAlerte({ alerteMensualites: { jourEcheance: 10, seuilMois: 3 } }), { jourEcheance: 10, seuilMois: 3 });
+  assert.deepEqual(reglagesAlerte({ alerteMensualites: { jourEcheance: 31, seuilMois: 0 } }), ALERTE_DEFAUT);
+  assert.deepEqual(reglagesAlerte({ alerteMensualites: { jourEcheance: 2.5, seuilMois: "x" } }), ALERTE_DEFAUT);
+});
+
+test("moisEchus : seuls les mois dont l'échéance est passée (sans garantie)", () => {
+  assert.deepEqual(moisEchus(MOIS, ANNEE, 1, le("2026-10-14"), 0), ["Octobre"]);
+  assert.deepEqual(moisEchus(MOIS, ANNEE, 15, le("2026-10-14"), 0), []);
+  assert.deepEqual(moisEchus(MOIS, ANNEE, 10, le("2027-01-10"), 0), ["Octobre", "Novembre", "Décembre", "Janvier"]);
+  // Mois courts acceptés ; année illisible : rien d'échu (pas de fausse alerte).
+  assert.deepEqual(moisEchus(["Oct", "Nov"], ANNEE, 1, le("2026-11-02"), 0), ["Oct", "Nov"]);
+  assert.deepEqual(moisEchus(MOIS, "", 1, le("2027-06-30")), []);
+});
+
+test("moisEchus : les mois de garantie sont dus dès l'échéance du 1er mois", () => {
+  // Par défaut : le dernier mois.
+  assert.deepEqual(moisEchus(MOIS, ANNEE, 1, le("2026-10-14")), ["Octobre", "Juin"]);
+  assert.deepEqual(moisEchus(MOIS, ANNEE, 1, le("2026-10-14"), 2), ["Octobre", "Mai", "Juin"]);
+  // Avant l'échéance du premier mois, rien n'est dû, garantie comprise.
+  assert.deepEqual(moisEchus(MOIS, ANNEE, 15, le("2026-10-14"), 2), []);
+});
+
+test("retardEleve : les mois à venir ne comptent pas, sauf la garantie", () => {
+  const e = { classe: "6e A", mens: {} };
+  assert.deepEqual(retardEleve(e, opts(le("2026-10-14"))), { mois: ["Octobre", "Juin"], montant: 200000 });
+  assert.deepEqual(retardEleve(e, opts(le("2026-10-14"), { moisGarantie: 0 })), { mois: ["Octobre"], montant: 100000 });
+  // Garantie de 2 mois : Juin payé, Mai manque encore.
+  const juinPaye = { classe: "6e A", mens: { Juin: "Payé", Octobre: "Payé" } };
+  assert.deepEqual(retardEleve(juinPaye, opts(le("2026-10-14"), { moisGarantie: 2 })).mois, ["Mai"]);
+});
+
+test("retardEleve : un premier versement (dernier mois coché) ne masque plus le retard", () => {
+  // Ordre d'encaissement : inscription, puis Juin, puis Octobre → Mai.
+  const e = { classe: "6e A", mens: { Juin: "Payé" } };
+  const r = retardEleve(e, opts(le("2026-12-20")));
+  assert.deepEqual(r.mois, ["Octobre", "Novembre", "Décembre"]);
+  assert.equal(r.montant, 300000);
+});
+
+test("retardEleve : acompte déduit, dispense totale = aucun retard", () => {
+  const avecAcompte = { classe: "6e A", mens: {}, mensAcomptes: { Octobre: 40000 } };
+  assert.deepEqual(retardEleve(avecAcompte, opts(le("2026-10-14"), { moisGarantie: 0 })), { mois: ["Octobre"], montant: 60000 });
+  const dispense = { classe: "6e A", mens: {}, exoneration: { annee: ANNEE, mensualites: 100, inscription: 0, fraisAnnexes: 0, motif: "orphelin" } };
+  assert.deepEqual(retardEleve(dispense, opts(le("2027-03-01"))), { mois: [], montant: 0 });
+});
+
+test("retardEleve : parti en novembre, rien d'exigible après son départ", () => {
+  const e = { classe: "6e A", mens: { Octobre: "Payé" }, statut: "Transféré", dateDepart: "2026-11-15" };
+  const r = retardEleve(e, opts(le("2027-03-01")));
+  assert.deepEqual(r.mois, ["Novembre"]);
+});
+
+test("elevesEnRetard : seuil appliqué, plus gros retards d'abord", () => {
+  const a = { _id: "a", classe: "6e A", mens: { Octobre: "Payé" } };
+  const b = { _id: "b", classe: "6e A", mens: {} };
+  const c = { _id: "c", classe: "6e A", mens: { Octobre: "Payé", Novembre: "Payé", Décembre: "Payé" } };
+  const liste = elevesEnRetard([a, b, c], { ...opts(le("2026-12-05"), { moisGarantie: 0 }), reglages: { jourEcheance: 1, seuilMois: 2 } });
+  assert.deepEqual(liste.map((r) => r.eleve._id), ["b", "a"]);
+  assert.equal(liste[0].mois.length, 3);
+  // Échéance au 10 : Décembre pas encore en retard le 5 décembre.
+  const auDix = elevesEnRetard([a, b, c], { ...opts(le("2026-12-05"), { moisGarantie: 0 }), reglages: { jourEcheance: 10, seuilMois: 2 } });
+  assert.deepEqual(auDix.map((r) => r.eleve._id), ["b"]);
+  // Garantie par défaut : Juin s'ajoute à chacun ; c (Oct-Déc payés) n'en doit qu'un.
+  const garantie = elevesEnRetard([a, b, c], { ...opts(le("2026-12-05")), reglages: { jourEcheance: 1, seuilMois: 2 } });
+  assert.deepEqual(garantie.map((r) => [r.eleve._id, r.mois.length]), [["b", 4], ["a", 3]]);
+});
+
+test("elevesAyantPaye : au moins un mois payé, acomptes et montant perçu (tarif figé)", () => {
+  const a = { _id: "a", classe: "6e A", mens: { Juin: "Payé", Octobre: "Payé" }, mensMontants: { Juin: 90000 }, mensAcomptes: { Novembre: 30000 } };
+  const b = { _id: "b", classe: "6e A", mens: {}, mensAcomptes: { Octobre: 50000 } };
+  const liste = elevesAyantPaye([a, b], { moisAnnee: MOIS, tarifsClasses: TARIFS });
+  assert.equal(liste.length, 1);
+  // Mois dans l'ordre de l'année, quel que soit l'ordre d'encaissement.
+  assert.deepEqual(liste[0].mois, ["Octobre", "Juin"]);
+  assert.deepEqual(liste[0].acomptes, [{ mois: "Novembre", montant: 30000 }]);
+  assert.equal(liste[0].montant, 100000 + 90000 + 30000);
+});
+
+test("elevesNonReinscrits : actifs sans inscription encaissée, dispense totale exclue", () => {
+  const TARIFS_INS = [{ classe: "6e A", montant: 100000, inscription: 50000, reinscription: 30000 }];
+  const ancien = { _id: "r", classe: "6e A", statut: "Actif", typeInscription: "Réinscription", inscriptionPayee: false, inscriptionAcompte: 10000, mens: { Octobre: "Payé" } };
+  const nouveau = { _id: "n", classe: "6e A", statut: "Actif", typeInscription: "Première inscription", inscriptionPayee: false, mens: {} };
+  const inscrit = { _id: "i", classe: "6e A", statut: "Actif", inscriptionPayee: true, mens: {} };
+  const parti = { _id: "p", classe: "6e A", statut: "Transféré", inscriptionPayee: false, mens: {} };
+  const dispense = { _id: "d", classe: "6e A", statut: "Actif", inscriptionPayee: false, mens: {},
+    exoneration: { annee: ANNEE, mensualites: 0, inscription: 100, fraisAnnexes: 0, motif: "personnel" } };
+  const liste = elevesNonReinscrits([ancien, nouveau, inscrit, parti, dispense], { moisAnnee: MOIS, tarifsClasses: TARIFS_INS });
+  assert.deepEqual(liste.map((l) => l.eleve._id), ["r", "n"]);
+  assert.deepEqual([liste[0].type, liste[0].reste, liste[0].acompte, liste[0].moisPayes], ["Réinscription", 20000, 10000, 1]);
+  assert.deepEqual([liste[1].type, liste[1].reste, liste[1].moisPayes], ["Inscription", 50000, 0]);
+});
+
+test("trierAyantPaye : critère et sens choisis, égalités départagées", () => {
+  const l = (nom, nbMois, montant) => ({ eleve: { _id: nom, nom, prenom: "" }, mois: MOIS.slice(0, nbMois), acomptes: [], montant });
+  const lignes = [l("CAMARA", 2, 200000), l("BAH", 4, 400000), l("DIALLO", 2, 250000), l("ALPHA", 2, 200000)];
+  const ids = (tri) => trierAyantPaye(lignes, tri).map((x) => x.eleve._id);
+  // Mois décroissant (défaut) : à 2 mois, le montant le plus fort d'abord, puis le nom de A à Z.
+  assert.deepEqual(ids(), ["BAH", "DIALLO", "ALPHA", "CAMARA"]);
+  assert.deepEqual(ids({ critere: "mois", sens: "asc" }), ["ALPHA", "CAMARA", "DIALLO", "BAH"]);
+  assert.deepEqual(ids({ critere: "montant", sens: "desc" }), ["BAH", "DIALLO", "ALPHA", "CAMARA"]);
+  assert.deepEqual(ids({ critere: "nom", sens: "asc" }), ["ALPHA", "BAH", "CAMARA", "DIALLO"]);
+  assert.deepEqual(ids({ critere: "nom", sens: "desc" }), ["DIALLO", "CAMARA", "BAH", "ALPHA"]);
+  // La liste d'origine n'est pas modifiée.
+  assert.equal(lignes[0].eleve._id, "CAMARA");
+  assert.equal(libelleTriAyantPaye({ critere: "montant", sens: "asc" }), "Montant perçu, croissant");
+  assert.equal(libelleTriAyantPaye({ critere: "nom", sens: "desc" }), "Nom de l'élève, de Z à A");
+});

@@ -1,6 +1,6 @@
 // Calculs purs de la fiche de résultats : classement des élèves par moyenne
 // (identique au bulletin, via getSubjectAverage) + statistiques de la classe.
-import { getSubjectAverage } from "../../note-utils.js";
+import { getSubjectAverage, matieresNotees } from "../../note-utils.js";
 import { notesDeLEleve } from "../../note-index.js";
 
 // Mention/appréciation à partir d'une moyenne et de la note max.
@@ -23,6 +23,17 @@ export const apprecComposition = (v, maxNote) => {
 export function computeFicheResultats({ classe, periode, notes, matieres, eleves, maxNote = 20, matieresForClasse = null }) {
   const mi = maxNote / 2;
   const elevesClasse = classe === "all" ? eleves : eleves.filter((e) => e.classe === classe);
+  // Matières notées dans chaque classe sur la période : une matière que
+  // personne n'a notée ne compte pas (matieresNotees), comme au bulletin.
+  const noteesParClasse = new Map();
+  const noteesDe = (cl) => {
+    if (!noteesParClasse.has(cl)) {
+      const ids = new Set(eleves.filter((e) => e.classe === cl).map((e) => e._id));
+      const notesCl = notes.filter((n) => ids.has(n.eleveId) && n.periode === periode);
+      noteesParClasse.set(cl, new Set(matieresNotees(matieres, notesCl).map((m) => m.nom)));
+    }
+    return noteesParClasse.get(cl);
+  };
 
   const resultats = elevesClasse.map((e) => {
     // Repli sur la liste globale si la classe n'a aucune matière dédiée : un
@@ -30,7 +41,8 @@ export function computeFicheResultats({ classe, periode, notes, matieres, eleves
     // disparaissait du classement et toutes ses notes étaient ignorées.
     const matsClasse = matieresForClasse ? matieresForClasse(e.classe) : null;
     const matsEleve = (matsClasse && matsClasse.length) ? matsClasse : matieres;
-    const classSet = new Set(matsEleve.map((m) => m.nom));
+    const notees = noteesDe(e.classe);
+    const classSet = new Set(matsEleve.map((m) => m.nom).filter((nom) => notees.has(nom)));
     // Toutes les notes de l'élève sur la période : la moyenne par matière est
     // calculée par getSubjectAverage → EXACTEMENT comme le bulletin (rubriques
     // Français, type « Moyenne », formule Cours/Composition).

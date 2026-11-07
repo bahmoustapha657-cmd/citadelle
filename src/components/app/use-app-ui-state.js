@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { memoriserPage, pageApresMiseAJour } from "../../mise-a-jour/mise-a-jour-auto";
 
 // Regroupe l'état d'interface transverse de App : page courante, panneaux
 // ouverts (recherche/notifs/profil/aide/sidebar/onboarding), onglet initial
@@ -7,8 +8,11 @@ export function useAppUiState() {
   // Lien direct vers la landing produit (?decouvrir) pour le marketing ; sans
   // lui, l'app ouvre sur la connexion. Un utilisateur connecté est rabattu
   // sur son module par le garde-fou de App.
+  // Après un rechargement de mise à jour automatique, on rouvre le module
+  // où l'on était (le garde-fou de App rabat s'il n'est plus permis).
   const [page, setPage] = useState(() =>
-    new URLSearchParams(window.location.search).has("decouvrir") ? "decouvrir" : null);
+    new URLSearchParams(window.location.search).has("decouvrir") ? "decouvrir" : pageApresMiseAJour());
+  useEffect(() => { memoriserPage(page); }, [page]);
   // Onglet initial à afficher quand on entre dans ParametresEcole — permet
   // au TableauDeBord (alerte conformité) de pointer directement sur "officiel".
   const [paramInitialTab, setParamInitialTab] = useState(null);

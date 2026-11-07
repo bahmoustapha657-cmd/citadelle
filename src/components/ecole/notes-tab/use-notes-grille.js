@@ -1,5 +1,6 @@
-import { getAnnee } from "../../../constants";
+import { comparerClassesParNiveau, getAnnee } from "../../../constants";
 import { nomEleve } from "../../../fiche-eleve";
+import { nomAffiche, trierElevesAlpha } from "../../../ordre-eleves";
 
 // Logique de la grille de saisie. Trois modes (un axe figé car élève ×
 // matière × période ne tient pas en 2D) :
@@ -13,12 +14,12 @@ export function useNotesGrille({
   eleves, notes, matieresForClasse, annee, ajN, toast, maxNote = 20,
   grilleClasse, grillePeriode, grilleType, periodes = [],
   grilleMode = "periode", grilleMatiere = "", grilleEleve = "",
-  grilleChanges, setGrilleChanges, setGrilleSaving,
+  grilleChanges, setGrilleChanges, setGrilleSaving, triEleves,
 }) {
-  const classesUniqN = [...new Set(eleves.map(e => e.classe || ""))].filter(Boolean).sort();
-  const elevesGrille = (grilleClasse === "all" ? eleves : eleves.filter(e => e.classe === grilleClasse))
-    .filter(e => e.statut === "Actif" || !e.statut)
-    .sort((a, b) => (a.nom + a.prenom).localeCompare(b.nom + b.prenom));
+  const classesUniqN = [...new Set(eleves.map(e => e.classe || ""))].filter(Boolean).sort(comparerClassesParNiveau);
+  // Ordre et écriture des noms : ceux de l'école (Paramètres → Affichage).
+  const elevesGrille = trierElevesAlpha((grilleClasse === "all" ? eleves : eleves.filter(e => e.classe === grilleClasse))
+    .filter(e => e.statut === "Actif" || !e.statut), triEleves);
 
   const eleveById = (id) => eleves.find(e => e._id === id) || null;
   const eleveCourant = grilleMode === "eleve" ? eleveById(grilleEleve) : null;
@@ -36,10 +37,10 @@ export function useNotesGrille({
     lignes = eleveCourant ? matieresClasse.map(m => ({ key: m, label: m, sub: "" })) : [];
   } else if (grilleMode === "matiere") {
     colonnes = grilleMatiere ? periodes : [];
-    lignes = elevesGrille.map(e => ({ key: e._id, label: nomEleve(e), sub: e.classe }));
+    lignes = elevesGrille.map(e => ({ key: e._id, label: nomAffiche(e, triEleves), sub: e.classe }));
   } else {
     colonnes = matieresClasse;
-    lignes = elevesGrille.map(e => ({ key: e._id, label: nomEleve(e), sub: e.classe }));
+    lignes = elevesGrille.map(e => ({ key: e._id, label: nomAffiche(e, triEleves), sub: e.classe }));
   }
 
   // (ligneKey, colonne) → { eleveId, periode, matiere } selon le mode.

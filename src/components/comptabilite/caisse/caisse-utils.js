@@ -1,5 +1,7 @@
 // Journal de caisse : collecte de TOUS les mouvements datés du module
-// Comptabilité, puis filtrage sur une journée, une semaine ou un mois.
+// Comptabilité, puis filtrage sur une journée, une semaine ou un mois. La
+// période « Année » (aperçu général) ne filtre pas : elle reprend tout ce qui
+// est enregistré dans l'année consultée (voir serieParMois).
 // Logique pure — aucune dépendance React.
 //
 // Pourquoi un module dédié : les mouvements ne vivent pas au même endroit.
@@ -22,7 +24,17 @@ export const PERIODES_CAISSE = [
   { id: "jour", label: "Journée" },
   { id: "semaine", label: "Semaine" },
   { id: "mois", label: "Mois" },
+  { id: "annee", label: "Année" },
 ];
+
+// Aperçu général (période « Année ») : masqué pour les écoles listées ici, à
+// leur demande. Clé = schoolId (code école).
+const ECOLES_SANS_APERCU_ANNUEL = new Set(["citadelle"]);
+
+export const periodesCaisse = (schoolId) =>
+  ECOLES_SANS_APERCU_ANNUEL.has(schoolId)
+    ? PERIODES_CAISSE.filter((p) => p.id !== "annee")
+    : PERIODES_CAISSE;
 
 // ── Dates ───────────────────────────────────────────────────────────────────
 // Deux formats coexistent en base : "AAAA-MM-JJ" pour les champs saisis dans
@@ -265,4 +277,31 @@ export function serieParJour(mouvements, date, periode) {
     if (m.sens === "sortie") jour.sorties += montant; else if (m.sens === "entree") jour.entrees += montant;
   }
   return jours;
+}
+
+// Série mensuelle de l'aperçu général (période « Année »). Cette période ne
+// filtre PAS par date : les mouvements sont déjà ceux de l'année consultée
+// (recettes, dépenses, versements et journal des paiements sont lus par année),
+// comme dans le Bilan. Une fenêtre de dates en perdait : une école passée à
+// 2026-2027 en septembre y enregistre ses réinscriptions de septembre, que la
+// fenêtre « octobre → septembre » rejetait — comptées dans aucune année.
+// Base : septembre AAAA → août AAAA+1 (septembre ouvre l'année, comme pour
+// anneeScolaireDeDate), plus chaque mois hors base qui porte un mouvement
+// (pré-inscriptions de l'été, date mal saisie) : la somme des barres égale
+// toujours les totaux.
+export function serieParMois(mouvements, annee) {
+  const mois = new Map();
+  const ligneDuMois = (d) => {
+    const cle = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    if (!mois.has(cle)) mois.set(cle, { cle, date: new Date(d.getFullYear(), d.getMonth(), 1), entrees: 0, sorties: 0 });
+    return mois.get(cle);
+  };
+  const ouverture = Number(/^(\d{4})-\d{4}$/.exec(String(annee || "").trim())?.[1]);
+  if (ouverture) for (let i = 0; i < 12; i += 1) ligneDuMois(new Date(ouverture, 8 + i, 1));
+  for (const m of mouvements) {
+    const ligne = ligneDuMois(m.date);
+    const montant = Number(m.montant) || 0;
+    if (m.sens === "sortie") ligne.sorties += montant; else if (m.sens === "entree") ligne.entrees += montant;
+  }
+  return [...mois.values()].sort((a, b) => a.date - b.date);
 }

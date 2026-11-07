@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { C } from "../../../constants";
 import { getEvaluationLabel } from "../../../evaluation-forms";
 import { Badge, Btn, Card, TD, THead, TR, Vide } from "../../ui";
@@ -5,37 +6,56 @@ import { Badge, Btn, Card, TD, THead, TR, Vide } from "../../ui";
 // En-tête (sélection période + actions) et tableau des notes de la période.
 export function NotesListe({
   c1, matiere, schoolInfo, utilisateur,
-  periodeN, setPeriodeN, periodes, mesClasses,
+  periodeN, setPeriodeN, periodes, mesClasses, classeNotes = "", setClasseNotes,
   notesPeriode, maxNote = 20, enregistrement,
   pendingSync = 0, syncing = false, synchroniser,
   ouvrirGrille, ouvrirCreationNote, ouvrirEditionNote, supprimerNote,
 }) {
+  const { t } = useTranslation();
   return (
     <>
+      {/* Enseignant de plusieurs classes (titulaire + autres classes) : on
+          choisit d'abord la classe, la liste et les saisies s'y limitent. */}
+      {mesClasses.length > 1 && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: "10px 12px", marginBottom: 14 }}>
+          <span style={{ fontSize: 12, fontWeight: 800, color: "#475569" }}>{t("teacher.notesList.classLabel")}</span>
+          {mesClasses.map((classe) => {
+            const actif = classe === classeNotes;
+            return (
+              <button key={classe} type="button" onClick={() => setClasseNotes(classe)} style={{
+                border: `2px solid ${actif ? c1 : "#e2e8f0"}`, background: actif ? c1 : "#fff", color: actif ? "#fff" : "#334155",
+                borderRadius: 999, padding: "6px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer",
+              }}>
+                {classe}
+              </button>
+            );
+          })}
+        </div>
+      )}
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
-        <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900, color: c1, flex: 1 }}>Saisie des notes - {matiere || "Matiere"}</h2>
+        <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900, color: c1, flex: 1 }}>{t("teacher.notesList.title", { subject: matiere || t("teacher.notesList.subject") })}{classeNotes && <span style={{ color: "#64748b", fontWeight: 700 }}> · {classeNotes}</span>}</h2>
         {pendingSync > 0 && (
           <button
             type="button" onClick={syncing ? undefined : synchroniser} disabled={syncing}
-            title="Notes saisies hors-ligne en attente d'envoi. Cliquez pour synchroniser maintenant."
+            title={t("teacher.notesList.pendingHint")}
             style={{ display: "inline-flex", alignItems: "center", gap: 6, border: "1px solid #f59e0b", background: "#fffbeb", color: "#92400e", borderRadius: 999, padding: "5px 12px", fontSize: 12, fontWeight: 700, cursor: syncing ? "default" : "pointer" }}
           >
-            {syncing ? "⏳ Synchronisation…" : `⏳ ${pendingSync} note(s) en attente — synchroniser`}
+            {syncing ? `⏳ ${t("teacher.notesList.syncing")}` : `⏳ ${t("teacher.notesList.pending", { count: pendingSync })}`}
           </button>
         )}
         <select value={periodeN} onChange={(event) => setPeriodeN(event.target.value)} style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "7px 12px", fontSize: 13, background: "#fff" }}>
           {periodes.map((p) => <option key={p}>{p}</option>)}
         </select>
-        {mesClasses.length > 0 && <Btn v="vert" onClick={ouvrirGrille}>📊 Saisie en grille</Btn>}
-        <Btn onClick={ouvrirCreationNote}>Nouvelle note</Btn>
+        {mesClasses.length > 0 && <Btn v="vert" onClick={ouvrirGrille}>📊 {t("teacher.notesList.grid")}</Btn>}
+        <Btn onClick={ouvrirCreationNote}>{t("teacher.notesList.newGrade")}</Btn>
       </div>
 
       {notesPeriode.length === 0 ? (
-        <Vide icone="Notes" msg={`Aucune note pour ${periodeN}`} />
+        <Vide icone="📝" msg={classeNotes ? t("teacher.notesList.noneForIn", { period: periodeN, classe: classeNotes }) : t("teacher.notesList.noneFor", { period: periodeN })} />
       ) : (
         <Card>
           <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
-            <THead cols={["Eleve", "Type", `Note /${maxNote}`, "Actions"]} />
+            <THead cols={[t("teacher.cols.student"), t("teacher.cols.type"), t("teacher.cols.gradeOutOf", { max: maxNote }), t("teacher.cols.actions")]} />
             <tbody>
               {notesPeriode.map((note) => (
                 <TR key={note._id}>
@@ -44,8 +64,8 @@ export function NotesListe({
                   <TD center><strong style={{ fontSize: 14, color: Number(note.note) >= maxNote / 2 ? C.greenDk : "#b91c1c" }}>{note.note}</strong></TD>
                   <TD center>
                     <div style={{ display: "flex", justifyContent: "center", gap: 6 }}>
-                      <Btn sm v="ghost" onClick={() => ouvrirEditionNote(note)}>Modifier</Btn>
-                      <Btn sm v="danger" onClick={() => supprimerNote(note._id)} disabled={enregistrement}>Supprimer</Btn>
+                      <Btn sm v="ghost" onClick={() => ouvrirEditionNote(note)}>{t("common.edit")}</Btn>
+                      <Btn sm v="danger" onClick={() => supprimerNote(note._id)} disabled={enregistrement}>{t("common.delete")}</Btn>
                     </div>
                   </TD>
                 </TR>

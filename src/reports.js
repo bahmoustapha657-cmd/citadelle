@@ -19,9 +19,10 @@ export {
   watermarkHtml,
 } from "./reports/print-helpers.js";
 
-export { getRecuTotals, imprimerRecu, imprimerRecuTicket } from "./reports/recus.js";
+export { getRecuTotals, imprimerRecu, imprimerRecuFamille, imprimerRecuTicket } from "./reports/recus.js";
 export { TICKET_LARGEURS } from "./reports/recus/recu-ticket.js";
 export { imprimerCartesEleves, imprimerListeClasse } from "./reports/cartes-listes.js";
+export { imprimerBadges, imprimerTrombinoscope } from "./reports/trombinoscope.js";
 export { genererRapportMensuel } from "./reports/rapport-mensuel.js";
 export { genererRapportAnnuel } from "./reports/rapport-annuel.js";
 export { exportExcel, telechargerExcel } from "./reports/excel.js";
@@ -37,6 +38,10 @@ export {
   imprimerOrdreMutation,
 } from "./reports/mutation-radiation.js";
 export { imprimerLivret } from "./reports/livret.js";
-export { imprimerTableauHonneur } from "./reports/tableau-honneur.js";
+export { imprimerTableauHonneur, imprimerTableauxHonneur } from "./reports/tableau-honneur.js";
+export { imprimerAlerteMensualites } from "./reports/alerte-mensualites.js";
+export { imprimerPreavisRenvoi } from "./reports/preavis-renvoi.js";
+export { imprimerListeNonReinscrits, imprimerListePayes } from "./reports/listes-mensualites.js";
 export { imprimerEtatsSalaires } from "./reports/etats-salaires.js";
 export { imprimerEdtEnseignant, imprimerPaiesEnseignant } from "./reports/teacher-prints.js";
+export { imprimerEdtPortail } from "./reports/edt-portail-print.js";

@@ -1,12 +1,18 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { urlStockage } from "../../backend/messagerie-supabase";
 import { formatTaille, iconeFichier, imageAffichable, SEUIL_APERCU_AUTO } from "./documents";
 
+// clair : sur la bulle « moi », couleur de l'école → écriture assortie.
 const bouton = (clair) => ({
-  background: clair ? "rgba(255,255,255,0.2)" : "var(--lc-surface)", color: clair ? "#fff" : "var(--sc1)",
+  background: clair ? "color-mix(in srgb, var(--msg-encre, #fff) 20%, transparent)" : "var(--lc-surface)",
+  color: clair ? "var(--msg-encre, #fff)" : "var(--msg-accent, var(--sc1))",
   border: clair ? "none" : "1px solid var(--lc-border)", borderRadius: 8, padding: "4px 10px",
   fontSize: 11.5, fontWeight: 700, cursor: "pointer",
 });
+
+// Visionneuse plein écran : fond noir, boutons toujours blancs.
+const boutonVisionneuse = { ...bouton(true), background: "rgba(255,255,255,0.2)", color: "#fff" };
 
 function telecharger(url, nom) {
   const a = document.createElement("a");
@@ -21,6 +27,7 @@ function telecharger(url, nom) {
 // (téléchargée d'office si légère, sinon sur demande), carte sinon, avec
 // Ouvrir / Télécharger. Le fichier vient du bucket privé (blob: local).
 export function PieceJointe({ chemin, nom, type, taille, clair = false }) {
+  const { t } = useTranslation();
   const photo = imageAffichable(type);
   const [url, setUrl] = useState(null);
   const [etat, setEtat] = useState("repos"); // repos | chargement | erreur
@@ -77,8 +84,8 @@ export function PieceJointe({ chemin, nom, type, taille, clair = false }) {
             style={{ position: "fixed", inset: 0, zIndex: 1300, background: "rgba(0,0,0,0.88)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, padding: 16, textAlign: "start" }}>
             <img src={url} alt={nom} style={{ maxWidth: "100%", maxHeight: "82vh", borderRadius: 8 }} />
             <div style={{ display: "flex", gap: 10 }}>
-              <button type="button" style={bouton(true)} onClick={enregistrer}>⬇️ Télécharger</button>
-              <button type="button" style={bouton(true)} onClick={() => setAgrandie(false)}>✕ Fermer</button>
+              <button type="button" style={boutonVisionneuse} onClick={enregistrer}>⬇️ {t("msg.file.download")}</button>
+              <button type="button" style={boutonVisionneuse} onClick={() => setAgrandie(false)}>✕ {t("common.close")}</button>
             </div>
           </div>
         )}
@@ -89,19 +96,19 @@ export function PieceJointe({ chemin, nom, type, taille, clair = false }) {
   return (
     <div style={{
       display: "flex", alignItems: "center", gap: 10, minWidth: 200, maxWidth: 300, padding: "8px 10px", borderRadius: 10,
-      background: clair ? "rgba(255,255,255,0.14)" : "var(--lc-surface-alt)", border: clair ? "none" : "1px solid var(--lc-border)",
+      background: clair ? "color-mix(in srgb, var(--msg-encre, #fff) 14%, transparent)" : "var(--lc-surface-alt)", border: clair ? "none" : "1px solid var(--lc-border)",
     }}>
       <span style={{ fontSize: 26, lineHeight: 1 }}>{iconeFichier(type)}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 12.5, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={nom}>{nom}</div>
         <div style={{ fontSize: 10.5, opacity: 0.75, marginTop: 2 }}>
-          {etat === "erreur" ? "Fichier indisponible" : etat === "chargement" ? "Téléchargement…" : formatTaille(taille)}
+          {etat === "erreur" ? t("msg.file.unavailable") : etat === "chargement" ? t("msg.file.downloading") : formatTaille(taille)}
         </div>
         <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
           <button type="button" style={bouton(clair)} onClick={ouvrir} disabled={etat === "chargement"}>
-            {photo ? "🖼️ Afficher" : "Ouvrir"}
+            {photo ? `🖼️ ${t("msg.file.show")}` : t("msg.file.open")}
           </button>
-          <button type="button" style={bouton(clair)} onClick={enregistrer} disabled={etat === "chargement"}>⬇️</button>
+          <button type="button" style={bouton(clair)} onClick={enregistrer} disabled={etat === "chargement"} aria-label={t("msg.file.download")}>⬇️</button>
         </div>
       </div>
     </div>

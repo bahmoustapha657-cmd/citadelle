@@ -18,12 +18,12 @@ export function PortailTabContent({ p, schoolInfo, utilisateur, t }) {
           schoolInfo={schoolInfo} utilisateur={utilisateur} t={t}
           mesClasses={p.mesClasses} eleves={p.eleves} mesNotes={p.mesNotes} maxNote={p.maxNote}
           emplois={p.emplois} mesEvenements={p.mesEvenements}
-          formatEmploiHeure={p.formatEmploiHeure}
+          onVoirEdt={() => p.setTab("edt")}
         />
       )}
 
       {p.tab === "edt" && (
-        <EdtTab c1={p.c1} matiere={p.matiere} emplois={p.emplois} formatEmploiHeure={p.formatEmploiHeure} imprimerEdt={p.imprimerEdt} />
+        <EdtTab c1={p.c1} matiere={p.matiere} emplois={p.emplois} joursOuvrables={p.joursOuvrables} imprimerEdt={p.imprimerEdt} />
       )}
 
       {p.tab === "notes" && (
@@ -31,9 +31,10 @@ export function PortailTabContent({ p, schoolInfo, utilisateur, t }) {
           c1={p.c1} matiere={p.matiere} schoolInfo={schoolInfo} utilisateur={utilisateur}
           periodeN={p.periodeN} setPeriodeN={p.setPeriodeN} periodes={p.periodes}
           mesClasses={p.mesClasses} notesPeriode={p.notesPeriode}
+          classeNotes={p.classeNotes} setClasseNotes={p.setClasseNotes}
           noteForms={p.noteForms} defaultNoteType={p.defaultNoteType}
           isPrimaire={p.isPrimaire} matieresDispo={p.matieresDispo} maxNote={p.maxNote}
-          eleves={p.eleves} portalData={p.portalData}
+          eleves={p.elevesClasseNotes} portalData={p.portalData}
           modalNote={p.modalNote} setModalNote={p.setModalNote}
           formNote={p.formNote} setFormNote={p.setFormNote}
           gridForm={p.gridForm} setGridForm={p.setGridForm}
@@ -51,7 +52,8 @@ export function PortailTabContent({ p, schoolInfo, utilisateur, t }) {
       )}
 
       {p.tab === "eleves" && (
-        <ElevesTab c1={p.c1} mesClasses={p.mesClasses} eleves={p.eleves} ouvrirSignalementEleve={p.ouvrirSignalementEleve} />
+        <ElevesTab c1={p.c1} mesClasses={p.mesClasses} eleves={p.eleves} ouvrirSignalementEleve={p.ouvrirSignalementEleve}
+          schoolInfo={schoolInfo} annee={p.anneeNotes} section={p.section} />
       )}
 
       {p.tab === "absences" && (

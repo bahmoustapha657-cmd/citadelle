@@ -1,16 +1,19 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { PolarAngleAxis, PolarGrid, Radar, RadarChart, ResponsiveContainer, Tooltip } from "recharts";
 import { C, getBaremeForSection } from "../../constants";
 import { getSubjectAverage } from "../../note-utils";
 import { Badge, Card, TD, THead, TR, Vide } from "../ui";
 import { estAbsence } from "./helpers";
 import { FamilleCard } from "./FamilleCard";
+import { localeCourante } from "../../i18n";
 
 // Aperçu : vue « famille » en tête quand le compte suit plusieurs enfants,
 // puis annonces de l'école et résumé de l'enfant affiché. `section` = clé de
 // section de l'enfant : barème des notes et échelle du radar (maternelle et
 // primaire sur 10), formule des moyennes par matière.
 export function DashboardTab({ annonces, mesNotes, mesAbsences, matieres, eleve, section, c1, onVoirNotes, famille, eleveId, onVoirEnfant }) {
+  const { t } = useTranslation();
   const maxNote = getBaremeForSection(section);
   return (
     <>
@@ -24,7 +27,7 @@ export function DashboardTab({ annonces, mesNotes, mesAbsences, matieres, eleve,
             <div key={index} style={{ background: annonce.important ? "linear-gradient(135deg,#fef3c7,#fffbeb)" : "#f8fafc", border: `1px solid ${annonce.important ? "#fcd34d" : "#e2e8f0"}`, borderLeft: `4px solid ${annonce.important ? "#f59e0b" : c1}`, borderRadius: "0 12px 12px 0", padding: "12px 18px", marginBottom: 8 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                 <strong style={{ fontSize: 13, color: "#0A1628" }}>{annonce.titre}</strong>
-                <span style={{ marginLeft: "auto", fontSize: 10, color: "#94a3b8" }}>{annonce.auteur} - {annonce.date ? new Date(annonce.date).toLocaleDateString("fr-FR") : ""}</span>
+                <span style={{ marginLeft: "auto", fontSize: 10, color: "#94a3b8" }}>{annonce.auteur} - {annonce.date ? new Date(annonce.date).toLocaleDateString(localeCourante()) : ""}</span>
               </div>
               <p style={{ margin: 0, fontSize: 12, color: "#475569", lineHeight: 1.6 }}>{annonce.corps}</p>
             </div>
@@ -35,12 +38,12 @@ export function DashboardTab({ annonces, mesNotes, mesAbsences, matieres, eleve,
       {mesNotes.length > 0 && (
         <Card style={{ marginBottom: 16 }}>
           <div style={{ padding: "14px 18px", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <strong style={{ fontSize: 13, color: c1 }}>Dernieres notes</strong>
-            <button onClick={onVoirNotes} style={{ fontSize: 12, color: c1, background: "none", border: "none", cursor: "pointer", fontWeight: 700 }}>Voir tout</button>
+            <strong style={{ fontSize: 13, color: c1 }}>{t("parent.dash.lastGrades")}</strong>
+            <button onClick={onVoirNotes} style={{ fontSize: 12, color: c1, background: "none", border: "none", cursor: "pointer", fontWeight: 700 }}>{t("parent.dash.seeAll")}</button>
           </div>
           <div style={{ overflowX: "auto" }}>
             <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
-              <THead cols={["Matiere", "Type", "Periode", "Note"]} />
+              <THead cols={[t("parent.cols.subject"), t("parent.cols.type"), t("parent.cols.period"), t("parent.cols.grade")]} />
               <tbody>
                 {mesNotes.slice(-6).reverse().map((item, index) => (
                   <TR key={index}>
@@ -59,17 +62,17 @@ export function DashboardTab({ annonces, mesNotes, mesAbsences, matieres, eleve,
       {mesAbsences.filter(estAbsence).length > 0 && (
         <Card style={{ marginBottom: 16 }}>
           <div style={{ padding: "14px 18px", borderBottom: "1px solid #f1f5f9" }}>
-            <strong style={{ fontSize: 13, color: "#b91c1c" }}>Absences recentes</strong>
+            <strong style={{ fontSize: 13, color: "#b91c1c" }}>{t("parent.dash.recentAbsences")}</strong>
           </div>
           <div style={{ overflowX: "auto" }}>
             <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
-              <THead cols={["Date", "Matiere", "Statut", "Motif"]} />
+              <THead cols={[t("parent.cols.date"), t("parent.cols.subject"), t("parent.cols.status"), t("parent.cols.reason")]} />
               <tbody>
                 {mesAbsences.filter(estAbsence).slice(-5).map((item, index) => (
                   <TR key={index}>
                     <TD>{item.date || "-"}</TD>
                     <TD>{item.matiere || "-"}</TD>
-                    <TD><Badge color="red">Absent</Badge></TD>
+                    <TD><Badge color="red">{t("parent.dash.absent")}</Badge></TD>
                     <TD>{item.motif || "-"}</TD>
                   </TR>
                 ))}
@@ -82,7 +85,7 @@ export function DashboardTab({ annonces, mesNotes, mesAbsences, matieres, eleve,
       {mesNotes.length > 0 && matieres.length >= 3 && (
         <Card style={{ marginBottom: 16 }}>
           <div style={{ padding: "14px 18px" }}>
-            <p style={{ margin: "0 0 8px", fontWeight: 800, fontSize: 13, color: c1 }}>Profil par matiere</p>
+            <p style={{ margin: "0 0 8px", fontWeight: 800, fontSize: 13, color: c1 }}>{t("parent.dash.subjectProfile")}</p>
             <ResponsiveContainer width="100%" height={220}>
               <RadarChart data={matieres.map((matiere) => {
                 const notesMatiere = mesNotes.filter((item) => item.matiere === matiere);
@@ -91,7 +94,7 @@ export function DashboardTab({ annonces, mesNotes, mesAbsences, matieres, eleve,
               })}>
                 <PolarGrid stroke="#e2e8f0" />
                 <PolarAngleAxis dataKey="matiere" tick={{ fontSize: 10 }} />
-                <Radar name="Note" dataKey="valeur" stroke={c1} fill={c1} fillOpacity={0.25} />
+                <Radar name={t("parent.cols.grade")} dataKey="valeur" stroke={c1} fill={c1} fillOpacity={0.25} />
                 <Radar name="Max" dataKey="plein" stroke="transparent" fill="transparent" />
                 <Tooltip formatter={(value) => `${value}/${maxNote}`} />
               </RadarChart>
@@ -100,7 +103,7 @@ export function DashboardTab({ annonces, mesNotes, mesAbsences, matieres, eleve,
         </Card>
       )}
 
-      {mesNotes.length === 0 && mesAbsences.length === 0 && <Vide icone="Info" msg="Aucune donnee disponible pour le moment" />}
+      {mesNotes.length === 0 && mesAbsences.length === 0 && <Vide icone="ℹ️" msg={t("parent.dash.noData")} />}
     </>
   );
 }

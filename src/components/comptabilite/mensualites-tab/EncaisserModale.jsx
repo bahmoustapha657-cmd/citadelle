@@ -4,7 +4,7 @@ import { Btn, Modale } from "../../ui";
 import {
   acompteInscription, getEleveMensualiteSnapshot, getFraisAnnexesEleve, getTarifConfigForClasse,
 } from "../../../mensualite-utils";
-import { planVersement } from "../../../paiements-scolarite";
+import { moisGarantieEcole, planVersement } from "../../../paiements-scolarite";
 import { ciblesVersement, montantPropose } from "../../../versements";
 import { getRecuFormat, labelRecuFormat } from "./recu-format";
 import { imprimerRecuEleve } from "./recu-eleve";
@@ -22,9 +22,10 @@ export function EncaisserModale({
   encaisserVersement, retirerAcompte, fermer,
 }) {
   const nomEleve = `${eleve.nom || ""} ${eleve.prenom || ""}`.trim();
+  const moisGarantie = moisGarantieEcole(schoolInfo);
   const { cibles, etats, mensualite } = useMemo(
-    () => ciblesVersement({ eleve, moisAnnee, annee, tarifsClasses, tranches }),
-    [eleve, moisAnnee, annee, tarifsClasses, tranches],
+    () => ciblesVersement({ eleve, moisAnnee, annee, tarifsClasses, tranches, moisGarantie }),
+    [eleve, moisAnnee, annee, tarifsClasses, tranches, moisGarantie],
   );
   const snapshot = getEleveMensualiteSnapshot(eleve, moisAnnee, tarifsClasses, annee);
   const resteTotal = snapshot.soldeMensualites + snapshot.soldeInscription + snapshot.soldeAutre;

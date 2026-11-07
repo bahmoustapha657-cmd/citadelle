@@ -4,6 +4,9 @@ import assert from "node:assert/strict";
 import {
   getActiveExamForms,
   getActiveNoteForms,
+  getAvertissementSaisie,
+  getEffetForme,
+  getEvaluationFormsConfig,
   getEvaluationLabel,
   resolveCanonicalExamType,
   resolveCanonicalNoteType,
@@ -81,4 +84,68 @@ test("getActiveExamForms garde un fallback si tout est masque", () => {
 
   assert.ok(forms.length > 0);
   assert.equal(resolveCanonicalExamType("DS", schoolInfo), "Devoir surveillé");
+});
+
+// Paramètres → Évaluations affiche sous chaque forme sa place dans le calcul
+// (getSubjectAverage). Elle se lit sur la valeur interne : renommer une forme
+// ne la déplace pas.
+test("getEffetForme décrit la place de chaque forme du secondaire dans la moyenne", () => {
+  const effets = Object.fromEntries(
+    getEvaluationFormsConfig({}).secondaire.map((item) => [item.id, getEffetForme("secondaire", item.value)]),
+  );
+  assert.equal(effets.devoir.texte, "Note de classe · partie écrite");
+  assert.equal(effets.evaluation_ecrite.texte, "Note de classe · partie écrite");
+  assert.equal(effets.examen.texte, "Note de classe · partie écrite");
+  assert.equal(effets.interrogation.texte, "Note de classe · partie orale");
+  assert.equal(effets.evaluation_orale.texte, "Note de classe · partie orale");
+  assert.equal(effets.composition.texte, "Composition · compte double face à la note de classe");
+  assert.equal(effets.moyenne.texte, "Remplace toutes les autres notes de la matière");
+  assert.deepEqual(
+    Object.entries(effets).filter(([, e]) => e.fort).map(([id]) => id),
+    ["moyenne"],
+  );
+});
+
+// Dictée et Questions / Rédaction sont des MATIÈRES « évaluées seulement »
+// (matiere-nature.js), plus des formes de notes : ni dans Paramètres →
+// Évaluations, ni à la saisie, même pour une école qui les avait enregistrées.
+test("Dictée/Questions et Rédaction ne sont plus des formes de notes", () => {
+  const schoolInfo = {
+    evaluationForms: {
+      secondaire: [
+        { id: "dictee_questions", label: "Dictée/Questions (Français)", active: true, college: true },
+        { id: "redaction", label: "Rédaction (Français)", active: true, college: true },
+      ],
+    },
+  };
+  const ids = getEvaluationFormsConfig(schoolInfo).secondaire.map((item) => item.id);
+  assert.ok(!ids.includes("dictee_questions") && !ids.includes("redaction"));
+  for (const section of ["prescolaire", "primaire", "college", "lycee", "secondaire"]) {
+    const valeurs = getActiveNoteForms(schoolInfo, section).map((item) => item.value);
+    assert.ok(!valeurs.includes("Dictée/Questions") && !valeurs.includes("Rédaction"), section);
+  }
+});
+
+test("getEffetForme : au primaire toutes les notes pèsent autant, sauf la Moyenne", () => {
+  for (const item of getEvaluationFormsConfig({}).primaire) {
+    const effet = getEffetForme("primaire", item.value);
+    if (item.id === "moyenne") assert.equal(effet.fort, true);
+    else assert.equal(effet.texte, "Moyenne simple : même poids que les autres notes");
+  }
+  // Les épreuves du module Examens ne touchent pas aux notes.
+  assert.equal(getEffetForme("examens", "Composition"), null);
+});
+
+test("getEffetForme suit la valeur interne, pas le libellé choisi par l'école", () => {
+  const schoolInfo = { evaluationForms: { secondaire: [{ id: "interrogation", label: "Devoir surveillé", active: true }] } };
+  const interro = getEvaluationFormsConfig(schoolInfo).secondaire.find((item) => item.id === "interrogation");
+  assert.equal(interro.label, "Devoir surveillé");
+  assert.equal(getEffetForme("secondaire", interro.value).texte, "Note de classe · partie orale");
+});
+
+test("getAvertissementSaisie prévient seulement quand la forme écarte les autres notes", () => {
+  assert.match(getAvertissementSaisie("Moyenne"), /remplace toutes les autres notes/);
+  for (const type of ["Devoir", "Interrogation", "Évaluation orale", "Évaluation écrite", "Examen", "Composition", ""]) {
+    assert.equal(getAvertissementSaisie(type), null, type);
+  }
 });

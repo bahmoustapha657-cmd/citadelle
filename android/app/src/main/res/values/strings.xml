@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="nom_application">EduGest</string>
+    <string name="url_site" translatable="false">https://edugest-gn.pages.dev/</string>
+    <string name="hote_site" translatable="false">edugest-gn.pages.dev</string>
+    <string name="asset_statements" translatable="false">[{\"relation\":[\"delegate_permission/common.handle_all_urls\"],\"target\":{\"namespace\":\"web\",\"site\":\"https://edugest-gn.pages.dev\"}}]</string>
+    <string name="appel_entrant">Appel EduGest</string>
+    <string name="appel_inconnu">Un correspondant</string>
+    <string name="repondre">Répondre</string>
+    <string name="refuser">Refuser</string>
+    <string name="canal_appels">Appels entrants</string>
+    <string name="canal_notifications">Messages et informations</string>
+</resources>

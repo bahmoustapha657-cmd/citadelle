@@ -34,6 +34,11 @@ const FLAT_TABLE = {
   // Comptabilité (Tranche 4) :
   recettes: "recettes", depenses: "depenses", versements: "versements",
   bons: "bons", personnel: "personnel",
+  // Registre des absences/retards du personnel (retenues sur salaire) :
+  presences: "presences",
+  // Paie des enseignants (forfait, primes), réservée à la Comptabilité ; id
+  // = celui de la fiche enseignant (src/paie-enseignants.js).
+  paieEnseignants: "paie_enseignants",
   // Journal des encaissements de scolarité (grand livre, ajout seul) :
   paiements: "paiements",
   // Modules « document » (Tranche 5) — tables uniformes id+ecole_id+extra :
@@ -131,7 +136,9 @@ const TRANSFORMERS = {
   depenses: (r) => ({ _id: r.id, annee: r.annee, date: r.date, montant: Number(r.montant), ...(r.extra || {}) }),
   versements: (r) => ({ _id: r.id, annee: r.annee, date: r.date, montant: Number(r.montant), ...(r.extra || {}) }),
   bons: (r) => ({ _id: r.id, annee: r.annee, date: r.date, montant: Number(r.montant), ...(r.extra || {}) }),
+  presences: (r) => ({ _id: r.id, annee: r.annee, date: r.date, ...(r.extra || {}) }),
   personnel: (r) => ({ _id: r.id, nom: r.nom, prenom: r.prenom, ...(r.extra || {}) }),
+  paie_enseignants: (r) => ({ _id: r.id, ...(r.extra || {}) }),
   // Journal des encaissements : l'élève, la classe et le nom sont FIGÉS au
   // moment du paiement (la fiche peut changer de classe, ou disparaître).
   paiements: (r) => ({
@@ -187,7 +194,9 @@ const COLUMN_DEFS = {
   depenses: { extraCol: "extra", cols: { annee: "annee", date: "date", montant: "montant" } },
   versements: { extraCol: "extra", cols: { annee: "annee", date: "date", montant: "montant" } },
   bons: { extraCol: "extra", cols: { annee: "annee", date: "date", montant: "montant" } },
+  presences: { extraCol: "extra", cols: { annee: "annee", date: "date" } },
   personnel: { extraCol: "extra", cols: { nom: "nom", prenom: "prenom" } },
+  paie_enseignants: { extraCol: "extra", cols: {} },
   paiements: { extraCol: "extra", cols: {
     annee: "annee", type: "type", statut: "statut", eleveId: "eleve_id",
     eleveNom: "eleve_nom", classe: "classe", mois: "mois", libelle: "libelle",

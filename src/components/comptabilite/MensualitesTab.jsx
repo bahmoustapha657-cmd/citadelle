@@ -6,10 +6,17 @@ import { TarifsClasses } from "../TarifsClasses";
 import { TriElevesSelect } from "../TriElevesSelect";
 import { useTriEleves } from "../use-tri-eleves";
 import { trierEleves } from "../../tri-eleves";
+import { rechercherEleves } from "../../recherche-eleves";
+import { RechercheEleves } from "../RechercheEleves";
+import { useRechercheEleves } from "../use-recherche-eleves";
 import { AlertesCritiques } from "./mensualites-tab/AlertesCritiques";
+import { RappelNonReinscrits } from "./mensualites-tab/RappelNonReinscrits";
+import { ecarterNonReinscrits, regleEcartement } from "../../ecartes-non-reinscrits";
 import { EncaisserModale } from "./mensualites-tab/EncaisserModale";
 import { ExonerationsModale } from "./mensualites-tab/ExonerationsModale";
 import { MensualitesTable } from "./mensualites-tab/MensualitesTable";
+import { RecuFamilleModale } from "./mensualites-tab/RecuFamilleModale";
+import { indexFratries } from "../../fratrie";
 import { TranchesPaiement } from "./mensualites-tab/TranchesPaiement";
 
 // Onglet mensualités : tarifs par classe, alertes impayés, filtres niveau/classe
@@ -27,6 +34,10 @@ export function MensualitesTab({
   // mensualités
   eleves,
   elevesFiltres,
+  // Élèves de l'année, toutes sections : on y cherche les fratries.
+  elevesFamille = [],
+  // Les mêmes, rangés par section : la recherche signale les autres sections.
+  elevesAnneeParNiveau = {},
   classesU,
   niveau,
   setNiveau,
@@ -37,6 +48,8 @@ export function MensualitesTab({
   // Année des fiches affichées : la consultée (archive) ou la courante.
   anneeScolarite,
   readOnly,
+  // Année affichée = année close consultée (archive) : pas de rappel.
+  estArchive = false,
   canCreate,
   canEdit,
   schoolInfo,
@@ -61,12 +74,35 @@ export function MensualitesTab({
   // l'état à jour.
   const [encaisseId, setEncaisseId] = useState(null);
   const eleveEncaisse = encaisseId ? eleves.find((e) => e._id === encaisseId) : null;
+  // Reçu famille : élève cliqué (id) ; sa fratrie est relue dans la liste.
+  const [recuFamilleId, setRecuFamilleId] = useState(null);
+  const fratrieDe = useMemo(() => indexFratries(elevesFamille), [elevesFamille]);
+  const eleveFamille = recuFamilleId ? elevesFamille.find((e) => e._id === recuFamilleId) : null;
   // Tri choisi (alphabétique, reste à payer, dernier paiement…), posé sur
   // l'ordre alphabétique de l'école.
   const [tri, setTri] = useTriEleves("mensualites");
+  // Recherche (matricule, filiation, tuteur…) : elle restreint la grille et
+  // sa synthèse — une famille et ce qu'elle doit. Les alertes impayés gardent
+  // le périmètre cycle + classe qu'elles impriment.
+  const recherche = useRechercheEleves("mensualites");
+  const { saisie, critere } = recherche;
+  // Non réinscrits (aucun paiement) retirés des classes : hors de la grille,
+  // de sa synthèse et des alertes ; un bouton du rappel les affiche seuls
+  // pour encaisser leur réinscription. Une recherche les trouve toujours.
+  const perimetre = filtClasse !== "all" ? `Classe ${filtClasse}` : getSectionLabel(niveau);
+  const regle = useMemo(() => regleEcartement(schoolInfo, anneeScolarite), [schoolInfo, anneeScolarite]);
+  const { gardes: elevesClasses, ecartes: retires } = useMemo(
+    () => ecarterNonReinscrits(elevesFiltres, regle), [elevesFiltres, regle],
+  );
+  const [voirRetires, setVoirRetires] = useState(false);
+  const affiches = voirRetires ? retires : (saisie.trim() ? elevesFiltres : elevesClasses);
+  const elevesCherches = useMemo(
+    () => rechercherEleves(affiches, saisie, critere),
+    [affiches, saisie, critere],
+  );
   const elevesTries = useMemo(
-    () => trierEleves(elevesFiltres, tri, { moisAnnee, tarifsClasses, annee: anneeScolarite }),
-    [elevesFiltres, tri, moisAnnee, tarifsClasses, anneeScolarite],
+    () => trierEleves(elevesCherches, tri, { moisAnnee, tarifsClasses, annee: anneeScolarite }),
+    [elevesCherches, tri, moisAnnee, tarifsClasses, anneeScolarite],
   );
   return (
     <div>
@@ -127,8 +163,32 @@ export function MensualitesTab({
         fermer={() => setEncaisseId(null)}
       />}
 
+      {eleveFamille && <RecuFamilleModale
+        fratrie={fratrieDe(eleveFamille)} moisAnnee={moisAnnee} annee={anneeScolarite}
+        tarifsClasses={tarifsClasses} schoolInfo={schoolInfo}
+        fermer={() => setRecuFamilleId(null)}
+      />}
+
+      {/* Rappel : non réinscrits retirés des classes, à faire réinscrire. */}
+      <RappelNonReinscrits eleves={elevesFiltres} retires={retires} regle={regle} schoolInfo={schoolInfo}
+        annee={anneeScolarite} moisAnnee={moisAnnee} tarifsClasses={tarifsClasses} perimetre={perimetre}
+        voirRetires={voirRetires} basculer={() => setVoirRetires((v) => !v)} estArchive={estArchive} />
+
       {/* Alertes impayés : repliées derrière un bouton, filtrées cycle + classe. */}
-      <AlertesCritiques eleves={elevesFiltres} moisAnnee={moisAnnee} annee={anneeScolarite} />
+      <AlertesCritiques eleves={elevesFiltres} moisAnnee={moisAnnee} annee={anneeScolarite}
+        tarifsClasses={tarifsClasses} schoolInfo={schoolInfo} canEdit={canEdit} toast={toast}
+        perimetre={perimetre} classe={filtClasse !== "all" ? filtClasse : ""} />
+
+      <RechercheEleves
+        recherche={recherche} nbTrouves={elevesCherches.length}
+        sansResultat={recherche.sansResultat(affiches)}
+        pistes={recherche.pistes({
+          nbDansClasse: elevesCherches.length, classe: filtClasse, elevesSection: elevesAnneeParNiveau[niveau],
+          section: niveau, elevesParSection: elevesAnneeParNiveau, schoolInfo,
+          toutesClasses: () => setFiltClasse("all"),
+          changerSection: (s) => { setNiveau(s); setFiltClasse("all"); },
+        })}
+      />
 
       <MensualitesTable
         eleves={eleves}
@@ -145,6 +205,8 @@ export function MensualitesTab({
         getTarifInscriptionEleve={getTarifInscriptionEleve}
         ouvrirEncaissement={encaisserVersement ? (e) => setEncaisseId(e._id) : null}
         tranches={tranchesPaiement}
+        fratrieDe={fratrieDe}
+        ouvrirRecuFamille={(e) => setRecuFamilleId(e._id)}
       />
     </div>
   );

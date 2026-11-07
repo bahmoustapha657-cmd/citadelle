@@ -182,6 +182,21 @@ export function resolveLegalFields(schoolInfo: {
   };
 }
 
+export const MINISTERE_DEFAUT = "Ministère de l'Éducation Nationale, de l'Alphabétisation, de l'Enseignement Technique et de la Formation Professionnelle";
+
+// Ce que porte l'en-tête de tout document de l'école, défauts compris. Les
+// fiches de Pédagogue le reçoivent aussi (fonction pedagogue-ticket).
+export function enteteOfficiel(schoolInfo: Parameters<typeof resolveLegalFields>[0] & { pays?: string }) {
+  const { ministere, agrement, ire, dpe } = resolveLegalFields(schoolInfo);
+  return {
+    pays: schoolInfo.pays?.trim() ? schoolInfo.pays : "République de Guinée",
+    ministere: ministere.trim() ? ministere : MINISTERE_DEFAUT,
+    ire,
+    dpe,
+    agrement,
+  };
+}
+
 // ── HTML helper pour les documents imprimés (bulletins, attestations) ──
 // Style discret, centré, petite police grise. Compatible avec @page A4.
 // Renvoie une chaîne vide si l'école n'a pas renseigné son arrêté :

@@ -12,10 +12,12 @@
 // script classique que MediaPipe injecte lui-même, il ne doit pas passer par
 // le bundler.
 import { FaceDetector, FilesetResolver } from "@mediapipe/tasks-vision";
-import chargeurSimd from "@mediapipe/tasks-vision/vision_wasm_internal.js?url";
-import binaireSimd from "@mediapipe/tasks-vision/vision_wasm_internal.wasm?url";
-import chargeurSansSimd from "@mediapipe/tasks-vision/vision_wasm_nosimd_internal.js?url";
-import binaireSansSimd from "@mediapipe/tasks-vision/vision_wasm_nosimd_internal.wasm?url";
+//
+// Variante SIMD seule : la variante sans SIMD pesait 12 Mo de plus dans dist/
+// (et dans chaque premier envoi wrangler) pour Safari < 16.4 et les très
+// vieux Android. Ceux-là gardent la caméra, sans guidage (cf. plus bas).
+import chargeur from "@mediapipe/tasks-vision/vision_wasm_internal.js?url";
+import binaire from "@mediapipe/tasks-vision/vision_wasm_internal.wasm?url";
 // Source : storage.googleapis.com/mediapipe-models/face_detector/
 // blaze_face_short_range/float16/1/blaze_face_short_range.tflite
 import modele from "../../assets/models/blaze_face_short_range.tflite?url";
@@ -24,12 +26,13 @@ let chargement = null;
 let dernierHorodatage = 0;
 
 async function creerDetecteur() {
-  // Navigateurs sans SIMD WebAssembly (Safari < 16.4, vieux Android) : la
-  // variante sans SIMD, plus lente mais identique.
-  const simd = await FilesetResolver.isSimdSupported();
-  const fichiers = simd
-    ? { wasmLoaderPath: chargeurSimd, wasmBinaryPath: binaireSimd }
-    : { wasmLoaderPath: chargeurSansSimd, wasmBinaryPath: binaireSansSimd };
+  // Navigateurs sans SIMD WebAssembly (Safari < 16.4, vieux Android) : pas
+  // de détecteur. L'échec est rattrapé par use-face-guidance, qui laisse la
+  // caméra utilisable avec cadrage à l'œil dans l'ovale.
+  if (!(await FilesetResolver.isSimdSupported())) {
+    throw new Error("WebAssembly SIMD non pris en charge : guidage du visage indisponible");
+  }
+  const fichiers = { wasmLoaderPath: chargeur, wasmBinaryPath: binaire };
   const detecteur = await FaceDetector.createFromOptions(fichiers, {
     // CPU : le modèle est minuscule (quelques millisecondes par image) et le
     // délégué GPU est capricieux sur les pilotes graphiques anciens.

@@ -5,6 +5,8 @@
 // téléphones n'indiquent pas le type d'un .docx : on le déduit alors de
 // l'extension.
 
+import i18n from "../../i18n";
+
 export const TAILLE_MAX_FICHIER = 10 * 1024 * 1024;
 export const MAX_PIECES_ANNONCE = 5;
 // Photos : téléchargées d'office si elles pèsent moins que ça (sinon, sur
@@ -52,11 +54,12 @@ export function typeFichier(fichier) {
 }
 
 export function verifierFichier(fichier) {
-  if (!fichier) return { ok: false, erreur: "Aucun fichier." };
+  if (!fichier) return { ok: false, erreur: i18n.t("msg.doc.none") };
   const type = typeFichier(fichier);
-  if (!type) return { ok: false, erreur: `« ${fichier.name} » : type de fichier non accepté (PDF, photo, Word, Excel, PowerPoint, texte).` };
-  if (fichier.size > TAILLE_MAX_FICHIER) return { ok: false, erreur: `« ${fichier.name} » dépasse 10 Mo.` };
-  if (!fichier.size) return { ok: false, erreur: `« ${fichier.name} » est vide.` };
+  const nom = { name: fichier.name };
+  if (!type) return { ok: false, erreur: i18n.t("msg.doc.badType", nom) };
+  if (fichier.size > TAILLE_MAX_FICHIER) return { ok: false, erreur: i18n.t("msg.doc.tooBig", nom) };
+  if (!fichier.size) return { ok: false, erreur: i18n.t("msg.doc.empty", nom) };
   return { ok: true, type };
 }
 

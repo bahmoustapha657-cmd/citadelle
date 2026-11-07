@@ -34,6 +34,16 @@ i18n
 
 applyDocumentDirection(initialLang);
 
+// Locale des dates et nombres affichés (toLocaleDateString…) selon la langue
+// choisie. En arabe, chiffres latins : ceux des montants, des matricules et
+// des documents de l'école.
+export function localeCourante() {
+  const lang = i18n.resolvedLanguage || i18n.language || "fr";
+  if (lang.startsWith("ar")) return "ar-u-nu-latn";
+  if (lang.startsWith("en")) return "en-GB";
+  return "fr-FR";
+}
+
 i18n.on("languageChanged", (lng) => {
   applyDocumentDirection(lng);
   try { localStorage.setItem("LC_lang", lng); } catch { /* ignore */ }

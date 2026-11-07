@@ -1,20 +1,32 @@
-import { useMemo, useState } from "react";
+import { useContext, useMemo, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { C, fmt } from "../../constants";
+import { SchoolContext } from "../../contexts/SchoolContext";
 import { Badge, Btn, Card, Stat, TD, THead, TR, Vide } from "../ui";
 import {
-  PERIODES_CAISSE, SOURCES,
+  SOURCES,
   collecterMouvements, decalerPeriode, filtrerPeriode, formatJour,
-  libellePeriode, serieParJour, totauxMouvements,
+  libellePeriode, periodesCaisse, serieParJour, serieParMois, totauxMouvements,
 } from "./caisse/caisse-utils";
+import { affichageFinancesClassique, montantAxe } from "./finances-claires";
+import { StatClair } from "./StatClair";
 
 // Journal de caisse : ce qui est réellement entré et sorti sur une journée,
 // une semaine ou un mois. Complète le Bilan, qui raisonne par période
 // scolaire (T1/T2…) et ne répond pas à « combien a-t-on encaissé aujourd'hui ».
+// La période « Année » donne l'aperçu général de l'année scolaire, mois par
+// mois (masquée pour certaines écoles, voir periodesCaisse). Elle reprend TOUT
+// ce qui est enregistré dans l'année consultée dans l'en-tête de la
+// Comptabilité, sans filtre de date (voir serieParMois) ; ← → changent cette
+// année consultée, seul chemin qui charge les données d'une autre année.
 export function CaisseTab({
   recettes, depenses, versements, eleves, moisAnnee, tarifsClasses, paiements = [],
-  enModeArchive, anneeConsultee,
+  enModeArchive, anneeConsultee, setAnneeConsultee, anneesDispo = [],
 }) {
+  const { schoolId } = useContext(SchoolContext);
+  const periodes = periodesCaisse(schoolId);
+  // La Citadelle garde l'affichage d'origine (voir finances-claires.js).
+  const classique = affichageFinancesClassique(schoolId);
   const [periode, setPeriode] = useState("jour");
   const [reference, setReference] = useState(() => new Date());
 
@@ -25,11 +37,25 @@ export function CaisseTab({
     }),
     [recettes, depenses, versements, eleves, moisAnnee, tarifsClasses, paiements, anneeConsultee],
   );
-  const duJour = useMemo(() => filtrerPeriode(mouvements, reference, periode), [mouvements, reference, periode]);
+  const duJour = useMemo(
+    () => (periode === "annee" ? mouvements : filtrerPeriode(mouvements, reference, periode)),
+    [mouvements, reference, periode],
+  );
   const totaux = useMemo(() => totauxMouvements(duJour), [duJour]);
-  const serie = useMemo(() => serieParJour(duJour, reference, periode), [duJour, reference, periode]);
+  const serie = useMemo(
+    () => (periode === "annee" ? serieParMois(duJour, anneeConsultee) : serieParJour(duJour, reference, periode)),
+    [duJour, reference, periode, anneeConsultee],
+  );
 
-  const naviguer = (sens) => setReference((d) => decalerPeriode(d, periode, sens));
+  // Année : ← → changent l'année consultée (liste du plus récent au plus
+  // ancien ou l'inverse — on ne présuppose pas l'ordre).
+  const anneesTriees = [...anneesDispo].sort();
+  const rangAnnee = anneesTriees.indexOf(anneeConsultee);
+  const anneeVoisine = (sens) => (rangAnnee >= 0 ? anneesTriees[rangAnnee + sens] : undefined);
+  const naviguer = (sens) => {
+    if (periode === "annee") { const a = anneeVoisine(sens); if (a && setAnneeConsultee) setAnneeConsultee(a); return; }
+    setReference((d) => decalerPeriode(d, periode, sens));
+  };
   const inputValue = `${reference.getFullYear()}-${String(reference.getMonth() + 1).padStart(2, "0")}-${String(reference.getDate()).padStart(2, "0")}`;
 
   return (
@@ -37,7 +63,7 @@ export function CaisseTab({
       {/* ── Sélecteur de période ── */}
       <Card><div style={{ padding: "14px 16px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <div style={{ display: "flex", gap: 3, background: "var(--lc-surface-hov)", padding: 4, borderRadius: 10 }}>
-          {PERIODES_CAISSE.map((p) => (
+          {periodes.map((p) => (
             <button key={p.id} type="button" onClick={() => setPeriode(p.id)}
               style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer",
                 background: periode === p.id ? `linear-gradient(135deg,${C.greenDk},${C.green})` : "transparent",
@@ -46,6 +72,12 @@ export function CaisseTab({
             </button>
           ))}
         </div>
+        {periode === "annee" ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <Btn sm v="ghost" disabled={!anneeVoisine(-1)} onClick={() => naviguer(-1)}>←</Btn>
+          <Btn sm v="ghost" disabled={!anneeVoisine(1)} onClick={() => naviguer(1)}>→</Btn>
+        </div>
+        ) : (
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <Btn sm v="ghost" onClick={() => naviguer(-1)}>←</Btn>
           <input type="date" value={inputValue}
@@ -54,7 +86,8 @@ export function CaisseTab({
           <Btn sm v="ghost" onClick={() => naviguer(1)}>→</Btn>
           <Btn sm v="ghost" onClick={() => setReference(new Date())}>Aujourd'hui</Btn>
         </div>
-        <strong style={{ fontSize: 13, color: C.blueDark, marginInlineStart: "auto" }}>{libellePeriode(reference, periode)}</strong>
+        )}
+        <strong style={{ fontSize: 13, color: C.blueDark, marginInlineStart: "auto" }}>{periode === "annee" ? `Année scolaire ${anneeConsultee}` : libellePeriode(reference, periode)}</strong>
       </div></Card>
 
       {enModeArchive && (
@@ -66,12 +99,26 @@ export function CaisseTab({
       )}
 
       {/* ── Totaux de la période ── */}
+      {classique ? (
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 10, margin: "12px 0 16px" }}>
         <Stat label="Encaissé" value={fmt(totaux.entrees)} sub={`${duJour.filter((m) => m.sens === "entree").length} opération(s)`} bg="#eaf4e0" />
         <Stat label="Sorti" value={fmt(totaux.sorties)} sub={`${duJour.filter((m) => m.sens === "sortie").length} opération(s)`} bg="#fce8e8" />
         <Stat label="Solde de la période" value={fmt(totaux.solde)} sub={totaux.solde >= 0 ? "Excédent" : "Déficit"} bg={totaux.solde >= 0 ? "#eaf4e0" : "#fce8e8"} />
-        <Stat label="Mouvements" value={totaux.nb} sub={PERIODES_CAISSE.find((p) => p.id === periode)?.label} bg="#e0ebf8" />
+        <Stat label="Mouvements" value={totaux.nb} sub={periodes.find((p) => p.id === periode)?.label} bg="#e0ebf8" />
       </div>
+      ) : (
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,190px),1fr))", gap: 10, margin: "12px 0 16px" }}>
+        <StatClair label="Argent encaissé" value={fmt(totaux.entrees)} couleur="#15803d" valeurCouleur="#15803d"
+          sub={`${duJour.filter((m) => m.sens === "entree").length} encaissement(s) sur la période`} />
+        <StatClair label="Argent sorti" value={fmt(totaux.sorties)} couleur="#b91c1c" valeurCouleur="#b91c1c"
+          sub={`${duJour.filter((m) => m.sens === "sortie").length} sortie(s) : dépenses, versements, remboursements`} />
+        <StatClair label="Solde de la période" value={`${totaux.solde < 0 ? "− " : ""}${fmt(Math.abs(totaux.solde))}`}
+          couleur={totaux.solde >= 0 ? "#15803d" : "#b91c1c"} valeurCouleur={totaux.solde >= 0 ? "#15803d" : "#b91c1c"}
+          sub={totaux.solde >= 0 ? "Excédent : plus d'argent entré que sorti" : "Déficit : plus d'argent sorti qu'entré"} />
+        <StatClair label="Nombre d'opérations" value={totaux.nb} couleur="#0ea5e9"
+          sub={`Toutes natures confondues · ${periodes.find((p) => p.id === periode)?.label}`} />
+      </div>
+      )}
 
       {duJour.length === 0 ? (
         <Vide icone="🧾" msg="Aucun mouvement sur cette période" />
@@ -86,7 +133,7 @@ export function CaisseTab({
                 if (!ligne) return null;
                 return (
                   <div key={id} style={{ border: "1px solid var(--lc-border)", borderRadius: 10, padding: "10px 12px", borderInlineStartWidth: 4, borderInlineStartColor: src.couleur, borderInlineStartStyle: "solid" }}>
-                    <p style={{ margin: "0 0 3px", fontSize: 11, fontWeight: 700, color: "var(--lc-text-muted)" }}>{src.label}</p>
+                    <p style={{ margin: "0 0 3px", fontSize: classique ? 11 : 13, fontWeight: 700, color: classique ? "var(--lc-text-muted)" : "var(--lc-text)" }}>{src.label}</p>
                     {src.sens === "neutre" ? (
                       <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: "#64748b" }}>
                         {ligne.montant < 0 ? `− ${fmt(-ligne.montant)}` : "Non comptées"}
@@ -96,26 +143,29 @@ export function CaisseTab({
                         {src.sens === "sortie" ? "− " : "+ "}{fmt(ligne.montant)}
                       </p>
                     )}
-                    <p style={{ margin: 0, fontSize: 11, color: "var(--lc-text-faint)" }}>{ligne.nb} opération(s)</p>
+                    <p style={{ margin: 0, fontSize: classique ? 11 : 12, color: classique ? "var(--lc-text-faint)" : "var(--lc-text-muted)" }}>{ligne.nb} opération(s)</p>
                   </div>
                 );
               })}
             </div>
           </div></Card>
 
-          {/* ── Courbe jour par jour (semaine / mois) ── */}
+          {/* ── Courbe jour par jour (semaine / mois) ou mois par mois (année) ── */}
           {periode !== "jour" && (
             <Card style={{ marginTop: 14 }}><div style={{ padding: "14px 16px" }}>
-              <p style={{ margin: "0 0 12px", fontWeight: 800, fontSize: 13, color: C.blueDark }}>Jour par jour</p>
+              <p style={{ margin: "0 0 12px", fontWeight: 800, fontSize: 13, color: C.blueDark }}>{periode === "annee" ? "Mois par mois" : "Jour par jour"}</p>
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={serie.map((j) => ({
-                  jour: j.date.toLocaleDateString("fr-FR", periode === "mois" ? { day: "numeric" } : { weekday: "short" }),
+                  jour: j.date.toLocaleDateString("fr-FR",
+                    periode === "annee" ? { month: "short", year: "2-digit" } : periode === "mois" ? { day: "numeric" } : { weekday: "short" }),
                   Encaissé: j.entrees,
                   Sorti: j.sorties,
                 }))}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e0ebf8" />
                   <XAxis dataKey="jour" tick={{ fontSize: 10 }} />
-                  <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1e6).toFixed(1)}M`} />
+                  {classique
+                    ? <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1e6).toFixed(1)}M`} />
+                    : <YAxis tick={{ fontSize: 12 }} tickFormatter={montantAxe} width={56} />}
                   <Tooltip formatter={(v) => fmt(v)} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   <Bar dataKey="Encaissé" fill={C.green} radius={[4, 4, 0, 0]} />
@@ -144,13 +194,16 @@ export function CaisseTab({
         </>
       )}
 
-      <p style={{ margin: "12px 0 0", fontSize: 11, color: "var(--lc-text-faint)" }}>
+      <p style={classique
+        ? { margin: "12px 0 0", fontSize: 11, color: "var(--lc-text-faint)" }
+        : { margin: "12px 0 0", fontSize: 13, lineHeight: 1.5, color: "var(--lc-text-muted)" }}>
         Les encaissements de scolarité proviennent du journal des paiements, qui enregistre chaque mouvement
         et ses annulations. Les paiements antérieurs à sa mise en service sont reconstitués depuis les fiches
         élèves — sans doublon, mais sans annulations ni auteur. Les salaires n'apparaissent pas ici : une fiche
         de paie porte un mois, pas une date de décaissement. Une case cochée par erreur puis décochée avec le
         motif « erreur de saisie » reste listée (barrée, avec son explication) mais ne compte ni en entrée ni en
-        sortie ; un remboursement, lui, est une sortie.
+        sortie ; un remboursement, lui, est une sortie. La vue « Année » compte tout ce qui est enregistré dans
+        l'année consultée, quelle que soit sa date (réinscriptions de septembre comprises), comme le Bilan.
       </p>
     </div>
   );

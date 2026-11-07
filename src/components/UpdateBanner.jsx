@@ -3,9 +3,9 @@ import { AutoReloadToast } from "./update-banner/AutoReloadToast";
 import { UpdateAvailableBanner } from "./update-banner/UpdateAvailableBanner";
 
 export default function UpdateBanner() {
-  const { available, registration, autoToast } = useUpdateBanner();
+  const { available, autoToast, plusTard } = useUpdateBanner();
 
   if (autoToast) return <AutoReloadToast />;
   if (!available) return null;
-  return <UpdateAvailableBanner registration={registration} />;
+  return <UpdateAvailableBanner plusTard={plusTard} />;
 }

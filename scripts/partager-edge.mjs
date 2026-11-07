@@ -31,6 +31,11 @@ export const ENTREES = [
   "src/mensualite-utils.ts",
   "src/backend/collection-map.js",
   "src/components/comptabilite/paiements-journal.js",
+  "src/legal-utils.ts",
+  "src/national-symbols.js",
+  // Rappel des non réinscrits (fonction rappel-reinscriptions).
+  "src/ecartes-non-reinscrits.js",
+  "src/rappel-reinscriptions.js",
 ];
 
 const IMPORTS = /((?:import|export)\s[^;]*?from\s+|import\(\s*)(["'])(\.{1,2}\/[^"']+)\2/g;

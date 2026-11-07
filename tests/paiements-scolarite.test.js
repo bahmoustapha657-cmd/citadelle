@@ -3,6 +3,8 @@ import test from "node:test";
 import {
   champsRetraitAcompte,
   etatsMois,
+  moisDeGarantie,
+  moisGarantieEcole,
   ordreEncaissement,
   periodeTranche,
   planVersement,
@@ -185,7 +187,8 @@ test("clôture : les acomptes comptent comme paiements et repartent à zéro", (
 
 // ── Élève parti (règle des départs, cf. depart-utils) ─────────────────────
 test("élève parti : seuls les mois entamés avant le départ se paient ; un acompte reste perçu", () => {
-  const parti = eleve({ statut: "Transféré", dateDepart: "15/11/2026" });
+  // Venu : il a réglé son inscription (parti sans rien payer, il ne devrait rien).
+  const parti = eleve({ statut: "Transféré", dateDepart: "15/11/2026", inscriptionPayee: true });
   const etats = etatsMois(parti, MOIS, 110000, "2026-2027");
   assert.deepEqual(etats.slice(0, 3).map((e) => [e.mois, e.statut, e.reste]), [
     ["Octobre", "impaye", 110000], ["Novembre", "impaye", 110000], ["Décembre", "nonDu", 0],
@@ -207,6 +210,18 @@ test("ordreEncaissement place le dernier mois en tête", () => {
   assert.deepEqual(ordreEncaissement(MOIS), ["Juin", "Octobre", "Novembre", "Décembre", "Janvier", "Février", "Mars", "Avril", "Mai"]);
   assert.deepEqual(ordreEncaissement(["Octobre"]), ["Octobre"]);
   assert.deepEqual(ordreEncaissement([]), []);
+});
+
+test("mois de garantie : les 2 derniers d'abord, aucun, ou réglage illisible = 1", () => {
+  assert.deepEqual(ordreEncaissement(MOIS, 2), ["Mai", "Juin", "Octobre", "Novembre", "Décembre", "Janvier", "Février", "Mars", "Avril"]);
+  assert.deepEqual(ordreEncaissement(MOIS, 0), MOIS);
+  // Jamais toute l'année : il reste au moins un mois courant.
+  assert.deepEqual(ordreEncaissement(["Octobre", "Novembre"], 3), ["Novembre", "Octobre"]);
+  assert.equal(moisGarantieEcole({}), 1);
+  assert.equal(moisGarantieEcole({ moisGarantie: 2 }), 2);
+  assert.equal(moisGarantieEcole({ moisGarantie: 0 }), 0);
+  assert.equal(moisGarantieEcole({ moisGarantie: 7 }), 1);
+  assert.deepEqual(moisDeGarantie(MOIS, 2), ["Mai", "Juin"]);
 });
 
 test("un montant libre solde le dernier mois puis repart du 1er", () => {
