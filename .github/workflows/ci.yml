@@ -249,11 +249,13 @@ jobs:
             etat text;
           begin
             insert into ecoles (id, code, nom) values (ecole, 'ci-garde-encaissements', 'CI');
-            insert into eleves (id, ecole_id, section, nom, extra) values
-              (journal, ecole, 'college', 'JOURNAL', '{}'),
-              (fiche, ecole, 'college', 'FICHE', '{"mens": {"Oct": "Payé", "Nov": "Impayé"}}'),
-              (archive, ecole, 'college', 'ARCHIVE', '{"historique": {"2025-2026": {"inscriptionPayee": true}}}'),
-              (libre, ecole, 'college', 'LIBRE', '{"mens": {"Oct": "Impayé"}, "fraisPayes": {"tenue": false}, "inscriptionAcompte": 0}');
+            -- Une classe pour chacun : la base refuse un élève sans classe
+            -- (trg_eleves_classe_obligatoire).
+            insert into eleves (id, ecole_id, section, classe, nom, extra) values
+              (journal, ecole, 'college', '7ème A', 'JOURNAL', '{}'),
+              (fiche, ecole, 'college', '7ème A', 'FICHE', '{"mens": {"Oct": "Payé", "Nov": "Impayé"}}'),
+              (archive, ecole, 'college', '7ème A', 'ARCHIVE', '{"historique": {"2025-2026": {"inscriptionPayee": true}}}'),
+              (libre, ecole, 'college', '7ème A', 'LIBRE', '{"mens": {"Oct": "Impayé"}, "fraisPayes": {"tenue": false}, "inscriptionAcompte": 0}');
             insert into paiements (ecole_id, eleve_id, montant, statut, type, annee, mois)
               values (ecole, journal, 75000, 'encaisse', 'mensualite', '2026-2027', 'Oct');
 
