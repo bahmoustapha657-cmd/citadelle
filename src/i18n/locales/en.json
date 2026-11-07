@@ -199,7 +199,12 @@
     "previousSchool": "Previous school (if transferred)",
     "previousSchoolPlaceholder": "Name of the former school",
     "lastClass": "Last class attended (before joining)",
-    "lastClassPlaceholder": "e.g. Grade 8 — if the student comes from another school"
+    "lastClassPlaceholder": "e.g. Grade 8 — if the student comes from another school",
+    "deletionUnnamed": "this student",
+    "deletionRefused": "{{name}} has payments on record (cash journal, student record or archived year): the record cannot be deleted, or this money would disappear from the cash register and the reports.\n\nFor a student who is leaving the school, record their departure.\n\nRecord the departure now?",
+    "deletionConfirm": "Permanently delete the record of {{name}}?\n\nTheir grades, absences and comments will be deleted with it. For a student who is leaving the school, record their departure instead (📤).",
+    "deletionRefusedServer": "Deletion refused: {{name}} has payments in the cash journal. The record is kept: record their departure instead (📤).",
+    "deletionFailed": "Deletion failed: {{message}}"
   },
   "register": {
     "title": "Create your school workspace",

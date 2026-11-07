@@ -199,7 +199,12 @@
     "previousSchool": "Établissement d'origine (si transféré)",
     "previousSchoolPlaceholder": "Nom de l'ancienne école",
     "lastClass": "Dernière classe suivie (avant l'arrivée)",
-    "lastClassPlaceholder": "ex. 8ème Année — si l'élève vient d'une autre école"
+    "lastClassPlaceholder": "ex. 8ème Année — si l'élève vient d'une autre école",
+    "deletionUnnamed": "cet élève",
+    "deletionRefused": "{{name}} a des encaissements (journal de caisse, fiche ou année archivée) : sa fiche ne peut pas être supprimée, cet argent disparaîtrait de la caisse et des bilans.\n\nPour un élève qui quitte l'école, déclarez son départ.\n\nDéclarer son départ maintenant ?",
+    "deletionConfirm": "Supprimer définitivement la fiche de {{name}} ?\n\nSes notes, absences et appréciations seront effacées avec elle. Pour un élève qui quitte l'école, déclarez plutôt son départ (📤).",
+    "deletionRefusedServer": "Suppression refusée : {{name}} a des encaissements au journal de caisse. Sa fiche est conservée : déclarez plutôt son départ (📤).",
+    "deletionFailed": "Suppression impossible : {{message}}"
   },
   "register": {
     "title": "Créer votre espace école",

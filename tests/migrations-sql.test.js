@@ -31,6 +31,18 @@ test("baseline : rôle PowerSync créé avant ses GRANT, Storage après les help
   assert.ok(helper > 0 && helper < b.indexOf("create policy photos_insert"));
 });
 
+test("journal de caisse : supprimer une fiche élève ne le vide plus (pas de cascade)", () => {
+  // La DERNIÈRE définition de paiements_eleve_id_fkey fait foi.
+  const definitions = migrations.flatMap((f) => readFileSync(new URL(f, dossier), "utf8")
+    .match(/constraint\s+"?paiements_eleve_id_fkey"?\s+foreign key[^;]*;/gi) || []);
+  assert.ok(definitions.length >= 2, "définition de paiements_eleve_id_fkey introuvable");
+  assert.doesNotMatch(definitions.at(-1), /on delete cascade/i);
+  // Et la garde explicite (message en français, hint lu par l'écran) existe.
+  const toutes = migrations.map((f) => readFileSync(new URL(f, dossier), "utf8")).join("\n");
+  assert.match(toutes, /create trigger trg_eleves_garde_suppression\s+before delete on public\.eleves/);
+  assert.match(toutes, /hint = 'eleve_avec_encaissements'/);
+});
+
 test("nomDeMigration : horodatage UTC + nom nettoyé", () => {
   const d = new Date("2026-10-09T07:05:03Z");
   assert.equal(nomDeMigration("Notes : coefficient élève", d), "20261009070503_notes_coefficient_eleve.sql");
