@@ -15,13 +15,16 @@ import { useRechercheEleves } from "../use-recherche-eleves";
 import { useTriEleves } from "../use-tri-eleves";
 import { trierEleves } from "../../tri-eleves";
 import { SeancePhotoModale } from "../identite-enfant/SeancePhotoModale";
+import {
+  messageConfirmationSuppression, messageErreurSuppression, messageSuppressionRefusee, porteDesEncaissements,
+} from "./enrolment/suppression-eleve";
 
 export function EnrolmentTab({
   form, setForm, modal, setModal, canCreate, canEdit, canCreateParent = false,
   elevesC, elevesL, elevesP, elevesPre = [], cEC, cEL, cEP,
   tousElevesScolarite, ajoutParNiveau, suppressionParNiveau,
   modChampParNiveau = {}, rechargerParNiveau = {}, ensureClasse, sortAlpha,
-  encaisserInscriptions, getTarifInscriptionEleve, tarifsClasses = [],
+  encaisserInscriptions, getTarifInscriptionEleve, tarifsClasses = [], paiements = [],
 }) {
   const { t } = useTranslation();
   const { schoolId, schoolInfo, toast, planInfo, moisAnnee, logAction } = useContext(SchoolContext);
@@ -69,6 +72,29 @@ export function EnrolmentTab({
   const nbAReinscrire = elevesClasse.filter(aReinscrire).length;
   const supEnrol = suppressionParNiveau[niveauEnrol] || suppressionParNiveau.college;
 
+  // Départ : la fiche reste (statut « Transféré »), son argent aussi.
+  const declarerDepart = (eleve) => {
+    // i18n-ignore — « Transféré » est la valeur enregistrée, pas un libellé.
+    setForm({ ...eleve, niveau: niveauEnrol, statut: "Transféré", dateDepart: new Date().toISOString().slice(0, 10) });
+    setModal("edit_enrol");
+  };
+  // Une fiche qui porte de l'argent ne se supprime pas : la base effaçait ses
+  // lignes du journal de caisse avec elle (cf. suppression-eleve.js). On
+  // propose le départ à la place ; le serveur refuse aussi, pour les années
+  // que l'écran n'a pas chargées.
+  const supprimerEleve = async (eleve) => {
+    if (porteDesEncaissements(eleve, paiements)) {
+      if (confirm(messageSuppressionRefusee(eleve))) declarerDepart(eleve);
+      return;
+    }
+    if (!confirm(messageConfirmationSuppression(eleve))) return;
+    try {
+      await supEnrol(eleve._id);
+    } catch (e) {
+      toast(messageErreurSuppression(e, eleve), "error");
+    }
+  };
+
   return (
     <div>
       <EnrolPlanAlerte planInfo={planInfo}/>
@@ -106,7 +132,8 @@ export function EnrolmentTab({
       {!afficherDeparts&&<EnrolTable
         cEC={cEC} cEL={cEL} cEP={cEP} elevesEnrol={elevesAffiches} canEdit={canEdit}
         canCreate={canCreate} planInfo={planInfo} niveauEnrol={niveauEnrol}
-        schoolInfo={schoolInfo} setForm={setForm} setModal={setModal} supEnrol={supEnrol}
+        schoolInfo={schoolInfo} setForm={setForm} setModal={setModal}
+        declarerDepart={declarerDepart} supprimerEleve={supprimerEleve}
       />}
       {afficherDeparts&&<DepartsView
         elevesEnrol={elevesEnrol.filter(dansClasse)} canEdit={canEdit} modChamp={modChampParNiveau[niveauEnrol]} toast={toast}
