@@ -5,10 +5,11 @@ import { Badge, Btn, THead, TR, TD, Vide, Chargement } from "../../ui";
 import { nomAffiche } from "../../../ordre-eleves";
 
 // Tableau des élèves enrôlés pour le niveau courant, avec actions :
-// modifier, dupliquer (fratrie), déclarer un départ, supprimer.
+// modifier, dupliquer (fratrie), déclarer un départ, supprimer (refusé à une
+// fiche qui porte de l'argent : cf. EnrolmentTab / suppression-eleve.js).
 export function EnrolTable({
   cEC, cEL, cEP, elevesEnrol, canEdit, canCreate, planInfo,
-  niveauEnrol, schoolInfo, setForm, setModal, supEnrol,
+  niveauEnrol, schoolInfo, setForm, setModal, declarerDepart, supprimerEleve,
 }) {
   const { t } = useTranslation();
   if (cEC || cEL || cEP) return <Chargement/>;
@@ -45,12 +46,8 @@ export function EnrolTable({
                 classe:e.classe,filiation:e.filiation,tuteur:e.tuteur,contactTuteur:e.contactTuteur,domicile:e.domicile});
               setModal("add_enrol");
             }}>👥</Btn>}
-            {e.statut==="Actif"&&<Btn sm v="amber" onClick={()=>{
-              // i18n-ignore
-              setForm({...e,niveau:niveauEnrol,statut:"Transféré",dateDepart:new Date().toISOString().slice(0,10)});
-              setModal("edit_enrol");
-            }} title={t("accounting.enrol.declareDeparture")}>📤</Btn>}
-            <Btn sm v="danger" onClick={()=>{if(confirm(t("accounting.enrol.confirmDelete")))supEnrol(e._id);}}>{t("accounting.enrol.deleteShort")}</Btn>
+            {e.statut==="Actif"&&<Btn sm v="amber" onClick={()=>declarerDepart(e)} title={t("accounting.enrol.declareDeparture")}>📤</Btn>}
+            <Btn sm v="danger" onClick={()=>supprimerEleve(e)}>{t("accounting.enrol.deleteShort")}</Btn>
           </div></TD>}
         </TR>)}</tbody>
       </table>

@@ -14,6 +14,7 @@ import {
 } from "./payment-actions";
 import { ensureClasse as ensureClasseHelper, sortAlphaEleves } from "./eleves-helpers";
 import { useComptaSalaires } from "./useComptaSalaires";
+import { useJournalEnAttente } from "./use-journal-en-attente";
 import { getPeriodesForSchool } from "../../period-utils";
 import {
   acompteInscription, concerneParAnnee, getMensualiteOverview, getTarifMensuelForClasse, montantDuInscription, montantDuMois,
@@ -83,7 +84,10 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   // encaissement (ordre de 4 500/an pour une école de 500 élèves) et il n'y a
   // aucune raison de charger les exercices passés pour afficher l'exercice en
   // cours.
-  const { items: paiements, chargement: cPaie, ajouter: ajPaiement } = useFirestore("paiements", { annee: anneeConsultee });
+  const { items: paiements, chargement: cPaie, ajouter: ajouterPaiement } = useFirestore("paiements", { annee: anneeConsultee });
+  // Une ligne que le journal refuse est gardée sur l'appareil puis renvoyée,
+  // au lieu d'être perdue (cf. journal-en-attente).
+  const ajPaiement = useJournalEnAttente(schoolId, ajouterPaiement, toast);
   const { items: elevesCBrut, chargement: cEC, ajouter: ajEC, supprimer: supEC, modifierChamp: modEC, refresh: refEC } = useFirestore("elevesCollege");
   const { items: elevesPBrut, chargement: cEP, ajouter: ajEP, supprimer: supEP, modifierChamp: modEP, refresh: refEP } = useFirestore("elevesPrimaire");
   const { items: elevesLBrut, chargement: cEL, ajouter: ajEL, supprimer: supEL, modifierChamp: modEL, refresh: refEL } = useFirestore("elevesLycee");

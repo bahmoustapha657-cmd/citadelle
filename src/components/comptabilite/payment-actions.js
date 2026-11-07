@@ -31,14 +31,19 @@ const msgArchive = () => i18n.t("accounting.pay.archived");
 // Libellé affiché d'un mois (les mois restent en français dans les données).
 const nomMois = (mois) => i18n.t(`months.${mois}`, mois);
 
-// Écrit une ligne au journal des encaissements. BEST-EFFORT : si le journal
-// refuse l'écriture (droits, réseau), l'encaissement lui-même reste acquis —
-// perdre le paiement parce que sa trace a échoué serait pire que l'inverse.
-// L'utilisateur est averti pour pouvoir régulariser.
+// Écrit une ligne au journal des encaissements. Si le journal refuse
+// l'écriture (droits, réseau), l'encaissement lui-même reste acquis — perdre
+// le paiement parce que sa trace a échoué serait pire que l'inverse. La ligne
+// n'est pas perdue pour autant : `ajPaiement` (use-journal-en-attente) la
+// garde sur l'appareil et la renverra — `{ enAttente: true }`.
 async function journaliser(ajPaiement, ecriture, toast) {
   if (typeof ajPaiement !== "function") return;
   try {
-    await ajPaiement(ecriture);
+    const resultat = await ajPaiement(ecriture);
+    if (resultat?.enAttente) {
+      console.error("journal des paiements:", resultat.erreur);
+      toast?.(i18n.t("accounting.journalPendingKept"), "warning");
+    }
   } catch (e) {
     console.error("journal des paiements:", e);
     toast?.(i18n.t("accounting.pay.notJournaled"), "warning");

@@ -199,7 +199,12 @@
     "previousSchool": "Previous school (if transferred)",
     "previousSchoolPlaceholder": "Name of the former school",
     "lastClass": "Last class attended (before joining)",
-    "lastClassPlaceholder": "e.g. Grade 8 — if the student comes from another school"
+    "lastClassPlaceholder": "e.g. Grade 8 — if the student comes from another school",
+    "deletionUnnamed": "this student",
+    "deletionRefused": "{{name}} has payments on record (cash journal, student record or archived year): the record cannot be deleted, or this money would disappear from the cash register and the reports.\n\nFor a student who is leaving the school, record their departure.\n\nRecord the departure now?",
+    "deletionConfirm": "Permanently delete the record of {{name}}?\n\nTheir grades, absences and comments will be deleted with it. For a student who is leaving the school, record their departure instead (📤).",
+    "deletionRefusedServer": "Deletion refused: {{name}} has payments in the cash journal. The record is kept: record their departure instead (📤).",
+    "deletionFailed": "Deletion failed: {{message}}"
   },
   "register": {
     "title": "Create your school workspace",
@@ -892,7 +897,6 @@
       "toReenrolHint": "Enrolment fee not collected for this year",
       "duplicateHint": "Duplicate — same guardian/contact (brother/sister)",
       "declareDeparture": "Record a departure",
-      "confirmDelete": "Permanently delete this student?",
       "deleteShort": "Del.",
       "limitTitle": "Student limit reached — {{plan}} plan",
       "limitBody": "You have <b>{{active}}</b> active students out of <b>{{limit}}</b> allowed.",
@@ -1457,7 +1461,10 @@
         "confirm": "Apply deductions for absences/lateness for {{month}}?\n\n{{count}} payslip(s) will be updated.",
         "done": "{{count}} payslip(s) updated."
       }
-    }
+    },
+    "journalPendingKept": "Payment recorded. Its cash journal entry could not be written: it is kept on this device and will be recorded automatically.",
+    "journalPendingSent": "{{n}} payment(s) kept on this device recorded in the cash journal.",
+    "journalPendingRemaining": "{{n}} cash journal entry(ies) waiting on this device: they will be recorded as soon as possible."
   },
   "parent": {
     "title": "Parent space",
