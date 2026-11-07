@@ -512,7 +512,10 @@
       "reglageMois": "{{n}} month(s) after the start of the year",
       "reglageMoisDate": "{{n}} month(s) after the start of the year — {{date}}",
       "reglageAide": "No re-enrolment, no monthly fee, no other fee: they disappear from classes (School module, teacher portal, grid) without their record changing, and accountants get a reminder every morning. Their first payment puts them back in their class."
-    }
+    },
+    "journalPendingKept": "Payment recorded. Its cash journal entry could not be written: it is kept on this device and will be recorded automatically.",
+    "journalPendingSent": "{{n}} payment(s) kept on this device recorded in the cash journal.",
+    "journalPendingRemaining": "{{n}} cash journal entry(ies) waiting on this device: they will be recorded as soon as possible."
   },
   "parent": {
     "title": "Parent space",

@@ -21,9 +21,10 @@ export async function lireLocal(table, filtres) {
 // encaissement fait hors ligne remonte parfois le lendemain.
 const HORODATEES = new Set(["paiements"]);
 
+// `row.id` : id fixé par l'appelant (journal de caisse, cf. ajouterDoc).
 export async function insererLocal(table, row) {
   const ps = getPowerSync();
-  const id = crypto.randomUUID();
+  const id = row.id || crypto.randomUUID();
   const horodatage = HORODATEES.has(table) && !row.created_at ? { created_at: new Date().toISOString() } : {};
   const complet = stringifyJsonCols(table, { ...row, ...horodatage, id });
   const cols = Object.keys(complet);

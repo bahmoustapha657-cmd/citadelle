@@ -512,7 +512,10 @@
       "reglageMois": "{{n}} mois après la rentrée",
       "reglageMoisDate": "{{n}} mois après la rentrée — le {{date}}",
       "reglageAide": "Ni réinscription, ni mensualité, ni frais : ils disparaissent des classes (module École, portail enseignant, grille) sans que leur fiche change, et les comptables reçoivent un rappel chaque matin. Le premier paiement les remet dans leur classe."
-    }
+    },
+    "journalPendingKept": "Paiement enregistré. Sa ligne de journal de caisse n'a pas pu s'écrire : elle est gardée sur cet appareil et sera inscrite automatiquement.",
+    "journalPendingSent": "{{n}} encaissement(s) gardé(s) sur cet appareil inscrit(s) au journal de caisse.",
+    "journalPendingRemaining": "{{n}} ligne(s) du journal de caisse en attente sur cet appareil : elles seront inscrites dès que possible."
   },
   "parent": {
     "title": "Espace Parent",

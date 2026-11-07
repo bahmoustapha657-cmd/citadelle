@@ -45,6 +45,10 @@ export const ELEVE_ENCAISSE = { nom: "KABA", prenom: "Mariama", sexe: "F", matri
 export const INSCRIPTION = 50000;
 // Rien d'encaissé (fiche créée par erreur) : la suppression reste possible.
 export const ELEVE_SANS_ENCAISSEMENT = { nom: "TOURE", prenom: "Sekou", sexe: "M", matricule: "E2E-006" };
+// Élève dont la ligne de journal de caisse échoue à l'encaissement
+// (encaissement-journal-attente.spec.js) : même classe, même tarif. Matricule
+// à part : la base refuse un matricule en double dans l'école.
+export const ELEVE_JOURNAL = { nom: "KEITA", prenom: "Mariama", sexe: "F", matricule: "E2E-007" };
 export const MATIERES = [
   { nom: "Mathématiques", coefficient: 4 },
   { nom: "Français", coefficient: 3 },
@@ -141,7 +145,7 @@ export async function preparerEcole() {
   await ecrire("matieres", MATIERES.map((m) => ligne("matieres", m)));
   await ecrire("tarifs", [ligne("tarifs", { classe: CLASSE, montant: MENSUALITE })]);
   await ecrire("eleves", [
-    ...[...ELEVES, ELEVE_SUPPRIME].map((e) => ligne("eleves", { ...e, classe: CLASSE, statut: "Actif", inscriptionPayee: true })),
+    ...[...ELEVES, ELEVE_SUPPRIME, ELEVE_JOURNAL].map((e) => ligne("eleves", { ...e, classe: CLASSE, statut: "Actif", inscriptionPayee: true })),
     ligne("eleves", { ...ELEVE_HORS_LIGNE, classe: CLASSE_HORS_LIGNE, statut: "Actif", inscriptionPayee: true }),
     ligne("eleves", {
       ...ELEVE_ENCAISSE, classe: CLASSE_SUPPRESSION, statut: "Actif",
