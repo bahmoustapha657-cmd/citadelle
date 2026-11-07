@@ -16,6 +16,7 @@
 // (la fiche affichée en avance sur le serveur) n'en est pas un : c'est notre
 // propre écriture qui n'est pas encore remontée.
 
+import i18n from "../../i18n";
 import { getFraisAnnexeLabel } from "../../constants";
 
 const positif = (v) => {
@@ -74,7 +75,12 @@ export function conflitFiche(affichee, versions = [], opts) {
   return null;
 }
 
-export const messageConflit = (nomEleve, ignores = []) =>
-  `La fiche de ${nomEleve || "cet élève"} a changé entre-temps (${ignores.join(", ")}) : `
-  + "un autre encaissement vient d'être enregistré. Rien n'a été encaissé — "
-  + "attendez que la fiche se mette à jour, vérifiez, puis recommencez.";
+// Les postes (mois, « Inscription ») sont des données françaises : traduits
+// à l'affichage seulement.
+const posteAffiche = (libelle) => (libelle === "Inscription"
+  ? i18n.t("accounting.mens.enrolment")
+  : i18n.t(`months.${libelle}`, libelle));
+export const messageConflit = (nomEleve, ignores = []) => i18n.t("accounting.cash.conflict", {
+  name: nomEleve || i18n.t("accounting.pay.thisStudent"),
+  items: ignores.map(posteAffiche).join(", "),
+});

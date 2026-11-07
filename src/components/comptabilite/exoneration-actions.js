@@ -8,12 +8,16 @@
 // Chaque décision laisse une trace au journal des actions (qui, quand, quel
 // élève, quelle portée, quel motif) : c'est ce qui rend la dispense défendable
 // le jour où on demande des comptes.
+import i18n from "../../i18n";
 import { getAnnee } from "../../constants";
 import {
   libelleMotif, normaliserExoneration, resumeExoneration,
 } from "../../exoneration-utils";
+import { resumeExonerationAffiche } from "./exoneration-affichage";
 
-export const REFUS_NON_DIRECTION = "Seule la Direction Générale peut accorder ou retirer une dispense de paiement.";
+// Le journal des actions garde les libellés français (resumeExoneration,
+// libelleMotif) ; confirmations et messages suivent la langue.
+export const refusNonDirection = () => i18n.t("accounting.exempt.onlyDirection");
 
 // De quel élève parle-t-on, exactement : les homonymes sont courants, et
 // l'IEN comme la filiation sont ce qui les départage. Repris dans la
@@ -30,7 +34,7 @@ const identite = (eleve = {}) => [
 export async function accorderExoneration(eleve, brouillon, {
   estDirection, modEleves, logAction, toast, auteur = "", annee = "",
 }) {
-  if (!estDirection) { toast?.(REFUS_NON_DIRECTION, "warning"); return false; }
+  if (!estDirection) { toast?.(refusNonDirection(), "warning"); return false; }
 
   const exoneration = normaliserExoneration({
     ...brouillon,
@@ -38,29 +42,31 @@ export async function accorderExoneration(eleve, brouillon, {
     accordeePar: auteur || brouillon.accordeePar || "",
     accordeeLe: new Date().toLocaleDateString("fr-FR"),
   });
-  if (!exoneration) { toast?.("Choisissez au moins un poste à dispenser (taux supérieur à 0).", "warning"); return false; }
+  if (!exoneration) { toast?.(i18n.t("accounting.exempt.pickPost"), "warning"); return false; }
   if (exoneration.motif === "autre" && !exoneration.precision) {
-    toast?.("Motif « Autre » : précisez la raison de la dispense.", "warning"); return false;
+    toast?.(i18n.t("accounting.exempt.otherNeedsReason"), "warning"); return false;
   }
 
   const nom = `${eleve.nom || ""} ${eleve.prenom || ""}`.trim();
-  if (!confirm(`Dispenser cet élève ?\n\n${identite(eleve)}\n\n${resumeExoneration({ exoneration })}`)) return false;
+  if (!confirm(i18n.t("accounting.exempt.confirmGrant", { identity: identite(eleve), summary: resumeExonerationAffiche({ exoneration }) }))) return false;
 
   await modEleves(eleve._id, { exoneration });
+  // i18n-ignore
   logAction?.("Dispense de paiement accordée",
     `${identite(eleve)} · ${resumeExoneration({ exoneration })} · ${libelleMotif(exoneration.motif)}${exoneration.precision ? ` (${exoneration.precision})` : ""}`);
-  toast?.(`Dispense accordée à ${nom}.`, "success");
+  toast?.(i18n.t("accounting.exempt.granted", { name: nom }), "success");
   return true;
 }
 
 export async function retirerExoneration(eleve, { estDirection, modEleves, logAction, toast }) {
-  if (!estDirection) { toast?.(REFUS_NON_DIRECTION, "warning"); return false; }
+  if (!estDirection) { toast?.(refusNonDirection(), "warning"); return false; }
 
   const nom = `${eleve.nom || ""} ${eleve.prenom || ""}`.trim();
-  if (!confirm(`Retirer la dispense de cet élève ?\n\n${identite(eleve)}\n\nLes mois non réglés redeviendront des impayés.`)) return false;
+  if (!confirm(i18n.t("accounting.exempt.confirmRemove", { identity: identite(eleve) }))) return false;
 
   await modEleves(eleve._id, { exoneration: null });
+  // i18n-ignore
   logAction?.("Dispense de paiement retirée", `${identite(eleve)} · ${resumeExoneration(eleve) || "—"}`);
-  toast?.(`Dispense retirée pour ${nom}.`, "success");
+  toast?.(i18n.t("accounting.exempt.removed", { name: nom }), "success");
   return true;
 }

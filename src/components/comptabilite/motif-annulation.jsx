@@ -1,10 +1,11 @@
 import { createRoot } from "react-dom/client";
+import i18n from "../../i18n";
 import { FenetreMotif } from "./FenetreMotif";
 
 // Demande le motif d'un décochage / retrait d'encaissement (cf.
 // FenetreMotif). Appelée depuis payment-actions, hors React : rendu
 // impératif, la promesse rend { motif, explication } ou null si l'on annule.
-export function demanderMotifAnnulation({ titre = "Retirer un paiement", message = "" } = {}) {
+export function demanderMotifAnnulation({ titre = i18n.t("accounting.reason.defaultTitle"), message = "" } = {}) {
   return new Promise((resolve) => {
     const hote = document.createElement("div");
     document.body.appendChild(hote);

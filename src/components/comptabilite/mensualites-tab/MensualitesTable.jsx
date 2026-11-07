@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Vide } from "../../ui";
 import { trancheDuMois } from "../../../paiements-scolarite";
 import { MensualitesSynthese } from "./MensualitesSynthese";
@@ -13,7 +14,8 @@ export function MensualitesTable({
   schoolInfo, toggleMens, toggleFraisAnnexe, getTarifInscriptionEleve, ouvrirEncaissement,
   tranches = [], fratrieDe, ouvrirRecuFamille,
 }) {
-  if (eleves.length === 0) return <Vide icone="🎓" msg="Aucun élève" />;
+  const { t } = useTranslation();
+  if (eleves.length === 0) return <Vide icone="🎓" msg={t("accounting.cols.noStudent")} />;
 
   return (
     <>
@@ -42,27 +44,27 @@ export function MensualitesTable({
               position: "sticky", top: 0,
             };
             const thStickyLeft = (left, z = 3) => ({ ...thBase, left, zIndex: z });
-            const avant = ["Classe", "Tuteur", "Contact"];
-            const apres = ["Payés", "Ins.", "Frais", "Reçu"];
+            const avant = ["class", "guardian", "contact"];
+            const apres = ["paid", "enrolShort", "fees", "receipt"];
             return (
               <thead>
                 <tr>
-                  <th style={thStickyLeft(0)}>Matricule</th>
-                  <th style={thStickyLeft(95)}>Nom & Prénom</th>
-                  {avant.map((c) => <th key={c} style={{ ...thBase, zIndex: 2 }}>{c}</th>)}
+                  <th style={thStickyLeft(0)}>{t("accounting.cols.matricule")}</th>
+                  <th style={thStickyLeft(95)}>{t("accounting.cols.name")}</th>
+                  {avant.map((c) => <th key={c} style={{ ...thBase, zIndex: 2 }}>{t(`accounting.cols.${c}`)}</th>)}
                   {/* Tranches de paiement : chaque mois porte le repère de sa
                       tranche (T1, T2…) et un filet de sa couleur. */}
                   {moisAnnee.map((m) => {
-                    const t = trancheDuMois(tranches, m);
+                    const tr = trancheDuMois(tranches, m);
                     return (
-                      <th key={m} title={t >= 0 ? `${tranches[t].nom}` : undefined}
-                        style={{ ...thBase, zIndex: 2, ...(t >= 0 ? { borderBottom: `3px solid ${COULEURS_TRANCHES[t % COULEURS_TRANCHES.length]}` } : {}) }}>
-                        {m}
-                        {t >= 0 && <span style={{ display: "block", fontSize: 8, opacity: 0.85, letterSpacing: 0 }}>T{t + 1}</span>}
+                      <th key={m} title={tr >= 0 ? `${tranches[tr].nom}` : undefined}
+                        style={{ ...thBase, zIndex: 2, ...(tr >= 0 ? { borderBottom: `3px solid ${COULEURS_TRANCHES[tr % COULEURS_TRANCHES.length]}` } : {}) }}>
+                        {t(`months.${m}`, m)}
+                        {tr >= 0 && <span style={{ display: "block", fontSize: 8, opacity: 0.85, letterSpacing: 0 }}>T{tr + 1}</span>}
                       </th>
                     );
                   })}
-                  {apres.map((c) => <th key={c} style={{ ...thBase, zIndex: 2 }}>{c}</th>)}
+                  {apres.map((c) => <th key={c} style={{ ...thBase, zIndex: 2 }}>{t(`accounting.cols.${c}`)}</th>)}
                 </tr>
               </thead>
             );

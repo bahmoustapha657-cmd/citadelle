@@ -10,6 +10,7 @@
 // SUR la fiche élève, avec des dates au format français. Ce fichier ramène
 // tout ça à une seule liste normalisée.
 
+import i18n, { localeCourante } from "../../../i18n";
 import {
   getFraisAnnexesEleve,
   getTarifConfigForClasse,
@@ -20,12 +21,9 @@ import {
 } from "../../../mensualite-utils";
 import { clePaiement, mouvementsDepuisJournal } from "../paiements-journal";
 
-export const PERIODES_CAISSE = [
-  { id: "jour", label: "Journée" },
-  { id: "semaine", label: "Semaine" },
-  { id: "mois", label: "Mois" },
-  { id: "annee", label: "Année" },
-];
+// Libellés lus à l'affichage (langue courante).
+const periodeCaisse = (id) => ({ id, get label() { return i18n.t(`accounting.cash.period.${id}`); } });
+export const PERIODES_CAISSE = ["jour", "semaine", "mois", "annee"].map(periodeCaisse);
 
 // Aperçu général (période « Année ») : masqué pour les écoles listées ici, à
 // leur demande. Clé = schoolId (code école).
@@ -62,7 +60,7 @@ export const dateSeule = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDat
 export const cleJour = (d) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-export const formatJour = (d) => d.toLocaleDateString("fr-FR");
+export const formatJour = (d) => d.toLocaleDateString(localeCourante());
 
 // Lundi de la semaine contenant `d` (semaine ISO : lundi → dimanche).
 export function debutSemaine(d) {
@@ -102,36 +100,38 @@ export function decalerPeriode(date, periode, sens) {
 export function libellePeriode(date, periode) {
   const { debut, fin } = bornesPeriode(date, periode);
   if (periode === "jour") {
-    return debut.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    return debut.toLocaleDateString(localeCourante(), { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   }
   if (periode === "mois") {
-    const texte = debut.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+    const texte = debut.toLocaleDateString(localeCourante(), { month: "long", year: "numeric" });
     return texte.charAt(0).toUpperCase() + texte.slice(1);
   }
   const memeMois = debut.getMonth() === fin.getMonth();
-  const debutTexte = debut.toLocaleDateString("fr-FR", memeMois ? { day: "numeric" } : { day: "numeric", month: "short" });
-  const finTexte = fin.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
-  return `Semaine du ${debutTexte} au ${finTexte}`;
+  const debutTexte = debut.toLocaleDateString(localeCourante(), memeMois ? { day: "numeric" } : { day: "numeric", month: "short" });
+  const finTexte = fin.toLocaleDateString(localeCourante(), { day: "numeric", month: "long", year: "numeric" });
+  return i18n.t("accounting.cash.weekOf", { from: debutTexte, to: finTexte });
 }
 
 // ── Collecte des mouvements ─────────────────────────────────────────────────
 // Un mouvement : { id, date, sens: "entree"|"sortie"|"neutre", source, libelle,
 //                  detail, montant }.
 // `source` sert au regroupement par nature (voir SOURCES).
+// `label` : lu à l'affichage, dans la langue courante.
+const source = (id, sens, couleur) => ({ sens, couleur, get label() { return i18n.t(`accounting.cash.source.${id}`); } });
 export const SOURCES = {
-  scolarite: { label: "Scolarité (mensualités)", sens: "entree", couleur: "#00C48C" },
-  inscription: { label: "Inscriptions", sens: "entree", couleur: "#0ea5e9" },
-  frais: { label: "Frais annexes", sens: "entree", couleur: "#8b5cf6" },
-  recette: { label: "Recettes diverses", sens: "entree", couleur: "#22c55e" },
-  depense: { label: "Dépenses", sens: "sortie", couleur: "#ef4444" },
+  scolarite: source("scolarite", "entree", "#00C48C"),
+  inscription: source("inscription", "entree", "#0ea5e9"),
+  frais: source("frais", "entree", "#8b5cf6"),
+  recette: source("recette", "entree", "#22c55e"),
+  depense: source("depense", "sortie", "#ef4444"),
   // Versements du comptable : l'argent de la caisse remis à la banque ou à la
   // Fondation. Il SORT de la caisse — il était compté en entrée (« Dons &
   // versements ») et gonflait l'encaissé du jour du montant déposé.
-  versement: { label: "Versements (banque / Fondation)", sens: "sortie", couleur: "#14b8a6" },
-  annulation: { label: "Annulations / remboursements", sens: "sortie", couleur: "#f97316" },
+  versement: source("versement", "sortie", "#14b8a6"),
+  annulation: source("annulation", "sortie", "#f97316"),
   // Case cochée par erreur puis décochée : la trace reste, l'argent n'a
   // jamais bougé (cf. lignesNeutralisees dans paiements-journal).
-  correction: { label: "Erreurs de saisie corrigées", sens: "neutre", couleur: "#94a3b8" },
+  correction: source("correction", "neutre", "#94a3b8"),
 };
 
 // Mouvements portés par les documents comptables (date déjà au format ISO).
@@ -142,7 +142,7 @@ function mouvementsDocuments({ recettes = [], depenses = [], versements = [] }) 
     if (!date) continue;
     lignes.push({
       id: `recette-${r._id}`, date, sens: "entree", source: "recette",
-      libelle: r.libelle || "Recette", detail: r.categorie || "", montant: Number(r.montant) || 0,
+      libelle: r.libelle || i18n.t("accounting.cash.revenue"), detail: r.categorie || "", montant: Number(r.montant) || 0,
     });
   }
   for (const d of depenses) {
@@ -150,7 +150,7 @@ function mouvementsDocuments({ recettes = [], depenses = [], versements = [] }) 
     if (!date) continue;
     lignes.push({
       id: `depense-${d._id}`, date, sens: "sortie", source: "depense",
-      libelle: d.libelle || "Dépense", detail: d.categorie || "", montant: Number(d.montant) || 0,
+      libelle: d.libelle || i18n.t("accounting.cash.expense"), detail: d.categorie || "", montant: Number(d.montant) || 0,
     });
   }
   for (const v of versements) {
@@ -158,7 +158,7 @@ function mouvementsDocuments({ recettes = [], depenses = [], versements = [] }) 
     if (!date) continue;
     lignes.push({
       id: `versement-${v._id}`, date, sens: "sortie", source: "versement",
-      libelle: v.libelle || "Versement", detail: [v.beneficiaire, v.description].filter(Boolean).join(" — "),
+      libelle: v.libelle || i18n.t("accounting.cash.transfer"), detail: [v.beneficiaire, v.description].filter(Boolean).join(" — "),
       montant: Number(v.montant) || 0,
     });
   }
@@ -171,7 +171,7 @@ function mouvementsDocuments({ recettes = [], depenses = [], versements = [] }) 
 function mouvementsEleves({ eleves = [], moisAnnee = [], tarifsClasses = [], annee = "" }) {
   const lignes = [];
   for (const eleve of eleves) {
-    const nom = `${eleve.prenom || ""} ${eleve.nom || ""}`.trim() || "Élève";
+    const nom = `${eleve.prenom || ""} ${eleve.nom || ""}`.trim() || i18n.t("accounting.cash.student");
     const classe = eleve.classe || "";
     const mens = eleve.mens || {};
     const mensDates = eleve.mensDates || {};
@@ -185,7 +185,7 @@ function mouvementsEleves({ eleves = [], moisAnnee = [], tarifsClasses = [], ann
         id: `mens-${eleve._id}-${mois}`,
         cle: clePaiement({ annee, eleveId: eleve._id, type: "mensualite", mois }),
         date, sens: "entree", source: "scolarite",
-        libelle: nom, detail: `${mois}${classe ? ` · ${classe}` : ""}`,
+        libelle: nom, detail: `${i18n.t(`months.${mois}`, mois)}${classe ? ` · ${classe}` : ""}`,
         montant: montantMoisPaye(eleve, mois, tarifMensuel),
       });
     }
@@ -197,7 +197,7 @@ function mouvementsEleves({ eleves = [], moisAnnee = [], tarifsClasses = [], ann
           id: `insc-${eleve._id}`,
           cle: clePaiement({ annee, eleveId: eleve._id, type: "inscription", mois: "inscription" }),
           date, sens: "entree", source: "inscription",
-          libelle: nom, detail: `Inscription${classe ? ` · ${classe}` : ""}`,
+          libelle: nom, detail: `${i18n.t("accounting.mens.enrolment")}${classe ? ` · ${classe}` : ""}`,
           montant: montantInscriptionPaye(eleve, getTarifInscriptionForEleve(eleve, tarifsClasses)),
         });
       }

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { Btn, Modale } from "../../ui";
 import { estNonReinscritSansPaiement } from "../../../ecartes-non-reinscrits";
 
@@ -11,6 +12,7 @@ const trierClasses = (classes) => [...classes].sort((a, b) => String(a).localeCo
 // `changerClassesEcartees` : enregistre la nouvelle liste (réseau).
 // `peutModifier` faux : consultation seule.
 export function EcarterModale({ eleves, classesEcartees, changerClassesEcartees, classeCourante, peutModifier = true, fermer }) {
+  const { t } = useTranslation();
   const [enCours, setEnCours] = useState(false);
   const candidats = eleves.filter(estNonReinscritSansPaiement);
   const parClasse = (classe) => candidats.filter((e) => e.classe === classe);
@@ -26,48 +28,45 @@ export function EcarterModale({ eleves, classesEcartees, changerClassesEcartees,
   };
 
   return (
-    <Modale titre="🚫 Écarter les non réinscrits" fermer={fermer}>
+    <Modale titre={`🚫 ${t("accounting.excl.title")}`} fermer={fermer}>
       <div style={{ fontSize: 12.5, color: "#475569", lineHeight: 1.5, marginBottom: 12 }}>
-        Élèves actifs dont l'inscription ou la réinscription n'est pas encaissée <strong>et qui n'ont rien payé</strong> de
-        l'année. Une fois leur classe écartée, ils disparaissent <strong>pour toute l'école</strong> : alerte, préavis et
-        listes imprimées, module École (chefs de section, Direction) et portail des enseignants. <strong>Leur fiche n'est
-        pas modifiée</strong>, et un élève qui paie quoi que ce soit réapparaît partout de lui-même.
+        <Trans i18nKey="accounting.excl.intro" components={{ b: <strong /> }} />
       </div>
 
       {peutModifier && (proposables.length ? (
         <>
-          <label style={{ display: "block", fontSize: 13, fontWeight: 700, marginBottom: 6 }}>Classe</label>
+          <label style={{ display: "block", fontSize: 13, fontWeight: 700, marginBottom: 6 }}>{t("accounting.cols.class")}</label>
           <select value={classe} onChange={(e) => setClasse(e.target.value)}
             style={{ border: "1px solid #b0c4d8", borderRadius: 7, padding: "7px 10px", fontSize: 13, width: "100%" }}>
-            {proposables.map((c) => <option key={c} value={c}>{c} — {parClasse(c).length} élève(s)</option>)}
+            {proposables.map((c) => <option key={c} value={c}>{t("accounting.excl.option", { class: c, count: parClasse(c).length })}</option>)}
           </select>
-          <div style={{ fontSize: 11.5, color: "#64748b", margin: "10px 0 4px" }}>Seront écartés :</div>
+          <div style={{ fontSize: 11.5, color: "#64748b", margin: "10px 0 4px" }}>{t("accounting.excl.willBe")}</div>
           <ol style={{ margin: 0, paddingInlineStart: 22, fontSize: 12.5, lineHeight: 1.6, maxHeight: 180, overflowY: "auto" }}>
             {choisis.map((e) => <li key={e._id}><strong>{e.nom} {e.prenom}</strong>{e.matricule ? ` · ${e.matricule}` : ""}</li>)}
           </ol>
           <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}>
             <Btn disabled={!choisis.length || enCours} onClick={() => changer([...classesEcartees, classe])}>
-              🚫 Écarter {choisis.length} élève(s) de {classe}
+              🚫 {t("accounting.excl.button", { count: choisis.length, class: classe })}
             </Btn>
           </div>
         </>
       ) : (
         <div style={{ fontSize: 12.5, padding: "8px 10px", background: "#f8fafc", borderRadius: 8 }}>
-          Aucun autre non réinscrit sans paiement à écarter dans cette sélection.
+          {t("accounting.excl.noneLeft")}
         </div>
       ))}
 
       {classesEcartees.length > 0 && (
         <div style={{ marginTop: 16, borderTop: "1px solid var(--lc-border, #e2e8f0)", paddingTop: 12 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>Classes écartées (toute l'école)</div>
+          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>{t("accounting.excl.classes")}</div>
           {trierClasses(classesEcartees).map((c) => (
             <div key={c} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, padding: "3px 0" }}>
               <span style={{ flex: 1 }}>
                 <strong>{c}</strong>
-                {classesVisibles.has(c) ? ` — ${parClasse(c).length} élève(s) masqué(s)` : " — autre section ou classe"}
+                {classesVisibles.has(c) ? t("accounting.excl.hidden", { count: parClasse(c).length }) : t("accounting.excl.otherSection")}
               </span>
               {peutModifier && (
-                <Btn sm v="ghost" disabled={enCours} onClick={() => changer(classesEcartees.filter((x) => x !== c))}>↺ Réafficher</Btn>
+                <Btn sm v="ghost" disabled={enCours} onClick={() => changer(classesEcartees.filter((x) => x !== c))}>↺ {t("accounting.excl.showAgain")}</Btn>
               )}
             </div>
           ))}
@@ -75,7 +74,7 @@ export function EcarterModale({ eleves, classesEcartees, changerClassesEcartees,
       )}
 
       <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
-        <Btn v="ghost" onClick={fermer}>Fermer</Btn>
+        <Btn v="ghost" onClick={fermer}>{t("common.close")}</Btn>
       </div>
     </Modale>
   );

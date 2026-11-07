@@ -4,6 +4,7 @@
 // dernier mois (ordre d'encaissement) : un seul paiement faisait sortir
 // l'élève de l'alerte pour toute l'année.
 // Aucune dépendance React : entièrement testable en isolation.
+import i18n from "../../../i18n";
 import { TOUS_MOIS_COURTS, TOUS_MOIS_LONGS, aReinscrire } from "../../../constants.js";
 import { moisExigibles } from "../../../depart-utils.js";
 import {
@@ -115,10 +116,11 @@ export function elevesAyantPaye(eleves = [], { moisAnnee = [], tarifsClasses = [
 // Tri de la liste « Ont payé », choisi à l'impression : critère puis sens.
 // À égalité, les autres critères départagent (mois, montant, nom) — l'ordre
 // reste le même d'une impression à l'autre.
+// Libellés lus à l'affichage (langue courante).
 export const TRIS_AYANT_PAYE = [
-  { id: "mois", label: "Nombre de mois payés" },
-  { id: "montant", label: "Montant perçu" },
-  { id: "nom", label: "Nom de l'élève" },
+  { id: "mois", get label() { return i18n.t("accounting.paidSort.months"); } },
+  { id: "montant", get label() { return i18n.t("accounting.paidSort.amount"); } },
+  { id: "nom", get label() { return i18n.t("accounting.paidSort.name"); } },
 ];
 export const TRI_AYANT_PAYE_DEFAUT = Object.freeze({ critere: "mois", sens: "desc" });
 
@@ -141,8 +143,9 @@ export function trierAyantPaye(lignes = [], { critere = TRI_AYANT_PAYE_DEFAUT.cr
 // Libellé du tri, imprimé sous le titre de la liste.
 export const libelleTriAyantPaye = ({ critere, sens } = TRI_AYANT_PAYE_DEFAUT) => {
   const tri = TRIS_AYANT_PAYE.find((t) => t.id === critere) || TRIS_AYANT_PAYE[0];
-  const ordre = tri.id === "nom" ? (sens === "asc" ? "de A à Z" : "de Z à A") : (sens === "asc" ? "croissant" : "décroissant");
-  return `${tri.label}, ${ordre}`;
+  const ordre = i18n.t(tri.id === "nom" ? (sens === "asc" ? "accounting.paidSort.aToZ" : "accounting.paidSort.zToA")
+    : (sens === "asc" ? "accounting.paidSort.asc" : "accounting.paidSort.desc"));
+  return i18n.t("accounting.paidSort.label", { criterion: tri.label, order: ordre });
 };
 
 // Élèves présents (statut « Actif ») dont l'inscription ou la réinscription
@@ -157,6 +160,8 @@ export function elevesNonReinscrits(eleves = [], { moisAnnee = [], tarifsClasses
       const acompte = acompteInscription(eleve);
       return {
         eleve,
+        // Donnée (comparée et testée) : reste en français.
+        // i18n-ignore
         type: eleve.typeInscription === "Réinscription" ? "Réinscription" : "Inscription",
         reste: Math.max(0, du - acompte),
         acompte,

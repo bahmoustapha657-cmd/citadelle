@@ -5,6 +5,7 @@
 // Ces actions sont UI-coupled (confirm/toast/push) mais reçoivent
 // leurs dépendances par injection pour rester découplées du parent.
 
+import i18n from "../../i18n";
 import { fmt, initMens } from "../../constants";
 import { sumBonsForSalary } from "../../salary-utils";
 import { notifierParents } from "../../backend/notify-supabase";
@@ -14,7 +15,11 @@ import { MOTIFS_ANNULATION, ecritureAnnulation, ecritureEncaissement } from "./p
 import { demanderMotifAnnulation } from "./motif-annulation";
 import { clePosteFrais, clePosteMois, conflitFiche, messageConflit } from "./fiche-a-jour";
 
+// Le journal des actions (historique) est une donnée partagée : ses libellés
+// restent en français. Seuls les messages, confirmations et notifications
+// suivent la langue de l'utilisateur.
 // Libellé de l'historique des actions pour un retrait motivé.
+// i18n-ignore
 const actionRetrait = ({ motif }) => (motif === "remboursement" ? "Paiement remboursé" : "Erreur de saisie corrigée");
 const detailRetrait = (texte, { motif, explication }) =>
   `${texte} — ${MOTIFS_ANNULATION[motif] || motif} : « ${explication} »`;
@@ -22,7 +27,9 @@ const detailRetrait = (texte, { motif, explication }) =>
 // Année archivée affichée (canCreate faux sans lecture seule) : rien ne
 // s'encaisse. L'écriture partirait sur la fiche de l'année EN COURS, avec
 // l'état d'une autre année.
-const MSG_ARCHIVE = "Année archivée : consultation seule, aucun encaissement possible.";
+const msgArchive = () => i18n.t("accounting.pay.archived");
+// Libellé affiché d'un mois (les mois restent en français dans les données).
+const nomMois = (mois) => i18n.t(`months.${mois}`, mois);
 
 // Écrit une ligne au journal des encaissements. BEST-EFFORT : si le journal
 // refuse l'écriture (droits, réseau), l'encaissement lui-même reste acquis —
@@ -34,7 +41,7 @@ async function journaliser(ajPaiement, ecriture, toast) {
     await ajPaiement(ecriture);
   } catch (e) {
     console.error("journal des paiements:", e);
-    toast?.("Paiement enregistré, mais non inscrit au journal de caisse.", "warning");
+    toast?.(i18n.t("accounting.pay.notJournaled"), "warning");
   }
 }
 
@@ -48,7 +55,7 @@ const elevesEnCours = new Set();
 // (absent : pas de relecture, ex. build Firebase).
 async function surFicheAJour(_id, { affichee, nomEleve, lireFiche, toast, retrait = null }, ecrire) {
   if(elevesEnCours.has(_id)){
-    toast?.(`Un encaissement est déjà en cours pour ${nomEleve||"cet élève"} : patientez un instant.`,"warning");
+    toast?.(i18n.t("accounting.pay.inProgress", { name: nomEleve || i18n.t("accounting.pay.thisStudent") }),"warning");
     return false;
   }
   elevesEnCours.add(_id);
@@ -82,38 +89,43 @@ export async function toggleFraisAnnexe(_id, opts, {
   // classe de 50 élèves ouvrirait 50 fenêtres de confirmation.
   const { poste, valeurActuelle=false, label, montant=0, nomEleve="", confirmer=true } = opts;
   if(readOnly) return;
-  if(!canCreate){ toast(MSG_ARCHIVE,"warning"); return; }
+  if(!canCreate){ toast(msgArchive(),"warning"); return; }
+  // Libellé affiché : l'inscription suit la langue, un frais garde son nom.
+  const labelAff = poste === "inscription"
+    ? i18n.t(label === "Réinscription" ? "accounting.mens.reEnrolment" : "accounting.mens.enrolment")
+    : label;
+  const labelMin = labelAff.toLowerCase();
   if(valeurActuelle && !canEdit){
-    toast(`Le retrait de ${label.toLowerCase()} nécessite l'autorisation de l'administrateur (verrou activé).`,"warning");
+    toast(i18n.t("accounting.pay.removeNeedsAdmin", { label: labelMin }),"warning");
     return;
   }
   // Sans la fiche, on réécrirait les cartes de frais à partir de rien et les
   // autres frais déjà payés disparaîtraient.
   const fiche = opts.eleve || eleve;
-  if(!fiche){ toast("Fiche élève introuvable : rechargez la page puis réessayez.","error"); return; }
+  if(!fiche){ toast(i18n.t("accounting.pay.recordNotFound"),"error"); return; }
   const { champs, montantJournal, acompte } = champsBasculeFrais({
     eleve: fiche, poste, valeurActuelle, montant, date: new Date().toLocaleDateString("fr-FR"),
   });
   // Dispense totale d'un frais : il n'y a rien à encaisser. L'inscription, elle,
   // se valide quand même : c'est ce qui marque l'élève réinscrit.
   const estInscription = poste === "inscription";
-  if(!valeurActuelle && montantJournal<=0 && !estInscription){ toast(`Rien à encaisser pour ${label.toLowerCase()}.`,"info"); return; }
+  if(!valeurActuelle && montantJournal<=0 && !estInscription){ toast(i18n.t("accounting.pay.nothingFor", { label: labelMin }),"info"); return; }
   const montantLabel = montantJournal>0 ? ` (${fmt(montantJournal)})` : "";
   const message = valeurActuelle
-    ? `Retirer ${label.toLowerCase()}${montantLabel} pour ${nomEleve} ?`
+    ? i18n.t("accounting.pay.confirmRemove", { label: labelMin, amount: montantLabel, name: nomEleve })
     : acompte>0
-      ? `Solder ${label.toLowerCase()} pour ${nomEleve} : reste ${fmt(montantJournal)} (acompte de ${fmt(acompte)} déjà versé) ?`
+      ? i18n.t("accounting.pay.confirmSettle", { label: labelMin, name: nomEleve, rest: fmt(montantJournal), deposit: fmt(acompte) })
       : montantJournal>0
-        ? `Marquer ${label.toLowerCase()}${montantLabel} comme payé pour ${nomEleve} ?`
-        : `Valider ${label.toLowerCase()} de ${nomEleve} sans encaissement (dispense) ?`;
+        ? i18n.t("accounting.pay.confirmMark", { label: labelMin, amount: montantLabel, name: nomEleve })
+        : i18n.t("accounting.pay.confirmExempt", { label: labelMin, name: nomEleve });
   // Retrait d'un frais réellement encaissé : motif + explication, au lieu
   // d'une simple confirmation (cf. motif-annulation).
   const retraitMotive = valeurActuelle && montantJournal>0;
   let retrait = null;
   if(retraitMotive){
     retrait = await demanderMotifAnnulation({
-      titre: `Retirer ${label.toLowerCase()}`,
-      message: `${nomEleve} · ${label} · ${fmt(montantJournal)}`,
+      titre: i18n.t("accounting.pay.removeTitle", { label: labelMin }),
+      message: `${nomEleve} · ${labelAff} · ${fmt(montantJournal)}`,
     });
     if(!retrait) return;
   } else if(confirmer && !confirm(message)) return;
@@ -124,6 +136,7 @@ export async function toggleFraisAnnexe(_id, opts, {
   // Journal d'audit : chaque encaissement/retrait de frais laisse une trace.
   const detailFrais = `${nomEleve} · ${label}${montantJournal>0?` · ${fmt(montantJournal)}`:""}`;
   if(retrait) logAction?.(actionRetrait(retrait), detailRetrait(detailFrais, retrait));
+  // i18n-ignore
   else logAction?.(valeurActuelle ? "Frais annexe retiré" : "Frais annexe encaissé", detailFrais);
   // Grand livre : l'inscription et les frais annexes sont des encaissements
   // au même titre que les mensualités. `mois` porte l'id du frais. Rien
@@ -153,11 +166,11 @@ export async function toggleMens(_id, mois, mensActuels, mensDatesActuels, nomEl
   mensAcomptesActuels = null, ajPaiement = null, annee = "", auteur = "", eleve = null, lireFiche = null,
 }) {
   if(readOnly) return;
-  if(!canCreate){ toast(MSG_ARCHIVE,"warning"); return; }
+  if(!canCreate){ toast(msgArchive(),"warning"); return; }
   const mens={...(mensActuels||initMens())};
   const estPaye=mens[mois]==="Payé";
   if(estPaye && !canEdit){
-    toast("Le décochage nécessite l'autorisation de l'administrateur (verrou activé).","warning");
+    toast(i18n.t("accounting.pay.uncheckNeedsAdmin"),"warning");
     return;
   }
   const du = Number.isFinite(Number(montantMois)) ? Number(montantMois) : null;
@@ -169,16 +182,17 @@ export async function toggleMens(_id, mois, mensActuels, mensDatesActuels, nomEl
   let retrait = null;
   if(estPaye){
     retrait = await demanderMotifAnnulation({
-      titre: `Décocher ${mois}`,
-      message: `${nomEleve||"Élève"} · ${mois}${montantRetire>0?` · ${fmt(montantRetire)}`:""}`,
+      titre: i18n.t("accounting.pay.uncheckTitle", { month: nomMois(mois) }),
+      message: `${nomEleve||i18n.t("accounting.pay.student")} · ${nomMois(mois)}${montantRetire>0?` · ${fmt(montantRetire)}`:""}`,
     });
     if(!retrait) return;
   } else {
     const msg = acompte>0 && reste!==null
-      ? `Solder ${mois} pour ${nomEleve||""} : reste ${fmt(reste)} (acompte de ${fmt(acompte)} déjà versé) ?`
-      : `Marquer ${mois} comme payé pour ${nomEleve||""} ?`;
+      ? i18n.t("accounting.pay.confirmSettle", { label: nomMois(mois), name: nomEleve||"", rest: fmt(reste), deposit: fmt(acompte) })
+      : i18n.t("accounting.pay.confirmMark", { label: nomMois(mois), amount: "", name: nomEleve||"" });
     if(!confirm(msg)) return;
   }
+  // i18n-ignore
   mens[mois]=estPaye?"Impayé":"Payé";
   const mensDates={...(mensDatesActuels||{})};
   const mensMontants={...(mensMontantsActuels||{})};
@@ -203,7 +217,9 @@ export async function toggleMens(_id, mois, mensActuels, mensDatesActuels, nomEl
   // trace (élève, mois, montant) — cœur de la promesse de traçabilité.
   const montantEncaisse = reste ?? 0;
   const montantJournal = !estPaye && montantEncaisse > 0 ? ` · ${fmt(montantEncaisse)}` : "";
+  // i18n-ignore
   if(retrait) logAction?.(actionRetrait(retrait), detailRetrait(`${nomEleve||"Élève"} · ${mois} · ${fmt(montantRetire)}`, retrait));
+  // i18n-ignore
   else logAction?.("Mensualité encaissée", `${nomEleve||"Élève"} · ${mois}${montantJournal}`);
   // Grand livre : le décochage n'efface pas la ligne d'encaissement, il ajoute
   // une contre-passation. C'est ce qui permet à la caisse de rester juste et à
@@ -220,14 +236,15 @@ export async function toggleMens(_id, mois, mensActuels, mensDatesActuels, nomEl
   };
   await journaliser(ajPaiement, estPaye ? ecritureAnnulation({ ...params, ...retrait }) : ecritureEncaissement(params), toast);
   // Push aux seuls parents de CET élève (eleveId), pas à toutes les familles.
+  const pourPush = { month: nomMois(mois), name: nomEleve || i18n.t("accounting.pay.yourChild") };
   if(!estPaye){
-    envoyerPush(["parent"],"✅ Paiement enregistré",`Mensualité ${mois} de ${nomEleve||"votre enfant"} confirmée.`,"/paiements",{ eleveId: _id });
+    envoyerPush(["parent"],`✅ ${i18n.t("accounting.pay.pushPaidTitle")}`,i18n.t("accounting.pay.pushPaidBody", pourPush),"/paiements",{ eleveId: _id });
   } else if(retrait.motif === "erreur_saisie"){
     // Le parent a pu recevoir « Paiement enregistré » : on rectifie, sans
     // l'alarmer d'un « rappel de paiement ».
-    envoyerPush(["parent"],"ℹ️ Rectification",`Le paiement de la mensualité ${mois} de ${nomEleve||"votre enfant"} avait été enregistré par erreur ; il a été corrigé.`,"/paiements",{ eleveId: _id });
+    envoyerPush(["parent"],`ℹ️ ${i18n.t("accounting.pay.pushFixTitle")}`,i18n.t("accounting.pay.pushFixBody", pourPush),"/paiements",{ eleveId: _id });
   } else {
-    envoyerPush(["parent"],"⚠️ Rappel de paiement",`La mensualité ${mois} de ${nomEleve||"votre enfant"} est marquée impayée.`,"/paiements",{ eleveId: _id });
+    envoyerPush(["parent"],`⚠️ ${i18n.t("accounting.pay.pushReminderTitle")}`,i18n.t("accounting.pay.pushReminderBody", pourPush),"/paiements",{ eleveId: _id });
   }
   // Notification SMS/WhatsApp au tuteur (best-effort, inactive si non configurée).
   // Seul l'encaissement notifie ; le décochage (impayé) reste un push interne.
@@ -245,12 +262,13 @@ export async function encaisserVersement(_id, { plan, nomEleve = "", eleve = nul
   ajPaiement = null, annee = "", auteur = "", lireFiche = null,
 }) {
   if(readOnly) return false;
-  if(!canCreate){ toast(MSG_ARCHIVE,"warning"); return false; }
+  if(!canCreate){ toast(msgArchive(),"warning"); return false; }
   if(!plan?.ok || !plan.lignes?.length) return false;
   // `eleve` : la fiche sur laquelle la fenêtre a calculé le plan.
   const ecrit = await surFicheAJour(_id, { affichee: eleve, nomEleve, lireFiche, toast }, () => modEleves(_id, plan.champs));
   if(!ecrit) return false;
   const detail = plan.lignes.map((l) => `${l.libelle} ${fmt(l.montant)}`).join(", ");
+  // i18n-ignore
   logAction?.("Versement encaissé", `${nomEleve} · ${fmt(plan.total)} — ${detail}`);
   for (const ligne of plan.lignes) {
     await journaliser(ajPaiement, ecritureEncaissement({
@@ -260,7 +278,9 @@ export async function encaisserVersement(_id, { plan, nomEleve = "", eleve = nul
   }
   if(plan.moisSoldes?.length){
     const liste = plan.moisSoldes.join(", ");
-    envoyerPush?.(["parent"],"✅ Paiement enregistré",`Mensualité(s) ${liste} de ${nomEleve||"votre enfant"} confirmée(s).`,"/paiements",{ eleveId: _id });
+    envoyerPush?.(["parent"],`✅ ${i18n.t("accounting.pay.pushPaidTitle")}`,i18n.t("accounting.pay.pushPaidManyBody", {
+      months: plan.moisSoldes.map(nomMois).join(", "), name: nomEleve || i18n.t("accounting.pay.yourChild"),
+    }),"/paiements",{ eleveId: _id });
     notifierParents("paiement", { eleveId: _id, data: { nomEleve, mois: liste, paye: true } });
   }
   return true;
@@ -275,14 +295,18 @@ export async function retirerAcompte(_id, { type, cle, label, nomEleve = "", ele
 }) {
   if(readOnly) return false;
   if(!canEdit){
-    toast("Retirer un acompte nécessite l'autorisation de l'administrateur (verrou activé).","warning");
+    toast(i18n.t("accounting.pay.depositNeedsAdmin"),"warning");
     return false;
   }
   const { champs, montant } = champsRetraitAcompte(eleve || {}, { type, cle });
   if(!(montant>0)) return false;
   const retrait = await demanderMotifAnnulation({
-    titre: "Annuler un acompte",
-    message: `${nomEleve} · ${label} · acompte de ${fmt(montant)}`,
+    titre: i18n.t("accounting.pay.cancelDepositTitle"),
+    message: i18n.t("accounting.pay.depositMessage", {
+      name: nomEleve,
+      label: type === "inscription" ? i18n.t("accounting.mens.enrolment") : type === "mois" ? nomMois(label) : label,
+      amount: fmt(montant),
+    }),
   });
   if(!retrait) return false;
   const ecrit = await surFicheAJour(_id, { affichee: eleve, nomEleve, lireFiche, toast }, () => modEleves(_id, champs));
@@ -304,13 +328,13 @@ export async function retirerAcompte(_id, { type, cle, label, nomEleve = "", ele
 // du même agent (prof + admin) et que le net se retrouve doublé.
 export async function appliquerBons({ moisSel, bonsMois, salairesMois, readOnly, toast, modS }) {
   if(readOnly) return;
-  if(moisSel==="__TOUS__"){toast("Sélectionnez un mois précis pour appliquer les bons.","warning");return;}
-  if(!bonsMois.length){toast("Aucun bon enregistré pour ce mois.","warning");return;}
-  if(!confirm(`Appliquer les bons du mois de ${moisSel} aux salaires ?\n\nLe champ "Bon" de chaque enseignant sera mis à jour.`)) return;
+  if(moisSel==="__TOUS__"){toast(i18n.t("accounting.pay.bonsPickMonth"),"warning");return;}
+  if(!bonsMois.length){toast(i18n.t("accounting.pay.bonsNone"),"warning");return;}
+  if(!confirm(i18n.t("accounting.pay.bonsConfirm", { month: nomMois(moisSel), field: i18n.t("accounting.salaryBonus") }))) return;
   let nb=0;
   for(const sal of salairesMois){
     const total=sumBonsForSalary(sal,bonsMois);
     if(total!==Number(sal.bon||0)){await modS({...sal,bon:total});nb++;}
   }
-  toast(`${nb} salaire(s) mis à jour.`,"success");
+  toast(i18n.t("accounting.pay.bonsDone", { count: nb }),"success");
 }

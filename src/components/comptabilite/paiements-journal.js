@@ -9,8 +9,11 @@
 // supprime jamais (règles Firestore et RLS Supabase l'imposent aussi).
 //
 // Logique pure : aucune dépendance React ni backend.
+import i18n from "../../i18n";
 
+// Libellés ÉCRITS au journal (donnée partagée) : restent en français.
 export const TYPES_PAIEMENT = {
+  // i18n-ignore
   mensualite: "Mensualité",
   inscription: "Inscription",
   frais: "Frais annexe",
@@ -59,6 +62,7 @@ export function ecritureEncaissement({
 //   • remboursement : l'argent a réellement été rendu — c'est une sortie.
 // Une annulation sans motif (antérieure à ce choix) reste une sortie.
 export const MOTIFS_ANNULATION = {
+  // i18n-ignore
   erreur_saisie: "Erreur de saisie",
   remboursement: "Remboursement",
 };
@@ -146,17 +150,18 @@ export function mouvementsDepuisJournal(lignes = []) {
     const source = ligne.type === "inscription" ? "inscription"
       : ligne.type === "frais" ? "frais" : "scolarite";
     const explication = ligne.explication ? `« ${ligne.explication} »` : "";
+    // Affichage (langue de l'utilisateur) ; ligne.libelle est la donnée enregistrée.
     const libelleDetail = !annule
-      ? (neutre ? `${ligne.libelle} — annulé (erreur de saisie)` : ligne.libelle)
-      : erreur ? `Correction — ${ligne.libelle}`
-        : `${ligne.motif === "remboursement" ? "Remboursement" : "Annulation"} — ${ligne.libelle}`;
+      ? (neutre ? i18n.t("accounting.cash.cancelledTypo", { label: ligne.libelle }) : ligne.libelle)
+      : erreur ? i18n.t("accounting.cash.correction", { label: ligne.libelle })
+        : i18n.t(ligne.motif === "remboursement" ? "accounting.cash.refund" : "accounting.cash.cancellation", { label: ligne.libelle });
     return {
       id: `journal-${ligne._id}`,
       cle: clePaiement(ligne),
       dateBrute: ligne.date,
       sens: neutre ? "neutre" : erreur ? "entree" : annule ? "sortie" : "entree",
       source: neutre || erreur ? "correction" : annule ? "annulation" : source,
-      libelle: ligne.eleveNom || "Élève",
+      libelle: ligne.eleveNom || i18n.t("accounting.cash.student"),
       detail: [libelleDetail, annule ? explication : "", ligne.classe].filter(Boolean).join(" · "),
       montant: erreur && !neutre ? -montant : montant,
       auteur: ligne.auteur || "",
