@@ -13,18 +13,18 @@ export function MensualitesSynthese({ elevesFiltres, moisAnnee, tarifsClasses, a
       <span style={{ fontSize: 12, color: C.greenDk, fontWeight: 700 }}>✓ {overview.totalPayes} {t("accounting.paid").toLowerCase()}</span>
       <span style={{ fontSize: 12, color: "#b91c1c", fontWeight: 700 }}>✗ {overview.totalImpayes} {t("accounting.unpaid").toLowerCase()}</span>
       {overview.totalPartiels > 0 && (
-        <span title="Mois entamés par un acompte (comptés dans les impayés)" style={{ fontSize: 12, color: "#92400e", fontWeight: 700 }}>
-          ◐ {overview.totalPartiels} entamé(s)
+        <span title={t("accounting.mens.startedTitle")} style={{ fontSize: 12, color: "#92400e", fontWeight: 700 }}>
+          ◐ {t("accounting.mens.startedCount", { count: overview.totalPartiels })}
         </span>
       )}
       <span style={{ fontSize: 12, color: C.blue, fontWeight: 700 }}>💰 {fmt(overview.totalPercu)}</span>
-      <Badge color="purple">{fmt(overview.totalInscriptionsPercues)} inscriptions perçues</Badge>
-      <Badge color="gray">{fmt(overview.totalAutresPercus)} autres frais perçus</Badge>
+      <Badge color="purple">{t("accounting.mens.enrolCollected", { amount: fmt(overview.totalInscriptionsPercues) })}</Badge>
+      <Badge color="gray">{t("accounting.mens.otherCollected", { amount: fmt(overview.totalAutresPercus) })}</Badge>
       {/* Les dispenses ne sont pas des impayés : on les montre à part, avec ce
           qu'elles coûtent, pour qu'elles restent une décision visible. */}
       {overview.totalElevesExoneres > 0 && (
         <Badge color="amber">
-          🎓 {overview.totalElevesExoneres} dispensé(s) · {fmt(overview.totalExonere)} non perçus
+          🎓 {t("accounting.mens.exemptSummary", { count: overview.totalElevesExoneres, amount: fmt(overview.totalExonere) })}
         </Badge>
       )}
     </div>

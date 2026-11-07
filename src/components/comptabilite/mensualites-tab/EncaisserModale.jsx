@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { C, fmt } from "../../../constants";
 import { Btn, Modale } from "../../ui";
 import {
@@ -21,6 +22,7 @@ export function EncaisserModale({
   eleve, moisAnnee, annee, tarifsClasses, tranches = [], schoolInfo, canEdit,
   encaisserVersement, retirerAcompte, fermer,
 }) {
+  const { t } = useTranslation();
   const nomEleve = `${eleve.nom || ""} ${eleve.prenom || ""}`.trim();
   const moisGarantie = moisGarantieEcole(schoolInfo);
   const { cibles, etats, mensualite } = useMemo(
@@ -44,7 +46,7 @@ export function EncaisserModale({
   const encaisser = async () => {
     if (!plan?.ok || enCours) return;
     const detail = plan.lignes.map((l) => `• ${l.libelle} : ${fmt(l.montant)}`).join("\n");
-    if (!confirm(`Encaisser ${fmt(plan.total)} pour ${nomEleve} ?\n\n${detail}`)) return;
+    if (!confirm(t("accounting.collect.confirm", { amount: fmt(plan.total), name: nomEleve, detail }))) return;
     setEnCours(true);
     try {
       const date = aujourdhui();
@@ -73,6 +75,8 @@ export function EncaisserModale({
     ...etats.filter((e) => e.statut === "partiel" || (e.statut === "nonDu" && e.verse > 0))
       .map((e) => ({ type: "mois", cle: e.mois, label: e.mois, montant: e.verse, reste: e.reste })),
     ...(!eleve.inscriptionPayee && acompteInscription(eleve) > 0
+      // Libellé transmis à l'action (journal) : reste en français.
+      // i18n-ignore
       ? [{ type: "inscription", cle: "inscription", label: "Inscription", montant: acompteInscription(eleve), reste: cibles.find((c) => c.cle === "inscription")?.reste || 0 }]
       : []),
     ...getFraisAnnexesEleve(eleve, getTarifConfigForClasse(tarifsClasses, eleve.classe))
@@ -87,57 +91,57 @@ export function EncaisserModale({
   });
 
   return (
-    <Modale large titre={`💰 Encaisser — ${nomEleve}`} fermer={fermer}>
+    <Modale large titre={`💰 ${t("accounting.collect.title", { name: nomEleve })}`} fermer={fermer}>
       <div style={{ textAlign: "start" }}>
       <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 14, fontSize: 12.5, color: "#475569" }}>
         <span><strong>{eleve.classe}</strong>{eleve.matricule ? ` · ${eleve.matricule}` : ""}</span>
-        <span>Reste à payer : <strong style={{ color: resteTotal > 0 ? "#b91c1c" : C.greenDk }}>{fmt(resteTotal)}</strong></span>
+        <span>{t("accounting.collect.remaining")} <strong style={{ color: resteTotal > 0 ? "#b91c1c" : C.greenDk }}>{fmt(resteTotal)}</strong></span>
         <span style={{ color: "#64748b" }}>
-          (mensualités {fmt(snapshot.soldeMensualites)} · inscription {fmt(snapshot.soldeInscription)} · frais {fmt(snapshot.soldeAutre)})
+          {t("accounting.collect.breakdown", { monthly: fmt(snapshot.soldeMensualites), enrol: fmt(snapshot.soldeInscription), fees: fmt(snapshot.soldeAutre) })}
         </span>
       </div>
 
       {resultat && (
         <div style={{ background: "#d1fae5", border: "1px solid #6ee7b7", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
           <div style={{ fontWeight: 800, color: "#065f46", marginBottom: 6 }}>
-            ✅ Versement de {fmt(resultat.plan.total)} enregistré le {resultat.date}
+            ✅ {t("accounting.collect.saved", { amount: fmt(resultat.plan.total), date: resultat.date })}
           </div>
           <ul style={{ margin: "0 0 10px", paddingInlineStart: 18, fontSize: 12.5, color: "#065f46" }}>
             {resultat.plan.lignes.map((l) => <li key={`${l.type}-${l.mois}`}>{l.libelle} : {fmt(l.montant)}</li>)}
           </ul>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <Btn sm v="amber" onClick={imprimer}>🖨️ Imprimer le reçu ({labelRecuFormat(getRecuFormat())})</Btn>
-            <Btn sm v="ghost" onClick={fermer}>Fermer</Btn>
+            <Btn sm v="amber" onClick={imprimer}>🖨️ {t("accounting.collect.printReceipt", { format: labelRecuFormat(getRecuFormat()) })}</Btn>
+            <Btn sm v="ghost" onClick={fermer}>{t("common.close")}</Btn>
           </div>
         </div>
       )}
 
       {resteTotal <= 0 && !resultat ? (
-        <p style={{ fontSize: 13, color: C.greenDk, fontWeight: 700 }}>✓ Cet élève est à jour : rien à encaisser.</p>
+        <p style={{ fontSize: 13, color: C.greenDk, fontWeight: 700 }}>✓ {t("accounting.collect.upToDate")}</p>
       ) : (
         <>
           <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 800, color: C.blueDark, textTransform: "uppercase", letterSpacing: "0.04em" }}>
-            Que paie-t-il ?
+            {t("accounting.collect.whatPaid")}
           </p>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
             {cibles.filter((c) => c.reste > 0).map((c) => (
               <button key={c.cle} type="button" onClick={() => choisir(c)} style={puce(c.cle === cible?.cle)}>
                 <span style={{ fontSize: 12.5, fontWeight: 800, color: C.blueDark }}>{c.label}</span>
                 {c.detail && <span style={{ fontSize: 10.5, color: "#64748b" }}>{c.detail}</span>}
-                <span style={{ fontSize: 11, color: "#b91c1c", fontWeight: 700 }}>reste {fmt(c.reste)}</span>
+                <span style={{ fontSize: 11, color: "#b91c1c", fontWeight: 700 }}>{t("accounting.collect.rest", { amount: fmt(c.reste) })}</span>
               </button>
             ))}
           </div>
 
           <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 4 }}>
-            Montant versé
+            {t("accounting.collect.amountPaid")}
           </label>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 10 }}>
             <input type="number" min={0} step={500} value={montant} autoFocus
               onChange={(ev) => { setMontant(ev.target.value); setResultat(null); }}
               style={{ width: 180, border: "1.5px solid var(--lc-border)", borderRadius: 8, padding: "8px 11px", fontSize: 15, fontWeight: 700 }} />
             {cible && cible.reste > 0 && (
-              <Btn sm v="ghost" onClick={() => setMontant(String(cible.reste))}>Tout le reste ({fmt(cible.reste)})</Btn>
+              <Btn sm v="ghost" onClick={() => setMontant(String(cible.reste))}>{t("accounting.collect.allRest", { amount: fmt(cible.reste) })}</Btn>
             )}
           </div>
 
@@ -152,7 +156,7 @@ export function EncaisserModale({
                   <div key={`${l.type}-${l.mois}`} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 12.5, padding: "3px 0" }}>
                     <span style={{ fontWeight: 600 }}>{l.libelle}</span>
                     <span style={{ whiteSpace: "nowrap", fontWeight: 700, color: l.solde ? C.greenDk : "#92400e" }}>
-                      {fmt(l.montant)} {l.solde ? "✓ soldé" : `◐ reste ${fmt(resteApres)}`}
+                      {fmt(l.montant)} {l.solde ? `✓ ${t("accounting.collect.settled")}` : `◐ ${t("accounting.collect.rest", { amount: fmt(resteApres) })}`}
                     </span>
                   </div>
                 );
@@ -160,32 +164,32 @@ export function EncaisserModale({
             </div>
           ) : plan && plan.raison === "depasse" ? (
             <p style={{ fontSize: 12.5, color: "#b91c1c", fontWeight: 700, margin: "0 0 12px" }}>
-              Le montant dépasse le reste à payer pour « {cible.label} » ({fmt(plan.reste)}).
+              {t("accounting.collect.exceeds", { label: cible.label, amount: fmt(plan.reste) })}
             </p>
           ) : null}
 
           <Btn v="success" onClick={encaisser} disabled={!plan?.ok || enCours}>
-            {enCours ? "Enregistrement…" : plan?.ok ? `Encaisser ${fmt(plan.total)}` : "Encaisser"}
+            {enCours ? t("accounting.collect.saving") : plan?.ok ? t("accounting.collect.collectAmount", { amount: fmt(plan.total) }) : t("accounting.collect.collect")}
           </Btn>
         </>
       )}
 
       {acomptes.length > 0 && (
         <div style={{ marginTop: 18, borderTop: "1px solid #e2e8f0", paddingTop: 12 }}>
-          <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 800, color: "#92400e" }}>◐ Acomptes en cours</p>
+          <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 800, color: "#92400e" }}>◐ {t("accounting.collect.depositsInProgress")}</p>
           {acomptes.map((a) => (
             <div key={`${a.type}-${a.cle}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, fontSize: 12.5, padding: "3px 0" }}>
-              <span>{a.label} : <strong>{fmt(a.montant)}</strong> versés, reste {fmt(a.reste)}</span>
+              <span><Trans i18nKey="accounting.collect.depositLine" values={{ label: a.type === "inscription" ? t("accounting.mens.enrolment") : a.type === "mois" ? t(`months.${a.label}`, a.label) : a.label, amount: fmt(a.montant), rest: fmt(a.reste) }} components={{ b: <strong /> }} /></span>
               {canEdit && (
                 <Btn sm v="ghost" onClick={() => retirerAcompte(eleve._id, { type: a.type, cle: a.cle, label: a.label, nomEleve, eleve })}>
-                  Annuler l'acompte
+                  {t("accounting.collect.cancelDeposit")}
                 </Btn>
               )}
             </div>
           ))}
           {!canEdit && (
             <p style={{ margin: "4px 0 0", fontSize: 11, color: "#94a3b8" }}>
-              Annuler un acompte demande l'autorisation de l'administrateur (verrou).
+              {t("accounting.collect.cancelNeedsAdmin")}
             </p>
           )}
         </div>

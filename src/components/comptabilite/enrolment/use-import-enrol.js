@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { initMens, genererMatricule } from "../../../constants";
+import i18n from "../../../i18n";
 import { telechargerExcel } from "../../../reports";
 import { findEnrollmentDuplicate } from "../../../enrollment-utils";
 import { parseEnrolmentFile, buildEnrolmentTemplate } from "../enrolment-import";
@@ -74,7 +75,7 @@ export function useImportEnrol({
     setImportEnrolEnCours(false);
     setModal(null);
     setImportEnrolPreview(null);
-    toast(`${count} élève(s) importé(s) avec succès`, "success");
+    toast(i18n.t("accounting.enrol.imported", { count }), "success");
   };
 
   return {

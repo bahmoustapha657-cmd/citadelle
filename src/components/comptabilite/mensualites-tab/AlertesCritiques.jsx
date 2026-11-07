@@ -50,9 +50,9 @@ export function AlertesCritiques({ eleves: tousEleves, moisAnnee, annee, tarifsC
       // Effet immédiat ici ; les autres postes le reçoivent au chargement de l'école.
       setSchoolInfo?.((prec) => ({ ...prec, ...enregistre }));
       toast?.(classes.length > classesEcartees.length
-        ? "Non réinscrits écartés pour toute l'école." : "Non réinscrits réaffichés pour toute l'école.", "success");
+        ? t("accounting.alert.excludedAll") : t("accounting.alert.shownAgainAll"), "success");
     } catch (e) {
-      toast?.(`Réglage non enregistré : ${e.message}`, "error");
+      toast?.(t("accounting.alert.settingNotSaved", { error: e.message }), "error");
     }
   };
   const [ecartant, setEcartant] = useState(false);
@@ -82,14 +82,14 @@ export function AlertesCritiques({ eleves: tousEleves, moisAnnee, annee, tarifsC
   );
   const boutonsListes = (
     <>
-      <Btn sm v="ghost" disabled={!listes.payes.length} title="Imprimer les élèves ayant payé et leurs mois payés"
-        onClick={() => setClasserPayes(true)}>✅ Ont payé ({listes.payes.length})</Btn>
-      <Btn sm v="ghost" disabled={!listes.nonReinscrits.length} title="Imprimer les élèves présents dont l'inscription ou la réinscription n'est pas encaissée"
+      <Btn sm v="ghost" disabled={!listes.payes.length} title={t("accounting.alert.printPaidHint")}
+        onClick={() => setClasserPayes(true)}>✅ {t("accounting.alert.havePaid", { count: listes.payes.length })}</Btn>
+      <Btn sm v="ghost" disabled={!listes.nonReinscrits.length} title={t("accounting.alert.printNotEnrolledHint")}
         onClick={() => imprimerListeNonReinscrits(listes.nonReinscrits, optionsListe)}>{t("accounting.nonReinscrits.inscriptionNonEncaissee", { n: listes.nonReinscrits.length })}</Btn>
       {/* Écartement manuel, classe par classe : utile AVANT le retrait automatique. */}
       {!regleRetrait.toutes && (canEdit || ecartes.length > 0) && (
-        <Btn sm v="ghost" disabled={!nbAEcarter} title="Masquer, classe par classe, les non réinscrits qui n'ont rien payé — pour toute l'école (fiches non modifiées)"
-          onClick={() => setEcartant(true)}>🚫 {ecartes.length ? `Écartés (${ecartes.length})` : "Écarter non réinscrits"}</Btn>
+        <Btn sm v="ghost" disabled={!nbAEcarter} title={t("accounting.alert.excludeHint")}
+          onClick={() => setEcartant(true)}>🚫 {ecartes.length ? t("accounting.alert.excludedCount", { count: ecartes.length }) : t("accounting.alert.exclude")}</Btn>
       )}
     </>
   );
@@ -106,20 +106,20 @@ export function AlertesCritiques({ eleves: tousEleves, moisAnnee, annee, tarifsC
       // Effet immédiat ici (retrait des non réinscrits compris) ; les autres
       // postes le reçoivent par l'abonnement à la fiche de l'école.
       if (enregistre && typeof enregistre === "object") setSchoolInfo?.((prec) => ({ ...prec, ...enregistre }));
-      toast?.("Réglages de l'alerte enregistrés.", "success");
+      toast?.(t("accounting.alert.settingsSaved"), "success");
       setReglant(false);
     } catch (e) {
-      toast?.(`Réglages non enregistrés : ${e.message}`, "error");
+      toast?.(t("accounting.alert.settingsNotSaved", { error: e.message }), "error");
     }
   };
 
   const modale = reglant && <ReglagesAlerteModale reglages={reglages} schoolInfo={schoolInfo} annee={annee}
     fermer={() => setReglant(false)} enregistrer={enregistrer} />;
-  const boutonReglages = canEdit && <Btn sm v="ghost" onClick={() => setReglant(true)}>⚙️ Réglages</Btn>;
+  const boutonReglages = canEdit && <Btn sm v="ghost" onClick={() => setReglant(true)}>⚙️ {t("accounting.alert.settings")}</Btn>;
   const regle = [
-    garantie.length ? `${garantie.join(" et ")} dû(s) dès la rentrée` : "",
-    `retard compté à partir du ${reglages.jourEcheance === 1 ? "1er" : reglages.jourEcheance} du mois`,
-    `alerte dès ${reglages.seuilMois} mois`,
+    garantie.length ? t("accounting.alert.ruleGuarantee", { months: garantie.map((m) => t(`months.${m}`, m)).join(t("accounting.alert.and")) }) : "",
+    t("accounting.alert.ruleLateFrom", { day: reglages.jourEcheance === 1 ? t("accounting.alert.firstDay") : reglages.jourEcheance }),
+    t("accounting.alert.ruleThreshold", { count: reglages.seuilMois }),
   ].filter(Boolean).join(" · ");
 
   if (retards.length === 0) {
@@ -127,7 +127,7 @@ export function AlertesCritiques({ eleves: tousEleves, moisAnnee, annee, tarifsC
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, flexWrap: "wrap",
         background: "#ecfdf5", border: "1px solid #a7f3d0", borderRadius: 10, padding: "8px 14px" }}>
         <span style={{ fontSize: 16 }}>✅</span>
-        <strong style={{ fontSize: 13, color: "#065f46" }}>Alertes mensualités — aucun élève en retard</strong>
+        <strong style={{ fontSize: 13, color: "#065f46" }}>{t("accounting.alert.noneLate")}</strong>
         <span style={{ fontSize: 11.5, color: "#047857" }}>({regle})</span>
         <span style={{ marginInlineStart: "auto", display: "flex", gap: 6, flexWrap: "wrap" }}>{boutonsListes}{boutonReglages}</span>
         {modale}
@@ -145,29 +145,29 @@ export function AlertesCritiques({ eleves: tousEleves, moisAnnee, annee, tarifsC
           borderRadius: ouvert ? "10px 10px 0 0" : 10, padding: "10px 14px", textAlign: "start" }}>
         <span style={{ fontSize: 18 }}>🚨</span>
         <strong style={{ fontSize: 13, color: "#9b2020" }}>
-          Alertes mensualités — {retards.length} élève(s) en retard · {fmtN(total)} {monnaie} dû(s)
+          {t("accounting.alert.lateSummary", { count: retards.length, amount: fmtN(total), currency: monnaie })}
         </strong>
         <span style={{ marginInlineStart: "auto", fontSize: 12, fontWeight: 700, color: "#9b2020" }}>
-          {ouvert ? "▾ Masquer" : "▸ Afficher"}
+          {ouvert ? `▾ ${t("accounting.alert.hide")}` : `▸ ${t("accounting.alert.show")}`}
         </span>
       </button>
 
       {ouvert && (
         <div style={{ background: "#fff", border: "1px solid #f5c1c1", borderTop: "none", borderRadius: "0 0 10px 10px", padding: "12px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
-            <span style={{ fontSize: 11.5, color: "#6b7280", flex: 1, minWidth: 180 }}>Règle : {regle}.</span>
+            <span style={{ fontSize: 11.5, color: "#6b7280", flex: 1, minWidth: 180 }}>{t("accounting.alert.rule", { rule: regle })}</span>
             {boutonReglages}
             <Btn sm v="ghost" onClick={() => imprimerAlerteMensualites(retards, { schoolInfo, annee, perimetre, regle })}>
-              🖨️ Imprimer
+              🖨️ {t("common.print")}
             </Btn>
-            <Btn sm v="ghost" onClick={() => setPreavis(retards)}>📨 Préavis de renvoi</Btn>
+            <Btn sm v="ghost" onClick={() => setPreavis(retards)}>📨 {t("accounting.alert.notice")}</Btn>
             {boutonsListes}
             <Btn sm v="ghost" onClick={() => exportExcel(
               t("reports.excel.files.paymentAlerts"),
-              [t("reports.excel.headers.matricule"), t("reports.excel.headers.lastName"), t("reports.excel.headers.firstName"), t("reports.excel.headers.class"), t("reports.excel.headers.level"), t("reports.excel.headers.unpaidMonths"), "Mois en retard", `Reste dû (${monnaie})`, t("reports.excel.headers.guardian"), t("reports.excel.headers.contact")],
+              [t("reports.excel.headers.matricule"), t("reports.excel.headers.lastName"), t("reports.excel.headers.firstName"), t("reports.excel.headers.class"), t("reports.excel.headers.level"), t("reports.excel.headers.unpaidMonths"), t("accounting.alert.monthsLate"), t("accounting.alert.remainingDue", { currency: monnaie }), t("reports.excel.headers.guardian"), t("reports.excel.headers.contact")],
               retards.map(({ eleve: e, mois, montant }) => [
                 e.matricule || "", e.nom, e.prenom, e.classe, getSectionLabelForClasse(e.classe),
-                mois.length, mois.join(", "), montant, e.tuteur || "", e.contactTuteur || "",
+                mois.length, mois.map((m) => t(`months.${m}`, m)).join(", "), montant, e.tuteur || "", e.contactTuteur || "",
               ]),
             )}>📥 {t("common.export")}</Btn>
           </div>
@@ -181,13 +181,13 @@ export function AlertesCritiques({ eleves: tousEleves, moisAnnee, annee, tarifsC
                     <span style={{ fontWeight: 800, color: "#9b2020" }}>{e.nom} {e.prenom}</span>
                     <span style={{ color: "#6b7280" }}> · {e.classe}</span>
                   </span>
-                  <button type="button" title="Préavis de renvoi pour cet élève" onClick={() => setPreavis([retard])}
+                  <button type="button" title={t("accounting.alert.noticeForStudent")} onClick={() => setPreavis([retard])}
                     style={{ border: "1px solid #f5c1c1", background: "#fff", borderRadius: 6, padding: "1px 7px", fontSize: 11.5, cursor: "pointer", color: "#9b2020", whiteSpace: "nowrap" }}>
-                    📨 Préavis
+                    📨 {t("accounting.alert.noticeShort")}
                   </button>
                 </div>
                 <div>
-                  <strong>{mois.length} mois</strong> : {mois.join(", ")}
+                  <strong>{t("accounting.alert.monthsCount", { count: mois.length })}</strong> : {mois.map((m) => t(`months.${m}`, m)).join(", ")}
                   {montant > 0 && <strong style={{ color: "#9b2020" }}> — {fmtN(montant)} {monnaie}</strong>}
                 </div>
                 <div style={{ color: "#475569" }}>
@@ -234,25 +234,25 @@ function ReglagesAlerteModale({ reglages, schoolInfo, annee, fermer, enregistrer
     } finally { setEnCours(false); }
   };
   return (
-    <Modale titre="⚙️ Réglages de l'alerte mensualités" fermer={fermer}>
-      <Input label={`Jour d'échéance du mois (1 à ${JOUR_ECHEANCE_MAX})`} type="number" min="1" max={JOUR_ECHEANCE_MAX}
+    <Modale titre={`⚙️ ${t("accounting.alert.settingsTitle")}`} fermer={fermer}>
+      <Input label={t("accounting.alert.dueDay", { max: JOUR_ECHEANCE_MAX })} type="number" min="1" max={JOUR_ECHEANCE_MAX}
         value={jour} onChange={(e) => setJour(e.target.value)} />
       <div style={{ fontSize: 11.5, color: "#64748b", margin: "4px 0 14px" }}>
-        Exemple : 10 → Octobre non payé compte comme en retard à partir du 10 octobre.
+        {t("accounting.alert.dueDayExample")}
       </div>
-      <Input label={`Nombre de mois de retard pour déclencher l'alerte (1 à ${SEUIL_MOIS_MAX})`} type="number" min="1" max={SEUIL_MOIS_MAX}
+      <Input label={t("accounting.alert.thresholdLabel", { max: SEUIL_MOIS_MAX })} type="number" min="1" max={SEUIL_MOIS_MAX}
         value={seuil} onChange={(e) => setSeuil(e.target.value)} />
       <label style={{ display: "block", fontSize: 13, fontWeight: 700, margin: "14px 0 6px" }}>
-        Mois de garantie payés d'avance (derniers mois de l'année)
+        {t("accounting.alert.guaranteeLabel")}
       </label>
       <select value={garantie} onChange={(e) => setGarantie(Number(e.target.value))}
         style={{ border: "1px solid #b0c4d8", borderRadius: 7, padding: "7px 10px", fontSize: 13, width: "100%" }}>
         {Array.from({ length: MOIS_GARANTIE_MAX + 1 }, (_, n) => (
-          <option key={n} value={n}>{n === 0 ? "Aucun" : n === 1 ? "Le dernier mois" : `Les ${n} derniers mois`}</option>
+          <option key={n} value={n}>{n === 0 ? t("accounting.alert.guaranteeNone") : n === 1 ? t("accounting.alert.guaranteeLast") : t("accounting.alert.guaranteeLastN", { count: n })}</option>
         ))}
       </select>
       <div style={{ fontSize: 11.5, color: "#64748b", marginTop: 4 }}>
-        Dus dès la rentrée, ils sont aussi encaissés en premier (avant le 1er mois).
+        {t("accounting.alert.guaranteeHint")}
       </div>
       <label style={{ display: "block", fontSize: 13, fontWeight: 700, margin: "14px 0 6px" }}>
         {t("accounting.nonReinscrits.reglageLibelle")}
@@ -271,8 +271,8 @@ function ReglagesAlerteModale({ reglages, schoolInfo, annee, fermer, enregistrer
         {t("accounting.nonReinscrits.reglageAide")}
       </div>
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
-        <Btn v="ghost" onClick={fermer}>Annuler</Btn>
-        <Btn disabled={!valide || enCours} onClick={valider}>Enregistrer</Btn>
+        <Btn v="ghost" onClick={fermer}>{t("common.cancel")}</Btn>
+        <Btn disabled={!valide || enCours} onClick={valider}>{t("common.save")}</Btn>
       </div>
     </Modale>
   );

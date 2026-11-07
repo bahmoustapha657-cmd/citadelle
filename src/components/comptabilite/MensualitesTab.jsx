@@ -147,7 +147,7 @@ export function MensualitesTab({
         {/* Élèves dispensés de payer : la Direction les accorde, la
             comptabilité les consulte (cf. exoneration-actions). */}
         <TriElevesSelect liste="mensualites" value={tri} onChange={setTri} />
-        <Btn sm v="ghost" onClick={() => setExonerations(true)}>🎓 Dispenses</Btn>
+        <Btn sm v="ghost" onClick={() => setExonerations(true)}>{t("accounting.mens.exemptionsBtn")}</Btn>
       </div>
 
       {exonerations && <ExonerationsModale

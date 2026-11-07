@@ -4,6 +4,7 @@ import { C, fmt } from "../../constants";
 import { Btn, Card, Chargement, Input, Modale, Selec, TD, THead, TR, Vide } from "../ui";
 import { imprimerSituationVersements } from "../../reports/situation-versements";
 import { BENEFICIAIRES, dateCourte, filtrerVersements, resumeVersements } from "./fondation/versements-utils";
+import { libelleBeneficiaire } from "../../i18n/libelles";
 
 // Versements du comptable : l'argent de la caisse remis à la banque ou à la
 // Fondation. Les filtres (période, bénéficiaire) règlent à la fois la liste
@@ -40,41 +41,41 @@ export function FondationTab({
         <strong style={{fontSize:14,color:C.blueDark}}>{t("accounting.tabs.donations")} ({versements.length})</strong>
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
           <Btn v="amber" onClick={() => imprimer(affiches, filtre)} disabled={affiches.length === 0}
-            title="Imprimer la situation des versements affichés (période et bénéficiaire choisis)">🖨️ Imprimer la situation</Btn>
+            title={t("accounting.vers.printHint")}>{t("accounting.vers.print")}</Btn>
           {canCreate&&<Btn onClick={()=>{setForm({});setModal("add_v");}}>+ {t("common.new")}</Btn>}
         </div>
       </div>
 
       {versements.length > 0 && (
         <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:12,padding:"8px 12px",background:"#f1f5f9",borderRadius:8,fontSize:12}}>
-          <label style={{fontWeight:600,color:"#475569"}}>Du</label>
+          <label style={{fontWeight:600,color:"#475569"}}>{t("accounting.vers.from")}</label>
           <input type="date" value={filtre.du} onChange={chgFiltre("du")} style={champFiltre}/>
-          <label style={{fontWeight:600,color:"#475569"}}>au</label>
+          <label style={{fontWeight:600,color:"#475569"}}>{t("accounting.vers.to")}</label>
           <input type="date" value={filtre.au} onChange={chgFiltre("au")} style={champFiltre}/>
           <select value={filtre.beneficiaire} onChange={chgFiltre("beneficiaire")} style={champFiltre}>
-            <option value="">Tous les bénéficiaires</option>
-            {BENEFICIAIRES.map((b) => <option key={b} value={b}>{b}</option>)}
+            <option value="">{t("accounting.vers.allRecipients")}</option>
+            {BENEFICIAIRES.map((b) => <option key={b} value={b}>{libelleBeneficiaire(b)}</option>)}
           </select>
-          {filtreActif && <Btn sm v="ghost" onClick={() => setFiltre({ du: "", au: "", beneficiaire: "" })}>✕ Tout afficher</Btn>}
+          {filtreActif && <Btn sm v="ghost" onClick={() => setFiltre({ du: "", au: "", beneficiaire: "" })}>{t("accounting.vers.showAll")}</Btn>}
           <span style={{marginInlineStart:"auto",fontWeight:700,color:C.blueDark}}>
-            {affiches.length} versement(s) · Total : <span style={{color:C.blue}}>{fmt(total)}</span>
+            {t("accounting.vers.count",{count:affiches.length})} <span style={{color:C.blue}}>{fmt(total)}</span>
           </span>
         </div>
       )}
 
       {cV?<Chargement/>:versements.length===0?<Vide icone="🏛️" msg={t("common.empty")}/>
-        :affiches.length===0?<Vide icone="🔎" msg="Aucun versement pour ces filtres"/>
+        :affiches.length===0?<Vide icone="🔎" msg={t("accounting.vers.noneFiltered")}/>
         :<Card><div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
-          <THead cols={[t("accounting.dateField"),t("accounting.label"),"Bénéficiaire","Référence",t("common.description"),t("accounting.amountField"),t("common.actions")]}/>
+          <THead cols={[t("accounting.dateField"),t("accounting.label"),t("accounting.vers.recipient"),t("accounting.vers.reference"),t("common.description"),t("accounting.amountField"),t("common.actions")]}/>
           <tbody>{affiches.map(v=><TR key={v._id}>
             <TD>{dateCourte(v.date)}</TD>
             <TD bold>{v.libelle}</TD>
-            <TD>{v.beneficiaire || "—"}</TD>
+            <TD>{libelleBeneficiaire(v.beneficiaire) || "—"}</TD>
             <TD>{v.reference || "—"}</TD>
             <TD>{v.description}</TD>
             <TD><span style={{color:C.blue,fontWeight:700}}>{fmt(v.montant)}</span></TD>
             <TD><div style={{display:"flex",gap:6}}>
-              <Btn sm v="amber" title="Imprimer la situation de ce versement" onClick={() => imprimer([v], {})}>🖨️</Btn>
+              <Btn sm v="amber" title={t("accounting.vers.printOneHint")} onClick={() => imprimer([v], {})}>🖨️</Btn>
               {canEdit&&<>
                 <Btn sm v="ghost" onClick={()=>{setForm({...v});setModal("edit_v");}}>{t("common.edit")}</Btn>
                 <Btn sm v="danger" onClick={()=>{if(confirm(t("accounting.deleteConfirm")))supV(v._id);}}>{t("common.delete")}</Btn>
@@ -85,11 +86,11 @@ export function FondationTab({
       {(modal==="add_v"&&canCreate||(modal==="edit_v"&&canEdit))&&<Modale titre={modal==="add_v"?t("common.new"):t("accounting.editTitle")} fermer={()=>setModal(null)}>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
           <div style={{gridColumn:"1/-1"}}><Input label={t("accounting.label")} value={form.libelle||""} onChange={chg("libelle")}/></div>
-          <Selec label="Bénéficiaire" value={form.beneficiaire||""} onChange={chg("beneficiaire")}>
-            <option value="">— Choisir —</option>
-            {BENEFICIAIRES.map((b) => <option key={b} value={b}>{b}</option>)}
+          <Selec label={t("accounting.vers.recipient")} value={form.beneficiaire||""} onChange={chg("beneficiaire")}>
+            <option value="">{t("accounting.vers.choose")}</option>
+            {BENEFICIAIRES.map((b) => <option key={b} value={b}>{libelleBeneficiaire(b)}</option>)}
           </Selec>
-          <Input label="Référence (n° de bordereau ou de reçu)" value={form.reference||""} onChange={chg("reference")}/>
+          <Input label={t("accounting.vers.referenceField")} value={form.reference||""} onChange={chg("reference")}/>
           <div style={{gridColumn:"1/-1"}}><Input label={t("common.description")} value={form.description||""} onChange={chg("description")}/></div>
           <Input label={t("accounting.amountField")} type="number" value={form.montant||""} onChange={chg("montant")}/>
           <Input label={t("accounting.dateField")} type="date" value={form.date||""} onChange={chg("date")}/>

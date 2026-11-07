@@ -3,6 +3,8 @@
 // (génération auto, application des bons, impression) du domaine paie.
 
 import { imprimerEtatsSalaires } from "../../reports";
+import i18n from "../../i18n";
+import { libelleMois } from "../../i18n/libelles";
 import { appliquerCinquiemeSemaine, autoGenererSalairesAction, genererSalairesPourMois } from "./salary-actions";
 import { appliquerBons as appliquerBonsAction } from "./payment-actions";
 import { appliquerAbsences as appliquerAbsencesAction } from "./presences/appliquer-absences";
@@ -42,7 +44,8 @@ export function useComptaSalaires({
   toast,
   logAction,
 }) {
-  const moisLabel = moisSel === "__TOUS__" ? "Tous les mois (prévision)" : moisSel;
+  // Libellé affiché seulement (en-têtes, bilan) : la donnée reste moisSel.
+  const moisLabel = moisSel === "__TOUS__" ? i18n.t("accounting.sal.allMonths") : libelleMois(moisSel);
   const moisModale = moisSel === "__TOUS__" ? (moisSalaire[0] || "Octobre") : moisSel;
   const salairesMois = moisSel === "__TOUS__" ? [] : salaires.filter((s) => s.mois === moisSel);
   const salairesSec = salairesMois.filter((s) => s.section === "Secondaire");
@@ -122,7 +125,7 @@ export function useComptaSalaires({
   // src/reports/etats-salaires.js. La fonction d'impression elle-même
   // (~170 LOC de template) vit avec les autres documents imprimables.
   const imprimerSalaires = () => {
-    if (moisSel === "__TOUS__") { toast("Sélectionnez un mois précis pour imprimer.", "warning"); return; }
+    if (moisSel === "__TOUS__") { toast(i18n.t("accounting.sal.pickMonthToPrint"), "warning"); return; }
     imprimerEtatsSalaires({
       moisSel, anneeConsultee, schoolInfo,
       salairesSec, salairesPrim, salairesPers,

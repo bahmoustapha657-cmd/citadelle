@@ -3,8 +3,10 @@
 // Une dépense sans date valide n'appartient à aucun mois : elle ne sort que
 // dans l'état global.
 
+// Noms français : ils servent aux états imprimés (cf. i18n/libelles pour l'écran).
+// i18n-ignore
 const NOMS_MOIS = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
-  "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
+  "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"]; // i18n-ignore
 
 // « 2026-10-14 » → « 2026-10 » ; "" si la date est absente ou mal formée.
 export const moisDeDepense = (d) => {

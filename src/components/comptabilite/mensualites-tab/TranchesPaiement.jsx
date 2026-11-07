@@ -1,7 +1,8 @@
 import { useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { C } from "../../../constants";
 import { Btn } from "../../ui";
-import { nomTrancheParDefaut, periodeTranche, proposerTranches } from "../../../paiements-scolarite";
+import { nomTrancheParDefaut, proposerTranches } from "../../../paiements-scolarite";
 
 // Brouillon d'édition : une tranche = son nom et l'index de son DERNIER mois.
 // Les tranches se suivent sans trou ni chevauchement et couvrent toute
@@ -29,6 +30,13 @@ const proposition = (moisAnnee, nb) => proposerTranches(moisAnnee, nb)
 // tranche paie ses mois d'un coup ; la grille garde les mois. C'est un réglage
 // d'école : seules la direction et l'administration le modifient.
 export function TranchesPaiement({ tranches = [], moisAnnee = [], peutRegler, sauverTranches, toast }) {
+  const { t } = useTranslation();
+  const nomMois = (m) => t(`months.${m}`, m);
+  // Période affichée (mois traduits) : « Octobre–Décembre ».
+  const periode = (tr) => {
+    const mois = tr?.mois || [];
+    return mois.length > 1 ? `${nomMois(mois[0])}–${nomMois(mois[mois.length - 1])}` : (mois[0] ? nomMois(mois[0]) : "");
+  };
   const [ouvert, setOuvert] = useState(false);
   const [brouillon, setBrouillon] = useState(null); // null : pas d'édition en cours
   const [enCours, setEnCours] = useState(false);
@@ -48,10 +56,10 @@ export function TranchesPaiement({ tranches = [], moisAnnee = [], peutRegler, sa
     setEnCours(true);
     try {
       await sauverTranches(depuisBrouillon(brouillon, moisAnnee));
-      toast?.(brouillon.length ? "Tranches de paiement enregistrées." : "Tranches supprimées.", "success");
+      toast?.(t(brouillon.length ? "accounting.installments.saved" : "accounting.installments.removed"), "success");
       setBrouillon(null);
     } catch (e) {
-      toast?.(e?.message || "Enregistrement impossible.", "error");
+      toast?.(e?.message || t("accounting.installments.saveFailed"), "error");
     } finally {
       setEnCours(false);
     }
@@ -65,38 +73,36 @@ export function TranchesPaiement({ tranches = [], moisAnnee = [], peutRegler, sa
         style={{ width: "100%", background: "#f0f6ff", border: "none", padding: "11px 16px", cursor: "pointer",
           display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 13, fontWeight: 700, color: C.blueDark }}>
         <span style={{ textAlign: "start" }}>
-          Tranches de paiement{" "}
+          {t("accounting.installments.title")}{" "}
           <span style={{ fontWeight: 400, color: "#64748b" }}>
-            {tranches.length ? `— ${tranches.map((t) => `${t.nom} : ${periodeTranche(t)}`).join(" · ")}` : "— aucune (paiement au mois)"}
+            {tranches.length ? `— ${tranches.map((tr) => `${tr.nom} : ${periode(tr)}`).join(" · ")}` : t("accounting.installments.noneMonthly")}
           </span>
         </span>
-        <span style={{ fontSize: 11, fontWeight: 400, color: "#6b7280" }}>{ouvert ? "Fermer" : "Voir / Modifier"}</span>
+        <span style={{ fontSize: 11, fontWeight: 400, color: "#6b7280" }}>{ouvert ? t("common.close") : t("accounting.installments.viewEdit")}</span>
       </button>
       {ouvert && (
         <div style={{ padding: "14px 18px", background: "var(--lc-surface, #fff)", fontSize: 12.5, color: "#475569", textAlign: "start" }}>
           <p style={{ margin: "0 0 10px" }}>
-            Une tranche regroupe des mois qui se paient ensemble (ex. 1re tranche = Octobre–Décembre).
-            Dans la fenêtre 💰 Encaisser, choisir une tranche paie tous ses mois d'un coup ; un montant
-            partiel se répartit sur ses mois dans l'ordre. La grille garde l'affichage mois par mois.
+            {t("accounting.installments.intro")}
           </p>
           {!peutRegler && (
             <p style={{ margin: "0 0 10px", color: "#94a3b8" }}>
-              Réglage d'école : seules la direction et l'administration peuvent modifier les tranches.
+              {t("accounting.installments.schoolSetting")}
             </p>
           )}
 
           {brouillon === null ? (
-            peutRegler && <Btn sm onClick={editer}>{tranches.length ? "Modifier les tranches" : "Définir des tranches"}</Btn>
+            peutRegler && <Btn sm onClick={editer}>{tranches.length ? t("accounting.installments.edit") : t("accounting.installments.define")}</Btn>
           ) : (
             <>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                <span style={{ fontWeight: 700 }}>Nombre de tranches :</span>
+                <span style={{ fontWeight: 700 }}>{t("accounting.installments.count")}</span>
                 <select value={nb} onChange={(ev) => changerNombre(Number(ev.target.value))} style={champ}>
-                  <option value={0}>Aucune</option>
+                  <option value={0}>{t("accounting.installments.none")}</option>
                   {[2, 3, 4, 5, 6].filter((n) => n <= moisAnnee.length).map((n) => <option key={n} value={n}>{n}</option>)}
                 </select>
               </div>
-              {brouillon.map((t, i) => {
+              {brouillon.map((tr, i) => {
                 const debut = i === 0 ? 0 : brouillon[i - 1].fin + 1;
                 const derniere = i === nb - 1;
                 // Fins possibles : de son premier mois jusqu'à laisser un mois
@@ -104,23 +110,23 @@ export function TranchesPaiement({ tranches = [], moisAnnee = [], peutRegler, sa
                 const finMax = moisAnnee.length - 1 - (nb - 1 - i);
                 return (
                   <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 6 }}>
-                    <input value={t.nom} onChange={(ev) => renommer(i, ev.target.value)} style={{ ...champ, width: 130 }}
-                      aria-label={`Nom de la tranche ${i + 1}`} />
-                    <span>de <strong>{moisAnnee[debut]}</strong> à</span>
-                    {derniere ? <strong>{moisAnnee[moisAnnee.length - 1]}</strong> : (
-                      <select value={t.fin} onChange={(ev) => changerFin(i, Number(ev.target.value))} style={champ}
-                        aria-label={`Dernier mois de la tranche ${i + 1}`}>
+                    <input value={tr.nom} onChange={(ev) => renommer(i, ev.target.value)} style={{ ...champ, width: 130 }}
+                      aria-label={t("accounting.installments.nameAria", { n: i + 1 })} />
+                    <span><Trans i18nKey="accounting.installments.from" values={{ month: nomMois(moisAnnee[debut]) }} components={{ b: <strong /> }} /></span>
+                    {derniere ? <strong>{nomMois(moisAnnee[moisAnnee.length - 1])}</strong> : (
+                      <select value={tr.fin} onChange={(ev) => changerFin(i, Number(ev.target.value))} style={champ}
+                        aria-label={t("accounting.installments.lastMonthAria", { n: i + 1 })}>
                         {moisAnnee.map((m, idx) => (idx >= debut && idx <= finMax
-                          ? <option key={m} value={idx}>{m}</option> : null))}
+                          ? <option key={m} value={idx}>{nomMois(m)}</option> : null))}
                       </select>
                     )}
-                    <span style={{ color: "#94a3b8" }}>({(derniere ? moisAnnee.length - 1 : t.fin) - debut + 1} mois)</span>
+                    <span style={{ color: "#94a3b8" }}>({t("accounting.alert.monthsCount", { count: (derniere ? moisAnnee.length - 1 : tr.fin) - debut + 1 })})</span>
                   </div>
                 );
               })}
               <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                <Btn sm v="success" onClick={enregistrer} disabled={enCours}>{enCours ? "Enregistrement…" : "Enregistrer"}</Btn>
-                <Btn sm v="ghost" onClick={() => setBrouillon(null)} disabled={enCours}>Annuler</Btn>
+                <Btn sm v="success" onClick={enregistrer} disabled={enCours}>{enCours ? t("accounting.collect.saving") : t("common.save")}</Btn>
+                <Btn sm v="ghost" onClick={() => setBrouillon(null)} disabled={enCours}>{t("common.cancel")}</Btn>
               </div>
             </>
           )}

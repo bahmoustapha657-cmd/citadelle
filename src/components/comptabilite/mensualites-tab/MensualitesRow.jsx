@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { localeCourante } from "../../../i18n";
 import { C, estSorti, fmt, initMens } from "../../../constants";
 import { Badge, Btn, TR, TD } from "../../ui";
 import {
@@ -23,6 +25,8 @@ export function MensualitesRow({
   fratrie = [], ouvrirRecuFamille,
 }) {
   // Frères et sœurs (même tuteur, toutes sections) : un reçu famille possible.
+  const { t } = useTranslation();
+  const nomMois = (m) => t(`months.${m}`, m);
   const nbFratrie = ouvrirRecuFamille ? fratrie.length : 0;
   const mens = e.mens || initMens();
   const snapshot = getEleveMensualiteSnapshot(e, moisAnnee, tarifsClasses, annee);
@@ -30,7 +34,7 @@ export function MensualitesRow({
   // la case devient « — » et ne se clique plus (un mois déjà réglé reste
   // affiché, donc annulable).
   const sorti = estSorti(e);
-  const depart = lireDate(e.dateDepart)?.toLocaleDateString("fr-FR") || "";
+  const depart = lireDate(e.dateDepart)?.toLocaleDateString(localeCourante()) || "";
   const dus = new Set(moisExigibles(e, moisAnnee, annee));
   const nbAttendus = moisAnnee.filter((m) => dus.has(m) || mens[m] === "Payé").length;
   // Dispense de paiement : un mois non coché n'est plus un impayé, et il n'y a
@@ -46,7 +50,10 @@ export function MensualitesRow({
   const mensualite = getTarifMensuelForClasse(tarifsClasses, e.classe);
   const duMois = montantDuMois(e, mensualite);
   const montantInscription = getTarifInscriptionEleve(e);
+  // Libellé transmis à l'action (journal de caisse) : reste en français.
+  // i18n-ignore
   const libelleInscription = e.typeInscription === "Réinscription" ? "Réinscription" : "Inscription";
+  const libelleInscriptionAff = t(e.typeInscription === "Réinscription" ? "accounting.mens.reEnrolment" : "accounting.mens.enrolment");
   const duInscription = montantDuInscription(e, montantInscription);
   const acompteIns = e.inscriptionPayee ? 0 : acompteInscription(e);
   // Frais annexes de l'élève : ceux que la classe facture (autre, révision,
@@ -87,11 +94,11 @@ export function MensualitesRow({
       <TD style={tdSticky(0)}><span style={{ fontSize: 11, fontFamily: "monospace", background: "#e0ebf8", padding: "2px 6px", borderRadius: 4, color: C.blue, fontWeight: 700 }}>{e.matricule}</span></TD>
       <TD bold style={tdSticky(95)}>
         {nomAffiche(e, schoolInfo?.triEleves)}
-        {exonere && <span title={`Dispense de paiement — ${resume}`}
+        {exonere && <span title={t("accounting.mens.exemptionTitle", { summary: resume })}
           style={{ marginInlineStart: 6, fontSize: 11, background: "#fef3c7", color: "#92400e", borderRadius: 4, padding: "1px 5px", fontWeight: 700 }}>🎓</span>}
-        {sorti && <span title={`${e.statut}${depart ? ` le ${depart}` : " (date de départ inconnue)"} — seuls les mois entamés avant le départ sont dus`}
+        {sorti && <span title={depart ? t("accounting.mens.departedOn", { status: e.statut, date: depart }) : t("accounting.mens.departedNoDate", { status: e.statut })}
           style={{ marginInlineStart: 6, fontSize: 10, background: "#f1f5f9", color: "#475569", borderRadius: 4, padding: "1px 5px", fontWeight: 700, whiteSpace: "nowrap" }}>
-          📤 {e.statut}{depart ? ` le ${depart}` : ""}
+          📤 {depart ? t("accounting.mens.statusOn", { status: e.statut, date: depart }) : e.statut}
         </span>}
       </TD>
       <TD><Badge color="blue">{e.classe}</Badge></TD>
@@ -99,7 +106,7 @@ export function MensualitesRow({
         {e.tuteur}
         {nbFratrie > 1 && (
           <button onClick={() => ouvrirRecuFamille(e)}
-            title={`${nbFratrie} enfants de ce tuteur : ${fratrie.map((x) => `${x.prenom} (${x.classe})`).join(", ")} — imprimer un reçu famille`}
+            title={t("accounting.mens.siblingsTitle", { count: nbFratrie, list: fratrie.map((x) => `${x.prenom} (${x.classe})`).join(", ") })}
             style={{ marginInlineStart: 6, fontSize: 10, background: "#ede9fe", color: "#5b21b6", border: "none", borderRadius: 4,
               padding: "1px 5px", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
             👨‍👩‍👧 {nbFratrie}
@@ -118,12 +125,13 @@ export function MensualitesRow({
         // Mois couvert par une dispense totale : rien à encaisser.
         const moisExonere = !horsDu && exonereTotal && !paye && acompte === 0;
         const peutCliquer = horsDu || moisExonere ? false : (paye ? (canCreate && canEdit) : canCreate);
-        const titre = apresDepart ? `${m} — après le départ${depart ? ` (${depart})` : ""} : non dû`
-          : horsDu ? `${m} — après le départ : acompte ${fmt(acompte)} versé, à annuler depuis 💰`
-          : moisExonere ? `${m} — dispensé (${resume})`
-            : paye ? `${m} — payé ${fmt(montantMoisPaye(e, m, mensualite))}${datePaie ? ` (${datePaie})` : ""}`
-              : acompte > 0 ? `${m} — acompte ${fmt(acompte)}, reste ${fmt(Math.max(0, duMois - acompte))}`
-                : `${m} — impayé (${fmt(duMois)})`;
+        const mt = nomMois(m);
+        const titre = apresDepart ? t("accounting.mens.afterLeavingNotDue", { month: mt, date: depart ? ` (${depart})` : "" })
+          : horsDu ? t("accounting.mens.afterLeavingDeposit", { month: mt, amount: fmt(acompte) })
+          : moisExonere ? t("accounting.mens.monthExempt", { month: mt, summary: resume })
+            : paye ? t("accounting.mens.monthPaid", { month: mt, amount: fmt(montantMoisPaye(e, m, mensualite)), date: datePaie ? ` (${datePaie})` : "" })
+              : acompte > 0 ? t("accounting.mens.monthDeposit", { month: mt, amount: fmt(acompte), rest: fmt(Math.max(0, duMois - acompte)) })
+                : t("accounting.mens.monthUnpaid", { month: mt, amount: fmt(duMois) });
         return <td key={m} style={{ padding: "4px 2px", textAlign: "center" }}>
           <button onClick={() => peutCliquer && toggleMens(e._id, m, mens, e.mensDates || {}, nomEleve)}
             title={titre}
@@ -131,14 +139,14 @@ export function MensualitesRow({
               background: paye ? C.green : acompte > 0 ? PARTIEL.background : apresDepart ? "#f1f5f9" : moisExonere ? "#fef3c7" : "#e8f0e8",
               color: paye ? "#fff" : acompte > 0 ? PARTIEL.color : apresDepart ? "#cbd5e1" : moisExonere ? "#92400e" : "#9ca3af",
               fontWeight: 700, opacity: (readOnly || (!peutCliquer && !paye && !moisExonere && !apresDepart && acompte === 0)) ? 0.6 : 1 }}>
-            {paye ? "✓" : acompte > 0 ? "◐" : apresDepart ? "—" : moisExonere ? "Exo" : "·"}
+            {paye ? "✓" : acompte > 0 ? "◐" : apresDepart ? "—" : moisExonere ? t("accounting.mens.exemptShort") : "·"}
           </button>
         </td>;
       })}
       <td style={{ padding: "4px 8px", textAlign: "center" }}>
         <span title={[
-          sorti ? "Mois payés / mois dus jusqu'au départ" : "",
-          snapshot.nbPartiels > 0 ? `${snapshot.nbPartiels} mois entamé(s) par un acompte` : "",
+          sorti ? t("accounting.mens.paidVsDueUntilLeaving") : "",
+          snapshot.nbPartiels > 0 ? t("accounting.mens.startedByDeposit", { count: snapshot.nbPartiels }) : "",
         ].filter(Boolean).join(" — ") || undefined}
           style={{ fontWeight: 800, fontSize: 13, color: snapshot.nbPayes === nbAttendus ? C.greenDk : snapshot.nbPayes > 0 ? "#d97706" : "#b91c1c" }}>
           {snapshot.nbPayes}/{nbAttendus}{snapshot.nbPartiels > 0 ? " ◐" : ""}
@@ -149,9 +157,9 @@ export function MensualitesRow({
           const paye = !!e.inscriptionPayee;
           const peut = peutBasculer(paye);
           const montantAffiche = paye ? montantInscriptionPaye(e, montantInscription) : duInscription;
-          const titre = paye ? `${libelleInscription} — ${fmt(montantAffiche)}${e.inscriptionDate ? ` (${e.inscriptionDate})` : ""}`
-            : acompteIns > 0 ? `${libelleInscription} — acompte ${fmt(acompteIns)}, reste ${fmt(Math.max(0, duInscription - acompteIns))}`
-              : `${libelleInscription} — ${duInscription > 0 ? fmt(duInscription) : "dispensée"}`;
+          const titre = paye ? t("accounting.mens.enrolPaid", { label: libelleInscriptionAff, amount: fmt(montantAffiche), date: e.inscriptionDate ? ` (${e.inscriptionDate})` : "" })
+            : acompteIns > 0 ? t("accounting.mens.enrolDeposit", { label: libelleInscriptionAff, amount: fmt(acompteIns), rest: fmt(Math.max(0, duInscription - acompteIns)) })
+              : t("accounting.mens.enrolDue", { label: libelleInscriptionAff, amount: duInscription > 0 ? fmt(duInscription) : t("accounting.mens.exemptFem") });
           return (
             <button onClick={() => peut && toggleFraisAnnexe(e._id, {
               poste: "inscription",
@@ -165,19 +173,19 @@ export function MensualitesRow({
                 background: paye ? C.blue : acompteIns > 0 ? PARTIEL.background : "#f1f3f4",
                 color: paye ? "#fff" : acompteIns > 0 ? PARTIEL.color : "#9ca3af", fontWeight: 700,
                 opacity: !peut && !paye ? 0.6 : 1 }}>
-              {paye ? "✓" : acompteIns > 0 ? "◐" : "I"}
+              {paye ? "✓" : acompteIns > 0 ? "◐" : t("accounting.mens.enrolShort")}
             </button>
           );
         })()}
       </td>
       <td style={{ padding: "4px 4px", textAlign: "center", position: "relative" }}>
         {lignesFrais.length === 0 ? (
-          <span title="Aucun frais annexe configuré pour cette classe (Tarifs par classe)"
+          <span title={t("accounting.mens.noExtraFees")}
             style={{ fontSize: 11, color: "#cbd5e1" }}>—</span>
         ) : (
           <>
             <button onClick={() => setMenuFrais((v) => !v)}
-              title={`Frais annexes : ${nbFraisPayes}/${lignesFrais.length} payé(s)${nbFraisEntames ? `, ${nbFraisEntames} entamé(s)` : ""}`}
+              title={t("accounting.mens.extraFeesTitle", { paid: nbFraisPayes, total: lignesFrais.length, started: nbFraisEntames ? t("accounting.mens.startedSuffix", { count: nbFraisEntames }) : "" })}
               style={{ minWidth: 34, height: 26, borderRadius: 5, border: "none", cursor: "pointer", fontSize: 10,
                 background: nbFraisPayes === lignesFrais.length ? "#475569" : nbFraisPayes + nbFraisEntames > 0 ? "#f59e0b" : "#f1f3f4",
                 color: nbFraisPayes + nbFraisEntames > 0 ? "#fff" : "#9ca3af", fontWeight: 700, padding: "0 6px" }}>
@@ -195,10 +203,10 @@ export function MensualitesRow({
                   return (
                     <button key={ligne.id} onClick={() => { if (!peut) return; setMenuFrais(false); basculerFrais(ligne); }}
                       title={ligne.paye
-                        ? `Payé le ${ligne.date || "—"}${ligne.du === 0 ? " — n'est plus facturé à cette classe" : ""}`
-                        : dispense ? "Dispensé (cf. 🎓 Dispenses)"
-                          : entame ? `Acompte ${fmt(ligne.verse)} — cliquer pour solder le reste (${fmt(ligne.reste)})`
-                            : `À payer : ${fmt(ligne.duNet)}`}
+                        ? t("accounting.mens.paidOn", { date: ligne.date || "—" }) + (ligne.du === 0 ? t("accounting.mens.noLongerBilled") : "")
+                        : dispense ? t("accounting.mens.exemptSeeExemptions")
+                          : entame ? t("accounting.mens.depositClickToSettle", { amount: fmt(ligne.verse), rest: fmt(ligne.reste) })
+                            : t("accounting.mens.toPay", { amount: fmt(ligne.duNet) })}
                       style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, width: "100%",
                         border: "none", background: "none", cursor: peut ? "pointer" : "default", opacity: peut || ligne.paye ? 1 : 0.6,
                         padding: "6px 8px", borderRadius: 6, fontSize: 12, color: "#334155" }}>
@@ -206,7 +214,7 @@ export function MensualitesRow({
                       <span style={{ whiteSpace: "nowrap", fontWeight: 700,
                         color: ligne.paye ? "#059669" : entame ? PARTIEL.color : "#94a3b8" }}>
                         {ligne.paye ? `${fmt(ligne.montant)} ✓`
-                          : dispense ? "Exo"
+                          : dispense ? t("accounting.mens.exemptShort")
                             : entame ? `◐ ${fmt(ligne.verse)} / ${fmt(ligne.duNet)}`
                               : `${fmt(ligne.duNet)} ·`}
                       </span>
@@ -217,7 +225,7 @@ export function MensualitesRow({
                   <button onClick={() => { setMenuFrais(false); ouvrirEncaissement(e); }}
                     style={{ display: "block", width: "100%", marginTop: 4, padding: "6px 8px", borderRadius: 6, cursor: "pointer",
                       border: "1px dashed #cbd5e1", background: "none", fontSize: 11, fontWeight: 700, color: C.blue, textAlign: "start" }}>
-                    💰 Payer un montant (acompte)…
+                    💰 {t("accounting.mens.payAmount")}
                   </button>
                 )}
               </div>
@@ -228,13 +236,13 @@ export function MensualitesRow({
       <td style={{ padding: "4px 6px", textAlign: "center", position: "relative", whiteSpace: "nowrap" }}>
         {canCreate && ouvrirEncaissement && (
           <span style={{ marginInlineEnd: 3 }}>
-            <Btn sm v="success" title="Encaisser un montant : réparti sur les mois, une tranche, ou un acompte sur un frais"
+            <Btn sm v="success" title={t("accounting.mens.collectHint")}
               onClick={() => ouvrirEncaissement(e)}>💰</Btn>
           </span>
         )}
-        <Btn sm v="amber" title={`Imprimer le reçu — ${labelRecuFormat(formatRecu)}`}
+        <Btn sm v="amber" title={t("accounting.mens.printReceipt", { format: labelRecuFormat(formatRecu) })}
           onClick={() => imprimer(formatRecu)}>🖨️</Btn>
-        <button onClick={() => setMenuImpr((v) => !v)} title="Choisir le format d'impression"
+        <button onClick={() => setMenuImpr((v) => !v)} title={t("accounting.mens.chooseFormat")}
           style={{ marginInlineStart: 3, width: 20, height: 24, borderRadius: 6, border: "1px solid var(--lc-border)",
             background: "var(--lc-surface)", color: "var(--lc-text-muted, #64748b)", cursor: "pointer", fontSize: 10, fontWeight: 700, padding: 0 }}>
           ▾
@@ -257,8 +265,8 @@ export function MensualitesRow({
               <button onClick={() => { setMenuImpr(false); ouvrirRecuFamille(e); }}
                 style={{ display: "block", width: "100%", marginTop: 4, padding: "6px 8px", borderRadius: 6, cursor: "pointer",
                   border: "1px dashed #c4b5fd", background: "none", textAlign: "start", color: "#5b21b6" }}>
-                <span style={{ fontSize: 12, fontWeight: 700 }}>👨‍👩‍👧 Reçu famille ({nbFratrie} enfants)</span>
-                <span style={{ display: "block", fontSize: 10, color: "#64748b" }}>Un seul reçu pour les enfants de ce tuteur</span>
+                <span style={{ fontSize: 12, fontWeight: 700 }}>👨‍👩‍👧 {t("accounting.mens.familyReceipt", { count: nbFratrie })}</span>
+                <span style={{ display: "block", fontSize: 10, color: "#64748b" }}>{t("accounting.mens.familyReceiptHint")}</span>
               </button>
             )}
           </div>

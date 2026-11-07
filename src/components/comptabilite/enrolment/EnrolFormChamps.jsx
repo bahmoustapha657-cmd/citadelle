@@ -19,8 +19,8 @@ export function EnrolFormChamps({ form, chg, niveauEnrol }) {
       <Input label={t("enrolment.firstName")} value={form.prenom||""} onChange={chg("prenom")}/>
       {/* Maternelle : les petits ne connaissent souvent que leur surnom de la
           maison. Écrit en gros sur le trombinoscope et le badge. */}
-      {(niveauEnrol==="prescolaire"||form.surnom)&&<Input label="Surnom (à la maison)" value={form.surnom||""}
-        onChange={chg("surnom")} maxLength={SURNOM_MAX} placeholder="Ex. : Néné, Bobo…"/>}
+      {(niveauEnrol==="prescolaire"||form.surnom)&&<Input label={t("accounting.enrol.nickname")} value={form.surnom||""}
+        onChange={chg("surnom")} maxLength={SURNOM_MAX} placeholder={t("accounting.enrol.nicknamePlaceholder")}/>}
       <Champ label={t("enrolment.matricule")}>
         <div style={{display:"flex",gap:6,alignItems:"center"}}>
           <input value={form.matricule||""} onChange={chg("matricule")}
@@ -69,10 +69,10 @@ export function EnrolFormChamps({ form, chg, niveauEnrol }) {
           décide du passage — la promotion ne se sert pas des moyennes ici.
           Tant qu'il est vide, l'élève est laissé tel quel. */}
       {estClasseExamen(form.classe, getSystemeScolaire(schoolInfo))&&(
-        <Selec label="Résultat d'examen (fin d'année)" value={form.resultatExamen||""} onChange={chg("resultatExamen")}>
-          <option value="">En attente des résultats</option>
-          <option value="Admis">Admis</option>
-          <option value="Refusé">Refusé</option>
+        <Selec label={t("accounting.enrol.examResult")} value={form.resultatExamen||""} onChange={chg("resultatExamen")}>
+          <option value="">{t("accounting.enrol.examPending")}</option>
+          <option value="Admis">{t("accounting.enrol.examPassed")}</option>
+          <option value="Refusé">{t("accounting.enrol.examFailed")}</option>
         </Selec>
       )}
       {STATUTS_SORTIE.includes(form.statut)&&<>

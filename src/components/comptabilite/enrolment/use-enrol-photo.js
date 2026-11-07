@@ -1,6 +1,8 @@
 import { useContext, useRef, useState } from "react";
 import { SchoolContext } from "../../../contexts/SchoolContext";
 import { getSectionLabel, initMens } from "../../../constants";
+import i18n from "../../../i18n";
+import { libelleSection } from "../../../i18n/libelles";
 import { champsRetour, normaliserDepart } from "../../../depart-utils";
 import { uploadPhotoEleve } from "../../../storageUtils";
 import { finaliserRetouche } from "../../camera-capture/retouche";
@@ -44,7 +46,7 @@ export function useEnrolPhoto({
     // Retour d'un élève parti (statut repassé à « Actif ») : les mois
     // d'absence sont dus ou non, au choix de la direction (champsRetour).
     if (retour) {
-      if (retour.absenceDue === null) { toast("Indiquez si les mois d'absence sont dus.", "warning"); return; }
+      if (retour.absenceDue === null) { toast(i18n.t("accounting.enrol.absenceChoice"), "warning"); return; }
       const { champs, erreur } = champsRetour(
         { dateDepart: retour.dateDepart, interruptions: form.interruptions },
         { dateRetour: retour.dateRetour, absenceDue: retour.absenceDue },
@@ -57,11 +59,10 @@ export function useEnrolPhoto({
     // classe saisie librement doit rester modifiable telle quelle.
     const erreurClasse = deplacement && erreurClasseSection(fiche.classe, section);
     if (erreurClasse) { toast(erreurClasse, "warning"); return; }
-    if (deplacement && !confirm(
-      `Faire passer ${fiche.nom || ""} ${fiche.prenom || ""} du ${getSectionLabel(sectionOrigine)} au `
-      + `${getSectionLabel(section)}, en « ${fiche.classe} » ?\n\n`
-      + "Sa fiche, son matricule et ses paiements le suivent ; ses notes restent dans l'ancienne section.",
-    )) return;
+    if (deplacement && !confirm(i18n.t("accounting.enrol.confirmMove", {
+      name: `${fiche.nom || ""} ${fiche.prenom || ""}`.trim(),
+      from: libelleSection(sectionOrigine), to: libelleSection(section), class: fiche.classe,
+    }))) return;
     verrou.current = true;
     setUploadEnCours(true);
     try {
@@ -89,8 +90,9 @@ export function useEnrolPhoto({
           // D'abord le déplacement (classe + section ensemble) : s'il échoue,
           // rien n'a changé ; ensuite les autres champs, dans la section d'arrivée.
           await deplacerEleve(schoolId, r._id, { depart: sectionOrigine, arrivee: section, classe: r.classe });
+          // Journal des actions (donnée partagée) : en français.
           logAction?.(
-            `Passage ${getSectionLabel(sectionOrigine)} → ${getSectionLabel(section)}`,
+            `Passage ${getSectionLabel(sectionOrigine)} → ${getSectionLabel(section)}`, // i18n-ignore
             `${r.nom} ${r.prenom} (${classeOrigine || "?"} → ${r.classe})`,
           );
           await ensureClasse(r.classe, section);
@@ -98,18 +100,18 @@ export function useEnrolPhoto({
         // Fusion champ par champ, sans les paiements (cf. fiche-modifiable).
         await modChampParNiveau[section](r._id, champsFicheModifiee(r));
         if (retour) {
-          logAction?.("Réintégration d'un élève",
-            `${r.nom} ${r.prenom} (${r.classe}) — parti le ${retour.dateDepart || "?"}, revenu le ${retour.dateRetour || "?"} ; `
-            + (retour.absenceDue ? "mois d'absence dus" : "mois d'absence non dus"));
+          logAction?.("Réintégration d'un élève", // i18n-ignore
+            `${r.nom} ${r.prenom} (${r.classe}) — parti le ${retour.dateDepart || "?"}, revenu le ${retour.dateRetour || "?"} ; ` // i18n-ignore
+            + (retour.absenceDue ? "mois d'absence dus" : "mois d'absence non dus")); // i18n-ignore
         }
         if (deplacement) {
           await rechargerParNiveau[sectionOrigine]?.();
-          toast(`${r.nom} ${r.prenom} est passé(e) au ${getSectionLabel(section)} en ${r.classe}`, "success");
+          toast(i18n.t("accounting.enrol.moved", { name: `${r.nom} ${r.prenom}`, section: libelleSection(section), class: r.classe }), "success");
         }
       }
       setModal(null);
     } catch (e) {
-      toast("Erreur à l'enregistrement : " + e.message, "error");
+      toast(i18n.t("accounting.enrol.saveError", { error: e.message }), "error");
     } finally {
       setUploadEnCours(false);
       verrou.current = false;

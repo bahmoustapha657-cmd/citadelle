@@ -8,6 +8,8 @@
 // retenues d'absences restent ceux de la fiche.
 import { getFifthWeekDays, hasFifthWeekApplied } from "../../../salary-utils";
 import { recalculerFicheSecondaire } from "../presences/presences-secondaire";
+import i18n from "../../../i18n";
+import { libelleJour, libelleMois } from "../../../i18n/libelles";
 
 // Pur : les fiches à réécrire, et celles qu'on ne sait pas recalculer
 // (saisies à la main pour un nom absent des fiches enseignants).
@@ -30,22 +32,22 @@ export async function appliquerCinquiemeSemaine({
 }) {
   if (readOnly) return;
   const jours = getFifthWeekDays(moisSel);
-  if (!jours.length) { toast("Ce mois n'a pas de 5ème semaine.", "info"); return; }
+  if (!jours.length) { toast(i18n.t("accounting.sal.fifth.none"), "info"); return; }
   const { majs, ignorees } = fichesCinquiemeSemaine({ salairesSec, appliquer, secondaire, presences, anneeScolaire });
   const noteManuelles = ignorees
-    ? ` ${ignorees} fiche(s) saisie(s) à la main : corrigez leur colonne « 5è Sem » avec ✏️.`
+    ? ` ${i18n.t("accounting.sal.fifth.manualNote", { count: ignorees })}`
     : "";
   if (!majs.length) {
-    toast(`Rien à changer.${noteManuelles}`, ignorees ? "warning" : "info");
+    toast(`${i18n.t("accounting.sal.fifth.nothing")}${noteManuelles}`, ignorees ? "warning" : "info");
     return;
   }
+  // Journal en français (liste) ; fenêtres et messages dans la langue choisie.
   const liste = jours.join(", ");
-  const question = appliquer
-    ? `Appliquer la 5ème semaine (${liste}) aux salaires du secondaire de ${moisSel} ?\n\nLes heures de cours de ces jours seront payées une fois de plus.`
-    : `Retirer la 5ème semaine (${liste}) des salaires du secondaire de ${moisSel} ?\n\nLes heures de cours de ces jours ne seront plus payées en plus.`;
-  const detail = `\n\n${majs.length} fiche(s) recalculée(s) depuis l'emploi du temps (comme 🔄 Actualiser) ; bons, révisions et retenues conservés.`;
+  const libelles = { days: jours.map(libelleJour).join(", "), month: libelleMois(moisSel) };
+  const question = i18n.t(appliquer ? "accounting.sal.fifth.askApply" : "accounting.sal.fifth.askRemove", libelles);
+  const detail = `\n\n${i18n.t("accounting.sal.fifth.detail", { count: majs.length })}`;
   if (!confirm(question + detail)) return;
   for (const sal of majs) await modS(sal);
-  toast(`5ème semaine ${appliquer ? "appliquée" : "retirée"} : ${majs.length} fiche(s) mise(s) à jour.${noteManuelles}`, ignorees ? "warning" : "success");
-  logAction(appliquer ? "5ème semaine appliquée" : "5ème semaine retirée", `Mois : ${moisSel} · ${liste} · ${majs.length} fiche(s)`);
+  toast(`${i18n.t(appliquer ? "accounting.sal.fifth.doneApplied" : "accounting.sal.fifth.doneRemoved", { count: majs.length })}${noteManuelles}`, ignorees ? "warning" : "success");
+  logAction(appliquer ? "5ème semaine appliquée" : "5ème semaine retirée", `Mois : ${moisSel} · ${liste} · ${majs.length} fiche(s)`); // i18n-ignore
 }

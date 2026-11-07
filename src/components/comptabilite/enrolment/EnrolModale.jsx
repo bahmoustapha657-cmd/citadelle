@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { STATUTS_SORTIE, getSectionLabel, sectionOuverte } from "../../../constants";
+import { Trans, useTranslation } from "react-i18next";
+import { STATUTS_SORTIE, sectionOuverte } from "../../../constants";
+import { libelleSection } from "../../../i18n/libelles";
 import { Btn, Modale, Selec } from "../../ui";
 import { EnrolFormChamps } from "./EnrolFormChamps";
 import { PhotoEleveChamp } from "./PhotoEleveChamp";
@@ -15,6 +17,7 @@ export function EnrolModale({
   // Section de la fiche, choisie comme dans la saisie rapide. Celle d'origine
   // est la liste d'où la fiche a été ouverte — pas `form.niveau`, une copie
   // enregistrée qui peut dater d'avant une promotion.
+  const { t } = useTranslation();
   const sectionOrigine = sectionOuverte(schoolInfo, niveauEnrol);
   const [classeOrigine] = useState(form.classe || "");
   const [sectionChoisie, setSectionChoisie] = useState(
@@ -48,20 +51,18 @@ export function EnrolModale({
     schoolId, toast, tousElevesScolarite, ajoutParNiveau, modChampParNiveau, rechargerParNiveau, ensureClasse,
   });
 
-  return (<Modale large titre={modal==="add_enrol"?"Nouvel élève":"Modifier l'élève"} fermer={()=>setModal(null)}>
+  return (<Modale large titre={modal==="add_enrol"?t("accounting.enrol.newTitle"):t("accounting.enrol.editTitle")} fermer={()=>setModal(null)}>
     {sections.length>1&&<div style={{marginBottom:12,maxWidth:260}}>
-      <Selec label="Section *" value={section} onChange={changerSection}>
-        {sections.map(s=><option key={s} value={s}>{getSectionLabel(s)}</option>)}
+      <Selec label={t("accounting.enrol.sectionField")} value={section} onChange={changerSection}>
+        {sections.map(s=><option key={s} value={s}>{libelleSection(s)}</option>)}
       </Selec>
     </div>}
     {deplacement&&<div style={{background:"#fef3c7",border:"1px solid #fcd34d",borderRadius:8,padding:"8px 12px",marginBottom:12,fontSize:12,color:"#92400e"}}>
-      🌉 À l'enregistrement, l'élève passera du <strong>{getSectionLabel(sectionOrigine)}</strong> au{" "}
-      <strong>{getSectionLabel(section)}</strong>. Choisissez sa nouvelle classe ci-dessous. Sa fiche, son matricule
-      et ses paiements le suivent ; ses notes restent dans l'ancienne section.
+      🌉 <Trans i18nKey="accounting.enrol.moveNotice" values={{ from: libelleSection(sectionOrigine), to: libelleSection(section) }} components={{ b: <strong /> }} />
     </div>}
     <EnrolFormChamps form={form} chg={chg} niveauEnrol={section}/>
     {enRetour&&<div style={{marginTop:14,background:"#f0fdf4",border:"1px solid #86efac",borderRadius:8,padding:"12px 14px"}}>
-      <p style={{margin:"0 0 10px",fontSize:13,fontWeight:800,color:"#166534"}}>↩ Retour de l'élève</p>
+      <p style={{margin:"0 0 10px",fontSize:13,fontWeight:800,color:"#166534"}}>↩ {t("accounting.enrol.returnTitle")}</p>
       <RetourChoix dateDepart={departOrigine} dateRetour={dateRetour} setDateRetour={setDateRetour}
         absenceDue={absenceDue} setAbsenceDue={setAbsenceDue}/>
     </div>}
@@ -70,8 +71,8 @@ export function EnrolModale({
         onChange={(photo,photoRetouche)=>setForm(p=>({...p,photo,photoRetouche}))}/>
     </div>
     <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
-      <Btn v="ghost" onClick={()=>setModal(null)} disabled={uploadEnCours}>Annuler</Btn>
-      <Btn disabled={uploadEnCours} onClick={enregistrer}>{uploadEnCours?"⏳ Enregistrement...":"Enregistrer"}</Btn>
+      <Btn v="ghost" onClick={()=>setModal(null)} disabled={uploadEnCours}>{t("common.cancel")}</Btn>
+      <Btn disabled={uploadEnCours} onClick={enregistrer}>{uploadEnCours?`⏳ ${t("accounting.collect.saving")}`:t("common.save")}</Btn>
     </div>
   </Modale>);
 }

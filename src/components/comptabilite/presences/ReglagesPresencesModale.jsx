@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Btn, Input, Modale } from "../../ui";
 import { JOURS_SEMAINE } from "./presences-utils";
 
@@ -6,6 +7,7 @@ import { JOURS_SEMAINE } from "./presences-utils";
 // compter les jours ouvrables du mois) et nombre de retards valant une
 // demi-journée. Enregistrés dans l'école (RPC maj_reglages_compta).
 export function ReglagesPresencesModale({ reglages, fermer, enregistrer }) {
+  const { t } = useTranslation();
   const [jours, setJours] = useState(reglages.joursTravail);
   const [retards, setRetards] = useState(reglages.retardsParDemiJournee);
   const [enCours, setEnCours] = useState(false);
@@ -17,8 +19,8 @@ export function ReglagesPresencesModale({ reglages, fermer, enregistrer }) {
     try { await enregistrer({ joursTravail: jours, retardsParDemiJournee: nbRetards }); } finally { setEnCours(false); }
   };
   return (
-    <Modale titre="⚙️ Réglages des retenues" fermer={fermer}>
-      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>Jours travaillés</div>
+    <Modale titre={t("accounting.att.settings.title")} fermer={fermer}>
+      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>{t("accounting.att.settings.workDays")}</div>
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 6 }}>
         {JOURS_SEMAINE.map((j) => (
           <label key={j.n} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 13, padding: "4px 10px", border: "1px solid var(--lc-border)", borderRadius: 8, cursor: "pointer" }}>
@@ -27,12 +29,12 @@ export function ReglagesPresencesModale({ reglages, fermer, enregistrer }) {
         ))}
       </div>
       <div style={{ fontSize: 11.5, color: "#64748b", marginBottom: 14 }}>
-        Retenue d'une journée = salaire du mois ÷ nombre de jours travaillés du mois.
+        {t("accounting.att.settings.dayRule")}
       </div>
-      <Input label="Nombre de retards injustifiés = une demi-journée" type="number" min="1" max="20" value={retards} onChange={(e) => setRetards(e.target.value)} />
+      <Input label={t("accounting.att.settings.latesField")} type="number" min="1" max="20" value={retards} onChange={(e) => setRetards(e.target.value)} />
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
-        <Btn v="ghost" onClick={fermer}>Annuler</Btn>
-        <Btn disabled={!valide || enCours} onClick={valider}>Enregistrer</Btn>
+        <Btn v="ghost" onClick={fermer}>{t("common.cancel")}</Btn>
+        <Btn disabled={!valide || enCours} onClick={valider}>{t("common.save")}</Btn>
       </div>
     </Modale>
   );

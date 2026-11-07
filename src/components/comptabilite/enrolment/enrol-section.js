@@ -5,7 +5,9 @@
 // dans la même requête (changerSectionDoc), jamais l'une sans l'autre.
 
 import { changerSectionDoc } from "../../../backend/data-supabase";
-import { getSectionForClasse, getSectionLabel } from "../../../constants";
+import { getSectionForClasse } from "../../../constants";
+import i18n from "../../../i18n";
+import { libelleSection } from "../../../i18n/libelles";
 import { MESSAGE_CLASSE_OBLIGATOIRE, classeManquante } from "../../../enrollment-utils";
 
 export const COLLECTION_ELEVES = {
@@ -18,7 +20,7 @@ export const COLLECTION_ELEVES = {
 export function erreurClasseSection(classe, section) {
   if (classeManquante({ classe })) return MESSAGE_CLASSE_OBLIGATOIRE;
   if (getSectionForClasse(classe) !== section) {
-    return `« ${classe} » n'est pas une classe du ${getSectionLabel(section)}.`;
+    return i18n.t("accounting.enrol.classNotInSection", { class: classe, section: libelleSection(section) });
   }
   return null;
 }

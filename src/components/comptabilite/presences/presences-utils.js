@@ -11,26 +11,31 @@
 //    « Absent » d'Enseignements, jours justifiés payés, retenue du reste).
 import { TOUS_MOIS_LONGS } from "../../../constants.js";
 import { normalizeSalaryName } from "../../../salary-utils";
+import i18n from "../../../i18n";
 
+// Libellés en accesseurs : ils suivent la langue choisie ; l'id est la donnée.
+const typePresence = (id, icone) => ({ id, icone, get label() { return i18n.t(`accounting.att.type.${id}`); } });
 export const TYPES_PRESENCE = [
-  { id: "absence", label: "Absence", icone: "🚫" },
-  { id: "retard", label: "Retard", icone: "⏰" },
-  { id: "permission", label: "Permission", icone: "📝" },
-  { id: "conge", label: "Congé", icone: "🌴" },
-  { id: "mission", label: "Mission", icone: "🚗" },
+  typePresence("absence", "🚫"),
+  typePresence("retard", "⏰"),
+  typePresence("permission", "📝"),
+  typePresence("conge", "🌴"),
+  typePresence("mission", "🚗"),
 ];
 // Seuls ces types se justifient (ou non) ; les autres sont autorisés d'office.
 export const TYPES_A_JUSTIFIER = new Set(["absence", "retard"]);
 
+const statut = (id, couleur) => ({ couleur, get label() { return i18n.t(`accounting.att.status.${id}`); } });
 export const STATUTS = {
-  en_attente: { label: "En attente", couleur: "amber" },
-  justifiee: { label: "Justifiée", couleur: "vert" },
-  injustifiee: { label: "Injustifiée", couleur: "red" },
+  en_attente: statut("en_attente", "amber"),
+  justifiee: statut("justifiee", "vert"),
+  injustifiee: statut("injustifiee", "red"),
 };
 
+const jour = (n, nom) => ({ n, get court() { return i18n.t(`weekdaysShort.${nom}`); } });
 export const JOURS_SEMAINE = [
-  { n: 1, court: "Lun" }, { n: 2, court: "Mar" }, { n: 3, court: "Mer" },
-  { n: 4, court: "Jeu" }, { n: 5, court: "Ven" }, { n: 6, court: "Sam" },
+  jour(1, "Lundi"), jour(2, "Mardi"), jour(3, "Mercredi"),
+  jour(4, "Jeudi"), jour(5, "Vendredi"), jour(6, "Samedi"),
 ];
 
 export const REGLAGES_DEFAUT = Object.freeze({ joursTravail: [1, 2, 3, 4, 5], retardsParDemiJournee: 3 });

@@ -1,5 +1,6 @@
 // Conversion des lignes brutes d'un fichier d'import en candidats élèves,
 // avec validation (erreurs / avertissements) et détection des doublons.
+import i18n from "../../../i18n";
 import { getToutesClassesConnues } from "../../../constants";
 import { classeManquante, filiationManquante, findEnrollmentDuplicate, getEnrollmentDuplicateMessage } from "../../../enrollment-utils";
 
@@ -68,21 +69,22 @@ export function parseEnrolmentRows({ allRows, headerRowIdx, cols, classeDefautIm
     const ligneCandidate = { nom, prenom, classe, sexe, dateNaissance, lieuNaissance, ien, tuteur, contactTuteur, filiation, domicile, typeInscription };
     const erreurs = [];
     const avertissements = [];
-    if (!nom) erreurs.push("Nom manquant");
-    if (!prenom) erreurs.push("Prenom manquant");
-    if (filiationManquante(ligneCandidate)) erreurs.push("Filiation manquante (pere et mere)");
-    if (classeManquante(ligneCandidate)) erreurs.push("Classe manquante (colonne Classe ou « Classe à affecter »)");
+    if (!nom) erreurs.push(i18n.t("accounting.import.err.lastName"));
+    if (!prenom) erreurs.push(i18n.t("accounting.import.err.firstName"));
+    if (filiationManquante(ligneCandidate)) erreurs.push(i18n.t("accounting.import.err.filiation"));
+    if (classeManquante(ligneCandidate)) erreurs.push(i18n.t("accounting.import.err.class"));
     else if (!classesEcole.includes(classe.toLowerCase()) && !classesConnues.includes(classe.toLowerCase())) {
-      avertissements.push(`Classe "${classe}" non reconnue`);
+      avertissements.push(i18n.t("accounting.import.err.classUnknown", { class: classe }));
     }
     if (!erreurs.length) {
       const doublonExistant = findEnrollmentDuplicate(ligneCandidate, tousElevesScolarite);
       if (doublonExistant) {
-        erreurs.push(getEnrollmentDuplicateMessage(doublonExistant, ligneCandidate, { scope: "deja dans l'ecole" }));
+        // Message de doublon (enrollment-utils) en français : sa précision aussi.
+        erreurs.push(getEnrollmentDuplicateMessage(doublonExistant, ligneCandidate, { scope: "deja dans l'ecole" })); // i18n-ignore
       } else {
         const doublonImport = findEnrollmentDuplicate(ligneCandidate, candidatsImport);
         if (doublonImport) {
-          erreurs.push(getEnrollmentDuplicateMessage(doublonImport, ligneCandidate, { scope: "deja dans ce fichier" }));
+          erreurs.push(getEnrollmentDuplicateMessage(doublonImport, ligneCandidate, { scope: "deja dans ce fichier" })); // i18n-ignore
         } else {
           candidatsImport.push(ligneCandidate);
         }

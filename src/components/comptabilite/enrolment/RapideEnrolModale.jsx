@@ -1,5 +1,7 @@
 import { useRef, useState } from "react";
-import { C, initMens, getClassesForSection, getSectionLabel, getSystemeScolaire, sectionOuverte } from "../../../constants";
+import { useTranslation } from "react-i18next";
+import { C, initMens, getClassesForSection, getSystemeScolaire, sectionOuverte } from "../../../constants";
+import { libelleSection } from "../../../i18n/libelles";
 import { Btn, Champ, Input, Modale, Selec } from "../../ui";
 import {
   MESSAGE_CLASSE_OBLIGATOIRE, MESSAGE_FILIATION_OBLIGATOIRE, classeManquante, filiationManquante,
@@ -20,6 +22,7 @@ export function RapideEnrolModale({
 }) {
   // Élèves enregistrés depuis l'ouverture : matricules suivants, contrôle des
   // doublons et récapitulatif, avant même que les listes soient rechargées.
+  const { t } = useTranslation();
   const [ajoutes, setAjoutes] = useState([]);
   const [enCours, setEnCours] = useState(false);
   // Lus par un clic qui suit avant le rendu : ni `enCours` ni `ajoutes` ne
@@ -46,7 +49,7 @@ export function RapideEnrolModale({
     // Double clic : le second appel partirait avant que `enCours` ne désactive
     // le bouton, et inscrirait l'élève deux fois.
     if(verrou.current) return null;
-    if(!form.nom||!form.prenom){toast("Nom et prénom obligatoires","warning");return null;}
+    if(!form.nom||!form.prenom){toast(t("accounting.quick.nameRequired"),"warning");return null;}
     if(classeManquante(form)){toast(MESSAGE_CLASSE_OBLIGATOIRE,"warning");return null;}
     if(filiationManquante(form)){toast(MESSAGE_FILIATION_OBLIGATOIRE,"warning");return null;}
     const ajouter = ajoutParNiveau[section];
@@ -67,13 +70,13 @@ export function RapideEnrolModale({
       if (cree?.id) r._id = cree.id;
       await ensureClasse(r.classe, section);
     } catch (e) {
-      toast("Élève non enregistré : " + (e?.message || e), "error");
+      toast(t("accounting.quick.notSaved", { error: e?.message || e }), "error");
       return null;
     } finally {
       setEnCours(false);
       verrou.current = false;
     }
-    toast(`${r.prenom} ${r.nom} ajouté(e) — ${r.classe} (${getSectionLabel(section)})`,"success");
+    toast(t("accounting.quick.added", { first: r.prenom, last: r.nom, class: r.classe, section: libelleSection(section) }),"success");
     const nouveaux = [...ajoutesRef.current, r];
     ajoutesRef.current = nouveaux;
     setAjoutes(nouveaux);
@@ -96,59 +99,65 @@ export function RapideEnrolModale({
     setModal(null);
   };
 
-  if (etape === "parent") return (<Modale titre="⚡ Saisie rapide — Fratrie / même tuteur" fermer={()=>setModal(null)}>
+  if (etape === "parent") return (<Modale titre={`⚡ ${t("accounting.quick.title")}`} fermer={()=>setModal(null)}>
     <RecapInscrits ajoutes={ajoutes}/>
     <CompteParentFratrie fratrie={fratrie}/>
     <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:14}}>
-      <Btn v="ghost" onClick={()=>setModal(null)} disabled={fratrie.enCours}>{fratrie.resultat?"Fermer":"Plus tard"}</Btn>
+      <Btn v="ghost" onClick={()=>setModal(null)} disabled={fratrie.enCours}>{fratrie.resultat?t("common.close"):t("accounting.quick.later")}</Btn>
     </div>
   </Modale>);
 
-  return (<Modale titre="⚡ Saisie rapide — Fratrie / même tuteur" fermer={()=>setModal(null)}>
+  return (<Modale titre={`⚡ ${t("accounting.quick.title")}`} fermer={()=>setModal(null)}>
     <div style={{background:"#f0f6ff",border:`1.5px solid ${C.blue}`,borderRadius:10,padding:"12px 14px",marginBottom:14}}>
       <p style={{margin:"0 0 10px",fontSize:11,fontWeight:800,color:C.blueDark,textTransform:"uppercase",letterSpacing:"0.06em"}}>
-        👨‍👩‍👧‍👦 Informations communes (conservées pour chaque élève)
+        👨‍👩‍👧‍👦 {t("accounting.quick.commonInfo")}
       </p>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-        <Input label="Nom du Tuteur" value={form.tuteur||""} onChange={chg("tuteur")} placeholder="Bah Mamadou"/>
-        <Input label="Contact Tuteur" value={form.contactTuteur||""} onChange={chg("contactTuteur")} placeholder="622 000 000"/>
-        <div style={{gridColumn:"1/-1"}}><Input label="Filiation (Père / Mère) *" value={form.filiation||""} onChange={chg("filiation")} placeholder="Père: … / Mère: …"/></div>
-        <div style={{gridColumn:"1/-1"}}><Input label="Domicile" value={form.domicile||""} onChange={chg("domicile")} placeholder="Quartier, commune…"/></div>
+        {/* Exemples de noms guinéens : les mêmes dans toutes les langues. i18n-ignore */}
+        <Input label={t("enrolment.guardianName")} value={form.tuteur||""} onChange={chg("tuteur")} placeholder="Bah Mamadou"/>
+        <Input label={t("enrolment.guardianContact")} value={form.contactTuteur||""} onChange={chg("contactTuteur")} placeholder="622 000 000"/>
+        <div style={{gridColumn:"1/-1"}}><Input label={t("enrolment.parentage")} value={form.filiation||""} onChange={chg("filiation")} placeholder={t("accounting.quick.parentagePlaceholder")}/></div>
+        <div style={{gridColumn:"1/-1"}}><Input label={t("accounting.cols.address")} value={form.domicile||""} onChange={chg("domicile")} placeholder={t("accounting.quick.addressPlaceholder")}/></div>
         {/* Une fratrie arrive le même jour : la date est conservée d'un élève
             au suivant, comme le tuteur et le domicile. */}
-        <Input label="Date d'arrivée" type="date" value={form.dateArrivee||""} onChange={chg("dateArrivee")}/>
+        <Input label={t("accounting.quick.arrivalDate")} type="date" value={form.dateArrivee||""} onChange={chg("dateArrivee")}/>
       </div>
     </div>
     <div style={{background:"#fafafa",border:"1px solid #e5e7eb",borderRadius:10,padding:"12px 14px"}}>
       <p style={{margin:"0 0 10px",fontSize:11,fontWeight:800,color:"#374151",textTransform:"uppercase",letterSpacing:"0.06em"}}>
-        🎓 Élève à inscrire
+        🎓 {t("accounting.quick.toEnrol")}
       </p>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-        <Input label="Nom *" value={form.nom||""} onChange={chg("nom")} placeholder="Bah"/>
-        <Input label="Prénom *" value={form.prenom||""} onChange={chg("prenom")} placeholder="Aminata"/>
+        {/* i18n-ignore */}
+        <Input label={t("accounting.quick.lastNameReq")} value={form.nom||""} onChange={chg("nom")} placeholder="Bah"/>
+        {/* i18n-ignore */}
+        <Input label={t("accounting.quick.firstNameReq")} value={form.prenom||""} onChange={chg("prenom")} placeholder="Aminata"/>
         {/* Maternelle : le surnom de la maison, celui auquel l'enfant répond. */}
-        {section==="prescolaire"&&<Input label="Surnom (à la maison)" value={form.surnom||""}
-          onChange={chg("surnom")} maxLength={SURNOM_MAX} placeholder="Ex. : Néné, Bobo…"/>}
+        {section==="prescolaire"&&<Input label={t("accounting.enrol.nickname")} value={form.surnom||""}
+          onChange={chg("surnom")} maxLength={SURNOM_MAX} placeholder={t("accounting.enrol.nicknamePlaceholder")}/>}
         {/* Une fratrie s'étale souvent sur plusieurs cycles : chaque élève
             est inscrit dans SA section (classes, matricule, liste). */}
-        {sections.length>1&&<Selec label="Section *" value={section} onChange={changerSection}>
-          {sections.map(s=><option key={s} value={s}>{getSectionLabel(s)}</option>)}
+        {sections.length>1&&<Selec label={t("accounting.enrol.sectionField")} value={section} onChange={changerSection}>
+          {sections.map(s=><option key={s} value={s}>{libelleSection(s)}</option>)}
         </Selec>}
-        <Champ label="Classe *">
+        <Champ label={t("enrolment.class")}>
           <select value={form.classe||""} onChange={chg("classe")}
             style={{width:"100%",border:"1px solid #b0c4d8",borderRadius:7,padding:"7px 10px",fontSize:13,background:"#fff",boxSizing:"border-box",outline:"none"}}>
-            <option value="">— Sélectionner —</option>
+            <option value="">{t("enrolment.select")}</option>
             {getClassesForSection(section, getSystemeScolaire(schoolInfo)).map(c=><option key={c}>{c}</option>)}
           </select>
         </Champ>
-        <Selec label="Sexe" value={form.sexe||"M"} onChange={chg("sexe")}>
-          <option value="M">Masculin</option><option value="F">Féminin</option>
+        <Selec label={t("enrolment.sex")} value={form.sexe||"M"} onChange={chg("sexe")}>
+          <option value="M">{t("enrolment.male")}</option><option value="F">{t("enrolment.female")}</option>
         </Selec>
-        <Input label="Date de naissance" type="date" value={form.dateNaissance||""} onChange={chg("dateNaissance")}/>
-        <Selec label="Type d'inscription" value={form.typeInscription||"Première inscription"} onChange={chg("typeInscription")}>
-          <option>Première inscription</option><option>Réinscription</option>
+        <Input label={t("enrolment.dateOfBirth")} type="date" value={form.dateNaissance||""} onChange={chg("dateNaissance")}/>
+        {/* Valeurs enregistrées en français ; seul le texte affiché est traduit. */}
+        {/* i18n-ignore */}
+        <Selec label={t("enrolment.enrollmentType")} value={form.typeInscription||"Première inscription"} onChange={chg("typeInscription")}>
+          {/* i18n-ignore */}
+          <option value="Première inscription">{t("enrolment.firstEnrollment")}</option><option value="Réinscription">{t("enrolment.reEnrollment")}</option>
         </Selec>
-        <Champ label="Matricule (auto)">
+        <Champ label={t("accounting.quick.matriculeAuto")}>
           <input value={form.matricule||""} onChange={chg("matricule")}
             style={{width:"100%",border:"1px solid #b0c4d8",borderRadius:7,padding:"7px 10px",fontSize:13,boxSizing:"border-box",outline:"none",fontFamily:"monospace",fontWeight:700,color:C.blue,background:"#e0ebf8"}}/>
         </Champ>
@@ -159,20 +168,21 @@ export function RapideEnrolModale({
     </div>
     <RecapInscrits ajoutes={ajoutes}/>
     <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:14,flexWrap:"wrap"}}>
-      <Btn v="ghost" onClick={()=>setModal(null)} disabled={enCours}>{ajoutes.length?"Fermer":"Annuler"}</Btn>
-      <Btn v="ghost" onClick={eleveSuivant} disabled={enCours}>➕ Élève suivant</Btn>
-      <Btn onClick={terminer} disabled={enCours}>{enCours?"⏳ Enregistrement…":"✅ Terminer"}</Btn>
+      <Btn v="ghost" onClick={()=>setModal(null)} disabled={enCours}>{ajoutes.length?t("common.close"):t("common.cancel")}</Btn>
+      <Btn v="ghost" onClick={eleveSuivant} disabled={enCours}>➕ {t("accounting.quick.next")}</Btn>
+      <Btn onClick={terminer} disabled={enCours}>{enCours?`⏳ ${t("accounting.collect.saving")}`:`✅ ${t("accounting.quick.finish")}`}</Btn>
     </div>
   </Modale>);
 }
 
 function RecapInscrits({ ajoutes }) {
+  const { t } = useTranslation();
   if (!ajoutes.length) return null;
   return (
     <div style={{marginTop:12,background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:10,padding:"10px 14px",fontSize:12,color:"#166534",textAlign:"left"}}>
-      <strong>✅ Déjà inscrits dans cette saisie ({ajoutes.length})</strong>
+      <strong>✅ {t("accounting.quick.recap", { count: ajoutes.length })}</strong>
       <ul style={{margin:"6px 0 0",paddingLeft:18}}>
-        {ajoutes.map((e,i)=><li key={`${e.matricule}-${i}`}>{e.prenom} {e.nom} — {e.classe} ({getSectionLabel(e.niveau)}) · <span style={{fontFamily:"monospace"}}>{e.matricule}</span></li>)}
+        {ajoutes.map((e,i)=><li key={`${e.matricule}-${i}`}>{e.prenom} {e.nom} — {e.classe} ({libelleSection(e.niveau)}) · <span style={{fontFamily:"monospace"}}>{e.matricule}</span></li>)}
       </ul>
     </div>
   );

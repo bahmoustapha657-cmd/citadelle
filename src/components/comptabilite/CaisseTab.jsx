@@ -1,6 +1,8 @@
 import { useContext, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { C, fmt } from "../../constants";
+import { localeCourante } from "../../i18n";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { Badge, Btn, Card, Stat, TD, THead, TR, Vide } from "../ui";
 import {
@@ -23,6 +25,7 @@ export function CaisseTab({
   recettes, depenses, versements, eleves, moisAnnee, tarifsClasses, paiements = [],
   enModeArchive, anneeConsultee, setAnneeConsultee, anneesDispo = [],
 }) {
+  const { t } = useTranslation();
   const { schoolId } = useContext(SchoolContext);
   const periodes = periodesCaisse(schoolId);
   // La Citadelle garde l'affichage d'origine (voir finances-claires.js).
@@ -84,49 +87,47 @@ export function CaisseTab({
             onChange={(e) => { const [a, m, j] = e.target.value.split("-").map(Number); if (a) setReference(new Date(a, m - 1, j)); }}
             style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: "6px 10px", fontSize: 12 }} />
           <Btn sm v="ghost" onClick={() => naviguer(1)}>→</Btn>
-          <Btn sm v="ghost" onClick={() => setReference(new Date())}>Aujourd'hui</Btn>
+          <Btn sm v="ghost" onClick={() => setReference(new Date())}>{t("accounting.cash.today")}</Btn>
         </div>
         )}
-        <strong style={{ fontSize: 13, color: C.blueDark, marginInlineStart: "auto" }}>{periode === "annee" ? `Année scolaire ${anneeConsultee}` : libellePeriode(reference, periode)}</strong>
+        <strong style={{ fontSize: 13, color: C.blueDark, marginInlineStart: "auto" }}>{periode === "annee" ? t("accounting.cash.schoolYear", { year: anneeConsultee }) : libellePeriode(reference, periode)}</strong>
       </div></Card>
 
       {enModeArchive && (
         <p style={{ margin: "10px 0 0", padding: "8px 12px", background: "#fef3c7", border: "1px solid #fbbf24", borderRadius: 6, fontSize: 11, color: "#92400e" }}>
-          📚 Année {anneeConsultee} : recettes, dépenses et versements sont ceux de l'archive ; les paiements de
-          scolarité proviennent de l'instantané figé à la clôture de cette année. Si elle n'a jamais été
-          clôturée, ce sont les fiches élèves actuelles qui s'affichent.
+          📚 {t("accounting.cash.archiveNote", { year: anneeConsultee })}
         </p>
       )}
 
       {/* ── Totaux de la période ── */}
       {classique ? (
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 10, margin: "12px 0 16px" }}>
-        <Stat label="Encaissé" value={fmt(totaux.entrees)} sub={`${duJour.filter((m) => m.sens === "entree").length} opération(s)`} bg="#eaf4e0" />
-        <Stat label="Sorti" value={fmt(totaux.sorties)} sub={`${duJour.filter((m) => m.sens === "sortie").length} opération(s)`} bg="#fce8e8" />
-        <Stat label="Solde de la période" value={fmt(totaux.solde)} sub={totaux.solde >= 0 ? "Excédent" : "Déficit"} bg={totaux.solde >= 0 ? "#eaf4e0" : "#fce8e8"} />
-        <Stat label="Mouvements" value={totaux.nb} sub={periodes.find((p) => p.id === periode)?.label} bg="#e0ebf8" />
+        <Stat label={t("accounting.cash.in")} value={fmt(totaux.entrees)} sub={t("accounting.cash.operations", { count: duJour.filter((m) => m.sens === "entree").length })} bg="#eaf4e0" />
+        <Stat label={t("accounting.cash.out")} value={fmt(totaux.sorties)} sub={t("accounting.cash.operations", { count: duJour.filter((m) => m.sens === "sortie").length })} bg="#fce8e8" />
+        <Stat label={t("accounting.cash.periodBalance")} value={fmt(totaux.solde)} sub={totaux.solde >= 0 ? t("accounting.cash.surplus") : t("accounting.cash.deficit")} bg={totaux.solde >= 0 ? "#eaf4e0" : "#fce8e8"} />
+        <Stat label={t("accounting.cash.movements")} value={totaux.nb} sub={periodes.find((p) => p.id === periode)?.label} bg="#e0ebf8" />
       </div>
       ) : (
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,190px),1fr))", gap: 10, margin: "12px 0 16px" }}>
-        <StatClair label="Argent encaissé" value={fmt(totaux.entrees)} couleur="#15803d" valeurCouleur="#15803d"
-          sub={`${duJour.filter((m) => m.sens === "entree").length} encaissement(s) sur la période`} />
-        <StatClair label="Argent sorti" value={fmt(totaux.sorties)} couleur="#b91c1c" valeurCouleur="#b91c1c"
-          sub={`${duJour.filter((m) => m.sens === "sortie").length} sortie(s) : dépenses, versements, remboursements`} />
-        <StatClair label="Solde de la période" value={`${totaux.solde < 0 ? "− " : ""}${fmt(Math.abs(totaux.solde))}`}
+        <StatClair label={t("accounting.cash.moneyIn")} value={fmt(totaux.entrees)} couleur="#15803d" valeurCouleur="#15803d"
+          sub={t("accounting.cash.moneyInSub", { count: duJour.filter((m) => m.sens === "entree").length })} />
+        <StatClair label={t("accounting.cash.moneyOut")} value={fmt(totaux.sorties)} couleur="#b91c1c" valeurCouleur="#b91c1c"
+          sub={t("accounting.cash.moneyOutSub", { count: duJour.filter((m) => m.sens === "sortie").length })} />
+        <StatClair label={t("accounting.cash.periodBalance")} value={`${totaux.solde < 0 ? "− " : ""}${fmt(Math.abs(totaux.solde))}`}
           couleur={totaux.solde >= 0 ? "#15803d" : "#b91c1c"} valeurCouleur={totaux.solde >= 0 ? "#15803d" : "#b91c1c"}
-          sub={totaux.solde >= 0 ? "Excédent : plus d'argent entré que sorti" : "Déficit : plus d'argent sorti qu'entré"} />
-        <StatClair label="Nombre d'opérations" value={totaux.nb} couleur="#0ea5e9"
-          sub={`Toutes natures confondues · ${periodes.find((p) => p.id === periode)?.label}`} />
+          sub={totaux.solde >= 0 ? t("accounting.cash.surplusHint") : t("accounting.cash.deficitHint")} />
+        <StatClair label={t("accounting.cash.operationsCount")} value={totaux.nb} couleur="#0ea5e9"
+          sub={t("accounting.cash.allKinds", { period: periodes.find((p) => p.id === periode)?.label })} />
       </div>
       )}
 
       {duJour.length === 0 ? (
-        <Vide icone="🧾" msg="Aucun mouvement sur cette période" />
+        <Vide icone="🧾" msg={t("accounting.cash.noMovement")} />
       ) : (
         <>
           {/* ── Répartition par nature ── */}
           <Card><div style={{ padding: "14px 16px" }}>
-            <p style={{ margin: "0 0 12px", fontWeight: 800, fontSize: 13, color: C.blueDark }}>Répartition par nature</p>
+            <p style={{ margin: "0 0 12px", fontWeight: 800, fontSize: 13, color: C.blueDark }}>{t("accounting.cash.byKind")}</p>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(190px,1fr))", gap: 10 }}>
               {Object.entries(SOURCES).map(([id, src]) => {
                 const ligne = totaux.parSource[id];
@@ -136,14 +137,14 @@ export function CaisseTab({
                     <p style={{ margin: "0 0 3px", fontSize: classique ? 11 : 13, fontWeight: 700, color: classique ? "var(--lc-text-muted)" : "var(--lc-text)" }}>{src.label}</p>
                     {src.sens === "neutre" ? (
                       <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: "#64748b" }}>
-                        {ligne.montant < 0 ? `− ${fmt(-ligne.montant)}` : "Non comptées"}
+                        {ligne.montant < 0 ? `− ${fmt(-ligne.montant)}` : t("accounting.cash.notCounted")}
                       </p>
                     ) : (
                       <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: src.sens === "sortie" ? "#b91c1c" : C.greenDk }}>
                         {src.sens === "sortie" ? "− " : "+ "}{fmt(ligne.montant)}
                       </p>
                     )}
-                    <p style={{ margin: 0, fontSize: classique ? 11 : 12, color: classique ? "var(--lc-text-faint)" : "var(--lc-text-muted)" }}>{ligne.nb} opération(s)</p>
+                    <p style={{ margin: 0, fontSize: classique ? 11 : 12, color: classique ? "var(--lc-text-faint)" : "var(--lc-text-muted)" }}>{t("accounting.cash.operations", { count: ligne.nb })}</p>
                   </div>
                 );
               })}
@@ -153,13 +154,13 @@ export function CaisseTab({
           {/* ── Courbe jour par jour (semaine / mois) ou mois par mois (année) ── */}
           {periode !== "jour" && (
             <Card style={{ marginTop: 14 }}><div style={{ padding: "14px 16px" }}>
-              <p style={{ margin: "0 0 12px", fontWeight: 800, fontSize: 13, color: C.blueDark }}>{periode === "annee" ? "Mois par mois" : "Jour par jour"}</p>
+              <p style={{ margin: "0 0 12px", fontWeight: 800, fontSize: 13, color: C.blueDark }}>{periode === "annee" ? t("accounting.cash.monthByMonth") : t("accounting.cash.dayByDay")}</p>
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={serie.map((j) => ({
-                  jour: j.date.toLocaleDateString("fr-FR",
+                  jour: j.date.toLocaleDateString(localeCourante(),
                     periode === "annee" ? { month: "short", year: "2-digit" } : periode === "mois" ? { day: "numeric" } : { weekday: "short" }),
-                  Encaissé: j.entrees,
-                  Sorti: j.sorties,
+                  entrees: j.entrees,
+                  sorties: j.sorties,
                 }))}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e0ebf8" />
                   <XAxis dataKey="jour" tick={{ fontSize: 10 }} />
@@ -168,8 +169,8 @@ export function CaisseTab({
                     : <YAxis tick={{ fontSize: 12 }} tickFormatter={montantAxe} width={56} />}
                   <Tooltip formatter={(v) => fmt(v)} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar dataKey="Encaissé" fill={C.green} radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="Sorti" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="entrees" name={t("accounting.cash.in")} fill={C.green} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="sorties" name={t("accounting.cash.out")} fill="#ef4444" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div></Card>
@@ -177,7 +178,7 @@ export function CaisseTab({
 
           {/* ── Détail des mouvements ── */}
           <Card style={{ marginTop: 14 }}><div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
-            <THead cols={["Date", "Nature", "Libellé", "Détail", "Entrée", "Sortie"]} />
+            <THead cols={[t("accounting.cash.colDate"), t("accounting.cash.colKind"), t("accounting.cash.colLabel"), t("accounting.cash.colDetail"), t("accounting.cash.colIn"), t("accounting.cash.colOut")]} />
             <tbody>{duJour.map((m) => (
               <TR key={m.id}>
                 <TD>{formatJour(m.date)}</TD>
@@ -185,7 +186,7 @@ export function CaisseTab({
                 <TD bold>{m.libelle}</TD>
                 <TD>{m.detail}</TD>
                 <TD>{m.sens === "neutre"
-                  ? <span title="Erreur de saisie corrigée : non comptée" style={{ color: "#94a3b8", textDecoration: "line-through" }}>{fmt(m.montant)}</span>
+                  ? <span title={t("accounting.cash.typoNotCounted")} style={{ color: "#94a3b8", textDecoration: "line-through" }}>{fmt(m.montant)}</span>
                   : m.sens === "entree" ? <span style={{ color: m.montant < 0 ? "#b45309" : C.greenDk, fontWeight: 700 }}>{fmt(m.montant)}</span> : ""}</TD>
                 <TD>{m.sens === "sortie" ? <span style={{ color: "#b91c1c", fontWeight: 700 }}>{fmt(m.montant)}</span> : ""}</TD>
               </TR>
@@ -197,13 +198,7 @@ export function CaisseTab({
       <p style={classique
         ? { margin: "12px 0 0", fontSize: 11, color: "var(--lc-text-faint)" }
         : { margin: "12px 0 0", fontSize: 13, lineHeight: 1.5, color: "var(--lc-text-muted)" }}>
-        Les encaissements de scolarité proviennent du journal des paiements, qui enregistre chaque mouvement
-        et ses annulations. Les paiements antérieurs à sa mise en service sont reconstitués depuis les fiches
-        élèves — sans doublon, mais sans annulations ni auteur. Les salaires n'apparaissent pas ici : une fiche
-        de paie porte un mois, pas une date de décaissement. Une case cochée par erreur puis décochée avec le
-        motif « erreur de saisie » reste listée (barrée, avec son explication) mais ne compte ni en entrée ni en
-        sortie ; un remboursement, lui, est une sortie. La vue « Année » compte tout ce qui est enregistré dans
-        l'année consultée, quelle que soit sa date (réinscriptions de septembre comprises), comme le Bilan.
+        {t("accounting.cash.footer")}
       </p>
     </div>
   );

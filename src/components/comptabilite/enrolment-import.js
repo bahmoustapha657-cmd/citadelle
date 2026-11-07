@@ -3,6 +3,7 @@
 // column-detect et la conversion des lignes à ./enrolment-import/row-parse.
 // Extrait de EnrolmentTab.jsx au refactor découpage 2026-05-29.
 
+import i18n from "../../i18n";
 import { detectColumns } from "./enrolment-import/column-detect";
 import { parseEnrolmentRows } from "./enrolment-import/row-parse";
 import { lireTableur } from "../../lecture-tableur";
@@ -13,7 +14,7 @@ const loadXLSX = () => import("xlsx");
 // preview = { lignes, valides, mapping, nbAvert }.
 export async function parseEnrolmentFile(arrayBuffer, { classeDefautImport, ordreNomImport, tousElevesScolarite }) {
   const allRows = await lireTableur(arrayBuffer, { texte: true });
-  if (allRows.length < 2) return { error: "Fichier vide ou sans données" };
+  if (allRows.length < 2) return { error: i18n.t("accounting.import.emptyFile") };
 
   const { headers, headerRowIdx, cols, champLabels } = detectColumns(allRows);
 
@@ -40,6 +41,7 @@ export async function buildEnrolmentTemplate(t) {
   const ws = XLSX.utils.aoa_to_sheet([
     [t("reports.excel.template.n"), t("reports.excel.template.matricule"), t("reports.excel.template.student"), t("reports.excel.template.sex"), t("reports.excel.template.dateOfBirth"), t("reports.excel.template.birthPlace"), t("reports.excel.template.father"), t("reports.excel.template.mother"), t("reports.excel.template.phone")],
     [1, "", "BAH Aminata", "F", "2012-03-15", "Conakry", "Mamadou Bah", "Fatoumata Diallo", "622000001"],
+    // i18n-ignore
     [2, "", "DIALLO Ibrahima Sékou", "M", "2013-07-22", "Kindia", "Boubacar Diallo", "Mariama Bah", "628000002"],
   ]);
   XLSX.utils.book_append_sheet(wb, ws, t("reports.excel.template.sheetStudents"));
