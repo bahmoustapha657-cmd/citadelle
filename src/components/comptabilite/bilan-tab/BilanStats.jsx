@@ -18,8 +18,8 @@ export function BilanStats({
       {/* Dispenses de paiement : ce que l'école a décidé de ne pas percevoir.
           Ce n'est ni une recette ni un impayé — c'est un choix, et il se chiffre. */}
       {mensualiteOverview.totalElevesExoneres > 0 && (
-        <Stat label="Dispenses accordées" value={`${(mensualiteOverview.totalExonere/1e6).toFixed(2)}M`}
-          sub={`${cur} — ${mensualiteOverview.totalElevesExoneres} élève(s)`} bg="#fef3c7"/>
+        <Stat label={t("accounting.bilanS.exemptions")} value={`${(mensualiteOverview.totalExonere/1e6).toFixed(2)}M`}
+          sub={`${cur} — ${t("accounting.bilanS.students", { count: mensualiteOverview.totalElevesExoneres })}`} bg="#fef3c7"/>
       )}
     </div>
   );

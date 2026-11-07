@@ -449,7 +449,10 @@
       "donations": "Versements",
       "students": "Élèves",
       "monthlyFees": "Mensualités",
-      "transfers": "Transferts"
+      "transfers": "Transferts",
+      "cash": "📆 Caisse",
+      "online": "💳 En ligne",
+      "attendance": "🕘 Présences"
     },
     "addRevenue": "+ Nouvelle recette",
     "addExpense": "+ Nouvelle dépense",
@@ -587,7 +590,8 @@
       "startedCount": "{{count}} entamé(s)",
       "enrolCollected": "{{amount}} inscriptions perçues",
       "otherCollected": "{{amount}} autres frais perçus",
-      "exemptSummary": "{{count}} dispensé(s) · {{amount}} non perçus"
+      "exemptSummary": "{{count}} dispensé(s) · {{amount}} non perçus",
+      "exemptionsBtn": "🎓 Dispenses"
     },
     "collect": {
       "confirm": "Encaisser {{amount}} pour {{name}} ?\n\n{{detail}}",
@@ -1166,7 +1170,8 @@
         "missingAfter": "{{count}} fiche(s) sans paie — complétez-les dans l'onglet Enseignants/Personnel.",
         "fifthApplied": "📅 5ème semaine ({{days}}) appliquée à ce mois : ses heures restent comptées.",
         "fifthNotCounted": "📅 5ème semaine ({{days}}) NON comptée. Pour la payer : « 📅 Appliquer la 5ème semaine » après la génération."
-      }
+      },
+      "duplicate": "Une fiche existe déjà pour {{name}} en {{month}} ({{section}})."
     },
     "bon": {
       "new": "Nouveau bon",
@@ -1197,7 +1202,9 @@
       "editTitle": "Modifier l'employé",
       "baseSalaryField": "Salaire mensuel de base (GNF)",
       "baseSalaryPh": "Ex : 500000",
-      "info": "Le salaire de base sera repris automatiquement lors de la génération mensuelle des salaires."
+      "info": "Le salaire de base sera repris automatiquement lors de la génération mensuelle des salaires.",
+      "dupPhone": "Doublon détecté : ce numéro est déjà utilisé pour ce membre du personnel.",
+      "dupIdentity": "Doublon détecté : une fiche avec le même nom et prénom existe déjà pour ce membre du personnel."
     },
     "ensStatus": {
       "permanent": "Titulaire",
@@ -1235,6 +1242,221 @@
       "updated": "Enseignant mis à jour.",
       "emailNotAdded": "L'e-mail n'a pas pu être ajouté au compte : {{error}}",
       "created": "Enseignant créé. Affectations pédagogiques à compléter dans Primaire/Secondaire."
+    },
+    "checkQr": "🔍 Vérifier un QR",
+    "expCat": {
+      "salaries": "Salaires",
+      "equipment": "Matériel",
+      "infrastructure": "Infrastructure",
+      "utilities": "Charges",
+      "other": "Divers"
+    },
+    "revCat": {
+      "tuition": "Scolarité",
+      "enrolment": "Inscription",
+      "exams": "Examens",
+      "activities": "Activités",
+      "donation": "Don"
+    },
+    "benef": {
+      "bank": "Banque",
+      "foundation": "Fondation",
+      "other": "Autre"
+    },
+    "dep": {
+      "monthSelect": "Mois des dépenses",
+      "allMonths": "Tous les mois",
+      "printMonthHint": "Imprimer les dépenses de {{month}}",
+      "printYearHint": "Imprimer toutes les dépenses de l'année",
+      "printMonth": "Imprimer {{month}}",
+      "printAll": "Imprimer l'état global",
+      "totalOf": "TOTAL — {{month}}",
+      "allMonthsLower": "tous les mois"
+    },
+    "vers": {
+      "printHint": "Imprimer la situation des versements affichés (période et bénéficiaire choisis)",
+      "print": "🖨️ Imprimer la situation",
+      "from": "Du",
+      "to": "au",
+      "allRecipients": "Tous les bénéficiaires",
+      "showAll": "✕ Tout afficher",
+      "count": "{{count}} versement(s) · Total :",
+      "noneFiltered": "Aucun versement pour ces filtres",
+      "recipient": "Bénéficiaire",
+      "reference": "Référence",
+      "printOneHint": "Imprimer la situation de ce versement",
+      "choose": "— Choisir —",
+      "referenceField": "Référence (n° de bordereau ou de reçu)"
+    },
+    "fin": {
+      "in": {
+        "scolarite": "Mensualités encaissées",
+        "scolariteHint": "Mois payés et acomptes, sur les fiches élèves",
+        "inscription": "Inscriptions encaissées",
+        "inscriptionHint": "Droits d'inscription et réinscription payés",
+        "frais": "Frais annexes encaissés",
+        "fraisHint": "Tenue, révision, examens… payés",
+        "recette": "Recettes diverses",
+        "recetteHint": "Saisies dans l'onglet Recettes ({{count}})"
+      },
+      "out": {
+        "depense": "Dépenses",
+        "depenseHint": "Saisies dans l'onglet Dépenses ({{count}})",
+        "versement": "Versements (banque / Fondation)",
+        "versementHint": "Argent retiré de la caisse ({{count}})"
+      },
+      "rest": {
+        "scolarite": "Mensualités",
+        "inscription": "Inscriptions",
+        "frais": "Frais annexes"
+      }
+    },
+    "bilanC": {
+      "balanceTitle": "Solde réel de l'année {{year}}",
+      "equation": "<g>{{in}}</g> entrés − <r>{{out}}</r> sortis = <b>{{result}}</b>",
+      "surplus": "excédent",
+      "deficit": "déficit",
+      "moneyIn": "Argent entré",
+      "moneyInHint": "Tout ce qui a été encaissé cette année.",
+      "totalIn": "Total entré",
+      "moneyOut": "Argent sorti",
+      "moneyOutHint": "Tout ce qui a quitté la caisse cette année.",
+      "totalOut": "Total sorti",
+      "salariesOf": "📋 Salaires de {{month}}",
+      "salariesNote": "{{count}} fiche(s) de paie. <b>Non déduits du solde</b> : une fiche de paie n'est pas un décaissement daté. Pour qu'un salaire versé compte, saisissez-le dans Dépenses (catégorie « Salaires »).",
+      "toCollect": "⏳ Ce qui reste à encaisser",
+      "toCollectHint": "Scolarité due par les élèves inscrits cette année, dispenses déduites.",
+      "collectedOf": "Encaissé <g>{{done}}</g> sur <b>{{expected}}</b> attendus",
+      "remaining": "Reste à encaisser",
+      "ofWhich": "dont {{what}}",
+      "feeMonths": "Mois de mensualité :",
+      "monthsPaid": "{{count}} payés",
+      "monthsUnpaid": "{{count}} impayés",
+      "monthsStarted": "(dont {{count}} entamés par un acompte)",
+      "exempted": "{{count}} élève(s) dispensé(s)",
+      "exemptedAmount": ", soit {{amount}} auxquels l'école renonce (ni encaissé, ni impayé)",
+      "monthByMonth": "📅 Mois par mois",
+      "monthByMonthHint": "Encaissements et sorties datés, comme dans l'onglet Caisse. Survolez une barre pour le montant exact.",
+      "chartIn": "Entré",
+      "chartOut": "Sorti",
+      "howToRead": "<b>Comment lire ces chiffres.</b> L'argent entré vient des fiches élèves (mensualités, inscriptions, frais annexes, nets des remboursements) et de l'onglet Recettes. L'argent sorti vient des onglets Dépenses et Versements. Le graphique mois par mois, comme la Caisse, ne montre que les paiements datés : un ancien paiement sans date compte dans le solde mais n'a pas de barre."
+    },
+    "blocage": {
+      "title": "Portail parents — Notes & Bulletins",
+      "blocked": "🔴 BLOQUÉ",
+      "open": "🟢 OUVERT",
+      "blockedInfo": "Les parents d'élèves avec mensualités impayées ne peuvent pas consulter ni imprimer les notes et bulletins.",
+      "openInfo": "Tous les parents peuvent consulter et imprimer les notes et bulletins.",
+      "unblock": "🔓 Débloquer",
+      "block": "🔒 Bloquer",
+      "reserved": "Action réservée au comptable ou à l'administrateur.",
+      "restored": "🔓 Accès parents rétabli",
+      "applied": "🔒 Accès parents bloqué pour les impayés",
+      "failed": "Impossible de modifier le blocage. Vérifiez vos droits ou réessayez."
+    },
+    "bilanG": {
+      "byPeriod": "Recettes vs Dépenses par période",
+      "feesStatus": "Mensualités — état des paiements",
+      "paid": "Payés",
+      "unpaid": "Impayés",
+      "revenueByCat": "Évolution des recettes par catégorie"
+    },
+    "bilanS": {
+      "exemptions": "Dispenses accordées",
+      "students": "{{count}} élève(s)",
+      "noData": "Aucune donnée financière"
+    },
+    "groupEnrol": {
+      "allPaid": "Tous ces élèves ont déjà réglé leur inscription.",
+      "confirm": "Encaisser l'inscription de {{count}} élève(s) ?\n\nTotal : {{total}}\n\nChaque élève sera marqué comme réinscrit, avec une ligne au journal de caisse.",
+      "done": "{{count}} élève(s) réinscrit(s) — {{total}} encaissés."
+    },
+    "att": {
+      "type": {
+        "absence": "Absence",
+        "retard": "Retard",
+        "permission": "Permission",
+        "conge": "Congé",
+        "mission": "Mission"
+      },
+      "status": {
+        "en_attente": "En attente",
+        "justifiee": "Justifiée",
+        "injustifiee": "Injustifiée"
+      },
+      "saved": "Enregistré.",
+      "saveFailed": "Enregistrement impossible : {{error}}",
+      "decisionFailed": "Décision non enregistrée : {{error}}",
+      "sheetSaved": "{{count}} absence(s)/retard(s) enregistré(s) — en attente de décision.",
+      "sheetPartial": "Feuille enregistrée en partie : {{error}}",
+      "settingsSaved": "Réglages enregistrés.",
+      "settingsFailed": "Réglages non enregistrés : {{error}}",
+      "title": "Présences du personnel",
+      "pendingBadge": "{{count}} en attente de décision",
+      "dailySheetBtn": "📋 Feuille du jour",
+      "enterBtn": "+ Saisir",
+      "settingsHint": "Jours travaillés, retards",
+      "rule": "<b>Règle :</b> seuls les absences et retards <b>injustifiés</b> sont retenus. Salaire au forfait (primaire, personnel) : salaire ÷ {{days}} jours travaillés en {{month}} × jours d'absence ; {{lates}} retards = ½ journée. Secondaire (payé à l'heure) : les heures « Absent » d'Enseignements sont retirées, <b>sauf</b> les jours d'absence déclarés justifiés ici ; une absence injustifiée sans heures saisies retire les cours prévus ce jour-là à l'emploi du temps. Pour reporter sur la paie : <i>Salaires → ✔ Appliquer les absences</i>.",
+      "cols": {
+        "agent": "Agent",
+        "absUnexc": "Absences injust.",
+        "lateUnexc": "Retards injust.",
+        "calcDeduction": "Retenue calculée",
+        "onPayroll": "Sur la paie",
+        "type": "Type",
+        "decision": "Décision"
+      },
+      "daysShort": "{{n}} j",
+      "halfDayShort": "(½ j)",
+      "payNotGenerated": "paie non générée",
+      "teacherNotFound": "enseignant introuvable",
+      "toApply": "à appliquer",
+      "filterAll": "Tout ({{count}})",
+      "filterPending": "En attente ({{count}})",
+      "nothingFor": "Rien d'enregistré pour {{month}}",
+      "decidedBy": "Décidé par {{name}}",
+      "authorized": "Autorisé",
+      "excusedHint": "Justifiée : payée",
+      "excusedBtn": "✔ Justifiée",
+      "unexcusedHint": "Injustifiée : retenue sur salaire",
+      "unexcusedBtn": "✖ Injustifiée",
+      "deleteLine": "Supprimer cette ligne ?",
+      "sheet": {
+        "present": "Présent",
+        "absent": "Absent",
+        "late": "Retard",
+        "title": "📋 Feuille de présence du jour",
+        "defaultPresent": "Tout le monde est <b>présent</b> par défaut : cochez seulement les absents et les retards.",
+        "noAgent": "Aucun agent en fiche (onglets Enseignants et Personnel).",
+        "alreadyEntered": "Déjà saisi pour cette date",
+        "toSave": "{{count}} absence(s)/retard(s) à enregistrer",
+        "save": "Enregistrer la feuille"
+      },
+      "modal": {
+        "newTitle": "Saisir une absence / un retard",
+        "paySection": "Section de paie",
+        "duration": "Durée",
+        "fullDay": "Journée entière",
+        "halfDay": "Demi-journée",
+        "reason": "Motif / observation",
+        "reasonPh": "Ex : maladie (certificat fourni), sans nouvelle…",
+        "ruleNote": "Seules les absences et retards <b>injustifiés</b> sont retenus sur le salaire. « En attente » : rien n'est retenu tant que la Direction ou la comptabilité n'a pas tranché."
+      },
+      "settings": {
+        "title": "⚙️ Réglages des retenues",
+        "workDays": "Jours travaillés",
+        "dayRule": "Retenue d'une journée = salaire du mois ÷ nombre de jours travaillés du mois.",
+        "latesField": "Nombre de retards injustifiés = une demi-journée"
+      },
+      "apply": {
+        "pickMonth": "Sélectionnez un mois précis pour appliquer les absences.",
+        "pendingWarn": "⚠️ {{count}} absence(s)/retard(s) encore « en attente » : ils ne seront PAS retenus tant qu'ils ne sont pas déclarés injustifiés.",
+        "nothingPending": "Rien à changer. {{count}} fait(s) en attente de décision.",
+        "upToDate": "Retenues déjà à jour pour ce mois.",
+        "secNote": "Secondaire : {{count}} fiche(s) recalculée(s) depuis l'emploi du temps et les heures « Absent » du mois (comme 🔄 Actualiser) ; bons et révisions conservés.",
+        "confirm": "Appliquer les retenues pour absences/retards du mois de {{month}} ?\n\n{{count}} fiche(s) de paie seront mises à jour.",
+        "done": "{{count}} fiche(s) de paie mise(s) à jour."
+      }
     }
   },
   "parent": {

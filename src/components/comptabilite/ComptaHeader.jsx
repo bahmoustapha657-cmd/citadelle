@@ -21,7 +21,7 @@ export function ComptaHeader({ c, readOnly }) {
           <p style={{ margin: 0, fontSize: 12, color: C.green, fontWeight: 600 }}>{t("accounting.subtitle")}</p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Btn sm v="ghost" onClick={() => setScanQr(true)}>🔍 Vérifier un QR</Btn>
+          <Btn sm v="ghost" onClick={() => setScanQr(true)}>{t("accounting.checkQr")}</Btn>
           <label style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>{t("common.yearViewed")} :</label>
           <select value={c.anneeConsultee} onChange={(e) => c.setAnneeConsultee(e.target.value)}
             style={{ padding: "6px 10px", borderRadius: 8, border: `1px solid ${c.enModeArchive ? "#f59e0b" : "#cbd5e1"}`, fontSize: 13, fontWeight: 700,

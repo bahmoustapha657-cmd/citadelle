@@ -8,6 +8,8 @@
 //    du registre non saisies en heures et des retards (presences-secondaire).
 import { calculerRetenue, reglagesPresences, SECTIONS_FORFAIT } from "./presences-utils";
 import { ficheModifiee, recalculerFicheSecondaire } from "./presences-secondaire";
+import i18n from "../../../i18n";
+import { libelleMois } from "../../../i18n/libelles";
 
 // Pur : les fiches à modifier, avec leurs nouvelles valeurs, et le nombre de
 // faits encore en attente de décision (non retenus). `secondaire` : données
@@ -36,18 +38,18 @@ export function retenuesDuMois({ salairesMois = [], presences = [], anneeScolair
 
 export async function appliquerAbsences({ moisSel, salairesMois, presences, anneeScolaire, schoolInfo, secondaire, readOnly, toast, modS }) {
   if (readOnly) return;
-  if (moisSel === "__TOUS__") { toast("Sélectionnez un mois précis pour appliquer les absences.", "warning"); return; }
+  if (moisSel === "__TOUS__") { toast(i18n.t("accounting.att.apply.pickMonth"), "warning"); return; }
   const { majs, enAttente } = retenuesDuMois({ salairesMois, presences, anneeScolaire, schoolInfo, secondaire });
   const avertissement = enAttente
-    ? `\n\n⚠️ ${enAttente} absence(s)/retard(s) encore « en attente » : ils ne seront PAS retenus tant qu'ils ne sont pas déclarés injustifiés.`
+    ? `\n\n${i18n.t("accounting.att.apply.pendingWarn", { count: enAttente })}`
     : "";
   if (!majs.length) {
-    toast(enAttente ? `Rien à changer. ${enAttente} fait(s) en attente de décision.` : "Retenues déjà à jour pour ce mois.", enAttente ? "warning" : "info");
+    toast(enAttente ? i18n.t("accounting.att.apply.nothingPending", { count: enAttente }) : i18n.t("accounting.att.apply.upToDate"), enAttente ? "warning" : "info");
     return;
   }
   const nbSec = majs.filter((s) => s.section === "Secondaire").length;
-  const noteSec = nbSec ? `\n\nSecondaire : ${nbSec} fiche(s) recalculée(s) depuis l'emploi du temps et les heures « Absent » du mois (comme 🔄 Actualiser) ; bons et révisions conservés.` : "";
-  if (!confirm(`Appliquer les retenues pour absences/retards du mois de ${moisSel} ?\n\n${majs.length} fiche(s) de paie seront mises à jour.${noteSec}${avertissement}`)) return;
+  const noteSec = nbSec ? `\n\n${i18n.t("accounting.att.apply.secNote", { count: nbSec })}` : "";
+  if (!confirm(`${i18n.t("accounting.att.apply.confirm", { month: libelleMois(moisSel), count: majs.length })}${noteSec}${avertissement}`)) return;
   for (const sal of majs) await modS(sal);
-  toast(`${majs.length} fiche(s) de paie mise(s) à jour.`, "success");
+  toast(i18n.t("accounting.att.apply.done", { count: majs.length }), "success");
 }

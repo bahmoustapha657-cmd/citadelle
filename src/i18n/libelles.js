@@ -29,6 +29,29 @@ export const libelleMoisCourt = (mois) => {
   return new Intl.DateTimeFormat(locale, { month: "short" }).format(new Date(2000, i, 1));
 };
 
+// « 2026-10 » (mois d'une dépense) → « Octobre 2026 » dans la langue choisie.
+export const libelleMoisAnnee = (cle) => {
+  const [annee, m] = String(cle || "").split("-");
+  const nom = MOIS[Number(m) - 1];
+  return nom && annee ? `${libelleMois(nom)} ${annee}` : "";
+};
+
+// Catégories des dépenses et des recettes, bénéficiaires des versements :
+// valeurs enregistrées en français, libellés traduits.
+// i18n-ignore
+const CLES_CAT_DEPENSE = { Salaires: "salaries", Matériel: "equipment", Infrastructure: "infrastructure", Charges: "utilities", Divers: "other" };
+export const CATEGORIES_DEPENSE = Object.keys(CLES_CAT_DEPENSE);
+export const libelleCategorieDepense = (categorie) =>
+  (CLES_CAT_DEPENSE[categorie] ? i18n.t(`accounting.expCat.${CLES_CAT_DEPENSE[categorie]}`) : categorie || "");
+// i18n-ignore
+const CLES_CAT_RECETTE = { Scolarité: "tuition", Inscription: "enrolment", Examens: "exams", Activités: "activities", Don: "donation" };
+export const CATEGORIES_RECETTE = Object.keys(CLES_CAT_RECETTE);
+export const libelleCategorieRecette = (categorie) =>
+  (CLES_CAT_RECETTE[categorie] ? i18n.t(`accounting.revCat.${CLES_CAT_RECETTE[categorie]}`) : categorie || "");
+const CLES_BENEFICIAIRE = { Banque: "bank", Fondation: "foundation", Autre: "other" };
+export const libelleBeneficiaire = (beneficiaire) =>
+  (CLES_BENEFICIAIRE[beneficiaire] ? i18n.t(`accounting.benef.${CLES_BENEFICIAIRE[beneficiaire]}`) : beneficiaire || "");
+
 // Section d'une fiche de paie ou d'un bon (« Secondaire », « Personnel »…).
 // i18n-ignore
 const CLES_GROUPE_PAIE = { Secondaire: "secondary", Primaire: "primary", Préscolaire: "preschool", Personnel: "staff" };

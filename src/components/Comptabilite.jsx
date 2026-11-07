@@ -14,14 +14,14 @@ function Comptabilite({ readOnly, annee, userRole, permissions = null, verrouOuv
     { id: "bilan", label: t("accounting.tabs.bilan") },
     // Journal de caisse : le bilan raisonne par période scolaire (T1/T2…),
     // la caisse répond à « combien est entré aujourd'hui / cette semaine ».
-    { id: "caisse", label: "📆 Caisse" },
+    { id: "caisse", label: t("accounting.tabs.cash") },
     // Paiements des parents en Mobile Money (imputés automatiquement).
-    { id: "en-ligne", label: "💳 En ligne" },
+    { id: "en-ligne", label: t("accounting.tabs.online") },
     { id: "recettes", label: `${t("accounting.tabs.revenues")} (${c.recettes.length})` },
     { id: "depenses", label: `${t("accounting.tabs.expenses")} (${c.depenses.length})` },
     { id: "salaires", label: t("accounting.tabs.salaries") },
     // Absences/retards du personnel → retenues sur la paie.
-    { id: "presences", label: "🕘 Présences" },
+    { id: "presences", label: t("accounting.tabs.attendance") },
     { id: "enseignants", label: `${t("accounting.tabs.teachers")} (${c.ensPrimaire.length + c.ensCollege.length + c.ensLycee.length + c.ensPrescolaire.length})` },
     { id: "personnel", label: `${t("accounting.tabs.staff")} (${c.personnel.length})` },
     { id: "fondation", label: `${t("accounting.tabs.donations")} (${c.versements.length})` },

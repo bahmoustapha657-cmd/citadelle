@@ -1,4 +1,5 @@
 import { useContext, useMemo, useState } from "react";
+import i18n from "../../i18n";
 import { fmt, getAnnee, peutCreerComptesParent, peutModifierEleves, peutModifier, sectionOuverte } from "../../constants";
 import { hasWrite } from "../../../shared/postes-config.js";
 import { SchoolContext } from "../../contexts/SchoolContext";
@@ -217,26 +218,24 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   // paiements daté et signé, trace d'audit.
   const encaisserInscriptions = async (elevesCibles = []) => {
     const aTraiter = elevesCibles.filter((e) => !e.inscriptionPayee);
-    if (!aTraiter.length) { toast("Tous ces élèves ont déjà réglé leur inscription.", "info"); return; }
+    if (!aTraiter.length) { toast(i18n.t("accounting.groupEnrol.allPaid"), "info"); return; }
     // Dû après dispense, moins un éventuel acompte déjà versé.
     const duNet = (e) => montantDuInscription(e, getTarifInscriptionEleve(e));
     const total = aTraiter.reduce((s, e) => s + Math.max(0, duNet(e) - acompteInscription(e)), 0);
-    const message = `Encaisser l'inscription de ${aTraiter.length} élève(s) ?\n\n`
-      + `Total : ${fmt(total)}\n\n`
-      + "Chaque élève sera marqué comme réinscrit, avec une ligne au journal de caisse.";
+    const message = i18n.t("accounting.groupEnrol.confirm", { count: aTraiter.length, total: fmt(total) });
     if (!confirm(message)) return;
     for (const eleve of aTraiter) {
       await toggleFraisAnnexe(eleve._id, {
         poste: "inscription",
         eleve,
         valeurActuelle: false,
-        label: eleve.typeInscription === "Réinscription" ? "Réinscription" : "Inscription",
+        label: eleve.typeInscription === "Réinscription" ? "Réinscription" : "Inscription", // i18n-ignore
         montant: duNet(eleve),
         nomEleve: `${eleve.nom} ${eleve.prenom}`,
         confirmer: false,
       });
     }
-    toast(`${aTraiter.length} élève(s) réinscrit(s) — ${fmt(total)} encaissés.`, "success");
+    toast(i18n.t("accounting.groupEnrol.done", { count: aTraiter.length, total: fmt(total) }), "success");
   };
 
   // Dispenses de paiement : les dépendances d'écriture, la garde « Direction »
@@ -281,8 +280,10 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
     || (permissions ? (hasWrite(permissions, "parametres") || hasWrite(permissions, "admin_panel")) : userRole === "admin"));
   const sauverTranches = async (tranches) => {
     await sauverParametresEcole(schoolId, { tranchesPaiement: tranches });
+    // Journal des actions : toujours en français.
+    // i18n-ignore
     logAction?.("Tranches de paiement modifiées",
-      tranches.map((t) => `${t.nom} : ${periodeTranche(t)}`).join(" · ") || "aucune tranche");
+      tranches.map((t) => `${t.nom} : ${periodeTranche(t)}`).join(" · ") || "aucune tranche"); // i18n-ignore
   };
 
   const enreg = (aj, mod, extra = {}) => {
@@ -337,7 +338,7 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
 
   const toggleBlocage = async () => {
     const blocage = !!schoolInfo.blocageParentImpaye;
-    if (!canCreate) { toast("Action réservée au comptable ou à l'administrateur.", "warning"); return; }
+    if (!canCreate) { toast(i18n.t("accounting.blocage.reserved"), "warning"); return; }
     try {
       // Écrivait dans FIRESTORE alors que la production lit Supabase : le
       // message « Accès parents bloqué » s'affichait sans que le blocage ne
@@ -346,10 +347,10 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
       // RPC dédiée : la policy ecoles_update est fermée au comptable, et
       // l'update direct y était refusé EN SILENCE (0 ligne, succès affiché).
       await majReglagesCompta({ blocageParentImpaye: !blocage });
-      toast(blocage ? "🔓 Accès parents rétabli" : "🔒 Accès parents bloqué pour les impayés", "success");
+      toast(i18n.t(blocage ? "accounting.blocage.restored" : "accounting.blocage.applied"), "success");
     } catch (e) {
       console.error("toggleBlocage error:", e);
-      toast("Impossible de modifier le blocage. Vérifiez vos droits ou réessayez.", "error");
+      toast(i18n.t("accounting.blocage.failed"), "error");
     }
   };
 

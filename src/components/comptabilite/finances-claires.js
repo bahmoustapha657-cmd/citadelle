@@ -12,6 +12,16 @@
 // annulations — un mois remboursé n'est plus « Payé ». Les paiements sans
 // date y comptent, alors que la Caisse, journal daté, les ignore.
 
+import i18n from "../../i18n";
+
+// Libellés en accesseurs : lus au rendu, ils suivent la langue choisie même
+// quand la synthèse est mémorisée (tableau de bord).
+const ligne = (id, cle, montant, aide) => {
+  const l = { id, montant, get label() { return i18n.t(`accounting.fin.${cle}`); } };
+  if (aide) Object.defineProperty(l, "aide", { get: aide, enumerable: true });
+  return l;
+};
+
 // Écoles qui gardent l'affichage financier d'origine, à leur demande.
 // Clé = schoolId (code école).
 const ECOLES_AFFICHAGE_CLASSIQUE = new Set(["citadelle"]);
@@ -30,14 +40,14 @@ export function syntheseFinances({ overview = {}, recettes = [], depenses = [], 
   };
 
   const entrees = [
-    { id: "scolarite", label: "Mensualités encaissées", aide: "Mois payés et acomptes, sur les fiches élèves", montant: o.totalPercu },
-    { id: "inscription", label: "Inscriptions encaissées", aide: "Droits d'inscription et réinscription payés", montant: o.totalInscriptionsPercues },
-    { id: "frais", label: "Frais annexes encaissés", aide: "Tenue, révision, examens… payés", montant: o.totalAutresPercus },
-    { id: "recette", label: "Recettes diverses", aide: `Saisies dans l'onglet Recettes (${recettes.length})`, montant: total(recettes) },
+    ligne("scolarite", "in.scolarite", o.totalPercu, () => i18n.t("accounting.fin.in.scolariteHint")),
+    ligne("inscription", "in.inscription", o.totalInscriptionsPercues, () => i18n.t("accounting.fin.in.inscriptionHint")),
+    ligne("frais", "in.frais", o.totalAutresPercus, () => i18n.t("accounting.fin.in.fraisHint")),
+    ligne("recette", "in.recette", total(recettes), () => i18n.t("accounting.fin.in.recetteHint", { count: recettes.length })),
   ];
   const sorties = [
-    { id: "depense", label: "Dépenses", aide: `Saisies dans l'onglet Dépenses (${depenses.length})`, montant: total(depenses) },
-    { id: "versement", label: "Versements (banque / Fondation)", aide: `Argent retiré de la caisse (${versements.length})`, montant: total(versements) },
+    ligne("depense", "out.depense", total(depenses), () => i18n.t("accounting.fin.out.depenseHint", { count: depenses.length })),
+    ligne("versement", "out.versement", total(versements), () => i18n.t("accounting.fin.out.versementHint", { count: versements.length })),
   ];
   const totalEntrees = somme(entrees);
   const totalSorties = somme(sorties);
@@ -58,9 +68,9 @@ export function syntheseFinances({ overview = {}, recettes = [], depenses = [], 
       reste,
       taux: attendu > 0 ? (encaisseScolarite / attendu) * 100 : 0,
       detailReste: [
-        { id: "scolarite", label: "Mensualités", montant: resteMensualites },
-        { id: "inscription", label: "Inscriptions", montant: o.totalResteInscriptions },
-        { id: "frais", label: "Frais annexes", montant: o.totalResteAutres },
+        ligne("scolarite", "rest.scolarite", resteMensualites),
+        ligne("inscription", "rest.inscription", o.totalResteInscriptions),
+        ligne("frais", "rest.frais", o.totalResteAutres),
       ],
       moisPayes: o.totalPayes,
       moisImpayes: o.totalImpayes,

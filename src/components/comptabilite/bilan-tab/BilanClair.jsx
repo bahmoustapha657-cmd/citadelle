@@ -1,4 +1,6 @@
 import { useMemo } from "react";
+import { Trans, useTranslation } from "react-i18next";
+import { localeCourante } from "../../../i18n";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { C, fmt } from "../../../constants";
 import { Card, Chargement } from "../../ui";
@@ -55,6 +57,7 @@ export function BilanClair({
   salairesMois = [], moisLabel, totNetSec = 0, totNetPrim = 0, totNetPers = 0,
   eleves = [], moisAnnee = [], tarifsClasses = [], paiements = [], anneeConsultee = "",
 }) {
+  const { t } = useTranslation();
   const s = syntheseFinances({ overview: mensualiteOverview, recettes, depenses, versements });
   const r = s.recouvrement;
   const positif = s.solde >= 0;
@@ -73,34 +76,32 @@ export function BilanClair({
       {/* ── 1. Le solde, en une phrase ── */}
       <Card><div style={{ padding: "18px 20px", borderInlineStart: `6px solid ${positif ? VERT : ROUGE}`, borderRadius: "inherit" }}>
         <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 800, color: "var(--lc-text-muted)", textTransform: "uppercase", letterSpacing: ".05em" }}>
-          Solde réel de l'année {anneeConsultee}
+          {t("accounting.bilanC.balanceTitle", { year: anneeConsultee })}
         </p>
         <p style={{ ...nombre, margin: "2px 0 8px", fontSize: "clamp(26px,5vw,36px)", fontWeight: 900, color: positif ? VERT : ROUGE, whiteSpace: "normal" }}>
           {positif ? "" : "− "}{fmt(Math.abs(s.solde))}
         </p>
         <p style={{ margin: 0, fontSize: 14, color: "var(--lc-text)", lineHeight: 1.6 }}>
-          <span style={{ ...nombre, color: VERT, fontWeight: 800 }}>{fmt(s.totalEntrees)}</span> entrés
-          {" "}−{" "}
-          <span style={{ ...nombre, color: ROUGE, fontWeight: 800 }}>{fmt(s.totalSorties)}</span> sortis
-          {" "}= <strong>{positif ? "excédent" : "déficit"}</strong>
+          <Trans i18nKey="accounting.bilanC.equation"
+            values={{ in: fmt(s.totalEntrees), out: fmt(s.totalSorties), result: t(positif ? "accounting.bilanC.surplus" : "accounting.bilanC.deficit") }}
+            components={{ g: <span style={{ ...nombre, color: VERT, fontWeight: 800 }} />, r: <span style={{ ...nombre, color: ROUGE, fontWeight: 800 }} />, b: <strong /> }} />
         </p>
       </div></Card>
 
       {/* ── 2. D'où vient l'argent, où il est parti ── */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,320px),1fr))", gap: 14 }}>
-        <Colonne icone="⬇️" intitule="Argent entré" sousTitre="Tout ce qui a été encaissé cette année."
-          lignes={s.entrees} totalLabel="Total entré" totalMontant={s.totalEntrees} couleur={VERT} signe="+" />
-        <Colonne icone="⬆️" intitule="Argent sorti" sousTitre="Tout ce qui a quitté la caisse cette année."
-          lignes={s.sorties} totalLabel="Total sorti" totalMontant={s.totalSorties} couleur={ROUGE} signe="−" />
+        <Colonne icone="⬇️" intitule={t("accounting.bilanC.moneyIn")} sousTitre={t("accounting.bilanC.moneyInHint")}
+          lignes={s.entrees} totalLabel={t("accounting.bilanC.totalIn")} totalMontant={s.totalEntrees} couleur={VERT} signe="+" />
+        <Colonne icone="⬆️" intitule={t("accounting.bilanC.moneyOut")} sousTitre={t("accounting.bilanC.moneyOutHint")}
+          lignes={s.sorties} totalLabel={t("accounting.bilanC.totalOut")} totalMontant={s.totalSorties} couleur={ROUGE} signe="−" />
       </div>
 
       {/* ── 3. Salaires : affichés, pas déduits ── */}
       <Card><div style={{ padding: "14px 18px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <div style={{ flex: "1 1 260px" }}>
-          <p style={titre}>📋 Salaires de {moisLabel || "ce mois"}</p>
+          <p style={titre}>{t("accounting.bilanC.salariesOf", { month: moisLabel || t("accounting.sal.thisMonth") })}</p>
           <p style={aideTexte}>
-            {salairesMois.length} fiche(s) de paie. <strong>Non déduits du solde</strong> : une fiche de paie n'est pas
-            un décaissement daté. Pour qu'un salaire versé compte, saisissez-le dans Dépenses (catégorie « Salaires »).
+            <Trans i18nKey="accounting.bilanC.salariesNote" values={{ count: salairesMois.length }} components={{ b: <strong /> }} />
           </p>
         </div>
         <span style={{ ...nombre, fontSize: 18, fontWeight: 900, color: "#b45309" }}>{fmt(masseSalariale)}</span>
@@ -108,12 +109,13 @@ export function BilanClair({
 
       {/* ── 4. Ce qui reste à encaisser ── */}
       <Card><div style={{ padding: "16px 18px" }}>
-        <p style={titre}>⏳ Ce qui reste à encaisser</p>
-        <p style={aideTexte}>Scolarité due par les élèves inscrits cette année, dispenses déduites.</p>
+        <p style={titre}>{t("accounting.bilanC.toCollect")}</p>
+        <p style={aideTexte}>{t("accounting.bilanC.toCollectHint")}</p>
 
         <div style={{ margin: "14px 0 6px", display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap", fontSize: 14, color: "var(--lc-text)" }}>
-          <span>Encaissé <strong style={{ ...nombre, color: VERT }}>{fmt(r.encaisse)}</strong> sur <strong style={nombre}>{fmt(r.attendu)}</strong> attendus</span>
-          <strong style={{ ...nombre, color: r.taux >= 70 ? VERT : r.taux >= 40 ? "#b45309" : ROUGE }}>{r.taux.toFixed(1).replace(".", ",")} %</strong>
+          <span><Trans i18nKey="accounting.bilanC.collectedOf" values={{ done: fmt(r.encaisse), expected: fmt(r.attendu) }}
+            components={{ g: <strong style={{ ...nombre, color: VERT }} />, b: <strong style={nombre} /> }} /></span>
+          <strong style={{ ...nombre, color: r.taux >= 70 ? VERT : r.taux >= 40 ? "#b45309" : ROUGE }}>{r.taux.toLocaleString(localeCourante(), { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %</strong>
         </div>
         <div role="progressbar" aria-valuenow={Math.round(r.taux)} aria-valuemin={0} aria-valuemax={100}
           style={{ height: 14, borderRadius: 8, background: "#fecaca", overflow: "hidden" }}>
@@ -122,21 +124,21 @@ export function BilanClair({
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,180px),1fr))", gap: 10, marginTop: 14 }}>
           <div style={{ padding: "12px 14px", borderRadius: 10, border: `2px solid ${ROUGE}` }}>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: "var(--lc-text)" }}>Reste à encaisser</p>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: "var(--lc-text)" }}>{t("accounting.bilanC.remaining")}</p>
             <p style={{ ...nombre, margin: "2px 0 0", fontSize: 20, fontWeight: 900, color: ROUGE }}>{fmt(r.reste)}</p>
           </div>
           {r.detailReste.map((d) => (
             <div key={d.id} style={{ padding: "12px 14px", borderRadius: 10, border: "1px solid var(--lc-border)" }}>
-              <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--lc-text-muted)" }}>dont {d.label.toLowerCase()}</p>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--lc-text-muted)" }}>{t("accounting.bilanC.ofWhich", { what: d.label.toLowerCase() })}</p>
               <p style={{ ...nombre, margin: "2px 0 0", fontSize: 16, fontWeight: 800, color: d.montant ? ROUGE : "var(--lc-text-muted)" }}>{fmt(d.montant)}</p>
             </div>
           ))}
         </div>
 
         <p style={{ ...aideTexte, marginTop: 12, fontSize: 13, color: "var(--lc-text)" }}>
-          Mois de mensualité : <strong style={{ color: VERT }}>{r.moisPayes} payés</strong> · <strong style={{ color: ROUGE }}>{r.moisImpayes} impayés</strong>
-          {r.moisEntames > 0 && <> (dont {r.moisEntames} entamés par un acompte)</>}
-          {r.elevesExoneres > 0 && <> · <strong style={{ color: "#b45309" }}>{r.elevesExoneres} élève(s) dispensé(s)</strong>, soit {fmt(r.exonere)} auxquels l'école renonce (ni encaissé, ni impayé)</>}
+          {t("accounting.bilanC.feeMonths")} <strong style={{ color: VERT }}>{t("accounting.bilanC.monthsPaid", { count: r.moisPayes })}</strong> · <strong style={{ color: ROUGE }}>{t("accounting.bilanC.monthsUnpaid", { count: r.moisImpayes })}</strong>
+          {r.moisEntames > 0 && <> {t("accounting.bilanC.monthsStarted", { count: r.moisEntames })}</>}
+          {r.elevesExoneres > 0 && <> · <strong style={{ color: "#b45309" }}>{t("accounting.bilanC.exempted", { count: r.elevesExoneres })}</strong>{t("accounting.bilanC.exemptedAmount", { amount: fmt(r.exonere) })}</>}
         </p>
       </div></Card>
 
@@ -145,30 +147,27 @@ export function BilanClair({
       {/* ── 5. Mois par mois ── */}
       {serie.some((m) => m.entrees || m.sorties) && (
         <Card><div style={{ padding: "16px 18px" }}>
-          <p style={titre}>📅 Mois par mois</p>
-          <p style={aideTexte}>Encaissements et sorties datés, comme dans l'onglet Caisse. Survolez une barre pour le montant exact.</p>
+          <p style={titre}>{t("accounting.bilanC.monthByMonth")}</p>
+          <p style={aideTexte}>{t("accounting.bilanC.monthByMonthHint")}</p>
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={serie.map((m) => ({
-              mois: m.date.toLocaleDateString("fr-FR", { month: "short", year: "2-digit" }),
-              Entré: m.entrees, Sorti: m.sorties,
+              mois: m.date.toLocaleDateString(localeCourante(), { month: "short", year: "2-digit" }),
+              entrees: m.entrees, sorties: m.sorties,
             }))} margin={{ top: 12, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e0ebf8" />
               <XAxis dataKey="mois" tick={{ fontSize: 12 }} />
               <YAxis tick={{ fontSize: 12 }} tickFormatter={montantAxe} width={56} />
               <Tooltip formatter={(v) => fmt(v)} />
               <Legend wrapperStyle={{ fontSize: 13 }} />
-              <Bar dataKey="Entré" fill={C.green} radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Sorti" fill="#ef4444" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="entrees" name={t("accounting.bilanC.chartIn")} fill={C.green} radius={[4, 4, 0, 0]} />
+              <Bar dataKey="sorties" name={t("accounting.bilanC.chartOut")} fill="#ef4444" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div></Card>
       )}
 
       <p style={{ ...aideTexte, padding: "0 4px" }}>
-        <strong>Comment lire ces chiffres.</strong> L'argent entré vient des fiches élèves (mensualités, inscriptions,
-        frais annexes, nets des remboursements) et de l'onglet Recettes. L'argent sorti vient des onglets Dépenses et
-        Versements. Le graphique mois par mois, comme la Caisse, ne montre que les paiements datés : un ancien paiement
-        sans date compte dans le solde mais n'a pas de barre.
+        <Trans i18nKey="accounting.bilanC.howToRead" components={{ b: <strong /> }} />
       </p>
     </div>
   );

@@ -24,7 +24,7 @@ export function BilanTab({
         moisLabel={moisLabel} mensualiteOverview={mensualiteOverview}
       />
       <BilanBlocage blocage={blocage} canCreate={canCreate} toggleBlocage={toggleBlocage} />
-      {(cR||cD)?<Chargement/>:totR===0&&totD===0?<Vide icone="📊" msg="Aucune donnée financière"/>
+      {(cR||cD)?<Chargement/>:totR===0&&totD===0?<Vide icone="📊" msg={t("accounting.bilanS.noData")}/>
         :<BilanGraphiques
           recettes={recettes} depenses={depenses} totR={totR} totD={totD}
           mensualiteOverview={mensualiteOverview} periodes={periodes}

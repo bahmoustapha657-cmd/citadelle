@@ -449,7 +449,10 @@
       "donations": "Donations",
       "students": "Students",
       "monthlyFees": "Monthly fees",
-      "transfers": "Transfers"
+      "transfers": "Transfers",
+      "cash": "📆 Cash",
+      "online": "💳 Online",
+      "attendance": "🕘 Attendance"
     },
     "addRevenue": "+ New revenue",
     "addExpense": "+ New expense",
@@ -587,7 +590,8 @@
       "startedCount": "{{count}} started",
       "enrolCollected": "{{amount}} enrolment fees received",
       "otherCollected": "{{amount}} other fees received",
-      "exemptSummary": "{{count}} exempt · {{amount}} not received"
+      "exemptSummary": "{{count}} exempt · {{amount}} not received",
+      "exemptionsBtn": "🎓 Exemptions"
     },
     "collect": {
       "confirm": "Collect {{amount}} for {{name}}?\n\n{{detail}}",
@@ -1166,7 +1170,8 @@
         "missingAfter": "{{count}} record(s) without pay — complete them in the Teachers/Staff tab.",
         "fifthApplied": "📅 5th week ({{days}}) applied to this month: its hours remain counted.",
         "fifthNotCounted": "📅 5th week ({{days}}) NOT counted. To pay it: “📅 Apply the 5th week” after generating."
-      }
+      },
+      "duplicate": "A record already exists for {{name}} in {{month}} ({{section}})."
     },
     "bon": {
       "new": "New advance",
@@ -1197,7 +1202,9 @@
       "editTitle": "Edit employee",
       "baseSalaryField": "Monthly base salary (GNF)",
       "baseSalaryPh": "E.g. 500000",
-      "info": "The base salary will be carried over automatically when monthly salaries are generated."
+      "info": "The base salary will be carried over automatically when monthly salaries are generated.",
+      "dupPhone": "Duplicate found: this number is already used for this staff member.",
+      "dupIdentity": "Duplicate found: a record with the same first and last name already exists for this staff member."
     },
     "ensStatus": {
       "permanent": "Permanent",
@@ -1235,6 +1242,221 @@
       "updated": "Teacher updated.",
       "emailNotAdded": "The e-mail could not be added to the account: {{error}}",
       "created": "Teacher created. Complete the teaching assignments in Primary/Secondary."
+    },
+    "checkQr": "🔍 Check a QR code",
+    "expCat": {
+      "salaries": "Salaries",
+      "equipment": "Equipment",
+      "infrastructure": "Infrastructure",
+      "utilities": "Running costs",
+      "other": "Other"
+    },
+    "revCat": {
+      "tuition": "Tuition",
+      "enrolment": "Enrolment",
+      "exams": "Exams",
+      "activities": "Activities",
+      "donation": "Donation"
+    },
+    "benef": {
+      "bank": "Bank",
+      "foundation": "Foundation",
+      "other": "Other"
+    },
+    "dep": {
+      "monthSelect": "Expense month",
+      "allMonths": "All months",
+      "printMonthHint": "Print the expenses for {{month}}",
+      "printYearHint": "Print all expenses for the year",
+      "printMonth": "Print {{month}}",
+      "printAll": "Print the overall statement",
+      "totalOf": "TOTAL — {{month}}",
+      "allMonthsLower": "all months"
+    },
+    "vers": {
+      "printHint": "Print the statement of the transfers shown (chosen period and recipient)",
+      "print": "🖨️ Print the statement",
+      "from": "From",
+      "to": "to",
+      "allRecipients": "All recipients",
+      "showAll": "✕ Show all",
+      "count": "{{count}} transfer(s) · Total:",
+      "noneFiltered": "No transfer for these filters",
+      "recipient": "Recipient",
+      "reference": "Reference",
+      "printOneHint": "Print the statement for this transfer",
+      "choose": "— Choose —",
+      "referenceField": "Reference (slip or receipt no.)"
+    },
+    "fin": {
+      "in": {
+        "scolarite": "Monthly fees collected",
+        "scolariteHint": "Paid months and part-payments, from student records",
+        "inscription": "Enrolment fees collected",
+        "inscriptionHint": "Enrolment and re-enrolment fees paid",
+        "frais": "Additional fees collected",
+        "fraisHint": "Uniform, revision classes, exams… paid",
+        "recette": "Other revenue",
+        "recetteHint": "Entered in the Revenue tab ({{count}})"
+      },
+      "out": {
+        "depense": "Expenses",
+        "depenseHint": "Entered in the Expenses tab ({{count}})",
+        "versement": "Transfers (bank / Foundation)",
+        "versementHint": "Money taken out of the cash box ({{count}})"
+      },
+      "rest": {
+        "scolarite": "Monthly fees",
+        "inscription": "Enrolment fees",
+        "frais": "Additional fees"
+      }
+    },
+    "bilanC": {
+      "balanceTitle": "Actual balance for the year {{year}}",
+      "equation": "<g>{{in}}</g> in − <r>{{out}}</r> out = <b>{{result}}</b>",
+      "surplus": "surplus",
+      "deficit": "deficit",
+      "moneyIn": "Money in",
+      "moneyInHint": "Everything collected this year.",
+      "totalIn": "Total in",
+      "moneyOut": "Money out",
+      "moneyOutHint": "Everything that left the cash box this year.",
+      "totalOut": "Total out",
+      "salariesOf": "📋 Salaries for {{month}}",
+      "salariesNote": "{{count}} payslip(s). <b>Not deducted from the balance</b>: a payslip is not a dated payment. For a paid salary to count, enter it in Expenses (category “Salaries”).",
+      "toCollect": "⏳ What remains to be collected",
+      "toCollectHint": "Fees owed by students enrolled this year, exemptions deducted.",
+      "collectedOf": "Collected <g>{{done}}</g> of <b>{{expected}}</b> expected",
+      "remaining": "Remaining to collect",
+      "ofWhich": "of which {{what}}",
+      "feeMonths": "Fee months:",
+      "monthsPaid": "{{count}} paid",
+      "monthsUnpaid": "{{count}} unpaid",
+      "monthsStarted": "(including {{count}} started with a part-payment)",
+      "exempted": "{{count}} exempted student(s)",
+      "exemptedAmount": ", i.e. {{amount}} the school waives (neither collected nor unpaid)",
+      "monthByMonth": "📅 Month by month",
+      "monthByMonthHint": "Dated receipts and outflows, as in the Cash tab. Hover over a bar for the exact amount.",
+      "chartIn": "In",
+      "chartOut": "Out",
+      "howToRead": "<b>How to read these figures.</b> Money in comes from student records (monthly fees, enrolment, additional fees, net of refunds) and from the Revenue tab. Money out comes from the Expenses and Transfers tabs. The month-by-month chart, like the Cash tab, only shows dated payments: an old payment with no date counts in the balance but has no bar."
+    },
+    "blocage": {
+      "title": "Parent portal — Grades & report cards",
+      "blocked": "🔴 BLOCKED",
+      "open": "🟢 OPEN",
+      "blockedInfo": "Parents of students with unpaid monthly fees cannot view or print grades and report cards.",
+      "openInfo": "All parents can view and print grades and report cards.",
+      "unblock": "🔓 Unblock",
+      "block": "🔒 Block",
+      "reserved": "Only the accountant or the administrator can do this.",
+      "restored": "🔓 Parent access restored",
+      "applied": "🔒 Parent access blocked for unpaid fees",
+      "failed": "Could not change the block. Check your permissions or try again."
+    },
+    "bilanG": {
+      "byPeriod": "Revenue vs expenses by period",
+      "feesStatus": "Monthly fees — payment status",
+      "paid": "Paid",
+      "unpaid": "Unpaid",
+      "revenueByCat": "Revenue trend by category"
+    },
+    "bilanS": {
+      "exemptions": "Exemptions granted",
+      "students": "{{count}} student(s)",
+      "noData": "No financial data"
+    },
+    "groupEnrol": {
+      "allPaid": "All these students have already paid their enrolment fee.",
+      "confirm": "Collect the enrolment fee for {{count}} student(s)?\n\nTotal: {{total}}\n\nEach student will be marked as re-enrolled, with a line in the cash journal.",
+      "done": "{{count}} student(s) re-enrolled — {{total}} collected."
+    },
+    "att": {
+      "type": {
+        "absence": "Absence",
+        "retard": "Lateness",
+        "permission": "Permission",
+        "conge": "Leave",
+        "mission": "Mission"
+      },
+      "status": {
+        "en_attente": "Pending",
+        "justifiee": "Excused",
+        "injustifiee": "Unexcused"
+      },
+      "saved": "Saved.",
+      "saveFailed": "Could not save: {{error}}",
+      "decisionFailed": "Decision not saved: {{error}}",
+      "sheetSaved": "{{count}} absence(s)/lateness recorded — awaiting decision.",
+      "sheetPartial": "Sheet only partly saved: {{error}}",
+      "settingsSaved": "Settings saved.",
+      "settingsFailed": "Settings not saved: {{error}}",
+      "title": "Staff attendance",
+      "pendingBadge": "{{count}} awaiting decision",
+      "dailySheetBtn": "📋 Daily sheet",
+      "enterBtn": "+ Record",
+      "settingsHint": "Working days, lateness",
+      "rule": "<b>Rule:</b> only <b>unexcused</b> absences and lateness are deducted. Flat-rate salary (primary, staff): salary ÷ {{days}} working days in {{month}} × days absent; {{lates}} lateness = ½ day. Secondary (paid by the hour): hours marked “Absent” in Teaching are removed, <b>except</b> absence days declared excused here; an unexcused absence with no hours entered removes the classes scheduled that day in the timetable. To carry it over to payroll: <i>Salaries → ✔ Apply absences</i>.",
+      "cols": {
+        "agent": "Staff member",
+        "absUnexc": "Unexcused abs.",
+        "lateUnexc": "Unexcused late",
+        "calcDeduction": "Calculated deduction",
+        "onPayroll": "On payroll",
+        "type": "Type",
+        "decision": "Decision"
+      },
+      "daysShort": "{{n}} d",
+      "halfDayShort": "(½ d)",
+      "payNotGenerated": "payroll not generated",
+      "teacherNotFound": "teacher not found",
+      "toApply": "to apply",
+      "filterAll": "All ({{count}})",
+      "filterPending": "Pending ({{count}})",
+      "nothingFor": "Nothing recorded for {{month}}",
+      "decidedBy": "Decided by {{name}}",
+      "authorized": "Authorised",
+      "excusedHint": "Excused: paid",
+      "excusedBtn": "✔ Excused",
+      "unexcusedHint": "Unexcused: deducted from salary",
+      "unexcusedBtn": "✖ Unexcused",
+      "deleteLine": "Delete this line?",
+      "sheet": {
+        "present": "Present",
+        "absent": "Absent",
+        "late": "Late",
+        "title": "📋 Daily attendance sheet",
+        "defaultPresent": "Everyone is <b>present</b> by default: only tick those absent or late.",
+        "noAgent": "No staff on record (Teachers and Staff tabs).",
+        "alreadyEntered": "Already recorded for this date",
+        "toSave": "{{count}} absence(s)/lateness to save",
+        "save": "Save the sheet"
+      },
+      "modal": {
+        "newTitle": "Record an absence / lateness",
+        "paySection": "Payroll section",
+        "duration": "Duration",
+        "fullDay": "Full day",
+        "halfDay": "Half day",
+        "reason": "Reason / remarks",
+        "reasonPh": "E.g. illness (certificate provided), no news…",
+        "ruleNote": "Only <b>unexcused</b> absences and lateness are deducted from salary. “Pending”: nothing is deducted until the leadership or accounting has decided."
+      },
+      "settings": {
+        "title": "⚙️ Deduction settings",
+        "workDays": "Working days",
+        "dayRule": "One day's deduction = the month's salary ÷ the number of working days in the month.",
+        "latesField": "Number of unexcused lateness = half a day"
+      },
+      "apply": {
+        "pickMonth": "Select a specific month to apply absences.",
+        "pendingWarn": "⚠️ {{count}} absence(s)/lateness still “pending”: they will NOT be deducted until declared unexcused.",
+        "nothingPending": "Nothing to change. {{count}} item(s) awaiting decision.",
+        "upToDate": "Deductions already up to date for this month.",
+        "secNote": "Secondary: {{count}} record(s) recalculated from the timetable and the month's “Absent” hours (like 🔄 Refresh); advances and adjustments kept.",
+        "confirm": "Apply deductions for absences/lateness for {{month}}?\n\n{{count}} payslip(s) will be updated.",
+        "done": "{{count}} payslip(s) updated."
+      }
     }
   },
   "parent": {

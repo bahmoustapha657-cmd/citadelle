@@ -1,14 +1,16 @@
 // Enregistrement des fiches de paie et du personnel avec garde anti-doublon.
 // Renvoient true si l'écriture a eu lieu, false si bloquée par un doublon.
 import { findSalaryDuplicate } from "../../salary-utils";
-import { findStaffDuplicate, getStaffDuplicateMessage } from "../../staff-utils";
+import { findStaffDuplicate } from "../../staff-utils";
+import i18n from "../../i18n";
+import { libelleMois, libelleSectionPaie } from "../../i18n/libelles";
 
 // Garde anti-doublon (nom + mois + section) — évite 2 bulletins pour le même
 // agent le même mois via le formulaire manuel.
 export async function saveSalaireAction(r, { isEdit, salaires, toast, modS, ajS, anneeRecord }) {
   const doublon = findSalaryDuplicate(r, salaires, { excludeId: isEdit ? r._id : null });
   if (doublon) {
-    toast(`Une fiche existe déjà pour ${doublon.nom} en ${doublon.mois} (${doublon.section}).`, "warning");
+    toast(i18n.t("accounting.sal.duplicate", { name: doublon.nom, month: libelleMois(doublon.mois), section: libelleSectionPaie(doublon.section) }), "warning");
     return false;
   }
   if (isEdit) await modS(r);
@@ -19,7 +21,7 @@ export async function saveSalaireAction(r, { isEdit, salaires, toast, modS, ajS,
 export async function savePersonnelAction(r, { isEdit, personnel, toast, ajPers, modPers }) {
   const doublon = findStaffDuplicate(r, personnel, { excludeId: isEdit ? r._id : null });
   if (doublon) {
-    toast(getStaffDuplicateMessage(doublon, { label: "ce membre du personnel" }), "warning");
+    toast(i18n.t(doublon.type === "phone" ? "accounting.staff.dupPhone" : "accounting.staff.dupIdentity"), "warning");
     return false;
   }
   if (!isEdit) await ajPers(r);

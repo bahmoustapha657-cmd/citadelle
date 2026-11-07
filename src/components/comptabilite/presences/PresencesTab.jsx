@@ -1,5 +1,8 @@
 import React, { useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { C, fmtN, isGroupeActif } from "../../../constants";
+import { localeCourante } from "../../../i18n";
+import { libelleMois, libelleSectionPaie } from "../../../i18n/libelles";
 import { Badge, Btn, Card, Chargement, TD, THead, TR, Vide } from "../../ui";
 import { majReglagesCompta } from "../../../backend/data-supabase";
 import { dateDuJour } from "../paiements-journal";
@@ -13,13 +16,14 @@ import {
 
 const TYPE = Object.fromEntries(TYPES_PRESENCE.map((t) => [t.id, t]));
 const dateFr = (d) => String(d || "").split("-").reverse().join("/");
-const fmtJ = (j) => String(j).replace(".", ",");
+const fmtJ = (j) => Number(j).toLocaleString(localeCourante(), { maximumFractionDigits: 2 });
 
 // Onglet Comptabilité → Présences : registre des absences, retards,
 // permissions… du personnel, décisions (justifiée / injustifiée) et aperçu
 // des retenues du mois, reportées sur la paie par « ✔ Appliquer les
 // absences » (onglet Salaires).
 export function PresencesTab({ c, readOnly }) {
+  const { t } = useTranslation();
   const { presences, cPres, ajPres, modPres, supPres, canCreate, canEdit, schoolInfo, toast, salaires } = c;
   const anneeScolaire = c.anneeConsultee;
   const reglages = reglagesPresences(schoolInfo);
@@ -75,13 +79,13 @@ export function PresencesTab({ c, readOnly }) {
         await ajPres({ ...fait, annee: c.anneeCourante, saisiPar: c.auteur || "", ...(fait.statut !== "en_attente" ? trace() : {}) });
       }
       setModal(null);
-      toast("Enregistré.", "success");
+      toast(t("accounting.att.saved"), "success");
     } catch (e) {
-      toast(`Enregistrement impossible : ${e.message}`, "error");
+      toast(t("accounting.att.saveFailed", { error: e.message }), "error");
     }
   };
   const decider = async (p, statut) => {
-    try { await modPres({ ...p, statut, ...trace() }); } catch (e) { toast(`Décision non enregistrée : ${e.message}`, "error"); }
+    try { await modPres({ ...p, statut, ...trace() }); } catch (e) { toast(t("accounting.att.decisionFailed", { error: e.message }), "error"); }
   };
   const enregistrerFeuille = async (date, faits) => {
     try {
@@ -92,64 +96,62 @@ export function PresencesTab({ c, readOnly }) {
           statut: "en_attente", motif: "", annee: c.anneeCourante, saisiPar: c.auteur || "", origine: "feuille",
         });
       }
-      toast(`${faits.length} absence(s)/retard(s) enregistré(s) — en attente de décision.`, "success");
+      toast(t("accounting.att.sheetSaved", { count: faits.length }), "success");
       setModal(null);
     } catch (e) {
-      toast(`Feuille enregistrée en partie : ${e.message}`, "error");
+      toast(t("accounting.att.sheetPartial", { error: e.message }), "error");
     }
   };
   const enregistrerReglages = async (r) => {
     try {
       await majReglagesCompta({ reglagesPresences: r });
-      toast("Réglages enregistrés.", "success");
+      toast(t("accounting.att.settingsSaved"), "success");
       setModal(null);
     } catch (e) {
-      toast(`Réglages non enregistrés : ${e.message}`, "error");
+      toast(t("accounting.att.settingsFailed", { error: e.message }), "error");
     }
   };
 
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
-        <strong style={{ fontSize: 14, color: C.blueDark }}>Présences du personnel</strong>
-        {nbAttente > 0 && <Badge color="amber">{nbAttente} en attente de décision</Badge>}
+        <strong style={{ fontSize: 14, color: C.blueDark }}>{t("accounting.att.title")}</strong>
+        {nbAttente > 0 && <Badge color="amber">{t("accounting.att.pendingBadge", { count: nbAttente })}</Badge>}
         <div style={{ flex: 1 }} />
-        <select value={mois} onChange={(e) => setMois(e.target.value)} aria-label="Mois"
+        <select value={mois} onChange={(e) => setMois(e.target.value)} aria-label={t("accounting.month")}
           style={{ border: "1px solid #b0c4d8", borderRadius: 7, padding: "6px 12px", fontSize: 13, background: "#fff", color: C.blueDark, fontWeight: 700 }}>
-          {c.moisSalaire.map((m) => <option key={m} value={m}>{m}</option>)}
+          {c.moisSalaire.map((m) => <option key={m} value={m}>{libelleMois(m)}</option>)}
         </select>
-        {peutSaisir && <Btn v="vert" onClick={() => setModal("feuille")}>📋 Feuille du jour</Btn>}
-        {peutSaisir && <Btn onClick={ouvrirNouveau}>+ Saisir</Btn>}
-        {peutDecider && <Btn v="ghost" onClick={() => setModal("reglages")} title="Jours travaillés, retards">⚙️</Btn>}
+        {peutSaisir && <Btn v="vert" onClick={() => setModal("feuille")}>{t("accounting.att.dailySheetBtn")}</Btn>}
+        {peutSaisir && <Btn onClick={ouvrirNouveau}>{t("accounting.att.enterBtn")}</Btn>}
+        {peutDecider && <Btn v="ghost" onClick={() => setModal("reglages")} title={t("accounting.att.settingsHint")}>⚙️</Btn>}
       </div>
 
       <div style={{ padding: "10px 14px", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 10, fontSize: 12.5, color: "#1e3a8a", marginBottom: 12 }}>
-        <strong>Règle :</strong> seuls les absences et retards <strong>injustifiés</strong> sont retenus.
-        Salaire au forfait (primaire, personnel) : salaire ÷ {ouvrables || "?"} jours travaillés en {mois} × jours d'absence ;
-        {" "}{reglages.retardsParDemiJournee} retards = ½ journée.
-        Secondaire (payé à l'heure) : les heures « Absent » d'Enseignements sont retirées, <strong>sauf</strong> les jours d'absence déclarés justifiés ici ; une absence injustifiée sans heures saisies retire les cours prévus ce jour-là à l'emploi du temps.
-        {" "}Pour reporter sur la paie : <em>Salaires → ✔ Appliquer les absences</em>.
+        <Trans i18nKey="accounting.att.rule"
+          values={{ days: ouvrables || "?", month: libelleMois(mois), lates: reglages.retardsParDemiJournee }}
+          components={{ b: <strong />, i: <em /> }} />
       </div>
 
       {cPres ? <Chargement /> : <>
         {recap.length > 0 && <Card style={{ marginBottom: 14 }}><div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
-          <THead cols={["Agent", "Section", "Absences injust.", "Retards injust.", "En attente", "Retenue calculée", "Sur la paie"]} />
+          <THead cols={[t("accounting.att.cols.agent"), t("accounting.section"), t("accounting.att.cols.absUnexc"), t("accounting.att.cols.lateUnexc"), t("accounting.att.status.en_attente"), t("accounting.att.cols.calcDeduction"), t("accounting.att.cols.onPayroll")]} />
           <tbody>{recap.map((r) => {
             const aAppliquer = r.retenue !== null && r.appliquee !== null && r.retenue !== r.appliquee;
             return (
               <TR key={`${r.section}|${r.nom}`}>
                 <TD bold>{r.nom}</TD>
-                <TD><Badge color={r.section === "Personnel" ? "purple" : r.section === "Primaire" ? "vert" : "blue"}>{r.section}</Badge></TD>
-                <TD center>{r.joursAbsence ? `${fmtJ(r.joursAbsence)} j` : "—"}</TD>
-                <TD center>{r.retards ? `${r.retards}${r.joursRetards ? ` (= ${fmtJ(r.joursRetards)} j)` : ""}` : "—"}</TD>
+                <TD><Badge color={r.section === "Personnel" ? "purple" : r.section === "Primaire" ? "vert" : "blue"}>{libelleSectionPaie(r.section)}</Badge></TD>
+                <TD center>{r.joursAbsence ? t("accounting.att.daysShort", { n: fmtJ(r.joursAbsence) }) : "—"}</TD>
+                <TD center>{r.retards ? `${r.retards}${r.joursRetards ? ` (= ${t("accounting.att.daysShort", { n: fmtJ(r.joursRetards) })})` : ""}` : "—"}</TD>
                 <TD center>{r.enAttente ? <Badge color="amber">{r.enAttente}</Badge> : "—"}</TD>
                 <TD center style={{ color: "#b91c1c", fontWeight: 700 }}>
-                  {!r.fiche ? <span style={{ fontWeight: 400, color: "#64748b", fontSize: 12 }}>paie non générée</span>
-                    : r.retenue === null ? <span style={{ fontWeight: 400, color: "#64748b", fontSize: 12 }}>enseignant introuvable</span>
+                  {!r.fiche ? <span style={{ fontWeight: 400, color: "#64748b", fontSize: 12 }}>{t("accounting.att.payNotGenerated")}</span>
+                    : r.retenue === null ? <span style={{ fontWeight: 400, color: "#64748b", fontSize: 12 }}>{t("accounting.att.teacherNotFound")}</span>
                       : r.retenue ? `-${fmtN(r.retenue)}` : "0"}
                 </TD>
                 <TD center>{r.appliquee === null ? "—"
-                  : aAppliquer ? <Badge color="orange">à appliquer</Badge>
+                  : aAppliquer ? <Badge color="orange">{t("accounting.att.toApply")}</Badge>
                     : r.appliquee ? <Badge color="green">✔ {fmtN(r.appliquee)}</Badge> : "—"}</TD>
               </TR>
             );
@@ -157,8 +159,8 @@ export function PresencesTab({ c, readOnly }) {
         </table></div></Card>}
 
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
-          {[{ id: "tous", label: `Tout (${duMois.length})` }, { id: "en_attente", label: `En attente (${nbAttente})` },
-            ...TYPES_PRESENCE.map((t) => ({ id: t.id, label: `${t.icone} ${t.label}` }))].map((f) => (
+          {[{ id: "tous", label: t("accounting.att.filterAll", { count: duMois.length }) }, { id: "en_attente", label: t("accounting.att.filterPending", { count: nbAttente }) },
+            ...TYPES_PRESENCE.map((ty) => ({ id: ty.id, label: `${ty.icone} ${ty.label}` }))].map((f) => (
             <button key={f.id} type="button" onClick={() => setFiltre(f.id)} style={{
               padding: "5px 12px", borderRadius: 16, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700,
               background: filtre === f.id ? C.blueDark : "#e0ebf8", color: filtre === f.id ? "#fff" : C.blueDark,
@@ -166,27 +168,27 @@ export function PresencesTab({ c, readOnly }) {
           ))}
         </div>
 
-        {affiches.length === 0 ? <Vide icone="🕘" msg={`Rien d'enregistré pour ${mois}`} />
+        {affiches.length === 0 ? <Vide icone="🕘" msg={t("accounting.att.nothingFor", { month: libelleMois(mois) })} />
           : <Card><div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
-            <THead cols={["Agent", "Date", "Type", "Décision", "Motif", "Actions"]} />
+            <THead cols={[t("accounting.att.cols.agent"), t("common.date"), t("accounting.att.cols.type"), t("accounting.att.cols.decision"), t("accounting.bon.reason"), t("common.actions")]} />
             <tbody>{affiches.map((p) => {
-              const t = TYPE[p.type] || { label: p.type, icone: "" };
+              const ty = TYPE[p.type] || { label: p.type, icone: "" };
               const aJustifier = TYPES_A_JUSTIFIER.has(p.type);
               const statut = STATUTS[p.statut || "en_attente"];
               return (
                 <TR key={p._id}>
-                  <TD bold>{p.agentNom}<div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 400 }}>{p.section}</div></TD>
+                  <TD bold>{p.agentNom}<div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 400 }}>{libelleSectionPaie(p.section)}</div></TD>
                   <TD>{dateFr(p.date)}</TD>
-                  <TD>{t.icone} {t.label}{p.type === "absence" && p.duree === "demi" ? " (½ j)" : ""}</TD>
+                  <TD>{ty.icone} {ty.label}{p.type === "absence" && p.duree === "demi" ? ` ${t("accounting.att.halfDayShort")}` : ""}</TD>
                   <TD>{aJustifier
-                    ? <span title={p.decidePar ? `Décidé par ${p.decidePar}` : ""}><Badge color={statut.couleur}>{statut.label}</Badge></span>
-                    : <Badge color="gray">Autorisé</Badge>}</TD>
+                    ? <span title={p.decidePar ? t("accounting.att.decidedBy", { name: p.decidePar }) : ""}><Badge color={statut.couleur}>{statut.label}</Badge></span>
+                    : <Badge color="gray">{t("accounting.att.authorized")}</Badge>}</TD>
                   <TD><span style={{ fontSize: 12 }}>{p.motif || "—"}</span></TD>
                   <TD><div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                    {peutDecider && aJustifier && p.statut !== "justifiee" && <Btn sm v="success" onClick={() => decider(p, "justifiee")} title="Justifiée : payée">✔ Justifiée</Btn>}
-                    {peutDecider && aJustifier && p.statut !== "injustifiee" && <Btn sm v="red" onClick={() => decider(p, "injustifiee")} title="Injustifiée : retenue sur salaire">✖ Injustifiée</Btn>}
+                    {peutDecider && aJustifier && p.statut !== "justifiee" && <Btn sm v="success" onClick={() => decider(p, "justifiee")} title={t("accounting.att.excusedHint")}>{t("accounting.att.excusedBtn")}</Btn>}
+                    {peutDecider && aJustifier && p.statut !== "injustifiee" && <Btn sm v="red" onClick={() => decider(p, "injustifiee")} title={t("accounting.att.unexcusedHint")}>{t("accounting.att.unexcusedBtn")}</Btn>}
                     {peutDecider && <Btn sm v="ghost" onClick={() => { setForm({ ...p }); setModal("saisie"); }}>✏️</Btn>}
-                    {peutDecider && <Btn sm v="ghost" onClick={() => { if (confirm("Supprimer cette ligne ?")) supPres(p._id); }}>🗑</Btn>}
+                    {peutDecider && <Btn sm v="ghost" onClick={() => { if (confirm(t("accounting.att.deleteLine"))) supPres(p._id); }}>🗑</Btn>}
                   </div></TD>
                 </TR>
               );
