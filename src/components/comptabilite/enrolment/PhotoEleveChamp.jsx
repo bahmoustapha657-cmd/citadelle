@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { C } from "../../../constants";
 import { Btn } from "../../ui";
 import { CameraCapture } from "../../CameraCapture";
@@ -14,6 +15,7 @@ import { lireImageNormalisee } from "../../camera-capture/photo-capture";
 // et réglages, cf. retouche.js), null pour une photo prise ou importée.
 // `retouche` (prop) : celle de la fiche, pour repartir de l'origine.
 export function PhotoEleveChamp({ photo, onChange, toast, retouche = null }) {
+  const { t } = useTranslation();
   const [cameraOuverte, setCameraOuverte] = useState(false);
   const [retoucheOuverte, setRetoucheOuverte] = useState(false);
 
@@ -24,28 +26,28 @@ export function PhotoEleveChamp({ photo, onChange, toast, retouche = null }) {
     try {
       onChange(await lireImageNormalisee(fichier), null);
     } catch {
-      toast?.("Image illisible : choisissez une photo JPEG ou PNG.", "warning");
+      toast?.(t("accounting.photo.unreadable"), "warning");
     }
   };
 
   return (
     <div>
-      <p style={{fontSize:10,fontWeight:700,color:C.blue,textTransform:"uppercase",margin:"0 0 10px",letterSpacing:"0.07em"}}>📷 Photo de l'élève (optionnel)</p>
+      <p style={{fontSize:10,fontWeight:700,color:C.blue,textTransform:"uppercase",margin:"0 0 10px",letterSpacing:"0.07em"}}>📷 {t("accounting.photo.title")}</p>
       <div style={{display:"flex",alignItems:"center",gap:16,flexWrap:"wrap"}}>
         {/* Cadre au format de la photo (portrait 3:4). */}
         <div style={{width:75,height:100,borderRadius:10,overflow:"hidden",border:`2px solid ${C.blue}`,background:"#f0f4f8",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
           {photo
-            ? <img crossOrigin="anonymous" src={photo} alt="Photo de l'élève" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+            ? <img crossOrigin="anonymous" src={photo} alt={t("accounting.photo.alt")} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
             : <span style={{fontSize:32}}>👤</span>}
         </div>
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
-          <Btn v="blue" onClick={()=>setCameraOuverte(true)}>📸 {photo ? "Reprendre la photo" : "Prendre une photo"}</Btn>
-          {photo&&<Btn v="ghost" onClick={()=>setRetoucheOuverte(true)} title="Fond, cadrage, lumière — sans reprendre la photo">✏️ Modifier la photo</Btn>}
+          <Btn v="blue" onClick={()=>setCameraOuverte(true)}>📸 {photo ? t("accounting.photo.retake") : t("accounting.photo.take")}</Btn>
+          {photo&&<Btn v="ghost" onClick={()=>setRetoucheOuverte(true)} title={t("accounting.photo.editHint")}>✏️ {t("accounting.photo.edit")}</Btn>}
           <label style={{display:"inline-flex",alignItems:"center",gap:6,padding:"6px 14px",borderRadius:8,border:`1px solid ${C.blue}`,background:"#fff",color:C.blue,fontSize:12,fontWeight:700,cursor:"pointer"}}>
-            📁 Importer depuis la galerie
+            📁 {t("accounting.photo.gallery")}
             <input type="file" accept="image/*" style={{display:"none"}} onChange={importer}/>
           </label>
-          {photo&&<Btn sm v="danger" onClick={()=>onChange("", null)}>✕ Supprimer</Btn>}
+          {photo&&<Btn sm v="danger" onClick={()=>onChange("", null)}>✕ {t("accounting.photo.remove")}</Btn>}
         </div>
       </div>
       {cameraOuverte&&<CameraCapture onCapture={(nouvelle)=>onChange(nouvelle, null)} onClose={()=>setCameraOuverte(false)}/>}

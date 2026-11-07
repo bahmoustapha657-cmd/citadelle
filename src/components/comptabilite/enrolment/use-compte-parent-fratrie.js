@@ -1,5 +1,6 @@
 import { useContext, useState } from "react";
 import { genererMdp } from "../../../constants";
+import i18n from "../../../i18n";
 import { SchoolContext } from "../../../contexts/SchoolContext";
 import { creerOuRattacherCompteParent } from "../../../backend/compte-parent";
 import { loginParentSuggere, messageCompteParent } from "../../../comptes-parents";
@@ -23,8 +24,8 @@ export function useCompteParentFratrie({ eleves, schoolId, toast }) {
 
   const valider = async () => {
     if (enCours || resultat || !enAttente.length) return;
-    if (!loginSaisi.trim()) { toast("Identifiant requis.", "warning"); return; }
-    if (mdp.length < 8) { toast("Mot de passe : 8 caractères minimum.", "warning"); return; }
+    if (!loginSaisi.trim()) { toast(i18n.t("accounting.parentAcct.loginRequired"), "warning"); return; }
+    if (mdp.length < 8) { toast(i18n.t("accounting.parentAcct.passwordMin"), "warning"); return; }
     setEnCours(true);
     try {
       const r = await creerOuRattacherCompteParent({
@@ -39,7 +40,7 @@ export function useCompteParentFratrie({ eleves, schoolId, toast }) {
           `Login: ${r.login} - Eleves: ${enAttente.map((e) => `${e.prenom} ${e.nom}`).join(", ")}`);
       }
     } catch (e) {
-      toast("Compte parent : " + (e?.message || e), "error");
+      toast(i18n.t("accounting.parentAcct.error", { error: e?.message || e }), "error");
     } finally {
       setEnCours(false);
     }

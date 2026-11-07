@@ -29,6 +29,7 @@ const CHAMPS_COMMUNS = ["tuteur", "contactTuteur", "filiation", "domicile", "dat
 // reste (nom, prénom, classe, photo…) repart à vide.
 export const formulaireEleveSuivant = (precedent = {}, section, matricule) => ({
   ...Object.fromEntries(CHAMPS_COMMUNS.map((champ) => [champ, precedent[champ]])),
+  // i18n-ignore
   statut: "Actif", sexe: "M", niveau: section, matricule, typeInscription: "Première inscription",
 });
 

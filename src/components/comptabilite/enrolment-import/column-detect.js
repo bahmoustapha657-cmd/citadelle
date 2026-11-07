@@ -1,5 +1,6 @@
 // Détection automatique de la ligne d'en-tête et des colonnes d'un fichier
 // d'import élèves (Excel/CSV). Logique pure, sans dépendance XLSX ni DOM.
+import i18n from "../../../i18n";
 
 // Normalise une chaîne : minuscules, sans accents, alphanumérique espacé.
 export const norm = (s) =>
@@ -24,7 +25,9 @@ const wordMatch = (hn, v) => {
   }));
 };
 
-const CHAMP_LABELS = { num: "N°(ignoré)", matricule: "Matricule→IEN", eleveComplet: "Élève", nom: "Nom", prenom: "Prénom", classe: "Classe", sexe: "Sexe", date: "Date naissance", lieuNaiss: "Lieu naissance", pere: "Père", mere: "Mère", filiation: "Père et Mère (combiné)", tuteur: "Tuteur", contact: "Téléphone", domicile: "Domicile", typeInsc: "Type inscription", ien: "IEN" };
+// Libellés des champs affichés dans l'aperçu (langue courante).
+const CHAMPS = ["num", "matricule", "eleveComplet", "nom", "prenom", "classe", "sexe", "date", "lieuNaiss", "pere", "mere", "filiation", "tuteur", "contact", "domicile", "typeInsc", "ien"];
+const libellesChamps = () => Object.fromEntries(CHAMPS.map((k) => [k, i18n.t(`accounting.import.field.${k}`)]));
 
 // Détecte la ligne d'en-tête (parmi les 5 premières) et mappe chaque champ
 // connu vers son index de colonne. Renvoie { headers, headerRowIdx, cols, champLabels }.
@@ -47,19 +50,20 @@ export function detectColumns(allRows) {
     }
     return -1;
   };
+  // Variantes d'en-têtes reconnues : texte des FICHIERS importés, pas de l'interface.
   const cols = {
     num: findCol(["n", "no", "num", "numero"]),
     matricule: findCol(["matricule", "mat", "numero eleve", "id eleve"]),
-    eleveComplet: findCol(["eleve", "noms et prenoms", "nom et prenom", "nom complet", "prenom et nom", "nomcomplet", "nom prenom", "full name"]),
-    nom: findCol(["nom eleve", "nom de l eleve", "nom famille", "last name", "surname", "noms", "nom"]),
-    prenom: findCol(["prenom eleve", "prenom de l eleve", "prenoms", "first name", "given name", "forename", "prenom"]),
+    eleveComplet: findCol(["eleve", "noms et prenoms", "nom et prenom", "nom complet", "prenom et nom", "nomcomplet", "nom prenom", "full name"]), // i18n-ignore
+    nom: findCol(["nom eleve", "nom de l eleve", "nom famille", "last name", "surname", "noms", "nom"]), // i18n-ignore
+    prenom: findCol(["prenom eleve", "prenom de l eleve", "prenoms", "first name", "given name", "forename", "prenom"]), // i18n-ignore
     classe: findCol(["classe", "class", "niveau", "section", "group"]),
     sexe: findCol(["sexe", "genre", "sex", "gender", "masculin", "feminin"]),
-    date: findCol(["date naissance", "date de naissance", "date naiss", "ne le", "dob", "birth"]),
-    lieuNaiss: findCol(["lieu naissance", "lieu de naissance", "lieu naiss", "ville naissance", "birthplace", "born in", "ne a"]),
+    date: findCol(["date naissance", "date de naissance", "date naiss", "ne le", "dob", "birth"]), // i18n-ignore
+    lieuNaiss: findCol(["lieu naissance", "lieu de naissance", "lieu naiss", "ville naissance", "birthplace", "born in", "ne a"]), // i18n-ignore
     pere: findCol(["pere", "father", "papa", "nom pere"]),
     mere: findCol(["mere", "mother", "maman", "nom mere"]),
-    filiation: findCol(["pere et mere", "filiation", "parents", "famille"]),
+    filiation: findCol(["pere et mere", "filiation", "parents", "famille"]), // i18n-ignore
     tuteur: findCol(["tuteur", "responsable", "gardien", "tuteur legal"]),
     contact: findCol(["telephone", "tel", "phone", "mobile", "gsm", "numero telephone", "contact"]),
     domicile: findCol(["domicile", "adresse", "quartier", "residence", "localite"]),
@@ -71,5 +75,5 @@ export function detectColumns(allRows) {
     cols.nom = -1; cols.prenom = -1;
   }
 
-  return { headers, headerRowIdx, cols, champLabels: CHAMP_LABELS };
+  return { headers, headerRowIdx, cols, champLabels: libellesChamps() };
 }

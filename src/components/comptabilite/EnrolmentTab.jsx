@@ -1,5 +1,5 @@
 import { useContext, useState } from "react";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 import { C, aReinscrire, estReinscrit, estSorti, getAnnee, sectionOuverte } from "../../constants";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { DepartsView } from "./enrolment/DepartsView";
@@ -90,7 +90,7 @@ export function EnrolmentTab({
       />
 
       <div style={{background:"#e0ebf8",borderRadius:8,padding:"9px 14px",marginBottom:14,fontSize:12,color:C.blueDark}}>
-        🔒 Seul le <strong>Comptable</strong> peut enrôler ou supprimer des élèves.
+        🔒 <Trans i18nKey="accounting.enrol.onlyAccountant" components={{ b: <strong /> }} />
       </div>
 
       {!afficherDeparts&&<RechercheEleves
