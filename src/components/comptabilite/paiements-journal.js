@@ -8,8 +8,8 @@
 // AJOUT SEUL : une annulation ajoute une ligne `statut: "annule"`, elle n'en
 // supprime jamais (règles Firestore et RLS Supabase l'imposent aussi).
 //
-// Logique pure : aucune dépendance React ni backend.
-import i18n from "../../i18n";
+// Logique pure : aucune dépendance React ni backend — ni i18n : ce module est
+// copié pour les Edge Functions (scripts/partager-edge.mjs).
 
 // Libellés ÉCRITS au journal (donnée partagée) : restent en français.
 export const TYPES_PAIEMENT = {
@@ -140,7 +140,19 @@ export function etatNetParCle(lignes = []) {
 // sortie : l'encaissement et sa correction restent visibles, en sens
 // « neutre », hors des totaux. Sans contrepartie au journal, la correction
 // retire son montant des entrées (l'argent n'est jamais entré).
-export function mouvementsDepuisJournal(lignes = []) {
+//
+// `libelles` : textes affichés dans la caisse. Français par défaut ; l'écran
+// passe ceux de la langue choisie (caisse-utils).
+// i18n-ignore
+export const LIBELLES_JOURNAL_FR = {
+  annuleErreur: (libelle) => `${libelle} — annulé (erreur de saisie)`, // i18n-ignore
+  correction: (libelle) => `Correction — ${libelle}`,
+  remboursement: (libelle) => `Remboursement — ${libelle}`,
+  annulation: (libelle) => `Annulation — ${libelle}`,
+  eleve: "Élève", // i18n-ignore
+};
+
+export function mouvementsDepuisJournal(lignes = [], libelles = LIBELLES_JOURNAL_FR) {
   const neutres = lignesNeutralisees(lignes);
   return lignes.map((ligne) => {
     const annule = ligne.statut === "annule";
@@ -152,16 +164,16 @@ export function mouvementsDepuisJournal(lignes = []) {
     const explication = ligne.explication ? `« ${ligne.explication} »` : "";
     // Affichage (langue de l'utilisateur) ; ligne.libelle est la donnée enregistrée.
     const libelleDetail = !annule
-      ? (neutre ? i18n.t("accounting.cash.cancelledTypo", { label: ligne.libelle }) : ligne.libelle)
-      : erreur ? i18n.t("accounting.cash.correction", { label: ligne.libelle })
-        : i18n.t(ligne.motif === "remboursement" ? "accounting.cash.refund" : "accounting.cash.cancellation", { label: ligne.libelle });
+      ? (neutre ? libelles.annuleErreur(ligne.libelle) : ligne.libelle)
+      : erreur ? libelles.correction(ligne.libelle)
+        : (ligne.motif === "remboursement" ? libelles.remboursement : libelles.annulation)(ligne.libelle);
     return {
       id: `journal-${ligne._id}`,
       cle: clePaiement(ligne),
       dateBrute: ligne.date,
       sens: neutre ? "neutre" : erreur ? "entree" : annule ? "sortie" : "entree",
       source: neutre || erreur ? "correction" : annule ? "annulation" : source,
-      libelle: ligne.eleveNom || i18n.t("accounting.cash.student"),
+      libelle: ligne.eleveNom || libelles.eleve,
       detail: [libelleDetail, annule ? explication : "", ligne.classe].filter(Boolean).join(" · "),
       montant: erreur && !neutre ? -montant : montant,
       auteur: ligne.auteur || "",

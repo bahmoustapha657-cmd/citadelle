@@ -226,9 +226,18 @@ function mouvementsEleves({ eleves = [], moisAnnee = [], tarifsClasses = [], ann
 // élève (seule trace des paiements antérieurs). Une clé métier commune permet
 // de garder le journal quand il connaît le mouvement, et de ne retomber sur
 // la fiche que pour l'historique d'avant — sans jamais compter deux fois.
+// Textes du journal dans la langue choisie (paiements-journal reste sans i18n).
+const libellesJournal = () => ({
+  annuleErreur: (label) => i18n.t("accounting.cash.cancelledTypo", { label }),
+  correction: (label) => i18n.t("accounting.cash.correction", { label }),
+  remboursement: (label) => i18n.t("accounting.cash.refund", { label }),
+  annulation: (label) => i18n.t("accounting.cash.cancellation", { label }),
+  eleve: i18n.t("accounting.cash.student"),
+});
+
 export function collecterMouvements(sources) {
   const { paiements = [] } = sources;
-  const duJournal = mouvementsDepuisJournal(paiements).map((m) => ({
+  const duJournal = mouvementsDepuisJournal(paiements, libellesJournal()).map((m) => ({
     ...m, date: parseDateSouple(m.dateBrute),
   })).filter((m) => m.date);
   const clesJournal = new Set(duJournal.map((m) => m.cle));
