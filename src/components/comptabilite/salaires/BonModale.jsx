@@ -1,9 +1,12 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Btn, Input, Modale, Selec } from "../../ui";
+import { libelleMois, libelleSectionPaie } from "../../../i18n/libelles";
 import { agentsPourBon, sectionDuBon, sectionsBonProposees } from "./bon-agents";
 import { dateDuJour } from "../paiements-journal";
 
 export function BonModale({ modal, canCreate, canEdit, form, setForm, setModal, moisModale, moisSalaire, ensCollege = [], ensLycee = [], ensPrimaire = [], ensPrescolaire = [], personnel = [], ajBon, modBon, enreg, groupesPaie }) {
+  const { t } = useTranslation();
   if (!((modal==="add_b"&&canCreate)||(modal==="edit_b"&&canEdit))) return null;
   const chg = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
   const listes = { ensCollege, ensLycee, ensPrimaire, ensPrescolaire, personnel };
@@ -19,39 +22,40 @@ export function BonModale({ modal, canCreate, canEdit, form, setForm, setModal, 
   // Agents en fiche pour la section — sans attendre que la paie du mois soit
   // générée : un bon est une avance consentie en cours de mois.
   const agents = agentsPourBon(secBon, listes, form.nom);
-  const libelle = secBon==="Personnel" ? "Membre du personnel" : "Enseignant";
+  const libelle = secBon==="Personnel" ? t("accounting.bon.staffMember") : t("accounting.bon.teacher");
   return (
-    <Modale titre={modal==="add_b"?"Nouveau bon":"Modifier le bon"} fermer={()=>setModal(null)}>
-      <Selec label="Mois" value={moisBon} onChange={chg("mois")}>
-        {moisSalaire.map(m=><option key={m}>{m}</option>)}
+    <Modale titre={modal==="add_b"?t("accounting.bon.new"):t("accounting.bon.editTitle")} fermer={()=>setModal(null)}>
+      <Selec label={t("accounting.month")} value={moisBon} onChange={chg("mois")}>
+        {moisSalaire.map(m=><option key={m} value={m}>{libelleMois(m)}</option>)}
       </Selec>
       <div style={{height:10}}/>
-      <Selec label="Section" value={secBon} onChange={e=>{chg("section")(e);setForm(p=>({...p,nom:""}));}}>
-        {sections.map(s=><option key={s}>{s}</option>)}
+      <Selec label={t("accounting.section")} value={secBon} onChange={e=>{chg("section")(e);setForm(p=>({...p,nom:""}));}}>
+        {sections.map(s=><option key={s} value={s}>{libelleSectionPaie(s)}</option>)}
       </Selec>
       <div style={{height:10}}/>
       <Selec label={libelle} value={form.nom||""} onChange={chg("nom")}>
-        <option value="">— Sélectionner —</option>
+        <option value="">{t("enrolment.select")}</option>
         {agents.map(n=><option key={n} value={n}>{n}</option>)}
       </Selec>
       {agents.length===0&&<div style={{fontSize:11,color:"#b45309",marginTop:4}}>
         {secBon==="Personnel"
-          ? "Aucun membre du personnel actif : ajoutez-le d'abord dans l'onglet Personnel admin."
-          : `Aucun enseignant en fiche pour la section ${secBon} : ajoutez-le d'abord dans l'onglet Enseignants.`}
+          ? t("accounting.bon.noStaff")
+          : t("accounting.bon.noTeacher",{section:libelleSectionPaie(secBon)})}
       </div>}
       <div style={{height:10}}/>
-      <Input label="Date de remise" type="date" value={dateBon} onChange={chg("date")}/>
+      <Input label={t("accounting.bon.date")} type="date" value={dateBon} onChange={chg("date")}/>
       <div style={{height:10}}/>
-      <Input label="Montant du bon (GNF)" type="number" value={form.montant||""} onChange={chg("montant")} placeholder="Ex : 50000"/>
+      <Input label={t("accounting.bon.amount")} type="number" value={form.montant||""} onChange={chg("montant")} placeholder={t("accounting.bon.amountPh")}/>
       <div style={{height:10}}/>
-      <Input label="Motif" value={form.motif||""} onChange={chg("motif")} placeholder="Ex : Retard, Absence injustifiée…"/>
+      <Input label={t("accounting.bon.reason")} value={form.motif||""} onChange={chg("motif")} placeholder={t("accounting.bon.reasonPh")}/>
       <div style={{marginTop:12,padding:"10px 14px",background:"#fce8e8",borderRadius:8,fontSize:12,color:"#9b2020"}}>
-        Le bon sera déduit du salaire net lors de l'application (États de salaires → ✔ Appliquer les bons), une fois la paie du mois générée.
-        {secBon==="Préscolaire"&&" Les enseignants du préscolaire étant payés avec le primaire, il apparaîtra sur leur ligne du tableau Primaire."}
+        {t("accounting.bon.deductInfo")}
+        {/* i18n-ignore */}
+        {secBon==="Préscolaire"&&` ${t("accounting.bon.preschoolInfo")}`}
       </div>
       <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
-        <Btn v="ghost" onClick={()=>setModal(null)}>Annuler</Btn>
-        <Btn onClick={()=>enreg(ajBon,modBon,{montant:Number(form.montant||0),section:secBon,mois:moisBon,date:dateBon})}>Enregistrer</Btn>
+        <Btn v="ghost" onClick={()=>setModal(null)}>{t("common.cancel")}</Btn>
+        <Btn onClick={()=>enreg(ajBon,modBon,{montant:Number(form.montant||0),section:secBon,mois:moisBon,date:dateBon})}>{t("common.save")}</Btn>
       </div>
     </Modale>
   );

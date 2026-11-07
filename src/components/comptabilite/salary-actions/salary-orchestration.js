@@ -5,6 +5,8 @@
 // injection : construit les messages, itère sur les mois cibles et résume.
 
 import { getFifthWeekDays, getMissingSalaryProfiles, monthHasFifthWeek } from "../../../salary-utils";
+import i18n from "../../../i18n";
+import { libelleJour, libelleMois } from "../../../i18n/libelles";
 
 // Détecte les fiches enseignant/personnel sans paie configurée — leur
 // retour permet au caller d'afficher un message pédagogique avant la
@@ -47,43 +49,46 @@ export async function autoGenererSalairesAction({
   let warningMissing = "";
   if(totalMissing > 0){
     const lignes = [];
-    if(secMissing.length) lignes.push(`• Secondaire sans prime horaire ni prime/classe : ${formatNomsListe(secMissing)}`);
-    if(primMissing.length) lignes.push(`• Primaire sans forfait mensuel : ${formatNomsListe(primMissing)}`);
-    if(persMissing.length) lignes.push(`• Personnel sans salaire de base : ${formatNomsListe(persMissing)}`);
-    warningMissing = `\n\n⚠️ Fiches incomplètes (à compléter dans l'onglet Enseignants / Personnel) :\n${lignes.join("\n")}\n\nLeur ligne sera générée à 0 GNF — vous pourrez la corriger après.`;
+    if(secMissing.length) lignes.push(i18n.t("accounting.sal.gen.secMissing", { names: formatNomsListe(secMissing) }));
+    if(primMissing.length) lignes.push(i18n.t("accounting.sal.gen.primMissing", { names: formatNomsListe(primMissing) }));
+    if(persMissing.length) lignes.push(i18n.t("accounting.sal.gen.persMissing", { names: formatNomsListe(persMissing) }));
+    warningMissing = `\n\n${i18n.t("accounting.sal.gen.missingWarning", { lines: lignes.join("\n") })}`;
   }
-  const verbeAction = resync ? "Rafraîchir" : "Générer";
-  const detailMode = resync
-    ? "Les lignes existantes seront RECALCULÉES depuis la fiche enseignant et l'EDT actuels (V/H, prime horaire, observation). Les bons et révisions saisis manuellement seront conservés."
-    : "Seuls les nouveaux enseignants seront ajoutés.";
+  const detailMode = i18n.t(resync ? "accounting.sal.gen.modeRefresh" : "accounting.sal.gen.modeGenerate");
   if(moisSel==="__TOUS__"){
-    if(!confirm(`${verbeAction} les salaires pour les ${moisSalaire.length} mois de l'année scolaire ?\n\n${detailMode}${warningMissing}`)) return;
+    const question = i18n.t(resync ? "accounting.sal.gen.askYearRefresh" : "accounting.sal.gen.askYearGenerate", { count: moisSalaire.length });
+    if(!confirm(`${question}\n\n${detailMode}${warningMissing}`)) return;
     let totalCree=0, totalResync=0, totalSupprime=0;
     for(const m of moisSalaire){
       const r = await genererPourMois(m,{resync});
       totalCree += r.nbCree; totalResync += r.nbResync; totalSupprime += r.nbSupprime;
     }
-    const dedupMsg = totalSupprime ? ` · ${totalSupprime} doublon(s) supprimé(s)` : "";
-    toast(`Prévision annuelle : ${totalCree} créé(s), ${totalResync} rafraîchi(s)${dedupMsg} sur ${moisSalaire.length} mois.`,"success");
-    logAction("Salaires auto-générés (annuel)",`${totalCree} créés · ${totalResync} rafraîchis · ${totalSupprime} doublons supprimés · ${moisSalaire.join(", ")}`);
+    const dedupMsg = totalSupprime ? ` · ${i18n.t("accounting.sal.gen.dedup", { count: totalSupprime })}` : "";
+    toast(i18n.t("accounting.sal.gen.yearDone", {
+      created: i18n.t("accounting.sal.gen.created", { count: totalCree }),
+      refreshed: i18n.t("accounting.sal.gen.refreshed", { count: totalResync }),
+      dedup: dedupMsg,
+      months: moisSalaire.length,
+    }),"success");
+    logAction("Salaires auto-générés (annuel)",`${totalCree} créés · ${totalResync} rafraîchis · ${totalSupprime} doublons supprimés · ${moisSalaire.join(", ")}`); // i18n-ignore
     return;
   }
   const jours5eme = getFifthWeekDays(moisSel);
+  const days = jours5eme.map(libelleJour).join(", ");
   const info5eme = !jours5eme.length ? ""
-    : monthHasFifthWeek(salaires, moisSel)
-      ? `\n📅 5ème semaine (${jours5eme.join(", ")}) appliquée à ce mois : ses heures restent comptées.`
-      : `\n📅 5ème semaine (${jours5eme.join(", ")}) NON comptée. Pour la payer : « 📅 Appliquer la 5ème semaine » après la génération.`;
-  if(!confirm(`${verbeAction} automatiquement les salaires pour ${moisSel} ?${info5eme}\n\n${detailMode}${warningMissing}`)) return;
+    : `\n${i18n.t(monthHasFifthWeek(salaires, moisSel) ? "accounting.sal.gen.fifthApplied" : "accounting.sal.gen.fifthNotCounted", { days })}`;
+  const question = i18n.t(resync ? "accounting.sal.gen.askMonthRefresh" : "accounting.sal.gen.askMonthGenerate", { month: libelleMois(moisSel) });
+  if(!confirm(`${question}${info5eme}\n\n${detailMode}${warningMissing}`)) return;
   const {nbCree, nbResync, nbSupprime} = await genererPourMois(moisSel,{resync});
   const parts = [];
-  if(nbSupprime) parts.push(`${nbSupprime} doublon(s) supprimé(s)`);
-  if(nbCree) parts.push(`${nbCree} créé(s)`);
-  if(nbResync) parts.push(`${nbResync} rafraîchi(s)`);
-  if(!parts.length) parts.push("rien à faire");
-  const baseMsg = `Salaires : ${parts.join(", ")}.`;
+  if(nbSupprime) parts.push(i18n.t("accounting.sal.gen.dedup", { count: nbSupprime }));
+  if(nbCree) parts.push(i18n.t("accounting.sal.gen.created", { count: nbCree }));
+  if(nbResync) parts.push(i18n.t("accounting.sal.gen.refreshed", { count: nbResync }));
+  if(!parts.length) parts.push(i18n.t("accounting.sal.gen.nothing"));
+  const baseMsg = i18n.t("accounting.sal.gen.monthDone", { parts: parts.join(", ") });
   const msg = totalMissing > 0
-    ? `${baseMsg} ${totalMissing} fiche(s) sans paie — complétez-les dans l'onglet Enseignants/Personnel.`
+    ? `${baseMsg} ${i18n.t("accounting.sal.gen.missingAfter", { count: totalMissing })}`
     : baseMsg;
   toast(msg, totalMissing > 0 ? "warning" : "success");
-  logAction(resync?"Salaires rafraîchis":"Salaires auto-générés",`Mois : ${moisSel} · ${nbCree} créés · ${nbResync} rafraîchis · ${nbSupprime} doublons supprimés`);
+  logAction(resync?"Salaires rafraîchis":"Salaires auto-générés",`Mois : ${moisSel} · ${nbCree} créés · ${nbResync} rafraîchis · ${nbSupprime} doublons supprimés`); // i18n-ignore
 }

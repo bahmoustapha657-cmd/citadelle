@@ -18,7 +18,7 @@ export const SECTIONS_PAIE = ["Secondaire", "Primaire", "Personnel"];
 // comptable doit pouvoir les retrouver à part au lieu de les chercher parmi
 // ceux du primaire ; « Appliquer les bons » reporte un bon « Préscolaire » sur
 // la fiche « Primaire » (cf. findBonsForSalary).
-export const SECTIONS_BON = ["Secondaire", "Primaire", "Préscolaire", "Personnel"];
+export const SECTIONS_BON = ["Secondaire", "Primaire", "Préscolaire", "Personnel"]; // i18n-ignore
 
 // Sections proposées dans les fenêtres « salaire » et « bon » : les groupes de
 // paie affichés par SalairesTab (une école sans collège ni lycée n'a pas de

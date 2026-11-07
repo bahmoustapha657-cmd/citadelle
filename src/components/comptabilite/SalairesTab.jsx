@@ -1,4 +1,5 @@
 import { useContext } from "react";
+import { Trans } from "react-i18next";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { isGroupeActif, isSectionActive } from "../../constants";
 import { Chargement } from "../ui";
@@ -125,8 +126,7 @@ export function SalairesTab({
 
       {cS?<Chargement/>:<>
         {moisSel==="__TOUS__"&&<div style={{background:"linear-gradient(135deg,#fef3c7,#fde68a)",border:"1px solid #f59e0b",borderRadius:10,padding:"12px 16px",marginBottom:14,fontSize:13,color:"#92400e"}}>
-          <strong>📊 Mode prévision annuelle</strong> — Sélectionnez un mois précis pour consulter ou modifier ses salaires.
-          Cliquez sur <strong>⚡ Auto-générer</strong> pour remplir d'un coup les {moisSalaire.length} mois de l'année scolaire.
+          <Trans i18nKey="accounting.sal.forecastHint" values={{ count: moisSalaire.length }} components={{ b: <strong /> }} />
         </div>}
 
         {groupesPaie.secondaire&&<SecondaireTable
