@@ -17,9 +17,31 @@ function versionJson() {
   };
 }
 
+// Les textes anglais et arabes sont chargés à la demande (src/i18n) : ils ne
+// figurent donc pas parmi les fichiers de démarrage que le service worker
+// range d'avance avec la page d'accueil (rafraichirCoque, public/sw.js). Sans
+// eux, après une mise à jour, une ouverture hors ligne retomberait en
+// français. Chaque fichier de langue est donc cité dans index.html par un
+// <link> de type inconnu : le navigateur l'ignore (rien n'est téléchargé pour
+// l'affichage), le service worker le lit et range le fichier.
+function languesDansLaCoque() {
+  return {
+    name: "edugest-langues-coque",
+    apply: "build",
+    transformIndexHtml: {
+      order: "post",
+      handler(_html, ctx) {
+        return Object.values(ctx.bundle || {})
+          .filter((c) => c.type === "chunk" && /[\\/]i18n[\\/]locales[\\/]\w+\.json$/.test(c.facadeModuleId || ""))
+          .map((c) => ({ tag: "link", attrs: { rel: "edugest-langue", href: `/${c.fileName}` }, injectTo: "head" }));
+      },
+    },
+  };
+}
+
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), versionJson()],
+  plugins: [react(), versionJson(), languesDansLaCoque()],
   define: {
     __EDUGEST_VERSION__: JSON.stringify(VERSION),
   },
