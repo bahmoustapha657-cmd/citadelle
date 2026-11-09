@@ -61,11 +61,19 @@ async function monter() {
   const url = (chemin) => new URL(chemin, import.meta.url).href;
   mock.module(url("../src/backend/powersync/client.js"), {
     namedExports: {
-      getPowerSync: () => ({
-        getAll: async (sql, params = []) => db.prepare(sql).all(...params),
-        getOptional: async (sql, params = []) => db.prepare(sql).get(...params) ?? null,
-        execute: async (sql, params = []) => db.prepare(sql).run(...params),
-      }),
+      getPowerSync: () => {
+        const ps = {
+          getAll: async (sql, params = []) => db.prepare(sql).all(...params),
+          getOptional: async (sql, params = []) => db.prepare(sql).get(...params) ?? null,
+          execute: async (sql, params = []) => db.prepare(sql).run(...params),
+        };
+        // Lecture + écriture du jsonb dans une même transaction (majLocalFusionnee).
+        ps.writeTransaction = async (fn) => {
+          db.exec("BEGIN");
+          try { const r = await fn(ps); db.exec("COMMIT"); return r; } catch (e) { db.exec("ROLLBACK"); throw e; }
+        };
+        return ps;
+      },
     },
   });
   // Le jsonb `extra` vit en TEXT dans le miroir, comme en production.

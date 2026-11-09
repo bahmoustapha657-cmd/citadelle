@@ -19,6 +19,7 @@ import { estCouvertHorsLigne, powerSyncConfigured } from "./powersync/tables";
 // hors ligne (local-data.js), pour que les deux chemins ne divergent plus.
 import { ANNEE_TABLES, PERIODE_TABLES } from "./filtres-lecture";
 import { exigerEffet } from "./ecritures-refusees";
+import { fusionnerJsonb, operationsChamps } from "./fusion-jsonb";
 import { SELECT_PAIEMENTS_ELEVE, elevePaiementsDepuisLigne } from "../ecartes-non-reinscrits.js";
 
 let localDataPromise = null;
@@ -514,23 +515,26 @@ export async function modifierChampDoc(schoolCode, nomCollection, id, champs, { 
   const { row, extraKeys, extraCol } = toRow(map.table, champs);
 
   if (!reseau && horsLigne(map.table)) {
-    const { majLocal, lireUneLocal } = await localData();
-    if (extraCol && extraKeys.length) {
-      const actuel = await lireUneLocal(map.table, id);
-      row[extraCol] = { ...(actuel?.[extraCol] || {}), ...row[extraCol] };
-    }
-    await majLocal(map.table, id, row);
+    const { majLocal, majLocalFusionnee } = await localData();
+    if (extraCol && extraKeys.length) await majLocalFusionnee(map.table, id, row, extraCol);
+    else await majLocal(map.table, id, row);
     return;
   }
 
+  // En ligne : les clés du jsonb sont fusionnées EN BASE (fusionner_jsonb),
+  // en une instruction. L'ancien lire-puis-réécrire perdait ce qu'un autre
+  // poste écrivait entre la lecture et l'écriture.
+  const quoi = { table: map.table, operation: "modification", id };
   if (extraCol && extraKeys.length) {
-    const { data: actuel } = await sb.from(map.table).select(extraCol).eq("id", id).maybeSingle();
-    row[extraCol] = { ...(actuel?.[extraCol] || {}), ...row[extraCol] };
+    const { [extraCol]: jsonb, ...colonnes } = row;
+    if (Object.keys(colonnes).length) {
+      exigerEffet(await sb.from(map.table).update(colonnes, { count: "exact" }).eq("id", id), quoi);
+    }
+    const modifiee = await fusionnerJsonb(sb, map.table, id, extraCol, operationsChamps(jsonb));
+    exigerEffet({ count: modifiee ? 1 : 0 }, quoi);
+    return;
   }
-  exigerEffet(
-    await sb.from(map.table).update(row, { count: "exact" }).eq("id", id),
-    { table: map.table, operation: "modification", id },
-  );
+  exigerEffet(await sb.from(map.table).update(row, { count: "exact" }).eq("id", id), quoi);
 }
 
 // Déplace une ligne vers une autre SECTION de sa table, en écrivant `champs`
@@ -551,12 +555,9 @@ export async function changerSectionDoc(schoolCode, nomCollection, id, section, 
   row.section = section;
 
   if (!reseau && horsLigne(map.table)) {
-    const { majLocal, lireUneLocal } = await localData();
-    if (extraCol && extraKeys.length) {
-      const actuel = await lireUneLocal(map.table, id);
-      row[extraCol] = { ...(actuel?.[extraCol] || {}), ...row[extraCol] };
-    }
-    await majLocal(map.table, id, row);
+    const { majLocal, majLocalFusionnee } = await localData();
+    if (extraCol && extraKeys.length) await majLocalFusionnee(map.table, id, row, extraCol);
+    else await majLocal(map.table, id, row);
     return;
   }
 
