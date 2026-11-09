@@ -42,6 +42,7 @@ export class SupabaseConnector {
         await envoyerOperation(sb, op, {
           record: parseJsonCols(op.table, { ...op.opData, id: op.id }),
           patch: parseJsonCols(op.table, op.opData),
+          precedent: op.previousValues ? parseJsonCols(op.table, op.previousValues) : undefined,
         });
       }
       await transaction.complete();

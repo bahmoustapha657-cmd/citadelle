@@ -42,6 +42,24 @@ export async function majLocal(table, id, row) {
   await ps.execute(sql, [...cols.map((c) => complet[c]), id]);
 }
 
+// Modification dont une partie va dans le jsonb `col` : lecture et écriture
+// dans la MÊME transaction, pour qu'une synchro descendante (un autre poste)
+// ne s'intercale pas entre les deux — sa donnée serait effacée par la
+// réécriture. Les clés de `row[col]` remplacent celles du miroir ; la file
+// d'envoi ne remontera que la différence (envoi-operation.js).
+export async function majLocalFusionnee(table, id, row, col) {
+  return getPowerSync().writeTransaction(async (tx) => {
+    const actuel = await tx.getOptional(`SELECT ${col} FROM ${table} WHERE id = ?`, [id]);
+    const existant = actuel ? parseJsonCols(table, actuel)[col] : null;
+    const complet = stringifyJsonCols(table, { ...row, [col]: { ...(existant || {}), ...row[col] } });
+    const cols = Object.keys(complet);
+    await tx.execute(
+      `UPDATE ${table} SET ${cols.map((c) => `${c} = ?`).join(", ")} WHERE id = ?`,
+      [...cols.map((c) => complet[c]), id],
+    );
+  });
+}
+
 // Upsert avec id connu à l'avance (ex. saveNotes : items déjà pourvus de _id).
 // Remplace la ligne entière si elle existe déjà — même sémantique que
 // `.upsert()` côté supabase-js (colonnes non fournies → NULL).

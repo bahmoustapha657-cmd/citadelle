@@ -7,6 +7,7 @@
 // refus passait pour un succès et la saisie hors ligne disparaissait en
 // silence à la synchro suivante (cf. ecritures-refusees.js).
 import { verifierEffet } from "../ecritures-refusees.js";
+import { fusionnerJsonb, operationsDiff } from "../fusion-jsonb.js";
 
 // Tables en AJOUT SEUL : la RLS n'y accorde que l'insertion (paiements.sql),
 // un upsert y serait refusé. Une ligne déjà présente (renvoi après une coupure
@@ -64,10 +65,42 @@ function echec({ error, status }) {
   return Object.assign(new Error(error.message), { code: error.code, status });
 }
 
+const estObjet = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+
+// Modification d'une ligne dont le jsonb `extra` (ou `details`) a changé :
+// on n'envoie PLUS le jsonb entier calculé sur le miroir de l'appareil — il
+// effaçait ce qu'un autre poste avait écrit entre-temps (mois encaissé,
+// paiement en ligne imputé…). On envoie la DIFFÉRENCE avant → après de cette
+// opération, que la base fusionne chemin par chemin (fusionner_jsonb).
+// Renvoie false quand ce chemin ne s'applique pas (valeur précédente
+// inconnue : opération mise en file avant cette version) → envoi entier.
+async function envoyerPatchFusionne(sb, op, patch, precedent) {
+  // extra partout, details pour les salaires (cf. JSON_COLS de tables.js).
+  const col = ["extra", "details"].find((c) => estObjet(patch?.[c]));
+  if (!col || !estObjet(patch?.[col]) || !precedent || !(col in precedent)) return false;
+  const avant = precedent[col];
+  if (avant != null && !estObjet(avant)) return false;
+
+  const operations = operationsDiff(avant || {}, patch[col]);
+  const { [col]: _jsonb, ...colonnes } = patch;
+  if (Object.keys(colonnes).length) {
+    const reponse = await sb.from(op.table).update(colonnes, { count: "exact" }).eq("id", op.id);
+    if (reponse.error) throw echec(reponse);
+    verifierEffet(reponse, op.table, "modification");
+  }
+  if (operations.length) {
+    const modifiee = await fusionnerJsonb(sb, op.table, op.id, col, operations);
+    verifierEffet({ count: modifiee ? 1 : 0 }, op.table, "modification");
+  }
+  return true;
+}
+
 // `op.op` : "PUT" | "PATCH" | "DELETE" (UpdateType de @powersync/web).
 // `record` : la ligne complète (PUT), `patch` : les seules colonnes changées
-// (PATCH) — colonnes jsonb déjà re-parsées par l'appelant.
-export async function envoyerOperation(sb, op, { record, patch } = {}) {
+// (PATCH), `precedent` : leurs valeurs AVANT la modification (PATCH, tables
+// à trackPrevious, cf. schema.js) — colonnes jsonb déjà re-parsées par
+// l'appelant.
+export async function envoyerOperation(sb, op, { record, patch, precedent } = {}) {
   if (op.op === "PUT" && AJOUT_SEUL.has(op.table)) {
     const reponse = await sb.from(op.table).insert(record);
     if (reponse.error && reponse.error.code !== DEJA_PRESENTE) throw echec(reponse);
@@ -75,6 +108,7 @@ export async function envoyerOperation(sb, op, { record, patch } = {}) {
     const reponse = await sb.from(op.table).upsert(record);
     if (reponse.error) throw echec(reponse);
   } else if (op.op === "PATCH") {
+    if (await envoyerPatchFusionne(sb, op, patch, precedent)) return;
     const reponse = await sb.from(op.table).update(patch, { count: "exact" }).eq("id", op.id);
     if (reponse.error) throw echec(reponse);
     verifierEffet(reponse, op.table, "modification");
