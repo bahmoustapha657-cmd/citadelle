@@ -30,22 +30,56 @@ function localData() {
 // schoolId applicatif = CODE de l'école ; les tables référencent l'uuid.
 // Mis aussi en cache localStorage : nécessaire pour résoudre l'ecole_id hors
 // ligne (premier chargement après un rechargement de page sans réseau).
+//
+// L'uuid gardé sur l'appareil est servi SANS attendre le réseau. Toute lecture
+// passe par ici, miroir local compris : en demandant d'abord l'uuid au
+// serveur, chaque ouverture de l'app attendait un aller-retour avant
+// d'afficher des données pourtant déjà sur l'appareil — et, sans réseau avec
+// un jeton expiré (plus d'une heure depuis la dernière ouverture), les ~25 s
+// de tentatives de renouvellement de supabase-js. Le serveur n'est attendu
+// que la toute première fois (uuid inconnu de l'appareil).
 const ecoleIdCache = new Map();
+const ecoleIdEnVol = new Map(); // code → requête serveur en cours (partagée)
+const clefEcoleId = (code) => `LC_ecole_id_${code}`;
+const lireEcoleIdLocal = (code) => {
+  try { return localStorage.getItem(clefEcoleId(code)) || null; } catch { return null; }
+};
+
+// Une seule requête par code, même si dix écrans la demandent ensemble.
+// Renvoie l'uuid du serveur, ou null (école inconnue, réseau absent).
+function ecoleIdServeur(sb, code) {
+  if (ecoleIdEnVol.has(code)) return ecoleIdEnVol.get(code);
+  const requete = (async () => {
+    try {
+      const { data } = await sb.from("ecoles").select("id").eq("code", code).maybeSingle();
+      const id = data?.id || null;
+      if (id) {
+        ecoleIdCache.set(code, id);
+        try { localStorage.setItem(clefEcoleId(code), id); } catch { /* stockage indisponible */ }
+      }
+      return id;
+    } catch {
+      return null; // hors ligne
+    } finally {
+      ecoleIdEnVol.delete(code);
+    }
+  })();
+  ecoleIdEnVol.set(code, requete);
+  return requete;
+}
+
 async function ecoleIdFromCode(sb, code) {
   if (ecoleIdCache.has(code)) return ecoleIdCache.get(code);
-  const clefLocale = `LC_ecole_id_${code}`;
-  try {
-    const { data } = await sb.from("ecoles").select("id").eq("code", code).maybeSingle();
-    const id = data?.id || null;
-    if (id) {
-      ecoleIdCache.set(code, id);
-      localStorage.setItem(clefLocale, id);
-      return id;
-    }
-  } catch { /* hors ligne : bascule sur le cache local ci-dessous */ }
-  const idLocal = localStorage.getItem(clefLocale);
-  if (idLocal) ecoleIdCache.set(code, idLocal);
-  return idLocal || null;
+  const idLocal = lireEcoleIdLocal(code);
+  if (idLocal) {
+    ecoleIdCache.set(code, idLocal);
+    // Contrôle en arrière-plan, une fois par ouverture : le code d'une école
+    // ne change pas d'uuid, sauf école supprimée puis recréée sous le même
+    // code — l'appareil se corrige alors seul.
+    ecoleIdServeur(sb, code);
+    return idLocal;
+  }
+  return ecoleIdServeur(sb, code);
 }
 
 // Exposé pour le temps réel (realtime-supabase.js) : réutilise le MÊME cache et
