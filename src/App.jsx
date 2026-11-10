@@ -20,6 +20,7 @@ import { definirSignataireSession } from "./reports/signataire-session";
 import { MessagerieProvider } from "./components/messagerie/MessagerieContext";
 import { MODULE_MESSAGERIE, messagerieOuverteA } from "./components/messagerie/messagerie-logic";
 import { EspacesUtilisateur } from "./components/app/EspacesUtilisateur";
+import { InvitationInstallationIphone } from "./components/installation-iphone/InvitationInstallationIphone";
 
 export default function App() {
   const { t } = useTranslation();
@@ -148,7 +149,8 @@ export default function App() {
     annee, connecter, deconnecter, setPage, setUtilisateur, premiereSynchro, estHorsLigne,
   });
   // Bouton « Espace » des comptes reliés (enseignant + parent + personnel).
-  const espaces = <EspacesUtilisateur utilisateur={utilisateur} />;
+  // iPhone : installer EduGest sur l'écran d'accueil pour recevoir les appels.
+  const espaces = <><EspacesUtilisateur utilisateur={utilisateur} />{utilisateur && <InvitationInstallationIphone />}</>;
   if (ecranAuth) return <>{ecranAuth}{espaces}</>;
 
   const { modulesVisibles, permissions, roleEffectif, estAdmin, readOnly, abonnementExpire, couleur2, utilisateurLabel } =

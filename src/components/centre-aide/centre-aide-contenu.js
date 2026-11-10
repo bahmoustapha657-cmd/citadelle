@@ -410,9 +410,9 @@ export const ARTICLES = [
     cat: "horsligne",
     titre: "Installer EduGest sur mon téléphone",
     etapes: [
-      "Ouvrez le site dans Chrome (Android) ou Safari (iPhone).",
-      "Utilisez le menu du navigateur → « Ajouter à l'écran d'accueil » (ou la bannière proposée).",
-      "L'icône EduGest apparaît comme une vraie application.",
+      "Android : dans Chrome, menu ⋮ → « Installer l'application » (ou la bannière proposée).",
+      "iPhone / iPad : dans Safari, bouton Partager (iOS 26 : « ••• » puis Partager) → « Sur l'écran d'accueil » → Ajouter.",
+      "Ouvrez EduGest depuis sa nouvelle icône. Sur iPhone, reconnectez-vous une fois, puis Messagerie → « Activer » pour recevoir appels et messages.",
     ],
   },
   {
