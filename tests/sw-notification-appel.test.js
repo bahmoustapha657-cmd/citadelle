@@ -5,12 +5,20 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 
-function chargerServiceWorker({ fenetres = [], cliquee = false } = {}) {
+// Navigateurs : Chrome n'impose rien quand l'application est à l'écran,
+// Safari (iPhone, Mac) retire l'abonnement après trois poussées muettes.
+const CHROME_ANDROID = "Mozilla/5.0 (Linux; Android 14; SM-A145F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36";
+const CHROME_MAC = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36";
+const IPHONE = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Mobile/15E148 Safari/604.1";
+const SAFARI_MAC = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Safari/605.1.15";
+
+function chargerServiceWorker({ fenetres = [], cliquee = false, ua = CHROME_ANDROID } = {}) {
   const ecouteurs = new Map();
   const affichees = [];
   const self = {
     addEventListener: (nom, fn) => ecouteurs.set(nom, fn),
     location: { origin: "https://edugest.test" },
+    navigator: { userAgent: ua },
     skipWaiting: () => {},
     clients: { claim: async () => {} },
     registration: {
@@ -54,6 +62,33 @@ test("appel, application à l'écran : rien en double, l'écran d'appel sonne d�
   const sw = chargerServiceWorker({ fenetres: [{ visibilityState: "visible" }] });
   await sw.recevoir(APPEL);
   assert.equal(sw.affichees.length, 0);
+});
+
+test("appel sur iPhone, application à l'écran : un simple rappel, sinon Safari coupe l'abonnement", async () => {
+  for (const ua of [IPHONE, SAFARI_MAC]) {
+    const sw = chargerServiceWorker({ fenetres: [{ visibilityState: "visible" }], ua });
+    await sw.recevoir(APPEL);
+    assert.equal(sw.affichees.length, 1, "chaque poussée doit afficher une notification");
+    const [n] = sw.affichees;
+    assert.equal(n.titre, APPEL.title);
+    assert.equal(n.tag, "appel-entrant");
+    assert.equal(n.requireInteraction, undefined, "l'écran d'appel sonne déjà");
+    assert.equal(n.data.url, APPEL.url);
+  }
+});
+
+test("appel sur ordinateur sous Chrome, application à l'écran : rien en double", async () => {
+  const sw = chargerServiceWorker({ fenetres: [{ visibilityState: "visible" }], ua: CHROME_MAC });
+  await sw.recevoir(APPEL);
+  assert.equal(sw.affichees.length, 0);
+});
+
+test("appel sur iPhone, application fermée : même notification qu'ailleurs, puis appel manqué", async () => {
+  const sw = chargerServiceWorker({ ua: IPHONE });
+  await sw.recevoir(APPEL);
+  assert.equal(sw.affichees.length, 2);
+  assert.equal(sw.affichees[0].requireInteraction, true);
+  assert.equal(sw.affichees[1].body, "Appel manqué");
 });
 
 test("appel, application en arrière-plan : la notification s'affiche", async () => {

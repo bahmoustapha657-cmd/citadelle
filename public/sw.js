@@ -164,9 +164,22 @@ async function appShellFirst(request) {
 const TAG_APPEL = "appel-entrant";
 const DUREE_APPEL_MS = 60000;
 
+// Safari (iPhone, iPad, Mac) retire l'abonnement après trois poussées reçues
+// sans notification affichée : l'appareil ne serait plus jamais prévenu. Là,
+// chaque poussée affiche donc quelque chose, même application à l'écran.
+function safariApple() {
+  const ua = self.navigator?.userAgent || "";
+  return /AppleWebKit/.test(ua) && !/Chrome|Chromium|Android/.test(ua);
+}
+
 async function afficherAppel(titre, options) {
   const fenetres = await clients.matchAll({ type: "window", includeUncontrolled: true });
-  if (fenetres.some((c) => c.visibilityState === "visible")) return;
+  if (fenetres.some((c) => c.visibilityState === "visible")) {
+    // L'écran d'appel sonne déjà : simple rappel, jamais changé en « Appel
+    // manqué » puisque l'appel se joue dans l'application.
+    if (safariApple()) await self.registration.showNotification(titre, { ...options, tag: TAG_APPEL });
+    return;
+  }
   await self.registration.showNotification(titre, {
     ...options, tag: TAG_APPEL, renotify: true, requireInteraction: true,
     vibrate: [500, 250, 500, 250, 500, 250, 500, 250, 500],
