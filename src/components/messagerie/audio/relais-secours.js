@@ -23,10 +23,15 @@ export function demarrerRelaisSecours({ flux, canal, cle, surPerte, urlModule = 
   // Le chiffrement est asynchrone : ces files gardent les paquets dans l'ordre.
   let fileEnvoi = Promise.resolve();
   let fileLecture = Promise.resolve();
+  // Pour le compte rendu de l'appel (trace-appel.js).
+  const compte = { envoyes: 0, recus: 0, joues: 0 };
 
   const envoyerPaquet = (octets) => {
     fileEnvoi = fileEnvoi
-      .then(async () => canal.envoyer("a", { d: versBase64(await chiffrerPaquet(cle, octets)) }))
+      .then(async () => {
+        canal.envoyer("a", { d: versBase64(await chiffrerPaquet(cle, octets)) });
+        compte.envoyes += 1;
+      })
       .catch(() => { /* paquet perdu, comme sur le réseau */ });
   };
   const reprendre = () => { ctx.resume?.().catch(() => {}); };
@@ -54,6 +59,7 @@ export function demarrerRelaisSecours({ flux, canal, cle, surPerte, urlModule = 
     lecture.buffer = tampon;
     lecture.connect(ctx.destination);
     lecture.start(debut);
+    compte.joues += 1;
     prochain = finDeLecture(debut);
   };
 
@@ -67,10 +73,12 @@ export function demarrerRelaisSecours({ flux, canal, cle, surPerte, urlModule = 
     recevoir(evenement, charge) {
       dernierSignal = Date.now();
       if (evenement !== "a" || !charge?.d) return;
+      compte.recus += 1;
       fileLecture = fileLecture
         .then(async () => jouer(await dechiffrerPaquet(cle, depuisBase64(charge.d))))
         .catch(() => { /* paquet illisible : ignoré */ });
     },
+    compteurs: () => ({ ...compte, contexte: ctx.state }),
     arreter() {
       arrete = true;
       clearInterval(battement);
