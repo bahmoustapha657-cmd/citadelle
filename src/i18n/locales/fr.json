@@ -2421,6 +2421,7 @@
       "removeFile": "Retirer {{name}}",
       "attach": "Joindre un document",
       "attachHint": "Joindre un document ou une photo (10 Mo max)",
+      "dropHere": "Déposez pour joindre",
       "fixPlaceholder": "Corrigez votre message…",
       "captionPlaceholder": "Ajouter une légende (facultatif)…",
       "placeholder": "Écrire un message…",
@@ -2607,6 +2608,9 @@
     "conv": {
       "deleteConfirm": "Supprimer ce message pour tout le monde ?",
       "onlineCount": "{{count}} en ligne",
+      "typing": "écrit…",
+      "typingName": "{{name}} écrit…",
+      "typingMany": "{{count}} personnes écrivent…",
       "audioCall": "Appel audio",
       "joinCount": "Rejoindre ({{count}})",
       "backToCall": "Revenir à l'appel",

@@ -9,6 +9,8 @@ import {
 } from "./messagerie-logic";
 import { boutonIcone } from "./styles-messagerie";
 import { ecrireBrouillon, lireBrouillon } from "./envoi-local";
+import { fichiersTransferes, libelleEcriture } from "./ecriture-logic";
+import { useEcriture } from "./use-ecriture";
 
 const itemMenu = {
   display: "block", width: "100%", textAlign: "start", background: "none", border: "none",
@@ -26,6 +28,21 @@ export function VueConversation({ m, conv, etroit, onRetour, onGererGroupe }) {
   const [edition, setEdition] = useState(null);
   const [menu, setMenu] = useState(false);
   const [chargementAnciens, setChargementAnciens] = useState(false);
+  // « En train d'écrire… » : canal privé de la discussion.
+  const ecriture = useEcriture({ convId: conv.id, moi });
+  const ecrit = libelleEcriture(ecriture.enTrainDEcrire, { groupe: conv.type === "groupe", annuaire });
+  // Fichiers glissés sur la discussion : remis à la zone de saisie.
+  const [depot, setDepot] = useState(null);
+  const [survol, setSurvol] = useState(false);
+  const porteDesFichiers = (e) => Array.from(e.dataTransfer?.types || []).includes("Files");
+  const surSurvol = (e) => { if (porteDesFichiers(e)) { e.preventDefault(); setSurvol(true); } };
+  const surDepot = (e) => {
+    if (!porteDesFichiers(e)) return;
+    e.preventDefault();
+    setSurvol(false);
+    const fichiers = fichiersTransferes(e.dataTransfer);
+    if (fichiers.length) setDepot({ fichiers });
+  };
   const defilRef = useRef(null);
   const enBasRef = useRef(true);
   const hauteurAvantRef = useRef(null);
@@ -47,6 +64,14 @@ export function VueConversation({ m, conv, etroit, onRetour, onGererGroupe }) {
       d.scrollTop = d.scrollHeight;
     }
   }, [messages, moi]);
+
+  // Son message vient d'arriver : il n'écrit plus.
+  const dernierAuteur = messages[messages.length - 1]?.de_compte_id;
+  const nbMessages = messages.length;
+  const oublierEcriture = ecriture.oublier;
+  useEffect(() => {
+    if (dernierAuteur && dernierAuteur !== moi) oublierEcriture(dernierAuteur);
+  }, [dernierAuteur, nbMessages, moi, oublierEcriture]);
 
   // Zone redimensionnée (clavier mobile, rotation, fenêtre) : on reste collé
   // en bas si on y était.
@@ -94,7 +119,13 @@ export function VueConversation({ m, conv, etroit, onRetour, onGererGroupe }) {
   const peutLancerGroupe = conv.type === "groupe" && peutLancerAppelGroupe(conv, annuaire, moi);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0, background: "var(--lc-surface-alt)" }}>
+    <div onDragOver={surSurvol} onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setSurvol(false); }} onDrop={surDepot}
+      style={{ position: "relative", display: "flex", flexDirection: "column", height: "100%", minHeight: 0, background: "var(--lc-surface-alt)" }}>
+      {survol && (
+        <div style={{ position: "absolute", inset: 8, zIndex: 30, pointerEvents: "none", display: "flex", alignItems: "center", justifyContent: "center", border: "2px dashed var(--sc1)", borderRadius: 14, background: "color-mix(in srgb, var(--lc-surface) 88%, transparent)", color: "var(--msg-accent, var(--sc1))", fontSize: 15, fontWeight: 800 }}>
+          📎 {t("msg.compose.dropHere")}
+        </div>
+      )}
       {/* En-tête */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", background: "var(--lc-surface)", borderBottom: "1px solid var(--lc-border)" }}>
         {etroit && <button type="button" onClick={onRetour} style={boutonIcone} aria-label={t("msg.backToList")}>←</button>}
@@ -105,8 +136,8 @@ export function VueConversation({ m, conv, etroit, onRetour, onGererGroupe }) {
           <div style={{ fontWeight: 800, fontSize: 14, color: "var(--lc-text-brand)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {conv.epingle && "📌 "}{titre}{conv.sourdine && " 🔕"}
           </div>
-          <div style={{ fontSize: 11.5, color: "var(--lc-text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {[
+          <div style={{ fontSize: 11.5, color: ecrit ? "var(--msg-accent, var(--sc1))" : "var(--lc-text-muted)", fontWeight: ecrit ? 700 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {ecrit || [
               sousTitreConversation(conv, annuaire, moi),
               correspondant
                 ? libellePresence(m.presences?.get(correspondant.id))
@@ -179,6 +210,7 @@ export function VueConversation({ m, conv, etroit, onRetour, onGererGroupe }) {
 
       <Composeur annuaire={annuaire}
         brouillon={lireBrouillon(moi, conv.id)} onBrouillon={(texte) => ecrireBrouillon(moi, conv.id, texte)}
+        onFrappe={ecriture.signalerFrappe} depot={depot}
         reponse={reponse} onAnnulerReponse={() => setReponse(null)}
         edition={edition} onAnnulerEdition={() => setEdition(null)}
         onEnvoyerTexte={(texte) => { enBasRef.current = true; m.envoyerTexte(conv.id, texte, reponse?.id || null); setReponse(null); }}
