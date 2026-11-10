@@ -237,9 +237,15 @@ export async function appelsEntrantsEnAttente(moi, depuisMs = 60000) {
 // réserve aux deux participants d'un appel en cours. `pret` se résout une fois
 // le canal rejoint. Coupé du réseau, un paquet de voix est perdu : le repli
 // automatique de `send` vers REST arriverait de toute façon trop tard.
-export function ouvrirCanalAppel(id, surMessage) {
+export const ouvrirCanalAppel = (id, surMessage) => ouvrirCanalPrive(`appel:${id}`, surMessage);
+
+// Canal privé d'une discussion : « en train d'écrire… », réservé à ses membres
+// (msg_ecrit_autorise). Rien n'y est enregistré.
+export const ouvrirCanalEcriture = (convId, surMessage) => ouvrirCanalPrive(`ecrit:${convId}`, surMessage);
+
+function ouvrirCanalPrive(sujet, surMessage) {
   const sb = getSupabase();
-  const canal = sb.channel(`appel:${id}`, { config: { private: true, broadcast: { self: false } } });
+  const canal = sb.channel(sujet, { config: { private: true, broadcast: { self: false } } });
   let rejoint = false;
   canal.on("broadcast", { event: "*" }, ({ event, payload }) => surMessage(event, payload));
   const pret = new Promise((resolve, reject) => {
@@ -249,6 +255,8 @@ export function ouvrirCanalAppel(id, surMessage) {
       else if (statut === "CHANNEL_ERROR" || statut === "TIMED_OUT") reject(erreur || new Error("Canal d'appel indisponible."));
     });
   });
+  // Canal refusé ou hors réseau : à l'appelant de s'en soucier, s'il attend `pret`.
+  pret.catch(() => {});
   return {
     pret,
     envoyer(evenement, charge = {}) {

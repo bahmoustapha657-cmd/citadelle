@@ -2421,6 +2421,7 @@
       "removeFile": "Remove {{name}}",
       "attach": "Attach a document",
       "attachHint": "Attach a document or a photo (10 MB max)",
+      "dropHere": "Drop to attach",
       "fixPlaceholder": "Correct your message…",
       "captionPlaceholder": "Add a caption (optional)…",
       "placeholder": "Write a message…",
@@ -2607,6 +2608,9 @@
     "conv": {
       "deleteConfirm": "Delete this message for everyone?",
       "onlineCount": "{{count}} online",
+      "typing": "typing…",
+      "typingName": "{{name}} is typing…",
+      "typingMany": "{{count}} people are typing…",
       "audioCall": "Voice call",
       "joinCount": "Join ({{count}})",
       "backToCall": "Back to the call",

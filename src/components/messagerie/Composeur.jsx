@@ -4,6 +4,7 @@ import { enregistrementDisponible, useEnregistreur } from "./audio/use-enregistr
 import { apercuMessage, formatChrono } from "./messagerie-logic";
 import { ACCEPT_DOCUMENTS, formatTaille, iconeFichier, typeFichier } from "./documents";
 import { boutonIcone } from "./styles-messagerie";
+import { fichiersTransferes } from "./ecriture-logic";
 
 const ecranTactile = () => typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches;
 
@@ -17,14 +18,16 @@ const rond = (fond) => ({
 // le texte saisi sert alors de légende).
 // `brouillon` : texte laissé en plan dans cette discussion ; `onBrouillon` le
 // garde à chaque frappe (jamais pendant une correction).
-export function Composeur({ annuaire, brouillon = "", onBrouillon, reponse, onAnnulerReponse, edition, onAnnulerEdition, onEnvoyerTexte, onEnvoyerVocal, onEnvoyerFichiers, onValiderEdition }) {
+// `onFrappe` : la saisie change (« en train d'écrire… ») ; `depot` : fichiers
+// glissés sur la discussion ({ fichiers }), ajoutés aux pièces jointes.
+export function Composeur({ annuaire, brouillon = "", onBrouillon, onFrappe, depot, reponse, onAnnulerReponse, edition, onAnnulerEdition, onEnvoyerTexte, onEnvoyerVocal, onEnvoyerFichiers, onValiderEdition }) {
   const { t } = useTranslation();
   const [texte, setTexteEtat] = useState(brouillon);
   const editionRef = useRef(edition);
   useEffect(() => { editionRef.current = edition; }, [edition]);
   const setTexte = (valeur) => {
     setTexteEtat(valeur);
-    if (!editionRef.current) onBrouillon?.(valeur);
+    if (!editionRef.current) { onBrouillon?.(valeur); onFrappe?.(valeur); }
   };
   const [fichiers, setFichiers] = useState([]);
   const choixRef = useRef(null);
@@ -76,6 +79,20 @@ export function Composeur({ annuaire, brouillon = "", onBrouillon, reponse, onAn
   const ajouterFichiers = (liste) => {
     setErreur("");
     setFichiers((actuels) => [...actuels, ...Array.from(liste || [])].slice(0, 10));
+  };
+
+  // Fichiers glissés sur la discussion.
+  useEffect(() => {
+    if (depot?.fichiers?.length) ajouterFichiers(depot.fichiers);
+  }, [depot]);
+
+  // Photo copiée ou capture d'écran collée : elle devient une pièce jointe.
+  const surCollage = (e) => {
+    if (edition) return;
+    const colles = fichiersTransferes(e.clipboardData);
+    if (!colles.length) return;
+    e.preventDefault();
+    ajouterFichiers(colles);
   };
 
   const surTouche = (e) => {
@@ -147,7 +164,7 @@ export function Composeur({ annuaire, brouillon = "", onBrouillon, reponse, onAn
                 onChange={(e) => { ajouterFichiers(e.target.files); e.target.value = ""; }} />
             </>
           )}
-          <textarea ref={zoneRef} value={texte} rows={1} onChange={(e) => setTexte(e.target.value)} onKeyDown={surTouche}
+          <textarea ref={zoneRef} value={texte} rows={1} onChange={(e) => setTexte(e.target.value)} onKeyDown={surTouche} onPaste={surCollage}
             placeholder={edition ? t("msg.compose.fixPlaceholder") : fichiers.length ? t("msg.compose.captionPlaceholder") : t("msg.compose.placeholder")} maxLength={4000}
             style={{
               flex: 1, resize: "none", border: "1.5px solid var(--lc-border)", borderRadius: 20, padding: "10px 14px",

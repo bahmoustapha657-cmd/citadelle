@@ -2421,6 +2421,7 @@
       "removeFile": "إزالة {{name}}",
       "attach": "إرفاق مستند",
       "attachHint": "إرفاق مستند أو صورة (10 ميغابايت كحد أقصى)",
+      "dropHere": "أفلت للإرفاق",
       "fixPlaceholder": "صحّح رسالتك…",
       "captionPlaceholder": "أضف تعليقًا (اختياري)…",
       "placeholder": "اكتب رسالة…",
@@ -2607,6 +2608,9 @@
     "conv": {
       "deleteConfirm": "حذف هذه الرسالة لدى الجميع؟",
       "onlineCount": "المتصلون: {{count}}",
+      "typing": "يكتب…",
+      "typingName": "{{name}} يكتب…",
+      "typingMany": "{{count}} أشخاص يكتبون…",
       "audioCall": "مكالمة صوتية",
       "joinCount": "انضمام ({{count}})",
       "backToCall": "العودة إلى المكالمة",
