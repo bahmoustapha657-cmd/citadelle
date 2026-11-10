@@ -3,7 +3,8 @@
  * Stratégies de cache :
  *   Page d'accueil (/)       → copie de l'appareil aussitôt, rafraîchie en
  *                              arrière-plan avec ses fichiers (cf. rafraichirCoque)
- *   Fichiers hachés (JS/CSS) → CacheFirst
+ *   Fichiers hachés (JS/CSS) → CacheFirst ; tous les modules sont rangés
+ *                              d'avance en arrière-plan (cf. rangerModules)
  *   Supabase Storage (photos, logos) → CacheFirst sans expiration
  * Les données (Supabase, PowerSync) ne passent pas par ce cache : le mode
  * hors ligne a son propre miroir local.
@@ -53,6 +54,10 @@ self.addEventListener("message", (e) => {
   // Mise à jour automatique (src/mise-a-jour) : avant de recharger la page
   // sur une nouvelle version, elle demande la page d'accueil à jour et attend
   // la réponse — sinon le rechargement resservirait l'ancienne copie.
+  // Envoyé par la page quelques secondes après son ouverture (sw-register.js).
+  if (e.data && e.data.type === "RANGER_MODULES") {
+    e.waitUntil(rangerModules());
+  }
   if (e.data && e.data.type === "RAFRAICHIR_COQUE") {
     const repondre = (ok) => e.ports && e.ports[0] && e.ports[0].postMessage({ ok });
     e.waitUntil(rafraichirCoque().then(repondre, () => repondre(false)));
@@ -79,8 +84,8 @@ self.addEventListener("fetch", (e) => {
   const url = new URL(request.url);
 
   // 1. Fichiers SEO / validation + /version.json (commit en ligne, lu par la
-  //    CI après déploiement) → toujours réseau
-  if (/sitemap\.xml|robots\.txt|google.*\.html|BingSiteAuth\.xml|^\/version\.json$/.test(url.pathname)) {
+  //    CI après déploiement) + liste des modules → toujours réseau
+  if (/sitemap\.xml|robots\.txt|google.*\.html|BingSiteAuth\.xml|^\/version\.json$|^\/precache\.json$/.test(url.pathname)) {
     return;
   }
 
@@ -217,6 +222,51 @@ function rafraichirCoque({ strict = false } = {}) {
     })().finally(() => { coqueEnCours = null; });
   }
   return strict ? coqueEnCours : coqueEnCours.catch(() => false);
+}
+
+// ── Modules chargés à la demande ──────────────────────────────
+// Tous les modules de l'application (liste publiée au build, /precache.json)
+// sont rangés sur l'appareil en arrière-plan : après une mise à jour, un
+// écran pas encore rouvert en ligne s'ouvre quand même sans réseau. Seuls les
+// fichiers absents du cache sont téléchargés (ceux qu'une mise à jour a
+// modifiés), deux à la fois pour ne pas gêner l'utilisation sur réseau
+// faible. Interrompu (réseau, service worker endormi) : repris à la
+// prochaine ouverture — la liste n'est gardée qu'une fois tout rangé.
+const LISTE_MODULES = "/precache.json";
+const MODULES_SIMULTANES = 2;
+let modulesEnCours = null;
+function rangerModules() {
+  if (!modulesEnCours) {
+    modulesEnCours = (async () => {
+      const reponse = await fetch(LISTE_MODULES, { cache: "no-store" });
+      const type = reponse.headers.get("content-type") || "";
+      if (!reponse.ok || !type.includes("json")) return false;
+      const texte = await reponse.text();
+      const cache = await caches.open(CACHE_APP);
+      const rangee = await cache.match(LISTE_MODULES);
+      if (rangee && (await rangee.text()) === texte) return true; // déjà tout rangé
+      const chemins = JSON.parse(texte).filter((c) => typeof c === "string" && c.startsWith("/assets/"));
+      let complet = true;
+      const suivant = async () => {
+        for (let chemin = chemins.shift(); chemin; chemin = chemins.shift()) {
+          try {
+            if (await cache.match(chemin, { ignoreVary: true })) continue;
+            const fichier = await fetch(chemin);
+            // Fichier absent : l'hébergeur répond par la page d'accueil (200).
+            const html404 = (fichier.headers.get("content-type") || "").includes("text/html");
+            if (!fichier.ok || html404) { complet = false; continue; }
+            await cache.put(chemin, fichier);
+          } catch {
+            complet = false;
+          }
+        }
+      };
+      await Promise.all(Array.from({ length: MODULES_SIMULTANES }, suivant));
+      if (complet) await cache.put(LISTE_MODULES, new Response(texte, { headers: { "Content-Type": "application/json" } }));
+      return complet;
+    })().catch(() => false).finally(() => { modulesEnCours = null; });
+  }
+  return modulesEnCours;
 }
 
 /** App shell : cache d'abord, fallback index.html pour le routing SPA */

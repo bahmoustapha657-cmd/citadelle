@@ -39,9 +39,30 @@ function languesDansLaCoque() {
   };
 }
 
+// Liste des modules de l'application (/precache.json) : le service worker
+// les range tous sur l'appareil en arrière-plan (rangerModules, public/sw.js).
+// Sans elle, un module chargé à la demande (Comptabilité, École…) n'était
+// gardé hors ligne qu'après avoir été ouvert une fois en ligne — à refaire
+// après chaque mise à jour qui le modifiait. Le WebAssembly (base locale,
+// détourage des photos) n'y figure pas : plusieurs Mo, gardés à l'usage, et
+// le chargeur du détourage ne sert à rien sans lui.
+function listeModules() {
+  return {
+    name: "edugest-liste-modules",
+    apply: "build",
+    generateBundle(_options, bundle) {
+      const fichiers = Object.keys(bundle)
+        .filter((f) => f.startsWith("assets/") && /\.(js|css)$/.test(f) && !f.includes("vision_wasm_internal"))
+        .sort()
+        .map((f) => `/${f}`);
+      this.emitFile({ type: "asset", fileName: "precache.json", source: `${JSON.stringify(fichiers)}\n` });
+    },
+  };
+}
+
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), versionJson(), languesDansLaCoque()],
+  plugins: [react(), versionJson(), languesDansLaCoque(), listeModules()],
   define: {
     __EDUGEST_VERSION__: JSON.stringify(VERSION),
   },
