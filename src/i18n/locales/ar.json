@@ -2405,6 +2405,7 @@
       "reply": "ردّ",
       "readByList": "قرأها: {{names}}",
       "notReadList": "لم يقرأها بعد: {{names}}",
+      "react": "تفاعل",
       "sending": "جارٍ الإرسال…",
       "notSent": "لم يُرسَل",
       "retry": "إعادة المحاولة"

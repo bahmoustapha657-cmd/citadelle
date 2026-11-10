@@ -2405,6 +2405,7 @@
       "reply": "Reply",
       "readByList": "Read by: {{names}}",
       "notReadList": "Not read yet: {{names}}",
+      "react": "React",
       "sending": "Sending…",
       "notSent": "Not sent",
       "retry": "Try again"
