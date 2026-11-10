@@ -1,6 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { SUPPORTED_LANGS } from "../i18n";
+import { SUPPORTED_LANGS, changerLangue } from "../i18n";
 
 export function LanguageSwitcher({ compact = false, style = {} }) {
   const { i18n, t } = useTranslation();
@@ -9,7 +9,11 @@ export function LanguageSwitcher({ compact = false, style = {} }) {
     <select
       aria-label={t("common.language")}
       value={current}
-      onChange={(e) => i18n.changeLanguage(e.target.value)}
+      onChange={(e) => {
+        // Textes d'une langue jamais ouverte sur cet appareil, sans réseau :
+        // la langue reste celle affichée.
+        changerLangue(e.target.value).then((ok) => { if (!ok) window.alert(t("common.languageUnavailable")); });
+      }}
       style={{
         padding: compact ? "4px 8px" : "6px 10px",
         borderRadius: 8,

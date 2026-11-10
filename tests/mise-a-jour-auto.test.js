@@ -522,3 +522,50 @@ test("module introuvable dû au réseau, puis vrai déploiement : pas de recharg
   assert.equal(env.rechargements, 0);
   assert.equal(env.dernier().raison, "utilisation");
 });
+
+// ── Page d'accueil servie depuis l'appareil (sw.js) ───────────
+// Le rechargement attend que le service worker ait rangé la nouvelle page
+// d'accueil : sinon il resservirait l'ancienne version.
+function environnementAvecCoque(t, preparer) {
+  const env = environnement(t, { visible: false });
+  env.maj.arreter();
+  env.maj = creerMiseAJourAuto({
+    fenetre: env.fen, doc: env.doc, nav: { onLine: true },
+    session: {
+      getItem: (k) => env.session.get(k) ?? null,
+      setItem: (k, v) => env.session.set(k, String(v)),
+      removeItem: (k) => env.session.delete(k),
+    },
+    versionLocale: ANCIENNE, lireVersionPubliee: async () => NOUVELLE,
+    recharger: () => { env.rechargements += 1; }, preparerRechargement: preparer,
+    maintenant: () => Date.now(), publier: (e) => env.publications.push(e),
+  });
+  return env;
+}
+
+test("rechargement : seulement après la page d'accueil à jour rangée par le service worker", async (t) => {
+  let ranger;
+  const env = environnementAvecCoque(t, () => new Promise((fin) => { ranger = fin; }));
+  await env.maj.demarrer();
+  await env.tick(2000);
+  assert.equal(env.rechargements, 0, "le service worker n'a pas encore répondu");
+  ranger(true);
+  await env.tick(0);
+  assert.equal(env.rechargements, 1);
+});
+
+test("page d'accueil à jour injoignable : pas de rechargement sur l'ancienne version", async (t) => {
+  const env = environnementAvecCoque(t, async () => false);
+  await env.maj.demarrer();
+  await env.tick(2000);
+  assert.equal(env.rechargements, 0);
+  assert.equal(env.dernier().bandeau, true);
+  assert.equal(env.dernier().raison, "coque-indisponible");
+});
+
+test("ancien service worker qui ne répond pas : rechargement quand même (il lit le réseau)", async (t) => {
+  const env = environnementAvecCoque(t, async () => null);
+  await env.maj.demarrer();
+  await env.tick(2000);
+  assert.equal(env.rechargements, 1);
+});

@@ -37,6 +37,28 @@ const DELAI_MESSAGE_MS = 1500;
 // ne laisse aucun événement DOM : on la compte comme une interaction.
 const RETARD_BLOCAGE_MS = 2000;
 
+// Le service worker sert la page d'accueil depuis sa copie locale (sw.js) :
+// avant de recharger sur une nouvelle version, on lui demande de rafraîchir
+// cette copie et on attend sa réponse. true : copie à jour ; false : il n'a
+// pas pu (réseau) ; null : pas de service worker aux commandes, ou ancien
+// service worker qui ne répond pas — le rechargement lit alors le réseau.
+const DELAI_COQUE_MS = 10000;
+function rafraichirCoque(nav) {
+  const sw = nav?.serviceWorker?.controller;
+  if (!sw || typeof MessageChannel === "undefined") return null;
+  return new Promise((fin) => {
+    const canal = new MessageChannel();
+    const minuterie = setTimeout(() => fin(null), DELAI_COQUE_MS);
+    canal.port1.onmessage = (e) => { clearTimeout(minuterie); fin(e.data?.ok === true); };
+    try {
+      sw.postMessage({ type: "RAFRAICHIR_COQUE" }, [canal.port2]);
+    } catch {
+      clearTimeout(minuterie);
+      fin(null);
+    }
+  });
+}
+
 async function lireVersionJson(fenetre) {
   try {
     const rep = await fenetre.fetch(`/version.json?t=${Date.now()}`, { cache: "no-store" });
@@ -59,6 +81,7 @@ export function creerMiseAJourAuto({
   versionLocale = VERSION_APP,
   lireVersionPubliee = () => lireVersionJson(fenetre),
   recharger = () => fenetre.location.reload(),
+  preparerRechargement = () => rafraichirCoque(nav),
   maintenant = () => Date.now(),
   publier = () => {},
   pageCourante = () => null,
@@ -146,7 +169,23 @@ export function creerMiseAJourAuto({
     }
     registration?.waiting?.postMessage({ type: "SKIP_WAITING" });
     console.info(`[EduGest] mise à jour ${VERSION_APP.court} → ${String(cible).slice(0, 7)}`);
-    recharger();
+    rechargerSurCoqueAJour(() => {
+      // Page d'accueil à jour pas encore sur l'appareil : recharger
+      // resservirait l'ancienne version. Nouvel essai au prochain contrôle.
+      rechargement = false;
+      publier({ cible, bandeau: true, rechargement: false, raison: "coque-indisponible" });
+    });
+  }
+
+  // Recharge une fois la page d'accueil à jour rangée par le service worker
+  // (immédiat sans service worker). `siIndisponible` : il n'a pas pu la lire.
+  function rechargerSurCoqueAJour(siIndisponible) {
+    const pret = preparerRechargement();
+    if (!pret || typeof pret.then !== "function") { recharger(); return; }
+    pret.catch(() => null).then((ok) => {
+      if (ok === false && siIndisponible) siIndisponible();
+      else recharger();
+    });
   }
 
   function lancerRechargement() {
@@ -255,7 +294,7 @@ export function creerMiseAJourAuto({
     rechargerMaintenant() {
       rechargement = true;
       registration?.waiting?.postMessage({ type: "SKIP_WAITING" });
-      recharger();
+      rechargerSurCoqueAJour();
     },
     arreter() {
       if (minuterie) clearTimeout(minuterie);

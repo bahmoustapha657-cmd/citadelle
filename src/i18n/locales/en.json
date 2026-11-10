@@ -14,6 +14,7 @@
     "next": "Next",
     "previous": "Previous",
     "language": "Language",
+    "languageUnavailable": "This language is not on this device yet. Connect to the internet to load it.",
     "required": "* required",
     "actions": "Actions",
     "total": "Total",

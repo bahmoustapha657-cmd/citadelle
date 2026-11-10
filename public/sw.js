@@ -1,7 +1,9 @@
 /**
  * EduGest — Service Worker (PWA)
  * Stratégies de cache :
- *   App shell (JS/CSS/HTML)  → CacheFirst + mise à jour en arrière-plan
+ *   Page d'accueil (/)       → copie de l'appareil aussitôt, rafraîchie en
+ *                              arrière-plan avec ses fichiers (cf. rafraichirCoque)
+ *   Fichiers hachés (JS/CSS) → CacheFirst
  *   Supabase Storage (photos, logos) → CacheFirst sans expiration
  * Les données (Supabase, PowerSync) ne passent pas par ce cache : le mode
  * hors ligne a son propre miroir local.
@@ -18,9 +20,7 @@ const CACHE_PHOTOS_ATTENTE = "edugest-photos-attente";
 // ?v=2 : cache-busting du nouveau logo (les navigateurs cachent les favicons
 // très longtemps ; les téléphones ne rafraîchissent l'icône PWA que si l'URL
 // du manifest change). Garder en phase avec index.html et manifest.json.
-const APP_SHELL = [
-  "/",
-  "/index.html",
+const ICONES = [
   "/favicon.svg?v=2",
   "/icons/pwa-192.png?v=2",
   "/icons/pwa-512.png?v=2",
@@ -28,9 +28,13 @@ const APP_SHELL = [
 ];
 
 // ── Installation : mise en cache de l'app shell ───────────────
+// La page d'accueil est rangée AVEC les fichiers qu'elle charge : dès la
+// première visite, l'application peut se rouvrir sans réseau.
 self.addEventListener("install", (e) => {
   e.waitUntil(
-    caches.open(CACHE_APP).then((cache) => cache.addAll(APP_SHELL))
+    caches.open(CACHE_APP)
+      .then((cache) => cache.addAll(ICONES))
+      .then(() => rafraichirCoque({ strict: true }))
   );
   // skipWaiting : le nouveau SW prend la main IMMEDIATEMENT au lieu de rester
   // « en attente » derriere l'ancien. Sans cela, un utilisateur bloque sur une
@@ -45,6 +49,13 @@ self.addEventListener("install", (e) => {
 self.addEventListener("message", (e) => {
   if (e.data && e.data.type === "SKIP_WAITING") {
     self.skipWaiting();
+  }
+  // Mise à jour automatique (src/mise-a-jour) : avant de recharger la page
+  // sur une nouvelle version, elle demande la page d'accueil à jour et attend
+  // la réponse — sinon le rechargement resservirait l'ancienne copie.
+  if (e.data && e.data.type === "RAFRAICHIR_COQUE") {
+    const repondre = (ok) => e.ports && e.ports[0] && e.ports[0].postMessage({ ok });
+    e.waitUntil(rafraichirCoque().then(repondre, () => repondre(false)));
   }
 });
 
@@ -83,7 +94,18 @@ self.addEventListener("fetch", (e) => {
     return;
   }
 
-  // 3. Navigation HTML → NetworkFirst (toujours la dernière version)
+  // 3. Page d'accueil (l'application) → copie de l'appareil AUSSITÔT, sans
+  //    attendre le réseau : en NetworkFirst, chaque ouverture attendait la
+  //    réponse du serveur, jusqu'à 5 s d'écran blanc sur un réseau connecté
+  //    mais sans internet. La copie est rafraîchie en arrière-plan ; la page
+  //    passe à la nouvelle version seule (src/mise-a-jour, /version.json).
+  if (request.mode === "navigate" && url.origin === self.location.origin && COQUE_CHEMINS.includes(url.pathname)) {
+    e.respondWith(coqueDabord(request));
+    e.waitUntil(rafraichirCoque().catch(() => false));
+    return;
+  }
+
+  // 3 bis. Autres pages HTML (aide, pages publiques) → NetworkFirst
   if (request.mode === "navigate") {
     e.respondWith(networkFirst(request, CACHE_APP, 5000));
     return;
@@ -138,10 +160,72 @@ async function networkFirst(request, cacheName, timeoutMs) {
   }
 }
 
+// ── Page d'accueil ────────────────────────────────────────────
+// Rangée sous la clé "/" : /index.html est une redirection chez l'hébergeur,
+// et une réponse redirigée ne peut pas servir une navigation.
+const COQUE = "/";
+const COQUE_CHEMINS = ["/", "/index.html"];
+const DELAI_COQUE_MS = 20000;
+
+/** Copie de l'appareil d'abord ; réseau seulement si elle manque. */
+async function coqueDabord(request) {
+  const cache = await caches.open(CACHE_APP);
+  const cached = await cache.match(COQUE);
+  if (cached && !cached.redirected) return cached;
+  return networkFirst(request, CACHE_APP, 5000);
+}
+
+/** Fichiers /assets/ que la page charge au démarrage (scripts, styles, préchargements). */
+function fichiersDeLaCoque(html) {
+  const urls = new Set();
+  const motif = /(?:src|href)="(\/assets\/[^"]+)"/g;
+  for (let m = motif.exec(html); m; m = motif.exec(html)) urls.add(m[1]);
+  return [...urls];
+}
+
+/**
+ * Lit la page d'accueil sur le serveur et la range dans le cache, APRÈS les
+ * fichiers qu'elle charge : la copie servie au prochain lancement peut
+ * toujours démarrer sans réseau. Un fichier manquant → l'ancienne copie
+ * reste. Une seule lecture à la fois. Renvoie true si la copie est à jour.
+ * `strict` (installation) : lève au lieu de renvoyer false.
+ */
+let coqueEnCours = null;
+function rafraichirCoque({ strict = false } = {}) {
+  if (!coqueEnCours) {
+    coqueEnCours = (async () => {
+      // Borné : sur un réseau qui ne répond pas, la lecture ne doit pas
+      // rester en vol et retenir les suivantes.
+      const controle = new AbortController();
+      const minuterie = setTimeout(() => controle.abort(), DELAI_COQUE_MS);
+      const reponse = await fetch(COQUE, { cache: "no-store", signal: controle.signal })
+        .finally(() => clearTimeout(minuterie));
+      const type = reponse.headers.get("content-type") || "";
+      if (!reponse.ok || reponse.redirected || !type.includes("text/html")) throw new Error("page d'accueil illisible");
+      const html = await reponse.clone().text();
+      const cache = await caches.open(CACHE_APP);
+      await Promise.all(fichiersDeLaCoque(html).map(async (chemin) => {
+        if (await cache.match(chemin)) return;
+        const fichier = await fetch(chemin);
+        // Fichier absent : l'hébergeur répond par la page d'accueil (200).
+        const html404 = (fichier.headers.get("content-type") || "").includes("text/html");
+        if (!fichier.ok || html404) throw new Error(`fichier manquant : ${chemin}`);
+        await cache.put(chemin, fichier);
+      }));
+      await cache.put(COQUE, reponse);
+      return true;
+    })().finally(() => { coqueEnCours = null; });
+  }
+  return strict ? coqueEnCours : coqueEnCours.catch(() => false);
+}
+
 /** App shell : cache d'abord, fallback index.html pour le routing SPA */
 async function appShellFirst(request) {
   const cache = await caches.open(CACHE_APP);
-  const cached = await cache.match(request);
+  // ignoreVary : un fichier rangé d'avance par rafraichirCoque (requête du
+  // service worker, sans en-tête Origin) doit servir aussi la requête de la
+  // page (<script type="module" crossorigin>, qui en porte un).
+  const cached = await cache.match(request, { ignoreVary: true });
   if (cached) return cached;
   try {
     const response = await fetch(request);
