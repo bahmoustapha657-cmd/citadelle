@@ -58,13 +58,22 @@ export const definirPreferences = (conv, { archive = null, epingle = null, sourd
   rpc("msg_preferences", { p_conv: conv, p_archive: archive, p_epingle: epingle, p_sourdine: sourdine });
 
 // ── Messages ──
-export async function envoyerTexte({ conversationId, ecoleId, moi, corps, reponseA = null }) {
+// `id` : identifiant choisi par l'appareil (envoi immédiat). Un nouvel essai
+// après une réponse perdue retombe sur la même ligne : déjà en base (23505),
+// elle est simplement relue.
+export async function envoyerTexte({ id, conversationId, ecoleId, moi, corps, reponseA = null }) {
   const texte = String(corps || "").trim();
   if (!texte) throw new Error("Le message est vide.");
-  const { data, error } = await getSupabase().from("msg_messages").insert({
+  const sb = getSupabase();
+  const { data, error } = await sb.from("msg_messages").insert({
+    ...(id ? { id } : {}),
     conversation_id: conversationId, ecole_id: ecoleId, de_compte_id: moi,
     type: "texte", corps: texte.slice(0, 4000), reponse_a: reponseA,
   }).select("*").single();
+  if (error && id && error.code === "23505") {
+    const { data: deja } = await sb.from("msg_messages").select("*").eq("id", id).eq("de_compte_id", moi).maybeSingle();
+    if (deja) return deja;
+  }
   if (error) throw new Error(error.message || "Envoi impossible.");
   return data;
 }

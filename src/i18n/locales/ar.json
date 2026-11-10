@@ -2404,7 +2404,10 @@
       "readBy": "قرأها {{read}} من {{total}}",
       "reply": "ردّ",
       "readByList": "قرأها: {{names}}",
-      "notReadList": "لم يقرأها بعد: {{names}}"
+      "notReadList": "لم يقرأها بعد: {{names}}",
+      "sending": "جارٍ الإرسال…",
+      "notSent": "لم يُرسَل",
+      "retry": "إعادة المحاولة"
     },
     "compose": {
       "sendFailed": "تعذّر الإرسال.",
@@ -2445,6 +2448,7 @@
     },
     "list": {
       "noConversation": "لا توجد محادثات.",
+      "draft": "مسودة:",
       "groupCreated": "تم إنشاء المجموعة",
       "newConversation": "محادثة جديدة",
       "groupCallInProgress": "مكالمة جماعية جارية",

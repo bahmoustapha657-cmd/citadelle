@@ -4,6 +4,7 @@ import {
   annonceAConfirmer, annonceNonLue, autresMembres, formatDateBoite, PRIORITES, titreConversation,
 } from "./messagerie-logic";
 import { badge, texteDiscret } from "./styles-messagerie";
+import { lireBrouillon } from "./envoi-local";
 
 const ligne = (active) => ({
   display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "start", cursor: "pointer",
@@ -22,6 +23,8 @@ export function ListeConversations({ m, conversations, activeId, onOuvrir }) {
     const titre = titreConversation(c, m.annuaire, m.moi);
     const autre = c.type === "direct" ? autresMembres(c, m.moi)[0] : null;
     const nonLus = c.non_lus || 0;
+    // Texte laissé en plan : rappelé tant que la discussion n'est pas ouverte.
+    const brouillon = c.id === activeId ? "" : lireBrouillon(m.moi, c.id);
     return (
       <button key={c.id} type="button" style={ligne(c.id === activeId)} onClick={() => onOuvrir(c.id)}>
         <Avatar id={autre?.id || c.id} nom={titre} groupe={c.type === "groupe"} taille={42}
@@ -37,7 +40,9 @@ export function ListeConversations({ m, conversations, activeId, onOuvrir }) {
           </span>
           <span style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
             <span style={{ ...ellipse, flex: 1, fontSize: 12, color: nonLus ? "var(--lc-text)" : "var(--lc-text-muted)", fontWeight: nonLus ? 600 : 400 }}>
-              {c.dernier_apercu || (c.type === "groupe" ? t("msg.list.groupCreated") : t("msg.list.newConversation"))}
+              {brouillon
+                ? <><span style={{ color: "#dc2626", fontWeight: 700 }}>{t("msg.list.draft")}</span> {brouillon}</>
+                : (c.dernier_apercu || (c.type === "groupe" ? t("msg.list.groupCreated") : t("msg.list.newConversation")))}
             </span>
             {m.reunions?.actives.some((a) => a.conversation_id === c.id) && (
               <span title={t("msg.list.groupCallInProgress")} style={{ fontSize: 10, fontWeight: 800, color: "#fff", background: "#059669", borderRadius: 8, padding: "1px 6px" }}>📞 {t("msg.list.inProgress")}</span>

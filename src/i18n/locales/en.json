@@ -2404,7 +2404,10 @@
       "readBy": "Read by {{read}} of {{total}}",
       "reply": "Reply",
       "readByList": "Read by: {{names}}",
-      "notReadList": "Not read yet: {{names}}"
+      "notReadList": "Not read yet: {{names}}",
+      "sending": "Sending…",
+      "notSent": "Not sent",
+      "retry": "Try again"
     },
     "compose": {
       "sendFailed": "Unable to send.",
@@ -2445,6 +2448,7 @@
     },
     "list": {
       "noConversation": "No conversations.",
+      "draft": "Draft:",
       "groupCreated": "Group created",
       "newConversation": "New conversation",
       "groupCallInProgress": "Group call in progress",
