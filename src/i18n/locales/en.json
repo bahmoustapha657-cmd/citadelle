@@ -2318,6 +2318,23 @@
     },
     "yearNotSaved": "Year not saved for the school: only the school management can change it."
   },
+  "install": {
+    "ios": {
+      "title": "Install EduGest on iPhone",
+      "intro": "On iPhone and iPad, EduGest installs from Safari, with no App Store and at no cost. Opened from its icon, it alerts you of calls and messages even when closed.",
+      "tooOld": "This device runs iOS {{version}}: installing works, but notifications need iOS 16.4 or later (Settings → General → Software Update).",
+      "step1": "Open EduGest in Safari. From WhatsApp or another app, first choose “Open in Safari”.",
+      "step2": "Tap the Share button. On iOS 26, first tap “•••” next to the address, then “Share”.",
+      "step3": "Scroll down and tap “Add to Home Screen”. Not there? Tap “More” or “•••” in that menu.",
+      "step4": "Leave “Open as Web App” on if it appears, then tap “Add”.",
+      "step5": "Close Safari and open EduGest from its new icon. Sign in: the icon does not reuse Safari's sign-in.",
+      "step6": "In Messaging, tap “Turn on”, then “Allow”.",
+      "ringtone": "A call arrives as a notification with the usual iPhone sound, not as a continuous ringtone like a phone call.",
+      "ok": "Got it",
+      "bannerDesc": "Get calls and messages even when the app is closed",
+      "how": "Show me how"
+    }
+  },
   "msg": {
     "removedAccount": "Removed account",
     "call": {
@@ -2345,7 +2362,10 @@
       "enable": "Turn on notifications to be alerted of a call or a message when the app is closed.",
       "blocked": "Notifications are blocked on this device: allow them for this site in the browser settings, otherwise you won't see your calls when the app is closed.",
       "unavailable": "This device cannot receive notifications. On iPhone, first add EduGest to the home screen.",
-      "activate": "Turn on"
+      "activate": "Turn on",
+      "iosInstall": "On iPhone, calls and messages only reach you when EduGest is opened from its icon on the Home Screen.",
+      "iosBlocked": "Notifications are turned off on this iPhone: Settings → Notifications → EduGest → Allow Notifications.",
+      "iosTooOld": "This device runs iOS {{version}}: call and message notifications need iOS 16.4 or later (Settings → General → Software Update)."
     },
     "meet": {
       "inProgressIn": "Group call in progress — {{name}}",

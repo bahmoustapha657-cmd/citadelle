@@ -3,7 +3,8 @@
 // ══════════════════════════════════════════════════════════════
 import { useTranslation } from "react-i18next";
 
-export function InstallBanner({ onInstall, onDismiss }) {
+// desc : sur iPhone, « Installer » ouvre le guide pas à pas (installation-iphone/).
+export function InstallBanner({ onInstall, onDismiss, desc }) {
   const { t } = useTranslation();
   return (
     <div style={{position:"fixed",bottom:16,left:"50%",transform:"translateX(-50%)",
@@ -13,7 +14,7 @@ export function InstallBanner({ onInstall, onDismiss }) {
       <span style={{fontSize:28}}>📲</span>
       <div style={{flex:1}}>
         <p style={{margin:"0 0 2px",fontWeight:800,fontSize:14}}>{t("shell.install.title")}</p>
-        <p style={{margin:0,fontSize:12,color:"rgba(255,255,255,0.65)"}}>{t("shell.install.desc")}</p>
+        <p style={{margin:0,fontSize:12,color:"rgba(255,255,255,0.65)"}}>{desc || t("shell.install.desc")}</p>
       </div>
       <button onClick={onInstall}
         style={{background:"#00C48C",color:"#fff",border:"none",borderRadius:8,

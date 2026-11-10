@@ -2318,6 +2318,23 @@
     },
     "yearNotSaved": "Année non enregistrée pour l'école : seule la Direction peut la modifier."
   },
+  "install": {
+    "ios": {
+      "title": "Installer EduGest sur iPhone",
+      "intro": "Sur iPhone et iPad, EduGest s'installe depuis Safari, sans App Store et sans frais. Ouvert depuis son icône, il vous prévient des appels et des messages même fermé.",
+      "tooOld": "Cet appareil est en iOS {{version}} : l'installation fonctionne, mais les notifications demandent iOS 16.4 ou plus récent (Réglages → Général → Mise à jour logicielle).",
+      "step1": "Ouvrez EduGest dans Safari. Depuis WhatsApp ou une autre application, choisissez d'abord « Ouvrir dans Safari ».",
+      "step2": "Touchez le bouton Partager. Sur iOS 26, touchez d'abord « ••• » à côté de l'adresse, puis « Partager ».",
+      "step3": "Faites défiler et touchez « Sur l'écran d'accueil ». Absent ? Touchez « Plus » ou « ••• » dans ce menu.",
+      "step4": "Laissez activée l'option « app web » si elle apparaît, puis touchez « Ajouter ».",
+      "step5": "Fermez Safari et ouvrez EduGest depuis sa nouvelle icône. Connectez-vous : l'icône ne reprend pas la connexion de Safari.",
+      "step6": "Dans la Messagerie, touchez « Activer », puis « Autoriser ».",
+      "ringtone": "Un appel arrive comme une notification, avec le son habituel de l'iPhone : pas de sonnerie continue comme pour un appel téléphonique.",
+      "ok": "Compris",
+      "bannerDesc": "Recevez appels et messages même application fermée",
+      "how": "Comment faire ?"
+    }
+  },
   "msg": {
     "removedAccount": "Compte retiré",
     "call": {
@@ -2345,7 +2362,10 @@
       "enable": "Activez les notifications pour être prévenu d'un appel ou d'un message quand l'application est fermée.",
       "blocked": "Notifications bloquées sur cet appareil : autorisez-les pour ce site dans les réglages du navigateur, sinon vous ne verrez pas vos appels quand l'application est fermée.",
       "unavailable": "Cet appareil ne peut pas recevoir de notifications. Sur iPhone, ajoutez d'abord EduGest à l'écran d'accueil.",
-      "activate": "Activer"
+      "activate": "Activer",
+      "iosInstall": "Sur iPhone, les appels et les messages n'arrivent que si EduGest est ouvert depuis son icône sur l'écran d'accueil.",
+      "iosBlocked": "Notifications refusées sur cet iPhone : Réglages → Notifications → EduGest → Autoriser les notifications.",
+      "iosTooOld": "Cet appareil est en iOS {{version}} : les notifications d'appels et de messages demandent iOS 16.4 ou plus récent (Réglages → Général → Mise à jour logicielle)."
     },
     "meet": {
       "inProgressIn": "Appel de groupe en cours — {{name}}",
