@@ -2462,7 +2462,11 @@
     "voice": {
       "pause": "Pause",
       "listen": "Listen to the voice message",
-      "unavailable": "Voice message unavailable"
+      "unavailable": "Voice message unavailable",
+      "loading": "Downloading…",
+      "retry": "Weak network: tap to try again",
+      "tapToPlay": "Ready: tap to listen",
+      "unsupported": "This device cannot play this format"
     },
     "day": {
       "today": "Today",
