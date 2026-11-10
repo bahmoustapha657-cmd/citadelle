@@ -219,6 +219,9 @@ export async function supprimerAnnonce(annonce) {
 export const lancerAppel = (conv, offre) => rpc("msg_appel_lancer", { p_conv: conv, p_offre: offre });
 export const repondreAppel = (id, reponse) => rpc("msg_appel_repondre", { p_id: id, p_reponse: reponse });
 export const terminerAppel = (id, statut) => rpc("msg_appel_terminer", { p_id: id, p_statut: statut });
+// Compte rendu technique de CET appareil (audio/trace-appel.js), pour comprendre
+// après coup un appel muet.
+export const tracerAppel = (id, trace) => rpc("msg_appel_tracer", { p_id: id, p_trace: trace });
 
 // Appels entrants qui sonnent encore (ouverture de l'app depuis une
 // notification « X vous appelle »).

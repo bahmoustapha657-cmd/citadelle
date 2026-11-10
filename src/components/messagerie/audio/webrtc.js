@@ -65,14 +65,16 @@ export function attendreCollecteIce(pc, delaiMs = delaiCollecteIce(pc.getConfigu
 export const descriptionJson = (d) => (d ? { type: d.type, sdp: d.sdp } : null);
 
 // Crée la connexion, y branche le micro, et joue l'audio distant.
-export function creerConnexion({ iceServers, flux, onEtat }) {
+// `onLecture(ok)` : le haut-parleur a-t-il accepté de jouer la voix reçue ?
+export function creerConnexion({ iceServers, flux, onEtat, onLecture }) {
   const pc = new RTCPeerConnection({ iceServers });
   flux.getTracks().forEach((piste) => pc.addTrack(piste, flux));
   const audio = new Audio();
   audio.autoplay = true;
   pc.ontrack = (e) => {
     audio.srcObject = e.streams[0] || new MediaStream([e.track]);
-    audio.play().catch(() => { /* lecture relancée au prochain geste */ });
+    audio.play().then(() => onLecture?.(true))
+      .catch(() => { onLecture?.(false); /* lecture relancée au prochain geste */ });
   };
   pc.onconnectionstatechange = () => onEtat?.(pc.connectionState);
   return { pc, audio };
