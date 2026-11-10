@@ -34,6 +34,7 @@ function chargerServiceWorker({ serveur = {}, cache = {} } = {}) {
       clients: { claim: async () => {} },
     },
     console: { log: () => {} }, URL, AbortController,
+    Response: function Response(corps, init) { return reponse(corps, { type: init?.headers?.["Content-Type"] }); },
     setTimeout, clearTimeout,
     caches: {
       open: async () => ({
@@ -175,4 +176,62 @@ test("mise à jour automatique : le service worker rafraîchit la page d'accueil
 
   const horsLigne = chargerServiceWorker({ cache: { "/": reponse(page("v1")) } });
   assert.equal((await demander(horsLigne)).ok, false);
+});
+
+// ── Modules chargés à la demande (Comptabilité, École…) ───────
+const liste = (...chemins) => reponse(JSON.stringify(chemins), { type: "application/json" });
+const ranger = (sw) => sw.emettre("message", { data: { type: "RANGER_MODULES" } }).fond;
+
+test("modules : tous rangés d'avance, seuls les absents sont téléchargés", async () => {
+  const sw = chargerServiceWorker({
+    cache: { "/assets/compta-v1.js": script("compta") },
+    serveur: {
+      "/precache.json": liste("/assets/compta-v1.js", "/assets/ecole-v1.js", "/assets/notes-v1.css"),
+      "/assets/ecole-v1.js": script("ecole"),
+      "/assets/notes-v1.css": reponse("a{}", { type: "text/css" }),
+    },
+  });
+  await ranger(sw);
+  assert.deepEqual(sw.demandes.sort(), ["/assets/ecole-v1.js", "/assets/notes-v1.css", "/precache.json"]);
+  assert.ok(sw.stock.has("/assets/ecole-v1.js") && sw.stock.has("/assets/notes-v1.css"));
+
+  // Ouverture suivante, même version : seule la liste est relue.
+  sw.demandes.length = 0;
+  await ranger(sw);
+  assert.deepEqual(sw.demandes, ["/precache.json"]);
+});
+
+test("modules : rangement interrompu, repris à l'ouverture suivante", async () => {
+  const serveur = {
+    "/precache.json": liste("/assets/compta-v2.js", "/assets/ecole-v2.js"),
+    "/assets/compta-v2.js": script("compta"),
+    // ecole-v2.js : réseau coupé en route.
+  };
+  const sw = chargerServiceWorker({ serveur });
+  await ranger(sw);
+  assert.ok(sw.stock.has("/assets/compta-v2.js"));
+  assert.equal(sw.stock.has("/precache.json"), false, "rien n'est tenu pour acquis");
+
+  serveur["/assets/ecole-v2.js"] = script("ecole");
+  sw.demandes.length = 0;
+  await ranger(sw);
+  assert.deepEqual(sw.demandes.sort(), ["/assets/ecole-v2.js", "/precache.json"]);
+  assert.ok(sw.stock.has("/assets/ecole-v2.js") && sw.stock.has("/precache.json"));
+});
+
+test("modules : une page d'erreur n'est jamais rangée comme module, une liste absente n'efface rien", async () => {
+  const sw = chargerServiceWorker({
+    serveur: { "/precache.json": liste("/assets/ancien.js", "/ailleurs.js"), "/assets/ancien.js": reponse(page("v1")) },
+  });
+  await ranger(sw);
+  assert.equal(sw.stock.has("/assets/ancien.js"), false);
+  assert.ok(!sw.demandes.includes("/ailleurs.js"), "hors de /assets/ : ignoré");
+
+  // Hébergeur qui renvoie la page d'accueil à la place de la liste, ou hors ligne.
+  for (const serveur of [{ "/precache.json": reponse(page("v1")) }, {}]) {
+    const autre = chargerServiceWorker({ cache: { "/assets/compta-v1.js": script("compta") }, serveur });
+    await ranger(autre);
+    assert.ok(autre.stock.has("/assets/compta-v1.js"));
+    assert.equal(autre.stock.has("/precache.json"), false);
+  }
 });

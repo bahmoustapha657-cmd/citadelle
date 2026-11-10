@@ -3,6 +3,7 @@ import { demarrerMiseAJourAuto } from "./mise-a-jour/mise-a-jour-auto.js";
 // Intervalle de vérification d'une mise à jour du SW (1 min).
 // On déclenche aussi un check au load et au retour de visibilité.
 const UPDATE_CHECK_INTERVAL_MS = 60 * 1000;
+const DELAI_RANGEMENT_MODULES_MS = 10 * 1000;
 
 export function registerServiceWorker() {
   window.addEventListener("load", async () => {
@@ -14,6 +15,15 @@ export function registerServiceWorker() {
     try {
       const registration = await navigator.serviceWorker.register("/sw.js");
       maj.lierServiceWorker(registration);
+
+      // Modules de l'application rangés sur l'appareil en arrière-plan
+      // (rangerModules, sw.js), une fois l'ouverture passée : le démarrage
+      // et la première synchronisation gardent le réseau pour eux.
+      setTimeout(() => {
+        navigator.serviceWorker.ready
+          .then((reg) => reg.active?.postMessage({ type: "RANGER_MODULES" }))
+          .catch(() => {});
+      }, DELAI_RANGEMENT_MODULES_MS);
 
       const notifyIfUpdated = (worker) => {
         if (!worker) return;
