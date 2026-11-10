@@ -9,7 +9,7 @@ import { MatieresTab } from "../MatieresTab";
 
 // Onglets de gestion : enseignements, discipline, bulletins, tableau
 // d'honneur, livrets, matières, emploi du temps, attestations.
-export function EcoleTabsAdmin({ e, titre, section, avecEns, userRole, annee, maxNote, matieresPredefinies, cleNotes, cleEleves }) {
+export function EcoleTabsAdmin({ e, section, avecEns, userRole, annee, maxNote, matieresPredefinies, cleNotes, cleEleves }) {
   return (
     <>
       {/* ── ENSEIGNEMENTS ── */}
@@ -83,10 +83,9 @@ export function EcoleTabsAdmin({ e, titre, section, avecEns, userRole, annee, ma
       />}
 
       {/* ── TABLEAU D'HONNEUR (un par classe) ──
-          `titre` nomme la section sur le palmarès « toute la section » ;
-          `section` règle le calcul des moyennes, comme au bulletin. */}
+          `section` règle le calcul des moyennes, comme au bulletin, et
+          nomme la section sur le palmarès « toute la section ». */}
       {e.tab === "honneur" && <HonneurTab
-        titre={titre}
         classes={e.classes}
         eleves={e.eleves}
         notes={e.notes}
