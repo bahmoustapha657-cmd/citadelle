@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { subscribeTablePayload } from "../../../backend/realtime-supabase";
 import {
   appelsEntrantsEnAttente, lancerAppel, notifier, ouvrirCanalAppel, repondreAppel, serveursIce, terminerAppel,
+  tracerAppel,
 } from "../../../backend/messagerie-supabase";
 import {
   arreterFlux, attendreCollecteIce, capterMicro, creerConnexion, descriptionJson, webrtcDisponible,
@@ -10,6 +11,7 @@ import { cleCommune, creerEchangeCles } from "./relais-chiffrement";
 import { appelADecrocher } from "../../../backend/application-android";
 import { demarrerRelaisSecours } from "./relais-secours";
 import { creerSonnerie } from "./sonnerie";
+import { compteRendu, noter, nouvelleTrace, resumerStats } from "./trace-appel";
 import i18n from "../../../i18n";
 
 // Sonnerie côté appelant avant « Pas de réponse » : le temps de voir la
@@ -20,6 +22,8 @@ const DELAI_COUPURE_MS = 12000;
 // Après la réponse : au-delà, la voix passe par le relais de secours sans
 // attendre que le navigateur déclare la connexion perdue.
 const DELAI_CONNEXION_MS = 10000;
+// Relevé des compteurs de la connexion, gardé pour le compte rendu de l'appel.
+const RELEVE_STATS_MS = 2000;
 
 // Fin annoncée à l'écran, selon le statut final lu dans msg_appels
 // (clés msg.callEnd.*).
@@ -35,7 +39,27 @@ const etatVide = () => ({
   jeton: null, id: null, sens: null, offre: null, pc: null, audio: null, flux: null,
   sonnerie: null, minuteurs: [], coupure: null, reponduIci: false, distantOk: false,
   canal: null, secours: null, attenteConnexion: null, echange: null, cle: null, appeleUserId: null,
+  trace: null, releve: null,
 });
+
+// Dernier état connu de la connexion WebRTC, relevé tant qu'elle existe : à la
+// fin de l'appel elle est déjà fermée, et ses compteurs avec elle.
+function releverStats(r) {
+  const { pc, trace } = r;
+  if (!pc || !trace) return;
+  pc.getStats().then((stats) => { trace.webrtc = resumerStats(stats.values()); }).catch(() => {});
+}
+
+// Compte rendu de cet appareil, déposé pour tout appel décroché.
+function deposerTrace(r) {
+  const { id, trace, flux, secours } = r;
+  if (!id || !trace || !(r.reponduIci || r.distantOk)) return;
+  if (secours) trace.secours = secours.compteurs();
+  const piste = flux?.getAudioTracks?.()[0];
+  if (piste) trace.piste = { active: piste.enabled, muette: piste.muted, etat: piste.readyState };
+  noter(trace, "fin");
+  tracerAppel(id, compteRendu(trace)).catch(() => {});
+}
 
 // Description envoyée à l'autre côté, avec la clé publique du relais de secours.
 const descriptionAvecCle = (pc, echange) => ({ ...descriptionJson(pc.localDescription), cle: echange?.publique });
@@ -61,6 +85,8 @@ export function useAppels({ actif, moi, schoolCode, annuaire, nomMoi, occupe }) 
 
   const nettoyer = useCallback(() => {
     const r = ref.current;
+    deposerTrace(r);
+    clearInterval(r.releve);
     r.sonnerie?.arreter();
     r.minuteurs.forEach(clearTimeout);
     clearTimeout(r.coupure);
@@ -101,7 +127,12 @@ export function useAppels({ actif, moi, schoolCode, annuaire, nomMoi, occupe }) 
   const basculer = useCallback((jeton) => {
     const r = ref.current;
     if (r.jeton !== jeton || r.secours) return;
-    const impossible = () => { if (ref.current.jeton === jeton) echouer(fin("networkFailed")); };
+    const impossible = () => {
+      if (ref.current.jeton !== jeton) return;
+      noter(ref.current.trace, "secours-impossible");
+      echouer(fin("networkFailed"));
+    };
+    noter(r.trace, `bascule:${r.pc?.connectionState || "sans-connexion"}`);
     if (!r.canal || !r.cle) { impossible(); return; }
     clearTimeout(r.coupure);
     clearTimeout(r.attenteConnexion);
@@ -111,12 +142,18 @@ export function useAppels({ actif, moi, schoolCode, annuaire, nomMoi, occupe }) 
     const { canal, flux, cle } = r;
     try {
       r.secours = demarrerRelaisSecours({
-        flux, canal, cle, surPerte: () => { if (ref.current.jeton === jeton) echouer(fin("lost")); },
+        flux, canal, cle,
+        surPerte: () => {
+          if (ref.current.jeton !== jeton) return;
+          noter(ref.current.trace, "secours-perdu");
+          echouer(fin("lost"));
+        },
       });
     } catch { impossible(); return; }
     Promise.all([canal.pret, r.secours.pret]).then(() => {
       if (ref.current.jeton !== jeton) return;
       canal.envoyer("bascule");
+      noter(ref.current.trace, "secours-pret");
       setAppel((a) => (a ? { ...a, phase: "en_cours", debut: a.debut || Date.now(), secours: true } : a));
     }).catch(impossible);
   }, [echouer]);
@@ -134,7 +171,10 @@ export function useAppels({ actif, moi, schoolCode, annuaire, nomMoi, occupe }) 
       basculer(jeton);
       ref.current.secours?.recevoir(evenement, charge);
     });
-    r.canal.pret.catch(() => { /* WebRTC reste seul en piste */ });
+    r.canal.pret.then(() => noter(ref.current.trace, "canal-pret"))
+      .catch(() => { noter(ref.current.trace, "canal-refuse"); /* WebRTC reste seul en piste */ });
+    clearInterval(r.releve);
+    r.releve = setInterval(() => releverStats(ref.current), RELEVE_STATS_MS);
     r.attenteConnexion = setTimeout(() => {
       const e = ref.current;
       if (e.jeton === jeton && e.cle && e.pc?.connectionState !== "connected") basculer(jeton);
@@ -144,7 +184,9 @@ export function useAppels({ actif, moi, schoolCode, annuaire, nomMoi, occupe }) 
   const surEtatConnexion = useCallback((jeton) => (etat) => {
     const r = ref.current;
     if (r.jeton !== jeton) return;
+    noter(r.trace, etat);
     if (etat === "connected") {
+      releverStats(r);
       clearTimeout(r.coupure);
       clearTimeout(r.attenteConnexion);
       setAppel((a) => (a && a.phase !== "en_cours" ? { ...a, phase: "en_cours", debut: a.debut || Date.now() } : a));
@@ -163,7 +205,11 @@ export function useAppels({ actif, moi, schoolCode, annuaire, nomMoi, occupe }) 
     const r = ref.current;
     if (r.jeton !== jeton) { arreterFlux(flux); return null; }
     r.flux = flux;
-    const { pc, audio } = creerConnexion({ iceServers, flux, onEtat: surEtatConnexion(jeton) });
+    r.trace = nouvelleTrace({ sens: r.sens, ua: navigator.userAgent });
+    const { pc, audio } = creerConnexion({
+      iceServers, flux, onEtat: surEtatConnexion(jeton),
+      onLecture: (ok) => { if (ref.current.jeton === jeton) noter(ref.current.trace, ok ? "lecture" : "lecture-bloquee"); },
+    });
     Object.assign(r, { pc, audio });
     return pc;
   };
