@@ -11,6 +11,7 @@ import { boutonIcone } from "./styles-messagerie";
 import { ecrireBrouillon, lireBrouillon } from "./envoi-local";
 import { fichiersTransferes, libelleEcriture } from "./ecriture-logic";
 import { useEcriture } from "./use-ecriture";
+import { DecorMessagerie } from "./DecorMessagerie";
 
 const itemMenu = {
   display: "block", width: "100%", textAlign: "start", background: "none", border: "none",
@@ -175,9 +176,11 @@ export function VueConversation({ m, conv, etroit, onRetour, onGererGroupe }) {
         </div>
       </div>
 
-      {/* Fil */}
+      {/* Fil, sur le décor EduGest (fixe : il ne défile pas avec les messages) */}
+      <div style={{ position: "relative", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+      <DecorMessagerie />
       <div ref={defilRef} onScroll={surDefilement} onClick={() => setMenu(false)}
-        style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "8px 14px 14px", display: "flex", flexDirection: "column" }}>
+        style={{ position: "relative", flex: 1, minHeight: 0, overflowY: "auto", padding: "8px 14px 14px", display: "flex", flexDirection: "column" }}>
         {!fil && <p style={{ textAlign: "center", color: "var(--lc-text-faint)", fontSize: 12, marginTop: 30 }}>{t("msg.page.loading")}</p>}
         {fil && !fil.complet && (
           <button type="button" onClick={chargerAnciens} disabled={chargementAnciens}
@@ -207,6 +210,7 @@ export function VueConversation({ m, conv, etroit, onRetour, onGererGroupe }) {
             onAbandonner={() => m.abandonnerMessage(item.message)}
             onRappeler={item.message.type === "appel" && peutAppeler && !appelEnCours ? appeler : undefined} />
         )))}
+      </div>
       </div>
 
       <Composeur annuaire={annuaire}

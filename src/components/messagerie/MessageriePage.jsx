@@ -9,6 +9,7 @@ import { NouvelleDiscussionModal } from "./NouvelleDiscussionModal";
 import { NouvelleAnnonceModal } from "./NouvelleAnnonceModal";
 import { GroupeModal } from "./GroupeModal";
 import { BandeauNotifications } from "./BandeauNotifications";
+import { DecorMessagerie } from "./DecorMessagerie";
 import {
   couleursEcoleMessagerie, estParent, filtrerConversations, normaliser, peutCreerGroupe, peutPublierAnnonce,
   titreConversation, trierAnnonces,
@@ -130,9 +131,10 @@ export function MessageriePage({ utilisateur, hauteur = "100%" }) {
   );
 
   const vide = (icone, texte) => (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "var(--lc-text-faint)", background: "var(--lc-surface-alt)", padding: 20, textAlign: "center" }}>
-      <div style={{ fontSize: 44, marginBottom: 10 }}>{icone}</div>
-      <div style={{ fontSize: 13 }}>{texte}</div>
+    <div style={{ position: "relative", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "var(--lc-text-muted)", background: "var(--lc-surface-alt)", padding: 20, textAlign: "center" }}>
+      <DecorMessagerie />
+      <div style={{ position: "relative", fontSize: 44, marginBottom: 10 }}>{icone}</div>
+      <div style={{ position: "relative", fontSize: 13, background: "var(--lc-surface)", border: "1px solid var(--lc-border)", borderRadius: 12, padding: "6px 14px" }}>{texte}</div>
     </div>
   );
 
