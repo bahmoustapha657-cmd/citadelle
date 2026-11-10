@@ -2462,7 +2462,11 @@
     "voice": {
       "pause": "Pause",
       "listen": "Écouter le message vocal",
-      "unavailable": "Vocal indisponible"
+      "unavailable": "Vocal indisponible",
+      "loading": "Téléchargement…",
+      "retry": "Réseau faible : touchez pour réessayer",
+      "tapToPlay": "Prêt : touchez pour écouter",
+      "unsupported": "Format illisible sur cet appareil"
     },
     "day": {
       "today": "Aujourd'hui",
