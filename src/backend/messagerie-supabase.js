@@ -103,6 +103,9 @@ export async function envoyerVocal({ conversationId, ecoleId, moi, blob, duree, 
 
 export const modifierMessage = (id, corps) => rpc("msg_modifier_message", { p_id: id, p_corps: corps });
 
+// Pose, change ou retire MA réaction ; renvoie les réactions du message.
+export const reagir = (messageId, emoji) => rpc("msg_reagir", { p_message: messageId, p_emoji: emoji });
+
 export async function supprimerMessage(id) {
   const chemin = await rpc("msg_supprimer_message", { p_id: id });
   if (chemin) getSupabase().storage.from(BUCKET).remove([chemin]).catch(() => {});

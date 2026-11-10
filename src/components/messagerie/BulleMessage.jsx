@@ -4,6 +4,7 @@ import { LecteurVocal } from "./LecteurVocal";
 import { PieceJointe } from "./PieceJointe";
 import { accuseLecture, apercuMessage, formatHeure, lecteursMessage, libelleAppel } from "./messagerie-logic";
 import { enEnvoi, envoiEchoue, estProvisoire } from "./envoi-local";
+import { REACTIONS, resumerReactions } from "./reactions";
 
 const MODIFIABLE_MS = 24 * 3600 * 1000;
 
@@ -21,7 +22,7 @@ const action = {
 // Un message du fil : bulle (texte / vocal), trace d'appel ou message système.
 export function BulleMessage({
   message, conv, moi, annuaire, suite, citation, selectionne, onSelection,
-  onRepondre, onModifier, onSupprimer, onRappeler, onReessayer, onAbandonner,
+  onRepondre, onModifier, onSupprimer, onRappeler, onReessayer, onAbandonner, onReagir,
 }) {
   const { t } = useTranslation();
   const deMoi = message.de_compte_id === moi;
@@ -56,6 +57,10 @@ export function BulleMessage({
   const echec = envoiEchoue(message);
   const modifiable = deMoi && !provisoire && !message.supprime && message.type === "texte"
     && instantAffichage - Date.parse(message.created_at) < MODIFIABLE_MS;
+
+  const reactions = message.supprime || provisoire ? [] : resumerReactions(message.reactions, moi);
+  const maReaction = message.reactions?.[moi];
+  const noms = (comptes) => comptes.map((id) => (id === moi ? t("msg.you") : annuaire.get(id)?.nom || t("msg.removedAccount"))).join(", ");
 
   const fond = message.supprime ? "transparent" : deMoi ? "var(--sc1)" : "var(--lc-surface)";
   // Écriture de la bulle « moi » : blanche ou bleu nuit selon la couleur de
@@ -118,11 +123,37 @@ export function BulleMessage({
         </div>
       </div>
 
+      {reactions.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: -6, marginInline: 8, position: "relative", justifyContent: deMoi ? "flex-end" : "flex-start" }}>
+          {reactions.map((r) => (
+            <button key={r.emoji} type="button" onClick={() => onReagir?.(r.emoji)} title={noms(r.comptes)}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 3, cursor: "pointer", borderRadius: 12, padding: "1px 7px",
+                fontSize: 12.5, lineHeight: "20px", color: "var(--lc-text)", background: r.deMoi ? "var(--msg-surbrillance, var(--lc-surface-alt))" : "var(--lc-surface)",
+                border: `1px solid ${r.deMoi ? "var(--sc1)" : "var(--lc-border)"}`, boxShadow: "var(--lc-shadow)",
+              }}>
+              <span>{r.emoji}</span>
+              {r.nombre > 1 && <span style={{ fontSize: 11, fontWeight: 800 }}>{r.nombre}</span>}
+            </button>
+          ))}
+        </div>
+      )}
       {echec && (
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, marginTop: 5, justifyContent: "flex-end" }}>
           <span style={{ fontSize: 11.5, fontWeight: 700, color: "#dc2626" }}>{t("msg.bubble.notSent")}</span>
           <button type="button" style={action} onClick={onReessayer}>🔄 {t("msg.bubble.retry")}</button>
           <button type="button" style={{ ...action, color: "#dc2626" }} onClick={onAbandonner}>🗑️ {t("common.delete")}</button>
+        </div>
+      )}
+      {selectionne && !provisoire && !message.supprime && onReagir && (
+        <div role="group" aria-label={t("msg.bubble.react")}
+          style={{ display: "flex", gap: 2, marginTop: 6, padding: "3px 6px", background: "var(--lc-surface)", border: "1px solid var(--lc-border)", borderRadius: 18, boxShadow: "var(--lc-shadow)" }}>
+          {REACTIONS.map((emoji) => (
+            <button key={emoji} type="button" onClick={() => onReagir(emoji)} aria-pressed={maReaction === emoji}
+              style={{ border: "none", cursor: "pointer", fontSize: 19, lineHeight: 1, padding: "5px 6px", borderRadius: 12, background: maReaction === emoji ? "var(--msg-surbrillance, var(--lc-surface-alt))" : "none" }}>
+              {emoji}
+            </button>
+          ))}
         </div>
       )}
       {selectionne && !provisoire && !message.supprime && (

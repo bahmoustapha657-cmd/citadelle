@@ -9,6 +9,7 @@ import {
 import { MAX_PIECES_ANNONCE, verifierFichier } from "./documents";
 import { preparerFichier } from "./compresser-image";
 import { fusionnerFil, messageProvisoire, messagesEchoues } from "./envoi-local";
+import { basculerReaction } from "./reactions";
 import i18n from "../../i18n";
 
 // Délai avant le premier chargement : la connexion (surtout sur réseau
@@ -307,6 +308,20 @@ export function useMessagerieEtat({ utilisateur, schoolCode, actif }) {
     planifierBoite();
   }, [planifierBoite, remplacerDansFil]);
 
+  // Réaction : affichée tout de suite, confirmée par la base (qui tranche si
+  // quelqu'un d'autre a réagi entre-temps) ; retirée si elle est refusée.
+  const reagirMessage = useCallback(async (message, emoji) => {
+    const avant = message.reactions || {};
+    remplacerDansFil({ id: message.id, conversation_id: message.conversation_id, reactions: basculerReaction(avant, moi, emoji) });
+    try {
+      const reactions = await api.reagir(message.id, emoji);
+      remplacerDansFil({ id: message.id, conversation_id: message.conversation_id, reactions: reactions || {} });
+    } catch (e) {
+      remplacerDansFil({ id: message.id, conversation_id: message.conversation_id, reactions: avant });
+      setErreur(e.message || i18n.t("msg.state.unavailable"));
+    }
+  }, [moi, remplacerDansFil]);
+
   // ── Discussions ──
   const ouvrirDirecteAvec = useCallback(async (compteId) => {
     const id = await api.ouvrirDirecte(compteId);
@@ -461,7 +476,7 @@ export function useMessagerieEtat({ utilisateur, schoolCode, actif }) {
     annuaire, annuaireListe, boite, boiteParId, fils,
     convActiveId, ouvrirConversation, chargerPlusAnciens,
     vueOuverte, setVueOuverte: definirVueOuverte, onglet, setOnglet, annonceActiveId, setAnnonceActiveId, appliquerDemande,
-    envoyerTexte, reessayerMessage, abandonnerMessage,
+    envoyerTexte, reessayerMessage, abandonnerMessage, reagirMessage,
     envoyerVocal, envoyerFichiers, modifierMessage, supprimerMessage, ecoleIdSure,
     ouvrirDirecteAvec, creerGroupe, actionGroupe, definirPreferences,
     annonces, lusAnnonces, statsAnnonces, alertes, annoncesNonLues,

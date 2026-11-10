@@ -202,6 +202,7 @@ export function VueConversation({ m, conv, etroit, onRetour, onGererGroupe }) {
             onRepondre={() => { setReponse(item.message); setEdition(null); setSelectionId(null); }}
             onModifier={() => { setEdition(item.message); setReponse(null); setSelectionId(null); }}
             onSupprimer={() => supprimer(item.message)}
+            onReagir={(emoji) => { m.reagirMessage(item.message, emoji); setSelectionId(null); }}
             onReessayer={() => m.reessayerMessage(item.message)}
             onAbandonner={() => m.abandonnerMessage(item.message)}
             onRappeler={item.message.type === "appel" && peutAppeler && !appelEnCours ? appeler : undefined} />

@@ -2405,6 +2405,7 @@
       "reply": "Répondre",
       "readByList": "Lu par : {{names}}",
       "notReadList": "Pas encore lu : {{names}}",
+      "react": "Réagir",
       "sending": "Envoi en cours…",
       "notSent": "Non envoyé",
       "retry": "Réessayer"
