@@ -8,6 +8,7 @@ import {
 } from "./messagerie-logic";
 import { MAX_PIECES_ANNONCE, verifierFichier } from "./documents";
 import { preparerFichier } from "./compresser-image";
+import { fusionnerFil, messageProvisoire, messagesEchoues } from "./envoi-local";
 import i18n from "../../i18n";
 
 // Délai avant le premier chargement : la connexion (surtout sur réseau
@@ -122,10 +123,7 @@ export function useMessagerieEtat({ utilisateur, schoolCode, actif }) {
   const ajouterAuFil = useCallback((convId, messagesAjoutes, { enTete = false, complet } = {}) => {
     setFils((tous) => {
       const actuel = tous[convId] || { messages: [], complet: false };
-      const connus = new Set(actuel.messages.map((m) => m.id));
-      const nouveaux = messagesAjoutes.filter((m) => !connus.has(m.id));
-      const messages = enTete ? [...nouveaux, ...actuel.messages] : [...actuel.messages, ...nouveaux];
-      messages.sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at));
+      const messages = fusionnerFil(actuel.messages, messagesAjoutes, { enTete });
       return { ...tous, [convId]: { messages, complet: complet ?? actuel.complet } };
     });
   }, []);
@@ -208,13 +206,55 @@ export function useMessagerieEtat({ utilisateur, schoolCode, actif }) {
     return id;
   }, [ecoleId, schoolCode]);
 
-  const envoyerTexte = useCallback(async (convId, corps, reponseA = null) => {
-    const message = await api.envoyerTexte({ conversationId: convId, ecoleId: await ecoleIdSure(), moi, corps, reponseA });
-    ajouterAuFil(convId, [message]);
-    planifierBoite();
-    pousserNotification(etat.current.boiteParId.get(convId), apercuMessage(message));
-    return message;
-  }, [ajouterAuFil, ecoleIdSure, moi, planifierBoite, pousserNotification]);
+  // Texte : affiché tout de suite, transmis ensuite (envoi-local.js). En cas
+  // d'échec le message reste dans le fil, « non envoyé », à réessayer.
+  const transmettre = useCallback(async (provisoire) => {
+    const convId = provisoire.conversation_id;
+    try {
+      const message = await api.envoyerTexte({
+        id: provisoire.id, conversationId: convId, ecoleId: await ecoleIdSure(), moi,
+        corps: provisoire.corps, reponseA: provisoire.reponse_a,
+      });
+      ajouterAuFil(convId, [message]);
+      planifierBoite();
+      pousserNotification(etat.current.boiteParId.get(convId), apercuMessage(message));
+    } catch {
+      remplacerDansFil({ ...provisoire, envoi: "echec" });
+    }
+  }, [ajouterAuFil, ecoleIdSure, moi, planifierBoite, pousserNotification, remplacerDansFil]);
+
+  const envoyerTexte = useCallback((convId, corps, reponseA = null) => {
+    const fil = etat.current.fils[convId]?.messages || [];
+    const provisoire = messageProvisoire({
+      convId, moi, corps, reponseA, dernier: fil[fil.length - 1]?.created_at,
+    });
+    ajouterAuFil(convId, [provisoire]);
+    transmettre(provisoire);
+    return provisoire;
+  }, [ajouterAuFil, moi, transmettre]);
+
+  const reessayerMessage = useCallback((message) => {
+    const provisoire = { ...message, envoi: "en_cours" };
+    remplacerDansFil(provisoire);
+    transmettre(provisoire);
+  }, [remplacerDansFil, transmettre]);
+
+  // Renoncer à un message jamais parti : il quitte le fil.
+  const abandonnerMessage = useCallback((message) => {
+    setFils((tous) => {
+      const actuel = tous[message.conversation_id];
+      if (!actuel) return tous;
+      return { ...tous, [message.conversation_id]: { ...actuel, messages: actuel.messages.filter((m) => m.id !== message.id) } };
+    });
+  }, []);
+
+  // Réseau revenu : les messages restés en panne repartent seuls.
+  useEffect(() => {
+    if (!actif || typeof window === "undefined") return undefined;
+    const relancer = () => messagesEchoues(etat.current.fils).forEach(reessayerMessage);
+    window.addEventListener("online", relancer);
+    return () => window.removeEventListener("online", relancer);
+  }, [actif, reessayerMessage]);
 
   const envoyerVocal = useCallback(async (convId, { blob, duree }, reponseA = null) => {
     const message = await api.envoyerVocal({ conversationId: convId, ecoleId: await ecoleIdSure(), moi, blob, duree, reponseA });
@@ -421,7 +461,8 @@ export function useMessagerieEtat({ utilisateur, schoolCode, actif }) {
     annuaire, annuaireListe, boite, boiteParId, fils,
     convActiveId, ouvrirConversation, chargerPlusAnciens,
     vueOuverte, setVueOuverte: definirVueOuverte, onglet, setOnglet, annonceActiveId, setAnnonceActiveId, appliquerDemande,
-    envoyerTexte, envoyerVocal, envoyerFichiers, modifierMessage, supprimerMessage, ecoleIdSure,
+    envoyerTexte, reessayerMessage, abandonnerMessage,
+    envoyerVocal, envoyerFichiers, modifierMessage, supprimerMessage, ecoleIdSure,
     ouvrirDirecteAvec, creerGroupe, actionGroupe, definirPreferences,
     annonces, lusAnnonces, statsAnnonces, alertes, annoncesNonLues,
     publierAnnonce, lireAnnonce, relancerAnnonce, epinglerAnnonce, supprimerAnnonce,

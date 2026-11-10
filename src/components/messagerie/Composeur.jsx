@@ -15,9 +15,17 @@ const rond = (fond) => ({
 // Zone de saisie : texte (Entrée pour envoyer sur ordinateur), réponse à un
 // message, correction d'un message, message vocal (🎤) et documents (📎 ;
 // le texte saisi sert alors de légende).
-export function Composeur({ annuaire, reponse, onAnnulerReponse, edition, onAnnulerEdition, onEnvoyerTexte, onEnvoyerVocal, onEnvoyerFichiers, onValiderEdition }) {
+// `brouillon` : texte laissé en plan dans cette discussion ; `onBrouillon` le
+// garde à chaque frappe (jamais pendant une correction).
+export function Composeur({ annuaire, brouillon = "", onBrouillon, reponse, onAnnulerReponse, edition, onAnnulerEdition, onEnvoyerTexte, onEnvoyerVocal, onEnvoyerFichiers, onValiderEdition }) {
   const { t } = useTranslation();
-  const [texte, setTexte] = useState("");
+  const [texte, setTexteEtat] = useState(brouillon);
+  const editionRef = useRef(edition);
+  useEffect(() => { editionRef.current = edition; }, [edition]);
+  const setTexte = (valeur) => {
+    setTexteEtat(valeur);
+    if (!editionRef.current) onBrouillon?.(valeur);
+  };
   const [fichiers, setFichiers] = useState([]);
   const choixRef = useRef(null);
   const [envoi, setEnvoi] = useState(false);
@@ -27,7 +35,7 @@ export function Composeur({ annuaire, reponse, onAnnulerReponse, edition, onAnnu
 
   // Passage en mode correction : le texte du message est repris.
   useEffect(() => {
-    if (edition) { setTexte(edition.corps || ""); zoneRef.current?.focus(); }
+    if (edition) { setTexteEtat(edition.corps || ""); zoneRef.current?.focus(); }
   }, [edition]);
   useEffect(() => { if (reponse) zoneRef.current?.focus(); }, [reponse]);
 
@@ -59,8 +67,10 @@ export function Composeur({ annuaire, reponse, onAnnulerReponse, edition, onAnnu
       return;
     }
     if (!contenu) return;
-    const ok = await executer(() => (edition ? onValiderEdition(contenu) : onEnvoyerTexte(contenu)));
-    if (ok) setTexte("");
+    // Texte simple : il part dans le fil aussitôt, la saisie reste libre.
+    if (!edition) { setErreur(""); onEnvoyerTexte(contenu); setTexte(""); zoneRef.current?.focus(); return; }
+    const ok = await executer(() => onValiderEdition(contenu));
+    if (ok) setTexteEtat(brouillon);
   };
 
   const ajouterFichiers = (liste) => {
@@ -70,7 +80,7 @@ export function Composeur({ annuaire, reponse, onAnnulerReponse, edition, onAnnu
 
   const surTouche = (e) => {
     if (e.key === "Enter" && !e.shiftKey && !ecranTactile()) { e.preventDefault(); envoyer(); }
-    if (e.key === "Escape") { if (edition) { onAnnulerEdition(); setTexte(""); } else if (reponse) onAnnulerReponse(); }
+    if (e.key === "Escape") { if (edition) { onAnnulerEdition(); setTexteEtat(brouillon); } else if (reponse) onAnnulerReponse(); }
   };
 
   const envoyerVocal = async () => {
@@ -79,7 +89,7 @@ export function Composeur({ annuaire, reponse, onAnnulerReponse, edition, onAnnu
     await executer(() => onEnvoyerVocal(resultat));
   };
 
-  const bandeau = edition ? { titre: `✏️ ${t("msg.compose.editMessage")}`, texte: apercuMessage(edition), annuler: () => { onAnnulerEdition(); setTexte(""); } }
+  const bandeau = edition ? { titre: `✏️ ${t("msg.compose.editMessage")}`, texte: apercuMessage(edition), annuler: () => { onAnnulerEdition(); setTexteEtat(brouillon); } }
     : reponse ? { titre: `↩️ ${t("msg.compose.replyTo", { name: annuaire.get(reponse.de_compte_id)?.nom || t("msg.compose.aMessage") })}`, texte: apercuMessage(reponse), annuler: onAnnulerReponse }
       : null;
 

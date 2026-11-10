@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { LecteurVocal } from "./LecteurVocal";
 import { PieceJointe } from "./PieceJointe";
 import { accuseLecture, apercuMessage, formatHeure, lecteursMessage, libelleAppel } from "./messagerie-logic";
+import { enEnvoi, envoiEchoue, estProvisoire } from "./envoi-local";
 
 const MODIFIABLE_MS = 24 * 3600 * 1000;
 
@@ -20,7 +21,7 @@ const action = {
 // Un message du fil : bulle (texte / vocal), trace d'appel ou message système.
 export function BulleMessage({
   message, conv, moi, annuaire, suite, citation, selectionne, onSelection,
-  onRepondre, onModifier, onSupprimer, onRappeler,
+  onRepondre, onModifier, onSupprimer, onRappeler, onReessayer, onAbandonner,
 }) {
   const { t } = useTranslation();
   const deMoi = message.de_compte_id === moi;
@@ -50,7 +51,10 @@ export function BulleMessage({
   const auteur = annuaire.get(message.de_compte_id);
   const { lus, total } = deMoi ? accuseLecture(message, conv) : { lus: 0, total: 0 };
   const toutLu = total > 0 && lus === total;
-  const modifiable = deMoi && !message.supprime && message.type === "texte"
+  // Pas encore en base : rien à corriger, citer ou supprimer côté serveur.
+  const provisoire = estProvisoire(message);
+  const echec = envoiEchoue(message);
+  const modifiable = deMoi && !provisoire && !message.supprime && message.type === "texte"
     && instantAffichage - Date.parse(message.created_at) < MODIFIABLE_MS;
 
   const fond = message.supprime ? "transparent" : deMoi ? "var(--sc1)" : "var(--lc-surface)";
@@ -65,10 +69,11 @@ export function BulleMessage({
           {auteur?.nom || t("msg.removedAccount")}
         </div>
       )}
-      <div onClick={onSelection} role="button" tabIndex={0}
-        onKeyDown={(e) => { if (e.key === "Enter") onSelection(); }}
+      <div onClick={provisoire ? undefined : onSelection} role="button" tabIndex={0}
+        onKeyDown={(e) => { if (e.key === "Enter" && !provisoire) onSelection(); }}
         style={{
-          maxWidth: "min(78%, 520px)", background: fond, color: texte, cursor: "pointer",
+          maxWidth: "min(78%, 520px)", background: fond, color: texte, cursor: provisoire ? "default" : "pointer",
+          opacity: enEnvoi(message) ? 0.75 : 1,
           border: message.supprime ? "1px dashed var(--lc-border)" : deMoi ? "none" : "1px solid var(--lc-border)",
           borderRadius: 16, borderEndEndRadius: deMoi ? 5 : 16, borderEndStartRadius: deMoi ? 16 : 5,
           padding: "8px 12px", boxShadow: message.supprime ? "none" : "var(--lc-shadow)",
@@ -104,7 +109,8 @@ export function BulleMessage({
         <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 6, marginTop: 3, fontSize: 10, opacity: 0.75 }}>
           {message.modifie_at && !message.supprime && <span>{t("msg.bubble.edited")}</span>}
           <span>{formatHeure(message.created_at)}</span>
-          {deMoi && !message.supprime && (
+          {provisoire && <span title={t(echec ? "msg.bubble.notSent" : "msg.bubble.sending")}>{echec ? "⚠️" : "🕓"}</span>}
+          {deMoi && !provisoire && !message.supprime && (
             <span title={t("msg.bubble.readBy", { read: lus, total })} style={{ fontWeight: 800, color: toutLu ? "var(--msg-lu, #7dd3fc)" : undefined }}>
               {groupe && lus > 0 && !toutLu ? `✓✓ ${lus}/${total}` : lus > 0 ? "✓✓" : "✓"}
             </span>
@@ -112,14 +118,21 @@ export function BulleMessage({
         </div>
       </div>
 
-      {selectionne && !message.supprime && (
+      {echec && (
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, marginTop: 5, justifyContent: "flex-end" }}>
+          <span style={{ fontSize: 11.5, fontWeight: 700, color: "#dc2626" }}>{t("msg.bubble.notSent")}</span>
+          <button type="button" style={action} onClick={onReessayer}>🔄 {t("msg.bubble.retry")}</button>
+          <button type="button" style={{ ...action, color: "#dc2626" }} onClick={onAbandonner}>🗑️ {t("common.delete")}</button>
+        </div>
+      )}
+      {selectionne && !provisoire && !message.supprime && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 5, justifyContent: deMoi ? "flex-end" : "flex-start" }}>
           <button type="button" style={action} onClick={onRepondre}>↩️ {t("msg.bubble.reply")}</button>
           {modifiable && <button type="button" style={action} onClick={onModifier}>✏️ {t("common.edit")}</button>}
           {deMoi && <button type="button" style={{ ...action, color: "#dc2626" }} onClick={onSupprimer}>🗑️ {t("common.delete")}</button>}
         </div>
       )}
-      {selectionne && deMoi && !message.supprime && total > 0 && (
+      {selectionne && deMoi && !provisoire && !message.supprime && total > 0 && (
         <AccuseDetail message={message} conv={conv} annuaire={annuaire} />
       )}
     </div>

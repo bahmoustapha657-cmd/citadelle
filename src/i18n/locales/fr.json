@@ -2404,7 +2404,10 @@
       "readBy": "Lu par {{read}} sur {{total}}",
       "reply": "Répondre",
       "readByList": "Lu par : {{names}}",
-      "notReadList": "Pas encore lu : {{names}}"
+      "notReadList": "Pas encore lu : {{names}}",
+      "sending": "Envoi en cours…",
+      "notSent": "Non envoyé",
+      "retry": "Réessayer"
     },
     "compose": {
       "sendFailed": "Envoi impossible.",
@@ -2445,6 +2448,7 @@
     },
     "list": {
       "noConversation": "Aucune discussion.",
+      "draft": "Brouillon :",
       "groupCreated": "Groupe créé",
       "newConversation": "Nouvelle discussion",
       "groupCallInProgress": "Appel de groupe en cours",

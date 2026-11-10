@@ -8,6 +8,7 @@ import {
   sousTitreConversation, titreConversation,
 } from "./messagerie-logic";
 import { boutonIcone } from "./styles-messagerie";
+import { ecrireBrouillon, lireBrouillon } from "./envoi-local";
 
 const itemMenu = {
   display: "block", width: "100%", textAlign: "start", background: "none", border: "none",
@@ -170,14 +171,17 @@ export function VueConversation({ m, conv, etroit, onRetour, onGererGroupe }) {
             onRepondre={() => { setReponse(item.message); setEdition(null); setSelectionId(null); }}
             onModifier={() => { setEdition(item.message); setReponse(null); setSelectionId(null); }}
             onSupprimer={() => supprimer(item.message)}
+            onReessayer={() => m.reessayerMessage(item.message)}
+            onAbandonner={() => m.abandonnerMessage(item.message)}
             onRappeler={item.message.type === "appel" && peutAppeler && !appelEnCours ? appeler : undefined} />
         )))}
       </div>
 
       <Composeur annuaire={annuaire}
+        brouillon={lireBrouillon(moi, conv.id)} onBrouillon={(texte) => ecrireBrouillon(moi, conv.id, texte)}
         reponse={reponse} onAnnulerReponse={() => setReponse(null)}
         edition={edition} onAnnulerEdition={() => setEdition(null)}
-        onEnvoyerTexte={async (texte) => { await m.envoyerTexte(conv.id, texte, reponse?.id || null); setReponse(null); enBasRef.current = true; }}
+        onEnvoyerTexte={(texte) => { enBasRef.current = true; m.envoyerTexte(conv.id, texte, reponse?.id || null); setReponse(null); }}
         onEnvoyerFichiers={async (fichiers, legende) => {
           enBasRef.current = true;
           try { await m.envoyerFichiers(conv.id, fichiers, legende, reponse?.id || null); } finally { setReponse(null); }
