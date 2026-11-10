@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { C } from "../../constants";
+import { C, getSectionLabel } from "../../constants";
 import { Badge, Btn, Card, Chargement, Vide } from "../ui";
 import { PERIODE_ANNEE, imprimerTableauxHonneur } from "../../reports";
 import { getMention } from "../../reports/bulletins/bulletin-format";
@@ -22,7 +22,7 @@ const selectStyle = { border: "1px solid #b0c4d8", borderRadius: 7, padding: "6p
 // murale par classe à imprimer d'un coup. Le palmarès de toute la section
 // reste disponible dans le sélecteur de classe.
 export function HonneurTab({
-  titre = "", classes = [], eleves = [], notes = [], matieres = [], periodes = [],
+  classes = [], eleves = [], notes = [], matieres = [], periodes = [],
   section = "", maxNote = 20, schoolInfo = {}, anneeConsultee = "", chargement = false,
 }) {
   const { t } = useTranslation();
@@ -55,7 +55,10 @@ export function HonneurTab({
   }) : null), [filtre, eleves, notes, matsFor, periode, periodesSection, section, maxNote, nombre, seuil, tri]);
 
   const periodeLabel = periode === PERIODE_ANNEE ? "Résultats annuels" : getPeriodeLongLabel(periode);
-  const optionsImpression = { periodeLabel, portee: titre, annee: anneeConsultee, maxNote };
+  // Le palmarès de section porte le NOM de la section (Collège, Lycée…), pas
+  // le titre du module : au collège, c'est le nom du poste de son chef
+  // (« Principal »), qui s'imprimait sous « Tableau d'honneur ».
+  const optionsImpression = { periodeLabel, portee: getSectionLabel(section), annee: anneeConsultee, maxNote };
   const affichees = filtre === "all" || filtre === SECTION ? parClasse : parClasse.filter((tb) => tb.classe === filtre);
   const aImprimer = affichees.filter((tb) => tb.laureats.length);
   const minimum = (SEUILS_HONNEUR.find((s) => s.id === seuil)?.part || 0) * maxNote;

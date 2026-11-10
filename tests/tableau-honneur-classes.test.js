@@ -158,3 +158,20 @@ test("l'affiche écrit les noms dans l'ordre réglé par l'école", async () => 
   assert.match(affiche("prenom_nom"), /Prenom4 Nom4/); // ligne du tableau aussi
   assert.match(affiche(undefined), /Diallo Mamadou Aliou/); // défaut : NOM Prénom
 });
+
+// Le palmarès « toute la section » porte le NOM de la section sous « Tableau
+// d'honneur » (Collège, Lycée…), jamais le titre du module : au collège,
+// c'est le nom du poste de son chef (« Principal »), qui s'y imprimait.
+test("le palmarès de section écrit le nom de la section, pas « Principal »", async () => {
+  const { htmlTableauxHonneur } = await import("../src/reports/tableau-honneur.js");
+  const { getSectionLabel } = await import("../src/constants.js");
+  const classement = [1, 2, 3].map((rang) => ({ _id: `e${rang}`, nom: `Nom${rang}`, prenom: "P", classe: "7ème A", moyenne: 16 - rang, rang }));
+  const portee = (section) => {
+    const html = htmlTableauxHonneur([{ classement, evalues: 3 }], { nom: "École" }, { portee: getSectionLabel(section) });
+    return html.match(/<div class="portee">([^<]*)<\/div>/)?.[1];
+  };
+  assert.equal(portee("college"), "Collège");
+  assert.equal(portee("lycee"), "Lycée");
+  assert.equal(portee("primaire"), "Primaire");
+  assert.equal(portee("prescolaire"), "Préscolaire");
+});
