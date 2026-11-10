@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="360" viewBox="0 0 360 360" fill="none" stroke="#000" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Décor de la messagerie EduGest : carreau répété, dessiné pour EduGest.
+       Sert de masque (seule la forme compte) : la couleur vient de l'école.
+       Aucun motif ne touche le bord, le carreau se répète sans couture. -->
+
+  <!-- Écusson EduGest : le livre ouvert du logo dans son carré arrondi -->
+  <g transform="translate(62 58) rotate(-10)">
+    <rect x="-26" y="-26" width="52" height="52" rx="14"/>
+    <path d="M0 -8 C-5 -13 -12 -14 -17 -12 V9 C-12 7 -5 8 0 13 Z"/>
+    <path d="M0 -8 C5 -13 12 -14 17 -12 V9 C12 7 5 8 0 13 Z"/>
+    <path d="M-12 -5 C-9 -6 -6 -5 -4 -3 M12 -5 C9 -6 6 -5 4 -3"/>
+  </g>
+
+  <!-- Crayon -->
+  <g transform="translate(170 44) rotate(18)">
+    <path d="M-16 6 L-21 14 L-12 10 Z"/>
+    <path d="M-16 6 L10 -20 L18 -12 L-12 10"/>
+    <path d="M5 -15 L13 -7"/>
+  </g>
+
+  <!-- Toque de diplômé -->
+  <g transform="translate(286 62) rotate(8)">
+    <path d="M0 -13 L24 -3 L0 7 L-24 -3 Z"/>
+    <path d="M-13 2 V11 C-7 17 7 17 13 11 V2"/>
+    <path d="M24 -3 V9"/>
+    <circle cx="24" cy="12" r="2.2"/>
+  </g>
+
+  <!-- Bulle de discussion -->
+  <g transform="translate(118 138) rotate(-6)">
+    <path d="M-18 -13 H18 a5 5 0 0 1 5 5 V5 a5 5 0 0 1 -5 5 H-3 L-12 18 V10 H-18 a5 5 0 0 1 -5 -5 V-8 a5 5 0 0 1 5 -5 Z"/>
+    <path d="M-12 -5 H12 M-12 2 H4"/>
+  </g>
+
+  <!-- Cloche de l'école -->
+  <g transform="translate(232 150) rotate(-14)">
+    <path d="M-11 9 C-11 -4 -9 -13 0 -13 C9 -13 11 -4 11 9 Z"/>
+    <path d="M-15 9 H15 M-3 13 a3 3 0 0 0 6 0 M0 -13 V-17"/>
+  </g>
+
+  <!-- Globe -->
+  <g transform="translate(318 168)">
+    <circle r="15"/>
+    <path d="M-15 0 H15 M0 -15 C-9 -7 -9 7 0 15 C9 7 9 -7 0 -15"/>
+  </g>
+
+  <!-- Règle -->
+  <g transform="translate(52 196) rotate(-32)">
+    <rect x="-24" y="-6" width="48" height="12" rx="2.5"/>
+    <path d="M-16 -6 v4 M-8 -6 v7 M0 -6 v4 M8 -6 v7 M16 -6 v4"/>
+  </g>
+
+  <!-- Étoile du tableau d'honneur -->
+  <g transform="translate(168 228) rotate(10)">
+    <path d="M0 -14 L4 -5 L14 -4 L6.5 2.5 L9 12 L0 7 L-9 12 L-6.5 2.5 L-14 -4 L-4 -5 Z"/>
+  </g>
+
+  <!-- Livre ouvert -->
+  <g transform="translate(266 262) rotate(6)">
+    <path d="M0 -9 C-6 -14 -14 -15 -20 -12 V10 C-14 7 -6 8 0 13 C6 8 14 7 20 10 V-12 C14 -15 6 -14 0 -9 Z"/>
+    <path d="M0 -9 V13"/>
+  </g>
+
+  <!-- Cartable -->
+  <g transform="translate(92 296) rotate(7)">
+    <rect x="-18" y="-10" width="36" height="26" rx="5"/>
+    <path d="M-8 -10 V-15 a3 3 0 0 1 3 -3 H5 a3 3 0 0 1 3 3 V-10"/>
+    <path d="M-18 0 H18 M-4 0 V5 H4 V0"/>
+  </g>
+
+  <!-- Coche : travail validé -->
+  <g transform="translate(186 312)">
+    <circle r="12"/>
+    <path d="M-5.5 0 L-1.5 4.5 L6 -4.5"/>
+  </g>
+
+  <!-- Ampoule : l'idée -->
+  <g transform="translate(324 318) rotate(-8)">
+    <path d="M-6 6 C-12 2 -12 -12 0 -13 C12 -12 12 2 6 6 Z"/>
+    <path d="M-5 10 H5 M-3 14 H3"/>
+  </g>
+
+  <!-- Petits signes entre les motifs -->
+  <path d="M118 62 h10 M123 57 v10"/>
+  <path d="M226 92 h9 M230.5 87.5 v9"/>
+  <path d="M26 132 l7 7 M33 132 l-7 7"/>
+  <path d="M276 212 l7 7 M283 212 l-7 7"/>
+  <path d="M222 322 h9 M226.5 317.5 v9"/>
+  <circle cx="176" cy="118" r="2.6"/>
+  <circle cx="120" cy="226" r="2.6"/>
+  <circle cx="30" cy="268" r="2.6"/>
+  <circle cx="336" cy="232" r="2.6"/>
+  <circle cx="140" cy="340" r="2.6"/>
+  <circle cx="226" cy="30" r="2.6"/>
+  <circle cx="18" cy="24" r="2.6"/>
+</svg>
