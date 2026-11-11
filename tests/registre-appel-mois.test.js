@@ -7,7 +7,9 @@ import {
   debutDeMois, dernierJour, estArrete, joursDeClasse, joursDeConge, lignesAuSuivi, moisDeLAnnee,
   moisPrecedent, registreMensuel, taux,
 } from "../src/components/portail-enseignant/registre-mensuel.js";
-import { registreAppelHTML, registresAppelHTML } from "../src/reports/registre-appel.js";
+import {
+  registreAppelHTML, registresAppelHTML, titreChefSection, titreTitulaire,
+} from "../src/reports/registre-appel.js";
 
 const LUN_SAM = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
 const LUN_VEN = LUN_SAM.slice(0, 5);
@@ -109,10 +111,47 @@ test("feuille imprimée : grille, présents / absents par jour, arrêté, signat
   assert.match(html, /window\.print/);
 });
 
+test("page de garde d'abord ; totaux par jour, bilan et signatures seulement après le dernier élève", () => {
+  const r = reg([inc("e1", "2026-11-03", "Absence")]);
+  const html = registreAppelHTML({ registre: r, classe: "7ème A", schoolInfo: { nom: "École test" }, annee: "2026-2027" });
+  const garde = html.indexOf('<section class="page couverture">');
+  const grille = html.indexOf('<section class="page">');
+  assert.ok(garde > -1 && garde < grille);
+  assert.match(html.slice(garde, grille), /7ème A[\s\S]*2026-2027/);
+  // Pas de <tfoot> : il se répéterait au bas de chaque page du registre.
+  assert.doesNotMatch(html, /<tfoot>/);
+  const dernierNom = html.lastIndexOf('<td class="nom">');
+  const totaux = html.indexOf('<tr class="total">');
+  assert.ok(totaux > dernierNom);
+  assert.ok(html.indexOf('<div class="fin">') > totaux);
+  assert.ok(html.indexOf("Le chef de section") > html.indexOf('<div class="fin">'));
+});
+
+test("deux signatures : le titulaire et le chef de section sous son vrai titre", () => {
+  assert.equal(titreChefSection({}, "primaire"), "Le Directeur");
+  assert.equal(titreChefSection({}, "prescolaire"), "Le Directeur");
+  assert.equal(titreChefSection({}, "college"), "Le Principal");
+  assert.equal(titreChefSection({}, "lycee"), "Le Censeur");
+  // Poste renommé par l'école : son nom fait foi… sauf au lycée, qui partage
+  // le poste du collège mais pas son titre.
+  const renomme = { libellesPostes: { college: "Directeur des études", primaire: "Direction Primaire" } };
+  assert.equal(titreChefSection(renomme, "college"), "Directeur des études");
+  assert.equal(titreChefSection(renomme, "lycee"), "Le Censeur");
+  assert.equal(titreTitulaire("primaire"), "Le maître titulaire");
+  assert.equal(titreTitulaire("lycee"), "Le professeur principal");
+
+  const html = registreAppelHTML({ registre: reg([]), classe: "11ème A", titreChef: "Le Censeur", titulaire: "Le professeur principal" });
+  const pied = html.slice(html.indexOf('<div class="pied">'));
+  assert.match(pied, /Le professeur principal[\s\S]*Le Censeur/);
+  assert.doesNotMatch(pied, /La Direction/);
+  assert.equal((pied.match(/<strong>/g) || []).length, 2);
+});
+
 test("plusieurs classes : une page chacune ; l'aperçu n'imprime pas et le dit", () => {
   const r = reg([]);
   const deux = registresAppelHTML([{ registre: r, classe: "7ème A" }, { registre: r, classe: "7ème B" }], { schoolInfo: {} });
   assert.equal((deux.match(/<section class="page">/g) || []).length, 2);
+  assert.equal((deux.match(/<section class="page couverture">/g) || []).length, 2);
   const apercu = registresAppelHTML([{ registre: r, classe: "7ème A" }], { schoolInfo: {}, apercu: true });
   assert.doesNotMatch(apercu, /window\.print/);
   assert.match(apercu, /APERÇU/);

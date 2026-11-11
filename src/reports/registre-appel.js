@@ -1,9 +1,11 @@
 // ══════════════════════════════════════════════════════════════
 //  Registre d'appel du mois — feuille A4 paysage
 // ══════════════════════════════════════════════════════════════
-// Grille élèves × jours de classe (A / J / R), présences par élève, présents
-// et absents par jour, arrêté du mois (présences possibles, effectives, taux
-// de fréquentation) et signatures. Imprimé par le chef de section (module
+// Pour chaque classe : une page de garde, puis la grille élèves × jours de
+// classe (A / J / R), qui court sur autant de pages qu'il faut (seul l'en-tête
+// des colonnes se répète). À la fin seulement, après le dernier élève :
+// présents et absents par jour, arrêté du mois (présences possibles,
+// effectives, taux de fréquentation) et signatures, gardés ensemble. Imprimé par le chef de section (module
 // École → Discipline) ; l'enseignant n'en voit qu'un aperçu dans son portail.
 // Calcul : components/portail-enseignant/registre-mensuel.js.
 import {
@@ -12,6 +14,36 @@ import {
 import {
   dernierJour, formaterTaux, libelleDate, libelleMois,
 } from "../components/portail-enseignant/registre-mensuel.js";
+import { libelleChoisiParEcole } from "./signatures.js";
+
+// ── Qui signe le registre ───────────────────────────────────────
+// Deux signatures seulement : le titulaire de la classe (maître titulaire au
+// primaire, professeur principal au secondaire) et le chef de section sous
+// son VRAI titre. Ce titre : celui que l'école a donné au poste du chef
+// (Comptes & Postes : « Direction du Primaire » renommé « Directeur »,
+// « Bureau du Collège » renommé « Principal »…), sinon le titre habituel de la
+// section. Le lycée partage le poste du collège mais pas son titre : il garde
+// le sien (Censeur), que le chef de section peut changer avant d'imprimer
+// (« Directeur des études »…).
+const SECTIONS_PRIMAIRE = ["prescolaire", "maternelle", "primaire"];
+const POSTE_CHEF = { prescolaire: "primaire", maternelle: "primaire", primaire: "primaire", college: "college" };
+
+export function titreChefSection(schoolInfo = {}, section = "") {
+  const cle = String(section || "").toLowerCase();
+  const poste = POSTE_CHEF[cle];
+  const choisi = poste ? libelleChoisiParEcole(schoolInfo, poste) : "";
+  if (choisi) return choisi;
+  if (SECTIONS_PRIMAIRE.includes(cle)) return tr("teacher.register.headTitles.primaire");
+  if (cle === "college" || cle === "lycee") return tr(`teacher.register.headTitles.${cle}`);
+  return tr("teacher.register.signHead");
+}
+
+export const titreTitulaire = (section = "") => {
+  const cle = String(section || "").toLowerCase();
+  if (SECTIONS_PRIMAIRE.includes(cle)) return tr("teacher.register.titularTitles.primaire");
+  if (cle === "college" || cle === "lycee") return tr("teacher.register.titularTitles.secondaire");
+  return tr("teacher.register.signTitular");
+};
 
 // Noms saisis à la main : ni balise injectée ni tableau cassé.
 const echapper = (valeur) => String(valeur ?? "")
@@ -28,8 +60,30 @@ const initialeJour = (date, langue) => {
 const COULEUR_MARQUE = { A: "#b91c1c", J: "#1d4ed8", R: "#b45309" };
 const nombre = (n, langue) => Number(n || 0).toLocaleString(langue);
 
-// Une page : en-tête de l'école, grille, arrêté, signatures.
-function pageRegistre({ registre, classe = "", schoolInfo = {}, annee = "", nomEns = "", matiere = "" }, langue) {
+// Page de garde : l'école, le titre, la classe et le mois en grand.
+function pageDeGarde({ registre, classe = "", schoolInfo = {}, annee = "", nomEns = "", matiere = "" }, langue) {
+  const champs = [
+    ["teacher.register.coverYear", annee],
+    ["teacher.register.coverStudents", nombre(registre.lignes.length, langue)],
+    ["teacher.register.coverDays", nombre(registre.jours.length, langue)],
+    ["teacher.register.coverTeacher", [nomEns, matiere].filter(Boolean).join(" — ")],
+  ].filter(([, valeur]) => valeur !== "" && valeur != null)
+    .map(([cle, valeur]) => `<tr><th>${echapper(tr(cle))}</th><td>${echapper(valeur)}</td></tr>`).join("");
+  return `<section class="page couverture">
+  ${enteteDoc(schoolInfo, schoolInfo.logo)}
+  <div class="garde">
+    <div class="garde-titre">${echapper(tr("teacher.register.coverTitle"))}</div>
+    <div class="garde-mois">${echapper(libelleMois(registre.mois, langue))}</div>
+    ${classe ? `<div class="garde-classe">${echapper(classe)}</div>` : ""}
+    <table class="garde-champs">${champs}</table>
+  </div>
+  <div class="imprime">${echapper(tr("teacher.register.printedOn", { date: new Date().toLocaleDateString(langue) }))}</div>
+  </section>`;
+}
+
+// La grille (sur une ou plusieurs pages), puis, à la fin seulement, les
+// totaux par jour, le bilan, l'arrêté et les signatures.
+function pageRegistre({ registre, classe = "", annee = "", nomEns = "", matiere = "", titreChef = "", titulaire = "" }, langue) {
   const mois = libelleMois(registre.mois, langue);
   const { jours, lignes, parJour, totaux } = registre;
   const entetesJours = jours.map((j) => `<th class="j">${j.jour}<br/><small>${echapper(initialeJour(j.date, langue))}</small></th>`).join("");
@@ -41,7 +95,7 @@ function pageRegistre({ registre, classe = "", schoolInfo = {}, annee = "", nomE
     return `<tr><td class="n">${i + 1}</td><td class="nom">${echapper(l.eleve.nom)} ${echapper(l.eleve.prenom)}</td>${cases}`
       + `<td class="t">${l.absNJ || ""}</td><td class="t">${l.absJ || ""}</td><td class="t">${l.retards || ""}</td><td class="t tot">${l.presences}</td></tr>`;
   }).join("");
-  const ligneJour = (cle, libelle, total) => `<tr><td colspan="2" class="lib">${echapper(tr(libelle))}</td>`
+  const ligneJour = (cle, libelle, total) => `<tr class="total"><td colspan="2" class="lib">${echapper(tr(libelle))}</td>`
     + jours.map(({ date }) => `<td class="j">${parJour[date][cle]}</td>`).join("")
     + `<td colspan="3"></td><td class="t tot">${nombre(total, langue)}</td></tr>`;
   const sous = [
@@ -63,19 +117,18 @@ function pageRegistre({ registre, classe = "", schoolInfo = {}, annee = "", nomE
   ].filter(Boolean).map(echapper).join(" · ");
 
   return `<section class="page">
-  ${enteteDoc(schoolInfo, schoolInfo.logo)}
   <h2>${echapper(tr("teacher.register.printTitle", { month: mois }))}</h2>
   <div class="sous">${sous}</div>
   <table>
     <colgroup><col style="width:7mm"/><col style="width:50mm"/>${jours.map(() => "<col/>").join("")}<col style="width:9mm"/><col style="width:9mm"/><col style="width:9mm"/><col style="width:12mm"/></colgroup>
     <thead><tr><th>${echapper(tr("teacher.register.colNo"))}</th><th>${echapper(tr("teacher.register.colStudent"))}</th>${entetesJours}`
     + `<th>A</th><th>J</th><th>R</th><th>${echapper(tr("teacher.register.colPresences"))}</th></tr></thead>
-    <tbody>${corps}</tbody>
-    <tfoot>
+    <tbody>${corps}
       ${ligneJour("presents", "teacher.register.rowPresent", totaux.effectives)}
       ${ligneJour("absents", "teacher.register.rowAbsent", totaux.absNJ + totaux.absJ)}
-    </tfoot>
+    </tbody>
   </table>
+  <div class="fin">
   <div class="bilan">
     <span>${echapper(tr("teacher.register.statStudents", { count: lignes.length }))}</span>
     <span>${echapper(tr("teacher.register.statDays", { count: jours.length }))}</span>
@@ -89,15 +142,15 @@ function pageRegistre({ registre, classe = "", schoolInfo = {}, annee = "", nomE
   <div class="arrete">${echapper(arrete)}</div>
   <div class="legende">${echapper(tr("teacher.register.legend"))}${notes ? `<br/>${notes}` : ""}</div>
   <div class="pied">
-    <span><strong>${echapper(tr("teacher.register.signTitular"))}</strong><br/><br/><br/></span>
-    <span><strong>${echapper(tr("teacher.register.signHead"))}</strong><br/><br/><br/></span>
-    <span><strong>${echapper(tr("teacher.register.signDirection"))}</strong><br/><br/><br/></span>
+    <span><strong>${echapper(titulaire || tr("teacher.register.signTitular"))}</strong><br/><br/><br/></span>
+    <span><strong>${echapper(titreChef || tr("teacher.register.signHead"))}</strong><br/><br/><br/></span>
   </div>
   <div class="imprime">${echapper(tr("teacher.register.printedOn", { date: new Date().toLocaleDateString(langue) }))}</div>
+  </div>
   </section>`;
 }
 
-// Document complet : une page par classe. `apercu` : sans impression
+// Document complet : pour chaque classe, page de garde puis registre. `apercu` : sans impression
 // automatique, barré « APERÇU » (portail enseignant).
 export function registresAppelHTML(feuilles = [], { schoolInfo = {}, apercu = false } = {}) {
   const langue = printLang();
@@ -108,9 +161,9 @@ export function registresAppelHTML(feuilles = [], { schoolInfo = {}, apercu = fa
     : "";
   return `<!DOCTYPE html><html lang="${langue}" dir="${printDir()}"><head><meta charset="utf-8"/>
   <title>${echapper(titre)}</title>
-  <style>${printResetFor("size:A4 landscape;margin:0")}
+  <style>${printResetFor("size:A4 landscape;margin:7mm 0")}
   body{font-family:Arial,sans-serif;margin:0;color:#111;font-size:10px}
-  .page{padding:8mm 8mm 6mm;position:relative}
+  .page{padding:0 8mm;position:relative}
   .page + .page{break-before:page;page-break-before:always}
   h2{color:${c1};text-align:center;margin:2px 0;font-size:16px;letter-spacing:.04em;text-transform:uppercase}
   .sous{text-align:center;font-size:11px;color:#475569;font-weight:700;margin-bottom:6px}
@@ -118,6 +171,8 @@ export function registresAppelHTML(feuilles = [], { schoolInfo = {}, apercu = fa
   th{background:${c1};color:#fff;font-size:9px;padding:3px 1px}
   th small{font-weight:400;opacity:.8}
   td{border:1px solid #cbd5e1;padding:1px 3px;height:13px}
+  thead{display:table-header-group}
+  tr{break-inside:avoid;page-break-inside:avoid}
   tbody tr:nth-child(even) td{background:#f8fafc}
   td.j,th.j{text-align:center;padding:1px 0;font-weight:900}
   td.n{text-align:center;color:#64748b}
@@ -125,12 +180,22 @@ export function registresAppelHTML(feuilles = [], { schoolInfo = {}, apercu = fa
   td.t{text-align:center;font-weight:800}
   td.tot{background:#f1f5f9!important}
   td.lib{text-align:end;font-weight:900}
-  tfoot td{background:#f1f5f9!important;font-weight:900;font-size:9px}
+  tr.total td{background:#f1f5f9!important;font-weight:900;font-size:9px;border-top:1.5px solid #64748b}
+  .fin{break-inside:avoid;page-break-inside:avoid}
+  .couverture{min-height:192mm;display:flex;flex-direction:column}
+  .garde{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;border:3px double ${c1};border-radius:10px;margin:6mm 20mm;padding:10mm}
+  .garde-titre{font-size:40px;font-weight:900;color:${c1};letter-spacing:.08em;text-transform:uppercase;text-align:center}
+  .garde-mois{font-size:24px;font-weight:800;text-transform:capitalize}
+  .garde-classe{font-size:30px;font-weight:900;color:${c1};border-top:2px solid ${c1};border-bottom:2px solid ${c1};padding:4px 24px}
+  .garde-champs{width:auto;table-layout:auto;margin-top:8px;font-size:14px}
+  .garde-champs th{background:none;color:#475569;font-size:13px;text-align:end;padding:3px 12px;font-weight:700}
+  .garde-champs td{border:none;height:auto;padding:3px 12px;font-weight:800;background:none!important}
   .bilan{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:6px;font-size:10.5px;font-weight:700}
   .bilan .taux{color:${c1};font-size:12px}
   .arrete{margin:8px auto 0;max-width:230mm;border:1.5px solid ${c1};border-radius:6px;padding:6px 10px;font-size:11.5px;font-weight:700;text-align:center}
   .legende{text-align:center;font-size:9px;color:#64748b;margin-top:4px}
-  .pied{margin-top:10px;display:flex;justify-content:space-between;font-size:11px}
+  .pied{margin:12px 20mm 0;display:flex;justify-content:space-between;font-size:12px}
+  .pied span{text-align:center;min-width:60mm}
   .imprime{font-size:9px;color:#94a3b8;text-align:end}
   .apercu{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:5}
   .apercu span{transform:rotate(-24deg);font-size:110px;font-weight:900;color:rgba(185,28,28,.12);letter-spacing:.1em}
@@ -138,7 +203,7 @@ export function registresAppelHTML(feuilles = [], { schoolInfo = {}, apercu = fa
   ${WATERMARK_CSS}</style></head><body>
   ${watermarkHtml(schoolInfo)}
   ${apercu ? `<div class="bandeau">${echapper(tr("teacher.register.previewNote"))}</div><div class="apercu"><span>${echapper(tr("teacher.register.previewBadge"))}</span></div>` : ""}
-  ${feuilles.map((f) => pageRegistre({ schoolInfo, ...f }, langue)).join("")}
+  ${feuilles.map((f) => pageDeGarde({ schoolInfo, ...f }, langue) + pageRegistre({ schoolInfo, ...f }, langue)).join("")}
   ${apercu ? "" : `<script>${PRINT_TRIGGER}</script>`}
   </body></html>`;
 }

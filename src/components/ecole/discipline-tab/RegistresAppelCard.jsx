@@ -4,7 +4,7 @@ import { SchoolContext } from "../../../contexts/SchoolContext";
 import { getSectionLabel } from "../../../constants";
 import { useFirestore } from "../../../hooks/useFirestore";
 import { getJoursOuvrables } from "../edt/edt-utils";
-import { imprimerRegistresAppel } from "../../../reports/registre-appel";
+import { imprimerRegistresAppel, titreChefSection, titreTitulaire } from "../../../reports/registre-appel";
 import {
   cleMois, debutDeMois, formaterTaux, joursDeClasse, joursDeConge, libelleMois, moisDeLAnnee, moisPrecedent, registreMensuel,
 } from "../../portail-enseignant/registre-mensuel";
@@ -17,6 +17,19 @@ import {
 // Jours de classe : jours ouvrés de la section, sans les congés du
 // calendrier scolaire ; le chef de section peut retirer un jour de plus
 // (fermeture imprévue) d'un toucher, pour toutes les classes.
+// Titre du chef de section retouché avant d'imprimer : gardé sur l'appareil,
+// par école et par section (un chef de section imprime depuis le sien).
+const cleTitre = (schoolInfo, section) => `registre-titre-chef:${schoolInfo?.code || schoolInfo?.nom || ""}:${section}`;
+const lireTitre = (cle) => {
+  try { return localStorage.getItem(cle) || ""; } catch { return ""; }
+};
+const ecrireTitre = (cle, valeur) => {
+  try {
+    if (valeur) localStorage.setItem(cle, valeur);
+    else localStorage.removeItem(cle);
+  } catch { /* stockage indisponible : le titre vaut pour cette fois */ }
+};
+
 const selectStyle = {
   minHeight: 34, border: "1px solid #b0c4d8", borderRadius: 7, padding: "0 8px",
   fontSize: 12, fontWeight: 600, background: "#fff", fontFamily: "inherit",
@@ -41,6 +54,9 @@ export function RegistresAppelCard({ eleves = [], absences = [], section = "coll
   // par classe) se voit sans chercher.
   const [ouvert, setOuvert] = useState(true);
   const [classeChoisie, setClasseChoisie] = useState("");
+  const titreParDefaut = titreChefSection(schoolInfo, section);
+  const [titreSaisi, setTitreSaisi] = useState(() => lireTitre(cleTitre(schoolInfo, section)));
+  const titreChef = titreSaisi.trim() || titreParDefaut;
 
   const joursOuvrables = getJoursOuvrables(schoolInfo, section);
   const conges = joursDeConge(evenements, getSectionLabel(section));
@@ -62,7 +78,11 @@ export function RegistresAppelCard({ eleves = [], absences = [], section = "coll
   const joursOuvres = joursDeClasse(mois, joursOuvrables, aujourdhui);
 
   const imprimer = (liste) => {
-    const fait = imprimerRegistresAppel(liste.map(({ classe, registre }) => ({ classe, registre, annee })), { schoolInfo });
+    const titulaire = titreTitulaire(section);
+    const fait = imprimerRegistresAppel(
+      liste.map(({ classe, registre }) => ({ classe, registre, annee, titreChef, titulaire })),
+      { schoolInfo },
+    );
     if (!fait && toast) toast(t("teacher.register.popupBlocked"), "warning");
   };
   const basculerJour = (date) => setExclusParMois((cur) => {
@@ -114,6 +134,13 @@ export function RegistresAppelCard({ eleves = [], absences = [], section = "coll
             style={{ marginInlineStart: "auto", minHeight: 36, padding: "0 14px", borderRadius: 7, border: "none", background: couleur, color: "#fff", fontWeight: 800, fontSize: 12.5, cursor: "pointer" }}>
             🖨️ {t("school.registers.printOne", { classe: classeImpression })}
           </button>
+          <label style={{ flexBasis: "100%", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", fontSize: 12, fontWeight: 700, color: "#475569" }}>
+            ✍️ {t("school.registers.headTitle")}
+            <input type="text" value={titreSaisi} placeholder={titreParDefaut} maxLength={60}
+              onChange={(e) => { setTitreSaisi(e.target.value); ecrireTitre(cleTitre(schoolInfo, section), e.target.value.trim()); }}
+              style={{ ...selectStyle, flex: "1 1 180px", maxWidth: 280, fontWeight: 700 }} />
+            <span style={{ flexBasis: "100%", fontSize: 11, fontWeight: 400, color: "#64748b" }}>{t("school.registers.headTitleHint")}</span>
+          </label>
         </div>
       )}
 
