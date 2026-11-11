@@ -1639,7 +1639,8 @@
       "students": "Mes élèves",
       "schedule": "Emploi du temps",
       "messages": "Messages",
-      "lessonPlans": "Mes fiches"
+      "lessonPlans": "Mes fiches",
+      "rollRegister": "Registre d'appel"
     },
     "selectClass": "Sélectionnez une classe",
     "selectSubject": "Sélectionnez une matière",
@@ -1666,7 +1667,7 @@
       "sex": "Sexe"
     },
     "abs": {
-      "title": "Signalements et événements",
+      "title": "Registre d'appel",
       "myReports": "Mes signalements sur élèves ({{count}})",
       "visibleTo": "Visibles par la direction et les parents concernés.",
       "none": "Aucun signalement. Allez dans <b>Mes élèves</b> pour signaler une absence, un retard, une indiscipline.",
@@ -1708,6 +1709,37 @@
       "countInClass": "{{classe}} — {{count}} élève(s)",
       "active": "Actif",
       "report": "Signaler"
+    },
+    "register": {
+      "monthStats": "Statistique du mois",
+      "month": "Mois",
+      "class": "Classe",
+      "print": "Imprimer la statistique du mois",
+      "monthEnded": "Le mois de {{month}} est terminé : pensez à imprimer sa statistique.",
+      "seeMonth": "Voir {{month}}",
+      "noEvent": "Aucune absence ni aucun retard ce mois-ci dans cette classe.",
+      "colNo": "N°",
+      "colStudent": "Élève",
+      "colAbsNJ": "Absences non justifiées",
+      "colAbsJ": "Absences justifiées",
+      "colLate": "Retards",
+      "colTotal": "Total",
+      "statDays": "{{count}} jour(s) de classe",
+      "statStudents": "{{count}} élève(s)",
+      "statAbsNJ": "{{count}} absence(s) non justifiée(s)",
+      "statAbsJ": "{{count}} absence(s) justifiée(s)",
+      "statLate": "{{count}} retard(s)",
+      "statConcerned": "{{count}} élève(s) concerné(s) sur {{total}}",
+      "printTitle": "Registre d'appel — {{month}}",
+      "printClass": "Classe : {{classe}}",
+      "printTeacher": "Enseignant : {{name}}",
+      "printYear": "Année scolaire {{year}}",
+      "absentsPerDay": "Absents du jour / totaux",
+      "legend": "A = absent non justifié · J = absent justifié · R = retard · un jour compte une fois par élève.",
+      "printedOn": "Imprimé le {{date}}",
+      "signTeacher": "L'enseignant",
+      "signDirection": "La Direction",
+      "popupBlocked": "Le navigateur a bloqué la fenêtre d'impression : autorisez les fenêtres pour ce site."
     },
     "rollCall": {
       "tab": "Appel",

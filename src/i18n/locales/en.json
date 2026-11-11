@@ -1639,7 +1639,8 @@
       "students": "My students",
       "schedule": "Timetable",
       "messages": "Messages",
-      "lessonPlans": "My lesson plans"
+      "lessonPlans": "My lesson plans",
+      "rollRegister": "Attendance register"
     },
     "selectClass": "Select a class",
     "selectSubject": "Select a subject",
@@ -1666,7 +1667,7 @@
       "sex": "Sex"
     },
     "abs": {
-      "title": "Reports and events",
+      "title": "Attendance register",
       "myReports": "My reports on students ({{count}})",
       "visibleTo": "Visible to the management and the parents concerned.",
       "none": "No reports. Go to <b>My students</b> to report an absence, a late arrival or misbehaviour.",
@@ -1708,6 +1709,37 @@
       "countInClass": "{{classe}} — {{count}} student(s)",
       "active": "Active",
       "report": "Report"
+    },
+    "register": {
+      "monthStats": "Monthly statistics",
+      "month": "Month",
+      "class": "Class",
+      "print": "Print the monthly statistics",
+      "monthEnded": "{{month}} is over: remember to print its statistics.",
+      "seeMonth": "See {{month}}",
+      "noEvent": "No absence or lateness this month in this class.",
+      "colNo": "No.",
+      "colStudent": "Student",
+      "colAbsNJ": "Unexcused absences",
+      "colAbsJ": "Excused absences",
+      "colLate": "Late arrivals",
+      "colTotal": "Total",
+      "statDays": "{{count}} school day(s)",
+      "statStudents": "{{count}} student(s)",
+      "statAbsNJ": "{{count}} unexcused absence(s)",
+      "statAbsJ": "{{count}} excused absence(s)",
+      "statLate": "{{count}} late arrival(s)",
+      "statConcerned": "{{count}} student(s) concerned out of {{total}}",
+      "printTitle": "Attendance register — {{month}}",
+      "printClass": "Class: {{classe}}",
+      "printTeacher": "Teacher: {{name}}",
+      "printYear": "School year {{year}}",
+      "absentsPerDay": "Absent per day / totals",
+      "legend": "A = unexcused absence · J = excused absence · R = late · a day counts once per student.",
+      "printedOn": "Printed on {{date}}",
+      "signTeacher": "The teacher",
+      "signDirection": "The Management",
+      "popupBlocked": "The browser blocked the print window: allow pop-ups for this site."
     },
     "rollCall": {
       "tab": "Roll call",

@@ -1639,7 +1639,8 @@
       "students": "طلابي",
       "schedule": "الجدول الزمني",
       "messages": "الرسائل",
-      "lessonPlans": "بطاقات دروسي"
+      "lessonPlans": "بطاقات دروسي",
+      "rollRegister": "سجل المناداة"
     },
     "selectClass": "اختر فصلاً",
     "selectSubject": "اختر مادة",
@@ -1666,7 +1667,7 @@
       "sex": "الجنس"
     },
     "abs": {
-      "title": "البلاغات والأحداث",
+      "title": "سجل المناداة",
       "myReports": "بلاغاتي عن التلاميذ ({{count}})",
       "visibleTo": "تراها الإدارة وأولياء الأمور المعنيون.",
       "none": "لا توجد بلاغات. انتقل إلى <b>تلاميذي</b> للإبلاغ عن غياب أو تأخر أو سوء سلوك.",
@@ -1708,6 +1709,37 @@
       "countInClass": "{{classe}} — التلاميذ: {{count}}",
       "active": "نشط",
       "report": "إبلاغ"
+    },
+    "register": {
+      "monthStats": "إحصائيات الشهر",
+      "month": "الشهر",
+      "class": "القسم",
+      "print": "طباعة إحصائيات الشهر",
+      "monthEnded": "انتهى شهر {{month}}: لا تنسَ طباعة إحصائياته.",
+      "seeMonth": "عرض {{month}}",
+      "noEvent": "لا غياب ولا تأخر هذا الشهر في هذا القسم.",
+      "colNo": "الرقم",
+      "colStudent": "التلميذ",
+      "colAbsNJ": "غيابات غير مبررة",
+      "colAbsJ": "غيابات مبررة",
+      "colLate": "تأخرات",
+      "colTotal": "المجموع",
+      "statDays": "{{count}} يوم دراسة",
+      "statStudents": "{{count}} تلميذ",
+      "statAbsNJ": "{{count}} غياب غير مبرر",
+      "statAbsJ": "{{count}} غياب مبرر",
+      "statLate": "{{count}} تأخر",
+      "statConcerned": "{{count}} تلميذ معني من أصل {{total}}",
+      "printTitle": "سجل المناداة — {{month}}",
+      "printClass": "القسم: {{classe}}",
+      "printTeacher": "المعلم: {{name}}",
+      "printYear": "السنة الدراسية {{year}}",
+      "absentsPerDay": "الغائبون في اليوم / المجاميع",
+      "legend": "A = غياب غير مبرر · J = غياب مبرر · R = تأخر · يُحسب اليوم مرة واحدة لكل تلميذ.",
+      "printedOn": "طُبع في {{date}}",
+      "signTeacher": "المعلم",
+      "signDirection": "الإدارة",
+      "popupBlocked": "منع المتصفح نافذة الطباعة: اسمح بالنوافذ المنبثقة لهذا الموقع."
     },
     "rollCall": {
       "tab": "المناداة",

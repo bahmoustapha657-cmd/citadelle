@@ -2,8 +2,10 @@ import React from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { Badge, Btn, Card, TD, THead, TR } from "../ui";
 import { COULEUR_TYPE_INCIDENT, libelleTypeIncident } from "./incidents-actions";
+import { RegistreMoisCard } from "./RegistreMoisCard";
 
-// Onglet "Absences et événements" du Portail Enseignant.
+// Onglet « Registre d'appel » du Portail Enseignant : statistique du mois
+// (imprimable), puis les signalements.
 // Affiche les signalements faits par cet enseignant (avec actions
 // d'édition/suppression sur les siens uniquement) et les événements
 // d'enseignement saisis par la comptabilité (cours effectués/absents/…).
@@ -12,6 +14,7 @@ export function AbsencesTab({
   incidents, mesEvenements,
   enseignantId,
   ouvrirEditionIncident, supprimerIncident, ouvrirAppel = null,
+  mesClasses = [], eleves = [], joursOuvrables, annee = "", schoolInfo = {}, nomEns = "",
 }) {
   const { t } = useTranslation();
   return (
@@ -20,6 +23,9 @@ export function AbsencesTab({
         <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900, color: c1, flex: 1 }}>{t("teacher.abs.title")}</h2>
         {ouvrirAppel && <Btn sm v="blue" onClick={ouvrirAppel}>✅ {t("teacher.rollCall.start")}</Btn>}
       </div>
+
+      <RegistreMoisCard c1={c1} mesClasses={mesClasses} eleves={eleves} incidents={incidents}
+        joursOuvrables={joursOuvrables} annee={annee} schoolInfo={schoolInfo} nomEns={nomEns} matiere={matiere} />
 
       <Card style={{ marginBottom: 16 }}>
         <div style={{ padding: "12px 18px", borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
