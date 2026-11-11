@@ -243,6 +243,29 @@ export async function saveIncident({ incidentId, eleveId, type, date, justifie, 
   return { ok: true };
 }
 
+// Appel d'une classe : toutes les écritures d'un coup (plan de appel-logic.js).
+// Les créations partent en UNE requête ; un absent ↔ retard garde le motif et
+// le justificatif déjà saisis.
+export async function saveAppel({ date, creations = [], modifications = [], suppressions = [] }) {
+  const coll = absencesColl();
+  const auteur = {
+    matiere: ctx?.matiere || "",
+    signaledByEnseignantId: ctx?.enseignantId || null,
+    signaledByEnseignantNom: ctx?.enseignantNom || "",
+  };
+  await ajouterDocs(ctx.code, coll, creations.map(({ eleveId, type }) => ({
+    eleveId, type, date, justifie: "Non", motif: "", ...auteur,
+  })));
+  for (const { incident, type } of modifications) {
+    await modifierDoc(ctx.code, coll, {
+      _id: incident._id, eleveId: incident.eleveId, type, date: incident.date || date,
+      justifie: incident.justifie || "Non", motif: incident.motif || "", ...auteur,
+    });
+  }
+  for (const id of suppressions) await supprimerDoc(ctx.code, coll, id);
+  return { ok: true };
+}
+
 export async function deleteIncident(incidentId) {
   await supprimerDoc(ctx.code, absencesColl(), incidentId);
   return { ok: true };

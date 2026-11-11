@@ -1709,6 +1709,25 @@
       "active": "Active",
       "report": "Report"
     },
+    "rollCall": {
+      "tab": "Roll call",
+      "start": "Take roll call",
+      "date": "Date",
+      "hint": "Everyone is present by default: tap only the absent and late students, then save once.",
+      "present": "Present",
+      "absent": "Absent",
+      "late": "Late",
+      "other": "Other report (warning, sanction…)",
+      "noStudent": "No student in this class.",
+      "summary": "{{total}} students · present: {{presents}} · absent: {{absents}} · late: {{retards}}",
+      "doneAt": "Roll call taken at {{time}}",
+      "save": "Save roll call",
+      "saveCount": "Save roll call ({{n}})",
+      "validateAll": "All present — confirm roll call",
+      "allPresent": "Roll call saved: everyone is present.",
+      "saved": "Roll call saved — absent: {{absents}}, late: {{retards}}.",
+      "savedNotified": "Roll call saved — absent: {{absents}}, late: {{retards}}. Parents have been notified."
+    },
     "header": {
       "logoAlt": "School logo",
       "school": "School",
