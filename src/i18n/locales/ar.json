@@ -2309,7 +2309,9 @@
       "holiday": "عطلة في الرزنامة",
       "removed": "يوم محذوف",
       "classDay": "يوم دراسة",
-      "students": "التلاميذ"
+      "students": "التلاميذ",
+      "printOne": "طباعة سجل {{classe}}",
+      "classSummary": "{{possibles}} حضورًا ممكنًا · {{effectives}} فعليًا · {{rate}} %"
     }
   },
   "shell": {
