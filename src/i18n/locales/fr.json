@@ -1732,7 +1732,8 @@
       "logoAlt": "Logo de l'école",
       "school": "École",
       "portal": "Portail enseignant — {{year}}",
-      "teacher": "Enseignant"
+      "teacher": "Enseignant",
+      "menu": "Menu"
     },
     "incident": {
       "editTitle": "Modifier le signalement",

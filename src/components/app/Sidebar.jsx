@@ -48,9 +48,11 @@ export function Sidebar({
   utilisateur, utilisateurLabel, deconnecter, estHorsLigne, t,
 }) {
   const messagerie = useMessagerie();
+  // Repli sur téléphone par le bord de départ (gauche, ou droite en arabe) :
+  // un translateX(-100%) laissait le menu fermé à moitié visible en RTL.
   return (
-    <aside style={{position:"fixed",top:0,bottom:0,insetInlineStart:0,width:228,zIndex:50,background:schoolInfo.couleur1||C.sidebar,display:"flex",flexDirection:"column",
-      transform:isMobile&&!sidebarOuvert?"translateX(-100%)":"translateX(0)",transition:"transform 0.25s ease"}}>
+    <aside style={{position:"fixed",top:0,bottom:0,insetInlineStart:isMobile&&!sidebarOuvert?-228:0,width:228,zIndex:50,background:schoolInfo.couleur1||C.sidebar,display:"flex",flexDirection:"column",
+      transition:"inset-inline-start 0.25s ease"}}>
       <div style={{padding:"18px 16px 14px",borderBottom:"1px solid rgba(255,255,255,0.1)",textAlign:"center"}}>
         <Logo width={140} height={46} variant="light"/>
         <div style={{marginTop:10,paddingTop:8,borderTop:"1px solid rgba(255,255,255,0.08)"}}>

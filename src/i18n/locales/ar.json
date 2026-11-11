@@ -1732,7 +1732,8 @@
       "logoAlt": "شعار المدرسة",
       "school": "المدرسة",
       "portal": "بوابة المعلم — {{year}}",
-      "teacher": "معلم"
+      "teacher": "معلم",
+      "menu": "القائمة"
     },
     "incident": {
       "editTitle": "تعديل البلاغ",

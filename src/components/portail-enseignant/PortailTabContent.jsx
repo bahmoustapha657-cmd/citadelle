@@ -69,8 +69,8 @@ export function PortailTabContent({ p, schoolInfo, utilisateur, t }) {
       )}
 
       {p.tab === "messages" && (
-        <div style={{ border: "1px solid var(--lc-border)", borderRadius: 14, overflow: "hidden", boxShadow: "var(--lc-shadow)" }}>
-          <MessageriePage utilisateur={utilisateur} hauteur="calc(100dvh - 190px)" />
+        <div style={{ height: "100%", boxSizing: "border-box", border: "1px solid var(--lc-border)", borderRadius: 14, overflow: "hidden", boxShadow: "var(--lc-shadow)" }}>
+          <MessageriePage utilisateur={utilisateur} />
         </div>
       )}
 
