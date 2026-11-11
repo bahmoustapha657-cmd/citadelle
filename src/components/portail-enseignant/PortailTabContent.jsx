@@ -65,6 +65,8 @@ export function PortailTabContent({ p, schoolInfo, utilisateur, t }) {
           ouvrirEditionIncident={p.ouvrirEditionIncident}
           supprimerIncident={p.supprimerIncident}
           ouvrirAppel={p.mesClasses.length > 0 ? p.ouvrirAppel : null}
+          mesClasses={p.mesClasses} eleves={p.eleves} joursOuvrables={p.joursOuvrables}
+          annee={p.anneeNotes} schoolInfo={schoolInfo} nomEns={p.nomEns}
         />
       )}
 

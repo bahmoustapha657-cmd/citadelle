@@ -16,7 +16,7 @@ export function PortailMenu({
     { id: "edt", icon: "📅", libelle: t("teacher.tabs.schedule") },
     { id: "notes", icon: "📝", libelle: t("teacher.tabs.grades") },
     { id: "eleves", icon: "👥", libelle: t("teacher.tabs.students") },
-    { id: "absences", icon: "📋", libelle: t("dashboard.absences") },
+    { id: "absences", icon: "📋", libelle: t("teacher.tabs.rollRegister") },
     { id: "salaire", icon: "💰", libelle: t("accounting.tabs.salaries") },
     ...(messagerie ? [{ id: "messages", icon: "💬", libelle: t("teacher.tabs.messages") }] : []),
   ];
