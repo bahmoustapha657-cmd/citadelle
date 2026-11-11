@@ -2309,7 +2309,9 @@
       "holiday": "Congé du calendrier",
       "removed": "Jour retiré",
       "classDay": "Jour de classe",
-      "students": "Élèves"
+      "students": "Élèves",
+      "printOne": "Imprimer le registre de {{classe}}",
+      "classSummary": "{{possibles}} présences possibles · {{effectives}} effectives · {{rate}} %"
     }
   },
   "shell": {

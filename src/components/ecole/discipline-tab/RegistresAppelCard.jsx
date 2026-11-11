@@ -37,7 +37,10 @@ export function RegistresAppelCard({ eleves = [], absences = [], section = "coll
   const mois = listeMois.includes(moisChoisi) ? moisChoisi : listeMois[listeMois.length - 1];
   const [exclusParMois, setExclusParMois] = useState({});
   const exclus = exclusParMois[mois] || [];
-  const [ouvert, setOuvert] = useState(false);
+  // Ouverte d'office : le tableau par classe (et son bouton d'impression
+  // par classe) se voit sans chercher.
+  const [ouvert, setOuvert] = useState(true);
+  const [classeChoisie, setClasseChoisie] = useState("");
 
   const joursOuvrables = getJoursOuvrables(schoolInfo, section);
   const conges = joursDeConge(evenements, getSectionLabel(section));
@@ -52,7 +55,9 @@ export function RegistresAppelCard({ eleves = [], absences = [], section = "coll
   const section_ = registres.reduce((s, { registre: r }) => ({
     possibles: s.possibles + r.totaux.possibles, effectives: s.effectives + r.totaux.effectives,
   }), { possibles: 0, effectives: 0 });
-  const tauxSection = section_.possibles > 0 ? Math.round((section_.effectives / section_.possibles) * 1000) / 10 : 0;
+  const classeImpression = classes.includes(classeChoisie) ? classeChoisie : (classes[0] || "");
+  const registreClasse = registres.find((r) => r.classe === classeImpression);
+  const tauxSection =section_.possibles > 0 ? Math.round((section_.effectives / section_.possibles) * 1000) / 10 : 0;
   // Tous les jours ouvrés du mois (congés compris) : on retire/rajoute d'un toucher.
   const joursOuvres = joursDeClasse(mois, joursOuvrables, aujourdhui);
 
@@ -81,11 +86,36 @@ export function RegistresAppelCard({ eleves = [], absences = [], section = "coll
         </span>
         {peutImprimer && (
           <button type="button" onClick={() => imprimer(registres)}
-            style={{ minHeight: 34, padding: "0 12px", borderRadius: 7, border: "none", background: couleur, color: "#fff", fontWeight: 800, fontSize: 12, cursor: "pointer" }}>
+            style={{ minHeight: 34, padding: "0 12px", borderRadius: 7, border: `1px solid ${couleur}`, background: "#fff", color: couleur, fontWeight: 800, fontSize: 12, cursor: "pointer" }}>
             🖨️ {t("school.registers.printAll", { count: classes.length })}
           </button>
         )}
       </div>
+
+      {/* Impression d'UNE classe : le geste le plus courant du chef de section. */}
+      {peutImprimer && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", padding: "10px 12px", background: "#f8fafc", borderBottom: "1px solid #eef2f7" }}>
+          <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: "#475569" }}>
+            {t("teacher.register.class")}
+            <select aria-label={t("teacher.register.class")} value={classeImpression} onChange={(e) => setClasseChoisie(e.target.value)} style={selectStyle}>
+              {classes.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </label>
+          {registreClasse && (
+            <span style={{ fontSize: 12, color: "#475569" }}>
+              {t("school.registers.classSummary", {
+                possibles: registreClasse.registre.totaux.possibles.toLocaleString(langue),
+                effectives: registreClasse.registre.totaux.effectives.toLocaleString(langue),
+                rate: formaterTaux(registreClasse.registre.totaux.taux, langue),
+              })}
+            </span>
+          )}
+          <button type="button" disabled={!registreClasse} onClick={() => registreClasse && imprimer([registreClasse])}
+            style={{ marginInlineStart: "auto", minHeight: 36, padding: "0 14px", borderRadius: 7, border: "none", background: couleur, color: "#fff", fontWeight: 800, fontSize: 12.5, cursor: "pointer" }}>
+            🖨️ {t("school.registers.printOne", { classe: classeImpression })}
+          </button>
+        </div>
+      )}
 
       {ouvert && (
         <div style={{ padding: "10px 12px" }}>

@@ -2309,7 +2309,9 @@
       "holiday": "Calendar holiday",
       "removed": "Day removed",
       "classDay": "School day",
-      "students": "Students"
+      "students": "Students",
+      "printOne": "Print the register of {{classe}}",
+      "classSummary": "{{possibles}} possible attendances · {{effectives}} actual · {{rate}} %"
     }
   },
   "shell": {
