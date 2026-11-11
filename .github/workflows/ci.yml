@@ -151,7 +151,14 @@ jobs:
         run: npm run build:supabase
 
       - name: Navigateur Chromium
-        run: npx playwright install --with-deps chromium
+        # Dépôts Ubuntu injoignables (panne du 2026-11-11 : polices introuvables,
+        # e2e jamais lancés) : on installe alors Chromium seul. S'il lui manque
+        # une bibliothèque, les parcours échouent au lancement, en clair.
+        run: |
+          npx playwright install --with-deps chromium || {
+            echo "::warning::Dépendances système de Chromium non installées (dépôts Ubuntu injoignables) : Chromium seul."
+            npx playwright install chromium
+          }
 
       - name: Parcours de bout en bout
         env:
