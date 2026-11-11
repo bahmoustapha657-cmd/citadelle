@@ -1755,7 +1755,12 @@
       "previewNote": "Aperçu seulement : le registre officiel est arrêté et imprimé par le chef de section, congés du calendrier retirés.",
       "teacherHint": "Présences possibles = élèves × jours de classe ; un retard compte présent. Le registre officiel (congés retirés) est imprimé par le chef de section.",
       "holidaysNote": "{{count}} jour(s) de congé du calendrier retiré(s) des jours de classe.",
-      "outsideDays": "{{count}} signalement(s) tombé(s) un jour sans classe, non compté(s)."
+      "outsideDays": "{{count}} signalement(s) tombé(s) un jour sans classe, non compté(s).",
+      "coverTitle": "Registre d'appel",
+      "coverYear": "Année scolaire",
+      "coverStudents": "Effectif",
+      "coverDays": "Jours de classe",
+      "coverTeacher": "Enseignant"
     },
     "rollCall": {
       "tab": "Appel",

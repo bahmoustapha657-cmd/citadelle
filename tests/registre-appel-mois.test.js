@@ -109,10 +109,27 @@ test("feuille imprimée : grille, présents / absents par jour, arrêté, signat
   assert.match(html, /window\.print/);
 });
 
+test("page de garde d'abord ; totaux par jour, bilan et signatures seulement après le dernier élève", () => {
+  const r = reg([inc("e1", "2026-11-03", "Absence")]);
+  const html = registreAppelHTML({ registre: r, classe: "7ème A", schoolInfo: { nom: "École test" }, annee: "2026-2027" });
+  const garde = html.indexOf('<section class="page couverture">');
+  const grille = html.indexOf('<section class="page">');
+  assert.ok(garde > -1 && garde < grille);
+  assert.match(html.slice(garde, grille), /7ème A[\s\S]*2026-2027/);
+  // Pas de <tfoot> : il se répéterait au bas de chaque page du registre.
+  assert.doesNotMatch(html, /<tfoot>/);
+  const dernierNom = html.lastIndexOf('<td class="nom">');
+  const totaux = html.indexOf('<tr class="total">');
+  assert.ok(totaux > dernierNom);
+  assert.ok(html.indexOf('<div class="fin">') > totaux);
+  assert.ok(html.indexOf("Le chef de section") > html.indexOf('<div class="fin">'));
+});
+
 test("plusieurs classes : une page chacune ; l'aperçu n'imprime pas et le dit", () => {
   const r = reg([]);
   const deux = registresAppelHTML([{ registre: r, classe: "7ème A" }, { registre: r, classe: "7ème B" }], { schoolInfo: {} });
   assert.equal((deux.match(/<section class="page">/g) || []).length, 2);
+  assert.equal((deux.match(/<section class="page couverture">/g) || []).length, 2);
   const apercu = registresAppelHTML([{ registre: r, classe: "7ème A" }], { schoolInfo: {}, apercu: true });
   assert.doesNotMatch(apercu, /window\.print/);
   assert.match(apercu, /APERÇU/);

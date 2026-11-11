@@ -1755,7 +1755,12 @@
       "previewNote": "Preview only: the official register is closed and printed by the head of section, with calendar holidays removed.",
       "teacherHint": "Possible attendances = students × school days; a late arrival counts as present. The official register (holidays removed) is printed by the head of section.",
       "holidaysNote": "{{count}} calendar holiday day(s) removed from school days.",
-      "outsideDays": "{{count}} report(s) on a day without class, not counted."
+      "outsideDays": "{{count}} report(s) on a day without class, not counted.",
+      "coverTitle": "Attendance register",
+      "coverYear": "School year",
+      "coverStudents": "Number of students",
+      "coverDays": "School days",
+      "coverTeacher": "Teacher"
     },
     "rollCall": {
       "tab": "Roll call",
