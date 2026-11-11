@@ -14,6 +14,36 @@ import {
 import {
   dernierJour, formaterTaux, libelleDate, libelleMois,
 } from "../components/portail-enseignant/registre-mensuel.js";
+import { libelleChoisiParEcole } from "./signatures.js";
+
+// ── Qui signe le registre ───────────────────────────────────────
+// Deux signatures seulement : le titulaire de la classe (maître titulaire au
+// primaire, professeur principal au secondaire) et le chef de section sous
+// son VRAI titre. Ce titre : celui que l'école a donné au poste du chef
+// (Comptes & Postes : « Direction du Primaire » renommé « Directeur »,
+// « Bureau du Collège » renommé « Principal »…), sinon le titre habituel de la
+// section. Le lycée partage le poste du collège mais pas son titre : il garde
+// le sien (Censeur), que le chef de section peut changer avant d'imprimer
+// (« Directeur des études »…).
+const SECTIONS_PRIMAIRE = ["prescolaire", "maternelle", "primaire"];
+const POSTE_CHEF = { prescolaire: "primaire", maternelle: "primaire", primaire: "primaire", college: "college" };
+
+export function titreChefSection(schoolInfo = {}, section = "") {
+  const cle = String(section || "").toLowerCase();
+  const poste = POSTE_CHEF[cle];
+  const choisi = poste ? libelleChoisiParEcole(schoolInfo, poste) : "";
+  if (choisi) return choisi;
+  if (SECTIONS_PRIMAIRE.includes(cle)) return tr("teacher.register.headTitles.primaire");
+  if (cle === "college" || cle === "lycee") return tr(`teacher.register.headTitles.${cle}`);
+  return tr("teacher.register.signHead");
+}
+
+export const titreTitulaire = (section = "") => {
+  const cle = String(section || "").toLowerCase();
+  if (SECTIONS_PRIMAIRE.includes(cle)) return tr("teacher.register.titularTitles.primaire");
+  if (cle === "college" || cle === "lycee") return tr("teacher.register.titularTitles.secondaire");
+  return tr("teacher.register.signTitular");
+};
 
 // Noms saisis à la main : ni balise injectée ni tableau cassé.
 const echapper = (valeur) => String(valeur ?? "")
@@ -53,7 +83,7 @@ function pageDeGarde({ registre, classe = "", schoolInfo = {}, annee = "", nomEn
 
 // La grille (sur une ou plusieurs pages), puis, à la fin seulement, les
 // totaux par jour, le bilan, l'arrêté et les signatures.
-function pageRegistre({ registre, classe = "", annee = "", nomEns = "", matiere = "" }, langue) {
+function pageRegistre({ registre, classe = "", annee = "", nomEns = "", matiere = "", titreChef = "", titulaire = "" }, langue) {
   const mois = libelleMois(registre.mois, langue);
   const { jours, lignes, parJour, totaux } = registre;
   const entetesJours = jours.map((j) => `<th class="j">${j.jour}<br/><small>${echapper(initialeJour(j.date, langue))}</small></th>`).join("");
@@ -112,9 +142,8 @@ function pageRegistre({ registre, classe = "", annee = "", nomEns = "", matiere 
   <div class="arrete">${echapper(arrete)}</div>
   <div class="legende">${echapper(tr("teacher.register.legend"))}${notes ? `<br/>${notes}` : ""}</div>
   <div class="pied">
-    <span><strong>${echapper(tr("teacher.register.signTitular"))}</strong><br/><br/><br/></span>
-    <span><strong>${echapper(tr("teacher.register.signHead"))}</strong><br/><br/><br/></span>
-    <span><strong>${echapper(tr("teacher.register.signDirection"))}</strong><br/><br/><br/></span>
+    <span><strong>${echapper(titulaire || tr("teacher.register.signTitular"))}</strong><br/><br/><br/></span>
+    <span><strong>${echapper(titreChef || tr("teacher.register.signHead"))}</strong><br/><br/><br/></span>
   </div>
   <div class="imprime">${echapper(tr("teacher.register.printedOn", { date: new Date().toLocaleDateString(langue) }))}</div>
   </div>
@@ -165,7 +194,8 @@ export function registresAppelHTML(feuilles = [], { schoolInfo = {}, apercu = fa
   .bilan .taux{color:${c1};font-size:12px}
   .arrete{margin:8px auto 0;max-width:230mm;border:1.5px solid ${c1};border-radius:6px;padding:6px 10px;font-size:11.5px;font-weight:700;text-align:center}
   .legende{text-align:center;font-size:9px;color:#64748b;margin-top:4px}
-  .pied{margin-top:10px;display:flex;justify-content:space-between;font-size:11px}
+  .pied{margin:12px 20mm 0;display:flex;justify-content:space-between;font-size:12px}
+  .pied span{text-align:center;min-width:60mm}
   .imprime{font-size:9px;color:#94a3b8;text-align:end}
   .apercu{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:5}
   .apercu span{transform:rotate(-24deg);font-size:110px;font-weight:900;color:rgba(185,28,28,.12);letter-spacing:.1em}

@@ -1734,7 +1734,6 @@
       "printYear": "السنة الدراسية {{year}}",
       "legend": "A = غياب غير مبرر · J = غياب مبرر · R = تأخر (يُحسب حاضرًا) · يُحسب اليوم مرة واحدة لكل تلميذ.",
       "printedOn": "طُبع في {{date}}",
-      "signDirection": "الإدارة",
       "popupBlocked": "منع المتصفح نافذة الطباعة: اسمح بالنوافذ المنبثقة لهذا الموقع.",
       "possible": "الحضور الممكن",
       "effective": "الحضور الفعلي",
@@ -1760,7 +1759,16 @@
       "coverYear": "السنة الدراسية",
       "coverStudents": "عدد التلاميذ",
       "coverDays": "أيام الدراسة",
-      "coverTeacher": "المعلم"
+      "coverTeacher": "المعلم",
+      "headTitles": {
+        "primaire": "المدير",
+        "college": "مدير المتوسطة",
+        "lycee": "الناظر"
+      },
+      "titularTitles": {
+        "primaire": "معلم القسم",
+        "secondaire": "الأستاذ الرئيسي"
+      }
     },
     "rollCall": {
       "tab": "المناداة",
@@ -2316,7 +2324,9 @@
       "classDay": "يوم دراسة",
       "students": "التلاميذ",
       "printOne": "طباعة سجل {{classe}}",
-      "classSummary": "{{possibles}} حضورًا ممكنًا · {{effectives}} فعليًا · {{rate}} %"
+      "classSummary": "{{possibles}} حضورًا ممكنًا · {{effectives}} فعليًا · {{rate}} %",
+      "headTitle": "لقب رئيس القسم التعليمي",
+      "headTitleHint": "يُطبع تحت توقيع رئيس القسم التعليمي (مثل: المدير، الناظر، مدير الدروس). يُحفظ على هذا الجهاز."
     }
   },
   "shell": {

@@ -1734,7 +1734,6 @@
       "printYear": "Année scolaire {{year}}",
       "legend": "A = absent non justifié · J = absent justifié · R = retard (compté présent) · un jour compte une fois par élève.",
       "printedOn": "Imprimé le {{date}}",
-      "signDirection": "La Direction",
       "popupBlocked": "Le navigateur a bloqué la fenêtre d'impression : autorisez les fenêtres pour ce site.",
       "possible": "Présences possibles",
       "effective": "Présences effectives",
@@ -1760,7 +1759,16 @@
       "coverYear": "Année scolaire",
       "coverStudents": "Effectif",
       "coverDays": "Jours de classe",
-      "coverTeacher": "Enseignant"
+      "coverTeacher": "Enseignant",
+      "headTitles": {
+        "primaire": "Le Directeur",
+        "college": "Le Principal",
+        "lycee": "Le Censeur"
+      },
+      "titularTitles": {
+        "primaire": "Le maître titulaire",
+        "secondaire": "Le professeur principal"
+      }
     },
     "rollCall": {
       "tab": "Appel",
@@ -2316,7 +2324,9 @@
       "classDay": "Jour de classe",
       "students": "Élèves",
       "printOne": "Imprimer le registre de {{classe}}",
-      "classSummary": "{{possibles}} présences possibles · {{effectives}} effectives · {{rate}} %"
+      "classSummary": "{{possibles}} présences possibles · {{effectives}} effectives · {{rate}} %",
+      "headTitle": "Titre du chef de section",
+      "headTitleHint": "Imprimé sous la signature du chef de section (ex. : Directeur, Principal, Censeur, Directeur des études). Gardé sur cet appareil."
     }
   },
   "shell": {
