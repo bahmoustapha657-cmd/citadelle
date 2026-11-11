@@ -5,8 +5,9 @@
 // Push notification au parent à la CRÉATION uniquement (pas en édition),
 // pour éviter de spammer si l'enseignant corrige une faute de frappe.
 
-import { saveIncident, deleteIncident } from "../../backend/teacher-portal-supabase";
+import { saveIncident, saveAppel, deleteIncident } from "../../backend/teacher-portal-supabase";
 import i18n from "../../i18n";
+import { nbEcritures } from "./appel-logic";
 
 // Types de signalement : la valeur enregistrée reste en français (lue par la
 // direction, les parents et les états imprimés) ; seul le libellé se traduit.
@@ -63,6 +64,45 @@ export async function enregistrerIncident({
     toast(i18n.t("teacher.incident.saved"), "success");
   } catch (error) {
     toast(error.message || i18n.t("teacher.incident.saveError"), "error");
+  } finally {
+    setEnregistrement(false);
+  }
+}
+
+// Enregistre l'appel d'un jour : n'écrit que la différence avec ce qui est
+// déjà en base (plan de appel-logic.js). Les parents ne sont prévenus que des
+// nouvelles absences et des nouveaux retards. Renvoie true si c'est fait.
+export async function enregistrerAppel({
+  plan, date, bilan,
+  envoyerPush, setEnregistrement, chargerPortail, toast,
+}) {
+  setEnregistrement(true);
+  try {
+    if (nbEcritures(plan) > 0) {
+      await saveAppel({ date, ...plan });
+      if (envoyerPush) {
+        for (const { eleveId, eleveNom, type } of plan.creations) {
+          envoyerPush(
+            ["parent"],
+            `⚠️ ${i18n.t("teacher.incident.pushTitle", { type: libelleTypeIncident(type) })}`,
+            i18n.t("teacher.incident.pushBody", { name: eleveNom || i18n.t("teacher.incident.yourChild"), type: libelleTypeIncident(type), date, reason: "" }),
+            "/absences",
+            { eleveId },
+          );
+        }
+      }
+      await chargerPortail();
+    }
+    const cle = bilan.absents + bilan.retards === 0 ? "allPresent"
+      : plan.creations.length > 0 ? "savedNotified" : "saved";
+    toast(i18n.t(`teacher.rollCall.${cle}`, { absents: bilan.absents, retards: bilan.retards }), "success");
+    return true;
+  } catch (error) {
+    // Une partie a pu passer : on relit, l'écran montre ce qui est enregistré
+    // et un nouvel appui n'envoie que le reste.
+    await chargerPortail();
+    toast(error.message || i18n.t("teacher.incident.saveError"), "error");
+    return false;
   } finally {
     setEnregistrement(false);
   }

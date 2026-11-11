@@ -34,7 +34,7 @@ export function elevesEnAlerte(eleves = [], absences = [], seuil = 3) {
 // Date d'absence → « AAAA-MM-JJ ». Le champ date et le portail enseignant
 // écrivent ce format ; les absences Firestore d'avant la migration portaient
 // parfois « JJ/MM/AAAA » (today()).
-const dateIso = (date) => {
+export const dateIso = (date) => {
   const brut = String(date || "").trim();
   if (/^\d{4}-\d{2}-\d{2}/.test(brut)) return brut.slice(0, 10);
   const fr = brut.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);

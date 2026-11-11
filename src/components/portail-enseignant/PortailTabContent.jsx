@@ -53,7 +53,8 @@ export function PortailTabContent({ p, schoolInfo, utilisateur, t }) {
 
       {p.tab === "eleves" && (
         <ElevesTab c1={p.c1} mesClasses={p.mesClasses} eleves={p.eleves} ouvrirSignalementEleve={p.ouvrirSignalementEleve}
-          schoolInfo={schoolInfo} annee={p.anneeNotes} section={p.section} />
+          schoolInfo={schoolInfo} annee={p.anneeNotes} section={p.section}
+          vueChoisie={p.vueEleves} setVue={p.setVueEleves} appel={p.appel} enregistrement={p.enregistrement} />
       )}
 
       {p.tab === "absences" && (
@@ -63,6 +64,7 @@ export function PortailTabContent({ p, schoolInfo, utilisateur, t }) {
           enseignantId={p.enseignantId}
           ouvrirEditionIncident={p.ouvrirEditionIncident}
           supprimerIncident={p.supprimerIncident}
+          ouvrirAppel={p.mesClasses.length > 0 ? p.ouvrirAppel : null}
         />
       )}
 

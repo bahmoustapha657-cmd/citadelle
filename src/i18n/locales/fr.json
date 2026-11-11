@@ -1709,6 +1709,25 @@
       "active": "Actif",
       "report": "Signaler"
     },
+    "rollCall": {
+      "tab": "Appel",
+      "start": "Faire l'appel",
+      "date": "Date",
+      "hint": "Tout le monde est présent par défaut : touchez seulement les absents et les retards, puis enregistrez une seule fois.",
+      "present": "Présent",
+      "absent": "Absent",
+      "late": "Retard",
+      "other": "Autre signalement (avertissement, sanction…)",
+      "noStudent": "Aucun élève dans cette classe.",
+      "summary": "{{total}} élèves · présents : {{presents}} · absents : {{absents}} · retards : {{retards}}",
+      "doneAt": "Appel fait à {{time}}",
+      "save": "Enregistrer l'appel",
+      "saveCount": "Enregistrer l'appel ({{n}})",
+      "validateAll": "Tous présents — valider l'appel",
+      "allPresent": "Appel enregistré : tout le monde est présent.",
+      "saved": "Appel enregistré — absents : {{absents}}, retards : {{retards}}.",
+      "savedNotified": "Appel enregistré — absents : {{absents}}, retards : {{retards}}. Les parents sont prévenus."
+    },
     "header": {
       "logoAlt": "Logo de l'école",
       "school": "École",
