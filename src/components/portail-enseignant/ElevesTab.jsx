@@ -5,11 +5,12 @@ import { Badge, Btn, Card, TD, THead, TR, Vide } from "../ui";
 import { EnfantAgrandi } from "../identite-enfant/EnfantAgrandi";
 import { PhotoEleve } from "../identite-enfant/PhotoEleve";
 import { Trombinoscope } from "../identite-enfant/Trombinoscope";
+import { AppelVue } from "./AppelVue";
 
-export function ElevesTab({ c1, mesClasses, eleves, ouvrirSignalementEleve, schoolInfo = {}, annee = "", section = "" }) {
+export function ElevesTab({ c1, mesClasses, eleves, ouvrirSignalementEleve, schoolInfo = {}, annee = "", section = "", vueChoisie = "", setVue, appel, enregistrement = false }) {
   // En maternelle, la maîtresse reconnaît l'enfant à son visage avant son
   // nom : le trombinoscope s'ouvre d'office. Ailleurs, la liste.
-  const [vue, setVue] = useState(section === "prescolaire" ? "trombi" : "liste");
+  const vue = vueChoisie || (section === "prescolaire" ? "trombi" : "liste");
   const [agrandi, setAgrandi] = useState(null);
   const { t } = useTranslation();
   return (
@@ -17,12 +18,19 @@ export function ElevesTab({ c1, mesClasses, eleves, ouvrirSignalementEleve, scho
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", margin: "0 0 16px" }}>
         <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900, color: c1, flex: 1 }}>{t("teacher.students.title", { count: eleves.length })}</h2>
         {mesClasses.length > 0 && <span style={{ display: "inline-flex", gap: 4 }}>
+          <Btn sm v={vue === "appel" ? "blue" : "ghost"} onClick={() => setVue("appel")}>✅ {t("teacher.rollCall.tab")}</Btn>
           <Btn sm v={vue === "liste" ? "blue" : "ghost"} onClick={() => setVue("liste")}>📋 {t("teacher.students.list")}</Btn>
           <Btn sm v={vue === "trombi" ? "blue" : "ghost"} onClick={() => setVue("trombi")}>🖼️ {t("teacher.students.photoBoard")}</Btn>
         </span>}
       </div>
       {mesClasses.length === 0 ? (
         <Vide icone="👥" msg={t("teacher.students.noClass")} />
+      ) : vue === "appel" ? (
+        <>
+          <AppelVue c1={c1} mesClasses={mesClasses} appel={appel} enregistrement={enregistrement}
+            ouvrirSignalementEleve={ouvrirSignalementEleve} onAgrandir={setAgrandi} />
+          <EnfantAgrandi eleve={agrandi} fermer={() => setAgrandi(null)} />
+        </>
       ) : vue === "trombi" ? (
         <Trombinoscope eleves={eleves} schoolInfo={schoolInfo} annee={annee} />
       ) : (

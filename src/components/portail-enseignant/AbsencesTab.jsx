@@ -11,12 +11,15 @@ export function AbsencesTab({
   c1, matiere,
   incidents, mesEvenements,
   enseignantId,
-  ouvrirEditionIncident, supprimerIncident,
+  ouvrirEditionIncident, supprimerIncident, ouvrirAppel = null,
 }) {
   const { t } = useTranslation();
   return (
     <>
-      <h2 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 900, color: c1 }}>{t("teacher.abs.title")}</h2>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", margin: "0 0 16px" }}>
+        <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900, color: c1, flex: 1 }}>{t("teacher.abs.title")}</h2>
+        {ouvrirAppel && <Btn sm v="blue" onClick={ouvrirAppel}>✅ {t("teacher.rollCall.start")}</Btn>}
+      </div>
 
       <Card style={{ marginBottom: 16 }}>
         <div style={{ padding: "12px 18px", borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>

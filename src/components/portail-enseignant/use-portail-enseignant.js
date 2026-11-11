@@ -19,8 +19,11 @@ import {
 } from "./notes-actions";
 import {
   enregistrerIncident as enregistrerIncidentAction,
+  enregistrerAppel as enregistrerAppelAction,
   supprimerIncident as supprimerIncidentAction,
 } from "./incidents-actions";
+import { compterAppel, heureAppelFait, noterAppelFait, planAppel, situationDuJour } from "./appel-logic";
+import { dateAbsence } from "../../absences-eleves";
 import { fetchTeacherPortal } from "./portail-api";
 import { ecouterMiroir } from "../../backend/realtime-supabase";
 import { saveNotesApi } from "./notes-api";
@@ -87,6 +90,13 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
   const [modalIncident, setModalIncident] = useState(null);
   const [formIncident, setFormIncident] = useState({});
   const [enregistrement, setEnregistrement] = useState(false);
+  // « Mes élèves » : vue choisie (liste, trombinoscope, appel) et appel en
+  // cours. Gardés ici : changer d'onglet ne perd pas un appel commencé.
+  const [vueEleves, setVueEleves] = useState("");
+  const [appelClasseChoisie, setAppelClasse] = useState("");
+  const [appelDate, setAppelDateBrute] = useState(() => dateAbsence());
+  const [appelMarques, setAppelMarques] = useState({});
+  const [appelFaitA, setAppelFaitA] = useState("");
 
   const nomEns = utilisateur.enseignantNom || utilisateur.nom || "";
   const matiere = utilisateur.matiere || "";
@@ -120,7 +130,7 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
   const enseignements = portalData.enseignements || [];
   const salaires = portalData.salaires || [];
   const salairesIndisponibles = Boolean(portalData.salairesIndisponibles);
-  const incidents = portalData.incidents || [];
+  const incidents = useMemo(() => portalData.incidents || [], [portalData.incidents]);
   const enseignantId = utilisateur.enseignantId || null;
 
   // Classes du prof = union de l'emploi du temps ET des classes des élèves
@@ -347,12 +357,57 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
     setModalIncident("edit");
   };
 
+  // Relecture discrète après un signalement : l'écran reste en place, la
+  // liste ne remonte pas en haut (l'enseignant reprenait sa recherche à zéro
+  // après chaque absence signalée).
+  const relireSansBouger = () => chargerPortail({ silencieux: true });
+
   const enregistrerIncident = siModifiable(() => enregistrerIncidentAction({
-    formIncident, envoyerPush, setEnregistrement, setModalIncident, chargerPortail, toast,
+    formIncident, envoyerPush, setEnregistrement, setModalIncident, chargerPortail: relireSansBouger, toast,
   }));
   const supprimerIncident = siModifiable((incidentId) => supprimerIncidentAction(incidentId, {
-    setEnregistrement, chargerPortail, toast,
+    setEnregistrement, chargerPortail: relireSansBouger, toast,
   }));
+
+  // ── Appel de la classe ─────────────────────────────────────────────────
+  // Une classe et un jour à la fois ; tout le monde est présent par défaut.
+  const appelClasse = mesClasses.includes(appelClasseChoisie) ? appelClasseChoisie : (mesClasses[0] || "");
+  const aujourdhui = dateAbsence();
+  const elevesAppel = useMemo(
+    () => eleves.filter((item) => item.classe === appelClasse)
+      .sort((a, b) => `${a.nom || ""} ${a.prenom || ""}`.localeCompare(`${b.nom || ""} ${b.prenom || ""}`, "fr", { sensitivity: "base" })),
+    [eleves, appelClasse],
+  );
+  const situationAppel = useMemo(
+    () => situationDuJour(incidents, appelDate, enseignantId),
+    [incidents, appelDate, enseignantId],
+  );
+  // Tous les élèves cochés, même d'une autre classe : rien de coché ne reste
+  // de côté à l'enregistrement.
+  const planDeLAppel = planAppel({ eleves, incidents, date: appelDate, marques: appelMarques, enseignantId });
+  // Un autre jour = un autre appel : les coches du précédent ne s'y reportent pas.
+  const setAppelDate = (date) => {
+    setAppelDateBrute(!date || date > aujourdhui ? aujourdhui : date);
+    setAppelMarques({});
+  };
+  const marquerAppel = (eleveId, etat) => setAppelMarques((cur) => ({ ...cur, [eleveId]: etat }));
+  useEffect(() => {
+    setAppelFaitA(heureAppelFait(ownerId, appelClasse, appelDate));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appelClasse, appelDate]);
+  const enregistrerAppel = siModifiable(async () => {
+    const fait = await enregistrerAppelAction({
+      plan: planDeLAppel, date: appelDate,
+      bilan: compterAppel(elevesAppel, situationAppel, appelMarques),
+      envoyerPush, setEnregistrement, chargerPortail: relireSansBouger, toast,
+    });
+    if (!fait) return;
+    setAppelMarques({});
+    const heure = new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+    noterAppelFait(ownerId, appelClasse, appelDate, heure);
+    setAppelFaitA(heure);
+  });
+  const ouvrirAppel = () => { setVueEleves("appel"); setTab("eleves"); };
 
   const notesPeriode = useMemo(
     () => mesNotes.filter((item) => item.periode === periodeN
@@ -382,6 +437,12 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
     ouvrirCreationNote, ouvrirGrille, majGrid, enregistrerGrille,
     ouvrirEditionNote, enregistrerNote, supprimerNote,
     ouvrirSignalementEleve, ouvrirEditionIncident, enregistrerIncident, supprimerIncident,
+    vueEleves, setVueEleves, ouvrirAppel,
+    appel: {
+      classe: appelClasse, setClasse: setAppelClasse, date: appelDate, setDate: setAppelDate, aujourdhui,
+      eleves: elevesAppel, situation: situationAppel, marques: appelMarques, marquer: marquerAppel,
+      plan: planDeLAppel, enregistrer: enregistrerAppel, faitA: appelFaitA,
+    },
     imprimerEdt, imprimerPaies,
     lectureSeule,
     // Vue d'ouverture de « Mes élèves » (trombinoscope en maternelle).
