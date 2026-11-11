@@ -1713,7 +1713,8 @@
       "logoAlt": "School logo",
       "school": "School",
       "portal": "Teacher portal — {{year}}",
-      "teacher": "Teacher"
+      "teacher": "Teacher",
+      "menu": "Menu"
     },
     "incident": {
       "editTitle": "Edit the report",
