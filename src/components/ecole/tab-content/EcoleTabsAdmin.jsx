@@ -9,7 +9,7 @@ import { MatieresTab } from "../MatieresTab";
 
 // Onglets de gestion : enseignements, discipline, bulletins, tableau
 // d'honneur, livrets, matières, emploi du temps, attestations.
-export function EcoleTabsAdmin({ e, section, avecEns, userRole, annee, maxNote, matieresPredefinies, cleNotes, cleEleves }) {
+export function EcoleTabsAdmin({ e, section, avecEns, userRole, annee, maxNote, matieresPredefinies, cleNotes, cleEleves, readOnly = false }) {
   return (
     <>
       {/* ── ENSEIGNEMENTS ── */}
@@ -47,6 +47,10 @@ export function EcoleTabsAdmin({ e, section, avecEns, userRole, annee, maxNote, 
         canCreate={e.canCreateDiscipline}
         canEdit={e.canEditDiscipline}
         envoyerPush={e.envoyerPush}
+        // Registres d'appel : imprimés par les chefs de section (écriture sur
+        // le module de la section) et la Direction — pas par le surveillant,
+        // qui n'écrit que la discipline.
+        peutImprimerRegistres={userRole === "direction" || !readOnly}
       />}
 
       {/* ── BULLETINS ── */}

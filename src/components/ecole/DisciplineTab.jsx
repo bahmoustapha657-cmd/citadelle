@@ -7,10 +7,11 @@ import { exportExcel } from "../../reports";
 import { DisciplineAlertes } from "./discipline-tab/DisciplineAlertes";
 import { DisciplineTable } from "./discipline-tab/DisciplineTable";
 import { DisciplineModale } from "./discipline-tab/DisciplineModale";
+import { RegistresAppelCard } from "./discipline-tab/RegistresAppelCard";
 
 export function DisciplineTab({
   absences: absencesBrutes, cAbs, ajAbs, supAbs, eleves: tousEleves, section = "college",
-  form, setForm, modal, setModal, canCreate, canEdit, envoyerPush,
+  form, setForm, modal, setModal, canCreate, canEdit, envoyerPush, peutImprimerRegistres = false,
 }) {
   const { t } = useTranslation();
   const chg = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
@@ -60,6 +61,9 @@ export function DisciplineTab({
         )}>📥 {t("common.export")} Excel</Btn>
         {canCreate&&<Btn onClick={()=>{setForm({type:"Absence",justifie:"Non",classe:classeFiltre==="all"?"":classeFiltre});setModal("add_abs");}}>+ Enregistrer</Btn>}
       </div>
+
+      <RegistresAppelCard eleves={eleves} absences={absencesBrutes} section={section}
+        peutImprimer={peutImprimerRegistres} couleur={C.blueDark}/>
 
       <DisciplineAlertes eleves={elevesFiltres} absences={absencesFiltrees} t={t}/>
 
