@@ -8,6 +8,7 @@ import { getSupabase } from "../../supabaseClient";
 import { parseJsonCols } from "./tables";
 import { envoyerOperation, estErreurPassagere, exigerSession } from "./envoi-operation";
 import { signalerEcritureRefusee } from "../ecritures-refusees";
+import { garderRefus } from "./garde-refus";
 
 const POWERSYNC_URL = String(import.meta.env?.VITE_POWERSYNC_URL || "").trim();
 
@@ -50,13 +51,15 @@ export class SupabaseConnector {
       // PowerSync retentera à la reconnexion.
       if (estErreurPassagere(err, { enLigne: navigator.onLine })) throw err;
       // Refus définitif (RLS, fiche supprimée entre-temps, validation) : on
-      // abandonne la transaction plutôt que de bloquer la file à l'infini —
-      // mais l'utilisateur est AVERTI (la saisie va disparaître de l'écran à
-      // la synchro suivante), et le refus est gardé dans le journal de
-      // l'appareil. Auparavant : un simple console.error.
+      // abandonne la transaction plutôt que de bloquer la file à l'infini.
+      // La saisie va disparaître de l'écran à la synchro suivante : elle est
+      // donc GARDÉE avant (garde-refus.js) — trace dans le journal de l'école
+      // et, pour une inscription ou un encaissement, bandeau « à régulariser »
+      // sur cet appareil —, en plus de l'avertissement immédiat.
+      const motif = await garderRefus(database, enCours, err);
       signalerEcritureRefusee({
         table: enCours?.table, operation: enCours?.op, id: enCours?.id,
-        message: err?.message || String(err), horsLigne: true,
+        message: motif || err?.message || String(err), horsLigne: true,
       });
       await transaction.complete();
     }

@@ -10,7 +10,8 @@
 // src/backend/powersync/ (client/connector/local-data, qui eux importent
 // @powersync/web) n'est chargé qu'en `import()` dynamique, uniquement quand
 // ce test est vrai — zéro coût de bundle pour le build Firebase (prod).
-export const powerSyncConfigured = Boolean(String(import.meta.env.VITE_POWERSYNC_URL || "").trim());
+// `?.` : chargeable sous Node (tests), où import.meta.env n'existe pas.
+export const powerSyncConfigured = Boolean(String(import.meta.env?.VITE_POWERSYNC_URL || "").trim());
 
 export const TABLES_HORS_LIGNE = new Set([
   // Académique (vague 1)

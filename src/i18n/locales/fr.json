@@ -2940,5 +2940,17 @@
     "guardian": "Tuteur",
     "contact": "Contact",
     "printLegend": "En gros : le nom auquel l'enfant répond (son surnom s'il est renseigné). Dessous : son nom officiel, sa filiation, son tuteur et le contact du tuteur."
+  },
+  "refusServeur": {
+    "titre": "Saisies refusées par le serveur — élèves à régulariser : {{nombre}}",
+    "consigne": "Ces saisies faites sur cet appareil ont été refusées à l'envoi : elles ne sont PAS dans la base ni dans la caisse, même si un reçu a été imprimé. Réinscrivez l'élève (corrigez le nom ou ajoutez la date de naissance) puis réencaissez le reçu, ou encaissez sur la bonne fiche.",
+    "ficheNonEnregistree": "Fiche de l'élève non enregistrée.",
+    "encaissements": "Encaissements non enregistrés : {{liste}} — total {{total}} GNF.",
+    "motif": "Motif du serveur : {{motif}}",
+    "regularise": "Régularisé",
+    "regulariseAide": "Je l'ai réinscrit(e) et réencaissé(e) : retirer de la liste",
+    "confirmer": "Confirmez-vous que {{nom}} a été réinscrit(e) et ses encaissements ressaisis ? Il disparaîtra de cette liste.",
+    "masquer": "Réduire",
+    "afficher": "Voir le détail"
   }
 }

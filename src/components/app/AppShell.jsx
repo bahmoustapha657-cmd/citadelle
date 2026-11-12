@@ -8,6 +8,7 @@ import { InstallBanner } from "./InstallBanner";
 import { Sidebar } from "./Sidebar";
 import { AppHeader } from "./AppHeader";
 import { BandeauPremiereSynchro } from "./BandeauPremiereSynchro";
+import { BandeauARegulariser } from "./BandeauARegulariser";
 import { PageRouter } from "./PageRouter";
 import { ModuleHorsLignePlaceholder } from "./ModuleHorsLignePlaceholder";
 import { AppShellOverlays } from "./app-shell/AppShellOverlays";
@@ -75,6 +76,7 @@ export function AppShell(p) {
             setPage={p.setPage} setAideOuverte={p.setAideOuverte} setCentreAideOuvert={p.setCentreAideOuvert} deconnecter={p.deconnecter}
           />
           <BandeauPremiereSynchro premiereSynchro={p.premiereSynchro} estHorsLigne={p.estHorsLigne} t={p.t} />
+          <BandeauARegulariser t={p.t} />
           {!pageMessagerie && <BandeauAnnonces />}
           <BandeauReunions />
           {/* La messagerie gère son propre défilement (liste / fil) : la zone

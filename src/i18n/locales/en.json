@@ -2940,5 +2940,17 @@
     "guardian": "Guardian",
     "contact": "Contact",
     "printLegend": "In large print: the name the child answers to (their nickname if set). Below: their official name, parents, guardian and the guardian's contact."
+  },
+  "refusServeur": {
+    "titre": "Entries rejected by the server — students to fix: {{nombre}}",
+    "consigne": "These entries made on this device were rejected when sent: they are NOT in the database or in the cash book, even if a receipt was printed. Re-enrol the student (correct the name or add the date of birth) then record the receipt again, or record it on the right record.",
+    "ficheNonEnregistree": "Student record not saved.",
+    "encaissements": "Payments not saved: {{liste}} — total {{total}} GNF.",
+    "motif": "Server reason: {{motif}}",
+    "regularise": "Fixed",
+    "regulariseAide": "I re-enrolled the student and recorded the payments again: remove from the list",
+    "confirmer": "Do you confirm that {{nom}} was re-enrolled and the payments recorded again? The student will be removed from this list.",
+    "masquer": "Collapse",
+    "afficher": "Show details"
   }
 }

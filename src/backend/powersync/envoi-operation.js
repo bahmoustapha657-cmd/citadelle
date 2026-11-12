@@ -59,10 +59,12 @@ export async function exigerSession(sb) {
   }
 }
 
-// Erreur supabase-js → exception qui garde le code et le statut HTTP de la
-// réponse (le statut n'est porté que par la réponse, pas par l'erreur).
+// Erreur supabase-js → exception qui garde le code, l'indice et le statut HTTP
+// de la réponse (le statut n'est porté que par la réponse, pas par l'erreur).
+// L'indice complète le motif d'un refus métier (« renseignez la date de
+// naissance sur les deux fiches »), cf. refus-ecriture.js.
 function echec({ error, status }) {
-  return Object.assign(new Error(error.message), { code: error.code, status });
+  return Object.assign(new Error(error.message), { code: error.code, hint: error.hint, status });
 }
 
 const estObjet = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
