@@ -8,6 +8,7 @@ import { correspondEnfant, nettoyerSurnom } from "../../../identite-enfant";
 import { EnfantAgrandi } from "../../identite-enfant/EnfantAgrandi";
 import { PhotoEleve } from "../../identite-enfant/PhotoEleve";
 import { AvisFormeNote } from "../../AvisFormeNote";
+import { nomAffiche, trierElevesAlpha } from "../../../ordre-eleves";
 
 // Modale de saisie en grille (portail enseignant). Trois modes :
 //  - normal        : une période + une matière figées, une colonne « Note ».
@@ -33,14 +34,15 @@ export function GrilleModale({
   const choixMatiere = isPrimaire || matCols.length > 1;
 
   // Ni les partis, ni les non réinscrits sans paiement d'une classe écartée.
-  const elevesClasse = sansNonReinscritsEcartes(
-    (portalData.eleves || []).filter((e) => e.classe === gridForm.classe && !estSorti(e)), schoolInfo);
+  // Dans l'ordre de Paramètres → Affichage, comme « Mes élèves ».
+  const elevesClasse = trierElevesAlpha(sansNonReinscritsEcartes(
+    (portalData.eleves || []).filter((e) => e.classe === gridForm.classe && !estSorti(e)), schoolInfo), schoolInfo.triEleves);
   const elevesAff = elevesClasse.filter((e) => correspondEnfant(e, rech));
   const nomEleve = (e) => (
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
       <PhotoEleve eleve={e} largeur={28} onClick={setAgrandi} />
       <div>
-        <strong>{e.nom} {e.prenom}</strong>
+        <strong>{nomAffiche(e, schoolInfo.triEleves)}</strong>
         {e.matricule && <span style={{ marginInlineStart: 6, fontSize: 10, color: "#94a3b8", fontFamily: "monospace" }}>{e.matricule}</span>}
         {nettoyerSurnom(e.surnom) && <div style={{ fontSize: 11, fontWeight: 700, color: "#b45309" }}>« {nettoyerSurnom(e.surnom)} »</div>}
       </div>

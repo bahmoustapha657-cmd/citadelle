@@ -7,6 +7,7 @@ import { imprimerEdtEnseignant, imprimerPaiesEnseignant } from "../../reports";
 import { isTitulaireSection } from "../../backend/teacher-scope";
 import { presents } from "../../depart-utils";
 import { sansNonReinscritsEcartes } from "../../ecartes-non-reinscrits";
+import { trierElevesAlpha } from "../../ordre-eleves";
 import { getJoursOuvrables } from "../ecole/edt/edt-utils";
 import { enrichirNotes } from "../../notes-eleves";
 import { msgLectureSeulePortail } from "../app/app-shell-plan";
@@ -121,8 +122,10 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
   // Élèves encore inscrits : un élève parti ne figure plus dans « Mes élèves »
   // ni dans les grilles de saisie de notes — pas plus qu'un non réinscrit sans
   // paiement d'une classe écartée par la comptabilité (réglage de l'école).
+  // Dans l'ordre de Paramètres → Affichage, comme les listes de l'école :
+  // « Mes élèves », l'appel et la saisie de notes en héritent.
   const eleves = useMemo(
-    () => sansNonReinscritsEcartes(presents(portalData.eleves || []), schoolInfo, anneeNotes),
+    () => trierElevesAlpha(sansNonReinscritsEcartes(presents(portalData.eleves || []), schoolInfo, anneeNotes), schoolInfo?.triEleves),
     [portalData.eleves, schoolInfo, anneeNotes],
   );
   // Nom de l'élève lu sur sa fiche (la table notes n'a que eleve_id), y
@@ -379,8 +382,7 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
   const appelClasse = mesClasses.includes(appelClasseChoisie) ? appelClasseChoisie : (mesClasses[0] || "");
   const aujourdhui = dateAbsence();
   const elevesAppel = useMemo(
-    () => eleves.filter((item) => item.classe === appelClasse)
-      .sort((a, b) => `${a.nom || ""} ${a.prenom || ""}`.localeCompare(`${b.nom || ""} ${b.prenom || ""}`, "fr", { sensitivity: "base" })),
+    () => eleves.filter((item) => item.classe === appelClasse), // déjà dans l'ordre de l'école
     [eleves, appelClasse],
   );
   // Au secondaire, l'appel se fait par cours : ceux du professeur dans cette

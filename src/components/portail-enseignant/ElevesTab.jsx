@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { nettoyerSurnom } from "../../identite-enfant";
+import { nomAffiche } from "../../ordre-eleves";
 import { Badge, Btn, Card, TD, THead, TR, Vide } from "../ui";
 import { EnfantAgrandi } from "../identite-enfant/EnfantAgrandi";
 import { PhotoEleve } from "../identite-enfant/PhotoEleve";
@@ -27,7 +28,7 @@ export function ElevesTab({ c1, mesClasses, eleves, ouvrirSignalementEleve, scho
         <Vide icone="👥" msg={t("teacher.students.noClass")} />
       ) : vue === "appel" ? (
         <>
-          <AppelVue c1={c1} mesClasses={mesClasses} appel={appel} enregistrement={enregistrement}
+          <AppelVue c1={c1} mesClasses={mesClasses} appel={appel} enregistrement={enregistrement} triEleves={schoolInfo.triEleves}
             ouvrirSignalementEleve={ouvrirSignalementEleve} onAgrandir={setAgrandi} />
           <EnfantAgrandi eleve={agrandi} fermer={() => setAgrandi(null)} />
         </>
@@ -51,7 +52,7 @@ export function ElevesTab({ c1, mesClasses, eleves, ouvrirSignalementEleve, scho
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <PhotoEleve eleve={eleveItem} largeur={30} onClick={setAgrandi} />
                         <div>
-                          {eleveItem.nom} {eleveItem.prenom}
+                          {nomAffiche(eleveItem, schoolInfo.triEleves)}
                           {nettoyerSurnom(eleveItem.surnom) && <div style={{ fontSize: 11, fontWeight: 700, color: "#b45309" }}>« {nettoyerSurnom(eleveItem.surnom)} »</div>}
                         </div>
                       </div>

@@ -64,6 +64,7 @@ export function NotesTab({
           periodeN={periodeN} periodes={periodes} maxNote={maxNote}
           isPrimaire={isPrimaire} matieresDispo={matieresDispo}
           enregistrement={enregistrement} enregistrerNote={enregistrerNote}
+          triEleves={schoolInfo?.triEleves}
         />
       )}
     </>

@@ -1,13 +1,14 @@
 import { useTranslation } from "react-i18next";
 import { Btn, Input, Modale, Selec } from "../../ui";
 import { AvisFormeNote } from "../../AvisFormeNote";
+import { nomAffiche } from "../../../ordre-eleves";
 
 // Modale de création / édition d'une note unitaire.
 export function NoteModale({
   modalNote, setModalNote, formNote, setFormNote,
   eleves, noteForms, defaultNoteType, periodeN, periodes, maxNote = 20,
   isPrimaire = false, matieresDispo = [],
-  enregistrement, enregistrerNote,
+  enregistrement, enregistrerNote, triEleves,
 }) {
   // Même règle que la grille : choix de la matière pour le titulaire, ou
   // pour le professeur du secondaire à qui des matières sont rattachées.
@@ -23,7 +24,7 @@ export function NoteModale({
         <option value="">{t("teacher.noteModal.choose")}</option>
         {eleves.map((eleveItem) => (
           <option key={eleveItem._id} value={eleveItem._id}>
-            {eleveItem.nom} {eleveItem.prenom} ({eleveItem.classe})
+            {nomAffiche(eleveItem, triEleves)} ({eleveItem.classe})
           </option>
         ))}
       </Selec>
