@@ -14,7 +14,8 @@ import {
 import {
   dernierJour, formaterTaux, libelleDate, libelleMois,
 } from "../components/portail-enseignant/registre-mensuel.js";
-import { libelleChoisiParEcole } from "./signatures.js";
+import { cachetOuEspace, libelleChoisiParEcole, responsableNom } from "./signatures.js";
+import { signataireSession } from "./signataire-session.js";
 
 // ── Qui signe le registre ───────────────────────────────────────
 // Deux signatures seulement : le titulaire de la classe (maître titulaire au
@@ -38,12 +39,34 @@ export function titreChefSection(schoolInfo = {}, section = "") {
   return tr("teacher.register.signHead");
 }
 
-export const titreTitulaire = (section = "") => {
+// Titre du titulaire accordé à sa civilité (fiche enseignant) : maître ou
+// maîtresse titulaire, professeur ou professeure principal(e). Civilité
+// inconnue : forme neutre « Le (la) … », jamais un genre deviné.
+const GENRE = { M: "", Mme: "F" };
+export const titreTitulaire = (section = "", civilite = "") => {
   const cle = String(section || "").toLowerCase();
-  if (SECTIONS_PRIMAIRE.includes(cle)) return tr("teacher.register.titularTitles.primaire");
-  if (cle === "college" || cle === "lycee") return tr("teacher.register.titularTitles.secondaire");
+  const genre = civilite in GENRE ? GENRE[civilite] : "N";
+  if (SECTIONS_PRIMAIRE.includes(cle)) return tr(`teacher.register.titularTitles.primaire${genre}`);
+  if (cle === "college" || cle === "lycee") return tr(`teacher.register.titularTitles.secondaire${genre}`);
   return tr("teacher.register.signTitular");
 };
+
+// Chef de section qui signe : son nom et, si c'est LUI qui imprime, son cachet
+// et sa signature déposés (comme sur ses autres documents). Nom : celui du
+// compte qui imprime s'il occupe le poste du chef, sinon le responsable du
+// poste (Comptes & Postes). Le lycée partage le poste du collège : le
+// responsable du collège n'est pas forcément son chef, il n'est pas repris.
+export function chefDeSection(schoolInfo = {}, section = "", signataire = signataireSession()) {
+  const cle = String(section || "").toLowerCase();
+  const poste = cle === "lycee" ? "college" : POSTE_CHEF[cle];
+  if (!poste) return { nom: "" };
+  const moi = signataire?.cle === poste ? signataire : null;
+  return {
+    nom: moi?.nom || (cle === "lycee" ? "" : responsableNom(schoolInfo, poste)),
+    cachet: moi?.cachet || "", cachetTaille: moi?.taille, cachetDecalage: moi?.decalage,
+    signature: moi?.signature || "", signatureTaille: moi?.signatureTaille, signatureDecalage: moi?.signatureDecalage,
+  };
+}
 
 // Noms saisis à la main : ni balise injectée ni tableau cassé.
 const echapper = (valeur) => String(valeur ?? "")
@@ -83,7 +106,9 @@ function pageDeGarde({ registre, classe = "", schoolInfo = {}, annee = "", nomEn
 
 // La grille (sur une ou plusieurs pages), puis, à la fin seulement, les
 // totaux par jour, le bilan, l'arrêté et les signatures.
-function pageRegistre({ registre, classe = "", annee = "", nomEns = "", matiere = "", titreChef = "", titulaire = "" }, langue) {
+function pageRegistre({
+  registre, classe = "", annee = "", nomEns = "", matiere = "", titreChef = "", titulaire = "", nomTitulaire = "", chef = null,
+}, langue) {
   const mois = libelleMois(registre.mois, langue);
   const { jours, lignes, parJour, totaux } = registre;
   const entetesJours = jours.map((j) => `<th class="j">${j.jour}<br/><small>${echapper(initialeJour(j.date, langue))}</small></th>`).join("");
@@ -142,8 +167,8 @@ function pageRegistre({ registre, classe = "", annee = "", nomEns = "", matiere 
   <div class="arrete">${echapper(arrete)}</div>
   <div class="legende">${echapper(tr("teacher.register.legend"))}${notes ? `<br/>${notes}` : ""}</div>
   <div class="pied">
-    <span><strong>${echapper(titulaire || tr("teacher.register.signTitular"))}</strong><br/><br/><br/></span>
-    <span><strong>${echapper(titreChef || tr("teacher.register.signHead"))}</strong><br/><br/><br/></span>
+    <span><strong>${echapper(titulaire || tr("teacher.register.signTitular"))}</strong>${nomTitulaire ? `<br/><span class="nom-sig">${echapper(nomTitulaire)}</span>` : ""}<br/><br/><br/></span>
+    <span><strong>${echapper(titreChef || tr("teacher.register.signHead"))}</strong>${chef?.nom ? `<br/><span class="nom-sig">${echapper(chef.nom)}</span>` : ""}${cachetOuEspace(chef || {})}</span>
   </div>
   <div class="imprime">${echapper(tr("teacher.register.printedOn", { date: new Date().toLocaleDateString(langue) }))}</div>
   </div>
@@ -195,7 +220,8 @@ export function registresAppelHTML(feuilles = [], { schoolInfo = {}, apercu = fa
   .arrete{margin:8px auto 0;max-width:230mm;border:1.5px solid ${c1};border-radius:6px;padding:6px 10px;font-size:11.5px;font-weight:700;text-align:center}
   .legende{text-align:center;font-size:9px;color:#64748b;margin-top:4px}
   .pied{margin:12px 20mm 0;display:flex;justify-content:space-between;font-size:12px}
-  .pied span{text-align:center;min-width:60mm}
+  .pied > span{text-align:center;min-width:60mm}
+  .nom-sig{font-weight:800;font-size:12.5px}
   .imprime{font-size:9px;color:#94a3b8;text-align:end}
   .apercu{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:5}
   .apercu span{transform:rotate(-24deg);font-size:110px;font-weight:900;color:rgba(185,28,28,.12);letter-spacing:.1em}

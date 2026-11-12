@@ -51,6 +51,8 @@ export function EcoleTabsAdmin({ e, section, avecEns, userRole, annee, maxNote, 
         // le module de la section) et la Direction — pas par le surveillant,
         // qui n'écrit que la discipline.
         peutImprimerRegistres={userRole === "direction" || !readOnly}
+        ens={e.ens}
+        classesEcole={e.classes}
       />}
 
       {/* ── BULLETINS ── */}

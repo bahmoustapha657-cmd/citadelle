@@ -1,13 +1,22 @@
+import { useTranslation } from "react-i18next";
 import { Btn, Input, Modale, Selec, UploadFichiers } from "../../ui";
 import { ClasseTitulaireSelect } from "./ClasseTitulaireSelect";
 
 // Modale d'ajout/édition d'un enseignant : identité, matière, grade, statut,
 // classe de titulaire et pièces jointes. La paie est gérée en Comptabilité.
 export function EnsFormModale({ modal, setModal, canCreate, canEdit, form, setForm, chg, cleEns, saveEnseignant, classes = [], ens = [] }) {
+  const { t } = useTranslation();
   if (!((modal === "add_ens" && canCreate) || (modal === "edit_ens" && canEdit))) return null;
   return (
     <Modale titre={modal==="add_ens"?"Nouvel enseignant":"Modifier"} fermer={()=>setModal(null)}>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+        {/* Civilité : accorde les titres imprimés (maître / maîtresse titulaire). */}
+        <Selec label={t("school.teacherCivility.label")} value={form.civilite||""} onChange={chg("civilite")}>
+          <option value="">{t("school.teacherCivility.none")}</option>
+          <option value="M">{t("school.teacherCivility.m")}</option>
+          <option value="Mme">{t("school.teacherCivility.mme")}</option>
+        </Selec>
+        <div/>
         <Input label="Nom" value={form.nom||""} onChange={chg("nom")}/>
         <Input label="Prénom" value={form.prenom||""} onChange={chg("prenom")}/>
         <Input label="Matière" value={form.matiere||""} onChange={chg("matiere")}/>

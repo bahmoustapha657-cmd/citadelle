@@ -12,6 +12,7 @@ import { RegistresAppelCard } from "./discipline-tab/RegistresAppelCard";
 export function DisciplineTab({
   absences: absencesBrutes, cAbs, ajAbs, supAbs, eleves: tousEleves, section = "college",
   form, setForm, modal, setModal, canCreate, canEdit, envoyerPush, peutImprimerRegistres = false,
+  ens = [], classesEcole = [],
 }) {
   const { t } = useTranslation();
   const chg = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
@@ -63,7 +64,7 @@ export function DisciplineTab({
       </div>
 
       <RegistresAppelCard eleves={eleves} absences={absencesBrutes} section={section}
-        peutImprimer={peutImprimerRegistres} couleur={C.blueDark}/>
+        peutImprimer={peutImprimerRegistres} couleur={C.blueDark} ens={ens} classesEcole={classesEcole}/>
 
       <DisciplineAlertes eleves={elevesFiltres} absences={absencesFiltrees} t={t}/>
 
