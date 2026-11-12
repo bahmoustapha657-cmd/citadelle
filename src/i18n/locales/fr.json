@@ -1767,7 +1767,11 @@
       },
       "titularTitles": {
         "primaire": "Le maître titulaire",
-        "secondaire": "Le professeur principal"
+        "primaireF": "La maîtresse titulaire",
+        "primaireN": "Le maître (la maîtresse) titulaire",
+        "secondaire": "Le professeur principal",
+        "secondaireF": "La professeure principale",
+        "secondaireN": "Le (la) professeur(e) principal(e)"
       }
     },
     "rollCall": {
@@ -2326,7 +2330,15 @@
       "printOne": "Imprimer le registre de {{classe}}",
       "classSummary": "{{possibles}} présences possibles · {{effectives}} effectives · {{rate}} %",
       "headTitle": "Titre du chef de section",
-      "headTitleHint": "Imprimé sous la signature du chef de section (ex. : Directeur, Principal, Censeur, Directeur des études). Gardé sur cet appareil."
+      "headTitleHint": "Imprimé sous la signature du chef de section (ex. : Directeur, Principal, Censeur, Directeur des études). Gardé sur cet appareil.",
+      "headName": "Nom du chef de section",
+      "headNameHint": "Imprimé sous son titre. Vide : le responsable du poste (Comptes & Postes)."
+    },
+    "teacherCivility": {
+      "label": "Civilité",
+      "none": "Non précisée",
+      "m": "M. (homme)",
+      "mme": "Mme (femme)"
     }
   },
   "shell": {

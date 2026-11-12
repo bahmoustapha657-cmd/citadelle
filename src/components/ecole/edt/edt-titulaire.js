@@ -41,6 +41,16 @@ export function titulaireDeClasse(classe, ens = [], classes = []) {
   return connu ? nomEnseignant(connu) : principal;
 }
 
+// Titulaire d'une classe pour les documents signés (registre d'appel) :
+// { nom, civilite } — civilite « M » / « Mme » de sa fiche, "" si inconnue
+// (titre neutre à l'impression). Nom vide s'il n'est pas désigné.
+export function ficheTitulaire(classe, ens = [], classes = []) {
+  const nom = titulaireDeClasse(classe, ens, classes);
+  if (!nom) return { nom: "", civilite: "" };
+  const fiche = ens.find((e) => memeEnseignant(nomEnseignant(e), nom));
+  return { nom, civilite: fiche?.civilite || "" };
+}
+
 // Enseignant proposé d'office pour un créneau de la classe : celui qui assure
 // déjà cette matière dans la classe (l'intervenant d'anglais reste
 // l'intervenant d'anglais), sinon le titulaire.

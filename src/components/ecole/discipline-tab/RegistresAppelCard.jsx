@@ -4,7 +4,8 @@ import { SchoolContext } from "../../../contexts/SchoolContext";
 import { getSectionLabel } from "../../../constants";
 import { useFirestore } from "../../../hooks/useFirestore";
 import { getJoursOuvrables } from "../edt/edt-utils";
-import { imprimerRegistresAppel, titreChefSection, titreTitulaire } from "../../../reports/registre-appel";
+import { chefDeSection, imprimerRegistresAppel, titreChefSection, titreTitulaire } from "../../../reports/registre-appel";
+import { ficheTitulaire } from "../edt/edt-titulaire";
 import {
   cleMois, debutDeMois, formaterTaux, joursDeClasse, joursDeConge, libelleMois, moisDeLAnnee, moisPrecedent, registreMensuel,
 } from "../../portail-enseignant/registre-mensuel";
@@ -20,6 +21,7 @@ import {
 // Titre du chef de section retouché avant d'imprimer : gardé sur l'appareil,
 // par école et par section (un chef de section imprime depuis le sien).
 const cleTitre = (schoolInfo, section) => `registre-titre-chef:${schoolInfo?.code || schoolInfo?.nom || ""}:${section}`;
+const cleNom = (schoolInfo, section) => `registre-nom-chef:${schoolInfo?.code || schoolInfo?.nom || ""}:${section}`;
 const lireTitre = (cle) => {
   try { return localStorage.getItem(cle) || ""; } catch { return ""; }
 };
@@ -35,7 +37,9 @@ const selectStyle = {
   fontSize: 12, fontWeight: 600, background: "#fff", fontFamily: "inherit",
 };
 
-export function RegistresAppelCard({ eleves = [], absences = [], section = "college", peutImprimer = false, couleur = "#0A1628" }) {
+export function RegistresAppelCard({
+  eleves = [], absences = [], section = "college", peutImprimer = false, couleur = "#0A1628", ens = [], classesEcole = [],
+}) {
   const { t, i18n } = useTranslation();
   const langue = i18n.resolvedLanguage || i18n.language || "fr";
   const { schoolInfo = {}, toast } = useContext(SchoolContext);
@@ -57,6 +61,9 @@ export function RegistresAppelCard({ eleves = [], absences = [], section = "coll
   const titreParDefaut = titreChefSection(schoolInfo, section);
   const [titreSaisi, setTitreSaisi] = useState(() => lireTitre(cleTitre(schoolInfo, section)));
   const titreChef = titreSaisi.trim() || titreParDefaut;
+  const chefParDefaut = chefDeSection(schoolInfo, section);
+  const [nomSaisi, setNomSaisi] = useState(() => lireTitre(cleNom(schoolInfo, section)));
+  const chef = { ...chefParDefaut, nom: nomSaisi.trim() || chefParDefaut.nom };
 
   const joursOuvrables = getJoursOuvrables(schoolInfo, section);
   const conges = joursDeConge(evenements, getSectionLabel(section));
@@ -78,9 +85,11 @@ export function RegistresAppelCard({ eleves = [], absences = [], section = "coll
   const joursOuvres = joursDeClasse(mois, joursOuvrables, aujourdhui);
 
   const imprimer = (liste) => {
-    const titulaire = titreTitulaire(section);
     const fait = imprimerRegistresAppel(
-      liste.map(({ classe, registre }) => ({ classe, registre, annee, titreChef, titulaire })),
+      liste.map(({ classe, registre }) => {
+        const tit = ficheTitulaire(classe, ens, classesEcole);
+        return { classe, registre, annee, titreChef, chef, titulaire: titreTitulaire(section, tit.civilite), nomTitulaire: tit.nom };
+      }),
       { schoolInfo },
     );
     if (!fait && toast) toast(t("teacher.register.popupBlocked"), "warning");
@@ -140,6 +149,13 @@ export function RegistresAppelCard({ eleves = [], absences = [], section = "coll
               onChange={(e) => { setTitreSaisi(e.target.value); ecrireTitre(cleTitre(schoolInfo, section), e.target.value.trim()); }}
               style={{ ...selectStyle, flex: "1 1 180px", maxWidth: 280, fontWeight: 700 }} />
             <span style={{ flexBasis: "100%", fontSize: 11, fontWeight: 400, color: "#64748b" }}>{t("school.registers.headTitleHint")}</span>
+          </label>
+          <label style={{ flexBasis: "100%", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", fontSize: 12, fontWeight: 700, color: "#475569" }}>
+            👤 {t("school.registers.headName")}
+            <input type="text" value={nomSaisi} placeholder={chefParDefaut.nom} maxLength={80}
+              onChange={(e) => { setNomSaisi(e.target.value); ecrireTitre(cleNom(schoolInfo, section), e.target.value.trim()); }}
+              style={{ ...selectStyle, flex: "1 1 180px", maxWidth: 280, fontWeight: 700 }} />
+            <span style={{ flexBasis: "100%", fontSize: 11, fontWeight: 400, color: "#64748b" }}>{t("school.registers.headNameHint")}</span>
           </label>
         </div>
       )}

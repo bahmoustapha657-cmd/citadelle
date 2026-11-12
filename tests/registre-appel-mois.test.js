@@ -8,8 +8,9 @@ import {
   moisPrecedent, registreMensuel, taux,
 } from "../src/components/portail-enseignant/registre-mensuel.js";
 import {
-  registreAppelHTML, registresAppelHTML, titreChefSection, titreTitulaire,
+  chefDeSection, registreAppelHTML, registresAppelHTML, titreChefSection, titreTitulaire,
 } from "../src/reports/registre-appel.js";
+import { ficheTitulaire } from "../src/components/ecole/edt/edt-titulaire.js";
 
 const LUN_SAM = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
 const LUN_VEN = LUN_SAM.slice(0, 5);
@@ -137,14 +138,39 @@ test("deux signatures : le titulaire et le chef de section sous son vrai titre",
   const renomme = { libellesPostes: { college: "Directeur des études", primaire: "Direction Primaire" } };
   assert.equal(titreChefSection(renomme, "college"), "Directeur des études");
   assert.equal(titreChefSection(renomme, "lycee"), "Le Censeur");
-  assert.equal(titreTitulaire("primaire"), "Le maître titulaire");
-  assert.equal(titreTitulaire("lycee"), "Le professeur principal");
+  assert.equal(titreTitulaire("primaire", "M"), "Le maître titulaire");
+  assert.equal(titreTitulaire("primaire", "Mme"), "La maîtresse titulaire");
+  assert.equal(titreTitulaire("primaire"), "Le maître (la maîtresse) titulaire"); // civilité inconnue
+  assert.equal(titreTitulaire("lycee", "M"), "Le professeur principal");
+  assert.equal(titreTitulaire("college", "Mme"), "La professeure principale");
 
   const html = registreAppelHTML({ registre: reg([]), classe: "11ème A", titreChef: "Le Censeur", titulaire: "Le professeur principal" });
   const pied = html.slice(html.indexOf('<div class="pied">'));
   assert.match(pied, /Le professeur principal[\s\S]*Le Censeur/);
   assert.doesNotMatch(pied, /La Direction/);
   assert.equal((pied.match(/<strong>/g) || []).length, 2);
+});
+
+test("noms sous les titres : titulaire de la fiche, chef = compte qui imprime ou responsable du poste", () => {
+  const ens = [{ nom: "Diallo", prenom: "Fatoumata", civilite: "Mme", classeTitle: "CM2 A" }];
+  assert.deepEqual(ficheTitulaire("CM2 A", ens, []), { nom: "Fatoumata Diallo", civilite: "Mme" });
+  assert.deepEqual(ficheTitulaire("CM1 B", ens, [{ nom: "CM1 B", enseignant: "Alpha Bah" }]), { nom: "Alpha Bah", civilite: "" });
+
+  const ecole = { responsables: { primaire: "Mamadou Sow", college: "Ibrahima Barry" } };
+  assert.equal(chefDeSection(ecole, "primaire", null).nom, "Mamadou Sow");
+  assert.equal(chefDeSection(ecole, "college", null).nom, "Ibrahima Barry");
+  assert.equal(chefDeSection(ecole, "lycee", null).nom, ""); // pas le responsable du collège
+  const moi = { cle: "college", nom: "Aïssatou Camara", cachet: "https://x/cachet.png" };
+  assert.equal(chefDeSection(ecole, "lycee", moi).nom, "Aïssatou Camara");
+  assert.equal(chefDeSection(ecole, "college", moi).cachet, "https://x/cachet.png");
+  assert.equal(chefDeSection(ecole, "primaire", moi).cachet, ""); // pas son poste
+
+  const html = registreAppelHTML({
+    registre: reg([]), classe: "CM2 A", titulaire: titreTitulaire("primaire", "Mme"), nomTitulaire: "Fatoumata <Diallo>",
+    titreChef: "Le Directeur", chef: { nom: "Mamadou Sow" },
+  });
+  const pied = html.slice(html.indexOf('<div class="pied">'));
+  assert.match(pied, /La maîtresse titulaire[\s\S]*Fatoumata &lt;Diallo&gt;[\s\S]*Le Directeur[\s\S]*Mamadou Sow/);
 });
 
 test("plusieurs classes : une page chacune ; l'aperçu n'imprime pas et le dit", () => {

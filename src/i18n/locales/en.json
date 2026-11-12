@@ -1767,7 +1767,11 @@
       },
       "titularTitles": {
         "primaire": "The class teacher",
-        "secondaire": "The form tutor"
+        "primaireF": "The class teacher",
+        "primaireN": "The class teacher",
+        "secondaire": "The form tutor",
+        "secondaireF": "The form tutor",
+        "secondaireN": "The form tutor"
       }
     },
     "rollCall": {
@@ -2326,7 +2330,15 @@
       "printOne": "Print the register of {{classe}}",
       "classSummary": "{{possibles}} possible attendances · {{effectives}} actual · {{rate}} %",
       "headTitle": "Head of section's title",
-      "headTitleHint": "Printed under the head of section's signature (e.g. Head Teacher, Principal, Deputy Head, Director of Studies). Kept on this device."
+      "headTitleHint": "Printed under the head of section's signature (e.g. Head Teacher, Principal, Deputy Head, Director of Studies). Kept on this device.",
+      "headName": "Head of section's name",
+      "headNameHint": "Printed under the title. Empty: the post's manager (Accounts & Posts)."
+    },
+    "teacherCivility": {
+      "label": "Title",
+      "none": "Not specified",
+      "m": "Mr (man)",
+      "mme": "Mrs/Ms (woman)"
     }
   },
   "shell": {
