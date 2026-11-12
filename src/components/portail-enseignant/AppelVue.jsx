@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { nettoyerSurnom } from "../../identite-enfant";
+import { nomAffiche } from "../../ordre-eleves";
 import { Card, Vide } from "../ui";
 import { PhotoEleve } from "../identite-enfant/PhotoEleve";
 import { compterAppel, etatEleve, nbEcritures } from "./appel-logic";
@@ -72,7 +73,7 @@ function AutresCours({ liste = [] }) {
   );
 }
 
-export function AppelVue({ c1, mesClasses, appel, enregistrement, ouvrirSignalementEleve, onAgrandir }) {
+export function AppelVue({ c1, mesClasses, appel, enregistrement, ouvrirSignalementEleve, onAgrandir, triEleves }) {
   const { t } = useTranslation();
   const { eleves, situation, marques } = appel;
   const bilan = compterAppel(eleves, situation, marques);
@@ -118,7 +119,7 @@ export function AppelVue({ c1, mesClasses, appel, enregistrement, ouvrirSignalem
                   <span style={{ width: 20, fontSize: 11, color: "#94a3b8", textAlign: "end", flexShrink: 0 }}>{index + 1}</span>
                   <PhotoEleve eleve={eleve} largeur={34} onClick={onAgrandir} />
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a" }}>{eleve.nom} {eleve.prenom}</div>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a" }}>{nomAffiche(eleve, triEleves)}</div>
                     {surnom && <div style={{ fontSize: 11, fontWeight: 700, color: "#b45309" }}>« {surnom} »</div>}
                     {appel.parCours && <AutresCours liste={appel.autresCours.get(eleve._id)} />}
                     {verrouille && (
@@ -128,7 +129,7 @@ export function AppelVue({ c1, mesClasses, appel, enregistrement, ouvrirSignalem
                     )}
                   </div>
                 </div>
-                <div role="group" aria-label={`${eleve.nom} ${eleve.prenom}`} style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                <div role="group" aria-label={nomAffiche(eleve, triEleves)} style={{ display: "flex", gap: 4, alignItems: "center" }}>
                   {ETATS.map(({ etat: choix, cle, fond }) => {
                     const actif = etat === choix;
                     return (
