@@ -15,6 +15,7 @@ export function AbsencesTab({
   enseignantId,
   ouvrirEditionIncident, supprimerIncident, ouvrirAppel = null,
   mesClasses = [], eleves = [], joursOuvrables, annee = "", schoolInfo = {}, nomEns = "",
+  section = "", emplois = [],
 }) {
   const { t } = useTranslation();
   return (
@@ -25,7 +26,8 @@ export function AbsencesTab({
       </div>
 
       <RegistreMoisCard c1={c1} mesClasses={mesClasses} eleves={eleves} incidents={incidents}
-        joursOuvrables={joursOuvrables} annee={annee} schoolInfo={schoolInfo} nomEns={nomEns} matiere={matiere} />
+        joursOuvrables={joursOuvrables} annee={annee} schoolInfo={schoolInfo} nomEns={nomEns} matiere={matiere}
+        section={section} emplois={emplois} />
 
       <Card style={{ marginBottom: 16 }}>
         <div style={{ padding: "12px 18px", borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
@@ -45,7 +47,7 @@ export function AbsencesTab({
                 const typeColor = COULEUR_TYPE_INCIDENT[inc.type] || "blue";
                 return (
                   <TR key={inc._id}>
-                    <TD>{inc.date || "-"}</TD>
+                    <TD>{inc.date || "-"}{inc.heureDebut ? <div style={{ fontSize: 10.5, color: "#64748b" }}>{inc.heureDebut}–{inc.heureFin}</div> : null}</TD>
                     <TD bold>{inc.eleveNom || "-"}</TD>
                     <TD><Badge color="blue">{inc.classe || "-"}</Badge></TD>
                     <TD><Badge color={typeColor}>{inc.type ? libelleTypeIncident(inc.type) : "-"}</Badge></TD>

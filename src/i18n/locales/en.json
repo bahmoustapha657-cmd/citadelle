@@ -1772,7 +1772,19 @@
         "secondaire": "The form tutor",
         "secondaireF": "The form tutor",
         "secondaireN": "The form tutor"
-      }
+      },
+      "coverHours": "Lesson hours per student",
+      "rowPresentHours": "Hours attended",
+      "rowAbsentHours": "Hours missed",
+      "colPresencesHours": "Hrs att.",
+      "statPossibleHours": "Possible lesson hours: {{count}}",
+      "statEffectiveHours": "Hours attended: {{count}}",
+      "statAbsNJHours": "Unexcused absences: {{count}}",
+      "statAbsJHours": "Excused absences: {{count}}",
+      "stoppedHours": "Register closed on {{date}}: {{possibles}} of possible lessons and {{effectives}} attended, an attendance rate of {{rate}} %.",
+      "situationHours": "Situation on {{date}}, month in progress: {{possibles}} of possible lessons and {{effectives}} attended, an attendance rate of {{rate}} %.",
+      "legendHours": "Number = lesson hours missed (red: unexcused, blue: excused) · R = late (counted present) · an absence without a time counts for every lesson of the day.",
+      "noTimetable": "The class timetable is empty: register counted by day."
     },
     "rollCall": {
       "tab": "Roll call",
@@ -1791,7 +1803,16 @@
       "validateAll": "All present — confirm roll call",
       "allPresent": "Roll call saved: everyone is present.",
       "saved": "Roll call saved — absent: {{absents}}, late: {{retards}}.",
-      "savedNotified": "Roll call saved — absent: {{absents}}, late: {{retards}}. Parents have been notified."
+      "savedNotified": "Roll call saved — absent: {{absents}}, late: {{retards}}. Parents have been notified.",
+      "course": "Lesson",
+      "otherTime": "Other time",
+      "from": "Lesson start",
+      "to": "Lesson end",
+      "courseRequired": "Choose the lesson (start and end time).",
+      "hintCourse": "Roll call for this lesson only: everyone is present by default, tap the absent and late students of your lesson. What other lessons recorded shows under the name, without blocking anything.",
+      "elsewhereAbsent": "Absent {{when}}{{subject}}",
+      "elsewhereLate": "Late {{when}}{{subject}}",
+      "allDay": "all day"
     },
     "header": {
       "logoAlt": "School logo",
@@ -1827,7 +1848,8 @@
       "saveError": "Saving error.",
       "deleteConfirm": "Delete this report?",
       "deleted": "Report deleted.",
-      "deleteError": "Deletion error."
+      "deleteError": "Deletion error.",
+      "pushBodyCourse": "{{name}}: {{type}} in the {{subject}} lesson ({{time}}) on {{date}}"
     },
     "pay": {
       "title": "My payslip",

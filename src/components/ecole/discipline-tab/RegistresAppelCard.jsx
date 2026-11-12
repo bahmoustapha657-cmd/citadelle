@@ -6,8 +6,10 @@ import { useFirestore } from "../../../hooks/useFirestore";
 import { getJoursOuvrables } from "../edt/edt-utils";
 import { chefDeSection, imprimerRegistresAppel, titreChefSection, titreTitulaire } from "../../../reports/registre-appel";
 import { ficheTitulaire } from "../edt/edt-titulaire";
+import { sectionParCours } from "../../portail-enseignant/seances";
 import {
-  cleMois, debutDeMois, formaterTaux, joursDeClasse, joursDeConge, libelleMois, moisDeLAnnee, moisPrecedent, registreMensuel,
+  cleMois, debutDeMois, formaterQuantite, formaterTaux, joursDeClasse, joursDeConge, libelleMois, moisDeLAnnee, moisPrecedent,
+  registreDuMois,
 } from "../../portail-enseignant/registre-mensuel";
 
 // Registres d'appel de la section, arrêtés à la fin du mois : présences
@@ -39,6 +41,7 @@ const selectStyle = {
 
 export function RegistresAppelCard({
   eleves = [], absences = [], section = "college", peutImprimer = false, couleur = "#0A1628", ens = [], classesEcole = [],
+  emplois = [],
 }) {
   const { t, i18n } = useTranslation();
   const langue = i18n.resolvedLanguage || i18n.language || "fr";
@@ -71,7 +74,10 @@ export function RegistresAppelCard({
     .sort((a, b) => String(a).localeCompare(String(b), "fr", { numeric: true }));
   const registres = classes.map((classe) => ({
     classe,
-    registre: registreMensuel({
+    // Secondaire : compté en heures de cours, d'après l'emploi du temps de
+    // la classe (appel par cours) ; par journée sinon.
+    registre: registreDuMois({
+      parCours: sectionParCours(section), creneaux: emplois.filter((c) => c.classe === classe),
       eleves: eleves.filter((e) => e.classe === classe), incidents: absences, mois, joursOuvrables, conges, exclus,
     }),
   }));
@@ -80,7 +86,12 @@ export function RegistresAppelCard({
   }), { possibles: 0, effectives: 0 });
   const classeImpression = classes.includes(classeChoisie) ? classeChoisie : (classes[0] || "");
   const registreClasse = registres.find((r) => r.classe === classeImpression);
-  const tauxSection =section_.possibles > 0 ? Math.round((section_.effectives / section_.possibles) * 1000) / 10 : 0;
+  // Classes comptées en heures et classes comptées par journée (emploi du
+  // temps vide) ne s'additionnent pas : moyenne des taux dans ce cas.
+  const unites = new Set(registres.map(({ registre: r }) => r.unite));
+  const tauxSection = unites.size > 1
+    ? Math.round((registres.reduce((s, { registre: r }) => s + r.totaux.taux, 0) / registres.length) * 10) / 10
+    : section_.possibles > 0 ? Math.round((section_.effectives / section_.possibles) * 1000) / 10 : 0;
   // Tous les jours ouvrés du mois (congés compris) : on retire/rajoute d'un toucher.
   const joursOuvres = joursDeClasse(mois, joursOuvrables, aujourdhui);
 
@@ -133,8 +144,8 @@ export function RegistresAppelCard({
           {registreClasse && (
             <span style={{ fontSize: 12, color: "#475569" }}>
               {t("school.registers.classSummary", {
-                possibles: registreClasse.registre.totaux.possibles.toLocaleString(langue),
-                effectives: registreClasse.registre.totaux.effectives.toLocaleString(langue),
+                possibles: formaterQuantite(registreClasse.registre.totaux.possibles, registreClasse.registre.unite, langue),
+                effectives: formaterQuantite(registreClasse.registre.totaux.effectives, registreClasse.registre.unite, langue),
                 rate: formaterTaux(registreClasse.registre.totaux.taux, langue),
               })}
             </span>
@@ -205,8 +216,8 @@ export function RegistresAppelCard({
                   <tr key={item.classe} style={{ borderTop: "1px solid #f1f5f9" }}>
                     <td style={{ padding: "6px 4px", fontWeight: 800 }}>{item.classe}</td>
                     <td style={{ padding: "6px 4px", textAlign: "center" }}>{item.registre.lignes.length}</td>
-                    <td style={{ padding: "6px 4px", textAlign: "center" }}>{item.registre.totaux.possibles.toLocaleString(langue)}</td>
-                    <td style={{ padding: "6px 4px", textAlign: "center" }}>{item.registre.totaux.effectives.toLocaleString(langue)}</td>
+                    <td style={{ padding: "6px 4px", textAlign: "center" }}>{formaterQuantite(item.registre.totaux.possibles, item.registre.unite, langue)}</td>
+                    <td style={{ padding: "6px 4px", textAlign: "center" }}>{formaterQuantite(item.registre.totaux.effectives, item.registre.unite, langue)}</td>
                     <td style={{ padding: "6px 4px", textAlign: "center", fontWeight: 900, color: couleur }}>{formaterTaux(item.registre.totaux.taux, langue)} %</td>
                     {peutImprimer && (
                       <td style={{ padding: "4px", textAlign: "end" }}>

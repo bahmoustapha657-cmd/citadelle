@@ -1772,7 +1772,19 @@
         "secondaire": "Le professeur principal",
         "secondaireF": "La professeure principale",
         "secondaireN": "Le (la) professeur(e) principal(e)"
-      }
+      },
+      "coverHours": "Heures de cours par élève",
+      "rowPresentHours": "Heures suivies",
+      "rowAbsentHours": "Heures d'absence",
+      "colPresencesHours": "H. suiv.",
+      "statPossibleHours": "Heures de cours possibles : {{count}}",
+      "statEffectiveHours": "Heures suivies : {{count}}",
+      "statAbsNJHours": "Absences non justifiées : {{count}}",
+      "statAbsJHours": "Absences justifiées : {{count}}",
+      "stoppedHours": "Arrêté le présent registre au {{date}} : {{possibles}} de cours possibles et {{effectives}} suivies, soit un taux de fréquentation de {{rate}} %.",
+      "situationHours": "Situation au {{date}}, mois en cours : {{possibles}} de cours possibles et {{effectives}} suivies, soit un taux de fréquentation de {{rate}} %.",
+      "legendHours": "Chiffre = heures de cours manquées (rouge : non justifiées, bleu : justifiées) · R = retard (compté présent) · une absence sans heure vaut pour tous les cours de la journée.",
+      "noTimetable": "Emploi du temps de la classe vide : registre compté par journée."
     },
     "rollCall": {
       "tab": "Appel",
@@ -1791,7 +1803,16 @@
       "validateAll": "Tous présents — valider l'appel",
       "allPresent": "Appel enregistré : tout le monde est présent.",
       "saved": "Appel enregistré — absents : {{absents}}, retards : {{retards}}.",
-      "savedNotified": "Appel enregistré — absents : {{absents}}, retards : {{retards}}. Les parents sont prévenus."
+      "savedNotified": "Appel enregistré — absents : {{absents}}, retards : {{retards}}. Les parents sont prévenus.",
+      "course": "Cours",
+      "otherTime": "Autre heure",
+      "from": "Début du cours",
+      "to": "Fin du cours",
+      "courseRequired": "Choisissez le cours (heure de début et de fin).",
+      "hintCourse": "Appel de ce cours seulement : tout le monde est présent par défaut, touchez les absents et les retards de votre cours. Ce que les autres cours ont noté s'affiche sous le nom, sans rien bloquer.",
+      "elsewhereAbsent": "Absent {{when}}{{subject}}",
+      "elsewhereLate": "En retard {{when}}{{subject}}",
+      "allDay": "toute la journée"
     },
     "header": {
       "logoAlt": "Logo de l'école",
@@ -1827,7 +1848,8 @@
       "saveError": "Erreur d'enregistrement.",
       "deleteConfirm": "Supprimer ce signalement ?",
       "deleted": "Signalement supprimé.",
-      "deleteError": "Erreur de suppression."
+      "deleteError": "Erreur de suppression.",
+      "pushBodyCourse": "{{name}} : {{type}} au cours de {{subject}} ({{time}}) du {{date}}"
     },
     "pay": {
       "title": "Ma fiche de paie",

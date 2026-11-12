@@ -53,6 +53,7 @@ export function EcoleTabsAdmin({ e, section, avecEns, userRole, annee, maxNote, 
         peutImprimerRegistres={userRole === "direction" || !readOnly}
         ens={e.ens}
         classesEcole={e.classes}
+        emplois={e.emplois}
       />}
 
       {/* ── BULLETINS ── */}

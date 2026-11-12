@@ -10,7 +10,7 @@ export function DisciplineTable({ absences, cAbs, supAbs, canEdit }) {
       <tbody>{absences.map(a=><TR key={a._id}>
         <TD bold>{a.eleveNom||"—"}</TD><TD>{a.classe||"—"}</TD>
         <TD><Badge color={a.type==="Absence"?"red":a.type==="Retard"?"amber":"orange"}>{a.type}</Badge></TD>
-        <TD>{a.date}</TD><TD>{a.motif||"—"}</TD>
+        <TD>{a.date}{a.heureDebut ? <div style={{ fontSize: 10.5, color: "#64748b" }}>{a.heureDebut}–{a.heureFin}{a.matiere ? ` · ${a.matiere}` : ""}</div> : null}</TD><TD>{a.motif||"—"}</TD>
         <TD><Badge color={a.justifie==="Oui"?"vert":"red"}>{a.justifie}</Badge></TD>
         {canEdit&&<TD><Btn sm v="danger" onClick={()=>{if(confirm("Supprimer ?"))supAbs(a._id);}}>Suppr.</Btn></TD>}
       </TR>)}</tbody>
