@@ -40,7 +40,8 @@ test("connecteur : le journal remonte en INSERT, une ligne déjà reçue n'est p
     },
   }));
   mocks.push(mock.module(url("../src/backend/powersync/tables.js"), {
-    namedExports: { parseJsonCols: (_t, r) => r },
+    // stringifyJsonCols : utilisé par la garde des refus (garde-refus.js).
+    namedExports: { parseJsonCols: (_t, r) => r, stringifyJsonCols: (_t, r) => r },
   }));
   Object.defineProperty(globalThis, "navigator", { configurable: true, value: { onLine: true } });
   const { SupabaseConnector } = await import("../src/backend/powersync/connector.js");

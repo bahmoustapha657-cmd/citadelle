@@ -4,6 +4,7 @@ import { getPrimaryModuleForRole, getRoleLabelForSchool } from "../../constants"
 import { getPrimaryModuleForCompte } from "../../../shared/postes-config.js";
 import { computePlanInfo } from "./app-shell-plan";
 import { EVENEMENT_ECRITURE_REFUSEE, messageRefus } from "../../backend/ecritures-refusees";
+import { definirAuteurJournal } from "../../backend/refus-ecriture";
 import {
   envoyerPushApi,
   logActionDoc,
@@ -56,6 +57,8 @@ export function useAppShell({
   // appelants — même principe que le journal des paiements.
   const logAction = (action, details = "", auteur = utilisateur?.nom || "") =>
     logActionDoc(action, details, auteur);
+  // Même auteur pour les refus que le connecteur hors ligne écrit au journal.
+  useEffect(() => { definirAuteurJournal(utilisateur?.nom || ""); }, [utilisateur?.nom]);
 
   const [annee, setAnneeState] = useState(() => localStorage.getItem("LC_annee") || "2025-2026");
   // `persister` distingue DEUX gestes que l'écran confondait :
