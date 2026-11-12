@@ -4,8 +4,9 @@ import { Badge, Btn, Card } from "../ui";
 import { registresAppelHTML } from "../../reports/registre-appel";
 import { ApercuRegistre } from "./ApercuRegistre";
 import {
-  cleMois, debutDeMois, formaterTaux, libelleMois, lignesAuSuivi, moisDeLAnnee, moisPrecedent, registreMensuel,
+  cleMois, debutDeMois, formaterQuantite, formaterTaux, libelleMois, lignesAuSuivi, moisDeLAnnee, moisPrecedent, registreDuMois,
 } from "./registre-mensuel";
+import { sectionParCours } from "./seances";
 
 // Statistique du mois du registre d'appel, côté enseignant : présences
 // possibles et effectives, taux de fréquentation, élèves les plus absents, et
@@ -16,7 +17,10 @@ const selectStyle = {
   fontSize: 13, fontFamily: "inherit", background: "#fff",
 };
 
-export function RegistreMoisCard({ c1, mesClasses = [], eleves = [], incidents = [], joursOuvrables, annee = "", schoolInfo = {}, nomEns = "", matiere = "" }) {
+export function RegistreMoisCard({
+  c1, mesClasses = [], eleves = [], incidents = [], joursOuvrables, annee = "", schoolInfo = {}, nomEns = "", matiere = "",
+  section = "", emplois = [],
+}) {
   const { t, i18n } = useTranslation();
   const langue = i18n.resolvedLanguage || i18n.language || "fr";
   const aujourdhui = new Date();
@@ -27,7 +31,12 @@ export function RegistreMoisCard({ c1, mesClasses = [], eleves = [], incidents =
   const classe = mesClasses.includes(classeChoisie) ? classeChoisie : (mesClasses[0] || "");
   const [apercu, setApercu] = useState("");
 
-  const registre = registreMensuel({ eleves: eleves.filter((e) => e.classe === classe), incidents, mois, joursOuvrables });
+  // Secondaire : SES cours dans la classe, en heures (appel par cours).
+  const registre = registreDuMois({
+    parCours: sectionParCours(section), creneaux: emplois.filter((c) => c.classe === classe),
+    eleves: eleves.filter((e) => e.classe === classe), incidents, mois, joursOuvrables,
+  });
+  const quantite = (valeur) => formaterQuantite(valeur, registre.unite, langue);
   const suivi = lignesAuSuivi(registre);
   const precedent = moisPrecedent(aujourdhui);
   const rappel = debutDeMois(aujourdhui) && listeMois.includes(precedent) && mois !== precedent;
@@ -59,15 +68,24 @@ export function RegistreMoisCard({ c1, mesClasses = [], eleves = [], incidents =
       )}
 
       <div style={{ padding: "12px 18px 4px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 8 }}>
-        <Chiffre libelle={t("teacher.register.possible")} valeur={registre.totaux.possibles.toLocaleString(langue)} />
-        <Chiffre libelle={t("teacher.register.effective")} valeur={registre.totaux.effectives.toLocaleString(langue)} />
+        <Chiffre libelle={t("teacher.register.possible")} valeur={quantite(registre.totaux.possibles)} />
+        <Chiffre libelle={t("teacher.register.effective")} valeur={quantite(registre.totaux.effectives)} />
         <Chiffre libelle={t("teacher.register.rate")} valeur={`${formaterTaux(registre.totaux.taux, langue)} %`} couleur={c1} />
       </div>
 
       <div style={{ padding: "8px 18px 10px", display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
         <Badge color="gray">{t("teacher.register.statDays", { count: registre.jours.length })}</Badge>
-        <Badge color="red">{t("teacher.register.statAbsNJ", { count: registre.totaux.absNJ })}</Badge>
-        <Badge color="blue">{t("teacher.register.statAbsJ", { count: registre.totaux.absJ })}</Badge>
+        {registre.unite === "heures" ? (
+          <>
+            <Badge color="red">{t("teacher.register.statAbsNJHours", { count: quantite(registre.totaux.absNJ) })}</Badge>
+            <Badge color="blue">{t("teacher.register.statAbsJHours", { count: quantite(registre.totaux.absJ) })}</Badge>
+          </>
+        ) : (
+          <>
+            <Badge color="red">{t("teacher.register.statAbsNJ", { count: registre.totaux.absNJ })}</Badge>
+            <Badge color="blue">{t("teacher.register.statAbsJ", { count: registre.totaux.absJ })}</Badge>
+          </>
+        )}
         <Badge color="amber">{t("teacher.register.statLate", { count: registre.totaux.retards })}</Badge>
       </div>
       <div style={{ padding: "0 18px 10px", fontSize: 11.5, color: "#64748b" }}>{t("teacher.register.teacherHint")}</div>

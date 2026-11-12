@@ -8,6 +8,7 @@
 import { saveIncident, saveAppel, deleteIncident } from "../../backend/teacher-portal-supabase";
 import i18n from "../../i18n";
 import { nbEcritures } from "./appel-logic";
+import { libelleSeance } from "./seances";
 
 // Types de signalement : la valeur enregistrée reste en français (lue par la
 // direction, les parents et les états imprimés) ; seul le libellé se traduit.
@@ -72,20 +73,26 @@ export async function enregistrerIncident({
 // Enregistre l'appel d'un jour : n'écrit que la différence avec ce qui est
 // déjà en base (plan de appel-logic.js). Les parents ne sont prévenus que des
 // nouvelles absences et des nouveaux retards. Renvoie true si c'est fait.
+// `seance` (secondaire) : le cours appelé ; le message aux parents dit lequel.
 export async function enregistrerAppel({
-  plan, date, bilan,
+  plan, date, bilan, seance = null,
   envoyerPush, setEnregistrement, chargerPortail, toast,
 }) {
   setEnregistrement(true);
   try {
     if (nbEcritures(plan) > 0) {
-      await saveAppel({ date, ...plan });
+      await saveAppel({ date, seance, ...plan });
       if (envoyerPush) {
         for (const { eleveId, eleveNom, type } of plan.creations) {
           envoyerPush(
             ["parent"],
             `⚠️ ${i18n.t("teacher.incident.pushTitle", { type: libelleTypeIncident(type) })}`,
-            i18n.t("teacher.incident.pushBody", { name: eleveNom || i18n.t("teacher.incident.yourChild"), type: libelleTypeIncident(type), date, reason: "" }),
+            seance
+              ? i18n.t("teacher.incident.pushBodyCourse", {
+                name: eleveNom || i18n.t("teacher.incident.yourChild"), type: libelleTypeIncident(type), date,
+                subject: seance.matiere || "", time: libelleSeance(seance),
+              })
+              : i18n.t("teacher.incident.pushBody", { name: eleveNom || i18n.t("teacher.incident.yourChild"), type: libelleTypeIncident(type), date, reason: "" }),
             "/absences",
             { eleveId },
           );

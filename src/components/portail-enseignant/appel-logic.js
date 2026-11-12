@@ -6,7 +6,14 @@
 // `absences`). Faire l'appel revient donc à comparer ce que l'enseignant a
 // coché avec ce qui est déjà enregistré, et à n'écrire que la différence —
 // enregistrer deux fois le même appel n'écrit rien la seconde fois.
+//
+// Au secondaire, l'appel se fait par COURS (`seance` : heureDebut, heureFin,
+// matiere ; voir seances.js) : seuls les signalements de ce cours comptent
+// pour cet appel. Ceux des autres cours du jour (et ceux sans heure, valables
+// toute la journée) sont montrés pour information sans rien bloquer : un élève
+// absent en Maths à 8 h peut être présent en Français à 10 h.
 import { dateIso } from "../../absences-eleves.js";
+import { cleSeance, libelleSeance } from "./seances.js";
 
 // i18n-ignore
 export const TYPE_PAR_ETAT = { absent: "Absence", retard: "Retard" };
@@ -16,11 +23,14 @@ const ETAT_PAR_TYPE = { Absence: "absent", Retard: "retard" };
 // modifiable, auteur }. Une absence l'emporte sur un retard du même jour.
 // `modifiable` : tous ces signalements sont ceux de l'enseignant — celui de
 // la direction ou d'un collègue ne se défait pas depuis l'appel.
-export function situationDuJour(incidents = [], date = "", enseignantId = null) {
+// `seance` : appel d'un cours (secondaire) ; null : appel de la journée.
+const duCours = (inc, seance) => !seance || cleSeance(inc) === cleSeance(seance);
+
+export function situationDuJour(incidents = [], date = "", enseignantId = null, seance = null) {
   const parEleve = new Map();
   for (const inc of incidents) {
     const etat = ETAT_PAR_TYPE[inc.type];
-    if (!etat || !inc.eleveId || dateIso(inc.date) !== date) continue;
+    if (!etat || !inc.eleveId || dateIso(inc.date) !== date || !duCours(inc, seance)) continue;
     const deja = parEleve.get(inc.eleveId) || { etat, incidents: [], modifiable: true, auteur: "" };
     if (etat === "absent") deja.etat = "absent";
     deja.incidents.push(inc);
@@ -57,8 +67,8 @@ export function compterAppel(eleves = [], situation, marques = {}) {
 //  · creations     : élève présent en base, coché absent ou en retard ;
 //  · modifications : absent ↔ retard (le signalement garde motif et justificatif) ;
 //  · suppressions  : élève recoché présent (et doublons du même jour).
-export function planAppel({ eleves = [], incidents = [], date = "", marques = {}, enseignantId = null }) {
-  const situation = situationDuJour(incidents, date, enseignantId);
+export function planAppel({ eleves = [], incidents = [], date = "", marques = {}, enseignantId = null, seance = null }) {
+  const situation = situationDuJour(incidents, date, enseignantId, seance);
   const plan = { creations: [], modifications: [], suppressions: [] };
   for (const e of eleves) {
     const voulu = marques[e._id];
@@ -78,6 +88,23 @@ export function planAppel({ eleves = [], incidents = [], date = "", marques = {}
     }
   }
   return plan;
+}
+
+// Ce que les AUTRES cours du jour disent d'un élève (appel par cours) :
+// Map eleveId → [{ etat, quand, matiere, auteur }], dans l'ordre de la
+// journée. `quand` : « 08:00–10:00 », vide pour un signalement de la journée.
+export function autresCoursDuJour(incidents = [], date = "", seance = null) {
+  const parEleve = new Map();
+  if (!seance) return parEleve;
+  for (const inc of incidents) {
+    const etat = ETAT_PAR_TYPE[inc.type];
+    if (!etat || !inc.eleveId || dateIso(inc.date) !== date || duCours(inc, seance)) continue;
+    const liste = parEleve.get(inc.eleveId) || [];
+    liste.push({ etat, quand: libelleSeance(inc), matiere: inc.matiere || "", auteur: inc.signaledByEnseignantNom || "" });
+    parEleve.set(inc.eleveId, liste);
+  }
+  for (const liste of parEleve.values()) liste.sort((a, b) => a.quand.localeCompare(b.quand));
+  return parEleve;
 }
 
 export const nbEcritures = (plan) =>

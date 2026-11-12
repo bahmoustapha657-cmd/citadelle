@@ -88,6 +88,8 @@ const TRANSFORMERS = {
     _id: r.id, section: r.section, eleveId: r.eleve_id, type: r.type,
     date: r.date, justifie: r.justifie, motif: r.motif, matiere: r.matiere,
     signaledByEnseignantId: r.signale_par_id, signaledByEnseignantNom: r.signale_par_nom,
+    // Heure du cours manqué (appel par cours au secondaire) ; vide = journée.
+    heureDebut: r.heure_debut || "", heureFin: r.heure_fin || "",
   }),
   classes: (r) => ({
     _id: r.id, section: r.section, nom: r.nom, effectif: r.effectif,
@@ -175,7 +177,8 @@ const COLUMN_DEFS = {
     note: "note", annee: "annee", enseignantId: "enseignant_id", enseignantNom: "enseignant_nom" } },
   absences: { cols: {
     eleveId: "eleve_id", type: "type", date: "date", justifie: "justifie", motif: "motif",
-    matiere: "matiere", signaledByEnseignantId: "signale_par_id", signaledByEnseignantNom: "signale_par_nom" } },
+    matiere: "matiere", signaledByEnseignantId: "signale_par_id", signaledByEnseignantNom: "signale_par_nom",
+    heureDebut: "heure_debut", heureFin: "heure_fin" } },
   classes: { extraCol: "extra", cols: {
     nom: "nom", effectif: "effectif", enseignantId: "enseignant_id", salle: "salle" } },
   enseignants: { extraCol: "extra", cols: {

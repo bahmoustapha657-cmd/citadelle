@@ -12,7 +12,7 @@ import {
   PRINT_TRIGGER, WATERMARK_CSS, enteteDoc, printDir, printLang, printResetFor, tr, watermarkHtml,
 } from "./print-helpers.js";
 import {
-  dernierJour, formaterTaux, libelleDate, libelleMois,
+  dernierJour, formaterQuantite, formaterTaux, libelleDate, libelleMois,
 } from "../components/portail-enseignant/registre-mensuel.js";
 import { cachetOuEspace, libelleChoisiParEcole, responsableNom } from "./signatures.js";
 import { signataireSession } from "./signataire-session.js";
@@ -82,6 +82,10 @@ const initialeJour = (date, langue) => {
 
 const COULEUR_MARQUE = { A: "#b91c1c", J: "#1d4ed8", R: "#b45309" };
 const nombre = (n, langue) => Number(n || 0).toLocaleString(langue);
+// Registre en heures (secondaire) : minutes → « 1,5 » dans les cases.
+const heures = (minutes, langue) => (Math.round((minutes / 60) * 10) / 10).toLocaleString(langue, { maximumFractionDigits: 1 });
+// Clé de texte : sa variante « en heures » pour un registre compté en heures.
+const cle = (registre, base) => (registre.unite === "heures" ? `${base}Hours` : base);
 
 // Page de garde : l'école, le titre, la classe et le mois en grand.
 function pageDeGarde({ registre, classe = "", schoolInfo = {}, annee = "", nomEns = "", matiere = "" }, langue) {
@@ -89,8 +93,10 @@ function pageDeGarde({ registre, classe = "", schoolInfo = {}, annee = "", nomEn
     ["teacher.register.coverYear", annee],
     ["teacher.register.coverStudents", nombre(registre.lignes.length, langue)],
     ["teacher.register.coverDays", nombre(registre.jours.length, langue)],
+    registre.unite === "heures" && registre.lignes.length > 0
+      ? ["teacher.register.coverHours", formaterQuantite(registre.totaux.possibles / registre.lignes.length, "heures", langue)] : null,
     ["teacher.register.coverTeacher", [nomEns, matiere].filter(Boolean).join(" — ")],
-  ].filter(([, valeur]) => valeur !== "" && valeur != null)
+  ].filter((champ) => champ && champ[1] !== "" && champ[1] != null)
     .map(([cle, valeur]) => `<tr><th>${echapper(tr(cle))}</th><td>${echapper(valeur)}</td></tr>`).join("");
   return `<section class="page couverture">
   ${enteteDoc(schoolInfo, schoolInfo.logo)}
@@ -111,32 +117,40 @@ function pageRegistre({
 }, langue) {
   const mois = libelleMois(registre.mois, langue);
   const { jours, lignes, parJour, totaux } = registre;
+  const enHeures = registre.unite === "heures";
+  const q = (valeur) => (enHeures ? heures(valeur, langue) : valeur);
+  // Case du jour : A / J / R, ou, en heures, les heures manquées (rouge s'il
+  // y a du non justifié, bleu sinon) et R pour un retard seul.
+  const caseJour = (m) => {
+    if (!m) return `<td class="j"></td>`;
+    if (!enHeures) return `<td class="j" style="color:${COULEUR_MARQUE[m]}">${m}</td>`;
+    if (m.nj + m.j === 0) return `<td class="j" style="color:${COULEUR_MARQUE.R}">R</td>`;
+    return `<td class="j" style="color:${m.nj ? COULEUR_MARQUE.A : COULEUR_MARQUE.J}">${heures(m.nj + m.j, langue)}</td>`;
+  };
   const entetesJours = jours.map((j) => `<th class="j">${j.jour}<br/><small>${echapper(initialeJour(j.date, langue))}</small></th>`).join("");
   const corps = lignes.map((l, i) => {
-    const cases = jours.map(({ date }) => {
-      const m = l.marques[date] || "";
-      return `<td class="j"${m ? ` style="color:${COULEUR_MARQUE[m]}"` : ""}>${m}</td>`;
-    }).join("");
+    const cases = jours.map(({ date }) => caseJour(l.marques[date])).join("");
     return `<tr><td class="n">${i + 1}</td><td class="nom">${echapper(l.eleve.nom)} ${echapper(l.eleve.prenom)}</td>${cases}`
-      + `<td class="t">${l.absNJ || ""}</td><td class="t">${l.absJ || ""}</td><td class="t">${l.retards || ""}</td><td class="t tot">${l.presences}</td></tr>`;
+      + `<td class="t">${l.absNJ ? q(l.absNJ) : ""}</td><td class="t">${l.absJ ? q(l.absJ) : ""}</td><td class="t">${l.retards || ""}</td><td class="t tot">${q(l.presences)}</td></tr>`;
   }).join("");
-  const ligneJour = (cle, libelle, total) => `<tr class="total"><td colspan="2" class="lib">${echapper(tr(libelle))}</td>`
-    + jours.map(({ date }) => `<td class="j">${parJour[date][cle]}</td>`).join("")
-    + `<td colspan="3"></td><td class="t tot">${nombre(total, langue)}</td></tr>`;
+  const ligneJour = (champ, libelle, total) => `<tr class="total"><td colspan="2" class="lib">${echapper(tr(cle(registre, libelle)))}</td>`
+    + jours.map(({ date }) => `<td class="j">${q(parJour[date][champ])}</td>`).join("")
+    + `<td colspan="3"></td><td class="t tot">${enHeures ? heures(total, langue) : nombre(total, langue)}</td></tr>`;
   const sous = [
     classe && tr("teacher.register.printClass", { classe }),
     nomEns && tr("teacher.register.printTeacher", { name: [nomEns, matiere].filter(Boolean).join(" — ") }),
     annee && tr("teacher.register.printYear", { year: annee }),
   ].filter(Boolean).map(echapper).join(" · ");
   const chiffres = {
-    possibles: nombre(totaux.possibles, langue),
-    effectives: nombre(totaux.effectives, langue),
+    possibles: formaterQuantite(totaux.possibles, registre.unite, langue),
+    effectives: formaterQuantite(totaux.effectives, registre.unite, langue),
     rate: formaterTaux(totaux.taux, langue),
   };
   const arrete = registre.arrete
-    ? tr("teacher.register.stopped", { date: libelleDate(dernierJour(registre.mois), langue), ...chiffres })
-    : tr("teacher.register.situation", { date: libelleDate(new Date().toISOString().slice(0, 10), langue), ...chiffres });
+    ? tr(cle(registre, "teacher.register.stopped"), { date: libelleDate(dernierJour(registre.mois), langue), ...chiffres })
+    : tr(cle(registre, "teacher.register.situation"), { date: libelleDate(new Date().toISOString().slice(0, 10), langue), ...chiffres });
   const notes = [
+    registre.sansEmploiDuTemps && tr("teacher.register.noTimetable"),
     registre.congesRetires > 0 && tr("teacher.register.holidaysNote", { count: registre.congesRetires }),
     registre.horsJours > 0 && tr("teacher.register.outsideDays", { count: registre.horsJours }),
   ].filter(Boolean).map(echapper).join(" · ");
@@ -147,7 +161,7 @@ function pageRegistre({
   <table>
     <colgroup><col style="width:7mm"/><col style="width:50mm"/>${jours.map(() => "<col/>").join("")}<col style="width:9mm"/><col style="width:9mm"/><col style="width:9mm"/><col style="width:12mm"/></colgroup>
     <thead><tr><th>${echapper(tr("teacher.register.colNo"))}</th><th>${echapper(tr("teacher.register.colStudent"))}</th>${entetesJours}`
-    + `<th>A</th><th>J</th><th>R</th><th>${echapper(tr("teacher.register.colPresences"))}</th></tr></thead>
+    + `<th>A${enHeures ? " (h)" : ""}</th><th>J${enHeures ? " (h)" : ""}</th><th>R</th><th>${echapper(tr(cle(registre, "teacher.register.colPresences")))}</th></tr></thead>
     <tbody>${corps}
       ${ligneJour("presents", "teacher.register.rowPresent", totaux.effectives)}
       ${ligneJour("absents", "teacher.register.rowAbsent", totaux.absNJ + totaux.absJ)}
@@ -157,15 +171,15 @@ function pageRegistre({
   <div class="bilan">
     <span>${echapper(tr("teacher.register.statStudents", { count: lignes.length }))}</span>
     <span>${echapper(tr("teacher.register.statDays", { count: jours.length }))}</span>
-    <span>${echapper(tr("teacher.register.statPossible", { count: chiffres.possibles }))}</span>
-    <span>${echapper(tr("teacher.register.statEffective", { count: chiffres.effectives }))}</span>
+    <span>${echapper(tr(cle(registre, "teacher.register.statPossible"), { count: chiffres.possibles }))}</span>
+    <span>${echapper(tr(cle(registre, "teacher.register.statEffective"), { count: chiffres.effectives }))}</span>
     <span class="taux">${echapper(tr("teacher.register.statRate", { rate: chiffres.rate }))}</span>
-    <span style="color:#b91c1c">${echapper(tr("teacher.register.statAbsNJ", { count: totaux.absNJ }))}</span>
-    <span style="color:#1d4ed8">${echapper(tr("teacher.register.statAbsJ", { count: totaux.absJ }))}</span>
+    <span style="color:#b91c1c">${echapper(enHeures ? tr("teacher.register.statAbsNJHours", { count: formaterQuantite(totaux.absNJ, "heures", langue) }) : tr("teacher.register.statAbsNJ", { count: totaux.absNJ }))}</span>
+    <span style="color:#1d4ed8">${echapper(enHeures ? tr("teacher.register.statAbsJHours", { count: formaterQuantite(totaux.absJ, "heures", langue) }) : tr("teacher.register.statAbsJ", { count: totaux.absJ }))}</span>
     <span style="color:#b45309">${echapper(tr("teacher.register.statLate", { count: totaux.retards }))}</span>
   </div>
   <div class="arrete">${echapper(arrete)}</div>
-  <div class="legende">${echapper(tr("teacher.register.legend"))}${notes ? `<br/>${notes}` : ""}</div>
+  <div class="legende">${echapper(tr(cle(registre, "teacher.register.legend")))}${notes ? `<br/>${notes}` : ""}</div>
   <div class="pied">
     <span><strong>${echapper(titulaire || tr("teacher.register.signTitular"))}</strong>${nomTitulaire ? `<br/><span class="nom-sig">${echapper(nomTitulaire)}</span>` : ""}<br/><br/><br/></span>
     <span><strong>${echapper(titreChef || tr("teacher.register.signHead"))}</strong>${chef?.nom ? `<br/><span class="nom-sig">${echapper(chef.nom)}</span>` : ""}${cachetOuEspace(chef || {})}</span>

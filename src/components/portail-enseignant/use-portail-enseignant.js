@@ -22,7 +22,8 @@ import {
   enregistrerAppel as enregistrerAppelAction,
   supprimerIncident as supprimerIncidentAction,
 } from "./incidents-actions";
-import { compterAppel, heureAppelFait, noterAppelFait, planAppel, situationDuJour } from "./appel-logic";
+import { autresCoursDuJour, compterAppel, heureAppelFait, noterAppelFait, planAppel, situationDuJour } from "./appel-logic";
+import { cleSeance, heureDe, seanceParDefaut, seanceValide, seancesDuJour, sectionParCours } from "./seances";
 import { dateAbsence } from "../../absences-eleves";
 import { fetchTeacherPortal } from "./portail-api";
 import { ecouterMiroir } from "../../backend/realtime-supabase";
@@ -97,6 +98,10 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
   const [appelDate, setAppelDateBrute] = useState(() => dateAbsence());
   const [appelMarques, setAppelMarques] = useState({});
   const [appelFaitA, setAppelFaitA] = useState("");
+  // Appel par cours (secondaire) : cours choisi (clé « 08:00-10:00 ») ou
+  // « autre » avec ses heures saisies ; "" = cours proposé d'office.
+  const [appelSeanceChoisie, setAppelSeanceChoisie] = useState("");
+  const [appelSeanceLibre, setAppelSeanceLibre] = useState(null);
 
   const nomEns = utilisateur.enseignantNom || utilisateur.nom || "";
   const matiere = utilisateur.matiere || "";
@@ -378,33 +383,69 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
       .sort((a, b) => `${a.nom || ""} ${a.prenom || ""}`.localeCompare(`${b.nom || ""} ${b.prenom || ""}`, "fr", { sensitivity: "base" })),
     [eleves, appelClasse],
   );
+  // Au secondaire, l'appel se fait par cours : ceux du professeur dans cette
+  // classe ce jour-là (emploi du temps), le cours en cours proposé d'office ;
+  // « autre heure » pour un cours absent de l'emploi du temps.
+  const parCours = sectionParCours(portalData.section || utilisateur.section);
+  const seancesAppel = parCours ? seancesDuJour(emplois, appelClasse, appelDate) : [];
+  const maintenant = new Date();
+  const heureMaintenant = heureDe(maintenant.getHours() * 60 + maintenant.getMinutes());
+  const seanceLibreParDefaut = {
+    heureDebut: heureDe(maintenant.getHours() * 60),
+    heureFin: heureDe(Math.min(23, maintenant.getHours() + 1) * 60),
+  };
+  const seanceLibre = appelSeanceLibre || seanceLibreParDefaut;
+  const seanceAppel = !parCours ? null
+    : appelSeanceChoisie === "autre" || !seancesAppel.length
+      ? (seanceValide(seanceLibre) ? { ...seanceLibre, matiere } : null)
+      : seancesAppel.find((s) => cleSeance(s) === appelSeanceChoisie)
+        || seanceParDefaut(seancesAppel, appelDate === aujourdhui ? heureMaintenant : "");
   const situationAppel = useMemo(
-    () => situationDuJour(incidents, appelDate, enseignantId),
-    [incidents, appelDate, enseignantId],
+    () => situationDuJour(incidents, appelDate, enseignantId, seanceAppel),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [incidents, appelDate, enseignantId, cleSeance(seanceAppel)],
+  );
+  const autresCours = useMemo(
+    () => autresCoursDuJour(incidents, appelDate, seanceAppel),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [incidents, appelDate, cleSeance(seanceAppel)],
   );
   // Tous les élèves cochés, même d'une autre classe : rien de coché ne reste
   // de côté à l'enregistrement.
-  const planDeLAppel = planAppel({ eleves, incidents, date: appelDate, marques: appelMarques, enseignantId });
+  const planDeLAppel = planAppel({ eleves, incidents, date: appelDate, marques: appelMarques, enseignantId, seance: seanceAppel });
   // Un autre jour = un autre appel : les coches du précédent ne s'y reportent pas.
   const setAppelDate = (date) => {
     setAppelDateBrute(!date || date > aujourdhui ? aujourdhui : date);
     setAppelMarques({});
+    setAppelSeanceChoisie("");
   };
+  // Un autre cours = un autre appel, lui aussi.
+  const choisirSeance = (cle) => { setAppelSeanceChoisie(cle); setAppelMarques({}); };
+  const changerSeanceLibre = (champ, valeur) => {
+    setAppelSeanceLibre((cur) => ({ ...(cur || seanceLibreParDefaut), [champ]: valeur }));
+    setAppelMarques({});
+  };
+  // « Appel fait à 08:12 » : par cours au secondaire.
+  const cleFaitAppel = seanceAppel ? `${appelDate}@${cleSeance(seanceAppel)}` : appelDate;
   const marquerAppel = (eleveId, etat) => setAppelMarques((cur) => ({ ...cur, [eleveId]: etat }));
   useEffect(() => {
-    setAppelFaitA(heureAppelFait(ownerId, appelClasse, appelDate));
+    setAppelFaitA(heureAppelFait(ownerId, appelClasse, cleFaitAppel));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appelClasse, appelDate]);
+  }, [appelClasse, cleFaitAppel]);
   const enregistrerAppel = siModifiable(async () => {
+    if (parCours && !seanceAppel) {
+      toast(i18n.t("teacher.rollCall.courseRequired"), "warning");
+      return;
+    }
     const fait = await enregistrerAppelAction({
-      plan: planDeLAppel, date: appelDate,
+      plan: planDeLAppel, date: appelDate, seance: seanceAppel,
       bilan: compterAppel(elevesAppel, situationAppel, appelMarques),
       envoyerPush, setEnregistrement, chargerPortail: relireSansBouger, toast,
     });
     if (!fait) return;
     setAppelMarques({});
     const heure = new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-    noterAppelFait(ownerId, appelClasse, appelDate, heure);
+    noterAppelFait(ownerId, appelClasse, cleFaitAppel, heure);
     setAppelFaitA(heure);
   });
   const ouvrirAppel = () => { setVueEleves("appel"); setTab("eleves"); };
@@ -442,6 +483,9 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
       classe: appelClasse, setClasse: setAppelClasse, date: appelDate, setDate: setAppelDate, aujourdhui,
       eleves: elevesAppel, situation: situationAppel, marques: appelMarques, marquer: marquerAppel,
       plan: planDeLAppel, enregistrer: enregistrerAppel, faitA: appelFaitA,
+      parCours, seances: seancesAppel, seance: seanceAppel, autresCours,
+      seanceChoisie: appelSeanceChoisie === "autre" || (parCours && !seancesAppel.length) ? "autre" : cleSeance(seanceAppel),
+      choisirSeance, seanceLibre, changerSeanceLibre,
     },
     imprimerEdt, imprimerPaies,
     lectureSeule,

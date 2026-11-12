@@ -1772,7 +1772,19 @@
         "secondaire": "الأستاذ الرئيسي",
         "secondaireF": "الأستاذة الرئيسية",
         "secondaireN": "الأستاذ(ة) الرئيسي(ة)"
-      }
+      },
+      "coverHours": "ساعات الدراسة لكل تلميذ",
+      "rowPresentHours": "ساعات الحضور",
+      "rowAbsentHours": "ساعات الغياب",
+      "colPresencesHours": "س. حضور",
+      "statPossibleHours": "ساعات الدراسة الممكنة: {{count}}",
+      "statEffectiveHours": "ساعات الحضور: {{count}}",
+      "statAbsNJHours": "غياب غير مبرر: {{count}}",
+      "statAbsJHours": "غياب مبرر: {{count}}",
+      "stoppedHours": "أُوقف هذا السجل بتاريخ {{date}}: {{possibles}} دراسة ممكنة و{{effectives}} حضورًا، أي نسبة مواظبة قدرها {{rate}} %.",
+      "situationHours": "الوضع بتاريخ {{date}}، الشهر جارٍ: {{possibles}} دراسة ممكنة و{{effectives}} حضورًا، أي نسبة مواظبة قدرها {{rate}} %.",
+      "legendHours": "الرقم = ساعات الدراسة الفائتة (أحمر: غير مبررة، أزرق: مبررة) · R = تأخر (يُحسب حاضرًا) · الغياب بلا ساعة يشمل كل حصص اليوم.",
+      "noTimetable": "جدول القسم فارغ: السجل محسوب باليوم."
     },
     "rollCall": {
       "tab": "المناداة",
@@ -1791,7 +1803,16 @@
       "validateAll": "الجميع حاضرون — تأكيد المناداة",
       "allPresent": "تم حفظ المناداة: الجميع حاضرون.",
       "saved": "تم حفظ المناداة — الغائبون: {{absents}}، المتأخرون: {{retards}}.",
-      "savedNotified": "تم حفظ المناداة — الغائبون: {{absents}}، المتأخرون: {{retards}}. تم إشعار الأولياء."
+      "savedNotified": "تم حفظ المناداة — الغائبون: {{absents}}، المتأخرون: {{retards}}. تم إشعار الأولياء.",
+      "course": "الحصة",
+      "otherTime": "وقت آخر",
+      "from": "بداية الحصة",
+      "to": "نهاية الحصة",
+      "courseRequired": "اختر الحصة (وقت البداية والنهاية).",
+      "hintCourse": "مناداة هذه الحصة فقط: الجميع حاضر افتراضيًا، المس الغائبين والمتأخرين في حصتك. ما سجلته الحصص الأخرى يظهر تحت الاسم دون أن يمنع شيئًا.",
+      "elsewhereAbsent": "غائب {{when}}{{subject}}",
+      "elsewhereLate": "متأخر {{when}}{{subject}}",
+      "allDay": "طوال اليوم"
     },
     "header": {
       "logoAlt": "شعار المدرسة",
@@ -1827,7 +1848,8 @@
       "saveError": "خطأ في الحفظ.",
       "deleteConfirm": "حذف هذا البلاغ؟",
       "deleted": "تم حذف البلاغ.",
-      "deleteError": "خطأ في الحذف."
+      "deleteError": "خطأ في الحذف.",
+      "pushBodyCourse": "{{name}}: {{type}} في حصة {{subject}} ({{time}}) بتاريخ {{date}}"
     },
     "pay": {
       "title": "كشف راتبي",

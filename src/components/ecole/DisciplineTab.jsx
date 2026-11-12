@@ -12,7 +12,7 @@ import { RegistresAppelCard } from "./discipline-tab/RegistresAppelCard";
 export function DisciplineTab({
   absences: absencesBrutes, cAbs, ajAbs, supAbs, eleves: tousEleves, section = "college",
   form, setForm, modal, setModal, canCreate, canEdit, envoyerPush, peutImprimerRegistres = false,
-  ens = [], classesEcole = [],
+  ens = [], classesEcole = [], emplois = [],
 }) {
   const { t } = useTranslation();
   const chg = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
@@ -58,13 +58,13 @@ export function DisciplineTab({
         <Btn sm v="ghost" onClick={()=>exportExcel(
           `${t("reports.excel.files.discipline")}_${getSectionSlug(section)}${classeFiltre!=="all"?`_${classeFiltre}`:""}`,
           [t("reports.excel.headers.student"),t("reports.excel.headers.class"),t("reports.excel.headers.type"),t("reports.excel.headers.date"),t("reports.excel.headers.motive"),t("reports.excel.headers.justified")],
-          absencesFiltrees.map(a=>[a.eleveNom,a.classe,a.type,a.date,a.motif||"",a.justifie])
+          absencesFiltrees.map(a=>[a.eleveNom,a.classe,a.type,a.heureDebut?`${a.date} ${a.heureDebut}–${a.heureFin}`:a.date,a.motif||"",a.justifie])
         )}>📥 {t("common.export")} Excel</Btn>
         {canCreate&&<Btn onClick={()=>{setForm({type:"Absence",justifie:"Non",classe:classeFiltre==="all"?"":classeFiltre});setModal("add_abs");}}>+ Enregistrer</Btn>}
       </div>
 
       <RegistresAppelCard eleves={eleves} absences={absencesBrutes} section={section}
-        peutImprimer={peutImprimerRegistres} couleur={C.blueDark} ens={ens} classesEcole={classesEcole}/>
+        peutImprimer={peutImprimerRegistres} couleur={C.blueDark} ens={ens} classesEcole={classesEcole} emplois={emplois}/>
 
       <DisciplineAlertes eleves={elevesFiltres} absences={absencesFiltrees} t={t}/>
 

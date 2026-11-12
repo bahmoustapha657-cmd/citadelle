@@ -43,6 +43,7 @@ const absences = table(
     ecole_id: column.text, section: column.text, eleve_id: column.text, type: column.text,
     date: column.text, justifie: column.text, motif: column.text, matiere: column.text,
     signale_par_id: column.text, signale_par_nom: column.text,
+    heure_debut: column.text, heure_fin: column.text,
   },
   { indexes: { eleve: ["eleve_id"] } },
 );

@@ -15,8 +15,15 @@
 // dimanche, sans les congés du calendrier scolaire, sans les jours retirés à
 // la main par le chef de section (fermeture imprévue), et pas au-delà
 // d'aujourd'hui.
+//
+// Au secondaire, l'appel se fait par cours : le registre compte alors en
+// HEURES de cours (registreMensuelHeures) — heures possibles = élèves × heures
+// de cours de la classe (emploi du temps), heures suivies = possibles −
+// heures manquées. Une absence sans heure (direction, anciennes absences)
+// vaut pour tous les cours de la journée.
 import { dateIso } from "../../absences-eleves.js";
 import { JOURS_SEMAINE } from "../../constants.js";
+import { cleSeance, dureeMinutes, recouvrement, seanceValide, seancesDuJour } from "./seances.js";
 
 const deux = (n) => String(n).padStart(2, "0");
 export const cleMois = (date = new Date()) => `${date.getFullYear()}-${deux(date.getMonth() + 1)}`;
@@ -165,6 +172,109 @@ export function registreMensuel({
     horsJours: horsJours.size,
     congesRetires: congesDuMois,
   };
+}
+
+// ── Registre en heures (secondaire, appel par cours) ────────────────────────
+// `creneaux` : l'emploi du temps de la classe (ou, pour l'aperçu d'un
+// professeur, ses seuls cours dans la classe). Pour chaque jour de classe,
+// ses cours ; un élève manque un cours si une absence le recouvre (même en
+// partie) ou s'il est absent toute la journée. Un cours manqué compte pour
+// toute sa durée ; justifié s'il n'est recouvert que par des absences
+// justifiées. Un retard (sans absence au même cours) compte présent.
+// marques[date] = { nj, j, r } : minutes non justifiées, justifiées, retards.
+export function registreMensuelHeures({
+  eleves = [], incidents = [], mois = "", joursOuvrables, aujourdhui = new Date(),
+  conges = new Set(), exclus = [], creneaux = [],
+}) {
+  const retires = new Set([...conges, ...exclus]);
+  const jours = joursDeClasse(mois, joursOuvrables, aujourdhui, retires)
+    .map((j) => {
+      const cours = seancesDuJour(creneaux, "", j.date);
+      return { ...j, cours, minutes: cours.reduce((s, c) => s + dureeMinutes(c), 0) };
+    })
+    .filter((j) => j.minutes > 0);
+  const parDate = new Map(jours.map((j) => [j.date, j]));
+  const ids = new Set(eleves.map((e) => e._id));
+  // eleveId → Map(date → signalements du jour)
+  const signalements = new Map();
+  const horsJours = new Set();
+  for (const inc of incidents) {
+    if (!MARQUE(inc) || !ids.has(inc.eleveId)) continue;
+    const date = dateIso(inc.date);
+    if (date.slice(0, 7) !== mois) continue;
+    const jour = parDate.get(date);
+    const touche = jour && (!seanceValide(inc) || jour.cours.some((c) => recouvrement(c, inc) > 0));
+    if (!touche) { horsJours.add(`${inc.eleveId}|${date}|${cleSeance(inc)}`); continue; }
+    const parJour = signalements.get(inc.eleveId) || new Map();
+    parJour.set(date, [...(parJour.get(date) || []), inc]);
+    signalements.set(inc.eleveId, parJour);
+  }
+
+  const couvre = (inc, cours) => !seanceValide(inc) || recouvrement(cours, inc) > 0;
+  const lignes = [...eleves]
+    .sort((a, b) => `${a.nom || ""} ${a.prenom || ""}`.localeCompare(`${b.nom || ""} ${b.prenom || ""}`, "fr", { sensitivity: "base" }))
+    .map((eleve) => {
+      const marques = {};
+      for (const [date, liste] of signalements.get(eleve._id) || []) {
+        const marque = { nj: 0, j: 0, r: 0 };
+        for (const cours of parDate.get(date).cours) {
+          const sur = liste.filter((inc) => couvre(inc, cours));
+          const absences = sur.filter((inc) => inc.type === "Absence");
+          if (absences.length) {
+            if (absences.some((inc) => inc.justifie !== "Oui")) marque.nj += dureeMinutes(cours);
+            else marque.j += dureeMinutes(cours);
+          } else if (sur.some((inc) => inc.type === "Retard")) marque.r += 1;
+        }
+        if (marque.nj || marque.j || marque.r) marques[date] = marque;
+      }
+      const somme = (cle) => Object.values(marques).reduce((s, m) => s + m[cle], 0);
+      const ligne = { eleve, marques, absNJ: somme("nj"), absJ: somme("j"), retards: somme("r") };
+      ligne.total = ligne.absNJ + ligne.absJ + ligne.retards;
+      ligne.presences = jours.reduce((s, j) => s + j.minutes, 0) - ligne.absNJ - ligne.absJ;
+      return ligne;
+    });
+
+  const parJour = Object.fromEntries(jours.map(({ date, minutes }) => {
+    const possibles = lignes.length * minutes;
+    const absents = lignes.reduce((s, l) => s + (l.marques[date]?.nj || 0) + (l.marques[date]?.j || 0), 0);
+    return [date, {
+      possibles, absents, presents: possibles - absents,
+      retards: lignes.reduce((s, l) => s + (l.marques[date]?.r || 0), 0),
+    }];
+  }));
+  const possibles = lignes.length * jours.reduce((s, j) => s + j.minutes, 0);
+  const absences = lignes.reduce((s, l) => s + l.absNJ + l.absJ, 0);
+  return {
+    unite: "heures", mois, jours, lignes, parJour,
+    totaux: {
+      absNJ: lignes.reduce((s, l) => s + l.absNJ, 0),
+      absJ: lignes.reduce((s, l) => s + l.absJ, 0),
+      retards: lignes.reduce((s, l) => s + l.retards, 0),
+      elevesConcernes: lignes.filter((l) => l.total > 0).length,
+      possibles, effectives: possibles - absences, taux: taux(possibles - absences, possibles),
+    },
+    arrete: estArrete(mois, aujourdhui),
+    horsJours: horsJours.size,
+    congesRetires: [...conges].filter((d) => d.slice(0, 7) === mois && d <= cleJour(aujourdhui)).length,
+  };
+}
+
+// Registre d'une classe : en heures au secondaire quand l'emploi du temps de
+// la classe a des cours, sinon par journée (primaire, emploi du temps vide).
+export function registreDuMois({ parCours = false, creneaux = [], ...options }) {
+  if (parCours && creneaux.some(seanceValide)) return registreMensuelHeures({ creneaux, ...options });
+  return { ...registreMensuel(options), unite: "jours", sansEmploiDuTemps: parCours };
+}
+
+// Quantité affichée : un nombre de journées, ou des heures (« 12,5 h »).
+export function formaterQuantite(valeur, unite = "jours", langue = "fr") {
+  if (unite !== "heures") return Number(valeur || 0).toLocaleString(langue);
+  const heures = Math.round((Number(valeur || 0) / 60) * 10) / 10;
+  try {
+    return `${heures.toLocaleString(langue, { maximumFractionDigits: 1 })} h`;
+  } catch {
+    return `${heures} h`;
+  }
 }
 
 // Les élèves à suivre en premier : les plus absents (non justifié d'abord).
