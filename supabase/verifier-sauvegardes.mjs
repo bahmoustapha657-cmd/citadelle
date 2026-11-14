@@ -53,6 +53,10 @@ function auditer(nom) {
   // `complet` n'existe que depuis l'ajout du contrôle d'intégrité ; les
   // sauvegardes antérieures sont jugées sur leurs seuls fichiers.
   if (manifeste.complet === false) res.raisons.push("marquée incomplète");
+  // Copie complète (pg_dump, mots de passe compris) : de quoi remonter
+  // l'école à l'identique (scripts/remonter-edugest.mjs).
+  res.copieComplete = !!(manifeste.base?.ok && existsSync(join(dir, "base", "donnees.sql")));
+  res.raisonCopie = manifeste.base?.absente || manifeste.base?.erreur || (manifeste.base ? "" : "pas encore en place");
   if (res.lignes === null) res.lignes = tables.reduce((s, [, i]) => s + (i.lignes || 0), 0);
 
   res.valide = res.raisons.length === 0;
@@ -94,6 +98,9 @@ if (!derniere) {
 
 const age = Math.floor(derniere.age);
 console.log(`   dernière valide : ${derniere.nom} (${age} jour${age > 1 ? "s" : ""}, ${fr(derniere.lignes)} lignes)`);
+console.log(derniere.copieComplete
+  ? "   copie complète  : oui (mots de passe compris, remontage à l'identique possible)"
+  : `   copie complète  : NON — ${derniere.raisonCopie || "base absente"} ; un remontage obligerait chacun à refaire son mot de passe`);
 
 if (derniere.age > MAX_JOURS) {
   console.error(`\n❌ La dernière sauvegarde valide a ${age} jours (seuil : ${MAX_JOURS}).`);

@@ -10,6 +10,8 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+# Application construite par scripts/remonter-edugest.mjs (pile locale)
+dist-remontage
 *.local
 
 # Supabase : clés privées (à ne JAMAIS committer)
