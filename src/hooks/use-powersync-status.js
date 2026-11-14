@@ -1,13 +1,16 @@
 import { useEffect, useState } from "react";
 import { powerSyncConfigured } from "../backend/powersync/tables";
 import { compterPhotosEnAttente } from "../photos-hors-ligne";
+import { lireProprietaire } from "../backend/powersync/proprietaire";
+import { compterSaisiesDeCote } from "../backend/powersync/saisies-de-cote";
 
 // État du mode hors ligne (PowerSync). No-op si PowerSync n'est pas configuré
 // (VITE_POWERSYNC_URL vide) : rien en attente, pas de synchro en cours, sans
 // coût — le module lourd (@powersync/web/wa-sqlite) n'est chargé en
 // `import()` que s'il l'est.
 //   • syncPendantes : changements locaux pas encore remontés à Supabase,
-//     photos d'élèves en attente d'envoi comprises.
+//     photos d'élèves en attente d'envoi et saisies de ce compte mises de
+//     côté (saisies-de-cote.js) comprises.
 //   • premiereSynchro : null, ou { fraction (0 → 1), essentielPret } tant que
 //     le miroir de cet appareil n'a jamais été complet — première connexion
 //     d'un compte sur l'appareil. L'écran dit ce qui manque encore.
@@ -45,7 +48,10 @@ export function usePowerSyncStatus() {
           const stats = await ps.getUploadQueueStats();
           // + photos d'élèves prises hors ligne, pas encore envoyées.
           const photos = await compterPhotosEnAttente();
-          if (actif) setSyncPendantes((stats?.count || 0) + photos);
+          // + saisies que ce compte avait laissées avant qu'un autre ne se
+          // connecte sur l'appareil (propriétaire du miroir = compte connecté).
+          const deCote = compterSaisiesDeCote(lireProprietaire());
+          if (actif) setSyncPendantes((stats?.count || 0) + photos + deCote);
         } catch { /* base locale pas encore prête */ }
       };
 

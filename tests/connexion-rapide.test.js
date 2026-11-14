@@ -38,6 +38,11 @@ function raz() {
     getSession: async () => ({ data: { session: session() }, error: null }),
     ligne: LIGNE,
     reseauCoupe: false,
+    // Saisies non envoyées de l'autre compte impossibles à mettre de côté.
+    purgeImpossible: false,
+    // Révocation de session retenue (déconnexion lente) ; ordre des appels d'auth.
+    revocation: null,
+    ordre: [],
     requetes: [],
     appels: [],
     ecouteurs: [],
@@ -68,8 +73,16 @@ const faux = {
       etat.ecouteurs.push(cb);
       return { data: { subscription: { unsubscribe() {} } } };
     },
-    signInWithPassword: async () => ({ data: { user: { id: "u1" } }, error: null }),
-    signOut: async () => { etat.appels.push("signOut"); return { error: null }; },
+    signInWithPassword: async () => {
+      etat.ordre.push("connexion");
+      return { data: { user: { id: "u1" } }, error: null };
+    },
+    signOut: async () => {
+      await etat.revocation;
+      etat.appels.push("signOut");
+      etat.ordre.push("révocation");
+      return { error: null };
+    },
   },
 };
 
@@ -90,6 +103,7 @@ async function monter() {
     namedExports: {
       effacerMiroir: async () => {
         etat.appels.push("effacerMiroir");
+        if (etat.purgeImpossible) throw Object.assign(new Error("miroir gardé"), { code: "saisies-non-gardees" });
         stock.delete("LC_powersync_proprietaire");
       },
     },
@@ -104,7 +118,7 @@ const suivre = () => {
 };
 
 test("connexion sur réseau faible", { skip: ignore }, async (t) => {
-  const { watchAuthState, ecoleLogin } = await monter();
+  const { watchAuthState, ecoleLogin, signOut } = await monter();
 
   // Compte tel que chargerCompte le construit pour LIGNE (via une vraie connexion).
   raz();
@@ -218,6 +232,43 @@ test("connexion sur réseau faible", { skip: ignore }, async (t) => {
     assert.equal(r.ok, true);
     assert.deepEqual(etat.appels, ["effacerMiroir"]);
     assert.ok(stock.has("LC_compte_session"), "compte mémorisé pour le prochain démarrage");
+  });
+
+  await t.test("saisies de l'autre compte impossibles à mettre de côté : connexion refusée, rien d'effacé", async () => {
+    raz();
+    stock.set("LC_powersync_proprietaire", "u0");
+    etat.purgeImpossible = true;
+    const r = await ecoleLogin({ login: "dg", mdp: "x", schoolId: "citadelle" });
+    assert.equal(r.ok, false);
+    assert.match(r.data.error, /autre compte/);
+    assert.deepEqual(etat.appels, ["effacerMiroir", "signOut"]);
+    assert.equal(stock.get("LC_powersync_proprietaire"), "u0", "miroir toujours à l'autre compte");
+    assert.equal(stock.has("LC_compte_session"), false, "rien de mémorisé");
+  });
+
+  await t.test("même cas au démarrage (session déjà ouverte) : écran de connexion", async () => {
+    raz(); memoriser();
+    stock.set("LC_powersync_proprietaire", "u0");
+    etat.purgeImpossible = true;
+    const { recus, cb } = suivre();
+    await watchAuthState(cb); await tic();
+    assert.deepEqual(recus, [null]);
+    assert.ok(etat.appels.includes("signOut"));
+  });
+
+  await t.test("connexion pendant une déconnexion lente : la révocation passe AVANT, pas sur la nouvelle session", async () => {
+    raz();
+    let liberer;
+    etat.revocation = new Promise((r) => { liberer = r; });
+    const sortie = signOut();
+    const entree = ecoleLogin({ login: "dg", mdp: "x", schoolId: "citadelle" });
+    await tic();
+    assert.deepEqual(etat.ordre, [], "la connexion attend la fin de la déconnexion");
+    liberer();
+    await sortie;
+    const r = await entree;
+    assert.equal(r.ok, true);
+    assert.deepEqual(etat.ordre, ["révocation", "connexion"]);
   });
 
   await t.test("même compte qui revient : miroir gardé", async () => {

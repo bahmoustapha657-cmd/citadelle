@@ -99,6 +99,8 @@
     "errSchoolDeleted": "This school is no longer available.",
     "errAccountMerged": "This account is no longer active: it has been merged with another parent account of the school. Ask the school for your username.",
     "errInterrupted": "Sign-in interrupted: check your internet connection and try again.",
+    "errUnsentOtherAccount": "This device holds entries made offline by another account that have not been sent yet, and there is no room left to set them aside. The person who made them must sign in again on this device with internet to send them.",
+    "logoutUnsentConfirm": "{{count}} entry(ies) made offline have not been sent yet. They stay on this device and will be sent when you sign in here again with internet. Sign out anyway?",
     "errAccountDisabled": "Account deactivated by the school management.",
     "errAccountNotFound": "Account not found.",
     "errSwitchSpace": "Unable to switch space: please try again.",

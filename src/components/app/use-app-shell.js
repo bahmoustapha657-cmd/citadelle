@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { signOutSession } from "../../backend/session";
+import { saisiesNonEnvoyees, signOutSession } from "../../backend/session";
 import { getPrimaryModuleForRole, getRoleLabelForSchool } from "../../constants";
 import { getPrimaryModuleForCompte } from "../../../shared/postes-config.js";
 import { computePlanInfo } from "./app-shell-plan";
@@ -111,7 +111,14 @@ export function useAppShell({
     if (schoolIdEffectif) sAbonnerAuxPush(c, schoolIdEffectif);
   };
 
-  const deconnecter = () => {
+  const deconnecter = async () => {
+    // Hors ligne, les saisies pas encore envoyées restent sur l'appareil
+    // (gardées même si un autre compte s'y connecte ensuite) : la personne
+    // doit savoir qu'elles ne partiront qu'à sa prochaine connexion ICI.
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      const restantes = await saisiesNonEnvoyees();
+      if (restantes && !confirm(t("auth.logoutUnsentConfirm", { count: restantes }))) return;
+    }
     signOutSession().catch(() => {});
     setUtilisateur(null);
     setPage(null);

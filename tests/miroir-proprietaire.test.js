@@ -17,13 +17,20 @@ Object.defineProperty(globalThis, "localStorage", {
   configurable: true,
   value: {
     getItem: (k) => (stock.has(k) ? stock.get(k) : null),
-    setItem: (k, v) => stock.set(k, String(v)),
+    setItem: (k, v) => {
+      if (stockagePlein && k === "LC_saisies_de_cote") throw new Error("QuotaExceededError");
+      stock.set(k, String(v));
+    },
     removeItem: (k) => stock.delete(k),
   },
 });
 
 const appels = [];
+// File d'envoi du miroir : saisies pas encore envoyées.
+let file = [];
+let stockagePlein = false;
 class FausseBase {
+  async getCrudBatch() { return file.length ? { crud: file, haveMore: false } : null; }
   async connect() { appels.push("connect"); }
   async disconnect() { appels.push("disconnect"); }
   async disconnectAndClear() { appels.push("clear"); }
@@ -38,7 +45,13 @@ async function monter() {
   const url = (chemin) => new URL(chemin, import.meta.url).href;
   mock.module("@powersync/web", { namedExports: { PowerSyncDatabase: FausseBase } });
   mock.module(url("../src/backend/powersync/schema.js"), { namedExports: { AppSchema: {} } });
-  mock.module(url("../src/backend/powersync/connector.js"), { namedExports: { SupabaseConnector: class {} } });
+  mock.module(url("../src/backend/powersync/connector.js"), {
+    namedExports: {
+      SupabaseConnector: class {},
+      // Renvoi des saisies de côté : noté, et réputé réussi.
+      envoyerSaisiesDeCote: async (uid) => { appels.push(["renvoi", uid]); stock.delete("LC_saisies_de_cote"); return 0; },
+    },
+  });
   mock.module(url("../src/backend/powersync/tables.js"), { namedExports: { powerSyncConfigured: true } });
   return import("../src/backend/powersync/client.js");
 }
@@ -91,6 +104,42 @@ test("miroir hors ligne et compte propriétaire", { skip: ignore }, async (t) =>
     await client.effacerMiroir();
     assert.deepEqual(appels, ["clear"]);
     assert.equal(proprietaire(), null);
+  });
+
+  await t.test("autre compte, saisies non envoyées : mises de côté pour leur auteur AVANT la purge", async () => {
+    raz();
+    await client.connectPowerSync("comptable");
+    await client.disconnectPowerSync();
+    file = [{ op: "PUT", table: "paiements", id: "p1", opData: { montant: 5000 }, clientId: 1 }];
+    raz();
+    await client.connectPowerSync("directeur");
+    file = [];
+    assert.deepEqual(appels, ["clear", "connect"]);
+    const deCote = JSON.parse(stock.get("LC_saisies_de_cote"));
+    assert.deepEqual(deCote, { comptable: [{ op: "PUT", table: "paiements", id: "p1", opData: { montant: 5000 } }] });
+  });
+
+  await t.test("leur auteur revient : renvoyées avec sa synchro", async () => {
+    raz();
+    await client.disconnectPowerSync();
+    await client.connectPowerSync("comptable");
+    await new Promise((fin) => setTimeout(fin, 0));
+    assert.deepEqual(appels, ["disconnect", "clear", "connect", ["renvoi", "comptable"]]);
+    assert.equal(stock.has("LC_saisies_de_cote"), false);
+  });
+
+  await t.test("mise de côté impossible : miroir GARDÉ, l'autre compte n'est pas synchronisé", async () => {
+    raz();
+    await client.disconnectPowerSync();
+    file = [{ op: "PUT", table: "paiements", id: "p2", opData: {} }];
+    stockagePlein = true;
+    await assert.rejects(client.effacerMiroir(), (err) => err.code === "saisies-non-gardees");
+    await client.connectPowerSync("directeur");
+    assert.deepEqual(appels, ["disconnect"]);
+    assert.equal(proprietaire(), "comptable");
+    assert.equal(client.synchroOuverte(), false);
+    stockagePlein = false;
+    file = [];
   });
 
   await t.test("ecouterTables : écoute du miroir et arrêt", async () => {
