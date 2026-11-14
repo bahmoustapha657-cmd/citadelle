@@ -20,6 +20,20 @@ test("adresse de la base : mot de passe mis à part, jamais dans la ligne de com
   assert.throws(() => decouperUrl(""));
 });
 
+test("adresse mal formée : l'erreur ne recopie jamais le mot de passe", () => {
+  // Le « @ » avant l'hôte effacé par mégarde : le mot de passe devient le port.
+  for (const abimee of [
+    "postgresql://postgres.abc:Secret123b-0-eu-west-1.pooler.supabase.com:5432/postgres",
+    "postgresql://postgres.abc:Secret123%ZZ@hote:5432/postgres",
+  ]) {
+    let erreur;
+    try { decouperUrl(abimee); } catch (e) { erreur = e; }
+    assert.ok(erreur, abimee);
+    assert.match(erreur.message, /illisible/);
+    assert.ok(!JSON.stringify({ ...erreur, message: erreur.message, stack: erreur.stack }).includes("Secret123"));
+  }
+});
+
 test("lignes de chaque bloc COPY d'un dump pg_dump (fins de ligne Windows comprises)", () => {
   const dump = [
     "SET statement_timeout = 0;",

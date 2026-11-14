@@ -15,11 +15,20 @@ export const TABLES_NON_COPIEES = ["auth.schema_migrations", "storage.migrations
 
 // Adresse Postgres → la même sans mot de passe + le mot de passe à part
 // (passé par PGPASSWORD : il n'apparaît ni dans la ligne de commande, ni
-// dans les journaux).
+// dans les journaux). Une adresse mal formée lève une erreur qui ne contient
+// RIEN de l'adresse : l'erreur native de `new URL` la recopie en entier,
+// mot de passe compris, et finirait dans le manifeste ou à l'écran.
 export function decouperUrl(url) {
-  const u = new URL(String(url || "").trim());
-  if (!/^postgres(ql)?:$/.test(u.protocol)) throw new Error("adresse Postgres attendue (postgresql://…)");
-  const mdp = decodeURIComponent(u.password || "");
+  const ATTENDUE = "adresse Postgres attendue : postgresql://utilisateur:motdepasse@hôte:port/base";
+  let u;
+  let mdp;
+  try {
+    u = new URL(String(url || "").trim());
+    mdp = decodeURIComponent(u.password || "");
+  } catch {
+    throw new Error(`adresse de la base illisible (${ATTENDUE} ; un @, : ou % du mot de passe s'écrit %40, %3A ou %25)`);
+  }
+  if (!/^postgres(ql)?:$/.test(u.protocol) || !u.hostname) throw new Error(ATTENDUE);
   u.password = "";
   return { url: u.toString(), mdp };
 }
