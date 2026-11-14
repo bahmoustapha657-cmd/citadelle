@@ -18,7 +18,9 @@
 import { createClient } from "@supabase/supabase-js";
 import { mkdirSync, writeFileSync, readFileSync, readdirSync, renameSync, rmSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { SUPABASE_URL, SUPABASE_SERVICE_ROLE } from "./_config.mjs";
+import { PG_BIN, SUPABASE_DB_URL, SUPABASE_URL, SUPABASE_SERVICE_ROLE } from "./_config.mjs";
+import { TABLES, TRI } from "./sauvegarde-tables.mjs";
+import { sauvegarderBase, sauvegarderFichiers } from "./sauvegarde-base.mjs";
 
 // ── Règle d'or : un dossier « backup-… » n'existe QUE s'il est complet ──────
 // Historique : la tâche planifiée s'exécutait fenêtre visible ; fermer cette
@@ -37,32 +39,15 @@ const RETENTION = Number(process.env.EDUGEST_BACKUP_RETENTION || 60); // nb de s
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE) { console.error("❌ config.local.mjs incomplet."); process.exit(1); }
 const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE, { auth: { persistSession: false } });
 
-// Toutes les tables de données à sauvegarder.
-const TABLES = [
-  "ecoles", "ecoles_public", "comptes", "postes",
-  "enseignants", "enseignant_classes", "classes", "matieres",
-  "eleves", "notes", "absences", "emplois", "enseignements",
-  "appreciations", "paiements", "tarifs", "salaires", "parent_eleves", "audit",
-  "recettes", "depenses", "versements", "bons", "personnel", "paie_enseignants",
-  "messages", "annonces", "documents", "examens", "livrets", "honneurs",
-  "membres", "evenements", "historique", "push_subs",
-  "messages_internes", "messages_internes_lus",
-  "msg_conversations", "msg_membres", "msg_messages", "msg_appels",
-  "msg_annonces", "msg_annonces_lus", "msg_reunions", "msg_reunion_participants", "msg_presences",
-];
-// Clé de tri fiable pour la pagination (défaut : id). Certaines tables de
-// liaison n'ont pas d'`id` unique → tri par une colonne présente.
-const TRI = {
-  parent_eleves: "eleve_id", enseignant_classes: "compte_id", messages_internes_lus: "message_id",
-  msg_membres: "conversation_id", msg_annonces_lus: "annonce_id", msg_reunion_participants: "reunion_id", msg_presences: "compte_id",
-};
+// Tables à sauvegarder et leur tri de pagination : sauvegarde-tables.mjs
+// (un test y vérifie qu'aucune table créée par les migrations n'est oubliée).
 const PAGE = 1000;
 
 async function exporterTable(table) {
-  const tri = TRI[table] || "id";
+  const tri = TRI[table] || ["id"];
   const rows = [];
   for (let de = 0; ; de += PAGE) {
-    let r = await sb.from(table).select("*").order(tri).range(de, de + PAGE - 1);
+    let r = await tri.reduce((q, col) => q.order(col), sb.from(table).select("*")).range(de, de + PAGE - 1);
     if (r.error && /column .* does not exist|order/i.test(r.error.message)) {
       // Repli : pagination sans tri (petites tables).
       r = await sb.from(table).select("*").range(de, de + PAGE - 1);
@@ -189,6 +174,28 @@ async function main() {
   writeFileSync(join(dir, "_auth_users.json"), JSON.stringify(authUsers, null, 0), "utf8");
   manifest.authUsers = authUsers.length;
   console.log(`  ✅ ${"_auth_users".padEnd(24)} ${String(authUsers.length).padStart(6)} comptes (sans mdp)`);
+
+  // Copie complète (pg_dump : mots de passe compris) et fichiers déposés.
+  // Un échec ici n'annule pas l'export JSON déjà fait : il est noté au
+  // manifeste, et verifier-sauvegardes.mjs le signale.
+  try {
+    manifest.base = await sauvegarderBase(dir, { dbUrl: SUPABASE_DB_URL, pgBin: PG_BIN });
+  } catch (e) {
+    manifest.base = { erreur: String(e.message || e).slice(0, 500) };
+  }
+  console.log(manifest.base.ok
+    ? `  ✅ ${"base complète".padEnd(24)} ${(manifest.base.octets / 1e6).toFixed(1).padStart(6)} Mo (mots de passe compris)`
+    : `  ⚠️  base complète : ${manifest.base.absente || manifest.base.erreur}`);
+  try {
+    manifest.fichiers = await sauvegarderFichiers(base, { dbUrl: SUPABASE_DB_URL, pgBin: PG_BIN, sb });
+  } catch (e) {
+    manifest.fichiers = { erreur: String(e.message || e).slice(0, 500) };
+  }
+  if (manifest.fichiers.total !== undefined) {
+    console.log(`  ${manifest.fichiers.ok ? "✅" : "⚠️ "} ${"fichiers déposés".padEnd(24)} ${String(manifest.fichiers.total).padStart(6)} (${manifest.fichiers.nouveaux} nouveaux${manifest.fichiers.nbManquants ? `, ${manifest.fichiers.nbManquants} illisibles` : ""})`);
+  } else if (manifest.base.ok) {
+    console.log(`  ⚠️  fichiers déposés : ${manifest.fichiers.absente || manifest.fichiers.erreur}`);
+  }
 
   manifest.lignesTotales = total;
   manifest.complet = true; // n'est écrit que si toutes les tables sont passées
