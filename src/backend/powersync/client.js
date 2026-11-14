@@ -5,10 +5,11 @@
 // continue de fonctionner normalement (comportement actuel inchangé).
 import { PowerSyncDatabase } from "@powersync/web";
 import { AppSchema } from "./schema";
-import { SupabaseConnector } from "./connector";
+import { SupabaseConnector, envoyerSaisiesDeCote } from "./connector";
 import { attendreFileVide } from "./file-envoi";
 import { powerSyncConfigured } from "./tables";
-import { ecrireProprietaire, miroirAutreCompte, oublierProprietaire } from "./proprietaire";
+import { ecrireProprietaire, lireProprietaire, miroirAutreCompte, oublierProprietaire } from "./proprietaire";
+import { SAISIES_NON_GARDEES, compterSaisiesDeCote, mettreDeCote } from "./saisies-de-cote";
 import { ajouterGarde } from "../../mise-a-jour/travail-en-cours";
 
 export { powerSyncConfigured };
@@ -46,6 +47,40 @@ let connecte = null; // uid du compte dont la synchro est ouverte
 // d'envoi attendrait en vain (changement d'espace, espaces-supabase.js).
 export const synchroOuverte = () => connecte !== null;
 
+// Plafond de lecture de la file d'envoi : elle tient toujours en un lot.
+const LIMITE_FILE = 1_000_000;
+
+// Vide le miroir pour un autre compte, APRÈS avoir mis de côté les saisies
+// que son propriétaire n'a pas encore envoyées (saisies-de-cote.js) : elles
+// repartiront quand il se reconnectera sur l'appareil. Si elles ne peuvent
+// pas être gardées, le miroir n'est PAS vidé (erreur SAISIES_NON_GARDEES).
+async function viderMiroir(ps) {
+  const lot = await ps.getCrudBatch(LIMITE_FILE);
+  if (lot?.crud?.length && !mettreDeCote(lireProprietaire(), lot.crud)) {
+    // i18n-ignore — erreur interne, traduite par auth-supabase.js
+    throw Object.assign(new Error(`${lot.crud.length} saisie(s) non envoyée(s) impossibles à mettre de côté : miroir gardé`), { code: SAISIES_NON_GARDEES });
+  }
+  await ps.disconnectAndClear();
+}
+
+// Saisies que ce compte avait laissées sur l'appareil avant qu'un autre ne
+// s'y connecte : envoyées tout de suite, puis toutes les minutes tant qu'il
+// en reste (réseau absent, session à renouveler). Le connecteur les envoie
+// aussi, en premier, dès qu'une nouvelle saisie part.
+const DELAI_RENVOI = 60_000;
+let minuterieRenvoi = null;
+function programmerRenvoi(uid) {
+  clearTimeout(minuterieRenvoi);
+  minuterieRenvoi = null;
+  const essayer = async () => {
+    minuterieRenvoi = null;
+    if (connecte !== uid || !compterSaisiesDeCote(uid)) return;
+    const restantes = await envoyerSaisiesDeCote(uid, getPowerSync()).catch(() => 1);
+    if (restantes && connecte === uid) minuterieRenvoi = setTimeout(essayer, DELAI_RENVOI);
+  };
+  essayer();
+}
+
 // Ouvre la synchro pour le compte `uid`. Le miroir est gardé d'une session à
 // l'autre (cf. proprietaire.js) : on ne le vide que s'il appartient à un
 // autre compte. La connexion réseau elle-même n'est pas attendue — PowerSync
@@ -55,13 +90,14 @@ export function connectPowerSync(uid) {
   return enFile(async () => {
     if (connecte && connecte === uid) return;
     const ps = getPowerSync();
-    if (miroirAutreCompte(uid)) await ps.disconnectAndClear();
+    if (miroirAutreCompte(uid)) await viderMiroir(ps);
     ecrireProprietaire(uid);
     connecte = uid;
-    ps.connect(new SupabaseConnector()).catch((err) => {
+    ps.connect(new SupabaseConnector(uid)).catch((err) => {
       if (connecte === uid) connecte = null;
       console.warn("[powersync] connexion échouée :", err?.message || err);
     });
+    programmerRenvoi(uid);
   }).catch((err) => {
     connecte = null;
     console.warn("[powersync] ouverture du miroir :", err?.message || err);
@@ -93,12 +129,14 @@ export function disconnectPowerSync() {
   });
 }
 
-// Vide le miroir (données + file d'envoi) : un autre compte va ouvrir l'app
-// sur cet appareil et ne doit pas y trouver les données du précédent.
+// Vide le miroir (données + file d'envoi, mise de côté d'abord) : un autre
+// compte va ouvrir l'app sur cet appareil et ne doit pas y trouver les
+// données du précédent. Lève SAISIES_NON_GARDEES si la file n'a pas pu être
+// gardée (miroir intact).
 export function effacerMiroir() {
   return enFile(async () => {
     connecte = null;
-    await getPowerSync().disconnectAndClear();
+    await viderMiroir(getPowerSync());
     oublierProprietaire();
   });
 }

@@ -99,6 +99,8 @@
     "errSchoolDeleted": "Cet établissement n'est plus disponible.",
     "errAccountMerged": "Ce compte n'est plus actif : il a été regroupé avec un autre compte parent de l'école. Demandez votre identifiant à l'école.",
     "errInterrupted": "Connexion interrompue : vérifiez votre connexion internet puis réessayez.",
+    "errUnsentOtherAccount": "Cet appareil garde des saisies faites sans connexion par un autre compte, pas encore envoyées, et il n'y a plus de place pour les mettre de côté. La personne qui les a faites doit se reconnecter sur cet appareil avec Internet pour les envoyer.",
+    "logoutUnsentConfirm": "{{count}} saisie(s) faite(s) sans connexion ne sont pas encore envoyées. Elles restent sur cet appareil et partiront quand vous vous y reconnecterez avec Internet. Se déconnecter quand même ?",
     "errAccountDisabled": "Compte désactivé par la direction.",
     "errAccountNotFound": "Compte introuvable.",
     "errSwitchSpace": "Changement d'espace impossible : réessayez.",

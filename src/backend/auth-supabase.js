@@ -11,12 +11,19 @@ import { getSupabase, uidSessionEnregistree } from "../supabaseClient";
 import { emailFor, superadminEmailFor } from "../backend";
 import { identifiantConnexion } from "../comptes-parents";
 import { powerSyncConfigured } from "./powersync/tables";
-import { miroirAutreCompte } from "./powersync/proprietaire";
+import { lireProprietaire, miroirAutreCompte } from "./powersync/proprietaire";
+import { SAISIES_NON_GARDEES, compterSaisiesDeCote } from "./powersync/saisies-de-cote";
 import { seDesabonnerDesPush } from "./push-supabase";
 import i18n from "../i18n";
 
 // Délai maximal du désabonnement push à la déconnexion (cf. signOut).
 const DELAI_DESABONNEMENT = 3000;
+// Délai maximal laissé aux saisies en file pour partir avant la déconnexion
+// (en ligne, la file se vide en une ou deux secondes).
+const DELAI_ENVOI_FILE = 8000;
+// Déconnexion pas encore terminée : la connexion suivante l'attend (cf.
+// connexionParEmail).
+let deconnexionEnCours = Promise.resolve();
 
 // ── Compte mémorisé : démarrage sans attendre le réseau ─────────────────────
 // Le compte construit à la dernière ouverture est gardé sur l'appareil. Au
@@ -55,15 +62,26 @@ export function ajusterCompteMemorise(uid, champs) {
 // le vide AVANT d'ouvrir l'app pour celui-ci, sinon ses premiers écrans
 // liraient les données du précédent. Le moteur SQLite n'est chargé que dans
 // ce cas (poste partagé) — le test lui-même est une simple lecture locale.
+// Les saisies que l'autre compte n'a pas encore envoyées sont mises de côté
+// pour lui (saisies-de-cote.js). Renvoie false si c'était impossible : le
+// miroir est gardé et ce compte ne doit pas ouvrir l'app sur l'appareil.
 async function libererMiroirPour(uid) {
-  if (!powerSyncConfigured || !miroirAutreCompte(uid)) return;
+  if (!powerSyncConfigured || !miroirAutreCompte(uid)) return true;
   try {
     const { effacerMiroir } = await import("./powersync/client");
     await effacerMiroir();
   } catch (err) {
+    if (err?.code === SAISIES_NON_GARDEES) return false;
     // connectPowerSync refera la purge avant de synchroniser ce compte.
     console.warn("[powersync] purge du miroir :", err?.message || err);
   }
+  return true;
+}
+
+// Connexion refusée sur l'appareil : session fermée, message lisible.
+async function refuserSaisiesNonGardees(sb) {
+  await sb.auth.signOut().catch(() => {});
+  return { ok: false, data: { error: i18n.t("auth.errUnsentOtherAccount") } };
 }
 
 // État public d'une école (avant connexion) via la RPC publique `etat_ecole`.
@@ -166,6 +184,10 @@ export const msgEcoleHorsService = (statut) =>
 export const msgCompteRegroupe = () => i18n.t("auth.errAccountMerged");
 
 async function connexionParEmail(email, mdp, schoolCode) {
+  // La déconnexion du compte précédent peut durer quelques secondes (saisies
+  // qui partent, désabonnement push) : sa révocation, arrivée après cette
+  // connexion, fermerait la nouvelle session.
+  await deconnexionEnCours;
   const sb = getSupabase();
   const { data: auth, error } = await sb.auth.signInWithPassword({ email, password: mdp });
   if (error || !auth?.user) {
@@ -185,7 +207,7 @@ async function connexionParEmail(email, mdp, schoolCode) {
     if (compte?.regroupe) return { ok: false, data: { error: msgCompteRegroupe(), regroupe: true } };
     return { ok: false, data: { error: i18n.t(compte?.desactive ? "auth.errAccountDisabled" : "auth.errAccountNotFound") } };
   }
-  await libererMiroirPour(compte.uid);
+  if (!(await libererMiroirPour(compte.uid))) return refuserSaisiesNonGardees(sb);
   memoriserCompte(compte);
   return { ok: true, data: { compte } };
 }
@@ -208,7 +230,7 @@ export async function ouvrirSessionParJeton(tokenHash, schoolCode) {
     await sb.auth.signOut().catch(() => {});
     return { ok: false, data: { error: i18n.t(compte?.desactive ? "auth.errSpaceDisabled" : "auth.errSpaceNotFound") } };
   }
-  await libererMiroirPour(compte.uid);
+  if (!(await libererMiroirPour(compte.uid))) return refuserSaisiesNonGardees(sb);
   memoriserCompte(compte);
   return { ok: true, data: { compte } };
 }
@@ -262,15 +284,17 @@ export async function watchAuthState(callback) {
   // N'appelle cb que si l'état change : un compte identique renvoyé par la
   // vérification ne re-déclenche ni rendu ni rechargement.
   const transmettre = async (compte) => {
+    // Miroir d'un autre compte dont les saisies non envoyées n'ont pas pu
+    // être mises de côté : ce compte n'ouvre pas l'app sur l'appareil.
+    if (compte && !(await libererMiroirPour(compte.uid))) {
+      await sb.auth.signOut().catch(() => {});
+      compte = null;
+    }
     const json = JSON.stringify(compte);
     if (json === dernier) return;
     dernier = json;
-    if (compte) {
-      await libererMiroirPour(compte.uid);
-      memoriserCompte(compte);
-    } else {
-      oublierCompte();
-    }
+    if (compte) memoriserCompte(compte);
+    else oublierCompte();
     callback(compte);
   };
 
@@ -328,13 +352,52 @@ export async function watchAuthState(callback) {
   return () => sub.subscription.unsubscribe();
 }
 
+// En ligne, les saisies encore en file partent AVANT la révocation : après,
+// faute de session, elles attendraient que ce compte se reconnecte sur cet
+// appareil. Borné : un réseau lent ne retient pas la déconnexion.
+async function laisserPartirLaFile() {
+  if (!powerSyncConfigured || (typeof navigator !== "undefined" && navigator.onLine === false)) return;
+  try {
+    const { attendreRemontee, synchroOuverte } = await import("./powersync/client");
+    if (synchroOuverte()) await attendreRemontee(DELAI_ENVOI_FILE);
+  } catch { /* rien à attendre */ }
+}
+
+// Saisies de ce compte pas encore envoyées (file hors ligne et saisies mises
+// de côté) : une déconnexion hors ligne les laisse sur l'appareil.
+export async function compterSaisiesNonEnvoyees() {
+  if (!powerSyncConfigured) return 0;
+  const deCote = compterSaisiesDeCote(lireProprietaire());
+  try {
+    const { getPowerSync, synchroOuverte } = await import("./powersync/client");
+    if (!synchroOuverte()) return deCote;
+    // Borné : une base locale qui ne répond pas ne retient pas la déconnexion.
+    const stats = await Promise.race([
+      getPowerSync().getUploadQueueStats(),
+      new Promise((fin) => setTimeout(() => fin(null), 2000)),
+    ]);
+    return (stats?.count || 0) + deCote;
+  } catch {
+    return deCote;
+  }
+}
+
 export async function signOut() {
+  const fin = deconnecterSession();
+  deconnexionEnCours = fin.catch(() => {});
+  return fin;
+}
+
+async function deconnecterSession() {
   // Oublié même si la révocation échoue (hors ligne) : au prochain lancement,
   // l'app ne s'ouvrira plus d'office sur ce compte.
   oublierCompte();
   // Avant la révocation (il faut encore la session) et borné : un réseau
-  // lent ne retient pas la déconnexion plus de quelques secondes.
+  // lent ne retient pas la déconnexion plus de quelques secondes. Les
+  // saisies en file partent pendant ce temps.
+  const file = laisserPartirLaFile();
   await Promise.race([seDesabonnerDesPush(), new Promise((fin) => setTimeout(fin, DELAI_DESABONNEMENT))]);
+  await file;
   const sb = getSupabase();
   await sb.auth.signOut();
 }
