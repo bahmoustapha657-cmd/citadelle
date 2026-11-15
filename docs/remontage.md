@@ -55,6 +55,11 @@ personnel, transferts…).
 Sur la machine de secours (ce PC, ou plus tard le serveur de l'école) :
 **Docker Desktop démarré**, Node 22, ce dépôt **à jour** (`git pull`), puis :
 
+> Docker Desktop a besoin de **WSL** : s'il affiche « Docker Desktop is
+> unable to start », ouvrir un Terminal **administrateur**, lancer
+> `wsl --install --no-distribution`, redémarrer, puis rouvrir Docker Desktop
+> et accepter ses conditions (constaté à l'installation du 2026-11-14).
+
 ```
 node scripts/remonter-edugest.mjs
 ```
@@ -66,6 +71,11 @@ Le script prend la dernière sauvegarde complète (ou celle passée par
    (la même pile que les tests e2e de la CI). ⚠️ La base Supabase *locale* de
    la machine est remise à zéro (jamais la production).
 2. **Versement des données** en une seule transaction : tout passe, ou rien.
+   La production peut avoir des tables *internes* de Supabase (`auth`,
+   `storage`) plus récentes que la pile locale : celles-là sont sautées et
+   le rapport les nomme, avec leur nombre de lignes (au 2026-11-15 : deux
+   tables de `storage`, vides). Pour les tables de l'école (`public`), le
+   moindre écart arrête tout : mettre le dépôt à jour.
 3. **Contrôle ligne à ligne** : chaque table doit avoir exactement le nombre
    de lignes de la copie, sinon le script s'arrête et le dit.
 4. **Fichiers de la messagerie**, remis depuis le miroir.
@@ -78,9 +88,16 @@ Puis on se connecte avec un **vrai compte** de l'école : le mot de passe
 habituel doit marcher. Le rapport (durée de chaque étape) est écrit dans
 `C:\Users\ADMIN\edugest-backups\remontages\`.
 
-La première fois, Docker télécharge les images de Supabase et de PowerSync
-(plusieurs Go) : prévoir du temps et du réseau. Les fois suivantes, tout est
-déjà sur la machine, **et le remontage ne demande plus Internet**.
+La première fois, Docker télécharge les images de Supabase (5,2 Go, environ
+40 min à 400 Ko/s) puis de PowerSync (1,4 Go) : prévoir du temps et du
+réseau, idéalement la nuit. Docker Hub (images de PowerSync) expire souvent
+sur un réseau faible : le script réessaie, et prend la base de stockage de
+PowerSync sur le miroir d'Amazon. Les fois suivantes, tout est déjà sur la
+machine, **et le remontage ne demande plus Internet**.
+
+Si PowerSync refuse de se télécharger, `--sans-powersync` remonte quand
+même l'école : l'application marche alors en direct sur la base locale,
+sans le mode hors ligne.
 
 ## 3. Ce qui ne remonte pas
 
@@ -103,4 +120,4 @@ déjà sur la machine, **et le remontage ne demande plus Internet**.
 
 | Date | Sauvegarde | Durée | Remarques |
 |---|---|---|---|
-| | | | |
+| 2026-11-15 | backup-2026-11-14-19h28 | **164 s** (images déjà là) | 1er exercice. 24 875 lignes, 87 tables identiques, 176 comptes, 659 fichiers ; connexion d'un vrai compte avec son mot de passe habituel : OK. PowerSync : recopie initiale complète. Avant cela : WSL à installer, 40 min de téléchargement des images Supabase, une nuit de réessais pour celles de PowerSync (Docker Hub), deux tables internes de `storage` absentes en local (vides, sautées). |

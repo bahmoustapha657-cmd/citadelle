@@ -18,12 +18,13 @@
 // Prérequis : Docker Desktop démarré, Node 22, ce dépôt à jour. ⚠️ La base
 // Supabase LOCALE de cette machine est remise à zéro (jamais la production).
 import { spawn, spawnSync } from "node:child_process";
-import { createReadStream, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createClient } from "@supabase/supabase-js";
 import {
-  SQL_TABLES_A_VIDER, compterLignesCopy, derniereSauvegardeComplete, ecartsComptes, lireEnv, preambuleRemontage,
+  SQL_COLONNES_LOCALES, SQL_SEQUENCES_LOCALES, SQL_TABLES_A_VIDER, adapterCopie, compterLignesCopy,
+  derniereSauvegardeComplete, ecartsComptes, lireEnv, preambuleRemontage,
 } from "../supabase/sauvegarde-sql.mjs";
 
 const RACINE = fileURLToPath(new URL("..", import.meta.url));
@@ -33,6 +34,10 @@ const SERVICES_EXCLUS = "studio,imgproxy,logflare,vector,supavisor,realtime,post
 const BASE_LOCALE = "supabase_db_edugest";
 const KONG_LOCAL = "supabase_kong_edugest";
 const POWERSYNC = "journeyapps/powersync-service:1.26.1";
+// Même image que postgres:16 de Docker Hub, servie par le miroir d'Amazon
+// (celui des images Supabase) : Docker Hub expire ou répond 401 sur un
+// réseau faible (constaté au 2e exercice).
+const STOCKAGE_POWERSYNC = "public.ecr.aws/docker/library/postgres:16";
 const PORT_APPLICATION = 4173;
 const SORTIE_APPLICATION = "dist-remontage";
 
@@ -67,24 +72,47 @@ function docker(argsDocker, { capturer = true, tolerer = false } = {}) {
   return r.stdout || "";
 }
 
+// Image présente sur la machine, ou téléchargée avec plusieurs essais : sur
+// un réseau faible, Docker Hub expire souvent (constaté au 2e exercice).
+// Une fois les images là, le remontage ne demande plus Internet.
+async function assurerImage(image) {
+  if (spawnSync("docker", ["image", "inspect", image], { stdio: "ignore" }).status === 0) return;
+  for (let essai = 1; essai <= 5; essai++) {
+    console.log(`  ⬇ téléchargement de ${image} (essai ${essai}/5)…`);
+    if (spawnSync("docker", ["pull", "-q", image], { stdio: "inherit" }).status === 0) return;
+    await new Promise((r) => setTimeout(r, 10_000));
+  }
+  throw new Error(`image ${image} introuvable et impossible à télécharger (réseau ?)`);
+}
+
 // psql DANS le conteneur de la base locale, en superutilisateur (le seul qui
 // puisse suspendre déclencheurs et clés étrangères le temps du versement).
 const psqlArgs = ["exec", "-i", "-e", "PGPASSWORD=postgres", BASE_LOCALE,
   "psql", "-h", "127.0.0.1", "-U", "supabase_admin", "-d", "postgres", "-v", "ON_ERROR_STOP=1"];
 const requete = (sql) => docker([...psqlArgs, "-AtF", "\t", "-c", sql]).trim();
 
-// Verse le préambule puis la copie sur l'entrée de psql, en une transaction :
-// tout passe, ou rien.
-function verserCopie(fichier, preambule) {
+// Verse le préambule puis la copie (adaptée) sur l'entrée de psql, en une
+// transaction : tout passe, ou rien.
+function verserCopie(texte, preambule) {
   return new Promise((resolve, reject) => {
-    const enfant = spawn("docker", [...psqlArgs, "-q", "--single-transaction"], { stdio: ["pipe", "inherit", "pipe"] });
+    const enfant = spawn("docker", [...psqlArgs, "-q", "--single-transaction", "-o", "/dev/null"], { stdio: ["pipe", "inherit", "pipe"] });
     let erreurs = "";
     enfant.stderr.on("data", (d) => { erreurs += d; });
     enfant.on("error", reject);
     enfant.on("close", (code) => (code === 0 ? resolve() : reject(new Error(`versement de la copie : ${erreurs.trim().slice(0, 1500)}`))));
     enfant.stdin.write(preambule);
-    createReadStream(fichier).pipe(enfant.stdin);
+    enfant.stdin.end(texte);
   });
+}
+
+// Schéma de la base d'arrivée (tables, colonnes, séquences), pour adapterCopie.
+function schemaLocal() {
+  const colonnes = {};
+  for (const l of requete(SQL_COLONNES_LOCALES).split(/\r?\n/).filter(Boolean)) {
+    const [table, colonne] = l.split("\t");
+    (colonnes[table] ||= []).push(colonne);
+  }
+  return { colonnes, sequences: requete(SQL_SEQUENCES_LOCALES).split(/\r?\n/).filter(Boolean) };
 }
 
 // ── Étapes chronométrées ───────────────────────────────────────────────────
@@ -143,11 +171,20 @@ async function main() {
     return env.API_URL;
   });
 
-  const fichierCopie = join(sauvegarde, "base", "donnees.sql");
-  const attendus = compterLignesCopy(readFileSync(fichierCopie, "utf8"));
+  let attendus;
   await etape("Versement des données (mots de passe compris)", async () => {
-    await verserCopie(fichierCopie, preambuleRemontage(requete(SQL_TABLES_A_VIDER)));
-    return `${Object.values(attendus).reduce((s, n) => s + n, 0)} lignes`;
+    const { colonnes, sequences } = schemaLocal();
+    const copie = adapterCopie(readFileSync(join(sauvegarde, "base", "donnees.sql"), "utf8"), colonnes, sequences);
+    attendus = compterLignesCopy(copie.texte);
+    await verserCopie(copie.texte, preambuleRemontage(requete(SQL_TABLES_A_VIDER)));
+    // Écarts de version des tables internes de Supabase : dits, jamais tus.
+    const perdues = Object.entries(copie.ignorees).filter(([, n]) => n > 0);
+    if (perdues.length) console.log(`  ⚠️  tables internes absentes de la pile locale, lignes NON remontées : ${perdues.map(([t, n]) => `${t} (${n})`).join(", ")}`);
+    return {
+      lignes: Object.values(attendus).reduce((s, n) => s + n, 0),
+      tablesInternesSautees: copie.ignorees,
+      colonnesInternesRetirees: copie.colonnesRetirees,
+    };
   });
 
   await etape("Contrôle ligne à ligne", () => {
@@ -182,11 +219,13 @@ async function main() {
   let powersync = "";
   if (!option("--sans-powersync")) {
     await etape("Service PowerSync (hors ligne)", async () => {
+      await assurerImage(STOCKAGE_POWERSYNC);
+      await assurerImage(POWERSYNC);
       requete("alter role powersync_role with login replication bypassrls password 'powersync-local'");
       const reseau = docker(["inspect", "-f", "{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{end}}", BASE_LOCALE]).trim();
       docker(["rm", "-f", "powersync", "ps-stockage"], { tolerer: true });
       docker(["run", "-d", "--name", "ps-stockage", "--network", reseau,
-        "-e", "POSTGRES_PASSWORD=stockage", "-e", "POSTGRES_DB=powersync_storage", "postgres:16"]);
+        "-e", "POSTGRES_PASSWORD=stockage", "-e", "POSTGRES_DB=powersync_storage", STOCKAGE_POWERSYNC]);
       for (let i = 0; i < 60; i++) {
         if (spawnSync("docker", ["exec", "ps-stockage", "pg_isready", "-U", "postgres", "-q"]).status === 0) break;
         await new Promise((r) => setTimeout(r, 1000));
