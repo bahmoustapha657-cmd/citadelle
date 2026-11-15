@@ -7,7 +7,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
-  SQL_TABLES_A_VIDER, TABLES_NON_COPIEES, compterLignesCopy, decouperUrl, derniereSauvegardeComplete,
+  SQL_TABLES_A_VIDER, TABLES_NON_COPIEES, adapterCopie, compterLignesCopy, decouperUrl, derniereSauvegardeComplete,
   ecartsComptes, lireEnv, preambuleRemontage,
 } from "../supabase/sauvegarde-sql.mjs";
 
@@ -61,6 +61,47 @@ test("remontage : tables vidées puis déclencheurs suspendus, dans la transacti
   assert.match(p, /^SET session_replication_role = replica;/);
   assert.match(p, /TRUNCATE "public"\."eleves", "auth"\."users" CASCADE;/);
   assert.doesNotMatch(preambuleRemontage(""), /TRUNCATE/);
+});
+
+test("copie adaptée à une pile locale plus ancienne que la production", () => {
+  const dump = [
+    "SELECT pg_catalog.set_config('search_path', '', false);",
+    'COPY "storage"."bucket_lifecycle_states" ("id", "etat") FROM stdin;',
+    "b1\tactif",
+    "\\.",
+    'COPY "auth"."users" ("id", "email", "colonne_recente", "encrypted_password") FROM stdin;\r',
+    "u1\ta@x\tX\t$2a$10$hash\r",
+    "u2\tb\\tc@x\t\\N\t$2a$10$autre\r",
+    "\\.\r",
+    'COPY "public"."eleves" ("id", "nom") FROM stdin;',
+    "e1\tDIALLO",
+    "\\.",
+    "SELECT pg_catalog.setval('\"auth\".\"refresh_tokens_id_seq\"', 42, true);",
+    "SELECT pg_catalog.setval('\"auth\".\"sequence_recente\"', 7, true);",
+  ].join("\n");
+  const locales = {
+    "auth.users": ["id", "email", "encrypted_password", "confirmed_at"],
+    "public.eleves": ["id", "nom"],
+  };
+  const { texte, ignorees, colonnesRetirees } = adapterCopie(dump, locales, ["auth.refresh_tokens_id_seq"]);
+  assert.deepEqual(ignorees, { "storage.bucket_lifecycle_states": 1 });
+  assert.deepEqual(colonnesRetirees, { "auth.users": ["colonne_recente"] });
+  assert.ok(!texte.includes("bucket_lifecycle_states") && !texte.includes("actif"));
+  // Colonne retirée ligne à ligne, tabulation échappée (\t) et fins de ligne Windows préservées.
+  assert.ok(texte.includes('COPY "auth"."users" ("id", "email", "encrypted_password") FROM stdin;\r\n'));
+  assert.ok(texte.includes("u1\ta@x\t$2a$10$hash\r\n"));
+  assert.ok(texte.includes("u2\tb\\tc@x\t$2a$10$autre\r\n"));
+  assert.ok(texte.includes("e1\tDIALLO"));
+  assert.ok(texte.includes("refresh_tokens_id_seq") && !texte.includes("sequence_recente"));
+  assert.deepEqual(compterLignesCopy(texte), { "auth.users": 2, "public.eleves": 1 });
+});
+
+test("copie adaptée : tout écart sur les tables de l'école arrête le remontage", () => {
+  const table = 'COPY "public"."eleves" ("id", "nom", "matricule") FROM stdin;\ne1\tA\tM1\n\\.';
+  assert.throws(() => adapterCopie(table, {}), /public\.eleves absente/);
+  assert.throws(() => adapterCopie(table, { "public.eleves": ["id", "nom"] }), /matricule de public\.eleves absentes/);
+  assert.throws(() => adapterCopie("SELECT pg_catalog.setval('\"public\".\"compteur\"', 1, true);", {}), /séquence public\.compteur/);
+  assert.equal(adapterCopie(table, { "public.eleves": ["id", "nom", "matricule"] }).texte, table);
 });
 
 test("clés de la pile locale (supabase status -o env)", () => {
