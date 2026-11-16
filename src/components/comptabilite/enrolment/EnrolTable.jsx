@@ -3,13 +3,19 @@ import { C, aReinscrire, genererMatricule } from "../../../constants";
 import { libelleStatutEleve } from "../../../i18n/libelles";
 import { Badge, Btn, THead, TR, TD, Vide, Chargement } from "../../ui";
 import { nomAffiche } from "../../../ordre-eleves";
+import { aUneExoneration } from "../../../exoneration-utils";
+import { demandeEnAttente } from "../../../demande-dispense";
+import { resumeExonerationAffiche } from "../exoneration-affichage";
 
 // Tableau des élèves enrôlés pour le niveau courant, avec actions :
 // modifier, dupliquer (fratrie), déclarer un départ, supprimer (refusé à une
 // fiche qui porte de l'argent : cf. EnrolmentTab / suppression-eleve.js).
+// 🎓 : demander une dispense (comptabilité) ou l'accorder (Direction) pour
+// l'élève de la ligne (`onDispense`, null si le compte ne peut ni l'un ni l'autre).
 export function EnrolTable({
   cEC, cEL, cEP, elevesEnrol, canEdit, canCreate, planInfo,
   niveauEnrol, schoolInfo, setForm, setModal, declarerDepart, supprimerEleve,
+  onDispense = null, anneeDispenses = "", estDirection = false,
 }) {
   const { t } = useTranslation();
   if (cEC || cEL || cEP) return <Chargement/>;
@@ -35,6 +41,9 @@ export function EnrolTable({
                   sa classe : la pastille signale un dossier à finir, pas une
                   absence. */}
               {aReinscrire(e)&&<Badge color="amber" title={t("accounting.enrol.toReenrolHint")}>{t("accounting.enrol.toReenrol")}</Badge>}
+              {/* Dispense accordée, ou demandée et en attente de la Direction. */}
+              {aUneExoneration(e)&&<Badge color="blue" title={resumeExonerationAffiche(e)}>{t("accounting.exempt.badgeExempt")}</Badge>}
+              {demandeEnAttente(e, anneeDispenses)&&<Badge color="amber">{t("accounting.exempt.request.badgePending")}</Badge>}
             </div>
           </TD>
           {canEdit&&<TD><div style={{display:"flex",gap:6}}>
@@ -46,6 +55,9 @@ export function EnrolTable({
                 classe:e.classe,filiation:e.filiation,tuteur:e.tuteur,contactTuteur:e.contactTuteur,domicile:e.domicile});
               setModal("add_enrol");
             }}>👥</Btn>}
+            {onDispense&&<Btn sm v="ghost" onClick={()=>onDispense(e)}
+              title={estDirection?t("accounting.exempt.grant"):t("accounting.exempt.request.formTitle")}
+              aria-label={estDirection?t("accounting.exempt.grant"):t("accounting.exempt.request.formTitle")}>🎓</Btn>}
             {e.statut==="Actif"&&<Btn sm v="amber" onClick={()=>declarerDepart(e)} title={t("accounting.enrol.declareDeparture")}>📤</Btn>}
             <Btn sm v="danger" onClick={()=>supprimerEleve(e)}>{t("accounting.enrol.deleteShort")}</Btn>
           </div></TD>}

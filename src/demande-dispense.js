@@ -74,6 +74,17 @@ export function compterDemandesParSection(elevesParSection = {}, annee = "") {
   return { total: parSection.reduce((s, x) => s + x.nombre, 0), parSection };
 }
 
+// Ce qui attend quelqu'un, section par section ({ college: 2, primaire: 0 }) :
+// pour la Direction, les demandes à examiner ; pour la comptabilité, les
+// refus à lire. Alimente la pastille du bouton « Dispenses » (Mensualités,
+// Enrôlement) et les boutons de section de la fenêtre.
+export function attentesParSection(elevesParSection = {}, sections = [], annee = "", { direction = false } = {}) {
+  const filtre = direction ? elevesDemandeEnAttente : elevesDemandeRefusee;
+  return Object.fromEntries(sections.map((section) => [section, filtre(elevesParSection[section] || [], annee).length]));
+}
+
+export const totalAttentes = (attentes = {}) => Object.values(attentes).reduce((s, n) => s + n, 0);
+
 // Demande à enregistrer, à partir de la dispense proposée (forme de
 // versExoneration). null si elle ne dispense de rien.
 export function nouvelleDemande(proposition, { annee = "", auteur = "", date = "" } = {}) {

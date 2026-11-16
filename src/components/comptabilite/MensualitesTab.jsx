@@ -1,10 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { C, getAnnee, getSectionLabel, isSectionActive } from "../../constants";
-import { elevesDemandeEnAttente, elevesDemandeRefusee } from "../../demande-dispense";
-import { libelleSection } from "../../i18n/libelles";
+import { BoutonDispenses } from "./BoutonDispenses";
 import { intentionDispenses, oublierIntentionDispenses } from "./ouvrir-dispenses";
-import { Btn } from "../ui";
 import { TarifsClasses } from "../TarifsClasses";
 import { TriElevesSelect } from "../TriElevesSelect";
 import { useTriEleves } from "../use-tri-eleves";
@@ -60,8 +58,9 @@ export function MensualitesTab({
   toggleFraisAnnexe,
   getTarifInscriptionEleve,
   getTarifFraisDivers,
-  estDirection,
-  exonerationDeps,
+  // Fenêtre « Dispenses » : élèves et écritures de chaque section, rôle
+  // (cf. use-comptabilite).
+  dispenses,
   // paiements libres et tranches
   encaisserVersement,
   retirerAcompte,
@@ -75,24 +74,6 @@ export function MensualitesTab({
   // l'intention est effacée une fois la fenêtre montée.
   const [exonerations, setExonerations] = useState(() => intentionDispenses() !== null);
   useEffect(() => { oublierIntentionDispenses(); }, []);
-  // Ce qui attend sur les dispenses, section par section : les demandes de
-  // la comptabilité pour la Direction, les refus à lire pour la comptabilité.
-  // La pastille du bouton couvre toute l'école ; la fenêtre, elle, montre la
-  // section affichée et propose de basculer vers les autres.
-  const anneeDispenses = annee || getAnnee();
-  const peutDemanderDispense = !estDirection && !!canEdit && !readOnly && !estArchive;
-  const dispensesParSection = useMemo(() => {
-    const aTraiter = estDirection ? elevesDemandeEnAttente : elevesDemandeRefusee;
-    return ["college", "lycee", "primaire", "prescolaire"]
-      .filter((section) => isSectionActive(schoolInfo, section))
-      .map((section) => ({
-        section,
-        label: libelleSection(section),
-        nombre: aTraiter(elevesAnneeParNiveau[section] || [], anneeDispenses).length,
-      }))
-      .filter((s) => s.nombre > 0);
-  }, [estDirection, schoolInfo, elevesAnneeParNiveau, anneeDispenses]);
-  const pastilleDispenses = dispensesParSection.reduce((s, x) => s + x.nombre, 0);
   // Élève dont la fenêtre d'encaissement est ouverte. On garde son id et on
   // relit la fiche dans la liste : après un versement, la fenêtre montre
   // l'état à jour.
@@ -168,28 +149,15 @@ export function MensualitesTab({
           <option value="all">{t("common.all")}</option>
           {classesU.map(c => <option key={c}>{c}</option>)}
         </select>}
-        {/* Élèves dispensés de payer : la Direction les accorde, la
-            comptabilité les consulte (cf. exoneration-actions). */}
         <TriElevesSelect liste="mensualites" value={tri} onChange={setTri} />
-        <Btn sm v="ghost" onClick={() => setExonerations(true)}
-          title={pastilleDispenses > 0
-            ? t(estDirection ? "accounting.exempt.request.badgeDirection" : "accounting.exempt.request.badgeRefused", { count: pastilleDispenses })
-            : undefined}>
-          {t("accounting.mens.exemptionsBtn")}
-          {pastilleDispenses > 0 && (
-            <span style={{ marginInlineStart: 6, background: "#dc2626", color: "#fff", borderRadius: 999, padding: "0 6px", fontSize: 10.5, fontWeight: 800, lineHeight: "16px", display: "inline-block", minWidth: 16, textAlign: "center" }}>
-              {pastilleDispenses}
-            </span>
-          )}
-        </Btn>
+        {/* Élèves dispensés de payer : la Direction les accorde, la
+            comptabilité les demande (cf. exoneration-actions). */}
+        <BoutonDispenses dispenses={dispenses} onClick={() => setExonerations(true)} />
       </div>
 
-      {exonerations && <ExonerationsModale
-        eleves={eleves} moisAnnee={moisAnnee} tarifsClasses={tarifsClasses}
-        annee={anneeDispenses} estDirection={estDirection} peutDemander={peutDemanderDispense}
-        autresSections={dispensesParSection.filter((s) => s.section !== niveau)}
-        changerSection={(section) => { setNiveau(section); setFiltClasse("all"); }}
-        deps={exonerationDeps} fermer={() => setExonerations(false)}
+      {/* La fenêtre s'ouvre sur la section affichée, et en change à volonté. */}
+      {exonerations && <ExonerationsModale {...dispenses}
+        sectionInitiale={niveau} fermer={() => setExonerations(false)}
       />}
 
       {eleveEncaisse && <EncaisserModale

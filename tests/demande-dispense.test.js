@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  STATUT_ATTENTE, STATUT_REFUSEE, compterDemandesParSection, demandeEnAttente, demandeRefusee,
+  STATUT_ATTENTE, STATUT_REFUSEE, attentesParSection, compterDemandesParSection, demandeEnAttente, demandeRefusee,
+  totalAttentes,
   elevesDemandeEnAttente, elevesDemandeRefusee, exonerationDepuisDemande, getDemande,
   normaliserDemande, nouvelleDemande, refuserDemande,
 } from "../src/demande-dispense.js";
@@ -103,6 +104,24 @@ test("le compte par section ne garde que les sections qui ont des demandes, la p
     parSection: [{ section: "primaire", nombre: 2 }, { section: "college", nombre: 1 }],
   });
   assert.deepEqual(compterDemandesParSection({}, ANNEE), { total: 0, parSection: [] });
+});
+
+test("ce qui attend, par section : demandes pour la Direction, refus pour la comptabilité", () => {
+  const refusee = refuserDemande(enAttente, { motifRefus: "Non" });
+  const parSection = {
+    college: [eleve(enAttente), eleve(refusee)],
+    primaire: [eleve(enAttente), eleve(enAttente)],
+    lycee: [eleve(refusee)],
+  };
+  // Seules les sections demandées (ouvertes dans l'école) sont comptées.
+  const sections = ["college", "primaire", "lycee", "prescolaire"];
+  const direction = attentesParSection(parSection, sections, ANNEE, { direction: true });
+  assert.deepEqual(direction, { college: 1, primaire: 2, lycee: 0, prescolaire: 0 });
+  assert.equal(totalAttentes(direction), 3);
+  const comptable = attentesParSection(parSection, sections, ANNEE);
+  assert.deepEqual(comptable, { college: 1, primaire: 0, lycee: 1, prescolaire: 0 });
+  assert.deepEqual(attentesParSection(parSection, ["college"], "2027-2028", { direction: true }), { college: 0 });
+  assert.equal(totalAttentes({}), 0);
 });
 
 test("accepter telle quelle reprend exactement les taux et le motif demandés", () => {

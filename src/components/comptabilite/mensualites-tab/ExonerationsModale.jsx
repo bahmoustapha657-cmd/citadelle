@@ -7,9 +7,10 @@ import {
   aUneExoneration, clampPourcentage, getExoneration,
 } from "../../../exoneration-utils";
 import {
-  STATUT_REFUSEE, demandeEnAttente, elevesDemandeEnAttente, elevesDemandeRefusee,
+  STATUT_REFUSEE, attentesParSection, demandeEnAttente, elevesDemandeEnAttente, elevesDemandeRefusee,
   exonerationDepuisDemande, getDemande,
 } from "../../../demande-dispense";
+import { libelleSection } from "../../../i18n/libelles";
 import { libelleMotifAffiche, libellePoste, resumeExonerationAffiche } from "../exoneration-affichage";
 import { getMensualiteOverview } from "../../../mensualite-utils";
 import {
@@ -68,21 +69,33 @@ const titreBloc = { margin: "0 0 8px", fontSize: 12, fontWeight: 800, color: C.b
 // même formulaire et l'ENVOIE à la Direction, qui l'accorde telle quelle, la
 // corrige ou la refuse en disant pourquoi (cf. demande-dispense).
 //
-// La fenêtre montre la section affichée ; `autresSections` signale les autres
-// sections qui attendent quelque chose (demandes pour la Direction, refus à
-// lire pour la comptabilité) et `changerSection` y bascule.
+// La fenêtre choisit sa SECTION (boutons en tête, avec ce qui y attend :
+// demandes pour la Direction, refus à lire pour la comptabilité). Elle reçoit
+// donc les élèves et l'écriture de chaque section (`elevesParSection`,
+// `modParSection`, cf. use-comptabilite) : ouverte depuis Mensualités comme
+// depuis l'Enrôlement, elle ne dépend plus de la section de l'onglet.
+// `eleveInitialId` : élève à préparer d'emblée (bouton 🎓 d'une ligne de
+// l'Enrôlement), cherché dans `sectionInitiale`.
 export function ExonerationsModale({
-  eleves, moisAnnee, tarifsClasses, annee, estDirection, peutDemander = false,
-  autresSections = [], changerSection, fermer, deps,
+  elevesParSection = {}, modParSection = {}, sections = [], sectionInitiale = "", eleveInitialId = null,
+  moisAnnee, tarifsClasses, annee, estDirection, peutDemander = false, fermer, deps,
 }) {
   const { t } = useTranslation();
+  const [section, setSection] = useState(() => (sections.includes(sectionInitiale) ? sectionInitiale : sections[0] || "college"));
+  const eleves = useMemo(() => elevesParSection[section] || [], [elevesParSection, section]);
+  // Écriture de la section affichée : une fiche s'enregistre dans SA table.
+  const depsSection = { ...deps, modEleves: modParSection[section] };
   const [recherche, setRecherche] = useState("");
-  const [choisi, setChoisi] = useState(null);
-  const [brouillon, setBrouillon] = useState(() => brouillonDepuis());
+  const [choisi, setChoisi] = useState(() => (eleveInitialId && eleves.find((e) => e._id === eleveInitialId)) || null);
+  const [brouillon, setBrouillon] = useState(() => brouillonDepuis(choisi ? (getDemande(choisi, annee) || getExoneration(choisi)) : null));
   const [enCours, setEnCours] = useState(false);
   // Refus en cours de rédaction : { id, raison }.
   const [refus, setRefus] = useState(null);
   const formulaire = useRef(null);
+  const attentes = useMemo(
+    () => attentesParSection(elevesParSection, sections, annee, { direction: estDirection }),
+    [elevesParSection, sections, annee, estDirection],
+  );
 
   const exoneres = useMemo(() => eleves.filter(aUneExoneration), [eleves]);
   const enAttente = useMemo(() => elevesDemandeEnAttente(eleves, annee), [eleves, annee]);
@@ -118,6 +131,8 @@ export function ExonerationsModale({
 
   const reinitialiser = () => { setChoisi(null); setRecherche(""); setBrouillon(brouillonDepuis()); };
 
+  const changerSection = (s) => { if (s === section) return; setRefus(null); reinitialiser(); setSection(s); };
+
   // Choisir un élève reprend ce qui le concerne déjà — la demande en cours,
   // sinon sa dispense : la modifier ne doit pas obliger à ressaisir les taux.
   const choisir = (eleve) => {
@@ -126,23 +141,23 @@ export function ExonerationsModale({
   };
 
   const accorder = () => executer(async () => {
-    if (await accorderExoneration(choisi, versExoneration(brouillon), { estDirection, annee, ...deps })) reinitialiser();
+    if (await accorderExoneration(choisi, versExoneration(brouillon), { estDirection, annee, ...depsSection })) reinitialiser();
   });
 
   const envoyer = () => executer(async () => {
-    if (await demanderDispense(choisi, versExoneration(brouillon), { estDirection, annee, ...deps })) reinitialiser();
+    if (await demanderDispense(choisi, versExoneration(brouillon), { estDirection, annee, ...depsSection })) reinitialiser();
   });
 
   const reconduire = (eleve) => executer(async () => {
     const precedente = (eleve.historique || {})[anneePrecedente(annee)]?.exoneration || {};
-    await accorderExoneration(eleve, precedente, { estDirection, annee, ...deps });
+    await accorderExoneration(eleve, precedente, { estDirection, annee, ...depsSection });
   });
 
-  const retirer = (eleve) => executer(() => retirerExoneration(eleve, { estDirection, ...deps }));
+  const retirer = (eleve) => executer(() => retirerExoneration(eleve, { estDirection, ...depsSection }));
 
   // Demande acceptée telle quelle : les taux et le motif de la comptabilité.
   const accorderDemande = (eleve) => executer(() =>
-    accorderExoneration(eleve, exonerationDepuisDemande(getDemande(eleve, annee)), { estDirection, annee, ...deps }));
+    accorderExoneration(eleve, exonerationDepuisDemande(getDemande(eleve, annee)), { estDirection, annee, ...depsSection }));
 
   // Demande à corriger : elle remplit le formulaire, la Direction ajuste puis
   // accorde (la demande quitte alors la fiche).
@@ -152,10 +167,10 @@ export function ExonerationsModale({
   };
 
   const refuser = (eleve) => executer(async () => {
-    if (await refuserDemandeDispense(eleve, refus?.raison, { estDirection, annee, ...deps })) setRefus(null);
+    if (await refuserDemandeDispense(eleve, refus?.raison, { estDirection, annee, ...depsSection })) setRefus(null);
   });
 
-  const retirerDemande = (eleve) => executer(() => retirerDemandeDispense(eleve, deps));
+  const retirerDemande = (eleve) => executer(() => retirerDemandeDispense(eleve, depsSection));
 
   const champ = { border: "1px solid #cbd5e1", borderRadius: 8, padding: "8px 10px", fontSize: 13 };
 
@@ -166,24 +181,40 @@ export function ExonerationsModale({
     </>
   );
 
-  // Les autres sections qui attendent : un bouton par section.
-  const versAutresSections = autresSections.length > 0 && changerSection && (
-    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginTop: 8, fontSize: 12, color: "#475569" }}>
-      <span>{t("accounting.exempt.request.otherSections")}</span>
-      {autresSections.map((s) => (
-        <Btn key={s.section} sm v="ghost" onClick={() => { setRefus(null); reinitialiser(); changerSection(s.section); }}>
-          {s.label} ({s.nombre})
-        </Btn>
-      ))}
-    </div>
-  );
-
   return (
     <Modale large titre={`🎓 ${t("accounting.exempt.title")}`} fermer={fermer}>
       <p style={{ margin: "0 0 12px", fontSize: 12.5, color: "#475569" }}>
         <Trans i18nKey="accounting.exempt.intro" values={{ year: annee }} components={{ b: <strong /> }} />
         {!estDirection && <><br/><Trans i18nKey={peutDemander ? "accounting.exempt.request.introCanAsk" : "accounting.exempt.readOnly"} components={{ b: <strong /> }} /></>}
       </p>
+
+      {/* Section : la fenêtre ne montre qu'une section à la fois (ses élèves,
+          ses dispenses, ses demandes). Le chiffre rouge signale ce qui attend
+          dans chacune. */}
+      {sections.length > 1 && (
+        <div role="tablist" aria-label={t("accounting.exempt.sectionLabel")}
+          style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginBottom: 12 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: "#475569" }}>{t("accounting.exempt.sectionLabel")}</span>
+          {sections.map((s) => {
+            const actif = s === section;
+            return (
+              <button key={s} type="button" role="tab" aria-selected={actif} onClick={() => changerSection(s)}
+                style={{
+                  border: `1.5px solid ${actif ? C.blueDark : "#cbd5e1"}`, background: actif ? C.blueDark : "#fff",
+                  color: actif ? "#fff" : C.blueDark, borderRadius: 999, padding: "4px 12px", fontSize: 12,
+                  fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6,
+                }}>
+                {libelleSection(s)}
+                {attentes[s] > 0 && (
+                  <span style={{ background: "#dc2626", color: "#fff", borderRadius: 999, padding: "0 6px", fontSize: 10.5, fontWeight: 800, lineHeight: "16px", minWidth: 16, textAlign: "center" }}>
+                    {attentes[s]}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center", background: "#e0ebf8", borderRadius: 8, padding: "9px 14px", marginBottom: 14 }}>
         <span style={{ fontSize: 12, fontWeight: 700, color: C.blueDark }}>🎓 {t("accounting.exempt.count", { count: overview.totalElevesExoneres })}</span>
@@ -193,7 +224,7 @@ export function ExonerationsModale({
       {/* Direction : les demandes de la comptabilité, en tête — c'est ce
           qu'elle vient chercher quand la pastille ou le tableau de bord l'a
           prévenue. */}
-      {estDirection && (enAttente.length > 0 || versAutresSections) && (
+      {estDirection && enAttente.length > 0 && (
         <div style={{ border: "1px solid #fcd34d", background: "#fffbeb", borderRadius: 10, padding: "10px 14px", marginBottom: 14 }}>
           <p style={{ ...titreBloc, color: "#92400e" }}>{t("accounting.exempt.request.inbox", { count: enAttente.length })}</p>
           {enAttente.map((e, i) => {
@@ -232,14 +263,13 @@ export function ExonerationsModale({
               </div>
             );
           })}
-          {versAutresSections}
         </div>
       )}
 
       {/* Comptabilité : ses demandes, et la réponse de la Direction quand
           elle a refusé. Une demande accordée quitte cette liste et rejoint
           les dispenses en cours. */}
-      {!estDirection && (enAttente.length + refusees.length > 0 || versAutresSections) && (
+      {!estDirection && enAttente.length + refusees.length > 0 && (
         <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: "10px 14px", marginBottom: 14 }}>
           <p style={titreBloc}>{t("accounting.exempt.request.mine", { count: enAttente.length + refusees.length })}</p>
           {[...refusees, ...enAttente].map((e, i) => {
@@ -263,7 +293,6 @@ export function ExonerationsModale({
               </div>
             );
           })}
-          {versAutresSections}
         </div>
       )}
 

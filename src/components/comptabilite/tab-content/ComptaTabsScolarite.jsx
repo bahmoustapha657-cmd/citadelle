@@ -97,6 +97,7 @@ export function ComptaTabsScolarite({ c, readOnly, annee, userRole }) {
         getTarifInscriptionEleve={c.getTarifInscriptionEleve}
         tarifsClasses={c.tarifsClasses}
         paiements={c.paiements}
+        dispenses={c.dispenses}
       />}
 
       {c.tab === "mens" && <MensualitesTab
@@ -129,8 +130,7 @@ export function ComptaTabsScolarite({ c, readOnly, annee, userRole }) {
         toggleFraisAnnexe={c.toggleFraisAnnexe}
         getTarifInscriptionEleve={c.getTarifInscriptionEleve}
         getTarifFraisDivers={c.getTarifFraisDivers}
-        estDirection={userRole === "direction"}
-        exonerationDeps={c.exonerationDeps}
+        dispenses={c.dispenses}
         encaisserVersement={c.encaisserVersement}
         retirerAcompte={c.retirerAcompte}
         tranchesPaiement={c.tranchesPaiement}
