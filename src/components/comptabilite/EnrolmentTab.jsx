@@ -15,6 +15,8 @@ import { useRechercheEleves } from "../use-recherche-eleves";
 import { useTriEleves } from "../use-tri-eleves";
 import { trierEleves } from "../../tri-eleves";
 import { SeancePhotoModale } from "../identite-enfant/SeancePhotoModale";
+import { BoutonDispenses } from "./BoutonDispenses";
+import { ExonerationsModale } from "./mensualites-tab/ExonerationsModale";
 import {
   messageConfirmationSuppression, messageErreurSuppression, messageSuppressionRefusee, porteDesEncaissements,
 } from "./enrolment/suppression-eleve";
@@ -25,6 +27,9 @@ export function EnrolmentTab({
   tousElevesScolarite, ajoutParNiveau, suppressionParNiveau,
   modChampParNiveau = {}, rechargerParNiveau = {}, ensureClasse, sortAlpha,
   encaisserInscriptions, getTarifInscriptionEleve, tarifsClasses = [], paiements = [],
+  // Fenêtre « Dispenses » (cf. use-comptabilite) : la comptabilité demande
+  // une dispense, la Direction l'accorde, sans quitter l'enrôlement.
+  dispenses = null,
 }) {
   const { t } = useTranslation();
   const { schoolId, schoolInfo, toast, planInfo, moisAnnee, logAction } = useContext(SchoolContext);
@@ -38,6 +43,10 @@ export function EnrolmentTab({
   const recherche = useRechercheEleves("enrolement");
   // Séance photo ouverte sur une classe (null : toutes) ; undefined = fermée.
   const [seanceClasse, setSeanceClasse] = useState(undefined);
+  // Fenêtre « Dispenses » : null = fermée ; { eleveId } = ouverte, sur cet
+  // élève s'il vient du bouton 🎓 de sa ligne.
+  const [fenetreDispenses, setFenetreDispenses] = useState(null);
+  const peutDispenser = !!dispenses && (dispenses.estDirection || dispenses.peutDemander);
 
   // Cycle affiché : le choix s'il est ouvert dans l'école, sinon la première
   // section ouverte — une école sans collège ne s'ouvre pas sur une liste vide.
@@ -113,6 +122,7 @@ export function EnrolmentTab({
         onEncaisserInscriptions={() => encaisserInscriptions?.(elevesClasse.filter(aReinscrire))}
         onSeancePhoto={canEdit && modChampParNiveau[niveauEnrol]
           ? () => setSeanceClasse(classeEnrol === "all" ? null : classeEnrol) : null}
+        boutonDispenses={dispenses && <BoutonDispenses dispenses={dispenses} onClick={() => setFenetreDispenses({ eleveId: null })} />}
       />
 
       <div style={{background:"#e0ebf8",borderRadius:8,padding:"9px 14px",marginBottom:14,fontSize:12,color:C.blueDark}}>
@@ -134,6 +144,8 @@ export function EnrolmentTab({
         canCreate={canCreate} planInfo={planInfo} niveauEnrol={niveauEnrol}
         schoolInfo={schoolInfo} setForm={setForm} setModal={setModal}
         declarerDepart={declarerDepart} supprimerEleve={supprimerEleve}
+        anneeDispenses={dispenses?.annee} estDirection={!!dispenses?.estDirection}
+        onDispense={peutDispenser ? (eleve) => setFenetreDispenses({ eleveId: eleve._id }) : null}
       />}
       {afficherDeparts&&<DepartsView
         elevesEnrol={elevesEnrol.filter(dansClasse)} canEdit={canEdit} modChamp={modChampParNiveau[niveauEnrol]} toast={toast}
@@ -159,6 +171,12 @@ export function EnrolmentTab({
         peutCreerParent={canCreateParent}
         schoolId={schoolId} schoolInfo={schoolInfo} toast={toast} tousElevesScolarite={tousElevesScolarite}
         ajoutParNiveau={ajoutParNiveau} ensureClasse={ensureClasse} elevesParNiveau={elevesParNiveau}/>}
+
+      {/* Ouverte sur la section affichée (et l'élève de la ligne cliquée) ;
+          la fenêtre change de section à volonté. */}
+      {fenetreDispenses&&dispenses&&<ExonerationsModale {...dispenses}
+        sectionInitiale={niveauEnrol} eleveInitialId={fenetreDispenses.eleveId}
+        fermer={()=>setFenetreDispenses(null)}/>}
 
       {seanceClasse!==undefined&&<SeancePhotoModale
         eleves={elevesPresents} classeInitiale={seanceClasse}

@@ -690,7 +690,6 @@
         "cancel": "Cancel",
         "refuseNeedsReason": "Write the reason for refusal: accounting will have to explain it to the family.",
         "refused": "Request refused for {{name}}.",
-        "otherSections": "Other sections:",
         "mine": "Requests sent to the Management ({{count}})",
         "pending": "Awaiting the Management",
         "refusedBy": "Refused by {{author}} on {{date}}: {{reason}}",
@@ -699,8 +698,11 @@
         "withdrawn": "Request withdrawn for {{name}}.",
         "seen": "Read, remove",
         "badgeDirection": "Pending exemption requests: {{count}}",
-        "badgeRefused": "Refused requests to read: {{count}}"
-      }
+        "badgeRefused": "Refused requests to read: {{count}}",
+        "badgePending": "⏳ Exemption requested"
+      },
+      "sectionLabel": "Section:",
+      "badgeExempt": "🎓 Exempt"
     },
     "cols": {
       "matricule": "ID number",

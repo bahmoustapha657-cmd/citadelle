@@ -1,6 +1,6 @@
 import { useContext, useMemo, useState } from "react";
 import i18n from "../../i18n";
-import { fmt, getAnnee, peutCreerComptesParent, peutModifierEleves, peutModifier, sectionOuverte } from "../../constants";
+import { fmt, getAnnee, isSectionActive, peutCreerComptesParent, peutModifierEleves, peutModifier, sectionOuverte } from "../../constants";
 import { hasWrite } from "../../../shared/postes-config.js";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { useFirestore } from "../../hooks/useFirestore";
@@ -248,8 +248,24 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   // Dispenses de paiement : les dépendances d'écriture, la garde « Direction »
   // vivant dans exoneration-actions. `modEleves` suit le niveau affiché, comme
   // pour les paiements.
+  //
+  // Fenêtre « Dispenses » : ouverte depuis Mensualités comme depuis
+  // l'Enrôlement, elle choisit elle-même sa section ; elle reçoit donc les
+  // élèves et l'écriture de CHAQUE section (sections ouvertes de l'école).
   // `envoyerPush` : une demande de dispense prévient la Direction sur son téléphone.
-  const exonerationDeps = { modEleves, logAction, toast, envoyerPush, auteur: signature };
+  const estDirection = userRole === "direction";
+  const dispenses = {
+    elevesParSection: elevesParNiveau,
+    modParSection: modChampParNiveau,
+    sections: ["college", "lycee", "primaire", "prescolaire"].filter((s) => isSectionActive(schoolInfo, s)),
+    annee: annee || getAnnee(),
+    moisAnnee,
+    tarifsClasses,
+    estDirection,
+    // La comptabilité demande, la Direction accorde ; jamais sur une année close.
+    peutDemander: !estDirection && canEdit,
+    deps: { logAction, toast, envoyerPush, auteur: signature },
+  };
 
   const toggleMens = (_id, mois, mensActuels, mensDatesActuels, nomEleve) => {
     // Fige le montant dû au moment du paiement (mensMontants[mois]) : les
@@ -391,7 +407,7 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
     totR, totD, totVers, eleves, classesU, tousElevesScolarite, elevesFamille, elevesAnneeParNiveau, elevesFiltres,
     getTarif, getTarifBase, getTarifRevision, getTarifAutre, getTarifIns, getTarifReinsc,
     getTarifInscriptionEleve, getTarifFraisDivers, saveTarif,
-    toggleFraisAnnexe, toggleMens, encaisserInscriptions, exonerationDeps, enreg, saveSalaire, savePersonnel,
+    toggleFraisAnnexe, toggleMens, encaisserInscriptions, dispenses, enreg, saveSalaire, savePersonnel,
     encaisserVersement, retirerAcompte, tranchesPaiement, peutReglerTranches, sauverTranches,
     salairesDomaine, moisLabel, totNetSec, totNetPrim, totNetPers, salairesMois,
     mensualiteOverview, periodes, defaultPeriode, impaye, pctImpaye,

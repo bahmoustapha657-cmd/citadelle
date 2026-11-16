@@ -196,7 +196,7 @@ export const ARTICLES = [
     roles: ["admin", "direction", "comptable", "superadmin"],
     titre: "Dispenser un élève de payer (gratuité, bourse, réduction)",
     etapes: [
-      "Comptabilité → Mensualités → bouton « 🎓 Dispenses ».",
+      "Comptabilité → Mensualités ou Élèves (enrôlement) → bouton « 🎓 Dispenses », ou 🎓 sur la ligne d'un élève dans l'enrôlement. Choisissez la section en haut de la fenêtre.",
       "Accordez la dispense à un élève : choisissez ce qui est dispensé (mensualités, inscription, frais annexes), le taux (100 % ou une réduction) et le motif — enfant du personnel, orphelin, boursier, cas social, mérite, fratrie.",
       "Seule la Direction Générale accorde ou retire une dispense. La comptabilité la DEMANDE : même formulaire, puis « 📨 Envoyer à la Direction ». La Direction est prévenue (pastille rouge sur « 🎓 Dispenses », alerte du tableau de bord, notification sur le téléphone), puis accorde, corrige ou refuse en écrivant pourquoi ; la comptable lit la réponse dans « Demandes envoyées à la Direction ». Chaque étape est inscrite au journal des actions.",
       "Un élève dispensé à 100 % n'est plus compté parmi les impayés : ses mois affichent « Exo », il sort des alertes, et ses bulletins ne sont plus retenus par le blocage des parents en impayé.",

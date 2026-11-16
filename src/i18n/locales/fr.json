@@ -690,7 +690,6 @@
         "cancel": "Annuler",
         "refuseNeedsReason": "Écrivez la raison du refus : la comptabilité devra l'expliquer à la famille.",
         "refused": "Demande refusée pour {{name}}.",
-        "otherSections": "Autres sections :",
         "mine": "Demandes envoyées à la Direction ({{count}})",
         "pending": "En attente de la Direction",
         "refusedBy": "Refusée par {{author}} le {{date}} : {{reason}}",
@@ -699,8 +698,11 @@
         "withdrawn": "Demande retirée pour {{name}}.",
         "seen": "Lu, retirer",
         "badgeDirection": "Demandes de dispense en attente : {{count}}",
-        "badgeRefused": "Demandes refusées à lire : {{count}}"
-      }
+        "badgeRefused": "Demandes refusées à lire : {{count}}",
+        "badgePending": "⏳ Dispense demandée"
+      },
+      "sectionLabel": "Section :",
+      "badgeExempt": "🎓 Dispensé"
     },
     "cols": {
       "matricule": "Matricule",

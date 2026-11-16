@@ -690,7 +690,6 @@
         "cancel": "إلغاء",
         "refuseNeedsReason": "اكتبوا سبب الرفض: على المحاسبة أن تشرحه للأسرة.",
         "refused": "رُفض الطلب لـ{{name}}.",
-        "otherSections": "أقسام أخرى:",
         "mine": "الطلبات المرسلة إلى الإدارة ({{count}})",
         "pending": "في انتظار الإدارة",
         "refusedBy": "رفضه {{author}} في {{date}}: {{reason}}",
@@ -699,8 +698,11 @@
         "withdrawn": "سُحب الطلب لـ{{name}}.",
         "seen": "قُرئ، سحب",
         "badgeDirection": "طلبات إعفاء قيد الانتظار: {{count}}",
-        "badgeRefused": "طلبات مرفوضة للقراءة: {{count}}"
-      }
+        "badgeRefused": "طلبات مرفوضة للقراءة: {{count}}",
+        "badgePending": "⏳ إعفاء مطلوب"
+      },
+      "sectionLabel": "القسم:",
+      "badgeExempt": "🎓 معفى"
     },
     "cols": {
       "matricule": "الرقم التسلسلي",

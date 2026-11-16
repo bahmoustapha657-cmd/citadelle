@@ -16,6 +16,8 @@ export function EnrolToolbar({
   filtreReinscription = "all", setFiltreReinscription = () => {},
   nbAReinscrire = 0, nbSelection = 0, totalAReinscrire = 0, onEncaisserInscriptions,
   tri = "alpha", setTri = () => {}, onSeancePhoto = null,
+  // Bouton « 🎓 Dispenses » (avec sa pastille), fourni par EnrolmentTab.
+  boutonDispenses = null,
 }) {
   return (
     <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,flexWrap:"wrap"}}>
@@ -77,6 +79,7 @@ export function EnrolToolbar({
         <Btn sm v="ghost" title={t("accounting.enrol.photoHint")}
           onClick={onSeancePhoto}>📸 {t("accounting.enrol.photoSession")}</Btn>
       )}
+      {!afficherDeparts&&boutonDispenses}
       <Btn sm v={afficherDeparts?"blue":"ghost"} onClick={()=>setAfficherDeparts(d=>!d)}>
         {afficherDeparts?`👥 ${t("accounting.enrol.activeStudents")}`:`📤 ${t("accounting.enrol.departures")}`}
       </Btn>
