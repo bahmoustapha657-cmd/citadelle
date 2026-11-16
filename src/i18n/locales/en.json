@@ -424,7 +424,11 @@
       "sending": "Sending…",
       "send": "Send the request",
       "sendError": "Error while sending. Check your connection and try again."
-    }
+    },
+    "alertExemptRequestsOne": "1 exemption request to review",
+    "alertExemptRequestsMany": "{{count}} exemption requests to review",
+    "alertExemptRequestsDesc": "Sent by accounting — {{detail}}.",
+    "alertExemptRequestsBtn": "Review the requests"
   },
   "landing": {
     "heroTitle": "EduGest — Modern school management",
@@ -664,7 +668,39 @@
       "confirmGrant": "Exempt this student?\n\n{{identity}}\n\n{{summary}}",
       "granted": "Exemption granted to {{name}}.",
       "confirmRemove": "Remove this student's exemption?\n\n{{identity}}\n\nUnsettled months will become unpaid again.",
-      "removed": "Exemption removed for {{name}}."
+      "removed": "Exemption removed for {{name}}.",
+      "request": {
+        "introCanAsk": "Only the General Management grants an exemption. You can <b>request</b> one: it is notified at once, then grants it, adjusts it or refuses it with a reason.",
+        "formTitle": "Request an exemption from the Management",
+        "sendBtn": "📨 Send to the Management",
+        "confirm": "Ask the Management to exempt this student?\n\n{{identity}}\n\n{{summary}}",
+        "sent": "Request sent to the Management for {{name}}.",
+        "alreadyPending": "A request is already pending (sent on {{date}}): this one will replace it.",
+        "pendingTag": " · request pending",
+        "pushTitle": "Exemption requested",
+        "pushBody": "{{name}} ({{classe}}): {{summary}}. Requested by {{author}}.",
+        "inbox": "📨 Requests from accounting ({{count}})",
+        "askedBy": "Requested by {{author}} on {{date}}",
+        "replaces": "Current exemption, which would be replaced: {{summary}}",
+        "accept": "Grant",
+        "edit": "Edit",
+        "refuse": "Refuse",
+        "refuseReason": "Reason for refusal (accounting will read it)",
+        "refuseConfirm": "Refuse the request",
+        "cancel": "Cancel",
+        "refuseNeedsReason": "Write the reason for refusal: accounting will have to explain it to the family.",
+        "refused": "Request refused for {{name}}.",
+        "otherSections": "Other sections:",
+        "mine": "Requests sent to the Management ({{count}})",
+        "pending": "Awaiting the Management",
+        "refusedBy": "Refused by {{author}} on {{date}}: {{reason}}",
+        "withdraw": "Withdraw the request",
+        "withdrawConfirm": "Withdraw the exemption request for this student?\n\n{{identity}}",
+        "withdrawn": "Request withdrawn for {{name}}.",
+        "seen": "Read, remove",
+        "badgeDirection": "Pending exemption requests: {{count}}",
+        "badgeRefused": "Refused requests to read: {{count}}"
+      }
     },
     "cols": {
       "matricule": "ID number",

@@ -424,7 +424,11 @@
       "sending": "Envoi en cours…",
       "send": "Envoyer la demande",
       "sendError": "Erreur lors de l'envoi. Vérifiez votre connexion et réessayez."
-    }
+    },
+    "alertExemptRequestsOne": "1 demande de dispense à examiner",
+    "alertExemptRequestsMany": "{{count}} demandes de dispense à examiner",
+    "alertExemptRequestsDesc": "Envoyées par la comptabilité — {{detail}}.",
+    "alertExemptRequestsBtn": "Examiner les demandes"
   },
   "landing": {
     "heroTitle": "EduGest — La gestion scolaire moderne",
@@ -664,7 +668,39 @@
       "confirmGrant": "Dispenser cet élève ?\n\n{{identity}}\n\n{{summary}}",
       "granted": "Dispense accordée à {{name}}.",
       "confirmRemove": "Retirer la dispense de cet élève ?\n\n{{identity}}\n\nLes mois non réglés redeviendront des impayés.",
-      "removed": "Dispense retirée pour {{name}}."
+      "removed": "Dispense retirée pour {{name}}.",
+      "request": {
+        "introCanAsk": "Seule la Direction Générale accorde une dispense. Vous pouvez lui en <b>demander</b> une : elle est prévenue aussitôt, puis l'accorde, la corrige ou la refuse en disant pourquoi.",
+        "formTitle": "Demander une dispense à la Direction",
+        "sendBtn": "📨 Envoyer à la Direction",
+        "confirm": "Demander à la Direction de dispenser cet élève ?\n\n{{identity}}\n\n{{summary}}",
+        "sent": "Demande envoyée à la Direction pour {{name}}.",
+        "alreadyPending": "Une demande est déjà en attente (envoyée le {{date}}) : celle-ci la remplacera.",
+        "pendingTag": " · demande en attente",
+        "pushTitle": "Dispense demandée",
+        "pushBody": "{{name}} ({{classe}}) : {{summary}}. Demandée par {{author}}.",
+        "inbox": "📨 Demandes de la comptabilité ({{count}})",
+        "askedBy": "Demandée par {{author}} le {{date}}",
+        "replaces": "Dispense actuelle, qui serait remplacée : {{summary}}",
+        "accept": "Accorder",
+        "edit": "Modifier",
+        "refuse": "Refuser",
+        "refuseReason": "Raison du refus (la comptabilité la lira)",
+        "refuseConfirm": "Refuser la demande",
+        "cancel": "Annuler",
+        "refuseNeedsReason": "Écrivez la raison du refus : la comptabilité devra l'expliquer à la famille.",
+        "refused": "Demande refusée pour {{name}}.",
+        "otherSections": "Autres sections :",
+        "mine": "Demandes envoyées à la Direction ({{count}})",
+        "pending": "En attente de la Direction",
+        "refusedBy": "Refusée par {{author}} le {{date}} : {{reason}}",
+        "withdraw": "Retirer la demande",
+        "withdrawConfirm": "Retirer la demande de dispense de cet élève ?\n\n{{identity}}",
+        "withdrawn": "Demande retirée pour {{name}}.",
+        "seen": "Lu, retirer",
+        "badgeDirection": "Demandes de dispense en attente : {{count}}",
+        "badgeRefused": "Demandes refusées à lire : {{count}}"
+      }
     },
     "cols": {
       "matricule": "Matricule",

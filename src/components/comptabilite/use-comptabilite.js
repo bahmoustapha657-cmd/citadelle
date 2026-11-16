@@ -24,6 +24,7 @@ import { buildTarifGetters, buildTarifData } from "./compta-tarifs";
 import { scolaritePourAnnee } from "../admin/cloture-annee-utils";
 import { saveSalaireAction, savePersonnelAction } from "./compta-saves";
 import { avecPaie, indexerPaie } from "../../paie-enseignants";
+import { intentionDispenses } from "./ouvrir-dispenses";
 
 // Toute la logique du module Comptabilité : chargement Firestore de
 // toutes les collections (filtrées par année consultée), permissions,
@@ -133,11 +134,13 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   const { items: engCollege } = useFirestore("ensCollege_enseignements");
   const { items: engLycee } = useFirestore("ensLycee_enseignements");
 
-  const [tab, setTab] = useState("bilan");
+  // Arrivée depuis l'alerte « demandes de dispense » du tableau de bord :
+  // onglet Mensualités, sur la section qui a des demandes (cf. ouvrir-dispenses).
+  const [tab, setTab] = useState(() => (intentionDispenses() !== null ? "mens" : "bilan"));
   const [sousTabSal, setSousTabSal] = useState("etats");
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState({});
-  const [niveauChoisi, setNiveau] = useState("college");
+  const [niveauChoisi, setNiveau] = useState(() => intentionDispenses() || "college");
   // Cycle des mensualités : le choix s'il est ouvert dans l'école, sinon la
   // première section ouverte (Paramètres → Identité).
   const niveau = sectionOuverte(schoolInfo, niveauChoisi);
@@ -245,7 +248,8 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   // Dispenses de paiement : les dépendances d'écriture, la garde « Direction »
   // vivant dans exoneration-actions. `modEleves` suit le niveau affiché, comme
   // pour les paiements.
-  const exonerationDeps = { modEleves, logAction, toast, auteur: signature };
+  // `envoyerPush` : une demande de dispense prévient la Direction sur son téléphone.
+  const exonerationDeps = { modEleves, logAction, toast, envoyerPush, auteur: signature };
 
   const toggleMens = (_id, mois, mensActuels, mensDatesActuels, nomEleve) => {
     // Fige le montant dû au moment du paiement (mensMontants[mois]) : les

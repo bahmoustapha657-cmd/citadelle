@@ -9,10 +9,11 @@ import { TrendsCard } from "./tableau-de-bord/TrendsCard";
 import { EventsAlerts } from "./tableau-de-bord/EventsAlerts";
 import { AbonnementBloc } from "./tableau-de-bord/AbonnementBloc";
 import { ESPACE } from "./tableau-de-bord/tdb-styles";
+import { demanderOuvertureDispenses } from "./comptabilite/ouvrir-dispenses";
 
 // Orchestrateur du tableau de bord : les données et calculs vivent dans
 // useTableauDeBord, chaque bloc visuel dans tableau-de-bord/*.jsx.
-function TableauDeBord({ annee, userRole, onOpenLegalSettings }) {
+function TableauDeBord({ annee, userRole, onOpenLegalSettings, onOpenDispenses = null }) {
   const { t } = useTranslation();
   const d = useTableauDeBord({ annee });
 
@@ -57,6 +58,9 @@ function TableauDeBord({ annee, userRole, onOpenLegalSettings }) {
         c1={d.c1} c2={d.c2} evAVenir={d.evAVenir}
         tauxPay={d.tauxPay} solde={d.financesClaires ? d.financesClaires.solde : d.solde}
         masseSal={d.masseSal} totalRec={d.totalRec} moyenneMensuelle={d.moyenneEncaisseeMois}
+        // Seule la Direction accorde une dispense : elle seule voit les demandes.
+        demandesDispense={userRole === "direction" ? d.demandesDispense : null}
+        ouvrirDispenses={onOpenDispenses ? (section) => { demanderOuvertureDispenses(section); onOpenDispenses(); } : null}
       />
 
       <AbonnementBloc
