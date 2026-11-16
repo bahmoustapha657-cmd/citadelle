@@ -63,13 +63,92 @@ export const SQL_TABLES_A_VIDER = `select string_agg(format('%I.%I', schemaname,
 
 // SQL versé avant la copie, dans la même transaction : déclencheurs et clés
 // étrangères suspendus (l'ordre des tables de la copie n'importe plus), puis
-// tables vidées.
+// tables vidées (sans les avis « truncate cascades to … », attendus).
 export function preambuleRemontage(tablesAVider) {
   return [
     "SET session_replication_role = replica;",
+    "SET client_min_messages = warning;",
     tablesAVider ? `TRUNCATE ${tablesAVider} CASCADE;` : "",
     "",
   ].join("\n");
+}
+
+// Requêtes du schéma de la base d'arrivée, pour adapterCopie.
+export const SQL_COLONNES_LOCALES = `select table_schema || '.' || table_name, column_name
+  from information_schema.columns
+  where table_schema in (${SCHEMAS_COPIES.map((s) => `'${s}'`).join(", ")})
+  order by 1, ordinal_position`;
+export const SQL_SEQUENCES_LOCALES = `select schemaname || '.' || sequencename from pg_sequences
+  where schemaname in (${SCHEMAS_COPIES.map((s) => `'${s}'`).join(", ")})`;
+
+// Adapte la copie (texte de pg_dump) au schéma de la base d'arrivée.
+// Les tables internes de Supabase (auth, storage) changent d'une version à
+// l'autre : la production peut en avoir que la pile locale ignore encore
+// (storage.bucket_lifecycle_states, constaté au premier exercice). Pour
+// celles-là, une table absente est sautée et une colonne absente retirée,
+// et le bilan le dit. Les tables de l'école (public), elles, sont rebâties
+// par les migrations du dépôt : le moindre écart y est une erreur.
+// `colonnesLocales` : { "schema.table": [colonnes] } ; `sequencesLocales` :
+// ["schema.sequence"].
+export function adapterCopie(texte, colonnesLocales, sequencesLocales = []) {
+  const sortie = [];
+  const ignorees = {};
+  const colonnesRetirees = {};
+  let bloc = null;
+  for (const brute of String(texte).split("\n")) {
+    const cr = brute.endsWith("\r") ? "\r" : "";
+    const ligne = cr ? brute.slice(0, -1) : brute;
+    if (bloc) {
+      if (ligne === "\\.") {
+        if (!bloc.ignorer) sortie.push(brute);
+        bloc = null;
+      } else if (bloc.ignorer) {
+        ignorees[bloc.table] += 1;
+      } else if (bloc.garder) {
+        // Format texte de COPY : une tabulation DANS une valeur s'écrit \t,
+        // donc chaque tabulation réelle sépare deux colonnes.
+        const champs = ligne.split("\t");
+        sortie.push(bloc.garder.map((i) => champs[i]).join("\t") + cr);
+      } else {
+        sortie.push(brute);
+      }
+      continue;
+    }
+    const copie = /^COPY "([^"]+)"\."([^"]+)" \(([^)]*)\) FROM stdin;$/.exec(ligne);
+    if (copie) {
+      const [, schema, nom, liste] = copie;
+      const table = `${schema}.${nom}`;
+      const colonnes = liste.split(", ").map((c) => c.replace(/^"|"$/g, ""));
+      const locales = colonnesLocales[table];
+      if (!locales) {
+        if (schema === "public") throw new Error(`table ${table} absente de la base d'arrivée (migrations du dépôt en retard ?)`);
+        ignorees[table] = 0;
+        bloc = { table, ignorer: true };
+        continue;
+      }
+      const absentes = colonnes.filter((c) => !locales.includes(c));
+      if (absentes.length && schema === "public") {
+        throw new Error(`colonnes ${absentes.join(", ")} de ${table} absentes de la base d'arrivée (migrations du dépôt en retard ?)`);
+      }
+      if (absentes.length) {
+        colonnesRetirees[table] = absentes;
+        const garder = colonnes.map((c, i) => [c, i]).filter(([c]) => locales.includes(c));
+        sortie.push(`COPY "${schema}"."${nom}" (${garder.map(([c]) => `"${c}"`).join(", ")}) FROM stdin;${cr}`);
+        bloc = { table, garder: garder.map(([, i]) => i) };
+        continue;
+      }
+      sortie.push(brute);
+      bloc = { table };
+      continue;
+    }
+    const sequence = /^SELECT pg_catalog\.setval\('"([^"]+)"\."([^"]+)"'/.exec(ligne);
+    if (sequence && !sequencesLocales.includes(`${sequence[1]}.${sequence[2]}`)) {
+      if (sequence[1] === "public") throw new Error(`séquence ${sequence[1]}.${sequence[2]} absente de la base d'arrivée`);
+      continue;
+    }
+    sortie.push(brute);
+  }
+  return { texte: sortie.join("\n"), ignorees, colonnesRetirees };
 }
 
 // Sortie de `supabase status -o env` (KEY="valeur") → objet.
