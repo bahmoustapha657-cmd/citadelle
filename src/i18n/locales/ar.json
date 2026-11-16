@@ -424,7 +424,11 @@
       "sending": "جارٍ الإرسال…",
       "send": "إرسال الطلب",
       "sendError": "حدث خطأ أثناء الإرسال. تحقّق من اتصالك ثم أعد المحاولة."
-    }
+    },
+    "alertExemptRequestsOne": "طلب إعفاء واحد للدراسة",
+    "alertExemptRequestsMany": "طلبات إعفاء للدراسة: {{count}}",
+    "alertExemptRequestsDesc": "أرسلتها المحاسبة — {{detail}}.",
+    "alertExemptRequestsBtn": "دراسة الطلبات"
   },
   "landing": {
     "heroTitle": "EduGest — الإدارة المدرسية الحديثة",
@@ -664,7 +668,39 @@
       "confirmGrant": "إعفاء هذا التلميذ؟\n\n{{identity}}\n\n{{summary}}",
       "granted": "مُنح الإعفاء لـ{{name}}.",
       "confirmRemove": "سحب إعفاء هذا التلميذ؟\n\n{{identity}}\n\nستعود الأشهر غير المسددة إلى غير مدفوعة.",
-      "removed": "سُحب الإعفاء عن {{name}}."
+      "removed": "سُحب الإعفاء عن {{name}}.",
+      "request": {
+        "introCanAsk": "الإدارة العامة وحدها تمنح الإعفاء. يمكنكم <b>طلب</b> إعفاء منها: تُبلَّغ فورًا، ثم تمنحه أو تعدّله أو ترفضه مع ذكر السبب.",
+        "formTitle": "طلب إعفاء من الإدارة",
+        "sendBtn": "📨 إرسال إلى الإدارة",
+        "confirm": "طلب إعفاء هذا التلميذ من الإدارة؟\n\n{{identity}}\n\n{{summary}}",
+        "sent": "أُرسل الطلب إلى الإدارة لـ{{name}}.",
+        "alreadyPending": "يوجد طلب قيد الانتظار (أُرسل في {{date}}): هذا الطلب سيحلّ محله.",
+        "pendingTag": " · طلب قيد الانتظار",
+        "pushTitle": "طلب إعفاء",
+        "pushBody": "{{name}} ({{classe}}): {{summary}}. طلبه {{author}}.",
+        "inbox": "📨 طلبات المحاسبة ({{count}})",
+        "askedBy": "طلبه {{author}} في {{date}}",
+        "replaces": "الإعفاء الحالي، الذي سيُستبدل: {{summary}}",
+        "accept": "منح",
+        "edit": "تعديل",
+        "refuse": "رفض",
+        "refuseReason": "سبب الرفض (ستقرؤه المحاسبة)",
+        "refuseConfirm": "رفض الطلب",
+        "cancel": "إلغاء",
+        "refuseNeedsReason": "اكتبوا سبب الرفض: على المحاسبة أن تشرحه للأسرة.",
+        "refused": "رُفض الطلب لـ{{name}}.",
+        "otherSections": "أقسام أخرى:",
+        "mine": "الطلبات المرسلة إلى الإدارة ({{count}})",
+        "pending": "في انتظار الإدارة",
+        "refusedBy": "رفضه {{author}} في {{date}}: {{reason}}",
+        "withdraw": "سحب الطلب",
+        "withdrawConfirm": "سحب طلب الإعفاء لهذا التلميذ؟\n\n{{identity}}",
+        "withdrawn": "سُحب الطلب لـ{{name}}.",
+        "seen": "قُرئ، سحب",
+        "badgeDirection": "طلبات إعفاء قيد الانتظار: {{count}}",
+        "badgeRefused": "طلبات مرفوضة للقراءة: {{count}}"
+      }
     },
     "cols": {
       "matricule": "الرقم التسلسلي",

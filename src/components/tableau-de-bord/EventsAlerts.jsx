@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { fmt } from "../../constants";
-import { Badge, Card } from "../ui";
+import { Badge, Btn, Card } from "../ui";
+import { libelleSection } from "../../i18n/libelles";
 import { corpsCarte, encadre, grilleSouple, pastille, titreCarte, TONS } from "./tdb-styles";
 
 const TYPE_COLORS = { exam: "#ef4444", conge: "#10b981", reunion: "#f59e0b", autre: "#6366f1" };
@@ -9,8 +10,16 @@ const TYPE_COLORS = { exam: "#ef4444", conge: "#10b981", reunion: "#f59e0b", aut
 // encaissé en moyenne par mois, scolarité comprise ; `solde` est alors le solde
 // réel. Sans elle (null), les règles d'origine : paie comparée aux recettes
 // saisies à la main.
-export function EventsAlerts({ evAVenir, tauxPay, solde, masseSal, totalRec, moyenneMensuelle = null }) {
+//
+// `demandesDispense` ({ total, parSection }, cf. demande-dispense) : les
+// demandes de dispense de la comptabilité qui attendent la Direction — passé
+// à la Direction seulement. `ouvrirDispenses(section)` mène à la fenêtre.
+export function EventsAlerts({
+  evAVenir, tauxPay, solde, masseSal, totalRec, moyenneMensuelle = null,
+  demandesDispense = null, ouvrirDispenses = null,
+}) {
   const { t } = useTranslation();
+  const nbDemandes = demandesDispense?.total || 0;
   const clair = moyenneMensuelle !== null;
   const paieElevee = clair
     ? masseSal > 0 && masseSal > moyenneMensuelle * 0.7
@@ -53,6 +62,28 @@ export function EventsAlerts({ evAVenir, tauxPay, solde, masseSal, totalRec, moy
       <Card><div style={corpsCarte}>
         <p style={titreCarte}>{t("dashboard.alertsTitle")}</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {nbDemandes > 0 && (
+            <div style={encadre(TONS.attention)}>
+              <span style={pastille(TONS.attention)} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700 }}>
+                  🎓 {nbDemandes === 1 ? t("dashboard.alertExemptRequestsOne") : t("dashboard.alertExemptRequestsMany", { count: nbDemandes })}
+                </div>
+                <div style={{ color: "var(--lc-text-muted)", marginTop: 2 }}>
+                  {t("dashboard.alertExemptRequestsDesc", {
+                    detail: demandesDispense.parSection.map((s) => `${libelleSection(s.section)} : ${s.nombre}`).join(" · "),
+                  })}
+                </div>
+                {ouvrirDispenses && (
+                  <div style={{ marginTop: 6 }}>
+                    <Btn sm v="amber" onClick={() => ouvrirDispenses(demandesDispense.parSection[0]?.section || "")}>
+                      {t("dashboard.alertExemptRequestsBtn")}
+                    </Btn>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
           {tauxPay < 60 && alerte(TONS.attention, t("dashboard.alertLowPayTitle"), t("dashboard.alertLowPayDesc", { rate: tauxPay }))}
           {solde < 0 && alerte(TONS.danger, t("dashboard.alertNegBalTitle"), t(clair ? "dashboard.alertNegBalDescReal" : "dashboard.alertNegBalDesc", { amount: fmt(solde) }))}
           {paieElevee && alerte(TONS.attention, t("dashboard.alertHighPayrollTitle"), descPaie)}

@@ -6,6 +6,7 @@ import { sansNonReinscritsEcartes } from "../../ecartes-non-reinscrits";
 import { creerDemandePlan } from "./tableau-de-bord-api";
 import i18n from "../../i18n";
 import { getMensualiteOverview } from "../../mensualite-utils";
+import { compterDemandesParSection } from "../../demande-dispense";
 import { affichageFinancesClassique, syntheseFinances } from "../comptabilite/finances-claires";
 import {
   calcTauxPaiement,
@@ -35,6 +36,11 @@ export function useTableauDeBord({ annee } = {}) {
   const elevesP = useMemo(() => sansNonReinscritsEcartes(elevesPBruts, schoolInfo, anneeCourante), [elevesPBruts, schoolInfo, anneeCourante]);
   const elevesL = useMemo(() => sansNonReinscritsEcartes(elevesLBruts, schoolInfo, anneeCourante), [elevesLBruts, schoolInfo, anneeCourante]);
   const elevesPre = useMemo(() => sansNonReinscritsEcartes(elevesPreBruts, schoolInfo, anneeCourante), [elevesPreBruts, schoolInfo, anneeCourante]);
+  // Demandes de dispense de la comptabilité, en attente de la Direction :
+  // toutes les fiches, écartées comprises — une demande ne doit pas se perdre.
+  const demandesDispense = useMemo(() => compterDemandesParSection({
+    college: elevesCBruts, lycee: elevesLBruts, primaire: elevesPBruts, prescolaire: elevesPreBruts,
+  }, anneeCourante), [elevesCBruts, elevesLBruts, elevesPBruts, elevesPreBruts, anneeCourante]);
   const { items: ensC } = useFirestore("ensCollege");
   const { items: ensL } = useFirestore("ensLycee");
   const { items: ensP } = useFirestore("ensPrimaire");
@@ -155,6 +161,6 @@ export function useTableauDeBord({ annee } = {}) {
     totalEleves, totalEns, moisActuel,
     tauxPayC, tauxPayL, tauxPayP, tauxPay,
     totalRec, totalDep, solde, salMois, masseSal, financesClaires, anneeCourante, moyenneEncaisseeMois,
-    evAVenir, totalAbs, dataTendance,
+    evAVenir, totalAbs, dataTendance, demandesDispense,
   };
 }
