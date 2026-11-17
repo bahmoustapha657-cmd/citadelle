@@ -66,14 +66,19 @@ export async function sauvegarderBase(dir, { dbUrl, pgBin }) {
   return { ok: true, octets: statSync(donnees).size, migration, lignes: comptes };
 }
 
+// Fichiers déposés (storage) : [[compartiment, nom], …].
+export async function listerFichiers({ dbUrl, pgBin }) {
+  const { url, mdp } = decouperUrl(dbUrl);
+  return (await lancer(exe(pgBin, "psql"), [
+    "-AtF", "\t", "-c", "select bucket_id, name from storage.objects order by 1, 2", url,
+  ], { mdp })).split(/\r?\n/).filter(Boolean).map((l) => l.split("\t"));
+}
+
 // Miroir des fichiers déposés (storage). `base` : dossier des sauvegardes.
 // `sb` : client supabase-js en service_role (téléchargement).
 export async function sauvegarderFichiers(base, { dbUrl, pgBin, sb }) {
   if (!dbUrl || !existsSync(exe(pgBin, "psql"))) return { absente: "copie complète non configurée" };
-  const { url, mdp } = decouperUrl(dbUrl);
-  const liste = (await lancer(exe(pgBin, "psql"), [
-    "-AtF", "\t", "-c", "select bucket_id, name from storage.objects order by 1, 2", url,
-  ], { mdp })).split(/\r?\n/).filter(Boolean).map((l) => l.split("\t"));
+  const liste = await listerFichiers({ dbUrl, pgBin });
 
   const miroir = join(base, "fichiers");
   let nouveaux = 0;
