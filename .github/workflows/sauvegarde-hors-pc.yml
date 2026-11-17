@@ -1,0 +1,133 @@
+name: Sauvegarde hors du PC
+
+# Chaque nuit : copie COMPLÈTE de la production (base avec comptes et mots de
+# passe, fichiers de la messagerie), CHIFFRÉE ici même avec les clés
+# PUBLIQUES de supabase/cles-sauvegarde.txt, puis rangée dans Google Drive
+# (dossier « EduGest-sauvegardes »). Ni GitHub ni Google ne peuvent la lire :
+# seules les clés privées l'ouvrent (scripts/dechiffrer-sauvegarde.mjs).
+# La copie locale du PC (et du disque externe) continue à part.
+#
+# Dépôt PUBLIC = journal public : n'y paraissent que des tailles et des
+# nombres de fichiers. Aucune donnée n'est déposée sur GitHub (ni artefact,
+# ni cache), et aucun paquet npm n'est installé à côté des secrets.
+#
+# Prérequis (environnement « production ») : SUPABASE_DB_URL,
+# SUPABASE_SERVICE_ROLE et RCLONE_DRIVE_TOKEN — cf. docs/sauvegarde-hors-pc.md.
+
+on:
+  schedule:
+    - cron: "41 1 * * *"  # 01 h 41 à Conakry (UTC) : réseau et base au calme
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sauvegarde-hors-pc
+  cancel-in-progress: false
+
+jobs:
+  sauvegarde:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 60
+
+    steps:
+      - name: Vérifier les secrets
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE }}
+          RCLONE_DRIVE_TOKEN: ${{ secrets.RCLONE_DRIVE_TOKEN }}
+        run: |
+          manque=""
+          for s in SUPABASE_DB_URL SUPABASE_SERVICE_ROLE RCLONE_DRIVE_TOKEN; do
+            [ -n "${!s}" ] || manque="$manque $s"
+          done
+          if [ -n "$manque" ]; then
+            echo "::error::Secret(s) absent(s) :$manque (Settings → Environments → production, cf. docs/sauvegarde-hors-pc.md)."
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # pg_dump de la même version que le serveur (Postgres 17 chez Supabase) :
+      # un pg_dump plus ancien refuse de copier.
+      - name: pg_dump 17 et rclone
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -yq postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -yq postgresql-client-17 rclone
+          /usr/lib/postgresql/17/bin/pg_dump --version
+          rclone version | head -1
+
+      # Fichiers déjà rangés dans Drive : chaque fichier déposé n'est envoyé
+      # qu'une fois (ils ne changent jamais une fois déposés).
+      - name: Inventaire de Drive
+        env:
+          RCLONE_CONFIG_DRIVE_TYPE: drive
+          RCLONE_CONFIG_DRIVE_SCOPE: drive.file
+          RCLONE_CONFIG_DRIVE_TOKEN: ${{ secrets.RCLONE_DRIVE_TOKEN }}
+        run: |
+          rclone mkdir drive:EduGest-sauvegardes/fichiers
+          rclone lsf -R --files-only drive:EduGest-sauvegardes/fichiers > "$RUNNER_TEMP/deja.txt"
+          echo "Fichiers déjà dans Drive : $(wc -l < "$RUNNER_TEMP/deja.txt")"
+
+      - name: Copie chiffrée
+        id: copie
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          SUPABASE_URL: https://pfzanslrcowkjjipuzpa.supabase.co
+          SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE }}
+        run: node supabase/sauvegarde-hors-pc.mjs "$RUNNER_TEMP/sortie" "$RUNNER_TEMP/deja.txt"
+
+      - name: Envoi dans Google Drive et contrôle
+        env:
+          RCLONE_CONFIG_DRIVE_TYPE: drive
+          RCLONE_CONFIG_DRIVE_SCOPE: drive.file
+          RCLONE_CONFIG_DRIVE_TOKEN: ${{ secrets.RCLONE_DRIVE_TOKEN }}
+          NOM: ${{ steps.copie.outputs.nom }}
+        run: |
+          sortie="$RUNNER_TEMP/sortie"
+          if [ -d "$sortie/fichiers" ]; then
+            rclone copy "$sortie/fichiers" drive:EduGest-sauvegardes/fichiers --ignore-existing
+          fi
+          rclone copy "$sortie/sauvegardes/$NOM" "drive:EduGest-sauvegardes/sauvegardes/$NOM"
+          # Relu dans Drive : mêmes fichiers, mêmes empreintes (MD5).
+          rclone check "$sortie/sauvegardes/$NOM" "drive:EduGest-sauvegardes/sauvegardes/$NOM" --one-way
+          taille=$(du -sh "$sortie/sauvegardes/$NOM" | cut -f1)
+          echo "### ✅ Copie \`$NOM\` rangée dans Google Drive ($taille, chiffrée)" >> "$GITHUB_STEP_SUMMARY"
+
+      # 90 jours de copies de la base ; les fichiers déposés restent (miroir
+      # commun à toutes les copies). Seulement APRÈS l'arrivée contrôlée de la
+      # copie du jour : il reste toujours au moins une copie fraîche.
+      # Les copies retirées passent par la corbeille de Drive (30 jours).
+      - name: Rétention (90 jours)
+        env:
+          RCLONE_CONFIG_DRIVE_TYPE: drive
+          RCLONE_CONFIG_DRIVE_SCOPE: drive.file
+          RCLONE_CONFIG_DRIVE_TOKEN: ${{ secrets.RCLONE_DRIVE_TOKEN }}
+        run: |
+          rclone delete drive:EduGest-sauvegardes/sauvegardes --min-age 90d
+          rclone rmdirs drive:EduGest-sauvegardes/sauvegardes --leave-root
+          echo "Copies de la base dans Drive : $(rclone lsf --dirs-only drive:EduGest-sauvegardes/sauvegardes | wc -l)"
+
+      - name: Fichiers déposés illisibles ?
+        env:
+          ILLISIBLES: ${{ steps.copie.outputs.illisibles }}
+        run: |
+          if [ "$ILLISIBLES" != "0" ]; then
+            echo "::error::$ILLISIBLES fichier(s) déposé(s) illisible(s) : la base est rangée, mais ces fichiers manquent à la copie."
+            exit 1
+          fi
+
+      - name: Ménage
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/sortie" "$RUNNER_TEMP/deja.txt"

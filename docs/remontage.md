@@ -22,6 +22,11 @@ chaque jour) écrit dans `C:\Users\ADMIN\edugest-backups\backup-<date>\` :
 `node supabase/verifier-sauvegardes.mjs` indique si la dernière sauvegarde a
 sa **copie complète**.
 
+La même copie complète part aussi **chaque nuit, chiffrée, dans Google
+Drive**, pour le jour où ce PC n'est plus là : voir
+[sauvegarde-hors-pc.md](sauvegarde-hors-pc.md) (on la rouvre avec
+`scripts/dechiffrer-sauvegarde.mjs`, puis on remonte comme ci-dessous).
+
 Chaque table créée par une migration doit figurer dans
 `supabase/sauvegarde-tables.mjs`, sinon `npm test` échoue : c'est ainsi qu'on
 avait découvert dix tables oubliées (paiements Mobile Money, présences du
@@ -121,3 +126,4 @@ sans le mode hors ligne.
 | Date | Sauvegarde | Durée | Remarques |
 |---|---|---|---|
 | 2026-11-15 | backup-2026-11-14-19h28 | **164 s** (images déjà là) | 1er exercice. 24 875 lignes, 87 tables identiques, 176 comptes, 659 fichiers ; connexion d'un vrai compte avec son mot de passe habituel : OK. PowerSync : recopie initiale complète. Avant cela : WSL à installer, 40 min de téléchargement des images Supabase, une nuit de réessais pour celles de PowerSync (Docker Hub), deux tables internes de `storage` absentes en local (vides, sautées). |
+| 2026-11-17 | backup-2026-11-17-08h49 (copie **chiffrée**, rouverte) | **110 s** | Format de Google Drive, rouvert par `dechiffrer-sauvegarde.mjs`. 25 129 lignes, 87 tables identiques, 183 comptes, 662/662 fichiers. Deux nouvelles colonnes internes de `auth` en production, absentes en local, retirées et signalées par le rapport. |
