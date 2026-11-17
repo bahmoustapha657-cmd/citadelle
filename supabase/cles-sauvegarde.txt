@@ -1,0 +1,7 @@
+# Clés PUBLIQUES des sauvegardes hors du PC (.github/workflows/sauvegarde-hors-pc.yml).
+# Sans danger : elles ferment les copies, elles ne savent pas les ouvrir.
+# Une clé par ligne, suivie d'un libellé (jamais un nom de personne : dépôt public).
+# Le détenteur de la clé PRIVÉE correspondante ouvre les copies faites après
+# l'ajout de sa ligne. Ajouter : node scripts/cle-sauvegarde.mjs --libelle "…"
+# Retirer : supprimer la ligne (les copies déjà faites restent ouvrables par elle).
+edugest-publique-0ce9b5950f05f817518cceaf17efe79266379805e682690ff926188bf3757b7d  clé principale
