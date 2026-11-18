@@ -17,6 +17,7 @@ import { useMessagerie } from "../messagerie/messagerie-contexte";
 import { BandeauAnnonces } from "../messagerie/BandeauAnnonces";
 import { BandeauReunions } from "../messagerie/BandeauReunions";
 import { MODULE_MESSAGERIE } from "../messagerie/messagerie-logic";
+import { estEspaceEnseignant } from "../../espace-enseignant";
 
 // Coquille de l'application après authentification : toasts, recherche globale,
 // bannière d'installation, sidebar, en-tête, routeur de pages et modales/dropdowns.
@@ -29,8 +30,11 @@ export function AppShell(p) {
     && p.estHorsLigne && !moduleDisponibleHorsLigne(p.page);
   // Messagerie interne : entrée de menu ajoutée aux modules du poste pour
   // tout compte de son périmètre (null sinon).
+  // Espace d'un enseignant indépendant : il en est le seul compte, la
+  // messagerie n'y a personne à joindre.
   const messagerie = useMessagerie();
-  const modulesMenu = messagerie ? [...p.modulesVisibles, MODULE_MESSAGERIE] : p.modulesVisibles;
+  const avecMessagerie = !!messagerie && !estEspaceEnseignant(p.schoolInfo);
+  const modulesMenu = avecMessagerie ? [...p.modulesVisibles, MODULE_MESSAGERIE] : p.modulesVisibles;
   const pageMessagerie = p.page === MODULE_MESSAGERIE.id;
 
   return (

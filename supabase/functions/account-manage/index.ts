@@ -17,6 +17,7 @@ import { peutFusionnerParents, peutGererRole } from "./droits.ts";
 import { fusionnerComptesParents, lienValide, modifierLienParent, rattacherAuFoyer } from "./foyer.ts";
 import { normaliserTel } from "../_shared/telephone.ts";
 import { idsADetacher, peutRelierComptes, planLiaison, refusChangement } from "./espaces.ts";
+import { refusEspaceEnseignant } from "./espace-enseignant.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -59,17 +60,24 @@ Deno.serve(async (req) => {
     const action = body.action;
 
     // École cible : celle de l'appelant (superadmin : peut viser via schoolId).
+    // `select("*")` et non une liste : type_espace n'existe qu'après la
+    // migration 20261118100213 — cette fonction peut être déployée avant.
     let ecoleId = caller.ecole_id as string | null;
     let schoolCode = "";
+    let typeEspace: unknown = "ecole";
     if (caller.role === "superadmin" && body.schoolId) {
-      const { data: ec } = await admin.from("ecoles").select("id, code").eq("code", String(body.schoolId).toLowerCase()).maybeSingle();
+      const { data: ec } = await admin.from("ecoles").select("*").eq("code", String(body.schoolId).toLowerCase()).maybeSingle();
       if (!ec) return json({ error: "École introuvable." }, 404);
-      ecoleId = ec.id; schoolCode = ec.code;
+      ecoleId = ec.id; schoolCode = ec.code; typeEspace = ec.type_espace;
     } else {
       if (!ecoleId) return json({ error: "Appelant sans école." }, 403);
-      const { data: ec } = await admin.from("ecoles").select("code").eq("id", ecoleId).maybeSingle();
-      schoolCode = ec?.code || "";
+      const { data: ec } = await admin.from("ecoles").select("*").eq("id", ecoleId).maybeSingle();
+      schoolCode = ec?.code || ""; typeEspace = ec?.type_espace;
     }
+
+    // Espace d'un enseignant indépendant : un seul compte, le sien.
+    const refusEspace = refusEspaceEnseignant(typeEspace, action, caller.role);
+    if (refusEspace) return json({ error: refusEspace.error }, refusEspace.status);
 
     if (action === "create") {
       const login = String(body.login || "").trim().toLowerCase();

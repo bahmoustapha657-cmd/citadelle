@@ -209,6 +209,9 @@ const ecoles = table({
   devise: column.text, plan: column.text, plan_expiry: column.integer,
   modele_bulletin: column.text, role_settings: column.text,
   legal: column.text, extra: column.text,
+  // 'ecole' | 'enseignant' (espace d'un enseignant indépendant) : sans lui,
+  // l'app ouverte hors ligne montrerait la compta à un espace enseignant.
+  type_espace: column.text,
 });
 
 export const AppSchema = new Schema({

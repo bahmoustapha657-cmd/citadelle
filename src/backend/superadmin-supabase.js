@@ -11,6 +11,8 @@ function toEcole(r) {
     couleur1: r.couleur1, couleur2: r.couleur2, plan: r.plan, planExpiry: r.plan_expiry,
     modeleBulletin: r.modele_bulletin, roleSettings: r.role_settings,
     actif: r.actif, supprime: r.supprime, ...(r.extra || {}),
+    // Après `extra` : la colonne fait foi (espace d'enseignant indépendant).
+    typeEspace: r.type_espace || "ecole",
   };
 }
 

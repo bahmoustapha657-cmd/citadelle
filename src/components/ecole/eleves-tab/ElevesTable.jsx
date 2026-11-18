@@ -12,7 +12,7 @@ import { EnfantAgrandi } from "../../identite-enfant/EnfantAgrandi";
 // (carte scolaire, création de compte parent).
 export function ElevesTable({
   cE, elevesFiltres, peutCreerParent, ouvrirCompte, t,
-  schoolInfo = {}, annee = "", userRole = "",
+  schoolInfo = {}, annee = "", userRole = "", onModifier = null,
 }) {
   // Même règle que la planche complète de la barre d'outils : la carte est une
   // pièce d'identité, fermée au surveillant général.
@@ -60,6 +60,8 @@ export function ElevesTable({
               {peutCarte&&<Btn sm v="blue" title={`Imprimer la carte de ${e.nom} ${e.prenom}`}
                 onClick={()=>imprimerCartesEleves([e],schoolInfo,annee)}>🪪 Carte</Btn>}
               {peutCreerParent&&<Btn sm v="purple" onClick={()=>ouvrirCompte(e)}>👨‍👩‍👧 Compte</Btn>}
+              {/* Espace d'un enseignant indépendant : il corrige ses élèves. */}
+              {onModifier&&<Btn sm v="ghost" onClick={()=>onModifier(e)}>✏️ {t("school.students.teacherEdit.button")}</Btn>}
             </div>
           </TD>
         </TR>)}</tbody>

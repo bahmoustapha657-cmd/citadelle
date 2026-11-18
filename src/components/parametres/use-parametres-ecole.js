@@ -19,6 +19,7 @@ import {
   sauvegarderMonnaie, sauvegarderParametres, executerCycleVie,
 } from "./use-parametres/parametres-api";
 import { lireImageEnBase64 } from "./use-parametres/parametres-uploads";
+import { ongletParametresOuvert } from "../../espace-enseignant";
 
 export function useParametresEcole({ utilisateurRole = "", onSchoolClosed = null, initialTab = null, onTabConsumed = null }) {
   const {schoolId,schoolInfo,setSchoolInfo,toast} = useContext(SchoolContext);
@@ -190,7 +191,7 @@ export function useParametresEcole({ utilisateurRole = "", onSchoolClosed = null
 
   const resetLogo = () => { setForm(p=>({...p,logo:""})); setApercu(null); };
 
-  const tabItems = buildTabItems(canManageLifecycle);
+  const tabItems = buildTabItems(canManageLifecycle).filter((tab) => ongletParametresOuvert(schoolInfo, tab.id));
 
   return {
     schoolId, schoolInfo, toast,

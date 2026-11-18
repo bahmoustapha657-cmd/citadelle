@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { demanderReinitialisation, validerCodeReinitialisation } from "../../backend/password-reset-supabase";
 import { codeARedemander, messageErreurCode } from "../../backend/code-reinitialisation";
 import i18n from "../../i18n";
+import { codeEcoleSaisi } from "./code-ecole";
 
 // Logique de la modale « Mot de passe oublié » : demande (code école +
 // identifiant, e-mail ou numéro), puis — si le serveur a envoyé un code par
@@ -26,7 +27,7 @@ export function useMotDePasseOublie({ codeEcoleInitial = "" }) {
     return () => clearTimeout(minuteur);
   }, [attente]);
 
-  const demande = { schoolId: codeEcole.trim().toLowerCase(), identifiant: identifiant.trim() };
+  const demande = { schoolId: codeEcoleSaisi(codeEcole), identifiant: identifiant.trim() };
   const peutDemander = Boolean(demande.schoolId) && demande.identifiant.length >= 2;
 
   // Première demande, et « Renvoyer le code » ensuite.

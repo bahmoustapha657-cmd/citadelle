@@ -19,6 +19,16 @@ export function EcoleRow({
       </td>
       <td style={S.td}>
         <strong>{ecole.nom}</strong>
+        {/* Espace gratuit d'un enseignant indépendant : un seul compte.
+            Panneau superadmin en français, comme le reste. i18n-ignore */}
+        {ecole.typeEspace === "enseignant" && (
+          // i18n-ignore
+          <span title="Espace gratuit d'un enseignant indépendant : un seul compte, sans comptabilité ni parents"
+            style={{ marginInlineStart: 6, fontSize: 10, fontWeight: 800, color: "#047857", background: "#d1fae5", borderRadius: 5, padding: "1px 6px", verticalAlign: "middle" }}>
+            {/* i18n-ignore */}
+            ENSEIGNANT
+          </span>
+        )}
         {ecole.responsable && (
           <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>
             {ecole.responsable}{ecole.telephone ? ` · ${ecole.telephone}` : ""}{ecole.email ? ` · ${ecole.email}` : ""}

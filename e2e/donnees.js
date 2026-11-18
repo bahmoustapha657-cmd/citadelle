@@ -76,10 +76,11 @@ export function clientAdmin() {
 
 // Client connecté comme un utilisateur de l'école : la RLS s'applique,
 // exactement comme dans le navigateur.
-export async function clientConnecte({ login, mdp }) {
+// `code` : une autre école que celle des parcours (espace enseignant).
+export async function clientConnecte({ login, mdp, code = ECOLE.code }) {
   verifierEnv();
   const sb = createClient(SUPABASE_URL, ANON_KEY, sansSession);
-  const { error } = await sb.auth.signInWithPassword({ email: emailFor(login, ECOLE.code), password: mdp });
+  const { error } = await sb.auth.signInWithPassword({ email: emailFor(login, code), password: mdp });
   if (error) throw new Error(`Connexion ${login} impossible : ${error.message}`);
   return sb;
 }
@@ -93,6 +94,17 @@ async function appelerFonction(nom, corps, jeton = ANON_KEY) {
   const data = await r.json().catch(() => ({}));
   if (!r.ok || data.error) throw new Error(`${nom} : HTTP ${r.status} ${data.error || ""}`);
   return data;
+}
+
+// Inscription publique, réponse brute (refus compris) : { status, data }.
+export async function appelerInscription(corps) {
+  verifierEnv();
+  const r = await fetch(`${SUPABASE_URL}/functions/v1/inscription`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` },
+    body: JSON.stringify(corps),
+  });
+  return { status: r.status, data: await r.json().catch(() => ({})) };
 }
 
 export async function ecoleId(admin = clientAdmin()) {

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ecoleLogin, fetchEtatEcole, superadminLogin } from "./connexion-api";
 import { demanderChoixEspace } from "../app/espaces-choix";
+import { codeEcoleSaisi } from "./code-ecole";
 
 // Logique de connexion : état du formulaire, résolution de l'école saisie
 // (lookup débounce) et appel d'authentification.
@@ -17,7 +18,7 @@ export function useConnexion({ onLogin }) {
   const [statutEcole, setStatutEcole] = useState("");
 
   useEffect(() => {
-    const sid = codeEcole.trim().toLowerCase();
+    const sid = codeEcoleSaisi(codeEcole);
     if (!sid || sid === "superadmin") {
       setInfoEcole(null);
       setStatutEcole("");
@@ -42,7 +43,7 @@ export function useConnexion({ onLogin }) {
   }, [codeEcole]);
 
   const connecter = async () => {
-    const sid = codeEcole.trim().toLowerCase();
+    const sid = codeEcoleSaisi(codeEcole);
     if (!sid) {
       setErreur(t("auth.errEnterSchoolCode"));
       return;

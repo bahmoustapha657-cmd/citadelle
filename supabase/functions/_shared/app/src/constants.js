@@ -14,6 +14,7 @@ import {
   getRoleSettingsMap,
   normalizeRoleLogin,
 } from "../shared/role-config.js";
+import { estEspaceEnseignant, libelleRoleEspaceEnseignant, moduleOuvertEspaceEnseignant } from "./espace-enseignant.js";
 
 export { ADMIN_WRITABLE_MODULES, MODULE_COLLECTIONS, getAdminWriteModules };
 
@@ -183,8 +184,12 @@ export const isGroupeActif = (schoolInfo, groupe) =>
 // Modules du menu adossés à un groupe : une école sans collège ni lycée n'a
 // pas de module Secondaire, une école sans maternelle ni primaire pas de
 // module Dir. Primaire. Les autres modules ne dépendent d'aucune section.
-export const isModuleOuvertPourEcole = (moduleId, schoolInfo) =>
-  (moduleId === "primaire" || moduleId === "secondaire" ? isGroupeActif(schoolInfo, moduleId) : true);
+// Espace d'un enseignant indépendant : seulement sa classe et ses paramètres
+// (src/espace-enseignant.js).
+export const isModuleOuvertPourEcole = (moduleId, schoolInfo) => {
+  if (estEspaceEnseignant(schoolInfo) && !moduleOuvertEspaceEnseignant(moduleId)) return false;
+  return (moduleId === "primaire" || moduleId === "secondaire" ? isGroupeActif(schoolInfo, moduleId) : true);
+};
 
 // Section retenue par un sélecteur de section : le choix courant s'il est
 // ouvert, sinon la première section ouverte — primaire et collège (les gros
@@ -468,7 +473,8 @@ export const ACCES = ROLE_MODULE_CAPABILITIES;
 export const COMPTES_DEFAUT = getActiveRoleAccounts({});
 export const getRoleSettingsForSchool = (schoolInfo = {}) => getRoleSettingsMap(schoolInfo);
 export const getRoleConfigForSchool = (role, schoolInfo = {}) => getRoleConfigFromSettings(role, schoolInfo);
-export const getRoleLabelForSchool = (role, schoolInfo = {}) => getRoleLabelFromSettings(role, schoolInfo);
+export const getRoleLabelForSchool = (role, schoolInfo = {}) =>
+  libelleRoleEspaceEnseignant(schoolInfo, role) || getRoleLabelFromSettings(role, schoolInfo);
 export const getModulesForRole = (role, schoolInfo = {}) => getRoleModulesFromSettings(role, schoolInfo);
 export const getPrimaryModuleForRole = (role, schoolInfo = {}) => getPrimaryModuleForRoleConfig(role, schoolInfo);
 export const getComptesDefautForSchool = (schoolInfo = {}) => getActiveRoleAccounts(schoolInfo);

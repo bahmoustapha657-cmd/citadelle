@@ -21,6 +21,7 @@ import { MessagerieProvider } from "./components/messagerie/MessagerieContext";
 import { MODULE_MESSAGERIE, messagerieOuverteA } from "./components/messagerie/messagerie-logic";
 import { EspacesUtilisateur } from "./components/app/EspacesUtilisateur";
 import { InvitationInstallationIphone } from "./components/installation-iphone/InvitationInstallationIphone";
+import { estEspaceEnseignant, premierModuleEspaceEnseignant } from "./espace-enseignant";
 
 export default function App() {
   const { t } = useTranslation();
@@ -120,7 +121,10 @@ export default function App() {
       ? readableModules(getSessionPermissions(utilisateur, schoolInfo))
       : getModulesForRole(utilisateur.role, schoolInfo))
       .filter((moduleId) => isModuleOuvertPourEcole(moduleId, schoolInfo));
-    const fallbackPage = modulesCourants[0] || null;
+    // Espace enseignant : on arrive sur sa classe, pas sur les paramètres.
+    const fallbackPage = estEspaceEnseignant(schoolInfo)
+      ? premierModuleEspaceEnseignant(modulesCourants)
+      : (modulesCourants[0] || null);
     if (fallbackPage && !modulesCourants.includes(page)) {
       setPage(fallbackPage);
     }

@@ -21,6 +21,7 @@ import {
 import { saveClasseAction, saveEnseignantAction, saveAppreciationAction } from "./ecole-saves";
 import { synchroniserEmailEnseignant } from "../../backend/account-manage-supabase";
 import { fusionnerPaie, indexerPaie } from "../../paie-enseignants";
+import { estEspaceEnseignant } from "../../espace-enseignant";
 
 const CLES_ELEVES = {
   prescolaire: "elevesPrescolaire", primaire: "elevesPrimaire", college: "elevesCollege", lycee: "elevesLycee",
@@ -104,7 +105,9 @@ export function useEcole({
   // année passée, la section et le statut de cette année-là (elevesDeLAnnee).
   // La scolarité complète (mensualités, frais) reste l'affaire de la
   // Comptabilité, qui a sa propre projection et d'autres règles.
-  const { items: elevesBruts, chargement: cE0, modifierChamp: modChampE } = useFirestore(cleEleves);
+  // `ajouter` : réservé à l'espace d'un enseignant indépendant, qui inscrit
+  // ses élèves ici faute de Comptabilité (AjoutElevesModale).
+  const { items: elevesBruts, chargement: cE0, modifierChamp: modChampE, ajouter: ajE, supprimer: supE } = useFirestore(cleEleves);
   // Année passée : les élèves des AUTRES sections aussi, car on a pu changer
   // de section depuis (maternelle → primaire, 6ème Année → collège). Hors
   // archive, ces lectures restent vides (collection nulle = rien chargé).
@@ -223,7 +226,9 @@ export function useEcole({
   // le comptable (front-line inscription/paiement) et, via les postes
   // flexibles, tout poste qui écrit la compta. Ignore le verrou car
   // c'est une action de service au tuteur, pas une édition de données scolaires.
-  const canCreateParent = !readOnly && !enModeArchive
+  // Jamais dans l'espace d'un enseignant indépendant : il n'a pas de comptes
+  // parents (account-manage le refuse aussi).
+  const canCreateParent = !readOnly && !enModeArchive && !estEspaceEnseignant(schoolInfo)
     && (peutCreerComptesParent(userRole) || hasWrite(permissions, "compta"));
   // Salaires des enseignants (forfait sur la carte) : réservés à qui lit la
   // Comptabilité — direction, admin, comptable. Jamais au chef de section,
@@ -253,7 +258,7 @@ export function useEcole({
     classes, cC, ajC, modC, supC,
     ens, cEns, ajEns, modEns, supEns,
     notes, cN, ajN, supN,
-    eleves, cE, modChampE,
+    eleves, cE, modChampE, ajE, supE,
     absences, cAbs, ajAbs, supAbs,
     enseignements, cEng, ajEng, modEng, supEng,
     matieres, matieresToutes, cMat, ajMat, modMat, supMat,

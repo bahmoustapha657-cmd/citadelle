@@ -3,6 +3,7 @@
 // ══════════════════════════════════════════════════════════════
 import { useTranslation } from "react-i18next";
 import { C, isModuleOuvertPourEcole } from "../../constants";
+import { estEspaceEnseignant } from "../../espace-enseignant";
 import { Btn } from "../ui";
 
 export function OnboardingModal({ schoolInfo, setPage, onClose }) {
@@ -11,11 +12,18 @@ export function OnboardingModal({ schoolInfo, setPage, onClose }) {
   // Une école sans maternelle ni primaire n'a pas de module Dir. Primaire :
   // classes, enseignants et emplois du temps se gèrent dans Secondaire.
   const moduleSections = isModuleOuvertPourEcole("primaire", schoolInfo) ? "primaire" : "secondaire";
-  const etape = (done, cle, page) => ({
-    done, label: t(`shell.onboarding.${cle}`), desc: t(`shell.onboarding.${cle}Desc`), action: () => go(page),
+  const etape = (done, cle, page, cleDesc = `${cle}Desc`) => ({
+    done, label: t(`shell.onboarding.${cle}`), desc: t(`shell.onboarding.${cleDesc}`), action: () => go(page),
   });
-  const steps = [
-    etape(schoolInfo.nom !== "EduGest" && !!schoolInfo.nom, "identity", "parametres"),
+  const identite = etape(schoolInfo.nom !== "EduGest" && !!schoolInfo.nom, "identity", "parametres");
+  // Espace d'un enseignant indépendant : ni Comptabilité, ni enseignants, ni
+  // emplois du temps ; il inscrit ses élèves depuis l'onglet Élèves.
+  const steps = estEspaceEnseignant(schoolInfo) ? [
+    identite,
+    etape(true, "classes", moduleSections),
+    etape(true, "students", moduleSections, "studentsTeacherDesc"),
+  ] : [
+    identite,
     etape(true, "classes", moduleSections),
     etape(true, "teachers", moduleSections),
     etape(true, "students", "compta"),
