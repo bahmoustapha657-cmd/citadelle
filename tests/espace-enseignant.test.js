@@ -17,9 +17,9 @@ import { refusEspaceEnseignant } from "../supabase/functions/account-manage/espa
 import {
   estEspaceEnseignant, ongletEcoleOuvert, ongletParametresOuvert, premierModuleEspaceEnseignant,
 } from "../src/espace-enseignant.js";
-import { isModuleOuvertPourEcole, MODULES } from "../src/constants.js";
+import { getRoleLabelForSchool, isModuleOuvertPourEcole, MODULES } from "../src/constants.js";
 import { codeEcoleSaisi } from "../src/components/connexion/code-ecole.js";
-import { lireLigneEleve, lireListeEleves } from "../src/components/ecole/eleves-tab/liste-eleves-collee.js";
+import { classeRetenue, lireLigneEleve, lireListeEleves } from "../src/components/ecole/eleves-tab/liste-eleves-collee.js";
 import { corpsInscriptionEnseignant, erreurEnseignant } from "../src/inscription/inscription-validation.js";
 import { computePlanInfo } from "../src/components/app/app-shell-plan.js";
 import { regleEcartement } from "../src/ecartes-non-reinscrits.js";
@@ -239,4 +239,23 @@ test("liste d'élèves : un élève déjà dans la classe est écarté (liste co
   assert.ok(lignes[2].erreur);
   // Même élève dans une AUTRE classe : rien à signaler.
   assert.equal(lireListeEleves("BAH Aminata", { classe: "8ème A", existants })[0].erreur, undefined);
+});
+
+test("liste d'élèves : la classe arrivée après l'ouverture de la fenêtre est retenue", () => {
+  // Hors ligne, la fenêtre s'ouvre avant que la synchro n'apporte la classe :
+  // le bouton d'inscription doit marcher dès qu'elle arrive.
+  assert.equal(classeRetenue("", []), "");
+  assert.equal(classeRetenue("", ["8ème A"]), "8ème A");
+  assert.equal(classeRetenue("8ème B", ["8ème A", "8ème B"]), "8ème B");
+  // Classe supprimée ou renommée entre-temps : la première qui existe.
+  assert.equal(classeRetenue("7ème A", ["8ème A"]), "8ème A");
+});
+
+test("écran : libellés d'enseignant, pas ceux d'une direction d'école", () => {
+  assert.equal(getRoleLabelForSchool("direction", ESPACE), "Enseignant");
+  assert.equal(getRoleLabelForSchool("college", ESPACE), "Secondaire");
+  assert.equal(getRoleLabelForSchool("primaire", ESPACE), "Primaire");
+  // Une école garde ses libellés, réglés ou par défaut.
+  assert.equal(getRoleLabelForSchool("direction", {}), "Direction Generale");
+  assert.equal(getRoleLabelForSchool("college", { roleSettings: { college: { label: "Censeur" } } }), "Censeur");
 });

@@ -13,7 +13,7 @@ import {
   getRoleSettingsMap,
   normalizeRoleLogin,
 } from "../shared/role-config.js";
-import { estEspaceEnseignant, moduleOuvertEspaceEnseignant } from "./espace-enseignant.js";
+import { estEspaceEnseignant, libelleRoleEspaceEnseignant, moduleOuvertEspaceEnseignant } from "./espace-enseignant.js";
 
 export { ADMIN_WRITABLE_MODULES, MODULE_COLLECTIONS, getAdminWriteModules };
 
@@ -472,7 +472,8 @@ export const ACCES = ROLE_MODULE_CAPABILITIES;
 export const COMPTES_DEFAUT = getActiveRoleAccounts({});
 export const getRoleSettingsForSchool = (schoolInfo = {}) => getRoleSettingsMap(schoolInfo);
 export const getRoleConfigForSchool = (role, schoolInfo = {}) => getRoleConfigFromSettings(role, schoolInfo);
-export const getRoleLabelForSchool = (role, schoolInfo = {}) => getRoleLabelFromSettings(role, schoolInfo);
+export const getRoleLabelForSchool = (role, schoolInfo = {}) =>
+  libelleRoleEspaceEnseignant(schoolInfo, role) || getRoleLabelFromSettings(role, schoolInfo);
 export const getModulesForRole = (role, schoolInfo = {}) => getRoleModulesFromSettings(role, schoolInfo);
 export const getPrimaryModuleForRole = (role, schoolInfo = {}) => getPrimaryModuleForRoleConfig(role, schoolInfo);
 export const getComptesDefautForSchool = (schoolInfo = {}) => getActiveRoleAccounts(schoolInfo);

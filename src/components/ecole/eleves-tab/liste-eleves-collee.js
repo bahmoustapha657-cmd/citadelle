@@ -16,6 +16,12 @@
 export const ERREUR_NOM_PRENOM = "nomPrenom";
 export const ERREUR_DEJA_LA = "dejaLa";
 
+// Classe retenue dans la fenêtre d'ajout : celle choisie si elle existe,
+// sinon la première. Les classes peuvent arriver APRÈS l'ouverture de la
+// fenêtre (synchronisation du mode hors ligne, réseau lent) : on ne fige
+// jamais « aucune classe », sinon le bouton d'inscription ne ferait rien.
+export const classeRetenue = (choix, noms) => (noms.includes(choix) ? choix : (noms[0] || ""));
+
 // i18n-ignore
 const SEXES = new Map([
   ["m", "M"], ["g", "M"], ["h", "M"], ["masculin", "M"], ["garcon", "M"], ["garçon", "M"], // i18n-ignore

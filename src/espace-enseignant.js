@@ -21,6 +21,14 @@ export const MODULES_ESPACE_ENSEIGNANT = Object.freeze(["primaire", "secondaire"
 
 export const moduleOuvertEspaceEnseignant = (moduleId) => MODULES_ESPACE_ENSEIGNANT.includes(moduleId);
 
+// Libellés des rôles : ceux d'une école (« Direction Generale » sous son nom,
+// « Bureau College » en titre) n'ont pas de sens pour un enseignant seul.
+// Données en français, comme les libellés par défaut (shared/role-config.js). i18n-ignore
+const LIBELLES_ROLES_ENSEIGNANT = Object.freeze({ direction: "Enseignant", primaire: "Primaire", college: "Secondaire" });
+
+export const libelleRoleEspaceEnseignant = (schoolInfo, role) =>
+  (estEspaceEnseignant(schoolInfo) && LIBELLES_ROLES_ENSEIGNANT[role]) || null;
+
 // Module ouvert à la connexion : sa classe d'abord, pas les paramètres.
 export function premierModuleEspaceEnseignant(modules) {
   return modules.find((id) => id === "primaire" || id === "secondaire") || modules[0] || null;

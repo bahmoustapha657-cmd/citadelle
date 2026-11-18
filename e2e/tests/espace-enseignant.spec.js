@@ -135,6 +135,9 @@ test("connecté par son numéro, il ne voit que ses classes et y inscrit ses él
 
   // Onglet Élèves : il colle sa liste, un élève par ligne.
   await menu.getByRole("button", { name: /Secondaire/ }).click();
+  // Ni renvoi vers une Comptabilité qu'il n'a pas, ni titre de direction d'école.
+  await expect(page.getByText(/Comptabilité → Élèves/)).toHaveCount(0);
+  await expect(page.getByText("Direction Generale")).toHaveCount(0);
   await page.getByRole("button", { name: /^Élèves \(\d+\)$/ }).click();
   await page.getByRole("button", { name: "➕ Ajouter des élèves" }).click();
   await page.getByLabel("Élèves — un par ligne")

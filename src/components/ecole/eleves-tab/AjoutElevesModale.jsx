@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { C, genererMatricule, initMens } from "../../../constants";
 import { Btn, Modale } from "../../ui";
-import { ERREUR_DEJA_LA, lireListeEleves } from "./liste-eleves-collee";
+import { ERREUR_DEJA_LA, classeRetenue, lireListeEleves } from "./liste-eleves-collee";
 
 const titreChamp = { display: "block", fontSize: 11, fontWeight: 800, color: C.blueDark, textTransform: "uppercase", letterSpacing: "0.06em" };
 
@@ -15,7 +15,8 @@ export function AjoutElevesModale({
 }) {
   const { t } = useTranslation();
   const nomsClasses = useMemo(() => [...new Set(classes.map((c) => c.nom).filter(Boolean))], [classes]);
-  const [classe, setClasse] = useState(nomsClasses.includes(classeInitiale) ? classeInitiale : (nomsClasses[0] || ""));
+  const [choix, setClasse] = useState(classeInitiale);
+  const classe = classeRetenue(choix, nomsClasses);
   const [texte, setTexte] = useState("");
   const [prenomDabord, setPrenomDabord] = useState(false);
   const [enCours, setEnCours] = useState(false);

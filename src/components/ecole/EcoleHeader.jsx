@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { C } from "../../constants";
 import { Badge, LectureSeule } from "../ui";
+import { estEspaceEnseignant } from "../../espace-enseignant";
 
 // En-tête du module École : logo, titre, sélecteur d'année et avis d'archive.
 export function EcoleHeader({ e, titre, couleur, readOnly }) {
@@ -24,10 +25,11 @@ export function EcoleHeader({ e, titre, couleur, readOnly }) {
         </div>
       </div>
       {readOnly && <LectureSeule />}
-      <div style={{ background: "#fef3e0", border: "1px solid #fbbf24", borderRadius: 8, padding: "9px 14px", fontSize: 12, color: "#92400e", marginBottom: 14, display: "flex", alignItems: "center", gap: 8 }}>
+      {/* Pas de Comptabilité dans l'espace d'un enseignant seul : il inscrit ses élèves ici. */}
+      {!estEspaceEnseignant(e.schoolInfo) && <div style={{ background: "#fef3e0", border: "1px solid #fbbf24", borderRadius: 8, padding: "9px 14px", fontSize: 12, color: "#92400e", marginBottom: 14, display: "flex", alignItems: "center", gap: 8 }}>
         <span style={{ fontSize: 16 }}>🔒</span>
         <span>{t("school.enrollmentNotice")}</span>
-      </div>
+      </div>}
     </>
   );
 }
