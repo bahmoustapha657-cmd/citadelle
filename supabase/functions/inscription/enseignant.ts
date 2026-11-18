@@ -25,6 +25,11 @@ export function codeEspaceEnseignant(telephone: unknown): string | null {
   return chiffres.length >= 8 && chiffres.length <= 15 ? chiffres : null;
 }
 
+// Codes réservés aux espaces enseignants : le numéro (« 622000111 ») et les
+// établissements suivants du même enseignant (« 622000111-2 », « -3 »…,
+// account-manage/etablissements.ts). Une école ne peut pas les prendre.
+export const codeReserveEnseignant = (code: string) => /^[0-9]+(-[0-9]+)?$/.test(code);
+
 type Corps = Record<string, unknown>;
 const texte = (v: unknown) => String(v ?? "").trim();
 

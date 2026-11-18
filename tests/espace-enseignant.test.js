@@ -91,7 +91,7 @@ test("inscription : espace enseignant gratuit, sans retrait des non réinscrits"
 
 test("inscription : un code d'école ne peut pas être un simple numéro (réservé aux enseignants)", () => {
   const source = readFileSync(new URL("../supabase/functions/inscription/index.ts", import.meta.url), "utf8");
-  assert.match(source, /\/\^\[0-9\]\+\$\/\.test\(code\)/);
+  assert.match(source, /if \(codeReserveEnseignant\(code\)\)/);
   assert.match(source, /corps\.typeEspace === "enseignant"/);
 });
 

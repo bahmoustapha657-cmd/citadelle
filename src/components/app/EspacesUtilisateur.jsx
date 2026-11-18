@@ -44,7 +44,8 @@ export function EspacesUtilisateur({ utilisateur }) {
     setErreur("");
     setEnCours(e.id);
     try {
-      await changerEspace(e.id, utilisateur.schoolId);
+      // Autre établissement d'un enseignant : la session s'ouvre sur SON code.
+      await changerEspace(e.id, e.ecole_code || utilisateur.schoolId);
       // Rechargement : l'app repart proprement sur le nouvel espace (page,
       // synchro hors ligne, données), comme après une connexion.
       window.location.reload();

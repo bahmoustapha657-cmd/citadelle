@@ -12,7 +12,7 @@
 // Déploiement : supabase functions deploy inscription
 // (publique : pas de JWT requis ; la clé anon suffit côté client.)
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { ligneCompteEnseignant, ligneEcoleEnseignant, validerInscriptionEnseignant } from "./enseignant.ts";
+import { codeReserveEnseignant, ligneCompteEnseignant, ligneEcoleEnseignant, validerInscriptionEnseignant } from "./enseignant.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -88,9 +88,9 @@ Deno.serve(async (req) => {
 
     const code = genSlug(nomEcole);
     if (code.length < 2 || RESERVES.has(code)) return json({ error: "Le nom produit un code réservé ou invalide. Choisissez un autre nom." }, 400);
-    // Un code fait de chiffres seuls est un numéro de téléphone : il est
-    // réservé aux espaces enseignants (enseignant.ts).
-    if (/^[0-9]+$/.test(code)) return json({ error: "Le nom de l'école ne peut pas être un simple numéro." }, 400);
+    // Un code fait de chiffres seuls (ou « numéro-rang ») est celui d'un
+    // espace enseignant : réservé (codeReserveEnseignant, enseignant.ts).
+    if (codeReserveEnseignant(code)) return json({ error: "Le nom de l'école ne peut pas être un simple numéro." }, 400);
 
     const { data: exist } = await admin.from("ecoles").select("id").eq("code", code).maybeSingle();
     if (exist) return json({ error: "Une école avec ce nom existe déjà. Choisissez un autre nom." }, 409);

@@ -44,10 +44,13 @@ export function planLiaison(
 
 // Passage d'un compte à un autre : uniquement vers un compte RELIÉ au compte
 // connecté, de la même école, actif et doté d'un accès de connexion.
-export function refusChangement(appelant: CompteLie, cible: CompteLie | null): Refus | null {
+// `entreEtablissements` : appelant et cible sont deux espaces enseignants
+// (ses établissements, etablissements.ts) — l'école peut alors différer.
+export function refusChangement(appelant: CompteLie, cible: CompteLie | null, entreEtablissements = false): Refus | null {
   if (!cible) return { error: "Espace introuvable.", status: 404 };
   if (cible.id === appelant.id) return { error: "Vous êtes déjà dans cet espace.", status: 400 };
-  if (!appelant.personne_id || cible.personne_id !== appelant.personne_id || cible.ecole_id !== appelant.ecole_id) {
+  const ecoleAdmise = cible.ecole_id === appelant.ecole_id || entreEtablissements;
+  if (!appelant.personne_id || cible.personne_id !== appelant.personne_id || !ecoleAdmise) {
     return { error: "Cet espace n'est pas relié à votre compte.", status: 403 };
   }
   if (!cible.user_id) return { error: "Cet espace n'a pas d'accès de connexion.", status: 409 };

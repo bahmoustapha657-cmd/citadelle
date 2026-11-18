@@ -8,6 +8,7 @@ import { getSupabase } from "../supabaseClient";
 import { invoke } from "./account-manage-supabase";
 import { ouvrirSessionParJeton } from "./auth-supabase";
 import { powerSyncConfigured } from "./powersync/tables";
+import i18n from "../i18n";
 
 // Espaces de la personne connectée, le sien en premier ; [] si son compte
 // n'est relié à aucun autre (ou base pas encore migrée).
@@ -43,8 +44,27 @@ export async function changerEspace(compteId, schoolCode) {
   const { tokenHash } = await invoke({ action: "changer_espace", compteId }, "Changement d'espace impossible.");
   const r = await ouvrirSessionParJeton(tokenHash, schoolCode);
   if (!r.ok) throw new Error(r.data.error);
+  // Autre établissement (espace enseignant) : le rechargement qui suit doit
+  // repartir sur SON code, pas sur celui de l'espace quitté.
+  try {
+    if (r.data.compte?.schoolId) localStorage.setItem("LC_schoolId", r.data.compte.schoolId);
+  } catch { /* stockage refusé : la session le reposera */ }
   return r.data.compte;
 }
+
+// Espace enseignant : les classes de TOUS ses établissements (RPC
+// mes_classes, une ligne par classe, une ligne sans classe pour un
+// établissement qui n'en a pas encore).
+export async function mesClasses() {
+  const { data, error } = await getSupabase().rpc("mes_classes");
+  if (error) throw new Error(error.message || i18n.t("shell.myClasses.errLoad"));
+  return Array.isArray(data) ? data : [];
+}
+
+// Espace enseignant : ajoute un établissement (un nouvel espace relié au
+// sien). Renvoie { compteId, schoolId } du nouvel espace.
+export const ajouterEtablissement = ({ etablissement, ville, sections }) =>
+  invoke({ action: "ajouter_etablissement", etablissement, ville, sections }, i18n.t("shell.myClasses.errAdd"));
 
 // Direction : relier des comptes d'une même personne / en détacher un.
 export const relierComptes = (compteIds) =>

@@ -2492,6 +2492,28 @@
       "reinscTitre": "📝 {{n}} élève(s) non réinscrit(s)",
       "reinscCorps": "Aucun paiement depuis la rentrée : retirés des classes depuis le {{date}}. Faites-les réinscrire."
     },
+    "myClasses": {
+      "menu": "Toutes mes classes",
+      "menuDesc": "Tous vos établissements",
+      "summary": "Établissements : {{etablissements}} · Classes : {{classes}} · Élèves : {{eleves}}",
+      "intro": "Vous enseignez aussi ailleurs ? Ajoutez l'établissement : ses classes apparaîtront ici, et vous passerez de l'un à l'autre sans mot de passe.",
+      "add": "Ajouter un établissement",
+      "here": "Vous êtes ici",
+      "noClass": "Aucune classe pour l'instant.",
+      "openSchool": "Ouvrir cet établissement",
+      "open": "Ouvrir",
+      "opening": "Ouverture…",
+      "students": "Élèves : {{count}}",
+      "loadError": "Lecture de vos classes impossible : {{error}}",
+      "retry": "Réessayer",
+      "addHelp": "Un espace à part, relié au vôtre : ses élèves et ses notes restent séparés. Vous vous connectez toujours avec votre numéro, et passez d'un établissement à l'autre sans mot de passe.",
+      "schoolName": "Nom de l'établissement",
+      "submit": "Ajouter l'établissement",
+      "adding": "Ajout en cours…",
+      "added": "Établissement ajouté : {{nom}}.",
+      "errLoad": "Lecture de vos classes impossible.",
+      "errAdd": "Ajout de l'établissement impossible."
+    },
     "spaces": {
       "switch": "Changer d'espace",
       "chooseMine": "Choisir mon espace",

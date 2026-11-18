@@ -18,6 +18,11 @@ import { fusionnerComptesParents, lienValide, modifierLienParent, rattacherAuFoy
 import { normaliserTel } from "../_shared/telephone.ts";
 import { idsADetacher, peutRelierComptes, planLiaison, refusChangement } from "./espaces.ts";
 import { refusEspaceEnseignant } from "./espace-enseignant.ts";
+import {
+  baseCodeEnseignant, codeEtablissementSuivant, entreEspacesEnseignant, motDePasseInterne,
+  refusAjoutEtablissement, validerNouvelEtablissement,
+} from "./etablissements.ts";
+import { ligneCompteEnseignant, ligneEcoleEnseignant } from "../inscription/enseignant.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -273,13 +278,91 @@ Deno.serve(async (req) => {
       return json({ ok: true, detaches: aDetacher });
     }
 
+    // ── Enseignant dans plusieurs établissements (etablissements.ts) ─────
+    // Il ajoute lui-même un établissement : un nouvel espace enseignant,
+    // relié au sien (même personne_id), où il entre sans mot de passe.
+    if (action === "ajouter_etablissement") {
+      const personneExistante = (caller.personne_id as string | null) || null;
+      let nbEspaces = 1;
+      if (personneExistante) {
+        const { count } = await admin.from("comptes")
+          .select("id", { count: "exact", head: true }).eq("personne_id", personneExistante);
+        nbEspaces = count ?? 1;
+      }
+      const refusAjout = refusAjoutEtablissement(typeEspace, caller.role, nbEspaces);
+      if (refusAjout) return json({ error: refusAjout.error }, refusAjout.status);
+      const nouvel = validerNouvelEtablissement(body);
+      if ("error" in nouvel) return json({ error: nouvel.error }, nouvel.status);
+      const base = baseCodeEnseignant(caller.login);
+      if (!base) return json({ error: "Identifiant inattendu pour un espace enseignant : ajout impossible." }, 409);
+
+      const { data: ecActuelle } = await admin.from("ecoles").select("*").eq("id", ecoleId).maybeSingle();
+      const { data: codesPris } = await admin.from("ecoles").select("code").like("code", `${base}-%`);
+      const code = codeEtablissementSuivant(base, (codesPris || []).map((e) => e.code));
+      const x = (ecActuelle?.extra || {}) as Record<string, unknown>;
+      const fiche = {
+        code, login: base,
+        nomEnseignant: String(caller.nom || x.responsable || ""),
+        etablissement: nouvel.etablissement, ville: nouvel.ville, pays: String(ecActuelle?.pays || "Guinée"),
+        telephone: String(caller.telephone || x.telephone || ""), email: String(caller.email || x.email || ""),
+        sections: nouvel.sections, mdp: motDePasseInterne(),
+      };
+      const personneId = personneExistante || crypto.randomUUID();
+
+      const { data: ecole, error: eErr } = await admin.from("ecoles")
+        .insert(ligneEcoleEnseignant(fiche)).select("id").single();
+      if (eErr || !ecole) return json({ error: eErr?.message || "Création de l'établissement impossible." }, 500);
+      const annuler = async (userId?: string) => {
+        if (userId) await admin.auth.admin.deleteUser(userId);
+        await admin.from("ecoles").delete().eq("id", ecole.id);
+      };
+      const { data: acces, error: aErr } = await admin.auth.admin.createUser({
+        email: `${base}.${code}@${DOMAIN}`, password: fiche.mdp, email_confirm: true,
+        user_metadata: { login: base, schoolId: code },
+      });
+      if (aErr || !acces?.user) {
+        await annuler();
+        return json({ error: aErr?.message || "Création de l'accès impossible." }, 500);
+      }
+      const { data: compte, error: cErr } = await admin.from("comptes")
+        .insert({ ...ligneCompteEnseignant(fiche, acces.user.id, ecole.id), personne_id: personneId })
+        .select("id").single();
+      if (cErr || !compte) {
+        await annuler(acces.user.id);
+        return json({ error: cErr?.message || "Création du compte impossible." }, 500);
+      }
+      if (!personneExistante) {
+        const { error: pErr } = await admin.from("comptes").update({ personne_id: personneId }).eq("id", caller.id);
+        if (pErr) {
+          await admin.from("comptes").delete().eq("id", compte.id);
+          await annuler(acces.user.id);
+          return json({ error: pErr.message }, 500);
+        }
+      }
+      await admin.from("audit").insert({
+        ecole_id: ecoleId, action: "ajouter_etablissement",
+        auteur: { compteId: caller.id, login: caller.login, role: caller.role },
+        cible: { compteId: compte.id, code },
+        details: { etablissement: nouvel.etablissement, sections: nouvel.sections, personneId },
+      });
+      return json({ ok: true, compteId: compte.id, schoolId: code });
+    }
+
     // Passer à un autre espace de la même personne, sans mot de passe : on
     // rend un jeton à usage unique que le navigateur échange contre la
     // session du compte visé (verifyOtp), comme pour « Mot de passe oublié ».
     if (action === "changer_espace") {
       const { data: cible } = await admin.from("comptes")
         .select("id, ecole_id, user_id, role, personne_id, extra, login, poste_id").eq("id", String(body.compteId || "")).maybeSingle();
-      const refus = refusChangement(caller, cible);
+      // Autre établissement du même enseignant : permis entre deux espaces
+      // enseignants seulement (etablissements.ts).
+      let entreEtablissements = false;
+      if (cible && cible.ecole_id !== caller.ecole_id) {
+        const { data: ecCible } = await admin.from("ecoles").select("*").eq("id", cible.ecole_id).maybeSingle();
+        entreEtablissements = !!ecCible && ecCible.actif !== false && ecCible.supprime !== true
+          && entreEspacesEnseignant(typeEspace, ecCible.type_espace);
+      }
+      const refus = refusChangement(caller, cible, entreEtablissements);
       if (refus) return json({ error: refus.error }, refus.status);
       if (cible.poste_id) {
         const { data: poste } = await admin.from("postes").select("actif").eq("id", cible.poste_id).maybeSingle();
