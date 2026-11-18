@@ -32,3 +32,5 @@ export const MessagesEcole = lazy(() => import("../MessagesEcole"));
 export const MessageriePage = lazyNamedExport(() => import("../messagerie/MessageriePage"), "MessageriePage");
 export const LandingEduGest = lazyNamedExport(() => import("../LandingEduGest"), "LandingEduGest");
 export const DemoEduGest = lazyNamedExport(() => import("../DemoEduGest"), "DemoEduGest");
+// Espace d'un enseignant indépendant : ses classes de tous ses établissements.
+export const MesClasses = lazyNamedExport(() => import("../mes-classes/MesClasses"), "MesClasses");

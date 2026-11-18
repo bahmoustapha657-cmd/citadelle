@@ -4,9 +4,11 @@
 import { C, getRoleLabelForSchool } from "../../constants";
 import {
   AdminPanel, Calendrier, Comptabilite, Fondation, GestionExamens,
-  HistoriqueActions, MessageriePage, MessagesParents, ParametresEcole, Primaire, Secondaire,
+  HistoriqueActions, MesClasses, MessageriePage, MessagesParents, ParametresEcole, Primaire, Secondaire,
   Statistiques, SuperAdminPanel, TableauDeBord,
 } from "./lazy-pages";
+import { PAGE_MES_CLASSES } from "../mes-classes/mes-classes";
+import { estEspaceEnseignant } from "../../espace-enseignant";
 
 export function PageRouter({
   page, annee, setAnnee, verrous, schoolId, utilisateur, readOnly,
@@ -37,6 +39,8 @@ export function PageRouter({
       {page==="messages"    && <MessagesParents readOnly={readOnly}/>}
       {/* Messagerie interne : occupe toute la hauteur de la zone de contenu. */}
       {page==="messagerie"  && <MessageriePage utilisateur={utilisateur}/>}
+      {/* Espace d'un enseignant indépendant : ses classes de tous ses établissements. */}
+      {page===PAGE_MES_CLASSES && estEspaceEnseignant(schoolInfo) && <MesClasses setPage={setPage}/>}
     </>
   );
 }

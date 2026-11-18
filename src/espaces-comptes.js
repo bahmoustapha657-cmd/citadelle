@@ -63,6 +63,8 @@ export function suggestionsEspaces(comptes = []) {
 // Libellé d'un espace (choix d'espace, carte de la Direction), dans la langue
 // de l'interface ; le libellé d'un poste du personnel reste celui de l'école.
 export function libelleEspace(e = {}) {
+  // Enseignant indépendant : un espace par établissement, nommé comme lui.
+  if (e.type_espace === "enseignant" && e.ecole_nom) return { icone: "🏫", titre: e.ecole_nom };
   if (e.role === "enseignant") return { icone: "👨‍🏫", titre: i18n.t("shell.spaces.teacher") };
   if (e.role === "parent") return { icone: "👪", titre: i18n.t("shell.spaces.parent") };
   return { icone: "🗂️", titre: e.label || i18n.t("shell.spaces.staff") };

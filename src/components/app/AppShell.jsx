@@ -18,6 +18,7 @@ import { BandeauAnnonces } from "../messagerie/BandeauAnnonces";
 import { BandeauReunions } from "../messagerie/BandeauReunions";
 import { MODULE_MESSAGERIE } from "../messagerie/messagerie-logic";
 import { estEspaceEnseignant } from "../../espace-enseignant";
+import { PAGE_MES_CLASSES } from "../mes-classes/mes-classes";
 
 // Coquille de l'application après authentification : toasts, recherche globale,
 // bannière d'installation, sidebar, en-tête, routeur de pages et modales/dropdowns.
@@ -34,7 +35,12 @@ export function AppShell(p) {
   // messagerie n'y a personne à joindre.
   const messagerie = useMessagerie();
   const avecMessagerie = !!messagerie && !estEspaceEnseignant(p.schoolInfo);
-  const modulesMenu = avecMessagerie ? [...p.modulesVisibles, MODULE_MESSAGERIE] : p.modulesVisibles;
+  // Espace enseignant : « Toutes mes classes » (tous ses établissements) en
+  // tête du menu — page hors carte de permissions, comme la messagerie.
+  const modulesBase = estEspaceEnseignant(p.schoolInfo)
+    ? [{ id: PAGE_MES_CLASSES, icon: "📚", libelle: p.t("shell.myClasses.menu"), desc: p.t("shell.myClasses.menuDesc") }, ...p.modulesVisibles]
+    : p.modulesVisibles;
+  const modulesMenu = avecMessagerie ? [...modulesBase, MODULE_MESSAGERIE] : modulesBase;
   const pageMessagerie = p.page === MODULE_MESSAGERIE.id;
 
   return (

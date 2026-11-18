@@ -2492,6 +2492,28 @@
       "reinscTitre": "📝 {{n}} student(s) not re-enrolled",
       "reinscCorps": "No payment since the start of the year: removed from classes since {{date}}. Get them re-enrolled."
     },
+    "myClasses": {
+      "menu": "All my classes",
+      "menuDesc": "All your schools",
+      "summary": "Schools: {{etablissements}} · Classes: {{classes}} · Students: {{eleves}}",
+      "intro": "Do you also teach elsewhere? Add the school: its classes will appear here, and you will move from one to the other without a password.",
+      "add": "Add a school",
+      "here": "You are here",
+      "noClass": "No class yet.",
+      "openSchool": "Open this school",
+      "open": "Open",
+      "opening": "Opening…",
+      "students": "Students: {{count}}",
+      "loadError": "Could not read your classes: {{error}}",
+      "retry": "Try again",
+      "addHelp": "A separate space, linked to yours: its students and marks stay separate. You still sign in with your number, and move between schools without a password.",
+      "schoolName": "School name",
+      "submit": "Add the school",
+      "adding": "Adding…",
+      "added": "School added: {{nom}}.",
+      "errLoad": "Could not read your classes.",
+      "errAdd": "Could not add the school."
+    },
     "spaces": {
       "switch": "Switch space",
       "chooseMine": "Choose my space",

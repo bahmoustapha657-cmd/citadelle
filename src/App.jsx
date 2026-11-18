@@ -22,6 +22,8 @@ import { MODULE_MESSAGERIE, messagerieOuverteA } from "./components/messagerie/m
 import { EspacesUtilisateur } from "./components/app/EspacesUtilisateur";
 import { InvitationInstallationIphone } from "./components/installation-iphone/InvitationInstallationIphone";
 import { estEspaceEnseignant, premierModuleEspaceEnseignant } from "./espace-enseignant";
+import { PAGE_MES_CLASSES } from "./components/mes-classes/mes-classes";
+import { prendreDestination } from "./components/app/destination-espace";
 
 export default function App() {
   const { t } = useTranslation();
@@ -121,6 +123,14 @@ export default function App() {
       ? readableModules(getSessionPermissions(utilisateur, schoolInfo))
       : getModulesForRole(utilisateur.role, schoolInfo))
       .filter((moduleId) => isModuleOuvertPourEcole(moduleId, schoolInfo));
+    if (estEspaceEnseignant(schoolInfo)) {
+      // Classe d'un autre établissement ouverte depuis « Toutes mes classes » :
+      // après le changement d'espace, droit au module de cette classe.
+      const destination = prendreDestination(modulesCourants);
+      if (destination) { if (destination !== page) setPage(destination); return; }
+      // « Toutes mes classes » : page de l'espace enseignant, hors carte de permissions.
+      if (page === PAGE_MES_CLASSES) return;
+    }
     // Espace enseignant : on arrive sur sa classe, pas sur les paramètres.
     const fallbackPage = estEspaceEnseignant(schoolInfo)
       ? premierModuleEspaceEnseignant(modulesCourants)
