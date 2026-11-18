@@ -11,12 +11,14 @@ export function ElevesToolbar({
   eleves, elevesFiltres, filtreClasse, setFiltreClasse, classesUniq,
   section = "college", annee, schoolInfo, userRole = "",
   nbPartis = 0, avecPartis = false, setAvecPartis = () => {},
-  tri = null, vue = null, onBadges = null,
+  tri = null, vue = null, onBadges = null, onAjouter = null,
 }) {
   const { t } = useTranslation();
   return (
     <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12,flexWrap:"wrap"}}>
       <strong style={{fontSize:14,color:C.blueDark,flex:1}}>{t("school.students.title")} ({eleves.length})</strong>
+      {/* Espace d'un enseignant indépendant seulement (ElevesTab). */}
+      {onAjouter&&<Btn sm onClick={onAjouter}>➕ {t("school.students.teacherAdd.button")}</Btn>}
       <select value={filtreClasse} onChange={e=>setFiltreClasse(e.target.value)}
         style={{border:"1px solid #b0c4d8",borderRadius:7,padding:"6px 10px",fontSize:12,background:"#fff"}}>
         <option value="all">{t("common.all")}</option>

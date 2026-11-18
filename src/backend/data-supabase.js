@@ -276,6 +276,9 @@ function ecoleVersInfo(data) {
     pays: data.pays, devise: data.devise, monnaie: x.monnaie || "GNF",
     plan: data.plan, planExpiry: data.plan_expiry, modeleBulletin: data.modele_bulletin,
     roleSettings: data.role_settings, legal: data.legal, verrous: x.verrous,
+    // Après `...x` : la colonne (gardée par ecoles_guard) prime sur une clé
+    // homonyme qu'`extra`, modifiable par l'école, pourrait porter.
+    typeEspace: data.type_espace || "ecole",
   };
 }
 

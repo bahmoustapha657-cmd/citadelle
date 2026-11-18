@@ -24,6 +24,9 @@ export function ConnexionChamps({
             spellCheck={false}
           />
         </div>
+        <p style={{ margin: "4px 0 0", fontSize: 11.5, color: "var(--cx-muted, #64748b)" }}>
+          {t("auth.schoolCodeTeacherHint")}
+        </p>
         {statutEcole && (
           <p className="cx-alerte">
             {statutEcole === "inactive" ? t("auth.schoolInactive") : t("auth.schoolUnavailable")}

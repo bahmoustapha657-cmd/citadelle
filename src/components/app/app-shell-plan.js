@@ -2,6 +2,7 @@
 import { PLANS } from "../../constants";
 import { estPremiumActif } from "../../../shared/plan-features.js";
 import i18n from "../../i18n";
+import { estEspaceEnseignant } from "../../espace-enseignant";
 
 const GRACE_MS = 3 * 86400000; // 3 jours de grâce après expiration
 
@@ -20,10 +21,15 @@ export function computePlanInfo({ schoolInfoState, nowTs, totalElevesActifs, t }
   const planEstExpire = planExpiryBrut && !enPeriodeGrace; // vraiment expiré (après grâce)
   const joursGrace = enPeriodeGrace ? Math.ceil((planExpiry + GRACE_MS - now) / 86400000) : null;
   const joursRestants = planExpiry && !planExpiryBrut ? Math.ceil((planExpiry - now) / 86400000) : null;
-  // Pendant la période de grâce : on garde les limites du plan payant
-  const eleveLimit = planEstExpire
-    ? PLANS.gratuit.eleveLimit
-    : (PLANS[planCourant]?.eleveLimit ?? PLANS.gratuit.eleveLimit);
+  // Pendant la période de grâce : on garde les limites du plan payant.
+  // Espace d'un enseignant indépendant : gratuit et sans limite (une classe
+  // guinéenne dépasse vite les 50 élèves du plan gratuit) ; sans comptabilité
+  // ni autres comptes, il ne peut pas tenir lieu d'école.
+  const eleveLimit = estEspaceEnseignant(schoolInfoState)
+    ? Infinity
+    : planEstExpire
+      ? PLANS.gratuit.eleveLimit
+      : (PLANS[planCourant]?.eleveLimit ?? PLANS.gratuit.eleveLimit);
   // Effectif pas encore compté (chargement, lecture en échec) : on ne bloque
   // pas. `null < 50` le ferait déjà par coercition — autant l'écrire.
   const effectifConnu = Number.isFinite(totalElevesActifs);

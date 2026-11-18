@@ -1,5 +1,8 @@
+import { useContext } from "react";
 import { useTranslation } from "react-i18next";
 import { Tabs } from "./ui";
+import { SchoolContext } from "../contexts/SchoolContext";
+import { ongletEcoleOuvert } from "../espace-enseignant";
 import { useEcole } from "./ecole/use-ecole";
 import { EcoleHeader } from "./ecole/EcoleHeader";
 import { EcoleTabContent } from "./ecole/EcoleTabContent";
@@ -17,6 +20,7 @@ const TABS_SURVEILLANT = new Set(["eleves", "discipline", "emploidutemps"]);
 // l'école, cf. collegeLabel) ne peuvent en tenir lieu.
 function Ecole({ titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, section = "college", avecEns, userRole, permissions = null, annee, classesPredefinies, maxNote = 20, matieresPredefinies = [], readOnly = false, verrouOuvert = false }) {
   const { t } = useTranslation();
+  const { schoolInfo } = useContext(SchoolContext);
   const e = useEcole({ cleClasses, cleEns, cleNotes, cleEleves, section, userRole, permissions, annee, readOnly, verrouOuvert });
 
   const tabItems = [
@@ -37,7 +41,10 @@ function Ecole({ titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, sectio
     // Surveillance générale : périmètre discipline uniquement — élèves
     // (lecture + impression des listes), absences et emploi du temps.
     // Les notes/bulletins lui sont aussi refusés côté règles serveur.
-  ].filter((item) => userRole !== "surveillant" || TABS_SURVEILLANT.has(item.id));
+  ].filter((item) => (userRole !== "surveillant" || TABS_SURVEILLANT.has(item.id))
+    // Espace d'un enseignant indépendant : ni liste d'enseignants, ni
+    // emploi du temps d'école, ni attestations (src/espace-enseignant.js).
+    && ongletEcoleOuvert(schoolInfo, item.id));
 
   return (
     <div style={{ padding: "22px 26px" }}>

@@ -71,6 +71,9 @@ export function EcoleTabsPedago({ e, section, avecEns, annee, classesPredefinies
         canEdit={e.canEdit}
         canPhoto={e.canPhoto}
         modChampE={e.modChampE}
+        ajE={e.ajE}
+        supE={e.supE}
+        classes={e.classes}
         canCreateParent={e.canCreateParent}
         parentEleve={e.parentEleve}
         setParentEleve={e.setParentEleve}

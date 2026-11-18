@@ -12,13 +12,23 @@ import { Btn, Chargement } from "../ui";
 import { Trombinoscope } from "../identite-enfant/Trombinoscope";
 import { SeancePhotoModale } from "../identite-enfant/SeancePhotoModale";
 import { BadgesModale } from "../identite-enfant/BadgesModale";
+import { AjoutElevesModale } from "./eleves-tab/AjoutElevesModale";
+import { EleveEnseignantModale } from "./eleves-tab/EleveEnseignantModale";
+import { estEspaceEnseignant } from "../../espace-enseignant";
 
 export function ElevesTab({
   eleves, elevesFiltres, cE, filtreClasse, setFiltreClasse, classesUniq,
   section = "college", annee, schoolInfo, schoolId, toast, logAction, canEdit, canCreateParent,
   parentEleve, setParentEleve, userRole = "", modChampE = null, canPhoto = false,
+  ajE = null, supE = null, classes = [],
 }) {
   const { t } = useTranslation();
+  // Espace d'un enseignant indépendant : il inscrit lui-même ses élèves
+  // (ailleurs, l'inscription passe par la Comptabilité).
+  const peutInscrire = estEspaceEnseignant(schoolInfo) && canEdit && !!ajE;
+  const peutCorriger = estEspaceEnseignant(schoolInfo) && canEdit && !!modChampE && !!supE;
+  const [ajout, setAjout] = useState(false);
+  const [aCorriger, setACorriger] = useState(null);
   // Élèves partis : hors de la liste, des cartes et de l'export par défaut —
   // ils n'ont plus de place en classe. Affichables pour retrouver une fiche.
   const [avecPartis, setAvecPartis] = useState(false);
@@ -47,6 +57,7 @@ export function ElevesTab({
         nbPartis={nbPartis} avecPartis={avecPartis} setAvecPartis={setAvecPartis}
         tri={<TriElevesSelect liste="eleves" value={tri} onChange={setTri} />}
         onBadges={vue === "liste" ? () => setBadges(listeAffichee) : null}
+        onAjouter={peutInscrire ? () => setAjout(true) : null}
         vue={<span style={{ display: "inline-flex", gap: 4 }}>
           <Btn sm v={vue === "liste" ? "blue" : "ghost"} onClick={() => setVue("liste")}>📋 Liste</Btn>
           <Btn sm v={vue === "trombi" ? "blue" : "ghost"} onClick={() => setVue("trombi")}>🖼️ Trombinoscope</Btn>
@@ -57,6 +68,7 @@ export function ElevesTab({
           cE={cE} elevesFiltres={listeAffichee} peutCreerParent={peutCreerParent}
           ouvrirCompte={ouvrirCompte} t={t}
           schoolInfo={schoolInfo} annee={annee} userRole={userRole}
+          onModifier={peutCorriger ? setACorriger : null}
         />
       ) : cE ? <Chargement/> : (
         <Trombinoscope
@@ -65,6 +77,15 @@ export function ElevesTab({
           enregistrer={peutPhotographier ? modChampE : null} schoolId={schoolId} toast={toast} logAction={logAction}
         />
       )}
+      {ajout && <AjoutElevesModale
+        classes={classes} eleves={eleves} section={section} schoolInfo={schoolInfo}
+        ajouter={ajE} toast={toast} logAction={logAction} fermer={() => setAjout(false)}
+        classeInitiale={filtreClasse !== "all" ? filtreClasse : ""}
+      />}
+      {aCorriger && <EleveEnseignantModale
+        eleve={aCorriger} classes={classes} modifierChamp={modChampE} supprimer={supE}
+        toast={toast} logAction={logAction} fermer={() => setACorriger(null)}
+      />}
       {badges && <BadgesModale eleves={badges} schoolInfo={schoolInfo} annee={annee} section={section}
         fermer={() => setBadges(null)}/>}
       {seance && <SeancePhotoModale
