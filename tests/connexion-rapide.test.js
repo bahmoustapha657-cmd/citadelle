@@ -45,6 +45,7 @@ function raz() {
     ordre: [],
     requetes: [],
     appels: [],
+    portees: [],
     ecouteurs: [],
   });
 }
@@ -77,9 +78,11 @@ const faux = {
       etat.ordre.push("connexion");
       return { data: { user: { id: "u1" } }, error: null };
     },
-    signOut: async () => {
+    signOut: async (options) => {
       await etat.revocation;
       etat.appels.push("signOut");
+      // supabase-js ferme TOUS les appareils du compte sans portée explicite.
+      etat.portees.push(options?.scope ?? "global");
       etat.ordre.push("révocation");
       return { error: null };
     },
@@ -285,5 +288,21 @@ test("connexion sur réseau faible", { skip: ignore }, async (t) => {
     assert.equal(r.ok, false);
     assert.match(r.data.error, /connexion internet/);
     assert.ok(etat.appels.includes("signOut"));
+    assert.deepEqual(etat.portees, ["local"], "les autres appareils du compte restent connectés");
+  });
+
+  await t.test("se déconnecter : seule la session de CET appareil est fermée", async () => {
+    raz(); memoriser();
+    await signOut();
+    assert.deepEqual(etat.portees, ["local"], "le PC reste connecté quand on se déconnecte du téléphone");
+    assert.equal(stock.has("LC_compte_session"), false);
+  });
+
+  await t.test("connexion refusée sur l'appareil : les autres appareils restent connectés", async () => {
+    raz();
+    stock.set("LC_powersync_proprietaire", "u0");
+    etat.purgeImpossible = true;
+    await ecoleLogin({ login: "dg", mdp: "x", schoolId: "citadelle" });
+    assert.deepEqual(etat.portees, ["local"]);
   });
 });

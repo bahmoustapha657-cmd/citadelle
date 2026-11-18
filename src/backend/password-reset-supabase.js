@@ -85,7 +85,9 @@ export function creerRecuperation(retour) {
       try {
         await client.from("comptes").update({ premiere_co: false }).eq("user_id", user.id);
       } catch { /* non bloquant */ }
-      try { await client.auth.signOut(); } catch { /* non bloquant */ }
+      // `global` voulu : mot de passe oublié puis remplacé, tous les appareils
+      // encore ouverts sur ce compte doivent ressaisir le nouveau.
+      try { await client.auth.signOut({ scope: "global" }); } catch { /* non bloquant */ }
       // Jeton consommé : un rechargement ne doit pas rouvrir le formulaire.
       nettoyerUrlRecovery();
       return identiteCompte(user);

@@ -68,7 +68,7 @@ test("signOut : désabonnement borné, AVANT la révocation de la session", () =
   const fn = src.slice(src.indexOf("export async function signOut()"));
   const course = fn.indexOf("await Promise.race([seDesabonnerDesPush(), new Promise((fin) => setTimeout(fin, DELAI_DESABONNEMENT))])");
   assert.ok(course > 0, "seDesabonnerDesPush en course avec un délai");
-  assert.ok(course < fn.indexOf("await sb.auth.signOut()"), "avant sb.auth.signOut()");
+  assert.ok(course < fn.indexOf("await sb.auth.signOut(CET_APPAREIL)"), "avant sb.auth.signOut()");
   assert.match(src, /const DELAI_DESABONNEMENT = \d+;/);
   const push = readFileSync(new URL("../src/backend/push-supabase.js", import.meta.url), "utf8");
   assert.match(push, /retirerAbonnementNavigateur\(\{ sb: getSupabase\(\), navigateur: globalThis\.navigator \}\)/);

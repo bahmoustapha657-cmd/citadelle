@@ -25,6 +25,15 @@ const DELAI_ENVOI_FILE = 8000;
 // connexionParEmail).
 let deconnexionEnCours = Promise.resolve();
 
+// Une déconnexion ne ferme que la session de CET appareil. Par défaut,
+// supabase-js les ferme TOUTES (`scope: "global"`) : se déconnecter du
+// téléphone — ou une connexion interrompue par le réseau — mettait dehors le
+// PC du même compte, et la personne qui partage ce compte, à l'expiration de
+// leur jeton d'accès (une heure au plus), sans rien leur expliquer. Seuls les
+// changements de mot de passe ferment exprès les autres appareils
+// (account-manage-supabase.js, password-reset-supabase.js).
+export const CET_APPAREIL = { scope: "local" };
+
 // ── Compte mémorisé : démarrage sans attendre le réseau ─────────────────────
 // Le compte construit à la dernière ouverture est gardé sur l'appareil. Au
 // lancement, l'app s'ouvre aussitôt dessus (hors ligne compris) ; la
@@ -80,7 +89,7 @@ async function libererMiroirPour(uid) {
 
 // Connexion refusée sur l'appareil : session fermée, message lisible.
 async function refuserSaisiesNonGardees(sb) {
-  await sb.auth.signOut().catch(() => {});
+  await sb.auth.signOut(CET_APPAREIL).catch(() => {});
   return { ok: false, data: { error: i18n.t("auth.errUnsentOtherAccount") } };
 }
 
@@ -199,11 +208,11 @@ async function connexionParEmail(email, mdp, schoolCode) {
     compte = await chargerCompte(sb, auth.user.id, schoolCode);
   } catch {
     // Mot de passe accepté mais compte illisible : réseau coupé entre les deux.
-    await sb.auth.signOut().catch(() => {});
+    await sb.auth.signOut(CET_APPAREIL).catch(() => {});
     return { ok: false, data: { error: i18n.t("auth.errInterrupted") } };
   }
   if (!compte || compte.desactive) {
-    await sb.auth.signOut().catch(() => {});
+    await sb.auth.signOut(CET_APPAREIL).catch(() => {});
     if (compte?.regroupe) return { ok: false, data: { error: msgCompteRegroupe(), regroupe: true } };
     return { ok: false, data: { error: i18n.t(compte?.desactive ? "auth.errAccountDisabled" : "auth.errAccountNotFound") } };
   }
@@ -227,7 +236,7 @@ export async function ouvrirSessionParJeton(tokenHash, schoolCode) {
     return { ok: false, data: { error: i18n.t("auth.errInterrupted") } };
   }
   if (!compte || compte.desactive) {
-    await sb.auth.signOut().catch(() => {});
+    await sb.auth.signOut(CET_APPAREIL).catch(() => {});
     return { ok: false, data: { error: i18n.t(compte?.desactive ? "auth.errSpaceDisabled" : "auth.errSpaceNotFound") } };
   }
   if (!(await libererMiroirPour(compte.uid))) return refuserSaisiesNonGardees(sb);
@@ -287,7 +296,7 @@ export async function watchAuthState(callback) {
     // Miroir d'un autre compte dont les saisies non envoyées n'ont pas pu
     // être mises de côté : ce compte n'ouvre pas l'app sur l'appareil.
     if (compte && !(await libererMiroirPour(compte.uid))) {
-      await sb.auth.signOut().catch(() => {});
+      await sb.auth.signOut(CET_APPAREIL).catch(() => {});
       compte = null;
     }
     const json = JSON.stringify(compte);
@@ -399,5 +408,5 @@ async function deconnecterSession() {
   await Promise.race([seDesabonnerDesPush(), new Promise((fin) => setTimeout(fin, DELAI_DESABONNEMENT))]);
   await file;
   const sb = getSupabase();
-  await sb.auth.signOut();
+  await sb.auth.signOut(CET_APPAREIL);
 }

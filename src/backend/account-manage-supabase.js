@@ -5,7 +5,7 @@
 // - role_settings de l'école : direct (update ecoles, RLS staff).
 import { getSupabase } from "../supabaseClient";
 import { powerSyncConfigured } from "./powersync/tables";
-import { ajusterCompteMemorise } from "./auth-supabase";
+import { CET_APPAREIL, ajusterCompteMemorise } from "./auth-supabase";
 import { fusionnerExtraEcole } from "./data-supabase";
 
 // Exporté pour les actions propres aux comptes parents (backend/compte-parent.js).
@@ -18,9 +18,10 @@ export async function invoke(body, messageEchec) {
     // session est réellement morte. Sans ce traitement, l'écran restait
     // « connecté » et chaque clic rejouait le même échec, la console
     // empilant des 401 et un 400 sur /token?grant_type=refresh_token.
-    // On termine la session pour ramener l'utilisateur à l'écran de connexion.
+    // On termine la session pour ramener l'utilisateur à l'écran de connexion
+    // — celle de CET appareil seulement : les autres n'y sont pour rien.
     if (error.context?.status === 401) {
-      try { await sb.auth.signOut(); } catch { /* session déjà perdue */ }
+      try { await sb.auth.signOut(CET_APPAREIL); } catch { /* session déjà perdue */ }
       throw new Error("Votre session a expiré. Reconnectez-vous.");
     }
     // L'Edge Function renvoie { error } avec un status non-2xx → message utile.
