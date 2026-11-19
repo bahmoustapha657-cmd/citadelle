@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { SuperAdminTabs } from "./superadmin/SuperAdminTabs";
 import { EcolesTab } from "./superadmin/EcolesTab";
 import { PlansTab } from "./superadmin/PlansTab";
 import { DemandesTab } from "./superadmin/DemandesTab";
 import { OutilsTab } from "./superadmin/OutilsTab";
+import { RetoursTab } from "./superadmin/RetoursTab";
+import { compterRetoursNouveaux } from "../backend/retours-terrain-supabase";
 import { LIFECYCLE_LABELS, S_STYLES } from "./superadmin/constants";
 import { useEcolesAdmin } from "./superadmin/useEcolesAdmin";
 
@@ -21,6 +23,15 @@ function SuperAdminPanel() {
 
   const ea = useEcolesAdmin(setMsgSucces);
 
+  // Retours terrain pas encore lus : compteur de l'onglet dès l'ouverture du
+  // panneau, tenu à jour ensuite par l'onglet lui-même.
+  const [retoursNouveaux, setRetoursNouveaux] = useState(0);
+  useEffect(() => {
+    let actif = true;
+    compterRetoursNouveaux().then((n) => { if (actif) setRetoursNouveaux(n); }).catch(() => {});
+    return () => { actif = false; };
+  }, []);
+
   const S = S_STYLES;
 
   return (
@@ -35,13 +46,15 @@ function SuperAdminPanel() {
       )}
 
       <SuperAdminTabs
-        ongletSA={ongletSA} setOngletSA={setOngletSA} demandes={ea.demandes}
+        ongletSA={ongletSA} setOngletSA={setOngletSA} demandes={ea.demandes} retoursNouveaux={retoursNouveaux}
         setPlanModal={ea.setPlanModal} setConfirmDowngrade={ea.setConfirmDowngrade}
       />
 
       {ongletSA==="outils" && (
         <OutilsTab outilsTab={outilsTab} setOutilsTab={setOutilsTab} ecoles={ea.ecoles}/>
       )}
+
+      {ongletSA==="retours" && <RetoursTab S={S} onNouveaux={setRetoursNouveaux} />}
 
       {ongletSA==="demandes" && (
         <DemandesTab

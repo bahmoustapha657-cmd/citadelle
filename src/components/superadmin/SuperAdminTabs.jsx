@@ -1,15 +1,18 @@
+import { useTranslation } from "react-i18next";
 import { C } from "../../constants";
 
 // Barre de navigation entre les onglets du panel super-admin. Le compteur de
 // demandes en attente est calculé ici ; changer d'onglet referme les panneaux
 // de plan ouverts.
-export function SuperAdminTabs({ ongletSA, setOngletSA, demandes, setPlanModal, setConfirmDowngrade }) {
+export function SuperAdminTabs({ ongletSA, setOngletSA, demandes, retoursNouveaux = 0, setPlanModal, setConfirmDowngrade }) {
+  const { t } = useTranslation();
   const enAttente = demandes.filter(d => d.statut === "en_attente").length;
   const onglets = [
     { id: "ecoles", label: "Ecoles" },
     { id: "plans", label: "Plans" },
     { id: "outils", label: "Comms & Assistant" },
     { id: "demandes", label: `Demandes${enAttente > 0 ? " (" + enAttente + ")" : ""}` },
+    { id: "retours", label: `${t("feedback.admin.tab")}${retoursNouveaux > 0 ? " (" + retoursNouveaux + ")" : ""}` },
   ];
   return (
     <div style={{display:"flex",gap:8,marginBottom:20,flexWrap:"wrap"}}>

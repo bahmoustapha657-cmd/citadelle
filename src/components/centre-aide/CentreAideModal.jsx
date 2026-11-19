@@ -1,13 +1,21 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Modale } from "../ui";
 import { CATEGORIES, ARTICLES } from "./centre-aide-contenu";
+import { RetourTerrain } from "./RetourTerrain";
 
 const norm = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 
 // Centre d'aide intégré : articles « pas à pas » filtrés selon le rôle de
 // l'utilisateur, recherche plein texte, et bloc de contact (WhatsApp / tél /
 // e-mail). Accessible depuis le menu profil.
-export function CentreAideModal({ utilisateur = {}, onClose }) {
+// Retours terrain : depuis le bloc de contact (ou une recherche sans
+// résultat), un compte d'école signale un problème ou propose une idée à
+// EduGest (RetourTerrain.jsx) ; `ecran` = page ouverte, jointe à l'envoi.
+export function CentreAideModal({ utilisateur = {}, onClose, ecran = "", peutSignaler = false }) {
+  const { t } = useTranslation();
+  // null = articles d'aide ; sinon panneau de retour, pré-rempli.
+  const [retour, setRetour] = useState(null);
   // Clé effective : le poste prime sur le rôle enum (postes système = mêmes
   // clés que les rôles historiques ; direction voit tout).
   const role = utilisateur.posteCle || utilisateur.role || "";
@@ -24,6 +32,19 @@ export function CentreAideModal({ utilisateur = {}, onClose }) {
 
   const categoriesAff = CATEGORIES.filter((c) => articles.some((a) => a.cat === c.id));
 
+  if (retour) {
+    return (
+      <Modale large titre={t("feedback.title")} fermer={onClose}>
+        <RetourTerrain ecran={ecran} genreInitial={retour.genre} messageInitial={retour.message} onRetour={() => setRetour(null)} />
+      </Modale>
+    );
+  }
+
+  const boutonRetour = {
+    display: "inline-flex", alignItems: "center", gap: 6, background: "#0A1628", color: "#fff", border: "none",
+    borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer",
+  };
+
   return (
     <Modale xlarge titre="❓ Centre d'aide" fermer={onClose}>
       <input
@@ -38,6 +59,13 @@ export function CentreAideModal({ utilisateur = {}, onClose }) {
           <p style={{ textAlign: "center", color: "#94a3b8", fontSize: 13, padding: "24px 0" }}>
             Aucune aide ne correspond à « {q} ».
           </p>
+        )}
+        {categoriesAff.length === 0 && peutSignaler && (
+          <div style={{ textAlign: "center", marginBottom: 16 }}>
+            <button type="button" style={boutonRetour} onClick={() => setRetour({ genre: "question", message: q.trim() })}>
+              {t("feedback.askQuestion")}
+            </button>
+          </div>
         )}
 
         {categoriesAff.map((cat) => (
@@ -70,6 +98,11 @@ export function CentreAideModal({ utilisateur = {}, onClose }) {
       <div style={{ marginTop: 14, borderTop: "1px solid #e2e8f0", paddingTop: 14 }}>
         <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 800, color: "#0A1628" }}>Besoin d'aide supplémentaire ?</p>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {peutSignaler && (
+            <button type="button" style={boutonRetour} onClick={() => setRetour({})}>
+              {t("feedback.open")}
+            </button>
+          )}
           <a href="https://wa.me/224627738579" target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#22c55e", color: "#fff", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 700, textDecoration: "none" }}>💬 WhatsApp</a>
           <a href="tel:+224627738579" style={{ display: "inline-flex", alignItems: "center", gap: 6, border: "1px solid #b0c4d8", color: "#334155", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 700, textDecoration: "none" }}>📞 +224 627 73 85 79</a>
           <a href="mailto:edugest26@gmail.com" style={{ display: "inline-flex", alignItems: "center", gap: 6, border: "1px solid #b0c4d8", color: "#334155", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 700, textDecoration: "none" }}>✉️ edugest26@gmail.com</a>
