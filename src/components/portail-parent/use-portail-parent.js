@@ -5,6 +5,7 @@ import { getPeriodesForSection } from "../../period-utils";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { msgLectureSeulePortail } from "../app/app-shell-plan";
 import { tranchesValides } from "../../paiements-scolarite";
+import { sansComptabilite } from "../../ecole-publique";
 import { getJoursOuvrablesPourClasse } from "../ecole/edt/edt-utils";
 import { fetchParentPortal, envoyerMessageParent } from "./portail-parent-api";
 import {
@@ -140,13 +141,16 @@ export function usePortailParent({ utilisateur, schoolInfo }) {
     }
   };
 
+  // École publique : la scolarité est gratuite, pas d'onglet Mensualités ni
+  // de « reste à payer » (src/ecole-publique.js).
+  const sansArgent = sansComptabilite(schoolInfo);
   const tabs = [
     { id: "dashboard", label: t("parent.tabs.overview") },
     { id: "notes", label: t("parent.tabs.grades"), bloque: accesBloqueParPaiement },
     { id: "edt", label: t("parent.tabs.schedule") },
     { id: "absences", label: t("parent.tabs.absences") },
     { id: "bulletins", label: t("parent.tabs.bulletin"), bloque: accesBloqueParPaiement },
-    { id: "paiements", label: t("parent.tabs.fees") },
+    ...(sansArgent ? [] : [{ id: "paiements", label: t("parent.tabs.fees") }]),
     { id: "messages", label: `${t("parent.tabs.messages")}${nonLus > 0 ? ` (${nonLus})` : ""}`, labelBase: t("parent.tabs.messages") },
   ];
 
@@ -180,6 +184,7 @@ export function usePortailParent({ utilisateur, schoolInfo }) {
     accesBloqueParPaiement,
     moisAnnee,
     famille,
+    sansArgent,
     voirEnfant,
     envoyer,
     chargerPortail,

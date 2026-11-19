@@ -2,12 +2,16 @@
 // constructeurs d'état initial (form / accueil), config des actions
 // dangereuses, onglets et styles partagés. Aucun état React ici.
 import { C, JOURS_SEMAINE, getSectionsActives } from "../../../constants";
+import { statutNormalise, typeEtablissementParDefaut } from "../../../ecole-publique";
 
 // État initial du formulaire d'identité à partir de schoolInfo.
 export function buildFormInitial(schoolInfo) {
   return {
     nom: schoolInfo.nom || "",
-    type: schoolInfo.type || "Groupe Scolaire Privé",
+    type: schoolInfo.type || typeEtablissementParDefaut(schoolInfo),
+    // Public / privé (src/ecole-publique.js) : une école publique n'a pas de
+    // comptabilité. Masqué dans l'espace d'un enseignant seul.
+    statutEtablissement: statutNormalise(schoolInfo.statutEtablissement),
     ville: schoolInfo.ville || "",
     pays: schoolInfo.pays || "République de Guinée",
     couleur1: schoolInfo.couleur1 || "#0A1628",

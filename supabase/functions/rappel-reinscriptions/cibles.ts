@@ -43,13 +43,15 @@ export function anneeDuJour(d: Date): string {
 
 // Réglages de l'école utiles à la règle, avec les mêmes replis que l'app
 // (mergeSchoolInfo : rentrée en octobre ; année du jour si l'école n'a jamais
-// enregistré la sienne).
+// enregistré la sienne). Le statut public/privé coupe la règle
+// (delaiRetraitEcole : une école publique n'a pas de non réinscrits).
 export function infoEcole(extra: Record<string, unknown> | null | undefined, maintenant: Date) {
   const x = extra || {};
   return {
     anneeScolaire: typeof x.anneeScolaire === "string" && x.anneeScolaire ? x.anneeScolaire : anneeDuJour(maintenant),
     moisDebut: typeof x.moisDebut === "string" && x.moisDebut ? x.moisDebut : "Octobre",
     retraitNonReinscrits: x.retraitNonReinscrits,
+    statutEtablissement: x.statutEtablissement,
   };
 }
 

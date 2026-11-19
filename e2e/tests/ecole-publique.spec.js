@@ -6,6 +6,7 @@
 //
 // Nom tiré au hasard à chaque passage : le spec se relance sur la même base.
 import { test, expect } from "@playwright/test";
+import { toRow } from "../../src/backend/collection-map.js";
 import { appelerInscription, clientAdmin, clientConnecte } from "../donnees.js";
 
 const SUFFIXE = String(Date.now()).slice(-5);
@@ -23,6 +24,16 @@ const lireEcole = async (code) => {
 // Prix fixé le 2026-11-19 (src/ecole-publique.js) ; l'espace entre les
 // milliers est insécable, d'où \s.
 const PRIX_MOIS = /100\s000 GNF \/ mois/;
+
+const seConnecter = async (page) => {
+  await page.goto("/");
+  await page.getByPlaceholder("Ex. : citadelle").fill(ECOLE.code);
+  await expect(page.getByText(ECOLE.nom).first()).toBeVisible();
+  await page.getByPlaceholder("Identifiant, téléphone ou e-mail").fill(DIRECTION.login);
+  await page.getByPlaceholder("Votre mot de passe").fill(DIRECTION.mdp);
+  await page.getByRole("button", { name: "Se connecter", exact: true }).click();
+  await expect(page.getByRole("button", { name: /Se déconnecter/ })).toBeVisible({ timeout: 30_000 });
+};
 
 test("la page d'accueil affiche l'offre École publique et mène à son inscription", async ({ page }) => {
   await page.goto("/");
@@ -109,5 +120,98 @@ test("depuis le tableau de bord, elle demande l'offre École publique, choisie d
   const { data: demandes } = await clientAdmin().from("demandes_plan").select("plan_demande, statut").eq("ecole_id", id);
   expect(demandes).toEqual([{ plan_demande: "publique", statut: "en_attente" }]);
   // Rien n'est activé avant la vérification d'EduGest.
+  expect((await lireEcole(ECOLE.code)).plan).toBe("gratuit");
+});
+
+// ── Lot A (2026-11-19) : une école publique n'a PAS de comptabilité ──
+// Primaire gratuit, enseignants payés par l'État : ni mensualités, ni caisse,
+// ni paie, ni fondation. Elle garde les présences du personnel et inscrit ses
+// élèves depuis l'onglet Élèves.
+const CLASSE = "7ème Année A";
+const ELEVES = [
+  { nom: "DIALLO", prenom: "Mariama", sexe: "F" },
+  { nom: "SOW", prenom: "Ibrahima", sexe: "M" },
+];
+
+test("sans comptabilité : présences du personnel au menu, aucun chiffre d'argent", async ({ page }) => {
+  await seConnecter(page);
+  const menu = page.getByRole("navigation");
+  await expect(menu.getByRole("button", { name: /Présences du personnel/ })).toBeVisible();
+  for (const absent of [/Comptabilité/, /Fondation/]) {
+    await expect(menu.getByRole("button", { name: absent })).toHaveCount(0);
+  }
+
+  // Tableau de bord : effectifs et absences, aucune tuile ni alerte d'argent.
+  await menu.getByRole("button", { name: /Tableau de bord/ }).click();
+  await expect(page.getByText("Absences saisies").first()).toBeVisible();
+  for (const argent of ["Taux paiement", "Solde tréso.", "Mensualités payées", "Alertes & rappels"]) {
+    await expect(page.getByText(argent, { exact: true })).toHaveCount(0);
+  }
+
+  // Le module garde un seul écran : les présences, sans onglet d'argent.
+  await menu.getByRole("button", { name: /Présences du personnel/ }).click();
+  await expect(page.getByRole("heading", { name: "Présences du personnel" })).toBeVisible();
+  await expect(page.getByText("Absences, retards et permissions des enseignants et du personnel")).toBeVisible();
+  await expect(page.getByText(/^Recettes \(/)).toHaveCount(0);
+  await expect(page.getByText(/^Salaires/)).toHaveCount(0);
+
+  // Paramètres : le statut se lit (et se change) dans Identité ; pas de
+  // paiement en ligne des familles.
+  await menu.getByRole("button", { name: /Paramètres/ }).click();
+  await expect(page.getByLabel("Statut de l'établissement")).toHaveValue("public");
+  await expect(page.getByText(/Paiement en ligne/)).toHaveCount(0);
+});
+
+test("elle inscrit ses élèves depuis l'onglet Élèves, sans passer par une comptabilité", async ({ page }) => {
+  // Sa classe, écrite par la direction (RLS), sous la forme que produit l'app.
+  const direction = await clientConnecte(DIRECTION);
+  const { id: ecole_id } = await lireEcole(ECOLE.code);
+  const { data: dejaLa } = await direction.from("classes").select("id").eq("nom", CLASSE);
+  if (!dejaLa?.length) {
+    const { error } = await direction.from("classes")
+      .insert({ ...toRow("classes", { nom: CLASSE }).row, ecole_id, section: "college" });
+    if (error) throw new Error(`classes : ${error.message}`);
+  }
+
+  await seConnecter(page);
+  const menu = page.getByRole("navigation");
+  await menu.getByRole("button", { name: /Secondaire/ }).click();
+  // Plus de renvoi vers une Comptabilité → Élèves qu'elle n'a pas.
+  await expect(page.getByText(/Comptabilité → Élèves/)).toHaveCount(0);
+  await page.getByRole("button", { name: /^Élèves \(\d+\)$/ }).click();
+  await page.getByRole("button", { name: "➕ Ajouter des élèves" }).click();
+  await page.getByLabel("Élèves — un par ligne")
+    .fill(ELEVES.map((e) => `${e.nom} ${e.prenom} ${e.sexe}`).join("\n"));
+  await page.getByRole("button", { name: `✅ Inscrire (${ELEVES.length})` }).click();
+  await expect(page.getByText(`Élèves inscrits en ${CLASSE} : ${ELEVES.length}.`)).toBeVisible({ timeout: 30_000 });
+
+  await expect.poll(async () => {
+    const { data } = await clientAdmin().from("eleves")
+      .select("nom, prenom, sexe, classe, section").eq("ecole_id", ecole_id).order("nom");
+    return data;
+  }, { timeout: 30_000 }).toEqual(ELEVES.map((e) => ({ ...e, classe: CLASSE, section: "college" })));
+
+  // Toujours là après le 1er novembre : sans paiement, un élève d'école
+  // publique n'est pas un « non réinscrit » (le retrait automatique est coupé).
+  await page.reload();
+  await expect(page.getByRole("button", { name: /Se déconnecter/ })).toBeVisible({ timeout: 30_000 });
+  await menu.getByRole("button", { name: /Secondaire/ }).click();
+  await expect(page.getByRole("button", { name: `Élèves (${ELEVES.length})` })).toBeVisible();
+});
+
+test("redevenue privée dans Paramètres, elle retrouve sa comptabilité", async ({ page }) => {
+  await seConnecter(page);
+  const menu = page.getByRole("navigation");
+  await menu.getByRole("button", { name: /Paramètres/ }).click();
+  await page.getByLabel("Statut de l'établissement").selectOption("prive");
+  await page.getByRole("button", { name: "💾 Enregistrer les paramètres" }).click();
+  await expect(page.getByText("Paramètres enregistrés avec succès.")).toBeVisible({ timeout: 30_000 });
+  await expect(menu.getByRole("button", { name: /Comptabilité/ })).toBeVisible();
+  await expect(menu.getByRole("button", { name: /Présences du personnel/ })).toHaveCount(0);
+
+  const { extra } = await lireEcole(ECOLE.code);
+  expect(extra.statutEtablissement).toBe("prive");
+  // Le type par défaut a suivi le statut ; le plan, lui, n'a pas bougé.
+  expect(extra.type).toBe("Groupe Scolaire Privé");
   expect((await lireEcole(ECOLE.code)).plan).toBe("gratuit");
 });

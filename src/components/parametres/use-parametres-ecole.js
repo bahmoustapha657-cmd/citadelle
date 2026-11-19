@@ -20,6 +20,7 @@ import {
 } from "./use-parametres/parametres-api";
 import { lireImageEnBase64 } from "./use-parametres/parametres-uploads";
 import { ongletParametresOuvert } from "../../espace-enseignant";
+import { ongletParametresOuvertPublique } from "../../ecole-publique";
 
 export function useParametresEcole({ utilisateurRole = "", onSchoolClosed = null, initialTab = null, onTabConsumed = null }) {
   const {schoolId,schoolInfo,setSchoolInfo,toast} = useContext(SchoolContext);
@@ -191,7 +192,8 @@ export function useParametresEcole({ utilisateurRole = "", onSchoolClosed = null
 
   const resetLogo = () => { setForm(p=>({...p,logo:""})); setApercu(null); };
 
-  const tabItems = buildTabItems(canManageLifecycle).filter((tab) => ongletParametresOuvert(schoolInfo, tab.id));
+  const tabItems = buildTabItems(canManageLifecycle).filter((tab) => ongletParametresOuvert(schoolInfo, tab.id)
+    && ongletParametresOuvertPublique(schoolInfo, tab.id));
 
   return {
     schoolId, schoolInfo, toast,

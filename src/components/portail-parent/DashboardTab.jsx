@@ -12,13 +12,13 @@ import { localeCourante } from "../../i18n";
 // puis annonces de l'école et résumé de l'enfant affiché. `section` = clé de
 // section de l'enfant : barème des notes et échelle du radar (maternelle et
 // primaire sur 10), formule des moyennes par matière.
-export function DashboardTab({ annonces, mesNotes, mesAbsences, matieres, eleve, section, c1, onVoirNotes, famille, eleveId, onVoirEnfant }) {
+export function DashboardTab({ annonces, mesNotes, mesAbsences, matieres, eleve, section, c1, onVoirNotes, famille, eleveId, onVoirEnfant, sansArgent = false }) {
   const { t } = useTranslation();
   const maxNote = getBaremeForSection(section);
   return (
     <>
       {famille?.enfants.length > 1 && (
-        <FamilleCard famille={famille} eleveId={eleveId} onVoirEnfant={onVoirEnfant} c1={c1} />
+        <FamilleCard famille={famille} eleveId={eleveId} onVoirEnfant={onVoirEnfant} c1={c1} sansArgent={sansArgent} />
       )}
 
       {annonces.length > 0 && (

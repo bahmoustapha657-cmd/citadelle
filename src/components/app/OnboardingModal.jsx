@@ -4,6 +4,7 @@
 import { useTranslation } from "react-i18next";
 import { C, isModuleOuvertPourEcole } from "../../constants";
 import { estEspaceEnseignant } from "../../espace-enseignant";
+import { estEcolePublique } from "../../ecole-publique";
 import { Btn } from "../ui";
 
 export function OnboardingModal({ schoolInfo, setPage, onClose }) {
@@ -22,6 +23,14 @@ export function OnboardingModal({ schoolInfo, setPage, onClose }) {
     identite,
     etape(true, "classes", moduleSections),
     etape(true, "students", moduleSections, "studentsTeacherDesc"),
+  ] : estEcolePublique(schoolInfo) ? [
+    // École publique : pas de Comptabilité — élèves inscrits depuis l'onglet
+    // Élèves, enseignants payés par l'État (aucune paie).
+    identite,
+    etape(true, "classes", moduleSections),
+    etape(true, "teachers", moduleSections),
+    etape(true, "students", moduleSections, "studentsTeacherDesc"),
+    etape(true, "timetables", moduleSections),
   ] : [
     identite,
     etape(true, "classes", moduleSections),

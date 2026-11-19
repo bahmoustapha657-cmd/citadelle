@@ -17,6 +17,7 @@ import {
   montantApresExoneration,
 } from "./exoneration-utils.ts";
 import { moisExigibles, partiAvantAnnee } from "./depart-utils.js";
+import { blocageImpayeActif } from "./ecole-publique.js";
 
 // Bumper à chaque changement de formule (mensualité, solde, snapshot) qui
 // rendrait les calculs antérieurs non reproductibles.
@@ -194,7 +195,7 @@ export function estBloquePourImpaye(
   moisAnnee: string[] = [],
   annee?: string,
 ): boolean {
-  if (!schoolInfo?.blocageParentImpaye) return false;
+  if (!blocageImpayeActif(schoolInfo)) return false;
   return countUnpaidMonths(eleve, moisAnnee, annee) > 0;
 }
 

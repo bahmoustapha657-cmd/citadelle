@@ -9,6 +9,7 @@ import { fmt, isSectionActive, today } from "../../constants.js";
 import { PRINT_TRIGGER, printDir, printLang, tr, watermarkHtml } from "../print-helpers.js";
 import { blocsSignatures, cachetOuEspace } from "../signatures.js";
 import { getRapportAnnuelStyles } from "./rapport-styles.js";
+import { sansComptabilite } from "../../ecole-publique.js";
 import {
   buildAbsences,
   buildEffectifs,
@@ -45,14 +46,17 @@ const detailSections = (schoolInfo, parSection) => [["prescolaire", "M"], ["coll
   .map(([section, lettre]) => `${parSection[section]}${lettre}`)
   .join(" · ");
 
-const buildKpis = (m, schoolInfo) => `
-  <div class="kpi-row">
+// École publique (sansComptabilite) : effectifs et absences, aucune tuile
+// d'argent — personne n'y paie l'école.
+const buildKpis = (m, schoolInfo, avecArgent = true) => `
+  <div class="kpi-row"${avecArgent ? "" : ' style="grid-template-columns:repeat(3,1fr)"'}>
     <div class="kpi"><div class="kpi-val">${m.totEleves}</div><div class="kpi-label">Élèves actifs</div><div class="kpi-sub">${detailSections(schoolInfo, { prescolaire: m.totPre, college: m.totC, lycee: m.totL, primaire: m.totP })}</div></div>
     <div class="kpi"><div class="kpi-val">${m.totEnseignants}</div><div class="kpi-label">Enseignants</div><div class="kpi-sub">${detailSections(schoolInfo, { prescolaire: m.ensPreCount, college: m.ensCCount, lycee: m.ensLCount, primaire: m.ensPCount })}</div></div>
-    <div class="kpi vert"><div class="kpi-val">${fmtMoney(m.totRecAnnuel)}</div><div class="kpi-label">Recettes</div></div>
+    ${avecArgent ? "" : `<div class="kpi amber"><div class="kpi-val">${m.totAbsences}</div><div class="kpi-label">${tr("reports.absences")}</div></div>`}
+    ${!avecArgent ? "" : `<div class="kpi vert"><div class="kpi-val">${fmtMoney(m.totRecAnnuel)}</div><div class="kpi-label">Recettes</div></div>
     <div class="kpi rouge"><div class="kpi-val">${fmtMoney(m.totDepAnnuel + m.totSalAnnuel)}</div><div class="kpi-label">Dépenses+Salaires</div><div class="kpi-sub">${fmtMoney(m.totDepAnnuel)} + ${fmtMoney(m.totSalAnnuel)}</div></div>
     <div class="kpi ${m.soldeAnnuel >= 0 ? "vert" : "rouge"}"><div class="kpi-val">${fmtMoney(m.soldeAnnuel)}</div><div class="kpi-label">Solde annuel</div></div>
-    <div class="kpi ${m.tauxRecouvrement >= 80 ? "vert" : m.tauxRecouvrement >= 50 ? "amber" : "rouge"}"><div class="kpi-val">${m.tauxRecouvrement}%</div><div class="kpi-label">Recouvrement</div><div class="kpi-sub">${m.totalPercu}/${m.totalDu}</div></div>
+    <div class="kpi ${m.tauxRecouvrement >= 80 ? "vert" : m.tauxRecouvrement >= 50 ? "amber" : "rouge"}"><div class="kpi-val">${m.tauxRecouvrement}%</div><div class="kpi-label">Recouvrement</div><div class="kpi-sub">${m.totalPercu}/${m.totalDu}</div></div>`}
   </div>`;
 
 export const buildRapportAnnuelHTML = (model, schoolInfo = {}) => {
@@ -60,6 +64,9 @@ export const buildRapportAnnuelHTML = (model, schoolInfo = {}) => {
   const c2 = schoolInfo.couleur2 || "#00C48C";
   const nomEcole = schoolInfo.nom || "École";
   const logo = schoolInfo.logo || "";
+  // École publique : ni finances, ni mensualités, ni salaires, ni fondateur.
+  const avecArgent = !sansComptabilite(schoolInfo);
+  const si = (cond, html) => (cond ? html : "");
 
   return `<!DOCTYPE html><html lang="${printLang()}" dir="${printDir()}"><head>
   <meta charset="utf-8"/>
@@ -67,17 +74,17 @@ export const buildRapportAnnuelHTML = (model, schoolInfo = {}) => {
   <style>${getRapportAnnuelStyles(c1, c2)}</style></head><body>
   ${watermarkHtml(schoolInfo)}
   ${buildHeader(model, c1, c2, nomEcole, logo)}
-  ${buildKpis(model, schoolInfo)}
+  ${buildKpis(model, schoolInfo, avecArgent)}
   ${buildEffectifs(model)}
-  ${buildFinances(model)}
+  ${si(avecArgent, buildFinances(model))}
   ${buildPedagogie(model)}
-  ${buildMensualites(model)}
-  ${buildSalaires(model)}
+  ${si(avecArgent, buildMensualites(model))}
+  ${si(avecArgent, buildSalaires(model))}
   ${buildAbsences(model)}
 
   <div class="sigs">
     ${blocsSignatures(schoolInfo, "rapportAnnuel", (identite, s) => `<div class="sig">${identite}${cachetOuEspace(s)}${s.role === "principal" ? "Signature & Cachet" : "Signature"}</div>`)}
-    <div class="sig">Fondateur / Conseil d'administration<br/><br/><br/>Signature</div>
+    ${si(avecArgent, `<div class="sig">Fondateur / Conseil d'administration<br/><br/><br/>Signature</div>`)}
   </div>
 
   <div class="footer">

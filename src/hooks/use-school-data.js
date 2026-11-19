@@ -8,7 +8,7 @@ import { marquerRappelVu, rappelNonReinscrits, rappelVuAujourdhui } from "../rap
 import { DEFAULT_VERROUS, mergeSchoolInfo, applyBrandingColors } from "./school-data-helpers";
 import { suivreCompteur } from "./suivre-compteur";
 import { NB_NOTIFS, preparerNotifs, lireVu, ecrireVu } from "../notifications-cloche";
-import { estEspaceEnseignant } from "../espace-enseignant";
+import { sansComptabilite } from "../ecole-publique";
 
 // Hook des données liées à l'école courante :
 // - schoolInfo (table `ecoles`, profil légal compris) + verrous + variables
@@ -124,10 +124,11 @@ export function useSchoolData({ schoolId, utilisateur }) {
   // Seulement pour qui écrit la comptabilité. Relu à l'ouverture puis après
   // chaque rafale de changements des élèves (30 s : un encaissement retire
   // l'élève du rappel sans relire toute l'école à chaque clic).
-  // Jamais dans l'espace d'un enseignant indépendant : sans comptabilité,
-  // personne n'y paie, tous ses élèves passeraient pour non réinscrits.
+  // Jamais dans l'espace d'un enseignant indépendant ni dans une école
+  // publique : sans comptabilité, personne n'y paie, tous les élèves
+  // passeraient pour non réinscrits.
   const peutCompta = !!utilisateur && !["enseignant", "parent"].includes(utilisateur.role)
-    && !estEspaceEnseignant(schoolInfoState)
+    && !sansComptabilite(schoolInfoState)
     && hasWrite(getSessionPermissions(utilisateur, schoolInfoState), "compta");
   useEffect(() => {
     if (!peutCompta || !schoolId || schoolId === "superadmin") return undefined;
