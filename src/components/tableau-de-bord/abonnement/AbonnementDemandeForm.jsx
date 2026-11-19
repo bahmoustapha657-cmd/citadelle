@@ -1,6 +1,6 @@
 import { Trans, useTranslation } from "react-i18next";
 import { C, PLANS } from "../../../constants";
-import { PLAN_PUBLIQUE, plansDemandables } from "../../../ecole-publique";
+import { PLAN_PUBLIQUE, plansDemandables, prixEcolePublique } from "../../../ecole-publique";
 
 // Opérateurs proposés ; la valeur envoyée reste ce libellé (« Autre » compris).
 const OPERATEURS = ["Orange Money", "MTN Mobile Money", "Moov Money", "Wave", "Autre"];
@@ -15,8 +15,9 @@ export function AbonnementDemandeForm({
   const plans = plansDemandables(schoolInfo, PLANS);
   // Capacité affichée sous le nom du plan ; l'école publique paie un prix
   // fixe quel que soit son effectif.
+  const prix = prixEcolePublique();
   const capacite = (key, info) => key === PLAN_PUBLIQUE
-    ? t("dashboard.sub.fixedPrice")
+    ? t("dashboard.sub.fixedPrice", { prix })
     : info.eleveLimit === Infinity ? t("dashboard.sub.unlimited") : t("dashboard.sub.upToStudents", { count: info.eleveLimit });
   return (
     <div style={{ padding: "20px 24px" }}>
@@ -38,7 +39,7 @@ export function AbonnementDemandeForm({
       </div>
       {demandePlan === PLAN_PUBLIQUE && (
         <p style={{ margin: "0 0 18px", fontSize: 12, color: "#065f46", background: "#ecfdf5", border: "1px solid #a7f3d0", borderRadius: 8, padding: "8px 10px", lineHeight: 1.5 }}>
-          {t("dashboard.sub.publicNote")}
+          {t("dashboard.sub.publicNote", { prix })}
         </p>
       )}
 

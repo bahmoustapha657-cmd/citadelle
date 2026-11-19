@@ -1,4 +1,55 @@
+import { useTranslation } from "react-i18next";
 import { OFFRES } from "./landing-content";
+import { prixEcolePublique } from "../../ecole-publique";
+
+// Offre École publique : un public à part (prix fixe quel que soit
+// l'effectif), d'où une bande sous la grille plutôt qu'une 5e carte.
+const PUBLIQUE = { accent: "#34D399", accentSoft: "rgba(52,211,153,0.14)" };
+
+function BandeEcolePublique({ onInscription }) {
+  const { t } = useTranslation();
+  const atouts = ["publicFeature1", "publicFeature2", "publicFeature3", "publicFeature4"];
+  return (
+    <div
+      data-offre="publique"
+      className="landing-card"
+      style={{
+        marginTop: 16, borderRadius: 16, padding: "20px 20px", textAlign: "start",
+        background: `linear-gradient(90deg, ${PUBLIQUE.accentSoft} 0%, rgba(255,255,255,0.03) 85%)`,
+        border: `1px solid ${PUBLIQUE.accent}55`,
+        display: "flex", flexWrap: "wrap", alignItems: "center", gap: "16px 28px",
+      }}
+    >
+      <div style={{ flex: "1 1 220px" }}>
+        <div style={{ fontSize: 11, fontWeight: 800, color: PUBLIQUE.accent, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 }}>
+          🏛️ {t("plans.publique")}
+        </div>
+        <div style={{ fontSize: "clamp(18px,3vw,26px)", fontWeight: 900, color: "#fff", lineHeight: 1.1 }}>
+          {t("register.public.fixedPrice", { prix: prixEcolePublique() })}
+        </div>
+        <div style={{ fontSize: 12.5, color: "rgba(255,255,255,0.65)", marginTop: 6, lineHeight: 1.5 }}>{t("landing.publicTitle")}</div>
+      </div>
+      <ul style={{ flex: "2 1 300px", listStyle: "none", padding: 0, margin: 0, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(170px,1fr))", gap: 8 }}>
+        {atouts.map((cle) => (
+          <li key={cle} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12, color: "rgba(255,255,255,0.78)", lineHeight: 1.5 }}>
+            <span style={{ color: PUBLIQUE.accent, fontWeight: 800, marginTop: 1, flexShrink: 0 }}>✓</span>
+            {t(`landing.${cle}`)}
+          </li>
+        ))}
+      </ul>
+      <button
+        className="landing-cta"
+        onClick={onInscription}
+        style={{
+          flex: "1 1 200px", padding: "12px 16px", borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: "pointer",
+          background: `${PUBLIQUE.accent}1A`, border: `1px solid ${PUBLIQUE.accent}55`, color: "#fff", letterSpacing: 0.2, minHeight: 44,
+        }}
+      >
+        {t("landing.publicCta")}
+      </button>
+    </div>
+  );
+}
 
 export function LandingTarifs({ onInscription }) {
   return (
@@ -88,6 +139,7 @@ export function LandingTarifs({ onInscription }) {
           </div>
         ))}
       </div>
+      <BandeEcolePublique onInscription={onInscription} />
     </section>
   );
 }

@@ -10,6 +10,12 @@
 
 export const PLAN_PUBLIQUE = "publique";
 
+// Prix fixé par l'utilisateur le 2026-11-19 : 100 000 GNF par mois, quel que
+// soit le nombre d'élèves. Seule source du montant : les textes (inscription,
+// demande d'abonnement, page d'accueil) le reçoivent en {{prix}}.
+export const PRIX_MENSUEL_PUBLIQUE = 100000;
+export const prixEcolePublique = () => `${PRIX_MENSUEL_PUBLIQUE.toLocaleString("fr-FR")} GNF`;
+
 export const estEcolePublique = (schoolInfo) => schoolInfo?.statutEtablissement === "public";
 
 // Plans proposés dans la demande d'abonnement (tableau de bord). Tous restent
