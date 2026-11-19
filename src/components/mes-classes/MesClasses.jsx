@@ -8,6 +8,32 @@ import { changerEspace, mesClasses } from "../../backend/espaces-supabase";
 import { retenirDestination } from "../app/destination-espace";
 import { grouperParEtablissement, moduleDeSection, totauxMesClasses } from "./mes-classes";
 import { AjoutEtablissementModale } from "./AjoutEtablissementModale";
+import { DemandeRattachementModale } from "../rattachement/DemandeRattachementModale";
+import { annulerRattachement } from "../../backend/rattachement-supabase";
+
+// Demande de rattachement de l'établissement ouvert à son école (étape 3) :
+// le bouton pour la faire, ou son état et l'annulation.
+function EtatRattachement({ groupe, t, onDemander, onAnnuler, occupe }) {
+  const r = groupe.rattachement;
+  if (r?.statut === "en_attente") {
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
+        <Badge color="amber">⏳ {t("rattachement.pending", { ecole: r.ecole })}</Badge>
+        {groupe.actuel && (
+          <Btn sm v="ghost" disabled={occupe} onClick={onAnnuler}>{t("rattachement.cancel")}</Btn>
+        )}
+      </div>
+    );
+  }
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
+      {r?.statut === "refusee" && <Badge color="red">{t("rattachement.refused", { ecole: r.ecole })}</Badge>}
+      {groupe.actuel && (
+        <Btn sm v="ghost" disabled={occupe} onClick={onDemander}>🏫 {t("rattachement.requestButton")}</Btn>
+      )}
+    </div>
+  );
+}
 
 // « Toutes mes classes » — espace d'un enseignant indépendant (étape 2) :
 // les classes de TOUS ses établissements, un par carte. Une classe de
@@ -19,7 +45,9 @@ export function MesClasses({ setPage }) {
   const { toast } = useContext(SchoolContext);
   const [etat, setEtat] = useState({ chargement: true, erreur: "", groupes: [] });
   const [ajout, setAjout] = useState(false);
+  const [demande, setDemande] = useState(null);
   const [ouverture, setOuverture] = useState(null);
+  const [annulation, setAnnulation] = useState(false);
 
   const lire = useCallback(() => mesClasses()
     .then((lignes) => setEtat({ chargement: false, erreur: "", groupes: grouperParEtablissement(lignes) }))
@@ -43,6 +71,20 @@ export function MesClasses({ setPage }) {
     } catch (err) {
       toast(err?.message || t("shell.spaces.error"), "error");
       setOuverture(null);
+    }
+  };
+
+  const annuler = async () => {
+    if (!window.confirm(t("rattachement.cancelConfirm"))) return;
+    setAnnulation(true);
+    try {
+      await annulerRattachement();
+      toast(t("rattachement.cancelled"), "success");
+      recharger();
+    } catch (err) {
+      toast(err?.message || t("rattachement.errCancel"), "error");
+    } finally {
+      setAnnulation(false);
     }
   };
 
@@ -117,6 +159,8 @@ export function MesClasses({ setPage }) {
                     })}
                   </div>
                 )}
+                <EtatRattachement groupe={g} t={t} occupe={!!ouverture || annulation}
+                  onDemander={() => setDemande(g)} onAnnuler={annuler} />
               </Card>
             ))}
           </div>
@@ -129,6 +173,18 @@ export function MesClasses({ setPage }) {
           onAjoute={(nom) => {
             toast(t("shell.myClasses.added", { nom }), "success");
             setAjout(false);
+            recharger();
+          }}
+        />
+      )}
+
+      {demande && (
+        <DemandeRattachementModale
+          etablissement={demande.nom}
+          fermer={() => setDemande(null)}
+          onEnvoyee={(ecole) => {
+            toast(t("rattachement.sent", { ecole }), "success");
+            setDemande(null);
             recharger();
           }}
         />

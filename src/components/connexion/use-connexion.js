@@ -79,7 +79,9 @@ export function useConnexion({ onLogin }) {
       // proposé une fois, juste après cette connexion.
       demanderChoixEspace();
       // Session Supabase déjà ouverte → useAuthSession prend le relais.
-      onLogin(data.compte, sid);
+      // Espace personnel d'un enseignant rattaché : la session s'ouvre sur
+      // le code de l'école où il arrive, pas sur celui qu'il a tapé.
+      onLogin(data.compte, data.compte?.schoolId || sid);
     } catch {
       setErreur(t("auth.errServerUnreachable"));
     } finally {

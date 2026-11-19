@@ -18,6 +18,11 @@ export function grouperParEtablissement(lignes = []) {
     if (!groupes.has(l.compte_id)) {
       groupes.set(l.compte_id, {
         compteId: l.compte_id, code: l.ecole_code || "", nom: l.ecole_nom || "", actuel: !!l.actuel, classes: [],
+        // Dernière demande de rattachement à une école (étape 3), si elle
+        // attend la direction ou a été refusée.
+        rattachement: l.rattachement_statut
+          ? { statut: l.rattachement_statut, ecole: l.rattachement_ecole || "" }
+          : null,
       });
     }
     if (l.classe_id) {

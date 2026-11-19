@@ -21,6 +21,8 @@ export const TABLES = [
   // Ajoutées le 2026-11-14 (absentes depuis leur création).
   "paiement_config", "paiements_en_ligne", "presences", "transferts",
   "notifications_envois", "demandes_plan", "superadmin_messages", "superadmin_message_lectures",
+  // Demandes de rattachement d'un espace enseignant à une école (2026-11-18).
+  "rattachements",
 ];
 
 // Tables volontairement NON sauvegardées, avec la raison.

@@ -333,7 +333,7 @@ test("rattacher / détacher : compte et élève de l'école de l'appelant, compt
 test("Edge Functions : index.ts délègue à foyer.ts et au module téléphone partagé", () => {
   const source = lire("../supabase/functions/account-manage/index.ts");
   assert.match(source, /import \{ fusionnerComptesParents, lienValide, modifierLienParent, rattacherAuFoyer \} from "\.\/foyer\.ts";/);
-  assert.match(source, /import \{ normaliserTel \} from "\.\.\/_shared\/telephone\.ts";/);
+  assert.match(source, /import \{ normaliserTel(, numeroNational)? \} from "\.\.\/_shared\/telephone\.ts";/);
   assert.match(source, /action === "rattacher_parent" \|\| action === "detacher_parent"/);
   assert.doesNotMatch(source, /function memeFoyer|function normaliserTel/);
 });
