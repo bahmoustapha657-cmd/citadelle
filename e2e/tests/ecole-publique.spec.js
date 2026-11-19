@@ -199,6 +199,60 @@ test("elle inscrit ses élèves depuis l'onglet Élèves, sans passer par une co
   await expect(page.getByRole("button", { name: `Élèves (${ELEVES.length})` })).toBeVisible();
 });
 
+// ── Lot B (2026-11-19) : ce que la plateforme DGECS demande ──
+// Matricule saisi dans la fiche de notes (rangé dans l'IEN de l'élève),
+// notes manquantes signalées avant la « Clôture », redoublants de l'année
+// cochés pour les statistiques de rentrée.
+test("onglet DGECS : matricules, notes manquantes et redoublants", async ({ page }) => {
+  const direction = await clientConnecte(DIRECTION);
+  const { id: ecole_id } = await lireEcole(ECOLE.code);
+  const { data: matieres } = await direction.from("matieres").select("id").eq("nom", "Mathématiques");
+  if (!matieres?.length) {
+    const { error } = await direction.from("matieres")
+      .insert({ ...toRow("matieres", { nom: "Mathématiques", coefficient: 2 }).row, ecole_id, section: "college" });
+    if (error) throw new Error(`matieres : ${error.message}`);
+  }
+
+  await seConnecter(page);
+  const menu = page.getByRole("navigation");
+  await menu.getByRole("button", { name: /Secondaire/ }).click();
+  await page.getByRole("button", { name: /DGECS/ }).click();
+
+  // Fiche de notes de la classe : une colonne par matière, aucune note encore.
+  await expect(page.getByRole("columnheader", { name: /MATHÉMATIQUES/ })).toBeVisible();
+  await expect(page.getByText("MARIAMA DIALLO")).toBeVisible();
+  await expect(page.getByText("IBRAHIMA SOW")).toBeVisible();
+  await expect(page.getByText("2 note(s) manquante(s)")).toBeVisible();
+  await expect(page.getByText("2 sans matricule")).toBeVisible();
+  await expect(page.getByText(/À compléter avant de « Clôturer »/)).toBeVisible();
+
+  // Matricule de la plateforme : majuscules, sans espaces, sur la fiche (IEN).
+  const matricule = page.getByRole("textbox", { name: "Matricule" }).first();
+  await matricule.fill("ma 2503 2033");
+  await matricule.press("Enter");
+  await expect(page.getByText("1 sans matricule")).toBeVisible({ timeout: 30_000 });
+  await expect.poll(async () => {
+    const { data } = await clientAdmin().from("eleves").select("ien").eq("ecole_id", ecole_id).eq("nom", "DIALLO");
+    return data?.[0]?.ien;
+  }, { timeout: 30_000 }).toBe("MA25032033");
+
+  // Statistiques de rentrée : Ibrahima coché redoublant de l'année.
+  await page.getByRole("button", { name: "📊 Statistiques de rentrée" }).click();
+  await page.getByRole("button", { name: "🔁 Marquer les redoublants" }).click();
+  await page.getByLabel("SOW Ibrahima").check();
+  await expect.poll(async () => {
+    const { data } = await clientAdmin().from("eleves").select("extra").eq("ecole_id", ecole_id).eq("nom", "SOW");
+    return data?.[0]?.extra?.redoublantAnnee || "";
+  }, { timeout: 30_000 }).toMatch(/^\d{4}-\d{4}$/);
+  // Niveau, classes, effectifs G/F/T, redoublants G/F/T.
+  await expect(page.getByRole("row", { name: /^7ème Année/ }).locator("td"))
+    .toHaveText(["7ème Année", "1", "1", "1", "2", "1", "0", "1"]);
+
+  // Candidats : la 7ème Année n'est pas une classe d'examen (BEPC = 10ème Année).
+  await page.getByRole("button", { name: "🎓 Candidats aux examens" }).click();
+  await expect(page.getByText("Aucun élève en 10ème Année dans cette section.")).toBeVisible();
+});
+
 test("redevenue privée dans Paramètres, elle retrouve sa comptabilité", async ({ page }) => {
   await seConnecter(page);
   const menu = page.getByRole("navigation");

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Tabs } from "./ui";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { ongletEcoleOuvert } from "../espace-enseignant";
+import { ongletDgecsOuvert } from "../dgecs";
 import { useEcole } from "./ecole/use-ecole";
 import { EcoleHeader } from "./ecole/EcoleHeader";
 import { EcoleTabContent } from "./ecole/EcoleTabContent";
@@ -38,6 +39,9 @@ function Ecole({ titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, sectio
     ...(avecEns ? [{ id: "emploidutemps", label: t("school.tabs.schedule") }] : []),
     // Au primaire, les attestations de niveau sont des certificats de niveau.
     { id: "attestations", label: t(section === "primaire" ? "school.tabs.certificatesPrimary" : "school.tabs.certificates") },
+    // Plateforme du ministère (dgecsecoles.com) : fiche de notes à recopier,
+    // statistiques de rentrée, candidats aux examens (src/dgecs.js).
+    ...(ongletDgecsOuvert(schoolInfo, section) ? [{ id: "dgecs", label: t("dgecs.tab") }] : []),
     // Surveillance générale : périmètre discipline uniquement — élèves
     // (lecture + impression des listes), absences et emploi du temps.
     // Les notes/bulletins lui sont aussi refusés côté règles serveur.
