@@ -37,8 +37,9 @@ export function premierModuleEspaceEnseignant(modules) {
 // Onglets du module École sans objet pour un enseignant seul : la liste des
 // enseignants et leurs attributions, l'emploi du temps de l'école (il
 // répartit des enseignants dans des créneaux) et les attestations, que
-// signe le chef d'établissement.
-const ONGLETS_ECOLE_FERMES = new Set(["ens", "enseignements", "emploidutemps", "attestations"]);
+// signe le chef d'établissement. Ni la plateforme du ministère (DGECS),
+// qui s'adresse aux établissements.
+const ONGLETS_ECOLE_FERMES = new Set(["ens", "enseignements", "emploidutemps", "attestations", "dgecs"]);
 
 export const ongletEcoleOuvert = (schoolInfo, ongletId) =>
   !estEspaceEnseignant(schoolInfo) || !ONGLETS_ECOLE_FERMES.has(ongletId);

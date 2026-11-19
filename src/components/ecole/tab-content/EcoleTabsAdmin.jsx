@@ -6,6 +6,7 @@ import { DisciplineTab } from "../DisciplineTab";
 import { BulletinsTab } from "../BulletinsTab";
 import { HonneurTab } from "../HonneurTab";
 import { MatieresTab } from "../MatieresTab";
+import { DgecsTab } from "../DgecsTab";
 
 // Onglets de gestion : enseignements, discipline, bulletins, tableau
 // d'honneur, livrets, matières, emploi du temps, attestations.
@@ -169,6 +170,27 @@ export function EcoleTabsAdmin({ e, section, avecEns, userRole, annee, maxNote, 
         periodes={e.periodes}
         maxNote={maxNote}
         cleNotes={cleNotes}
+      />}
+
+      {/* ── PLATEFORME DGECS ── matricules et redoublants modifiables par qui
+          écrit la section (canEdit), jamais sur une année archivée. */}
+      {e.tab === "dgecs" && <DgecsTab
+        chargement={e.cE || e.cN}
+        eleves={e.eleves}
+        notes={e.notes}
+        matieresForClasse={e.matieresForClasse}
+        periodes={e.periodes}
+        classesUniq={e.classesUniq}
+        classes={e.classes}
+        ens={e.ens}
+        section={section}
+        schoolInfo={e.schoolInfo}
+        annee={e.anneeConsultee}
+        maxNote={maxNote}
+        canEdit={e.canEdit}
+        modChampE={e.modChampE}
+        toast={e.toast}
+        filtreClasse={e.filtreClasse}
       />}
     </>
   );
