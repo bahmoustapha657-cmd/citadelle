@@ -7,6 +7,7 @@ import { getEleveSolde } from "../../mensualite-utils";
 import { getGeneralAverage } from "../../note-utils";
 import { estAbsence, normalizeText } from "./helpers";
 import { moisExigibles } from "../../depart-utils";
+import { blocageImpayeActif } from "../../ecole-publique";
 
 // Notes de l'enfant courant.
 export const filtrerNotes = (notes, eleveId) =>
@@ -41,7 +42,7 @@ export function computeTarifInfos(tarifs, eleve) {
 // les mois entamés avant son départ (`annee` : celle des fiches).
 export function computeBlocage(schoolInfo, eleve, moisAnnee, annee) {
   if (estExonereTotal(eleve, "mensualites")) return { moisImpayes: [], accesBloqueParPaiement: false };
-  const blocageActif = !!schoolInfo.blocageParentImpaye;
+  const blocageActif = blocageImpayeActif(schoolInfo);
   const moisImpayes = moisExigibles(eleve, moisAnnee, annee)
     .filter((mois) => normalizeText((eleve.mens || {})[mois]) !== "paye");
   const accesBloqueParPaiement = blocageActif && moisImpayes.length > 0;

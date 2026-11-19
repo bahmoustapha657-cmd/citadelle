@@ -33,7 +33,7 @@ function KPI({ label, value, sub, icon, color = "white", trend, clair = false })
 export function KpiGrid({
   t, schoolInfo = {}, totalEleves, elevesC, elevesL, elevesP, elevesPre = [],
   totalEns, ensC, ensL, ensP, ensPre = [], tauxPay, solde, totalRec, totalDep,
-  masseSal, salMois, moisActuel, totalAbs, financesClaires = null, anneeCourante = "",
+  masseSal, salMois, moisActuel, totalAbs, financesClaires = null, anneeCourante = "", sansArgent = false,
 }) {
   // Le détail ne cite que les sections ouvertes dans l'école (Paramètres →
   // Identité) : une école sans lycée n'affiche pas « 0 Lycée ». La maternelle
@@ -55,6 +55,17 @@ export function KpiGrid({
   // Au plus `n` colonnes (lignes complètes), jamais moins de 150 px : 2 colonnes sur téléphone.
   const colonnes = (n) => `repeat(auto-fill,minmax(max(min(100%,150px),calc((100% - ${n - 1} * ${ESPACE - 4}px) / ${n})),1fr))`;
   const grille = { display: "grid", gridTemplateColumns: colonnes(3), gap: ESPACE - 4 };
+
+  // École publique : effectifs et absences seulement, aucune tuile d'argent.
+  if (sansArgent) {
+    return (
+      <div style={grille}>
+        <KPI clair label={t("dashboard.activeStudents")} value={totalEleves} icon="🎓" sub={detailEleves} />
+        <KPI clair label={t("dashboard.totalTeachers")} value={totalEns} icon="👨‍🏫" sub={detailEns} />
+        <KPI clair label={t("dashboard.absencesEntered")} value={totalAbs} icon="📝" sub={t("dashboard.allSections")} />
+      </div>
+    );
+  }
 
   if (financesClaires) {
     const f = financesClaires;

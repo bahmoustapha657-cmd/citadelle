@@ -3163,5 +3163,14 @@
     "errNoClass": "Choisissez la classe de l'école d'au moins une de ses classes.",
     "errName": "Le nom de l'enseignant est requis pour créer son compte.",
     "errSection": "Choisissez la section de l'enseignant."
+  },
+  "publicSchool": {
+    "attendanceMenuDesc": "Absences, retards et permissions du personnel",
+    "attendanceSubtitle": "Absences, retards et permissions des enseignants et du personnel",
+    "attendanceRule": "<b>Suivi :</b> notez chaque absence ou retard et précisez s'il est <b>justifié</b>. Le récapitulatif de {{month}} compte pour chacun les absences et les retards injustifiés ({{lates}} retards = ½ journée).",
+    "statusLabel": "Statut de l'établissement",
+    "statusPrivate": "École privée",
+    "statusPublic": "École publique",
+    "statusHint": "École publique : pas de comptabilité. Les élèves s'inscrivent dans l'onglet Élèves et seules les présences du personnel sont suivies. Le prix de l'offre École publique n'est accordé qu'après vérification par EduGest."
   }
 }

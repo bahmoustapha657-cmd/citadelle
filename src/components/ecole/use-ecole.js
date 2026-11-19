@@ -105,8 +105,9 @@ export function useEcole({
   // année passée, la section et le statut de cette année-là (elevesDeLAnnee).
   // La scolarité complète (mensualités, frais) reste l'affaire de la
   // Comptabilité, qui a sa propre projection et d'autres règles.
-  // `ajouter` : réservé à l'espace d'un enseignant indépendant, qui inscrit
-  // ses élèves ici faute de Comptabilité (AjoutElevesModale).
+  // `ajouter` : réservé à l'espace d'un enseignant indépendant et à l'école
+  // publique, qui inscrivent leurs élèves ici faute de Comptabilité
+  // (AjoutElevesModale).
   const { items: elevesBruts, chargement: cE0, modifierChamp: modChampE, ajouter: ajE, supprimer: supE } = useFirestore(cleEleves);
   // Année passée : les élèves des AUTRES sections aussi, car on a pu changer
   // de section depuis (maternelle → primaire, 6ème Année → collège). Hors

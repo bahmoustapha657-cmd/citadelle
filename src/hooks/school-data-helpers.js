@@ -2,6 +2,7 @@
 // par défaut et application du branding (variables CSS).
 import { SCHOOL_INFO_DEFAUT } from "../contexts/SchoolContext";
 import { getRoleSettingsForSchool } from "../constants";
+import { typeEtablissementParDefaut } from "../ecole-publique";
 
 export const DEFAULT_VERROUS = { comptable: false, primaire: false, secondaire: false };
 
@@ -13,7 +14,8 @@ export function mergeSchoolInfo(d) {
     ...D,
     ...d,
     nom:       d.nom       || D.nom,
-    type:      d.type      || D.type,
+    // École publique sans type saisi : « École publique », pas le défaut privé.
+    type:      d.type      || typeEtablissementParDefaut(d),
     ville:     d.ville     || D.ville,
     pays:      d.pays      || D.pays,
     couleur1:  d.couleur1  || D.couleur1,

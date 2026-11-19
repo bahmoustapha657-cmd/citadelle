@@ -14,7 +14,7 @@ import { SeancePhotoModale } from "../identite-enfant/SeancePhotoModale";
 import { BadgesModale } from "../identite-enfant/BadgesModale";
 import { AjoutElevesModale } from "./eleves-tab/AjoutElevesModale";
 import { EleveEnseignantModale } from "./eleves-tab/EleveEnseignantModale";
-import { estEspaceEnseignant } from "../../espace-enseignant";
+import { sansComptabilite } from "../../ecole-publique";
 
 export function ElevesTab({
   eleves, elevesFiltres, cE, filtreClasse, setFiltreClasse, classesUniq,
@@ -23,10 +23,11 @@ export function ElevesTab({
   ajE = null, supE = null, classes = [],
 }) {
   const { t } = useTranslation();
-  // Espace d'un enseignant indépendant : il inscrit lui-même ses élèves
-  // (ailleurs, l'inscription passe par la Comptabilité).
-  const peutInscrire = estEspaceEnseignant(schoolInfo) && canEdit && !!ajE;
-  const peutCorriger = estEspaceEnseignant(schoolInfo) && canEdit && !!modChampE && !!supE;
+  // Espace d'un enseignant indépendant ou école publique : pas de
+  // Comptabilité, les élèves s'inscrivent ici (ailleurs, l'inscription passe
+  // par la Comptabilité, qui ouvre la scolarité de l'élève).
+  const peutInscrire = sansComptabilite(schoolInfo) && canEdit && !!ajE;
+  const peutCorriger = sansComptabilite(schoolInfo) && canEdit && !!modChampE && !!supE;
   const [ajout, setAjout] = useState(false);
   const [aCorriger, setACorriger] = useState(null);
   // Élèves partis : hors de la liste, des cartes et de l'export par défaut —

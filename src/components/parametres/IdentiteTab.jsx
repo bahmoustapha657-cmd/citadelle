@@ -24,7 +24,7 @@ export function IdentiteTab({
 }) {
   return (
     <>
-      <InfosGeneralesSection form={form} setForm={setForm} chg={chg} inp={inp} lbl={lbl} sec={sec} />
+      <InfosGeneralesSection form={form} setForm={setForm} chg={chg} schoolInfo={schoolInfo} inp={inp} lbl={lbl} sec={sec} />
       <CouleursSection form={form} chg={chg} inp={inp} lbl={lbl} sec={sec} />
       <LogoSection
         form={form}

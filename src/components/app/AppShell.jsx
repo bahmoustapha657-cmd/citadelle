@@ -18,6 +18,7 @@ import { BandeauAnnonces } from "../messagerie/BandeauAnnonces";
 import { BandeauReunions } from "../messagerie/BandeauReunions";
 import { MODULE_MESSAGERIE } from "../messagerie/messagerie-logic";
 import { estEspaceEnseignant } from "../../espace-enseignant";
+import { estEcolePublique } from "../../ecole-publique";
 import { PAGE_MES_CLASSES } from "../mes-classes/mes-classes";
 import { BandeauRattachements } from "../rattachement/BandeauRattachements";
 
@@ -38,9 +39,15 @@ export function AppShell(p) {
   const avecMessagerie = !!messagerie && !estEspaceEnseignant(p.schoolInfo);
   // Espace enseignant : « Toutes mes classes » (tous ses établissements) en
   // tête du menu — page hors carte de permissions, comme la messagerie.
-  const modulesBase = estEspaceEnseignant(p.schoolInfo)
-    ? [{ id: PAGE_MES_CLASSES, icon: "📚", libelle: p.t("shell.myClasses.menu"), desc: p.t("shell.myClasses.menuDesc") }, ...p.modulesVisibles]
+  // École publique : pas de comptabilité, le module ne garde que les
+  // présences du personnel (src/ecole-publique.js) et en prend le nom.
+  const modulesEcole = estEcolePublique(p.schoolInfo)
+    ? p.modulesVisibles.map((m) => (m.id === "compta"
+      ? { ...m, icon: "🕘", libelle: p.t("accounting.att.title"), desc: p.t("publicSchool.attendanceMenuDesc") } : m))
     : p.modulesVisibles;
+  const modulesBase = estEspaceEnseignant(p.schoolInfo)
+    ? [{ id: PAGE_MES_CLASSES, icon: "📚", libelle: p.t("shell.myClasses.menu"), desc: p.t("shell.myClasses.menuDesc") }, ...modulesEcole]
+    : modulesEcole;
   const modulesMenu = avecMessagerie ? [...modulesBase, MODULE_MESSAGERIE] : modulesBase;
   const pageMessagerie = p.page === MODULE_MESSAGERIE.id;
 

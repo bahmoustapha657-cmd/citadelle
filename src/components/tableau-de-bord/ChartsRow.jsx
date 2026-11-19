@@ -3,7 +3,8 @@ import { estSorti, isSectionActive } from "../../constants";
 import { Card } from "../ui";
 import { axe, corpsCarte, ESPACE, grille, infobulle, titreCarte, TONS } from "./tdb-styles";
 
-export function ChartsRow({ t, c1, schoolInfo = {}, elevesC, elevesL, elevesP, tauxPayC, tauxPayL, tauxPayP, tauxPay }) {
+// `sansArgent` (école publique) : la répartition des élèves seule, sans taux de paiement.
+export function ChartsRow({ t, c1, schoolInfo = {}, elevesC, elevesL, elevesP, tauxPayC, tauxPayL, tauxPayP, tauxPay, sansArgent = false }) {
   // Une barre et une jauge par section OUVERTE dans l'école (Paramètres →
   // Identité) : une école sans lycée n'affiche pas un « Lycée » vide.
   const sections = [
@@ -32,7 +33,7 @@ export function ChartsRow({ t, c1, schoolInfo = {}, elevesC, elevesL, elevesP, t
       </div></Card>
 
       {/* Taux de paiement */}
-      <Card style={{ flex: "1 1 260px", minWidth: 0 }}><div style={{ ...corpsCarte, display: "flex", flexDirection: "column", height: "100%", boxSizing: "border-box" }}>
+      {!sansArgent && <Card style={{ flex: "1 1 260px", minWidth: 0 }}><div style={{ ...corpsCarte, display: "flex", flexDirection: "column", height: "100%", boxSizing: "border-box" }}>
         <p style={titreCarte}>{t("dashboard.paymentRate")}</p>
         <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 18 }}>
           <span style={{ fontSize: 32, fontWeight: 800, color: "var(--lc-text-brand)", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{tauxPay}%</span>
@@ -51,7 +52,7 @@ export function ChartsRow({ t, c1, schoolInfo = {}, elevesC, elevesL, elevesP, t
             </div>
           ))}
         </div>
-      </div></Card>
+      </div></Card>}
     </div>
   );
 }

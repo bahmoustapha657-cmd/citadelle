@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { C } from "../../constants";
 import { Badge, Btn, LectureSeule } from "../ui";
 import { QrScannerModal } from "../verif-qr/QrScannerModal";
+import { estEcolePublique } from "../../ecole-publique";
 
 // En-tête du module Comptabilité : logo, titre, vérification de QR et
 // sélecteur d'année. Le scanner est aussi ici (et pas seulement dans
@@ -12,16 +13,19 @@ import { QrScannerModal } from "../verif-qr/QrScannerModal";
 export function ComptaHeader({ c, readOnly }) {
   const { t } = useTranslation();
   const [scanQr, setScanQr] = useState(false);
+  // École publique : le module ne garde que les présences du personnel, et
+  // ne reçoit aucun reçu de paiement à vérifier.
+  const publique = estEcolePublique(c.schoolInfo);
   return (
     <>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18, flexWrap: "wrap" }}>
         {c.schoolInfo?.logo && <img crossOrigin="anonymous" src={c.schoolInfo.logo} alt="" style={{ width: 48, height: 48, objectFit: "contain" }} />}
         <div style={{ flex: 1, minWidth: 200 }}>
-          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: C.blueDark }}>{t("accounting.title")}</h2>
-          <p style={{ margin: 0, fontSize: 12, color: C.green, fontWeight: 600 }}>{t("accounting.subtitle")}</p>
+          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: C.blueDark }}>{t(publique ? "accounting.att.title" : "accounting.title")}</h2>
+          <p style={{ margin: 0, fontSize: 12, color: C.green, fontWeight: 600 }}>{t(publique ? "publicSchool.attendanceSubtitle" : "accounting.subtitle")}</p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Btn sm v="ghost" onClick={() => setScanQr(true)}>{t("accounting.checkQr")}</Btn>
+          {!publique && <Btn sm v="ghost" onClick={() => setScanQr(true)}>{t("accounting.checkQr")}</Btn>}
           <label style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>{t("common.yearViewed")} :</label>
           <select value={c.anneeConsultee} onChange={(e) => c.setAnneeConsultee(e.target.value)}
             style={{ padding: "6px 10px", borderRadius: 8, border: `1px solid ${c.enModeArchive ? "#f59e0b" : "#cbd5e1"}`, fontSize: 13, fontWeight: 700,

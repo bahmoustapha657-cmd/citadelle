@@ -3163,5 +3163,14 @@
     "errNoClass": "Choose the school class for at least one of their classes.",
     "errName": "The teacher's name is required to create their account.",
     "errSection": "Choose the teacher's section."
+  },
+  "publicSchool": {
+    "attendanceMenuDesc": "Staff absences, lateness and leave",
+    "attendanceSubtitle": "Absences, lateness and leave of teachers and staff",
+    "attendanceRule": "<b>Tracking:</b> record each absence or lateness and state whether it is <b>excused</b>. The {{month}} summary counts each person's unexcused absences and lateness ({{lates}} lateness = ½ day).",
+    "statusLabel": "School status",
+    "statusPrivate": "Private school",
+    "statusPublic": "Public school",
+    "statusHint": "Public school: no accounting. Students are enrolled in the Students tab and only staff attendance is tracked. The Public school price is granted only after EduGest has checked the school's status."
   }
 }

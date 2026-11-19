@@ -10,6 +10,7 @@ import { agentsPourBon, sectionsPaieProposees } from "../salaires/bon-agents";
 import { FeuilleDuJour } from "./FeuilleDuJour";
 import { PresenceModale } from "./PresenceModale";
 import { ReglagesPresencesModale } from "./ReglagesPresencesModale";
+import { estEcolePublique } from "../../../ecole-publique";
 import {
   STATUTS, TYPES_A_JUSTIFIER, TYPES_PRESENCE, joursOuvrables, moisDeDate, recapMois, reglagesPresences,
 } from "./presences-utils";
@@ -55,6 +56,11 @@ export function PresencesTab({ c, readOnly }) {
     retenueSecondaire: c.salairesDomaine?.retenueSecondaire,
   });
   const ouvrables = joursOuvrables(mois, anneeScolaire, reglages.joursTravail);
+  // École publique : l'État paie les enseignants, l'école ne fait pas de paie
+  // — ni retenue calculée, ni report sur la paie (src/ecole-publique.js).
+  const sansPaie = estEcolePublique(schoolInfo);
+  const colonnesRecap = [t("accounting.att.cols.agent"), t("accounting.section"), t("accounting.att.cols.absUnexc"), t("accounting.att.cols.lateUnexc"), t("accounting.att.status.en_attente"),
+    ...(sansPaie ? [] : [t("accounting.att.cols.calcDeduction"), t("accounting.att.cols.onPayroll")])];
 
   const peutSaisir = canCreate && !readOnly;
   const peutDecider = canEdit && !readOnly;
@@ -128,14 +134,14 @@ export function PresencesTab({ c, readOnly }) {
       </div>
 
       <div style={{ padding: "10px 14px", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 10, fontSize: 12.5, color: "#1e3a8a", marginBottom: 12 }}>
-        <Trans i18nKey="accounting.att.rule"
+        <Trans i18nKey={sansPaie ? "publicSchool.attendanceRule" : "accounting.att.rule"}
           values={{ days: ouvrables || "?", month: libelleMois(mois), lates: reglages.retardsParDemiJournee }}
           components={{ b: <strong />, i: <em /> }} />
       </div>
 
       {cPres ? <Chargement /> : <>
         {recap.length > 0 && <Card style={{ marginBottom: 14 }}><div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
-          <THead cols={[t("accounting.att.cols.agent"), t("accounting.section"), t("accounting.att.cols.absUnexc"), t("accounting.att.cols.lateUnexc"), t("accounting.att.status.en_attente"), t("accounting.att.cols.calcDeduction"), t("accounting.att.cols.onPayroll")]} />
+          <THead cols={colonnesRecap} />
           <tbody>{recap.map((r) => {
             const aAppliquer = r.retenue !== null && r.appliquee !== null && r.retenue !== r.appliquee;
             return (
@@ -145,6 +151,7 @@ export function PresencesTab({ c, readOnly }) {
                 <TD center>{r.joursAbsence ? t("accounting.att.daysShort", { n: fmtJ(r.joursAbsence) }) : "—"}</TD>
                 <TD center>{r.retards ? `${r.retards}${r.joursRetards ? ` (= ${t("accounting.att.daysShort", { n: fmtJ(r.joursRetards) })})` : ""}` : "—"}</TD>
                 <TD center>{r.enAttente ? <Badge color="amber">{r.enAttente}</Badge> : "—"}</TD>
+                {!sansPaie && <>
                 <TD center style={{ color: "#b91c1c", fontWeight: 700 }}>
                   {!r.fiche ? <span style={{ fontWeight: 400, color: "#64748b", fontSize: 12 }}>{t("accounting.att.payNotGenerated")}</span>
                     : r.retenue === null ? <span style={{ fontWeight: 400, color: "#64748b", fontSize: 12 }}>{t("accounting.att.teacherNotFound")}</span>
@@ -153,6 +160,7 @@ export function PresencesTab({ c, readOnly }) {
                 <TD center>{r.appliquee === null ? "—"
                   : aAppliquer ? <Badge color="orange">{t("accounting.att.toApply")}</Badge>
                     : r.appliquee ? <Badge color="green">✔ {fmtN(r.appliquee)}</Badge> : "—"}</TD>
+                </>}
               </TR>
             );
           })}</tbody>

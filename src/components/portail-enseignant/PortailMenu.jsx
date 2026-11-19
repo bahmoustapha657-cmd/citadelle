@@ -1,5 +1,6 @@
 import { Sidebar } from "../app/Sidebar";
 import { useMessagerie } from "../messagerie/messagerie-contexte";
+import { sansComptabilite } from "../../ecole-publique";
 
 // Menu latéral du portail enseignant : la barre latérale des autres comptes
 // (app/Sidebar), nourrie des entrées du portail. « Mes fiches » est un lien
@@ -17,7 +18,8 @@ export function PortailMenu({
     { id: "notes", icon: "📝", libelle: t("teacher.tabs.grades") },
     { id: "eleves", icon: "👥", libelle: t("teacher.tabs.students") },
     { id: "absences", icon: "📋", libelle: t("teacher.tabs.rollRegister") },
-    { id: "salaire", icon: "💰", libelle: t("accounting.tabs.salaries") },
+    // École publique : enseignants payés par l'État, aucune fiche de paie ici.
+    ...(sansComptabilite(schoolInfo) ? [] : [{ id: "salaire", icon: "💰", libelle: t("accounting.tabs.salaries") }]),
     ...(messagerie ? [{ id: "messages", icon: "💬", libelle: t("teacher.tabs.messages") }] : []),
   ];
 

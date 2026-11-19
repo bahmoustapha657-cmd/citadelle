@@ -3,12 +3,25 @@ import { Tabs } from "./ui";
 import { useComptabilite } from "./comptabilite/use-comptabilite";
 import { ComptaHeader } from "./comptabilite/ComptaHeader";
 import { ComptaTabContent } from "./comptabilite/ComptaTabContent";
+import { ONGLET_COMPTA_ECOLE_PUBLIQUE, estEcolePublique } from "../ecole-publique";
 
 // Orchestrateur du module Comptabilité : la logique vit dans useComptabilite,
 // l'en-tête dans ComptaHeader et l'aiguillage des onglets dans ComptaTabContent.
 function Comptabilite({ readOnly, annee, userRole, permissions = null, verrouOuvert = false, auteur = "" }) {
   const { t } = useTranslation();
   const c = useComptabilite({ readOnly, annee, userRole, permissions, verrouOuvert, auteur });
+
+  // École publique : pas de comptabilité, seulement les présences du
+  // personnel (src/ecole-publique.js) — un seul onglet, sans barre d'onglets.
+  if (estEcolePublique(c.schoolInfo)) {
+    const p = { ...c, tab: ONGLET_COMPTA_ECOLE_PUBLIQUE };
+    return (
+      <div style={{ padding: "22px 26px" }}>
+        <ComptaHeader c={p} readOnly={readOnly} />
+        <ComptaTabContent c={p} readOnly={readOnly} annee={annee} userRole={userRole} />
+      </div>
+    );
+  }
 
   const tabs = [
     { id: "bilan", label: t("accounting.tabs.bilan") },

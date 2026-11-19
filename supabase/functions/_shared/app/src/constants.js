@@ -15,6 +15,7 @@ import {
   normalizeRoleLogin,
 } from "../shared/role-config.js";
 import { estEspaceEnseignant, libelleRoleEspaceEnseignant, moduleOuvertEspaceEnseignant } from "./espace-enseignant.js";
+import { moduleOuvertEcolePublique } from "./ecole-publique.js";
 
 export { ADMIN_WRITABLE_MODULES, MODULE_COLLECTIONS, getAdminWriteModules };
 
@@ -185,9 +186,11 @@ export const isGroupeActif = (schoolInfo, groupe) =>
 // pas de module Secondaire, une école sans maternelle ni primaire pas de
 // module Dir. Primaire. Les autres modules ne dépendent d'aucune section.
 // Espace d'un enseignant indépendant : seulement sa classe et ses paramètres
-// (src/espace-enseignant.js).
+// (src/espace-enseignant.js). École publique : pas de Fondation
+// (src/ecole-publique.js).
 export const isModuleOuvertPourEcole = (moduleId, schoolInfo) => {
   if (estEspaceEnseignant(schoolInfo) && !moduleOuvertEspaceEnseignant(moduleId)) return false;
+  if (!moduleOuvertEcolePublique(schoolInfo, moduleId)) return false;
   return (moduleId === "primaire" || moduleId === "secondaire" ? isGroupeActif(schoolInfo, moduleId) : true);
 };
 

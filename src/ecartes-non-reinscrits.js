@@ -26,6 +26,7 @@
 import { TOUS_MOIS_LONGS, aReinscrire } from "./constants.js";
 import { aDesPaiements } from "./depart-utils.js";
 import { estExonereTotal } from "./exoneration-utils.js";
+import { sansComptabilite } from "./ecole-publique.js";
 
 export const estNonReinscritSansPaiement = (eleve = {}) => aReinscrire(eleve) && !aDesPaiements(eleve)
   && !estExonereTotal(eleve, "inscription");
@@ -35,7 +36,11 @@ export const DELAI_RETRAIT_DEFAUT = 1;
 export const DELAI_RETRAIT_MAX = 3;
 
 // Délai (en mois après le début de l'année) réglé par l'école ; 0 = jamais.
+// Toujours 0 là où personne ne paie l'école (école publique, espace d'un
+// enseignant) : un élève sans paiement n'y est pas un non réinscrit, la règle
+// viderait toutes les classes au 1er novembre.
 export function delaiRetraitEcole(schoolInfo = {}) {
+  if (sansComptabilite(schoolInfo)) return 0;
   const v = schoolInfo?.retraitNonReinscrits;
   return Number.isInteger(v) && v >= 0 && v <= DELAI_RETRAIT_MAX ? v : DELAI_RETRAIT_DEFAUT;
 }

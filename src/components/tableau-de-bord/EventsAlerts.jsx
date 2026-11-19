@@ -14,9 +14,12 @@ const TYPE_COLORS = { exam: "#ef4444", conge: "#10b981", reunion: "#f59e0b", aut
 // `demandesDispense` ({ total, parSection }, cf. demande-dispense) : les
 // demandes de dispense de la comptabilité qui attendent la Direction — passé
 // à la Direction seulement. `ouvrirDispenses(section)` mène à la fenêtre.
+//
+// `sansArgent` (école publique) : les événements seuls — toutes les alertes
+// parlent d'argent (paiements, solde, paie, dispenses).
 export function EventsAlerts({
   evAVenir, tauxPay, solde, masseSal, totalRec, moyenneMensuelle = null,
-  demandesDispense = null, ouvrirDispenses = null,
+  demandesDispense = null, ouvrirDispenses = null, sansArgent = false,
 }) {
   const { t } = useTranslation();
   const nbDemandes = demandesDispense?.total || 0;
@@ -59,7 +62,7 @@ export function EventsAlerts({
         }
       </div></Card>
 
-      <Card><div style={corpsCarte}>
+      {!sansArgent && <Card><div style={corpsCarte}>
         <p style={titreCarte}>{t("dashboard.alertsTitle")}</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {nbDemandes > 0 && (
@@ -89,7 +92,7 @@ export function EventsAlerts({
           {paieElevee && alerte(TONS.attention, t("dashboard.alertHighPayrollTitle"), descPaie)}
           {tauxPay >= 60 && solde >= 0 && alerte(TONS.ok, t("dashboard.alertAllGoodTitle"), t("dashboard.alertAllGoodDesc"))}
         </div>
-      </div></Card>
+      </div></Card>}
     </div>
   );
 }

@@ -25,17 +25,18 @@ function Courbe({ data, cle, couleur, nom, domaine, format }) {
   );
 }
 
-export function TrendsCard({ c1, annee, dataTendance }) {
+// `sansArgent` (école publique) : la courbe des absences seule.
+export function TrendsCard({ c1, annee, dataTendance, sansArgent = false }) {
   const { t } = useTranslation();
   const pct = (v) => `${v}%`;
   return (
     <Card><div style={corpsCarte}>
       <p style={titreCarte}>{t("dashboard.annualTrends")} — {annee || getAnnee()}</p>
       <div style={{ ...grilleSouple(280), gap: 24 }}>
-        <div>
+        {!sansArgent && <div>
           <p style={sousTitre}>{t("dashboard.paymentRatePct")}</p>
           <Courbe data={dataTendance} cle="taux" couleur={c1} nom={t("dashboard.paymentRate")} domaine={[0, 100]} format={pct} />
-        </div>
+        </div>}
         <div>
           <p style={sousTitre}>{t("dashboard.absencesEntered")}</p>
           <Courbe data={dataTendance} cle="absences" couleur={TONS.danger} nom={t("dashboard.absencesLabel")} />

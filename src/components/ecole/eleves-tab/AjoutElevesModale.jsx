@@ -3,11 +3,12 @@ import { useTranslation } from "react-i18next";
 import { C, genererMatricule, initMens } from "../../../constants";
 import { Btn, Modale } from "../../ui";
 import { ERREUR_DEJA_LA, classeRetenue, lireListeEleves } from "./liste-eleves-collee";
+import { estEspaceEnseignant } from "../../../espace-enseignant";
 
 const titreChamp = { display: "block", fontSize: 11, fontWeight: 800, color: C.blueDark, textTransform: "uppercase", letterSpacing: "0.06em" };
 
-// Espace d'un enseignant indépendant : il inscrit lui-même les élèves de ses
-// classes, sans passer par la Comptabilité (absente de son espace). Une
+// Espace d'un enseignant indépendant ou école publique : les élèves
+// s'inscrivent sans passer par la Comptabilité (absente de ces espaces). Une
 // classe, puis la liste tapée ou collée, un élève par ligne ; aperçu avant
 // d'enregistrer.
 export function AjoutElevesModale({
@@ -52,7 +53,7 @@ export function AjoutElevesModale({
       }
       toast(t("school.students.teacherAdd.done", { classe, count: ajoutes.length }), "success");
       // Journal de l'école : en français, comme toutes ses entrées. i18n-ignore
-      logAction?.("Élèves inscrits par l'enseignant", `${ajoutes.length} en ${classe}`);
+      logAction?.(estEspaceEnseignant(schoolInfo) ? "Élèves inscrits par l'enseignant" : "Élèves inscrits", `${ajoutes.length} en ${classe}`);
       fermer();
     } catch (e) {
       toast(t("school.students.teacherAdd.interrupted", { count: ajoutes.length, error: e?.message || e }), "error");

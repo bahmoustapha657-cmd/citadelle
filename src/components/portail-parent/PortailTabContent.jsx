@@ -24,6 +24,7 @@ export function PortailTabContent({ p, schoolInfo, utilisateur, c1, c2 }) {
           c1={c1}
           onVoirNotes={() => p.setTab("notes")}
           famille={p.famille}
+          sansArgent={p.sansArgent}
           eleveId={p.eleveId}
           onVoirEnfant={p.voirEnfant}
         />
@@ -68,7 +69,7 @@ export function PortailTabContent({ p, schoolInfo, utilisateur, c1, c2 }) {
         />
       )}
 
-      {p.tab === "paiements" && (
+      {p.tab === "paiements" && !p.sansArgent && (
         <PaiementsTab
           eleve={p.eleve}
           moisAnnee={p.moisAnnee}

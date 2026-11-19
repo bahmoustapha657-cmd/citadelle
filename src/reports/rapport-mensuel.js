@@ -15,6 +15,7 @@ import {
 } from "./print-helpers.js";
 import { computeRapportMensuel } from "./rapport-mensuel/mensuel-data.js";
 import { mensuelCss } from "./rapport-mensuel/mensuel-styles.js";
+import { sansComptabilite } from "../ecole-publique.js";
 
 /**
  * Rapport mensuel complet : absences + paiements par classe
@@ -36,6 +37,10 @@ export const genererRapportMensuel = (mois, eleves, absences, annee, schoolInfo=
   const {
     classes, lignesClasse, totEffectif, totAbsJ, totAbsN, totPaye, tauxGlobal, elevesConcernes,
   } = computeRapportMensuel(mois, eleves, absences);
+  // École publique : personne n'y paie l'école, le rapport ne parle que
+  // d'effectifs et d'absences (src/ecole-publique.js).
+  const avecPaiements = !sansComptabilite(schoolInfo);
+  const si = (cond, html) => (cond ? html : "");
 
   const w = window.open("","_blank");
   w.document.write(`<!DOCTYPE html><html lang="${printLang()}" dir="${printDir()}"><head>
@@ -58,17 +63,17 @@ export const genererRapportMensuel = (mois, eleves, absences, annee, schoolInfo=
     </div>
   </div>
 
-  <div class="kpi-row">
+  <div class="kpi-row"${si(!avecPaiements, ' style="grid-template-columns:repeat(3,1fr)"')}>
     <div class="kpi"><div class="kpi-val">${totEffectif}</div><div class="kpi-label">${tr("reports.monthlyReport.totalStudents")}</div><div class="kpi-sub">${classes.length}</div></div>
     <div class="kpi amber"><div class="kpi-val">${totAbsJ+totAbsN}</div><div class="kpi-label">${tr("reports.absences")}</div><div class="kpi-sub">${totAbsJ} ${tr("reports.justified")} · ${totAbsN} ${tr("reports.unjustified")}</div></div>
-    <div class="kpi ${tauxGlobal>=80?"vert":tauxGlobal>=50?"amber":"rouge"}"><div class="kpi-val">${tauxGlobal}%</div><div class="kpi-label">${tr("accounting.rate")}</div><div class="kpi-sub">${totPaye}/${totEffectif}</div></div>
+    ${si(avecPaiements, `<div class="kpi ${tauxGlobal>=80?"vert":tauxGlobal>=50?"amber":"rouge"}"><div class="kpi-val">${tauxGlobal}%</div><div class="kpi-label">${tr("accounting.rate")}</div><div class="kpi-sub">${totPaye}/${totEffectif}</div></div>`)}
     <div class="kpi"><div class="kpi-val">${elevesConcernes.length}</div><div class="kpi-label">${tr("reports.absences")}</div><div class="kpi-sub">≥ 3</div></div>
   </div>
 
   <div class="section-title">${tr("reports.monthlyReport.stats")}</div>
   <table>
     <thead><tr>
-      <th>${tr("reports.class")}</th><th>${tr("school.classes.students")}</th><th>${tr("reports.absences")} ${tr("reports.justified")}</th><th>${tr("reports.absences")} ${tr("reports.unjustified")}</th><th>${tr("common.total")}</th><th>${tr("accounting.tabs.monthlyFees")}</th><th>${tr("accounting.rate")}</th>
+      <th>${tr("reports.class")}</th><th>${tr("school.classes.students")}</th><th>${tr("reports.absences")} ${tr("reports.justified")}</th><th>${tr("reports.absences")} ${tr("reports.unjustified")}</th><th>${tr("common.total")}</th>${si(avecPaiements, `<th>${tr("accounting.tabs.monthlyFees")}</th><th>${tr("accounting.rate")}</th>`)}
     </tr></thead>
     <tbody>
       ${lignesClasse.map(l=>`<tr>
@@ -77,19 +82,19 @@ export const genererRapportMensuel = (mois, eleves, absences, annee, schoolInfo=
         <td style="text-align:center;color:#059669">${l.absJustif}</td>
         <td style="text-align:center;color:#dc2626">${l.absNonJust}</td>
         <td style="text-align:center;font-weight:700">${l.total}</td>
-        <td style="text-align:center">${l.payesMois}/${l.effectif}</td>
+        ${si(avecPaiements, `<td style="text-align:center">${l.payesMois}/${l.effectif}</td>
         <td>
           <span class="pct-bar" style="width:${l.tauxPaye*0.5}px"></span>
           <strong style="color:${l.tauxPaye>=80?"#059669":l.tauxPaye>=50?"#d97706":"#dc2626"}">${l.tauxPaye}%</strong>
-        </td>
+        </td>`)}
       </tr>`).join("")}
       <tr style="background:#f1f5f9;font-weight:800">
         <td>${tr("common.total").toUpperCase()}</td><td style="text-align:center">${totEffectif}</td>
         <td style="text-align:center;color:#059669">${totAbsJ}</td>
         <td style="text-align:center;color:#dc2626">${totAbsN}</td>
         <td style="text-align:center">${totAbsJ+totAbsN}</td>
-        <td style="text-align:center">${totPaye}/${totEffectif}</td>
-        <td><strong style="color:${tauxGlobal>=80?"#059669":tauxGlobal>=50?"#d97706":"#dc2626"}">${tauxGlobal}%</strong></td>
+        ${si(avecPaiements, `<td style="text-align:center">${totPaye}/${totEffectif}</td>
+        <td><strong style="color:${tauxGlobal>=80?"#059669":tauxGlobal>=50?"#d97706":"#dc2626"}">${tauxGlobal}%</strong></td>`)}
       </tr>
     </tbody>
   </table>

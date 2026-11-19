@@ -4,6 +4,7 @@
 import { JOURS_SEMAINE, getSectionsActives } from "../../../constants";
 import { uploadImage } from "../../../storageUtils";
 import { majReglagesCompta, sauverParametresEcole } from "../../../backend/data-supabase";
+import { statutNormalise } from "../../../ecole-publique";
 
 const normaliserMonnaie = (m) => (m || "GNF").trim().toUpperCase();
 
@@ -60,6 +61,9 @@ export async function sauvegarderParametres({ schoolId, form, accueil, evaluatio
     // resolveLegalFields() comme fallback tant que le profil légal structuré
     // n'est pas complet.
     moisDebut: form.moisDebut,
+    // Public / privé : retire la comptabilité d'une école publique (aucun
+    // droit en plus — le plan reste attribué par EduGest).
+    statutEtablissement: statutNormalise(form.statutEtablissement),
     systemeScolaire: form.systemeScolaire || "guineen",
     // Sections réellement ouvertes (école sans lycée…) — pilote l'UI.
     // Vide ou invalide : toutes, préscolaire compris.

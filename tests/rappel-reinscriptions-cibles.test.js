@@ -49,9 +49,9 @@ test("réglages de l'école : mêmes replis que l'application", () => {
   assert.equal(anneeDuJour(novembre), "2026-2027");
   assert.equal(anneeDuJour(new Date(Date.UTC(2027, 2, 1))), "2026-2027");
   assert.equal(anneeDuJour(new Date(Date.UTC(2026, 8, 1))), "2026-2027");
-  assert.deepEqual(infoEcole(null, novembre), { anneeScolaire: "2026-2027", moisDebut: "Octobre", retraitNonReinscrits: undefined });
+  assert.deepEqual(infoEcole(null, novembre), { anneeScolaire: "2026-2027", moisDebut: "Octobre", retraitNonReinscrits: undefined, statutEtablissement: undefined });
   assert.deepEqual(infoEcole({ anneeScolaire: "2025-2026", moisDebut: "Septembre", retraitNonReinscrits: 0 }, novembre),
-    { anneeScolaire: "2025-2026", moisDebut: "Septembre", retraitNonReinscrits: 0 });
+    { anneeScolaire: "2025-2026", moisDebut: "Septembre", retraitNonReinscrits: 0, statutEtablissement: undefined });
 });
 
 test("secret de la tâche planifiée", () => {

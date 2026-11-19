@@ -10,6 +10,7 @@ import { EventsAlerts } from "./tableau-de-bord/EventsAlerts";
 import { AbonnementBloc } from "./tableau-de-bord/AbonnementBloc";
 import { ESPACE } from "./tableau-de-bord/tdb-styles";
 import { demanderOuvertureDispenses } from "./comptabilite/ouvrir-dispenses";
+import { sansComptabilite } from "../ecole-publique";
 
 // Orchestrateur du tableau de bord : les données et calculs vivent dans
 // useTableauDeBord, chaque bloc visuel dans tableau-de-bord/*.jsx.
@@ -18,6 +19,9 @@ function TableauDeBord({ annee, userRole, onOpenLegalSettings, onOpenDispenses =
   const d = useTableauDeBord({ annee });
 
   if (d.enChargement) return <Chargement type="kpi" cols={6} />;
+  // École publique : personne n'y paie l'école — ni taux de paiement, ni
+  // caisse, ni paie, ni alertes d'argent (src/ecole-publique.js).
+  const sansArgent = sansComptabilite(d.schoolInfo);
 
   return (
     <div style={{ padding: "clamp(16px,3vw,28px)", maxWidth: 1200, display: "flex", flexDirection: "column", gap: ESPACE, textAlign: "start" }}>
@@ -37,7 +41,7 @@ function TableauDeBord({ annee, userRole, onOpenLegalSettings, onOpenDispenses =
         totalEns={d.totalEns} ensC={d.ensC} ensL={d.ensL} ensP={d.ensP} ensPre={d.ensPre}
         tauxPay={d.tauxPay} solde={d.solde} totalRec={d.totalRec} totalDep={d.totalDep}
         masseSal={d.masseSal} salMois={d.salMois} moisActuel={d.moisActuel} totalAbs={d.totalAbs}
-        financesClaires={d.financesClaires} anneeCourante={d.anneeCourante}
+        financesClaires={d.financesClaires} anneeCourante={d.anneeCourante} sansArgent={sansArgent}
       />
 
       {/* Alerte Conformité légale (compact) — réservé directeur/admin.
@@ -50,12 +54,13 @@ function TableauDeBord({ annee, userRole, onOpenLegalSettings, onOpenDispenses =
         t={t} c1={d.c1} c2={d.c2} schoolInfo={d.schoolInfo}
         elevesC={d.elevesC} elevesL={d.elevesL} elevesP={d.elevesP}
         tauxPayC={d.tauxPayC} tauxPayL={d.tauxPayL} tauxPayP={d.tauxPayP} tauxPay={d.tauxPay}
+        sansArgent={sansArgent}
       />
 
-      <TrendsCard c1={d.c1} c2={d.c2} annee={annee} dataTendance={d.dataTendance} />
+      <TrendsCard c1={d.c1} c2={d.c2} annee={annee} dataTendance={d.dataTendance} sansArgent={sansArgent} />
 
       <EventsAlerts
-        c1={d.c1} c2={d.c2} evAVenir={d.evAVenir}
+        c1={d.c1} c2={d.c2} evAVenir={d.evAVenir} sansArgent={sansArgent}
         tauxPay={d.tauxPay} solde={d.financesClaires ? d.financesClaires.solde : d.solde}
         masseSal={d.masseSal} totalRec={d.totalRec} moyenneMensuelle={d.moyenneEncaisseeMois}
         // Seule la Direction accorde une dispense : elle seule voit les demandes.
