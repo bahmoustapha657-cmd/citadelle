@@ -294,7 +294,7 @@
     "public": {
       "choice": "A public school",
       "fixedPrice": "{{prix}} / month",
-      "choiceDesc": "One price, whatever the number of students, with every management tool: students, grades and report cards, accounting, teacher and parent portals.",
+      "choiceDesc": "One price, whatever the number of students: students and classes, grades and report cards, absences, timetables, teacher and parent portals.",
       "info": "Public school: you start with the free plan (up to 50 students). Then request the Public school plan from the dashboard: EduGest checks the school's status and activates it, at {{prix}} per month whatever the number of students."
     }
   },
@@ -476,7 +476,7 @@
       "send": "Send the request",
       "sendError": "Error while sending. Check your connection and try again.",
       "fixedPrice": "{{prix}} / month, unlimited students",
-      "publicNote": "For public schools only: EduGest checks the school's status before activating this plan. {{prix}} per month whatever the number of students, with every management tool."
+      "publicNote": "For public schools only: EduGest checks the school's status before activating this plan. {{prix}} per month whatever the number of students."
     },
     "alertExemptRequestsOne": "1 exemption request to review",
     "alertExemptRequestsMany": "{{count}} exemption requests to review",
@@ -502,7 +502,7 @@
     "footerTagline": "EduGest — Built for French-, English- and Arabic-speaking schools.",
     "publicTitle": "One price, whatever the number of students",
     "publicFeature1": "Unlimited students",
-    "publicFeature2": "Every management tool",
+    "publicFeature2": "Grades, report cards and absences",
     "publicFeature3": "Teacher and parent portals",
     "publicFeature4": "School status checked by EduGest",
     "publicCta": "Register my public school"

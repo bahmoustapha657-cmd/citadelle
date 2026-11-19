@@ -294,7 +294,7 @@
     "public": {
       "choice": "Une école publique",
       "fixedPrice": "{{prix}} / mois",
-      "choiceDesc": "Un seul prix, quel que soit le nombre d'élèves, avec tous les outils de gestion : élèves, notes et bulletins, comptabilité, portails enseignants et parents.",
+      "choiceDesc": "Un seul prix, quel que soit le nombre d'élèves : élèves et classes, notes et bulletins, absences, emplois du temps, portails enseignants et parents.",
       "info": "École publique : vous commencez avec l'offre gratuite (jusqu'à 50 élèves). Demandez ensuite l'offre École publique depuis le tableau de bord : EduGest vérifie le statut de l'école puis l'active, à {{prix}} par mois quel que soit le nombre d'élèves."
     }
   },
@@ -476,7 +476,7 @@
       "send": "Envoyer la demande",
       "sendError": "Erreur lors de l'envoi. Vérifiez votre connexion et réessayez.",
       "fixedPrice": "{{prix}} / mois, élèves illimités",
-      "publicNote": "Réservé aux établissements publics : EduGest vérifie le statut de l'école avant d'activer ce plan. {{prix}} par mois quel que soit le nombre d'élèves, avec tous les outils de gestion."
+      "publicNote": "Réservé aux établissements publics : EduGest vérifie le statut de l'école avant d'activer ce plan. {{prix}} par mois quel que soit le nombre d'élèves."
     },
     "alertExemptRequestsOne": "1 demande de dispense à examiner",
     "alertExemptRequestsMany": "{{count}} demandes de dispense à examiner",
@@ -502,7 +502,7 @@
     "footerTagline": "EduGest — Pensé pour les écoles francophones, anglophones et arabophones.",
     "publicTitle": "Un seul prix, quel que soit le nombre d'élèves",
     "publicFeature1": "Élèves illimités",
-    "publicFeature2": "Tous les outils de gestion",
+    "publicFeature2": "Notes, bulletins et absences",
     "publicFeature3": "Portails enseignants et parents",
     "publicFeature4": "Statut de l'école vérifié par EduGest",
     "publicCta": "Inscrire mon école publique"
