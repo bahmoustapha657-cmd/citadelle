@@ -6,6 +6,11 @@ export function EtapeEcole({ form, chg, erreur, onNext }) {
   const { t } = useTranslation();
   return (
     <>
+      {form.statutEtablissement === "public" && (
+        <div role="note" style={{ background: "#ecfdf5", border: "1px solid #a7f3d0", borderRadius: 8, padding: "9px 12px", fontSize: 12, color: "#065f46", marginBottom: 12, lineHeight: 1.5 }}>
+          🏛️ {t("register.public.info")}
+        </div>
+      )}
       <label style={labelStyle}>{t("register.schoolName")} *</label>
       <input
         style={inputStyle}

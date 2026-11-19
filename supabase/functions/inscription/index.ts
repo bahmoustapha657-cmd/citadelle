@@ -13,6 +13,7 @@
 // (publique : pas de JWT requis ; la clé anon suffit côté client.)
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { codeReserveEnseignant, ligneCompteEnseignant, ligneEcoleEnseignant, validerInscriptionEnseignant } from "./enseignant.ts";
+import { statutEtablissement } from "./ecole.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -108,6 +109,8 @@ Deno.serve(async (req) => {
       extra: {
         ville: ville.trim(), createdAt: Date.now(), securityVersion: 2,
         responsable: responsable.trim(), telephone: telDigits, email: contactEmail.trim(),
+        // École publique ou privée (ecole.ts) : l'offre proposée d'abord.
+        statutEtablissement: statutEtablissement(corps.statutEtablissement),
       },
     }).select("id").single();
     if (eErr) return json({ error: eErr.message }, 500);

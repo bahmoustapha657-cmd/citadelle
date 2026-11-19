@@ -1,7 +1,10 @@
+import { useTranslation } from "react-i18next";
 import { PLANS } from "../../../constants";
+import { estEcolePublique } from "../../../ecole-publique";
 
 // Badge de plan d'une école (gère l'état "expiré").
 export function EcolePlanBadge({ ecole, now }) {
+  const { t } = useTranslation();
   const p = PLANS[ecole.plan] || PLANS.gratuit;
   const expired = ecole.plan !== "gratuit" && ecole.planExpiry && now > ecole.planExpiry;
   return (
@@ -12,6 +15,13 @@ export function EcolePlanBadge({ ecole, now }) {
       }}>
         {expired ? "Expire" : p.label}
       </span>
+      {/* Statut déclaré à l'inscription : à vérifier avant d'attribuer le
+          plan École publique (src/ecole-publique.js). */}
+      {estEcolePublique(ecole) && (
+        <span style={{ fontSize: 10, fontWeight: 800, color: "#047857" }}>
+          🏛️ {t("register.public.choice")}
+        </span>
+      )}
       {ecole.plan !== "gratuit" && ecole.planExpiry && (
         <span style={{ fontSize: 9, color: expired ? "#ef4444" : "#9ca3af" }}>
           Exp. {new Date(ecole.planExpiry).toLocaleDateString("fr-FR")}

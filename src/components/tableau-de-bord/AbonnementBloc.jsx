@@ -72,7 +72,7 @@ export function AbonnementBloc({
 
         {demandeOuverte && (
           <AbonnementDemandeForm
-            demandePlan={demandePlan} setDemandePlan={setDemandePlan}
+            schoolInfo={schoolInfo} demandePlan={demandePlan} setDemandePlan={setDemandePlan}
             demandeForm={demandeForm} setDemandeForm={setDemandeForm}
             demandeEnvoi={demandeEnvoi} demandeSucces={demandeSucces} envoyerDemande={envoyerDemande}
           />

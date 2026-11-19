@@ -290,6 +290,12 @@
         "schoolRequired": "The name of the school where you teach is required.",
         "levelRequired": "Choose at least one level taught."
       }
+    },
+    "public": {
+      "choice": "A public school",
+      "fixedPrice": "Fixed price",
+      "choiceDesc": "One fixed price whatever the number of students, with every management tool: students, grades and report cards, accounting, teacher and parent portals.",
+      "info": "Public school: you start with the free plan (up to 50 students). Then request the Public school plan from the dashboard: EduGest checks the school's status and activates it, at the same price whatever the number of students."
     }
   },
   "modules": {
@@ -359,7 +365,8 @@
     "starter": "Starter",
     "standard": "Standard",
     "premium": "Premium",
-    "pro": "Pro"
+    "pro": "Pro",
+    "publique": "Public school"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -467,7 +474,9 @@
       "sentBody": "The EduGest team will check your payment and activate your <b>{{plan}}</b> subscription within 24 hours.",
       "sending": "Sending…",
       "send": "Send the request",
-      "sendError": "Error while sending. Check your connection and try again."
+      "sendError": "Error while sending. Check your connection and try again.",
+      "fixedPrice": "Fixed price, unlimited students",
+      "publicNote": "For public schools only: EduGest checks the school's status before activating this plan. Same price whatever the number of students, with every management tool."
     },
     "alertExemptRequestsOne": "1 exemption request to review",
     "alertExemptRequestsMany": "{{count}} exemption requests to review",

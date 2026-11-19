@@ -290,6 +290,12 @@
         "schoolRequired": "Le nom de l'établissement où vous enseignez est requis.",
         "levelRequired": "Choisissez au moins un niveau enseigné."
       }
+    },
+    "public": {
+      "choice": "Une école publique",
+      "fixedPrice": "Prix fixe",
+      "choiceDesc": "Un prix fixe quel que soit le nombre d'élèves, avec tous les outils de gestion : élèves, notes et bulletins, comptabilité, portails enseignants et parents.",
+      "info": "École publique : vous commencez avec l'offre gratuite (jusqu'à 50 élèves). Demandez ensuite l'offre École publique depuis le tableau de bord : EduGest vérifie le statut de l'école puis l'active, au même prix quel que soit le nombre d'élèves."
     }
   },
   "nav": {
@@ -375,7 +381,8 @@
     "starter": "Starter",
     "standard": "Standard",
     "premium": "Premium",
-    "pro": "Pro"
+    "pro": "Pro",
+    "publique": "École publique"
   },
   "dashboard": {
     "title": "Tableau de bord",
@@ -467,7 +474,9 @@
       "sentBody": "L'équipe EduGest va vérifier votre paiement et activer votre abonnement <b>{{plan}}</b> sous 24h.",
       "sending": "Envoi en cours…",
       "send": "Envoyer la demande",
-      "sendError": "Erreur lors de l'envoi. Vérifiez votre connexion et réessayez."
+      "sendError": "Erreur lors de l'envoi. Vérifiez votre connexion et réessayez.",
+      "fixedPrice": "Prix fixe, élèves illimités",
+      "publicNote": "Réservé aux établissements publics : EduGest vérifie le statut de l'école avant d'activer ce plan. Même prix quel que soit le nombre d'élèves, avec tous les outils de gestion."
     },
     "alertExemptRequestsOne": "1 demande de dispense à examiner",
     "alertExemptRequestsMany": "{{count}} demandes de dispense à examiner",

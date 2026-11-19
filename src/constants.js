@@ -494,6 +494,11 @@ export const PLANS = {
   starter: { label: "Starter", eleveLimit: 200, couleur: "#0ea5e9", bg: "#e0f2fe" },
   standard: { label: "Standard", eleveLimit: 500, couleur: "#8b5cf6", bg: "#ede9fe" },
   premium: { label: "Premium", eleveLimit: Infinity, couleur: "#f59e0b", bg: "#fef3c7" },
+  // École publique : prix fixe quel que soit l'effectif, tous les outils de
+  // gestion (src/ecole-publique.js). Les fonctions facturées à l'usage
+  // (SMS/WhatsApp, appréciations IA) restent au Premium (plan-features.js).
+  // i18n-ignore — libellé de repli : l'interface passe par t("plans.publique").
+  publique: { label: "École publique", eleveLimit: Infinity, couleur: "#047857", bg: "#d1fae5" },
 };
 export const PLAN_DUREES = [
   { label: "1 mois", jours: 30 },

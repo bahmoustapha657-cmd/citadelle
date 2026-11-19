@@ -1,5 +1,6 @@
 import { Trans, useTranslation } from "react-i18next";
 import { C, PLANS } from "../../../constants";
+import { PLAN_PUBLIQUE, plansDemandables } from "../../../ecole-publique";
 
 // Opérateurs proposés ; la valeur envoyée reste ce libellé (« Autre » compris).
 const OPERATEURS = ["Orange Money", "MTN Mobile Money", "Moov Money", "Wave", "Autre"];
@@ -7,25 +8,39 @@ const OPERATEURS = ["Orange Money", "MTN Mobile Money", "Moov Money", "Wave", "A
 // Formulaire de demande formelle d'abonnement : choix du plan, infos de
 // paiement Mobile Money et envoi (ou écran de succès).
 export function AbonnementDemandeForm({
-  demandePlan, setDemandePlan, demandeForm, setDemandeForm,
+  schoolInfo, demandePlan, setDemandePlan, demandeForm, setDemandeForm,
   demandeEnvoi, demandeSucces, envoyerDemande,
 }) {
   const { t } = useTranslation();
+  const plans = plansDemandables(schoolInfo, PLANS);
+  // Capacité affichée sous le nom du plan ; l'école publique paie un prix
+  // fixe quel que soit son effectif.
+  const capacite = (key, info) => key === PLAN_PUBLIQUE
+    ? t("dashboard.sub.fixedPrice")
+    : info.eleveLimit === Infinity ? t("dashboard.sub.unlimited") : t("dashboard.sub.upToStudents", { count: info.eleveLimit });
   return (
     <div style={{ padding: "20px 24px" }}>
       <p style={{ margin: "0 0 16px", fontSize: 13, color: "#374151" }}>{t("dashboard.sub.formIntro")}</p>
 
       {/* Choix du plan */}
       <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: C.blue, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>{t("dashboard.sub.desiredPlan")}</label>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, marginBottom: 18 }}>
-        {Object.entries(PLANS).filter(([k]) => k !== "gratuit").map(([key, info]) => (
-          <button key={key} onClick={() => setDemandePlan(key)}
-            style={{ border: `2px solid ${demandePlan === key ? info.couleur : "#e5e7eb"}`, borderRadius: 10, padding: "10px 12px", cursor: "pointer", textAlign: "start", background: demandePlan === key ? info.bg : "#f9fafb" }}>
-            <div style={{ fontWeight: 800, fontSize: 13, color: info.couleur }}>{t(`plans.${key}`, info.label)}</div>
-            <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>{info.eleveLimit === Infinity ? t("dashboard.sub.unlimited") : t("dashboard.sub.upToStudents", { count: info.eleveLimit })}</div>
-          </button>
-        ))}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: 8, marginBottom: demandePlan === PLAN_PUBLIQUE ? 8 : 18 }}>
+        {plans.map((key) => {
+          const info = PLANS[key];
+          return (
+            <button key={key} type="button" aria-pressed={demandePlan === key} onClick={() => setDemandePlan(key)}
+              style={{ border: `2px solid ${demandePlan === key ? info.couleur : "#e5e7eb"}`, borderRadius: 10, padding: "10px 12px", cursor: "pointer", textAlign: "start", background: demandePlan === key ? info.bg : "#f9fafb" }}>
+              <div style={{ fontWeight: 800, fontSize: 13, color: info.couleur }}>{t(`plans.${key}`, info.label)}</div>
+              <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>{capacite(key, info)}</div>
+            </button>
+          );
+        })}
       </div>
+      {demandePlan === PLAN_PUBLIQUE && (
+        <p style={{ margin: "0 0 18px", fontSize: 12, color: "#065f46", background: "#ecfdf5", border: "1px solid #a7f3d0", borderRadius: 8, padding: "8px 10px", lineHeight: 1.5 }}>
+          {t("dashboard.sub.publicNote")}
+        </p>
+      )}
 
       {/* Infos paiement */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>

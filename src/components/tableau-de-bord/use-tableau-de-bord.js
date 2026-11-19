@@ -1,7 +1,8 @@
 import { useContext, useMemo, useState } from "react";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { useFirestore } from "../../hooks/useFirestore";
-import { C, getAnnee } from "../../constants";
+import { C, PLANS, getAnnee } from "../../constants";
+import { planDemandeParDefaut } from "../../ecole-publique";
 import { sansNonReinscritsEcartes } from "../../ecartes-non-reinscrits";
 import { creerDemandePlan } from "./tableau-de-bord-api";
 import i18n from "../../i18n";
@@ -78,7 +79,8 @@ export function useTableauDeBord({ annee } = {}) {
 
   const [moisRapport, setMoisRapport] = useState(moisSalaire[moisSalaire.length - 1] || "");
   const [demandeOuverte, setDemandeOuverte] = useState(false);
-  const [demandePlan, setDemandePlan] = useState("starter");
+  // Une école publique trouve son offre choisie d'avance (ecole-publique.js).
+  const [demandePlan, setDemandePlan] = useState(() => planDemandeParDefaut(schoolInfo, PLANS) || "starter");
   const [demandeForm, setDemandeForm] = useState({ operateur: "Orange Money", telephone: "", reference: "" });
   const [demandeEnvoi, setDemandeEnvoi] = useState(false);
   const [demandeSucces, setDemandeSucces] = useState(false);
