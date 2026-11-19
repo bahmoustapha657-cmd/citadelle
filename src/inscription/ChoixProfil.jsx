@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 
-// Premier écran de l'inscription : une école entière, ou un enseignant seul
+// Premier écran de l'inscription : une école entière, une école publique
+// (même parcours, offre à prix fixe proposée ensuite), ou un enseignant seul
 // (espace gratuit, même si son école n'utilise pas EduGest).
 const carte = {
   display: "block", width: "100%", textAlign: "start", cursor: "pointer",
@@ -19,6 +20,18 @@ export function ChoixProfil({ onChoisir }) {
         <div style={{ fontSize: 15, fontWeight: 800, color: "#0A1628" }}>{t("register.teacher.choiceSchool")}</div>
         <div style={{ fontSize: 12.5, color: "#475569", marginTop: 4, lineHeight: 1.5 }}>
           {t("register.teacher.choiceSchoolDesc")}
+        </div>
+      </button>
+      {/* École publique : prix fixe quel que soit l'effectif (étape 4). */}
+      <button type="button" style={carte} onClick={() => onChoisir("publique")}>
+        <div style={{ fontSize: 15, fontWeight: 800, color: "#0A1628" }}>
+          {t("register.public.choice")}
+          <span style={{ fontSize: 11, fontWeight: 800, color: "#047857", background: "#d1fae5", borderRadius: 6, padding: "2px 7px", marginInlineStart: 6 }}>
+            {t("register.public.fixedPrice")}
+          </span>
+        </div>
+        <div style={{ fontSize: 12.5, color: "#475569", marginTop: 4, lineHeight: 1.5 }}>
+          {t("register.public.choiceDesc")}
         </div>
       </button>
       <button type="button" style={carte} onClick={() => onChoisir("enseignant")}>

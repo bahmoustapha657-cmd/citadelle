@@ -23,6 +23,7 @@ export async function soumettreInscription(form) {
     responsable: form.responsable,
     telephone: form.telephone,
     email: form.email,
+    statutEtablissement: form.statutEtablissement === "public" ? "public" : "prive",
     website: form.website,
     adminLogin: form.adminLogin,
     adminMdp: form.adminMdp,

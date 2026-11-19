@@ -23,6 +23,7 @@ export function useInscription() {
     responsable: "",
     telephone: "",
     email: "",
+    statutEtablissement: "prive", // « public » : école publique (prix fixe)
     adminLogin: "",
     adminMdp: "",
     adminMdp2: "",
@@ -50,7 +51,14 @@ export function useInscription() {
   const validerEtape1 = () => valider(erreurEtape1);
   const validerEtape2 = () => valider(erreurEtape2);
 
-  const choisirProfil = (p) => { setProfil(p); setEtape(1); setErreur(""); };
+  // « publique » : le parcours d'une école, avec son statut déclaré (il lui
+  // propose d'abord l'offre école publique ; le plan reste attribué par EduGest).
+  const choisirProfil = (p) => {
+    setProfil(p === "publique" ? "ecole" : p);
+    setForm((f) => ({ ...f, statutEtablissement: p === "publique" ? "public" : "prive" }));
+    setEtape(1);
+    setErreur("");
+  };
 
   const inscrire = async () => {
     if (!validerEtape2()) return;
