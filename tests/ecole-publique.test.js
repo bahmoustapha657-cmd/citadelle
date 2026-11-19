@@ -8,7 +8,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { PLANS } from "../src/constants.js";
-import { PLAN_PUBLIQUE, estEcolePublique, planDemandeParDefaut, plansDemandables } from "../src/ecole-publique.js";
+import {
+  PLAN_PUBLIQUE, PRIX_MENSUEL_PUBLIQUE, estEcolePublique, planDemandeParDefaut, plansDemandables, prixEcolePublique,
+} from "../src/ecole-publique.js";
 import { computePlanInfo } from "../src/components/app/app-shell-plan.js";
 import { estPremiumActif } from "../shared/plan-features.js";
 import { statutEtablissement } from "../supabase/functions/inscription/ecole.ts";
@@ -82,6 +84,30 @@ test("inscription : le statut déclaré est « public » ou « privé », sans a
   assert.match(index, /plan: "gratuit", actif: true,/);
   assert.match(source("supabase/migrations/20261118100213_espace_enseignant.sql"),
     /if new\.plan is distinct from old\.plan\s+or new\.plan_expiry is distinct from old\.plan_expiry then/);
+});
+
+test("prix de l'offre : 100 000 GNF par mois, une seule source pour tous les textes", () => {
+  assert.equal(PRIX_MENSUEL_PUBLIQUE, 100000);
+  assert.match(prixEcolePublique(), /^100\s000 GNF$/);
+  const locale = (langue) => JSON.parse(source(`src/i18n/locales/${langue}.json`));
+  for (const langue of ["fr", "en", "ar"]) {
+    const o = locale(langue);
+    // Le montant n'est écrit dans aucune langue : il arrive par {{prix}}.
+    for (const texte of [o.dashboard.sub.fixedPrice, o.dashboard.sub.publicNote, o.register.public.fixedPrice,
+      o.register.public.info]) {
+      assert.match(texte, /\{\{prix\}\}/, `${langue} : ${texte}`);
+      assert.doesNotMatch(texte, /100/, `${langue} : ${texte}`);
+    }
+    for (const cle of ["publicTitle", "publicFeature1", "publicFeature2", "publicFeature3", "publicFeature4", "publicCta"]) {
+      assert.ok(o.landing[cle], `${langue} : landing.${cle}`);
+    }
+  }
+  assert.equal(locale("fr").register.public.fixedPrice.replace("{{prix}}", prixEcolePublique()).replace(/\s/g, " "), "100 000 GNF / mois");
+  // Chaque écran passe le prix au texte.
+  assert.match(source("src/inscription/ChoixProfil.jsx"), /t\("register\.public\.fixedPrice", \{ prix: prixEcolePublique\(\) \}\)/);
+  assert.match(source("src/inscription/EtapeEcole.jsx"), /t\("register\.public\.info", \{ prix: prixEcolePublique\(\) \}\)/);
+  assert.match(source("src/components/tableau-de-bord/abonnement/AbonnementDemandeForm.jsx"), /t\("dashboard\.sub\.publicNote", \{ prix \}\)/);
+  assert.match(source("src/components/landing/LandingTarifs.jsx"), /<BandeEcolePublique onInscription=\{onInscription\} \/>/);
 });
 
 test("écran d'inscription : le profil École publique suit le parcours d'une école", () => {

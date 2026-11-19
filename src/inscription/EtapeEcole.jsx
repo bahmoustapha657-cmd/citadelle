@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { inputStyle, labelStyle, btnStyle, errStyle } from "./inscription-styles";
+import { prixEcolePublique } from "../ecole-publique";
 
 // Étape 1 : informations de l'école (nom, ville, pays).
 export function EtapeEcole({ form, chg, erreur, onNext }) {
@@ -8,7 +9,7 @@ export function EtapeEcole({ form, chg, erreur, onNext }) {
     <>
       {form.statutEtablissement === "public" && (
         <div role="note" style={{ background: "#ecfdf5", border: "1px solid #a7f3d0", borderRadius: 8, padding: "9px 12px", fontSize: 12, color: "#065f46", marginBottom: 12, lineHeight: 1.5 }}>
-          🏛️ {t("register.public.info")}
+          🏛️ {t("register.public.info", { prix: prixEcolePublique() })}
         </div>
       )}
       <label style={labelStyle}>{t("register.schoolName")} *</label>

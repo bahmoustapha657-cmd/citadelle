@@ -20,11 +20,26 @@ const lireEcole = async (code) => {
   return data;
 };
 
+// Prix fixé le 2026-11-19 (src/ecole-publique.js) ; l'espace entre les
+// milliers est insécable, d'où \s.
+const PRIX_MOIS = /100\s000 GNF \/ mois/;
+
+test("la page d'accueil affiche l'offre École publique et mène à son inscription", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "En savoir plus sur EduGest" }).click();
+  const bande = page.locator("[data-offre=publique]");
+  await expect(bande).toContainText(PRIX_MOIS);
+  await expect(bande).toContainText("Un seul prix, quel que soit le nombre d'élèves");
+  await bande.getByRole("button", { name: "Inscrire mon école publique" }).click();
+  await expect(page.getByRole("button", { name: /Une école publique/ })).toContainText(PRIX_MOIS);
+});
+
 test("elle s'inscrit comme école publique : statut noté, plan gratuit", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Créer une école ou un espace enseignant" }).click();
   await page.getByRole("button", { name: /Une école publique/ }).click();
   await expect(page.getByRole("note")).toContainText("vous commencez avec l'offre gratuite");
+  await expect(page.getByRole("note")).toContainText(/100\s000 GNF par mois/);
   await page.getByPlaceholder("Ex. : École La Citadelle").fill(ECOLE.nom);
   await page.getByPlaceholder("Ex. : Kindia").fill(ECOLE.ville);
   await page.getByPlaceholder("Nom et prénom du directeur / fondateur").fill("Mamadou CAMARA");
@@ -83,7 +98,7 @@ test("depuis le tableau de bord, elle demande l'offre École publique, choisie d
   await page.getByRole("button", { name: "📋 Demande formelle" }).click();
   const offre = page.getByRole("button", { name: /École publique/ });
   await expect(offre).toHaveAttribute("aria-pressed", "true");
-  await expect(offre).toContainText("Prix fixe, élèves illimités");
+  await expect(offre).toContainText(/100\s000 GNF \/ mois, élèves illimités/);
   await expect(page.getByText(/Réservé aux établissements publics/)).toBeVisible();
   await page.getByPlaceholder("Ex. : 621 00 00 00").fill("620 00 05 55");
   await page.getByPlaceholder("Ex. : TXN-20240418-001").fill(`OM-${SUFFIXE}`);

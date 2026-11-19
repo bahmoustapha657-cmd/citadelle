@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { prixEcolePublique } from "../ecole-publique";
 
 // Premier écran de l'inscription : une école entière, une école publique
 // (même parcours, offre à prix fixe proposée ensuite), ou un enseignant seul
@@ -25,9 +26,9 @@ export function ChoixProfil({ onChoisir }) {
       {/* École publique : prix fixe quel que soit l'effectif (étape 4). */}
       <button type="button" style={carte} onClick={() => onChoisir("publique")}>
         <div style={{ fontSize: 15, fontWeight: 800, color: "#0A1628" }}>
-          {t("register.public.choice")}
+          🏛️ {t("register.public.choice")}
           <span style={{ fontSize: 11, fontWeight: 800, color: "#047857", background: "#d1fae5", borderRadius: 6, padding: "2px 7px", marginInlineStart: 6 }}>
-            {t("register.public.fixedPrice")}
+            {t("register.public.fixedPrice", { prix: prixEcolePublique() })}
           </span>
         </div>
         <div style={{ fontSize: 12.5, color: "#475569", marginTop: 4, lineHeight: 1.5 }}>
