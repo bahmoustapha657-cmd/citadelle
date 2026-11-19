@@ -15,13 +15,17 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { peutFusionnerParents, peutGererRole } from "./droits.ts";
 import { fusionnerComptesParents, lienValide, modifierLienParent, rattacherAuFoyer } from "./foyer.ts";
-import { normaliserTel } from "../_shared/telephone.ts";
+import { normaliserTel, numeroNational } from "../_shared/telephone.ts";
 import { idsADetacher, peutRelierComptes, planLiaison, refusChangement } from "./espaces.ts";
 import { refusEspaceEnseignant } from "./espace-enseignant.ts";
 import {
-  baseCodeEnseignant, codeEtablissementSuivant, entreEspacesEnseignant, motDePasseInterne,
+  baseCodeEnseignant, codeEtablissementSuivant, motDePasseInterne,
   refusAjoutEtablissement, validerNouvelEtablissement,
 } from "./etablissements.ts";
+import {
+  normaliserCodeEcole, passageEntreEcolesPermis, refusDemandeur, refusEcoleVisee, refusTraitement,
+  statutErreurApplication, validerAcceptation,
+} from "./rattachement.ts";
 import { ligneCompteEnseignant, ligneEcoleEnseignant } from "../inscription/enseignant.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -70,14 +74,15 @@ Deno.serve(async (req) => {
     let ecoleId = caller.ecole_id as string | null;
     let schoolCode = "";
     let typeEspace: unknown = "ecole";
+    let ecoleActive: unknown = true;
     if (caller.role === "superadmin" && body.schoolId) {
       const { data: ec } = await admin.from("ecoles").select("*").eq("code", String(body.schoolId).toLowerCase()).maybeSingle();
       if (!ec) return json({ error: "École introuvable." }, 404);
-      ecoleId = ec.id; schoolCode = ec.code; typeEspace = ec.type_espace;
+      ecoleId = ec.id; schoolCode = ec.code; typeEspace = ec.type_espace; ecoleActive = ec.actif;
     } else {
       if (!ecoleId) return json({ error: "Appelant sans école." }, 403);
       const { data: ec } = await admin.from("ecoles").select("*").eq("id", ecoleId).maybeSingle();
-      schoolCode = ec?.code || ""; typeEspace = ec?.type_espace;
+      schoolCode = ec?.code || ""; typeEspace = ec?.type_espace; ecoleActive = ec?.actif;
     }
 
     // Espace d'un enseignant indépendant : un seul compte, le sien.
@@ -348,19 +353,130 @@ Deno.serve(async (req) => {
       return json({ ok: true, compteId: compte.id, schoolId: code });
     }
 
+    // ── Rattachement à l'école qui adopte EduGest (rattachement.ts) ──────
+    // L'enseignant propose, depuis son espace, en saisissant le code de son
+    // école ; une seule demande en attente par espace (index unique).
+    if (action === "demander_rattachement") {
+      const refusD = refusDemandeur(typeEspace, caller.role, ecoleActive);
+      if (refusD) return json({ error: refusD.error }, refusD.status);
+      const code = normaliserCodeEcole(body.codeEcole);
+      const { data: visee } = code
+        ? await admin.from("ecoles").select("*").eq("code", code).maybeSingle()
+        : { data: null };
+      const refusV = refusEcoleVisee(visee, ecoleId);
+      if (refusV) return json({ error: refusV.error }, refusV.status);
+      const { data: demande, error: dErr } = await admin.from("rattachements")
+        .insert({ espace_id: ecoleId, ecole_id: visee.id, demandeur_id: caller.id })
+        .select("id").single();
+      if (dErr) {
+        const enAttente = dErr.code === "23505";
+        return json({
+          error: enAttente ? "Une demande de rattachement attend déjà la direction : annulez-la avant d'en faire une autre." : dErr.message,
+        }, enAttente ? 409 : 500);
+      }
+      await admin.from("audit").insert({
+        ecole_id: ecoleId, action: "demander_rattachement",
+        auteur: { compteId: caller.id, login: caller.login, role: caller.role },
+        cible: { ecoleId: visee.id, code: visee.code },
+        details: { demandeId: demande.id },
+      });
+      return json({ ok: true, demandeId: demande.id, ecoleNom: visee.nom });
+    }
+
+    if (action === "annuler_rattachement") {
+      const refusD = refusDemandeur(typeEspace, caller.role);
+      if (refusD) return json({ error: refusD.error }, refusD.status);
+      const { data: annulees, error: aErr } = await admin.from("rattachements")
+        .update({ statut: "annulee", traitee_le: new Date().toISOString(), traitee_par: { compteId: caller.id, login: caller.login } })
+        .eq("espace_id", ecoleId).eq("statut", "en_attente").select("id");
+      if (aErr) return json({ error: aErr.message }, 500);
+      return json({ ok: true, annulees: (annulees || []).length });
+    }
+
+    // La direction de l'école visée refuse, ou relie les élèves et accepte.
+    if (action === "refuser_rattachement" || action === "accepter_rattachement") {
+      const { data: demande } = await admin.from("rattachements")
+        .select("*").eq("id", String(body.demandeId || "")).maybeSingle();
+      const refusT = refusTraitement(demande, ecoleId, caller.role, typeEspace);
+      if (refusT) return json({ error: refusT.error }, refusT.status);
+      const auteur = { compteId: caller.id, login: caller.login, role: caller.role, nom: caller.nom };
+
+      if (action === "refuser_rattachement") {
+        const { error: rErr } = await admin.from("rattachements")
+          .update({ statut: "refusee", traitee_le: new Date().toISOString(), traitee_par: auteur })
+          .eq("id", demande.id).eq("statut", "en_attente");
+        if (rErr) return json({ error: rErr.message }, 500);
+        await admin.from("audit").insert({
+          ecole_id: ecoleId, action: "refuser_rattachement", auteur,
+          cible: { demandeId: demande.id, espaceId: demande.espace_id }, details: {},
+        });
+        return json({ ok: true });
+      }
+
+      const corps = validerAcceptation(body);
+      if ("error" in corps) return json({ error: corps.error }, corps.status);
+      const { data: demandeur } = await admin.from("comptes")
+        .select("id, login, nom, email, telephone").eq("id", demande.demandeur_id).maybeSingle();
+      if (!demandeur) return json({ error: "Le compte de l'enseignant n'existe plus." }, 409);
+
+      // Nouveau compte : son numéro comme identifiant, un accès propre à
+      // l'école (mot de passe interne : il y entre depuis son espace, ou en
+      // se connectant avec son numéro et son mot de passe habituels).
+      let nouveau: Record<string, unknown> | null = null;
+      let accesCree: string | null = null;
+      if (corps.nouveau) {
+        const login = String(demandeur.login || "");
+        const { data: pris } = await admin.from("comptes")
+          .select("id").eq("ecole_id", ecoleId).eq("login", login).maybeSingle();
+        if (pris) {
+          return json({ error: `L'identifiant ${login} est déjà celui d'un compte de l'école : choisissez ce compte comme son compte existant.` }, 409);
+        }
+        const { data: acces, error: aErr } = await admin.auth.admin.createUser({
+          email: `${login}.${schoolCode}@${DOMAIN}`, password: motDePasseInterne(), email_confirm: true,
+          user_metadata: { login, schoolId: schoolCode },
+        });
+        if (aErr || !acces?.user) return json({ error: aErr?.message || "Création de l'accès de l'enseignant impossible." }, 500);
+        accesCree = acces.user.id;
+        nouveau = {
+          ...corps.nouveau, userId: accesCree, login,
+          email: demandeur.email || null, telephone: numeroNational(demandeur.telephone) || login,
+        };
+      }
+
+      const { data: bilan, error: pErr } = await admin.rpc("rattachement_appliquer", {
+        p_demande: demande.id,
+        p: {
+          eleves: corps.eleves, matieres: corps.matieres, classes: corps.classes,
+          compteId: corps.compteId, nouveau, auteur,
+        },
+      });
+      if (pErr) {
+        if (accesCree) await admin.auth.admin.deleteUser(accesCree).catch(() => {});
+        return json({ error: pErr.message }, statutErreurApplication(pErr.hint, pErr.code));
+      }
+      await admin.from("audit").insert({
+        ecole_id: ecoleId, action: "accepter_rattachement", auteur,
+        cible: { demandeId: demande.id, espaceId: demande.espace_id, compteId: bilan?.compteId },
+        details: bilan || {},
+      });
+      return json({ ok: true, bilan });
+    }
+
     // Passer à un autre espace de la même personne, sans mot de passe : on
     // rend un jeton à usage unique que le navigateur échange contre la
     // session du compte visé (verifyOtp), comme pour « Mot de passe oublié ».
     if (action === "changer_espace") {
       const { data: cible } = await admin.from("comptes")
         .select("id, ecole_id, user_id, role, personne_id, extra, login, poste_id").eq("id", String(body.compteId || "")).maybeSingle();
-      // Autre établissement du même enseignant : permis entre deux espaces
-      // enseignants seulement (etablissements.ts).
+      // Autre école : seulement depuis un espace enseignant, vers un autre de
+      // ses espaces enseignants ou vers son compte enseignant d'une école où
+      // ses classes ont été rattachées — jamais d'un compte d'école vers ses
+      // espaces (rattachement.ts).
       let entreEtablissements = false;
       if (cible && cible.ecole_id !== caller.ecole_id) {
         const { data: ecCible } = await admin.from("ecoles").select("*").eq("id", cible.ecole_id).maybeSingle();
         entreEtablissements = !!ecCible && ecCible.actif !== false && ecCible.supprime !== true
-          && entreEspacesEnseignant(typeEspace, ecCible.type_espace);
+          && passageEntreEcolesPermis(typeEspace, ecCible.type_espace, cible.role);
       }
       const refus = refusChangement(caller, cible, entreEtablissements);
       if (refus) return json({ error: refus.error }, refus.status);

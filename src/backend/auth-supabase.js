@@ -7,7 +7,7 @@
 //   - signOut()
 // Pas de customToken : signInWithPassword établit directement la session.
 import { isAuthRetryableFetchError } from "@supabase/supabase-js";
-import { getSupabase, uidSessionEnregistree } from "../supabaseClient";
+import { creerClientEphemere, getSupabase, uidSessionEnregistree } from "../supabaseClient";
 import { emailFor, superadminEmailFor } from "../backend";
 import { identifiantConnexion } from "../comptes-parents";
 import { powerSyncConfigured } from "./powersync/tables";
@@ -99,9 +99,50 @@ export async function fetchEtatEcole(sid) {
   const { data, error } = await sb.rpc("etat_ecole", { p_code: sid });
   if (error || !data || !data.length) return { info: null, statut: "" };
   const e = data[0];
+  // Espace enseignant fermé parce que ses classes ont rejoint une école
+  // (rattachement) : son numéro et son mot de passe restent son accès.
+  if (e.rattache === true) return { info: null, statut: "", rattache: true, typeEspace: "enseignant" };
   if (e.supprime === true) return { info: null, statut: "supprimee" };
   if (e.actif === false) return { info: null, statut: "inactive" };
-  return { info: { nom: e.nom, logo: e.logo, couleur1: e.couleur1, couleur2: e.couleur2, code: e.code }, statut: "" };
+  return {
+    info: { nom: e.nom, logo: e.logo, couleur1: e.couleur1, couleur2: e.couleur2, code: e.code },
+    statut: "", typeEspace: e.type_espace || "ecole",
+  };
+}
+
+// Connexion par l'espace PERSONNEL d'un enseignant (son numéro = code et
+// identifiant, son mot de passe) quand il doit arriver ailleurs : son espace
+// a été fermé par un rattachement, ou il a tapé le code de l'école où ses
+// classes ont été rattachées. L'espace personnel n'est ouvert que dans un
+// client jetable (aucune session enregistrée, aucun rappel côté app) : il
+// sert à obtenir le jeton du compte visé (account-manage, changer_espace),
+// qui seul ouvre la session de l'application.
+// `codeVise` : code de l'école visée ; sans lui, son espace enseignant
+// ouvert d'abord, sinon son compte d'école. null : mot de passe refusé, ou
+// rien de relié à l'école visée (l'appelant garde son propre message).
+async function connexionParEspacePersonnel({ numero, mdp, codeVise = "" }) {
+  await deconnexionEnCours;
+  const jetable = creerClientEphemere();
+  const { data: auth, error } = await jetable.auth.signInWithPassword({ email: emailFor(numero, numero), password: mdp });
+  if (error || !auth?.user) return null;
+  const fermer = () => jetable.auth.signOut(CET_APPAREIL).catch(() => {});
+  try {
+    const { data: espaces, error: eErr } = await jetable.rpc("mes_espaces");
+    if (eErr) return { ok: false, data: { error: i18n.t("auth.errInterrupted") } };
+    const autres = (espaces || []).filter((e) => !e.actuel);
+    const vise = String(codeVise || "").trim().toLowerCase();
+    const cible = vise
+      ? autres.find((e) => e.ecole_code === vise)
+      : (autres.find((e) => e.type_espace === "enseignant") || autres.find((e) => e.role === "enseignant"));
+    if (!cible) return vise ? null : { ok: false, data: { error: i18n.t("auth.errSpaceAttached") } };
+    const { data, error: fErr } = await jetable.functions.invoke("account-manage", {
+      body: { action: "changer_espace", compteId: cible.id },
+    });
+    if (fErr || !data?.tokenHash) return { ok: false, data: { error: i18n.t("auth.errSwitchSpace") } };
+    return ouvrirSessionParJeton(data.tokenHash, cible.ecole_code);
+  } finally {
+    await fermer();
+  }
 }
 
 // Construit l'utilisateur de session depuis la table `comptes` (filtrée par RLS).
@@ -176,6 +217,9 @@ async function chargerCompte(sb, userId, schoolCode) {
     eleveIds: Array.isArray(x.eleveIds) ? x.eleveIds : [],
     eleveNom: x.eleveNom || "",
     eleveClasse: x.eleveClasse || "",
+    // Enseignant : classes attribuées par le rattachement de son espace à
+    // l'école (étape 3) ; son portail les montre dès la première visite.
+    classesRattachees: Array.isArray(x.classesRattachees) ? x.classesRattachees : [],
     elevesAssocies: Array.isArray(x.elevesAssocies) ? x.elevesAssocies : [],
     tuteur: x.tuteur || "",
     contactTuteur: x.contactTuteur || "",
@@ -251,7 +295,13 @@ export async function ecoleLogin({ login, mdp, schoolId }) {
   // École désactivée ou supprimée : la base refuse déjà tout accès à ses
   // comptes (ecole-hors-service.sql) — on le dit clairement plutôt que de
   // laisser croire à un mauvais mot de passe ou à un compte introuvable.
-  const { statut } = await fetchEtatEcole(schoolId);
+  const { statut, rattache } = await fetchEtatEcole(schoolId);
+  // Espace enseignant fermé (ses classes ont rejoint une école) : sa
+  // connexion l'emmène dans ses espaces encore ouverts.
+  if (rattache) {
+    const r = await connexionParEspacePersonnel({ numero: identifiantConnexion(login), mdp });
+    return r || { ok: false, data: { error: i18n.t("auth.wrongCredentials") } };
+  }
   if (statut) return { ok: false, data: { error: msgEcoleHorsService(statut) } };
   let identifiant = String(login || "").trim();
   if (identifiant.includes("@")) {
@@ -269,8 +319,21 @@ export async function ecoleLogin({ login, mdp, schoolId }) {
   // chiffres. L'identifiant exact passe toujours en premier, pour qu'aucun
   // compte existant ne change de comportement.
   const numero = identifiantConnexion(identifiant);
-  if (r.ok || numero === identifiant || r.data?.regroupe) return r;
-  return connexionParEmail(emailFor(numero, schoolId), mdp, schoolId);
+  if (r.ok || r.data?.regroupe) return r;
+  const r2 = numero === identifiant ? r : await connexionParEmail(emailFor(numero, schoolId), mdp, schoolId);
+  if (r2.ok || r2.data?.regroupe) return r2;
+  // Enseignant dont les classes ont été rattachées à cette école : son
+  // compte d'école n'a pas de mot de passe à lui. Son numéro et son mot de
+  // passe habituels passent par son espace personnel.
+  const code = String(schoolId || "").trim().toLowerCase();
+  if (/^[0-9]{8,15}$/.test(numero) && numero !== code) {
+    const perso = await fetchEtatEcole(numero);
+    if (perso.typeEspace === "enseignant") {
+      const r3 = await connexionParEspacePersonnel({ numero, mdp, codeVise: code });
+      if (r3) return r3;
+    }
+  }
+  return r2;
 }
 
 // Connexion superadmin (transversal, sans école).

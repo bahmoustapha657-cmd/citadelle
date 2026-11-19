@@ -67,11 +67,8 @@ export function codeEtablissementSuivant(base: string, codesPris: Iterable<strin
   }
 }
 
-// Changer d'espace d'un établissement à un autre : seulement entre deux
-// espaces enseignants. Entre écoles, les espaces d'une personne restent ceux
-// de sa propre école (espaces.ts, refusChangement).
-export const entreEspacesEnseignant = (typeAppelant: unknown, typeCible: unknown) =>
-  typeAppelant === "enseignant" && typeCible === "enseignant";
+// Changer d'espace d'un établissement à un autre : règle commune avec le
+// rattachement à une école (rattachement.ts, passageEntreEcolesPermis).
 
 // Mot de passe de l'accès de connexion d'un établissement suivant : jamais
 // saisi par personne — l'enseignant y entre depuis son premier espace, sans

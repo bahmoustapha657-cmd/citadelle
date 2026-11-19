@@ -19,6 +19,7 @@ import { BandeauReunions } from "../messagerie/BandeauReunions";
 import { MODULE_MESSAGERIE } from "../messagerie/messagerie-logic";
 import { estEspaceEnseignant } from "../../espace-enseignant";
 import { PAGE_MES_CLASSES } from "../mes-classes/mes-classes";
+import { BandeauRattachements } from "../rattachement/BandeauRattachements";
 
 // Coquille de l'application après authentification : toasts, recherche globale,
 // bannière d'installation, sidebar, en-tête, routeur de pages et modales/dropdowns.
@@ -87,6 +88,7 @@ export function AppShell(p) {
           />
           <BandeauPremiereSynchro premiereSynchro={p.premiereSynchro} estHorsLigne={p.estHorsLigne} t={p.t} />
           <BandeauARegulariser t={p.t} />
+          <BandeauRattachements utilisateur={p.utilisateur} schoolInfo={p.schoolInfo} estHorsLigne={p.estHorsLigne} />
           {!pageMessagerie && <BandeauAnnonces />}
           <BandeauReunions />
           {/* La messagerie gère son propre défilement (liste / fil) : la zone

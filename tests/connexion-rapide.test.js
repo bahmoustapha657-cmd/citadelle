@@ -92,7 +92,10 @@ const faux = {
 async function monter() {
   const url = (chemin) => new URL(chemin, import.meta.url).href;
   mock.module(url("../src/supabaseClient.js"), {
-    namedExports: { getSupabase: () => faux, uidSessionEnregistree: () => etat.sessionEnregistree },
+    namedExports: {
+      getSupabase: () => faux, uidSessionEnregistree: () => etat.sessionEnregistree,
+      creerClientEphemere: () => faux,
+    },
   });
   mock.module(url("../src/backend.js"), {
     namedExports: {

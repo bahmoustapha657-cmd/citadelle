@@ -96,7 +96,9 @@ export async function fetchTeacherPortal(utilisateur, { annee = "" } = {}) {
     .filter((c) => c.enseignantId && c.enseignantId === utilisateur.enseignantId)
     .map((c) => c.nom);
   const profilClasses = [utilisateur.classeTitre, utilisateur.classe,
-    ...(Array.isArray(utilisateur.classesTitulaire) ? utilisateur.classesTitulaire : [])];
+    ...(Array.isArray(utilisateur.classesTitulaire) ? utilisateur.classesTitulaire : []),
+    // Classes attribuées par le rattachement de son espace personnel (étape 3).
+    ...(Array.isArray(utilisateur.classesRattachees) ? utilisateur.classesRattachees : [])];
 
   const classes = [...new Set([
     ...emplois.map((e) => e.classe), ...enseignements.map((e) => e.classe),

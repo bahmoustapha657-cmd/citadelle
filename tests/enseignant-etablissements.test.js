@@ -12,9 +12,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import {
-  MAX_ETABLISSEMENTS, baseCodeEnseignant, codeEtablissementSuivant, entreEspacesEnseignant,
+  MAX_ETABLISSEMENTS, baseCodeEnseignant, codeEtablissementSuivant,
   motDePasseInterne, refusAjoutEtablissement, validerNouvelEtablissement,
 } from "../supabase/functions/account-manage/etablissements.ts";
+import { passageEntreEcolesPermis } from "../supabase/functions/account-manage/rattachement.ts";
 import { refusChangement } from "../supabase/functions/account-manage/espaces.ts";
 import { codeReserveEnseignant } from "../supabase/functions/inscription/enseignant.ts";
 import {
@@ -91,11 +92,16 @@ test("ajout : l'Edge lie le nouvel espace à la personne et contrôle avant de c
 
 // ── Serveur : changer d'établissement ───────────────────────────────────────
 
-test("changer d'espace : d'une école à une autre, seulement entre deux espaces enseignants", () => {
-  assert.equal(entreEspacesEnseignant("enseignant", "enseignant"), true);
-  assert.equal(entreEspacesEnseignant("ecole", "enseignant"), false);
-  assert.equal(entreEspacesEnseignant("enseignant", "ecole"), false);
-  assert.equal(entreEspacesEnseignant(undefined, undefined), false);
+test("changer d'espace : d'une école à une autre, seulement depuis un espace enseignant", () => {
+  // Entre ses établissements (deux espaces enseignants).
+  assert.equal(passageEntreEcolesPermis("enseignant", "enseignant", "direction"), true);
+  // Vers son compte ENSEIGNANT d'une école où ses classes ont été rattachées.
+  assert.equal(passageEntreEcolesPermis("enseignant", "ecole", "enseignant"), true);
+  // Jamais vers un autre compte de l'école, ni depuis un compte d'école.
+  assert.equal(passageEntreEcolesPermis("enseignant", "ecole", "direction"), false);
+  assert.equal(passageEntreEcolesPermis("ecole", "enseignant", "direction"), false);
+  assert.equal(passageEntreEcolesPermis("ecole", "ecole", "enseignant"), false);
+  assert.equal(passageEntreEcolesPermis(undefined, undefined, undefined), false);
 
   const moi = { id: "a", ecole_id: "e1", user_id: "u-a", role: "direction", personne_id: "p1" };
   const ailleurs = { id: "b", ecole_id: "e2", user_id: "u-b", role: "direction", personne_id: "p1" };
@@ -107,7 +113,7 @@ test("changer d'espace : d'une école à une autre, seulement entre deux espaces
   assert.equal(refusChangement(moi, { ...ailleurs, user_id: null }, true)?.status, 409);
 
   const index = source("supabase/functions/account-manage/index.ts");
-  assert.match(index, /entreEspacesEnseignant\(typeEspace, ecCible\.type_espace\)/);
+  assert.match(index, /passageEntreEcolesPermis\(typeEspace, ecCible\.type_espace, cible\.role\)/);
   assert.match(index, /refusChangement\(caller, cible, entreEtablissements\)/);
 });
 
