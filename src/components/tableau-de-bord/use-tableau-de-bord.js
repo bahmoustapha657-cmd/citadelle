@@ -80,7 +80,11 @@ export function useTableauDeBord({ annee } = {}) {
   const [moisRapport, setMoisRapport] = useState(moisSalaire[moisSalaire.length - 1] || "");
   const [demandeOuverte, setDemandeOuverte] = useState(false);
   // Une école publique trouve son offre choisie d'avance (ecole-publique.js).
-  const [demandePlan, setDemandePlan] = useState(() => planDemandeParDefaut(schoolInfo, PLANS) || "starter");
+  // Tant que l'utilisateur n'a rien choisi, l'offre par défaut SUIT la fiche
+  // école : elle peut arriver après l'ouverture du tableau de bord (miroir
+  // hors ligne), et un état figé au premier rendu manquerait le statut.
+  const [choixPlan, setDemandePlan] = useState(null);
+  const demandePlan = choixPlan || planDemandeParDefaut(schoolInfo, PLANS) || "starter";
   const [demandeForm, setDemandeForm] = useState({ operateur: "Orange Money", telephone: "", reference: "" });
   const [demandeEnvoi, setDemandeEnvoi] = useState(false);
   const [demandeSucces, setDemandeSucces] = useState(false);

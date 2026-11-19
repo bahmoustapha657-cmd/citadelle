@@ -61,6 +61,13 @@ test("demande d'abonnement : l'école publique voit d'abord son offre", () => {
   assert.ok(!plansDemandables(publique, PLANS).includes("gratuit"));
   assert.deepEqual(plansDemandables(publique, undefined), []);
   assert.deepEqual(plansDemandables(publique, { gratuit: {}, premium: {} }), ["premium"]);
+
+  // La fiche école peut arriver APRÈS l'ouverture du tableau de bord (miroir
+  // hors ligne) : l'offre par défaut se recalcule tant que rien n'est choisi,
+  // au lieu d'être figée au premier rendu (e2e hors-ligne rouge sinon).
+  const hook = source("src/components/tableau-de-bord/use-tableau-de-bord.js");
+  assert.match(hook, /const \[choixPlan, setDemandePlan\] = useState\(null\);/);
+  assert.match(hook, /const demandePlan = choixPlan \|\| planDemandeParDefaut\(schoolInfo, PLANS\) \|\| "starter";/);
 });
 
 test("inscription : le statut déclaré est « public » ou « privé », sans aucun droit", () => {
