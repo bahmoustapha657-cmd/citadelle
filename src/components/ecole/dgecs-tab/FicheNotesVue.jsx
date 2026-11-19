@@ -46,7 +46,11 @@ export function FicheNotesVue({
   maxNote = 20, canEdit = false, modChampE = null, toast, filtreClasse = "all",
 }) {
   const { t } = useTranslation();
-  const [classe, setClasse] = useState(filtreClasse !== "all" && classesUniq.includes(filtreClasse) ? filtreClasse : classesUniq[0] || "");
+  const [choix, setClasse] = useState(filtreClasse !== "all" ? filtreClasse : "");
+  // Classes arrivées après l'ouverture de l'onglet (synchronisation, mode
+  // hors ligne) : sans choix valable, la première de la liste — celle que le
+  // menu déroulant affiche.
+  const classe = classesUniq.includes(choix) ? choix : classesUniq[0] || "";
   const [periode, setPeriode] = useState(PERIODE_ANNEE);
   const matieres = useMemo(() => (classe ? matieresForClasse(classe) : []), [matieresForClasse, classe]);
   const fiche = useMemo(

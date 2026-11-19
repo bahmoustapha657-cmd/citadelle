@@ -13,17 +13,26 @@ const champ = { border: "1px solid var(--lc-border)", borderRadius: 7, padding: 
 // noter). Le repère porte l'année : il ne suit pas l'élève l'an prochain.
 function RedoublantsPanneau({ eleves, classesUniq, annee, modifierChamp, toast }) {
   const { t } = useTranslation();
-  const [classe, setClasse] = useState(classesUniq[0] || "");
+  const [choix, setClasse] = useState("");
+  // Liste des classes arrivée après l'ouverture : la première, celle que le
+  // menu déroulant affiche.
+  const classe = classesUniq.includes(choix) ? choix : classesUniq[0] || "";
   const [enCours, setEnCours] = useState({});
+  // Case cochée tout de suite, sans attendre l'enregistrement ; décochée de
+  // nouveau s'il échoue.
+  const [voulu, setVoulu] = useState({});
   const liste = useMemo(() => elevesDeClasse(eleves, classe), [eleves, classe]);
   const basculer = async (eleve, coche) => {
-    setEnCours((p) => ({ ...p, [eleve._id]: true }));
+    const id = eleve._id;
+    setVoulu((p) => ({ ...p, [id]: coche }));
+    setEnCours((p) => ({ ...p, [id]: true }));
     try {
-      await modifierChamp(eleve._id, { redoublantAnnee: coche ? annee : "" });
+      await modifierChamp(id, { redoublantAnnee: coche ? annee : "" });
     } catch (e) {
+      setVoulu((p) => { const reste = { ...p }; delete reste[id]; return reste; });
       toast?.(t("dgecs.stats.repeaterError", { error: e?.message || e }), "error");
     } finally {
-      setEnCours((p) => ({ ...p, [eleve._id]: false }));
+      setEnCours((p) => ({ ...p, [id]: false }));
     }
   };
   return (
@@ -37,7 +46,7 @@ function RedoublantsPanneau({ eleves, classesUniq, annee, modifierChamp, toast }
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 4 }}>
         {liste.map((e) => (
           <label key={e._id} style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12.5, padding: "3px 4px" }}>
-            <input type="checkbox" checked={estRedoublant(e, annee)} disabled={!!enCours[e._id]}
+            <input type="checkbox" checked={voulu[e._id] ?? estRedoublant(e, annee)} disabled={!!enCours[e._id]}
               onChange={(ev) => basculer(e, ev.target.checked)} />
             {`${e.nom || ""} ${e.prenom || ""}`.trim()}
           </label>
