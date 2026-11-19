@@ -3270,5 +3270,68 @@
       "printYear": "{{session}} session — school year {{annee}}",
       "printLegend": "Red box: information missing from the file."
     }
+  },
+  "feedback": {
+    "title": "💡 Report a problem or suggest an idea",
+    "open": "💡 Report a problem or suggest an idea",
+    "askQuestion": "❓ Ask EduGest",
+    "backToHelp": "← Back to the help center",
+    "intro": "Your message goes straight to the EduGest team. A problem, an idea, a question or something that works well: it all helps us improve the app for your school.",
+    "genreLabel": "Message type",
+    "genres": {
+      "probleme": "A problem",
+      "idee": "An idea",
+      "question": "A question",
+      "bravo": "It works well"
+    },
+    "messageLabel": "Your message",
+    "placeholders": {
+      "probleme": "What were you doing? What did you expect? What happened instead?",
+      "idee": "Which feature would save you time, and why?",
+      "question": "Ask your question: we will answer you right here.",
+      "bravo": "What helps you every day?"
+    },
+    "contextNote": "The open screen, EduGest version, language and device type are attached automatically.",
+    "send": "Send to EduGest",
+    "sending": "Sending…",
+    "thanks": "Thank you! Your message has reached EduGest. The reply will appear below.",
+    "mine": "My messages to EduGest",
+    "none": "No message sent yet.",
+    "replyFrom": "Reply from EduGest",
+    "statuts": {
+      "nouveau": "Sent",
+      "lu": "Read by EduGest",
+      "traite": "Handled"
+    },
+    "errors": {
+      "genre": "Choose the message type.",
+      "tooShort": "Write at least a few words.",
+      "tooLong": "Message too long: 2,000 characters at most.",
+      "tooMany": "You have sent many messages today: try again tomorrow, or write to us on WhatsApp.",
+      "account": "This account cannot send messages to EduGest. Sign in again and retry.",
+      "network": "No connection: your text is kept on this device. Try again when the network is back.",
+      "generic": "Sending failed. Your text is kept: try again in a moment.",
+      "list": "Your messages cannot be loaded right now."
+    },
+    "admin": {
+      "tab": "Field feedback",
+      "intro": "What schools report from their help center. The author sees the status and your reply in their help center; nobody else at the school can read them.",
+      "context": "Context",
+      "status": "Feedback status",
+      "reply": "Reply to the author",
+      "replyPlaceholder": "Reply shown to the author in their help center…",
+      "saving": "Saving…",
+      "saved": "Saved.",
+      "saveError": "Saving was refused or failed: try again.",
+      "repliedOn": "Reply sent on {{date}}",
+      "filterStatus": "Filter by status",
+      "allStatuses": "All statuses ({{n}})",
+      "filterGenre": "Filter by type",
+      "allGenres": "All types",
+      "search": "Search (message, school, author…)",
+      "refresh": "↻ Refresh",
+      "loadError": "Field feedback cannot be loaded.",
+      "empty": "No feedback to show."
+    }
   }
 }

@@ -23,6 +23,8 @@ export const TABLES = [
   "notifications_envois", "demandes_plan", "superadmin_messages", "superadmin_message_lectures",
   // Demandes de rattachement d'un espace enseignant à une école (2026-11-18).
   "rattachements",
+  // Retours terrain des écoles vers EduGest (2026-11-19).
+  "retours_terrain",
 ];
 
 // Tables volontairement NON sauvegardées, avec la raison.

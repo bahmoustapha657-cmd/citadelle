@@ -32,7 +32,10 @@ export function AppShellOverlays({ p }) {
 
       {p.aideOuverte && <RaccourcisModal onClose={() => p.setAideOuverte(false)} />}
 
-      {p.centreAideOuvert && <CentreAideModal utilisateur={p.utilisateur} onClose={() => p.setCentreAideOuvert(false)} />}
+      {p.centreAideOuvert && (
+        <CentreAideModal utilisateur={p.utilisateur} onClose={() => p.setCentreAideOuvert(false)}
+          ecran={p.page || ""} peutSignaler={Boolean(p.schoolId) && p.schoolId !== "superadmin"} />
+      )}
 
       {p.schoolId && p.schoolId !== "superadmin" && (
         <Suspense fallback={null}>

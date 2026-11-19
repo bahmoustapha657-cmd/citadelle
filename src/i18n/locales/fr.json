@@ -3270,5 +3270,68 @@
       "printYear": "Session {{session}} — année scolaire {{annee}}",
       "printLegend": "Case rouge : information manquante au dossier."
     }
+  },
+  "feedback": {
+    "title": "💡 Signaler un problème ou proposer une idée",
+    "open": "💡 Signaler un problème ou proposer une idée",
+    "askQuestion": "❓ Poser la question à EduGest",
+    "backToHelp": "← Retour au centre d'aide",
+    "intro": "Votre message arrive directement chez l'équipe EduGest. Un problème, une idée, une question ou ce qui marche bien : tout nous aide à améliorer l'application pour votre école.",
+    "genreLabel": "Type de message",
+    "genres": {
+      "probleme": "Un problème",
+      "idee": "Une idée",
+      "question": "Une question",
+      "bravo": "Ça marche bien"
+    },
+    "messageLabel": "Votre message",
+    "placeholders": {
+      "probleme": "Que faisiez-vous ? Qu'attendiez-vous ? Que s'est-il passé à la place ?",
+      "idee": "Quelle fonction vous ferait gagner du temps, et pourquoi ?",
+      "question": "Posez votre question : nous vous répondons ici même.",
+      "bravo": "Qu'est-ce qui vous rend service au quotidien ?"
+    },
+    "contextNote": "L'écran ouvert, la version d'EduGest, la langue et le type d'appareil sont joints automatiquement.",
+    "send": "Envoyer à EduGest",
+    "sending": "Envoi…",
+    "thanks": "Merci ! Votre message est bien arrivé chez EduGest. La réponse s'affichera ci-dessous.",
+    "mine": "Mes messages à EduGest",
+    "none": "Aucun message envoyé pour l'instant.",
+    "replyFrom": "Réponse d'EduGest",
+    "statuts": {
+      "nouveau": "Envoyé",
+      "lu": "Lu par EduGest",
+      "traite": "Traité"
+    },
+    "errors": {
+      "genre": "Choisissez le type de message.",
+      "tooShort": "Écrivez au moins quelques mots.",
+      "tooLong": "Message trop long : 2 000 caractères au plus.",
+      "tooMany": "Vous avez envoyé beaucoup de messages aujourd'hui : réessayez demain, ou écrivez-nous sur WhatsApp.",
+      "account": "Ce compte ne peut pas envoyer de message à EduGest. Reconnectez-vous puis réessayez.",
+      "network": "Pas de connexion : votre texte est gardé sur cet appareil. Réessayez quand le réseau revient.",
+      "generic": "L'envoi a échoué. Votre texte est gardé : réessayez dans un instant.",
+      "list": "Impossible de charger vos messages pour l'instant."
+    },
+    "admin": {
+      "tab": "Retours terrain",
+      "intro": "Ce que les écoles signalent depuis leur centre d'aide. L'auteur voit le statut et votre réponse dans son centre d'aide ; personne d'autre dans l'école ne les lit.",
+      "context": "Contexte",
+      "status": "Statut du retour",
+      "reply": "Réponse à l'auteur",
+      "replyPlaceholder": "Réponse visible par l'auteur dans son centre d'aide…",
+      "saving": "Enregistrement…",
+      "saved": "Enregistré.",
+      "saveError": "Enregistrement refusé ou impossible : réessayez.",
+      "repliedOn": "Réponse envoyée le {{date}}",
+      "filterStatus": "Filtrer par statut",
+      "allStatuses": "Tous les statuts ({{n}})",
+      "filterGenre": "Filtrer par type",
+      "allGenres": "Tous les types",
+      "search": "Rechercher (message, école, auteur…)",
+      "refresh": "↻ Actualiser",
+      "loadError": "Impossible de charger les retours terrain.",
+      "empty": "Aucun retour à afficher."
+    }
   }
 }
