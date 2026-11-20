@@ -7,7 +7,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
-  FORMAT_MATRICULE_DGECS, absentsDeDgecs, cleNomComplet, cleSonore, cocheParDefaut, dateIso, enNomPropre, ficheDepuisDgecs,
+  FORMAT_MATRICULE_DGECS, absentsDeDgecs, champsDgecs, cleNomComplet, cleSonore, cocheParDefaut, dateIso, ecartsAvecDgecs, enNomPropre, ficheDepuisDgecs,
   lireListeDgecs, lireTexteTableau, rapprocherDgecs, resumeRapprochement,
 } from "../src/dgecs-import.js";
 
@@ -220,6 +220,46 @@ test("fiche EduGest d'un élève de DGECS : matricule DGECS dans ien, filiation,
   });
 });
 
+// ── Fiche conforme à DGECS (référence officielle) ──
+
+test("fiche conforme à DGECS : nom, prénoms, naissance et filiation recopiés quand ils diffèrent vraiment", () => {
+  const d = ligneDgecs("MA00000041", "BARRY", "Mamadou Aliou", {
+    dateNaissance: "2012-03-04", lieuNaissance: "Labe", pere: "Alpha", mere: "Fatoumata Diallo", filiation: "Pere: Alpha / Mere: Fatoumata Diallo",
+  });
+  assert.deepEqual(ecartsAvecDgecs(d, { nom: "BARY", prenom: "Mamadu", dateNaissance: "14/03/2012", lieuNaissance: "Pita", filiation: "Fils de Alpha et de Kadiatou Sow" }), {
+    nom: ["BARY", "BARRY"], prenom: ["Mamadu", "Mamadou Aliou"], dateNaissance: ["14/03/2012", "2012-03-04"],
+    lieuNaissance: ["Pita", "Labe"], filiation: ["Fils de Alpha et de Kadiatou Sow", "Pere: Alpha / Mere: Fatoumata Diallo"],
+  });
+  // Accents et casse d'EduGest, date en jj/mm/aaaa, filiation plus complète : rien à corriger.
+  assert.deepEqual(ecartsAvecDgecs(d, {
+    nom: "Barry", prenom: "Mamadou Aliou", dateNaissance: "04/03/2012", lieuNaissance: "Labé", filiation: "Pere: Alpha BARRY / Mere: Fatoumata DIALLO",
+  }), {});
+  // DGECS sans date ni lieu : EduGest garde les siens ; filiation vide : remplie.
+  assert.deepEqual(ecartsAvecDgecs({ ...d, dateNaissance: "", lieuNaissance: "" }, { nom: "BARRY", prenom: "Mamadou Aliou", dateNaissance: "2012-03-05" }),
+    { filiation: ["", "Pere: Alpha / Mere: Fatoumata Diallo"] });
+  assert.deepEqual(champsDgecs({ nom: ["BARY", "BARRY"], filiation: ["", "Pere: Alpha"] }), { nom: "BARRY", filiation: "Pere: Alpha" });
+});
+
+test("écarts portés par les lignes : rattachement, candidat à vérifier, déjà à jour de la section seulement", () => {
+  const section = [
+    { _id: "a", nom: "BARY", prenom: "Mamadou", dateNaissance: "2012-03-04" },
+    { _id: "b", nom: "SOWE", prenom: "Aïssatou", ien: "MA00000052" },
+    { _id: "d", nom: "SYLLA", prenom: "Ibrahim" },
+  ];
+  const lignes = rapprocherDgecs([
+    ligneDgecs("MA00000051", "BARRY", "Mamadou", { dateNaissance: "2012-03-04" }),
+    ligneDgecs("MA00000052", "SOW", "Aissatou"),
+    ligneDgecs("MA00000053", "KEITA", "Sekou"),
+    ligneDgecs("MA00000054", "SYLLA", "Ibrahima"),
+  ], section, { tous: [...section, { _id: "c", nom: "KEYTA", prenom: "Sékou", ien: "MA00000053" }] });
+  assert.deepEqual(lignes.map((l) => l.etat), ["rattacher", "deja", "deja", "aVerifier"]);
+  assert.deepEqual(lignes[0].ecarts, { nom: ["BARY", "BARRY"] });
+  assert.deepEqual(lignes[1].ecarts, { nom: ["SOWE", "SOW"] });
+  // Fiche d'une autre section : corrigée depuis sa section, pas d'ici.
+  assert.deepEqual(lignes[2].ecarts, {});
+  assert.deepEqual(lignes[3].candidats[0].ecarts, { prenom: ["Ibrahim", "Ibrahima"] });
+});
+
 test("chaque état, colonne et problème a son libellé en français", () => {
   const fr = JSON.parse(readFileSync(new URL("../src/i18n/locales/fr.json", import.meta.url), "utf8")).dgecs.import;
   for (const etat of ["deja", "rattacher", "conflit", "aVerifier", "nouveau", "invalide"]) assert.ok(fr.states[etat], etat);
@@ -228,4 +268,5 @@ test("chaque état, colonne et problème a son libellé en français", () => {
   for (const p of ["nomIdentique", "nomEcritAutrement", "nomProche", "nomPartiel", "dateEgale", "dateProche", "dateDifferente",
     "filiationEgale", "filiationProche", "filiationDifferente"]) assert.ok(fr.evidence[p], p);
   for (const d of ["rattacher", "rattacherSur", "rattacherProche", "rattacherSonore", "conflit", "aVerifier", "nouveau"]) assert.ok(fr.detail[d], d);
+  for (const c of ["nom", "prenom", "dateNaissance", "lieuNaissance", "filiation"]) assert.ok(fr.fields[c], c);
 });

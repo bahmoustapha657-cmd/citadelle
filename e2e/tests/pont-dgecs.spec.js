@@ -4,8 +4,10 @@
 // élève). L'élève qu'EduGest connaît déjà reçoit son matricule DGECS, même
 // si son nom y est écrit autrement (confirmé par la date de naissance) ;
 // l'élève douteux (nom proche, rien pour confirmer) n'est pas déclaré absent :
-// le comptable dit qui c'est ; l'élève absent d'EduGest est inscrit dans la
-// classe, avec son matricule DGECS, sa filiation et un matricule d'école.
+// le comptable dit qui c'est ; la fiche de chacun est corrigée comme sur DGECS
+// (nom, prénoms, naissance, filiation : référence officielle), sauf si le
+// comptable décoche ; l'élève absent d'EduGest est inscrit dans la classe,
+// avec son matricule DGECS, sa filiation et un matricule d'école.
 // On vérifie l'écran ET la base.
 //
 // Noms, classe, dates et matricules tirés au hasard à chaque passage : le
@@ -57,7 +59,7 @@ const eleveParIen = async (ien) => {
   return data;
 };
 
-test("le comptable recopie une classe de DGECS : noms écrits autrement retrouvés, élève manquant inscrit", async ({ page }) => {
+test("le comptable recopie une classe de DGECS : noms écrits autrement retrouvés et corrigés, élève manquant inscrit", async ({ page }) => {
   // Préparation : la classe et trois élèves sans matricule DGECS, écrits par
   // la direction (RLS) sous la forme exacte que l'app produit.
   const direction = await clientConnecte(DIRECTION);
@@ -102,19 +104,36 @@ test("le comptable recopie une classe de DGECS : noms écrits autrement retrouv�
   // Personne de la classe n'est déclaré absent de DGECS.
   await expect(page.getByText(/ne sont pas dans cette liste DGECS/)).toHaveCount(0);
 
+  // Fiches corrigées comme sur DGECS, cochées d'office : le comptable garde
+  // celle de BARRY telle quelle.
+  await expect(proche).toContainText(`Nom : CAMARA → KAMARA`);
+  await expect(page.getByRole("button", { name: "Appliquer : 2 matricule(s), 2 fiche(s) corrigée(s), 1 inscription(s)" })).toBeVisible();
+  await page.getByLabel(`Corriger la fiche de BARRY Aliou ${MOT} comme sur DGECS`).uncheck();
+
   // Le douteux : rien d'office ; le comptable dit que c'est bien lui.
-  await expect(page.getByRole("button", { name: "Appliquer : 2 matricule(s), 1 inscription(s)" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Appliquer : 2 matricule(s), 1 fiche(s) corrigée(s), 1 inscription(s)" })).toBeVisible();
   await page.getByLabel(`Que faire de SOUMAH Ibrahima ${MOT} ?`).selectOption(doute.id);
-  await page.getByRole("button", { name: "Appliquer : 3 matricule(s), 1 inscription(s)" }).click();
-  await expect(page.getByText("DGECS : 3 matricule(s) posé(s), 1 élève(s) inscrit(s).")).toBeVisible();
+  await page.getByRole("button", { name: "Appliquer : 3 matricule(s), 2 fiche(s) corrigée(s), 1 inscription(s)" }).click();
+  await expect(page.getByText("DGECS : 3 matricule(s) posé(s), 2 fiche(s) corrigée(s), 1 élève(s) inscrit(s).")).toBeVisible();
   await expect(page.getByRole("row").filter({ hasText: "YANSANE" })).toHaveCount(1);
 
-  // Base : le matricule DGECS sur les trois fiches existantes, dont le nom
-  // reste tel qu'EduGest l'écrit…
+  // Base : le matricule DGECS sur les trois fiches existantes ; BARRY gardée
+  // telle quelle (case décochée), les deux autres corrigées comme sur DGECS…
   for (const [ien, eleve] of [[MATRICULE_CONNU, CONNU], [MATRICULE_PROCHE, PROCHE], [MATRICULE_DOUTE, DOUTE]]) {
     await expect.poll(async () => (await eleveParIen(ien))?.matricule, { timeout: 30_000 }).toBe(eleve.matricule);
-    expect(await eleveParIen(ien)).toMatchObject({ nom: eleve.nom, prenom: eleve.prenom, classe: CLASSE_DGECS });
   }
+  const connuEnBase = await eleveParIen(MATRICULE_CONNU);
+  expect(connuEnBase).toMatchObject({ nom: CONNU.nom, prenom: CONNU.prenom, classe: CLASSE_DGECS });
+  expect(connuEnBase.lieu_naissance || "").toBe("");
+  expect(connuEnBase.filiation || "").toBe("");
+  expect(await eleveParIen(MATRICULE_PROCHE)).toMatchObject({
+    nom: "KAMARA", prenom: `Mamadou ${MOT}`, classe: CLASSE_DGECS, date_naissance: iso("05"),
+    lieu_naissance: "Kindia", filiation: "Pere: Lansana / Mere: Mariama Sylla",
+  });
+  expect(await eleveParIen(MATRICULE_DOUTE)).toMatchObject({
+    nom: "SOUMAH", prenom: `Ibrahima ${MOT}`, classe: CLASSE_DGECS, date_naissance: iso("07"),
+    lieu_naissance: "Fria", filiation: "Pere: Moussa / Mere: Fanta Keita",
+  });
 
   // … et l'élève manquant inscrit dans la classe, avec ce que DGECS savait.
   await expect.poll(async () => !!(await eleveParIen(MATRICULE_NOUVEAU)), { timeout: 30_000 }).toBe(true);

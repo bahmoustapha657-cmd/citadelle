@@ -3299,8 +3299,8 @@
       "cannotLink": "Vous ne pouvez pas modifier les fiches de cette section : aucun matricule ne sera posé.",
       "chooseClass": "Choisissez la classe des nouveaux élèves.",
       "progress": "{{done}} / {{total}}…",
-      "apply": "Appliquer : {{linked}} matricule(s), {{enrolled}} inscription(s)",
-      "done": "DGECS : {{linked}} matricule(s) posé(s), {{enrolled}} élève(s) inscrit(s).",
+      "apply": "Appliquer : {{linked}} matricule(s), {{fixed}} fiche(s) corrigée(s), {{enrolled}} inscription(s)",
+      "done": "DGECS : {{linked}} matricule(s) posé(s), {{fixed}} fiche(s) corrigée(s), {{enrolled}} élève(s) inscrit(s).",
       "failed": "{{count}} opération(s) refusée(s) : réessayez, rien n'est perdu pour les autres.",
       "states": {
         "rattacher": "Matricule à poser",
@@ -3349,6 +3349,17 @@
         "link": "C'est {{name}} ({{classe}}) : poser le matricule",
         "new": "Élève différent : l'inscrire"
       },
+      "fix": {
+        "title": "Corriger la fiche comme sur DGECS (officiel)",
+        "label": "Corriger la fiche de {{name}} comme sur DGECS"
+      },
+      "fields": {
+        "nom": "Nom",
+        "prenom": "Prénoms",
+        "dateNaissance": "Né(e) le",
+        "lieuNaissance": "Lieu de naissance",
+        "filiation": "Filiation"
+      },
       "issues": {
         "sansMatricule": "sans matricule",
         "matriculeInhabituel": "matricule inhabituel",
@@ -3359,6 +3370,59 @@
       "absents": "{{count}} élève(s) de {{classe}} ne sont pas dans cette liste DGECS",
       "absentsHint": "Vérifiés par le nom, la date de naissance et la filiation. À inscrire sur DGECS (module Inscription, avec leur matricule) : un élève sans matricule est déclaré redoublant."
     }
+  },
+  "departsSignales": {
+    "tab": "📤 Départs",
+    "formTitle": "Signaler le départ d'un élève",
+    "intro": "Un élève quitte l'école (transfert accordé, abandon, exclusion, décès) ? Signalez-le ici : la comptabilité est prévenue aussitôt et confirme le départ, qui arrête ses mensualités à la date de départ.",
+    "class": "Classe",
+    "allClasses": "Toutes les classes",
+    "student": "Élève qui part",
+    "pickStudent": "— Choisir l'élève —",
+    "type": "Type de départ",
+    "reasonPlaceholder": "Ex. : transfert accordé par le directeur, déménagement…",
+    "send": "Signaler à la comptabilité",
+    "confirmSend": "Signaler ce départ à la comptabilité ?\n\n{{identity}}\n\n{{summary}}\n\nL'élève reste inscrit jusqu'à ce que la comptabilité confirme.",
+    "sent": "Départ de {{name}} signalé à la comptabilité.",
+    "summary": "{{status}} le {{date}}",
+    "summaryTo": "vers {{school}}",
+    "pendingTitle": "En attente de la comptabilité ({{count}})",
+    "nonePending": "Aucun départ en attente de la comptabilité.",
+    "refusedTitle": "Refusés par la comptabilité ({{count}})",
+    "sentBy": "Signalé par {{author}} le {{date}}",
+    "refusedBy": "Refusé par {{author}} le {{date}} : {{reason}}",
+    "withdraw": "Retirer",
+    "withdrawConfirm": "Retirer le signalement de départ de cet élève ?\n\n{{identity}}",
+    "withdrawn": "Signalement retiré pour {{name}}.",
+    "seen": "Lu, retirer",
+    "saveError": "Enregistrement impossible : {{error}}",
+    "errors": {
+      "student": "Choisissez l'élève qui part.",
+      "alreadyGone": "Cet élève est déjà enregistré comme parti.",
+      "status": "Choisissez le type de départ.",
+      "date": "Indiquez la date de départ de l'élève."
+    },
+    "pushTitle": "Départ d'élève signalé",
+    "pushBody": "{{name}} ({{classe}}) : {{summary}}. Signalé par {{author}} — à confirmer dans Comptabilité → Élèves.",
+    "pushConfirmedTitle": "Départ confirmé",
+    "pushConfirmedBody": "La comptabilité ({{author}}) a confirmé le départ de {{name}} ({{classe}}).",
+    "pushRefusedTitle": "Départ refusé par la comptabilité",
+    "pushRefusedBody": "{{name}} ({{classe}}) : {{reason}}",
+    "button": "Départs signalés",
+    "badge": "Départs signalés à confirmer : {{count}}",
+    "alertTitle": "{{count}} départ(s) d'élève signalé(s) à confirmer",
+    "alertDesc": "Signalés par les chefs de section ou la Direction — {{detail}}. Tant que la comptabilité ne confirme pas, l'élève doit ses mensualités.",
+    "alertBtn": "Voir les départs signalés",
+    "inboxTitle": "Départs signalés à confirmer",
+    "inboxIntro": "Ces départs ont été signalés par un chef de section ou la Direction. Confirmer enregistre le départ sur la fiche : les mensualités s'arrêtent à la date de départ. Refuser renvoie votre raison à l'auteur du signalement.",
+    "confirm": "Confirmer le départ",
+    "confirmDeparture": "Confirmer le départ de cet élève ?\n\n{{identity}}\n\n{{summary}}\n\nSes mensualités s'arrêtent à la date de départ.",
+    "confirmed": "Départ de {{name}} confirmé.",
+    "refuse": "Refuser",
+    "refuseReason": "Raison du refus (l'auteur du signalement la lira)",
+    "refuseSend": "Refuser le signalement",
+    "refuseNeedsReason": "Écrivez la raison du refus.",
+    "refused": "Signalement refusé pour {{name}}."
   },
   "feedback": {
     "title": "💡 Signaler un problème ou proposer une idée",

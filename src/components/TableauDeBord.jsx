@@ -10,11 +10,12 @@ import { EventsAlerts } from "./tableau-de-bord/EventsAlerts";
 import { AbonnementBloc } from "./tableau-de-bord/AbonnementBloc";
 import { ESPACE } from "./tableau-de-bord/tdb-styles";
 import { demanderOuvertureDispenses } from "./comptabilite/ouvrir-dispenses";
+import { demanderOuvertureDepartsSignales } from "./departs-signales/ouvrir-departs-signales";
 import { sansComptabilite } from "../ecole-publique";
 
 // Orchestrateur du tableau de bord : les données et calculs vivent dans
 // useTableauDeBord, chaque bloc visuel dans tableau-de-bord/*.jsx.
-function TableauDeBord({ annee, userRole, onOpenLegalSettings, onOpenDispenses = null }) {
+function TableauDeBord({ annee, userRole, onOpenLegalSettings, onOpenDispenses = null, onOpenDepartsSignales = null }) {
   const { t } = useTranslation();
   const d = useTableauDeBord({ annee });
 
@@ -66,6 +67,10 @@ function TableauDeBord({ annee, userRole, onOpenLegalSettings, onOpenDispenses =
         // Seule la Direction accorde une dispense : elle seule voit les demandes.
         demandesDispense={userRole === "direction" ? d.demandesDispense : null}
         ouvrirDispenses={onOpenDispenses ? (section) => { demanderOuvertureDispenses(section); onOpenDispenses(); } : null}
+        // Départs signalés par les chefs de section : la comptabilité les
+        // confirme, la Direction suit.
+        departsSignales={["comptable", "direction", "admin"].includes(userRole) ? d.departsSignales : null}
+        ouvrirDepartsSignales={onOpenDepartsSignales ? () => { demanderOuvertureDepartsSignales(); onOpenDepartsSignales(); } : null}
       />
 
       <AbonnementBloc

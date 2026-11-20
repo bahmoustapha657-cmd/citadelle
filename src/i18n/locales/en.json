@@ -3299,8 +3299,8 @@
       "cannotLink": "You cannot edit this section's records: no matricule will be added.",
       "chooseClass": "Choose the class for new students.",
       "progress": "{{done}} / {{total}}…",
-      "apply": "Apply: {{linked}} matricule(s), {{enrolled}} enrolment(s)",
-      "done": "DGECS: {{linked}} matricule(s) added, {{enrolled}} student(s) enrolled.",
+      "apply": "Apply: {{linked}} matricule(s), {{fixed}} record(s) corrected, {{enrolled}} enrolment(s)",
+      "done": "DGECS: {{linked}} matricule(s) added, {{fixed}} record(s) corrected, {{enrolled}} student(s) enrolled.",
       "failed": "{{count}} operation(s) refused: try again, nothing is lost for the others.",
       "states": {
         "rattacher": "Matricule to add",
@@ -3349,6 +3349,17 @@
         "link": "It is {{name}} ({{classe}}): add the matricule",
         "new": "A different student: enrol them"
       },
+      "fix": {
+        "title": "Correct the record as on DGECS (official)",
+        "label": "Correct {{name}}'s record as on DGECS"
+      },
+      "fields": {
+        "nom": "Last name",
+        "prenom": "First names",
+        "dateNaissance": "Born on",
+        "lieuNaissance": "Place of birth",
+        "filiation": "Parentage"
+      },
       "issues": {
         "sansMatricule": "no matricule",
         "matriculeInhabituel": "unusual matricule",
@@ -3359,6 +3370,59 @@
       "absents": "{{count}} student(s) of {{classe}} are not in this DGECS list",
       "absentsHint": "Checked by name, date of birth and parentage. To register on DGECS (Inscription module, with their matricule): a student without a matricule is declared as repeating the year."
     }
+  },
+  "departsSignales": {
+    "tab": "📤 Departures",
+    "formTitle": "Report a student's departure",
+    "intro": "A student is leaving the school (transfer granted, dropout, expulsion, death)? Report it here: accounting is notified right away and confirms the departure, which stops monthly fees on the departure date.",
+    "class": "Class",
+    "allClasses": "All classes",
+    "student": "Student leaving",
+    "pickStudent": "— Choose the student —",
+    "type": "Type of departure",
+    "reasonPlaceholder": "E.g. transfer granted by the head, family moved…",
+    "send": "Report to accounting",
+    "confirmSend": "Report this departure to accounting?\n\n{{identity}}\n\n{{summary}}\n\nThe student stays enrolled until accounting confirms.",
+    "sent": "Departure of {{name}} reported to accounting.",
+    "summary": "{{status}} on {{date}}",
+    "summaryTo": "to {{school}}",
+    "pendingTitle": "Awaiting accounting ({{count}})",
+    "nonePending": "No departure awaiting accounting.",
+    "refusedTitle": "Refused by accounting ({{count}})",
+    "sentBy": "Reported by {{author}} on {{date}}",
+    "refusedBy": "Refused by {{author}} on {{date}}: {{reason}}",
+    "withdraw": "Withdraw",
+    "withdrawConfirm": "Withdraw the departure report for this student?\n\n{{identity}}",
+    "withdrawn": "Report withdrawn for {{name}}.",
+    "seen": "Read, remove",
+    "saveError": "Could not save: {{error}}",
+    "errors": {
+      "student": "Choose the student who is leaving.",
+      "alreadyGone": "This student is already recorded as gone.",
+      "status": "Choose the type of departure.",
+      "date": "Enter the student's departure date."
+    },
+    "pushTitle": "Student departure reported",
+    "pushBody": "{{name}} ({{classe}}): {{summary}}. Reported by {{author}} — to confirm in Accounting → Students.",
+    "pushConfirmedTitle": "Departure confirmed",
+    "pushConfirmedBody": "Accounting ({{author}}) confirmed the departure of {{name}} ({{classe}}).",
+    "pushRefusedTitle": "Departure refused by accounting",
+    "pushRefusedBody": "{{name}} ({{classe}}): {{reason}}",
+    "button": "Reported departures",
+    "badge": "Reported departures to confirm: {{count}}",
+    "alertTitle": "{{count}} reported student departure(s) to confirm",
+    "alertDesc": "Reported by section heads or the Management — {{detail}}. Until accounting confirms, the student still owes monthly fees.",
+    "alertBtn": "See reported departures",
+    "inboxTitle": "Reported departures to confirm",
+    "inboxIntro": "These departures were reported by a section head or the Management. Confirming records the departure on the student's file: monthly fees stop on the departure date. Refusing sends your reason back to whoever reported it.",
+    "confirm": "Confirm departure",
+    "confirmDeparture": "Confirm this student's departure?\n\n{{identity}}\n\n{{summary}}\n\nMonthly fees stop on the departure date.",
+    "confirmed": "Departure of {{name}} confirmed.",
+    "refuse": "Refuse",
+    "refuseReason": "Reason for refusing (the reporter will read it)",
+    "refuseSend": "Refuse the report",
+    "refuseNeedsReason": "Write the reason for refusing.",
+    "refused": "Report refused for {{name}}."
   },
   "feedback": {
     "title": "💡 Report a problem or suggest an idea",

@@ -8,6 +8,7 @@ import { creerDemandePlan } from "./tableau-de-bord-api";
 import i18n from "../../i18n";
 import { getMensualiteOverview } from "../../mensualite-utils";
 import { compterDemandesParSection } from "../../demande-dispense";
+import { compterSignalementsParSection } from "../../depart-signale";
 import { affichageFinancesClassique, syntheseFinances } from "../comptabilite/finances-claires";
 import {
   calcTauxPaiement,
@@ -40,6 +41,10 @@ export function useTableauDeBord({ annee } = {}) {
   // Demandes de dispense de la comptabilité, en attente de la Direction :
   // toutes les fiches, écartées comprises — une demande ne doit pas se perdre.
   const demandesDispense = useMemo(() => compterDemandesParSection({
+    college: elevesCBruts, lycee: elevesLBruts, primaire: elevesPBruts, prescolaire: elevesPreBruts,
+  }, anneeCourante), [elevesCBruts, elevesLBruts, elevesPBruts, elevesPreBruts, anneeCourante]);
+  // Départs signalés par les chefs de section, à confirmer par la comptabilité.
+  const departsSignales = useMemo(() => compterSignalementsParSection({
     college: elevesCBruts, lycee: elevesLBruts, primaire: elevesPBruts, prescolaire: elevesPreBruts,
   }, anneeCourante), [elevesCBruts, elevesLBruts, elevesPBruts, elevesPreBruts, anneeCourante]);
   const { items: ensC } = useFirestore("ensCollege");
@@ -167,6 +172,6 @@ export function useTableauDeBord({ annee } = {}) {
     totalEleves, totalEns, moisActuel,
     tauxPayC, tauxPayL, tauxPayP, tauxPay,
     totalRec, totalDep, solde, salMois, masseSal, financesClaires, anneeCourante, moyenneEncaisseeMois,
-    evAVenir, totalAbs, dataTendance, demandesDispense,
+    evAVenir, totalAbs, dataTendance, demandesDispense, departsSignales,
   };
 }

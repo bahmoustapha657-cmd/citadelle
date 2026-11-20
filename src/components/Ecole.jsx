@@ -4,6 +4,7 @@ import { Tabs } from "./ui";
 import { SchoolContext } from "../contexts/SchoolContext";
 import { ongletEcoleOuvert } from "../espace-enseignant";
 import { ongletDgecsOuvert } from "../dgecs";
+import { sansComptabilite } from "../ecole-publique";
 import { useEcole } from "./ecole/use-ecole";
 import { EcoleHeader } from "./ecole/EcoleHeader";
 import { EcoleTabContent } from "./ecole/EcoleTabContent";
@@ -28,6 +29,10 @@ function Ecole({ titre, couleur, cleClasses, cleEns, cleNotes, cleEleves, sectio
     { id: "apercu", label: t("school.tabs.overview") },
     { id: "classes", label: `${t("school.tabs.classes")} (${e.classes.length})` },
     { id: "eleves", label: `${t("school.tabs.students")} (${e.eleves.length})` },
+    // Départs signalés à la comptabilité (src/depart-signale.js) : par qui
+    // écrit la section — chef de section, Direction —, sur l'année en cours,
+    // et seulement là où une comptabilité confirme.
+    ...(e.canCreate && !sansComptabilite(schoolInfo) ? [{ id: "departs", label: t("departsSignales.tab") }] : []),
     ...(avecEns ? [{ id: "ens", label: `${t("school.tabs.teachers")} (${e.ens.length})` }] : []),
     { id: "notes", label: `${t("school.tabs.notes")} (${e.notes.length})` },
     { id: "enseignements", label: t("school.tabs.teachings") },

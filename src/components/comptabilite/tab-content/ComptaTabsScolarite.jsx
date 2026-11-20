@@ -98,6 +98,7 @@ export function ComptaTabsScolarite({ c, readOnly, annee, userRole }) {
         tarifsClasses={c.tarifsClasses}
         paiements={c.paiements}
         dispenses={c.dispenses}
+        canEditEleves={c.canEditEleves}
       />}
 
       {c.tab === "mens" && <MensualitesTab

@@ -11,6 +11,8 @@ const COULEURS = {
   invalide: ["#fee2e2", "#991b1b"],
 };
 const ORDRE = ["rattacher", "nouveau", "aVerifier", "conflit", "deja", "invalide"];
+// Champs de la fiche que DGECS peut corriger, dans l'ordre d'affichage.
+const CHAMPS_FICHE = ["nom", "prenom", "dateNaissance", "lieuNaissance", "filiation"];
 
 const Pastille = ({ etat, children }) => {
   const [bg, fg] = COULEURS[etat] || COULEURS.deja;
@@ -24,6 +26,7 @@ const Pastille = ({ etat, children }) => {
 export function ApercuDgecs({
   lignes, resume, absents, classes, classe, setClasse, estCoche, peutAgir, basculer, peutInscrire, peutRattacher,
   choix = {}, choisir, lierPossible = () => false, fichesPromises = new Set(),
+  ecartsDe = () => null, corriger = () => false, basculerCorrection,
 }) {
   const { t } = useTranslation();
   const [voirAbsents, setVoirAbsents] = useState(false);
@@ -42,6 +45,28 @@ export function ApercuDgecs({
     if (l.etat === "conflit") return t("dgecs.import.detail.conflit", v);
     if (l.etat === "aVerifier") return t("dgecs.import.detail.aVerifier");
     return peutInscrire ? t("dgecs.import.detail.nouveau") : t("dgecs.import.detail.nouveauSansInscription");
+  };
+
+  // Fiche EduGest qui dit autre chose que DGECS (référence officielle) :
+  // avant → après, recopié de DGECS si la case reste cochée.
+  const correction = (l) => {
+    const ecarts = ecartsDe(l);
+    return (
+      <div style={{ marginTop: 6, background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 7, padding: "6px 9px" }}>
+        <label style={{ display: "flex", gap: 6, alignItems: "center", fontWeight: 700, color: "#166534", cursor: "pointer" }}>
+          <input type="checkbox" checked={corriger(l)} onChange={() => basculerCorrection(l)}
+            aria-label={t("dgecs.import.fix.label", { name: `${l.nom} ${l.prenom}` })} />
+          {t("dgecs.import.fix.title")}
+        </label>
+        <ul style={{ margin: "4px 0 0", paddingInlineStart: 22 }}>
+          {CHAMPS_FICHE.filter((c) => ecarts[c]).map((c) => (
+            <li key={c}>
+              {t(`dgecs.import.fields.${c}`)} : <s style={{ color: "#94a3b8" }}>{ecarts[c][0] || "—"}</s> → <strong style={{ color: "#14532d" }}>{ecarts[c][1]}</strong>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
   };
 
   // Ligne « à vérifier » : les élèves d'EduGest qui pourraient être lui, et
@@ -121,6 +146,7 @@ export function ApercuDgecs({
                 <td style={{ ...td, color: "#475569" }}>
                   {detail(l)}
                   {l.etat === "aVerifier" && candidats(l)}
+                  {ecartsDe(l) && correction(l)}
                 </td>
               </tr>
             ))}

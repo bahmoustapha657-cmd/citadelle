@@ -3,6 +3,7 @@ import { fmt } from "../../constants";
 import { Badge, Btn, Card } from "../ui";
 import { libelleSection } from "../../i18n/libelles";
 import { corpsCarte, encadre, grilleSouple, pastille, titreCarte, TONS } from "./tdb-styles";
+import { AlerteDepartsSignales } from "../departs-signales/AlerteDepartsSignales";
 
 const TYPE_COLORS = { exam: "#ef4444", conge: "#10b981", reunion: "#f59e0b", autre: "#6366f1" };
 
@@ -15,11 +16,16 @@ const TYPE_COLORS = { exam: "#ef4444", conge: "#10b981", reunion: "#f59e0b", aut
 // demandes de dispense de la comptabilité qui attendent la Direction — passé
 // à la Direction seulement. `ouvrirDispenses(section)` mène à la fenêtre.
 //
+// `departsSignales` ({ total, parSection }, cf. depart-signale) : les départs
+// signalés par les chefs de section, à confirmer par la comptabilité.
+// `ouvrirDepartsSignales()` mène à la fenêtre de Comptabilité → Élèves.
+//
 // `sansArgent` (école publique) : les événements seuls — toutes les alertes
 // parlent d'argent (paiements, solde, paie, dispenses).
 export function EventsAlerts({
   evAVenir, tauxPay, solde, masseSal, totalRec, moyenneMensuelle = null,
   demandesDispense = null, ouvrirDispenses = null, sansArgent = false,
+  departsSignales = null, ouvrirDepartsSignales = null,
 }) {
   const { t } = useTranslation();
   const nbDemandes = demandesDispense?.total || 0;
@@ -87,6 +93,7 @@ export function EventsAlerts({
               </div>
             </div>
           )}
+          <AlerteDepartsSignales compte={departsSignales} ouvrir={ouvrirDepartsSignales} />
           {tauxPay < 60 && alerte(TONS.attention, t("dashboard.alertLowPayTitle"), t("dashboard.alertLowPayDesc", { rate: tauxPay }))}
           {solde < 0 && alerte(TONS.danger, t("dashboard.alertNegBalTitle"), t(clair ? "dashboard.alertNegBalDescReal" : "dashboard.alertNegBalDesc", { amount: fmt(solde) }))}
           {paieElevee && alerte(TONS.attention, t("dashboard.alertHighPayrollTitle"), descPaie)}
