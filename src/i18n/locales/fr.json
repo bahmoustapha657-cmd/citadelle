@@ -3323,11 +3323,31 @@
       "detail": {
         "deja": "{{name}} ({{classe}}) a déjà ce matricule.",
         "rattacher": "Retrouvé par le nom : {{name}} ({{classe}}). Vérifiez avant d'appliquer.",
-        "rattacherSur": "Retrouvé : {{name}} ({{classe}}), même date de naissance ou même filiation.",
-        "conflit": "Retrouvé par le nom, mais EduGest lui donne le matricule {{ien}} ({{classe}}). À corriger à la main.",
-        "aVerifier": "Même nom que : {{list}}. Rien n'est fait d'office ; cochez pour l'inscrire comme nouvel élève.",
-        "nouveau": "Sera inscrit dans la classe choisie, avec son matricule DGECS et sa filiation.",
-        "nouveauSansInscription": "Absent d'EduGest : à inscrire par Comptabilité → Enrôlement."
+        "rattacherSur": "Retrouvé : {{name}} ({{classe}}) — {{preuves}}.",
+        "conflit": "Retrouvé ({{preuves}}) : {{name}} ({{classe}}), mais EduGest lui donne le matricule {{ien}}. À corriger à la main.",
+        "aVerifier": "Peut-être déjà dans EduGest (nom, date de naissance ou filiation proches). Rien n'est fait d'office : dites qui c'est.",
+        "nouveau": "Aucun élève d'EduGest ne s'en approche (nom, date de naissance, filiation) : sera inscrit dans la classe choisie, avec son matricule DGECS et sa filiation.",
+        "nouveauSansInscription": "Aucun élève d'EduGest ne s'en approche (nom, date de naissance, filiation) : à inscrire par Comptabilité → Enrôlement.",
+        "rattacherProche": "Même élève, nom écrit autrement dans EduGest : {{name}} ({{classe}}) — {{preuves}}.",
+        "rattacherSonore": "Même nom écrit autrement : {{name}} ({{classe}}) dans EduGest, sans date de naissance ni filiation pour le confirmer. Vérifiez avant d'appliquer."
+      },
+      "evidence": {
+        "nomIdentique": "même nom",
+        "nomEcritAutrement": "même nom écrit autrement",
+        "nomProche": "nom proche",
+        "nomPartiel": "un mot du nom en commun",
+        "dateEgale": "même date de naissance",
+        "dateProche": "date de naissance presque identique",
+        "dateDifferente": "autre date de naissance",
+        "filiationEgale": "même filiation",
+        "filiationProche": "filiation en partie commune",
+        "filiationDifferente": "autre filiation"
+      },
+      "choice": {
+        "label": "Que faire de {{name}} ?",
+        "none": "— À décider plus tard —",
+        "link": "C'est {{name}} ({{classe}}) : poser le matricule",
+        "new": "Élève différent : l'inscrire"
       },
       "issues": {
         "sansMatricule": "sans matricule",
@@ -3337,7 +3357,7 @@
         "matriculeEnDouble": "matricule en double dans la liste"
       },
       "absents": "{{count}} élève(s) de {{classe}} ne sont pas dans cette liste DGECS",
-      "absentsHint": "À inscrire sur DGECS (module Inscription, avec leur matricule) : un élève sans matricule est déclaré redoublant."
+      "absentsHint": "Vérifiés par le nom, la date de naissance et la filiation. À inscrire sur DGECS (module Inscription, avec leur matricule) : un élève sans matricule est déclaré redoublant."
     }
   },
   "feedback": {

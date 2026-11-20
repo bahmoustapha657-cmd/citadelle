@@ -3323,11 +3323,31 @@
       "detail": {
         "deja": "{{name}} ({{classe}}) لديه هذا الرقم مسبقًا.",
         "rattacher": "عُثر عليه بالاسم: {{name}} ({{classe}}). تحقّق قبل التطبيق.",
-        "rattacherSur": "عُثر عليه: {{name}} ({{classe}})، بنفس تاريخ الولادة أو النسب.",
-        "conflit": "عُثر عليه بالاسم، لكن EduGest يعطيه الرقم {{ien}} ({{classe}}). يُصحَّح يدويًا.",
-        "aVerifier": "نفس اسم: {{list}}. لا يتم أي شيء تلقائيًا؛ ضع علامة لتسجيله تلميذًا جديدًا.",
-        "nouveau": "سيُسجَّل في القسم المختار، برقم DGECS ونسبه.",
-        "nouveauSansInscription": "غير موجود في EduGest: يُسجَّل عبر المحاسبة ← التسجيل."
+        "rattacherSur": "عُثر عليه: {{name}} ({{classe}}) — {{preuves}}.",
+        "conflit": "عُثر عليه ({{preuves}}): {{name}} ({{classe}})، لكن EduGest يعطيه الرقم {{ien}}. يُصحَّح يدويًا.",
+        "aVerifier": "ربما موجود مسبقًا في EduGest (اسم أو تاريخ ولادة أو نسب متقارب). لا يتم أي شيء تلقائيًا: حدّد من هو.",
+        "nouveau": "لا يقترب منه أي تلميذ في EduGest (الاسم، تاريخ الولادة، النسب): سيُسجَّل في القسم المختار، برقم DGECS ونسبه.",
+        "nouveauSansInscription": "لا يقترب منه أي تلميذ في EduGest (الاسم، تاريخ الولادة، النسب): يُسجَّل عبر المحاسبة ← التسجيل.",
+        "rattacherProche": "نفس التلميذ، اسمه مكتوب بشكل مختلف في EduGest: {{name}} ({{classe}}) — {{preuves}}.",
+        "rattacherSonore": "نفس الاسم مكتوب بشكل مختلف: {{name}} ({{classe}}) في EduGest، دون تاريخ ولادة أو نسب للتأكيد. تحقّق قبل التطبيق."
+      },
+      "evidence": {
+        "nomIdentique": "نفس الاسم",
+        "nomEcritAutrement": "نفس الاسم بكتابة مختلفة",
+        "nomProche": "اسم متقارب",
+        "nomPartiel": "جزء مشترك من الاسم",
+        "dateEgale": "نفس تاريخ الولادة",
+        "dateProche": "تاريخ ولادة شبه مطابق",
+        "dateDifferente": "تاريخ ولادة مختلف",
+        "filiationEgale": "نفس النسب",
+        "filiationProche": "نسب مشترك جزئيًا",
+        "filiationDifferente": "نسب مختلف"
+      },
+      "choice": {
+        "label": "ماذا تفعل بـ {{name}}؟",
+        "none": "— يُقرَّر لاحقًا —",
+        "link": "إنه {{name}} ({{classe}}): أضف الرقم",
+        "new": "تلميذ مختلف: سجّله"
       },
       "issues": {
         "sansMatricule": "بدون رقم",
@@ -3337,7 +3357,7 @@
         "matriculeEnDouble": "رقم مكرر في القائمة"
       },
       "absents": "{{count}} تلميذ من {{classe}} غير موجودين في قائمة DGECS هذه",
-      "absentsHint": "يجب تسجيلهم في DGECS (وحدة Inscription، برقمهم): التلميذ بدون رقم يُعتبر راسبًا."
+      "absentsHint": "تم التحقق بالاسم وتاريخ الولادة والنسب. يجب تسجيلهم في DGECS (وحدة Inscription، برقمهم): التلميذ بدون رقم يُعتبر راسبًا."
     }
   },
   "feedback": {

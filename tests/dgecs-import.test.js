@@ -7,7 +7,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
-  FORMAT_MATRICULE_DGECS, absentsDeDgecs, cleNomComplet, cocheParDefaut, dateIso, enNomPropre, ficheDepuisDgecs,
+  FORMAT_MATRICULE_DGECS, absentsDeDgecs, cleNomComplet, cleSonore, cocheParDefaut, dateIso, enNomPropre, ficheDepuisDgecs,
   lireListeDgecs, lireTexteTableau, rapprocherDgecs, resumeRapprochement,
 } from "../src/dgecs-import.js";
 
@@ -93,9 +93,11 @@ test("rapprochement : déjà à jour, matricule à poser, conflit, à vérifier,
   ]);
   // Même date de naissance : rattachement sûr ; nom seul : à vérifier à l'œil.
   assert.equal(lignes[0].sur, true);
+  assert.deepEqual(lignes[0].preuves, ["nomIdentique", "dateEgale"]);
+  assert.equal(lignes[0].orthographe, false);
   assert.equal(lignes[4].sur, false);
   // Date de naissance différente : peut-être un homonyme, rien d'office.
-  assert.deepEqual(lignes[3].candidats.map((e) => e._id), ["e4"]);
+  assert.deepEqual(lignes[3].candidats.map((c) => [c.eleve._id, c.preuves]), [["e4", ["nomIdentique", "dateDifferente"]]]);
   assert.deepEqual(resumeRapprochement(lignes), { deja: 1, rattacher: 2, conflit: 1, aVerifier: 1, nouveau: 0, invalide: 0 });
   assert.deepEqual(lignes.filter(cocheParDefaut).map((l) => l.matricule), ["MA25032033", "MA25032037"]);
 });
@@ -123,11 +125,90 @@ test("rapprochement : matricule déjà porté dans une autre section, homonymes,
   assert.deepEqual(doubles.map((l) => l.etat), ["rattacher", "nouveau"]);
 });
 
-test("absents de DGECS : élèves de la classe ni retrouvés ni porteurs d'un matricule de la liste", () => {
+test("absents de DGECS : ni retrouvés, ni porteurs d'un matricule de la liste, ni candidats d'une ligne à vérifier", () => {
   const { eleves } = lireListeDgecs(lireTexteTableau(COPIE));
   const lignes = rapprocherDgecs(eleves, EDUGEST);
   const classeA = EDUGEST.filter((e) => e.classe === "7ème Année A");
-  assert.deepEqual(absentsDeDgecs(lignes, classeA).map((e) => e._id), ["e4", "e5"]);
+  // BAH Ibrahima (e4) est peut-être « IBRAHIMA BAH » de DGECS (autre date) :
+  // on ne le déclare pas absent avant de l'avoir vérifié.
+  assert.deepEqual(absentsDeDgecs(lignes, classeA).map((e) => e._id), ["e5"]);
+});
+
+// ── Orthographe différente : nom, date de naissance, filiation ──
+
+const ligneDgecs = (matricule, nom, prenom, x = {}) => ({ matricule, nom, prenom, dateNaissance: "", pere: "", mere: "", erreurs: [], avertissements: [], ...x });
+const etats = (lignes) => lignes.map((l) => [l.matricule, l.etat, l.eleve?._id ?? (l.candidats || []).map((c) => c.eleve._id).join("+")]);
+
+test("graphies courantes ramenées à la même prononciation, sans confondre des prénoms différents", () => {
+  for (const [a, b] of [["Mamadou", "Mamadu"], ["Camara", "Kamara"], ["Barry", "Bari"], ["Thierno", "Tierno"], ["Diallo", "Djallo"],
+    ["Abdoulaye", "Abdoulaï"], ["Hawa", "Awa"], ["Fatoumata", "Fatoumatta"], ["Kadiatou", "Kadjatou"], ["Tidiane", "Tidjane"], ["Bah", "Ba"]]) {
+    assert.equal(cleSonore(a), cleSonore(b), `${a} / ${b}`);
+  }
+  assert.notEqual(cleSonore("Fanta"), cleSonore("Fatou"));
+  assert.notEqual(cleSonore("Sow"), cleSonore("Bah"));
+});
+
+test("nom écrit autrement : retrouvé grâce à la date de naissance ou à la filiation, pas déclaré absent", () => {
+  const lignes = rapprocherDgecs([
+    ligneDgecs("MA00000001", "BARRY", "Mamadou Aliou", { dateNaissance: "2012-03-04" }),
+    ligneDgecs("MA00000002", "KAMARA", "Fanta", { pere: "Sekou", mere: "Hawa Conde" }),
+    ligneDgecs("MA00000003", "SOUMAH", "Abdoulaye", { dateNaissance: "2012-01-01" }),
+    ligneDgecs("MA00000004", "SYLLA", "Ibrahima"),
+  ], [
+    { _id: "a", nom: "BARY", prenom: "Mamadu", dateNaissance: "04/03/2012" },
+    { _id: "b", nom: "CAMARA", prenom: "Fanta", filiation: "Fille de Sékou Kamara et de Awa Condé" },
+    { _id: "c", nom: "SOUMAH", prenom: "Abdoulaï" },
+    { _id: "d", nom: "SYLLA", prenom: "Ibrahim" },
+  ]);
+  assert.deepEqual(etats(lignes), [
+    ["MA00000001", "rattacher", "a"], ["MA00000002", "rattacher", "b"], ["MA00000003", "rattacher", "c"], ["MA00000004", "aVerifier", "d"],
+  ]);
+  // 2e prénom absent d'EduGest, même date : sûr, coché d'office.
+  assert.deepEqual([lignes[0].sur, lignes[0].orthographe, lignes[0].preuves], [true, true, ["nomProche", "dateEgale"]]);
+  // Kamara / Camara, mêmes parents : sûr.
+  assert.deepEqual([lignes[1].sur, lignes[1].preuves], [true, ["nomEcritAutrement", "filiationEgale"]]);
+  // Même prononciation, rien pour confirmer : proposé, à vérifier à l'œil.
+  assert.deepEqual([lignes[2].sur, lignes[2].orthographe], [false, true]);
+  // Ibrahim / Ibrahima, rien pour confirmer : montré, rien d'office.
+  assert.deepEqual(lignes[3].candidats[0].preuves, ["nomProche"]);
+});
+
+test("mêmes parents : jumeaux départagés par le prénom, frère d'une autre année jamais confondu", () => {
+  const parents = { pere: "Alpha", mere: "Oumou Bah" };
+  const filiation = "Pere: Alpha Sow / Mere: Oumou Bah";
+  const lignes = rapprocherDgecs([
+    ligneDgecs("MA00000011", "SOW", "Hassane", { dateNaissance: "2012-06-01", ...parents }),
+    ligneDgecs("MA00000012", "SOW", "Housseine", { dateNaissance: "2012-06-01", ...parents }),
+    ligneDgecs("MA00000013", "SOW", "Ibrahima", { dateNaissance: "2014-09-09", ...parents }),
+  ], [
+    { _id: "h1", nom: "SOW", prenom: "Housseine", dateNaissance: "2012-06-01", filiation },
+    { _id: "h2", nom: "SOW", prenom: "Hassan", dateNaissance: "2012-06-01", filiation },
+    { _id: "m", nom: "SOW", prenom: "Mamadou", dateNaissance: "2010-02-02", filiation },
+  ]);
+  assert.deepEqual(etats(lignes), [["MA00000011", "rattacher", "h2"], ["MA00000012", "rattacher", "h1"], ["MA00000013", "nouveau", ""]]);
+});
+
+test("mêmes date et parents sous un autre nom (surnom) : à vérifier ; même nom mais autres parents : à vérifier", () => {
+  const lignes = rapprocherDgecs([
+    ligneDgecs("MA00000021", "DIALLO", "Boubacar", { dateNaissance: "2011-11-11", pere: "Thierno", mere: "Kadiatou Barry" }),
+    ligneDgecs("MA00000022", "CAMARA", "Fanta", { pere: "Sekou", mere: "Hawa Conde" }),
+  ], [
+    { _id: "bobo", nom: "DIALLO", prenom: "Bobo", dateNaissance: "2011-11-11", filiation: "Pere: Tierno Diallo / Mere: Kadiatou Bari" },
+    { _id: "fanta", nom: "CAMARA", prenom: "Fanta", filiation: "Pere: Moussa Keita / Mere: Mariama Sylla" },
+  ]);
+  assert.deepEqual(etats(lignes), [["MA00000021", "aVerifier", "bobo"], ["MA00000022", "aVerifier", "fanta"]]);
+  assert.deepEqual(lignes[0].candidats[0].preuves, ["nomPartiel", "dateEgale", "filiationEgale"]);
+  assert.deepEqual(lignes[1].candidats[0].preuves, ["nomIdentique", "filiationDifferente"]);
+  // Aucun des deux n'est coché d'office.
+  assert.deepEqual(lignes.filter(cocheParDefaut), []);
+});
+
+test("le tuteur confirme la filiation mais ne la contredit jamais (ce peut être un oncle)", () => {
+  const d = [ligneDgecs("MA00000031", "KABA", "Mariama", { pere: "Lansana", mere: "Fanta Conde" })];
+  const avecPere = rapprocherDgecs(d, [{ _id: "k", nom: "KABA", prenom: "Mariama", tuteur: "Lansana Kaba", filiation: "" }]);
+  assert.deepEqual(avecPere[0].preuves, ["nomIdentique", "filiationProche"]);
+  const oncle = rapprocherDgecs(d, [{ _id: "k", nom: "KABA", prenom: "Mariama", tuteur: "Ousmane Kaba" }]);
+  assert.deepEqual([oncle[0].etat, oncle[0].preuves], ["rattacher", ["nomIdentique"]]);
 });
 
 test("fiche EduGest d'un élève de DGECS : matricule DGECS dans ien, filiation, tuteur", () => {
@@ -144,4 +225,7 @@ test("chaque état, colonne et problème a son libellé en français", () => {
   for (const etat of ["deja", "rattacher", "conflit", "aVerifier", "nouveau", "invalide"]) assert.ok(fr.states[etat], etat);
   for (const code of ["sansMatricule", "matriculeInhabituel", "sansNom", "sansSexe", "matriculeEnDouble"]) assert.ok(fr.issues[code], code);
   for (const e of ["entete", "vide"]) assert.ok(fr.readError[e], e);
+  for (const p of ["nomIdentique", "nomEcritAutrement", "nomProche", "nomPartiel", "dateEgale", "dateProche", "dateDifferente",
+    "filiationEgale", "filiationProche", "filiationDifferente"]) assert.ok(fr.evidence[p], p);
+  for (const d of ["rattacher", "rattacherSur", "rattacherProche", "rattacherSonore", "conflit", "aVerifier", "nouveau"]) assert.ok(fr.detail[d], d);
 });

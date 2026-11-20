@@ -18,10 +18,12 @@ const Pastille = ({ etat, children }) => {
 };
 
 // Aperçu du rapprochement : classe des nouveaux élèves, compteurs par état,
-// une ligne par élève de la liste DGECS (case = action proposée), puis les
+// une ligne par élève de la liste DGECS (case = action proposée ; menu pour
+// les lignes « à vérifier » : quel élève d'EduGest est le même), puis les
 // élèves de la classe qu'EduGest connaît mais que DGECS n'a pas.
 export function ApercuDgecs({
   lignes, resume, absents, classes, classe, setClasse, estCoche, peutAgir, basculer, peutInscrire, peutRattacher,
+  choix = {}, choisir, lierPossible = () => false, fichesPromises = new Set(),
 }) {
   const { t } = useTranslation();
   const [voirAbsents, setVoirAbsents] = useState(false);
@@ -29,14 +31,46 @@ export function ApercuDgecs({
   const th = { textAlign: "start", padding: "8px 10px", fontSize: 11, fontWeight: 800, color: "#475569", background: "#f8fafc", borderBottom: "1px solid #e2e8f0", whiteSpace: "nowrap" };
   const td = { padding: "7px 10px", fontSize: 12.5, color: "#1e293b", borderBottom: "1px solid #f1f5f9", verticalAlign: "top" };
 
+  const nomEleve = (e) => `${e.nom} ${e.prenom}`;
+  const preuves = (codes = []) => codes.map((c) => t(`dgecs.import.evidence.${c}`)).join(", ");
   const detail = (l) => {
     if (l.etat === "invalide") return [...l.erreurs, ...l.avertissements].map((c) => t(`dgecs.import.issues.${c}`)).join(" · ");
-    if (l.etat === "deja") return t("dgecs.import.detail.deja", { name: `${l.eleve.nom} ${l.eleve.prenom}`, classe: l.eleve.classe || "—" });
-    if (l.etat === "rattacher") return t(l.sur ? "dgecs.import.detail.rattacherSur" : "dgecs.import.detail.rattacher", { name: `${l.eleve.nom} ${l.eleve.prenom}`, classe: l.eleve.classe || "—" });
-    if (l.etat === "conflit") return t("dgecs.import.detail.conflit", { ien: l.eleve.ien, classe: l.eleve.classe || "—" });
-    if (l.etat === "aVerifier") return t("dgecs.import.detail.aVerifier", { list: l.candidats.map((e) => `${e.nom} ${e.prenom} (${e.classe || "—"}${e.dateNaissance ? `, ${e.dateNaissance}` : ""})`).join(" ; ") });
+    const v = l.eleve ? { name: nomEleve(l.eleve), classe: l.eleve.classe || "—", preuves: preuves(l.preuves), ien: l.eleve.ien } : {};
+    if (l.etat === "deja") return t("dgecs.import.detail.deja", v);
+    if (l.etat === "rattacher" && l.orthographe) return t(l.sur ? "dgecs.import.detail.rattacherProche" : "dgecs.import.detail.rattacherSonore", v);
+    if (l.etat === "rattacher") return t(l.sur ? "dgecs.import.detail.rattacherSur" : "dgecs.import.detail.rattacher", v);
+    if (l.etat === "conflit") return t("dgecs.import.detail.conflit", v);
+    if (l.etat === "aVerifier") return t("dgecs.import.detail.aVerifier");
     return peutInscrire ? t("dgecs.import.detail.nouveau") : t("dgecs.import.detail.nouveauSansInscription");
   };
+
+  // Ligne « à vérifier » : les élèves d'EduGest qui pourraient être lui, et
+  // le choix (le même élève → matricule posé ; élève différent → inscrit).
+  const candidats = (l) => (
+    <>
+      <ul style={{ margin: "4px 0 6px", paddingInlineStart: 18 }}>
+        {l.candidats.map((c) => (
+          <li key={c.eleve._id}>
+            <strong>{nomEleve(c.eleve)}</strong> ({c.eleve.classe || "—"}{c.eleve.dateNaissance ? `, ${c.eleve.dateNaissance}` : ""})
+            {c.eleve.ien ? ` · ${c.eleve.ien}` : ""} — {preuves(c.preuves)}
+          </li>
+        ))}
+      </ul>
+      {peutAgir(l) && (
+        <select value={choix[l.matricule] || ""} onChange={(e) => choisir(l, e.target.value)}
+          aria-label={t("dgecs.import.choice.label", { name: `${l.nom} ${l.prenom}` })}
+          style={{ border: "1px solid #b0c4d8", borderRadius: 7, padding: "5px 8px", fontSize: 12, background: "#fff", maxWidth: "100%" }}>
+          <option value="">{t("dgecs.import.choice.none")}</option>
+          {peutRattacher && l.candidats.filter(lierPossible).map((c) => (
+            <option key={c.eleve._id} value={c.eleve._id} disabled={fichesPromises.has(c.eleve._id) && choix[l.matricule] !== c.eleve._id}>
+              {t("dgecs.import.choice.link", { name: nomEleve(c.eleve), classe: c.eleve.classe || "—" })}
+            </option>
+          ))}
+          {peutInscrire && <option value="nouveau">{t("dgecs.import.choice.new")}</option>}
+        </select>
+      )}
+    </>
+  );
 
   return (
     <div>
@@ -74,7 +108,7 @@ export function ApercuDgecs({
             {triees.map((l, i) => (
               <tr key={`${l.matricule}-${l.ligne}-${i}`} data-testid="ligne-dgecs" data-etat={l.etat}>
                 <td style={td}>
-                  {peutAgir(l) && (
+                  {peutAgir(l) && l.etat !== "aVerifier" && (
                     <input type="checkbox" checked={estCoche(l)} onChange={() => basculer(l)}
                       aria-label={t("dgecs.import.selectRow", { name: `${l.nom} ${l.prenom}` })} />
                   )}
@@ -84,7 +118,10 @@ export function ApercuDgecs({
                 <td style={td}>{l.sexe || "—"}</td>
                 <td style={td}>{l.dateNaissance || "—"}{l.lieuNaissance ? ` · ${l.lieuNaissance}` : ""}</td>
                 <td style={td}><Pastille etat={l.etat}>{t(`dgecs.import.states.${l.etat}`)}</Pastille></td>
-                <td style={{ ...td, color: "#475569" }}>{detail(l)}</td>
+                <td style={{ ...td, color: "#475569" }}>
+                  {detail(l)}
+                  {l.etat === "aVerifier" && candidats(l)}
+                </td>
               </tr>
             ))}
           </tbody>
