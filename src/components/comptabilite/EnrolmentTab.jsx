@@ -1,4 +1,4 @@
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { C, aReinscrire, estReinscrit, estSorti, getAnnee, getClassesForSection, getSystemeScolaire, sectionOuverte } from "../../constants";
 import { SchoolContext } from "../../contexts/SchoolContext";
@@ -18,6 +18,9 @@ import { trierEleves } from "../../tri-eleves";
 import { SeancePhotoModale } from "../identite-enfant/SeancePhotoModale";
 import { BoutonDispenses } from "./BoutonDispenses";
 import { ExonerationsModale } from "./mensualites-tab/ExonerationsModale";
+import { BoutonDepartsSignales } from "../departs-signales/BoutonDepartsSignales";
+import { DepartsSignalesModale } from "../departs-signales/DepartsSignalesModale";
+import { intentionDepartsSignales, oublierIntentionDepartsSignales } from "../departs-signales/ouvrir-departs-signales";
 import {
   messageConfirmationSuppression, messageErreurSuppression, messageSuppressionRefusee, porteDesEncaissements,
 } from "./enrolment/suppression-eleve";
@@ -31,6 +34,11 @@ export function EnrolmentTab({
   // Fenêtre « Dispenses » (cf. use-comptabilite) : la comptabilité demande
   // une dispense, la Direction l'accorde, sans quitter l'enrôlement.
   dispenses = null,
+  // Fiche élève (comptable, postes qui écrivent la compta) : confirmer un
+  // départ signalé. Sans le verrou de l'admin, qu'exige la modification libre
+  // (canEdit) : le départ a déjà été signalé par un chef de section ou la
+  // Direction : la comptable ne peut pas en inventer un à elle seule.
+  canEditEleves = false,
 }) {
   const { t } = useTranslation();
   const { schoolId, schoolInfo, toast, planInfo, moisAnnee, logAction } = useContext(SchoolContext);
@@ -48,6 +56,11 @@ export function EnrolmentTab({
   // élève s'il vient du bouton 🎓 de sa ligne.
   const [fenetreDispenses, setFenetreDispenses] = useState(null);
   const peutDispenser = !!dispenses && (dispenses.estDirection || dispenses.peutDemander);
+  // Fenêtre « Départs signalés » (chefs de section, Direction → comptabilité),
+  // ouverte d'office en arrivant de son alerte (Comptabilité, tableau de bord).
+  const [fenetreDeparts, setFenetreDeparts] = useState(() => intentionDepartsSignales());
+  useEffect(() => { oublierIntentionDepartsSignales(); }, []);
+  const peutConfirmerDeparts = (canEdit || canEditEleves) && !!dispenses;
 
   // Cycle affiché : le choix s'il est ouvert dans l'école, sinon la première
   // section ouverte — une école sans collège ne s'ouvre pas sur une liste vide.
@@ -124,6 +137,7 @@ export function EnrolmentTab({
         onSeancePhoto={canEdit && modChampParNiveau[niveauEnrol]
           ? () => setSeanceClasse(classeEnrol === "all" ? null : classeEnrol) : null}
         boutonDispenses={dispenses && <BoutonDispenses dispenses={dispenses} onClick={() => setFenetreDispenses({ eleveId: null })} />}
+        boutonDepartsSignales={peutConfirmerDeparts && <BoutonDepartsSignales paquet={dispenses} onClick={() => setFenetreDeparts(true)} />}
       />
 
       <div style={{background:"#e0ebf8",borderRadius:8,padding:"9px 14px",marginBottom:14,fontSize:12,color:C.blueDark}}>
@@ -178,6 +192,8 @@ export function EnrolmentTab({
       {fenetreDispenses&&dispenses&&<ExonerationsModale {...dispenses}
         sectionInitiale={niveauEnrol} eleveInitialId={fenetreDispenses.eleveId}
         fermer={()=>setFenetreDispenses(null)}/>}
+
+      {fenetreDeparts&&peutConfirmerDeparts&&<DepartsSignalesModale paquet={dispenses} fermer={()=>setFenetreDeparts(false)}/>}
 
       {seanceClasse!==undefined&&<SeancePhotoModale
         eleves={elevesPresents} classeInitiale={seanceClasse}

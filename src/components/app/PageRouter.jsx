@@ -21,7 +21,7 @@ export function PageRouter({
   return (
     <>
       {page==="superadmin_panel" && <SuperAdminPanel/>}
-      {page==="accueil"         && <TableauDeBord annee={annee} userRole={userRole} onOpenLegalSettings={()=>{setParamInitialTab("officiel");setPage("parametres");}} onOpenDispenses={()=>setPage("compta")}/>}
+      {page==="accueil"         && <TableauDeBord annee={annee} userRole={userRole} onOpenLegalSettings={()=>{setParamInitialTab("officiel");setPage("parametres");}} onOpenDispenses={()=>setPage("compta")} onOpenDepartsSignales={()=>setPage("compta")}/>}
       {page==="historique"      && <HistoriqueActions/>}
       {page==="statistiques"    && <Statistiques annee={annee}/>}
       {page==="parametres"      && <ParametresEcole utilisateurRole={userRole} onSchoolClosed={deconnecter} initialTab={paramInitialTab} onTabConsumed={()=>setParamInitialTab(null)}/>}

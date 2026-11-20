@@ -25,6 +25,7 @@ import { scolaritePourAnnee } from "../admin/cloture-annee-utils";
 import { saveSalaireAction, savePersonnelAction } from "./compta-saves";
 import { avecPaie, indexerPaie } from "../../paie-enseignants";
 import { intentionDispenses } from "./ouvrir-dispenses";
+import { intentionDepartsSignales } from "../departs-signales/ouvrir-departs-signales";
 
 // Toute la logique du module Comptabilité : chargement Firestore de
 // toutes les collections (filtrées par année consultée), permissions,
@@ -136,7 +137,9 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
 
   // Arrivée depuis l'alerte « demandes de dispense » du tableau de bord :
   // onglet Mensualités, sur la section qui a des demandes (cf. ouvrir-dispenses).
-  const [tab, setTab] = useState(() => (intentionDispenses() !== null ? "mens" : "bilan"));
+  // De l'alerte « départs signalés » : onglet Élèves (cf. ouvrir-departs-signales).
+  const [tab, setTab] = useState(() => (intentionDispenses() !== null ? "mens"
+    : intentionDepartsSignales() ? "enrolment" : "bilan"));
   const [sousTabSal, setSousTabSal] = useState("etats");
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState({});

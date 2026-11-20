@@ -7,6 +7,8 @@ import { BulletinsTab } from "../BulletinsTab";
 import { HonneurTab } from "../HonneurTab";
 import { MatieresTab } from "../MatieresTab";
 import { DgecsTab } from "../DgecsTab";
+import { SignalerDepartsTab } from "../../departs-signales/SignalerDepartsTab";
+import { getAnnee } from "../../../constants";
 
 // Onglets de gestion : enseignements, discipline, bulletins, tableau
 // d'honneur, livrets, matières, emploi du temps, attestations.
@@ -170,6 +172,16 @@ export function EcoleTabsAdmin({ e, section, avecEns, userRole, annee, maxNote, 
         periodes={e.periodes}
         maxNote={maxNote}
         cleNotes={cleNotes}
+      />}
+
+      {/* ── DÉPARTS SIGNALÉS ── le chef de section signale, la comptabilité
+          confirme (onglet ouvert par qui écrit la section, cf. Ecole.jsx). */}
+      {e.tab === "departs" && e.canCreate && <SignalerDepartsTab
+        eleves={e.eleves}
+        classes={[...e.classesUniq].sort((a, b) => String(a).localeCompare(String(b), "fr", { numeric: true }))}
+        modChamp={e.modChampE}
+        userRole={userRole}
+        annee={annee || getAnnee()}
       />}
 
       {/* ── PLATEFORME DGECS ── matricules et redoublants modifiables par qui

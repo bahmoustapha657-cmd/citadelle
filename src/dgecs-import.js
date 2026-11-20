@@ -295,19 +295,48 @@ function candidatsDe(d, fiches) {
     if (!nom && date !== "egale") continue;
     const ind = { nom, date, filiation: comparerFiliations(filD, f.fil, f.tuteur) };
     const fo = force(ind);
-    if (fo) trouves.push({ eleve: f.eleve, ...ind, force: fo, preuves: preuvesDe(ind) });
+    if (fo) trouves.push({ eleve: f.eleve, ...ind, force: fo, preuves: preuvesDe(ind), ecarts: ecartsAvecDgecs(d, f.eleve) });
   }
   return trouves.sort((a, b) => b.force - a.force);
 }
 
+// ── Fiche conforme à DGECS ──────────────────────────────────────────────────
+// DGECS est la référence officielle : quand la fiche EduGest d'un élève
+// retrouvé dit autre chose, l'écran propose (coché d'office) de recopier les
+// valeurs de DGECS. `ecarts` : { champ: [valeur EduGest, valeur DGECS] }.
+//  - nom, prénoms : écrits autrement (les accents et la casse d'EduGest sont
+//    gardés : DGECS écrit tout en majuscules, sans accents) ;
+//  - date, lieu de naissance : seulement si DGECS en donne ;
+//  - filiation : seulement si EduGest ne contient pas déjà le père et la mère
+//    de DGECS (une filiation plus complète, « Pere: Alpha BARRY », est gardée).
+export function ecartsAvecDgecs(d, e = {}) {
+  const ecarts = {};
+  if (d.nom && cle(e.nom) !== cle(d.nom)) ecarts.nom = [e.nom || "", d.nom];
+  if (d.prenom && cle(e.prenom) !== cle(d.prenom)) ecarts.prenom = [e.prenom || "", d.prenom];
+  if (/^\d{4}-\d{2}-\d{2}$/.test(d.dateNaissance || "") && dateIso(e.dateNaissance) !== d.dateNaissance) {
+    ecarts.dateNaissance = [e.dateNaissance || "", d.dateNaissance];
+  }
+  if (d.lieuNaissance && cle(e.lieuNaissance) !== cle(d.lieuNaissance)) ecarts.lieuNaissance = [e.lieuNaissance || "", d.lieuNaissance];
+  const filD = motsFiliation(d.pere, d.mere);
+  if (d.filiation && filD.length && comparerFiliations(filD, motsFiliation(e.filiation), []) !== "egale") {
+    ecarts.filiation = [e.filiation || "", d.filiation];
+  }
+  return ecarts;
+}
+
+// Écarts → champs à écrire sur la fiche (valeurs de DGECS).
+export const champsDgecs = (ecarts = {}) => Object.fromEntries(Object.entries(ecarts).map(([champ, [, valeur]]) => [champ, valeur]));
+
 // États d'une ligne DGECS face aux élèves d'EduGest :
-//  - deja       : un élève d'EduGest porte déjà ce matricule — rien à faire ;
+//  - deja       : un élève d'EduGest porte déjà ce matricule — rien à faire,
+//                 sauf recopier les `ecarts` (élève de la section) ;
 //  - rattacher  : retrouvé, sans matricule — on le lui pose. `sur` : confirmé
 //                 par la date de naissance ou la filiation ; `orthographe` :
 //                 nom écrit autrement dans EduGest ; `preuves` : pourquoi ;
+//                 `ecarts` : ce que la fiche dit autrement que DGECS ;
 //  - conflit    : retrouvé, mais avec un AUTRE matricule ;
 //  - aVerifier  : peut-être un élève d'EduGest (`candidats` : [{ eleve,
-//                 preuves, force }]) — rien d'office, l'écran fait choisir ;
+//                 preuves, force, ecarts }]) — rien d'office, l'écran fait choisir ;
 //  - nouveau    : aucun élève d'EduGest ne s'en approche (nom, date de
 //                 naissance, filiation) — à inscrire ;
 //  - invalide   : ligne inutilisable (sans matricule ou sans nom).
@@ -322,12 +351,14 @@ export function rapprocherDgecs(listeDgecs, eleves = [], { tous = eleves } = {})
     if (m && !parIen.has(m)) parIen.set(m, e);
   }
   const pris = new Set();
+  // Une fiche d'une autre section se corrige depuis sa section, pas d'ici.
+  const enSection = new Set(eleves.map((e) => e._id));
   const res = listeDgecs.map((d) => {
     if (d.erreurs.length) return { ...d, etat: "invalide" };
     const meme = parIen.get(d.matricule);
     if (!meme) return null;
     pris.add(meme._id);
-    return { ...d, etat: "deja", eleve: meme };
+    return { ...d, etat: "deja", eleve: meme, ecarts: enSection.has(meme._id) ? ecartsAvecDgecs(d, meme) : {} };
   });
 
   const fiches = eleves.filter((e) => !pris.has(e._id)).map((e) => ({
@@ -341,7 +372,7 @@ export function rapprocherDgecs(listeDgecs, eleves = [], { tous = eleves } = {})
     const ligne = { ...listeDgecs[i], eleve: c.eleve, preuves: c.preuves, orthographe: c.nom !== "identique" };
     res[i] = normaliserMatriculeDgecs(c.eleve.ien)
       ? { ...ligne, etat: "conflit" }
-      : { ...ligne, etat: "rattacher", sur: c.force === 3 };
+      : { ...ligne, etat: "rattacher", sur: c.force === 3, ecarts: c.ecarts };
   };
 
   // 1. Un seul candidat sûr. Une fiche prise peut en libérer une autre ligne
