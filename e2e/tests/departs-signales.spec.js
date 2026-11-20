@@ -114,11 +114,15 @@ test("la comptable confirme l'un, refuse l'autre en disant pourquoi", async ({ p
   await expect(reste).toHaveCount(0);
 
   // Base : le premier est parti (date, école d'accueil, plus de signalement) ;
-  // le second reste inscrit, son signalement porte le refus.
-  await expect.poll(async () => (await fiche(PART.matricule)).statut, { timeout: 30_000 }).toBe("Transféré");
+  // le second reste inscrit, son signalement porte le refus. Hors ligne, la
+  // colonne statut et les champs d'extra remontent séparément : on attend
+  // les deux.
+  await expect.poll(async () => {
+    const f = await fiche(PART.matricule);
+    return [f.statut, f.extra?.dateDepart, f.extra?.departSignale ?? null];
+  }, { timeout: 30_000 }).toEqual(["Transféré", DATE, null]);
   const parti = await fiche(PART.matricule);
   expect(parti.extra).toMatchObject({ dateDepart: DATE, destinationDepart: ECOLE_ACCUEIL, motifDepart: "Transfert accordé par le directeur" });
-  expect(parti.extra.departSignale ?? null).toBeNull();
   await expect.poll(async () => (await fiche(RESTE.matricule)).extra?.departSignale?.etat, { timeout: 30_000 }).toBe("refuse");
   const reste2 = await fiche(RESTE.matricule);
   expect(reste2.statut).toBe("Actif");
