@@ -35,13 +35,15 @@ const fiche = async (matricule) => {
 test.beforeAll(async () => {
   await preparerChefPrimaire();
   // La classe et deux élèves du primaire, écrits par la direction (RLS)
-  // sous la forme exacte que l'app produit.
+  // sous la forme exacte que l'app produit. Inscription payée : un élève sans
+  // aucun paiement est un non réinscrit, retiré des listes des chefs de
+  // section passé le 1er novembre (ecartes-non-reinscrits.js).
   const direction = await clientConnecte(DIRECTION);
   const id = await ecoleId();
   const ligne = (table, item) => ({ ...toRow(table, item).row, ecole_id: id, section: "primaire" });
   for (const [table, lignes] of [
     ["classes", [ligne("classes", { nom: CLASSE })]],
-    ["eleves", [PART, RESTE].map((e) => ligne("eleves", { ...e, classe: CLASSE, statut: "Actif" }))],
+    ["eleves", [PART, RESTE].map((e) => ligne("eleves", { ...e, classe: CLASSE, statut: "Actif", inscriptionPayee: true }))],
   ]) {
     const { error } = await direction.from(table).insert(lignes);
     if (error) throw new Error(`${table} : ${error.message}`);
