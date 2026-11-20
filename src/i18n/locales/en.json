@@ -3323,11 +3323,31 @@
       "detail": {
         "deja": "{{name}} ({{classe}}) already has this matricule.",
         "rattacher": "Found by name: {{name}} ({{classe}}). Check before applying.",
-        "rattacherSur": "Found: {{name}} ({{classe}}), same date of birth or same parentage.",
-        "conflit": "Found by name, but EduGest gives them matricule {{ien}} ({{classe}}). Fix by hand.",
-        "aVerifier": "Same name as: {{list}}. Nothing is done automatically; tick to enrol as a new student.",
-        "nouveau": "Will be enrolled in the chosen class, with their DGECS matricule and parentage.",
-        "nouveauSansInscription": "Not in EduGest: enrol through Accounting → Enrolment."
+        "rattacherSur": "Found: {{name}} ({{classe}}) — {{preuves}}.",
+        "conflit": "Found ({{preuves}}): {{name}} ({{classe}}), but EduGest gives them matricule {{ien}}. Fix by hand.",
+        "aVerifier": "Possibly already in EduGest (close name, date of birth or parentage). Nothing is done automatically: say who it is.",
+        "nouveau": "No EduGest student comes close (name, date of birth, parentage): will be enrolled in the chosen class, with their DGECS matricule and parentage.",
+        "nouveauSansInscription": "No EduGest student comes close (name, date of birth, parentage): enrol through Accounting → Enrolment.",
+        "rattacherProche": "Same student, name spelt differently in EduGest: {{name}} ({{classe}}) — {{preuves}}.",
+        "rattacherSonore": "Same name spelt differently: {{name}} ({{classe}}) in EduGest, with no date of birth or parentage to confirm it. Check before applying."
+      },
+      "evidence": {
+        "nomIdentique": "same name",
+        "nomEcritAutrement": "same name spelt differently",
+        "nomProche": "similar name",
+        "nomPartiel": "part of the name in common",
+        "dateEgale": "same date of birth",
+        "dateProche": "almost the same date of birth",
+        "dateDifferente": "different date of birth",
+        "filiationEgale": "same parentage",
+        "filiationProche": "partly the same parentage",
+        "filiationDifferente": "different parentage"
+      },
+      "choice": {
+        "label": "What to do with {{name}}?",
+        "none": "— Decide later —",
+        "link": "It is {{name}} ({{classe}}): add the matricule",
+        "new": "A different student: enrol them"
       },
       "issues": {
         "sansMatricule": "no matricule",
@@ -3337,7 +3357,7 @@
         "matriculeEnDouble": "matricule repeated in the list"
       },
       "absents": "{{count}} student(s) of {{classe}} are not in this DGECS list",
-      "absentsHint": "To register on DGECS (Inscription module, with their matricule): a student without a matricule is declared as repeating the year."
+      "absentsHint": "Checked by name, date of birth and parentage. To register on DGECS (Inscription module, with their matricule): a student without a matricule is declared as repeating the year."
     }
   },
   "feedback": {

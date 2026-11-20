@@ -4,7 +4,7 @@ import { genererMatricule, initMens } from "../../constants";
 import { Btn, Modale } from "../ui";
 import {
   URL_LISTE_DGECS, absentsDeDgecs, cocheParDefaut, ficheDepuisDgecs, lireListeDgecs, lireTexteTableau,
-  rapprocherDgecs, resumeRapprochement,
+  normaliserMatriculeDgecs, rapprocherDgecs, resumeRapprochement,
 } from "../../dgecs-import";
 import { lireTableur } from "../../lecture-tableur";
 import { ApercuDgecs } from "./ApercuDgecs";
@@ -26,7 +26,9 @@ export function ImportDgecsModale({
   const [lignesFichier, setLignesFichier] = useState(null);
   const [classe, setClasse] = useState(classeInitiale && classes.includes(classeInitiale) ? classeInitiale : "");
   const [decoches, setDecoches] = useState(() => new Set());
-  const [coches, setCoches] = useState(() => new Set());
+  // Lignes « à vérifier » : matricule DGECS → "" (rien), "nouveau" (élève
+  // différent, à inscrire) ou _id de l'élève d'EduGest qui est le même.
+  const [choix, setChoix] = useState(() => ({}));
   const [enCours, setEnCours] = useState(false);
   const [faits, setFaits] = useState(0);
   const verrou = useRef(false);
@@ -44,20 +46,29 @@ export function ImportDgecsModale({
   const elevesClasse = useMemo(() => eleves.filter((e) => e.classe === classe), [eleves, classe]);
   const absents = useMemo(() => (classe && lignes.length ? absentsDeDgecs(lignes, elevesClasse) : []), [lignes, elevesClasse, classe]);
 
-  // Coché = coché d'office (rattachements, nouveaux) sauf décoché, ou coché
-  // à la main (homonymes « à vérifier » inscrits malgré tout).
+  // Rattachements et nouveaux : cochés d'office, sauf décochés. Lignes « à
+  // vérifier » : rien tant qu'on n'a pas choisi l'élève (ou « élève différent »).
+  const lierPossible = (c) => !!modifierChamp && !normaliserMatriculeDgecs(c.eleve.ien);
   const peutAgir = (l) => (l.etat === "rattacher" && !!modifierChamp)
-    || ((l.etat === "nouveau" || l.etat === "aVerifier") && !!ajouter);
-  const estCoche = (l) => peutAgir(l) && (cocheParDefaut(l) ? !decoches.has(l.matricule) : coches.has(l.matricule));
+    || (l.etat === "nouveau" && !!ajouter)
+    || (l.etat === "aVerifier" && (!!ajouter || l.candidats.some(lierPossible)));
+  const estCoche = (l) => peutAgir(l) && (cocheParDefaut(l) ? !decoches.has(l.matricule) : !!choix[l.matricule]);
   const basculer = (l) => {
-    const [ens, setEns] = cocheParDefaut(l) ? [decoches, setDecoches] : [coches, setCoches];
-    const suite = new Set(ens);
+    const suite = new Set(decoches);
     if (suite.has(l.matricule)) suite.delete(l.matricule); else suite.add(l.matricule);
-    setEns(suite);
+    setDecoches(suite);
   };
+  const choisir = (l, valeur) => setChoix({ ...choix, [l.matricule]: valeur });
   const choisies = lignes.filter(estCoche);
-  const aRattacher = choisies.filter((l) => l.etat === "rattacher");
-  const aInscrire = choisies.filter((l) => l.etat !== "rattacher");
+  // { ligne, eleve } : matricule DGECS à poser sur cette fiche d'EduGest.
+  const aRattacher = choisies.flatMap((l) => {
+    if (l.etat === "rattacher") return [{ ligne: l, eleve: l.eleve }];
+    const c = l.etat === "aVerifier" && l.candidats.find((x) => x.eleve._id === choix[l.matricule]);
+    return c ? [{ ligne: l, eleve: c.eleve }] : [];
+  });
+  const aInscrire = choisies.filter((l) => l.etat === "nouveau" || choix[l.matricule] === "nouveau");
+  // Une fiche ne reçoit qu'un matricule : déjà promise, elle n'est plus proposée.
+  const fichesPromises = new Set(aRattacher.map((r) => r.eleve._id));
   const classeManque = aInscrire.length > 0 && !classe;
 
   const choisirFichier = async (e) => {
@@ -67,6 +78,8 @@ export function ImportDgecsModale({
     try {
       setLignesFichier(await lireTableur(await f.arrayBuffer(), { texte: true }));
       setTexte("");
+      setDecoches(new Set());
+      setChoix({});
     } catch {
       toast?.(t("dgecs.import.fileError"), "warning");
     }
@@ -81,8 +94,8 @@ export function ImportDgecsModale({
     let echecs = 0;
     const ajoutes = [];
     try {
-      for (const l of aRattacher) {
-        try { await modifierChamp(l.eleve._id, { ien: l.matricule }); poses++; } catch { echecs++; }
+      for (const { ligne, eleve } of aRattacher) {
+        try { await modifierChamp(eleve._id, { ien: ligne.matricule }); poses++; } catch { echecs++; }
         setFaits(poses + ajoutes.length + echecs);
       }
       if (aInscrire.length && ensureClasse) await ensureClasse(classe);
@@ -123,7 +136,7 @@ export function ImportDgecsModale({
         {t("dgecs.import.pasteLabel")}
       </label>
       <textarea id="dgecs-import-texte" value={texte} rows={lecture ? 3 : 7}
-        onChange={(e) => { setTexte(e.target.value); setLignesFichier(null); setDecoches(new Set()); setCoches(new Set()); }}
+        onChange={(e) => { setTexte(e.target.value); setLignesFichier(null); setDecoches(new Set()); setChoix({}); }}
         placeholder={t("dgecs.import.pastePlaceholder")}
         style={{ width: "100%", border: "1px solid #b0c4d8", borderRadius: 9, padding: "10px 12px", fontSize: 13, boxSizing: "border-box", resize: "vertical", fontFamily: "inherit" }} />
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", margin: "8px 0 14px", fontSize: 12, color: "#64748b" }}>
@@ -140,6 +153,7 @@ export function ImportDgecsModale({
         <ApercuDgecs
           lignes={lignes} resume={resume} absents={absents} classes={classes} classe={classe} setClasse={setClasse}
           estCoche={estCoche} peutAgir={peutAgir} basculer={basculer} peutInscrire={!!ajouter} peutRattacher={!!modifierChamp}
+          choix={choix} choisir={choisir} lierPossible={lierPossible} fichesPromises={fichesPromises}
         />
       )}
 

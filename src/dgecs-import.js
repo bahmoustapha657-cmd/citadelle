@@ -137,59 +137,250 @@ export function lireListeDgecs(lignes) {
   return { eleves, erreur: eleves.length ? null : "vide" };
 }
 
+// ── Rapprochement : nom, date de naissance, filiation ──────────────────────
+// Un même élève s'écrit souvent autrement d'une saisie à l'autre : Mamadou /
+// Mamadu, Camara / Kamara, Barry / Bary, Thierno / Tierno, Diallo / Djallo,
+// un 2e prénom en plus ou en moins. Avant de déclarer un élève absent d'un
+// côté ou de l'autre, on compare donc aussi les noms PROCHES, la date de
+// naissance et la filiation (père, mère). Un nom proche ne pose un matricule
+// d'office que si la date de naissance ou la filiation le confirme.
+
 // Même personne, quel que soit l'ordre des mots : « BARRY Mamadou Aliou » et
 // « Mamadou Aliou BARRY » donnent la même clé.
 export const cleNomComplet = (nom, prenom) => cle(`${nom} ${prenom}`).split(" ").filter(Boolean).sort().join(" ");
-const cleFiliation = (f) => cle(f).split(" ").filter((m) => m && !["pere", "mere", "fils", "fille", "de", "d", "du", "et"].includes(m)).join(" ");
+
+// Mot réduit à sa prononciation, pour les graphies courantes en Guinée :
+// ou→u, y→i, ph→f, th→t, dj et di+voyelle→j, c dur et qu→k, h muet, lettres
+// doublées simplifiées, e final muet.
+export function cleSonore(mot) {
+  let s = cle(mot).replace(/[^a-z]/g, "")
+    .replace(/ph/g, "f").replace(/th/g, "t").replace(/dj/g, "j").replace(/di(?=[aeiou])/g, "j")
+    .replace(/qu/g, "k").replace(/c(?![eih])/g, "k")
+    .replace(/ou/g, "u").replace(/y/g, "i")
+    .replace(/([^cs])h/g, "$1").replace(/^h/, "")
+    .replace(/(.)\1+/g, "$1");
+  if (s.length > 3) s = s.replace(/e$/, "");
+  return s;
+}
+
+// Distance d'édition (lettres ajoutées, retirées ou changées).
+function distance(a, b) {
+  let prec = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const cour = [i];
+    for (let j = 1; j <= b.length; j++) {
+      cour[j] = Math.min(prec[j] + 1, cour[j - 1] + 1, prec[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    prec = cour;
+  }
+  return prec[b.length];
+}
+
+// Deux mots se valent : même prononciation, ou une faute de frappe sur un
+// mot d'au moins 4 lettres (2 à partir de 8 lettres).
+const motsProches = (a, b) => {
+  if (a === b) return true;
+  const court = Math.min(a.length, b.length);
+  return court >= 4 && distance(a, b) <= (court >= 8 ? 2 : 1);
+};
+
+// Nombre de mots de `a` retrouvés dans `b`, chaque mot ne servant qu'une
+// fois (les mots identiques d'abord, puis les proches).
+function motsCommuns(a, b) {
+  const restA = [...a];
+  const restB = [...b];
+  let n = 0;
+  for (const exact of [true, false]) {
+    for (let i = restA.length - 1; i >= 0; i--) {
+      const j = restB.findIndex((m) => (exact ? m === restA[i] : motsProches(restA[i], m)));
+      if (j >= 0) { restA.splice(i, 1); restB.splice(j, 1); n++; }
+    }
+  }
+  return n;
+}
+
+const motsNom = (nom, prenom) => cle(`${nom} ${prenom}`).split(" ").map(cleSonore).filter(Boolean);
+
+// Mots qui ne disent rien des parents (« Pere: », « fils de », « feu »…).
+const MOTS_VIDES_FILIATION = new Set([
+  "pere", "mere", "fils", "fille", "de", "d", "du", "des", "et", "feu", "feue", "le", "la", "l",
+  "mr", "mme", "m", "monsieur", "madame", "mlle", "ne", "nee", "epouse", "ep", "veuve", "tuteur", "tutrice", "enfant",
+]);
+const motsFiliation = (...textes) => cle(textes.filter(Boolean).join(" ")).split(" ")
+  .filter((m) => m && !MOTS_VIDES_FILIATION.has(m)).map(cleSonore).filter(Boolean);
+
+const cleSonoreNom = (mots) => [...mots].sort().join(" ");
+
+// Noms : "identique" (mêmes mots, dans n'importe quel ordre), "sonore" (mêmes
+// mots à la prononciation près : Abdoulaye / Abdoulaï, Camara / Kamara),
+// "proche" (tous les mots du plus court retrouvés, à une faute près, au moins
+// 2), "partiel" (un mot en commun), "" (rien en commun).
+function comparerNoms(motsA, motsB) {
+  if (cleSonoreNom(motsA) === cleSonoreNom(motsB)) return "sonore";
+  const communs = motsCommuns(motsA, motsB);
+  const court = Math.min(motsA.length, motsB.length);
+  if (court >= 2 && communs === court) return "proche";
+  return communs ? "partiel" : "";
+}
+
+// Dates : "egale", "proche" (même année et même mois ou même jour, jour et
+// mois inversés, ou seule l'année diffère : faute de frappe probable),
+// "differente", "" (une des deux inconnue).
+function comparerDates(a, b) {
+  const x = dateIso(a);
+  const y = dateIso(b);
+  const iso = /^\d{4}-\d{2}-\d{2}$/;
+  if (!iso.test(x) || !iso.test(y)) return "";
+  if (x === y) return "egale";
+  const [ax, mx, jx] = x.split("-");
+  const [ay, my, jy] = y.split("-");
+  const memeAnnee = ax === ay && (mx === my || jx === jy || (mx === jy && jx === my));
+  return memeAnnee || (mx === my && jx === jy) ? "proche" : "differente";
+}
+
+// Filiation : mots des parents DGECS (père, mère) retrouvés dans la filiation
+// d'EduGest (ou son tuteur). "egale" : au moins les 3/4, et 2 mots dès que
+// DGECS en donne 2 ; "proche" : un mot ; "differente" : aucun alors que la
+// filiation d'EduGest est remplie ; "" : rien à comparer. Le tuteur peut être
+// un oncle : il confirme, il ne contredit jamais.
+function comparerFiliations(motsDgecs, motsFil, motsTuteur) {
+  if (!motsDgecs.length) return "";
+  const communs = motsCommuns(motsDgecs, [...motsFil, ...motsTuteur]);
+  if (communs >= Math.min(2, motsDgecs.length) && communs / motsDgecs.length >= 0.75) return "egale";
+  if (communs) return "proche";
+  return motsFil.length >= 2 ? "differente" : "";
+}
+
+// Ce qui rapproche (ou sépare) deux fiches, en codes traduits par l'écran
+// (dgecs.import.evidence.*).
+const PREUVES = {
+  nom: { identique: "nomIdentique", sonore: "nomEcritAutrement", proche: "nomProche", partiel: "nomPartiel" },
+  date: { egale: "dateEgale", proche: "dateProche", differente: "dateDifferente" },
+  filiation: { egale: "filiationEgale", proche: "filiationProche", differente: "filiationDifferente" },
+};
+const preuvesDe = (ind) => ["nom", "date", "filiation"].map((k) => PREUVES[k][ind[k]]).filter(Boolean);
+
+// Force d'un rapprochement :
+//  3 = sûr : nom identique ou proche, confirmé par la date de naissance ou la
+//      filiation, rien de contraire ;
+//  2 = par le nom seul : même nom (à l'orthographe près), aucune date pour
+//      confirmer ou contredire, filiation pas contraire ;
+//  1 = à montrer, rien d'office : même nom malgré une différence, nom proche,
+//      un mot du nom + même date ou même filiation (frère ? jumeau ?), ou
+//      même date ET même filiation sous un autre nom ;
+//  0 = sans rapport.
+function force({ nom: n, date, filiation }) {
+  const nom = n === "sonore" ? "identique" : n;
+  const contraire = date === "differente" || filiation === "differente";
+  const confirme = date === "egale" || filiation === "egale";
+  if (!contraire && (nom === "identique" || nom === "proche") && confirme) return 3;
+  if (nom === "identique" && !date && !contraire) return 2;
+  if (nom === "identique") return 1;
+  if (nom === "proche" && !contraire) return 1;
+  if (nom === "partiel" && !contraire && confirme) return 1;
+  if (date === "egale" && filiation === "egale") return 1;
+  return 0;
+}
+
+// Élèves d'EduGest qui pourraient être la ligne DGECS `d`, du plus sûr au
+// moins sûr.
+function candidatsDe(d, fiches) {
+  const cleD = cleNomComplet(d.nom, d.prenom);
+  const motsD = motsNom(d.nom, d.prenom);
+  const filD = motsFiliation(d.pere, d.mere);
+  const trouves = [];
+  for (const f of fiches) {
+    const nom = f.cle === cleD ? "identique" : comparerNoms(motsD, f.mots);
+    const date = comparerDates(d.dateNaissance, f.eleve.dateNaissance);
+    if (!nom && date !== "egale") continue;
+    const ind = { nom, date, filiation: comparerFiliations(filD, f.fil, f.tuteur) };
+    const fo = force(ind);
+    if (fo) trouves.push({ eleve: f.eleve, ...ind, force: fo, preuves: preuvesDe(ind) });
+  }
+  return trouves.sort((a, b) => b.force - a.force);
+}
 
 // États d'une ligne DGECS face aux élèves d'EduGest :
 //  - deja       : un élève d'EduGest porte déjà ce matricule — rien à faire ;
-//  - rattacher  : retrouvé par son nom, sans matricule — on le lui pose
-//                 (`sur` : confirmé par la date de naissance ou la filiation) ;
-//  - conflit    : retrouvé par son nom, mais avec un AUTRE matricule ;
-//  - aVerifier  : même nom, mais date de naissance différente ou plusieurs
-//                 homonymes — rien d'automatique ;
-//  - nouveau    : absent d'EduGest — à inscrire ;
+//  - rattacher  : retrouvé, sans matricule — on le lui pose. `sur` : confirmé
+//                 par la date de naissance ou la filiation ; `orthographe` :
+//                 nom écrit autrement dans EduGest ; `preuves` : pourquoi ;
+//  - conflit    : retrouvé, mais avec un AUTRE matricule ;
+//  - aVerifier  : peut-être un élève d'EduGest (`candidats` : [{ eleve,
+//                 preuves, force }]) — rien d'office, l'écran fait choisir ;
+//  - nouveau    : aucun élève d'EduGest ne s'en approche (nom, date de
+//                 naissance, filiation) — à inscrire ;
 //  - invalide   : ligne inutilisable (sans matricule ou sans nom).
 // `eleves` : les élèves d'EduGest qu'on peut rattacher (la section choisie) ;
 // `tous` : toute l'école, pour reconnaître un matricule déjà donné ailleurs.
+// Une fiche EduGest ne sert qu'à une ligne : les rapprochements sûrs passent
+// d'abord, puis ceux par le nom seul ; le reste est à vérifier ou nouveau.
 export function rapprocherDgecs(listeDgecs, eleves = [], { tous = eleves } = {}) {
   const parIen = new Map();
   for (const e of tous) {
     const m = normaliserMatriculeDgecs(e.ien);
     if (m && !parIen.has(m)) parIen.set(m, e);
   }
-  const parNom = new Map();
-  for (const e of eleves) {
-    const k = cleNomComplet(e.nom, e.prenom);
-    if (!k) continue;
-    if (!parNom.has(k)) parNom.set(k, []);
-    parNom.get(k).push(e);
-  }
   const pris = new Set();
-  const lignes = listeDgecs.map((d) => {
+  const res = listeDgecs.map((d) => {
     if (d.erreurs.length) return { ...d, etat: "invalide" };
     const meme = parIen.get(d.matricule);
-    if (meme) { pris.add(meme._id); return { ...d, etat: "deja", eleve: meme }; }
-    const candidats = (parNom.get(cleNomComplet(d.nom, d.prenom)) || []).filter((e) => !pris.has(e._id));
-    if (!candidats.length) return { ...d, etat: "nouveau" };
-    const dateEgale = (e) => !!d.dateNaissance && dateIso(e.dateNaissance) === d.dateNaissance;
-    const dateContraire = (e) => !!d.dateNaissance && !!e.dateNaissance && dateIso(e.dateNaissance) !== d.dateNaissance;
-    const filiationEgale = (e) => !!cleFiliation(d.filiation) && cleFiliation(e.filiation) === cleFiliation(d.filiation);
-    const compatibles = candidats.filter((e) => !dateContraire(e));
-    if (compatibles.length !== 1) return { ...d, etat: "aVerifier", candidats };
-    const e = compatibles[0];
-    pris.add(e._id);
-    if (normaliserMatriculeDgecs(e.ien)) return { ...d, etat: "conflit", eleve: e };
-    return { ...d, etat: "rattacher", eleve: e, sur: dateEgale(e) || filiationEgale(e) };
+    if (!meme) return null;
+    pris.add(meme._id);
+    return { ...d, etat: "deja", eleve: meme };
   });
-  return lignes;
+
+  const fiches = eleves.filter((e) => !pris.has(e._id)).map((e) => ({
+    eleve: e, cle: cleNomComplet(e.nom, e.prenom), mots: motsNom(e.nom, e.prenom),
+    fil: motsFiliation(e.filiation), tuteur: motsFiliation(e.tuteur),
+  }));
+  const candidats = listeDgecs.map((d, i) => (res[i] ? [] : candidatsDe(d, fiches)));
+  const libres = (i) => candidats[i].filter((c) => !pris.has(c.eleve._id));
+  const poser = (i, c) => {
+    pris.add(c.eleve._id);
+    const ligne = { ...listeDgecs[i], eleve: c.eleve, preuves: c.preuves, orthographe: c.nom !== "identique" };
+    res[i] = normaliserMatriculeDgecs(c.eleve.ien)
+      ? { ...ligne, etat: "conflit" }
+      : { ...ligne, etat: "rattacher", sur: c.force === 3 };
+  };
+
+  // 1. Un seul candidat sûr. Une fiche prise peut en libérer une autre ligne
+  //    (deux candidats sûrs dont l'un part ailleurs) : on recommence.
+  for (let change = true; change;) {
+    change = false;
+    listeDgecs.forEach((_, i) => {
+      if (res[i]) return;
+      const surs = libres(i).filter((c) => c.force === 3);
+      if (surs.length === 1) { poser(i, surs[0]); change = true; }
+    });
+  }
+  // 2. Un seul homonyme (à l'orthographe près), que rien ne confirme ni ne
+  //    contredit.
+  listeDgecs.forEach((_, i) => {
+    if (res[i]) return;
+    const restants = libres(i);
+    const memeNom = restants.filter((c) => c.nom === "identique" || c.nom === "sonore");
+    if (!restants.some((c) => c.force === 3) && memeNom.length === 1 && memeNom[0].force === 2) poser(i, memeNom[0]);
+  });
+  // 3. Le reste.
+  return listeDgecs.map((d, i) => {
+    if (res[i]) return res[i];
+    const restants = libres(i);
+    return restants.length ? { ...d, etat: "aVerifier", candidats: restants } : { ...d, etat: "nouveau" };
+  });
 }
 
 // Élèves d'EduGest de la classe choisie que la liste DGECS ne contient pas :
-// à inscrire sur la plateforme (sans matricule, l'élève est déclaré redoublant).
+// à inscrire sur la plateforme (sans matricule, l'élève est déclaré
+// redoublant). Un élève qui POURRAIT être une ligne de la liste (nom proche,
+// même date ou même filiation : candidat d'une ligne « à vérifier ») n'y
+// figure pas : on ne le déclare pas absent avant de l'avoir vérifié.
 export function absentsDeDgecs(lignes, elevesClasse = []) {
-  const vus = new Set(lignes.filter((l) => l.eleve).map((l) => l.eleve._id));
+  const vus = new Set();
+  for (const l of lignes) {
+    if (l.eleve) vus.add(l.eleve._id);
+    for (const c of l.candidats || []) vus.add(c.eleve._id);
+  }
   const matricules = new Set(lignes.map((l) => l.matricule).filter(Boolean));
   return elevesClasse.filter((e) => !vus.has(e._id) && !matricules.has(normaliserMatriculeDgecs(e.ien)));
 }
