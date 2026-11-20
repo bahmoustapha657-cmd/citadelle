@@ -1,11 +1,12 @@
 import { useContext, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import { C, aReinscrire, estReinscrit, estSorti, getAnnee, sectionOuverte } from "../../constants";
+import { C, aReinscrire, estReinscrit, estSorti, getAnnee, getClassesForSection, getSystemeScolaire, sectionOuverte } from "../../constants";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { DepartsView } from "./enrolment/DepartsView";
 import { EnrolModale } from "./enrolment/EnrolModale";
 import { RapideEnrolModale } from "./enrolment/RapideEnrolModale";
 import { ImportEnrolModale } from "./enrolment/ImportEnrolModale";
+import { ImportDgecsModale } from "../dgecs-import/ImportDgecsModale";
 import { EnrolPlanAlerte } from "./enrolment/EnrolPlanAlerte";
 import { EnrolToolbar } from "./enrolment/EnrolToolbar";
 import { EnrolTable } from "./enrolment/EnrolTable";
@@ -182,6 +183,17 @@ export function EnrolmentTab({
         eleves={elevesPresents} classeInitiale={seanceClasse}
         schoolId={schoolId} enregistrer={modChampParNiveau[niveauEnrol]} toast={toast} logAction={logAction}
         fermer={()=>setSeanceClasse(undefined)}/>}
+
+      {/* Pont DGECS : matricules posés sur les fiches existantes, élèves
+          manquants inscrits dans la classe choisie (classe créée au besoin). */}
+      {modal==="import_dgecs"&&canCreate&&<ImportDgecsModale
+        section={niveauEnrol} schoolInfo={schoolInfo} toast={toast} logAction={logAction}
+        classes={[...new Set([...getClassesForSection(niveauEnrol, getSystemeScolaire(schoolInfo)), ...classesEnrol])]}
+        classeInitiale={classeEnrol!=="all"?classeEnrol:""}
+        eleves={elevesPresents} tous={tousElevesScolarite} elevesSection={elevesEnrol}
+        ajouter={ajoutParNiveau[niveauEnrol]} modifierChamp={modChampParNiveau[niveauEnrol]||null}
+        ensureClasse={(c)=>ensureClasse(c, niveauEnrol, new Set())}
+        fermer={()=>setModal(null)}/>}
 
       {modal==="import_enrol"&&canCreate&&<ImportEnrolModale
         setModal={setModal} niveauEnrol={niveauEnrol} schoolInfo={schoolInfo} toast={toast}
