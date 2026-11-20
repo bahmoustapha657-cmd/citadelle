@@ -4,6 +4,7 @@ import { imprimerListeClasse } from "../../../reports";
 import { sansNonReinscritsEcartes } from "../../../ecartes-non-reinscrits";
 import { TriElevesSelect } from "../../TriElevesSelect";
 import { libelleSection } from "../../../i18n/libelles";
+import { ongletDgecsOuvert } from "../../../dgecs";
 
 // Barre d'outils de l'enrôlement : titre + compteur de plan, sélecteur de
 // niveau, filtre classe + impression de la liste de classe, bascule Départs
@@ -99,6 +100,10 @@ export function EnrolToolbar({
                 setModal("rapide_enrol");
               }}>⚡ {t("accounting.enrol.quick")}</Btn>
               <Btn v="ghost" title={t("accounting.enrol.importHint")} onClick={()=>{setModal("import_enrol");}}>📋 {t("accounting.enrol.importExcel")}</Btn>
+              {/* Pont DGECS : liste copiée sur dgecsecoles.com (système guinéen). */}
+              {ongletDgecsOuvert(schoolInfo, niveauEnrol)&&(
+                <Btn v="ghost" title={t("dgecs.import.buttonHint")} onClick={()=>{setModal("import_dgecs");}}>🇬🇳 {t("dgecs.import.button")}</Btn>
+              )}
             </div>
           : <Btn disabled title={t("accounting.enrol.limitHint")}>🔒 {t("accounting.enrol.limitReached")}</Btn>
       )}

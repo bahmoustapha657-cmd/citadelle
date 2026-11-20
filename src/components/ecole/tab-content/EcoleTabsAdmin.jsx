@@ -189,6 +189,8 @@ export function EcoleTabsAdmin({ e, section, avecEns, userRole, annee, maxNote, 
         maxNote={maxNote}
         canEdit={e.canEdit}
         modChampE={e.modChampE}
+        ajE={e.ajE}
+        logAction={e.logAction}
         toast={e.toast}
         filtreClasse={e.filtreClasse}
       />}

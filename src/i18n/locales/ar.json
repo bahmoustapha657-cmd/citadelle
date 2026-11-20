@@ -3179,7 +3179,8 @@
     "views": {
       "notes": "📝 كشف الدرجات",
       "stats": "📊 إحصاءات الدخول المدرسي",
-      "candidates": "🎓 المرشحون للامتحانات"
+      "candidates": "🎓 المرشحون للامتحانات",
+      "import": "📥 من DGECS"
     },
     "class": "القسم",
     "period": "الفترة",
@@ -3269,6 +3270,74 @@
       "printTitle": "قائمة المرشحين لامتحان {{examen}}",
       "printYear": "دورة {{session}} — السنة الدراسية {{annee}}",
       "printLegend": "خانة حمراء: معلومة ناقصة في الملف."
+    },
+    "import": {
+      "button": "من DGECS",
+      "buttonHint": "نسخ قائمة التلاميذ من منصة DGECS: إضافة الأرقام التعريفية وتسجيل التلاميذ الناقصين",
+      "title": "🇬🇳 نسخ قائمة التلاميذ من DGECS",
+      "intro": "انسخ هنا قائمة تلاميذ منصة DGECS، قسمًا بعد قسم. يتعرّف EduGest على تلاميذه ويضيف إليهم رقمهم التعريفي في DGECS، ويشير إلى الناقصين في أي من الجانبين، ويمكنه تسجيل التلاميذ غير الموجودين في EduGest.",
+      "coverage": "{{done}} من أصل {{total}} تلميذًا في هذا القسم لديهم رقم DGECS.",
+      "enrolInAccounting": "يُسجَّل التلاميذ الجدد عبر المحاسبة ← التسجيل ← 🇬🇳 من DGECS (مع رسوم تسجيلهم)؛ وهنا يضيف EduGest الأرقام التعريفية فقط.",
+      "readOnly": "قراءة فقط: يلزم حق تعديل تلاميذ هذا القسم.",
+      "step1": "في DGECS، افتح «Liste des élèves» واختر القسم.",
+      "openDgecs": "فتح DGECS ↗",
+      "step2": "انقر زر «copier» فوق الجدول (أو «Excel» لتنزيل الملف).",
+      "step3": "عد إلى هنا والصق القائمة في الخانة أدناه (Ctrl+V)، أو اختر ملف Excel.",
+      "pasteLabel": "القائمة المنسوخة من DGECS",
+      "pastePlaceholder": "الصق القائمة هنا (Ctrl+V)…",
+      "orFile": "أو ملف Excel الذي تم تنزيله:",
+      "fileLabel": "ملف Excel المصدَّر من DGECS",
+      "fileRead": "تمت قراءة الملف ✓",
+      "fileError": "تعذرت قراءة هذا الملف. جرّب زر «copier» في DGECS.",
+      "readError": {
+        "entete": "لم يُعثر على عمودي «Matricule» و«Elève»: انسخ جدول صفحة «Liste des élèves» في DGECS مع رأسه.",
+        "vide": "لا يوجد أي تلميذ في القائمة الملصقة."
+      },
+      "classLabel": "قسم التلاميذ الجدد",
+      "classPlaceholder": "اختر القسم…",
+      "classHint": "يعطي DGECS المستوى لا الفرع (A، B…): يحتفظ التلاميذ المعروفون بقسمهم.",
+      "cannotLink": "لا يمكنك تعديل بطاقات هذا القسم: لن يُضاف أي رقم تعريفي.",
+      "chooseClass": "اختر قسم التلاميذ الجدد.",
+      "progress": "{{done}} / {{total}}…",
+      "apply": "تطبيق: {{linked}} رقم، {{enrolled}} تسجيل",
+      "done": "DGECS: أُضيف {{linked}} رقم، وسُجّل {{enrolled}} تلميذ.",
+      "failed": "رُفضت {{count}} عملية: حاول مجددًا، لم يضِع شيء من البقية.",
+      "states": {
+        "rattacher": "رقم يجب إضافته",
+        "nouveau": "غير موجود في EduGest",
+        "aVerifier": "للتحقق",
+        "conflit": "رقم آخر",
+        "deja": "محدَّث",
+        "invalide": "سطر غير مقروء"
+      },
+      "cols": {
+        "select": "اختيار",
+        "matricule": "رقم DGECS",
+        "student": "التلميذ",
+        "sex": "الجنس",
+        "birth": "الولادة",
+        "state": "الحالة",
+        "detail": "في EduGest"
+      },
+      "selectRow": "اختيار {{name}}",
+      "detail": {
+        "deja": "{{name}} ({{classe}}) لديه هذا الرقم مسبقًا.",
+        "rattacher": "عُثر عليه بالاسم: {{name}} ({{classe}}). تحقّق قبل التطبيق.",
+        "rattacherSur": "عُثر عليه: {{name}} ({{classe}})، بنفس تاريخ الولادة أو النسب.",
+        "conflit": "عُثر عليه بالاسم، لكن EduGest يعطيه الرقم {{ien}} ({{classe}}). يُصحَّح يدويًا.",
+        "aVerifier": "نفس اسم: {{list}}. لا يتم أي شيء تلقائيًا؛ ضع علامة لتسجيله تلميذًا جديدًا.",
+        "nouveau": "سيُسجَّل في القسم المختار، برقم DGECS ونسبه.",
+        "nouveauSansInscription": "غير موجود في EduGest: يُسجَّل عبر المحاسبة ← التسجيل."
+      },
+      "issues": {
+        "sansMatricule": "بدون رقم",
+        "matriculeInhabituel": "رقم غير معتاد",
+        "sansNom": "الاسم أو اللقب ناقص",
+        "sansSexe": "الجنس غير مذكور",
+        "matriculeEnDouble": "رقم مكرر في القائمة"
+      },
+      "absents": "{{count}} تلميذ من {{classe}} غير موجودين في قائمة DGECS هذه",
+      "absentsHint": "يجب تسجيلهم في DGECS (وحدة Inscription، برقمهم): التلميذ بدون رقم يُعتبر راسبًا."
     }
   },
   "feedback": {

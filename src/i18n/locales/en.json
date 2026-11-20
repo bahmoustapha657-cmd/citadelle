@@ -3179,7 +3179,8 @@
     "views": {
       "notes": "📝 Marks sheet",
       "stats": "📊 Start-of-year statistics",
-      "candidates": "🎓 Exam candidates"
+      "candidates": "🎓 Exam candidates",
+      "import": "📥 From DGECS"
     },
     "class": "Class",
     "period": "Period",
@@ -3269,6 +3270,74 @@
       "printTitle": "List of {{examen}} candidates",
       "printYear": "{{session}} session — school year {{annee}}",
       "printLegend": "Red box: information missing from the file."
+    },
+    "import": {
+      "button": "From DGECS",
+      "buttonHint": "Copy the student list from the DGECS platform: matricules added, missing students enrolled",
+      "title": "🇬🇳 Copy the student list from DGECS",
+      "intro": "Copy the DGECS platform's student list here, class by class. EduGest finds its students and adds their DGECS matricule, flags those missing on either side, and can enrol the students EduGest does not have.",
+      "coverage": "{{done}} of {{total}} students in this section have their DGECS matricule.",
+      "enrolInAccounting": "New students are enrolled through Accounting → Enrolment → 🇬🇳 From DGECS (with their registration); here, EduGest only adds the matricules.",
+      "readOnly": "Read only: you need the right to edit this section's students.",
+      "step1": "On DGECS, open \"Liste des élèves\" and choose the class.",
+      "openDgecs": "Open DGECS ↗",
+      "step2": "Click the \"copier\" button above the table (or \"Excel\" to download the file).",
+      "step3": "Come back here and paste the list in the box below (Ctrl+V), or choose the Excel file.",
+      "pasteLabel": "List copied from DGECS",
+      "pastePlaceholder": "Paste the list here (Ctrl+V)…",
+      "orFile": "or the downloaded Excel file:",
+      "fileLabel": "Excel file exported from DGECS",
+      "fileRead": "File read ✓",
+      "fileError": "This file cannot be read. Try DGECS's \"copier\" button.",
+      "readError": {
+        "entete": "\"Matricule\" and \"Elève\" columns not found: copy the table of the DGECS \"Liste des élèves\" page, header included.",
+        "vide": "No student in the pasted list."
+      },
+      "classLabel": "Class for new students",
+      "classPlaceholder": "Choose the class…",
+      "classHint": "DGECS gives the level, not the division (A, B…): students already known keep their class.",
+      "cannotLink": "You cannot edit this section's records: no matricule will be added.",
+      "chooseClass": "Choose the class for new students.",
+      "progress": "{{done}} / {{total}}…",
+      "apply": "Apply: {{linked}} matricule(s), {{enrolled}} enrolment(s)",
+      "done": "DGECS: {{linked}} matricule(s) added, {{enrolled}} student(s) enrolled.",
+      "failed": "{{count}} operation(s) refused: try again, nothing is lost for the others.",
+      "states": {
+        "rattacher": "Matricule to add",
+        "nouveau": "Not in EduGest",
+        "aVerifier": "To check",
+        "conflit": "Other matricule",
+        "deja": "Up to date",
+        "invalide": "Unreadable row"
+      },
+      "cols": {
+        "select": "Select",
+        "matricule": "DGECS matricule",
+        "student": "Student",
+        "sex": "Sex",
+        "birth": "Birth",
+        "state": "Status",
+        "detail": "In EduGest"
+      },
+      "selectRow": "Select {{name}}",
+      "detail": {
+        "deja": "{{name}} ({{classe}}) already has this matricule.",
+        "rattacher": "Found by name: {{name}} ({{classe}}). Check before applying.",
+        "rattacherSur": "Found: {{name}} ({{classe}}), same date of birth or same parentage.",
+        "conflit": "Found by name, but EduGest gives them matricule {{ien}} ({{classe}}). Fix by hand.",
+        "aVerifier": "Same name as: {{list}}. Nothing is done automatically; tick to enrol as a new student.",
+        "nouveau": "Will be enrolled in the chosen class, with their DGECS matricule and parentage.",
+        "nouveauSansInscription": "Not in EduGest: enrol through Accounting → Enrolment."
+      },
+      "issues": {
+        "sansMatricule": "no matricule",
+        "matriculeInhabituel": "unusual matricule",
+        "sansNom": "missing last or first name",
+        "sansSexe": "sex missing",
+        "matriculeEnDouble": "matricule repeated in the list"
+      },
+      "absents": "{{count}} student(s) of {{classe}} are not in this DGECS list",
+      "absentsHint": "To register on DGECS (Inscription module, with their matricule): a student without a matricule is declared as repeating the year."
     }
   },
   "feedback": {

@@ -3179,7 +3179,8 @@
     "views": {
       "notes": "📝 Fiche de notes",
       "stats": "📊 Statistiques de rentrée",
-      "candidates": "🎓 Candidats aux examens"
+      "candidates": "🎓 Candidats aux examens",
+      "import": "📥 Depuis DGECS"
     },
     "class": "Classe",
     "period": "Période",
@@ -3269,6 +3270,74 @@
       "printTitle": "Liste des candidats au {{examen}}",
       "printYear": "Session {{session}} — année scolaire {{annee}}",
       "printLegend": "Case rouge : information manquante au dossier."
+    },
+    "import": {
+      "button": "Depuis DGECS",
+      "buttonHint": "Recopier la liste des élèves de la plateforme DGECS : matricules posés, élèves manquants inscrits",
+      "title": "🇬🇳 Recopier la liste des élèves depuis DGECS",
+      "intro": "Recopiez ici la liste des élèves de la plateforme DGECS, classe par classe. EduGest retrouve ses élèves et leur pose leur matricule DGECS, signale ceux qui manquent d'un côté ou de l'autre, et peut inscrire les élèves absents d'EduGest.",
+      "coverage": "{{done}} élève(s) sur {{total}} ont leur matricule DGECS dans cette section.",
+      "enrolInAccounting": "Les nouveaux élèves s'inscrivent par Comptabilité → Enrôlement → 🇬🇳 Depuis DGECS (avec leur inscription) ; ici, EduGest pose seulement les matricules.",
+      "readOnly": "Lecture seule : il faut le droit de modifier les élèves de cette section.",
+      "step1": "Sur DGECS, ouvrez « Liste des élèves » et choisissez la classe.",
+      "openDgecs": "Ouvrir DGECS ↗",
+      "step2": "Cliquez sur le bouton « copier » au-dessus du tableau (ou « Excel » pour télécharger le fichier).",
+      "step3": "Revenez ici et collez la liste dans la case ci-dessous (Ctrl+V), ou choisissez le fichier Excel.",
+      "pasteLabel": "Liste copiée sur DGECS",
+      "pastePlaceholder": "Collez ici la liste (Ctrl+V)…",
+      "orFile": "ou le fichier Excel téléchargé :",
+      "fileLabel": "Fichier Excel exporté de DGECS",
+      "fileRead": "Fichier lu ✓",
+      "fileError": "Ce fichier ne peut pas être lu. Essayez le bouton « copier » de DGECS.",
+      "readError": {
+        "entete": "Colonnes « Matricule » et « Elève » introuvables : copiez le tableau de la page « Liste des élèves » de DGECS, en-tête compris.",
+        "vide": "Aucun élève dans la liste collée."
+      },
+      "classLabel": "Classe des nouveaux élèves",
+      "classPlaceholder": "Choisir la classe…",
+      "classHint": "DGECS donne le niveau, pas la division (A, B…) : les élèves déjà connus gardent leur classe.",
+      "cannotLink": "Vous ne pouvez pas modifier les fiches de cette section : aucun matricule ne sera posé.",
+      "chooseClass": "Choisissez la classe des nouveaux élèves.",
+      "progress": "{{done}} / {{total}}…",
+      "apply": "Appliquer : {{linked}} matricule(s), {{enrolled}} inscription(s)",
+      "done": "DGECS : {{linked}} matricule(s) posé(s), {{enrolled}} élève(s) inscrit(s).",
+      "failed": "{{count}} opération(s) refusée(s) : réessayez, rien n'est perdu pour les autres.",
+      "states": {
+        "rattacher": "Matricule à poser",
+        "nouveau": "Absent d'EduGest",
+        "aVerifier": "À vérifier",
+        "conflit": "Autre matricule",
+        "deja": "Déjà à jour",
+        "invalide": "Ligne illisible"
+      },
+      "cols": {
+        "select": "Choisir",
+        "matricule": "Matricule DGECS",
+        "student": "Élève",
+        "sex": "Sexe",
+        "birth": "Naissance",
+        "state": "État",
+        "detail": "Dans EduGest"
+      },
+      "selectRow": "Choisir {{name}}",
+      "detail": {
+        "deja": "{{name}} ({{classe}}) a déjà ce matricule.",
+        "rattacher": "Retrouvé par le nom : {{name}} ({{classe}}). Vérifiez avant d'appliquer.",
+        "rattacherSur": "Retrouvé : {{name}} ({{classe}}), même date de naissance ou même filiation.",
+        "conflit": "Retrouvé par le nom, mais EduGest lui donne le matricule {{ien}} ({{classe}}). À corriger à la main.",
+        "aVerifier": "Même nom que : {{list}}. Rien n'est fait d'office ; cochez pour l'inscrire comme nouvel élève.",
+        "nouveau": "Sera inscrit dans la classe choisie, avec son matricule DGECS et sa filiation.",
+        "nouveauSansInscription": "Absent d'EduGest : à inscrire par Comptabilité → Enrôlement."
+      },
+      "issues": {
+        "sansMatricule": "sans matricule",
+        "matriculeInhabituel": "matricule inhabituel",
+        "sansNom": "nom ou prénom manquant",
+        "sansSexe": "sexe absent",
+        "matriculeEnDouble": "matricule en double dans la liste"
+      },
+      "absents": "{{count}} élève(s) de {{classe}} ne sont pas dans cette liste DGECS",
+      "absentsHint": "À inscrire sur DGECS (module Inscription, avec leur matricule) : un élève sans matricule est déclaré redoublant."
     }
   },
   "feedback": {

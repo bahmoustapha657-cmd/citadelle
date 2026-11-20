@@ -4,11 +4,12 @@ import { Btn, Chargement } from "../ui";
 import { FicheNotesVue } from "./dgecs-tab/FicheNotesVue";
 import { StatistiquesVue } from "./dgecs-tab/StatistiquesVue";
 import { CandidatsVue } from "./dgecs-tab/CandidatsVue";
+import { ImportVue } from "./dgecs-tab/ImportVue";
 
 // Onglet « DGECS » du module École (lot B, 2026-11-19) : ce que la plateforme
 // du ministère (dgecsecoles.com) demande, prêt à recopier. Calculs :
 // src/dgecs.js ; impressions : src/reports/dgecs-print.js.
-const VUES = ["notes", "stats", "candidates"];
+const VUES = ["notes", "stats", "candidates", "import"];
 
 export function DgecsTab(props) {
   const { t } = useTranslation();
@@ -25,6 +26,7 @@ export function DgecsTab(props) {
       {vue === "notes" && <FicheNotesVue {...props} />}
       {vue === "stats" && <StatistiquesVue {...props} />}
       {vue === "candidates" && <CandidatsVue {...props} />}
+      {vue === "import" && <ImportVue {...props} />}
     </div>
   );
 }
