@@ -216,7 +216,8 @@ test("onglet DGECS : matricules, notes manquantes et redoublants", async ({ page
   await seConnecter(page);
   const menu = page.getByRole("navigation");
   await menu.getByRole("button", { name: /Secondaire/ }).click();
-  await page.getByRole("button", { name: /DGECS/ }).click();
+  // Nom exact : le menu latéral a aussi un bouton « 🇬🇳 Plateformes DGECS ».
+  await page.getByRole("button", { name: "🇬🇳 DGECS", exact: true }).click();
 
   // Fiche de notes de la classe : une colonne par matière, aucune note encore.
   await expect(page.getByRole("columnheader", { name: /MATHÉMATIQUES/ })).toBeVisible();

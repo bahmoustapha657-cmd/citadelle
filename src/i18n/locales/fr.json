@@ -3176,8 +3176,17 @@
   "dgecs": {
     "tab": "🇬🇳 DGECS",
     "intro": "Ce que la plateforme du ministère (dgecsecoles.com) demande, prêt à recopier : notes par matière, statistiques de rentrée, candidats aux examens.",
-    "openPlatform": "Plateforme DGECS",
-    "openPlatformHint": "Ouvre dgecsecoles.com dans un nouvel onglet : connectez-vous avec le compte DGECS de votre section.",
+    "platforms": {
+      "title": "Plateformes DGECS",
+      "ecoles": "Classes intermédiaires",
+      "ecolesHint": "dgecsecoles.com : élèves des classes intermédiaires (matricule, notes, bulletins) ; certains examens s'y inscrivent aussi (entrée en 7e année, BAC unique). Connectez-vous avec le compte DGECS de votre section.",
+      "examens": "Inscription aux examens",
+      "examensHint": "dgecs.com : inscription des candidats aux examens nationaux (BEPC). Suivez la note de la DGECS de la session : certains examens s'inscrivent sur dgecsecoles.com.",
+      "commissions": "Surveillants d'examen",
+      "commissionsHint": "dgecscommissions.com : listes des surveillants, délégués, correcteurs et autres membres des commissions d'examen.",
+      "resultats": "Résultats des examens",
+      "resultatsHint": "dgecsresultats.com : résultats des examens nationaux et listes de rattrapage."
+    },
     "views": {
       "notes": "📝 Fiche de notes",
       "stats": "📊 Statistiques de rentrée",

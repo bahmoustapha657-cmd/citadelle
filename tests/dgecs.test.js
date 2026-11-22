@@ -8,7 +8,7 @@ import { readFileSync } from "node:fs";
 import {
   PERIODE_ANNEE, candidatsExamen, dateLisible, elevesDeClasse, estRedoublant, ficheNotesDgecs, formatNoteDgecs,
   matriculesEnDouble, niveauDeClasse, nomDgecs, normaliserMatricule, ongletDgecsOuvert, statistiquesRentree,
-  URL_DGECS, lienDgecsOuvert,
+  PLATEFORMES_DGECS, URL_DGECS, lienDgecsOuvert,
 } from "../src/dgecs.js";
 import { ongletEcoleOuvert } from "../src/espace-enseignant.js";
 import { buildFicheNotesDgecsHTML, buildStatistiquesRentreeHTML, buildCandidatsExamenHTML } from "../src/reports/dgecs-print.js";
@@ -32,8 +32,22 @@ test("l'onglet DGECS : système guinéen, primaire au lycée, jamais pour un ens
   assert.equal(ongletEcoleOuvert({ typeEspace: "enseignant" }, "dgecs"), false);
 });
 
-test("lien direct vers DGECS : chefs de section et Direction d'une école guinéenne", () => {
+test("liens directs vers les plateformes DGECS : chefs de section et Direction d'une école guinéenne", () => {
   assert.equal(URL_DGECS, "https://dgecsecoles.com/");
+  // Classes intermédiaires, inscription aux examens, commissions (surveillants),
+  // résultats : les quatre sites qui se citent entre eux.
+  assert.deepEqual(PLATEFORMES_DGECS.map((p) => p.url), [
+    "https://dgecsecoles.com/", "https://dgecs.com/", "https://dgecscommissions.com/", "https://dgecsresultats.com/",
+  ]);
+  // Chaque lien a son libellé et une bulle qui nomme le site, dans les 3 langues.
+  for (const langue of ["fr", "en", "ar"]) {
+    const textes = JSON.parse(readFileSync(new URL(`../src/i18n/locales/${langue}.json`, import.meta.url), "utf8")).dgecs.platforms;
+    assert.ok(textes.title, langue);
+    for (const p of PLATEFORMES_DGECS) {
+      assert.ok(textes[p.id], `${langue} ${p.id}`);
+      assert.ok(textes[`${p.id}Hint`].includes(new URL(p.url).hostname), `${langue} ${p.id}Hint`);
+    }
+  }
   const chefPrimaire = { role: "primaire", modules: ["primaire", "calendrier", "examens"] };
   const chefCollege = { role: "college", modules: ["secondaire", "calendrier"] };
   const direction = { role: "direction", modules: ["accueil", "compta", "primaire", "secondaire"] };

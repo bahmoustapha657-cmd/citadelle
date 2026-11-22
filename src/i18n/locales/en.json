@@ -3176,8 +3176,17 @@
   "dgecs": {
     "tab": "🇬🇳 DGECS",
     "intro": "What the ministry platform (dgecsecoles.com) asks for, ready to copy: marks by subject, start-of-year statistics, exam candidates.",
-    "openPlatform": "DGECS platform",
-    "openPlatformHint": "Opens dgecsecoles.com in a new tab: sign in with your section's DGECS account.",
+    "platforms": {
+      "title": "DGECS platforms",
+      "ecoles": "Intermediate classes",
+      "ecolesHint": "dgecsecoles.com: students in intermediate classes (registration number, marks, report cards); some exams are registered here too (7th-grade entrance, unified Baccalaureate). Sign in with your section's DGECS account.",
+      "examens": "Exam registration",
+      "examensHint": "dgecs.com: registering candidates for national exams (BEPC). Follow the session's DGECS notice: some exams are registered on dgecsecoles.com.",
+      "commissions": "Exam invigilators",
+      "commissionsHint": "dgecscommissions.com: lists of invigilators, delegates, markers and other exam board members.",
+      "resultats": "Exam results",
+      "resultatsHint": "dgecsresultats.com: national exam results and resit lists."
+    },
     "views": {
       "notes": "📝 Marks sheet",
       "stats": "📊 Start-of-year statistics",
