@@ -47,3 +47,24 @@ test("une classe inconnue reste un simple avertissement : elle sera créée", as
   assert.equal(preview.valides.length, 1);
   assert.match(preview.lignes[0].avertissements.join(), /non reconnue/);
 });
+
+// Liste exportée par EduGest puis réimportée : « Code élève » (le numéro
+// qu'EduGest donne) n'est pas le nom de l'élève, et « Matricule » (celui de
+// DGECS) va dans le champ `ien`.
+test("export réimporté : le code élève est ignoré, le matricule va dans ien", async () => {
+  const { preview } = await lire(classeur([
+    ["Code élève", "Matricule", "Élève", "Classe", "Sexe", "Père", "Mère"],
+    ["C-25-001", "MA25032033", "BAH Aminata", "7ème Année", "F", "Mamadou Bah", "Fatoumata Diallo"],
+  ]));
+  const [ligne] = preview.lignes;
+  assert.equal(`${ligne.nom} ${ligne.prenom}`, "BAH Aminata");
+  assert.equal(ligne.ien, "MA25032033");
+});
+
+test("modèle anglais : la colonne Student number donne le matricule", async () => {
+  const { preview } = await lire(classeur([
+    ["No.", "Student number", "Student", "Sex", "Father", "Mother"],
+    [1, "MA25032033", "BAH Aminata", "F", "Mamadou Bah", "Fatoumata Diallo"],
+  ]), "7ème Année");
+  assert.equal(preview.lignes[0].ien, "MA25032033");
+});

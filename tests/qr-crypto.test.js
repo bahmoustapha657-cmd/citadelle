@@ -75,7 +75,7 @@ test("un document imprimé au format EQR1 reste lisible", async () => {
 test("lireChampsQr : clés courtes EQR2 → libellés", () => {
   assert.deepEqual(lireChampsQr("T:B|E:Diallo A|I:GN123|M:16/20|A:2025-2026"), {
     type: "Bulletin",
-    champs: [["Élève", "Diallo A"], ["IEN", "GN123"], ["Moyenne", "16/20"], ["Année", "2025-2026"]],
+    champs: [["Élève", "Diallo A"], ["Matricule", "GN123"], ["Moyenne", "16/20"], ["Année", "2025-2026"]],
   });
   assert.equal(lireChampsQr("T:R|S:500000 GNF").type, "Reçu");
   assert.equal(lireChampsQr("T:P|X:900000 GNF").type, "Fiche de paie");

@@ -119,7 +119,7 @@ const preavisA4 = (r, options) => {
       <div class="sous-titre">${[annee ? `Année scolaire ${echapper(annee)}` : "", `Fait à ${echapper(schoolInfo.ville || "—")}, le ${today()}`].filter(Boolean).join(" · ")}</div>
       <div class="grid">
         ${ligne("Élève", `<strong>${d.nom}</strong>`)}
-        ${ligne("Matricule", echapper(e.matricule))}
+        ${ligne("Code élève", echapper(e.matricule))}
         ${ligne("Classe", echapper(e.classe))}
         ${ligne("Parent / tuteur", echapper(e.tuteur))}
         ${ligne("Téléphone", echapper(e.contactTuteur))}
@@ -175,7 +175,7 @@ const preavisTicket = (r, options) => {
     <div class="t-titre">Préavis de renvoi</div>
     <div class="t-sep"></div>
     ${info("Élève", d.nom)}
-    ${info("Matricule", echapper(e.matricule))}
+    ${info("Code élève", echapper(e.matricule))}
     ${info("Classe", echapper(e.classe))}
     ${info("Parent", echapper(e.tuteur))}
     ${info("Date", today())}

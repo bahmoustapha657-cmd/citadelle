@@ -28,7 +28,7 @@ export function BulletinDemoModale({ onInscription, onClose }) {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 14, fontSize: 12 }}>
           <div><strong>Élève :</strong> {bulletinDemo.eleve.prenom} {bulletinDemo.eleve.nom}</div>
           <div><strong>Classe :</strong> {bulletinDemo.eleve.classe}</div>
-          <div><strong>Matricule :</strong> {bulletinDemo.eleve.matricule}</div>
+          <div><strong>Code élève :</strong> {bulletinDemo.eleve.matricule}</div>
         </div>
 
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginBottom: 14 }}>

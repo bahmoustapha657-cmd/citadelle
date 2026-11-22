@@ -29,8 +29,8 @@ export function FicheEleve({ data, section, moisAnnee, onNaviguer, onFermer }) {
         {/* Identité */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           {[
-            { l: "Matricule", v: data.matricule, mono: true },
-            { l: "IEN", v: data.ien, mono: true },
+            { l: "Code élève", v: data.matricule, mono: true },
+            { l: "Matricule", v: data.ien, mono: true },
             { l: "Sexe", v: data.sexe === "M" ? "Masculin" : data.sexe === "F" ? "Féminin" : data.sexe || "—" },
             { l: "Date de naissance", v: data.dateNaissance || "—" },
             { l: "Lieu de naissance", v: data.lieuNaissance || "—" },

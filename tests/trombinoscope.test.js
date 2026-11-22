@@ -89,20 +89,20 @@ test("badges : impression en miroir pour le papier transfert, à l'endroit sinon
   assert.match(badgesHTML([enfant(1)], { schoolInfo: ecole, format: "?" }), /<div class="badge portrait">/);
 });
 
-test("badges : IEN sous le nom, sinon le matricule, rien sans l'un ni l'autre", () => {
+test("badges : matricule sous le nom, sinon le code élève, rien sans l'un ni l'autre", () => {
   for (const format of ["poche", "portrait"]) {
     const html = badgesHTML([
       enfant(1, { ien: "2026123456", matricule: "PRE-001" }),
       enfant(2, { matricule: "PRE-002" }),
       enfant(3),
     ], { schoolInfo: ecole, format });
-    assert.match(html, /<div class="ident">IEN <strong>2026123456<\/strong><\/div>/);
+    assert.match(html, /<div class="ident">Matricule <strong>2026123456<\/strong><\/div>/);
     assert.doesNotMatch(html, /PRE-001/);
-    assert.match(html, /<div class="ident">Matricule <strong>PRE-002<\/strong><\/div>/);
+    assert.match(html, /<div class="ident">Code élève <strong>PRE-002<\/strong><\/div>/);
     assert.equal(compter(html, /<div class="ident">/g), 2);
   }
   // Saisi à la main : échappé.
-  assert.match(badgesHTML([enfant(4, { matricule: "<b>X</b>" })], { schoolInfo: ecole }), /Matricule <strong>&lt;b&gt;X&lt;\/b&gt;<\/strong>/);
+  assert.match(badgesHTML([enfant(4, { matricule: "<b>X</b>" })], { schoolInfo: ecole }), /Code élève <strong>&lt;b&gt;X&lt;\/b&gt;<\/strong>/);
 });
 
 test("taille des badges : tout à l'échelle, sur A4 comme sur papier Lettre", () => {

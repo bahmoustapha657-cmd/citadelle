@@ -33,7 +33,7 @@ const identite = (eleve = {}) => [
   `${eleve.nom || ""} ${eleve.prenom || ""}`.trim(),
   eleve.classe,
   eleve.matricule,
-  eleve.ien && `IEN ${eleve.ien}`,
+  eleve.ien && `Matricule ${eleve.ien}`,
   eleve.filiation,
 ].filter(Boolean).join(" · ");
 

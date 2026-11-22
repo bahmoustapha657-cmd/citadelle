@@ -27,7 +27,7 @@ export function EnseignantView() {
         </div>
         <div style={{ border: "1px solid var(--lc-border, #e2e8f0)", borderRadius: 8, overflow: "hidden" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <THead cols={["#", "Élève", "Matricule", "Note /20"]} />
+            <THead cols={["#", "Élève", "Code élève", "Note /20"]} />
             <tbody>
               {LIGNES.map(([nom, mat, val], i) => (
                 <TR key={mat}>

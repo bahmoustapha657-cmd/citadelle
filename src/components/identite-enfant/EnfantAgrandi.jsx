@@ -26,7 +26,8 @@ export function EnfantAgrandi({ eleve, fermer, actions = null }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 4 }}>
           {ligne("Surnom", nettoyerSurnom(eleve.surnom))}
           {familleEnfant(eleve, t).map(([libelle, valeur]) => ligne(libelle, valeur))}
-          {ligne("Matricule", eleve.matricule)}
+          {ligne(t("accounting.cols.ien"), eleve.ien)}
+          {ligne(t("school.students.matricule"), eleve.matricule)}
         </div>
         {actions && <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center", marginTop: 6 }}>{actions}</div>}
       </div>

@@ -2,16 +2,17 @@
 //  Recherche d'élèves (Comptabilité → Élèves et Mensualités)
 // ══════════════════════════════════════════════════════════════
 // Module PUR (testé par tests/recherche-eleves.test.js). Une saisie, un
-// critère : matricule, filiation, numéro ou nom du tuteur — ou « Tout », qui
-// lit aussi le nom de l'élève.
+// critère : matricule (celui de DGECS, champ `ien`) ou code élève (celui
+// qu'EduGest donne, champ `matricule`), filiation, numéro ou nom du tuteur —
+// ou « Tout », qui lit aussi le nom de l'élève.
 // Recherche collective : plusieurs termes séparés par une virgule, un
 // point-virgule ou un retour à la ligne (« C-25-001, C-25-014 ») ; un élève
 // est retenu dès qu'il répond à l'un d'eux. Chercher un tuteur (nom ou
 // numéro) réunit, de fait, toute sa fratrie.
 
 export const CRITERES_RECHERCHE = [
-  { id: "tout", label: "Tout", exemple: "nom, matricule, filiation, tuteur ou téléphone" },
-  { id: "matricule", label: "Matricule", exemple: "C-25-001" },
+  { id: "tout", label: "Tout", exemple: "nom, matricule, code élève, filiation, tuteur ou téléphone" },
+  { id: "matricule", label: "Matricule ou code élève", exemple: "MA25032033 ou C-25-001" },
   { id: "filiation", label: "Filiation", exemple: "Mariama Bah" },
   { id: "telTuteur", label: "N° du tuteur", exemple: "622 12 34 56" },
   { id: "nomTuteur", label: "Nom du tuteur", exemple: "Mamadou Diallo" },
@@ -47,10 +48,11 @@ function contientMots(champ, terme) {
   return mots.every((m) => h.includes(m));
 }
 
-// Tirets et espaces ignorés : « c25001 » trouve « C-25-001 ».
+// Matricule DGECS ou code élève. Tirets et espaces ignorés : « c25001 »
+// trouve « C-25-001 ».
 function contientMatricule(e, terme) {
   const q = compact(terme);
-  return Boolean(q) && compact(e.matricule).includes(q);
+  return Boolean(q) && [e.ien, e.matricule].some((n) => compact(n).includes(q));
 }
 
 // Le numéro — ou un morceau d'au moins 3 chiffres — figure dans l'un des
@@ -78,6 +80,14 @@ const CORRESPONDANCES = {
 };
 
 const correspondance = (critere) => CORRESPONDANCES[critere] || CORRESPONDANCES.tout;
+
+// Recherche rapide des onglets Bulletins et Attestations : nom et prénom,
+// matricule ou code élève, dans un seul champ.
+export function correspondRechercheRapide(e = {}, saisie = "") {
+  const q = String(saisie ?? "").trim().toLowerCase();
+  if (!q) return true;
+  return `${e.nom} ${e.prenom}`.toLowerCase().includes(q) || contientMatricule(e, q);
+}
 
 // Élèves qui répondent à l'un des termes, dans l'ordre reçu. Sans saisie, la
 // liste revient telle quelle.

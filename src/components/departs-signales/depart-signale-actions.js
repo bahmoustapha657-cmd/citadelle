@@ -22,7 +22,7 @@ const aujourdhui = () => new Date().toLocaleDateString("fr-FR");
 const nomDe = (eleve = {}) => `${eleve.nom || ""} ${eleve.prenom || ""}`.trim();
 // Les homonymes sont courants : classe, matricule et filiation départagent.
 const identite = (eleve = {}) => [
-  nomDe(eleve), eleve.classe, eleve.matricule, eleve.ien && `IEN ${eleve.ien}`, eleve.filiation,
+  nomDe(eleve), eleve.classe, eleve.matricule, eleve.ien && `Matricule ${eleve.ien}`, eleve.filiation,
 ].filter(Boolean).join(" · ");
 // « 2026-11-12 » → « 12/11/2026 » ; une autre forme passe telle quelle.
 export const dateLisible = (iso = "") => {

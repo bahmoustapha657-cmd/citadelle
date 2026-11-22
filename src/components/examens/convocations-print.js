@@ -46,7 +46,7 @@ export function imprimerConvocations(exam, tousEleves, schoolInfo) {
     <div class="titre">${exam.titre}</div>
     <div class="info-grid">
       <div class="info-item"><div class="info-label">Élève</div><div class="info-val">${e.nom} ${e.prenom}</div></div>
-      <div class="info-item"><div class="info-label">Matricule</div><div class="info-val">${e.matricule || "—"}</div></div>
+      <div class="info-item"><div class="info-label">Code élève</div><div class="info-val">${e.matricule || "—"}</div></div>
       <div class="info-item"><div class="info-label">Classe</div><div class="info-val">${e.classe || "—"}</div></div>
       <div class="info-item"><div class="info-label">Date</div><div class="info-val">${exam.date || "—"}</div></div>
       ${exam.heure ? `<div class="info-item"><div class="info-label">Heure</div><div class="info-val">${exam.heure}</div></div>` : ""}

@@ -38,7 +38,7 @@ const CRITERES_BASE = [
   { id: "alpha", label: "Alphabétique (réglage de l'école)" },
   { id: "nom_desc", label: "Nom de Z à A", comparer: (a, b) => comparerTexte(nomComplet(b), nomComplet(a)) },
   { id: "classe", label: "Classe", comparer: (a, b) => comparerClassesParNiveau(a.classe, b.classe) },
-  { id: "matricule", label: "Matricule", comparer: (a, b) => comparerTexte(a.matricule, b.matricule) },
+  { id: "matricule", label: "Code élève", comparer: (a, b) => comparerTexte(a.matricule, b.matricule) },
 ];
 
 // Critères de paiement : ils lisent la situation de chaque élève (snapshot).

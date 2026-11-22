@@ -196,10 +196,10 @@ const LIBELLE_TYPE = {
 // Libellés affichés, pour les clés courtes (EQR2) ET les anciennes clés
 // longues (EQR1, documents déjà imprimés).
 const LIBELLE_CHAMP = {
-  E: "Élève", I: "IEN", C: "Classe", P: "Période", M: "Moyenne", A: "Année",
+  E: "Élève", I: "Matricule", C: "Classe", P: "Période", M: "Moyenne", A: "Année",
   N: "N°", D: "Du", F: "Au", S: "Total payé", O: "Mois", G: "Enseignant", X: "Net total",
   L: "Dernière classe", U: "Tuteur",
-  Ecole: "École", Eleve: "Élève", Periode: "Période", Moy: "Moyenne", Annee: "Année",
+  Ecole: "École", Eleve: "Élève", IEN: "Matricule", Periode: "Période", Moy: "Moyenne", Annee: "Année",
   Num: "N°", Total: "Total payé", NetTotal: "Net total", DerniereClasse: "Dernière classe",
 };
 

@@ -99,6 +99,6 @@ test("duplicate message stays readable for import and manual entry", () => {
 
   assert.equal(
     getEnrollmentDuplicateMessage(duplicate, {}, { scope: "deja dans l'ecole" }),
-    "Doublon detecte: Bah Aicha, meme filiation, est deja inscrit(e) (3ème Année B, matricule P26/465) (deja dans l'ecole).",
+    "Doublon detecte: Bah Aicha, meme filiation, est deja inscrit(e) (3ème Année B, code eleve P26/465) (deja dans l'ecole).",
   );
 });

@@ -4,6 +4,7 @@ import { SchoolContext } from "../../../contexts/SchoolContext";
 import { Btn } from "../../ui";
 import { imprimerBulletinsGroupes, imprimerFicheCompositions, PERIODE_ANNEE } from "../../../reports";
 import { estBloquePourImpaye } from "../../../mensualite-utils";
+import { correspondRechercheRapide } from "../../../recherche-eleves";
 
 // Barre d'outils des bulletins : recherche, sélecteurs période/classe et
 // boutons d'impression (résultats d'évaluation, bulletins groupés).
@@ -52,7 +53,7 @@ export function BulletinsToolbar({
       </Btn>
       <Btn v="vert" onClick={()=>{
         const elevesBtn=elevesFiltres
-          .filter(e=>!rechercheMatricule||(e.matricule||"").toLowerCase().includes(rechercheMatricule.toLowerCase())||(e.nom+" "+e.prenom).toLowerCase().includes(rechercheMatricule.toLowerCase()))
+          .filter(e=>correspondRechercheRapide(e, rechercheMatricule))
           .filter(e=>!estBloquePourImpaye(schoolInfo, e, moisAnnee, schoolInfo?.anneeScolaire));
         imprimerBulletinsGroupes(elevesBtn,notes,matieres,periodeB,section,maxNote,schoolInfo,filtreClasse==="all"?"Toutes classes":filtreClasse,matieresForClasse,appreciationsParEleveB(periodeB),periodes,{absences,emplois});
       }}>

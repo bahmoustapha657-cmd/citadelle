@@ -115,14 +115,15 @@ export const fileSeancePhoto = (eleves = [], { classe = null, seulementSansPhoto
     .sort((a, b) => nomOfficiel(a).localeCompare(nomOfficiel(b), "fr", { sensitivity: "base" }))
     .map((e) => e._id);
 
-// Identifiant imprimé sur un badge : l'IEN (identifiant national) quand
-// l'élève en a un, sinon le matricule de l'école ; null s'il n'a ni l'un ni
-// l'autre.
+// Identifiant imprimé sur un badge : le matricule (celui de DGECS, champ
+// `ien`) quand l'élève en a un, sinon le code élève qu'EduGest lui donne
+// (champ `matricule`) ; null s'il n'a ni l'un ni l'autre. `champ` dit lequel,
+// l'impression le nomme dans la langue de l'école.
 export const identifiantBadge = (eleve = {}) => {
   const ien = String(eleve.ien ?? "").trim();
-  if (ien) return { libelle: "IEN", valeur: ien };
+  if (ien) return { champ: "ien", valeur: ien };
   const matricule = String(eleve.matricule ?? "").trim();
-  return matricule ? { libelle: "Matricule", valeur: matricule } : null;
+  return matricule ? { champ: "matricule", valeur: matricule } : null;
 };
 
 // Champs à enregistrer pour un enfant : seulement ce qui change (la photo
