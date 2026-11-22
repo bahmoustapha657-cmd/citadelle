@@ -2125,7 +2125,15 @@
       "issued": "Délivré pour servir et valoir ce que de droit",
       "titleCertificate": "Certificat de niveau",
       "numberCertificate": "Certificat N°",
-      "lastClass": "Dernière classe suivie"
+      "lastClass": "Dernière classe suivie",
+      "results": "Résultats de l'année scolaire {{annee}}",
+      "periods": {
+        "T1": "1er trimestre",
+        "T2": "2ème trimestre",
+        "T3": "3ème trimestre",
+        "S1": "1er semestre",
+        "S2": "2ème semestre"
+      }
     },
     "card": {
       "title": "Carte d'identité scolaire",
@@ -2437,7 +2445,13 @@
       "title": "Attestations de niveau",
       "titlePrimary": "Certificats de niveau",
       "generate": "Générer",
-      "print": "Imprimer"
+      "print": "Imprimer",
+      "helpAttestation": "Cliquez sur Imprimer pour générer l'attestation officielle de niveau de chaque élève.",
+      "helpCertificate": "Cliquez sur Imprimer pour générer le certificat de niveau de chaque élève.",
+      "helpContent": "La pièce indique sa dernière classe suivie — celle de l'année précédente ; pour un élève parti, celle de l'année achevée avant son départ ; pour un élève venu d'une autre école, celle saisie à son inscription — et les moyennes de chaque période de cette année-là, avec la moyenne annuelle.",
+      "model": "Modèle",
+      "modelDiploma": "Diplôme (cadre d'apparat)",
+      "modelPlain": "Sobre"
     },
     "bulletins": {
       "title": "Bulletins de notes",

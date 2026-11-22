@@ -6,28 +6,25 @@
 // de vérification comme les bulletins et reçus, et une formule administrative
 // en une seule phrase continue. Au primaire, la même pièce s'intitule
 // « Certificat de niveau » (titre, numéro CN-…, type du QR).
+//
+// Deux modèles, au choix de l'école au moment d'imprimer (onglet
+// Attestations) : « Diplôme » (attestation/gabarit-diplome.js, le style du
+// bulletin Prestige) et « Sobre » (attestation/gabarit-sobre.js, la mise en
+// page d'origine). Ce fichier rassemble ce que la pièce CERTIFIE ; les
+// gabarits ne font que la mise en page.
 
-import { estSorti, getAnnee, today } from "../constants.js";
-import {
-  getOfficialLegalFooterHTML,
-  legalProfileVide,
-  mapNiveauToCycle,
-} from "../legal-utils.js";
-import {
-  PRINT_RESET,
-  PRINT_TRIGGER,
-  WATERMARK_CSS,
-  enteteDoc,
-  printDir,
-  printLang,
-  tr,
-  watermarkHtml,
-  edugestBrandHTML,
-} from "./print-helpers.js";
-import { cachetOuEspace, identiteHTML, imagesHTML, imagesSignataire, signatairesDocument } from "./signatures.js";
+import { estSorti, getAnnee } from "../constants.js";
+import { tr } from "./print-helpers.js";
+import { signatairesDocument } from "./signatures.js";
 import { qrPayload, qrSecuriseImgHtml } from "./qr.js";
-import { formatMoyenneAnnuelle, getMoyenneAttestation } from "./attestation/attestation-moyenne.js";
-import { anneeAttesteePour, derniereClassePourAttestation } from "./attestation/derniere-classe.js";
+import { formatMoyenneAnnuelle, getResultatsAttestation } from "./attestation/attestation-moyenne.js";
+import { anneeAttesteePour, derniereClasseDeLEleve, formatDerniereClasse } from "./attestation/derniere-classe.js";
+import { gabaritDiplome } from "./attestation/gabarit-diplome.js";
+import { gabaritSobre } from "./attestation/gabarit-sobre.js";
+
+// Modèles proposés, le premier par défaut.
+export const MODELES_ATTESTATION = ["diplome", "sobre"];
+const GABARITS = { diplome: gabaritDiplome, sobre: gabaritSobre };
 
 // Au primaire, l'attestation de niveau s'appelle « Certificat de niveau ».
 // La maternelle garde l'attestation.
@@ -53,32 +50,17 @@ const dateFr = (valeur) => {
   return iso ? `${iso[3]}/${iso[2]}/${iso[1]}` : v;
 };
 
-// Une ligne de l'encadré d'identité : libellé, conducteur pointillé, valeur.
-// Les lignes sans valeur DISPARAISSENT au lieu d'imprimer un tiret : sur une
-// pièce officielle, une rubrique vide se remplit à la main ou n'existe pas.
-const ligneInfo = (label, valeur, fort = false) => {
-  const v = String(valeur ?? "").trim();
-  if (!v) return "";
-  // Valeur longue (filiation complète : « Père : … / Mère : … ») : alignée à
-  // droite derrière un conducteur, elle passe à la ligne et abandonne un mot
-  // orphelin contre la marge. On la déroule alors à la suite du libellé.
-  const longue = v.length > 42;
-  const val = fort ? `<strong>${v}</strong>` : v;
-  return `<div class="row${longue ? " row-longue" : ""}">`
-    + `<span class="lbl">${label}</span>`
-    + (longue ? "" : `<span class="fil"></span>`)
-    + `<span class="val">${val}</span></div>`;
-};
-
-// `options` : { notes, notesPrecedentes, matieres, periodes, maxNote, eleves } —
-// fournis par l'onglet Attestations. Absents (appel historique), la moyenne
-// annuelle est simplement omise du document.
+// `options` : { notes, notesPrecedentes, matieres, matieresForClasse, periodes,
+// maxNote, eleves, modele } — fournis par l'onglet Attestations. Absents
+// (appel historique), les résultats sont simplement omis du document.
+// `modele` : "diplome" (défaut) ou "sobre".
 export const imprimerAttestation = async (eleve, niveau, annee, schoolInfo = {}, options = {}) => {
-  const { notes = [], notesPrecedentes = [], matieres = [], periodes = [], maxNote = 20, eleves = null } = options;
+  const {
+    notes = [], notesPrecedentes = [], matieres = [], matieresForClasse = null, periodes = [], maxNote = 20, eleves = null,
+    modele = MODELES_ATTESTATION[0],
+  } = options;
   // Couleurs de l'école (Paramètres → Identité), même repli que les bulletins,
   // le livret et les cartes : le document appartient à l'ÉCOLE, pas à EduGest.
-  // Le vert du bloc « moyenne annuelle » reste, lui, sémantique — comme les
-  // mentions des bulletins, il dit un résultat et ne suit pas la charte.
   const c1 = schoolInfo.couleur1 || "#0A1628";
   const c2 = schoolInfo.couleur2 || "#00C48C";
   const certificat = estCertificatDeNiveau(niveau);
@@ -95,16 +77,19 @@ export const imprimerAttestation = async (eleve, niveau, annee, schoolInfo = {},
   // rien de mieux que l'année de l'écran.
   const anneeAttestee = anneeAttesteePour(eleve, anneeScolaire);
   const numero = numeroAttestation(eleve, schoolInfo, anneeAttestee, certificat ? "CN" : "ATT");
-  // La classe imprimée est la DERNIÈRE CLASSE SUIVIE (8ème pour un élève de
-  // 9ème en 2026-2027), et non plus la classe de l'année en cours.
-  const derniereClasse = derniereClassePourAttestation(eleve, anneeScolaire);
+  // La classe imprimée est la DERNIÈRE CLASSE SUIVIE, celle de la dernière
+  // année achevée : 8ème pour un élève de 9ème en 2026-2027, 9ème (2025-2026)
+  // pour un élève promu en 10ème puis parti en 2026-2027.
+  const derniere = derniereClasseDeLEleve(eleve, anneeScolaire, { moisDebut: schoolInfo.moisDebut });
+  const derniereClasse = formatDerniereClasse(derniere);
 
-  // Moyenne de l'année en cours, ou à défaut de l'année écoulée : `anneeMoyenne`
-  // dit toujours à quelle année le chiffre imprimé se rapporte.
-  const { moyenne, annee: anneeMoyenne } = getMoyenneAttestation({
-    eleve, matieres, periodes, niveau, annee: anneeScolaire, notes, notesPrecedentes, eleves,
+  // Résultats de CETTE année-là (moyenne de chaque période + annuelle) ;
+  // `resultats.annee` dit toujours à quelle année les chiffres se rapportent.
+  const resultats = getResultatsAttestation({
+    eleve, matieres, matieresForClasse, periodes, niveau, annee: anneeScolaire, anneeEnCours: anneeAttestee,
+    derniere, notes, notesPrecedentes, eleves,
   });
-  const moyenneTexte = formatMoyenneAnnuelle(moyenne, maxNote);
+  const moyenneTexte = formatMoyenneAnnuelle(resultats?.annuelle ?? null, maxNote);
   // Ce que le document CERTIFIE exactement.
   //
   // Pour un élève parti, l'année scolaire en cours est un contresens : celui
@@ -163,109 +148,11 @@ export const imprimerAttestation = async (eleve, niveau, annee, schoolInfo = {},
     Au: depart,
   }), schoolInfo, { size: 100, alt: "QR attestation" });
 
-  w.document.write(`<!DOCTYPE html><html lang="${printLang()}" dir="${printDir()}"><head><title>${titre} — ${eleve.nom || ""}</title>
-  <meta charset="utf-8"/>
-  <style>${PRINT_RESET}
-  /* Le cadre double (filet fin extérieur + filet épais intérieur) est ce qui
-     distingue une pièce officielle d'une page imprimée : il tient la page
-     entière, la marge d'impression étant à 0 (@page). */
-  body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:8mm;background:#fff;font-size:13px}
-  .feuille{border:1px solid ${c1};padding:3px;min-height:281mm;display:flex}
-  .feuille-int{border:2.5px solid ${c1};padding:11mm 12mm 8mm;flex:1;display:flex;flex-direction:column;position:relative}
-  .contenu{max-width:640px;margin:0 auto;width:100%;flex:1;display:flex;flex-direction:column}
-
-  /* Titre gravé : filets latéraux + losange, capitales très espacées. */
-  .titre{display:flex;align-items:center;gap:12px;justify-content:center;margin:14px 0 4px}
-  .titre::before,.titre::after{content:"";height:1px;background:linear-gradient(90deg,transparent,${c1});flex:1;max-width:90px}
-  .titre::after{background:linear-gradient(90deg,${c1},transparent)}
-  .titre h2{color:${c1};font-size:19px;text-transform:uppercase;letter-spacing:4px;margin:0;font-weight:800;white-space:nowrap}
-  .losange{color:${c2};font-size:10px;letter-spacing:6px;text-align:center;margin-top:2px}
-  .numero{text-align:center;font-size:10.5px;color:#64748b;font-family:"Courier New",monospace;
-          letter-spacing:.08em;margin:4px 0 16px}
-
-  /* Corps en serif : une formule administrative se lit mieux, et se distingue
-     nettement des libellés du formulaire restés en sans-serif. */
-  .formule{font-family:Georgia,"Times New Roman",serif;line-height:1.95;font-size:14px;
-           text-align:justify;margin:0 0 10px;color:#111}
-  .formule strong{color:${c1}}
-
-  /* Conducteurs pointillés : le libellé, la ligne de conduite, la valeur —
-     c'est la grammaire visuelle d'un acte, pas d'un écran. */
-  /* Filet et lavis dérivés de la couleur de l'école (alpha hex) plutôt que
-     figés en bleu : sur une école aux couleurs chaudes, un encadré bleuté
-     jurait avec le reste du document. */
-  .infos{margin:2px 0 12px;padding:12px 16px;border:1px solid ${c1}33;border-radius:6px;
-         border-inline-start:4px solid ${c1};background:${c1}0a}
-  .row{display:flex;align-items:baseline;gap:8px;font-size:13px;margin:5px 0;line-height:1.6}
-  .lbl{font-weight:bold;color:${c1};flex-shrink:0}
-  .lbl::after{content:" :"}
-  .fil{flex:1;border-bottom:1px dotted #94a3b8;min-width:14px;transform:translateY(-3px)}
-  .val{flex-shrink:0;max-width:62%;text-align:end;color:#1f2937}
-  .row-longue .val{flex:1;max-width:none;text-align:start;text-wrap:balance}
-  .val strong{color:${c1};font-size:14px;letter-spacing:.02em}
-
-  /* Moyenne annuelle : le seul chiffre du document, donc le seul accent. */
-  .moy{display:flex;align-items:center;justify-content:space-between;gap:14px;
-       border:1px solid #86efac;border-inline-start:4px solid #16a34a;background:#f2fbf4;
-       border-radius:6px;padding:9px 16px;margin:0 0 12px}
-  .moy-lbl{font-weight:bold;color:#14532d;font-size:13px}
-  .moy-val{font-size:20px;font-weight:800;color:#14532d;letter-spacing:.03em;white-space:nowrap}
-
-  .issued{font-style:italic;color:#334155}
-  .lieu-date{text-align:end;margin:14px 0 0;font-size:13px;font-family:Georgia,serif}
-
-  /* QR à gauche, signature à droite : le vérificateur trouve le QR au même
-     endroit que le cachet qu'il vient de regarder. Le margin-top:auto pousse
-     le bloc en bas de page quel que soit le nombre de lignes d'identité. */
-  .pied{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin-top:auto;padding-top:22px}
-  .qr{text-align:center;flex-shrink:0}
-  .qr .legende{font-size:8px;color:#94a3b8;margin-top:2px;letter-spacing:.05em;text-transform:uppercase}
-  .sig{border-top:2px solid ${c1};padding-top:8px;text-align:center;font-size:12px;color:#333;
-       min-width:235px;font-weight:600}
-  /* Visa : entre le QR et le signataire, qui garde la droite et le cachet. */
-  .sig.visa{min-width:170px}
-  .stamp{border:2.5px solid ${c1};padding:7px 16px;display:inline-block;border-radius:4px;
-         font-weight:bold;color:${c1};margin-top:8px;font-size:12px;letter-spacing:.04em}
-  .devise{text-align:center;font-size:11px;margin-top:16px;font-style:italic;color:${c2};font-weight:bold}
-  @media print{button{display:none}}
-  ${WATERMARK_CSS}</style></head><body>
-  ${watermarkHtml(schoolInfo)}
-  <div class="feuille"><div class="feuille-int"><div class="contenu">
-  ${enteteDoc(schoolInfo, schoolInfo.logo)}
-  <div class="titre"><h2>${titre}</h2></div>
-  <div class="losange">◆ ◆ ◆</div>
-  <div class="numero">${tr(certificat ? "reports.attestation.numberCertificate" : "reports.attestation.number")} ${numero}</div>
-  <p class="formule">${formuleCertifie} :</p>
-  <div class="infos">
-    ${ligneInfo(tr("reports.studentName"), `${eleve.nom || ""} ${eleve.prenom || ""}`, true)}
-    ${ligneInfo(tr("school.bulletins.matricule"), eleve.matricule)}
-    ${ligneInfo(tr("reports.ien"), eleve.ien)}
-    ${ligneInfo(tr("reports.dateOfBirth"), dateFr(eleve.dateNaissance))}
-    ${ligneInfo(tr("reports.placeOfBirth"), eleve.lieuNaissance)}
-    ${ligneInfo(tr("reports.filiation"), eleve.filiation)}
-    ${ligneInfo(tr("reports.attestation.lastClass"), derniereClasse, true)}
-    ${ligneInfo(tr("reports.attestation.arrival"), arrivee)}
-    ${ligneInfo(tr("reports.attestation.departure"), depart)}
-  </div>
-  ${moyenneTexte ? `<div class="moy">
-    <span class="moy-lbl">${tr("reports.attestation.annualAverage")} — ${anneeMoyenne}</span>
-    <span class="moy-val">${moyenneTexte}</span>
-  </div>` : ""}
-  <p class="formule">${formuleEnrolement}.</p>
-  <p class="formule issued">${tr("reports.attestation.issued")}.</p>
-  <p class="lieu-date">${tr("reports.ordreMutation.issuedAt")} ${schoolInfo.ville || "—"}, ${tr("reports.ordreMutation.on")} ${today()}</p>
-  <div class="pied">
-    <div class="qr">${qr}<div class="legende">${tr("reports.qrVerify")}</div></div>
-    ${visa ? `<div class="sig visa">${identiteHTML(visa)}${cachetOuEspace(visa)}${tr("reports.signature")}</div>` : ""}
-    <div class="sig">${identiteHTML(signataire)}${imagesSignataire(signataire).length
-      // Cachet et/ou signature déposés par le signataire : ils remplacent le tampon dessiné.
-      ? imagesHTML(imagesSignataire(signataire), { hauteur: "22mm", lignes: 3 })
-      : `<br/><div class="stamp">${schoolInfo.nom || ""}</div>`}</div>
-  </div>
-  <div class="devise">${schoolInfo.devise || "Travail – Rigueur – Réussite"}</div>
-  ${getOfficialLegalFooterHTML(schoolInfo.legal || legalProfileVide, mapNiveauToCycle(niveau))}
-  ${edugestBrandHTML(schoolInfo)}
-  </div></div></div>
-  <script>${PRINT_TRIGGER}</script></body></html>`);
+  const gabarit = GABARITS[modele] || GABARITS[MODELES_ATTESTATION[0]];
+  w.document.write(gabarit({
+    eleve, niveau, schoolInfo, c1, c2, titre, certificat, numero,
+    naissance: dateFr(eleve.dateNaissance), arrivee, depart, derniereClasse, resultats, maxNote,
+    formuleCertifie, formuleEnrolement, signataire, visa, qr,
+  }));
   w.document.close();
 };

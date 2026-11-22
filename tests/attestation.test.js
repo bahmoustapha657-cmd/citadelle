@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  anneePrecedente, formatMoyenneAnnuelle, getMoyenneAnnuelleEleve, getMoyenneAttestation,
+  anneePrecedente, formatMoyenneAnnuelle, getMoyenneAnnuelleEleve, getResultatsAttestation,
 } from "../src/reports/attestation/attestation-moyenne.js";
 import { identiteHTML, signatairesDocument } from "../src/reports/signatures.js";
 import { anneeScolaireDeDate } from "../src/constants.js";
@@ -77,7 +77,7 @@ test("le document imprimé porte l'identité complète, une seule formule, et ni
   assert.ok(html.includes("224-2026-118477"));
   assert.ok(html.includes("Lieu de naissance"));
   assert.ok(html.includes("Père : Mamadou Diallo"));
-  assert.ok(html.includes("12,33/20"));
+  assert.ok(html.includes("<b>12,33</b><em>/20</em>"));
   assert.ok(html.includes("ATT-LAC-25-M-042"));   // numéro de pièce déterministe
   assert.ok(html.includes("QR attestation"));      // QR de vérification
 
@@ -148,32 +148,141 @@ test("anneePrecedente recule d'une année scolaire, et refuse ce qu'elle ne comp
   assert.equal(anneePrecedente(undefined), "");
 });
 
-test("rentrée sans notes : la moyenne de l'année écoulée est imprimée, datée de SON année", () => {
-  const resultat = getMoyenneAttestation({
-    ...contexteMoyenne, notes: [], notesPrecedentes: notesAnnee(15, 15),
-  });
+// ── Résultats : moyenne de chaque période + moyenne annuelle ──────────────
+const moyennes = (resultats) => resultats.periodes.map((p) => formatMoyenneAnnuelle(p.moy, 20) || "—");
 
-  assert.equal(formatMoyenneAnnuelle(resultat.moyenne, 20), "15,00/20");
-  // Le document doit annoncer 2025-2026, pas l'année en cours : sinon le
-  // lecteur croit à une moyenne déjà acquise cette année.
-  assert.equal(resultat.annee, "2025-2026");
+test("dernière classe connue : les résultats de SON année, même si l'année en cours a des notes", () => {
+  const resultats = getResultatsAttestation({
+    ...contexteMoyenne, derniere: { classe: "5ème A", annee: "2025-2026" },
+    notes: notesAnnee(11, 11), notesPrecedentes: notesAnnee(15, 12),
+  });
+  assert.equal(resultats.annee, "2025-2026");
+  assert.equal(resultats.classe, "5ème A");
+  assert.deepEqual(resultats.periodes.map((p) => p.periode), periodes);
+  assert.deepEqual(moyennes(resultats), ["14,00/20", "14,00/20", "14,00/20"]);
+  assert.equal(formatMoyenneAnnuelle(resultats.annuelle, 20), "14,00/20");
 });
 
-test("dès que l'année en cours porte des notes, elle prime sur l'année écoulée", () => {
-  const resultat = getMoyenneAttestation({
-    ...contexteMoyenne, notes: notesAnnee(11, 11), notesPrecedentes: notesAnnee(18, 18),
+test("année achevée : la moyenne annuelle suit la règle du bulletin, même avec une période vide", () => {
+  const sansT1 = notesAnnee(15, 12).filter((n) => n.periode !== "Trimestre 1");
+  const resultats = getResultatsAttestation({
+    ...contexteMoyenne, derniere: { classe: "5ème A", annee: "2025-2026" }, notes: [], notesPrecedentes: sansT1,
   });
-
-  assert.equal(formatMoyenneAnnuelle(resultat.moyenne, 20), "11,00/20");
-  assert.equal(resultat.annee, "2026-2027");
+  assert.deepEqual(moyennes(resultats), ["—", "14,00/20", "14,00/20"]);
+  assert.ok(resultats.annuelle != null);
 });
 
-test("aucune note nulle part : ni moyenne ni année, la rubrique disparaît", () => {
-  const resultat = getMoyenneAttestation({ ...contexteMoyenne, notes: [], notesPrecedentes: [] });
+test("année en cours entamée : les périodes notées, sans moyenne annuelle au rabais", () => {
+  const t1 = notesAnnee(11, 11).filter((n) => n.periode === "Trimestre 1");
+  const resultats = getResultatsAttestation({ ...contexteMoyenne, notes: t1, notesPrecedentes: [] });
+  assert.equal(resultats.annee, "2026-2027");
+  assert.deepEqual(moyennes(resultats), ["11,00/20", "—", "—"]);
+  assert.equal(resultats.annuelle, null);
+  // Toutes les périodes notées : la moyenne annuelle revient.
+  const complete = getResultatsAttestation({ ...contexteMoyenne, notes: notesAnnee(11, 11), notesPrecedentes: notesAnnee(18, 18) });
+  assert.equal(complete.annee, "2026-2027");
+  assert.equal(formatMoyenneAnnuelle(complete.annuelle, 20), "11,00/20");
+});
 
-  assert.equal(resultat.moyenne, null);
-  assert.equal(resultat.annee, "");
-  assert.equal(formatMoyenneAnnuelle(resultat.moyenne, 20), "");
+test("rentrée sans notes ni classe archivée : l'année écoulée, datée de SON année", () => {
+  const resultats = getResultatsAttestation({ ...contexteMoyenne, notes: [], notesPrecedentes: notesAnnee(15, 15) });
+  assert.equal(resultats.annee, "2025-2026");
+  assert.equal(formatMoyenneAnnuelle(resultats.annuelle, 20), "15,00/20");
+});
+
+test("les matières sont celles de la classe de l'année imprimée", () => {
+  const demandees = [];
+  const matieresForClasse = (classe) => { demandees.push(classe); return classe === "5ème A" ? [matieres[0]] : matieres; };
+  const resultats = getResultatsAttestation({
+    ...contexteMoyenne, matieresForClasse, derniere: { classe: "5ème A", annee: "2025-2026" },
+    notes: [], notesPrecedentes: notesAnnee(15, 9),
+  });
+  assert.deepEqual(demandees, ["5ème A"]);
+  // Français seul : 15, les Maths de la 6ème n'entrent pas dans le calcul.
+  assert.equal(formatMoyenneAnnuelle(resultats.annuelle, 20), "15,00/20");
+});
+
+test("rien à montrer : pas d'encadré", () => {
+  assert.equal(getResultatsAttestation({ ...contexteMoyenne, notes: [], notesPrecedentes: [] }), null);
+  // Année de la dernière classe non chargée (ni l'écran ni la précédente).
+  assert.equal(getResultatsAttestation({
+    ...contexteMoyenne, derniere: { classe: "4ème A", annee: "2023-2024" }, notes: notesAnnee(11, 11), notesPrecedentes: notesAnnee(15, 15),
+  }), null);
+  assert.equal(getResultatsAttestation({ ...contexteMoyenne, periodes: [], notes: notesAnnee(11, 11) }), null);
+  assert.equal(getResultatsAttestation(), null);
+});
+
+test("le document : 9ème (2025-2026) pour un promu parti, ses trimestres et sa moyenne annuelle en gros", async () => {
+  let html = "";
+  globalThis.window = { open: () => ({ document: { write: (s) => { html += s; }, close: () => {} } }) };
+  const { imprimerAttestation } = await import("../src/reports/attestation.js");
+  const parti = {
+    ...eleve, classe: "10ème A", statut: "Transféré", dateDepart: "2026-11-10",
+    historique: { "2025-2026": { classe: "9ème A", clotureLe: "2026-07-02" } },
+  };
+  const trimestres = ["T1", "T2", "T3"];
+  const notesT = (valeur) => trimestres.flatMap((p) => [note("Français", p, valeur), note("Maths", p, valeur)]);
+  await imprimerAttestation(parti, "college", "2026-2027", { nom: "La Citadelle", ville: "Conakry" },
+    { notes: notesT(8).filter((n) => n.periode === "T1"), notesPrecedentes: notesT(13), matieres, periodes: trimestres, maxNote: 20 });
+
+  assert.ok(html.includes("9ème A (2025-2026)"));
+  assert.ok(!html.includes("10ème A"));
+  assert.ok(html.includes("Résultats de l'année scolaire 2025-2026"));
+  for (const libelle of ["1er trimestre", "2ème trimestre", "3ème trimestre"]) assert.ok(html.includes(libelle), libelle);
+  assert.ok(html.includes("<b>13,00</b><em>/20</em>"));
+  // La moyenne annuelle, en gros, dans le médaillon.
+  assert.match(html, /res-med">[\s\S]*?Moyenne annuelle<\/small><b>13,00<\/b>/);
+  // La 10ème entamée (8/20 au 1er trimestre) n'apparaît nulle part.
+  assert.ok(!html.includes("8,00"));
+});
+
+test("modèle en semestres : deux cases, 1er et 2ème semestre", async () => {
+  let html = "";
+  globalThis.window = { open: () => ({ document: { write: (s) => { html += s; }, close: () => {} } }) };
+  const { imprimerAttestation } = await import("../src/reports/attestation.js");
+  const semestres = ["S1", "S2"];
+  const notesS = semestres.flatMap((p) => [note("Français", p, 12), note("Maths", p, 12)]);
+  await imprimerAttestation(eleve, "lycee", "2025-2026", { nom: "La Citadelle" },
+    { notes: notesS, matieres, periodes: semestres, maxNote: 20 });
+  assert.ok(html.includes("1er semestre") && html.includes("2ème semestre"));
+  assert.ok(!html.includes("trimestre"));
+  // Deux semestres sur la bande, puis le médaillon de la moyenne annuelle.
+  assert.ok(html.includes("grid-template-columns:repeat(2,1fr)"));
+  assert.match(html, /res-med">[\s\S]*?Moyenne annuelle<\/small><b>12,00<\/b>/);
+});
+
+// ── Deux modèles : Diplôme (défaut) et Sobre ──────────────────────────────
+const imprimerModele = async (modele) => {
+  let html = "";
+  globalThis.window = { open: () => ({ document: { write: (s) => { html += s; }, close: () => {} } }) };
+  const { imprimerAttestation } = await import("../src/reports/attestation.js");
+  const trimestres = ["T1", "T2", "T3"];
+  const notesT = trimestres.flatMap((p) => [note("Français", p, 14), note("Maths", p, 11)]);
+  await imprimerAttestation(eleve, "college", "2025-2026", { nom: "La Citadelle", ville: "Conakry" },
+    { notes: notesT, matieres, periodes: trimestres, maxNote: 20, ...(modele ? { modele } : {}) });
+  return html;
+};
+
+test("modèle Diplôme par défaut : cadre guilloché, laurier, médaillon, ajustement à la page", async () => {
+  const html = await imprimerModele();
+  assert.ok(html.includes('class="page att"'));
+  assert.ok(html.includes('class="cadre"'));      // cadre guilloché
+  assert.ok(html.includes('class="laurier"'));    // emblème dans son laurier
+  assert.ok(html.includes('class="medaillon"'));  // moyenne annuelle
+  assert.ok(html.includes(".page.att .ajustable")); // jamais de seconde feuille
+  assert.ok(html.includes("<b>13,00</b><em>/20</em>"));
+  // Inconnu : on retombe sur le modèle par défaut.
+  assert.ok((await imprimerModele("inconnu")).includes('class="page att"'));
+});
+
+test("modèle Sobre : la mise en page d'origine, avec les mêmes résultats", async () => {
+  const html = await imprimerModele("sobre");
+  assert.ok(html.includes('class="feuille"'));
+  assert.ok(!html.includes('class="page att"'));
+  assert.ok(html.includes("1er trimestre") && html.includes("3ème trimestre"));
+  assert.ok(html.includes("13,00<small>/20</small>"));
+  assert.ok(html.includes("grid-template-columns:repeat(3,1fr) 1.45fr"));
+  assert.equal(html.split("Je soussigné(e)").length - 1, 1);
 });
 
 // ── Signataire : nom + vrai poste ─────────────────────────────────────────
