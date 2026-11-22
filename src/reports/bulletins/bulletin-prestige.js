@@ -95,8 +95,8 @@ export function buildBulletinPrestigeHTML(ctx) {
           ${ligneIdent("Classe", echapper(eleve.classe || "—"))}
           ${ligneIdent("Effectif", classStats ? `${classStats.effectif} élèves` : "—")}
           ${ligneIdent("Né(e) le", `${echapper(dateFr(eleve.dateNaissance) || "—")}${eleve.lieuNaissance ? ` à ${echapper(eleve.lieuNaissance)}` : ""}`, "large")}
-          ${ligneIdent("Matricule", echapper(eleve.matricule || "—"))}
-          ${ligneIdent("N° IEN", echapper(eleve.ien || "—"))}
+          ${ligneIdent("Code élève", echapper(eleve.matricule || "—"))}
+          ${ligneIdent("Matricule", echapper(eleve.ien || "—"))}
           ${eleve.filiation ? ligneIdent("Filiation", echapper(eleve.filiation), "large") : ""}
         </div>
         <div class="photo">${photoHTML(eleve, { w: 22, h: 27, bord: OR })}</div>

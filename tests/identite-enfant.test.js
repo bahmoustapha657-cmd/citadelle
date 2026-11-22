@@ -94,10 +94,10 @@ test("séance photo : file figée par classe, sans photo d'abord demandée, ordr
   assert.deepEqual(fileSeancePhoto(tous, {}), ["1", "4", "3"]);
 });
 
-test("identifiant du badge : l'IEN s'il existe, sinon le matricule", () => {
-  assert.deepEqual(identifiantBadge({ ien: " 2026123456 ", matricule: "PRE-003" }), { libelle: "IEN", valeur: "2026123456" });
-  assert.deepEqual(identifiantBadge({ ien: "", matricule: "PRE-003" }), { libelle: "Matricule", valeur: "PRE-003" });
-  assert.deepEqual(identifiantBadge({ ien: "   ", matricule: " C-12 " }), { libelle: "Matricule", valeur: "C-12" });
+test("identifiant du badge : le matricule (ien) s'il existe, sinon le code élève", () => {
+  assert.deepEqual(identifiantBadge({ ien: " 2026123456 ", matricule: "PRE-003" }), { champ: "ien", valeur: "2026123456" });
+  assert.deepEqual(identifiantBadge({ ien: "", matricule: "PRE-003" }), { champ: "matricule", valeur: "PRE-003" });
+  assert.deepEqual(identifiantBadge({ ien: "   ", matricule: " C-12 " }), { champ: "matricule", valeur: "C-12" });
   assert.equal(identifiantBadge({ nom: "Bah" }), null);
   assert.equal(identifiantBadge(), null);
 });

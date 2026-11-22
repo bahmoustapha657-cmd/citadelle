@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { rechercheActive, rechercherEleves, termesRecherche, termesSansResultat } from "../src/recherche-eleves.js";
+import {
+  correspondRechercheRapide, rechercheActive, rechercherEleves, termesRecherche, termesSansResultat,
+} from "../src/recherche-eleves.js";
 
 const eleve = (id, extra = {}) => ({
   _id: id, nom: "Diallo", prenom: "Aïssatou", classe: "8e A", matricule: `C-25-00${id}`,
@@ -80,4 +82,22 @@ test("fiches incomplètes et critère inconnu : pas d'erreur", () => {
   const liste = [{ _id: "x" }, null, eleve("1")];
   assert.deepEqual(ids(rechercherEleves(liste, "620000001", "telTuteur")), ["1"]);
   assert.deepEqual(ids(rechercherEleves(liste.filter(Boolean), "aissatou", "inconnu")), ["1"]);
+});
+
+// « Matricule » = celui de DGECS (champ `ien`) ; « code élève » = celui
+// qu'EduGest donne (champ `matricule`). Le critère les lit tous les deux.
+test("matricule ou code élève : le matricule DGECS (ien) se trouve aussi", () => {
+  const liste = [eleve("1", { ien: "MA25032033" }), eleve("2")];
+  assert.deepEqual(ids(rechercherEleves(liste, "ma 2503 2033", "matricule")), ["1"]);
+  assert.deepEqual(ids(rechercherEleves(liste, "C-25-002", "matricule")), ["2"]);
+  assert.deepEqual(ids(rechercherEleves(liste, "MA25032033", "tout")), ["1"]);
+});
+
+test("recherche rapide (Bulletins, Attestations) : nom, matricule ou code élève", () => {
+  const e = eleve("7", { ien: "MA25032033" });
+  assert.equal(correspondRechercheRapide(e, ""), true);
+  assert.equal(correspondRechercheRapide(e, "diallo aï"), true);
+  assert.equal(correspondRechercheRapide(e, "ma25032033"), true);
+  assert.equal(correspondRechercheRapide(e, "c-25-007"), true);
+  assert.equal(correspondRechercheRapide(e, "MA99999999"), false);
 });

@@ -109,12 +109,12 @@ export const getEnrollmentDuplicateMessage = (
   if (!duplicate) return "";
   const suffix = options.scope ? ` (${options.scope})` : "";
   if (duplicate.type === "ien") {
-    return `Doublon detecte: l'IEN ${candidate.ien || duplicate.student?.ien || ""} est deja utilise${suffix}.`;
+    return `Doublon detecte: le matricule ${candidate.ien || duplicate.student?.ien || ""} est deja utilise${suffix}.`;
   }
   if (duplicate.type === "matricule") {
-    return `Doublon detecte: le matricule ${candidate.matricule || duplicate.student?.matricule || ""} existe deja${suffix}.`;
+    return `Doublon detecte: le code eleve ${candidate.matricule || duplicate.student?.matricule || ""} existe deja${suffix}.`;
   }
   const e = duplicate.student || {};
-  const details = [e.classe, e.matricule && `matricule ${e.matricule}`].filter(Boolean).join(", ");
+  const details = [e.classe, e.matricule && `code eleve ${e.matricule}`].filter(Boolean).join(", ");
   return `Doublon detecte: ${e.nom || ""} ${e.prenom || ""}, meme filiation, est deja inscrit(e)${details ? ` (${details})` : ""}${suffix}.`;
 };

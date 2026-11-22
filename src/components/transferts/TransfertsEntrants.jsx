@@ -45,7 +45,7 @@ export function TransfertsEntrants({ h, setTab }) {
                 </select>
               </label>
               {matriculeAccueil && <span style={{ fontSize: 12, color: "#475569" }}>
-                Matricule attribué : <strong style={{ fontFamily: "monospace", color: C.blue }}>{matriculeAccueil}</strong>
+                Code élève attribué : <strong style={{ fontFamily: "monospace", color: C.blue }}>{matriculeAccueil}</strong>
               </span>}
             </div>
             <p style={{ margin: "0 0 12px", fontSize: 11, color: "#64748b" }}>

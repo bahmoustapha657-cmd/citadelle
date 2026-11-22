@@ -19,7 +19,7 @@ export function LivretsListe({ h }) {
         ? <Vide icone="📋" msg="Aucun élève dans cette sélection" />
         : <Card>
             <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="2">
-              <THead cols={["Matricule", "Nom & Prénom", "Classe", "Livret", "Années saisies", "Action"]} />
+              <THead cols={["Code élève", "Nom & Prénom", "Classe", "Livret", "Années saisies", "Action"]} />
               <tbody>{elevesFiltr.map(e => {
                 const lv = livrets.find(l => l.eleveId === e._id);
                 return <TR key={e._id}>

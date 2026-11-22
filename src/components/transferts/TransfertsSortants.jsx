@@ -20,7 +20,7 @@ export function TransfertsSortants({ h }) {
         ? <Vide icone="📤" msg="Aucun élève marqué 'Transféré' — déclarez un départ depuis l'onglet Enrôlement" />
         : <Card>
             <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
-              <THead cols={["Matricule", "Élève", "Classe", "Date départ", "Destination", "Solde dû", "Documents", "Token EduGest"]} />
+              <THead cols={["Code élève", "Élève", "Classe", "Date départ", "Destination", "Solde dû", "Documents", "Token EduGest"]} />
               <tbody>{partis.map(e => {
                 const s = situation(e);
                 const transfert = transfertDeLEleve(transfertsSortants, e._id);

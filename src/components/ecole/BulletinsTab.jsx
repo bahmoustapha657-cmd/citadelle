@@ -6,6 +6,7 @@ import { useBatchAppreciation } from "./bulletins-tab/use-batch-appreciation";
 import { PERIODE_ANNEE } from "../../reports";
 import { buildBulletinNotesAnnuelles } from "../../reports/bulletins/annual-notes";
 import { elevesPourPeriode } from "../../depart-utils";
+import { correspondRechercheRapide } from "../../recherche-eleves";
 
 export function BulletinsTab({
   periodes = ["T1", "T2", "T3"],
@@ -26,7 +27,7 @@ export function BulletinsTab({
   const periodeNotes = periodeB === PERIODE_ANNEE ? null : periodeB;
   const elevesFiltres = elevesPourPeriode(elevesFiltresTous, notes, periodeNotes);
   const eleves = elevesPourPeriode(elevesTous, notes, periodeNotes);
-  const elevesB = elevesFiltres.filter(e=>!rechercheMatricule||(e.matricule||"").toLowerCase().includes(rechercheMatricule.toLowerCase())||(e.nom+" "+e.prenom).toLowerCase().includes(rechercheMatricule.toLowerCase()));
+  const elevesB = elevesFiltres.filter(e=>correspondRechercheRapide(e, rechercheMatricule));
 
   // En mode « fin d'année », les moyennes/mentions affichées et le contexte
   // fourni à l'IA reposent sur des notes annuelles synthétiques (moyenne des

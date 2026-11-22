@@ -115,7 +115,7 @@ export function useTransferts({ userRole }) {
       });
       if (data.ok) {
         const snap = transfertData.eleveSnapshot || {};
-        toast(`${snap.prenom || ""} ${snap.nom || ""} accueilli(e) en ${classeAccueil} (matricule ${matriculeAccueil})`, "success");
+        toast(`${snap.prenom || ""} ${snap.nom || ""} accueilli(e) en ${classeAccueil} (code élève ${matriculeAccueil})`, "success");
         setTransfertData(null); setTokenInput(""); setClasseAccueil("");
       } else {
         toast(data.error || "Erreur lors de l'acceptation", "error");

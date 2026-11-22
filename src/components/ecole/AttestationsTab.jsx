@@ -6,6 +6,7 @@ import { imprimerAttestation } from "../../reports";
 import { MODELES_ATTESTATION, estCertificatDeNiveau } from "../../reports/attestation";
 import { anneePrecedente } from "../../reports/attestation/attestation-moyenne";
 import { derniereClassePourAttestation } from "../../reports/attestation/derniere-classe";
+import { correspondRechercheRapide } from "../../recherche-eleves";
 import { useFirestore } from "../../hooks/useFirestore";
 
 // Modèle choisi (Diplôme ou Sobre), retenu sur l'appareil d'une impression à
@@ -64,9 +65,7 @@ export function AttestationsTab({
   // Le mois de rentrée de l'école situe la fin de l'année : un élève parti au
   // dernier mois de classe a achevé son année (cf. derniere-classe.js).
   const optionsDerniere = { moisDebut: schoolInfo?.moisDebut };
-  const elevesAtt = elevesFiltres.filter(e=>!rechercheMatricule
-    ||(e.matricule||"").toLowerCase().includes(rechercheMatricule.toLowerCase())
-    ||(e.nom+" "+e.prenom).toLowerCase().includes(rechercheMatricule.toLowerCase()));
+  const elevesAtt = elevesFiltres.filter(e=>correspondRechercheRapide(e, rechercheMatricule));
 
   return (
     <div>
@@ -91,7 +90,7 @@ export function AttestationsTab({
           if(!elevesAtt.length){alert("Aucun élève à imprimer.");return;}
           const w=window.open("","_blank");
           const rows=elevesAtt.map(e=>`<tr><td>${e.matricule||"—"}</td><td>${e.nom} ${e.prenom}</td><td>${e.classe}</td><td>${derniereClassePourAttestation(e,annee,optionsDerniere)||"—"}</td><td>${e.dateNaissance||"—"}</td><td>${e.lieuNaissance||"—"}</td></tr>`).join("");
-          w.document.write(`<!DOCTYPE html><html><head><title>${nomPiece}s — ${filtreClasse==="all"?"Toutes classes":filtreClasse}</title><style>@page{size:A4 portrait;margin:0}@media print{html,body{margin:0}button{display:none}}body{font-family:Arial,sans-serif;padding:14mm 12mm;margin:0}h2{color:#0A1628;text-align:center}table{width:100%;border-collapse:collapse;margin-top:16px}th{background:#0A1628;color:#fff;padding:8px}td{padding:7px 8px;border-bottom:1px solid #e5e7eb}</style></head><body><h2>${schoolInfo.nom||"École"} — Registre des ${nomPiece.toLowerCase()}s</h2><p style="text-align:center">${filtreClasse==="all"?"Toutes classes":filtreClasse} · Année ${annee}</p><table><tr><th>Matricule</th><th>Nom & Prénom</th><th>Classe</th><th>Dernière classe suivie</th><th>Date naissance</th><th>Lieu naissance</th></tr>${rows}</table><br/><button onclick="window.print()">🖨️ Imprimer la liste</button></body></html>`);
+          w.document.write(`<!DOCTYPE html><html><head><title>${nomPiece}s — ${filtreClasse==="all"?"Toutes classes":filtreClasse}</title><style>@page{size:A4 portrait;margin:0}@media print{html,body{margin:0}button{display:none}}body{font-family:Arial,sans-serif;padding:14mm 12mm;margin:0}h2{color:#0A1628;text-align:center}table{width:100%;border-collapse:collapse;margin-top:16px}th{background:#0A1628;color:#fff;padding:8px}td{padding:7px 8px;border-bottom:1px solid #e5e7eb}</style></head><body><h2>${schoolInfo.nom||"École"} — Registre des ${nomPiece.toLowerCase()}s</h2><p style="text-align:center">${filtreClasse==="all"?"Toutes classes":filtreClasse} · Année ${annee}</p><table><tr><th>${t("school.bulletins.matricule")}</th><th>Nom & Prénom</th><th>Classe</th><th>Dernière classe suivie</th><th>Date naissance</th><th>Lieu naissance</th></tr>${rows}</table><br/><button onclick="window.print()">🖨️ Imprimer la liste</button></body></html>`);
           w.document.close();
         }}>📋 Liste en lot</Btn>
       </div>
@@ -102,7 +101,7 @@ export function AttestationsTab({
       </div>
       {cE?<Chargement/>:elevesAtt.length===0?<Vide icone="📜" msg="Aucun élève pour cette sélection"/>
         :<Card><div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="2">
-          <THead cols={["Matricule","Nom & Prénom","Classe","Dernière classe suivie","Niveau","Statut",nomPiece]}/>
+          <THead cols={[t("school.bulletins.matricule"),"Nom & Prénom","Classe","Dernière classe suivie","Niveau","Statut",nomPiece]}/>
           <tbody>{elevesAtt.map(e=><TR key={e._id}>
             <TD><span style={{fontSize:11,fontFamily:"monospace",background:"#e0ebf8",padding:"2px 5px",borderRadius:4,color:C.blue,fontWeight:700}}>{e.matricule||"—"}</span></TD>
             <TD bold>{e.nom} {e.prenom}</TD>

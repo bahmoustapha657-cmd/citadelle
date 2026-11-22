@@ -50,7 +50,7 @@ function ChampTaux({ taux, actif, onTaux, label, style }) {
 // courants ; dispenser le mauvais « DIALLO Mamadou » se verrait tard, et
 // l'IEN comme les parents sont ce qui les départage.
 function Identite({ eleve, bloc = false }) {
-  const reperes = [eleve.matricule, eleve.ien && `IEN ${eleve.ien}`].filter(Boolean).join(" · ");
+  const reperes = [eleve.matricule, eleve.ien && `Matricule ${eleve.ien}`].filter(Boolean).join(" · ");
   return (
     <span style={{ display: bloc ? "block" : "inline", fontSize: 11, color: "#64748b", lineHeight: 1.4 }}>
       {reperes}

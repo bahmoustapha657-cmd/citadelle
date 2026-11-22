@@ -108,8 +108,8 @@ export function buildTabItems(canManageLifecycle) {
       desc: "Agrément, autorisations et codes statistiques — imprimés en pied des documents officiels." },
     { id: "evaluations", label: "Évaluations", icon: "📝", groupe: "Pédagogie",
       desc: "Libellés et activation des périodes d'évaluation (compositions, devoirs…)." },
-    { id: "matricules", label: "Matricules", icon: "🆔", groupe: "Pédagogie",
-      desc: "Format et numérotation des matricules élèves." },
+    { id: "matricules", label: "Codes élèves", icon: "🆔", groupe: "Pédagogie",
+      desc: "Format et numérotation des codes élèves." },
     { id: "notifications", label: "Notifications", icon: "🔔", groupe: "École",
       desc: "Alertes SMS / WhatsApp aux tuteurs : paiements, absences et annonces." },
     // Identifiants du compte marchand : direction seulement (le serveur

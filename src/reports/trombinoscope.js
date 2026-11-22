@@ -118,7 +118,7 @@ export function trombinoscopeHTML(eleves = [], { schoolInfo = {}, annee = "", pa
 //  • « portrait » : 62 × 90 mm, le badge d'origine de la maternelle, à
 //    plastifier et porter en collier.
 // Quatre tailles d'impression (TAILLES_BADGE) ; le nombre par page en découle.
-// Sous le nom : l'IEN de l'élève, ou à défaut son matricule (identifiantBadge).
+// Sous le nom : le matricule de l'élève (ien), ou à défaut son code élève (identifiantBadge).
 // Photo au choix ; sans photo, le logo de l'école s'affiche en grand à sa
 // place (et plus dans l'en-tête). Avec photo, le logo est aussi en filigrane,
 // très pâle, derrière le nom. En haut, le nom de l'école ; en pied, une ligne
@@ -249,7 +249,9 @@ export const taillePoliceAppel = (nom = "", largeurMm = 58) => {
 
 const ligneIdentifiant = (eleve) => {
   const id = identifiantBadge(eleve);
-  return id ? `<div class="ident">${id.libelle} <strong>${echapper(id.valeur)}</strong></div>` : "";
+  if (!id) return "";
+  const libelle = tr(id.champ === "ien" ? "reports.ien" : "school.bulletins.matricule");
+  return `<div class="ident">${echapper(libelle)} <strong>${echapper(id.valeur)}</strong></div>`;
 };
 
 const logoEcole = (schoolInfo, classe = "logo") => (schoolInfo.logo

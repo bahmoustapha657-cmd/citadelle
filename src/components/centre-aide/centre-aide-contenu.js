@@ -56,7 +56,7 @@ export const ARTICLES = [
     titre: "Inscrire un élève",
     etapes: [
       "Module Primaire/Secondaire → onglet Élèves → « Ajouter ».",
-      "Renseignez nom, prénom, sexe, classe et, si disponible, le matricule national (IEN).",
+      "Renseignez nom, prénom, sexe, classe et, si disponible, le matricule (celui de la plateforme DGECS).",
       "Le tuteur et son contact permettent de créer ensuite un compte parent.",
     ],
   },
@@ -67,7 +67,7 @@ export const ARTICLES = [
     etapes: [
       "Comptabilité → Inscriptions → « Importer ».",
       "Sélectionnez votre fichier ; EduGest détecte automatiquement les colonnes (nom, classe, sexe, IEN…).",
-      "Vérifiez l'aperçu puis validez : les doublons (même IEN/matricule) sont signalés.",
+      "Vérifiez l'aperçu puis validez : les doublons (même matricule ou même code élève) sont signalés.",
     ],
   },
   {

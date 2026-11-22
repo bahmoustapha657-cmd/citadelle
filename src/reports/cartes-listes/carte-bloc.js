@@ -51,7 +51,7 @@ export function carteEleve(e, { logo, nomEcole, ville, annee, qrMap }) {
         <div class="carte-infos">
           <div class="carte-nom">${(e.prenom || "").toUpperCase()} ${(e.nom || "").toUpperCase()}</div>
           <div class="info-ligne"><span class="info-label">${tr("school.bulletins.matricule")}</span><span class="info-val">${e.matricule || "—"}</span></div>
-          ${e.ien ? `<div class="info-ligne"><span class="info-label">IEN</span><span class="info-val ien">${e.ien}</span></div>` : ""}
+          ${e.ien ? `<div class="info-ligne"><span class="info-label">${tr("reports.ien")}</span><span class="info-val ien">${e.ien}</span></div>` : ""}
           <div class="info-ligne"><span class="info-label">${tr("reports.class")}</span><span class="info-val">${e.classe || "—"}</span></div>
           <div class="info-ligne"><span class="info-label">${tr("reports.dateOfBirth")}</span><span class="info-val">${e.dateNaissance || "—"}</span></div>
           ${e.sexe ? `<div class="info-ligne"><span class="info-label">${tr("common.status")}</span><span class="info-val">${e.sexe}</span></div>` : ""}

@@ -77,7 +77,7 @@ export function buildBulletinOfficielHTML(ctx) {
     <table class="ident">
       <tr><td class="l">Nom et prénoms</td><td class="v nom">${echapper(`${eleve.nom || ""} ${eleve.prenom || ""}`)}</td><td class="l">Classe</td><td class="v">${echapper(eleve.classe || "—")}</td><td class="photo" rowspan="${eleve.filiation ? 4 : 3}">${photoHTML(eleve, { w: 21, h: 26, bord: "#9aa3ad" })}</td></tr>
       <tr><td class="l">Né(e) le</td><td class="v">${echapper(dateFr(eleve.dateNaissance) || "—")}${eleve.lieuNaissance ? ` à ${echapper(eleve.lieuNaissance)}` : ""}</td><td class="l">Effectif</td><td class="v">${classStats ? `${classStats.effectif} élèves` : "—"}</td></tr>
-      <tr><td class="l">Matricule</td><td class="v">${echapper(eleve.matricule || "—")}</td><td class="l">N° IEN</td><td class="v">${echapper(eleve.ien || "—")}</td></tr>
+      <tr><td class="l">Code élève</td><td class="v">${echapper(eleve.matricule || "—")}</td><td class="l">Matricule</td><td class="v">${echapper(eleve.ien || "—")}</td></tr>
       ${eleve.filiation ? `<tr><td class="l">Filiation</td><td class="v" colspan="3">${echapper(eleve.filiation)}</td></tr>` : ""}
     </table>
 

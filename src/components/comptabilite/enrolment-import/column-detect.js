@@ -25,6 +25,9 @@ const wordMatch = (hn, v) => {
   }));
 };
 
+// En-têtes du code élève d'EduGest (export Excel), normalisés.
+const CODES_ELEVE = ["code eleve", "code de l eleve", "student code"]; // i18n-ignore
+
 // Libellés des champs affichés dans l'aperçu (langue courante).
 const CHAMPS = ["num", "matricule", "eleveComplet", "nom", "prenom", "classe", "sexe", "date", "lieuNaiss", "pere", "mere", "filiation", "tuteur", "contact", "domicile", "typeInsc", "ien"];
 const libellesChamps = () => Object.fromEntries(CHAMPS.map((k) => [k, i18n.t(`accounting.import.field.${k}`)]));
@@ -40,11 +43,14 @@ export function detectColumns(allRows) {
 
   const headers = allRows[headerRowIdx].map(h => String(h || ""));
 
+  // Colonne « Code élève » d'une liste exportée par EduGest : le code est
+  // regénéré à l'import, et « élève » ne doit pas la faire lire comme le nom.
+  const ignoree = (hn) => CODES_ELEVE.some(v => hn === v);
   const findCol = (variants) => {
     for (const v of variants) {
       const idx = headers.findIndex(h => {
         const hn = norm(h);
-        return hn && wordMatch(hn, v);
+        return hn && !ignoree(hn) && wordMatch(hn, v);
       });
       if (idx >= 0) return idx;
     }
@@ -53,7 +59,7 @@ export function detectColumns(allRows) {
   // Variantes d'en-têtes reconnues : texte des FICHIERS importés, pas de l'interface.
   const cols = {
     num: findCol(["n", "no", "num", "numero"]),
-    matricule: findCol(["matricule", "mat", "numero eleve", "id eleve"]),
+    matricule: findCol(["matricule", "mat", "numero eleve", "id eleve", "student number", "student id"]),
     eleveComplet: findCol(["eleve", "noms et prenoms", "nom et prenom", "nom complet", "prenom et nom", "nomcomplet", "nom prenom", "full name"]), // i18n-ignore
     nom: findCol(["nom eleve", "nom de l eleve", "nom famille", "last name", "surname", "noms", "nom"]), // i18n-ignore
     prenom: findCol(["prenom eleve", "prenom de l eleve", "prenoms", "first name", "given name", "forename", "prenom"]), // i18n-ignore

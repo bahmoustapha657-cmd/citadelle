@@ -34,7 +34,7 @@ function MatriculeSettings({sec, lbl, inp, setMsgSucces, setErreur}) {
       // rechargement (liquidation Firebase, lot 2).
       await sauverParametresEcole(schoolId, cfgLocal);
       setSchoolInfo(prev=>({...prev,...cfgLocal}));
-      setMsgSucces("Modèle de matricule enregistré."); setTimeout(()=>setMsgSucces(""),3000);
+      setMsgSucces("Modèle de code élève enregistré."); setTimeout(()=>setMsgSucces(""),3000);
     } catch(e) { setErreur(e.message); } finally { setSavingMat(false); }
   };
 
@@ -46,7 +46,7 @@ function MatriculeSettings({sec, lbl, inp, setMsgSucces, setErreur}) {
 
   return (
     <div style={sec}>
-      <h3 style={{margin:"0 0 16px",fontSize:14,fontWeight:800,color:C.blueDark}}>🔢 Modèle de matricule</h3>
+      <h3 style={{margin:"0 0 16px",fontSize:14,fontWeight:800,color:C.blueDark}}>🔢 Modèle de code élève</h3>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
         {avecPrimaire&&<div>
           <label style={lbl}>Préfixe — Primaire</label>
@@ -72,7 +72,7 @@ function MatriculeSettings({sec, lbl, inp, setMsgSucces, setErreur}) {
       <div style={{display:"flex",gap:24,marginBottom:16}}>
         <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,cursor:"pointer"}}>
           <input type="checkbox" checked={cfgLocal.matriculeAnnee} onChange={upd("matriculeAnnee")}/>
-          Inclure l'année dans le matricule
+          Inclure l'année dans le code élève
         </label>
         {cfgLocal.matriculeAnnee&&<label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,cursor:"pointer"}}>
           <input type="checkbox" checked={cfgLocal.matriculeAnnee4} onChange={upd("matriculeAnnee4")}/>
@@ -85,7 +85,7 @@ function MatriculeSettings({sec, lbl, inp, setMsgSucces, setErreur}) {
         {avecCollege&&<p style={{margin:0,fontSize:12,color:"#0369a1"}}>Collège : <strong>{previewFor("college")}</strong></p>}
       </div>}
       <p style={{margin:"0 0 14px",fontSize:11,color:"#9ca3af"}}>
-        ⚠️ Ce modèle s'applique uniquement aux <strong>nouveaux élèves</strong>. Les matricules existants ne sont pas modifiés.
+        ⚠️ Ce modèle s'applique uniquement aux <strong>nouveaux élèves</strong>. Les codes élèves existants ne sont pas modifiés.
       </p>
       <Btn onClick={sauvegarderMat} disabled={savingMat} v="success">
         {savingMat?"Enregistrement…":"💾 Enregistrer le modèle"}

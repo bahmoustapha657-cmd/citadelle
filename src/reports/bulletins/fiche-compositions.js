@@ -17,7 +17,7 @@ import { blocsSignatures, cachetOuEspace } from "../signatures.js";
 import { apprecComposition, computeFicheResultats } from "./fiche-compositions-data.js";
 import { PERIODE_ANNEE, buildBulletinNotesAnnuelles } from "./annual-notes.js";
 
-// `format` : "simple" (N°, Rang, Élève, IEN, Moyenne, Mention) ou
+// `format` : "simple" (N°, Rang, Élève, Matricule, Moyenne, Mention) ou
 // "matieres" (Rang, Élèves, IEN, moyennes par matière, Moyenne, Mention —
 // imprimé en paysage pour loger une colonne par matière).
 export const imprimerFicheCompositions = (classe, periode, notes, matieres, eleves, maxNote=20, schoolInfo={}, periodes=[], matieresForClasse=null, format="simple") => {
@@ -120,7 +120,7 @@ export const imprimerFicheCompositions = (classe, periode, notes, matieres, elev
     ? `<tr>
       <th rowspan="2" style="text-align:center;width:46px;vertical-align:middle">${tr("reports.rank")}</th>
       <th rowspan="2" style="vertical-align:middle">${tr("reports.studentsHeader")}</th>
-      <th rowspan="2" style="text-align:center;vertical-align:middle">IEN</th>
+      <th rowspan="2" style="text-align:center;vertical-align:middle">Matricule</th>
       <th colspan="${matieresAff.length}" style="text-align:center;border-bottom:1px solid rgba(255,255,255,.35)">${tr("reports.averagesBySubject")}</th>
       <th rowspan="2" style="text-align:center;vertical-align:middle">${tr("reports.average")}/${maxNote}</th>
       <th rowspan="2" style="text-align:center;vertical-align:middle">${tr("reports.mention")}</th>
@@ -139,7 +139,7 @@ export const imprimerFicheCompositions = (classe, periode, notes, matieres, elev
       <th style="text-align:center;width:34px">${tr("reports.rowNumber")}</th>
       <th style="text-align:center;width:46px">${tr("reports.rank")}</th>
       <th>${tr("reports.studentFullName")}</th>
-      <th style="text-align:center">IEN</th>
+      <th style="text-align:center">Matricule</th>
       <th style="text-align:center">${tr("reports.average")}/${maxNote}</th>
       <th style="text-align:center">${tr("reports.mention")}</th>
     </tr>`;

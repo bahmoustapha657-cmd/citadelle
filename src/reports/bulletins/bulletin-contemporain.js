@@ -86,7 +86,7 @@ export function buildBulletinContemporainHTML(ctx) {
       <div class="qui"><div class="nom">${echapper(`${eleve.nom || ""} ${eleve.prenom || ""}`)}</div>
         <div class="infos">${[
           `<b>${echapper(eleve.classe || "—")}</b>${classStats ? ` · ${classStats.effectif} élèves` : ""}`,
-          [eleve.matricule && `Matricule ${echapper(eleve.matricule)}`, eleve.ien && `IEN ${echapper(eleve.ien)}`].filter(Boolean).join(" · "),
+          [eleve.ien && `Matricule ${echapper(eleve.ien)}`, eleve.matricule && `Code élève ${echapper(eleve.matricule)}`].filter(Boolean).join(" · "),
           eleve.dateNaissance ? `Né(e) le ${echapper(dateFr(eleve.dateNaissance))}${eleve.lieuNaissance ? ` à ${echapper(eleve.lieuNaissance)}` : ""}` : "",
           eleve.filiation ? echapper(eleve.filiation) : "",
         ].filter(Boolean).map((ligne) => `<span>${ligne}</span>`).join("")}</div></div>
