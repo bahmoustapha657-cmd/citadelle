@@ -41,6 +41,23 @@ export const ongletDgecsOuvert = (schoolInfo, section) =>
   && SECTIONS_DGECS.includes(section)
   && !estEspaceEnseignant(schoolInfo);
 
+// Accès direct à la plateforme (bouton « 🇬🇳 Plateforme DGECS » du menu
+// latéral, lien de l'onglet DGECS) : la page d'accueil, où chacun se connecte
+// avec le compte DGECS de sa section. Nouvel onglet : EduGest reste ouvert à
+// côté pour recopier.
+export const URL_DGECS = "https://dgecsecoles.com/";
+
+// Le lien du menu latéral : pour qui travaille dans les modules pédagogiques
+// (chefs de section, Direction, admin — y compris par un poste) d'une école
+// guinéenne, jamais dans l'espace d'un enseignant seul. Le surveillant voit
+// les modules pour la discipline seulement ; le comptable a son lien dans la
+// fenêtre « Depuis DGECS ».
+export function lienDgecsOuvert(schoolInfo, { role = "", modules = [] } = {}) {
+  if (getSystemeScolaire(schoolInfo || {}) !== "guineen" || estEspaceEnseignant(schoolInfo)) return false;
+  if (role === "surveillant") return false;
+  return modules.includes("primaire") || modules.includes("secondaire");
+}
+
 export const matriculeDgecs = (eleve) => String(eleve?.ien || "").trim();
 
 // Saisie d'un matricule : majuscules, sans espaces (« ma 2503 2033 » →

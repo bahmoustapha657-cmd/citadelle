@@ -3176,6 +3176,8 @@
   "dgecs": {
     "tab": "🇬🇳 DGECS",
     "intro": "Ce que la plateforme du ministère (dgecsecoles.com) demande, prêt à recopier : notes par matière, statistiques de rentrée, candidats aux examens.",
+    "openPlatform": "Plateforme DGECS",
+    "openPlatformHint": "Ouvre dgecsecoles.com dans un nouvel onglet : connectez-vous avec le compte DGECS de votre section.",
     "views": {
       "notes": "📝 Fiche de notes",
       "stats": "📊 Statistiques de rentrée",

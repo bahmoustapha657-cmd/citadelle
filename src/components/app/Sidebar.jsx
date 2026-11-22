@@ -8,6 +8,7 @@ import { lienMesFiches } from "../../backend/pedagogue-supabase";
 import { useMessagerie } from "../messagerie/messagerie-contexte";
 import { moduleLabel, moduleDesc } from "./module-i18n";
 import { VERSION_APP } from "../../version-app";
+import { URL_DGECS, lienDgecsOuvert } from "../../dgecs";
 
 // Comptes qui configurent Pédagogue et y lisent les fiches partagées par leurs
 // enseignants (rôles de pedagogue-ticket). Un enseignant passe par son portail.
@@ -38,6 +39,21 @@ function LienFichesEcole({ uid, t }) {
         <span aria-hidden="true" style={{color:"rgba(255,255,255,0.5)"}}>↗</span>
       </button>
       {erreur&&<p role="alert" style={{margin:"6px 0 0",fontSize:10,fontWeight:600,color:"#fecaca"}}>{erreur}</p>}
+    </div>
+  );
+}
+
+// Accès direct à la plateforme du ministère (dgecsecoles.com), dans un nouvel
+// onglet : chacun s'y connecte avec le compte DGECS de sa section.
+function LienDgecs({ t }) {
+  return (
+    <div style={{padding:"0 8px 8px"}}>
+      <a href={URL_DGECS} target="_blank" rel="noopener noreferrer" title={t("dgecs.openPlatformHint")}
+        style={{display:"flex",alignItems:"center",gap:9,padding:"9px 11px",borderRadius:8,border:"1px solid rgba(255,255,255,0.12)",textDecoration:"none",width:"100%",boxSizing:"border-box"}}>
+        <span style={{fontSize:15}}>🇬🇳</span>
+        <span style={{flex:1,minWidth:0,fontSize:12,fontWeight:800,color:"rgba(255,255,255,0.82)"}}>{t("dgecs.openPlatform")}</span>
+        <span aria-hidden="true" style={{color:"rgba(255,255,255,0.5)"}}>↗</span>
+      </a>
     </div>
   );
 }
@@ -86,6 +102,7 @@ export function Sidebar({
         })}
       </nav>
       {ROLES_FICHES_ECOLE.includes(utilisateur.role) && <LienFichesEcole uid={utilisateur.uid} t={t}/>}
+      {lienDgecsOuvert(schoolInfo, { role: utilisateur.role, modules: modulesVisibles.map((m) => m.id) }) && <LienDgecs t={t}/>}
       <div style={{padding:"12px 14px",borderTop:"1px solid rgba(255,255,255,0.08)"}}>
         <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
           <div style={{width:30,height:30,borderRadius:"50%",background:C.green,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,color:"#fff",flexShrink:0}}>

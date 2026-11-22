@@ -3176,6 +3176,8 @@
   "dgecs": {
     "tab": "🇬🇳 DGECS",
     "intro": "What the ministry platform (dgecsecoles.com) asks for, ready to copy: marks by subject, start-of-year statistics, exam candidates.",
+    "openPlatform": "DGECS platform",
+    "openPlatformHint": "Opens dgecsecoles.com in a new tab: sign in with your section's DGECS account.",
     "views": {
       "notes": "📝 Marks sheet",
       "stats": "📊 Start-of-year statistics",
