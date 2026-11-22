@@ -5,7 +5,7 @@ import { FicheNotesVue } from "./dgecs-tab/FicheNotesVue";
 import { StatistiquesVue } from "./dgecs-tab/StatistiquesVue";
 import { CandidatsVue } from "./dgecs-tab/CandidatsVue";
 import { ImportVue } from "./dgecs-tab/ImportVue";
-import { URL_DGECS } from "../../dgecs";
+import { PLATEFORMES_DGECS } from "../../dgecs";
 
 // Onglet « DGECS » du module École (lot B, 2026-11-19) : ce que la plateforme
 // du ministère (dgecsecoles.com) demande, prêt à recopier. Calculs :
@@ -18,11 +18,17 @@ export function DgecsTab(props) {
   if (props.chargement) return <Chargement />;
   return (
     <div>
-      <p style={{ fontSize: 12.5, color: "var(--lc-text-muted)", margin: "0 0 12px" }}>
-        {t("dgecs.intro")}{" "}
-        <a href={URL_DGECS} target="_blank" rel="noopener noreferrer" title={t("dgecs.openPlatformHint")}
-          style={{ color: "#0a7d5a", fontWeight: 800, whiteSpace: "nowrap" }}>🇬🇳 {t("dgecs.openPlatform")} ↗</a>
-      </p>
+      <p style={{ fontSize: 12.5, color: "var(--lc-text-muted)", margin: "0 0 8px" }}>{t("dgecs.intro")}</p>
+      <div role="group" aria-label={t("dgecs.platforms.title")}
+        style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", margin: "0 0 12px", fontSize: 12 }}>
+        <span style={{ fontWeight: 800, color: "var(--lc-text-muted)" }}>🇬🇳 {t("dgecs.platforms.title")}</span>
+        {PLATEFORMES_DGECS.map((p) => (
+          <a key={p.id} href={p.url} target="_blank" rel="noopener noreferrer" title={t(`dgecs.platforms.${p.id}Hint`)}
+            style={{ color: "#0a7d5a", fontWeight: 800, whiteSpace: "nowrap", textDecoration: "none", padding: "3px 10px", borderRadius: 999, border: "1px solid rgba(10,125,90,0.35)" }}>
+            {t(`dgecs.platforms.${p.id}`)} ↗
+          </a>
+        ))}
+      </div>
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
         {VUES.map((v) => (
           <Btn key={v} sm v={vue === v ? "blue" : "ghost"} onClick={() => setVue(v)}>{t(`dgecs.views.${v}`)}</Btn>

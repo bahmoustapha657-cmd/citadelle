@@ -41,13 +41,26 @@ export const ongletDgecsOuvert = (schoolInfo, section) =>
   && SECTIONS_DGECS.includes(section)
   && !estEspaceEnseignant(schoolInfo);
 
-// Accès direct à la plateforme (bouton « 🇬🇳 Plateforme DGECS » du menu
-// latéral, lien de l'onglet DGECS) : la page d'accueil, où chacun se connecte
-// avec le compte DGECS de sa section. Nouvel onglet : EduGest reste ouvert à
-// côté pour recopier.
+// Les plateformes du ministère, chacune avec sa propre connexion (directives
+// du MENA-ETFP pour les examens 2027, Guinee7 du 23/10/2026 ; elles ne citent
+// qu'elles-mêmes, vérifié le 2026-11-22) :
+// - dgecsecoles.com : élèves des classes intermédiaires (matricule, notes,
+//   bulletins) ; l'entrée en 7e année et le BAC unique s'y inscrivent aussi ;
+// - dgecs.com : inscription des candidats aux examens (BEPC) ;
+// - dgecscommissions.com : surveillants, délégués, correcteurs ;
+// - dgecsresultats.com : résultats et listes de rattrapage.
+// Liens vers la page d'accueil, ouverts dans un nouvel onglet : EduGest reste
+// à côté pour recopier. Tous montrés à chaque chef de section : quel examen
+// passe par quelle plateforme change d'une session à l'autre.
 export const URL_DGECS = "https://dgecsecoles.com/";
+export const PLATEFORMES_DGECS = [
+  { id: "ecoles", url: URL_DGECS },
+  { id: "examens", url: "https://dgecs.com/" },
+  { id: "commissions", url: "https://dgecscommissions.com/" },
+  { id: "resultats", url: "https://dgecsresultats.com/" },
+];
 
-// Le lien du menu latéral : pour qui travaille dans les modules pédagogiques
+// Les liens du menu latéral : pour qui travaille dans les modules pédagogiques
 // (chefs de section, Direction, admin — y compris par un poste) d'une école
 // guinéenne, jamais dans l'espace d'un enseignant seul. Le surveillant voit
 // les modules pour la discipline seulement ; le comptable a son lien dans la
