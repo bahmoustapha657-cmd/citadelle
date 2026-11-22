@@ -3,10 +3,21 @@ import { useTranslation } from "react-i18next";
 import { C, getSectionLabel } from "../../constants";
 import { Badge, Btn, Card, Chargement, TD, THead, TR, Vide } from "../ui";
 import { imprimerAttestation } from "../../reports";
-import { estCertificatDeNiveau } from "../../reports/attestation";
+import { MODELES_ATTESTATION, estCertificatDeNiveau } from "../../reports/attestation";
 import { anneePrecedente } from "../../reports/attestation/attestation-moyenne";
 import { derniereClassePourAttestation } from "../../reports/attestation/derniere-classe";
 import { useFirestore } from "../../hooks/useFirestore";
+
+// Modèle choisi (Diplôme ou Sobre), retenu sur l'appareil d'une impression à
+// l'autre. Sans stockage (navigation privée), le choix vaut le temps de la page.
+const CLE_MODELE = "LC_modeleAttestation";
+const modeleRetenu = () => {
+  try {
+    const m = localStorage.getItem(CLE_MODELE);
+    return MODELES_ATTESTATION.includes(m) ? m : MODELES_ATTESTATION[0];
+  } catch { return MODELES_ATTESTATION[0]; }
+};
+const LIBELLES_MODELE = { diplome: "school.certificates.modelDiploma", sobre: "school.certificates.modelPlain" };
 
 export function AttestationsTab({
   rechercheMatricule,
@@ -27,6 +38,11 @@ export function AttestationsTab({
   cleNotes,
 }) {
   const { t } = useTranslation();
+  const [modele, setModele] = React.useState(modeleRetenu);
+  const choisirModele = (m) => {
+    setModele(m);
+    try { localStorage.setItem(CLE_MODELE, m); } catch { /* stockage indisponible */ }
+  };
   // Notes de l'année écoulée : à la rentrée, l'année en cours est vide et
   // l'attestation sortirait sans moyenne. Le chargement ne coûte que dans CET
   // onglet — le composant n'est monté que lorsqu'il est ouvert — et il est
@@ -45,6 +61,9 @@ export function AttestationsTab({
   // Au primaire, la pièce s'appelle « Certificat de niveau ».
   const certificat = estCertificatDeNiveau(section);
   const nomPiece = certificat ? "Certificat" : "Attestation";
+  // Le mois de rentrée de l'école situe la fin de l'année : un élève parti au
+  // dernier mois de classe a achevé son année (cf. derniere-classe.js).
+  const optionsDerniere = { moisDebut: schoolInfo?.moisDebut };
   const elevesAtt = elevesFiltres.filter(e=>!rechercheMatricule
     ||(e.matricule||"").toLowerCase().includes(rechercheMatricule.toLowerCase())
     ||(e.nom+" "+e.prenom).toLowerCase().includes(rechercheMatricule.toLowerCase()));
@@ -61,19 +80,25 @@ export function AttestationsTab({
           <option value="all">{t("common.all")}</option>
           {classesUniq.map(c=><option key={c}>{c}</option>)}
         </select>
+        <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:C.blueDark,fontWeight:600}}>
+          {t("school.certificates.model")}
+          <select value={modele} onChange={e=>choisirModele(e.target.value)}
+            style={{border:"1px solid #b0c4d8",borderRadius:7,padding:"6px 10px",fontSize:12,background:"#fff"}}>
+            {MODELES_ATTESTATION.map(m=><option key={m} value={m}>{t(LIBELLES_MODELE[m])}</option>)}
+          </select>
+        </label>
         <Btn sm v="amber" onClick={()=>{
           if(!elevesAtt.length){alert("Aucun élève à imprimer.");return;}
           const w=window.open("","_blank");
-          const rows=elevesAtt.map(e=>`<tr><td>${e.matricule||"—"}</td><td>${e.nom} ${e.prenom}</td><td>${e.classe}</td><td>${derniereClassePourAttestation(e,annee)||"—"}</td><td>${e.dateNaissance||"—"}</td><td>${e.lieuNaissance||"—"}</td></tr>`).join("");
+          const rows=elevesAtt.map(e=>`<tr><td>${e.matricule||"—"}</td><td>${e.nom} ${e.prenom}</td><td>${e.classe}</td><td>${derniereClassePourAttestation(e,annee,optionsDerniere)||"—"}</td><td>${e.dateNaissance||"—"}</td><td>${e.lieuNaissance||"—"}</td></tr>`).join("");
           w.document.write(`<!DOCTYPE html><html><head><title>${nomPiece}s — ${filtreClasse==="all"?"Toutes classes":filtreClasse}</title><style>@page{size:A4 portrait;margin:0}@media print{html,body{margin:0}button{display:none}}body{font-family:Arial,sans-serif;padding:14mm 12mm;margin:0}h2{color:#0A1628;text-align:center}table{width:100%;border-collapse:collapse;margin-top:16px}th{background:#0A1628;color:#fff;padding:8px}td{padding:7px 8px;border-bottom:1px solid #e5e7eb}</style></head><body><h2>${schoolInfo.nom||"École"} — Registre des ${nomPiece.toLowerCase()}s</h2><p style="text-align:center">${filtreClasse==="all"?"Toutes classes":filtreClasse} · Année ${annee}</p><table><tr><th>Matricule</th><th>Nom & Prénom</th><th>Classe</th><th>Dernière classe suivie</th><th>Date naissance</th><th>Lieu naissance</th></tr>${rows}</table><br/><button onclick="window.print()">🖨️ Imprimer la liste</button></body></html>`);
           w.document.close();
         }}>📋 Liste en lot</Btn>
       </div>
       <div style={{background:"#eaf4e0",border:"1px solid #86efac",borderRadius:8,padding:"9px 14px",fontSize:12,color:"#166534",marginBottom:14,display:"flex",alignItems:"center",gap:8}}>
         <span style={{fontSize:16}}>📜</span>
-        <span>Cliquez sur <strong>Imprimer</strong> pour générer {certificat ? "le certificat" : "l'attestation officielle"} de niveau de chaque élève.
-          La pièce indique sa <strong>dernière classe suivie</strong> : celle de l'année précédente, ou, pour un élève venu
-          d'une autre école, celle saisie sur sa fiche d'inscription.</span>
+        <span>{t(certificat ? "school.certificates.helpCertificate" : "school.certificates.helpAttestation")}{" "}
+          {t("school.certificates.helpContent")}</span>
       </div>
       {cE?<Chargement/>:elevesAtt.length===0?<Vide icone="📜" msg="Aucun élève pour cette sélection"/>
         :<Card><div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="2">
@@ -82,7 +107,7 @@ export function AttestationsTab({
             <TD><span style={{fontSize:11,fontFamily:"monospace",background:"#e0ebf8",padding:"2px 5px",borderRadius:4,color:C.blue,fontWeight:700}}>{e.matricule||"—"}</span></TD>
             <TD bold>{e.nom} {e.prenom}</TD>
             <TD><Badge color="blue">{e.classe}</Badge></TD>
-            <TD>{derniereClassePourAttestation(e, annee) || (
+            <TD>{derniereClassePourAttestation(e, annee, optionsDerniere) || (
               <span title="Inconnue : pas d'année clôturée pour cet élève, ni de classe saisie à son inscription. La ligne ne sera pas imprimée."
                 style={{color:"#94a3b8"}}>—</span>
             )}</TD>
@@ -93,10 +118,14 @@ export function AttestationsTab({
               notesPrecedentes,
               // Les matières de SA classe, comme le bulletin : une moyenne
               // calculée sur le catalogue complet ne correspondrait plus.
+              // `matieresForClasse` : celles de la classe de l'année imprimée
+              // (la 9ème d'un élève aujourd'hui en 10ème).
               matieres: matieresForClasse ? matieresForClasse(e.classe) : [],
+              matieresForClasse,
               periodes,
               maxNote,
               eleves,
+              modele,
             })}>🖨️ Imprimer</Btn></TD>
           </TR>)}</tbody>
         </table></div></Card>}

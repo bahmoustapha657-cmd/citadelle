@@ -1,4 +1,6 @@
-// Moyenne annuelle imprimée sur l'attestation.
+// Résultats imprimés sur l'attestation : moyenne générale de chaque période
+// (trimestres, semestres ou mois, selon le modèle d'évaluation de l'école)
+// et moyenne annuelle.
 //
 // On réutilise EXACTEMENT le pipeline du bulletin de fin d'année : notes
 // annuelles synthétiques (moyenne des périodes, matière par matière) puis
@@ -10,6 +12,7 @@ import { anneePrecedente } from "../../constants.js";
 import { getGeneralAverage, matieresNotees } from "../../note-utils.js";
 import { classePourAnnee } from "../../components/admin/cloture-annee-utils.js";
 import { buildBulletinNotesAnnuelles } from "../bulletins/annual-notes.js";
+import { getMoyennesPeriodes } from "../bulletins/bulletin-helpers.js";
 
 // Renvoie la moyenne annuelle (nombre) ou null quand elle n'a pas de sens :
 // données manquantes, ou élève sans aucune note sur l'année.
@@ -45,35 +48,60 @@ export function formatMoyenneAnnuelle(moyenne, maxNote = 20) {
 // historiques de ce module.
 export { anneePrecedente };
 
-// Moyenne à IMPRIMER, avec son année.
+// Résultats à IMPRIMER, pour UNE année : { annee, classe, periodes:
+// [{ periode, moy }], annuelle } — ou null quand il n'y a rien à montrer.
 //
-// À la rentrée, l'année en cours n'a encore aucune note : l'attestation
-// sortait alors sans moyenne, au moment précis où les familles en réclament une
-// (dossier d'inscription ailleurs, bourse, concours). On retombe donc sur
-// l'ANNÉE ÉCOULÉE — c'est la dernière moyenne réellement acquise, et le
-// document imprime l'année à laquelle elle se rapporte, jamais un chiffre
-// orphelin qu'on croirait de l'année en cours.
+// L'année est celle de la DERNIÈRE CLASSE SUIVIE (`derniere`, cf.
+// derniere-classe.js) : la pièce annonce « 9ème A (2025-2026) », ses chiffres
+// sont ceux de la 9ème A en 2025-2026 — jamais une moyenne de 10ème entamée,
+// qui la contredirait.
 //
-// L'année en cours reste prioritaire dès qu'elle porte une seule note : une
-// moyenne de première période vaut mieux qu'une moyenne périmée.
-// `eleves` (facultatif) : les élèves de la section, pour juger les matières
-// notées dans la classe de chaque année.
-export function getMoyenneAttestation({
-  eleve, matieres = [], periodes = [], niveau = "", annee = "",
+// Classe inconnue ou sans année (élève venu d'ailleurs) : l'année qu'il suit
+// (`anneeEnCours`, celle du départ pour un élève parti), sinon la précédente.
+//
+// Chaque période est calculée comme au bulletin (getMoyennesPeriodes, les
+// matières comptées par la classe), la moyenne annuelle comme au bulletin de
+// fin d'année. Celle-ci n'est imprimée que sur une année ACHEVÉE, ou dont
+// toutes les périodes sont notées : en cours d'année, la règle du bulletin
+// (périodes vides comptées 0) annoncerait une moyenne au rabais.
+//
+// Seules les notes de l'année de l'écran (`notes`) et de la précédente
+// (`notesPrecedentes`) sont chargées : une autre année n'imprime rien.
+// `matieresForClasse` (facultatif) : les matières de la classe de CETTE
+// année-là, à défaut `matieres`. `eleves` (facultatif) : les élèves de la
+// section, pour juger les matières notées dans la classe.
+export function getResultatsAttestation({
+  eleve, matieres = [], matieresForClasse = null, periodes = [], niveau = "",
+  annee = "", anneeEnCours = annee, derniere = null,
   notes = [], notesPrecedentes = [], eleves = null,
 } = {}) {
-  const commun = { eleve, matieres, periodes, niveau };
-  const camaradesEn = (an) => {
-    if (!eleves) return null;
-    const classe = classePourAnnee(eleve, an);
-    return eleves.filter((e) => classePourAnnee(e, an) === classe);
+  if (!eleve?._id || !periodes.length) return null;
+  const notesDe = (an) => {
+    if (!an) return [];
+    if (an === annee) return notes;
+    return an === anneePrecedente(annee) ? notesPrecedentes : [];
   };
 
-  const courante = getMoyenneAnnuelleEleve({ ...commun, notes, camarades: camaradesEn(annee) });
-  if (courante != null) return { moyenne: courante, annee };
+  const resultatsDe = (an, { classe: classeConnue = "", achevee = false } = {}) => {
+    const notesAn = notesDe(an);
+    if (!notesAn.length) return null;
+    const classe = classeConnue || classePourAnnee(eleve, an);
+    const eleveAn = { ...eleve, classe };
+    const propres = matieresForClasse ? matieresForClasse(classe) : null;
+    const mats = propres && propres.length ? propres : matieres;
+    if (!mats.length) return null;
+    const camarades = eleves ? eleves.filter((e) => classePourAnnee(e, an) === classe) : null;
 
-  const precedente = getMoyenneAnnuelleEleve({ ...commun, notes: notesPrecedentes, camarades: camaradesEn(anneePrecedente(annee)) });
-  if (precedente != null) return { moyenne: precedente, annee: anneePrecedente(annee) };
+    const parPeriode = getMoyennesPeriodes(eleveAn, notesAn, mats, classe, niveau, periodes, camarades);
+    if (!parPeriode.some((p) => p.moy != null)) return null;
+    const complete = achevee || parPeriode.every((p) => p.moy != null);
+    const annuelle = complete
+      ? getMoyenneAnnuelleEleve({ eleve: eleveAn, notes: notesAn, matieres: mats, periodes, niveau, camarades })
+      : null;
+    return { annee: an, classe, periodes: parPeriode, annuelle };
+  };
 
-  return { moyenne: null, annee: "" };
+  if (derniere?.annee) return resultatsDe(derniere.annee, { classe: derniere.classe, achevee: true });
+  return resultatsDe(anneeEnCours)
+    || resultatsDe(anneePrecedente(anneeEnCours), { achevee: true });
 }

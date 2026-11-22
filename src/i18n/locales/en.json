@@ -2125,7 +2125,15 @@
       "issued": "Issued to serve and assert as appropriate",
       "titleCertificate": "Level certificate",
       "numberCertificate": "Certificate No.",
-      "lastClass": "Last class attended"
+      "lastClass": "Last class attended",
+      "results": "Results for the {{annee}} school year",
+      "periods": {
+        "T1": "1st term",
+        "T2": "2nd term",
+        "T3": "3rd term",
+        "S1": "1st semester",
+        "S2": "2nd semester"
+      }
     },
     "card": {
       "title": "Student ID card",
@@ -2437,7 +2445,13 @@
       "title": "Certificates",
       "titlePrimary": "Level certificates",
       "generate": "Generate",
-      "print": "Print"
+      "print": "Print",
+      "helpAttestation": "Click Print to generate each student's official level attestation.",
+      "helpCertificate": "Click Print to generate each student's level certificate.",
+      "helpContent": "The document shows the last class attended — last year's class; for a student who has left, the class of the last year completed before leaving; for a student from another school, the class entered at enrolment — and that year's average for each period, with the annual average.",
+      "model": "Template",
+      "modelDiploma": "Diploma (ornate frame)",
+      "modelPlain": "Plain"
     },
     "bulletins": {
       "title": "Report cards",
