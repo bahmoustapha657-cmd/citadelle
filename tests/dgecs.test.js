@@ -8,6 +8,7 @@ import { readFileSync } from "node:fs";
 import {
   PERIODE_ANNEE, candidatsExamen, dateLisible, elevesDeClasse, estRedoublant, ficheNotesDgecs, formatNoteDgecs,
   matriculesEnDouble, niveauDeClasse, nomDgecs, normaliserMatricule, ongletDgecsOuvert, statistiquesRentree,
+  URL_DGECS, lienDgecsOuvert,
 } from "../src/dgecs.js";
 import { ongletEcoleOuvert } from "../src/espace-enseignant.js";
 import { buildFicheNotesDgecsHTML, buildStatistiquesRentreeHTML, buildCandidatsExamenHTML } from "../src/reports/dgecs-print.js";
@@ -29,6 +30,24 @@ test("l'onglet DGECS : système guinéen, primaire au lycée, jamais pour un ens
   assert.equal(ongletDgecsOuvert({ systemeScolaire: "francophone" }, "primaire"), false);
   assert.equal(ongletDgecsOuvert({ typeEspace: "enseignant" }, "primaire"), false);
   assert.equal(ongletEcoleOuvert({ typeEspace: "enseignant" }, "dgecs"), false);
+});
+
+test("lien direct vers DGECS : chefs de section et Direction d'une école guinéenne", () => {
+  assert.equal(URL_DGECS, "https://dgecsecoles.com/");
+  const chefPrimaire = { role: "primaire", modules: ["primaire", "calendrier", "examens"] };
+  const chefCollege = { role: "college", modules: ["secondaire", "calendrier"] };
+  const direction = { role: "direction", modules: ["accueil", "compta", "primaire", "secondaire"] };
+  // Poste flexible : un chef de section sous un autre nom de rôle.
+  const poste = { role: "censeur", modules: ["secondaire"] };
+  for (const compte of [chefPrimaire, chefCollege, direction, poste]) assert.equal(lienDgecsOuvert(PUBLIQUE, compte), true, compte.role);
+  assert.equal(lienDgecsOuvert({ statutEtablissement: "prive" }, chefCollege), true);
+  // Ni le comptable (son lien est dans « Depuis DGECS »), ni le surveillant.
+  assert.equal(lienDgecsOuvert(PUBLIQUE, { role: "comptable", modules: ["compta"] }), false);
+  assert.equal(lienDgecsOuvert(PUBLIQUE, { role: "surveillant", modules: ["primaire", "secondaire"] }), false);
+  // Hors système guinéen, ou espace d'un enseignant seul : pas de lien.
+  assert.equal(lienDgecsOuvert({ systemeScolaire: "francophone" }, chefPrimaire), false);
+  assert.equal(lienDgecsOuvert({ typeEspace: "enseignant" }, chefPrimaire), false);
+  assert.equal(lienDgecsOuvert(PUBLIQUE), false);
 });
 
 test("matricule, nom et note au format de la plateforme", () => {
