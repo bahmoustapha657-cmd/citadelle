@@ -35,6 +35,23 @@ test("cadre guilloché : micro-texte et dimensions de la feuille", () => {
   assert.match(paysage, /ÉCOLE · 2026-2027/);
 });
 
+test("cadre guilloché continu : mêmes ondes en tracés, sans motif, ni tracé hors de la bande", () => {
+  const motif = cadreGuilloche({ largeur: 297, hauteur: 210, marge: 5, bande: 2.4 });
+  const continu = cadreGuilloche({ largeur: 297, hauteur: 210, marge: 5, bande: 2.4, continu: true });
+  assert.match(motif, /<pattern id="orn-gui-h"/);
+  assert.ok(!continu.includes("<pattern") && !continu.includes("url(#orn-gui"));
+  // Trois ondes sur chacun des quatre côtés.
+  const ondes = continu.match(/<path d="M[\d.]+ [\d.]+(L[\d.-]+ [\d.-]+)+"\/>/g) || [];
+  assert.equal(ondes.length, 12);
+  // Tous les points restent dans les bandes (entre 5 et 7,4 mm du bord).
+  const points = ondes.join("").matchAll(/[ML]([\d.-]+) ([\d.-]+)/g);
+  for (const [, x, y] of points) {
+    const dx = Math.min(Number(x) - 5, 292 - Number(x));
+    const dy = Math.min(Number(y) - 5, 205 - Number(y));
+    assert.ok(Math.min(dx, dy) >= -0.01 && Math.min(dx, dy) <= 2.41, `point ${x} ${y}`);
+  }
+});
+
 test("ajustement à la page : vise le sélecteur et la hauteur de la feuille", () => {
   const script = ajusterPagesScript(".affiche", 210);
   assert.match(script, /"\.affiche \.ajustable"/);

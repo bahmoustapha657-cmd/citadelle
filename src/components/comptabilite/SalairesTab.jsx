@@ -11,6 +11,7 @@ import { PrimaireTable } from "./salaires/PrimaireTable";
 import { PersonnelTable } from "./salaires/PersonnelTable";
 import { SalaireModale } from "./salaires/SalaireModale";
 import { BonModale } from "./salaires/BonModale";
+import { BulletinsAnnuelsModale } from "./salaires/BulletinsAnnuelsModale";
 
 export function SalairesTab({
   // sous-onglet
@@ -78,6 +79,8 @@ export function SalairesTab({
   avec5eme,
   basculerCinquiemeSemaine,
   imprimerSalaires,
+  fichesBulletinsAnnuels,
+  imprimerBulletinsAnnuels,
   enreg,
   saveSalaire,
 }) {
@@ -103,7 +106,10 @@ export function SalairesTab({
         avec5eme={avec5eme} basculerCinquiemeSemaine={basculerCinquiemeSemaine} nbFichesSec={salairesSec.length}
         imprimerSalaires={imprimerSalaires} setForm={setForm} setModal={setModal} moisModale={moisModale}
         groupesPaie={groupesPaie}
+        ouvrirBulletinsAnnuels={fichesBulletinsAnnuels ? () => setModal("bulletins_annuels") : null}
       />
+      {modal==="bulletins_annuels"&&fichesBulletinsAnnuels&&
+        <BulletinsAnnuelsModale calculerFiches={fichesBulletinsAnnuels} imprimer={imprimerBulletinsAnnuels} fermer={()=>setModal(null)}/>}
 
       {/* ── SOUS-ONGLET BONS ── */}
       {sousTabSal==="bons"&&

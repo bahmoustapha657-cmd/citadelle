@@ -2,7 +2,7 @@
 // Regroupe l'état dérivé (filtrage par mois/section, totaux) et les actions
 // (génération auto, application des bons, impression) du domaine paie.
 
-import { imprimerEtatsSalaires } from "../../reports";
+import { fichesBulletinsPaie, imprimerBulletinsPaie, imprimerEtatsSalaires } from "../../reports";
 import i18n from "../../i18n";
 import { libelleMois } from "../../i18n/libelles";
 import { appliquerCinquiemeSemaine, autoGenererSalairesAction, genererSalairesPourMois } from "./salary-actions";
@@ -28,6 +28,9 @@ export function useComptaSalaires({
   ensCollege,
   ensLycee,
   ensPrimaire,
+  // Maternelle : déjà dans ensPrimaire (groupe de paie « Primaire ») ; sert
+  // seulement à reconnaître ses enseignants sur les bulletins annuels.
+  ensPrescolaire = [],
   personnel,
   emploisCollege,
   emploisLycee,
@@ -139,6 +142,21 @@ export function useComptaSalaires({
     });
   };
 
+  // Bulletins de paie annuels : un feuillet par enseignant pour l'année,
+  // imprimé une fois et rempli à la main (src/reports/bulletins-paie-annuels.js).
+  // Seuls les éléments fixes viennent d'ici : fiches enseignants et emplois du temps.
+  const fichesBulletinsAnnuels = () => fichesBulletinsPaie({
+    ensCollege, ensLycee, ensPrimaire, ensPrescolaire, emploisCollege, emploisLycee, primeDefaut,
+    ordreNoms: schoolInfo?.triEleves,
+  });
+  const imprimerBulletinsAnnuels = (fiches, { couverture = true, totalFeuillets = 0 } = {}) => {
+    const ok = imprimerBulletinsPaie({
+      fiches, schoolInfo, annee: anneeConsultee || annee, mois: moisSalaire, couverture, totalFeuillets,
+    });
+    if (!ok) toast(i18n.t("accounting.payBook.popupBlocked"), "error");
+    return ok;
+  };
+
   return {
     moisLabel,
     moisModale,
@@ -161,5 +179,7 @@ export function useComptaSalaires({
     totNetPers,
     autoGenererSalaires,
     imprimerSalaires,
+    fichesBulletinsAnnuels,
+    imprimerBulletinsAnnuels,
   };
 }

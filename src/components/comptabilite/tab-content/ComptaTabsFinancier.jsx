@@ -172,6 +172,8 @@ export function ComptaTabsFinancier({ c, readOnly, annee }) {
         avec5eme={sd.avec5eme}
         basculerCinquiemeSemaine={sd.basculerCinquiemeSemaine}
         imprimerSalaires={sd.imprimerSalaires}
+        fichesBulletinsAnnuels={sd.fichesBulletinsAnnuels}
+        imprimerBulletinsAnnuels={sd.imprimerBulletinsAnnuels}
         enreg={c.enreg}
         saveSalaire={c.saveSalaire}
       />}

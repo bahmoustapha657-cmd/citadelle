@@ -13,6 +13,7 @@ export function SalairesToolbar({
   autoGenererSalaires, appliquerBons, appliquerAbsences, imprimerSalaires, setForm, setModal, moisModale,
   avec5eme = false, basculerCinquiemeSemaine, nbFichesSec = 0,
   groupesPaie = { secondaire: true, primaire: true },
+  ouvrirBulletinsAnnuels = null,
 }) {
   const { t } = useTranslation();
   // Section proposée à l'ajout : une école sans secondaire part sur Primaire.
@@ -47,6 +48,7 @@ export function SalairesToolbar({
         {canCreate&&appliquerAbsences&&<Btn v="amber" onClick={appliquerAbsences} title={t("accounting.sal.applyAbsencesHint")}>✔ {t("accounting.sal.applyAbsences")}</Btn>}
         {canCreate&&<Btn onClick={()=>{setForm({section:sectionDefaut,mois:moisModale,nonExecute:0,cinqSem:0,bon:0,revision:0});setModal("add_s");}}>+ {t("common.add")}</Btn>}
         <Btn v="vert" onClick={imprimerSalaires}>🖨️ {t("accounting.printSalaries")}</Btn>
+        {ouvrirBulletinsAnnuels&&<Btn v="ghost" onClick={ouvrirBulletinsAnnuels} title={t("accounting.payBook.buttonHint")}>📘 {t("accounting.payBook.button")}</Btn>}
       </>}
       {/* Payé à l'heure : la 5ᵉ semaine ne concerne que le secondaire. */}
       {groupesPaie.secondaire&&(()=>{const j5=getFifthWeekDays(moisSel);return j5.length>0&&(
