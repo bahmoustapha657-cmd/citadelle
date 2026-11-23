@@ -343,7 +343,7 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   // (génération auto, application des bons, impression). Voir useComptaSalaires.
   const salairesDomaine = useComptaSalaires({
     salaires, bons, presences, moisSel, moisSalaire,
-    ensCollege, ensLycee, ensPrimaire: ensPaiePrimaire, personnel,
+    ensCollege, ensLycee, ensPrimaire: ensPaiePrimaire, ensPrescolaire, personnel,
     emploisCollege, emploisLycee, engCollege, engLycee,
     primeDefaut, annee: anneeEcriture, anneeConsultee, schoolInfo,
     modS, ajS, supS, readOnly, toast, logAction,

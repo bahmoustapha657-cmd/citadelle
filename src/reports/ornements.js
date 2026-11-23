@@ -70,10 +70,36 @@ function motifGuilloche(id, periode, bande, rotation) {
     <g fill="none" stroke="var(--c1)" stroke-width=".13">${ondes}</g></pattern>`;
 }
 
+// Les mêmes trois ondes, mais en tracés continus le long des quatre côtés.
+// Même dessin que le motif, beaucoup plus léger à l'impression : Chrome
+// découpe un <pattern> en centaines de tuiles dans le PDF (≈ 2,6 Mo par
+// page de registre, contre ≈ 0,1 Mo ici) — ce qui compte pour une brochure
+// de dizaines de feuillets.
+function bandesContinues(x0, y0, x1, y1, b, periode) {
+  const a = b * 0.36;
+  const parPeriode = 24;
+  const ligneOnde = (longueur, point, phase) => {
+    const n = Math.ceil((longueur / periode) * parPeriode);
+    return Array.from({ length: n + 1 }, (_, i) => {
+      const t = (i * longueur) / n;
+      const [x, y] = point(t, a * Math.sin((2 * Math.PI * t) / periode + phase));
+      return `${i ? "L" : "M"}${f(x)} ${f(y)}`;
+    }).join("");
+  };
+  const chemins = [0, (2 * Math.PI) / 3, (4 * Math.PI) / 3].flatMap((p) => [
+    ligneOnde(x1 - x0, (t, d) => [x0 + t, y0 + b / 2 + d], p),
+    ligneOnde(x1 - x0, (t, d) => [x0 + t, y1 - b / 2 + d], p),
+    ligneOnde(y1 - y0, (t, d) => [x0 + b / 2 - d, y0 + t], p),
+    ligneOnde(y1 - y0, (t, d) => [x1 - b / 2 - d, y0 + t], p),
+  ]);
+  return `<g fill="none" stroke="var(--c1)" stroke-width=".13">${chemins.map((d) => `<path d="${d}"/>`).join("")}</g>`;
+}
+
 // Cadre de page (mm) : filet extérieur à la couleur de l'école, bande
 // guillochée, micro-texte de sécurité, filet intérieur doré, médaillons
-// d'angle. `microTexte` est déjà échappé.
-export function cadreGuilloche({ largeur = 210, hauteur = 297, marge = 6, bande = 2.8, microTexte = "" } = {}) {
+// d'angle. `microTexte` est déjà échappé. `continu` : bandes en tracés
+// continus (voir bandesContinues), pour les documents de nombreuses pages.
+export function cadreGuilloche({ largeur = 210, hauteur = 297, marge = 6, bande = 2.8, microTexte = "", continu = false } = {}) {
   const x0 = marge, y0 = marge, x1 = largeur - marge, y1 = hauteur - marge;
   const b = bande;
   // Micro-texte : une ligne courant le long du cadre, juste à l'intérieur de
@@ -90,11 +116,11 @@ export function cadreGuilloche({ largeur = 210, hauteur = 297, marge = 6, bande 
       <rect x="${-b / 2 - .5}" y="${-b / 2 - .5}" width="${b + 1}" height="${b + 1}" fill="#fff" stroke="var(--c1)" stroke-width=".35"/>
       <path d="M0 ${-b / 2 + .2}L${b / 2 - .2} 0L0 ${b / 2 - .2}L${-b / 2 + .2} 0Z" fill="${OR}"/></g>`;
   return `<svg class="cadre" viewBox="0 0 ${largeur} ${hauteur}" preserveAspectRatio="none" aria-hidden="true">
-    <defs>${motifGuilloche("orn-gui-h", 4.2, b, 0)}${motifGuilloche("orn-gui-v", 4.2, b, 90)}</defs>
+    ${continu ? bandesContinues(x0, y0, x1, y1, b, 4.2) : `<defs>${motifGuilloche("orn-gui-h", 4.2, b, 0)}${motifGuilloche("orn-gui-v", 4.2, b, 90)}</defs>
     <rect x="${x0}" y="${y0}" width="${x1 - x0}" height="${b}" fill="url(#orn-gui-h)"/>
     <rect x="${x0}" y="${y1 - b}" width="${x1 - x0}" height="${b}" fill="url(#orn-gui-h)"/>
     <rect x="${x0}" y="${y0}" width="${b}" height="${y1 - y0}" fill="url(#orn-gui-v)"/>
-    <rect x="${x1 - b}" y="${y0}" width="${b}" height="${y1 - y0}" fill="url(#orn-gui-v)"/>
+    <rect x="${x1 - b}" y="${y0}" width="${b}" height="${y1 - y0}" fill="url(#orn-gui-v)"/>`}
     <rect x="${x0 - .5}" y="${y0 - .5}" width="${x1 - x0 + 1}" height="${y1 - y0 + 1}" fill="none" stroke="var(--c1)" stroke-width=".6"/>
     <rect x="${x0 + b}" y="${y0 + b}" width="${x1 - x0 - 2 * b}" height="${y1 - y0 - 2 * b}" fill="none" stroke="var(--c1)" stroke-width=".2"/>
     ${texte ? `<path id="orn-micro" d="${chemin}" fill="none"/><text font-family="Arial,Helvetica,sans-serif" font-size="1.25" letter-spacing=".12" fill="var(--c1)" fill-opacity=".75"><textPath href="#orn-micro">${texte}</textPath></text>` : ""}
