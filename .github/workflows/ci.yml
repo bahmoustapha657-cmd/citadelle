@@ -329,6 +329,67 @@ jobs:
           rollback;
           SQL
 
+      # Un élève n'est JAMAIS refusé par la base (migration 20261123111904) :
+      # une inscription hors ligne refusée à la synchro disparaissait avec ses
+      # encaissements. Doublon possible → signalé ; code élève pris → numéro
+      # suivant. Données jetables, annulées à la fin (rollback).
+      - name: Contrôler qu'aucune inscription n'est refusée
+        env:
+          LOCALE: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        run: |
+          psql "$LOCALE" -v ON_ERROR_STOP=1 -At <<'SQL'
+          begin;
+          do $$
+          declare
+            ecole uuid := gen_random_uuid();
+            a uuid := gen_random_uuid();
+            b uuid := gen_random_uuid();
+            c uuid := gen_random_uuid();
+            d uuid := gen_random_uuid();
+            ligne eleves%rowtype;
+          begin
+            insert into ecoles (id, code, nom) values (ecole, 'ci-jamais-refuse', 'CI');
+            insert into eleves (id, ecole_id, section, classe, nom, prenom, filiation, matricule, ien, extra) values
+              (a, ecole, 'primaire', '2ème Année A', 'ESSAI', 'AMINATA', 'Père : Paul / Mère : Marie', 'P26/001', 'GN1', '{}');
+            -- Même identité, mêmes codes, sans date de naissance : enregistré quand même.
+            insert into eleves (id, ecole_id, section, classe, nom, prenom, filiation, matricule, ien, extra) values
+              (b, ecole, 'primaire', '2ème Année A', 'Essaï', 'Aminata', 'Paul / Marie', 'P26/001', 'GN1', '{"mens": {"Oct": "Payé"}}');
+            select * into ligne from eleves where id = b;
+            if ligne.matricule is distinct from 'P26/002' then
+              raise exception 'Code élève pris : % (attendu P26/002)', ligne.matricule;
+            end if;
+            if jsonb_array_length(ligne.extra -> 'doublonPossible' -> 'signaux') <> 3 then
+              raise exception 'Signalement attendu (identité, code, matricule) : %', ligne.extra;
+            end if;
+            if ligne.extra -> 'mens' ->> 'Oct' is distinct from 'Payé' then
+              raise exception 'Le reste de la fiche a été perdu : %', ligne.extra;
+            end if;
+            if not exists (select 1 from historique where ecole_id = ecole
+                           and extra ->> 'action' = 'Doublon possible enregistré') then
+              raise exception 'Doublon possible : pas de trace à l''historique';
+            end if;
+            -- Numéro plus long que la largeur : jamais tronqué.
+            insert into eleves (id, ecole_id, section, classe, nom, matricule) values
+              (c, ecole, 'primaire', '1ère Année A', 'C', 'P26/999'),
+              (d, ecole, 'primaire', '1ère Année A', 'D', 'P26/999');
+            if (select matricule from eleves where id = d) is distinct from 'P26/1000' then
+              raise exception 'Numéro suivant de P26/999 : %', (select matricule from eleves where id = d);
+            end if;
+            -- Modification vers un code pris : l'ancien code reste.
+            update eleves set matricule = 'P26/001' where id = b;
+            if (select matricule from eleves where id = b) is distinct from 'P26/002' then
+              raise exception 'Modification vers un code pris : %', (select matricule from eleves where id = b);
+            end if;
+            -- Identité corrigée : le signalement tombe.
+            update eleves set prenom = 'AMINA', ien = null where id = b;
+            if (select extra ? 'doublonPossible' from eleves where id = b) then
+              raise exception 'Signalement resté après correction';
+            end if;
+            raise notice 'Aucune inscription refusée : OK';
+          end $$;
+          rollback;
+          SQL
+
   # Applique à la PRODUCTION les migrations pas encore passées, AVANT le
   # front : le nouveau front trouve toujours la base dont il a besoin.
   # Règle : une migration reste compatible avec le front encore en ligne
