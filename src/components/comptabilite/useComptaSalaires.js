@@ -142,11 +142,11 @@ export function useComptaSalaires({
     });
   };
 
-  // Bulletins de paie annuels : un feuillet par enseignant pour l'année,
+  // Bulletins de paie annuels : un feuillet pour l'année par personne de l'état de salaire,
   // imprimé une fois et rempli à la main (src/reports/bulletins-paie-annuels.js).
-  // Seuls les éléments fixes viennent d'ici : fiches enseignants et emplois du temps.
+  // Seuls les éléments fixes viennent d'ici : fiches du personnel et emplois du temps.
   const fichesBulletinsAnnuels = () => fichesBulletinsPaie({
-    ensCollege, ensLycee, ensPrimaire, ensPrescolaire, emploisCollege, emploisLycee, primeDefaut,
+    ensCollege, ensLycee, ensPrimaire, ensPrescolaire, personnel, emploisCollege, emploisLycee, primeDefaut,
     ordreNoms: schoolInfo?.triEleves,
   });
   const imprimerBulletinsAnnuels = (fiches, { couverture = true, totalFeuillets = 0 } = {}) => {

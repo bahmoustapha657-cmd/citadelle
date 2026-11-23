@@ -1,6 +1,7 @@
 // Bulletins de paie annuels : registre d'émargement rempli à la main.
 // L'application n'imprime que les éléments fixes de l'année (identité,
-// heures de l'emploi du temps, taux, forfait) ; le reste reste en blanc.
+// heures de l'emploi du temps, taux, forfait, salaire du personnel) ; le reste
+// reste en blanc. Tous ceux qui ont une ligne sur l'état de salaire y figurent.
 import test from "node:test";
 import assert from "node:assert/strict";
 
@@ -34,8 +35,16 @@ const ensPrimaire = [
 ];
 const ensPrescolaire = [{ _id: "m1", prenom: "Kadi", nom: "PETITE", classeTitle: "Grande section", montantForfait: 900000 }];
 
+const personnel = [
+  { _id: "a1", prenom: "Fanta", nom: "GARDE", poste: "Gardien de nuit", categorie: "Sécurité", salaireBase: 600000, statut: "Actif" },
+  // Sans statut = actif, comme à la génération de l'état de salaire.
+  { _id: "a2", prenom: "Ibra", nom: "BUREAU", poste: "Secrétaire", categorie: "Administration", salaireBase: 800000 },
+  // Parti : plus de ligne sur l'état de salaire, donc pas de feuillet.
+  { _id: "a3", prenom: "Ancien", nom: "AGENT", poste: "Cuisinier", categorie: "Cuisine", salaireBase: 500000, statut: "Inactif" },
+];
+
 const fiches = fichesBulletinsPaie({
-  ensCollege, ensLycee, ensPrimaire, ensPrescolaire, emploisCollege, emploisLycee, primeDefaut: 0,
+  ensCollege, ensLycee, ensPrimaire, ensPrescolaire, personnel, emploisCollege, emploisLycee, primeDefaut: 0,
 });
 const parNom = (nom) => fiches.find((f) => f.nom === nom);
 
@@ -71,9 +80,20 @@ test("primaire et maternelle : forfait mensuel, maternelle reconnue, un seul feu
   assert.deepEqual(kadi[0].sections, ["prescolaire"]);
 });
 
-test("ordre du registre : secondaire, primaire, maternelle, NOM Prénom par défaut, numéros 1…n", () => {
-  assert.deepEqual(fiches.map((f) => f.nom), ["ESSAI Paul", "MODELE Marie", "VIDE Jean", "EXEMPLE Awa", "PETITE Kadi"]);
-  assert.deepEqual(fiches.map((f) => f.numero), [1, 2, 3, 4, 5]);
+test("personnel : un feuillet par agent actif, salaire de base imprimé, les partis exclus", () => {
+  const fanta = parNom("GARDE Fanta");
+  assert.equal(fanta.type, "personnel");
+  assert.deepEqual(fanta.sections, ["personnel"]);
+  assert.equal(fanta.poste, "Gardien de nuit");
+  assert.equal(fanta.salaireMois, 600000);
+  assert.ok(parNom("BUREAU Ibra"), "sans statut = actif");
+  assert.equal(parNom("AGENT Ancien"), undefined);
+});
+
+test("ordre du registre : secondaire, primaire, maternelle, personnel, NOM Prénom par défaut, numéros 1…n", () => {
+  assert.deepEqual(fiches.map((f) => f.nom),
+    ["ESSAI Paul", "MODELE Marie", "VIDE Jean", "EXEMPLE Awa", "PETITE Kadi", "BUREAU Ibra", "GARDE Fanta"]);
+  assert.deepEqual(fiches.map((f) => f.numero), [1, 2, 3, 4, 5, 6, 7]);
 });
 
 test("réglage « Prénom NOM » de l'école : écriture et ordre suivent", () => {
@@ -83,16 +103,16 @@ test("réglage « Prénom NOM » de l'école : écriture et ordre suivent", () =
   assert.equal(prenomDAbord.find((f) => f.nom === "Paul ESSAI").vhHebdo, 7);
 });
 
-const schoolInfo = { nom: "École Essai <b>", couleur1: "#123456", pays: "République de Guinée" };
+const schoolInfo = { nom: "École Essai <b>", couleur1: "#123456", pays: "République de Guinée", ire: "IRE de Essai", dpe: "DPE de Modèle" };
 const pagesDe = (html) => (html.match(/<section class="page bp/g) || []).length;
 
-test("document : couverture, sommaire, puis un feuillet A4 paysage par enseignant", () => {
+test("document : couverture, sommaire, puis un feuillet A4 paysage par personne", () => {
   const html = htmlBulletinsPaie({ fiches, schoolInfo, annee: "2026-2027", mois: MOIS });
   assert.match(html, /size:A4 landscape/);
   assert.equal(pagesDe(html), 1 + 1 + fiches.length);
   assert.match(html, /Registre des bulletins de paie/);
   assert.match(html, /Sommaire/);
-  assert.match(html, /Feuillet n° 3 \/ 5/);
+  assert.match(html, /Feuillet n° 3 \/ 7/);
   // Rien chargé d'Internet ; nom de l'école échappé.
   assert.doesNotMatch(html, /(src|href)="https?:|url\(https?:|@import/);
   // Cadre en tracés continus : pas de <pattern>, découpé en tuiles (PDF lourd).
@@ -105,6 +125,7 @@ test("feuillet du secondaire : éléments fixes imprimés, une ligne par mois av
   const html = htmlBulletinsPaie({ fiches: [parNom("ESSAI Paul")], schoolInfo, annee: "2026-2027", mois: MOIS, totalFeuillets: 5 });
   assert.equal(pagesDe(html), 1, "un seul feuillet : ni couverture ni sommaire");
   assert.match(html, /Feuillet n° 1 \/ 5/, "un feuillet réimprimé garde sa place dans le registre");
+  assert.match(html, /<div class="folio">Feuillet<b>1<\/b><\/div>/, "numéro bien visible en haut du feuillet");
   assert.match(html, /7ème A, 8ème B, 11ème SM/);
   // Heures prévues imprimées sur chacune des 9 lignes de mois.
   assert.equal((html.match(/<span class="pre">28 h<\/span>/g) || []).length, 9);
@@ -139,4 +160,33 @@ test("année plus longue : les lignes se resserrent au lieu de déborder", () =>
   assert.ok(rang * 12 <= 83.1 && rang >= 6, `ligne de ${rang} mm`);
   assert.match(html, /Septembre<small>2026<\/small>/);
   assert.match(html, /Août<small>2027<\/small>/);
+});
+
+test("feuillet du personnel : poste et salaire imprimés, signature de l'agent, pas d'heures", () => {
+  const html = htmlBulletinsPaie({ fiches: [parNom("GARDE Fanta")], schoolInfo, annee: "2026-2027", mois: MOIS });
+  assert.ok(html.includes("L'agent(e)"));
+  assert.match(html, /Poste occupé<\/span><b>Gardien de nuit<\/b>/);
+  assert.match(html, /Catégorie<\/span><b>Sécurité<\/b>/);
+  assert.equal((html.match(/<span class="pre">600\s000 GNF<\/span>/g) || []).length, 9);
+  assert.ok(html.includes("Signature de l'agent(e)"));
+  assert.ok(!html.includes("enseignant(e)"), "aucune mention d'enseignant sur le feuillet d'un agent");
+  assert.ok(!html.includes("5e semaine"));
+});
+
+test("couverture : en-tête officiel ligne par ligne (pays, devise, ministère, IRE, DPE), personnel compté", () => {
+  const html = htmlBulletinsPaie({ fiches, schoolInfo, annee: "2026-2027", mois: MOIS });
+  const couv = html.slice(html.indexOf('class="page bp couv"'), html.indexOf('class="page bp somm-page"'));
+  assert.match(couv, /<div class="rep">République de Guinée<\/div>\s*<div class="dev">/, "pays et devise chacun sur sa ligne");
+  assert.match(couv, /<div class="min">Ministère de l/);
+  assert.match(couv, /<div class="tut">IRE de Essai<\/div><div class="tut">DPE de Modèle<\/div>/);
+  assert.match(couv, /Personnel enseignant et non enseignant/);
+  assert.match(couv, /Personnel : <b>2<\/b>/);
+  // Chaque feuillet porte en haut le numéro auquel le sommaire renvoie.
+  assert.equal((html.match(/class="folio"/g) || []).length, fiches.length);
+  assert.match(html, /<td class="n">7<\/td><td class="nm">GARDE Fanta<\/td><td>Personnel<\/td><td>Gardien de nuit<\/td>/);
+});
+
+test("feuillet seul (registre d'une personne) : pas de folio", () => {
+  const html = htmlBulletinsPaie({ fiches: [parNom("GARDE Fanta")], schoolInfo, annee: "2026-2027", mois: MOIS });
+  assert.ok(!html.includes('class="folio"'));
 });
