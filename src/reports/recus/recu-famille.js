@@ -12,6 +12,7 @@ import { EDUGEST_SITE, printResetFor, tr } from "../print-helpers.js";
 import { blocsSignatures, cachetOuEspace } from "../signatures.js";
 import { enteteCompact } from "./recu-blocs.js";
 import { TICKET_STYLES, normaliserLargeur } from "./recu-ticket.js";
+import { tuteurFamille } from "../../fratrie.js";
 
 // Mois réglés en abrégé (« Oct, Nov, Déc ») ; un mois entamé porte ◐.
 const abrege = (mois) => String(mois).slice(0, 3);
@@ -31,11 +32,12 @@ export const totauxFamille = (enfants = []) => ({
   resteAPayer: enfants.reduce((s, x) => s + Number(x.resteAPayer || 0), 0),
 });
 
-// Tuteur et contact : ceux du premier enfant qui les renseigne.
-const foyer = (enfants) => {
-  const avec = (champ) => enfants.find((x) => String(x.eleve[champ] || "").trim())?.eleve[champ] || "—";
-  return { tuteur: avec("tuteur"), contact: avec("contactTuteur") };
-};
+// Tuteur : le nom le plus complet des fiches (« Mamadou Saliou Diallo »
+// plutôt que « Mamadou ») ; contact : celui du premier enfant qui le renseigne.
+const foyer = (enfants) => ({
+  tuteur: tuteurFamille(enfants.map((x) => x.eleve)) || "—",
+  contact: enfants.find((x) => String(x.eleve.contactTuteur || "").trim())?.eleve.contactTuteur || "—",
+});
 
 // Bloc A4 (demi-page). ctx : { schoolInfo, lf, enfants, moisAnnee, qr }.
 export const blocRecuFamille = (titre, ctx) => {

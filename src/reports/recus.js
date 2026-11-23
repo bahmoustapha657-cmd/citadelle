@@ -18,6 +18,7 @@ import { blocRecu } from "./recus/recu-blocs.js";
 import { RECU_AJUSTEMENT, RECU_STYLES } from "./recus/recus-styles.js";
 import { documentTicket, normaliserLargeur } from "./recus/recu-ticket.js";
 import { blocRecuFamille, documentTicketFamille, totauxFamille } from "./recus/recu-famille.js";
+import { tuteurFamille } from "../fratrie.js";
 import { qrSecuriseImgHtml, qrPayload } from "./qr.js";
 
 // `fraisAnnexes` : tarifs de la classe — { inscription, autre, revision,
@@ -137,7 +138,7 @@ export const imprimerRecuFamille = async (enfants = [], schoolInfo={}, moisAnnee
   // QR : les enfants (nom + classe) et le total versé par le foyer.
   const qr = await qrSecuriseImgHtml(qrPayload({
     EduGest: "Recu",
-    Tuteur: lignes[0]?.eleve?.tuteur,
+    Tuteur: tuteurFamille(lignes.map(({ eleve }) => eleve)),
     Eleve: lignes.map(({ eleve }) => `${eleve.nom||""} ${eleve.prenom||""} (${eleve.classe||""})`).join(", "),
     Total: `${totalGeneral} GNF`,
   // 100 px en A4 (84 sur le reçu individuel) : chaque enfant allonge le
