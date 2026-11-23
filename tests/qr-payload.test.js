@@ -40,7 +40,11 @@ test("les QR des documents réalistes restent peu denses (version ≤ 9, soit �
   for (const [nom, champs] of Object.entries(documents)) {
     const jeton = await encryptQrPayload(qrPayload(champs), "citadelle");
     const qr = QRCode.create(jeton, { errorCorrectionLevel: "M" });
-    assert.deepEqual(qr.segments.map((s) => s.mode.id), ["Alphanumeric"], `${nom} : un seul segment alphanumérique`);
+    // Jamais d'octets (8 bits par caractère). L'IV est aléatoire : un jeton
+    // qui finit par 7 chiffres ou plus prend un segment numérique, plus
+    // compact encore (cf. CI de la PR #302) — accepté.
+    const modes = qr.segments.map((s) => s.mode.id);
+    assert.ok(modes.every((m) => m === "Alphanumeric" || m === "Numeric"), `${nom} : segments ${modes.join(" + ")}`);
     assert.ok(qr.version <= 9, `${nom} : version ${qr.version} (${qr.modules.size} modules)`);
   }
 });
