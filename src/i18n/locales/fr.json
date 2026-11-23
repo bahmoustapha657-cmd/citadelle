@@ -829,7 +829,7 @@
     },
     "familyRcpt": {
       "title": "Reçu famille — {{guardian}}",
-      "intro": "Enfants rattachés à ce tuteur (même nom et même numéro, ou même filiation). Décochez ceux à ne pas faire figurer sur le reçu.",
+      "intro": "Enfants rattachés à ce tuteur : même nom et même numéro, même filiation, ou même numéro avec le nom du tuteur abrégé ou écrit autrement (« Mamadou » / « Mamadou Diallo »). Décochez ceux à ne pas faire figurer sur le reçu.",
       "upToDate": "à jour",
       "printOne": "Imprimer ({{count}} enfant)",
       "printMany": "Imprimer ({{count}} enfants)"

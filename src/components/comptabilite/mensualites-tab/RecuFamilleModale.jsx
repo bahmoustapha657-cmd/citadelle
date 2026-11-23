@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { C, fmt } from "../../../constants";
 import { Btn, Modale } from "../../ui";
 import { getEleveSolde } from "../../../mensualite-utils";
+import { tuteurFamille } from "../../../fratrie";
 import { FORMATS_RECU, getRecuFormat, setRecuFormat } from "./recu-format";
 import { imprimerRecuFamilleEleves } from "./recu-eleve";
 
@@ -10,7 +11,8 @@ import { imprimerRecuFamilleEleves } from "./recu-eleve";
 //  Reçu famille — un reçu pour plusieurs enfants d'un même tuteur
 // ══════════════════════════════════════════════════════════════
 // `fratrie` : l'élève cliqué puis ses frères et sœurs, toutes sections
-// confondues (cf. fratrie.js). Tous sont cochés ; le caissier décoche ceux
+// confondues : même tuteur, ou même numéro avec un nom de tuteur abrégé ou
+// mal orthographié (cf. fratrie.js). Tous sont cochés ; le caissier décoche ceux
 // que le parent ne règle pas aujourd'hui.
 export function RecuFamilleModale({ fratrie = [], moisAnnee, annee, tarifsClasses, schoolInfo, fermer }) {
   const { t } = useTranslation();
@@ -27,7 +29,7 @@ export function RecuFamilleModale({ fratrie = [], moisAnnee, annee, tarifsClasse
     setRecuFormat(format);
     imprimerRecuFamilleEleves({ eleves: choisis, tarifsClasses, moisAnnee, annee, schoolInfo, format });
   };
-  const tuteur = fratrie[0]?.tuteur || "—";
+  const tuteur = tuteurFamille(fratrie) || "—";
 
   return (
     <Modale titre={`👨‍👩‍👧 ${t("accounting.familyRcpt.title", { guardian: tuteur })}`} fermer={fermer}>
