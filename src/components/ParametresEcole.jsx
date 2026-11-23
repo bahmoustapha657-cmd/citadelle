@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { C } from "../constants";
 import { AffichageSettings } from "./AffichageSettings";
 import { MatriculeSettings } from "./MatriculeSettings";
@@ -17,6 +18,7 @@ import { useParametresEcole } from "./parametres/use-parametres-ecole";
 // Toute la logique (état partagé, sauvegarde, cycle de vie, uploads) vit
 // dans le hook useParametresEcole ; chaque onglet dans parametres/*Tab.jsx.
 function ParametresEcole({ utilisateurRole = "", onSchoolClosed = null, initialTab = null, onTabConsumed = null }) {
+  const { t } = useTranslation();
   const p = useParametresEcole({ utilisateurRole, onSchoolClosed, initialTab, onTabConsumed });
   const {
     schoolId, schoolInfo, toast,
@@ -129,7 +131,9 @@ function ParametresEcole({ utilisateurRole = "", onSchoolClosed = null, initialT
       </button>}
 
       <p style={{textAlign:"center",fontSize:11,color:"#9ca3af",marginTop:12}}>
-        Code école : <strong style={{color:C.blue}}>{schoolId}</strong> · Les modifications sont visibles immédiatement dans la sidebar et au prochain chargement.
+        Code école : <strong style={{color:C.blue}}>{schoolId}</strong>
+        {schoolInfo?.codeCourt && <> · {t("auth.schoolCodeShort")} : <strong style={{color:C.blue}}>{schoolInfo.codeCourt}</strong></>}
+        {" "}· Les modifications sont visibles immédiatement dans la sidebar et au prochain chargement.
       </p>
     </div>
   );

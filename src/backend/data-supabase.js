@@ -269,6 +269,9 @@ function ecoleVersInfo(data) {
     // secret retombait sur le NOM de l'école — un renommage rendait alors
     // illisibles tous les bulletins/reçus/fiches déjà imprimés.
     code: data.code,
+    // Code court (un mot du nom), accepté à la saisie en plus de `code` ;
+    // seulement affiché — tout le reste de l'app travaille avec `code`.
+    codeCourt: data.code_court || "",
     nom: data.nom, logo: data.logo, couleur1: data.couleur1, couleur2: data.couleur2,
     // La colonne `devise` porte la MAXIME de l'école (héritage Firebase, cf.
     // migration) ; la monnaie vit dans extra.monnaie. L'ancien mapping

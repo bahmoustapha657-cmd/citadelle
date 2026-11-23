@@ -118,6 +118,8 @@ EduGest est disponible en **Français / Anglais / Arabe** (avec support RTL auto
 3. Sélectionnez votre **école** (si plusieurs hébergées), choisissez le **rôle** (Direction au début), entrez **identifiant + mot de passe**.
 4. À la première connexion, EduGest vous demande de **changer votre mot de passe** (modale automatique).
 
+**Code court.** Une école au nom long peut avoir, en plus de son code d'origine (`groupe-scolaire-…`), un **code court** : un seul mot de son nom, attribué par EduGest. Les deux codes marchent partout où un code école est demandé (connexion, mot de passe oublié, rattachement d'un enseignant), sans tenir compte des majuscules ni des accents. Le code court s'affiche sous le nom de l'école à la connexion et en bas des Paramètres.
+
 ### 2.2 Guide de démarrage (DG/Admin)
 
 Une fois connecté en tant que DG ou Admin, un bouton flottant **🚀** apparaît en bas à gauche. Il ouvre un guide en 6 étapes :

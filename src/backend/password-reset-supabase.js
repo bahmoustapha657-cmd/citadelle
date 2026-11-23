@@ -5,12 +5,15 @@
 // Puis finalisation via le lien de récupération, ou via le code reçu.
 import { creerClientEphemere, getSupabase } from "../supabaseClient";
 import { analyserRetourRecovery, estErreurReseau, identiteCompte, messageErreurRecovery } from "./recovery-url";
+import { codeEcoleOrigine } from "./code-ecole-origine";
 
 // Déclenche la récupération. Réponse volontairement générique côté serveur.
+// Le code court d'une école est d'abord traduit en son code d'origine :
+// l'Edge Function cherche l'école par celui-ci.
 export async function demanderReinitialisation({ schoolId, identifiant }) {
   const sb = getSupabase();
   const { data, error } = await sb.functions.invoke("password-reset", {
-    body: { schoolId, identifiant },
+    body: { schoolId: await codeEcoleOrigine(schoolId), identifiant },
   });
   if (error) {
     // On reste neutre : pas de détail qui permettrait l'énumération.
@@ -26,7 +29,7 @@ export async function demanderReinitialisation({ schoolId, identifiant }) {
 export async function validerCodeReinitialisation({ schoolId, identifiant, code, nouveauMdp }) {
   const sb = getSupabase();
   const { data, error } = await sb.functions.invoke("password-reset", {
-    body: { action: "verifier_code", schoolId, identifiant, code, nouveauMdp },
+    body: { action: "verifier_code", schoolId: await codeEcoleOrigine(schoolId), identifiant, code, nouveauMdp },
   });
   if (error) return { ok: false, erreur: error.name === "FunctionsFetchError" ? "reseau" : "indisponible" };
   return data || { ok: false, erreur: "indisponible" };

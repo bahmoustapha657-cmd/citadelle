@@ -94,19 +94,27 @@ async function refuserSaisiesNonGardees(sb) {
 }
 
 // État public d'une école (avant connexion) via la RPC publique `etat_ecole`.
+// La saisie peut être le code d'origine de l'école OU son code court (un mot
+// de son nom) : `code` est toujours le code D'ORIGINE, le seul que la suite
+// utilise (e-mail de connexion, QR, chemins des fichiers) ; `codeCourt`, le
+// mot à montrer. Code inconnu ou réseau coupé : pas de `code`.
 export async function fetchEtatEcole(sid) {
   const sb = getSupabase();
   const { data, error } = await sb.rpc("etat_ecole", { p_code: sid });
   if (error || !data || !data.length) return { info: null, statut: "" };
   const e = data[0];
+  const code = e.code || undefined;
   // Espace enseignant fermé parce que ses classes ont rejoint une école
   // (rattachement) : son numéro et son mot de passe restent son accès.
-  if (e.rattache === true) return { info: null, statut: "", rattache: true, typeEspace: "enseignant" };
-  if (e.supprime === true) return { info: null, statut: "supprimee" };
-  if (e.actif === false) return { info: null, statut: "inactive" };
+  if (e.rattache === true) return { info: null, statut: "", rattache: true, typeEspace: "enseignant", code };
+  if (e.supprime === true) return { info: null, statut: "supprimee", code };
+  if (e.actif === false) return { info: null, statut: "inactive", code };
   return {
-    info: { nom: e.nom, logo: e.logo, couleur1: e.couleur1, couleur2: e.couleur2, code: e.code },
-    statut: "", typeEspace: e.type_espace || "ecole",
+    info: {
+      nom: e.nom, logo: e.logo, couleur1: e.couleur1, couleur2: e.couleur2, code: e.code,
+      codeCourt: e.code_court || "",
+    },
+    statut: "", typeEspace: e.type_espace || "ecole", code,
   };
 }
 
@@ -291,11 +299,15 @@ export async function ouvrirSessionParJeton(tokenHash, schoolCode) {
 // Connexion d'un utilisateur d'école. La saisie peut être l'identifiant
 // interne OU l'e-mail réel du compte (résolu via la RPC publique
 // login_pour_email — l'authentification reste l'e-mail synthétique).
-export async function ecoleLogin({ login, mdp, schoolId }) {
+export async function ecoleLogin({ login, mdp, schoolId: saisi }) {
   // École désactivée ou supprimée : la base refuse déjà tout accès à ses
   // comptes (ecole-hors-service.sql) — on le dit clairement plutôt que de
   // laisser croire à un mauvais mot de passe ou à un compte introuvable.
-  const { statut, rattache } = await fetchEtatEcole(schoolId);
+  const etat = await fetchEtatEcole(saisi);
+  const { statut, rattache } = etat;
+  // Code court saisi (« baobab ») : la connexion se fait avec le code
+  // d'origine de l'école — c'est lui qui est dans l'e-mail des comptes.
+  const schoolId = etat.code || saisi;
   // Espace enseignant fermé (ses classes ont rejoint une école) : sa
   // connexion l'emmène dans ses espaces encore ouverts.
   if (rattache) {

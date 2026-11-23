@@ -49,6 +49,7 @@
     "schoolCode": "Code école",
     "schoolCodePlaceholder": "Ex. : citadelle",
     "schoolCodeTeacherHint": "Enseignant indépendant : votre numéro de téléphone.",
+    "schoolCodeShort": "Code court",
     "username": "Identifiant ou e-mail",
     "usernamePlaceholder": "Identifiant, téléphone ou e-mail",
     "password": "Mot de passe",

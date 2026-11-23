@@ -6,12 +6,14 @@
 // rattachements_recus() / rattachement_apercu() (migration 20261118180200).
 import { getSupabase } from "../supabaseClient";
 import { invoke } from "./account-manage-supabase";
+import { codeEcoleOrigine } from "./code-ecole-origine";
 import i18n from "../i18n";
 
 // Enseignant : propose de rattacher les classes de l'espace ouvert à l'école
-// dont il saisit le code. Renvoie { demandeId, ecoleNom }.
-export const demanderRattachement = (codeEcole) =>
-  invoke({ action: "demander_rattachement", codeEcole }, i18n.t("rattachement.errRequest"));
+// dont il saisit le code — d'origine ou court ; l'Edge Function cherche
+// l'école par son code d'origine. Renvoie { demandeId, ecoleNom }.
+export const demanderRattachement = async (codeEcole) =>
+  invoke({ action: "demander_rattachement", codeEcole: await codeEcoleOrigine(codeEcole) }, i18n.t("rattachement.errRequest"));
 
 export const annulerRattachement = () =>
   invoke({ action: "annuler_rattachement" }, i18n.t("rattachement.errCancel"));
