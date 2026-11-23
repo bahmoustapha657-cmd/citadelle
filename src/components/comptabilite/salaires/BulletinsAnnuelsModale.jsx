@@ -3,8 +3,9 @@ import { useTranslation } from "react-i18next";
 import { Btn, Modale, Selec } from "../../ui";
 
 // Bulletins de paie annuels (registre d'émargement rempli à la main) : on
-// choisit les feuillets à imprimer — tous, une section, ou un seul enseignant
-// pour remplacer sa page dans la brochure — et la couverture avec sommaire.
+// choisit les feuillets à imprimer — tous, un groupe (secondaire, primaire et
+// maternelle, personnel), ou une seule personne pour remplacer sa page dans la
+// brochure — et la couverture avec sommaire.
 // Les feuillets gardent le numéro qu'ils ont dans le registre complet : un
 // feuillet réimprimé reprend sa place dans la brochure.
 const MAX_NOMS = 6;
@@ -17,14 +18,16 @@ export function BulletinsAnnuelsModale({ calculerFiches, imprimer, fermer }) {
   const fiches = useMemo(() => calculerFiches(), [calculerFiches]);
   const secondaire = fiches.filter((f) => f.type === "heures");
   const forfait = fiches.filter((f) => f.type === "forfait");
+  const agents = fiches.filter((f) => f.type === "personnel");
+  // Groupes proposés seulement s'il y en a au moins deux.
+  const groupes = [["secondaire", "secondary", secondaire], ["forfait", "forfait", forfait], ["personnel", "staff", agents]]
+    .filter(([, , liste]) => liste.length > 0);
   const [portee, setPortee] = useState("tous");
   const [idSeul, setIdSeul] = useState(() => String(fiches[0]?.id ?? ""));
   const [couverture, setCouverture] = useState(true);
 
   const choisies = portee === "un" ? fiches.filter((f) => String(f.id) === idSeul)
-    : portee === "secondaire" ? secondaire
-      : portee === "forfait" ? forfait
-        : fiches;
+    : groupes.find(([cle]) => cle === portee)?.[2] || fiches;
   const avecCouverture = couverture && choisies.length > 1;
   const sansEdt = choisies.filter((f) => f.type === "heures" && !(f.vhHebdo > 0)).map((f) => f.nom);
   const sansTaux = choisies.filter((f) => (f.type === "heures"
@@ -45,10 +48,9 @@ export function BulletinsAnnuelsModale({ calculerFiches, imprimer, fermer }) {
         : <>
           <Selec label={t("accounting.payBook.scope")} value={portee} onChange={(e) => setPortee(e.target.value)}>
             <option value="tous">{t("accounting.payBook.all", { n: fiches.length })}</option>
-            {secondaire.length > 0 && forfait.length > 0 && <>
-              <option value="secondaire">{t("accounting.payBook.secondary", { n: secondaire.length })}</option>
-              <option value="forfait">{t("accounting.payBook.forfait", { n: forfait.length })}</option>
-            </>}
+            {groupes.length > 1 && groupes.map(([cle, libelle, liste]) => (
+              <option key={cle} value={cle}>{t(`accounting.payBook.${libelle}`, { n: liste.length })}</option>
+            ))}
             <option value="un">{t("accounting.payBook.one")}</option>
           </Selec>
           {portee === "un" && <div style={{marginTop:10}}>

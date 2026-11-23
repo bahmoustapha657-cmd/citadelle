@@ -1570,20 +1570,21 @@
       "button": "Annual payslips",
       "buttonHint": "Payslips for the whole year, filled in by hand and signed every month",
       "title": "Annual payslips",
-      "intro": "One sheet per teacher for the whole school year: print them once, bind them into a booklet, fill them in by hand and have them signed at each payday.",
-      "fixed": "Already printed on each sheet: identity, classes, planned hours (timetable), hourly rate or monthly salary. If one of them changes during the year, reprint only that teacher's sheet.",
+      "intro": "One sheet for the whole school year per person on the payroll (teachers and staff): print them once, bind them into a booklet, fill them in by hand and have them signed at each payday.",
+      "fixed": "Already printed on each sheet: identity, classes, planned hours (timetable), hourly rate, monthly salary or position. If one of them changes during the year, reprint only that person's sheet.",
       "scope": "Sheets to print",
-      "all": "All teachers ({{n}})",
+      "all": "Everyone ({{n}})",
       "secondary": "Secondary ({{n}})",
       "forfait": "Primary and nursery ({{n}})",
-      "one": "A single teacher",
-      "teacher": "Teacher",
+      "one": "A single person",
+      "teacher": "Person",
       "cover": "Add the booklet's cover and contents page",
       "noSchedule": "No timetable (planned hours to be written by hand): {{noms}}",
       "noRate": "No rate or salary recorded: {{noms}}",
-      "none": "No teacher recorded yet.",
+      "none": "Nobody is on the payroll yet.",
       "print": "Print",
-      "popupBlocked": "The browser blocked the print window: allow pop-ups for this site."
+      "popupBlocked": "The browser blocked the print window: allow pop-ups for this site.",
+      "staff": "Administrative and support staff ({{n}})"
     }
   },
   "parent": {
@@ -2419,7 +2420,14 @@
       "sheetsCount": "Sheets: {{n}}",
       "summary": "Contents",
       "sheetNo": "Sheet",
-      "subjectOrClass": "Subject / class"
+      "subjectOrClass": "Subject, class or position",
+      "staffCard": "The staff member",
+      "category": "Category",
+      "post": "Position held",
+      "colSignatureStaff": "Staff member's signature",
+      "noteStaff": "The staff member's signature on a month's line is a receipt for the net amount paid. Any crossing-out or overwriting must be initialled by the accountant.",
+      "coverAllStaff": "Teaching and non-teaching staff",
+      "coverOtherStaff": "Administrative and support staff"
     }
   },
   "school": {

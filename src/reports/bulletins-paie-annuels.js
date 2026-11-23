@@ -1,13 +1,15 @@
 // ══════════════════════════════════════════════════════════════
 //  Bulletins de paie annuels — registre d'émargement à remplir à la main
 // ══════════════════════════════════════════════════════════════
-// Un feuillet A4 paysage par enseignant pour TOUTE l'année scolaire :
-// imprimé une fois, relié en brochure, rempli à la main par le comptable et
-// signé chaque mois par l'enseignant (sa signature vaut reçu du net payé).
+// Un feuillet A4 paysage pour TOUTE l'année scolaire par personne inscrite à
+// l'état de salaire (enseignants du secondaire, du primaire et de la
+// maternelle, personnel administratif et de service) : imprimé une fois,
+// relié en brochure, rempli à la main par le comptable et signé chaque mois
+// par l'intéressé (sa signature vaut reçu du net payé).
 //
 // L'application n'imprime que ce qui ne bouge pas de l'année : identité,
 // classes et volume horaire tirés de l'emploi du temps, taux horaire,
-// forfait du primaire. Ce qui change d'un mois à l'autre (5ᵉ semaine, heures
+// forfait du primaire, salaire du personnel. Ce qui change d'un mois à l'autre (5ᵉ semaine, heures
 // non faites, avances, retenues, net, dates, signatures) reste en blanc. Si
 // un élément fixe change en cours d'année, on réimprime ce seul feuillet.
 //
@@ -16,7 +18,7 @@
 // filets dorés, typographie à empattements ; rien n'est chargé d'Internet et
 // la page reste lisible en noir et blanc.
 import { TOUS_MOIS_LONGS, fmtN } from "../constants.js";
-import { libelleMois, libelleStatutEnseignant } from "../i18n/libelles.js";
+import { libelleCategoriePersonnel, libelleMois, libelleStatutEnseignant } from "../i18n/libelles.js";
 import { nomAffiche } from "../ordre-eleves.js";
 import {
   buildTeacherFullName,
@@ -43,10 +45,12 @@ const naturel = (a, b) => a.localeCompare(b, "fr", { numeric: true, sensitivity:
 // ── Données : ce qui est fixe pour l'année ──────────────────────
 // `ensPrimaire` peut contenir la maternelle (groupe de paie « Primaire ») :
 // `ensPrescolaire` sert alors seulement à reconnaître ses enseignants.
+// `personnel` : seuls les agents « Actif » ont une ligne sur l'état de
+// salaire, donc un feuillet.
 // `ordreNoms` : réglage Paramètres → Affichage (« NOM Prénom » par défaut),
 // qui fixe l'écriture des noms et l'ordre du registre.
 export function fichesBulletinsPaie({
-  ensCollege = [], ensLycee = [], ensPrimaire = [], ensPrescolaire = [],
+  ensCollege = [], ensLycee = [], ensPrimaire = [], ensPrescolaire = [], personnel = [],
   emploisCollege = [], emploisLycee = [], primeDefaut = 0, ordreNoms,
 } = {}) {
   // Le nom complet « Prénom NOM » sert aux rapprochements (emploi du temps,
@@ -124,12 +128,32 @@ export function fichesBulletinsPaie({
     ...ensPrimaire.filter((t) => idsMaternelle.has(t._id)),
   ], "prescolaire");
 
-  return [...heures, ...primaire, ...maternelle].map((f, i) => ({ ...f, numero: i + 1 }));
+  // Personnel administratif et de service : salaire mensuel fixe, comme à
+  // la génération de l'état de salaire (salaire de base de la fiche).
+  const vusPersonnel = new Set();
+  const agents = personnel.filter((p) => (p.statut || "Actif") === "Actif").flatMap((p) => {
+    const nom = `${p.prenom || ""} ${p.nom || ""}`.trim();
+    const cle = normalizeSalaryName(nom);
+    if (!cle || vusPersonnel.has(cle)) return [];
+    vusPersonnel.add(cle);
+    return [{
+      id: p._id || `personnel-${cle}`,
+      type: "personnel",
+      nom: ecrit(p, nom),
+      sections: ["personnel"],
+      poste: p.poste || "",
+      categorie: p.categorie || "",
+      salaireMois: Number(p.salaireBase || 0),
+    }];
+  }).sort(parNom);
+
+  return [...heures, ...primaire, ...maternelle, ...agents].map((f, i) => ({ ...f, numero: i + 1 }));
 }
 
 // ── Mise en forme ───────────────────────────────────────────────
-const libelleSections = (sections) =>
-  sections.map((s) => tr(`accounting.sections.${s}`)).join(k("and"));
+const libelleSection = (s) => (s === "personnel" ? tr("accounting.payGroup.staff") : tr(`accounting.sections.${s}`));
+const libelleSections = (sections) => sections.map(libelleSection).join(k("and"));
+const estAgent = (f) => f.type === "personnel";
 
 const gnf = (v) => (Number(v) > 0 ? k("amount", { montant: fmtN(v) }) : "");
 const heuresTxt = (v) => (Number(v) > 0 ? k("hours", { n: String(v).replace(".", ",") }) : "");
@@ -159,7 +183,13 @@ function tauxTexte(f) {
 
 function cartes(f, nbMois) {
   const statut = [libelleStatutEnseignant(f.statut), f.grade].filter(Boolean).join(" · ");
-  const enseignant = `<div class="carte"><div class="carte-t">${k("teacherCard")}</div><div class="champs">
+  const personne = estAgent(f)
+    ? `<div class="carte"><div class="carte-t">${k("staffCard")}</div><div class="champs">
+      ${ligne(k("name"), f.nom, "large nomel")}
+      ${ligne(k("section"), libelleSections(f.sections))}
+      ${ligne(k("category"), libelleCategoriePersonnel(f.categorie))}
+    </div></div>`
+    : `<div class="carte"><div class="carte-t">${k("teacherCard")}</div><div class="champs">
       ${ligne(k("name"), f.nom, "large nomel")}
       ${ligne(k("section"), libelleSections(f.sections))}
       ${ligne(k("phone"), f.telephone)}
@@ -169,7 +199,13 @@ function cartes(f, nbMois) {
   // classe) prennent la largeur et passent à la ligne au lieu d'être coupées.
   // Taux par classe : sa propre ligne, le taux moyen à côté du brut.
   const parClasse = f.tauxParClasse?.length > 0;
-  const fixes = f.type === "heures"
+  const annuel = `${ligne(k("monthlySalary"), gnf(f.salaireMois))}
+       ${ligne(k("yearPlanned", { n: nbMois }), gnf(f.salaireMois * nbMois))}`;
+  const fixes = estAgent(f)
+    // Personnel : le poste tenu et le salaire du mois.
+    ? `${ligne(k("post"), f.poste)}
+       ${annuel}`
+    : f.type === "heures"
     ? `${ligne(k("subject"), f.matiere)}
        ${ligne(k("weeklyHours"), heuresTxt(f.vhHebdo))}
        ${ligne(k("monthlyHours"), heuresTxt(f.vhMois))}
@@ -182,11 +218,10 @@ function cartes(f, nbMois) {
        ${ligne(k("monthlyPlanned"), gnf(f.montantMois), "c2")}`}`
     // Primaire : l'instituteur fait toute sa classe, la matière n'apparaît
     // que si la fiche en porte une.
-    : `${ligne(k("homeClass"), f.classe)}
-       ${ligne(k("monthlySalary"), gnf(f.salaireMois))}
-       ${ligne(k("yearPlanned", { n: nbMois }), gnf(f.salaireMois * nbMois))}
+      : `${ligne(k("homeClass"), f.classe)}
+       ${annuel}
        ${f.matiere ? ligne(k("subject"), f.matiere, "large") : ""}`;
-  return `<div class="cartes">${enseignant}
+  return `<div class="cartes">${personne}
     <div class="carte fixe"><div class="carte-t">${k("fixedCard")}</div><div class="champs">${fixes}</div></div></div>`;
 }
 
@@ -208,6 +243,11 @@ const COLONNES = {
     ],
   },
 };
+// Personnel : mêmes colonnes que le primaire, signature de l'agent.
+COLONNES.personnel = {
+  groupes: COLONNES.forfait.groupes,
+  colonnes: COLONNES.forfait.colonnes.map((c) => (c[0] === "colSignature" ? ["colSignatureStaff", ...c.slice(1)] : c)),
+};
 const LARGEUR_MOIS = 19;
 
 function tableau(f, mois, annee) {
@@ -223,7 +263,7 @@ function tableau(f, mois, annee) {
   }).join("");
   const lignes = mois.map((m) => `<tr><th class="mois" scope="row">${libelleMois(m)}<small>${anneeDuMois(m, annee)}</small></th>${cellules}</tr>`).join("");
   // Total : les colonnes d'argent et d'heures seulement.
-  const totaux = colonnes.map(([cle, , , cls]) => (["colDate", "colSignature", "colVisa"].includes(cle)
+  const totaux = colonnes.map(([cle, , , cls]) => (["colDate", "colSignature", "colSignatureStaff", "colVisa"].includes(cle)
     ? `<td class="neutre"></td>` : `<td${cls ? ` class="${cls}"` : ""}></td>`)).join("");
   return `<table class="paie">
     <colgroup><col style="width:${pct(LARGEUR_MOIS)}"/>${colonnes.map((c) => `<col style="width:${pct(c[2])}"/>`).join("")}</colgroup>
@@ -240,10 +280,14 @@ function signaturesHTML(f, schoolInfo) {
   // porte pas d'avance le cachet ni la signature de la direction.
   const blocs = signatairesDocument(schoolInfo, "etatSalaires")
     .map((s) => ({ titre: s.titre, nom: s.nom, bas: k(s.role === "visa" ? "stampSignature" : "nameSignature") }));
-  const enseignant = { titre: k("teacherCard"), nom: f.nom, bas: k("endOfYear") };
-  return [enseignant, ...blocs].map((s) => `<div class="sig"><b>${echapper(s.titre)}</b>`
+  const interesse = { titre: k(estAgent(f) ? "staffCard" : "teacherCard"), nom: f.nom, bas: k("endOfYear") };
+  return [interesse, ...blocs].map((s) => `<div class="sig"><b>${echapper(s.titre)}</b>`
     + `<span class="nom">${echapper(s.nom || "")}</span><div class="trace"></div><small>${s.bas}</small></div>`).join("");
 }
+
+// Inspection régionale puis direction préfectorale (ou communale), chacune
+// sur sa ligne, telles que saisies dans les informations légales de l'école.
+const tutelles = (ecole) => [ecole.ire, ecole.dpe].filter(Boolean).map((t) => `<div class="tut">${t}</div>`).join("");
 
 function enTete(ecole, schoolInfo) {
   return `<div class="tete">
@@ -251,7 +295,7 @@ function enTete(ecole, schoolInfo) {
         <div class="rep">${ecole.pays}</div>
         <div class="dev">${ecole.devise}</div>
         <div class="min">${ecole.ministere}</div>
-        ${ecole.tutelle ? `<div class="tut">${ecole.tutelle}</div>` : ""}
+        ${tutelles(ecole)}
       </div>
       <div class="embleme">${laurier(24)}${ecole.logo ? `<img crossOrigin="anonymous" src="${echapper(ecole.logo)}" alt=""/>` : monogramme(schoolInfo.nom)}</div>
       <div class="ecole">
@@ -272,6 +316,7 @@ function feuillet(f, { ecole, schoolInfo, annee, mois, total }) {
   return `<section class="page bp">
     ${cadreGuilloche({ ...CADRE, microTexte })}
     ${filigrane(ecole)}
+    ${total > 1 ? `<div class="folio">${k("sheetNo")}<b>${f.numero}</b></div>` : ""}
     <div class="corps"><div class="ajustable">
       ${enTete(ecole, schoolInfo)}
       <div class="titre"><i></i><h1>${k("title")}</h1><i></i></div>
@@ -280,7 +325,7 @@ function feuillet(f, { ecole, schoolInfo, annee, mois, total }) {
       ${tableau(f, mois, annee)}
       <div class="cloture">
         <div class="arrete"><span>${k("settled")}</span><em></em><span>${k("currency")}</span></div>
-        <div class="note">${k("note")}</div>
+        <div class="note">${k(estAgent(f) ? "noteStaff" : "note")}</div>
         <div class="sigs">${signaturesHTML(f, schoolInfo)}</div>
       </div>
     </div></div>
@@ -289,21 +334,29 @@ function feuillet(f, { ecole, schoolInfo, annee, mois, total }) {
 
 function pageCouverture(fiches, { ecole, schoolInfo, annee, mois }) {
   const compte = (s) => fiches.filter((f) => f.sections.includes(s)).length;
-  const repartition = ["college", "lycee", "primaire", "prescolaire"]
+  const repartition = ["college", "lycee", "primaire", "prescolaire", "personnel"]
     .filter((s) => compte(s) > 0)
-    .map((s) => `${tr(`accounting.sections.${s}`)} : <b>${compte(s)}</b>`).join(" · ");
+    .map((s) => `${libelleSection(s)} : <b>${compte(s)}</b>`).join(" · ");
+  const agents = fiches.filter(estAgent).length;
+  const sousTitre = !agents ? "coverStaff" : agents === fiches.length ? "coverOtherStaff" : "coverAllStaff";
   const debut = mois[0] ? `${libelleMois(mois[0])} ${anneeDuMois(mois[0], annee)}` : "";
   const fin = mois.length ? `${libelleMois(mois[mois.length - 1])} ${anneeDuMois(mois[mois.length - 1], annee)}` : "";
   return `<section class="page bp couv">
     ${cadreGuilloche({ ...CADRE, microTexte: echapper(`${schoolInfo.nom || ""} · ${k("coverTitle")} · ${annee}`.toUpperCase()) })}
     ${filigrane(ecole)}
     <div class="corps">
-      <div class="etat couv-etat"><span class="rep">${ecole.pays}</span> · <span class="dev">${ecole.devise}</span></div>
+      <div class="etat couv-etat">
+        <div class="rep">${ecole.pays}</div>
+        <div class="dev">${ecole.devise}</div>
+        <i class="couv-filet"></i>
+        <div class="min">${ecole.ministere}</div>
+        ${tutelles(ecole)}
+      </div>
       <div class="couv-centre">
         <div class="embleme grand">${laurier(40)}${ecole.logo ? `<img crossOrigin="anonymous" src="${echapper(ecole.logo)}" alt=""/>` : monogramme(schoolInfo.nom)}</div>
         <div class="couv-ecole">${ecole.nom}</div>
         <div class="titre"><i></i><h1>${k("coverTitle")}</h1><i></i></div>
-        <div class="couv-sous">${k("coverStaff")}</div>
+        <div class="couv-sous">${k(sousTitre)}</div>
         <div class="couv-annee">${k("yearLine", { annee: echapper(annee) })}</div>
         ${debut ? `<div class="couv-periode">${k("period", { debut, fin })}</div>` : ""}
         <div class="couv-compte">${k("sheetsCount", { n: fiches.length })}${repartition ? ` — ${repartition}` : ""}</div>
@@ -320,7 +373,7 @@ function pagesSommaire(fiches, { schoolInfo, annee }) {
   const colonne = (liste) => (liste.length ? `<table class="somm"><thead><tr>
       <th class="n">${k("sheetNo")}</th><th>${k("name")}</th><th>${k("section")}</th><th>${k("subjectOrClass")}</th></tr></thead><tbody>
       ${liste.map((f) => `<tr><td class="n">${f.numero}</td><td class="nm">${echapper(f.nom)}</td><td>${libelleSections(f.sections)}</td>`
-        + `<td>${echapper(f.type === "heures" ? f.matiere : f.classe)}</td></tr>`).join("")}</tbody></table>` : "<div></div>");
+        + `<td>${echapper(estAgent(f) ? f.poste : f.type === "heures" ? f.matiere : f.classe)}</td></tr>`).join("")}</tbody></table>` : "<div></div>");
   return pages.map((liste) => `<section class="page bp somm-page">
     ${cadreGuilloche({ ...CADRE, microTexte: echapper(`${schoolInfo.nom || ""} · ${k("summary")} · ${annee}`.toUpperCase()) })}
     <div class="corps">
@@ -349,7 +402,12 @@ const css = (c1) => `${printResetFor("size:A4 landscape;margin:0")}
   .bp .etat{text-align:center;font-size:6.9px;line-height:1.4;color:#3d3d3d}
   .bp .etat .rep{font-size:8.4px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:#1d1d1f}
   .bp .etat .dev{font-size:7.6px;font-style:italic;margin:.2mm 0 .5mm}
-  .bp .etat .tut{margin-top:.5mm;letter-spacing:.06em;color:#555}
+  .bp .etat .tut{letter-spacing:.06em;color:#555}
+  .bp .etat .min + .tut{margin-top:.5mm}
+  .bp .folio{position:absolute;top:3.5mm;inset-inline-end:17mm;z-index:2;display:flex;align-items:baseline;gap:1.6mm;padding:.5mm 2.6mm .6mm;
+             background:#fff;border:.35mm solid var(--c1);border-radius:1mm;font:700 6.4px Arial,Helvetica,sans-serif;letter-spacing:.18em;
+             text-transform:uppercase;color:${OR_FONCE}}
+  .bp .folio b{font:700 13px/1 ${SERIF};letter-spacing:.02em;color:var(--c1)}
   .bp .embleme{position:relative;width:26mm;height:23mm;display:flex;align-items:center;justify-content:center;margin:0 auto}
   .bp .embleme .laurier{position:absolute;left:1mm;top:-.5mm;width:24mm;height:24mm}
   .bp .embleme img{position:relative;width:14mm;height:14mm;object-fit:contain;margin-top:-1mm}
@@ -419,7 +477,12 @@ const css = (c1) => `${printResetFor("size:A4 landscape;margin:0")}
   .bp .sig small{display:block;border-top:.25mm solid #8f8f8f;padding-top:.6mm;font-size:6.9px;font-style:italic;color:#777}
 
   .bp.couv .corps{padding:14mm 20mm 11mm;align-items:center}
-  .bp .couv-etat{font-size:8px}
+  .bp .couv-etat{font-size:8.6px;line-height:1.45}
+  .bp .couv-etat .rep{font-size:10.5px;letter-spacing:.3em}
+  .bp .couv-etat .dev{font-size:9px;margin:.4mm 0 0}
+  .bp .couv-etat .couv-filet{display:block;width:26mm;height:.9mm;margin:1.4mm auto 1.2mm;border-top:.3mm solid ${OR};border-bottom:.15mm solid ${OR}}
+  .bp .couv-etat .min{font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#2a2a2a}
+  .bp .couv-etat .tut{margin-top:.3mm;font-size:8.4px;letter-spacing:.06em;color:#444}
   .bp .couv-centre{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;width:100%}
   .bp .embleme.grand{width:44mm;height:40mm}
   .bp .embleme.grand .laurier{left:2mm;top:-.5mm;width:40mm;height:40mm}

@@ -1570,20 +1570,21 @@
       "button": "Bulletins annuels",
       "buttonHint": "Bulletins de paie de toute l'année, à remplir à la main et à faire signer chaque mois",
       "title": "Bulletins de paie annuels",
-      "intro": "Un feuillet par enseignant pour toute l'année scolaire : imprimez-les une fois, reliez-les en brochure, remplissez-les à la main et faites-les signer à chaque paie.",
-      "fixed": "Déjà imprimé sur chaque feuillet : identité, classes, heures prévues (emploi du temps), taux horaire ou salaire mensuel. Si l'un d'eux change en cours d'année, réimprimez seulement le feuillet de cet enseignant.",
+      "intro": "Un feuillet pour toute l'année scolaire par personne inscrite à l'état de salaire (enseignants et personnel) : imprimez-les une fois, reliez-les en brochure, remplissez-les à la main et faites-les signer à chaque paie.",
+      "fixed": "Déjà imprimé sur chaque feuillet : identité, classes, heures prévues (emploi du temps), taux horaire, salaire mensuel ou poste. Si l'un d'eux change en cours d'année, réimprimez seulement le feuillet de cette personne.",
       "scope": "Feuillets à imprimer",
-      "all": "Tous les enseignants ({{n}})",
+      "all": "Tout le monde ({{n}})",
       "secondary": "Secondaire ({{n}})",
       "forfait": "Primaire et maternelle ({{n}})",
-      "one": "Un seul enseignant",
-      "teacher": "Enseignant",
+      "one": "Une seule personne",
+      "teacher": "Personne",
       "cover": "Ajouter la couverture et le sommaire de la brochure",
       "noSchedule": "Sans emploi du temps (heures prévues à écrire à la main) : {{noms}}",
       "noRate": "Sans taux ni salaire enregistré : {{noms}}",
-      "none": "Aucun enseignant enregistré pour l'instant.",
+      "none": "Personne n'est encore inscrit à l'état de salaire.",
       "print": "Imprimer",
-      "popupBlocked": "Le navigateur a bloqué la fenêtre d'impression : autorisez les fenêtres pour ce site."
+      "popupBlocked": "Le navigateur a bloqué la fenêtre d'impression : autorisez les fenêtres pour ce site.",
+      "staff": "Personnel administratif et de service ({{n}})"
     }
   },
   "parent": {
@@ -2419,7 +2420,14 @@
       "sheetsCount": "Feuillets : {{n}}",
       "summary": "Sommaire",
       "sheetNo": "Feuillet",
-      "subjectOrClass": "Matière / classe"
+      "subjectOrClass": "Matière, classe ou poste",
+      "staffCard": "L'agent(e)",
+      "category": "Catégorie",
+      "post": "Poste occupé",
+      "colSignatureStaff": "Signature de l'agent(e)",
+      "noteStaff": "La signature de l'agent(e) sur la ligne du mois vaut reçu du net payé. Toute rature ou surcharge est paraphée par le comptable.",
+      "coverAllStaff": "Personnel enseignant et non enseignant",
+      "coverOtherStaff": "Personnel administratif et de service"
     }
   },
   "school": {

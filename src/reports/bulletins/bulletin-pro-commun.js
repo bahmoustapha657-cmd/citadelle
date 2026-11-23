@@ -72,6 +72,9 @@ export function identiteEcole(si = {}) {
     devise: getNationalDeviseHTML(si.pays),
     ministere: echapper(orDefault(lf.ministere, MINISTERE_DEFAUT)),
     tutelle: [lf.ire, lf.dpe].filter(Boolean).map(echapper).join(" · "),
+    // Les mêmes séparément, pour un en-tête où chacune a sa ligne.
+    ire: echapper(lf.ire || ""),
+    dpe: echapper(lf.dpe || ""),
     nom: echapper(si.nom || ""),
     agrement: lf.agrement ? `Agrément : ${echapper(lf.agrement)}` : "",
     adresse: echapper(accueil.adresse || si.ville || ""),
