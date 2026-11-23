@@ -212,6 +212,8 @@ const ecoles = table({
   // 'ecole' | 'enseignant' (espace d'un enseignant indépendant) : sans lui,
   // l'app ouverte hors ligne montrerait la compta à un espace enseignant.
   type_espace: column.text,
+  // Code court (un mot du nom) : affiché dans Paramètres, même hors ligne.
+  code_court: column.text,
 });
 
 export const AppSchema = new Schema({

@@ -49,6 +49,7 @@
     "schoolCode": "رمز المدرسة",
     "schoolCodePlaceholder": "مثال: citadelle",
     "schoolCodeTeacherHint": "معلّم مستقل: رقم هاتفك.",
+    "schoolCodeShort": "الرمز المختصر",
     "username": "اسم المستخدم أو البريد الإلكتروني",
     "usernamePlaceholder": "اسم المستخدم أو الهاتف أو البريد الإلكتروني",
     "password": "كلمة المرور",

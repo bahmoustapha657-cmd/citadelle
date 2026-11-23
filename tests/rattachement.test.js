@@ -340,7 +340,7 @@ test("connexion par l'espace personnel : client jetable, refermé dans tous les 
   assert.doesNotMatch(f, /getSupabase\(\)/);
   assert.match(f, /return ouvrirSessionParJeton\(data\.tokenHash, cible\.ecole_code\);/);
   // Espace fermé : etat_ecole le dit, et la connexion l'emmène ailleurs.
-  assert.match(auth, /if \(e\.rattache === true\) return \{ info: null, statut: "", rattache: true, typeEspace: "enseignant" \};/);
+  assert.match(auth, /if \(e\.rattache === true\) return \{ info: null, statut: "", rattache: true, typeEspace: "enseignant", code \};/);
 });
 
 test("portail enseignant : les classes rattachées comptent dans son périmètre", () => {
