@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { matriculeRemplace } from "../../dgecs-import";
 
 // Couleurs des états (cf. rapprocherDgecs dans src/dgecs-import.js).
 const COULEURS = {
@@ -25,7 +26,7 @@ const Pastille = ({ etat, children }) => {
 // élèves de la classe qu'EduGest connaît mais que DGECS n'a pas.
 export function ApercuDgecs({
   lignes, resume, absents, classes, classe, setClasse, estCoche, peutAgir, basculer, peutInscrire, peutRattacher,
-  choix = {}, choisir, lierPossible = () => false, fichesPromises = new Set(),
+  choix = {}, choisir, fichesPromises = new Set(),
   ecartsDe = () => null, corriger = () => false, basculerCorrection,
 }) {
   const { t } = useTranslation();
@@ -70,32 +71,43 @@ export function ApercuDgecs({
   };
 
   // Ligne « à vérifier » : les élèves d'EduGest qui pourraient être lui, et
-  // le choix (le même élève → matricule posé ; élève différent → inscrit).
-  const candidats = (l) => (
-    <>
-      <ul style={{ margin: "4px 0 6px", paddingInlineStart: 18 }}>
-        {l.candidats.map((c) => (
-          <li key={c.eleve._id}>
-            <strong>{nomEleve(c.eleve)}</strong> ({c.eleve.classe || "—"}{c.eleve.dateNaissance ? `, ${c.eleve.dateNaissance}` : ""})
-            {c.eleve.ien ? ` · ${c.eleve.ien}` : ""} — {preuves(c.preuves)}
-          </li>
-        ))}
-      </ul>
-      {peutAgir(l) && (
-        <select value={choix[l.matricule] || ""} onChange={(e) => choisir(l, e.target.value)}
-          aria-label={t("dgecs.import.choice.label", { name: `${l.nom} ${l.prenom}` })}
-          style={{ border: "1px solid #b0c4d8", borderRadius: 7, padding: "5px 8px", fontSize: 12, background: "#fff", maxWidth: "100%" }}>
-          <option value="">{t("dgecs.import.choice.none")}</option>
-          {peutRattacher && l.candidats.filter(lierPossible).map((c) => (
-            <option key={c.eleve._id} value={c.eleve._id} disabled={fichesPromises.has(c.eleve._id) && choix[l.matricule] !== c.eleve._id}>
-              {t("dgecs.import.choice.link", { name: nomEleve(c.eleve), classe: c.eleve.classe || "—" })}
-            </option>
+  // le choix : plus tard ; c'est tel élève → garder les données de DGECS
+  // (matricule posé, ou mis à la place de celui d'EduGest, et fiche recopiée) ;
+  // élève différent → inscrit.
+  const candidats = (l) => {
+    const choisi = l.candidats.find((c) => c.eleve._id === choix[l.matricule]);
+    const ancien = choisi && matriculeRemplace(l, choisi.eleve);
+    return (
+      <>
+        <ul style={{ margin: "4px 0 6px", paddingInlineStart: 18 }}>
+          {l.candidats.map((c) => (
+            <li key={c.eleve._id}>
+              <strong>{nomEleve(c.eleve)}</strong> ({c.eleve.classe || "—"}{c.eleve.dateNaissance ? `, ${c.eleve.dateNaissance}` : ""})
+              {c.eleve.ien ? ` · ${c.eleve.ien}` : ""} — {preuves(c.preuves)}
+            </li>
           ))}
-          {peutInscrire && <option value="nouveau">{t("dgecs.import.choice.new")}</option>}
-        </select>
-      )}
-    </>
-  );
+        </ul>
+        {peutAgir(l) && (
+          <select value={choix[l.matricule] || ""} onChange={(e) => choisir(l, e.target.value)}
+            aria-label={t("dgecs.import.choice.label", { name: `${l.nom} ${l.prenom}` })}
+            style={{ border: "1px solid #b0c4d8", borderRadius: 7, padding: "5px 8px", fontSize: 12, background: "#fff", maxWidth: "100%" }}>
+            <option value="">{t("dgecs.import.choice.none")}</option>
+            {peutRattacher && l.candidats.map((c) => (
+              <option key={c.eleve._id} value={c.eleve._id} disabled={fichesPromises.has(c.eleve._id) && choix[l.matricule] !== c.eleve._id}>
+                {t("dgecs.import.choice.link", { name: nomEleve(c.eleve), classe: c.eleve.classe || "—" })}
+              </option>
+            ))}
+            {peutInscrire && <option value="nouveau">{t("dgecs.import.choice.new")}</option>}
+          </select>
+        )}
+        {ancien && (
+          <p style={{ margin: "6px 0 0", fontSize: 12, fontWeight: 700, color: "#92400e" }}>
+            {t("dgecs.import.choice.replaces", { ancien, nouveau: l.matricule })}
+          </p>
+        )}
+      </>
+    );
+  };
 
   return (
     <div>

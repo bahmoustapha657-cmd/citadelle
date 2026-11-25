@@ -3457,8 +3457,9 @@
       "choice": {
         "label": "Que faire de {{name}} ?",
         "none": "— À décider plus tard —",
-        "link": "C'est {{name}} ({{classe}}) : poser le matricule",
-        "new": "Élève différent : l'inscrire"
+        "link": "C'est {{name}} ({{classe}}) : garder les données de DGECS",
+        "new": "Élève différent : l'inscrire",
+        "replaces": "Le matricule {{ancien}} qu'EduGest lui donnait sera remplacé par celui de DGECS ({{nouveau}})."
       },
       "fix": {
         "title": "Corriger la fiche comme sur DGECS (officiel)",

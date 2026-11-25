@@ -4,7 +4,7 @@ import { genererMatricule, initMens } from "../../constants";
 import { Btn, Modale } from "../ui";
 import {
   URL_LISTE_DGECS, absentsDeDgecs, cocheParDefaut, ficheDepuisDgecs, lireListeDgecs, lireTexteTableau,
-  champsDgecs, normaliserMatriculeDgecs, rapprocherDgecs, resumeRapprochement,
+  champsDgecs, matriculeRemplace, rapprocherDgecs, resumeRapprochement,
 } from "../../dgecs-import";
 import { lireTableur } from "../../lecture-tableur";
 import { ApercuDgecs } from "./ApercuDgecs";
@@ -27,8 +27,9 @@ export function ImportDgecsModale({
   const [lignesFichier, setLignesFichier] = useState(null);
   const [classe, setClasse] = useState(classeInitiale && classes.includes(classeInitiale) ? classeInitiale : "");
   const [decoches, setDecoches] = useState(() => new Set());
-  // Lignes « à vérifier » : matricule DGECS → "" (rien), "nouveau" (élève
-  // différent, à inscrire) ou _id de l'élève d'EduGest qui est le même.
+  // Lignes « à vérifier » : matricule DGECS → "" (à décider plus tard),
+  // "nouveau" (élève différent, à inscrire) ou _id de l'élève d'EduGest qui
+  // est le même (garder les données de DGECS : matricule, fiche recopiée).
   const [choix, setChoix] = useState(() => ({}));
   const [enCours, setEnCours] = useState(false);
   const [faits, setFaits] = useState(0);
@@ -49,10 +50,11 @@ export function ImportDgecsModale({
 
   // Rattachements et nouveaux : cochés d'office, sauf décochés. Lignes « à
   // vérifier » : rien tant qu'on n'a pas choisi l'élève (ou « élève différent »).
-  const lierPossible = (c) => !!modifierChamp && !normaliserMatriculeDgecs(c.eleve.ien);
+  // Tout candidat peut être choisi, même s'il a déjà un autre matricule :
+  // celui de DGECS le remplace (l'écran le dit avant d'appliquer).
   const peutAgir = (l) => (l.etat === "rattacher" && !!modifierChamp)
     || (l.etat === "nouveau" && !!ajouter)
-    || (l.etat === "aVerifier" && (!!ajouter || l.candidats.some(lierPossible)));
+    || (l.etat === "aVerifier" && (!!ajouter || !!modifierChamp));
   const estCoche = (l) => peutAgir(l) && (cocheParDefaut(l) ? !decoches.has(l.matricule) : !!choix[l.matricule]);
   const basculer = (l) => {
     const suite = new Set(decoches);
@@ -117,16 +119,18 @@ export function ImportDgecsModale({
     setEnCours(true);
     setFaits(0);
     let poses = 0;
+    let remplaces = 0;
     let corrigees = 0;
     let echecs = 0;
     const ajoutes = [];
     let operations = 0;
     const avancer = () => setFaits(++operations);
     try {
-      for (const { eleve, champs } of aRattacher) {
+      for (const { ligne, eleve, champs } of aRattacher) {
         try {
           await modifierChamp(eleve._id, champs);
           poses++;
+          if (matriculeRemplace(ligne, eleve)) remplaces++;
           if (Object.keys(champs).length > 1) corrigees++;
         } catch { echecs++; }
         avancer();
@@ -149,7 +153,7 @@ export function ImportDgecsModale({
       toast?.(t("dgecs.import.done", { linked: poses, fixed: corrigees, enrolled: ajoutes.length }), echecs ? "warning" : "success");
       if (echecs) toast?.(t("dgecs.import.failed", { count: echecs }), "error");
       // Journal de l'école : en français, comme toutes ses entrées. i18n-ignore
-      if (poses || corrigees || ajoutes.length) logAction?.("Import depuis DGECS", `${poses} matricule(s) posé(s), ${corrigees} fiche(s) recopiée(s) de DGECS, ${ajoutes.length} élève(s) inscrit(s)${classe ? ` en ${classe}` : ""}`);
+      if (poses || corrigees || ajoutes.length) logAction?.("Import depuis DGECS", `${poses} matricule(s) posé(s)${remplaces ? ` (dont ${remplaces} à la place d'un autre matricule)` : ""}, ${corrigees} fiche(s) recopiée(s) de DGECS, ${ajoutes.length} élève(s) inscrit(s)${classe ? ` en ${classe}` : ""}`);
       if (!echecs) fermer();
     } finally {
       verrou.current = false;
@@ -190,7 +194,7 @@ export function ImportDgecsModale({
         <ApercuDgecs
           lignes={lignes} resume={resume} absents={absents} classes={classes} classe={classe} setClasse={setClasse}
           estCoche={estCoche} peutAgir={peutAgir} basculer={basculer} peutInscrire={!!ajouter} peutRattacher={!!modifierChamp}
-          choix={choix} choisir={choisir} lierPossible={lierPossible} fichesPromises={fichesPromises}
+          choix={choix} choisir={choisir} fichesPromises={fichesPromises}
           ecartsDe={ecartsDe} corriger={corriger} basculerCorrection={basculerCorrection}
         />
       )}
