@@ -5,12 +5,20 @@
 //
 // La clé de service (*firebase-adminsdk*.json, ignorée par git) doit se
 // trouver dans ce dossier, comme pour l'ancien script de migration.
+//
+// Copie locale : cet ancien Firestore ne bouge plus (fin 2025-2026) et son
+// offre gratuite plafonne les lectures par jour — plafond atteint le
+// 2026-11-10 en relisant les mêmes collections d'un élève à l'autre. Chaque
+// collection lue est gardée dans EDUGEST_FIRESTORE_COPIE (défaut : à côté des
+// sauvegardes locales, jamais dans le dépôt : données réelles) et relue de là
+// ensuite, sans réseau ni clé.
 import crypto from "node:crypto";
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ICI = dirname(fileURLToPath(import.meta.url));
+const COPIE = process.env.EDUGEST_FIRESTORE_COPIE || "C:/Users/ADMIN/edugest-backups/firestore";
 
 function cleDeService() {
   const fichier = readdirSync(ICI).find((f) => /firebase-adminsdk.*\.json$/.test(f));
@@ -59,25 +67,46 @@ const champs = (d) => Object.fromEntries(Object.entries(d.fields || {}).map(([k,
 // { _id, ...champs }. Une collection absente renvoie une liste vide.
 // lire.ecole() → le document de l'école lui-même (ses réglages).
 export async function lecteurFirestore(codeEcole) {
-  const svc = cleDeService();
-  const token = await jeton(svc);
-  const base = `https://firestore.googleapis.com/v1/projects/${svc.project_id}/databases/(default)/documents/ecoles/${codeEcole}`;
-  lire.ecole = async () => {
+  const dossier = join(COPIE, codeEcole);
+  let acces = null; // { base, token } — seulement si une lecture manque à la copie
+  const reseau = async () => {
+    if (!acces) {
+      const svc = cleDeService();
+      acces = {
+        base: `https://firestore.googleapis.com/v1/projects/${svc.project_id}/databases/(default)/documents/ecoles/${codeEcole}`,
+        token: await jeton(svc),
+      };
+    }
+    return acces;
+  };
+  const enCopie = async (fichier, lireEnLigne) => {
+    const chemin = join(dossier, fichier);
+    if (existsSync(chemin)) return JSON.parse(readFileSync(chemin, "utf8"));
+    const valeurLue = await lireEnLigne();
+    mkdirSync(dossier, { recursive: true });
+    writeFileSync(chemin, JSON.stringify(valeurLue));
+    return valeurLue;
+  };
+  lire.ecole = () => enCopie("_ecole.json", async () => {
+    const { base, token } = await reseau();
     const j = await (await fetch(base, { headers: { Authorization: `Bearer ${token}` } })).json();
     if (j.error) throw new Error(`Firestore école : ${j.error.message}`);
     return champs(j);
-  };
+  });
   return lire;
-  async function lire(collection) {
-    const docs = [];
-    let page = "";
-    do {
-      const url = `${base}/${collection}?pageSize=300${page ? `&pageToken=${encodeURIComponent(page)}` : ""}`;
-      const j = await (await fetch(url, { headers: { Authorization: `Bearer ${token}` } })).json();
-      if (j.error) throw new Error(`Firestore ${collection} : ${j.error.message}`);
-      for (const d of j.documents || []) docs.push({ _id: d.name.split("/").pop(), ...champs(d) });
-      page = j.nextPageToken || "";
-    } while (page);
-    return docs;
+  function lire(collection) {
+    return enCopie(`${collection}.json`, async () => {
+      const { base, token } = await reseau();
+      const docs = [];
+      let page = "";
+      do {
+        const url = `${base}/${collection}?pageSize=300${page ? `&pageToken=${encodeURIComponent(page)}` : ""}`;
+        const j = await (await fetch(url, { headers: { Authorization: `Bearer ${token}` } })).json();
+        if (j.error) throw new Error(`Firestore ${collection} : ${j.error.message}`);
+        for (const d of j.documents || []) docs.push({ _id: d.name.split("/").pop(), ...champs(d) });
+        page = j.nextPageToken || "";
+      } while (page);
+      return docs;
+    });
   }
 }
