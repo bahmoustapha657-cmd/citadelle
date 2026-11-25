@@ -5,7 +5,9 @@ import { useMessagerie } from "../../messagerie/messagerie-contexte";
 import { COULEURS_PRESENCE, libellePresence } from "../../messagerie/messagerie-logic";
 
 // Tableau des comptes de l'école avec action de réinitialisation du mot
-// de passe (selon les droits de l'utilisateur courant).
+// de passe (selon les droits de l'utilisateur courant). Plus de colonne
+// « 🔒 Sécurisé » identique sur chaque ligne : la colonne « Mot de passe »
+// porte directement le bouton.
 export function ComptesTable({ comptes, chargement, initEnCours, peutResetCompte, setForm, setModal }) {
   // Présence (messagerie) : personnel et enseignants ; rien pour les parents.
   const presences = useMessagerie()?.presences;
@@ -13,7 +15,7 @@ export function ComptesTable({ comptes, chargement, initEnCours, peutResetCompte
   return (
     <Card>
       <div className="lc-sticky-wrap"><table className="lc-sticky-table" data-fix-left="1">
-        <THead cols={["Utilisateur","Login","Rôle","Connexion","Mot de passe","Action"]}/>
+        <THead cols={["Utilisateur","Login","Rôle","Connexion","Mot de passe"]}/>
         <tbody>
           {comptes.map((c,i)=>{
             const reserve = !peutResetCompte(c.role);
@@ -37,12 +39,9 @@ export function ComptesTable({ comptes, chargement, initEnCours, peutResetCompte
                 })()}
               </TD>
               <TD>
-                <Badge color="vert">🔒 Sécurisé</Badge>
-              </TD>
-              <TD>
                 {c._id && (reserve
                   ? <span title="Seule la Direction Générale peut réinitialiser ce compte" style={{fontSize:11,color:"#6b7280",fontStyle:"italic"}}>🛡️ Réservé Direction</span>
-                  : <Btn sm onClick={()=>{setForm({...c,mdp:""});setModal("mdp");}}>✏️ Modifier</Btn>
+                  : <Btn sm onClick={()=>{setForm({...c,mdp:""});setModal("mdp");}} title={`Donner un nouveau mot de passe à ${c.nom || c.login}`}>🔑 Réinitialiser</Btn>
                 )}
               </TD>
             </TR>

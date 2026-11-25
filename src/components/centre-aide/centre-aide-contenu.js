@@ -221,7 +221,7 @@ export const ARTICLES = [
     roles: ["admin", "direction", "superadmin"],
     titre: "Comptes & Postes : comprendre le principe",
     etapes: [
-      "Ouvrez le module « Comptes & Postes » (ancien « Gestion des Accès »).",
+      "Ouvrez le module « Comptes & Postes » (ancien « Gestion des Accès »). Il se lit par onglets : 👥 Comptes (mots de passe), 🧩 Postes & droits, 🖋️ Qui signe quoi, 🔒 Autorisations de modification, 🔗 Doublons & espaces, 📅 Année scolaire.",
       "Un POSTE définit un métier (Direction, Comptabilité, Censeur…) et ses droits, module par module : invisible, 👁 lecture ou ✏️ écriture.",
       "Un COMPTE est une personne rattachée à un poste. Modifier les droits d'un poste s'applique à tous ses comptes.",
       "Le poste Direction garde toujours tous les droits (impossible de s'enfermer dehors).",
@@ -233,7 +233,7 @@ export const ARTICLES = [
     roles: ["direction", "superadmin"],
     titre: "Créer un poste sur mesure (censeur, économe…)",
     etapes: [
-      "Comptes & Postes → « + Nouveau poste ».",
+      "Comptes & Postes → onglet « 🧩 Postes & droits » → « + Nouveau poste ».",
       "Donnez un nom au poste (ex. « Censeur des études »).",
       "Dans la matrice, cliquez chaque module pour choisir son droit : ∅ invisible → 👁 lecture → ✏️ écriture.",
       "Enregistrez le poste, puis ajoutez-lui un ou plusieurs comptes.",
@@ -245,7 +245,7 @@ export const ARTICLES = [
     roles: ["admin", "direction", "superadmin"],
     titre: "Créer plusieurs comptes pour un même poste",
     etapes: [
-      "Comptes & Postes → sous le poste voulu → « + Ajouter un compte ».",
+      "Comptes & Postes → onglet « 🧩 Postes & droits » → sous le poste voulu → « + Ajouter un compte ».",
       "Saisissez le nom et l'identifiant ; le mot de passe est généré et affiché une seule fois.",
       "Vous pouvez ainsi avoir 2 comptables, 3 surveillants… chacun avec sa propre connexion.",
     ],
@@ -256,7 +256,7 @@ export const ARTICLES = [
     roles: ["admin", "direction", "superadmin"],
     titre: "Se connecter avec un e-mail (au lieu de l'identifiant)",
     etapes: [
-      "Comptes & Postes → sur la ligne d'un compte → « + e-mail de connexion ».",
+      "Comptes & Postes → onglet « 🧩 Postes & droits » → sur la ligne d'un compte → « ✉️ Ajouter un e-mail ».",
       "Saisissez l'adresse e-mail réelle de la personne.",
       "Elle pourra alors se connecter avec code école + e-mail + mot de passe (l'identifiant classique marche toujours).",
     ],
@@ -267,7 +267,7 @@ export const ARTICLES = [
     roles: ["admin", "direction", "superadmin"],
     titre: "Faire apparaître le nom du responsable sur les documents",
     etapes: [
-      "Comptes & Postes → « ✏️ Droits & nom » (ou « Nom & signataire » pour la Direction).",
+      "Comptes & Postes → onglet « 🧩 Postes & droits » → « ✏️ Droits & nom » (ou « Nom & signataire » pour la Direction).",
       "Renseignez « 🖋️ Responsable — prénom et nom ».",
       "Ce nom s'imprime sous le bloc de signature des documents que ce poste signe — voir « Qui signe quoi » pour choisir lesquels.",
     ],
@@ -278,7 +278,7 @@ export const ARTICLES = [
     roles: ["admin", "direction", "superadmin"],
     titre: "Choisir qui signe chaque document (Qui signe quoi)",
     etapes: [
-      "Comptes & Postes → carte « 🖋️ Qui signe quoi », sous la liste des postes (réglage réservé à la Direction Générale).",
+      "Comptes & Postes → onglet « 🖋️ Qui signe quoi » (réglage réservé à la Direction Générale).",
       "Pour chaque document (reçu, bulletin, attestation, livret, états de salaires…), choisissez le poste qui signe — y compris un poste que vous avez créé, comme « Censeur des études ».",
       "« Chef de la section de l'élève » : la Direction primaire ou le Bureau collège selon l'élève, la Direction Générale si la section n'a pas de responsable.",
       "Ajoutez si besoin un second signataire (visa) : il s'imprime à côté du signataire principal, qui garde le cachet.",
@@ -337,7 +337,7 @@ export const ARTICLES = [
       "📎 joint un document : PDF, photo, Word, Excel, PowerPoint (10 Mo max). Le texte saisi sert de légende ; les photos lourdes sont allégées automatiquement.",
       "✓ = envoyé, ✓✓ = lu ; en groupe, « ✓✓ 3/5 » indique combien l'ont lu — touchez votre message pour voir qui.",
       "Menu ⋮ : épingler, mettre en sourdine, archiver ; pour un groupe, gérer les membres et les administrateurs.",
-      "Point vert = en ligne (application ouverte à l'écran), point orange = absent (application ouverte en arrière-plan, joignable par appel) ; sinon « Vu il y a … ». Aussi visible dans Comptes & Postes, colonne « Connexion ».",
+      "Point vert = en ligne (application ouverte à l'écran), point orange = absent (application ouverte en arrière-plan, joignable par appel) ; sinon « Vu il y a … ». Aussi visible dans Comptes & Postes → onglet « 👥 Comptes », colonne « Connexion ».",
     ],
   },
   {
@@ -432,7 +432,7 @@ export const ARTICLES = [
     cat: "securite",
     titre: "Réinitialiser un mot de passe",
     etapes: [
-      "Direction/comptable : ouvrez le compte concerné et « Réinitialiser le mot de passe ».",
+      "Comptes & Postes → onglet « 👥 Comptes » : retrouvez le compte (recherche par nom, identifiant ou e-mail ; filtres Personnel, Enseignants, Parents) puis « 🔑 Réinitialiser ».",
       "L'utilisateur devra le changer à sa prochaine connexion.",
     ],
   },

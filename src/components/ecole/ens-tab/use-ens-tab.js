@@ -83,7 +83,7 @@ export function useEnsTab({
           logAction("Espace enseignant relié", `${nomComplet} · relié au compte ${relierA.login}`);
         } catch (e) {
           // Liaison réservée à la Direction : le compte existe, à relier ensuite.
-          toast(`Compte enseignant créé (identifiant ${loginFinal}), mais pas encore relié : ${e.message} La Direction peut le relier dans Comptes & Postes → « Une personne, plusieurs espaces ».`, "warning");
+          toast(`Compte enseignant créé (identifiant ${loginFinal}), mais pas encore relié : ${e.message} La Direction peut le relier dans Comptes & Postes → onglet « 🔗 Doublons & espaces ».`, "warning");
           logAction("Compte enseignant créé", `Identifiant : ${loginFinal} · ${nomComplet}`);
         }
         setEnsCompte(null);

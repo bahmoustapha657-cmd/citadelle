@@ -32,6 +32,9 @@ test("clôture : l'argent encaissé est archivé puis rendu à l'annulation ; la
 
   await seConnecter(page, DIRECTION);
   await ouvrirModule(page, "Comptes & Postes");
+  // Le module est rangé en onglets : clôture, promotion et passage des
+  // admis sont dans « 📅 Année scolaire ».
+  await page.getByRole("button", { name: "📅 Année scolaire", exact: true }).click();
   await expect(page.getByText(`Année active : ${ANNEE}`)).toBeVisible();
 
   // ── Clôture ──

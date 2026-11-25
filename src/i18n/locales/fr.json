@@ -3698,5 +3698,30 @@
       "S1": "1er semestre",
       "S2": "2e semestre"
     }
+  },
+  "comptesPostes": {
+    "onglets": {
+      "comptes": "👥 Comptes",
+      "postes": "🧩 Postes & droits",
+      "signatures": "🖋️ Qui signe quoi",
+      "autorisations": "🔒 Autorisations de modification",
+      "doublons": "🔗 Doublons & espaces",
+      "annee": "📅 Année scolaire"
+    },
+    "anneeEtapes": "Une fois l'année terminée : ① clôturer l'année, puis ② lancer la promotion des classes ordinaires et ③ passer les admis des classes d'examen, à mesure que les résultats arrivent.",
+    "comptes": {
+      "intro": "Tous les comptes de l'école : qui est connecté, et le bouton pour changer un mot de passe.",
+      "introPostes": "Pour créer un compte, régler ses droits, son e-mail ou le nom qu'il imprime :",
+      "recherche": "🔍 Rechercher : nom, identifiant, e-mail…",
+      "rechercheAria": "Rechercher un compte",
+      "aucun": "Aucun compte ne correspond.",
+      "chercherPartout": "Chercher dans tous les comptes ({{n}})",
+      "types": {
+        "personnel": "Personnel",
+        "enseignant": "Enseignants",
+        "parent": "Parents",
+        "tous": "Tous"
+      }
+    }
   }
 }

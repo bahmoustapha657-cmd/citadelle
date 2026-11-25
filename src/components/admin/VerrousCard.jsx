@@ -23,7 +23,7 @@ export function VerrousCard({ verrous = {}, schoolId }) {
   };
 
   return (
-    <Card style={{marginTop:20,padding:"20px 24px"}}>
+    <Card style={{marginBottom:20,padding:"20px 24px"}}>
       <p style={{margin:"0 0 6px",fontWeight:800,fontSize:14,color:C.blueDark}}>🔒 Autorisation de modification</p>
       <p style={{margin:"0 0 18px",fontSize:12,color:"#6b7280"}}>Réservé à la Direction Générale. Chaque rôle peut toujours <strong>créer</strong> des enregistrements ; une fois sauvegardés, ils sont verrouillés. Activez le verrou pour permettre les corrections par le rôle concerné.</p>
       <div style={{display:"flex",flexDirection:"column",gap:12}}>
