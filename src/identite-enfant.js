@@ -81,6 +81,11 @@ export const grouperParClasse = (eleves = []) => {
 
 export const aUnePhoto = (eleve = {}) => !!texte(eleve.photo);
 
+// Impression d'un lot (trombinoscope, badges) : tout le monde, ou seulement
+// les enfants qui ont déjà leur photo — au choix de qui imprime.
+export const elevesAImprimer = (eleves = [], avecSansPhoto = true) =>
+  (avecSansPhoto ? eleves : eleves.filter(aUnePhoto));
+
 // La famille d'un enfant, pour le confier à la bonne personne (trombinoscope,
 // enfant agrandi) : [[libellé, valeur], …] des champs renseignés. `t` traduit
 // les libellés (t de react-i18next à l'écran, tr à l'impression). Jamais sur

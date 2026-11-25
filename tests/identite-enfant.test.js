@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  champsSeancePhoto, correspondEnfant, identifiantBadge, couleurClasse, familleEnfant, fileSeancePhoto,
+  champsSeancePhoto, correspondEnfant, elevesAImprimer, identifiantBadge, couleurClasse, familleEnfant, fileSeancePhoto,
   grouperParClasse, initiales, nettoyerSurnom, nomAppel, nomOfficiel, SURNOM_MAX, trierParNomAppel,
   trierPhotosDabord,
 } from "../src/identite-enfant.js";
@@ -64,6 +64,17 @@ test("trombinoscope et badges : les enfants qui ont leur photo d'abord, chaque g
   assert.deepEqual(trierPhotosDabord([{ ...ZEINAB, photo: "  " }, AWA]).map((e) => e._id), ["5", "6"]);
   // Sans photo du tout : l'ordre alphabétique d'avant.
   assert.deepEqual(trierPhotosDabord([NENE, AWA]).map((e) => e._id), ["5", "1"]);
+});
+
+test("impression d'un lot : tout le monde, ou seulement ceux qui ont leur photo", () => {
+  const lot = [NENE, FATOU, { _id: "7", prenom: "Kadi", photo: "  " }];
+  // Par défaut, et si on le choisit : tout le monde, dans le même ordre.
+  assert.deepEqual(elevesAImprimer(lot), lot);
+  assert.deepEqual(elevesAImprimer(lot, true), lot);
+  // Sans les enfants qui n'ont pas encore de photo (une photo d'espaces ne compte pas).
+  assert.deepEqual(elevesAImprimer(lot, false).map((e) => e._id), ["2"]);
+  assert.deepEqual(elevesAImprimer([NENE], false), []);
+  assert.deepEqual(elevesAImprimer(), []);
 });
 
 test("famille d'un enfant : filiation, tuteur et contact renseignés seulement, libellés traduits", () => {

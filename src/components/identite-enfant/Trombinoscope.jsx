@@ -1,13 +1,14 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  aUnePhoto, comparerClasses, correspondEnfant, couleurClasse, familleEnfant, grouperParClasse, nomAppel, nomOfficiel,
+  aUnePhoto, comparerClasses, correspondEnfant, couleurClasse, elevesAImprimer, familleEnfant, grouperParClasse, nomAppel,
+  nomOfficiel,
 } from "../../identite-enfant";
 import { imprimerTrombinoscope } from "../../reports";
 import { uploadPhotoEleve } from "../../storageUtils";
 import { RetouchePhoto } from "../RetouchePhoto";
 import { finaliserRetouche } from "../camera-capture/retouche";
-import { Btn, Vide } from "../ui";
+import { Btn, Modale, Vide } from "../ui";
 import { BadgesModale } from "./BadgesModale";
 import { EnfantAgrandi } from "./EnfantAgrandi";
 import { FondClasseModale } from "./FondClasseModale";
@@ -17,7 +18,8 @@ import { PhotoEleve } from "./PhotoEleve";
 // (ceux qui ont leur photo d'abord), le nom auquel ils répondent en gros,
 // puis leur filiation, leur tuteur et son contact. Recherche par prénom,
 // surnom, nom, tuteur ou filiation ; un toucher agrandit l'enfant. Impressions :
-// trombinoscope A4 et, avec `avecBadges`, badges (toutes les classes,
+// trombinoscope A4 (avec ou sans les enfants qui n'ont pas encore de photo,
+// au choix) et, avec `avecBadges`, badges (toutes les classes,
 // BadgesModale) — fermés par défaut : les enseignants ne les impriment pas.
 // `onSeancePhoto(classe, eleveId)` et `enregistrer(id, champs)` (retouche
 // d'une photo, fond de toute une classe) : présents seulement pour qui peut
@@ -35,6 +37,9 @@ export function Trombinoscope({
   const [fondClasse, setFondClasse] = useState(false);
   // Élèves dont on imprime les badges (réglages dans BadgesModale), null fermé.
   const [badges, setBadges] = useState(null);
+  // Impression du trombinoscope quand des enfants n'ont pas encore de photo :
+  // tout le monde, ou seulement ceux qui l'ont.
+  const [choixImpression, setChoixImpression] = useState(false);
 
   const classes = useMemo(
     () => [...new Set(eleves.map((e) => e.classe).filter(Boolean))].sort(comparerClasses),
@@ -45,6 +50,10 @@ export function Trombinoscope({
   const groupes = grouperParClasse(dansClasse.filter((e) => correspondEnfant(e, recherche)));
   const nbSansPhoto = dansClasse.filter((e) => !aUnePhoto(e)).length;
   const options = { schoolInfo, annee };
+  const imprimerTrombi = (avecSansPhoto) => {
+    setChoixImpression(false);
+    imprimerTrombinoscope(elevesAImprimer(dansClasse, avecSansPhoto), options);
+  };
   // Fiche à jour (après une séance photo) plutôt que la copie prise au clic.
   const enfantAgrandi = agrandi ? eleves.find((e) => e._id === agrandi._id) || agrandi : null;
 
@@ -72,7 +81,7 @@ export function Trombinoscope({
           </select>
         )}
         <Btn sm v="ghost" title="Une feuille A4 par classe, à afficher dans la classe"
-          onClick={() => imprimerTrombinoscope(dansClasse, options)}>🖨️ Imprimer le trombinoscope</Btn>
+          onClick={() => (nbSansPhoto ? setChoixImpression(true) : imprimerTrombi(true))}>🖨️ Imprimer le trombinoscope</Btn>
         {avecBadges && <Btn sm v="ghost" title="Écussons de poche pour la tenue, ou badges à plastifier"
           onClick={() => setBadges(dansClasse)}>🏷️ Badges</Btn>}
         {onSeancePhoto && <Btn sm v="blue" title="Prendre les photos et les surnoms des enfants, l'un après l'autre"
@@ -131,6 +140,23 @@ export function Trombinoscope({
         onClose={() => setRetouche(null)}/>}
       {badges && <BadgesModale eleves={badges} schoolInfo={schoolInfo} annee={annee} section={section}
         fermer={() => setBadges(null)}/>}
+      {choixImpression && (
+        <Modale titre={t("trombinoscope.printTitle")} fermer={() => setChoixImpression(false)}>
+          <div style={{ textAlign: "start" }}>
+            <p style={{ fontSize: 13, color: "var(--lc-text)", lineHeight: 1.5 }}>
+              {t("trombinoscope.printWithoutPhoto", { sans: nbSansPhoto, total: dansClasse.length })}
+            </p>
+            <div style={{ display: "grid", gap: 8, marginTop: 16 }}>
+              <Btn onClick={() => imprimerTrombi(false)} disabled={nbSansPhoto === dansClasse.length}>
+                🖼️ {t("trombinoscope.printOnlyWithPhoto", { n: dansClasse.length - nbSansPhoto })}
+              </Btn>
+              <Btn v="ghost" onClick={() => imprimerTrombi(true)}>
+                👥 {t("trombinoscope.printEveryone", { n: dansClasse.length })}
+              </Btn>
+            </div>
+          </div>
+        </Modale>
+      )}
       {fondClasse && <FondClasseModale
         eleves={eleves} classeInitiale={classeActive === "all" ? null : classeActive}
         schoolId={schoolId} enregistrer={enregistrer} toast={toast} logAction={logAction}

@@ -89,6 +89,30 @@ test("badges : impression en miroir pour le papier transfert, à l'endroit sinon
   assert.match(badgesHTML([enfant(1)], { schoolInfo: ecole, format: "?" }), /<div class="badge portrait">/);
 });
 
+test("badges : la photo de l'élève ou, à défaut, le logo de l'école — jamais « Photo à prendre »", () => {
+  const ecoleLogo = { ...ecole, logo: "https://x/logo.png" };
+  const eleves = [enfant(1, { photo: "https://x/e.jpg" }), enfant(2), enfant(3, { photo: "  " })];
+  for (const format of ["poche", "portrait"]) {
+    const html = badgesHTML(eleves, { schoolInfo: ecoleLogo, format, photo: true });
+    assert.equal(compter(html, /<div class="badge (poche|portrait)">/g), 3);
+    // Le premier a sa photo ; les deux autres, le logo en grand à sa place.
+    assert.equal(compter(html, /src="https:\/\/x\/e\.jpg"/g), 1);
+    assert.equal(compter(html, /class="logo grand-logo"/g), 2);
+    // Petit logo d'en-tête et filigrane : seulement à côté d'une photo.
+    assert.equal(compter(html, /<div class="logo"><img/g), 1);
+    assert.equal(compter(html, /<img class="filigrane"/g), 1);
+    assert.doesNotMatch(html, /Photo à prendre|class="sans-photo"/);
+    // Même badge au logo que si la case « Avec la photo » était décochée.
+    const badgeLogo = (h) => h.slice(h.lastIndexOf('<div class="badge'));
+    assert.equal(badgeLogo(html), badgeLogo(badgesHTML([enfant(3)], { schoolInfo: ecoleLogo, format, photo: false })));
+  }
+  // École sans logo : ni cadre vide ni initiales, le nom s'écrit en grand.
+  const sansLogo = badgesHTML([enfant(2)], { schoolInfo: ecole, photo: true });
+  assert.doesNotMatch(sansLogo, /Photo à prendre|class="photo"|class="sans-photo"/);
+  // Le trombinoscope, lui, garde les initiales en attendant la photo.
+  assert.match(trombinoscopeHTML([enfant(2)], { schoolInfo: ecole }), /Photo à prendre/);
+});
+
 test("badges : matricule sous le nom, sinon le code élève, rien sans l'un ni l'autre", () => {
   for (const format of ["poche", "portrait"]) {
     const html = badgesHTML([
@@ -133,7 +157,7 @@ test("badge réduit : dessiné à sa taille réelle, sans réduction après coup
   assert.equal(echelonner(".x{width:80mm;font-size:7.5pt;gap:.8mm;line-height:1.05}", 0.82),
     ".x{width:65.6mm;font-size:6.15pt;gap:0.66mm;line-height:1.05}");
   assert.equal(echelonner(".x{width:80mm}", 1), ".x{width:80mm}");
-  const html = badgesHTML(Array.from({ length: 11 }, (_, i) => enfant(i)), { schoolInfo: ecole, format: "poche", taille: "reduite" });
+  const html = badgesHTML(Array.from({ length: 11 }, (_, i) => enfant(i, { photo: "https://x/e.jpg" })), { schoolInfo: ecole, format: "poche", taille: "reduite" });
   assert.match(html, /grid-template-columns:repeat\(2,65\.6mm\);grid-auto-rows:49\.2mm/);
   assert.equal(compter(html, /<div class="page" /g), 2);
   assert.equal(compter(html, /<div class="badge poche">/g), 11);

@@ -3186,7 +3186,14 @@
     "filiation": "Parents",
     "guardian": "Guardian",
     "contact": "Contact",
-    "printLegend": "In large print: the name the child answers to (their nickname if set). Below: their official name, parents, guardian and the guardian's contact."
+    "printLegend": "In large print: the name the child answers to (their nickname if set). Below: their official name, parents, guardian and the guardian's contact.",
+    "badgeLogoHint": "Without a photo (box unticked, or student not yet photographed), the school logo takes its place.",
+    "badgeIncludeWithoutPhoto": "Also print students without a photo ({{sans}} of {{total}})",
+    "badgeIncludeWithoutPhotoHint": "Their badge carries the school logo. Untick to print only those who already have their photo.",
+    "printTitle": "🖨️ Print the photo board",
+    "printWithoutPhoto": "No photo yet: {{sans}} of {{total}}. On the photo board, their initials replace the photo. Who should be printed?",
+    "printEveryone": "Everyone ({{n}})",
+    "printOnlyWithPhoto": "Only those with a photo ({{n}})"
   },
   "refusServeur": {
     "titre": "Entries rejected by the server — students to fix: {{nombre}}",

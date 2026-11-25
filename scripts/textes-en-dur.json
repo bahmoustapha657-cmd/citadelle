@@ -179,7 +179,7 @@
   "src/components/fondation/FondationApercu.jsx": 4,
   "src/components/fondation/FondationDocs.jsx": 23,
   "src/components/fondation/FondationMembres.jsx": 21,
-  "src/components/identite-enfant/BadgesModale.jsx": 22,
+  "src/components/identite-enfant/BadgesModale.jsx": 20,
   "src/components/identite-enfant/FondClasseModale.jsx": 35,
   "src/components/identite-enfant/PhotoEleve.jsx": 2,
   "src/components/identite-enfant/SeancePhotoModale.jsx": 37,

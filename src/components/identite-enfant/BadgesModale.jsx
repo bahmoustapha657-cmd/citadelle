@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { aUnePhoto, elevesAImprimer } from "../../identite-enfant";
 import { imprimerBadges } from "../../reports";
 import { FORMATS_BADGE, TAILLES_BADGE, grilleBadges } from "../../reports/trombinoscope";
 import { Btn, Modale } from "../ui";
@@ -27,8 +29,15 @@ const styleCase = { display: "flex", alignItems: "flex-start", gap: 8, fontSize:
 // (normale, réduite, petite), photo, impression en miroir pour le papier
 // transfert textile. Format, taille et miroir sont gardés sur l'appareil
 // d'une impression à l'autre (taille réduite par défaut) ; la photo est
-// cochée d'office en maternelle seulement.
+// cochée d'office en maternelle seulement. Un élève sans photo a le logo de
+// l'école à sa place ; dans un lot, on peut aussi ne pas imprimer ces
+// élèves-là (un élève choisi seul s'imprime toujours).
 export function BadgesModale({ eleves = [], schoolInfo = {}, annee = "", section = "", fermer }) {
+  const { t } = useTranslation();
+  const nbSansPhoto = eleves.filter((e) => !aUnePhoto(e)).length;
+  const choixSansPhoto = eleves.length > 1 && nbSansPhoto > 0;
+  const [avecSansPhoto, setAvecSansPhoto] = useState(true);
+  const aImprimer = elevesAImprimer(eleves, !choixSansPhoto || avecSansPhoto);
   const [format, setFormat] = useState(() => {
     const memorise = lire(CLE_FORMAT, "");
     return FORMATS_BADGE[memorise] ? memorise : section === "prescolaire" ? "portrait" : "poche";
@@ -40,13 +49,13 @@ export function BadgesModale({ eleves = [], schoolInfo = {}, annee = "", section
     return TAILLES_BADGE[memorisee] ? memorisee : "reduite";
   });
   const g = grilleBadges(format, taille);
-  const pages = Math.ceil(eleves.length / g.parPage);
+  const pages = Math.ceil(aImprimer.length / g.parPage);
 
   const choisirFormat = (valeur) => { setFormat(valeur); ecrire(CLE_FORMAT, valeur); };
   const choisirTaille = (valeur) => { setTaille(valeur); ecrire(CLE_TAILLE, valeur); };
   const changerMiroir = (valeur) => { setMiroir(valeur); ecrire(CLE_MIROIR, valeur ? "1" : "0"); };
   const imprimer = () => {
-    imprimerBadges(eleves, { schoolInfo, annee, format, taille, photo, miroir });
+    imprimerBadges(aImprimer, { schoolInfo, annee, format, taille, photo, miroir });
     fermer();
   };
 
@@ -100,11 +109,18 @@ export function BadgesModale({ eleves = [], schoolInfo = {}, annee = "", section
       <label style={styleCase}>
         <input type="checkbox" checked={photo} onChange={(e) => setPhoto(e.target.checked)} style={{ marginTop: 2 }}/>
         <span><strong>Avec la photo de l'élève</strong><br/>
-          <span style={{ fontSize: 11, color: "var(--lc-text-muted)" }}>
-            {format === "portrait" ? "Sans photo, le logo de l'école prend sa place." : "Sans photo, le nom s'écrit plus grand."}
-          </span>
+          <span style={{ fontSize: 11, color: "var(--lc-text-muted)" }}>{t("trombinoscope.badgeLogoHint")}</span>
         </span>
       </label>
+
+      {choixSansPhoto && (
+        <label style={styleCase}>
+          <input type="checkbox" checked={avecSansPhoto} onChange={(e) => setAvecSansPhoto(e.target.checked)} style={{ marginTop: 2 }}/>
+          <span><strong>{t("trombinoscope.badgeIncludeWithoutPhoto", { sans: nbSansPhoto, total: eleves.length })}</strong><br/>
+            <span style={{ fontSize: 11, color: "var(--lc-text-muted)" }}>{t("trombinoscope.badgeIncludeWithoutPhotoHint")}</span>
+          </span>
+        </label>
+      )}
 
       <label style={styleCase}>
         <input type="checkbox" checked={miroir} onChange={(e) => changerMiroir(e.target.checked)} style={{ marginTop: 2 }}/>
@@ -123,11 +139,11 @@ export function BadgesModale({ eleves = [], schoolInfo = {}, annee = "", section
 
       <div style={{ display: "flex", gap: 8, justifyContent: "space-between", alignItems: "center", marginTop: 16, flexWrap: "wrap" }}>
         <span style={{ fontSize: 12, color: "var(--lc-text-muted)" }}>
-          {eleves.length} badge{eleves.length > 1 ? "s" : ""} · {pages} page{pages > 1 ? "s" : ""} A4
+          {aImprimer.length} badge{aImprimer.length > 1 ? "s" : ""} · {pages} page{pages > 1 ? "s" : ""} A4
         </span>
         <div style={{ display: "flex", gap: 8 }}>
           <Btn v="ghost" onClick={fermer}>Annuler</Btn>
-          <Btn onClick={imprimer} disabled={!eleves.length}>🖨️ Imprimer</Btn>
+          <Btn onClick={imprimer} disabled={!aImprimer.length}>🖨️ Imprimer</Btn>
         </div>
       </div>
       </div>

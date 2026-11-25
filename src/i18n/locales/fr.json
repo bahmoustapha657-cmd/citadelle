@@ -3186,7 +3186,14 @@
     "filiation": "Filiation",
     "guardian": "Tuteur",
     "contact": "Contact",
-    "printLegend": "En gros : le nom auquel l'enfant répond (son surnom s'il est renseigné). Dessous : son nom officiel, sa filiation, son tuteur et le contact du tuteur."
+    "printLegend": "En gros : le nom auquel l'enfant répond (son surnom s'il est renseigné). Dessous : son nom officiel, sa filiation, son tuteur et le contact du tuteur.",
+    "badgeLogoHint": "Sans photo (case décochée, ou élève pas encore photographié), le logo de l'école prend sa place.",
+    "badgeIncludeWithoutPhoto": "Imprimer aussi les élèves sans photo ({{sans}} sur {{total}})",
+    "badgeIncludeWithoutPhotoHint": "Leur badge porte le logo de l'école. Décochez pour n'imprimer que ceux qui ont déjà leur photo.",
+    "printTitle": "🖨️ Imprimer le trombinoscope",
+    "printWithoutPhoto": "Sans photo pour l'instant : {{sans}} sur {{total}}. Sur le trombinoscope, leurs initiales et « Photo à prendre » remplacent la photo. Qui faut-il imprimer ?",
+    "printEveryone": "Tout le monde ({{n}})",
+    "printOnlyWithPhoto": "Seulement ceux qui ont leur photo ({{n}})"
   },
   "refusServeur": {
     "titre": "Saisies refusées par le serveur — élèves à régulariser : {{nombre}}",
