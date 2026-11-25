@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  TOUTES_SECTIONS, elevesAffiches, sectionAffichee, sectionDeEleve, sectionEcriture, sectionsMensualites, toutProposable,
+  TOUTES_SECTIONS, elevesAffiches, mensualitesClassiques, sectionAffichee, sectionDeEleve, sectionEcriture, sectionsMensualites,
+  toutProposable,
 } from "../src/components/comptabilite/mensualites-tab/toutes-sections.js";
 
 const ecole = (sectionsActives) => ({ sectionsActives });
@@ -26,6 +27,18 @@ test("sectionAffichee : « Tout » s'il est proposable, sinon une section ouvert
   assert.equal(sectionAffichee(ecole(["primaire"]), TOUTES_SECTIONS), "primaire");
   assert.equal(sectionAffichee(ecole(["primaire", "college"]), "college"), "college");
   assert.equal(sectionAffichee(ecole(["primaire", "college"]), "lycee"), "primaire");
+});
+
+test("école à l'onglet Mensualités d'origine (code « citadelle ») : jamais de « Tout »", () => {
+  const deuxSections = ecole(["primaire", "college"]);
+  assert.equal(mensualitesClassiques("citadelle"), true);
+  assert.equal(mensualitesClassiques("autre-ecole"), false);
+  assert.equal(mensualitesClassiques(undefined), false);
+  assert.equal(toutProposable(deuxSections, "citadelle"), false);
+  assert.equal(toutProposable(deuxSections, "autre-ecole"), true);
+  // Un « Tout » resté choisi retombe sur une section ouverte.
+  assert.equal(sectionAffichee(deuxSections, TOUTES_SECTIONS, "citadelle"), "primaire");
+  assert.equal(sectionAffichee(deuxSections, TOUTES_SECTIONS, "autre-ecole"), TOUTES_SECTIONS);
 });
 
 test("elevesAffiches : « Tout » = les élèves des sections ouvertes seulement", () => {

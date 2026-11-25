@@ -19,7 +19,7 @@ const garderTri = (tri) => {
   try { localStorage.setItem(CLE_TRI, JSON.stringify(tri)); } catch { /* mode privé : défaut */ }
 };
 
-// Bouton radio encadré (aussi utilisé par ListeMoisModale).
+// Bouton radio encadré (aussi utilisé par la fenêtre « Situation des paiements »).
 export const Choix = ({ nom, actif, onChange, children }) => (
   <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, padding: "5px 10px", cursor: "pointer",
     border: `1px solid ${actif ? "#1d4ed8" : "var(--lc-border, #cbd5e1)"}`, borderRadius: 8 }}>

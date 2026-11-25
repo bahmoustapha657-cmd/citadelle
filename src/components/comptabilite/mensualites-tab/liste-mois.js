@@ -24,7 +24,8 @@ export function moisParDefaut(moisAnnee = [], aujourdhui = new Date()) {
 
 // Ce que l'élève a payé dans l'année : mensualités (montants figés, acomptes
 // compris), inscription et frais annexes — mêmes montants que la grille.
-function payeDansAnnee(eleve, moisAnnee, tarifsClasses, annee) {
+// Aussi utilisé par la situation générale (situation-generale.js).
+export function payeDansAnnee(eleve, moisAnnee, tarifsClasses, annee) {
   const s = getEleveMensualiteSnapshot(eleve, moisAnnee, tarifsClasses, annee);
   const mensualites = s.montantMensualitesPercu;
   const autres = s.montantInscriptionPercu + s.montantAutrePercu;
@@ -84,7 +85,8 @@ export const totauxListeMois = (lignes = []) => lignes.reduce((t, l) => ({
 
 // Lignes rangées par classe, classes dans l'ordre des niveaux (élèves sans
 // classe à la fin) ; dans une classe, l'ordre reçu (alphabétique de l'école).
-export function grouperParClasse(lignes = []) {
+// `totaux` : sous-totaux de chaque classe (ceux de la liste d'un mois par défaut).
+export function grouperParClasse(lignes = [], totaux = totauxListeMois) {
   const parClasse = new Map();
   for (const l of lignes) {
     const classe = String(l.eleve?.classe || "").trim();
@@ -93,5 +95,5 @@ export function grouperParClasse(lignes = []) {
   }
   return [...parClasse.entries()]
     .sort(([a], [b]) => Number(!a) - Number(!b) || comparerClassesParNiveau(a, b))
-    .map(([classe, ls]) => ({ classe, lignes: ls, ...totauxListeMois(ls) }));
+    .map(([classe, ls]) => ({ classe, lignes: ls, ...totaux(ls) }));
 }

@@ -1589,9 +1589,6 @@
       "staff": "Personnel administratif et de service ({{n}})"
     },
     "monthList": {
-      "button": "Liste par mois",
-      "buttonHint": "Imprimer les élèves qui ont payé (ou pas encore) un mois donné, avec le total payé par chacun",
-      "title": "Liste des élèves par mois",
       "month": "Mois",
       "who": "Élèves à imprimer",
       "paid": "Ont payé {{month}}",
@@ -1600,6 +1597,25 @@
       "summaryPaid": "{{n}} élève(s) · {{classes}} classe(s) · {{amount}} {{currency}} encaissés pour {{month}}",
       "summaryUnpaid": "{{n}} élève(s) · {{classes}} classe(s) · {{amount}} {{currency}} restent dus pour {{month}}",
       "totalNote": "Devant chaque nom : le total payé dans l'année (mensualités, inscription et frais)."
+    },
+    "paySituation": {
+      "button": "Situation des paiements",
+      "buttonHint": "Imprimer la situation générale de chaque élève et de chaque classe, ou la liste des élèves d'un mois",
+      "title": "Situation des paiements",
+      "typeGeneral": "Situation générale",
+      "typeMonth": "Un mois",
+      "detail": "Présentation",
+      "detailStudents": "Élève par élève",
+      "detailClasses": "Classes seules",
+      "filter": "Élèves à imprimer",
+      "filterAll": "Tous",
+      "filterLate": "En retard",
+      "filterUpToDate": "À jour",
+      "summary": "{{n}} élève(s) · {{classes}} classe(s) · {{upToDate}} à jour · {{late}} en retard · {{amount}} {{currency}} payés dans l'année",
+      "note": "Une case par mois (✓ payé, ◐ acompte, ✗ impayé, — pas encore dû) et le total payé dans l'année (mensualités, inscription et frais). En retard = au moins un mois échu impayé, comme l'alerte.",
+      "classLine": "{{n}} élève(s) · {{upToDate}} à jour · {{late}} en retard",
+      "monthsPaid": "{{n}} mois payé(s)",
+      "late": "{{n}} mois en retard"
     }
   },
   "parent": {
@@ -2475,6 +2491,22 @@
       "recap": "Récapitulatif par classe",
       "sansClasse": "Sans classe",
       "aucun": "Aucun élève à imprimer pour ce mois."
+    },
+    "situation": {
+      "titre": "📋 SITUATION GÉNÉRALE DES PAIEMENTS",
+      "fenetre": "Situation générale des paiements",
+      "legende": "✓ payé · ◐ acompte versé (montant) · ✗ impayé, échéance passée · « — » pas encore dû · « · » non dû (départ, dispense)",
+      "noteTotal": "Total payé = tout ce que l'élève a versé dans l'année : mensualités (acomptes compris), inscription et frais annexes · En retard = au moins un mois échu impayé",
+      "filtreRetard": "Élèves en retard seulement",
+      "filtreAjour": "Élèves à jour seulement",
+      "moisPayes": "Mois payés",
+      "aJour": "À jour",
+      "enRetard": "En retard",
+      "etatClasse": "{{n}} élève(s) · {{aJour}} à jour · {{retard}} en retard",
+      "sousTotal": "{{classe}} — payé par mois",
+      "totalGeneral": "TOTAL — {{n}} élève(s) — payé par mois",
+      "recap": "Situation par classe",
+      "aucun": "Aucun élève à imprimer."
     }
   },
   "school": {
