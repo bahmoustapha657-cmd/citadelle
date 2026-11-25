@@ -1,5 +1,6 @@
-import { getSectionForClasse } from "./constants.js";
+import { calcMoisAnnee, getSectionForClasse, TOUS_MOIS_COURTS } from "./constants.js";
 import { estEvaluee } from "./matiere-nature.js";
+import { estPeriodeMois, moisDePeriode } from "./period-utils.js";
 
 export type SectionName = "primaire" | "college" | "lycee" | string;
 
@@ -7,6 +8,12 @@ export type Note = {
   type?: string;
   note?: number | string | null;
   matiere?: string;
+  periode?: string;
+  // Mois de l'évaluation (« Oct »…) : oraux et écrits du secondaire.
+  mois?: string | null;
+  annee?: string;
+  // Date de saisie (epoch ms, ou chaîne ISO) : range une note sans mois.
+  createdAt?: number | string | null;
 };
 
 export type Matiere = {
@@ -86,24 +93,88 @@ export const isSecondarySection = (section: SectionName = ""): boolean =>
 export const isSecondaryClasse = (classe: string = ""): boolean =>
   isSecondarySection(getSectionForClasse(classe));
 
+// ── Mois des évaluations ────────────────────────────────────────────────────
+// Règle de la direction (2026-11-25) : au secondaire, on évalue à l'oral et à
+// l'écrit CHAQUE mois, quelle que soit la périodicité. Chaque oral et chaque
+// écrit porte donc le mois où il a eu lieu ; la composition n'en a pas (une
+// par période — chaque mois en périodicité mensuelle, la période étant alors
+// le mois). Primaire et maternelle : pas de mois, toutes les notes ont le
+// même poids.
+export const noteAvecMois = (type: string = "", section: SectionName = ""): boolean => {
+  if (section === "primaire" || section === "prescolaire") return false;
+  const role = getNoteTypeRole(type);
+  return role === "oral" || role === "ecrit";
+};
+
+// Mois de l'année scolaire de l'école (calcMoisAnnee) : sert à vérifier que
+// le mois tiré de la date de saisie d'une note tombe dans sa période. Réglé
+// par App d'après schoolInfo.moisDebut ; rentrée en octobre par défaut.
+let moisAnneeNotes: string[] = calcMoisAnnee("Octobre");
+export const definirCalendrierNotes = (moisDebut: string = ""): void => {
+  moisAnneeNotes = calcMoisAnnee(moisDebut || "Octobre");
+};
+
+// Mois et année scolaire d'une date de saisie : le 14/10/2026 → « Oct »,
+// 2026-2027. Septembre ouvre l'année (comme anneeScolaireDeDate).
+const moisDeDate = (valeur: number | string | null | undefined): { mois: string; annee: string } | null => {
+  if (valeur == null || valeur === "") return null;
+  const date = new Date(typeof valeur === "number" ? valeur : Date.parse(String(valeur)));
+  if (Number.isNaN(date.getTime())) return null;
+  const m = date.getMonth();
+  const an = date.getFullYear();
+  return {
+    mois: TOUS_MOIS_COURTS[(m + 4) % 12],
+    annee: m >= 8 ? `${an}-${an + 1}` : `${an - 1}-${an}`,
+  };
+};
+
+// Mois d'une note, pour le calcul de la note de cours :
+//  1. le mois saisi ;
+//  2. sinon, en périodicité mensuelle, la période elle-même ;
+//  3. sinon le mois de sa date de saisie, s'il tombe dans sa période et son
+//     année scolaire — note saisie avant que le mois soit demandé (choix de
+//     la direction, 2026-11-25 : rien n'est réécrit en base) ;
+//  4. sinon null, « sans mois » : saisie tardive, notes restaurées d'une
+//     archive, copiées… Les notes sans mois d'une période comptent ensemble
+//     comme un seul mois — sans aucun mois, c'est le calcul d'avant.
+export const moisDeNote = (note: Note = {}, moisAnnee: string[] = moisAnneeNotes): string | null => {
+  if (note.mois) return String(note.mois);
+  const periode = String(note.periode || "");
+  if (estPeriodeMois(periode)) return periode;
+  const saisie = moisDeDate(note.createdAt);
+  if (!saisie) return null;
+  if (note.annee && saisie.annee !== note.annee) return null;
+  return moisDePeriode(periode, moisAnnee).includes(saisie.mois) ? saisie.mois : null;
+};
+
 // Les deux notes dont le secondaire tire la moyenne d'une matière : la note de
-// classe (moyenne de l'oral et de l'écrit) et la note de composition.
+// cours et la note de composition.
+//
+// Note de cours, MOIS PAR MOIS (règle de la direction, 2026-11-25) :
+//   mois    = (moyenne des oraux du mois + moyenne des écrits du mois) ÷ 2
+//   période = moyenne des mois de la période — (M1 + M2 + M3) ÷ 3 au trimestre.
+// Un mois où l'élève n'a que l'oral, ou que l'écrit, vaut cette seule note ;
+// un mois sans aucune note de l'élève ne compte pas. Avec un oral et un écrit
+// chaque mois, c'est l'ancien calcul (moyenne de tous les oraux + moyenne de
+// tous les écrits) ÷ 2 ; les deux diffèrent quand un mois a plus ou moins
+// d'évaluations que les autres.
 const getSecondaryParts = (notes: Note[] = []): { cours: number | null; composition: number | null } => {
-  const oral = averageNumbers(
-    notes.filter((note) => ORAL_TYPES.has(normalizeType(note.type))).map((note) => note.note ?? null),
-  );
   const composition = averageNumbers(
     notes.filter((note) => COMPOSITION_TYPES.has(normalizeType(note.type))).map((note) => note.note ?? null),
   );
-  const written = averageNumbers(
-    notes
-      .filter((note) => {
-        const type = normalizeType(note.type);
-        return !ORAL_TYPES.has(type) && !COMPOSITION_TYPES.has(type);
-      })
-      .map((note) => note.note ?? null),
+  const parMois = new Map<string, { oraux: Array<Note["note"]>; ecrits: Array<Note["note"]> }>();
+  notes.forEach((note) => {
+    const type = normalizeType(note.type);
+    if (COMPOSITION_TYPES.has(type)) return;
+    const cle = moisDeNote(note) ?? "";
+    const mois = parMois.get(cle) || { oraux: [], ecrits: [] };
+    (ORAL_TYPES.has(type) ? mois.oraux : mois.ecrits).push(note.note ?? null);
+    parMois.set(cle, mois);
+  });
+  const cours = averageNumbers(
+    [...parMois.values()].map(({ oraux, ecrits }) => averageNumbers([averageNumbers(oraux), averageNumbers(ecrits)])),
   );
-  return { cours: averageNumbers([oral, written]), composition };
+  return { cours, composition };
 };
 
 export const getSecondarySubjectAverage = (notes: Note[] = []): number | null => {

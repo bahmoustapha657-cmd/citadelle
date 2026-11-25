@@ -1,21 +1,28 @@
+import { useTranslation } from "react-i18next";
 import { getAnnee } from "../../../constants";
 import { Btn, Modale } from "../../ui";
 import { getEvaluationLabel, resolveCanonicalNoteType } from "../../../evaluation-forms";
 import { lireTableur } from "../../../lecture-tableur";
+import { moisImporte } from "../../../notes-mois";
+import { libellePeriodeNote } from "../../../i18n/libelles";
 
 // Modale d'import de notes depuis un fichier Excel/CSV avec prévisualisation
 // ligne par ligne et validation avant écriture.
+// Colonne « Mois » (6e, après la note) : exigée pour les oraux et les écrits
+// du secondaire, hors périodicité mensuelle — un mois de la période.
 export function ImportNotesModal({
   setModal,
   importPreview, setImportPreview,
   importEnCours, setImportEnCours,
-  noteForms, schoolInfo, section, periodes, maxNote, eleves,
+  noteForms, schoolInfo, section, periodes, moisAnnee = [], maxNote, eleves,
   ajN, annee, toast,
 }) {
+  const { t } = useTranslation();
   return (
     <Modale titre="⬆️ Importer des notes depuis Excel" fermer={() => { setModal(null); setImportPreview(null); }} large>
       <div style={{ marginBottom: 14, padding: "10px 14px", background: "#f0fdf4", borderRadius: 10, fontSize: 12, color: "#166534" }}>
         <strong>Format attendu :</strong> colonnes <em>Élève (Nom Prénom) · Matière · Type · Période · Note</em><br />
+        {t("gradeMonth.importHint")}<br />
         Télécharge le modèle via le bouton "📋 Modèle" pour garantir le bon format.
       </div>
       <input type="file" accept=".xlsx,.xls,.csv" onChange={async e => {
@@ -34,7 +41,10 @@ export function ImportNotesModal({
           else if (!eleve) erreurs.push("Élève introuvable");
           if (!matiere) erreurs.push("Matière manquante");
           if (isNaN(note) || note < 0 || note > maxNote) erreurs.push(`Note invalide (0–${maxNote})`);
-          return { eleveNom, eleveId: eleve?._id, matiere, type, periode, note, erreurs, ligne: i + 2 };
+          const { mois, erreur: erreurMois } = moisImporte({ type, section, periode, valeur: r[5], moisAnnee });
+          if (erreurMois === "manquant") erreurs.push(t("gradeMonth.importMissing"));
+          if (erreurMois === "horsPeriode") erreurs.push(t("gradeMonth.importOutside", { period: periode }));
+          return { eleveNom, eleveId: eleve?._id, matiere, type, periode, mois, note, erreurs, ligne: i + 2 };
         });
         setImportPreview({ lignes, valides: lignes.filter(l => !l.erreurs.length) });
       }} style={{ marginBottom: 12 }} />
@@ -61,7 +71,7 @@ export function ImportNotesModal({
                 <td style={{ padding: "4px 8px", fontWeight: 600 }}>{l.eleveNom || "—"}</td>
                 <td style={{ padding: "4px 8px" }}>{l.matiere || "—"}</td>
                 <td style={{ padding: "4px 8px" }}>{getEvaluationLabel(l.type, schoolInfo, { section })}</td>
-                <td style={{ padding: "4px 8px" }}>{l.periode}</td>
+                <td style={{ padding: "4px 8px" }}>{libellePeriodeNote(l.periode, l.mois)}</td>
                 <td style={{ padding: "4px 8px", textAlign: "center", fontWeight: 700 }}>{isNaN(l.note) ? "—" : l.note}</td>
                 <td style={{ padding: "4px 8px" }}>
                   {l.erreurs.length
@@ -82,7 +92,7 @@ export function ImportNotesModal({
           // s'appliquent au cache local immédiatement et se synchronisent au
           // retour en ligne. Les attendre bloquerait l'import hors ligne.
           const ecritures = importPreview.valides.map(l =>
-            ajN({ eleveNom: l.eleveNom, eleveId: l.eleveId, matiere: l.matiere, type: l.type, periode: l.periode, note: l.note, annee: annee || getAnnee() }),
+            ajN({ eleveNom: l.eleveNom, eleveId: l.eleveId, matiere: l.matiere, type: l.type, periode: l.periode, mois: l.mois, note: l.note, annee: annee || getAnnee() }),
           );
           const count = ecritures.length;
           Promise.allSettled(ecritures).then((res) => {

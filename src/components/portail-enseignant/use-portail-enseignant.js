@@ -30,6 +30,7 @@ import { fetchTeacherPortal } from "./portail-api";
 import { ecouterMiroir } from "../../backend/realtime-supabase";
 import { saveNotesApi } from "./notes-api";
 import { draftKey, loadDraft, saveDraft, clearDraft } from "./notes-draft";
+import { moisSaisi } from "../../notes-mois";
 import { enqueue, queueCount, processQueue } from "./notes-sync-queue";
 import {
   formatEmploiHeure,
@@ -214,11 +215,19 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
   const nomsMatieres = matieresDispo.map((m) => m.nom).filter(Boolean);
 
   // Wrapper : injecte eleves/notes/schoolInfo/utilisateur au helper.
-  const construireGrille = (classe, type, periode, multiPeriode = false, matiereSel = "", multiMatiere = false) => construireGrilleHelper({
-    classe, type, periode, matiere: matiereSel,
-    periodes, matieres: nomsMatieres, multiPeriode, multiMatiere,
+  // ctx = { classe, type, periode, mois, matiere, multiPeriode, multiMatiere }.
+  const construireGrille = (ctx) => construireGrilleHelper({
+    classe: ctx.classe, type: ctx.type, periode: ctx.periode, mois: ctx.mois || "", matiere: ctx.matiere || "",
+    periodes, matieres: nomsMatieres, moisAnnee, multiPeriode: !!ctx.multiPeriode, multiMatiere: !!ctx.multiMatiere,
     eleves,
     mesNotes, schoolInfo, utilisateur,
+  });
+
+  // Mois de la grille à période figée (oraux et écrits du secondaire) : gardé
+  // tant qu'il appartient à la période, sinon le mois en cours s'il en fait
+  // partie (notes-mois.js). "" quand la forme ne porte pas de mois.
+  const moisGrille = (ctx) => moisSaisi({
+    type: ctx.type, section: utilisateur.section || "secondaire", periode: ctx.periode, mois: ctx.mois, moisAnnee,
   });
 
   // Identité de l'enseignant pour la clé de brouillon local (par appareil).
@@ -231,7 +240,7 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
   // les cellules qui en diffèrent sont envoyées (cf. collectGridNotes).
   const construireGrilleAvecBrouillon = (ctx) => {
     const base = ctx.classe
-      ? construireGrille(ctx.classe, ctx.type, ctx.periode, ctx.multiPeriode, ctx.matiere, ctx.multiMatiere)
+      ? construireGrille(ctx)
       : {};
     const brouillon = loadDraft(cleBrouillon(ctx));
     return { initiales: base, notes: brouillon ? { ...base, ...brouillon.notes } : base };
@@ -246,6 +255,7 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
       multiPeriode: false,
       multiMatiere: false,
     };
+    ctx.mois = moisGrille(ctx);
     setGridForm({ ...ctx, ...construireGrilleAvecBrouillon(ctx) });
     setGridProgress({ done: 0, total: 0 });
     setModalNote("grid");
@@ -254,8 +264,9 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
   const majGrid = (patch) => {
     setGridForm((current) => {
       const next = { ...current, ...patch };
-      // Reconstruit le tableau si classe/type/période/matière/mode change.
-      if (patch.classe !== undefined || patch.type !== undefined || patch.periode !== undefined
+      next.mois = moisGrille(next);
+      // Reconstruit le tableau si classe/type/période/mois/matière/mode change.
+      if (patch.classe !== undefined || patch.type !== undefined || patch.periode !== undefined || patch.mois !== undefined
           || patch.matiere !== undefined || patch.multiPeriode !== undefined || patch.multiMatiere !== undefined) {
         const grille = next.classe ? construireGrilleAvecBrouillon(next) : { notes: {}, initiales: {} };
         next.notes = grille.notes;
@@ -328,7 +339,7 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
   };
 
   const enregistrerGrille = siModifiable(() => enregistrerGrilleAction({
-    gridForm, mesNotes, schoolInfo, utilisateur, maxNote, annee: anneeNotes,
+    gridForm, mesNotes, schoolInfo, utilisateur, maxNote, annee: anneeNotes, moisAnnee,
     setEnregistrement, setGridProgress, setModalNote, chargerPortail, toast,
     // Enregistrement complet réussi → le brouillon local n'a plus de raison d'être.
     onSuccess: () => clearDraft(cleBrouillon(gridForm)),
@@ -343,12 +354,12 @@ export function usePortailEnseignant({ utilisateur, annee, schoolInfo }) {
   }));
 
   const ouvrirEditionNote = (note) => {
-    setFormNote(buildFormNoteEdition(note, { defaultNoteType, periodeN }));
+    setFormNote(buildFormNoteEdition(note, { defaultNoteType, periodeN, moisAnnee }));
     setModalNote("edit");
   };
 
   const enregistrerNote = siModifiable(() => enregistrerNoteAction({
-    formNote, defaultNoteType, schoolInfo, utilisateur, maxNote, annee: anneeNotes,
+    formNote, defaultNoteType, schoolInfo, utilisateur, maxNote, annee: anneeNotes, moisAnnee,
     setEnregistrement, setModalNote, chargerPortail, toast,
   }));
   const supprimerNote = siModifiable((noteId) => supprimerNoteAction(noteId, {

@@ -5,13 +5,14 @@ import { saveNote, saveNotes, deleteNote } from "../../backend/teacher-portal-su
 // Crée ou met à jour une note (création si noteId vide). `matiere` n'est
 // utilisée qu'au primaire (titulaire multi-matières) ; au secondaire, la
 // matière de l'enseignant prime.
-export function saveNoteApi({ noteId, eleveId, type, periode, note, matiere, annee }) {
-  return saveNote({ noteId, eleveId, type, periode, note, matiere, annee });
+// `mois` : mois de l'évaluation (oraux et écrits du secondaire), sinon null.
+export function saveNoteApi({ noteId, eleveId, type, periode, mois, note, matiere, annee }) {
+  return saveNote({ noteId, eleveId, type, periode, mois, note, matiere, annee });
 }
 
 // Enregistre PLUSIEURS notes en une seule fois. Bien plus rapide que N appels
 // saveNoteApi pour la grille.
-// `notes` : [{ noteId, eleveId, type, periode, note, matiere, annee }]. L'année
+// `notes` : [{ noteId, eleveId, type, periode, mois, note, matiere, annee }]. L'année
 // est portée par chaque note pour survivre à la file de synchro hors-ligne.
 export function saveNotesApi(notes) {
   return saveNotes(notes);

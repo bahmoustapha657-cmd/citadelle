@@ -79,6 +79,9 @@ const TRANSFORMERS = {
   notes: (r) => ({
     _id: r.id, section: r.section, eleveId: r.eleve_id, matiere: r.matiere,
     type: r.type, periode: r.periode, note: Number(r.note), annee: r.annee,
+    // Mois de l'évaluation (oraux et écrits du secondaire) ; vide = à déduire
+    // de la date de saisie (cf. moisDeNote dans note-utils).
+    mois: r.mois || null,
     enseignantId: r.enseignant_id, enseignantNom: r.enseignant_nom,
     // Epoch ms comme Firestore : le portail trie les notes récentes en tête.
     createdAt: r.created_at ? Date.parse(r.created_at) : null,
@@ -173,7 +176,7 @@ const COLUMN_DEFS = {
     filiation: "filiation", tuteur: "tuteur", contactTuteur: "contact_tuteur",
     domicile: "domicile", photo: "photo", statut: "statut" } },
   notes: { cols: {
-    eleveId: "eleve_id", matiere: "matiere", type: "type", periode: "periode",
+    eleveId: "eleve_id", matiere: "matiere", type: "type", periode: "periode", mois: "mois",
     note: "note", annee: "annee", enseignantId: "enseignant_id", enseignantNom: "enseignant_nom" } },
   absences: { cols: {
     eleveId: "eleve_id", type: "type", date: "date", justifie: "justifie", motif: "motif",

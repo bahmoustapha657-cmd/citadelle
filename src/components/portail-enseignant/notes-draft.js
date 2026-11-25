@@ -4,6 +4,8 @@
 // est restaurée à la réouverture de la grille (même contexte). Le brouillon
 // est effacé après un enregistrement complet réussi.
 
+import { jetonPeriode } from "../../notes-mois";
+
 const PREFIX = "lc-grille-brouillon:";
 
 function safeLocal() {
@@ -16,13 +18,14 @@ function safeLocal() {
 
 // Clé stable identifiant un contexte de grille (enseignant + classe + type +
 // période + matière + mode). En mode « toutes périodes » / « toutes matières »
-// la période / la matière ne discrimine pas (marqueurs P* / M*).
-export function draftKey({ ownerId, classe, type, periode, matiere, multiPeriode, multiMatiere }) {
+// la période / la matière ne discrimine pas (marqueurs P* / M*). Le mois de
+// l'évaluation (oraux et écrits du secondaire) suit la période : « T1:Oct ».
+export function draftKey({ ownerId, classe, type, periode, mois, matiere, multiPeriode, multiMatiere }) {
   return [
     PREFIX + (ownerId || "?"),
     classe || "",
     type || "",
-    multiPeriode ? "P*" : (periode || ""),
+    multiPeriode ? "P*" : jetonPeriode(periode || "", mois || ""),
     multiMatiere ? "M*" : (matiere || ""),
   ].join("|");
 }

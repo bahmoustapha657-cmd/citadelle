@@ -1,19 +1,29 @@
+import { useContext } from "react";
 import { useTranslation } from "react-i18next";
 import { Btn, Input, Modale, Selec } from "../../ui";
 import { AvisFormeNote } from "../../AvisFormeNote";
 import { nomAffiche } from "../../../ordre-eleves";
+import { SchoolContext } from "../../../contexts/SchoolContext";
+import { champMois, moisSaisi } from "../../../notes-mois";
+import { libelleMoisCode } from "../../../i18n/libelles";
 
 // Modale de création / édition d'une note unitaire.
+// Oraux et écrits du secondaire : mois de l'évaluation, parmi ceux de la
+// période (le mois en cours d'office) — notes-mois.js.
 export function NoteModale({
   modalNote, setModalNote, formNote, setFormNote,
   eleves, noteForms, defaultNoteType, periodeN, periodes, maxNote = 20,
-  isPrimaire = false, matieresDispo = [],
+  isPrimaire = false, matieresDispo = [], section = "secondaire",
   enregistrement, enregistrerNote, triEleves,
 }) {
   // Même règle que la grille : choix de la matière pour le titulaire, ou
   // pour le professeur du secondaire à qui des matières sont rattachées.
   const choixMatiere = isPrimaire || matieresDispo.length > 1;
   const { t } = useTranslation();
+  const { moisAnnee = [] } = useContext(SchoolContext);
+  const saisie = { type: formNote.type || defaultNoteType, section, periode: formNote.periode || periodeN, moisAnnee };
+  const champ = champMois(saisie);
+  const mois = moisSaisi({ ...saisie, mois: formNote.mois || "" });
   return (
     <Modale titre={modalNote === "add" ? t("teacher.noteModal.new") : t("teacher.noteModal.edit")} fermer={() => setModalNote(null)}>
       <Selec
@@ -60,6 +70,19 @@ export function NoteModale({
         {periodes.map((p) => <option key={p}>{p}</option>)}
       </Selec>
       <div style={{ height: 10 }} />
+      {champ.visible && (
+        <>
+          <Selec
+            label={t("gradeMonth.label")}
+            value={mois}
+            onChange={(event) => setFormNote((current) => ({ ...current, mois: event.target.value }))}
+          >
+            <option value="">{t("gradeMonth.choose")}</option>
+            {champ.choix.map((m) => <option key={m} value={m}>{libelleMoisCode(m)}</option>)}
+          </Selec>
+          <div style={{ height: 10 }} />
+        </>
+      )}
       <Input
         label={t("teacher.cols.gradeOutOf", { max: maxNote })}
         type="number"

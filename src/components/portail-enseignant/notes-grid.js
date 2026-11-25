@@ -2,19 +2,36 @@
 // pré-remplissage, collecte des cellules saisies et validation.
 import { resolveCanonicalNoteType } from "../../evaluation-forms";
 import i18n from "../../i18n";
+import { moisDeNote, noteAvecMois } from "../../note-utils";
+import { estPeriodeMois } from "../../period-utils";
+import { colonnesPeriodes, lireJetonPeriode, moisAEnregistrer } from "../../notes-mois";
+
+// ── Mois des évaluations (oraux et écrits du secondaire, notes-mois.js) ─────
+// Une forme qui porte un mois se saisit pour UN mois : période figée → le
+// mois choisi au-dessus de la grille (gridForm.mois) ; toutes les périodes →
+// une colonne par (période, mois), jeton « T1:Oct » dans la clé de cellule.
+// Mois à comparer pour une cellule : "" = pas de filtre (forme sans mois, ou
+// période au mois en périodicité mensuelle) ; « ? » quand le mois manque
+// (aucune note ne correspond, la validation bloque l'enregistrement).
+const moisCible = (avecMois, periode, mois) => (avecMois && !estPeriodeMois(periode) ? mois || "?" : "");
+const dansLeMois = (note, cible, moisAnnee) => !cible || moisDeNote(note, moisAnnee) === cible;
 
 // Pré-remplit la grille à partir des notes existantes.
 //  - mode normal      : clé = eleveId (une période figée).
 //  - multipériode     : clé = `${eleveId}|${periode}` (toutes les périodes,
-//                       pour saisir les 2-3 compositions d'un coup).
-export function construireGrille({ classe, type, periode, matiere = "", periodes = [], matieres = [], multiPeriode = false, multiMatiere = false, eleves, mesNotes, schoolInfo, utilisateur }) {
+//                       pour saisir les 2-3 compositions d'un coup) ;
+//                       `${eleveId}|${periode}:${mois}` pour une forme à mois.
+export function construireGrille({ classe, type, periode, matiere = "", mois = "", periodes = [], matieres = [], moisAnnee = [], multiPeriode = false, multiMatiere = false, eleves, mesNotes, schoolInfo, utilisateur }) {
   const section = utilisateur.section || "secondaire";
+  const avecMois = noteAvecMois(type, section);
+  const colonnes = colonnesPeriodes(periodes, { avecMois, moisAnnee });
   const map = {};
-  const find = (eleveId, per, mat) => mesNotes.find(
+  const find = (eleveId, per, mat, moisCol = mois) => mesNotes.find(
     (n) => n.eleveId === eleveId && n.periode === per
       && resolveCanonicalNoteType(n.type, schoolInfo, section) === type
       // On cible la matière de la cellule (sélecteur, ou colonne au multi-matières).
-      && (!mat || n.matiere === mat),
+      && (!mat || n.matiere === mat)
+      && dansLeMois(n, moisCible(avecMois, per, moisCol), moisAnnee),
   );
   eleves
     .filter((e) => e.classe === classe)
@@ -22,16 +39,16 @@ export function construireGrille({ classe, type, periode, matiere = "", periodes
       if (multiPeriode && multiMatiere) {
         // Grille complète : une colonne par couple (période, matière). Clé
         // `${eleveId}|${periode}|${matiere}`. On saisit tout puis 1 seul save.
-        periodes.forEach((per) => {
+        colonnes.forEach((col) => {
           matieres.forEach((mat) => {
-            const ex = find(e._id, per, mat);
-            map[`${e._id}|${per}|${mat}`] = ex ? String(ex.note ?? "") : "";
+            const ex = find(e._id, col.periode, mat, col.mois);
+            map[`${e._id}|${col.jeton}|${mat}`] = ex ? String(ex.note ?? "") : "";
           });
         });
       } else if (multiPeriode) {
-        periodes.forEach((per) => {
-          const ex = find(e._id, per, matiere);
-          map[`${e._id}|${per}`] = ex ? String(ex.note ?? "") : "";
+        colonnes.forEach((col) => {
+          const ex = find(e._id, col.periode, matiere, col.mois);
+          map[`${e._id}|${col.jeton}`] = ex ? String(ex.note ?? "") : "";
         });
       } else if (multiMatiere) {
         // Une colonne par matière de la classe (titulaire du primaire) : on
@@ -64,9 +81,12 @@ export function celluleASauver(val, init) {
 // cellules non vides, comme avant), avec le type canonique, la période de
 // chaque cellule et l'éventuel noteId existant.
 // eleveId (id Firestore) et periode ne contiennent jamais « | ».
-export function collectGridNotes({ gridForm, mesNotes, schoolInfo, utilisateur }) {
+// Chaque note porte son mois (moisAEnregistrer) ; `moisManquant` signale une
+// forme à mois saisie sans mois choisi (refusée par validateGridNotes).
+export function collectGridNotes({ gridForm, mesNotes, schoolInfo, utilisateur, moisAnnee = [] }) {
   const section = utilisateur.section || "secondaire";
   const canonical = resolveCanonicalNoteType(gridForm.type, schoolInfo, section);
+  const avecMois = noteAvecMois(canonical, section);
   const matiereFixe = gridForm.matiere || "";
   const initiales = gridForm.initiales || null;
   const aSauver = Object.entries(gridForm.notes)
@@ -95,12 +115,22 @@ export function collectGridNotes({ gridForm, mesNotes, schoolInfo, utilisateur }
         eleveId = key.slice(0, idx);
         matiere = key.slice(idx + 1);
       }
+      // Colonnes de périodes : « T1:Oct » → période T1, mois Oct.
+      const jeton = lireJetonPeriode(periode);
+      periode = jeton.periode;
+      const moisCol = gridForm.multiPeriode ? jeton.mois : (gridForm.mois || "");
+      const cible = moisCible(avecMois, periode, moisCol);
       const existante = mesNotes.find(
         (n) => n.eleveId === eleveId && n.periode === periode
           && resolveCanonicalNoteType(n.type, schoolInfo, section) === canonical
-          && (!matiere || n.matiere === matiere),
+          && (!matiere || n.matiere === matiere)
+          && dansLeMois(n, cible, moisAnnee),
       );
-      return { eleveId, periode, matiere, note: Number(val), noteId: existante?._id || "" };
+      return {
+        eleveId, periode, matiere, note: Number(val), noteId: existante?._id || "",
+        mois: moisAEnregistrer({ type: canonical, section, periode, mois: moisCol }),
+        moisManquant: cible === "?",
+      };
     });
   return { canonical, aSauver };
 }
@@ -109,6 +139,7 @@ export function collectGridNotes({ gridForm, mesNotes, schoolInfo, utilisateur }
 // maxNote : 20 au secondaire, 10 au primaire.
 export function validateGridNotes(aSauver, maxNote = 20) {
   if (aSauver.length === 0) return i18n.t("teacher.notes.nothingNew");
+  if (aSauver.some((n) => n.moisManquant)) return i18n.t("gradeMonth.required");
   const invalide = aSauver.find((n) => !Number.isFinite(n.note) || n.note < 0 || n.note > maxNote);
   if (invalide) return i18n.t("teacher.notes.invalid", { max: maxNote });
   return null;

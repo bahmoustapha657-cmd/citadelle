@@ -15,7 +15,7 @@
  * Les écoles guinéennes typiques : primaire trimestre, secondaire semestre.
  */
 
-import { calcMoisAnnee } from "./constants.js";
+import { calcMoisAnnee, TOUS_MOIS_COURTS } from "./constants.js";
 
 export type Periodicite = "trimestre" | "semestre" | "mensuel";
 
@@ -150,6 +150,33 @@ export function getPeriodeLongLabel(periode: string): string {
     case "S2": return "2ème semestre";
     default: return periode;
   }
+}
+
+/** Une période est-elle un mois (périodicité mensuelle : « Oct », « Nov »…) ? */
+export function estPeriodeMois(periode: string): boolean {
+  return TOUS_MOIS_COURTS.includes(periode);
+}
+
+/**
+ * Mois (codes courts de calcMoisAnnee) que couvre une période, dans l'ordre de
+ * l'année scolaire `moisAnnee` :
+ *  - T1 = mois 1 à 3, T2 = 4 à 6, T3 = 7 à 9 ;
+ *  - S1 = mois 1 à 5, S2 = mois 5 à 9 : le 5e mois (février pour une rentrée
+ *    en octobre) appartient aux DEUX semestres, c'est le semestre choisi à la
+ *    saisie qui décide (choix de la direction, 2026-11-25) ;
+ *  - un mois = lui-même.
+ * Même découpage que la conversion des périodes (tranchePeriode). Période
+ * inconnue → [].
+ */
+export function moisDePeriode(periode: string, moisAnnee: string[] = []): string[] {
+  const trimestre = /^T([1-3])$/.exec(periode || "");
+  if (trimestre) {
+    const debut = (Number(trimestre[1]) - 1) * 3;
+    return moisAnnee.slice(debut, debut + 3);
+  }
+  const semestre = /^S([12])$/.exec(periode || "");
+  if (semestre) return semestre[1] === "1" ? moisAnnee.slice(0, 5) : moisAnnee.slice(4, 9);
+  return estPeriodeMois(periode) ? [periode] : [];
 }
 
 /**

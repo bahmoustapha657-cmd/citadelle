@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { C } from "../../../constants";
 import { getEvaluationLabel } from "../../../evaluation-forms";
 import { Badge, Btn, Card, TD, THead, TR, Vide } from "../../ui";
+import { libelleMoisCode } from "../../../i18n/libelles";
 
 // En-tête (sélection période + actions) et tableau des notes de la période.
 export function NotesListe({
@@ -60,7 +61,9 @@ export function NotesListe({
               {notesPeriode.map((note) => (
                 <TR key={note._id}>
                   <TD bold>{note.eleveNom || "-"}</TD>
-                  <TD><Badge color="blue">{getEvaluationLabel(note.type, schoolInfo, { section: utilisateur.section || "secondaire" })}</Badge></TD>
+                  <TD><Badge color="blue">{getEvaluationLabel(note.type, schoolInfo, { section: utilisateur.section || "secondaire" })}</Badge>
+                    {/* Mois de l'évaluation (oraux et écrits du secondaire). */}
+                    {note.mois && note.mois !== note.periode && <span style={{ marginInlineStart: 6, fontSize: 11, color: "#64748b" }}>{libelleMoisCode(note.mois)}</span>}</TD>
                   <TD center><strong style={{ fontSize: 14, color: Number(note.note) >= maxNote / 2 ? C.greenDk : "#b91c1c" }}>{note.note}</strong></TD>
                   <TD center>
                     <div style={{ display: "flex", justifyContent: "center", gap: 6 }}>

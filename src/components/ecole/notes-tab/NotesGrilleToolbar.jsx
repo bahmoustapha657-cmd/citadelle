@@ -1,12 +1,14 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Btn } from "../../ui";
 import { nomAffiche } from "../../../ordre-eleves";
 import { AvisFormeNote } from "../../AvisFormeNote";
+import { libelleMoisCode } from "../../../i18n/libelles";
 
 // Barre de filtres de la grille, selon le mode de saisie :
-//   "periode" : classe + période + type      (colonnes = matières)
-//   "matiere" : classe + matière + type      (colonnes = périodes)
-//   "eleve"   : classe + élève + type        (lignes = matières, colonnes = périodes)
+//   "periode" : classe + période (+ mois) + type  (colonnes = matières)
+//   "matiere" : classe + matière + type      (colonnes = périodes, ou mois)
+//   "eleve"   : classe + élève + type        (lignes = matières, colonnes = périodes, ou mois)
 const MODES = [
   { id: "periode", label: "Par période" },
   { id: "matiere", label: "Par matière" },
@@ -17,8 +19,10 @@ export function NotesGrilleToolbar({
   classesUniqN, periodes, noteForms, matieresClasse, elevesGrille,
   grilleClasse, setGrilleClasse, grillePeriode, setGrillePeriode, grilleType, setGrilleType,
   grilleMode, setGrilleMode, grilleMatiere, setGrilleMatiere, grilleEleve, setGrilleEleve,
+  champMoisGrille = null, grilleMois = "", setGrilleMois,
   grilleChanges, setGrilleChanges, grilleSaving, sauvegarderGrille, triEleves,
 }) {
+  const { t } = useTranslation();
   const nbModif = Object.keys(grilleChanges).length;
   const selStyle = { border: "1px solid #b0c4d8", borderRadius: 7, padding: "6px 10px", fontSize: 12 };
   const changerMode = (id) => { setGrilleMode(id); setGrilleChanges({}); };
@@ -52,6 +56,14 @@ export function NotesGrilleToolbar({
       {grilleMode === "periode" && (
         <select value={grillePeriode} onChange={e => setGrillePeriode(e.target.value)} style={selStyle}>
           {periodes.map(p => <option key={p} value={p}>{p}</option>)}
+        </select>
+      )}
+      {/* Mois de l'évaluation : oraux et écrits du secondaire (notes-mois.js). */}
+      {grilleMode === "periode" && champMoisGrille?.visible && (
+        <select value={grilleMois} onChange={e => setGrilleMois(e.target.value)} title={t("gradeMonth.label")}
+          style={{ ...selStyle, borderColor: grilleMois ? "#b0c4d8" : "#f59e0b" }}>
+          <option value="">{t("gradeMonth.choose")}</option>
+          {champMoisGrille.choix.map(m => <option key={m} value={m}>{libelleMoisCode(m)}</option>)}
         </select>
       )}
       {grilleMode === "matiere" && (

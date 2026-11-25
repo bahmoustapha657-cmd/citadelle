@@ -29,6 +29,27 @@ export const libelleMoisCourt = (mois) => {
   return new Intl.DateTimeFormat(locale, { month: "short" }).format(new Date(2000, i, 1));
 };
 
+// Mois d'une note ou d'une période mensuelle, enregistré en code court
+// (« Oct », « Fév », cf. calcMoisAnnee) : nom complet traduit (« Octobre »,
+// « October »), ou abrégé pour les en-têtes de grille — le code lui-même en
+// français, l'abréviation de la langue sinon.
+// i18n-ignore
+const MOIS_CODES = ["Jan", "Fév", "Mar", "Avr", "Mai", "Jun", "Jul", "Aoû", "Sep", "Oct", "Nov", "Déc"];
+export const libelleMoisCode = (code, { court = false } = {}) => {
+  const i = MOIS_CODES.indexOf(code);
+  if (i < 0) return String(code || "");
+  if (!court) return libelleMois(MOIS[i]);
+  const locale = localeCourante();
+  if (locale === "fr-FR") return code;
+  return new Intl.DateTimeFormat(locale, { month: "short" }).format(new Date(2000, i, 1));
+};
+
+// Période d'une note et son mois : « T1 · Oct ». La période seule quand la
+// note n'a pas de mois, ou que la période est déjà le mois (périodicité
+// mensuelle : mois = période).
+export const libellePeriodeNote = (periode, mois) =>
+  (mois && mois !== periode ? `${periode} · ${libelleMoisCode(mois, { court: true })}` : String(periode || ""));
+
 // « 2026-10 » (mois d'une dépense) → « Octobre 2026 » dans la langue choisie.
 export const libelleMoisAnnee = (cle) => {
   const [annee, m] = String(cle || "").split("-");

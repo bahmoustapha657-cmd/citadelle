@@ -4,9 +4,10 @@ import { couleurNote } from "./notes-helpers";
 
 // Tableau de saisie générique : lignes (élèves OU matières selon le mode)
 // × colonnes (matières OU périodes). Moyenne par ligne sur les colonnes
-// renseignées. Cellules éditables (canCreate).
+// renseignées. Cellules éditables (canCreate). `libelleColonne` : en-tête
+// d'une colonne (« T1 · Oct » pour une colonne de période et de mois).
 export function NotesGrilleTable({
-  lignes, colonnes, ligneHeader = "Élève", maxNote, canCreate,
+  lignes, colonnes, libelleColonne = (col) => col, ligneHeader = "Élève", maxNote, canCreate,
   valeurCellule, cleCellule, grilleChanges, setGrilleChanges,
 }) {
   if (lignes.length === 0) return <Vide icone="📝" msg="Rien à afficher" />;
@@ -19,7 +20,7 @@ export function NotesGrilleTable({
             <th style={{ padding: "8px 12px", textAlign: "left", color: "rgba(255,255,255,0.9)", fontSize: 11, fontWeight: 700, textTransform: "uppercase", whiteSpace: "nowrap", minWidth: 150, background: "linear-gradient(135deg,var(--sc1),var(--sc1-dk))", position: "sticky", top: 0, left: 0, zIndex: 4 }}>{ligneHeader}</th>
             {colonnes.map(col => (
               <th key={col} style={{ padding: "8px 10px", textAlign: "center", color: "rgba(255,255,255,0.9)", fontSize: 10, fontWeight: 700, textTransform: "uppercase", whiteSpace: "nowrap", borderLeft: "1px solid rgba(255,255,255,0.1)", background: "linear-gradient(135deg,var(--sc1),var(--sc1-dk))", position: "sticky", top: 0, zIndex: 3 }}>
-                {col}<div style={{ fontSize: 9, opacity: 0.6, fontWeight: 400 }}>/{maxNote}</div>
+                {libelleColonne(col)}<div style={{ fontSize: 9, opacity: 0.6, fontWeight: 400 }}>/{maxNote}</div>
               </th>
             ))}
           </tr>
