@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { C, getAnnee, getSectionLabel, isSectionActive } from "../../constants";
+import { SchoolContext } from "../../contexts/SchoolContext";
 import { Btn } from "../ui";
 import { BoutonDispenses } from "./BoutonDispenses";
 import { intentionDispenses, oublierIntentionDispenses } from "./ouvrir-dispenses";
@@ -20,8 +21,8 @@ import { MensualitesTable } from "./mensualites-tab/MensualitesTable";
 import { RecuFamilleModale } from "./mensualites-tab/RecuFamilleModale";
 import { indexFratries } from "../../fratrie";
 import { TranchesPaiement } from "./mensualites-tab/TranchesPaiement";
-import { TOUTES_SECTIONS, toutProposable } from "./mensualites-tab/toutes-sections";
-import { ListeMoisModale } from "./mensualites-tab/ListeMoisModale";
+import { TOUTES_SECTIONS, mensualitesClassiques, toutProposable } from "./mensualites-tab/toutes-sections";
+import { SituationPaiementsModale } from "./mensualites-tab/SituationPaiementsModale";
 
 // Onglet mensualités : tarifs par classe, alertes impayés, filtres niveau/classe
 // puis tableau de suivi des paiements. Aiguille les données vers chaque bloc.
@@ -73,6 +74,10 @@ export function MensualitesTab({
   toast,
 }) {
   const { t } = useTranslation();
+  // Écoles à l'onglet d'origine (à leur demande) : ni « Tout » ni « Situation
+  // des paiements ».
+  const { schoolId } = useContext(SchoolContext);
+  const classique = mensualitesClassiques(schoolId);
   // Ouverte d'emblée quand on arrive de l'alerte du tableau de bord ;
   // l'intention est effacée une fois la fenêtre montée.
   const [exonerations, setExonerations] = useState(() => intentionDispenses() !== null);
@@ -100,8 +105,8 @@ export function MensualitesTab({
   // « Tout » : toutes les sections ouvertes dans la même grille.
   const toutes = niveau === TOUTES_SECTIONS;
   const perimetre = filtClasse !== "all" ? `Classe ${filtClasse}` : (toutes ? t("dashboard.allSections") : getSectionLabel(niveau));
-  // Liste imprimable des élèves d'un mois (ont payé / pas encore payé).
-  const [listeMois, setListeMois] = useState(false);
+  // Fenêtre « Situation des paiements » : situation générale ou liste d'un mois.
+  const [situation, setSituation] = useState(false);
   const regle = useMemo(() => regleEcartement(schoolInfo, anneeScolarite), [schoolInfo, anneeScolarite]);
   const { gardes: elevesClasses, ecartes: retires } = useMemo(
     () => ecarterNonReinscrits(elevesFiltres, regle), [elevesFiltres, regle],
@@ -143,7 +148,7 @@ export function MensualitesTab({
           style={{ border: "1px solid #b0c4d8", borderRadius: 7, padding: "6px 10px", fontSize: 12, background: "#fff", color: C.blueDark, fontWeight: 600 }}>
           {/* Seules les sections ouvertes dans l'école (Paramètres → Identité) ;
               « Tout » les montre toutes à la fois, dès qu'il y en a deux. */}
-          {toutProposable(schoolInfo) && <option value={TOUTES_SECTIONS}>{t("accounting.mens.allSections")}</option>}
+          {toutProposable(schoolInfo, schoolId) && <option value={TOUTES_SECTIONS}>{t("accounting.mens.allSections")}</option>}
           {[
             ["college", t("dashboard.secondary")],
             ["lycee", t("dashboard.lycee")],
@@ -159,9 +164,9 @@ export function MensualitesTab({
           {classesU.map(c => <option key={c}>{c}</option>)}
         </select>}
         <TriElevesSelect liste="mensualites" value={tri} onChange={setTri} />
-        <Btn sm v="ghost" onClick={() => setListeMois(true)} title={t("accounting.monthList.buttonHint")}>
-          🖨️ {t("accounting.monthList.button")}
-        </Btn>
+        {!classique && <Btn sm v="ghost" onClick={() => setSituation(true)} title={t("accounting.paySituation.buttonHint")}>
+          🖨️ {t("accounting.paySituation.button")}
+        </Btn>}
         {/* Élèves dispensés de payer : la Direction les accorde, la
             comptabilité les demande (cf. exoneration-actions). */}
         <BoutonDispenses dispenses={dispenses} onClick={() => setExonerations(true)} />
@@ -169,9 +174,9 @@ export function MensualitesTab({
 
       {/* Périmètre de la grille (section ou « Tout », classe), sans les non
           réinscrits retirés des classes — comme les alertes. */}
-      {listeMois && <ListeMoisModale eleves={elevesClasses} moisAnnee={moisAnnee} annee={anneeScolarite}
+      {situation && !classique && <SituationPaiementsModale eleves={elevesClasses} moisAnnee={moisAnnee} annee={anneeScolarite}
         tarifsClasses={tarifsClasses} schoolInfo={schoolInfo} perimetre={perimetre}
-        fermer={() => setListeMois(false)} />}
+        fermer={() => setSituation(false)} />}
 
       {/* La fenêtre s'ouvre sur la section affichée, et en change à volonté. */}
       {exonerations && <ExonerationsModale {...dispenses}

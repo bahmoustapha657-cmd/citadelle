@@ -18,13 +18,21 @@ export const SECTIONS_MENSUALITES = ["college", "lycee", "primaire", "prescolair
 export const sectionsMensualites = (schoolInfo) =>
   SECTIONS_MENSUALITES.filter((section) => isSectionActive(schoolInfo, section));
 
+// Écoles qui gardent l'onglet Mensualités d'origine, à leur demande : ni
+// « Tout » ni bouton « Situation des paiements » (situation générale, liste
+// d'un mois). Clé = schoolId (code école), comme finances-claires.js.
+const ECOLES_MENSUALITES_CLASSIQUES = new Set(["citadelle"]);
+
+export const mensualitesClassiques = (schoolId) => ECOLES_MENSUALITES_CLASSIQUES.has(schoolId);
+
 // « Tout » n'a de sens qu'à partir de deux sections ouvertes.
-export const toutProposable = (schoolInfo) => sectionsMensualites(schoolInfo).length > 1;
+export const toutProposable = (schoolInfo, schoolId) =>
+  !mensualitesClassiques(schoolId) && sectionsMensualites(schoolInfo).length > 1;
 
 // Section retenue par le sélecteur : « Tout » s'il est proposable, sinon la
 // section choisie si elle est ouverte, sinon la première ouverte.
-export const sectionAffichee = (schoolInfo, choix) =>
-  (choix === TOUTES_SECTIONS && toutProposable(schoolInfo) ? TOUTES_SECTIONS : sectionOuverte(schoolInfo, choix));
+export const sectionAffichee = (schoolInfo, choix, schoolId) =>
+  (choix === TOUTES_SECTIONS && toutProposable(schoolInfo, schoolId) ? TOUTES_SECTIONS : sectionOuverte(schoolInfo, choix));
 
 // Élèves affichés : ceux de la section, ou de toutes les sections ouvertes.
 export function elevesAffiches(elevesParSection = {}, section, schoolInfo) {

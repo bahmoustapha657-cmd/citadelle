@@ -9,6 +9,8 @@
 //  • élèves présents sans inscription / réinscription encaissée : type,
 //    reste à payer, mois déjà payés (preuve qu'ils fréquentent l'école),
 //    tuteur et téléphone pour les relancer.
+// Et, depuis le bouton « Situation des paiements » de l'onglet : la liste
+// d'un mois (listeMoisHTML) et la situation générale (situationGeneraleHTML).
 
 import { TOUS_MOIS_COURTS, TOUS_MOIS_LONGS, fmtN, getMonnaie, today } from "../constants.js";
 import {
@@ -236,6 +238,113 @@ export function listeMoisHTML(groupes = [], { mois = "", statut = "payes", pageP
   });
 }
 
+// Case d'un mois dans la situation générale (états : situation-generale.js).
+const CASES_SITUATION = {
+  paye: () => `<td class="mois paye">✓</td>`,
+  acompte: (c) => `<td class="mois acompte">◐<br/>${fmtN(c.acompte)}</td>`,
+  impaye: () => `<td class="mois impaye">✗</td>`,
+  avenir: () => `<td class="mois avenir">—</td>`,
+  nondu: () => `<td class="mois nondu">·</td>`,
+};
+
+/**
+ * Situation générale des paiements (calculs : components/comptabilite/
+ * mensualites-tab/situation-generale.js).
+ *  • detail « eleves » : une ligne par élève — une case par mois, mois payés,
+ *    total payé dans l'année — rangés par classe, chaque classe avec le
+ *    nombre d'élèves ayant payé chaque mois et ce qu'elle a payé ; puis,
+ *    à plusieurs classes, le tableau des classes ;
+ *  • detail « classes » : le tableau des classes seul — effectif, à jour,
+ *    en retard, payé par mois, total payé.
+ * @param {{ classe: string, lignes: Record<string, any>[], effectif: number, aJour: number, enRetard: number,
+ *   parMois: number[], total: number }[]} groupes
+ * @param {{ moisAnnee?: string[], detail?: string, filtre?: string, pageParClasse?: boolean,
+ *   schoolInfo?: Record<string, any>, annee?: string, perimetre?: string }} options
+ */
+export function situationGeneraleHTML(groupes = [], {
+  moisAnnee = [], detail = "eleves", filtre = "tous", pageParClasse = false, ...options
+} = {}) {
+  const monnaie = echapper(options.schoolInfo?.monnaie || getMonnaie());
+  const classesSeules = detail === "classes";
+  const titre = tr("reports.situation.titre");
+  const nomClasse = (classe) => echapper(classe) || tr("reports.listeMois.sansClasse");
+  const enTetesMois = moisAnnee.map((m) => `<th class="c">${echapper(moisCourt(m))}</th>`).join("");
+  const parMois = (g) => moisAnnee.map((_, i) => `<td class="c">${g.parMois[i] || 0}</td>`).join("");
+  const total = groupes.reduce((t, g) => ({
+    effectif: t.effectif + g.effectif, aJour: t.aJour + g.aJour, enRetard: t.enRetard + g.enRetard, total: t.total + g.total,
+    parMois: moisAnnee.map((_, i) => (t.parMois[i] || 0) + (g.parMois[i] || 0)),
+  }), { effectif: 0, aJour: 0, enRetard: 0, total: 0, parMois: [] });
+
+  // Tableau des classes : ce que lit la Direction.
+  const tableauClasses = `<table>
+    <thead><tr><th>${tr("reports.class")}</th><th class="c">${tr("reports.studentsHeader")}</th>
+      <th class="c">${tr("reports.situation.aJour")}</th><th class="c">${tr("reports.situation.enRetard")}</th>
+      ${enTetesMois}<th>${tr("reports.listeMois.totalPaye", { monnaie })}</th></tr></thead>
+    <tbody>${groupes.map((g) => `<tr><td><strong>${nomClasse(g.classe)}</strong></td><td class="c">${g.effectif}</td>
+      <td class="c ok">${g.aJour}</td><td class="c ko">${g.enRetard}</td>${parMois(g)}
+      <td class="m">${fmtN(g.total)}</td></tr>`).join("")}</tbody>
+    <tfoot><tr><td>${tr("common.total")}</td><td class="c">${total.effectif}</td><td class="c">${total.aJour}</td>
+      <td class="c">${total.enRetard}</td>${parMois(total)}<td class="m">${fmtN(total.total)}</td></tr></tfoot>
+  </table>`;
+
+  let tableau = tableauClasses;
+  if (!classesSeules) {
+    const nbColonnes = moisAnnee.length + 4;
+    const thead = `<thead><tr><th class="c">${tr("reports.rowNumber")}</th><th>${tr("reports.studentName")}</th>
+      ${enTetesMois}<th class="c">${tr("reports.situation.moisPayes")}</th>
+      <th>${tr("reports.listeMois.totalPaye", { monnaie })}</th></tr></thead>`;
+    const ligne = (l, i) => `<tr>
+      <td class="c">${i + 1}</td>
+      <td>${celluleEleve(l.eleve)}</td>
+      ${l.cases.map((c) => (CASES_SITUATION[c.etat] || CASES_SITUATION.avenir)(c)).join("")}
+      <td class="c"><strong>${l.moisPayes}</strong></td>
+      <td class="m">${fmtN(l.total)}</td>
+    </tr>`;
+    const etat = (g) => tr("reports.situation.etatClasse", { n: g.effectif, aJour: g.aJour, retard: g.enRetard });
+    const corpsGroupe = (g) => `<tr class="grp"><td colspan="${nbColonnes}">${nomClasse(g.classe)} — ${etat(g)}</td></tr>
+      ${g.lignes.map(ligne).join("")}
+      <tr class="st"><td colspan="2">${tr("reports.situation.sousTotal", { classe: nomClasse(g.classe) })}</td>${parMois(g)}
+        <td></td><td class="m">${fmtN(g.total)}</td></tr>`;
+    const ligneTotal = `<tr><td colspan="2">${tr("reports.situation.totalGeneral", { n: total.effectif })}</td>${parMois(total)}
+      <td></td><td class="m">${fmtN(total.total)}</td></tr>`;
+    // Une page par classe : chaque classe porte son tableau, et rappelle le
+    // titre à partir de la deuxième page.
+    tableau = pageParClasse
+      ? groupes.map((g, i) => `<div class="${i ? "saut" : ""}">
+          ${i ? `<div class="rappel">${titre} · ${echapper(options.annee || "")}</div>` : ""}
+          <table>${thead}<tbody>${corpsGroupe(g)}</tbody></table></div>`).join("")
+      : `<table>${thead}<tbody>${groupes.map(corpsGroupe).join("")}</tbody><tfoot>${ligneTotal}</tfoot></table>`;
+    if (groupes.length > 1) {
+      tableau += `<div class="${pageParClasse ? "saut" : ""}"><h3>${tr("reports.situation.recap")}</h3>${tableauClasses}</div>`;
+    }
+  }
+
+  const filtreNote = filtre === "retard" ? tr("reports.situation.filtreRetard")
+    : filtre === "ajour" ? tr("reports.situation.filtreAjour") : "";
+  return pageListe({
+    ...options,
+    couleur: "#0f4c81",
+    tableau,
+    titre,
+    titreFenetre: tr("reports.situation.fenetre"),
+    note: [
+      !classesSeules && filtreNote ? `<strong>${filtreNote}</strong>` : "",
+      classesSeules ? "" : tr("reports.situation.legende"),
+      tr("reports.situation.noteTotal"),
+    ].filter(Boolean).join("<br/>"),
+    css: `td{vertical-align:middle} td.mois{min-width:22px}
+      td.impaye{color:#b91c1c;font-weight:900}
+      td.avenir{color:#94a3b8}
+      td.nondu{color:#cbd5e1;background:#f8fafc!important}
+      td.ok{color:#166534;font-weight:800} td.ko{color:#b91c1c;font-weight:800}
+      tr.grp td{background:#e2e8f0!important;font-weight:900;font-size:11.5px;padding:5px 6px}
+      tr.st td{background:#f1f5f9!important;font-weight:800}
+      .saut{break-before:page;page-break-before:always}
+      .rappel{text-align:center;font-size:12px;font-weight:800;margin-bottom:8px}
+      h3{font-size:13px;margin:18px 0 6px}`,
+  });
+}
+
 const ouvrir = (html) => {
   const w = window.open("", "_blank");
   if (!w) { alert("Autorisez les fenêtres pop-up pour imprimer."); return; }
@@ -251,6 +360,11 @@ export function imprimerListePayes(lignes, options) {
 export function imprimerListeMois(groupes, options) {
   if (!groupes.length) { alert(tr("reports.listeMois.aucun")); return; }
   ouvrir(listeMoisHTML(groupes, options));
+}
+
+export function imprimerSituationGenerale(groupes, options) {
+  if (!groupes.length) { alert(tr("reports.situation.aucun")); return; }
+  ouvrir(situationGeneraleHTML(groupes, options));
 }
 
 export function imprimerListeNonReinscrits(lignes, options) {

@@ -2,14 +2,14 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { fmtN, getMonnaie } from "../../../constants";
 import { imprimerListeMois } from "../../../reports";
-import { Btn, Modale } from "../../ui";
+import { Btn } from "../../ui";
 import { Choix } from "./ListePayesModale";
 import { grouperParClasse, lignesListeMois, moisParDefaut, totauxListeMois } from "./liste-mois";
 
-// Avant d'imprimer la liste des élèves d'un mois : le mois, ceux qui l'ont
-// payé ou pas encore, une page par classe ou non — avec un aperçu. Élèves :
-// le périmètre de la grille (section ou « Tout », classe), déjà filtré.
-export function ListeMoisModale({ eleves, moisAnnee = [], annee, tarifsClasses, schoolInfo, perimetre, fermer }) {
+// « Situation des paiements » → « Un mois » : le mois, ceux qui l'ont payé ou
+// pas encore, une page par classe ou non — avec un aperçu. Élèves : le
+// périmètre de la grille (section ou « Tout », classe), déjà filtré.
+export function ListeMoisFormulaire({ eleves, moisAnnee = [], annee, tarifsClasses, schoolInfo, perimetre, fermer }) {
   const { t } = useTranslation();
   const [mois, setMois] = useState(() => moisParDefaut(moisAnnee));
   const [statut, changerStatut] = useState("payes");
@@ -24,7 +24,7 @@ export function ListeMoisModale({ eleves, moisAnnee = [], annee, tarifsClasses, 
   const nomMois = t(`months.${mois}`, mois);
 
   return (
-    <Modale titre={`🖨️ ${t("accounting.monthList.title")}`} fermer={fermer}>
+    <>
       <label style={{ display: "block", fontSize: 13, fontWeight: 700, marginBottom: 6 }}>{t("accounting.monthList.month")}</label>
       <select value={mois} onChange={(e) => setMois(e.target.value)}
         style={{ border: "1px solid #b0c4d8", borderRadius: 7, padding: "7px 10px", fontSize: 13, width: "100%" }}>
@@ -66,6 +66,6 @@ export function ListeMoisModale({ eleves, moisAnnee = [], annee, tarifsClasses, 
           fermer();
         }}>🖨️ {t("common.print")}</Btn>
       </div>
-    </Modale>
+    </>
   );
 }

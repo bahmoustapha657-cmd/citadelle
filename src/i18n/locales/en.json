@@ -1589,9 +1589,6 @@
       "staff": "Administrative and support staff ({{n}})"
     },
     "monthList": {
-      "button": "List by month",
-      "buttonHint": "Print the students who paid (or have not yet paid) a given month, with each one's total paid",
-      "title": "Students by month",
       "month": "Month",
       "who": "Students to print",
       "paid": "Paid {{month}}",
@@ -1600,6 +1597,25 @@
       "summaryPaid": "{{n}} student(s) · {{classes}} class(es) · {{amount}} {{currency}} collected for {{month}}",
       "summaryUnpaid": "{{n}} student(s) · {{classes}} class(es) · {{amount}} {{currency}} still due for {{month}}",
       "totalNote": "Next to each name: the total paid this year (monthly fees, enrolment and other fees)."
+    },
+    "paySituation": {
+      "button": "Payment status",
+      "buttonHint": "Print the overall payment status of each student and each class, or the list of students for one month",
+      "title": "Payment status",
+      "typeGeneral": "Overall status",
+      "typeMonth": "One month",
+      "detail": "Layout",
+      "detailStudents": "Student by student",
+      "detailClasses": "Classes only",
+      "filter": "Students to print",
+      "filterAll": "All",
+      "filterLate": "Behind",
+      "filterUpToDate": "Up to date",
+      "summary": "{{n}} student(s) · {{classes}} class(es) · {{upToDate}} up to date · {{late}} behind · {{amount}} {{currency}} paid this year",
+      "note": "One box per month (✓ paid, ◐ deposit, ✗ unpaid, — not yet due) and the total paid this year (monthly fees, enrolment and fees). Behind = at least one overdue month unpaid, as in the alert.",
+      "classLine": "{{n}} student(s) · {{upToDate}} up to date · {{late}} behind",
+      "monthsPaid": "{{n}} month(s) paid",
+      "late": "{{n}} month(s) behind"
     }
   },
   "parent": {
@@ -2475,6 +2491,22 @@
       "recap": "Summary by class",
       "sansClasse": "No class",
       "aucun": "No student to print for this month."
+    },
+    "situation": {
+      "titre": "📋 OVERALL PAYMENT STATUS",
+      "fenetre": "Overall payment status",
+      "legende": "✓ paid · ◐ deposit paid (amount) · ✗ unpaid, past due · “—” not yet due · “·” not due (left, exemption)",
+      "noteTotal": "Total paid = everything the student paid this year: monthly fees (deposits included), enrolment and other fees · Behind = at least one overdue month unpaid",
+      "filtreRetard": "Students behind only",
+      "filtreAjour": "Students up to date only",
+      "moisPayes": "Months paid",
+      "aJour": "Up to date",
+      "enRetard": "Behind",
+      "etatClasse": "{{n}} student(s) · {{aJour}} up to date · {{retard}} behind",
+      "sousTotal": "{{classe}} — paid per month",
+      "totalGeneral": "TOTAL — {{n}} student(s) — paid per month",
+      "recap": "Status by class",
+      "aucun": "No student to print."
     }
   },
   "school": {

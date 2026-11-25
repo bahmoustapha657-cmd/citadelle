@@ -150,7 +150,7 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   // Cycle des mensualités : le choix s'il est ouvert dans l'école, sinon la
   // première section ouverte (Paramètres → Identité). « Tout » (TOUTES_SECTIONS)
   // montre toutes les sections ouvertes à la fois, dès qu'il y en a deux.
-  const niveau = sectionAffichee(schoolInfo, niveauChoisi);
+  const niveau = sectionAffichee(schoolInfo, niveauChoisi, schoolId);
   const [filtClasse, setFiltClasse] = useState("all");
   const [moisSel, setMoisSel] = useState(() => moisSalaire[0] || "Octobre");
   const [primeDefaut, setPrimeDefaut] = useState(0);
