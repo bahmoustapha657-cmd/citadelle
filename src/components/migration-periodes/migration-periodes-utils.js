@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════════════════════
-//  Migration des périodes orphelines — logique pure (aucun accès aux données)
+//  Rangement des notes après un changement de périodicité — logique pure
 // ══════════════════════════════════════════════════════════════════════════
 // Une note est « orpheline » quand sa période n'appartient plus à la
 // périodicité de SA section : passé au semestre, le secondaire ne connaît plus
@@ -11,13 +11,16 @@
 // mapping à toutes les collections : renommer T2 → S1 pour le secondaire
 // renommait aussi les T2, parfaitement valides, du primaire.
 //
+// Le rangement se fait À L'ENREGISTREMENT de la nouvelle périodicité, sans
+// outil à part : les correspondances évidentes (T1 → S1, Novembre → T1) sont
+// faites d'office, seule une période à cheval (T2 au passage au semestre)
+// demande un choix. Il ne touche que l'année en cours : une année passée garde
+// la périodicité de son temps (figée dans reglagesAnnees, cf. reglages-annee.js).
+//
 // Séparé de migration-periodes-data.js pour être testable sous Node.
 
 import { TOUS_MOIS_COURTS } from "../../constants";
-import { getPeriodesForSection } from "../../period-utils";
-
-// Destination « supprimer ces notes » dans le mapping (select du modal).
-export const SUPPRIMER = "_delete_";
+import { getPeriodesForSection, getSchoolPeriodiciteForSection } from "../../period-utils";
 
 // Un groupe = un réglage de Paramètres → Périodicité scolaire. `sections` :
 // valeurs de la colonne notes.section ; `collections` : les noms que
@@ -43,6 +46,15 @@ export function periodesParGroupe(schoolInfo, moisAnnee) {
   )));
 }
 
+// Groupes dont la liste de périodes change entre deux réglages : la
+// périodicité elle-même, ou le mois de début pour un groupe au mois (ses
+// codes de mois glissent).
+export function groupesARevoir(periodesAvant, periodesApres) {
+  return GROUPES_PERIODICITE
+    .map(({ groupe }) => groupe)
+    .filter((g) => (periodesAvant?.[g] || []).join("|") !== (periodesApres?.[g] || []).join("|"));
+}
+
 // Clé d'une orpheline dans le mapping : la même période peut être orpheline
 // dans deux groupes (T1 au secondaire ET en maternelle) et y recevoir deux
 // destinations différentes.
@@ -58,11 +70,9 @@ const rangPeriode = (p) => {
 const rangGroupe = (g) => GROUPES_PERIODICITE.findIndex((x) => x.groupe === g);
 
 // Notes → périodes orphelines : [{ groupe, periode, count, annees }], triées
-// par groupe puis par période. `annees` : les années scolaires concernées —
-// la migration les touche toutes.
+// par groupe puis par période. `annees` : les années scolaires concernées.
 // Jamais orpheline : une note sans période, d'une section inconnue, ou d'un
-// groupe dont on ignore la périodicité — faute de référence, on ne juge pas
-// (et on ne propose surtout pas de la supprimer).
+// groupe dont on ignore la périodicité — faute de référence, on ne juge pas.
 export function detecterPeriodesOrphelines(notes, periodes) {
   const orphelines = new Map();
   for (const note of notes || []) {
@@ -83,20 +93,99 @@ export function detecterPeriodesOrphelines(notes, periodes) {
       || String(a.periode).localeCompare(String(b.periode)));
 }
 
-// Destination proposée d'office : la première période du groupe, comme
-// avant. Rien n'est écrit sans validation explicite.
-export function mappingParDefaut(orphelines, periodes) {
-  return Object.fromEntries(orphelines.map((o) => [cleOrpheline(o), periodes?.[o.groupe]?.[0] ?? SUPPRIMER]));
+// ── Où va une ancienne période ──────────────────────────────────────────────
+// L'année scolaire compte 9 mois (calcMoisAnnee). Chaque période en couvre une
+// tranche, en mois depuis la rentrée : T1 = [0, 3), T2 = [3, 6), T3 = [6, 9) ;
+// S1 = [0, 4,5), S2 = [4,5, 9) ; un mois = sa propre case. Une ancienne
+// période va dans les nouvelles périodes qu'elle recouvre : une seule = rangement
+// évident ; plusieurs (T2 au passage au semestre, le 5e mois aussi) = choix de
+// la direction. Une période inconnue peut aller partout.
+export function tranchePeriode(periode, moisAnnee) {
+  const trimestre = /^T([1-3])$/.exec(periode || "");
+  if (trimestre) {
+    const debut = (Number(trimestre[1]) - 1) * 3;
+    return [debut, debut + 3];
+  }
+  const semestre = /^S([12])$/.exec(periode || "");
+  if (semestre) return semestre[1] === "1" ? [0, 4.5] : [4.5, 9];
+  const mois = (moisAnnee || []).indexOf(periode);
+  return mois === -1 ? null : [mois, mois + 1];
 }
 
-// Mapping validé → écritures, une par (groupe, période) :
-// { groupe, periode, cible, collections, attendu }, `cible` valant SUPPRIMER
-// pour une suppression et `attendu` le nombre de notes vues au scan.
-// Contrôlé contre la périodicité ACTUELLE — elle a pu changer depuis le scan,
-// modal ouvert : une période redevenue valide n'est plus à migrer (ses notes
+export function ciblesPossibles(periode, periodesValides, moisAnnee) {
+  const valides = periodesValides || [];
+  const source = tranchePeriode(periode, moisAnnee);
+  if (!source) return [...valides];
+  const recouvertes = valides.filter((p) => {
+    const cible = tranchePeriode(p, moisAnnee);
+    return cible && Math.min(source[1], cible[1]) - Math.max(source[0], cible[0]) > 0;
+  });
+  return recouvertes.length ? recouvertes : [...valides];
+}
+
+// Orphelines → propositions affichées : { ...orpheline, options, evidente }.
+export function proposerRangement(orphelines, periodes, moisAnnee) {
+  return (orphelines || []).map((o) => {
+    const options = ciblesPossibles(o.periode, periodes?.[o.groupe], moisAnnee);
+    return { ...o, options, evidente: options.length === 1 };
+  });
+}
+
+// Choix de départ : les rangements évidents seulement. Une période à cheval
+// reste sans réponse tant que la direction n'a pas tranché — jamais de
+// destination devinée (l'ancien outil envoyait tout dans la 1re période :
+// T1, T2 et T3 fusionnés dans S1 pour qui validait sans regarder).
+export function choixParDefaut(propositions) {
+  return Object.fromEntries((propositions || [])
+    .filter((p) => p.evidente)
+    .map((p) => [cleOrpheline(p), p.options[0]]));
+}
+
+export const rangementComplet = (propositions, choix) => (propositions || [])
+  .every((p) => p.options.includes(choix?.[cleOrpheline(p)]));
+
+// ── Années passées : elles gardent leur périodicité ─────────────────────────
+// Une année passée sans réglages figés s'affiche avec ceux du jour : changer
+// la périodicité rendrait invisibles ses notes. Plutôt que de les réécrire, on
+// fige pour elle la périodicité d'AVANT le changement — celle de son temps.
+// Seules les années antérieures à l'année en cours, qui ont des notes hors
+// des nouvelles périodes, et rien de figé.
+export function anneesAFiger(annees, anneeCourante, reglagesAnnees = {}) {
+  return [...new Set(annees || [])]
+    .filter((a) => a && anneeCourante && a < anneeCourante && !reglagesAnnees?.[a])
+    .sort();
+}
+
+// Réglages figés complétés : la périodicité EFFECTIVE de chaque groupe (le
+// préscolaire sans réglage propre suit le primaire — écrite en clair pour
+// qu'un futur réglage de la maternelle ne s'applique pas à l'année passée).
+// Renvoie undefined s'il n'y a rien à figer.
+export function figerPeriodicite(schoolInfoAvant = {}, annees = [], maintenant = new Date()) {
+  if (!annees.length) return undefined;
+  const ecole = {
+    periodicite: schoolInfoAvant.periodicite || "trimestre",
+    periodicitePrescolaire: getSchoolPeriodiciteForSection(schoolInfoAvant, "prescolaire"),
+    periodicitePrimaire: getSchoolPeriodiciteForSection(schoolInfoAvant, "primaire"),
+    periodiciteSecondaire: getSchoolPeriodiciteForSection(schoolInfoAvant, "secondaire"),
+  };
+  const suite = { ...(schoolInfoAvant.reglagesAnnees || {}) };
+  for (const annee of annees) {
+    if (!suite[annee]) suite[annee] = { figesLe: maintenant.toISOString(), ecole };
+  }
+  return suite;
+}
+
+// ── Écritures ───────────────────────────────────────────────────────────────
+
+// Choix validés → écritures, une par (groupe, période), limitées à `annee` :
+// { groupe, periode, cible, collections, annee, attendu }, `attendu` valant le
+// nombre de notes vues à l'analyse.
+// Contrôlé contre la périodicité ACTUELLE — elle a pu changer depuis
+// l'analyse : une période redevenue valide n'est plus à ranger (ses notes
 // sont de nouveau visibles), et une destination hors du groupe fabriquerait
 // de nouvelles orphelines. Dans les deux cas, refus : rien n'est écrit.
-export function planifierMigration(orphelines, mapping, periodes) {
+export function planifierMigration(orphelines, mapping, periodes, annee) {
+  if (!annee) throw new Error("planifierMigration : annee manquante.");
   const operations = [];
   for (const o of orphelines) {
     const cible = mapping?.[cleOrpheline(o)];
@@ -104,21 +193,22 @@ export function planifierMigration(orphelines, mapping, periodes) {
     const groupe = GROUPE_PAR_NOM[o.groupe];
     if (!groupe) throw new Error(`Groupe de périodicité inconnu : ${o.groupe}.`);
     const valides = periodes?.[o.groupe] || [];
-    if (valides.includes(o.periode) || (cible !== SUPPRIMER && !valides.includes(cible))) {
+    if (valides.includes(o.periode) || !valides.includes(cible)) {
       throw new Error(`La périodicité de ${groupe.label} a changé depuis l'analyse (${o.periode} → ${cible}) : fermez puis rouvrez l'outil.`);
     }
-    operations.push({ groupe: o.groupe, periode: o.periode, cible, collections: groupe.collections, attendu: o.count });
+    operations.push({ groupe: o.groupe, periode: o.periode, cible, collections: groupe.collections, annee, attendu: o.count });
   }
   return operations;
 }
 
 // Résultats des écritures → bilan RÉEL. `issues[i]` : les résultats
 // (Promise.allSettled) des écritures de operations[i], une par collection.
-//   nonTraitees : notes vues au scan mais laissées en place — la RLS ignore
-//                 sans erreur les lignes qu'elle refuse, seul l'écart le trahit ;
+//   nonTraitees : notes vues à l'analyse mais laissées en place — la RLS
+//                 ignore sans erreur les lignes qu'elle refuse, seul l'écart
+//                 le trahit ;
 //   erreurs     : écritures en échec (les autres ont pu aboutir).
 export function bilanMigration(operations, issues) {
-  const bilan = { totalMaj: 0, totalSup: 0, nonTraitees: 0, erreurs: [] };
+  const bilan = { totalMaj: 0, nonTraitees: 0, erreurs: [] };
   operations.forEach((op, i) => {
     const resultats = issues[i] || [];
     let faites = 0;
@@ -126,8 +216,7 @@ export function bilanMigration(operations, issues) {
       if (r.status === "fulfilled") faites += r.value;
       else bilan.erreurs.push(`${op.periode} (${op.groupe}) : ${r.reason?.message || r.reason}`);
     }
-    if (op.cible === SUPPRIMER) bilan.totalSup += faites;
-    else bilan.totalMaj += faites;
+    bilan.totalMaj += faites;
     // Une écriture en échec explique déjà l'écart : ne pas le compter deux fois.
     if (resultats.every((r) => r.status === "fulfilled")) bilan.nonTraitees += Math.max(0, op.attendu - faites);
   });
