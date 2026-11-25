@@ -11,6 +11,10 @@
 //    fiche revient partie à la date indiquée ;
 //  • dans l'ancien Firestore, avant la migration : il ne reste que ses notes
 //    (eleveNom) → mode « recréer depuis Firestore » (--firestore).
+// Quand la fiche supprimée est sortie des sauvegardes (rotation), l'ancien
+// Firestore en a encore l'état de fin d'année : --firestore <id> remplace
+// alors --supprime, en mode rattacher comme en mode recréer, et l'archive
+// est reconstituée comme à la clôture (instantaneEleve).
 //
 // Sources : la dernière sauvegarde locale où figure la fiche supprimée
 // (backup-donnees.mjs), et l'ancien Firestore (état de fin 2025-2026) pour la
@@ -29,6 +33,7 @@
 //
 // Usage (DRY-RUN sans --executer) :
 //   … --supprime <uuid> --vers <uuid> [--corriger-classe]
+//   … --firestore <id élève Firestore> --vers <uuid> [--corriger-classe]
 //   … --supprime <uuid> --recreer --depart AAAA-MM-JJ [--statut Abandonné]
 //   … --firestore <id élève Firestore> --nom X --prenom Y --classe "Classe de l'année" --depart AAAA-MM-JJ [--statut Abandonné]
 // Sauvegardes : EDUGEST_BACKUP_DIR, sinon C:/Users/ADMIN/edugest-backups.
@@ -40,6 +45,7 @@ import { createClient } from "@supabase/supabase-js";
 import { lecteurFirestore } from "./_firestore-lecture.mjs";
 import { STATUTS_SORTIE, getSectionForClasse } from "../src/constants.js";
 import { lireDate } from "../src/depart-utils.js";
+import { instantaneEleve } from "../src/components/admin/cloture-annee-utils.js";
 
 const sb = createClient(cfg.url, cfg.serviceRole);
 const args = process.argv.slice(2);
@@ -69,7 +75,9 @@ const uuidDe = (cle) => {
 };
 
 const mode = VERS ? "rattacher" : RECREER ? "recreer" : FIRESTORE ? "firestore" : null;
-if (!mode || (mode !== "firestore" && !SUPPRIME)) stop("Indiquez --supprime <uuid> avec --vers <uuid> ou --recreer, ou bien --firestore <id>.");
+if (!mode || (mode === "recreer" && !SUPPRIME) || (mode === "rattacher" && !SUPPRIME === !FIRESTORE)) {
+  stop("Indiquez --supprime <uuid> ou --firestore <id> avec --vers <uuid>, ou --supprime <uuid> --recreer, ou --firestore <id> seul.");
+}
 if (mode !== "rattacher") {
   if (!STATUTS_SORTIE.includes(STATUT)) stop(`Statut de départ inconnu : ${STATUT} (${STATUTS_SORTIE.join(", ")}).`);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(DEPART || "") || !lireDate(DEPART)) stop("Indiquez --depart AAAA-MM-JJ.");
@@ -80,15 +88,39 @@ if (eEcole) stop(`École introuvable : ${eEcole.message}`);
 const lireFirestore = await lecteurFirestore(CODE);
 const classeReelle = (c) => (CORRESPONDANCES[CODE] || {})[t(c)] || t(c);
 
+// Archive d'un camarade de la même classe : modèle de forme et date de la
+// clôture pour une archive reconstituée.
+const modeleArchive = async (classe) => {
+  for (let de = 0; ; de += 1000) {
+    const { data, error } = await sb.from("eleves").select("extra").eq("ecole_id", ecole.id).order("id").range(de, de + 999);
+    if (error) stop(`Lecture des élèves : ${error.message}`);
+    const modele = data.map((e) => e.extra?.historique?.[ANNEE]).find((s) => t(s?.classe) === classe && s?.clotureLe);
+    if (modele) return modele;
+    if (data.length < 1000) return null;
+  }
+};
+
 // ── Source : fiche supprimée, notes et appréciations de l'année ────────────
 let ancienne = null;
 let notes = [];
 let appreciations = [];
 let dossier = "";
 let classeAnnee = "";
-if (mode === "firestore") {
-  classeAnnee = t(arg("--classe"));
-  if (!classeAnnee || !t(arg("--nom")) || !t(arg("--prenom"))) stop("Mode Firestore : --nom, --prenom et --classe sont obligatoires.");
+let snapSource = null; // archive de l'année telle que la fiche supprimée l'avait
+let docFirestore = null;
+if (FIRESTORE) {
+  for (const sec of ["Primaire", "College", "Lycee", "Prescolaire"]) {
+    docFirestore = (await lireFirestore(`eleves${sec}`)).find((d) => d._id === FIRESTORE) || null;
+    if (docFirestore) break;
+  }
+  classeAnnee = docFirestore ? classeReelle(docFirestore.classe) : t(arg("--classe"));
+  if (!classeAnnee) stop("Fiche absente de l'ancien Firestore : --classe est obligatoire.");
+  if (mode === "firestore" && !docFirestore && (!t(arg("--nom")) || !t(arg("--prenom")))) stop("Fiche absente de l'ancien Firestore : --nom et --prenom sont obligatoires.");
+  if (docFirestore) {
+    const modele = await modeleArchive(classeAnnee);
+    if (!modele) stop(`Aucun camarade de ${classeAnnee} en ${ANNEE} pour la date de clôture.`);
+    snapSource = { ...instantaneEleve(docFirestore), classe: classeAnnee, clotureLe: modele.clotureLe };
+  }
   for (const sec of ["Primaire", "College", "Lycee", "Prescolaire"]) {
     for (const n of await lireFirestore(`notes${sec}`)) {
       if (n.eleveId !== FIRESTORE || n.annee !== ANNEE) continue;
@@ -107,7 +139,7 @@ if (mode === "firestore") {
       });
     }
   }
-  if (!notes.length) stop(`Aucune note ${ANNEE} pour l'élève Firestore ${FIRESTORE}.`);
+  if (!notes.length && !docFirestore) stop(`Ni fiche ni note ${ANNEE} pour l'élève Firestore ${FIRESTORE}.`);
 } else {
   const lireSauvegarde = (d, fichier) => {
     const p = path.join(SAUVEGARDES, d, fichier);
@@ -134,6 +166,7 @@ if (mode === "firestore") {
     }
   }
   if (!classeAnnee) stop("Classe de fin d'année introuvable dans l'ancien Firestore.");
+  snapSource = ancienne.extra?.historique?.[ANNEE] || null;
   // En mode recréer, la fiche revient sous son identifiant : sa présence dit
   // seulement que c'est déjà fait (voir `existe`).
   const { data: encore } = await sb.from("eleves").select("id").eq("id", SUPPRIME);
@@ -166,17 +199,20 @@ if (mode === "rattacher") {
       delete base.updated_at;
       snap = ancienne.extra?.historique?.[ANNEE];
       if (!snap) stop(`La fiche supprimée n'a pas d'archive ${ANNEE}.`);
+    } else if (docFirestore) {
+      const d = docFirestore;
+      base = {
+        id, ecole_id: ecole.id, nom: t(d.nom), prenom: t(d.prenom), sexe: d.sexe || null, matricule: t(d.matricule) || null,
+        date_naissance: d.dateNaissance || null, lieu_naissance: d.lieuNaissance || null, filiation: d.filiation || null,
+        tuteur: d.tuteur || null, contact_tuteur: d.contactTuteur || null, domicile: d.domicile || null,
+        extra: { firestore_id: FIRESTORE },
+      };
+      snap = snapSource;
     } else {
       base = { id, ecole_id: ecole.id, nom: t(arg("--nom")), prenom: t(arg("--prenom")), extra: { firestore_id: FIRESTORE } };
       // Pas de fiche : la scolarité de l'année prend la forme de celle des
       // camarades (même clôture), rien de payé connu.
-      let modele = null;
-      for (let de = 0; !modele; de += 1000) {
-        const { data, error } = await sb.from("eleves").select("extra").eq("ecole_id", ecole.id).order("id").range(de, de + 999);
-        if (error) stop(`Lecture des élèves : ${error.message}`);
-        modele = data.map((e) => e.extra?.historique?.[ANNEE]).find((s) => t(s?.classe) === classeAnnee) || null;
-        if (data.length < 1000) break;
-      }
+      const modele = await modeleArchive(classeAnnee);
       if (!modele) stop(`Aucun camarade de ${classeAnnee} en ${ANNEE} pour modèle d'archive.`);
       snap = {
         classe: classeAnnee,
@@ -246,7 +282,7 @@ if (mode === "rattacher") {
   snapActuel = cible.extra?.historique?.[ANNEE] || null;
   classeACorriger = !!snapActuel && t(snapActuel.classe) !== classeAnnee;
   if (classeACorriger && !CORRIGER_CLASSE) stop(`Archive ${ANNEE} déjà présente en ${snapActuel.classe}, fin d'année en ${classeAnnee} (--corriger-classe pour la corriger).`);
-  if (!snapActuel && !ancienne.extra?.historique?.[ANNEE]) stop(`Ni la fiche actuelle ni la fiche supprimée n'ont d'archive ${ANNEE}.`);
+  if (!snapActuel && !snapSource) stop(`Ni la fiche actuelle ni la fiche supprimée n'ont d'archive ${ANNEE}.`);
 } else if (existe && t(cible.extra?.historique?.[ANNEE]?.classe) !== classeAnnee) {
   stop(`Fiche déjà recréée avec une archive ${ANNEE} en ${cible.extra?.historique?.[ANNEE]?.classe || "—"}.`);
 }
@@ -258,6 +294,7 @@ const sansMatiere = notes.filter((n) => !matieres.some((m) => m.nom === n.matier
 const nomCible = `${cible.prenom} ${cible.nom}`;
 console.log(EXECUTER ? "⚠️  MODE EXÉCUTION — les données vont être modifiées." : "🔎 DRY-RUN — aucune écriture. Ajoutez --executer pour appliquer.");
 if (ancienne) console.log(`Fiche supprimée : ${ancienne.prenom} ${ancienne.nom} (${ancienne.matricule || "sans matricule"}, ${ancienne.classe}), sauvegarde ${dossier}`);
+if (docFirestore) console.log(`Ancienne base  : ${docFirestore.prenom} ${docFirestore.nom} (${docFirestore.matricule || "sans matricule"}, ${docFirestore.classe}, né ${docFirestore.dateNaissance || "?"})`);
 if (mode === "rattacher") console.log(`Fiche actuelle  : ${nomCible} (${cible.matricule || "sans matricule"}, ${cible.classe}, ${cible.statut})`);
 else console.log(`Fiche ${existe ? "déjà recréée" : "à recréer"} : ${nomCible} (${cible.matricule || "sans matricule"}, ${cible.section}/${cible.classe}), ${existe ? cible.statut : `${STATUT} le ${DEPART}`}`);
 console.log(`Classe ${ANNEE} : ${classeAnnee} (${sectionAnnee})`);
@@ -268,7 +305,7 @@ console.log(`Appréciations ${ANNEE} : ${appreciations.length}, ${appreciationsA
 if (sansMatiere.length) console.log(`  ⚠️ ${sansMatiere.length} note(s) sans matière dans les réglages ${ANNEE} : ${[...new Set(sansMatiere.map((n) => n.matiere))].join(", ")}`);
 if (mode === "rattacher") {
   console.log(!snapActuel
-    ? `Archive ${ANNEE} : reprise de la fiche supprimée, classe ${ancienne.extra.historique[ANNEE].classe} → ${classeAnnee}`
+    ? `Archive ${ANNEE} : reprise de la fiche supprimée, classe ${snapSource.classe} → ${classeAnnee}`
     : classeACorriger ? `Archive ${ANNEE} : gardée, classe ${snapActuel.classe} → ${classeAnnee}` : `Archive ${ANNEE} : déjà présente (${snapActuel.classe}), gardée`);
 } else if (!existe) {
   console.log(`Archive ${ANNEE} : ${classeAnnee}${cible.extra.historique[ANNEE].classeAvantCorrection ? ` (au lieu de ${cible.extra.historique[ANNEE].classeAvantCorrection})` : ""}`);
@@ -290,14 +327,16 @@ if (appreciationsAInserer.length) {
   if (error) stop(`Notes écrites, mais appréciations non écrites (${error.message}) : relancez.`);
 }
 if (mode === "rattacher" && (!snapActuel || classeACorriger)) {
-  const base = snapActuel || ancienne.extra.historique[ANNEE];
+  const base = snapActuel || snapSource;
   const historique = {
     ...(cible.extra?.historique || {}),
     [ANNEE]: {
       ...base,
       classe: classeAnnee,
       ...(t(base.classe) !== classeAnnee ? { classeAvantCorrection: base.classe } : {}),
-      restaureDe: { eleveId: SUPPRIME, matricule: ancienne.matricule || null, sauvegarde: dossier },
+      restaureDe: ancienne
+        ? { eleveId: SUPPRIME, matricule: ancienne.matricule || null, sauvegarde: dossier }
+        : { firestoreId: FIRESTORE, matricule: docFirestore?.matricule || null },
       restaureLe: new Date().toISOString(),
     },
   };
@@ -315,7 +354,7 @@ const { error: eJournal } = await sb.from("historique").insert({
   ecole_id: ecole.id,
   extra: {
     action: "Correction des archives",
-    details: `${nomCible} : ${quoi}, repris de sa fiche supprimée (${ancienne?.matricule || SUPPRIME || "ancienne base"})`,
+    details: `${nomCible} : ${quoi}, repris de sa fiche supprimée (${ancienne?.matricule || docFirestore?.matricule || SUPPRIME || "ancienne base"})`,
     auteur: "Maintenance EduGest",
     date: Date.now(),
   },
