@@ -7,6 +7,8 @@ import { getMention } from "../../reports/bulletins/bulletin-format";
 import { getPeriodeLongLabel } from "../../period-utils";
 import { matieresForClasse as matieresForClasseFn } from "./ecole-logic";
 import { nomAffiche } from "../../ordre-eleves";
+import { aUnePhoto } from "../../identite-enfant";
+import { PhotoEleve } from "../identite-enfant/PhotoEleve";
 import {
   NOMBRES_HONNEUR, NOMBRE_HONNEUR_DEFAUT, SEUILS_HONNEUR, SEUIL_HONNEUR_DEFAUT,
   periodeHonneurParDefaut, tableauHonneurSection, tableauxHonneurParClasse,
@@ -138,8 +140,10 @@ export function HonneurTab({
 }
 
 // Liste des lauréats d'une classe (ou de la section, avec la colonne Classe).
+// La photo de chacun, comme sur l'affiche, dès qu'un lauréat en a une.
 function CarteLaureats({ laureats, maxNote, avecClasse = false, vide, tri }) {
   if (!laureats.length) return <p style={{ margin: 0, padding: "18px 14px", fontSize: 12, color: "#94a3b8", textAlign: "center" }}>{vide}</p>;
+  const avecPhotos = laureats.some(aUnePhoto);
   return (
     <table style={{ width: "100%", borderCollapse: "collapse" }}>
       <tbody>{laureats.map((e) => {
@@ -152,6 +156,7 @@ function CarteLaureats({ laureats, maxNote, avecClasse = false, vide, tri }) {
             <td style={{ padding: "8px 10px", textAlign: "center", width: 40, fontSize: e.rang <= 3 ? 20 : 13, fontWeight: 800, color: "#92400e" }}>
               {e.rang <= 3 ? MEDAILLES[e.rang - 1] : `${e.rang}e`}
             </td>
+            {avecPhotos && <td style={{ padding: "6px 0", width: 30 }}><PhotoEleve eleve={e} largeur={28}/></td>}
             <td style={{ padding: "8px 6px", fontWeight: 800, color: C.blueDark, fontSize: 13 }}>
               {nomAffiche(e, tri)}
               {avecClasse && <div style={{ marginTop: 3 }}><Badge color="blue">{e.classe}</Badge></div>}

@@ -204,3 +204,69 @@ export function medaille(rang, largeur = 16) {
     </g>
   </svg>`;
 }
+
+// Portrait médaillé du podium : la photo de l'élève dans un cadre rond en or,
+// argent ou bronze, et la médaille de son rang ACCROCHÉE À SON COU — les deux
+// pans du ruban, à la couleur de l'école, sortent des bords du cadre et se
+// rejoignent sous le menton, la médaille pend sur le bas du portrait.
+// Dessin en unités du viewBox 0 0 100 124 : cadre centré en (50, 50), photo
+// de rayon 44 posée en HTML dessous (cf. PORTRAIT_MEDAILLE_CSS).
+//
+// Sans photo, les initiales de l'enfant à la place. Une photo qui ne se
+// charge pas (impression hors ligne avant sa mise en cache) est retirée par
+// photosEnEchecScript : les initiales, posées dessous, réapparaissent au
+// lieu de l'icône d'image cassée.
+const PAN_GAUCHE = "M6.7 69.4L13.3 60.6L50.3 90.6L43.7 99.4Z";
+const PAN_DROIT = "M93.3 69.4L86.7 60.6L49.7 90.6L56.3 99.4Z";
+export function portraitMedaille(rang, { photo = "", initiales = "" } = {}) {
+  const k = Math.max(1, Math.min(3, rang)) - 1;
+  const m = METAUX[k];
+  const petales = Array.from({ length: 22 }, (_, i) => {
+    const a = (2 * Math.PI * i) / 22;
+    return `<circle cx="${f(15.4 * Math.cos(a))}" cy="${f(15.4 * Math.sin(a))}" r="2.5"/>`;
+  }).join("");
+  return `<div class="pm">
+    <div class="pm-photo"><span>${echapper(initiales)}</span>${photo ? `<img crossOrigin="anonymous" src="${echapper(photo)}" alt=""/>` : ""}</div>
+    <svg class="pm-decor" viewBox="0 0 100 124" aria-hidden="true">
+      <defs>
+        <linearGradient id="orn-pm-cadre-${k}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${m.clair}"/><stop offset=".45" stop-color="${m.fonce}"/><stop offset=".7" stop-color="${m.clair}"/><stop offset="1" stop-color="${m.fonce}"/></linearGradient>
+        <radialGradient id="orn-pm-disque-${k}" cx="38%" cy="32%" r="75%"><stop offset="0" stop-color="${m.clair}"/><stop offset="1" stop-color="${m.fonce}"/></radialGradient>
+      </defs>
+      <path d="${PAN_GAUCHE}" fill="var(--c1)"/><path d="${PAN_DROIT}" fill="var(--c1)"/>
+      <path d="M10 65L47 95M90 65L53 95" stroke="${OR}" stroke-width="1.7"/>
+      <circle cx="50" cy="50" r="45.6" fill="none" stroke="url(#orn-pm-cadre-${k})" stroke-width="3.6"/>
+      <circle cx="50" cy="50" r="47.5" fill="none" stroke="${m.fonce}" stroke-width=".5"/>
+      <circle cx="50" cy="50" r="43.7" fill="none" stroke="${m.fonce}" stroke-width=".45"/>
+      <g transform="translate(50 104)">
+        <g fill="${m.fonce}">${petales}</g>
+        <circle r="15.4" fill="url(#orn-pm-disque-${k})" stroke="${m.fonce}" stroke-width=".6"/>
+        <circle r="12" fill="none" stroke="#fff" stroke-opacity=".75" stroke-width=".8"/>
+        <text y="5.8" font-family='${SERIF}' font-size="16.5" font-weight="700" fill="${m.texte}" text-anchor="middle">${rang}</text>
+      </g>
+    </svg>
+  </div>`;
+}
+
+// Mise en page du portrait médaillé. Seule la LARGEUR de `.pm` se règle (selon
+// la densité de l'affiche) : la hauteur suit (100 × 124), et les initiales
+// suivent la largeur (unités cqw).
+export const PORTRAIT_MEDAILLE_CSS = `
+.pm { position: relative; width: 30mm; aspect-ratio: 100 / 124; margin: 0 auto 1.2mm; container-type: inline-size; }
+.pm-photo { position: absolute; left: 6%; top: 4.84%; width: 88%; aspect-ratio: 1; border-radius: 50%; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #eef2f7; background: color-mix(in srgb, var(--c1) 10%, #fff); }
+.pm-photo span { font-size: 30cqw; font-weight: 700; letter-spacing: .04em; color: var(--c1); }
+.pm-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 30%; display: block; }
+.pm-decor { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+`;
+
+// Photo d'élève qui ne se charge pas (hors ligne, fichier supprimé) : retirée,
+// pour que les initiales posées dessous la remplacent. Chrome dessine sinon
+// une icône d'image cassée, même avec alt="". `selecteur` : les <img> visées.
+export const photosEnEchecScript = (selecteur) => `
+  (function(){
+    var imgs = document.querySelectorAll("${selecteur}");
+    for (var i = 0; i < imgs.length; i++) (function(img){
+      if (img.complete && !img.naturalWidth) img.remove();
+      else img.addEventListener("error", function(){ img.remove(); });
+    })(imgs[i]);
+  })();
+`;

@@ -5,7 +5,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { ajusterPagesScript, cadreGuilloche, medaille, monogramme } from "../src/reports/ornements.js";
+import { ajusterPagesScript, cadreGuilloche, medaille, monogramme, portraitMedaille } from "../src/reports/ornements.js";
 import { AJUSTER_PAGES, documentBulletinHTML } from "../src/reports/bulletins/bulletin-doc.js";
 import { buildBulletinPageHTML } from "../src/reports/bulletins/bulletin-page.js";
 import { htmlTableauxHonneur } from "../src/reports/tableau-honneur.js";
@@ -139,4 +139,53 @@ test("affiche : noms et classes échappés, classe sous le nom au palmarès de s
   assert.ok(!html.includes("<script>Prénom") && !html.includes("Bah <script>"));
   assert.match(html, /BAH &lt;SCRIPT&gt;|Bah &lt;script&gt;/);
   assert.match(html, /<span class="cl">7ème &lt;A&gt;<\/span>/);
+});
+
+// ── Photos au tableau d'honneur ──────────────────────────────────────────
+// Photos fictives (aucune adresse en ligne) : un nom de fichier suffit.
+const avecPhotos = (liste, sans = []) => liste.map((e, i) => ({ ...e, photo: sans.includes(i) ? "" : `photo-fictive-${i}.jpg` }));
+
+test("portrait médaillé : photo dans le cadre, médaille au rang, un métal par rang", () => {
+  const [or, argent, bronze] = [1, 2, 3].map((r) => portraitMedaille(r, { photo: "p.jpg", initiales: "MD" }));
+  assert.match(or, /<img crossOrigin="anonymous" src="p\.jpg" alt=""\/>/);
+  assert.match(or, /<span>MD<\/span>/);
+  assert.match(or, />1<\/text>/);
+  assert.match(argent, />2<\/text>/);
+  assert.match(bronze, />3<\/text>/);
+  assert.equal(new Set([or, argent, bronze].map((m) => m.match(/orn-pm-cadre-\d/)[0])).size, 3);
+  // Sans photo : les initiales seules, aucune image.
+  const sans = portraitMedaille(2, { initiales: "AC" });
+  assert.ok(!sans.includes("<img"));
+  assert.match(sans, /<span>AC<\/span>/);
+  // Adresse de la photo échappée.
+  assert.ok(!portraitMedaille(1, { photo: `x"onerror="y`, initiales: "" }).includes(`"onerror="`));
+});
+
+test("affiche avec photos : portraits médaillés au podium, vignettes dans la liste, initiales à défaut", () => {
+  const html = htmlTableauxHonneur([{ classe: "7ème A", classement: avecPhotos(laureats(6), [1, 4]) }], ECOLE, { maxNote: 20 });
+  assert.match(sections(html)[0], /portraits"/);
+  assert.equal((html.match(/<div class="pm">/g) || []).length, 3);
+  assert.equal((html.match(/<span class="ph">/g) || []).length, 3);
+  assert.match(html, /src="photo-fictive-0\.jpg"/);
+  assert.match(html, /src="photo-fictive-5\.jpg"/);
+  // Deuxième du podium et cinquième sans photo : leurs initiales.
+  assert.ok(!html.includes("photo-fictive-1.jpg") && !html.includes("photo-fictive-4.jpg"));
+  assert.match(html, /<div class="pm-photo"><span>PC<\/span><\/div>/);
+  assert.match(html, /<span class="ph"><span>PC<\/span><\/span>/);
+  // Une photo qui ne charge pas laisse place aux initiales.
+  assert.match(html, /\.pm-photo img, \.ph img/);
+  assert.ok(!/https?:\/\/|<link|@import/.test(html), "aucune ressource en ligne");
+});
+
+test("affiche sans aucune photo : médailles comme avant, ni portrait ni vignette", () => {
+  const html = htmlTableauxHonneur([{ classe: "7ème A", classement: laureats(6) }], ECOLE, {});
+  assert.ok(!html.includes("portraits\"") && !html.includes(`<div class="pm">`) && !html.includes(`<span class="ph">`));
+  assert.match(html, /orn-metal-\w+/, "les médailles d'avant");
+});
+
+test("affiche avec photos : un cran plus dense pour tenir sur la page", () => {
+  const classe = (liste) => sections(htmlTableauxHonneur([{ classe: "7ème A", classement: liste }], ECOLE, {}))[0];
+  assert.equal(classe(laureats(10)), `<section class="affiche"`);
+  assert.match(classe(avecPhotos(laureats(10))), /affiche serre portraits"/);
+  assert.match(classe(avecPhotos(laureats(3))), /affiche seul portraits"/);
 });

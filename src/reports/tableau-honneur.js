@@ -23,14 +23,23 @@
 // Les mentions suivent le BARÈME de la section (getMention) : le primaire et
 // le préscolaire sont notés sur 10, des seuils figés sur 20 y auraient
 // affiché « Insuffisant » sous le nom d'un excellent élève — sur un mur.
+//
+// Les PHOTOS : dès qu'un lauréat de l'affiche a la sienne, le podium montre
+// chaque élève en portrait, la médaille de son rang accrochée au cou
+// (portraitMedaille), et chaque ligne de la liste sa petite photo ronde ; un
+// enfant sans photo y garde ses initiales. Une affiche dont personne n'a de
+// photo reste celle d'avant, aux médailles seules : trois ronds d'initiales
+// sur un podium n'honoreraient personne.
 
 import { PRINT_TRIGGER, printDir, printLang, printResetFor } from "./print-helpers.js";
 import { getMention } from "./bulletins/bulletin-format.js";
 import { dateDuJour, echapper, identiteEcole, mentionFr, nb } from "./bulletins/bulletin-pro-commun.js";
 import {
-  OR, OR_FONCE, SERIF, ajusterPagesScript, cadreGuilloche, laurier, medaille, monogramme, rosace,
+  OR, OR_FONCE, PORTRAIT_MEDAILLE_CSS, SERIF, ajusterPagesScript, cadreGuilloche, laurier, medaille, monogramme,
+  photosEnEchecScript, portraitMedaille, rosace,
 } from "./ornements.js";
 import { nomAffiche } from "../ordre-eleves.js";
+import { aUnePhoto, initiales } from "../identite-enfant.js";
 
 // Ordre du podium à l'italienne : 2e à gauche, 1er au centre surélevé, 3e à
 // droite. C'est ce que l'œil attend, et le premier ressort sans le dire.
@@ -38,10 +47,11 @@ const ORDRE_PODIUM = [1, 0, 2];
 // Densité selon la longueur de la liste sous le podium (ex aequo compris) :
 // podium seul agrandi, normal, resserré (.serre), très resserré
 // (.tres-serre). Au palmarès de section, chaque ligne porte aussi la classe
-// sous le nom et compte plus haut. Le filet de sécurité (ajusterPagesScript)
+// sous le nom et compte plus haut ; avec les photos aussi (portraits du
+// podium, vignettes des lignes). Le filet de sécurité (ajusterPagesScript)
 // réduit encore au besoin.
-const densite = (suite, avecClasse) => {
-  const poids = avecClasse ? suite + 3 : suite;
+const densite = (suite, avecClasse, avecPhotos) => {
+  const poids = suite + (avecClasse ? 3 : 0) + (avecPhotos ? 2 : 0);
   if (!suite) return " seul";
   if (poids > 12) return " serre tres-serre";
   return poids > 8 ? " serre" : "";
@@ -183,6 +193,27 @@ body { margin: 0; padding: 0; color: #1d1d1f; font-family: ${SERIF}; font-varian
 .tres-serre .ligne { padding: .35mm 1.5mm; }
 .tres-serre .ligne .r, .tres-serre .ligne .n, .tres-serre .ligne .m { font-size: 14px; }
 .tres-serre .ligne .me { font-size: 12px; }
+
+/* Avec les photos : un portrait médaillé par marche du podium, une petite
+   photo ronde par ligne. Les largeurs suivent la densité de l'affiche. */
+${PORTRAIT_MEDAILLE_CSS}
+.place .pm { width: 23mm; }
+.place.premier .pm { width: 29mm; }
+.seul .place .pm { width: 33mm; }
+.seul .place.premier .pm { width: 41mm; }
+.serre .place .pm { width: 19mm; }
+.serre .place.premier .pm { width: 24mm; }
+.tres-serre .place .pm { width: 15.5mm; }
+.tres-serre .place.premier .pm { width: 19mm; }
+.portraits .ligne { grid-template-columns: 11mm 8mm 1fr 16mm 21mm; align-items: center; }
+.ph { position: relative; width: 8mm; height: 8mm; border-radius: 50%; overflow: hidden; display: flex; align-items: center; justify-content: center; border: .3mm solid ${OR}; box-sizing: border-box; background: #eef2f7; background: color-mix(in srgb, var(--c1) 10%, #fff); }
+.ph span { font-size: 9px; font-weight: 700; color: var(--c1); }
+.ph img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 30%; display: block; }
+.serre.portraits .ligne { grid-template-columns: 11mm 7mm 1fr 16mm 21mm; }
+.serre .ph { width: 7mm; height: 7mm; }
+.tres-serre.portraits .ligne { grid-template-columns: 11mm 6mm 1fr 16mm 21mm; }
+.tres-serre .ph { width: 6mm; height: 6mm; }
+.tres-serre .ph span { font-size: 7px; }
 `;
 
 // Rang affiché : celui du classement (ex aequo compris) quand l'appelant le
@@ -191,12 +222,18 @@ const rangDe = (e, position) => (Number.isFinite(e.rang) ? e.rang : position + 1
 const ordinal = (rang) => (rang === 1 ? "1<sup>er</sup>" : `${rang}<sup>e</sup>`);
 const mentionDe = (moyenne, maxNote) => mentionFr(getMention(moyenne, maxNote));
 
-const carte = (e, position, maxNote, avecClasse, tri) => {
+// Photo ronde d'une ligne de la liste ; les initiales dessous (cf. portraitMedaille).
+const vignette = (e) => `<span class="ph"><span>${echapper(initiales(e))}</span>${aUnePhoto(e)
+  ? `<img crossOrigin="anonymous" src="${echapper(e.photo)}" alt=""/>` : ""}</span>`;
+
+const carte = (e, position, maxNote, avecClasse, tri, avecPhotos) => {
   const rang = rangDe(e, position);
   const premier = rang === 1;
   return `
   <div class="place${premier ? " premier" : ""}">
-    ${medaille(rang, premier ? 17 : 14)}
+    ${avecPhotos
+    ? portraitMedaille(rang, { photo: aUnePhoto(e) ? e.photo : "", initiales: initiales(e) })
+    : medaille(rang, premier ? 17 : 14)}
     <div class="nom">${echapper(nomAffiche(e, tri))}</div>
     ${avecClasse ? `<div class="classe">${echapper(e.classe)}</div>` : ""}
     <div class="moy">${nb(e.moyenne)}<small>/${maxNote}</small></div>
@@ -209,10 +246,10 @@ const carte = (e, position, maxNote, avecClasse, tri) => {
 // une colonne de « 9,40 » sans repère se lit sur 20 — un parent debout devant
 // l'affiche croit son enfant en échec. Les cartes du podium, elles, portent
 // déjà le barème chacune.
-const colonne = (lignes, maxNote, avecClasse, tri) => `<div class="colonne">
-  <div class="ligne entete"><span class="r">Rang</span><span class="n">Élève${avecClasse ? " · Classe" : ""}</span><span class="m">Moy. /${maxNote}</span><span class="me">Mention</span></div>
+const colonne = (lignes, maxNote, avecClasse, tri, avecPhotos) => `<div class="colonne">
+  <div class="ligne entete"><span class="r">Rang</span>${avecPhotos ? "<span></span>" : ""}<span class="n">Élève${avecClasse ? " · Classe" : ""}</span><span class="m">Moy. /${maxNote}</span><span class="me">Mention</span></div>
   ${lignes.map(({ e, position }) => `<div class="ligne">
-    <span class="r">${ordinal(rangDe(e, position))}</span>
+    <span class="r">${ordinal(rangDe(e, position))}</span>${avecPhotos ? vignette(e) : ""}
     <span class="n">${echapper(nomAffiche(e, tri))}${avecClasse ? `<span class="cl">${echapper(e.classe)}</span>` : ""}</span>
     <span class="m">${nb(e.moyenne)}</span>
     <span class="me">${mentionDe(e.moyenne, maxNote)}</span>
@@ -227,6 +264,7 @@ const colonne = (lignes, maxNote, avecClasse, tri) => `<div class="colonne">
 // l'onglet montre.
 const affiche = ({ classe = "", classement, evalues }, schoolInfo, { periodeLabel, portee, annee, maxNote }) => {
   const avecClasse = !classe;
+  const avecPhotos = classement.some(aUnePhoto);
   const tri = schoolInfo.triEleves;
   const ecole = identiteEcole(schoolInfo);
   const podium = classement.slice(0, 3);
@@ -239,7 +277,7 @@ const affiche = ({ classe = "", classement, evalues }, schoolInfo, { periodeLabe
   const microTexte = echapper(`${schoolInfo.nom || ""} · Tableau d'honneur · ${classe || portee || ""} · ${annee || ""}`.toUpperCase());
   const lieu = ecole.ville ? `Fait à ${ecole.ville}, le ${dateDuJour()}` : `Affiché le ${dateDuJour()}`;
   return `
-  <section class="affiche${densite(suite.length, avecClasse)}" style="--c1:${schoolInfo.couleur1 || "#0A1628"}">
+  <section class="affiche${densite(suite.length, avecClasse, avecPhotos)}${avecPhotos ? " portraits" : ""}" style="--c1:${schoolInfo.couleur1 || "#0A1628"}">
     ${cadreGuilloche({ largeur: 297, hauteur: 210, microTexte })}
     <div class="fili" aria-hidden="true">
       <svg viewBox="-60 -60 120 120">${rosace({ n: 48, rCentre: 19, rCercle: 31, epaisseur: 0.16, opacite: 0.12 })}</svg>
@@ -266,9 +304,9 @@ const affiche = ({ classe = "", classement, evalues }, schoolInfo, { periodeLabe
       </div>
       <div class="scene">
         <div class="podium">
-          ${ORDRE_PODIUM.filter((p) => podium[p]).map((p) => carte(podium[p], p, maxNote, avecClasse, tri)).join("")}
+          ${ORDRE_PODIUM.filter((p) => podium[p]).map((p) => carte(podium[p], p, maxNote, avecClasse, tri, avecPhotos)).join("")}
         </div>
-        ${colonnes.length ? `<div class="liste">${colonnes.map((c) => colonne(c, maxNote, avecClasse, tri)).join("")}</div>` : ""}
+        ${colonnes.length ? `<div class="liste">${colonnes.map((c) => colonne(c, maxNote, avecClasse, tri, avecPhotos)).join("")}</div>` : ""}
       </div>
       <div class="pied">
         <div>${classement.length} élève${classement.length > 1 ? "s" : ""} à l'honneur${Number.isFinite(evalues) ? ` sur ${evalues} classé${evalues > 1 ? "s" : ""}` : ""} · moyennes sur ${maxNote}</div>
@@ -296,6 +334,7 @@ export function htmlTableauxHonneur(affiches = [], schoolInfo = {}, options = {}
   <style>${css()}</style></head><body>
   ${affiches.map((a) => affiche(a, schoolInfo, { periodeLabel, portee, annee, maxNote })).join("")}
   <script>${ajusterPagesScript(".affiche", 210)}</script>
+  <script>${photosEnEchecScript(".pm-photo img, .ph img")}</script>
   <script>${PRINT_TRIGGER}</script>
   </body></html>`;
 }
