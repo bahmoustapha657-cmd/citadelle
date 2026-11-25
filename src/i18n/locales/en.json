@@ -3457,8 +3457,9 @@
       "choice": {
         "label": "What to do with {{name}}?",
         "none": "— Decide later —",
-        "link": "It is {{name}} ({{classe}}): add the matricule",
-        "new": "A different student: enrol them"
+        "link": "It is {{name}} ({{classe}}): keep the DGECS data",
+        "new": "A different student: enrol them",
+        "replaces": "The matricule {{ancien}} EduGest had for this student will be replaced by the DGECS one ({{nouveau}})."
       },
       "fix": {
         "title": "Correct the record as on DGECS (official)",

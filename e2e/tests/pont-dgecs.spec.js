@@ -4,7 +4,8 @@
 // élève). L'élève qu'EduGest connaît déjà reçoit son matricule DGECS, même
 // si son nom y est écrit autrement (confirmé par la date de naissance) ;
 // l'élève douteux (nom proche, rien pour confirmer) n'est pas déclaré absent :
-// le comptable dit qui c'est ; la fiche de chacun est corrigée comme sur DGECS
+// le comptable dit qui c'est (« garder les données de DGECS », même quand
+// EduGest lui donnait un autre matricule) ; la fiche de chacun est corrigée comme sur DGECS
 // (nom, prénoms, naissance, filiation : référence officielle), sauf si le
 // comptable décoche ; l'élève absent d'EduGest est inscrit dans la classe,
 // avec son matricule DGECS, sa filiation et un matricule d'école.
@@ -38,6 +39,10 @@ const MATRICULE_CONNU = `MA${SUFFIXE}101`;
 const MATRICULE_NOUVEAU = `MA${SUFFIXE}102`;
 const MATRICULE_PROCHE = `MA${SUFFIXE}103`;
 const MATRICULE_DOUTE = `MA${SUFFIXE}104`;
+const MATRICULE_KEITA = `MA${SUFFIXE}105`;
+// Douteuse elle aussi, mais EduGest lui donne un autre matricule DGECS.
+const MATRICULE_ANCIEN = `MA${SUFFIXE}199`;
+const KEITA = { nom: "KEITA", prenom: `Mariam ${MOT}`, sexe: "F", matricule: `E2E-T${SUFFIXE}`, ien: MATRICULE_ANCIEN };
 
 // Ce que donne le bouton « copier » de la page « Liste des élèves ».
 const COPIE = [
@@ -48,6 +53,7 @@ const COPIE = [
   `2\t${MATRICULE_NOUVEAU}\tMOUSSA ${LETTRES} YANSANE\tM\t${fr("10")}\tBOKE\tSEKOU\tHAWA CONDE\t\tAfficher`,
   `3\t${MATRICULE_PROCHE}\tMAMADOU ${LETTRES} KAMARA\tM\t${fr("05")}\tKINDIA\tLANSANA\tMARIAMA SYLLA\t\tAfficher`,
   `4\t${MATRICULE_DOUTE}\tIBRAHIMA ${LETTRES} SOUMAH\tM\t${fr("07")}\tFRIA\tMOUSSA\tFANTA KEITA\t\tAfficher`,
+  `5\t${MATRICULE_KEITA}\tMARIAMA ${LETTRES} KEITA\tF\t${fr("09")}\tCONAKRY\tSEKOU\tAWA CAMARA\t\tAfficher`,
 ].join("\n");
 
 const admin = () => clientAdmin();
@@ -60,14 +66,15 @@ const eleveParIen = async (ien) => {
 };
 
 test("le comptable recopie une classe de DGECS : noms écrits autrement retrouvés et corrigés, élève manquant inscrit", async ({ page }) => {
-  // Préparation : la classe et trois élèves sans matricule DGECS, écrits par
-  // la direction (RLS) sous la forme exacte que l'app produit.
+  // Préparation : la classe, trois élèves sans matricule DGECS et une avec un
+  // autre matricule, écrits par la direction (RLS) sous la forme exacte que
+  // l'app produit.
   const direction = await clientConnecte(DIRECTION);
   const id = await ecoleId();
   const ligne = (table, item) => ({ ...toRow(table, item).row, ecole_id: id, section: SECTION });
   for (const [table, lignes] of [
     ["classes", [ligne("classes", { nom: CLASSE_DGECS })]],
-    ["eleves", [CONNU, PROCHE, DOUTE].map((e) => ligne("eleves", { ...e, classe: CLASSE_DGECS, statut: "Actif" }))],
+    ["eleves", [CONNU, PROCHE, DOUTE, KEITA].map((e) => ligne("eleves", { ...e, classe: CLASSE_DGECS, statut: "Actif" }))],
   ]) {
     const { error } = await direction.from(table).insert(lignes);
     if (error) throw new Error(`${table} : ${error.message}`);
@@ -88,10 +95,10 @@ test("le comptable recopie une classe de DGECS : noms écrits autrement retrouv�
   await page.getByRole("button", { name: /Depuis DGECS/ }).click();
   await page.getByLabel("Liste copiée sur DGECS").fill(COPIE);
 
-  // Aperçu : le même nom (même date), le nom écrit autrement (même date), le
-  // douteux (à vérifier, pas déclaré absent), le seul vraiment absent.
+  // Aperçu : le même nom (même date), le nom écrit autrement (même date), les
+  // deux douteux (à vérifier, pas déclarés absents), le seul vraiment absent.
   const lignes = page.getByTestId("ligne-dgecs");
-  await expect(lignes).toHaveCount(4);
+  await expect(lignes).toHaveCount(5);
   const connu = lignes.filter({ hasText: MATRICULE_CONNU });
   await expect(connu).toHaveAttribute("data-etat", "rattacher");
   await expect(connu).toContainText("même date de naissance");
@@ -99,6 +106,8 @@ test("le comptable recopie une classe de DGECS : noms écrits autrement retrouv�
   await expect(proche).toHaveAttribute("data-etat", "rattacher");
   await expect(proche).toContainText("nom écrit autrement dans EduGest");
   await expect(lignes.filter({ hasText: MATRICULE_DOUTE })).toHaveAttribute("data-etat", "aVerifier");
+  const keita = lignes.filter({ hasText: MATRICULE_KEITA });
+  await expect(keita).toHaveAttribute("data-etat", "aVerifier");
   await expect(lignes.filter({ hasText: MATRICULE_NOUVEAU })).toHaveAttribute("data-etat", "nouveau");
   await expect(page.getByLabel("Classe des nouveaux élèves")).toHaveValue(CLASSE_DGECS);
   // Personne de la classe n'est déclaré absent de DGECS.
@@ -113,13 +122,19 @@ test("le comptable recopie une classe de DGECS : noms écrits autrement retrouv�
   // Le douteux : rien d'office ; le comptable dit que c'est bien lui.
   await expect(page.getByRole("button", { name: "Appliquer : 2 matricule(s), 1 fiche(s) corrigée(s), 1 inscription(s)" })).toBeVisible();
   await page.getByLabel(`Que faire de SOUMAH Ibrahima ${MOT} ?`).selectOption(doute.id);
-  await page.getByRole("button", { name: "Appliquer : 3 matricule(s), 2 fiche(s) corrigée(s), 1 inscription(s)" }).click();
-  await expect(page.getByText("DGECS : 3 matricule(s) posé(s), 2 fiche(s) corrigée(s), 1 élève(s) inscrit(s).")).toBeVisible();
+  // KEITA : EduGest lui donne un autre matricule ; le comptable garde les
+  // données de DGECS, l'écran prévient que l'ancien matricule est remplacé.
+  await page.getByLabel(`Que faire de KEITA Mariama ${MOT} ?`)
+    .selectOption({ label: `C'est KEITA Mariam ${MOT} (${CLASSE_DGECS}) : garder les données de DGECS` });
+  await expect(keita).toContainText(`Le matricule ${MATRICULE_ANCIEN} qu'EduGest lui donnait sera remplacé par celui de DGECS (${MATRICULE_KEITA}).`);
+  await expect(keita).toContainText(`Prénoms : Mariam ${MOT} → Mariama ${MOT}`);
+  await page.getByRole("button", { name: "Appliquer : 4 matricule(s), 3 fiche(s) corrigée(s), 1 inscription(s)" }).click();
+  await expect(page.getByText("DGECS : 4 matricule(s) posé(s), 3 fiche(s) corrigée(s), 1 élève(s) inscrit(s).")).toBeVisible();
   await expect(page.getByRole("row").filter({ hasText: "YANSANE" })).toHaveCount(1);
 
-  // Base : le matricule DGECS sur les trois fiches existantes ; BARRY gardée
-  // telle quelle (case décochée), les deux autres corrigées comme sur DGECS…
-  for (const [ien, eleve] of [[MATRICULE_CONNU, CONNU], [MATRICULE_PROCHE, PROCHE], [MATRICULE_DOUTE, DOUTE]]) {
+  // Base : le matricule DGECS sur les quatre fiches existantes ; BARRY gardée
+  // telle quelle (case décochée), les autres corrigées comme sur DGECS…
+  for (const [ien, eleve] of [[MATRICULE_CONNU, CONNU], [MATRICULE_PROCHE, PROCHE], [MATRICULE_DOUTE, DOUTE], [MATRICULE_KEITA, KEITA]]) {
     await expect.poll(async () => (await eleveParIen(ien))?.matricule, { timeout: 30_000 }).toBe(eleve.matricule);
   }
   const connuEnBase = await eleveParIen(MATRICULE_CONNU);
@@ -134,6 +149,12 @@ test("le comptable recopie une classe de DGECS : noms écrits autrement retrouv�
     nom: "SOUMAH", prenom: `Ibrahima ${MOT}`, classe: CLASSE_DGECS, date_naissance: iso("07"),
     lieu_naissance: "Fria", filiation: "Pere: Moussa / Mere: Fanta Keita",
   });
+  // KEITA : données de DGECS, matricule de DGECS à la place de l'ancien.
+  expect(await eleveParIen(MATRICULE_KEITA)).toMatchObject({
+    nom: "KEITA", prenom: `Mariama ${MOT}`, classe: CLASSE_DGECS, date_naissance: iso("09"),
+    lieu_naissance: "Conakry", filiation: "Pere: Sekou / Mere: Awa Camara",
+  });
+  expect(await eleveParIen(MATRICULE_ANCIEN)).toBeNull();
 
   // … et l'élève manquant inscrit dans la classe, avec ce que DGECS savait.
   await expect.poll(async () => !!(await eleveParIen(MATRICULE_NOUVEAU)), { timeout: 30_000 }).toBe(true);

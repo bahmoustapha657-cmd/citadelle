@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   FORMAT_MATRICULE_DGECS, absentsDeDgecs, champsDgecs, cleNomComplet, cleSonore, cocheParDefaut, dateIso, ecartsAvecDgecs, enNomPropre, ficheDepuisDgecs,
-  lireListeDgecs, lireTexteTableau, rapprocherDgecs, resumeRapprochement,
+  lireListeDgecs, lireTexteTableau, matriculeRemplace, rapprocherDgecs, resumeRapprochement,
 } from "../src/dgecs-import.js";
 
 const COPIE = [
@@ -260,6 +260,18 @@ test("écarts portés par les lignes : rattachement, candidat à vérifier, déj
   assert.deepEqual(lignes[3].candidats[0].ecarts, { prenom: ["Ibrahim", "Ibrahima"] });
 });
 
+test("à vérifier, « garder les données de DGECS » : un candidat qui a déjà un autre matricule reste proposé, et ce matricule est remplacé", () => {
+  const section = [{ _id: "k", nom: "KEITA", prenom: "Mariam", ien: "MA00000199" }];
+  const [l] = rapprocherDgecs([ligneDgecs("MA00000061", "KEITA", "Mariama", { dateNaissance: "2012-09-09" })], section);
+  assert.equal(l.etat, "aVerifier");
+  assert.deepEqual(l.candidats.map((c) => c.eleve._id), ["k"]);
+  assert.deepEqual(l.candidats[0].ecarts, { prenom: ["Mariam", "Mariama"], dateNaissance: ["", "2012-09-09"] });
+  assert.equal(matriculeRemplace(l, section[0]), "MA00000199");
+  // Fiche sans matricule (ou déjà le même, écrit autrement) : rien n'est remplacé.
+  assert.equal(matriculeRemplace(l, { ien: "" }), null);
+  assert.equal(matriculeRemplace(l, { ien: "ma 00000061" }), null);
+});
+
 test("chaque état, colonne et problème a son libellé en français", () => {
   const fr = JSON.parse(readFileSync(new URL("../src/i18n/locales/fr.json", import.meta.url), "utf8")).dgecs.import;
   for (const etat of ["deja", "rattacher", "conflit", "aVerifier", "nouveau", "invalide"]) assert.ok(fr.states[etat], etat);
@@ -269,4 +281,5 @@ test("chaque état, colonne et problème a son libellé en français", () => {
     "filiationEgale", "filiationProche", "filiationDifferente"]) assert.ok(fr.evidence[p], p);
   for (const d of ["rattacher", "rattacherSur", "rattacherProche", "rattacherSonore", "conflit", "aVerifier", "nouveau"]) assert.ok(fr.detail[d], d);
   for (const c of ["nom", "prenom", "dateNaissance", "lieuNaissance", "filiation"]) assert.ok(fr.fields[c], c);
+  for (const c of ["label", "none", "link", "new", "replaces"]) assert.ok(fr.choice[c], c);
 });

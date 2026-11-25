@@ -327,6 +327,15 @@ export function ecartsAvecDgecs(d, e = {}) {
 // Écarts → champs à écrire sur la fiche (valeurs de DGECS).
 export const champsDgecs = (ecarts = {}) => Object.fromEntries(Object.entries(ecarts).map(([champ, [, valeur]]) => [champ, valeur]));
 
+// Ligne « à vérifier », décision « c'est cet élève : garder les données de
+// DGECS » : la fiche reçoit le matricule DGECS de la ligne, même si EduGest
+// lui en donnait un autre (DGECS est la référence). Rend ce matricule
+// remplacé, ou null si la fiche n'en avait pas (ou déjà le même).
+export function matriculeRemplace(ligne, eleve) {
+  const ancien = normaliserMatriculeDgecs(eleve?.ien);
+  return ancien && ancien !== ligne.matricule ? ancien : null;
+}
+
 // États d'une ligne DGECS face aux élèves d'EduGest :
 //  - deja       : un élève d'EduGest porte déjà ce matricule — rien à faire,
 //                 sauf recopier les `ecarts` (élève de la section) ;
@@ -336,7 +345,9 @@ export const champsDgecs = (ecarts = {}) => Object.fromEntries(Object.entries(ec
 //                 `ecarts` : ce que la fiche dit autrement que DGECS ;
 //  - conflit    : retrouvé, mais avec un AUTRE matricule ;
 //  - aVerifier  : peut-être un élève d'EduGest (`candidats` : [{ eleve,
-//                 preuves, force, ecarts }]) — rien d'office, l'écran fait choisir ;
+//                 preuves, force, ecarts }], avec ou sans matricule) — rien
+//                 d'office, l'écran fait choisir (plus tard / c'est lui : garder
+//                 les données de DGECS / élève différent : l'inscrire) ;
 //  - nouveau    : aucun élève d'EduGest ne s'en approche (nom, date de
 //                 naissance, filiation) — à inscrire ;
 //  - invalide   : ligne inutilisable (sans matricule ou sans nom).
