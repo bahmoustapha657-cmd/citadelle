@@ -173,7 +173,7 @@ export function PostesCard({ schoolId, peutGererRoles, comptes, refreshComptes, 
     <div style={{ background: "var(--lc-surface, #fff)", borderRadius: 14, padding: "20px 22px", marginBottom: 20, border: "1px solid #e2e8f0" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 6 }}>
         <div>
-          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: C.blueDark }}>🧩 Comptes & Postes</h3>
+          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: C.blueDark }}>🧩 Postes, droits et comptes</h3>
           <p style={{ margin: "3px 0 0", fontSize: 12, color: "#64748b" }}>
             Créez les postes de VOTRE école (censeur, économe, secrétariat…), réglez leurs droits
             module par module et ouvrez autant de comptes que nécessaire par poste.
@@ -228,7 +228,7 @@ export function PostesCard({ schoolId, peutGererRoles, comptes, refreshComptes, 
                 </div>
                 <p style={{ margin: "6px 0 0", fontSize: 11, color: "#64748b" }}>
                   Le responsable apparaît sous les blocs de signature des documents que ce
-                  poste signe — à régler dans « 🖋️ Qui signe quoi », plus bas. Un compte du
+                  poste signe — à régler dans l'onglet « 🖋️ Qui signe quoi ». Un compte du
                   poste qui a son propre nom imprimé signe à son nom ce qu'il imprime.
                 </p>
                 <MatricePermissions

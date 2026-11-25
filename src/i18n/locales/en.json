@@ -3698,5 +3698,30 @@
       "S1": "Semester 1",
       "S2": "Semester 2"
     }
+  },
+  "comptesPostes": {
+    "onglets": {
+      "comptes": "👥 Accounts",
+      "postes": "🧩 Positions & rights",
+      "signatures": "🖋️ Who signs what",
+      "autorisations": "🔒 Edit permissions",
+      "doublons": "🔗 Duplicates & spaces",
+      "annee": "📅 School year"
+    },
+    "anneeEtapes": "Once the year is over: ① close the year, then ② run the promotion of regular classes and ③ move up the students who passed in exam classes, as the results come in.",
+    "comptes": {
+      "intro": "All the school's accounts: who is online, and the button to change a password.",
+      "introPostes": "To create an account, or set its rights, e-mail or printed name:",
+      "recherche": "🔍 Search: name, username, e-mail…",
+      "rechercheAria": "Search for an account",
+      "aucun": "No matching account.",
+      "chercherPartout": "Search all accounts ({{n}})",
+      "types": {
+        "personnel": "Staff",
+        "enseignant": "Teachers",
+        "parent": "Parents",
+        "tous": "All"
+      }
+    }
   }
 }

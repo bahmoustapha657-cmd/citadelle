@@ -128,7 +128,7 @@ export function MatriceSignatures({ s, peutGererRoles }) {
           {s.modifie && <Btn sm v="ghost" onClick={s.annuler}>Annuler</Btn>}
           <Btn sm v="ghost" onClick={s.retablir}>Rétablir les signataires d'origine</Btn>
           <span style={{ fontSize: 11, color: "#94a3b8" }}>
-            « ⚠️ sans nom » : nommez un responsable sur ce poste, ou donnez son nom à chacun de ses comptes, dans Comptes & Postes ci-dessus.
+            « ⚠️ sans nom » : nommez un responsable sur ce poste, ou donnez son nom à chacun de ses comptes, dans l'onglet « 🧩 Postes & droits ».
           </span>
         </div>
       )}
