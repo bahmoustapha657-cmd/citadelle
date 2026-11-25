@@ -1,42 +1,46 @@
-// Accès aux données de la migration des périodes — Supabase, via l'adaptateur.
-// Liquidation Firebase : l'ancien chemin Firestore (getDocs/writeBatch) ne
-// voyait plus AUCUNE note depuis la bascule de la prod sur Supabase ; l'outil
-// annonçait « aucune note orpheline » et ne migrait rien.
-// La logique (qu'est-ce qu'une orpheline, quelles écritures) vit dans
-// migration-periodes-utils.js ; ce fichier ne porte que lectures et écritures.
-import { chargerCollection, modifierDocsParFiltre, supprimerDocsParFiltre } from "../../backend/data-supabase";
+// Accès aux données du rangement des notes — Supabase, via l'adaptateur.
+// La logique (qu'est-ce qu'une orpheline, où elle va, quelles écritures) vit
+// dans migration-periodes-utils.js ; ce fichier ne porte que lectures et
+// écritures.
+import { chargerCollection, modifierDocsParFiltre } from "../../backend/data-supabase";
 import {
-  GROUPES_PERIODICITE, SUPPRIMER, bilanMigration, detecterPeriodesOrphelines, planifierMigration,
+  GROUPES_PERIODICITE, bilanMigration, detecterPeriodesOrphelines, planifierMigration,
 } from "./migration-periodes-utils";
 
-// Scanne les notes de TOUTES les années : la vue archive les affiche avec la
-// périodicité actuelle, une année close y est donc tout aussi invisible.
-// Seules les notes HORS périodicité sont lues (`saufPeriodes`, appliqué par
-// PostgREST en ligne comme par le miroir PowerSync — la prod) : rien à migrer
-// = quatre lectures vides. detecterPeriodesOrphelines reste seul juge.
-export async function collecterPeriodesOrphelines(schoolId, periodes) {
-  const lectures = await Promise.all(GROUPES_PERIODICITE.flatMap(({ groupe, collections }) => (
-    collections.map((nom) => chargerCollection(schoolId, nom, { saufPeriodes: periodes[groupe] }))
+// Notes des `groupes` HORS des périodes valides (`saufPeriodes`, appliqué par
+// PostgREST en ligne comme par le miroir PowerSync) : rien à ranger = lectures
+// vides. L'année en cours seulement, ou toutes avec `toutesAnnees` (pour
+// savoir quelles années passées figer à l'ancienne périodicité).
+// Renvoie { orphelines (de `anneeCourante`), annees (toutes celles vues) }.
+export async function analyserRangement(schoolId, { groupes, periodes, anneeCourante, toutesAnnees = false }) {
+  const cibles = GROUPES_PERIODICITE.filter((g) => groupes.includes(g.groupe));
+  const lectures = await Promise.all(cibles.flatMap(({ groupe, collections }) => (
+    collections.map((nom) => chargerCollection(schoolId, nom, {
+      saufPeriodes: periodes[groupe],
+      ...(toutesAnnees ? {} : { annee: anneeCourante }),
+    }))
   )));
-  // Une lecture en échec n'est pas « zéro orpheline » : l'annoncer ainsi
-  // ferait croire à la direction que tout est en ordre.
+  // Une lecture en échec n'est pas « rien à ranger » : l'annoncer ainsi ferait
+  // croire à la direction que tout est en ordre.
   const echec = lectures.find((r) => r.erreur || r.unsupported);
   if (echec) throw new Error(echec.erreur || "Notes indisponibles.");
-  return detecterPeriodesOrphelines(lectures.flatMap((r) => r.items), periodes);
+  const notes = lectures.flatMap((r) => r.items);
+  return {
+    orphelines: detecterPeriodesOrphelines(notes.filter((n) => n.annee === anneeCourante), periodes),
+    annees: [...new Set(notes.map((n) => n.annee).filter(Boolean))],
+  };
 }
 
-// Applique le mapping validé : UNE écriture par (collection, période) au lieu
-// d'une par note — une requête PostgREST, ou une instruction SQL sur le miroir
-// PowerSync, qui remonte ensuite les lignes à Supabase à son rythme. Les
-// écritures partent ensemble : elles visent des lignes disjointes, une période
-// orpheline n'étant jamais la destination d'une autre.
-// Renvoie le bilan réel { totalMaj, totalSup, nonTraitees, erreurs }.
-export async function appliquerMapping(schoolId, orphelines, mapping, periodes) {
-  const operations = planifierMigration(orphelines, mapping, periodes);
+// Applique les choix validés, pour `annee` seulement : UNE écriture par
+// (collection, période) au lieu d'une par note — une requête PostgREST, ou une
+// instruction SQL sur le miroir PowerSync, qui remonte ensuite les lignes à
+// Supabase à son rythme. Les écritures partent ensemble : elles visent des
+// lignes disjointes, une période orpheline n'étant jamais la destination
+// d'une autre. Renvoie le bilan réel { totalMaj, nonTraitees, erreurs }.
+export async function appliquerMapping(schoolId, orphelines, mapping, periodes, annee) {
+  const operations = planifierMigration(orphelines, mapping, periodes, annee);
   const issues = await Promise.all(operations.map((op) => Promise.allSettled(op.collections.map((nom) => (
-    op.cible === SUPPRIMER
-      ? supprimerDocsParFiltre(schoolId, nom, { periode: op.periode })
-      : modifierDocsParFiltre(schoolId, nom, { periode: op.periode }, { periode: op.cible })
+    modifierDocsParFiltre(schoolId, nom, { periode: op.periode, annee: op.annee }, { periode: op.cible })
   )))));
   return bilanMigration(operations, issues);
 }

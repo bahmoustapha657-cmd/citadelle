@@ -3250,7 +3250,7 @@
     "studentFor": "School student for {{nom}}",
     "subjectsTitle": "Subjects of their grades",
     "subjectFor": "School subject for {{matiere}}",
-    "foreignPeriods": "Periods the school does not use: {{periodes}}. These grades arrive as they are; sort them afterwards with \"Migrate existing grades\" (Settings, periods).",
+    "foreignPeriods": "Periods the school does not use: {{periodes}}. These grades arrive as they are; sort them afterwards with \"Check this year's grades\" (Settings, periods).",
     "preview": "Students matched: {{relies}} · left aside: {{laisses}} · grades to receive: {{notes}} at most.",
     "previewSubjects": "Subjects left aside (their grades do not move): {{matieres}}.",
     "afterAccept": "On accepting, the grades, absences and comments of matched students move to the school (a grade already there is not duplicated), their personal space for this school is closed, and they find their classes in the school's teacher portal.",
@@ -3604,6 +3604,52 @@
       "refresh": "↻ Refresh",
       "loadError": "Field feedback cannot be loaded.",
       "empty": "No feedback to show."
+    }
+  },
+  "rangementNotes": {
+    "titreEnregistrement": "🗓️ New period system: sort the grades already entered",
+    "titreVerification": "🗓️ {{annee}} grades to sort",
+    "changement": "{{groupe}}: {{avant}} → {{apres}}",
+    "fleche": "→",
+    "intro": "{{annee}} grades entered in a period the school no longer uses: {{nombre}}. Here is where they go:",
+    "quantite": "{{nombre}} grade(s)",
+    "question": "{{periode}} · {{quantite}}: which period should they go into?",
+    "repondre": "Answer each question marked ❓ to continue.",
+    "anneesFigees": "Past years ({{annees}}) keep their former period system: their report cards do not change.",
+    "anneesIntactes": "Past years are not affected.",
+    "annuler": "Close",
+    "annulerEnregistrement": "Cancel (nothing is saved)",
+    "confirmerEnregistrement": "Save and sort the grades",
+    "confirmerVerification": "Sort the grades",
+    "enCours": "Sorting…",
+    "avisChangement": "When you save, the grades already entered this year will be moved into the new periods. You will only be asked about a period that spans two new ones (for example term 2 when switching to semesters). Past years keep their period system.",
+    "verifier": "🔎 Check this year's grades",
+    "verificationEnCours": "Checking…",
+    "verifierAide": "Finds this year's grades entered under another period system and moves them into the current periods.",
+    "toutEnOrdre": "All {{annee}} grades are in one of the school's periods: nothing to sort.",
+    "fait": "Grades sorted: {{nombre}}.",
+    "nonTraitees": "Grades sorted: {{nombre}}. Left in place: {{reste}} (not enough write rights on their section?).",
+    "incomplet": "Sorting incomplete. Grades sorted: {{nombre}}. Failure: {{erreur}}. Resume with \"Check this year's grades\".",
+    "echec": "The grades were not sorted: {{message}}. Resume with \"Check this year's grades\".",
+    "echecEnregistrement": "Error while saving: {{message}}",
+    "echecAnalyse": "Could not check the grades already entered ({{message}}): nothing was saved. Try again.",
+    "echecVerification": "Could not check the grades: {{message}}",
+    "groupes": {
+      "prescolaire": "Pre-school",
+      "primaire": "Primary",
+      "secondaire": "Secondary (middle + high school)"
+    },
+    "periodicites": {
+      "trimestre": "by term",
+      "semestre": "by semester",
+      "mensuel": "by month"
+    },
+    "periodes": {
+      "T1": "Term 1",
+      "T2": "Term 2",
+      "T3": "Term 3",
+      "S1": "Semester 1",
+      "S2": "Semester 2"
     }
   }
 }

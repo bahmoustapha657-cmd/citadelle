@@ -21,6 +21,7 @@ import {
 import { lireImageEnBase64 } from "./use-parametres/parametres-uploads";
 import { ongletParametresOuvert } from "../../espace-enseignant";
 import { ongletParametresOuvertPublique } from "../../ecole-publique";
+import { useRangementNotes } from "../migration-periodes/use-rangement-notes";
 
 export function useParametresEcole({ utilisateurRole = "", onSchoolClosed = null, initialTab = null, onTabConsumed = null }) {
   const {schoolId,schoolInfo,setSchoolInfo,toast} = useContext(SchoolContext);
@@ -45,7 +46,9 @@ export function useParametresEcole({ utilisateurRole = "", onSchoolClosed = null
   const [chargement,setChargement] = useState(false);
   const [msgSucces,setMsgSucces] = useState("");
   const [erreur,setErreur] = useState("");
-  const [migrationOuverte, setMigrationOuverte] = useState(false);
+  // Notes déjà saisies à ranger quand la périodicité change (fenêtre ouverte
+  // par l'enregistrement lui-même, plus d'outil « Migration » à part).
+  const rangementNotes = useRangementNotes();
   const [apercu,setApercu] = useState(null); // aperçu logo uploadé
 
   const [dangerAction,setDangerAction] = useState("");
@@ -110,6 +113,20 @@ export function useParametresEcole({ utilisateurRole = "", onSchoolClosed = null
     setCouleursDetectees(null);
   };
 
+  // Écriture des paramètres. `reglagesAnnees` : cf. sauvegarderParametres.
+  // Lève l'erreur : à l'appelant de l'afficher.
+  const enregistrer = async ({ reglagesAnnees } = {}) => {
+    const data = await sauvegarderParametres({ schoolId, form, accueil, evaluationForms, reglagesAnnees });
+    setSchoolInfo(prev=>({...prev,...data}));
+    setMonnaie(data.monnaie);
+    if(data.couleur1) document.documentElement.style.setProperty("--sc1", data.couleur1);
+    if(data.couleur2) document.documentElement.style.setProperty("--sc2", data.couleur2);
+    setMsgSucces("Paramètres enregistrés avec succès.");
+    setTimeout(()=>setMsgSucces(""),4000);
+  };
+
+  const confirmerRangement = (choix) => rangementNotes.confirmer(choix, enregistrer);
+
   const sauvegarder = async () => {
     if(isComptableSeul) {
       setChargement(true); setErreur("");
@@ -129,13 +146,11 @@ export function useParametresEcole({ utilisateurRole = "", onSchoolClosed = null
     if(!form.nom.trim()){setErreur("Le nom de l'école est requis.");return;}
     setChargement(true); setErreur("");
     try {
-      const data = await sauvegarderParametres({ schoolId, form, accueil, evaluationForms });
-      setSchoolInfo(prev=>({...prev,...data}));
-      setMonnaie(data.monnaie);
-      if(data.couleur1) document.documentElement.style.setProperty("--sc1", data.couleur1);
-      if(data.couleur2) document.documentElement.style.setProperty("--sc2", data.couleur2);
-      setMsgSucces("Paramètres enregistrés avec succès.");
-      setTimeout(()=>setMsgSucces(""),4000);
+      // Périodicité changée avec des notes déjà saisies cette année : la
+      // fenêtre de rangement s'ouvre, et c'est elle qui enregistrera.
+      const { ouvert, reglagesAnnees } = await rangementNotes.preparer(form);
+      if (ouvert) return;
+      await enregistrer({ reglagesAnnees });
     } catch(e) {
       setErreur("Erreur lors de la sauvegarde : "+(e.message||"réessayez."));
     } finally {
@@ -203,7 +218,7 @@ export function useParametresEcole({ utilisateurRole = "", onSchoolClosed = null
     formHonneur, setFormHonneur, modalH, setModalH,
     evaluationForms, setEvaluationLabel, toggleEvaluationActive,
     chargement, msgSucces, setMsgSucces, erreur, setErreur,
-    migrationOuverte, setMigrationOuverte,
+    rangementNotes, confirmerRangement,
     apercu, couleursDetectees, setCouleursDetectees,
     dangerAction, setDangerAction, dangerConfirmation, setDangerConfirmation, dangerLoading,
     canManageLifecycle, peutEditerLegal, isComptableSeul, dangerConfig,

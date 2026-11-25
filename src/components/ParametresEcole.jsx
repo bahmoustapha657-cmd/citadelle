@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { C } from "../constants";
 import { AffichageSettings } from "./AffichageSettings";
 import { MatriculeSettings } from "./MatriculeSettings";
-import { MigrationPeriodesModal } from "./MigrationPeriodesModal";
+import { RangementNotesModal } from "./RangementNotesModal";
 import { ParametresTabs } from "./parametres/ParametresTabs";
 import { IdentiteTab } from "./parametres/IdentiteTab";
 import { EvaluationsTab } from "./parametres/EvaluationsTab";
@@ -28,7 +28,7 @@ function ParametresEcole({ utilisateurRole = "", onSchoolClosed = null, initialT
     formHonneur, setFormHonneur, modalH, setModalH,
     evaluationForms, setEvaluationLabel, toggleEvaluationActive,
     chargement, msgSucces, setMsgSucces, erreur, setErreur,
-    migrationOuverte, setMigrationOuverte,
+    rangementNotes, confirmerRangement,
     apercu, couleursDetectees, setCouleursDetectees,
     dangerAction, setDangerAction, dangerConfirmation, setDangerConfirmation, dangerLoading,
     canManageLifecycle, peutEditerLegal, isComptableSeul, dangerConfig,
@@ -66,12 +66,17 @@ function ParametresEcole({ utilisateurRole = "", onSchoolClosed = null, initialT
           apercu={apercu} handleLogoFile={handleLogoFile} resetLogo={resetLogo}
           couleursDetectees={couleursDetectees} setCouleursDetectees={setCouleursDetectees}
           appliquerCouleursDetectees={appliquerCouleursDetectees}
-          setMigrationOuverte={setMigrationOuverte}
+          verifierNotes={rangementNotes.verifier} verificationEnCours={rangementNotes.enCours && !rangementNotes.rangement}
           inp={inp} lbl={lbl} sec={sec}
         />
       )}
 
-      {migrationOuverte && <MigrationPeriodesModal fermer={()=>setMigrationOuverte(false)}/>}
+      {rangementNotes.rangement && (
+        <RangementNotesModal
+          rangement={rangementNotes.rangement} enCours={rangementNotes.enCours}
+          confirmer={confirmerRangement} annuler={rangementNotes.annuler}
+        />
+      )}
 
       {tabParam==="evaluations" && (
         <EvaluationsTab

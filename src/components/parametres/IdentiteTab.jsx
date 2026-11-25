@@ -5,7 +5,7 @@ import { AnneePeriodiciteSection } from "./identite-tab/AnneePeriodiciteSection"
 
 // Onglet "Identité" de ParametresEcole : informations générales, couleurs, logo,
 // mois de début d'année et périodicité. Aiguille form/setForm/chg + les handlers
-// (logo, couleurs détectées, migration) vers chaque section.
+// (logo, couleurs détectées, vérification des notes) vers chaque section.
 export function IdentiteTab({
   form,
   setForm,
@@ -17,7 +17,8 @@ export function IdentiteTab({
   couleursDetectees,
   setCouleursDetectees,
   appliquerCouleursDetectees,
-  setMigrationOuverte,
+  verifierNotes,
+  verificationEnCours,
   inp,
   lbl,
   sec,
@@ -39,7 +40,7 @@ export function IdentiteTab({
         lbl={lbl}
         sec={sec}
       />
-      <AnneePeriodiciteSection form={form} setForm={setForm} chg={chg} schoolInfo={schoolInfo} setMigrationOuverte={setMigrationOuverte} inp={inp} sec={sec} />
+      <AnneePeriodiciteSection form={form} setForm={setForm} chg={chg} schoolInfo={schoolInfo} verifierNotes={verifierNotes} verificationEnCours={verificationEnCours} inp={inp} sec={sec} />
     </>
   );
 }

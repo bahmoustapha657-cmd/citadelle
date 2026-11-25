@@ -24,8 +24,11 @@ export async function sauvegarderMonnaie({ monnaie }) {
 }
 
 // Sauvegarde complète des paramètres.
+// `reglagesAnnees` (facultatif) : réglages par année complétés quand la
+// périodicité change — les années passées y gardent l'ancienne (cf.
+// migration-periodes/use-rangement-notes.js).
 // Renvoie l'objet `data` écrit (pour mettre à jour schoolInfo côté hook).
-export async function sauvegarderParametres({ schoolId, form, accueil, evaluationForms }) {
+export async function sauvegarderParametres({ schoolId, form, accueil, evaluationForms, reglagesAnnees }) {
   // Logo et signature arrivent en base64 (l'écran en a besoin pour l'aperçu
   // et l'extraction des couleurs) mais ne doivent pas FINIR en base64 dans la
   // colonne : un logo de 339 ko repartait à chaque lecture de la fiche école.
@@ -78,6 +81,7 @@ export async function sauvegarderParametres({ schoolId, form, accueil, evaluatio
     joursOuvrablesPrimaire: joursValides(form.joursOuvrablesPrimaire),
     joursOuvrablesSecondaire: joursValides(form.joursOuvrablesSecondaire),
     evaluationForms,
+    ...(reglagesAnnees ? { reglagesAnnees } : {}),
     accueil: {
       active: accueil.active,
       slogan: accueil.slogan.trim(),

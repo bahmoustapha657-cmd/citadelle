@@ -3250,7 +3250,7 @@
     "studentFor": "Élève de l'école pour {{nom}}",
     "subjectsTitle": "Matières de ses notes",
     "subjectFor": "Matière de l'école pour {{matiere}}",
-    "foreignPeriods": "Périodes que l'école n'utilise pas : {{periodes}}. Ces notes arrivent telles quelles ; rangez-les ensuite avec « Migrer les notes existantes » (Paramètres, périodicité).",
+    "foreignPeriods": "Périodes que l'école n'utilise pas : {{periodes}}. Ces notes arrivent telles quelles ; rangez-les ensuite avec « Vérifier les notes de cette année » (Paramètres, périodicité).",
     "preview": "Élèves reliés : {{relies}} · laissés de côté : {{laisses}} · notes à recevoir : {{notes}} au plus.",
     "previewSubjects": "Matières laissées de côté (leurs notes ne passent pas) : {{matieres}}.",
     "afterAccept": "En acceptant, les notes, absences et appréciations des élèves reliés passent chez l'école (une note déjà présente n'est pas doublée), son espace personnel pour cet établissement est fermé, et il retrouve ses classes dans le portail enseignant de l'école.",
@@ -3604,6 +3604,52 @@
       "refresh": "↻ Actualiser",
       "loadError": "Impossible de charger les retours terrain.",
       "empty": "Aucun retour à afficher."
+    }
+  },
+  "rangementNotes": {
+    "titreEnregistrement": "🗓️ Nouvelle périodicité : ranger les notes déjà saisies",
+    "titreVerification": "🗓️ Notes de {{annee}} à ranger",
+    "changement": "{{groupe}} : {{avant}} → {{apres}}",
+    "fleche": "→",
+    "intro": "Notes de {{annee}} saisies dans une période que l'école n'utilise plus : {{nombre}}. Voici où elles vont :",
+    "quantite": "{{nombre}} note(s)",
+    "question": "{{periode}} · {{quantite}} : dans quelle période les ranger ?",
+    "repondre": "Répondez à chaque question marquée ❓ pour continuer.",
+    "anneesFigees": "Les années passées ({{annees}}) gardent leur ancienne périodicité : leurs bulletins ne changent pas.",
+    "anneesIntactes": "Les années passées ne sont pas touchées.",
+    "annuler": "Fermer",
+    "annulerEnregistrement": "Annuler (rien n'est enregistré)",
+    "confirmerEnregistrement": "Enregistrer et ranger les notes",
+    "confirmerVerification": "Ranger les notes",
+    "enCours": "Rangement en cours…",
+    "avisChangement": "À l'enregistrement, les notes déjà saisies cette année seront rangées dans les nouvelles périodes. Seule une période à cheval (par exemple le 2e trimestre quand on passe au semestre) vous sera demandée. Les années passées gardent leur périodicité.",
+    "verifier": "🔎 Vérifier les notes de cette année",
+    "verificationEnCours": "Vérification…",
+    "verifierAide": "Retrouve les notes de cette année saisies sous une autre périodicité et les range dans les périodes actuelles.",
+    "toutEnOrdre": "Toutes les notes de {{annee}} sont dans une période de l'école : rien à ranger.",
+    "fait": "Notes rangées : {{nombre}}.",
+    "nonTraitees": "Notes rangées : {{nombre}}. Laissées en place : {{reste}} (droits d'écriture insuffisants sur leur section ?).",
+    "incomplet": "Rangement incomplet. Notes rangées : {{nombre}}. Échec : {{erreur}}. Reprenez avec « Vérifier les notes de cette année ».",
+    "echec": "Les notes n'ont pas été rangées : {{message}}. Reprenez avec « Vérifier les notes de cette année ».",
+    "echecEnregistrement": "Erreur lors de l'enregistrement : {{message}}",
+    "echecAnalyse": "Impossible de vérifier les notes déjà saisies ({{message}}) : rien n'a été enregistré. Réessayez.",
+    "echecVerification": "Impossible de vérifier les notes : {{message}}",
+    "groupes": {
+      "prescolaire": "Préscolaire",
+      "primaire": "Primaire",
+      "secondaire": "Secondaire (collège + lycée)"
+    },
+    "periodicites": {
+      "trimestre": "par trimestre",
+      "semestre": "par semestre",
+      "mensuel": "par mois"
+    },
+    "periodes": {
+      "T1": "1er trimestre",
+      "T2": "2e trimestre",
+      "T3": "3e trimestre",
+      "S1": "1er semestre",
+      "S2": "2e semestre"
     }
   }
 }
