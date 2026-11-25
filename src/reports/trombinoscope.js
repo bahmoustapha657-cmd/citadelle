@@ -28,6 +28,8 @@ const decouper = (liste, taille) => {
   return paquets;
 };
 
+// Trombinoscope : la photo ou, en attendant, les initiales (« Photo à
+// prendre »). Les badges, eux, mettent le logo de l'école (visuel).
 const photoOuInitiales = (eleve, couleur) => (aUnePhoto(eleve)
   ? `<img crossOrigin="anonymous" src="${echapper(eleve.photo)}" alt=""/>`
   : `<div class="sans-photo" style="background:${couleur}1f;color:${couleur}"><strong>${echapper(initiales(eleve))}</strong><span>Photo à prendre</span></div>`);
@@ -197,9 +199,6 @@ const BADGE_CSS = `
 .logo img{width:100%;height:100%;object-fit:contain;display:block}
 .photo{border-radius:2.5mm;overflow:hidden;background:#f8fafc;flex-shrink:0}
 .photo img{width:100%;height:100%;object-fit:cover;object-position:center 30%;display:block}
-.sans-photo{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.5mm}
-.sans-photo strong{font-size:22pt}
-.sans-photo span{font-size:7pt;font-weight:700}
 .appel{font-weight:900;line-height:1.05;overflow-wrap:anywhere}
 .officiel{font-size:7.5pt;color:#475569;line-height:1.2;overflow-wrap:anywhere}
 .ident{font-size:7pt;color:#334155;letter-spacing:.02em;overflow-wrap:anywhere}
@@ -268,8 +267,9 @@ const marqueEdugest = () => `<div class="marque">${edugestEmbleme(12)}<span>Édi
 
 // La photo de l'élève ou, sans photo, le logo de l'école en grand (s'il
 // existe) : dans l'en-tête, le logo ne reste qu'à côté d'une photo.
+// `photo` n'est vrai que pour un élève qui a sa photo (badgesHTML).
 const visuel = (eleve, schoolInfo, photo, couleur) => (photo
-  ? `<div class="photo" style="border-color:${couleur}">${photoOuInitiales(eleve, couleur)}</div>`
+  ? `<div class="photo" style="border-color:${couleur}"><img crossOrigin="anonymous" src="${echapper(eleve.photo)}" alt=""/></div>`
   : logoEcole(schoolInfo, "logo grand-logo"));
 
 const badgePortrait = (eleve, { schoolInfo, annee, photo, k = 1 }) => {
@@ -314,7 +314,9 @@ const badgePoche = (eleve, { schoolInfo, annee, photo, k = 1 }) => {
 
 // `format` : "poche" ou "portrait" ; `taille` : "normale", "reduite",
 // "petite" ou "mini" (TAILLES_BADGE) ; `photo` : avec la photo de l'élève ; `miroir` :
-// impression inversée pour le papier transfert.
+// impression inversée pour le papier transfert. Un badge porte la photo de
+// l'élève ou, à défaut, le logo de l'école : un élève qui n'a pas encore sa
+// photo a son badge au logo, jamais un cadre « Photo à prendre ».
 export function badgesHTML(eleves = [], {
   schoolInfo = {}, annee = "", format = "portrait", taille = "normale", photo = true, miroir = false,
 } = {}) {
@@ -324,7 +326,7 @@ export function badgesHTML(eleves = [], {
   const ordre = grouperParClasse(eleves).flatMap(([, enfants]) => enfants);
   const grille = `grid-template-columns:repeat(${g.colonnes},${g.largeur}mm);grid-auto-rows:${g.hauteur}mm;gap:${g.ecart}mm`;
   const pages = decouper(ordre, g.parPage)
-    .map((paquet) => `<div class="page" style="${grille}">${paquet.map((eleve) => dessiner(eleve, { schoolInfo, annee, photo, k: g.echelle })).join("")}</div>`);
+    .map((paquet) => `<div class="page" style="${grille}">${paquet.map((eleve) => dessiner(eleve, { schoolInfo, annee, photo: photo && aUnePhoto(eleve), k: g.echelle })).join("")}</div>`);
   const avis = miroir
     ? `<div class="avis no-print">🔁 Impression en <strong>miroir</strong> pour papier transfert sur tissu clair : le texte apparaît à l'envers ici, il sera à l'endroit une fois repassé. Faites d'abord un essai sur une feuille ordinaire.</div>`
     : "";
