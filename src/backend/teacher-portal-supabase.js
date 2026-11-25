@@ -170,17 +170,20 @@ function matiereEffective(matiere) {
 }
 
 // Payload complet d'une note (auteur inclus, comme le handler serveur).
-function noteItem({ eleveId, type, periode, note, matiere, annee }) {
+// `mois` absent (saisie mise en file hors ligne avant l'ajout des mois) : la
+// colonne n'est pas écrite, une note existante garde le sien.
+function noteItem({ eleveId, type, periode, mois, note, matiere, annee }) {
   return {
     eleveId, type, periode, note: Number(note),
+    ...(mois === undefined ? {} : { mois: mois || null }),
     matiere: matiereEffective(matiere), annee: annee || "",
     enseignantId: ctx?.enseignantId || null,
     enseignantNom: ctx?.enseignantNom || "",
   };
 }
 
-export async function saveNote({ noteId, eleveId, type, periode, note, matiere, annee }) {
-  const item = noteItem({ eleveId, type, periode, note, matiere, annee });
+export async function saveNote({ noteId, eleveId, type, periode, mois, note, matiere, annee }) {
+  const item = noteItem({ eleveId, type, periode, mois, note, matiere, annee });
   if (noteId) await modifierDoc(ctx.code, notesColl(), { _id: noteId, ...item });
   else await ajouterDoc(ctx.code, notesColl(), item);
   return { ok: true, data: { ok: true } };

@@ -17,6 +17,7 @@ import { AuthGate } from "./components/app/AuthGate";
 import { AppShell } from "./components/app/AppShell";
 import { ResetPasswordScreen } from "./components/connexion/ResetPasswordScreen";
 import { definirSignataireSession } from "./reports/signataire-session";
+import { definirCalendrierNotes } from "./note-utils";
 import { MessagerieProvider } from "./components/messagerie/MessagerieContext";
 import { MODULE_MESSAGERIE, messagerieOuverteA } from "./components/messagerie/messagerie-logic";
 import { EspacesUtilisateur } from "./components/app/EspacesUtilisateur";
@@ -67,6 +68,10 @@ export default function App() {
 
   const schoolInfo = (!schoolId || schoolId === "superadmin") ? SCHOOL_INFO_DEFAUT : schoolInfoState;
   const moisAnnee = calcMoisAnnee(schoolInfo.moisDebut || "Octobre");
+  // Calendrier des notes : le mois tiré de la date de saisie d'une ancienne
+  // note (sans mois) doit tomber dans sa période — cf. moisDeNote. Réglé dès
+  // le rendu, avant que les modules enfants ne calculent leurs moyennes.
+  definirCalendrierNotes(schoolInfo.moisDebut);
   const moisSalaire = calcMoisSalaire(schoolInfo.moisDebut || "Octobre");
 
   // Logique transverse : toasts, journal, push, plan, année, connexion.

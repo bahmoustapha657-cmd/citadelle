@@ -1,5 +1,6 @@
-import { useMemo } from "react";
+import { useContext, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { SchoolContext } from "../../contexts/SchoolContext";
 import { enrichirNotes } from "../../notes-eleves";
 import { NotesToolbar } from "./notes-tab/NotesToolbar";
 import { NotesGrille } from "./notes-tab/NotesGrille";
@@ -58,6 +59,9 @@ export function NotesTab({
   toast,
 }) {
   const { t } = useTranslation();
+  // Mois de l'année scolaire : les oraux et écrits du secondaire se saisissent
+  // pour un mois de la période (cf. notes-mois.js).
+  const { moisAnnee = [] } = useContext(SchoolContext);
   // Nom de l'élève lu sur sa fiche : la table notes n'a que eleve_id. La
   // liste `eleves` du module garde les élèves partis, leurs notes aussi.
   const notesNommees = useMemo(() => enrichirNotes(notes, eleves), [notes, eleves]);
@@ -74,7 +78,7 @@ export function NotesTab({
       <NotesToolbar
         t={t} notes={notesNommees} notesVue={notesVue} setNotesVue={setNotesVue}
         section={section} maxNote={maxNote} schoolInfo={schoolInfo}
-        eleves={eleves} matieres={matieres} noteForms={noteForms} periodes={periodes}
+        eleves={eleves} matieres={matieres} noteForms={noteForms} periodes={periodes} moisAnnee={moisAnnee}
         canCreate={canCreate} setForm={setForm} setModal={setModal} defaultNoteType={defaultNoteType}
       />
 
@@ -85,6 +89,8 @@ export function NotesTab({
           matieresForClasse={matieresForClasse}
           noteForms={noteForms}
           periodes={periodes}
+          moisAnnee={moisAnnee}
+          section={section}
           maxNote={maxNote}
           annee={annee}
           canCreate={canCreate}
@@ -124,6 +130,7 @@ export function NotesTab({
           schoolInfo={schoolInfo}
           section={section}
           periodes={periodes}
+          moisAnnee={moisAnnee}
           maxNote={maxNote}
           eleves={eleves}
           ajN={ajN}
@@ -143,6 +150,7 @@ export function NotesTab({
           schoolInfo={schoolInfo}
           section={section}
           periodes={periodes}
+          moisAnnee={moisAnnee}
           annee={annee}
           ajN={ajN}
           toast={toast}

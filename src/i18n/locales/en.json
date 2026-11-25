@@ -2074,6 +2074,14 @@
     "Novembre": "November",
     "Décembre": "December"
   },
+  "gradeMonth": {
+    "label": "Month",
+    "choose": "— Month —",
+    "required": "Choose the month of the assessment: oral and written grades are recorded month by month.",
+    "importMissing": "Missing month",
+    "importOutside": "Month outside period {{period}}",
+    "importHint": "Month column (after the grade): required for oral and written grades in secondary school — a month of the period (\"Oct\", \"Octobre\" or \"10\")."
+  },
   "reports": {
     "schoolYear": "School year",
     "annual": "Year-end",
@@ -2325,6 +2333,7 @@
         "type": "Type",
         "period": "Period",
         "grade": "Grade",
+        "month": "Month",
         "date": "Date",
         "motive": "Reason",
         "justified": "Justified",

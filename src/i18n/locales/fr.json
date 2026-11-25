@@ -2074,6 +2074,14 @@
     "Novembre": "Novembre",
     "Décembre": "Décembre"
   },
+  "gradeMonth": {
+    "label": "Mois",
+    "choose": "— Mois —",
+    "required": "Choisissez le mois de l'évaluation : les oraux et les écrits se notent mois par mois.",
+    "importMissing": "Mois manquant",
+    "importOutside": "Mois hors de la période {{period}}",
+    "importHint": "Colonne Mois (après la note) : exigée pour les oraux et les écrits du secondaire — un mois de la période (« Oct », « Octobre » ou « 10 »)."
+  },
   "reports": {
     "schoolYear": "Année scolaire",
     "annual": "Fin d'année",
@@ -2325,6 +2333,7 @@
         "type": "Type",
         "period": "Période",
         "grade": "Note",
+        "month": "Mois",
         "date": "Date",
         "motive": "Motif",
         "justified": "Justifié",

@@ -50,7 +50,7 @@ export function NotesTab({
       {modalNote === "grid" && (
         <GrilleModale
           matiere={matiere} mesClasses={mesClasses} noteForms={noteForms} periodes={periodes}
-          isPrimaire={isPrimaire} matieresDispo={matieresDispo} maxNote={maxNote}
+          isPrimaire={isPrimaire} matieresDispo={matieresDispo} maxNote={maxNote} section={utilisateur?.section || "secondaire"}
           gridForm={gridForm} setGridForm={setGridForm} majGrid={majGrid} portalData={portalData} schoolInfo={schoolInfo}
           gridProgress={gridProgress} enregistrement={enregistrement}
           setModalNote={setModalNote} enregistrerGrille={enregistrerGrille}
@@ -62,7 +62,7 @@ export function NotesTab({
           modalNote={modalNote} setModalNote={setModalNote} formNote={formNote} setFormNote={setFormNote}
           eleves={eleves} noteForms={noteForms} defaultNoteType={defaultNoteType}
           periodeN={periodeN} periodes={periodes} maxNote={maxNote}
-          isPrimaire={isPrimaire} matieresDispo={matieresDispo}
+          isPrimaire={isPrimaire} matieresDispo={matieresDispo} section={utilisateur?.section || "secondaire"}
           enregistrement={enregistrement} enregistrerNote={enregistrerNote}
           triEleves={schoolInfo?.triEleves}
         />

@@ -2,12 +2,14 @@ import { C, getSectionSlug } from "../../../constants";
 import { Btn } from "../../ui";
 import { exportExcel } from "../../../reports";
 import { getEvaluationLabel } from "../../../evaluation-forms";
+import { moisDePeriode } from "../../../period-utils";
 
 // Barre d'outils des notes : bascule liste/grille, export Excel, modèle
-// d'import, et boutons import/ajout (réservés à la création).
+// d'import, et boutons import/ajout (réservés à la création). Colonne « Mois »
+// en 6e position (après la note), comme l'import la lit.
 export function NotesToolbar({
   t, notes, notesVue, setNotesVue, section = "college", maxNote, schoolInfo,
-  eleves, matieres, noteForms, periodes, canCreate, setForm, setModal, defaultNoteType,
+  eleves, matieres, noteForms, periodes, moisAnnee = [], canCreate, setForm, setModal, defaultNoteType,
 }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
@@ -23,12 +25,12 @@ export function NotesToolbar({
       </div>
       <Btn sm v="ghost" onClick={() => exportExcel(
         `${t("reports.excel.files.notes")}_${getSectionSlug(section)}`,
-        [t("reports.excel.headers.student"), t("reports.excel.headers.subject"), t("reports.excel.headers.type"), t("reports.excel.headers.period"), `${t("reports.excel.headers.grade")} /${maxNote}`],
-        notes.map(n => [n.eleveNom, n.matiere, getEvaluationLabel(n.type, schoolInfo, { section }), n.periode, n.note])
+        [t("reports.excel.headers.student"), t("reports.excel.headers.subject"), t("reports.excel.headers.type"), t("reports.excel.headers.period"), `${t("reports.excel.headers.grade")} /${maxNote}`, t("reports.excel.headers.month")],
+        notes.map(n => [n.eleveNom, n.matiere, getEvaluationLabel(n.type, schoolInfo, { section }), n.periode, n.note, n.mois || ""])
       )}>📥 {t("common.export")}</Btn>
       <Btn sm v="ghost" onClick={() => exportExcel(t("reports.excel.files.notesTemplate"),
-        [t("reports.excel.headers.studentFullName"), t("reports.excel.headers.subject"), t("reports.excel.headers.type"), t("reports.excel.headers.period"), `${t("reports.excel.headers.grade")} (/${maxNote})`],
-        eleves.slice(0, 3).map(e => [`${e.nom} ${e.prenom}`, matieres[0]?.nom || "Maths", noteForms[0]?.label || "Devoir", periodes[0] || "T1", Math.round(maxNote * 0.7)])
+        [t("reports.excel.headers.studentFullName"), t("reports.excel.headers.subject"), t("reports.excel.headers.type"), t("reports.excel.headers.period"), `${t("reports.excel.headers.grade")} (/${maxNote})`, t("reports.excel.headers.month")],
+        eleves.slice(0, 3).map(e => [`${e.nom} ${e.prenom}`, matieres[0]?.nom || "Maths", noteForms[0]?.label || "Devoir", periodes[0] || "T1", Math.round(maxNote * 0.7), moisDePeriode(periodes[0] || "T1", moisAnnee)[0] || ""])
       )}>📋 {t("common.template")}</Btn>
       {canCreate && <Btn sm v="vert" onClick={() => setModal("import_notes")}>⬆️ {t("common.import")}</Btn>}
       {canCreate && <Btn onClick={() => { setForm({ periode: periodes[0] || "T1", type: defaultNoteType }); setModal("add_n"); }}>+ {t("common.add")}</Btn>}

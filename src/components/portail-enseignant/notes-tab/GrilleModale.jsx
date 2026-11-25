@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { C, estSorti } from "../../../constants";
 import { sansNonReinscritsEcartes } from "../../../ecartes-non-reinscrits";
@@ -9,6 +9,9 @@ import { EnfantAgrandi } from "../../identite-enfant/EnfantAgrandi";
 import { PhotoEleve } from "../../identite-enfant/PhotoEleve";
 import { AvisFormeNote } from "../../AvisFormeNote";
 import { nomAffiche, trierElevesAlpha } from "../../../ordre-eleves";
+import { SchoolContext } from "../../../contexts/SchoolContext";
+import { champMois, colonnesPeriodes } from "../../../notes-mois";
+import { libelleMoisCode, libellePeriodeNote } from "../../../i18n/libelles";
 
 // Modale de saisie en grille (portail enseignant). Trois modes :
 //  - normal        : une période + une matière figées, une colonne « Note ».
@@ -17,16 +20,24 @@ import { nomAffiche, trierElevesAlpha } from "../../../ordre-eleves";
 //                    saisir toutes les matières d'un élève puis enregistrer une
 //                    seule fois. Recherche d'élève par nom ou surnom dans tous
 //                    les modes ; photo devant chaque nom (un toucher l'agrandit).
+// Oraux et écrits du secondaire (notes-mois.js) : période figée → un mois de
+// la période à choisir (gridForm.mois) ; toutes les périodes → une colonne
+// (ou une ligne au mode combiné) par mois, jeton « T1:Oct ».
 export function GrilleModale({
   matiere, mesClasses, noteForms, periodes,
-  isPrimaire = false, matieresDispo = [], maxNote = 20,
+  isPrimaire = false, matieresDispo = [], maxNote = 20, section = "secondaire",
   gridForm, setGridForm, majGrid, portalData, schoolInfo = {},
   gridProgress, enregistrement, setModalNote, enregistrerGrille,
 }) {
   const [rech, setRech] = useState("");
   const [agrandi, setAgrandi] = useState(null);
   const { t } = useTranslation();
+  const { moisAnnee = [] } = useContext(SchoolContext);
   const multi = !!gridForm.multiPeriode;
+  const champ = champMois({ type: gridForm.type, section, periode: gridForm.periode, moisAnnee });
+  // Colonnes de périodes (mode « toutes les périodes ») : une par mois pour
+  // une forme à mois, sinon une par période.
+  const colPeriodes = colonnesPeriodes(periodes, { avecMois: champ.avecMois, moisAnnee });
   const multiMat = !!gridForm.multiMatiere;
   const matCols = matieresDispo.map((m) => m.nom).filter(Boolean);
   // Sélecteur de matière : titulaire (toutes ses matières) ou professeur du
@@ -52,8 +63,8 @@ export function GrilleModale({
   // Descripteurs de colonnes : { sub, label, group }. sub = suffixe de clé
   // (null = colonne unique). group = en-tête de regroupement (mode combiné).
   const colDefs = combine
-    ? periodes.flatMap((p) => matCols.map((m) => ({ sub: `${p}|${m}`, label: m, group: p })))
-    : multi ? periodes.map((p) => ({ sub: p, label: p, group: null }))
+    ? colPeriodes.flatMap((p) => matCols.map((m) => ({ sub: `${p.jeton}|${m}`, label: m, group: p.jeton })))
+    : multi ? colPeriodes.map((p) => ({ sub: p.jeton, label: libellePeriodeNote(p.periode, p.mois), group: null }))
       : multiMat ? matCols.map((m) => ({ sub: m, label: m, group: null }))
         : [{ sub: null, label: t("teacher.cols.grade"), group: null }];
   const enColonnes = multi || multiMat;
@@ -110,6 +121,12 @@ export function GrilleModale({
             {periodes.map((p) => <option key={p} value={p}>{p}</option>)}
           </Selec>
         )}
+        {!multi && champ.visible && (
+          <Selec label={t("gradeMonth.label")} value={gridForm.mois || ""} onChange={(e) => majGrid({ mois: e.target.value })}>
+            <option value="">{t("gradeMonth.choose")}</option>
+            {champ.choix.map((m) => <option key={m} value={m}>{libelleMoisCode(m)}</option>)}
+          </Selec>
+        )}
       </div>
       <AvisFormeNote type={gridForm.type} style={{ marginBottom: 12 }} />
 
@@ -162,16 +179,16 @@ export function GrilleModale({
               </thead>
               <tbody>
                 {combine
-                  ? elevesAff.flatMap((e, i) => periodes.map((per, pIdx) => (
-                    <tr key={`${e._id}|${per}`} style={{ background: i % 2 === 0 ? "#fff" : "#f8fafc", borderTop: pIdx === 0 ? "2px solid #cbd5e1" : undefined }}>
-                      {pIdx === 0 && <td rowSpan={periodes.length} style={{ padding: "6px 10px", fontSize: 11, color: "#94a3b8", verticalAlign: "top" }}>{i + 1}</td>}
+                  ? elevesAff.flatMap((e, i) => colPeriodes.map((per, pIdx) => (
+                    <tr key={`${e._id}|${per.jeton}`} style={{ background: i % 2 === 0 ? "#fff" : "#f8fafc", borderTop: pIdx === 0 ? "2px solid #cbd5e1" : undefined }}>
+                      {pIdx === 0 && <td rowSpan={colPeriodes.length} style={{ padding: "6px 10px", fontSize: 11, color: "#94a3b8", verticalAlign: "top" }}>{i + 1}</td>}
                       {pIdx === 0 && (
-                        <td rowSpan={periodes.length} style={{ padding: "6px 10px", fontSize: 13, verticalAlign: "top" }}>
+                        <td rowSpan={colPeriodes.length} style={{ padding: "6px 10px", fontSize: 13, verticalAlign: "top" }}>
                           {nomEleve(e)}
                         </td>
                       )}
-                      <td style={{ padding: "6px 10px", fontSize: 12, fontWeight: 700, color: "#475569", textAlign: "center" }}>{per}</td>
-                      {matCols.map((m) => renderCell(`${e._id}|${per}|${m}`))}
+                      <td style={{ padding: "6px 10px", fontSize: 12, fontWeight: 700, color: "#475569", textAlign: "center", whiteSpace: "nowrap" }}>{libellePeriodeNote(per.periode, per.mois)}</td>
+                      {matCols.map((m) => renderCell(`${e._id}|${per.jeton}|${m}`))}
                     </tr>
                   )))
                   : elevesAff.map((e, i) => (

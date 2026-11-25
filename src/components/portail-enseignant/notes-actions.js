@@ -11,6 +11,7 @@ import { saveNoteApi, saveNotesApi, deleteNoteApi } from "./notes-api";
 import { resolveCanonicalNoteType } from "../../evaluation-forms";
 import { getAnnee } from "../../constants";
 import i18n from "../../i18n";
+import { moisAEnregistrer, moisSaisi, moisValide } from "../../notes-mois";
 
 // Ré-export pour préserver le point d'import unique du parent.
 export { construireGrille };
@@ -24,6 +25,7 @@ export async function enregistrerGrille({
   utilisateur,
   maxNote = 20,
   annee: anneeEcole = "",
+  moisAnnee = [],
   setEnregistrement,
   setGridProgress,
   setModalNote,
@@ -33,7 +35,7 @@ export async function enregistrerGrille({
   onQueued,
   onSavedNotes,
 }) {
-  const { canonical, aSauver } = collectGridNotes({ gridForm, mesNotes, schoolInfo, utilisateur });
+  const { canonical, aSauver } = collectGridNotes({ gridForm, mesNotes, schoolInfo, utilisateur, moisAnnee });
   const invalide = validateGridNotes(aSauver, maxNote);
   if (invalide) {
     toast(invalide, "warning");
@@ -47,6 +49,7 @@ export async function enregistrerGrille({
     eleveId: item.eleveId,
     type: canonical,
     periode: item.periode || gridForm.periode,
+    mois: item.mois,
     note: item.note,
     matiere: item.matiere || gridForm.matiere || "",
     annee,
@@ -108,8 +111,10 @@ export async function enregistrerGrille({
 }
 
 // Enregistre une note individuelle (création ou édition selon noteId).
+// Oraux et écrits du secondaire : un mois de la période est exigé — celui
+// qu'affiche la modale (moisSaisi, le mois en cours d'office).
 export async function enregistrerNote({
-  formNote, defaultNoteType, schoolInfo, utilisateur, maxNote = 20, annee = "",
+  formNote, defaultNoteType, schoolInfo, utilisateur, maxNote = 20, annee = "", moisAnnee = [],
   setEnregistrement, setModalNote, chargerPortail, toast,
 }) {
   if (!formNote.eleveId || formNote.note === "" || !formNote.periode) {
@@ -123,13 +128,22 @@ export async function enregistrerNote({
     toast(invalide, "warning");
     return;
   }
+  const section = utilisateur.section || "secondaire";
+  const type = resolveCanonicalNoteType(formNote.type || defaultNoteType, schoolInfo, section);
+  const champ = { type, section, periode: formNote.periode, moisAnnee };
+  const mois = moisSaisi({ ...champ, mois: formNote.mois || "" });
+  if (!moisValide({ ...champ, mois })) {
+    toast(i18n.t("gradeMonth.required"), "warning");
+    return;
+  }
   setEnregistrement(true);
   try {
     const { ok, data } = await saveNoteApi({
       noteId: formNote.noteId,
       eleveId: formNote.eleveId,
-      type: resolveCanonicalNoteType(formNote.type || defaultNoteType, schoolInfo, utilisateur.section || "secondaire"),
+      type,
       periode: formNote.periode,
+      mois: moisAEnregistrer({ ...champ, mois }),
       note: Number(formNote.note),
       matiere: formNote.matiere || "",
       annee: annee || getAnnee(),

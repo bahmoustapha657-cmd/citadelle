@@ -33,6 +33,8 @@ const notes = table(
     ecole_id: column.text, section: column.text, eleve_id: column.text, matiere: column.text,
     type: column.text, periode: column.text, note: column.real, annee: column.text,
     enseignant_id: column.text, enseignant_nom: column.text,
+    // Mois de l'évaluation (« Oct »…) : oraux et écrits du secondaire.
+    mois: column.text,
     created_at: column.text, updated_at: column.text,
   },
   { indexes: { eleve: ["eleve_id"], scope: ["ecole_id", "section", "annee", "periode"] } },
