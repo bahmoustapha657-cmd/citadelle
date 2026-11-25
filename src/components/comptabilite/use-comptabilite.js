@@ -1,6 +1,9 @@
 import { useContext, useMemo, useState } from "react";
 import i18n from "../../i18n";
-import { fmt, getAnnee, isSectionActive, peutCreerComptesParent, peutModifierEleves, peutModifier, sectionOuverte } from "../../constants";
+import {
+  comparerClassesParNiveau, fmt, getAnnee, isSectionActive, peutCreerComptesParent, peutModifierEleves, peutModifier,
+} from "../../constants";
+import { elevesAffiches, sectionAffichee, sectionEcriture } from "./mensualites-tab/toutes-sections";
 import { hasWrite } from "../../../shared/postes-config.js";
 import { SchoolContext } from "../../contexts/SchoolContext";
 import { useFirestore } from "../../hooks/useFirestore";
@@ -145,8 +148,9 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   const [form, setForm] = useState({});
   const [niveauChoisi, setNiveau] = useState(() => intentionDispenses() || "college");
   // Cycle des mensualités : le choix s'il est ouvert dans l'école, sinon la
-  // première section ouverte (Paramètres → Identité).
-  const niveau = sectionOuverte(schoolInfo, niveauChoisi);
+  // première section ouverte (Paramètres → Identité). « Tout » (TOUTES_SECTIONS)
+  // montre toutes les sections ouvertes à la fois, dès qu'il y en a deux.
+  const niveau = sectionAffichee(schoolInfo, niveauChoisi);
   const [filtClasse, setFiltClasse] = useState("all");
   const [moisSel, setMoisSel] = useState(() => moisSalaire[0] || "Octobre");
   const [primeDefaut, setPrimeDefaut] = useState(0);
@@ -174,17 +178,25 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
   const totD = depenses.reduce((s, x) => s + Number(x.montant), 0);
   const totVers = versements.reduce((s, x) => s + Number(x.montant), 0);
 
-  const eleves = elevesParNiveau[niveau] || elevesC;
-  const modEleves = modChampParNiveau[niveau] || modEC;
+  const eleves = elevesAffiches(elevesParNiveau, niveau, schoolInfo);
+  // Écriture d'un paiement : dans la collection de la section de l'élève. En
+  // vue « Tout », la grille mêle les sections ; écrire par une autre
+  // collection changerait l'élève de section (cf. toutes-sections.js).
+  const modEleves = (id, champs) => {
+    const mod = modChampParNiveau[sectionEcriture(elevesParNiveau, id, niveau)];
+    if (!mod) return Promise.reject(new Error(i18n.t("accounting.mens.sectionNotFound")));
+    return mod(id, champs);
+  };
   // Relecture de la fiche juste avant un encaissement (cf. fiche-a-jour) :
   // même collection que modEleves.
   const collectionParNiveau = { college: "elevesCollege", lycee: "elevesLycee", primaire: "elevesPrimaire", prescolaire: "elevesPrescolaire" };
-  const lireFiche = (id) => lireVersionsDoc(schoolId, collectionParNiveau[niveau] || "elevesCollege", id);
+  const lireFiche = (id) => lireVersionsDoc(schoolId, collectionParNiveau[sectionEcriture(elevesParNiveau, id, niveau)] || "elevesCollege", id);
   // Grille des mensualités : les élèves qui relèvent de l'année consultée. Un
   // élève parti avant sa rentrée, sans rien d'encaissé, n'y a plus sa place —
   // il y traînait avec neuf mois « impayés » qu'il ne devait pas.
   const elevesScolarite = eleves.filter((e) => concerneParAnnee(e, moisAnnee, anneeConsultee));
-  const classesU = [...new Set(elevesScolarite.map((e) => e.classe))].filter(Boolean);
+  // Classes dans l'ordre des niveaux : en vue « Tout », celles de toutes les sections.
+  const classesU = [...new Set(elevesScolarite.map((e) => e.classe))].filter(Boolean).sort(comparerClassesParNiveau);
   const tousElevesScolarite = [...elevesC, ...elevesL, ...elevesP, ...elevesPre];
   // Reçu famille : les frères et sœurs se cherchent dans TOUTES les sections
   // (un aîné au collège, un cadet au primaire), parmi les élèves de l'année.

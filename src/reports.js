@@ -41,7 +41,7 @@ export { imprimerLivret } from "./reports/livret.js";
 export { imprimerTableauHonneur, imprimerTableauxHonneur } from "./reports/tableau-honneur.js";
 export { imprimerAlerteMensualites } from "./reports/alerte-mensualites.js";
 export { imprimerPreavisRenvoi } from "./reports/preavis-renvoi.js";
-export { imprimerListeNonReinscrits, imprimerListePayes } from "./reports/listes-mensualites.js";
+export { imprimerListeMois, imprimerListeNonReinscrits, imprimerListePayes } from "./reports/listes-mensualites.js";
 export { imprimerEtatsSalaires } from "./reports/etats-salaires.js";
 export { imprimerEdtEnseignant, imprimerPaiesEnseignant } from "./reports/teacher-prints.js";
 export { fichesBulletinsPaie, imprimerBulletinsPaie } from "./reports/bulletins-paie-annuels.js";

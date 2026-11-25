@@ -663,7 +663,9 @@
       "enrolCollected": "{{amount}} inscriptions perçues",
       "otherCollected": "{{amount}} autres frais perçus",
       "exemptSummary": "{{count}} dispensé(s) · {{amount}} non perçus",
-      "exemptionsBtn": "🎓 Dispenses"
+      "exemptionsBtn": "🎓 Dispenses",
+      "allSections": "Tout (toutes les sections)",
+      "sectionNotFound": "Section de l'élève introuvable : rien n'a été enregistré. Rechargez la page."
     },
     "collect": {
       "confirm": "Encaisser {{amount}} pour {{name}} ?\n\n{{detail}}",
@@ -1585,6 +1587,19 @@
       "print": "Imprimer",
       "popupBlocked": "Le navigateur a bloqué la fenêtre d'impression : autorisez les fenêtres pour ce site.",
       "staff": "Personnel administratif et de service ({{n}})"
+    },
+    "monthList": {
+      "button": "Liste par mois",
+      "buttonHint": "Imprimer les élèves qui ont payé (ou pas encore) un mois donné, avec le total payé par chacun",
+      "title": "Liste des élèves par mois",
+      "month": "Mois",
+      "who": "Élèves à imprimer",
+      "paid": "Ont payé {{month}}",
+      "unpaid": "N'ont pas encore payé {{month}}",
+      "pagePerClass": "Une page par classe",
+      "summaryPaid": "{{n}} élève(s) · {{classes}} classe(s) · {{amount}} {{currency}} encaissés pour {{month}}",
+      "summaryUnpaid": "{{n}} élève(s) · {{classes}} classe(s) · {{amount}} {{currency}} restent dus pour {{month}}",
+      "totalNote": "Devant chaque nom : le total payé dans l'année (mensualités, inscription et frais)."
     }
   },
   "parent": {
@@ -2437,6 +2452,29 @@
       "noteStaff": "La signature de l'agent(e) sur la ligne du mois vaut reçu du net payé. Toute rature ou surcharge est paraphée par le comptable.",
       "coverAllStaff": "Personnel enseignant et non enseignant",
       "coverOtherStaff": "Personnel administratif et de service"
+    },
+    "listeMois": {
+      "titrePayes": "✅ ÉLÈVES AYANT PAYÉ — {{mois}}",
+      "titreImpayes": "⏳ ÉLÈVES N'AYANT PAS ENCORE PAYÉ — {{mois}}",
+      "fenetrePayes": "Élèves ayant payé {{mois}}",
+      "fenetreImpayes": "Élèves n'ayant pas payé {{mois}}",
+      "notePayes": "{{mois}} = mensualité encaissée pour ce mois · Total payé = tout ce que l'élève a versé dans l'année : mensualités (acomptes compris), inscription et frais annexes",
+      "noteImpayes": "Reste dû = mensualité de {{mois}}, dispense et acompte déduits · Total payé = tout ce que l'élève a versé dans l'année",
+      "moisPayes": "Mois payés",
+      "montantMois": "{{mois}} ({{monnaie}})",
+      "resteMois": "Reste dû {{mois}} ({{monnaie}})",
+      "mensualites": "Mensualités",
+      "autres": "Inscription et frais",
+      "totalPaye": "Total payé ({{monnaie}})",
+      "tuteur": "Tuteur",
+      "telephone": "Téléphone",
+      "acompte": "acompte {{montant}}",
+      "effectif": "{{n}} élève(s)",
+      "sousTotal": "Sous-total {{classe}}",
+      "totalGeneral": "TOTAL — {{n}} élève(s)",
+      "recap": "Récapitulatif par classe",
+      "sansClasse": "Sans classe",
+      "aucun": "Aucun élève à imprimer pour ce mois."
     }
   },
   "school": {

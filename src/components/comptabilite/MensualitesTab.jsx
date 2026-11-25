@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { C, getAnnee, getSectionLabel, isSectionActive } from "../../constants";
+import { Btn } from "../ui";
 import { BoutonDispenses } from "./BoutonDispenses";
 import { intentionDispenses, oublierIntentionDispenses } from "./ouvrir-dispenses";
 import { TarifsClasses } from "../TarifsClasses";
@@ -19,6 +20,8 @@ import { MensualitesTable } from "./mensualites-tab/MensualitesTable";
 import { RecuFamilleModale } from "./mensualites-tab/RecuFamilleModale";
 import { indexFratries } from "../../fratrie";
 import { TranchesPaiement } from "./mensualites-tab/TranchesPaiement";
+import { TOUTES_SECTIONS, toutProposable } from "./mensualites-tab/toutes-sections";
+import { ListeMoisModale } from "./mensualites-tab/ListeMoisModale";
 
 // Onglet mensualités : tarifs par classe, alertes impayés, filtres niveau/classe
 // puis tableau de suivi des paiements. Aiguille les données vers chaque bloc.
@@ -94,7 +97,11 @@ export function MensualitesTab({
   // Non réinscrits (aucun paiement) retirés des classes : hors de la grille,
   // de sa synthèse et des alertes ; un bouton du rappel les affiche seuls
   // pour encaisser leur réinscription. Une recherche les trouve toujours.
-  const perimetre = filtClasse !== "all" ? `Classe ${filtClasse}` : getSectionLabel(niveau);
+  // « Tout » : toutes les sections ouvertes dans la même grille.
+  const toutes = niveau === TOUTES_SECTIONS;
+  const perimetre = filtClasse !== "all" ? `Classe ${filtClasse}` : (toutes ? t("dashboard.allSections") : getSectionLabel(niveau));
+  // Liste imprimable des élèves d'un mois (ont payé / pas encore payé).
+  const [listeMois, setListeMois] = useState(false);
   const regle = useMemo(() => regleEcartement(schoolInfo, anneeScolarite), [schoolInfo, anneeScolarite]);
   const { gardes: elevesClasses, ecartes: retires } = useMemo(
     () => ecarterNonReinscrits(elevesFiltres, regle), [elevesFiltres, regle],
@@ -134,7 +141,9 @@ export function MensualitesTab({
         <strong style={{ fontSize: 14, flex: 1, color: C.blueDark }}>{t("accounting.monthly")} — {annee || getAnnee()}</strong>
         <select value={niveau} onChange={e => { setNiveau(e.target.value); setFiltClasse("all"); }}
           style={{ border: "1px solid #b0c4d8", borderRadius: 7, padding: "6px 10px", fontSize: 12, background: "#fff", color: C.blueDark, fontWeight: 600 }}>
-          {/* Seules les sections ouvertes dans l'école (Paramètres → Identité). */}
+          {/* Seules les sections ouvertes dans l'école (Paramètres → Identité) ;
+              « Tout » les montre toutes à la fois, dès qu'il y en a deux. */}
+          {toutProposable(schoolInfo) && <option value={TOUTES_SECTIONS}>{t("accounting.mens.allSections")}</option>}
           {[
             ["college", t("dashboard.secondary")],
             ["lycee", t("dashboard.lycee")],
@@ -150,10 +159,19 @@ export function MensualitesTab({
           {classesU.map(c => <option key={c}>{c}</option>)}
         </select>}
         <TriElevesSelect liste="mensualites" value={tri} onChange={setTri} />
+        <Btn sm v="ghost" onClick={() => setListeMois(true)} title={t("accounting.monthList.buttonHint")}>
+          🖨️ {t("accounting.monthList.button")}
+        </Btn>
         {/* Élèves dispensés de payer : la Direction les accorde, la
             comptabilité les demande (cf. exoneration-actions). */}
         <BoutonDispenses dispenses={dispenses} onClick={() => setExonerations(true)} />
       </div>
+
+      {/* Périmètre de la grille (section ou « Tout », classe), sans les non
+          réinscrits retirés des classes — comme les alertes. */}
+      {listeMois && <ListeMoisModale eleves={elevesClasses} moisAnnee={moisAnnee} annee={anneeScolarite}
+        tarifsClasses={tarifsClasses} schoolInfo={schoolInfo} perimetre={perimetre}
+        fermer={() => setListeMois(false)} />}
 
       {/* La fenêtre s'ouvre sur la section affichée, et en change à volonté. */}
       {exonerations && <ExonerationsModale {...dispenses}
@@ -187,8 +205,10 @@ export function MensualitesTab({
         recherche={recherche} nbTrouves={elevesCherches.length}
         sansResultat={recherche.sansResultat(affiches)}
         pistes={recherche.pistes({
-          nbDansClasse: elevesCherches.length, classe: filtClasse, elevesSection: elevesAnneeParNiveau[niveau],
-          section: niveau, elevesParSection: elevesAnneeParNiveau, schoolInfo,
+          // « Tout » montre déjà toutes les sections : aucune autre à proposer.
+          nbDansClasse: elevesCherches.length, classe: filtClasse,
+          elevesSection: toutes ? Object.values(elevesAnneeParNiveau).flat() : elevesAnneeParNiveau[niveau],
+          section: niveau, elevesParSection: toutes ? {} : elevesAnneeParNiveau, schoolInfo,
           toutesClasses: () => setFiltClasse("all"),
           changerSection: (s) => { setNiveau(s); setFiltClasse("all"); },
         })}

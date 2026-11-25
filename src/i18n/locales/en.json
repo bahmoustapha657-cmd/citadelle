@@ -663,7 +663,9 @@
       "enrolCollected": "{{amount}} enrolment fees received",
       "otherCollected": "{{amount}} other fees received",
       "exemptSummary": "{{count}} exempt · {{amount}} not received",
-      "exemptionsBtn": "🎓 Exemptions"
+      "exemptionsBtn": "🎓 Exemptions",
+      "allSections": "All (every section)",
+      "sectionNotFound": "The student's section was not found: nothing was saved. Reload the page."
     },
     "collect": {
       "confirm": "Collect {{amount}} for {{name}}?\n\n{{detail}}",
@@ -1585,6 +1587,19 @@
       "print": "Print",
       "popupBlocked": "The browser blocked the print window: allow pop-ups for this site.",
       "staff": "Administrative and support staff ({{n}})"
+    },
+    "monthList": {
+      "button": "List by month",
+      "buttonHint": "Print the students who paid (or have not yet paid) a given month, with each one's total paid",
+      "title": "Students by month",
+      "month": "Month",
+      "who": "Students to print",
+      "paid": "Paid {{month}}",
+      "unpaid": "Have not yet paid {{month}}",
+      "pagePerClass": "One page per class",
+      "summaryPaid": "{{n}} student(s) · {{classes}} class(es) · {{amount}} {{currency}} collected for {{month}}",
+      "summaryUnpaid": "{{n}} student(s) · {{classes}} class(es) · {{amount}} {{currency}} still due for {{month}}",
+      "totalNote": "Next to each name: the total paid this year (monthly fees, enrolment and other fees)."
     }
   },
   "parent": {
@@ -2437,6 +2452,29 @@
       "noteStaff": "The staff member's signature on a month's line is a receipt for the net amount paid. Any crossing-out or overwriting must be initialled by the accountant.",
       "coverAllStaff": "Teaching and non-teaching staff",
       "coverOtherStaff": "Administrative and support staff"
+    },
+    "listeMois": {
+      "titrePayes": "✅ STUDENTS WHO PAID — {{mois}}",
+      "titreImpayes": "⏳ STUDENTS WHO HAVE NOT YET PAID — {{mois}}",
+      "fenetrePayes": "Students who paid {{mois}}",
+      "fenetreImpayes": "Students who have not paid {{mois}}",
+      "notePayes": "{{mois}} = monthly fee collected for that month · Total paid = everything the student paid this year: monthly fees (deposits included), enrolment and other fees",
+      "noteImpayes": "Remaining due = monthly fee for {{mois}}, exemption and deposit deducted · Total paid = everything the student paid this year",
+      "moisPayes": "Months paid",
+      "montantMois": "{{mois}} ({{monnaie}})",
+      "resteMois": "Due for {{mois}} ({{monnaie}})",
+      "mensualites": "Monthly fees",
+      "autres": "Enrolment and fees",
+      "totalPaye": "Total paid ({{monnaie}})",
+      "tuteur": "Guardian",
+      "telephone": "Phone",
+      "acompte": "deposit {{montant}}",
+      "effectif": "{{n}} student(s)",
+      "sousTotal": "Subtotal {{classe}}",
+      "totalGeneral": "TOTAL — {{n}} student(s)",
+      "recap": "Summary by class",
+      "sansClasse": "No class",
+      "aucun": "No student to print for this month."
     }
   },
   "school": {

@@ -30,7 +30,8 @@ const celluleEleve = (e) => `<strong>${echapper(e.nom)} ${echapper(e.prenom)}</s
   + (e.matricule ? `<br/><span class="mat">${echapper(e.matricule)}</span>` : "");
 
 // Page commune : en-tête de l'école, titre, périmètre, tableau, signature.
-const pageListe = ({ schoolInfo = {}, annee = "", perimetre = "", titre, titreFenetre, note = "", tableau, couleur }) => {
+// `css` : règles propres à une liste, ajoutées aux règles communes.
+const pageListe = ({ schoolInfo = {}, annee = "", perimetre = "", titre, titreFenetre, note = "", tableau, couleur, css = "" }) => {
   const c1 = schoolInfo.couleur1 || "#0A1628";
   return `<!DOCTYPE html><html lang="${printLang()}" dir="${printDir()}"><head>
   <meta charset="utf-8"/>
@@ -53,6 +54,7 @@ const pageListe = ({ schoolInfo = {}, annee = "", perimetre = "", titre, titreFe
   .mat{font-size:9px;color:#64748b}
   tfoot td{background:#f1f5f9!important;font-weight:900}
   .pied{margin-top:22px;display:flex;justify-content:space-between;font-size:11px}
+  ${css}
   ${WATERMARK_CSS}</style></head><body>
   ${watermarkHtml(schoolInfo)}
   ${enteteDoc(schoolInfo, schoolInfo.logo)}
@@ -139,6 +141,101 @@ export function listeNonReinscritsHTML(lignes = [], options = {}) {
   return pageListe({ ...options, couleur: "#b45309", tableau, ...entete });
 }
 
+// Mois payés d'un élève, abrégés : « Oct · Nov · Déc ».
+const moisPayesCourts = (mois = []) => (mois.length ? mois.map((m) => echapper(moisCourt(m))).join(" · ") : "—");
+
+/**
+ * Élèves d'UN mois, rangés par classe (calculs : components/comptabilite/
+ * mensualites-tab/liste-mois.js) : ceux qui l'ont payé — montant du mois —
+ * ou ceux qui ne l'ont pas encore payé — reste dû, tuteur, téléphone. Devant
+ * chaque nom : ses mois payés et ce qu'il a payé dans l'année. Sous-total par
+ * classe, total général et, à plusieurs classes, un récapitulatif par classe.
+ * @param {{ classe: string, lignes: Record<string, any>[], montantMois: number, mensualites: number,
+ *   autres: number, total: number }[]} groupes
+ * @param {{ mois: string, statut?: string, pageParClasse?: boolean, schoolInfo?: Record<string, any>,
+ *   annee?: string, perimetre?: string }} options
+ */
+export function listeMoisHTML(groupes = [], { mois = "", statut = "payes", pageParClasse = false, ...options } = {}) {
+  const monnaie = echapper(options.schoolInfo?.monnaie || getMonnaie());
+  const impayes = statut === "impayes";
+  const nomMois = echapper(tr(`months.${mois}`, { defaultValue: mois }));
+  const titre = tr(impayes ? "reports.listeMois.titreImpayes" : "reports.listeMois.titrePayes", { mois: nomMois.toUpperCase() });
+  const nomClasse = (classe) => echapper(classe) || tr("reports.listeMois.sansClasse");
+  const colonnes = [
+    `<th class="c">${tr("reports.rowNumber")}</th>`,
+    `<th>${tr("reports.studentName")}</th>`,
+    `<th>${tr("reports.listeMois.moisPayes")}</th>`,
+    ...(impayes ? [
+      `<th>${tr("reports.listeMois.resteMois", { mois: nomMois, monnaie })}</th>`,
+      `<th>${tr("reports.listeMois.totalPaye", { monnaie })}</th>`,
+      `<th>${tr("reports.listeMois.tuteur")}</th>`,
+      `<th>${tr("reports.listeMois.telephone")}</th>`,
+    ] : [
+      `<th>${tr("reports.listeMois.montantMois", { mois: nomMois, monnaie })}</th>`,
+      `<th>${tr("reports.listeMois.mensualites")}</th>`,
+      `<th>${tr("reports.listeMois.autres")}</th>`,
+      `<th>${tr("reports.listeMois.totalPaye", { monnaie })}</th>`,
+    ]),
+  ];
+  const nbColonnes = colonnes.length;
+  const thead = `<thead><tr>${colonnes.join("")}</tr></thead>`;
+  // Cellules chiffrées d'une ligne, d'un sous-total ou du total.
+  const montants = (l) => (impayes
+    ? `<td class="m">${l.montantMois > 0 ? fmtN(l.montantMois) : "—"}${l.acompte > 0
+      ? `<br/><span class="mat">${tr("reports.listeMois.acompte", { montant: fmtN(l.acompte) })}</span>` : ""}</td>
+      <td class="m">${fmtN(l.total)}</td>`
+    : `<td class="m">${fmtN(l.montantMois)}</td><td class="n">${fmtN(l.mensualites)}</td>
+      <td class="n">${fmtN(l.autres)}</td><td class="m">${fmtN(l.total)}</td>`);
+  const ligne = (l, i) => `<tr>
+      <td class="c">${i + 1}</td>
+      <td>${celluleEleve(l.eleve)}</td>
+      <td class="mp">${moisPayesCourts(l.moisPayes)}</td>
+      ${montants(l)}
+      ${impayes ? `<td>${echapper(l.eleve.tuteur) || "—"}</td><td class="tel">${echapper(l.eleve.contactTuteur) || "—"}</td>` : ""}
+    </tr>`;
+  const vides = impayes ? `<td colspan="2"></td>` : "";
+  const effectif = (g) => tr("reports.listeMois.effectif", { n: g.lignes.length });
+  const corpsGroupe = (g) => `<tr class="grp"><td colspan="${nbColonnes}">${nomClasse(g.classe)} — ${effectif(g)}</td></tr>
+    ${g.lignes.map(ligne).join("")}
+    <tr class="st"><td colspan="3">${tr("reports.listeMois.sousTotal", { classe: nomClasse(g.classe) })}</td>${montants(g)}${vides}</tr>`;
+  const nbEleves = groupes.reduce((s, g) => s + g.lignes.length, 0);
+  const total = ["montantMois", "mensualites", "autres", "total"]
+    .reduce((t, cle) => ({ ...t, [cle]: groupes.reduce((s, g) => s + g[cle], 0) }), { acompte: 0 });
+  const ligneTotal = `<tr><td colspan="3">${tr("reports.listeMois.totalGeneral", { n: nbEleves })}</td>${montants(total)}${vides}</tr>`;
+  // Une page par classe : chaque classe porte son tableau, et rappelle le
+  // titre à partir de la deuxième page.
+  const tableau = pageParClasse
+    ? groupes.map((g, i) => `<div class="${i ? "saut" : ""}">
+        ${i ? `<div class="rappel">${titre} · ${echapper(options.annee || "")}</div>` : ""}
+        <table>${thead}<tbody>${corpsGroupe(g)}</tbody></table></div>`).join("")
+    : `<table>${thead}<tbody>${groupes.map(corpsGroupe).join("")}</tbody><tfoot>${ligneTotal}</tfoot></table>`;
+  // Récapitulatif par classe : ce que lit la Direction.
+  const recap = groupes.length > 1 ? `<div class="${pageParClasse ? "saut" : ""}">
+    <h3>${tr("reports.listeMois.recap")}</h3>
+    <table><thead><tr><th>${tr("reports.class")}</th><th class="c">${tr("reports.studentsHeader")}</th>
+      <th>${tr(impayes ? "reports.listeMois.resteMois" : "reports.listeMois.montantMois", { mois: nomMois, monnaie })}</th>
+      <th>${tr("reports.listeMois.totalPaye", { monnaie })}</th></tr></thead>
+    <tbody>${groupes.map((g) => `<tr><td>${nomClasse(g.classe)}</td><td class="c">${g.lignes.length}</td>
+      <td class="m">${fmtN(g.montantMois)}</td><td class="m">${fmtN(g.total)}</td></tr>`).join("")}</tbody>
+    <tfoot><tr><td>${tr("common.total")}</td><td class="c">${nbEleves}</td><td class="m">${fmtN(total.montantMois)}</td>
+      <td class="m">${fmtN(total.total)}</td></tr></tfoot></table></div>` : "";
+  return pageListe({
+    ...options,
+    couleur: impayes ? "#b45309" : "#166534",
+    tableau: tableau + recap,
+    titre,
+    titreFenetre: tr(impayes ? "reports.listeMois.fenetreImpayes" : "reports.listeMois.fenetrePayes", { mois: nomMois }),
+    note: tr(impayes ? "reports.listeMois.noteImpayes" : "reports.listeMois.notePayes", { mois: nomMois }),
+    css: `td.n{text-align:end;white-space:nowrap}
+      td.mp{font-size:9.5px;color:#334155}
+      tr.grp td{background:#e2e8f0!important;font-weight:900;font-size:11.5px;padding:5px 6px}
+      tr.st td{background:#f1f5f9!important;font-weight:800}
+      .saut{break-before:page;page-break-before:always}
+      .rappel{text-align:center;font-size:12px;font-weight:800;margin-bottom:8px}
+      h3{font-size:13px;margin:18px 0 6px}`,
+  });
+}
+
 const ouvrir = (html) => {
   const w = window.open("", "_blank");
   if (!w) { alert("Autorisez les fenêtres pop-up pour imprimer."); return; }
@@ -149,6 +246,11 @@ const ouvrir = (html) => {
 export function imprimerListePayes(lignes, options) {
   if (!lignes.length) { alert("Aucun élève n'a encore payé de mois."); return; }
   ouvrir(listePayesHTML(lignes, options));
+}
+
+export function imprimerListeMois(groupes, options) {
+  if (!groupes.length) { alert(tr("reports.listeMois.aucun")); return; }
+  ouvrir(listeMoisHTML(groupes, options));
 }
 
 export function imprimerListeNonReinscrits(lignes, options) {
