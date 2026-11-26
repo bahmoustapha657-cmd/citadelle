@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { indexFratries, memeFamille, nomsCompatibles, numerosTuteur, tuteurFamille } from "../src/fratrie.js";
+import { indexFratries, memeFamille, nomsCompatibles, numerosCollectifs, numerosTuteur, tuteurFamille } from "../src/fratrie.js";
 
 const eleve = (id, prenom, classe, extra = {}) => ({
   _id: id, nom: "Diallo", prenom, classe, tuteur: "Mamadou Diallo", contactTuteur: "620 00 00 01", ...extra,
@@ -51,13 +51,31 @@ test("même numéro : un nom de tuteur abrégé ou écrit autrement rattache qua
   assert.equal(fratrieDe(e).length, 5);
 });
 
-test("même numéro mais noms sans rapport (numéro de l'école pour des internes) : pas de rattachement", () => {
-  const a = eleve("a", "Aïssatou", "8e A", { contactTuteur: "622 00 00 00" });
-  const b = eleve("b", "Ibrahima", "CP1", { tuteur: "Ibrahima Sow", contactTuteur: "622 00 00 00" });
-  const c = eleve("c", "Fatou", "6e B", { tuteur: "Ibrahima Diallo", contactTuteur: "622000000" }); // même nom de famille seulement
-  const fratrieDe = indexFratries([a, b, c]);
-  assert.deepEqual(fratrieDe(a).map((x) => x._id), ["a"]);
-  assert.deepEqual(fratrieDe(c).map((x) => x._id), ["c"]);
+test("même numéro, noms de tuteur différents (le père sur une fiche, la mère sur l'autre) : rattachés", () => {
+  const a = eleve("a", "Aïssatou", "8e A");                                                  // Mamadou Diallo
+  const b = eleve("b", "Ibrahima", "CP1", { tuteur: "Mariama Bah", contactTuteur: "+224 620 00 00 01" });
+  const c = eleve("c", "Fatou", "6e B", { tuteur: "Oncle Thierno Sow", contactTuteur: "620000001" });
+  const d = eleve("d", "Oumar", "CE2", { tuteur: "", contactTuteur: "620 00 00 01" });       // nom non renseigné
+  const fratrieDe = indexFratries([a, b, c, d]);
+  assert.deepEqual(fratrieDe(b).map((x) => x._id).sort(), ["a", "b", "c", "d"]);
+  assert.equal(fratrieDe(b)[0]._id, "b");
+  assert.equal(memeFamille(a, b), true);
+  assert.equal(memeFamille(d, a), true);
+});
+
+test("numéro collectif (école, internat : six noms sans rapport ou plus) : seuls les noms compatibles sont réunis", () => {
+  const tuteurs = ["Mamadou Diallo", "Ibrahima Sow", "Mariama Bah", "Thierno Barry", "Kadiatou Camara", "Alpha Condé"];
+  const internes = tuteurs.map((tuteur, i) => eleve(`i${i}`, "Interne", "7e A", { tuteur, contactTuteur: "622 00 00 00" }));
+  const abrege = eleve("x", "Fatou", "CP1", { tuteur: "Mamadou", contactTuteur: "622000000" });
+  const sansNom = eleve("y", "Oumar", "CE2", { tuteur: "", contactTuteur: "622000000" });
+  const fratrieDe = indexFratries([...internes, abrege, sansNom]);
+  assert.deepEqual(fratrieDe(internes[1]).map((x) => x._id), ["i1"]);
+  assert.deepEqual(fratrieDe(internes[0]).map((x) => x._id), ["i0", "x"]);
+  assert.deepEqual(fratrieDe(sansNom).map((x) => x._id), ["y"]);
+  assert.deepEqual([...numerosCollectifs([...internes, abrege])], ["+224622000000"]);
+  // Cinq noms sans rapport (père, mères, oncle) : encore une famille.
+  assert.equal(numerosCollectifs(internes.slice(0, 5)).size, 0);
+  assert.equal(indexFratries(internes.slice(0, 5))(internes[0]).length, 5);
 });
 
 test("nom abrégé sans numéro commun : pas de rattachement", () => {
@@ -91,4 +109,7 @@ test("le reçu imprime le nom de tuteur le plus complet des fiches", () => {
   assert.equal(tuteurFamille(fiches), "Mamadou Saliou Diallo");
   assert.equal(tuteurFamille([{ tuteur: "Mamadou Diallo" }, { tuteur: "DIALLO Mamadou" }]), "Mamadou Diallo");
   assert.equal(tuteurFamille([{ tuteur: " " }]), "");
+  // Noms sans rapport sur le même numéro : le tuteur de l'enfant cliqué reste.
+  assert.equal(tuteurFamille([{ tuteur: "Mariama Bah" }, { tuteur: "Mamadou Saliou Diallo" }, { tuteur: "Mariama Bah Diallo" }]), "Mariama Bah Diallo");
+  assert.equal(tuteurFamille([{ tuteur: "" }, { tuteur: "Mamadou" }, { tuteur: "Mariama Bah" }, { tuteur: "Mamadou Diallo" }]), "Mamadou Diallo");
 });
