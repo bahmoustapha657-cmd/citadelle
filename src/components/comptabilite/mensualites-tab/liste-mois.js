@@ -24,7 +24,6 @@ export function moisParDefaut(moisAnnee = [], aujourdhui = new Date()) {
 
 // Ce que l'élève a payé dans l'année : mensualités (montants figés, acomptes
 // compris), inscription et frais annexes — mêmes montants que la grille.
-// Aussi utilisé par la situation générale (situation-generale.js).
 export function payeDansAnnee(eleve, moisAnnee, tarifsClasses, annee) {
   const s = getEleveMensualiteSnapshot(eleve, moisAnnee, tarifsClasses, annee);
   const mensualites = s.montantMensualitesPercu;
