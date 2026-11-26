@@ -17,6 +17,9 @@ const CACHE_APP    = "edugest-app-v11";
 // Les URL des photos sont immuables (nom aléatoire à chaque envoi).
 const CACHE_PHOTOS         = "edugest-photos";
 const CACHE_PHOTOS_ATTENTE = "edugest-photos-attente";
+// Saisies restées sur l'appareil (cf. rappelerSaisies) : même nom, sans
+// version, que src/rappel-saisies.js.
+const CACHE_RAPPEL         = "edugest-rappel";
 
 // ?v=2 : cache-busting du nouveau logo (les navigateurs cachent les favicons
 // très longtemps ; les téléphones ne rafraîchissent l'icône PWA que si l'URL
@@ -68,7 +71,7 @@ self.addEventListener("message", (e) => {
 self.addEventListener("activate", (e) => {
   // L'ancien cache « edugest-data-* » (réponses de l'API Vercel, retirée)
   // n'est plus gardé : il est vidé ici.
-  const KEPT = [CACHE_APP, CACHE_PHOTOS, CACHE_PHOTOS_ATTENTE];
+  const KEPT = [CACHE_APP, CACHE_PHOTOS, CACHE_PHOTOS_ATTENTE, CACHE_RAPPEL];
   e.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(keys.filter((k) => !KEPT.includes(k)).map((k) => caches.delete(k)))
@@ -342,6 +345,60 @@ self.addEventListener("push", (e) => {
     vibrate: [200, 100, 200],
   };
   e.waitUntil(data.appel ? afficherAppel(titre, options) : self.registration.showNotification(titre, options));
+});
+
+// ── Saisies restées sur l'appareil ────────────────────────────
+// Les saisies faites sans réseau ne partent que pendant qu'EduGest est
+// ouvert. La page demande au navigateur de réveiller ce service worker au
+// retour du réseau (Background Sync), même EduGest fermé : s'il reste des
+// saisies, une notification dit de rouvrir EduGest pour les envoyer. Rien
+// n'est envoyé d'ici. La page laisse le nombre et le texte traduit dans
+// CACHE_RAPPEL (src/rappel-saisies.js : mêmes noms, à garder en phase).
+const CLE_ATTENTE = "/__rappel-saisies";
+const TAG_RAPPEL = "rappel-saisies";
+// Une page encore ouverte (onglet en arrière-plan sur ordinateur) envoie
+// elle-même au retour du réseau : on lui en laisse le temps avant de prévenir.
+const DELAI_RAPPEL_MS = 45000;
+
+async function lireAttente() {
+  try {
+    const cache = await caches.open(CACHE_RAPPEL);
+    const reponse = await cache.match(CLE_ATTENTE);
+    return reponse ? await reponse.json() : null;
+  } catch {
+    return null;
+  }
+}
+
+async function rappelerSaisies() {
+  if (!((await lireAttente())?.n > 0)) return;
+  // Réseau vraiment revenu ? Connecté sans internet, la lecture échoue et le
+  // navigateur réessaiera plus tard.
+  await fetch("/version.json", { cache: "no-store" });
+  await new Promise((fin) => { setTimeout(fin, DELAI_RAPPEL_MS); });
+  const attente = await lireAttente();
+  if (!(attente?.n > 0)) return;
+  // EduGest à l'écran : il envoie lui-même, son compteur le montre.
+  const fenetres = await clients.matchAll({ type: "window", includeUncontrolled: true });
+  if (fenetres.some((c) => c.visibilityState === "visible")) return;
+  try {
+    // Le titre dit de quoi il s'agit : rien qui ressemble à un appel ou à
+    // un message. Une seule notification, remplacée sans sonner de nouveau.
+    await self.registration.showNotification(attente.titre || "📤 EduGest : saisies non envoyées", {
+      body: attente.corps || "Faites sans réseau, elles sont encore sur cet appareil. Ouvrez EduGest pour les envoyer.",
+      icon: "/icons/pwa-192.png",
+      badge: "/icons/pwa-192.png",
+      tag: TAG_RAPPEL,
+      renotify: false,
+      data: { url: "/" },
+    });
+  } catch {
+    // Notifications refusées sur cet appareil : rien à afficher.
+  }
+}
+
+self.addEventListener("sync", (e) => {
+  if (e.tag === TAG_RAPPEL) e.waitUntil(rappelerSaisies());
 });
 
 // Clic sur la notification → ouvre l'app sur l'URL concernée

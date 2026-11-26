@@ -3,6 +3,8 @@ import { powerSyncConfigured } from "../backend/powersync/tables";
 import { compterPhotosEnAttente } from "../photos-hors-ligne";
 import { lireProprietaire } from "../backend/powersync/proprietaire";
 import { compterSaisiesDeCote } from "../backend/powersync/saisies-de-cote";
+import { suivreSaisiesEnAttente } from "../rappel-saisies";
+import i18n from "../i18n";
 
 // État du mode hors ligne (PowerSync). No-op si PowerSync n'est pas configuré
 // (VITE_POWERSYNC_URL vide) : rien en attente, pas de synchro en cours, sans
@@ -14,6 +16,10 @@ import { compterSaisiesDeCote } from "../backend/powersync/saisies-de-cote";
 //   • premiereSynchro : null, ou { fraction (0 → 1), essentielPret } tant que
 //     le miroir de cet appareil n'a jamais été complet — première connexion
 //     d'un compte sur l'appareil. L'écran dit ce qui manque encore.
+// Le compte est aussi laissé au service worker, qui rappelle par une
+// notification, au retour du réseau, les saisies restées sur l'appareil
+// EduGest fermé (rappel-saisies.js) : d'où le recompte à la coupure du
+// réseau et au passage en arrière-plan.
 export function usePowerSyncStatus() {
   const [syncPendantes, setSyncPendantes] = useState(0);
   const [premiereSynchro, setPremiereSynchro] = useState(null);
@@ -23,6 +29,7 @@ export function usePowerSyncStatus() {
     let actif = true;
     let unsub = null;
     let timer = null;
+    let retirerEcoutes = null;
 
     import("../backend/powersync/client").then(({ getPowerSync }) => {
       if (!actif) return;
@@ -51,16 +58,31 @@ export function usePowerSyncStatus() {
           // + saisies que ce compte avait laissées avant qu'un autre ne se
           // connecte sur l'appareil (propriétaire du miroir = compte connecté).
           const deCote = compterSaisiesDeCote(lireProprietaire());
-          if (actif) setSyncPendantes((stats?.count || 0) + photos + deCote);
+          const total = (stats?.count || 0) + photos + deCote;
+          if (!actif) return;
+          setSyncPendantes(total);
+          suivreSaisiesEnAttente(total, {
+            titre: i18n.t("auth.rappelSaisiesTitre", { count: total }),
+            corps: i18n.t("auth.rappelSaisiesCorps"),
+          }).catch(() => {});
         } catch { /* base locale pas encore prête */ }
       };
 
       unsub = ps.registerListener?.({ statusChanged: rafraichir });
       rafraichir();
       timer = window.setInterval(rafraichir, 5000);
+      window.addEventListener("offline", rafraichir);
+      document.addEventListener("visibilitychange", rafraichir);
+      retirerEcoutes = () => {
+        window.removeEventListener("offline", rafraichir);
+        document.removeEventListener("visibilitychange", rafraichir);
+      };
     });
 
-    return () => { actif = false; unsub?.(); if (timer) window.clearInterval(timer); };
+    return () => {
+      actif = false; unsub?.(); retirerEcoutes?.();
+      if (timer) window.clearInterval(timer);
+    };
   }, []);
 
   return { syncPendantes, premiereSynchro };
