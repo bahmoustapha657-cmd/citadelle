@@ -1612,7 +1612,7 @@
       "filterLate": "Behind",
       "filterUpToDate": "Up to date",
       "summary": "{{n}} student(s) · {{classes}} class(es) · {{upToDate}} up to date · {{late}} behind · {{amount}} {{currency}} paid this year",
-      "note": "One box per month (✓ paid, ◐ deposit, ✗ unpaid, — not yet due) and the total paid this year (monthly fees, enrolment and fees). Behind = at least one overdue month unpaid, as in the alert.",
+      "note": "One box per month (✓ paid, ◐ deposit, ✗ unpaid, — not yet due) and the total paid this year (monthly fees, enrolment and fees). Behind = at least one overdue month unpaid, as in the alert. Under each class and at the end: a statistics table (months, enrolment, other fees, total collected).",
       "classLine": "{{n}} student(s) · {{upToDate}} up to date · {{late}} behind",
       "monthsPaid": "{{n}} month(s) paid",
       "late": "{{n}} month(s) behind"
@@ -2504,9 +2504,24 @@
       "enRetard": "Behind",
       "etatClasse": "{{n}} student(s) · {{aJour}} up to date · {{retard}} behind",
       "sousTotal": "{{classe}} — paid per month",
-      "totalGeneral": "TOTAL — {{n}} student(s) — paid per month",
       "recap": "Status by class",
-      "aucun": "No student to print."
+      "aucun": "No student to print.",
+      "statsClasse": "📊 STATISTICS — {{classe}}",
+      "statsGeneral": "📊 OVERALL STATISTICS — {{n}} class(es)",
+      "colMois": "Month",
+      "colPaye": "✓ Paid",
+      "colAcompte": "◐ Deposit",
+      "colImpaye": "✗ Unpaid",
+      "colPasDu": "Not due",
+      "colTaux": "% paid",
+      "colEncaisse": "Collected ({{monnaie}})",
+      "ligneMensualites": "Monthly fees (number of months)",
+      "ligneInscription": "Enrolment / re-enrolment (students)",
+      "ligneAnnexes": "Other fees",
+      "ligneTotal": "TOTAL COLLECTED",
+      "taux": "{{n}}%",
+      "inscriptionsPayees": "Enrol. paid",
+      "legendeStats": "Statistics: “Not due” = month not yet due, or not owed (left, exemption); for enrolment, not owed (exemption) · % paid = students who paid in full among those who owe · Collected = amounts paid, deposits included"
     }
   },
   "school": {

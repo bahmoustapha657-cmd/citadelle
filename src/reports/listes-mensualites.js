@@ -10,8 +10,10 @@
 //    reste à payer, mois déjà payés (preuve qu'ils fréquentent l'école),
 //    tuteur et téléphone pour les relancer.
 // Et, depuis le bouton « Situation des paiements » de l'onglet : la liste
-// d'un mois (listeMoisHTML) et la situation générale (situationGeneraleHTML).
+// d'un mois (listeMoisHTML) et la situation générale (situationGeneraleHTML),
+// avec ses tableaux de statistiques par classe et généraux (tableauStats).
 
+import { totalSituation } from "../components/comptabilite/mensualites-tab/situation-generale.js";
 import { TOUS_MOIS_COURTS, TOUS_MOIS_LONGS, fmtN, getMonnaie, today } from "../constants.js";
 import {
   PRINT_RESET, PRINT_TRIGGER, WATERMARK_CSS, enteteDoc, printDir, printLang, tr, watermarkHtml,
@@ -247,15 +249,57 @@ const CASES_SITUATION = {
   nondu: () => `<td class="mois nondu">·</td>`,
 };
 
+// Part payée, en pourcentage arrondi ; « — » sans personne à compter.
+const taux = (n, sur) => (sur > 0 ? tr("reports.situation.taux", { n: Math.round((n * 100) / sur) }) : "—");
+
+/**
+ * Tableau de statistiques d'une classe ou de toutes (totaux : totauxSituation
+ * de situation-generale.js). Une ligne par mois — élèves ayant payé, versé un
+ * acompte, en retard, ne devant pas (encore), % payé, encaissé —, la ligne
+ * des mensualités (en nombre de mois), l'inscription (en nombre d'élèves),
+ * les frais annexes et le total encaissé.
+ */
+const tableauStats = (g, { titre, moisAnnee, monnaie }) => {
+  const nombre = (n) => `<td class="c">${n}</td>`;
+  const lignesMois = moisAnnee.map((mois, i) => {
+    const s = g.statsMois?.[i] || { paye: 0, acompte: 0, impaye: 0, avenir: 0, nondu: 0, montant: 0 };
+    // Mois que personne ne doit encore ni n'a réglé : pas de pourcentage.
+    const commence = s.paye + s.acompte + s.impaye > 0;
+    return `<tr><td>${echapper(tr(`months.${mois}`, { defaultValue: mois }))}</td>
+      ${nombre(s.paye)}${nombre(s.acompte)}${nombre(s.impaye)}${nombre(s.avenir + s.nondu)}
+      <td class="c">${commence ? taux(s.paye, g.effectif - s.nondu) : "—"}</td><td class="m">${fmtN(s.montant)}</td></tr>`;
+  }).join("");
+  const somme = (cle) => (g.statsMois || []).reduce((t, s) => t + (s?.[cle] || 0), 0);
+  const ins = g.inscription || { payee: 0, acompte: 0, nonpayee: 0, nondue: 0, montant: 0 };
+  return `<table class="stats">
+    <caption>${titre}<span>${tr("reports.situation.etatClasse", { n: g.effectif, aJour: g.aJour, retard: g.enRetard })}</span></caption>
+    <thead><tr><th>${tr("reports.situation.colMois")}</th><th class="c">${tr("reports.situation.colPaye")}</th>
+      <th class="c">${tr("reports.situation.colAcompte")}</th><th class="c">${tr("reports.situation.colImpaye")}</th>
+      <th class="c">${tr("reports.situation.colPasDu")}</th><th class="c">${tr("reports.situation.colTaux")}</th>
+      <th>${tr("reports.situation.colEncaisse", { monnaie })}</th></tr></thead>
+    <tbody>${lignesMois}
+      <tr class="st"><td>${tr("reports.situation.ligneMensualites")}</td>${nombre(g.moisPayes || 0)}${nombre(g.acomptes || 0)}
+        ${nombre(somme("impaye"))}${nombre(somme("avenir") + somme("nondu"))}<td></td><td class="m">${fmtN(g.mensualites || 0)}</td></tr>
+      <tr class="st"><td>${tr("reports.situation.ligneInscription")}</td>${nombre(ins.payee)}${nombre(ins.acompte)}
+        ${nombre(ins.nonpayee)}${nombre(ins.nondue)}<td class="c">${taux(ins.payee, g.effectif - ins.nondue)}</td>
+        <td class="m">${fmtN(ins.montant)}</td></tr>
+      <tr class="st"><td>${tr("reports.situation.ligneAnnexes")}</td><td colspan="5"></td><td class="m">${fmtN(g.annexes || 0)}</td></tr>
+    </tbody>
+    <tfoot><tr><td colspan="6">${tr("reports.situation.ligneTotal")}</td><td class="m">${fmtN(g.total)}</td></tr></tfoot>
+  </table>`;
+};
+
 /**
  * Situation générale des paiements (calculs : components/comptabilite/
  * mensualites-tab/situation-generale.js).
  *  • detail « eleves » : une ligne par élève — une case par mois, mois payés,
- *    total payé dans l'année — rangés par classe, chaque classe avec le
- *    nombre d'élèves ayant payé chaque mois et ce qu'elle a payé ; puis,
- *    à plusieurs classes, le tableau des classes ;
- *  • detail « classes » : le tableau des classes seul — effectif, à jour,
- *    en retard, payé par mois, total payé.
+ *    total payé dans l'année — rangés par classe ; sous chaque classe, le
+ *    nombre d'élèves ayant payé chaque mois puis le tableau de statistiques
+ *    de la classe ; à plusieurs classes, le tableau des classes et les
+ *    statistiques générales à la fin ;
+ *  • detail « classes » : le tableau des classes — effectif, à jour, en
+ *    retard, payé par mois, inscriptions payées, total payé — et les
+ *    statistiques générales.
  * @param {{ classe: string, lignes: Record<string, any>[], effectif: number, aJour: number, enRetard: number,
  *   parMois: number[], total: number }[]} groupes
  * @param {{ moisAnnee?: string[], detail?: string, filtre?: string, pageParClasse?: boolean,
@@ -270,24 +314,24 @@ export function situationGeneraleHTML(groupes = [], {
   const nomClasse = (classe) => echapper(classe) || tr("reports.listeMois.sansClasse");
   const enTetesMois = moisAnnee.map((m) => `<th class="c">${echapper(moisCourt(m))}</th>`).join("");
   const parMois = (g) => moisAnnee.map((_, i) => `<td class="c">${g.parMois[i] || 0}</td>`).join("");
-  const total = groupes.reduce((t, g) => ({
-    effectif: t.effectif + g.effectif, aJour: t.aJour + g.aJour, enRetard: t.enRetard + g.enRetard, total: t.total + g.total,
-    parMois: moisAnnee.map((_, i) => (t.parMois[i] || 0) + (g.parMois[i] || 0)),
-  }), { effectif: 0, aJour: 0, enRetard: 0, total: 0, parMois: [] });
+  const total = totalSituation(groupes);
+  const statsGenerales = tableauStats(total, { titre: tr("reports.situation.statsGeneral", { n: groupes.length }), moisAnnee, monnaie });
 
   // Tableau des classes : ce que lit la Direction.
   const tableauClasses = `<table>
     <thead><tr><th>${tr("reports.class")}</th><th class="c">${tr("reports.studentsHeader")}</th>
       <th class="c">${tr("reports.situation.aJour")}</th><th class="c">${tr("reports.situation.enRetard")}</th>
-      ${enTetesMois}<th>${tr("reports.listeMois.totalPaye", { monnaie })}</th></tr></thead>
+      ${enTetesMois}<th class="c">${tr("reports.situation.inscriptionsPayees")}</th>
+      <th>${tr("reports.listeMois.totalPaye", { monnaie })}</th></tr></thead>
     <tbody>${groupes.map((g) => `<tr><td><strong>${nomClasse(g.classe)}</strong></td><td class="c">${g.effectif}</td>
       <td class="c ok">${g.aJour}</td><td class="c ko">${g.enRetard}</td>${parMois(g)}
-      <td class="m">${fmtN(g.total)}</td></tr>`).join("")}</tbody>
+      <td class="c">${g.inscription?.payee ?? 0}</td><td class="m">${fmtN(g.total)}</td></tr>`).join("")}</tbody>
     <tfoot><tr><td>${tr("common.total")}</td><td class="c">${total.effectif}</td><td class="c">${total.aJour}</td>
-      <td class="c">${total.enRetard}</td>${parMois(total)}<td class="m">${fmtN(total.total)}</td></tr></tfoot>
+      <td class="c">${total.enRetard}</td>${parMois(total)}<td class="c">${total.inscription.payee}</td>
+      <td class="m">${fmtN(total.total)}</td></tr></tfoot>
   </table>`;
 
-  let tableau = tableauClasses;
+  let tableau = `${tableauClasses}${statsGenerales}`;
   if (!classesSeules) {
     const nbColonnes = moisAnnee.length + 4;
     const thead = `<thead><tr><th class="c">${tr("reports.rowNumber")}</th><th>${tr("reports.studentName")}</th>
@@ -301,21 +345,25 @@ export function situationGeneraleHTML(groupes = [], {
       <td class="m">${fmtN(l.total)}</td>
     </tr>`;
     const etat = (g) => tr("reports.situation.etatClasse", { n: g.effectif, aJour: g.aJour, retard: g.enRetard });
-    const corpsGroupe = (g) => `<tr class="grp"><td colspan="${nbColonnes}">${nomClasse(g.classe)} — ${etat(g)}</td></tr>
-      ${g.lignes.map(ligne).join("")}
-      <tr class="st"><td colspan="2">${tr("reports.situation.sousTotal", { classe: nomClasse(g.classe) })}</td>${parMois(g)}
-        <td></td><td class="m">${fmtN(g.total)}</td></tr>`;
-    const ligneTotal = `<tr><td colspan="2">${tr("reports.situation.totalGeneral", { n: total.effectif })}</td>${parMois(total)}
-      <td></td><td class="m">${fmtN(total.total)}</td></tr>`;
-    // Une page par classe : chaque classe porte son tableau, et rappelle le
-    // titre à partir de la deuxième page.
-    tableau = pageParClasse
-      ? groupes.map((g, i) => `<div class="${i ? "saut" : ""}">
-          ${i ? `<div class="rappel">${titre} · ${echapper(options.annee || "")}</div>` : ""}
-          <table>${thead}<tbody>${corpsGroupe(g)}</tbody></table></div>`).join("")
-      : `<table>${thead}<tbody>${groupes.map(corpsGroupe).join("")}</tbody><tfoot>${ligneTotal}</tfoot></table>`;
+    // Chaque classe : ses élèves, le nombre d'élèves ayant payé chaque mois,
+    // puis ses statistiques. Une page par classe : la classe commence une
+    // nouvelle page et rappelle le titre à partir de la deuxième.
+    tableau = groupes.map((g, i) => `<div class="classe${pageParClasse && i ? " saut" : ""}">
+        ${pageParClasse && i ? `<div class="rappel">${titre} · ${echapper(options.annee || "")}</div>` : ""}
+        <table>${thead}<tbody>
+          <tr class="grp"><td colspan="${nbColonnes}">${nomClasse(g.classe)} — ${etat(g)}</td></tr>
+          ${g.lignes.map(ligne).join("")}
+          <tr class="st"><td colspan="2">${tr("reports.situation.sousTotal", { classe: nomClasse(g.classe) })}</td>${parMois(g)}
+            <td></td><td class="m">${fmtN(g.total)}</td></tr>
+        </tbody></table>
+        ${tableauStats(g, { titre: tr("reports.situation.statsClasse", { classe: nomClasse(g.classe) }), moisAnnee, monnaie })}
+      </div>`).join("");
+    // Fin du document, à plusieurs classes : le tableau des classes et les
+    // statistiques de toutes les classes réunies (une seule classe : ses
+    // statistiques disent déjà tout).
     if (groupes.length > 1) {
-      tableau += `<div class="${pageParClasse ? "saut" : ""}"><h3>${tr("reports.situation.recap")}</h3>${tableauClasses}</div>`;
+      tableau += `<div class="${pageParClasse ? "saut" : ""}"><h3>${tr("reports.situation.recap")}</h3>${tableauClasses}
+        ${statsGenerales}</div>`;
     }
   }
 
@@ -331,6 +379,7 @@ export function situationGeneraleHTML(groupes = [], {
       !classesSeules && filtreNote ? `<strong>${filtreNote}</strong>` : "",
       classesSeules ? "" : tr("reports.situation.legende"),
       tr("reports.situation.noteTotal"),
+      tr("reports.situation.legendeStats"),
     ].filter(Boolean).join("<br/>"),
     css: `td{vertical-align:middle} td.mois{min-width:22px}
       td.impaye{color:#b91c1c;font-weight:900}
@@ -339,6 +388,12 @@ export function situationGeneraleHTML(groupes = [], {
       td.ok{color:#166534;font-weight:800} td.ko{color:#b91c1c;font-weight:800}
       tr.grp td{background:#e2e8f0!important;font-weight:900;font-size:11.5px;padding:5px 6px}
       tr.st td{background:#f1f5f9!important;font-weight:800}
+      .classe+.classe{margin-top:16px}
+      table.stats{margin-top:10px;break-inside:avoid;page-break-inside:avoid}
+      table.stats caption{caption-side:top;text-align:start;font-weight:900;font-size:12px;color:#0f4c81;padding:4px 0}
+      table.stats caption span{font-weight:700;font-size:10.5px;color:#475569;margin-inline-start:10px}
+      table.stats td{padding:3px 6px}
+      table.stats tbody tr:not(.st) td:first-child{font-weight:700}
       .saut{break-before:page;page-break-before:always}
       .rappel{text-align:center;font-size:12px;font-weight:800;margin-bottom:8px}
       h3{font-size:13px;margin:18px 0 6px}`,

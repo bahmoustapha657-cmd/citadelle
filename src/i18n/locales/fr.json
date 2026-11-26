@@ -1612,7 +1612,7 @@
       "filterLate": "En retard",
       "filterUpToDate": "À jour",
       "summary": "{{n}} élève(s) · {{classes}} classe(s) · {{upToDate}} à jour · {{late}} en retard · {{amount}} {{currency}} payés dans l'année",
-      "note": "Une case par mois (✓ payé, ◐ acompte, ✗ impayé, — pas encore dû) et le total payé dans l'année (mensualités, inscription et frais). En retard = au moins un mois échu impayé, comme l'alerte.",
+      "note": "Une case par mois (✓ payé, ◐ acompte, ✗ impayé, — pas encore dû) et le total payé dans l'année (mensualités, inscription et frais). En retard = au moins un mois échu impayé, comme l'alerte. Sous chaque classe et à la fin : un tableau de statistiques (mois, inscription, frais annexes, total encaissé).",
       "classLine": "{{n}} élève(s) · {{upToDate}} à jour · {{late}} en retard",
       "monthsPaid": "{{n}} mois payé(s)",
       "late": "{{n}} mois en retard"
@@ -2504,9 +2504,24 @@
       "enRetard": "En retard",
       "etatClasse": "{{n}} élève(s) · {{aJour}} à jour · {{retard}} en retard",
       "sousTotal": "{{classe}} — payé par mois",
-      "totalGeneral": "TOTAL — {{n}} élève(s) — payé par mois",
       "recap": "Situation par classe",
-      "aucun": "Aucun élève à imprimer."
+      "aucun": "Aucun élève à imprimer.",
+      "statsClasse": "📊 STATISTIQUES — {{classe}}",
+      "statsGeneral": "📊 STATISTIQUES GÉNÉRALES — {{n}} classe(s)",
+      "colMois": "Mois",
+      "colPaye": "✓ Payé",
+      "colAcompte": "◐ Acompte",
+      "colImpaye": "✗ Impayé",
+      "colPasDu": "Pas dû",
+      "colTaux": "% payé",
+      "colEncaisse": "Encaissé ({{monnaie}})",
+      "ligneMensualites": "Mensualités (nombre de mois)",
+      "ligneInscription": "Inscription / réinscription (élèves)",
+      "ligneAnnexes": "Frais annexes",
+      "ligneTotal": "TOTAL ENCAISSÉ",
+      "taux": "{{n}} %",
+      "inscriptionsPayees": "Inscr. payées",
+      "legendeStats": "Statistiques : « Pas dû » = mois pas encore échu, ou non dû (départ, dispense) ; pour l'inscription, non due (dispense) · % payé = élèves ayant soldé parmi ceux qui doivent · Encaissé = sommes versées, acomptes compris"
     }
   },
   "school": {
