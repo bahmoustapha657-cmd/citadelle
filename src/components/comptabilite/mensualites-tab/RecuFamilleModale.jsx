@@ -11,9 +11,9 @@ import { imprimerRecuFamilleEleves } from "./recu-eleve";
 //  Reçu famille — un reçu pour plusieurs enfants d'un même tuteur
 // ══════════════════════════════════════════════════════════════
 // `fratrie` : l'élève cliqué puis ses frères et sœurs, toutes sections
-// confondues : même tuteur, ou même numéro avec un nom de tuteur abrégé ou
-// mal orthographié (cf. fratrie.js). Tous sont cochés ; le caissier décoche ceux
-// que le parent ne règle pas aujourd'hui.
+// confondues : même tuteur, ou même numéro quel que soit le nom de tuteur
+// écrit sur chaque fiche (cf. fratrie.js). Tous sont cochés ; le caissier
+// décoche ceux que le parent ne règle pas aujourd'hui.
 export function RecuFamilleModale({ fratrie = [], moisAnnee, annee, tarifsClasses, schoolInfo, fermer }) {
   const { t } = useTranslation();
   const [coches, setCoches] = useState(() => new Set(fratrie.map((e) => e._id)));

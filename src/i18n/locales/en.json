@@ -834,7 +834,7 @@
     },
     "familyRcpt": {
       "title": "Family receipt — {{guardian}}",
-      "intro": "Children linked to this guardian: same name and same number, same parentage, or same number with the guardian's name shortened or spelled differently (“Mamadou” / “Mamadou Diallo”). Untick those not to show on the receipt.",
+      "intro": "Children linked to this guardian: same phone number (even when the guardian's name is written differently from one record to another), or same name with the same parentage. Untick those not to show on the receipt.",
       "upToDate": "up to date",
       "printOne": "Print ({{count}} child)",
       "printMany": "Print ({{count}} children)"
