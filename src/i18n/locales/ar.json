@@ -86,6 +86,8 @@
     "offlineShort": "غير متصل",
     "syncPendingTitle": "{{count}} تعديل بانتظار المزامنة",
     "syncPendingShort": "{{count}} بالانتظار",
+    "rappelSaisiesTitre": "📤 EduGest: {{count}} إدخال لم يُرسل",
+    "rappelSaisiesCorps": "أُدخلت دون اتصال بالشبكة وما زالت على هذا الجهاز. افتح EduGest لإرسالها.",
     "firstSync": "المزامنة الأولى لبياناتك على هذا الجهاز… {{percent}}٪ — ستمتلئ القوائم تلقائيًا.",
     "firstSyncRest": "التلاميذ والأقسام جاهزة — العلامات وباقي البيانات قيد التنزيل… {{percent}}٪",
     "firstSyncOffline": "لم يتم تنزيل بياناتك على هذا الجهاز بعد: ستصل فور عودة الشبكة.",

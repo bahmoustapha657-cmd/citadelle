@@ -86,6 +86,8 @@
     "offlineShort": "Offline",
     "syncPendingTitle": "{{count}} change(s) waiting to sync",
     "syncPendingShort": "{{count}} pending",
+    "rappelSaisiesTitre": "📤 EduGest: {{count}} entry(ies) not sent",
+    "rappelSaisiesCorps": "Made without a connection, they are still on this device. Open EduGest to send them.",
     "firstSync": "First sync of your data on this device… {{percent}}% — lists will fill in on their own.",
     "firstSyncRest": "Students and classes are ready — grades and other data still downloading… {{percent}}%",
     "firstSyncOffline": "Your data has not been downloaded to this device yet: it will arrive as soon as the network is back.",
