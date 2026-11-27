@@ -89,6 +89,14 @@ export function ImpressionDispenses({
           );
         })}
       </ul>
+      {total.dispenses > 0 && (
+        <div style={{ fontSize: 12, color: "#334155", marginTop: 8, fontWeight: 700 }}>
+          {t("accounting.exempt.print.paySummary", {
+            paid: fmtN(total.paye), due: fmtN(total.aPayer), part: taux(total.paye, total.aPayer), rest: fmtN(total.reste),
+            late: total.etats.retard, none: total.rienPaye, currency: monnaie,
+          })}
+        </div>
+      )}
       <div style={{ fontSize: 11.5, color: "#64748b", marginTop: 6 }}>{t("accounting.exempt.print.note")}</div>
 
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 14 }}>

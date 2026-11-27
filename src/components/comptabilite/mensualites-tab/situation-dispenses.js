@@ -9,6 +9,14 @@
 // — ce que l'école renonce à percevoir sur ce qui restait dû ; ce qui a déjà
 // été encaissé n'est pas compté.
 //
+// Ce que paie un dispensé, poste par poste (mêmes chiffres que la grille) :
+//  • aPayer : la part laissée à la famille après la dispense, déjà encaissé
+//    compris (payé + reste) ;
+//  • paye : l'encaissé (mois au tarif figé, acomptes, inscription, frais) ;
+//  • reste : ce qui reste dû sur l'année ;
+//  • retard : mois ÉCHUS impayés, la règle de l'alerte mensualités et de la
+//    situation des paiements (échéance de l'école, mois de garantie).
+//
 // Effectif : les élèves de l'année, comme la grille des mensualités (partis
 // avant la rentrée sans rien payer et non réinscrits retirés exclus) — un
 // élève dispensé, lui, est toujours compté.
@@ -19,7 +27,25 @@ import {
   MOTIFS_EXONERATION, POSTES_EXONERABLES, aUneExoneration, clampPourcentage, getExoneration,
 } from "../../../exoneration-utils.js";
 import { concerneParAnnee, getEleveMensualiteSnapshot } from "../../../mensualite-utils.js";
+import { moisGarantieEcole } from "../../../paiements-scolarite.js";
+import { reglagesAlerte, retardEleve } from "./alerte-mensualites.js";
 import { grouperParClasse } from "./liste-mois.js";
+
+// État des paiements d'un dispensé, du plus favorable au moins favorable :
+//  • rien : rien à payer (dispensé de tout, rien encaissé) ;
+//  • solde : tout payé ;
+//  • ajour : il reste à payer, mais aucun mois échu impayé ;
+//  • retard : au moins un mois échu impayé.
+export const ETATS_PAIEMENT = ["rien", "solde", "ajour", "retard"];
+
+export function etatPaiement({ aPayer = 0, reste = 0, moisRetard = 0 } = {}) {
+  if (moisRetard > 0) return "retard";
+  if (aPayer <= 0) return "rien";
+  return reste > 0 ? "ajour" : "solde";
+}
+
+const montantsVides = () => ({ aPayer: 0, paye: 0, reste: 0 });
+const montantsPoste = (paye, reste) => ({ aPayer: paye + reste, paye, reste });
 
 // « eleves » : la liste des élèves dispensés puis les statistiques ;
 // « stats » : les statistiques seules.
@@ -37,13 +63,29 @@ export function elevesDeLAnnee(eleves = [], { moisAnnee = [], annee, schoolInfo 
  *  • motif, precision, accordeePar, accordeeLe : ceux de la dispense ;
  *  • montants : manque à gagner de chaque poste ; total : leur somme ;
  *  • moisDispenses : mois de mensualité restant dus couverts par une
- *    dispense totale des mensualités.
+ *    dispense totale des mensualités ;
+ *  • paiement : { aPayer, paye, reste } de chaque poste ; aPayer, paye,
+ *    reste : leurs sommes ; moisPayes : mois de mensualité soldés ;
+ *  • moisRetard / montantRetard : mois échus impayés et ce qu'ils doivent ;
+ *  • etat : etatPaiement (rien, solde, ajour, retard).
  */
-export function ligneDispense(eleve = {}, { moisAnnee = [], annee, tarifsClasses = [] } = {}) {
+export function ligneDispense(eleve = {}, {
+  moisAnnee = [], annee, tarifsClasses = [], schoolInfo = {}, aujourdhui = new Date(),
+} = {}) {
   const exo = getExoneration(eleve);
   if (!exo) return null;
   const s = getEleveMensualiteSnapshot(eleve, moisAnnee, tarifsClasses, annee);
-  return {
+  const paiement = {
+    mensualites: montantsPoste(s.montantMensualitesPercu, s.soldeMensualites),
+    inscription: montantsPoste(s.montantInscriptionPercu, s.soldeInscription),
+    fraisAnnexes: montantsPoste(s.montantAutrePercu, s.soldeAutre),
+  };
+  const somme = (champ) => POSTES_EXONERABLES.reduce((n, poste) => n + paiement[poste][champ], 0);
+  const retard = retardEleve(eleve, {
+    moisAnnee, annee, tarifsClasses, aujourdhui,
+    jourEcheance: reglagesAlerte(schoolInfo).jourEcheance, moisGarantie: moisGarantieEcole(schoolInfo),
+  });
+  const ligne = {
     eleve,
     taux: Object.fromEntries(POSTES_EXONERABLES.map((poste) => [poste, clampPourcentage(exo[poste])])),
     motif: exo.motif || "autre",
@@ -53,7 +95,15 @@ export function ligneDispense(eleve = {}, { moisAnnee = [], annee, tarifsClasses
     montants: { ...s.exonereParPoste },
     total: s.montantExonere,
     moisDispenses: s.nbExoneres,
+    paiement,
+    aPayer: somme("aPayer"),
+    paye: somme("paye"),
+    reste: somme("reste"),
+    moisPayes: s.nbPayes,
+    moisRetard: retard.mois.length,
+    montantRetard: retard.montant,
   };
+  return { ...ligne, etat: etatPaiement(ligne) };
 }
 
 const posteVide = () => ({ eleves: 0, totale: 0, partielle: 0, sommeTaux: 0, tauxMoyen: 0, montant: 0 });
@@ -65,14 +115,29 @@ const posteVide = () => ({ eleves: 0, totale: 0, partielle: 0, sommeTaux: 0, tau
  *    (totale) et à moins (partielle), taux moyen (arrondi), manque à gagner ;
  *  • parMotif : élèves et manque à gagner par motif — motifs présents
  *    seulement, le plus fréquent d'abord ;
- *  • montant : manque à gagner total ; moisDispenses : mois dispensés.
+ *  • montant : manque à gagner total ; moisDispenses : mois dispensés ;
+ *  • paiement : { aPayer, paye, reste } de chaque poste, tous dispensés
+ *    réunis ; aPayer, paye, reste : leurs sommes ;
+ *  • etats : nombre de dispensés par état (rien, solde, ajour, retard) ;
+ *    rienPaye : ceux qui ont quelque chose à payer et n'ont encore rien
+ *    payé ; montantRetard : ce que doivent les mois échus impayés.
  */
 export function statsDispenses(lignes = [], effectif = lignes.length) {
   const parPoste = Object.fromEntries(POSTES_EXONERABLES.map((poste) => [poste, posteVide()]));
+  const paiement = Object.fromEntries(POSTES_EXONERABLES.map((poste) => [poste, montantsVides()]));
+  const etats = Object.fromEntries(ETATS_PAIEMENT.map((etat) => [etat, 0]));
   const motifs = new Map();
   let montant = 0;
   let moisDispenses = 0;
+  let rienPaye = 0;
+  let montantRetard = 0;
   for (const l of lignes) {
+    for (const poste of POSTES_EXONERABLES) {
+      for (const champ of ["aPayer", "paye", "reste"]) paiement[poste][champ] += l.paiement?.[poste]?.[champ] || 0;
+    }
+    if (l.etat) etats[l.etat] += 1;
+    if (l.aPayer > 0 && !l.paye) rienPaye += 1;
+    montantRetard += l.montantRetard || 0;
     for (const poste of POSTES_EXONERABLES) {
       const taux = l.taux[poste] || 0;
       if (!taux) continue;
@@ -96,7 +161,11 @@ export function statsDispenses(lignes = [], effectif = lignes.length) {
   };
   const parMotif = [...motifs.values()]
     .sort((a, b) => b.eleves - a.eleves || b.montant - a.montant || ordre(a.motif) - ordre(b.motif));
-  return { effectif, dispenses: lignes.length, parPoste, parMotif, montant, moisDispenses };
+  const somme = (champ) => POSTES_EXONERABLES.reduce((n, poste) => n + paiement[poste][champ], 0);
+  return {
+    effectif, dispenses: lignes.length, parPoste, parMotif, montant, moisDispenses,
+    paiement, aPayer: somme("aPayer"), paye: somme("paye"), reste: somme("reste"), etats, rienPaye, montantRetard,
+  };
 }
 
 /**

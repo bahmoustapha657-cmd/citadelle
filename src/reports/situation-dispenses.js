@@ -3,12 +3,14 @@
 // ══════════════════════════════════════════════════════════════
 // Calculs : components/comptabilite/mensualites-tab/situation-dispenses.js.
 //  • detail « eleves » : les élèves dispensés, classe par classe — taux de
-//    chaque poste, motif, qui l'a accordée et quand, manque à gagner —, avec
-//    un sous-total par classe et le total, puis les statistiques ;
+//    chaque poste, motif, qui l'a accordée et quand, manque à gagner, puis à
+//    payer / payé / reste et l'état (tout payé, à jour, mois en retard) —,
+//    avec un sous-total par classe et le total, puis les statistiques ;
 //  • detail « stats » : les statistiques seules.
-// Statistiques : vue d'ensemble, par poste, par motif, par classe et, à
-// plusieurs sections, par section. Puis, si demandé, les demandes de la
-// comptabilité en attente ou refusées. Signatures : comptable et Direction.
+// Statistiques : vue d'ensemble, par poste, état des paiements des dispensés,
+// ce qu'ils paient poste par poste, par motif, par classe et, à plusieurs
+// sections, par section. Puis, si demandé, les demandes de la comptabilité
+// en attente ou refusées. Signatures : comptable et Direction.
 
 import { fmtN, getMonnaie, today } from "../constants.js";
 import { STATUT_REFUSEE } from "../demande-dispense.js";
@@ -38,28 +40,90 @@ const celluleTaux = (taux) => (taux >= 100
 const resumeDemande = (d) => POSTES.filter((p) => d[p] > 0)
   .map((p) => tr("accounting.exempt.summaryItem", { label: libellePoste(p), rate: d[p] })).join(" · ");
 
-// Liste des élèves dispensés, rangés par classe.
+// État des paiements d'un dispensé, sous son reste : « ✔ Tout payé »,
+// « À jour », « ⚠ 2 mois en retard (100 000) », « Rien à payer ».
+const libelleEtat = (l) => (l.etat === "retard"
+  ? `<span class="ko">${tr("reports.dispenses.etatRetardMois", { n: l.moisRetard, montant: fmtN(l.montantRetard) })}</span>`
+  : `<span class="${l.etat === "solde" ? "ok" : "mat"}">${tr(`reports.dispenses.etat.${l.etat}`)}</span>`);
+
+// Manque à gagner, à payer, payé, reste : les quatre montants d'une ligne,
+// d'un sous-total ou du total.
+const cellulesMontants = (x) => ["montant", "aPayer", "paye", "reste"]
+  .map((champ) => `<td class="m">${fmtN(x[champ])}</td>`).join("");
+
+// Liste des élèves dispensés, rangés par classe : la dispense (taux, motif,
+// qui l'a accordée), ce qu'elle coûte à l'école, puis ce que l'élève doit
+// encore payer, ce qu'il a payé et ce qui lui reste, avec son état.
 function tableauEleves(groupes, total, monnaie) {
+  const accordee = (l) => (l.accordeePar || l.accordeeLe
+    ? `<br/><span class="mat">${tr("reports.dispenses.accordeeParLe", {
+      author: echapper(l.accordeePar) || "—", date: echapper(l.accordeeLe) || "—",
+    })}</span>`
+    : "");
   const ligne = (l, i) => `<tr>
       <td class="c">${i + 1}</td>
       <td>${celluleEleve(l.eleve)}</td>
       ${POSTES.map((p) => celluleTaux(l.taux[p])).join("")}
-      <td>${libelleMotif(l.motif)}${l.precision ? `<br/><span class="mat">${echapper(l.precision)}</span>` : ""}</td>
-      <td class="signe">${echapper(l.accordeePar) || "—"}${l.accordeeLe ? `<br/><span class="mat">${echapper(l.accordeeLe)}</span>` : ""}</td>
+      <td>${libelleMotif(l.motif)}${l.precision ? `<br/><span class="mat">${echapper(l.precision)}</span>` : ""}${accordee(l)}</td>
       <td class="m">${fmtN(l.total)}</td>
+      <td class="m">${fmtN(l.aPayer)}</td>
+      <td class="m">${fmtN(l.paye)}<br/><span class="mat">${[
+  l.aPayer > 0 ? tr("reports.dispenses.partPayee", { part: part(l.paye, l.aPayer) }) : "",
+  // Dispensé de tous les mois : pas de « 0 mois payé ».
+  l.paiement.mensualites.aPayer > 0 ? tr("reports.dispenses.moisPayes", { n: l.moisPayes }) : "",
+].filter(Boolean).join(" · ")}</span></td>
+      <td class="m">${fmtN(l.reste)}<br/>${libelleEtat(l)}</td>
     </tr>`;
-  const corps = groupes.map((g) => `<tr class="grp"><td colspan="8">${tr("reports.dispenses.grpClasse", {
+  const corps = groupes.map((g) => `<tr class="grp"><td colspan="10">${tr("reports.dispenses.grpClasse", {
     classe: nomClasse(g.classe), n: g.dispenses, effectif: g.effectif, part: part(g.dispenses, g.effectif),
   })}</td></tr>
     ${g.lignes.map(ligne).join("")}
-    <tr class="st"><td colspan="7">${tr("reports.dispenses.sousTotal", { classe: nomClasse(g.classe) })}</td><td class="m">${fmtN(g.montant)}</td></tr>`).join("");
-  return `<table>
+    <tr class="st"><td colspan="6">${tr("reports.dispenses.sousTotal", { classe: nomClasse(g.classe) })}</td>${cellulesMontants(g)}</tr>`).join("");
+  return `<table class="liste">
     <thead><tr><th class="c">${tr("reports.rowNumber")}</th><th>${tr("reports.studentName")}</th>
       ${POSTES.map((p) => `<th class="c">${libellePoste(p)}</th>`).join("")}
-      <th>${tr("reports.dispenses.colMotif")}</th><th>${tr("reports.dispenses.colAccordee")}</th>
-      <th>${tr("reports.dispenses.colManque", { monnaie })}</th></tr></thead>
+      <th>${tr("reports.dispenses.colMotifAccordee")}</th>
+      <th>${tr("reports.dispenses.colManque", { monnaie })}</th>
+      <th>${tr("reports.dispenses.colAPayer", { monnaie })}</th>
+      <th>${tr("reports.dispenses.colPaye", { monnaie })}</th>
+      <th>${tr("reports.dispenses.colReste", { monnaie })}</th></tr></thead>
     <tbody>${corps}</tbody>
-    <tfoot><tr><td colspan="7">${tr("reports.dispenses.totalGeneral", { n: total.dispenses })}</td><td class="m">${fmtN(total.montant)}</td></tr></tfoot>
+    <tfoot><tr><td colspan="6">${tr("reports.dispenses.totalGeneral", { n: total.dispenses })}</td>${cellulesMontants(total)}</tr></tfoot>
+  </table>`;
+}
+
+// Ce que paient les dispensés, poste par poste : la part laissée à la
+// famille, ce qu'elle a payé (et quelle part) et ce qui lui reste.
+function tableauPaiements(total, monnaie) {
+  const cellules = (x) => `<td class="m">${fmtN(x.aPayer)}</td><td class="m">${fmtN(x.paye)}</td>
+    <td class="c">${part(x.paye, x.aPayer)}</td><td class="m">${fmtN(x.reste)}</td>`;
+  return `<table class="stats">
+    <caption>${tr("reports.dispenses.paiementsTitre")}</caption>
+    <thead><tr><th>${tr("reports.dispenses.colPoste")}</th><th>${tr("reports.dispenses.colAPayer", { monnaie })}</th>
+      <th>${tr("reports.dispenses.colPaye", { monnaie })}</th><th class="c">${tr("reports.dispenses.colPartPayee")}</th>
+      <th>${tr("reports.dispenses.colReste", { monnaie })}</th></tr></thead>
+    <tbody>${POSTES.map((p) => `<tr><td>${libellePoste(p)}</td>${cellules(total.paiement[p])}</tr>`).join("")}</tbody>
+    <tfoot><tr><td>${tr("common.total")}</td>${cellules(total)}</tr></tfoot>
+  </table>`;
+}
+
+// Où en sont les dispensés : tout payé, à jour, en retard, rien à payer —
+// et ceux qui n'ont encore rien payé.
+function tableauEtats(total, monnaie) {
+  const ligne = (libelle, n, classe = "") => `<tr><td${classe ? ` class="${classe}"` : ""}>${libelle}</td>
+    <td class="c">${n}</td><td class="c">${part(n, total.dispenses)}</td></tr>`;
+  return `<table class="stats ensemble">
+    <caption>${tr("reports.dispenses.etatsTitre")}</caption>
+    <thead><tr><th>${tr("reports.dispenses.colEtat")}</th><th class="c">${tr("reports.dispenses.colEleves")}</th>
+      <th class="c">${tr("reports.dispenses.colPartDispenses")}</th></tr></thead>
+    <tbody>
+      ${ligne(tr("reports.dispenses.etat.solde"), total.etats.solde, "ok")}
+      ${ligne(tr("reports.dispenses.etat.ajour"), total.etats.ajour)}
+      ${ligne(tr("reports.dispenses.etat.retard"), total.etats.retard, "ko")}
+      ${ligne(tr("reports.dispenses.etat.rien"), total.etats.rien)}
+      ${ligne(tr("reports.dispenses.rienPaye"), total.rienPaye)}
+      <tr><td>${tr("reports.dispenses.montantRetard", { monnaie })}</td><td class="m" colspan="2">${fmtN(total.montantRetard)}</td></tr>
+    </tbody>
   </table>`;
 }
 
@@ -122,18 +186,22 @@ function tableauMotifs(total, monnaie) {
 
 // Par classe (toutes les classes de l'année, même sans dispensé) ou par
 // section : effectif, dispensés, part de l'effectif, dispensés de chaque
-// poste, manque à gagner.
+// poste, manque à gagner, puis ce que les dispensés ont payé, ce qui leur
+// reste et combien sont en retard.
 function tableauGroupes(groupes, total, { titre, colonne, nom, monnaie }) {
   const cellules = (g) => `<td class="c">${g.effectif}</td><td class="c"><strong>${g.dispenses}</strong></td>
     <td class="c">${part(g.dispenses, g.effectif)}</td>
     ${POSTES.map((p) => `<td class="c">${g.parPoste[p].eleves}</td>`).join("")}
-    <td class="m">${fmtN(g.montant)}</td>`;
+    <td class="m">${fmtN(g.montant)}</td><td class="m">${fmtN(g.paye)}</td><td class="m">${fmtN(g.reste)}</td>
+    <td class="c${g.etats.retard ? " ko" : ""}">${g.etats.retard}</td>`;
   return `<table class="stats">
     <caption>${titre}</caption>
     <thead><tr><th>${colonne}</th><th class="c">${tr("reports.dispenses.colEffectif")}</th>
       <th class="c">${tr("reports.dispenses.colDispenses")}</th><th class="c">${tr("reports.dispenses.colPartEffectif")}</th>
       ${POSTES.map((p) => `<th class="c">${libellePoste(p)}</th>`).join("")}
-      <th>${tr("reports.dispenses.colManque", { monnaie })}</th></tr></thead>
+      <th>${tr("reports.dispenses.colManque", { monnaie })}</th>
+      <th>${tr("reports.dispenses.colPaye", { monnaie })}</th><th>${tr("reports.dispenses.colReste", { monnaie })}</th>
+      <th class="c">${tr("reports.dispenses.colRetard")}</th></tr></thead>
     <tbody>${groupes.map((g) => `<tr><td><strong>${nom(g)}</strong></td>${cellules(g)}</tr>`).join("")}</tbody>
     <tfoot><tr><td>${tr("common.total")}</td>${cellules(total)}</tr></tfoot>
   </table>`;
@@ -176,6 +244,7 @@ export function situationDispensesHTML(situation, { detail = "eleves", avecDeman
   const statistiques = `<div>
     <h3>${tr("reports.dispenses.statsTitre")}</h3>
     <div class="duo">${tableauEnsemble(total, demandes, monnaie)}${tableauPostes(total, monnaie)}</div>
+    <div class="duo">${tableauEtats(total, monnaie)}${tableauPaiements(total, monnaie)}</div>
     ${tableauMotifs(total, monnaie)}
     ${sections.length > 1 ? tableauGroupes(sections, total, {
     titre: tr("reports.dispenses.parSection"), colonne: tr("reports.dispenses.colSection"), nom: (g) => nomSection(g.section), monnaie,
@@ -193,13 +262,17 @@ export function situationDispensesHTML(situation, { detail = "eleves", avecDeman
     couleur: "#0f4c81",
     titre: tr("reports.dispenses.titre"),
     titreFenetre: tr("reports.dispenses.fenetre"),
-    note: [tr("reports.dispenses.noteTaux"), tr("reports.dispenses.noteManque"), tr("reports.dispenses.noteEffectif")].join("<br/>"),
+    note: [
+      tr("reports.dispenses.noteTaux"), tr("reports.dispenses.noteManque"),
+      tr("reports.dispenses.notePaiement"), tr("reports.dispenses.noteEffectif"),
+    ].join("<br/>"),
     tableau: liste + statistiques + blocDemandes,
     pied,
     css: `td{vertical-align:middle}
       td.tot{color:#166534;font-weight:900} td.vide{color:#94a3b8}
       td.signe{font-size:10px;white-space:nowrap}
-      .ko{color:#b91c1c;font-weight:700} .att{color:#92400e;font-weight:700}
+      table.liste td{font-size:10.5px} table.liste td.m .mat,table.liste td.m span{font-weight:700;white-space:normal}
+      .ok{color:#166534;font-weight:700} .ko{color:#b91c1c;font-weight:700} .att{color:#92400e;font-weight:700}
       tr.grp td{background:#e2e8f0!important;font-weight:900;font-size:11.5px;padding:5px 6px}
       tr.st td{background:#f1f5f9!important;font-weight:800}
       .vide-liste{text-align:center;color:#64748b;font-weight:700;margin:16px 0}
