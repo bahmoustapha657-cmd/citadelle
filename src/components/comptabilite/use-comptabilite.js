@@ -276,6 +276,8 @@ export function useComptabilite({ readOnly, annee, userRole, permissions = null,
     annee: annee || getAnnee(),
     moisAnnee,
     tarifsClasses,
+    // En-tête et monnaie de la situation imprimée.
+    schoolInfo,
     estDirection,
     // La comptabilité demande, la Direction accorde ; jamais sur une année close.
     peutDemander: !estDirection && canEdit,

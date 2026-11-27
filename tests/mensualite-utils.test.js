@@ -102,6 +102,7 @@ test("snapshot and overview aggregate scolarite and one-time fees", () => {
     // Élève sans dispense de paiement (cf. exoneration.test.js).
     nbExoneres: 0,
     montantExonere: 0,
+    exonereParPoste: { mensualites: 0, inscription: 0, fraisAnnexes: 0 },
     // Mensualité = 180 000 : la révision n'est plus ajoutée à chaque mois.
     montantMensualitesPercu: 360000,
     montantInscriptionPercu: 50000,
