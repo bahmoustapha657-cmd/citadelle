@@ -63,13 +63,18 @@ Documenter ensuite : heure, cause, impact, commit retiré, commit restauré.
 
 ## Sauvegarde et récupération
 
-- Données : `node supabase/backup-donnees.mjs` (export JSON hors du dépôt).
+- Hors site, chaque nuit : base + fichiers, chiffrés, dans Cloudflare R2,
+  puis restaurés à blanc pour preuve
+  ([sauvegarde-hors-site.md](sauvegarde-hors-site.md), procédure de
+  restauration comprise).
+- Sur le poste : `node supabase/backup-donnees.mjs` (export JSON hors du
+  dépôt) ; état : `npm run sauvegarde:verifier`.
 - Schéma : `supabase/migrations/` (baseline + migrations) et action
   « photographier » de [migrations-sql.md](migrations-sql.md).
 - Code : chaque déploiement correspond à un commit de master.
 
 ## Prochaines marches
 
-- Sauvegarde hors site automatique + restauration à un instant donné (PITR).
+- Restauration à un instant donné (PITR, option payante de Supabase).
 - Canal de retour utilisateur direct (e-mail visible, groupe WhatsApp).
 - Accès partagé ou coffre récupérable (un seul développeur).
