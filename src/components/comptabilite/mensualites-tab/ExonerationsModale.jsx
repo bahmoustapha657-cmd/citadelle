@@ -18,6 +18,7 @@ import {
   retirerDemandeDispense, retirerExoneration,
 } from "../exoneration-actions";
 import { brouillonDepuis, versExoneration } from "./exoneration-brouillon";
+import { ImpressionDispenses } from "./ImpressionDispenses";
 
 const nomComplet = (e) => `${e.nom || ""} ${e.prenom || ""}`.trim();
 
@@ -76,9 +77,11 @@ const titreBloc = { margin: "0 0 8px", fontSize: 12, fontWeight: 800, color: C.b
 // depuis l'Enrôlement, elle ne dépend plus de la section de l'onglet.
 // `eleveInitialId` : élève à préparer d'emblée (bouton 🎓 d'une ligne de
 // l'Enrôlement), cherché dans `sectionInitiale`.
+// « 🖨️ Imprimer la situation » (tous les rôles) : liste des dispensés et
+// statistiques, de la section affichée ou de toutes (ImpressionDispenses).
 export function ExonerationsModale({
   elevesParSection = {}, modParSection = {}, sections = [], sectionInitiale = "", eleveInitialId = null,
-  moisAnnee, tarifsClasses, annee, estDirection, peutDemander = false, fermer, deps,
+  moisAnnee, tarifsClasses, annee, estDirection, peutDemander = false, schoolInfo = {}, fermer, deps,
 }) {
   const { t } = useTranslation();
   const [section, setSection] = useState(() => (sections.includes(sectionInitiale) ? sectionInitiale : sections[0] || "college"));
@@ -91,6 +94,7 @@ export function ExonerationsModale({
   const [enCours, setEnCours] = useState(false);
   // Refus en cours de rédaction : { id, raison }.
   const [refus, setRefus] = useState(null);
+  const [impression, setImpression] = useState(false);
   const formulaire = useRef(null);
   const attentes = useMemo(
     () => attentesParSection(elevesParSection, sections, annee, { direction: estDirection }),
@@ -219,7 +223,18 @@ export function ExonerationsModale({
       <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center", background: "#e0ebf8", borderRadius: 8, padding: "9px 14px", marginBottom: 14 }}>
         <span style={{ fontSize: 12, fontWeight: 700, color: C.blueDark }}>🎓 {t("accounting.exempt.count", { count: overview.totalElevesExoneres })}</span>
         <Badge color="amber">{t("accounting.exempt.shortfall", { amount: fmt(overview.totalExonere) })}</Badge>
+        <span style={{ marginInlineStart: "auto" }}>
+          <Btn sm v="ghost" onClick={() => setImpression((v) => !v)} title={t("accounting.exempt.print.hint")}>
+            {t("accounting.exempt.print.button")}
+          </Btn>
+        </span>
       </div>
+
+      {impression && (
+        <ImpressionDispenses elevesParSection={elevesParSection} sections={sections} section={section}
+          moisAnnee={moisAnnee} tarifsClasses={tarifsClasses} annee={annee} schoolInfo={schoolInfo}
+          fermer={() => setImpression(false)} />
+      )}
 
       {/* Direction : les demandes de la comptabilité, en tête — c'est ce
           qu'elle vient chercher quand la pastille ou le tableau de bord l'a

@@ -21,7 +21,7 @@ import {
 
 // Noms, tuteurs, contacts sont saisis à la main : un « < » ou un « & » ne
 // doit ni casser le tableau ni injecter de balise dans la page imprimée.
-const echapper = (valeur) => String(valeur ?? "")
+export const echapper = (valeur) => String(valeur ?? "")
   .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 // « Octobre » → « Oct » : dix colonnes de mois tiennent ainsi sur un A4.
@@ -30,12 +30,14 @@ const moisCourt = (mois) => {
   return i >= 0 ? TOUS_MOIS_COURTS[i] : mois;
 };
 
-const celluleEleve = (e) => `<strong>${echapper(e.nom)} ${echapper(e.prenom)}</strong>`
+export const celluleEleve = (e) => `<strong>${echapper(e.nom)} ${echapper(e.prenom)}</strong>`
   + (e.matricule ? `<br/><span class="mat">${echapper(e.matricule)}</span>` : "");
 
 // Page commune : en-tête de l'école, titre, périmètre, tableau, signature.
-// `css` : règles propres à une liste, ajoutées aux règles communes.
-const pageListe = ({ schoolInfo = {}, annee = "", perimetre = "", titre, titreFenetre, note = "", tableau, couleur, css = "" }) => {
+// `css` : règles propres à une liste, ajoutées aux règles communes ;
+// `pied` : bas de page à la place de la date d'impression et du comptable.
+// Partagée avec la situation des dispenses (reports/situation-dispenses.js).
+export const pageListe = ({ schoolInfo = {}, annee = "", perimetre = "", titre, titreFenetre, note = "", tableau, couleur, css = "", pied = "" }) => {
   const c1 = schoolInfo.couleur1 || "#0A1628";
   return `<!DOCTYPE html><html lang="${printLang()}" dir="${printDir()}"><head>
   <meta charset="utf-8"/>
@@ -66,7 +68,7 @@ const pageListe = ({ schoolInfo = {}, annee = "", perimetre = "", titre, titreFe
   <div class="sous">${[annee ? `Année scolaire ${echapper(annee)}` : "", echapper(perimetre), `Situation au ${today()}`].filter(Boolean).join(" · ")}</div>
   ${note ? `<div class="note">${note}</div>` : ""}
   ${tableau}
-  <div class="pied"><span>Imprimé le ${today()}</span><span><strong>Le Comptable</strong><br/><br/><br/></span></div>
+  ${pied || `<div class="pied"><span>Imprimé le ${today()}</span><span><strong>Le Comptable</strong><br/><br/><br/></span></div>`}
   <script>${PRINT_TRIGGER}</script>
   </body></html>`;
 };
@@ -400,7 +402,7 @@ export function situationGeneraleHTML(groupes = [], {
   });
 }
 
-const ouvrir = (html) => {
+export const ouvrir = (html) => {
   const w = window.open("", "_blank");
   if (!w) { alert("Autorisez les fenêtres pop-up pour imprimer."); return; }
   w.document.write(html);

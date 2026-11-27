@@ -102,8 +102,10 @@ export type MensualiteSnapshot = {
   nbPartiels: number;
   // Mois couverts par une dispense totale : ni payés, ni dus.
   nbExoneres: number;
-  // Ce que l'école renonce à percevoir sur cet élève cette année.
+  // Ce que l'école renonce à percevoir sur cet élève cette année…
   montantExonere: number;
+  // … poste par poste (situation des dispenses).
+  exonereParPoste: { mensualites: number; inscription: number; fraisAnnexes: number };
   montantMensualitesPercu: number;
   montantInscriptionPercu: number;
   montantAutrePercu: number;
@@ -321,7 +323,7 @@ export function getEleveMensualiteSnapshot(eleve: MensualiteEleve = {}, moisAnne
   let nbNonPayes = 0;
   let montantMensualitesPercu = 0;
   let soldeMensualites = 0;
-  let exonere = 0;
+  const exonereParPoste = { mensualites: 0, inscription: 0, fraisAnnexes: 0 };
   for (const mois of moisAnnee) {
     if (mens[mois] === "Payé") {
       nbPayes += 1;
@@ -335,7 +337,7 @@ export function getEleveMensualiteSnapshot(eleve: MensualiteEleve = {}, moisAnne
     const reste = Math.max(0, duMois - acompte);
     nbNonPayes += 1;
     soldeMensualites += reste;
-    exonere += mensualite - duMois;
+    exonereParPoste.mensualites += mensualite - duMois;
     if (reste > 0) {
       nbImpayes += 1;
       if (acompte > 0) nbPartiels += 1;
@@ -354,7 +356,7 @@ export function getEleveMensualiteSnapshot(eleve: MensualiteEleve = {}, moisAnne
     if (aFrequente) {
       const duInscription = montantDuInscription(eleve, inscriptionTarif);
       soldeInscription = Math.max(0, duInscription - acompte);
-      exonere += inscriptionTarif - duInscription;
+      exonereParPoste.inscription += inscriptionTarif - duInscription;
     }
   }
 
@@ -367,7 +369,7 @@ export function getEleveMensualiteSnapshot(eleve: MensualiteEleve = {}, moisAnne
     montantAutrePercu += ligne.verse;
     if (ligne.paye || !aFrequente) continue;
     soldeAutre += ligne.reste;
-    exonere += ligne.du - ligne.duNet;
+    exonereParPoste.fraisAnnexes += ligne.du - ligne.duNet;
   }
 
   return {
@@ -376,7 +378,8 @@ export function getEleveMensualiteSnapshot(eleve: MensualiteEleve = {}, moisAnne
     nbImpayes,
     nbPartiels,
     nbExoneres,
-    montantExonere: exonere,
+    montantExonere: exonereParPoste.mensualites + exonereParPoste.inscription + exonereParPoste.fraisAnnexes,
+    exonereParPoste,
     montantMensualitesPercu,
     montantInscriptionPercu,
     montantAutrePercu,
