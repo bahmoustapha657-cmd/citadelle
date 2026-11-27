@@ -136,6 +136,63 @@ test("situationDispensesHTML : liste par classe, statistiques, demandes, signatu
   assert.ok(html.includes("Le Comptable") && html.includes("La Direction Générale"));
 });
 
+test("ligneDispense : à payer, payé, reste et état des paiements de chaque dispensé", () => {
+  // Dispensé de tout, octobre payé avant la dispense : tout payé.
+  const t = ligneDispense(total, opts);
+  assert.deepEqual(t.paiement.mensualites, { aPayer: 100000, paye: 100000, reste: 0 });
+  assert.deepEqual([t.aPayer, t.paye, t.reste, t.moisPayes, t.etat], [100000, 100000, 0, 1, "solde"]);
+
+  // 50 % des mensualités, rien payé au 10 décembre : 3 mois échus à 50 000,
+  // plus l'inscription et les frais annexes, non dispensés.
+  const m = ligneDispense(moitie, opts);
+  assert.deepEqual(m.paiement, {
+    mensualites: { aPayer: 150000, paye: 0, reste: 150000 },
+    inscription: { aPayer: 50000, paye: 0, reste: 50000 },
+    fraisAnnexes: { aPayer: 20000, paye: 0, reste: 20000 },
+  });
+  assert.deepEqual([m.aPayer, m.paye, m.reste], [220000, 0, 220000]);
+  assert.deepEqual([m.moisRetard, m.montantRetard, m.etat], [3, 150000, "retard"]);
+
+  // 50 % des mensualités, octobre et décembre (mois de garantie) payés au
+  // 15 octobre : il reste novembre, pas encore échu — à jour.
+  const aJour = {
+    _id: "j", nom: "FICTIF", prenom: "Awa", classe: "6e B", statut: "Actif", inscriptionPayee: true, inscriptionMontant: 50000,
+    mens: { Octobre: "Payé", Décembre: "Payé" }, mensMontants: { Octobre: 50000, Décembre: 50000 },
+    exoneration: exo({ mensualites: 50, motif: "fratrie" }),
+  };
+  const j = ligneDispense(aJour, { ...opts, aujourdhui: new Date("2026-10-15T12:00:00") });
+  assert.deepEqual([j.aPayer, j.paye, j.reste, j.moisPayes, j.moisRetard, j.etat], [200000, 150000, 50000, 2, 0, "ajour"]);
+
+  // Dispensé de tout, rien encaissé : rien à payer.
+  const rien = { _id: "z", nom: "ESSAI", prenom: "Zéro", classe: "6e B", statut: "Actif", mens: {},
+    exoneration: exo({ mensualites: 100, inscription: 100, fraisAnnexes: 100, motif: "orphelin" }) };
+  assert.equal(ligneDispense(rien, opts).etat, "rien");
+});
+
+test("statsDispenses : ce que paient les dispensés, états et retards", () => {
+  const s = statsDispenses([ligneDispense(total, opts), ligneDispense(moitie, opts)], 4);
+  assert.deepEqual(s.paiement.mensualites, { aPayer: 250000, paye: 100000, reste: 150000 });
+  assert.deepEqual([s.aPayer, s.paye, s.reste], [320000, 100000, 220000]);
+  assert.deepEqual(s.etats, { rien: 0, solde: 1, ajour: 0, retard: 1 });
+  assert.equal(s.rienPaye, 1, "à payer, rien payé : l'élève à 50 %");
+  assert.equal(s.montantRetard, 150000);
+  assert.deepEqual(statsDispenses([], 3).etats, { rien: 0, solde: 0, ajour: 0, retard: 0 });
+});
+
+test("situationDispensesHTML : à payer / payé / reste par élève, états et paiements dans les statistiques", () => {
+  const s = situationDispenses(parSection, ["college", "primaire"], opts);
+  // À payer : 100 000 + 220 000 + 80 000 ; payé : 100 000 + 80 000.
+  assert.deepEqual([s.total.aPayer, s.total.paye, s.total.reste], [400000, 180000, 220000]);
+  const html = situationDispensesHTML(s, { schoolInfo: ecole, annee: ANNEE });
+  for (const texte of [
+    "✔ Tout payé", `⚠ 3 mois en retard (${fmtN(150000)})`, "Accordée par DG ESSAI le 2026-10-02",
+    "Ce que paient les élèves dispensés", "Où en sont les élèves dispensés", "Ont à payer mais n'ont encore rien payé",
+    fmtN(400000), fmtN(180000), "45 %",
+  ]) {
+    assert.ok(html.includes(texte), texte);
+  }
+});
+
 test("situationDispensesHTML : statistiques seules, sans demandes, une section ; noms échappés", () => {
   const piege = { ...moitie, nom: "<b>ESSAI</b>" };
   const s = situationDispenses({ college: [total, piege, normalA] }, ["college"], opts);
